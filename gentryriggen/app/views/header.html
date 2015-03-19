@@ -1,0 +1,18 @@
+﻿<div ng-controller="headerCtrl" class="container">
+    <div class="row">
+        <div class="header">
+            <div class="text-muted brand"><a ui-sref="blog">Gentry Riggen</a></div>
+
+            <ul class="nav nav-pills">
+                <li ui-sref-active="active"><a ui-sref="blog">Blog</a></li>
+                <li ui-sref-active="active"><a ui-sref="about">About</a></li>
+                <li ng-show="isAuthenticated()" ui-sref-active="active">
+                    <a ui-sref="blogAdmin">Admin</a>
+                </li>
+                <li ng-show="isAuthenticated()" ui-sref-active="active">
+                    <a ui-sref="logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

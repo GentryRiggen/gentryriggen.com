@@ -1,0 +1,18 @@
+﻿<div class="container">
+    <div class="row">
+        <div class="col-xs-12 col-sm-8 col-sm-offset-2">
+            <div class="blog-post">
+                <div class="blog-post-header">
+                    <a class="blog-post-title" href="#" ng-click="goToPost()">{{model.title}}</a>
+                    <div class="blog-post-subtitle">
+                        {{model.subTitle}}
+                        <span>{{model.createdOn | date:'MMM d, y'}}</span>
+                    </div>
+                </div>
+                <div class="blog-post-body">
+                    <div class="blog-post-content" ng-bind-html="model.content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

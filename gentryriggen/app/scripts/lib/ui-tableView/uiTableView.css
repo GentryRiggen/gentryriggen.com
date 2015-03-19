@@ -1,0 +1,52 @@
+table.ui-table-view:hover, table.ui-table-view:focus {
+  box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.2); }
+
+table.ui-table-view {
+  font-size: 1.4rem;
+  font-weight: normal;
+  color: #656565; }
+  table.ui-table-view thead {
+    box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.2); }
+    table.ui-table-view thead tr {
+      font-size: 1.8rem;
+      background: #fff;
+      color: #343434; }
+      table.ui-table-view thead tr td {
+        text-transform: uppercase; }
+        table.ui-table-view thead tr td input {
+          max-width: 200px;
+          border: thin solid #eee;
+          font-size: 1.4rem;
+          padding: 5px;
+          color: #333; }
+  table.ui-table-view tbody tr:hover, table.ui-table-view tbody tr:focus {
+    background: #ddd;
+    cursor: pointer;
+    color: #343434; }
+
+table.ui-table-view.gray thead tr, table.ui-table-view.red thead tr, table.ui-table-view.blue thead tr, table.ui-table-view.green thead tr {
+  color: #fff; }
+table.ui-table-view.gray tbody tr:hover, table.ui-table-view.gray tbody tr:focus, table.ui-table-view.red tbody tr:hover, table.ui-table-view.red tbody tr:focus, table.ui-table-view.blue tbody tr:hover, table.ui-table-view.blue tbody tr:focus, table.ui-table-view.green tbody tr:hover, table.ui-table-view.green tbody tr:focus {
+  color: #fff; }
+
+table.ui-table-view.gray thead tr {
+  background: #6D6D6D; }
+table.ui-table-view.gray tbody tr:hover, table.ui-table-view.gray tbody tr:focus {
+  background: #808080; }
+
+table.ui-table-view.red thead tr {
+  background: #D04E50; }
+table.ui-table-view.red tbody tr:hover, table.ui-table-view.red tbody tr:focus {
+  background: #EF5A5C; }
+
+table.ui-table-view.blue thead tr {
+  background: #008cba; }
+table.ui-table-view.blue tbody tr:hover, table.ui-table-view.blue tbody tr:focus {
+  background: #00b2ed; }
+
+table.ui-table-view.green thead tr {
+  background: #57AC57; }
+table.ui-table-view.green tbody tr:hover, table.ui-table-view.green tbody tr:focus {
+  background: #65C965; }
+
+/*# sourceMappingURL=uiTableView.css.map */

@@ -1,0 +1,37 @@
+﻿<form class="form-inline" ng-submit="vm.searchFiles(q)">
+    <div class="form-group">
+        <label class="control-label"></label>
+        <input type="text" placeholder="Awesome.png"
+               name="q" ng-model="q" class="form-control">
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+</form>
+
+<div class="clearfix">
+    <input type="file" name="file" onchange="angular.element(this).scope().vm.uploadFile(this.files)" />
+    <ul>
+        <li ng-repeat="item in uploader.queue">
+            Name: <span ng-bind="item.file.name"></span><br />
+            <button ng-click="item.upload()">upload</button>
+        </li>
+    </ul>
+</div>
+<hr />
+<table class="ui-table-view table table-responsive table-hover blue">
+    <thead>
+        <tr>
+            <td>Image</td>
+            <td>Path</td>
+            <td></td>
+            <td></td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="file in vm.files">
+            <td><img src="{{file.uri}}" class="img-responsive" style="max-height: 100px; max-width: 100px;"/></td>
+            <td>{{file.uri}}</td>
+            <td><a target="#" href="{{file.uri}}">Download</a></td>
+            <td><button class="btn-danger" ng-click="vm.delete(file.fileName)">Delete</button></td>
+        </tr>
+    </tbody>
+</table>

@@ -1,0 +1,20 @@
+﻿<table class="ui-table-view table table-responsive table-hover {{tableClass}} {{color}}">
+    <thead>
+        <tr>
+            <td ng-repeat="col in config.columnDefs">
+                {{col.title}}
+                <div ng-show="col.search">
+                    <input type="search" id="search-{{col.field}}" placeholder="Search by {{col.title}}"
+                           ng-model="val" ng-keyup="searchByCol(col, val)" />
+                </div>
+            </td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="data in config.data" ng-click="rowClicked(data)">
+            <td ng-repeat="col in config.columnDefs">
+                <div>{{data[col.field]}}</div>
+            </td>
+        </tr>
+    </tbody>
+</table>

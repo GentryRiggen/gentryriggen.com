@@ -1,0 +1,15 @@
+﻿<div class="container">
+    <!-- Admin Navigation Area -->
+    <div class="col-sm-4 col-md-2">
+        <ul class="nav nav-pills nav-stacked">
+            <li ng-repeat="section in vm.sections" role="presentation" ui-sref-active="active">
+                <a ui-sref="{{section.state}}">{{section.title}}</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Admin Content Area -->
+    <div class="col-sm-8 col-md-10">
+        <ui-view></ui-view>
+    </div>
+</div>

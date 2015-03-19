@@ -1,0 +1,9 @@
+﻿<form ng-submit="vm.reset()" class="form-signin">
+    <h1 class="form-signin-heading text-muted">Reset Password</h1>
+    <input type="password" class="form-control" placeholder="Old Password" required autofocus ng-model="vm.resetModel.oldPassword">
+    <input type="password" class="form-control" placeholder="New Password" required ng-model="vm.resetModel.password">
+    <input type="password" class="form-control" placeholder="Confirm Password" required ng-model="vm.resetModel.confirmPassword">
+    <button class="btn btn-lg btn-primary btn-block" type="submit">
+        Reset
+    </button>
+</form>
