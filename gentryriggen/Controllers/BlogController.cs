@@ -13,6 +13,7 @@ using gentryriggen.models;
 using gentryriggen.models.Serializable;
 using gentryriggen.Filters;
 using System.Data.Entity.Validation;
+using gentryriggen.Utils;
 
 namespace gentryriggen.Controllers
 {
@@ -60,7 +61,9 @@ namespace gentryriggen.Controllers
                 return NotFound();
             }
 
-            return Ok(blogPost.Serialize());
+            SerializedBlogPost b = blogPost.Serialize();
+            b.Url = Utilities.GetSetting("appUrl") + "/#!/blog/" + b.Permalink;
+            return Ok(b);
         }
 
         [ResponseType(typeof(SerializedBlogPost))]

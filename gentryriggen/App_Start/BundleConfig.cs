@@ -23,6 +23,7 @@ namespace gentryriggen
                         "~/app/scripts/lib/textAngular-rangy.min.js",
                         "~/app/scripts/lib/textAngular.min.js",
                         "~/app/scripts/lib/ui-tableView/tableView.js",
+                        "~/app/scripts/lib/dirDisqus.js",
                         // Angular Libraries
                         "~/app/scripts/app.js",
                         "~/app/scripts/app.config.js",

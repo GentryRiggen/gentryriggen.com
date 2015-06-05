@@ -19,5 +19,6 @@ namespace gentryriggen.models.Serializable
         public DateTime CreatedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
         public string Permalink { get; set; }
+        public string Url { get; set; }
     }
 }

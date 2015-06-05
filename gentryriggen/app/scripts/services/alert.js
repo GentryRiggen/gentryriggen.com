@@ -19,6 +19,7 @@
                 if (timeout !== false) {
                     alertTimeout = $timeout(function () {
                         $rootScope.alert.show = false;
+                        $rootScope.alert.hasBeenShown = false;
                     }, timeout || 2000);
                 }
             },

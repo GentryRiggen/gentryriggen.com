@@ -12,6 +12,12 @@
                 <div class="blog-post-body">
                     <div class="blog-post-content" ng-bind-html="model.content"></div>
                 </div>
+                <div class="blog-post-footer">
+                    <dir-disqus disqus-shortname="gentryriggen"
+                                disqus-identifier="{{ model.permalink }}"
+                                disqus-url="{{ model.url }}">
+                    </dir-disqus>
+                </div>
             </div>
         </div>
     </div>
