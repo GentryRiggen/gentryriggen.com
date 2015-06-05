@@ -272,6 +272,7 @@
     <Content Include="app\scripts\lib\angular.min.js" />
     <Content Include="app\scripts\lib\bootstrap.js" />
     <Content Include="app\scripts\lib\bootstrap.min.js" />
+    <Content Include="app\scripts\lib\dirDisqus.js" />
     <Content Include="app\scripts\lib\jquery-2.1.3.js" />
     <Content Include="app\scripts\lib\jquery-2.1.3.min.js" />
     <Content Include="app\scripts\lib\textAngular-rangy.min.js" />

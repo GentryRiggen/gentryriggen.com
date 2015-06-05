@@ -178,6 +178,8 @@ ui-view.ng-leave-active {
       padding: 5px 0;
       font-size: 48px;
       line-height: 1.2; }
+    .blog-post .blog-post-header a.blog-post-title:hover {
+      cursor: pointer; }
     .blog-post .blog-post-header .blog-post-subtitle {
       margin: 0px 10px 15px 2px;
       display: block;

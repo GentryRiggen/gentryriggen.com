@@ -2,9 +2,9 @@
     'use strict';
     angular
         .module('gr')
-        .controller('blogCtrl', ['alert', 'blogService', blogCtrl]);
+        .controller('blogCtrl', ['alert', 'blogService', '$location', blogCtrl]);
 
-    function blogCtrl(alert, blogService) {
+    function blogCtrl(alert, blogService, $location) {
         var vm = this;
         vm.blogPosts = [];
 

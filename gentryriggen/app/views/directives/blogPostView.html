@@ -3,7 +3,7 @@
         <div class="col-xs-12 col-sm-8 col-sm-offset-2">
             <div class="blog-post">
                 <div class="blog-post-header">
-                    <a class="blog-post-title" href="#" ng-click="goToPost()">{{model.title}}</a>
+                    <a class="blog-post-title" ng-click="goToPost()">{{model.title}}</a>
                     <div class="blog-post-subtitle">
                         {{model.subTitle}}
                         <span>{{model.createdOn | date:'MMM d, y'}}</span>
@@ -12,7 +12,7 @@
                 <div class="blog-post-body">
                     <div class="blog-post-content" ng-bind-html="model.content"></div>
                 </div>
-                <div class="blog-post-footer">
+                <div class="blog-post-footer" ng-show="showComments">
                     <dir-disqus disqus-shortname="gentryriggen"
                                 disqus-identifier="{{ model.permalink }}"
                                 disqus-url="{{ model.url }}">

@@ -14,7 +14,7 @@
                 controllerAs: 'vm'
             })
             .state('blogPost', {
-                url: '/blog/{permalink}',
+                url: '/blog/:permalink',
                 templateUrl: '/app/views/blogPost.html',
                 controller: 'blogPostCtrl',
                 controllerAs: 'vm'
@@ -50,7 +50,7 @@
                 })
                 .state('blogAdminEdit', {
                     parent: 'admin',
-                    url: '/blog/edit/{id}',
+                    url: '/blog/edit/:id',
                     templateUrl: '/app/views/admin/blogEdit.html',
                     controller: 'blogAdminEditCtrl',
                     controllerAs: 'vm'
