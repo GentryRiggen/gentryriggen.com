@@ -9,7 +9,7 @@ namespace gentryriggen.models.DTO
 {
     public class AuthorizedResponse
     {
-        public string Bearer { get; set; }
+        public string Token { get; set; }
         public IEnumerable<string> Claims { get; set; }
         public SerializedUser User { get; set; }
     }

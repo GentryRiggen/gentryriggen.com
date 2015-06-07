@@ -11,7 +11,6 @@
             if (angular.isDefined(toState.data) &&
                         angular.isDefined(toState.data.requireLogin) &&
                         toState.data.requireLogin === false) {
-                console.log("It's ok, it's a public route");
                 return;
             }
 

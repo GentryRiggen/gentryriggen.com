@@ -15,12 +15,20 @@
             return $rootScope.userToken;
         };
 
+        authTokenSvc.setToken = function (token) {
+            storage.setItem(tokenKeyName, token);
+        };
+
         authTokenSvc.hasToken = function () {
             return !!authTokenSvc.getToken();
         };
 
         $rootScope.$on('gr.user.logout', function () {
             storage.removeItem(tokenKeyName);
+        });
+
+        $rootScope.$on('gr.user.login', function (event, user) {
+            authTokenSvc.setToken(user.token);
         });
 
         return authTokenSvc;

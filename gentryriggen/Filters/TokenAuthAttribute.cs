@@ -62,7 +62,7 @@ namespace gentryriggen.Filters
                     HttpContext.Current.User = currentPrinciple;
 
                     // Finally Check Roles requested the JWT verify
-                    if (this.Roles.Length > 0 && !String.IsNullOrEmpty(this.Roles))
+                    if (this.Roles != null && this.Roles.Length > 0 && !String.IsNullOrEmpty(this.Roles))
                     {
                         foreach (string claim in userJWT.Claims)
                         {

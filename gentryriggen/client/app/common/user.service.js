@@ -11,7 +11,7 @@
             if (angular.isUndefined($rootScope.currentUser)) {
                 $http.get(API_URL + "/auth/user").then(
                     function (userResponse) {
-                        $rootScope.currentUser = userResponse.data.user;
+                        $rootScope.currentUser = userResponse.data;
                         $rootScope.currentUser.roles = userResponse.data.roles;
                         deferred.resolve($rootScope.currentUser);
                     },
@@ -40,7 +40,8 @@
                 function (authResponse) {
                     // Set token on scope and store it
                     $rootScope.userToken = authResponse.data.token;
-                    storage.setItem(tokenKeyName, $rootScope.userToken);
+                    console.log(authResponse);
+                    $rootScope.$broadcast('gr.user.login', authResponse.data);
 
                     // Set user info on scope
                     $rootScope.currentUser = authResponse.data.user;

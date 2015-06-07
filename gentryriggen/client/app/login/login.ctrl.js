@@ -7,12 +7,10 @@
     LoginCtrl.$inject = ['$http', '$state', 'UserService'];
     function LoginCtrl($http, $state, UserService) {
         var LoginCtrl = this;
-        LoginCtrl.user = {
-            username: "",
-            password: ""
-        };
+        LoginCtrl.username = "";
+        LoginCtrl.password = "";
         LoginCtrl.submit = function () {
-            UserService.login(user.username, user.password).then(
+            UserService.login(LoginCtrl.username, LoginCtrl.password).then(
                 function () {
                     $state.go('blog');
                 },

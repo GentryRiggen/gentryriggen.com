@@ -71,7 +71,7 @@ namespace gentryriggen.Controllers
                 string jwt = userJWT.ToJWTString(Utilities.GetSetting("JWTSecret"));
                 AuthorizedResponse response = new AuthorizedResponse
                 {
-                    Bearer = jwt,
+                    Token = jwt,
                     User = dbUser.Serialize(),
                     Claims = roles
                 };

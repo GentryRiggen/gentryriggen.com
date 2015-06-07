@@ -4,20 +4,24 @@
         .module('gr')
         .controller('HeaderCtrl', HeaderCtrl);
 
-    HeaderCtrl.$inject = ['AuthTokenService', 'UserService'];
-    function HeaderCtrl(AuthTokenService, UserService) {
+    HeaderCtrl.$inject = ['$scope', 'UserService'];
+    function HeaderCtrl($scope, UserService) {
         var HeaderCtrl = this;
 
-        HeaderCtrl.isAuthenticated = AuthTokenService.isAuthenticated;
-        console.log("HeaderCtrl.isAuthenticated", HeaderCtrl.isAuthenticated);
+        function checkUserAuth() {
+            UserService.getCurrentUser().then(
+                function (user) {
+                    HeaderCtrl.currentUserName = user.firstName + " " + user.lastName;
+                }, function () {
+                    HeaderCtrl.isAuthenticated = true;
+                }
+            );
+        }
+        
+        checkUserAuth();
 
-        UserService.getCurrentUser().then(
-            function (user) {
-                HeaderCtrl.currentUserName = user.firstName + " " + user.lastName;
-            }, function () {
-                console.log("HeaderCtrl get current user failed");
-                HeaderCtrl.currentUserName = false;;
-            }
-        );
+        $scope.$on('gr.user.login', function (event, authResponse) {
+            HeaderCtrl.currentUserName = authResponse.user.firstName + " " + authResponse.user.lastName;
+        });
     }
 })();

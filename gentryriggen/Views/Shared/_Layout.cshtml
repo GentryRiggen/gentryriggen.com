@@ -24,11 +24,11 @@
             <ul>
                 <li><a ui-sref="blog" ui-sref-active="active">Blog</a></li>
                 <li><a ui-sref="about" ui-sref-active="active">About</a></li>
-                <li ng-show="HeaderCtrl.isAuthenticated()">
+                <li ng-show="HeaderCtrl.currentUserName">
                     <a ui-sref="admin.blog" ui-sref-active="active">Admin</a>
                 </li>
-                <li ng-show="HeaderCtrl.isAuthenticated()">
-                    <a ui-sref="logout">Logout {{HeaderCtrl.currentUserName}}</a>
+                <li ng-show="HeaderCtrl.currentUserName">
+                    <a ui-sref="logout">Logout - {{HeaderCtrl.currentUserName}}</a>
                 </li>
             </ul>
         </md-content>
