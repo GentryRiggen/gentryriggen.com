@@ -2,22 +2,81 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gentry Riggen</title>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,300,600,700' rel='stylesheet' type='text/css'>
     @Styles.Render("~/Content/css")
-    @Scripts.Render("~/bundles/scripts")
-
 </head>
-<body ng-app="gr" ng-cloak>
-    <div ng-include="'/app/views/header.html'"></div>
+<body layout-gt-md="row" layout="column" ng-app="gr" ng-cloak>
+    <!-- Side Navigation -->
+    <md-sidenav class=" md-sidenav-left md-whiteframe-z2"
+                md-component-id="sideNav"
+                md-is-locked-open="$mdMedia('gt-md')">
 
-    @RenderBody()
+        <header class="nav-header">
+            <a ui-sref="blog">
+                <img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg" class="img-circle img-responsive"/>
+                <h1>Gentry Riggen</h1>
+            </a>
+        </header>
 
-    <div ng-include="'/app/views/alert.html'"></div>
+        <md-content ng-controller="HeaderCtrl as HeaderCtrl">
+            <ul>
+                <li><a ui-sref="blog" ui-sref-active="active">Blog</a></li>
+                <li><a ui-sref="about" ui-sref-active="active">About</a></li>
+                <li ng-show="HeaderCtrl.isAuthenticated()">
+                    <a ui-sref="admin.blog" ui-sref-active="active">Admin</a>
+                </li>
+                <li ng-show="HeaderCtrl.isAuthenticated()">
+                    <a ui-sref="logout">Logout {{HeaderCtrl.currentUserName}}</a>
+                </li>
+            </ul>
+        </md-content>
+    </md-sidenav>
 
-    <div class="ui-view-container">
-        <ui-view></ui-view>
+    <!-- Mobile Nav -->
+    <header hide-gt-md class="mobile-header">
+        <div class="nav-header">
+            <a ui-sref="blog">
+                <img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg" class="img-circle img-responsive" />
+                <h1>Gentry Riggen</h1>
+            </a>
+        </div>
+        
+        <ul>
+            <li><a ui-sref="blog" ui-sref-active="active">Blog</a></li>
+            <li><a ui-sref="about" ui-sref-active="active">About</a></li>
+            <li ng-show="HeaderCtrl.isAuthenticated()">
+                <a ui-sref="admin.blog" ui-sref-active="active">Admin</a>
+            </li>
+            <li ng-show="HeaderCtrl.isAuthenticated()">
+                <a ui-sref="logout">Logout</a>
+            </li>
+        </ul>
+    </header>
+
+    <!-- Main Content -->
+    <div flex layout="column" role="main">
+        <md-content layout-padding class="ui-view-container">
+
+            <!-- LOADING -->
+            <div layout="row" layout-padding ng-show="alert.loading.show">
+                <span flex></span>
+                <div layout="column" flex="35" layout-align="center center">
+                    <md-progress-circular class="md-primary" md-mode="indeterminate"></md-progress-circular>
+                    <div style="margin-top: 10px;">{{alert.loading.message}}</div>
+                </div>
+                <span flex></span>
+            </div>
+
+            <ui-view ng-hide="alert.loading.show"></ui-view>
+        </md-content>
     </div>
 
+
+    <!-- REQUIRED FOR ASP.NET MVC (NOT USED HERE) -->
+    @RenderBody()
+
+    @Scripts.Render("~/bundles/scripts")
 </body>
 </html>

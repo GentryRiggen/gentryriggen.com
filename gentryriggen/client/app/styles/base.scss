@@ -1,0 +1,207 @@
+$themeColor: #00aeee;
+$defaultForegroundColor: #464646;
+
+// DEFAULTS
+body {
+    font-family: 'Open Sans','Lucida Grande','Lucida Sans',Arial,sans-serif;
+    color: $defaultForegroundColor;
+
+    a {
+        color: $themeColor;
+    }
+
+    a:hover {
+        color: lighten($themeColor, 10);
+        text-decoration: none;
+        cursor: pointer;
+    }
+}
+
+@media(max-width: 960px) {
+    .ui-view-container {
+        margin-top: 140px;
+    }
+}
+
+$navForegroundColor: #fefefe;
+
+md-sidenav {
+    background: $themeColor;
+    color: $navForegroundColor;
+
+    header.nav-header {
+        margin-bottom: 10px;
+
+        a:hover {
+            color: $navForegroundColor;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        img {
+            border-radius: 50%;
+            height: 175px;
+            width: 175px;
+            margin: 25px auto 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 300;
+            font-size: 24px;
+            color: $navForegroundColor;
+        }
+    }
+
+    ul {
+        background: $themeColor;
+        margin: 0;
+        padding: 0;
+
+        li {
+
+            a {
+                display: block;
+                background: $themeColor;
+                color: $navForegroundColor;
+                font-size: 18px;
+                padding: 25px;
+            }
+
+            a:hover, a:focus, a.active {
+                color: $navForegroundColor;
+                cursor: pointer;
+                text-decoration: none;
+                background: lighten($themeColor, 10);
+            }
+        }
+
+        li:hover {
+            cursor: pointer;
+            text-decoration: none;
+            background: lighten($themeColor, 10);
+        }
+    }
+}
+
+header.mobile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: $themeColor;
+    color: $defaultForegroundColor;
+    height: 130px;
+    display: block;
+    z-index: 9999;
+
+    .nav-header {
+
+        a:hover {
+            color: $navForegroundColor;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        img {
+            border-radius: 50%;
+            height: 75px;
+            width: 75px;
+            position: fixed;
+            left: 10px;
+            top: 10px;
+        }
+
+        h1 {
+            position: fixed;
+            top: 15px;
+            left: 100px;
+            font-weight: 300;
+            font-size: 24px;
+            color: $navForegroundColor;
+        }
+    }
+
+    ul {
+        position: fixed;
+        top: 88px;
+        left: 0px;
+        margin: 0px;
+        padding: 0px;
+        list-style: none;
+
+        li {
+            float: left;
+
+            a {
+                display: block;
+                background: $themeColor;
+                color: $navForegroundColor;
+                font-size: 15px;
+                padding: 10px 20px;
+            }
+
+            a:hover, a:focus {
+                color: $navForegroundColor;
+                cursor: pointer;
+                text-decoration: none;
+                background: lighten($themeColor, 10);
+            }
+        }
+    }
+}
+
+md-card {
+    margin-bottom: 50px;
+
+    md-card-content {
+        font-size: 1.3em;
+        line-height: 1.7em;
+        padding: 25px 35px;
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 300;
+        }
+        p {
+            margin-bottom: 25px;
+        }
+
+        .blog-post-header {
+            margin: 5px 0px 25px;
+
+            a {
+                font-weight: 300;
+                font-size: 42px;
+            }
+
+            .blog-post-subtitle {
+                color: lighten($defaultForegroundColor, 20);
+                font-weight: 300;
+                font-size: 18px;
+                font-style: italic;
+
+                span {
+                    margin-top: 5px;
+                    display: block;
+                    font-weight: 600;
+                    font-style: normal;
+                    font-size: 12px;
+                }
+            }
+        }
+
+        .blog-post-body {
+        }
+    }
+}
+
+@media(max-width: 400px) {
+    md-card {
+        margin-left: 0px;
+        margin-right: 0px;
+
+        md-card-content {
+            padding: 15px;
+        }
+    }
+}

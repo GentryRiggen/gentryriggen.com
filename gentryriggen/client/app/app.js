@@ -3,11 +3,12 @@
     angular.module('gr', [
         'ui.router',
         'ngAnimate',
+        'ngAria',
+        'ngMaterial',
         'ngSanitize',
         'ngMessages',
-        'ui.bootstrap',
-        'ui.tableView',
-        'textAngular',
+        //'ui.tableView',
+        //'textAngular',
         'angularUtils.directives.dirDisqus'
     ]);
 })();

@@ -10,58 +10,64 @@ namespace gentryriggen
         {
 
             bundles.Add(new ScriptBundle("~/bundles/scripts").Include(
-                        "~/app/scripts/lib/jquery-{version}.js",
-                        "~/app/scripts/lib/bootstrap.js",
-                        "~/app/scripts/lib/toastr.js",
-                        "~/app/scripts/lib/underscore-min.js",
-                        "~/app/scripts/lib/angular.js",
-                        "~/app/scripts/lib/angular-ui-router.js",
-                        "~/app/scripts/lib/angular-animate.js",
-                        "~/app/scripts/lib/angular-sanitize.js",
-                        "~/app/scripts/lib/angular-messages.min.js",
-                        "~/app/scripts/lib/angular-ui/ui-bootstrap-tpls.min.js",
-                        "~/app/scripts/lib/textAngular-rangy.min.js",
-                        "~/app/scripts/lib/textAngular.min.js",
-                        "~/app/scripts/lib/ui-tableView/tableView.js",
-                        "~/app/scripts/lib/dirDisqus.js",
-                        // Angular Libraries
-                        "~/app/scripts/app.js",
-                        "~/app/scripts/app.config.js",
-                        // Angular Models
-                        "~/app/scripts/models/blogPost.js",
-                        "~/app/scripts/models/user.js",
-                        // Angular Services
-                        "~/app/scripts/services/alert.js",
-                        "~/app/scripts/services/dialogService.js",
-                        "~/app/scripts/services/authToken.js",
-                        "~/app/scripts/services/authInterceptor.js",
-                        "~/app/scripts/services/blogService.js",
-                        "~/app/scripts/services/fileService.js",
-                        // Angular Directives
-                        "~/app/scripts/directives/formInput.js",
-                        "~/app/scripts/directives/blogPostView.js",
-                        "~/app/scripts/directives/blogPostEditView.js",
-                        // Angular Controllers
-                        "~/app/scripts/controllers/header.ctrl.js",
-                        "~/app/scripts/controllers/login.ctrl.js",
-                        "~/app/scripts/controllers/logout.ctrl.js",
-                        "~/app/scripts/controllers/blog.ctrl.js",
-                        "~/app/scripts/controllers/blogPost.ctrl.js",
-                        "~/app/scripts/controllers/admin/admin.ctrl.js",
-                        "~/app/scripts/controllers/admin/blogAdmin.ctrl.js",
-                        "~/app/scripts/controllers/admin/blogAdminEdit.ctrl.js",
-                        "~/app/scripts/controllers/admin/fileAdmin.ctrl.js",
-                        "~/app/scripts/controllers/admin/account.ctrl.js"
+                        "~/client/bower_components/jquery/dist/jquery.js",
+                        "~/client/bower_components/bootstrap/dist/js/bootstrap.js",
+                        "~/client/bower_components/toastr/toastr.js",
+                        "~/client/bower_components/angular/angular.js",
+                        "~/client/bower_components/angular-animate/angular-animate.js",
+                        "~/client/bower_components/angular-aria/angular-aria.js",
+                        "~/client/bower_components/angular-sanitize/angular-sanitize.js",
+                        "~/client/bower_components/angular-material/angular-material.js",
+                        "~/client/bower_components/angular-messages/angular-messages.js",
+                        "~/client/bower_components/angular-ui-router/release/angular-ui-router.js",
+                        "~/client/bower_components/angular-utils-disqus/dirDisqus.js",
+                        
+                        // APP Libraries
+                        "~/client/app/app.js",
+                        "~/client/app/app.config.js",
+
+                        // APP Services
+                        "~/client/app/common/user.service.js",
+                        "~/client/app/common/authInterceptor.factory.js",
+                        "~/client/app/common/authToken.service.js",
+                        "~/client/app/common/alert.service.js",
+
+                        "~/client/app/header/header.ctrl.js",
+
+                        "~/client/app/blog/blog.service.js",
+                        "~/client/app/blog/blogPost.directive.js",
+                        "~/client/app/blog/blog.ctrl.js",
+                        "~/client/app/blog/blogDetail.ctrl.js"
+
+
+                        //"~/app/scripts/services/dialogService.js",
+                        //"~/app/scripts/services/authToken.js",
+                        //"~/app/scripts/services/authInterceptor.js",
+                        //"~/app/scripts/services/blogService.js",
+                        //"~/app/scripts/services/fileService.js",
+                        //// Angular Directives
+                        //"~/app/scripts/directives/formInput.js",
+                        //"~/app/scripts/directives/blogPostView.js",
+                        //"~/app/scripts/directives/blogPostEditView.js",
+                        //// Angular Controllers
+                        //"~/app/scripts/controllers/header.ctrl.js",
+                        //"~/app/scripts/controllers/login.ctrl.js",
+                        //"~/app/scripts/controllers/logout.ctrl.js",
+                        //"~/app/scripts/controllers/blog.ctrl.js",
+                        //"~/app/scripts/controllers/blogPost.ctrl.js",
+                        //"~/app/scripts/controllers/admin/admin.ctrl.js",
+                        //"~/app/scripts/controllers/admin/blogAdmin.ctrl.js",
+                        //"~/app/scripts/controllers/admin/blogAdminEdit.ctrl.js",
+                        //"~/app/scripts/controllers/admin/fileAdmin.ctrl.js",
+                        //"~/app/scripts/controllers/admin/account.ctrl.js"
                     ));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
-                      "~/app/styles/bootstrap.yeti.min.css",
-                      "~/app/styles/toastr.min.css",
-                      "~/app/styles/animate.min.css",
-                      "~/Content/font-awesome.min.css",
-                      "~/app/scripts/lib/ui-tableView/uiTableView.css",
-                      "~/app/styles/textAngular.css",
-                      "~/app/styles/main.css"));
+                      "~/client/bower_components/bootstrap/dist/css/bootstrap.css",
+                      "~/client/bower_components/toastr/toastr.css",
+                      "~/client/bower_components/fontawesome/css/font-awesome.css",
+                      "~/client/bower_components/angular-material/angular-material.css",
+                      "~/client/app/styles/base.css"));
         }
     }
 }
