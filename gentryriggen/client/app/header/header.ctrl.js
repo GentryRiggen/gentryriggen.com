@@ -13,15 +13,19 @@
                 function (user) {
                     HeaderCtrl.currentUserName = user.firstName + " " + user.lastName;
                 }, function () {
-                    HeaderCtrl.isAuthenticated = true;
+                    HeaderCtrl.currentUserName = false;
                 }
             );
         }
-        
-        checkUserAuth();
+
+        $scope.$on('gr.user.logout', function () {
+            HeaderCtrl.currentUserName = false;
+        });
 
         $scope.$on('gr.user.login', function (event, authResponse) {
             HeaderCtrl.currentUserName = authResponse.user.firstName + " " + authResponse.user.lastName;
         });
+        
+        checkUserAuth();
     }
 })();

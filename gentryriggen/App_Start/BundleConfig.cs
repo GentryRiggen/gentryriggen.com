@@ -35,6 +35,7 @@ namespace gentryriggen
                         "~/client/app/header/header.ctrl.js",
 
                         "~/client/app/login/login.ctrl.js",
+                        "~/client/app/login/logout.ctrl.js",
 
                         "~/client/app/blog/blog.service.js",
                         "~/client/app/blog/blogPost.directive.js",

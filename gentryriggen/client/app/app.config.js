@@ -60,6 +60,11 @@
             controllerAs: 'LoginCtrl',
             data: { requireLogin: false }
         })
+        .state('logout', {
+            url: '/logout',
+            controller: 'LogoutCtrl',
+            data: { requireLogin: false }
+        })
         .state('blog', {
             url: '/',
             templateUrl: '/client/app/blog/blog.tmpl.html',
@@ -80,11 +85,7 @@
             data: { requireLogin: false }
         });
 
-        //.state('logout', {
-        //    url: '/logout',
-        //    controller: 'logoutCtrl',
-        //    data: { requireLogin: false }
-        //})
+        
         //// ADMIN STATE
         //.state('admin', {
         //    url: '/admin',

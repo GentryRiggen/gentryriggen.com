@@ -2,10 +2,11 @@
     'use strict';
     angular
         .module('gr')
-        .controller('logoutCtrl', ['$state', 'authToken', logoutCtrl]);
+        .controller('LogoutCtrl', logoutCtrl);
 
-    function logoutCtrl($state, authToken) {
-        authToken.removeToken();
+    LogoutCtrl.$inject = ['$state', 'UserService'];
+    function logoutCtrl($state, UserService) {
+        UserService.logout();
         $state.go('blog');
     }
 })();

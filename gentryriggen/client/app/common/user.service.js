@@ -31,7 +31,6 @@
             $rootScope.$broadcast('gr.user.logout');
             $rootScope.userToken = undefined;
             $rootScope.currentUser = undefined;
-            $rootScope.currentUser.claims = undefined;
         };
 
         userSvc.login = function (username, password) {
