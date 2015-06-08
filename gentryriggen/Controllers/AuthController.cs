@@ -39,16 +39,21 @@ namespace gentryriggen.Controllers
 
         [Route("api/auth/user")]
         [TokenAuth]
-        public IHttpActionResult Get()
+        public HttpResponseMessage Get()
         {
             User currentUser = appData.Users.GetById(User.Identity.Name);
             if (currentUser == null)
             {
-                return NotFound();
+                return Request.CreateErrorResponse(HttpStatusCode.Unauthorized, "Invalid username/password");
             }
             else
             {
-                return Ok(currentUser.Serialize());
+                IEnumerable<string> roles = UserManager.GetRoles(currentUser.Id);
+                return Request.CreateResponse(HttpStatusCode.OK, new
+                {
+                    User = currentUser.Serialize(),
+                    Roles = roles
+                });
             }
         }
 

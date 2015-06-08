@@ -13,6 +13,7 @@ namespace gentryriggen
                         "~/client/bower_components/jquery/dist/jquery.js",
                         "~/client/bower_components/bootstrap/dist/js/bootstrap.js",
                         "~/client/bower_components/toastr/toastr.js",
+                        "~/client/bower_components/underscore/underscore.js",
                         "~/client/bower_components/angular/angular.js",
                         "~/client/bower_components/angular-animate/angular-animate.js",
                         "~/client/bower_components/angular-aria/angular-aria.js",
@@ -40,7 +41,10 @@ namespace gentryriggen
                         "~/client/app/blog/blog.service.js",
                         "~/client/app/blog/blogPost.directive.js",
                         "~/client/app/blog/blog.ctrl.js",
-                        "~/client/app/blog/blogDetail.ctrl.js"
+                        "~/client/app/blog/blogDetail.ctrl.js",
+
+                        "~/client/adminApp/admin.ctrl.js",
+                        "~/client/adminApp/blog/adminBlog.ctrl.js"
 
 
                         //"~/app/scripts/services/dialogService.js",

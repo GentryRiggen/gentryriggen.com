@@ -1,0 +1,10 @@
+﻿<md-content layout="column">
+    <button class="btn btn-default pull-right" ng-click="vm.createNew()">Create New</button>
+
+    <md-list>
+        <md-list-item ng-repeat="post in AdminBlogCtrl.blogPosts">
+            <p>{{post.title}}</p>
+            <a ng-click="AdminBlogCtrl.rowClicked(post.id)">Edit</a>
+        </md-list-item>
+    </md-list>
+</md-content>

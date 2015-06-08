@@ -239,6 +239,7 @@
     <Compile Include="Utils\Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="client\adminApp\adminWrapper.tmpl.html" />
     <Content Include="client\app\app.config.js" />
     <Content Include="client\app\app.js" />
     <Content Include="client\app\blog\blog.tmpl.html" />
@@ -256,13 +257,12 @@
       <DependentUpon>base.scss</DependentUpon>
     </Content>
     <Content Include="client\app\_old\scripts\controllers\admin\account.ctrl.js" />
-    <Content Include="client\app\_old\scripts\controllers\admin\admin.ctrl.js" />
-    <Content Include="client\app\_old\scripts\controllers\admin\blogAdmin.ctrl.js" />
+    <Content Include="client\adminApp\admin.ctrl.js" />
+    <Content Include="client\adminApp\blog\adminBlog.ctrl.js" />
     <Content Include="client\app\_old\scripts\controllers\admin\blogAdminEdit.ctrl.js" />
     <Content Include="client\app\_old\scripts\controllers\admin\fileAdmin.ctrl.js" />
     <Content Include="client\app\_old\scripts\controllers\admin\projectAdmin.ctrl.js" />
     <Content Include="client\app\blog\blog.ctrl.js" />
-    <Content Include="client\app\_old\scripts\controllers\blogPost.ctrl.js" />
     <Content Include="client\app\header\header.ctrl.js" />
     <Content Include="client\app\login\login.ctrl.js" />
     <Content Include="client\app\login\logout.ctrl.js" />
@@ -316,8 +316,8 @@
     <Content Include="client\app\_old\templates\tableView.html" />
     <Content Include="client\app\about\about.tmpl.html" />
     <Content Include="client\app\_old\views\admin\account.html" />
-    <Content Include="client\app\_old\views\admin\blogEdit.html" />
-    <Content Include="client\app\_old\views\admin\blogList.html" />
+    <Content Include="client\adminApp\blog\blogEdit.html" />
+    <Content Include="client\adminApp\blog\adminBlog.tmpl.html" />
     <Content Include="client\app\_old\views\admin\fileList.html" />
     <Content Include="client\app\_old\views\admin\layout.html" />
     <Content Include="client\app\_old\views\alert.html" />

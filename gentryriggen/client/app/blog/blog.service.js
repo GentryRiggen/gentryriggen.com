@@ -7,7 +7,7 @@
     BlogService.$inject = ['$http', 'API_URL'];
     function BlogService($http, API_URL) {
         var thisApiUrl = API_URL + '/blog';
-        var thisApiAdminUrl = API_URL + 'admin/blog';
+        var thisApiAdminUrl = API_URL + '/admin/blog';
         var blogSvc = {};
 
         blogSvc.getPaginated = function (pageNum, pageSize, admin) {

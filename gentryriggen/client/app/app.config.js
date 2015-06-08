@@ -31,7 +31,7 @@
                         });
 
                         if (!allowedThrough) {
-                            console.log("Not allowed through, going to log", toState);
+                            console.log("Not allowed through, going to log", toState.data.allowedRoles, currentUser.roles);
                             // If we get this far, they don't have access
                             event.preventDefault();
                             $state.go('login');
@@ -83,26 +83,24 @@
             url: '/about',
             templateUrl: '/client/app/about/about.tmpl.html',
             data: { requireLogin: false }
-        });
+        })
 
-        
-        //// ADMIN STATE
-        //.state('admin', {
-        //    url: '/admin',
-        //    templateUrl: '/app/views/admin/layout.html',
-        //    controller: 'adminCtrl',
-        //    controllerAs: 'vm',
-        //    data: {
-        //        allowedRoles: ["Admin"]
-        //    }
-        //})
-        //// Blogs
-        //.state('admin.blog', {
-        //    url: '/blog',
-        //    templateUrl: '/app/views/admin/blogList.html',
-        //    controller: 'blogAdminCtrl',
-        //    controllerAs: 'vm'
-        //})
+        // ADMIN STATE
+        .state('admin', {
+            url: '/admin',
+            templateUrl: '/client/adminApp/adminWrapper.tmpl.html',
+            controller: 'AdminCtrl',
+            controllerAs: 'AdminCtrl',
+            data: {
+                allowedRoles: ["Admin", "Editor"]
+            }
+        })
+        .state('admin.blog', {
+            url: '/blog',
+            templateUrl: '/client/adminApp/blog/adminBlog.tmpl.html',
+            controller: 'AdminBlogCtrl',
+            controllerAs: 'AdminBlogCtrl'
+        });
         //.state('admin.blog.edit', {
         //    url: '/blog/edit/:id',
         //    templateUrl: '/app/views/admin/blogEdit.html',
