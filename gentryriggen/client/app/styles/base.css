@@ -10,7 +10,7 @@ body {
 
 @media (max-width: 960px) {
   .ui-view-container {
-    margin-top: 140px; } }
+    margin-top: 100px; } }
 md-sidenav {
   background: #00aeee;
   color: #fefefe; }
@@ -57,30 +57,31 @@ header.mobile-header {
   right: 0;
   background: #00aeee;
   color: #464646;
-  height: 130px;
+  height: 100px;
   display: block;
-  z-index: 9999; }
+  z-index: 9999;
+  box-shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.14), 0 6px 10px 0 rgba(0, 0, 0, 0.098), 0 1px 18px 0 rgba(0, 0, 0, 0.084); }
   header.mobile-header .nav-header a:hover {
     color: #fefefe;
     text-decoration: none;
     cursor: pointer; }
   header.mobile-header .nav-header img {
     border-radius: 50%;
-    height: 75px;
-    width: 75px;
+    height: 50px;
+    width: 50px;
     position: fixed;
-    left: 10px;
-    top: 10px; }
+    left: 8px;
+    top: 8px; }
   header.mobile-header .nav-header h1 {
     position: fixed;
-    top: 15px;
-    left: 100px;
+    top: 3px;
+    left: 70px;
     font-weight: 300;
     font-size: 24px;
     color: #fefefe; }
   header.mobile-header ul {
     position: fixed;
-    top: 88px;
+    top: 58px;
     left: 0px;
     margin: 0px;
     padding: 0px;
