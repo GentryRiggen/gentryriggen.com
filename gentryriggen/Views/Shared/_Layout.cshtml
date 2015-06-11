@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gentry Riggen</title>
     <link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,300,600,700' rel='stylesheet' type='text/css'>
+    @Scripts.Render("~/bundles/scripts")
     @Styles.Render("~/Content/css")
 </head>
 <body layout-gt-md="row" layout="column" ng-app="gr" ng-cloak>
@@ -81,7 +82,5 @@
 
     <!-- REQUIRED FOR ASP.NET MVC (NOT USED HERE) -->
     @RenderBody()
-
-    @Scripts.Render("~/bundles/scripts")
 </body>
 </html>
