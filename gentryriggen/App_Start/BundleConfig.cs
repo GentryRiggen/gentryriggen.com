@@ -22,6 +22,10 @@ namespace gentryriggen
                         "~/client/bower_components/angular-messages/angular-messages.js",
                         "~/client/bower_components/angular-ui-router/release/angular-ui-router.js",
                         "~/client/bower_components/angular-utils-disqus/dirDisqus.js",
+                        "~/client/bower_components/textAngular/dist/textAngular-rangy.min.js",
+                        "~/client/bower_components/textAngular/dist/textAngular-sanitize.min.js",
+                        "~/client/bower_components/textAngular/dist/textAngularSetup.js",
+                        "~/client/bower_components/textAngular/dist/textAngular.js",
                         
                         // APP Libraries
                         "~/client/app/app.js",
@@ -44,7 +48,9 @@ namespace gentryriggen
                         "~/client/app/blog/blogDetail.ctrl.js",
 
                         "~/client/adminApp/admin.ctrl.js",
-                        "~/client/adminApp/blog/adminBlog.ctrl.js"
+                        "~/client/adminApp/blog/adminBlog.ctrl.js",
+                        "~/client/adminApp/blog/adminBlogEdit.ctrl.js",
+                        "~/client/adminApp/blog/blogPostEditor.directive.js"
 
 
                         //"~/app/scripts/services/dialogService.js",
@@ -74,6 +80,7 @@ namespace gentryriggen
                       "~/client/bower_components/toastr/toastr.css",
                       "~/client/bower_components/fontawesome/css/font-awesome.css",
                       "~/client/bower_components/angular-material/angular-material.css",
+                      "~/client/bower_components/textAngular/dist/textAngular.css",
                       "~/client/app/styles/base.css"));
         }
     }

@@ -31,7 +31,16 @@ namespace gentryriggen.Controllers
                 serialized.Add(p.Serialize());
             }
 
-            return Ok(serialized);
+            int total = appData.BlogPosts.Count();
+            double numPages = Math.Ceiling(Convert.ToDouble(total / pageSize));
+
+            return Ok(new
+            {
+                page = page,
+                pageSize = pageSize,
+                numPages = numPages,
+                posts = serialized
+            });
         }
 
         // GET: get all paginated
@@ -43,6 +52,31 @@ namespace gentryriggen.Controllers
             List<BlogPost> posts = appData.BlogPosts.GetAll(true).Skip(skip).Take(pageSize).ToList();
             List<SerializedBlogPost> serialized = new List<SerializedBlogPost>();
             foreach (BlogPost p in posts)
+            {
+                serialized.Add(p.Serialize());
+            }
+
+            int total = appData.BlogPosts.Count();
+            double numPages = Math.Ceiling(Convert.ToDouble(total / pageSize));
+
+            return Ok(new
+            {
+                page = page,
+                pageSize = pageSize,
+                numPages = numPages,
+                posts = serialized
+            });
+        }
+
+        // GET: by search
+        [ResponseType(typeof(IEnumerable<SerializedBlogPost>))]
+        [Route("api/blog/search")]
+        [HttpGet]
+        public IHttpActionResult SearchBlogPosts([FromUri]string q = "")
+        {
+            List<BlogPost> blogPosts = appData.BlogPosts.Search(q).ToList();
+            List<SerializedBlogPost> serialized = new List<SerializedBlogPost>();
+            foreach (BlogPost p in blogPosts)
             {
                 serialized.Add(p.Serialize());
             }
@@ -173,6 +207,30 @@ namespace gentryriggen.Controllers
 
 
             return Created("/api/blog/" + newBlogPost.Permalink, newBlogPost.Serialize());
+        }
+
+        [ResponseType(typeof(SerializedBlogPost))]
+        [TokenAuth(Roles = "Admin, Editor")]
+        [Route("api/blog/createnew")]
+        [HttpPost]
+        public IHttpActionResult CreateBlogPost()
+        {
+            User u = appData.Users.GetById(User.Identity.Name);
+            BlogPost blogPost = new BlogPost
+            {
+                Title = "New Blog Post" + DateTime.Now.ToString(),
+                SubTitle = "",
+                Visible = false,
+                Permalink = "New-Blog-Post",
+                Author = u
+            };
+
+            appData.BlogPosts.Add(blogPost);
+            appData.SaveChanges();
+
+            SerializedBlogPost b = blogPost.Serialize();
+            b.Url = Utilities.GetSetting("appUrl") + "/#!/blog/" + b.Permalink;
+            return Ok(b);
         }
 
         // DELETE

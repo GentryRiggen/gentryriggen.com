@@ -101,8 +101,8 @@
             controller: 'AdminBlogCtrl',
             controllerAs: 'AdminBlogCtrl'
         })
-        .state('admin.blogEdit', {
-            url: '/blog/edit/:id',
+        .state('admin.blog.edit', {
+            url: '/edit/:id',
             templateUrl: '/client/adminApp/blog/adminBlogEdit.tmpl.html',
             controller: 'AdminBlogEditCtrl',
             controllerAs: 'AdminBlogEditCtrl'

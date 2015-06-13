@@ -8,7 +8,7 @@
         'ngSanitize',
         'ngMessages',
         //'ui.tableView',
-        'textAngular',
+        //'textAngular',
         'angularUtils.directives.dirDisqus'
     ]);
 })();

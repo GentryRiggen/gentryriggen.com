@@ -27,7 +27,7 @@
             return $http.get(url);
         };
 
-        blogSvc.getAdminPaginated = function (pageNum, pageSize) {
+        blogSvc.getAdminPaginated = function (pageNum, pageSize, admin) {
             if (typeof pageNum == 'undefined')
                 pageNum = 1;
             if (typeof pageSize == 'undefined')
@@ -37,10 +37,6 @@
 
             return $http.get(url);
         };
-
-        blogSvc.search = function (q) {
-            return $http.get(thisApiUrl + '/search?q=' + q);
-        }
 
         blogSvc.getByPermalink = function (permalink) {
             return $http.get(thisApiUrl + '/' + permalink);
@@ -56,10 +52,6 @@
             else
                 return $http.post(thisApiAdminUrl, post);
                     
-        };
-
-        blogSvc.createNew = function () {
-            return $http.post(thisApiUrl + '/createnew');
         };
 
         blogSvc.deleteById = function (id) {

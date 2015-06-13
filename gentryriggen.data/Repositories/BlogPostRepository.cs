@@ -12,6 +12,17 @@ namespace gentryriggen.data.Repositories
     {
         public BlogPostRepository(AppDbContext context) : base(context) { }
 
+        public IQueryable<BlogPost> Search(string q)
+        {
+            return base.DbSet
+                .Where(b => b.Title.Contains(q) || String.IsNullOrEmpty(q));
+        }
+
+        public int Count()
+        {
+            return base.DbSet.Count();
+        }
+
         public override BlogPost Find(int id)
         {
             return base.DbSet
