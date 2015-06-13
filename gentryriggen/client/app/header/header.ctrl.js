@@ -4,26 +4,30 @@
         .module('gr')
         .controller('HeaderCtrl', HeaderCtrl);
 
-    HeaderCtrl.$inject = ['$scope', 'UserService'];
-    function HeaderCtrl($scope, UserService) {
+    HeaderCtrl.$inject = ['$scope', 'UserService', '$state'];
+    function HeaderCtrl($scope, UserService, $state) {
         var HeaderCtrl = this;
 
         function checkUserAuth() {
             UserService.getCurrentUser().then(
                 function (user) {
-                    HeaderCtrl.currentUserName = user.firstName + " " + user.lastName;
+                    HeaderCtrl.currentUser = user;
                 }, function () {
-                    HeaderCtrl.currentUserName = false;
+                    HeaderCtrl.currentUser = false;
                 }
             );
         }
 
+        HeaderCtrl.navigate = function (state) {
+            $state.go(state);
+        };
+
         $scope.$on('gr.user.logout', function () {
-            HeaderCtrl.currentUserName = false;
+            HeaderCtrl.currentUser = false;
         });
 
         $scope.$on('gr.user.login', function (event, authResponse) {
-            HeaderCtrl.currentUserName = authResponse.user.firstName + " " + authResponse.user.lastName;
+            HeaderCtrl.currentUser = authResponse.user;
         });
         
         checkUserAuth();

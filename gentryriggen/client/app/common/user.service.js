@@ -39,7 +39,6 @@
                 function (authResponse) {
                     // Set token on scope and store it
                     $rootScope.userToken = authResponse.data.token;
-                    console.log(authResponse);
                     $rootScope.$broadcast('gr.user.login', authResponse.data);
 
                     // Set user info on scope
@@ -50,7 +49,6 @@
                     deferred.resolve(authResponse.data);
                 },
                 function (resp) {
-                    console.debug("Unsuccessful Login Attempt");
                     deferred.reject("Invalid Login Attempt");
                 });
 

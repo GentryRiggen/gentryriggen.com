@@ -26,16 +26,20 @@ namespace gentryriggen
                         "~/client/bower_components/textAngular/dist/textAngular-sanitize.min.js",
                         "~/client/bower_components/textAngular/dist/textAngularSetup.js",
                         "~/client/bower_components/textAngular/dist/textAngular.js",
+                        "~/client/bower_components/syntaxhighlighter/scripts/shCore.js",
+                        "~/client/bower_components/syntaxhighlighter/scripts/shBrushCSharp.js",
+                        "~/client/bower_components/syntaxhighlighter/scripts/shBrushCss.js",
+                        "~/client/bower_components/syntaxhighlighter/scripts/shBrushJScript.js",
                         
-                        // APP Libraries
                         "~/client/app/app.js",
                         "~/client/app/app.config.js",
 
-                        // APP Services
                         "~/client/app/common/user.service.js",
                         "~/client/app/common/authInterceptor.factory.js",
                         "~/client/app/common/authToken.service.js",
                         "~/client/app/common/alert.service.js",
+                        "~/client/app/common/syntaxHighlight.directive.js",
+                        "~/client/app/common/compileTemplate.directive.js",
 
                         "~/client/app/header/header.ctrl.js",
 
@@ -81,6 +85,8 @@ namespace gentryriggen
                       "~/client/bower_components/fontawesome/css/font-awesome.css",
                       "~/client/bower_components/angular-material/angular-material.css",
                       "~/client/bower_components/textAngular/dist/textAngular.css",
+                      "~/client/bower_components/syntaxhighlighter/styles/shCore.css",
+                      "~/client/bower_components/syntaxhighlighter/styles/shThemeDefault.css",
                       "~/client/app/styles/base.css"));
         }
     }

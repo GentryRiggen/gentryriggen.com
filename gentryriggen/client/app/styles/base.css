@@ -11,44 +11,26 @@ body {
 @media (max-width: 960px) {
   .ui-view-container {
     margin-top: 100px; } }
-md-sidenav {
+md-sidenav header.nav-header {
   background: #00aeee;
-  color: #fefefe; }
-  md-sidenav header.nav-header {
-    margin-bottom: 10px; }
-    md-sidenav header.nav-header a:hover {
-      color: #fefefe;
-      text-decoration: none;
-      cursor: pointer; }
-    md-sidenav header.nav-header img {
+  padding: 15px 10px; }
+  md-sidenav header.nav-header a {
+    text-decoration: none; }
+    md-sidenav header.nav-header a img {
       border-radius: 50%;
-      height: 175px;
-      width: 175px;
+      height: 150px;
+      width: 150px;
       margin: 25px auto 20px; }
-    md-sidenav header.nav-header h1 {
+    md-sidenav header.nav-header a h1 {
       text-align: center;
       font-weight: 300;
-      font-size: 24px;
+      font-size: 30px;
       color: #fefefe; }
-  md-sidenav ul {
-    background: #00aeee;
-    margin: 0;
-    padding: 0; }
-    md-sidenav ul li a {
-      display: block;
-      background: #00aeee;
-      color: #fefefe;
-      font-size: 18px;
-      padding: 25px; }
-    md-sidenav ul li a:hover, md-sidenav ul li a:focus, md-sidenav ul li a.active {
-      color: #fefefe;
-      cursor: pointer;
-      text-decoration: none;
-      background: #22c4ff; }
-    md-sidenav ul li:hover {
-      cursor: pointer;
-      text-decoration: none;
-      background: #22c4ff; }
+md-sidenav md-list md-list-item p {
+  color: #464646;
+  font-size: 18px;
+  font-weight: 400;
+  text-transform: uppercase; }
 
 header.mobile-header {
   position: fixed;

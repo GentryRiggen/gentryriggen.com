@@ -13,14 +13,18 @@
             { title: "My Account", state: "admin.account" }
         ];
 
-        AdminCtrl.selectedSection = 0;
+        AdminCtrl.selectedSection = -1;
         var count = 0;
         angular.forEach(AdminCtrl.sections, function (section) {
+            count++;
             if (section.name == $state.current.name) {
                 AdminCtrl.selectedSection = count;
             }
-            count++;
         });
+        if (AdminCtrl.selectedSection == -1) {
+            AdminCtrl.selectedSection = 0;
+            $state.go(AdminCtrl.sections[0].state);
+        }
 
         AdminCtrl.goTo = function (state) {
             $state.go(state);

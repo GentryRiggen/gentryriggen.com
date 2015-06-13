@@ -21,17 +21,22 @@
             </a>
         </header>
 
-        <md-content ng-controller="HeaderCtrl as HeaderCtrl">
-            <ul>
-                <li><a ui-sref="blog" ui-sref-active="active">Blog</a></li>
-                <li><a ui-sref="about" ui-sref-active="active">About</a></li>
-                <li ng-show="HeaderCtrl.currentUserName">
-                    <a ui-sref="admin.blog" ui-sref-active="active">Admin</a>
-                </li>
-                <li ng-show="HeaderCtrl.currentUserName">
-                    <a ui-sref="logout">Logout - {{HeaderCtrl.currentUserName}}</a>
-                </li>
-            </ul>
+        <md-content ng-controller="HeaderCtrl as HeaderCtrl" layout-padding>
+            <md-list>
+                <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('blog')">
+                    <p>Blog</p>
+                </md-list-item>
+                <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('about')">
+                    <p>About me</p>
+                </md-list-item>
+                <md-divider ng-show="HeaderCtrl.currentUser"></md-divider>
+                <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('admin')" ng-show="HeaderCtrl.currentUser">
+                    <p>Admin</p>
+                </md-list-item>
+                <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('logout')" ng-show="HeaderCtrl.currentUser">
+                    <p>Logout</p>
+                </md-list-item>
+            </md-list>
         </md-content>
     </md-sidenav>
 
@@ -64,7 +69,7 @@
             <div layout="row" layout-padding ng-show="alert.loading.show">
                 <span flex></span>
                 <div layout="column" flex="50" layout-align="center center">
-                    <md-progress-circular class="md-primary" md-mode="indeterminate"></md-progress-circular>
+                    <md-progress-circular class="md-accent" md-mode="indeterminate"></md-progress-circular>
                     <div style="margin-top: 10px;">{{alert.loading.message}}</div>
                 </div>
                 <span flex></span>

@@ -26,60 +26,38 @@ body {
 $navForegroundColor: #fefefe;
 
 md-sidenav {
-    background: $themeColor;
-    color: $navForegroundColor;
 
     header.nav-header {
-        margin-bottom: 10px;
+        background: $themeColor;
+        padding: 15px 10px;
 
-        a:hover {
-            color: $navForegroundColor;
+        a {
             text-decoration: none;
-            cursor: pointer;
-        }
 
-        img {
-            border-radius: 50%;
-            height: 175px;
-            width: 175px;
-            margin: 25px auto 20px;
-        }
+            img {
+                border-radius: 50%;
+                height: 150px;
+                width: 150px;
+                margin: 25px auto 20px;
+            }
 
-        h1 {
-            text-align: center;
-            font-weight: 300;
-            font-size: 24px;
-            color: $navForegroundColor;
+            h1 {
+                text-align: center;
+                font-weight: 300;
+                font-size: 30px;
+                color: $navForegroundColor;
+            }
         }
     }
 
-    ul {
-        background: $themeColor;
-        margin: 0;
-        padding: 0;
-
-        li {
-
-            a {
-                display: block;
-                background: $themeColor;
-                color: $navForegroundColor;
+    md-list {
+        md-list-item {
+            p {
+                color: $defaultForegroundColor;
                 font-size: 18px;
-                padding: 25px;
+                font-weight: 400;
+                text-transform: uppercase;
             }
-
-            a:hover, a:focus, a.active {
-                color: $navForegroundColor;
-                cursor: pointer;
-                text-decoration: none;
-                background: lighten($themeColor, 10);
-            }
-        }
-
-        li:hover {
-            cursor: pointer;
-            text-decoration: none;
-            background: lighten($themeColor, 10);
         }
     }
 }
@@ -163,6 +141,7 @@ md-card {
         h1, h2, h3, h4, h5, h6 {
             font-weight: 300;
         }
+
         p {
             margin-bottom: 25px;
         }
