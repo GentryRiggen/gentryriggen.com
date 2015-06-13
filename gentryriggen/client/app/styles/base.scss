@@ -17,12 +17,6 @@ body {
     }
 }
 
-@media(max-width: 960px) {
-    .ui-view-container {
-        margin-top: 100px;
-    }
-}
-
 $navForegroundColor: #fefefe;
 
 md-sidenav {
@@ -48,6 +42,16 @@ md-sidenav {
                 color: $navForegroundColor;
             }
         }
+
+        .social-links {
+            margin: 20px 10px 5px 10px;
+            span {
+                text-align: center;
+                a {
+                    color: $navForegroundColor;
+                }
+            }
+        }
     }
 
     md-list {
@@ -62,70 +66,12 @@ md-sidenav {
     }
 }
 
-header.mobile-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: $themeColor;
-    color: $defaultForegroundColor;
-    height: 100px;
-    display: block;
-    z-index: 9999;
-    box-shadow: 0 3px 5px -1px rgba(0,0,0,.14),0 6px 10px 0 rgba(0,0,0,.098),0 1px 18px 0 rgba(0,0,0,.084);
-
-    .nav-header {
-
-        a:hover {
-            color: $navForegroundColor;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        img {
-            border-radius: 50%;
-            height: 50px;
-            width: 50px;
-            position: fixed;
-            left: 8px;
-            top: 8px;
-        }
-
-        h1 {
-            position: fixed;
-            top: 3px;
-            left: 70px;
+md-toolbar.mobile-header {
+    .md-toolbar-tools {
+        h2 {
+            color: $navForegroundColor !important;
+            font-size: 30px;
             font-weight: 300;
-            font-size: 24px;
-            color: $navForegroundColor;
-        }
-    }
-
-    ul {
-        position: fixed;
-        top: 58px;
-        left: 0px;
-        margin: 0px;
-        padding: 0px;
-        list-style: none;
-
-        li {
-            float: left;
-
-            a {
-                display: block;
-                background: $themeColor;
-                color: $navForegroundColor;
-                font-size: 15px;
-                padding: 10px 20px;
-            }
-
-            a:hover, a:focus {
-                color: $navForegroundColor;
-                cursor: pointer;
-                text-decoration: none;
-                background: lighten($themeColor, 10);
-            }
         }
     }
 }

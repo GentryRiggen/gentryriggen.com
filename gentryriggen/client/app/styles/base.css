@@ -8,9 +8,6 @@ body {
     text-decoration: none;
     cursor: pointer; }
 
-@media (max-width: 960px) {
-  .ui-view-container {
-    margin-top: 100px; } }
 md-sidenav header.nav-header {
   background: #00aeee;
   padding: 15px 10px; }
@@ -26,61 +23,22 @@ md-sidenav header.nav-header {
       font-weight: 300;
       font-size: 30px;
       color: #fefefe; }
+  md-sidenav header.nav-header .social-links {
+    margin: 20px 10px 5px 10px; }
+    md-sidenav header.nav-header .social-links span {
+      text-align: center; }
+      md-sidenav header.nav-header .social-links span a {
+        color: #fefefe; }
 md-sidenav md-list md-list-item p {
   color: #464646;
   font-size: 18px;
   font-weight: 400;
   text-transform: uppercase; }
 
-header.mobile-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: #00aeee;
-  color: #464646;
-  height: 100px;
-  display: block;
-  z-index: 9999;
-  box-shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.14), 0 6px 10px 0 rgba(0, 0, 0, 0.098), 0 1px 18px 0 rgba(0, 0, 0, 0.084); }
-  header.mobile-header .nav-header a:hover {
-    color: #fefefe;
-    text-decoration: none;
-    cursor: pointer; }
-  header.mobile-header .nav-header img {
-    border-radius: 50%;
-    height: 50px;
-    width: 50px;
-    position: fixed;
-    left: 8px;
-    top: 8px; }
-  header.mobile-header .nav-header h1 {
-    position: fixed;
-    top: 3px;
-    left: 70px;
-    font-weight: 300;
-    font-size: 24px;
-    color: #fefefe; }
-  header.mobile-header ul {
-    position: fixed;
-    top: 58px;
-    left: 0px;
-    margin: 0px;
-    padding: 0px;
-    list-style: none; }
-    header.mobile-header ul li {
-      float: left; }
-      header.mobile-header ul li a {
-        display: block;
-        background: #00aeee;
-        color: #fefefe;
-        font-size: 15px;
-        padding: 10px 20px; }
-      header.mobile-header ul li a:hover, header.mobile-header ul li a:focus {
-        color: #fefefe;
-        cursor: pointer;
-        text-decoration: none;
-        background: #22c4ff; }
+md-toolbar.mobile-header .md-toolbar-tools h2 {
+  color: #fefefe !important;
+  font-size: 30px;
+  font-weight: 300; }
 
 md-card {
   margin-bottom: 50px; }

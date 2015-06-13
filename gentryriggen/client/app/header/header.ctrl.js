@@ -4,8 +4,8 @@
         .module('gr')
         .controller('HeaderCtrl', HeaderCtrl);
 
-    HeaderCtrl.$inject = ['$scope', 'UserService', '$state'];
-    function HeaderCtrl($scope, UserService, $state) {
+    HeaderCtrl.$inject = ['$scope', 'UserService', '$state', '$mdSidenav'];
+    function HeaderCtrl($scope, UserService, $state, $mdSidenav) {
         var HeaderCtrl = this;
 
         function checkUserAuth() {
@@ -19,7 +19,12 @@
         }
 
         HeaderCtrl.navigate = function (state) {
+            $mdSidenav("sideNav").close();
             $state.go(state);
+        };
+
+        HeaderCtrl.toggleNav = function () {
+            $mdSidenav("sideNav").toggle();
         };
 
         $scope.$on('gr.user.logout', function () {
