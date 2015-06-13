@@ -9,9 +9,11 @@
     </form>
 
         <md-list>
-            <md-list-item ng-repeat="post in AdminBlogCtrl.blogPosts">
-                <p>{{post.title}}</p>
-                <a ng-click="AdminBlogCtrl.rowClicked(post.id)">Edit</a>
+            <md-list-item class="md-2-line" ng-repeat="post in AdminBlogCtrl.blogPosts" ng-click="AdminBlogCtrl.rowClicked(post.id)">
+                <div class="md-list-item-text">
+                    <h5>{{post.title}}</h5>
+                    <p>{{post.modifiedOn | date}}</p>
+                </div>
             </md-list-item>
         </md-list>
 
