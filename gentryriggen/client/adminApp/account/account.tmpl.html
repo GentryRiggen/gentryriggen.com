@@ -1,0 +1,22 @@
+﻿<md-content layout-padding layout="row">
+    <span flex></span>
+
+    <form flex-sm="80" flex-gt-sm="50" name="login" ng-submit="AccountCtrl.reset()">
+        <md-input-container>
+            <label>Old Password</label>
+            <input required name="oldPassword" type="password" ng-model="AccountCtrl.resetModel.oldPassword">
+        </md-input-container>
+        <md-input-container>
+            <label>New Password</label>
+            <input required name="oldPassword" type="password" ng-model="AccountCtrl.resetModel.password">
+        </md-input-container>
+        <md-input-container>
+            <label>Confirm Password</label>
+            <input required name="oldPassword" type="password" ng-model="AccountCtrl.resetModel.confirmPassword">
+        </md-input-container>
+
+        <md-button class="md-raised md-warn">Reset Password</md-button>
+    </form>
+
+    <span flex></span>
+</md-content>

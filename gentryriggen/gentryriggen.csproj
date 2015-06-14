@@ -259,7 +259,7 @@
     <Content Include="client\app\styles\base.css">
       <DependentUpon>base.scss</DependentUpon>
     </Content>
-    <Content Include="client\app\_old\scripts\controllers\admin\account.ctrl.js" />
+    <Content Include="client\adminApp\account\account.ctrl.js" />
     <Content Include="client\adminApp\admin.ctrl.js" />
     <Content Include="client\adminApp\blog\adminBlog.ctrl.js" />
     <Content Include="client\adminApp\blog\AdminBlogEdit.ctrl.js" />
@@ -318,7 +318,7 @@
     <Content Include="client\app\_old\templates\formValidationMessages.html" />
     <Content Include="client\app\_old\templates\tableView.html" />
     <Content Include="client\app\about\about.tmpl.html" />
-    <Content Include="client\app\_old\views\admin\account.html" />
+    <Content Include="client\adminApp\account\account.tmpl.html" />
     <Content Include="client\adminApp\blog\adminBlogEdit.tmpl.html" />
     <Content Include="client\adminApp\blog\adminBlog.tmpl.html" />
     <Content Include="client\adminApp\files\files.tmpl.html" />

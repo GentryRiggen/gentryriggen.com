@@ -13,13 +13,21 @@
             { title: "My Account", state: "admin.account" }
         ];
 
-        AdminCtrl.selectedState = false;
-        angular.forEach(AdminCtrl.sections, function (section) {
-            if (!AdminCtrl.selectedState && section.state == $state.current.name) AdminCtrl.selectedState = section;
-        });
+        function init() {
+            AdminCtrl.selectedState = false;
+            angular.forEach(AdminCtrl.sections, function (section) {
+                if (!AdminCtrl.selectedState && section.state == $state.current.name) AdminCtrl.selectedState = section;
+            });
+            if (!AdminCtrl.selectedState) AdminCtrl.selectedState = AdminCtrl.sections[0];
 
-        AdminCtrl.goTo = function (state) {
-            $state.go(state);
+            AdminCtrl.goTo(AdminCtrl.selectedState);
+        }
+
+        AdminCtrl.goTo = function (section) {
+            AdminCtrl.selectedState = section;
+            $state.go(section.state);
         };
+
+        init();
     }
 })();

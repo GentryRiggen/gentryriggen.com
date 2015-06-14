@@ -2,7 +2,7 @@
     <div layout="row">
         <md-button ng-repeat="section in AdminCtrl.sections"
                    ng-class="{'md-primary': AdminCtrl.selectedState.state == section.state}"
-                   ng-click="AdminCtrl.goTo(section.state)">
+                   ng-click="AdminCtrl.goTo(section)">
             {{section.title}}
         </md-button>
     </div>

@@ -58,7 +58,9 @@ namespace gentryriggen
                         "~/client/adminApp/blog/blogPostEditor.directive.js",
 
                         "~/client/adminApp/files/files.ctrl.js",
-                        "~/client/adminApp/files/files.service.js"
+                        "~/client/adminApp/files/files.service.js",
+
+                        "~/client/adminApp/account/account.ctrl.js"
 
 
                         //"~/app/scripts/services/dialogService.js",

@@ -44,7 +44,6 @@
         FilesCtrl.search = function (q) {
             FilesService.getFilesPaginate(FilesCtrl.page, FilesCtrl.pageSize, q)
                 .success(function (data) {
-                    console.log("Search Results", data);
                     FilesCtrl.files = data.files;
                 }).error(function () {
                     AlertService.showAlert('error', 'Uh oh!', 'Failed to search files');
