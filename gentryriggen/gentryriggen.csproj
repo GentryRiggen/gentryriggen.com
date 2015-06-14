@@ -263,7 +263,7 @@
     <Content Include="client\adminApp\admin.ctrl.js" />
     <Content Include="client\adminApp\blog\adminBlog.ctrl.js" />
     <Content Include="client\adminApp\blog\AdminBlogEdit.ctrl.js" />
-    <Content Include="client\app\_old\scripts\controllers\admin\fileAdmin.ctrl.js" />
+    <Content Include="client\adminApp\files\files.ctrl.js" />
     <Content Include="client\app\_old\scripts\controllers\admin\projectAdmin.ctrl.js" />
     <Content Include="client\app\blog\blog.ctrl.js" />
     <Content Include="client\app\header\header.ctrl.js" />
@@ -306,7 +306,7 @@
     <Content Include="client\app\_old\scripts\services\authToken.js" />
     <Content Include="client\app\blog\blog.service.js" />
     <Content Include="client\app\_old\scripts\services\dialogService.js" />
-    <Content Include="client\app\_old\scripts\services\fileService.js" />
+    <Content Include="client\adminApp\files\files.service.js" />
     <Content Include="client\app\_old\styles\animate.css" />
     <Content Include="client\app\_old\styles\animate.min.css" />
     <Content Include="client\app\_old\styles\bootstrap.min.css" />
@@ -321,7 +321,7 @@
     <Content Include="client\app\_old\views\admin\account.html" />
     <Content Include="client\adminApp\blog\adminBlogEdit.tmpl.html" />
     <Content Include="client\adminApp\blog\adminBlog.tmpl.html" />
-    <Content Include="client\app\_old\views\admin\fileList.html" />
+    <Content Include="client\adminApp\files\files.tmpl.html" />
     <Content Include="client\app\_old\views\admin\layout.html" />
     <Content Include="client\app\_old\views\alert.html" />
     <Content Include="client\app\_old\views\blog.html" />
@@ -1224,6 +1224,7 @@
     <Content Include="client\bower_components\syntaxhighlighter\tests\.rvmrc" />
     <Content Include="client\bower_components\syntaxhighlighter\tests\webrick.rb" />
     <Content Include="client\bower_components\syntaxhighlighter\tests\webrick.sh" />
+    <Content Include="client\app\styles\base.css.map" />
     <None Include="Properties\PublishProfiles\GBlog.pubxml" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />

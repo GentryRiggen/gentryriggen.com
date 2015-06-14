@@ -106,14 +106,13 @@
             templateUrl: '/client/adminApp/blog/adminBlogEdit.tmpl.html',
             controller: 'AdminBlogEditCtrl',
             controllerAs: 'AdminBlogEditCtrl'
+        })
+        .state('admin.files', {
+            url: '/files',
+            templateUrl: '/client/adminApp/files/files.tmpl.html',
+            controller: 'FilesCtrl',
+            controllerAs: 'FilesCtrl'
         });
-        //// Files
-        //.state('admin.files', {
-        //    url: '/files',
-        //    templateUrl: '/app/views/admin/fileList.html',
-        //    controller: 'fileAdminCtrl',
-        //    controllerAs: 'vm'
-        //})
         //// Account
         //.state('admin.account', {
         //    url: '/account',

@@ -1,12 +1,11 @@
-﻿<md-content class="md-padding">
-    <md-tabs md-dynamic-height md-border-bottom>
-        <md-tab label="{{section.title}}"
-                ng-repeat="section in AdminCtrl.sections"
-                ng-click="AdminCtrl.goTo(post.state)"
-                md-selected="adminctrl.selectedsection">
-            <md-content class="md=padding">
-                <ui-view></ui-view>
-            </md-content>
-        </md-tab>
-    </md-tabs>
+﻿<md-content class="md-padding" layout="column">
+    <div layout="row">
+        <md-button ng-repeat="section in AdminCtrl.sections"
+                   ng-class="{'md-primary': AdminCtrl.selectedState.state == section.state}"
+                   ng-click="AdminCtrl.goTo(section.state)">
+            {{section.title}}
+        </md-button>
+    </div>
+
+    <ui-view></ui-view>
 </md-content>

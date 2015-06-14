@@ -21,7 +21,7 @@ namespace gentryriggen.Controllers
         private static string binaryContainerName = "binary";
         private static string binaryUrl = Utilities.GetSetting("binaryUrl");
 
-        [ResponseType(typeof(IEnumerable<BlobFile>))]
+        [ResponseType(typeof(IEnumerable<Object>))]
         [Route("api/admin/files")]
         [HttpGet]
         public IHttpActionResult Get([FromUri]int page = 1, [FromUri]int pageSize = 50, [FromUri]string q = "")
@@ -34,7 +34,10 @@ namespace gentryriggen.Controllers
             // Loop over items within the container and get their URI
             List<BlobFile> files = new List<BlobFile>();
             int count = 1;
-            foreach (IListBlobItem item in container.ListBlobs(null, false))
+            List<IListBlobItem> blobs = container.ListBlobs(null, false).ToList();
+            int total = blobs.Count();
+            double numPages = Math.Ceiling(Convert.ToDouble(total / pageSize));
+            foreach (IListBlobItem item in blobs)
             {
                 if (count > skip && count <= stopAt)
                 {
@@ -44,7 +47,7 @@ namespace gentryriggen.Controllers
                         if (!String.IsNullOrEmpty(q))
                         {
                             string fileName = blob.Uri.AbsolutePath.Split('/').Last().ToLower();
-                            if (fileName.StartsWith(q))
+                            if (String.IsNullOrEmpty(q) || fileName.Contains(q))
                             {
                                 files.Add(new BlobFile 
                                 {
@@ -67,13 +70,18 @@ namespace gentryriggen.Controllers
                             });
                         }
                     }
-                    else if (count > stopAt)
-                        break;
-
-                    count++;
+                    else if (count > stopAt) break;
                 }
+                count++;
             }
-            return Ok(files);
+
+            return Ok(new
+                {
+                    page = page,
+                    pageSize = pageSize,
+                    numPages = numPages,
+                    files = files
+                });
         }
 
         [Route("api/admin/files")]

@@ -26,10 +26,10 @@ namespace gentryriggen
                         "~/client/bower_components/textAngular/dist/textAngular-sanitize.min.js",
                         "~/client/bower_components/textAngular/dist/textAngularSetup.js",
                         "~/client/bower_components/textAngular/dist/textAngular.js",
-                        "~/client/bower_components/syntaxhighlighter/scripts/shCore.js",
-                        "~/client/bower_components/syntaxhighlighter/scripts/shBrushCSharp.js",
-                        "~/client/bower_components/syntaxhighlighter/scripts/shBrushCss.js",
-                        "~/client/bower_components/syntaxhighlighter/scripts/shBrushJScript.js",
+                        //"~/client/bower_components/syntaxhighlighter/scripts/shCore.js",
+                        //"~/client/bower_components/syntaxhighlighter/scripts/shBrushCSharp.js",
+                        //"~/client/bower_components/syntaxhighlighter/scripts/shBrushCss.js",
+                        //"~/client/bower_components/syntaxhighlighter/scripts/shBrushJScript.js",
                         
                         "~/client/app/app.js",
                         "~/client/app/app.config.js",
@@ -52,9 +52,13 @@ namespace gentryriggen
                         "~/client/app/blog/blogDetail.ctrl.js",
 
                         "~/client/adminApp/admin.ctrl.js",
+
                         "~/client/adminApp/blog/adminBlog.ctrl.js",
                         "~/client/adminApp/blog/adminBlogEdit.ctrl.js",
-                        "~/client/adminApp/blog/blogPostEditor.directive.js"
+                        "~/client/adminApp/blog/blogPostEditor.directive.js",
+
+                        "~/client/adminApp/files/files.ctrl.js",
+                        "~/client/adminApp/files/files.service.js"
 
 
                         //"~/app/scripts/services/dialogService.js",
@@ -85,8 +89,8 @@ namespace gentryriggen
                       "~/client/bower_components/fontawesome/css/font-awesome.css",
                       "~/client/bower_components/angular-material/angular-material.css",
                       "~/client/bower_components/textAngular/dist/textAngular.css",
-                      "~/client/bower_components/syntaxhighlighter/styles/shCore.css",
-                      "~/client/bower_components/syntaxhighlighter/styles/shThemeDefault.css",
+                      //"~/client/bower_components/syntaxhighlighter/styles/shCore.css",
+                      //"~/client/bower_components/syntaxhighlighter/styles/shThemeDefault.css",
                       "~/client/app/styles/base.css"));
         }
     }

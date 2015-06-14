@@ -54,10 +54,10 @@
                     toastr.success(title, message);
                     break;
                 case 'info':
-                    toastr.warning(title, message);
+                    toastr.info(title, message);
                     break;
                 case 'warning':
-                    toastr.info(title, message);
+                    toastr.warning(title, message);
                     break;
                 case 'error':
                     toastr.error(title, message);

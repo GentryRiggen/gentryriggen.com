@@ -2,18 +2,19 @@
     'use strict';
     angular
         .module('gr')
-        .service('fileService', ['$http', 'API_URL', fileService]);
+        .service('FilesService', FilesService);
 
-    function fileService($http, API_URL) {
-        var thisApiUrl = API_URL + 'admin/files';
+    FilesService.$inject = ['$http', 'API_URL'];
+    function FilesService($http, API_URL) {
+        var thisApiUrl = API_URL + '/admin/files';
         return {
             getFilesPaginate: function (pageNum, pageSize, query) {
                 var url = thisApiUrl + "?";
-                if (typeof pageNum == 'undefined')
+                if (angular.isUndefined(pageNum))
                     pageNum = 1;
-                if (typeof pageSize == 'undefined')
+                if (angular.isUndefined(pageSize))
                     pageSize = 50;
-                if (typeof query == 'undefined')
+                if (angular.isUndefined(query))
                     query = "";
 
                 var url = thisApiUrl + '?page=' + pageNum + '&pageSize=' + pageSize + "&q=" + query;
