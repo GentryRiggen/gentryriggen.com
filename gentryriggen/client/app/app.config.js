@@ -162,9 +162,7 @@
         });
 
         $mdThemingProvider.theme('default')
-
             .primaryPalette('theme')
-
             .accentPalette('base');
     }]);
 })();

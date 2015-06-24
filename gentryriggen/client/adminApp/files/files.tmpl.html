@@ -1,12 +1,12 @@
 ﻿<md-content>
     <form name="searchForm" ng-submit="FilesCtrl.search(q)">
         <md-input-container>
+            <lable>Search</lable>
             <input aria-label="files search" ng-model="q" ng-model-options="{ debounce: 350 }" ng-change="FilesCtrl.search(q)">
         </md-input-container>
     </form>
 
     <md-input-container>
-        <label>File Upload</label>
         <input type="file" name="file" onchange="angular.element(this).scope().FilesCtrl.uploadFile(this.files)" />
     </md-input-container>
 

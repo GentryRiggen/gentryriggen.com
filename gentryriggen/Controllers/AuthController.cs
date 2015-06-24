@@ -78,7 +78,7 @@ namespace gentryriggen.Controllers
                 {
                     Token = jwt,
                     User = dbUser.Serialize(),
-                    Claims = roles
+                    Roles = roles
                 };
                 return Request.CreateResponse(HttpStatusCode.OK, response);
             }

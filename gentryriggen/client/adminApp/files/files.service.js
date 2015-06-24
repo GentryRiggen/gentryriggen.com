@@ -33,6 +33,6 @@
             deleteFile: function (fileName) {
                 return $http.delete(thisApiUrl + '?fileName=' + encodeURI(fileName));
             }
-        }
+        };
     }
 })();
