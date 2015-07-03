@@ -41,7 +41,8 @@ md-toolbar.mobile-header .md-toolbar-tools h2 {
   font-weight: 300; }
 
 md-card {
-  margin-bottom: 50px; }
+  margin: 15px auto;
+  max-width: 800px; }
   md-card md-card-content {
     font-size: 1.3em;
     line-height: 1.7em;

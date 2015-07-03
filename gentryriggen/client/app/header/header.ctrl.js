@@ -11,11 +11,29 @@
         function checkUserAuth() {
             UserService.getCurrentUser().then(
                 function (user) {
-                    HeaderCtrl.currentUser = user;
+                    updatePermissions(user);
                 }, function () {
-                    HeaderCtrl.currentUser = false;
+                    updatePermissions();
                 }
             );
+        }
+        
+        function updatePermissions(data) {
+            console.log("Updating permissions: ", data);
+            if (angular.isDefined(data)) {
+                HeaderCtrl.currentUser = angular.isDefined(data.user) ? data.user : data;
+                console.log("ROLES: ", HeaderCtrl.currentUser, data.roles);
+                 angular.forEach(HeaderCtrl.currentUser, function (property) {
+                   console.log("Current User Property: ", property); 
+                });
+                angular.forEach(HeaderCtrl.currentUser.roles, function(role) {
+                    console.log("role: ", role);
+                    if (role == "Admin" || role == "Editor") HeaderCtrl.showModerator = true;
+                });
+            } else {
+                HeaderCtrl.currentUser = false;
+                HeaderCtrl.showModerator = false;
+            }
         }
 
         HeaderCtrl.navigate = function (state) {
@@ -28,11 +46,12 @@
         };
 
         $scope.$on('gr.user.logout', function () {
-            HeaderCtrl.currentUser = false;
+            updatePermissions();
         });
 
         $scope.$on('gr.user.login', function (event, authResponse) {
-            HeaderCtrl.currentUser = authResponse.user;
+            console.log("Login event! ", authResponse);
+            updatePermissions(authResponse);
         });
         
         checkUserAuth();

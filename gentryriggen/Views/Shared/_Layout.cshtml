@@ -37,11 +37,13 @@
                     <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('about')">
                         <p>About me</p>
                     </md-list-item>
-                    <md-divider ng-show="HeaderCtrl.currentUser"></md-divider>
-                    <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('admin')" ng-show="HeaderCtrl.currentUser">
+                    <md-divider ng-show="HeaderCtrl.showModerator"></md-divider>
+                    <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('admin')"
+                                  ng-show="HeaderCtrl.showModerator">
                         <p>Admin</p>
                     </md-list-item>
-                    <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('logout')" ng-show="HeaderCtrl.currentUser">
+                    <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('logout')"
+                                  ng-show="HeaderCtrl.showModerator">
                         <p>Logout</p>
                     </md-list-item>
                 </md-list>
@@ -78,11 +80,7 @@
                 <span flex></span>
             </div>
 
-            <div layout="row">
-                <span flex></span>
-                <ui-view flex-sm="100" flex-md="100" flex-lg="100" flex-gt-lg="80" ng-hide="alert.loading.show"></ui-view>
-                <span flex></span>
-            </div>
+            <ui-view ng-hide="alert.loading.show"></ui-view>
 
         </md-content>
     </div>

@@ -17,8 +17,10 @@ body {
     }
 }
 
-$navForegroundColor: #fefefe;
+.ui-view-container {
+}
 
+$navForegroundColor: #fefefe;
 md-sidenav {
 
     header.nav-header {
@@ -77,7 +79,9 @@ md-toolbar.mobile-header {
 }
 
 md-card {
-    margin-bottom: 50px;
+    margin: 15px auto;
+    max-width: 800px;
+
 
     md-card-content {
         font-size: 1.3em;

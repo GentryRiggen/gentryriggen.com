@@ -39,13 +39,11 @@
                 function (authResponse) {
                     // Set token on scope and store it
                     $rootScope.userToken = authResponse.data.token;
-                    $rootScope.$broadcast('gr.user.login', authResponse.data);
-
                     // Set user info on scope
                     console.log(authResponse.data);
                     $rootScope.currentUser = authResponse.data.user;
                     $rootScope.currentUser.roles = authResponse.data.roles;
-
+                    $rootScope.$broadcast('gr.user.login', authResponse.data);
                     deferred.resolve(authResponse.data);
                 },
                 function (resp) {
