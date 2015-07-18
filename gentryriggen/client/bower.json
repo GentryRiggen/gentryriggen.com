@@ -15,7 +15,7 @@
     "tests"
   ],
   "dependencies": {
-    "angular-material": "~0.9.8",
+    "angular-material": "~0.10.0",
     "angular-utils-disqus": "~0.2.0",
     "angular-messages": "~1.4.0",
     "angular-ui-router": "~0.2.15",

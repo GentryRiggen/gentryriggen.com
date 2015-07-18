@@ -67,6 +67,9 @@ md-card {
           font-weight: 600;
           font-style: normal;
           font-size: 12px; }
+    md-card md-card-content .blog-post-body pre {
+      background-color: #565656;
+      color: #fefefe; }
 
 @media (max-width: 400px) {
   md-card {
