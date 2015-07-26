@@ -32,6 +32,7 @@ namespace gentryriggen.models
                 Title = this.Title,
                 SubTitle = this.SubTitle,
                 Content = this.Content,
+                SampleContent = this.Content.Substring(0, 300),
                 AuthorName = this.Author.FirstName + " " + this.Author.LastName,
                 AuthorBio = this.Author.BioSnippet,
                 Visible = this.Visible,

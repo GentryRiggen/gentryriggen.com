@@ -12,6 +12,7 @@ namespace gentryriggen.models.Serializable
         public string Title { get; set; }
         public string SubTitle { get; set; }
         public string Content { get; set; }
+        public string SampleContent { get; set; }
         public string AuthorName { get; set; }
         public string AuthorBio { get; set; }
         public bool Visible { get; set; }

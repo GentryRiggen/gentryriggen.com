@@ -1,4 +1,4 @@
-﻿<md-card class="blog-post md-whiteframe-z1">
+﻿<md-card class="blog-post md-whiteframe-z2">
     <md-card-content>
         <div class="blog-post-header">
             <a class="blog-post-title" ng-click="goToPost()">{{model.title}}</a>
@@ -7,8 +7,26 @@
                 <span>{{model.createdOn | date:'MMM d, y'}}</span>
             </div>
         </div>
+
+        <!-- BLOG POST CONTENT -->
         <div class="blog-post-body">
-            <div class="blog-post-content" ng-bind-html="model.content"></div>
+            <div class="blog-post-content" ng-bind-html="model.content" ng-if="!sample"></div>
+            <div class="blog-post-content" ng-bind-html="model.sampleContent" ng-if="sample"></div>
+
+            <a ng-click="goToPost()" ng-if="sample">Read More...</a>
+        </div>
+
+        <!-- SOCIAL LINKS -->
+        <div class="social-links" ng-if="!sample">
+            <a ng-click="twitterShare()">
+                <i class="fa fa-twitter"></i> Twitter
+            </a>
+            <a ng-click="facebookShare()">
+                <i class="fa fa-facebook"></i> Facebook
+            </a>
+            <a ng-click="goToPost()">
+                <i class="fa fa-link"></i> Permalink
+            </a>
         </div>
         <div class="blog-post-footer" ng-show="showComments">
             <dir-disqus disqus-shortname="gentryriggen"
@@ -18,5 +36,3 @@
         </div>
     </md-card-content>
 </md-card>
-<br />
-<md-card>

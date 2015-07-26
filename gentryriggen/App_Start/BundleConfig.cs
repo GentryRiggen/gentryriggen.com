@@ -26,14 +26,12 @@ namespace gentryriggen
                         "~/client/bower_components/textAngular/dist/textAngular-sanitize.min.js",
                         "~/client/bower_components/textAngular/dist/textAngularSetup.js",
                         "~/client/bower_components/textAngular/dist/textAngular.js",
-                        //"~/client/bower_components/syntaxhighlighter/scripts/shCore.js",
-                        //"~/client/bower_components/syntaxhighlighter/scripts/shBrushCSharp.js",
-                        //"~/client/bower_components/syntaxhighlighter/scripts/shBrushCss.js",
-                        //"~/client/bower_components/syntaxhighlighter/scripts/shBrushJScript.js",
                         
+                        // APP
                         "~/client/app/app.js",
                         "~/client/app/app.config.js",
 
+                        // COMMON
                         "~/client/app/common/user.service.js",
                         "~/client/app/common/authInterceptor.factory.js",
                         "~/client/app/common/authToken.service.js",
@@ -41,16 +39,20 @@ namespace gentryriggen
                         "~/client/app/common/syntaxHighlight.directive.js",
                         "~/client/app/common/compileTemplate.directive.js",
 
+                        // LAYOUT
                         "~/client/app/header/header.ctrl.js",
 
+                        // LOGIN/LOGOUT
                         "~/client/app/login/login.ctrl.js",
                         "~/client/app/login/logout.ctrl.js",
 
+                        // BLOG
                         "~/client/app/blog/blog.service.js",
                         "~/client/app/blog/blogPost.directive.js",
                         "~/client/app/blog/blog.ctrl.js",
                         "~/client/app/blog/blogDetail.ctrl.js",
 
+                        // ADMIN
                         "~/client/adminApp/admin.ctrl.js",
 
                         "~/client/adminApp/blog/adminBlog.ctrl.js",
@@ -61,28 +63,6 @@ namespace gentryriggen
                         "~/client/adminApp/files/files.service.js",
 
                         "~/client/adminApp/account/account.ctrl.js"
-
-
-                        //"~/app/scripts/services/dialogService.js",
-                        //"~/app/scripts/services/authToken.js",
-                        //"~/app/scripts/services/authInterceptor.js",
-                        //"~/app/scripts/services/blogService.js",
-                        //"~/app/scripts/services/fileService.js",
-                        //// Angular Directives
-                        //"~/app/scripts/directives/formInput.js",
-                        //"~/app/scripts/directives/blogPostView.js",
-                        //"~/app/scripts/directives/blogPostEditView.js",
-                        //// Angular Controllers
-                        //"~/app/scripts/controllers/header.ctrl.js",
-                        //"~/app/scripts/controllers/login.ctrl.js",
-                        //"~/app/scripts/controllers/logout.ctrl.js",
-                        //"~/app/scripts/controllers/blog.ctrl.js",
-                        //"~/app/scripts/controllers/blogPost.ctrl.js",
-                        //"~/app/scripts/controllers/admin/admin.ctrl.js",
-                        //"~/app/scripts/controllers/admin/blogAdmin.ctrl.js",
-                        //"~/app/scripts/controllers/admin/blogAdminEdit.ctrl.js",
-                        //"~/app/scripts/controllers/admin/fileAdmin.ctrl.js",
-                        //"~/app/scripts/controllers/admin/account.ctrl.js"
                     ));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
@@ -91,8 +71,6 @@ namespace gentryriggen
                       "~/client/bower_components/fontawesome/css/font-awesome.css",
                       "~/client/bower_components/angular-material/angular-material.css",
                       "~/client/bower_components/textAngular/dist/textAngular.css",
-                      //"~/client/bower_components/syntaxhighlighter/styles/shCore.css",
-                      //"~/client/bower_components/syntaxhighlighter/styles/shThemeDefault.css",
                       "~/client/app/styles/base.css"));
         }
     }

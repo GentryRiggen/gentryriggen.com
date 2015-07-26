@@ -8,7 +8,6 @@
     // Handle Auth on every navigation
     app.run(function ($rootScope, $state, UserService, $window, $location) {
         $rootScope.$on('$viewContentLoaded', function (event) {
-            console.log("Updating google analytics with page view", $location.url());
             $window.ga('send', 'pageview', { page: $location.url() });
         });
 

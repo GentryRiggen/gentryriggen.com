@@ -21,6 +21,7 @@ body {
 }
 
 $navForegroundColor: #fefefe;
+
 md-sidenav {
 
     header.nav-header {
@@ -47,8 +48,10 @@ md-sidenav {
 
         .social-links {
             margin: 20px 10px 5px 10px;
+
             span {
                 text-align: center;
+
                 a {
                     color: $navForegroundColor;
                 }
@@ -102,6 +105,8 @@ md-card {
             a {
                 font-weight: 300;
                 font-size: 42px;
+                text-transform: capitalize;
+                line-height: 45px;
             }
 
             .blog-post-subtitle {
@@ -126,6 +131,13 @@ md-card {
                 color: #fefefe;
             }
         }
+
+        .social-links {
+            a {
+                font-size: 15px;
+                margin: 5px 15px 20px 0;
+            }
+        }
     }
 }
 
@@ -133,9 +145,22 @@ md-card {
     md-card {
         margin-left: 0px;
         margin-right: 0px;
+        width: 100%;
 
         md-card-content {
             padding: 15px;
+
+            .blog-post-header {
+                a {
+                    font-size: 36px;
+                    line-height: 36px;
+                }
+            }
         }
     }
+}
+
+/* ADMIN SECTION */
+.admin-view {
+    max-width: 800px;
 }

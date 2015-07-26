@@ -19,15 +19,11 @@
         }
         
         function updatePermissions(data) {
-            console.log("Updating permissions: ", data);
             if (angular.isDefined(data)) {
                 HeaderCtrl.currentUser = angular.isDefined(data.user) ? data.user : data;
-                console.log("ROLES: ", HeaderCtrl.currentUser, data.roles);
                  angular.forEach(HeaderCtrl.currentUser, function (property) {
-                   console.log("Current User Property: ", property); 
                 });
                 angular.forEach(HeaderCtrl.currentUser.roles, function(role) {
-                    console.log("role: ", role);
                     if (role == "Admin" || role == "Editor") HeaderCtrl.showModerator = true;
                 });
             } else {
@@ -50,7 +46,6 @@
         });
 
         $scope.$on('gr.user.login', function (event, authResponse) {
-            console.log("Login event! ", authResponse);
             updatePermissions(authResponse);
         });
         

@@ -197,4 +197,4 @@ FakesAssemblies/
 # Visual Studio 6 workspace options file
 *.opt
 
-AppSettingsSecrets.config
+gentryriggen/AppSettingsSecrets.config
