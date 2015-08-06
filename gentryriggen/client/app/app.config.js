@@ -35,7 +35,6 @@
                         });
 
                         if (!allowedThrough) {
-                            console.log("Not allowed through, going to log", toState.data.allowedRoles, currentUser.roles);
                             // If we get this far, they don't have access
                             event.preventDefault();
                             $state.go('login');
@@ -92,7 +91,7 @@
         // ADMIN STATE
         .state('admin', {
             url: '/admin',
-            templateUrl: '/client/adminApp/adminWrapper.tmpl.html',
+            templateUrl: '/client/app/admin/adminWrapper.tmpl.html',
             controller: 'AdminCtrl',
             controllerAs: 'AdminCtrl',
             data: {
@@ -101,25 +100,25 @@
         })
         .state('admin.blog', {
             url: '/blog',
-            templateUrl: '/client/adminApp/blog/adminBlog.tmpl.html',
+            templateUrl: '/client/app/admin/blog/adminBlog.tmpl.html',
             controller: 'AdminBlogCtrl',
             controllerAs: 'AdminBlogCtrl'
         })
         .state('admin.blogEdit', {
             url: '/blog/edit/:id',
-            templateUrl: '/client/adminApp/blog/adminBlogEdit.tmpl.html',
+            templateUrl: '/client/app/admin/blog/adminBlogEdit.tmpl.html',
             controller: 'AdminBlogEditCtrl',
             controllerAs: 'AdminBlogEditCtrl'
         })
         .state('admin.files', {
             url: '/files',
-            templateUrl: '/client/adminApp/files/files.tmpl.html',
+            templateUrl: '/client/app/admin/files/files.tmpl.html',
             controller: 'FilesCtrl',
             controllerAs: 'FilesCtrl'
         })
         .state('admin.account', {
             url: '/account',
-            templateUrl: '/client/adminApp/account/account.tmpl.html',
+            templateUrl: '/client/app/admin/account/account.tmpl.html',
             controller: 'AccountCtrl',
             controllerAs: 'AccountCtrl'
         });

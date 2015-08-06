@@ -29,6 +29,7 @@ md-sidenav header.nav-header {
       text-align: center; }
       md-sidenav header.nav-header .social-links span a {
         color: #fefefe; }
+
 md-sidenav md-list md-list-item p {
   color: #464646;
   font-size: 18px;
@@ -86,8 +87,7 @@ md-card {
       md-card md-card-content .blog-post-header a {
         font-size: 36px;
         line-height: 36px; } }
+
 /* ADMIN SECTION */
 .admin-view {
   max-width: 800px; }
-
-/*# sourceMappingURL=base.css.map */
