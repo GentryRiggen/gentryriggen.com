@@ -6,7 +6,7 @@
     app.constant('API_URL', '/api');
 
     // Handle Auth on every navigation
-    app.run(function ($rootScope, $state, UserService, $window, $location) {
+    app.run(['$rootScope', '$state', 'UserService', '$window', '$location', function ($rootScope, $state, UserService, $window, $location) {
         $rootScope.$on('$viewContentLoaded', function (event) {
             $window.ga('send', 'pageview', { page: $location.url() });
         });
@@ -48,7 +48,7 @@
                 }
             );
         });
-    });
+    }]);
 
     app.config(['$urlRouterProvider', '$stateProvider', '$httpProvider', '$locationProvider', '$mdThemingProvider',
     function ($urlRouterProvider, $stateProvider, $httpProvider, $locationProvider, $mdThemingProvider) {

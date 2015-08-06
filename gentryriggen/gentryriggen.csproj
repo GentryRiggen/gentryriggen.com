@@ -240,8 +240,19 @@
     <Compile Include="Utils\Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="client\adminApp\adminWrapper.tmpl.html" />
-    <Content Include="client\adminApp\blog\blogPostEditor.tmpl.html" />
+    <Content Include="client\app\admin\account\account.ctrl.js" />
+    <Content Include="client\app\admin\account\account.tmpl.html" />
+    <Content Include="client\app\admin\admin.ctrl.js" />
+    <Content Include="client\app\admin\adminWrapper.tmpl.html" />
+    <Content Include="client\app\admin\blog\adminBlog.ctrl.js" />
+    <Content Include="client\app\admin\blog\adminBlog.tmpl.html" />
+    <Content Include="client\app\admin\blog\AdminBlogEdit.ctrl.js" />
+    <Content Include="client\app\admin\blog\adminBlogEdit.tmpl.html" />
+    <Content Include="client\app\admin\blog\blogPostEditor.directive.js" />
+    <Content Include="client\app\admin\blog\blogPostEditor.tmpl.html" />
+    <Content Include="client\app\admin\files\files.ctrl.js" />
+    <Content Include="client\app\admin\files\files.service.js" />
+    <Content Include="client\app\admin\files\files.tmpl.html" />
     <Content Include="client\app\app.config.js" />
     <Content Include="client\app\app.js" />
     <Content Include="client\app\blog\blog.tmpl.html" />
@@ -260,25 +271,18 @@
     <Content Include="client\app\styles\base.css">
       <DependentUpon>base.scss</DependentUpon>
     </Content>
-    <Content Include="client\adminApp\account\account.ctrl.js" />
-    <Content Include="client\adminApp\admin.ctrl.js" />
-    <Content Include="client\adminApp\blog\adminBlog.ctrl.js" />
-    <Content Include="client\adminApp\blog\AdminBlogEdit.ctrl.js" />
-    <Content Include="client\adminApp\files\files.ctrl.js" />
     <Content Include="client\app\blog\blog.ctrl.js" />
     <Content Include="client\app\header\header.ctrl.js" />
     <Content Include="client\app\login\login.ctrl.js" />
     <Content Include="client\app\login\logout.ctrl.js" />
-    <Content Include="client\adminApp\blog\blogPostEditor.directive.js" />
     <Content Include="client\app\blog\blog.service.js" />
-    <Content Include="client\adminApp\files\files.service.js" />
     <Content Include="client\app\about\about.tmpl.html" />
-    <Content Include="client\adminApp\account\account.tmpl.html" />
-    <Content Include="client\adminApp\blog\adminBlogEdit.tmpl.html" />
-    <Content Include="client\adminApp\blog\adminBlog.tmpl.html" />
-    <Content Include="client\adminApp\files\files.tmpl.html" />
     <Content Include="client\app\blog\blogPostEdit.tmpl.html" />
     <Content Include="client\app\blog\blogPost.tmpl.html" />
+    <Content Include="client\dist\css\app.css" />
+    <Content Include="client\dist\css\lib.css" />
+    <Content Include="client\dist\js\app.js" />
+    <Content Include="client\dist\js\lib.js" />
     <Content Include="Content\animate.css" />
     <Content Include="Content\animate.min.css" />
     <Content Include="Content\bootstrap-theme.css" />
@@ -298,6 +302,8 @@
     <Content Include="fonts\glyphicons-halflings-regular.svg" />
     <Content Include="Global.asax" />
     <Content Include="Content\style.scss" />
+    <Content Include="gulp.config.js" />
+    <Content Include="gulpfile.js" />
     <Content Include="Icon.png" />
     <Content Include="Scripts\angular-animate.js" />
     <Content Include="Scripts\angular-animate.min.js" />
@@ -340,12 +346,15 @@
     <Content Include="Content\bootstrap.css.map" />
     <Content Include="Content\toastr.scss" />
     <Content Include="Content\toastr.less" />
-    <Content Include="client\bower.json" />
     <Content Include="client\app\styles\base.scss" />
-    <Content Include="client\app\styles\base.css.map" />
     <Content Include="AppSettingsSecrets.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="bower.json" />
+    <Content Include="index-postWiredep.cshtml" />
+    <Content Include="index-template.cshtml" />
+    <Content Include="index.cshtml" />
+    <Content Include="package.json" />
     <None Include="Properties\PublishProfiles\GBlog.pubxml" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
@@ -1136,12 +1145,12 @@
     </Content>
     <Content Include="Views\Web.config" />
     <Content Include="Views\_ViewStart.cshtml" />
-    <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Scripts\version.json" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <Folder Include="Views\Shared\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />

@@ -3,7 +3,7 @@ $defaultForegroundColor: #464646;
 
 // DEFAULTS
 body {
-    font-family: 'Open Sans','Lucida Grande','Lucida Sans',Arial,sans-serif;
+    font-family: 'Lato','Lucida Grande','Lucida Sans',Arial,sans-serif;
     color: $defaultForegroundColor;
 
     a {
@@ -64,7 +64,7 @@ md-sidenav {
             p {
                 color: $defaultForegroundColor;
                 font-size: 18px;
-                font-weight: 400;
+                font-weight: 300;
                 text-transform: uppercase;
             }
         }

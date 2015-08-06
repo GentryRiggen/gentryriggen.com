@@ -13,6 +13,7 @@ namespace gentryriggen.data.Migrations
         public Configuration()
         {
             AutomaticMigrationsEnabled = true;
+            AutomaticMigrationDataLossAllowed = true;
         }
 
         protected override void Seed(gentryriggen.data.AppDbContext context)

@@ -1,5 +1,5 @@
 body {
-  font-family: 'Open Sans','Lucida Grande','Lucida Sans',Arial,sans-serif;
+  font-family: 'Lato','Lucida Grande','Lucida Sans',Arial,sans-serif;
   color: #464646; }
   body a {
     color: #00aeee; }
@@ -33,7 +33,7 @@ md-sidenav header.nav-header {
 md-sidenav md-list md-list-item p {
   color: #464646;
   font-size: 18px;
-  font-weight: 400;
+  font-weight: 300;
   text-transform: uppercase; }
 
 md-toolbar.mobile-header .md-toolbar-tools h2 {

@@ -37,7 +37,7 @@ module.exports = function() {
 		templateCache: {
 			file: 'templates.js',
 			options: {
-				module: 'partyUp',
+				module: 'gr',
 				standAlone: false
 			}
 		}

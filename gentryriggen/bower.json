@@ -17,10 +17,8 @@
   "dependencies": {
     "angular-utils-disqus": "~0.2.0",
     "jquery": "~2.1.4",
-    "bootstrap": "~3.3.4",
     "toastr": "~2.1.1",
     "underscore": "~1.8.3",
-    "angular-sanitize": "~1.4.0",
     "textAngular": "~1.4.1"
   }
 }
