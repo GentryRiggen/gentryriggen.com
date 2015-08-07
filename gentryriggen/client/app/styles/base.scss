@@ -120,7 +120,7 @@ md-card {
                     display: block;
                     font-weight: 600;
                     font-style: normal;
-                    font-size: 12px;
+                    font-size: 11px;
                 }
             }
         }
@@ -129,6 +129,10 @@ md-card {
             pre {
                 background-color: #565656;
                 color: #fefefe;
+            }
+            p {
+                font-size: 18px;
+                font-weight: 300;
             }
         }
 

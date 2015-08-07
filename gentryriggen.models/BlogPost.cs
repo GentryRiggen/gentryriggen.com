@@ -19,6 +19,7 @@ namespace gentryriggen.models
         public virtual User Author { get; set; }
         public bool Visible { get; set; }
         public string LinkTo { get; set; }
+        public string VideoLink { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
         [Required]
@@ -37,6 +38,7 @@ namespace gentryriggen.models
                 AuthorBio = this.Author.BioSnippet,
                 Visible = this.Visible,
                 LinkTo = this.LinkTo,
+                VideoLink = this.VideoLink,
                 CreatedOn = this.CreatedOn,
                 ModifiedOn = this.ModifiedOn,
                 Permalink = this.Permalink
@@ -51,6 +53,7 @@ namespace gentryriggen.models
             this.Visible = serializedEntity.Visible;
             this.Permalink = serializedEntity.Permalink;
             this.LinkTo = serializedEntity.LinkTo;
+            this.VideoLink = serializedEntity.VideoLink;
         }
 
         public Dictionary<string, string> ModelErrors { get; set; }
