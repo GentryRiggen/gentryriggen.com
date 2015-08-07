@@ -261,11 +261,9 @@
     <Content Include="client\app\blog\blogPostEditView.directive.js" />
     <Content Include="client\app\blog\blogPost.directive.js" />
     <Content Include="client\app\common\alert.service.js" />
-    <Content Include="client\app\common\formInput.directive.js" />
     <Content Include="client\app\common\authInterceptor.factory.js" />
     <Content Include="client\app\common\authToken.service.js" />
     <Content Include="client\app\common\compileTemplate.directive.js" />
-    <Content Include="client\app\common\syntaxHighlight.directive.js" />
     <Content Include="client\app\common\user.service.js" />
     <Content Include="client\app\login\login.tmpl.html" />
     <Content Include="client\app\styles\base.css">

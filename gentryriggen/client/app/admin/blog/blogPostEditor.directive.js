@@ -11,7 +11,7 @@
             scope: {
                 model: '=post',
             },
-            templateUrl: '/client/adminApp/blog/blogPostEditor.tmpl.html',
+            templateUrl: '/client/app/admin/blog/blogPostEditor.tmpl.html',
             controller: function ($scope) {
                 $scope.currentTab = 1;
 

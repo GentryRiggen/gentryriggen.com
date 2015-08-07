@@ -220,6 +220,7 @@ namespace gentryriggen.Controllers
             {
                 Title = "New Blog Post" + DateTime.Now.ToString(),
                 SubTitle = "",
+                Content = "",
                 Visible = false,
                 Permalink = "New-Blog-Post",
                 Author = u

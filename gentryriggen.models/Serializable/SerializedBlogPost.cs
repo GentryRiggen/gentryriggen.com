@@ -17,7 +17,6 @@ namespace gentryriggen.models.Serializable
         public string AuthorBio { get; set; }
         public bool Visible { get; set; }
         public string LinkTo { get; set; }
-        public string VideoLink { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
         public string Permalink { get; set; }
