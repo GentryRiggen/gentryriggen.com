@@ -2,9 +2,11 @@
  * Created by gentryriggen on 8/11/15.
  */
 var crypto = require('crypto'),
-  conf = require('../config/conf');
+  conf = require('../config/conf'),
+  Q = require('q');
 
-exports.encode = function(payload) {
+function encode(payload) {
+  console.log('encoding jwt');
   var algorithm = 'HS256';
 
   var header = {
@@ -17,9 +19,9 @@ exports.encode = function(payload) {
   var jwt = base64Encode(JSON.stringify(header)) + '.' + base64Encode(JSON.stringify(payload));
   var signature = sign(jwt, conf.jwt.secret);
   return jwt + '.' + signature;
-};
+}
 
-exports.decode = function(token) {
+function decode(token) {
   var segments = token.split('.');
   if (segments.length !== 3) {
     throw new Error('Token structure incorrect');
@@ -37,7 +39,7 @@ exports.decode = function(token) {
     header: header,
     payload: payload
   };
-};
+}
 
 function sign(str, key) {
   return crypto.createHmac('sha256', key).update(str).digest('base64');
@@ -54,3 +56,32 @@ function base64Decode(str) {
 function verify(rawSignature, signature, secret) {
   return signature == sign(rawSignature, secret);
 }
+
+exports.encode = encode;
+exports.decode = decode;
+exports.tokenFilter = function(req, dbPool) {
+  var dfd = Q.defer();
+  var userRepo = require('../repositories/user.repo')(dbPool);
+
+  req.currentUser = false;
+  if (req.headers.authorization && req.headers.authorization.split(' '.length > 1)) {
+    var token = req.headers.authorization.split(' ')[1];
+    var decodedToken = decode(token);
+    if (decodedToken.payload.sub) {
+      // Get the user and their roles
+      userRepo.getById(decodedToken.payload.sub).then(
+        function (user) {
+          req.currentUser = user;
+          dfd.resolve();
+        }, function () {
+          dfd.resolve();
+        });
+    } else {
+      dfd.resolve();
+    }
+  } else {
+    dfd.resolve();
+  }
+
+  return dfd.promise;
+};
