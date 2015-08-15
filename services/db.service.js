@@ -30,7 +30,6 @@ var db = function(dbPool) {
     var dfd = Q.defer();
     dbPool.getConnection(function(err, connection) {
       if (err) {
-        connection.release();
         dfd.reject(err);
       } else {
         dfd.resolve(connection);
@@ -44,7 +43,3 @@ var db = function(dbPool) {
 };
 
 module.exports = db;
-
-exports.getConnection = function() {
-
-};
