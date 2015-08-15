@@ -11,7 +11,7 @@ var express = require('express'),
 
 // ENVIRONMENT SETUP
 var app = express();
-var port = process.env.PORT || 3000;
+var port = process.env.PORT || 8888;
 app.use(bodyParser.json());
 
 // DB CONNECTIONS
