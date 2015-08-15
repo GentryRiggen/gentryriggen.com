@@ -1,7 +1,7 @@
 /**
  * Created by gentryriggen on 8/11/15.
  */
-
+exports.appUrl = 'http://gentryriggen.com';
 exports.jwt = {
   issuer: 'gentryriggen.com',
   secret: 'FluffyBunnies'

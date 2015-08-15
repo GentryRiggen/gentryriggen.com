@@ -17,7 +17,9 @@ CREATE TABLE blog_post
   id         INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
   title      VARCHAR(256)    NOT NULL,
   subtitle   VARCHAR(256),
+  permalink   VARCHAR(256),
   content    LONGTEXT,
+  visible    INT DEFAULT 0 NOT NULL,
   created_by INT             NOT NULL,
   created_on DATETIME,
   updated_on DATETIME        NOT NULL
@@ -65,3 +67,19 @@ INSERT INTO user_role VALUES
   (DEFAULT, @defaultUserId, @adminRoleId),
   (DEFAULT, @defaultUserId, @editorRoleId),
   (DEFAULT, @defaultUserId, @readRoleId);
+
+
+INSERT INTO blog_post VALUES
+    (DEFAULT, 'Shut Up & Ship!', 'Seriously!', 'shut-up-and-ship',
+    '<p>Gentry Riggen is the man of all men</p> <p>Gentry Riggen is the man of all men</p> <p>Gentry Riggen is the man of all men</p>',
+    1, @defaultUserId, '2013/11/18', '2013/11/18'),
+
+    (DEFAULT, 'Shut Up & Ship!', 'Seriously!', 'shut-up-and-ship',
+    '<p>Gentry Riggen is the man of all men</p> <p>Gentry Riggen is the man of all men</p> <p>Gentry Riggen is the man of all men</p>',
+    1, @defaultUserId, '2013/11/17', '2013/11/17'),
+
+    (DEFAULT, 'Shut Up & Ship!', 'Seriously!', 'shut-up-and-ship',
+    '<p>Gentry Riggen is the man of all men</p> <p>Gentry Riggen is the man of all men</p> <p>Gentry Riggen is the man of all men</p>',
+    1, @defaultUserId, '2013/11/16', '2013/11/16');
+
+

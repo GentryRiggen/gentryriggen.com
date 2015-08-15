@@ -11,7 +11,7 @@ var repo = function(dbPool) {
 
   userRepo.getById = function(id) {
     var dfd = Q.defer();
-    db.query('SELECT * FROM user').then(
+    db.query('SELECT * FROM user WHERE id = ' + id).then(
       function(users) {
         if (users.length > 0) {
           var u = users[0];

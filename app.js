@@ -30,7 +30,7 @@ app.use('/api', function (req, res, next) {
 // ROUTES
 app.use('/api/auth', require('./routes/authRoutes')(dbPool));
 app.use('/api/user', require('./routes/userRoutes')(dbPool));
-app.use('/api/blog', require('./routes/blogRoutes')());
+app.use('/api/blog', require('./routes/blogRoutes')(dbPool));
 
 // START THE APP
 app.listen(port, function () {
