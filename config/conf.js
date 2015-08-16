@@ -8,9 +8,9 @@ exports.jwt = {
 };
 exports.databaseConfig = {
   connectionLimit: 100,
-  host: 'localhost',
-  user: 'root',
-  password: 'trainheroic',
+  host: 'gr.do',
+  user: 'gentry',
+  password: 'SuCc3$$F@|lisN@0',
   database: 'gentryriggenDB',
   debug: false
 };
