@@ -7,11 +7,14 @@ var express = require('express'),
   conf = require('./config/conf'),
   jwt = require('./services/jwt.service'),
   Q = require('q'),
-  bodyParser = require('body-parser');
+  bodyParser = require('body-parser'),
+  path = require('path'),
+  errorHandler = require('errorhandler');
+
 
 // ENVIRONMENT SETUP
-var app = express();
-var port = process.env.PORT || 8888;
+var app = express(),
+  port = process.env.PORT || 8888;
 app.use(bodyParser.json());
 
 // DB CONNECTIONS
@@ -29,8 +32,19 @@ app.use('/api', function (req, res, next) {
 
 // ROUTES
 app.use('/api/auth', require('./routes/authRoutes')(dbPool));
-app.use('/api/user', require('./routes/userRoutes')(dbPool));
+app.use('/api/user', require('./controllers/user.ctrl')(dbPool));
 app.use('/api/blog', require('./routes/blogRoutes')(dbPool));
+
+// SERVING UP CLIENT
+if (app.get('env') === 'development') {
+  console.log('Serving development environment', path.join(__dirname, 'client/.tmp'));
+  app.use(express.static(path.join(__dirname, 'client')));
+  app.use(express.static(path.join(__dirname, 'client/.tmp/serve')));
+  app.use(express.static(path.join(__dirname, 'client/src')));
+} else if ('production' == app.get('env')) {
+  console.log('Serving production environment');
+  app.use(express.static(path.join(__dirname, 'client/dist')));
+}
 
 // START THE APP
 app.listen(port, function () {

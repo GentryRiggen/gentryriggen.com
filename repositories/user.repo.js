@@ -2,7 +2,7 @@
  * Created by gentryriggen on 8/11/15.
  */
 
-var user = require('../models/user.model'),
+var userModel = require('../models/user.model'),
   Q = require('q');
 
 var repo = function(dbPool) {
@@ -14,7 +14,8 @@ var repo = function(dbPool) {
     db.query('SELECT * FROM user WHERE id = ' + id).then(
       function(users) {
         if (users.length > 0) {
-          var u = users[0];
+          var u = users[0]
+          u = userModel.toJson(u);
           // Get user roles
           u.roles = [];
           db.query('SELECT r.title ' +

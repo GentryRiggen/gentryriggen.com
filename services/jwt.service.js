@@ -6,7 +6,6 @@ var crypto = require('crypto'),
   Q = require('q');
 
 function encode(payload) {
-  console.log('encoding jwt');
   var algorithm = 'HS256';
 
   var header = {
