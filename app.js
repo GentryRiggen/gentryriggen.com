@@ -41,7 +41,7 @@ if (app.get('env') === 'development') {
   app.use(express.static(path.join(__dirname, 'client')));
   app.use(express.static(path.join(__dirname, 'client/.tmp/serve')));
   app.use(express.static(path.join(__dirname, 'client/src')));
-} else if ('production' == app.get('env')) {
+} else if (app.get('env') === 'production') {
   console.log('Serving production environment');
   app.use(express.static(path.join(__dirname, 'client/dist')));
 }
