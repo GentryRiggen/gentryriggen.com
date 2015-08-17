@@ -9,16 +9,28 @@ var repo = function(dbPool) {
   var blogRepo = {};
   var db = require('../services/db.service')(dbPool);
 
-  blogRepo.getAll = function(queryParams, adminRequest) {
-    var dfd = Q.defer();
-    var whereVisible = adminRequest ? '1 = 1' : 'visible = 1',
-      page = 'page' in queryParams ? parseInt(queryParams.page) : 1,
-      pageSize = 'pageSize' in queryParams ? parseInt(queryParams.pageSize) : 5,
-      skip = (page - 1) * pageSize;
+  blogRepo.getTotal = function(adminRequest) {
+    var dfd = Q.defer(),
+      whereVisible = adminRequest ? '1 = 1' : 'visible = 1';
+    db.query('SELECT COUNT(id) as count FROM blog_post WHERE ' + whereVisible).then(
+      function(results) {
+        if (results.length > 0) {
+          dfd.resolve(results[0].count);
+        } else {
+          dfd.resolve(0);
+        }
+      }, function(err) {
+        dfd.reject(err);
+      });
 
-    console.log('QUERY: ', 'SELECT * FROM blog_post WHERE ' + whereVisible + ' ORDER BY created_on DESC LIMIT ' + skip + ', ' + pageSize);
+    return dfd.promise;
+  };
 
-    db.query('SELECT * FROM blog_post WHERE ' + whereVisible + ' ORDER BY created_on DESC LIMIT ' + skip + ', ' + pageSize).then(
+  blogRepo.getAll = function(skip, take, adminRequest) {
+    var dfd = Q.defer(),
+      whereVisible = adminRequest ? '1 = 1' : 'visible = 1';
+
+    db.query('SELECT * FROM blog_post WHERE ' + whereVisible + ' ORDER BY created_on DESC LIMIT ' + skip + ', ' + take).then(
       function(blogs) {
         var response = [];
         for (var i = 0; i < blogs.length; i++) {

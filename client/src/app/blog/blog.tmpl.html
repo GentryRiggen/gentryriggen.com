@@ -1,0 +1,12 @@
+﻿<md-content>
+    <div ng-repeat="post in BlogCtrl.blogPosts">
+        <blog-post post="post" show-comments="false" sample="true"></blog-post>
+    </div>
+
+    <ul class="pagination">
+        <li ng-repeat="page in BlogCtrl.pages"
+            ng-class="{'active': page == BlogCtrl.page}">
+            <a ng-click="BlogCtrl.getNextPage(page, page == BlogCtrl.page)">{{page}}</a>
+        </li>
+    </ul>
+</md-content>

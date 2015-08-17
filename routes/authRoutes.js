@@ -5,7 +5,7 @@ var express = require('express');
 
 var routes = function(dbPool) {
   var authRouter = express.Router();
-  var authCtrl = require('../controllers/auth.ctrl')(dbPool);
+  var authCtrl = require('../controllers/auth.server.ctrl')(dbPool);
 
   authRouter.route('/')
     .post(function(req, res) {

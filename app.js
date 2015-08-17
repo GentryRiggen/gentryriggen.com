@@ -8,8 +8,7 @@ var express = require('express'),
   jwt = require('./services/jwt.service'),
   Q = require('q'),
   bodyParser = require('body-parser'),
-  path = require('path'),
-  errorHandler = require('errorhandler');
+  path = require('path');
 
 
 // ENVIRONMENT SETUP
@@ -32,8 +31,8 @@ app.use('/api', function (req, res, next) {
 
 // ROUTES
 app.use('/api/auth', require('./routes/authRoutes')(dbPool));
-app.use('/api/user', require('./controllers/user.ctrl')(dbPool));
-app.use('/api/blog', require('./routes/blogRoutes')(dbPool));
+app.use('/api/user', require('./controllers/user.server.ctrl')(dbPool));
+app.use('/api/blog', require('./controllers/blog.server.ctrl')(dbPool));
 
 // SERVING UP CLIENT
 if (app.get('env') === 'development') {
