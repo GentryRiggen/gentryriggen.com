@@ -9,9 +9,9 @@
         return {
             restrict: 'E',
             scope: {
-                model: '=post',
+                model: '=post'
             },
-            templateUrl: '/client/app/admin/blog/blogPostEditor.tmpl.html',
+            templateUrl: '/src/app/admin/blog/blogPostEditor.tmpl.html',
             controller: function ($scope) {
                 $scope.currentTab = 1;
 

@@ -71,6 +71,25 @@ exports.tokenFilter = function(req, dbPool) {
       userRepo.getById(decodedToken.payload.sub).then(
         function (user) {
           req.currentUser = user;
+          // SETUP Easy Roles
+          req.currentUser.hasAdminRole = req.currentUser.hasEditorRole = req.currentUser.hasReadRole = false;
+          for (var i = 0; i < req.currentUser.roles.length; i++) {
+            switch (req.currentUser.roles[i]) {
+              case 'Admin':
+                // ALL THE ROLES
+                req.currentUser.hasAdminRole = true;
+                req.currentUser.hasEditorRole = true;
+                req.currentUser.hasReadRole = true;
+                break;
+              case 'Editor':
+                req.currentUser.hasEditorRole = true;
+                req.currentUser.hasReadRole = true;
+                break;
+              case 'Read':
+                req.currentUser.hasReadRole = true;
+                break;
+            }
+          }
           dfd.resolve();
         }, function () {
           dfd.resolve();

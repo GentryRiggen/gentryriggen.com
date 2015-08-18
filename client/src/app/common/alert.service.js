@@ -28,7 +28,7 @@
             $timeout(function () {
                 $rootScope.alert.loading.show = false;
             }, 500);
-        }
+        };
 
         toastr.options = {
             "closeButton": false,
@@ -46,7 +46,7 @@
             "hideEasing": "linear",
             "showMethod": "fadeIn",
             "hideMethod": "fadeOut"
-        }
+        };
 
         alertSvc.showAlert = function (type, title, message) {
             switch (type) {

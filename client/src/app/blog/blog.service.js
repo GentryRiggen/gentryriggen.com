@@ -14,7 +14,7 @@
             if (angular.isUndefined(pageNum)) {
                 pageNum = 1;
             }
-                    
+
             if (angular.isUndefined(pageSize)) {
                 pageSize = 25;
             }
@@ -40,7 +40,7 @@
 
         blogSvc.search = function (q) {
             return $http.get(thisApiUrl + '/search?q=' + q);
-        }
+        };
 
         blogSvc.getByPermalink = function (permalink) {
             return $http.get(thisApiUrl + '/' + permalink);
@@ -55,7 +55,7 @@
                 return $http.put(thisApiAdminUrl + '/' + id, post);
             else
                 return $http.post(thisApiAdminUrl, post);
-                    
+
         };
 
         blogSvc.createNew = function () {

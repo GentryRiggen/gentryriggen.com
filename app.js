@@ -33,6 +33,7 @@ app.use('/api', function (req, res, next) {
 app.use('/api/auth', require('./routes/authRoutes')(dbPool));
 app.use('/api/user', require('./controllers/user.server.ctrl')(dbPool));
 app.use('/api/blog', require('./controllers/blog.server.ctrl')(dbPool));
+app.use('/api/admin/blog', require('./controllers/adminBlog.server.ctrl')(dbPool));
 
 // SERVING UP CLIENT
 if (app.get('env') === 'development') {
@@ -44,6 +45,17 @@ if (app.get('env') === 'development') {
   console.log('Serving production environment');
   app.use(express.static(path.join(__dirname, 'client/dist')));
 }
+
+// MISC
+function twoDigits(d) {
+  if(0 <= d && d < 10) return "0" + d.toString();
+  if(-10 < d && d < 0) return "-0" + (-1*d).toString();
+  return d.toString();
+}
+
+Date.prototype.toMysqlFormat = function() {
+  return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate()) + " " + twoDigits(this.getUTCHours()) + ":" + twoDigits(this.getUTCMinutes()) + ":" + twoDigits(this.getUTCSeconds());
+};
 
 // START THE APP
 app.listen(port, function () {
