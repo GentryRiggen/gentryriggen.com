@@ -50,6 +50,7 @@
     AdminBlogCtrl.createNew = function () {
       BlogService.createNew().success(
         function (newPost) {
+          console.log("New Blog Post!", newPost);
           AdminBlogCtrl.rowClicked(newPost.id);
         }).error(function () {
           AlertService.showAlert('error', 'Failed', 'Could not create new blog post!');

@@ -38,12 +38,12 @@ var ctrl = function (dbPool) {
     });
 
   blogCtrl.route('/:permalink')
-    .get(function(req, res) {
+    .get(function (req, res) {
       console.log('get blog post by permalink');
       blogRepo.getByPermalink(req.params.permalink).then(
-        function(blogPost) {
+        function (blogPost) {
           res.json(blogPost);
-        }, function(err) {
+        }, function (err) {
           console.log(err);
           res.status(500).send({error: 'Failed to get blog posts'});
         })

@@ -30,10 +30,11 @@ app.use('/api', function (req, res, next) {
 });
 
 // ROUTES
-app.use('/api/auth', require('./routes/authRoutes')(dbPool));
+app.use('/api/auth', require('./controllers/auth.server.ctrl.js')(dbPool));
 app.use('/api/user', require('./controllers/user.server.ctrl')(dbPool));
 app.use('/api/blog', require('./controllers/blog.server.ctrl')(dbPool));
 app.use('/api/admin/blog', require('./controllers/adminBlog.server.ctrl')(dbPool));
+app.use('/api/admin/files', require('./controllers/files.server.ctrl')(dbPool));
 
 // SERVING UP CLIENT
 if (app.get('env') === 'development') {

@@ -7,7 +7,8 @@
     </form>
 
     <md-input-container>
-        <input type="file" name="file" onchange="angular.element(this).scope().FilesCtrl.uploadFile(this.files)" />
+        <input type="file" name="file" aria-label="file"
+               onchange="angular.element(this).scope().FilesCtrl.uploadFile(this.files)" />
     </md-input-container>
 
     <md-list>

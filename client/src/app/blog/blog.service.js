@@ -59,7 +59,7 @@
         };
 
         blogSvc.createNew = function () {
-            return $http.post(thisApiUrl + '/createnew');
+            return $http.post(thisApiAdminUrl + '/', {});
         };
 
         blogSvc.deleteById = function (id) {

@@ -101,6 +101,42 @@ var repo = function (dbPool) {
     return dfd.promise;
   };
 
+  blogRepo.new = function (userId) {
+    var dfd = Q.defer(),
+      date = new Date();
+    date = date.toMysqlFormat();
+
+    var query = "INSERT INTO blog_post VALUES(" +
+      "DEFAULT, 'New Blog Post', 'subtitle', 'permalink', '<p>content</p>', 0, " + userId + ", " +
+      "'" + date + "'," +
+      "'" + date + "'" +
+      ");";
+    db.query(query).then(
+      function (result) {
+        dfd.resolve(result.insertId);
+        dfd.resolve();
+      }, function (err) {
+        console.log(err);
+        dfd.reject(err);
+      });
+
+    return dfd.promise;
+  };
+
+  blogRepo.deleteById = function(id) {
+    var dfd = Q.defer(),
+      query = "DELETE FROM blog_post WHERE id = " + id;
+    db.query(query).then(
+      function(result) {
+        console.log("DELETE RESPONSE: ", result);
+        dfd.resolve(result);
+      }, function(err) {
+        dfd.reject(err);
+      });
+
+    return dfd.promise;
+  };
+
   return blogRepo;
 };
 

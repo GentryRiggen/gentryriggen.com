@@ -20,6 +20,9 @@
 
         return $http.get(url);
       },
+      getUploadUrl: function() {
+        return thisApiUrl;
+      },
       uploadFile: function (file) {
         /* jshint -W117 */
         var fd = new FormData();
