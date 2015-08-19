@@ -14,7 +14,7 @@
                         $rootScope.currentUser = userResponse.data;
                         deferred.resolve($rootScope.currentUser);
                     },
-                    function (resp) {
+                    function (  ) {
                         deferred.reject();
                     }
                 );
@@ -39,12 +39,11 @@
                     // Set token on scope and store it
                     $rootScope.userToken = authResponse.data.token;
                     // Set user info on scope
-                    console.log(authResponse.data);
                     $rootScope.currentUser = authResponse.data;
                     $rootScope.$broadcast('gr.user.login', authResponse.data);
                     deferred.resolve(authResponse.data);
                 },
-                function (resp) {
+                function () {
                     deferred.reject("Invalid Login Attempt");
                 });
 
@@ -53,7 +52,7 @@
 
         userSvc.isAuthenticated = function () {
             return angular.isDefined($rootScope.currentUser);
-        },
+        };
 
         userSvc.userHasAccess = function (requestedRole) {
             // Search current claims

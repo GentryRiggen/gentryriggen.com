@@ -2,8 +2,8 @@
     'use strict';
     angular.module('gr').service('AlertService', AlertService);
 
-    AlertService.$inject = ['$rootScope', '$timeout'];
-    function AlertService($rootScope, $timeout) {
+    AlertService.$inject = ['$rootScope', '$timeout', 'toastr'];
+    function AlertService($rootScope, $timeout, toastr) {
         var alertSvc = {};
 
         alertSvc.showLoading = function (message) {
@@ -21,7 +21,7 @@
                     message: msg,
                     show: true
                 }
-            }
+            };
         };
 
         alertSvc.hideLoading = function () {

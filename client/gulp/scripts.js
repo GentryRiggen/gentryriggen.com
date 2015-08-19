@@ -11,7 +11,7 @@ var $ = require('gulp-load-plugins')();
 gulp.task('scripts', function () {
   return gulp.src(path.join(conf.paths.src, '/app/**/*.js'))
     .pipe($.jshint())
-    .pipe($.jshint.reporter('jshint-stylish'))
+    .pipe($.jshint.reporter('jshint-stylish', {verbose: true}))
     .pipe(browserSync.reload({ stream: true }))
     .pipe($.size())
 });

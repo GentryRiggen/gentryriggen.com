@@ -6,12 +6,13 @@
     app.constant('API_URL', '/api');
 
     // Handle Auth on every navigation
-    app.run(['$rootScope', '$state', 'UserService', '$window', '$location', function ($rootScope, $state, UserService, $window, $location) {
-        $rootScope.$on('$viewContentLoaded', function (event) {
+    app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_',
+      function ($rootScope, $state, UserService, $window, $location, _) {
+        $rootScope.$on('$viewContentLoaded', function () {
             $window.ga('send', 'pageview', { page: $location.url() });
         });
 
-        $rootScope.$on('$stateChangeStart', function (event, toState, toParams) {
+        $rootScope.$on('$stateChangeStart', function (event, toState) {
             if (angular.isDefined(toState.data) &&
                         angular.isDefined(toState.data.requireLogin) &&
                         toState.data.requireLogin === false) {

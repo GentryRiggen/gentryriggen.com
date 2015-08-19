@@ -1,31 +1,30 @@
 ﻿(function () {
-    'use strict';
-    angular
-        .module('gr')
-        .controller('BlogDetailCtrl', BlogDetailCtrl);
+  'use strict';
+  angular
+    .module('gr')
+    .controller('BlogDetailCtrl', BlogDetailController);
 
-    BlogDetailCtrl.$inject = ['$stateParams', 'BlogService', 'AlertService'];
-    function BlogDetailCtrl($stateParams, BlogService, AlertService) {
-        var BlogDetailCtrl = this;
+  BlogDetailController.$inject = ['$stateParams', 'BlogService', 'AlertService', '$state'];
+  function BlogDetailController($stateParams, BlogService, AlertService, $state) {
+    var BlogDetailCtrl = this;
 
-        function init() {
-            if (angular.isDefined($stateParams.permalink)) {
-                AlertService.showLoading("Fetching Blog Post...");
-                BlogService.getByPermalink($stateParams.permalink)
-                    .success(function (response) {
-                        AlertService.hideLoading();
-                        BlogDetailCtrl.blogPost = response;
-                    }).error(function (err) {
-                        AlertService.hideLoading();
-                        console.error("Could not get the blog post", err);
-                        // Show Alert
-                    });
-            } else {
-                // Show Alert
-                $state.go('blog');
-            }
-        };
-
-        init();
+    function init() {
+      if (angular.isDefined($stateParams.permalink)) {
+        AlertService.showLoading("Fetching Blog Post...");
+        BlogService.getByPermalink($stateParams.permalink)
+          .success(function (response) {
+            AlertService.hideLoading();
+            BlogDetailCtrl.blogPost = response;
+          }).error(function () {
+            AlertService.hideLoading();
+            // Show Alert
+          });
+      } else {
+        // Show Alert
+        $state.go('blog');
+      }
     }
+
+    init();
+  }
 })();

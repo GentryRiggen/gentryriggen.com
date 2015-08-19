@@ -1,8 +1,8 @@
 {
   "strict": true,
   "bitwise": true,
-  "curly": true,
-  "eqeqeq": true,
+  "curly": false,
+  "eqeqeq": false,
   "latedef": false,
   "noarg": true,
   "undef": true,

@@ -3,9 +3,9 @@
     angular
         .module('gr')
         .factory('AuthInterceptor', AuthInterceptor);
-    AuthInterceptor.$inject = ['$location', '$q', 'AuthTokenService'];
+    AuthInterceptor.$inject = ['$q', 'AuthTokenService'];
 
-    function AuthInterceptor($location, $q, AuthTokenService) {
+    function AuthInterceptor($q, AuthTokenService) {
         return {
             request: function (config) {
                 var token = AuthTokenService.getToken();
@@ -20,6 +20,6 @@
             responseError: function (rejection) {
                 return $q.reject(rejection);
             }
-        }
+        };
     }
 })();
