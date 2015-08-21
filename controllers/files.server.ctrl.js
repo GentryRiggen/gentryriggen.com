@@ -4,14 +4,7 @@
 var express = require('express'),
   path = require('path'),
   fs = require('fs'),
-  os = require('os'),
   multiparty = require('multiparty');
-
-function getFilesizeInBytes(filename) {
-  var stats = fs.statSync(filename)
-  var fileSizeInBytes = stats["size"]
-  return fileSizeInBytes
-}
 
 var ctrl = function (dbPool) {
   var fileCtrl = express.Router();
