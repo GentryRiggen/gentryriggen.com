@@ -8,7 +8,8 @@ var express = require('express'),
   jwt = require('./services/jwt.service'),
   Q = require('q'),
   bodyParser = require('body-parser'),
-  path = require('path');
+  path = require('path'),
+  busboy = require('connect-busboy');
 
 
 // ENVIRONMENT SETUP
@@ -28,6 +29,9 @@ app.use('/api', function (req, res, next) {
       next();
     });
 });
+
+// Files
+app.use(busboy({ immediate: true }));
 
 // ROUTES
 app.use('/api/auth', require('./controllers/auth.server.ctrl.js')(dbPool));

@@ -7,8 +7,10 @@
     </form>
 
     <md-input-container>
-        <input type="file" name="file" aria-label="file"
-               onchange="angular.element(this).scope().FilesCtrl.uploadFile(this.files)" />
+        <!--<input type="file" name="file" aria-label="file"-->
+               <!--onchange="angular.element(this).scope().FilesCtrl.uploadFile(this.files)" />-->
+
+      <input type="file" nv-file-select="" uploader="FilesCtrl.uploader" aria-label="file uploader"/>
     </md-input-container>
 
     <md-list>

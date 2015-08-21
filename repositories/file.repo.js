@@ -43,7 +43,7 @@ var repo = function (dbPool) {
     return dfd.promise;
   };
 
-  fileRepo.destroy = function(fileName) {
+  fileRepo.delete = function(fileName) {
     var dfd = Q.defer();
     blobSvc.deleteBlob(conf.blobStorage.container, fileName, function(err, response) {
       if (err) {
@@ -53,6 +53,18 @@ var repo = function (dbPool) {
       }
     });
 
+    return dfd.promise;
+  };
+
+  fileRepo.upload = function(fileStream, length, fileName) {
+    var dfd = Q.defer();
+    blobSvc.createBlockBlobFromStream(conf.blobStorage.container, fileName, fileStream, length, function(err) {
+      if(!err){
+        dfd.resolve();
+      } else {
+        dfd.reject(err)
+      }
+    });
     return dfd.promise;
   };
 

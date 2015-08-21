@@ -2,7 +2,16 @@
  * Created by gentryriggen on 8/11/15.
  */
 var express = require('express'),
-  fileModel = require('../models/file.model');
+  path = require('path'),
+  fs = require('fs'),
+  os = require('os'),
+  multiparty = require('multiparty');
+
+function getFilesizeInBytes(filename) {
+  var stats = fs.statSync(filename)
+  var fileSizeInBytes = stats["size"]
+  return fileSizeInBytes
+}
 
 var ctrl = function (dbPool) {
   var fileCtrl = express.Router();
@@ -17,6 +26,8 @@ var ctrl = function (dbPool) {
   }
 
   fileCtrl.use('/', ensureAccess);
+
+
   fileCtrl.route('/')
     .get(function (req, res) {
       var page = 'page' in req.query ? parseInt(req.query.page) : 1,
@@ -38,7 +49,22 @@ var ctrl = function (dbPool) {
         });
     })
     .post(function(req, res) {
-      console.log('File upload', req.body, req.files, req.file);
+      var form = new multiparty.Form();
+      form.on('part', function(part) {
+        if (part.filename) {
+          var size = part.byteCount - part.byteOffset;
+          var name = part.filename;
+          fileRepo.upload(part, size, name).then(
+            function () {
+              res.json({message: 'File uploaded successfully'});
+            }, function (err) {
+              res.status(500).send({error: 'Failed to upload file'});
+            });
+        } else {
+          form.handlePart(part);
+        }
+      });
+      form.parse(req);
     })
     .delete(function(req, res) {
       var fileToDelete = 'fileName' in req.query ? req.query.fileName : false;
@@ -46,7 +72,7 @@ var ctrl = function (dbPool) {
         res.status(400).send({error: 'fileName is required to delete'});
       }
 
-      fileRepo.destroy(fileToDelete).then(
+      fileRepo.delete(fileToDelete).then(
         function() {
           res.json({message: 'Successfully delete file'});
         }, function(err) {
