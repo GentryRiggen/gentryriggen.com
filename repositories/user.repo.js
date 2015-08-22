@@ -9,6 +9,22 @@
     var userRepo = {};
     var db = require('../services/db.service')(dbPool);
 
+    userRepo.getAll = function () {
+      var dfd = Q.defer();
+      db.query('SELECT * FROM user').then(
+        function (users) {
+          var userModels = [];
+          for (var i = 0; i < users.length; i++) {
+            userModels.push(userModel.toJson(users[i]));
+          }
+          dfd.resolve(userModels);
+        }, function (err) {
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
     userRepo.getById = function (id) {
       var dfd = Q.defer();
       db.query('SELECT * FROM user WHERE id = ' + id).then(
@@ -34,6 +50,90 @@
             dfd.reject('User not found');
           }
         }, function (err) {
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
+    userRepo.getAllRoles = function () {
+      var dfd = Q.defer();
+      db.query('SELECT * FROM role').then(
+        function (roles) {
+          dfd.resolve(roles);
+        }, function (err) {
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
+    userRepo.save = function (id, user) {
+      var dfd = Q.defer();
+      var query = "UPDATE user SET " +
+        "first_name = '" + user.firstName + "'," +
+        "last_name = '" + user.lastName + "'," +
+        "email = '" + user.email + "'," +
+        "username = '" + user.username + "'" +
+        "WHERE id = " + id;
+      db.query(query).then(
+        function () {
+          dfd.resolve();
+        }, function (err) {
+          console.log(err);
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
+    userRepo.updateUserPassword = function(id, password) {
+      var dfd = Q.defer();
+      userModel.encryptPassword(password).then(
+        function(encryptedPass) {
+          var query = "UPDATE user SET password = '" + encryptedPass + "'";
+          db.query(query).then(
+            function () {
+              dfd.resolve();
+            }, function (err) {
+              console.log(err);
+              dfd.reject(err);
+            });
+        }, function() {
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
+    userRepo.updateRoles = function (id, roles) {
+      var dfd = Q.defer();
+      // Remove all roles and then add new ones
+      var query = "DELETE FROM user_role WHERE user_id = " + id;
+      db.query(query).then(
+        function () {
+          // Add new roles if there are any
+          if (roles && roles.length > 0) {
+            // Insert new ones
+            query = 'INSERT INTO user_role VALUES ';
+            for (var i = 0; i < roles.length; i++) {
+              query += '(DEFAULT, ' + id + ', ' + roles[i].id + ')';
+              if (i != roles.length - 1) {
+                query += ',';
+              }
+            }
+            console.log('Inserting Roles', query);
+            db.query(query).then(
+              function () {
+                dfd.resolve();
+              }, function (err) {
+                dfd.reject(err);
+              });
+          } else {
+            dfd.resolve();
+          }
+        }, function (err) {
+          console.log(err);
           dfd.reject(err);
         });
 

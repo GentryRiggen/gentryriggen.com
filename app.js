@@ -35,6 +35,7 @@
   app.use('/api/blog', require('./controllers/blog.server.ctrl')(dbPool));
   app.use('/api/admin/blog', require('./controllers/adminBlog.server.ctrl')(dbPool));
   app.use('/api/admin/files', require('./controllers/files.server.ctrl')());
+  app.use('/api/admin/accounts', require('./controllers/adminAccounts.server.ctrl')(dbPool));
 
 // SERVING UP CLIENT
   if (app.get('env') === 'development') {
