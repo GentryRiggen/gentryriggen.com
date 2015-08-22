@@ -42,11 +42,14 @@
     };
 
     FilesCtrl.search = function (q) {
+      FilesCtrl.loading = true;
       FilesService.getFilesPaginate(FilesCtrl.page, FilesCtrl.pageSize, q)
         .success(function (data) {
           FilesCtrl.files = data.files;
+          FilesCtrl.loading = false;
         }).error(function () {
           AlertService.showAlert('error', 'Uh oh!', 'Failed to search files');
+          FilesCtrl.loading = false;
         });
     };
 
@@ -78,18 +81,22 @@
     });
 
     FilesCtrl.uploader.onWhenAddingFileFailed = function() {
+      FilesCtrl.loading = false;
       AlertService.showAlert('error', 'Failed', 'onWhenAddingFileFailed Failed to add file for upload');
     };
     FilesCtrl.uploader.onAfterAddingFile = function() {
+      FilesCtrl.loading = true;
       AlertService.showAlert('success', 'Success', 'Add file to queue');
     };
     FilesCtrl.uploader.onSuccessItem = function() {
+      FilesCtrl.loading = false;
       AlertService.showAlert('success', 'Success!', 'File has been uploaded');
     };
-    init();
-
     FilesCtrl.uploader.onErrorItem = function() {
+      FilesCtrl.loading = false;
       AlertService.showAlert('error', 'Failed', 'Failed to upload file');
     };
+
+    init();
   }
 })();

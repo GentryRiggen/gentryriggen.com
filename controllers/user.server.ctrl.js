@@ -1,22 +1,24 @@
-/**
- * Created by gentryriggen on 8/11/15.
- */
-var user = require('../models/user.model'),
-  express = require('express');
+(function () {
+  'use strict';
 
-var ctrl = function(dbPool) {
-  var userCtrl = express.Router();
+  /* jshint -W117 */
+  var express = require('express');
 
-  userCtrl.route('/')
-    .get(function(req, res) {
-      if (req.currentUser) {
-        return res.json(req.currentUser);
-      } else {
-        return res.status(401).send({error: 'Not logged in'});
-      }
-    });
+  var ctrl = function (dbPool) {
+    console.log(dbPool.length);
+    var userCtrl = express.Router();
 
-  return userCtrl;
-};
+    userCtrl.route('/')
+      .get(function (req, res) {
+        if (req.currentUser) {
+          return res.json(req.currentUser);
+        } else {
+          return res.status(401).send({error: 'Not logged in'});
+        }
+      });
 
-module.exports = ctrl;
+    return userCtrl;
+  };
+
+  module.exports = ctrl;
+})();

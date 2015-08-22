@@ -1,0 +1,18 @@
+{
+  "devel": true,
+  "strict": true,
+  "bitwise": true,
+  "curly": false,
+  "eqeqeq": false,
+  "latedef": false,
+  "noarg": true,
+  "undef": true,
+  "unused": true,
+  "validthis": true,
+  "jasmine": true,
+  "globals": {
+    "angular": false,
+    "inject": false,
+    "module": false
+  }
+}
