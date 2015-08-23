@@ -34,6 +34,14 @@
       return $http.put(thisApiUrl + '/' + id, book);
     };
 
+    bookSvc.getArtworkUploadUrl = function(id) {
+      return thisApiUrl + '/' + id + '/artwork';
+    };
+
+    bookSvc.getFileUploadUrl = function(id) {
+      return thisApiUrl + '/' + id + '/file';
+    };
+
     return bookSvc;
   }
 })();

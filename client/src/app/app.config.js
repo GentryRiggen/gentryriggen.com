@@ -13,7 +13,6 @@
       });
 
       $rootScope.$on('$stateChangeStart', function (event, toState) {
-        console.log('Going to state', toState);
         if (angular.isDefined(toState.data) &&
           angular.isDefined(toState.data.requireLogin) &&
           toState.data.requireLogin === false) {

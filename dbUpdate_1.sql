@@ -28,7 +28,8 @@ CREATE TABLE book
   file_url VARCHAR(256) NOT NULL,
   publish_date DATETIME NOT NULL,
   rating INT DEFAULT 1 NOT NULL,
-  fiction INT DEFAULT 0 NOT NULL
+  fiction INT DEFAULT 0 NOT NULL,
+  review LONGTEXT
 );
 CREATE UNIQUE INDEX unique_id ON book (id);
 ALTER TABLE book ADD FOREIGN KEY (author_id) REFERENCES author(id);

@@ -10,7 +10,7 @@
     </thead>
 
     <tbody>
-    <tr ng-repeat="book in AdminBooksCtrl.books" ng-click="AdminBooksCtrl.rowClicked(account.id)">
+    <tr ng-repeat="book in AdminBooksCtrl.books" ng-click="AdminBooksCtrl.rowClicked(book.id)">
       <td><img src="{{book.artworkUrl}}" width="45" height="60" /> {{book.title}}</td>
       <td>{{book.publishDate | date}}</td>
     </tr>

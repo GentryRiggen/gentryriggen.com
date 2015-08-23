@@ -2,11 +2,13 @@
   'use strict';
 
   /* jshint -W117 */
-  var express = require('express');
+  var express = require('express'),
+    multiparty = require('multiparty');
 
   var ctrl = function (dbPool) {
-    var booksCtrl = express.Router();
-    var bookRepo = require('../repositories/book.repo')(dbPool);
+    var booksCtrl = express.Router(),
+      bookRepo = require('../repositories/book.repo')(dbPool),
+      fileRepo = require('../repositories/file.repo')();
 
     function ensureAccess(req, res, next) {
       if (req.currentUser && req.currentUser.hasLibrarianRole) {
@@ -64,6 +66,7 @@
     booksCtrl.use('/:id', ensureAccess);
     booksCtrl.route('/:id')
       .get(function (req, res) {
+        console.log('Admin book get book by id', req.params.id);
         bookRepo.getById(req.params.id).then(
           function (book) {
             res.json(book);
@@ -86,6 +89,30 @@
           }, function () {
             res.status(500).send({error: 'Failed to delete book'});
           });
+      });
+
+    booksCtrl.route('/:id/artwork')
+      .post(function (req, res) {
+        var form = new multiparty.Form();
+
+        // Upload to Azure
+        form.on('part', function (part) {
+          fileRepo.upload(part, part.byteCount, part.filename).then(
+            function () {
+              bookRepo.saveArtwork(req.params.id, part.filename).then(
+                function() {
+                  res.json({message: 'Artwork updated successfully'});
+                }, function (err) {
+                  console.log(err);
+                  res.status(500).send({error: 'Failed to upload file'});
+                });
+            }, function (err) {
+              console.log(err);
+              res.status(500).send({error: 'Failed to upload file'});
+            });
+        });
+
+        form.parse(req);
       });
 
     return booksCtrl;

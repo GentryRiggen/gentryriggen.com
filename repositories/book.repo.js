@@ -5,6 +5,14 @@
   var bookModel = require('../models/book.model'),
     Q = require('q');
 
+  function getSelectColumns(all) {
+    var select = "id, author_id, book_series_id, title, artwork_url, publish_date, rating, fiction";
+    if (all) {
+      select += ', file_url';
+    }
+    return "*";
+  }
+
   var repo = function (dbPool) {
     var bookRepo = {};
     var db = require('../services/db.service')(dbPool);
@@ -27,10 +35,12 @@
 
     bookRepo.getAll = function (skip, take, all) {
       var dfd = Q.defer(),
-        select = getSelectColumns(all);
+        select = getSelectColumns(all),
+        query = 'SELECT ' + select + ' FROM book ORDER BY title, publish_date DESC LIMIT ' + skip + ', ' + take;
 
-      db.query('SELECT ' + select + ' FROM book ORDER BY title, publish_date DESC LIMIT ' + skip + ', ' + take).then(
+      db.query(query).then(
         function (books) {
+          console.log('Found books', books);
           var response = [];
           for (var i = 0; i < books.length; i++) {
             response.push(bookModel.toJson(books[i]));
@@ -48,12 +58,13 @@
         select = getSelectColumns(all);
 
       db.query('SELECT ' + select + ' FROM book WHERE id = ' + id).then(
-        function (blogs) {
-          if (blogs.length > 0) {
-            var b = blogs[0];
-            dfd.resolve(blogModel.toJson(b));
+        function (books) {
+          console.log('Looking for book with id', id, books);
+          if (books.length > 0) {
+            var b = books[0];
+            dfd.resolve(bookModel.toJson(b));
           } else {
-            dfd.reject('Blog Post not found');
+            dfd.reject('Book not found');
           }
         }, function (err) {
           dfd.reject(err);
@@ -74,6 +85,24 @@
         "rating = " + dbPool.escape(book.rating) + ", " +
         "fiction = " + dbPool.escape(book.fiction) + " " +
         "WHERE id = " + id;
+      db.query(query).then(
+        function () {
+          dfd.resolve();
+        }, function (err) {
+          console.log(err);
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
+    bookRepo.saveArtwork = function(id, artworkUrl) {
+      var dfd = Q.defer();
+      var query = "UPDATE book SET " +
+        "artwork_url = " + dbPool.escape(artworkUrl) + " " +
+        "WHERE id = " + id;
+
+      console.log('updating book artwork url', dbPool.escape(artworkUrl));
       db.query(query).then(
         function () {
           dfd.resolve();
@@ -118,14 +147,6 @@
 
     return bookRepo;
   };
-
-  function getSelectColumns(all) {
-    var select = "id, author_id, book_series_id, title, artwork_url, publish_date, rating, fiction";
-    if (all) {
-      select += ', file_url';
-    }
-    return select;
-  }
 
   module.exports = repo;
 })();
