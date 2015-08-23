@@ -1,5 +1,5 @@
 $themeColor: #00aeee;
-$defaultForegroundColor: #464646;
+$defaultForegroundColor: #303030;
 
 // DEFAULTS
 body {
@@ -16,6 +16,13 @@ body {
     text-decoration: none;
     cursor: pointer;
   }
+
+  p{
+    line-height: 1.6;
+    font-size: 16pt;
+    font-weight: 300;
+    margin-bottom: 25px;
+  }
 }
 
 body.ready {
@@ -25,7 +32,6 @@ body.ready {
 $navForegroundColor: #fefefe;
 
 md-sidenav {
-
   header.nav-header {
     background: $themeColor;
     padding: 15px 10px;
@@ -83,82 +89,81 @@ md-toolbar.mobile-header {
   }
 }
 
-md-card {
+
+.ui-view-container {
   margin: 15px auto;
   max-width: 800px;
 
-  md-card-content {
-    font-size: 1.3em;
-    line-height: 1.7em;
-    padding: 25px 35px;
+  .fullscreen-loader {
+    width: 300px;
+  }
 
-    h1, h2, h3, h4, h5, h6 {
-      font-weight: 300;
-    }
+  md-card {
+    md-card-content {
+      padding: 25px 35px;
 
-    p {
-      margin-bottom: 25px;
-    }
-
-    .blog-post-header {
-      margin: 5px 0px 25px;
-
-      a {
+      h1, h2, h3, h4, h5, h6 {
         font-weight: 300;
-        font-size: 42px;
-        text-transform: capitalize;
-        line-height: 45px;
       }
 
-      .blog-post-subtitle {
-        color: lighten($defaultForegroundColor, 20);
-        font-weight: 300;
-        font-size: 18px;
-        font-style: italic;
+      .blog-post-header {
+        margin: 5px 0px 25px;
 
-        span {
-          margin-top: 5px;
-          display: block;
-          font-weight: 600;
-          font-style: normal;
-          font-size: 11px;
+        a {
+          font-weight: 300;
+          font-size: 42px;
+          text-transform: capitalize;
+          line-height: 45px;
+        }
+
+        .blog-post-subtitle {
+          color: lighten($defaultForegroundColor, 20);
+          font-weight: 300;
+          font-size: 18px;
+          font-style: italic;
+
+          span {
+            margin-top: 5px;
+            display: block;
+            font-weight: 600;
+            font-style: normal;
+            font-size: 11px;
+          }
         }
       }
-    }
 
-    .blog-post-body {
-      pre {
-        background-color: #565656;
-        color: #fefefe;
+      .blog-post-body {
+        pre {
+          background-color: #565656;
+          color: #fefefe;
+        }
       }
-      p {
-        font-size: 18px;
-        font-weight: 300;
-      }
-    }
 
-    .social-links {
-      a {
-        font-size: 15px;
-        margin: 5px 15px 20px 0;
+      .social-links {
+        a {
+          font-size: 15px;
+          margin: 5px 15px 20px 0;
+        }
       }
     }
   }
 }
 
 @media(max-width: 400px) {
-  md-card {
-    margin-left: 0px;
-    margin-right: 0px;
-    width: 100%;
+  .ui-view-container {
+    md-card {
+      margin-left: 0px;
+      margin-right: 0px;
+      width: 100%;
 
-    md-card-content {
-      padding: 15px;
+      md-card-content {
+        padding: 15px;
 
-      .blog-post-header {
-        a {
-          font-size: 36px;
-          line-height: 36px;
+        .blog-post-header {
+          a {
+            font-size: 36px;
+            line-height: 36px;
+          }
         }
       }
     }

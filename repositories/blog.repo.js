@@ -30,7 +30,7 @@
       var dfd = Q.defer(),
         whereVisible = adminRequest ? '1 = 1' : 'visible = 1';
 
-      db.query('SELECT * FROM blog_post WHERE ' + whereVisible + ' ORDER BY created_on DESC LIMIT ' + skip + ', ' + take).then(
+      db.query('SELECT * FROM blog_post WHERE ' + whereVisible + ' ORDER BY visible_on DESC, created_on DESC LIMIT ' + skip + ', ' + take).then(
         function (blogs) {
           var response = [];
           for (var i = 0; i < blogs.length; i++) {
@@ -83,10 +83,10 @@
         updatedOn = new Date();
       updatedOn = updatedOn.toMysqlFormat();
       var query = "UPDATE blog_post SET " +
-        "title = '" + blogPost.title + "'," +
-        "subtitle = '" + blogPost.subtitle + "'," +
-        "permalink = '" + blogPost.permalink + "'," +
-        "content = '" + blogPost.content + "'," +
+        "title = " + dbPool.escape(blogPost.title) + "," +
+        "subtitle = " + dbPool.escape(blogPost.subtitle) + "," +
+        "permalink = " + dbPool.escape(blogPost.permalink) + "," +
+        "content = " + dbPool.escape(blogPost.content) + "," +
         "visible = " + blogPost.visible + "," +
         "updated_on = '" + updatedOn + "' " +
         "WHERE id = " + id;

@@ -149,25 +149,8 @@
         "A700": "#0083b3"
       });
 
-      $mdThemingProvider.definePalette('base', {
-        "50": "#f1f1f1",
-        "100": "#d5d5d5",
-        "200": "#b9b9b9",
-        "300": "#a1a1a1",
-        "400": "#898989",
-        "500": "#727272",
-        "600": "#646464",
-        "700": "#565656",
-        "800": "#474747",
-        "900": "#393939",
-        "A100": "#d5d5d5",
-        "A200": "#b9b9b9",
-        "A400": "#898989",
-        "A700": "#565656"
-      });
-
       $mdThemingProvider.theme('default')
         .primaryPalette('theme')
-        .accentPalette('base');
+        .accentPalette('theme');
     }]);
 })();

@@ -1,7 +1,7 @@
 ﻿<md-content>
   <form name="searchForm" ng-submit="FilesCtrl.search(q)">
     <md-input-container>
-      <lable>Search</lable>
+      <label>Search</label>
       <input aria-label="files search" ng-model="q" ng-model-options="{ debounce: 350 }"
              ng-change="FilesCtrl.search(q)">
     </md-input-container>

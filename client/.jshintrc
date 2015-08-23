@@ -1,4 +1,5 @@
 {
+  "devel": true,
   "strict": true,
   "bitwise": true,
   "curly": false,

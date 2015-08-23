@@ -37,7 +37,7 @@
           AlertService.showAlert('success', 'Success', 'Updated account details');
         }, function() {
           AlertService.showAlert('error', 'Failure', 'Failed to update account details!');
-        })
+        });
     };
 
     AccountCtrl.updatePassword = function() {
@@ -62,7 +62,7 @@
           AlertService.showAlert('success', 'Success', 'Updated account roles');
         }, function() {
           AlertService.showAlert('error', 'Failure', 'Failed to update account roles!');
-        })
+        });
     };
 
     init();
