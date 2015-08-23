@@ -43,6 +43,7 @@
     app.use(express.static(path.join(__dirname, 'client/.tmp/serve')));
     app.use(express.static(path.join(__dirname, 'client/src')));
   } else if (app.get('env') === 'production') {
+    console.log('Serving production files');
     app.use(express.static(path.join(__dirname, 'client/dist')));
   }
 
