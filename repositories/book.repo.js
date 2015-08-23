@@ -59,7 +59,6 @@
 
       db.query('SELECT ' + select + ' FROM book WHERE id = ' + id).then(
         function (books) {
-          console.log('Looking for book with id', id, books);
           if (books.length > 0) {
             var b = books[0];
             dfd.resolve(bookModel.toJson(b));
@@ -74,16 +73,16 @@
     };
 
     bookRepo.save = function (id, book) {
+      console.log('saving book: ', book);
       var dfd = Q.defer();
       var query = "UPDATE book SET " +
         "author_id = " + dbPool.escape(book.authorId) + "," +
         "book_series_id = " + dbPool.escape(book.bookSeriesId) + "," +
         "title = " + dbPool.escape(book.title) + "," +
-        "artwork_url = " + dbPool.escape(book.artworkUrl) + "," +
-        "file_url = " + dbPool.escape(book.fileUrl) + "," +
         "publish_date = " + dbPool.escape(book.publishDate) + ", " +
         "rating = " + dbPool.escape(book.rating) + ", " +
-        "fiction = " + dbPool.escape(book.fiction) + " " +
+        "fiction = " + dbPool.escape(book.fiction) + ", " +
+        "review = " + dbPool.escape(book.review) + " " +
         "WHERE id = " + id;
       db.query(query).then(
         function () {
@@ -103,6 +102,22 @@
         "WHERE id = " + id;
 
       console.log('updating book artwork url', dbPool.escape(artworkUrl));
+      db.query(query).then(
+        function () {
+          dfd.resolve();
+        }, function (err) {
+          console.log(err);
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
+    bookRepo.saveFile = function(id, fileName) {
+      var dfd = Q.defer();
+      var query = "UPDATE book SET " +
+        "file_url = " + dbPool.escape(fileName) + " " +
+        "WHERE id = " + id;
       db.query(query).then(
         function () {
           dfd.resolve();

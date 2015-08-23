@@ -6,7 +6,7 @@
     multiparty = require('multiparty');
 
   var ctrl = function (dbPool) {
-    var booksCtrl = express.Router(),
+    var authorsCtrl = express.Router(),
       bookRepo = require('../repositories/book.repo')(dbPool),
       fileRepo = require('../repositories/file.repo')();
 
@@ -18,8 +18,8 @@
       }
     }
 
-    booksCtrl.use('/', ensureAccess);
-    booksCtrl.route('/')
+    authorsCtrl.use('/', ensureAccess);
+    authorsCtrl.route('/')
       .get(function (req, res) {
         var page = 'page' in req.query ? parseInt(req.query.page) : 1,
           pageSize = 'pageSize' in req.query ? parseInt(req.query.pageSize) : 50,
@@ -63,8 +63,8 @@
           });
       });
 
-    booksCtrl.use('/:id', ensureAccess);
-    booksCtrl.route('/:id')
+    authorsCtrl.use('/:id', ensureAccess);
+    authorsCtrl.route('/:id')
       .get(function (req, res) {
         console.log('Admin book get book by id', req.params.id);
         bookRepo.getById(req.params.id).then(
@@ -91,7 +91,7 @@
           });
       });
 
-    booksCtrl.route('/:id/artwork')
+    authorsCtrl.route('/:id/artwork')
       .post(function (req, res) {
         var form = new multiparty.Form();
 
@@ -115,7 +115,7 @@
         form.parse(req);
       });
 
-    booksCtrl.route('/:id/file')
+    authorsCtrl.route('/:id/file')
       .post(function (req, res) {
         var form = new multiparty.Form();
 
@@ -139,7 +139,7 @@
         form.parse(req);
       });
 
-    return booksCtrl;
+    return authorsCtrl;
   };
 
   module.exports = ctrl;

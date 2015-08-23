@@ -1,32 +1,56 @@
 ﻿<md-content layout-padding layout="row" layout-wrap>
   <h2 flex="100">Book Details</h2>
-  <pre flex="100">{{AdminBookCtrl.book | json}}</pre>
-
   <div flex="50">
     <md-input-container>
       <label>Title</label>
-      <input type="text" ng-model="AdminBookCtrl.book.title" ng-blur="AdminBookCtrl.bookUpdated()"/>
+      <input type="text" ng-model="AdminBookCtrl.book.title"
+             ng-blur="AdminBookCtrl.bookUpdated()"/>
     </md-input-container>
 
     <md-input-container>
       <label>Artwork</label>
-      <input type="file" nv-file-select="" uploader="AdminBookCtrl.artworkUploader" aria-label="artwork uploader"/>
+      <input type="file" nv-file-select="" uploader="AdminBookCtrl.artworkUploader"
+             aria-label="artwork uploader"/>
       <img src="{{AdminBookCtrl.book.artworkUrl}}" width="100" height="100" />
     </md-input-container>
 
     <md-input-container>
       <label>File</label>
-      <input type="file" nv-file-select="" uploader="AdminBookCtrl.fileUploader" aria-label="file uploader"/>
-      <p>{{AdminBookCtrl.book.fileUrl}}</p>
+      <input type="file" nv-file-select="" uploader="AdminBookCtrl.fileUploader"
+             aria-label="file uploader"/>
+      <b>FILE: </b> <a href="{{AdminBookCtrl.book.fileUrl}}" target="_blank">Download Link</a>
     </md-input-container>
 
     <md-input-container>
       <label>Date Published</label>
-      <input type="text" ng-model="AdminBookCtrl.book.publishDate" ng-blur="AdminBookCtrl.bookUpdated()"/>
+      <datepicker>
+        <input ng-model="AdminBookCtrl.book.publishDate" type="text"
+               ng-change="AdminBookCtrl.bookUpdated(true)" aria-label="publish date"/>
+      </datepicker>
     </md-input-container>
+
+    <md-checkbox ng-model="AdminBookCtrl.book.fiction"
+                 aria-label="Fiction Book="
+                 ng-change="AdminBookCtrl.bookUpdated(true)"
+                 ng-true-value="1" ng-false-value="0">
+      Fiction
+    </md-checkbox>
   </div>
 
   <div flex="50">
     <h2>Author</h2>
+  </div>
+
+  <div flex="100">
+      <md-input-container>
+        <md-select ng-model="AdminBookCtrl.book.rating">
+          <md-option ng-repeat="rating in [1,2,3,4,5]" value="{{rating}}">{{rating}}</md-option>
+        </md-select>
+      </md-input-container>
+
+    <md-input-container>
+      <label>Review</label>
+      <textarea ng-model="AdminBookCtrl.book.review" ng-blur="AdminBookCtrl.bookUpdated(true)"></textarea>
+    </md-input-container>
   </div>
 </md-content>

@@ -16,8 +16,6 @@
               connection.release();
               dfd.reject(err);
             } else {
-
-              console.log('query', query, 'rows', rows);
               connection.release();
               dfd.resolve(rows);
             }

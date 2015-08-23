@@ -15,7 +15,8 @@
       fileUrl: conf.blobStorage.url + '/' + book.file_url,
       publishDate: book.publish_date,
       rating: book.rating,
-      fiction: book.fiction
+      fiction: book.fiction,
+      review: book.review
     };
   };
 })();
