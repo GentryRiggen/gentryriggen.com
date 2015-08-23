@@ -1,7 +1,5 @@
-﻿<md-content layout-padding layout="row">
-    <span flex></span>
-
-    <form flex-sm="80" flex-gt-sm="50" name="login" ng-submit="LoginCtrl.submit()">
+﻿<md-content>
+    <form flex-sm="80" flex-gt-sm="50" name="login" ng-submit="LoginCtrl.submit()" class="login-form">
         <md-input-container>
             <label>Username</label>
             <input required name="username" ng-model="LoginCtrl.username">
@@ -15,6 +13,4 @@
             <md-button type="submit" class="md-primary">Log In</md-button>
         </md-input-container>
     </form>
-
-    <span flex></span>
 </md-content>

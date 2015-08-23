@@ -93,6 +93,7 @@ md-toolbar.mobile-header {
 .ui-view-container {
   margin: 15px auto;
   max-width: 800px;
+  min-width: 300px;
 
   .fullscreen-loader {
     width: 300px;
@@ -100,6 +101,7 @@ md-toolbar.mobile-header {
 
   md-card {
     md-card-content {
+      min-width: 300px;
       padding: 25px 35px;
 
       h1, h2, h3, h4, h5, h6 {
