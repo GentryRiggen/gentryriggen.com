@@ -1,0 +1,39 @@
+﻿<md-content>
+  <form name="searchForm" ng-submit="FilesCtrl.search(q)">
+    <md-input-container>
+      <label>Search</label>
+      <input aria-label="files search" ng-model="q" ng-model-options="{ debounce: 350 }"
+             ng-change="FilesCtrl.search(q)">
+    </md-input-container>
+  </form>
+
+  <md-input-container>
+    <input type="file" nv-file-select="" uploader="FilesCtrl.uploader" aria-label="file uploader"/>
+  </md-input-container>
+
+  <md-progress-linear md-mode="indeterminate" ng-show="FilesCtrl.loading"></md-progress-linear>
+
+  <md-list ng-hide="FilesCtrl.loading">
+    <md-list-item class="md-2-line" ng-repeat="file in FilesCtrl.files">
+      <img ng-src="{{file.uri}}" class="md-avatar"/>
+
+      <div class="md-list-item-text">
+        <div class="md-list-item-text">
+          <p>{{file.uri}}</p>
+
+          <p>
+            <span><a target="#" href="{{file.uri}}">Download</a></span>&nbsp;
+            <span><a ng-click="FilesCtrl.delete(file.fileName)">Delete</a></span>
+          </p>
+        </div>
+      </div>
+    </md-list-item>
+  </md-list>
+
+  <ul class="pagination">
+    <li ng-repeat="page in FilesCtrl.pages"
+        ng-class="{'active': page == FilesCtrl.page}">
+      <a ng-click="FilesCtrl.getNextPage(page, page == FilesCtrl.page)">{{page}}</a>
+    </li>
+  </ul>
+</md-content>

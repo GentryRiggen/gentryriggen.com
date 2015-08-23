@@ -1,0 +1,35 @@
+﻿<md-content layout-padding>
+  <h2>Account Details</h2>
+  <md-input-container>
+    <label>First Name</label>
+    <input type="text" ng-model="AccountCtrl.account.firstName" ng-blur="AccountCtrl.userUpdated()"/>
+  </md-input-container>
+
+  <md-input-container>
+    <label>Last Name</label>
+    <input type="text" ng-model="AccountCtrl.account.lastName" ng-blur="AccountCtrl.userUpdated()"/>
+  </md-input-container>
+
+  <md-input-container>
+    <label>Email</label>
+    <input type="email" ng-model="AccountCtrl.account.email" ng-blur="AccountCtrl.userUpdated()"/>
+  </md-input-container>
+
+  <md-input-container>
+    <label>Username</label>
+    <input type="text" ng-model="AccountCtrl.account.username" ng-blur="AccountCtrl.userUpdated()"/>
+  </md-input-container>
+
+  <md-input-container>
+    <label>Password</label>
+    <input type="password" ng-model="AccountCtrl.password" ng-blur="AccountCtrl.updatePassword()"/>
+  </md-input-container>
+
+  <h2>Roles</h2>
+
+  <div ng-repeat="role in AccountCtrl.roles">
+    <md-checkbox ng-model="role.selected" aria-label="{{role.title}}" ng-change="AccountCtrl.roleChanged()">
+      {{role.title}}
+    </md-checkbox>
+  </div>
+</md-content>

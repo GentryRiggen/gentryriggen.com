@@ -1,0 +1,21 @@
+﻿<md-content>
+  <md-button class="md-raised" ng-click="AccountsCtrl.createNew()">Create New</md-button>
+
+  <table class="table table-striped">
+    <thead>
+    <tr>
+      <th>First Name</th>
+      <th>Last Name</th>
+      <th>Username</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr ng-repeat="account in AccountsCtrl.accounts" ng-click="AccountsCtrl.rowClicked(account.id)">
+      <td>{{account.firstName}}</td>
+      <td>{{account.lastName}}</td>
+      <td>{{account.username}}</td>
+    </tr>
+    </tbody>
+  </table>
+</md-content>
