@@ -83,6 +83,7 @@
                   req.currentUser.hasAdminRole = true;
                   req.currentUser.hasEditorRole = true;
                   req.currentUser.hasReadRole = true;
+                  req.currentUser.hasLibrarianRole = true;
                   break;
                 case 'Editor':
                   req.currentUser.hasEditorRole = true;
@@ -90,6 +91,9 @@
                   break;
                 case 'Read':
                   req.currentUser.hasReadRole = true;
+                  break;
+                case 'Librarian':
+                  req.currentUser.hasLibrarianRole = true;
                   break;
               }
             }

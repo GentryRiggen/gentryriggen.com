@@ -114,7 +114,6 @@
       db.query(query).then(
         function (result) {
           dfd.resolve(result.insertId);
-          dfd.resolve();
         }, function (err) {
           console.log(err);
           dfd.reject(err);

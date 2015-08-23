@@ -4,8 +4,8 @@
     .module('gr')
     .controller('AboutCtrl', AboutController);
 
-  AboutController.$inject = ['$timeout', '$window'];
-  function AboutController($timeout, $window) {
+  AboutController.$inject = [];
+  function AboutController() {
 
     function init() {
     }

@@ -13,6 +13,7 @@
       });
 
       $rootScope.$on('$stateChangeStart', function (event, toState) {
+        console.log('Going to state', toState);
         if (angular.isDefined(toState.data) &&
           angular.isDefined(toState.data.requireLogin) &&
           toState.data.requireLogin === false) {
@@ -129,6 +130,18 @@
           templateUrl: '/src/app/admin/account/account.tmpl.html',
           controller: 'AccountCtrl',
           controllerAs: 'AccountCtrl'
+        })
+        .state('admin.books', {
+          url: '/books',
+          templateUrl: '/src/app/admin/book/adminBooks.tmpl.html',
+          controller: 'AdminBooksCtrl',
+          controllerAs: 'AdminBooksCtrl'
+        })
+        .state('admin.book', {
+          url: '/books/:id',
+          templateUrl: '/src/app/admin/book/adminBook.tmpl.html',
+          controller: 'AdminBookCtrl',
+          controllerAs: 'AdminBookCtrl'
         });
 
       $httpProvider.interceptors.push('AuthInterceptor');

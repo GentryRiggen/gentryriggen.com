@@ -1,0 +1,19 @@
+﻿<md-content>
+  <md-button class="md-raised" ng-click="AdminBooksCtrl.createNew()">Create New</md-button>
+
+  <table class="table table-striped">
+    <thead>
+    <tr>
+      <th>Title</th>
+      <th>Published</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr ng-repeat="book in AdminBooksCtrl.books" ng-click="AdminBooksCtrl.rowClicked(account.id)">
+      <td><img src="{{book.artworkUrl}}" width="45" height="60" /> {{book.title}}</td>
+      <td>{{book.publishDate | date}}</td>
+    </tr>
+    </tbody>
+  </table>
+</md-content>
