@@ -140,6 +140,32 @@
       return dfd.promise;
     };
 
+    userRepo.authorizeUser = function(username, password) {
+      var dfd = Q.defer();
+      db.query('SELECT * FROM user WHERE username = "' + username + '"').then(
+        function (users) {
+          if (users.length > 0) {
+            userModel.checkPassword(password, users[0].password).then(
+              function () {
+                userRepo.getById(users[0].id).then(
+                  function (user) {
+                    dfd.resolve(user);
+                  }, function (err) {
+                    dfd.reject(err);
+                  });
+              }, function (err) {
+                dfd.reject(err);
+              });
+          } else {
+            dfd.reject('Could not find any matching users');
+          }
+        }, function (err) {
+          dfd.reject(err);
+        });
+
+      return dfd.promise;
+    };
+
     return userRepo;
   };
 
