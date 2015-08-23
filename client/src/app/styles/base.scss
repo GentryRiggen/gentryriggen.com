@@ -3,7 +3,6 @@ $defaultForegroundColor: #303030;
 
 // DEFAULTS
 body {
-  display: none;
   font-family: 'Lato', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
   color: $defaultForegroundColor;
 
@@ -11,13 +10,16 @@ body {
     color: $themeColor;
   }
 
-  a:hover {
-    color: lighten($themeColor, 10);
+  a:hover, a:visited {
+    color: darken($themeColor, 10);
     text-decoration: none;
     cursor: pointer;
   }
+  a:focus {
+    outline: none;
+  }
 
-  p{
+  p {
     line-height: 1.6;
     font-size: 16pt;
     font-weight: 300;
@@ -25,12 +27,8 @@ body {
   }
 }
 
-body.ready {
-  display: block;
-}
-
+// SIDE NAV
 $navForegroundColor: #fefefe;
-
 md-sidenav {
   header.nav-header {
     background: $themeColor;
@@ -48,7 +46,6 @@ md-sidenav {
 
       h1 {
         text-align: center;
-        font-weight: 300;
         font-size: 30px;
         color: $navForegroundColor;
       }
@@ -70,82 +67,94 @@ md-sidenav {
   md-list {
     md-list-item {
       p {
-        color: $defaultForegroundColor;
+        color: lighten($defaultForegroundColor, 20);
         font-size: 18px;
-        font-weight: 300;
-        text-transform: uppercase;
+        font-weight: normal;
       }
     }
   }
 }
 
+// MOBILE NAV
 md-toolbar.mobile-header {
   .md-toolbar-tools {
     h2 {
       color: $navForegroundColor !important;
       font-size: 30px;
-      font-weight: 300;
     }
   }
 }
 
-
+// MAIN CONTENT
 .ui-view-container {
-  margin: 15px auto;
-  max-width: 800px;
-  min-width: 300px;
-
+  // LOADER
   .fullscreen-loader {
-    width: 300px;
+    width: 500px;
+    margin: 15px auto;
+    h4 {
+      font-weight: 300;
+      color: $defaultForegroundColor;
+    }
   }
 
-  md-card {
-    md-card-content {
-      min-width: 300px;
-      padding: 25px 35px;
+  .page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 25px 10px;
+  }
+  .admin-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 25px 10px;
+  }
 
-      h1, h2, h3, h4, h5, h6 {
-        font-weight: 300;
+  // BLOG POST
+  .blog-post {
+    border-top: solid 1px lighten($defaultForegroundColor, 70);
+    padding: 25px 35px;
+    margin-bottom: 50px;
+
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 300;
+    }
+
+    .blog-post-header {
+      text-align: center;
+      margin: 5px 0px 25px;
+
+      a {
+        font-weight: 700;
+        font-size: 30px;
+        text-transform: capitalize;
+        line-height: 50px;
       }
 
-      .blog-post-header {
-        margin: 5px 0px 25px;
+      .blog-post-subtitle {
+        margin-top: 15px;
+        color: lighten($defaultForegroundColor, 20);
+        font-size: 18px;
+        font-style: italic;
 
-        a {
-          font-weight: 300;
-          font-size: 42px;
-          text-transform: capitalize;
-          line-height: 45px;
-        }
-
-        .blog-post-subtitle {
-          color: lighten($defaultForegroundColor, 20);
-          font-weight: 300;
-          font-size: 18px;
-          font-style: italic;
-
-          span {
-            margin-top: 5px;
-            display: block;
-            font-weight: 600;
-            font-style: normal;
-            font-size: 11px;
-          }
+        span {
+          color: lighten($defaultForegroundColor, 40);
+          margin: 5px 10px;
+          font-style: normal;
+          display: block;
         }
       }
+    }
 
-      .blog-post-body {
-        pre {
-          background-color: #565656;
-          color: #fefefe;
-        }
+    .blog-post-body {
+      pre {
+        background-color: #565656;
+        color: #fefefe;
       }
+    }
 
-      .social-links {
-        a {
-          font-size: 15px;
-          margin: 5px 15px 20px 0;
-        }
+    .social-links {
+      a {
+        font-size: 15px;
+        margin: 5px 15px 20px 0;
       }
     }
   }
@@ -153,13 +162,18 @@ md-toolbar.mobile-header {
 
 @media(max-width: 400px) {
   .ui-view-container {
-    md-card {
-      margin-left: 0px;
-      margin-right: 0px;
-      width: 100%;
+    // LOADER
+    .fullscreen-loader {
+      width: 300px;
+      h4 {
+        font-size: 14px;
+      }
+    }
 
-      md-card-content {
-        padding: 15px;
+    .page {
+      padding: 10px;
+      .blog-post {
+        padding: 5px;
 
         .blog-post-header {
           a {
@@ -170,9 +184,4 @@ md-toolbar.mobile-header {
       }
     }
   }
-}
-
-/* ADMIN SECTION */
-.admin-view {
-  max-width: 800px;
 }

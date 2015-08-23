@@ -1,38 +1,37 @@
-﻿<md-card class="blog-post md-whiteframe-z2">
-    <md-card-content>
-        <div class="blog-post-header">
-            <a class="blog-post-title" ng-click="goToPost()">{{model.title}}</a>
-            <div class="blog-post-subtitle">
-                {{model.subtitle}}
-                <span>{{model.createdOn | date:'MMM d, y'}}</span>
-            </div>
-        </div>
+﻿<div class="blog-post">
+  <div class="blog-post-header">
+    <a class="blog-post-title" ng-click="goToPost()">{{model.title}}</a>
 
-        <!-- BLOG POST CONTENT -->
-        <div class="blog-post-body">
-            <div class="blog-post-content" ng-bind-html="model.content" ng-if="!sample"></div>
-            <div class="blog-post-content" ng-bind-html="model.sampleContent" ng-if="sample"></div>
+    <div class="blog-post-subtitle">
+      {{model.subtitle}}
+      <span>{{model.createdOn | date:'MMM d, y'}}</span>
+    </div>
+  </div>
 
-            <a ng-click="goToPost()" ng-if="sample">Read More...</a>
-        </div>
+  <!-- BLOG POST CONTENT -->
+  <div class="blog-post-body">
+    <div class="blog-post-content" ng-bind-html="model.content" ng-if="!sample"></div>
+    <div class="blog-post-content" ng-bind-html="model.sampleContent" ng-if="sample"></div>
 
-        <!-- SOCIAL LINKS -->
-        <div class="social-links" ng-if="!sample">
-            <a ng-click="twitterShare()">
-                <i class="fa fa-twitter"></i> Twitter
-            </a>
-            <a ng-click="facebookShare()">
-                <i class="fa fa-facebook"></i> Facebook
-            </a>
-            <a ng-click="goToPost()">
-                <i class="fa fa-link"></i> Permalink
-            </a>
-        </div>
-        <div class="blog-post-footer" ng-show="showComments">
-            <dir-disqus disqus-shortname="gentryriggen"
-                        disqus-identifier="{{ model.permalink }}"
-                        disqus-url="{{ model.url }}">
-            </dir-disqus>
-        </div>
-    </md-card-content>
-</md-card>
+    <a ng-click="goToPost()" ng-if="sample">Read More...</a>
+  </div>
+
+  <!-- SOCIAL LINKS -->
+  <div class="social-links" ng-if="!sample">
+    <a ng-click="twitterShare()">
+      <i class="fa fa-twitter"></i> Twitter
+    </a>
+    <a ng-click="facebookShare()">
+      <i class="fa fa-facebook"></i> Facebook
+    </a>
+    <a ng-click="goToPost()">
+      <i class="fa fa-link"></i> Permalink
+    </a>
+  </div>
+  <div class="blog-post-footer" ng-show="showComments">
+    <dir-disqus disqus-shortname="gentryriggen"
+                disqus-identifier="{{ model.permalink }}"
+                disqus-url="{{ model.url }}">
+    </dir-disqus>
+  </div>
+</div>

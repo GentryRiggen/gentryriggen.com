@@ -86,6 +86,7 @@
         .state('about', {
           url: '/about',
           templateUrl: '/src/app/about/about.tmpl.html',
+          controller: 'AboutCtrl',
           data: {requireLogin: false}
         })
 

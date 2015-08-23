@@ -18,8 +18,8 @@
   <!-- endinject -->
   <!-- endbuild -->
 </head>
-<body layout-gt-md="row" layout="column" ng-app="gr">
-<div ng-controller="HeaderCtrl as HeaderCtrl" layout="column" ng-cloak>
+<body layout-gt-md="row" layout="column" ng-app="gr" ng-cloak>
+<div ng-controller="HeaderCtrl as HeaderCtrl" layout="column">
   <!-- Side Navigation -->
   <md-sidenav class=" md-sidenav-left md-whiteframe-z2"
               md-component-id="sideNav"
@@ -77,19 +77,20 @@
 
 
 <!-- Main Content -->
-<div flex layout="column" role="main" ng-cloak>
-  <md-content layout-padding class="ui-view-container">
+<div flex layout="column" role="main">
+  <md-content class="ui-view-container">
 
     <!-- LOADING -->
     <div layout="row" layout-padding ng-show="alert.loading.show" class="fullscreen-loader">
       <span flex></span>
       <div layout="column" flex="50" layout-align="center center">
         <md-progress-circular class="md-accent" md-mode="indeterminate"></md-progress-circular>
-        <div style="margin-top: 10px;">{{alert.loading.message}}</div>
+        <h4>{{alert.loading.message}}</h4>
       </div>
       <span flex></span>
     </div>
 
+    <!-- Page Content -->
     <ui-view ng-hide="alert.loading.show"></ui-view>
 
   </md-content>

@@ -1,4 +1,4 @@
-﻿<md-content class="md-padding" layout="column">
+﻿<md-content class="admin-page" layout="column">
     <div layout="row">
         <md-button ng-repeat="section in AdminCtrl.sections"
                    ng-class="{'md-primary': AdminCtrl.selectedState.state == section.state}"
@@ -7,5 +7,5 @@
         </md-button>
     </div>
 
-    <ui-view class="admin-view"></ui-view>
+    <ui-view></ui-view>
 </md-content>
