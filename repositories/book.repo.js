@@ -73,7 +73,6 @@
     };
 
     bookRepo.save = function (id, book) {
-      console.log('saving book: ', book);
       var dfd = Q.defer();
       var query = "UPDATE book SET " +
         "author_id = " + dbPool.escape(book.authorId) + "," +
@@ -134,8 +133,9 @@
         date = new Date();
       date = date.toMysqlFormat();
 
-      var query = "INSERT INTO book VALUES(" +
-        "DEFAULT, 1, NULL, 'New Book', '', '', '" + date + "', 1, 0);";
+      var query = "INSERT INTO book " +
+        "(author_id, book_series_id, title, artwork_url, file_url, publish_date) " +
+        "VALUES(1, NULL, 'New Book', '', '', '" + date + "');";
       db.query(query).then(
         function (result) {
           dfd.resolve(result.insertId);

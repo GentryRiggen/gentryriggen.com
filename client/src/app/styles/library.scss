@@ -1,0 +1,67 @@
+@import "variables";
+
+.library-admin {
+  md-input-container {
+    input {
+      max-width: 250px;
+    }
+  }
+
+  .artwork-upload {
+    img {
+      width: 120px;
+      height: 150px;
+    }
+  }
+
+  .file-upload {
+    margin: 25px 0;
+    a {
+      margin: 10px 25px 0 0;
+    }
+  }
+
+  .date {
+    margin: 25px 0 50px;
+
+    datepicker {
+      display: block;
+      position: inherit;
+
+      input {
+        width: 300px;
+        border-top: none;
+        border-right: none;
+        border-bottom: solid 1px $defaultForegroundColor;
+        border-left: none;
+      }
+      input:hover {
+        cursor: pointer;
+      }
+
+      ._720kb-datepicker-calendar {
+        max-width: 300px;
+      }
+    }
+  }
+
+  .authors {
+    background: lighten($defaultForegroundColor, 78);
+    border-radius: 5px;
+    max-height: 400px;
+    overflow: scroll;
+    .new-author, .current-author {
+      button {
+        margin-top: 15px;
+        max-height: 25px;
+      }
+    }
+
+    .new-author {
+      border-bottom: solid 1px lighten($defaultForegroundColor, 60);
+      md-input-container {
+        padding-bottom: 0px;
+      }
+    }
+  }
+}

@@ -30,6 +30,10 @@
       return $http.get(thisApiUrl + '/' + id);
     };
 
+    bookSvc.createNew = function() {
+      return $http.post(thisApiUrl + '/new', {});
+    };
+
     bookSvc.updateBook = function(id, book) {
       return $http.put(thisApiUrl + '/' + id, book);
     };
@@ -40,6 +44,10 @@
 
     bookSvc.getFileUploadUrl = function(id) {
       return thisApiUrl + '/' + id + '/file';
+    };
+
+    bookSvc.deleteById = function(id) {
+      return $http.delete(thisApiUrl + '/' + id);
     };
 
     return bookSvc;

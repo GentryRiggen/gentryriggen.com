@@ -45,7 +45,10 @@
             res.status(500).send({error: 'Failed to get books'});
           });
 
-      })
+      });
+
+    booksCtrl.use('/new', ensureAccess);
+    booksCtrl.route('/new')
       .post(function (req, res) {
         console.log('Creating new book');
         bookRepo.new().then(

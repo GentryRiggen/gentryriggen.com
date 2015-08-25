@@ -164,6 +164,6 @@
 
       $mdThemingProvider.theme('default')
         .primaryPalette('theme')
-        .accentPalette('theme');
+        .accentPalette('blue');
     }]);
 })();

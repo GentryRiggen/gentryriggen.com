@@ -40,6 +40,18 @@
       $state.go('admin.book', {'id': id});
     };
 
+    AdminBooksCtrl.createNew = function() {
+      AlertService.showLoading("Creating New Book...");
+      BookService.createNew().then(
+        function(resp) {
+          $state.go('admin.book', {'id': resp.data.id});
+          AlertService.hideLoading();
+        }, function() {
+          AlertService.showAlert('error', 'Failure', 'Failed to create new book');
+          AlertService.hideLoading();
+        });
+    };
+
     init();
   }
 })();
