@@ -1,5 +1,6 @@
 ﻿<md-content layout-padding layout="row" class="library-admin" layout-wrap>
-  <div class="actions" flex="100">
+  <div class="actions" flex="100" layout="row">
+    <md-button class="md-raised" ng-click="AdminBookCtrl.bookUpdated()">Save</md-button>
     <md-button class="md-raised md-warn" ng-click="AdminBookCtrl.delete($event)">Delete</md-button>
   </div>
   <!-- LEFT SIDE -->
@@ -46,7 +47,7 @@
       Fiction
     </md-checkbox>
 
-    <md-checkbox ng-model="AdminBookCtrl.book.visible"
+    <md-checkbox ng-model="AdminBookCtrl.book.haveRead"
                  aria-label="Has Gentry read this book?"
                  ng-change="AdminBookCtrl.bookUpdated()"
                  ng-true-value="1" ng-false-value="0">
@@ -105,6 +106,6 @@
   <!-- BOTTOM -->
   <div flex="100">
     <label>Review</label>
-    <text-angular ng-model="model.content"></text-angular>
+    <text-angular ng-model="AdminBookCtrl.book.review"></text-angular>
   </div>
 </md-content>

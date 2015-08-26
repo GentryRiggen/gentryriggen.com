@@ -5,6 +5,10 @@
     <thead>
     <tr>
       <th>Title</th>
+      <th>Author</th>
+      <th>Gentry Read?</th>
+      <th>Fiction</th>
+      <th>Rating</th>
       <th>Published</th>
     </tr>
     </thead>
@@ -12,6 +16,10 @@
     <tbody>
     <tr ng-repeat="book in AdminBooksCtrl.books" ng-click="AdminBooksCtrl.rowClicked(book.id)">
       <td><img src="{{book.artworkUrl}}" width="45" height="60" /> {{book.title}}</td>
+      <th>{{book.authorLastName}}, {{book.authorFirstName}}</th>
+      <td><input type="checkbox" ng-model="book.haveRead" ng-true-value="1" ng-false-value="0" disabled /></td>
+      <td><input type="checkbox" ng-model="book.fiction" ng-true-value="1" ng-false-value="0" disabled /></td>
+      <td>{{book.rating}} / 5</td>
       <td>{{book.publishDate | date}}</td>
     </tr>
     </tbody>

@@ -78,6 +78,7 @@
           });
       })
       .put(function (req, res) {
+        console.log('saving book', req.body);
         bookRepo.save(req.params.id, req.body).then(
           function () {
             res.status(204).send({message: 'book updated'});

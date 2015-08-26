@@ -23,6 +23,7 @@
       BookService.getPaginated(page, AdminBooksCtrl.pageSize, true)
         .success(function (data) {
           AdminBooksCtrl.books = data.books;
+          console.log(data.books);
           AdminBooksCtrl.page = data.page;
           AdminBooksCtrl.pageSize = data.pageSize;
           AdminBooksCtrl.pages = [];

@@ -6,11 +6,12 @@
     Q = require('q');
 
   function getSelectColumns(all) {
-    var select = "id, author_id, book_series_id, title, artwork_url, publish_date, rating, fiction";
+    var select = "b.id, b.author_id, b.book_series_id, b.title, b.artwork_url, b.publish_date, b.rating, b.fiction, b.review, b.have_read";
     if (all) {
-      select += ', file_url';
+      select += ', b.file_url';
     }
-    return "*";
+
+    return select;
   }
 
   var repo = function (dbPool) {
@@ -36,11 +37,13 @@
     bookRepo.getAll = function (skip, take, all) {
       var dfd = Q.defer(),
         select = getSelectColumns(all),
-        query = 'SELECT ' + select + ' FROM book ORDER BY title, publish_date DESC LIMIT ' + skip + ', ' + take;
+        query = 'SELECT ' + select + ', a.first_name as author_first_name, a.last_name as author_last_name ' +
+          'FROM book b ' +
+          'LEFT JOIN author a ON (a.id = b.author_id) ' +
+          'ORDER BY title, publish_date DESC LIMIT ' + skip + ', ' + take;
 
       db.query(query).then(
         function (books) {
-          console.log('Found books', books);
           var response = [];
           for (var i = 0; i < books.length; i++) {
             response.push(bookModel.toJson(books[i]));
@@ -57,7 +60,9 @@
       var dfd = Q.defer(),
         select = getSelectColumns(all);
 
-      db.query('SELECT ' + select + ' FROM book WHERE id = ' + id).then(
+      db.query('SELECT ' + select + ' ' +
+        'FROM book b ' +
+        'WHERE id = ' + id).then(
         function (books) {
           if (books.length > 0) {
             var b = books[0];
@@ -73,6 +78,7 @@
     };
 
     bookRepo.save = function (id, book) {
+      console.log('updating book', book);
       var dfd = Q.defer();
       var query = "UPDATE book SET " +
         "author_id = " + dbPool.escape(book.authorId) + "," +
@@ -81,7 +87,8 @@
         "publish_date = " + dbPool.escape(book.publishDate) + ", " +
         "rating = " + dbPool.escape(book.rating) + ", " +
         "fiction = " + dbPool.escape(book.fiction) + ", " +
-        "review = " + dbPool.escape(book.review) + " " +
+        "review = " + dbPool.escape(book.review) + ", " +
+        "have_read = " + dbPool.escape(book.haveRead) + " " +
         "WHERE id = " + id;
       db.query(query).then(
         function () {
@@ -158,6 +165,10 @@
         });
 
       return dfd.promise;
+    };
+
+    bookRepo.search = function(q) {
+
     };
 
     return bookRepo;

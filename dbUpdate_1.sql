@@ -29,7 +29,8 @@ CREATE TABLE book
   publish_date DATETIME NOT NULL,
   rating INT DEFAULT 1 NOT NULL,
   fiction INT DEFAULT 0 NOT NULL,
-  review LONGTEXT
+  review LONGTEXT,
+  have_read INT DEFAULT 0 NOT NULL
 );
 CREATE UNIQUE INDEX unique_id ON book (id);
 ALTER TABLE book ADD FOREIGN KEY (author_id) REFERENCES author(id);
@@ -40,5 +41,5 @@ INSERT INTO role (title) VALUES('Librarian');
 SET @librarianRoleId = LAST_INSERT_ID();
 INSERT INTO user_role (user_id, role_id) VALUES(1, @librarianRoleId);
 
-INSERT INTO book (author_id, book_series_id, title, artwork_url, file_url, publish_date, rating, fiction)
-VALUES(@defaultAuthorId, NULL, 'Freedom', 'freedomDanielSuarez.jpg', '', '2013-12-27 00:00:00', 5, 1);
+INSERT INTO book (author_id, book_series_id, title, artwork_url, file_url, publish_date, rating, fiction, have_read, review)
+VALUES(@defaultAuthorId, NULL, 'Freedom', 'freedomDanielSuarez.jpg', '', '2013-12-27 00:00:00', 5, 1, 1, '<p>Freedom is the book that made the series one of my favorite!</p>');
