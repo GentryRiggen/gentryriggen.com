@@ -168,7 +168,24 @@
     };
 
     bookRepo.search = function(q) {
+      var dfd = Q.defer(),
+        q = '"%' + q + '%"',
+        query = 'SELECT b.id, b.title, a.first_name, a.last_name, bs.title ' +
+          'FROM book b ' +
+          'LEFT JOIN author a ON (a.id = b.author_id) ' +
+          'LEFT JOIN book_series bs ON (bs.id = b.book_series_id) ' +
+          'WHERE b.title LIKE ' + q + ' ' +
+          'OR a.first_name LIKE ' + q + ' ' +
+          'OR a.last_name LIKE ' + q + ' ' +
+          'OR bs.title LIKE ' + q + ';';
+      db.query(query).then(
+        function (result) {
+          dfd.resolve(result);
+        }, function (err) {
+          dfd.reject(err);
+        });
 
+      return dfd.promise;
     };
 
     return bookRepo;
