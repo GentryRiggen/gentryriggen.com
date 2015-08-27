@@ -21,17 +21,33 @@
       if (alreadyOnThePage === true) return;
       AlertService.showLoading("Fetching Books...");
       BookService.getPaginated(page, AdminBooksCtrl.pageSize, true)
-        .success(function (data) {
-          AdminBooksCtrl.books = data.books;
-          console.log(data.books);
-          AdminBooksCtrl.page = data.page;
-          AdminBooksCtrl.pageSize = data.pageSize;
+        .then(function (resp) {
+          angular.forEach(resp.data.books, function (book) {
+            switch (book.rating) {
+              case 4:
+                book.rowSpan = 2;
+                book.colSpan = 2;
+                break;
+              case 5:
+                book.rowSpan = 3;
+                book.colSpan = 3;
+                break;
+              default :
+                book.rowSpan = 1;
+                book.colSpan = 1;
+                break;
+            }
+          });
+          AdminBooksCtrl.books = resp.data.books;
+          console.log(resp.data.books);
+          AdminBooksCtrl.page = resp.data.page;
+          AdminBooksCtrl.pageSize = resp.data.pageSize;
           AdminBooksCtrl.pages = [];
-          for (var i = 1; i <= data.numPages; i++) {
+          for (var i = 1; i <= resp.data.numPages; i++) {
             AdminBooksCtrl.pages.push(i);
           }
           AlertService.hideLoading();
-        }).error(function () {
+        },function () {
           AlertService.showAlert('error', 'Failure', 'Failed to get books!');
           AlertService.hideLoading();
         });
@@ -41,13 +57,13 @@
       $state.go('admin.book', {'id': id});
     };
 
-    AdminBooksCtrl.createNew = function() {
+    AdminBooksCtrl.createNew = function () {
       AlertService.showLoading("Creating New Book...");
       BookService.createNew().then(
-        function(resp) {
+        function (resp) {
           $state.go('admin.book', {'id': resp.data.id});
           AlertService.hideLoading();
-        }, function() {
+        }, function () {
           AlertService.showAlert('error', 'Failure', 'Failed to create new book');
           AlertService.hideLoading();
         });

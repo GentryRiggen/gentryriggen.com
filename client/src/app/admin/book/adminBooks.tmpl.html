@@ -1,10 +1,23 @@
-﻿<md-content>
+﻿<md-content class="library library-admin">
   <md-button class="md-raised" ng-click="AdminBooksCtrl.createNew()">Create New</md-button>
 
   <md-input-container>
     <label>Search</label>
-    <input type="text" ng-model="AdminBooksCtrl.searchQ" ng-change="AdminBooksCtrl."
+    <input type="text" ng-model="searchQ" ng-change="AdminBooksCtrl.search(searchQ)" />
   </md-input-container>
+
+  <md-grid-list
+    md-cols-sm="1" md-cols-md="6" md-cols-gt-md="8"
+    md-row-height-gt-md="1:1" md-row-height="4:3"
+    md-gutter="8px" md-gutter-gt-sm="4px" >
+    <md-grid-tile ng-repeat="book in AdminBooksCtrl.books"
+                  md-rowspan="{{book.rowSpan}}"
+                  md-colspan="{{book.colSpan}}"
+                  md-colspan-sm="1" >
+      <img src="{{book.artworkUrl}}" />
+      <md-grid-tile-footer><h3>{{book.title}} {{book.rowSpan}}</h3></md-grid-tile-footer>
+    </md-grid-tile>
+  </md-grid-list>
 
   <table class="table table-striped">
     <thead>
