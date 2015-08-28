@@ -73,6 +73,26 @@
         width: 100%;
         height: 100%;
       }
+
+      md-grid-tile-footer {
+        height: 55px;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding-left: 5px;
+
+        h1, h2, h3 {
+          margin: 0;
+        }
+        h1 {
+          font-size: 18px;
+          font-weight: 600;
+        }
+        h2 {
+          font-size: 15px;
+        }
+        h3 {
+          font-size: 12px;
+        }
+      }
     }
   }
 }

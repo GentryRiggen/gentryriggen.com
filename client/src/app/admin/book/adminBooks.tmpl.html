@@ -15,7 +15,11 @@
                   md-colspan="{{book.colSpan}}"
                   md-colspan-sm="1" >
       <img src="{{book.artworkUrl}}" />
-      <md-grid-tile-footer><h3>{{book.title}} {{book.rowSpan}}</h3></md-grid-tile-footer>
+      <md-grid-tile-footer>
+        <h1>{{book.title}}</h1>
+        <h2>{{book.authorLastName}}, {{book.authorFirstName}}</h2>
+        <h3>({{book.rating}}/5 Stars)</h3>
+      </md-grid-tile-footer>
     </md-grid-tile>
   </md-grid-list>
 

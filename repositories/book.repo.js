@@ -6,7 +6,8 @@
     Q = require('q');
 
   function getSelectColumns(all) {
-    var select = "b.id, b.author_id, b.book_series_id, b.title, b.artwork_url, b.publish_date, b.rating, b.fiction, b.review, b.have_read";
+    var select = "b.id, b.author_id, b.book_series_id, b.title, b.artwork_url, b.publish_date, b.rating, b.fiction, " +
+      "b.review, b.have_read, b.date_read";
     if (all) {
       select += ', b.file_url';
     }
@@ -60,9 +61,10 @@
       var dfd = Q.defer(),
         select = getSelectColumns(all);
 
-      db.query('SELECT ' + select + ' ' +
+      db.query('SELECT ' + select + ', a.first_name as author_first_name, a.last_name as author_last_name ' +
         'FROM book b ' +
-        'WHERE id = ' + id).then(
+        'LEFT JOIN author a ON (a.id = b.author_id) ' +
+        'WHERE b.id = ' + id).then(
         function (books) {
           if (books.length > 0) {
             var b = books[0];
@@ -78,7 +80,6 @@
     };
 
     bookRepo.save = function (id, book) {
-      console.log('updating book', book);
       var dfd = Q.defer();
       var query = "UPDATE book SET " +
         "author_id = " + dbPool.escape(book.authorId) + "," +
@@ -88,7 +89,8 @@
         "rating = " + dbPool.escape(book.rating) + ", " +
         "fiction = " + dbPool.escape(book.fiction) + ", " +
         "review = " + dbPool.escape(book.review) + ", " +
-        "have_read = " + dbPool.escape(book.haveRead) + " " +
+        "have_read = " + dbPool.escape(book.haveRead) + ", " +
+        "date_read = " + dbPool.escape(book.publishDate) + " " +
         "WHERE id = " + id;
       db.query(query).then(
         function () {
@@ -107,7 +109,6 @@
         "artwork_url = " + dbPool.escape(artworkUrl) + " " +
         "WHERE id = " + id;
 
-      console.log('updating book artwork url', dbPool.escape(artworkUrl));
       db.query(query).then(
         function () {
           dfd.resolve();
@@ -141,8 +142,9 @@
       date = date.toMysqlFormat();
 
       var query = "INSERT INTO book " +
-        "(author_id, book_series_id, title, artwork_url, file_url, publish_date) " +
-        "VALUES(1, NULL, 'New Book', '', '', '" + date + "');";
+        "(author_id, book_series_id, title, artwork_url, file_url, publish_date, date_read) " +
+        "VALUES(1, NULL, 'New Book', '', '', '" + date + "', '" + date + "');";
+
       db.query(query).then(
         function (result) {
           dfd.resolve(result.insertId);
