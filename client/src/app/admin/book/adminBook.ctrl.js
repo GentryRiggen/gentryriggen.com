@@ -47,13 +47,18 @@
     }
 
     AdminBookCtrl.bookUpdated = function () {
-      var tempDate = AdminBookCtrl.book.publishDate,
-        date = new Date(AdminBookCtrl.book.publishDate);
-      AdminBookCtrl.book.publishDate = toMysqlFormat(date);
+      var tempPubDate = AdminBookCtrl.book.publishDate,
+        teamDateRead = AdminBookCtrl.book.dateRead,
+        pubDate = new Date(AdminBookCtrl.book.publishDate),
+        dateRead = new Date(AdminBookCtrl.book.dateRead);
+
+      AdminBookCtrl.book.publishDate = toMysqlFormat(pubDate);
+      AdminBookCtrl.book.dateRead = toMysqlFormat(dateRead);
 
       BookService.updateBook($stateParams.id, AdminBookCtrl.book).then(
         function () {
-          AdminBookCtrl.book.publishDate = tempDate;
+          AdminBookCtrl.book.publishDate = tempPubDate;
+          AdminBookCtrl.book.dateRead = teamDateRead;
           AlertService.showAlert('success', 'Success', 'Updated book details');
         }, function () {
           AlertService.showAlert('error', 'Failed', 'Failed to update book details');

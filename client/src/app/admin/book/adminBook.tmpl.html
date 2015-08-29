@@ -54,6 +54,14 @@
       Has Gentry read this book?
     </md-checkbox>
 
+    <div class="date" ng-show="AdminBookCtrl.book.haveRead">
+      <label>Date Read</label>
+      <datepicker date-format="yyyy-MM-dd">
+        <input ng-model="AdminBookCtrl.book.dateRead" type="text"
+               ng-change="AdminBookCtrl.bookUpdated()" aria-label="date read"/>
+      </datepicker>
+    </div>
+
     <md-input-container>
       <md-select ng-model="AdminBookCtrl.book.rating" aria-label="book rating">
         <md-option ng-repeat="rating in [1,2,3,4,5]" value="{{rating}}">{{rating}} out of 5 stars</md-option>

@@ -7,8 +7,9 @@
   AdminBooksController.$inject = ['BookService', '$state', 'AlertService'];
   function AdminBooksController(BookService, $state, AlertService) {
     var AdminBooksCtrl = this;
+    AdminBooksCtrl.gridView = true;
+    AdminBooksCtrl.searching = false;
     AdminBooksCtrl.books = [];
-    AdminBooksCtrl.blogPosts = [];
     AdminBooksCtrl.page = 1;
     AdminBooksCtrl.pageSize = 50;
     AdminBooksCtrl.pages = [];
@@ -20,37 +21,40 @@
     AdminBooksCtrl.getNextPage = function (page, alreadyOnThePage) {
       if (alreadyOnThePage === true) return;
       AlertService.showLoading("Fetching Books...");
-      BookService.getPaginated(page, AdminBooksCtrl.pageSize, true)
+      BookService.getPaginated(page, AdminBooksCtrl.pageSize)
         .then(function (resp) {
-          angular.forEach(resp.data.books, function (book) {
-            switch (book.rating) {
-              case 4:
-                book.rowSpan = 2;
-                book.colSpan = 2;
-                break;
-              case 5:
-                book.rowSpan = 3;
-                book.colSpan = 3;
-                break;
-              default :
-                book.rowSpan = 1;
-                book.colSpan = 1;
-                break;
-            }
-          });
-          AdminBooksCtrl.books = resp.data.books;
-          console.log(resp.data.books);
-          AdminBooksCtrl.page = resp.data.page;
-          AdminBooksCtrl.pageSize = resp.data.pageSize;
-          AdminBooksCtrl.pages = [];
-          for (var i = 1; i <= resp.data.numPages; i++) {
-            AdminBooksCtrl.pages.push(i);
-          }
+          getBooksCallback(resp.data);
           AlertService.hideLoading();
         },function () {
           AlertService.showAlert('error', 'Failure', 'Failed to get books!');
           AlertService.hideLoading();
         });
+    };
+
+    AdminBooksCtrl.search = function(q) {
+      AdminBooksCtrl.searching = true;
+      console.log('searching books: ', q);
+      BookService.getPaginated(AdminBooksCtrl.page, AdminBooksCtrl.pageSize, q)
+        .then(function (resp) {
+          getBooksCallback(resp.data);
+          AdminBooksCtrl.searching = false;
+        },function () {
+          AdminBooksCtrl.searching = false;
+        });
+    };
+
+    function getBooksCallback(data) {
+      AdminBooksCtrl.books = data.books;
+      AdminBooksCtrl.page = data.page;
+      AdminBooksCtrl.pageSize = data.pageSize;
+      AdminBooksCtrl.pages = [];
+      for (var i = 1; i <= data.numPages; i++) {
+        AdminBooksCtrl.pages.push(i);
+      }
+    }
+
+    AdminBooksCtrl.toggleView = function() {
+      AdminBooksCtrl.gridView = !AdminBooksCtrl.gridView;
     };
 
     AdminBooksCtrl.rowClicked = function (id) {

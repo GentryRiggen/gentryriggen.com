@@ -9,7 +9,7 @@
     var thisApiUrl = API_URL + '/admin/books';
     var bookSvc = {};
 
-    bookSvc.getPaginated = function (pageNum, pageSize, admin) {
+    bookSvc.getPaginated = function (pageNum, pageSize, q) {
       if (angular.isUndefined(pageNum)) {
         pageNum = 1;
       }
@@ -19,6 +19,11 @@
       }
 
       var url = thisApiUrl + '?page=' + pageNum + '&pageSize=' + pageSize;
+
+      if (angular.isDefined(q)) {
+        url += '&q=' + q;
+      }
+
       return $http.get(url);
     };
 

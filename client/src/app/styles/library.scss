@@ -1,9 +1,10 @@
 @import "variables";
 
 .library-admin {
-  md-input-container {
-    input {
-      max-width: 250px;
+
+  .actions {
+    button {
+      max-height: 30px;
     }
   }
 
@@ -92,6 +93,18 @@
         h3 {
           font-size: 12px;
         }
+      }
+    }
+    md-grid-tile:hover {
+      cursor: pointer;
+      md-grid-tile-footer {
+        height: 85px;
+        background-color: rgba(0, 0, 0, 0.8);
+        -webkit-transition: height .3s;
+        -moz-transition: height .3s;
+        -ms-transition: height .3s;
+        -o-transition: height .3s;
+        transition: height .3s;
       }
     }
   }

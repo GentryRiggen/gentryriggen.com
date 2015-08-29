@@ -17,6 +17,7 @@
       fileUrl: conf.blobStorage.url + '/' + book.file_url,
       publishDate: book.publish_date,
       haveRead: book.have_read,
+      dateRead: book.date_read,
       rating: book.rating,
       fiction: book.fiction,
       review: book.review

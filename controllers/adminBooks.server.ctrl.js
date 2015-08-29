@@ -23,12 +23,15 @@
       .get(function (req, res) {
         var page = 'page' in req.query ? parseInt(req.query.page) : 1,
           pageSize = 'pageSize' in req.query ? parseInt(req.query.pageSize) : 50,
-          skip = (page - 1) * pageSize,
+          query = 'q' in req.query ? req.query.q : '',
+          skip = query.length > 0 ? 0 : (page - 1) * pageSize,
           adminRequest = true;
+
+        console.log('query:', query);
 
         bookRepo.getTotal().then(
           function (total) {
-            bookRepo.getAll(skip, pageSize, adminRequest).then(
+            bookRepo.getAll(skip, pageSize, query, adminRequest).then(
               function (books) {
                 res.json({
                   books: books,

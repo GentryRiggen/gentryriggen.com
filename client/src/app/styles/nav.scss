@@ -1,0 +1,58 @@
+@import "variables";
+// SIDE NAV
+$navForegroundColor: #fefefe;
+md-sidenav {
+  header.nav-header {
+    background: $themeColor;
+    padding: 15px 10px;
+
+    a {
+      text-decoration: none;
+
+      img {
+        border-radius: 50%;
+        height: 150px;
+        width: 150px;
+        margin: 25px auto 20px;
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 30px;
+        color: $navForegroundColor;
+      }
+    }
+
+    .social-links {
+      margin: 20px 10px 5px 10px;
+
+      span {
+        text-align: center;
+
+        a {
+          color: $navForegroundColor;
+        }
+      }
+    }
+  }
+
+  md-list {
+    md-list-item {
+      p {
+        color: lighten($defaultForegroundColor, 20);
+        font-size: 18px;
+        font-weight: normal;
+      }
+    }
+  }
+}
+
+// MOBILE NAV
+md-toolbar.mobile-header {
+  .md-toolbar-tools {
+    h2 {
+      color: $navForegroundColor !important;
+      font-size: 30px;
+    }
+  }
+}
