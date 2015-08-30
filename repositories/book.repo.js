@@ -38,14 +38,15 @@
     bookRepo.getAll = function (skip, take, q, all) {
       var dfd = Q.defer(),
         select = getSelectColumns(all),
+        getAllWhere = all ? '' : 'AND b.have_read = 1',
         searchQuery = '"%' + q + '%"',
         query = 'SELECT ' + select + ', a.first_name as author_first_name, a.last_name as author_last_name ' +
           'FROM book b ' +
           'LEFT JOIN author a ON (a.id = b.author_id) ' +
           'LEFT JOIN book_series bs ON (bs.id = b.book_series_id) ' +
-          'WHERE b.title LIKE ' + searchQuery +
+          'WHERE (b.title LIKE ' + searchQuery +
           ' OR a.first_name LIKE ' + searchQuery + ' OR a.last_name LIKE ' + searchQuery +
-          ' OR b.title LIKE ' + searchQuery +
+          ' OR b.title LIKE ' + searchQuery + ') ' + getAllWhere +
           ' ORDER BY b.date_read DESC, b.title, b.publish_date DESC' +
           ' LIMIT ' + skip + ', ' + take;
 

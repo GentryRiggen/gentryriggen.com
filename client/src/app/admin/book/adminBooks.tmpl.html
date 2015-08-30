@@ -23,12 +23,11 @@
   <!-- GRID VIEW -->
   <md-grid-list ng-show="AdminBooksCtrl.gridView"
                 md-cols-sm="1" md-cols-md="6" md-cols-gt-md="8"
-                md-row-height-gt-md="1:1" md-row-height="4:3"
+                md-row-height="3:4"
                 md-gutter="8px" md-gutter-gt-sm="4px">
     <md-grid-tile ng-repeat="book in AdminBooksCtrl.books"
-                  md-rowspan="2"
-                  md-colspan="2"
-                  md-colspan-sm="2"
+                  md-rowspan="1"
+                  md-colspan="1"
                   ng-click="AdminBooksCtrl.rowClicked(book.id)">
       <img src="{{book.artworkUrl}}"/>
       <md-grid-tile-footer>
