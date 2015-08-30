@@ -1,0 +1,119 @@
+﻿<md-content layout-padding layout="row" class="library-admin" layout-wrap>
+  <div class="actions" flex="100" layout="row">
+    <md-button class="md-raised" ng-click="AdminBookCtrl.bookUpdated()">Save</md-button>
+    <md-button class="md-raised md-warn" ng-click="AdminBookCtrl.delete($event)">Delete</md-button>
+  </div>
+  <!-- LEFT SIDE -->
+  <div flex="50">
+    <h2>Book Details</h2>
+    <md-input-container>
+      <label>Title</label>
+      <input type="text" ng-model="AdminBookCtrl.book.title"
+             ng-blur="AdminBookCtrl.bookUpdated()"/>
+    </md-input-container>
+
+    <div class="artwork-upload" layout="row">
+      <img src="{{AdminBookCtrl.book.artworkUrl}}"/>
+
+      <div>
+        <label>Artwork</label>
+        <input type="file" nv-file-select="" uploader="AdminBookCtrl.artworkUploader"
+               aria-label="artwork uploader"/>
+      </div>
+    </div>
+
+    <div class="file-upload" layout="row">
+      <a class="md-button md-raised md-primary" href="{{AdminBookCtrl.book.fileUrl}}" target="_blank">Download</a>
+
+      <div>
+        <label>File</label>
+        <input type="file" nv-file-select="" uploader="AdminBookCtrl.fileUploader"
+               aria-label="file uploader"/>
+      </div>
+    </div>
+
+    <div class="date">
+      <label>Date Published</label>
+      <datepicker date-format="yyyy-MM-dd">
+        <input ng-model="AdminBookCtrl.book.publishDate" type="text"
+               ng-change="AdminBookCtrl.bookUpdated()" aria-label="publish date"/>
+      </datepicker>
+    </div>
+
+    <md-checkbox ng-model="AdminBookCtrl.book.fiction"
+                 aria-label="Fiction Book?"
+                 ng-change="AdminBookCtrl.bookUpdated()"
+                 ng-true-value="1" ng-false-value="0">
+      Fiction
+    </md-checkbox>
+
+    <md-checkbox ng-model="AdminBookCtrl.book.haveRead"
+                 aria-label="Has Gentry read this book?"
+                 ng-change="AdminBookCtrl.bookUpdated()"
+                 ng-true-value="1" ng-false-value="0">
+      Has Gentry read this book?
+    </md-checkbox>
+
+    <div class="date" ng-show="AdminBookCtrl.book.haveRead">
+      <label>Date Read</label>
+      <datepicker date-format="yyyy-MM-dd">
+        <input ng-model="AdminBookCtrl.book.dateRead" type="text"
+               ng-change="AdminBookCtrl.bookUpdated()" aria-label="date read"/>
+      </datepicker>
+    </div>
+
+    <md-input-container>
+      <md-select ng-model="AdminBookCtrl.book.rating" aria-label="book rating">
+        <md-option ng-repeat="rating in [1,2,3,4,5]" value="{{rating}}">{{rating}} out of 5 stars</md-option>
+      </md-select>
+    </md-input-container>
+  </div>
+
+  <!-- RIGHT SIDE -->
+  <div flex="50">
+    <h2>Author</h2>
+
+    <div class="authors">
+      <div class="new-author" layout="row">
+        <md-input-container flex>
+          <label>First Name</label>
+          <input type="text" ng-model="AdminBookCtrl.newAuthor.firstName"/>
+        </md-input-container>
+
+        <md-input-container flex>
+          <label>Last Name</label>
+          <input type="text" ng-model="AdminBookCtrl.newAuthor.lastName"/>
+        </md-input-container>
+
+        <md-button class="md-primary" ng-click="AdminBookCtrl.addAuthor()">Add Author</md-button>
+      </div>
+
+
+      <div class="current-author" layout="row" ng-repeat="author in AdminBookCtrl.authors">
+        <md-checkbox ng-model="author.selected"
+                     aria-label="{{author.lastName}}, {{author.firstName}}"
+                     ng-click="AdminBookCtrl.authorSelected(author)">
+          {{author.selected}}
+        </md-checkbox>
+
+        <md-input-container flex>
+          <label>First Name</label>
+          <input type="text" ng-model="author.firstName"/>
+        </md-input-container>
+
+        <md-input-container flex>
+          <label>Last Name</label>
+          <input type="text" ng-model="author.lastName"/>
+        </md-input-container>
+
+        <md-button class="md-primary" ng-click="AdminBookCtrl.updateAuthor(author)">Update</md-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div flex="100">
+    <label>Review</label>
+    <text-angular ng-model="AdminBookCtrl.book.review"></text-angular>
+  </div>
+</md-content>

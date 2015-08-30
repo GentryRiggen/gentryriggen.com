@@ -12,9 +12,9 @@
     BlogCtrl.pageSize = 5;
     BlogCtrl.pages = [];
 
-    var init = function () {
+    function init() {
       BlogCtrl.getNextPage(BlogCtrl.page);
-    };
+    }
 
     BlogCtrl.getNextPage = function (page, alreadyOnThePage) {
       if (alreadyOnThePage === true) return;

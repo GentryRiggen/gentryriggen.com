@@ -13,6 +13,7 @@
       });
 
       $rootScope.$on('$stateChangeStart', function (event, toState) {
+        console.log('STATE: ', toState.name);
         if (angular.isDefined(toState.data) &&
           angular.isDefined(toState.data.requireLogin) &&
           toState.data.requireLogin === false) {
@@ -83,6 +84,20 @@
           controllerAs: 'BlogDetailCtrl',
           data: {requireLogin: false}
         })
+        .state('books', {
+          url: '/books',
+          templateUrl: '/src/app/books/books.tmpl.html',
+          controller: 'BooksCtrl',
+          controllerAs: 'BooksCtrl',
+          data: {requireLogin: false}
+        })
+        .state('book', {
+          url: '/books/:id',
+          templateUrl: '/src/app/books/book.tmpl.html',
+          controller: 'BookCtrl',
+          controllerAs: 'BookCtrl',
+          data: {requireLogin: false}
+        })
         .state('about', {
           url: '/about',
           templateUrl: '/src/app/about/about.tmpl.html',
@@ -129,6 +144,18 @@
           templateUrl: '/src/app/admin/account/account.tmpl.html',
           controller: 'AccountCtrl',
           controllerAs: 'AccountCtrl'
+        })
+        .state('admin.books', {
+          url: '/books',
+          templateUrl: '/src/app/admin/book/adminBooks.tmpl.html',
+          controller: 'AdminBooksCtrl',
+          controllerAs: 'AdminBooksCtrl'
+        })
+        .state('admin.book', {
+          url: '/books/:id',
+          templateUrl: '/src/app/admin/book/adminBook.tmpl.html',
+          controller: 'AdminBookCtrl',
+          controllerAs: 'AdminBookCtrl'
         });
 
       $httpProvider.interceptors.push('AuthInterceptor');
@@ -152,6 +179,6 @@
 
       $mdThemingProvider.theme('default')
         .primaryPalette('theme')
-        .accentPalette('theme');
+        .accentPalette('blue');
     }]);
 })();

@@ -28,8 +28,8 @@
         PORT: 8000
       },
       ignore: [
-        './node_modules/**',
-        './client/**'
+        'node_modules/**',
+        'client/**'
       ]
     };
     nodemon(options);

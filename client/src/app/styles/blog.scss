@@ -1,0 +1,63 @@
+// BLOG POST
+.blog-post {
+  border-top: solid 1px lighten($defaultForegroundColor, 70);
+  padding: 25px 35px;
+  margin-bottom: 50px;
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 300;
+  }
+
+  .blog-post-header {
+    text-align: center;
+    margin: 5px 0px 25px;
+
+    a {
+      font-weight: 700;
+      font-size: 30px;
+      text-transform: capitalize;
+      line-height: 50px;
+    }
+
+    .blog-post-subtitle {
+      margin-top: 15px;
+      color: lighten($defaultForegroundColor, 20);
+      font-size: 18px;
+      font-style: italic;
+
+      span {
+        color: lighten($defaultForegroundColor, 40);
+        margin: 5px 10px;
+        font-style: normal;
+        display: block;
+      }
+    }
+  }
+
+  .blog-post-body {
+    pre {
+      background-color: #565656;
+      color: #fefefe;
+    }
+  }
+
+  .social-links {
+    a {
+      font-size: 15px;
+      margin: 5px 15px 20px 0;
+    }
+  }
+}
+
+@media(max-width: 400px) {
+  .blog-post {
+    padding: 5px;
+
+    .blog-post-header {
+      a {
+        font-size: 36px;
+        line-height: 36px;
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@
     'ngMessages',
     'textAngular',
     'angularUtils.directives.dirDisqus',
-    'angularFileUpload'
+    'angularFileUpload',
+    '720kb.datepicker'
   ]);
 })();
