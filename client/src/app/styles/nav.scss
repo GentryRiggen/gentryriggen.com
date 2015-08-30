@@ -37,11 +37,20 @@ md-sidenav {
   }
 
   md-list {
+    padding-top: 0;
+
     md-list-item {
-      p {
-        color: lighten($defaultForegroundColor, 20);
-        font-size: 18px;
-        font-weight: normal;
+      .md-list-item-inner {
+        p {
+          margin-left: 15px;
+          color: lighten($defaultForegroundColor, 35);
+          font-size: 21px;
+          font-weight: normal;
+
+          i {
+            margin-right: 15px;
+          }
+        }
       }
     }
   }

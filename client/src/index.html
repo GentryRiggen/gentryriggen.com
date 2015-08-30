@@ -42,19 +42,24 @@
     <md-content layout-padding>
       <md-list>
         <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('blog')">
-          <p>Blog</p>
+          <p><i class="fa fa-pencil-square-o"></i> Blog</p>
         </md-list-item>
+
+        <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('books')">
+          <p><i class="fa fa-book"></i> Library</p>
+        </md-list-item>
+
         <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('about')">
-          <p>About me</p>
+          <p><i class="fa fa-user"></i> About me</p>
         </md-list-item>
         <md-divider ng-show="HeaderCtrl.showModerator"></md-divider>
         <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('admin')"
                       ng-show="HeaderCtrl.showModerator">
-          <p>Admin</p>
+          <p><i class="fa fa-pencil"></i> Admin</p>
         </md-list-item>
         <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('logout')"
                       ng-show="HeaderCtrl.showModerator">
-          <p>Logout</p>
+          <p><i class="fa fa-sign-out"></i> Logout</p>
         </md-list-item>
       </md-list>
     </md-content>

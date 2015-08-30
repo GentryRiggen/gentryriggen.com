@@ -21,7 +21,7 @@
     AdminBooksCtrl.getNextPage = function (page, alreadyOnThePage) {
       if (alreadyOnThePage === true) return;
       AlertService.showLoading("Fetching Books...");
-      BookService.getPaginated(page, AdminBooksCtrl.pageSize)
+      BookService.getPaginated(page, AdminBooksCtrl.pageSize, false, true)
         .then(function (resp) {
           getBooksCallback(resp.data);
           AlertService.hideLoading();
@@ -34,7 +34,7 @@
     AdminBooksCtrl.search = function(q) {
       AdminBooksCtrl.searching = true;
       console.log('searching books: ', q);
-      BookService.getPaginated(AdminBooksCtrl.page, AdminBooksCtrl.pageSize, q)
+      BookService.getPaginated(AdminBooksCtrl.page, AdminBooksCtrl.pageSize, q, true)
         .then(function (resp) {
           getBooksCallback(resp.data);
           AdminBooksCtrl.searching = false;

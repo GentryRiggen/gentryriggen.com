@@ -27,8 +27,6 @@
           skip = query.length > 0 ? 0 : (page - 1) * pageSize,
           adminRequest = true;
 
-        console.log('query:', query);
-
         bookRepo.getTotal().then(
           function (total) {
             bookRepo.getAll(skip, pageSize, query, adminRequest).then(
@@ -53,7 +51,6 @@
     booksCtrl.use('/new', ensureAccess);
     booksCtrl.route('/new')
       .post(function (req, res) {
-        console.log('Creating new book');
         bookRepo.new().then(
           function (newBookId) {
             bookRepo.getById(newBookId).then(
@@ -72,8 +69,7 @@
     booksCtrl.use('/:id', ensureAccess);
     booksCtrl.route('/:id')
       .get(function (req, res) {
-        console.log('Admin book get book by id', req.params.id);
-        bookRepo.getById(req.params.id).then(
+        bookRepo.getById(req.params.id, true).then(
           function (book) {
             res.json(book);
           }, function () {
@@ -98,6 +94,7 @@
           });
       });
 
+    booksCtrl.use('/:id/artwork', ensureAccess);
     booksCtrl.route('/:id/artwork')
       .post(function (req, res) {
         var form = new multiparty.Form();
@@ -122,6 +119,7 @@
         form.parse(req);
       });
 
+    booksCtrl.use('/:id/file', ensureAccess);
     booksCtrl.route('/:id/file')
       .post(function (req, res) {
         var form = new multiparty.Form();

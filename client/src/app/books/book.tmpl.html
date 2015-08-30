@@ -1,0 +1,29 @@
+﻿<md-content class="page">
+  <div class="book">
+    <div class="book-header">
+      <a class="book-title" ng-click="BookCtrl.goToPost()">{{BookCtrl.book.title}}</a>
+
+      <div class="artwork">
+        <img src="{{BookCtrl.book.artworkUrl}}" />
+      </div>
+
+      <div class="book-subtitle">
+        I rated this book {{BookCtrl.book.rating}} out of 5 Stars
+      </div>
+    </div>
+
+    <!-- BLOG POST CONTENT -->
+    <div class="book-body">
+      <div class="book-content" ng-bind-html="BookCtrl.book.review"></div>
+    </div>
+
+    <!-- SOCIAL LINKS -->
+    <div class="book-footer" ng-show="showComments">
+      <dir-disqus disqus-shortname="gentryriggen"
+                  disqus-identifier="{{ BookCtrl.book.id }}"
+                  disqus-url="{{ BookCtrl.currentUrl() }}">
+      </dir-disqus>
+    </div>
+  </div>
+
+</md-content>

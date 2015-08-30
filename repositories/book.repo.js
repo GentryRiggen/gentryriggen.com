@@ -46,9 +46,9 @@
           'WHERE b.title LIKE ' + searchQuery +
           ' OR a.first_name LIKE ' + searchQuery + ' OR a.last_name LIKE ' + searchQuery +
           ' OR b.title LIKE ' + searchQuery +
-          ' ORDER BY title, publish_date DESC LIMIT ' + skip + ', ' + take;
+          ' ORDER BY b.date_read DESC, b.title, b.publish_date DESC' +
+          ' LIMIT ' + skip + ', ' + take;
 
-      console.log(query);
       db.query(query).then(
         function (books) {
           var response = [];
@@ -65,16 +65,18 @@
 
     bookRepo.getById = function (id, all) {
       var dfd = Q.defer(),
-        select = getSelectColumns(all);
+        select = getSelectColumns(all),
+        query = 'SELECT ' + select + ', a.first_name as author_first_name, a.last_name as author_last_name ' +
+          'FROM book b ' +
+          'LEFT JOIN author a ON (a.id = b.author_id) ' +
+          'WHERE b.id = ' + id;
 
-      db.query('SELECT ' + select + ', a.first_name as author_first_name, a.last_name as author_last_name ' +
-        'FROM book b ' +
-        'LEFT JOIN author a ON (a.id = b.author_id) ' +
-        'WHERE b.id = ' + id).then(
+      console.log(query);
+      db.query(query).then(
         function (books) {
           if (books.length > 0) {
-            var b = books[0];
-            dfd.resolve(bookModel.toJson(b));
+            console.log('Date Read: ', books[0].date_read);
+            dfd.resolve(bookModel.toJson(books[0]));
           } else {
             dfd.reject('Book not found');
           }
@@ -109,7 +111,7 @@
       return dfd.promise;
     };
 
-    bookRepo.saveArtwork = function(id, artworkUrl) {
+    bookRepo.saveArtwork = function (id, artworkUrl) {
       var dfd = Q.defer();
       var query = "UPDATE book SET " +
         "artwork_url = " + dbPool.escape(artworkUrl) + " " +
@@ -126,7 +128,7 @@
       return dfd.promise;
     };
 
-    bookRepo.saveFile = function(id, fileName) {
+    bookRepo.saveFile = function (id, fileName) {
       var dfd = Q.defer();
       var query = "UPDATE book SET " +
         "file_url = " + dbPool.escape(fileName) + " " +
@@ -175,7 +177,7 @@
       return dfd.promise;
     };
 
-    bookRepo.search = function(q) {
+    bookRepo.search = function (q) {
       var dfd = Q.defer(),
         q = '"%' + q + '%"',
         query = 'SELECT b.id, b.title, a.first_name, a.last_name, bs.title ' +

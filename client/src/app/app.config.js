@@ -13,6 +13,7 @@
       });
 
       $rootScope.$on('$stateChangeStart', function (event, toState) {
+        console.log('STATE: ', toState.name);
         if (angular.isDefined(toState.data) &&
           angular.isDefined(toState.data.requireLogin) &&
           toState.data.requireLogin === false) {
@@ -81,6 +82,20 @@
           templateUrl: '/src/app/blog/blogDetail.tmpl.html',
           controller: 'BlogDetailCtrl',
           controllerAs: 'BlogDetailCtrl',
+          data: {requireLogin: false}
+        })
+        .state('books', {
+          url: '/books',
+          templateUrl: '/src/app/books/books.tmpl.html',
+          controller: 'BooksCtrl',
+          controllerAs: 'BooksCtrl',
+          data: {requireLogin: false}
+        })
+        .state('book', {
+          url: '/books/:id',
+          templateUrl: '/src/app/books/book.tmpl.html',
+          controller: 'BookCtrl',
+          controllerAs: 'BookCtrl',
           data: {requireLogin: false}
         })
         .state('about', {

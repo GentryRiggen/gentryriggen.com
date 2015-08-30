@@ -17,10 +17,12 @@
 
     function init() {
       AlertService.showLoading('Fetching Book Details...');
-      BookService.getById($stateParams.id).then(
+      BookService.getById($stateParams.id, true).then(
         function (resp) {
+          console.log(resp.data);
           AdminBookCtrl.book = resp.data;
           AdminBookCtrl.book.publishDate = new Date(AdminBookCtrl.book.publishDate);
+          AdminBookCtrl.book.dateRead = new Date(AdminBookCtrl.book.dateRead);
 
           // Get Authors
           AuthorService.getAll().then(
@@ -128,6 +130,7 @@
 
     AdminBookCtrl.authorSelected = function(author) {
       author.selected = !author.selected;
+      console.log('selecting author', author)
       AdminBookCtrl.book.authorId = author.id;
       AdminBookCtrl.bookUpdated();
       setSelectedAuthor(AdminBookCtrl.book.authorId);
@@ -136,12 +139,13 @@
     AdminBookCtrl.addAuthor = function() {
       AuthorService.createNew().then(
         function(resp) {
+          console.log('created new author', resp.data);
           resp.data.firstName = AdminBookCtrl.newAuthor.firstName;
           resp.data.lastName = AdminBookCtrl.newAuthor.lastName;
           AuthorService.updateAuthor(resp.data.id, resp.data).then(
             function() {
-              AdminBookCtrl.authors.unshift(AdminBookCtrl.newAuthor);
-              AdminBookCtrl.authorSelected(AdminBookCtrl.newAuthor);
+              AdminBookCtrl.authors.unshift(resp.data);
+              AdminBookCtrl.authorSelected(resp.data);
             });
         });
     };

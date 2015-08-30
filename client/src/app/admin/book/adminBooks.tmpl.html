@@ -20,15 +20,16 @@
     <md-button class="md-raised" ng-click="AdminBooksCtrl.createNew()" flex="20">Create New</md-button>
   </div>
 
+  <!-- GRID VIEW -->
   <md-grid-list ng-show="AdminBooksCtrl.gridView"
                 md-cols-sm="1" md-cols-md="6" md-cols-gt-md="8"
                 md-row-height-gt-md="1:1" md-row-height="4:3"
-                md-gutter="8px" md-gutter-gt-sm="4px"
-                ng-click="AdminBooksCtrl.rowClicked(book.id)">
+                md-gutter="8px" md-gutter-gt-sm="4px">
     <md-grid-tile ng-repeat="book in AdminBooksCtrl.books"
                   md-rowspan="2"
                   md-colspan="2"
-                  md-colspan-sm="2">
+                  md-colspan-sm="2"
+                  ng-click="AdminBooksCtrl.rowClicked(book.id)">
       <img src="{{book.artworkUrl}}"/>
       <md-grid-tile-footer>
         <h1>{{book.title}}</h1>
@@ -40,6 +41,7 @@
     </md-grid-tile>
   </md-grid-list>
 
+  <!-- TABLE VIEW -->
   <table class="table table-striped" ng-hide="AdminBooksCtrl.gridView">
     <thead>
     <tr>
