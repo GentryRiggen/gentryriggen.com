@@ -109,6 +109,7 @@
       var query = "INSERT INTO blog_post VALUES(" +
         "DEFAULT, 'New Blog Post', 'subtitle', 'permalink', '<p>content</p>', 0, " + userId + ", " +
         "'" + date + "'," +
+        "'" + date + "'," +
         "'" + date + "'" +
         ");";
       db.query(query).then(
