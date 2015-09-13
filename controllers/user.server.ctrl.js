@@ -5,7 +5,6 @@
   var express = require('express');
 
   var ctrl = function (dbPool) {
-    console.log(dbPool.length);
     var userCtrl = express.Router();
 
     userCtrl.route('/')
