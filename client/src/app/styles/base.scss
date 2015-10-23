@@ -60,6 +60,16 @@ body {
   }
 }
 
+@media (max-width: 600px) {
+  #splashScreen {
+    #splashScreenText {
+      text-align: center;
+      width: 300px;
+      font-size: 32px;
+    }
+  }
+}
+
 #splashScreen.hiding {
   animation:splashscreen 2s 1;
   -webkit-animation:splashscreen 2s 1;
