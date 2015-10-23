@@ -1,47 +1,43 @@
-(function () {
-  'use strict';
+/* jshint -W117 */
+var Q = require('q');
 
-  /* jshint -W117 */
-  var Q = require('q');
+var db = function (dbPool) {
+  var dbService = {};
 
-  var db = function (dbPool) {
-    var dbService = {};
-
-    dbService.query = function (query) {
-      var dfd = Q.defer();
-      dbService.getConnection().then(
-        function (connection) {
-          connection.query(query, function (err, rows) {
-            if (err) {
-              connection.release();
-              dfd.reject(err);
-            } else {
-              connection.release();
-              dfd.resolve(rows);
-            }
-          });
-        }, function (err) {
-          dfd.reject(err);
+  dbService.query = function (query) {
+    var dfd = Q.defer();
+    dbService.getConnection().then(
+      function (connection) {
+        connection.query(query, function (err, rows) {
+          if (err) {
+            connection.release();
+            dfd.reject(err);
+          } else {
+            connection.release();
+            dfd.resolve(rows);
+          }
         });
-
-      return dfd.promise;
-    };
-
-    dbService.getConnection = function () {
-      var dfd = Q.defer();
-      dbPool.getConnection(function (err, connection) {
-        if (err) {
-          dfd.reject(err);
-        } else {
-          dfd.resolve(connection);
-        }
+      }, function (err) {
+        dfd.reject(err);
       });
 
-      return dfd.promise;
-    };
-
-    return dbService;
+    return dfd.promise;
   };
 
-  module.exports = db;
-})();
+  dbService.getConnection = function () {
+    var dfd = Q.defer();
+    dbPool.getConnection(function (err, connection) {
+      if (err) {
+        dfd.reject(err);
+      } else {
+        dfd.resolve(connection);
+      }
+    });
+
+    return dfd.promise;
+  };
+
+  return dbService;
+};
+
+module.exports = db;

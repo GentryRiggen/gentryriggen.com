@@ -19,7 +19,13 @@
   <!-- endbuild -->
 </head>
 <body layout-gt-md="row" layout="column" ng-app="gr" ng-cloak>
-<div ng-controller="HeaderCtrl as HeaderCtrl" layout="column">
+
+<!-- MALARKEY -->
+<div id="splashScreen" ng-class="{'hiding': appReady}">
+  <div id="splashScreenText"></div>
+</div>
+
+<div ng-controller="HeaderCtrl as HeaderCtrl" layout="column" class="header" ng-class="{'showing': appReady}">
   <!-- Side Navigation -->
   <md-sidenav class=" md-sidenav-left md-whiteframe-z2"
               md-component-id="sideNav"
@@ -82,7 +88,7 @@
 
 
 <!-- Main Content -->
-<div flex layout="column" role="main">
+<div flex layout="column" role="main" class="main" ng-class="show" ng-class="{'showing': appReady}">
   <md-content class="ui-view-container">
 
     <!-- LOADING -->
@@ -100,7 +106,6 @@
 
   </md-content>
 </div>
-
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 <!-- build:js(src) scripts/vendor.js -->
 <!-- bower:js -->

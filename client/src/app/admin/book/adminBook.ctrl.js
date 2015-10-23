@@ -130,7 +130,6 @@
 
     AdminBookCtrl.authorSelected = function(author) {
       author.selected = !author.selected;
-      console.log('selecting author', author)
       AdminBookCtrl.book.authorId = author.id;
       AdminBookCtrl.bookUpdated();
       setSelectedAuthor(AdminBookCtrl.book.authorId);
