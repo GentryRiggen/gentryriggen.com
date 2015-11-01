@@ -15,7 +15,7 @@ exports.toJson = function (user) {
     email: user.email,
     username: user.username,
     token: token,
-    roles: user.roles
+    roles: user.roles ? user.roles : []
   };
 };
 

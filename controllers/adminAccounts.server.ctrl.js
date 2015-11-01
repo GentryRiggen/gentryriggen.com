@@ -3,7 +3,7 @@ var express = require('express');
 
 var ctrl = function (dbPool) {
   var accountsCtrl = express.Router();
-  var userRepo = require('../repositories/user.repo')(dbPool);
+  var userRepo = require('../repos/user.repo')(dbPool);
 
   function ensureAccess(req, res, next) {
     if (req.currentUser && req.currentUser.hasAdminRole) {

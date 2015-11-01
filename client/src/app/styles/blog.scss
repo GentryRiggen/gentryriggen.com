@@ -35,6 +35,11 @@
   }
 
   .blog-post-body {
+    .ta-insert-video {
+      width: 500px;
+      height: 265px;
+      margin: 0 auto;
+    }
     pre {
       background-color: #565656;
       color: #fefefe;
@@ -49,7 +54,7 @@
   }
 }
 
-@media(max-width: 400px) {
+@media(max-width: 600px) {
   .blog-post {
     padding: 5px;
 
@@ -57,6 +62,12 @@
       a {
         font-size: 36px;
         line-height: 36px;
+      }
+    }
+    .blog-post-body {
+      .ta-insert-video {
+        width: 300px;
+        height: 168px;
       }
     }
   }

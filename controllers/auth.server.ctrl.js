@@ -3,7 +3,7 @@ var express = require('express');
 
 var ctrl = function (dbPool) {
   var authCtrl = express.Router();
-  var userRepo = require('../repositories/user.repo')(dbPool);
+  var userRepo = require('../repos/user.repo')(dbPool);
 
   authCtrl.route('/')
     .post(function (req, res) {

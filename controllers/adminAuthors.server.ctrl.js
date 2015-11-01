@@ -3,7 +3,7 @@ var express = require('express');
 
 var ctrl = function (dbPool) {
   var authorsCtrl = express.Router(),
-    authorRepo = require('../repositories/author.repo')(dbPool);
+    authorRepo = require('../repos/author.repo')(dbPool);
 
   function ensureAccess(req, res, next) {
     if (req.currentUser && req.currentUser.hasLibrarianRole) {

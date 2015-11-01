@@ -60,7 +60,7 @@ exports.encode = encode;
 exports.decode = decode;
 exports.tokenFilter = function (req, dbPool) {
   var dfd = Q.defer();
-  var userRepo = require('../repositories/user.repo')(dbPool);
+  var userRepo = require('../repos/user.repo')(dbPool);
 
   req.currentUser = false;
   if (req.headers.authorization && req.headers.authorization.split(' '.length > 1)) {

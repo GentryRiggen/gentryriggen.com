@@ -4,8 +4,8 @@ var express = require('express'),
 
 var ctrl = function (dbPool) {
   var booksCtrl = express.Router(),
-    bookRepo = require('../repositories/book.repo')(dbPool),
-    fileRepo = require('../repositories/file.repo')();
+    bookRepo = require('../repos/book.repo')(dbPool),
+    fileRepo = require('../repos/file.repo')();
 
   function ensureAccess(req, res, next) {
     if (req.currentUser && req.currentUser.hasLibrarianRole) {

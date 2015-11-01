@@ -3,7 +3,7 @@ var express = require('express');
 
 var ctrl = function (dbPool) {
   var blogCtrl = express.Router();
-  var blogRepo = require('../repositories/blog.repo')(dbPool);
+  var blogRepo = require('../repos/blog.repo')(dbPool);
 
   function ensureAccess(req, res, next) {
     if (req.currentUser && req.currentUser.hasEditorRole) {
@@ -16,7 +16,6 @@ var ctrl = function (dbPool) {
   blogCtrl.use('/', ensureAccess);
   blogCtrl.route('/')
     .get(function (req, res) {
-      console.log('Admin get all blog posts');
       var page = 'page' in req.query ? parseInt(req.query.page) : 1,
         pageSize = 'pageSize' in req.query ? parseInt(req.query.pageSize) : 5,
         skip = (page - 1) * pageSize,
@@ -43,7 +42,6 @@ var ctrl = function (dbPool) {
 
     })
     .post(function (req, res) {
-      console.log('Creating new blog post');
       blogRepo.new(req.currentUser.id).then(
         function (newBlogPostId) {
           blogRepo.getById(newBlogPostId).then(
@@ -62,7 +60,6 @@ var ctrl = function (dbPool) {
   blogCtrl.use('/:id', ensureAccess);
   blogCtrl.route('/:id')
     .get(function (req, res) {
-      console.log('Admin get blog post by id');
       blogRepo.getById(req.params.id).then(
         function (blogPost) {
           res.json(blogPost);

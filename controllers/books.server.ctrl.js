@@ -3,7 +3,7 @@ var express = require('express');
 
 var ctrl = function (dbPool) {
   var booksCtrl = express.Router(),
-    bookRepo = require('../repositories/book.repo')(dbPool);
+    bookRepo = require('../repos/book.repo')(dbPool);
 
   booksCtrl.route('/')
     .get(function (req, res) {

@@ -1,9 +1,9 @@
-/* jshint -W117 */
 var express = require('express');
 
 var ctrl = function (dbPool) {
   var blogCtrl = express.Router();
-  var blogRepo = require('../repositories/blog.repo')(dbPool);
+  var blogRepo = require('../repos/blog.repo')(dbPool);
+  console.log('Blog Ctrl');
 
   blogCtrl.route('/')
     .get(function (req, res) {

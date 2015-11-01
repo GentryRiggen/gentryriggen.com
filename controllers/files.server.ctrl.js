@@ -4,7 +4,7 @@ var express = require('express'),
 
 var ctrl = function () {
   var fileCtrl = express.Router();
-  var fileRepo = require('../repositories/file.repo')();
+  var fileRepo = require('../repos/file.repo')();
 
   function ensureAccess(req, res, next) {
     if (req.currentUser && req.currentUser.hasEditorRole) {
