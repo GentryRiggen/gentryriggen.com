@@ -10,7 +10,7 @@ var express = require('express'),
 
 // ENVIRONMENT SETUP
 var app = express(),
-  port = process.env.PORT || 9898,
+  port = process.env.PORT || 8888,
   devMode = process.env.NODE_ENV === 'development';
 app.use(bodyParser.json());
 
