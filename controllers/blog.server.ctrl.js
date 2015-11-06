@@ -1,36 +1,29 @@
-var express = require('express');
+/* jshint -W117 */
+var express = require('express'),
+  Q = require('q');
 
 var ctrl = function (dbPool) {
   var blogCtrl = express.Router();
   var blogRepo = require('../repos/blog.repo')(dbPool);
-  console.log('Blog Ctrl');
 
   blogCtrl.route('/')
     .get(function (req, res) {
-      var page = 'page' in req.query ? parseInt(req.query.page) : 1,
-        pageSize = 'pageSize' in req.query ? parseInt(req.query.pageSize) : 5,
-        skip = (page - 1) * pageSize,
-        adminRequest = false;
+      var params = blogRepo.getPaginatedParams(req.query);
 
-      blogRepo.getTotal(false).then(
-        function (total) {
-          blogRepo.getAll(skip, pageSize, adminRequest).then(
-            function (blogs) {
-              res.json({
-                posts: blogs,
-                numPages: Math.ceil(total / req.query.pageSize),
-                page: page,
-                pageSize: pageSize
-              });
-            }, function (err) {
-              console.log(err);
-              res.status(500).send({error: 'Failed to get blog posts'});
-            });
+      var totalPromise = blogRepo.getTotal(false);
+      var getPaginatedPromise = blogRepo.getPaginated(params.skip, params.pageSize, false);
+      Q.all([totalPromise, getPaginatedPromise]).then(
+        function (results) {
+          res.json({
+            posts: results[1],
+            numPages: Math.ceil(results[0] / params.pageSize),
+            page: params.page,
+            pageSize: params.pageSize
+          });
         }, function (err) {
           console.log(err);
           res.status(500).send({error: 'Failed to get blog posts'});
         });
-
     });
 
   blogCtrl.route('/:permalink')

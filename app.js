@@ -10,11 +10,13 @@ var express = require('express'),
 
 // ENVIRONMENT SETUP
 var app = express(),
-  port = process.env.PORT || 8888;
+  port = process.env.PORT || 9898,
+  devMode = process.env.NODE_ENV === 'development';
 app.use(bodyParser.json());
 
 // DB CONNECTIONS
-var dbPool = mysql.createPool(conf.databaseConfig);
+
+var dbPool = mysql.createPool(devMode ? conf.db.mysql.development : conf.db.mysql.production);
 
 // TOKEN FILTER
 app.use('/api', function (req, res, next) {
@@ -38,12 +40,11 @@ app.use('/api/admin/books', require('./controllers/adminBooks.server.ctrl')(dbPo
 app.use('/api/admin/authors', require('./controllers/adminAuthors.server.ctrl')(dbPool));
 
 // SERVING UP CLIENT
-if (app.get('env') === 'development') {
+if (devMode) {
   app.use(express.static(path.join(__dirname, 'client')));
   app.use(express.static(path.join(__dirname, 'client/.tmp/serve')));
   app.use(express.static(path.join(__dirname, 'client/src')));
-} else if (app.get('env') === 'production') {
-  console.log('Serving production files');
+} else {
   app.use(express.static(path.join(__dirname, 'client/dist')));
 }
 

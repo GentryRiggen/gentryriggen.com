@@ -22,3 +22,17 @@ exports.toJson = function (blogPost) {
     url: conf.appUrl + '/#!/blog/' + blogPost.permalink
   };
 };
+
+exports.fromJson = function (blogPost) {
+  return {
+    id: ('id' in blogPost) ? blogPost.id : 0,
+    title: ('title' in blogPost) ? blogPost.title : "",
+    subtitle: ('subtitle' in blogPost) ? blogPost.subtitle : "",
+    permalink: ('permalink' in blogPost) ? blogPost.permalink : "",
+    content: ('content' in blogPost) ? blogPost.content : "",
+    visible: ('visible' in blogPost) ? blogPost.visible : 0,
+    created_by: ('createdBy' in blogPost) ? blogPost.createdBy : null,
+    created_on: ('createdOn' in blogPost) ? blogPost.createdOn : (new Date()).toMysqlFormat(),
+    updated_on: ('updatedOn' in blogPost) ? blogPost.updatedOn : (new Date()).toMysqlFormat()
+  };
+};

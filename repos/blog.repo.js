@@ -1,137 +1,75 @@
 /* jshint -W117 */
 var blogModel = require('../models/blog.model'),
-  Q = require('q');
+  Q = require('q'),
+  db = require('../db'),
+  tableName = 'blog_post';
 
 var repo = function (dbPool) {
   var blogRepo = {};
-  var db = require('../services/db.service')(dbPool);
+  var rawDB = require('../services/db.service')(dbPool);
 
-  blogRepo.getTotal = function (adminRequest) {
-    var dfd = Q.defer(),
-      whereVisible = adminRequest ? '1 = 1' : 'visible = 1';
-    db.query('SELECT COUNT(id) as count FROM blog_post WHERE ' + whereVisible).then(
-      function (results) {
-        if (results.length > 0) {
-          dfd.resolve(results[0].count);
-        } else {
-          dfd.resolve(0);
-        }
-      }, function (err) {
-        dfd.reject(err);
-      });
+  blogRepo.getPaginatedParams = function(params) {
+    var page = 'page' in params ? parseInt(params.page) : 1,
+      pageSize = 'pageSize' in params ? parseInt(params.pageSize) : 5,
+      skip = (page - 1) * pageSize;
 
-    return dfd.promise;
+    return {page: page, pageSize: pageSize, skip: skip};
   };
 
-  blogRepo.getAll = function (skip, take, adminRequest) {
-    var dfd = Q.defer(),
-      whereVisible = adminRequest ? '1 = 1' : 'visible = 1';
+  blogRepo.getPaginated = function(skip, amount, adminRequest) {
+    var query = db(tableName);
+    if (!adminRequest) {
+      query.where('visible', 1);
+    }
+    query.orderBy('created_on', 'DESC').limit(amount).offset(skip);
+    return query.then(
+      function(results) {
+        var posts = [];
+        results.forEach(function(post) {
+          posts.push(blogModel.toJson(post));
+        });
 
-    db.query('SELECT * FROM blog_post WHERE ' + whereVisible + ' ORDER BY visible_on DESC, created_on DESC LIMIT ' + skip + ', ' + take).then(
-      function (blogs) {
-        var response = [];
-        for (var i = 0; i < blogs.length; i++) {
-          response.push(blogModel.toJson(blogs[i]));
-        }
-        dfd.resolve(response);
-      }, function (err) {
-        dfd.reject(err);
-      });
+        return posts;
+      }
+    );
+  };
 
-    return dfd.promise;
+  blogRepo.getTotal = function (adminRequest) {
+    var query = db.from(tableName).count('id as count');
+    if (!adminRequest) {
+      query.where('visible', 1);
+    }
+    return query.first().then(function(result) {
+      return result.count;
+    });
   };
 
   blogRepo.getById = function (id) {
-    var dfd = Q.defer();
-    db.query('SELECT * FROM blog_post WHERE id = ' + id).then(
-      function (blogs) {
-        if (blogs.length > 0) {
-          var b = blogs[0];
-          dfd.resolve(blogModel.toJson(b));
-        } else {
-          dfd.reject('Blog Post not found');
-        }
-      }, function (err) {
-        dfd.reject(err);
+    return db(tableName).where('id', id).first().then(
+      function(post) {
+        return blogModel.toJson(post);
       });
-
-    return dfd.promise;
   };
 
   blogRepo.getByPermalink = function (permalink) {
-    var dfd = Q.defer();
-    db.query('SELECT * FROM blog_post WHERE permalink = "' + permalink + '"').then(
-      function (blogs) {
-        if (blogs.length > 0) {
-          var b = blogs[0];
-          dfd.resolve(blogModel.toJson(b));
-        } else {
-          dfd.reject('Blog Post not found');
-        }
-      }, function (err) {
-        dfd.reject(err);
+    return db(tableName).where('permalink', permalink).first().then(
+      function(post) {
+        return blogModel.toJson(post);
       });
-
-    return dfd.promise;
   };
 
-  blogRepo.save = function (id, blogPost) {
-    var dfd = Q.defer(),
-      updatedOn = new Date();
-    updatedOn = updatedOn.toMysqlFormat();
-    var query = "UPDATE blog_post SET " +
-      "title = " + dbPool.escape(blogPost.title) + "," +
-      "subtitle = " + dbPool.escape(blogPost.subtitle) + "," +
-      "permalink = " + dbPool.escape(blogPost.permalink) + "," +
-      "content = " + dbPool.escape(blogPost.content) + "," +
-      "visible = " + blogPost.visible + "," +
-      "updated_on = '" + updatedOn + "' " +
-      "WHERE id = " + id;
-    db.query(query).then(
-      function () {
-        dfd.resolve();
-      }, function (err) {
-        console.log(err);
-        dfd.reject(err);
-      });
-
-    return dfd.promise;
+  blogRepo.createOrUpdate = function(blogPost) {
+    var dbReadyPost = blogModel.fromJson(blogPost);
+    var update = dbReadyPost.id > 0;
+    delete dbReadyPost.id;
+    var query = update ? db(tableName).where('id', blogPost.id).update(dbReadyPost) : db.insert(dbReadyPost).into(tableName).returning('id');
+    return query.then(function(id) {
+        return update ? null : blogRepo.getById(id);
+    });
   };
 
-  blogRepo.new = function (userId) {
-    var dfd = Q.defer(),
-      date = new Date();
-    date = date.toMysqlFormat();
-
-    var query = "INSERT INTO blog_post VALUES(" +
-      "DEFAULT, 'New Blog Post', 'subtitle', 'permalink', '<p>content</p>', 0, " + userId + ", " +
-      "'" + date + "'," +
-      "'" + date + "'," +
-      "'" + date + "'" +
-      ");";
-    db.query(query).then(
-      function (result) {
-        dfd.resolve(result.insertId);
-      }, function (err) {
-        console.log(err);
-        dfd.reject(err);
-      });
-
-    return dfd.promise;
-  };
-
-  blogRepo.deleteById = function (id) {
-    var dfd = Q.defer(),
-      query = "DELETE FROM blog_post WHERE id = " + id;
-    db.query(query).then(
-      function (result) {
-        console.log("DELETE RESPONSE: ", result);
-        dfd.resolve(result);
-      }, function (err) {
-        dfd.reject(err);
-      });
-
-    return dfd.promise;
+  blogRepo.del = function (id) {
+    return db(tableName).where('id', id).del();
   };
 
   return blogRepo;

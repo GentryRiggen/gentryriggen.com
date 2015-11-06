@@ -1,5 +1,6 @@
 /* jshint -W117 */
-var express = require('express');
+var express = require('express'),
+  Q = require('q');
 
 var ctrl = function (dbPool) {
   var blogCtrl = express.Router();
@@ -16,43 +17,29 @@ var ctrl = function (dbPool) {
   blogCtrl.use('/', ensureAccess);
   blogCtrl.route('/')
     .get(function (req, res) {
-      var page = 'page' in req.query ? parseInt(req.query.page) : 1,
-        pageSize = 'pageSize' in req.query ? parseInt(req.query.pageSize) : 5,
-        skip = (page - 1) * pageSize,
-        adminRequest = true;
-
-      blogRepo.getTotal(false).then(
-        function (total) {
-          blogRepo.getAll(skip, pageSize, adminRequest).then(
-            function (blogs) {
-              res.json({
-                posts: blogs,
-                numPages: Math.ceil(total / req.query.pageSize),
-                page: page,
-                pageSize: pageSize
-              });
-            }, function (err) {
-              console.log(err);
-              res.status(500).send({error: 'Failed to get blog posts'});
-            });
+      var params = blogRepo.getPaginatedParams(req.query);
+      var totalPromise = blogRepo.getTotal(true);
+      var getPaginatedPromise = blogRepo.getPaginated(params.skip, params.pageSize, true);
+      Q.all([totalPromise, getPaginatedPromise]).then(
+        function (results) {
+          res.json({
+            posts: results[1],
+            numPages: Math.ceil(results[0] / params.pageSize),
+            page: params.page,
+            pageSize: params.pageSize
+          });
         }, function (err) {
           console.log(err);
           res.status(500).send({error: 'Failed to get blog posts'});
         });
-
     })
     .post(function (req, res) {
-      blogRepo.new(req.currentUser.id).then(
-        function (newBlogPostId) {
-          blogRepo.getById(newBlogPostId).then(
-            function (newBlogPost) {
-              res.json(newBlogPost);
-            }, function (err) {
-              console.log(err);
-              res.status(500).send({error: 'Failed to create new blog post'});
-            });
-        }, function (err) {
-          console.log(err);
+      blogRepo.createOrUpdate({createdBy: req.currentUser.id})
+        .then(
+          function (blogPost) {
+            res.json(blogPost);
+          })
+        .catch(function (err) {
           res.status(500).send({error: 'Failed to create new blog post'});
         });
     });
@@ -68,15 +55,16 @@ var ctrl = function (dbPool) {
         });
     })
     .put(function (req, res) {
-      blogRepo.save(req.params.id, req.body).then(
+      blogRepo.createOrUpdate(req.body).then(
         function () {
           res.status(204).send({message: 'Blog post updated'});
-        }, function () {
+        }, function (err) {
+          console.log(err);
           res.status(500).send({error: 'Failed to save blog post'});
         });
     })
     .delete(function (req, res) {
-      blogRepo.deleteById(req.params.id).then(
+      blogRepo.del(req.params.id).then(
         function () {
           res.status(204).send({message: 'Blog post deleted'});
         }, function () {
