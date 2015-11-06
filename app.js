@@ -31,9 +31,9 @@ app.use('/api', function (req, res, next) {
 // ROUTES
 app.use('/api/auth', require('./controllers/auth.server.ctrl.js')(dbPool));
 app.use('/api/user', require('./controllers/user.server.ctrl')());
-app.use('/api/blog', require('./controllers/blog.server.ctrl')(dbPool));
+app.use('/api/blog', require('./controllers/blog.server.ctrl')());
 app.use('/api/books', require('./controllers/books.server.ctrl')(dbPool));
-app.use('/api/admin/blog', require('./controllers/adminBlog.server.ctrl')(dbPool));
+app.use('/api/admin/blog', require('./controllers/adminBlog.server.ctrl')());
 app.use('/api/admin/files', require('./controllers/files.server.ctrl')());
 app.use('/api/admin/accounts', require('./controllers/adminAccounts.server.ctrl')(dbPool));
 app.use('/api/admin/books', require('./controllers/adminBooks.server.ctrl')(dbPool));

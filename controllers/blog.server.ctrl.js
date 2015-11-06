@@ -2,9 +2,9 @@
 var express = require('express'),
   Q = require('q');
 
-var ctrl = function (dbPool) {
+var ctrl = function () {
   var blogCtrl = express.Router();
-  var blogRepo = require('../repos/blog.repo')(dbPool);
+  var blogRepo = require('../repos/blog.repo');
 
   blogCtrl.route('/')
     .get(function (req, res) {

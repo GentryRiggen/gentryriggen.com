@@ -44,7 +44,7 @@ var ctrl = function (dbPool) {
         });
     })
     .put(function (req, res) {
-      userRepo.save(req.params.id, req.body).then(
+      userRepo.createOrUpdate(req.body).then(
         function () {
           res.status(200).send({message: 'Updated account info'});
         }, function (err) {

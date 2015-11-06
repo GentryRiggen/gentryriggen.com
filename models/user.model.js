@@ -8,14 +8,26 @@ exports.toJson = function (user) {
     sub: user.id
   });
 
-  return {
+  var userModel = {
     id: user.id,
     firstName: user.first_name,
     lastName: user.last_name,
     email: user.email,
     username: user.username,
     token: token,
-    roles: user.roles ? user.roles : []
+    roles: []
+  };
+
+  return userModel;
+};
+
+exports.fromJson = function (user) {
+  return {
+    id: ('id' in user) ? user.id : 0,
+    first_name: ('firstName' in user) ? user.firstName : "",
+    last_name: ('lastName' in user) ? user.lastName : "",
+    email: ('email' in user) ? user.email : "",
+    username: ('username' in user) ? user.username : ""
   };
 };
 

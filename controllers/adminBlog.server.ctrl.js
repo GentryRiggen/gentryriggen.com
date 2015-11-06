@@ -2,9 +2,9 @@
 var express = require('express'),
   Q = require('q');
 
-var ctrl = function (dbPool) {
+var ctrl = function () {
   var blogCtrl = express.Router();
-  var blogRepo = require('../repos/blog.repo')(dbPool);
+  var blogRepo = require('../repos/blog.repo');
 
   function ensureAccess(req, res, next) {
     if (req.currentUser && req.currentUser.hasEditorRole) {
@@ -39,7 +39,7 @@ var ctrl = function (dbPool) {
           function (blogPost) {
             res.json(blogPost);
           })
-        .catch(function (err) {
+        .catch(function () {
           res.status(500).send({error: 'Failed to create new blog post'});
         });
     });
