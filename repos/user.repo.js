@@ -5,9 +5,8 @@ var userModel = require('../models/user.model'),
   db = require('../db'),
   util = require('../services/util.service');
 
-var repo = function (dbPool) {
-  var userRepo = {},
-    rawDB = require('../services/db.service')(dbPool);
+var repo = function () {
+  var userRepo = {};
 
   userRepo.getAll = function () {
     return db(tableName).then(
@@ -106,7 +105,7 @@ var repo = function (dbPool) {
           })
           .catch(function (err) {
             dfd.reject(err);
-          })
+          });
       })
       .catch(function (err) {
         dfd.reject(err);
