@@ -28,6 +28,7 @@
           for (var i = 1; i <= data.numPages; i++) {
             BlogCtrl.pages.push(i);
           }
+          window.scrollTo(0, 0);
           AlertService.hideLoading();
         }).error(function () {
           AlertService.showAlert('error', 'Failure', 'Failed to get blog posts!');

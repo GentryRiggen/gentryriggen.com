@@ -1,6 +1,7 @@
-﻿<md-content class="library" layout-padding>
+﻿<div class="library" layout-padding>
   <div class="title-section">
     <h1>My Library</h1>
+
     <p>
       I love to read and I love to see what others enjoy and recommend. It's like going into
       someones house and seeing their library. It can tell you a lot about a person. What they're interested in
@@ -17,31 +18,23 @@
       <label>Search</label>
       <input type="text" ng-model="searchQ"
              ng-model-options="{ debounce: 350 }" ng-change="BooksCtrl.search(searchQ)"/>
-      <i class="fa fa-search"></i>
+      <i class="mdi mdi-magnify"></i>
     </md-input-container>
   </div>
 
-  <div style="height: 10px; margin: 10px;">
+  <div class="search-loading">
     <md-progress-linear md-mode="indeterminate" ng-show="BooksCtrl.searching"></md-progress-linear>
   </div>
 
   <!-- GRID VIEW -->
-  <md-grid-list md-cols-sm="4" md-cols-md="6" md-cols-gt-md="10"
-                md-row-height="3:4"
-                md-gutter="8px" md-gutter-gt-sm="4px">
-    <md-grid-tile ng-repeat="book in BooksCtrl.books"
-                  md-rowspan="2"
-                  md-colspan="2"
-                  md-colspan-sm="2"
-                  ng-click="BooksCtrl.rowClicked(book.id)">
-      <img src="{{book.artworkUrl}}"/>
-      <md-grid-tile-footer>
-        <h1>{{book.title}}</h1>
-
-        <h2>{{book.authorLastName}}, {{book.authorFirstName}}</h2>
-
-        <h3>({{book.rating}}/5 Stars)</h3>
-      </md-grid-tile-footer>
-    </md-grid-tile>
-  </md-grid-list>
-</md-content>
+  <div class="book-grid" layout="row" layout-wrap>
+    <div ng-repeat="book in BooksCtrl.books"
+         class="book" flex-sm="45" flex-gt-sm="20"
+         ng-click="BooksCtrl.rowClicked(book.id)">
+      <img ng-src="{{book.artworkUrl}}" />
+      <h1>{{book.title}}</h1>
+      <h2>{{book.authorLastName}}, {{book.authorFirstName}}</h2>
+      <h3>({{book.rating}}/5 Stars)</h3>
+    </div>
+  </div>
+</div>

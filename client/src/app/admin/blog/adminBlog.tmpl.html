@@ -9,23 +9,19 @@
   </form>
 
   <table class="table table-striped">
-    <thead>
     <tr>
-      <th>Title</th>
-      <th>Created On</th>
-      <th>Updated On</th>
-      <th>Visible</th>
+      <td>Title</td>
+      <td>Created On</td>
+      <td>Updated On</td>
+      <td>Visible</td>
     </tr>
-    </thead>
 
-    <tbody>
-      <tr ng-repeat="post in AdminBlogCtrl.blogPosts" ng-click="AdminBlogCtrl.rowClicked(post.id)">
-        <td>{{post.title}}</td>
-        <td>{{post.createdOn | date}}</td>
-        <td>{{post.updatedOn | date}}</td>
-        <td>{{post.visible == 1 ? 'TRUE' : 'FALSE'}}</td>
-      </tr>
-    </tbody>
+    <tr ng-repeat="post in AdminBlogCtrl.blogPosts" ng-click="AdminBlogCtrl.rowClicked(post.id)">
+      <td>{{post.title}}</td>
+      <td>{{post.createdOn | date}}</td>
+      <td>{{post.updatedOn | date}}</td>
+      <td>{{post.visible == 1 ? 'TRUE' : 'FALSE'}}</td>
+    </tr>
   </table>
 
   <ul class="pagination">

@@ -7,16 +7,38 @@ body {
   font-family: 'Open Sans', sans-serif;
 }
 
-.btn {
+.page {
+  h1, h2 {
+    margin: 15px 0 5px;
+  }
+  p {
+    font-size: 1.1em;
+    line-height: 1.6em;
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 400;
+  margin: 0;
+  padding: 0;
+}
+h1 {
+  font-size: 3.2em;
+}
+h2 {
+  font-size: 2.5em;
+}
+
+.gr-btn {
   outline: none !important;
 }
 
-.btn:hover {
+.gr-btn:hover {
   cursor: pointer;
   background: lighten($primaryColor, 10);
 }
 
-.btn:active {
+.gr-btn:active {
   background: lighten($primaryColor, 20);
 }
 
@@ -24,31 +46,22 @@ a {
   color: $primaryColor;
   outline: none !important;
 }
+
 a:hover {
   color: lighten($primaryColor, 10);
   cursor: pointer;
+  text-decoration: none !important;
 }
 
 .pagination {
-  list-style: none;
   li {
-    float: left;
-    width: 25px;
-    height: 25px;
-    line-height: 25px;
-    border: 1px solid #dedede;
-    border-radius: 2px;
-    margin-right: 3px;
-    text-align: center;
     a {
       color: $foregroundColor;
     }
   }
-  li.active {
-    background: $primaryColor;
-    a {
-      color: white;
-    }
+  li.active a {
+    background-color: $primaryColor;
+    border-color: $primaryColor;
   }
 }
 
@@ -107,7 +120,7 @@ $drawerWidth: 250px;
     background: $primaryColor;
 
     img {
-      padding: 25px 50px;
+      margin: 25px 50px;
       height: 150px;
       width: 150px;
       border-radius: 50%;
@@ -150,8 +163,8 @@ $drawerWidth: 250px;
   }
 }
 
-.drawer, .main, .header {
-  transition: all 0.2s;
+.main, .drawer, .header {
+  transition: all 0.3s;
 }
 
 .main {
@@ -180,5 +193,10 @@ $drawerWidth: 250px;
 @media (max-width: 600px) {
   .main {
     padding: 1em;
+  }
+  .main.drawer-open {
+    left: 0;
+    max-width: 100vw;
+    z-index: 0;
   }
 }

@@ -7,6 +7,8 @@
 
   <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,600,400italic,700' rel='stylesheet'
         type='text/css'>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 
   <!-- build:css({.tmp/serve,src}) styles/vendor.css -->
   <!-- bower:css -->
@@ -22,7 +24,7 @@
 
 <!-- TOPNAV -->
 <div class="header md-whiteframe-z2" layout="row" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">
-  <div class="btn menu-btn" ng-click="ShellCtrl.toggleMenu()">
+  <div class="gr-btn menu-btn" ng-click="ShellCtrl.toggleMenu()">
     <i class="mdi mdi-menu"></i>
   </div>
 
@@ -37,19 +39,17 @@
     <div class="social-links" layout="row" layout-align="center center">
       <span flex><a href="https://twitter.com/GentryRiggen" target="#"><i class="mdi mdi-twitter"></i></a></span>
       <span flex><a href="https://github.com/GentryRiggen" target="#"><i class="mdi mdi-github-circle"></i></a></span>
-      <span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i
-        class="mdi mdi-linkedin"></i></a></span>
-      <span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i
-        class="mdi mdi-stackoverflow"></i></a></span>
+      <span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i class="mdi mdi-linkedin"></i></a></span>
+      <span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i class="mdi mdi-stackoverflow"></i></a></span>
     </div>
 
   </div>
   <ul class="drawer-items">
-    <li class="btn" ui-sref="blog" ui-sref-active="active">Blog</li>
-    <li class="btn" ui-sref="books" ui-sref-active="active">Library</li>
-    <li class="btn" ui-sref="about" ui-sref-active="active">About Me</li>
-    <li class="btn" ui-sref="admin" ui-sref-active="active">Admin</li>
-    <li class="btn" ui-sref="logout" ui-sref-active="active">Logout</li>
+    <li class="gr-btn" ui-sref="blog" ui-sref-active="active">Blog</li>
+    <li class="gr-btn" ui-sref="books" ui-sref-active="active">Library</li>
+    <li class="gr-btn" ui-sref="about" ui-sref-active="active">About Me</li>
+    <li class="gr-btn" ui-sref="admin" ui-sref-active="active">Admin</li>
+    <li class="gr-btn" ui-sref="logout" ui-sref-active="active">Logout</li>
   </ul>
 </div>
 

@@ -1,10 +1,10 @@
 ﻿<div class="row">
     <div class="pull-right">
-        <button class="btn btn-default" ng-click="save()" ng-disabled="blogPostEditForm.$invalid">Save</button>
-        <button class="btn btn-primary" ng-click="saveAndClose()" ng-disabled="blogPostEditForm.$invalid">Save &amp; Close</button>
-        <button class="btn btn-danger" ng-click="delete()" ng-disabled="blogPostEditForm.$invalid || !model.id">Delete</button>
+        <md-button class="md-raised md-primary" ng-click="save()" ng-disabled="blogPostEditForm.$invalid">Save</md-button>
+        <md-button class="md-raised" ng-click="saveAndClose()" ng-disabled="blogPostEditForm.$invalid">Save &amp; Close</md-button>
+        <md-button class="md-raised md-warn" ng-click="delete()" ng-disabled="blogPostEditForm.$invalid || !model.id">Delete</md-button>
     </div>
-    
+
     <div class="tabs">
         <a class="tab-header" ng-click="showTab(1)" ng-class="{'active': currentTab == 1}">WYSIWYG</a>
         <a class="tab-header" ng-click="showTab(2)" ng-class="{'active': currentTab == 2}">Preview</a>
@@ -16,7 +16,7 @@
         <form class="clearfix" ng-show="currentTab == 1" name="blogPostEditForm">
             <div form-input>
                 <label>Title</label>
-                <input type="text" placeholder="Blog Post Title" 
+                <input type="text" placeholder="Blog Post Title"
                        name="title" ng-model="model.title" required>
             </div>
             <div form-input>
@@ -41,7 +41,7 @@
             </div>
         </form>
     </div>
-    
+
 
     <div class="tab-content">
         <text-angular ng-model="model.content" ng-show="currentTab == 1"></text-angular>

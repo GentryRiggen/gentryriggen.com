@@ -1,0 +1,58 @@
+@import "variables";
+
+.library {
+  .title-section {
+    .search {
+      label {
+        padding-left: 30px;
+      }
+      input {
+        padding-left: 25px;
+      }
+      i {
+        position: absolute;
+        top: 25px;
+        left: 0;
+        font-size: 24px;
+        color: lighten($foregroundColor, 25);
+      }
+    }
+  }
+
+  .search-loading {
+    height: 25px;
+  }
+
+  .book-grid {
+    margin: 0;
+
+    .book {
+      height: 300px;
+      margin: 5px 0 5px 10px;
+      outline: none !important;
+      img {
+        width: 100%;
+        max-height: 75%;
+      }
+      h1, h2, h3 {
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        font-size: 12px;
+        font-style: italic;
+      }
+      h2 {
+        font-size: 11px;
+      }
+      h3 {
+        font-size: 11px;
+        font-weight: 700;
+      }
+    }
+    .book:hover {
+      cursor: pointer;
+      color: $primaryColor;
+    }
+  }
+}

@@ -53,6 +53,12 @@
       updatePermissions(authResponse);
     });
 
+    $scope.$on('$stateChangeStart', function () {
+      if (ShellCtrl.drawerOpen && w.width() <= 900) {
+        ShellCtrl.toggleMenu();
+      }
+    });
+
     checkUserAuth();
   }
 })();

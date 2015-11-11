@@ -5,14 +5,15 @@
   app.constant('API_URL', '/api');
 
   // Handle Auth on every navigation
-  app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout',
-    function ($rootScope, $state, UserService, $window, $location, _, $timeout) {
+  app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout', '$anchorScroll',
+    function ($rootScope, $state, UserService, $window, $location, _, $timeout, $anchorScroll) {
       $timeout(function() {
         $rootScope.appReady = true;
       }, 7000);
 
       $rootScope.$on('$viewContentLoaded', function () {
         $window.ga('send', 'pageview', {page: $location.url()});
+        window.scrollTo(0, 0);
       });
 
       $rootScope.$on('$stateChangeStart', function (event, toState) {
