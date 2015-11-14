@@ -1,13 +1,14 @@
-﻿<md-content class="page">
-    <div ng-repeat="post in BlogCtrl.blogPosts">
-        <blog-post post="post" show-comments="false" sample="true"></blog-post>
-    </div>
+﻿<div class="page">
+  <div ng-repeat="item in BlogCtrl.items">
+    <blog-post post="item" show-comments="false" sample="true" ng-if="item.isBlog"></blog-post>
+    <book-detail book="item" show-comments="false" ng-if="item.isBook"></book-detail>
+  </div>
 
-    <ul class="pagination">
-        <li ng-repeat="page in BlogCtrl.pages"
-            ng-class="{'active': page == BlogCtrl.page}"
-            class="gr-btn">
-            <a ng-click="BlogCtrl.getNextPage(page, page == BlogCtrl.page)">{{page}}</a>
-        </li>
-    </ul>
-</md-content>
+  <ul class="pagination">
+    <li ng-repeat="page in BlogCtrl.pages"
+        ng-class="{'active': page == BlogCtrl.page}"
+        class="gr-btn">
+      <a ng-click="BlogCtrl.getNextPage(page, page == BlogCtrl.page)">{{page}}</a>
+    </li>
+  </ul>
+</div>

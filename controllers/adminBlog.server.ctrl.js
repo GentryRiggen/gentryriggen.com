@@ -55,7 +55,7 @@ var ctrl = function () {
         });
     })
     .put(function (req, res) {
-      blogRepo.createOrUpdate(req.body).then(
+      blogRepo.createOrUpdate(req.body, true).then(
         function () {
           res.status(204).send({message: 'Blog post updated'});
         }, function (err) {

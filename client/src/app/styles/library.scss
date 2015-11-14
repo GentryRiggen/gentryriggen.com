@@ -32,7 +32,8 @@
       outline: none !important;
       img {
         width: 100%;
-        max-height: 75%;
+        height: 65%;
+        margin-bottom: 5px;
       }
       h1, h2, h3 {
         margin: 0;
@@ -54,5 +55,118 @@
       cursor: pointer;
       color: $primaryColor;
     }
+  }
+}
+
+.book {
+  .book-header {
+    img {
+      height: 200px;
+      float: left;
+    }
+    .titles {
+      float: left;
+      margin: 0 0 0 15px;
+
+      .book-title {
+        font-size: 3.2em;
+        color: $foregroundColor;
+        outline: none !important;
+      }
+      .book-title:hover {
+        color: lighten($primaryColor, 10);
+        cursor: pointer;
+      }
+
+      .book-subtitle {
+        display: block;
+        padding-left: 5px;
+        font-size: 1.4em;
+      }
+      .book-rating {
+        padding-left: 5px;
+        display: block;
+        font-size: 1em;
+        font-style: italic;
+        margin-top: 5px;
+      }
+
+      a {
+        padding-left: 5px;
+        font-size: .9em;
+        margin-top: 15px;
+      }
+    }
+
+  }
+
+  .book-body {
+    clear: both;
+    padding-top: 15px;
+
+    .book-content {
+      outline: none !important;
+      font-size: 1.1em;
+      line-height: 1.6em;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .book {
+    .book-header {
+      img {
+        height: 150px;
+      }
+      .titles {
+        margin: 0 0 0 5px;
+        .book-title {
+          font-size: 1.5em;
+        }
+      }
+      .book-subtitle {
+        padding-left: 0;
+      }
+      .book-rating {
+        padding-left: 0;
+      }
+
+      a {
+        padding-left: 0;
+      }
+    }
+  }
+}
+
+.library-admin {
+  button {
+    max-height: 35px;
+    min-height: 35px;
+  }
+
+  .artwork-upload {
+    img {
+      max-height: 100px;
+      max-width: 100px;
+    }
+    .upload {
+      margin-left: 5px;
+    }
+  }
+
+  .date {
+    margin-top: 10px;
+    display: block;
+    height: 75px;
+
+  }
+
+  .new-author {
+
+  }
+
+  .authors {
+    max-height: 350px;
+    overflow: scroll;
   }
 }

@@ -51,8 +51,8 @@
       }
     }
 
-    BooksCtrl.rowClicked = function(id) {
-      $state.go('book', {'id': id});
+    BooksCtrl.rowClicked = function(book) {
+      $state.go('book', {'id': book.id});
     };
 
     init();

@@ -1,4 +1,4 @@
-﻿<div class="library" layout-padding>
+﻿<div class="page library" layout-padding>
   <div class="title-section">
     <h1>My Library</h1>
 
@@ -30,7 +30,7 @@
   <div class="book-grid" layout="row" layout-wrap>
     <div ng-repeat="book in BooksCtrl.books"
          class="book" flex-sm="45" flex-gt-sm="20"
-         ng-click="BooksCtrl.rowClicked(book.id)">
+         ng-click="BooksCtrl.rowClicked(book)">
       <img ng-src="{{book.artworkUrl}}" />
       <h1>{{book.title}}</h1>
       <h2>{{book.authorLastName}}, {{book.authorFirstName}}</h2>

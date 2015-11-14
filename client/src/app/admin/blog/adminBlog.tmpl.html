@@ -1,4 +1,6 @@
-﻿<md-content>
+﻿<div>
+  <h1 class="admin-title">Blog Posts</h1>
+
   <md-button class="md-raised" ng-click="AdminBlogCtrl.createNew()">Create New</md-button>
 
   <form name="searchForm" ng-submit="AdminBlogCtrl.search(q)">
@@ -10,10 +12,10 @@
 
   <table class="table table-striped">
     <tr>
-      <td>Title</td>
-      <td>Created On</td>
-      <td>Updated On</td>
-      <td>Visible</td>
+      <th>Title</th>
+      <th>Created On</th>
+      <th>Updated On</th>
+      <th>Visible</th>
     </tr>
 
     <tr ng-repeat="post in AdminBlogCtrl.blogPosts" ng-click="AdminBlogCtrl.rowClicked(post.id)">
@@ -30,4 +32,4 @@
       <a ng-click="AdminBlogCtrl.getNextPage(page, page == AdminBlogCtrl.page)">{{page}}</a>
     </li>
   </ul>
-</md-content>
+</div>

@@ -1,4 +1,4 @@
-﻿<div class="blog-post">
+﻿<div class="blog-post page-item">
   <div class="blog-post-header">
     <a class="blog-post-title" ng-click="goToPost()">{{model.title}}</a>
 
@@ -10,7 +10,7 @@
   <!-- BLOG POST CONTENT -->
   <div class="blog-post-body">
     <div class="blog-post-content" ta-bind="text" ta-readonly="disabled" ng-model="model.content" ng-if="!sample"></div>
-    <div class="blog-post-content" ta-bind="text" ta-readonly="disabled" ng-bind-html="model.sampleContent" ng-if="sample"></div>
+    <div class="blog-post-content" ta-bind="text" ta-readonly="disabled" ng-model="model.sampleContent" ng-if="sample"></div>
 
     <a ng-click="goToPost()" ng-if="sample">Read More...</a>
   </div>
@@ -27,7 +27,7 @@
       <i class="fa fa-link"></i> Permalink
     </a>
   </div>
-  <div class="blog-post-footer" ng-show="showComments">
+  <div class="blog-post-footer" ng-if="showComments">
     <dir-disqus disqus-shortname="gentryriggen"
                 disqus-identifier="{{ model.permalink }}"
                 disqus-url="{{ model.url }}">

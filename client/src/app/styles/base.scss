@@ -8,13 +8,19 @@ body {
 }
 
 .page {
+  outline: none !important;
+
   h1, h2 {
-    margin: 15px 0 5px;
+    margin: 15px 0 10px;
   }
   p {
     font-size: 1.1em;
     line-height: 1.6em;
   }
+}
+
+.page-item {
+  margin-bottom: 120px;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -29,17 +35,23 @@ h2 {
   font-size: 2.5em;
 }
 
+.admin-title {
+  font-size: 3em;
+  font-weight: 300;
+  margin: 0 0 25px;
+}
+
 .gr-btn {
   outline: none !important;
 }
 
 .gr-btn:hover {
   cursor: pointer;
-  background: lighten($primaryColor, 10);
+  background-color: lighten($primaryColor, 10);
 }
 
 .gr-btn:active {
-  background: lighten($primaryColor, 20);
+  background-color: lighten($primaryColor, 20);
 }
 
 a {
@@ -75,33 +87,50 @@ $drawerWidth: 250px;
   left: 0;
   right: 0;
   height: $defaultHeight;
-  background: $primaryColor;
+  background: transparent;
 
-  .menu-btn {
-    height: $defaultHeight;
-    width: $defaultHeight;
+  .header-left {
+    width: $drawerWidth;
+    background: $navColor;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 
-    i {
+    .menu-btn {
+      height: $defaultHeight;
       width: $defaultHeight;
+
+      i {
+        width: $defaultHeight;
+        line-height: $defaultHeight;
+        padding-left: 10px;
+        font-size: 26px;
+        color: white;
+      }
+    }
+
+    h1 {
+      margin: 0 0 0 5px;
+      padding: 0;
       line-height: $defaultHeight;
-      padding-left: 10px;
-      font-size: 26px;
       color: white;
+      font-weight: 400;
+      font-size: 24px;
     }
   }
 
-  h1 {
-    margin: 0 0 0 5px;
-    padding: 0;
-    line-height: $defaultHeight;
-    color: white;
-    font-weight: 400;
-    font-size: 24px;
+  .header-right {
+    background: lighten($navColor, 10);
   }
 }
 
 .header.drawer-closed {
   z-index: 2;
+
+  .header-right {
+    background: $navColor;
+  }
 }
 
 .drawer {
@@ -111,13 +140,13 @@ $drawerWidth: 250px;
   left: 0;
   width: $drawerWidth;
   box-shadow: 0 8px 8px 3px rgba(0, 0, 0, 0.14);
-  background-color: white;
+  background-color: $navColor;
   z-index: 1;
 
   .drawer-header {
     height: $drawerWidth;
     max-height: $drawerWidth;
-    background: $primaryColor;
+    background: $navColor;
 
     img {
       margin: 25px 50px;
@@ -131,7 +160,7 @@ $drawerWidth: 250px;
         text-align: center;
         i {
           font-size: 26px;
-          color: white;
+          color: $foregroundWhite;
         }
       }
     }
@@ -143,6 +172,7 @@ $drawerWidth: 250px;
     padding: 0;
 
     li {
+      color: $foregroundWhite;
       height: $defaultHeight;
       line-height: $defaultHeight;
       padding: 0 0 0 25px;
@@ -154,11 +184,22 @@ $drawerWidth: 250px;
     }
 
     li:hover, li.active {
-      background: #efefef;
+      color: $foregroundWhite;
+      background: lighten($navColor, 15);
       border-left-color: $primaryColor;
     }
-    li:active {
-      border-left-color: darken($primaryColor, 10);
+
+    li.no-select {
+      color: $foregroundWhite;
+      background: lighten($navColor, 5);
+      border-left: 5px solid transparent;
+    }
+    li.no-select:hover {
+      cursor: auto;
+    }
+
+    li.indent {
+      padding-left: 45px;
     }
   }
 }
@@ -181,6 +222,7 @@ $drawerWidth: 250px;
   .content {
     max-width: 800px;
     width: 100%;
+    margin: 0 auto;
   }
 }
 

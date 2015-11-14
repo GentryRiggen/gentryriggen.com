@@ -53,7 +53,7 @@
       updatePermissions(authResponse);
     });
 
-    $scope.$on('$stateChangeStart', function () {
+    $scope.$on('$stateChangeStart', function (event, toState) {
       if (ShellCtrl.drawerOpen && w.width() <= 900) {
         ShellCtrl.toggleMenu();
       }
