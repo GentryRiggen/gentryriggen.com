@@ -1,11 +1,15 @@
-﻿<md-content layout-padding layout="row" class="library-admin" layout-wrap>
+﻿<div layout="row" class="library-admin" layout-wrap>
+
+  <!-- ACTIONS -->
   <div class="actions" flex="100" layout="row">
     <md-button class="md-raised" ng-click="AdminBookCtrl.bookUpdated()">Save</md-button>
     <md-button class="md-raised md-warn" ng-click="AdminBookCtrl.delete($event)">Delete</md-button>
   </div>
+
   <!-- LEFT SIDE -->
-  <div flex="50">
+  <div flex="35">
     <h2>Book Details</h2>
+
     <md-input-container>
       <label>Title</label>
       <input type="text" ng-model="AdminBookCtrl.book.title"
@@ -13,24 +17,24 @@
     </md-input-container>
 
     <div class="artwork-upload" layout="row">
-      <img src="{{AdminBookCtrl.book.artworkUrl}}"/>
+      <img class="img-responsive" src="{{AdminBookCtrl.book.artworkUrl}}"/>
 
-      <div>
+      <div class="upload">
         <label>Artwork</label>
         <input type="file" nv-file-select="" uploader="AdminBookCtrl.artworkUploader"
                aria-label="artwork uploader"/>
       </div>
     </div>
 
-    <div class="file-upload" layout="row">
-      <a class="md-button md-raised md-primary" href="{{AdminBookCtrl.book.fileUrl}}" target="_blank">Download</a>
+    <!--<div class="file-upload" layout="row">-->
+      <!--<a class="md-button md-raised md-primary" href="{{AdminBookCtrl.book.fileUrl}}" target="_blank">Download</a>-->
 
-      <div>
-        <label>File</label>
-        <input type="file" nv-file-select="" uploader="AdminBookCtrl.fileUploader"
-               aria-label="file uploader"/>
-      </div>
-    </div>
+      <!--<div>-->
+        <!--<label>File</label>-->
+        <!--<input type="file" nv-file-select="" uploader="AdminBookCtrl.fileUploader"-->
+               <!--aria-label="file uploader"/>-->
+      <!--</div>-->
+    <!--</div>-->
 
     <div class="date">
       <label>Date Published</label>
@@ -54,6 +58,13 @@
       Has Gentry read this book?
     </md-checkbox>
 
+    <md-checkbox ng-model="AdminBookCtrl.book.mainPage"
+                 aria-label="Publish to main page?"
+                 ng-change="AdminBookCtrl.bookUpdated()"
+                 ng-true-value="1" ng-false-value="0">
+      Publish to main page?
+    </md-checkbox>
+
     <div class="date" ng-show="AdminBookCtrl.book.haveRead">
       <label>Date Read</label>
       <datepicker date-format="yyyy-MM-dd">
@@ -69,26 +80,28 @@
     </md-input-container>
   </div>
 
+  <span flex></span>
+
   <!-- RIGHT SIDE -->
-  <div flex="50">
+  <div flex="60">
     <h2>Author</h2>
 
+    <h3>Add new author</h3>
+    <div class="new-author" layout="row">
+      <md-input-container flex>
+        <label>First Name</label>
+        <input type="text" ng-model="AdminBookCtrl.newAuthor.firstName"/>
+      </md-input-container>
+
+      <md-input-container flex>
+        <label>Last Name</label>
+        <input type="text" ng-model="AdminBookCtrl.newAuthor.lastName"/>
+      </md-input-container>
+
+      <md-button class="md-raised" ng-click="AdminBookCtrl.addAuthor()">Add Author</md-button>
+    </div>
+
     <div class="authors">
-      <div class="new-author" layout="row">
-        <md-input-container flex>
-          <label>First Name</label>
-          <input type="text" ng-model="AdminBookCtrl.newAuthor.firstName"/>
-        </md-input-container>
-
-        <md-input-container flex>
-          <label>Last Name</label>
-          <input type="text" ng-model="AdminBookCtrl.newAuthor.lastName"/>
-        </md-input-container>
-
-        <md-button class="md-primary" ng-click="AdminBookCtrl.addAuthor()">Add Author</md-button>
-      </div>
-
-
       <div class="current-author" layout="row" ng-repeat="author in AdminBookCtrl.authors">
         <md-checkbox ng-model="author.selected"
                      aria-label="{{author.lastName}}, {{author.firstName}}"
@@ -116,4 +129,4 @@
     <label>Review</label>
     <text-angular ng-model="AdminBookCtrl.book.review"></text-angular>
   </div>
-</md-content>
+</div>

@@ -1,16 +1,21 @@
-﻿<md-content class="page">
-    <form flex-sm="80" flex-gt-sm="50" name="login" ng-submit="LoginCtrl.submit()" class="login-form">
-        <md-input-container>
-            <label>Username</label>
-            <input required name="username" ng-model="LoginCtrl.username">
-        </md-input-container>
-        <md-input-container>
-            <label>Password</label>
-            <input type="password" required name="password" ng-model="LoginCtrl.password">
-        </md-input-container>
+﻿<div class="page">
+  <form flex-sm="80" flex-gt-sm="50" name="login"
+        ng-submit="LoginCtrl.submit()" class="login-form md-whiteframe-z2">
 
-        <md-input-container>
-            <md-button type="submit" class="md-primary">Log In</md-button>
-        </md-input-container>
-    </form>
-</md-content>
+    <h1>Login</h1>
+
+    <md-input-container>
+      <label>Username</label>
+      <input required name="username" ng-model="LoginCtrl.username">
+    </md-input-container>
+    <md-input-container>
+      <label>Password</label>
+      <input type="password" required name="password" ng-model="LoginCtrl.password">
+    </md-input-container>
+
+    <md-input-container>
+      <md-button type="submit" class="md-raised">Log In</md-button>
+    </md-input-container>
+
+  </form>
+</div>

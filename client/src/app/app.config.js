@@ -4,34 +4,16 @@
   var app = angular.module('gr');
   app.constant('API_URL', '/api');
 
-  var firstRun = true;
-  function showSplashScreen(){
-    if (!firstRun) {
-      return;
-    }
-
-    firstRun = false;
-    var elem = document.querySelector('#splashScreenText');
-    var opts = {
-      typeSpeed: 60,
-      deleteSpeed: 30,
-      pauseDelay: 1800,
-      loop: false,
-      postfix: ''
-    };
-    malarkey(elem, opts).pause().type('Hi').pause().delete().type('Welcome!').pause().delete();
-  }
-
   // Handle Auth on every navigation
-  app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout',
-    function ($rootScope, $state, UserService, $window, $location, _, $timeout) {
-      showSplashScreen();
+  app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout', '$anchorScroll',
+    function ($rootScope, $state, UserService, $window, $location, _, $timeout, $anchorScroll) {
       $timeout(function() {
         $rootScope.appReady = true;
       }, 7000);
 
       $rootScope.$on('$viewContentLoaded', function () {
         $window.ga('send', 'pageview', {page: $location.url()});
+        window.scrollTo(0, 0);
       });
 
       $rootScope.$on('$stateChangeStart', function (event, toState) {

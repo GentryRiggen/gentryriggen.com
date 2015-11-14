@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="gr">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Gentry Riggen</title>
-  <link href='http://fonts.googleapis.com/css?family=Lato:300,400,700' rel='stylesheet' type='text/css'>
+
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,600,400italic,700' rel='stylesheet'
+        type='text/css'>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 
@@ -18,100 +20,82 @@
   <!-- endinject -->
   <!-- endbuild -->
 </head>
-<body layout-gt-md="row" layout="column" ng-app="gr">
+<body ng-controller="ShellCtrl as ShellCtrl">
 
-<!-- MALARKEY -->
-<div id="splashScreen" ng-class="{'hiding': appReady}">
-  <div id="splashScreenText"></div>
-</div>
-
-<div ng-controller="HeaderCtrl as HeaderCtrl" layout="column" class="header" ng-class="{'showing': appReady}">
-  <!-- Side Navigation -->
-  <md-sidenav class=" md-sidenav-left md-whiteframe-z2"
-              md-component-id="sideNav"
-              md-is-locked-open="$mdMedia('gt-md')"
-              flex>
-
-    <header class="nav-header">
-      <a ui-sref="blog">
-        <img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg" class="img-circle img-responsive" />
-        <h1>Gentry Riggen</h1>
-      </a>
-      <div class="social-links" layout="row" layout-align="center center">
-        <span flex><a href="https://twitter.com/GentryRiggen" target="#"><i class="fa fa-twitter fa-2x"></i></a></span>
-        <span flex><a href="https://github.com/GentryRiggen" target="#"><i class="fa fa-github fa-2x"></i></a></span>
-        <span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i class="fa fa-linkedin fa-2x"></i></a></span>
-        <span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i class="fa fa-stack-overflow fa-2x"></i></a></span>
-      </div>
-    </header>
-
-    <md-content layout-padding>
-      <md-list>
-        <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('blog')">
-          <p><i class="fa fa-pencil-square-o"></i> Blog</p>
-        </md-list-item>
-
-        <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('books')">
-          <p><i class="fa fa-book"></i> Library</p>
-        </md-list-item>
-
-        <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('about')">
-          <p><i class="fa fa-user"></i> About me</p>
-        </md-list-item>
-        <md-divider ng-show="HeaderCtrl.showModerator"></md-divider>
-        <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('admin')"
-                      ng-show="HeaderCtrl.showModerator">
-          <p><i class="fa fa-pencil"></i> Admin</p>
-        </md-list-item>
-        <md-list-item ui-sref-active="active" ng-click="HeaderCtrl.navigate('logout')"
-                      ng-show="HeaderCtrl.showModerator">
-          <p><i class="fa fa-sign-out"></i> Logout</p>
-        </md-list-item>
-      </md-list>
-    </md-content>
-  </md-sidenav>
-
-  <!-- Mobile Nav -->
-  <md-toolbar hide-gt-md class="mobile-header">
-    <div class="md-toolbar-tools">
-      <md-button class="md-icon-button" aria-label="Nav" ng-click="HeaderCtrl.toggleNav()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 18 18" fit="" preserveAspectRatio="xMidYMid meet" style="pointer-events: none; display: block;">
-          <path d="M0 0h18v18h-18z" fill="none"></path>
-          <path fill="#FFF" d="M2 13.5h14v-1.5h-14v1.5zm0-4h14v-1.5h-14v1.5zm0-5.5v1.5h14v-1.5h-14z"></path>
-        </svg>
-      </md-button>
-      <h2>Gentry Riggen</h2>
-      <span flex></span>
-    </div>
-  </md-toolbar>
-</div>
-
-
-<!-- Main Content -->
-<div flex layout="column" role="main" class="main" ng-class="{'showing': appReady}">
-  <md-content class="ui-view-container">
-
-    <!-- LOADING -->
-    <div layout="row" layout-padding ng-show="alert.loading.show" class="fullscreen-loader">
-      <span flex></span>
-      <div layout="column" flex="50" layout-align="center center">
-        <md-progress-circular class="md-accent" md-mode="indeterminate"></md-progress-circular>
-        <h4>{{alert.loading.message}}</h4>
-      </div>
-      <span flex></span>
+<!-- TOPNAV -->
+<div class="header md-whiteframe-z2" layout="row" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">
+  <div class="gr-btn header-left" layout="row" ng-click="ShellCtrl.toggleMenu()">
+    <div class="gr-btn menu-btn">
+      <i class="mdi mdi-menu"></i>
     </div>
 
-    <!-- Page Content -->
-    <ui-view ng-hide="alert.loading.show"></ui-view>
+    <h1>Gentry Riggen</h1>
+  </div>
 
-  </md-content>
+  <div class="header-right" flex>
+
+  </div>
 </div>
+
+<!-- DRAWER -->
+<div class="drawer" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">
+  <div class="drawer-header">
+    <img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg"/>
+
+    <div class="social-links" layout="row" layout-align="center center">
+      <span flex><a href="https://twitter.com/GentryRiggen" target="#"><i class="mdi mdi-twitter"></i></a></span>
+      <span flex><a href="https://github.com/GentryRiggen" target="#"><i class="mdi mdi-github-circle"></i></a></span>
+      <span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i class="mdi mdi-linkedin"></i></a></span>
+      <span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i class="mdi mdi-stackoverflow"></i></a></span>
+    </div>
+
+  </div>
+  <ul class="drawer-items">
+    <!-- ALL USERS -->
+    <li class="gr-btn" ui-sref="blog" ui-sref-active="active">
+      <i class="mdi mdi-pencil"></i> Blog
+    </li>
+    <li class="gr-btn" ui-sref="books" ui-sref-active="active">
+      <i class="mdi mdi-library-books"></i> Library
+    </li>
+    <li class="gr-btn" ui-sref="about" ui-sref-active="active">
+      <i class="mdi mdi-account"></i> About Me
+    </li>
+
+    <!-- ADMIN USERS -->
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn no-select" ui-sref="admin">
+      <i class="mdi mdi-lock"></i> Admin
+    </li>
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.blog" ui-sref-active="active">
+      <i class="mdi mdi-pencil-lock"></i> Blog
+    </li>
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.books" ui-sref-active="active">
+      <i class="mdi mdi-library-books"></i> Library
+    </li>
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.files" ui-sref-active="active">
+      <i class="mdi mdi-file"></i> Files
+    </li>
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.accounts" ui-sref-active="active">
+      <i class="mdi mdi-account-multiple"></i> Accounts
+    </li>
+
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn" ui-sref="logout">
+      <i class="mdi mdi-logout"></i> Logout
+    </li>
+  </ul>
+</div>
+
+
+<!-- CONTENT -->
+<div layout="column" class="main" ng-class="{'drawer-open': ShellCtrl.drawerOpen}">
+    <ui-view class="content"></ui-view>
+</div>
+
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 <!-- build:js(src) scripts/vendor.js -->
 <!-- bower:js -->
 <!-- endbower -->
 <!--endbuild -->
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
 
 <!-- build:js({.tmp/serve,.tmp/partials,src}) scripts/app.js -->
 <!-- inject:js -->
@@ -124,10 +108,15 @@
 <!-- GOOGLE ANALYTICS -->
 <script>
   (function (i, s, o, g, r, a, m) {
-    i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+    i['GoogleAnalyticsObject'] = r;
+    i[r] = i[r] || function () {
         (i[r].q = i[r].q || []).push(arguments)
-      }, i[r].l = 1 * new Date(); a = s.createElement(o),
-      m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+      }, i[r].l = 1 * new Date();
+    a = s.createElement(o),
+      m = s.getElementsByTagName(o)[0];
+    a.async = 1;
+    a.src = g;
+    m.parentNode.insertBefore(a, m)
   })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
 
   ga('create', 'UA-64096104-1', 'auto');

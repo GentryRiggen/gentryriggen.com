@@ -55,13 +55,14 @@ var repo = function () {
 
   fileRepo.upload = function (fileStream, length, fileName) {
     var dfd = Q.defer();
-    blobSvc.createBlockBlobFromStream(conf.blobStorage.container, fileName, fileStream, length, function (err) {
-      if (!err) {
-        dfd.resolve();
-      } else {
-        dfd.reject(err);
-      }
-    });
+    blobSvc.createBlockBlobFromStream(conf.blobStorage.container, fileName, fileStream, length,
+      function (err) {
+        if (!err) {
+          dfd.resolve();
+        } else {
+          dfd.reject(err);
+        }
+      });
     return dfd.promise;
   };
 

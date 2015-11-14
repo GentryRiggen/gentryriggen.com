@@ -1,4 +1,5 @@
-﻿<md-content class="library library-admin">
+﻿<page class="library library-admin">
+  <h1 class="admin-title">Books</h1>
 
   <md-progress-linear md-mode="indeterminate" ng-show="AdminBooksCtrl.searching">
   </md-progress-linear>
@@ -8,40 +9,15 @@
       <label>Search</label>
       <input type="text" ng-model="searchQ"
              ng-model-options="{ debounce: 350 }" ng-change="AdminBooksCtrl.search(searchQ)"/>
-      <i class="fa fa-search"></i>
     </md-input-container>
-
-    <a ng-click="AdminBooksCtrl.toggleView()" flex="20" class="view-toggle">
-      <i class="fa fa-th"></i> Toggle View
-    </a>
 
     <span flex></span>
 
     <md-button class="md-raised" ng-click="AdminBooksCtrl.createNew()" flex="20">Create New</md-button>
   </div>
 
-  <!-- GRID VIEW -->
-  <md-grid-list ng-show="AdminBooksCtrl.gridView"
-                md-cols-sm="1" md-cols-md="6" md-cols-gt-md="8"
-                md-row-height="3:4"
-                md-gutter="8px" md-gutter-gt-sm="4px">
-    <md-grid-tile ng-repeat="book in AdminBooksCtrl.books"
-                  md-rowspan="1"
-                  md-colspan="1"
-                  ng-click="AdminBooksCtrl.rowClicked(book.id)">
-      <img src="{{book.artworkUrl}}"/>
-      <md-grid-tile-footer>
-        <h1>{{book.title}}</h1>
-
-        <h2>{{book.authorLastName}}, {{book.authorFirstName}}</h2>
-
-        <h3>({{book.rating}}/5 Stars)</h3>
-      </md-grid-tile-footer>
-    </md-grid-tile>
-  </md-grid-list>
-
   <!-- TABLE VIEW -->
-  <table class="table table-striped" ng-hide="AdminBooksCtrl.gridView">
+  <table class="table table-striped">
     <thead>
     <tr>
       <th>Title</th>
@@ -64,4 +40,4 @@
     </tr>
     </tbody>
   </table>
-</md-content>
+</page>

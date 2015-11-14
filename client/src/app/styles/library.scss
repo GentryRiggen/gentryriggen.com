@@ -1,162 +1,172 @@
 @import "variables";
 
-.library-admin {
-
-  .actions {
-    button {
-      max-height: 30px;
-    }
-  }
-
-  .artwork-upload {
-    img {
-      width: 120px;
-      height: 150px;
-    }
-  }
-
-  .file-upload {
-    margin: 25px 0;
-    a {
-      margin: 10px 25px 0 0;
-    }
-  }
-
-  .date {
-    margin: 25px 0 50px;
-
-    datepicker {
-      display: block;
-      position: inherit;
-
-      input {
-        width: 300px;
-        border-top: none;
-        border-right: none;
-        border-bottom: solid 1px $defaultForegroundColor;
-        border-left: none;
-      }
-      input:hover {
-        cursor: pointer;
-      }
-
-      ._720kb-datepicker-calendar {
-        max-width: 300px;
-      }
-    }
-  }
-
-  .authors {
-    background: lighten($defaultForegroundColor, 78);
-    border-radius: 5px;
-    max-height: 400px;
-    overflow: scroll;
-    .new-author, .current-author {
-      button {
-        margin-top: 15px;
-        max-height: 25px;
-      }
-    }
-
-    .new-author {
-      border-bottom: solid 1px lighten($defaultForegroundColor, 60);
-      md-input-container {
-        padding-bottom: 0px;
-      }
-    }
-  }
-}
-
 .library {
-  margin: 0 15px;
   .title-section {
-    max-width: 800px;
-    margin: 0 auto;
-
-    h1 {
-      text-align: center;
-      font-weight: 700;
-      font-size: 30px;
-      text-transform: capitalize;
-      line-height: 50px;
-      color: $themeColor;
-    }
-
     .search {
-      margin: 0 auto;
+      label {
+        padding-left: 30px;
+      }
+      input {
+        padding-left: 25px;
+      }
+      i {
+        position: absolute;
+        top: 25px;
+        left: 0;
+        font-size: 24px;
+        color: lighten($foregroundColor, 25);
+      }
     }
   }
 
-  md-grid-list {
-    margin-bottom: 150px;
-    md-grid-tile {
+  .search-loading {
+    height: 25px;
+  }
+
+  .book-grid {
+    margin: 0;
+
+    .book {
+      height: 300px;
+      margin: 5px 0 5px 10px;
+      outline: none !important;
       img {
         width: 100%;
-        height: 100%;
+        height: 65%;
+        margin-bottom: 5px;
       }
-
-      md-grid-tile-footer {
-        height: 55px;
-        background-color: rgba(0, 0, 0, 0.5);
-        padding-left: 5px;
-
-        h1, h2, h3 {
-          margin: 0;
-        }
-        h1 {
-          font-size: 18px;
-          font-weight: 600;
-        }
-        h2 {
-          font-size: 15px;
-        }
-        h3 {
-          font-size: 12px;
-        }
+      h1, h2, h3 {
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        font-size: 12px;
+        font-style: italic;
+      }
+      h2 {
+        font-size: 11px;
+      }
+      h3 {
+        font-size: 11px;
+        font-weight: 700;
       }
     }
-    md-grid-tile:hover {
+    .book:hover {
       cursor: pointer;
-      md-grid-tile-footer {
-        height: 85px;
-        background-color: rgba(0, 0, 0, 0.8);
-        -webkit-transition: height .3s;
-        -moz-transition: height .3s;
-        -ms-transition: height .3s;
-        -o-transition: height .3s;
-        transition: height .3s;
-      }
+      color: $primaryColor;
     }
   }
 }
 
 .book {
   .book-header {
-    text-align: center;
-    margin: 5px 0px 25px;
-
-    a.book-title {
-      font-weight: 700;
-      font-size: 36px;
-      text-transform: capitalize;
-      line-height: 50px;
+    img {
+      height: 200px;
+      float: left;
     }
+    .titles {
+      float: left;
+      margin: 0 0 0 15px;
 
-    .artwork {
-      img {
-        max-height: 250px;
+      .book-title {
+        font-size: 3.2em;
+        color: $foregroundColor;
+        outline: none !important;
+      }
+      .book-title:hover {
+        color: lighten($primaryColor, 10);
+        cursor: pointer;
+      }
+
+      .book-subtitle {
+        display: block;
+        padding-left: 5px;
+        font-size: 1.4em;
+      }
+      .book-rating {
+        padding-left: 5px;
+        display: block;
+        font-size: 1em;
+        font-style: italic;
+        margin-top: 5px;
+      }
+
+      a {
+        padding-left: 5px;
+        font-size: .9em;
+        margin-top: 15px;
       }
     }
 
-    .book-subtitle {
-      margin-top: 15px;
-      color: lighten($defaultForegroundColor, 20);
-      font-size: 18px;
-      font-style: italic;
-
-    }
   }
 
   .book-body {
+    clear: both;
+    padding-top: 15px;
+
+    .book-content {
+      outline: none !important;
+      font-size: 1.1em;
+      line-height: 1.6em;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .book {
+    .book-header {
+      img {
+        height: 150px;
+      }
+      .titles {
+        margin: 0 0 0 5px;
+        .book-title {
+          font-size: 1.5em;
+        }
+      }
+      .book-subtitle {
+        padding-left: 0;
+      }
+      .book-rating {
+        padding-left: 0;
+      }
+
+      a {
+        padding-left: 0;
+      }
+    }
+  }
+}
+
+.library-admin {
+  button {
+    max-height: 35px;
+    min-height: 35px;
+  }
+
+  .artwork-upload {
+    img {
+      max-height: 100px;
+      max-width: 100px;
+    }
+    .upload {
+      margin-left: 5px;
+    }
+  }
+
+  .date {
+    margin-top: 10px;
+    display: block;
+    height: 75px;
+
+  }
+
+  .new-author {
+
+  }
+
+  .authors {
+    max-height: 350px;
+    overflow: scroll;
   }
 }
