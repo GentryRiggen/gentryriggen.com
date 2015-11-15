@@ -80,7 +80,7 @@ blogRepo.getTotal = function (adminRequest) {
 blogRepo.getTotalBlogsAndBooks = function() {
   var dfd = Q.defer();
   var getTotalBlogPosts = blogRepo.getTotal();
-  var getTotalBooks = bookRepo.getTotal();
+  var getTotalBooks = bookRepo.getTotal(true);
 
   Q.all([getTotalBlogPosts, getTotalBooks]).then(
     function(results) {

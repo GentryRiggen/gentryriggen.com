@@ -26,7 +26,9 @@
 <div class="header md-whiteframe-z2" layout="row" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">
   <div class="gr-btn header-left" layout="row" ng-click="ShellCtrl.toggleMenu()">
     <div class="gr-btn menu-btn">
-      <i class="mdi mdi-menu"></i>
+      <i class="mdi mdi-menu"
+         ng-class="{'mdi-menu': !ShellCtrl.smallScreen || !ShellCtrl.drawerOpen,
+         'mdi-close': ShellCtrl.smallScreen && ShellCtrl.drawerOpen}"></i>
     </div>
 
     <h1>Gentry Riggen</h1>
@@ -38,15 +40,17 @@
 </div>
 
 <!-- DRAWER -->
-<div class="drawer" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">
+<div id="drawer" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">
   <div class="drawer-header">
     <img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg"/>
 
     <div class="social-links" layout="row" layout-align="center center">
       <span flex><a href="https://twitter.com/GentryRiggen" target="#"><i class="mdi mdi-twitter"></i></a></span>
       <span flex><a href="https://github.com/GentryRiggen" target="#"><i class="mdi mdi-github-circle"></i></a></span>
-      <span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i class="mdi mdi-linkedin"></i></a></span>
-      <span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i class="mdi mdi-stackoverflow"></i></a></span>
+      <span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i
+        class="mdi mdi-linkedin"></i></a></span>
+      <span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i
+        class="mdi mdi-stackoverflow"></i></a></span>
     </div>
 
   </div>
@@ -88,7 +92,7 @@
 
 <!-- CONTENT -->
 <div layout="column" class="main" ng-class="{'drawer-open': ShellCtrl.drawerOpen}">
-    <ui-view class="content"></ui-view>
+  <ui-view class="content"></ui-view>
 </div>
 
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>

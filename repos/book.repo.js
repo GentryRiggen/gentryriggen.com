@@ -25,8 +25,11 @@ bookRepo.createOrUpdate = baseRepo.createOrUpdate;
 bookRepo.del = baseRepo.del;
 bookRepo.getPaginatedParams = baseRepo.getPaginatedParams;
 
-bookRepo.getTotal = function () {
+bookRepo.getTotal = function (frontPage) {
   var query = db.from(tableName).count('id as count');
+  if (frontPage) {
+    query = query.where('main_page', 1)
+  }
   return query.first().then(function (result) {
     return result.count;
   });
@@ -43,7 +46,7 @@ bookRepo.getPaginated = function (skip, take, q, all) {
       .orWhere('author.last_name', 'LIKE', searchQuery);
   }
 
-  if (all) {
+  if (!all) {
     query = query.where('b.have_read', 1);
   }
 

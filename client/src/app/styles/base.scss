@@ -41,17 +41,14 @@ h2 {
   margin: 0 0 25px;
 }
 
-.gr-btn {
+.gr-btn, .gr-btn:focus {
+  background-color: transparent;;
   outline: none !important;
 }
 
 .gr-btn:hover {
   cursor: pointer;
   background-color: lighten($primaryColor, 10);
-}
-
-.gr-btn:active {
-  background-color: lighten($primaryColor, 20);
 }
 
 a {
@@ -133,7 +130,8 @@ $drawerWidth: 250px;
   }
 }
 
-.drawer {
+#drawer {
+  min-height: 100%;
   position: fixed;
   top: $defaultHeight;
   bottom: 0;
@@ -170,6 +168,7 @@ $drawerWidth: 250px;
     list-style: none;
     margin: 0;
     padding: 0;
+    overflow-y: scroll;
 
     li {
       color: $foregroundWhite;
@@ -204,6 +203,14 @@ $drawerWidth: 250px;
   }
 }
 
+#drawer.drawer-closed {
+  -webkit-transform: translateX(-100%);
+  -moz-transform: translateX(-100%);
+  -ms-transform: translateX(-100%);
+  -o-transform: translateX(-100%);
+  transform: translateX(-100%);
+}
+
 .main, .drawer, .header {
   transition: all 0.3s;
 }
@@ -218,7 +225,7 @@ $drawerWidth: 250px;
   left: 0;
   z-index: 1;
   padding: 1em 4em 4em 4em;
-  overflow-x: hidden;
+  overflow: hidden;
   .content {
     max-width: 800px;
     width: 100%;
@@ -227,18 +234,27 @@ $drawerWidth: 250px;
 }
 
 .main.drawer-open {
-  left: 250px;
+  //left: 250px;
   max-width: calc(100vw - 250px);
   z-index: 0;
+
+  -webkit-transform: translateX($drawerWidth) scale(1);
+  -moz-transform: translateX($drawerWidth) scale(1);
+  -ms-transform: translateX($drawerWidth) scale(1);
+  -o-transform: translateX($drawerWidth) scale(1);
+  transform: translateX($drawerWidth) scale(1);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px) {
   .main {
     padding: 1em;
   }
   .main.drawer-open {
-    left: 0;
+    -webkit-transform: translateX($drawerWidth) scale(1);
+    -moz-transform: translateX(0) scale(1);
+    -ms-transform: translateX(0) scale(1);
+    -o-transform: translateX(0) scale(1);
+    transform: translateX(0) scale(1);
     max-width: 100vw;
-    z-index: 0;
   }
 }

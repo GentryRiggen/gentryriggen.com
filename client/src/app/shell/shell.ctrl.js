@@ -7,9 +7,11 @@
   ShellController.$inject = ['$scope', 'UserService', '$state', '$mdMedia', '$window'];
   function ShellController($scope, UserService, $state, $mdMedia, $window) {
     var ShellCtrl = this;
+    ShellCtrl.smallScreen = !$mdMedia('min-width: 900px');
     ShellCtrl.drawerOpen = $mdMedia('min-width: 900px');
 
     ShellCtrl.toggleMenu = function() {
+      ShellCtrl.smallScreen = !$mdMedia('min-width: 900px');
       ShellCtrl.drawerOpen = !ShellCtrl.drawerOpen;
     };
 
