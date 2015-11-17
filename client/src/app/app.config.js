@@ -5,8 +5,8 @@
   app.constant('API_URL', '/api');
 
   // Handle Auth on every navigation
-  app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout', '$anchorScroll',
-    function ($rootScope, $state, UserService, $window, $location, _, $timeout, $anchorScroll) {
+  app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout',
+    function ($rootScope, $state, UserService, $window, $location, _, $timeout) {
       $timeout(function() {
         $rootScope.appReady = true;
       }, 7000);

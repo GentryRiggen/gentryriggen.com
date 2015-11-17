@@ -22,8 +22,8 @@
   <!-- SOCIAL LINKS -->
   <div class="book-footer" ng-if="showComments">
     <dir-disqus disqus-shortname="gentryriggen"
-                disqus-identifier="{{book.id}}"
-                disqus-url="{{ currentUrl() }}">
+                disqus-identifier="book-{{book.id}}"
+                disqus-url="{{ book.url }}">
     </dir-disqus>
   </div>
 </div>

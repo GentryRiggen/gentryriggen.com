@@ -15,10 +15,6 @@
       link: function ($scope, el, attrs) {
         $scope.showComments = attrs.showComments != "false";
 
-        $scope.currentUrl = function() {
-          return $window.location.href;
-        };
-
         $scope.goToBook = function() {
           $state.go('book', {'id': $scope.book.id});
         };

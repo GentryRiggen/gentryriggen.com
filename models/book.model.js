@@ -18,7 +18,8 @@ exports.toJson = function (book) {
     dateRead: book.date_read,
     rating: book.rating,
     fiction: book.fiction,
-    review: book.review
+    review: book.review,
+    url: conf.appUrl + '/#!/books/' + book.id
   };
 
   if (book.content) {

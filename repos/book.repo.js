@@ -28,7 +28,7 @@ bookRepo.getPaginatedParams = baseRepo.getPaginatedParams;
 bookRepo.getTotal = function (frontPage) {
   var query = db.from(tableName).count('id as count');
   if (frontPage) {
-    query = query.where('main_page', 1)
+    query = query.where('main_page', 1);
   }
   return query.first().then(function (result) {
     return result.count;
