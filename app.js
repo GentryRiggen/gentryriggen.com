@@ -9,8 +9,9 @@ var express = require('express'),
 
 
 // ENVIRONMENT SETUP
+console.log('NODE_ENV: ', process.env.NODE_ENV);
 var app = express(),
-  port = process.env.PORT || 8888,
+  port = process.env.PORT || 8000,
   devMode = process.env.NODE_ENV === 'development';
 app.use(bodyParser.json());
 
@@ -38,6 +39,9 @@ app.use('/api/admin/files', require('./controllers/files.server.ctrl')());
 app.use('/api/admin/accounts', require('./controllers/adminAccounts.server.ctrl')(dbPool));
 app.use('/api/admin/books', require('./controllers/adminBooks.server.ctrl'));
 app.use('/api/admin/authors', require('./controllers/adminAuthors.server.ctrl')(dbPool));
+
+// MSFT CLOUD REDIRECT
+app.use('/redirect', require('./controllers/ouath.server.ctrl'));
 
 // SERVING UP CLIENT
 if (devMode) {

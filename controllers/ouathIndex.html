@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset="utf-8" />
+  <title></title>
+  <script>
+    (function (global) {
+      "use strict";
+
+      var loginUrl, clientId, scope, redirectUri, accessToken, authHeader, apiTemplateUrl, Promise, MicrosoftHealth;
+
+      loginUrl = "https://login.live.com/oauth20_authorize.srf?client_id={client_id}&scope={scope}&response_type=token&redirect_uri={redirect_uri}";
+      accessToken = "";
+      authHeader = "Bearer {access_token}";
+      apiTemplateUrl = "https://api.microsofthealth.net/v1/me/{path}?{parameters}";
+
+      MicrosoftHealth = function (options) {
+        clientId = options.clientId;
+        scope = options.scope;
+        redirectUri = options.redirectUri;
+      };
+      global.MicrosoftHealth = MicrosoftHealth;
+
+      function parseParameters(hash) {
+        var split, dictionary, i, param;
+
+        dictionary = {};
+        split = hash.split("&");
+
+        for (i = 0; i < split.length; i++) {
+          param = split[i].split("=");
+          if (param.length === 2) {
+            dictionary[param[0]] = param[1];
+          }
+        }
+
+        return dictionary;
+      }
+
+      function getParameters(parameters) {
+        var queryParameters, p;
+
+        queryParameters = "";
+
+        if (parameters) {
+          for (p in parameters) {
+            if (parameters[p]) {
+              queryParameters = queryParameters.concat(encodeURI(p) + "=" + encodeURI(parameters[p]) + "&");
+            }
+          }
+        }
+
+        return queryParameters.substring(0, queryParameters.length - 1);
+      }
+
+      function query(options) {
+        if (!accessToken) {
+          throw "User is not authenticated, call login function first";
+        }
+
+        var xmlHttpRequest, url, promise, queryParameters;
+        promise = new Promise();
+        xmlHttpRequest = new global.XMLHttpRequest();
+
+        queryParameters = options.parameters ? getParameters(options.parameters) : "";
+
+        url = apiTemplateUrl.replace("{path}", options.path).replace("{parameters}", queryParameters);
+        xmlHttpRequest.open(options.method, url, true);
+        xmlHttpRequest.setRequestHeader("Authorization", authHeader.replace("{access_token}", accessToken));
+
+        xmlHttpRequest.onload = function () {
+          var request = this;
+
+          if (request.status >= 200 && request.status < 300) {
+            promise.resolve(JSON.parse(request.responseText));
+          } else {
+            promise.reject(request.responseText ? JSON.parse(request.responseText) : {});
+          }
+        };
+
+        xmlHttpRequest.onerror = function () {
+          var request = this;
+
+          promise.reject(request.responseText ? JSON.parse(request.responseText) : {});
+        };
+
+        xmlHttpRequest.send();
+
+        return promise;
+      }
+
+      MicrosoftHealth.prototype.login = function () {
+        var hash, parameters, url;
+
+        hash = global.location.hash;
+
+        if (hash) {
+          parameters = parseParameters(hash.substring(1));
+          accessToken = parameters["access_token"];
+        } else {
+          url = loginUrl.replace("{client_id}", clientId).replace("{scope}", scope).replace("{redirect_uri}", encodeURIComponent(redirectUri));
+          global.location = url;
+        }
+      };
+
+      MicrosoftHealth.prototype.getProfile = function () {
+        return query({
+          path: "Profile",
+          method: "GET"
+        });
+      };
+
+      MicrosoftHealth.prototype.getSummaries = function (options) {
+        if (!options || !options.period) {
+          throw "A period is required to call the summaries API";
+        }
+
+        return query({
+          path: "Summaries/" + options.period,
+          method: "GET",
+          parameters: {
+            startTime: options.startTime,
+            endTime: options.endTime,
+            deviceIds: options.deviceIds,
+            maxPageSize: options.maxPageSize
+          }
+        });
+      };
+
+      MicrosoftHealth.prototype.getActivities = function (options) {
+        return query({
+          path: "Activities",
+          method: "GET",
+          parameters: {
+            activityIds: options.activityIds,
+            activityTypes: options.activityTypes,
+            activityIncludes: options.activityIncludes,
+            splitDistanceType: options.splitDistanceType,
+            startTime: options.startTime,
+            endTime: options.endTime,
+            deviceIds: options.deviceIds,
+            maxPageSize: options.maxPageSize
+          }
+        });
+      };
+
+      MicrosoftHealth.prototype.getDevices = function (deviceId) {
+        var path = deviceId ? "Devices/" + encodeURIComponent(deviceId) : "Devices";
+
+        return query({
+          path: path,
+          method: "GET"
+        });
+      };
+
+      Promise = function () { };
+
+      Promise.prototype.then = function (onResolved, onRejected) {
+        this.onResolved = onResolved;
+        this.onRejected = onRejected;
+      };
+
+      Promise.prototype.resolve = function (value) {
+        this.onResolved(value);
+      };
+
+      Promise.prototype.reject = function (value) {
+        this.onRejected(value);
+      };
+
+    })(this);
+  </script>
+  <link href="css/sample.css" rel="stylesheet" />
+
+  <script>
+    var mshealth = new MicrosoftHealth({
+      clientId: "000000004416F61F",
+      redirectUri: "http://local.gentryriggen.com:8000/redirect",
+      scope: "mshealth.ReadProfile mshealth.ReadDevices mshealth.ReadActivityHistory mshealth.ReadActivityLocation"
+
+    });
+    mshealth.login();
+  </script>
+</head>
+
+<body>
+<script>
+  mshealth.getProfile().then(
+    function (profile) {
+      var greeting = "Hello " + profile.firstName + ". Welcome to the Microsoft Health Cloud API";
+
+      document.getElementById("welcome").innerText = greeting;
+    },
+    function (error) {
+      onError(error.error);
+    }
+  );
+
+  mshealth.getDevices().then(
+    function (devices) {
+      var message = "You have " + devices.deviceProfiles.length + " device(s) associated.";
+
+      document.getElementById("devices").innerText = message;
+    },
+    function (error) {
+      onError(error.error);
+    }
+  );
+
+  var sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  mshealth.getSummaries({
+    period: "daily",
+    startTime: sevenDaysAgo.toISOString(),
+    endTime: (new Date()).toISOString()
+  }).then(
+    function (summaries) {
+      var totalSteps, totalCalories, message, i;
+      totalSteps = 0;
+      totalCalories = 0;
+      summaries = summaries.summaries;
+
+      for (i in summaries) {
+        if (summaries[i].caloriesBurnedSummary && summaries[i].caloriesBurnedSummary.totalCalories) {
+          totalCalories += summaries[i].caloriesBurnedSummary.totalCalories;
+        }
+
+        totalSteps += summaries[i].stepsTaken;
+      }
+
+      message = "You burned " + totalCalories + " calories and walked " + totalSteps + " steps in the last 7 days.";
+      document.getElementById("summaries").innerText = message;
+    },
+    function (error) { onError(error.error); }
+  );
+
+  mshealth.getActivities({
+    startTime: sevenDaysAgo.toISOString(),
+    endTime: (new Date()).toISOString()
+  }).then(
+    function (activities) {
+      var message = "You logged " + activities.itemCount + " activities in the last 7 days.";
+
+      document.getElementById("activities").innerText = message;
+    },
+    function (error) {
+      onError(error.error);
+    }
+  );
+
+  function onError(error) {
+    var errorMessage, errorNode;
+
+    if (error && error.details) {
+      errorMessage = error.details[0].message;
+    } else if (error) {
+      errorMessage = error.message;
+    } else {
+      errorMessage = "An error occurred";
+    }
+
+    errorNode = document.createElement("div");
+    errorNode.innerHTML = errorMessage;
+    document.getElementById("errors").appendChild(errorNode);
+  }
+</script>
+
+<h1 id="welcome"></h1>
+<div id="devices"></div>
+<div id="activities"></div>
+<div id="summaries"></div>
+<div id="errors"></div>
+</body>
+
+</html>
