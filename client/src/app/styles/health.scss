@@ -1,0 +1,68 @@
+@import "variables";
+.health {
+  $headerHeight: 64px;
+  color: $foregroundColor;
+  .day-headers {
+    height: $headerHeight;
+
+    .day {
+      background: #dedede;
+      border-bottom: solid 1px #cdcdcd;
+      text-align: center;
+      .day-title, .month-title {
+        display: block;
+      }
+      .day-title {
+        font-size: 26px;
+        font-weight: 700;
+      }
+      .month-title {
+        font-size: 15px;
+      }
+    }
+    .day:hover, .day.selected {
+      background: white;
+      border-bottom: solid 1px transparent;
+      .day-title {
+        color: $primaryColor;
+      }
+    }
+  }
+
+  .selected-day {
+    h1, h2 {
+      font-weight: 300;
+    }
+
+    .highlight {
+      max-height: 150px;
+      min-height: 150px;
+      max-width: 150px;
+      min-width: 150px;
+      margin: 10px auto;
+      text-align: center;
+      .stat {
+        padding-top: 30px;
+        font-size: 32px;
+      }
+      .subtext {
+        font-size: 12px;
+      }
+      i {
+        padding-top: 10px;
+        font-size: 32px;
+      }
+    }
+    .highlight.circle {
+      background: $primaryColor;
+      border-radius: 50%;
+      color: white;
+    }
+
+    .activity {
+      padding: 15px;
+      border: solid 1px #dedede;
+      background: #efefef;
+    }
+  }
+}

@@ -11,7 +11,7 @@ function getStartAndEndQuery(query) {
     startTime.setHours(0, 0, 0, 0);
   } else {
     startTime = new Date();
-    startTime.setDate(startTime.getDate() - 7);
+    startTime.setDate(startTime.getDate() - 6);
     startTime.setUTCHours(0, 0, 0, 0);
   }
 
