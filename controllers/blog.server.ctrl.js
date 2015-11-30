@@ -1,12 +1,18 @@
 /* jshint -W117 */
 var express = require('express'),
-  Q = require('q');
-
-var blogCtrl = express.Router();
-var blogRepo = require('../repos/blog.repo');
+  Q = require('q'),
+  blogCtrl = express.Router(),
+  blogRepo = require('../repos/blog.repo'),
+  msHealthRepo = require('../repos/msHealth.repo');
 
 blogCtrl.route('/')
   .get(function (req, res) {
+    var startTime = new Date();
+    startTime.setDate(startTime.getDate() - 1);
+    startTime.setUTCHours(0, 0, 0, 0);
+    console.log(startTime);
+    msHealthRepo.sync(startTime);
+
     var params = blogRepo.getPaginatedParams(req.query);
 
     var totalPromise = blogRepo.getTotalBlogsAndBooks();

@@ -3,7 +3,7 @@ var jwt = require('../services/jwt.service'),
   bcrypt = require('bcrypt-nodejs'),
   Q = require('q');
 
-exports.toJson = function (user) {
+exports.toJson = function (user, extended) {
   var token = jwt.encode({
     sub: user.id
   });
@@ -18,6 +18,11 @@ exports.toJson = function (user) {
     roles: []
   };
 
+  if (extended) {
+    userModel.msHealthToken = user.mshealth_token;
+    userModel.msHealthRefreshToken = user.mshealth_refresh_token;
+  }
+
   return userModel;
 };
 
@@ -27,7 +32,9 @@ exports.fromJson = function (user) {
     first_name: ('firstName' in user) ? user.firstName : "",
     last_name: ('lastName' in user) ? user.lastName : "",
     email: ('email' in user) ? user.email : "",
-    username: ('username' in user) ? user.username : ""
+    username: ('username' in user) ? user.username : "",
+    mshealth_token: ('msHealthToken' in user) ? user.msHealthToken : "",
+    mshealth_refresh_token: ('msHealthRefreshToken' in user) ? user.msHealthRefreshToken : ""
   };
 };
 

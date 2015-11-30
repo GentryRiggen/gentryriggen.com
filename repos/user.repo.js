@@ -3,7 +3,8 @@ var userModel = require('../models/user.model'),
   Q = require('q'),
   tableName = 'user',
   db = require('../db'),
-  util = require('../services/util.service');
+  util = require('../services/util.service'),
+  baseRepo = require('./base.repo')(tableName, userModel);
 
 var repo = function () {
   var userRepo = {};
@@ -33,13 +34,18 @@ var repo = function () {
     });
   };
 
-  userRepo.getById = function (id) {
+  userRepo.getById = function (id, extended) {
+    var select = ['id', 'first_name', 'last_name', 'email', 'username'];
+    if (extended) {
+      select.push('mshealth_token');
+      select.push('mshealth_refresh_token');
+    }
     var userPromise = db(tableName)
-      .select('id', 'first_name', 'last_name', 'email', 'username')
+      .select(select)
       .where('id', id).first().then();
     var userRoles = userRepo.getUserRoles(id);
     return Q.all([userPromise, userRoles]).then(function (results) {
-      var user = userModel.toJson(results[0]);
+      var user = userModel.toJson(results[0], extended);
       user.roles = results[1];
       return user;
     });
@@ -49,16 +55,7 @@ var repo = function () {
     return db('role').then();
   };
 
-  userRepo.createOrUpdate = function (user) {
-    var dbReadyUser = userModel.fromJson(user);
-    var update = dbReadyUser.id > 0;
-    delete dbReadyUser.id;
-    var query = update ? db(tableName).where('id', user.id).update(dbReadyUser) : db.insert(dbReadyUser).into(tableName).returning('id');
-    console.log('userRepo.createOrUpdate query', query.toString());
-    return query.then(function (id) {
-      return update ? null : userRepo.getById(id);
-    });
-  };
+  userRepo.createOrUpdate = baseRepo.createOrUpdate;
 
   userRepo.updateUserPassword = function (id, password) {
     var dfd = Q.defer();
