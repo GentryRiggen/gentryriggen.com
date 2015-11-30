@@ -1,22 +1,21 @@
 // REQUIRES
 /* jshint -W117 */
 var express = require('express'),
-  mysql = require('mysql'),
-  conf = require('./config/conf'),
   jwt = require('./services/jwt.service'),
   bodyParser = require('body-parser'),
   path = require('path');
 
 
 // ENVIRONMENT SETUP
+console.log('NODE_ENV: ', process.env.NODE_ENV);
 var app = express(),
-  port = process.env.PORT || 8888,
+  port = process.env.PORT || 8000,
   devMode = process.env.NODE_ENV === 'development';
 app.use(bodyParser.json());
 
 // DB CONNECTIONS
 
-var dbPool = mysql.createPool(devMode ? conf.db.mysql.development : conf.db.mysql.production);
+var dbPool = require('./mySqlDbPool');
 
 // TOKEN FILTER
 app.use('/api', function (req, res, next) {
@@ -33,6 +32,7 @@ app.use('/api/auth', require('./controllers/auth.server.ctrl.js')(dbPool));
 app.use('/api/user', require('./controllers/user.server.ctrl')());
 app.use('/api/blog', require('./controllers/blog.server.ctrl'));
 app.use('/api/books', require('./controllers/books.server.ctrl')(dbPool));
+app.use('/api/health', require('./controllers/health.server.ctrl'));
 app.use('/api/admin/blog', require('./controllers/adminBlog.server.ctrl')());
 app.use('/api/admin/files', require('./controllers/files.server.ctrl')());
 app.use('/api/admin/accounts', require('./controllers/adminAccounts.server.ctrl')(dbPool));
@@ -58,6 +58,34 @@ function twoDigits(d) {
 Date.prototype.toMysqlFormat = function () {
   return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate()) + " " + twoDigits(this.getUTCHours()) + ":" + twoDigits(this.getUTCMinutes()) + ":" + twoDigits(this.getUTCSeconds());
 };
+
+Date.prototype.formatYearMonthDay = function () {
+  return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate());
+};
+
+if (!Date.prototype.toISOString) {
+  (function() {
+
+    function pad(number) {
+      if (number < 10) {
+        return '0' + number;
+      }
+      return number;
+    }
+
+    Date.prototype.toISOString = function() {
+      return this.getUTCFullYear() +
+        '-' + pad(this.getUTCMonth() + 1) +
+        '-' + pad(this.getUTCDate()) +
+        'T' + pad(this.getUTCHours()) +
+        ':' + pad(this.getUTCMinutes()) +
+        ':' + pad(this.getUTCSeconds()) +
+        '.' + (this.getUTCMilliseconds() / 1000).toFixed(3).slice(2, 5) +
+        'Z';
+    };
+
+  }());
+}
 
 // START THE APP
 app.listen(port, function () {

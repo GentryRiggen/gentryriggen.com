@@ -1,53 +1,58 @@
 ﻿<div class="row">
-    <div class="pull-right">
-        <md-button class="md-raised md-primary" ng-click="save()" ng-disabled="blogPostEditForm.$invalid">Save</md-button>
-        <md-button class="md-raised" ng-click="saveAndClose()" ng-disabled="blogPostEditForm.$invalid">Save &amp; Close</md-button>
-        <md-button class="md-raised md-warn" ng-click="delete()" ng-disabled="blogPostEditForm.$invalid || !model.id">Delete</md-button>
+  <div class="pull-right">
+    <md-button class="md-raised md-success" ng-click="save()" ng-disabled="blogPostEditForm.$invalid">Save</md-button>
+    <md-button class="md-raised" ng-click="saveAndClose()" ng-disabled="blogPostEditForm.$invalid">Save &amp; Close
+    </md-button>
+    <md-button class="md-raised md-warn" ng-click="delete()" ng-disabled="blogPostEditForm.$invalid || !model.id">
+      Delete
+    </md-button>
+  </div>
+
+  <div class="tabs">
+    <a class="tab-header" ng-click="showTab(1)" ng-class="{'active': currentTab == 1}">WYSIWYG</a>
+    <a class="tab-header" ng-click="showTab(2)" ng-class="{'active': currentTab == 2}">Preview</a>
+  </div>
+
+  <br/>
+  <hr/>
+  <div class="">
+    <form class="clearfix" ng-show="currentTab == 1" name="blogPostEditForm">
+      <div form-input>
+        <label>Title</label>
+        <input type="text" placeholder="Blog Post Title"
+               name="title" ng-model="model.title" required>
+      </div>
+      <div form-input>
+        <label>Subtitle</label>
+        <input type="text" placeholder="Blog Post Subtitle"
+               name="subtitle" ng-model="model.subTitle">
+      </div>
+      <div form-input>
+        <label>Permalink</label>
+        <input type="text" placeholder="shut-up-and-ship"
+               name="permalink" ng-model="model.permalink" required>
+      </div>
+      <div form-input>
+        <label>Link To Another Article</label>
+        <input type="text" placeholder="http://sweetarticles.com"
+               name="linkTo" ng-model="model.linkTo">
+      </div>
+
+      <div form-input>
+        <label>
+          <input type="checkbox" ng-model="model.visible"> Visible
+        </label>
+      </div>
+
+    </form>
+  </div>
+
+
+  <div class="tab-content">
+    <text-angular ng-model="model.content" ng-show="currentTab == 1"></text-angular>
+
+    <div ng-show="currentTab == 2">
+      <blog-post-view post="model"></blog-post-view>
     </div>
-
-    <div class="tabs">
-        <a class="tab-header" ng-click="showTab(1)" ng-class="{'active': currentTab == 1}">WYSIWYG</a>
-        <a class="tab-header" ng-click="showTab(2)" ng-class="{'active': currentTab == 2}">Preview</a>
-    </div>
-
-    <br />
-    <hr />
-    <div class="clearfix col-xs-12">
-        <form class="clearfix" ng-show="currentTab == 1" name="blogPostEditForm">
-            <div form-input>
-                <label>Title</label>
-                <input type="text" placeholder="Blog Post Title"
-                       name="title" ng-model="model.title" required>
-            </div>
-            <div form-input>
-                <label>Subtitle</label>
-                <input type="text" placeholder="Blog Post Subtitle"
-                       name="subtitle" ng-model="model.subTitle">
-            </div>
-            <div form-input>
-                <label>Permalink</label>
-                <input type="text" placeholder="shut-up-and-ship"
-                       name="permalink" ng-model="model.permalink" required>
-            </div>
-            <div form-input>
-                <label>Link To Another Article</label>
-                <input type="text" placeholder="http://sweetarticles.com"
-                       name="linkTo" ng-model="model.linkTo">
-            </div>
-            <div form-input>
-                <label>
-                    <input type="checkbox" ng-model="model.visible"> Visible
-                </label>
-            </div>
-        </form>
-    </div>
-
-
-    <div class="tab-content">
-        <text-angular ng-model="model.content" ng-show="currentTab == 1"></text-angular>
-
-        <div ng-show="currentTab == 2">
-            <blog-post-view post="model"></blog-post-view>
-        </div>
-    </div>
+  </div>
 </div>

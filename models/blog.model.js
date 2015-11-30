@@ -19,6 +19,7 @@ exports.toJson = function (blogPost) {
     createdBy: blogPost.created_by,
     createdOn: blogPost.created_on,
     updatedOn: blogPost.updated_on,
+    visibleOn: blogPost.visible_on,
     url: conf.appUrl + '/#!/blog/' + blogPost.permalink
   };
 };
@@ -33,6 +34,7 @@ exports.fromJson = function (blogPost) {
     visible: ('visible' in blogPost) ? blogPost.visible : 0,
     created_by: ('createdBy' in blogPost) ? blogPost.createdBy : null,
     created_on: ('createdOn' in blogPost) ? blogPost.createdOn : (new Date()).toMysqlFormat(),
-    updated_on: ('updatedOn' in blogPost) ? blogPost.updatedOn : (new Date()).toMysqlFormat()
+    updated_on: ('updatedOn' in blogPost) ? blogPost.updatedOn : (new Date()).toMysqlFormat(),
+    visible_on: ('visibleOn' in blogPost) ? blogPost.visibleOn : (new Date()).toMysqlFormat()
   };
 };
