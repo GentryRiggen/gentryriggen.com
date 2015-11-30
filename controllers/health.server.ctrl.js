@@ -4,32 +4,50 @@ var express = require('express'),
   conf = require('../config/conf'),
   msHealthRepo = require('../repos/msHealth.repo');
 
+function getStartAndEndQuery(query) {
+  var startTime, endTime;
+  if (query.startTime) {
+    startTime = new Date(query.startTime);
+    startTime.setHours(0, 0, 0, 0);
+  } else {
+    startTime = new Date();
+    startTime.setDate(startTime.getDate() - 7);
+    startTime.setUTCHours(0, 0, 0, 0);
+  }
+
+  if (query.endTime) {
+    endTime = new Date(query.endTime);
+    endTime.setUTCHours(23, 59, 59, 99);
+  } else {
+    endTime = new Date();
+    endTime.setHours(23, 59, 59, 99);
+  }
+
+  return {
+    startTime: startTime,
+    endTime: endTime
+  };
+}
+
+ctrl.route('/')
+  .get(function (req, res) {
+    var query = getStartAndEndQuery(req.query);
+    msHealthRepo.getAll(query.startTime, query.endTime)
+      .then(function (results) {
+        console.log(results);
+        res.json(results);
+      });
+  });
+
 ctrl.route('/sync')
   .get(function (req, res) {
     if (req.query.secret != conf.msftHealth.syncSecret) {
       res.status(400).send({message: 'Go away'});
     }
 
-    var startTime, endTime;
-    if (req.query.startTime) {
-      startTime = new Date(req.query.startTime);
-      startTime.setHours(0, 0, 0, 0);
-    } else {
-      startTime = new Date();
-      startTime.setDate(startTime.getDate() - 1);
-      startTime.setHours(0, 0, 0, 0);
-    }
+    var query = getStartAndEndQuery(req.query);
 
-    if (req.query.endTime) {
-      endTime = new Date(req.query.endTime);
-      endTime.setHours(23, 59, 59, 99);
-    } else {
-      endTime = new Date(startTime);
-      endTime.setHours(23, 59, 59, 99);
-    }
-
-    console.log(startTime, endTime);
-    msHealthRepo.sync(startTime, endTime);
+    msHealthRepo.sync(query.startTime, query.endTime);
     res.status(200).send({message: 'Updates in progress'});
   });
 

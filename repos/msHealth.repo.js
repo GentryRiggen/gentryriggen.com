@@ -7,6 +7,9 @@ var conf = require('../config/conf'),
   userSleepRepo = require('./userSleep.repo'),
   userDailySummaryRepo = require('./userDailySummary.repo'),
   httpsService = require('../services/https.service'),
+  multiline = require('multiline'),
+  db = require('../db'),
+  _ = require('lodash'),
   apiToken, refreshToken;
 
 function getMSHealthUserTokens() {
@@ -202,6 +205,98 @@ msHealthRepo.sync = function (startTime, endTime) {
     id: conf.msftHealth.gentryId,
     mshealth_last_update: now
   });
+};
+
+msHealthRepo.getAll = function (startTime, endTime) {
+  var dfd = Q.defer();
+  var query = multiline.stripIndent(function () {/*
+   SELECT *
+   FROM (
+   (SELECT TRUE AS isWorkout, FALSE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time
+   FROM user_workout
+   WHERE day_id >= ? AND day_id <= ?)
+   UNION ALL
+   (SELECT FALSE isWorkout, TRUE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time
+   FROM user_run
+   WHERE day_id >= ? AND day_id <= ?)
+   UNION ALL
+   (SELECT FALSE isWorkout, FALSE AS isRun, TRUE as isSleep, FALSE as isSummary, id, start_time
+   FROM user_sleep
+   WHERE day_id >= ? AND day_id <= ?)
+   UNION ALL
+   (SELECT FALSE isWorkout, FALSE AS isRun, FALSE as isSleep, TRUE as isSummary, id, day_id as start_time
+   FROM user_daily_summary
+   WHERE day_id >= ? AND day_id <= ?)
+   ) results
+   ORDER BY results.start_time
+   */
+  });
+  query = db.formatQuery(query);
+  db.raw(query, [startTime, endTime, startTime, endTime, startTime, endTime, startTime, endTime])
+    .then(function (results) {
+      var workoutIds = [],
+        runIds = [],
+        sleepIds = [],
+        summaryIds = [];
+      for (var i = 0; i < results[0].length; i++) {
+        var result = results[0][i];
+        if (result.isWorkout) {
+          workoutIds.push(result.id);
+        } else if (result.isRun) {
+          runIds.push(result.id);
+        } else if (result.isSleep) {
+          sleepIds.push(result.id);
+        } else if (result.isSummary) {
+          summaryIds.push(result.id);
+        }
+      }
+
+      var promises = [];
+      promises.push(userWorkoutRepo.getByIds(workoutIds, false, 'start_time'));
+      promises.push(userRunRepo.getByIds(runIds, false, 'start_time'));
+      promises.push(userSleepRepo.getByIds(sleepIds, false, 'start_time'));
+      promises.push(userDailySummaryRepo.getByIds(summaryIds, false, 'day_id'));
+
+      Q.all(promises)
+        .then(function (promiseResults) {
+          var response = [];
+          for (var j = 0; j < promiseResults[3].length; j++) {
+            var summary = promiseResults[3][j];
+            var summaryDayId = summary.dayId.getTime();
+            var matches = [];
+            // Get all Workouts, Runs and Sleeps
+            promiseResults[0].forEach(function (workout) {
+              if (workout.dayId.getTime() == summaryDayId) {
+                workout.isWorkout = true;
+                matches.push(workout);
+              }
+            });
+            promiseResults[1].forEach(function (run) {
+              if (run.dayId.getTime() == summaryDayId) {
+                run.isRun = true;
+                matches.push(run);
+              }
+            });
+            promiseResults[2].forEach(function (sleep) {
+              if (sleep.dayId.getTime() == summaryDayId) {
+                sleep.isSleep = true;
+                matches.push(sleep);
+              }
+            });
+
+            // Order results by startTime
+            summary.items = _.sortBy(matches, 'startTime');
+            response.push(summary);
+          }
+
+          dfd.resolve(response);
+        });
+    })
+    .catch(function (err) {
+      dfd.reject(err);
+    });
+
+  return dfd.promise;
 };
 
 module.exports = msHealthRepo;

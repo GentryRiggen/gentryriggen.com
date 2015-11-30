@@ -4,6 +4,7 @@ var model = require('../models/userDailySummary.model'),
 
 var repo = {};
 repo.getById = baseRepo.getById;
+repo.getByIds = baseRepo.getByIds;
 repo.getByDayId = function (dayId) {
   return baseRepo.getById(dayId, 'day_id');
 };

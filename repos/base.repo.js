@@ -14,9 +14,30 @@ var repo = function (tableName, model) {
   baseRepo.getById = function (id, idField) {
     var selectField = idField ? idField : 'id';
     return db(tableName).where(selectField, id).first()
-      .then(function(item) {
+      .then(function (item) {
         return model.toJson(item);
       });
+  };
+
+  baseRepo.getByIds = function (idsArray, idField, orderByField, orderByDirection) {
+    var selectField = idField ? idField : 'id';
+    var query = db(tableName)
+      .whereIn(selectField, idsArray);
+
+    if (orderByField) {
+      var direction = orderByDirection && (orderByDirection == 'ASC' || orderByDirection == 'DSEC') ?
+        orderByDirection : 'ASC';
+      query.orderBy(orderByField, direction);
+    }
+
+    return query.then(function (results) {
+      var modeledResults = [];
+      results.forEach(function (result) {
+        modeledResults.push(model.toJson(result));
+      });
+
+      return modeledResults;
+    });
   };
 
   baseRepo.createOrUpdate = function (data, convert) {

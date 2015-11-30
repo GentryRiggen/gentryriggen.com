@@ -7,7 +7,7 @@ var express = require('express'),
 
 
 // ENVIRONMENT SETUP
-console.log('NODE_ENV: ', process.env.NODE_ENV);
+console.log('NODE_ENV: ', process.env.NODE_ENV, process.env.PORT);
 var app = express(),
   port = process.env.PORT || 8888,
   devMode = process.env.NODE_ENV === 'development';

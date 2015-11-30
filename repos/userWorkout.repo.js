@@ -4,6 +4,7 @@ var model = require('../models/userWorkout.model'),
 
 var repo = {};
 repo.getById = baseRepo.getById;
+repo.getByIds = baseRepo.getByIds;
 repo.getByMsHealthId = function (msHealthId) {
   return baseRepo.getById(msHealthId, 'mshealth_id');
 };
