@@ -87,6 +87,13 @@
           controllerAs: 'BlogDetailCtrl',
           data: {requireLogin: false}
         })
+        .state('health', {
+          url: '/health',
+          templateUrl: '/src/app/health/health.tmpl.html',
+          controller: 'HealthCtrl',
+          controllerAs: 'HealthCtrl',
+          data: {requireLogin: false}
+        })
         .state('books', {
           url: '/books',
           templateUrl: '/src/app/books/books.tmpl.html',

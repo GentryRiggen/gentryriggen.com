@@ -1,0 +1,41 @@
+﻿<div class="page">
+  <div class="day-headers" layout="row">
+    <div class="day gr-btn" ng-repeat="day in HealthCtrl.data" flex
+         ng-class="{'selected': day.id == HealthCtrl.selectedDay.id}"
+         ng-click="HealthCtrl.selectedDay = day">
+      {{day.dayId | date}}
+    </div>
+  </div>
+
+  <div class="selected-day">
+    <h1>{{HealthCtrl.selectedDay.dayId | date}}</h1>
+
+    <p>Steps: {{HealthCtrl.selectedDay.stepsTaken}}</p>
+
+    <p>Calories: {{HealthCtrl.selectedDay.caloriesBurned}}</p>
+
+    <p>Distance: {{HealthCtrl.selectedDay.distance}}</p>
+
+    <p>Average Heart Rate: {{HealthCtrl.selectedDay.averageHeartRate}}</p>
+
+    <p>Peak Heart Rate: {{HealthCtrl.selectedDay.peakHeartRate}}</p>
+
+    <p>Lowest Heart Rate: {{HealthCtrl.selectedDay.lowestHeartRate}}</p>
+
+    <h2>Activities</h2>
+
+    <div ng-repeat="item in HealthCtrl.selectedDay.items">
+      <div ng-if="item.isSleep" class="sleep">
+        SLEEP
+      </div>
+      <div ng-if="item.isWorkout" class="workout">
+        WORKOUT
+      </div>
+      <div ng-if="item.isRun" class="run">
+        RUN
+      </div>
+    </div>
+  </div>
+
+  <pre>{{HealthCtrl.selectedDay | json}}</pre>
+</div>
