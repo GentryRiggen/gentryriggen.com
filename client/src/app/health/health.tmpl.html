@@ -24,10 +24,10 @@
         <div class="goal-progress" layout="row">
           <div flex="80">
             <span class="progress-info">
-              {{Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100)}}% goal complete
+              {{HealthCtrl.stepsTakenPercentage}}% goal complete
             </span>
             <md-progress-linear md-mode="determinate"
-                                value="{{Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100)}}">
+                                value="{{HealthCtrl.stepsTakenPercentage}}">
             </md-progress-linear>
           </div>
           <span class="goal" flex="15" flex-offset="5">9000</span>
@@ -47,10 +47,10 @@
         <div class="goal-progress" layout="row">
           <div flex="80">
             <span class="progress-info">
-              {{Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 3000) * 100)}}% goal complete
+              {{HealthCtrl.caloriesBurnedPercentage}}% goal complete
             </span>
             <md-progress-linear md-mode="determinate"
-                                value="{{(HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 30}}">
+                                value="{{HealthCtrl.caloriesBurnedPercentage}}">
             </md-progress-linear>
           </div>
           <span class="goal" flex="15" flex-offset="5">3000</span>
