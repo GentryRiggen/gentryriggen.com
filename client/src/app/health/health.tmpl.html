@@ -1,151 +1,112 @@
 ﻿<div class="page health">
-  <div class="day-headers" layout="row">
-    <div class="day gr-btn" ng-repeat="day in HealthCtrl.data" flex
-         ng-class="{'selected': day.id == HealthCtrl.selectedDay.id}"
-         ng-click="HealthCtrl.selectedDay = day">
-
-      <span class="day-title">{{HealthCtrl.getDayOfMonth(day.dayId)}}</span>
-      <span class="month-title">{{HealthCtrl.getMonth(day.dayId)}}</span>
-    </div>
+  <div ng-if="HealthCtrl.loading" layout="row" layout-sm="column" layout-align="space-around">
+    <md-progress-circular md-mode="indeterminate"></md-progress-circular>
   </div>
 
-  <div class="selected-day">
-    <h1>{{HealthCtrl.selectedDay.dayId | date}}</h1>
-
-    <div class="highlights" layout="row" layout-wrap>
-      <div class="highlight circle calories" flex-sm="50" flex-gt-sm="25">
-        <div class="stat">{{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}</div>
-        <div class="subtext">Calories Burned</div>
-        <i class="mdi mdi-fire"></i>
-      </div>
-
-      <div class="highlight circle steps" flex-sm="50" flex-gt-sm="25">
-        <div class="stat">{{HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0}}</div>
-        <div class="subtext">Steps Taken</div>
-        <i class="mdi mdi-run"></i>
-      </div>
-
-      <div class="highlight circle heart" flex-sm="50" flex-gt-sm="25">
-        <div class="stat">{{HealthCtrl.selectedDay.averageHeartRate ? HealthCtrl.selectedDay.averageHeartRate :
-          'N/A'}}
-        </div>
-        <div class="subtext">Average Heart Rate</div>
-        <i class="mdi mdi-heart-outline"></i>
-      </div>
-
-      <div class="highlight circle distance" flex-sm="50" flex-gt-sm="25">
-        <div class="stat">{{HealthCtrl.selectedDay.distance ?
-          HealthCtrl.convertDistanceToMiles(HealthCtrl.selectedDay.distance) : 0}} Mi
-        </div>
-        <div class="subtext">Distance</div>
-        <i class="mdi mdi-ruler"></i>
-      </div>
+  <div ng-if="!HealthCtrl.loading">
+    <div class="header-row" layout="row" layout-align="end center">
+      <i class="mdi mdi-chevron-left" ng-click="HealthCtrl.dateChange(-1)"></i>
+      <span class="date">{{HealthCtrl.date}}</span>
+        <i class="mdi mdi-chevron-right" ng-click="HealthCtrl.dateChange(1)"></i>
     </div>
 
-    <h2>Activities</h2>
+    <div class="selected-day" layout="row" layout-wrap>
+      <!-- STEPS -->
+      <div class="stat-card md-whiteframe-z2" flex-sm="100" flex-gt-sm="45">
+        <div class="title">Steps <i class="mdi mdi-run"></i></div>
+        <div class="actual-value">
+          <span class="value">{{HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0}}</span>
+          <span class="descriptor">steps</span>
+        </div>
 
-    <div class="activities" ng-repeat="item in HealthCtrl.selectedDay.items">
-      <!--<div ng-if="item.isSleep" class="activity sleep">-->
-        <!--SLEEP-->
-        <!--<pre>{{item | json}}</pre>-->
-      <!--</div>-->
-      <div ng-if="item.isWorkout" class="activity workout">
-        <h3>WORKOUT</h3>
-        <div class="highlights" layout="row" layout-wrap>
-          <div class="highlight circle">
-            <div class="stat">{{item.duration ? HealthCtrl.convertDuration(item.duration) : 0}}</div>
-            <div class="subtext">Duration</div>
-            <i class="mdi mdi-timer"></i>
+        <div class="goal-progress" layout="row">
+          <div flex="80">
+            <span class="progress-info">
+              {{Math.round((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 90)}}% goal complete
+            </span>
+            <md-progress-linear md-mode="determinate"
+                                value="{{(HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 90}}">
+            </md-progress-linear>
           </div>
-
-          <div class="highlight circle">
-            <div class="stat">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
-            <div class="subtext">Average Heart Rate</div>
-            <i class="mdi mdi-heart-outline"></i>
-          </div>
-
-          <div class="highlight circle">
-            <div class="stat">{{item.peakHeartRate ? item.peakHeartRate : 0}}</div>
-            <div class="subtext">Peak Heart Rate</div>
-            <i class="mdi mdi-heart-outline"></i>
-          </div>
-
-          <div class="highlight circle">
-            <div class="stat">{{item.lowestHeartRate ? item.lowestHeartRate : 0}}</div>
-            <div class="subtext">Lowest Heart Rate</div>
-            <i class="mdi mdi-heart-outline"></i>
-          </div>
+          <span class="goal" flex="15" flex-offset="5">9000</span>
         </div>
       </div>
 
-      <div ng-if="item.isRun" class="activity run">
-        <h3>RUN</h3>
-        <div class="highlights" layout="row" layout-wrap>
-          <div class="highlight circle">
-            <div class="stat">{{item.totalDistance ? HealthCtrl.convertDistanceToMiles(item.totalDistance) : 0}} Mi</div>
-            <div class="subtext">Distance</div>
-            <i class="mdi mdi-ruler"></i>
+      <!-- CALORIES -->
+      <div class="stat-card md-whiteframe-z2" flex-offset-sm="0" flex-offset-gt-sm="10" flex-sm="100" flex-gt-sm="45">
+        <div class="title">Calories <i class="mdi mdi-calories"></i></div>
+        <div class="actual-value">
+          <span class="value">{{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}</span>
+          <span class="descriptor">calories</span>
+        </div>
+
+        <div class="goal-progress" layout="row">
+          <div flex="80">
+            <span class="progress-info">
+              {{Math.round((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 30)}}% goal complete
+            </span>
+            <md-progress-linear md-mode="determinate"
+                                value="{{(HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 30}}">
+            </md-progress-linear>
+          </div>
+          <span class="goal" flex="15" flex-offset="5">3000</span>
+        </div>
+      </div>
+
+      <div class="activities" ng-repeat="item in HealthCtrl.selectedDay.items" flex="100">
+        <!-- WORKOUT -->
+        <div ng-if="item.isWorkout" class="stat-card md-whiteframe-z2" flex="100">
+          <div class="title">Workout <i class="mdi mdi-dumbbell"></i></div>
+
+          <div class="highlights" layout="row" layout-align="start start" flex>
+            <div class="highlight" flex="25">
+              <div class="descriptor">Duration</div>
+              <div class="value">{{item.duration ? HealthCtrl.convertDuration(item.duration) : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Calories Burned</div>
+              <div class="value">{{item.caloriesBurned ? item.caloriesBurned : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Average Heart Rate</div>
+              <div class="value">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Peak Heart Rate</div>
+              <div class="value">{{item.peakHeartRate ? item.peakHeartRate : 0}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RUN -->
+        <div ng-if="item.isRun" class="stat-card md-whiteframe-z2" flex="100">
+          <div class="title">Run <i class="mdi mdi-run"></i></div>
+
+          <div class="highlights" layout="row" layout-align="start start" flex>
+            <div class="highlight" flex="25">
+              <div class="descriptor">Distance</div>
+              <div class="value">{{item.totalDistance ? HealthCtrl.convertDistanceToMiles(item.totalDistance) : 0}} Mi</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Duration</div>
+              <div class="value">{{item.duration ? HealthCtrl.convertDuration(item.duration) : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Calories Burned</div>
+              <div class="value">{{item.caloriesBurned ? item.caloriesBurned : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Average Heart Rate</div>
+              <div class="value">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
+            </div>
           </div>
 
-          <div class="highlight circle">
-            <div class="stat">{{item.duration ? HealthCtrl.convertDuration(item.duration) : 0}}</div>
-            <div class="subtext">Duration</div>
-            <i class="mdi mdi-timer"></i>
-          </div>
-
-          <div class="highlight circle">
-            <div class="stat">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
-            <div class="subtext">Average Heart Rate</div>
-            <i class="mdi mdi-heart-outline"></i>
-          </div>
-
-          <div class="highlight circle">
-            <div class="stat">{{item.peakHeartRate ? item.peakHeartRate : 0}}</div>
-            <div class="subtext">Peak Heart Rate</div>
-            <i class="mdi mdi-heart-outline"></i>
-          </div>
-
-          <div class="highlight circle">
-            <div class="stat">{{item.lowestHeartRate ? item.lowestHeartRate : 0}}</div>
-            <div class="subtext">Lowest Heart Rate</div>
-            <i class="mdi mdi-heart-outline"></i>
-          </div>
-
-          <!--<div class="highlight circle">-->
-            <!--<div class="stat">{{item.underAerobicTime ? item.underAerobicTime : 0}}</div>-->
-            <!--<div class="subtext">Under Aerobic Time</div>-->
-            <!--<i class="mdi mdi-timer"></i>-->
-          <!--</div>-->
-
-          <!--<div class="highlight circle">-->
-            <!--<div class="stat">{{item.aerobicTime ? item.aerobicTime : 0}}</div>-->
-            <!--<div class="subtext">Aerobic Time</div>-->
-            <!--<i class="mdi mdi-timer"></i>-->
-          <!--</div>-->
-
-          <!--<div class="highlight circle">-->
-            <!--<div class="stat">{{item.anaerobicTime ? item.anaerobicTime : 0}}</div>-->
-            <!--<div class="subtext">Anaerobic Time</div>-->
-            <!--<i class="mdi mdi-timer"></i>-->
-          <!--</div>-->
-
-          <!--<div class="highlight circle">-->
-            <!--<div class="stat">{{item.fitnessZoneTime ? item.fitnessZoneTime : 0}}</div>-->
-            <!--<div class="subtext">Fitness Zone Time</div>-->
-            <!--<i class="mdi mdi-timer"></i>-->
-          <!--</div>-->
-
-          <!--<div class="highlight circle">-->
-            <!--<div class="stat">{{item.healthyHeartTime ? item.healthyHeartTime : 0}}</div>-->
-            <!--<div class="subtext">Healthy Heart Time</div>-->
-            <!--<i class="mdi mdi-timer"></i>-->
-          <!--</div>-->
-
-          <!--<div class="highlight circle">-->
-            <!--<div class="stat">{{item.redlineTime ? item.redlineTime : 0}}</div>-->
-            <!--<div class="subtext">Redline Time</div>-->
-            <!--<i class="mdi mdi-timer"></i>-->
-          <!--</div>-->
         </div>
       </div>
     </div>

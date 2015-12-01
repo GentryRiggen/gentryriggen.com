@@ -4,21 +4,19 @@ var jwt = require('../services/jwt.service'),
   Q = require('q');
 
 exports.toJson = function (user, extended) {
-  var token = jwt.encode({
-    sub: user.id
-  });
-
   var userModel = {
     id: user.id,
     firstName: user.first_name,
     lastName: user.last_name,
     email: user.email,
     username: user.username,
-    token: token,
     roles: []
   };
 
   if (extended) {
+    user.token = jwt.encode({
+      sub: user.id
+    });
     userModel.msHealthToken = user.mshealth_token;
     userModel.msHealthRefreshToken = user.mshealth_refresh_token;
   }

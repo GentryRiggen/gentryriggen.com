@@ -8,7 +8,7 @@ function getStartAndEndQuery(query) {
   var startTime, endTime;
   if (query.startTime) {
     startTime = new Date(query.startTime);
-    startTime.setHours(0, 0, 0, 0);
+    startTime.setUTCHours(0, 0, 0, 0);
   } else {
     startTime = new Date();
     startTime.setDate(startTime.getDate() - 6);
@@ -20,7 +20,7 @@ function getStartAndEndQuery(query) {
     endTime.setUTCHours(23, 59, 59, 99);
   } else {
     endTime = new Date();
-    endTime.setHours(23, 59, 59, 99);
+    endTime.setUTCHours(23, 59, 59, 99);
   }
 
   return {
@@ -29,9 +29,13 @@ function getStartAndEndQuery(query) {
   };
 }
 
-ctrl.route('/')
+ctrl.route('/day/:date')
   .get(function (req, res) {
-    var query = getStartAndEndQuery(req.query);
+    var query = getStartAndEndQuery({
+      startTime: req.params.date,
+      endTime: req.params.date
+    });
+    console.log(query);
     msHealthRepo.getAll(query.startTime, query.endTime)
       .then(function (results) {
         console.log(results);

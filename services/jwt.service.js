@@ -68,7 +68,7 @@ exports.tokenFilter = function (req, dbPool) {
     var decodedToken = decode(token);
     if (decodedToken.payload.sub) {
       // Get the user and their roles
-      userRepo.getById(decodedToken.payload.sub, true).then(
+      userRepo.getById(decodedToken.payload.sub).then(
         function (user) {
           req.currentUser = user;
           // SETUP Easy Roles

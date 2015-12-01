@@ -4,17 +4,46 @@
     .module('gr')
     .controller('HealthCtrl', HealthController);
 
-  HealthController.$inject = ['HealthService'];
-  function HealthController(HealthService) {
+  HealthController.$inject = ['HealthService', '$location'];
+  function HealthController(HealthService, $location) {
     var HealthCtrl = this;
+    HealthCtrl.date;
+    HealthCtrl.loading = true;
 
     function init() {
-      HealthService.getData()
+      HealthCtrl.loading = true;
+      initStartAndEnd();
+      HealthService.getData(HealthCtrl.date)
         .then(function (resp) {
           HealthCtrl.selectedDay = resp.data[resp.data.length - 1];
           HealthCtrl.data = resp.data;
+          HealthCtrl.loading = false;
         });
     }
+
+    function initStartAndEnd() {
+      if (!HealthCtrl.date) {
+        var queryParams = $location.search();
+        if (queryParams.date) {
+          HealthCtrl.date = moment(queryParams.date).format('YYYY-MM-DD');
+        } else {
+          HealthCtrl.date = moment().format('YYYY-MM-DD');
+        }
+
+        $location.search('date', HealthCtrl.date);
+      }
+    }
+
+    HealthCtrl.dateChange = function (direction) {
+      if (direction > 0) {
+        HealthCtrl.date = moment(HealthCtrl.date).add(1, 'days').format('YYYY-MM-DD');
+      } else {
+        HealthCtrl.date = moment(HealthCtrl.date).subtract(1, 'days').format('YYYY-MM-DD');
+      }
+
+      $location.search('date', HealthCtrl.date);
+      init();
+    };
 
     HealthCtrl.toLocal = function (date) {
       return moment(date).format('YYYY-MM-DD HH:mm:ss');
@@ -44,8 +73,14 @@
 
     HealthCtrl.convertDuration = function (duration) {
       var minutes = Math.floor(duration/60);
+      var hours = Math.floor(minutes/60);
+      minutes = minutes - (hours*60);
       var rem = duration % 60;
-      return minutes + ':' + rem;
+      var durationStr = minutes + 'm ' + rem + 's';
+      if (hours > 0) {
+        durationStr = hours + 'h ' + durationStr;
+      }
+      return durationStr;
     };
 
     init();

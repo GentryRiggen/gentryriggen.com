@@ -9,8 +9,8 @@
     var thisApiUrl = API_URL + '/health',
       healthSvc = {};
 
-    healthSvc.getData = function() {
-      return $http.get(thisApiUrl);
+    healthSvc.getData = function(date) {
+      return $http.get(thisApiUrl + '/day/' + date);
     };
 
     return healthSvc;

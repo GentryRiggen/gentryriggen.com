@@ -135,11 +135,11 @@ var msHealthRepo = {};
 msHealthRepo.ensureStartAndEndTime = function (startTime, endTime) {
   if (!startTime) {
     startTime = new Date();
-    startTime.setUTCHours(0, 0, 0, 0);
+    startTime.setHours(0, 0, 0, 0);
   }
   if (!endTime) {
     endTime = new Date(startTime.getTime());
-    endTime.setUTCHours(23, 59, 59, 999);
+    endTime.setHours(23, 59, 59, 999);
   }
 
   return {
@@ -185,6 +185,7 @@ msHealthRepo.getDailySummary = function (startTime, endTime) {
 
   queryAPI(options)
     .then(function (resp) {
+      console.log(resp);
       if (resp.summaries) {
         resp.summaries.forEach(function (dailySummary) {
           userDailySummaryRepo.createIfDoesNotYetExist(dailySummary);

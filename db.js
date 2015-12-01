@@ -1,6 +1,6 @@
 /* jshint -W117 */
 var conf = require('./config/conf'),
-  devMode = process.env.NODE_ENV === 'development',
+  devMode = process.env.DATA_ENV === 'development',
   knex = require('knex')(devMode ? conf.db.knex.development : conf.db.knex.production);
 
 console.log('DB HOST ', devMode ? conf.db.knex.development.connection.host : conf.db.knex.production.connection.host);
