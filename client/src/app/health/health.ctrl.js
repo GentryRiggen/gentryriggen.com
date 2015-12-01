@@ -20,8 +20,8 @@
           HealthCtrl.loading = false;
           HealthCtrl.stepsTakenPercentage = Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100);
           HealthCtrl.caloriesBurnedPercentage = Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 9000) * 100);
-          console.log('Steps Taken %:', stepsTakenPercentage);
-          console.log('Steps Taken %:', caloriesBurnedPercentage);
+          console.log('Steps Taken %:', HealthCtrl.stepsTakenPercentage);
+          console.log('Steps Taken %:', HealthCtrl.caloriesBurnedPercentage);
         });
     }
 
