@@ -22,17 +22,19 @@
       <div class="stat-card md-whiteframe-z2" flex-sm="100" flex-gt-sm="45">
         <div class="title">Steps <i class="mdi mdi-run"></i></div>
         <div class="actual-value">
-          <span class="value">{{HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0}}</span>
+          <span class="value">
+            {{HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0}}
+          </span>
           <span class="descriptor">steps</span>
         </div>
 
         <div class="goal-progress" layout="row">
           <div flex="80">
             <span class="progress-info">
-              {{Math.round((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 90)}}% goal complete
+              {{HealthCtrl.stepsTakenPercentage}}% goal complete
             </span>
             <md-progress-linear md-mode="determinate"
-                                value="{{(HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 90}}">
+                                value="{{HealthCtrl.stepsTakenPercentage}}">
             </md-progress-linear>
           </div>
           <span class="goal" flex="15" flex-offset="5">9000</span>
@@ -43,18 +45,19 @@
       <div class="stat-card md-whiteframe-z2" flex-offset-sm="0" flex-offset-gt-sm="10" flex-sm="100" flex-gt-sm="45">
         <div class="title">Calories <i class="mdi mdi-fire"></i></div>
         <div class="actual-value">
-          <span
-            class="value">{{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}</span>
+          <span class="value">
+            {{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}
+          </span>
           <span class="descriptor">calories</span>
         </div>
 
         <div class="goal-progress" layout="row">
           <div flex="80">
             <span class="progress-info">
-              {{Math.round((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 30)}}% goal complete
+              {{HealthCtrl.caloriesBurnedPercentage}}% goal complete
             </span>
             <md-progress-linear md-mode="determinate"
-                                value="{{(HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 30}}">
+                                value="{{HealthCtrl.caloriesBurnedPercentage}}">
             </md-progress-linear>
           </div>
           <span class="goal" flex="15" flex-offset="5">3000</span>
