@@ -2,43 +2,17 @@
 var express = require('express'),
   ctrl = express.Router(),
   conf = require('../config/conf'),
-  msHealthRepo = require('../repos/msHealth.repo');
-
-function getStartAndEndQuery(query) {
-  var startTime, endTime;
-  if (query.startTime) {
-    startTime = new Date(query.startTime);
-    startTime.setUTCHours(0, 0, 0, 0);
-  } else {
-    startTime = new Date();
-    startTime.setDate(startTime.getDate() - 6);
-    startTime.setUTCHours(0, 0, 0, 0);
-  }
-
-  if (query.endTime) {
-    endTime = new Date(query.endTime);
-    endTime.setUTCHours(23, 59, 59, 99);
-  } else {
-    endTime = new Date();
-    endTime.setUTCHours(23, 59, 59, 99);
-  }
-
-  return {
-    startTime: startTime,
-    endTime: endTime
-  };
-}
+  msHealthRepo = require('../repos/msHealth.repo'),
+  baseRepo = require('../repos/base.repo')();
 
 ctrl.route('/day/:date')
   .get(function (req, res) {
-    var query = getStartAndEndQuery({
+    var query = baseRepo.getStartAndEndQuery({
       startTime: req.params.date,
       endTime: req.params.date
     });
-    console.log(query);
     msHealthRepo.getAll(query.startTime, query.endTime)
       .then(function (results) {
-        console.log(results);
         res.json(results);
       });
   });
@@ -49,7 +23,7 @@ ctrl.route('/sync')
       res.status(400).send({message: 'Go away'});
     }
 
-    var query = getStartAndEndQuery(req.query);
+    var query = baseRepo.getStartAndEndQuery(req.query);
 
     msHealthRepo.sync(query.startTime, query.endTime);
     res.status(200).send({message: 'Updates in progress'});

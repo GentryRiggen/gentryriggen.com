@@ -58,6 +58,31 @@ var repo = function (tableName, model) {
     return db(tableName).where('id', id).del();
   };
 
+  baseRepo.getStartAndEndQuery = function(query) {
+    var startTime, endTime;
+    if (query.startTime) {
+      startTime = new Date(query.startTime);
+      startTime.setUTCHours(0, 0, 0, 0);
+    } else {
+      startTime = new Date();
+      startTime.setDate(startTime.getDate() - 6);
+      startTime.setUTCHours(0, 0, 0, 0);
+    }
+
+    if (query.endTime) {
+      endTime = new Date(query.endTime);
+      endTime.setUTCHours(23, 59, 59, 99);
+    } else {
+      endTime = new Date();
+      endTime.setUTCHours(23, 59, 59, 99);
+    }
+
+    return {
+      startTime: startTime,
+      endTime: endTime
+    };
+  };
+
   return baseRepo;
 };
 

@@ -10,6 +10,7 @@ var conf = require('../config/conf'),
   multiline = require('multiline'),
   db = require('../db'),
   _ = require('lodash'),
+  moment = require('moment'),
   apiToken, refreshToken;
 
 function getMSHealthUserTokens() {
@@ -133,14 +134,15 @@ function queryAPI(options) {
 var msHealthRepo = {};
 
 msHealthRepo.ensureStartAndEndTime = function (startTime, endTime) {
-  if (!startTime) {
-    startTime = new Date();
-    startTime.setHours(0, 0, 0, 0);
-  }
-  if (!endTime) {
-    endTime = new Date(startTime.getTime());
-    endTime.setHours(23, 59, 59, 999);
-  }
+  startTime = startTime ? moment.utc(startTime) : moment.utc();
+  startTime.hour(0);
+  startTime.minute(0);
+  startTime.second(0);
+
+  endTime = endTime ? moment.utc(endTime) : moment.utc(startTime);
+  endTime.hour(23);
+  endTime.minute(59);
+  endTime.second(59);
 
   return {
     startTime: startTime.toISOString(),
@@ -185,7 +187,6 @@ msHealthRepo.getDailySummary = function (startTime, endTime) {
 
   queryAPI(options)
     .then(function (resp) {
-      console.log(resp);
       if (resp.summaries) {
         resp.summaries.forEach(function (dailySummary) {
           userDailySummaryRepo.createIfDoesNotYetExist(dailySummary);
@@ -210,6 +211,8 @@ msHealthRepo.sync = function (startTime, endTime) {
 
 msHealthRepo.getAll = function (startTime, endTime) {
   var dfd = Q.defer();
+  var options = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
+  var sleepStartTime = moment.utc(options.startTime).subtract(1, 'days').toISOString();
   var query = multiline.stripIndent(function () {/*
    SELECT *
    FROM (
@@ -233,8 +236,9 @@ msHealthRepo.getAll = function (startTime, endTime) {
    */
   });
   query = db.formatQuery(query);
-  db.raw(query, [startTime, endTime, startTime, endTime, startTime, endTime, startTime, endTime])
-    .then(function (results) {
+  query = db.raw(query, [options.startTime, options.endTime, options.startTime, options.endTime, sleepStartTime,
+    options.startTime, options.startTime, options.endTime]);
+  query.then(function (results) {
       var workoutIds = [],
         runIds = [],
         sleepIds = [],
@@ -257,13 +261,16 @@ msHealthRepo.getAll = function (startTime, endTime) {
       promises.push(userRunRepo.getByIds(runIds, false, 'start_time'));
       promises.push(userSleepRepo.getByIds(sleepIds, false, 'start_time'));
       promises.push(userDailySummaryRepo.getByIds(summaryIds, false, 'day_id'));
+      promises.push(userRepo.getById(conf.msftHealth.gentryId, true));
 
       Q.all(promises)
         .then(function (promiseResults) {
           var response = [];
           for (var j = 0; j < promiseResults[3].length; j++) {
             var summary = promiseResults[3][j];
+            summary.lastSync = promiseResults[4].msHealthLastSync;
             var summaryDayId = summary.dayId.getTime();
+            var sleepDayId = summaryDayId - (24 * 60 * 60 * 1000);
             var matches = [];
             // Get all Workouts, Runs and Sleeps
             promiseResults[0].forEach(function (workout) {
@@ -279,7 +286,7 @@ msHealthRepo.getAll = function (startTime, endTime) {
               }
             });
             promiseResults[2].forEach(function (sleep) {
-              if (sleep.dayId.getTime() == summaryDayId) {
+              if (sleep.dayId.getTime() == sleepDayId) {
                 sleep.isSleep = true;
                 matches.push(sleep);
               }

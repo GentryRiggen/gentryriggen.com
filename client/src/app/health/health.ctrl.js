@@ -46,7 +46,9 @@
     };
 
     HealthCtrl.toLocal = function (date) {
-      return moment(date).format('YYYY-MM-DD HH:mm:ss');
+      var localTime = moment.utc(date).toDate();
+      console.log(date, localTime, moment(localTime));
+      return moment(localTime).format('YYYY-MM-DD HH:mm:ss');
     };
 
     HealthCtrl.getMonth = function (date) {
@@ -55,6 +57,10 @@
 
     HealthCtrl.getDayOfMonth = function (date) {
       return moment(HealthCtrl.toLocal(date)).format('DD');
+    };
+
+    HealthCtrl.getLastSync = function (date) {
+      return moment(HealthCtrl.toLocal(date)).format('YYYY-MM-DD HH:mm:ss');
     };
 
     HealthCtrl.convertDistanceToMiles = function (distance) {
@@ -71,15 +77,28 @@
       return pace;
     };
 
-    HealthCtrl.convertDuration = function (duration) {
+    HealthCtrl.convertDuration = function (duration, precision) {
       var minutes = Math.floor(duration/60);
       var hours = Math.floor(minutes/60);
       minutes = minutes - (hours*60);
       var rem = duration % 60;
-      var durationStr = minutes + 'm ' + rem + 's';
-      if (hours > 0) {
-        durationStr = hours + 'h ' + durationStr;
+
+      var durationStr = '';
+      switch (precision) {
+        case 2:
+          var durationStr = minutes + 'm';
+          if (hours > 0) {
+            durationStr = hours + 'h ' + durationStr;
+          }
+          break;
+        default:
+          var durationStr = minutes + 'm ' + rem + 's';
+          if (hours > 0) {
+            durationStr = hours + 'h ' + durationStr;
+          }
+          break;
       }
+
       return durationStr;
     };
 

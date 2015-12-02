@@ -4,10 +4,17 @@
   </div>
 
   <div ng-if="!HealthCtrl.loading">
-    <div class="header-row" layout="row" layout-align="end center">
-      <i class="mdi mdi-chevron-left" ng-click="HealthCtrl.dateChange(-1)"></i>
-      <span class="date">{{HealthCtrl.date}}</span>
+    <div class="header-row">
+      <div layout="row" layout-align="end center">
+        <small class="last-sync">Last Sync Time: <b>{{HealthCtrl.getLastSync(HealthCtrl.selectedDay.lastSync)}} UTC</b></small>
+      </div>
+
+      <div layout="row" layout-align="end center">
+        <span class="date">{{HealthCtrl.date}}</span>
+        <i class="mdi mdi-chevron-left" ng-click="HealthCtrl.dateChange(-1)"></i>
+        <i class="mdi mdi-calendar calendar" ng-click=""></i>
         <i class="mdi mdi-chevron-right" ng-click="HealthCtrl.dateChange(1)"></i>
+      </div>
     </div>
 
     <div class="selected-day" layout="row" layout-wrap>
@@ -34,9 +41,10 @@
 
       <!-- CALORIES -->
       <div class="stat-card md-whiteframe-z2" flex-offset-sm="0" flex-offset-gt-sm="10" flex-sm="100" flex-gt-sm="45">
-        <div class="title">Calories <i class="mdi mdi-calories"></i></div>
+        <div class="title">Calories <i class="mdi mdi-fire"></i></div>
         <div class="actual-value">
-          <span class="value">{{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}</span>
+          <span
+            class="value">{{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}</span>
           <span class="descriptor">calories</span>
         </div>
 
@@ -55,7 +63,7 @@
 
       <div class="activities" ng-repeat="item in HealthCtrl.selectedDay.items" flex="100">
         <!-- WORKOUT -->
-        <div ng-if="item.isWorkout" class="stat-card md-whiteframe-z2" flex="100">
+        <div ng-if="item.isWorkout" class="stat-card md-whiteframe-z2" layout-wrap flex="100">
           <div class="title">Workout <i class="mdi mdi-dumbbell"></i></div>
 
           <div class="highlights" layout="row" layout-align="start start" flex>
@@ -85,10 +93,11 @@
         <div ng-if="item.isRun" class="stat-card md-whiteframe-z2" flex="100">
           <div class="title">Run <i class="mdi mdi-run"></i></div>
 
-          <div class="highlights" layout="row" layout-align="start start" flex>
+          <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
             <div class="highlight" flex="25">
               <div class="descriptor">Distance</div>
-              <div class="value">{{item.totalDistance ? HealthCtrl.convertDistanceToMiles(item.totalDistance) : 0}} Mi</div>
+              <div class="value">{{item.totalDistance ? HealthCtrl.convertDistanceToMiles(item.totalDistance) : 0}} Mi
+              </div>
             </div>
 
             <div class="highlight" flex="25">
@@ -107,6 +116,33 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- SLEEP -->
+        <div ng-if="item.isSleep" class="stat-card md-whiteframe-z2" flex="100">
+          <div class="title">Sleep <i class="mdi mdi-sleep"></i></div>
+
+          <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
+            <div class="highlight" flex="25">
+              <div class="descriptor">Total Duration</div>
+              <div class="value">{{item.totalDuration ? HealthCtrl.convertDuration(item.totalDuration, 2) : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Sleep Duration</div>
+              <div class="value">{{item.sleepDuration ? HealthCtrl.convertDuration(item.sleepDuration, 2) : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Awake Duration</div>
+              <div class="value">{{item.awakeDuration ? HealthCtrl.convertDuration(item.awakeDuration, 2) : 0}}</div>
+            </div>
+
+            <div class="highlight" flex="25">
+              <div class="descriptor">Woke Up</div>
+              <div class="value">{{item.numberOfWakeups ? item.numberOfWakeups : 0}} x</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

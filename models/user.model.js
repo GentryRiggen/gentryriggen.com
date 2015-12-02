@@ -19,6 +19,7 @@ exports.toJson = function (user, extended) {
     });
     userModel.msHealthToken = user.mshealth_token;
     userModel.msHealthRefreshToken = user.mshealth_refresh_token;
+    userModel.msHealthLastSync = user.mshealth_last_update;
   }
 
   return userModel;

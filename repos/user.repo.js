@@ -39,6 +39,7 @@ var repo = function () {
     if (extended) {
       select.push('mshealth_token');
       select.push('mshealth_refresh_token');
+      select.push('mshealth_last_update');
     }
     var userPromise = db(tableName)
       .select(select)
