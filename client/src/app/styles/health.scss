@@ -78,7 +78,11 @@
         }
       }
     }
+  }
+}
 
+@media (max-width:400px) {
+  .health {
     .stat-card.half {
       max-width: 49%;
     }
