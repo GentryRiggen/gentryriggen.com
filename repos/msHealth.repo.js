@@ -273,24 +273,26 @@ msHealthRepo.getAll = function (startTime, endTime) {
             var sleepDayId = summaryDayId - (24 * 60 * 60 * 1000);
             var matches = [];
             // Get all Workouts, Runs and Sleeps
-            promiseResults[0].forEach(function (workout) {
-              if (workout.dayId.getTime() == summaryDayId) {
-                workout.isWorkout = true;
-                matches.push(workout);
+            for (var k = 0; k < promiseResults[0].length; k++) {
+              if (promiseResults[0][k].dayId.getTime() == summaryDayId) {
+                promiseResults[0][k].isWorkout = true;
+                matches.push(promiseResults[0][k]);
               }
-            });
-            promiseResults[1].forEach(function (run) {
-              if (run.dayId.getTime() == summaryDayId) {
-                run.isRun = true;
-                matches.push(run);
+            }
+
+            for (var l = 0; l < promiseResults[1].length; l++) {
+              if (promiseResults[1][l].dayId.getTime() == summaryDayId) {
+                promiseResults[1][l].isRun = true;
+                matches.push(promiseResults[1][l]);
               }
-            });
-            promiseResults[2].forEach(function (sleep) {
-              if (sleep.dayId.getTime() == sleepDayId) {
-                sleep.isSleep = true;
-                matches.push(sleep);
+            }
+
+            for (var m = 0; m < promiseResults[2].length; m++) {
+              if (promiseResults[2][m].dayId.getTime() == sleepDayId) {
+                promiseResults[2][m].isSleep = true;
+                matches.push(promiseResults[2][m]);
               }
-            });
+            }
 
             // Order results by startTime
             summary.items = _.sortBy(matches, 'startTime');

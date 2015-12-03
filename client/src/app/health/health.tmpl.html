@@ -3,7 +3,7 @@
     <md-progress-circular md-mode="indeterminate"></md-progress-circular>
   </div>
 
-  <div ng-if="!HealthCtrl.loading">
+  <div>
     <div class="header-row">
       <div layout="row" layout-align="end center">
         <small class="last-sync">Last Sync Time: <b>{{HealthCtrl.getLastSync(HealthCtrl.selectedDay.lastSync)}} UTC</b></small>
@@ -17,9 +17,9 @@
       </div>
     </div>
 
-    <div class="selected-day" layout="row" layout-wrap>
+    <div ng-if="!HealthCtrl.loading" class="selected-day" layout="row" layout-wrap>
       <!-- STEPS -->
-      <div class="stat-card md-whiteframe-z2" flex-sm="100" flex-gt-sm="45">
+      <div class="stat-card half left md-whiteframe-z2" flex-sm="100" flex-gt-sm="50">
         <div class="title">Steps <i class="mdi mdi-run"></i></div>
         <div class="actual-value">
           <span class="value">
@@ -42,7 +42,7 @@
       </div>
 
       <!-- CALORIES -->
-      <div class="stat-card md-whiteframe-z2" flex-offset-sm="0" flex-offset-gt-sm="10" flex-sm="100" flex-gt-sm="45">
+      <div class="stat-card half right md-whiteframe-z2" flex-sm="100" flex-gt-sm="50">
         <div class="title">Calories <i class="mdi mdi-fire"></i></div>
         <div class="actual-value">
           <span class="value">
