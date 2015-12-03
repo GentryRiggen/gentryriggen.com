@@ -65,6 +65,33 @@
     </div>
 
     <div class="activities" ng-repeat="item in HealthCtrl.selectedDay.items" flex="100">
+      <!-- SLEEP -->
+      <div ng-if="item.isSleep" class="stat-card md-whiteframe-z2" flex="100">
+        <div class="title">Sleep <i class="mdi mdi-sleep"></i></div>
+
+        <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
+          <div class="highlight" flex="25">
+            <div class="descriptor">Total Sleep</div>
+            <div class="value">{{item.sleepDuration ? HealthCtrl.convertDuration(item.sleepDuration, 2) : 0}}</div>
+          </div>
+
+          <div class="highlight" flex="25">
+            <div class="descriptor">Total Duration</div>
+            <div class="value">{{item.totalDuration ? HealthCtrl.convertDuration(item.totalDuration, 2) : 0}}</div>
+          </div>
+
+          <div class="highlight" flex="25">
+            <div class="descriptor">Awake Duration</div>
+            <div class="value">{{item.awakeDuration ? HealthCtrl.convertDuration(item.awakeDuration, 2) : 0}}</div>
+          </div>
+
+          <div class="highlight" flex="25">
+            <div class="descriptor">Woke Up</div>
+            <div class="value">{{item.numberOfWakeups ? item.numberOfWakeups : 0}} x</div>
+          </div>
+        </div>
+      </div>
+
       <!-- WORKOUT -->
       <div ng-if="item.isWorkout" class="stat-card md-whiteframe-z2" layout-wrap flex="100">
         <div class="title">Workout <i class="mdi mdi-dumbbell"></i></div>
@@ -119,33 +146,6 @@
           </div>
         </div>
 
-      </div>
-
-      <!-- SLEEP -->
-      <div ng-if="item.isSleep" class="stat-card md-whiteframe-z2" flex="100">
-        <div class="title">Sleep <i class="mdi mdi-sleep"></i></div>
-
-        <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
-          <div class="highlight" flex="25">
-            <div class="descriptor">Total Duration</div>
-            <div class="value">{{item.totalDuration ? HealthCtrl.convertDuration(item.totalDuration, 2) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex="25">
-            <div class="descriptor">Sleep Duration</div>
-            <div class="value">{{item.sleepDuration ? HealthCtrl.convertDuration(item.sleepDuration, 2) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex="25">
-            <div class="descriptor">Awake Duration</div>
-            <div class="value">{{item.awakeDuration ? HealthCtrl.convertDuration(item.awakeDuration, 2) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex="25">
-            <div class="descriptor">Woke Up</div>
-            <div class="value">{{item.numberOfWakeups ? item.numberOfWakeups : 0}} x</div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
