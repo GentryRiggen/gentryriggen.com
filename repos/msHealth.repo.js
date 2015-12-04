@@ -6,6 +6,7 @@ var conf = require('../config/conf'),
   userRunRepo = require('./userRun.repo'),
   userSleepRepo = require('./userSleep.repo'),
   userDailySummaryRepo = require('./userDailySummary.repo'),
+  dailySummaryHourRepo = require('./dailySummaryHour.repo'),
   httpsService = require('../services/https.service'),
   multiline = require('multiline'),
   db = require('../db'),
@@ -179,6 +180,7 @@ msHealthRepo.getAllActivities = function (startTime, endTime) {
 };
 
 msHealthRepo.getDailySummary = function (startTime, endTime) {
+  var dfd = Q.defer();
   var parameters = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
   var options = {
     path: 'Summaries/Daily',
@@ -191,16 +193,45 @@ msHealthRepo.getDailySummary = function (startTime, endTime) {
         resp.summaries.forEach(function (dailySummary) {
           userDailySummaryRepo.createIfDoesNotYetExist(dailySummary);
         });
+
+        dfd.resolve();
       }
     })
     .catch(function (resp) {
       console.log('Failed to get Daily Summaries', resp);
+      dfd.reject();
+    });
+
+  return dfd.promise;
+};
+
+msHealthRepo.getDailySummaryHour = function (startTime, endTime) {
+  var parameters = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
+  var options = {
+    path: 'Summaries/Hourly',
+    parameters: parameters
+  };
+
+  queryAPI(options)
+    .then(function (resp) {
+      if (resp.summaries) {
+        resp.summaries.forEach(function (hourSummary) {
+          dailySummaryHourRepo.createIfDoesNotYetExist(hourSummary);
+        });
+      }
+    })
+    .catch(function (resp) {
+      console.log('Failed to get Daily Summary Hours', resp);
     });
 };
 
 msHealthRepo.sync = function (startTime, endTime) {
   msHealthRepo.getAllActivities(startTime, endTime);
-  msHealthRepo.getDailySummary(startTime, endTime);
+  msHealthRepo.getDailySummary(startTime, endTime)
+    .then(function () {
+      console.log('Done Syncing Daily Summaries');
+      msHealthRepo.getDailySummaryHour(startTime, endTime)
+    });
   var now = new Date();
   now = now.toMysqlFormat();
   userRepo.createOrUpdate({

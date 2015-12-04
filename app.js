@@ -88,15 +88,15 @@ if (!Date.prototype.toISOString) {
 }
 
 // CRON
-//  */10 * * * *
-var CronJob = require('cron').CronJob;
-var msHealthRepo = require('./repos/msHealth.repo');
-var baseRepo = require('./repos/base.repo')();
-new CronJob('*/1 * * * *', function() {
-  var query = baseRepo.getStartAndEndQuery({});
-  console.log('Syncing with MSFT Health', query);
-  msHealthRepo.sync(query.startTime, query.endTime);
-}, null, true, 'America/Denver');
+if (!devMode) {
+  var CronJob = require('cron').CronJob;
+  var msHealthRepo = require('./repos/msHealth.repo');
+  var baseRepo = require('./repos/base.repo')();
+  new CronJob('*/1 * * * *', function() {
+    var query = baseRepo.getStartAndEndQuery({});
+    msHealthRepo.sync(query.startTime, query.endTime);
+  }, null, true, 'America/Denver');
+}
 
 // START THE APP
 app.listen(port, function () {
