@@ -18,7 +18,7 @@ exports.toJson = function (dailySummary) {
 exports.fromJson = function (msHealthDailySummary) {
   var dailySummary = {
     user_id: conf.msftHealth.gentryId,
-    day_id: (new Date(msHealthDailySummary.parentDay)).formatYearMonthDay(),
+    day_id: (new Date(msHealthDailySummary.parentDay)).formatLocalYearMonthDay(),
     steps_taken: msHealthDailySummary.stepsTaken,
     distance: msHealthDailySummary.distanceSummary.totalDistance
   };

@@ -1,4 +1,7 @@
-var db = require('../db');
+var db = require('../db'),
+  moment = require('moment'),
+  conf = require('../config/conf');
+require('moment-timezone');
 
 var repo = function (tableName, model) {
   var baseRepo = {};
@@ -25,7 +28,7 @@ var repo = function (tableName, model) {
       .whereIn(selectField, idsArray);
 
     if (orderByField) {
-      var direction = orderByDirection && (orderByDirection == 'ASC' || orderByDirection == 'DSEC') ?
+      var direction = orderByDirection && (orderByDirection == 'ASC' || orderByDirection == 'DESC') ?
         orderByDirection : 'ASC';
       query.orderBy(orderByField, direction);
     }
@@ -58,29 +61,28 @@ var repo = function (tableName, model) {
     return db(tableName).where('id', id).del();
   };
 
-  baseRepo.getStartAndEndQuery = function(query) {
-    var startTime, endTime;
-    if (query.startTime) {
-      startTime = new Date(query.startTime);
-      startTime.setUTCHours(0, 0, 0, 0);
-    } else {
-      startTime = new Date();
-      startTime.setDate(startTime.getDate() - 6);
-      startTime.setUTCHours(0, 0, 0, 0);
-    }
+  baseRepo.ensureStartAndEndTime = function (startTime, endTime, toISOLocalString) {
+    startTime = startTime ? moment(startTime).tz(conf.msftHealth.timeZone) : moment().tz(conf.msftHealth.timeZone);
+    startTime.hour(0);
+    startTime.minute(0);
+    startTime.second(0);
 
-    if (query.endTime) {
-      endTime = new Date(query.endTime);
-      endTime.setUTCHours(23, 59, 59, 99);
-    } else {
-      endTime = new Date();
-      endTime.setUTCHours(23, 59, 59, 99);
-    }
+    endTime = endTime ? moment(endTime).tz(conf.msftHealth.timeZone) : moment(startTime).tz(conf.msftHealth.timeZone);
+    endTime.hour(23);
+    endTime.minute(59);
+    endTime.second(59);
 
-    return {
-      startTime: startTime,
-      endTime: endTime
-    };
+    if (toISOLocalString === true) {
+      return {
+        startTime: startTime.toDate().toISOLocalString(),
+        endTime: endTime.toDate().toISOLocalString()
+      };
+    } else {
+      return {
+        startTime: startTime.toDate(),
+        endTime: endTime.toDate()
+      };
+    }
   };
 
   return baseRepo;

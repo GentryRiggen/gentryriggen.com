@@ -34,9 +34,9 @@ exports.fromJson = function (msHealthRun) {
   var run = {
     mshealth_id: msHealthRun.id,
     user_id: conf.msftHealth.gentryId,
-    start_time: (new Date(msHealthRun.startTime)).toMysqlFormat(),
-    end_time: (new Date(msHealthRun.endTime)).toMysqlFormat(),
-    day_id: (new Date(msHealthRun.dayId)).formatYearMonthDay(),
+    start_time: (new Date(msHealthRun.startTime)).toLocalMysqlFormat(),
+    end_time: (new Date(msHealthRun.endTime)).toLocalMysqlFormat(),
+    day_id: (new Date(msHealthRun.dayId)).formatLocalYearMonthDay(),
     duration: baseMsHealthModel.durationToSeconds(msHealthRun.duration),
     split_distance: msHealthRun.splitDistance
   };

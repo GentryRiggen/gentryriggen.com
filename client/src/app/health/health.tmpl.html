@@ -1,7 +1,7 @@
 ﻿<div class="page health">
   <div class="header-row">
     <div layout="row" layout-align="end center">
-      <small class="last-sync">Last Sync Time: <b>{{HealthCtrl.getLastSync(HealthCtrl.selectedDay.lastSync)}} UTC</b>
+      <small class="last-sync">Last Sync Time: <b>{{HealthCtrl.selectedDay.lastSync | date:'MM/dd/yyyy @ h:mma'}} MST</b>
       </small>
     </div>
 
@@ -18,6 +18,12 @@
   </div>
 
   <div ng-if="!HealthCtrl.loading" class="selected-day" layout="row" layout-wrap>
+    <div class="stat-card md-whiteframe-z2" flex="100">
+      <div class="title">Hourly Breakdown <i class="mdi mdi-fire"></i></div>
+
+      <div id="dailySummaryHourChart"></div>
+    </div>
+
     <!-- STEPS -->
     <div class="stat-card half left md-whiteframe-z2" flex-sm="100" flex-gt-sm="50">
       <div class="title">Steps <i class="mdi mdi-run"></i></div>

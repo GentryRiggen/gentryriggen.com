@@ -7,11 +7,8 @@ var express = require('express'),
 
 ctrl.route('/day/:date')
   .get(function (req, res) {
-    var query = baseRepo.getStartAndEndQuery({
-      startTime: req.params.date,
-      endTime: req.params.date
-    });
-    msHealthRepo.getAll(query.startTime, query.endTime)
+    var params = baseRepo.ensureStartAndEndTime(req.params.date, req.params.date);
+    msHealthRepo.getAll(params.startTime, params.endTime)
       .then(function (results) {
         res.json(results);
       });
@@ -23,9 +20,8 @@ ctrl.route('/sync')
       res.status(400).send({message: 'Go away'});
     }
 
-    var query = baseRepo.getStartAndEndQuery(req.query);
-
-    msHealthRepo.sync(query.startTime, query.endTime);
+    var params = baseRepo.ensureStartAndEndTime(req.query.startTime, req.query.endTime);
+    msHealthRepo.sync(params.startTime, params.endTime);
     res.status(200).send({message: 'Updates in progress'});
   });
 
