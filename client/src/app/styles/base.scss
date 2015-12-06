@@ -51,6 +51,14 @@ h2 {
   background-color: lighten($primaryColor, 10);
 }
 
+.no-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 a {
   color: $primaryColor;
   outline: none !important;
@@ -74,6 +82,13 @@ a:hover {
   }
 }
 
+// CHART.JS
+canvas {
+  width: 100% !important;
+  max-width: 800px;
+  height: auto !important;
+}
+
 // NAV
 $defaultHeight: 48px;
 $drawerWidth: 250px;
@@ -89,6 +104,7 @@ $drawerWidth: 250px;
   .header-left {
     width: $drawerWidth;
     background: $navColor;
+    opacity: 1;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -118,12 +134,17 @@ $drawerWidth: 250px;
   }
 
   .header-right {
-    background: lighten($navColor, 10);
+    background: $navColor;
+    opacity: 0.9;
   }
 }
 
 .header.drawer-closed {
   z-index: 2;
+
+  .header-left {
+    opacity: 0.9;
+  }
 
   .header-right {
     background: $navColor;
@@ -227,7 +248,7 @@ $drawerWidth: 250px;
   padding: 1em 4em 4em 4em;
   overflow: hidden;
   .content {
-    max-width: 800px;
+    max-width: $pageMaxWidth;
     width: 100%;
     margin: 0 auto;
   }

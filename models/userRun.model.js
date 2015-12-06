@@ -34,13 +34,12 @@ exports.fromJson = function (msHealthRun) {
   var run = {
     mshealth_id: msHealthRun.id,
     user_id: conf.msftHealth.gentryId,
-    start_time: (new Date(msHealthRun.startTime)).toMysqlFormat(),
-    end_time: (new Date(msHealthRun.endTime)).toMysqlFormat(),
-    day_id: (new Date(msHealthRun.dayId)).formatYearMonthDay(),
     duration: baseMsHealthModel.durationToSeconds(msHealthRun.duration),
     split_distance: msHealthRun.splitDistance
   };
 
+  run = baseMsHealthModel.getDayId(msHealthRun, run);
+  run = baseMsHealthModel.getStartAndEndTime(msHealthRun, run);
   run = baseMsHealthModel.getPerformanceSummary(msHealthRun, run);
   run = baseMsHealthModel.getCaloricSummary(msHealthRun, run);
   run = baseMsHealthModel.getHeartRateSummary(msHealthRun, run);

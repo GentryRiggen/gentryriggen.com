@@ -1,3 +1,7 @@
+var moment = require('moment'),
+  conf = require('../config/conf');
+require('moment-timezone');
+
 var baseModel = {};
 
 // P[n]DT[n]H[n]M[n]S
@@ -107,6 +111,23 @@ baseModel.getDistanceSummary = function (msHealthModel, dbModel) {
   }
 
   return dbModel;
+};
+
+baseModel.getDayId = function (msHealthModel, dbModel) {
+  dbModel.day_id = moment(msHealthModel.startTime).tz(conf.msftHealth.timeZone).toDate().formatLocalYearMonthDay();
+
+  return dbModel;
+};
+
+baseModel.getStartAndEndTime = function (msHealthModel, dbModel) {
+  dbModel.start_time = moment(msHealthModel.startTime).tz(conf.msftHealth.timeZone).toDate().toLocalMysqlFormat();
+  dbModel.end_time = moment(msHealthModel.endTime).tz(conf.msftHealth.timeZone).toDate().toLocalMysqlFormat();
+
+  return dbModel;
+};
+
+baseModel.getLocalMoment = function (date) {
+  return moment(date).tz(conf.msftHealth.timeZone);
 };
 
 module.exports = baseModel;

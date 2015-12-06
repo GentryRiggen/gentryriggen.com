@@ -3,11 +3,16 @@
 
   var app = angular.module('gr');
   app.constant('API_URL', '/api');
+  app.constant("moment", moment);
+  // CHART.JS CONFIG
+  Chart.defaults.global.responsive = true;
+  Chart.defaults.global.multiTooltipTemplate = "<%= datasetLabel %> - <%= value %>";
+  app.constant("ChartJs", Chart);
 
   // Handle Auth on every navigation
   app.run(['$rootScope', '$state', 'UserService', '$window', '$location', '_', '$timeout',
     function ($rootScope, $state, UserService, $window, $location, _, $timeout) {
-      $timeout(function() {
+      $timeout(function () {
         $rootScope.appReady = true;
       }, 7000);
 

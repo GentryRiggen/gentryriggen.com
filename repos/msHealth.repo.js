@@ -1,18 +1,22 @@
 var conf = require('../config/conf'),
   Q = require('q'),
   mySqlDbPool = require('../mySqlDbPool'),
+  baseRepo = require('./base.repo')(),
   userRepo = require('./user.repo')(mySqlDbPool),
   userWorkoutRepo = require('./userWorkout.repo'),
   userRunRepo = require('./userRun.repo'),
   userSleepRepo = require('./userSleep.repo'),
   userDailySummaryRepo = require('./userDailySummary.repo'),
   dailySummaryHourRepo = require('./dailySummaryHour.repo'),
+  dailySummaryHourModel = require('../models/dailySummaryHour.model'),
   httpsService = require('../services/https.service'),
   multiline = require('multiline'),
   db = require('../db'),
   _ = require('lodash'),
   moment = require('moment'),
   apiToken, refreshToken;
+
+require('moment-timezone');
 
 function getMSHealthUserTokens() {
   var dfd = Q.defer();
@@ -134,29 +138,12 @@ function queryAPI(options) {
 
 var msHealthRepo = {};
 
-msHealthRepo.ensureStartAndEndTime = function (startTime, endTime) {
-  startTime = startTime ? moment.utc(startTime) : moment.utc();
-  startTime.hour(0);
-  startTime.minute(0);
-  startTime.second(0);
-
-  endTime = endTime ? moment.utc(endTime) : moment.utc(startTime);
-  endTime.hour(23);
-  endTime.minute(59);
-  endTime.second(59);
-
-  return {
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString()
-  };
-};
-
 msHealthRepo.getAllActivities = function (startTime, endTime) {
-  var parameters = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
+  var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
 
   var options = {
     path: 'Activities',
-    parameters: parameters
+    parameters: params
   };
 
   queryAPI(options)
@@ -181,10 +168,10 @@ msHealthRepo.getAllActivities = function (startTime, endTime) {
 
 msHealthRepo.getDailySummary = function (startTime, endTime) {
   var dfd = Q.defer();
-  var parameters = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
+  var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
   var options = {
     path: 'Summaries/Daily',
-    parameters: parameters
+    parameters: params
   };
 
   queryAPI(options)
@@ -206,10 +193,10 @@ msHealthRepo.getDailySummary = function (startTime, endTime) {
 };
 
 msHealthRepo.getDailySummaryHour = function (startTime, endTime) {
-  var parameters = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
+  var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
   var options = {
     path: 'Summaries/Hourly',
-    parameters: parameters
+    parameters: params
   };
 
   queryAPI(options)
@@ -229,11 +216,10 @@ msHealthRepo.sync = function (startTime, endTime) {
   msHealthRepo.getAllActivities(startTime, endTime);
   msHealthRepo.getDailySummary(startTime, endTime)
     .then(function () {
-      console.log('Done Syncing Daily Summaries');
-      msHealthRepo.getDailySummaryHour(startTime, endTime)
+      msHealthRepo.getDailySummaryHour(startTime, endTime);
     });
   var now = new Date();
-  now = now.toMysqlFormat();
+  now = now.toLocalMysqlFormat();
   userRepo.createOrUpdate({
     id: conf.msftHealth.gentryId,
     mshealth_last_update: now
@@ -242,33 +228,38 @@ msHealthRepo.sync = function (startTime, endTime) {
 
 msHealthRepo.getAll = function (startTime, endTime) {
   var dfd = Q.defer();
-  var options = msHealthRepo.ensureStartAndEndTime(startTime, endTime);
-  var sleepStartTime = moment.utc(options.startTime).subtract(1, 'days').toISOString();
-  var query = multiline.stripIndent(function () {/*
-   SELECT *
-   FROM (
-   (SELECT TRUE AS isWorkout, FALSE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time
-   FROM user_workout
-   WHERE day_id >= ? AND day_id <= ?)
-   UNION ALL
-   (SELECT FALSE isWorkout, TRUE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time
-   FROM user_run
-   WHERE day_id >= ? AND day_id <= ?)
-   UNION ALL
-   (SELECT FALSE isWorkout, FALSE AS isRun, TRUE as isSleep, FALSE as isSummary, id, start_time
-   FROM user_sleep
-   WHERE day_id >= ? AND day_id <= ?)
-   UNION ALL
-   (SELECT FALSE isWorkout, FALSE AS isRun, FALSE as isSleep, TRUE as isSummary, id, day_id as start_time
-   FROM user_daily_summary
-   WHERE day_id >= ? AND day_id <= ?)
-   ) results
-   ORDER BY results.start_time
-   */
-  });
-  query = db.formatQuery(query);
-  query = db.raw(query, [options.startTime, options.endTime, options.startTime, options.endTime, sleepStartTime,
-    options.startTime, options.startTime, options.endTime]);
+  var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
+  var tempParams = baseRepo.ensureStartAndEndTime(startTime, endTime);
+  var sleepStartTime = baseRepo.ensureStartAndEndTime(moment(tempParams.startTime).tz(conf.msftHealth.timeZone).subtract(1, 'days'), endTime, true).startTime;
+  var query = "SELECT *" +
+    " FROM (" +
+    "   (" +
+    "     SELECT TRUE AS isWorkout, FALSE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time" +
+    "     FROM user_workout" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    "   UNION ALL" +
+    "   (" +
+    "     SELECT FALSE isWorkout, TRUE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time" +
+    "     FROM user_run" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    "   UNION ALL" +
+    "   (" +
+    "     SELECT FALSE isWorkout, FALSE AS isRun, TRUE as isSleep, FALSE as isSummary, id, start_time" +
+    "     FROM user_sleep" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    "   UNION ALL" +
+    "   (" +
+    "     SELECT FALSE isWorkout, FALSE AS isRun, FALSE as isSleep, TRUE as isSummary, id, day_id as start_time" +
+    "     FROM user_daily_summary" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    " ) results" +
+    " ORDER BY results.start_time";
+  query = db.raw(query, [params.startTime, params.endTime, params.startTime, params.endTime, sleepStartTime,
+    params.startTime, params.startTime, params.endTime]);
   query.then(function (results) {
       var workoutIds = [],
         runIds = [],
@@ -296,10 +287,16 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
       Q.all(promises)
         .then(function (promiseResults) {
+          if (!promiseResults[3] || promiseResults[3].length < 1) {
+            dfd.resolve([]);
+            return;
+          }
+
           var response = [];
           for (var j = 0; j < promiseResults[3].length; j++) {
             var summary = promiseResults[3][j];
             summary.lastSync = promiseResults[4].msHealthLastSync;
+
             var summaryDayId = summary.dayId.getTime();
             var sleepDayId = summaryDayId - (24 * 60 * 60 * 1000);
             var matches = [];
@@ -327,6 +324,9 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
             // Order results by startTime
             summary.items = _.sortBy(matches, 'startTime');
+
+            // Add hours chart format
+            summary.chartHours = dailySummaryHourModel.toHoursChartJson(summary.hours);
             response.push(summary);
           }
 

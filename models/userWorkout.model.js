@@ -28,12 +28,14 @@ exports.fromJson = function (msHealthWorkout) {
   var workout = {
     mshealth_id: msHealthWorkout.id,
     user_id: conf.msftHealth.gentryId,
-    start_time: (new Date(msHealthWorkout.startTime)).toMysqlFormat(),
-    end_time: (new Date(msHealthWorkout.endTime)).toMysqlFormat(),
-    day_id: (new Date(msHealthWorkout.dayId)).formatYearMonthDay(),
+    start_time: (new Date(msHealthWorkout.startTime)).toLocalMysqlFormat(),
+    end_time: (new Date(msHealthWorkout.endTime)).toLocalMysqlFormat(),
+    day_id: (new Date(msHealthWorkout.dayId)).formatLocalYearMonthDay(),
     duration: baseMsHealthModel.durationToSeconds(msHealthWorkout.duration)
   };
 
+  workout = baseMsHealthModel.getDayId(msHealthWorkout, workout);
+  workout = baseMsHealthModel.getStartAndEndTime(msHealthWorkout, workout);
   workout = baseMsHealthModel.getPerformanceSummary(msHealthWorkout, workout);
   workout = baseMsHealthModel.getCaloricSummary(msHealthWorkout, workout);
   workout = baseMsHealthModel.getHeartRateSummary(msHealthWorkout, workout);

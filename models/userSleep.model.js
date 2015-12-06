@@ -30,12 +30,9 @@ exports.fromJson = function (msHealthSleep) {
   var sleep = {
     mshealth_id: msHealthSleep.id,
     user_id: conf.msftHealth.gentryId,
-    day_id: (new Date(msHealthSleep.dayId)).formatYearMonthDay(),
-    start_time: (new Date(msHealthSleep.startTime)).toMysqlFormat(),
-    end_time: (new Date(msHealthSleep.endTime)).toMysqlFormat(),
     number_of_wakeups: msHealthSleep.numberOfWakeups,
-    fall_asleep_time: (new Date(msHealthSleep.fallAsleepTime)).toMysqlFormat(),
-    wakeup_time: (new Date(msHealthSleep.wakeupTime)).toMysqlFormat(),
+    fall_asleep_time: (new Date(msHealthSleep.fallAsleepTime)).toLocalMysqlFormat(),
+    wakeup_time: (new Date(msHealthSleep.wakeupTime)).toLocalMysqlFormat(),
     total_duration: baseMsHealthModel.durationToSeconds(msHealthSleep.duration),
     awake_duration: baseMsHealthModel.durationToSeconds(msHealthSleep.awakeDuration),
     sleep_duration: baseMsHealthModel.durationToSeconds(msHealthSleep.sleepDuration),
@@ -45,6 +42,8 @@ exports.fromJson = function (msHealthSleep) {
     sleep_efficiency: msHealthSleep.sleepEfficiencyPercentage
   };
 
+  sleep = baseMsHealthModel.getDayId(msHealthSleep, sleep);
+  sleep = baseMsHealthModel.getStartAndEndTime(msHealthSleep, sleep);
   sleep = baseMsHealthModel.getCaloricSummary(msHealthSleep, sleep);
   sleep = baseMsHealthModel.getHeartRateSummary(msHealthSleep, sleep);
 

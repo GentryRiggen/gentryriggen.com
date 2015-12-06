@@ -48,53 +48,14 @@ if (devMode) {
   app.use(express.static(path.join(__dirname, 'client/dist')));
 }
 
-// MISC
-function twoDigits(d) {
-  if (0 <= d && d < 10) return "0" + d.toString();
-  if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
-  return d.toString();
-}
-
-Date.prototype.toMysqlFormat = function () {
-  return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate()) + " " + twoDigits(this.getUTCHours()) + ":" + twoDigits(this.getUTCMinutes()) + ":" + twoDigits(this.getUTCSeconds());
-};
-
-Date.prototype.formatYearMonthDay = function () {
-  return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate());
-};
-
-if (!Date.prototype.toISOString) {
-  (function() {
-
-    function pad(number) {
-      if (number < 10) {
-        return '0' + number;
-      }
-      return number;
-    }
-
-    Date.prototype.toISOString = function() {
-      return this.getUTCFullYear() +
-        '-' + pad(this.getUTCMonth() + 1) +
-        '-' + pad(this.getUTCDate()) +
-        'T' + pad(this.getUTCHours()) +
-        ':' + pad(this.getUTCMinutes()) +
-        ':' + pad(this.getUTCSeconds()) +
-        '.' + (this.getUTCMilliseconds() / 1000).toFixed(3).slice(2, 5) +
-        'Z';
-    };
-
-  }());
-}
-
 // CRON
 if (!devMode) {
   var CronJob = require('cron').CronJob;
   var msHealthRepo = require('./repos/msHealth.repo');
   var baseRepo = require('./repos/base.repo')();
   new CronJob('*/1 * * * *', function() {
-    var query = baseRepo.getStartAndEndQuery({});
-    msHealthRepo.sync(query.startTime, query.endTime);
+    var params = baseRepo.ensureStartAndEndTime(false, false);
+    msHealthRepo.sync(params.startTime, params.endTime);
   }, null, true, 'America/Denver');
 }
 
@@ -102,3 +63,44 @@ if (!devMode) {
 app.listen(port, function () {
   console.log('Listening on PORT: ', port);
 });
+
+
+
+// MISC
+function twoDigits(d) {
+  if (0 <= d && d < 10) return "0" + d.toString();
+  if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
+  return d.toString();
+}
+
+
+Date.prototype.toMysqlFormat = function () {
+  return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate()) + " " + twoDigits(this.getUTCHours()) + ":" + twoDigits(this.getUTCMinutes()) + ":" + twoDigits(this.getUTCSeconds());
+};
+
+Date.prototype.toLocalMysqlFormat = function () {
+  return this.getFullYear() + "-" + twoDigits(1 + this.getMonth()) + "-" + twoDigits(this.getDate()) + " " + twoDigits(this.getHours()) + ":" + twoDigits(this.getMinutes()) + ":" + twoDigits(this.getSeconds());
+};
+
+Date.prototype.formatLocalYearMonthDay = function () {
+  return this.getFullYear() + "-" + twoDigits(1 + this.getMonth()) + "-" + twoDigits(this.getDate());
+};
+
+Date.prototype.toISOLocalString = function () {
+  var tzo = -this.getTimezoneOffset(),
+    dif = tzo >= 0 ? '+' : '-',
+    pad = function(num) {
+      var norm = Math.abs(Math.floor(num));
+      return (norm < 10 ? '0' : '') + norm;
+    };
+
+  var isoLocalString = this.getFullYear();
+  isoLocalString += '-' + pad(this.getMonth()+1);
+  isoLocalString += '-' + pad(this.getDate());
+  isoLocalString += 'T' + pad(this.getHours());
+  isoLocalString += ':' + pad(this.getMinutes());
+  isoLocalString += ':' + pad(this.getSeconds());
+  isoLocalString += dif + pad(tzo / 60);
+  isoLocalString += ':' + pad(tzo % 60);
+  return isoLocalString;
+};
