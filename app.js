@@ -53,7 +53,7 @@ if (!devMode) {
   var CronJob = require('cron').CronJob;
   var msHealthRepo = require('./repos/msHealth.repo');
   var baseRepo = require('./repos/base.repo')();
-  new CronJob('*/1 * * * *', function() {
+  new CronJob('*/5 * * * *', function() {
     var params = baseRepo.ensureStartAndEndTime(false, false);
     msHealthRepo.sync(params.startTime, params.endTime);
   }, null, true, 'America/Denver');
