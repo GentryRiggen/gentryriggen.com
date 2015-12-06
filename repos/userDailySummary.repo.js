@@ -10,7 +10,13 @@ var repo = {};
 repo.getById = baseRepo.getById;
 
 repo.getByIds = function (ids) {
-  var dfd = Q.defer();
+  var dfd = Q.defer(),
+    modeledResults = [];
+  if (!ids || ids.length < 1) {
+    dfd.resolve(modeledResults);
+    return;
+  }
+
   var query = 'SELECT uds.*,' +
     ' dsh.id as `hours:id`,' +
     ' dsh.user_daily_summary_id as `hours:user_daily_summary_id`,' +
@@ -33,7 +39,6 @@ repo.getByIds = function (ids) {
     var dailySummaryTree = new Treeize();
     dailySummaryTree.grow(summaries[0]);
     var dailySummaries = dailySummaryTree.getData();
-    var modeledResults = [];
     dailySummaries.forEach(function (summary) {
       var jsonSummary = model.toJson(summary);
 
@@ -46,14 +51,14 @@ repo.getByIds = function (ids) {
       modeledResults.push(jsonSummary);
     });
 
-    modeledResults.forEach(function (summary) {
-      summary.hours.forEach(function (hour) {
-        console.log(hour.dayId);
-        console.log(hour.startTime);
-        console.log(hour.caloriesBurned);
-        console.log('----------------------------------------');
-      });
-    });
+    //modeledResults.forEach(function (summary) {
+    //  summary.hours.forEach(function (hour) {
+        //console.log(hour.dayId);
+        //console.log(hour.startTime);
+        //console.log(hour.caloriesBurned);
+        //console.log('----------------------------------------');
+      //});
+    //});
     dfd.resolve(modeledResults);
   });
 

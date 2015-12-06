@@ -4,8 +4,8 @@
     .module('gr')
     .controller('HealthCtrl', HealthController);
 
-  HealthController.$inject = ['HealthService', '$location'];
-  function HealthController(HealthService, $location) {
+  HealthController.$inject = ['HealthService', '$location', 'ChartJs', 'moment'];
+  function HealthController(HealthService, $location, ChartJs, moment) {
     var HealthCtrl = this;
     HealthCtrl.loading = true;
 
@@ -14,15 +14,60 @@
       initStartAndEnd();
       HealthService.getData(HealthCtrl.date)
         .then(function (resp) {
-          HealthCtrl.selectedDay = resp.data[resp.data.length - 1];
-          HealthCtrl.data = resp.data;
           HealthCtrl.loading = false;
-          HealthCtrl.stepsTakenPercentage = Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100);
-          HealthCtrl.caloriesBurnedPercentage = Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 3000) * 100);
 
-          // Setup chart #dailySummaryHourChart
-          document.getElementById('dailySummaryHourChart').getContext('2d');
+          if (!resp.data || resp.data.length < 1) {
+            HealthCtrl.selectedDay = false;
+            setupDailyHoursBreakdownChart(false);
+            setupDailyStepGoalChart(false);
+            setupDailyCalorieGoalChart(false);
+          } else {
+            HealthCtrl.selectedDay = resp.data[resp.data.length - 1];
+            HealthCtrl.data = resp.data;
+            HealthCtrl.stepsTakenPercentage = Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100);
+            HealthCtrl.caloriesBurnedPercentage = Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 3000) * 100);
+
+            setupDailyHoursBreakdownChart(HealthCtrl.selectedDay.chartHours);
+            setupDailyStepGoalChart(HealthCtrl.selectedDay.chartSteps);
+            setupDailyCalorieGoalChart(HealthCtrl.selectedDay.chartCalories);
+          }
         });
+    }
+
+    function setupDailyHoursBreakdownChart(data) {
+      var canvas = $("#dailySummaryHourChart");
+      if (data) {
+        canvas.parent().fadeIn(function () {
+          var ctx = $("#dailySummaryHourChart").get(0).getContext("2d");
+          new Chart(ctx).Bar(data);
+        });
+      } else {
+        canvas.parent().fadeOut();
+      }
+    }
+
+    function setupDailyStepGoalChart(data) {
+      var canvas = $("#dailyStepGoalChart");
+      if (data) {
+        canvas.parent().fadeIn(function () {
+          var ctx = $("#dailyStepGoalChart").get(0).getContext("2d");
+          new Chart(ctx).Doughnut(data);
+        });
+      } else {
+        canvas.parent().fadeOut();
+      }
+    }
+
+    function setupDailyCalorieGoalChart(data) {
+      var canvas = $("#dailyCalorieGoalChart");
+      if (data) {
+        canvas.parent().fadeIn(function () {
+          var ctx = $("#dailyCalorieGoalChart").get(0).getContext("2d");
+          new Chart(ctx).Doughnut(data);
+        });
+      } else {
+        canvas.parent().fadeOut();
+      }
     }
 
     function initStartAndEnd() {
@@ -34,18 +79,25 @@
           HealthCtrl.date = moment().format('YYYY-MM-DD');
         }
 
+        calcPrevAndNextDate();
         $location.search('date', HealthCtrl.date);
       }
     }
 
+    function calcPrevAndNextDate() {
+      HealthCtrl.prevDate = moment(HealthCtrl.date).subtract(1, 'days').format('YYYY-MM-DD');
+      HealthCtrl.nextDate = moment(HealthCtrl.date).add(1, 'days').format('YYYY-MM-DD');
+    }
+
     HealthCtrl.dateChange = function (direction) {
       if (direction > 0) {
-        HealthCtrl.date = moment(HealthCtrl.date).add(1, 'days').format('YYYY-MM-DD');
+        HealthCtrl.date = HealthCtrl.nextDate;
       } else {
-        HealthCtrl.date = moment(HealthCtrl.date).subtract(1, 'days').format('YYYY-MM-DD');
+        HealthCtrl.date = HealthCtrl.prevDate;
       }
-
       $location.search('date', HealthCtrl.date);
+      calcPrevAndNextDate();
+
       init();
     };
 

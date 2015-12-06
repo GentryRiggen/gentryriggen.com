@@ -61,6 +61,18 @@ var repo = function (tableName, model) {
     return db(tableName).where('id', id).del();
   };
 
+  baseRepo.getTodayLocal = function (toISOString) {
+    var now = moment().tz(conf.msftHealth.timeZone);
+    return toISOString ? now.toDate().toISOLocalString() : now;
+  };
+
+  baseRepo.getDateNDaysFromNow = function (days, toISOString) {
+    var now = baseRepo.getTodayLocal(false);
+    var requestedDate = days > 0 ? now.add(days, 'days') : now.subtract(Math.abs(days), 'days');
+
+    return toISOString ? requestedDate.toDate().toISOLocalString() : requestedDate;
+  };
+
   baseRepo.ensureStartAndEndTime = function (startTime, endTime, toISOLocalString) {
     startTime = startTime ? moment(startTime).tz(conf.msftHealth.timeZone) : moment().tz(conf.msftHealth.timeZone);
     startTime.hour(0);

@@ -1,27 +1,38 @@
 ﻿<div class="page health">
   <div class="header-row">
-    <div layout="row" layout-align="end center">
-      <small class="last-sync">Last Sync Time: <b>{{HealthCtrl.selectedDay.lastSync | date:'MM/dd/yyyy @ h:mma'}} MST</b>
-      </small>
-    </div>
+    <div layout="row" layout-align="center center">
+      <div class="date-navigation no-select" ng-click="HealthCtrl.dateChange(-1)"
+           flex="15" layout="row" layout-align="start center">
+        <i class="mdi mdi-chevron-left"></i>
+        {{HealthCtrl.prevDate | date:'MM/dd/yyyy'}}
+      </div>
 
-    <div layout="row" layout-align="end center">
-      <span class="date">{{HealthCtrl.date}}</span>
-      <i class="mdi mdi-chevron-left" ng-click="HealthCtrl.dateChange(-1)"></i>
-      <i class="mdi mdi-calendar calendar" ng-click=""></i>
-      <i class="mdi mdi-chevron-right" ng-click="HealthCtrl.dateChange(1)"></i>
+      <div flex="70" layout="column" layout-align="center center">
+        <span class="date">{{HealthCtrl.date | date:'MM/dd/yyyy'}}</span>
+      </div>
+
+      <div class="date-navigation no-select" ng-click="HealthCtrl.dateChange(1)"
+           flex="15" layout="row" layout-align="end center">
+        {{HealthCtrl.nextDate | date:'MM/dd/yyyy'}}
+        <i class="mdi mdi-chevron-right"></i>
+      </div>
     </div>
   </div>
 
-  <div ng-if="HealthCtrl.loading" layout="row" layout-sm="column" layout-align="space-around">
-    <md-progress-circular md-mode="indeterminate"></md-progress-circular>
+  <!-- LOADER -->
+  <div layout="row" layout-sm="column" layout-align="space-around" class="loader">
+    <md-progress-linear ng-if="HealthCtrl.loading" md-mode="indeterminate"></md-progress-linear>
   </div>
 
-  <div ng-if="!HealthCtrl.loading" class="selected-day" layout="row" layout-wrap>
+  <div ng-show="!HealthCtrl.selectedDay" class="selected-day" layout="row" layout-align="center center">
+    <h3>No Data</h3>
+  </div>
+
+  <div class="selected-day" layout="row" layout-wrap>
+    <!-- HOUR BREAKDOWN -->
     <div class="stat-card md-whiteframe-z2" flex="100">
       <div class="title">Hourly Breakdown <i class="mdi mdi-fire"></i></div>
-
-      <div id="dailySummaryHourChart"></div>
+      <canvas id="dailySummaryHourChart"></canvas>
     </div>
 
     <!-- STEPS -->
@@ -31,20 +42,10 @@
           <span class="value">
             {{HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0}}
           </span>
-        <span class="descriptor">steps</span>
+        <span class="descriptor">Goal: 9000/day</span>
       </div>
 
-      <div class="goal-progress" layout="row">
-        <div flex="80">
-            <span class="progress-info">
-              {{HealthCtrl.stepsTakenPercentage}}% goal complete
-            </span>
-          <md-progress-linear md-mode="determinate"
-                              value="{{HealthCtrl.stepsTakenPercentage}}">
-          </md-progress-linear>
-        </div>
-        <span class="goal" flex="15" flex-offset="5">9000</span>
-      </div>
+      <canvas id="dailyStepGoalChart"></canvas>
     </div>
 
     <!-- CALORIES -->
@@ -54,20 +55,10 @@
           <span class="value">
             {{HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0}}
           </span>
-        <span class="descriptor">calories</span>
+        <span class="descriptor">Goal: 3000/day</span>
       </div>
 
-      <div class="goal-progress" layout="row">
-        <div flex="80">
-            <span class="progress-info">
-              {{HealthCtrl.caloriesBurnedPercentage}}% goal complete
-            </span>
-          <md-progress-linear md-mode="determinate"
-                              value="{{HealthCtrl.caloriesBurnedPercentage}}">
-          </md-progress-linear>
-        </div>
-        <span class="goal" flex="15" flex-offset="5">3000</span>
-      </div>
+      <canvas id="dailyCalorieGoalChart"></canvas>
     </div>
 
     <div class="activities" ng-repeat="item in HealthCtrl.selectedDay.items" flex="100">
@@ -76,22 +67,22 @@
         <div class="title">Sleep <i class="mdi mdi-sleep"></i></div>
 
         <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Total Sleep</div>
             <div class="value">{{item.sleepDuration ? HealthCtrl.convertDuration(item.sleepDuration, 2) : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Total Duration</div>
             <div class="value">{{item.totalDuration ? HealthCtrl.convertDuration(item.totalDuration, 2) : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Awake Duration</div>
             <div class="value">{{item.awakeDuration ? HealthCtrl.convertDuration(item.awakeDuration, 2) : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Woke Up</div>
             <div class="value">{{item.numberOfWakeups ? item.numberOfWakeups : 0}} x</div>
           </div>
@@ -103,22 +94,22 @@
         <div class="title">Workout <i class="mdi mdi-dumbbell"></i></div>
 
         <div class="highlights" layout="row" layout-align="start start" flex>
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Duration</div>
             <div class="value">{{item.duration ? HealthCtrl.convertDuration(item.duration) : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Calories Burned</div>
             <div class="value">{{item.caloriesBurned ? item.caloriesBurned : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Average Heart Rate</div>
             <div class="value">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Peak Heart Rate</div>
             <div class="value">{{item.peakHeartRate ? item.peakHeartRate : 0}}</div>
           </div>
@@ -130,23 +121,23 @@
         <div class="title">Run <i class="mdi mdi-run"></i></div>
 
         <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Distance</div>
             <div class="value">{{item.totalDistance ? HealthCtrl.convertDistanceToMiles(item.totalDistance) : 0}} Mi
             </div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Duration</div>
             <div class="value">{{item.duration ? HealthCtrl.convertDuration(item.duration) : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Calories Burned</div>
             <div class="value">{{item.caloriesBurned ? item.caloriesBurned : 0}}</div>
           </div>
 
-          <div class="highlight" flex="25">
+          <div class="highlight" flex-sm="50" flex-gt-sm="25">
             <div class="descriptor">Average Heart Rate</div>
             <div class="value">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
           </div>

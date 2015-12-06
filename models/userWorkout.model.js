@@ -34,6 +34,8 @@ exports.fromJson = function (msHealthWorkout) {
     duration: baseMsHealthModel.durationToSeconds(msHealthWorkout.duration)
   };
 
+  workout = baseMsHealthModel.getDayId(msHealthWorkout, workout);
+  workout = baseMsHealthModel.getStartAndEndTime(msHealthWorkout, workout);
   workout = baseMsHealthModel.getPerformanceSummary(msHealthWorkout, workout);
   workout = baseMsHealthModel.getCaloricSummary(msHealthWorkout, workout);
   workout = baseMsHealthModel.getHeartRateSummary(msHealthWorkout, workout);

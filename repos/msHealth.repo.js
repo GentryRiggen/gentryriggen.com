@@ -8,6 +8,7 @@ var conf = require('../config/conf'),
   userSleepRepo = require('./userSleep.repo'),
   userDailySummaryRepo = require('./userDailySummary.repo'),
   dailySummaryHourRepo = require('./dailySummaryHour.repo'),
+  dailySummaryHourModel = require('../models/dailySummaryHour.model'),
   httpsService = require('../services/https.service'),
   multiline = require('multiline'),
   db = require('../db'),
@@ -215,7 +216,6 @@ msHealthRepo.sync = function (startTime, endTime) {
   msHealthRepo.getAllActivities(startTime, endTime);
   msHealthRepo.getDailySummary(startTime, endTime)
     .then(function () {
-      console.log('Done Syncing Daily Summaries');
       msHealthRepo.getDailySummaryHour(startTime, endTime);
     });
   var now = new Date();
@@ -231,29 +231,33 @@ msHealthRepo.getAll = function (startTime, endTime) {
   var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
   var tempParams = baseRepo.ensureStartAndEndTime(startTime, endTime);
   var sleepStartTime = baseRepo.ensureStartAndEndTime(moment(tempParams.startTime).tz(conf.msftHealth.timeZone).subtract(1, 'days'), endTime, true).startTime;
-  var query = multiline.stripIndent(function () {/*
-   SELECT *
-   FROM (
-   (SELECT TRUE AS isWorkout, FALSE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time
-   FROM user_workout
-   WHERE day_id >= ? AND day_id <= ?)
-   UNION ALL
-   (SELECT FALSE isWorkout, TRUE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time
-   FROM user_run
-   WHERE day_id >= ? AND day_id <= ?)
-   UNION ALL
-   (SELECT FALSE isWorkout, FALSE AS isRun, TRUE as isSleep, FALSE as isSummary, id, start_time
-   FROM user_sleep
-   WHERE day_id >= ? AND day_id <= ?)
-   UNION ALL
-   (SELECT FALSE isWorkout, FALSE AS isRun, FALSE as isSleep, TRUE as isSummary, id, day_id as start_time
-   FROM user_daily_summary
-   WHERE day_id >= ? AND day_id <= ?)
-   ) results
-   ORDER BY results.start_time
-   */
-  });
-  query = db.formatQuery(query);
+  var query = "SELECT *" +
+    " FROM (" +
+    "   (" +
+    "     SELECT TRUE AS isWorkout, FALSE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time" +
+    "     FROM user_workout" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    "   UNION ALL" +
+    "   (" +
+    "     SELECT FALSE isWorkout, TRUE AS isRun, FALSE as isSleep, FALSE as isSummary, id, start_time" +
+    "     FROM user_run" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    "   UNION ALL" +
+    "   (" +
+    "     SELECT FALSE isWorkout, FALSE AS isRun, TRUE as isSleep, FALSE as isSummary, id, start_time" +
+    "     FROM user_sleep" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    "   UNION ALL" +
+    "   (" +
+    "     SELECT FALSE isWorkout, FALSE AS isRun, FALSE as isSleep, TRUE as isSummary, id, day_id as start_time" +
+    "     FROM user_daily_summary" +
+    "     WHERE day_id >= ? AND day_id <= ?" +
+    "   )" +
+    " ) results" +
+    " ORDER BY results.start_time";
   query = db.raw(query, [params.startTime, params.endTime, params.startTime, params.endTime, sleepStartTime,
     params.startTime, params.startTime, params.endTime]);
   query.then(function (results) {
@@ -283,10 +287,16 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
       Q.all(promises)
         .then(function (promiseResults) {
+          if (!promiseResults[3] || promiseResults[3].length < 1) {
+            dfd.resolve([]);
+            return;
+          }
+
           var response = [];
           for (var j = 0; j < promiseResults[3].length; j++) {
             var summary = promiseResults[3][j];
             summary.lastSync = promiseResults[4].msHealthLastSync;
+
             var summaryDayId = summary.dayId.getTime();
             var sleepDayId = summaryDayId - (24 * 60 * 60 * 1000);
             var matches = [];
@@ -314,6 +324,9 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
             // Order results by startTime
             summary.items = _.sortBy(matches, 'startTime');
+
+            // Add hours chart format
+            summary.chartHours = dailySummaryHourModel.toHoursChartJson(summary.hours);
             response.push(summary);
           }
 

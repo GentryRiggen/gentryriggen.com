@@ -86,7 +86,6 @@ Date.prototype.formatLocalYearMonthDay = function () {
   return this.getFullYear() + "-" + twoDigits(1 + this.getMonth()) + "-" + twoDigits(this.getDate());
 };
 
-
 Date.prototype.toISOLocalString = function () {
   var tzo = -this.getTimezoneOffset(),
     dif = tzo >= 0 ? '+' : '-',
