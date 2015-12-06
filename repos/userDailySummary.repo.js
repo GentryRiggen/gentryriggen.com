@@ -20,7 +20,6 @@ repo.getByIds = function (ids) {
   var query = 'SELECT uds.*,' +
     ' dsh.id as `hours:id`,' +
     ' dsh.user_daily_summary_id as `hours:user_daily_summary_id`,' +
-    ' dsh.user_daily_summary_id as `hours:user_daily_summary_id`,' +
     ' dsh.day_id as `hours:day_id`,' +
     ' dsh.start_time as `hours:start_time`,' +
     ' dsh.end_time as `hours:end_time`,' +
@@ -31,7 +30,7 @@ repo.getByIds = function (ids) {
     ' dsh.lowest_heart_rate as `hours:lowest_heart_rate`' +
     ' FROM user_daily_summary uds' +
     ' LEFT JOIN daily_summary_hour dsh ON (dsh.user_daily_summary_id = uds.id)' +
-    ' WHERE uds.id IN (?)' +
+    ' WHERE uds.id IN (?) AND HOUR(dsh.start_time) > 4 AND HOUR(dsh.start_time) < 21' +
     ' ORDER BY uds.day_id DESC, dsh.start_time;';
 
   query = db.raw(query, [ids]);
@@ -53,14 +52,6 @@ repo.getByIds = function (ids) {
       modeledResults.push(jsonSummary);
     });
 
-    //modeledResults.forEach(function (summary) {
-    //  summary.hours.forEach(function (hour) {
-        //console.log(hour.dayId);
-        //console.log(hour.startTime);
-        //console.log(hour.caloriesBurned);
-        //console.log('----------------------------------------');
-      //});
-    //});
     dfd.resolve(modeledResults);
   });
 

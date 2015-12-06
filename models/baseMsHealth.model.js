@@ -130,4 +130,26 @@ baseModel.getLocalMoment = function (date) {
   return moment(date).tz(conf.msftHealth.timeZone);
 };
 
+baseModel.getPrimaryBarChartDataSet = function (title) {
+  return {
+    label: title,
+    fillColor: "rgba(" + conf.colors.primaryRGB.R + "," + conf.colors.primaryRGB.G + "," + conf.colors.primaryRGB.B + ",.75)",
+    strokeColor: "rgba(" + (conf.colors.primaryRGB.R + 10) + "," + (conf.colors.primaryRGB.G + 10) + "," + (conf.colors.primaryRGB.B + 10) + ",.75)",
+    highlightFill: "rgba(" + conf.colors.primaryRGB.R + "," + conf.colors.primaryRGB.G + "," + conf.colors.primaryRGB.B + ",1)",
+    highlightStroke: "rgba(" + (conf.colors.primaryRGB.R + 10) + "," + (conf.colors.primaryRGB.G + 10) + "," + (conf.colors.primaryRGB.B + 10) + ",1)",
+    data: []
+  };
+};
+
+baseModel.getSecondaryBarChartDataSet = function (title) {
+  return {
+    label: title,
+    fillColor: "rgba(" + conf.colors.secondaryRGB.R + "," + conf.colors.secondaryRGB.G + "," + conf.colors.secondaryRGB.B + ",.75)",
+    strokeColor: "rgba(" + (conf.colors.secondaryRGB.R + 10) + "," + (conf.colors.secondaryRGB.G + 10) + "," + (conf.colors.secondaryRGB.B + 10) + ",.75)",
+    highlightFill: "rgba(" + conf.colors.secondaryRGB.R + "," + conf.colors.secondaryRGB.G + "," + conf.colors.secondaryRGB.B + ",1)",
+    highlightStroke: "rgba(" + (conf.colors.secondaryRGB.R + 10) + "," + (conf.colors.secondaryRGB.G + 10) + "," + (conf.colors.secondaryRGB.B + 10) + ",1)",
+    data: []
+  };
+};
+
 module.exports = baseModel;

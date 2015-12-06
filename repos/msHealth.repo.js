@@ -139,6 +139,7 @@ var msHealthRepo = {};
 
 msHealthRepo.getAllActivities = function (startTime, endTime) {
   var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
+  params.activityIncludes = 'Details,MinuteSummaries,MapPoints';
 
   var options = {
     path: 'Activities',

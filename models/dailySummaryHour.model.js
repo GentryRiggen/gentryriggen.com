@@ -27,26 +27,15 @@ exports.toHoursChartJson = function (hours) {
     heartRateData.push(hour.averageHeartRate);
   });
 
+  var primaryDataSet = baseMsHealthModel.getPrimaryBarChartDataSet('Calories');
+  primaryDataSet.data = calorieData;
+
+  var secondaryDataSet = baseMsHealthModel.getSecondaryBarChartDataSet('Avg Heart Rate');
+  secondaryDataSet.data = heartRateData;
+
   return {
     labels: labels,
-    datasets: [
-      {
-        label: 'Calories',
-        fillColor: "rgba(" + conf.colors.primaryRGB.R + "," + conf.colors.primaryRGB.G + "," + conf.colors.primaryRGB.B + ",.75)",
-        strokeColor: "rgba(" + (conf.colors.primaryRGB.R + 10) + "," + (conf.colors.primaryRGB.G + 10) + "," + (conf.colors.primaryRGB.B + 10) + ",.75)",
-        highlightFill: "rgba(" + conf.colors.primaryRGB.R + "," + conf.colors.primaryRGB.G + "," + conf.colors.primaryRGB.B + ",1)",
-        highlightStroke: "rgba(" + (conf.colors.primaryRGB.R + 10) + "," + (conf.colors.primaryRGB.G + 10) + "," + (conf.colors.primaryRGB.B + 10) + ",1)",
-        data: calorieData
-      },
-      {
-        label: 'Avg Heart Rate',
-        fillColor: "rgba(" + conf.colors.secondaryRGB.R + "," + conf.colors.secondaryRGB.G + "," + conf.colors.secondaryRGB.B + ",.75)",
-        strokeColor: "rgba(" + (conf.colors.secondaryRGB.R + 10) + "," + (conf.colors.secondaryRGB.G + 10) + "," + (conf.colors.secondaryRGB.B + 10) + ",.75)",
-        highlightFill: "rgba(" + conf.colors.secondaryRGB.R + "," + conf.colors.secondaryRGB.G + "," + conf.colors.secondaryRGB.B + ",1)",
-        highlightStroke: "rgba(" + (conf.colors.secondaryRGB.R + 10) + "," + (conf.colors.secondaryRGB.G + 10) + "," + (conf.colors.secondaryRGB.B + 10) + ",1)",
-        data: heartRateData
-      }
-    ]
+    datasets: [primaryDataSet, secondaryDataSet]
   };
 };
 

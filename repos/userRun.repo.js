@@ -1,6 +1,7 @@
 var model = require('../models/userRun.model'),
   tableName = 'user_run',
-  baseRepo = require('./base.repo')(tableName, model);
+  baseRepo = require('./base.repo')(tableName, model),
+  minuteRepo = require('./runMinute.repo');
 
 var repo = {};
 repo.getById = baseRepo.getById;
@@ -14,7 +15,14 @@ repo.createIfDoesNotYetExist = function (obj) {
   repo.getByMsHealthId(dbReady.mshealth_id)
     .then(function() {})
     .catch(function () {
-      repo.createOrUpdate(dbReady, false);
+      repo.createOrUpdate(dbReady, false)
+        .then(function (inserted) {
+          if (obj.minuteSummaries) {
+            obj.minuteSummaries.forEach(function (minute){
+              minuteRepo.createOrUpdateWithParent(minute, inserted.id)
+            });
+          }
+        });
     });
 };
 repo.del = baseRepo.del;

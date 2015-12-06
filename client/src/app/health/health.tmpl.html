@@ -2,18 +2,20 @@
   <div class="header-row">
     <div layout="row" layout-align="center center">
       <div class="date-navigation no-select" ng-click="HealthCtrl.dateChange(-1)"
-           flex="15" layout="row" layout-align="start center" ng-if="!HealthCtrl.loading">
+           flex-sm="25" flex-gt-sm="15" layout="row" layout-align="start center"
+           ng-if="!HealthCtrl.loading">
         <i class="mdi mdi-chevron-left"></i>
-        {{HealthCtrl.prevDate | date:'MM/dd/yyyy'}}
+        {{HealthCtrl.prevDate | date:'EEE, MMM d'}}
       </div>
 
-      <div flex="70" layout="column" layout-align="center center">
-        <span class="date">{{HealthCtrl.date | date:'MM/dd/yyyy'}}</span>
+      <div flex-sm="50" flex-gt-sm="70" layout="column" layout-align="center center">
+        <span class="date">{{HealthCtrl.date | date:'EEE, MMM d'}}</span>
       </div>
 
       <div class="date-navigation no-select" ng-click="HealthCtrl.dateChange(1)"
-           flex="15" layout="row" layout-align="end center" ng-if="!HealthCtrl.loading">
-        {{HealthCtrl.nextDate | date:'MM/dd/yyyy'}}
+           flex-sm="25" flex-gt-sm="15" layout="row" layout-align="end center"
+           ng-if="!HealthCtrl.loading">
+        {{HealthCtrl.nextDate | date:'EEE, MMM d'}}
         <i class="mdi mdi-chevron-right"></i>
       </div>
     </div>
