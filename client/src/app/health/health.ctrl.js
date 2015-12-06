@@ -4,8 +4,8 @@
     .module('gr')
     .controller('HealthCtrl', HealthController);
 
-  HealthController.$inject = ['HealthService', '$location', 'ChartJs', 'moment'];
-  function HealthController(HealthService, $location, ChartJs, moment) {
+  HealthController.$inject = ['HealthService', '$location', 'ChartJsService', 'moment'];
+  function HealthController(HealthService, $location, ChartJsService, moment) {
     var HealthCtrl = this;
     HealthCtrl.loading = true;
 
@@ -18,56 +18,20 @@
 
           if (!resp.data || resp.data.length < 1) {
             HealthCtrl.selectedDay = false;
-            setupDailyHoursBreakdownChart(false);
-            setupDailyStepGoalChart(false);
-            setupDailyCalorieGoalChart(false);
+            ChartJsService.updateChart(false, '#dailySummaryHourChart', 'Bar');
+            ChartJsService.updateChart(false, '#dailyStepGoalChart', 'Doughnut');
+            ChartJsService.updateChart(false, '#dailyCalorieGoalChart', 'Doughnut');
           } else {
             HealthCtrl.selectedDay = resp.data[resp.data.length - 1];
             HealthCtrl.data = resp.data;
             HealthCtrl.stepsTakenPercentage = Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100);
             HealthCtrl.caloriesBurnedPercentage = Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 3000) * 100);
 
-            setupDailyHoursBreakdownChart(HealthCtrl.selectedDay.chartHours);
-            setupDailyStepGoalChart(HealthCtrl.selectedDay.chartSteps);
-            setupDailyCalorieGoalChart(HealthCtrl.selectedDay.chartCalories);
+            ChartJsService.updateChart(HealthCtrl.selectedDay.chartHours, '#dailySummaryHourChart', 'Bar');
+            ChartJsService.updateChart(HealthCtrl.selectedDay.chartSteps, '#dailyStepGoalChart', 'Doughnut');
+            ChartJsService.updateChart(HealthCtrl.selectedDay.chartCalories, '#dailyCalorieGoalChart', 'Doughnut');
           }
         });
-    }
-
-    function setupDailyHoursBreakdownChart(data) {
-      var canvas = $("#dailySummaryHourChart");
-      if (data) {
-        canvas.parent().fadeIn(function () {
-          var ctx = $("#dailySummaryHourChart").get(0).getContext("2d");
-          new Chart(ctx).Bar(data);
-        });
-      } else {
-        canvas.parent().fadeOut();
-      }
-    }
-
-    function setupDailyStepGoalChart(data) {
-      var canvas = $("#dailyStepGoalChart");
-      if (data) {
-        canvas.parent().fadeIn(function () {
-          var ctx = $("#dailyStepGoalChart").get(0).getContext("2d");
-          new Chart(ctx).Doughnut(data);
-        });
-      } else {
-        canvas.parent().fadeOut();
-      }
-    }
-
-    function setupDailyCalorieGoalChart(data) {
-      var canvas = $("#dailyCalorieGoalChart");
-      if (data) {
-        canvas.parent().fadeIn(function () {
-          var ctx = $("#dailyCalorieGoalChart").get(0).getContext("2d");
-          new Chart(ctx).Doughnut(data);
-        });
-      } else {
-        canvas.parent().fadeOut();
-      }
     }
 
     function initStartAndEnd() {
@@ -120,7 +84,7 @@
     };
 
     HealthCtrl.convertDistanceToMiles = function (distance) {
-      return Math.round((distance/160934)*100) / 100;
+      return Math.round((distance / 160934) * 100) / 100;
     };
 
     HealthCtrl.convertPace = function (pace) {
@@ -134,9 +98,9 @@
     };
 
     HealthCtrl.convertDuration = function (duration, precision) {
-      var minutes = Math.floor(duration/60);
-      var hours = Math.floor(minutes/60);
-      minutes = minutes - (hours*60);
+      var minutes = Math.floor(duration / 60);
+      var hours = Math.floor(minutes / 60);
+      minutes = minutes - (hours * 60);
       var rem = duration % 60;
 
       var durationStr = '';
