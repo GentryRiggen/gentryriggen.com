@@ -31,11 +31,13 @@ ctrl.route('/syncAll')
       res.status(400).send({message: 'Go away'});
     }
 
+    var startDaysBack = req.query.startDaysBack ? req.query.startDaysBack : 0;
+    var startDate = baseRepo.getDateNDaysFromNow(0 - startDaysBack, true);
     var daysBack = req.query.daysBack ? req.query.daysBack : 365 * 2,
       daysProcessed = [];
     var timer = setInterval(function () {
       if (daysBack > 0) {
-        var date = baseRepo.getDateNDaysFromNow(0 - daysBack, true);
+        var date = baseRepo.getDateNDaysFromDate(startDate, 0 - daysBack, true);
         var params = baseRepo.ensureStartAndEndTime(date, date);
         msHealthRepo.sync(params.startTime, params.endTime);
         daysProcessed.push(date);

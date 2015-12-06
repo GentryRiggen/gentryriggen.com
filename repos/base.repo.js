@@ -73,6 +73,13 @@ var repo = function (tableName, model) {
     return toISOString ? requestedDate.toDate().toISOLocalString() : requestedDate;
   };
 
+  baseRepo.getDateNDaysFromDate = function (date, days, toISOString) {
+    var startDate = moment(date).tz(conf.msftHealth.timeZone);
+    var requestedDate = days > 0 ? startDate.add(days, 'days') : startDate.subtract(Math.abs(days), 'days');
+
+    return toISOString ? requestedDate.toDate().toISOLocalString() : requestedDate;
+  };
+
   baseRepo.ensureStartAndEndTime = function (startTime, endTime, toISOLocalString) {
     startTime = startTime ? moment(startTime).tz(conf.msftHealth.timeZone) : moment().tz(conf.msftHealth.timeZone);
     startTime.hour(0);
