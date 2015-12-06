@@ -43,10 +43,12 @@ repo.getByIds = function (ids) {
       var jsonSummary = model.toJson(summary);
 
       jsonSummary.hours = [];
-      summary.hours.forEach(function (hour) {
-        var jsonHour = dailySummaryHourModel.toJson(hour);
-        jsonSummary.hours.push(jsonHour);
-      });
+      if (summary.hours) {
+        summary.hours.forEach(function (hour) {
+          var jsonHour = dailySummaryHourModel.toJson(hour);
+          jsonSummary.hours.push(jsonHour);
+        });
+      }
 
       modeledResults.push(jsonSummary);
     });
