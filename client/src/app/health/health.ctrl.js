@@ -4,8 +4,8 @@
     .module('gr')
     .controller('HealthCtrl', HealthController);
 
-  HealthController.$inject = ['HealthService', '$location', 'ChartJsService', 'moment'];
-  function HealthController(HealthService, $location, ChartJsService, moment) {
+  HealthController.$inject = ['HealthService', '$location', 'ChartJsService', 'moment', '$timeout'];
+  function HealthController(HealthService, $location, ChartJsService, moment, $timeout) {
     var HealthCtrl = this;
     HealthCtrl.loading = true;
 
@@ -16,22 +16,60 @@
         .then(function (resp) {
           HealthCtrl.loading = false;
 
-          if (!resp.data || resp.data.length < 1) {
-            HealthCtrl.selectedDay = false;
-            ChartJsService.updateChart(false, '#dailySummaryHourChart', 'Bar');
-            ChartJsService.updateChart(false, '#dailyStepGoalChart', 'Doughnut');
-            ChartJsService.updateChart(false, '#dailyCalorieGoalChart', 'Doughnut');
-          } else {
-            HealthCtrl.selectedDay = resp.data[resp.data.length - 1];
+          updateCharts(resp.data);
+          if (resp.data && resp.data.length < 1) {
             HealthCtrl.data = resp.data;
             HealthCtrl.stepsTakenPercentage = Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100);
             HealthCtrl.caloriesBurnedPercentage = Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 3000) * 100);
-
-            ChartJsService.updateChart(HealthCtrl.selectedDay.chartHours, '#dailySummaryHourChart', 'Bar');
-            ChartJsService.updateChart(HealthCtrl.selectedDay.chartSteps, '#dailyStepGoalChart', 'Doughnut');
-            ChartJsService.updateChart(HealthCtrl.selectedDay.chartCalories, '#dailyCalorieGoalChart', 'Doughnut');
           }
         });
+    }
+
+    function updateCharts(data) {
+      if (!data || data.length < 1) {
+        console.log('Clearing Charts', data);
+        ChartJsService.updateChart(false, '#dailySummaryHourChart', 'Line');
+        ChartJsService.updateChart(false, '#dailyStepGoalChart', 'Doughnut');
+        ChartJsService.updateChart(false, '#dailyCalorieGoalChart', 'Doughnut');
+
+        $timeout(function () {
+          HealthCtrl.selectedDay.items.forEach(function (item) {
+            var id;
+            if (item.isWorkout) {
+              id = '#workoutChart-' + item.id;
+            } else if (item.isRun) {
+              id = '#runChart-' + item.id;
+            }
+            ChartJsService.updateChart(false, id, 'Line');
+          });
+        }, 500);
+
+        HealthCtrl.selectedDay = false;
+      } else {
+        HealthCtrl.selectedDay = data[data.length - 1];
+        HealthCtrl.data = data;
+        HealthCtrl.stepsTakenPercentage = Math.round(((HealthCtrl.selectedDay.stepsTaken ? HealthCtrl.selectedDay.stepsTaken : 0) / 9000) * 100);
+        HealthCtrl.caloriesBurnedPercentage = Math.round(((HealthCtrl.selectedDay.caloriesBurned ? HealthCtrl.selectedDay.caloriesBurned : 0) / 3000) * 100);
+
+        ChartJsService.updateChart(HealthCtrl.selectedDay.chartHours, '#dailySummaryHourChart', 'Line');
+        ChartJsService.updateChart(HealthCtrl.selectedDay.chartSteps, '#dailyStepGoalChart', 'Doughnut');
+        ChartJsService.updateChart(HealthCtrl.selectedDay.chartCalories, '#dailyCalorieGoalChart', 'Doughnut');
+
+        console.log('Timeout', HealthCtrl.selectedDay.items);
+        $timeout(function () {
+          HealthCtrl.selectedDay.items.forEach(function (item) {
+            var id;
+            if (item.isWorkout) {
+              id = '#workoutChart-' + item.id;
+              console.log('ChartJsService.updateChart', id, item.chartMinutes, id);
+              ChartJsService.updateChart(item.chartMinutes, id, 'Line');
+            } else if (item.isRun) {
+              id = '#runChart-' + item.id;
+              ChartJsService.updateChart(item.chartMinutes, id, 'Line');
+            }
+          });
+        }, 500);
+      }
     }
 
     function initStartAndEnd() {

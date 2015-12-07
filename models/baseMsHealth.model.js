@@ -10,18 +10,18 @@ baseModel.durationToSeconds = function (duration) {
   var seconds = 0, startIndex;
   if (duration.indexOf('D') > 0) {
     var days = parseInt(duration.substr(1, duration.indexOf('D')));
-    seconds += days*(24*60*60);
+    seconds += days * (24 * 60 * 60);
   }
 
   if (duration.indexOf('H') > 0) {
     var hours = parseInt(duration.substr((duration.indexOf('T') + 1), duration.indexOf('H')));
-    seconds += hours*(60*60);
+    seconds += hours * (60 * 60);
   }
 
   if (duration.indexOf('M') > 0) {
     startIndex = duration.indexOf('H') > 0 ? (duration.indexOf('H') + 1) : (duration.indexOf('T') + 1);
     var minutes = parseInt(duration.substr(startIndex, duration.indexOf('M')));
-    seconds += minutes*60;
+    seconds += minutes * 60;
   }
 
   if (duration.indexOf('S') > 0) {
@@ -130,26 +130,66 @@ baseModel.getLocalMoment = function (date) {
   return moment(date).tz(conf.msftHealth.timeZone);
 };
 
-baseModel.getPrimaryBarChartDataSet = function (title) {
-  return {
-    label: title,
-    fillColor: "rgba(" + conf.colors.primaryRGB.R + "," + conf.colors.primaryRGB.G + "," + conf.colors.primaryRGB.B + ",.75)",
-    strokeColor: "rgba(" + (conf.colors.primaryRGB.R + 10) + "," + (conf.colors.primaryRGB.G + 10) + "," + (conf.colors.primaryRGB.B + 10) + ",.75)",
-    highlightFill: "rgba(" + conf.colors.primaryRGB.R + "," + conf.colors.primaryRGB.G + "," + conf.colors.primaryRGB.B + ",1)",
-    highlightStroke: "rgba(" + (conf.colors.primaryRGB.R + 10) + "," + (conf.colors.primaryRGB.G + 10) + "," + (conf.colors.primaryRGB.B + 10) + ",1)",
-    data: []
-  };
+baseModel.getPrimaryRGBString = function (opacity) {
+  return 'rgba(' + conf.colors.primaryRGB.R + ',' + conf.colors.primaryRGB.G + ',' + conf.colors.primaryRGB.B + ',' + opacity + ')';
 };
 
-baseModel.getSecondaryBarChartDataSet = function (title) {
-  return {
-    label: title,
-    fillColor: "rgba(" + conf.colors.secondaryRGB.R + "," + conf.colors.secondaryRGB.G + "," + conf.colors.secondaryRGB.B + ",.75)",
-    strokeColor: "rgba(" + (conf.colors.secondaryRGB.R + 10) + "," + (conf.colors.secondaryRGB.G + 10) + "," + (conf.colors.secondaryRGB.B + 10) + ",.75)",
-    highlightFill: "rgba(" + conf.colors.secondaryRGB.R + "," + conf.colors.secondaryRGB.G + "," + conf.colors.secondaryRGB.B + ",1)",
-    highlightStroke: "rgba(" + (conf.colors.secondaryRGB.R + 10) + "," + (conf.colors.secondaryRGB.G + 10) + "," + (conf.colors.secondaryRGB.B + 10) + ",1)",
-    data: []
+baseModel.getSecondaryRGBString = function (opacity) {
+  return 'rgba(' + conf.colors.secondaryRGB.R + ',' + conf.colors.secondaryRGB.G + ',' + conf.colors.secondaryRGB.B + ',' + opacity + ')';
+};
+
+baseModel.getChartOptions = function (type, title, color) {
+  var primaryRGB, primaryHex, secondaryRGB, secondaryHex;
+  switch (color) {
+    case 'primary':
+      primaryRGB = baseModel.getPrimaryRGBString('.75');
+      primaryHex = conf.colors.primaryHex;
+      secondaryRGB = baseModel.getPrimaryRGBString('1');
+      secondaryHex = conf.colors.primaryHighlightHex;
+      break;
+    case 'secondary':
+      primaryRGB = baseModel.getSecondaryRGBString('.75');
+      primaryHex = conf.colors.secondaryHex;
+      secondaryRGB = baseModel.getSecondaryRGBString('1');
+      secondaryHex = conf.colors.secondaryHighlightHex;
+      break;
+    case 'tertiary':
+      primaryRGB = baseModel.getSecondaryRGBString('.75');
+      primaryHex = conf.colors.secondaryHex;
+      secondaryRGB = baseModel.getSecondaryRGBString('1');
+      secondaryHex = conf.colors.secondaryHighlightHex;
+      break;
+  }
+
+  var chart = {
+    label: title
   };
+
+  switch (type) {
+    case 'Bar':
+      chart.highlightFill = secondaryRGB;
+      chart.highlightStroke = secondaryRGB;
+      chart.fillColor = primaryRGB;
+      chart.strokeColor = primaryRGB;
+      chart.data = [];
+      break;
+    case 'Line':
+      chart.pointColor = primaryRGB;
+      chart.pointStrokeColor = '#fff';
+      chart.pointHighlightFill = '#fff';
+      chart.pointHighlightStroke = secondaryRGB;
+      chart.fillColor = primaryRGB;
+      chart.strokeColor = primaryRGB;
+      chart.data = [];
+      break;
+    case 'Doughnut':
+      chart.color = primaryHex;
+      chart.highlight = secondaryHex;
+      chart.value = 0;
+      break;
+  }
+
+  return chart;
 };
 
 module.exports = baseModel;

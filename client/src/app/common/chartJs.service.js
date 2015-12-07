@@ -6,15 +6,23 @@
   function ChartJsService(ChartJs) {
     var chartJsService = {};
 
+    function replaceAndUpdate(data, tag, type) {
+      var canvas = angular.element(tag)[0];
+      console.log(tag, canvas);
+      var ctx = canvas.getContext("2d");
+      new ChartJs(ctx)[type](data);
+    }
+
     chartJsService.updateChart = function (data, tag, type) {
       var canvas = $(tag), ctx;
       if (data) {
-        canvas.parent().fadeIn(function () {
-          $(tag).replaceWith('<canvas id="' + tag.substr(1) + '"></canvas>');
-          canvas = $(tag);
-          ctx = canvas.get(0).getContext("2d");
-          new ChartJs(ctx)[type](data);
-        });
+        if (canvas.parent().length) {
+          canvas.parent().fadeIn(function () {
+            replaceAndUpdate(data, tag, type);
+          });
+        } else {
+          replaceAndUpdate(data, tag, type);
+        }
       } else {
         canvas.parent().fadeOut();
       }

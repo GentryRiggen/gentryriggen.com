@@ -14,36 +14,19 @@ exports.toJson = function (dailySummary) {
     lowestHeartRate: dailySummary.lowest_heart_rate
   };
 
-  // Get Steps and Calorie Chart Data
-  json.chartCalories = [
-    {
-      value: json.caloriesBurned,
-      color: conf.colors.primaryHex,
-      highlight: conf.colors.primaryHighlightHex,
-      label: 'Calories Burned'
-    },
-    {
-      value: json.caloriesBurned > 3000 ? 0 : 3000 - json.caloriesBurned,
-      color: conf.colors.secondaryHex,
-      highlight: conf.colors.secondaryHighlightHex,
-      label: 'Remaining to Goal'
-    }
-  ];
+  // CALORIES DOUGHNUT CHART
+  var caloriesDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Calories Burned', 'primary');
+  caloriesDoughnut.value = json.caloriesBurned;
+  var caloriesRemainingDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Remaining to Goal', 'secondary');
+  caloriesRemainingDoughnut.value = json.caloriesBurned > 3000 ? 0 : 3000 - json.caloriesBurned;
+  json.chartCalories = [caloriesDoughnut, caloriesRemainingDoughnut];
 
-  json.chartSteps = [
-    {
-      value: json.stepsTaken,
-      color: conf.colors.primaryHex,
-      highlight: conf.colors.primaryHighlightHex,
-      label: 'Steps Taken'
-    },
-    {
-      value: json.stepsTaken > 9000 ? 0 : 9000 - json.stepsTaken,
-      color: conf.colors.secondaryHex,
-      highlight: conf.colors.secondaryHighlightHex,
-      label: 'Remaining to Goal'
-    }
-  ];
+  // STEPS DOUGHNUT CHART
+  var stepsDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Steps Taken', 'primary');
+  stepsDoughnut.value = json.stepsTaken;
+  var stepsRemainingDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Remaining to Goal', 'secondary');
+  stepsRemainingDoughnut.value = json.stepsTaken > 9000 ? 0 : 9000 - json.stepsTaken;
+  json.chartSteps = [stepsDoughnut, stepsRemainingDoughnut];
 
   return json;
 };

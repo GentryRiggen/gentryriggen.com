@@ -87,11 +87,6 @@
         }
       }
     }
-  }
-}
-
-@media (min-width:600px) {
-  .health {
     .stat-card.half {
       max-width: 49%;
     }
@@ -105,16 +100,37 @@
 }
 
 @media (max-width: 600px) {
-  .header-row {
-    .date-navigation {
-      i {
-        font-size: 24px !important;
-        margin: 0 -5px;
+  .health {
+    .header-row {
+      .date-navigation {
+        i {
+          font-size: 24px;
+          margin: 0 -5px;
+        }
+      }
+
+      .date {
+        font-size: 16px;
       }
     }
 
-    .date {
-      font-size: 16px !important;
+    .stat-card {
+      padding: 10px;
+    }
+    .stat-card.half {
+      .title {
+        font-size: 18px;
+        padding: 0 0 5px 0;
+      }
+      .actual-value {
+        padding: 0 0 10px 0;
+        .value {
+          font-size: 16px;
+        }
+        .descriptor {
+          font-size: 11px;
+        }
+      }
     }
   }
 }

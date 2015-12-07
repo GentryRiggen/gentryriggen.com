@@ -104,6 +104,44 @@ var repo = function (tableName, model) {
     }
   };
 
+  baseRepo.objectifySQLResult = function (results, collectionName) {
+    var i,
+      prop,
+      roots = [],
+      root = {},
+      collection = [],
+      currentId,
+      collectionItem = {};
+    for (i = 0; i < results.length; i++) {
+      if (!currentId) {
+        currentId = results[i].id;
+      }
+
+      if (currentId != results[i].id) {
+        currentId = results[i].id;
+        root[collectionName] = collection;
+        roots.push(root);
+        collection = [];
+        root = {};
+      }
+
+      collectionItem = {};
+      for (prop in results[i]) {
+        if (prop.indexOf(collectionName) !== -1) {
+          collectionItem[(prop.substr(collectionName.length + 1))] = results[i][prop];
+        } else {
+          root[prop] = results[i][prop];
+        }
+      }
+
+      collection.push(collectionItem);
+    }
+
+    root[collectionName] = collection;
+    roots.push(root);
+    return roots;
+  };
+
   return baseRepo;
 };
 

@@ -15,7 +15,7 @@ exports.toJson = function (runMinute) {
   };
 };
 
-exports.toHoursChartJson = function (minutes) {
+exports.toMinutesChartJson = function (minutes) {
   var labels = [],
     calorieData = [],
     heartRateData = [];
@@ -26,10 +26,10 @@ exports.toHoursChartJson = function (minutes) {
     heartRateData.push(minutes[i].averageHeartRate);
   }
 
-  var primaryDataSet = baseMsHealthModel.getPrimaryBarChartDataSet('Calories');
+  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Calories', 'primary');
   primaryDataSet.data = calorieData;
 
-  var secondaryDataSet = baseMsHealthModel.getPrimaryBarChartDataSet('Avg Heart Rate');
+  var secondaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'secondary');
   secondaryDataSet.data = heartRateData;
 
   return {

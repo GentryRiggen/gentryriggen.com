@@ -19,18 +19,20 @@ exports.toJson = function (dailySummaryHour) {
 exports.toHoursChartJson = function (hours) {
   var labels = [],
     calorieData = [],
-    heartRateData = [];
+    heartRateData = [],
+    stepsData = [];
 
   hours.forEach(function (hour) {
     labels.push(baseMsHealthModel.getLocalMoment(hour.startTime).format('hA') + ' - ' + baseMsHealthModel.getLocalMoment(hour.endTime).format('hA'));
     calorieData.push(hour.caloriesBurned);
     heartRateData.push(hour.averageHeartRate);
+    stepsData.push(hour.stepsTaken);
   });
 
-  var primaryDataSet = baseMsHealthModel.getPrimaryBarChartDataSet('Calories');
+  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Calories', 'primary');
   primaryDataSet.data = calorieData;
 
-  var secondaryDataSet = baseMsHealthModel.getSecondaryBarChartDataSet('Avg Heart Rate');
+  var secondaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'secondary');
   secondaryDataSet.data = heartRateData;
 
   return {

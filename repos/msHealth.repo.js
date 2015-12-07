@@ -301,24 +301,30 @@ msHealthRepo.getAll = function (startTime, endTime) {
             var sleepDayId = summaryDayId - (24 * 60 * 60 * 1000);
             var matches = [];
             // Get all Workouts, Runs and Sleeps
-            for (var k = 0; k < promiseResults[0].length; k++) {
-              if (promiseResults[0][k].dayId.getTime() == summaryDayId) {
-                promiseResults[0][k].isWorkout = true;
-                matches.push(promiseResults[0][k]);
+            if (promiseResults[0]) {
+              for (var k = 0; k < promiseResults[0].length; k++) {
+                if (promiseResults[0][k].dayId.getTime() == summaryDayId) {
+                  promiseResults[0][k].isWorkout = true;
+                  matches.push(promiseResults[0][k]);
+                }
               }
             }
 
-            for (var l = 0; l < promiseResults[1].length; l++) {
-              if (promiseResults[1][l].dayId.getTime() == summaryDayId) {
-                promiseResults[1][l].isRun = true;
-                matches.push(promiseResults[1][l]);
+            if (promiseResults[1]) {
+              for (var l = 0; l < promiseResults[1].length; l++) {
+                if (promiseResults[1][l].dayId.getTime() == summaryDayId) {
+                  promiseResults[1][l].isRun = true;
+                  matches.push(promiseResults[1][l]);
+                }
               }
             }
 
-            for (var m = 0; m < promiseResults[2].length; m++) {
-              if (promiseResults[2][m].dayId.getTime() == sleepDayId) {
-                promiseResults[2][m].isSleep = true;
-                matches.push(promiseResults[2][m]);
+            if (promiseResults[2]) {
+              for (var m = 0; m < promiseResults[2].length; m++) {
+                if (promiseResults[2][m].dayId.getTime() == sleepDayId) {
+                  promiseResults[2][m].isSleep = true;
+                  matches.push(promiseResults[2][m]);
+                }
               }
             }
 
