@@ -29,15 +29,15 @@ blogRepo.getPaginated = function (skip, amount, adminRequest) {
      SELECT *
      FROM (
         (SELECT
-              TRUE AS isBook, FALSE AS isBlog, b.id, FALSE AS permalink, b.title,
-              CONCAT(a.last_name, ', ', a.first_name) AS subtitle,
-              b.artwork_url, b.rating, b.review AS content, b.date_read AS created_on
-            FROM book b
-            LEFT JOIN author a ON (a.id = b.author_id)
-            WHERE b.have_read = 1 && b.main_page = 1)
+          TRUE AS isBook, FALSE AS isBlog, b.id, FALSE AS permalink, b.title,
+          CONCAT(a.last_name, ', ', a.first_name) AS subtitle, a.first_name, a.last_name,
+          b.artwork_url, b.rating, b.review AS content, b.date_read AS created_on
+        FROM book b
+        LEFT JOIN author a ON (a.id = b.author_id)
+        WHERE b.have_read = 1 && b.main_page = 1)
         UNION ALL
         (SELECT
-          FALSE AS isBook, TRUE  AS isBlog, id, permalink, title,
+          FALSE AS isBook, TRUE  AS isBlog, id, permalink, title, '' as first_name, '' as last_name,
           subtitle, FALSE AS artwork_url, FALSE AS rating, content, created_on
         FROM blog_post
         WHERE visible = 1)
