@@ -10,25 +10,27 @@
     BlogCtrl.items = [];
     BlogCtrl.page = 1;
     BlogCtrl.pageSize = 5;
-    BlogCtrl.pages = [];
+    BlogCtrl.busy = false;
+    BlogCtrl.numPages = 1;
 
     function init() {
       BlogCtrl.getNextPage(BlogCtrl.page);
     }
 
-    BlogCtrl.getNextPage = function (page, alreadyOnThePage) {
-      if (alreadyOnThePage === true) return;
+    BlogCtrl.getNextPage = function (page) {
+      if (BlogCtrl.busy || page > BlogCtrl.numPages) return;
+      else BlogCtrl.busy = true;
+
       AlertService.showLoading("Fetching Posts...");
       BlogService.getPaginated(page, BlogCtrl.pageSize, true).then(
         function (resp) {
-          console.log(resp.data.posts);
-          BlogCtrl.items = resp.data.posts;
-          BlogCtrl.page = resp.data.page;
+          angular.forEach(resp.data.posts, function(item) {
+            BlogCtrl.items.push(item);
+          });
+          BlogCtrl.page = resp.data.page + 1;
           BlogCtrl.pageSize = resp.data.pageSize;
-          BlogCtrl.pages = [];
-          for (var i = 1; i <= resp.data.numPages; i++) {
-            BlogCtrl.pages.push(i);
-          }
+          BlogCtrl.numPages = resp.data.numPages;
+          BlogCtrl.busy = false;
           AlertService.hideLoading();
         }, function () {
           AlertService.showAlert('error', 'Failure', 'Failed to get blog posts!');

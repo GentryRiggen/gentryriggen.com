@@ -10,6 +10,7 @@
     'textAngular',
     'angularUtils.directives.dirDisqus',
     'angularFileUpload',
-    '720kb.datepicker'
+    '720kb.datepicker',
+    'infinite-scroll'
   ]);
 })();
