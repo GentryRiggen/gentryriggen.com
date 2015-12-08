@@ -1,5 +1,5 @@
 ﻿<div class="page">
-  <div infinite-scroll="BlogCtrl.getNextPage(BlogCtrl.page, BlogCtrl.currentPage == BlogCtrl.page)" infinite-scroll-distance="3">
+    <div infinite-scroll="BlogCtrl.getNextPage(BlogCtrl.page, BlogCtrl.currentPage == BlogCtrl.page)" infinite-scroll-distance="3">
     <div ng-repeat="item in BlogCtrl.items">
       <blog-post post="item" show-comments="false" sample="false" ng-if="item.isBlog"></blog-post>
       <book-detail book="item" show-comments="false" ng-if="item.isBook"></book-detail>

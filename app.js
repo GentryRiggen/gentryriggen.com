@@ -54,7 +54,9 @@ if (!devMode) {
   var msHealthRepo = require('./repos/msHealth.repo');
   var baseRepo = require('./repos/base.repo')();
   new CronJob('*/5 * * * *', function() {
-    var params = baseRepo.ensureStartAndEndTime(false, false);
+    var startDate = baseRepo.getDateNDaysFromDate(false, -1, false);
+    var endDate = baseRepo.getDateNDaysFromDate(false, 1, false);
+    var params = baseRepo.ensureStartAndEndTime(startDate, endDate);
     msHealthRepo.sync(params.startTime, params.endTime);
   }, null, true, 'America/Denver');
 }

@@ -74,6 +74,7 @@ var repo = function (tableName, model) {
   };
 
   baseRepo.getDateNDaysFromDate = function (date, days, toISOString) {
+    date = date ? date : new Date();
     var startDate = moment(date).tz(conf.msftHealth.timeZone);
     var requestedDate = days > 0 ? startDate.add(days, 'days') : startDate.subtract(Math.abs(days), 'days');
 
