@@ -34,7 +34,7 @@ var ctrl = function () {
         });
     })
     .post(function (req, res) {
-      blogRepo.createOrUpdate({createdBy: req.currentUser.id})
+      blogRepo.createOrUpdate({createdBy: req.currentUser.id}, true)
         .then(
           function (blogPost) {
             res.json(blogPost);

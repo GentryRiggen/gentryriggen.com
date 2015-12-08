@@ -14,7 +14,7 @@ exports.toJson = function (user, extended) {
   };
 
   if (extended) {
-    user.token = jwt.encode({
+    userModel.token = jwt.encode({
       sub: user.id
     });
     userModel.msHealthToken = user.mshealth_token;

@@ -7,6 +7,7 @@ var ctrl = function () {
   userCtrl.route('/')
     .get(function (req, res) {
       if (req.currentUser) {
+
         return res.json(req.currentUser);
       } else {
         return res.status(401).send({error: 'Not logged in'});

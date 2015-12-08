@@ -93,7 +93,7 @@ var repo = function () {
       .then(function (user) {
         userModel.checkPassword(password, user.password)
           .then(function () {
-            userRepo.getById(user.id)
+            userRepo.getById(user.id, true)
               .then(function (userModel) {
                 dfd.resolve(userModel);
               })
