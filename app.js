@@ -53,7 +53,7 @@ if (!devMode) {
   var CronJob = require('cron').CronJob;
   var msHealthRepo = require('./repos/msHealth.repo');
   var baseRepo = require('./repos/base.repo')();
-  new CronJob('*/5 * * * *', function() {
+  new CronJob('*/30 * * * * *', function() {
     var startDate = baseRepo.getDateNDaysFromDate(false, -1, false);
     var endDate = baseRepo.getDateNDaysFromDate(false, 1, false);
     var params = baseRepo.ensureStartAndEndTime(startDate, endDate);

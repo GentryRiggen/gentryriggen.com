@@ -92,6 +92,12 @@ var repo = function (tableName, model) {
     endTime.minute(59);
     endTime.second(59);
 
+    // Test end date not being greater than current UTC
+    var utcNow = moment.utc().tz(conf.msftHealth.timeZone);
+    if (endTime > utcNow) {
+      endTime = utcNow;
+    }
+
     if (toISOLocalString === true) {
       return {
         startTime: startTime.toDate().toISOLocalString(),

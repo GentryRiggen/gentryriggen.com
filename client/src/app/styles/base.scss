@@ -28,9 +28,11 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
   padding: 0;
 }
+
 h1 {
   font-size: 3.2em;
 }
+
 h2 {
   font-size: 2.5em;
 }
@@ -204,22 +206,66 @@ $drawerWidth: 250px;
     }
 
     li:hover, li.active {
-      color: $foregroundWhite;
       background: lighten($navColor, 15);
       border-left-color: $primaryColor;
     }
 
-    li.no-select {
-      color: $foregroundWhite;
-      background: lighten($navColor, 5);
-      border-left: 5px solid transparent;
-    }
-    li.no-select:hover {
-      cursor: auto;
+    li.active {
+      background: lighten($navColor, 15);
+      border-left-color: $primaryColor !important;
     }
 
     li.indent {
       padding-left: 45px;
+    }
+
+    li {
+      .arrow-right {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: solid 2px $foregroundWhite;
+        border-top: none;
+        border-left: none;
+        -webkit-transition: transform 0.2s;
+        -moz-transition: transform 0.2s;
+        -o-transition: transform 0.2s;
+        transition: transform 0.2s;
+        -webkit-transform: rotate(-45deg);
+        -moz-transform: rotate(-45deg);
+        -o-transform: rotate(-45deg);
+        transform: rotate(-45deg);
+        position: relative;
+        right: -100px;
+      }
+    }
+
+    li.open.no-select {
+      border-left-color: transparent;
+    }
+
+    li.open {
+      color: $foregroundWhite;
+      background: darken($navColor, 10);
+      border-left-color: $primaryColor;
+      .arrow-right {
+        transform: rotate(45deg);
+      }
+    }
+
+    li.sub-item {
+      border-left-color: transparent;
+      height:0px;
+      opacity: 0;
+      -webkit-transition:height 0.4s linear, opacity 0.3s linear;
+      -moz-transition: height 0.4s linear, opacity 0.3s linear;
+      -ms-transition: height 0.4s linear, opacity 0.3s linear;
+      -o-transition: height 0.4s linear, opacity 0.3s linear;
+      transition: height 0.4s linear, opacity 0.3s linear;
+    }
+    li.sub-item.open {
+      height: $defaultHeight;
+      opacity: 1;
     }
   }
 }

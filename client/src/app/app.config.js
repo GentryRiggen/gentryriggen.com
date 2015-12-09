@@ -93,11 +93,18 @@
           controllerAs: 'BlogDetailCtrl',
           data: {requireLogin: false}
         })
-        .state('health', {
+        .state('healthDaily', {
           url: '/health',
-          templateUrl: '/src/app/health/health.tmpl.html',
-          controller: 'HealthCtrl',
-          controllerAs: 'HealthCtrl',
+          templateUrl: '/src/app/health/dailyHealth.tmpl.html',
+          controller: 'DailyHealthCtrl',
+          controllerAs: 'DailyHealthCtrl',
+          data: {requireLogin: false}
+        })
+        .state('healthInsights', {
+          url: '/healthInsights',
+          templateUrl: '/src/app/health/healthInsights.tmpl.html',
+          controller: 'HealthInsightsCtrl',
+          controllerAs: 'HealthInsightsCtrl',
           data: {requireLogin: false}
         })
         .state('books', {

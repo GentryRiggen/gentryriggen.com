@@ -59,9 +59,22 @@
     <li class="gr-btn" ui-sref="blog" ui-sref-active="active">
       <i class="mdi mdi-pencil"></i> Blog
     </li>
-    <li class="gr-btn" ui-sref="health" ui-sref-active="active">
+
+    <!-- Health Section -->
+    <li class="gr-btn no-select" ng-class="{'open': ShellCtrl.healthOpen}"
+        ng-click="ShellCtrl.toggleDrawerDropdown('health')">
       <i class="mdi mdi-dumbbell"></i> Health
+      <div class="arrow-right"></div>
     </li>
+    <li ng-class="{'open': ShellCtrl.healthOpen}" class="gr-btn sub-item indent"
+        ui-sref="healthDaily" ui-sref-active="active">
+      <i class="mdi mdi-fire"></i> Daily
+    </li>
+    <!--<li ng-class="{'open': ShellCtrl.healthOpen}" class="gr-btn sub-item indent"-->
+        <!--ui-sref="healthInsights" ui-sref-active="active">-->
+      <!--<i class="mdi mdi-chart-areaspline"></i> Insights-->
+    <!--</li>-->
+
     <li class="gr-btn" ui-sref="books" ui-sref-active="active">
       <i class="mdi mdi-library-books"></i> Library
     </li>
@@ -70,19 +83,25 @@
     </li>
 
     <!-- ADMIN USERS -->
-    <li ng-if="ShellCtrl.showModerator" class="gr-btn no-select" ui-sref="admin">
+    <li ng-if="ShellCtrl.showModerator" class="gr-btn no-select" ng-class="{'open': ShellCtrl.adminOpen}"
+        ng-click="ShellCtrl.toggleDrawerDropdown('admin')">
       <i class="mdi mdi-lock"></i> Admin
+      <div class="arrow-right"></div>
     </li>
-    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.blog" ui-sref-active="active">
+    <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"
+        ui-sref="admin.blog" ui-sref-active="active">
       <i class="mdi mdi-pencil-lock"></i> Blog
     </li>
-    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.books" ui-sref-active="active">
+    <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"
+        ui-sref="admin.books" ui-sref-active="active">
       <i class="mdi mdi-library-books"></i> Library
     </li>
-    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.files" ui-sref-active="active">
+    <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"
+        ui-sref="admin.files" ui-sref-active="active">
       <i class="mdi mdi-file"></i> Files
     </li>
-    <li ng-if="ShellCtrl.showModerator" class="gr-btn indent" ui-sref="admin.accounts" ui-sref-active="active">
+    <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"
+        ui-sref="admin.accounts" ui-sref-active="active">
       <i class="mdi mdi-account-multiple"></i> Accounts
     </li>
 

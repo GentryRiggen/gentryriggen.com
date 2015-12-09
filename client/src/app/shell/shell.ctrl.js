@@ -59,7 +59,22 @@
       if (ShellCtrl.drawerOpen && w.width() <= 900) {
         ShellCtrl.toggleMenu();
       }
+
+      ShellCtrl.adminOpen = toState.name.indexOf('admin') !== -1;
+      ShellCtrl.healthOpen = toState.name.indexOf('health') !== -1;
     });
+
+    ShellCtrl.toggleDrawerDropdown = function (name) {
+      switch (name) {
+        case 'health':
+          ShellCtrl.healthOpen = !ShellCtrl.healthOpen;
+          console.log(ShellCtrl.healthOpen);
+          break;
+        case 'admin':
+          ShellCtrl.adminOpen = !ShellCtrl.adminOpen;
+          break;
+      }
+    };
 
     checkUserAuth();
   }
