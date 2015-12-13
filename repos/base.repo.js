@@ -61,6 +61,18 @@ var repo = function (tableName, model) {
     return db(tableName).where('id', id).del();
   };
 
+  baseRepo.onSameDay = function (date1, date2) {
+    date1 = moment(date1).tz(conf.msftHealth.timeZone);
+    date2 = moment(date2).tz(conf.msftHealth.timeZone);
+
+    return (date1.year() == date2.year()) && (date1.month() == date2.month()) && (date1.date() == date2.date());
+  };
+
+  baseRepo.convertDateToLocal = function (date, toISOString) {
+    var date = moment(date).tz(conf.msftHealth.timeZone);
+    return toISOString ? date.toDate().toISOLocalString() : date;
+  };
+
   baseRepo.getTodayLocal = function (toISOString) {
     var now = moment().tz(conf.msftHealth.timeZone);
     return toISOString ? now.toDate().toISOLocalString() : now;

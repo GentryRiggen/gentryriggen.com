@@ -229,8 +229,11 @@ msHealthRepo.sync = function (startTime, endTime) {
 msHealthRepo.getAll = function (startTime, endTime) {
   var dfd = Q.defer();
   var params = baseRepo.ensureStartAndEndTime(startTime, endTime, true);
-  var tempParams = baseRepo.ensureStartAndEndTime(startTime, endTime);
-  var sleepStartTime = baseRepo.ensureStartAndEndTime(moment(tempParams.startTime).tz(conf.msftHealth.timeZone).subtract(1, 'days'), endTime, true).startTime;
+
+  // Want to get 'yesterday's' sleep and display it today
+
+  var sleepStartTime = baseRepo.getDateNDaysFromNow(-1, false);
+  var sleepParams = baseRepo.ensureStartAndEndTime(sleepStartTime, params.startTime);
   var query = "SELECT *" +
     " FROM (" +
     "   (" +
@@ -248,7 +251,7 @@ msHealthRepo.getAll = function (startTime, endTime) {
     "   (" +
     "     SELECT FALSE isWorkout, FALSE AS isRun, TRUE as isSleep, FALSE as isSummary, id, start_time" +
     "     FROM user_sleep" +
-    "     WHERE day_id >= ? AND day_id <= ?" +
+    "     WHERE end_time >= ? AND end_time <= ?" +
     "   )" +
     "   UNION ALL" +
     "   (" +
@@ -258,8 +261,11 @@ msHealthRepo.getAll = function (startTime, endTime) {
     "   )" +
     " ) results" +
     " ORDER BY results.start_time";
-  query = db.raw(query, [params.startTime, params.endTime, params.startTime, params.endTime, sleepStartTime,
-    params.startTime, params.startTime, params.endTime]);
+  query = db.raw(query, [
+    params.startTime, params.endTime,
+    params.startTime, params.endTime,
+    params.startTime, params.endTime,
+    params.startTime, params.endTime]);
   query.then(function (results) {
       var workoutIds = [],
         runIds = [],
@@ -297,13 +303,11 @@ msHealthRepo.getAll = function (startTime, endTime) {
             var summary = promiseResults[3][j];
             summary.lastSync = promiseResults[4].msHealthLastSync;
 
-            var summaryDayId = summary.dayId.getTime();
-            var sleepDayId = summaryDayId - (24 * 60 * 60 * 1000);
             var matches = [];
             // Get all Workouts, Runs and Sleeps
             if (promiseResults[0]) {
               for (var k = 0; k < promiseResults[0].length; k++) {
-                if (promiseResults[0][k].dayId.getTime() == summaryDayId) {
+                if (baseRepo.onSameDay(promiseResults[0][k].dayId, summary.dayId)) {
                   promiseResults[0][k].isWorkout = true;
                   matches.push(promiseResults[0][k]);
                 }
@@ -312,7 +316,7 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
             if (promiseResults[1]) {
               for (var l = 0; l < promiseResults[1].length; l++) {
-                if (promiseResults[1][l].dayId.getTime() == summaryDayId) {
+                if (baseRepo.onSameDay(promiseResults[1][l].dayId, summary.dayId)) {
                   promiseResults[1][l].isRun = true;
                   matches.push(promiseResults[1][l]);
                 }
@@ -321,7 +325,7 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
             if (promiseResults[2]) {
               for (var m = 0; m < promiseResults[2].length; m++) {
-                if (promiseResults[2][m].dayId.getTime() == sleepDayId) {
+                if (baseRepo.onSameDay(promiseResults[2][m].endTime, summary.dayId)) {
                   promiseResults[2][m].isSleep = true;
                   matches.push(promiseResults[2][m]);
                 }
