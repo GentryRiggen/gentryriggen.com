@@ -15,8 +15,8 @@ exports.toJson = function (sleepMinute) {
 
 exports.toMinutesChartJson = function (minutes) {
   var labels = [],
-    calorieData = [],
     heartRateData = [],
+    lastHeartRate = 0,
     rollingHeartRateCount = 0;
 
   for (var i = 0; i < minutes.length; i++) {
@@ -27,9 +27,15 @@ exports.toMinutesChartJson = function (minutes) {
 
       heartRateData.push(Math.round(rollingHeartRateCount / 15));
       rollingHeartRateCount = 0;
-    } else {
-      rollingHeartRateCount += minutes[i].averageHeartRate;
     }
+
+    if (minutes[i].averageHeartRate > 1) {
+      lastHeartRate = minutes[i].averageHeartRate;
+    }
+    if (lastHeartRate < 1) {
+      lastHeartRate = 60;
+    }
+    rollingHeartRateCount += lastHeartRate;
   }
 
   var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'primary');
