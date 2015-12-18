@@ -27,7 +27,6 @@
 
     function updateCharts(data) {
       if (!data || data.length < 1) {
-        console.log('Clearing Charts', data);
         ChartJsService.updateChart(false, '#dailySummaryHourChart', 'Line');
         ChartJsService.updateChart(false, '#dailyStepGoalChart', 'Doughnut');
         ChartJsService.updateChart(false, '#dailyCalorieGoalChart', 'Doughnut');
@@ -55,16 +54,20 @@
         ChartJsService.updateChart(DailyHealthCtrl.selectedDay.chartSteps, '#dailyStepGoalChart', 'Doughnut');
         ChartJsService.updateChart(DailyHealthCtrl.selectedDay.chartCalories, '#dailyCalorieGoalChart', 'Doughnut');
 
-        console.log('Timeout', DailyHealthCtrl.selectedDay.items);
         $timeout(function () {
           DailyHealthCtrl.selectedDay.items.forEach(function (item) {
             var id;
-            if (item.isWorkout) {
+            if (item.isSleep) {
+              id = '#sleepChart-' + item.id;
+              console.log('Updating Sleep Chart', id);
+              ChartJsService.updateChart(item.chartMinutes, id, 'Line');
+            } else if (item.isWorkout) {
               id = '#workoutChart-' + item.id;
-              console.log('ChartJsService.updateChart', id, item.chartMinutes, id);
+              console.log('Updating Workout Chart', id);
               ChartJsService.updateChart(item.chartMinutes, id, 'Line');
             } else if (item.isRun) {
               id = '#runChart-' + item.id;
+              console.log('Updating Run Chart', id);
               ChartJsService.updateChart(item.chartMinutes, id, 'Line');
             }
           });
@@ -105,7 +108,6 @@
 
     DailyHealthCtrl.toLocal = function (date) {
       var localTime = moment.utc(date).toDate();
-      console.log(date, localTime, moment(localTime));
       return moment(localTime).format('YYYY-MM-DD HH:mm:ss');
     };
 
@@ -128,9 +130,7 @@
     DailyHealthCtrl.convertPace = function (pace) {
       // Pace is in ms / meter
       // Convert to minutes/mile
-      console.log(pace);
       pace = pace / 0.0268224;
-      console.log(pace);
 
       return pace;
     };

@@ -31,7 +31,7 @@ repo.getByIds = function (ids) {
     '\nFROM user_run ur' +
     '\nLEFT JOIN run_minute rm ON (rm.user_run_id = ur.id)' +
     '\nWHERE ur.id IN (?)' +
-    '\nORDER BY ur.day_id DESC, ur.start_time;';
+    '\nORDER BY ur.day_id DESC, ur.start_time, rm.start_time;';
 
   query = db.raw(query, [ids]);
   query.then(function(results) {

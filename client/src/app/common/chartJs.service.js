@@ -8,7 +8,6 @@
 
     function replaceAndUpdate(data, tag, type) {
       var canvas = angular.element(tag)[0];
-      console.log(tag, canvas);
       var ctx = canvas.getContext("2d");
       new ChartJs(ctx)[type](data);
     }

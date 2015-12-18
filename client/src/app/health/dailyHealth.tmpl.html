@@ -65,93 +65,13 @@
 
     <div class="activities" ng-repeat="item in DailyHealthCtrl.selectedDay.items" flex="100">
       <!-- SLEEP -->
-      <div ng-if="item.isSleep" class="stat-card md-whiteframe-z2" flex="100">
-        <div class="title">Sleep <i class="mdi mdi-sleep"></i></div>
-
-        <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Total Sleep</div>
-            <div class="value">{{item.sleepDuration ? DailyHealthCtrl.convertDuration(item.sleepDuration, 2) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Total Duration</div>
-            <div class="value">{{item.totalDuration ? DailyHealthCtrl.convertDuration(item.totalDuration, 2) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Awake Duration</div>
-            <div class="value">{{item.awakeDuration ? DailyHealthCtrl.convertDuration(item.awakeDuration, 2) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Woke Up</div>
-            <div class="value">{{item.numberOfWakeups ? item.numberOfWakeups : 0}} x</div>
-          </div>
-        </div>
-      </div>
+      <health-activity ng-if="item.isSleep" activity="item" type="'sleep'"></health-activity>
 
       <!-- WORKOUT -->
-      <div ng-if="item.isWorkout" class="stat-card md-whiteframe-z2" layout-wrap flex="100">
-        <div class="title">Workout <i class="mdi mdi-dumbbell"></i></div>
-
-        <p>Minute Breakdown</p>
-        <canvas id="workoutChart-{{item.id}}"></canvas>
-
-        <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Duration</div>
-            <div class="value">{{item.duration ? DailyHealthCtrl.convertDuration(item.duration) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Calories Burned</div>
-            <div class="value">{{item.caloriesBurned ? item.caloriesBurned : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Average Heart Rate</div>
-            <div class="value">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Peak Heart Rate</div>
-            <div class="value">{{item.peakHeartRate ? item.peakHeartRate : 0}}</div>
-          </div>
-        </div>
-      </div>
+      <health-activity ng-if="item.isWorkout" activity="item" type="'workout'"></health-activity>
 
       <!-- RUN -->
-      <div ng-if="item.isRun" class="stat-card md-whiteframe-z2" flex="100">
-        <div class="title">Run <i class="mdi mdi-run"></i></div>
-
-        <p>Minute Breakdown</p>
-        <canvas id="runChart-{{item.id}}"></canvas>
-
-        <div class="highlights" layout="row" layout-align="start start" layout-wrap flex>
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Distance</div>
-            <div class="value">{{item.totalDistance ? DailyHealthCtrl.convertDistanceToMiles(item.totalDistance) : 0}} Mi
-            </div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Duration</div>
-            <div class="value">{{item.duration ? DailyHealthCtrl.convertDuration(item.duration) : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Calories Burned</div>
-            <div class="value">{{item.caloriesBurned ? item.caloriesBurned : 0}}</div>
-          </div>
-
-          <div class="highlight" flex-sm="50" flex-gt-sm="25">
-            <div class="descriptor">Average Heart Rate</div>
-            <div class="value">{{item.averageHeartRate ? item.averageHeartRate : 0}}</div>
-          </div>
-        </div>
-
-      </div>
+      <health-activity ng-if="item.isRun" activity="item" type="'run'"></health-activity>
     </div>
   </div>
 </div>

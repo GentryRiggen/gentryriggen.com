@@ -31,7 +31,7 @@ repo.getByIds = function (ids) {
     '\nFROM user_workout uw' +
     '\nLEFT JOIN workout_minute wm ON (wm.user_workout_id = uw.id)' +
     '\nWHERE uw.id IN (?)' +
-    '\nORDER BY uw.day_id DESC, uw.start_time;';
+    '\nORDER BY uw.day_id DESC, uw.start_time, wm.start_time;';
 
   query = db.raw(query, [ids]);
   query.then(function(results) {

@@ -1,5 +1,4 @@
-var baseMsHealthModel = require('./baseMsHealth.model'),
-  conf = require('../config/conf');
+var baseMsHealthModel = require('./baseMsHealth.model');
 
 exports.toJson = function (sleepMinute) {
   return {
@@ -14,26 +13,31 @@ exports.toJson = function (sleepMinute) {
   };
 };
 
-exports.toHoursChartJson = function (minutes) {
+exports.toMinutesChartJson = function (minutes) {
   var labels = [],
     calorieData = [],
-    heartRateData = [];
+    heartRateData = [],
+    rollingHeartRateCount = 0;
 
   for (var i = 0; i < minutes.length; i++) {
-    labels.push(i + 1);
-    calorieData.push(minutes[i].caloriesBurned);
-    heartRateData.push(minutes[i].averageHeartRate);
+    if (i > 0 && i % 15 === 0) {
+      var avg = Math.round((i/60)*100)/100;
+      var label = (avg > 1 ? avg : 1) + ' hour(s)';
+      labels.push(label);
+
+      heartRateData.push(Math.round(rollingHeartRateCount / 15));
+      rollingHeartRateCount = 0;
+    } else {
+      rollingHeartRateCount += minutes[i].averageHeartRate;
+    }
   }
 
-  var primaryDataSet = baseMsHealthModel.getPrimaryBarChartDataSet('Calories');
-  primaryDataSet.data = calorieData;
-
-  var secondaryDataSet = baseMsHealthModel.getPrimaryBarChartDataSet('Avg Heart Rate');
-  secondaryDataSet.data = heartRateData;
+  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'primary');
+  primaryDataSet.data = heartRateData;
 
   return {
     labels: labels,
-    datasets: [primaryDataSet, secondaryDataSet]
+    datasets: [primaryDataSet]
   };
 };
 

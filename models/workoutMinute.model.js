@@ -15,28 +15,7 @@ exports.toJson = function (workoutMinute) {
   };
 };
 
-exports.toMinutesChartJson = function (minutes) {
-  var labels = [],
-    calorieData = [],
-    heartRateData = [];
-
-  for (var i = 0; i < minutes.length; i++) {
-    labels.push(i + 1);
-    calorieData.push(minutes[i].caloriesBurned);
-    heartRateData.push(minutes[i].averageHeartRate);
-  }
-
-  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Calories', 'primary');
-  primaryDataSet.data = calorieData;
-
-  var secondaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'secondary');
-  secondaryDataSet.data = heartRateData;
-
-  return {
-    labels: labels,
-    datasets: [primaryDataSet, secondaryDataSet]
-  };
-};
+exports.toMinutesChartJson = baseMsHealthModel.toMinutesChartJson;
 
 exports.fromJson = function (msHealthWorkoutMinute) {
   var workoutMinute = {
