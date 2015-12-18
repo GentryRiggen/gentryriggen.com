@@ -203,11 +203,11 @@ baseModel.toMinutesChartJson = function (minutes) {
     heartRateData.push(minutes[i].averageHeartRate);
   }
 
-  var primaryDataSet = baseModel.getChartOptions('Line', 'Calories', 'primary');
-  primaryDataSet.data = calorieData;
+  var primaryDataSet = baseModel.getChartOptions('Line', 'Avg Heart Rate', 'primary');
+  primaryDataSet.data = heartRateData;
 
-  var secondaryDataSet = baseModel.getChartOptions('Line', 'Avg Heart Rate', 'secondary');
-  secondaryDataSet.data = heartRateData;
+  var secondaryDataSet = baseModel.getChartOptions('Line', 'Calories', 'secondary');
+  secondaryDataSet.data = calorieData;
 
   return {
     labels: labels,
