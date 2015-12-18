@@ -29,7 +29,7 @@
   <!-- GRID VIEW -->
   <div class="book-grid" layout="row" layout-wrap>
     <div ng-repeat="book in BooksCtrl.books"
-         class="book" flex-sm="45" flex-gt-sm="20"
+         class="book" flex="45" flex-gt-sm="20"
          ng-click="BooksCtrl.rowClicked(book)">
       <img ng-src="{{book.artworkUrl}}" />
       <h1>{{book.title}}</h1>

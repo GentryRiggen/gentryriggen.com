@@ -3,27 +3,35 @@
   $headerHeight: 64px;
   color: $foregroundColor;
   .header-row {
-    position: absolute;
-    top: 15px;
+    position: fixed;
+    top: 14px;
     left: 0;
     right: 0;
     max-width: $pageMaxWidth;
-    height: $headerHeight;
+    height: $headerHeight/2;
     margin: 0 auto;
     padding: 0 15px;
     color: $navColor;
+    background: #eee;
 
     .date-navigation {
-      font-size: 12px;
-      margin: 0;
       outline: none !important;
-
       i {
         font-size: 36px;
+        color: lighten($navColor, 15);
+      }
+
+      span {
+        margin: 0;
+        font-size: 16px;
+        padding: 0 8px;
       }
 
       &:hover {
         cursor: pointer;
+        i, span {
+          color: $primaryColor;
+        }
       }
     }
 
@@ -93,15 +101,21 @@
 @media (max-width: 600px) {
   .health {
     .header-row {
+      top: 48px;
       .date-navigation {
         i {
-          font-size: 24px;
-          margin: 0 -5px;
+          font-size: 32px;
+          margin: 0 -15px;
+        }
+        span {
+          font-size: 14px;
+          padding: 0 8px;
         }
       }
 
       .date {
-        font-size: 16px;
+        font-size: 18px;
+        font-weight: 600;
       }
     }
 

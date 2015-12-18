@@ -2,28 +2,28 @@
   <div class="header-row">
     <div layout="row" layout-align="center center">
       <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(-1)"
-           flex-sm="25" flex-gt-sm="15" layout="row" layout-align="start center"
+           flex="30" flex-gt-sm="20" layout="row" layout-align="start center"
            ng-if="!DailyHealthCtrl.loading">
         <i class="mdi mdi-chevron-left"></i>
-        {{DailyHealthCtrl.prevDate | date:'EEE, MMM d'}}
+        <span>{{DailyHealthCtrl.prevDate | date:'MMM d'}}</span>
       </div>
 
-      <div flex-sm="50" flex-gt-sm="70" layout="column" layout-align="center center">
+      <div flex="40" flex-gt-sm="60" layout="column" layout-align="center center">
         <span class="date">{{DailyHealthCtrl.date | date:'EEE, MMM d'}}</span>
       </div>
 
       <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(1)"
-           flex-sm="25" flex-gt-sm="15" layout="row" layout-align="end center"
+           flex="30" flex-gt-sm="20" layout="row" layout-align="end center"
            ng-if="!DailyHealthCtrl.loading">
-        {{DailyHealthCtrl.nextDate | date:'EEE, MMM d'}}
+        <span>{{DailyHealthCtrl.nextDate | date:'MMM d'}}</span>
         <i class="mdi mdi-chevron-right"></i>
       </div>
     </div>
-  </div>
 
-  <!-- LOADER -->
-  <div layout="row" layout-sm="column" layout-align="space-around" class="loader">
-    <md-progress-linear ng-if="DailyHealthCtrl.loading" md-mode="indeterminate"></md-progress-linear>
+    <!-- LOADER -->
+    <div layout="row" layout-sm="column" layout-align="space-around" class="loader">
+      <md-progress-linear ng-if="DailyHealthCtrl.loading" md-mode="indeterminate"></md-progress-linear>
+    </div>
   </div>
 
   <div ng-show="!DailyHealthCtrl.selectedDay" class="selected-day" layout="row" layout-align="center center">
