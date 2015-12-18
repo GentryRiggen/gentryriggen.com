@@ -22,7 +22,7 @@ exports.toMinutesChartJson = function (minutes) {
   for (var i = 0; i < minutes.length; i++) {
     if (i > 0 && i % 15 === 0) {
       var avg = Math.round((i/60)*100)/100;
-      var label = (avg > 1 ? avg : 1) + ' hour(s)';
+      var label = avg + ' hour(s)';
       labels.push(label);
 
       heartRateData.push(Math.round(rollingHeartRateCount / 15));
