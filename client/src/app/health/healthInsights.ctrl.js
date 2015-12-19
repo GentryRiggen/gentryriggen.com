@@ -13,6 +13,8 @@
         .then(function (resp) {
           HealthInsightsCtrl.insights = resp.data;
           ChartJsService.updateChart(HealthInsightsCtrl.insights.affectsOfSleep, '#affectsOfSleep', 'Bar');
+          ChartJsService.updateChart(HealthInsightsCtrl.insights.affectsOnSleep, '#affectsOnSleep', 'Bar');
+          ChartJsService.updateChart(HealthInsightsCtrl.insights.activityLevelByMonth, '#activityLevelByMonth', 'Bar');
         });
     }
 

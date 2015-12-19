@@ -31,6 +31,29 @@ exports.toJson = function (dailySummary) {
   return json;
 };
 
+exports.getActivityLevelByMonthsData = function (data) {
+  var labels = [],
+    calorieData = [],
+    stepsData = [];
+
+  for (var i = 0; i < data.length; i++) {
+    labels.push(data[i].month);
+    calorieData.push(data[i].avgCals);
+    stepsData.push(data[i].avgSteps);
+  }
+
+  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Calories', 'primary');
+  primaryDataSet.data = calorieData;
+
+  var secondaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Steps', 'secondary');
+  secondaryDataSet.data = stepsData;
+
+  return {
+    labels: labels,
+    datasets: [primaryDataSet, secondaryDataSet]
+  };
+};
+
 exports.fromJson = function (msHealthDailySummary) {
   var dailySummary = {
     user_id: conf.msftHealth.gentryId,

@@ -355,11 +355,15 @@ msHealthRepo.getInsights = function() {
     promises = [];
 
   promises.push(userSleepRepo.getAffectsOfSleepInsights());
+  promises.push(userSleepRepo.getAffectsOnSleepInsights());
+  promises.push(userDailySummaryRepo.getActivityLevelByMonths());
 
   Q.all(promises)
     .then(function (results) {
       var response = {
-        affectsOfSleep: results[0]
+        affectsOfSleep: results[0],
+        affectsOnSleep: results[1],
+        activityLevelByMonth: results[2]
       };
       dfd.resolve(response);
     });

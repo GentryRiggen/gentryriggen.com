@@ -152,4 +152,39 @@ repo.getAffectsOfSleepInsights = function () {
   });
 };
 
+repo.getAffectsOnSleepInsights = function() {
+  var query = "SELECT " +
+    "ROUND(rDays.avg/60/60,2) as rDays, " +
+    "ROUND(wDays.avg/60/60,2) as wDays, " +
+    "ROUND(rwDays.avg/60/60,2) as rwDays, " +
+    "ROUND(nillDays.avg/60/60,2) as nillDays " +
+  "FROM " +
+  "(SELECT ROUND(AVG(sleep_duration)) as avg " +
+  "FROM user_sleep " +
+  "WHERE " +
+  "day_id IN (SELECT day_id FROM user_run) " +
+  ") rDays, " +
+  "(SELECT ROUND(AVG(sleep_duration)) as avg " +
+  "FROM user_sleep " +
+  "WHERE " +
+  "day_id IN (SELECT day_id FROM user_workout) " +
+  ") wDays, " +
+  "(SELECT ROUND(AVG(sleep_duration)) as avg " +
+  "FROM user_sleep " +
+  "WHERE " +
+  "day_id IN (SELECT user_workout.day_id FROM user_workout INNER JOIN user_run ON user_run.day_id = user_workout.day_id) " +
+  ") rwDays, " +
+  "(SELECT ROUND(AVG(sleep_duration)) as avg " +
+  "FROM user_sleep " +
+  "WHERE " +
+  "day_id NOT IN (SELECT day_id FROM user_run) " +
+  "OR day_id NOT IN (SELECT day_id FROM user_workout) " +
+  ") nillDays;";
+
+  return db.raw(query)
+    .then(function (results) {
+      return model.getAffectsOnSleepChartData(results[0][0]);
+    });
+};
+
 module.exports = repo;

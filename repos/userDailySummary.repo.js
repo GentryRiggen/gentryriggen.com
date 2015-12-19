@@ -75,4 +75,20 @@ repo.createIfDoesNotYetExist = function (obj) {
 };
 repo.del = baseRepo.del;
 
+repo.getActivityLevelByMonths = function() {
+  var query = "SELECT " +
+    "  MONTHNAME(day_id) as month, " +
+    "  ROUND(AVG(calories_burned)) as avgCals, " +
+    "  ROUND(AVG(steps_taken)) as avgSteps " +
+    "FROM user_daily_summary " +
+    "WHERE calories_burned > 0 AND steps_taken > 0 " +
+    "GROUP BY MONTH(day_id) " +
+    "ORDER BY MONTH(day_id);";
+
+  return db.raw(query)
+    .then(function (results) {
+      return model.getActivityLevelByMonthsData(results[0]);
+    });
+};
+
 module.exports = repo;
