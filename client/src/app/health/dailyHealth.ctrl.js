@@ -59,15 +59,12 @@
             var id;
             if (item.isSleep) {
               id = '#sleepChart-' + item.id;
-              console.log('Updating Sleep Chart', id);
               ChartJsService.updateChart(item.chartMinutes, id, 'Line');
             } else if (item.isWorkout) {
               id = '#workoutChart-' + item.id;
-              console.log('Updating Workout Chart', id);
               ChartJsService.updateChart(item.chartMinutes, id, 'Line');
             } else if (item.isRun) {
               id = '#runChart-' + item.id;
-              console.log('Updating Run Chart', id);
               ChartJsService.updateChart(item.chartMinutes, id, 'Line');
             }
           });
@@ -104,60 +101,6 @@
       calcPrevAndNextDate();
 
       init();
-    };
-
-    DailyHealthCtrl.toLocal = function (date) {
-      var localTime = moment.utc(date).toDate();
-      return moment(localTime).format('YYYY-MM-DD HH:mm:ss');
-    };
-
-    DailyHealthCtrl.getMonth = function (date) {
-      return moment(DailyHealthCtrl.toLocal(date)).format('MMM');
-    };
-
-    DailyHealthCtrl.getDayOfMonth = function (date) {
-      return moment(DailyHealthCtrl.toLocal(date)).format('DD');
-    };
-
-    DailyHealthCtrl.getLastSync = function (date) {
-      return moment(DailyHealthCtrl.toLocal(date)).format('YYYY-MM-DD HH:mm:ss');
-    };
-
-    DailyHealthCtrl.convertDistanceToMiles = function (distance) {
-      return Math.round((distance / 160934) * 100) / 100;
-    };
-
-    DailyHealthCtrl.convertPace = function (pace) {
-      // Pace is in ms / meter
-      // Convert to minutes/mile
-      pace = pace / 0.0268224;
-
-      return pace;
-    };
-
-    DailyHealthCtrl.convertDuration = function (duration, precision) {
-      var minutes = Math.floor(duration / 60);
-      var hours = Math.floor(minutes / 60);
-      minutes = minutes - (hours * 60);
-      var rem = duration % 60;
-
-      var durationStr = '';
-      switch (precision) {
-        case 2:
-          var durationStr = minutes + 'm';
-          if (hours > 0) {
-            durationStr = hours + 'h ' + durationStr;
-          }
-          break;
-        default:
-          var durationStr = minutes + 'm ' + rem + 's';
-          if (hours > 0) {
-            durationStr = hours + 'h ' + durationStr;
-          }
-          break;
-      }
-
-      return durationStr;
     };
 
     init();

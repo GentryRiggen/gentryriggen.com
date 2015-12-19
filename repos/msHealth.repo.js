@@ -350,4 +350,21 @@ msHealthRepo.getAll = function (startTime, endTime) {
   return dfd.promise;
 };
 
+msHealthRepo.getInsights = function() {
+  var dfd = Q.defer(),
+    promises = [];
+
+  promises.push(userSleepRepo.getAffectsOfSleepInsights());
+
+  Q.all(promises)
+    .then(function (results) {
+      var response = {
+        affectsOfSleep: results[0]
+      };
+      dfd.resolve(response);
+    });
+
+  return dfd.promise;
+};
+
 module.exports = msHealthRepo;

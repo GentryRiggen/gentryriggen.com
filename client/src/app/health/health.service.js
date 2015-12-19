@@ -13,6 +13,10 @@
       return $http.get(thisApiUrl + '/day/' + date);
     };
 
+    healthSvc.getInsights = function() {
+      return $http.get(thisApiUrl + '/insights');
+    };
+
     return healthSvc;
   }
 })();

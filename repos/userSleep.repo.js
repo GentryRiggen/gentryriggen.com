@@ -89,4 +89,67 @@ repo.createIfDoesNotYetExist = function (obj) {
 };
 repo.del = baseRepo.del;
 
+repo.getAffectsOfSleepInsights = function () {
+  var query = "SELECT lessThan5.avgSteps AS less5Steps, lessThan5.avgCals AS less5Cals, " +
+    "greaterThan5.avgSteps AS greater5Steps, greaterThan5.avgCals AS greater5Cals, " +
+    "greaterThan6.avgSteps AS greater6Steps, greaterThan6.avgCals AS greater6Cals, " +
+    "greaterThan7.avgSteps AS greater7Steps, greaterThan7.avgCals AS greater7Cals, " +
+    "greaterThan8.avgSteps AS greater8Steps, greaterThan8.avgCals AS greater8Cals, " +
+    "greaterThan9.avgSteps AS greater9Steps, greaterThan9.avgCals AS greater9Cals " +
+  "FROM " +
+  "( " +
+  "SELECT ROUND(AVG(uds.steps_taken)) AS avgSteps,ROUND(AVG(uds.calories_burned)) AS avgCals " +
+  "FROM user_daily_summary uds " +
+  "WHERE uds.day_id IN ( " +
+  "  SELECT CONCAT(YEAR(us.end_time),'-',MONTH(us.end_time),'-',DAY(us.end_time)) as day_id " +
+  "  FROM user_sleep us " +
+  "  WHERE us.sleep_duration > (60*60*9)) " +
+  ") greaterThan9, " +
+  "( " +
+  "SELECT ROUND(AVG(uds.steps_taken)) AS avgSteps,ROUND(AVG(uds.calories_burned)) AS avgCals " +
+  "FROM user_daily_summary uds " +
+  "WHERE uds.day_id IN ( " +
+  "  SELECT CONCAT(YEAR(us.end_time),'-',MONTH(us.end_time),'-',DAY(us.end_time)) as day_id " +
+  "  FROM user_sleep us " +
+  "  WHERE us.sleep_duration > (60*60*8) AND us.sleep_duration < (60*60*9)) " +
+  ") greaterThan8, " +
+  "( " +
+  "SELECT ROUND(AVG(uds.steps_taken)) AS avgSteps,ROUND(AVG(uds.calories_burned)) AS avgCals " +
+  "FROM user_daily_summary uds " +
+  "WHERE uds.day_id IN ( " +
+  "  SELECT CONCAT(YEAR(us.end_time),'-',MONTH(us.end_time),'-',DAY(us.end_time)) as day_id " +
+  "  FROM user_sleep us " +
+  "  WHERE us.sleep_duration > (60*60*7) AND us.sleep_duration < (60*60*8)) " +
+  ") greaterThan7, " +
+  "( " +
+  "SELECT ROUND(AVG(uds.steps_taken)) AS avgSteps,ROUND(AVG(uds.calories_burned)) AS avgCals " +
+  "FROM user_daily_summary uds " +
+  "WHERE uds.day_id IN ( " +
+  "  SELECT CONCAT(YEAR(us.end_time),'-',MONTH(us.end_time),'-',DAY(us.end_time)) as day_id " +
+  "  FROM user_sleep us " +
+  "  WHERE us.sleep_duration > (60*60*6) AND us.sleep_duration < (60*60*7)) " +
+  ") greaterThan6, " +
+  "( " +
+  "SELECT ROUND(AVG(uds.steps_taken)) AS avgSteps,ROUND(AVG(uds.calories_burned)) AS avgCals " +
+  "FROM user_daily_summary uds " +
+  "WHERE uds.day_id IN ( " +
+  "  SELECT CONCAT(YEAR(us.end_time),'-',MONTH(us.end_time),'-',DAY(us.end_time)) as day_id " +
+  "  FROM user_sleep us " +
+  "  WHERE us.sleep_duration > (60*60*5) AND us.sleep_duration < (60*60*6)) " +
+  ") greaterThan5, " +
+  "( " +
+  "SELECT ROUND(AVG(uds.steps_taken)) AS avgSteps,ROUND(AVG(uds.calories_burned)) AS avgCals " +
+  "FROM user_daily_summary uds " +
+  "WHERE uds.day_id IN ( " +
+  "  SELECT CONCAT(YEAR(us.end_time),'-',MONTH(us.end_time),'-',DAY(us.end_time)) as day_id " +
+  "  FROM user_sleep us " +
+  "  WHERE us.sleep_duration < (60*60*5)) " +
+  ") lessThan5;";
+
+  query = db.raw(query);
+  return query.then(function(results) {
+    return model.getAffectsOfSleepChartData(results[0][0]);
+  });
+};
+
 module.exports = repo;

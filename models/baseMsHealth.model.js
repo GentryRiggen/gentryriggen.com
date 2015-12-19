@@ -138,6 +138,10 @@ baseModel.getSecondaryRGBString = function (opacity) {
   return 'rgba(' + conf.colors.secondaryRGB.R + ',' + conf.colors.secondaryRGB.G + ',' + conf.colors.secondaryRGB.B + ',' + opacity + ')';
 };
 
+baseModel.getTertiaryRGBString = function (opacity) {
+  return 'rgba(' + conf.colors.tertiaryRGB.R + ',' + conf.colors.tertiaryRGB.G + ',' + conf.colors.tertiaryRGB.B + ',' + opacity + ')';
+};
+
 baseModel.getChartOptions = function (type, title, color) {
   var primaryRGB, primaryHex, secondaryRGB, secondaryHex;
   switch (color) {
@@ -154,9 +158,9 @@ baseModel.getChartOptions = function (type, title, color) {
       secondaryHex = conf.colors.secondaryHighlightHex;
       break;
     case 'tertiary':
-      primaryRGB = baseModel.getSecondaryRGBString('.75');
+      primaryRGB = baseModel.getTertiaryRGBString('.75');
       primaryHex = conf.colors.secondaryHex;
-      secondaryRGB = baseModel.getSecondaryRGBString('1');
+      secondaryRGB = baseModel.getTertiaryRGBString('1');
       secondaryHex = conf.colors.secondaryHighlightHex;
       break;
   }

@@ -49,3 +49,20 @@ exports.fromJson = function (msHealthSleep) {
 
   return sleep;
 };
+
+exports.getAffectsOfSleepChartData = function (data) {
+  var labels = ['Less than 5 hours', '5 - 6 hours', '6 - 7 hours', '7 - 8 hours', '8 - 9 hours', 'More than 9 hours'],
+    calorieData = [data.less5Cals, data.greater5Cals, data.greater6Cals, data.greater7Cals, data.greater8Cals, data.greater9Cals],
+    stepsData = [data.less5Steps, data.greater5Steps, data.greater6Steps, data.greater7Steps, data.greater8Steps, data.greater9Steps];
+
+  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Calories', 'primary');
+  primaryDataSet.data = calorieData;
+
+  var secondaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Steps', 'secondary');
+  secondaryDataSet.data = stepsData;
+
+  return {
+    labels: labels,
+    datasets: [primaryDataSet, secondaryDataSet]
+  };
+};

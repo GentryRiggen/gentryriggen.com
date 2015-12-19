@@ -14,6 +14,14 @@ ctrl.route('/day/:date')
       });
   });
 
+ctrl.route('/insights')
+  .get(function (req, res) {
+    msHealthRepo.getInsights()
+      .then(function (results) {
+        res.json(results);
+      });
+  });
+
 ctrl.route('/sync')
   .get(function (req, res) {
     if (req.query.secret != conf.msftHealth.syncSecret) {
