@@ -69,10 +69,10 @@ exports.getAffectsOfSleepChartData = function (data) {
 
 exports.getAffectsOnSleepChartData = function (data) {
   var labels = ['Days I run', 'Days I lift weights', 'Days I run and lift', "Days I don't do anything"],
-    data = [data.rDays, data.wDays, data.rwDays, data.nillDays];
+    dataArray = [data.rDays, data.wDays, data.rwDays, data.nillDays];
 
   var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Average Sleep Duration', 'primary');
-  primaryDataSet.data = data;
+  primaryDataSet.data = dataArray;
 
   return {
     labels: labels,

@@ -1,0 +1,132 @@
+@import "variables";
+
+#page-wrapper {
+  transition: all .4s ease 0s;
+  padding-left: 50px;
+
+  #sidebar-wrapper {
+    transition: all .4s ease 0s;
+    margin-left: -150px;
+    left: -50px;
+    width: 250px;
+    position: fixed;
+    height: 100%;
+    z-index: 999;
+    background: $navColor;
+    color: #dedede;
+
+    .sidebar-header {
+      transition: height .4s ease 0s, visibility .4s ease 0s;
+      height: 20px;
+      width: 100%;
+
+      .menu {
+        outline: none !important;
+        transition: left .4s ease 0s;
+        position: absolute;
+        top: 0;
+        left: 200px;
+        height: 48px;
+        width: 48px;
+        font-size: 28px;
+        padding: 10px;
+
+        &:hover {
+          background: darken($navColor, 3);
+          cursor: pointer;
+          color: white;
+        }
+      }
+
+      h1, img, .social-links {
+        visibility: collapse;
+      }
+
+      h1 {
+        margin: 10px 0 10px 50px;
+        padding: 0;
+        font-size: 25px;
+      }
+
+      img {
+        width: 150px;
+        height: 150px;
+        margin: 10px 50px;
+        border-radius: 50%;
+      }
+
+      .social-links {
+        a  {
+          color: #dedede;
+          width: 25%;
+          font-size: 36px;
+          text-align: center;
+
+          &:hover {
+            color: white;
+          }
+        }
+      }
+    }
+
+    ul.sidebar-items {
+      margin: 15px 0;
+      padding: 0;
+      list-style: none;
+
+      li {
+        font-size: 18px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        padding-left: 212px;
+        padding-right: 0;
+        border-left: solid 3px transparent;
+
+        &.active, &:hover {
+          cursor: pointer;
+          background: darken($navColor, 3);
+          color: white;
+          border-left: solid 3px $primaryColor;
+        }
+
+        span {
+          display: none;
+        }
+      }
+    }
+  }
+
+  &.open {
+    padding-left: 250px;
+
+    #sidebar-wrapper {
+      left: 150px;
+
+      .sidebar-header {
+        height: 250px;
+        .menu {
+          left: 0;
+        }
+        h1, img, .social-links {
+          visibility: visible;
+        }
+      }
+
+      ul.sidebar-items {
+        li {
+          padding-left: 20px;
+          span {
+            display: inline-block;
+          }
+        }
+      }
+    }
+  }
+
+  #content-wrapper {
+    padding-left: 0;
+    margin-left: 0;
+    width: 100%;
+    height: auto;
+  }
+}

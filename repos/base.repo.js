@@ -69,7 +69,7 @@ var repo = function (tableName, model) {
   };
 
   baseRepo.convertDateToLocal = function (date, toISOString) {
-    var date = moment(date).tz(conf.msftHealth.timeZone);
+    date = moment(date).tz(conf.msftHealth.timeZone);
     return toISOString ? date.toDate().toISOLocalString() : date;
   };
 

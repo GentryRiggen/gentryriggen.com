@@ -8,17 +8,17 @@
   function ShellController($scope, UserService, $state, $mdMedia, $window) {
     var ShellCtrl = this;
     ShellCtrl.smallScreen = !$mdMedia('min-width: 900px');
-    ShellCtrl.drawerOpen = $mdMedia('min-width: 900px');
+    ShellCtrl.toggle = $mdMedia('min-width: 900px');
 
     ShellCtrl.toggleMenu = function() {
       ShellCtrl.smallScreen = !$mdMedia('min-width: 900px');
-      ShellCtrl.drawerOpen = !ShellCtrl.drawerOpen;
+      ShellCtrl.toggle = !ShellCtrl.toggle;
     };
 
     // SCREEN RESIZE EVENTS
     var w = angular.element($window);
     $scope.$watch(function (){return w.width();}, function (screenWidth) {
-      ShellCtrl.drawerOpen = screenWidth > 900;
+      ShellCtrl.toggle = screenWidth > 900;
     }, true);
 
     function checkUserAuth() {
@@ -56,7 +56,7 @@
     });
 
     $scope.$on('$stateChangeStart', function (event, toState) {
-      if (ShellCtrl.drawerOpen && w.width() <= 900) {
+      if (ShellCtrl.toggle && w.width() <= 900) {
         ShellCtrl.toggleMenu();
       }
 

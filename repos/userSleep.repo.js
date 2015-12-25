@@ -75,13 +75,13 @@ repo.createIfDoesNotYetExist = function (obj) {
         .then(function (inserted) {
           if (obj.minuteSummaries) {
             obj.minuteSummaries.forEach(function (minute) {
-              minuteRepo.createOrUpdateWithParent(minute, inserted.id)
+              minuteRepo.createOrUpdateWithParent(minute, inserted.id);
             });
           }
 
           if (obj.activitySegments) {
             obj.activitySegments.forEach(function (segment){
-              segmentRepo.createOrUpdateWithParent(segment, inserted.id)
+              segmentRepo.createOrUpdateWithParent(segment, inserted.id);
             });
           }
         });

@@ -73,7 +73,7 @@ repo.createIfDoesNotYetExist = function (obj) {
         .then(function (inserted) {
           if (obj.minuteSummaries) {
             obj.minuteSummaries.forEach(function (minute){
-              minuteRepo.createOrUpdateWithParent(minute, inserted.id)
+              minuteRepo.createOrUpdateWithParent(minute, inserted.id);
             });
           }
         });

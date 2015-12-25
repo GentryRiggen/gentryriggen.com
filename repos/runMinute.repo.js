@@ -1,7 +1,6 @@
 var model = require('../models/runMinute.model'),
   tableName = 'run_minute',
-  baseRepo = require('./base.repo')(tableName, model),
-  parentRepo = require('./userRun.repo');
+  baseRepo = require('./base.repo')(tableName, model);
 
 var repo = {};
 repo.getById = baseRepo.getById;
