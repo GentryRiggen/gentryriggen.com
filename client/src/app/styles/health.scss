@@ -1,44 +1,27 @@
 @import "variables";
-.health {
-  $headerHeight: 64px;
-  color: $foregroundColor;
-  .header-row {
-    position: absolute;
-    top: 15px;
-    left: 0;
-    right: 0;
-    max-width: $pageMaxWidth;
-    height: $headerHeight;
-    margin: 0 auto;
-    padding: 0 15px;
-    color: $navColor;
 
-    .date-navigation {
-      font-size: 12px;
-      margin: 0;
-      outline: none !important;
-
-      i {
-        font-size: 36px;
-      }
-
-      &:hover {
-        cursor: pointer;
-      }
-    }
-
-    .date {
-      font-size: 24px;
+.nav-bar {
+  .date-navigation {
+    font-size: 15px;
+    outline: none !important;
+    i {
+      font-size: 21px;
     }
   }
 
+  .date {
+    font-size: 21px;
+  }
+}
+
+.health {
+  $headerHeight: 64px;
+  color: $foregroundColor;
   .loader {
     height: 15px;
   }
 
   .stat-cards {
-    position: relative;
-    top: 35px;
     margin-bottom: 100px;
 
     .stat-card {

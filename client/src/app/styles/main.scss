@@ -1,5 +1,6 @@
 @import "variables";
 $navForeground: #dedede;
+$navBarHeight: 48px;
 
 // MOBILE MODE
 @media only screen and (max-width: 600px) {
@@ -8,11 +9,17 @@ $navForeground: #dedede;
       #page-wrapper {
         padding-left: 0;
         .page-content {
-          margin-top: 48px;
+          margin-top: $navBarHeight;
+
+          .nav-bar {
+            top: 48px !important;
+            background: lighten($navColor, 10) !important;
+          }
         }
         #sidebar-wrapper {
-          //position: absolute;
-          //top: 0;
+          .sidebar-header {
+            height: 210px;
+          }
         }
       }
       #page-wrapper:not(.open) {
@@ -52,8 +59,8 @@ $navForeground: #dedede;
         position: absolute;
         top: 0;
         left: 200px;
-        height: 48px;
-        width: 48px;
+        height: $navBarHeight;
+        width: $navBarHeight;
         font-size: 28px;
         padding: 10px;
       }
@@ -165,8 +172,9 @@ $navForeground: #dedede;
     height: auto;
 
     .nav-header {
+      z-index: 999;
       background: $navColor;
-      height: 48px;
+      height: $navBarHeight;
       position: fixed;
       top: 0;
       left: 0;
@@ -178,8 +186,8 @@ $navForeground: #dedede;
         position: absolute;
         top: 0;
         left: 0;
-        height: 48px;
-        width: 48px;
+        height: $navBarHeight;
+        width: $navBarHeight;
         font-size: 28px;
         padding: 10px;
       }
@@ -193,7 +201,15 @@ $navForeground: #dedede;
     }
 
     .page-content {
-      padding: 20px;
+
+      .nav-bar {
+        margin: 0;
+        z-index: 999;
+        color: $navForeground;
+        height: $navBarHeight;
+        background: $navColor;
+        background: lighten($navColor, 10);
+      }
     }
   }
 }

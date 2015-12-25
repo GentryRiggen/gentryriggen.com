@@ -1,31 +1,24 @@
-﻿<div class="page health">
-  <div class="header-row">
-    <div layout="row" layout-align="center center">
-      <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(-1)"
-           flex="30" flex-gt-sm="20" layout="row" layout-align="start center"
-           ng-if="!DailyHealthCtrl.loading">
-        <i class="mdi mdi-chevron-left"></i>
-        <span>{{DailyHealthCtrl.prevDate | date:'MMM d'}}</span>
-      </div>
-
-      <div flex="40" flex-gt-sm="60" layout="column" layout-align="center center">
-        <span class="date">{{DailyHealthCtrl.date | date:'EEE, MMM d'}}</span>
-      </div>
-
-      <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(1)"
-           flex="30" flex-gt-sm="20" layout="row" layout-align="end center"
-           ng-if="!DailyHealthCtrl.loading">
-        <span>{{DailyHealthCtrl.nextDate | date:'MMM d'}}</span>
-        <i class="mdi mdi-chevron-right"></i>
-      </div>
-    </div>
-
-    <!-- LOADER -->
-    <div layout="row" layout-sm="column" layout-align="space-around" class="loader">
-      <md-progress-linear ng-if="DailyHealthCtrl.loading" md-mode="indeterminate"></md-progress-linear>
-    </div>
+﻿<div class="nav-bar" layout="row" layout-align="center center">
+  <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(-1)"
+       flex="30" flex-gt-sm="20" layout="row" layout-align="start center"
+       ng-if="!DailyHealthCtrl.loading">
+    <i class="mdi mdi-chevron-left"></i>
+    <span>{{DailyHealthCtrl.prevDate | date:'MMM d'}}</span>
   </div>
 
+  <div flex="40" flex-gt-sm="60" layout="column" layout-align="center center">
+    <span class="date">{{DailyHealthCtrl.date | date:'EEE, MMM d'}}</span>
+  </div>
+
+  <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(1)"
+       flex="30" flex-gt-sm="20" layout="row" layout-align="end center"
+       ng-if="!DailyHealthCtrl.loading">
+    <span>{{DailyHealthCtrl.nextDate | date:'MMM d'}}</span>
+    <i class="mdi mdi-chevron-right"></i>
+  </div>
+</div>
+
+<div class="page health">
   <div ng-show="!DailyHealthCtrl.selectedDay" class="selected-day" layout="row" layout-align="center center">
     <h3>No Data</h3>
   </div>

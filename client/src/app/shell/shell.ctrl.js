@@ -60,8 +60,8 @@
     });
 
     $scope.$on('$stateChangeStart', function (event, toState) {
-      if (ShellCtrl.toggle && w.width() <= 900) {
-        ShellCtrl.toggleMenu();
+      if (ShellCtrl.smallScreen) {
+        ShellCtrl.toggleMenu(false, false);
       }
 
       ShellCtrl.adminOpen = toState.name.indexOf('admin') !== -1;
