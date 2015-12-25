@@ -16,28 +16,34 @@ exports.toJson = function (dailySummaryHour) {
 };
 
 exports.toHoursChartJson = function (hours) {
-  var labels = [],
-    calorieData = [],
-    heartRateData = [],
-    stepsData = [];
+  var chartData = {
+    chart: {
+      type: 'column'
+    },
+    title: {
+      text: 'Hourly Breakdown'
+    },
+    xAxis: {
+      categories: []
+    },
+    yAxis: {
+      title: {
+        text: 'Calories / Steps / Heart Rate'
+      }
+    },
+    series: [
+      {name: 'Calories', data: []},
+      {name: 'Heart Rate', data: []}
+    ]
+  };
 
   hours.forEach(function (hour) {
-    labels.push(baseMsHealthModel.getLocalMoment(hour.startTime).format('hA') + ' - ' + baseMsHealthModel.getLocalMoment(hour.endTime).format('hA'));
-    calorieData.push(hour.caloriesBurned);
-    heartRateData.push(hour.averageHeartRate);
-    stepsData.push(hour.stepsTaken);
+    chartData.xAxis.categories.push(baseMsHealthModel.getLocalMoment(hour.startTime).format('hA') + ' - ' + baseMsHealthModel.getLocalMoment(hour.endTime).format('hA'));
+    chartData.series[0].data.push(hour.caloriesBurned);
+    chartData.series[1].data.push(hour.averageHeartRate);
   });
 
-  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Calories', 'primary');
-  primaryDataSet.data = calorieData;
-
-  var secondaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'secondary');
-  secondaryDataSet.data = heartRateData;
-
-  return {
-    labels: labels,
-    datasets: [primaryDataSet, secondaryDataSet]
-  };
+  return chartData
 };
 
 exports.fromJson = function (msHealthDailySummaryHour) {

@@ -1,10 +1,10 @@
 ﻿(function () {
   'use strict';
-  angular.module('gr').service('ChartJsService', ChartJsService);
+  angular.module('gr').service('ChartService', ChartService);
 
-  ChartJsService.$inject = ['ChartJs'];
-  function ChartJsService(ChartJs) {
-    var chartJsService = {};
+  ChartService.$inject = ['ChartJs'];
+  function ChartService(ChartJs) {
+    var chartService = {};
 
     function replaceAndUpdate(data, tag, type) {
       var canvas = angular.element(tag)[0];
@@ -12,8 +12,12 @@
       new ChartJs(ctx)[type](data);
     }
 
-    chartJsService.updateChart = function (data, tag, type) {
-      var canvas = $(tag), ctx;
+    chartService.updateHighChart = function (data, tag) {
+      $(tag).highcharts(data);
+    };
+
+    chartService.updateChart = function (data, tag, type) {
+      var canvas = $(tag);
       if (data) {
         if (canvas.parent().length) {
           canvas.parent().fadeIn(function () {
@@ -27,6 +31,6 @@
       }
     };
 
-    return chartJsService;
+    return chartService;
   }
 })();

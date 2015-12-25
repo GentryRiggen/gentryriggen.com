@@ -197,26 +197,34 @@ baseModel.getChartOptions = function (type, title, color) {
 };
 
 baseModel.toMinutesChartJson = function (minutes) {
-  var labels = [],
-    calorieData = [],
-    heartRateData = [];
+  var chartData = {
+    chart: {
+      type: 'area'
+    },
+    title: {
+      text: 'Minute Breakdown'
+    },
+    xAxis: {
+      categories: []
+    },
+    yAxis: {
+      title: {
+        text: 'Calories / Heart Rate / Steps'
+      }
+    },
+    series: [
+      {name: 'Heart Rate', data: []},
+      {name: 'Calories', data: []}
+    ]
+  };
 
   for (var i = 0; i < minutes.length; i++) {
-    labels.push(i + 1);
-    calorieData.push(minutes[i].caloriesBurned);
-    heartRateData.push(minutes[i].averageHeartRate);
+    chartData.xAxis.categories.push(i + 1);
+    chartData.series[0].data.push(minutes[i].averageHeartRate);
+    chartData.series[1].data.push(minutes[i].caloriesBurned);
   }
 
-  var primaryDataSet = baseModel.getChartOptions('Line', 'Avg Heart Rate', 'primary');
-  primaryDataSet.data = heartRateData;
-
-  var secondaryDataSet = baseModel.getChartOptions('Line', 'Calories', 'secondary');
-  secondaryDataSet.data = calorieData;
-
-  return {
-    labels: labels,
-    datasets: [primaryDataSet, secondaryDataSet]
-  };
+  return chartData;
 };
 
 module.exports = baseModel;

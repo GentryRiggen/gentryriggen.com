@@ -15,18 +15,66 @@ exports.toJson = function (dailySummary) {
   };
 
   // CALORIES DOUGHNUT CHART
-  var caloriesDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Calories Burned', 'primary');
-  caloriesDoughnut.value = json.caloriesBurned;
-  var caloriesRemainingDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Remaining to Goal', 'secondary');
-  caloriesRemainingDoughnut.value = json.caloriesBurned > 3000 ? 0 : 3000 - json.caloriesBurned;
-  json.chartCalories = [caloriesDoughnut, caloriesRemainingDoughnut];
+  json.chartCalories = {
+    chart: {
+      plotBackgroundColor: null,
+      plotBorderWidth: 0,
+      plotShadow: false
+    },
+    title: {
+      text: 'Daily Calorie Goal',
+      align: 'center',
+      verticalAlign: 'middle',
+      y: 115
+    },
+    plotOptions: {
+      pie: {
+        startAngle: -90,
+        endAngle: 90,
+        center: ['50%', '75%']
+      }
+    },
+    series: [
+      {
+        type: 'pie', name: 'Calories', innerSize: '50%',
+        data: [
+          ['Calories Burned', json.caloriesBurned],
+          ['Calories Remaining', json.caloriesBurned > 3000 ? 0 : (3000 - json.caloriesBurned)]
+        ]
+      }
+    ]
+  };
 
   // STEPS DOUGHNUT CHART
-  var stepsDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Steps Taken', 'primary');
-  stepsDoughnut.value = json.stepsTaken;
-  var stepsRemainingDoughnut = baseMsHealthModel.getChartOptions('Doughnut', 'Remaining to Goal', 'secondary');
-  stepsRemainingDoughnut.value = json.stepsTaken > 9000 ? 0 : 9000 - json.stepsTaken;
-  json.chartSteps = [stepsDoughnut, stepsRemainingDoughnut];
+  json.chartSteps = {
+    chart: {
+      plotBackgroundColor: null,
+      plotBorderWidth: 0,
+      plotShadow: false
+    },
+    title: {
+      text: 'Daily Steps Goal',
+      align: 'center',
+      verticalAlign: 'middle',
+      y: 115
+    },
+    plotOptions: {
+      pie: {
+        startAngle: -90,
+        endAngle: 90,
+        center: ['50%', '75%']
+      }
+    },
+    series: [
+      {
+        type: 'pie', name: 'Steps Taken', innerSize: '50%',
+        data: [
+          ['Steps Burned', json.stepsTaken],
+          ['Steps Remaining', json.stepsTaken > 9000 ? 0 : (9000 - json.stepsTaken)]
+        ]
+      }
+    ]
+  };
 
   return json;
 };

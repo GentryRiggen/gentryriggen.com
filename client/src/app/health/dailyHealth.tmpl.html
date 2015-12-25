@@ -1,9 +1,9 @@
 ﻿<div class="nav-bar" layout="row" layout-align="center center">
   <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(-1)"
        flex="30" flex-gt-sm="20" layout="row" layout-align="start center"
-       ng-if="!DailyHealthCtrl.loading">
-    <i class="mdi mdi-chevron-left"></i>
-    <span>{{DailyHealthCtrl.prevDate | date:'MMM d'}}</span>
+       ng-show="!DailyHealthCtrl.loading && DailyHealthCtrl.prevDate">
+    <i ng-show="DailyHealthCtrl.prevDate" class="mdi mdi-chevron-left"></i>
+    <span ng-show="DailyHealthCtrl.prevDate">{{DailyHealthCtrl.prevDate | date:'MMM d'}}</span>
   </div>
 
   <div flex="40" flex-gt-sm="60" layout="column" layout-align="center center">
@@ -12,13 +12,14 @@
 
   <div class="date-navigation no-select" ng-click="DailyHealthCtrl.dateChange(1)"
        flex="30" flex-gt-sm="20" layout="row" layout-align="end center"
-       ng-if="!DailyHealthCtrl.loading">
-    <span>{{DailyHealthCtrl.nextDate | date:'MMM d'}}</span>
-    <i class="mdi mdi-chevron-right"></i>
+       ng-show="!DailyHealthCtrl.loading">
+    <span ng-show="DailyHealthCtrl.nextDate">{{DailyHealthCtrl.nextDate | date:'MMM d'}}</span>
+    <i ng-show="DailyHealthCtrl.nextDate" class="mdi mdi-chevron-right"></i>
   </div>
 </div>
 
 <div class="page health">
+
   <div ng-show="!DailyHealthCtrl.selectedDay" class="selected-day" layout="row" layout-align="center center">
     <h3>No Data</h3>
   </div>
@@ -27,33 +28,20 @@
     <!-- HOUR BREAKDOWN -->
     <div class="stat-card md-whiteframe-z2" flex="100">
       <div class="title">Hourly Breakdown <i class="mdi mdi-fire"></i></div>
-      <canvas id="dailySummaryHourChart"></canvas>
+      <div id="dailySummaryHourChart"></div>
     </div>
 
-    <!-- STEPS -->
-    <div class="stat-card half left md-whiteframe-z2" flex="50">
-      <div class="title">Steps <i class="mdi mdi-run"></i></div>
-      <div class="actual-value">
-          <span class="value">
-            {{DailyHealthCtrl.selectedDay.stepsTaken ? DailyHealthCtrl.selectedDay.stepsTaken : 0}}
-          </span>
-        <span class="descriptor">Goal: 9000/day</span>
+    <!-- STEPS AND CALORIE GOALS-->
+    <div class="stat-card md-whiteframe-z2" layout="row" flex="100">
+      <div flex="100" flex-gt-sm="50">
+        <div class="title">Steps <i class="mdi mdi-run"></i></div>
+        <div id="dailyStepGoalChart"></div>
       </div>
 
-      <canvas id="dailyStepGoalChart"></canvas>
-    </div>
-
-    <!-- CALORIES -->
-    <div class="stat-card half right md-whiteframe-z2" flex="50">
-      <div class="title">Calories <i class="mdi mdi-fire"></i></div>
-      <div class="actual-value">
-          <span class="value">
-            {{DailyHealthCtrl.selectedDay.caloriesBurned ? DailyHealthCtrl.selectedDay.caloriesBurned : 0}}
-          </span>
-        <span class="descriptor">Goal: 3000/day</span>
+      <div flex="100" flex-gt-sm="50">
+        <div class="title">Calories <i class="mdi mdi-fire"></i></div>
+        <div id="dailyCalorieGoalChart"></div>
       </div>
-
-      <canvas id="dailyCalorieGoalChart"></canvas>
     </div>
 
     <div class="activities" ng-repeat="item in DailyHealthCtrl.selectedDay.items" flex="100">

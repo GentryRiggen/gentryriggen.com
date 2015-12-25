@@ -4,8 +4,8 @@
     .module('gr')
     .directive('healthActivity', healthActivity);
 
-  healthActivity.$inject = ['$state', '$window'];
-  function healthActivity($state, $window) {
+  healthActivity.$inject = [];
+  function healthActivity() {
     return {
       restrict: 'E',
       scope: {

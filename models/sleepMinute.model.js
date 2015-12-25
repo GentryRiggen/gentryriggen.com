@@ -14,18 +14,35 @@ exports.toJson = function (sleepMinute) {
 };
 
 exports.toMinutesChartJson = function (minutes) {
-  var labels = [],
-    heartRateData = [],
-    lastHeartRate = 0,
-    rollingHeartRateCount = 0;
+  var chartData = {
+    chart: {
+      type: 'area'
+    },
+    title: {
+      text: 'Sleep Breakdown'
+    },
+    xAxis: {
+      categories: []
+    },
+    yAxis: {
+      title: {
+        text: 'Heart Rate'
+      }
+    },
+    series: [
+      {name: 'Heart Rate', data: []}
+    ]
+  };
 
+  var lastHeartRate = 0,
+    rollingHeartRateCount = 0;
   for (var i = 0; i < minutes.length; i++) {
     if (i > 0 && i % 15 === 0) {
-      var avg = Math.round((i/60)*100)/100;
+      var avg = Math.round((i / 60) * 100) / 100;
       var label = avg + ' hour(s)';
-      labels.push(label);
+      chartData.xAxis.categories.push(label);
 
-      heartRateData.push(Math.round(rollingHeartRateCount / 15));
+      chartData.series[0].data.push(Math.round(rollingHeartRateCount / 15));
       rollingHeartRateCount = 0;
     }
 
@@ -38,13 +55,7 @@ exports.toMinutesChartJson = function (minutes) {
     rollingHeartRateCount += lastHeartRate;
   }
 
-  var primaryDataSet = baseMsHealthModel.getChartOptions('Line', 'Avg Heart Rate', 'primary');
-  primaryDataSet.data = heartRateData;
-
-  return {
-    labels: labels,
-    datasets: [primaryDataSet]
-  };
+  return chartData;
 };
 
 exports.fromJson = function (msHealthSleepMinute) {
