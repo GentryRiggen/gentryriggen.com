@@ -7,18 +7,22 @@
   ShellController.$inject = ['$scope', 'UserService', '$state', '$mdMedia', '$window'];
   function ShellController($scope, UserService, $state, $mdMedia, $window) {
     var ShellCtrl = this;
-    ShellCtrl.smallScreen = !$mdMedia('min-width: 900px');
-    ShellCtrl.toggle = $mdMedia('min-width: 900px');
+    ShellCtrl.smallScreen = !$mdMedia('min-width: 600px');
+    ShellCtrl.toggle = true;
 
-    ShellCtrl.toggleMenu = function() {
-      ShellCtrl.smallScreen = !$mdMedia('min-width: 900px');
-      ShellCtrl.toggle = !ShellCtrl.toggle;
+    ShellCtrl.toggleMenu = function(toggle, mouseMovement) {
+      if (ShellCtrl.smallScreen && mouseMovement === true) {
+        return;
+      } else {
+        ShellCtrl.toggle = toggle ? toggle : !ShellCtrl.toggle;
+      }
     };
 
     // SCREEN RESIZE EVENTS
     var w = angular.element($window);
     $scope.$watch(function (){return w.width();}, function (screenWidth) {
-      ShellCtrl.toggle = screenWidth > 900;
+      ShellCtrl.toggle = false;
+      ShellCtrl.smallScreen = screenWidth <= 600;
     }, true);
 
     function checkUserAuth() {

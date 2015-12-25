@@ -20,16 +20,21 @@
   <!-- endinject -->
   <!-- endbuild -->
 </head>
-<body ng-controller="ShellCtrl as ShellCtrl">
+<body ng-controller="ShellCtrl as ShellCtrl"
+      ng-class="{'mobile-screen': ShellCtrl.smallScreen}">
 <div id="page-wrapper" ng-class="{'open': ShellCtrl.toggle}" ng-cloak>
 
   <!-- SIDEBAR -->
-  <div id="sidebar-wrapper">
+  <div id="sidebar-wrapper"
+       ng-mouseenter="ShellCtrl.toggleMenu(true, true)"
+       ng-mouseleave="ShellCtrl.toggleMenu(false, true)">
 
     <!-- SIDEBAR HEADER -->
     <div class="sidebar-header">
-      <i class="menu mdi mdi-menu" ng-click="ShellCtrl.toggleMenu()"></i>
-      <h1>Gentry Riggen</h1>
+      <i class="menu mdi mdi-menu"
+         ng-click="ShellCtrl.toggleMenu()"
+         ng-hide="ShellCtrl.smallScreen"></i>
+      <h1 ng-hide="ShellCtrl.smallScreen">Gentry Riggen</h1>
 
       <img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg"/>
 
@@ -49,18 +54,11 @@
       </li>
 
       <!-- Health Section -->
-      <li class="no-select" ng-class="{'open': ShellCtrl.healthOpen}"
-          ng-click="ShellCtrl.toggleDrawerDropdown('health')">
-        <i class="mdi mdi-dumbbell"></i> <span>Health</span>
-        <div class="arrow-right"></div>
+      <li class="" ui-sref="healthDaily" ui-sref-active="active">
+        <i class="mdi mdi-fire"></i> <span>Daily Health</span>
       </li>
-      <li ng-class="{'open': ShellCtrl.healthOpen}" class="sub-item indent"
-          ui-sref="healthDaily" ui-sref-active="active">
-        <i class="mdi mdi-fire"></i> <span>Daily</span>
-      </li>
-      <li ng-class="{'open': ShellCtrl.healthOpen}" class="sub-item indent"
-          ui-sref="healthInsights" ui-sref-active="active">
-        <i class="mdi mdi-chart-areaspline"></i> <span>Insights</span>
+      <li class="" ui-sref="healthInsights" ui-sref-active="active">
+        <i class="mdi mdi-chart-areaspline"></i> <span>Health Insights</span>
       </li>
 
       <li class="" ui-sref="books" ui-sref-active="active">
@@ -71,24 +69,19 @@
       </li>
 
       <!-- ADMIN USERS -->
-      <li ng-if="ShellCtrl.showModerator" class="no-select" ng-class="{'open': ShellCtrl.adminOpen}"
-          ng-click="ShellCtrl.toggleDrawerDropdown('admin')">
-        <i class="mdi mdi-lock"></i> <span>Admin</span>
-        <div class="arrow-right"></div>
-      </li>
-      <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="sub-item indent"
+      <li ng-if="ShellCtrl.showModerator"
           ui-sref="admin.blog" ui-sref-active="active">
         <i class="mdi mdi-pencil-lock"></i> <span>Blog</span>
       </li>
-      <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="sub-item indent"
+      <li ng-if="ShellCtrl.showModerator"
           ui-sref="admin.books" ui-sref-active="active">
         <i class="mdi mdi-library-books"></i> <span>Library</span>
       </li>
-      <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="sub-item indent"
+      <li ng-if="ShellCtrl.showModerator"
           ui-sref="admin.files" ui-sref-active="active">
         <i class="mdi mdi-file"></i> <span>Files</span>
       </li>
-      <li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="sub-item indent"
+      <li ng-if="ShellCtrl.showModerator"
           ui-sref="admin.accounts" ui-sref-active="active">
         <i class="mdi mdi-account-multiple"></i> <span>Accounts</span>
       </li>
@@ -101,107 +94,16 @@
 
   <!-- CONTENT -->
   <div id="content-wrapper">
+    <div class="nav-header" ng-show="ShellCtrl.smallScreen">
+      <i class="mobile-menu-toggle mdi mdi-menu" ng-click="ShellCtrl.toggleMenu()"></i>
+      <h1>Gentry Riggen</h1>
+    </div>
+
     <div class="page-content">
       <ui-view class="content"></ui-view>
     </div>
   </div>
 </div>
-
-
-<!-- TOPNAV -->
-<!--<div class="header md-whiteframe-z2" layout="row" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">-->
-  <!--<div class="gr-btn header-left" layout="row" ng-click="ShellCtrl.toggleMenu()">-->
-    <!--<div class="gr-btn menu-btn">-->
-      <!--<i class="mdi mdi-menu"-->
-         <!--ng-class="{'mdi-menu': !ShellCtrl.smallScreen || !ShellCtrl.drawerOpen,-->
-         <!--'mdi-close': ShellCtrl.smallScreen && ShellCtrl.drawerOpen}"></i>-->
-    <!--</div>-->
-
-    <!--<h1>Gentry Riggen</h1>-->
-  <!--</div>-->
-
-  <!--<div class="header-right" flex>-->
-
-  <!--</div>-->
-<!--</div>-->
-
-<!-- DRAWER -->
-<!--<div id="drawer" ng-class="{'drawer-closed': !ShellCtrl.drawerOpen}">-->
-  <!--<div class="drawer-header">-->
-    <!--<img src="http://cdn.gentryriggen.com/binary/gentryBoardingSmall.jpg"/>-->
-
-    <!--<div class="social-links" layout="row" layout-align="center center">-->
-      <!--<span flex><a href="https://twitter.com/GentryRiggen" target="#"><i class="mdi mdi-twitter"></i></a></span>-->
-      <!--<span flex><a href="https://github.com/GentryRiggen" target="#"><i class="mdi mdi-github-circle"></i></a></span>-->
-      <!--<span flex><a href="https://linkedin.com/in/GentryRiggen/en" target="#"><i-->
-        <!--class="mdi mdi-linkedin"></i></a></span>-->
-      <!--<span flex><a href="http://stackoverflow.com/users/1767285" target="#"><i-->
-        <!--class="mdi mdi-stackoverflow"></i></a></span>-->
-    <!--</div>-->
-
-  <!--</div>-->
-  <!--<ul class="drawer-items">-->
-    <!--&lt;!&ndash; ALL USERS &ndash;&gt;-->
-    <!--<li class="gr-btn" ui-sref="blog" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-pencil"></i> Blog-->
-    <!--</li>-->
-
-    <!--&lt;!&ndash; Health Section &ndash;&gt;-->
-    <!--<li class="gr-btn no-select" ng-class="{'open': ShellCtrl.healthOpen}"-->
-        <!--ng-click="ShellCtrl.toggleDrawerDropdown('health')">-->
-      <!--<i class="mdi mdi-dumbbell"></i> Health-->
-      <!--<div class="arrow-right"></div>-->
-    <!--</li>-->
-    <!--<li ng-class="{'open': ShellCtrl.healthOpen}" class="gr-btn sub-item indent"-->
-        <!--ui-sref="healthDaily" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-fire"></i> Daily-->
-    <!--</li>-->
-    <!--<li ng-class="{'open': ShellCtrl.healthOpen}" class="gr-btn sub-item indent"-->
-        <!--ui-sref="healthInsights" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-chart-areaspline"></i> Insights-->
-    <!--</li>-->
-
-    <!--<li class="gr-btn" ui-sref="books" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-library-books"></i> Library-->
-    <!--</li>-->
-    <!--<li class="gr-btn" ui-sref="about" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-account"></i> About Me-->
-    <!--</li>-->
-
-    <!--&lt;!&ndash; ADMIN USERS &ndash;&gt;-->
-    <!--<li ng-if="ShellCtrl.showModerator" class="gr-btn no-select" ng-class="{'open': ShellCtrl.adminOpen}"-->
-        <!--ng-click="ShellCtrl.toggleDrawerDropdown('admin')">-->
-      <!--<i class="mdi mdi-lock"></i> Admin-->
-      <!--<div class="arrow-right"></div>-->
-    <!--</li>-->
-    <!--<li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"-->
-        <!--ui-sref="admin.blog" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-pencil-lock"></i> Blog-->
-    <!--</li>-->
-    <!--<li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"-->
-        <!--ui-sref="admin.books" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-library-books"></i> Library-->
-    <!--</li>-->
-    <!--<li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"-->
-        <!--ui-sref="admin.files" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-file"></i> Files-->
-    <!--</li>-->
-    <!--<li ng-if="ShellCtrl.showModerator" ng-class="{'open': ShellCtrl.adminOpen}" class="gr-btn sub-item indent"-->
-        <!--ui-sref="admin.accounts" ui-sref-active="active">-->
-      <!--<i class="mdi mdi-account-multiple"></i> Accounts-->
-    <!--</li>-->
-
-    <!--<li ng-if="ShellCtrl.showModerator" class="gr-btn" ui-sref="logout">-->
-      <!--<i class="mdi mdi-logout"></i> Logout-->
-    <!--</li>-->
-  <!--</ul>-->
-<!--</div>-->
-
-
-<!-- CONTENT -->
-<!--<div layout="column" class="main" ng-class="{'drawer-open': ShellCtrl.drawerOpen}">-->
-  <!--<ui-view class="content"></ui-view>-->
-<!--</div>-->
 
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 <!-- build:js(src) scripts/vendor.js -->
