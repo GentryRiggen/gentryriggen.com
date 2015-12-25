@@ -72,7 +72,6 @@
     function calcPrevAndNextDate() {
       DailyHealthCtrl.prevDate = moment(DailyHealthCtrl.date).subtract(1, 'days').format('YYYY-MM-DD');
       DailyHealthCtrl.nextDate = moment(DailyHealthCtrl.date).add(1, 'days').format('YYYY-MM-DD');
-      console.log(today.diff(moment(DailyHealthCtrl.nextDate)));
       if (today.diff(moment(DailyHealthCtrl.nextDate)) < 0) {
         DailyHealthCtrl.nextDate = false;
       }

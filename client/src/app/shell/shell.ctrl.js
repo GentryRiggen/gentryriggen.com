@@ -11,7 +11,9 @@
     ShellCtrl.toggle = false;
 
     ShellCtrl.toggleMenu = function(toggle, mouseMovement) {
-      if (!ShellCtrl.smallScreen && mouseMovement !== true) {
+      if (ShellCtrl.smallScreen && mouseMovement === true) {
+        return;
+      } else {
         ShellCtrl.toggle = toggle ? toggle : !ShellCtrl.toggle;
       }
     };
@@ -58,7 +60,7 @@
     });
 
     $scope.$on('$stateChangeStart', function (event, toState) {
-      if (ShellCtrl.smallScreen) {
+      if (ShellCtrl.sma && w.width() <= 900) {
         ShellCtrl.toggleMenu(false, false);
       }
 
