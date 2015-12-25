@@ -38,8 +38,8 @@ exports.toJson = function (dailySummary) {
       {
         type: 'pie', name: 'Calories', innerSize: '50%',
         data: [
-          ['Calories Burned', json.caloriesBurned],
-          ['Calories Remaining', json.caloriesBurned > 3000 ? 0 : (3000 - json.caloriesBurned)]
+          ['Burned', json.caloriesBurned],
+          ['Remaining', json.caloriesBurned > 3000 ? 0 : (3000 - json.caloriesBurned)]
         ]
       }
     ]
@@ -69,8 +69,8 @@ exports.toJson = function (dailySummary) {
       {
         type: 'pie', name: 'Steps Taken', innerSize: '50%',
         data: [
-          ['Steps Burned', json.stepsTaken],
-          ['Steps Remaining', json.stepsTaken > 9000 ? 0 : (9000 - json.stepsTaken)]
+          ['Taken', json.stepsTaken],
+          ['Remaining', json.stepsTaken > 9000 ? 0 : (9000 - json.stepsTaken)]
         ]
       }
     ]
