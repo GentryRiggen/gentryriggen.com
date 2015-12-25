@@ -61,7 +61,7 @@
 
     $scope.$on('$stateChangeStart', function (event, toState) {
       if (ShellCtrl.smallScreen) {
-        ShellCtrl.toggleMenu(false, false);
+        ShellCtrl.toggle = false;
       }
 
       ShellCtrl.adminOpen = toState.name.indexOf('admin') !== -1;
@@ -72,7 +72,6 @@
       switch (name) {
         case 'health':
           ShellCtrl.healthOpen = !ShellCtrl.healthOpen;
-          console.log(ShellCtrl.healthOpen);
           break;
         case 'admin':
           ShellCtrl.adminOpen = !ShellCtrl.adminOpen;
