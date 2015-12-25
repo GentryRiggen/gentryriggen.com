@@ -1,5 +1,4 @@
-var baseMsHealthModel = require('./baseMsHealth.model'),
-  conf = require('../config/conf');
+var baseMsHealthModel = require('./baseMsHealth.model');
 
 exports.toJson = function (dailySummaryHour) {
   return {

@@ -12,9 +12,9 @@ var conf = require('../config/conf'),
   httpsService = require('../services/https.service'),
   db = require('../db'),
   _ = require('lodash'),
-  moment = require('moment'),
   apiToken, refreshToken;
 
+require('moment');
 require('moment-timezone');
 
 function getMSHealthUserTokens() {
@@ -232,8 +232,6 @@ msHealthRepo.getAll = function (startTime, endTime) {
 
   // Want to get 'yesterday's' sleep and display it today
 
-  var sleepStartTime = baseRepo.getDateNDaysFromNow(-1, false);
-  var sleepParams = baseRepo.ensureStartAndEndTime(sleepStartTime, params.startTime);
   var query = "SELECT *" +
     " FROM (" +
     "   (" +
