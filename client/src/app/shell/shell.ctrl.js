@@ -60,7 +60,7 @@
     });
 
     $scope.$on('$stateChangeStart', function (event, toState) {
-      if (ShellCtrl.sma && w.width() <= 900) {
+      if (ShellCtrl.smallScreen) {
         ShellCtrl.toggleMenu(false, false);
       }
 
