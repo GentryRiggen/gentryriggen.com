@@ -8,12 +8,10 @@
   function ShellController($scope, UserService, $state, $mdMedia, $window) {
     var ShellCtrl = this;
     ShellCtrl.smallScreen = !$mdMedia('min-width: 600px');
-    ShellCtrl.toggle = true;
+    ShellCtrl.toggle = false;
 
     ShellCtrl.toggleMenu = function(toggle, mouseMovement) {
-      if (ShellCtrl.smallScreen && mouseMovement === true) {
-        return;
-      } else {
+      if (!ShellCtrl.smallScreen && mouseMovement !== true) {
         ShellCtrl.toggle = toggle ? toggle : !ShellCtrl.toggle;
       }
     };
