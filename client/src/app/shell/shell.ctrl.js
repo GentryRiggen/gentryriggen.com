@@ -7,9 +7,9 @@
   ShellController.$inject = ['$scope', 'UserService', '$state', '$mdMedia', '$window'];
   function ShellController($scope, UserService, $state, $mdMedia, $window) {
     var ShellCtrl = this;
-    ShellCtrl.toggle = ShellCtrl.largeScreen;
     ShellCtrl.smallScreen = !$mdMedia('min-width: 600px');
     ShellCtrl.largeScreen = $mdMedia('min-width: 1000px');
+    ShellCtrl.toggle = ShellCtrl.largeScreen;
 
     // SCREEN RESIZE EVENTS
     angular.element($window).resize(function(){
