@@ -8,6 +8,17 @@
   function ShellController($scope, UserService, $state, $mdMedia, $window) {
     var ShellCtrl = this;
     ShellCtrl.toggle = ShellCtrl.largeScreen;
+    ShellCtrl.smallScreen = !$mdMedia('min-width: 600px');
+    ShellCtrl.largeScreen = $mdMedia('min-width: 1000px');
+
+    // SCREEN RESIZE EVENTS
+    angular.element($window).resize(function(){
+      $scope.$apply(function(){
+        ShellCtrl.smallScreen = window.innerWidth <= 600;
+        ShellCtrl.largeScreen = window.innerWidth >= 1000;
+        ShellCtrl.toggle = ShellCtrl.largeScreen;
+      });
+    });
 
     ShellCtrl.toggleMenu = function(toggle, mouseMovement) {
       if (ShellCtrl.smallScreen && mouseMovement === true) {
@@ -18,15 +29,6 @@
         ShellCtrl.toggle = toggle ? toggle : !ShellCtrl.toggle;
       }
     };
-
-    // SCREEN RESIZE EVENTS
-    angular.element($window).resize(function(){
-      $scope.$apply(function(){
-        ShellCtrl.smallScreen = window.innerWidth <= 600;
-        ShellCtrl.largeScreen = window.innerWidth >= 1000;
-        ShellCtrl.toggle = ShellCtrl.largeScreen;
-      });
-    });
 
     function checkUserAuth() {
       UserService.getCurrentUser().then(
