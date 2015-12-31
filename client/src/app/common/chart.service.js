@@ -2,8 +2,8 @@
   'use strict';
   angular.module('gr').service('ChartService', ChartService);
 
-  ChartService.$inject = ['ChartJs'];
-  function ChartService(ChartJs) {
+  ChartService.$inject = [];
+  function ChartService() {
     var chartService = {};
 
     function replaceAndUpdate(data, tag, type) {
