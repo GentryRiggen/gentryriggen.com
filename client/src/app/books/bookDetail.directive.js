@@ -14,6 +14,7 @@
       templateUrl: '/src/app/books/bookDetail.tmpl.html',
       link: function ($scope, el, attrs) {
         $scope.showComments = attrs.showComments != "false";
+        $scope.sample = attrs.sample == "true";
 
         $scope.goToBook = function() {
           $state.go('book', {'id': $scope.book.id});

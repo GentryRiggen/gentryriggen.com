@@ -10,7 +10,8 @@
   <!-- BLOG POST CONTENT -->
   <div class="blog-post-body">
     <div class="blog-post-content" ta-bind="text" ta-readonly="disabled" ng-model="model.content" ng-if="!sample"></div>
-    <div class="blog-post-content" ta-bind="text" ta-readonly="disabled" ng-model="model.sampleContent" ng-if="sample"></div>
+    <div class="blog-post-content" ta-bind="text" ta-readonly="disabled" ng-model="model.sampleContent"
+         ng-if="sample"></div>
 
     <a ng-click="goToPost()" ng-if="sample">Read More...</a>
   </div>
@@ -28,9 +29,6 @@
     </a>
   </div>
   <div class="blog-post-footer" ng-if="showComments">
-    <!--<dir-disqus disqus-shortname="gentryriggen"-->
-                <!--disqus-identifier="{{ model.permalink }}"-->
-                <!--disqus-url="{{ model.url }}">-->
-    <!--</dir-disqus>-->
+    <div disqus="model.permalink"></div>
   </div>
 </div>

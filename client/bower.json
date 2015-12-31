@@ -10,7 +10,6 @@
     "angular-material": "~1.0.1",
     "moment": "~2.10.3",
     "animate.css": "~3.3.0",
-    "angular-utils-disqus": "~0.2.0",
     "toastr": "~2.1.1",
     "textAngular": "~1.4.6",
     "angular-messages": "~1.4.4",
@@ -20,7 +19,8 @@
     "mdi": "~1.3.41",
     "Chart.js": "~1.0.2",
     "ngInfiniteScroll": "~1.2.1",
-    "highcharts": "~4.2.1"
+    "highcharts": "~4.2.1",
+    "angular-disqus": "~1.1.0"
   },
   "resolutions": {
     "angular": "~1.4.8"

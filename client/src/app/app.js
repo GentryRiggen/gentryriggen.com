@@ -8,9 +8,9 @@
     'ngSanitize',
     'ngMessages',
     'textAngular',
-    'angularUtils.directives.dirDisqus',
     'angularFileUpload',
     '720kb.datepicker',
-    'infinite-scroll'
+    'infinite-scroll',
+    'ngDisqus'
   ]);
 })();

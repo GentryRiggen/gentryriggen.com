@@ -1,8 +1,15 @@
-/* jshint -W117 */
 var conf = require('../config/conf');
 
-/* jshint -W117 */
 exports.toJson = function (book) {
+  if (book.content) {
+    book.review = book.content;
+  }
+
+  var sampleReview = book.review;
+  if (sampleReview.length > 300) {
+    sampleReview = sampleReview.substring(0, 300);
+  }
+
   var bookModel = {
     id: book.id,
     authorId: book.author_id,
@@ -19,12 +26,11 @@ exports.toJson = function (book) {
     rating: book.rating,
     fiction: book.fiction,
     review: book.review,
+    sampleReview: sampleReview,
     url: conf.appUrl + '/#!/books/' + book.id
   };
 
-  if (book.content) {
-    bookModel.review = book.content;
-  }
+
 
   return bookModel;
 };

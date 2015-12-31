@@ -43,7 +43,7 @@ exports.toHoursChartJson = function (hours) {
     chartData.series[1].data.push(hour.averageHeartRate);
   });
 
-  return chartData
+  return chartData;
 };
 
 exports.fromJson = function (msHealthDailySummaryHour) {
