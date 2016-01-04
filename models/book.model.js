@@ -6,7 +6,7 @@ exports.toJson = function (book) {
   }
 
   var sampleReview = book.review;
-  if (sampleReview.length > 300) {
+  if (sampleReview && sampleReview.length > 300) {
     sampleReview = sampleReview.substring(0, 300);
   }
 
