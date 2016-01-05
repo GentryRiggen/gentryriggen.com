@@ -1,4 +1,5 @@
-var conf = require('../config/conf');
+var conf = require('../config/conf'),
+  util = require('../services/util.service');
 
 exports.toJson = function (book) {
   if (book.content) {
@@ -6,8 +7,8 @@ exports.toJson = function (book) {
   }
 
   var sampleReview = book.review;
-  if (sampleReview && sampleReview.length > 300) {
-    sampleReview = sampleReview.substring(0, 300);
+  if (sampleReview && sampleReview.length > 500) {
+    sampleReview = util.htmlSubStr(sampleReview, 500);
   }
 
   var bookModel = {
