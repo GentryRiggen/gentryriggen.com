@@ -5,7 +5,7 @@ var conf = require('../config/conf'),
 /* jshint -W117 */
 exports.toJson = function (blogPost) {
   var sampleContent = blogPost.content;
-  if (sampleContent.length > 300) {
+  if (sampleContent.length > 500) {
     sampleContent = util.htmlSubStr(sampleContent, 500);
   }
 
