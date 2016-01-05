@@ -1,11 +1,12 @@
 /* jshint -W117 */
-var conf = require('../config/conf');
+var conf = require('../config/conf'),
+  util = require('../services/util.service');
 
 /* jshint -W117 */
 exports.toJson = function (blogPost) {
   var sampleContent = blogPost.content;
   if (sampleContent.length > 300) {
-    sampleContent = sampleContent.substring(0, 300);
+    sampleContent = util.htmlSubStr(sampleContent, 500);
   }
 
   return {
