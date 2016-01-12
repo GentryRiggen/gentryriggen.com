@@ -91,4 +91,32 @@ repo.getActivityLevelByMonths = function() {
     });
 };
 
+repo.getWeekendsVsWeekdays = function() {
+  var query = "SELECT AVG(weekendDays.calories_burned) AS weekends, AVG(weekDays.calories_burned) AS weekdays " +
+    "FROM ( " +
+    "  SELECT calories_burned " +
+    "  FROM user_daily_summary uds " +
+    "  WHERE uds.id IN (SELECT id FROM user_daily_summary WHERE DAYOFWEEK(day_id) IN (1,2)) " +
+    "    AND uds.calories_burned > 0 " +
+    ") weekendDays, ( " +
+    "  SELECT calories_burned " +
+    "  FROM user_daily_summary uds " +
+    "  WHERE uds.id IN (SELECT id FROM user_daily_summary WHERE DAYOFWEEK(day_id) IN (2,3,4,5,6)) " +
+    "    AND uds.calories_burned > 0 " +
+    ") AS weekDays;";
+
+  return db.raw(query)
+    .then(function (results) {
+      return results[0];
+    });
+};
+
+repo.getCalorieAggregates = function() {
+  var promises = [];
+  promises.push(repo.getWeekendsVsWeekdays());
+  Q.all(promises).then(function(results) {
+
+  });
+};
+
 module.exports = repo;
