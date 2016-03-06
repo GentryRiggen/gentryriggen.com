@@ -36,7 +36,7 @@ httpsService.get = function (requestUrl, headers) {
       }
     });
   }).on('error', function (err) {
-    err.status = res.statusCode;
+      err.status = res.statusCode;
     dfd.reject(err);
   });
 
