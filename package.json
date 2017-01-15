@@ -2,7 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "description": "Gentry Riggen Blog Server",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -33,6 +33,10 @@
     "multiparty": "^4.1.2",
     "mysql": "^2.8.0",
     "q": "^1.4.1",
+    "ramda": "^0.23.0",
+    "request": "^2.79.0",
+    "slack": "^8.1.2",
+    "slack-terminalize": "^1.0.2",
     "treeize": "^2.0.2",
     "yargs": "^3.19.0"
   }

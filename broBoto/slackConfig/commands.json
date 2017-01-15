@@ -1,0 +1,16 @@
+{
+  "help": {
+    "alias": [ "halp" ],
+    "endpoint": "#",
+    "help": "help [command](optional)",
+    "description": "To get help on all supported commands, or a specified command"
+  },
+  "error": {
+    "exclude": true
+  },
+  "pong": {
+    "alias": [],
+    "help": "pong [commands]",
+    "description": "Do something with ping pong games."
+  }
+}

@@ -1,3 +1,5 @@
+const slackTerminal = require('slack-terminalize');
+const config = require('./config/conf');
 // REQUIRES
 /* jshint -W117 */
 var express = require('express'),
@@ -106,3 +108,18 @@ Date.prototype.toISOLocalString = function () {
   isoLocalString += ':' + pad(tzo % 60);
   return isoLocalString;
 };
+
+
+
+
+
+
+
+
+slackTerminal.init(config.slack.botToken, {}, {
+  // app configurations to suit your project structure
+  // to see the list of all possible config,
+  // check this out: https://github.com/ggauravr/slack-terminalize/blob/master/util/config.js
+  CONFIG_DIR: __dirname + '/broBoto/slackConfig',
+  COMMAND_DIR: __dirname + '/broBoto/slackCommands'
+});

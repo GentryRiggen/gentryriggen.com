@@ -43,12 +43,12 @@ var repo = function (tableName, model) {
     });
   };
 
-  baseRepo.createOrUpdate = function (data, convert) {
+  baseRepo.createOrUpdate = function (data, convert, keepId = false) {
     if (convert && model.fromJson) {
       data = model.fromJson(data);
     }
     var update = data.id > 0;
-    if (!update) {
+    if (!keepId && !update) {
       delete data.id;
     }
     var query = update ? db(tableName).where('id', data.id).update(data) : db.insert(data).into(tableName).returning('id');
