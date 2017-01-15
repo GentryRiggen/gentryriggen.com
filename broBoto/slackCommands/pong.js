@@ -34,6 +34,14 @@ module.exports = function (param) {
         return;
       }
 
+      if (
+        !currentUser.seasonId
+        && (pongArg === 'lost' || pongArg === 'leaderboard')
+      ) {
+        slackUtils.postMessage(channel, `There are no active seasons. Ask ${currentUser.captainName} to start a new season.`);
+        return;
+      }
+
       switch (pongArg) {
         case 'season':
           require('./pong/pongSeason')(param, currentUser);

@@ -1,7 +1,7 @@
 CREATE TABLE broboto_pong_team
 (
   id VARCHAR(64) PRIMARY KEY NOT NULL,
-  name VARCHAR(64) KEY NOT NULL,
+  name VARCHAR(64) NOT NULL,
   captainId VARCHAR(64) NOT NULL,
   dateCreated DATETIME NOT NULL
 );

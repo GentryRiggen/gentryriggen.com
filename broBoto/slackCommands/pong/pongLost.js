@@ -30,7 +30,8 @@ module.exports = function (param, loser) {
     return;
   }
 
-  const winnerId = args[1].replace('<@', '').replace('>', '');
+  const specifiedWinner = args[1];
+  const winnerId = specifiedWinner.replace('<@', '').replace('>', '');
   if (loser.userId == winnerId) {
     slackUtils.postMessage(channel, `You would find a way to lose to yourself, ${loser.username}...`);
     return;
@@ -38,6 +39,7 @@ module.exports = function (param, loser) {
 
   userRepo.getAllById(winnerId)
     .then((winner) => {
+      console.log(winner);
       if (!winner) {
         slackUtils.postMessage(channel, 'I couldn\'t find the users... You should probably be working anyway.');
         return;
@@ -70,6 +72,9 @@ module.exports = function (param, loser) {
                 });
             });
         });
+    })
+    .catch(() => {
+      slackUtils.postMessage(channel, `I have never heard of *${specifiedWinner}*. Ask them to register?`);
     });
 };
 

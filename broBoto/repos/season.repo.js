@@ -72,8 +72,8 @@ repo.getLeaderboard = (seasonId) => {
           losses: ranking.losses,
           lws: ranking.lws,
           lls: ranking.lls,
-          whippingBoi: ranking.whippingBoi == null ? 'UNKNOWN' : ranking.whippingBoi,
-          nemesis: ranking.nemesis == null ? 'UNKNOWN' : ranking.nemesis,
+          whippingBoi: ranking.whippingBoi == null ? 'N/A' : ranking.whippingBoi,
+          nemesis: ranking.nemesis == null ? 'N/A' : ranking.nemesis,
         }
       });
 

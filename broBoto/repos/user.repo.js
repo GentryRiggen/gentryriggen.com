@@ -30,9 +30,13 @@ repo.getAllById = function (id) {
     , whippingBoi.name AS whippingBoiName
     , nemesis.id AS nemesisId
     , nemesis.name AS nemesisName
+    , captain.id AS captainId
+    , captain.name AS captainName
   FROM broboto_pong_user AS user
   JOIN broboto_pong_team AS team
     ON team.id = user.teamId
+  JOIN broboto_pong_user AS captain
+    ON captain.id = team.captainId
   LEFT JOIN broboto_pong_season AS season
     ON season.teamId = team.id
       AND season.closed != 1
@@ -48,7 +52,7 @@ repo.getAllById = function (id) {
   const query = db.raw(sql, [id]);
   query.then((results) => {
     if (results[0].length < 1) {
-      dfd.reject('Could not find user.');
+      dfd.reject('I couldn\'t find your account. Try \npong register');
     } else {
       let user = false;
       results[0].forEach((result) => {
