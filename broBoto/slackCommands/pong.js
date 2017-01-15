@@ -67,8 +67,9 @@ const invalidMessage = (channel) => {
     '```1. PONG INIT - Initialize team for the first time (can only be done once by a slack admin).',
     '2. PONG REGISTER - Register to play ping pong.',
     '3. PONG SEASON [SEASON_NAME] - Create a new season and close the previous.',
-    '4. PONG LOST [@USER] - Record a loss to a superior opponent. Way to be pathetic!```',
+    '4. PONG LOST [@USER] - Record a loss to a superior opponent. Way to be pathetic!',
     '5. PONG LEADERBOARD - Get the leaderboard for the active season.',
+    '```',
   ];
   slackUtils.postMessage(channel, response.join('\n'));
 };
