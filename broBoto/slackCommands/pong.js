@@ -62,8 +62,6 @@ module.exports = function (param) {
 
 const invalidMessage = (channel) => {
   const response = [
-    'I remember the first time I used a computer...',
-    'How to use broboto pong:',
     '```1. PONG INIT - Initialize team for the first time (can only be done once by a slack admin).',
     '2. PONG REGISTER - Register to play ping pong.',
     '3. PONG SEASON [SEASON_NAME] - Create a new season and close the previous.',
