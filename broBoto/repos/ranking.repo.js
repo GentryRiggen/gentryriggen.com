@@ -95,18 +95,22 @@ repo.getUserRanking = (seasonId, userId) => {
       });
 
       let whippingBoiId = null;
+      let wins = 0;
       Object.keys(peopleBeaten).forEach((id) => {
         const best = R.propOr(0, whippingBoiId, peopleBeaten);
         const thisGuy = R.propOr(0, id, peopleBeaten);
+        wins += thisGuy;
         if (best <= thisGuy) {
           whippingBoiId = id;
         }
       });
 
       let nemesisId = null;
+      let losses = 0;
       Object.keys(peopleLostTo).forEach((id) => {
         const best = R.propOr(0, nemesisId, peopleLostTo);
         const thisGuy = R.propOr(0, id, peopleLostTo);
+        losses += thisGuy;
         if (best <= thisGuy) {
           nemesisId = id;
         }
@@ -116,8 +120,8 @@ repo.getUserRanking = (seasonId, userId) => {
         seasonId,
         userId,
         elo: currentELO,
-        wins: Object.keys(peopleBeaten).length,
-        losses: Object.keys(peopleLostTo).length,
+        wins,
+        losses,
         lws,
         lls,
         whippingBoi: whippingBoiId,
