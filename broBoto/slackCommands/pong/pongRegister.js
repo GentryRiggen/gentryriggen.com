@@ -19,11 +19,8 @@ module.exports = function (param) {
           } else {
             slackUtils.createOrGetUser(user.id, team.id)
               .then((newUser) => {
-                const response = [
-                  `Welcome to *${team.name}*`,
-                  newUser.name,
-                ];
-                slackUtils.postMessage(channel, response.join('\n'));
+                const response = `Welcome to *${team.name}*`;
+                slackUtils.postMessage(channel, response);
               });
           }
         });
