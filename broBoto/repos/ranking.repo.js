@@ -52,13 +52,13 @@ repo.getUserRanking = (seasonId, userId) => {
       let currentELO = 0;
 
       let peopleBeaten = {};
-      let lastWon = true;
-      let rollingWon = 0;
+      let lastWon = false;
+      let rollingWon = 1;
       let lws = 0;
 
       let peopleLostTo = {};
-      let lastLost = true;
-      let rollingLost = 0;
+      let lastLost = false;
+      let rollingLost = 1;
       let lls = 0;
       results[0].forEach((match, index) => {
         if (match.won) {
@@ -75,7 +75,7 @@ repo.getUserRanking = (seasonId, userId) => {
 
           lastWon = true;
           lastLost = false;
-          rollingLost = 0;
+          rollingLost = 1;
         } else {
           if (index === 0) currentELO = match.loserNewELO;
           const vs = R.propOr(0, match.winnerId, peopleLostTo);
@@ -90,7 +90,7 @@ repo.getUserRanking = (seasonId, userId) => {
 
           lastWon = false;
           lastLost = true;
-          rollingWon = 0;
+          rollingWon = 1;
         }
       });
 
