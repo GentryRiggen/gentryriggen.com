@@ -19,7 +19,7 @@ exports.postLeaderboard = (channel, leaderboard) => {
     postMessage(channel, 'No results for this season yet. Good job with all that work getting done... I guess... Play ping pong!');
   } else {
     const response = leaderboard.map((r) => {
-      return `>*${r.rank}. ${r.name}*: ${r.wins}W, ${r.losses}L, (elo: ${r.elo}, lws: ${r.lws}, lls: ${r.lls}), Whipping Boi: *${r.whippingBoi}*, Nemesis: *${r.nemesis}*`;
+      return `>*${r.rank}. ${r.name}*: (elo: ${r.elo}), ${r.wins}W, ${r.losses}L, Whipping Boi: *${r.whippingBoi}*, Nemesis: *${r.nemesis}*`;
     });
     postMessage(channel, response.join('\n'));
   }
