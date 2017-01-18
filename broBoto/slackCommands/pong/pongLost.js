@@ -31,7 +31,7 @@ module.exports = function (param, loser) {
   }
 
   const specifiedWinner = args[1];
-  const winnerId = specifiedWinner.replace('<@', '').replace('>', '');
+  const winnerId = slackUtils.getMentionId(specifiedWinner);
   if (loser.userId == winnerId) {
     slackUtils.postMessage(channel, `You would find a way to lose to yourself, ${loser.username}...`);
     return;
@@ -39,7 +39,6 @@ module.exports = function (param, loser) {
 
   userRepo.getAllById(winnerId)
     .then((winner) => {
-      console.log(winner);
       if (!winner) {
         slackUtils.postMessage(channel, 'I couldn\'t find the users... You should probably be working anyway.');
         return;

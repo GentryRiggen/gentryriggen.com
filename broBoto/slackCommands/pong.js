@@ -52,6 +52,9 @@ module.exports = function (param) {
         case 'leaderboard':
           require('./pong/pongLeaderboard')(param, currentUser);
           break;
+        case 'history':
+          require('./pong/pongHistory')(param, currentUser);
+          break;
         default:
           invalidMessage(channel);
           break;

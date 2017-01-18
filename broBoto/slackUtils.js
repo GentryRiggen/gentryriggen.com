@@ -6,6 +6,11 @@ const slack = require('slack');
 const Q = require('q');
 const userRepo = require('./repos/user.repo');
 
+exports.getMentionId = (mention) => {
+  const user = mention || '';
+  return user.replace('<@', '').replace('>', '');
+};
+
 const postMessage = (channel, response) => {
   // console.log('posting message', channel, response);
   webClient.chat.postMessage(channel, response, {

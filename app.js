@@ -51,17 +51,17 @@ if (devMode) {
 }
 
 // CRON
-if (!devMode) {
-  var CronJob = require('cron').CronJob;
-  var msHealthRepo = require('./repos/msHealth.repo');
-  var baseRepo = require('./repos/base.repo')();
-  new CronJob('*/30 * * * * *', function() {
-    var startDate = baseRepo.getDateNDaysFromDate(false, -1, false);
-    var endDate = baseRepo.getDateNDaysFromDate(false, 1, false);
-    var params = baseRepo.ensureStartAndEndTime(startDate, endDate);
-    msHealthRepo.sync(params.startTime, params.endTime);
-  }, null, true, 'America/Denver');
-}
+// if (!devMode) {
+//   var CronJob = require('cron').CronJob;
+//   var msHealthRepo = require('./repos/msHealth.repo');
+//   var baseRepo = require('./repos/base.repo')();
+//   new CronJob('*/30 * * * * *', function() {
+//     var startDate = baseRepo.getDateNDaysFromDate(false, -1, false);
+//     var endDate = baseRepo.getDateNDaysFromDate(false, 1, false);
+//     var params = baseRepo.ensureStartAndEndTime(startDate, endDate);
+//     msHealthRepo.sync(params.startTime, params.endTime);
+//   }, null, true, 'America/Denver');
+// }
 
 // START THE APP
 app.listen(port, function () {
