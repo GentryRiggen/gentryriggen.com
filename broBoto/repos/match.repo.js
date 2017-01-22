@@ -13,6 +13,8 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
   const sql = `
   SELECT
     pongMatch.seasonId
+    , pongMatch.winnerPoints
+    , pongMatch.loserPoints
     , CASE
         WHEN pongMatch.loserId = ? THEN 0
         ELSE 1
@@ -26,15 +28,25 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
   query.then((results) => {
     let seasonWins = 0;
     let seasonLosses = 0;
+    let seasonPd = 0;
     let allTimeWins = 0;
     let allTimeLosses = 0;
+    let allTimePd = 0;
     results[0].forEach((match) => {
       if (match.won) {
         allTimeWins++;
-        if (match.seasonId === seasonId) seasonWins++;
+        allTimePd += match.winnerPoints - match.loserPoints;
+        if (match.seasonId === seasonId) {
+          seasonWins++;
+          seasonPd += match.winnerPoints - match.loserPoints;
+        }
       } else {
         allTimeLosses++;
-        if (match.seasonId === seasonId) seasonLosses++;
+        allTimePd += match.loserPoints - match.winnerPoints;
+        if (match.seasonId === seasonId) {
+          seasonLosses++;
+          seasonPd += match.loserPoints - match.winnerPoints;
+        }
       }
     });
 
@@ -52,15 +64,20 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
     const seasonDifference = sDiff > 0 ? `+${sDiff}` : sDiff;
     const aDiff = allTimeWins - allTimeLosses;
     const allTimeDifference = aDiff > 0 ? `+${aDiff}` : aDiff;
+
+    const seasonPointDiff = seasonPd > 0 ? `+${seasonPd}` : seasonPd;
+    const allTimePointDiff = allTimePd > 0 ? `+${allTimePd}` : allTimePd;
     dfd.resolve({
       seasonWins,
       seasonLosses,
       seasonAverage,
       seasonDifference,
+      seasonPointDiff,
       allTimeWins,
       allTimeLosses,
       allTimeAverage,
       allTimeDifference,
+      allTimePointDiff
     });
   })
   .catch((err) => {

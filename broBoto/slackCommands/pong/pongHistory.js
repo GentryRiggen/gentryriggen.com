@@ -30,9 +30,9 @@ module.exports = function (param, me) {
         .then((matchHistories) => {
           const response = [
             `This season against ${against.username}:`,
-            `>${matchHistories.seasonWins} Wins, ${matchHistories.seasonLosses} Losses (${matchHistories.seasonDifference}, ${matchHistories.seasonAverage})`,
+            `>${matchHistories.seasonWins}W - ${matchHistories.seasonLosses}L (${matchHistories.seasonDifference}, ${matchHistories.seasonAverage}), point differential: ${matchHistories.seasonPointDiff}`,
             `All time:`,
-            `>${matchHistories.allTimeWins} Wins, ${matchHistories.allTimeLosses} Losses (${matchHistories.allTimeDifference}, ${matchHistories.allTimeAverage})`,
+            `>${matchHistories.allTimeWins}W - ${matchHistories.allTimeLosses}L (${matchHistories.allTimeDifference}, ${matchHistories.allTimeAverage}), point differential: ${matchHistories.allTimePointDiff}`,
           ];
           slackUtils.postMessage(channel, response.join('\n'));
         });
