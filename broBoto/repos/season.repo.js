@@ -33,7 +33,16 @@ repo.createNewSeason = (name, teamId) => {
   return dfd.promise;
 };
 
-repo.getLeaderboard = (seasonId) => {
+repo.getLeaderboard = (seasonId, leaderboardType = 'elo') => {
+  let orderBy;
+  switch (leaderboardType.toLowerCase()) {
+    case 'points':
+      orderBy = 'ranking.pointDifferential DESC';
+      break;
+    default:
+      orderBy = 'ranking.elo DESC';
+      break;
+  }
   const dfd = Q.defer();
   const sql = `
   SELECT
@@ -42,6 +51,8 @@ repo.getLeaderboard = (seasonId) => {
     , ranking.losses
     , ranking.lws
     , ranking.lls
+    , ranking.pointDifferential
+    , ranking.totalPoints
     , user.name
     , whippingBoi.name AS whippingBoi
     , nemesis.name AS nemesis
@@ -54,30 +65,35 @@ repo.getLeaderboard = (seasonId) => {
     ON nemesis.id = ranking.nemesis
   WHERE
     ranking.seasonId = ?
-  ORDER BY ranking.elo DESC`;
+  ORDER BY ${orderBy}`;
   const query = db.raw(sql, [seasonId]);
   query.then((results) => {
-      let rank = 1;
-      let previousElo = 0;
-      const rankings = results[0].map((ranking, index) => {
-        if (index === 0) previousElo = ranking.elo;
+    let rank = 1;
+    let previousElo = 0;
+    const rankings = results[0].map((ranking, index) => {
+      if (index === 0) previousElo = ranking.elo;
 
-        if (ranking.elo < previousElo) rank++;
+      if (ranking.elo < previousElo) rank++;
 
-        return {
-          rank,
-          name: ranking.name,
-          elo: ranking.elo,
-          wins: ranking.wins,
-          losses: ranking.losses,
-          lws: ranking.lws,
-          lls: ranking.lls,
-          whippingBoi: ranking.whippingBoi == null ? 'N/A' : ranking.whippingBoi,
-          nemesis: ranking.nemesis == null ? 'N/A' : ranking.nemesis,
-        }
-      });
+      const pointDifferential = ranking.pointDifferential > 0
+        ? `+${ranking.pointDifferential}`
+        : ranking.pointDifferential;
+      return {
+        rank,
+        name: ranking.name,
+        elo: ranking.elo,
+        wins: ranking.wins,
+        losses: ranking.losses,
+        lws: ranking.lws,
+        lls: ranking.lls,
+        whippingBoi: ranking.whippingBoi == null ? 'N/A' : ranking.whippingBoi,
+        nemesis: ranking.nemesis == null ? 'N/A' : ranking.nemesis,
+        pointDifferential,
+        totalPoints: ranking.totalPoints,
+      }
+    });
 
-      dfd.resolve(rankings);
+    dfd.resolve(rankings);
   });
 
   return dfd.promise;

@@ -19,12 +19,22 @@ const postMessage = (channel, response) => {
 };
 exports.postMessage = postMessage;
 
-exports.postLeaderboard = (channel, leaderboard) => {
+exports.postLeaderboard = (channel, leaderboard, type = 'elo') => {
   if (leaderboard.length === 0) {
     postMessage(channel, 'No results for this season yet. Good job with all that work getting done... I guess... Play ping pong!');
   } else {
     const response = leaderboard.map((r) => {
-      return `>*${r.rank}. ${r.name}*: (elo: ${r.elo}), ${r.wins}W, ${r.losses}L, Whipping Boi: *${r.whippingBoi}*, Nemesis: *${r.nemesis}*`;
+      const rankAndName = `>*${r.rank}. ${r.name}*:`;
+      const elo = `elo: ${r.elo}`;
+      const pd = `point differential: ${r.pointDifferential}`;
+      const wl = `(${r.wins}W - ${r.losses}L)`;
+      switch (type.toLowerCase()) {
+        case 'points':
+        case 'pd':
+          return `${rankAndName} ${pd}, ${elo}, ${wl}`;
+        default:
+          return `${rankAndName} ${elo}, ${pd}, ${wl}`;
+      }
     });
     postMessage(channel, response.join('\n'));
   }

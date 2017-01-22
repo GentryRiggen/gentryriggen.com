@@ -25,7 +25,9 @@ module.exports = function (param, loser) {
   const channel = R.propOr('', 'channel', param);
   const args = R.propOr([], 'args', param);
 
-  if (args.length < 2) {
+  const skunk = args[0] === 'skunk' || args[0] === 'skunked';
+
+  if (!skunk && args.length < 4) {
     invalidMessage(channel);
     return;
   }
@@ -47,6 +49,21 @@ module.exports = function (param, loser) {
       const loserNewELO = getNewRating(loser.elo, winner.elo, 0);
       const winnerNewELO = getNewRating(winner.elo, loser.elo, 1);
 
+      let loserPoints;
+      if (skunk) {
+        loserPoints = 0;
+      } else {
+        const lostBy = parseInt(args[3]);
+        if (lostBy < 2) {
+          slackUtils.postMessage(channel, 'Lose by 2 or I will make you lose by 21!');
+          return;
+        } else if (lostBy > 19) {
+          slackUtils.postMessage(channel, 'You either got skunked or don\'t know how to play this game...');
+          return;
+        }
+        loserPoints = 21 - lostBy;
+      }
+
       const match = {
         seasonId: loser.seasonId,
         loserId: loser.userId,
@@ -55,6 +72,9 @@ module.exports = function (param, loser) {
         winnerId: winner.userId,
         winnerOldELO: winner.elo,
         winnerNewELO,
+        winnerPoints: 21,
+        loserPoints,
+        skunk: skunk ? 1 : 0,
         dateCreated: (new Date()).toMysqlFormat(),
       };
 
@@ -67,6 +87,9 @@ module.exports = function (param, loser) {
             .then(() => {
               seasonRepo.getLeaderboard(loser.seasonId)
                 .then((leaderboard) => {
+                  if (skunk) {
+                    slackUtils.postMessage(channel, 'SKUNKED!!! This match has been recorded as 0-21. Ouch...');
+                  }
                   slackUtils.postLeaderboard(channel, leaderboard);
                 });
             });
@@ -80,7 +103,8 @@ module.exports = function (param, loser) {
 const invalidMessage = (channel) => {
   const response = [
     'Invalid command bruh!',
-    'pong lost to @yourmom',
+    'pong lost to @yourmom by 19',
+    'Yeah you lost 2-21 because you suck...',
   ];
   slackUtils.postMessage(channel, response.join('\n'));
 };

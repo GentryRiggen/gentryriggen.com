@@ -60,8 +60,12 @@ repo.getUserRanking = (seasonId, userId) => {
       let lastLost = false;
       let rollingLost = 1;
       let lls = 0;
+      let pointDifferential = 0;
+      let totalPoints = 0;
       results[0].forEach((match, index) => {
         if (match.won) {
+          pointDifferential += match.winnerPoints - match.loserPoints;
+          totalPoints += match.winnerPoints;
           if (index === 0) currentELO = match.winnerNewELO;
           const vs = R.propOr(0, match.loserId, peopleBeaten);
           peopleBeaten[match.loserId] = vs + 1;
@@ -77,6 +81,8 @@ repo.getUserRanking = (seasonId, userId) => {
           lastLost = false;
           rollingLost = 1;
         } else {
+          pointDifferential += match.loserPoints - match.winnerPoints;
+          totalPoints += match.loserPoints;
           if (index === 0) currentELO = match.loserNewELO;
           const vs = R.propOr(0, match.winnerId, peopleLostTo);
           peopleLostTo[match.winnerId] = vs + 1;
@@ -116,6 +122,7 @@ repo.getUserRanking = (seasonId, userId) => {
         }
       });
 
+      const time = (new Date()).toMysqlFormat();
       const ranking = {
         seasonId,
         userId,
@@ -126,6 +133,10 @@ repo.getUserRanking = (seasonId, userId) => {
         lls,
         whippingBoi: whippingBoiId,
         nemesis: nemesisId,
+        pointDifferential,
+        totalPoints,
+        dateCreated: time,
+        dateModified: time,
       };
 
       dfd.resolve(ranking);

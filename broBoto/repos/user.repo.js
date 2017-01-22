@@ -1,10 +1,14 @@
 const Q = require('q');
 const model = require('../models/generic.model');
-const baseRepo = require('../../repos/base.repo')('broboto_pong_user', model);
+const tableName = 'broboto_pong_user';
+const baseRepo = require('../../repos/base.repo')(tableName, model);
 const db = require('../../db');
 
 const repo = {};
 repo.getById = baseRepo.getById;
+repo.getAll = () => {
+  return db(tableName);
+};
 
 repo.getAllById = function (id) {
   const dfd = Q.defer();
