@@ -3,7 +3,6 @@ const slackUtils = require('../../slackUtils');
 const slack = require('slack');
 const userRepo = require('../../repos/user.repo');
 const matchRepo = require('../../repos/match.repo');
-const rankingsRepo = require('../../repos/ranking.repo');
 
 module.exports = function (param, me) {
   const channel = R.propOr('', 'channel', param);
@@ -38,16 +37,6 @@ module.exports = function (param, me) {
           slackUtils.postMessage(channel, response.join('\n'));
         });
     });
-
-  // TEMP
-  userRepo.getAll()
-    .then((allUsers) => {
-      allUsers.forEach((user) => {
-        rankingsRepo.updateUserRanking(me.seasonId, user.id);
-      });
-    })
-    .catch((err) => console.log('Something went wrong!', err));
-  // END TEMP
 };
 
 const invalidMessage = (channel) => {
