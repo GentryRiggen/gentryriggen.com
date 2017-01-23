@@ -103,7 +103,7 @@ module.exports = function (param, loser) {
 const invalidMessage = (channel) => {
   const response = [
     'Invalid command bruh!',
-    'pong lost to @yourmom by 19',
+    'pong lost @yourmom by 19',
     'Yeah you lost 2-21 because you suck...',
   ];
   slackUtils.postMessage(channel, response.join('\n'));
