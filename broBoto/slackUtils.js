@@ -26,7 +26,7 @@ exports.postLeaderboard = (channel, leaderboard, type = 'elo') => {
     const response = leaderboard.map((r) => {
       const rankAndName = `>*${r.rank}. ${r.name}*:`;
       const elo = `elo: ${r.elo}`;
-      const pd = `point differential: ${r.pointDifferential}`;
+      const pd = `pd: ${r.pointDifferential}`;
       const wl = `(${r.wins}W - ${r.losses}L)`;
       switch (type.toLowerCase()) {
         case 'points':
