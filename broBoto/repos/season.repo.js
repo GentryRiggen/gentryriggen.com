@@ -70,10 +70,14 @@ repo.getLeaderboard = (seasonId, leaderboardType = 'elo') => {
   query.then((results) => {
     let rank = 1;
     let previousElo = 0;
+    let previousPd = 0;
     const rankings = results[0].map((ranking, index) => {
-      if (index === 0) previousElo = ranking.elo;
+      if (index === 0) {
+	previousElo = ranking.elo;
+	previousPd = ranking.pointDifferential;
+      }
 
-      if (ranking.elo < previousElo) rank++;
+      if (ranking.elo < previousElo || ranking.pointDifferential < previousPd) rank++;
 
       const pointDifferential = ranking.pointDifferential > 0
         ? `+${ranking.pointDifferential}`
