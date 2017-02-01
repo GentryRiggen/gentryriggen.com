@@ -57,6 +57,10 @@ module.exports = function (param) {
         case 'history':
           require('./pong/pongHistory')(param, currentUser);
           break;
+        case 'challenge':
+        case 'accept':
+          require('./pong/pongGiphy')(param, currentUser);
+          break;
         default:
           invalidMessage(channel);
           break;

@@ -5,3 +5,5 @@ bower_components/
 .tmp/
 dist/
 config/conf.js
+**/*.DS_Store
+npm-debug.log
