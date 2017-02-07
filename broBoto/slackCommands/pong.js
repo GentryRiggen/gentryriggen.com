@@ -59,7 +59,8 @@ module.exports = function (param) {
           break;
         case 'challenge':
         case 'accept':
-          require('./pong/pongGiphy')(param, currentUser);
+          // require('./pong/pongGiphy')(param, currentUser);
+          require('./pong/pongGiphyEnhanced')(param, currentUser);
           break;
         default:
           invalidMessage(channel);
