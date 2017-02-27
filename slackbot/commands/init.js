@@ -1,36 +1,29 @@
-const R = require('ramda');
 const Q = require('q');
-const slackUtils = require('../../slackUtils');
 const slack = require('slack');
-const config = require('../../../config/conf');
-const teamRepo = require('../.././team.repo');
-const userRepo = require('../.././user.repo');
+const slackUtils = require('../slackUtils');
+const config = require('../../config/conf');
+const teamRepo = require('../repos/team.repo');
 
-module.exports = function (param) {
-  const channel = R.propOr('', 'channel', param);
-  const args = R.propOr([], 'args', param);
-
-  const captainId = param.user;
-  slackUtils.getUser(captainId)
-    .then((user) => {
-      if (!user.is_admin) {
-        slackUtils.postMessage(channel, 'Admins only pleb!');
+module.exports = (bot, message) => {
+  slackUtils.getUser(message.user)
+    .then((slackUser) => {
+      if (!slackUser.is_admin) {
+        bot.reply(message, 'Admins only, Pleb!');
         return;
       }
 
-      createOrGetTeam(user.team_id, user.id)
+      createOrGetTeam(slackUser.team_id, slackUser.id)
         .then((team) => {
-          slackUtils.createOrGetUser(user.id, team.id)
+          slackUtils.createOrGetUser(slackUser.id, team.id)
             .then((captain) => {
               const response = [
                 team.name,
                 `Captain: ${captain.name}`,
-                `Date Created: ${team.dateCreated}`,
               ];
-              slackUtils.postMessage(channel, response.join('\n'));
+              bot.reply(message, response.join('\n'));
             });
         })
-        .catch(error => slackUtils.postMessage(channel, error));
+        .catch(error => bot.reply(message, 'I totally failed to do what you asked...'));
     });
 };
 

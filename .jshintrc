@@ -11,6 +11,7 @@
   "validthis": true,
   "jasmine": true,
   "globals": {
+    "require": true,
     "angular": false,
     "inject": false,
     "module": false,

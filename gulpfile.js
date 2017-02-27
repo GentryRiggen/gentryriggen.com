@@ -19,7 +19,7 @@
       .pipe($.jshint.reporter('jshint-stylish', {verbose: true}));
   });
 
-  gulp.task('default', ['lint'], function () {
+  gulp.task('default', function () {
     var production = typeof args.production != 'undefined' ? 'production' : 'development';
     var productionData = typeof args.productionData != 'undefined' ? 'production' : 'development';
     productionData = production == 'production' && productionData != 'production' ? production : productionData;

@@ -4,7 +4,7 @@ const config = require('../config/conf');
 const R = require('ramda');
 const slack = require('slack');
 const Q = require('q');
-const userRepo = require('././user.repo');
+const userRepo = require('./repos/user.repo');
 
 exports.getMentionId = (mention) => {
   const user = mention || '';
@@ -19,25 +19,26 @@ const postMessage = (channel, response) => {
 };
 exports.postMessage = postMessage;
 
-exports.postLeaderboard = (channel, leaderboard, type = 'elo') => {
+exports.postLeaderboard = (bot, message, leaderboard, type = 'elo') => {
   if (leaderboard.length === 0) {
-    postMessage(channel, 'No results for this season yet. Good job with all that work getting done... I guess... Play ping pong!');
-  } else {
-    const response = leaderboard.map((r) => {
-      const rankAndName = `>*${r.rank}. ${r.name}*:`;
-      const elo = `elo: ${r.elo}`;
-      const pd = `pd: ${r.pointDifferential}`;
-      const wl = `(${r.wins}W - ${r.losses}L)`;
-      switch (type.toLowerCase()) {
-        case 'points':
-        case 'pd':
-          return `${rankAndName} ${pd}, ${elo}, ${wl}`;
-        default:
-          return `${rankAndName} ${elo}, ${pd}, ${wl}`;
-      }
-    });
-    postMessage(channel, response.join('\n'));
+    bot.reply(message, 'No results yet for this season. Play more ping pong!');
+    return
   }
+
+  const response = leaderboard.map((r) => {
+    const rankAndName = `>*${r.rank}. ${r.name}*:`;
+    const elo = `elo: ${r.elo}`;
+    const pd = `pd: ${r.pointDifferential}`;
+    const wl = `(${r.wins}W - ${r.losses}L)`;
+    switch (type.toLowerCase()) {
+      case 'points':
+      case 'pd':
+        return `${rankAndName} ${pd}, ${elo}, ${wl}`;
+      default:
+        return `${rankAndName} ${elo}, ${pd}, ${wl}`;
+    }
+  });
+  bot.reply(message, response.join('\n'));
 };
 
 const getUser = (userId) => {
@@ -47,7 +48,7 @@ const getUser = (userId) => {
     token: config.slack.botToken,
     user: userId,
   }, (err, data) => {
-    if (err || !data.ok) {
+    if (err || !data.ok || !data.user) {
       dfd.reject('Failed to find user.');
     }
 
@@ -84,3 +85,12 @@ const createOrGetUser = (userId, teamId) => {
   return dfd.promise;
 };
 exports.createOrGetUser = createOrGetUser;
+
+exports.getArgs = (message) => {
+  let args = R.propOr('', 'text', message).split(' ');
+  if (args.length > 0 && args[0] === 'pong') {
+    args.splice(0, 1);
+  }
+
+  return args;
+};

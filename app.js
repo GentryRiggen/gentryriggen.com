@@ -1,4 +1,5 @@
 const slackTerminal = require('slack-terminalize');
+require('./slackbot/app');
 const config = require('./config/conf');
 // REQUIRES
 /* jshint -W117 */
@@ -11,7 +12,7 @@ var express = require('express'),
 // ENVIRONMENT SETUP
 console.log('NODE_ENV: ', process.env.NODE_ENV, process.env.PORT);
 var app = express(),
-  port = process.env.PORT || 8888,
+  port = config.usePort || 8888,
   devMode = process.env.NODE_ENV === 'development';
 app.use(bodyParser.json());
 
@@ -116,10 +117,12 @@ Date.prototype.toISOLocalString = function () {
 
 
 
-slackTerminal.init(config.slack.botToken, {}, {
-  // app configurations to suit your project structure
-  // to see the list of all possible config,
-  // check this out: https://github.com/ggauravr/slack-terminalize/blob/master/util/config.js
-  CONFIG_DIR: __dirname + '/broBoto/slackConfig',
-  COMMAND_DIR: __dirname + '/broBoto/slackCommands'
-});
+// slackTerminal.init(config.slack.botToken, {}, {
+//   // app configurations to suit your project structure
+//   // to see the list of all possible config,
+//   // check this out: https://github.com/ggauravr/slack-terminalize/blob/master/util/config.js
+//   CONFIG_DIR: __dirname + '/broBoto/slackConfig',
+//   COMMAND_DIR: __dirname + '/broBoto/slackCommands'
+// });
+//
+

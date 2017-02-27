@@ -1,7 +1,7 @@
 const Q = require('q');
-const model = require('../models/generic.model');
+const model = require('./generic.model');
 const tableName = 'broboto_pong_user';
-const baseRepo = require('../../repos/base.repo')(tableName, model);
+const baseRepo = require('../../repos/base.repo.js')(tableName, model);
 const db = require('../../db');
 
 const repo = {};
@@ -56,6 +56,10 @@ repo.getAllById = function (id) {
   const query = db.raw(sql, [id]);
   query.then((results) => {
     if (results[0].length < 1) {
+      dfd.resolve({
+        hasAccount: false,
+        userId: id,
+      });
       dfd.reject('I couldn\'t find your account. Try \npong register');
     } else {
       let user = false;
@@ -63,7 +67,11 @@ repo.getAllById = function (id) {
         user = result;
       });
 
-      dfd.resolve(user);
+      dfd.resolve(
+        Object.assign({}, user, {
+          hasAccount: true,
+        })
+      );
     }
   });
 

@@ -1,8 +1,8 @@
 const R = require('ramda');
 const slackUtils = require('../../slackUtils');
 const slack = require('slack');
-const userRepo = require('../../repos/user.repo');
-const matchRepo = require('../../repos/match.repo');
+const userRepo = require('../.././user.repo');
+const matchRepo = require('../.././match.repo');
 
 module.exports = function (param, me) {
   const channel = R.propOr('', 'channel', param);

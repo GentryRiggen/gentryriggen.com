@@ -1,7 +1,7 @@
 const Q = require('q');
 const R = require('ramda');
-const model = require('../models/generic.model');
-const baseRepo = require('../../repos/base.repo')('broboto_pong_season', model);
+const model = require('./generic.model');
+const baseRepo = require('../../repos/base.repo.js')('broboto_pong_season', model);
 const db = require('../../db');
 
 const repo = {};

@@ -1,7 +1,7 @@
 const R = require('ramda');
 const slackUtils = require('../../slackUtils');
 const slack = require('slack');
-const seasonRepo = require('../../repos/season.repo');
+const seasonRepo = require('../.././season.repo');
 
 module.exports = function (param, loser) {
   const channel = R.propOr('', 'channel', param);

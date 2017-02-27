@@ -1,9 +1,9 @@
 const Q = require('q');
 const R = require('ramda');
 const db = require('../../db');
-const model = require('../models/generic.model');
+const model = require('./generic.model');
 const tableName = 'broboto_pong_ranking';
-const baseRepo = require('../../repos/base.repo')(tableName, model);
+const baseRepo = require('../../repos/base.repo.js')(tableName, model);
 
 const repo = {};
 repo.getById = baseRepo.getById;

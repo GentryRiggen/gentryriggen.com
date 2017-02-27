@@ -1,11 +1,11 @@
 const R = require('ramda');
 const Q = require('q');
-const slackUtils = require('../../slackUtils');
 const slack = require('slack');
-const userRepo = require('../.././user.repo');
-const matchRepo = require('../.././match.repo');
-const rankingsRepo = require('../.././ranking.repo');
-const seasonRepo = require('../.././season.repo');
+const slackUtils = require('../slackUtils');
+const userRepo = require('../repos/user.repo');
+const matchRepo = require('../repos/match.repo');
+const rankingsRepo = require('../repos/ranking.repo');
+const seasonRepo = require('../repos/season.repo');
 
 const getRatingDelta = (myRating, opponentRating, myGameResult) => {
   if ([0, 0.5, 1].indexOf(myGameResult) === -1) {
@@ -21,28 +21,29 @@ const getNewRating = (myRating, opponentRating, myGameResult) => {
   return myRating + getRatingDelta(myRating, opponentRating, myGameResult);
 };
 
-module.exports = function (param, loser) {
-  const channel = R.propOr('', 'channel', param);
-  const args = R.propOr([], 'args', param);
-
-  const skunk = args[0] === 'skunk' || args[0] === 'skunked';
+module.exports = (bot, message, loser) => {
+  const args = slackUtils.getArgs(message);
+  let skunk = false;
+  if (args.length > 1) {
+    skunk = args[1] === 'skunked';
+  }
 
   if (!skunk && args.length < 4) {
-    invalidMessage(channel);
+    invalidMessage(bot, message);
     return;
   }
 
-  const specifiedWinner = args[1];
+  const specifiedWinner = skunk ? args[0] : args[1];
   const winnerId = slackUtils.getMentionId(specifiedWinner);
   if (loser.userId == winnerId) {
-    slackUtils.postMessage(channel, `You would find a way to lose to yourself, ${loser.username}...`);
+    bot.reply(message, `You would find a way to lose to yourself, ${loser.username}...`);
     return;
   }
 
   userRepo.getAllById(winnerId)
     .then((winner) => {
       if (!winner) {
-        slackUtils.postMessage(channel, 'I couldn\'t find the users... You should probably be working anyway.');
+        bot.reply(message, 'I couldn\'t find that user... You should probably be working anyway.');
         return;
       }
 
@@ -55,10 +56,10 @@ module.exports = function (param, loser) {
       } else {
         const lostBy = parseInt(args[3]);
         if (lostBy < 2) {
-          slackUtils.postMessage(channel, 'Lose by 2 or I will make you lose by 21!');
+          bot.reply(message, 'You cannot lose by less than 2...');
           return;
         } else if (lostBy > 19) {
-          slackUtils.postMessage(channel, 'You either got skunked or don\'t know how to play this game...');
+          bot.reply(message, 'You either got skunked or don\'t know how to play this game...');
           return;
         }
         loserPoints = 21 - lostBy;
@@ -88,23 +89,26 @@ module.exports = function (param, loser) {
               seasonRepo.getLeaderboard(loser.seasonId)
                 .then((leaderboard) => {
                   if (skunk) {
-                    slackUtils.postMessage(channel, 'SKUNKED!!! This match has been recorded as 0-21. Ouch...');
+                    bot.reply(message, 'SKUNKED!!! This match has been recorded as 0-21. Ouch...');
                   }
-                  slackUtils.postLeaderboard(channel, leaderboard);
+                  slackUtils.postLeaderboard(bot, message, leaderboard);
                 });
             });
         });
-    })
-    .catch(() => {
-      slackUtils.postMessage(channel, `I have never heard of *${specifiedWinner}*. Ask them to register?`);
     });
 };
 
-const invalidMessage = (channel) => {
+const invalidMessage = (bot, message) => {
+  bot.api.reactions.add({
+    timestamp: message.ts,
+    channel: message.channel,
+    name: 'unamused',
+  });
   const response = [
-    'Invalid command bruh!',
-    'pong lost @yourmom by 19',
-    'Yeah you lost 2-21 because you suck...',
+    'Invalid command',
+    `><@${bot.identity.name}> lost @user by 19`,
+    'OR',
+    `><@${bot.identity.name}> @user skunked me`,
   ];
-  slackUtils.postMessage(channel, response.join('\n'));
+  bot.reply(message, response.join('\n'));
 };

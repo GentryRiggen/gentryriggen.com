@@ -1,7 +1,7 @@
 const Q = require('q');
 const db = require('../../db');
-const model = require('../models/generic.model');
-const baseRepo = require('../../repos/base.repo')('broboto_pong_match', model);
+const model = require('./generic.model.js');
+const baseRepo = require('../../repos/base.repo.js')('broboto_pong_match', model);
 
 const repo = {};
 repo.getById = baseRepo.getById;
@@ -57,7 +57,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
 
     const allTimeGamesTotal = allTimeWins + allTimeLosses;
     const allTimeAverage = allTimeGamesTotal > 0
-      ? ((allTimeWins / (allTimeWins + allTimeLosses))* 100).toFixed(1) + '%'
+      ? ((allTimeWins / (allTimeWins + allTimeLosses)) * 100).toFixed(1) + '%'
       : '0%';
 
     const sDiff = seasonWins - seasonLosses;
@@ -66,18 +66,30 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
     const allTimeDifference = aDiff > 0 ? `+${aDiff}` : aDiff;
 
     const seasonPointDiff = seasonPd > 0 ? `+${seasonPd}` : seasonPd;
+    let seasonPointAverage = seasonGamesTotal > 0
+      ? (seasonPd / seasonGamesTotal).toFixed(1)
+      : 0;
+    seasonPointAverage = `${(seasonPointAverage > 0 ? `+${seasonPointAverage}` : seasonPointAverage)}pts/game`;
+
     const allTimePointDiff = allTimePd > 0 ? `+${allTimePd}` : allTimePd;
+    let allTimePointAverage = allTimeGamesTotal > 0
+      ? (allTimePd / allTimeGamesTotal).toFixed(1)
+      : 0;
+    allTimePointAverage = `${(allTimePointAverage > 0 ? `+${allTimePointAverage}` : allTimePointAverage)}pts/game`;
+
     dfd.resolve({
       seasonWins,
       seasonLosses,
       seasonAverage,
       seasonDifference,
       seasonPointDiff,
+      seasonPointAverage,
       allTimeWins,
       allTimeLosses,
       allTimeAverage,
       allTimeDifference,
-      allTimePointDiff
+      allTimePointDiff,
+      allTimePointAverage,
     });
   })
   .catch((err) => {
