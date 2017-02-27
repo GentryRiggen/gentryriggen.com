@@ -75,13 +75,13 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
     let seasonPointAverage = seasonGamesTotal > 0
       ? (seasonPoints / seasonGamesTotal).toFixed(0)
       : 0;
-    seasonPointAverage = `${(seasonPointAverage > 0 ? `+${seasonPointAverage}` : seasonPointAverage)}pts/game`;
+    seasonPointAverage = `average ${seasonPointAverage}pts/game`;
 
     const allTimePointDiff = allTimePd > 0 ? `+${allTimePd}` : allTimePd;
     let allTimePointAverage = allTimeGamesTotal > 0
       ? (allTimePoints / allTimeGamesTotal).toFixed(0)
       : 0;
-    allTimePointAverage = `${(allTimePointAverage > 0 ? `+${allTimePointAverage}` : allTimePointAverage)}pts/game`;
+    allTimePointAverage = `average ${allTimePointAverage}pts/game`;
 
     dfd.resolve({
       seasonWins,
