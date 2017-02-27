@@ -29,23 +29,29 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
     let seasonWins = 0;
     let seasonLosses = 0;
     let seasonPd = 0;
+    let seasonPoints = 0;
     let allTimeWins = 0;
     let allTimeLosses = 0;
     let allTimePd = 0;
+    let allTimePoints = 0;
     results[0].forEach((match) => {
       if (match.won) {
         allTimeWins++;
         allTimePd += match.winnerPoints - match.loserPoints;
+        allTimePoints += match.winnerPoints;
         if (match.seasonId === seasonId) {
           seasonWins++;
           seasonPd += match.winnerPoints - match.loserPoints;
+          seasonPoints += match.winnerPoints;
         }
       } else {
         allTimeLosses++;
         allTimePd += match.loserPoints - match.winnerPoints;
+        allTimePoints += match.loserPoints;
         if (match.seasonId === seasonId) {
           seasonLosses++;
           seasonPd += match.loserPoints - match.winnerPoints;
+          seasonPoints += match.loserPoints;
         }
       }
     });
@@ -67,13 +73,13 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
 
     const seasonPointDiff = seasonPd > 0 ? `+${seasonPd}` : seasonPd;
     let seasonPointAverage = seasonGamesTotal > 0
-      ? (seasonPd / seasonGamesTotal).toFixed(1)
+      ? (seasonPoints / seasonGamesTotal).toFixed(0)
       : 0;
     seasonPointAverage = `${(seasonPointAverage > 0 ? `+${seasonPointAverage}` : seasonPointAverage)}pts/game`;
 
     const allTimePointDiff = allTimePd > 0 ? `+${allTimePd}` : allTimePd;
     let allTimePointAverage = allTimeGamesTotal > 0
-      ? (allTimePd / allTimeGamesTotal).toFixed(1)
+      ? (allTimePoints / allTimeGamesTotal).toFixed(0)
       : 0;
     allTimePointAverage = `${(allTimePointAverage > 0 ? `+${allTimePointAverage}` : allTimePointAverage)}pts/game`;
 
