@@ -29,17 +29,67 @@ module.exports = (bot, message, loser) => {
   }
 
   if (!skunk && args.length < 4) {
-    invalidMessage(bot, message);
+    let specifiedWinner;
+    let lostBy;
+    bot.startConversation(message, (err, convo) => {
+      if (!err) {
+        if (args.length < 2) {
+          getWinner(convo, (response, convo) => {
+            specifiedWinner = response.text;
+            convo.next();
+            getLostBy(convo, (response, convo) => {
+              lostBy = response.text;
+              convo.next();
+            });
+          });
+        } else {
+          specifiedWinner = args[1];
+          getLostBy(convo, (response, convo) => {
+            lostBy = response.text;
+            convo.next();
+          });
+        }
+
+        convo.on('end', convo => {
+          if (convo.status == 'completed') {
+            gotAllInfo(bot, message, loser, specifiedWinner, lostBy)
+          } else {
+            bot.reply(message, 'OK, nevermind!');
+          }
+        });
+      }
+    });
     return;
   }
 
   const specifiedWinner = skunk ? args[0] : args[1];
+  const lostBy = skunk ? 21 : args[3];
+  gotAllInfo(bot, message, loser, specifiedWinner, lostBy);
+};
+
+const getWinner = (convo, cb) => {
+  convo.say('Bummer...');
+  convo.ask('Can you @mention who you lost to?', cb);
+};
+
+const getLostBy = (convo, cb) => {
+  convo.say('Yeah they are way better than you...');
+  convo.ask('How many points did you lose by?', cb);
+};
+
+const gotAllInfo = (bot, message, loser, specifiedWinner, lostBy) => {
+  const loserPoints = 21 - lostBy;
+  const skunk = loserPoints === 0;
+  if (!lostBy) {
+    invalidMessage(bot, message);
+    return;
+  }
+
   const winnerId = slackUtils.getMentionId(specifiedWinner);
   if (loser.userId == winnerId) {
     bot.reply(message, `You would find a way to lose to yourself, ${loser.username}...`);
     return;
   }
-
   userRepo.getAllById(winnerId)
     .then((winner) => {
       if (!winner) {
@@ -50,19 +100,12 @@ module.exports = (bot, message, loser) => {
       const loserNewELO = getNewRating(loser.elo, winner.elo, 0);
       const winnerNewELO = getNewRating(winner.elo, loser.elo, 1);
 
-      let loserPoints;
-      if (skunk) {
-        loserPoints = 0;
-      } else {
-        const lostBy = parseInt(args[3]);
-        if (lostBy < 2) {
-          bot.reply(message, 'You cannot lose by less than 2...');
-          return;
-        } else if (lostBy > 19) {
-          bot.reply(message, 'You either got skunked or don\'t know how to play this game...');
-          return;
-        }
-        loserPoints = 21 - lostBy;
+      if (lostBy < 2) {
+        bot.reply(message, 'You cannot lose by less than 2...');
+        return;
+      } else if (!skunk && lostBy > 19) {
+        bot.reply(message, 'You either got skunked or don\'t know how to play this game...');
+        return;
       }
 
       const match = {
@@ -89,6 +132,11 @@ module.exports = (bot, message, loser) => {
               seasonRepo.getLeaderboard(loser.seasonId)
                 .then((leaderboard) => {
                   if (skunk) {
+                    bot.api.reactions.add({
+                      timestamp: message.ts,
+                      channel: message.channel,
+                      name: 'sob',
+                    });
                     bot.reply(message, 'SKUNKED!!! This match has been recorded as 0-21. Ouch...');
                   }
                   slackUtils.postLeaderboard(bot, message, leaderboard);
