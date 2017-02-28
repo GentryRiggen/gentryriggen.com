@@ -72,65 +72,59 @@ const initCommand = (bot, message, forward, userRequired = false, seasonRequired
     .catch((error) => failure(bot, message, error))
 };
 
-controller.hears(
-  [
-    'init',
-    'pong init',
-  ],
-  ALL_FORMATS,
-  (bot, message) => initCommand(bot, message, require('./commands/init'))
-);
-controller.hears(
-  [
-    'register',
-    'pong register',
-  ],
-  ALL_FORMATS,
-  (bot, message) => initCommand(bot, message, require('./commands/register'))
-);
-controller.hears(
-  [
-    'challenge (.*)', 'accept (.*)', 'taunt (.*)',
-    'pong challenge (.*)', 'pong accept (.*)', 'pong taunt (.*)',
-  ],
+const controllerHears = (hears, audience, cb) => {
+  const prefixedHears = hears.map(h => `pong ${h}`);
+  controller.hears(hears.concat(prefixedHears), audience, cb);
+};
+
+controllerHears(['init'], ALL_FORMATS, (bot, message) => initCommand(bot, message, require('./commands/init')));
+controllerHears(['register'], ALL_FORMATS, (bot, message) => initCommand(bot, message, require('./commands/register')));
+controllerHears(
+  ['challenge (.*)', 'accept (.*)', 'taunt (.*)'],
   ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/taunt'))
 );
-controller.hears(
-  [
-    'history (.*)', '(.*) history',
-    'pong history (.*)', 'pong (.*) history',
-  ],
+controllerHears(
+  ['history (.*)', '(.*) history'],
   ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/history'), true)
 );
-controller.hears(
-  [
-    'leaderboard', 'leaderboard (.*)', '(.*) leaderboard',
-    'pong leaderboard', 'pong leaderboard (.*)', 'pong (.*) leaderboard'
-  ],
+controllerHears(
+  ['leaderboard', 'leaderboard (.*)', '(.*) leaderboard'],
   ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/leaderboard'), true)
 );
-controller.hears(
-  [
-    'lost', 'lost (.*)', 'lost (.*) by (.*)', '(.*) skunked me',
-    'pong lost', 'pong lost (.*)', 'pong lost (.*) by (.*)', 'pong (.*) skunked me',
-  ],
+controllerHears(
+  ['lost', 'lost (.*)', 'lost (.*) by (.*)', '(.*) skunked me'],
   ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/lost'), true, true)
 );
-controller.hears(
-  [
-    'season (.*)',
-    'pong season (.*)',
-  ],
+controllerHears(
+  ['season (.*)'],
   ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/season'), true)
 );
 
-controller.hears(
-  ['uptime', 'identify yourself', 'who are you', 'what is your name'],
+controllerHears(
+  ['help', 'halp'],
+  ALL_FORMATS,
+  (bot, message) => {
+    const response = [
+      '>>>',
+      `1. <@${bot.identity.name}> init - Initialize team for the first time (can only be done once by a slack admin).`,
+      `2. <@${bot.identity.name}> register - Register to play ping pong.`,
+      `3. <@${bot.identity.name}> season [SEASON_NAME] - Create a new season and close the previous.`,
+      `4. <@${bot.identity.name}> lost [@USER] by [POINT_COUNT] - Record a loss to a superior opponent. Way to be pathetic!`,
+      `4. <@${bot.identity.name}> [@USER] skunked me - You got skunked... COLLECT -21 points. Do not pass go!`,
+      `5. <@${bot.identity.name}> leaderboard [TYPE(elo|points|pd)] - Get the leaderboard for the active season. You can sort by elo or point differential.`,
+      `6. <@${bot.identity.name}> history [@USER] - See your season & all-time record vs. another player.`,
+    ];
+    bot.reply(message, response.join('\n'));
+  }
+);
+
+controllerHears(
+  ['uptime'],
   'direct_message,direct_mention,mention',
   (bot, message) => {
     const upTime = Math.floor(process.uptime());
@@ -140,20 +134,3 @@ controller.hears(
     );
   });
 
-controller.hears(
-  ['help', 'halp'],
-  'direct_message,direct_mention,mention',
-  (bot, message) => {
-    const response = [
-      '>>>',
-      '1. pong init - Initialize team for the first time (can only be done once by a slack admin).',
-      '2. pong register - Register to play ping pong.',
-      '3. pong season [SEASON_NAME] - Create a new season and close the previous.',
-      '4. pong lost [@USER] by [POINT_COUNT] - Record a loss to a superior opponent. Way to be pathetic!',
-      '4. pong skunk [@USER] - You got skunked... COLLECT -21 points. Do not pass go!',
-      '5. pong leaderboard [TYPE(elo|points)] - Get the leaderboard for the active season. You can sort by elo or point differential.',
-      '6. pong history [@USER] - See your season & all-time record vs. another player.',
-    ];
-    bot.reply(message, response.join('\n'));
-  }
-);
