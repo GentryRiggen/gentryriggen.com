@@ -3,7 +3,12 @@ const slack = require('slack');
 const slackUtils = require('../slackUtils');
 const seasonRepo = require('../repos/season.repo');
 
-module.exports = (bot, message, loser) => {
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} leaderboard [TYPE(elo|points|pd)]`,
+  help: `Get the leaderboard for the active season. You can sort by elo or point differential.`,
+});
+
+exports.command = (bot, message, loser) => {
   const args = slackUtils.getArgs(message);
   let validType = 'elo';
   if (args.length > 1) {

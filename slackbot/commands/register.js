@@ -2,7 +2,12 @@ const slack = require('slack');
 const slackUtils = require('../slackUtils');
 const teamRepo = require('../repos/team.repo');
 
-module.exports = (bot, message, me) => {
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} register`,
+  help: `Register your account with the ping pong team`,
+});
+
+exports.command = (bot, message, me) => {
   slackUtils.getUser(me.userId)
     .then((user) => {
       teamRepo.getById(user.team_id)

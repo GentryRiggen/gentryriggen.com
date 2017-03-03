@@ -29,6 +29,7 @@ controller.on('rtm_close', () => startRtm());
 startRtm();
 
 const ALL_FORMATS = 'direct_message,direct_mention,mention,ambient';
+
 const failure = (bot, message, error) => {
   bot.api.reactions.add({
     timestamp: message.ts,
@@ -67,7 +68,7 @@ const initCommand = (bot, message, forward, userRequired = false, seasonRequired
         return;
       }
 
-      forward(bot, message, user);
+      forward.command(bot, message, user);
     })
     .catch((error) => failure(bot, message, error))
 };
@@ -108,29 +109,11 @@ controllerHears(
 controllerHears(
   ['help', 'halp'],
   ALL_FORMATS,
-  (bot, message) => {
-    const response = [
-      '>>>',
-      `1. <@${bot.identity.name}> init - Initialize team for the first time (can only be done once by a slack admin).`,
-      `2. <@${bot.identity.name}> register - Register to play ping pong.`,
-      `3. <@${bot.identity.name}> season [SEASON_NAME] - Create a new season and close the previous.`,
-      `4. <@${bot.identity.name}> lost [@USER] by [POINT_COUNT] - Record a loss to a superior opponent. Way to be pathetic!`,
-      `4. <@${bot.identity.name}> [@USER] skunked me - You got skunked... COLLECT -21 points. Do not pass go!`,
-      `5. <@${bot.identity.name}> leaderboard [TYPE(elo|points|pd)] - Get the leaderboard for the active season. You can sort by elo or point differential.`,
-      `6. <@${bot.identity.name}> history [@USER] - See your season & all-time record vs. another player.`,
-    ];
-    bot.reply(message, response.join('\n'));
-  }
+  (bot, message) => initCommand(bot, message, require('./commands/help'))
 );
 
 controllerHears(
   ['uptime'],
   'direct_message,direct_mention,mention',
-  (bot, message) => {
-    const upTime = Math.floor(process.uptime());
-    bot.reply(
-      message,
-      `:robot_face: I am a bot named <@${bot.identity.name}>. I have been running for ${upTime} seconds.`
-    );
-  });
-
+  (bot, message) => initCommand(bot, message, require('./commands/uptime'))
+);

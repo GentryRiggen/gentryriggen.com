@@ -1,9 +1,13 @@
-const R = require('ramda');
 const slack = require('slack');
 const slackUtils = require('../slackUtils');
 const seasonRepo = require('../repos/season.repo');
 
-module.exports = (bot, message, user) => {
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} season [SEASON_NAME]`,
+  help: `Create a new season and close the previous.`,
+});
+
+exports.command = (bot, message, user) => {
   const args = slackUtils.getArgs(message);
 
   if (!user.isCaptain) {

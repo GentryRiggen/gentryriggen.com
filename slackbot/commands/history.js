@@ -1,10 +1,14 @@
-const R = require('ramda');
 const slack = require('slack');
 const slackUtils = require('../slackUtils');
 const userRepo = require('../repos/user.repo');
 const matchRepo = require('../repos/match.repo');
 
-module.exports = (bot, message, me) => {
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} history [@USER]`,
+  help: `See your season & all-time record vs. another player.`,
+});
+
+exports.command = (bot, message, me) => {
   const args = slackUtils.getArgs(message);
   if (args.length < 2) {
     const response = [

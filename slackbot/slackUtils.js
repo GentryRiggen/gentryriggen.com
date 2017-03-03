@@ -94,3 +94,6 @@ exports.getArgs = (message) => {
 
   return args;
 };
+
+exports.mentionBot = bot => `<@${bot.identity.name}>`;
+exports.mentionUser = userId => `<@${userId}>`;

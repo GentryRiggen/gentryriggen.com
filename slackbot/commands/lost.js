@@ -1,4 +1,3 @@
-const R = require('ramda');
 const Q = require('q');
 const slack = require('slack');
 const slackUtils = require('../slackUtils');
@@ -6,6 +5,11 @@ const userRepo = require('../repos/user.repo');
 const matchRepo = require('../repos/match.repo');
 const rankingsRepo = require('../repos/ranking.repo');
 const seasonRepo = require('../repos/season.repo');
+
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} lost [@USER] by [POINT_COUNT]`,
+  help: `Record a loss to a superior opponent. Way to be pathetic!`,
+});
 
 const getRatingDelta = (myRating, opponentRating, myGameResult) => {
   if ([0, 0.5, 1].indexOf(myGameResult) === -1) {
@@ -21,8 +25,9 @@ const getNewRating = (myRating, opponentRating, myGameResult) => {
   return myRating + getRatingDelta(myRating, opponentRating, myGameResult);
 };
 
-module.exports = (bot, message, loser) => {
+exports.command = (bot, message, loser) => {
   const args = slackUtils.getArgs(message);
+  console.log(args);
   let skunk = false;
   if (args.length > 1) {
     skunk = args[1] === 'skunked';
@@ -92,7 +97,8 @@ const gotAllInfo = (bot, message, loser, specifiedWinner, lostBy) => {
   }
   userRepo.getAllById(winnerId)
     .then((winner) => {
-      if (!winner) {
+      console.log('Found winner', winner);
+      if (!winner.hasAccount) {
         bot.reply(message, 'I couldn\'t find that user... You should probably be working anyway.');
         return;
       }

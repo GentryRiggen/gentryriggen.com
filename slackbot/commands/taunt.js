@@ -1,10 +1,14 @@
-const R = require('ramda');
 const request = require('request');
 const slackUtils = require('../slackUtils');
 
-module.exports = (bot, message) => {
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} [TYPE(challenge,accept,taunt)]`,
+  help: `Antagonize your opponents (giphy search)`,
+});
+
+exports.command = (bot, message) => {
   const args = slackUtils.getArgs(message);
-  const search = args[0] === 'taunt' ? 'bring+it' : args[0];
+  const search = args[0];
 
   request(`http://api.giphy.com/v1/gifs/search?q=${search}&api_key=dc6zaTOxFJmzC`, (error, response, body) => {
     if (!error && response.statusCode == 200) {

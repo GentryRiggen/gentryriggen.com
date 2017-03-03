@@ -4,7 +4,12 @@ const slackUtils = require('../slackUtils');
 const config = require('../../config/conf');
 const teamRepo = require('../repos/team.repo');
 
-module.exports = (bot, message) => {
+exports.getHelp = (bot) => ({
+  command: `${slackUtils.mentionBot(bot)} init`,
+  help: `Initialize team for the first time (can only be done once by a slack admin).`,
+});
+
+exports.command = (bot, message) => {
   slackUtils.getUser(message.user)
     .then((slackUser) => {
       if (!slackUser.is_admin) {
