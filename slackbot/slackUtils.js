@@ -12,7 +12,6 @@ exports.getMentionId = (mention) => {
 };
 
 const postMessage = (channel, response) => {
-  // console.log('posting message', channel, response);
   webClient.chat.postMessage(channel, response, {
     as_user: true
   });
@@ -88,7 +87,7 @@ exports.createOrGetUser = createOrGetUser;
 
 exports.getArgs = (message) => {
   let args = R.propOr('', 'text', message).split(' ');
-  if (args.length > 0 && args[0] === 'pong') {
+  if (args.length > 0 && (args[0]).toLowerCase() === 'pong') {
     args.splice(0, 1);
   }
 

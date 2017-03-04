@@ -27,7 +27,6 @@ const getNewRating = (myRating, opponentRating, myGameResult) => {
 
 exports.command = (bot, message, loser) => {
   const args = slackUtils.getArgs(message);
-  console.log(args);
   let skunk = false;
   if (args.length > 1) {
     skunk = args[1] === 'skunked';
@@ -73,12 +72,10 @@ exports.command = (bot, message, loser) => {
 };
 
 const getWinner = (convo, cb) => {
-  convo.say('Bummer...');
   convo.ask('Can you @mention who you lost to?', cb);
 };
 
 const getLostBy = (convo, cb) => {
-  convo.say('Yeah they are way better than you...');
   convo.ask('How many points did you lose by?', cb);
 };
 

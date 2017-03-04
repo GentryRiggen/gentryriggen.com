@@ -81,7 +81,7 @@ const controllerHears = (hears, audience, cb) => {
 controllerHears(['init'], ALL_FORMATS, (bot, message) => initCommand(bot, message, require('./commands/init')));
 controllerHears(['register'], ALL_FORMATS, (bot, message) => initCommand(bot, message, require('./commands/register')));
 controllerHears(
-  ['challenge (.*)', 'accept (.*)', 'taunt (.*)'],
+  ['challenge (.*)', 'accept (.*)', 'taunt (.*)', 'giphy (.*) (.*)'],
   ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/taunt'))
 );

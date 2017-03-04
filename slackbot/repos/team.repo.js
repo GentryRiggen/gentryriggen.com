@@ -1,6 +1,6 @@
 /* jshint -W117 */
 const model = require('./generic.model');
-const baseRepo = require('../../repos/base.repo.js')('broboto_pong_team', model);
+const baseRepo = require('../../repos/base.repo.js')('slackbot_pong_team', model);
 
 const repo = {};
 repo.getById = baseRepo.getById;

@@ -1,7 +1,7 @@
 const Q = require('q');
 const db = require('../../db');
 const model = require('./generic.model.js');
-const baseRepo = require('../../repos/base.repo.js')('broboto_pong_match', model);
+const baseRepo = require('../../repos/base.repo.js')('slackbot_pong_match', model);
 
 const repo = {};
 repo.getById = baseRepo.getById;
@@ -19,7 +19,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
         WHEN pongMatch.loserId = ? THEN 0
         ELSE 1
       END AS won
-  FROM broboto_pong_match AS pongMatch
+  FROM slackbot_pong_match AS pongMatch
   WHERE
     (pongMatch.loserId = ? OR pongMatch.winnerId = ?)
     AND (pongMatch.loserId = ? OR pongMatch.winnerId = ?)

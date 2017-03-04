@@ -1,6 +1,6 @@
 const Q = require('q');
 const model = require('./generic.model');
-const tableName = 'broboto_pong_user';
+const tableName = 'slackbot_pong_user';
 const baseRepo = require('../../repos/base.repo.js')(tableName, model);
 const db = require('../../db');
 
@@ -36,20 +36,20 @@ repo.getAllById = function (id) {
     , nemesis.name AS nemesisName
     , captain.id AS captainId
     , captain.name AS captainName
-  FROM broboto_pong_user AS user
-  JOIN broboto_pong_team AS team
+  FROM slackbot_pong_user AS user
+  JOIN slackbot_pong_team AS team
     ON team.id = user.teamId
-  JOIN broboto_pong_user AS captain
+  JOIN slackbot_pong_user AS captain
     ON captain.id = team.captainId
-  LEFT JOIN broboto_pong_season AS season
+  LEFT JOIN slackbot_pong_season AS season
     ON season.teamId = team.id
       AND season.closed != 1
-  LEFT JOIN broboto_pong_ranking AS ranking
+  LEFT JOIN slackbot_pong_ranking AS ranking
     ON ranking.seasonId = season.id
       AND ranking.userId = user.id
-  LEFT JOIN broboto_pong_user AS whippingBoi
+  LEFT JOIN slackbot_pong_user AS whippingBoi
     ON ranking.whippingBoi = whippingBoi.id
-  LEFT JOIN broboto_pong_user AS nemesis
+  LEFT JOIN slackbot_pong_user AS nemesis
     ON ranking.nemesis = nemesis.id
   WHERE user.id = ?
 `;

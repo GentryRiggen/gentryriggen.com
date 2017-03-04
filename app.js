@@ -51,25 +51,10 @@ if (devMode) {
   app.use(express.static(path.join(__dirname, 'client/dist')));
 }
 
-// CRON
-// if (!devMode) {
-//   var CronJob = require('cron').CronJob;
-//   var msHealthRepo = require('./repos/msHealth.repo');
-//   var baseRepo = require('./repos/base.repo')();
-//   new CronJob('*/30 * * * * *', function() {
-//     var startDate = baseRepo.getDateNDaysFromDate(false, -1, false);
-//     var endDate = baseRepo.getDateNDaysFromDate(false, 1, false);
-//     var params = baseRepo.ensureStartAndEndTime(startDate, endDate);
-//     msHealthRepo.sync(params.startTime, params.endTime);
-//   }, null, true, 'America/Denver');
-// }
-
 // START THE APP
 app.listen(port, function () {
   console.log('Listening on PORT: ', port);
 });
-
-
 
 // MISC
 function twoDigits(d) {
@@ -109,20 +94,3 @@ Date.prototype.toISOLocalString = function () {
   isoLocalString += ':' + pad(tzo % 60);
   return isoLocalString;
 };
-
-
-
-
-
-
-
-
-// slackTerminal.init(config.slack.botToken, {}, {
-//   // app configurations to suit your project structure
-//   // to see the list of all possible config,
-//   // check this out: https://github.com/ggauravr/slack-terminalize/blob/master/util/config.js
-//   CONFIG_DIR: __dirname + '/broBoto/slackConfig',
-//   COMMAND_DIR: __dirname + '/broBoto/slackCommands'
-// });
-//
-

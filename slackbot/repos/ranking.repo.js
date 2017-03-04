@@ -2,7 +2,7 @@ const Q = require('q');
 const R = require('ramda');
 const db = require('../../db');
 const model = require('./generic.model');
-const tableName = 'broboto_pong_ranking';
+const tableName = 'slackbot_pong_ranking';
 const baseRepo = require('../../repos/base.repo.js')(tableName, model);
 
 const repo = {};
@@ -39,7 +39,7 @@ repo.getUserRanking = (seasonId, userId) => {
         WHEN pongMatch.loserId = ? THEN 0
         ELSE 1
       END AS won
-  FROM broboto_pong_match AS pongMatch
+  FROM slackbot_pong_match AS pongMatch
   WHERE
     (pongMatch.loserId = ? OR pongMatch.winnerId = ?)
     AND pongMatch.seasonId = ?
