@@ -1,6 +1,6 @@
 {
-  "name": "gentryriggenCom",
-  "version": "0.0.0",
+  "name": "gentryriggencom",
+  "version": "1.0.0",
   "dependencies": {
     "angular": "~1.4.8",
     "angular-animate": "~1.4.8",
