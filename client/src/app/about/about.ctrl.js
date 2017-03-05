@@ -6,7 +6,6 @@
 
   AboutController.$inject = [];
   function AboutController() {
-
     function init() {
     }
 

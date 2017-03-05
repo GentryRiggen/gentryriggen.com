@@ -41,6 +41,7 @@ app.use('/api/admin/files', require('./controllers/files.server.ctrl')());
 app.use('/api/admin/accounts', require('./controllers/adminAccounts.server.ctrl')(dbPool));
 app.use('/api/admin/books', require('./controllers/adminBooks.server.ctrl'));
 app.use('/api/admin/authors', require('./controllers/adminAuthors.server.ctrl')(dbPool));
+app.use('/api/slack', require('./slackbot/server/slack.server.ctrl'));
 
 // SERVING UP CLIENT
 if (devMode) {

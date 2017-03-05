@@ -19,7 +19,6 @@
       AlertService.showLoading('Fetching Book Details...');
       BookService.getById($stateParams.id, true).then(
         function (resp) {
-          console.log(resp.data);
           AdminBookCtrl.book = resp.data;
           AdminBookCtrl.book.publishDate = new Date(AdminBookCtrl.book.publishDate);
           AdminBookCtrl.book.dateRead = new Date(AdminBookCtrl.book.dateRead);
@@ -138,7 +137,6 @@
     AdminBookCtrl.addAuthor = function() {
       AuthorService.createNew().then(
         function(resp) {
-          console.log('created new author', resp.data);
           resp.data.firstName = AdminBookCtrl.newAuthor.firstName;
           resp.data.lastName = AdminBookCtrl.newAuthor.lastName;
           AuthorService.updateAuthor(resp.data.id, resp.data).then(

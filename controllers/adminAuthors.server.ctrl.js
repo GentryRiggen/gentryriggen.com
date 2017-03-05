@@ -36,7 +36,6 @@ var ctrl = function (dbPool) {
         });
     })
     .put(function (req, res) {
-      console.log('Author details', req.params.id, req.body);
       authorRepo.save(req.params.id, req.body).then(
         function () {
           res.status(204).send({message: 'Author updated'});

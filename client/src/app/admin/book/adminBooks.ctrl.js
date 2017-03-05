@@ -33,7 +33,6 @@
 
     AdminBooksCtrl.search = function(q) {
       AdminBooksCtrl.searching = true;
-      console.log('searching books: ', q);
       BookService.getPaginated(AdminBooksCtrl.page, AdminBooksCtrl.pageSize, q, true)
         .then(function (resp) {
           getBooksCallback(resp.data);

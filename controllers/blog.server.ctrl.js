@@ -10,7 +10,6 @@ blogCtrl.route('/')
     var startTime = new Date();
     startTime.setDate(startTime.getDate() - 1);
     startTime.setUTCHours(0, 0, 0, 0);
-    console.log(startTime);
     msHealthRepo.sync(startTime);
 
     var params = blogRepo.getPaginatedParams(req.query);

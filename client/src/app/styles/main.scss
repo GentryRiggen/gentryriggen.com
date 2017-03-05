@@ -37,6 +37,8 @@ $navBarHeight: 48px;
   padding-left: 50px;
 
   #sidebar-wrapper {
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
     transition: all .4s ease 0s;
     margin-left: -150px;
@@ -124,6 +126,21 @@ $navBarHeight: 48px;
         &.sub-item {
 
         }
+      }
+    }
+
+    .space-between {
+      flex-grow: 1;
+    }
+    .slack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+
+      h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
       }
     }
   }
