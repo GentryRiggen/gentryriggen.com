@@ -51,11 +51,12 @@ app.use('/api/admin/authors', require('./controllers/adminAuthors.server.ctrl')(
 app.use('/api/slack', require('./slackbot/server/slack.server.ctrl'));
 
 // SERVING UP CLIENT
+let clientCode = path.join(__dirname, 'client/build');
 if (devMode) {
-  app.use(express.static(path.join(__dirname, 'client/public')));
-} else {
-  app.use(express.static(path.join(__dirname, 'client/build')));
+  clientCode = path.join(__dirname, 'client/public');
 }
+app.use('/', express.static(clientCode));
+app.use('/books', express.static(clientCode));
 
 // START THE APP
 app.listen(port, function () {
