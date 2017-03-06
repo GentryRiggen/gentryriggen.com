@@ -3,6 +3,7 @@ echo Stopping app
 pm2 stop app
 echo Ensuring node version 7.4.0
 sh $NVM_DIR/nvm.sh use v7.4.0
+git pull
 echo Cleaning node_modules
 rm -rf node_modules
 yarn install
