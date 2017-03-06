@@ -21,6 +21,13 @@ app.use(bodyParser.json());
 var dbPool = require('./mySqlDbPool');
 
 // TOKEN FILTER
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  next();
+});
 app.use('/api', function (req, res, next) {
   jwt.tokenFilter(req, dbPool).then(
     function () {
@@ -45,11 +52,9 @@ app.use('/api/slack', require('./slackbot/server/slack.server.ctrl'));
 
 // SERVING UP CLIENT
 if (devMode) {
-  app.use(express.static(path.join(__dirname, 'client')));
-  app.use(express.static(path.join(__dirname, 'client/.tmp/serve')));
-  app.use(express.static(path.join(__dirname, 'client/src')));
+  app.use(express.static(path.join(__dirname, 'client/public')));
 } else {
-  app.use(express.static(path.join(__dirname, 'client/dist')));
+  app.use(express.static(path.join(__dirname, 'client/build')));
 }
 
 // START THE APP
