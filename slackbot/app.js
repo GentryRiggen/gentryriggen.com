@@ -102,6 +102,10 @@ controllerHears(
   ['season (.*)'],
   (bot, message) => initCommand(bot, message, require('./commands/season'), true)
 );
+controllerHears(
+  ['stats', 'stats (.*)'],
+  (bot, message) => initCommand(bot, message, require('./commands/stats'), true)
+);
 
 controllerHears(
   ['help', 'halp'],

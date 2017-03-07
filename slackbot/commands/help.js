@@ -16,6 +16,7 @@ exports.command = (bot, message) => {
     (require('./register')).getHelp(bot),
     (require('./season')).getHelp(bot),
     (require('./skunk')).getHelp(bot),
+    (require('./stats')).getHelp(bot),
     (require('./taunt')).getHelp(bot),
     (require('./uptime')).getHelp(bot),
   ];
