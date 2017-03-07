@@ -1,4 +1,3 @@
-const slackTerminal = require('slack-terminalize');
 require('./slackbot/app');
 const config = require('./config/conf');
 // REQUIRES
