@@ -50,7 +50,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
         winOpponents = Object.assign(
           {},
           winOpponents,
-          { [match.loserId]: R.propOr(0, match.loserId, winOpponents) + 1 }
+          { [match.loserId]: (R.propOr(0, match.loserId, winOpponents)) + 1 }
         );
         allTimeWins++;
         allTimePd += match.winnerPoints - match.loserPoints;
@@ -65,7 +65,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
         lossOpponents = Object.assign(
           {},
           lossOpponents,
-          { [match.winnerId]: R.propOr(0, match.winnerId, lossOpponents) + 1 }
+          { [match.winnerId]: (R.propOr(0, match.winnerId, lossOpponents)) + 1 }
         );
         allTimeLosses++;
         allTimePd += match.loserPoints - match.winnerPoints;
@@ -76,6 +76,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
           seasonPoints += match.loserPoints;
         }
       }
+      console.log(opponents, winOpponents, lossOpponents);
     });
 
     let whippingBoiId = false;
