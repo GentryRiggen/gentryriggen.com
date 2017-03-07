@@ -76,7 +76,6 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
           seasonPoints += match.loserPoints;
         }
       }
-      console.log(opponents, winOpponents, lossOpponents);
     });
 
     let whippingBoiId = false;
