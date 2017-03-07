@@ -59,13 +59,13 @@ exports.command = (bot, message, me) => {
           ];
 
           if (results.nemesisId) {
-            let whipping = `${whoAgainst} whipping boi is *${results.whippingBoiName}* with *${results.whippingBoiCount}* wins against them.`;
+            let whipping = `${me.userId === user.userId ? "Your" : `${user.username}'s`} whipping boi is *${results.whippingBoiName}* with *${results.whippingBoiCount}* wins against them.`;
             if (results.nemesisId === results.whippingBoiId) {
               whipping = `Although... *${results.whippingBoiName}* is who ${me.userId === user.userId ? "you defeat" : `${user.username} defeats`} the most with *${results.whippingBoiCount}* wins against them.`;
             }
             response = [
               ...response,
-              `${me.userId === user.userId ? "You really suck" : `${user.username}really sucks `} against *${results.nemesisName}* with *${results.nemesisCount}* losses against them.`,
+              `${me.userId === user.userId ? "You really suck" : `${user.username} really sucks `} against *${results.nemesisName}* with *${results.nemesisCount}* losses against them.`,
               whipping,
             ];
           }
