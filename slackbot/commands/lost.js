@@ -49,7 +49,7 @@ exports.command = (bot, message, loser) => {
         } else {
           specifiedWinner = args[1];
           getLostBy(convo, (response, convo) => {
-            lostBy = response.text;
+            lostBy = parseInt(response.text);
             convo.next();
           });
         }
@@ -72,11 +72,11 @@ exports.command = (bot, message, loser) => {
 };
 
 const getWinner = (convo, cb) => {
-  convo.ask('Can you @mention who you lost to?', cb);
+  convo.ask('Can you @mention who you lost to? e.g. @bigDaddy', cb);
 };
 
 const getLostBy = (convo, cb) => {
-  convo.ask('How many points did you lose by?', cb);
+  convo.ask('How many points did you lose by? e.g. 4', cb);
 };
 
 const gotAllInfo = (bot, message, loser, specifiedWinner, lostBy) => {
