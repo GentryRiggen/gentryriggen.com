@@ -29,6 +29,7 @@ exports.command = (bot, message, me) => {
         .getMatchHistory(0, user.userId, user.userId)
         .then(results => {
           const who = me.userId === user.userId ? "you're" : `${user.username} is`;
+          const whoAgainst = me.userId === user.userId ? "Your" : `${user.username}`;
           const atmRaw = results.allTimeAverageRaw;
           const sucks = atmRaw < 50;
           const decent = atmRaw > 50 && atmRaw < 70;
@@ -58,13 +59,13 @@ exports.command = (bot, message, me) => {
           ];
 
           if (results.nemesisId) {
-            let whipping = `You are at your best against *${results.whippingBoiName}* with *${results.whippingBoiCount}* wins against them.`;
+            let whipping = `${whoAgainst} whipping boi is *${results.whippingBoiName}* with *${results.whippingBoiCount}* wins against them.`;
             if (results.nemesisId === results.whippingBoiId) {
-              whipping = `Although... *${results.whippingBoiName}* is who you defeat the most with *${results.whippingBoiCount}* wins against them.`;
+              whipping = `Although... *${results.whippingBoiName}* is who ${me.userId === user.userId ? "you defeat" : `${user.username} defeats`} the most with *${results.whippingBoiCount}* wins against them.`;
             }
             response = [
               ...response,
-              `You really suck against *${results.nemesisName}* with *${results.nemesisCount}* losses against them.`,
+              `${me.userId === user.userId ? "You really suck" : `${user.username}really sucks `} against *${results.nemesisName}* with *${results.nemesisCount}* losses against them.`,
               whipping,
             ];
           }
