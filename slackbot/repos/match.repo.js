@@ -88,7 +88,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
       whippingBoiName = opponents[whippingBoiId];
       whippingBoiCount = winOpponents[whippingBoiId];
       winnerIds.forEach(id => {
-        if (winOpponents[id] < winOpponents[whippingBoiId]) {
+        if (winOpponents[id] > whippingBoiCount) {
           whippingBoiId = id;
           whippingBoiName = opponents[id];
           whippingBoiCount = winOpponents[id];
@@ -105,7 +105,7 @@ repo.getMatchHistory = (seasonId, meId, againstId) => {
       nemesisName = opponents[nemesisId];
       nemesisCount = lossOpponents[nemesisId];
       loserIds.forEach(id => {
-        if (lossOpponents[id] < lossOpponents[whippingBoiId]) {
+        if (lossOpponents[id] > nemesisCount) {
           nemesisId = id;
           nemesisName = opponents[id];
           nemesisCount = lossOpponents[id];
