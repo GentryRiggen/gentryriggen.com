@@ -21,6 +21,7 @@ render(
       <Route path="/" component={App}>
         <IndexRoute component={Home}/>
         <Route path="/" component={Home}/>
+        <Route path="/apps" component={Books}/>
         <Route path="/books" component={Books}/>
       </Route>
       <Route path="/admin" component={App}>
