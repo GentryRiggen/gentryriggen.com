@@ -28,7 +28,8 @@ const startRtm = (retry = 0) => {
 controller.on('rtm_close', () => startRtm());
 startRtm();
 
-const ALL_FORMATS = 'direct_message,direct_mention,mention,ambient';
+const MENTION_FORMATS = 'direct_message,direct_mention,mention';
+const ALL_FORMATS = `${MENTION_FORMATS},ambient`;
 
 const failure = (bot, message, error) => {
   bot.api.reactions.add({
@@ -73,47 +74,41 @@ const initCommand = (bot, message, forward, userRequired = false, seasonRequired
     .catch((error) => failure(bot, message, error))
 };
 
-const controllerHears = (hears, audience, cb) => {
+const controllerHears = (hears, cb) => {
   const prefixedHears = hears.map(h => `pong ${h}`);
-  controller.hears(hears.concat(prefixedHears), audience, cb);
+  controller.hears(hears, MENTION_FORMATS, cb);
+  controller.hears(prefixedHears, ALL_FORMATS, cb);
 };
 
-controllerHears(['init'], ALL_FORMATS, (bot, message) => initCommand(bot, message, require('./commands/init')));
-controllerHears(['register'], ALL_FORMATS, (bot, message) => initCommand(bot, message, require('./commands/register')));
+controllerHears(['init'], (bot, message) => initCommand(bot, message, require('./commands/init')));
+controllerHears(['register'], (bot, message) => initCommand(bot, message, require('./commands/register')));
 controllerHears(
   ['challenge (.*)', 'accept (.*)', 'taunt (.*)', 'giphy (.*) (.*)'],
-  ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/taunt'))
 );
 controllerHears(
   ['history (.*)', '(.*) history'],
-  ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/history'), true)
 );
 controllerHears(
   ['leaderboard', 'leaderboard (.*)', '(.*) leaderboard'],
-  ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/leaderboard'), true)
 );
 controllerHears(
   ['lost', 'lost (.*)', 'lost (.*) by (.*)', '(.*) skunked me'],
-  ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/lost'), true, true)
 );
 controllerHears(
   ['season (.*)'],
-  ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/season'), true)
 );
 
 controllerHears(
   ['help', 'halp'],
-  ALL_FORMATS,
   (bot, message) => initCommand(bot, message, require('./commands/help'))
 );
 
 controllerHears(
   ['uptime'],
-  'direct_message,direct_mention,mention',
   (bot, message) => initCommand(bot, message, require('./commands/uptime'))
 );
