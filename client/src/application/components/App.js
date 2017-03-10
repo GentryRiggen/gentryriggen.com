@@ -4,7 +4,7 @@ import { windowSizeChange } from '../ducks';
 import theme from '../common/theme';
 import NavBar from './NavBar';
 
-const rand = 2;//Math.ceil(Math.random() * (2 - 1)) + 1;
+const rand = Math.ceil(Math.random() * (4 - 1)) + 1;
 const background = `images/background${rand}.png`;
 const styles = {
   app: {
@@ -45,6 +45,7 @@ const styles = {
   },
   smallContent: {
     width: 'calc(100vw - 32px)',
+    opacity: '0.82',
   },
   innerContent: {
     paddingTop: theme.dimensions.navBarHeight,
@@ -77,7 +78,6 @@ class App extends React.Component {
       smallApp = styles.smallApp;
       smallContent = styles.smallContent;
     }
-    console.log({...styles.content, ...smallContent});
     return (
       <div
         style={{
