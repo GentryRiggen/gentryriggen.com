@@ -49,7 +49,7 @@ const styles = {
   },
   innerContent: {
     paddingTop: theme.dimensions.navBarHeight,
-    overflowX: 'scroll',
+    overflowY: 'scroll',
     '-webkit-overflow-scrolling': 'touch',
   },
 };
