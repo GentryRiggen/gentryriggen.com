@@ -1,1 +1,0 @@
-ALTER TABLE book ADD main_page INT DEFAULT 0 NOT NULL;
