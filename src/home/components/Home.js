@@ -32,7 +32,7 @@ const styles = {
 const Home = () => (
   <div style={styles.content}>
     <img
-      src="images/profile.jpg"
+      src="images/profileSquare.jpg"
       style={styles.image}
       alt="Gentry Riggen"
     />

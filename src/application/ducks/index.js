@@ -1,7 +1,6 @@
 export const WINDOW_SIZE_CHANGE = 'WINDOW_SIZE_CHANGE';
 export const windowSizeChange = (width) => {
   return (dispatch) => {
-    console.log('windowSizeChange', width);
     dispatch({
       type: WINDOW_SIZE_CHANGE,
       payload: width,
