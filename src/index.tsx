@@ -1,9 +1,9 @@
 import * as React from "react";
 import { render } from "react-dom";
 
-import { Hello } from "./Hello";
+import App from 'domains/application/screens/App';
 
 render(
-  <Hello compiler="TypeScript" framework="React" />,
+  <App />,
   document.getElementById("root"),
 );
