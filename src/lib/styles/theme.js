@@ -8,7 +8,7 @@ const space = {
   xl: 48,
 };
 
-const SMALL_SCREEN = 480;
+const SMALL_SCREEN = 768;
 const LARGE_SCREEN = 1024;
 
 export const theme = {

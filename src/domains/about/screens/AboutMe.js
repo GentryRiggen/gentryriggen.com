@@ -45,12 +45,12 @@ export class AboutMe extends PureComponent {
               borderRadius="50%"
               alt="Gentry Riggen"
             />
-            <Title>Hi, I'm Gentry.</Title>
+            <Title textAlign="center" pt="md">Hi, I'm Gentry.</Title>
           </View>
           <View
             display="flex"
             flexDirection="column"
-            maxWidth="sm"
+            maxWidth={400}
             m="md"
           >
             <Text>
@@ -61,7 +61,7 @@ export class AboutMe extends PureComponent {
               display="flex"
               flexDirection="row"
               justifyContent="space-around"
-              pt="md"
+              pt="lg"
             >
               {this.renderLink('https://twitter.com/gentryriggen', 'fab fa-twitter')}
               {this.renderLink('https://github.com/gentryriggen', 'fab fa-github')}
