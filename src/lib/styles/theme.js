@@ -1,14 +1,45 @@
 import colors from 'lib/styles/colors';
 
+const space = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 32,
+  xl: 48,
+};
+
+const SMALL_SCREEN = 480;
+const LARGE_SCREEN = 1024;
+
 export const theme = {
-  breakpoints: [0, 360, 1024],
-  space: [0, 8, 16, 32, 64, 128, 256, 512],
-  fontSizes: [12, 16, 20, 36, 48],
-  fontWeights: [300, 400, 700],
+  breakpoints: [0, SMALL_SCREEN, LARGE_SCREEN],
+  space,
+  fontSizes: {
+    caption: 12,
+    text: 18,
+    subtitle: 24,
+    title: 36,
+    jumbo: 48,
+  },
+  lineHeights: {
+    caption: 1.7,
+    text: 1.7,
+    subtitle: 1.7,
+    title: 1.7,
+    jumbo: 1.7,
+  },
+  fontWeights: {
+    light: 300,
+    text: 400,
+    title: 700,
+  },
   width: [16, 32, 64, 128, 256],
-  maxWidths: [768, 1024],
+  maxWidths: {
+    sm: SMALL_SCREEN,
+    md: LARGE_SCREEN,
+  },
   colors: {
     primary: colors.primary,
-    'dark-gray': 'rgb(70, 72, 85)',
+    text: 'rgb(70, 72, 85)',
   },
 };

@@ -12,9 +12,10 @@ const baseStyles = [
 const Text = system(
   {
     is: 'p',
-    fontSize: 1,
-    fontWeight: 1,
-    color: 'dark-gray',
+    fontSize: 'text',
+    fontWeight: 'text',
+    color: 'text',
+    lineHeight: 'text',
   },
   ...baseStyles,
 );
@@ -23,9 +24,9 @@ Text.displayName = 'Text';
 const Title = system(
   {
     is: 'p',
-    fontSize: [3, 3, 4],
-    fontWeight: 2,
-    color: 'dark-gray',
+    fontSize: 'title',
+    fontWeight: 'title',
+    color: 'text',
   },
   ...baseStyles,
 );

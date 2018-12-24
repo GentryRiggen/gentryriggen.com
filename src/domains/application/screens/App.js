@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
-import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Route } from "react-router-dom";
 
+import AboutMe from 'domains/about/screens/AboutMe';
 import BlogRouter from 'domains/blog/navigation/BlogRouter';
 
 import {
@@ -8,16 +9,12 @@ import {
 } from 'lib/components';
 
 
-const Index = () => <h2>Home</h2>;
-
 class App extends Component {
   render() {
     return (
       <Router>
         <View>
-          <Link to="/">Home</Link>
-          <Link to="/blog/">Blog</Link>
-          <Route path="/" exact component={Index} />
+          <Route path="/" exact component={AboutMe} />
           <Route path="/blog" component={BlogRouter} />
         </View>
       </Router>

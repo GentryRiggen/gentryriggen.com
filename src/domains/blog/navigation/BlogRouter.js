@@ -19,7 +19,7 @@ export class Router extends PureComponent {
     return (
       <View
         m="0 auto"
-        pt={[1, 3, 5]}
+        pt={[1, 3, 4]}
         pr={[1, 3, 4]}
         pl={[1, 3, 4]}
       >
