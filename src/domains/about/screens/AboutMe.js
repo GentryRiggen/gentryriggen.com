@@ -53,7 +53,7 @@ export class AboutMe extends PureComponent {
             maxWidth={400}
             m="md"
           >
-            <Text>
+            <Text textAlign="center">
               I am a software developer in the mobile (React Native - iOS &amp; Android) and web space.
               My current vices are React, React Native, Node and Firebase. I have also done plenty of PHP, Angular, and MySQL.
             </Text>
