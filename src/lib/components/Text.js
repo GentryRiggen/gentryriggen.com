@@ -32,7 +32,31 @@ const Title = system(
 );
 Title.displayName = 'Title';
 
+const Subtitle = system(
+  {
+    is: 'p',
+    fontSize: 'subtitle',
+    fontWeight: 'subtitle',
+    color: 'text',
+  },
+  ...baseStyles,
+);
+Subtitle.displayName = 'Subtitle';
+
+const Caption = system(
+  {
+    is: 'p',
+    fontSize: 'caption',
+    fontWeight: 'caption',
+    color: 'text',
+  },
+  ...baseStyles,
+);
+Caption.displayName = 'Caption';
+
 export {
+  Caption,
+  Subtitle,
   Text,
   Title,
 };

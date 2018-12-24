@@ -7,6 +7,7 @@ import {
 } from 'lib/components';
 
 import BlogPost from 'domains/blog/screens/BlogPost';
+import Blog from 'domains/blog/screens/Blog';
 
 export class Router extends PureComponent {
   static propTypes = {
@@ -15,7 +16,6 @@ export class Router extends PureComponent {
 
   render() {
     const { match } = this.props;
-    console.log({ match });
     return (
       <View
         m="0 auto"
@@ -30,7 +30,7 @@ export class Router extends PureComponent {
         <Route
           exact
           path={match.path}
-          render={() => <h3>Blog Index</h3>}
+          component={Blog}
         />
       </View>
     );

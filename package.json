@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "firebase": "^5.7.1",
     "ramda": "^0.26.1",
+    "re-base": "^4.0.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "react-router-dom": "^4.3.1",
