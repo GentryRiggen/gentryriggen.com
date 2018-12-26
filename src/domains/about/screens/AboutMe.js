@@ -21,7 +21,7 @@ export class AboutMe extends PureComponent {
         display="flex"
         flexDirection="column"
         alignItems="center"
-        justifyContent="center"
+        justifyContent="flex-start"
         pt={['sm', 'lg', 'xl']}
         pr={['sm', 'lg', 'xl']}
         pl={['sm', 'lg', 'xl']}

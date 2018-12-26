@@ -18,10 +18,10 @@ export class Router extends PureComponent {
     const { match } = this.props;
     return (
       <View
-        m="0 auto"
         pt={[1, 3, 4]}
         pr={[1, 3, 4]}
         pl={[1, 3, 4]}
+        width="100%"
       >
         <Route
           path={`${match.path}/:id`}
