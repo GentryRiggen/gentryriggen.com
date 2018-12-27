@@ -6,7 +6,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: 'rgb(70, 72, 85)',
+  color: 'rgb(70, 72, 85)';
+}
+
+#root {
+  display: flex;
+  flex: 1;
+  min-height: 100vh;
 }
 
 p {

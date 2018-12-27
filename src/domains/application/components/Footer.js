@@ -18,6 +18,7 @@ export class Footer extends PureComponent {
   render() {
     return (
       <Flex
+        flex="0 1 auto"
         flexDirection="column"
         justifyContent="center"
         alignItems="Center"

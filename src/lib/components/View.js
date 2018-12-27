@@ -38,6 +38,8 @@ export default View;
 const Flex = system(
   {
     display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
   },
   ...baseStyles,
 );

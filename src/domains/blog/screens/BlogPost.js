@@ -4,11 +4,11 @@ import ReactMarkdown from 'react-markdown';
 
 import { mapNavigationParams } from 'lib/utils/navigation';
 import {
-  Title,
   Caption,
+  Screen,
+  Title,
 } from 'lib/components';
 
-import BlogViewContainer from 'domains/blog/components/BlogViewContainer';
 import { ReBase } from 'lib/firebase';
 import { formatDate } from 'lib/utils/date';
 
@@ -44,7 +44,7 @@ export class BlogPost extends Component {
     }
 
     return (
-      <BlogViewContainer>
+      <Screen>
         <Title>{post.title}</Title>
         <Caption>{formatDate(post.date)}</Caption>
         <textarea
@@ -52,9 +52,11 @@ export class BlogPost extends Component {
           value={post.body}
           onChange={this.onChangeBody}
           rows="12"
+          cols="40"
+          style={{ maxWidth: '500px' }}
         />
         <ReactMarkdown source={post.body} />
-      </BlogViewContainer>
+      </Screen>
     );
   }
 }

@@ -23,12 +23,17 @@ class App extends Component {
       <Router>
         <Flex
           flexDirection="column"
-          minHeight="100vh"
+          alignItems="center"
+          pt={['sm', 'lg', 'xl']}
+          px="sm"
+          data-test="screen-container"
         >
           <Flex
-            flex="1 0 auto"
             flexDirection="column"
-            width="100vw"
+            alignItems="center"
+            maxWidth="md"
+            minWidth={[0, 'sm', 'md', 'lg']}
+            data-test="screen-inner"
           >
             <Route path="/" exact component={AboutMe} />
             <Route path="/blog" component={BlogRouter} />

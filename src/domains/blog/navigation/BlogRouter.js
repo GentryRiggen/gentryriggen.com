@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Route } from "react-router-dom";
 
 import {
-  View,
+  Flex,
 } from 'lib/components';
 
 import BlogPost from 'domains/blog/screens/BlogPost';
@@ -17,11 +17,7 @@ export class BlogRouter extends PureComponent {
   render() {
     const { match } = this.props;
     return (
-      <View
-        pt={[1, 3, 4]}
-        pr={[1, 3, 4]}
-        pl={[1, 3, 4]}
-        width="100%"
+      <Flex
       >
         <Route
           exact
@@ -32,7 +28,7 @@ export class BlogRouter extends PureComponent {
           path={`${match.path}/:id`}
           component={BlogPost}
         />
-      </View>
+      </Flex>
     );
   }
 }

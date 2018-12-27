@@ -2,11 +2,12 @@ import React, { PureComponent } from 'react';
 
 import { ReBase } from 'lib/firebase';
 import {
+  Flex,
+  Screen,
   Title,
 } from 'lib/components';
 
 import BlogPostRow from 'domains/blog/components/BlogPostRow';
-import BlogViewContainer from 'domains/blog/components/BlogViewContainer';
 
 export class Blog extends PureComponent {
   state = {
@@ -30,10 +31,10 @@ export class Blog extends PureComponent {
 
   render() {
     return (
-      <BlogViewContainer>
+      <Flex>
         <Title>Blog</Title>
         {this.state.posts.map(this.renderPost)}
-      </BlogViewContainer>
+      </Flex>
     );
   }
 }

@@ -8,11 +8,12 @@ const space = {
   xl: 48,
 };
 
-const SMALL_SCREEN = 768;
+const SMALL_SCREEN = 320;
+const MEDIUM_SCREEN = 768;
 const LARGE_SCREEN = 1024;
 
 export const theme = {
-  breakpoints: [0, SMALL_SCREEN, LARGE_SCREEN],
+  breakpoints: [SMALL_SCREEN, LARGE_SCREEN, LARGE_SCREEN],
   space,
   fontSizes: {
     caption: 12,
@@ -34,9 +35,15 @@ export const theme = {
     title: 700,
   },
   width: [16, 32, 64, 128, 256],
+  minWidths: {
+    sm: SMALL_SCREEN,
+    md: MEDIUM_SCREEN,
+    lg: LARGE_SCREEN,
+  },
   maxWidths: {
     sm: SMALL_SCREEN,
-    md: LARGE_SCREEN,
+    md: MEDIUM_SCREEN,
+    lg: LARGE_SCREEN,
   },
   colors: {
     primary: colors.primary,
