@@ -3,30 +3,26 @@ import React, { PureComponent } from 'react';
 import {
   Button,
   Title,
-  View,
+  Flex,
 } from 'lib/components';
 import { logout } from 'domains/admin/awaits/logout';
 
 export class Admin extends PureComponent {
   render() {
     return (
-      <View
-        display="flex"
+      <Flex
         flexDirection="column"
         p="md"
       >
-        <View
-          display="flex"
+        <Flex
           flexDirection="row"
           justifyContent="space-between"
           p="md"
         >
           <Title>Admin</Title>
           <Button onClick={logout}>Log out</Button>
-        </View>
-
-
-      </View>
+        </Flex>
+      </Flex>
     );
   }
 }

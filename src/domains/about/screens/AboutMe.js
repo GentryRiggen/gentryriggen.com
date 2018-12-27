@@ -1,11 +1,11 @@
 import React, { PureComponent } from 'react';
 
 import {
+  Flex,
   Icon,
   Image,
   Text,
   Title,
-  View,
 } from 'lib/components';
 
 export class AboutMe extends PureComponent {
@@ -17,8 +17,7 @@ export class AboutMe extends PureComponent {
 
   render() {
     return (
-      <View
-        display="flex"
+      <Flex
         flexDirection="column"
         alignItems="center"
         justifyContent="flex-start"
@@ -26,15 +25,13 @@ export class AboutMe extends PureComponent {
         pr={['sm', 'lg', 'xl']}
         pl={['sm', 'lg', 'xl']}
       >
-        <View
-          display="flex"
+        <Flex
           flexDirection={['column', 'column', 'row']}
           flexWrap="wrap"
           alignItems="center"
           maxWidth="md"
         >
-          <View
-            display="flex"
+          <Flex
             flexDirection="column"
             m="md"
           >
@@ -46,9 +43,8 @@ export class AboutMe extends PureComponent {
               alt="Gentry Riggen"
             />
             <Title textAlign="center" pt="md">Hi, I'm Gentry.</Title>
-          </View>
-          <View
-            display="flex"
+          </Flex>
+          <Flex
             flexDirection="column"
             maxWidth={400}
             m="md"
@@ -57,8 +53,7 @@ export class AboutMe extends PureComponent {
               I am a software developer in the mobile (React Native - iOS &amp; Android) and web space.
               My current vices are React, React Native, Node and Firebase. I have also done plenty of PHP, Angular, and MySQL.
             </Text>
-            <View
-              display="flex"
+            <Flex
               flexDirection="row"
               justifyContent="space-around"
               pt="lg"
@@ -67,10 +62,10 @@ export class AboutMe extends PureComponent {
               {this.renderLink('https://github.com/gentryriggen', 'fab fa-github')}
               {this.renderLink('https://www.linkedin.com/in/GentryRiggen', 'fab fa-linkedin-in')}
               {this.renderLink('https://stackoverflow.com/users/1767285/gentryriggen', 'fab fa-stack-overflow')}
-            </View>
-          </View>
-        </View>
-      </View>
+            </Flex>
+          </Flex>
+        </Flex>
+      </Flex>
     );
   }
 }

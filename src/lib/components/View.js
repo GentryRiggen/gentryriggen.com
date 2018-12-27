@@ -1,23 +1,19 @@
 import system from 'system-components';
 
-const View = system(
-  // core
+const baseStyles = [
   'space',
   'width',
   'color',
   'fontSize',
-  // borders
   'borders',
   'borderColor',
   'borderRadius',
-  // layout
   'display',
   'maxWidth',
   'minWidth',
   'height',
   'maxHeight',
   'minHeight',
-  // flexbox
   'alignItems',
   'alignContent',
   'justifyContent',
@@ -28,14 +24,25 @@ const View = system(
   'justifySelf',
   'alignSelf',
   'order',
-  // position
   'position',
   'zIndex',
   'top',
   'right',
   'bottom',
   'left',
-);
+];
+const View = system(...baseStyles);
 View.displayName = 'View';
-
 export default View;
+
+const Flex = system(
+  {
+    display: 'flex',
+  },
+  ...baseStyles,
+);
+Flex.displayName = 'Flex';
+
+export {
+  Flex,
+};

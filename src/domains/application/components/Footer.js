@@ -2,7 +2,7 @@ import React, { PureComponent } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
-  View,
+  Flex,
   Text,
   Subtitle,
 } from 'lib/components';
@@ -17,8 +17,7 @@ export class Footer extends PureComponent {
 
   render() {
     return (
-      <View
-        display="flex"
+      <Flex
         flexDirection="column"
         justifyContent="center"
         alignItems="Center"
@@ -26,8 +25,7 @@ export class Footer extends PureComponent {
         pb="md"
       >
         <Subtitle>GentryRiggen.com</Subtitle>
-        <View
-          display="flex"
+        <Flex
           flexDirection="row"
           justifyContent="center"
           alignItems="Center"
@@ -37,8 +35,8 @@ export class Footer extends PureComponent {
             feature="blog"
             on={this.renderLink('/blog', 'Blog')}
           />
-        </View>
-      </View>
+        </Flex>
+      </Flex>
     );
   }
 }

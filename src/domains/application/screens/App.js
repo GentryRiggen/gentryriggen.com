@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import { BrowserRouter as Router, Route } from "react-router-dom";
 
 import {
-  View,
+  Flex,
 } from 'lib/components';
 
 import AboutMe from 'domains/about/screens/AboutMe';
@@ -21,13 +21,11 @@ class App extends Component {
   render() {
     return (
       <Router>
-        <View
-          display="flex"
+        <Flex
           flexDirection="column"
           minHeight="100vh"
         >
-          <View
-            display="flex"
+          <Flex
             flex="1 0 auto"
             flexDirection="column"
             width="100vw"
@@ -36,9 +34,9 @@ class App extends Component {
             <Route path="/blog" component={BlogRouter} />
             <Route path="/login" component={Login} />
             <AdminRoute path="/admin" component={AdminRouter} />
-          </View>
+          </Flex>
           <Footer />
-        </View>
+        </Flex>
       </Router>
     );
   }
