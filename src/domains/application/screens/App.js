@@ -10,6 +10,8 @@ import BlogRouter from 'domains/blog/navigation/BlogRouter';
 import Footer from 'domains/application/components/Footer';
 import Login from 'domains/admin/Screens/Login';
 import initialize from 'domains/application/awaits/initialize';
+import AdminRoute from 'domains/admin/components/AdminRoute';
+import AdminRouter from 'domains/admin/navigation/AdminRouter';
 
 class App extends Component {
   componentWillMount() {
@@ -31,7 +33,8 @@ class App extends Component {
           >
             <Route path="/" exact component={AboutMe} />
             <Route path="/blog" component={BlogRouter} />
-            <Route path="/admin" component={Login} />
+            <Route path="/login" component={Login} />
+            <AdminRoute path="/admin" component={AdminRouter} />
           </View>
           <Footer />
         </View>

@@ -1,4 +1,7 @@
 import React, { PureComponent } from 'react';
+import {
+  Redirect,
+} from "react-router-dom";
 
 import {
   Button,
@@ -14,6 +17,7 @@ export class Login extends PureComponent {
   state = {
     email: '',
     password: '',
+    user: false,
   }
 
   onChangeEmail = ({ target: { value } }) => this.setState({ email: value })
@@ -22,7 +26,9 @@ export class Login extends PureComponent {
 
   onSubmit = async () => {
     const user = await login(this.state.email, this.state.password);
-    console.log({ user });
+    if (user) {
+      window.location.href = '/admin';
+    }
   }
 
   render() {

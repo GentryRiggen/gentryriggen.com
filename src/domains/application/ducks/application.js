@@ -1,10 +1,10 @@
 import { createReducers, Definitions } from 'redux-enterprise';
 
-const { Flag } = Definitions;
+const { Field } = Definitions;
 
 const ducks = createReducers({
   application: {
-    authenticated: Flag,
+    loggedInUser: Field,
   },
 });
 

@@ -5,17 +5,15 @@ import { Route } from "react-router-dom";
 import {
   View,
 } from 'lib/components';
+import Admin from 'domains/admin/Screens/Admin';
 
-import BlogPost from 'domains/blog/screens/BlogPost';
-import Blog from 'domains/blog/screens/Blog';
-
-export class BlogRouter extends PureComponent {
+export class AdminRouter extends PureComponent {
   static propTypes = {
-    match: PropTypes.object.isRequired,
+    path: PropTypes.string.isRequired,
   }
 
   render() {
-    const { match } = this.props;
+    const { path } = this.props;
     return (
       <View
         pt={[1, 3, 4]}
@@ -25,16 +23,12 @@ export class BlogRouter extends PureComponent {
       >
         <Route
           exact
-          path={match.path}
-          component={Blog}
-        />
-        <Route
-          path={`${match.path}/:id`}
-          component={BlogPost}
+          path={path}
+          component={Admin}
         />
       </View>
     );
   }
 }
 
-export default BlogRouter;
+export default AdminRouter;

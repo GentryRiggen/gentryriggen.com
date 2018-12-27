@@ -6,9 +6,9 @@ export const watchUserAuthentication = () => {
   app.auth().onAuthStateChanged((user) => {
     console.log({ user });
     if (user) {
-      store.dispatch(actions.authenticated.set(true));
+      store.dispatch(actions.loggedInUser.set(true));
     } else {
-      store.dispatch(actions.authenticated.set(false));
+      store.dispatch(actions.loggedInUser.set(false));
     }
   });
 }
