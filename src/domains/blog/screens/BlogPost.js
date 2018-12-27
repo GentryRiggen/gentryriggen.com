@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { mapNavigationParams } from 'lib/utils/navigation';
 import {
   Caption,
-  Screen,
+  Flex,
   Title,
 } from 'lib/components';
 
@@ -44,7 +44,7 @@ export class BlogPost extends Component {
     }
 
     return (
-      <Screen>
+      <Flex>
         <Title>{post.title}</Title>
         <Caption>{formatDate(post.date)}</Caption>
         <textarea
@@ -56,7 +56,7 @@ export class BlogPost extends Component {
           style={{ maxWidth: '500px' }}
         />
         <ReactMarkdown source={post.body} />
-      </Screen>
+      </Flex>
     );
   }
 }

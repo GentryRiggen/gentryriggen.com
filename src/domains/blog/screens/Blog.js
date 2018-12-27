@@ -3,7 +3,6 @@ import React, { PureComponent } from 'react';
 import { ReBase } from 'lib/firebase';
 import {
   Flex,
-  Screen,
   Title,
 } from 'lib/components';
 
@@ -31,7 +30,7 @@ export class Blog extends PureComponent {
 
   render() {
     return (
-      <Flex>
+      <Flex width={1}>
         <Title>Blog</Title>
         {this.state.posts.map(this.renderPost)}
       </Flex>
