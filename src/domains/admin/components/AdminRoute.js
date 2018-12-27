@@ -38,16 +38,13 @@ export class AdminRoute extends PureComponent {
     } = this.props;
 
     if (loggedInUser === false) {
-      console.log('AdminRoute: Not logged in', this.props);
       return <Redirect to={{ pathname: '/login', state: { from: location } }} />;
     }
 
     if (loggedInUser) {
-      console.log('AdminRoute: User is logged in', this.props);
       return <Component {...rest} />;
     }
 
-    console.log('AdminRoute: User status is unknown', this.props);
     return <Title>Checkin Authentication</Title>;
   }
 

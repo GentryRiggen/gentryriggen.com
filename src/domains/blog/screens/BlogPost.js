@@ -39,8 +39,6 @@ export class BlogPost extends Component {
 
   render() {
     const { post } = this.state;
-    console.log({ post });
-
     if (!post) {
       return null;
     }

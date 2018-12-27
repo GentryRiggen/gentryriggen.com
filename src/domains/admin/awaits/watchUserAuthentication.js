@@ -4,7 +4,6 @@ import { actions } from 'domains/application/ducks/application';
 
 export const watchUserAuthentication = () => {
   app.auth().onAuthStateChanged((user) => {
-    console.log({ user });
     if (user) {
       store.dispatch(actions.loggedInUser.set(true));
     } else {

@@ -6,6 +6,7 @@ import {
   Text,
   Subtitle,
 } from 'lib/components';
+import BehindFeature from 'domains/features/components/BehindFeature';
 
 export class Footer extends PureComponent {
   renderLink = (to, label) => (
@@ -32,7 +33,10 @@ export class Footer extends PureComponent {
           alignItems="Center"
         >
           {this.renderLink('/', 'Home')}
-          {this.renderLink('/blog', 'Blog')}
+          <BehindFeature
+            feature="blog"
+            on={this.renderLink('/blog', 'Blog')}
+          />
         </View>
       </View>
     );

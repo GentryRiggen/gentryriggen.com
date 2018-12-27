@@ -9,7 +9,6 @@ import { logout } from 'domains/admin/awaits/logout';
 
 export class Admin extends PureComponent {
   render() {
-    console.log('ADMIN');
     return (
       <View
         display="flex"
