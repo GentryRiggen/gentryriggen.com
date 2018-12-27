@@ -29,6 +29,7 @@ class App extends Component {
           <View
             display="flex"
             flex="1 0 auto"
+            flexDirection="column"
             width="100vw"
           >
             <Route path="/" exact component={AboutMe} />
