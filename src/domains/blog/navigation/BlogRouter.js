@@ -1,0 +1,40 @@
+import React, { PureComponent } from 'react';
+import PropTypes from 'prop-types';
+import { Route } from "react-router-dom";
+
+import {
+  View,
+} from 'lib/components';
+
+import BlogPost from 'domains/blog/screens/BlogPost';
+import Blog from 'domains/blog/screens/Blog';
+
+export class BlogRouter extends PureComponent {
+  static propTypes = {
+    match: PropTypes.object.isRequired,
+  }
+
+  render() {
+    const { match } = this.props;
+    return (
+      <View
+        pt={[1, 3, 4]}
+        pr={[1, 3, 4]}
+        pl={[1, 3, 4]}
+        width="100%"
+      >
+        <Route
+          exact
+          path={match.path}
+          component={Blog}
+        />
+        <Route
+          path={`${match.path}/:id`}
+          component={BlogPost}
+        />
+      </View>
+    );
+  }
+}
+
+export default BlogRouter;
