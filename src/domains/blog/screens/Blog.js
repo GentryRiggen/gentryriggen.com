@@ -19,6 +19,9 @@ export class Blog extends PureComponent {
       {
         context: this,
         withIds: true,
+        query: ref => ref
+          .where('published', '==', true)
+          .orderBy('date', 'desc'),
         then: this.onPosts,
       },
     );
