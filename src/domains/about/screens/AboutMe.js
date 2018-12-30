@@ -35,24 +35,21 @@ export class AboutMe extends PureComponent {
         >
           Hi, I'm Gentry.
         </Title>
-        <Flex
-          alignItems="center"
-        >
-          <Text textAlign="center">
-            I am a software developer in the mobile (React Native - iOS &amp; Android) and web space.
-            My current vices are React, React Native, Node and Firebase. I have also done plenty of PHP, Angular, and MySQL.
+
+        <Text textAlign="center">
+          I am a software developer in the mobile (React Native - iOS &amp; Android) and web space.
+          My current vices are React, React Native, Node and Firebase. I have also done plenty of PHP, Angular, and MySQL.
             </Text>
-          <Flex
-            flexDirection="row"
-            justifyContent="space-around"
-            pt="lg"
-            width={1}
-          >
-            {this.renderLink('https://twitter.com/gentryriggen', 'fab fa-twitter')}
-            {this.renderLink('https://github.com/gentryriggen', 'fab fa-github')}
-            {this.renderLink('https://www.linkedin.com/in/GentryRiggen', 'fab fa-linkedin-in')}
-            {this.renderLink('https://stackoverflow.com/users/1767285/gentryriggen', 'fab fa-stack-overflow')}
-          </Flex>
+        <Flex
+          flexDirection="row"
+          justifyContent="space-around"
+          pt="lg"
+          width={1}
+        >
+          {this.renderLink('https://twitter.com/gentryriggen', 'fab fa-twitter')}
+          {this.renderLink('https://github.com/gentryriggen', 'fab fa-github')}
+          {this.renderLink('https://www.linkedin.com/in/GentryRiggen', 'fab fa-linkedin-in')}
+          {this.renderLink('https://stackoverflow.com/users/1767285/gentryriggen', 'fab fa-stack-overflow')}
         </Flex>
       </Flex>
     );

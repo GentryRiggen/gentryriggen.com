@@ -24,6 +24,7 @@ export class Footer extends PureComponent {
         alignItems="Center"
         pt="xl"
         pb="md"
+        data-test="footer"
       >
         <Subtitle>GentryRiggen.com</Subtitle>
         <Flex
