@@ -38,15 +38,15 @@ jobs:
       - run:
           name: Build the app
           command: yarn build
-        - persist_to_workspace:
-          root: .
-          paths:
-            - dist
+      - persist_to_workspace:
+        root: .
+        paths:
+          - dist
   deploy:
     executor: my-executor
     steps:
       - attach_workspace:
-          at: $CIRCLE_WORKING_DIRECTORY
+          at: ~/project
       - run:
           name: Deploy Master to Firebase
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
