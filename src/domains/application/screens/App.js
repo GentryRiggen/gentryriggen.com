@@ -22,6 +22,14 @@ import initialize from 'domains/application/awaits/initialize';
 import AdminRoute from 'domains/admin/components/AdminRoute';
 import AdminRouter from 'domains/admin/navigation/AdminRouter';
 
+const TransitionGroupWrapper = props => (
+  <Flex
+    {...props}
+    width="100%"
+    maxWidth="md"
+  />
+);
+
 class App extends Component {
   componentWillMount() {
     initialize();
@@ -34,9 +42,8 @@ class App extends Component {
           <Route
             render={({ location }) => (
               <Flex
-                flexDirection="column"
                 alignItems="center"
-                pt={['md', 'lg', 'xl']}
+                pt={['lg', 'lg', 'xl']}
                 px="md"
                 data-test="screen-container"
               >
@@ -45,17 +52,19 @@ class App extends Component {
                   path="/"
                   render={() => <Redirect to="/about" />}
                 />
-                <TransitionGroup>
+                <TransitionGroup
+                  data-test="transitionGroup"
+                  component={TransitionGroupWrapper}
+                >
                   <CSSTransition
                     key={location.key}
                     timeout={350}
                     classNames="fade"
+                    data-test="cssTransition"
                   >
                     <Flex
                       flexDirection="column"
                       alignItems="center"
-                      maxWidth={['sm', 'sm', 'md']}
-                      minWidth={[0, 'sm', 'md']}
                       data-test="screen-inner"
                     >
                       <Switch location={location}>

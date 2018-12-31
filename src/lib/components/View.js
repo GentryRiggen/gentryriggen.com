@@ -39,7 +39,7 @@ const Flex = system(
   {
     display: 'flex',
     flexDirection: 'column',
-    flex: 1,
+    flex: '1 1 auto',
   },
   ...baseStyles,
 );

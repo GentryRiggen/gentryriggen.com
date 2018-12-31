@@ -20,7 +20,6 @@ export class AboutMe extends PureComponent {
       <Flex
         alignItems="center"
         justifyContent="center"
-        maxWidth="md"
       >
         <Image
           src="images/profile.jpg"

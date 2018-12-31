@@ -109,7 +109,6 @@ export class BlogPost extends Component {
           onChange={this.onChangeBody}
           rows="12"
           cols="40"
-          style={{ maxWidth: '500px' }}
         />
       </Flex>
     );
@@ -125,7 +124,6 @@ export class BlogPost extends Component {
     return (
 
       <Flex
-        maxWidth="100%"
         flexDirection={[
           'column',
           'column',
