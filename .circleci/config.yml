@@ -8,6 +8,9 @@ executors:
 
 jobs:
   build:
+    branches:
+        ignore:
+            - master
     executor: my-executor
     steps:
       - checkout
@@ -27,6 +30,9 @@ jobs:
           name: Run Test and Coverage
           command: yarn test --coverage
   deploy:
+    branches:
+        only:
+            - master
     executor: my-executor
     steps:
       - checkout
