@@ -43,9 +43,6 @@ jobs:
           paths:
             - ~/.cache/yarn
       - run:
-          name: Run Test and Coverage
-          command: yarn test --coverage
-      - run:
           name: Build the app
           command: yarn build
       - run:
@@ -61,7 +58,10 @@ workflows:
               ignore: master
   -deploy:
     jobs:
+      -test
       - deploy:
+          requires:
+              - test
           filters:
             branches:
               only: master
