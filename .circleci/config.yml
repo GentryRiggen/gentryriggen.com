@@ -26,17 +26,21 @@ jobs:
       - run:
           name: Run Test and Coverage
           command: yarn test --coverage
-      - persist_to_workspace:
-          root: .
-          paths:
-            - node_modules
   prod:
     executor: my-executor
-    requires:
-      - build
     steps:
-      - attach_workspace:
-          at: ~/project
+      - restore_cache:
+          name: Restore Yarn Package Cache
+          keys:
+            - yarn-packages-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Dependencies
+          command: yarn install --frozen-lockfile
+      - save_cache:
+          name: Save Yarn Package Cache
+          key: yarn-packages-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
       - checkout
       - run:
           name: Build the app
@@ -45,6 +49,7 @@ jobs:
           root: .
           paths:
             - dist
+            - node_modules
   deploy:
     executor: my-executor
     steps:
@@ -58,11 +63,9 @@ workflows:
  version: 2
  -deploy:
    jobs:
-     - build
      - prod
      - deploy:
          requires:
-           - build
            - prod
          filters:
            branches:
