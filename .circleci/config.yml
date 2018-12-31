@@ -29,9 +29,6 @@ jobs:
             yarn test --coverage
   build-job:
     executor: my-executor
-    branches:
-      only:
-        - master
     steps:
       - checkout
       - restore_cache:
@@ -56,10 +53,7 @@ jobs:
             - dist
             - node_modules
   deploy-job:
-    docker:
-      - image: circleci/node:8
-    requires:
-      - test-job
+    executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp
