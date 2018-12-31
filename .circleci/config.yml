@@ -4,7 +4,7 @@ executors:
   my-executor:
     docker:
       - image: circleci/node:8
-    working_directory: /gentryriggen
+    working_directory: $CIRCLE_WORKING_DIRECTORY
 
 jobs:
   build:
@@ -25,8 +25,7 @@ jobs:
             - ~/.cache/yarn
       - run:
           name: Run Test and Coverage
-          command: |
-            yarn test --coverage
+          command: yarn test --coverage
       - persist_to_workspace:
           root: .
           paths:
@@ -35,24 +34,10 @@ jobs:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
-#          at: /gentryriggen
-#      - checkout
-#      - restore_cache:
-#          name: Restore Yarn Package Cache
-#          keys:
-#            - yarn-packages-{{ checksum "yarn.lock" }}
-#      - run:
-#          name: Install Dependencies
-#          command: yarn install --frozen-lockfile
-#      - save_cache:
-#          name: Save Yarn Package Cache
-#          key: yarn-packages-{{ checksum "yarn.lock" }}
-#          paths:
-#            - ~/.cache/yarn
+#          at: $CIRCLE_WORKING_DIRECTORY
 #      - run:
 #          name: Build the app
-#          command: |
-#            yarn build
+#          command: yarn build
 #       - persist_to_workspace:
 #          root: .
 #          paths:
@@ -61,7 +46,7 @@ jobs:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
-#          at: /gentryriggen
+#          at: $CIRCLE_WORKING_DIRECTORY
 #      - run:
 #          name: Deploy Master to Firebase
 #          command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
