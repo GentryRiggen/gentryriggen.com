@@ -58,7 +58,10 @@ workflows:
               ignore: master
   -deploy:
     jobs:
-      - test
+      - test:
+          filters:
+            branches:
+              only: master
       - deploy:
           requires:
               - test
