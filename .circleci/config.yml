@@ -7,7 +7,7 @@ executors:
     working_directory: ~/project
 
 jobs:
-  build:
+  test:
     executor: my-executor
     steps:
       - checkout
@@ -43,9 +43,6 @@ jobs:
           paths:
             - ~/.cache/yarn
       - run:
-          name: Run Test and Coverage
-          command: yarn test --coverage
-      - run:
           name: Build the app
           command: yarn build
       - run:
@@ -53,10 +50,21 @@ jobs:
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
-  version: 2
+  -test:
+    jobs:
+      - test:
+          filters:
+            branches:
+              ignore: master
   -deploy:
     jobs:
+      - test:
+          filters:
+            branches:
+              only: master
       - deploy:
+          requires:
+              - test
           filters:
             branches:
               only: master
