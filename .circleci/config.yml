@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  test-job:
     docker:
       - image: circleci/node:8
     steps:
@@ -17,7 +17,55 @@ jobs:
           key: yarn-packages-{{ checksum "yarn.lock" }}
           paths:
             - ~/.cache/yarn
-      - run: # run tests
+      - run:
           name: Run Test and Coverage
           command: |
             yarn test --coverage
+  build-job:
+    docker:
+      - image: circleci/node:8
+    requires:
+      - test-job
+    filters:
+      branches:
+        only: master
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Yarn Package Cache
+          keys:
+            - yarn-packages-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Dependencies
+          command: yarn install --frozen-lockfile
+      - save_cache:
+          name: Save Yarn Package Cache
+          key: yarn-packages-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
+      - run:
+          name: Build the app
+          command: |
+            yarn build
+  deploy-job:
+    requires:
+      - build-job
+    docker:
+      - image: circleci/node:8
+      steps:
+      - run:
+          name: Deploy Master to Firebase
+          command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
+
+workflows:
+  version: 2
+
+  -deploy:
+    jobs:
+      - build-job
+      - deploy-job:
+          requires:
+            - build-job
+          filters:
+            branches:
+              only: master
