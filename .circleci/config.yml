@@ -32,6 +32,8 @@ jobs:
             - node_modules
   prod:
     executor: my-executor
+    requires:
+      - build
     steps:
       - attach_workspace:
           at: ~/project
