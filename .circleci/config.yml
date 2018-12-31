@@ -24,6 +24,8 @@ jobs:
   build-job:
     docker:
       - image: circleci/node:8
+    requires:
+      - test-job
     steps:
       - run:
           name: Build the app
@@ -32,6 +34,8 @@ jobs:
   deploy-job:
     docker:
       - image: circleci/node:8
+    requires:
+      - test-job
     steps:
       - run:
           name: Deploy Master to Firebase
