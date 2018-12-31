@@ -35,13 +35,14 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/project
+      - checkout
       - run:
           name: Build the app
           command: yarn build
       - persist_to_workspace:
-        root: .
-        paths:
-          - dist
+          root: .
+          paths:
+            - dist
   deploy:
     executor: my-executor
     steps:
