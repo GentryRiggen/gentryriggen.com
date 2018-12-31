@@ -18,7 +18,6 @@ import { ReBase } from 'lib/firebase';
 import { formatDate } from 'lib/utils/date';
 
 import { selectors } from 'domains/application/ducks/application';
-import View from 'lib/components/View';
 
 const mapState = createStructuredSelector({
   loggedInUser: selectors.loggedInUser.get,
