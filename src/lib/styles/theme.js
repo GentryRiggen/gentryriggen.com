@@ -42,14 +42,14 @@ export const theme = {
   },
   width: [16, 32, 64, 128, 256],
   minWidths: {
-    sm: SMALL_SCREEN - 32,
-    md: MEDIUM_SCREEN - 32,
-    lg: LARGE_SCREEN - 32,
+    sm: SMALL_SCREEN - 64,
+    md: MEDIUM_SCREEN - 64,
+    lg: LARGE_SCREEN - 64,
   },
   maxWidths: {
-    sm: SMALL_SCREEN,
-    md: MEDIUM_SCREEN,
-    lg: LARGE_SCREEN,
+    sm: SMALL_SCREEN - 64,
+    md: MEDIUM_SCREEN - 64,
+    lg: LARGE_SCREEN - 64,
   },
   colors: {
     primary: colors.primary,

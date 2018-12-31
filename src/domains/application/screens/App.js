@@ -36,7 +36,7 @@ class App extends Component {
               <Flex
                 flexDirection="column"
                 alignItems="center"
-                pt={['sm', 'lg', 'xl']}
+                pt={['md', 'lg', 'xl']}
                 px="md"
                 data-test="screen-container"
               >
@@ -54,7 +54,7 @@ class App extends Component {
                     <Flex
                       flexDirection="column"
                       alignItems="center"
-                      maxWidth={['sm', 'md', 'md']}
+                      maxWidth={['sm', 'sm', 'md']}
                       minWidth={[0, 'sm', 'md']}
                       data-test="screen-inner"
                     >

@@ -125,6 +125,7 @@ export class BlogPost extends Component {
     return (
 
       <Flex
+        maxWidth="100%"
         flexDirection={[
           'column',
           'column',

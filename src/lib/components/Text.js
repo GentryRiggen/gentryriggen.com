@@ -36,7 +36,7 @@ Title.displayName = 'Title';
 const Jumbo = system(
   {
     is: 'p',
-    fontSize: 'jumbo',
+    fontSize: ['subtitle', 'title', 'jumbo'],
     fontWeight: 'jumbo',
     lineHeight: 'jumbo',
     color: 'text',
