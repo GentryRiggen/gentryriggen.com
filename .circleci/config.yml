@@ -30,7 +30,7 @@ jobs:
           root: .
           paths:
             - node_modules
-  build-prod:
+  prod:
     executor: my-executor
     steps:
       - attach_workspace:
@@ -56,11 +56,11 @@ jobs:
 #  -deploy:
 #    jobs:
 #      - build
-#      - build-prod
+#      - prod
 #      - deploy:
 #          requires:
 #            - build
-#            - build-prod
+#            - prod
 #          filters:
 #            branches:
 #              only: master
