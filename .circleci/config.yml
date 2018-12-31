@@ -4,7 +4,7 @@ executors:
   my-executor:
     docker:
       - image: circleci/node:8
-    working_directory: /tmp
+    working_directory: /gentryriggen
 
 jobs:
   build:
@@ -35,7 +35,7 @@ jobs:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
-#          at: /tmp
+#          at: /gentryriggen
 #      - checkout
 #      - restore_cache:
 #          name: Restore Yarn Package Cache
@@ -61,7 +61,7 @@ jobs:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
-#          at: /tmp
+#          at: /gentryriggen
 #      - run:
 #          name: Deploy Master to Firebase
 #          command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
