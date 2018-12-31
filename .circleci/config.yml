@@ -7,7 +7,7 @@ executors:
     working_directory: ~/project
 
 jobs:
-  build:
+  test:
     executor: my-executor
     steps:
       - checkout
@@ -53,6 +53,12 @@ jobs:
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
+  -test:
+    jobs:
+      - test:
+          filters:
+            branches:
+              ignore: master
   -deploy:
     jobs:
       - deploy:
