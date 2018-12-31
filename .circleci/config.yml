@@ -50,13 +50,13 @@ jobs:
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
-  -test:
+  Test:
     jobs:
       - test:
           filters:
             branches:
               ignore: master
-  -deploy:
+  Deploy:
     jobs:
       - test:
           filters:
