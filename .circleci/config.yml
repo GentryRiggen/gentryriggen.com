@@ -7,7 +7,7 @@ executors:
     working_directory: /tmp
 
 jobs:
-  test-job:
+  build:
     executor: my-executor
     steps:
       - checkout
@@ -31,7 +31,7 @@ jobs:
           root: .
           paths:
             - node_modules
-#  build-job:
+#  build-prod:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
@@ -57,7 +57,7 @@ jobs:
 #          root: .
 #          paths:
 #            - dist
-#  deploy-job:
+#  deploy:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
@@ -70,12 +70,12 @@ jobs:
 #  version: 2
 #  -deploy:
 #    jobs:
-#      - test-job
-#      - build-job
-#      - deploy-job:
+#      - build
+#      - build-prod
+#      - deploy:
 #          requires:
-#            - test-job
-#            - build-job
+#            - build
+#            - build-prod
 #          filters:
 #            branches:
 #              only: master
