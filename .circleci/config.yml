@@ -1,8 +1,14 @@
 version: 2
-jobs:
-  test-job:
+
+executors:
+  my-executor:
     docker:
       - image: circleci/node:8
+    working_directory: /tmp
+
+jobs:
+  test-job:
+    executor: my-executor
     steps:
       - checkout
       - restore_cache:
@@ -22,10 +28,10 @@ jobs:
           command: |
             yarn test --coverage
   build-job:
-    docker:
-      - image: circleci/node:8
-    requires:
-      - test-job
+    executor: my-executor
+    branches:
+      only:
+        - master
     steps:
       - checkout
       - restore_cache:
@@ -44,19 +50,25 @@ jobs:
           name: Build the app
           command: |
             yarn build
+       - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+            - node_modules
   deploy-job:
     docker:
       - image: circleci/node:8
     requires:
       - test-job
     steps:
+      - attach_workspace:
+          at: /tmp
       - run:
           name: Deploy Master to Firebase
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
   version: 2
-
   -deploy:
     jobs:
       - test-job
