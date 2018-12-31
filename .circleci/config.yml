@@ -8,9 +8,6 @@ executors:
 
 jobs:
   build:
-    branches:
-        ignore:
-            - master
     executor: my-executor
     steps:
       - checkout
@@ -30,9 +27,6 @@ jobs:
           name: Run Test and Coverage
           command: yarn test --coverage
   deploy:
-    branches:
-        only:
-            - master
     executor: my-executor
     steps:
       - checkout
@@ -59,7 +53,6 @@ jobs:
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
-  version: 2
   -deploy:
     jobs:
       - deploy:
