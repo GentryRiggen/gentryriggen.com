@@ -36,8 +36,8 @@ export class AboutMe extends PureComponent {
         </Title>
 
         <Text textAlign="center">
-          I am a full-stack software engineer developing websites and mobile apps with React, React Native, Node and Firebase.
-          In the past I have done lots of PHP, Angular, and MySQL development.
+          I'm a full-stack software engineer developing websites and mobile apps with React, React Native, Node and Firebase.
+          In the past I have done lots of PHP, Angular, and MySQL.
           Check out my work or hit me up on any of the platforms below <span role="img" aria-label="muscle fire">🔥💪</span>.
         </Text>
         <Flex
