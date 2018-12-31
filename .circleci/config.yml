@@ -4,7 +4,7 @@ executors:
   my-executor:
     docker:
       - image: circleci/node:8
-    working_directory: $CIRCLE_WORKING_DIRECTORY
+    working_directory: ~/project
 
 jobs:
   build:
@@ -34,7 +34,7 @@ jobs:
 #    executor: my-executor
 #    steps:
 #      - attach_workspace:
-#          at: $CIRCLE_WORKING_DIRECTORY
+#          at: ~/project
 #      - run:
 #          name: Build the app
 #          command: yarn build
