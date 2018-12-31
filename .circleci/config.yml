@@ -26,7 +26,7 @@ jobs:
       - run:
           name: Run Test and Coverage
           command: yarn test --coverage
-  prod:
+  deploy:
     executor: my-executor
     steps:
       - checkout
@@ -48,17 +48,6 @@ jobs:
       - run:
           name: Build the app
           command: yarn build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - dist
-            - node_modules
-  deploy:
-    executor: my-executor
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ~/project
       - run:
           name: Deploy Master to Firebase
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
@@ -67,10 +56,7 @@ workflows:
   version: 2
   -deploy:
     jobs:
-      - prod
       - deploy:
-          requires:
-            - prod
           filters:
             branches:
               only: master
