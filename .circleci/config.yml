@@ -58,7 +58,7 @@ workflows:
               ignore: master
   -deploy:
     jobs:
-      -test
+      - test
       - deploy:
           requires:
               - test
