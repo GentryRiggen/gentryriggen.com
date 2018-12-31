@@ -10,7 +10,7 @@ export const getMoment = (date) => {
   }
 
   let theDate = moment();
-  if (R.has('toDate', date)) {
+  if (R.propOr(false, 'toDate', date)) {
     theDate = moment(date.toDate());
   }
 

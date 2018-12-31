@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 
 import './global';
 import './index.css'
+import './blog.css'
 import './fade.css'
 
 import { theme } from 'lib/styles/theme';

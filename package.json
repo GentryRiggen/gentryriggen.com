@@ -5,6 +5,7 @@
   "dependencies": {
     "firebase": "^5.7.1",
     "moment": "^2.23.0",
+    "prismjs": "^1.15.0",
     "ramda": "^0.26.1",
     "re-base": "^4.0.0",
     "react": "^16.7.0",

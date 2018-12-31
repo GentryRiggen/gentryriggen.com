@@ -1,0 +1,27 @@
+.blog-post h1 {
+  font-size: 36px;
+  line-height: 1.7em;
+}
+.blog-post h2 {
+  font-size: 24px;
+  line-height: 1.7em;
+}
+.blog-post p {
+  font-size: 18px;
+  line-height: 1.7em;
+  margin-bottom: 24px;
+}
+
+.blog-post blockquote {
+  border-left: 8px solid #ccc;
+  margin: 24px 4px;
+  padding: 8px 16px;
+}
+.blog-post blockquote p {
+  margin: 0;
+  font-size: 24px;
+}
+
+.blog-post pre {
+  margin: 16px 0;
+}

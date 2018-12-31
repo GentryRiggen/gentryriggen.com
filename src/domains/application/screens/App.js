@@ -37,7 +37,7 @@ class App extends Component {
                 flexDirection="column"
                 alignItems="center"
                 pt={['sm', 'lg', 'xl']}
-                px="sm"
+                px="md"
                 data-test="screen-container"
               >
                 <Route
@@ -54,8 +54,8 @@ class App extends Component {
                     <Flex
                       flexDirection="column"
                       alignItems="center"
-                      maxWidth="md"
-                      minWidth={[0, 'sm', 'md', 'lg']}
+                      maxWidth={['sm', 'md', 'md']}
+                      minWidth={[0, 'sm', 'md']}
                       data-test="screen-inner"
                     >
                       <Switch location={location}>

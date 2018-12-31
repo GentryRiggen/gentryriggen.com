@@ -1,21 +1,24 @@
 import React, { Component } from 'react';
+import * as R from 'ramda';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import { createStructuredSelector } from 'reselect';
+import Prism from 'prismjs';
 
 import { mapNavigationParams } from 'lib/utils/navigation';
 import {
   Caption,
   Flex,
   Text,
-  Title,
+  Jumbo,
 } from 'lib/components';
 
 import { ReBase } from 'lib/firebase';
 import { formatDate } from 'lib/utils/date';
 
 import { selectors } from 'domains/application/ducks/application';
+import View from 'lib/components/View';
 
 const mapState = createStructuredSelector({
   loggedInUser: selectors.loggedInUser.get,
@@ -45,19 +48,25 @@ export class BlogPost extends Component {
     );
   }
 
+  componentDidMount() {
+    this.highlightCode();
+  }
+
+  highlightCode = () => setTimeout(Prism.highlightAll, 1000)
+
   onPost = post => this.setState({ post })
 
   onChangeTitle = ({ target: { value } }) =>
-    this.setState(s => ({ post: { ...s.post, title: value } }))
+    this.setState(R.over(R.lensPath(['post', 'title']), () => value))
 
   onChangePublished = () =>
-    this.setState(s => ({ post: { ...s.post, published: !s.post.published } }))
+    this.setState(R.over(R.lensPath(['post', 'published']), R.not))
 
   onChangeDate = ({ target: { value } }) =>
-    this.setState(s => ({ post: { ...s.post, date: value } }))
+    this.setState(R.over(R.lensPath(['post', 'date']), () => new Date(value)))
 
   onChangeBody = ({ target: { value } }) =>
-    this.setState(s => ({ post: { ...s.post, body: value } }))
+    this.setState(R.over(R.lensPath(['post', 'body']), () => value), this.highlightCode)
 
   renderEditor() {
     if (!this.props.loggedInUser) {
@@ -114,6 +123,7 @@ export class BlogPost extends Component {
     }
 
     return (
+
       <Flex
         flexDirection={[
           'column',
@@ -123,9 +133,12 @@ export class BlogPost extends Component {
       >
         {this.renderEditor()}
         <Flex>
-          <Title>{post.title}</Title>
-          <Caption>{formatDate(post.date)}</Caption>
-          <ReactMarkdown source={post.body} />
+          <Jumbo>{post.title}</Jumbo>
+          <Caption pb="md">{formatDate(post.date)}</Caption>
+          <ReactMarkdown
+            className="blog-post"
+            source={post.body}
+          />
         </Flex>
       </Flex>
     );
