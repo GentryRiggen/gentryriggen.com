@@ -52,7 +52,7 @@ jobs:
       - build-job
     docker:
       - image: circleci/node:8
-      steps:
+    steps:
       - run:
           name: Deploy Master to Firebase
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
