@@ -20,7 +20,7 @@ export class Fade extends PureComponent {
   }
 
   static defaultProps = {
-    in: false,
+    in: true,
   }
 
   render() {
