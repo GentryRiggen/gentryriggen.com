@@ -11,20 +11,16 @@ import {
 } from 'lib/components';
 
 import BehindFeature from 'domains/features/components/BehindFeature';
-import { selectors } from 'domains/application/ducks/application';
 import { logout } from 'domains/admin/awaits/logout';
+import { isLoggedInSelector } from 'domains/admin/selectors/admin';
 
 const mapState = createStructuredSelector({
-  loggedInUser: selectors.loggedInUser.get,
+  isLoggedIn: isLoggedInSelector,
 });
 
 export class Footer extends PureComponent {
   static propTypes = {
-    loggedInUser: PropTypes.any,
-  }
-
-  static defaultProps = {
-    loggedInUser: null,
+    isLoggedIn: PropTypes.bool.isRequired,
   }
 
   renderLink = (to, label) => (
@@ -34,7 +30,7 @@ export class Footer extends PureComponent {
   )
 
   render() {
-    const { loggedInUser } = this.props;
+    const { isLoggedIn } = this.props;
 
     return (
       <Flex
@@ -57,7 +53,7 @@ export class Footer extends PureComponent {
             feature="blog"
             on={this.renderLink('/blog', 'Blog')}
           />
-          {!!loggedInUser && (
+          {isLoggedIn && (
             <Text p="md" onClick={logout}>Logout</Text>
           )}
         </Flex>

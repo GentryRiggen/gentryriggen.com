@@ -1,14 +1,27 @@
 import React, { PureComponent } from 'react';
+import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import { createStructuredSelector } from 'reselect';
 
-import { ReBase } from 'lib/firebase';
+import { ReBase, firestore } from 'lib/firebase';
 import {
+  Button,
   Flex,
   Title,
 } from 'lib/components';
 
 import BlogPostRow from 'domains/blog/components/BlogPostRow';
+import { isLoggedInSelector } from 'domains/admin/selectors/admin';
+
+const mapState = createStructuredSelector({
+  isLoggedIn: isLoggedInSelector,
+});
 
 export class Blog extends PureComponent {
+  static propTypes = {
+    isLoggedIn: PropTypes.bool.isRequired,
+  }
+
   state = {
     posts: [],
   }
@@ -19,9 +32,7 @@ export class Blog extends PureComponent {
       {
         context: this,
         withIds: true,
-        query: ref => ref
-          .where('published', '==', true)
-          .orderBy('date', 'desc'),
+        query: this.getQuery,
         then: this.onPosts,
       },
     );
@@ -29,16 +40,44 @@ export class Blog extends PureComponent {
 
   onPosts = posts => this.setState({ posts })
 
+  onCreatePost = () => firestore.collection('posts').add({
+    title: 'New Post',
+    body: '',
+    published: false,
+    date: new Date(),
+  });
+
+  getQuery = (ref) => {
+    if (this.props.isLoggedIn) {
+      return ref.orderBy('date', 'desc');
+    }
+
+    return ref
+      .where('published', '==', true)
+      .orderBy('date', 'desc');
+  }
+
+  renderCreatePost() {
+    if (!this.props.isLoggedIn) {
+      return null;
+    }
+
+    return (
+      <Button onClick={this.onCreatePost}>Create Post</Button>
+    );
+  }
+
   renderPost = (post, index) => <BlogPostRow post={post} key={index} />
 
   render() {
     return (
       <Flex width={1}>
         <Title>Blog</Title>
+        {this.renderCreatePost()}
         {this.state.posts.map(this.renderPost)}
       </Flex>
     );
   }
 }
 
-export default Blog;
+export default connect(mapState)(Blog);

@@ -62,18 +62,12 @@ class App extends Component {
                     classNames="fade"
                     data-test="cssTransition"
                   >
-                    <Flex
-                      flexDirection="column"
-                      alignItems="center"
-                      data-test="screen-inner"
-                    >
-                      <Switch location={location}>
-                        <Route path="/about" component={AboutMe} />
-                        <Route path="/blog" component={BlogRouter} />
-                        <Route path="/login" component={Login} />
-                        <AdminRoute path="/admin" component={AdminRouter} />
-                      </Switch>
-                    </Flex>
+                    <Switch location={location}>
+                      <Route path="/about" component={AboutMe} />
+                      <Route path="/blog" component={BlogRouter} />
+                      <Route path="/login" component={Login} />
+                      <AdminRoute path="/admin" component={AdminRouter} />
+                    </Switch>
                   </CSSTransition>
                 </TransitionGroup>
               </Flex>
