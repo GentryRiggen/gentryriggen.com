@@ -8,6 +8,7 @@ import Prism from 'prismjs';
 
 import { mapNavigationParams } from 'lib/utils/navigation';
 import {
+  Button,
   Caption,
   Flex,
   Text,
@@ -17,23 +18,20 @@ import {
 import { ReBase } from 'lib/firebase';
 import { formatDate } from 'lib/utils/date';
 
-import { selectors } from 'domains/application/ducks/application';
+import { isLoggedInSelector } from 'domains/admin/selectors/admin';
 
 const mapState = createStructuredSelector({
-  loggedInUser: selectors.loggedInUser.get,
+  isLoggedIn: isLoggedInSelector,
 });
 
 export class BlogPost extends Component {
   static propTypes = {
-    loggedInUser: PropTypes.any,
+    isLoggedIn: PropTypes.bool.isRequired,
     id: PropTypes.string.isRequired,
   }
 
-  static defaultProps = {
-    loggedInUser: null,
-  }
-
   state = {
+    editMode: false,
     post: null
   }
 
@@ -48,10 +46,10 @@ export class BlogPost extends Component {
   }
 
   componentDidMount() {
-    this.highlightCode();
+    this.onHighlightCode();
   }
 
-  highlightCode = () => setTimeout(Prism.highlightAll, 1000)
+  onHighlightCode = () => setTimeout(Prism.highlightAll, 1000)
 
   onPost = post => this.setState({ post })
 
@@ -65,42 +63,55 @@ export class BlogPost extends Component {
     this.setState(R.over(R.lensPath(['post', 'date']), () => new Date(value)))
 
   onChangeBody = ({ target: { value } }) =>
-    this.setState(R.over(R.lensPath(['post', 'body']), () => value), this.highlightCode)
+    this.setState(R.over(R.lensPath(['post', 'body']), () => value), this.onHighlightCode)
+
+  editMode = R.over(R.lens(R.prop('editMode'), R.assoc('editMode')), R.not)
+  toggleEditMode = () => this.setState(s => this.editMode(s), this.onHighlightCode)
 
   renderEditor() {
-    if (!this.props.loggedInUser) {
+    if (!this.props.isLoggedIn) {
       return null;
     }
 
     const { post } = this.state;
+    if (!post) {
+      return null;
+    }
 
     return (
-      <Flex p="md">
-        <Text>Title</Text>
-        <input
-          type="text"
-          value={post.title}
-          onChange={this.onChangeTitle}
-        />
+      <Flex>
+        <Flex
+          flexDirection="row"
+          maxHeight="160px"
+        >
+          <Flex mr="md">
+            <Text>Title</Text>
+            <input
+              type="text"
+              value={post.title}
+              onChange={this.onChangeTitle}
+            />
+          </Flex>
 
-        <Flex flexDirection="row" my="lg" flex={0}>
-          <Text>Published</Text>
-          <input
-            type="checkbox"
-            value={post.published}
-            checked={post.published}
-            onChange={this.onChangePublished}
-          />
-          <Text>Date</Text>
-          <div>
-            <Text>{formatDate(post.date)}</Text>
-          <input
-            type="date"
-            style={{ height: 32 }}
-            onChange={this.onChangeDate}
-          />
-          </div>
+          <Flex>
+            <Text>Published</Text>
+            <input
+              type="checkbox"
+              value={post.published}
+              checked={post.published}
+              onChange={this.onChangePublished}
+            />
+            <div>
+              <Text>{formatDate(post.date)}</Text>
+              <input
+                type="date"
+                style={{ height: 32 }}
+                onChange={this.onChangeDate}
+              />
+            </div>
+          </Flex>
         </Flex>
+
         <Text>Body</Text>
         <textarea
           type="text"
@@ -113,33 +124,42 @@ export class BlogPost extends Component {
     );
   }
 
-  render() {
+  renderPost() {
     const { post } = this.state;
-    const { loggedInUser } = this.props;
     if (!post) {
       return null;
     }
 
     return (
+      <React.Fragment>
+        <Jumbo>{post.title}</Jumbo>
+        <Caption pb="md">{formatDate(post.date)}</Caption>
 
-      <Flex
-        flexDirection={[
-          'column',
-          'column',
-          !!loggedInUser ? 'row' : 'column',
-        ]}
-      >
-        {this.renderEditor()}
-        <Flex>
-          <Jumbo>{post.title}</Jumbo>
-          <Caption pb="md">{formatDate(post.date)}</Caption>
-          <ReactMarkdown
-            className="blog-post"
-            source={post.body}
-          />
-        </Flex>
-      </Flex>
+        <ReactMarkdown
+          className="blog-post"
+          source={post.body}
+        />
+      </React.Fragment>
     );
+  }
+
+  render() {
+    const { isLoggedIn } = this.props;
+    const { editMode } = this.state;
+    const content = editMode
+      ? this.renderEditor()
+      : this.renderPost();
+
+    return (
+      <Flex width={1} maxWidth="100%">
+        {isLoggedIn && (
+          <div>
+            <Button onClick={this.toggleEditMode}>{editMode ? 'See Post' : 'Edit Post'}</Button>
+          </div>
+        )}
+        {content}
+      </Flex>
+    )
   }
 }
 
