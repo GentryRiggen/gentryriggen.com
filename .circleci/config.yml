@@ -24,8 +24,27 @@ jobs:
           paths:
             - ~/.cache/yarn
       - run:
-          name: Run Test and Coverage
+          name: Run Unit/Integration Tests
           command: yarn test --coverage
+  testEndToEnds:
+    executor: my-executor
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Yarn Package Cache
+          keys:
+            - yarn-packages-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Dependencies
+          command: yarn install --frozen-lockfile
+      - save_cache:
+          name: Save Yarn Package Cache
+          key: yarn-packages-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
+      - run:
+          name: Run End to End Tests
+          command: yarn test:e2e
   deploy:
     executor: my-executor
     steps:
@@ -56,15 +75,25 @@ workflows:
           filters:
             branches:
               ignore: master
+      - testEndToEnds:
+          filters:
+            branches:
+              ignore: master
   Deploy:
     jobs:
       - test:
           filters:
             branches:
               only: master
-      - deploy:
+      - testEndToEnds:
           requires:
               - test
+          filters:
+            branches:
+              only: master
+      - deploy:
+          requires:
+              - testEndToEnds
           filters:
             branches:
               only: master
