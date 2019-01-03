@@ -6,8 +6,8 @@ import { createStructuredSelector } from 'reselect';
 import { ReBase, firestore } from 'lib/firebase';
 import {
   Button,
-  Flex,
-  Title,
+  View,
+  Text,
 } from 'lib/components';
 
 import BlogPostRow from 'domains/blog/components/BlogPostRow';
@@ -71,11 +71,11 @@ export class Blog extends PureComponent {
 
   render() {
     return (
-      <Flex width={1}>
-        <Title>Blog</Title>
+      <View>
+        <Text textStyle="title">Blog</Text>
         {this.renderCreatePost()}
         {this.state.posts.map(this.renderPost)}
-      </Flex>
+      </View>
     );
   }
 }

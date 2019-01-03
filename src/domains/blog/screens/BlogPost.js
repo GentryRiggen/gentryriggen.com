@@ -5,14 +5,14 @@ import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import { createStructuredSelector } from 'reselect';
 import Prism from 'prismjs';
+import 'prismjs/components/prism-jsx';
 
 import { mapNavigationParams } from 'lib/utils/navigation';
 import {
   Button,
-  Caption,
-  Flex,
+  Input,
   Text,
-  Jumbo,
+  View,
 } from 'lib/components';
 
 import { ReBase } from 'lib/firebase';
@@ -49,7 +49,11 @@ export class BlogPost extends Component {
     this.onHighlightCode();
   }
 
-  onHighlightCode = () => setTimeout(Prism.highlightAll, 1000)
+  componentDidUpdate() {
+    this.onHighlightCode();
+  }
+
+  onHighlightCode = () => setTimeout(Prism.highlightAll, 500)
 
   onPost = post => this.setState({ post })
 
@@ -79,21 +83,31 @@ export class BlogPost extends Component {
     }
 
     return (
-      <Flex>
-        <Flex
-          flexDirection="row"
+      <View
+        flex={1}
+        width={1}
+      >
+        <View
+          flexStyle="horizontal"
+          flex={1}
           maxHeight="160px"
         >
-          <Flex mr="md">
+          <View
+            flex={1}
+            mr="md"
+          >
             <Text>Title</Text>
-            <input
+            <Input
               type="text"
               value={post.title}
               onChange={this.onChangeTitle}
+              width="85%"
             />
-          </Flex>
+          </View>
 
-          <Flex>
+          <View
+            flex={1}
+          >
             <Text>Published</Text>
             <input
               type="checkbox"
@@ -109,18 +123,21 @@ export class BlogPost extends Component {
                 onChange={this.onChangeDate}
               />
             </div>
-          </Flex>
-        </Flex>
+          </View>
+        </View>
 
-        <Text>Body</Text>
-        <textarea
-          type="text"
-          value={post.body}
-          onChange={this.onChangeBody}
-          rows="12"
-          cols="40"
-        />
-      </Flex>
+        <View
+          flex={1}
+        >
+          <Text>Body</Text>
+          <textarea
+            type="text"
+            value={post.body}
+            onChange={this.onChangeBody}
+            rows="40"
+          />
+        </View>
+      </View>
     );
   }
 
@@ -132,8 +149,8 @@ export class BlogPost extends Component {
 
     return (
       <React.Fragment>
-        <Jumbo>{post.title}</Jumbo>
-        <Caption pb="md">{formatDate(post.date)}</Caption>
+        <Text textStyle="jumbo">{post.title}</Text>
+        <Text textStyle="caption" pb="md">{formatDate(post.date)}</Text>
 
         <ReactMarkdown
           className="blog-post"
@@ -151,14 +168,14 @@ export class BlogPost extends Component {
       : this.renderPost();
 
     return (
-      <Flex width={1} maxWidth="100%">
+      <View flexStyle="vertical">
         {isLoggedIn && (
           <div>
             <Button onClick={this.toggleEditMode}>{editMode ? 'See Post' : 'Edit Post'}</Button>
           </div>
         )}
         {content}
-      </Flex>
+      </View>
     )
   }
 }

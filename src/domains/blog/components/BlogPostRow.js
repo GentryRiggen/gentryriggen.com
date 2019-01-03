@@ -4,8 +4,7 @@ import { Link } from 'react-router-dom';
 
 import {
   View,
-  Subtitle,
-  Caption,
+  Text,
 } from 'lib/components';
 
 export class BlogPostRow extends PureComponent {
@@ -28,8 +27,8 @@ export class BlogPostRow extends PureComponent {
           pt="md"
           pb="md"
         >
-          <Subtitle>{title}</Subtitle>
-          <Caption>December 24th, 2018</Caption>
+          <Text textStyle="subtitle">{title}</Text>
+          <Text textStyle="caption">December 24th, 2018</Text>
         </View>
       </Link>
     );

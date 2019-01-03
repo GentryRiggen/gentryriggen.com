@@ -11,7 +11,7 @@ import {
 } from 'react-transition-group';
 
 import {
-  Flex,
+  View,
 } from 'lib/components';
 
 import AboutMe from 'domains/about/screens/AboutMe';
@@ -23,8 +23,9 @@ import AdminRoute from 'domains/admin/components/AdminRoute';
 import AdminRouter from 'domains/admin/navigation/AdminRouter';
 
 const TransitionGroupWrapper = props => (
-  <Flex
+  <View
     {...props}
+    m="0 auto"
     width="100%"
     maxWidth="md"
   />
@@ -38,11 +39,16 @@ class App extends Component {
   render() {
     return (
       <Router>
-        <Flex>
+        <View
+          flexStyle="vertical"
+          flex={1}
+        >
           <Route
             render={({ location }) => (
-              <Flex
-                alignItems="center"
+              <View
+                flexStyle="vertical"
+                flex={1}
+                width={1}
                 pt={['lg', 'lg', 'xl']}
                 px="md"
                 data-test="screen-container"
@@ -70,11 +76,11 @@ class App extends Component {
                     </Switch>
                   </CSSTransition>
                 </TransitionGroup>
-              </Flex>
+              </View>
             )}
           />
           <Footer />
-        </Flex>
+        </View>
       </Router>
     );
   }
