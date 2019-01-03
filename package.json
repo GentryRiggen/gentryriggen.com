@@ -24,11 +24,15 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:e2e": "jest -c e2e/jest.config.js",
     "eject": "react-scripts eject",
     "deploy": "yarn build && firebase deploy"
   },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": "react-app",
+    "globals": {
+      "page": true
+    }
   },
   "browserslist": [
     ">0.2%",
@@ -37,6 +41,8 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "firebase-tools": "^6.2.2"
+    "firebase-tools": "^6.2.2",
+    "jest-puppeteer": "^3.7.0",
+    "puppeteer": "^1.11.0"
   }
 }
