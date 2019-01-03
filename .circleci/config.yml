@@ -3,7 +3,7 @@ version: 2.1
 executors:
   my-executor:
     docker:
-      - image: circleci/node:8
+      - image: circleci/node:latest-browsers
     working_directory: ~/project
 
 jobs:
