@@ -24,7 +24,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "test:e2e": "jest -c e2e/jest.config.js",
+    "test:e2e": "jest -c ./e2e/jest.config.js",
     "eject": "react-scripts eject",
     "deploy": "yarn build && firebase deploy"
   },
