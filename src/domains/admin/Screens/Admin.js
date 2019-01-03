@@ -2,27 +2,27 @@ import React, { PureComponent } from 'react';
 
 import {
   Button,
-  Title,
-  Flex,
+  Text,
+  View,
 } from 'lib/components';
 import { logout } from 'domains/admin/awaits/logout';
 
 export class Admin extends PureComponent {
   render() {
     return (
-      <Flex
-        flexDirection="column"
+      <View
+        flexStyle="vertical"
         p="md"
       >
-        <Flex
-          flexDirection="row"
+        <View
+          flexStyle="horizontal"
           justifyContent="space-between"
           p="md"
         >
-          <Title>Admin</Title>
+          <Text textStyle="title">Admin</Text>
           <Button onClick={logout}>Log out</Button>
-        </Flex>
-      </Flex>
+        </View>
+      </View>
     );
   }
 }

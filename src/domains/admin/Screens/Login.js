@@ -2,10 +2,9 @@ import React, { PureComponent } from 'react';
 
 import {
   Button,
-  Flex,
+  View,
   Input,
   Text,
-  Title,
 } from 'lib/components';
 
 import { login } from 'domains/admin/awaits/login';
@@ -30,17 +29,13 @@ export class Login extends PureComponent {
 
   render() {
     return (
-      <Flex
-        flex="1 0 auto"
-        flexDirection="column"
-        alignItems="center"
+      <View
+        flexStyle="vertical-center"
         pt="md"
       >
-        <Title>Log In</Title>
-        <Flex
-          flex="1 0 auto"
-          flexDirection="column"
-          alignItems="center"
+        <Text textStyle="title">Log In</Text>
+        <View
+          flexStyle="vertical-center"
           pt="md"
         >
           <Input
@@ -61,8 +56,8 @@ export class Login extends PureComponent {
           <Button onClick={this.onSubmit}>
             <Text>Submit</Text>
           </Button>
-        </Flex>
-      </Flex>
+        </View>
+      </View>
     );
   }
 }

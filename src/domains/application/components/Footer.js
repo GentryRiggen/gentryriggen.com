@@ -5,9 +5,8 @@ import { connect } from 'react-redux';
 import { createStructuredSelector } from 'reselect';
 
 import {
-  Flex,
+  View,
   Text,
-  Subtitle,
 } from 'lib/components';
 
 import BehindFeature from 'domains/features/components/BehindFeature';
@@ -33,20 +32,15 @@ export class Footer extends PureComponent {
     const { isLoggedIn } = this.props;
 
     return (
-      <Flex
-        flex="0 1 auto"
-        flexDirection="column"
-        justifyContent="center"
-        alignItems="Center"
+      <View
+        flexStyle="vertical-center"
         pt="xl"
         pb="md"
         data-test="footer"
       >
-        <Subtitle>GentryRiggen.com</Subtitle>
-        <Flex
-          flexDirection="row"
-          justifyContent="center"
-          alignItems="Center"
+        <Text textStyle="subtitle">GentryRiggen.com</Text>
+        <View
+          flexStyle="horizontal-center"
         >
           {this.renderLink('/', 'Home')}
           <BehindFeature
@@ -56,8 +50,8 @@ export class Footer extends PureComponent {
           {isLoggedIn && (
             <Text p="md" onClick={logout}>Logout</Text>
           )}
-        </Flex>
-      </Flex>
+        </View>
+      </View>
     );
   }
 }

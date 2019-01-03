@@ -2,27 +2,24 @@ import React, { PureComponent } from 'react';
 
 import {
   FlyIn,
-  Flex,
-  Icon,
+  View,
   Image,
   Text,
-  Title,
 } from 'lib/components';
 
 export class AboutMe extends PureComponent {
   renderLink = (link, icon, direction) => (
     <FlyIn type={direction}>
       <a href={link} target="_blank" rel="noopener noreferrer">
-        <Icon className={icon} fontSize="title" />
+        <Text className={icon} textStyle="title" />
       </a>
     </FlyIn>
   )
 
   render() {
     return (
-      <Flex
-        alignItems="center"
-        justifyContent="center"
+      <View
+        flexStyle="vertical-center"
       >
         <Image
           src="images/profile.jpg"
@@ -31,23 +28,24 @@ export class AboutMe extends PureComponent {
           borderRadius="50%"
           alt="Gentry Riggen"
         />
-        <Title
+        <Text
+          textStyle="title"
           textAlign="center"
           p="lg"
         >
           Hi, I'm Gentry.
-        </Title>
+        </Text>
 
         <Text textAlign="center">
           I'm a full-stack software engineer developing websites and mobile apps with React, React Native, Node and Firebase.
           In the past I have done lots of PHP, Angular, and MySQL.
           Check out my work or hit me up on any of the platforms below <span role="img" aria-label="muscle fire">🔥💪</span>.
         </Text>
-        <Flex
-          flexDirection="row"
+        <View
+          flexStyle="horizontal"
           justifyContent="space-around"
           pt="lg"
-          width={1}
+          width="100%"
         >
           {this.renderLink(
             'https://twitter.com/gentryriggen',
@@ -69,8 +67,8 @@ export class AboutMe extends PureComponent {
             'fab fa-stack-overflow',
             FlyIn.FLY_IN_RIGHT,
           )}
-        </Flex>
-      </Flex>
+        </View>
+      </View>
     );
   }
 }

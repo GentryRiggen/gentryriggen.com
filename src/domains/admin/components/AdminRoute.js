@@ -8,8 +8,8 @@ import {
 } from "react-router-dom";
 
 import {
-  Title,
-} from 'lib/components/Text';
+  Text,
+} from 'lib/components';
 
 import { selectors } from 'domains/application/ducks/application';
 
@@ -45,7 +45,7 @@ export class AdminRoute extends PureComponent {
       return <Component {...rest} />;
     }
 
-    return <Title>Checkin Authentication</Title>;
+    return <Text>Checkin Authentication</Text>;
   }
 
   render() {
