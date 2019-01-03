@@ -31,6 +31,10 @@ import {
   right,
   bottom,
   left,
+  textAlign,
+  lineHeight,
+  fontWeight,
+  letterSpacing,
 } from 'styled-system';
 
 export const flexStyle = variant({
@@ -69,6 +73,10 @@ export default (htmlTag, displayName, styles = '', defaultProps = {}) => {
     ${right}
     ${bottom}
     ${left}
+    ${textAlign}
+    ${lineHeight}
+    ${fontWeight}
+    ${letterSpacing}
     ${flexStyle}
     ${styles}
   `;
