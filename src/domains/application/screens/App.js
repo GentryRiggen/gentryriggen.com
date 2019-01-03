@@ -48,7 +48,6 @@ class App extends Component {
               <View
                 flexStyle="vertical"
                 flex={1}
-                width={1}
                 pt={['lg', 'lg', 'xl']}
                 px="md"
                 data-test="screen-container"
