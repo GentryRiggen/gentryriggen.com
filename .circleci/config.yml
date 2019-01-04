@@ -86,14 +86,13 @@ workflows:
             branches:
               only: master
       - testEndToEnds:
-          requires:
-              - test
           filters:
             branches:
               only: master
       - deploy:
           requires:
               - testEndToEnds
+              - test
           filters:
             branches:
               only: master
