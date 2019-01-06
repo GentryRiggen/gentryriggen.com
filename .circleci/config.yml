@@ -44,7 +44,7 @@ jobs:
             - ~/.cache/yarn
       - run:
           name: Run End to End Tests
-          command: .circleci/runServerBackground.sh && yarn test:e2e
+          command: yarn test:e2e
   deploy:
     executor: my-executor
     steps:
