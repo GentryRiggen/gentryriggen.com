@@ -25,6 +25,7 @@ export class AboutMe extends PureComponent {
     return (
       <View
         flexStyle="vertical-center"
+        data-test="about-me"
       >
         <Image
           src="images/profile.jpg"

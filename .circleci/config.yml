@@ -7,7 +7,7 @@ executors:
     working_directory: ~/project
 
 jobs:
-  test:
+  Test:
     executor: my-executor
     steps:
       - checkout
@@ -26,7 +26,7 @@ jobs:
       - run:
           name: Run Unit/Integration Tests
           command: yarn test --coverage
-  testEndToEnds:
+  Test_E2E:
     executor: my-executor
     steps:
       - checkout
@@ -71,28 +71,28 @@ jobs:
 workflows:
   Test:
     jobs:
-      - test:
+      - Test:
           filters:
             branches:
               ignore: master
-      - testEndToEnds:
+      - Test_E2E:
           filters:
             branches:
               ignore: master
   Deploy:
     jobs:
-      - test:
+      - Test:
           filters:
             branches:
               only: master
-      - testEndToEnds:
+      - Test_E2E:
           filters:
             branches:
               only: master
       - deploy:
           requires:
-              - testEndToEnds
-              - test
+              - Test_E2E
+              - Test
           filters:
             branches:
               only: master
