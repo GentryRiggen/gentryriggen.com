@@ -1,6 +1,6 @@
 describe('Site launches', () => {
   beforeAll(async () => {
-    await page.goto(`http://${require('ip').address()}:3000`);
+    await page.goto(`http://${require('ip').address()}:3000/about`);
     await page.waitForSelector('[data-test="about-me"]');
   });
 
