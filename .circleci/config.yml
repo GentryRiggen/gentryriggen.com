@@ -43,6 +43,9 @@ jobs:
           paths:
             - ~/.cache/yarn
       - run:
+          name: Start the dev server
+          command: ./runServerBackground.sh
+      - run:
           name: Run End to End Tests
           command: yarn test:e2e
   deploy:
