@@ -6,8 +6,13 @@ import {
   Image,
   Text,
 } from 'lib/components';
+import trackAboutAnalytics from 'domains/about/trackAboutAnalytics';
 
 export class AboutMe extends PureComponent {
+  componentDidMount() {
+    trackAboutAnalytics('Viewed About Me');
+  }
+
   renderLink = (link, icon, direction) => (
     <FlyIn type={direction}>
       <a href={link} target="_blank" rel="noopener noreferrer">

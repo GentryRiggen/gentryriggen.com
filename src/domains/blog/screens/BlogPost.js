@@ -19,6 +19,7 @@ import { ReBase } from 'lib/firebase';
 import { formatDate } from 'lib/utils/date';
 
 import { isLoggedInSelector } from 'domains/admin/selectors/admin';
+import trackBlogAnalytics from 'domains/blog/trackBlogAnalytics';
 
 const mapState = createStructuredSelector({
   isLoggedIn: isLoggedInSelector,
@@ -41,6 +42,7 @@ export class BlogPost extends Component {
       {
         context: this,
         state: 'post',
+        then: this.onPostLoaded,
       },
     );
   }
@@ -52,6 +54,9 @@ export class BlogPost extends Component {
   componentDidUpdate() {
     this.onHighlightCode();
   }
+
+  onPostLoaded = () =>
+    trackBlogAnalytics('Viewed Blog Post', R.pick(['id', 'title'], this.state.post))
 
   onHighlightCode = () => setTimeout(Prism.highlightAll, 500)
 

@@ -12,6 +12,7 @@ import {
 
 import BlogPostRow from 'domains/blog/components/BlogPostRow';
 import { isLoggedInSelector } from 'domains/admin/selectors/admin';
+import trackBlogAnalytics from 'domains/blog/trackBlogAnalytics';
 
 const mapState = createStructuredSelector({
   isLoggedIn: isLoggedInSelector,
@@ -27,6 +28,7 @@ export class Blog extends PureComponent {
   }
 
   componentWillMount() {
+    trackBlogAnalytics('Viewed Blog');
     ReBase.listenToCollection(
       'posts',
       {
