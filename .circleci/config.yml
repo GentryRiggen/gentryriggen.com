@@ -7,7 +7,7 @@ executors:
     working_directory: ~/project
 
 jobs:
-  test:
+  Test:
     executor: my-executor
     steps:
       - checkout
@@ -26,7 +26,7 @@ jobs:
       - run:
           name: Run Unit/Integration Tests
           command: yarn test --coverage
-  testEndToEnds:
+  Test_E2E:
     executor: my-executor
     steps:
       - checkout
@@ -43,11 +43,8 @@ jobs:
           paths:
             - ~/.cache/yarn
       - run:
-          name: Start the dev server
-          command: .circleci/runServerBackground.sh
-      - run:
           name: Run End to End Tests
-          command: yarn test:e2e
+          command: .circleci/runServerBackground.sh && yarn test:e2e
   deploy:
     executor: my-executor
     steps:
@@ -74,28 +71,28 @@ jobs:
 workflows:
   Test:
     jobs:
-      - test:
+      - Test:
           filters:
             branches:
               ignore: master
-      - testEndToEnds:
+      - Test_E2E:
           filters:
             branches:
               ignore: master
   Deploy:
     jobs:
-      - test:
+      - Test:
           filters:
             branches:
               only: master
-      - testEndToEnds:
+      - Test_E2E:
           filters:
             branches:
               only: master
       - deploy:
           requires:
-              - testEndToEnds
-              - test
+              - Test_E2E
+              - Test
           filters:
             branches:
               only: master
