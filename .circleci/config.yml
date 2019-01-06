@@ -44,7 +44,7 @@ jobs:
             - ~/.cache/yarn
       - run:
           name: Start the dev server
-          command: ./runServerBackground.sh
+          command: .circleci/runServerBackground.sh
       - run:
           name: Run End to End Tests
           command: yarn test:e2e
