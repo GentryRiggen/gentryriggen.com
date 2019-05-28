@@ -27,12 +27,12 @@ module.exports = {
 
   module: {
     rules: [
-      // {
-      //   test: /\.(ts|js)x?$/,
-      //   loader: 'babel-loader',
-      //   exclude: /node_modules/,
-      // },
-      { test: /\.tsx?$/, loader: 'awesome-typescript-loader' },
+      {
+        test: /\.(ts|js)x?$/,
+        loader: 'babel-loader',
+        exclude: /node_modules/,
+      },
+      // { test: /\.tsx?$/, loader: 'awesome-typescript-loader' },
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],

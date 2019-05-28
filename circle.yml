@@ -1,0 +1,63 @@
+version: 2.1
+
+executors:
+  default:
+    docker:
+      - image: cypress/base:10
+        environment:
+          TERM: xterm
+    working_directory: ~/project
+
+jobs:
+  build:
+    executor: default
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Yarn Package Cache
+          keys:
+            - yarn-packages-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Dependencies
+          command: yarn install --frozen-lockfile
+      - save_cache:
+          name: Save Yarn Package Cache
+          key: yarn-packages-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project
+            - .cache/Cypress
+  test-unit-integration:
+    executor: default
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Unit/Integration Tests
+          command: yarn test --coverage --runInBand
+  test-e2e:
+    executor: default
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: End To End Tests
+          command: yarn test:e2e
+      - store_artifacts:
+          path: cypress/videos
+      - store_artifacts:
+          path: cypress/screenshots
+
+workflows:
+  Test:
+    jobs:
+      - build:
+      - test-unit-integration:
+          requires:
+            - build
+      - test-e2e:
+          requires:
+            - build

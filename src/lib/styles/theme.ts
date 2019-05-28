@@ -4,6 +4,13 @@ import {
   flexibleStyles,
   viewVariantStyles,
 } from 'lib/components/View'
+import {
+  fontSizes,
+  fontWeights,
+  lineHeights,
+  textStyles,
+  textOverflowStyles,
+} from 'lib/components/Text'
 
 export default {
   backgroundColors: colors,
@@ -12,7 +19,15 @@ export default {
   space: [0, 4, 8, 16, 32, 64, 128, 256, 512],
   width: [16, 32, 64, 128, 256],
 
+  // VIEW
   elevationStyles,
   flexibleStyles,
   viewVariantStyles,
+
+  // TEXT
+  fontSizes,
+  fontWeights,
+  lineHeights,
+  textStyles,
+  textOverflowStyles,
 }

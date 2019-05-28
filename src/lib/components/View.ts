@@ -14,8 +14,7 @@ export const viewVariantStyles = {
     padding: '32px',
   },
   screen: {
-    paddingLeft: '16px',
-    paddingRight: '16px',
+    padding: '16px',
   },
 }
 export const hoverStyle = SS.variant({
