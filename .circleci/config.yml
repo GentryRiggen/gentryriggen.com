@@ -54,7 +54,7 @@ jobs:
 workflows:
   Test:
     jobs:
-      - build:
+      - build
       - test-unit-integration:
           requires:
             - build
