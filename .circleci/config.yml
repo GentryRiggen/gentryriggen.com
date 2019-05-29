@@ -56,9 +56,6 @@ jobs:
       - attach_workspace:
           at: ~/
       - run:
-          name: Deploy to Firebase
-          command: yarn deploy --token=$FIREBASE_DEPLOY_TOKEN
-      - run:
           name: Build the app
           command: yarn build
       - run:
