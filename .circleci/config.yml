@@ -51,7 +51,7 @@ jobs:
       - store_artifacts:
           path: cypress/screenshots
   deploy:
-    executor: my-executor
+    executor: default
     steps:
       - attach_workspace:
           at: ~/
@@ -62,45 +62,48 @@ jobs:
 workflows:
   Test:
     jobs:
-      - build
+      - build:
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
       - test-unit-integration:
-          filters:
-            branches:
-              ignore: master
           requires:
             - build
+          filters:
+            branches:
+              ignore:
+                - master
       - test-e2e:
-          filters:
-            branches:
-              ignore: master
           requires:
             - build
+          filters:
+            branches:
+              ignore:
+                - master
   Deploy:
     jobs:
-      - build
+      - build:
           filters:
             branches:
               only: master
       - test-unit-integration:
+          requires:
+            - build
           filters:
             branches:
               only: master
-          requires:
-            - build
       - test-e2e:
-          filters:
-            branches:
-              only: master
           requires:
             - build
-      - deploy:
           filters:
             branches:
               only: master
+      - deploy:
           requires:
             - build
             - test-unit-integration
             - test-e2e
+          filters:
+            branches:
+              only: master
