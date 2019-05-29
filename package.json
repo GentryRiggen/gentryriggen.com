@@ -65,6 +65,7 @@
     "csstype": "^2.6.5",
     "ramda": "^0.26.1",
     "react": "^16.8.6",
+    "react-animation": "^1.0.9",
     "react-dom": "^16.8.6",
     "react-router-dom": "^5.0.0",
     "styled-components": "^4.2.0",

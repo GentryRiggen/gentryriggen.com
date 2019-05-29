@@ -16,6 +16,15 @@ export interface IColors {
   textLight: string
 }
 
+export type ColorOptions =
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'error'
+  | 'success'
+  | 'warning'
+  | 'info'
+
 const colors: IColors = {
   primary,
   secondary,

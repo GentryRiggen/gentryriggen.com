@@ -11,8 +11,10 @@ import {
   textStyles,
   textOverflowStyles,
 } from 'lib/components/Text'
+import { animations } from 'lib/styles/animations'
 
 export default {
+  animations,
   backgroundColors: colors,
   breakpoints: [960, 1440, 1920, 2160],
   colors,
