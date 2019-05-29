@@ -1,14 +1,16 @@
 version: 2.1
 
 executors:
-  my-executor:
+  default:
     docker:
-      - image: circleci/node:latest-browsers
+      - image: cypress/base:10
+        environment:
+          TERM: xterm
     working_directory: ~/project
 
 jobs:
-  Test:
-    executor: my-executor
+  build:
+    executor: default
     steps:
       - checkout
       - restore_cache:
@@ -23,77 +25,85 @@ jobs:
           key: yarn-packages-{{ checksum "yarn.lock" }}
           paths:
             - ~/.cache/yarn
-      - run:
-          name: Run Unit/Integration Tests
-          command: yarn test --coverage
-  Test_E2E:
-    executor: my-executor
-    steps:
-      - checkout
-      - restore_cache:
-          name: Restore Yarn Package Cache
-          keys:
-            - yarn-packages-{{ checksum "yarn.lock" }}
-      - run:
-          name: Install Dependencies
-          command: yarn install --frozen-lockfile
-      - save_cache:
-          name: Save Yarn Package Cache
-          key: yarn-packages-{{ checksum "yarn.lock" }}
+      - persist_to_workspace:
+          root: ~/
           paths:
-            - ~/.cache/yarn
+            - project
+            - .cache/Cypress
+  test-unit-integration:
+    executor: default
+    steps:
+      - attach_workspace:
+          at: ~/
       - run:
-          name: Run End to End Tests
+          name: Unit/Integration Tests
+          command: yarn test --coverage --runInBand
+  test-e2e:
+    executor: default
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: End To End Tests
           command: yarn test:e2e
+      - store_artifacts:
+          path: cypress/videos
+      - store_artifacts:
+          path: cypress/screenshots
   deploy:
-    executor: my-executor
+    executor: default
     steps:
-      - checkout
-      - restore_cache:
-          name: Restore Yarn Package Cache
-          keys:
-            - yarn-packages-{{ checksum "yarn.lock" }}
+      - attach_workspace:
+          at: ~/
       - run:
-          name: Install Dependencies
-          command: yarn install --frozen-lockfile
-      - save_cache:
-          name: Save Yarn Package Cache
-          key: yarn-packages-{{ checksum "yarn.lock" }}
-          paths:
-            - ~/.cache/yarn
-      - run:
-          name: Build the app
-          command: yarn build
-      - run:
-          name: Deploy Master to Firebase
-          command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
+          name: Deploy to Firebase
+          command: yarn deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
   Test:
     jobs:
-      - Test:
+      - build:
           filters:
             branches:
-              ignore: master
-      - Test_E2E:
+              ignore:
+                - master
+      - test-unit-integration:
+          requires:
+            - build
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+      - test-e2e:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore:
+                - master
   Deploy:
     jobs:
-      - Test:
+      - build:
           filters:
             branches:
               only: master
-      - Test_E2E:
+      - test-unit-integration:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
+      - test-e2e:
+          requires:
+            - build
           filters:
             branches:
               only: master
       - deploy:
           requires:
-              - Test_E2E
-              - Test
+            - build
+            - test-unit-integration
+            - test-e2e
           filters:
             branches:
               only: master
-
