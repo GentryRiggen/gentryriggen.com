@@ -50,14 +50,57 @@ jobs:
           path: cypress/videos
       - store_artifacts:
           path: cypress/screenshots
+  deploy:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Deploy to Firebase
+          command: yarn deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
   Test:
     jobs:
       - build
+          filters:
+            branches:
+              ignore: master
       - test-unit-integration:
+          filters:
+            branches:
+              ignore: master
           requires:
             - build
       - test-e2e:
+          filters:
+            branches:
+              ignore: master
           requires:
             - build
+  Deploy:
+    jobs:
+      - build
+          filters:
+            branches:
+              only: master
+      - test-unit-integration:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build
+      - test-e2e:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build
+      - deploy:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build
+            - test-unit-integration
+            - test-e2e
