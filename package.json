@@ -15,7 +15,9 @@
     "test": "jest",
     "test:e2e": "start-test start 3000 cypress:run",
     "test:pre-commit": "CI=true yarn test --findRelatedTests",
-    "cypress:run": "cypress run"
+    "cypress:run": "cypress run",
+    "predeploy": "yarn build",
+    "deploy": "firebase deploy"
   },
   "husky": {
     "hooks": {
