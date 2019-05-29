@@ -58,6 +58,12 @@ jobs:
       - run:
           name: Deploy to Firebase
           command: yarn deploy --token=$FIREBASE_DEPLOY_TOKEN
+      - run:
+          name: Build the app
+          command: yarn build
+      - run:
+          name: Deploy Master to Firebase
+          command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
 
 workflows:
   Test:
