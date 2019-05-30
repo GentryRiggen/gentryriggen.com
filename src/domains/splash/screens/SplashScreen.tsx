@@ -18,7 +18,7 @@ export const SplashScreen = () => {
         imageToLoad="images/header.png"
         Spinner={Spinner}
       >
-        <Image src="images/header.png" height="auto" width="100%" />
+        <Image src="images/Header.jpg" height="auto" width="100%" />
       </HideUntilLoaded>
 
       <View
