@@ -2,7 +2,7 @@ import React, { HTMLAttributes, useState } from 'react'
 import * as CSS from 'csstype'
 import styled from 'styled-components'
 import * as SS from 'styled-system'
-import View, { AnimationOptions } from 'lib/components/View'
+import View, { AnimationType } from 'lib/components/View'
 import Spinner from 'lib/components/Spinner'
 
 export interface IHtmlImgElementProps
@@ -99,7 +99,7 @@ const Img = styled.img<IProps>`
 Img.displayName = 'Img'
 
 interface IImageProps extends IProps {
-  animation?: AnimationOptions
+  animation?: AnimationType
   animationDelay?: number
   noSpinner?: boolean
   src: string

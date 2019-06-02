@@ -1,6 +1,6 @@
 const primary = '#2A72F0'
 const secondary = '#E03D95'
-const tertiary = '#EA9A21'
+const tertiary = '#8C03DB'
 const text = '#4f4756'
 const textLight = '#868587'
 

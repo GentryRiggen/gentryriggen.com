@@ -56,37 +56,39 @@ const keyframes = {
       transform: none;
     }
   }`,
-  // @keyframes pop-out {
-  //   0% {
-  //     opacity: 1;
-  //     transform: none;
-  //   }
-  //   99% {
-  //     opacity: 0;
-  //   }
-  //   100% {
-  //     opacity: 0;
-  //     transform: scale(0);
-  //   }
-  // }
-
-  // @keyframes slide-in {
-  //   0% {
-  //     transform: translateY(100%);
-  //   }
-  //   100% {
-  //     transform: none;
-  //   }
-  // }
-
-  // @keyframes slide-out {
-  //   0% {
-  //     transform: translateY(0%);
-  //   }
-  //   100% {
-  //     transform: translateY(-100%);
-  //   }
-  // }
+  popOut: `@keyframes popOut {
+    0% {
+      opacity: 1;
+      transform: none;
+    }
+    99% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0);
+    }
+  }`,
+  slideIn: `@keyframes slideIn {
+    0% {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+    }
+  }`,
+  slideOut: `@keyframes slideOut {
+    0% {
+      opacity: 1;
+      transform: translateY(0%);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+  }`,
 }
 
 export const easings = {
@@ -126,12 +128,12 @@ export const animations = {
   `,
   fadeInUp: `
     opacity: 0;
-    animation: fadeInUp 800ms ${easings.easeOutExpo} forwards;
+    animation: fadeInUp 500ms ${easings.easeInOutBack} forwards;
     ${keyframes.fadeInUp}
   `,
   fadeInDown: `
     opacity: 0;
-    animation: fadeInDown 500ms ease-in-out forwards;
+    animation: fadeInDown 500ms ${easings.easeInOutBack} forwards;
     ${keyframes.fadeInDown}
   `,
   popIn: `
@@ -139,12 +141,30 @@ export const animations = {
     animation: popIn 500ms ${easings.easeOutExpo} forwards;
     ${keyframes.popIn}
   `,
+  popOut: `
+    opacity: 1;
+    animation: popOut 400ms ${easings.easeOutBack} forwards;
+    ${keyframes.popOut}
+  `,
+  bounceIn: `
+    animation: popIn 300ms ${easings.easeOutBack} forwards;
+    ${keyframes.popIn}
+  `,
+  bounceOut: `
+    animation: popOut 300ms ${easings.easeInBack} forwards;
+    ${keyframes.popOut}
+  `,
+  slideIn: `
+    animation: slideIn 500ms ${easings.easeInOutBack} forwards;
+    ${keyframes.slideIn}
+  `,
+  slideOut: `
+    animation: slideOut 350ms ${easings.easeOutBack} forwards;
+    ${keyframes.slideOut}
+  `,
 }
 
 // export const animations = {
-//   popOut: `pop-out 400ms ${easings.easeOutBack} forwards`,
 //   bounceIn: `pop-in 300ms ${easings.easeOutBack} forwards`,
 //   bounceOut: `pop-out 300ms ${easings.easeInBack} forwards`,
-//   slideIn: `slide-in 500ms ${easings.easeInOutBack} forwards`,
-//   slideOut: `slide-out 350ms ${easings.easeOutBack} forwards`
 // }

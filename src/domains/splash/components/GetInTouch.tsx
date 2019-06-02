@@ -11,23 +11,15 @@ export const GetInTouch = () => {
       animationDelay={1500}
       flexible="column-h-center"
       px={3}
-      height="100%"
       mt={[64, 128]}
     >
-      <View
-        display="flex"
-        flexDirection="column"
-        justifyContent="space-between"
-        alignContent="center"
-        height="100%"
-        maxWidth={304}
-      >
+      <View maxWidth={304}>
         <View width="100%" flexible="column-center">
           <Text textAlign="center" variant="subtitle" fontWeight={700}>
             Get in touch / See my work
           </Text>
         </View>
-        <View flexible="row-center" height={64}>
+        <View flexible="row-center" mt={3} height={64}>
           <SocialLink
             link="https://twitter.com/gentryriggen"
             icon="fab fa-twitter"

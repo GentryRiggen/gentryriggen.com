@@ -17,7 +17,9 @@ export const viewVariantStyles = {
   screen: `
     ${animations.fadeIn};
     opacity: 0;
-    padding: 16px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
     max-width: 1350px;
     margin: 0 auto;
   `,
@@ -34,18 +36,28 @@ export const animationStyle = SS.variant({
   prop: 'animation',
 })
 
-export type AnimationOptions =
+export type AnimationType =
   | 'fadeIn'
   | 'fadeInUp'
   | 'fadeInDown'
   | 'fadeOut'
   | 'popIn'
+  | 'popOut'
+  | 'bounceIn'
+  | 'bounceOut'
+  | 'slideIn'
+  | 'slideOut'
 export const animationStyles = {
   fadeIn: animations.fadeIn,
   fadeInUp: animations.fadeInUp,
   fadeOut: animations.fadeIn,
   fadeInDown: animations.fadeInDown,
   popIn: animations.popIn,
+  popOut: animations.popOut,
+  bounceIn: animations.bounceIn,
+  bounceOut: animations.bounceOut,
+  slideIn: animations.slideIn,
+  slideOut: animations.slideOut,
 }
 
 export const hoverStyle = SS.variant({
@@ -286,7 +298,7 @@ interface IBaseProps
   color?: CSS.ColorProperty
   flexible?: string
   variant?: 'paper' | 'screen'
-  animation?: AnimationOptions
+  animation?: AnimationType
   animationDelay?: number | string
   wordBreak?: string
   userSelect?: string
