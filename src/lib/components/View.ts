@@ -2,6 +2,7 @@ import * as CSS from 'csstype'
 import { HTMLAttributes } from 'react'
 import styled from 'styled-components'
 import * as SS from 'styled-system'
+import { animations } from 'lib/styles/animations'
 
 export const variantStyle = SS.variant({ key: 'viewVariantStyles' })
 export const viewVariantStyles = {
@@ -13,10 +14,40 @@ export const viewVariantStyles = {
     overflow: 'hidden',
     padding: '32px',
   },
-  screen: {
-    padding: '16px',
-  },
+  screen: `
+    ${animations.fadeIn};
+    opacity: 0;
+    padding: 16px;
+    max-width: 1350px;
+    margin: 0 auto;
+  `,
 }
+
+const animationDelay = SS.style({
+  prop: 'animationDelay',
+  cssProperty: 'animationDelay',
+  transformValue: (n: number) => `${n}ms`,
+})
+
+export const animationStyle = SS.variant({
+  key: 'animationStyles',
+  prop: 'animation',
+})
+
+export type AnimationOptions =
+  | 'fadeIn'
+  | 'fadeInUp'
+  | 'fadeInDown'
+  | 'fadeOut'
+  | 'popIn'
+export const animationStyles = {
+  fadeIn: animations.fadeIn,
+  fadeInUp: animations.fadeInUp,
+  fadeOut: animations.fadeIn,
+  fadeInDown: animations.fadeInDown,
+  popIn: animations.popIn,
+}
+
 export const hoverStyle = SS.variant({
   key: 'viewHoverStyles',
   prop: 'hover',
@@ -52,7 +83,6 @@ const overflowX = SS.style({
   prop: 'overflowX',
   cssProperty: 'overflowX',
 })
-
 export const flexibleStyle = SS.variant({
   key: 'flexibleStyles',
   prop: 'flexible',
@@ -255,7 +285,9 @@ interface IBaseProps
     SS.ZIndexProps {
   color?: CSS.ColorProperty
   flexible?: string
-  variant?: string
+  variant?: 'paper' | 'screen'
+  animation?: AnimationOptions
+  animationDelay?: number | string
   wordBreak?: string
   userSelect?: string
   hover?: string
@@ -301,6 +333,8 @@ export type IViewProps = IBaseProps & IFlexibleProps & IElevationProps
 const View = styled.div<IViewProps>`
   ${flexibleStyle};
   ${variantStyle};
+  ${animationStyle};
+  ${animationDelay};
   ${hoverStyle};
   ${boxSizing};
   ${cursorStyle};

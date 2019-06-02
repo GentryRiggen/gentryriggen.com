@@ -22,9 +22,9 @@ interface IDotProps {
 const Dot = styled.div<IDotProps>`
   background-color: ${props => props.color || colors.primary};
   border-radius: 50%;
-  width: 10px;
-  height: 10px;
-  margin: 0 5px;
+  width: 8px;
+  height: 8px;
+  margin: 0 3px;
   /* Animation */
   animation: ${BounceAnimation} 0.5s linear infinite;
   animation-delay: ${props => props.delay};

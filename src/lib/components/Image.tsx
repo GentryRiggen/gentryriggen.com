@@ -1,10 +1,15 @@
+import React, { HTMLAttributes, useState } from 'react'
 import * as CSS from 'csstype'
-import { HTMLAttributes } from 'react'
 import styled from 'styled-components'
 import * as SS from 'styled-system'
+import View, { AnimationOptions } from 'lib/components/View'
+import Spinner from 'lib/components/Spinner'
 
+export interface IHtmlImgElementProps
+  extends HTMLAttributes<HTMLImageElement> {}
 export interface IProps
-  extends SS.AlignContentProps,
+  extends IHtmlImgElementProps,
+    SS.AlignContentProps,
     SS.AlignItemsProps,
     SS.AlignSelfProps,
     SS.BackgroundColorProps,
@@ -47,16 +52,10 @@ export interface IProps
     SS.WidthProps,
     SS.ZIndexProps {
   color?: CSS.ColorProperty
-  flexible?: string
-  variant?: string
-  hover?: string
-  boxSizing?: string
-  width?: string | number | Array<string | number>
-  height?: string | number | Array<string | number>
   'data-test'?: string
 }
 
-const Image = styled.img<IProps>`
+const Img = styled.img<IProps>`
   ${SS.alignContent};
   ${SS.alignItems};
   ${SS.alignSelf};
@@ -97,6 +96,40 @@ const Image = styled.img<IProps>`
   ${SS.zIndex};
 `
 
-Image.displayName = 'Image'
+Img.displayName = 'Img'
 
-export default Image
+interface IImageProps extends IProps {
+  animation?: AnimationOptions
+  animationDelay?: number
+  noSpinner?: boolean
+  src: string
+}
+
+export default function(props: IImageProps) {
+  const [loaded, setLoaded] = useState(false)
+
+  const onLoaded = () => setLoaded(true)
+
+  const {
+    animation = 'popIn',
+    animationDelay = 0,
+    src,
+    noSpinner = false,
+    ...rest
+  } = props
+  if (!loaded) {
+    return (
+      <View {...rest}>
+        <View flexible="column-center">
+          {!noSpinner && <Spinner />}
+          <Img src={src} onLoad={onLoaded} style={{ visibility: 'hidden' }} />
+        </View>
+      </View>
+    )
+  }
+  return (
+    <View {...rest} animation={animation} animationDelay={animationDelay}>
+      <Img height="100%" width="100%" src={src} />
+    </View>
+  )
+}

@@ -8,7 +8,11 @@ import Spinner from 'lib/components/Spinner'
 
 export const Header = () => {
   return (
-    <View flexible="row-space-between" height={86}>
+    <View
+      animation="fadeInDown"
+      flexible="row-space-between"
+      height={86}
+    >
       <View flexible="row-v-center">
         <HideUntilLoaded
           animationIn="bounceIn"

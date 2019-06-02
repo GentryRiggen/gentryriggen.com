@@ -11,13 +11,18 @@
     "start": "webpack-dev-server --config webpack.config.js --mode=development",
     "prebuild": "rimraf build/",
     "build": "webpack --mode=production",
+    "prebuild:ssr": "cd functions && yarn install --frozen-lockfile",
+    "build:ssr": "webpack --config webpack.srr.config.js --mode=production",
+    "babel": "babel src -d functions/src",
     "lint": "tslint",
     "test": "jest",
     "test:e2e": "start-test start 3000 cypress:run",
     "test:pre-commit": "CI=true yarn test --findRelatedTests",
     "cypress:run": "cypress run",
     "predeploy": "yarn build",
-    "deploy": "firebase deploy"
+    "deploy": "firebase deploy",
+    "preserve": "yarn build",
+    "serve": "firebase serve --only hosting"
   },
   "husky": {
     "hooks": {
@@ -65,6 +70,9 @@
   "dependencies": {
     "babel-polyfill": "^6.26.0",
     "csstype": "^2.6.5",
+    "express": "^4.17.1",
+    "firebase-admin": "^8.0.0",
+    "firebase-functions": "^2.3.1",
     "ramda": "^0.26.1",
     "react": "^16.8.6",
     "react-animation": "^1.0.9",

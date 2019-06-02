@@ -1,26 +1,23 @@
 import React from 'react'
-import { HideUntilLoaded } from 'react-animation'
 
 import View from 'lib/components/View'
 import Image from 'lib/components/Image'
 import Text from 'lib/components/Text'
 import Header from 'domains/splash/components/Header'
-import ScreenWrapper from 'lib/components/ScreenWrapper'
-import Spinner from 'lib/components/Spinner'
+import { GetInTouch } from 'domains/splash/components/GetInTouch'
 
 export const SplashScreen = () => {
   return (
-    <ScreenWrapper>
+    <View variant="screen">
       <Header />
 
-      <HideUntilLoaded
-        animationIn="bounceIn"
-        imageToLoad="images/header.png"
-        Spinner={Spinner}
-      >
-        <Image src="images/Header.jpg" height="auto" width="100%" />
-      </HideUntilLoaded>
-
+      <Image
+        animationDelay={500}
+        src="images/Header.jpg"
+        height="auto"
+        width="100%"
+        noSpinner={true}
+      />
       <View
         mt={4}
         display="grid"
@@ -28,18 +25,24 @@ export const SplashScreen = () => {
         gridColumnGap="28px"
         width="100%"
       >
-        <Text
-          fontSize={[48, 72]}
-          fontWeight={700}
-          lineHeight={['54px', '84px']}
-          mb={[3, 0]}
-          ml={[0, 4]}
-          textAlign={['center', 'left']}
-        >
-          Hi, I'm Gentry
-        </Text>
+        <View animation="fadeIn" animationDelay={1000} mb={[3, 0]} ml={[0, 4]}>
+          <Text
+            fontSize={[48, 72]}
+            fontWeight={700}
+            lineHeight={['54px', '84px']}
+            textAlign={['center', 'left']}
+          >
+            Hi, I'm Gentry
+          </Text>
+        </View>
 
-        <View flex={1} mt={2} mr={[0, 4]}>
+        <View
+          animation="fadeIn"
+          animationDelay={1250}
+          flex={1}
+          mt={2}
+          mr={[0, 4]}
+        >
           <Text
             color="textLight"
             fontSize={18}
@@ -54,7 +57,9 @@ export const SplashScreen = () => {
           </Text>
         </View>
       </View>
-    </ScreenWrapper>
+
+      <GetInTouch />
+    </View>
   )
 }
 

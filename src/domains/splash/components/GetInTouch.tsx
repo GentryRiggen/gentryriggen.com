@@ -3,11 +3,17 @@ import React from 'react'
 import View from 'lib/components/View'
 import Text from 'lib/components/Text'
 import SocialLink from 'domains/splash/components/SocialLink'
-import ScreenWrapper from 'lib/components/ScreenWrapper'
 
-export const Footer = () => {
+export const GetInTouch = () => {
   return (
-    <View flexible="column-h-center" px={3} height="100%">
+    <View
+      animation="fadeInUp"
+      animationDelay={1500}
+      flexible="column-h-center"
+      px={3}
+      height="100%"
+      mt={[64, 128]}
+    >
       <View
         display="flex"
         flexDirection="column"
@@ -53,4 +59,4 @@ export const Footer = () => {
   )
 }
 
-export default Footer
+export default GetInTouch

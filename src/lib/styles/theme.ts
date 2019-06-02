@@ -3,6 +3,7 @@ import {
   elevationStyles,
   flexibleStyles,
   viewVariantStyles,
+  animationStyles,
 } from 'lib/components/View'
 import {
   fontSizes,
@@ -25,6 +26,7 @@ export default {
   elevationStyles,
   flexibleStyles,
   viewVariantStyles,
+  animationStyles,
 
   // TEXT
   fontSizes,
