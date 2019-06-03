@@ -1,3 +1,3 @@
 ## GentryRiggen.com
 
-Currently written with React, Redux and Firebase
+A React app written in TypeScript and hosted on Firebase
