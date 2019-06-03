@@ -62,7 +62,7 @@ export const SplashScreen = () => {
   )
 
   return (
-    <View variant="screen">
+    <View variant="screen" id="splash-screen">
       <Header />
 
       <Image
@@ -72,12 +72,13 @@ export const SplashScreen = () => {
         width="100%"
         noSpinner={true}
       />
+
       <View
         mt={[2, 4]}
+        mb={[64, 128]}
         display="grid"
         gridTemplateColumns={['auto', '1fr 1fr']}
         gridColumnGap="28px"
-        width="100%"
         boxSizing="border-box"
         px={[0, 4]}
       >

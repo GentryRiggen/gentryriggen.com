@@ -25,12 +25,7 @@ const renderRoute = (props: RouteComponentProps) => {
 export const App = () => {
   return (
     <ThemeProvider theme={theme}>
-      <View
-        id="page=container"
-        position="relative"
-        minHeight="100vh"
-        minWidth="100vw"
-      >
+      <View id="page-container">
         <BrowserRouter>
           <Route render={renderRoute} />
         </BrowserRouter>
