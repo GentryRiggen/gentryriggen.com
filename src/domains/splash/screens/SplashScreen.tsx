@@ -10,12 +10,12 @@ import AnimateOnChange from 'lib/components/AnimateOnChange'
 
 const technolgies = [
   'React 🎉',
-  'Passion 💪',
   'React-Native 🤩',
   'Node 😃',
+  'Passion 💪',
   'GraphQL 😘',
-  'Love 😍',
   'Firebase 👍',
+  'Love 😍',
   'MySQL 😎',
   'Angular 😪',
   'PHP 🤬',
@@ -24,6 +24,11 @@ const colors = ['primary', 'secondary', 'tertiary', '#2dc5ee']
 
 const getTechRandomIndex = (index: number) =>
   index === technolgies.length - 1 ? 0 : index + 1
+
+const titleProps = {
+  fontSize: [32, 48, 72],
+  lineHeight: ['54px', '84px'],
+}
 
 export const SplashScreen = () => {
   const [techIndex, setTechIndex] = useState(0)
@@ -55,7 +60,7 @@ export const SplashScreen = () => {
       color="textLight"
       fontSize={[14, 16, 18]}
       fontWeight={600}
-      lineHeight={'24px'}
+      lineHeight={'28px'}
     >
       {interest}
     </Text>
@@ -83,12 +88,12 @@ export const SplashScreen = () => {
         px={[0, 4]}
       >
         <View animation="fadeIn" animationDelay={1000}>
-          <Text
-            fontSize={[32, 48, 72]}
-            fontWeight={700}
-            lineHeight={['54px', '84px']}
-          >
-            Hi 👋, I'm Gentry
+          <Text {...titleProps}>Hi 👋,</Text>
+          <Text {...titleProps}>
+            I'm{' '}
+            <Span {...titleProps} fontWeight={700}>
+              Gentry
+            </Span>
           </Text>
         </View>
 
@@ -109,7 +114,7 @@ export const SplashScreen = () => {
             mt={3}
             fontSize={[14, 16, 18]}
             fontWeight={600}
-            lineHeight={'24px'}
+            lineHeight={'28px'}
           >
             Besides software engineering...
           </Text>
