@@ -103,6 +103,7 @@ interface IImageProps extends IProps {
   animationDelay?: number
   noSpinner?: boolean
   src: string
+  alt: string
 }
 
 export default function(props: IImageProps) {
@@ -114,6 +115,7 @@ export default function(props: IImageProps) {
     animation = 'popIn',
     animationDelay = 0,
     src,
+    alt,
     noSpinner = false,
     ...rest
   } = props
@@ -129,7 +131,7 @@ export default function(props: IImageProps) {
   }
   return (
     <View {...rest} animation={animation} animationDelay={animationDelay}>
-      <Img height="100%" width="100%" src={src} />
+      <Img height="100%" width="100%" src={src} alt={alt} />
     </View>
   )
 }

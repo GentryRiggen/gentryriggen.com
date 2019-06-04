@@ -2,7 +2,7 @@ const primary = '#2A72F0'
 const secondary = '#E03D95'
 const tertiary = '#8C03DB'
 const text = '#4f4756'
-const textLight = '#868587'
+const textLight = '#757476'
 
 export interface IColors {
   primary: string

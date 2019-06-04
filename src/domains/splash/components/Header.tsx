@@ -6,10 +6,15 @@ import Text from 'lib/components/Text'
 
 export const Header = () => {
   return (
-    <View animation="fadeInDown" flexible="row-space-between" height={[64, 86]}>
+    <View
+      animation="fadeInDown"
+      flexible="row-space-between"
+      height={[64, 86]}
+    >
       <View flexible="row-v-center">
         <Image
           src="images/MultiColorLogo.png"
+          alt="Logo for Gentry"
           width={[32, 50]}
           height={[32, 50]}
         />

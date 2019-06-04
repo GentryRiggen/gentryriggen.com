@@ -19,26 +19,31 @@ export const GetInTouch = () => {
       </View>
       <View flexible="row-center" mt={3} height={64}>
         <SocialLink
+          name="Twitter Profile"
           link="https://twitter.com/gentryriggen"
           icon="fab fa-twitter"
           color="#27b1e8"
         />
         <SocialLink
+          name="Instagram Profile"
           link="https://www.instagram.com/gentrycodes/"
           icon="fab fa-instagram"
           color="#e1345f"
         />
         <SocialLink
+          name="Github Profile"
           link="https://github.com/gentryriggen"
           icon="fab fa-github"
           color="#2d264e"
         />
         <SocialLink
+          name="LinkedIn Profile"
           link="https://www.linkedin.com/in/GentryRiggen"
           icon="fab fa-linkedin-in"
           color="#0d75b5"
         />
         <SocialLink
+          name="Stack Overflow Profile"
           link="https://stackoverflow.com/users/1767285/gentryriggen"
           icon="fab fa-stack-overflow"
           color="#f17507"

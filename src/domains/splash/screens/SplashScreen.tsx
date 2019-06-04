@@ -73,6 +73,7 @@ export const SplashScreen = () => {
       <Image
         animationDelay={500}
         src="images/Header.jpg"
+        alt="Profile Header Image for Gentry"
         height="auto"
         width="100%"
         noSpinner={true}
