@@ -12,7 +12,7 @@ module.exports = {
   entry: APP_PATH,
 
   output: {
-    filename: '[name].[contenthash].js',
+    filename: '[contenthash].js',
     path: BUILD_PATH,
     publicPath: '/',
   },
@@ -51,18 +51,15 @@ module.exports = {
       template: path.resolve(PUBLIC_PATH, 'index.html'),
     }),
     new ForkTsCheckerWebpackPlugin(),
-    new CopyWebpackPlugin([
-      {
-        from: PUBLIC_PATH,
-        to: BUILD_PATH,
-      },
-    ]),
+    new CopyWebpackPlugin({
+      patterns: [{ from: PUBLIC_PATH, to: BUILD_PATH }],
+    }),
   ],
 
   devtool: 'source-map',
 
   devServer: {
-    port: 3000,
+    port: 3001,
     historyApiFallback: {
       disableDotRule: true,
     },
