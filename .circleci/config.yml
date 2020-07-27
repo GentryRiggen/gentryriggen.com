@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cypress/base:10
+      - image: cypress/browsers:node11.13.0-chrome73
         environment:
           TERM: xterm
     working_directory: ~/project
