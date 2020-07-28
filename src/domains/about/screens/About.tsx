@@ -28,10 +28,18 @@ export default function About() {
         Gentry
       </Text>
 
-      <Text mt={8} fontSize={['lg', 'xl']}>
-        I am a web and mobile developer. I like building products for my clients
-        with React, React-Native, Firebase, SwiftUI, Node.js, PHP, and MySQL.
-      </Text>
+      <Box my={8} fontSize={['lg', 'xl']}>
+        <Text>
+          I am a web and mobile developer. I like building products for my
+          clients with React, React-Native, Firebase, SwiftUI, Node.js, PHP, and
+          MySQL. If you are interested in working with me, please reach out on
+          one of the networks below.
+        </Text>
+        <Text mt={4}>
+          When I am not coding I am constantly injuring myself doing constantly
+          varied functional movements AKA CrossFit 🏋️‍♂️.
+        </Text>
+      </Box>
 
       <Box mt={16}>
         <Text mt={8} fontSize={['lg', 'xl']}>

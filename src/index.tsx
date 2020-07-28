@@ -19,9 +19,9 @@ ReactDOM.render(
   <ThemeProvider theme={customTheme}>
     <ColorModeProvider>
       <CSSReset />
-      <Header />
       <Flex direction="column" justify="flex-start" align="center" flex={1}>
-        <Box px={[3, 4]} width={['100%', '80%', '48em', '62em', '80em']}>
+        <Box px={[3, 4]} width={['100%', '80%', '48em', '62em']}>
+          <Header />
           <Router>
             <Switch>
               <Route path="/">
