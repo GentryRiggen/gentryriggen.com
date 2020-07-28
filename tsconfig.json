@@ -8,12 +8,21 @@
     "outDir": "build",
     "strict": true,
     "sourceMap": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
       "*": ["src/*"]
-    }
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/typings",
+      "./cypress/support"
+    ],
+
+    "resolveJsonModule": true
   },
   "include": ["src/**/*"]
 }

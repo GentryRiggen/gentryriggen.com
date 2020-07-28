@@ -1,0 +1,14 @@
+.react-toggle--checked .react-toggle-track {
+  background-color: #4d4d4d;
+}
+.react-toggle--unchecked .react-toggle-track {
+  background-color: #4d4d4d;
+}
+
+.react-toggle:hover:not(.react-toggle--disabled) .react-toggle-track {
+  background-color: #000000;
+}
+
+.react-toggle--checked:hover:not(.react-toggle--disabled) .react-toggle-track {
+  background-color: #5e5e5e;
+}

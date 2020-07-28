@@ -1,6 +1,37 @@
-import * as React from 'react'
-import * as ReactDOM from 'react-dom'
+import React from 'react'
+import ReactDOM from 'react-dom'
+import {
+  ThemeProvider,
+  CSSReset,
+  ColorModeProvider,
+  Heading,
+  Box,
+  Flex,
+} from '@chakra-ui/core'
+import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom'
+import 'lib/styles/index.css'
 
-import App from 'domains/application/screens/App'
+import customTheme from 'lib/styles/theme'
+import Header from 'domains/application/components/Header'
+import About from 'domains/about/screens/About'
 
-ReactDOM.render(<App />, document.getElementById('root'))
+ReactDOM.render(
+  <ThemeProvider theme={customTheme}>
+    <ColorModeProvider>
+      <CSSReset />
+      <Header />
+      <Flex direction="column" justify="flex-start" align="center" flex={1}>
+        <Box px={[3, 4]} width={['100%', '80%', '48em', '62em', '80em']}>
+          <Router>
+            <Switch>
+              <Route path="/">
+                <About />
+              </Route>
+            </Switch>
+          </Router>
+        </Box>
+      </Flex>
+    </ColorModeProvider>
+  </ThemeProvider>,
+  document.getElementById('root'),
+)
