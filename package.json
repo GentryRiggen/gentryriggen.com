@@ -83,7 +83,7 @@
     "@types/jest": "26.0.24",
     "@types/webpack": "4.41.21",
     "babel-loader": "8.1.0",
-    "copy-webpack-plugin": "6.0.3",
+    "copy-webpack-plugin": "6.4.1",
     "css-loader": "4.0.0",
     "cypress": "4.11.0",
     "firebase": "7.17.1",
