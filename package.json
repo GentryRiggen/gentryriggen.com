@@ -104,6 +104,6 @@
     "typescript": "3.9.10",
     "webpack": "5.69.1",
     "webpack-cli": "3.3.12",
-    "webpack-dev-server": "3.11.3"
+    "webpack-dev-server": "4.7.4"
   }
 }
