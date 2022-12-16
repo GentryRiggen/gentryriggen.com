@@ -32,6 +32,13 @@ ReactDOM.render(
         </Box>
       </Flex>
     </ColorModeProvider>
+    <a
+      rel="me"
+      href="https://hachyderm.io/@gentry"
+      style={{ display: 'none' }}
+    >
+      Mastodon
+    </a>
   </ThemeProvider>,
   document.getElementById('root'),
 )
