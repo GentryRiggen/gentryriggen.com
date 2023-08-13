@@ -4,11 +4,10 @@ import {
   ThemeProvider,
   CSSReset,
   ColorModeProvider,
-  Heading,
   Box,
   Flex,
 } from '@chakra-ui/core'
-import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom'
 import 'lib/styles/index.css'
 
 import customTheme from 'lib/styles/theme'
@@ -32,13 +31,6 @@ ReactDOM.render(
         </Box>
       </Flex>
     </ColorModeProvider>
-    <a
-      rel="me"
-      href="https://hachyderm.io/@gentry"
-      style={{ display: 'none' }}
-    >
-      Mastodon
-    </a>
   </ThemeProvider>,
   document.getElementById('root'),
 )
