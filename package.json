@@ -84,7 +84,7 @@
     "@babel/preset-react": "7.22.5",
     "@babel/preset-typescript": "7.22.11",
     "@types/jest": "26.0.24",
-    "@types/webpack": "5.28.1",
+    "@types/webpack": "5.28.2",
     "babel-loader": "8.3.0",
     "copy-webpack-plugin": "6.4.1",
     "css-loader": "4.3.0",
