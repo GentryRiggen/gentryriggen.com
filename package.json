@@ -87,7 +87,7 @@
     "@types/webpack": "5.28.5",
     "babel-loader": "8.4.1",
     "copy-webpack-plugin": "6.4.1",
-    "css-loader": "4.3.0",
+    "css-loader": "7.1.2",
     "cypress": "4.11.0",
     "firebase": "7.24.0",
     "firebase-tools": "13.22.1",
