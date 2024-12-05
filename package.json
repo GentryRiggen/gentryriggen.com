@@ -88,7 +88,7 @@
     "babel-loader": "8.4.1",
     "copy-webpack-plugin": "6.4.1",
     "css-loader": "4.3.0",
-    "cypress": "4.11.0",
+    "cypress": "13.16.1",
     "firebase": "7.24.0",
     "firebase-tools": "13.28.0",
     "fork-ts-checker-webpack-plugin": "5.2.1",
