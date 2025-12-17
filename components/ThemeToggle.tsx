@@ -16,7 +16,6 @@ export default function ThemeToggle() {
   const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log("Button clicked! Current theme:", theme);
     toggleTheme();
   };
 

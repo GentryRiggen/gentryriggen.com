@@ -12,9 +12,7 @@ export const metadata: Metadata = {
   title: "Gentry Riggen",
   description: "Personal website of Gentry Riggen",
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: "/icon.svg",
     apple: "/icon.svg",
   },

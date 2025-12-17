@@ -46,7 +46,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Apply theme changes to the DOM when theme changes (backup in case toggleTheme doesn't run)
+  // Apply theme changes to the DOM and localStorage when theme state changes
+  // This is the single source of truth for DOM/localStorage updates
   useEffect(() => {
     if (!mounted) return;
 
@@ -55,35 +56,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (theme === "dark" && !hasDark) {
       root.classList.add("dark");
-      console.log("Effect: Added dark class");
     } else if (theme === "light" && hasDark) {
       root.classList.remove("dark");
-      console.log("Effect: Removed dark class");
     }
 
     localStorage.setItem("theme", theme);
   }, [theme, mounted]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prevTheme) => {
-      const newTheme = prevTheme === "dark" ? "light" : "dark";
-      console.log("Toggling theme from", prevTheme, "to", newTheme);
-
-      // Immediately update DOM and localStorage
-      const root = document.documentElement;
-      if (newTheme === "dark") {
-        root.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-      }
-      localStorage.setItem("theme", newTheme);
-      console.log(
-        "DOM updated immediately. Classes:",
-        root.classList.toString()
-      );
-
-      return newTheme;
-    });
+    // Only update state - the effect will handle DOM and localStorage updates
+    setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
   }, []);
 
   return (

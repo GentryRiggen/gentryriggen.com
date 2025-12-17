@@ -15,23 +15,26 @@ Personal website built with Next.js, TypeScript, and Tailwind CSS.
 
 ### Prerequisites
 
-- Node.js 20+ 
+- Node.js 20+
 - Yarn (latest version)
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd gentryriggen.com
 ```
 
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
 
 3. Run the development server:
+
 ```bash
 yarn dev
 ```
@@ -97,21 +100,25 @@ yarn test:e2e
 ### Firebase Hosting Setup
 
 1. Install Firebase CLI globally (if not already installed):
+
 ```bash
 yarn global add firebase-tools
 ```
 
 2. Login to Firebase:
+
 ```bash
 firebase login
 ```
 
 3. Initialize Firebase in your project:
+
 ```bash
 firebase init hosting
 ```
 
 4. Update `.firebaserc` with your Firebase project ID:
+
 ```json
 {
   "projects": {
@@ -121,6 +128,7 @@ firebase init hosting
 ```
 
 5. Build and deploy:
+
 ```bash
 yarn build
 firebase deploy
@@ -141,6 +149,7 @@ Set up the following secrets in your GitHub repository settings:
 - `FIREBASE_PROJECT_ID`: Your Firebase project ID
 
 To get the service account:
+
 1. Go to Firebase Console → Project Settings → Service Accounts
 2. Click "Generate New Private Key"
 3. Copy the JSON content and add it as a GitHub secret

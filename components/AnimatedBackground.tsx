@@ -18,9 +18,9 @@ export default function AnimatedBackground() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Different parallax intensities for each orb (in pixels) - much more pronounced
+  // Different parallax intensities for each orb (in pixels) - subtle effect
   // Some orbs move in opposite direction for more dynamic effect
-  const parallaxIntensities = [200, -150, 250, -120, 180, -100, 160];
+  const parallaxIntensities = [60, -45, 75, -36, 54, -30, 48];
 
   const getParallaxStyle = (intensity: number) => {
     const offsetX = mousePosition.x * intensity;

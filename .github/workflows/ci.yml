@@ -5,64 +5,66 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
+    # Run on all pull requests regardless of target branch
 
 jobs:
   test:
-    name: Run Tests
+    name: 🧪 Run Tests
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js and Yarn
+      - name: ⚙️ Setup Node.js and Yarn
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "yarn"
 
-      - name: Install dependencies
+      - name: 📚 Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run linter
+      - name: 🔍 Run linter
         run: yarn lint
 
-      - name: Check formatting
+      - name: 💅 Check formatting
         run: yarn format:check
 
-      - name: Run unit tests
+      - name: 🔷 Check TypeScript types
+        run: yarn type-check
+
+      - name: ✅ Run unit tests
         run: yarn test
 
-      - name: Install Playwright browsers
+      - name: 🌐 Install Playwright browsers
         run: yarn playwright install --with-deps
 
-      - name: Run E2E tests
+      - name: 🎬 Run E2E tests
         run: yarn test:e2e
 
   build:
-    name: Build
+    name: 🏗️ Build
     runs-on: ubuntu-latest
     needs: test
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js and Yarn
+      - name: ⚙️ Setup Node.js and Yarn
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "yarn"
 
-      - name: Install dependencies
+      - name: 📚 Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Build application
+      - name: 🔨 Build application
         run: yarn build
 
-      - name: Upload build artifacts
+      - name: 📤 Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build
@@ -70,34 +72,30 @@ jobs:
           retention-days: 1
 
   deploy:
-    name: Deploy to Firebase
+    name: 🚀 Deploy to Firebase
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Only deploy on pushes to main branch (merges), never on PRs
+    # PRs have event_name == 'pull_request', so this condition excludes them
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js and Yarn
+      - name: ⚙️ Setup Node.js and Yarn
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "yarn"
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build application
-        run: yarn build
-
-      - name: Download build artifacts
+      - name: 📥 Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: build
           path: out
 
-      - name: Validate Firebase configuration
+      - name: 🔥 Validate Firebase configuration
         run: |
           if grep -q "your-firebase-project-id\|placeholder\|example" .firebaserc; then
             echo "Error: .firebaserc contains placeholder values. Please set a valid Firebase project ID."
@@ -105,7 +103,7 @@ jobs:
           fi
           echo "Firebase project ID validation passed."
 
-      - name: Deploy to Firebase
+      - name: 🚀 Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"

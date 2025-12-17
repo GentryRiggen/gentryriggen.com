@@ -4,7 +4,14 @@ import Hero from "../Hero";
 // Mock next/image
 jest.mock("next/image", () => ({
   __esModule: true,
-  default: (props: React.ComponentPropsWithoutRef<"img">) => {
+  default: ({
+    fill: _fill, // eslint-disable-line @typescript-eslint/no-unused-vars
+    priority: _priority, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ...props
+  }: React.ComponentPropsWithoutRef<"img"> & {
+    fill?: boolean;
+    priority?: boolean;
+  }) => {
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img {...props} />;
   },
@@ -17,19 +24,15 @@ describe("Hero", () => {
     expect(screen.getByText("RIGGEN")).toBeInTheDocument();
   });
 
-  it("renders the description text", () => {
+  it("renders the subtitle", () => {
     render(<Hero />);
-    expect(screen.getByText(/Web & Mobile Developer/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Crafting digital experiences that hit different/)
-    ).toBeInTheDocument();
+    expect(screen.getByText("Software Leader & Developer")).toBeInTheDocument();
   });
 
-  it("renders the about section", () => {
+  it("renders the main content text", () => {
     render(<Hero />);
-    expect(screen.getByText("What I Do")).toBeInTheDocument();
     expect(
-      screen.getByText(/I build products for clients/)
+      screen.getByText(/I build products and lead teams/)
     ).toBeInTheDocument();
   });
 
