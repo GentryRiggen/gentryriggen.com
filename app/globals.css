@@ -16,11 +16,13 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
+  overflow-x: visible;
 }
 
 /* Smooth scrolling for anchor links */
 html {
   scroll-behavior: smooth;
+  overflow-x: visible;
 }
 
 /* Gradient animation */
