@@ -1,0 +1,138 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    # Run on all pull requests regardless of target branch
+
+jobs:
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 🔧 Enable Corepack
+        run: corepack enable
+
+      - name: 💾 Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: 📚 Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: 🔍 Run linter
+        run: yarn lint
+
+      - name: 💅 Check formatting
+        run: yarn format:check
+
+      - name: 🔷 Check TypeScript types
+        run: yarn type-check
+
+      - name: ✅ Run unit tests
+        run: yarn test
+
+      - name: 🌐 Install Playwright browsers
+        run: yarn playwright install --with-deps
+
+      - name: 🎬 Run E2E tests
+        run: yarn test:e2e
+
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 🔧 Enable Corepack
+        run: corepack enable
+
+      - name: 💾 Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: 📚 Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: 🔨 Build application
+        run: yarn build
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: out
+          retention-days: 1
+
+  deploy:
+    name: 🚀 Deploy to Firebase
+    runs-on: ubuntu-latest
+    needs: build
+    # Only deploy on pushes to main branch (merges), never on PRs
+    # PRs have event_name == 'pull_request', so this condition excludes them
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 🔧 Enable Corepack
+        run: corepack enable
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: out
+
+      - name: 🔥 Validate Firebase configuration
+        run: |
+          if grep -q "your-firebase-project-id\|placeholder\|example" .firebaserc; then
+            echo "Error: .firebaserc contains placeholder values. Please set a valid Firebase project ID."
+            exit 1
+          fi
+          echo "Firebase project ID validation passed."
+
+      - name: 🚀 Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          channelId: live
+          projectId: "${{ secrets.FIREBASE_PROJECT_ID }}"
