@@ -16,14 +16,23 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js and Yarn
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
 
       - name: 🔧 Enable Corepack
         run: corepack enable
+
+      - name: 💾 Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: 📚 Install dependencies
         run: yarn install --frozen-lockfile
@@ -55,14 +64,23 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js and Yarn
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
 
       - name: 🔧 Enable Corepack
         run: corepack enable
+
+      - name: 💾 Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: 📚 Install dependencies
         run: yarn install --frozen-lockfile
@@ -89,11 +107,10 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js and Yarn
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
 
       - name: 🔧 Enable Corepack
         run: corepack enable
