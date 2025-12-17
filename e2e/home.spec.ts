@@ -57,8 +57,10 @@ test.describe("Home Page", () => {
   test("should be responsive on mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");
-    await expect(page.getByText("GENTRY")).toBeVisible();
-    await expect(page.getByText("RIGGEN")).toBeVisible();
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toBeVisible();
+    await expect(heading).toContainText("GENTRY");
+    await expect(heading).toContainText("RIGGEN");
   });
 
   test("should have theme toggle button", async ({ page }) => {
