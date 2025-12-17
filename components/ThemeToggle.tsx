@@ -9,8 +9,8 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     // Required for Next.js hydration
+    // eslint-disable-next-line -- setState in effect required for Next.js hydration
     setMounted(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {

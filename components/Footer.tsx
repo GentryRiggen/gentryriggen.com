@@ -10,20 +10,20 @@ export default function Footer() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
             <a
-              href="https://github.com/gentryriggen"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-2.5 bg-gray-900/10 dark:bg-white/10 hover:bg-gray-900/20 dark:hover:bg-white/20 border border-gray-300/50 dark:border-white/20 rounded-full text-gray-900 dark:text-white font-medium transition-all text-sm"
-            >
-              GitHub
-            </a>
-            <a
               href="https://linkedin.com/in/gentryriggen"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-2.5 bg-gray-900/10 dark:bg-white/10 hover:bg-gray-900/20 dark:hover:bg-white/20 border border-gray-300/50 dark:border-white/20 rounded-full text-gray-900 dark:text-white font-medium transition-all text-sm"
             >
               LinkedIn
+            </a>
+            <a
+              href="https://github.com/gentryriggen"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-2.5 bg-gray-900/10 dark:bg-white/10 hover:bg-gray-900/20 dark:hover:bg-white/20 border border-gray-300/50 dark:border-white/20 rounded-full text-gray-900 dark:text-white font-medium transition-all text-sm"
+            >
+              GitHub
             </a>
           </div>
         </div>

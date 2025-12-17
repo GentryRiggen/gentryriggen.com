@@ -53,7 +53,7 @@ export default function Hero() {
                 <span className="font-semibold text-blue-300">Docker</span>,{" "}
                 <span className="font-semibold text-orange-400">Terraform</span>
                 ,{" "}
-                <span className="font-semibold text-gray-400">
+                <span className="font-semibold text-fuchsia-500">
                   GitHub Actions
                 </span>
                 , and more. These days I&apos;m focused on leading projects and
