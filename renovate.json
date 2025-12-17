@@ -16,6 +16,6 @@
     }
   ],
   "prCreation": "not-pending",
-  "stabilityDays": 0,
+  "minimumReleaseAge": null,
   "timezone": "America/Los_Angeles"
 }
