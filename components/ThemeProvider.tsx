@@ -61,6 +61,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     localStorage.setItem("theme", theme);
+
+    // Update theme-color meta tag for iOS Safari browser chrome
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute(
+        "content",
+        theme === "dark" ? "#020617" : "#ffffff"
+      );
+    }
   }, [theme, mounted]);
 
   const toggleTheme = useCallback(() => {
