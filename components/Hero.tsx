@@ -57,7 +57,7 @@ export default function Hero() {
                   GitHub Actions
                 </span>
                 , and more. These days I&apos;m focused on leading projects and
-                empowering teams to ship exceptional work—while still getting my
+                empowering teams to ship exceptional work - while still getting my
                 hands dirty with code.
               </p>
               <p className="text-lg sm:text-lg md:text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
