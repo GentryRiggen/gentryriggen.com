@@ -2,10 +2,6 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --font-inter: var(--font-inter);
-}
-
 * {
   scroll-behavior: smooth;
 }

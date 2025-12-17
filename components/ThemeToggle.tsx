@@ -23,7 +23,7 @@ export default function ThemeToggle() {
   if (!mounted) {
     return (
       <button
-        className="fixed top-6 right-6 z-50 p-3 rounded-full bg-gray-100/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 backdrop-blur-sm transition-all shadow-sm"
+        className="fixed top-6 right-6 z-50 p-3 rounded-full bg-gray-100/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 backdrop-blur-sm transition-all shadow-sm cursor-pointer"
         aria-label="Toggle theme"
         disabled
       >
@@ -35,7 +35,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={handleToggle}
-      className="fixed top-6 right-6 z-50 p-3 rounded-full bg-gray-100/80 dark:bg-white/10 hover:bg-gray-200/80 dark:hover:bg-white/20 border border-gray-300/50 dark:border-white/20 backdrop-blur-sm transition-all shadow-sm"
+      className="fixed top-6 right-6 z-50 p-3 rounded-full bg-gray-100/80 dark:bg-white/10 hover:bg-gray-200/80 dark:hover:bg-white/20 border border-gray-300/50 dark:border-white/20 backdrop-blur-sm transition-all shadow-sm cursor-pointer"
       aria-label="Toggle theme"
       type="button"
     >

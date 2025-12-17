@@ -97,6 +97,14 @@ jobs:
           name: build
           path: out
 
+      - name: Validate Firebase configuration
+        run: |
+          if grep -q "your-firebase-project-id\|placeholder\|example" .firebaserc; then
+            echo "Error: .firebaserc contains placeholder values. Please set a valid Firebase project ID."
+            exit 1
+          fi
+          echo "Firebase project ID validation passed."
+
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -104,4 +112,3 @@ jobs:
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           channelId: live
           projectId: "${{ secrets.FIREBASE_PROJECT_ID }}"
-

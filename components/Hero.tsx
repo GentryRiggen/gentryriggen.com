@@ -62,7 +62,7 @@ export default function Hero() {
               </p>
               <p className="text-lg sm:text-lg md:text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
                 Off the clock, you&apos;ll find me at the gym doing constantly
-                varied functional movements—AKA CrossFit 🏋️‍♂️. The grind never
+                varied functional movements - AKA CrossFit 🏋️‍♂️. The grind never
                 stops, whether it&apos;s debugging or deadlifting.
               </p>
             </div>
