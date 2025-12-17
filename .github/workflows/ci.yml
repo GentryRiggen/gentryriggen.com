@@ -40,7 +40,7 @@ jobs:
         run: corepack enable
 
       - name: 💾 Cache Yarn dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .yarn/cache
@@ -103,7 +103,7 @@ jobs:
         run: corepack enable
 
       - name: 💾 Cache Yarn dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .yarn/cache
