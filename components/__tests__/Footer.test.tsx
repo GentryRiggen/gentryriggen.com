@@ -2,6 +2,18 @@ import { render, screen } from "@testing-library/react";
 import Footer from "../Footer";
 
 describe("Footer", () => {
+  it("renders the contact heading", () => {
+    render(<Footer />);
+    expect(screen.getByText("Get in Touch")).toBeInTheDocument();
+  });
+
+  it("renders the email button", () => {
+    render(<Footer />);
+    expect(screen.getByText("Email Me")).toBeInTheDocument();
+    const emailLink = screen.getByText("Email Me");
+    expect(emailLink).toHaveAttribute("href", "mailto:hello@gentryriggen.com");
+  });
+
   it("renders the copyright text", () => {
     render(<Footer />);
     const currentYear = new Date().getFullYear();
@@ -29,4 +41,3 @@ describe("Footer", () => {
     expect(twitterLink).toHaveAttribute("target", "_blank");
   });
 });
-

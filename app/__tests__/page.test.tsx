@@ -1,32 +1,33 @@
 import { render, screen } from "@testing-library/react";
 import Home from "../page";
 
+// Mock next/image
+jest.mock("next/image", () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    return <img {...props} />;
+  },
+}));
+
 describe("Home Page", () => {
   it("renders the hero section", () => {
     render(<Home />);
-    expect(screen.getByText(/Hello, I'm/)).toBeInTheDocument();
+    expect(screen.getByText("GENTRY")).toBeInTheDocument();
+    expect(screen.getByText("RIGGEN")).toBeInTheDocument();
   });
 
   it("renders the about section", () => {
     render(<Home />);
-    expect(screen.getByLabelText("About section")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(screen.getByText("What I Do")).toBeInTheDocument();
   });
 
-  it("renders the contact section", () => {
+  it("renders the footer with contact section", () => {
     render(<Home />);
-    expect(screen.getByLabelText("Contact section")).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Contact" })
-    ).toBeInTheDocument();
-  });
-
-  it("renders the footer", () => {
-    render(<Home />);
+    expect(screen.getByText("Get in Touch")).toBeInTheDocument();
     const currentYear = new Date().getFullYear();
     expect(
       screen.getByText(`© ${currentYear} Gentry Riggen. All rights reserved.`)
     ).toBeInTheDocument();
   });
 });
-
