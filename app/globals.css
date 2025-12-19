@@ -218,3 +218,49 @@ button:focus-visible {
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
+
+/* Bouncy click animation */
+@keyframes bounce-click {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  75% {
+    transform: scale(0.975);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Shake animation for cooldown period (nodding no) */
+@keyframes shake-no {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-8px);
+  }
+  50% {
+    transform: translateX(8px);
+  }
+  75% {
+    transform: translateX(-8px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-bounce-click {
+  animation: bounce-click 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-shake-no {
+  animation: shake-no 0.5s ease-in-out;
+}

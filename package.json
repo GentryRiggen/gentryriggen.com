@@ -18,6 +18,7 @@
     "test:all": "yarn test && yarn test:e2e"
   },
   "dependencies": {
+    "canvas-confetti": "^1.9.4",
     "next": "16.0.10",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -29,6 +30,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19",

@@ -1,7 +1,118 @@
+"use client";
+
 import Image from "next/image";
+import { useState, useRef, useCallback } from "react";
+import confetti from "canvas-confetti";
 import Footer from "./Footer";
 
 export default function Hero() {
+  const [isBouncing, setIsBouncing] = useState(false);
+  const [isCooldown, setIsCooldown] = useState(false);
+  const clickCountRef = useRef(0);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cooldownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  const triggerConfetti = useCallback(() => {
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    const colors = [
+      "#ff6b6b",
+      "#4ecdc4",
+      "#45b7d1",
+      "#f9ca24",
+      "#f0932b",
+      "#eb4d4b",
+      "#6c5ce7",
+      "#a29bfe",
+    ];
+
+    const confettiBurst = () => {
+      if (Date.now() > end) return;
+
+      // Burst from top center with wide spread
+      confetti({
+        particleCount: 30,
+        angle: 90,
+        spread: 70,
+        origin: { x: 0.5, y: 0.1 },
+        colors: colors,
+        startVelocity: 50,
+        gravity: 1,
+        ticks: 400,
+      });
+
+      // Additional bursts from sides for more spread
+      confetti({
+        particleCount: 20,
+        angle: 60,
+        spread: 80,
+        origin: { x: 0.2, y: 0.1 },
+        colors: colors,
+        startVelocity: 45,
+        gravity: 1,
+        ticks: 400,
+      });
+
+      confetti({
+        particleCount: 20,
+        angle: 120,
+        spread: 80,
+        origin: { x: 0.8, y: 0.1 },
+        colors: colors,
+        startVelocity: 45,
+        gravity: 1,
+        ticks: 400,
+      });
+
+      requestAnimationFrame(confettiBurst);
+    };
+
+    confettiBurst();
+
+    // Set cooldown for 3 seconds
+    setIsCooldown(true);
+    if (cooldownTimeoutRef.current) {
+      clearTimeout(cooldownTimeoutRef.current);
+    }
+    cooldownTimeoutRef.current = setTimeout(() => {
+      setIsCooldown(false);
+    }, 3000);
+  }, []);
+
+  const handleImageClick = useCallback(() => {
+    // If in cooldown, show shake animation and don't count clicks
+    if (isCooldown) {
+      setIsBouncing(true);
+      setTimeout(() => setIsBouncing(false), 500);
+      return;
+    }
+
+    // Clear any existing timeout
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+
+    // Trigger bounce animation
+    setIsBouncing(true);
+    setTimeout(() => setIsBouncing(false), 400);
+
+    // Increment click count
+    clickCountRef.current += 1;
+
+    // Check if we've reached 3 clicks
+    if (clickCountRef.current >= 3) {
+      triggerConfetti();
+      clickCountRef.current = 0;
+    }
+
+    // Reset click count after 1 second of no clicks
+    clickTimeoutRef.current = setTimeout(() => {
+      clickCountRef.current = 0;
+    }, 1000);
+  }, [triggerConfetti, isCooldown]);
+
   return (
     <section className="min-h-screen flex flex-col items-center justify-start sm:justify-center px-6 sm:px-6 py-4 sm:py-8 md:py-12 lg:py-16 overflow-visible">
       <div className="max-w-4xl mx-auto w-full overflow-visible">
@@ -25,7 +136,26 @@ export default function Hero() {
         <div className="bg-gray-100/80 dark:bg-white/5 backdrop-blur-sm border border-gray-300/50 dark:border-white/10 rounded-2xl sm:rounded-3xl p-8 sm:p-8 md:p-10 lg:p-12 mb-6 md:mb-8">
           <div className="flex flex-col md:flex-row gap-5 sm:gap-6 md:gap-6 lg:gap-8 items-start">
             {/* Image - Smaller on mobile, hidden on very small screens */}
-            <div className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 shrink-0 rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-gray-400/30 dark:ring-white/20 mx-auto md:mx-0">
+            <div
+              ref={imageContainerRef}
+              onClick={handleImageClick}
+              className={`relative w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 shrink-0 rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-gray-400/30 dark:ring-white/20 mx-auto md:mx-0 cursor-pointer transition-transform duration-200 hover:scale-105 ${
+                isBouncing
+                  ? isCooldown
+                    ? "animate-shake-no"
+                    : "animate-bounce-click"
+                  : ""
+              }`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleImageClick();
+                }
+              }}
+              aria-label="Click me three times for a surprise!"
+            >
               <Image
                 src="/gentry-riggen_web Medium.jpeg"
                 alt="Gentry Riggen"
