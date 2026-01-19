@@ -1,18 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+function getTagline() {
+  return typeof window !== "undefined" &&
+    window.location.hostname === "www.iamsturdy.com"
+    ? "Let's build something sturdy together."
+    : "Let's build something incredible together.";
+}
+
+function subscribe() {
+  return () => {};
+}
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const [tagline, setTagline] = useState(
-    "Let's build something incredible together."
+  const tagline = useSyncExternalStore(
+    subscribe,
+    getTagline,
+    () => "Let's build something incredible together."
   );
-
-  useEffect(() => {
-    if (window.location.hostname === "www.iamsturdy.com") {
-      setTagline("Let's build something sturdy together.");
-    }
-  }, []);
 
   return (
     <footer className="pt-8 sm:pt-12 md:pt-16">
