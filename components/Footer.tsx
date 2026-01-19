@@ -1,12 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [tagline, setTagline] = useState(
+    "Let's build something incredible together."
+  );
+
+  useEffect(() => {
+    if (window.location.hostname === "www.iamsturdy.com") {
+      setTagline("Let's build something sturdy together.");
+    }
+  }, []);
 
   return (
     <footer className="pt-8 sm:pt-12 md:pt-16">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8 sm:mb-10 md:mb-12">
           <p className="text-gray-600 dark:text-gray-400 mb-6 sm:mb-8 text-base sm:text-lg">
-            Let&apos;s build something incredible together.
+            {tagline}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
             <a

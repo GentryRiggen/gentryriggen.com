@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import Footer from "../Footer";
 
 describe("Footer", () => {
-  it("renders the call to action text", () => {
+  it("renders the default call to action text", () => {
     render(<Footer />);
     expect(
       screen.getByText("Let's build something incredible together.")
