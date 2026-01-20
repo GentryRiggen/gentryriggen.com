@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 function getTagline() {
   return typeof window !== "undefined" &&
-    window.location.hostname === "www.iamsturdy.com"
+    window.location.hostname.includes("iamsturdy")
     ? "Let's build something sturdy together."
     : "Let's build something incredible together.";
 }
