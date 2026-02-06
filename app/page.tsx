@@ -28,11 +28,11 @@ export default function Home() {
 
       <ThemeToggle />
 
-      <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+      <main className="relative z-10 min-h-[100dvh] sm:min-h-0 max-w-3xl mx-auto px-0 sm:px-6 py-0 sm:py-16 flex flex-col">
         <Terminal />
 
         {/* Footer / copyright */}
-        <footer className="mt-8 text-center text-xs text-gray-400 dark:text-green-500/40 font-mono">
+        <footer className="py-4 sm:mt-8 text-center text-xs text-gray-400 dark:text-green-500/40 font-mono">
           <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
         </footer>
       </main>

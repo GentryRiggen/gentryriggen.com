@@ -255,7 +255,7 @@ export default function InteractivePrompt({
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            className="w-full bg-transparent border-none outline-none text-gray-800 dark:text-gray-200 font-mono text-sm caret-green-500 dark:caret-green-400 p-0 m-0"
+            className="w-full bg-transparent border-none outline-none text-gray-800 dark:text-gray-200 font-mono text-base sm:text-sm caret-green-500 dark:caret-green-400 p-0 m-0"
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"

@@ -14,7 +14,7 @@ export default function TerminalWindow({
   onClick,
 }: TerminalWindowProps) {
   return (
-    <div className="group w-full rounded-lg overflow-hidden border border-gray-300 dark:border-green-500/30 shadow-2xl shadow-green-500/5 dark:shadow-green-500/10 transition-[border-color,box-shadow] duration-300 focus-within:border-green-500/70 dark:focus-within:border-green-400/60 focus-within:shadow-[0_0_30px_rgba(34,197,94,0.25),0_4px_20px_rgba(0,0,0,0.15)] dark:focus-within:shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+    <div className="group w-full sm:rounded-lg overflow-hidden border-y sm:border border-gray-300 dark:border-green-500/30 shadow-2xl shadow-green-500/5 dark:shadow-green-500/10 transition-[border-color,box-shadow] duration-300 focus-within:border-green-500/70 dark:focus-within:border-green-400/60 focus-within:shadow-[0_0_30px_rgba(34,197,94,0.25),0_4px_20px_rgba(0,0,0,0.15)] dark:focus-within:shadow-[0_0_30px_rgba(34,197,94,0.2)] flex flex-col flex-1 sm:flex-initial">
       {/* Title bar */}
       <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-200 dark:bg-gray-900 border-b border-gray-300 dark:border-green-500/20 transition-[border-color] duration-300">
         <div className="flex gap-1.5">
@@ -29,7 +29,7 @@ export default function TerminalWindow({
       {/* Terminal body - click anywhere to focus input */}
       <div
         onClick={onClick}
-        className="bg-gray-50 dark:bg-black p-5 sm:p-6 font-mono text-sm leading-relaxed min-h-[200px] max-h-[80vh] overflow-y-auto overflow-x-auto cursor-text"
+        className="bg-gray-50 dark:bg-black p-4 sm:p-6 font-mono text-sm leading-relaxed flex-1 sm:flex-initial sm:min-h-[200px] sm:max-h-[80vh] overflow-y-auto overflow-x-auto cursor-text"
       >
         {children}
       </div>

@@ -13,6 +13,11 @@ body {
     -apple-system,
     sans-serif;
   overflow-x: visible;
+  background-color: #ffffff;
+}
+
+html.dark body {
+  background-color: #030712;
 }
 
 /* Smooth scrolling for anchor links */
