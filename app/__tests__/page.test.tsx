@@ -23,15 +23,11 @@ const renderWithTheme = (component: React.ReactElement) => {
 };
 
 describe("Home Page", () => {
-  it("renders the hero section", () => {
+  it("renders the terminal window", () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText("GENTRY")).toBeInTheDocument();
-    expect(screen.getByText("RIGGEN")).toBeInTheDocument();
-  });
-
-  it("renders the subtitle", () => {
-    renderWithTheme(<Home />);
-    expect(screen.getByText("Software Leader & Developer")).toBeInTheDocument();
+    expect(
+      screen.getByText("gentry@portfolio ~ (bash)")
+    ).toBeInTheDocument();
   });
 
   it("renders the footer with copyright", () => {
@@ -42,9 +38,10 @@ describe("Home Page", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders social media links", () => {
+  it("renders the theme toggle", () => {
     renderWithTheme(<Home />);
-    expect(screen.getByRole("link", { name: "LinkedIn" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "GitHub" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Toggle theme" })
+    ).toBeInTheDocument();
   });
 });

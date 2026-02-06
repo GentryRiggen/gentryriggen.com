@@ -1,15 +1,40 @@
-import Hero from "@/components/Hero";
 import ThemeToggle from "@/components/ThemeToggle";
-import AnimatedBackground from "@/components/AnimatedBackground";
+import Terminal from "@/components/designs/design1/Terminal";
 
 export default function Home() {
   return (
-    <div className="min-h-screen text-gray-900 dark:text-white transition-colors overflow-visible relative">
-      <div className="fixed inset-0 bg-white dark:bg-slate-950 -z-20" />
-      <AnimatedBackground />
+    <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-green-400 transition-colors font-mono">
+      {/* Subtle scanline overlay for CRT effect in dark mode */}
+      <div
+        className="fixed inset-0 pointer-events-none z-10 opacity-0 dark:opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.3) 1px, rgba(0,0,0,0.3) 2px)",
+          backgroundSize: "100% 2px",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Background grid pattern */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 opacity-[0.03] dark:opacity-[0.04]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(34,197,94,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.4) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+        aria-hidden="true"
+      />
+
       <ThemeToggle />
-      <main className="overflow-visible relative z-10">
-        <Hero />
+
+      <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+        <Terminal />
+
+        {/* Footer / copyright */}
+        <footer className="mt-8 text-center text-xs text-gray-400 dark:text-green-500/40 font-mono">
+          <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
+        </footer>
       </main>
     </div>
   );

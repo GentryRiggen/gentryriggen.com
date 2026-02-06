@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    { media: "(prefers-color-scheme: dark)", color: "#030712" },
   ],
   other: {
     "apple-mobile-web-app-status-bar-style": "black-translucent",
@@ -52,7 +52,7 @@ export default function RootLayout({
                 // Set initial theme-color for iOS Safari browser chrome
                 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
                 if (themeColorMeta) {
-                  themeColorMeta.setAttribute('content', theme === 'dark' ? '#020617' : '#ffffff');
+                  themeColorMeta.setAttribute('content', theme === 'dark' ? '#030712' : '#ffffff');
                 }
               })();
             `,
