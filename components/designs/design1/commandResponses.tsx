@@ -444,11 +444,11 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
       return {
         output: (
           <p className="whitespace-pre-wrap leading-relaxed">
-            I build products and lead teams using React, Next.js, Node.js,
+            🚀 I build products and lead teams using React, Next.js, Node.js,
             TypeScript, Tailwind CSS, Postgres, Prisma, GraphQL, Docker,
             Terraform, GitHub Actions, and more. These days I&apos;m focused on
-            leading projects and empowering teams to ship exceptional work -
-            while still getting my hands dirty with code.
+            leading projects and empowering teams to ship exceptional work —
+            while still getting my hands dirty with code. 💻
           </p>
         ),
         shouldClear: false,
@@ -458,8 +458,9 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
       return {
         output: (
           <p className="whitespace-pre-wrap leading-relaxed">
-            Off the clock, you&apos;ll find me at the gym chasing PRs in Olympic
-            weightlifting, functional fitness, and CrossFit-style workouts.
+            Off the clock, I&apos;m all about my family 👨‍👩‍👦‍👦 — hanging out with my
+            beautiful wife and our two boys. When I&apos;m not with them, you&apos;ll
+            find me at the CrossFit box 🏋️ or out on the golf course ⛳.
           </p>
         ),
         shouldClear: false,
