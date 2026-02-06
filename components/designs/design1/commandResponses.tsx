@@ -459,8 +459,9 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
         output: (
           <p className="whitespace-pre-wrap leading-relaxed">
             Off the clock, I&apos;m all about my family 👨‍👩‍👦‍👦 — hanging out with my
-            beautiful wife and our two boys. When I&apos;m not with them, you&apos;ll
-            find me at the CrossFit box 🏋️ or out on the golf course ⛳.
+            beautiful wife and our two boys. When I&apos;m not with them,
+            you&apos;ll find me at the CrossFit box 🏋️ or out on the golf course
+            ⛳.
           </p>
         ),
         shouldClear: false,
