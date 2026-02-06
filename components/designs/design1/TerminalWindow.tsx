@@ -27,7 +27,10 @@ export default function TerminalWindow({
         </span>
       </div>
       {/* Terminal body - click anywhere to focus input */}
-      <div onClick={onClick} className="bg-gray-50 dark:bg-black p-5 sm:p-6 font-mono text-sm leading-relaxed min-h-[200px] max-h-[80vh] overflow-y-auto overflow-x-auto cursor-text">
+      <div
+        onClick={onClick}
+        className="bg-gray-50 dark:bg-black p-5 sm:p-6 font-mono text-sm leading-relaxed min-h-[200px] max-h-[80vh] overflow-y-auto overflow-x-auto cursor-text"
+      >
         {children}
       </div>
     </div>

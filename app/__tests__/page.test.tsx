@@ -25,9 +25,7 @@ const renderWithTheme = (component: React.ReactElement) => {
 describe("Home Page", () => {
   it("renders the terminal window", () => {
     renderWithTheme(<Home />);
-    expect(
-      screen.getByText("gentry@portfolio ~ (bash)")
-    ).toBeInTheDocument();
+    expect(screen.getByText("gentry@portfolio ~ (bash)")).toBeInTheDocument();
   });
 
   it("renders the footer with copyright", () => {

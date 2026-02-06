@@ -52,7 +52,10 @@ export default function Terminal() {
   const showBootContent = !isCleared;
 
   return (
-    <TerminalWindow title="gentry@portfolio ~ (bash)" onClick={handleWindowClick}>
+    <TerminalWindow
+      title="gentry@portfolio ~ (bash)"
+      onClick={handleWindowClick}
+    >
       {/* Boot / MOTD */}
       {showBootContent && showMotd && (
         <div className="mb-6 animate-fadeIn">
@@ -61,7 +64,8 @@ export default function Terminal() {
             Welcome to Gentry Riggen&apos;s portfolio terminal v1.0.0
           </p>
           <p className="text-gray-500 dark:text-green-500/60 text-xs">
-            Last login: {new Date().toLocaleDateString("en-US", {
+            Last login:{" "}
+            {new Date().toLocaleDateString("en-US", {
               weekday: "short",
               month: "short",
               day: "numeric",
@@ -128,9 +132,8 @@ export default function Terminal() {
           onComplete={advanceCommand}
         >
           <p className="whitespace-pre-wrap leading-relaxed">
-            Off the clock, you&apos;ll find me at the gym chasing PRs in
-            Olympic weightlifting, functional fitness, and CrossFit-style
-            workouts.
+            Off the clock, you&apos;ll find me at the gym chasing PRs in Olympic
+            weightlifting, functional fitness, and CrossFit-style workouts.
           </p>
         </CommandBlock>
       )}

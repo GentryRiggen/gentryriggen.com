@@ -314,7 +314,7 @@ function linksOutput(): ReactNode {
  */
 export function getCommandResponse(
   rawInput: string,
-  commandHistory: readonly string[],
+  commandHistory: readonly string[]
 ): CommandResult {
   const trimmed = rawInput.trim();
   const lower = trimmed.toLowerCase();
@@ -335,15 +335,24 @@ export function getCommandResponse(
   }
 
   // --- ls -la skills/ (matches boot command exactly) ---
-  if (lower === "ls -la skills/" || lower === "ls skills/" || lower === "ls skills") {
+  if (
+    lower === "ls -la skills/" ||
+    lower === "ls skills/" ||
+    lower === "ls skills"
+  ) {
     return { output: skillsOutput(), shouldClear: false };
   }
 
   // --- ls ---
-  if (lower === "ls" || lower === "ls -la" || lower === "ls -al" || lower === "ll" || lower === "dir") {
+  if (
+    lower === "ls" ||
+    lower === "ls -la" ||
+    lower === "ls -al" ||
+    lower === "ll" ||
+    lower === "dir"
+  ) {
     return {
-      output:
-        `total 42
+      output: `total 42
 drwxr-xr-x  8 gentry staff  256 ${new Date().toLocaleDateString()}  .
 drwxr-xr-x  3 gentry staff   96 ${new Date().toLocaleDateString()}  ..
 -rw-r--r--  1 gentry staff  420 ${new Date().toLocaleDateString()}  about.md
@@ -360,7 +369,8 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- cd ---
   if (lower === "cd" || lower.startsWith("cd ")) {
     return {
-      output: "Nice try, but this is a single-page app. No directories to change to!",
+      output:
+        "Nice try, but this is a single-page app. No directories to change to!",
       shouldClear: false,
     };
   }
@@ -381,7 +391,8 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- exit ---
   if (lower === "exit" || lower === "quit" || lower === "logout") {
     return {
-      output: "You can check out any time you like, but you can never leave...\n(Hotel California playing in the background)",
+      output:
+        "You can check out any time you like, but you can never leave...\n(Hotel California playing in the background)",
       shouldClear: false,
     };
   }
@@ -402,7 +413,11 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   }
 
   // --- cat resume.pdf ---
-  if (lower === "cat resume.pdf" || lower === "cat resume" || lower === "open resume.pdf") {
+  if (
+    lower === "cat resume.pdf" ||
+    lower === "cat resume" ||
+    lower === "open resume.pdf"
+  ) {
     return {
       output:
         "I'd love to chat! Reach out on LinkedIn:\nhttps://linkedin.com/in/gentryriggen",
@@ -431,9 +446,8 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
       return {
         output: (
           <p className="whitespace-pre-wrap leading-relaxed">
-            Off the clock, you&apos;ll find me at the gym chasing PRs in
-            Olympic weightlifting, functional fitness, and CrossFit-style
-            workouts.
+            Off the clock, you&apos;ll find me at the gym chasing PRs in Olympic
+            weightlifting, functional fitness, and CrossFit-style workouts.
           </p>
         ),
         shouldClear: false,
@@ -474,7 +488,16 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   }
 
   // --- vim / nano / emacs ---
-  if (lower === "vim" || lower === "vi" || lower === "nano" || lower === "emacs" || lower.startsWith("vim ") || lower.startsWith("vi ") || lower.startsWith("nano ") || lower.startsWith("emacs ")) {
+  if (
+    lower === "vim" ||
+    lower === "vi" ||
+    lower === "nano" ||
+    lower === "emacs" ||
+    lower.startsWith("vim ") ||
+    lower.startsWith("vi ") ||
+    lower.startsWith("nano ") ||
+    lower.startsWith("emacs ")
+  ) {
     return { output: pickRandom(EDITOR_RESPONSES), shouldClear: false };
   }
 
@@ -514,7 +537,11 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   }
 
   // --- neofetch ---
-  if (lower === "neofetch" || lower === "fastfetch" || lower === "screenfetch") {
+  if (
+    lower === "neofetch" ||
+    lower === "fastfetch" ||
+    lower === "screenfetch"
+  ) {
     return { output: NEOFETCH_OUTPUT, shouldClear: false };
   }
 
@@ -534,21 +561,25 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- matrix ---
   if (lower === "matrix") {
     return {
-      output: "You take the red pill... you stay in the terminal.\nYou take the blue pill... you close the browser.\n\nWelcome to the Matrix, Neo.",
+      output:
+        "You take the red pill... you stay in the terminal.\nYou take the blue pill... you close the browser.\n\nWelcome to the Matrix, Neo.",
       shouldClear: false,
     };
   }
 
   // --- coffee / brew coffee ---
-  if (lower === "coffee" || lower === "brew coffee" || lower === "make coffee") {
+  if (
+    lower === "coffee" ||
+    lower === "brew coffee" ||
+    lower === "make coffee"
+  ) {
     return { output: COFFEE_ART, shouldClear: false };
   }
 
   // --- hire / hire me ---
   if (lower === "hire" || lower === "hire me" || lower === "contact") {
     return {
-      output:
-        `Awesome! Let's connect!\n\nLinkedIn: https://linkedin.com/in/gentryriggen\nGitHub:   https://github.com/gentryriggen\n\nI'm always open to interesting opportunities and conversations.\nDon't be a stranger!`,
+      output: `Awesome! Let's connect!\n\nLinkedIn: https://linkedin.com/in/gentryriggen\nGitHub:   https://github.com/gentryriggen\n\nI'm always open to interesting opportunities and conversations.\nDon't be a stranger!`,
       shouldClear: false,
     };
   }
@@ -561,8 +592,7 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- weather ---
   if (lower === "weather" || lower === "wttr" || lower === "wttr.in") {
     return {
-      output:
-        `Weather Report for /home/gentry/portfolio:
+      output: `Weather Report for /home/gentry/portfolio:
 
   Temperature:  72F (22C) - perfectly comfortable
   Humidity:     Low - no sweat
@@ -577,7 +607,7 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   if (lower === "history") {
     const allCommands = [...BOOT_COMMANDS, ...commandHistory];
     const lines = allCommands.map(
-      (cmd, i) => `  ${String(i + 1).padStart(4)}  ${cmd}`,
+      (cmd, i) => `  ${String(i + 1).padStart(4)}  ${cmd}`
     );
     return { output: lines.join("\n"), shouldClear: false };
   }
@@ -585,7 +615,8 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- whoami variations ---
   if (lower === "who" || lower === "w" || lower === "id") {
     return {
-      output: "uid=1000(gentry) gid=1000(developer) groups=1000(developer),27(sudo-wishful-thinking)",
+      output:
+        "uid=1000(gentry) gid=1000(developer) groups=1000(developer),27(sudo-wishful-thinking)",
       shouldClear: false,
     };
   }
@@ -598,7 +629,8 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- uname ---
   if (lower === "uname" || lower === "uname -a") {
     return {
-      output: "PortfolioOS 1.0.0 gentryriggen.com 6.1.0-portfolio #1 SMP TypeScript x86_64 Next.js",
+      output:
+        "PortfolioOS 1.0.0 gentryriggen.com 6.1.0-portfolio #1 SMP TypeScript x86_64 Next.js",
       shouldClear: false,
     };
   }
@@ -612,7 +644,11 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   }
 
   // --- which / whereis / type ---
-  if (lower.startsWith("which ") || lower.startsWith("whereis ") || lower.startsWith("type ")) {
+  if (
+    lower.startsWith("which ") ||
+    lower.startsWith("whereis ") ||
+    lower.startsWith("type ")
+  ) {
     return {
       output: `/usr/local/bin/${trimmed.split(" ")[1] ?? "unknown"}`,
       shouldClear: false,

@@ -60,7 +60,7 @@ export default function InteractivePrompt({
 }: InteractivePromptProps) {
   const [inputValue, setInputValue] = useState("");
   const [executedCommands, setExecutedCommands] = useState<ExecutedCommand[]>(
-    [],
+    []
   );
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -156,10 +156,7 @@ export default function InteractivePrompt({
       setCommandHistory((prev) => [...prev, trimmed]);
       setHistoryIndex(-1);
 
-      const result = getCommandResponse(trimmed, [
-        ...commandHistory,
-        trimmed,
-      ]);
+      const result = getCommandResponse(trimmed, [...commandHistory, trimmed]);
 
       if (result.shouldClear) {
         setExecutedCommands([]);
@@ -174,7 +171,7 @@ export default function InteractivePrompt({
       ]);
       setInputValue("");
     },
-    [inputValue, commandHistory, onClear],
+    [inputValue, commandHistory, onClear]
   );
 
   /** Handle up/down arrows for command history navigation */
@@ -203,7 +200,7 @@ export default function InteractivePrompt({
         }
       }
     },
-    [commandHistory, historyIndex],
+    [commandHistory, historyIndex]
   );
 
   const showGhost = !isFocused && !hasInteracted && ghostText.length > 0;
@@ -212,35 +209,37 @@ export default function InteractivePrompt({
     <div onClick={focusInput}>
       {/* Previously executed commands + output */}
       <div aria-live="polite" aria-relevant="additions">
-      {executedCommands.map((entry) => (
-        <div key={entry.id} className="mb-6 animate-fadeIn">
-          {/* Command line */}
-          <div className="flex flex-wrap gap-x-2">
-            <span className="text-green-600 dark:text-green-400 shrink-0 select-none">
-              {prompt}
-            </span>
-            <span className="text-gray-800 dark:text-gray-200">
-              {entry.command}
-            </span>
+        {executedCommands.map((entry) => (
+          <div key={entry.id} className="mb-6 animate-fadeIn">
+            {/* Command line */}
+            <div className="flex flex-wrap gap-x-2">
+              <span className="text-green-600 dark:text-green-400 shrink-0 select-none">
+                {prompt}
+              </span>
+              <span className="text-gray-800 dark:text-gray-200">
+                {entry.command}
+              </span>
+            </div>
+            {/* Output */}
+            {entry.output &&
+              (typeof entry.output === "string" ? (
+                <pre className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
+                  {entry.output}
+                </pre>
+              ) : (
+                <div className="mt-2 text-gray-700 dark:text-gray-300 font-mono text-sm leading-relaxed">
+                  {entry.output}
+                </div>
+              ))}
           </div>
-          {/* Output */}
-          {entry.output && (
-            typeof entry.output === "string" ? (
-              <pre className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
-                {entry.output}
-              </pre>
-            ) : (
-              <div className="mt-2 text-gray-700 dark:text-gray-300 font-mono text-sm leading-relaxed">
-                {entry.output}
-              </div>
-            )
-          )}
-        </div>
-      ))}
+        ))}
       </div>
 
       {/* Active input line */}
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-x-2 items-center">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-wrap gap-x-2 items-center"
+      >
         <span className="text-green-600 dark:text-green-400 shrink-0 select-none">
           {prompt}
         </span>
@@ -265,7 +264,10 @@ export default function InteractivePrompt({
           />
           {/* Ghost typing hint overlay */}
           {showGhost && (
-            <div className="absolute inset-0 flex items-center pointer-events-none" aria-hidden="true">
+            <div
+              className="absolute inset-0 flex items-center pointer-events-none"
+              aria-hidden="true"
+            >
               <span className="text-gray-400/60 dark:text-green-500/35 font-mono text-sm">
                 {ghostText}
               </span>

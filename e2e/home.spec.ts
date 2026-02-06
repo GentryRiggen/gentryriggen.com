@@ -3,9 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Home Page", () => {
   test("should display the terminal window", async ({ page }) => {
     await page.goto("/");
-    await expect(
-      page.getByText("gentry@portfolio ~ (bash)")
-    ).toBeVisible();
+    await expect(page.getByText("gentry@portfolio ~ (bash)")).toBeVisible();
   });
 
   test("should display the ASCII art banner", async ({ page }) => {
@@ -32,9 +30,7 @@ test.describe("Home Page", () => {
   test("should be responsive on mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");
-    await expect(
-      page.getByText("gentry@portfolio ~ (bash)")
-    ).toBeVisible();
+    await expect(page.getByText("gentry@portfolio ~ (bash)")).toBeVisible();
   });
 
   test("should have theme toggle button", async ({ page }) => {
@@ -63,9 +59,9 @@ test.describe("Home Page", () => {
 
   test("should display bio text after typing animation", async ({ page }) => {
     await page.goto("/");
-    await expect(
-      page.getByText(/I build products and lead teams/)
-    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/I build products and lead teams/)).toBeVisible(
+      { timeout: 15000 }
+    );
   });
 
   test("should display social links after typing animation", async ({

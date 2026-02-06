@@ -18,6 +18,7 @@ Apply these design patterns when styling components for gentryriggen.com.
 ## Color System
 
 ### Theme Colors
+
 - **Light background**: white (`#ffffff`) / `bg-white`
 - **Dark background**: slate-950 (`#020617`) / `dark:bg-slate-950`
 - **Light text**: gray-900 / `text-gray-900`
@@ -31,6 +32,7 @@ Pattern: `bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white`
 ## Glass Morphism Card Pattern
 
 Use this for card containers:
+
 ```
 bg-gray-100/80 dark:bg-white/5 backdrop-blur-sm border border-gray-300/50 dark:border-white/10 rounded-2xl sm:rounded-3xl
 ```
@@ -38,6 +40,7 @@ bg-gray-100/80 dark:bg-white/5 backdrop-blur-sm border border-gray-300/50 dark:b
 ## Responsive Breakpoints
 
 Use Tailwind defaults, mobile-first:
+
 - Base: mobile
 - `sm:` (640px)
 - `md:` (768px)
@@ -49,11 +52,13 @@ Example responsive text: `text-lg sm:text-lg md:text-xl`
 ## Interactive Elements
 
 Buttons and links use:
+
 ```
 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-110 active:scale-95
 ```
 
 Social button pattern:
+
 ```
 p-4 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 rounded-full text-white
 ```
@@ -63,7 +68,8 @@ p-4 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-60
 - All interactive elements need `aria-label`
 - Focus styles defined globally in `globals.css`:
   ```css
-  a:focus-visible, button:focus-visible {
+  a:focus-visible,
+  button:focus-visible {
     outline: 2px solid rgb(147, 51, 234);
     outline-offset: 2px;
     border-radius: 0.5rem;
@@ -73,6 +79,7 @@ p-4 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-60
 ## Animation Patterns
 
 Custom animations live in `app/globals.css`. Existing animations:
+
 - `animate-gradient` - 3s gradient position loop
 - `animate-float-1` through `animate-float-7` - floating orb movement (18-30s)
 - `animate-bounce-click` - click feedback (0.4s)

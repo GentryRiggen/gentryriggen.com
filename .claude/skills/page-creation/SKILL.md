@@ -71,17 +71,18 @@ export const metadata: Metadata = {
 ## Layout Patterns
 
 ### Shared Layout Elements
+
 These are used on every page and should be included:
+
 - `AnimatedBackground` - floating gradient orbs
 - `ThemeToggle` - dark/light mode switch (fixed top-right)
 - Background div: `<div className="fixed inset-0 bg-white dark:bg-slate-950 -z-20" />`
 
 ### Content Container
+
 ```tsx
 <section className="min-h-screen flex flex-col items-center justify-center px-6 sm:px-6 py-4 sm:py-8 md:py-12 lg:py-16">
-  <div className="max-w-4xl mx-auto w-full">
-    {/* Content */}
-  </div>
+  <div className="max-w-4xl mx-auto w-full">{/* Content */}</div>
 </section>
 ```
 
@@ -123,6 +124,7 @@ test.describe("About Page", () => {
 ## Static Export Constraints
 
 Because of `output: "export"` in `next.config.ts`:
+
 - No `getServerSideProps` or API routes
 - Dynamic routes need `generateStaticParams()`
 - No `next/headers` or `next/cookies`

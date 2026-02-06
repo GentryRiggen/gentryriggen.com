@@ -10,6 +10,7 @@ Follow these patterns when creating new components for gentryriggen.com.
 ## File Structure
 
 Components go in `components/` at the project root:
+
 ```
 components/
 ├── MyComponent.tsx
@@ -22,6 +23,7 @@ components/
 ## Component Patterns
 
 ### Server Component (default)
+
 Use when the component has no interactivity, state, or browser APIs:
 
 ```tsx
@@ -35,6 +37,7 @@ export default function MyComponent({ title }: MyComponentProps) {
 ```
 
 ### Client Component
+
 Add `"use client"` only when the component uses hooks, event handlers, or browser APIs:
 
 ```tsx
@@ -53,6 +56,7 @@ export default function MyComponent({ initialValue }: MyComponentProps) {
 ```
 
 ### Key Conventions
+
 - Use `export default function` (not arrow functions)
 - Define TypeScript `interface` for props (not `type`)
 - Use `ReactNode` for children: `import { ReactNode } from "react"`
