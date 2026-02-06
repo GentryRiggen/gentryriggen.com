@@ -20,6 +20,8 @@ export interface CommandResult {
   output: ReactNode;
   /** If true, the caller should clear all previous output */
   shouldClear: boolean;
+  /** If true, the caller should fire a confetti burst */
+  shouldConfetti?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,6 +134,15 @@ const MAN_RESPONSES: readonly string[] = [
 // Help text
 // ---------------------------------------------------------------------------
 
+const CONFETTI_RESPONSES: readonly string[] = [
+  "Time to celebrate! You found the party command!",
+  "Woohoo! Confetti cannons activated!",
+  "It's raining confetti! Quick, make a wish!",
+  "Party mode: ENGAGED.",
+  "This calls for a celebration!",
+  "Achievement unlocked: Party Animal!",
+];
+
 const HELP_TEXT = `Available commands:
   help             Show this help message
   whoami           Display profile information
@@ -156,6 +167,7 @@ const HELP_TEXT = `Available commands:
   weather          Check the weather
   coffee           Brew some coffee
   matrix           Enter the matrix
+  confetti         Celebrate!
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -652,6 +664,26 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
     return {
       output: `/usr/local/bin/${trimmed.split(" ")[1] ?? "unknown"}`,
       shouldClear: false,
+    };
+  }
+
+  // --- confetti / party / celebrate ---
+  if (
+    lower === "confetti" ||
+    lower === "party" ||
+    lower === "celebrate" ||
+    lower === "cheers" ||
+    lower === "hooray" ||
+    lower === "yay" ||
+    lower === "woo" ||
+    lower === "woohoo" ||
+    lower === "fireworks" ||
+    lower === "tada"
+  ) {
+    return {
+      output: pickRandom(CONFETTI_RESPONSES),
+      shouldClear: false,
+      shouldConfetti: true,
     };
   }
 

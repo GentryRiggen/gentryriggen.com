@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import confetti from "canvas-confetti";
 import { getCommandResponse } from "./commandResponses";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ const HINT_COMMANDS = [
   "cat bio.txt",
   "weather",
   "matrix",
+  "party",
 ];
 
 // ---------------------------------------------------------------------------
@@ -163,6 +165,26 @@ export default function InteractivePrompt({
         setInputValue("");
         onClear();
         return;
+      }
+
+      if (result.shouldConfetti) {
+        const end = Date.now() + 1500;
+        const frame = () => {
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.6 },
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.6 },
+          });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        };
+        frame();
       }
 
       setExecutedCommands((prev) => [
