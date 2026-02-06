@@ -2,55 +2,59 @@ name: CI/CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    # Run on all pull requests regardless of target branch
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: 🧪 Run Tests
+  # ── Static checks + unit tests ──
+  validate:
+    name: ✅ Validate
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'push' && (
-        !contains(github.event.head_commit.message, '[skip ci]') &&
-        !contains(github.event.head_commit.message, '[ci skip]') &&
-        !contains(github.event.head_commit.message, '[skip actions]') &&
-        !contains(github.event.head_commit.message, '[actions skip]') &&
-        !contains(github.event.head_commit.message, '***NO_CI***')
-      )) ||
-      (github.event_name == 'pull_request' && (
-        !contains(github.event.pull_request.title, '[skip ci]') &&
-        !contains(github.event.pull_request.title, '[ci skip]') &&
-        !contains(github.event.pull_request.title, '[skip actions]') &&
-        !contains(github.event.pull_request.title, '[actions skip]') &&
-        !contains(github.event.pull_request.title, '***NO_CI***')
-      ))
-
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: ⚙️ Setup Node.js
+      - name: ⚙️ Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: "npm"
 
-      - name: 📚 Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🔍 Run linter
+      - name: 🔍 Lint
         run: npm run lint
 
-      - name: 💅 Check formatting
+      - name: 💅 Format check
         run: npm run format:check
 
-      - name: 🔷 Check TypeScript types
+      - name: 🔷 Type check
         run: npm run type-check
 
-      - name: ✅ Run unit tests
+      - name: 🧪 Unit tests
         run: npm test
+
+  # ── Browser tests (runs in parallel with validate) ──
+  e2e:
+    name: 🎭 E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - name: ⚙️ Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: 📦 Install dependencies
+        run: npm ci
 
       - name: 💾 Cache Playwright browsers
         uses: actions/cache@v5
@@ -66,40 +70,25 @@ jobs:
       - name: 🎬 Run E2E tests
         run: npm run test:e2e
 
+  # ── Production build (waits for validate + e2e) ──
   build:
-    name: 🏗️ Build
+    name: 📦 Build
     runs-on: ubuntu-latest
-    needs: test
-    if: |
-      (github.event_name == 'push' && (
-        !contains(github.event.head_commit.message, '[skip ci]') &&
-        !contains(github.event.head_commit.message, '[ci skip]') &&
-        !contains(github.event.head_commit.message, '[skip actions]') &&
-        !contains(github.event.head_commit.message, '[actions skip]') &&
-        !contains(github.event.head_commit.message, '***NO_CI***')
-      )) ||
-      (github.event_name == 'pull_request' && (
-        !contains(github.event.pull_request.title, '[skip ci]') &&
-        !contains(github.event.pull_request.title, '[ci skip]') &&
-        !contains(github.event.pull_request.title, '[skip actions]') &&
-        !contains(github.event.pull_request.title, '[actions skip]') &&
-        !contains(github.event.pull_request.title, '***NO_CI***')
-      ))
-
+    needs: [validate, e2e]
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: ⚙️ Setup Node.js
+      - name: ⚙️ Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: "npm"
 
-      - name: 📚 Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🔨 Build application
+      - name: 🏗️ Build
         run: npm run build
 
       - name: 📤 Upload build artifacts
@@ -109,26 +98,17 @@ jobs:
           path: out
           retention-days: 1
 
+  # ── Deploy (main branch only) ──
   deploy:
-    name: 🚀 Deploy to Firebase
+    name: 🚀 Deploy
     runs-on: ubuntu-latest
     needs: build
-    # Only deploy on pushes to main branch (merges), never on PRs
-    # PRs have event_name == 'pull_request', so this condition excludes them
-    if: |
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      !contains(github.event.head_commit.message, '[skip ci]') &&
-      !contains(github.event.head_commit.message, '[ci skip]') &&
-      !contains(github.event.head_commit.message, '[skip actions]') &&
-      !contains(github.event.head_commit.message, '[actions skip]') &&
-      !contains(github.event.head_commit.message, '***NO_CI***')
-
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: ⚙️ Setup Node.js
+      - name: ⚙️ Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -139,13 +119,12 @@ jobs:
           name: build
           path: out
 
-      - name: 🔥 Validate Firebase configuration
+      - name: 🔥 Validate Firebase config
         run: |
           if grep -q "your-firebase-project-id\|placeholder\|example" .firebaserc; then
-            echo "Error: .firebaserc contains placeholder values. Please set a valid Firebase project ID."
+            echo "::error::.firebaserc contains placeholder values. Set a valid Firebase project ID."
             exit 1
           fi
-          echo "Firebase project ID validation passed."
 
       - name: 🚀 Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0

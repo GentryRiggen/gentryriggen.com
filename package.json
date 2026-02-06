@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm test && npm run test:e2e",
+    "validate": "npm run lint && npm run format:check && npm run type-check && npm test && npm run build",
     "prepare": "lefthook install"
   },
   "dependencies": {

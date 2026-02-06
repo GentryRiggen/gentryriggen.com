@@ -17,6 +17,7 @@ npm run test:watch       # Jest watch mode
 npm run test:e2e         # Playwright E2E tests (auto-starts dev server)
 npm run test:e2e:ui      # Playwright UI mode
 npm run test:all         # Unit + E2E tests
+npm run validate         # Full CI check (lint + format + types + tests + build)
 ```
 
 ## Architecture
