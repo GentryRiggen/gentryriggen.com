@@ -35,48 +35,36 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-
-      - name: 🔧 Enable Corepack
-        run: corepack enable
-
-      - name: 💾 Cache Yarn dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            .yarn/cache
-            node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          cache: "npm"
 
       - name: 📚 Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: 🔍 Run linter
-        run: yarn lint
+        run: npm run lint
 
       - name: 💅 Check formatting
-        run: yarn format:check
+        run: npm run format:check
 
       - name: 🔷 Check TypeScript types
-        run: yarn type-check
+        run: npm run type-check
 
       - name: ✅ Run unit tests
-        run: yarn test
+        run: npm test
 
       - name: 💾 Cache Playwright browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package.json', '**/yarn.lock') }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
       - name: 🌐 Install Playwright browsers
-        run: yarn playwright install --with-deps
+        run: npx playwright install --with-deps
 
       - name: 🎬 Run E2E tests
-        run: yarn test:e2e
+        run: npm run test:e2e
 
   build:
     name: 🏗️ Build
@@ -106,25 +94,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-
-      - name: 🔧 Enable Corepack
-        run: corepack enable
-
-      - name: 💾 Cache Yarn dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            .yarn/cache
-            node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          cache: "npm"
 
       - name: 📚 Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: 🔨 Build application
-        run: yarn build
+        run: npm run build
 
       - name: 📤 Upload build artifacts
         uses: actions/upload-artifact@v6
@@ -156,9 +132,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-
-      - name: 🔧 Enable Corepack
-        run: corepack enable
 
       - name: 📥 Download build artifacts
         uses: actions/download-artifact@v7

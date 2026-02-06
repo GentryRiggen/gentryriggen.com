@@ -16,7 +16,6 @@ Personal website built with Next.js, TypeScript, and Tailwind CSS.
 ### Prerequisites
 
 - Node.js 20+
-- Yarn (latest version)
 
 ### Installation
 
@@ -30,31 +29,31 @@ cd gentryriggen.com
 2. Install dependencies:
 
 ```bash
-yarn install
+npm install
 ```
 
 3. Run the development server:
 
 ```bash
-yarn dev
+npm run dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Available Scripts
 
-- `yarn dev` - Start development server
-- `yarn build` - Build for production
-- `yarn start` - Start production server
-- `yarn lint` - Run ESLint
-- `yarn format` - Format code with Prettier
-- `yarn format:check` - Check code formatting
-- `yarn test` - Run unit tests
-- `yarn test:watch` - Run tests in watch mode
-- `yarn test:coverage` - Generate test coverage report
-- `yarn test:e2e` - Run end-to-end tests
-- `yarn test:e2e:ui` - Run E2E tests with UI
-- `yarn test:all` - Run all tests (unit + E2E)
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run format:check` - Check code formatting
+- `npm test` - Run unit tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Generate test coverage report
+- `npm run test:e2e` - Run end-to-end tests
+- `npm run test:e2e:ui` - Run E2E tests with UI
+- `npm run test:all` - Run all tests (unit + E2E)
 
 ## Project Structure
 
@@ -84,7 +83,7 @@ gentryriggen.com/
 Unit tests are written using Jest and React Testing Library. They test individual components and their behavior.
 
 ```bash
-yarn test
+npm test
 ```
 
 ### End-to-End Tests
@@ -92,7 +91,7 @@ yarn test
 E2E tests are written using Playwright and test critical user flows.
 
 ```bash
-yarn test:e2e
+npm run test:e2e
 ```
 
 ## Deployment
@@ -102,7 +101,7 @@ yarn test:e2e
 1. Install Firebase CLI globally (if not already installed):
 
 ```bash
-yarn global add firebase-tools
+npm install -g firebase-tools
 ```
 
 2. Login to Firebase:
@@ -130,7 +129,7 @@ firebase init hosting
 5. Build and deploy:
 
 ```bash
-yarn build
+npm run build
 firebase deploy
 ```
 
@@ -166,9 +165,9 @@ To get the service account:
 
 1. Create a feature branch
 2. Make your changes
-3. Run tests: `yarn test:all`
-4. Ensure linting passes: `yarn lint`
-5. Ensure formatting is correct: `yarn format:check`
+3. Run tests: `npm run test:all`
+4. Ensure linting passes: `npm run lint`
+5. Ensure formatting is correct: `npm run format:check`
 6. Submit a pull request
 
 ## License
