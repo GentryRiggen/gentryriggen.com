@@ -257,10 +257,10 @@ export default function InteractivePrompt({
         ))}
       </div>
 
-      {/* Active input line */}
+      {/* Active input line — sticky so it's always visible at the bottom */}
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap gap-x-2 items-center"
+        className="sticky bottom-0 flex flex-wrap gap-x-2 items-center bg-gray-50 dark:bg-black py-1"
       >
         <span className="text-green-600 dark:text-green-400 shrink-0 select-none">
           {prompt}

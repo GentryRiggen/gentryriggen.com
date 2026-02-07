@@ -23,10 +23,10 @@ export default function TerminalWindow({
 }: TerminalWindowProps) {
   return (
     <div
-      className={`group w-full overflow-hidden border-gray-300 dark:border-green-500/30 shadow-2xl shadow-green-500/5 dark:shadow-green-500/10 transition-[border-color,box-shadow] duration-300 focus-within:border-green-500/70 dark:focus-within:border-green-400/60 focus-within:shadow-[0_0_30px_rgba(34,197,94,0.25),0_4px_20px_rgba(0,0,0,0.15)] dark:focus-within:shadow-[0_0_30px_rgba(34,197,94,0.2)] flex flex-col flex-1 sm:flex-initial ${isFullscreen ? "border-0" : "border-y sm:border sm:rounded-lg"}`}
+      className={`group w-full overflow-clip border-gray-300 dark:border-green-500/30 shadow-2xl shadow-green-500/5 dark:shadow-green-500/10 transition-[border-color,box-shadow] duration-300 focus-within:border-green-500/70 dark:focus-within:border-green-400/60 focus-within:shadow-[0_0_30px_rgba(34,197,94,0.25),0_4px_20px_rgba(0,0,0,0.15)] dark:focus-within:shadow-[0_0_30px_rgba(34,197,94,0.2)] flex flex-col flex-1 sm:flex-initial ${isFullscreen ? "border-0" : "border-y sm:border sm:rounded-lg"}`}
     >
       {/* Title bar */}
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-200 dark:bg-gray-900 border-b border-gray-300 dark:border-green-500/20 transition-[border-color] duration-300">
+      <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 bg-gray-200 dark:bg-gray-900 border-b border-gray-300 dark:border-green-500/20 transition-[border-color] duration-300">
         <div className="flex gap-1.5">
           <button
             type="button"
