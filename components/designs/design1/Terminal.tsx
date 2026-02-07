@@ -13,7 +13,19 @@ const INITIAL_COMMAND_DELAY = 600;
 /** Delay between each subsequent command */
 const INTER_COMMAND_DELAY = 400;
 
-export default function Terminal() {
+interface TerminalProps {
+  onKill?: () => void;
+  onMinimize?: () => void;
+  onFullscreen?: () => void;
+  isFullscreen?: boolean;
+}
+
+export default function Terminal({
+  onKill,
+  onMinimize,
+  onFullscreen,
+  isFullscreen,
+}: TerminalProps) {
   const [visibleCommands, setVisibleCommands] = useState(0);
   const [showMotd, setShowMotd] = useState(false);
   const [isBootComplete, setIsBootComplete] = useState(false);
@@ -55,6 +67,10 @@ export default function Terminal() {
     <TerminalWindow
       title="gentry@portfolio ~ (bash)"
       onClick={handleWindowClick}
+      onKill={onKill}
+      onMinimize={onMinimize}
+      onFullscreen={onFullscreen}
+      isFullscreen={isFullscreen}
     >
       {/* Boot / MOTD */}
       {showBootContent && showMotd && (

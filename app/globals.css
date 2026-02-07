@@ -70,3 +70,35 @@ button:focus-visible {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Scale down animation for minimize */
+@keyframes scaleDown {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.animate-scaleDown {
+  animation: scaleDown 0.3s ease-in forwards;
+}
+
+/* Scale up animation for relaunch/restore */
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scaleUp {
+  animation: scaleUp 0.3s ease-out;
+}
