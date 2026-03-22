@@ -28,6 +28,8 @@ interface InteractivePromptProps {
   prompt?: string;
   /** External ref so parent can focus the input */
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Called when new output is added so parent can scroll */
+  onContentChange?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,7 @@ export default function InteractivePrompt({
   onClear,
   prompt = "gentry@portfolio:~$",
   inputRef: externalInputRef,
+  onContentChange,
 }: InteractivePromptProps) {
   const [inputValue, setInputValue] = useState("");
   const [executedCommands, setExecutedCommands] = useState<ExecutedCommand[]>(
@@ -75,14 +78,13 @@ export default function InteractivePrompt({
 
   const internalRef = useRef<HTMLInputElement>(null);
   const inputRef = externalInputRef ?? internalRef;
-  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Don't auto-focus — let the ghost hint play to entice the user to click
 
-  // Auto-scroll to bottom whenever new commands are added
+  // Notify parent to scroll when new commands are added
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [executedCommands]);
+    onContentChange?.();
+  }, [executedCommands, onContentChange]);
 
   // Ghost typing animation — types a command, pauses, deletes, then advances
   useEffect(() => {
@@ -300,9 +302,6 @@ export default function InteractivePrompt({
           )}
         </div>
       </form>
-
-      {/* Scroll anchor */}
-      <div ref={bottomRef} />
     </div>
   );
 }

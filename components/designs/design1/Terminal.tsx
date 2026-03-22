@@ -31,6 +31,13 @@ export default function Terminal({
   const [isBootComplete, setIsBootComplete] = useState(false);
   const [isCleared, setIsCleared] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = useCallback(() => {
+    if (typeof bottomRef.current?.scrollIntoView === "function") {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
 
   const handleWindowClick = useCallback(() => {
     inputRef.current?.focus();
@@ -41,6 +48,11 @@ export default function Terminal({
     const timeout = setTimeout(() => setShowMotd(true), 300);
     return () => clearTimeout(timeout);
   }, []);
+
+  // Auto-scroll as boot content appears
+  useEffect(() => {
+    scrollToBottom();
+  }, [showMotd, visibleCommands, isBootComplete, scrollToBottom]);
 
   const advanceCommand = useCallback(() => {
     setVisibleCommands((prev) => {
@@ -219,9 +231,16 @@ export default function Terminal({
       {/* Interactive prompt — replaces the static BlinkingCursor */}
       {isBootComplete && (
         <div className="animate-fadeIn">
-          <InteractivePrompt onClear={handleClear} inputRef={inputRef} />
+          <InteractivePrompt
+            onClear={handleClear}
+            inputRef={inputRef}
+            onContentChange={scrollToBottom}
+          />
         </div>
       )}
+
+      {/* Scroll anchor — always at the very bottom of terminal content */}
+      <div ref={bottomRef} />
     </TerminalWindow>
   );
 }
