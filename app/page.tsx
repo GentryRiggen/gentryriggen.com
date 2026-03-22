@@ -56,6 +56,37 @@ export default function Home() {
         aria-hidden="true"
       />
 
+      {/* SEO: Hidden content for search engines and screen readers */}
+      <div className="sr-only">
+        <h1>Gentry Riggen — Software Leader & Developer</h1>
+        <p>
+          I build products and lead teams using React, Next.js, Node.js,
+          TypeScript, Tailwind CSS, Postgres, Prisma, GraphQL, Docker,
+          Terraform, GitHub Actions, and more. Focused on leading projects and
+          empowering teams to ship exceptional work while still getting hands
+          dirty with code.
+        </p>
+        <h2>Skills</h2>
+        <ul>
+          <li>Languages: TypeScript, JavaScript, SQL, HTML/CSS</li>
+          <li>Frontend: React, Next.js, Tailwind CSS, React Native</li>
+          <li>Backend: Node.js, GraphQL, Prisma, Postgres</li>
+          <li>DevOps: Docker, Terraform, GitHub Actions, CI/CD</li>
+          <li>
+            Leadership: Team Building, Architecture, Code Review, Mentorship
+          </li>
+        </ul>
+        <h2>Connect</h2>
+        <ul>
+          <li>
+            <a href="https://linkedin.com/in/gentryriggen">LinkedIn</a>
+          </li>
+          <li>
+            <a href="https://github.com/gentryriggen">GitHub</a>
+          </li>
+        </ul>
+      </div>
+
       <ThemeToggle />
 
       {/* Dock-style relaunch UI — shown at bottom center when minimized or killed */}

@@ -19,8 +19,43 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://gentryriggen.com"),
   title: "Gentry Riggen",
-  description: "Personal website of Gentry Riggen",
+  description:
+    "Gentry Riggen — Software Leader & Developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+  keywords: [
+    "Gentry Riggen",
+    "software engineer",
+    "software leader",
+    "React",
+    "Next.js",
+    "TypeScript",
+    "Node.js",
+    "full stack developer",
+    "frontend developer",
+    "web developer",
+    "GraphQL",
+    "Tailwind CSS",
+    "React Native",
+  ],
+  alternates: {
+    canonical: "https://gentryriggen.com",
+  },
+  openGraph: {
+    title: "Gentry Riggen",
+    description:
+      "Software Leader & Developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+    url: "https://gentryriggen.com",
+    siteName: "Gentry Riggen",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    title: "Gentry Riggen",
+    description:
+      "Software Leader & Developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+  },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: "/icon.svg",
@@ -62,6 +97,44 @@ export default function RootLayout({
                 }
               })();
             `,
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "Person",
+                name: "Gentry Riggen",
+                url: "https://gentryriggen.com",
+                jobTitle: "Software Leader & Developer",
+                description:
+                  "Software leader and developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+                knowsAbout: [
+                  "TypeScript",
+                  "JavaScript",
+                  "React",
+                  "Next.js",
+                  "Node.js",
+                  "GraphQL",
+                  "Tailwind CSS",
+                  "Docker",
+                  "Terraform",
+                  "PostgreSQL",
+                ],
+                sameAs: [
+                  "https://linkedin.com/in/gentryriggen",
+                  "https://github.com/gentryriggen",
+                ],
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "Gentry Riggen",
+                url: "https://gentryriggen.com",
+              },
+            ]),
           }}
         />
       </head>
