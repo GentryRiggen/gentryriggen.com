@@ -46,6 +46,6 @@
     "lefthook": "^2.1.0",
     "prettier": "^3.7.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^6.0.0"
   }
 }
