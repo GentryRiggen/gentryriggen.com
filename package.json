@@ -22,8 +22,8 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "next": "16.2.11",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
