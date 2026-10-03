@@ -1,0 +1,30 @@
+import type { PartType, PlacedPart, Rotation, Ship } from "./model/types";
+
+export function gridPart(
+  id: string,
+  type: PartType,
+  level: number,
+  x: number,
+  z: number,
+  rotation: Rotation = 0
+): PlacedPart {
+  return { id, type, anchor: { kind: "grid", level, x, z }, rotation };
+}
+
+export function attachPart(
+  id: string,
+  type: PartType,
+  parentId: string,
+  pointId: string
+): PlacedPart {
+  return {
+    id,
+    type,
+    anchor: { kind: "attach", parentId, pointId },
+    rotation: 0,
+  };
+}
+
+export function testShip(parts: PlacedPart[] = [], lengthSegments = 8): Ship {
+  return { v: 1, name: "Test", hull: { lengthSegments }, parts };
+}
