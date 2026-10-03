@@ -53,11 +53,34 @@ describe("tools", () => {
   });
 
   it("cancel clears tool, hover and selection", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("a", "deck-1x1", 0, 2, 1)]),
+      })
+    );
     store().selectTool("deck-1x1");
+    store().select("a");
     store().hoverAt(cell(0, 0, 0));
     store().cancel();
     expect(store().tool).toEqual({ kind: "none" });
     expect(store().hover).toBeNull();
+    expect(store().selectedId).toBeNull();
+  });
+
+  it("forces attach parts to rotation 0", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("a", "deck-1x1", 0, 4, 1)]),
+      })
+    );
+    store().selectTool("deck-2x1");
+    store().rotate();
+    store().selectTool("funnel");
+    expect(
+      store().placeAt({ kind: "attach", parentId: "a", pointId: "funnel" })
+    ).toEqual({ ok: true });
+    const funnel = store().ship.parts.find((p) => p.type === "funnel");
+    expect(funnel?.rotation).toBe(0);
   });
 });
 
@@ -143,6 +166,35 @@ describe("removal", () => {
     expect(store().pendingRemoval).toBeNull();
   });
 
+  it("clears a pending cascade when a placement commits", () => {
+    store().selectTool("deck-1x1");
+    store().select("a");
+    store().requestDelete();
+    expect(store().pendingRemoval).not.toBeNull();
+    expect(store().placeAt(cell(0, 5, 1))).toEqual({ ok: true });
+    expect(store().pendingRemoval).toBeNull();
+  });
+
+  it("ignores a delete request for an unknown part", () => {
+    act(() => useShipBuilderStore.setState({ selectedId: "ghost" }));
+    store().requestDelete();
+    expect(store().pendingRemoval).toBeNull();
+    expect(store().selectedId).toBeNull();
+    expect(store().past).toHaveLength(0);
+  });
+
+  it("undo and redo clear a pending removal", () => {
+    store().changeHullLength(+1); // gives undo something to step back over
+    store().select("a");
+    store().requestDelete();
+    store().undo();
+    expect(store().pendingRemoval).toBeNull();
+    store().select("a");
+    store().requestDelete();
+    store().redo();
+    expect(store().pendingRemoval).toBeNull();
+  });
+
   it("cancels a pending removal", () => {
     store().select("a");
     store().requestDelete();
@@ -180,6 +232,30 @@ describe("hull length", () => {
     store().confirmRemoval();
     expect(store().ship.hull.lengthSegments).toBe(7);
     expect(store().ship.parts).toHaveLength(0);
+  });
+
+  it("clears a pending shrink when a placement commits", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("aft", "deck-1x1", 0, 23, 0)]),
+      })
+    );
+    store().selectTool("deck-1x1");
+    store().changeHullLength(-1);
+    expect(store().pendingRemoval).not.toBeNull();
+    expect(store().placeAt(cell(0, 22, 0))).toEqual({ ok: true });
+    expect(store().pendingRemoval).toBeNull();
+    store().confirmRemoval();
+    expect(store().ship.hull.lengthSegments).toBe(8);
+    expect(store().ship.parts).toHaveLength(2);
+  });
+
+  it("clears hover when the hull length changes", () => {
+    store().selectTool("deck-1x1");
+    store().hoverAt(cell(0, 0, 0));
+    expect(store().hover).not.toBeNull();
+    store().changeHullLength(+1);
+    expect(store().hover).toBeNull();
   });
 });
 

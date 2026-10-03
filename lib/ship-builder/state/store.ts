@@ -108,12 +108,18 @@ const CLEARED = {
 } satisfies Partial<ShipBuilderData>;
 
 export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
+  /**
+   * Pushes a new ship onto history. Hover and any pending removal were
+   * computed against the old ship, so they're always dropped.
+   */
   function commit(next: Ship, extra: Partial<ShipBuilderData> = {}) {
     const { ship, past } = get();
     set({
       ship: next,
       past: [...past, ship].slice(-HISTORY_LIMIT),
       future: [],
+      hover: null,
+      pendingRemoval: null,
       ...extra,
     });
   }
@@ -157,7 +163,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (!candidate) return { ok: false, reason: "Pick a part first" };
       const result = place(ship, { id: newId("p"), ...candidate });
       if (!result.ok) return { ok: false, reason: result.reason };
-      commit(result.ship, { hover: null });
+      commit(result.ship);
       return { ok: true };
     },
 
@@ -169,6 +175,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const { ship, selectedId } = get();
       if (!selectedId) return;
       const ids = cascadeIds(ship, [selectedId]);
+      if (ids.length === 0) {
+        set({ selectedId: null });
+        return;
+      }
       if (ids.length === 1) {
         commit(removeParts(ship, ids), CLEARED);
         return;
@@ -181,7 +191,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (!pendingRemoval) return;
       const next =
         pendingRemoval.kind === "part"
-          ? removeParts(ship, pendingRemoval.ids)
+          ? removeParts(ship, cascadeIds(ship, pendingRemoval.ids))
           : setHullLength(ship, pendingRemoval.lengthSegments);
       commit(next, CLEARED);
     },
@@ -200,7 +210,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (target === current) return;
       const ids = target < current ? previewHullLength(ship, target) : [];
       if (ids.length === 0) {
-        commit(setHullLength(ship, target), { pendingRemoval: null });
+        commit(setHullLength(ship, target));
         return;
       }
       set({ pendingRemoval: { kind: "hull", lengthSegments: target, ids } });
