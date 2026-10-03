@@ -1,0 +1,46 @@
+"use client";
+
+import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
+import useTestHook from "./hooks/useTestHook";
+import useWebGLSupport from "./hooks/useWebGLSupport";
+import CatalogPanel from "./ui/CatalogPanel";
+import Drawer from "./ui/Drawer";
+import StatsPanel from "./ui/StatsPanel";
+import WebGLFallback from "./ui/WebGLFallback";
+
+export default function ShipBuilder() {
+  useTestHook();
+  const webgl = useWebGLSupport();
+
+  return (
+    <div className="flex h-[100dvh] flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="flex items-center gap-4 border-b border-slate-200 bg-white py-3 pl-4 pr-20 dark:border-slate-800 dark:bg-slate-900">
+        <Link
+          href="/"
+          className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ← gentryriggen.com
+        </Link>
+        <h1 className="text-lg font-semibold">Ship Builder</h1>
+      </header>
+      <ThemeToggle />
+
+      <div className="relative flex min-h-0 flex-1">
+        <Drawer side="left" label="Parts">
+          <CatalogPanel />
+        </Drawer>
+        <main className="relative min-w-0 flex-1">
+          {webgl === false ? (
+            <WebGLFallback />
+          ) : (
+            <div data-testid="scene-placeholder" className="h-full w-full" />
+          )}
+        </main>
+        <Drawer side="right" label="Stats">
+          <StatsPanel />
+        </Drawer>
+      </div>
+    </div>
+  );
+}
