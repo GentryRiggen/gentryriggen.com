@@ -34,9 +34,20 @@ export default function CameraRig() {
 
   useEffect(() => {
     const lengthCells = gridLength(useShipBuilderStore.getState().ship);
+    const orbit = controls.current;
+    // With damping on, update() only applies a fraction of any leftover drag
+    // momentum, so a preset would drift off its pose. Flush the momentum with
+    // damping off, place the camera, then settle once more before restoring.
+    if (orbit) {
+      orbit.enableDamping = false;
+      orbit.update();
+    }
     get().camera.position.set(...viewPosition(camera.view, lengthCells));
-    controls.current?.target.set(...TARGET);
-    controls.current?.update();
+    if (orbit) {
+      orbit.target.set(...TARGET);
+      orbit.update();
+      orbit.enableDamping = true;
+    }
   }, [camera, get]);
 
   return (
@@ -44,6 +55,9 @@ export default function CameraRig() {
       ref={controls}
       makeDefault
       target={TARGET}
+      // maxPolarAngle only keeps the camera above the target; panning moves
+      // the target, which would let the camera sink below the waterline.
+      enablePan={false}
       minDistance={6}
       maxDistance={90}
       maxPolarAngle={Math.PI / 2 - 0.08}
