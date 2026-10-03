@@ -125,6 +125,32 @@ describe("canPlace — grid parts", () => {
     );
   });
 
+  it("rejects a 2x1 whose anchor cell is over a funnel's block, at 0 and 180", () => {
+    const ship = testShip([
+      gridPart("base", "deck-1x1", 0, 4, 1),
+      gridPart("side", "deck-1x1", 0, 5, 1),
+      attachPart("f", "funnel", "base", "funnel"),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    for (const rotation of [0, 180] as const) {
+      expect(
+        canPlace(ship, gridCandidate("deck-2x1", 1, 4, 1, rotation))
+      ).toEqual(fail("Can't build over a funnel"));
+    }
+  });
+
+  it("applies the forward-half rule to a bridge at 180 and 270", () => {
+    const ship = testShip(); // length 24, half = 12
+    expect(canPlace(ship, gridCandidate("bridge", 0, 11, 0, 180))).toEqual(OK);
+    expect(canPlace(ship, gridCandidate("bridge", 0, 12, 0, 180))).toEqual(
+      fail("The bridge must be in the forward half")
+    );
+    expect(canPlace(ship, gridCandidate("bridge", 0, 8, 0, 270))).toEqual(OK);
+    expect(canPlace(ship, gridCandidate("bridge", 0, 9, 0, 270))).toEqual(
+      fail("The bridge must be in the forward half")
+    );
+  });
+
   it("keeps the bridge on top of its stack (rule 3)", () => {
     // Hand-built, inconsistent ship: something floats above the target cells.
     const ship = testShip([gridPart("float", "deck-1x1", 1, 2, 2)]);
@@ -235,6 +261,12 @@ describe("place", () => {
       fail("Duplicate part id")
     );
   });
+
+  it("rejects the reserved hull id", () => {
+    expect(place(testShip(), gridPart(HULL_ID, "deck-1x1", 0, 0, 0))).toEqual(
+      fail("Reserved part id")
+    );
+  });
 });
 
 describe("cascade removal", () => {
@@ -256,6 +288,18 @@ describe("cascade removal", () => {
       gridPart("top", "deck-2x1", 1, 4, 1),
     ]);
     expect(cascadeIds(ship, ["r"])).toEqual(["r", "top"]);
+  });
+
+  it("removing the middle of a 3-level stack cascades upward only", () => {
+    const ship = testShip([
+      gridPart("bottom", "deck-1x1", 0, 2, 0),
+      gridPart("middle", "deck-1x1", 1, 2, 0),
+      gridPart("top", "deck-1x1", 2, 2, 0),
+      attachPart("dv", "davit", "top", "davit:2:0"),
+      attachPart("lb", "lifeboat-standard", "dv", "boat"),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(cascadeIds(ship, ["middle"])).toEqual(["middle", "top", "dv", "lb"]);
   });
 
   it("removing a leaf removes only the leaf", () => {
@@ -280,6 +324,28 @@ describe("hull length", () => {
     const shrunk = setHullLength(ship, 4);
     expect(shrunk.hull.lengthSegments).toBe(4);
     expect(shrunk.parts.map((p) => p.id)).toEqual(["fwd", "mast"]);
+  });
+
+  it("drops a bridge that falls out of the forward half", () => {
+    const fullBeam = [0, 1, 2, 3].map((z) =>
+      gridPart(`l${z}`, "deck-1x1", 0, 10, z)
+    );
+    const ship = testShip(
+      [...fullBeam, gridPart("br", "bridge", 1, 10, 0)],
+      12
+    );
+    expect(validateShip(ship)).toEqual(OK);
+    expect(previewHullLength(ship, 4)).toEqual(["br"]);
+    const shrunk = setHullLength(ship, 4);
+    expect(shrunk.parts.map((p) => p.id)).toEqual(["l0", "l1", "l2", "l3"]);
+    expect(validateShip(shrunk)).toEqual(OK);
+  });
+
+  it("keeps a bridge that stays in the forward half", () => {
+    const ship = testShip([gridPart("br", "bridge", 0, 2, 0)], 12);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(previewHullLength(ship, 4)).toEqual([]);
+    expect(setHullLength(ship, 4).parts.map((p) => p.id)).toEqual(["br"]);
   });
 
   it("growing keeps every part", () => {

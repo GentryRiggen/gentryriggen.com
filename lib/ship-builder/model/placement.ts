@@ -11,7 +11,13 @@ import {
   partCells,
   type Occupancy,
 } from "./grid";
-import type { AttachPartDef, GridPartDef, PlacedPart, Ship } from "./types";
+import {
+  HULL_ID,
+  type AttachPartDef,
+  type GridPartDef,
+  type PlacedPart,
+  type Ship,
+} from "./types";
 
 export type RuleResult = { ok: true } | { ok: false; reason: string };
 export type PartCandidate = Omit<PlacedPart, "id">;
@@ -115,6 +121,7 @@ function canPlaceAttach(
   return OK;
 }
 
+/** Expects a ship that passed validateShip (no parent cycles). */
 export function canPlace(
   ship: Ship,
   candidate: PartCandidate,
@@ -130,6 +137,9 @@ export function place(
   ship: Ship,
   part: PlacedPart
 ): { ok: true; ship: Ship } | { ok: false; reason: string } {
+  if (part.id === HULL_ID) {
+    return { ok: false, reason: "Reserved part id" };
+  }
   if (ship.parts.some((p) => p.id === part.id)) {
     return { ok: false, reason: "Duplicate part id" };
   }
@@ -139,8 +149,9 @@ export function place(
 }
 
 /**
- * Structural check only (bounds, support, attach point exists). Used to find
- * parts left dangling after a removal or a hull shrink.
+ * Structural check (bounds, support, attach point exists, bridge still in the
+ * forward half). Used to find parts left dangling or invalid after a removal
+ * or a hull shrink.
  */
 function isStillSupported(
   ship: Ship,
@@ -153,7 +164,13 @@ function isStillSupported(
       (p) => p.id === pointId
     );
   }
-  return partCells(part).every(
+  const def = getPartDef(part.type);
+  const cells = partCells(part);
+  const isBridge = def.placement === "grid" && def.role === "bridge";
+  if (isBridge && cells.some((cell) => !isForwardHalf(ship, cell.x))) {
+    return false;
+  }
+  return cells.every(
     (cell) =>
       inBounds(ship, cell) &&
       (cell.level === 0 ||
@@ -161,7 +178,10 @@ function isStillSupported(
   );
 }
 
-/** Root ids plus everything that loses support without them, in ship order. */
+/**
+ * Root ids plus everything that loses support without them, in ship order.
+ * Expects a ship that passed validateShip (no parent cycles).
+ */
 export function cascadeIds(ship: Ship, rootIds: string[]): string[] {
   const removed = new Set(rootIds);
   let changed = true;
