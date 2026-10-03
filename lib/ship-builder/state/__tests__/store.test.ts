@@ -260,14 +260,37 @@ describe("hull length", () => {
 });
 
 describe("load, new, save, camera", () => {
-  it("loadShip resets history and tools", () => {
+  it("loadShip keeps an undo step and resets tools", () => {
     store().selectTool("deck-1x1");
     store().placeAt(cell(0, 0, 0));
     store().loadShip(testShip([], 5), "ship-9");
     expect(store().ship.hull.lengthSegments).toBe(5);
     expect(store().savedId).toBe("ship-9");
-    expect(store().past).toHaveLength(0);
+    expect(store().past).toHaveLength(2);
+    expect(store().future).toHaveLength(0);
     expect(store().tool).toEqual({ kind: "none" });
+  });
+
+  it("loadShip with resetHistory starts a clean history", () => {
+    store().selectTool("deck-1x1");
+    store().placeAt(cell(0, 0, 0));
+    store().loadShip(testShip([], 5), "ship-9", { resetHistory: true });
+    expect(store().past).toHaveLength(0);
+    expect(store().future).toHaveLength(0);
+    expect(store().tool).toEqual({ kind: "none" });
+  });
+
+  it("undoing a load restores the previous ship and savedId", () => {
+    store().markSaved("ship-1");
+    store().selectTool("deck-1x1");
+    store().placeAt(cell(0, 0, 0));
+    store().loadShip(testShip([], 5), "ship-9");
+    store().undo();
+    expect(store().ship.parts).toHaveLength(1);
+    expect(store().savedId).toBe("ship-1");
+    store().redo();
+    expect(store().ship.hull.lengthSegments).toBe(5);
+    expect(store().savedId).toBe("ship-9");
   });
 
   it("newShip is undoable and clears savedId", () => {
@@ -279,6 +302,7 @@ describe("load, new, save, camera", () => {
     expect(store().savedId).toBeNull();
     store().undo();
     expect(store().ship.parts).toHaveLength(1);
+    expect(store().savedId).toBe("ship-1");
   });
 
   it("truncates long names", () => {

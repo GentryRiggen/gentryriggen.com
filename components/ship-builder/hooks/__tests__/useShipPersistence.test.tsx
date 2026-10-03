@@ -84,6 +84,7 @@ describe("useShipPersistence", () => {
     render(<Harness />);
     expect(store().ship).toEqual(shared);
     expect(store().savedId).toBe("ship-3");
+    expect(store().past).toHaveLength(0);
   });
 
   it("autosaves after changes, debounced", () => {

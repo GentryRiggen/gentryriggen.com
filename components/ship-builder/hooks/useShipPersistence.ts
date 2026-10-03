@@ -62,7 +62,13 @@ export default function useShipPersistence() {
       hasLoadedRef.current = true;
       if (!loadFromHash()) {
         const saved = loadAutosave();
-        if (saved) store.getState().loadShip(saved.ship, saved.savedId);
+        // Restoring on page load isn't an edit: don't offer to undo into the
+        // empty default hull.
+        if (saved) {
+          store
+            .getState()
+            .loadShip(saved.ship, saved.savedId, { resetHistory: true });
+        }
       }
     }
 

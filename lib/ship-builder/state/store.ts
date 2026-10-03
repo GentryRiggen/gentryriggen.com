@@ -38,6 +38,12 @@ export interface Notice {
   id: number;
 }
 
+/** What undo/redo restore: the ship and which My Ships entry it belongs to. */
+interface HistoryEntry {
+  ship: Ship;
+  savedId: string | null;
+}
+
 interface ShipBuilderData {
   ship: Ship;
   savedId: string | null;
@@ -45,8 +51,8 @@ interface ShipBuilderData {
   selectedId: string | null;
   hover: HoverState | null;
   pendingRemoval: PendingRemoval | null;
-  past: Ship[];
-  future: Ship[];
+  past: HistoryEntry[];
+  future: HistoryEntry[];
   /** `id` changes on every setNotice so repeated text restarts and re-announces. */
   notice: Notice | null;
   camera: { view: CameraView; nonce: number };
@@ -66,7 +72,11 @@ export interface ShipBuilderState extends ShipBuilderData {
   rename: (name: string) => void;
   undo: () => void;
   redo: () => void;
-  loadShip: (ship: Ship, savedId: string | null) => void;
+  loadShip: (
+    ship: Ship,
+    savedId: string | null,
+    options?: { resetHistory?: boolean }
+  ) => void;
   newShip: () => void;
   markSaved: (savedId: string) => void;
   setNotice: (text: string | null) => void;
@@ -122,10 +132,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
    * computed against the old ship, so they're always dropped.
    */
   function commit(next: Ship, extra: Partial<ShipBuilderData> = {}) {
-    const { ship, past } = get();
+    const { ship, savedId, past } = get();
     set({
       ship: next,
-      past: [...past, ship].slice(-HISTORY_LIMIT),
+      past: [...past, { ship, savedId }].slice(-HISTORY_LIMIT),
       future: [],
       hover: null,
       pendingRemoval: null,
@@ -230,32 +240,55 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     undo() {
-      const { ship, past, future } = get();
+      const { ship, savedId, past, future } = get();
       const previous = past.at(-1);
       if (!previous) return;
       set({
-        ship: { ...previous, name: ship.name },
+        ship: { ...previous.ship, name: ship.name },
+        savedId: previous.savedId,
         past: past.slice(0, -1),
-        future: [ship, ...future],
+        future: [{ ship, savedId }, ...future],
         ...CLEARED,
       });
     },
 
     redo() {
-      const { ship, past, future } = get();
+      const { ship, savedId, past, future } = get();
       const [next, ...rest] = future;
       if (!next) return;
       set({
-        ship: { ...next, name: ship.name },
-        past: [...past, ship].slice(-HISTORY_LIMIT),
+        ship: { ...next.ship, name: ship.name },
+        savedId: next.savedId,
+        past: [...past, { ship, savedId }].slice(-HISTORY_LIMIT),
         future: rest,
         ...CLEARED,
       });
     },
 
-    loadShip(ship, savedId) {
-      const { camera, notice } = get();
-      set({ ...createInitialState(), ship, savedId, camera, notice });
+    loadShip(ship, savedId, options) {
+      const {
+        camera,
+        notice,
+        ship: outgoing,
+        savedId: outgoingId,
+        past,
+      } = get();
+      const history = options?.resetHistory
+        ? { past: [], future: [] }
+        : {
+            past: [...past, { ship: outgoing, savedId: outgoingId }].slice(
+              -HISTORY_LIMIT
+            ),
+            future: [],
+          };
+      set({
+        ...createInitialState(),
+        ...history,
+        ship,
+        savedId,
+        camera,
+        notice,
+      });
     },
 
     newShip() {
