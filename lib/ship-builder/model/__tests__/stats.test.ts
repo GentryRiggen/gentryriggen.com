@@ -1,4 +1,9 @@
-import { computeStats, coverageLevel, TITANIC_REFERENCE } from "../stats";
+import {
+  computeSpeed,
+  computeStats,
+  coverageLevel,
+  TITANIC_REFERENCE,
+} from "../stats";
 import { GRID_WIDTH } from "../grid";
 import type { PlacedPart } from "../types";
 import { attachPart, gridPart, testShip } from "../../testing";
@@ -63,14 +68,14 @@ describe("computeStats", () => {
     expect(stats.topSpeedKnots).toBe(22.1);
   });
 
-  it("clamps speed to the sane range", () => {
-    const parts = Array.from({ length: 10 }, (_, i) => [
-      gridPart(`d${i}`, "deck-1x1", 0, i, 0),
-      attachPart(`f${i}`, "funnel", `d${i}`, "funnel"),
-    ]).flat();
-    expect(computeStats(testShip(parts, 12)).topSpeedKnots).toBeLessThanOrEqual(
-      30
+  it("formats people counts with thousands separators in the warning", () => {
+    const cabins = Array.from({ length: 9 }, (_, x) =>
+      gridPart(`c${x}`, "cabin-3rd", 0, x, 0)
     );
+    const stats = computeStats(testShip(cabins));
+    expect(stats.peopleAboard).toBe(480 + 1080);
+    const lifeboats = stats.warnings.find((w) => w.code === "lifeboats");
+    expect(lifeboats?.message).toContain("of 1,560 aboard");
   });
 
   it("sums lifeboat seats and coverage", () => {
@@ -117,6 +122,19 @@ describe("computeStats", () => {
     const parts = [0, 1, 2, 3].flatMap((level) => fillLevel(level, len));
     const codes = computeStats(testShip(parts, 4)).warnings.map((w) => w.code);
     expect(codes).toContain("top-heavy");
+  });
+});
+
+describe("computeSpeed", () => {
+  it("clamps to the sane range", () => {
+    // 14 + 6*2.2 + 12*0.25 = 30.2 before tonnage loss
+    expect(computeSpeed(6, 12, 0)).toBe(30);
+    // 14 + 2.2 + 4*0.25 - 20 = -2.8
+    expect(computeSpeed(1, 4, 200000)).toBe(8);
+  });
+
+  it("is 0 with no funnels", () => {
+    expect(computeSpeed(0, 12, 0)).toBe(0);
   });
 });
 

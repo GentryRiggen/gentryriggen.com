@@ -6,7 +6,17 @@ import {
 } from "../attach";
 import { getPartDef } from "../catalog";
 import { HULL_ID, type AttachPartDef } from "../types";
+import { validateShip } from "../placement";
 import { attachPart, gridPart, testShip } from "../../testing";
+
+/** Rotation-90 deck-2x1 at (level 1, x 4, z 2), covering z 2-3. */
+function portRotatedShip() {
+  return testShip([
+    gridPart("s2", "deck-1x1", 0, 4, 2),
+    gridPart("s3", "deck-1x1", 0, 4, 3),
+    gridPart("top", "deck-2x1", 1, 4, 2, 90),
+  ]);
+}
 
 describe("attach points", () => {
   it("gives the hull fore and aft mast mounts that track the stern", () => {
@@ -105,6 +115,47 @@ describe("attach points", () => {
     expect(mount.position.x).toBeCloseTo(2.5);
     expect(mount.position.y).toBeCloseTo(2.8);
     expect(mount.position.z).toBeCloseTo(-0.6);
+  });
+
+  it("places a rotated 2x1's funnel mount and starboard davit point", () => {
+    const ship = testShip([
+      gridPart("s0", "deck-1x1", 0, 4, 0),
+      gridPart("s1", "deck-1x1", 0, 4, 1),
+      gridPart("top", "deck-2x1", 1, 4, 0, 90), // covers z 0-1 at x 4
+    ]);
+    expect(validateShip(ship)).toEqual({ ok: true });
+    const points = attachPointsOf(ship, "top");
+    expect(points.find((p) => p.type === "funnel-mount")).toEqual({
+      id: "funnel",
+      type: "funnel-mount",
+      position: { x: 4.5, y: 2, z: 1 },
+    });
+    const davits = points.filter((p) => p.type === "davit-point");
+    expect(davits).toEqual([
+      expect.objectContaining({ id: "davit:4:0", side: "starboard" }),
+    ]);
+  });
+
+  it("gives a rotated 2x1 on the port edge one port davit point", () => {
+    const ship = portRotatedShip();
+    expect(validateShip(ship)).toEqual({ ok: true });
+    const davits = attachPointsOf(ship, "top").filter(
+      (p) => p.type === "davit-point"
+    );
+    expect(davits).toEqual([
+      expect.objectContaining({ id: "davit:4:3", side: "port" }),
+    ]);
+  });
+
+  it("hangs a port davit's boat mount outboard of the port edge", () => {
+    const ship = testShip([
+      ...portRotatedShip().parts,
+      attachPart("dv", "davit", "top", "davit:4:3"),
+    ]);
+    expect(validateShip(ship)).toEqual({ ok: true });
+    const [mount] = attachPointsOf(ship, "dv");
+    expect(mount.side).toBe("port");
+    expect(mount.position.z).toBeCloseTo(4.6);
   });
 
   it("returns nothing for unknown parents", () => {

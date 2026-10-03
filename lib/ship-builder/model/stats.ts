@@ -73,7 +73,7 @@ function partBaseY(ship: Ship, part: PlacedPart, occupancy: Occupancy): number {
   return resolveAttachPoint(ship, part.anchor, occupancy)?.position.y ?? 0;
 }
 
-function computeSpeed(
+export function computeSpeed(
   funnels: number,
   segments: number,
   grossTonnage: number
