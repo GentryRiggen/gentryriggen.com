@@ -3,11 +3,17 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
+import useShipPersistence from "./hooks/useShipPersistence";
 import useTestHook from "./hooks/useTestHook";
 import useWebGLSupport from "./hooks/useWebGLSupport";
 import CatalogPanel from "./ui/CatalogPanel";
 import Drawer from "./ui/Drawer";
+import Notice from "./ui/Notice";
+import PlacementHint from "./ui/PlacementHint";
+import RemovalConfirm from "./ui/RemovalConfirm";
 import StatsPanel from "./ui/StatsPanel";
+import Toolbar from "./ui/Toolbar";
 import WebGLFallback from "./ui/WebGLFallback";
 
 const Scene = dynamic(() => import("./scene/Scene"), {
@@ -21,6 +27,8 @@ const Scene = dynamic(() => import("./scene/Scene"), {
 
 export default function ShipBuilder() {
   useTestHook();
+  useShipPersistence();
+  useKeyboardShortcuts();
   const webgl = useWebGLSupport();
 
   return (
@@ -42,11 +50,15 @@ export default function ShipBuilder() {
         </Drawer>
         <main className="relative min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
+          <Notice />
+          <RemovalConfirm />
+          <PlacementHint />
         </main>
         <Drawer side="right" label="Stats">
           <StatsPanel />
         </Drawer>
       </div>
+      <Toolbar />
     </div>
   );
 }
