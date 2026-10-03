@@ -52,3 +52,6 @@ next-env.d.ts
 *.swp
 *.swo
 *~
+
+# agent worktrees
+/.claude/worktrees/
