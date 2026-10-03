@@ -109,6 +109,28 @@ describe("migrate", () => {
     });
   });
 
+  it("stops at the last good record when a step throws", () => {
+    const start = { v: -1, name: "x" };
+    const step0 = { v: 0, name: "x" };
+    const result = migrate(start, {
+      [-1]: () => step0,
+      0: () => {
+        throw new Error("boom");
+      },
+    });
+    expect(result).toBe(step0);
+    expect(parseShip(result).ok).toBe(false);
+  });
+
+  it("stops at the last good record when a step returns a non-record", () => {
+    const start = { v: 0, name: "x" };
+    const result = migrate(start, {
+      0: () => null as unknown as Record<string, unknown>,
+    });
+    expect(result).toBe(start);
+    expect(parseShip(result).ok).toBe(false);
+  });
+
   it("leaves current and unknown data alone", () => {
     expect(migrate(validShip)).toBe(validShip);
     expect(migrate("nope")).toBe("nope");

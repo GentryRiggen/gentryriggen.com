@@ -384,4 +384,14 @@ describe("validateShip", () => {
       ).ok
     ).toBe(false);
   });
+
+  it("rejects a rotated attach part", () => {
+    const mast = {
+      ...attachPart("m", "mast-fore", HULL_ID, "mast-fore"),
+      rotation: 270 as const,
+    };
+    expect(validateShip(testShip([mast]))).toEqual(
+      fail("Part m: Attach parts can't be rotated")
+    );
+  });
 });

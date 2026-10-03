@@ -110,6 +110,9 @@ function canPlaceAttach(
   candidate: PartCandidate,
   occupancy: Occupancy
 ): RuleResult {
+  // The store always places attach parts at rotation 0; anything else came
+  // from hand-edited or hostile data.
+  if (candidate.rotation !== 0) return fail("Attach parts can't be rotated");
   const missing = fail(`Needs a free ${ATTACH_POINT_LABELS[def.attachTo]}`);
   if (candidate.anchor.kind !== "attach") return missing;
   const { parentId, pointId } = candidate.anchor;

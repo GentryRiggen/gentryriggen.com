@@ -60,8 +60,21 @@ export function migrate(
   while (typeof current.v === "number" && current.v < CURRENT_VERSION) {
     const step = migrations[current.v];
     if (!step) break;
-    const next = step(current);
-    if (typeof next.v !== "number" || next.v <= current.v) break;
+    let next: unknown;
+    try {
+      next = step(current);
+    } catch {
+      break;
+    }
+    // Each step must hand back a record with a strictly higher version;
+    // otherwise keep the last good record and let the schema reject it.
+    if (
+      !isRecord(next) ||
+      typeof next.v !== "number" ||
+      !(next.v > current.v)
+    ) {
+      break;
+    }
     current = next;
   }
   return current;
