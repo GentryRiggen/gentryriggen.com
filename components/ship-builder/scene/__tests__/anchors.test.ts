@@ -1,4 +1,4 @@
-import { sameAnchor } from "../anchors";
+import { isTap, sameAnchor, TAP_SLOP_PX, TOUCH_TAP_SLOP_PX } from "../anchors";
 import type { Anchor } from "@/lib/ship-builder/model/types";
 
 const grid: Anchor = { kind: "grid", level: 1, x: 3, z: 2 };
@@ -34,5 +34,32 @@ describe("sameAnchor", () => {
     expect(sameAnchor(grid, attach)).toBe(false);
     expect(sameAnchor(grid, null)).toBe(false);
     expect(sameAnchor(undefined, attach)).toBe(false);
+  });
+});
+
+describe("isTap", () => {
+  it("allows a few pixels of mouse movement but not a drag", () => {
+    expect(isTap({ delta: TAP_SLOP_PX })).toBe(true);
+    expect(isTap({ delta: TAP_SLOP_PX + 1 })).toBe(false);
+    expect(isTap({ delta: 6, pointerType: "mouse" })).toBe(false);
+  });
+
+  it("is more forgiving for touch", () => {
+    expect(isTap({ delta: TOUCH_TAP_SLOP_PX, pointerType: "touch" })).toBe(
+      true
+    );
+    expect(isTap({ delta: TOUCH_TAP_SLOP_PX + 1, pointerType: "touch" })).toBe(
+      false
+    );
+  });
+
+  it("reads the pointer type from the native event", () => {
+    expect(isTap({ delta: 8, nativeEvent: { pointerType: "touch" } })).toBe(
+      true
+    );
+    expect(isTap({ delta: 8, nativeEvent: { pointerType: "mouse" } })).toBe(
+      false
+    );
+    expect(isTap({ delta: 8, nativeEvent: {} })).toBe(false);
   });
 });

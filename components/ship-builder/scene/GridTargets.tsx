@@ -19,7 +19,7 @@ import {
 import type { GridAnchor } from "@/lib/ship-builder/model/types";
 import { useCursor } from "@react-three/drei";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import { sameAnchor, TAP_SLOP_PX } from "./anchors";
+import { isTap, sameAnchor } from "./anchors";
 import { modelToWorld } from "./coords";
 import { PALETTE } from "./palette";
 
@@ -130,7 +130,7 @@ export default function GridTargets() {
               }}
               onClick={(event) => {
                 event.stopPropagation();
-                if (event.delta > TAP_SLOP_PX) return;
+                if (!isTap(event)) return;
                 const result = placeAt(anchor);
                 // Touch has no hover, so show the red ghost and the reason.
                 if (!result.ok) hoverAt(anchor);
