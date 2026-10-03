@@ -1,4 +1,5 @@
 import { newId } from "../model/ids";
+import { MAX_NAME_LENGTH } from "../model/placement";
 import type { Ship } from "../model/types";
 import { parseShip } from "./schema";
 
@@ -25,13 +26,27 @@ function storage(): Storage | null {
   }
 }
 
-function readJson(key: string): unknown {
+/**
+ * `ok: false` only when storage itself throws on read, so callers can tell
+ * "unreadable" (don't overwrite) apart from "absent or corrupt" (null value).
+ */
+function readStored(key: string): { ok: true; value: unknown } | { ok: false } {
+  let text: string | null | undefined;
   try {
-    const text = storage()?.getItem(key);
-    return text ? JSON.parse(text) : null;
+    text = storage()?.getItem(key);
   } catch {
-    return null;
+    return { ok: false };
   }
+  try {
+    return { ok: true, value: text ? JSON.parse(text) : null };
+  } catch {
+    return { ok: true, value: null };
+  }
+}
+
+function readJson(key: string): unknown {
+  const stored = readStored(key);
+  return stored.ok ? stored.value : null;
 }
 
 function writeJson(key: string, value: unknown): boolean {
@@ -63,7 +78,10 @@ export function saveAutosave(ship: Ship, savedId: string | null): boolean {
 }
 
 export function listShips(): SavedShip[] {
-  const raw = readJson(SHIPS_KEY);
+  return parseShipList(readJson(SHIPS_KEY));
+}
+
+function parseShipList(raw: unknown): SavedShip[] {
   if (!Array.isArray(raw)) return [];
   const ships: SavedShip[] = [];
   for (const entry of raw) {
@@ -98,22 +116,34 @@ export function saveShip(
     savedAt: now,
     ship,
   };
-  const others = listShips().filter((s) => s.id !== entry.id);
-  return writeJson(SHIPS_KEY, [entry, ...others]) ? entry : null;
+  const saved = updateShips((ships) => [
+    entry,
+    ...ships.filter((s) => s.id !== entry.id),
+  ]);
+  return saved ? entry : null;
+}
+
+/**
+ * Read-modify-write of the ship list. Refuses to write when the current list
+ * can't be read, since writing then would wipe every saved ship.
+ */
+function updateShips(update: (ships: SavedShip[]) => SavedShip[]): boolean {
+  const stored = readStored(SHIPS_KEY);
+  if (!stored.ok) return false;
+  return writeJson(SHIPS_KEY, update(parseShipList(stored.value)));
 }
 
 export function deleteShip(id: string): boolean {
-  return writeJson(
-    SHIPS_KEY,
-    listShips().filter((s) => s.id !== id)
-  );
+  return updateShips((ships) => ships.filter((s) => s.id !== id));
 }
 
 export function renameShip(id: string, name: string): boolean {
-  return writeJson(
-    SHIPS_KEY,
-    listShips().map((s) =>
-      s.id === id ? { ...s, name, ship: { ...s.ship, name } } : s
+  const clamped = name.slice(0, MAX_NAME_LENGTH);
+  return updateShips((ships) =>
+    ships.map((s) =>
+      s.id === id
+        ? { ...s, name: clamped, ship: { ...s.ship, name: clamped } }
+        : s
     )
   );
 }

@@ -68,6 +68,27 @@ describe("My Ships", () => {
     expect(listShips()).toEqual([]);
   });
 
+  it("clamps a long rename so the entry stays listed", () => {
+    const saved = saveShip(ship, null)!;
+    expect(renameShip(saved.id, "x".repeat(80))).toBe(true);
+    const [entry] = listShips();
+    expect(entry.id).toBe(saved.id);
+    expect(entry.name).toHaveLength(60);
+    expect(entry.ship.name).toHaveLength(60);
+  });
+
+  it("does not overwrite the list when reading it throws", () => {
+    saveShip(ship, null);
+    jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+    const setItem = jest.spyOn(Storage.prototype, "setItem");
+    expect(saveShip(ship, null)).toBeNull();
+    expect(renameShip("any", "Olympic")).toBe(false);
+    expect(deleteShip("any")).toBe(false);
+    expect(setItem).not.toHaveBeenCalledWith(SHIPS_KEY, expect.anything());
+  });
+
   it("skips corrupt entries", () => {
     localStorage.setItem(
       SHIPS_KEY,
