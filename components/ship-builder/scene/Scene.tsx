@@ -4,7 +4,10 @@ import { Canvas } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import AttachMarkers from "./AttachMarkers";
 import CameraRig from "./CameraRig";
+import GhostPreview from "./GhostPreview";
+import GridTargets from "./GridTargets";
 import Hull from "./Hull";
 import Ocean from "./Ocean";
 import { PALETTE } from "./palette";
@@ -29,6 +32,9 @@ export default function Scene() {
         <Ocean />
         <Hull lengthCells={lengthCells} />
         <ShipParts />
+        <GridTargets />
+        <AttachMarkers />
+        <GhostPreview />
         <CameraRig />
       </Canvas>
     </div>
