@@ -23,6 +23,13 @@ const STABILITY_CLASSES: Record<Stability, string> = {
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
+// Plain rounding would show 100% for 0.996 while the ship is still short of
+// seats, so anything below full coverage caps at 99%.
+function formatCoverage(coverage: number): string {
+  const percent = Math.round(coverage * 100);
+  return `${coverage < 1 ? Math.min(percent, 99) : percent}%`;
+}
+
 interface StatRowProps {
   label: string;
   testId: string;
@@ -98,7 +105,7 @@ export default function StatsPanel() {
           <StatRow
             label="Coverage"
             testId="stat-coverage"
-            value={`${Math.round(stats.coverage * 100)}%`}
+            value={formatCoverage(stats.coverage)}
             valueClass={COVERAGE_CLASSES[stats.coverageLevel]}
           />
           <StatRow
