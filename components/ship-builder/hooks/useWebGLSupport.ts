@@ -8,9 +8,11 @@ function detect(): boolean {
   if (cached === undefined) {
     try {
       const canvas = document.createElement("canvas");
-      cached = Boolean(
-        canvas.getContext("webgl2") ?? canvas.getContext("webgl")
-      );
+      const ctx = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+      cached = ctx !== null;
+      // Release the probe context so it doesn't count against the browser's
+      // limit on live WebGL contexts.
+      ctx?.getExtension("WEBGL_lose_context")?.loseContext();
     } catch {
       cached = false;
     }

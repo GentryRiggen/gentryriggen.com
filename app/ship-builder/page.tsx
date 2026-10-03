@@ -14,6 +14,12 @@ export const metadata: Metadata = {
     url: "https://gentryriggen.com/ship-builder",
     siteName: "Gentry Riggen",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    title: "Ship Builder",
+    description,
   },
 };
 

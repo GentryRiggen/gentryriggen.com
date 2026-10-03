@@ -23,7 +23,7 @@ export default function Drawer({ side, label, children }: DrawerProps) {
         aria-controls={id}
         onClick={() => setOpen((value) => !value)}
         className={`absolute top-3 z-20 rounded-md border border-slate-300 bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 ${
-          left ? "left-3" : "right-3"
+          left ? "left-3" : "right-20"
         }`}
       >
         {label}
@@ -31,9 +31,9 @@ export default function Drawer({ side, label, children }: DrawerProps) {
       <aside
         id={id}
         aria-label={label}
-        className={`absolute inset-y-0 z-30 w-72 overflow-y-auto transition-transform lg:static lg:z-auto lg:translate-x-0 ${panelClass} ${
+        className={`absolute inset-y-0 z-30 w-72 overflow-y-auto transition-[transform,visibility] lg:static lg:z-auto lg:translate-x-0 ${panelClass} ${
           left ? "left-0 border-r" : "right-0 border-l"
-        } ${open ? "translate-x-0" : closed}`}
+        } ${open ? "visible translate-x-0" : `invisible lg:visible ${closed}`}`}
       >
         <div className="flex justify-end p-2 lg:hidden">
           <button

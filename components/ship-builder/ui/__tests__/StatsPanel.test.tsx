@@ -16,14 +16,14 @@ beforeEach(() => {
 describe("StatsPanel", () => {
   it("renders stats for the store's ship", () => {
     render(<StatsPanel />);
-    expect(screen.getByTestId("stat-passengers")).toHaveTextContent("0");
-    expect(screen.getByTestId("stat-crew")).toHaveTextContent("480");
-    expect(screen.getByTestId("stat-people")).toHaveTextContent("480");
-    expect(screen.getByTestId("stat-seats")).toHaveTextContent("0");
-    expect(screen.getByTestId("stat-coverage")).toHaveTextContent("0%");
-    expect(screen.getByTestId("stat-tonnage")).toHaveTextContent("24,192");
-    expect(screen.getByTestId("stat-speed")).toHaveTextContent("0");
-    expect(screen.getByTestId("stat-stability")).toHaveTextContent("Stable");
+    expect(screen.getByTestId("stat-passengers")).toHaveTextContent(/^0$/);
+    expect(screen.getByTestId("stat-crew")).toHaveTextContent(/^480$/);
+    expect(screen.getByTestId("stat-people")).toHaveTextContent(/^480$/);
+    expect(screen.getByTestId("stat-seats")).toHaveTextContent(/^0$/);
+    expect(screen.getByTestId("stat-coverage")).toHaveTextContent(/^0%$/);
+    expect(screen.getByTestId("stat-tonnage")).toHaveTextContent(/^24,192$/);
+    expect(screen.getByTestId("stat-speed")).toHaveTextContent(/^0$/);
+    expect(screen.getByTestId("stat-stability")).toHaveTextContent(/^Stable$/);
   });
 
   it("updates when the ship changes", () => {
@@ -39,9 +39,9 @@ describe("StatsPanel", () => {
         ]),
       })
     );
-    expect(screen.getByTestId("stat-passengers")).toHaveTextContent("30");
-    expect(screen.getByTestId("stat-seats")).toHaveTextContent("65");
-    expect(screen.getByTestId("stat-coverage")).toHaveTextContent("13%");
+    expect(screen.getByTestId("stat-passengers")).toHaveTextContent(/^30$/);
+    expect(screen.getByTestId("stat-seats")).toHaveTextContent(/^65$/);
+    expect(screen.getByTestId("stat-coverage")).toHaveTextContent(/^13%$/);
   });
 
   it("never shows 100% coverage while short of seats", () => {
@@ -61,9 +61,9 @@ describe("StatsPanel", () => {
     expect(validateShip(ship)).toEqual({ ok: true });
     render(<StatsPanel />);
     act(() => useShipBuilderStore.setState({ ship }));
-    expect(screen.getByTestId("stat-people")).toHaveTextContent("420");
-    expect(screen.getByTestId("stat-seats")).toHaveTextContent("419");
-    expect(screen.getByTestId("stat-coverage")).toHaveTextContent("99%");
+    expect(screen.getByTestId("stat-people")).toHaveTextContent(/^420$/);
+    expect(screen.getByTestId("stat-seats")).toHaveTextContent(/^419$/);
+    expect(screen.getByTestId("stat-coverage")).toHaveTextContent(/^99%$/);
   });
 
   it("lists warnings and the Titanic reference", () => {
