@@ -6,6 +6,8 @@ import type { Ship } from "../model/types";
 import { parseShip } from "./schema";
 
 export const MAX_SHARE_LENGTH = 20000;
+/** The largest valid ship serialises to about 83 KB of JSON. */
+export const MAX_JSON_LENGTH = 200_000;
 export const SHARE_PATH = "/ship-builder";
 
 export type HashResult =
@@ -39,7 +41,10 @@ export function decodeShareHash(hash: string): HashResult {
   } catch {
     return INVALID;
   }
-  if (!json) return INVALID;
+  // lz-string inflates quadratically, so a short hash can expand to tens of
+  // megabytes. Reject anything larger than a maximal valid ship before
+  // parsing it.
+  if (!json || json.length > MAX_JSON_LENGTH) return INVALID;
 
   let raw: unknown;
   try {

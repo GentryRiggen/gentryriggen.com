@@ -47,12 +47,16 @@ export type Migration = (raw: RawShip) => RawShip;
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
 const MIGRATIONS: Record<number, Migration> = {};
 
+function isRecord(value: unknown): value is RawShip {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function migrate(
   raw: unknown,
   migrations: Record<number, Migration> = MIGRATIONS
 ): unknown {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
-  let current = raw as RawShip;
+  if (!isRecord(raw)) return raw;
+  let current = raw;
   while (typeof current.v === "number" && current.v < CURRENT_VERSION) {
     const step = migrations[current.v];
     if (!step) break;
@@ -67,11 +71,31 @@ export type ParseResult =
   | { ok: true; ship: Ship }
   | { ok: false; error: string };
 
+const INVALID: ParseResult = { ok: false, error: "Invalid ship data" };
+
+/**
+ * Cheap shape check before zod: zod visits every array element (and records
+ * an issue for each) even past `.max()`, so an oversized parts array would
+ * cost time and memory proportional to its length.
+ */
+function hasBoundedParts(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const { parts } = value;
+  return Array.isArray(parts) && parts.length <= MAX_PARTS;
+}
+
 export function parseShip(raw: unknown): ParseResult {
-  const parsed = shipSchema.safeParse(migrate(raw));
-  if (!parsed.success) return { ok: false, error: "Invalid ship data" };
-  const ship: Ship = parsed.data;
-  const valid = validateShip(ship);
-  if (!valid.ok) return { ok: false, error: valid.reason };
-  return { ok: true, ship };
+  try {
+    const migrated = migrate(raw);
+    if (!hasBoundedParts(migrated)) return INVALID;
+    const parsed = shipSchema.safeParse(migrated);
+    if (!parsed.success) return INVALID;
+    const ship: Ship = parsed.data;
+    const valid = validateShip(ship);
+    if (!valid.ok) return { ok: false, error: valid.reason };
+    return { ok: true, ship };
+  } catch {
+    // Hostile input (getters, deep nesting) can throw, including RangeError.
+    return INVALID;
+  }
 }

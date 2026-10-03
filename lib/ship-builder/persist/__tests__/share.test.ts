@@ -3,6 +3,7 @@ import {
   buildShareUrl,
   decodeShareHash,
   encodeShip,
+  MAX_JSON_LENGTH,
   MAX_SHARE_LENGTH,
 } from "../share";
 import { attachPart, gridPart, testShip } from "../../testing";
@@ -50,6 +51,24 @@ describe("share links", () => {
     ],
     ["oversize", `#ship=${"A".repeat(MAX_SHARE_LENGTH + 1)}`],
   ])("returns invalid for %s", (_label, hash) => {
+    expect(decodeShareHash(hash)).toEqual({ kind: "invalid" });
+  });
+
+  it("rejects a decompression bomb quickly", () => {
+    const json =
+      '{"v":1,"name":"x","hull":{"lengthSegments":8},"parts":[' +
+      "0,".repeat(100_000) +
+      "0]}";
+    const hash = `#ship=${compressToEncodedURIComponent(json)}`;
+    const start = performance.now();
+    expect(decodeShareHash(hash)).toEqual({ kind: "invalid" });
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it("rejects decompressed JSON over the length cap", () => {
+    const json = JSON.stringify({ ...ship, pad: "x".repeat(MAX_JSON_LENGTH) });
+    const hash = `#ship=${compressToEncodedURIComponent(json)}`;
+    expect(hash.length).toBeLessThan(MAX_SHARE_LENGTH);
     expect(decodeShareHash(hash)).toEqual({ kind: "invalid" });
   });
 });

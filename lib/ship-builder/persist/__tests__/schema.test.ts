@@ -42,8 +42,41 @@ describe("parseShip", () => {
         ),
       },
     ],
+    [
+      "too many parts as bare numbers",
+      { ...validShip, parts: Array.from({ length: MAX_PARTS + 1 }, () => 0) },
+    ],
+    ["parts that aren't an array", { ...validShip, parts: { length: 1 } }],
   ])("rejects %s", (_label, raw) => {
     expect(parseShip(raw).ok).toBe(false);
+  });
+
+  it("checks the parts count before visiting any part", () => {
+    const visited = jest.fn();
+    const parts = new Proxy(
+      Array.from({ length: MAX_PARTS + 1 }, () => 0),
+      {
+        get(target, key, receiver) {
+          if (typeof key === "string" && /^\d+$/.test(key)) visited(key);
+          return Reflect.get(target, key, receiver);
+        },
+      }
+    );
+    expect(parseShip({ ...validShip, parts }).ok).toBe(false);
+    expect(visited).not.toHaveBeenCalled();
+  });
+
+  it("turns errors thrown during parsing into a failure", () => {
+    const hostile = {
+      ...validShip,
+      get hull(): never {
+        throw new RangeError("boom");
+      },
+    };
+    expect(parseShip(hostile)).toEqual({
+      ok: false,
+      error: "Invalid ship data",
+    });
   });
 
   it("rejects data that breaks the building rules", () => {
