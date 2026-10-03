@@ -19,7 +19,7 @@ const customJestConfig = {
     "/e2e/",
     "/.next/",
     "/out/",
-    "/.claude/",
+    "<rootDir>/.claude/",
   ],
   modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   collectCoverageFrom: [
