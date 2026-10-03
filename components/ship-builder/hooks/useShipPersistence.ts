@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { loadAutosave, saveAutosave } from "@/lib/ship-builder/persist/local";
 import { decodeShareHash } from "@/lib/ship-builder/persist/share";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -10,6 +10,11 @@ const STORAGE_NOTICE =
   "Browser storage is unavailable — your ship won't be saved";
 
 export default function useShipPersistence() {
+  // StrictMode re-runs this effect but keeps refs. The initial load must run
+  // once: after an invalid hash the first run clears the hash, so a second
+  // run would wrongly restore the old autosave.
+  const hasLoadedRef = useRef(false);
+
   useEffect(() => {
     const store = useShipBuilderStore;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -47,21 +52,31 @@ export default function useShipPersistence() {
       return true;
     }
 
-    if (!loadFromHash()) {
-      const saved = loadAutosave();
-      if (saved) store.getState().loadShip(saved.ship, saved.savedId);
+    function flushPending() {
+      if (timer === undefined) return;
+      clearTimeout(timer);
+      flush();
+    }
+
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      if (!loadFromHash()) {
+        const saved = loadAutosave();
+        if (saved) store.getState().loadShip(saved.ship, saved.savedId);
+      }
     }
 
     window.addEventListener("hashchange", loadFromHash);
+    // A change made just before the tab closes would otherwise be lost to the
+    // debounce.
+    window.addEventListener("pagehide", flushPending);
     return () => {
       window.removeEventListener("hashchange", loadFromHash);
+      window.removeEventListener("pagehide", flushPending);
       unsubscribe();
       // Flush instead of dropping: StrictMode remounts would otherwise lose
       // a just-loaded shared ship.
-      if (timer !== undefined) {
-        clearTimeout(timer);
-        flush();
-      }
+      flushPending();
     };
   }, []);
 }

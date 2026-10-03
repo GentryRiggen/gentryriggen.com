@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { render } from "@testing-library/react";
 import useShipPersistence, { AUTOSAVE_DELAY_MS } from "../useShipPersistence";
 import { AUTOSAVE_KEY, saveAutosave } from "@/lib/ship-builder/persist/local";
@@ -50,6 +50,35 @@ describe("useShipPersistence", () => {
     expect(store().ship.parts).toHaveLength(0);
   });
 
+  it("keeps a fresh hull after an invalid hash under StrictMode", () => {
+    saveAutosave(shared, null);
+    window.history.replaceState(null, "", "/ship-builder#ship=garbage");
+    render(
+      <StrictMode>
+        <Harness />
+      </StrictMode>
+    );
+    expect(store().notice).toBe("Couldn't load that ship");
+    expect(store().ship.parts).toHaveLength(0);
+  });
+
+  it("still loads a shared ship on hashchange under StrictMode", () => {
+    render(
+      <StrictMode>
+        <Harness />
+      </StrictMode>
+    );
+    act(() => {
+      window.history.replaceState(
+        null,
+        "",
+        `/ship-builder#ship=${encodeShip(shared)}`
+      );
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(store().ship).toEqual(shared);
+  });
+
   it("restores the autosave when there is no hash", () => {
     saveAutosave(shared, "ship-3");
     render(<Harness />);
@@ -74,6 +103,22 @@ describe("useShipPersistence", () => {
     expect(JSON.parse(localStorage.getItem(AUTOSAVE_KEY)!).ship.name).toBe(
       "Flushed"
     );
+  });
+
+  it("flushes a pending save on pagehide", () => {
+    render(<Harness />);
+    act(() => store().rename("Closing"));
+    expect(localStorage.getItem(AUTOSAVE_KEY)).toBeNull();
+    window.dispatchEvent(new Event("pagehide"));
+    expect(JSON.parse(localStorage.getItem(AUTOSAVE_KEY)!).ship.name).toBe(
+      "Closing"
+    );
+  });
+
+  it("does not write on pagehide when nothing is pending", () => {
+    render(<Harness />);
+    window.dispatchEvent(new Event("pagehide"));
+    expect(localStorage.getItem(AUTOSAVE_KEY)).toBeNull();
   });
 
   it("warns once when storage fails", () => {
