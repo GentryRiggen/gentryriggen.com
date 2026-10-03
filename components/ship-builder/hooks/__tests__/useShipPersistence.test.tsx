@@ -46,7 +46,7 @@ describe("useShipPersistence", () => {
     saveAutosave(shared, null);
     window.history.replaceState(null, "", "/ship-builder#ship=garbage");
     render(<Harness />);
-    expect(store().notice).toBe("Couldn't load that ship");
+    expect(store().notice?.text).toBe("Couldn't load that ship");
     expect(store().ship.parts).toHaveLength(0);
   });
 
@@ -58,7 +58,7 @@ describe("useShipPersistence", () => {
         <Harness />
       </StrictMode>
     );
-    expect(store().notice).toBe("Couldn't load that ship");
+    expect(store().notice?.text).toBe("Couldn't load that ship");
     expect(store().ship.parts).toHaveLength(0);
   });
 
@@ -128,7 +128,7 @@ describe("useShipPersistence", () => {
     render(<Harness />);
     act(() => store().rename("One"));
     act(() => jest.advanceTimersByTime(AUTOSAVE_DELAY_MS));
-    expect(store().notice).toMatch(/won't be saved/);
+    expect(store().notice?.text).toMatch(/won't be saved/);
     act(() => store().setNotice(null));
     act(() => store().rename("Two"));
     act(() => jest.advanceTimersByTime(AUTOSAVE_DELAY_MS));

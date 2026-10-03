@@ -291,4 +291,22 @@ describe("load, new, save, camera", () => {
     store().setCameraView("side");
     expect(store().camera).toEqual({ view: "side", nonce: 2 });
   });
+
+  it("gives every notice a fresh id, even with the same text", () => {
+    store().setNotice("Saved");
+    const first = store().notice;
+    store().setNotice("Saved");
+    const second = store().notice;
+    expect(first?.text).toBe("Saved");
+    expect(second?.text).toBe("Saved");
+    expect(second?.id).not.toBe(first?.id);
+    store().setNotice(null);
+    expect(store().notice).toBeNull();
+  });
+
+  it("keeps the notice across loadShip", () => {
+    store().setNotice("Couldn't load that ship");
+    store().loadShip(testShip(), null);
+    expect(store().notice?.text).toBe("Couldn't load that ship");
+  });
 });

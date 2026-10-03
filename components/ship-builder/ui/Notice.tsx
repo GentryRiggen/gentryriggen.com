@@ -9,15 +9,20 @@ const NOTICE_MS = 5000;
 export default function Notice() {
   const notice = useShipBuilderStore((s) => s.notice);
   const setNotice = useShipBuilderStore((s) => s.setNotice);
+  const noticeId = notice?.id;
 
+  // Keyed on the id, not the text, so setting the same text again restarts
+  // the timer.
   useEffect(() => {
-    if (!notice) return;
+    if (noticeId === undefined) return;
     const timer = setTimeout(() => setNotice(null), NOTICE_MS);
     return () => clearTimeout(timer);
-  }, [notice, setNotice]);
+  }, [noticeId, setNotice]);
 
   // The live region stays mounted so screen readers are already watching it
   // when text arrives; a region that mounts with its text may go unannounced.
+  // The keyed span inside is replaced on every notice, so a repeat of the same
+  // text is still a DOM change the screen reader announces.
   // Below lg it sits under the drawer toggles instead of covering them.
   return (
     <div
@@ -28,7 +33,7 @@ export default function Notice() {
       }`}
     >
       <div role="status" aria-live="polite">
-        {notice}
+        {notice && <span key={notice.id}>{notice.text}</span>}
       </div>
       {notice && (
         <button

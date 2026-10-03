@@ -52,7 +52,7 @@ describe("Toolbar", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(listShips()).toHaveLength(1);
     expect(store().savedId).toBe(listShips()[0].id);
-    expect(store().notice).toBe("Saved to My Ships");
+    expect(store().notice?.text).toBe("Saved to My Ships");
   });
 
   it("sets camera presets", async () => {

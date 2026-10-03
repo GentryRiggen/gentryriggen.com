@@ -33,6 +33,11 @@ export interface HoverState {
 
 export type CameraView = "side" | "top" | "three-quarter";
 
+export interface Notice {
+  text: string;
+  id: number;
+}
+
 interface ShipBuilderData {
   ship: Ship;
   savedId: string | null;
@@ -42,7 +47,8 @@ interface ShipBuilderData {
   pendingRemoval: PendingRemoval | null;
   past: Ship[];
   future: Ship[];
-  notice: string | null;
+  /** `id` changes on every setNotice so repeated text restarts and re-announces. */
+  notice: Notice | null;
   camera: { view: CameraView; nonce: number };
 }
 
@@ -63,7 +69,7 @@ export interface ShipBuilderState extends ShipBuilderData {
   loadShip: (ship: Ship, savedId: string | null) => void;
   newShip: () => void;
   markSaved: (savedId: string) => void;
-  setNotice: (notice: string | null) => void;
+  setNotice: (text: string | null) => void;
   setCameraView: (view: CameraView) => void;
 }
 
@@ -108,6 +114,9 @@ const CLEARED = {
 } satisfies Partial<ShipBuilderData>;
 
 export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
+  // Lives outside the state so createInitialState() resets can't reuse ids.
+  let noticeId = 0;
+
   /**
    * Pushes a new ship onto history. Hover and any pending removal were
    * computed against the old ship, so they're always dropped.
@@ -261,8 +270,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       set({ savedId });
     },
 
-    setNotice(notice) {
-      set({ notice });
+    setNotice(text) {
+      noticeId += 1;
+      set({ notice: text === null ? null : { text, id: noticeId } });
     },
 
     setCameraView(view) {

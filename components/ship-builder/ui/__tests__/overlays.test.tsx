@@ -78,4 +78,38 @@ describe("Notice", () => {
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(store().notice).toBeNull();
   });
+
+  describe("with fake timers", () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it("hides after five seconds", () => {
+      render(<Notice />);
+      act(() => store().setNotice("Saved"));
+      act(() => jest.advanceTimersByTime(5000));
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    });
+
+    it("restarts the timer when the same text is set again", () => {
+      render(<Notice />);
+      act(() => store().setNotice("Saved"));
+      act(() => jest.advanceTimersByTime(4000));
+      act(() => store().setNotice("Saved"));
+      act(() => jest.advanceTimersByTime(4000));
+      expect(screen.getByRole("status")).toHaveTextContent("Saved");
+      act(() => jest.advanceTimersByTime(1000));
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    });
+  });
+
+  it("replaces the announced node when the same text repeats", () => {
+    render(<Notice />);
+    const status = screen.getByRole("status");
+    act(() => store().setNotice("Saved"));
+    const first = status.firstChild;
+    act(() => store().setNotice("Saved"));
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.firstChild).not.toBe(first);
+    expect(status).toHaveTextContent("Saved");
+  });
 });
