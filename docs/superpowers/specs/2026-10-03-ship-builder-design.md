@@ -1,7 +1,7 @@
 # Ship Builder — Design
 
 **Date:** 2026-10-03
-**Status:** Draft, awaiting review
+**Status:** Approved
 **Route:** `gentryriggen.com/ship-builder`
 
 ## Summary
