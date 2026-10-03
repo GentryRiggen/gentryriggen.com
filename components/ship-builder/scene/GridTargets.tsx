@@ -11,6 +11,7 @@ import {
 } from "@/lib/ship-builder/model/grid";
 import type { GridAnchor } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { sameAnchor, TAP_SLOP_PX } from "./anchors";
 import { modelToWorld } from "./coords";
 import { PALETTE } from "./palette";
 
@@ -52,10 +53,18 @@ export default function GridTargets() {
               event.stopPropagation();
               hoverAt(anchor);
             }}
-            onPointerOut={() => hoverAt(null)}
+            onPointerOut={() => {
+              // Only clear our own hover, so a late pointerout from this
+              // target can't wipe the hover a neighbour just set.
+              const current = useShipBuilderStore.getState().hover;
+              if (sameAnchor(current?.candidate.anchor, anchor)) hoverAt(null);
+            }}
             onClick={(event) => {
               event.stopPropagation();
-              placeAt(anchor);
+              if (event.delta > TAP_SLOP_PX) return;
+              const result = placeAt(anchor);
+              // Touch has no hover, so show the red ghost and the reason.
+              if (!result.ok) hoverAt(anchor);
             }}
           >
             <boxGeometry args={[0.94, 0.06, 0.94]} />

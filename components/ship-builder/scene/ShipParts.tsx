@@ -1,8 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import type { ThreeEvent } from "@react-three/fiber";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import PartMesh from "./PartMesh";
+
+/**
+ * With a tool active, parts still catch pointer events but only to swallow
+ * them, so a block occludes the grid targets and markers behind it. R3F skips
+ * objects without handlers when raycasting, which would let a tap go through.
+ */
+const OCCLUDE_HANDLERS = {
+  onPointerOver: (event: ThreeEvent<PointerEvent>) => event.stopPropagation(),
+  onClick: (event: ThreeEvent<MouseEvent>) => event.stopPropagation(),
+};
 
 export default function ShipParts() {
   const ship = useShipBuilderStore((s) => s.ship);
@@ -12,10 +23,31 @@ export default function ShipParts() {
   const select = useShipBuilderStore((s) => s.select);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // Parts only take pointer events with no tool active, so they never steal
-  // clicks from grid targets or attach markers.
+  // Parts are only selectable with no tool active.
   const interactive = tool.kind === "none";
+
+  // Leaving select mode drops the hover, so a part doesn't come back
+  // highlighted after a tool round-trip (adjusting state during render).
+  const [wasInteractive, setWasInteractive] = useState(interactive);
+  if (wasInteractive !== interactive) {
+    setWasInteractive(interactive);
+    if (!interactive) setHoveredId(null);
+  }
+
   const removing = new Set(pendingRemoval?.ids ?? []);
+
+  const selectHandlers = (id: string) => ({
+    onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+      setHoveredId(id);
+    },
+    onPointerOut: () =>
+      setHoveredId((current) => (current === id ? null : current)),
+    onClick: (event: ThreeEvent<MouseEvent>) => {
+      event.stopPropagation();
+      select(id);
+    },
+  });
 
   return (
     <group>
@@ -32,18 +64,7 @@ export default function ShipParts() {
                 ? "hover"
                 : null
           }
-          {...(interactive && {
-            onPointerOver: (event) => {
-              event.stopPropagation();
-              setHoveredId(part.id);
-            },
-            onPointerOut: () =>
-              setHoveredId((current) => (current === part.id ? null : current)),
-            onClick: (event) => {
-              event.stopPropagation();
-              select(part.id);
-            },
-          })}
+          {...(interactive ? selectHandlers(part.id) : OCCLUDE_HANDLERS)}
         />
       ))}
     </group>

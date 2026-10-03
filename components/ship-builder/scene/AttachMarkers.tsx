@@ -6,6 +6,7 @@ import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import type { AttachAnchor } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { sameAnchor, TAP_SLOP_PX } from "./anchors";
 import { modelToWorld } from "./coords";
 import { PALETTE } from "./palette";
 
@@ -38,10 +39,18 @@ export default function AttachMarkers() {
               event.stopPropagation();
               hoverAt(anchor);
             }}
-            onPointerOut={() => hoverAt(null)}
+            onPointerOut={() => {
+              // Only clear our own hover, so a late pointerout from this
+              // marker can't wipe the hover a neighbour just set.
+              const current = useShipBuilderStore.getState().hover;
+              if (sameAnchor(current?.candidate.anchor, anchor)) hoverAt(null);
+            }}
             onClick={(event) => {
               event.stopPropagation();
-              placeAt(anchor);
+              if (event.delta > TAP_SLOP_PX) return;
+              const result = placeAt(anchor);
+              // Touch has no hover, so show the red ghost and the reason.
+              if (!result.ok) hoverAt(anchor);
             }}
           >
             <sphereGeometry args={[0.16, 12, 12]} />
