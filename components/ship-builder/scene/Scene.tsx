@@ -25,7 +25,7 @@ export default function Scene() {
       className="h-full w-full"
     >
       <Canvas
-        shadows
+        shadows="percentage"
         camera={{ position: [24, 16, 24], fov: 45 }}
         onPointerMissed={() => select(null)}
       >
