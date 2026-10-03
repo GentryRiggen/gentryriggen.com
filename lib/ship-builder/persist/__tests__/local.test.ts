@@ -101,6 +101,97 @@ describe("My Ships", () => {
     expect(listShips().map((s) => s.id)).toEqual(["ok"]);
   });
 
+  describe("entries the app can't parse", () => {
+    const future = {
+      id: "future",
+      name: "From a newer deploy",
+      savedAt: 5,
+      ship: { v: 2, name: "Future", hull: { lengthSegments: 8 }, parts: [] },
+      extra: { kept: true },
+    };
+
+    function rawEntries(): unknown[] {
+      return JSON.parse(localStorage.getItem(SHIPS_KEY) ?? "[]");
+    }
+
+    function storeWithFuture(): string {
+      const saved = saveShip({ ...ship, name: "Valid" }, null, 1)!;
+      localStorage.setItem(
+        SHIPS_KEY,
+        JSON.stringify([future, ...rawEntries()])
+      );
+      return saved.id;
+    }
+
+    it("hides them from the list", () => {
+      storeWithFuture();
+      expect(listShips().map((s) => s.name)).toEqual(["Valid"]);
+    });
+
+    it("keeps them through a delete of another id", () => {
+      storeWithFuture();
+      expect(deleteShip("nonexistent")).toBe(true);
+      expect(rawEntries()).toContainEqual(future);
+    });
+
+    it("keeps them through a save", () => {
+      storeWithFuture();
+      expect(saveShip({ ...ship, name: "New" }, null, 9)).not.toBeNull();
+      expect(rawEntries()).toContainEqual(future);
+      expect(listShips().map((s) => s.name)).toEqual(["New", "Valid"]);
+    });
+
+    it("keeps them through a rename of a valid entry", () => {
+      const id = storeWithFuture();
+      expect(renameShip(id, "Renamed")).toBe(true);
+      expect(rawEntries()).toContainEqual(future);
+      expect(listShips().map((s) => s.name)).toEqual(["Renamed"]);
+    });
+
+    it("skips non-finite savedAt but keeps it in storage", () => {
+      const saved = saveShip({ ...ship, name: "Valid" }, null, 1)!;
+      localStorage.setItem(
+        SHIPS_KEY,
+        `[{"id":"inf","name":"Inf","savedAt":1e400,"ship":${JSON.stringify(
+          ship
+        )}},${JSON.stringify(rawEntries()[0])}]`
+      );
+      expect(listShips().map((s) => s.id)).toEqual([saved.id]);
+      expect(renameShip(saved.id, "Renamed")).toBe(true);
+      expect(rawEntries().map((e) => (e as { id: string }).id)).toContain(
+        "inf"
+      );
+    });
+  });
+
+  it("dedupes ids, keeping the newest", () => {
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([
+        { id: "d", name: "Old", savedAt: 1, ship: { ...ship, name: "Old" } },
+        { id: "d", name: "New", savedAt: 2, ship: { ...ship, name: "New" } },
+      ])
+    );
+    const listed = listShips();
+    expect(listed).toHaveLength(1);
+    expect(listed[0].name).toBe("New");
+  });
+
+  it("takes the displayed name from the ship, not the entry", () => {
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([
+        {
+          id: "n",
+          name: "N".repeat(5000),
+          savedAt: 1,
+          ship: { ...ship, name: "Real" },
+        },
+      ])
+    );
+    expect(listShips()[0].name).toBe("Real");
+  });
+
   it("returns null when saving fails", () => {
     jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError");

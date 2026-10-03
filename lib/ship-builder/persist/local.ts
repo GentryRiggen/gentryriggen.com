@@ -81,28 +81,40 @@ export function listShips(): SavedShip[] {
   return parseShipList(readJson(SHIPS_KEY));
 }
 
+/**
+ * Validation happens only here, on read. Writers work on the raw stored
+ * entries so that anything this build can't parse (a newer deploy's format,
+ * or data tripped by a rules bug) survives untouched.
+ */
 function parseShipList(raw: unknown): SavedShip[] {
   if (!Array.isArray(raw)) return [];
-  const ships: SavedShip[] = [];
+  const newestById = new Map<string, SavedShip>();
   for (const entry of raw) {
     if (
       !isRecord(entry) ||
       typeof entry.id !== "string" ||
-      typeof entry.name !== "string" ||
-      typeof entry.savedAt !== "number"
+      typeof entry.savedAt !== "number" ||
+      !Number.isFinite(entry.savedAt)
     ) {
       continue;
     }
     const parsed = parseShip(entry.ship);
     if (!parsed.ok) continue;
-    ships.push({
+    const existing = newestById.get(entry.id);
+    if (existing && existing.savedAt >= entry.savedAt) continue;
+    newestById.set(entry.id, {
       id: entry.id,
-      name: entry.name,
+      // The validated ship name is length-checked; entry.name is not.
+      name: parsed.ship.name,
       savedAt: entry.savedAt,
       ship: parsed.ship,
     });
   }
-  return ships.sort((a, b) => b.savedAt - a.savedAt);
+  return [...newestById.values()].sort((a, b) => b.savedAt - a.savedAt);
+}
+
+function entryId(entry: unknown): unknown {
+  return isRecord(entry) ? entry.id : undefined;
 }
 
 export function saveShip(
@@ -116,34 +128,36 @@ export function saveShip(
     savedAt: now,
     ship,
   };
-  const saved = updateShips((ships) => [
+  const saved = updateShips((entries) => [
     entry,
-    ...ships.filter((s) => s.id !== entry.id),
+    ...entries.filter((e) => entryId(e) !== entry.id),
   ]);
   return saved ? entry : null;
 }
 
 /**
- * Read-modify-write of the ship list. Refuses to write when the current list
+ * Read-modify-write of the raw stored entries; entries the update doesn't
+ * touch are written back exactly as stored. Refuses to write when the list
  * can't be read, since writing then would wipe every saved ship.
  */
-function updateShips(update: (ships: SavedShip[]) => SavedShip[]): boolean {
+function updateShips(update: (entries: unknown[]) => unknown[]): boolean {
   const stored = readStored(SHIPS_KEY);
   if (!stored.ok) return false;
-  return writeJson(SHIPS_KEY, update(parseShipList(stored.value)));
+  const entries = Array.isArray(stored.value) ? stored.value : [];
+  return writeJson(SHIPS_KEY, update(entries));
 }
 
 export function deleteShip(id: string): boolean {
-  return updateShips((ships) => ships.filter((s) => s.id !== id));
+  return updateShips((entries) => entries.filter((e) => entryId(e) !== id));
 }
 
 export function renameShip(id: string, name: string): boolean {
   const clamped = name.slice(0, MAX_NAME_LENGTH);
-  return updateShips((ships) =>
-    ships.map((s) =>
-      s.id === id
-        ? { ...s, name: clamped, ship: { ...s.ship, name: clamped } }
-        : s
+  return updateShips((entries) =>
+    entries.map((e) =>
+      isRecord(e) && e.id === id && isRecord(e.ship)
+        ? { ...e, name: clamped, ship: { ...e.ship, name: clamped } }
+        : e
     )
   );
 }
