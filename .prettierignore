@@ -7,3 +7,4 @@ coverage
 *.lock
 package-lock.json
 
+.claude/worktrees

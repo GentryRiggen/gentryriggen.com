@@ -4,13 +4,13 @@
     {
       "id": 1,
       "subject": "Task 1: Dependencies, types, catalog, ids",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Install the new packages and add the model's types, part catalog and id helper, with catalog tests.\n\n**Files:**\n- package.json\n- lib/ship-builder/model/types.ts\n- lib/ship-builder/model/catalog.ts\n- lib/ship-builder/model/ids.ts\n- lib/ship-builder/testing.ts\n- lib/ship-builder/model/__tests__/catalog.test.ts\n\n**Acceptance Criteria:**\n- `three`, `@react-three/fiber`, `@react-three/drei`, `zustand`, `zod`, `lz-string` are in `dependencies`, and `@types/three` is in `devDependencies`\n- Every `PART_TYPES` entry has a catalog def whose `type` matches its key\n- Every category has at least one part\n\n**Verify:** `npm test -- --testPathPatterns=ship-builder/model/__tests__/catalog` \u2192 PASS\n\nFull steps: see plan section 'Task 1: Dependencies, types, catalog, ids'.\n\n```json:metadata\n{\"files\": [\"package.json\", \"lib/ship-builder/model/types.ts\", \"lib/ship-builder/model/catalog.ts\", \"lib/ship-builder/model/ids.ts\", \"lib/ship-builder/testing.ts\", \"lib/ship-builder/model/__tests__/catalog.test.ts\"], \"verifyCommand\": \"`npm test -- --testPathPatterns=ship-builder/model/__tests__/catalog` \\u2192 PASS\", \"acceptanceCriteria\": [\"`three`, `@react-three/fiber`, `@react-three/drei`, `zustand`, `zod`, `lz-string` are in `dependencies`, and `@types/three` is in `devDependencies`\", \"Every `PART_TYPES` entry has a catalog def whose `type` matches its key\", \"Every category has at least one part\"]}\n```"
     },
     {
       "id": 2,
       "subject": "Task 2: Grid math and attach points",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Pure grid helpers (footprints, bounds, occupancy, column tops) and attach-point generation for the hull, blocks and davits.\n\n**Files:**\n- lib/ship-builder/model/grid.ts\n- lib/ship-builder/model/attach.ts\n- lib/ship-builder/model/__tests__/grid.test.ts\n- lib/ship-builder/model/__tests__/attach.test.ts\n\n**Acceptance Criteria:**\n- The grid is 3 cells per segment long and 4 wide, with levels 0\u20133\n- Rotating by 90/270 swaps the footprint\n- The hull exposes `mast-fore` and `mast-aft`\n- A deck block exposes `funnel-mount` only when uncovered\n- Davit points appear only on uncovered `z = 0`/`z = 3` cells at level \u2265 1, never on a bridge\n- A davit exposes one `boat-mount`, offset outboard\n\n**Verify:** `npm test -- --testPathPatterns=\"ship-builder/model/__tests__/(grid|attach)\"` \u2192 PASS\n\nFull steps: see plan section 'Task 2: Grid math and attach points'.\n\n```json:metadata\n{\"files\": [\"lib/ship-builder/model/grid.ts\", \"lib/ship-builder/model/attach.ts\", \"lib/ship-builder/model/__tests__/grid.test.ts\", \"lib/ship-builder/model/__tests__/attach.test.ts\"], \"verifyCommand\": \"`npm test -- --testPathPatterns=\\\"ship-builder/model/__tests__/(grid|attach)\\\"` \\u2192 PASS\", \"acceptanceCriteria\": [\"The grid is 3 cells per segment long and 4 wide, with levels 0\\u20133\", \"Rotating by 90/270 swaps the footprint\", \"The hull exposes `mast-fore` and `mast-aft`\", \"A deck block exposes `funnel-mount` only when uncovered\", \"Davit points appear only on uncovered `z = 0`/`z = 3` cells at level \\u2265 1, never on a bridge\", \"A davit exposes one `boat-mount`, offset outboard\"]}\n```",
       "blockedBy": [1]
     },
@@ -78,5 +78,5 @@
       "blockedBy": [8, 10]
     }
   ],
-  "lastUpdated": "2026-10-03T14:17:32.641739"
+  "lastUpdated": "2026-10-03T14:23:01.714656"
 }
