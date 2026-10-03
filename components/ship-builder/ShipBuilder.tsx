@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import useTestHook from "./hooks/useTestHook";
@@ -8,6 +9,15 @@ import CatalogPanel from "./ui/CatalogPanel";
 import Drawer from "./ui/Drawer";
 import StatsPanel from "./ui/StatsPanel";
 import WebGLFallback from "./ui/WebGLFallback";
+
+const Scene = dynamic(() => import("./scene/Scene"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+      Launching the shipyard…
+    </div>
+  ),
+});
 
 export default function ShipBuilder() {
   useTestHook();
@@ -31,11 +41,7 @@ export default function ShipBuilder() {
           <CatalogPanel />
         </Drawer>
         <main className="relative min-w-0 flex-1">
-          {webgl === false ? (
-            <WebGLFallback />
-          ) : (
-            <div data-testid="scene-placeholder" className="h-full w-full" />
-          )}
+          {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
         </main>
         <Drawer side="right" label="Stats">
           <StatsPanel />

@@ -1,0 +1,36 @@
+"use client";
+
+import { Canvas } from "@react-three/fiber";
+import { Sky } from "@react-three/drei";
+import { gridLength } from "@/lib/ship-builder/model/grid";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import CameraRig from "./CameraRig";
+import Hull from "./Hull";
+import Ocean from "./Ocean";
+import { PALETTE } from "./palette";
+import ShipParts from "./ShipParts";
+
+export default function Scene() {
+  const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
+  const select = useShipBuilderStore((s) => s.select);
+
+  return (
+    <div data-testid="ship-canvas" className="h-full w-full">
+      <Canvas
+        shadows
+        camera={{ position: [24, 16, 24], fov: 45 }}
+        onPointerMissed={() => select(null)}
+      >
+        <color attach="background" args={[PALETTE.sky]} />
+        <fog attach="fog" args={[PALETTE.sky, 80, 260]} />
+        <Sky sunPosition={[100, 40, 80]} distance={450} />
+        <ambientLight intensity={0.55} />
+        <directionalLight position={[30, 40, 20]} intensity={1.4} castShadow />
+        <Ocean />
+        <Hull lengthCells={lengthCells} />
+        <ShipParts />
+        <CameraRig />
+      </Canvas>
+    </div>
+  );
+}
