@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { buildShareUrl } from "@/lib/ship-builder/persist/share";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { buttonClass, inputClass, panelClass } from "./styles";
 
+type CopyStatus = "pending" | "copied" | "failed";
+
 export default function ShareButton() {
   const [link, setLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("pending");
+  const shareButtonRef = useRef<HTMLButtonElement>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+
+  // Without clipboard access, hand the user a selected link to copy by hand.
+  useEffect(() => {
+    if (copyStatus !== "failed" || !link) return;
+    linkInputRef.current?.focus();
+    linkInputRef.current?.select();
+  }, [copyStatus, link]);
 
   async function handleShare() {
     const url = buildShareUrl(
@@ -15,27 +26,45 @@ export default function ShareButton() {
       window.location.origin
     );
     setLink(url);
-    setCopied(false);
+    setCopyStatus("pending");
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
+      setCopyStatus("copied");
     } catch {
-      setCopied(false);
+      setCopyStatus("failed");
     }
   }
 
+  function handleClose() {
+    setLink(null);
+    shareButtonRef.current?.focus();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape" || !link) return;
+    // Keep the global Escape shortcut from also clearing the current tool.
+    event.stopPropagation();
+    handleClose();
+  }
+
   return (
-    <div className="relative">
-      <button type="button" onClick={handleShare} className={buttonClass}>
+    <div className="relative" onKeyDown={handleKeyDown}>
+      <button
+        ref={shareButtonRef}
+        type="button"
+        onClick={handleShare}
+        className={buttonClass}
+      >
         Share
       </button>
       {link && (
         <div
           role="dialog"
           aria-label="Share link"
-          className={`absolute bottom-full right-0 z-40 mb-2 w-80 space-y-2 rounded-lg border p-3 shadow-lg ${panelClass}`}
+          className={`absolute bottom-full right-0 z-40 mb-2 w-[min(20rem,calc(100vw-2rem))] space-y-2 rounded-lg border p-3 shadow-lg ${panelClass}`}
         >
           <input
+            ref={linkInputRef}
             readOnly
             aria-label="Share link URL"
             value={link}
@@ -44,13 +73,13 @@ export default function ShareButton() {
           />
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              {copied
+              {copyStatus === "copied"
                 ? "Link copied to clipboard"
                 : "Copy this link to share your ship"}
             </p>
             <button
               type="button"
-              onClick={() => setLink(null)}
+              onClick={handleClose}
               className="text-xs font-medium text-sky-700 hover:underline dark:text-sky-400"
             >
               Close

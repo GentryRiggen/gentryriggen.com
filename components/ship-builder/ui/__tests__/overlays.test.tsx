@@ -59,6 +59,17 @@ describe("RemovalConfirm", () => {
 });
 
 describe("Notice", () => {
+  it("keeps the live region mounted with no notice", () => {
+    render(<Notice />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toBeEmptyDOMElement();
+    expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
+    act(() => store().setNotice("Saved to My Ships"));
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("Saved to My Ships");
+  });
+
   it("shows and dismisses the notice", async () => {
     const user = userEvent.setup();
     render(<Notice />);

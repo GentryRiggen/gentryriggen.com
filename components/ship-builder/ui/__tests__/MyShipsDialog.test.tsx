@@ -58,6 +58,15 @@ describe("MyShipsDialog", () => {
     expect(listShips()).toHaveLength(0);
   });
 
+  it("labels unnamed ships as Untitled liner", () => {
+    saveShip({ ...testShip(), name: "" }, null);
+    render(<MyShipsDialog onClose={jest.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Load Untitled liner" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Untitled liner")).toBeInTheDocument();
+  });
+
   it("focuses the Close button on mount", () => {
     render(<MyShipsDialog onClose={jest.fn()} />);
     expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();

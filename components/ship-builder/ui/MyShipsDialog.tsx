@@ -16,6 +16,8 @@ import {
   panelClass,
 } from "./styles";
 
+const UNTITLED_NAME = "Untitled liner";
+
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
@@ -121,73 +123,76 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
           </p>
         ) : (
           <ul className="max-h-96 space-y-2 overflow-y-auto">
-            {ships.map((entry) => (
-              <li
-                key={entry.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 p-2 dark:border-slate-800"
-              >
-                {renamingId === entry.id ? (
-                  <input
-                    autoFocus
-                    aria-label={`New name for ${entry.name}`}
-                    value={draftName}
-                    maxLength={MAX_NAME_LENGTH}
-                    onChange={(event) => setDraftName(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") commitRename(entry);
-                      if (event.key === "Escape") {
-                        event.stopPropagation();
-                        setRenamingId(null);
-                      }
-                    }}
-                    onBlur={() => commitRename(entry)}
-                    className={`flex-1 ${inputClass}`}
-                  />
-                ) : (
-                  <span className="flex-1 truncate text-sm font-medium">
-                    {entry.name}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  aria-label={`Load ${entry.name}`}
-                  onClick={() => handleLoad(entry)}
-                  className={buttonClass}
+            {ships.map((entry) => {
+              const displayName = entry.name || UNTITLED_NAME;
+              return (
+                <li
+                  key={entry.id}
+                  className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 p-2 dark:border-slate-800"
                 >
-                  Load
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Rename ${entry.name}`}
-                  onClick={() => {
-                    setRenamingId(entry.id);
-                    setDraftName(entry.name);
-                  }}
-                  className={buttonClass}
-                >
-                  Rename
-                </button>
-                {confirmingId === entry.id ? (
+                  {renamingId === entry.id ? (
+                    <input
+                      autoFocus
+                      aria-label={`New name for ${displayName}`}
+                      value={draftName}
+                      maxLength={MAX_NAME_LENGTH}
+                      onChange={(event) => setDraftName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") commitRename(entry);
+                        if (event.key === "Escape") {
+                          event.stopPropagation();
+                          setRenamingId(null);
+                        }
+                      }}
+                      onBlur={() => commitRename(entry)}
+                      className={`flex-1 ${inputClass}`}
+                    />
+                  ) : (
+                    <span className="flex-1 truncate text-sm font-medium">
+                      {displayName}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    aria-label={`Confirm delete ${entry.name}`}
-                    onClick={() => handleDelete(entry)}
-                    className={dangerButtonClass}
-                  >
-                    Confirm
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label={`Delete ${entry.name}`}
-                    onClick={() => setConfirmingId(entry.id)}
+                    aria-label={`Load ${displayName}`}
+                    onClick={() => handleLoad(entry)}
                     className={buttonClass}
                   >
-                    Delete
+                    Load
                   </button>
-                )}
-              </li>
-            ))}
+                  <button
+                    type="button"
+                    aria-label={`Rename ${displayName}`}
+                    onClick={() => {
+                      setRenamingId(entry.id);
+                      setDraftName(entry.name);
+                    }}
+                    className={buttonClass}
+                  >
+                    Rename
+                  </button>
+                  {confirmingId === entry.id ? (
+                    <button
+                      type="button"
+                      aria-label={`Confirm delete ${displayName}`}
+                      onClick={() => handleDelete(entry)}
+                      className={dangerButtonClass}
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${displayName}`}
+                      onClick={() => setConfirmingId(entry.id)}
+                      className={buttonClass}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -41,5 +41,6 @@ describe("Drawer", () => {
     await user.click(screen.getByRole("button", { name: "Close Stats" }));
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(aside).toHaveClass("invisible");
+    expect(toggle).toHaveFocus();
   });
 });

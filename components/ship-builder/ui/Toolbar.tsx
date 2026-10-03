@@ -15,6 +15,7 @@ import {
   buttonClass,
   inputClass,
   panelClass,
+  pressedButtonClass,
   primaryButtonClass,
 } from "./styles";
 
@@ -31,6 +32,7 @@ export default function Toolbar() {
   const tool = useShipBuilderStore((s) => s.tool);
   const savedId = useShipBuilderStore((s) => s.savedId);
   const selectedId = useShipBuilderStore((s) => s.selectedId);
+  const cameraView = useShipBuilderStore((s) => s.camera.view);
   const canUndo = useShipBuilderStore((s) => s.past.length > 0);
   const canRedo = useShipBuilderStore((s) => s.future.length > 0);
   const rename = useShipBuilderStore((s) => s.rename);
@@ -147,8 +149,9 @@ export default function Toolbar() {
             key={view}
             type="button"
             aria-label={ariaLabel}
+            aria-pressed={cameraView === view}
             onClick={() => setCameraView(view)}
-            className={buttonClass}
+            className={cameraView === view ? pressedButtonClass : buttonClass}
           >
             {label}
           </button>

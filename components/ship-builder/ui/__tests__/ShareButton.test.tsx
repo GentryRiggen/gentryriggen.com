@@ -36,9 +36,25 @@ describe("ShareButton", () => {
       configurable: true,
     });
     await user.click(screen.getByRole("button", { name: "Share" }));
-    expect(screen.getByLabelText("Share link URL")).toBeInTheDocument();
     expect(
       await screen.findByText("Copy this link to share your ship")
     ).toBeInTheDocument();
+    expect(screen.getByLabelText("Share link URL")).toHaveFocus();
+  });
+
+  it("closes on Escape and returns focus to Share", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<ShareButton />);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    const share = screen.getByRole("button", { name: "Share" });
+    await user.click(share);
+    await screen.findByText("Link copied to clipboard");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Share link" })).toBeNull();
+    expect(share).toHaveFocus();
   });
 });

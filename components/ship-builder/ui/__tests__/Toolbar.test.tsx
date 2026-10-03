@@ -58,8 +58,13 @@ describe("Toolbar", () => {
   it("sets camera presets", async () => {
     const user = userEvent.setup();
     render(<Toolbar />);
-    await user.click(screen.getByRole("button", { name: "Top view" }));
+    const top = screen.getByRole("button", { name: "Top view" });
+    const side = screen.getByRole("button", { name: "Side view" });
+    expect(top).toHaveAttribute("aria-pressed", "false");
+    await user.click(top);
     expect(store().camera.view).toBe("top");
+    expect(top).toHaveAttribute("aria-pressed", "true");
+    expect(side).toHaveAttribute("aria-pressed", "false");
   });
 
   it("returns focus to My Ships when the dialog closes", async () => {

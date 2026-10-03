@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { panelClass } from "./styles";
 
 interface DrawerProps {
@@ -12,12 +12,19 @@ interface DrawerProps {
 export default function Drawer({ side, label, children }: DrawerProps) {
   const [open, setOpen] = useState(false);
   const id = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const left = side === "left";
   const closed = left ? "-translate-x-full" : "translate-x-full";
+
+  function handleClose() {
+    setOpen(false);
+    toggleRef.current?.focus();
+  }
 
   return (
     <>
       <button
+        ref={toggleRef}
         type="button"
         aria-expanded={open}
         aria-controls={id}
@@ -35,11 +42,14 @@ export default function Drawer({ side, label, children }: DrawerProps) {
           left ? "left-0 border-r" : "right-0 border-l"
         } ${open ? "visible translate-x-0" : `invisible lg:visible ${closed}`}`}
       >
-        <div className="flex justify-end p-2 lg:hidden">
+        {/* On the right, keep ✕ clear of the fixed ThemeToggle. */}
+        <div
+          className={`flex justify-end p-2 lg:hidden ${left ? "" : "pr-20"}`}
+        >
           <button
             type="button"
             aria-label={`Close ${label}`}
-            onClick={() => setOpen(false)}
+            onClick={handleClose}
             className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
           >
             ✕

@@ -16,21 +16,30 @@ export default function Notice() {
     return () => clearTimeout(timer);
   }, [notice, setNotice]);
 
-  if (!notice) return null;
+  // The live region stays mounted so screen readers are already watching it
+  // when text arrives; a region that mounts with its text may go unannounced.
+  // Below lg it sits under the drawer toggles instead of covering them.
   return (
     <div
-      role="status"
-      className={`absolute left-1/2 top-3 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-2 text-sm shadow-lg ${panelClass}`}
+      className={`absolute left-1/2 top-14 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 lg:top-3 ${
+        notice
+          ? `rounded-lg border px-4 py-2 text-sm shadow-lg ${panelClass}`
+          : "pointer-events-none"
+      }`}
     >
-      <span>{notice}</span>
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={() => setNotice(null)}
-        className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-      >
-        ✕
-      </button>
+      <div role="status" aria-live="polite">
+        {notice}
+      </div>
+      {notice && (
+        <button
+          type="button"
+          aria-label="Dismiss"
+          onClick={() => setNotice(null)}
+          className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }
