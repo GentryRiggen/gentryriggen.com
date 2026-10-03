@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import { useCursor } from "@react-three/drei";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import PartMesh from "./PartMesh";
 
@@ -33,6 +34,7 @@ export default function ShipParts() {
     setWasInteractive(interactive);
     if (!interactive) setHoveredId(null);
   }
+  useCursor(interactive && ship.parts.some((part) => part.id === hoveredId));
 
   const removing = new Set(pendingRemoval?.ids ?? []);
 

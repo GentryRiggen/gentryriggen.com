@@ -17,6 +17,7 @@ import {
   topLevel,
 } from "@/lib/ship-builder/model/grid";
 import type { GridAnchor } from "@/lib/ship-builder/model/types";
+import { useCursor } from "@react-three/drei";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { sameAnchor, TAP_SLOP_PX } from "./anchors";
 import { modelToWorld } from "./coords";
@@ -62,6 +63,7 @@ export default function GridTargets() {
   );
   const hoverAt = useShipBuilderStore((s) => s.hoverAt);
   const placeAt = useShipBuilderStore((s) => s.placeAt);
+  useCursor(hoverAnchor?.kind === "grid");
 
   const resources = useMemo(() => createTargetResources(), []);
   useEffect(

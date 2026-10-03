@@ -6,6 +6,7 @@ import { openAttachPoints } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import type { AttachAnchor } from "@/lib/ship-builder/model/types";
+import { useCursor } from "@react-three/drei";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { sameAnchor, TAP_SLOP_PX } from "./anchors";
 import { modelToWorld } from "./coords";
@@ -24,6 +25,10 @@ export default function AttachMarkers() {
   const tool = useShipBuilderStore((s) => s.tool);
   const hoverAt = useShipBuilderStore((s) => s.hoverAt);
   const placeAt = useShipBuilderStore((s) => s.placeAt);
+  const isMarkerHovered = useShipBuilderStore(
+    (s) => s.hover?.candidate.anchor.kind === "attach"
+  );
+  useCursor(isMarkerHovered);
 
   const resources = useMemo(() => createMarkerResources(), []);
   useEffect(

@@ -18,7 +18,12 @@ export default function Scene() {
   const select = useShipBuilderStore((s) => s.select);
 
   return (
-    <div data-testid="ship-canvas" className="h-full w-full">
+    <div
+      data-testid="ship-canvas"
+      role="img"
+      aria-label="3D view of your ship"
+      className="h-full w-full"
+    >
       <Canvas
         shadows
         camera={{ position: [24, 16, 24], fov: 45 }}
