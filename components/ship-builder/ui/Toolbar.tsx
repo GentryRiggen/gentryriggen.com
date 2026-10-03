@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { MAX_SEGMENTS, MIN_SEGMENTS } from "@/lib/ship-builder/model/grid";
 import { MAX_NAME_LENGTH } from "@/lib/ship-builder/model/placement";
@@ -26,6 +26,7 @@ const CAMERA_VIEWS: { view: CameraView; label: string; ariaLabel: string }[] = [
 
 export default function Toolbar() {
   const [shipsOpen, setShipsOpen] = useState(false);
+  const myShipsButtonRef = useRef<HTMLButtonElement>(null);
   const ship = useShipBuilderStore((s) => s.ship);
   const tool = useShipBuilderStore((s) => s.tool);
   const savedId = useShipBuilderStore((s) => s.savedId);
@@ -55,6 +56,11 @@ export default function Toolbar() {
     } else {
       setNotice("Couldn't save — browser storage is unavailable");
     }
+  }
+
+  function handleShipsClose() {
+    setShipsOpen(false);
+    myShipsButtonRef.current?.focus();
   }
 
   return (
@@ -162,6 +168,7 @@ export default function Toolbar() {
         </button>
         <ShareButton />
         <button
+          ref={myShipsButtonRef}
           type="button"
           onClick={() => setShipsOpen(true)}
           className={buttonClass}
@@ -170,7 +177,7 @@ export default function Toolbar() {
         </button>
       </div>
 
-      {shipsOpen && <MyShipsDialog onClose={() => setShipsOpen(false)} />}
+      {shipsOpen && <MyShipsDialog onClose={handleShipsClose} />}
     </footer>
   );
 }

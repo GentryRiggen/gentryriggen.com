@@ -1,6 +1,7 @@
 import { act } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import useKeyboardShortcuts from "../useKeyboardShortcuts";
+import MyShipsDialog from "../../ui/MyShipsDialog";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -47,6 +48,32 @@ describe("useKeyboardShortcuts", () => {
       store().cancel();
       store().select(store().ship.parts[0].id);
     });
+    fireEvent.keyDown(window, { key: "Backspace" });
+    expect(store().ship.parts).toHaveLength(0);
+  });
+
+  it("ignores shortcuts while a modal dialog is open", () => {
+    const { rerender } = render(
+      <>
+        <Harness />
+        <MyShipsDialog onClose={jest.fn()} />
+      </>
+    );
+    act(() => {
+      store().selectTool("deck-1x1");
+      store().placeAt({ kind: "grid", level: 0, x: 0, z: 0 });
+      store().cancel();
+      store().select(store().ship.parts[0].id);
+    });
+    const parts = store().ship.parts;
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close" }), {
+      key: "Backspace",
+    });
+    fireEvent.keyDown(window, { key: "Delete" });
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    expect(store().ship.parts).toBe(parts);
+
+    rerender(<Harness />);
     fireEvent.keyDown(window, { key: "Backspace" });
     expect(store().ship.parts).toHaveLength(0);
   });

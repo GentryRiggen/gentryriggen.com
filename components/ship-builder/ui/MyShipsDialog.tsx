@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   deleteShip,
   listShips,
@@ -16,6 +16,28 @@ import {
   panelClass,
 } from "./styles";
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+
+/** Wraps Tab / Shift+Tab focus between the first and last focusable child. */
+function trapTab(container: HTMLElement, event: KeyboardEvent) {
+  const focusable = Array.from(
+    container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+  );
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  const isInside = active instanceof Node && container.contains(active);
+  if (event.shiftKey && (active === first || !isInside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || !isInside)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 interface MyShipsDialogProps {
   onClose: () => void;
 }
@@ -28,6 +50,30 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
   const loadShip = useShipBuilderStore((s) => s.loadShip);
   const rename = useShipBuilderStore((s) => s.rename);
   const savedId = useShipBuilderStore((s) => s.savedId);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleDocumentKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      // Escape inside the rename input cancels the rename, not the dialog.
+      if (event.target instanceof HTMLInputElement) return;
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key === "Tab" && dialogRef.current) {
+      trapTab(dialogRef.current, event);
+    }
+  });
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+    function onKeyDown(event: KeyboardEvent) {
+      handleDocumentKeyDown(event);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   function handleLoad(entry: SavedShip) {
     loadShip(entry.ship, entry.id);
@@ -51,6 +97,7 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="My Ships"
@@ -58,7 +105,12 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">My Ships</h2>
-          <button type="button" onClick={onClose} className={buttonClass}>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            className={buttonClass}
+          >
             Close
           </button>
         </div>
@@ -83,7 +135,10 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
                     onChange={(event) => setDraftName(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") commitRename(entry);
-                      if (event.key === "Escape") setRenamingId(null);
+                      if (event.key === "Escape") {
+                        event.stopPropagation();
+                        setRenamingId(null);
+                      }
                     }}
                     onBlur={() => commitRename(entry)}
                     className={`flex-1 ${inputClass}`}

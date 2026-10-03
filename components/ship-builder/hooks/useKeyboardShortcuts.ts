@@ -17,6 +17,9 @@ export default function useKeyboardShortcuts() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (isTyping(event.target)) return;
+      // A modal dialog owns the keyboard; editing the ship behind it would be
+      // invisible and surprising.
+      if (document.querySelector('[aria-modal="true"]')) return;
       const state = useShipBuilderStore.getState();
       const key = event.key.toLowerCase();
 

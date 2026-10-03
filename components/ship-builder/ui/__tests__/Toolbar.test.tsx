@@ -61,4 +61,17 @@ describe("Toolbar", () => {
     await user.click(screen.getByRole("button", { name: "Top view" }));
     expect(store().camera.view).toBe("top");
   });
+
+  it("returns focus to My Ships when the dialog closes", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const myShips = screen.getByRole("button", { name: "My Ships" });
+    await user.click(myShips);
+    expect(
+      screen.getByRole("dialog", { name: "My Ships" })
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(myShips).toHaveFocus();
+  });
 });

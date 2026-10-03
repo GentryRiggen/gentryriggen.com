@@ -1,5 +1,5 @@
 import { act } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MyShipsDialog from "../MyShipsDialog";
 import { listShips, saveShip } from "@/lib/ship-builder/persist/local";
@@ -56,5 +56,48 @@ describe("MyShipsDialog", () => {
       within(dialog).getByRole("button", { name: "Confirm delete Olympic" })
     );
     expect(listShips()).toHaveLength(0);
+  });
+
+  it("focuses the Close button on mount", () => {
+    render(<MyShipsDialog onClose={jest.fn()} />);
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+  });
+
+  it("closes on Escape", () => {
+    const onClose = jest.fn();
+    render(<MyShipsDialog onClose={onClose} />);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close" }), {
+      key: "Escape",
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a rename on Escape without closing", async () => {
+    saveShip({ ...testShip(), name: "Olympic" }, null);
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    render(<MyShipsDialog onClose={onClose} />);
+    await user.click(screen.getByRole("button", { name: "Rename Olympic" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByLabelText("New name for Olympic")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("traps Tab focus inside the dialog", async () => {
+    saveShip({ ...testShip(), name: "Olympic" }, null);
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Outside</button>
+        <MyShipsDialog onClose={jest.fn()} />
+      </>
+    );
+    const close = screen.getByRole("button", { name: "Close" });
+    const last = screen.getByRole("button", { name: "Delete Olympic" });
+    expect(close).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(last).toHaveFocus();
+    await user.tab();
+    expect(close).toHaveFocus();
   });
 });
