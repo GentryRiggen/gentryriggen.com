@@ -244,4 +244,73 @@ test.describe("Ship Builder", () => {
       await browser.close();
     }
   });
+
+  test("places a large funnel, a large lifeboat and a propeller", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    for (const [x, z] of [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ]) {
+      await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x, z });
+    }
+    await place(page, /^Large funnel/, {
+      kind: "attach",
+      parentId: await partId(page, 0),
+      pointId: "funnel-lg:0:0",
+    });
+
+    // Two adjacent edge blocks on level 1 carry the davits.
+    for (const x of [3, 4]) {
+      await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x, z: 0 });
+      await place(page, /Deck block 1×1/, { kind: "grid", level: 1, x, z: 0 });
+    }
+    const davitIds: string[] = [];
+    for (const x of [3, 4]) {
+      const count = await page.evaluate(
+        () => window.__shipBuilderStore!.getState().ship.parts.length
+      );
+      const upper = await page.evaluate(
+        ([cellX]) =>
+          window
+            .__shipBuilderStore!.getState()
+            .ship.parts.find(
+              (p) =>
+                p.anchor.kind === "grid" &&
+                p.anchor.level === 1 &&
+                p.anchor.x === cellX
+            )!.id,
+        [x]
+      );
+      await place(page, /^Davit/, {
+        kind: "attach",
+        parentId: upper,
+        pointId: `davit:${x}:0`,
+      });
+      davitIds.push(await partId(page, count));
+    }
+    // The boat hangs from the forward davit of the pair.
+    await place(page, /^Large lifeboat/, {
+      kind: "attach",
+      parentId: davitIds[0],
+      pointId: "big-boat",
+    });
+
+    await page.getByRole("button", { name: "Below view" }).click();
+    await place(page, /^Propeller/, {
+      kind: "attach",
+      parentId: "hull",
+      pointId: "prop:0",
+    });
+
+    await expect
+      .poll(async () =>
+        Number(await page.getByTestId("stat-speed").innerText())
+      )
+      .toBeGreaterThan(0);
+    await expect(page.getByText(/No propellers/)).toHaveCount(0);
+  });
 });
