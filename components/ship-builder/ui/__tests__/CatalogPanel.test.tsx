@@ -5,12 +5,14 @@ import { PART_TYPES } from "@/lib/ship-builder/model/types";
 import CatalogPanel from "../CatalogPanel";
 import Drawer from "../Drawer";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
+import { emptyShip } from "@/lib/ship-builder/model/placement";
 import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
 
 beforeEach(() => {
+  window.localStorage.clear();
   act(() => useShipBuilderStore.setState(createInitialState()));
 });
 
@@ -278,6 +280,74 @@ describe("CatalogPanel", () => {
         within(screen.getByTestId("drawer-header-Parts")).getByRole("searchbox")
       ).toBeInTheDocument();
       expect(screen.getAllByRole("searchbox")).toHaveLength(1);
+    });
+  });
+
+  describe("Kinds and Show all parts", () => {
+    const showCruise = () =>
+      act(() => useShipBuilderStore.setState({ ship: emptyShip("cruise") }));
+    const funnelButton = () =>
+      screen.queryByRole("button", { name: /^Funnel/ });
+    const toggle = () => screen.getByRole("switch", { name: "Show all parts" });
+
+    it("lists the liner-only parts for a liner", () => {
+      render(<CatalogPanel />);
+      expect(funnelButton()).toBeInTheDocument();
+      expect(toggle()).toHaveAttribute("aria-checked", "false");
+    });
+
+    it("hides liner-only parts and the empty Funnels category on a cruise ship", () => {
+      showCruise();
+      render(<CatalogPanel />);
+      expect(funnelButton()).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^(Collapsible|Large) lifeboat/ })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Funnels" })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Lifeboat gear" })
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Mast/ })).toBeInTheDocument();
+    });
+
+    it("shows everything with the switch and remembers it", async () => {
+      const user = userEvent.setup();
+      showCruise();
+      const first = render(<CatalogPanel />);
+      await user.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-checked", "true");
+      expect(funnelButton()).toBeInTheDocument();
+      expect(screen.getAllByTestId("part-icon")).toHaveLength(
+        PART_TYPES.length
+      );
+      first.unmount();
+      render(<CatalogPanel />);
+      expect(toggle()).toHaveAttribute("aria-checked", "true");
+      expect(funnelButton()).toBeInTheDocument();
+    });
+
+    it("only searches the visible parts", async () => {
+      const user = userEvent.setup();
+      showCruise();
+      render(<CatalogPanel />);
+      const box = screen.getByRole("searchbox", { name: "Search parts" });
+      await user.type(box, "funnel");
+      expect(funnelButton()).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("No parts match");
+      await user.click(toggle());
+      expect(funnelButton()).toBeInTheDocument();
+    });
+
+    it("puts the switch in the drawer's sticky header beside the search", () => {
+      render(
+        <Drawer side="left" label="Parts" open onOpenChange={() => {}}>
+          <CatalogPanel />
+        </Drawer>
+      );
+      const search = screen.getByRole("searchbox", { name: "Search parts" });
+      expect(search.closest("aside")).toContainElement(toggle());
     });
   });
 });

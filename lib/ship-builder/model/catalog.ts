@@ -1,3 +1,4 @@
+import type { ShipKind } from "./kinds";
 import {
   PART_TYPES,
   type AttachPointType,
@@ -120,6 +121,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   "bridge-7": bridgeDef("bridge-7", 7),
   funnel: {
     type: "funnel",
+    kinds: ["liner"],
     category: "funnels",
     name: "Funnel",
     description: "Smokestack · sits on a deck block · 40 stokers",
@@ -167,6 +169,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   },
   "lifeboat-collapsible": {
     type: "lifeboat-collapsible",
+    kinds: ["liner"],
     category: "lifeboats",
     name: "Collapsible lifeboat",
     description: "47 seats · hangs from a davit",
@@ -179,6 +182,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   },
   "funnel-large": {
     type: "funnel-large",
+    kinds: ["liner"],
     category: "funnels",
     name: "Large funnel",
     description: "Big smokestack · sits on a 2×2 of deck blocks · 75 stokers",
@@ -192,6 +196,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   },
   "lifeboat-large": {
     type: "lifeboat-large",
+    kinds: ["liner"],
     category: "lifeboats",
     name: "Large lifeboat",
     description: "150 seats · hangs between two davits",
@@ -234,4 +239,15 @@ export function partsInCategory(category: PartCategory): PartDef[] {
   return PART_TYPES.map((type) => CATALOG[type]).filter(
     (def) => def.category === category
   );
+}
+
+/**
+ * The parts to list for a ship kind: its own plus the shared ones, or every
+ * part when showAll is set. Always in catalog order.
+ */
+export function visibleParts(kind: ShipKind, showAll: boolean): PartDef[] {
+  const defs = PART_TYPES.map((type) => CATALOG[type]);
+  return showAll
+    ? defs
+    : defs.filter((def) => def.kinds === undefined || def.kinds.includes(kind));
 }

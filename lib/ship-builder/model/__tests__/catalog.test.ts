@@ -1,6 +1,13 @@
-import { CATALOG, CATEGORIES, getPartDef, partsInCategory } from "../catalog";
+import {
+  CATALOG,
+  CATEGORIES,
+  getPartDef,
+  partsInCategory,
+  visibleParts,
+} from "../catalog";
+import { SHIP_KINDS } from "../kinds";
 import { newId } from "../ids";
-import { PART_TYPES } from "../types";
+import { PART_TYPES, type PartType } from "../types";
 
 describe("catalog", () => {
   it("has a def for every part type, keyed by its own type", () => {
@@ -62,5 +69,45 @@ describe("newId", () => {
     const ids = new Set(Array.from({ length: 200 }, () => newId("p")));
     expect(ids.size).toBe(200);
     for (const id of ids) expect(id.startsWith("p-")).toBe(true);
+  });
+});
+
+describe("visibleParts", () => {
+  const LINER_ONLY: PartType[] = [
+    "funnel",
+    "funnel-large",
+    "lifeboat-collapsible",
+    "lifeboat-large",
+  ];
+  const types = (kind: Parameters<typeof visibleParts>[0], showAll: boolean) =>
+    visibleParts(kind, showAll).map((d) => d.type);
+
+  it("marks only the four liner parts as liner-only", () => {
+    const restricted = PART_TYPES.filter((t) => CATALOG[t].kinds !== undefined);
+    expect(restricted).toEqual(expect.arrayContaining(LINER_ONLY));
+    expect(restricted).toHaveLength(LINER_ONLY.length);
+    for (const type of LINER_ONLY)
+      expect(CATALOG[type].kinds).toEqual(["liner"]);
+  });
+
+  it("lists every part for a liner", () => {
+    expect(types("liner", false)).toEqual([...PART_TYPES]);
+  });
+
+  it.each(["cruise", "navy", "cargo"] as const)(
+    "hides the liner parts for a %s ship",
+    (kind) => {
+      const listed = types(kind, false);
+      for (const type of LINER_ONLY) expect(listed).not.toContain(type);
+      expect(listed).toEqual(
+        expect.arrayContaining(["deck-1x1", "mast", "propeller", "rudder"])
+      );
+    }
+  );
+
+  it("lists every part for every kind when showAll is set", () => {
+    for (const kind of SHIP_KINDS) {
+      expect(types(kind, true)).toEqual([...PART_TYPES]);
+    }
   });
 });

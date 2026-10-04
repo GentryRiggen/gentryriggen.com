@@ -152,6 +152,8 @@ interface PartDefBase {
   stokers?: number;
   /** Engine power units a funnel provides. */
   power?: number;
+  /** Ship kinds this part is listed for. Absent means every kind. */
+  kinds?: ShipKind[];
 }
 
 export interface GridPartDef extends PartDefBase {

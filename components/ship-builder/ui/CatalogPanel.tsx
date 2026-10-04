@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { CATEGORIES, partsInCategory } from "@/lib/ship-builder/model/catalog";
+import { CATEGORIES, visibleParts } from "@/lib/ship-builder/model/catalog";
 import { fuzzyFilter, type SearchField } from "@/lib/ship-builder/search/fuzzy";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
@@ -23,6 +23,7 @@ import {
   type BowShape,
   type SternShape,
 } from "@/lib/ship-builder/model/types";
+import useShowAllParts from "../hooks/useShowAllParts";
 import HullEndIcon, { type HullEndKind } from "./icons/HullEndIcon";
 import PartIcon from "./icons/PartIcon";
 import { DrawerHeaderSlot } from "./Drawer";
@@ -153,6 +154,45 @@ function SearchBox({ query, onQueryChange }: SearchBoxProps) {
   );
 }
 
+interface ShowAllSwitchProps {
+  isOn: boolean;
+  onChange: (next: boolean) => void;
+}
+
+function ShowAllSwitch({ isOn, onChange }: ShowAllSwitchProps) {
+  const labelId = useId();
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 pb-2">
+      <span id={labelId} className="text-xs text-slate-600 dark:text-slate-300">
+        Show all parts
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isOn}
+        aria-labelledby={labelId}
+        onClick={() => onChange(!isOn)}
+        className="-my-2 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:focus-visible:outline-sky-400"
+      >
+        <span
+          aria-hidden="true"
+          className={`flex h-5 w-9 items-center rounded-full p-0.5 transition-colors ${
+            isOn
+              ? "bg-sky-600 dark:bg-sky-500"
+              : "bg-slate-300 dark:bg-slate-600"
+          }`}
+        >
+          <span
+            className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              isOn ? "translate-x-4" : "translate-x-0"
+            }`}
+          />
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export default function CatalogPanel({ onPick }: CatalogPanelProps) {
   const [query, setQuery] = useState("");
   const headerSlot = useContext(DrawerHeaderSlot);
@@ -160,6 +200,8 @@ export default function CatalogPanel({ onPick }: CatalogPanelProps) {
   const selectTool = useShipBuilderStore((s) => s.selectTool);
   const bow = useShipBuilderStore((s) => s.ship.hull.bow);
   const stern = useShipBuilderStore((s) => s.ship.hull.stern);
+  const kind = useShipBuilderStore((s) => s.ship.kind);
+  const { showAll, setShowAll } = useShowAllParts();
   const setBow = useShipBuilderStore((s) => s.setBow);
   const setStern = useShipBuilderStore((s) => s.setStern);
 
@@ -171,22 +213,30 @@ export default function CatalogPanel({ onPick }: CatalogPanelProps) {
     () => fuzzyFilter(query, sternTiles, (t) => hullTileFields("Stern", t)),
     [query]
   );
-  const visibleCategories = useMemo(
-    () =>
-      CATEGORIES.map((category) => ({
-        category,
-        parts: fuzzyFilter(query, partsInCategory(category.id), (def) => [
+  const visibleCategories = useMemo(() => {
+    const listed = visibleParts(kind, showAll);
+    return CATEGORIES.map((category) => ({
+      category,
+      parts: fuzzyFilter(
+        query,
+        listed.filter((def) => def.category === category.id),
+        (def) => [
           { text: def.name, weight: 1, allowSubsequence: true },
           { text: category.name, weight: 0.7, allowSubsequence: true },
           { text: def.description, weight: 0.4 },
-        ]),
-      })).filter(({ parts }) => parts.length > 0),
-    [query]
-  );
+        ]
+      ),
+    })).filter(({ parts }) => parts.length > 0);
+  }, [query, kind, showAll]);
   const hasHull = visibleBow.length > 0 || visibleStern.length > 0;
   const hasResults = hasHull || visibleCategories.length > 0;
 
-  const search = <SearchBox query={query} onQueryChange={setQuery} />;
+  const search = (
+    <>
+      <SearchBox query={query} onQueryChange={setQuery} />
+      <ShowAllSwitch isOn={showAll} onChange={setShowAll} />
+    </>
+  );
 
   return (
     <>
