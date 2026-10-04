@@ -54,6 +54,21 @@ export default function Drawer({
   const expandRef = useRef<HTMLButtonElement>(null);
   const hasMounted = useRef(false);
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  // Things scrolled into view (keyboard focus, find-in-page, tests) must
+  // land below the sticky header, whose height changes with its contents.
+  useEffect(() => {
+    const aside = asideRef.current;
+    const header = headerRef.current;
+    if (!aside || !header || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      aside.style.scrollPaddingTop = `${header.offsetHeight}px`;
+    });
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   // Collapsing hides the focused button and expanding unmounts the rail
   // button, so hand focus to the button that replaces it. Skipped on mount so
@@ -86,6 +101,7 @@ export default function Drawer({
         {label}
       </button>
       <aside
+        ref={asideRef}
         id={id}
         aria-label={label}
         className={`absolute inset-y-0 z-30 w-72 overflow-y-auto transition-[transform,visibility] lg:static lg:z-auto lg:translate-x-0 ${panelClass} ${
@@ -119,6 +135,7 @@ export default function Drawer({
             opaque background hides the panel content that scrolls beneath it.
           */}
           <div
+            ref={headerRef}
             data-testid={`drawer-header-${label}`}
             className="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
           >
