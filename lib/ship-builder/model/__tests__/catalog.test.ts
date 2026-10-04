@@ -16,6 +16,23 @@ describe("catalog", () => {
     }
   });
 
+  it("lists Propulsion last, holding the propeller", () => {
+    expect(CATEGORIES[CATEGORIES.length - 1]).toEqual({
+      id: "propulsion",
+      name: "Propulsion",
+    });
+    expect(partsInCategory("propulsion").map((d) => d.type)).toEqual([
+      "propeller",
+    ]);
+  });
+
+  it("gives funnels power and the new parts their stats", () => {
+    expect(CATALOG.funnel.power).toBe(1);
+    expect(CATALOG["funnel-large"].power).toBe(2);
+    expect(CATALOG["funnel-large"].stokers).toBe(75);
+    expect(CATALOG["lifeboat-large"].seats).toBe(90);
+  });
+
   it("gives grid parts positive footprints and attach parts a target", () => {
     for (const type of PART_TYPES) {
       const def = CATALOG[type];

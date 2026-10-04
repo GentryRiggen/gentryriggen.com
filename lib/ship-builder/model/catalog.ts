@@ -13,6 +13,7 @@ export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
   { id: "funnels", name: "Funnels" },
   { id: "masts", name: "Masts" },
   { id: "lifeboats", name: "Lifeboat gear" },
+  { id: "propulsion", name: "Propulsion" },
 ];
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
@@ -20,6 +21,9 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "mast-mount": "mast mount",
   "davit-point": "boat-deck edge",
   "boat-mount": "davit",
+  "large-funnel-mount": "2×2 of deck blocks with nothing on top",
+  "big-boat-mount": "pair of side-by-side davits",
+  "prop-mount": "propeller spot under the stern",
 };
 
 export const CATALOG: Record<PartType, PartDef> = {
@@ -102,6 +106,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 2,
     height: 3.2,
     stokers: 40,
+    power: 1,
     emptyHint: "Place a deck block with nothing on top of it first",
   },
   "mast-fore": {
@@ -162,6 +167,42 @@ export const CATALOG: Record<PartType, PartDef> = {
     height: 0.4,
     seats: 47,
     emptyHint: "Every davit has a boat — add another davit",
+  },
+  "funnel-large": {
+    type: "funnel-large",
+    category: "funnels",
+    name: "Large funnel",
+    description: "Sits on a 2×2 of deck blocks · 75 stokers",
+    placement: "attach",
+    attachTo: "large-funnel-mount",
+    mass: 4,
+    height: 4.2,
+    stokers: 75,
+    power: 2,
+    emptyHint: "Make a 2×2 of deck blocks with nothing on top",
+  },
+  "lifeboat-large": {
+    type: "lifeboat-large",
+    category: "lifeboats",
+    name: "Large lifeboat",
+    description: "90 seats · hangs between two davits",
+    placement: "attach",
+    attachTo: "big-boat-mount",
+    mass: 0.4,
+    height: 0.5,
+    seats: 90,
+    emptyHint: "Put two davits side by side on the same deck edge",
+  },
+  propeller: {
+    type: "propeller",
+    category: "propulsion",
+    name: "Propeller",
+    description: "Mounts under the stern · pushes the ship",
+    placement: "attach",
+    attachTo: "prop-mount",
+    mass: 0.3,
+    height: 0.5,
+    emptyHint: "Every propeller spot is taken",
   },
 };
 

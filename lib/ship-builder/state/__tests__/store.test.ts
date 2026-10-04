@@ -213,8 +213,8 @@ describe("hull length", () => {
   it("grows immediately and clamps to range", () => {
     store().changeHullLength(+1);
     expect(store().ship.hull.lengthSegments).toBe(9);
-    for (let i = 0; i < 10; i++) store().changeHullLength(+1);
-    expect(store().ship.hull.lengthSegments).toBe(12);
+    for (let i = 0; i < 20; i++) store().changeHullLength(+1);
+    expect(store().ship.hull.lengthSegments).toBe(20);
   });
 
   it("shrinks immediately when nothing is lost", () => {

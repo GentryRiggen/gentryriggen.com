@@ -24,7 +24,7 @@ import {
 } from "../../model/types";
 import { createInitialState, useShipBuilderStore } from "../store";
 
-const SEQUENCES = 300;
+const SEQUENCES = 600;
 const ACTIONS_PER_SEQUENCE = 40;
 const SEED = 0x5eed;
 

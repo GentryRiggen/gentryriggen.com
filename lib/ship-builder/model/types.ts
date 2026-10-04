@@ -11,15 +11,30 @@ export const PART_TYPES = [
   "davit",
   "lifeboat-standard",
   "lifeboat-collapsible",
+  "funnel-large",
+  "lifeboat-large",
+  "propeller",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
 
 export type PartCategory =
-  "decks" | "cabins" | "command" | "funnels" | "masts" | "lifeboats";
+  | "decks"
+  | "cabins"
+  | "command"
+  | "funnels"
+  | "masts"
+  | "lifeboats"
+  | "propulsion";
 
 export type AttachPointType =
-  "funnel-mount" | "mast-mount" | "davit-point" | "boat-mount";
+  | "funnel-mount"
+  | "mast-mount"
+  | "davit-point"
+  | "boat-mount"
+  | "large-funnel-mount"
+  | "big-boat-mount"
+  | "prop-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -87,6 +102,11 @@ export interface AttachPoint {
   type: AttachPointType;
   position: Vec3;
   side?: Side;
+  /**
+   * What this point occupies. Two points conflict when they share a claim.
+   * Defaults to one key unique to the point (see claimsOf in attach.ts).
+   */
+  claims?: string[];
 }
 
 interface PartDefBase {
@@ -101,6 +121,8 @@ interface PartDefBase {
   passengers?: { cabinClass: CabinClass; count: number };
   seats?: number;
   stokers?: number;
+  /** Engine power units a funnel provides. */
+  power?: number;
 }
 
 export interface GridPartDef extends PartDefBase {

@@ -26,9 +26,38 @@ export const STERN_LENGTH = 1.5;
 const DAVIT_HEIGHT = 0.8;
 const DAVIT_REACH = 0.6;
 
+/** Model y of a propeller shaft: below the keel (deck is y 0, keel ≈ −2.8). */
+export const PROP_MOUNT_Y = -3.1;
+/** Propellers sit this far forward of the hull's last cell. */
+const PROP_SETBACK = 0.5;
+
+export function propCount(beam: number): number {
+  if (beam <= 3) return 2;
+  return beam === 4 ? 3 : 4;
+}
+
+/** The resources a point occupies; see AttachPoint.claims. */
+export function claimsOf(parentId: string, point: AttachPoint): string[] {
+  return point.claims ?? [`${parentId}/${point.id}`];
+}
+
+const topClaim = (cell: Cell) => `top:${cell.level}:${cell.x}:${cell.z}`;
+const davitClaim = (davitId: string) => `davit:${davitId}`;
+
 function hullPoints(ship: Ship): AttachPoint[] {
   const length = gridLength(ship);
-  const centerline = beamOf(ship) / 2;
+  const beam = beamOf(ship);
+  const centerline = beam / 2;
+  const props = propCount(beam);
+  const propellers: AttachPoint[] = Array.from({ length: props }, (_, i) => ({
+    id: `prop:${i}`,
+    type: "prop-mount",
+    position: {
+      x: length - PROP_SETBACK,
+      y: PROP_MOUNT_Y,
+      z: (beam * (i + 1)) / (props + 1),
+    },
+  }));
   return [
     {
       id: "mast-fore",
@@ -40,6 +69,7 @@ function hullPoints(ship: Ship): AttachPoint[] {
       type: "mast-mount",
       position: { x: length + STERN_LENGTH / 2, y: 0, z: centerline },
     },
+    ...propellers,
   ];
 }
 
@@ -80,6 +110,42 @@ function isCovered(part: PlacedPart, occupancy: Occupancy): boolean {
   );
 }
 
+/** Whether the cell holds an uncovered deck-role block. */
+function isOpenDeckTop(occupancy: Occupancy, cell: Cell): boolean {
+  const occupant = occupancy.get(cellKey(cell));
+  if (!occupant) return false;
+  const def = getPartDef(occupant.type);
+  if (def.placement !== "grid" || def.role !== "deck") return false;
+  return !occupancy.has(cellKey({ ...cell, level: cell.level + 1 }));
+}
+
+/**
+ * One point per 2×2 square of open deck tops whose lowest-x, lowest-z corner
+ * belongs to this block, so each square is exposed exactly once.
+ */
+function largeFunnelPoints(
+  part: PlacedPart,
+  occupancy: Occupancy
+): AttachPoint[] {
+  const points: AttachPoint[] = [];
+  for (const c of partCells(part)) {
+    const square: Cell[] = [
+      c,
+      { ...c, x: c.x + 1 },
+      { ...c, z: c.z + 1 },
+      { ...c, x: c.x + 1, z: c.z + 1 },
+    ];
+    if (!square.every((cell) => isOpenDeckTop(occupancy, cell))) continue;
+    points.push({
+      id: `funnel-lg:${c.x}:${c.z}`,
+      type: "large-funnel-mount",
+      position: { x: c.x + 1, y: c.level + 1, z: c.z + 1 },
+      claims: square.map(topClaim),
+    });
+  }
+  return points;
+}
+
 function blockPoints(
   ship: Ship,
   part: PlacedPart,
@@ -96,8 +162,11 @@ function blockPoints(
       id: "funnel",
       type: "funnel-mount",
       position: { x: x + size.x / 2, y: level + 1, z: z + size.z / 2 },
+      claims: partCells(part).map(topClaim),
     });
   }
+
+  if (def.role === "deck") points.push(...largeFunnelPoints(part, occupancy));
 
   if (def.role !== "bridge" && level >= 1) {
     for (const cell of partCells(part)) {
@@ -134,18 +203,47 @@ function davitPoints(
   if (!base) return [];
   // Starboard is low z, so outboard is -z there and +z on the port side.
   const outward = base.side === "starboard" ? -1 : 1;
-  return [
+  const y = base.position.y + DAVIT_HEIGHT;
+  const z = base.position.z + outward * DAVIT_REACH;
+  const points: AttachPoint[] = [
     {
       id: "boat",
       type: "boat-mount",
-      position: {
-        x: base.position.x,
-        y: base.position.y + DAVIT_HEIGHT,
-        z: base.position.z + outward * DAVIT_REACH,
-      },
+      position: { x: base.position.x, y, z },
       side: base.side,
+      claims: [davitClaim(part.id)],
     },
   ];
+  const neighbour = ship.parts.find(
+    (other) =>
+      other.type === "davit" &&
+      other.anchor.kind === "attach" &&
+      isNextDavit(base, resolveAttachPoint(ship, other.anchor, occupancy))
+  );
+  if (neighbour) {
+    points.push({
+      id: "big-boat",
+      type: "big-boat-mount",
+      position: { x: base.position.x + 0.5, y, z },
+      side: base.side,
+      claims: [davitClaim(part.id), davitClaim(neighbour.id)],
+    });
+  }
+  return points;
+}
+
+/** Same side, level and edge, one cell further aft. */
+function isNextDavit(
+  base: AttachPoint,
+  other: AttachPoint | undefined
+): boolean {
+  return (
+    other !== undefined &&
+    other.side === base.side &&
+    other.position.y === base.position.y &&
+    other.position.z === base.position.z &&
+    other.position.x === base.position.x + 1
+  );
 }
 
 /** Every attach point a parent currently exposes, taken or not. */
@@ -171,17 +269,44 @@ export function resolveAttachPoint(
   );
 }
 
+/** The claims one placed part holds; empty for grid parts. */
+export function claimsOfPart(
+  ship: Ship,
+  part: PlacedPart,
+  occupancy: Occupancy
+): string[] {
+  if (part.anchor.kind !== "attach") return [];
+  const point = resolveAttachPoint(ship, part.anchor, occupancy);
+  return point ? claimsOf(part.anchor.parentId, point) : [];
+}
+
+/** Every claim held by a placed attach part. */
+export function claimedKeys(ship: Ship, occupancy: Occupancy): Set<string> {
+  const claimed = new Set<string>();
+  for (const part of ship.parts) {
+    for (const key of claimsOfPart(ship, part, occupancy)) claimed.add(key);
+  }
+  return claimed;
+}
+
+export function overlapsClaims(
+  parentId: string,
+  point: AttachPoint,
+  claimed: ReadonlySet<string>
+): boolean {
+  return claimsOf(parentId, point).some((key) => claimed.has(key));
+}
+
 export function isPointTaken(
   ship: Ship,
   parentId: string,
-  pointId: string
+  pointId: string,
+  occupancy: Occupancy = buildOccupancy(ship)
 ): boolean {
-  return ship.parts.some(
-    (part) =>
-      part.anchor.kind === "attach" &&
-      part.anchor.parentId === parentId &&
-      part.anchor.pointId === pointId
-  );
+  const anchor: AttachAnchor = { kind: "attach", parentId, pointId };
+  const point = resolveAttachPoint(ship, anchor, occupancy);
+  if (!point) return false;
+  return overlapsClaims(parentId, point, claimedKeys(ship, occupancy));
 }
 
 export function pointFitsPart(def: AttachPartDef, point: AttachPoint): boolean {
@@ -197,12 +322,13 @@ export function openAttachPoints(
   def: AttachPartDef
 ): { parentId: string; point: AttachPoint }[] {
   const occupancy = buildOccupancy(ship);
+  const claimed = claimedKeys(ship, occupancy);
   const parentIds = [HULL_ID, ...ship.parts.map((part) => part.id)];
   return parentIds.flatMap((parentId) =>
     attachPointsOf(ship, parentId, occupancy)
       .filter(
         (point) =>
-          pointFitsPart(def, point) && !isPointTaken(ship, parentId, point.id)
+          pointFitsPart(def, point) && !overlapsClaims(parentId, point, claimed)
       )
       .map((point) => ({ parentId, point }))
   );

@@ -21,7 +21,7 @@ export const GRID_WIDTH = DEFAULT_BEAM;
 export const WING_REACH = 2;
 export const MAX_LEVEL = 3;
 export const MIN_SEGMENTS = 4;
-export const MAX_SEGMENTS = 12;
+export const MAX_SEGMENTS = 20;
 
 /** Cell key → the grid part occupying it. */
 export type Occupancy = Map<string, PlacedPart>;

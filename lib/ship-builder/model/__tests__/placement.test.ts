@@ -703,9 +703,9 @@ describe("validateShip", () => {
     }
   });
 
-  it("rejects a hull outside 4-12 segments", () => {
+  it("rejects a hull outside 4-20 segments", () => {
     expect(validateShip(testShip([], 3)).ok).toBe(false);
-    expect(validateShip(testShip([], 13)).ok).toBe(false);
+    expect(validateShip(testShip([], 21)).ok).toBe(false);
   });
 
   it("rejects parts listed before their parent", () => {

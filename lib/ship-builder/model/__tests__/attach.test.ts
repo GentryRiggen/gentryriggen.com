@@ -20,16 +20,21 @@ function portRotatedShip() {
 
 describe("attach points", () => {
   it("gives the hull fore and aft mast mounts that track the stern", () => {
-    const short = attachPointsOf(testShip([], 4), HULL_ID);
+    const hullMasts = (length: number, beam = 4) =>
+      attachPointsOf(testShip([], length, beam), HULL_ID).filter(
+        (p) => p.type === "mast-mount"
+      );
+    const short = hullMasts(4);
     expect(short.map((p) => p.id)).toEqual(["mast-fore", "mast-aft"]);
     expect(short[0].position).toEqual({ x: -1, y: 0, z: 2 });
     expect(short[1].position).toEqual({ x: 12.75, y: 0, z: 2 });
-    const long = attachPointsOf(testShip([], 8), HULL_ID);
-    expect(long[1].position.x).toBe(24.75);
+    expect(hullMasts(8)[1].position.x).toBe(24.75);
   });
 
   it("centres the mast mounts on the beam", () => {
-    const points = attachPointsOf(testShip([], 4, 5), HULL_ID);
+    const points = attachPointsOf(testShip([], 4, 5), HULL_ID).filter(
+      (p) => p.type === "mast-mount"
+    );
     expect(points.map((p) => p.position.z)).toEqual([2.5, 2.5]);
   });
 
@@ -40,6 +45,7 @@ describe("attach points", () => {
         id: "funnel",
         type: "funnel-mount",
         position: { x: 5, y: 1, z: 1.5 },
+        claims: ["top:0:4:1", "top:0:5:1"],
       },
     ]);
   });
@@ -134,6 +140,7 @@ describe("attach points", () => {
       id: "funnel",
       type: "funnel-mount",
       position: { x: 4.5, y: 2, z: 1 },
+      claims: ["top:1:4:0", "top:1:4:1"],
     });
     const davits = points.filter((p) => p.type === "davit-point");
     expect(davits).toEqual([

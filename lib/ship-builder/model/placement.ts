@@ -1,7 +1,11 @@
 import {
   attachPointsOf,
-  isPointTaken,
+  claimedKeys,
+  claimsOf,
+  claimsOfPart,
+  overlapsClaims,
   pointFitsPart,
+  resolveAttachPoint,
   rowExtent,
 } from "./attach";
 import { ATTACH_POINT_LABELS, getPartDef } from "./catalog";
@@ -71,13 +75,25 @@ export function emptyShip(
   return { v: 2, name, hull: { lengthSegments, beam }, parts: [] };
 }
 
-function holdsFunnel(ship: Ship, block: PlacedPart): boolean {
-  return ship.parts.some(
-    (p) =>
-      p.type === "funnel" &&
-      p.anchor.kind === "attach" &&
-      p.anchor.parentId === block.id
-  );
+/** Whether a small or large funnel stands on the cell directly below. */
+function isUnderFunnel(ship: Ship, cell: Cell, occupancy: Occupancy): boolean {
+  const belowKey = `top:${cell.level - 1}:${cell.x}:${cell.z}`;
+  return ship.parts.some((part) => {
+    if (part.anchor.kind !== "attach") return false;
+    const def = getPartDef(part.type);
+    if (def.placement !== "attach") return false;
+    if (
+      def.attachTo !== "funnel-mount" &&
+      def.attachTo !== "large-funnel-mount"
+    ) {
+      return false;
+    }
+    const point = resolveAttachPoint(ship, part.anchor, occupancy);
+    return (
+      point !== undefined &&
+      claimsOf(part.anchor.parentId, point).includes(belowKey)
+    );
+  });
 }
 
 function holdsDavitAt(
@@ -168,7 +184,9 @@ function canPlaceGrid(
     if (below.type === "bridge") {
       return fail("Can't build on top of the bridge");
     }
-    if (holdsFunnel(ship, below)) return fail("Can't build over a funnel");
+    if (isUnderFunnel(ship, cell, occupancy)) {
+      return fail("Can't build over a funnel");
+    }
     if (holdsDavitAt(ship, below, cell.x, cell.z)) {
       return fail("Can't build over a davit");
     }
@@ -198,7 +216,8 @@ function canPlaceAttach(
   ship: Ship,
   def: AttachPartDef,
   candidate: PartCandidate,
-  occupancy: Occupancy
+  occupancy: Occupancy,
+  claimed: ReadonlySet<string> | undefined
 ): RuleResult {
   // The store always places attach parts at rotation 0; anything else came
   // from hand-edited or hostile data.
@@ -210,20 +229,29 @@ function canPlaceAttach(
     (p) => p.id === pointId
   );
   if (!point || !pointFitsPart(def, point)) return missing;
-  if (isPointTaken(ship, parentId, pointId)) return fail("That spot is taken");
+  if (
+    overlapsClaims(parentId, point, claimed ?? claimedKeys(ship, occupancy))
+  ) {
+    return fail("That spot is taken");
+  }
   return OK;
 }
 
-/** Expects a ship that passed validateShip (no parent cycles). */
+/**
+ * Expects a ship that passed validateShip (no parent cycles). Callers that
+ * place many parts in a row can pass the ship's claimedKeys to avoid
+ * recomputing them for each one.
+ */
 export function canPlace(
   ship: Ship,
   candidate: PartCandidate,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = buildOccupancy(ship),
+  claimed?: ReadonlySet<string>
 ): RuleResult {
   const def = getPartDef(candidate.type);
   return def.placement === "grid"
     ? canPlaceGrid(ship, def, candidate, occupancy)
-    : canPlaceAttach(ship, def, candidate, occupancy);
+    : canPlaceAttach(ship, def, candidate, occupancy, claimed);
 }
 
 export function place(
@@ -351,19 +379,28 @@ function isIntegerIn(value: number, min: number, max: number): boolean {
 interface Build {
   ship: Ship;
   occupancy: Occupancy;
+  claimed: Set<string>;
   ids: Set<string>;
 }
 
 function startBuild(ship: Ship): Build {
-  return { ship: { ...ship, parts: [] }, occupancy: new Map(), ids: new Set() };
+  return {
+    ship: { ...ship, parts: [] },
+    occupancy: new Map(),
+    claimed: new Set(),
+    ids: new Set(),
+  };
 }
 
 /** place(), without rebuilding the occupancy for every part. */
 function addToBuild(build: Build, part: PlacedPart): RuleResult {
   if (part.id === HULL_ID) return fail("Reserved part id");
   if (build.ids.has(part.id)) return fail("Duplicate part id");
-  const result = canPlace(build.ship, part, build.occupancy);
+  const result = canPlace(build.ship, part, build.occupancy, build.claimed);
   if (!result.ok) return result;
+  for (const key of claimsOfPart(build.ship, part, build.occupancy)) {
+    build.claimed.add(key);
+  }
   build.ship.parts.push(part);
   build.ids.add(part.id);
   for (const cell of partCells(part)) build.occupancy.set(cellKey(cell), part);
