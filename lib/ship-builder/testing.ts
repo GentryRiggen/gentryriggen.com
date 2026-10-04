@@ -25,8 +25,12 @@ export function attachPart(
   };
 }
 
-export function testShip(parts: PlacedPart[] = [], lengthSegments = 8): Ship {
-  return { v: 1, name: "Test", hull: { lengthSegments }, parts };
+export function testShip(
+  parts: PlacedPart[] = [],
+  lengthSegments = 8,
+  beam = 4
+): Ship {
+  return { v: 2, name: "Test", hull: { lengthSegments, beam }, parts };
 }
 
 const LONE_SURROGATE =

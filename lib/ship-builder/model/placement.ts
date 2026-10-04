@@ -3,10 +3,13 @@ import { ATTACH_POINT_LABELS, getPartDef } from "./catalog";
 import {
   buildOccupancy,
   cellKey,
+  DEFAULT_BEAM,
   footprintCells,
   inBounds,
   isForwardHalf,
+  MAX_BEAM,
   MAX_SEGMENTS,
+  MIN_BEAM,
   MIN_SEGMENTS,
   partCells,
   type Occupancy,
@@ -46,9 +49,10 @@ const fail = (reason: string): RuleResult => ({ ok: false, reason });
 
 export function emptyShip(
   name = "Untitled liner",
-  lengthSegments = DEFAULT_SEGMENTS
+  lengthSegments = DEFAULT_SEGMENTS,
+  beam = DEFAULT_BEAM
 ): Ship {
-  return { v: 1, name, hull: { lengthSegments }, parts: [] };
+  return { v: 2, name, hull: { lengthSegments, beam }, parts: [] };
 }
 
 function holdsFunnel(ship: Ship, block: PlacedPart): boolean {
@@ -227,7 +231,7 @@ export function removeParts(ship: Ship, ids: string[]): Ship {
 }
 
 function withLength(ship: Ship, lengthSegments: number): Ship {
-  return { ...ship, hull: { lengthSegments } };
+  return { ...ship, hull: { ...ship.hull, lengthSegments } };
 }
 
 export function previewHullLength(
@@ -242,16 +246,17 @@ export function setHullLength(ship: Ship, lengthSegments: number): Ship {
   return removeParts(resized, cascadeIds(resized, []));
 }
 
+function isIntegerIn(value: number, min: number, max: number): boolean {
+  return Number.isInteger(value) && value >= min && value <= max;
+}
+
 /** Re-applies every placement in order; used on loaded or shared data. */
 export function validateShip(ship: Ship): RuleResult {
-  const { lengthSegments } = ship.hull;
-  if (
-    !Number.isInteger(lengthSegments) ||
-    lengthSegments < MIN_SEGMENTS ||
-    lengthSegments > MAX_SEGMENTS
-  ) {
+  const { lengthSegments, beam } = ship.hull;
+  if (!isIntegerIn(lengthSegments, MIN_SEGMENTS, MAX_SEGMENTS)) {
     return fail("Hull length out of range");
   }
+  if (!isIntegerIn(beam, MIN_BEAM, MAX_BEAM)) return fail("Beam out of range");
   let built: Ship = { ...ship, parts: [] };
   for (const part of ship.parts) {
     const result = place(built, part);

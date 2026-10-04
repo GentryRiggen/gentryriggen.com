@@ -391,6 +391,21 @@ describe("validateShip", () => {
     expect(validateShip(emptyShip())).toEqual(OK);
   });
 
+  it("starts an empty ship 4 cells wide", () => {
+    expect(emptyShip().hull).toEqual({ lengthSegments: 8, beam: 4 });
+    expect(emptyShip().v).toBe(2);
+  });
+
+  it("rejects a beam outside 3-7 cells or not a whole number", () => {
+    expect(validateShip(testShip([], 8, 3))).toEqual(OK);
+    expect(validateShip(testShip([], 8, 7))).toEqual(OK);
+    for (const beam of [2, 8, 4.5]) {
+      expect(validateShip(testShip([], 8, beam))).toEqual(
+        fail("Beam out of range")
+      );
+    }
+  });
+
   it("rejects a hull outside 4-12 segments", () => {
     expect(validateShip(testShip([], 3)).ok).toBe(false);
     expect(validateShip(testShip([], 13)).ok).toBe(false);

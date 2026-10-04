@@ -123,7 +123,12 @@ describe("My Ships", () => {
       id: "future",
       name: "From a newer deploy",
       savedAt: 5,
-      ship: { v: 2, name: "Future", hull: { lengthSegments: 8 }, parts: [] },
+      ship: {
+        v: 3,
+        name: "Future",
+        hull: { lengthSegments: 8, beam: 4 },
+        parts: [],
+      },
       extra: { kept: true },
     };
 

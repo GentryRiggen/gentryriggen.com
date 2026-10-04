@@ -51,10 +51,16 @@ export interface PlacedPart {
   rotation: Rotation;
 }
 
+export interface Hull {
+  lengthSegments: number;
+  /** Width in cells, MIN_BEAM to MAX_BEAM. Inside-hull cells are 0 <= z < beam. */
+  beam: number;
+}
+
 export interface Ship {
-  v: 1;
+  v: 2;
   name: string;
-  hull: { lengthSegments: number };
+  hull: Hull;
   parts: PlacedPart[];
 }
 

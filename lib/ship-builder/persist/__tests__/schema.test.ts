@@ -12,6 +12,16 @@ describe("parseShip", () => {
     expect(parseShip(validShip)).toEqual({ ok: true, ship: validShip });
   });
 
+  it("round-trips a v2 ship of every beam through JSON", () => {
+    for (const beam of [3, 4, 5, 6, 7]) {
+      const ship = testShip(validShip.parts, 8, beam);
+      expect(parseShip(JSON.parse(JSON.stringify(ship)))).toEqual({
+        ok: true,
+        ship,
+      });
+    }
+  });
+
   it("strips unknown keys", () => {
     const result = parseShip({ ...validShip, extra: "x" });
     expect(result.ok && "extra" in result.ship).toBe(false);
@@ -21,13 +31,29 @@ describe("parseShip", () => {
     ["null", null],
     ["a string", "ship"],
     ["an array", []],
-    ["the wrong version", { ...validShip, v: 2 }],
+    ["a newer version", { ...validShip, v: 3 }],
+    [
+      "a beam too narrow",
+      { ...validShip, hull: { ...validShip.hull, beam: 2 } },
+    ],
+    ["a beam too wide", { ...validShip, hull: { ...validShip.hull, beam: 8 } }],
+    [
+      "a fractional beam",
+      { ...validShip, hull: { ...validShip.hull, beam: 4.5 } },
+    ],
+    ["a missing beam", { ...validShip, hull: { lengthSegments: 8 } }],
     [
       "an unknown part type",
       { ...validShip, parts: [{ ...validShip.parts[0], type: "cannon" }] },
     ],
-    ["a hull too long", { ...validShip, hull: { lengthSegments: 99 } }],
-    ["a fractional hull", { ...validShip, hull: { lengthSegments: 6.5 } }],
+    [
+      "a hull too long",
+      { ...validShip, hull: { ...validShip.hull, lengthSegments: 99 } },
+    ],
+    [
+      "a fractional hull",
+      { ...validShip, hull: { ...validShip.hull, lengthSegments: 6.5 } },
+    ],
     ["a long name", { ...validShip, name: "x".repeat(61) }],
     [
       "a bad rotation",
@@ -99,12 +125,13 @@ describe("migrate", () => {
           hull: raw.hull,
           parts: raw.parts,
         }),
+        1: (raw) => ({ ...raw, v: 2, hull: { lengthSegments: 6, beam: 5 } }),
       }
     );
     expect(migrated).toEqual({
       v: CURRENT_VERSION,
       name: "Old",
-      hull: { lengthSegments: 6 },
+      hull: { lengthSegments: 6, beam: 5 },
       parts: [],
     });
   });

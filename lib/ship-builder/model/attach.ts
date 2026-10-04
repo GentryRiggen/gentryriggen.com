@@ -1,5 +1,6 @@
 import { getPartDef } from "./catalog";
 import {
+  beamOf,
   buildOccupancy,
   cellKey,
   GRID_WIDTH,
@@ -25,16 +26,17 @@ const DAVIT_REACH = 0.6;
 
 function hullPoints(ship: Ship): AttachPoint[] {
   const length = gridLength(ship);
+  const centerline = beamOf(ship) / 2;
   return [
     {
       id: "mast-fore",
       type: "mast-mount",
-      position: { x: -PROW_LENGTH / 2, y: 0, z: GRID_WIDTH / 2 },
+      position: { x: -PROW_LENGTH / 2, y: 0, z: centerline },
     },
     {
       id: "mast-aft",
       type: "mast-mount",
-      position: { x: length + STERN_LENGTH / 2, y: 0, z: GRID_WIDTH / 2 },
+      position: { x: length + STERN_LENGTH / 2, y: 0, z: centerline },
     },
   ];
 }

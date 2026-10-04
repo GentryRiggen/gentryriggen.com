@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { MAX_SEGMENTS, MIN_SEGMENTS } from "../model/grid";
+import { MAX_BEAM, MAX_SEGMENTS, MIN_BEAM, MIN_SEGMENTS } from "../model/grid";
 import { MAX_NAME_LENGTH, validateShip } from "../model/placement";
 import { PART_TYPES, type Ship } from "../model/types";
 
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -37,6 +37,7 @@ export const shipSchema = z.object({
   name: z.string().max(MAX_NAME_LENGTH),
   hull: z.object({
     lengthSegments: z.number().int().min(MIN_SEGMENTS).max(MAX_SEGMENTS),
+    beam: z.number().int().min(MIN_BEAM).max(MAX_BEAM),
   }),
   parts: z.array(placedPart).max(MAX_PARTS),
 });

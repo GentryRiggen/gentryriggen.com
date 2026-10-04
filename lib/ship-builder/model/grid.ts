@@ -9,7 +9,14 @@ import type {
 } from "./types";
 
 export const CELLS_PER_SEGMENT = 3;
-export const GRID_WIDTH = 4;
+export const MIN_BEAM = 3;
+export const MAX_BEAM = 7;
+export const DEFAULT_BEAM = 4;
+/**
+ * @deprecated The default beam only; ships have their own width. Use
+ * `beamOf(ship)`.
+ */
+export const GRID_WIDTH = DEFAULT_BEAM;
 export const MAX_LEVEL = 3;
 export const MIN_SEGMENTS = 4;
 export const MAX_SEGMENTS = 12;
@@ -19,6 +26,10 @@ export type Occupancy = Map<string, PlacedPart>;
 
 export function gridLength(ship: Ship): number {
   return ship.hull.lengthSegments * CELLS_PER_SEGMENT;
+}
+
+export function beamOf(ship: Ship): number {
+  return ship.hull.beam;
 }
 
 export function cellKey(cell: Cell): string {
@@ -62,7 +73,7 @@ export function inBounds(ship: Ship, cell: Cell): boolean {
     cell.x >= 0 &&
     cell.x < gridLength(ship) &&
     cell.z >= 0 &&
-    cell.z < GRID_WIDTH
+    cell.z < beamOf(ship)
   );
 }
 

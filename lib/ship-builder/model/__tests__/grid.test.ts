@@ -1,11 +1,15 @@
 import { getPartDef } from "../catalog";
 import {
+  beamOf,
   buildOccupancy,
   cellKey,
+  DEFAULT_BEAM,
   footprintCells,
   gridLength,
   inBounds,
   isForwardHalf,
+  MAX_BEAM,
+  MIN_BEAM,
   partCells,
   rotatedFootprint,
   topLevel,
@@ -49,6 +53,16 @@ describe("grid", () => {
     expect(inBounds(ship, { level: 0, x: 12, z: 0 })).toBe(false);
     expect(inBounds(ship, { level: 0, x: 0, z: 4 })).toBe(false);
     expect(inBounds(ship, { level: 0, x: -1, z: 0 })).toBe(false);
+  });
+
+  it("reads the beam from the ship, 3 to 7 cells wide", () => {
+    expect([MIN_BEAM, DEFAULT_BEAM, MAX_BEAM]).toEqual([3, 4, 7]);
+    expect(beamOf(testShip())).toBe(DEFAULT_BEAM);
+    expect(beamOf(testShip([], 8, 7))).toBe(7);
+  });
+
+  it("keeps inner columns of a wide hull in bounds", () => {
+    expect(inBounds(testShip([], 4, 7), { level: 0, x: 0, z: 6 })).toBe(true);
   });
 
   it("treats cells below half the length as the forward half", () => {

@@ -28,6 +28,11 @@ describe("attach points", () => {
     expect(long[1].position.x).toBe(24.75);
   });
 
+  it("centres the mast mounts on the beam", () => {
+    const points = attachPointsOf(testShip([], 4, 5), HULL_ID);
+    expect(points.map((p) => p.position.z)).toEqual([2.5, 2.5]);
+  });
+
   it("gives an uncovered deck block a centered funnel mount", () => {
     const ship = testShip([gridPart("a", "deck-2x1", 0, 4, 1)]);
     expect(attachPointsOf(ship, "a")).toEqual([
