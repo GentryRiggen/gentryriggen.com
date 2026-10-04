@@ -1,27 +1,26 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Sky } from "@react-three/drei";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
 import CameraRig from "./CameraRig";
+import useSeaState from "../hooks/useSeaState";
+import useTimeOfDay from "../hooks/useTimeOfDay";
 import { shouldSwallowClick } from "./clickGuard";
 import GhostPreview from "./GhostPreview";
 import GridTargets from "./GridTargets";
+import Environment from "./Environment";
+import { environmentFor } from "./environmentModel";
+import { toRuntimeEnvironment } from "./environmentRuntime";
 import Hull from "./Hull";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
-import { PALETTE } from "./palette";
 import Railings from "./Railings";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
 import { usePartLongPress } from "./usePartLongPress";
-
-/** Water swallows distance faster than air, so the fog closes in. */
-const UNDERWATER_FOG_NEAR = 40;
-const UNDERWATER_FOG_FAR = 200;
 
 /**
  * iOS Safari starts its own UI during a press-and-hold (callout, selection,
@@ -43,6 +42,12 @@ export default function Scene() {
   const paint = useShipBuilderStore((s) => s.ship.hull.paint);
   const select = useShipBuilderStore((s) => s.select);
   const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
+  const { seaState } = useSeaState();
+  const { timeOfDay } = useTimeOfDay();
+  // Built once from the first look; Environment eases it from there.
+  const [environment] = useState(() =>
+    toRuntimeEnvironment(environmentFor(timeOfDay, seaState))
+  );
   const wrapper = useRef<HTMLDivElement>(null);
   const { ring, startPress } = usePartLongPress(wrapper);
 
@@ -79,39 +84,13 @@ export default function Scene() {
           select(null);
         }}
       >
-        {/* Both themes share one scene, so the sky and the water are the same
-            colours in light and dark mode. Seen from below, the ship must sit
-            in water rather than sky. */}
-        <color
-          attach="background"
-          args={[isBelow ? PALETTE.underwater : PALETTE.sky]}
+        <Environment
+          current={environment}
+          timeOfDay={timeOfDay}
+          seaState={seaState}
+          isBelow={isBelow}
         />
-        <fog
-          attach="fog"
-          args={
-            isBelow
-              ? [PALETTE.underwater, UNDERWATER_FOG_NEAR, UNDERWATER_FOG_FAR]
-              : [PALETTE.sky, 80, 260]
-          }
-        />
-        {!isBelow && <Sky sunPosition={[100, 40, 80]} distance={450} />}
-        <ambientLight intensity={0.55} />
-        {/* The default ±5 shadow frustum clips anything past a few cells; this
-            covers the longest hull (36 cells) from the light's angle. */}
-        <directionalLight
-          position={[30, 40, 20]}
-          intensity={1.4}
-          castShadow
-          shadow-bias={-0.0005}
-          shadow-normalBias={0.02}
-          shadow-camera-left={-30}
-          shadow-camera-right={30}
-          shadow-camera-top={30}
-          shadow-camera-bottom={-30}
-          shadow-camera-far={150}
-          shadow-mapSize={[2048, 2048]}
-        />
-        <Ocean seeThrough={isBelow} />
+        <Ocean seeThrough={isBelow} environment={environment} />
         <ShipAnimation>
           <Hull
             lengthCells={lengthCells}

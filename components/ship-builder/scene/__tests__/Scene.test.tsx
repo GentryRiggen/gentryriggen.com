@@ -2,7 +2,10 @@ import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import Scene from "../Scene";
 
 jest.mock("@react-three/fiber", () => ({ Canvas: () => null }));
-jest.mock("@react-three/drei", () => ({ Sky: () => null }));
+jest.mock("../Environment", () => () => null);
+jest.mock("../environmentRuntime", () => ({
+  toRuntimeEnvironment: () => ({}),
+}));
 jest.mock("../AttachMarkers", () => () => null);
 jest.mock("../CameraRig", () => () => null);
 jest.mock("../GhostPreview", () => () => null);

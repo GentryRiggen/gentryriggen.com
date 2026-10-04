@@ -18,13 +18,38 @@ export interface SeaParams {
   bobScale: number;
   /** Multiplier on the ship's roll. */
   rollScale: number;
+  /** Share of the sky the clouds cover: clear, partly cloudy, overcast. */
+  cloudCover: number;
+  /** How far the light and sky turn grey and dim; 0 leaves them untouched. */
+  overcast: number;
 }
 
 const SEA_PARAMS: Record<SeaState, SeaParams> = {
   // Calm is the original look: a barely visible swell and the original bob.
-  calm: { amplitude: 0.03, speed: 0.6, bobScale: 1, rollScale: 1 },
-  choppy: { amplitude: 0.2, speed: 1, bobScale: 1.8, rollScale: 1.6 },
-  stormy: { amplitude: 0.45, speed: 1.6, bobScale: 3, rollScale: 2.4 },
+  calm: {
+    amplitude: 0.03,
+    speed: 0.6,
+    bobScale: 1,
+    rollScale: 1,
+    cloudCover: 0.2,
+    overcast: 0,
+  },
+  choppy: {
+    amplitude: 0.2,
+    speed: 1,
+    bobScale: 1.8,
+    rollScale: 1.6,
+    cloudCover: 0.55,
+    overcast: 0.25,
+  },
+  stormy: {
+    amplitude: 0.45,
+    speed: 1.6,
+    bobScale: 3,
+    rollScale: 2.4,
+    cloudCover: 1,
+    overcast: 0.85,
+  },
 };
 
 export function seaParams(sea: SeaState): SeaParams {

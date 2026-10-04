@@ -6,6 +6,7 @@ import {
   Color,
   DoubleSide,
   Float32BufferAttribute,
+  type MeshStandardMaterial,
   PlaneGeometry,
   type WebGLProgramParametersWithUniforms,
 } from "three";
@@ -18,6 +19,7 @@ import {
   oceanAxisCoordinate,
   oceanDepthMix,
 } from "./oceanGradient";
+import type { RuntimeEnvironment } from "./environmentRuntime";
 import { PALETTE } from "./palette";
 import {
   SEA_FAR_END,
@@ -61,6 +63,8 @@ function createOceanGeometry(): PlaneGeometry {
 interface OceanProps {
   /** Fades the surface so the hull shows through it (the below view). */
   seeThrough: boolean;
+  /** The live look; the water takes its tint and sheen from it. */
+  environment: RuntimeEnvironment;
 }
 
 /** Rate at which the wave height eases toward a newly chosen sea state. */
@@ -104,7 +108,8 @@ interface SeaUniforms {
 const OPACITY = 0.9;
 const SEE_THROUGH_OPACITY = 0.35;
 
-export default function Ocean({ seeThrough }: OceanProps) {
+export default function Ocean({ seeThrough, environment }: OceanProps) {
+  const material = useRef<MeshStandardMaterial>(null);
   const geometry = useMemo(() => createOceanGeometry(), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -147,13 +152,17 @@ export default function Ocean({ seeThrough }: OceanProps) {
     if (!reducedMotion) uniforms.uTime.value += step * speed;
     const ease = Math.min(1, step * AMPLITUDE_EASE);
     uniforms.uAmplitude.value += (amplitude - uniforms.uAmplitude.value) * ease;
+    if (material.current) {
+      material.current.color.copy(environment.colors.seaTint);
+      material.current.roughness = environment.numbers.seaRoughness;
+    }
   });
 
   return (
     <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <meshStandardMaterial
+        ref={material}
         vertexColors
-        roughness={0.35}
         metalness={0.1}
         transparent
         opacity={seeThrough ? SEE_THROUGH_OPACITY : OPACITY}
