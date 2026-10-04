@@ -1,6 +1,7 @@
 export const PALETTE = {
   sky: "#bcd4e6",
-  sea: "#1f4e6e",
+  /** Ocean gradient: lighter water around the ship, deeper toward the horizon. */
+  sea: { near: "#2b6788", far: "#163a54" },
   hull: "#15171a",
   antifouling: "#8e2a22",
   deck: "#c9a878",
