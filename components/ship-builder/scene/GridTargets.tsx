@@ -9,19 +9,13 @@ import {
   PlaneGeometry,
 } from "three";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
-import {
-  buildOccupancy,
-  beamOf,
-  gridLength,
-  MAX_LEVEL,
-  topLevel,
-} from "@/lib/ship-builder/model/grid";
-import type { GridAnchor } from "@/lib/ship-builder/model/types";
+import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useCursor } from "@react-three/drei";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap, sameAnchor } from "./anchors";
 import { shouldSwallowClick } from "./clickGuard";
 import { modelToWorld } from "./coords";
+import { gridTargetAnchors } from "./gridTargetAnchors";
 import { PALETTE } from "./palette";
 
 /** Lifts targets just clear of the block top they sit on. */
@@ -51,6 +45,7 @@ function createTargetResources() {
       opacity: 0.6,
     }),
     line: new LineBasicMaterial({ color: PALETTE.gridTarget }),
+    wingLine: new LineBasicMaterial({ color: PALETTE.gridTargetWing }),
     hoverLine: new LineBasicMaterial({ color: PALETTE.emphasis.hover }),
     hitMaterial: new MeshBasicMaterial({ side: DoubleSide }),
   };
@@ -72,26 +67,19 @@ export default function GridTargets() {
     [resources]
   );
 
-  const anchors = useMemo<GridAnchor[]>(() => {
+  const targets = useMemo(() => {
     if (tool.kind !== "place" || getPartDef(tool.type).placement !== "grid") {
       return [];
     }
-    const occupancy = buildOccupancy(ship);
-    const list: GridAnchor[] = [];
-    for (let x = 0; x < gridLength(ship); x++) {
-      for (let z = 0; z < beamOf(ship); z++) {
-        const level = topLevel(occupancy, x, z) + 1;
-        if (level <= MAX_LEVEL) list.push({ kind: "grid", level, x, z });
-      }
-    }
-    return list;
+    return gridTargetAnchors(ship);
   }, [ship, tool]);
 
   const length = gridLength(ship);
+  const beam = beamOf(ship);
   return (
     <group>
-      {anchors.map((anchor) => {
-        const [x, y, z] = modelToWorld(length, beamOf(ship), {
+      {targets.map(({ isWing, ...anchor }) => {
+        const [x, y, z] = modelToWorld(length, beam, {
           x: anchor.x + 0.5,
           y: anchor.level,
           z: anchor.z + 0.5,
@@ -109,7 +97,13 @@ export default function GridTargets() {
             />
             <lineSegments
               geometry={resources.edges}
-              material={isHovered ? resources.hoverLine : resources.line}
+              material={
+                isHovered
+                  ? resources.hoverLine
+                  : isWing
+                    ? resources.wingLine
+                    : resources.line
+              }
               renderOrder={1}
             />
             {/* Three.js still raycasts invisible meshes. */}

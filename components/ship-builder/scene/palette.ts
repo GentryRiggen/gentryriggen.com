@@ -17,6 +17,7 @@ export const PALETTE = {
   tint: { "ghost-ok": "#22c55e", "ghost-bad": "#ef4444", removal: "#ef4444" },
   emphasis: { hover: "#facc15", selected: "#38bdf8" },
   gridTarget: "#0284c7",
+  gridTargetWing: "#f97316",
   gridTargetFill: "#ffffff",
   attachMarker: "#facc15",
 } as const;
