@@ -74,6 +74,10 @@ export default function Toolbar() {
         value={ship.name}
         maxLength={MAX_NAME_LENGTH}
         onChange={(event) => rename(event.target.value)}
+        // Global shortcuts ignore inputs; blurring lets the next Esc reach them.
+        onKeyDown={(event) => {
+          if (event.key === "Escape") event.currentTarget.blur();
+        }}
         className={`w-44 ${inputClass}`}
       />
 

@@ -79,4 +79,14 @@ describe("Toolbar", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(myShips).toHaveFocus();
   });
+
+  it("blurs the ship name input on Escape", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const name = screen.getByLabelText("Ship name");
+    await user.click(name);
+    expect(name).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(name).not.toHaveFocus();
+  });
 });
