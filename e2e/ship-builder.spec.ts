@@ -434,4 +434,34 @@ test.describe("Ship Builder", () => {
     });
     await expect(page.getByTestId("stat-seats")).toHaveText("40");
   });
+
+  test("places deck items and stairs that climb a block", async ({ page }) => {
+    await openBuilder(page);
+    await place(page, /^Deck block 1×1/, {
+      kind: "grid",
+      level: 0,
+      x: 4,
+      z: 1,
+    });
+    await place(page, /^Deck chair/, { kind: "grid", level: 1, x: 4, z: 1 });
+    await place(page, /^Ventilator/, { kind: "grid", level: 0, x: 2, z: 2 });
+    // Stairs face +x at rotation 0, so they climb the block one cell aft.
+    await place(page, /^Stairs/, { kind: "grid", level: 0, x: 3, z: 1 });
+    const count = await page.evaluate(
+      () => window.__shipBuilderStore!.getState().ship.parts.length
+    );
+    expect(count).toBe(4);
+
+    // Removing the block takes the chair on top of it and the stairs along.
+    await page.evaluate(() => {
+      const store = window.__shipBuilderStore!;
+      store.getState().select(store.getState().ship.parts[0].id);
+      store.getState().requestDelete();
+      if (store.getState().pendingRemoval) store.getState().confirmRemoval();
+    });
+    const left = await page.evaluate(() =>
+      window.__shipBuilderStore!.getState().ship.parts.map((part) => part.type)
+    );
+    expect(left).toEqual(["ventilator"]);
+  });
 });
