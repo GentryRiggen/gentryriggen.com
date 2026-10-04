@@ -1,5 +1,5 @@
 import { newId } from "../model/ids";
-import { MAX_NAME_LENGTH } from "../model/placement";
+import { clampName } from "../model/placement";
 import type { Ship } from "../model/types";
 import { parseShip } from "./schema";
 
@@ -196,7 +196,7 @@ export function deleteShip(id: string): boolean {
 }
 
 export function renameShip(id: string, name: string): boolean {
-  const clamped = name.slice(0, MAX_NAME_LENGTH);
+  const clamped = clampName(name);
   return updateShips((entries) =>
     entries.map((e) =>
       // Only entries this build can read: a hidden twin with the same id

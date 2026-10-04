@@ -1,7 +1,9 @@
 import {
   canPlace,
   cascadeIds,
+  clampName,
   emptyShip,
+  MAX_NAME_LENGTH,
   place,
   previewHullLength,
   removeParts,
@@ -11,7 +13,13 @@ import {
   type PartCandidate,
 } from "../placement";
 import { HULL_ID, type PartType, type Rotation } from "../types";
-import { attachPart, gridPart, testShip } from "../../testing";
+import { parseShip } from "../../persist/schema";
+import {
+  attachPart,
+  gridPart,
+  hasLoneSurrogate,
+  testShip,
+} from "../../testing";
 
 function gridCandidate(
   type: PartType,
@@ -266,6 +274,30 @@ describe("place", () => {
     expect(place(testShip(), gridPart(HULL_ID, "deck-1x1", 0, 0, 0))).toEqual(
       fail("Reserved part id")
     );
+  });
+});
+
+describe("clampName", () => {
+  it("leaves short names alone", () => {
+    expect(clampName("Olympic")).toBe("Olympic");
+  });
+
+  it("clamps to MAX_NAME_LENGTH", () => {
+    expect(clampName("x".repeat(80))).toBe("x".repeat(MAX_NAME_LENGTH));
+  });
+
+  it("drops an emoji that would be split at the limit", () => {
+    const clamped = clampName("a".repeat(59) + "😀");
+    expect(hasLoneSurrogate(clamped)).toBe(false);
+    expect(clamped).toBe("a".repeat(59));
+  });
+
+  it("keeps all-emoji names within the schema's UTF-16 limit", () => {
+    const clamped = clampName("😀".repeat(60));
+    expect(hasLoneSurrogate(clamped)).toBe(false);
+    expect(clamped.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
+    expect(clamped).toBe("😀".repeat(MAX_NAME_LENGTH / 2));
+    expect(parseShip({ ...testShip(), name: clamped }).ok).toBe(true);
   });
 });
 

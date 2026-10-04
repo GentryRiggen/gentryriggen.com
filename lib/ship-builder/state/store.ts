@@ -5,8 +5,8 @@ import { newId } from "../model/ids";
 import {
   canPlace,
   cascadeIds,
+  clampName,
   emptyShip,
-  MAX_NAME_LENGTH,
   place,
   previewHullLength,
   removeParts,
@@ -235,7 +235,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     rename(name) {
-      set({ ship: { ...get().ship, name: name.slice(0, MAX_NAME_LENGTH) } });
+      set({ ship: { ...get().ship, name: clampName(name) } });
     },
 
     undo() {

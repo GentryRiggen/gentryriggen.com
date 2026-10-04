@@ -5,7 +5,7 @@ import {
   useShipBuilderStore,
 } from "../store";
 import type { GridAnchor } from "../../model/types";
-import { gridPart, testShip } from "../../testing";
+import { gridPart, hasLoneSurrogate, testShip } from "../../testing";
 
 const store = () => useShipBuilderStore.getState();
 const cell = (level: number, x: number, z: number): GridAnchor => ({
@@ -308,6 +308,11 @@ describe("load, new, save, camera", () => {
   it("truncates long names", () => {
     store().rename("x".repeat(80));
     expect(store().ship.name).toHaveLength(60);
+  });
+
+  it("truncates without splitting an emoji", () => {
+    store().rename("a".repeat(59) + "😀");
+    expect(hasLoneSurrogate(store().ship.name)).toBe(false);
   });
 
   it("bumps the camera nonce on every preset", () => {

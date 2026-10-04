@@ -11,7 +11,7 @@ import {
   SHIPS_BACKUP_KEY,
   SHIPS_KEY,
 } from "../local";
-import { gridPart, testShip } from "../../testing";
+import { gridPart, hasLoneSurrogate, testShip } from "../../testing";
 
 const ship = testShip([gridPart("a", "deck-1x1", 0, 0, 0)]);
 
@@ -78,6 +78,14 @@ describe("My Ships", () => {
     expect(entry.id).toBe(saved.id);
     expect(entry.name).toHaveLength(60);
     expect(entry.ship.name).toHaveLength(60);
+  });
+
+  it("clamps a rename without splitting an emoji", () => {
+    const saved = saveShip(ship, null)!;
+    expect(renameShip(saved.id, "a".repeat(59) + "😀")).toBe(true);
+    const [entry] = listShips();
+    expect(entry.id).toBe(saved.id);
+    expect(hasLoneSurrogate(entry.name)).toBe(false);
   });
 
   it("does not overwrite the list when reading it throws", () => {

@@ -28,3 +28,10 @@ export function attachPart(
 export function testShip(parts: PlacedPart[] = [], lengthSegments = 8): Ship {
   return { v: 1, name: "Test", hull: { lengthSegments }, parts };
 }
+
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+export function hasLoneSurrogate(text: string): boolean {
+  return LONE_SURROGATE.test(text);
+}

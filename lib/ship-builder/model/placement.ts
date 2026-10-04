@@ -23,6 +23,22 @@ export type RuleResult = { ok: true } | { ok: false; reason: string };
 export type PartCandidate = Omit<PlacedPart, "id">;
 
 export const MAX_NAME_LENGTH = 60;
+
+/**
+ * Truncates to MAX_NAME_LENGTH without splitting a surrogate pair. The schema
+ * counts UTF-16 units, so astral characters (emoji) are dropped whole until
+ * the result fits that limit too.
+ */
+export function clampName(name: string): string {
+  const codePoints = Array.from(name).slice(0, MAX_NAME_LENGTH);
+  let length = codePoints.reduce((sum, char) => sum + char.length, 0);
+  while (length > MAX_NAME_LENGTH) {
+    const dropped = codePoints.pop();
+    if (dropped === undefined) break;
+    length -= dropped.length;
+  }
+  return codePoints.join("");
+}
 export const DEFAULT_SEGMENTS = 8;
 
 const OK: RuleResult = { ok: true };
