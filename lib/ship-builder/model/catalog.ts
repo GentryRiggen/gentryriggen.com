@@ -340,7 +340,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     placement: "attach",
     attachTo: "funnel-mount",
     mass: 1,
-    height: 4,
+    height: 2.6,
     emptyHint: "Place a deck block or hatch cover with nothing on top first",
   },
   "lifeboat-freefall": {

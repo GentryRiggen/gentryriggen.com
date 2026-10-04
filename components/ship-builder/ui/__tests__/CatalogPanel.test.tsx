@@ -1,8 +1,8 @@
 import { act } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PART_TYPES } from "@/lib/ship-builder/model/types";
 import { visibleParts } from "@/lib/ship-builder/model/catalog";
+import { PART_TYPES } from "@/lib/ship-builder/model/types";
 import CatalogPanel from "../CatalogPanel";
 import Drawer from "../Drawer";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";

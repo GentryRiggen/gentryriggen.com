@@ -44,6 +44,21 @@ describe("StatsPanel", () => {
     expect(screen.getByTestId("stat-coverage")).toHaveTextContent(/^13%$/);
   });
 
+  it("shows a Cargo row in TEU only once there is cargo", () => {
+    render(<StatsPanel />);
+    expect(screen.queryByTestId("stat-cargo")).not.toBeInTheDocument();
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([
+          gridPart("a", "container", 0, 2, 1),
+          gridPart("b", "container", 1, 2, 1),
+        ]),
+      })
+    );
+    expect(screen.getByTestId("stat-cargo")).toHaveTextContent(/^4$/);
+    expect(screen.getByText("Cargo")).toBeInTheDocument();
+  });
+
   it("never shows 100% coverage while short of seats", () => {
     // 7 segments → 420 crew. 5 standard (65) + 2 collapsible (47) boats seat
     // 419, so coverage is 0.9976, which plain rounding would show as 100%.

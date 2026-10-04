@@ -37,6 +37,7 @@ export const PALETTE = {
   gridTargetFill: "#ffffff",
   attachMarker: "#facc15",
   /** Cargo gear: container steel, hatch cover, crane and the freefall boat. */
+  containerSteel: "#5f666d",
   hatchCover: "#7c8791",
   hatchCoaming: "#5d6872",
   crane: "#e0b02c",

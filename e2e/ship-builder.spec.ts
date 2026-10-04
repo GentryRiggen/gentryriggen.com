@@ -415,4 +415,23 @@ test.describe("Ship Builder", () => {
       paint: { topsides: "navy", bottom: "red" },
     });
   });
+  test("builds a cargo stack and shows its TEU", async ({ page }) => {
+    await openBuilder(page);
+    await page.evaluate(() =>
+      window.__shipBuilderStore!.getState().newShip("cargo")
+    );
+    await expect(page.getByTestId("stat-cargo")).toHaveCount(0);
+
+    await place(page, /^Hatch cover/, { kind: "grid", level: 0, x: 4, z: 1 });
+    await place(page, /^Container/, { kind: "grid", level: 1, x: 4, z: 1 });
+    await place(page, /^Container/, { kind: "grid", level: 2, x: 4, z: 1 });
+    await expect(page.getByTestId("stat-cargo")).toHaveText("4");
+
+    await place(page, /^Freefall lifeboat/, {
+      kind: "attach",
+      parentId: "hull",
+      pointId: "freefall",
+    });
+    await expect(page.getByTestId("stat-seats")).toHaveText("40");
+  });
 });

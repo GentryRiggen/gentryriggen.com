@@ -29,6 +29,12 @@ import {
   RibBoatMesh,
   TurretMesh,
 } from "./navyParts";
+import {
+  CargoCraneMesh,
+  ContainerMesh,
+  FreefallBoatMesh,
+  HatchCoverMesh,
+} from "./cargoParts";
 import { PALETTE } from "./palette";
 import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -220,6 +226,12 @@ function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
       return <HelicopterMesh {...navy} />;
     case "rib-boat":
       return <RibBoatMesh {...navy} />;
+    case "cargo-crane":
+      return <CargoCraneMesh color={painted} tint={tint} emphasis={emphasis} />;
+    case "lifeboat-freefall":
+      return (
+        <FreefallBoatMesh color={painted} tint={tint} emphasis={emphasis} />
+      );
     default:
       return null;
   }
@@ -254,13 +266,30 @@ function PartMesh({
     const { center, size } = footprintBase(def, part.anchor, part.rotation);
     return (
       <group position={modelToWorld(length, beam, center)} {...handlers}>
-        <Block
-          def={def}
-          size={size}
-          color={color}
-          tint={tint}
-          emphasis={emphasis}
-        />
+        {def.role === "cargo" ? (
+          <ContainerMesh
+            partId={partId}
+            color={color}
+            rotation={part.rotation}
+            tint={tint}
+            emphasis={emphasis}
+          />
+        ) : part.type === "hatch-cover" ? (
+          <HatchCoverMesh
+            size={size}
+            color={color}
+            tint={tint}
+            emphasis={emphasis}
+          />
+        ) : (
+          <Block
+            def={def}
+            size={size}
+            color={color}
+            tint={tint}
+            emphasis={emphasis}
+          />
+        )}
       </group>
     );
   }
