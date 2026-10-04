@@ -1,7 +1,14 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import {
+  createContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { panelClass } from "./styles";
 
 interface DrawerProps {
@@ -15,6 +22,14 @@ interface DrawerProps {
   onCollapsedChange?: () => void;
   children: ReactNode;
 }
+
+/**
+ * Lets a panel render controls (such as a search box) into the drawer's
+ * sticky header. `undefined` outside a drawer; `null` until the slot mounts.
+ */
+export const DrawerHeaderSlot = createContext<HTMLElement | null | undefined>(
+  undefined
+);
 
 /** A 44px square icon button, the minimum comfortable touch target. */
 const ICON_BUTTON_CLASS =
@@ -38,6 +53,7 @@ export default function Drawer({
   const collapseRef = useRef<HTMLButtonElement>(null);
   const expandRef = useRef<HTMLButtonElement>(null);
   const hasMounted = useRef(false);
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
 
   // Collapsing hides the focused button and expanding unmounts the rail
   // button, so hand focus to the button that replaces it. Skipped on mount so
@@ -98,41 +114,58 @@ export default function Drawer({
           data-testid={`drawer-content-${label}`}
           className={isRail ? "lg:hidden" : undefined}
         >
-          {/* On the right, keep the close button clear of the fixed ThemeToggle. */}
+          {/*
+            Sticky so the close / collapse buttons never scroll away. The
+            opaque background hides the panel content that scrolls beneath it.
+          */}
           <div
-            className={`flex justify-end p-2 lg:hidden ${left ? "" : "pr-20"}`}
+            data-testid={`drawer-header-${label}`}
+            className="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
           >
-            <button
-              type="button"
-              aria-label={`Close ${label}`}
-              onClick={handleClose}
-              className={`inline-flex ${ICON_BUTTON_CLASS}`}
-            >
-              <X aria-hidden="true" size={ICON_SIZE} />
-            </button>
-          </div>
-          {onCollapsedChange && (
+            {/* On the right, keep the close button clear of the fixed ThemeToggle. */}
             <div
-              className={`hidden p-2 lg:flex ${left ? "justify-end" : "justify-start"}`}
+              className={`flex items-center gap-2 p-2 ${
+                left ? "" : "pr-20 lg:flex-row-reverse lg:pr-2"
+              }`}
             >
-              <button
-                ref={collapseRef}
-                type="button"
-                aria-label={`Collapse ${label}`}
-                aria-expanded={true}
-                aria-controls={id}
-                onClick={onCollapsedChange}
-                className={`hidden lg:inline-flex ${ICON_BUTTON_CLASS}`}
+              <span
+                className={`min-w-0 flex-1 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 ${
+                  left ? "" : "lg:text-right"
+                }`}
               >
-                {left ? (
-                  <ChevronLeft aria-hidden="true" size={ICON_SIZE} />
-                ) : (
-                  <ChevronRight aria-hidden="true" size={ICON_SIZE} />
-                )}
+                {label}
+              </span>
+              <button
+                type="button"
+                aria-label={`Close ${label}`}
+                onClick={handleClose}
+                className={`inline-flex lg:hidden ${ICON_BUTTON_CLASS}`}
+              >
+                <X aria-hidden="true" size={ICON_SIZE} />
               </button>
+              {onCollapsedChange && (
+                <button
+                  ref={collapseRef}
+                  type="button"
+                  aria-label={`Collapse ${label}`}
+                  aria-expanded={true}
+                  aria-controls={id}
+                  onClick={onCollapsedChange}
+                  className={`hidden lg:inline-flex ${ICON_BUTTON_CLASS}`}
+                >
+                  {left ? (
+                    <ChevronLeft aria-hidden="true" size={ICON_SIZE} />
+                  ) : (
+                    <ChevronRight aria-hidden="true" size={ICON_SIZE} />
+                  )}
+                </button>
+              )}
             </div>
-          )}
-          {children}
+            <div ref={setHeaderSlot} />
+          </div>
+          <DrawerHeaderSlot.Provider value={headerSlot}>
+            {children}
+          </DrawerHeaderSlot.Provider>
         </div>
       </aside>
     </>

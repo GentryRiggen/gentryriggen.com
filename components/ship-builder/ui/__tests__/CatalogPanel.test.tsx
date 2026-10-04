@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PART_TYPES } from "@/lib/ship-builder/model/types";
 import CatalogPanel from "../CatalogPanel";
+import Drawer from "../Drawer";
+import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -151,6 +153,131 @@ describe("CatalogPanel", () => {
         expect(tile.className).toMatch(/min-h-(1[1-9]|[2-9]\d)\b/);
         expect(tile.className).toContain("dark:");
       }
+    });
+  });
+
+  describe("Search", () => {
+    const box = () => screen.getByRole("searchbox", { name: "Search parts" });
+
+    it("finds a part despite a typo and hides everything else", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "funel");
+      expect(
+        screen.getByRole("button", { name: /^Funnel/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^Mast/ })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Decks" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("finds Lifeboat for 'lifebot'", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "lifebot");
+      expect(
+        screen.getByRole("button", { name: /^Collapsible lifeboat/ })
+      ).toBeInTheDocument();
+    });
+
+    it("matches by category name", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "cabins");
+      expect(screen.getByRole("heading", { name: "Cabins" })).toBeVisible();
+      expect(
+        screen.queryByRole("heading", { name: "Funnels" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("searches hull shapes and hides the Hull section when nothing matches", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "clipper");
+      expect(screen.getByRole("heading", { name: "Hull" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Clipper" })).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "Canoe" })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("group", { name: "Stern" })
+      ).not.toBeInTheDocument();
+
+      await user.clear(box());
+      await user.type(box(), "funnel");
+      expect(
+        screen.queryByRole("heading", { name: "Hull" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("selects hull shapes that are still visible", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "canoe");
+      await user.click(screen.getByRole("button", { name: "Canoe" }));
+      expect(useShipBuilderStore.getState().ship.hull.stern).toBe("canoe");
+    });
+
+    it("shows a message when nothing matches", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "zzzzzz");
+      expect(screen.getByText("No parts match")).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+    });
+
+    it("clears with the clear button", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      expect(
+        screen.queryByRole("button", { name: "Clear search" })
+      ).not.toBeInTheDocument();
+      await user.type(box(), "funnel");
+      await user.click(screen.getByRole("button", { name: "Clear search" }));
+      expect(box()).toHaveValue("");
+      expect(screen.getByRole("heading", { name: "Decks" })).toBeVisible();
+    });
+
+    it("clears on the first Escape and blurs on the second", async () => {
+      const user = userEvent.setup();
+      render(<CatalogPanel />);
+      await user.type(box(), "funnel");
+      await user.keyboard("{Escape}");
+      expect(box()).toHaveValue("");
+      expect(box()).toHaveFocus();
+      await user.keyboard("{Escape}");
+      expect(box()).not.toHaveFocus();
+    });
+
+    it("does not trigger global shortcuts while typing", async () => {
+      const user = userEvent.setup();
+      function Harness() {
+        useKeyboardShortcuts();
+        return <CatalogPanel />;
+      }
+      render(<Harness />);
+      act(() => useShipBuilderStore.getState().selectTool("deck-2x1"));
+      await user.click(box());
+      await user.keyboard("r{Backspace}{Escape}");
+      expect(useShipBuilderStore.getState().tool).toMatchObject({
+        kind: "place",
+        rotation: 0,
+      });
+    });
+
+    it("renders into the drawer's sticky header", () => {
+      render(
+        <Drawer side="left" label="Parts" open onOpenChange={() => {}}>
+          <CatalogPanel />
+        </Drawer>
+      );
+      expect(
+        within(screen.getByTestId("drawer-header-Parts")).getByRole("searchbox")
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole("searchbox")).toHaveLength(1);
     });
   });
 });

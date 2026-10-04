@@ -40,6 +40,20 @@ describe("Drawer", () => {
     }
   });
 
+  it("keeps the header sticky with an opaque background in both themes", () => {
+    renderDrawer();
+    const header = screen.getByTestId("drawer-header-Stats");
+    expect(header).toHaveClass(
+      "sticky",
+      "top-0",
+      "bg-white",
+      "dark:bg-slate-900"
+    );
+    expect(header).toContainElement(
+      screen.getByRole("button", { name: "Close Stats" })
+    );
+  });
+
   it("flips aria-expanded on the toggle", async () => {
     const user = userEvent.setup();
     const { toggle } = renderDrawer();
