@@ -52,6 +52,25 @@ describe("ShipBuilder drawers", () => {
     expect(parts).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByTestId("drawer-backdrop")).toBeNull();
   });
+
+  it("closes the Parts drawer after picking a part", async () => {
+    const user = userEvent.setup();
+    render(<ShipBuilder />);
+    const parts = screen.getByRole("button", { name: "Parts" });
+    await user.click(parts);
+    expect(parts).toHaveAttribute("aria-expanded", "true");
+    await user.click(screen.getByRole("button", { name: /^Funnel/ }));
+    expect(parts).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps the Stats drawer open when a part is picked", async () => {
+    const user = userEvent.setup();
+    render(<ShipBuilder />);
+    const stats = screen.getByRole("button", { name: "Stats" });
+    await user.click(stats);
+    await user.click(screen.getByRole("button", { name: /^Funnel/ }));
+    expect(stats).toHaveAttribute("aria-expanded", "true");
+  });
 });
 
 describe("ShipBuilder collapsible panels", () => {

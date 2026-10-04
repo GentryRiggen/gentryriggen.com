@@ -73,7 +73,9 @@ export default function ShipBuilder() {
           collapsed={collapsed.left}
           onCollapsedChange={() => collapsed.toggle("left")}
         >
-          <CatalogPanel />
+          <CatalogPanel
+            onPick={() => setOpenDrawer((d) => (d === "left" ? null : d))}
+          />
         </Drawer>
         <main className="relative min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}

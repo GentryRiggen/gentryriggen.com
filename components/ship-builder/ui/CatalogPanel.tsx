@@ -3,7 +3,12 @@
 import { CATEGORIES, partsInCategory } from "@/lib/ship-builder/model/catalog";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 
-export default function CatalogPanel() {
+interface CatalogPanelProps {
+  /** Called after a part is picked (or unpicked). */
+  onPick?: () => void;
+}
+
+export default function CatalogPanel({ onPick }: CatalogPanelProps) {
   const tool = useShipBuilderStore((s) => s.tool);
   const selectTool = useShipBuilderStore((s) => s.selectTool);
 
@@ -22,7 +27,10 @@ export default function CatalogPanel() {
                   <button
                     type="button"
                     aria-pressed={active}
-                    onClick={() => selectTool(def.type)}
+                    onClick={() => {
+                      selectTool(def.type);
+                      onPick?.();
+                    }}
                     className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
                       active
                         ? "border-sky-500 bg-sky-50 dark:border-sky-400 dark:bg-sky-950"

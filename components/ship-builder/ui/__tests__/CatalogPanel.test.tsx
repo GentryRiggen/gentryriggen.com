@@ -44,4 +44,12 @@ describe("CatalogPanel", () => {
     expect(funnel).toHaveAttribute("aria-pressed", "false");
     expect(useShipBuilderStore.getState().tool).toEqual({ kind: "none" });
   });
+
+  it("calls onPick after selecting a part", async () => {
+    const user = userEvent.setup();
+    const onPick = jest.fn();
+    render(<CatalogPanel onPick={onPick} />);
+    await user.click(screen.getByRole("button", { name: /^Funnel/ }));
+    expect(onPick).toHaveBeenCalledTimes(1);
+  });
 });
