@@ -793,7 +793,7 @@ describe("validateShip", () => {
       bow: "straight",
       stern: "counter",
     });
-    expect(emptyShip().v).toBe(4);
+    expect(emptyShip().v).toBe(5);
   });
 
   it("rejects a beam outside 3-7 cells or not a whole number", () => {

@@ -101,6 +101,26 @@ describe("share links from v3", () => {
   });
 });
 
+describe("share links from v4", () => {
+  it("loads a v4 link unchanged", () => {
+    const v4 = { ...ship, v: 4 };
+    const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v4))}`;
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+  });
+
+  it("round-trips a painted ship", () => {
+    const painted = {
+      ...ship,
+      hull: { ...ship.hull, paint: { topsides: "sky", bottom: "grey" } },
+      parts: ship.parts.map((p) => ({ ...p, color: "red" as const })),
+    } as const;
+    expect(decodeShareHash(`#ship=${encodeShip(painted)}`)).toEqual({
+      kind: "ok",
+      ship: painted,
+    });
+  });
+});
+
 describe("share links", () => {
   it("round-trips a ship through the hash", () => {
     expect(decodeShareHash(`#ship=${encodeShip(ship)}`)).toEqual({

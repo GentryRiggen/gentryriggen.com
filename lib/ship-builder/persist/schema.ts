@@ -6,10 +6,11 @@ import {
   MIN_BEAM,
   MIN_SEGMENTS,
 } from "../model/grid";
+import { PAINT_COLOR_IDS } from "../model/paint";
 import { MAX_NAME_LENGTH, validateShip } from "../model/placement";
 import { BOW_IDS, PART_TYPES, STERN_IDS, type Ship } from "../model/types";
 
-export const CURRENT_VERSION = 4;
+export const CURRENT_VERSION = 5;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -36,6 +37,7 @@ const placedPart = z.object({
     z.literal(180),
     z.literal(270),
   ]),
+  color: z.enum(PAINT_COLOR_IDS).optional(),
 });
 
 export const shipSchema = z.object({
@@ -46,6 +48,12 @@ export const shipSchema = z.object({
     beam: z.number().int().min(MIN_BEAM).max(MAX_BEAM),
     bow: z.enum(BOW_IDS),
     stern: z.enum(STERN_IDS),
+    paint: z
+      .object({
+        topsides: z.enum(PAINT_COLOR_IDS).optional(),
+        bottom: z.enum(PAINT_COLOR_IDS).optional(),
+      })
+      .optional(),
   }),
   parts: z.array(placedPart).max(MAX_PARTS),
 });
@@ -89,11 +97,18 @@ const addHullEnds: Migration = (raw) => {
   return { ...raw, v: 4, hull: { ...hull, bow: "straight", stern: "counter" } };
 };
 
+/**
+ * v4 to v5 adds optional paint colours and changes no data. The bump makes
+ * older builds treat v5 saves as unreadable instead of dropping colours.
+ */
+const addPaint: Migration = (raw) => ({ ...raw, v: 5 });
+
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
 const MIGRATIONS: Record<number, Migration> = {
   1: addDefaultBeam,
   2: mergeMasts,
   3: addHullEnds,
+  4: addPaint,
 };
 
 export function migrate(

@@ -1,3 +1,5 @@
+import type { HullArea, PaintColor } from "./paint";
+
 export const PART_TYPES = [
   "deck-1x1",
   "deck-2x1",
@@ -69,6 +71,8 @@ export interface PlacedPart {
   type: PartType;
   anchor: Anchor;
   rotation: Rotation;
+  /** Paint on the part's main surface. Absent means the default look. */
+  color?: PaintColor;
 }
 
 export const BOW_IDS = [
@@ -88,10 +92,12 @@ export interface Hull {
   beam: number;
   bow: BowShape;
   stern: SternShape;
+  /** Paint per hull area. Absent means the default look. */
+  paint?: Partial<Record<HullArea, PaintColor>>;
 }
 
 export interface Ship {
-  v: 4;
+  v: 5;
   name: string;
   hull: Hull;
   parts: PlacedPart[];

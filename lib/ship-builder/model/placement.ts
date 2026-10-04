@@ -74,7 +74,7 @@ export function emptyShip(
   beam = DEFAULT_BEAM
 ): Ship {
   return {
-    v: 4,
+    v: 5,
     name,
     hull: { lengthSegments, beam, bow: "straight", stern: "counter" },
     parts: [],

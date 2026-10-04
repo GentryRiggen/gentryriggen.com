@@ -32,7 +32,7 @@ describe("parseShip", () => {
     ["null", null],
     ["a string", "ship"],
     ["an array", []],
-    ["a newer version", { ...validShip, v: 5 }],
+    ["a newer version", { ...validShip, v: 6 }],
     ["an unknown bow", { ...validShip, hull: { ...validShip.hull, bow: "x" } }],
     [
       "a missing stern",
@@ -137,7 +137,7 @@ describe("v1 to v2 migration", () => {
 
   it("overrides any beam already on a v1 hull", () => {
     const migrated = migrate({ ...v1, hull: { lengthSegments: 10, beam: 7 } });
-    expect(migrated).toMatchObject({ v: 4, hull: { beam: 4 } });
+    expect(migrated).toMatchObject({ v: 5, hull: { beam: 4 } });
   });
 
   it("does not mutate the input", () => {
@@ -219,7 +219,7 @@ describe("v3 to v4 migration", () => {
       ship: { ...testShip(v3.parts), name: "Plain" },
     });
     expect(migrate(v3)).toMatchObject({
-      v: 4,
+      v: 5,
       hull: { bow: "straight", stern: "counter" },
     });
   });
@@ -259,6 +259,87 @@ describe("v3 to v4 migration", () => {
   });
 });
 
+describe("v4 to v5 migration", () => {
+  const v4 = {
+    v: 4,
+    name: "Plain",
+    hull: { lengthSegments: 8, beam: 4, bow: "straight", stern: "counter" },
+    parts: [gridPart("a", "deck-1x1", 0, 2, 1)],
+  };
+
+  it("only bumps the version", () => {
+    expect(migrate(v4)).toEqual({ ...v4, v: 5 });
+    expect(parseShip(JSON.parse(JSON.stringify(v4)))).toEqual({
+      ok: true,
+      ship: { ...testShip(v4.parts), name: "Plain" },
+    });
+  });
+
+  it("loads v1 to v3 ships through every step", () => {
+    const { bow, stern, ...hull } = v4.hull;
+    expect([bow, stern]).toEqual(["straight", "counter"]);
+    const v3 = { ...v4, v: 3, hull };
+    const v1 = { ...v4, v: 1, hull: { lengthSegments: 8 } };
+    for (const old of [v1, v3]) {
+      expect(parseShip(JSON.parse(JSON.stringify(old)))).toEqual({
+        ok: true,
+        ship: { ...testShip(v4.parts), name: "Plain" },
+      });
+    }
+  });
+
+  it("round-trips a painted ship", () => {
+    const base = testShip([gridPart("a", "deck-1x1", 0, 2, 1)]);
+    const painted = {
+      ...base,
+      hull: { ...base.hull, paint: { topsides: "navy", bottom: "green" } },
+      parts: [{ ...base.parts[0], color: "red" }],
+    } as const;
+    expect(parseShip(JSON.parse(JSON.stringify(painted)))).toEqual({
+      ok: true,
+      ship: painted,
+    });
+  });
+
+  it("ignores colour when validating placement", () => {
+    const base = testShip([gridPart("a", "deck-1x1", 0, 2, 1)]);
+    const painted = {
+      ...base,
+      parts: [{ ...base.parts[0], color: "pink" }],
+    } as const;
+    expect(parseShip(painted).ok).toBe(true);
+  });
+
+  it.each([
+    [
+      "a part colour",
+      (s: typeof v4) => ({
+        ...s,
+        v: 5,
+        parts: [{ ...s.parts[0], color: "teal" }],
+      }),
+    ],
+    [
+      "a topsides colour",
+      (s: typeof v4) => ({
+        ...s,
+        v: 5,
+        hull: { ...s.hull, paint: { topsides: "#fff" } },
+      }),
+    ],
+    [
+      "a bottom colour",
+      (s: typeof v4) => ({
+        ...s,
+        v: 5,
+        hull: { ...s.hull, paint: { bottom: 3 } },
+      }),
+    ],
+  ])("rejects an unknown %s", (_label, make) => {
+    expect(parseShip(make(v4)).ok).toBe(false);
+  });
+});
+
 describe("migrate", () => {
   it("runs migrations up to the current version", () => {
     const migrated = migrate(
@@ -273,6 +354,7 @@ describe("migrate", () => {
         1: (raw) => ({ ...raw, v: 2, hull: { lengthSegments: 6, beam: 5 } }),
         2: (raw) => ({ ...raw, v: 3 }),
         3: (raw) => ({ ...raw, v: 4 }),
+        4: (raw) => ({ ...raw, v: 5 }),
       }
     );
     expect(migrated).toEqual({
