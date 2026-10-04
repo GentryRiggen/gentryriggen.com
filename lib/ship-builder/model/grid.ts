@@ -38,6 +38,12 @@ export function cellKey(cell: Cell): string {
   return `${cell.level}:${cell.x}:${cell.z}`;
 }
 
+/** Inverse of cellKey. Only for keys that cellKey produced. */
+export function parseCellKey(key: string): Cell {
+  const [level, x, z] = key.split(":").map(Number);
+  return { level, x, z };
+}
+
 export function rotatedFootprint(
   footprint: { x: number; z: number },
   rotation: Rotation

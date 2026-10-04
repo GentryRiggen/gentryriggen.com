@@ -15,8 +15,17 @@ import {
   type Occupancy,
 } from "./grid";
 import {
+  isGrounded,
+  MAX_OVERHANG,
+  neighbours,
+  stepsToSupport,
+  supportMap,
+  type SupportMap,
+} from "./support";
+import {
   HULL_ID,
   type AttachPartDef,
+  type Cell,
   type GridPartDef,
   type PlacedPart,
   type Ship,
@@ -79,6 +88,32 @@ function holdsDavitAt(
   );
 }
 
+/**
+ * Every candidate cell must be within MAX_OVERHANG steps of a grounded cell,
+ * walking through the ship's cells plus the candidate's own.
+ */
+function checkSupport(
+  ship: Ship,
+  cells: Cell[],
+  occupancy: Occupancy
+): RuleResult {
+  const own = new Set(cells.map(cellKey));
+  const isOccupied = (key: string) => occupancy.has(key) || own.has(key);
+  const isHeld = cells.every(
+    (cell) =>
+      stepsToSupport(ship, isOccupied, cell, MAX_OVERHANG) <= MAX_OVERHANG
+  );
+  if (isHeld) return OK;
+  const touchesShip = cells.some(
+    (cell) =>
+      isGrounded(ship, occupancy, cell) ||
+      neighbours(cell).some((n) => occupancy.has(cellKey(n)))
+  );
+  return touchesShip
+    ? fail("Too far from a support (max 2 cells)")
+    : fail("Needs a deck beneath every cell");
+}
+
 function canPlaceGrid(
   ship: Ship,
   def: GridPartDef,
@@ -97,19 +132,21 @@ function canPlaceGrid(
     return fail("That space is taken");
   }
 
-  if (candidate.anchor.level > 0) {
-    for (const cell of cells) {
-      const below = occupancy.get(cellKey({ ...cell, level: cell.level - 1 }));
-      if (!below) return fail("Needs a deck beneath every cell");
-      if (below.type === "bridge") {
-        return fail("Can't build on top of the bridge");
-      }
-      if (holdsFunnel(ship, below)) return fail("Can't build over a funnel");
-      if (holdsDavitAt(ship, below, cell.x, cell.z)) {
-        return fail("Can't build over a davit");
-      }
+  for (const cell of cells) {
+    if (cell.level === 0) continue;
+    const below = occupancy.get(cellKey({ ...cell, level: cell.level - 1 }));
+    if (!below) continue;
+    if (below.type === "bridge") {
+      return fail("Can't build on top of the bridge");
+    }
+    if (holdsFunnel(ship, below)) return fail("Can't build over a funnel");
+    if (holdsDavitAt(ship, below, cell.x, cell.z)) {
+      return fail("Can't build over a davit");
     }
   }
+
+  const support = checkSupport(ship, cells, occupancy);
+  if (!support.ok) return support;
 
   if (def.role === "bridge") {
     if (cells.some((cell) => !isForwardHalf(ship, cell.x))) {
@@ -174,12 +211,13 @@ export function place(
 /**
  * Structural check (bounds, support, attach point exists, bridge still in the
  * forward half). Used to find parts left dangling or invalid after a removal
- * or a hull shrink.
+ * or a hull resize.
  */
 function isStillSupported(
   ship: Ship,
   part: PlacedPart,
-  occupancy: Occupancy
+  occupancy: Occupancy,
+  support: SupportMap
 ): boolean {
   if (part.anchor.kind === "attach") {
     const { parentId, pointId } = part.anchor;
@@ -193,41 +231,55 @@ function isStillSupported(
   if (isBridge && cells.some((cell) => !isForwardHalf(ship, cell.x))) {
     return false;
   }
-  return cells.every(
-    (cell) =>
-      inBounds(ship, cell) &&
-      (cell.level === 0 ||
-        occupancy.has(cellKey({ ...cell, level: cell.level - 1 })))
-  );
+  return cells.every((cell) => {
+    if (!inBounds(ship, cell)) return false;
+    const steps = support.get(cellKey(cell));
+    return steps !== undefined && steps <= MAX_OVERHANG;
+  });
+}
+
+function without(ship: Ship, ids: ReadonlySet<string>): Ship {
+  return { ...ship, parts: ship.parts.filter((p) => !ids.has(p.id)) };
 }
 
 /**
  * Root ids plus everything that loses support without them, in ship order.
+ * Also takes anything that is still held up but can't be rebuilt in any
+ * order, so removeParts can always hand back a ship that validates.
  * Expects a ship that passed validateShip (no parent cycles).
  */
 export function cascadeIds(ship: Ship, rootIds: string[]): string[] {
   const removed = new Set(rootIds);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    const remaining: Ship = {
-      ...ship,
-      parts: ship.parts.filter((p) => !removed.has(p.id)),
-    };
-    const occupancy = buildOccupancy(remaining);
-    for (const part of remaining.parts) {
-      if (!isStillSupported(remaining, part, occupancy)) {
-        removed.add(part.id);
-        changed = true;
+  for (;;) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const remaining = without(ship, removed);
+      const occupancy = buildOccupancy(remaining);
+      // One BFS per pass; parts dropped in this pass are seen by the next.
+      const support = supportMap(remaining, occupancy);
+      for (const part of remaining.parts) {
+        if (!isStillSupported(remaining, part, occupancy, support)) {
+          removed.add(part.id);
+          changed = true;
+        }
       }
     }
+    const { stuck } = planBuild(without(ship, removed));
+    if (stuck.length === 0) break;
+    for (const part of stuck) removed.add(part.id);
   }
   return ship.parts.filter((p) => removed.has(p.id)).map((p) => p.id);
 }
 
+/**
+ * Drops the given ids. The rest keep their order where they can, but a part
+ * now held up only by a part saved after it moves behind that part, so the
+ * result still replays through validateShip. Pass ids from cascadeIds.
+ */
 export function removeParts(ship: Ship, ids: string[]): Ship {
-  const drop = new Set(ids);
-  return { ...ship, parts: ship.parts.filter((p) => !drop.has(p.id)) };
+  const { order, stuck } = planBuild(without(ship, new Set(ids)));
+  return { ...ship, parts: [...order, ...stuck] };
 }
 
 function withLength(ship: Ship, lengthSegments: number): Ship {
@@ -250,6 +302,44 @@ function isIntegerIn(value: number, min: number, max: number): boolean {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
+/** A ship being rebuilt one part at a time, with its occupancy kept current. */
+interface Build {
+  ship: Ship;
+  occupancy: Occupancy;
+  ids: Set<string>;
+}
+
+function startBuild(ship: Ship): Build {
+  return { ship: { ...ship, parts: [] }, occupancy: new Map(), ids: new Set() };
+}
+
+/** place(), without rebuilding the occupancy for every part. */
+function addToBuild(build: Build, part: PlacedPart): RuleResult {
+  if (part.id === HULL_ID) return fail("Reserved part id");
+  if (build.ids.has(part.id)) return fail("Duplicate part id");
+  const result = canPlace(build.ship, part, build.occupancy);
+  if (!result.ok) return result;
+  build.ship.parts.push(part);
+  build.ids.add(part.id);
+  for (const cell of partCells(part)) build.occupancy.set(cellKey(cell), part);
+  return OK;
+}
+
+/**
+ * Rebuilds the ship in list order, deferring any part that can't go in yet
+ * and retrying it after the rest. `stuck` holds parts that never fit.
+ */
+function planBuild(ship: Ship): { order: PlacedPart[]; stuck: PlacedPart[] } {
+  const build = startBuild(ship);
+  let pending = ship.parts;
+  while (pending.length > 0) {
+    const deferred = pending.filter((part) => !addToBuild(build, part).ok);
+    if (deferred.length === pending.length) break;
+    pending = deferred;
+  }
+  return { order: build.ship.parts, stuck: pending };
+}
+
 /** Re-applies every placement in order; used on loaded or shared data. */
 export function validateShip(ship: Ship): RuleResult {
   const { lengthSegments, beam } = ship.hull;
@@ -257,11 +347,10 @@ export function validateShip(ship: Ship): RuleResult {
     return fail("Hull length out of range");
   }
   if (!isIntegerIn(beam, MIN_BEAM, MAX_BEAM)) return fail("Beam out of range");
-  let built: Ship = { ...ship, parts: [] };
+  const build = startBuild(ship);
   for (const part of ship.parts) {
-    const result = place(built, part);
+    const result = addToBuild(build, part);
     if (!result.ok) return fail(`Part ${part.id}: ${result.reason}`);
-    built = result.ship;
   }
   return OK;
 }

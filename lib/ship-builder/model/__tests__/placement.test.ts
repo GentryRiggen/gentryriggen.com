@@ -87,15 +87,14 @@ describe("canPlace — grid parts", () => {
     );
   });
 
-  it("requires support under every cell above level 0 (rule 1)", () => {
+  it("needs something below or beside a block above level 0", () => {
     const ship = testShip([gridPart("a", "deck-1x1", 0, 4, 1)]);
     expect(canPlace(ship, gridCandidate("deck-1x1", 1, 4, 1))).toEqual(OK);
     expect(canPlace(ship, gridCandidate("deck-1x1", 1, 6, 1))).toEqual(
       fail("Needs a deck beneath every cell")
     );
-    expect(canPlace(ship, gridCandidate("deck-2x1", 1, 4, 1))).toEqual(
-      fail("Needs a deck beneath every cell")
-    );
+    // v1.1: one cell over a block is enough; the other overhangs by one.
+    expect(canPlace(ship, gridCandidate("deck-2x1", 1, 4, 1))).toEqual(OK);
   });
 
   it("refuses to build over a bridge, funnel or davit (rule 6)", () => {
@@ -173,6 +172,107 @@ describe("canPlace — grid parts", () => {
     expect(
       canPlace(testShip(), attachCandidate("deck-1x1", HULL_ID, "mast-fore"))
     ).toEqual(fail("Place this on the deck grid"));
+  });
+});
+
+describe("canPlace — side support", () => {
+  const TOO_FAR = fail("Too far from a support (max 2 cells)");
+  const NEEDS_DECK = fail("Needs a deck beneath every cell");
+
+  /** Level-1 block on a level-0 block at (x 4, z 1). */
+  const pillar = [
+    gridPart("p0", "deck-1x1", 0, 4, 1),
+    gridPart("p1", "deck-1x1", 1, 4, 1),
+  ];
+
+  it("lets a level-0 wing block hang off a hull block", () => {
+    const ship = testShip([gridPart("a", "deck-1x1", 0, 5, 0)]);
+    expect(canPlace(ship, gridCandidate("deck-1x1", 0, 5, -1))).toEqual(OK);
+    const wider = testShip([
+      ...ship.parts,
+      gridPart("w1", "deck-1x1", 0, 5, -1),
+    ]);
+    expect(canPlace(wider, gridCandidate("deck-1x1", 0, 5, -2))).toEqual(OK);
+  });
+
+  it("needs a neighbour for a level-0 wing block", () => {
+    expect(canPlace(testShip(), gridCandidate("deck-1x1", 0, 5, -1))).toEqual(
+      NEEDS_DECK
+    );
+    const port = testShip([gridPart("a", "deck-1x1", 0, 5, 3)]);
+    expect(canPlace(port, gridCandidate("deck-1x1", 0, 5, 4))).toEqual(OK);
+    expect(canPlace(port, gridCandidate("deck-1x1", 0, 5, 5))).toEqual(
+      NEEDS_DECK
+    );
+  });
+
+  it("rejects a level-0 wing block three cells out as out of bounds", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 5, 0),
+      gridPart("w1", "deck-1x1", 0, 5, -1),
+      gridPart("w2", "deck-1x1", 0, 5, -2),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(canPlace(ship, gridCandidate("deck-1x1", 0, 5, -3))).toEqual(
+      fail("Outside the hull")
+    );
+  });
+
+  it("cantilevers up to two cells from a supported block", () => {
+    let ship = testShip(pillar);
+    for (const x of [5, 6]) {
+      expect(canPlace(ship, gridCandidate("deck-1x1", 1, x, 1))).toEqual(OK);
+      ship = testShip([...ship.parts, gridPart(`c${x}`, "deck-1x1", 1, x, 1)]);
+    }
+    expect(canPlace(ship, gridCandidate("deck-1x1", 1, 7, 1))).toEqual(TOO_FAR);
+    // A 2x1 whose far cell would be three out fails the same way.
+    expect(
+      canPlace(
+        testShip([...pillar, ship.parts[2]]),
+        gridCandidate("deck-2x1", 1, 6, 1)
+      )
+    ).toEqual(TOO_FAR);
+  });
+
+  it("bridges four cells between two pillars", () => {
+    const pillars = [
+      gridPart("l0", "deck-1x1", 0, 2, 1),
+      gridPart("l1", "deck-1x1", 1, 2, 1),
+      gridPart("r0", "deck-1x1", 0, 7, 1),
+      gridPart("r1", "deck-1x1", 1, 7, 1),
+    ];
+    const span = [3, 4, 6, 5].map((x) =>
+      gridPart(`s${x}`, "deck-1x1", 1, x, 1)
+    );
+    expect(validateShip(testShip([...pillars, ...span]))).toEqual(OK);
+    // x 5 is three cells from the left pillar until x 6 links it to the right.
+    const early = testShip([...pillars, span[0], span[1]]);
+    expect(canPlace(early, gridCandidate("deck-1x1", 1, 5, 1))).toEqual(
+      TOO_FAR
+    );
+  });
+
+  it("places a 1x4 bridge on a 3-wide ship with its 4th cell in a wing", () => {
+    const ship = testShip([], 8, 3);
+    expect(canPlace(ship, gridCandidate("bridge", 0, 1, 0))).toEqual(OK);
+    const raised = testShip(
+      [0, 1, 2].map((z) => gridPart(`b${z}`, "deck-1x1", 0, 1, z)),
+      8,
+      3
+    );
+    expect(canPlace(raised, gridCandidate("bridge", 1, 1, 0))).toEqual(OK);
+  });
+
+  it("keeps the rule-6 checks on cells that have a part below", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 4, 1),
+      gridPart("b", "deck-1x1", 0, 5, 1),
+      gridPart("c", "deck-1x1", 1, 4, 1),
+      attachPart("f", "funnel", "b", "funnel"),
+    ]);
+    expect(canPlace(ship, gridCandidate("deck-1x1", 1, 5, 1))).toEqual(
+      fail("Can't build over a funnel")
+    );
   });
 });
 
@@ -314,13 +414,59 @@ describe("cascade removal", () => {
     expect(removed.parts.map((p) => p.id)).toEqual(["other"]);
   });
 
-  it("removes a 2x1 block when either supporting cell goes", () => {
+  it("keeps a 2x1 block while either supporting cell remains", () => {
     const ship = testShip([
       gridPart("l", "deck-1x1", 0, 4, 1),
       gridPart("r", "deck-1x1", 0, 5, 1),
       gridPart("top", "deck-2x1", 1, 4, 1),
     ]);
-    expect(cascadeIds(ship, ["r"])).toEqual(["r", "top"]);
+    // v1.1: the other cell still holds it up as a one-cell overhang.
+    expect(cascadeIds(ship, ["r"])).toEqual(["r"]);
+    expect(cascadeIds(ship, ["l", "r"])).toEqual(["l", "r", "top"]);
+  });
+
+  it("drops the far end of a bridge when one pillar goes", () => {
+    const ship = testShip([
+      gridPart("l0", "deck-1x1", 0, 2, 1),
+      gridPart("l1", "deck-1x1", 1, 2, 1),
+      gridPart("r0", "deck-1x1", 0, 7, 1),
+      gridPart("r1", "deck-1x1", 1, 7, 1),
+      ...[3, 4, 6, 5].map((x) => gridPart(`s${x}`, "deck-1x1", 1, x, 1)),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    // l1 loses its deck and is now 5 from r1; s3 and s4 are 4 and 3 away.
+    expect(cascadeIds(ship, ["l0"])).toEqual(["l0", "l1", "s3", "s4"]);
+  });
+
+  it("brings down a wing when its anchor block goes", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 5, 0),
+      gridPart("w1", "deck-1x1", 0, 5, -1),
+      gridPart("w2", "deck-1x1", 0, 5, -2),
+      gridPart("other", "deck-1x1", 0, 9, 0),
+    ]);
+    expect(cascadeIds(ship, ["a"])).toEqual(["a", "w1", "w2"]);
+  });
+
+  it("keeps a block held up by a later neighbour, in a buildable order", () => {
+    // p hangs off q; r, placed after p, also holds p up.
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 0),
+      gridPart("c", "deck-1x1", 0, 4, 0),
+      gridPart("q", "deck-1x1", 1, 2, 0),
+      gridPart("p", "deck-1x1", 1, 3, 0),
+      gridPart("r", "deck-1x1", 1, 4, 0),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(cascadeIds(ship, ["q"])).toEqual(["q"]);
+    const after = removeParts(ship, ["q"]);
+    expect(after.parts.map((part) => part.id).sort()).toEqual([
+      "a",
+      "c",
+      "p",
+      "r",
+    ]);
+    expect(validateShip(after)).toEqual(OK);
   });
 
   it("removing the middle of a 3-level stack cascades upward only", () => {
@@ -385,6 +531,55 @@ describe("hull length", () => {
     const ship = boatDeckShip();
     expect(previewHullLength(ship, 12)).toEqual([]);
     expect(setHullLength(ship, 12).parts).toHaveLength(4);
+  });
+});
+
+/**
+ * 866 parts: four full levels of 1x1 decks on a 12-segment hull, a funnel on
+ * every top block, a davit and boat on every top edge cell, and both masts.
+ */
+function largestShip() {
+  const parts = [];
+  for (let level = 0; level <= 3; level++) {
+    for (let x = 0; x < 36; x++) {
+      for (let z = 0; z < 4; z++) {
+        parts.push(gridPart(`d${level}:${x}:${z}`, "deck-1x1", level, x, z));
+      }
+    }
+  }
+  for (let x = 0; x < 36; x++) {
+    for (let z = 0; z < 4; z++) {
+      parts.push(attachPart(`f${x}:${z}`, "funnel", `d3:${x}:${z}`, "funnel"));
+    }
+    for (const z of [0, 3]) {
+      const davit = `dv${x}:${z}`;
+      parts.push(attachPart(davit, "davit", `d3:${x}:${z}`, `davit:${x}:${z}`));
+      parts.push(attachPart(`lb${x}:${z}`, "lifeboat-standard", davit, "boat"));
+    }
+  }
+  parts.push(attachPart("mf", "mast-fore", HULL_ID, "mast-fore"));
+  parts.push(attachPart("ma", "mast-aft", HULL_ID, "mast-aft"));
+  return testShip(parts, 12);
+}
+
+describe("performance on the largest ship", () => {
+  // Generous bounds so a loaded CI box doesn't flake; locally these run in
+  // about 5 ms and 10 ms.
+  it("validates in well under 100 ms", () => {
+    const ship = largestShip();
+    expect(ship.parts).toHaveLength(866);
+    expect(validateShip(ship)).toEqual(OK);
+    const start = performance.now();
+    validateShip(ship);
+    expect(performance.now() - start).toBeLessThan(100);
+  });
+
+  it("cascades a bottom-corner removal in well under 100 ms", () => {
+    const ship = largestShip();
+    const start = performance.now();
+    const ids = cascadeIds(ship, ["d0:0:0"]);
+    expect(performance.now() - start).toBeLessThan(100);
+    expect(ids).toEqual(["d0:0:0"]);
   });
 });
 
