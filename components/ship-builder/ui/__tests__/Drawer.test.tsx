@@ -21,6 +21,25 @@ function renderDrawer() {
 }
 
 describe("Drawer", () => {
+  it("gives the close and collapse buttons 44px icon targets", () => {
+    render(
+      <Drawer
+        side="left"
+        label="Parts"
+        open
+        onOpenChange={() => {}}
+        onCollapsedChange={() => {}}
+      >
+        <p>Inside</p>
+      </Drawer>
+    );
+    for (const name of ["Close Parts", "Collapse Parts"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button).toHaveClass("h-11", "w-11");
+      expect(button.querySelector("svg")).toHaveAttribute("width", "24");
+    }
+  });
+
   it("flips aria-expanded on the toggle", async () => {
     const user = userEvent.setup();
     const { toggle } = renderDrawer();

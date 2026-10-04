@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { panelClass } from "./styles";
 
@@ -15,8 +16,10 @@ interface DrawerProps {
   children: ReactNode;
 }
 
-const COLLAPSE_BUTTON_CLASS =
-  "hidden rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 lg:inline-flex dark:text-slate-400 dark:hover:bg-slate-800";
+/** A 44px square icon button, the minimum comfortable touch target. */
+const ICON_BUTTON_CLASS =
+  "h-11 w-11 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:focus-visible:outline-sky-400";
+const ICON_SIZE = 24;
 
 export default function Drawer({
   side,
@@ -95,7 +98,7 @@ export default function Drawer({
           data-testid={`drawer-content-${label}`}
           className={isRail ? "lg:hidden" : undefined}
         >
-          {/* On the right, keep ✕ clear of the fixed ThemeToggle. */}
+          {/* On the right, keep the close button clear of the fixed ThemeToggle. */}
           <div
             className={`flex justify-end p-2 lg:hidden ${left ? "" : "pr-20"}`}
           >
@@ -103,9 +106,9 @@ export default function Drawer({
               type="button"
               aria-label={`Close ${label}`}
               onClick={handleClose}
-              className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              className={`inline-flex ${ICON_BUTTON_CLASS}`}
             >
-              ✕
+              <X aria-hidden="true" size={ICON_SIZE} />
             </button>
           </div>
           {onCollapsedChange && (
@@ -119,9 +122,13 @@ export default function Drawer({
                 aria-expanded={true}
                 aria-controls={id}
                 onClick={onCollapsedChange}
-                className={COLLAPSE_BUTTON_CLASS}
+                className={`hidden lg:inline-flex ${ICON_BUTTON_CLASS}`}
               >
-                <span aria-hidden="true">{left ? "‹" : "›"}</span>
+                {left ? (
+                  <ChevronLeft aria-hidden="true" size={ICON_SIZE} />
+                ) : (
+                  <ChevronRight aria-hidden="true" size={ICON_SIZE} />
+                )}
               </button>
             </div>
           )}
