@@ -143,7 +143,7 @@ export default function Home() {
                 <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
                 <a
                   href="/ship-builder"
-                  className="hover:text-green-600 dark:hover:text-green-400 underline-offset-2 hover:underline transition-colors"
+                  className="px-1 py-2 text-gray-500 dark:text-green-500/80 underline underline-offset-2 hover:text-green-600 dark:hover:text-green-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:focus-visible:outline-green-400 transition-colors"
                 >
                   ⚓ Ship Builder
                 </a>
