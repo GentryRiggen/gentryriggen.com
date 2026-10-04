@@ -1,0 +1,20 @@
+{
+  "v": 6,
+  "kind": "liner",
+  "name": "Walled Hopper",
+  "hull": {
+    "lengthSegments": 8,
+    "beam": 4,
+    "bow": "straight",
+    "stern": "counter",
+    "bulkheads": [
+      { "at": 2, "height": "low" },
+      { "at": 4, "height": "waterline" },
+      { "at": 6, "height": "deck" }
+    ]
+  },
+  "parts": [
+    { "id": "p1", "type": "deck-1x1", "anchor": { "kind": "grid", "level": 0, "x": 0, "z": 0 }, "rotation": 0 },
+    { "id": "p2", "type": "deck-1x1", "anchor": { "kind": "grid", "level": 0, "x": 1, "z": 0 }, "rotation": 0 }
+  ]
+}

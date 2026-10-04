@@ -9,7 +9,14 @@ import {
 import { PAINT_COLOR_IDS } from "../model/paint";
 import { MAX_NAME_LENGTH, removeParts, validateShip } from "../model/placement";
 import { SHIP_KINDS } from "../model/kinds";
-import { BOW_IDS, PART_TYPES, STERN_IDS, type Ship } from "../model/types";
+import { cleanBulkheads } from "../model/bulkheads";
+import {
+  BOW_IDS,
+  BULKHEAD_HEIGHTS,
+  PART_TYPES,
+  STERN_IDS,
+  type Ship,
+} from "../model/types";
 
 /**
  * THE SAVE FORMAT INCLUDES POINT IDS.
@@ -68,6 +75,12 @@ export const shipSchema = z.object({
         topsides: z.enum(PAINT_COLOR_IDS).optional(),
         bottom: z.enum(PAINT_COLOR_IDS).optional(),
       })
+      .optional(),
+    bulkheads: z
+      .array(
+        z.object({ at: z.number().int(), height: z.enum(BULKHEAD_HEIGHTS) })
+      )
+      .max(MAX_SEGMENTS)
       .optional(),
   }),
   parts: z.array(placedPart).max(MAX_PARTS),
@@ -197,8 +210,10 @@ function hasBoundedParts(value: unknown): boolean {
  * placeable parts end.
  */
 function repairShip(
-  ship: Ship
+  parsed: Ship
 ): { ok: true; ship: Ship; dropped: number } | { ok: false; error: string } {
+  // Walls outside the hull or doubled up are dropped, not rejected.
+  const ship = { ...parsed, hull: cleanBulkheads(parsed.hull) };
   const initial = validateShip(ship);
   if (initial.ok) return { ok: true, ship, dropped: 0 };
 

@@ -5,6 +5,7 @@ import {
   migrate,
   parseShip,
 } from "../schema";
+import { MAX_SEGMENTS } from "../../model/grid";
 import { validateShip } from "../../model/placement";
 import { attachPart, gridPart, testShip } from "../../testing";
 import { HULL_ID } from "../../model/types";
@@ -507,5 +508,61 @@ describe("migrate", () => {
     expect(migrate(validShip)).toBe(validShip);
     expect(migrate("nope")).toBe("nope");
     expect(migrate({ v: -5 })).toEqual({ v: -5 });
+  });
+});
+
+describe("bulkheads", () => {
+  const withWalls = (bulkheads: unknown, lengthSegments = 8) => ({
+    ...validShip,
+    hull: { ...validShip.hull, lengthSegments, bulkheads },
+  });
+
+  it("keeps valid walls and stays on version 6", () => {
+    const bulkheads = [
+      { at: 2, height: "low" },
+      { at: 5, height: "deck" },
+    ];
+    const result = parseShip(withWalls(bulkheads));
+    expect(result.ok && result.ship.v).toBe(6);
+    expect(result.ok && result.ship.hull.bulkheads).toEqual(bulkheads);
+  });
+
+  it("loads a ship without any walls", () => {
+    const result = parseShip(validShip);
+    expect(result.ok && "bulkheads" in result.ship.hull).toBe(false);
+  });
+
+  it("drops out-of-range and doubled walls instead of rejecting the ship", () => {
+    const result = parseShip(
+      withWalls([
+        { at: 0, height: "low" },
+        { at: 8, height: "low" },
+        { at: 6, height: "deck" },
+        { at: 3, height: "waterline" },
+        { at: 3, height: "low" },
+      ])
+    );
+    expect(result).toMatchObject({ ok: true, dropped: 0 });
+    expect(result.ok && result.ship.hull.bulkheads).toEqual([
+      { at: 3, height: "waterline" },
+      { at: 6, height: "deck" },
+    ]);
+  });
+
+  it("removes the list when no wall is valid", () => {
+    const result = parseShip(withWalls([{ at: 99, height: "low" }]));
+    expect(result.ok && "bulkheads" in result.ship.hull).toBe(false);
+  });
+
+  it("rejects a wall with an unknown height", () => {
+    expect(parseShip(withWalls([{ at: 2, height: "tall" }])).ok).toBe(false);
+  });
+
+  it("rejects more walls than the longest hull has boundaries", () => {
+    const walls = Array.from({ length: MAX_SEGMENTS + 1 }, (_, i) => ({
+      at: i + 1,
+      height: "low",
+    }));
+    expect(parseShip(withWalls(walls)).ok).toBe(false);
   });
 });

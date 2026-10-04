@@ -232,3 +232,23 @@ describe("share links", () => {
     expect(decodeShareHash(hash)).toEqual({ kind: "invalid" });
   });
 });
+
+describe("share links with bulkheads", () => {
+  it("round-trips the walls", () => {
+    const walled: Ship = {
+      ...ship,
+      hull: {
+        ...ship.hull,
+        bulkheads: [
+          { at: 2, height: "low" },
+          { at: 5, height: "waterline" },
+        ],
+      },
+    };
+    expect(decodeShareHash(`#ship=${encodeShip(walled)}`)).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship: walled,
+    });
+  });
+});

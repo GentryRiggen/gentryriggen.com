@@ -88,6 +88,20 @@ describe("autosave", () => {
     });
   });
 
+  it("round-trips bulkheads", () => {
+    const walled = {
+      ...ship,
+      hull: { ...ship.hull, bulkheads: [{ at: 3, height: "deck" as const }] },
+    };
+    expect(saveAutosave(walled, null)).toBe(true);
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship: walled,
+      savedId: null,
+    });
+  });
+
   it("loads a v1 autosave and My Ships entry with the default beam", () => {
     const v1 = { ...ship, kind: undefined, v: 1, hull: { lengthSegments: 8 } };
     localStorage.setItem(
