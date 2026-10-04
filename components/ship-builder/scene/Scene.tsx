@@ -20,6 +20,8 @@ import Hull from "./Hull";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import Railings from "./Railings";
+import SeaTrialEffects from "./SeaTrialEffects";
+import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
 import { usePartLongPress } from "./usePartLongPress";
@@ -111,6 +113,8 @@ export default function Scene() {
           <AttachMarkers />
           <GhostPreview />
         </ShipAnimation>
+        <SeaTrialRunner />
+        <SeaTrialEffects />
         <CameraRig />
       </Canvas>
       {ring && <LongPressRing key={ring.key} x={ring.x} y={ring.y} />}

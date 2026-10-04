@@ -10,6 +10,8 @@ export interface ShipAnimationValue {
   reducedMotion: boolean;
   /** How rough the water is; scales the ship's bob and roll. */
   seaState: SeaState;
+  /** Resting lean from off-centre weight, radians; positive is starboard. */
+  listAngle: number;
 }
 
 /** Outside a provider (previews, tests) nothing moves. */
@@ -18,6 +20,7 @@ const STILL: ShipAnimationValue = {
   stabilityRatio: 0,
   reducedMotion: true,
   seaState: "calm",
+  listAngle: 0,
 };
 
 export const ShipAnimationContext = createContext<ShipAnimationValue>(STILL);

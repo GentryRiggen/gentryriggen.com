@@ -81,6 +81,8 @@ export function usePartLongPress(wrapper: RefObject<HTMLElement | null>): {
 
   const startPress = useCallback(
     ({ partId, pointerId, clientX, clientY }: PartPress) => {
+      // The ship is frozen during a sea trial, so a hold must not start.
+      if (useShipBuilderStore.getState().trial.status !== "idle") return;
       if (!machine.start(partId, pointerId, clientX, clientY)) return;
       const rect = wrapper.current?.getBoundingClientRect();
       setRing((previous) => ({

@@ -10,6 +10,7 @@ const BUTTON_CLASS =
 export default function UndoRedo() {
   const canUndo = useShipBuilderStore((s) => s.past.length > 0);
   const canRedo = useShipBuilderStore((s) => s.future.length > 0);
+  const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
   const undo = useShipBuilderStore((s) => s.undo);
   const redo = useShipBuilderStore((s) => s.redo);
 
@@ -17,7 +18,7 @@ export default function UndoRedo() {
     <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-3 z-10 flex items-center gap-0.5 rounded-lg border border-slate-300 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
       <button
         type="button"
-        disabled={!canUndo}
+        disabled={!canUndo || isTrialActive}
         onClick={undo}
         className={BUTTON_CLASS}
       >
@@ -26,7 +27,7 @@ export default function UndoRedo() {
       </button>
       <button
         type="button"
-        disabled={!canRedo}
+        disabled={!canRedo || isTrialActive}
         onClick={redo}
         className={BUTTON_CLASS}
       >

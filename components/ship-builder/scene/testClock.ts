@@ -10,6 +10,14 @@
 export interface ShipBuilderTestConfig {
   /** Seconds of scene time every animation should show. */
   freezeTime?: number;
+  /**
+   * Sea trial: jump the simulation to this many seconds and hold there (the
+   * trial stays "running" so a screenshot can catch a mid-capsize pose). A
+   * trial that finishes sooner still ends normally.
+   */
+  trialSeconds?: number;
+  /** Sea trial: play this many times faster, so a whole trial takes moments. */
+  trialSpeed?: number;
 }
 
 declare global {
@@ -32,4 +40,24 @@ export function frozenTime(): number | null {
 /** The time animations should show: the frozen time, else the live clock. */
 export function sceneTime(liveSeconds: number): number {
   return frozenTime() ?? liveSeconds;
+}
+
+function finiteTestNumber(value: number | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Seconds the test wants the sea trial held at, or null. */
+export function testTrialSeconds(): number | null {
+  if (process.env.NODE_ENV === "production") return null;
+  if (typeof window === "undefined") return null;
+  const seconds = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.trialSeconds);
+  return seconds !== null && seconds >= 0 ? seconds : null;
+}
+
+/** The sea trial playback speed multiplier; 1 when no test sets it. */
+export function testTrialSpeed(): number {
+  if (process.env.NODE_ENV === "production") return 1;
+  if (typeof window === "undefined") return 1;
+  const speed = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.trialSpeed);
+  return speed !== null && speed > 0 ? speed : 1;
 }

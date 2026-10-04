@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import useCollapsedPanels from "./hooks/useCollapsedPanels";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useServiceWorker from "./hooks/useServiceWorker";
@@ -15,6 +16,9 @@ import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
+import SeaTrialButton from "./ui/SeaTrialButton";
+import SeaTrialResult from "./ui/SeaTrialResult";
+import SeaTrialStatus from "./ui/SeaTrialStatus";
 import SelectionBar from "./ui/SelectionBar";
 import StatsHud from "./ui/StatsHud";
 import StatsPanel from "./ui/StatsPanel";
@@ -41,6 +45,7 @@ export default function ShipBuilder() {
   const webgl = useWebGLSupport();
   const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
+  const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
 
   function handleDrawerOpenChange(side: DrawerSide, open: boolean) {
     setOpenDrawer((current) =>
@@ -69,9 +74,23 @@ export default function ShipBuilder() {
           collapsed={collapsed.left}
           onCollapsedChange={() => collapsed.toggle("left")}
         >
-          <CatalogPanel
-            onPick={() => setOpenDrawer((d) => (d === "left" ? null : d))}
-          />
+          {isTrialActive && (
+            <p
+              role="note"
+              className="m-3 rounded-lg bg-sky-50 p-3 text-sm text-sky-900 dark:bg-sky-950 dark:text-sky-200"
+            >
+              Building is paused during the sea trial.
+            </p>
+          )}
+          {/* Inert, not hidden: the parts stay in view but cannot be picked. */}
+          <div
+            inert={isTrialActive}
+            className={isTrialActive ? "opacity-50" : undefined}
+          >
+            <CatalogPanel
+              onPick={() => setOpenDrawer((d) => (d === "left" ? null : d))}
+            />
+          </div>
         </Drawer>
         <main className="relative isolate min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
@@ -80,6 +99,10 @@ export default function ShipBuilder() {
           <RemovalConfirm />
           <SelectionBar />
           <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
+          {/* The trial plays in the 3D scene, so it needs WebGL. */}
+          {webgl && <SeaTrialButton />}
+          <SeaTrialStatus />
+          <SeaTrialResult />
           <HelpButton />
           <UndoRedo />
         </main>

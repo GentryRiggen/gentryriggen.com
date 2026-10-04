@@ -84,6 +84,8 @@ export default function ViewControls() {
   const { timeOfDay, setTimeOfDay } = useTimeOfDay();
   const cameraView = useShipBuilderStore((s) => s.camera.view);
   const setCameraView = useShipBuilderStore((s) => s.setCameraView);
+  // The trial plays in the sea it started in, so the sea can't change under it.
+  const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
 
   return (
     <div className="pointer-events-none absolute inset-x-3 top-16 z-10 flex flex-wrap items-start justify-between gap-2 lg:top-3">
@@ -110,8 +112,9 @@ export default function ViewControls() {
               type="button"
               aria-label={ariaLabel}
               aria-pressed={seaState === sea}
+              disabled={isTrialActive}
               onClick={() => setSeaState(sea)}
-              className={seaState === sea ? SEGMENT_PRESSED : SEGMENT_IDLE}
+              className={`${seaState === sea ? SEGMENT_PRESSED : SEGMENT_IDLE} disabled:cursor-not-allowed disabled:opacity-60`}
             >
               <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="sr-only xl:not-sr-only">{label}</span>

@@ -28,9 +28,16 @@ export default function ShipAnimation({ children }: ShipAnimationProps) {
   const { seaState } = useSeaState();
   const stats = useMemo(() => analyzeShip(ship).stats, [ship]);
   const { topSpeedKnots, stabilityRatio } = stats;
+  const { listAngle } = stats;
   const value = useMemo<ShipAnimationValue>(
-    () => ({ topSpeedKnots, stabilityRatio, reducedMotion, seaState }),
-    [topSpeedKnots, stabilityRatio, reducedMotion, seaState]
+    () => ({
+      topSpeedKnots,
+      stabilityRatio,
+      reducedMotion,
+      seaState,
+      listAngle,
+    }),
+    [topSpeedKnots, stabilityRatio, reducedMotion, seaState, listAngle]
   );
 
   return (

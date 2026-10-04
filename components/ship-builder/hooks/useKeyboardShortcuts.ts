@@ -23,6 +23,19 @@ export default function useKeyboardShortcuts() {
       const state = useShipBuilderStore.getState();
       const key = event.key.toLowerCase();
 
+      // During a sea trial the ship is frozen (the store ignores edits too);
+      // swallow the editing keys so Backspace never navigates away, and let
+      // Escape leave the trial.
+      if (state.trial.status !== "idle") {
+        if (key === "escape") state.endTrial();
+        else if (key === "delete" || key === "backspace")
+          event.preventDefault();
+        else if ((event.metaKey || event.ctrlKey) && key === "z") {
+          event.preventDefault();
+        }
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && key === "z") {
         event.preventDefault();
         if (event.shiftKey) state.redo();

@@ -7,6 +7,7 @@ import { collectEffectAnchors } from "./effectAnchors";
 import ParticleField, { type ParticleWriter } from "./ParticleField";
 import { lifePhase, slotNoise } from "./particles";
 import { useShipAnimation } from "./ShipAnimationContext";
+import { isCapsizing } from "./trialEffects";
 import {
   createPuffState,
   puffState,
@@ -39,8 +40,10 @@ export default function FunnelSmoke() {
   const update = useCallback(
     (writer: ParticleWriter, time: number, delta: number) => {
       const step = delta / FADE_SECONDS;
+      // The fires are out once the ship is going over.
+      const isPuffing = emitting && !isCapsizing();
       intensity.current = clamp(
-        intensity.current + (emitting ? step : -step),
+        intensity.current + (isPuffing ? step : -step),
         0,
         1
       );

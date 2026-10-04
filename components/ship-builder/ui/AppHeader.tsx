@@ -41,6 +41,8 @@ export default function AppHeader() {
   const rename = useShipBuilderStore((s) => s.rename);
   const markSaved = useShipBuilderStore((s) => s.markSaved);
   const setNotice = useShipBuilderStore((s) => s.setNotice);
+  // New and My Ships replace the ship, which the sea trial must not allow.
+  const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
 
   function handleSave() {
     const saved = saveShip(ship, savedId);
@@ -107,6 +109,7 @@ export default function AppHeader() {
           ref={newButtonRef}
           type="button"
           aria-haspopup="dialog"
+          disabled={isTrialActive}
           onClick={() => setNewOpen(true)}
           className={`${buttonClass} ${TOUCH_CLASS}`}
         >
@@ -123,6 +126,7 @@ export default function AppHeader() {
         <button
           ref={myShipsButtonRef}
           type="button"
+          disabled={isTrialActive}
           onClick={() => setShipsOpen(true)}
           className={`${buttonClass} ${TOUCH_CLASS}`}
         >
