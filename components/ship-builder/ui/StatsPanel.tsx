@@ -12,10 +12,10 @@ import {
   Weight,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
+import { REFERENCE_SHIPS } from "@/lib/ship-builder/model/kinds";
 import {
   computeStats,
-  TITANIC_REFERENCE,
   type CoverageLevel,
   type Stability,
 } from "@/lib/ship-builder/model/stats";
@@ -94,6 +94,8 @@ export default function StatsPanel() {
   const ship = useShipBuilderStore((s) => s.ship);
   const stats = useMemo(() => computeStats(ship), [ship]);
   const { passengers } = stats;
+  const reference = REFERENCE_SHIPS[ship.kind];
+  const isNavy = ship.kind === "navy";
 
   return (
     <div className="space-y-5 p-4">
@@ -144,10 +146,10 @@ export default function StatsPanel() {
           />
           <StatRow
             Icon={Weight}
-            label="Gross tonnage"
+            label={isNavy ? "Displacement" : "Gross tonnage"}
             testId="stat-tonnage"
             value={fmt(stats.grossTonnage)}
-            unit="GRT"
+            unit={isNavy ? "t" : "GRT"}
           />
           <StatRow
             Icon={Gauge}
@@ -189,26 +191,18 @@ export default function StatsPanel() {
 
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          RMS Titanic (1912)
+          {reference.title}
         </h2>
-        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
-          <dt>Tonnage</dt>
-          <dd className="text-right font-mono">
-            {fmt(TITANIC_REFERENCE.grossTonnage)}
-          </dd>
-          <dt>Speed</dt>
-          <dd className="text-right font-mono">
-            {TITANIC_REFERENCE.topSpeedKnots} kn
-          </dd>
-          <dt>Lifeboats</dt>
-          <dd className="text-right font-mono">
-            {TITANIC_REFERENCE.lifeboats} (
-            {fmt(TITANIC_REFERENCE.lifeboatSeats)} seats)
-          </dd>
-          <dt>Aboard</dt>
-          <dd className="text-right font-mono">
-            {fmt(TITANIC_REFERENCE.peopleAboard)}
-          </dd>
+        <dl
+          data-testid="reference-ship"
+          className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400"
+        >
+          {reference.rows.map((row) => (
+            <Fragment key={row.label}>
+              <dt>{row.label}</dt>
+              <dd className="text-right font-mono">{row.value}</dd>
+            </Fragment>
+          ))}
         </dl>
       </div>
     </div>

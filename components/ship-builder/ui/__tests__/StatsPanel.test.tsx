@@ -5,7 +5,7 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
-import { validateShip } from "@/lib/ship-builder/model/placement";
+import { emptyShip, validateShip } from "@/lib/ship-builder/model/placement";
 import type { PartType } from "@/lib/ship-builder/model/types";
 import { attachPart, gridPart, testShip } from "@/lib/ship-builder/testing";
 
@@ -97,5 +97,60 @@ describe("StatsPanel", () => {
     );
     expect(screen.getByText("46,328")).toBeInTheDocument();
     expect(screen.getByText("2,224")).toBeInTheDocument();
+  });
+
+  describe("comparison ship", () => {
+    const showKind = (kind: Parameters<typeof emptyShip>[0]) =>
+      act(() => useShipBuilderStore.setState({ ship: emptyShip(kind) }));
+    const reference = () => screen.getByTestId("reference-ship");
+
+    it("compares a liner to the Titanic", () => {
+      render(<StatsPanel />);
+      expect(
+        screen.getByRole("heading", { name: "RMS Titanic (1912)" })
+      ).toBeInTheDocument();
+      expect(within(reference()).getByText("Tonnage")).toBeInTheDocument();
+      expect(within(reference()).getByText("20 (1,178 seats)")).toBeVisible();
+    });
+
+    it("compares a cruise ship to Wonder of the Seas", () => {
+      render(<StatsPanel />);
+      showKind("cruise");
+      expect(
+        screen.getByRole("heading", { name: "Wonder of the Seas (2022)" })
+      ).toBeInTheDocument();
+      for (const text of ["236,857", "22 kn", "5,734", "2,300"]) {
+        expect(within(reference()).getByText(text)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("46,328")).not.toBeInTheDocument();
+    });
+
+    it("compares a navy ship to a destroyer, using displacement", () => {
+      render(<StatsPanel />);
+      showKind("navy");
+      expect(
+        screen.getByRole("heading", { name: "Arleigh Burke destroyer" })
+      ).toBeInTheDocument();
+      expect(within(reference()).getByText("Displacement")).toBeVisible();
+      expect(within(reference()).queryByText("Tonnage")).toBeNull();
+      expect(within(reference()).getByText("9,200 t")).toBeVisible();
+      expect(within(reference()).getByText("30+ kn")).toBeVisible();
+      expect(within(reference()).getByText("about 300")).toBeVisible();
+      expect(
+        screen.getByTestId("stat-tonnage").closest("div")
+      ).toHaveTextContent(/Displacement/);
+      expect(screen.queryByText("Gross tonnage")).not.toBeInTheDocument();
+    });
+
+    it("compares a cargo ship to the Ever Given", () => {
+      render(<StatsPanel />);
+      showKind("cargo");
+      expect(
+        screen.getByRole("heading", { name: "Ever Given (2018)" })
+      ).toBeInTheDocument();
+      for (const text of ["219,079", "22.8 kn", "20,124 TEU", "25"]) {
+        expect(within(reference()).getByText(text)).toBeInTheDocument();
+      }
+    });
   });
 });

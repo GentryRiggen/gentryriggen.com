@@ -1,3 +1,4 @@
+import { REFERENCE_SHIPS, SHIP_KINDS } from "../kinds";
 import {
   computeSpeed,
   computeStats,
@@ -275,6 +276,26 @@ describe("coverageLevel", () => {
     expect(coverageLevel(0.5)).toBe("amber");
     expect(coverageLevel(0.99)).toBe("amber");
     expect(coverageLevel(1)).toBe("green");
+  });
+});
+
+describe("REFERENCE_SHIPS", () => {
+  it("keeps the liner box in step with the Titanic figures", () => {
+    const rows = Object.fromEntries(
+      REFERENCE_SHIPS.liner.rows.map((r) => [r.label, r.value])
+    );
+    expect(rows).toEqual({
+      Tonnage: TITANIC_REFERENCE.grossTonnage.toLocaleString("en-US"),
+      Speed: `${TITANIC_REFERENCE.topSpeedKnots} kn`,
+      Lifeboats: `${TITANIC_REFERENCE.lifeboats} (${TITANIC_REFERENCE.lifeboatSeats.toLocaleString("en-US")} seats)`,
+      Aboard: TITANIC_REFERENCE.peopleAboard.toLocaleString("en-US"),
+    });
+  });
+
+  it("has a comparison ship for every kind", () => {
+    for (const kind of SHIP_KINDS) {
+      expect(REFERENCE_SHIPS[kind].rows.length).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 
