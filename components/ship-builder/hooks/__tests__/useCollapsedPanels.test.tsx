@@ -49,4 +49,20 @@ describe("useCollapsedPanels", () => {
     act(() => result.current.toggle("left"));
     expect(result.current.left).toBe(false);
   });
+
+  // Keep this last: a failed write switches the module to its in-memory value
+  // for the rest of the file.
+  it("still toggles when only writing to storage throws", () => {
+    jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+    const { result } = renderHook(() => useCollapsedPanels());
+    act(() => result.current.toggle("left"));
+    expect(result.current.left).toBe(true);
+    act(() => result.current.toggle("right"));
+    expect(result.current).toMatchObject({ left: true, right: true });
+    act(() => result.current.toggle("left"));
+    act(() => result.current.toggle("right"));
+    expect(result.current).toMatchObject({ left: false, right: false });
+  });
 });

@@ -18,6 +18,9 @@ const EXPANDED = "";
 const listeners = new Set<() => void>();
 // Used when localStorage is unavailable, so toggling still works per session.
 let memorySnapshot = EXPANDED;
+// Set once a write fails: reads may still work, but they would return the
+// stale stored value and undo the toggle.
+let isMemoryAuthoritative = false;
 
 function normalize(raw: string | null): string {
   if (raw === null) return EXPANDED;
@@ -32,6 +35,7 @@ function normalize(raw: string | null): string {
 }
 
 function getSnapshot(): string {
+  if (isMemoryAuthoritative) return memorySnapshot;
   try {
     return normalize(window.localStorage.getItem(STORAGE_KEY));
   } catch {
@@ -54,9 +58,11 @@ function writeSnapshot(next: string): void {
       STORAGE_KEY,
       JSON.stringify({ left: next.includes("l"), right: next.includes("r") })
     );
+    isMemoryAuthoritative = false;
   } catch {
     // Storage unavailable: the in-memory value still applies this session.
     memorySnapshot = next;
+    isMemoryAuthoritative = true;
   }
   listeners.forEach((listener) => listener());
 }
