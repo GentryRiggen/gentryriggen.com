@@ -168,14 +168,14 @@ describe("computeStats", () => {
     expect(wide.stability).toBe("Stable");
   });
 
-  it("warns about lifeboats, bridge, funnels, crew beds in order", () => {
+  it("warns about bridge, funnels, lifeboats, crew beds in build order", () => {
     expect(computeStats(testShip()).warnings).toEqual([
+      { code: "no-bridge", message: "No bridge — someone has to steer" },
+      { code: "no-funnels", message: "No funnels — she isn't going anywhere" },
       {
         code: "lifeboats",
         message: "Lifeboats seat 0 of 480 aboard (480 short)",
       },
-      { code: "no-bridge", message: "No bridge — someone has to steer" },
-      { code: "no-funnels", message: "No funnels — she isn't going anywhere" },
       { code: "crew-berths", message: "Crew need beds: 0 of 480" },
     ]);
   });
@@ -295,22 +295,122 @@ describe("coverageLevel", () => {
 });
 
 describe("REFERENCE_SHIPS", () => {
-  it("keeps the liner box in step with the Titanic figures", () => {
-    const rows = Object.fromEntries(
-      REFERENCE_SHIPS.liner.rows.map((r) => [r.label, r.value])
+  it("keeps the liner figures in step with the Titanic", () => {
+    const figures = Object.fromEntries(
+      REFERENCE_SHIPS.liner.figures.map((f) => [f.metric, f.value])
     );
-    expect(rows).toEqual({
-      Tonnage: TITANIC_REFERENCE.grossTonnage.toLocaleString("en-US"),
-      Speed: `${TITANIC_REFERENCE.topSpeedKnots} kn`,
-      Lifeboats: `${TITANIC_REFERENCE.lifeboats} (${TITANIC_REFERENCE.lifeboatSeats.toLocaleString("en-US")} seats)`,
-      Aboard: TITANIC_REFERENCE.peopleAboard.toLocaleString("en-US"),
+    expect(figures).toEqual({
+      tonnage: TITANIC_REFERENCE.grossTonnage,
+      speed: TITANIC_REFERENCE.topSpeedKnots,
+      seats: TITANIC_REFERENCE.lifeboatSeats,
+      people: TITANIC_REFERENCE.peopleAboard,
     });
   });
 
-  it("has a comparison ship for every kind", () => {
+  it("has comparable figures for every kind", () => {
     for (const kind of SHIP_KINDS) {
-      expect(REFERENCE_SHIPS[kind].rows.length).toBeGreaterThanOrEqual(3);
+      expect(REFERENCE_SHIPS[kind].figures.length).toBeGreaterThanOrEqual(2);
     }
+  });
+});
+
+describe("checks", () => {
+  const codes = (ship: ReturnType<typeof testShip>) =>
+    computeStats(ship).checks.map((c) => c.code);
+  const failing = (ship: ReturnType<typeof testShip>) =>
+    computeStats(ship)
+      .checks.filter((c) => !c.ok)
+      .map((c) => c.code);
+
+  it("lists the always-applicable goals for a blank ship, all failing", () => {
+    const { checks } = computeStats(testShip());
+    expect(checks.map((c) => c.code)).toEqual([
+      "no-bridge",
+      "no-funnels",
+      "lifeboats",
+      "crew-berths",
+      "top-heavy",
+    ]);
+    expect(checks.filter((c) => !c.ok)).toHaveLength(4);
+    expect(checks.find((c) => c.code === "top-heavy")).toEqual({
+      code: "top-heavy",
+      label: "Stays upright",
+      ok: true,
+    });
+  });
+
+  it("gives a failing check today's warning message as its detail", () => {
+    const bridge = computeStats(testShip()).checks[0];
+    expect(bridge).toEqual({
+      code: "no-bridge",
+      label: "Bridge to steer from",
+      ok: false,
+      detail: "No bridge — someone has to steer",
+    });
+  });
+
+  it("passes a check with a positive label and no detail", () => {
+    const stats = computeStats(testShip([gridPart("br", "bridge", 0, 1, 0)]));
+    expect(stats.checks[0]).toEqual({
+      code: "no-bridge",
+      label: "Bridge to steer from",
+      ok: true,
+    });
+  });
+
+  it("maps every warning to exactly one failing check, in order", () => {
+    const ships = [
+      testShip(),
+      testShip([attachPart("p", "propeller", HULL_ID, "prop:0")]),
+      testShip([gridPart("br", "bridge", 0, 1, 0)]),
+      testShip(
+        [0, 1, 2, 3].flatMap((level) => fillLevel(level, 12)),
+        4
+      ),
+    ];
+    for (const ship of ships) {
+      const stats = computeStats(ship);
+      expect(stats.warnings.map((w) => w.code)).toEqual(failing(ship));
+      expect(stats.warnings.map((w) => w.message)).toEqual(
+        stats.checks.filter((c) => !c.ok).map((c) => c.detail)
+      );
+    }
+  });
+
+  it("only checks propellers, power match and rudder when they apply", () => {
+    expect(codes(testShip())).not.toContain("no-propellers");
+    expect(codes(testShip())).not.toContain("needs-propellers");
+    expect(codes(testShip())).not.toContain("no-rudder");
+
+    const propeller = attachPart("p", "propeller", HULL_ID, "prop:0");
+    const withProp = testShip([propeller]);
+    expect(codes(withProp)).toContain("no-propellers");
+    expect(failing(withProp)).not.toContain("no-propellers");
+    expect(codes(withProp)).not.toContain("needs-propellers");
+    expect(failing(withProp)).toContain("no-rudder");
+  });
+
+  it("uses the kind's drivetrain for the propeller power match", () => {
+    const parts = [
+      gridPart("a", "deck-1x1", 0, 4, 1),
+      gridPart("b", "deck-1x1", 0, 7, 0),
+      attachPart("f", "funnel-large", "a", "funnel-lg:4:1"),
+      attachPart("f2", "funnel", "b", "funnel"),
+      attachPart("p", "propeller", HULL_ID, "prop:0"),
+    ];
+    const liner = testShip(parts);
+    const cruise = { ...liner, kind: "cruise" as const };
+    expect(failing(liner)).toContain("needs-propellers");
+    expect(failing(cruise)).not.toContain("needs-propellers");
+  });
+
+  it("passes a stable ship's stability check and fails a top-heavy one", () => {
+    const tall = testShip(
+      [0, 1, 2, 3].flatMap((level) => fillLevel(level, 12)),
+      4
+    );
+    expect(failing(tall)).toContain("top-heavy");
+    expect(failing(testShip())).not.toContain("top-heavy");
   });
 });
 

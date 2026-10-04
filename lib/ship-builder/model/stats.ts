@@ -77,6 +77,17 @@ export interface StatWarning {
   message: string;
 }
 
+/** One goal for a seaworthy ship: passing, or failing with a plain reason. */
+export interface Check {
+  /** Same codes as warnings: every failing check is exactly one warning. */
+  code: WarningCode;
+  /** Positive wording, e.g. "Bridge to steer from". */
+  label: string;
+  ok: boolean;
+  /** What's wrong; only present while the check fails. */
+  detail?: string;
+}
+
 export interface Stats {
   passengers: { first: number; second: number; third: number; total: number };
   crew: number;
@@ -92,6 +103,8 @@ export interface Stats {
   topSpeedKnots: number;
   stability: Stability;
   stabilityRatio: number;
+  /** Goals in build order. Only the ones that apply right now. */
+  checks: Check[];
   warnings: StatWarning[];
 }
 
@@ -199,60 +212,83 @@ export function computeStats(ship: Ship): Stats {
   const stabilityRatio = moment / mass / beam;
   const stability = classifyStability(stabilityRatio);
 
-  const warnings: StatWarning[] = [];
-  if (coverage < 1) {
-    warnings.push({
-      code: "lifeboats",
-      message: `Lifeboats seat ${lifeboatSeats.toLocaleString("en-US")} of ${peopleAboard.toLocaleString("en-US")} aboard (${(peopleAboard - lifeboatSeats).toLocaleString("en-US")} short)`,
+  const fmtN = (n: number) => n.toLocaleString("en-US");
+  const { powerPerProp } = DRIVETRAINS[ship.kind];
+  const checks: Check[] = [];
+  const addCheck = (
+    code: WarningCode,
+    label: string,
+    failure: string | null
+  ) => {
+    checks.push({
+      code,
+      label,
+      ok: failure === null,
+      ...(failure === null ? {} : { detail: failure }),
     });
+  };
+
+  // Listed in build order; checks that don't apply yet are left out.
+  addCheck(
+    "no-bridge",
+    "Bridge to steer from",
+    bridges === 0 ? "No bridge — someone has to steer" : null
+  );
+  addCheck(
+    "no-funnels",
+    "Funnels for power",
+    funnels === 0 ? "No funnels — she isn't going anywhere" : null
+  );
+  if (funnels > 0 || propellers > 0) {
+    addCheck(
+      "no-propellers",
+      "Propellers to push her",
+      funnels > 0 && propellers === 0 ? "No propellers — she can't move" : null
+    );
   }
-  if (bridges === 0) {
-    warnings.push({
-      code: "no-bridge",
-      message: "No bridge — someone has to steer",
-    });
+  if (funnels > 0 && propellers > 0) {
+    addCheck(
+      "needs-propellers",
+      "Enough propellers for the funnels",
+      power > propellers * powerPerProp
+        ? "Not enough propellers for your funnels"
+        : null
+    );
   }
-  if (funnels === 0) {
-    warnings.push({
-      code: "no-funnels",
-      message: "No funnels — she isn't going anywhere",
-    });
+  if (propellers > 0) {
+    addCheck(
+      "no-rudder",
+      "Rudder to steer",
+      rudders === 0 ? "No rudder — she can't steer" : null
+    );
   }
-  if (funnels > 0 && propellers === 0) {
-    warnings.push({
-      code: "no-propellers",
-      message: "No propellers — she can't move",
-    });
-  } else if (
-    propellers > 0 &&
-    power > propellers * DRIVETRAINS[ship.kind].powerPerProp
-  ) {
-    warnings.push({
-      code: "needs-propellers",
-      message: "Not enough propellers for your funnels",
-    });
-  }
-  if (propellers > 0 && rudders === 0) {
-    warnings.push({
-      code: "no-rudder",
-      message: "No rudder — she can't steer",
-    });
-  }
-  if (crewBerths < crew) {
-    warnings.push({
-      code: "crew-berths",
-      message: `Crew need beds: ${crewBerths.toLocaleString("en-US")} of ${crew.toLocaleString("en-US")}`,
-    });
-  }
-  if (stability !== "Stable") {
-    warnings.push({
-      code: "top-heavy",
-      message:
-        stability === "Dangerous"
-          ? "Dangerously top-heavy — she'll capsize"
-          : "Top-heavy — lower the superstructure, or widen or lengthen the hull",
-    });
-  }
+  addCheck(
+    "lifeboats",
+    "Lifeboat seat for everyone",
+    coverage < 1
+      ? `Lifeboats seat ${fmtN(lifeboatSeats)} of ${fmtN(peopleAboard)} aboard (${fmtN(peopleAboard - lifeboatSeats)} short)`
+      : null
+  );
+  addCheck(
+    "crew-berths",
+    "A bed for every crew member",
+    crewBerths < crew
+      ? `Crew need beds: ${fmtN(crewBerths)} of ${fmtN(crew)}`
+      : null
+  );
+  addCheck(
+    "top-heavy",
+    "Stays upright",
+    stability === "Stable"
+      ? null
+      : stability === "Dangerous"
+        ? "Dangerously top-heavy — she'll capsize"
+        : "Top-heavy — lower the superstructure, or widen or lengthen the hull"
+  );
+
+  const warnings: StatWarning[] = checks.flatMap((check) =>
+    check.ok ? [] : [{ code: check.code, message: check.detail ?? check.label }]
+  );
 
   return {
     passengers,
@@ -268,6 +304,7 @@ export function computeStats(ship: Ship): Stats {
     topSpeedKnots,
     stability,
     stabilityRatio,
+    checks,
     warnings,
   };
 }

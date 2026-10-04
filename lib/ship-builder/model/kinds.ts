@@ -41,52 +41,63 @@ export function isShipKind(value: unknown): value is ShipKind {
   return (SHIP_KINDS as readonly unknown[]).includes(value);
 }
 
-export interface ReferenceRow {
+/** Which of the player's computed stats a real-ship figure lines up with. */
+export type ReferenceMetric =
+  "tonnage" | "speed" | "seats" | "people" | "passengers" | "crew" | "teu";
+
+export interface ReferenceFigure {
+  metric: ReferenceMetric;
   label: string;
-  value: string;
+  value: number;
+  /** Shown after the number, e.g. "kn". */
+  unit?: string;
 }
 
 export interface ReferenceShip {
   /** Heading of the comparison box, e.g. "RMS Titanic (1912)". */
   title: string;
-  rows: ReferenceRow[];
+  /** Real-world numbers that can be compared bar-for-bar with the player's. */
+  figures: ReferenceFigure[];
+  /** A figure the model can't compute, shown as plain text. */
+  note?: string;
 }
 
 /** Approximate real-world figures shown beside a player's own stats. */
 export const REFERENCE_SHIPS: Record<ShipKind, ReferenceShip> = {
   liner: {
     title: "RMS Titanic (1912)",
-    rows: [
-      { label: "Tonnage", value: "46,328" },
-      { label: "Speed", value: "21 kn" },
-      { label: "Lifeboats", value: "20 (1,178 seats)" },
-      { label: "Aboard", value: "2,224" },
+    figures: [
+      { metric: "tonnage", label: "Gross tonnage", value: 46328 },
+      { metric: "speed", label: "Top speed", value: 21, unit: "kn" },
+      { metric: "seats", label: "Lifeboat seats", value: 1178 },
+      { metric: "people", label: "People aboard", value: 2224 },
     ],
   },
   cruise: {
     title: "Wonder of the Seas (2022)",
-    rows: [
-      { label: "Tonnage", value: "236,857" },
-      { label: "Speed", value: "22 kn" },
-      { label: "Passengers", value: "5,734" },
-      { label: "Crew", value: "2,300" },
+    figures: [
+      { metric: "tonnage", label: "Gross tonnage", value: 236857 },
+      { metric: "speed", label: "Top speed", value: 22, unit: "kn" },
+      { metric: "passengers", label: "Passengers", value: 5734 },
+      { metric: "crew", label: "Crew", value: 2300 },
     ],
   },
   navy: {
     title: "Arleigh Burke destroyer",
-    rows: [
-      { label: "Displacement", value: "9,200 t" },
-      { label: "Speed", value: "30+ kn" },
-      { label: "Crew", value: "about 300" },
+    figures: [
+      { metric: "speed", label: "Top speed", value: 30, unit: "kn" },
+      { metric: "crew", label: "Crew", value: 300 },
     ],
+    // Displacement is a mass, which the model doesn't compute.
+    note: "Displaces about 9,200 tons",
   },
   cargo: {
     title: "Ever Given (2018)",
-    rows: [
-      { label: "Tonnage", value: "219,079" },
-      { label: "Speed", value: "22.8 kn" },
-      { label: "Cargo", value: "20,124 TEU" },
-      { label: "Crew", value: "25" },
+    figures: [
+      { metric: "tonnage", label: "Gross tonnage", value: 219079 },
+      { metric: "speed", label: "Top speed", value: 22.8, unit: "kn" },
+      { metric: "teu", label: "Cargo", value: 20124, unit: "TEU" },
+      { metric: "crew", label: "Crew", value: 25 },
     ],
   },
 };
