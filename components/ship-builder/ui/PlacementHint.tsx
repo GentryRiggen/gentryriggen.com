@@ -6,6 +6,9 @@ import { openAttachPoints } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 
+const HINT_CLASS =
+  "pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-slate-900/85 px-4 py-1.5 text-sm text-white shadow dark:bg-slate-100/90 dark:text-slate-900";
+
 export default function PlacementHint() {
   const tool = useShipBuilderStore((s) => s.tool);
   const hover = useShipBuilderStore((s) => s.hover);
@@ -18,13 +21,20 @@ export default function PlacementHint() {
     return openAttachPoints(ship, def).length === 0 ? def.emptyHint : null;
   }, [ship, tool]);
 
+  if (tool.kind === "paint") {
+    return (
+      <div className={HINT_CLASS}>
+        <span>Painting · tap a part or the hull</span>
+      </div>
+    );
+  }
   if (tool.kind !== "place") return null;
   const def = getPartDef(tool.type);
   const rotateHint =
     def.placement === "grid" ? ` · R to rotate (${tool.rotation}°)` : "";
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-slate-900/85 px-4 py-1.5 text-sm text-white shadow dark:bg-slate-100/90 dark:text-slate-900">
+    <div className={HINT_CLASS}>
       {hover && !hover.result.ok ? (
         <span
           data-testid="placement-reason"

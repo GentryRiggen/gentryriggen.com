@@ -9,6 +9,7 @@ import {
   ChevronsRightLeft,
   Eye,
   FilePlus,
+  Paintbrush,
   Minus,
   Plus,
   Redo2,
@@ -61,6 +62,9 @@ const CAMERA_VIEWS: {
   { view: "below", label: "Below", ariaLabel: "Below view", Icon: Waves },
 ];
 
+/** The colour a fresh trip into paint mode starts with. */
+const DEFAULT_PAINT_COLOR = "red";
+
 const ICON_CLASS = "h-4 w-4 shrink-0";
 // Icons carry the meaning on a phone; the words stay for screen readers.
 const LABEL_CLASS = "sr-only sm:not-sr-only";
@@ -95,6 +99,8 @@ export default function Toolbar() {
   const undo = useShipBuilderStore((s) => s.undo);
   const redo = useShipBuilderStore((s) => s.redo);
   const rotate = useShipBuilderStore((s) => s.rotate);
+  const selectPaint = useShipBuilderStore((s) => s.selectPaint);
+  const cancel = useShipBuilderStore((s) => s.cancel);
   const requestDelete = useShipBuilderStore((s) => s.requestDelete);
   const setCameraView = useShipBuilderStore((s) => s.setCameraView);
   const newShip = useShipBuilderStore((s) => s.newShip);
@@ -103,6 +109,7 @@ export default function Toolbar() {
 
   const segments = ship.hull.lengthSegments;
   const { beam } = ship.hull;
+  const isPainting = tool.kind === "paint";
   const canRotate =
     tool.kind === "place" && getPartDef(tool.type).placement === "grid";
 
@@ -235,6 +242,16 @@ export default function Toolbar() {
           className={buttonClass}
         >
           <ButtonLabel Icon={Trash2}>Delete</ButtonLabel>
+        </button>
+        <button
+          type="button"
+          aria-pressed={isPainting}
+          onClick={() =>
+            isPainting ? cancel() : selectPaint(DEFAULT_PAINT_COLOR)
+          }
+          className={isPainting ? pressedButtonClass : buttonClass}
+        >
+          <ButtonLabel Icon={Paintbrush}>Paint</ButtonLabel>
         </button>
       </div>
 

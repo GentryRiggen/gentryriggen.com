@@ -56,6 +56,18 @@ describe("Toolbar", () => {
     expect(store().ship.name).toBe("Olympic");
   });
 
+  it("toggles paint mode with the Paint button", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const paint = screen.getByRole("button", { name: "Paint" });
+    expect(paint).toHaveAttribute("aria-pressed", "false");
+    await user.click(paint);
+    expect(store().tool.kind).toBe("paint");
+    expect(paint).toHaveAttribute("aria-pressed", "true");
+    await user.click(paint);
+    expect(store().tool).toEqual({ kind: "none" });
+  });
+
   it("only enables rotate for grid tools and delete with a selection", () => {
     render(<Toolbar />);
     expect(screen.getByRole("button", { name: "Rotate" })).toBeDisabled();
