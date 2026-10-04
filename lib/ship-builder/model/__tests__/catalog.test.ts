@@ -117,4 +117,17 @@ describe("visibleParts", () => {
       expect(types(kind, true)).toEqual([...PART_TYPES]);
     }
   });
+
+  it("gives every ship kind an engine, a propeller and lifeboats", () => {
+    for (const kind of SHIP_KINDS) {
+      const defs = types(kind, false).map((type) => CATALOG[type]);
+      expect(defs.some((def) => (def.power ?? 0) > 0)).toBe(true);
+      expect(
+        defs.some(
+          (def) => def.placement === "attach" && def.attachTo === "prop-mount"
+        )
+      ).toBe(true);
+      expect(defs.some((def) => (def.seats ?? 0) > 0)).toBe(true);
+    }
+  });
 });

@@ -434,7 +434,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   },
   "funnel-modern": {
     type: "funnel-modern",
-    kinds: ["cruise"],
+    kinds: ["cruise", "navy", "cargo"],
     category: "funnels",
     name: "Modern funnel",
     description: "Raked diesel stack · sits on a deck block · no stokers",
