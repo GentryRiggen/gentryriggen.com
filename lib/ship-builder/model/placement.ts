@@ -1,7 +1,13 @@
-import { attachPointsOf, isPointTaken, pointFitsPart } from "./attach";
+import {
+  attachPointsOf,
+  isPointTaken,
+  pointFitsPart,
+  rowExtent,
+} from "./attach";
 import { ATTACH_POINT_LABELS, getPartDef } from "./catalog";
 import {
   buildOccupancy,
+  beamOf,
   cellKey,
   DEFAULT_BEAM,
   footprintCells,
@@ -89,6 +95,28 @@ function holdsDavitAt(
 }
 
 /**
+ * A davit sits on the outermost cell of its row, so a cell placed further out
+ * on that side would leave it stranded.
+ */
+function isOutboardOfDavit(
+  ship: Ship,
+  cell: Cell,
+  occupancy: Occupancy
+): boolean {
+  const extent = rowExtent(ship, occupancy, cell.level, cell.x);
+  if (!extent) return false;
+  const holdsDavit = (edgeZ: number) => {
+    const edge = occupancy.get(cellKey({ ...cell, z: edgeZ }));
+    return edge !== undefined && holdsDavitAt(ship, edge, cell.x, edgeZ);
+  };
+  if (cell.z < extent.min && extent.min <= 0) return holdsDavit(extent.min);
+  if (cell.z > extent.max && extent.max >= beamOf(ship) - 1) {
+    return holdsDavit(extent.max);
+  }
+  return false;
+}
+
+/**
  * Every candidate cell must be within MAX_OVERHANG steps of a grounded cell,
  * walking through the ship's cells plus the candidate's own.
  */
@@ -143,6 +171,10 @@ function canPlaceGrid(
     if (holdsDavitAt(ship, below, cell.x, cell.z)) {
       return fail("Can't build over a davit");
     }
+  }
+
+  if (cells.some((cell) => isOutboardOfDavit(ship, cell, occupancy))) {
+    return fail("Can't build outboard of a davit");
   }
 
   const support = checkSupport(ship, cells, occupancy);

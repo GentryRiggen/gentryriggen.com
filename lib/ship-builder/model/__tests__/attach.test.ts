@@ -163,6 +163,75 @@ describe("attach points", () => {
     expect(mount.position.z).toBeCloseTo(4.6);
   });
 
+  describe("davits on wings and other beams", () => {
+    /** Two-level stacks at x 5 across the given z columns, ids "b<z>" on top. */
+    function rowShip(zs: number[], beam = 4) {
+      return testShip(
+        [
+          ...zs.map((z) => gridPart(`a${z}`, "deck-1x1", 0, 5, z)),
+          ...zs.map((z) => gridPart(`b${z}`, "deck-1x1", 1, 5, z)),
+        ],
+        8,
+        beam
+      );
+    }
+    const davitsOf = (ship: ReturnType<typeof rowShip>, id: string) =>
+      attachPointsOf(ship, id).filter((p) => p.type === "davit-point");
+
+    it("puts a starboard davit on a wing block two cells out", () => {
+      const ship = rowShip([0, -1, -2]);
+      expect(validateShip(ship)).toEqual({ ok: true });
+      expect(davitsOf(ship, "b-2")).toEqual([
+        {
+          id: "davit:5:-2",
+          type: "davit-point",
+          position: { x: 5.5, y: 2, z: -2 },
+          side: "starboard",
+        },
+      ]);
+      const withBoat = testShip([
+        ...ship.parts,
+        attachPart("dv", "davit", "b-2", "davit:5:-2"),
+      ]);
+      expect(validateShip(withBoat)).toEqual({ ok: true });
+      const [mount] = attachPointsOf(withBoat, "dv");
+      expect(mount.position.z).toBeCloseTo(-2.6);
+    });
+
+    it("puts a port davit on a wing block at beam + 1", () => {
+      const ship = rowShip([3, 4, 5]);
+      expect(validateShip(ship)).toEqual({ ok: true });
+      expect(davitsOf(ship, "b5")).toEqual([
+        {
+          id: "davit:5:5",
+          type: "davit-point",
+          position: { x: 5.5, y: 2, z: 6 },
+          side: "port",
+        },
+      ]);
+    });
+
+    it("moves the davit off an inner cell once a wing block is outboard", () => {
+      const ship = rowShip([0, -1]);
+      expect(davitsOf(ship, "b0")).toEqual([]);
+      expect(davitsOf(ship, "b-1").map((p) => p.id)).toEqual(["davit:5:-1"]);
+    });
+
+    it("uses the port edge of the ship's own beam", () => {
+      expect(davitsOf(rowShip([2], 3), "b2")).toEqual([
+        expect.objectContaining({ id: "davit:5:2", side: "port" }),
+      ]);
+      expect(davitsOf(rowShip([3], 6), "b3")).toEqual([]);
+      expect(davitsOf(rowShip([5], 6), "b5")).toEqual([
+        expect.objectContaining({ position: { x: 5.5, y: 2, z: 6 } }),
+      ]);
+    });
+
+    it("gives the middle of a 3-wide row no davit", () => {
+      expect(davitsOf(rowShip([1], 3), "b1")).toEqual([]);
+    });
+  });
+
   it("returns nothing for unknown parents", () => {
     expect(attachPointsOf(testShip(), "missing")).toEqual([]);
   });

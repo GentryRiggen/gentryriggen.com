@@ -3,10 +3,10 @@ import {
   beamOf,
   buildOccupancy,
   cellKey,
-  GRID_WIDTH,
   gridLength,
   partCells,
   rotatedFootprint,
+  WING_REACH,
   type Occupancy,
 } from "./grid";
 import {
@@ -14,8 +14,10 @@ import {
   type AttachAnchor,
   type AttachPartDef,
   type AttachPoint,
+  type Cell,
   type PlacedPart,
   type Ship,
+  type Side,
 } from "./types";
 
 /** Prow extends forward of x = 0; stern extends aft of the last cell. */
@@ -41,13 +43,48 @@ function hullPoints(ship: Ship): AttachPoint[] {
   ];
 }
 
+/** Lowest and highest occupied z in one row (same level and x), if any. */
+export function rowExtent(
+  ship: Ship,
+  occupancy: Occupancy,
+  level: number,
+  x: number
+): { min: number; max: number } | undefined {
+  let extent: { min: number; max: number } | undefined;
+  for (let z = -WING_REACH; z <= beamOf(ship) - 1 + WING_REACH; z++) {
+    if (!occupancy.has(cellKey({ level, x, z }))) continue;
+    extent = { min: extent?.min ?? z, max: z };
+  }
+  return extent;
+}
+
+/**
+ * The side whose davit a cell would carry: it must be the outermost occupied
+ * cell of its row on that side, at or past that hull edge.
+ */
+export function davitSide(
+  ship: Ship,
+  occupancy: Occupancy,
+  cell: Cell
+): Side | undefined {
+  const extent = rowExtent(ship, occupancy, cell.level, cell.x);
+  if (!extent) return undefined;
+  if (cell.z === extent.min && cell.z <= 0) return "starboard";
+  if (cell.z === extent.max && cell.z >= beamOf(ship) - 1) return "port";
+  return undefined;
+}
+
 function isCovered(part: PlacedPart, occupancy: Occupancy): boolean {
   return partCells(part).some((cell) =>
     occupancy.has(cellKey({ ...cell, level: cell.level + 1 }))
   );
 }
 
-function blockPoints(part: PlacedPart, occupancy: Occupancy): AttachPoint[] {
+function blockPoints(
+  ship: Ship,
+  part: PlacedPart,
+  occupancy: Occupancy
+): AttachPoint[] {
   const def = getPartDef(part.type);
   if (def.placement !== "grid" || part.anchor.kind !== "grid") return [];
   const { level, x, z } = part.anchor;
@@ -64,21 +101,22 @@ function blockPoints(part: PlacedPart, occupancy: Occupancy): AttachPoint[] {
 
   if (def.role !== "bridge" && level >= 1) {
     for (const cell of partCells(part)) {
-      const outboard = cell.z === 0 || cell.z === GRID_WIDTH - 1;
       const covered = occupancy.has(
         cellKey({ ...cell, level: cell.level + 1 })
       );
-      if (!outboard || covered) continue;
-      const starboard = cell.z === 0;
+      if (covered) continue;
+      const side = davitSide(ship, occupancy, cell);
+      if (!side) continue;
       points.push({
         id: `davit:${cell.x}:${cell.z}`,
         type: "davit-point",
         position: {
           x: cell.x + 0.5,
           y: level + 1,
-          z: starboard ? 0 : GRID_WIDTH,
+          // On the cell's outward face.
+          z: side === "starboard" ? cell.z : cell.z + 1,
         },
-        side: starboard ? "starboard" : "port",
+        side,
       });
     }
   }
@@ -94,7 +132,7 @@ function davitPoints(
   if (part.anchor.kind !== "attach") return [];
   const base = resolveAttachPoint(ship, part.anchor, occupancy);
   if (!base) return [];
-  // Starboard is z = 0, so outboard is -z there and +z on the port side.
+  // Starboard is low z, so outboard is -z there and +z on the port side.
   const outward = base.side === "starboard" ? -1 : 1;
   return [
     {
@@ -120,7 +158,7 @@ export function attachPointsOf(
   const part = ship.parts.find((p) => p.id === parentId);
   if (!part) return [];
   if (part.type === "davit") return davitPoints(ship, part, occupancy);
-  return blockPoints(part, occupancy);
+  return blockPoints(ship, part, occupancy);
 }
 
 export function resolveAttachPoint(

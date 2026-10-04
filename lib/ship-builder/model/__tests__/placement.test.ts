@@ -263,6 +263,33 @@ describe("canPlace — side support", () => {
     expect(canPlace(raised, gridCandidate("bridge", 1, 1, 0))).toEqual(OK);
   });
 
+  it("refuses to build outboard of a davit in the same row", () => {
+    const BLOCKED = fail("Can't build outboard of a davit");
+    const ship = testShip([
+      ...boatDeckShip().parts,
+      gridPart("w0", "deck-1x1", 0, 2, -1),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(canPlace(ship, gridCandidate("deck-1x1", 1, 2, -1))).toEqual(
+      BLOCKED
+    );
+    // Without the davit the same wing block is fine.
+    const bare = removeParts(ship, ["lb", "dv"]);
+    expect(canPlace(bare, gridCandidate("deck-1x1", 1, 2, -1))).toEqual(OK);
+
+    const port = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 3),
+      gridPart("b", "deck-1x1", 1, 2, 3),
+      gridPart("w", "deck-1x1", 0, 2, 4),
+      attachPart("dv", "davit", "b", "davit:2:3"),
+    ]);
+    expect(validateShip(port)).toEqual(OK);
+    expect(canPlace(port, gridCandidate("deck-1x1", 1, 2, 4))).toEqual(BLOCKED);
+    // Inboard of the davit, or on another level or row, is fine.
+    expect(canPlace(port, gridCandidate("deck-1x1", 1, 2, 2))).toEqual(OK);
+    expect(canPlace(port, gridCandidate("deck-1x1", 0, 2, 5))).toEqual(OK);
+  });
+
   it("keeps the rule-6 checks on cells that have a part below", () => {
     const ship = testShip([
       gridPart("a", "deck-1x1", 0, 4, 1),
