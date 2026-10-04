@@ -1,13 +1,19 @@
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Drawer from "../Drawer";
 
-function renderDrawer() {
-  render(
-    <Drawer side="right" label="Stats">
+function StatefulDrawer() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Drawer side="right" label="Stats" open={open} onOpenChange={setOpen}>
       <button type="button">Inside</button>
     </Drawer>
   );
+}
+
+function renderDrawer() {
+  render(<StatefulDrawer />);
   return {
     toggle: screen.getByRole("button", { name: "Stats" }),
     aside: screen.getByLabelText("Stats", { selector: "aside" }),

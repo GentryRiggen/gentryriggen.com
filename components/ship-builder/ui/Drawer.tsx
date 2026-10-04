@@ -1,23 +1,30 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { panelClass } from "./styles";
 
 interface DrawerProps {
   side: "left" | "right";
   label: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   children: ReactNode;
 }
 
-export default function Drawer({ side, label, children }: DrawerProps) {
-  const [open, setOpen] = useState(false);
+export default function Drawer({
+  side,
+  label,
+  open,
+  onOpenChange,
+  children,
+}: DrawerProps) {
   const id = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const left = side === "left";
   const closed = left ? "-translate-x-full" : "translate-x-full";
 
   function handleClose() {
-    setOpen(false);
+    onOpenChange(false);
     toggleRef.current?.focus();
   }
 
@@ -28,7 +35,7 @@ export default function Drawer({ side, label, children }: DrawerProps) {
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => onOpenChange(!open)}
         className={`absolute top-3 z-20 rounded-md border border-slate-300 bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 ${
           left ? "left-3" : "right-20"
         }`}

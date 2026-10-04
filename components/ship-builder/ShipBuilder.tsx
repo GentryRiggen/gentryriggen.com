@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -16,6 +17,8 @@ import StatsPanel from "./ui/StatsPanel";
 import Toolbar from "./ui/Toolbar";
 import WebGLFallback from "./ui/WebGLFallback";
 
+type DrawerSide = "left" | "right";
+
 const Scene = dynamic(() => import("./scene/Scene"), {
   ssr: false,
   loading: () => (
@@ -30,6 +33,13 @@ export default function ShipBuilder() {
   useShipPersistence();
   useKeyboardShortcuts();
   const webgl = useWebGLSupport();
+  const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
+
+  function handleDrawerOpenChange(side: DrawerSide, open: boolean) {
+    setOpenDrawer((current) =>
+      open ? side : current === side ? null : current
+    );
+  }
 
   return (
     <div className="flex h-[100dvh] flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -45,7 +55,20 @@ export default function ShipBuilder() {
       <ThemeToggle />
 
       <div className="relative flex min-h-0 flex-1">
-        <Drawer side="left" label="Parts">
+        {openDrawer && (
+          <div
+            data-testid="drawer-backdrop"
+            aria-hidden="true"
+            onClick={() => setOpenDrawer(null)}
+            className="absolute inset-0 z-20 bg-slate-950/40 lg:hidden"
+          />
+        )}
+        <Drawer
+          side="left"
+          label="Parts"
+          open={openDrawer === "left"}
+          onOpenChange={(open) => handleDrawerOpenChange("left", open)}
+        >
           <CatalogPanel />
         </Drawer>
         <main className="relative min-w-0 flex-1">
@@ -54,7 +77,12 @@ export default function ShipBuilder() {
           <RemovalConfirm />
           <PlacementHint />
         </main>
-        <Drawer side="right" label="Stats">
+        <Drawer
+          side="right"
+          label="Stats"
+          open={openDrawer === "right"}
+          onOpenChange={(open) => handleDrawerOpenChange("right", open)}
+        >
           <StatsPanel />
         </Drawer>
       </div>
