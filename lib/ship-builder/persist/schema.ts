@@ -78,7 +78,12 @@ export const shipSchema = z.object({
       .optional(),
     bulkheads: z
       .array(
-        z.object({ at: z.number().int(), height: z.enum(BULKHEAD_HEIGHTS) })
+        z.object({
+          // Lenient: a fractional or garbled `at` becomes NaN, which
+          // `cleanBulkheads` drops, instead of rejecting the whole ship.
+          at: z.number().catch(Number.NaN),
+          height: z.enum(BULKHEAD_HEIGHTS),
+        })
       )
       .max(MAX_SEGMENTS)
       .optional(),

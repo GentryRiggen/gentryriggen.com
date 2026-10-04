@@ -549,6 +549,21 @@ describe("bulkheads", () => {
     ]);
   });
 
+  it("drops a fractional or non-numeric wall instead of rejecting the ship", () => {
+    const result = parseShip(
+      withWalls([
+        { at: 2.5, height: "low" },
+        { at: "3", height: "low" },
+        { height: "low" },
+        { at: 4, height: "deck" },
+      ])
+    );
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.ship.hull.bulkheads).toEqual([
+      { at: 4, height: "deck" },
+    ]);
+  });
+
   it("removes the list when no wall is valid", () => {
     const result = parseShip(withWalls([{ at: 99, height: "low" }]));
     expect(result.ok && "bulkheads" in result.ship.hull).toBe(false);
