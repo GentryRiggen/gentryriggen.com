@@ -7,6 +7,9 @@ import { GRID_WIDTH } from "@/lib/ship-builder/model/grid";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
 import { PALETTE } from "./palette";
 
+/** Deck plate thickness; it sits on DECK_Y so its top is DECK_Y + 0.02. */
+const DECK_PLATE = 0.02;
+
 interface HullProps {
   lengthCells: number;
 }
@@ -55,6 +58,45 @@ function HullBand({ lengthCells, bottom, top, color, prow }: HullBandProps) {
   );
 }
 
+interface DeckPlateProps {
+  lengthCells: number;
+  prow: Shape;
+}
+
+/** A thin tan plate over the whole hull top: box, prow and stern. */
+function DeckPlate({ lengthCells, prow }: DeckPlateProps) {
+  const half = lengthCells / 2;
+  const radius = GRID_WIDTH / 2;
+  return (
+    <group>
+      <mesh position={[0, DECK_Y + DECK_PLATE / 2, 0]} receiveShadow>
+        <boxGeometry args={[lengthCells, DECK_PLATE, GRID_WIDTH]} />
+        <meshStandardMaterial color={PALETTE.deck} />
+      </mesh>
+      <mesh
+        position={[half, DECK_Y, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+      >
+        <extrudeGeometry
+          args={[prow, { depth: DECK_PLATE, bevelEnabled: false }]}
+        />
+        <meshStandardMaterial color={PALETTE.deck} />
+      </mesh>
+      <mesh
+        position={[-half, DECK_Y + DECK_PLATE / 2, 0]}
+        scale={[STERN_LENGTH / radius, 1, 1]}
+        receiveShadow
+      >
+        <cylinderGeometry
+          args={[radius, radius, DECK_PLATE, 24, 1, false, Math.PI, Math.PI]}
+        />
+        <meshStandardMaterial color={PALETTE.deck} />
+      </mesh>
+    </group>
+  );
+}
+
 export default function Hull({ lengthCells }: HullProps) {
   const prow = useMemo(() => {
     const shape = new Shape();
@@ -81,10 +123,7 @@ export default function Hull({ lengthCells }: HullProps) {
         color={PALETTE.hull}
         prow={prow}
       />
-      <mesh position={[0, DECK_Y + 0.01, 0]} receiveShadow>
-        <boxGeometry args={[lengthCells, 0.02, GRID_WIDTH]} />
-        <meshStandardMaterial color={PALETTE.deck} />
-      </mesh>
+      <DeckPlate lengthCells={lengthCells} prow={prow} />
     </group>
   );
 }
