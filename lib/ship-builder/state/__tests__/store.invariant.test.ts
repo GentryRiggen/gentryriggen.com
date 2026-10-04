@@ -26,7 +26,7 @@ import { createInitialState, useShipBuilderStore } from "../store";
 
 const SEQUENCES = 600;
 const ACTIONS_PER_SEQUENCE = 40;
-const SEED = 0x5ee1;
+const SEED = 0x5ee2;
 
 /** Small deterministic PRNG so failures reproduce from the seed. */
 function mulberry32(seed: number): () => number {

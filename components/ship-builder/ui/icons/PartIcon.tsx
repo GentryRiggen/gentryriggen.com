@@ -464,6 +464,54 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       />
     </g>
   ),
+  dome: () => (
+    <g>
+      <rect x={8} y={32} width={32} height={5} fill={PALETTE.windowFrame} />
+      <path
+        d="M10 32 A14 18 0 0 1 38 32 Z"
+        fill={PALETTE.domeGlass}
+        fillOpacity={0.7}
+      />
+      <path d="M24 14 V32 M17 18 Q15 26 15 32 M31 18 Q33 26 33 32" />
+    </g>
+  ),
+  searchlight: () => (
+    <g>
+      <rect x={21} y={28} width={6} height={13} fill={PALETTE.lampBody} />
+      <rect
+        x={10}
+        y={16}
+        width={22}
+        height={13}
+        rx={3}
+        fill={PALETTE.lampBody}
+      />
+      <rect x={32} y={18} width={5} height={9} fill={PALETTE.lampLens} />
+    </g>
+  ),
+  "crows-nest": () => (
+    <g>
+      <rect x={22} y={6} width={4} height={38} fill={PALETTE.mast} />
+      <path d="M10 18 H38 L34 32 H14 Z" fill={PALETTE.nestBasket} />
+      <path d="M14 24 H34" />
+    </g>
+  ),
+  "stern-flag": () => (
+    <g>
+      <rect x={11} y={5} width={3} height={38} fill={PALETTE.railing} />
+      <path
+        d="M14 8 Q24 4 28 9 T42 10 V26 Q34 30 28 25 T14 26 Z"
+        fill={PALETTE.flag}
+      />
+    </g>
+  ),
+  "wireless-aerial": () => (
+    <g>
+      <rect x={6} y={10} width={3} height={32} fill={PALETTE.mast} />
+      <rect x={39} y={14} width={3} height={28} fill={PALETTE.mast} />
+      <path d="M8 11 L40 15 M8 15 L40 19" stroke={PALETTE.aerialWire} />
+    </g>
+  ),
 };
 
 /** A flat drawing of a part, matching its 3D look. Decorative: aria-hidden. */

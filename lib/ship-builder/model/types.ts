@@ -40,6 +40,11 @@ export const PART_TYPES = [
   "raft-canister",
   "funnel-modern",
   "azipod",
+  "dome",
+  "searchlight",
+  "crows-nest",
+  "stern-flag",
+  "wireless-aerial",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -51,6 +56,7 @@ export type PartCategory =
   | "funnels"
   | "masts"
   | "lifeboats"
+  | "decor"
   | "propulsion"
   | "naval"
   | "cargo";
@@ -66,7 +72,11 @@ export type AttachPointType =
   | "rudder-mount"
   | "heli-mount"
   | "freefall-mount"
-  | "edge-mount";
+  | "edge-mount"
+  | "searchlight-mount"
+  | "nest-mount"
+  | "flag-mount"
+  | "aerial-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 

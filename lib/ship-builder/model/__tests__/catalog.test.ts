@@ -79,11 +79,13 @@ describe("visibleParts", () => {
     "funnel-large",
     "lifeboat-collapsible",
     "lifeboat-large",
+    "dome",
+    "wireless-aerial",
   ];
   const types = (kind: Parameters<typeof visibleParts>[0], showAll: boolean) =>
     visibleParts(kind, showAll).map((d) => d.type);
 
-  it("marks only the four liner parts as liner-only", () => {
+  it("marks only the six liner parts as liner-only", () => {
     const restricted = PART_TYPES.filter((t) =>
       CATALOG[t].kinds?.every((kind) => kind === "liner")
     );

@@ -43,4 +43,11 @@ export const PALETTE = {
   crane: "#e0b02c",
   freefallBoat: "#e8661c",
   freefallRamp: "#6b7580",
+  /** Fittings: dome glass, searchlight lens, crow's nest, flag, aerial wire. */
+  domeGlass: "#bfe3f2",
+  lampLens: "#fff4b8",
+  lampBody: "#59616a",
+  nestBasket: "#7a5a3a",
+  flag: "#d23c3c",
+  aerialWire: "#2a2a2a",
 } as const;

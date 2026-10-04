@@ -16,13 +16,28 @@ import {
   type AttachPartDef,
   type AttachPoint,
   type Cell,
+  type PartType,
   type PlacedPart,
   type Ship,
   type Side,
+  type Vec3,
 } from "./types";
 import { partAt, partById } from "./partIndex";
 
 const DAVIT_HEIGHT = 0.8;
+/** Height of a bridge above its level (see BRIDGE_HEIGHT in PartMesh). */
+const BRIDGE_ROOF = 0.8;
+/** Mast heights, matching the meshes. */
+const MAST_HEIGHTS: Partial<Record<PartType, number>> = {
+  mast: 7,
+  "radar-mast": 6,
+};
+/** A mast's searchlight sits this far below its top. */
+const MAST_LIGHT_DROP = 0.4;
+/** A crow's nest sits this far up a mast, as a fraction of its height. */
+const NEST_FRACTION = 0.6;
+/** The stern flagpole stands this fraction of the stern's length aft. */
+const FLAG_SETBACK = 0.8;
 const DAVIT_REACH = 0.6;
 /** How far a helipad's surface rises above the deck tops it sits on. */
 const HELIPAD_THICKNESS = 0.15;
@@ -91,6 +106,15 @@ function hullPoints(ship: Ship): AttachPoint[] {
       type: "freefall-mount",
       position: {
         x: length + sternLength(ship.hull.stern) / 2 - FREEFALL_SETBACK,
+        y: 0,
+        z: centerline,
+      },
+    },
+    {
+      id: "flag",
+      type: "flag-mount",
+      position: {
+        x: length + sternLength(ship.hull.stern) * FLAG_SETBACK,
         y: 0,
         z: centerline,
       },
@@ -181,6 +205,20 @@ function blockPoints(
   // Cargo is plain stackable boxes: nothing mounts on or beside it.
   if (def.role === "cargo") return [];
   const { level, x, z } = part.anchor;
+  if (def.role === "bridge") {
+    const size = rotatedFootprint(def.footprint, part.rotation);
+    return [
+      {
+        id: "light",
+        type: "searchlight-mount",
+        position: {
+          x: x + size.x / 2,
+          y: level + BRIDGE_ROOF,
+          z: z + size.z / 2,
+        },
+      },
+    ];
+  }
   const points: AttachPoint[] = [];
 
   if (def.role === "deck" && !isCovered(part, occupancy)) {
@@ -266,6 +304,89 @@ function davitPoints(
   return points;
 }
 
+/** The mast heights a mast-like part has, or undefined for anything else. */
+function mastHeight(part: PlacedPart): number | undefined {
+  return MAST_HEIGHTS[part.type];
+}
+
+/** The top of the other mast nearest to this one, if there is one. */
+function nearestOtherMastTop(
+  ship: Ship,
+  mast: PlacedPart,
+  base: Vec3,
+  occupancy: Occupancy
+): Vec3 | undefined {
+  let nearest: Vec3 | undefined;
+  let nearestDistance = Infinity;
+  for (const other of ship.parts) {
+    const height = mastHeight(other);
+    if (height === undefined || other.id === mast.id) continue;
+    if (other.anchor.kind !== "attach") continue;
+    const point = resolveAttachPoint(ship, other.anchor, occupancy);
+    if (!point) continue;
+    const distance =
+      Math.abs(point.position.x - base.x) + Math.abs(point.position.z - base.z);
+    if (distance >= nearestDistance) continue;
+    nearestDistance = distance;
+    nearest = { ...point.position, y: point.position.y + height };
+  }
+  return nearest;
+}
+
+/**
+ * Where a wireless aerial on this mast strings its wires: the top of the
+ * nearest other mast, in model space. Undefined when there is none.
+ */
+export function aerialTarget(
+  ship: Ship,
+  mast: PlacedPart,
+  occupancy: Occupancy = buildOccupancy(ship)
+): Vec3 | undefined {
+  if (mast.anchor.kind !== "attach" || mastHeight(mast) === undefined) {
+    return undefined;
+  }
+  const base = resolveAttachPoint(ship, mast.anchor, occupancy);
+  return base && nearestOtherMastTop(ship, mast, base.position, occupancy);
+}
+
+/**
+ * A mast exposes a searchlight point near its top and, on a plain mast, a
+ * crow's nest point; either kind exposes an aerial point while another mast
+ * exists to string wires to.
+ */
+function mastPoints(
+  ship: Ship,
+  part: PlacedPart,
+  height: number,
+  occupancy: Occupancy
+): AttachPoint[] {
+  if (part.anchor.kind !== "attach") return [];
+  const base = resolveAttachPoint(ship, part.anchor, occupancy);
+  if (!base) return [];
+  const at = (y: number): Vec3 => ({
+    ...base.position,
+    y: base.position.y + y,
+  });
+  const points: AttachPoint[] = [
+    {
+      id: "light",
+      type: "searchlight-mount",
+      position: at(height - MAST_LIGHT_DROP),
+    },
+  ];
+  if (part.type === "mast") {
+    points.push({
+      id: "nest",
+      type: "nest-mount",
+      position: at(height * NEST_FRACTION),
+    });
+  }
+  if (nearestOtherMastTop(ship, part, base.position, occupancy)) {
+    points.push({ id: "aerial", type: "aerial-mount", position: at(height) });
+  }
+  return points;
+}
+
 /** A placed helipad exposes one point, at its centre top, for a helicopter. */
 function helipadPoints(
   ship: Ship,
@@ -334,6 +455,8 @@ export function attachPointsOf(
   if (!part) return [];
   if (part.type === "davit") return davitPoints(ship, part, occupancy);
   if (part.type === "helipad") return helipadPoints(ship, part, occupancy);
+  const height = mastHeight(part);
+  if (height !== undefined) return mastPoints(ship, part, height, occupancy);
   return blockPoints(ship, part, occupancy);
 }
 

@@ -154,7 +154,9 @@ describe("attach points", () => {
       gridPart("l3", "deck-1x1", 0, 1, 3),
       gridPart("br", "bridge", 1, 1, 0),
     ]);
-    expect(attachPointsOf(bridgeShip, "br")).toEqual([]);
+    expect(attachPointsOf(bridgeShip, "br").map((p) => p.type)).toEqual([
+      "searchlight-mount",
+    ]);
   });
 
   it("gives a davit one boat mount hanging outboard", () => {

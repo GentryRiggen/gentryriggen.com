@@ -2,7 +2,10 @@
 
 import { memo } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
-import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
+import {
+  aerialTarget,
+  resolveAttachPoint,
+} from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   beamOf,
@@ -17,6 +20,7 @@ import type {
   PartType,
   Ship,
   Side,
+  Vec3,
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import BlockDetails from "./BlockDetails";
@@ -31,6 +35,13 @@ import {
   Waterslide,
 } from "./cruiseParts";
 import DavitMesh from "./DavitMesh";
+import {
+  CrowsNestMesh,
+  DomeMesh,
+  SearchlightMesh,
+  SternFlagMesh,
+  WirelessAerialMesh,
+} from "./fittingDecor";
 import FunnelMesh from "./FunnelMesh";
 import LifeboatMesh from "./LifeboatMesh";
 import {
@@ -128,9 +139,18 @@ interface FittingProps {
   color?: PaintColor;
   tint: PartTint;
   emphasis: PartEmphasis;
+  /** Offset from the part's origin to the other mast's top, for an aerial. */
+  wireTarget?: [number, number, number];
 }
 
-function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
+function Fitting({
+  type,
+  side,
+  color,
+  tint,
+  emphasis,
+  wireTarget,
+}: FittingProps) {
   const surface = { tint, emphasis };
   const painted = color ? paintHex(color) : undefined;
   // Starboard is world +Z (see coords.ts), so outboard is +Z there.
@@ -278,9 +298,43 @@ function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
       return <ModernFunnel color={painted} tint={tint} emphasis={emphasis} />;
     case "azipod":
       return <Azipod color={painted} tint={tint} emphasis={emphasis} />;
+    case "dome":
+      return <DomeMesh {...navy} />;
+    case "searchlight":
+      return <SearchlightMesh {...navy} />;
+    case "crows-nest":
+      return <CrowsNestMesh {...navy} />;
+    case "stern-flag":
+      return (
+        <SternFlagMesh
+          {...navy}
+          isGhost={tint === "ghost-ok" || tint === "ghost-bad"}
+        />
+      );
+    case "wireless-aerial":
+      return wireTarget ? (
+        <WirelessAerialMesh
+          target={wireTarget}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      ) : null;
     default:
       return null;
   }
+}
+
+/** Offset from an aerial's point to the nearest other mast's top, in world axes. */
+function aerialWireTarget(
+  ship: Ship,
+  parentId: string,
+  from: Vec3,
+  occupancy?: Occupancy
+): [number, number, number] | undefined {
+  const mast = ship.parts.find((p) => p.id === parentId);
+  const top = mast && aerialTarget(ship, mast, occupancy);
+  // World x and z run opposite to model x and z (see modelToWorld).
+  return top && [from.x - top.x, top.y - from.y, from.z - top.z];
 }
 
 function PartMesh({
@@ -356,6 +410,16 @@ function PartMesh({
         color={color}
         tint={tint}
         emphasis={emphasis}
+        wireTarget={
+          part.type === "wireless-aerial"
+            ? aerialWireTarget(
+                ship,
+                part.anchor.parentId,
+                point.position,
+                occupancy
+              )
+            : undefined
+        }
       />
     </group>
   );
