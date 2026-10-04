@@ -381,7 +381,7 @@ describe("canPlace — attach parts (rules 4 and 5)", () => {
       OK
     );
     expect(canPlace(ship, attachCandidate("funnel", "c", "funnel"))).toEqual(
-      fail("Needs a free funnel mount on a deck block")
+      fail("Needs a free deck block with nothing on top")
     );
   });
 
@@ -484,7 +484,7 @@ describe("canPlace — attach parts (rules 4 and 5)", () => {
 
   it("rejects an attach part given a grid anchor", () => {
     expect(canPlace(testShip(), gridCandidate("funnel", 0, 0, 0))).toEqual(
-      fail("Needs a free funnel mount on a deck block")
+      fail("Needs a free deck block with nothing on top")
     );
   });
 });

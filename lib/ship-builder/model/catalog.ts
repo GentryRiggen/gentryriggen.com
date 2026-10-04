@@ -18,7 +18,7 @@ export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
 ];
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
-  "funnel-mount": "funnel mount on a deck block",
+  "funnel-mount": "deck block with nothing on top",
   "mast-mount": "mast mount",
   "davit-point": "boat-deck edge",
   "boat-mount": "davit",
