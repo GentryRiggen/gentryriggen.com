@@ -33,7 +33,7 @@ export default function FunnelSmoke() {
     anchors.largeFunnels.length / 3
   );
   const intensity = useRef(0);
-  const puff = useMemo(createPuffState, []);
+  const puff = useMemo(() => createPuffState(), []);
   const emitting = topSpeedKnots > 0 && !reducedMotion;
 
   const update = useCallback(
