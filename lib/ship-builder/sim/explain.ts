@@ -1,6 +1,13 @@
 import { STABILITY_THRESHOLDS } from "../model/stats";
 import { LOPSIDED_LIST } from "./seaTrial";
-import type { SimSea, SimShip, SimState, TrialReason } from "./types";
+import { formatStoryTime, storyMinutes } from "./story";
+import type {
+  SimSea,
+  SimShip,
+  SimState,
+  TrialInput,
+  TrialReason,
+} from "./types";
 
 export interface TrialSummary {
   /** Short headline, e.g. "Steady as she goes!". */
@@ -97,15 +104,47 @@ function steadySummary(
   };
 }
 
+const TIP_TALLER_WALLS = "Make the walls near the bow taller.";
+const TIP_MORE_WALLS = "Add more walls so each compartment is smaller.";
+const TIP_ADD_WALLS = "Add walls in Below deck, in the Hull panel.";
+
+function compartmentsWord(count: number): string {
+  return `${count} ${count === 1 ? "compartment" : "compartments"}`;
+}
+
+function openedCount(state: SimState): number {
+  return state.compartments.filter((c) => c.opened).length;
+}
+
+function sankSummary(state: SimState): { message: string; tips: string[] } {
+  const sunk = state.events.find((event) => event.kind === "sunk");
+  const afloatFor = formatStoryTime(storyMinutes(sunk?.at ?? state.time));
+  const lead = `She stayed afloat for ${afloatFor}.`;
+  switch (state.reason) {
+    case "no-bulkheads":
+      return {
+        message: `${lead} She had no walls below deck, so the water filled her.`,
+        tips: [TIP_ADD_WALLS],
+      };
+    case "too-many-opened":
+      return {
+        message: `${lead} The iceberg opened ${compartmentsWord(openedCount(state))} at once.`,
+        tips: [TIP_MORE_WALLS],
+      };
+    default:
+      return {
+        message: `${lead} Water spilled over the low walls near the bow.`,
+        tips: [TIP_TALLER_WALLS, TIP_MORE_WALLS],
+      };
+  }
+}
+
 /**
  * Plain-words summary of a finished trial for the result card. Kind in tone:
  * it talks about the ship, never about anyone aboard.
  */
-export function explainTrial(
-  state: SimState,
-  ship: SimShip,
-  sea: SimSea
-): TrialSummary {
+export function explainTrial(state: SimState, input: TrialInput): TrialSummary {
+  const { ship, sea } = input;
   switch (state.outcome) {
     case "capsized":
       return {
@@ -122,11 +161,14 @@ export function explainTrial(
         title: "Steady as she goes!",
         ...steadySummary(ship, sea),
       };
-    // Task B replaces these with the full iceberg summaries.
     case "afloat":
-      return { title: "She stayed afloat!", message: "", tips: [] };
+      return {
+        title: "She stayed afloat!",
+        message: `The walls kept the water in ${compartmentsWord(openedCount(state))}.`,
+        tips: [],
+      };
     case "sank":
-      return { title: "She sank", message: "", tips: [] };
+      return { title: "She sank", ...sankSummary(state) };
     case null:
       return {
         title: "Sea trial under way",

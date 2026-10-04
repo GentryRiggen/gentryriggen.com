@@ -65,10 +65,7 @@ function ResultCard({ trial }: ResultCardProps) {
   const endTrial = useShipBuilderStore((s) => s.endTrial);
   const card = useRef<HTMLDivElement>(null);
   const { input, state } = trial;
-  const summary = useMemo(
-    () => explainTrial(state, input.ship, input.sea),
-    [state, input]
-  );
+  const summary = useMemo(() => explainTrial(state, input), [state, input]);
   const look = OUTCOME_LOOKS[state.outcome ?? "steady"];
 
   useEffect(() => {
