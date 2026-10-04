@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.4.0",
+    date: "2026-10-04",
+    title: "Day and night",
+    highlights: [
+      "Sail by day, at sunset or at night, with stars and a moon after dark",
+      "Choppy seas bring some clouds, and stormy seas turn the sky grey and gloomy",
+      "Cabin windows light up at night: gold for first class, white for second, dimmer for third, and a cool blue for the crew",
+      "Bridges, portholes, deck lamps and searchlights glow too",
+      "New Lights parts: string lights between masts, red and green navigation lights, floodlights and underwater lights",
+    ],
+  },
+  {
     version: "2.3.0",
     date: "2026-10-04",
     title: "A tidier shipyard",
