@@ -149,6 +149,18 @@ describe("My Ships", () => {
       expect(listShips().map((s) => s.name)).toEqual(["Renamed"]);
     });
 
+    it("leaves an unparseable twin of a renamed entry untouched", () => {
+      const id = storeWithFuture();
+      const twin = { ...future, id };
+      localStorage.setItem(
+        SHIPS_KEY,
+        JSON.stringify([twin, ...rawEntries().slice(1)])
+      );
+      expect(renameShip(id, "Renamed")).toBe(true);
+      expect(rawEntries()).toContainEqual(twin);
+      expect(listShips().map((s) => s.name)).toEqual(["Renamed"]);
+    });
+
     it("skips non-finite savedAt but keeps it in storage", () => {
       const saved = saveShip({ ...ship, name: "Valid" }, null, 1)!;
       localStorage.setItem(

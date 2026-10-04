@@ -179,7 +179,9 @@ export function renameShip(id: string, name: string): boolean {
   const clamped = name.slice(0, MAX_NAME_LENGTH);
   return updateShips((entries) =>
     entries.map((e) =>
-      isRecord(e) && e.id === id && isRecord(e.ship)
+      // Only entries this build can read: a hidden twin with the same id
+      // (say, from a newer deploy) must survive untouched.
+      isRecord(e) && e.id === id && isRecord(e.ship) && parseShip(e.ship).ok
         ? { ...e, name: clamped, ship: { ...e.ship, name: clamped } }
         : e
     )
