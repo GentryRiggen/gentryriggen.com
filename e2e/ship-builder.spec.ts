@@ -397,6 +397,24 @@ test.describe("Ship Builder", () => {
     ).toBeInViewport();
   });
 
+  test("loads the Titanic template from the New ship dialog", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "New ship" });
+    await dialog.getByRole("button", { name: /Ocean liner/ }).click();
+    await dialog.getByRole("button", { name: /RMS Titanic/ }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await expect(page.getByLabel("Ship name")).toHaveValue("RMS Titanic");
+    const ship = await page.evaluate(
+      () => window.__shipBuilderStore!.getState().ship
+    );
+    expect(ship.name).toBe("RMS Titanic");
+    expect(ship.parts.length).toBeGreaterThan(50);
+  });
+
   test("starts a cargo ship from the New ship dialog", async ({ page }) => {
     await openBuilder(page);
     await page.getByRole("button", { name: "New", exact: true }).click();
