@@ -1,6 +1,7 @@
 import { STABILITY_THRESHOLDS } from "../model/stats";
 import {
   SIM_STEP_S,
+  type Compartment,
   type SimAction,
   type SimEvent,
   type SimSea,
@@ -10,6 +11,8 @@ import {
   type TrialOutcome,
   type TrialReason,
 } from "./types";
+import { ICEBERG_MAX_S, stepFlooding, stepPlunge } from "./flooding";
+import { openedBy } from "./compartments";
 
 /**
  * Level 1 sea trial: "physics-lite", deterministic and allocation-light.
@@ -245,13 +248,27 @@ type StepFn = (
   state: SimState
 ) => SimState;
 
+/** Level 2: dry compartments, those the gash touches marked as opened. */
+function compartmentsOf(input: TrialInput): Compartment[] {
+  const { iceberg } = input;
+  if (!iceberg) return [];
+  const opened = new Set(
+    openedBy(iceberg.compartments, iceberg.impactX, iceberg.length)
+  );
+  return iceberg.compartments.map((spec) => ({
+    id: spec.id,
+    water: 0,
+    opened: opened.has(spec.id),
+  }));
+}
+
 export function createTrial(input: TrialInput): SimState {
   return {
     time: 0,
     phase: "sailing",
     pose: { roll: input.ship.listAngle, pitch: 0, sink: 0 },
     rollVelocity: 0,
-    compartments: [],
+    compartments: compartmentsOf(input),
     events: [],
     outcome: null,
     reason: null,
@@ -312,7 +329,8 @@ const stepSailing: StepFn = (input, params, state) => {
     };
   }
 
-  if (time >= TRIAL_DURATION_S) {
+  // An iceberg trial ends when the flooding settles or she sinks.
+  if (time >= TRIAL_DURATION_S && !input.iceberg) {
     const outcome = hasEvent(events, "big-roll") ? "recovered" : "steady";
     return {
       ...state,
@@ -401,6 +419,14 @@ export function stepTrial(
 ): SimState {
   void actions;
   if (state.phase === "done") return state;
+  if (input.iceberg && state.phase === "sailing") {
+    const flooded = stepFlooding(input, state);
+    if (flooded.phase !== "sailing") return flooded;
+    return stepSailing(input, paramsOf(input), flooded);
+  }
+  if (state.phase === "sinking" && state.outcome === "sank") {
+    return stepPlunge(state);
+  }
   const params = paramsOf(input);
   switch (state.phase) {
     case "sailing":
@@ -413,7 +439,10 @@ export function stepTrial(
 }
 
 /** Runs a whole trial without rendering: for tests and previews. */
-export function runTrial(input: TrialInput, maxSeconds = 30): SimState {
+export function runTrial(
+  input: TrialInput,
+  maxSeconds = input.iceberg ? ICEBERG_MAX_S + 30 : 30
+): SimState {
   let state = createTrial(input);
   while (state.phase !== "done" && state.time < maxSeconds) {
     state = stepTrial(input, state);
