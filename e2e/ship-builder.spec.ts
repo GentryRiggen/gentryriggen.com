@@ -83,9 +83,7 @@ test.describe("Ship Builder", () => {
     await context.close();
   });
 
-  test("an invalid share link shows a notice and a fresh hull", async ({
-    page,
-  }) => {
+  test("an invalid share link shows a notice", async ({ page }) => {
     await openBuilder(page, "#ship=not-a-ship");
     await expect(page.getByRole("status")).toHaveText(
       /Couldn't load that ship/

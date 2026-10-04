@@ -42,16 +42,18 @@ describe("useShipPersistence", () => {
     expect(window.location.hash).toBe("");
   });
 
-  it("shows a notice for an invalid hash and keeps a fresh hull", () => {
-    saveAutosave(shared, null);
+  it("shows a notice for an invalid hash and restores the autosave", () => {
+    saveAutosave(shared, "ship-3");
     window.history.replaceState(null, "", "/ship-builder#ship=garbage");
     render(<Harness />);
     expect(store().notice?.text).toBe("Couldn't load that ship");
-    expect(store().ship.parts).toHaveLength(0);
+    expect(store().ship).toEqual(shared);
+    expect(store().savedId).toBe("ship-3");
+    expect(window.location.hash).toBe("");
   });
 
-  it("keeps a fresh hull after an invalid hash under StrictMode", () => {
-    saveAutosave(shared, null);
+  it("restores the autosave after an invalid hash under StrictMode", () => {
+    saveAutosave(shared, "ship-3");
     window.history.replaceState(null, "", "/ship-builder#ship=garbage");
     render(
       <StrictMode>
@@ -59,7 +61,21 @@ describe("useShipPersistence", () => {
       </StrictMode>
     );
     expect(store().notice?.text).toBe("Couldn't load that ship");
-    expect(store().ship.parts).toHaveLength(0);
+    expect(store().ship).toEqual(shared);
+    expect(store().savedId).toBe("ship-3");
+  });
+
+  it("keeps the current ship when an invalid hash arrives mid-session", () => {
+    render(<Harness />);
+    act(() => store().rename("Current"));
+    const before = store().ship;
+    act(() => {
+      window.location.hash = "ship=garbage";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(store().notice?.text).toBe("Couldn't load that ship");
+    expect(store().ship).toBe(before);
+    expect(window.location.hash).toBe("");
   });
 
   it("still loads a shared ship on hashchange under StrictMode", () => {

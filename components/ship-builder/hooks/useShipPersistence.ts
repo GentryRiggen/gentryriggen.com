@@ -12,8 +12,8 @@ const RESTORE_NOTICE = "Couldn't restore your last ship";
 
 export default function useShipPersistence() {
   // StrictMode re-runs this effect but keeps refs. The initial load must run
-  // once: after an invalid hash the first run clears the hash, so a second
-  // run would wrongly restore the old autosave.
+  // once: the first run clears the hash, so a second run would restore the
+  // autosave over a just-loaded shared ship.
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -37,6 +37,11 @@ export default function useShipPersistence() {
       timer = setTimeout(flush, AUTOSAVE_DELAY_MS);
     });
 
+    /**
+     * Returns true only when a shared ship was loaded. A bad link leaves the
+     * current ship alone, so on page load the caller still restores the
+     * autosave instead of letting an empty hull autosave over it.
+     */
     function loadFromHash(): boolean {
       const result = decodeShareHash(window.location.hash);
       if (result.kind === "none") return false;
@@ -45,11 +50,11 @@ export default function useShipPersistence() {
         "",
         window.location.pathname + window.location.search
       );
-      if (result.kind === "ok") {
-        store.getState().loadShip(result.ship, null);
-      } else {
+      if (result.kind === "invalid") {
         store.getState().setNotice("Couldn't load that ship");
+        return false;
       }
+      store.getState().loadShip(result.ship, null);
       return true;
     }
 
