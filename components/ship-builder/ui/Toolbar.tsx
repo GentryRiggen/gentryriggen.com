@@ -2,7 +2,12 @@
 
 import { useRef, useState } from "react";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
-import { MAX_SEGMENTS, MIN_SEGMENTS } from "@/lib/ship-builder/model/grid";
+import {
+  MAX_BEAM,
+  MAX_SEGMENTS,
+  MIN_BEAM,
+  MIN_SEGMENTS,
+} from "@/lib/ship-builder/model/grid";
 import { MAX_NAME_LENGTH } from "@/lib/ship-builder/model/placement";
 import { saveShip } from "@/lib/ship-builder/persist/local";
 import {
@@ -37,6 +42,7 @@ export default function Toolbar() {
   const canRedo = useShipBuilderStore((s) => s.future.length > 0);
   const rename = useShipBuilderStore((s) => s.rename);
   const changeHullLength = useShipBuilderStore((s) => s.changeHullLength);
+  const changeBeam = useShipBuilderStore((s) => s.changeBeam);
   const undo = useShipBuilderStore((s) => s.undo);
   const redo = useShipBuilderStore((s) => s.redo);
   const rotate = useShipBuilderStore((s) => s.rotate);
@@ -47,6 +53,7 @@ export default function Toolbar() {
   const setNotice = useShipBuilderStore((s) => s.setNotice);
 
   const segments = ship.hull.lengthSegments;
+  const { beam } = ship.hull;
   const canRotate =
     tool.kind === "place" && getPartDef(tool.type).placement === "grid";
 
@@ -109,6 +116,33 @@ export default function Toolbar() {
           className={buttonClass}
         >
           +
+        </button>
+      </div>
+
+      <div role="group" aria-label="Beam" className="flex items-center gap-1">
+        <button
+          type="button"
+          aria-label="Narrower"
+          disabled={beam <= MIN_BEAM}
+          onClick={() => changeBeam(-1)}
+          className={buttonClass}
+        >
+          ◂
+        </button>
+        <span
+          data-testid="beam-width"
+          className="w-16 text-center text-sm tabular-nums"
+        >
+          {beam} wide
+        </span>
+        <button
+          type="button"
+          aria-label="Wider"
+          disabled={beam >= MAX_BEAM}
+          onClick={() => changeBeam(1)}
+          className={buttonClass}
+        >
+          ▸
         </button>
       </div>
 

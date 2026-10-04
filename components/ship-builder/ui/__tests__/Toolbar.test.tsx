@@ -25,6 +25,24 @@ describe("Toolbar", () => {
     expect(screen.getByTestId("hull-length")).toHaveTextContent("8 segments");
   });
 
+  it("changes the beam and disables the buttons at the limits", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const wider = screen.getByRole("button", { name: "Wider" });
+    const narrower = screen.getByRole("button", { name: "Narrower" });
+    expect(screen.getByTestId("beam-width")).toHaveTextContent("4 wide");
+    await user.click(wider);
+    expect(screen.getByTestId("beam-width")).toHaveTextContent("5 wide");
+    await user.click(wider);
+    await user.click(wider);
+    expect(screen.getByTestId("beam-width")).toHaveTextContent("7 wide");
+    expect(wider).toBeDisabled();
+    for (let i = 0; i < 4; i++) await user.click(narrower);
+    expect(screen.getByTestId("beam-width")).toHaveTextContent("3 wide");
+    expect(narrower).toBeDisabled();
+    expect(wider).toBeEnabled();
+  });
+
   it("enables undo after a change and renames the ship", async () => {
     const user = userEvent.setup();
     render(<Toolbar />);
