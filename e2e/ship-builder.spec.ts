@@ -415,6 +415,27 @@ test.describe("Ship Builder", () => {
     expect(ship.parts.length).toBeGreaterThan(50);
   });
 
+  test("the stats checklist turns warnings into goals", async ({ page }) => {
+    await openBuilder(page);
+    await expect(page.getByTestId("checks-progress")).toHaveText("1 of 5 done");
+    await expect(
+      page.getByText("No bridge — someone has to steer")
+    ).toBeVisible();
+    await expect(page.getByTestId("reference-ship")).toBeVisible();
+
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "New ship" });
+    await dialog.getByRole("button", { name: /Ocean liner/ }).click();
+    await dialog.getByRole("button", { name: /RMS Titanic/ }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByTestId("checks-progress")).not.toHaveText(
+      "1 of 5 done"
+    );
+    await expect(
+      page.getByText("No bridge — someone has to steer")
+    ).toHaveCount(0);
+  });
+
   test("starts a cargo ship from the New ship dialog", async ({ page }) => {
     await openBuilder(page);
     await page.getByRole("button", { name: "New", exact: true }).click();

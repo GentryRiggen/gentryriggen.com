@@ -8,6 +8,8 @@ import {
 import { emptyShip, validateShip } from "@/lib/ship-builder/model/placement";
 import type { PartType } from "@/lib/ship-builder/model/types";
 import { attachPart, gridPart, testShip } from "@/lib/ship-builder/testing";
+import { findTemplate } from "@/lib/ship-builder/templates";
+import StatsHud from "../StatsHud";
 
 beforeEach(() => {
   act(() => useShipBuilderStore.setState(createInitialState()));
@@ -94,24 +96,76 @@ describe("StatsPanel", () => {
     );
     expect(screen.getByTestId("stat-crew-beds")).toHaveTextContent(/^120/);
     expect(
-      within(screen.getByRole("list", { name: "Warnings" })).getByText(
+      within(screen.getByRole("list", { name: "Checklist" })).getByText(
         /Crew need beds: 120 of 480/
       )
     ).toBeInTheDocument();
   });
 
-  it("lists warnings and the Titanic reference", () => {
+  it("opens with the checklist, listing what is still to do", () => {
     render(<StatsPanel />);
-    const warnings = screen.getByRole("list", { name: "Warnings" });
     expect(
-      within(warnings).getByText(/Lifeboats seat 0 of 480/)
+      screen.getByRole("heading", { name: "Ready to sail?" })
     ).toBeInTheDocument();
-    expect(within(warnings).getByText(/No bridge/)).toBeInTheDocument();
-    expect(within(warnings).getAllByTestId("warning-icon")).toHaveLength(
-      within(warnings).getAllByRole("listitem").length
+    expect(screen.queryByRole("heading", { name: "Stats" })).toBeNull();
+    expect(screen.getByTestId("checks-progress")).toHaveTextContent(
+      "1 of 5 done"
     );
-    expect(screen.getByText("46,328")).toBeInTheDocument();
-    expect(screen.getByText("2,224")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Checklist" });
+    expect(within(list).getByText(/Lifeboats seat 0 of 480/)).toBeVisible();
+    expect(within(list).getByText(/No bridge/)).toBeVisible();
+    expect(within(list).getAllByTestId("warning-icon")).toHaveLength(4);
+    expect(within(list).getByText("Stays upright")).toBeVisible();
+    expect(screen.queryByTestId("ready-to-sail")).toBeNull();
+    expect(
+      screen.getByRole("progressbar", { name: "Checklist progress" })
+    ).toHaveAttribute("aria-valuenow", "1");
+  });
+
+  it("keeps checks in a stable order as they pass", () => {
+    render(<StatsPanel />);
+    const order = () =>
+      within(screen.getByRole("list", { name: "Checklist" }))
+        .getAllByRole("listitem")
+        .map((li) => li.textContent);
+    const before = order();
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("br", "bridge", 0, 1, 0)]),
+      })
+    );
+    const after = order();
+    expect(after).toHaveLength(before.length);
+    expect(after[0]).toMatch(/^Bridge to steer from/);
+    expect(after[0]).not.toMatch(/No bridge/);
+  });
+
+  it("celebrates when every check passes", () => {
+    render(<StatsPanel />);
+    const template = findTemplate("ocean-breeze");
+    if (!template) throw new Error("missing template");
+    act(() => useShipBuilderStore.setState({ ship: template.build() }));
+    expect(screen.getByTestId("ready-to-sail")).toHaveTextContent(
+      "Ready to sail!"
+    );
+    expect(screen.queryAllByTestId("check-todo")).toHaveLength(0);
+    expect(screen.getByTestId("checks-progress")).toHaveTextContent(
+      /^(\d+) of \1 done$/
+    );
+  });
+
+  it("groups the numbers under People and Ship", () => {
+    render(<StatsPanel />);
+    const people = screen
+      .getByRole("heading", { name: "People" })
+      .closest("section");
+    const ship = screen
+      .getByRole("heading", { name: "Ship" })
+      .closest("section");
+    expect(people).toContainElement(screen.getByTestId("stat-coverage"));
+    expect(people).toContainElement(screen.getByTestId("stat-seats"));
+    expect(ship).toContainElement(screen.getByTestId("stat-tonnage"));
+    expect(ship).toContainElement(screen.getByTestId("stat-stability"));
   });
 
   describe("comparison ship", () => {
@@ -119,20 +173,26 @@ describe("StatsPanel", () => {
       act(() => useShipBuilderStore.setState({ ship: emptyShip(kind) }));
     const reference = () => screen.getByTestId("reference-ship");
 
-    it("compares a liner to the Titanic", () => {
+    it("compares a liner to the Titanic with paired values", () => {
       render(<StatsPanel />);
       expect(
-        screen.getByRole("heading", { name: "RMS Titanic (1912)" })
+        screen.getByRole("heading", { name: "You vs RMS Titanic (1912)" })
       ).toBeInTheDocument();
-      expect(within(reference()).getByText("Tonnage")).toBeInTheDocument();
-      expect(within(reference()).getByText("20 (1,178 seats)")).toBeVisible();
+      expect(within(reference()).getByText("Gross tonnage")).toBeVisible();
+      expect(within(reference()).getByText("46,328")).toBeVisible();
+      expect(within(reference()).getByText("1,178")).toBeVisible();
+      expect(within(reference()).getByText("21 kn")).toBeVisible();
+      expect(within(reference()).getByText("2,224")).toBeVisible();
+      // "You" side: blank liner is 24,192 GRT and 480 aboard.
+      expect(within(reference()).getByText("24,192")).toBeVisible();
+      expect(within(reference()).getByText("480")).toBeVisible();
     });
 
     it("compares a cruise ship to Wonder of the Seas", () => {
       render(<StatsPanel />);
       showKind("cruise");
       expect(
-        screen.getByRole("heading", { name: "Wonder of the Seas (2022)" })
+        screen.getByRole("heading", { name: /Wonder of the Seas \(2022\)/ })
       ).toBeInTheDocument();
       for (const text of ["236,857", "22 kn", "5,734", "2,300"]) {
         expect(within(reference()).getByText(text)).toBeInTheDocument();
@@ -140,19 +200,16 @@ describe("StatsPanel", () => {
       expect(screen.queryByText("46,328")).not.toBeInTheDocument();
     });
 
-    it("compares a navy ship to a destroyer by displacement", () => {
+    it("compares a navy ship to a destroyer, noting its displacement", () => {
       render(<StatsPanel />);
       showKind("navy");
       expect(
-        screen.getByRole("heading", { name: "Arleigh Burke destroyer" })
+        screen.getByRole("heading", { name: /Arleigh Burke destroyer/ })
       ).toBeInTheDocument();
-      expect(within(reference()).getByText("Displacement")).toBeVisible();
-      expect(within(reference()).queryByText("Tonnage")).toBeNull();
-      expect(within(reference()).getByText("9,200 t")).toBeVisible();
-      expect(within(reference()).getByText("30+ kn")).toBeVisible();
-      expect(within(reference()).getByText("about 300")).toBeVisible();
-      // The player's ship keeps its gross tonnage: displacement is a mass,
-      // which the model doesn't compute.
+      expect(within(reference()).queryByText("Gross tonnage")).toBeNull();
+      expect(within(reference()).getByText("30 kn")).toBeVisible();
+      expect(within(reference()).getByText("300")).toBeVisible();
+      expect(screen.getByText("Displaces about 9,200 tons")).toBeVisible();
       expect(
         screen.getByTestId("stat-tonnage").closest("div")
       ).toHaveTextContent(/Gross tonnage/);
@@ -162,11 +219,34 @@ describe("StatsPanel", () => {
       render(<StatsPanel />);
       showKind("cargo");
       expect(
-        screen.getByRole("heading", { name: "Ever Given (2018)" })
+        screen.getByRole("heading", { name: /Ever Given \(2018\)/ })
       ).toBeInTheDocument();
       for (const text of ["219,079", "22.8 kn", "20,124 TEU", "25"]) {
         expect(within(reference()).getByText(text)).toBeInTheDocument();
       }
     });
+  });
+});
+
+describe("StatsHud", () => {
+  it("summarises checks, speed, people and coverage without any controls", () => {
+    render(<StatsHud />);
+    const hud = screen.getByTestId("stats-hud");
+    expect(hud).toHaveTextContent("✓ 1/5");
+    expect(hud).toHaveTextContent("0 kn");
+    expect(hud).toHaveTextContent("480");
+    expect(hud).toHaveTextContent("0%");
+    expect(hud).toHaveAttribute("aria-hidden", "true");
+    expect(within(hud).queryByRole("button")).toBeNull();
+  });
+
+  it("follows the ship", () => {
+    render(<StatsHud />);
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("br", "bridge", 0, 1, 0)]),
+      })
+    );
+    expect(screen.getByTestId("stats-hud")).toHaveTextContent("✓ 2/5");
   });
 });
