@@ -59,7 +59,10 @@ useShipBuilderStore.subscribe((state, previous) => {
   const isNewRun =
     trial.status === "running" &&
     (before.status !== "running" || before.runId !== trial.runId);
-  const isLeaving = trial.status === "idle" && before.status !== "idle";
+  const isLeaving =
+    (trial.status === "idle" || trial.status === "aiming") &&
+    before.status !== "idle" &&
+    before.status !== "aiming";
   if (isNewRun || isLeaving) resetPlayback();
 });
 
