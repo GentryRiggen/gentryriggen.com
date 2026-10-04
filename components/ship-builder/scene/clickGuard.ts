@@ -33,6 +33,15 @@ export function releaseClickGuard(): void {
   expiry = setTimeout(resetClickGuard, CLICK_GUARD_RELEASE_MS);
 }
 
+/**
+ * A primary pointerdown starts a new gesture, so any click owed to an earlier
+ * hold has already fired (or never will). Clears a guard left armed by a lost
+ * pointerup or a hold aborted by a second finger.
+ */
+export function notePointerDown(isPrimary: boolean): void {
+  if (isPrimary) resetClickGuard();
+}
+
 /** Click handlers call this first and bail out on true. Consumes the guard. */
 export function shouldSwallowClick(): boolean {
   if (!armed) return false;

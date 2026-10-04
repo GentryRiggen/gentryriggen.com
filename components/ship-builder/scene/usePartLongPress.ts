@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import { holdClickGuard, releaseClickGuard } from "./clickGuard";
+import {
+  holdClickGuard,
+  notePointerDown,
+  releaseClickGuard,
+} from "./clickGuard";
 import { createLongPress } from "./longPress";
 
 /** Where the hold ring sits, relative to the canvas wrapper. */
@@ -44,12 +48,17 @@ export function usePartLongPress(wrapper: RefObject<HTMLElement | null>): {
   );
 
   useEffect(() => {
-    const handleDown = (event: PointerEvent) =>
+    const handleDown = (event: PointerEvent) => {
+      notePointerDown(event.isPrimary);
       machine.pointerDown(event.pointerId, event.isPrimary);
+    };
     const handleMove = (event: PointerEvent) =>
       machine.move(event.pointerId, event.clientX, event.clientY);
     const handleUp = (event: PointerEvent) => {
-      if (machine.end(event.pointerId) === "fired") releaseClickGuard();
+      machine.end(event.pointerId);
+      // Always start the expiry: a second finger can abort a press that
+      // already fired, and then end() no longer reports "fired".
+      releaseClickGuard();
     };
     const handleCancel = (event: PointerEvent) => {
       machine.cancel(event.pointerId);
