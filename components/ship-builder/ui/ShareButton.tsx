@@ -12,6 +12,26 @@ export default function ShareButton() {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("pending");
   const shareButtonRef = useRef<HTMLButtonElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const isOpen = link !== null;
+
+  // A link for an old ship is misleading, so drop it as soon as the ship changes.
+  useEffect(
+    () =>
+      useShipBuilderStore.subscribe((state, previous) => {
+        if (state.ship !== previous.ship) setLink(null);
+      }),
+    []
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (!wrapperRef.current?.contains(event.target as Node)) setLink(null);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen]);
 
   // Without clipboard access, hand the user a selected link to copy by hand.
   useEffect(() => {
@@ -48,7 +68,7 @@ export default function ShareButton() {
   }
 
   return (
-    <div className="relative" onKeyDown={handleKeyDown}>
+    <div ref={wrapperRef} className="relative" onKeyDown={handleKeyDown}>
       <button
         ref={shareButtonRef}
         type="button"

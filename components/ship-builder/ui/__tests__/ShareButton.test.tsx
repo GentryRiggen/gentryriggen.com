@@ -1,8 +1,17 @@
+import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ShareButton from "../ShareButton";
+import {
+  createInitialState,
+  useShipBuilderStore,
+} from "@/lib/ship-builder/state/store";
 
 describe("ShareButton", () => {
+  beforeEach(() => {
+    act(() => useShipBuilderStore.setState(createInitialState()));
+  });
+
   afterEach(() => {
     Object.defineProperty(navigator, "clipboard", {
       value: undefined,
@@ -56,5 +65,29 @@ describe("ShareButton", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Share link" })).toBeNull();
     expect(share).toHaveFocus();
+  });
+
+  it("closes when the ship changes", async () => {
+    const user = userEvent.setup();
+    render(<ShareButton />);
+    await user.click(screen.getByRole("button", { name: "Share" }));
+    expect(screen.getByRole("dialog", { name: "Share link" })).toBeVisible();
+    act(() => useShipBuilderStore.getState().rename("Renamed"));
+    expect(screen.queryByRole("dialog", { name: "Share link" })).toBeNull();
+  });
+
+  it("closes on a pointer press outside, but not inside", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Outside</button>
+        <ShareButton />
+      </>
+    );
+    await user.click(screen.getByRole("button", { name: "Share" }));
+    await user.click(screen.getByLabelText("Share link URL"));
+    expect(screen.getByRole("dialog", { name: "Share link" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Outside" }));
+    expect(screen.queryByRole("dialog", { name: "Share link" })).toBeNull();
   });
 });
