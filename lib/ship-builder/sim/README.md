@@ -111,7 +111,7 @@ length) / L`.
      `SPILL_RATE`; the first time any wall overflows she logs a `spilled` event.
 - Nothing floods until `ICEBERG_IMPACT_S` (1.5 s), when the scene's iceberg
   touches the hull. `flooding` is logged at the first inflow.
-- Sinking: once the flooded fraction reaches `RESERVE` (0.2) the outcome is
+- Sinking: once the flooded fraction reaches `RESERVE` (0.3) the outcome is
   `sank`, the phase becomes `sinking` and `stepPlunge` takes her bow-first to
   a pitch of `PLUNGE_PITCH` and down to `PLUNGE_DEPTH`; the `sunk` event ends
   the trial.
@@ -128,6 +128,11 @@ she stays afloat.
 Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, counted from impact
 (`storyMinutesSinceImpact`), so the Titanic (about 31.75 sim seconds after the
 strike) sinks in 159 story minutes.
+
+Tuning: `INFLOW` 3, `SPILL_RATE` 20, `SINK_TO_DEPTH` 0.1, `TRIM_LEVER` 0.12,
+`RESERVE` 0.3. Together they keep any hull of 8 or more segments with deck-high
+walls on every boundary afloat wherever the iceberg strikes (swept in the
+tests), while the Titanic's low walls still overflow.
 
 ### Outcomes (enforced by `__tests__/flooding.test.ts`)
 

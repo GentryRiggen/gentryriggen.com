@@ -121,6 +121,23 @@ describe("iceberg trial outcomes", () => {
     expect(hasEvent(state, "spilled")).toBe(false);
   });
 
+  it("keeps any fully deck-walled hull of 8+ segments afloat wherever it is struck", () => {
+    for (const segments of [8, 10, 14, 20]) {
+      const ship = emptyShip("liner", "Test", segments, 4);
+      const walled: Ship = {
+        ...ship,
+        hull: { ...ship.hull, bulkheads: wallsAt(segments, "deck") },
+      };
+      const length = segments * CELLS_PER_SEGMENT;
+      for (let impactX = 0; impactX <= length; impactX++) {
+        const state = run(walled, impactX);
+        if (state.outcome !== "afloat") {
+          throw new Error(`${segments} segments, impact ${impactX} sank`);
+        }
+      }
+    }
+  });
+
   it("sinks the Titanic in about 160 story minutes", () => {
     const state = run(templateShip("titanic"), HISTORIC_IMPACT_X);
     expect(state.outcome).toBe("sank");

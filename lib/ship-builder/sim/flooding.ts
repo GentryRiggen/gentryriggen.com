@@ -24,19 +24,19 @@ import {
 /** Sea level against the hull before she settles, as a fraction of depth. */
 export const SEA_LEVEL = 0.6;
 /** How fast the sea pours through the gash (cells of gash per second). */
-export const INFLOW = 1.5;
+export const INFLOW = 3;
 /** How fast water pours over a wall (cells per second per unit of height). */
-export const SPILL_RATE = 5.5;
+export const SPILL_RATE = 20;
 /** Bow-down pitch (radians) from the water's weight along the hull. */
 export const PITCH_GAIN = 2.2;
 /** Draft (world units) from the flooded fraction of the hull. */
 export const SINK_GAIN = 5;
 /** Converts draft in world units to a fraction of the hull's depth. */
-export const SINK_TO_DEPTH = 0.2;
+export const SINK_TO_DEPTH = 0.1;
 /** How much one radian of bow-down trim lowers a wall, per cell from midships. */
-export const TRIM_LEVER = 0.06;
+export const TRIM_LEVER = 0.12;
 /** Flooded fraction of the hull past which she cannot stay afloat. */
-export const RESERVE = 0.2;
+export const RESERVE = 0.3;
 /** Total inflow and spill below this (cells per second) means she has settled. */
 export const SETTLED_EPS = 0.01;
 /** Sim seconds until the iceberg meets the hull; no water comes in before. */
