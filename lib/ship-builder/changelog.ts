@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.5.0",
+    date: "2026-10-04",
+    title: "Sea trials",
+    highlights: [
+      "Take your ship on a sea trial: she sails into the waves and rides them out, has a close call, or capsizes",
+      "A top-heavy ship might be fine on a calm day but tip over in a storm, so try every sea",
+      "After each trial you get tips on how to make her steadier",
+      "Ships now lean if one side is heavier than the other, and the checklist tells you when she doesn't sit level",
+    ],
+  },
+  {
     version: "2.4.1",
     date: "2026-10-04",
     title: "Sturdier shipyard",
