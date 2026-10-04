@@ -18,6 +18,7 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import { PALETTE } from "./palette";
+import Spinner from "./Spinner";
 
 export type PartTint = keyof typeof PALETTE.tint | null;
 export type PartEmphasis = keyof typeof PALETTE.emphasis | null;
@@ -138,10 +139,11 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
           </mesh>
         </group>
       );
-    case "propeller":
+    case "propeller": {
       // Shaft along world X (the ship's length); blades spread around it.
+      const isGhost = tint === "ghost-ok" || tint === "ghost-bad";
       return (
-        <group>
+        <Spinner enabled={!isGhost}>
           <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
             <cylinderGeometry args={[0.12, 0.12, 0.4, 12]} />
             <Surface color={PALETTE.propeller} {...surface} />
@@ -154,8 +156,9 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
               </mesh>
             </group>
           ))}
-        </group>
+        </Spinner>
       );
+    }
     case "mast":
       return (
         <mesh position={[0, 3.5, 0]} castShadow>

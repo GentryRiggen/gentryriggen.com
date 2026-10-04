@@ -11,6 +11,7 @@ jest.mock("../Hull", () => () => null);
 jest.mock("../LongPressRing", () => () => null);
 jest.mock("../Ocean", () => () => null);
 jest.mock("../ShipParts", () => () => null);
+jest.mock("../ShipAnimation", () => () => null);
 
 describe("Scene canvas wrapper", () => {
   it.each(["contextmenu", "selectstart", "dragstart"])(

@@ -14,6 +14,7 @@ import Hull from "./Hull";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import { PALETTE } from "./palette";
+import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
 import { usePartLongPress } from "./usePartLongPress";
 
@@ -107,11 +108,13 @@ export default function Scene() {
           shadow-mapSize={[2048, 2048]}
         />
         <Ocean seeThrough={isBelow} />
-        <Hull lengthCells={lengthCells} beam={beam} />
-        <ShipParts onPartPress={startPress} />
-        <GridTargets />
-        <AttachMarkers />
-        <GhostPreview />
+        <ShipAnimation>
+          <Hull lengthCells={lengthCells} beam={beam} />
+          <ShipParts onPartPress={startPress} />
+          <GridTargets />
+          <AttachMarkers />
+          <GhostPreview />
+        </ShipAnimation>
         <CameraRig />
       </Canvas>
       {ring && <LongPressRing key={ring.key} x={ring.x} y={ring.y} />}
