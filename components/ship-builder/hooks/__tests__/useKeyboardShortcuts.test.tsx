@@ -53,6 +53,25 @@ describe("useKeyboardShortcuts", () => {
     expect(store().ship.parts).toHaveLength(0);
   });
 
+  it("Escape cancels aiming the iceberg, once", () => {
+    render(<Harness />);
+    act(() => store().aimIceberg());
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store().trial.status).toBe("idle");
+  });
+
+  it("Escape does not cancel aiming behind a modal dialog", () => {
+    render(
+      <>
+        <Harness />
+        <MyShipsDialog onClose={jest.fn()} />
+      </>
+    );
+    act(() => store().aimIceberg());
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store().trial.status).toBe("aiming");
+  });
+
   it("ignores shortcuts while a modal dialog is open", () => {
     const { rerender } = render(
       <>

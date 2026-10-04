@@ -21,17 +21,9 @@ export default function IcebergAimHint() {
   }
 
   // The Iceberg menu item that began aiming is gone, so focus would drop to
-  // the page: hand it to Cancel, and let Esc back out from anywhere.
+  // the page: hand it to Cancel. Esc is handled by useKeyboardShortcuts.
   useEffect(() => {
-    if (!isAiming) return;
-    cancelButton.current?.focus();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      useShipBuilderStore.getState().cancelAim();
-      focusSeaTrialButton();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    if (isAiming) cancelButton.current?.focus();
   }, [isAiming]);
 
   if (!isAiming) return null;

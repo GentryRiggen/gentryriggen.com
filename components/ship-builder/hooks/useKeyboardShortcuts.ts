@@ -29,7 +29,8 @@ export default function useKeyboardShortcuts() {
       // Escape leave the trial.
       if (state.trial.status !== "idle") {
         if (key === "escape") {
-          state.endTrial();
+          if (state.trial.status === "aiming") state.cancelAim();
+          else state.endTrial();
           focusSeaTrialButton();
         } else if (key === "delete" || key === "backspace")
           event.preventDefault();

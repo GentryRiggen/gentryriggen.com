@@ -33,12 +33,4 @@ describe("IcebergAimHint", () => {
     expect(store().trial.status).toBe("idle");
     expect(screen.queryByText("Tap where the iceberg hits")).toBeNull();
   });
-
-  it("Escape cancels", async () => {
-    const user = userEvent.setup();
-    render(<IcebergAimHint />);
-    act(() => store().aimIceberg());
-    await user.keyboard("{Escape}");
-    expect(store().trial.status).toBe("idle");
-  });
 });
