@@ -15,10 +15,11 @@ export interface SavedShip {
   ship: Ship;
 }
 
-export interface Autosave {
-  ship: Ship;
-  savedId: string | null;
-}
+/** "invalid" means something is stored but this build can't read it. */
+export type AutosaveResult =
+  | { kind: "none" }
+  | { kind: "ok"; ship: Ship; savedId: string | null }
+  | { kind: "invalid" };
 
 function storage(): Storage | null {
   try {
@@ -68,13 +69,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function loadAutosave(): Autosave | null {
-  const raw = readJson(AUTOSAVE_KEY);
-  if (!isRecord(raw)) return null;
+export function loadAutosave(): AutosaveResult {
+  const stored = readStored(AUTOSAVE_KEY);
+  // Unreadable storage is reported when saving fails, not here.
+  if (!stored.ok || !stored.text) return { kind: "none" };
+  const raw = stored.value;
+  if (!isRecord(raw)) return { kind: "invalid" };
   const parsed = parseShip(raw.ship);
-  if (!parsed.ok) return null;
+  if (!parsed.ok) return { kind: "invalid" };
   const savedId = typeof raw.savedId === "string" ? raw.savedId : null;
-  return { ship: parsed.ship, savedId };
+  return { kind: "ok", ship: parsed.ship, savedId };
 }
 
 export function saveAutosave(ship: Ship, savedId: string | null): boolean {

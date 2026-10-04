@@ -23,15 +23,21 @@ beforeEach(() => {
 describe("autosave", () => {
   it("round-trips the ship and savedId", () => {
     expect(saveAutosave(ship, "ship-1")).toBe(true);
-    expect(loadAutosave()).toEqual({ ship, savedId: "ship-1" });
+    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "ship-1" });
   });
 
-  it("returns null for missing, corrupt or invalid data", () => {
-    expect(loadAutosave()).toBeNull();
-    localStorage.setItem(AUTOSAVE_KEY, "{not json");
-    expect(loadAutosave()).toBeNull();
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ ship: { v: 9 } }));
-    expect(loadAutosave()).toBeNull();
+  it("reports none when nothing is stored", () => {
+    expect(loadAutosave()).toEqual({ kind: "none" });
+  });
+
+  it.each([
+    ["corrupt JSON", "{not json"],
+    ["a non-record", "[1,2]"],
+    ["JSON null", "null"],
+    ["an invalid ship", JSON.stringify({ ship: { v: 9 } })],
+  ])("reports invalid for %s", (_label, text) => {
+    localStorage.setItem(AUTOSAVE_KEY, text);
+    expect(loadAutosave()).toEqual({ kind: "invalid" });
   });
 
   it("returns false when storage throws", () => {
@@ -41,11 +47,11 @@ describe("autosave", () => {
     expect(saveAutosave(ship, null)).toBe(false);
   });
 
-  it("returns null when reading throws", () => {
+  it("reports none when reading throws", () => {
     jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("SecurityError");
     });
-    expect(loadAutosave()).toBeNull();
+    expect(loadAutosave()).toEqual({ kind: "none" });
     expect(listShips()).toEqual([]);
   });
 });

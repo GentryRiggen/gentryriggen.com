@@ -87,6 +87,19 @@ describe("useShipPersistence", () => {
     expect(store().past).toHaveLength(0);
   });
 
+  it("shows a notice when the autosave can't be read, leaving it stored", () => {
+    localStorage.setItem(AUTOSAVE_KEY, "{not json");
+    render(<Harness />);
+    expect(store().notice?.text).toBe("Couldn't restore your last ship");
+    expect(store().ship.parts).toHaveLength(0);
+    expect(localStorage.getItem(AUTOSAVE_KEY)).toBe("{not json");
+  });
+
+  it("shows no notice when there is no autosave", () => {
+    render(<Harness />);
+    expect(store().notice).toBeNull();
+  });
+
   it("autosaves after changes, debounced", () => {
     render(<Harness />);
     act(() => store().rename("Britannic"));

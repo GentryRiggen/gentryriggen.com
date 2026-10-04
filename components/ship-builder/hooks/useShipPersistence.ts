@@ -8,6 +8,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 export const AUTOSAVE_DELAY_MS = 500;
 const STORAGE_NOTICE =
   "Browser storage is unavailable — your ship won't be saved";
+const RESTORE_NOTICE = "Couldn't restore your last ship";
 
 export default function useShipPersistence() {
   // StrictMode re-runs this effect but keeps refs. The initial load must run
@@ -64,10 +65,14 @@ export default function useShipPersistence() {
         const saved = loadAutosave();
         // Restoring on page load isn't an edit: don't offer to undo into the
         // empty default hull.
-        if (saved) {
+        if (saved.kind === "ok") {
           store
             .getState()
             .loadShip(saved.ship, saved.savedId, { resetHistory: true });
+        } else if (saved.kind === "invalid") {
+          // The unreadable autosave stays put until the next change
+          // overwrites it.
+          store.getState().setNotice(RESTORE_NOTICE);
         }
       }
     }
