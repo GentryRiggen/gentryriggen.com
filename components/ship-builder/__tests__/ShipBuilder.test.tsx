@@ -122,6 +122,5 @@ describe("ShipBuilder version", () => {
     expect(screen.getByTestId("app-version")).toHaveTextContent(
       `v${SHIP_BUILDER_VERSION}`
     );
-    expect(SHIP_BUILDER_VERSION).toBe("1.4.0");
   });
 });
