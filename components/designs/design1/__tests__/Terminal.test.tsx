@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import Terminal from "../Terminal";
+import { SOCIAL_LINKS } from "../constants";
 
 jest.mock("canvas-confetti", () => ({ __esModule: true, default: jest.fn() }));
 jest.mock("next/image", () => ({
@@ -15,7 +16,8 @@ jest.mock("next/image", () => ({
 
 const SHIPS_LINE = (_: string, el: Element | null) =>
   el?.tagName === "P" &&
-  el.textContent === "⚓ New: a ship-building game. Type 'ships' to set sail.";
+  el.textContent ===
+    "⚓ I also love building fun things for my kids, like a ship-building game. Type 'ships' to set sail.";
 
 const queryPrompt = () => screen.queryByLabelText("Terminal command input");
 
@@ -42,48 +44,41 @@ describe("Terminal boot sequence", () => {
     jest.useRealTimers();
   });
 
-  it("shows the prompt only after the `cat ships.txt` block has finished", () => {
+  it("shows the prompt only after the `cat links.txt` block has finished", () => {
     render(<Terminal />);
     let promptShownEarly = false;
-    let sawShipsBlockTyping = false;
     advanceUntil(() => {
-      const hasShipsLine = screen.queryByText(SHIPS_LINE) !== null;
-      const isTypingShips = document.body.textContent?.includes("cat ship");
-      if (isTypingShips && !hasShipsLine) {
-        sawShipsBlockTyping = true;
-        if (queryPrompt()) promptShownEarly = true;
-      }
-      return hasShipsLine;
+      const linksShown =
+        screen.queryByText(SOCIAL_LINKS[SOCIAL_LINKS.length - 1].url) !== null;
+      if (!linksShown && queryPrompt()) promptShownEarly = true;
+      return linksShown;
     });
 
-    expect(sawShipsBlockTyping).toBe(true);
     expect(promptShownEarly).toBe(false);
-    expect(screen.getByText(SHIPS_LINE)).toBeInTheDocument();
     advance(100);
     expect(queryPrompt()).toBeInTheDocument();
   });
 
-  it("ends with a line pointing visitors at the `ships` command", () => {
+  it("points visitors at the `ships` command from the hobbies section", () => {
     render(<Terminal />);
     advanceUntil(() => false);
 
-    expect(screen.getByText("cat ships.txt")).toBeInTheDocument();
     expect(screen.getByText(SHIPS_LINE)).toBeInTheDocument();
+    expect(screen.queryByText("cat ships.txt")).not.toBeInTheDocument();
     expect(queryPrompt()).toBeInTheDocument();
   });
 
-  it("lists `cat ships.txt` in the command history", () => {
+  it("no longer lists `cat ships.txt` in the command history", () => {
     render(<Terminal />);
     advanceUntil(() => false);
     const input = screen.getByLabelText("Terminal command input");
     fireEvent.change(input, { target: { value: "history" } });
     fireEvent.submit(input);
 
-    expect(
-      screen.getByText(
-        (_, el) =>
-          el?.tagName === "PRE" && !!el.textContent?.includes("cat ships.txt")
-      )
-    ).toBeInTheDocument();
+    const history = screen.getByText(
+      (_, el) =>
+        el?.tagName === "PRE" && !!el.textContent?.includes("cat links.txt")
+    );
+    expect(history.textContent).not.toContain("cat ships.txt");
   });
 });
