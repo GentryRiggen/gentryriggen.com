@@ -1,10 +1,11 @@
 import type { Stats } from "../model/stats";
 import type { SimShip } from "./types";
 
-/**
- * PLACEHOLDER: listAngle is 0 until stats track side-to-side balance. The
- * signature is the contract.
- */
+/** The sim input for a ship, from its stats and hull width in cells. */
 export function simShipFromStats(stats: Stats, beam: number): SimShip {
-  return { stabilityRatio: stats.stabilityRatio, listAngle: 0, beam };
+  return {
+    stabilityRatio: stats.stabilityRatio,
+    listAngle: stats.listAngle,
+    beam,
+  };
 }
