@@ -7,15 +7,15 @@ import { OrbitControls } from "@react-three/drei";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
-  CAMERA_TARGET,
   clampTarget,
-  MAX_POLAR_ANGLE,
   MAX_VIEW_DISTANCE,
+  maxPolarAngleFor,
   panBounds,
   shipBeam,
   shouldFrame,
   type FrameRequest,
   viewPosition,
+  viewTarget,
 } from "./cameraViews";
 
 // Left orbits (Shift/Ctrl/Meta + left pans, built into OrbitControls), the
@@ -34,6 +34,7 @@ export default function CameraRig() {
   const lengthSegments = useShipBuilderStore((s) => s.ship.hull.lengthSegments);
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => shipBeam(s.ship));
+  const view = camera.view;
   // The previous request, updated on every run so that repeated single-step
   // length edits never add up to a reframe.
   const seen = useRef<FrameRequest | null>(null);
@@ -62,7 +63,7 @@ export default function CameraRig() {
       ...viewPosition(camera.view, lengthCells, aspect, shipBeam(ship))
     );
     if (orbit) {
-      orbit.target.set(...CAMERA_TARGET);
+      orbit.target.set(...viewTarget(camera.view));
       orbit.update();
       orbit.enableDamping = true;
     }
@@ -78,7 +79,7 @@ export default function CameraRig() {
     const { target, object } = orbit;
     const [x, y, z] = clampTarget(
       [target.x, target.y, target.z],
-      panBounds(lengthCells, beam)
+      panBounds(lengthCells, beam, view)
     );
     const dx = x - target.x;
     const dy = y - target.y;
@@ -90,7 +91,7 @@ export default function CameraRig() {
       object.position.y + dy,
       object.position.z + dz
     );
-  }, [lengthCells, beam]);
+  }, [lengthCells, beam, view]);
 
   // A shorter or narrower hull shrinks the box; pull the target back into it.
   useEffect(handleChange, [handleChange]);
@@ -99,7 +100,7 @@ export default function CameraRig() {
     <OrbitControls
       ref={controls}
       makeDefault
-      target={CAMERA_TARGET}
+      target={viewTarget(view)}
       enablePan
       screenSpacePanning
       mouseButtons={MOUSE_BUTTONS}
@@ -107,7 +108,7 @@ export default function CameraRig() {
       onChange={handleChange}
       minDistance={6}
       maxDistance={MAX_VIEW_DISTANCE}
-      maxPolarAngle={MAX_POLAR_ANGLE}
+      maxPolarAngle={maxPolarAngleFor(view)}
     />
   );
 }

@@ -96,6 +96,16 @@ describe("Toolbar", () => {
     expect(side).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("switches to the below view", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const below = screen.getByRole("button", { name: "Below view" });
+    expect(below).toHaveAttribute("aria-pressed", "false");
+    await user.click(below);
+    expect(store().camera.view).toBe("below");
+    expect(below).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("returns focus to My Ships when the dialog closes", async () => {
     const user = userEvent.setup();
     render(<Toolbar />);

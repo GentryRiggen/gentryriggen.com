@@ -28,6 +28,7 @@ const CAMERA_VIEWS: { view: CameraView; label: string; ariaLabel: string }[] = [
   { view: "side", label: "Side", ariaLabel: "Side view" },
   { view: "top", label: "Top", ariaLabel: "Top view" },
   { view: "three-quarter", label: "¾", ariaLabel: "Three-quarter view" },
+  { view: "below", label: "Below", ariaLabel: "Below view" },
 ];
 
 export default function Toolbar() {

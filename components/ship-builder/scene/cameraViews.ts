@@ -8,6 +8,13 @@ export type CameraPosition = [number, number, number];
 
 export const CAMERA_TARGET: CameraPosition = [0, DECK_Y + 1.5, 0];
 
+/** The below view looks at the hull's underwater body. */
+export const BELOW_TARGET: CameraPosition = [0, -1.2, 0];
+
+export function viewTarget(view: CameraView): CameraPosition {
+  return view === "below" ? BELOW_TARGET : CAMERA_TARGET;
+}
+
 /** Keeps the orbit camera a little above the horizon (≈85.4°). */
 export const MAX_POLAR_ANGLE = Math.PI / 2 - 0.08;
 
@@ -15,6 +22,13 @@ export const MAX_POLAR_ANGLE = Math.PI / 2 - 0.08;
  * The side preset's polar angle (≈83.1°). It must sit inside MAX_POLAR_ANGLE,
  * or OrbitControls clamps it and the preset lands somewhere else.
  */
+/** The below view may orbit nearly to straight down, under the water. */
+const BELOW_MAX_POLAR_ANGLE = Math.PI - 0.1;
+
+export function maxPolarAngleFor(view: CameraView): number {
+  return view === "below" ? BELOW_MAX_POLAR_ANGLE : MAX_POLAR_ANGLE;
+}
+
 const SIDE_POLAR_ANGLE = Math.PI / 2 - 0.12;
 
 /** Extra camera distance per cell of beam beyond the default hull. */
@@ -51,6 +65,15 @@ function threeQuarterDistance(
   );
 }
 
+/** Camera offset from BELOW_TARGET, per unit of distance: stern, down, port. */
+const BELOW_OFFSET = [-0.55, -0.35, 0.6] as const;
+
+function belowPosition(distance: number): CameraPosition {
+  const [dx, dy, dz] = BELOW_OFFSET;
+  const d = Math.min(distance, MAX_VIEW_DISTANCE / Math.hypot(...BELOW_OFFSET));
+  return [d * dx, BELOW_TARGET[1] + d * dy, d * dz];
+}
+
 export function viewPosition(
   view: CameraView,
   lengthCells: number,
@@ -73,6 +96,8 @@ export function viewPosition(
       const d = threeQuarterDistance(lengthCells, aspect, beam);
       return [d * dx, d * dy, d * dz];
     }
+    case "below":
+      return belowPosition(distance);
   }
 }
 
@@ -141,6 +166,9 @@ export const PAN_MARGIN = 3;
  */
 const PAN_HEIGHT: [number, number] = [0.5, 6];
 
+/** The below view's target may sink to look up at the hull from underwater. */
+const BELOW_PAN_HEIGHT: [number, number] = [-4, 6];
+
 export interface PanBounds {
   x: [number, number];
   y: [number, number];
@@ -148,10 +176,18 @@ export interface PanBounds {
 }
 
 /** The box the orbit target may be panned within, centred on the ship. */
-export function panBounds(lengthCells: number, beam: number): PanBounds {
+export function panBounds(
+  lengthCells: number,
+  beam: number,
+  view: CameraView = "side"
+): PanBounds {
   const halfX = lengthCells / 2 + PROW_LENGTH + PAN_MARGIN;
   const halfZ = beam / 2 + WING_REACH + PAN_MARGIN;
-  return { x: [-halfX, halfX], y: PAN_HEIGHT, z: [-halfZ, halfZ] };
+  return {
+    x: [-halfX, halfX],
+    y: view === "below" ? BELOW_PAN_HEIGHT : PAN_HEIGHT,
+    z: [-halfZ, halfZ],
+  };
 }
 
 const clamp = (value: number, [min, max]: [number, number]) =>

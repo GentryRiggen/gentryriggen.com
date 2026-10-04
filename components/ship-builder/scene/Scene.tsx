@@ -21,6 +21,7 @@ export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
   const select = useShipBuilderStore((s) => s.select);
+  const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
   const wrapper = useRef<HTMLDivElement>(null);
   const { ring, startPress } = usePartLongPress(wrapper);
 
@@ -63,7 +64,7 @@ export default function Scene() {
           shadow-camera-far={150}
           shadow-mapSize={[2048, 2048]}
         />
-        <Ocean />
+        <Ocean seeThrough={isBelow} />
         <Hull lengthCells={lengthCells} beam={beam} />
         <ShipParts onPartPress={startPress} />
         <GridTargets />

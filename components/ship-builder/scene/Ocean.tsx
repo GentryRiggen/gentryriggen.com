@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Color, Float32BufferAttribute, PlaneGeometry } from "three";
+import {
+  Color,
+  DoubleSide,
+  Float32BufferAttribute,
+  PlaneGeometry,
+} from "three";
 import { OCEAN_SEGMENTS, OCEAN_SIZE, oceanDepthMix } from "./oceanGradient";
 import { PALETTE } from "./palette";
 
@@ -28,7 +33,15 @@ function createOceanGeometry(): PlaneGeometry {
   return geometry;
 }
 
-export default function Ocean() {
+interface OceanProps {
+  /** Fades the surface so the hull shows through it (the below view). */
+  seeThrough: boolean;
+}
+
+const OPACITY = 0.9;
+const SEE_THROUGH_OPACITY = 0.35;
+
+export default function Ocean({ seeThrough }: OceanProps) {
   const geometry = useMemo(() => createOceanGeometry(), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -39,7 +52,9 @@ export default function Ocean() {
         roughness={0.35}
         metalness={0.1}
         transparent
-        opacity={0.9}
+        opacity={seeThrough ? SEE_THROUGH_OPACITY : OPACITY}
+        depthWrite={!seeThrough}
+        side={DoubleSide}
       />
     </mesh>
   );

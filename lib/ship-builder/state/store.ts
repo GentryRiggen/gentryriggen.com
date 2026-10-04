@@ -31,7 +31,7 @@ export interface HoverState {
   result: RuleResult;
 }
 
-export type CameraView = "side" | "top" | "three-quarter";
+export type CameraView = "side" | "top" | "three-quarter" | "below";
 
 export interface Notice {
   text: string;

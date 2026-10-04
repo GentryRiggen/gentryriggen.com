@@ -11,6 +11,7 @@ import { PROW_LENGTH } from "@/lib/ship-builder/model/attach";
 import { emptyShip } from "@/lib/ship-builder/model/placement";
 import type { CameraView } from "@/lib/ship-builder/state/store";
 import {
+  BELOW_TARGET,
   CAMERA_TARGET,
   clampTarget,
   panBounds,
@@ -18,6 +19,7 @@ import {
   shipBeam,
   MAX_POLAR_ANGLE,
   MAX_VIEW_DISTANCE,
+  maxPolarAngleFor,
   polarAngle,
   shouldReframe,
   shouldReframeBeam,
@@ -25,6 +27,7 @@ import {
   type FrameRequest,
   viewDistance,
   viewPosition,
+  viewTarget,
 } from "../cameraViews";
 
 const VIEWS: CameraView[] = ["side", "top", "three-quarter"];
@@ -56,6 +59,47 @@ describe("viewPosition", () => {
       (value, i) => value - CAMERA_TARGET[i]
     );
     expect(Math.hypot(x, y, z)).toBeCloseTo(viewDistance(36));
+  });
+});
+
+describe("below view", () => {
+  it("targets the hull body under the waterline", () => {
+    expect(BELOW_TARGET).toEqual([0, -1.2, 0]);
+    expect(viewTarget("side")).toBe(CAMERA_TARGET);
+    expect(viewTarget("top")).toBe(CAMERA_TARGET);
+    expect(viewTarget("three-quarter")).toBe(CAMERA_TARGET);
+    expect(viewTarget("below")).toBe(BELOW_TARGET);
+  });
+
+  it("sits under the water, toward the stern, within the max distance", () => {
+    for (const length of LENGTHS) {
+      for (const beam of [MIN_BEAM, MAX_BEAM]) {
+        for (const aspect of [0.5, 1, 2]) {
+          const position = viewPosition("below", length, aspect, beam);
+          expect(position[1]).toBeLessThan(-2);
+          expect(position[0]).toBeLessThan(0);
+          const [x, y, z] = position.map((v, i) => v - BELOW_TARGET[i]);
+          expect(Math.hypot(x, y, z)).toBeLessThanOrEqual(MAX_VIEW_DISTANCE);
+        }
+      }
+    }
+  });
+
+  it("stays inside its own polar clamp", () => {
+    const position = viewPosition("below", 36);
+    const [x, y, z] = position.map((v, i) => v - BELOW_TARGET[i]);
+    expect(Math.atan2(Math.hypot(x, z), y)).toBeLessThanOrEqual(
+      maxPolarAngleFor("below")
+    );
+  });
+});
+
+describe("maxPolarAngleFor", () => {
+  it("keeps the camera above the water except in the below view", () => {
+    expect(maxPolarAngleFor("side")).toBe(MAX_POLAR_ANGLE);
+    expect(maxPolarAngleFor("top")).toBe(MAX_POLAR_ANGLE);
+    expect(maxPolarAngleFor("three-quarter")).toBe(MAX_POLAR_ANGLE);
+    expect(maxPolarAngleFor("below")).toBe(Math.PI - 0.1);
   });
 });
 
@@ -169,6 +213,19 @@ describe("panBounds", () => {
       2 + WING_REACH + PAN_MARGIN,
     ]);
     expect(bounds.y).toEqual([0.5, 6]);
+  });
+
+  it("lets the target sink underwater in the below view", () => {
+    expect(panBounds(32, 4, "below").y).toEqual([-4, 6]);
+    expect(panBounds(32, 4, "side").y).toEqual([0.5, 6]);
+  });
+
+  it("contains the below target for every hull length", () => {
+    for (const length of LENGTHS) {
+      expect(clampTarget(BELOW_TARGET, panBounds(length, 4, "below"))).toEqual(
+        BELOW_TARGET
+      );
+    }
   });
 
   it("grows with the beam", () => {
