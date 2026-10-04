@@ -7,6 +7,7 @@
  */
 
 import { type ReactNode } from "react";
+import Hobbies from "./Hobbies";
 import Image from "next/image";
 import { SKILLS, SOCIAL_LINKS } from "./constants";
 
@@ -485,24 +486,7 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
     }
     if (file === "hobbies.txt") {
       return {
-        output: (
-          <div className="space-y-2">
-            <p className="whitespace-pre-wrap leading-relaxed">
-              Off the clock, I&apos;m all about my family 👨‍👩‍👦‍👦 — hanging out with
-              my beautiful wife and our two boys. When I&apos;m not with them,
-              you&apos;ll find me at the CrossFit box 🏋️ or out on the golf
-              course ⛳.
-            </p>
-            <p className="leading-relaxed">
-              ⚓ I also love building fun things for my kids, like a
-              ship-building game. Type{" "}
-              <span className="text-green-600 dark:text-green-300">
-                &apos;ships&apos;
-              </span>{" "}
-              to set sail.
-            </p>
-          </div>
-        ),
+        output: <Hobbies />,
         shouldClear: false,
       };
     }

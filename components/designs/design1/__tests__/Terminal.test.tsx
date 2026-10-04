@@ -17,7 +17,7 @@ jest.mock("next/image", () => ({
 const SHIPS_LINE = (_: string, el: Element | null) =>
   el?.tagName === "P" &&
   el.textContent ===
-    "⚓ I also love building fun things for my kids, like a ship-building game. Type 'ships' to set sail.";
+    "⚓ I also love building fun things for my kids, like a ship-building game: /ship-builder (or type 'ships').";
 
 const queryPrompt = () => screen.queryByLabelText("Terminal command input");
 
@@ -64,6 +64,10 @@ describe("Terminal boot sequence", () => {
     advanceUntil(() => false);
 
     expect(screen.getByText(SHIPS_LINE)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "/ship-builder" })).toHaveAttribute(
+      "href",
+      "/ship-builder"
+    );
     expect(screen.queryByText("cat ships.txt")).not.toBeInTheDocument();
     expect(queryPrompt()).toBeInTheDocument();
   });
