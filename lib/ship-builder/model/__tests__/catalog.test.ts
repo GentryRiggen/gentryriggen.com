@@ -33,6 +33,15 @@ describe("catalog", () => {
     expect(CATALOG["lifeboat-large"].seats).toBe(150);
   });
 
+  it("calls both funnels smokestacks", () => {
+    expect(CATALOG.funnel.description).toBe(
+      "Smokestack · sits on a deck block · 40 stokers"
+    );
+    expect(CATALOG["funnel-large"].description).toBe(
+      "Big smokestack · sits on a 2×2 of deck blocks · 75 stokers"
+    );
+  });
+
   it("gives grid parts positive footprints and attach parts a target", () => {
     for (const type of PART_TYPES) {
       const def = CATALOG[type];
