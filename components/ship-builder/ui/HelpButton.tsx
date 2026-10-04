@@ -10,48 +10,27 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { createStoredSetting } from "../hooks/createStoredSetting";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 
-const COACH_STORAGE_KEY = "ship-builder:ui:coach-seen";
-
-const listeners = new Set<() => void>();
-// Remembers a dismissal when localStorage is unavailable.
-let isDismissedInMemory = false;
+const coachSetting = createStoredSetting<boolean>({
+  key: "ship-builder:ui:coach-seen",
+  parse: (raw) => raw === "1",
+  serialize: (value) => (value ? "1" : null),
+  fallback: false,
+});
 
 function isWebDriven(): boolean {
   return typeof navigator !== "undefined" && navigator.webdriver === true;
 }
 
-function hasSeenCoach(): boolean {
-  if (isDismissedInMemory) return true;
-  try {
-    return window.localStorage.getItem(COACH_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
 function dismissCoach(): void {
-  isDismissedInMemory = true;
-  try {
-    window.localStorage.setItem(COACH_STORAGE_KEY, "1");
-  } catch {
-    // Storage is unavailable; the in-memory flag covers this session.
-  }
-  listeners.forEach((listener) => listener());
+  coachSetting.set(true);
 }
 
 /** Test-only: forget a dismissal so each test starts first-run. */
 export function resetCoachForTests(): void {
-  isDismissedInMemory = false;
-  listeners.forEach((listener) => listener());
+  coachSetting.resetMemory();
 }
 
 const TIPS = [
@@ -73,8 +52,8 @@ export default function HelpButton() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const toolKind = useShipBuilderStore((s) => s.tool.kind);
   const isCoachVisible = useSyncExternalStore(
-    subscribe,
-    () => !hasSeenCoach() && !isWebDriven(),
+    coachSetting.subscribe,
+    () => !coachSetting.get() && !isWebDriven(),
     () => false
   );
 

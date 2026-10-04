@@ -1,47 +1,15 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { createStoredSetting } from "./createStoredSetting";
 
-const STORAGE_KEY = "ship-builder:ui:show-all-parts";
 const ON = "1";
 
-const listeners = new Set<() => void>();
-// Used when localStorage is unavailable, so the switch still works per session.
-let memorySnapshot = false;
-// Set once a write fails: reads may still work but would return a stale value.
-let isMemoryAuthoritative = false;
-
-function getSnapshot(): boolean {
-  if (isMemoryAuthoritative) return memorySnapshot;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === ON;
-  } catch {
-    return memorySnapshot;
-  }
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-
-function writeSnapshot(next: boolean): void {
-  // Kept current on every write, so a read that later throws falls back to
-  // the latest value rather than a stale one.
-  memorySnapshot = next;
-  try {
-    if (next) window.localStorage.setItem(STORAGE_KEY, ON);
-    else window.localStorage.removeItem(STORAGE_KEY);
-    isMemoryAuthoritative = false;
-  } catch {
-    isMemoryAuthoritative = true;
-  }
-  listeners.forEach((listener) => listener());
-}
+const showAllSetting = createStoredSetting<boolean>({
+  key: "ship-builder:ui:show-all-parts",
+  parse: (raw) => raw === ON,
+  serialize: (value) => (value ? ON : null),
+  fallback: false,
+});
 
 interface ShowAllPartsControl {
   showAll: boolean;
@@ -50,7 +18,6 @@ interface ShowAllPartsControl {
 
 /** Whether the Parts panel lists every part; remembered per device. */
 export default function useShowAllParts(): ShowAllPartsControl {
-  const showAll = useSyncExternalStore(subscribe, getSnapshot, () => false);
-  const setShowAll = useCallback((next: boolean) => writeSnapshot(next), []);
-  return { showAll, setShowAll };
+  const showAll = showAllSetting.useValue();
+  return { showAll, setShowAll: showAllSetting.set };
 }

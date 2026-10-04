@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
-
-const STORAGE_KEY = "ship-builder:ui:collapsed";
+import { useCallback } from "react";
+import { createStoredSetting } from "./createStoredSetting";
 
 export type PanelSide = "left" | "right";
 
@@ -12,17 +11,10 @@ interface CollapsedPanels {
   toggle: (side: PanelSide) => void;
 }
 
-/** Snapshot is a primitive string ("l", "r", "lr" or "") so React can compare. */
+/** Value is a primitive string ("l", "r", "lr" or "") so React can compare. */
 const EXPANDED = "";
 
-const listeners = new Set<() => void>();
-// Used when localStorage is unavailable, so toggling still works per session.
-let memorySnapshot = EXPANDED;
-// Set once a write fails: reads may still work, but they would return the
-// stale stored value and undo the toggle.
-let isMemoryAuthoritative = false;
-
-function normalize(raw: string | null): string {
+function parseCollapsed(raw: string | null): string {
   if (raw === null) return EXPANDED;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -34,51 +26,26 @@ function normalize(raw: string | null): string {
   }
 }
 
-function getSnapshot(): string {
-  if (isMemoryAuthoritative) return memorySnapshot;
-  try {
-    return normalize(window.localStorage.getItem(STORAGE_KEY));
-  } catch {
-    return memorySnapshot;
-  }
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-
-function writeSnapshot(next: string): void {
-  try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ left: next.includes("l"), right: next.includes("r") })
-    );
-    isMemoryAuthoritative = false;
-  } catch {
-    // Storage unavailable: the in-memory value still applies this session.
-    memorySnapshot = next;
-    isMemoryAuthoritative = true;
-  }
-  listeners.forEach((listener) => listener());
-}
+const collapsedSetting = createStoredSetting<string>({
+  key: "ship-builder:ui:collapsed",
+  parse: parseCollapsed,
+  serialize: (value) =>
+    JSON.stringify({ left: value.includes("l"), right: value.includes("r") }),
+  fallback: EXPANDED,
+});
 
 /** Per-side collapsed state of the side panels, persisted across visits. */
 export default function useCollapsedPanels(): CollapsedPanels {
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => EXPANDED);
+  const snapshot = collapsedSetting.useValue();
 
   const toggle = useCallback((side: PanelSide) => {
     const flag = side === "left" ? "l" : "r";
-    const current = getSnapshot();
+    const current = collapsedSetting.get();
     const next = current.includes(flag)
       ? current.replace(flag, "")
       : // Keep a stable "lr" order whichever side was collapsed first.
         ["l", "r"].filter((f) => f === flag || current.includes(f)).join("");
-    writeSnapshot(next);
+    collapsedSetting.set(next);
   }, []);
 
   return {

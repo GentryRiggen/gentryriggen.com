@@ -36,6 +36,11 @@ describe("useCollapsedPanels", () => {
   });
 
   it("stays expanded and still toggles when storage throws", () => {
+    // The in-memory value tracks every write, so undo the earlier test's.
+    const earlier = renderHook(() => useCollapsedPanels());
+    act(() => earlier.result.current.toggle("right"));
+    act(() => earlier.result.current.toggle("right"));
+    earlier.unmount();
     jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("denied");
     });
