@@ -10,6 +10,21 @@ import { modelToWorld } from "./coords";
 /** Height of a funnel's top above its attach point (see PartMesh). */
 export const FUNNEL_TOP_OFFSET = { small: 3.2, large: 4.2 } as const;
 
+/** Funnels lean aft (toward world −X), pivoting at the base (see FunnelMesh). */
+export const FUNNEL_RAKE_RADIANS = (5 * Math.PI) / 180;
+
+/** A raked funnel's top, from its attach point in world space. */
+function funnelTop(
+  [x, y, z]: [number, number, number],
+  height: number
+): [number, number, number] {
+  return [
+    x - height * Math.sin(FUNNEL_RAKE_RADIANS),
+    y + height * Math.cos(FUNNEL_RAKE_RADIANS),
+    z,
+  ];
+}
+
 export interface EffectAnchors {
   /** Flat [x, y, z] triples in the ship's world space. */
   smallFunnels: number[];
@@ -39,13 +54,13 @@ export function collectEffectAnchors(ship: Ship): EffectAnchors {
     if (part.anchor.kind !== "attach") continue;
     const point = resolveAttachPoint(ship, part.anchor, occupancy);
     if (!point) continue;
-    const [x, y, z] = modelToWorld(length, beam, point.position);
+    const base = modelToWorld(length, beam, point.position);
     if (part.type === "propeller") {
-      anchors.propellers.push(x, y, z);
+      anchors.propellers.push(...base);
     } else if (part.type === "funnel") {
-      anchors.smallFunnels.push(x, y + FUNNEL_TOP_OFFSET.small, z);
+      anchors.smallFunnels.push(...funnelTop(base, FUNNEL_TOP_OFFSET.small));
     } else {
-      anchors.largeFunnels.push(x, y + FUNNEL_TOP_OFFSET.large, z);
+      anchors.largeFunnels.push(...funnelTop(base, FUNNEL_TOP_OFFSET.large));
     }
   }
   return anchors;

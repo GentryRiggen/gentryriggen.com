@@ -1,8 +1,7 @@
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
+import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
 
-/** Funnels lean aft (toward world -X; the bow faces +X), pivoting at the base. */
-const RAKE_RADIANS = (5 * Math.PI) / 180;
 const SEGMENTS = 16;
 const BAND_HEIGHT = 0.12;
 const BAND_FLARE = 0.012;
@@ -34,7 +33,7 @@ export default function FunnelMesh({
     (baseRadius - topRadius) * (1 - height / bodyHeight) +
     BAND_FLARE;
   return (
-    <group rotation={[0, 0, RAKE_RADIANS]}>
+    <group rotation={[0, 0, FUNNEL_RAKE_RADIANS]}>
       <mesh position={[0, bodyHeight / 2, 0]} castShadow>
         <cylinderGeometry
           args={[topRadius, baseRadius, bodyHeight, SEGMENTS]}
