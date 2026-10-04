@@ -91,6 +91,9 @@ export function loadAutosave(): AutosaveResult {
     backupText(AUTOSAVE_BACKUP_KEY, stored.text);
     return { kind: "invalid" };
   }
+  // A repaired ship is autosaved over the original on the next change, so
+  // keep the full original in case the parts were dropped by a rules bug.
+  if (parsed.dropped > 0) backupText(AUTOSAVE_BACKUP_KEY, stored.text);
   const savedId = typeof raw.savedId === "string" ? raw.savedId : null;
   return { kind: "ok", ship: parsed.ship, savedId, dropped: parsed.dropped };
 }

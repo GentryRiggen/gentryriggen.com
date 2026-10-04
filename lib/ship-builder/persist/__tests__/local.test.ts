@@ -41,6 +41,29 @@ describe("ships with parts that no longer fit", () => {
     expect(loadAutosave()).toMatchObject({ kind: "ok", dropped: 1 });
   });
 
+  it("backs up the original autosave before the repaired ship replaces it", () => {
+    const text = JSON.stringify({ ship: broken, savedId: "s" });
+    localStorage.setItem(AUTOSAVE_KEY, text);
+    loadAutosave();
+    expect(localStorage.getItem(AUTOSAVE_BACKUP_KEY)).toBe(text);
+  });
+
+  it("keeps an independent part that comes after a dropped one", () => {
+    const mixed = testShip([
+      gridPart("floating", "deck-1x1", 3, 0, 0),
+      gridPart("a", "deck-1x1", 0, 0, 0),
+      gridPart("b", "deck-1x1", 0, 2, 0),
+    ]);
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: mixed, savedId: null })
+    );
+    const loaded = loadAutosave();
+    expect(loaded).toMatchObject({ kind: "ok", dropped: 1 });
+    if (loaded.kind !== "ok") throw new Error("expected ok");
+    expect(loaded.ship.parts.map((p) => p.id).sort()).toEqual(["a", "b"]);
+  });
+
   it("lists a saved ship without them, leaving the stored entry alone", () => {
     const entry = { id: "s", name: "x", savedAt: 1, ship: broken };
     localStorage.setItem(SHIPS_KEY, JSON.stringify([entry]));
