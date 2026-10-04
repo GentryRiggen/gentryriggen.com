@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
-import { gridLength } from "@/lib/ship-builder/model/grid";
+import { gridLength, type Occupancy } from "@/lib/ship-builder/model/grid";
 import type { PartCandidate } from "@/lib/ship-builder/model/placement";
 import type {
   GridPartDef,
@@ -20,6 +21,13 @@ export type PartEmphasis = keyof typeof PALETTE.emphasis | null;
 interface PartMeshProps {
   ship: Ship;
   part: PartCandidate;
+  /**
+   * Tags the group's `userData.partId`, so one shared set of handlers can tell
+   * which part an event hit via `event.eventObject`.
+   */
+  partId?: string;
+  /** The ship's occupancy, shared across parts so each doesn't rebuild it. */
+  occupancy?: Occupancy;
   tint?: PartTint;
   emphasis?: PartEmphasis;
   onPointerOver?: (event: ThreeEvent<PointerEvent>) => void;
@@ -151,9 +159,11 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
   }
 }
 
-export default function PartMesh({
+function PartMesh({
   ship,
   part,
+  partId,
+  occupancy,
   tint = null,
   emphasis = null,
   onPointerOver,
@@ -162,7 +172,12 @@ export default function PartMesh({
 }: PartMeshProps) {
   const def = getPartDef(part.type);
   const length = gridLength(ship);
-  const handlers = { onPointerOver, onPointerOut, onClick };
+  const handlers = {
+    onPointerOver,
+    onPointerOut,
+    onClick,
+    userData: { partId },
+  };
 
   if (def.placement === "grid") {
     if (part.anchor.kind !== "grid") return null;
@@ -175,7 +190,7 @@ export default function PartMesh({
   }
 
   if (part.anchor.kind !== "attach") return null;
-  const point = resolveAttachPoint(ship, part.anchor);
+  const point = resolveAttachPoint(ship, part.anchor, occupancy);
   if (!point) return null;
   return (
     <group position={modelToWorld(length, point.position)} {...handlers}>
@@ -188,3 +203,5 @@ export default function PartMesh({
     </group>
   );
 }
+
+export default memo(PartMesh);

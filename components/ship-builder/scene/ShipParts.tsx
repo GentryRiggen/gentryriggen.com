@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { Object3D } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCursor } from "@react-three/drei";
+import { buildOccupancy } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import PartMesh from "./PartMesh";
 
@@ -15,6 +17,12 @@ const OCCLUDE_HANDLERS = {
   onPointerOver: (event: ThreeEvent<PointerEvent>) => event.stopPropagation(),
   onClick: (event: ThreeEvent<MouseEvent>) => event.stopPropagation(),
 };
+
+/** The part a handler fired for; PartMesh tags its group with the id. */
+function partIdOf(event: { eventObject: Object3D }): string | null {
+  const id: unknown = event.eventObject.userData.partId;
+  return typeof id === "string" ? id : null;
+}
 
 export default function ShipParts() {
   const ship = useShipBuilderStore((s) => s.ship);
@@ -36,20 +44,32 @@ export default function ShipParts() {
   }
   useCursor(interactive && ship.parts.some((part) => part.id === hoveredId));
 
-  const removing = new Set(pendingRemoval?.ids ?? []);
+  const occupancy = useMemo(() => buildOccupancy(ship), [ship]);
 
-  const selectHandlers = (id: string) => ({
-    onPointerOver: (event: ThreeEvent<PointerEvent>) => {
-      event.stopPropagation();
-      setHoveredId(id);
-    },
-    onPointerOut: () =>
-      setHoveredId((current) => (current === id ? null : current)),
-    onClick: (event: ThreeEvent<MouseEvent>) => {
-      event.stopPropagation();
-      select(id);
-    },
-  });
+  // One stable set of handlers for every part, so a hover or selection change
+  // only re-renders the (memoized) parts whose tint or emphasis changed.
+  const selectHandlers = useMemo(
+    () => ({
+      onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+        event.stopPropagation();
+        const id = partIdOf(event);
+        if (id) setHoveredId(id);
+      },
+      onPointerOut: (event: ThreeEvent<PointerEvent>) => {
+        const id = partIdOf(event);
+        setHoveredId((current) => (current === id ? null : current));
+      },
+      onClick: (event: ThreeEvent<MouseEvent>) => {
+        event.stopPropagation();
+        const id = partIdOf(event);
+        if (id) select(id);
+      },
+    }),
+    [select]
+  );
+  const handlers = interactive ? selectHandlers : OCCLUDE_HANDLERS;
+
+  const removing = new Set(pendingRemoval?.ids ?? []);
 
   return (
     <group>
@@ -57,7 +77,9 @@ export default function ShipParts() {
         <PartMesh
           key={part.id}
           ship={ship}
+          occupancy={occupancy}
           part={part}
+          partId={part.id}
           tint={removing.has(part.id) ? "removal" : null}
           emphasis={
             selectedId === part.id
@@ -66,7 +88,7 @@ export default function ShipParts() {
                 ? "hover"
                 : null
           }
-          {...(interactive ? selectHandlers(part.id) : OCCLUDE_HANDLERS)}
+          {...handlers}
         />
       ))}
     </group>
