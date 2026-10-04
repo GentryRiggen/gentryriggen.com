@@ -16,6 +16,7 @@ import {
   DEFAULT_BEAM,
   footprintCells,
   inBounds,
+  isInsideHull,
   isForwardHalf,
   MAX_BEAM,
   MAX_SEGMENTS,
@@ -171,6 +172,43 @@ function checkSupport(
     : fail("Needs a deck beneath every cell");
 }
 
+/** Whether a grid part is a container (role "cargo"). */
+function isCargo(type: PlacedPart["type"]): boolean {
+  const def = getPartDef(type);
+  return def.placement === "grid" && def.role === "cargo";
+}
+
+/**
+ * Containers go on the main deck inside the hull, or on hatch covers and
+ * other containers; nothing but containers goes on a container. A cell with
+ * nothing beneath it is left to the usual overhang rule.
+ */
+function checkCargo(
+  ship: Ship,
+  def: GridPartDef,
+  cells: Cell[],
+  occupancy: Occupancy
+): RuleResult {
+  for (const cell of cells) {
+    const below = occupancy.get(cellKey({ ...cell, level: cell.level - 1 }));
+    const belowIsCargo = below !== undefined && isCargo(below.type);
+    if (def.role !== "cargo") {
+      if (belowIsCargo) return fail("Only containers stack on containers");
+      continue;
+    }
+    if (cell.level === 0) {
+      if (!isInsideHull(ship, cell)) {
+        return fail("Containers go on the deck, inside the hull");
+      }
+      continue;
+    }
+    if (below && !belowIsCargo && below.type !== "hatch-cover") {
+      return fail("Containers stack on hatch covers or other containers");
+    }
+  }
+  return OK;
+}
+
 function canPlaceGrid(
   ship: Ship,
   def: GridPartDef,
@@ -204,6 +242,9 @@ function canPlaceGrid(
       return fail("Can't build over a davit");
     }
   }
+
+  const cargo = checkCargo(ship, def, cells, occupancy);
+  if (!cargo.ok) return cargo;
 
   if (cells.some((cell) => isOutboardOfDavit(ship, cell, occupancy))) {
     return fail("Can't build outboard of a davit");

@@ -26,6 +26,8 @@ const DAVIT_HEIGHT = 0.8;
 const DAVIT_REACH = 0.6;
 /** How far a helipad's surface rises above the deck tops it sits on. */
 const HELIPAD_THICKNESS = 0.15;
+/** The freefall boat sits this far forward of the stern tip's midpoint. */
+const FREEFALL_SETBACK = 0.6;
 
 /** Model y of a propeller shaft: below the keel (deck is y 0, keel ≈ −2.8). */
 export const PROP_MOUNT_Y = -3.1;
@@ -81,6 +83,15 @@ function hullPoints(ship: Ship): AttachPoint[] {
       id: "rudder",
       type: "rudder-mount",
       position: { x: length + RUDDER_OFFSET, y: PROP_MOUNT_Y, z: centerline },
+    },
+    {
+      id: "freefall",
+      type: "freefall-mount",
+      position: {
+        x: length + sternLength(ship.hull.stern) / 2 - FREEFALL_SETBACK,
+        y: 0,
+        z: centerline,
+      },
     },
   ];
 }
@@ -165,6 +176,8 @@ function blockPoints(
 ): AttachPoint[] {
   const def = getPartDef(part.type);
   if (def.placement !== "grid" || part.anchor.kind !== "grid") return [];
+  // Cargo is plain stackable boxes: nothing mounts on or beside it.
+  if (def.role === "cargo") return [];
   const { level, x, z } = part.anchor;
   const points: AttachPoint[] = [];
 

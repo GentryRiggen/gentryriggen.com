@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { PALETTE } from "@/components/ship-builder/scene/palette";
+import { paintHex } from "@/lib/ship-builder/model/paint";
 import type { PartType } from "@/lib/ship-builder/model/types";
 
 interface PartIconProps {
@@ -294,6 +295,50 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
     <g>
       <ellipse cx={24} cy={26} rx={20} ry={10} fill={NAVAL_TUBE} />
       <ellipse cx={24} cy={26} rx={13} ry={5} fill={NAVAL_DARK} />
+    </g>
+  ),
+  // A corrugated box: vertical ribs down the front.
+  container: () => (
+    <g>
+      <Box x={4} bottom={36} width={32} height={20} fill={paintHex("sky")} />
+      {[10, 15, 20, 25, 30].map((x) => (
+        <line key={x} x1={x} y1={19} x2={x} y2={35} strokeWidth={1} />
+      ))}
+    </g>
+  ),
+  // A low slab on a raised rim.
+  "hatch-cover": () => (
+    <g>
+      <Box
+        x={6}
+        bottom={36}
+        width={30}
+        height={6}
+        fill={PALETTE.hatchCoaming}
+      />
+      <Box x={4} bottom={30} width={34} height={4} fill={PALETTE.hatchCover} />
+    </g>
+  ),
+  // A pedestal with a jib leaning out over a hook.
+  "cargo-crane": () => (
+    <g>
+      <rect x={10} y={26} width={10} height={16} fill={PALETTE.crane} />
+      <rect x={7} y={40} width={16} height={4} fill={PALETTE.hatchCover} />
+      <path d="M15 28 L40 10 L42 13 L18 30 Z" fill={PALETTE.crane} />
+      <line x1={38} y1={12} x2={38} y2={28} strokeWidth={1.5} />
+      <rect x={35} y={28} width={6} height={4} fill={PALETTE.hatchCover} />
+    </g>
+  ),
+  // An enclosed boat on a ramp tilted down toward the stern (right).
+  "lifeboat-freefall": () => (
+    <g>
+      <path d="M4 20 L44 36 L44 40 L4 24 Z" fill={PALETTE.freefallRamp} />
+      <path
+        d="M8 11 Q18 6 28 14 L36 24 L34 28 L12 20 Q7 16 8 11 Z"
+        fill={PALETTE.freefallBoat}
+        transform="translate(0 -1)"
+      />
+      <circle cx={19} cy={14} r={2} fill={PALETTE.bridgeWindows} />
     </g>
   ),
 };

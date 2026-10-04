@@ -59,6 +59,8 @@ export interface Stats {
   peopleAboard: number;
   lifeboats: number;
   lifeboatSeats: number;
+  /** Container capacity in twenty-foot-equivalent units. */
+  teu: number;
   coverage: number;
   coverageLevel: CoverageLevel;
   grossTonnage: number;
@@ -113,6 +115,7 @@ export function computeStats(ship: Ship): Stats {
   let lifeboats = 0;
   let lifeboatSeats = 0;
   let stokers = 0;
+  let teu = 0;
   let crewBerths = 0;
   let funnels = 0;
   let power = 0;
@@ -138,6 +141,7 @@ export function computeStats(ship: Ship): Stats {
       lifeboatSeats += def.seats;
     }
     if (def.stokers) stokers += def.stokers;
+    if (def.teu) teu += def.teu;
     if (def.power) {
       funnels += 1;
       power += def.power;
@@ -227,6 +231,7 @@ export function computeStats(ship: Ship): Stats {
     peopleAboard,
     lifeboats,
     lifeboatSeats,
+    teu,
     coverage,
     coverageLevel: coverageLevel(coverage),
     grossTonnage,

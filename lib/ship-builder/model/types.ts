@@ -28,6 +28,10 @@ export const PART_TYPES = [
   "helipad",
   "helicopter",
   "rib-boat",
+  "container",
+  "hatch-cover",
+  "cargo-crane",
+  "lifeboat-freefall",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -40,7 +44,8 @@ export type PartCategory =
   | "masts"
   | "lifeboats"
   | "propulsion"
-  | "naval";
+  | "naval"
+  | "cargo";
 
 export type AttachPointType =
   | "funnel-mount"
@@ -51,7 +56,8 @@ export type AttachPointType =
   | "big-boat-mount"
   | "prop-mount"
   | "rudder-mount"
-  | "heli-mount";
+  | "heli-mount"
+  | "freefall-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -160,13 +166,15 @@ interface PartDefBase {
   stokers?: number;
   /** Engine power units a funnel provides. */
   power?: number;
+  /** Twenty-foot-equivalent container units this part carries. */
+  teu?: number;
   /** Ship kinds this part is listed for. Absent means every kind. */
   kinds?: ShipKind[];
 }
 
 export interface GridPartDef extends PartDefBase {
   placement: "grid";
-  role: "deck" | "cabin" | "bridge";
+  role: "deck" | "cabin" | "bridge" | "cargo";
   /** Size at rotation 0: x along the length, z across the beam. */
   footprint: { x: number; z: number };
 }

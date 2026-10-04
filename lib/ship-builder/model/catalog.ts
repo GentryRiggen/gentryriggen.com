@@ -16,6 +16,7 @@ export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
   { id: "lifeboats", name: "Lifeboat gear" },
   { id: "naval", name: "Naval" },
   { id: "propulsion", name: "Propulsion" },
+  { id: "cargo", name: "Cargo" },
 ];
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
@@ -28,6 +29,7 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "prop-mount": "propeller spot under the stern",
   "rudder-mount": "rudder spot under the stern",
   "heli-mount": "helipad with nothing on it",
+  "freefall-mount": "freefall boat spot at the stern",
 };
 
 /** The 4-wide bridge keeps the original `bridge` id so old saves still load. */
@@ -303,6 +305,56 @@ export const CATALOG: Record<PartType, PartDef> = {
     height: 0.4,
     seats: 15,
     emptyHint: "Every davit has a boat — add another davit",
+  },
+  container: {
+    type: "container",
+    kinds: ["cargo"],
+    category: "cargo",
+    name: "Container",
+    description: "2 TEU · on the main deck or a hatch cover · stacks",
+    placement: "grid",
+    role: "cargo",
+    footprint: { x: 2, z: 1 },
+    mass: 0.6,
+    height: 1,
+    teu: 2,
+  },
+  "hatch-cover": {
+    type: "hatch-cover",
+    kinds: ["cargo"],
+    category: "cargo",
+    name: "Hatch cover",
+    description: "Low 2×2 cover over the hold · containers stack on it",
+    placement: "grid",
+    role: "deck",
+    footprint: { x: 2, z: 2 },
+    mass: 0.3,
+    height: 0.3,
+  },
+  "cargo-crane": {
+    type: "cargo-crane",
+    kinds: ["cargo"],
+    category: "cargo",
+    name: "Cargo crane",
+    description: "Sits on a deck block or hatch cover · the jib turns slowly",
+    placement: "attach",
+    attachTo: "funnel-mount",
+    mass: 1,
+    height: 4,
+    emptyHint: "Place a deck block or hatch cover with nothing on top first",
+  },
+  "lifeboat-freefall": {
+    type: "lifeboat-freefall",
+    kinds: ["cargo"],
+    category: "lifeboats",
+    name: "Freefall lifeboat",
+    description: "40 seats · slides off the stern",
+    placement: "attach",
+    attachTo: "freefall-mount",
+    mass: 0.5,
+    height: 1.2,
+    seats: 40,
+    emptyHint: "The freefall spot at the stern is taken",
   },
 };
 

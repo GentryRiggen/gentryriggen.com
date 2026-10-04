@@ -2,6 +2,7 @@
 
 import {
   BedDouble,
+  Container,
   Gauge,
   HardHat,
   LifeBuoy,
@@ -136,6 +137,15 @@ export default function StatsPanel() {
             value={fmt(stats.lifeboatSeats)}
             detail={`${stats.lifeboats} boats`}
           />
+          {stats.teu > 0 && (
+            <StatRow
+              Icon={Container}
+              label="Cargo"
+              testId="stat-cargo"
+              value={fmt(stats.teu)}
+              unit="TEU"
+            />
+          )}
           <StatRow
             Icon={ShieldCheck}
             label="Coverage"

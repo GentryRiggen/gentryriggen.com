@@ -25,3 +25,33 @@ export function paintHex(color: PaintColor): string {
   const found = PAINT_COLORS.find((c) => c.id === color);
   return found ? found.hex : PAINT_COLORS[0].hex;
 }
+
+/** Pleasant container colours; the loud and the dull ones are left out. */
+const CONTAINER_COLORS: readonly PaintColor[] = [
+  "red",
+  "navy",
+  "sky",
+  "green",
+  "yellow",
+  "orange",
+  "grey",
+  "buff",
+];
+
+/** FNV-1a over UTF-16 units: small, stable and well spread for short ids. */
+function hashString(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+/**
+ * A container's colour: its own paint if it has any, else one picked from the
+ * part id so the same container always looks the same and stacks vary.
+ */
+export function containerColor(id: string, painted?: PaintColor): PaintColor {
+  return painted ?? CONTAINER_COLORS[hashString(id) % CONTAINER_COLORS.length];
+}
