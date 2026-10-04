@@ -32,6 +32,7 @@ interface PartMeshProps {
   emphasis?: PartEmphasis;
   onPointerOver?: (event: ThreeEvent<PointerEvent>) => void;
   onPointerOut?: (event: ThreeEvent<PointerEvent>) => void;
+  onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
   onClick?: (event: ThreeEvent<MouseEvent>) => void;
 }
 
@@ -168,6 +169,7 @@ function PartMesh({
   emphasis = null,
   onPointerOver,
   onPointerOut,
+  onPointerDown,
   onClick,
 }: PartMeshProps) {
   const def = getPartDef(part.type);
@@ -175,6 +177,7 @@ function PartMesh({
   const handlers = {
     onPointerOver,
     onPointerOut,
+    onPointerDown,
     onClick,
     userData: { partId },
   };

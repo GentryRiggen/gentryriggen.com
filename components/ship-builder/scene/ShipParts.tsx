@@ -1,22 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Object3D } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCursor } from "@react-three/drei";
 import { buildOccupancy } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
-
-/**
- * With a tool active, parts still catch pointer events but only to swallow
- * them, so a block occludes the grid targets and markers behind it. R3F skips
- * objects without handlers when raycasting, which would let a tap go through.
- */
-const OCCLUDE_HANDLERS = {
-  onPointerOver: (event: ThreeEvent<PointerEvent>) => event.stopPropagation(),
-  onClick: (event: ThreeEvent<MouseEvent>) => event.stopPropagation(),
-};
+import type { PartPress } from "./usePartLongPress";
 
 /** The part a handler fired for; PartMesh tags its group with the id. */
 function partIdOf(event: { eventObject: Object3D }): string | null {
@@ -24,7 +16,22 @@ function partIdOf(event: { eventObject: Object3D }): string | null {
   return typeof id === "string" ? id : null;
 }
 
-export default function ShipParts() {
+interface ShipPartsProps {
+  /** A primary press on a part, which may become a press-and-hold delete. */
+  onPartPress: (press: PartPress) => void;
+}
+
+/**
+ * Only a plain primary press can become a hold: right-drag and Shift/Ctrl/Meta
+ * + drag pan the camera instead.
+ */
+function isHoldCandidate(event: ThreeEvent<PointerEvent>): boolean {
+  return (
+    event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey
+  );
+}
+
+export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const tool = useShipBuilderStore((s) => s.tool);
   const selectedId = useShipBuilderStore((s) => s.selectedId);
@@ -46,6 +53,39 @@ export default function ShipParts() {
 
   const occupancy = useMemo(() => buildOccupancy(ship), [ship]);
 
+  // Press-and-hold deletes with or without an active tool.
+  const handlePointerDown = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+      const partId = partIdOf(event);
+      if (!partId || !isHoldCandidate(event)) return;
+      onPartPress({
+        partId,
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    },
+    [onPartPress]
+  );
+
+  // With a tool active, parts still catch pointer events but only to swallow
+  // them, so a block occludes the grid targets and markers behind it. R3F
+  // skips objects without handlers when raycasting, which would let a tap go
+  // through.
+  const occludeHandlers = useMemo(
+    () => ({
+      onPointerOver: (event: ThreeEvent<PointerEvent>) =>
+        event.stopPropagation(),
+      onPointerDown: handlePointerDown,
+      onClick: (event: ThreeEvent<MouseEvent>) => {
+        event.stopPropagation();
+        shouldSwallowClick();
+      },
+    }),
+    [handlePointerDown]
+  );
+
   // One stable set of handlers for every part, so a hover or selection change
   // only re-renders the (memoized) parts whose tint or emphasis changed.
   const selectHandlers = useMemo(
@@ -59,15 +99,17 @@ export default function ShipParts() {
         const id = partIdOf(event);
         setHoveredId((current) => (current === id ? null : current));
       },
+      onPointerDown: handlePointerDown,
       onClick: (event: ThreeEvent<MouseEvent>) => {
         event.stopPropagation();
+        if (shouldSwallowClick()) return;
         const id = partIdOf(event);
         if (id) select(id);
       },
     }),
-    [select]
+    [select, handlePointerDown]
   );
-  const handlers = interactive ? selectHandlers : OCCLUDE_HANDLERS;
+  const handlers = interactive ? selectHandlers : occludeHandlers;
 
   const removing = new Set(pendingRemoval?.ids ?? []);
 

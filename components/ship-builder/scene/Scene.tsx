@@ -1,33 +1,47 @@
 "use client";
 
+import { useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
 import CameraRig from "./CameraRig";
+import { shouldSwallowClick } from "./clickGuard";
 import GhostPreview from "./GhostPreview";
 import GridTargets from "./GridTargets";
 import Hull from "./Hull";
+import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import { PALETTE } from "./palette";
 import ShipParts from "./ShipParts";
+import { usePartLongPress } from "./usePartLongPress";
 
 export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const select = useShipBuilderStore((s) => s.select);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const { ring, startPress } = usePartLongPress(wrapper);
 
   return (
+    // The canvas owns every touch gesture (orbit, pinch, pan, hold), so the
+    // browser must not scroll, zoom, select text or open its callout menu.
     <div
+      ref={wrapper}
       data-testid="ship-canvas"
       role="img"
       aria-label="3D view of your ship"
-      className="h-full w-full"
+      className="relative h-full w-full touch-none select-none [-webkit-touch-callout:none]"
     >
       <Canvas
         shadows="percentage"
         camera={{ position: [24, 16, 24], fov: 45 }}
-        onPointerMissed={() => select(null)}
+        onPointerMissed={() => {
+          // A hold that deleted the last part under the pointer releases onto
+          // empty water; that click must not drop a pending removal.
+          if (shouldSwallowClick()) return;
+          select(null);
+        }}
       >
         <color attach="background" args={[PALETTE.sky]} />
         <fog attach="fog" args={[PALETTE.sky, 80, 260]} />
@@ -50,12 +64,13 @@ export default function Scene() {
         />
         <Ocean />
         <Hull lengthCells={lengthCells} />
-        <ShipParts />
+        <ShipParts onPartPress={startPress} />
         <GridTargets />
         <AttachMarkers />
         <GhostPreview />
         <CameraRig />
       </Canvas>
+      {ring && <LongPressRing key={ring.key} x={ring.x} y={ring.y} />}
     </div>
   );
 }
