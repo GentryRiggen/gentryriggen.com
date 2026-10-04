@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { analyzeShip } from "../model/analysis";
 import { getPartDef } from "../model/catalog";
 import { MAX_BEAM, MAX_SEGMENTS, MIN_BEAM, MIN_SEGMENTS } from "../model/grid";
 import { newId } from "../model/ids";
@@ -16,6 +17,8 @@ import {
   type RuleResult,
 } from "../model/placement";
 import type { ShipKind } from "../model/kinds";
+import { simShipFromStats } from "../sim/simShip";
+import type { SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
 import type { HullArea, PaintColor } from "../model/paint";
 import type {
@@ -51,6 +54,21 @@ export interface Notice {
   id: number;
 }
 
+/**
+ * The sea trial: idle while building, running while the sim plays, then a
+ * result until the player goes back to building. Anything but idle freezes the
+ * ship: every action that would edit it does nothing (see `isTrialActive`).
+ */
+export type TrialSlice =
+  | { status: "idle" }
+  | {
+      status: "running";
+      input: TrialInput;
+      /** Changes per run, so "Try again" restarts the runner. */
+      runId: number;
+    }
+  | { status: "result"; input: TrialInput; state: SimState; runId: number };
+
 /** What undo/redo restore: the ship and which My Ships entry it belongs to. */
 interface HistoryEntry {
   ship: Ship;
@@ -69,6 +87,7 @@ interface ShipBuilderData {
   /** `id` changes on every setNotice so repeated text restarts and re-announces. */
   notice: Notice | null;
   camera: { view: CameraView; nonce: number };
+  trial: TrialSlice;
 }
 
 export interface ShipBuilderState extends ShipBuilderData {
@@ -108,6 +127,15 @@ export interface ShipBuilderState extends ShipBuilderData {
   markSaved: (savedId: string) => void;
   setNotice: (text: string | null) => void;
   setCameraView: (view: CameraView) => void;
+  /**
+   * Starts a sea trial of the current ship in this sea, dropping any tool and
+   * selection. Also restarts a finished trial ("Try again").
+   */
+  startTrial: (sea: SimSea) => void;
+  /** Records how the running trial ended; ignored unless one is running. */
+  finishTrial: (state: SimState) => void;
+  /** Leaves the trial (running or finished) and goes back to building. */
+  endTrial: () => void;
 }
 
 export function createInitialState(): ShipBuilderData {
@@ -122,6 +150,7 @@ export function createInitialState(): ShipBuilderData {
     future: [],
     notice: null,
     camera: { view: "three-quarter", nonce: 0 },
+    trial: { status: "idle" },
   };
 }
 
@@ -157,6 +186,12 @@ const CLEARED = {
 export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   // Lives outside the state so createInitialState() resets can't reuse ids.
   let noticeId = 0;
+  let runId = 0;
+
+  /** True while a trial runs or its result shows: the ship must not change. */
+  function isTrialActive(): boolean {
+    return get().trial.status !== "idle";
+  }
 
   /**
    * Pushes a new ship onto history. Hover and any pending removal were
@@ -200,6 +235,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     ...createInitialState(),
 
     selectTool(type) {
+      if (isTrialActive()) return;
       const { tool } = get();
       if (tool.kind === "place" && tool.type === type) {
         set({ tool: { kind: "none" }, hover: null });
@@ -209,10 +245,12 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     selectPaint(color) {
+      if (isTrialActive()) return;
       set({ tool: { kind: "paint", color }, ...CLEARED });
     },
 
     paintPart(id) {
+      if (isTrialActive()) return;
       const { ship, tool } = get();
       if (tool.kind !== "paint") return;
       const part = ship.parts.find((p) => p.id === id);
@@ -227,6 +265,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     paintHull(area) {
+      if (isTrialActive()) return;
       const { ship, tool } = get();
       if (tool.kind !== "paint") return;
       const { [area]: current, ...others } = ship.hull.paint ?? {};
@@ -242,6 +281,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     rotate() {
+      if (isTrialActive()) return;
       const { tool, hover, ship } = get();
       if (tool.kind !== "place" || getPartDef(tool.type).placement !== "grid") {
         return;
@@ -254,11 +294,15 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     hoverAt(anchor) {
+      if (isTrialActive()) return;
       const { ship, tool } = get();
       set({ hover: anchor ? hoverFor(ship, tool, anchor) : null });
     },
 
     placeAt(anchor) {
+      if (isTrialActive()) {
+        return { ok: false, reason: "Building is paused during the sea trial" };
+      }
       const { ship, tool } = get();
       const candidate = candidateFor(tool, anchor);
       if (!candidate) return { ok: false, reason: "Pick a part first" };
@@ -269,6 +313,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     select(id) {
+      if (isTrialActive()) return;
       // A selection and a tool are mutually exclusive, so the bottom pills
       // (Delete, placement hint) never stack: selecting drops the tool.
       set(
@@ -284,6 +329,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     requestDelete() {
+      if (isTrialActive()) return;
       const { ship, selectedId } = get();
       if (!selectedId) return;
       const ids = cascadeIds(ship, [selectedId]);
@@ -299,6 +345,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     confirmRemoval() {
+      if (isTrialActive()) return;
       const { ship, pendingRemoval } = get();
       if (!pendingRemoval) return;
       const next =
@@ -316,6 +363,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     changeHullLength(delta) {
+      if (isTrialActive()) return;
       const { lengthSegments } = get().ship.hull;
       resizeHull({
         lengthSegments: clamp(
@@ -327,17 +375,20 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     changeBeam(delta) {
+      if (isTrialActive()) return;
       const { beam } = get().ship.hull;
       resizeHull({ beam: clamp(beam + delta, MIN_BEAM, MAX_BEAM) });
     },
 
     setBow(bow) {
+      if (isTrialActive()) return;
       const { ship } = get();
       if (ship.hull.bow === bow) return;
       commit(setHullSize(ship, { bow }));
     },
 
     setStern(stern) {
+      if (isTrialActive()) return;
       const { ship } = get();
       if (ship.hull.stern === stern) return;
       commit(setHullSize(ship, { stern }));
@@ -348,6 +399,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     undo() {
+      if (isTrialActive()) return;
       const { ship, savedId, past, future } = get();
       const previous = past.at(-1);
       if (!previous) return;
@@ -361,6 +413,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     redo() {
+      if (isTrialActive()) return;
       const { ship, savedId, past, future } = get();
       const [next, ...rest] = future;
       if (!next) return;
@@ -374,6 +427,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     loadShip(ship, savedId, options) {
+      if (isTrialActive()) return;
       const {
         camera,
         notice,
@@ -400,6 +454,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     newShip(kind) {
+      if (isTrialActive()) return;
       commit(emptyShip(kind), {
         savedId: null,
         tool: { kind: "none" },
@@ -408,6 +463,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     newShipFromTemplate(id) {
+      if (isTrialActive()) return;
       const template = findTemplate(id);
       if (!template) return;
       commit(template.build(), {
@@ -428,6 +484,38 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     setCameraView(view) {
       set({ camera: { view, nonce: get().camera.nonce + 1 } });
+    },
+
+    startTrial(sea) {
+      const { ship } = get();
+      const { stats } = analyzeShip(ship);
+      const input: TrialInput = {
+        ship: simShipFromStats(stats, ship.hull.beam),
+        sea,
+      };
+      runId += 1;
+      set({
+        trial: { status: "running", input, runId },
+        tool: { kind: "none" },
+        ...CLEARED,
+      });
+    },
+
+    finishTrial(state) {
+      const { trial } = get();
+      if (trial.status !== "running") return;
+      set({
+        trial: {
+          status: "result",
+          input: trial.input,
+          state,
+          runId: trial.runId,
+        },
+      });
+    },
+
+    endTrial() {
+      set({ trial: { status: "idle" } });
     },
   };
 });
