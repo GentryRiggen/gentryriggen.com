@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.4.1",
+    date: "2026-10-04",
+    title: "Sturdier shipyard",
+    highlights: [
+      "If a saved ship has parts that no longer fit after an update, it still opens with those parts removed, instead of not opening at all",
+      "Behind the scenes: new checks make sure saved ships, shared links and the 3D scene keep working as the game grows",
+    ],
+  },
+  {
     version: "2.4.0",
     date: "2026-10-04",
     title: "Day and night",
