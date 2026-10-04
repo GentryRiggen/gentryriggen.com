@@ -80,6 +80,27 @@ describe("share links from older versions", () => {
   });
 });
 
+describe("share links from v3", () => {
+  it("loads a v3 link with the default bow and stern", () => {
+    const { bow, stern, ...hull } = ship.hull;
+    expect([bow, stern]).toEqual(["straight", "counter"]);
+    const v3 = { ...ship, v: 3, hull };
+    const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v3))}`;
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+  });
+
+  it("round-trips a ship with non-default ends", () => {
+    const shaped = {
+      ...ship,
+      hull: { ...ship.hull, bow: "icebreaker", stern: "transom" },
+    } as const;
+    expect(decodeShareHash(`#ship=${encodeShip(shaped)}`)).toEqual({
+      kind: "ok",
+      ship: shaped,
+    });
+  });
+});
+
 describe("share links", () => {
   it("round-trips a ship through the hash", () => {
     expect(decodeShareHash(`#ship=${encodeShip(ship)}`)).toEqual({

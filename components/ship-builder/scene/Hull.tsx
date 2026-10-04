@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { Shape } from "three";
-import { PROW_LENGTH, STERN_LENGTH } from "@/lib/ship-builder/model/attach";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
 import { PALETTE } from "./palette";
 
@@ -12,6 +11,10 @@ const DECK_PLATE = 0.02;
 interface HullProps {
   lengthCells: number;
   beam: number;
+  /** Cells the bow extends forward of the grid. */
+  bowLength: number;
+  /** Cells the stern extends aft of the grid. */
+  sternLength: number;
 }
 
 interface HullBandProps {
@@ -21,6 +24,7 @@ interface HullBandProps {
   top: number;
   color: string;
   prow: Shape;
+  sternLength: number;
 }
 
 function HullBand({
@@ -30,6 +34,7 @@ function HullBand({
   top,
   color,
   prow,
+  sternLength,
 }: HullBandProps) {
   const height = top - bottom;
   const half = lengthCells / 2;
@@ -54,10 +59,10 @@ function HullBand({
         <extrudeGeometry args={[prow, extrudeOptions]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      {/* Stern: half cylinder facing -X, squashed to STERN_LENGTH. */}
+      {/* Stern: half cylinder facing -X, squashed to the stern length. */}
       <mesh
         position={[-half, bottom + height / 2, 0]}
-        scale={[STERN_LENGTH / radius, 1, 1]}
+        scale={[sternLength / radius, 1, 1]}
         castShadow
       >
         <cylinderGeometry
@@ -73,10 +78,11 @@ interface DeckPlateProps {
   lengthCells: number;
   beam: number;
   prow: Shape;
+  sternLength: number;
 }
 
 /** A thin tan plate over the whole hull top: box, prow and stern. */
-function DeckPlate({ lengthCells, beam, prow }: DeckPlateProps) {
+function DeckPlate({ lengthCells, beam, prow, sternLength }: DeckPlateProps) {
   const half = lengthCells / 2;
   const radius = beam / 2;
   const extrudeOptions = useMemo(
@@ -99,7 +105,7 @@ function DeckPlate({ lengthCells, beam, prow }: DeckPlateProps) {
       </mesh>
       <mesh
         position={[-half, DECK_Y + DECK_PLATE / 2, 0]}
-        scale={[STERN_LENGTH / radius, 1, 1]}
+        scale={[sternLength / radius, 1, 1]}
         receiveShadow
       >
         <cylinderGeometry
@@ -111,15 +117,20 @@ function DeckPlate({ lengthCells, beam, prow }: DeckPlateProps) {
   );
 }
 
-export default function Hull({ lengthCells, beam }: HullProps) {
+export default function Hull({
+  lengthCells,
+  beam,
+  bowLength,
+  sternLength,
+}: HullProps) {
   const prow = useMemo(() => {
     const shape = new Shape();
     shape.moveTo(0, -beam / 2);
-    shape.lineTo(PROW_LENGTH, 0);
+    shape.lineTo(bowLength, 0);
     shape.lineTo(0, beam / 2);
     shape.closePath();
     return shape;
-  }, [beam]);
+  }, [beam, bowLength]);
 
   return (
     <group>
@@ -130,6 +141,7 @@ export default function Hull({ lengthCells, beam }: HullProps) {
         top={BOOT_TOP}
         color={PALETTE.antifouling}
         prow={prow}
+        sternLength={sternLength}
       />
       <HullBand
         lengthCells={lengthCells}
@@ -138,8 +150,14 @@ export default function Hull({ lengthCells, beam }: HullProps) {
         top={DECK_Y}
         color={PALETTE.hull}
         prow={prow}
+        sternLength={sternLength}
       />
-      <DeckPlate lengthCells={lengthCells} beam={beam} prow={prow} />
+      <DeckPlate
+        lengthCells={lengthCells}
+        beam={beam}
+        prow={prow}
+        sternLength={sternLength}
+      />
     </group>
   );
 }

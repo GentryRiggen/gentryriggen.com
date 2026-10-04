@@ -7,9 +7,9 @@ import {
   MIN_SEGMENTS,
 } from "../model/grid";
 import { MAX_NAME_LENGTH, validateShip } from "../model/placement";
-import { PART_TYPES, type Ship } from "../model/types";
+import { BOW_IDS, PART_TYPES, STERN_IDS, type Ship } from "../model/types";
 
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -44,6 +44,8 @@ export const shipSchema = z.object({
   hull: z.object({
     lengthSegments: z.number().int().min(MIN_SEGMENTS).max(MAX_SEGMENTS),
     beam: z.number().int().min(MIN_BEAM).max(MAX_BEAM),
+    bow: z.enum(BOW_IDS),
+    stern: z.enum(STERN_IDS),
   }),
   parts: z.array(placedPart).max(MAX_PARTS),
 });
@@ -80,10 +82,18 @@ const mergeMasts: Migration = (raw) => {
   };
 };
 
+/** v3 hulls had one fixed bow and stern, now the default shapes. */
+const addHullEnds: Migration = (raw) => {
+  const { hull } = raw;
+  if (!isRecord(hull)) return raw;
+  return { ...raw, v: 4, hull: { ...hull, bow: "straight", stern: "counter" } };
+};
+
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
 const MIGRATIONS: Record<number, Migration> = {
   1: addDefaultBeam,
   2: mergeMasts,
+  3: addHullEnds,
 };
 
 export function migrate(

@@ -4,7 +4,14 @@ import {
   HISTORY_LIMIT,
   useShipBuilderStore,
 } from "../store";
-import type { GridAnchor } from "../../model/types";
+import { attachPointsOf } from "../../model/attach";
+import { previewHullSize, validateShip } from "../../model/placement";
+import {
+  BOW_IDS,
+  HULL_ID,
+  STERN_IDS,
+  type GridAnchor,
+} from "../../model/types";
 import {
   attachPart,
   gridPart,
@@ -268,7 +275,12 @@ describe("hull length", () => {
 describe("beam", () => {
   it("widens and narrows immediately when nothing is lost, within 3-7", () => {
     store().changeBeam(+1);
-    expect(store().ship.hull).toEqual({ lengthSegments: 8, beam: 5 });
+    expect(store().ship.hull).toEqual({
+      lengthSegments: 8,
+      beam: 5,
+      bow: "straight",
+      stern: "counter",
+    });
     for (let i = 0; i < 10; i++) store().changeBeam(+1);
     expect(store().ship.hull.beam).toBe(7);
     for (let i = 0; i < 10; i++) store().changeBeam(-1);
@@ -291,7 +303,12 @@ describe("beam", () => {
       ids: ["port"],
     });
     store().confirmRemoval();
-    expect(store().ship.hull).toEqual({ lengthSegments: 6, beam: 3 });
+    expect(store().ship.hull).toEqual({
+      lengthSegments: 6,
+      beam: 3,
+      bow: "straight",
+      stern: "counter",
+    });
     expect(store().ship.parts).toHaveLength(0);
     store().undo();
     expect(store().ship.hull.beam).toBe(4);
@@ -322,7 +339,92 @@ describe("beam", () => {
   it("keeps the beam when the hull length changes", () => {
     store().changeBeam(+1);
     store().changeHullLength(-1);
-    expect(store().ship.hull).toEqual({ lengthSegments: 7, beam: 5 });
+    expect(store().ship.hull).toEqual({
+      lengthSegments: 7,
+      beam: 5,
+      bow: "straight",
+      stern: "counter",
+    });
+  });
+});
+
+describe("hull ends", () => {
+  const withParts = () =>
+    testShip([
+      gridPart("a", "deck-1x1", 0, 2, 1),
+      gridPart("b", "deck-1x1", 0, 3, 1),
+      attachPart("f", "funnel", "a", "funnel"),
+      attachPart("mf", "mast", HULL_ID, "mast-fore"),
+      attachPart("ma", "mast", HULL_ID, "mast-aft"),
+      attachPart("p0", "propeller", HULL_ID, "prop:0"),
+    ]);
+
+  it("changes the bow and stern without touching the parts", () => {
+    const ship = withParts();
+    act(() => useShipBuilderStore.setState({ ship }));
+    store().setBow("clipper");
+    store().setStern("transom");
+    expect(store().ship.hull).toMatchObject({
+      bow: "clipper",
+      stern: "transom",
+    });
+    expect(store().ship.parts).toEqual(ship.parts);
+    expect(store().pendingRemoval).toBeNull();
+  });
+
+  it("keeps mounts on the hull's ends attached, however long the shapes", () => {
+    act(() => useShipBuilderStore.setState({ ship: withParts() }));
+    for (const bow of BOW_IDS) {
+      for (const stern of STERN_IDS) {
+        store().setBow(bow);
+        store().setStern(stern);
+        expect(store().ship.parts.map((p) => p.id)).toEqual(
+          withParts().parts.map((p) => p.id)
+        );
+        expect(validateShip(store().ship)).toEqual({ ok: true });
+        expect(previewHullSize(store().ship, {})).toEqual([]);
+      }
+    }
+  });
+
+  it("moves the hull's mast points with the shape", () => {
+    const mastX = () =>
+      attachPointsOf(store().ship, HULL_ID).find((p) => p.id === "mast-fore")
+        ?.position.x;
+    expect(mastX()).toBe(-1);
+    store().setBow("clipper");
+    expect(mastX()).toBe(-1.5);
+  });
+
+  it("undoes and redoes like other ship edits", () => {
+    store().setBow("bulbous");
+    store().setStern("cruiser");
+    expect(store().past).toHaveLength(2);
+    store().undo();
+    expect(store().ship.hull).toMatchObject({
+      bow: "bulbous",
+      stern: "counter",
+    });
+    store().undo();
+    expect(store().ship.hull.bow).toBe("straight");
+    store().redo();
+    expect(store().ship.hull.bow).toBe("bulbous");
+  });
+
+  it("ignores picking the shape already in use", () => {
+    store().setBow("straight");
+    store().setStern("counter");
+    expect(store().past).toHaveLength(0);
+  });
+
+  it("leaves the active tool alone", () => {
+    store().selectTool("funnel");
+    store().setBow("icebreaker");
+    expect(store().tool).toEqual({
+      kind: "place",
+      type: "funnel",
+      rotation: 0,
+    });
   });
 });
 

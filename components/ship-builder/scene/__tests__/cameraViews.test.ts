@@ -7,7 +7,7 @@ import {
   MIN_SEGMENTS,
   WING_REACH,
 } from "@/lib/ship-builder/model/grid";
-import { PROW_LENGTH } from "@/lib/ship-builder/model/attach";
+const PROW_LENGTH = 2;
 import { emptyShip } from "@/lib/ship-builder/model/placement";
 import type { CameraView } from "@/lib/ship-builder/state/store";
 import {
@@ -262,6 +262,11 @@ describe("three-quarter framing", () => {
 });
 
 describe("panBounds", () => {
+  it("grows with the longest of the bow and stern", () => {
+    expect(panBounds(32, 4, "side", 3).x[1]).toBe(16 + 3 + PAN_MARGIN);
+    expect(panBounds(32, 4, "side", 0.6).x[1]).toBe(16 + 0.6 + PAN_MARGIN);
+  });
+
   it("covers the hull, prow and wings plus a margin", () => {
     const bounds = panBounds(32, 4);
     expect(bounds.x).toEqual([

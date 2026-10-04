@@ -629,7 +629,12 @@ describe("hull size", () => {
       "lone",
     ]);
     const narrowed = setHullSize(ship, { beam: 3 });
-    expect(narrowed.hull).toEqual({ lengthSegments: 8, beam: 3 });
+    expect(narrowed.hull).toEqual({
+      lengthSegments: 8,
+      beam: 3,
+      bow: "straight",
+      stern: "counter",
+    });
     expect(narrowed.parts.map((p) => p.id)).toEqual(["stbd"]);
     expect(validateShip(narrowed)).toEqual(OK);
   });
@@ -671,7 +676,12 @@ describe("hull size", () => {
   it("changes length and beam together", () => {
     const ship = testShip([gridPart("aft", "deck-1x1", 0, 20, 0)]);
     const resized = setHullSize(ship, { lengthSegments: 6, beam: 6 });
-    expect(resized.hull).toEqual({ lengthSegments: 6, beam: 6 });
+    expect(resized.hull).toEqual({
+      lengthSegments: 6,
+      beam: 6,
+      bow: "straight",
+      stern: "counter",
+    });
     expect(resized.parts).toEqual([]);
     expect(setHullSize(ship, {}).hull).toEqual(ship.hull);
   });
@@ -777,8 +787,13 @@ describe("validateShip", () => {
   });
 
   it("starts an empty ship 4 cells wide", () => {
-    expect(emptyShip().hull).toEqual({ lengthSegments: 8, beam: 4 });
-    expect(emptyShip().v).toBe(3);
+    expect(emptyShip().hull).toEqual({
+      lengthSegments: 8,
+      beam: 4,
+      bow: "straight",
+      stern: "counter",
+    });
+    expect(emptyShip().v).toBe(4);
   });
 
   it("rejects a beam outside 3-7 cells or not a whole number", () => {

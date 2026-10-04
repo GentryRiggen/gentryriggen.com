@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, type ComponentRef } from "react";
 import { MOUSE, TOUCH } from "three";
 import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
@@ -34,6 +35,9 @@ export default function CameraRig() {
   const lengthSegments = useShipBuilderStore((s) => s.ship.hull.lengthSegments);
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => shipBeam(s.ship));
+  const endLength = useShipBuilderStore((s) =>
+    Math.max(bowLength(s.ship.hull.bow), sternLength(s.ship.hull.stern))
+  );
   const view = camera.view;
   // The previous request, updated on every run so that repeated single-step
   // length edits never add up to a reframe.
@@ -79,7 +83,7 @@ export default function CameraRig() {
     const { target, object } = orbit;
     const [x, y, z] = clampTarget(
       [target.x, target.y, target.z],
-      panBounds(lengthCells, beam, view)
+      panBounds(lengthCells, beam, view, endLength)
     );
     const dx = x - target.x;
     const dy = y - target.y;
@@ -91,7 +95,7 @@ export default function CameraRig() {
       object.position.y + dy,
       object.position.z + dz
     );
-  }, [lengthCells, beam, view]);
+  }, [lengthCells, beam, view, endLength]);
 
   // A shorter or narrower hull shrinks the box; pull the target back into it.
   useEffect(handleChange, [handleChange]);

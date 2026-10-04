@@ -30,7 +30,12 @@ export function testShip(
   lengthSegments = 8,
   beam = 4
 ): Ship {
-  return { v: 3, name: "Test", hull: { lengthSegments, beam }, parts };
+  return {
+    v: 4,
+    name: "Test",
+    hull: { lengthSegments, beam, bow: "straight", stern: "counter" },
+    parts,
+  };
 }
 
 const LONE_SURROGATE =

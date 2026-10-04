@@ -4,7 +4,12 @@ import {
   coverageLevel,
   TITANIC_REFERENCE,
 } from "../stats";
-import { HULL_ID, type PlacedPart } from "../types";
+import {
+  HULL_ID,
+  type BowShape,
+  type PlacedPart,
+  type SternShape,
+} from "../types";
 import { validateShip } from "../placement";
 import { attachPart, gridPart, testShip } from "../../testing";
 
@@ -170,6 +175,60 @@ describe("computeSpeed", () => {
   it("counts only the power the propellers can use", () => {
     expect(computeSpeed(4, 1, 8, 0)).toBe(computeSpeed(2, 1, 8, 0));
     expect(computeSpeed(4, 1, 8, 0)).toBeLessThan(computeSpeed(4, 2, 8, 0));
+  });
+});
+
+describe("hull end speed modifiers", () => {
+  const movingShip = (bow: BowShape, stern: SternShape) => {
+    const parts = [0, 1, 2, 3].flatMap((i) => [
+      gridPart(`d${i}`, "deck-1x1", 0, i * 3, 1),
+      attachPart(`f${i}`, "funnel", `d${i}`, "funnel"),
+    ]);
+    parts.push(
+      attachPart("p0", "propeller", HULL_ID, "prop:0"),
+      attachPart("p1", "propeller", HULL_ID, "prop:1")
+    );
+    const ship = testShip(parts, 12);
+    return { ...ship, hull: { ...ship.hull, bow, stern } };
+  };
+  const speed = (bow: BowShape, stern: SternShape) =>
+    computeStats(movingShip(bow, stern)).topSpeedKnots;
+
+  it("adds the bulbous, cruiser and icebreaker modifiers", () => {
+    // The default hull makes 19.346 before rounding.
+    expect(speed("straight", "counter")).toBe(19.3);
+    expect(speed("bulbous", "counter")).toBe(20.3);
+    expect(speed("straight", "cruiser")).toBe(19.8);
+    expect(speed("icebreaker", "counter")).toBe(17.8);
+    expect(speed("bulbous", "cruiser")).toBe(20.8);
+  });
+
+  it("leaves the other shapes cosmetic", () => {
+    for (const bow of ["clipper"] as const) {
+      expect(speed(bow, "counter")).toBe(19.3);
+    }
+    for (const stern of ["transom", "canoe"] as const) {
+      expect(speed("straight", stern)).toBe(19.3);
+    }
+  });
+
+  it("applies the modifier before the clamp", () => {
+    // 14 + 8*1.5 + 20*0.25 = 31: clamps to 30 even with the icebreaker's -1.5.
+    expect(computeSpeed(8, 4, 20, 0, -1.5)).toBe(29.5);
+    expect(computeSpeed(8, 4, 20, 0, 1)).toBe(30);
+    // The floor holds against a penalty too.
+    expect(computeSpeed(1, 1, 4, 200000, -1.5)).toBe(8);
+  });
+
+  it("never gives a ship that can't move any speed", () => {
+    expect(computeSpeed(0, 3, 12, 0, 1)).toBe(0);
+    expect(computeSpeed(2, 0, 12, 0, 1)).toBe(0);
+    const still = testShip();
+    const bulbous = {
+      ...still,
+      hull: { ...still.hull, bow: "bulbous" as const },
+    };
+    expect(computeStats(bulbous).topSpeedKnots).toBe(0);
   });
 });
 

@@ -46,6 +46,22 @@ describe("autosave", () => {
     expect(listShips().map((s) => s.ship)).toEqual([ship]);
   });
 
+  it("loads a v3 autosave and My Ships entry with the default ends", () => {
+    const { bow, stern, ...hull } = ship.hull;
+    expect([bow, stern]).toEqual(["straight", "counter"]);
+    const v3 = { ...ship, v: 3, hull };
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: v3, savedId: "old" })
+    );
+    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v3 }])
+    );
+    expect(listShips().map((s) => s.ship)).toEqual([ship]);
+  });
+
   it("loads a v2 autosave and My Ships entry with old mast types", () => {
     const v2 = {
       ...ship,

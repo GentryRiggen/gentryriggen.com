@@ -9,6 +9,7 @@ import {
   WING_REACH,
   type Occupancy,
 } from "./grid";
+import { bowLength, sternLength } from "./hullEnds";
 import {
   HULL_ID,
   type AttachAnchor,
@@ -20,9 +21,6 @@ import {
   type Side,
 } from "./types";
 
-/** Prow extends forward of x = 0; stern extends aft of the last cell. */
-export const PROW_LENGTH = 2;
-export const STERN_LENGTH = 1.5;
 const DAVIT_HEIGHT = 0.8;
 const DAVIT_REACH = 0.6;
 
@@ -62,12 +60,16 @@ function hullPoints(ship: Ship): AttachPoint[] {
     {
       id: "mast-fore",
       type: "mast-mount",
-      position: { x: -PROW_LENGTH / 2, y: 0, z: centerline },
+      position: { x: -bowLength(ship.hull.bow) / 2, y: 0, z: centerline },
     },
     {
       id: "mast-aft",
       type: "mast-mount",
-      position: { x: length + STERN_LENGTH / 2, y: 0, z: centerline },
+      position: {
+        x: length + sternLength(ship.hull.stern) / 2,
+        y: 0,
+        z: centerline,
+      },
     },
     ...propellers,
   ];

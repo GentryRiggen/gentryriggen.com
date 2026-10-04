@@ -1,5 +1,6 @@
 import { resolveAttachPoint } from "./attach";
 import { getPartDef } from "./catalog";
+import { hullSpeedModifier } from "./hullEnds";
 import {
   beamOf,
   buildOccupancy,
@@ -79,7 +80,9 @@ export function computeSpeed(
   power: number,
   propellers: number,
   segments: number,
-  grossTonnage: number
+  grossTonnage: number,
+  /** Knots from the hull's bow and stern, applied before the clamp. */
+  hullModifier = 0
 ): number {
   if (power === 0 || propellers === 0) return 0;
   const usable = Math.min(power, propellers * SPEED.powerPerProp);
@@ -87,7 +90,8 @@ export function computeSpeed(
     SPEED.base +
     usable * SPEED.perPower +
     segments * SPEED.perSegment -
-    (grossTonnage / 10000) * SPEED.lossPer10kTons;
+    (grossTonnage / 10000) * SPEED.lossPer10kTons +
+    hullModifier;
   const clamped = Math.min(SPEED.max, Math.max(SPEED.min, raw));
   return Math.round(clamped * 10) / 10;
 }
@@ -151,7 +155,8 @@ export function computeStats(ship: Ship): Stats {
     power,
     propellers,
     ship.hull.lengthSegments,
-    grossTonnage
+    grossTonnage,
+    hullSpeedModifier(ship.hull.bow, ship.hull.stern)
   );
   const stabilityRatio = moment / mass / beam;
   const stability = classifyStability(stabilityRatio);

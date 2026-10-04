@@ -72,7 +72,12 @@ export function emptyShip(
   lengthSegments = DEFAULT_SEGMENTS,
   beam = DEFAULT_BEAM
 ): Ship {
-  return { v: 3, name, hull: { lengthSegments, beam }, parts: [] };
+  return {
+    v: 4,
+    name,
+    hull: { lengthSegments, beam, bow: "straight", stern: "counter" },
+    parts: [],
+  };
 }
 
 /** Whether an attach part (funnel or mast) claims the top of the cell below. */

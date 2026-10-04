@@ -15,7 +15,14 @@ import {
   type PartCandidate,
   type RuleResult,
 } from "../model/placement";
-import type { Anchor, PartType, Rotation, Ship } from "../model/types";
+import type {
+  Anchor,
+  BowShape,
+  PartType,
+  Rotation,
+  Ship,
+  SternShape,
+} from "../model/types";
 
 export const HISTORY_LIMIT = 100;
 
@@ -71,6 +78,9 @@ export interface ShipBuilderState extends ShipBuilderData {
   changeHullLength: (delta: number) => void;
   /** Widens or narrows the ship on the port side. */
   changeBeam: (delta: number) => void;
+  /** Reshapes the bow. Parts stay put: shapes only change the hull's ends. */
+  setBow: (bow: BowShape) => void;
+  setStern: (stern: SternShape) => void;
   rename: (name: string) => void;
   undo: () => void;
   redo: () => void;
@@ -264,6 +274,18 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     changeBeam(delta) {
       const { beam } = get().ship.hull;
       resizeHull({ beam: clamp(beam + delta, MIN_BEAM, MAX_BEAM) });
+    },
+
+    setBow(bow) {
+      const { ship } = get();
+      if (ship.hull.bow === bow) return;
+      commit(setHullSize(ship, { bow }));
+    },
+
+    setStern(stern) {
+      const { ship } = get();
+      if (ship.hull.stern === stern) return;
+      commit(setHullSize(ship, { stern }));
     },
 
     rename(name) {

@@ -69,14 +69,27 @@ export interface PlacedPart {
   rotation: Rotation;
 }
 
+export const BOW_IDS = [
+  "straight",
+  "clipper",
+  "bulbous",
+  "icebreaker",
+] as const;
+export type BowShape = (typeof BOW_IDS)[number];
+
+export const STERN_IDS = ["counter", "cruiser", "transom", "canoe"] as const;
+export type SternShape = (typeof STERN_IDS)[number];
+
 export interface Hull {
   lengthSegments: number;
   /** Width in cells, MIN_BEAM to MAX_BEAM. Inside-hull cells are 0 <= z < beam. */
   beam: number;
+  bow: BowShape;
+  stern: SternShape;
 }
 
 export interface Ship {
-  v: 3;
+  v: 4;
   name: string;
   hull: Hull;
   parts: PlacedPart[];

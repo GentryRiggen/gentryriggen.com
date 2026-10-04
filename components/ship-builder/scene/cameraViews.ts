@@ -1,4 +1,3 @@
-import { PROW_LENGTH } from "@/lib/ship-builder/model/attach";
 import { DEFAULT_BEAM, WING_REACH } from "@/lib/ship-builder/model/grid";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import type { CameraView } from "@/lib/ship-builder/state/store";
@@ -184,6 +183,9 @@ const PAN_HEIGHT: [number, number] = [0.5, 6];
 /** The below view's target may sink to look up at the hull from underwater. */
 const BELOW_PAN_HEIGHT: [number, number] = [-4, 6];
 
+/** The straight bow, the default shape's reach past the grid. */
+const DEFAULT_END_LENGTH = 2;
+
 export interface PanBounds {
   x: [number, number];
   y: [number, number];
@@ -194,9 +196,11 @@ export interface PanBounds {
 export function panBounds(
   lengthCells: number,
   beam: number,
-  view: CameraView = "side"
+  view: CameraView = "side",
+  /** The longer of the bow and stern, in cells past the grid. */
+  endLength: number = DEFAULT_END_LENGTH
 ): PanBounds {
-  const halfX = lengthCells / 2 + PROW_LENGTH + PAN_MARGIN;
+  const halfX = lengthCells / 2 + endLength + PAN_MARGIN;
   const halfZ = beam / 2 + WING_REACH + PAN_MARGIN;
   return {
     x: [-halfX, halfX],

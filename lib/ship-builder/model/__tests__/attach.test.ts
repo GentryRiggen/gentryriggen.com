@@ -1,3 +1,4 @@
+import type { BowShape, SternShape } from "../types";
 import {
   attachPointsOf,
   isPointTaken,
@@ -29,6 +30,17 @@ describe("attach points", () => {
     expect(short[0].position).toEqual({ x: -1, y: 0, z: 2 });
     expect(short[1].position).toEqual({ x: 12.75, y: 0, z: 2 });
     expect(hullMasts(8)[1].position.x).toBe(24.75);
+  });
+
+  it("moves the mast mounts with the bow and stern shape", () => {
+    const base = testShip([], 4);
+    const shaped = (bow: BowShape, stern: SternShape) =>
+      attachPointsOf({ ...base, hull: { ...base.hull, bow, stern } }, HULL_ID)
+        .filter((p) => p.type === "mast-mount")
+        .map((p) => p.position.x);
+    // Grid length is 12 cells; mounts sit halfway along each end.
+    expect(shaped("straight", "counter")).toEqual([-1, 12.75]);
+    expect(shaped("clipper", "transom")).toEqual([-1.5, 12.3]);
   });
 
   it("centres the mast mounts on the beam", () => {
