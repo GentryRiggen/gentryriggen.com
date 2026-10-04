@@ -167,7 +167,7 @@ export function computeStats(ship: Ship): Stats {
       message:
         stability === "Dangerous"
           ? "Dangerously top-heavy — she'll capsize"
-          : "Top-heavy — lower the superstructure or lengthen the hull",
+          : "Top-heavy — lower the superstructure, or widen or lengthen the hull",
     });
   }
 
