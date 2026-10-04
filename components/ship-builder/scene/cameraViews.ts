@@ -18,10 +18,6 @@ export function viewTarget(view: CameraView): CameraPosition {
 /** Keeps the orbit camera a little above the horizon (≈85.4°). */
 export const MAX_POLAR_ANGLE = Math.PI / 2 - 0.08;
 
-/**
- * The side preset's polar angle (≈83.1°). It must sit inside MAX_POLAR_ANGLE,
- * or OrbitControls clamps it and the preset lands somewhere else.
- */
 /** The below view may orbit nearly to straight down, under the water. */
 const BELOW_MAX_POLAR_ANGLE = Math.PI - 0.1;
 
@@ -29,6 +25,10 @@ export function maxPolarAngleFor(view: CameraView): number {
   return view === "below" ? BELOW_MAX_POLAR_ANGLE : MAX_POLAR_ANGLE;
 }
 
+/**
+ * The side preset's polar angle (≈83.1°). It must sit inside MAX_POLAR_ANGLE,
+ * or OrbitControls clamps it and the preset lands somewhere else.
+ */
 const SIDE_POLAR_ANGLE = Math.PI / 2 - 0.12;
 
 /** Extra camera distance per cell of beam beyond the default hull. */
