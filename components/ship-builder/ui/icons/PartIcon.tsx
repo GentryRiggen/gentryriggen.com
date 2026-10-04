@@ -105,6 +105,27 @@ function Mast({ direction }: MastProps) {
   );
 }
 
+interface BridgeIconProps {
+  /** Footprint width in cells; the drawn box grows 3.5 units per cell. */
+  width: number;
+}
+
+/** One bridge drawing for every size, centred in the 48-unit viewBox. */
+function BridgeIcon({ width }: BridgeIconProps) {
+  const drawnWidth = 26 + 3.5 * (width - 3);
+  const depth = 7;
+  return (
+    <Box
+      x={(48 - depth - drawnWidth) / 2}
+      bottom={38}
+      width={drawnWidth}
+      height={14}
+      fill={PALETTE.superstructure}
+      band={{ fill: PALETTE.bridgeWindows, inset: 2 }}
+    />
+  );
+}
+
 const BLADE_ROTATIONS = [0, 120, 240] as const;
 
 const DRAWINGS: Record<PartType, () => ReactNode> = {
@@ -156,16 +177,11 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       band={{ fill: PALETTE.cabin.third }}
     />
   ),
-  bridge: () => (
-    <Box
-      x={3}
-      bottom={34}
-      width={34}
-      height={14}
-      fill={PALETTE.superstructure}
-      band={{ fill: PALETTE.bridgeWindows, inset: 2 }}
-    />
-  ),
+  "bridge-3": () => <BridgeIcon width={3} />,
+  bridge: () => <BridgeIcon width={4} />,
+  "bridge-5": () => <BridgeIcon width={5} />,
+  "bridge-6": () => <BridgeIcon width={6} />,
+  "bridge-7": () => <BridgeIcon width={7} />,
   funnel: () => (
     <g>
       <path d="M17 42 L19 14 H29 L31 42 Z" fill={PALETTE.funnel} />

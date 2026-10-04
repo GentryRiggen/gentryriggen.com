@@ -22,6 +22,17 @@ describe("PartIcon", () => {
     );
     expect(new Set(markup).size).toBe(PART_TYPES.length);
   });
+
+  it("draws wider bridges wider", () => {
+    const widths = (
+      ["bridge-3", "bridge", "bridge-5", "bridge-6", "bridge-7"] as const
+    ).map((type) => {
+      const { container } = render(<PartIcon type={type} />);
+      return Number(container.querySelector("rect")?.getAttribute("width"));
+    });
+    expect(widths).toEqual([...widths].sort((a, b) => a - b));
+    expect(new Set(widths).size).toBe(5);
+  });
 });
 
 describe("warningIcons", () => {

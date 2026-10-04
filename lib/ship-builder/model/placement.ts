@@ -181,7 +181,8 @@ function canPlaceGrid(
     if (cell.level === 0) continue;
     const below = occupancy.get(cellKey({ ...cell, level: cell.level - 1 }));
     if (!below) continue;
-    if (below.type === "bridge") {
+    const belowDef = getPartDef(below.type);
+    if (belowDef.placement === "grid" && belowDef.role === "bridge") {
       return fail("Can't build on top of the bridge");
     }
     if (isUnderFunnel(ship, cell, occupancy)) {

@@ -26,6 +26,21 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "prop-mount": "propeller spot under the stern",
 };
 
+/** The 4-wide bridge keeps the original `bridge` id so old saves still load. */
+function bridgeDef(type: PartType, width: number): PartDef {
+  return {
+    type,
+    category: "command",
+    name: `Bridge · ${width} wide`,
+    description: "Forward half, top of its stack",
+    placement: "grid",
+    role: "bridge",
+    footprint: { x: 1, z: width },
+    mass: 1,
+    height: 1,
+  };
+}
+
 export const CATALOG: Record<PartType, PartDef> = {
   "deck-1x1": {
     type: "deck-1x1",
@@ -85,17 +100,11 @@ export const CATALOG: Record<PartType, PartDef> = {
     height: 1,
     passengers: { cabinClass: "third", count: 120 },
   },
-  bridge: {
-    type: "bridge",
-    category: "command",
-    name: "Bridge",
-    description: "Full beam · forward half, top of its stack",
-    placement: "grid",
-    role: "bridge",
-    footprint: { x: 1, z: 4 },
-    mass: 1,
-    height: 1,
-  },
+  "bridge-3": bridgeDef("bridge-3", 3),
+  bridge: bridgeDef("bridge", 4),
+  "bridge-5": bridgeDef("bridge-5", 5),
+  "bridge-6": bridgeDef("bridge-6", 6),
+  "bridge-7": bridgeDef("bridge-7", 7),
   funnel: {
     type: "funnel",
     category: "funnels",

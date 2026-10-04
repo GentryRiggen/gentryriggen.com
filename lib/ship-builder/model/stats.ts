@@ -133,7 +133,7 @@ export function computeStats(ship: Ship): Stats {
       power += def.power;
     }
     if (part.type === "propeller") propellers += 1;
-    if (part.type === "bridge") bridges += 1;
+    if (def.placement === "grid" && def.role === "bridge") bridges += 1;
 
     const partMass = def.placement === "grid" ? def.mass * cells : def.mass;
     mass += partMass;

@@ -136,6 +136,16 @@ describe("computeStats", () => {
     ]);
   });
 
+  it.each(["bridge-3", "bridge", "bridge-5", "bridge-6", "bridge-7"] as const)(
+    "counts %s as a bridge for the warning",
+    (type) => {
+      const stats = computeStats(
+        testShip([gridPart("br", type, 0, 1, 0)], 8, 7)
+      );
+      expect(stats.warnings.map((w) => w.code)).not.toContain("no-bridge");
+    }
+  );
+
   it("warns when top-heavy", () => {
     const len = 12;
     const parts = [0, 1, 2, 3].flatMap((level) => fillLevel(level, len));

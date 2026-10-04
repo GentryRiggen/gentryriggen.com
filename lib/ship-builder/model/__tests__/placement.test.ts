@@ -13,6 +13,8 @@ import {
   validateShip,
   type PartCandidate,
 } from "../placement";
+import { getPartDef } from "../catalog";
+import { WING_REACH } from "../grid";
 import { HULL_ID, type PartType, type Rotation } from "../types";
 import { parseShip } from "../../persist/schema";
 import {
@@ -263,6 +265,48 @@ describe("canPlace — side support", () => {
       3
     );
     expect(canPlace(raised, gridCandidate("bridge", 1, 1, 0))).toEqual(OK);
+  });
+
+  it.each([
+    ["bridge-3", 3],
+    ["bridge", 4],
+    ["bridge-5", 5],
+    ["bridge-6", 6],
+    ["bridge-7", 7],
+  ] as const)("places %s (%i wide) on a wide hull", (type, width) => {
+    expect(getPartDef(type)).toMatchObject({
+      role: "bridge",
+      footprint: { x: 1, z: width },
+    });
+    const ship = testShip([], 8, 7);
+    expect(canPlace(ship, gridCandidate(type, 0, 1, 0))).toEqual(OK);
+  });
+
+  it("fits a 7-wide bridge on a 3-wide hull using both wings", () => {
+    const ship = testShip([], 8, 3);
+    expect(
+      canPlace(ship, gridCandidate("bridge-7", 0, 1, -WING_REACH))
+    ).toEqual(OK);
+    expect(
+      canPlace(ship, gridCandidate("bridge-7", 0, 1, -WING_REACH - 1))
+    ).not.toEqual(OK);
+    expect(canPlace(ship, gridCandidate("bridge-7", 0, 1, 0))).not.toEqual(OK);
+  });
+
+  it("applies the bridge rules to every bridge size", () => {
+    const forward = testShip([], 8, 7);
+    expect(canPlace(forward, gridCandidate("bridge-6", 0, 12, 0))).toEqual(
+      fail("The bridge must be in the forward half")
+    );
+    const withBridge = testShip([gridPart("br", "bridge-5", 0, 1, 0)], 8, 7);
+    expect(canPlace(withBridge, gridCandidate("deck-1x1", 1, 1, 2))).toEqual(
+      fail("Can't build on top of the bridge")
+    );
+  });
+
+  it("still validates an old ship saved with the 4-wide bridge", () => {
+    const old = testShip([gridPart("br", "bridge", 0, 1, 0)], 8, 4);
+    expect(validateShip(old)).toEqual(OK);
   });
 
   it("refuses to build outboard of a davit in the same row", () => {
