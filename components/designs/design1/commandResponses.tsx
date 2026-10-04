@@ -36,6 +36,7 @@ export const BOOT_COMMANDS = [
   "cat hobbies.txt",
   "ls -la skills/",
   "cat links.txt",
+  "cat ships.txt",
 ];
 
 // ---------------------------------------------------------------------------

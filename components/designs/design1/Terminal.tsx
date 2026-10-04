@@ -13,6 +13,9 @@ const INITIAL_COMMAND_DELAY = 600;
 /** Delay between each subsequent command */
 const INTER_COMMAND_DELAY = 400;
 
+/** Number of scripted boot commands; the prompt appears after the last one */
+const BOOT_COMMAND_COUNT = 6;
+
 interface TerminalProps {
   onKill?: () => void;
   onMinimize?: () => void;
@@ -57,9 +60,9 @@ export default function Terminal({
   const advanceCommand = useCallback(() => {
     setVisibleCommands((prev) => {
       const next = prev + 1;
-      // Boot sequence has 5 commands (indices 0-4). When the 5th completes,
-      // mark boot as done so the interactive prompt appears.
-      if (next >= 5) {
+      // When the last boot command completes, mark boot as done so the
+      // interactive prompt appears.
+      if (next >= BOOT_COMMAND_COUNT) {
         // Use a microtask to avoid setting state during render
         queueMicrotask(() => setIsBootComplete(true));
       }
@@ -225,6 +228,23 @@ export default function Terminal({
               </div>
             ))}
           </div>
+        </CommandBlock>
+      )}
+
+      {/* Command 6: cat ships.txt */}
+      {showBootContent && visibleCommands >= 5 && (
+        <CommandBlock
+          command="cat ships.txt"
+          startDelay={INTER_COMMAND_DELAY}
+          onComplete={advanceCommand}
+        >
+          <p className="leading-relaxed">
+            ⚓ New: a ship-building game. Type{" "}
+            <span className="text-green-600 dark:text-green-300">
+              &apos;ships&apos;
+            </span>{" "}
+            to set sail.
+          </p>
         </CommandBlock>
       )}
 
