@@ -23,6 +23,24 @@
         ]
       },
       {
+        "source": "/ship-builder",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/ship-builder.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|css|woff|woff2|ttf|eot)",
         "headers": [
           {
