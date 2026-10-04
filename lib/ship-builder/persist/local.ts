@@ -5,6 +5,8 @@ import { parseShip } from "./schema";
 
 export const AUTOSAVE_KEY = "ship-builder:autosave";
 export const SHIPS_KEY = "ship-builder:ships";
+/** Holds a non-array SHIPS_KEY value (e.g. a newer format) we overwrote. */
+export const SHIPS_BACKUP_KEY = "ship-builder:ships:backup";
 
 export interface SavedShip {
   id: string;
@@ -30,17 +32,19 @@ function storage(): Storage | null {
  * `ok: false` only when storage itself throws on read, so callers can tell
  * "unreadable" (don't overwrite) apart from "absent or corrupt" (null value).
  */
-function readStored(key: string): { ok: true; value: unknown } | { ok: false } {
-  let text: string | null | undefined;
+function readStored(
+  key: string
+): { ok: true; value: unknown; text: string | null } | { ok: false } {
+  let text: string | null;
   try {
-    text = storage()?.getItem(key);
+    text = storage()?.getItem(key) ?? null;
   } catch {
     return { ok: false };
   }
   try {
-    return { ok: true, value: text ? JSON.parse(text) : null };
+    return { ok: true, value: text ? JSON.parse(text) : null, text };
   } catch {
-    return { ok: true, value: null };
+    return { ok: true, value: null, text };
   }
 }
 
@@ -143,8 +147,28 @@ export function saveShip(
 function updateShips(update: (entries: unknown[]) => unknown[]): boolean {
   const stored = readStored(SHIPS_KEY);
   if (!stored.ok) return false;
-  const entries = Array.isArray(stored.value) ? stored.value : [];
-  return writeJson(SHIPS_KEY, update(entries));
+  if (Array.isArray(stored.value)) {
+    return writeJson(SHIPS_KEY, update(stored.value));
+  }
+  // Valid JSON that isn't an array is likely a newer format: keep a copy
+  // before replacing it. Corrupt text has nothing worth keeping.
+  if (stored.value !== null && !backupOnce(SHIPS_BACKUP_KEY, stored.text)) {
+    return false;
+  }
+  return writeJson(SHIPS_KEY, update([]));
+}
+
+/** Writes `text` to `key` unless it already holds something. */
+function backupOnce(key: string, text: string | null): boolean {
+  const store = storage();
+  if (!store || text === null) return false;
+  try {
+    if (store.getItem(key) !== null) return true;
+    store.setItem(key, text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function deleteShip(id: string): boolean {

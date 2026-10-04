@@ -6,6 +6,7 @@ import {
   renameShip,
   saveAutosave,
   saveShip,
+  SHIPS_BACKUP_KEY,
   SHIPS_KEY,
 } from "../local";
 import { gridPart, testShip } from "../../testing";
@@ -161,6 +162,45 @@ describe("My Ships", () => {
       expect(rawEntries().map((e) => (e as { id: string }).id)).toContain(
         "inf"
       );
+    });
+  });
+
+  describe("a stored list that isn't an array", () => {
+    const wrapper = JSON.stringify({ format: 2, ships: [{ id: "w" }] });
+
+    it("backs up the raw text before overwriting it", () => {
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null)).not.toBeNull();
+      expect(localStorage.getItem(SHIPS_BACKUP_KEY)).toBe(wrapper);
+      expect(listShips()).toHaveLength(1);
+    });
+
+    it("does not clobber an existing backup", () => {
+      localStorage.setItem(SHIPS_BACKUP_KEY, "earlier");
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null)).not.toBeNull();
+      expect(localStorage.getItem(SHIPS_BACKUP_KEY)).toBe("earlier");
+    });
+
+    it("does not back up corrupt text", () => {
+      localStorage.setItem(SHIPS_KEY, "{not json");
+      expect(saveShip(ship, null)).not.toBeNull();
+      expect(localStorage.getItem(SHIPS_BACKUP_KEY)).toBeNull();
+    });
+
+    it("refuses to overwrite when the backup can't be written", () => {
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      const realSetItem = Storage.prototype.setItem;
+      jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        key,
+        value
+      ) {
+        if (key === SHIPS_BACKUP_KEY) throw new Error("QuotaExceededError");
+        realSetItem.call(this, key, value);
+      });
+      expect(saveShip(ship, null)).toBeNull();
+      expect(localStorage.getItem(SHIPS_KEY)).toBe(wrapper);
     });
   });
 
