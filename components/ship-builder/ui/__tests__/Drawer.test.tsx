@@ -94,6 +94,24 @@ describe("Drawer", () => {
       ).toBeInTheDocument();
     });
 
+    it("moves focus to the counterpart button after collapsing and expanding", async () => {
+      const user = userEvent.setup();
+      renderCollapsible();
+      await user.click(screen.getByRole("button", { name: "Collapse Parts" }));
+      expect(
+        screen.getByRole("button", { name: "Expand Parts" })
+      ).toHaveFocus();
+      await user.click(screen.getByRole("button", { name: "Expand Parts" }));
+      expect(
+        screen.getByRole("button", { name: "Collapse Parts" })
+      ).toHaveFocus();
+    });
+
+    it("does not steal focus on first render", () => {
+      renderCollapsible(true);
+      expect(document.body).toHaveFocus();
+    });
+
     it("renders the collapsed rail only at lg", () => {
       renderCollapsible(true);
       expect(screen.getByRole("button", { name: "Expand Parts" })).toHaveClass(

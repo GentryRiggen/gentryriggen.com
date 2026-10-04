@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { panelClass } from "./styles";
 
 interface DrawerProps {
@@ -32,6 +32,20 @@ export default function Drawer({
   const left = side === "left";
   const closed = left ? "-translate-x-full" : "translate-x-full";
   const isRail = collapsed && onCollapsedChange !== undefined;
+  const collapseRef = useRef<HTMLButtonElement>(null);
+  const expandRef = useRef<HTMLButtonElement>(null);
+  const hasMounted = useRef(false);
+
+  // Collapsing hides the focused button and expanding unmounts the rail
+  // button, so hand focus to the button that replaces it. Skipped on mount so
+  // a page load doesn't pull focus.
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+    (isRail ? expandRef : collapseRef).current?.focus();
+  }, [isRail]);
 
   function handleClose() {
     onOpenChange(false);
@@ -63,6 +77,7 @@ export default function Drawer({
       >
         {isRail && (
           <button
+            ref={expandRef}
             type="button"
             aria-label={`Expand ${label}`}
             aria-expanded={false}
@@ -98,6 +113,7 @@ export default function Drawer({
               className={`hidden p-2 lg:flex ${left ? "justify-end" : "justify-start"}`}
             >
               <button
+                ref={collapseRef}
                 type="button"
                 aria-label={`Collapse ${label}`}
                 aria-expanded={true}
