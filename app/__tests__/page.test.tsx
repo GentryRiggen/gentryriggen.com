@@ -36,6 +36,13 @@ describe("Home Page", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a footer link to the ship builder", () => {
+    renderWithTheme(<Home />);
+    expect(
+      screen.getByRole("link", { name: "⚓ Ship Builder" })
+    ).toHaveAttribute("href", "/ship-builder");
+  });
+
   it("renders the theme toggle", () => {
     renderWithTheme(<Home />);
     expect(

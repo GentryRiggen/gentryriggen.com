@@ -27,6 +27,13 @@ test.describe("Home Page", () => {
     ).toBeVisible();
   });
 
+  test("should link to the ship builder from the footer", async ({ page }) => {
+    await page.goto("/");
+    const link = page.getByRole("link", { name: "⚓ Ship Builder" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/ship-builder");
+  });
+
   test("should be responsive on mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");

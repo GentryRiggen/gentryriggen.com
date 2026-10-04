@@ -139,8 +139,14 @@ export default function Home() {
               />
 
               {/* Footer / copyright */}
-              <footer className="py-4 sm:mt-8 text-center text-xs text-gray-400 dark:text-green-500/40 font-mono">
+              <footer className="py-4 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 text-center text-xs text-gray-400 dark:text-green-500/40 font-mono">
                 <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
+                <a
+                  href="/ship-builder"
+                  className="hover:text-green-600 dark:hover:text-green-400 underline-offset-2 hover:underline transition-colors"
+                >
+                  ⚓ Ship Builder
+                </a>
               </footer>
             </main>
           )}
