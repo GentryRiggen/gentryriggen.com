@@ -3,9 +3,17 @@ import {
   MAX_SEGMENTS,
   MIN_SEGMENTS,
 } from "@/lib/ship-builder/model/grid";
+import { PROW_LENGTH } from "@/lib/ship-builder/model/attach";
+import { emptyShip } from "@/lib/ship-builder/model/placement";
 import type { CameraView } from "@/lib/ship-builder/state/store";
 import {
   CAMERA_TARGET,
+  clampTarget,
+  DEFAULT_BEAM,
+  panBounds,
+  PAN_MARGIN,
+  PAN_WING_REACH,
+  shipBeam,
   MAX_POLAR_ANGLE,
   MAX_VIEW_DISTANCE,
   polarAngle,
@@ -104,5 +112,66 @@ describe("three-quarter framing", () => {
     const position = viewPosition("three-quarter", 36, 0.1);
     const [x, y, z] = position.map((value, i) => value - CAMERA_TARGET[i]);
     expect(Math.hypot(x, y, z)).toBeLessThanOrEqual(MAX_VIEW_DISTANCE);
+  });
+});
+
+describe("panBounds", () => {
+  it("covers the hull, prow and wings plus a margin", () => {
+    const bounds = panBounds(32, 4);
+    expect(bounds.x).toEqual([
+      -(16 + PROW_LENGTH + PAN_MARGIN),
+      16 + PROW_LENGTH + PAN_MARGIN,
+    ]);
+    expect(bounds.z).toEqual([
+      -(2 + PAN_WING_REACH + PAN_MARGIN),
+      2 + PAN_WING_REACH + PAN_MARGIN,
+    ]);
+    expect(bounds.y).toEqual([0.5, 6]);
+  });
+
+  it("grows with the beam", () => {
+    expect(panBounds(16, 7).z[1]).toBeGreaterThan(panBounds(16, 3).z[1]);
+  });
+
+  it("contains the default target for every hull length", () => {
+    for (const length of LENGTHS) {
+      expect(clampTarget(CAMERA_TARGET, panBounds(length, 4))).toEqual(
+        CAMERA_TARGET
+      );
+    }
+  });
+});
+
+describe("clampTarget", () => {
+  const bounds = panBounds(16, 4);
+
+  it("leaves a target inside the box alone", () => {
+    expect(clampTarget([1, 2, -1], bounds)).toEqual([1, 2, -1]);
+  });
+
+  it("pulls each axis back to the box", () => {
+    expect(clampTarget([1000, -50, -1000], bounds)).toEqual([
+      bounds.x[1],
+      bounds.y[0],
+      bounds.z[0],
+    ]);
+    expect(clampTarget([-1000, 50, 1000], bounds)).toEqual([
+      bounds.x[0],
+      bounds.y[1],
+      bounds.z[1],
+    ]);
+  });
+});
+
+describe("shipBeam", () => {
+  it("defaults to four cells until the model has a beam", () => {
+    expect(shipBeam(emptyShip())).toBe(DEFAULT_BEAM);
+    expect(DEFAULT_BEAM).toBe(4);
+  });
+
+  it("reads the hull beam when present", () => {
+    const ship = emptyShip();
+    const wide = { ...ship, hull: { ...ship.hull, beam: 6 } };
+    expect(shipBeam(wide)).toBe(6);
   });
 });

@@ -1,3 +1,5 @@
+import { PROW_LENGTH } from "@/lib/ship-builder/model/attach";
+import type { Ship } from "@/lib/ship-builder/model/types";
 import type { CameraView } from "@/lib/ship-builder/state/store";
 import { DECK_Y } from "./coords";
 
@@ -98,4 +100,53 @@ export function shouldFrame(
 ): boolean {
   if (!seen || seen.camera !== next.camera) return true;
   return shouldReframe(seen.lengthSegments, next.lengthSegments);
+}
+
+/** The hull width in cells before the model gains a beam. */
+export const DEFAULT_BEAM = 4;
+
+/**
+ * The ship's beam in cells. Ship.hull has no beam yet; this is the one place
+ * that reads it, so it tightens to `ship.hull.beam` once the model has it.
+ */
+export function shipBeam(ship: Ship): number {
+  return (ship.hull as { beam?: number }).beam ?? DEFAULT_BEAM;
+}
+
+/**
+ * How far blocks may reach past each hull edge, in cells. Mirrors the model's
+ * WING_REACH, which doesn't exist yet.
+ */
+export const PAN_WING_REACH = 2;
+
+/** Room to pan past the ship's outline, in world units. */
+export const PAN_MARGIN = 3;
+
+/**
+ * The target's height range: low enough to look along the waterline, and high
+ * enough that MAX_POLAR_ANGLE keeps the camera above the water.
+ */
+const PAN_HEIGHT: [number, number] = [0.5, 6];
+
+export interface PanBounds {
+  x: [number, number];
+  y: [number, number];
+  z: [number, number];
+}
+
+/** The box the orbit target may be panned within, centred on the ship. */
+export function panBounds(lengthCells: number, beam: number): PanBounds {
+  const halfX = lengthCells / 2 + PROW_LENGTH + PAN_MARGIN;
+  const halfZ = beam / 2 + PAN_WING_REACH + PAN_MARGIN;
+  return { x: [-halfX, halfX], y: PAN_HEIGHT, z: [-halfZ, halfZ] };
+}
+
+const clamp = (value: number, [min, max]: [number, number]) =>
+  Math.min(max, Math.max(min, value));
+
+export function clampTarget(
+  [x, y, z]: CameraPosition,
+  bounds: PanBounds
+): CameraPosition {
+  return [clamp(x, bounds.x), clamp(y, bounds.y), clamp(z, bounds.z)];
 }
