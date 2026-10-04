@@ -403,6 +403,7 @@ test.describe("Ship Builder", () => {
     const dialog = page.getByRole("dialog", { name: "New ship" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: /Cargo ship/ }).click();
+    await dialog.getByRole("button", { name: /Blank ship/ }).click();
     await expect(dialog).toHaveCount(0);
 
     const ship = await page.evaluate(
