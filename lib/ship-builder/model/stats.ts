@@ -15,8 +15,9 @@ export const HULL_DEPTH = 4;
 export const GRT_PER_UNIT = 63;
 export const SPEED = {
   base: 14,
-  perFunnel: 2.2,
-  maxFunnelsCounted: 6,
+  perPower: 1.5,
+  powerPerProp: 2,
+  maxPowerCounted: 8,
   perSegment: 0.25,
   lossPer10kTons: 1,
   min: 8,
@@ -37,7 +38,12 @@ export const TITANIC_REFERENCE = {
 export type CoverageLevel = "red" | "amber" | "green";
 export type Stability = "Stable" | "Top-heavy" | "Dangerous";
 export type WarningCode =
-  "lifeboats" | "no-bridge" | "no-funnels" | "top-heavy";
+  | "lifeboats"
+  | "no-bridge"
+  | "no-funnels"
+  | "no-propellers"
+  | "needs-propellers"
+  | "top-heavy";
 
 export interface StatWarning {
   code: WarningCode;
@@ -71,14 +77,20 @@ function partBaseY(ship: Ship, part: PlacedPart, occupancy: Occupancy): number {
 }
 
 export function computeSpeed(
-  funnels: number,
+  power: number,
+  propellers: number,
   segments: number,
   grossTonnage: number
 ): number {
-  if (funnels === 0) return 0;
+  if (power === 0 || propellers === 0) return 0;
+  const usable = Math.min(
+    power,
+    propellers * SPEED.powerPerProp,
+    SPEED.maxPowerCounted
+  );
   const raw =
     SPEED.base +
-    Math.min(funnels, SPEED.maxFunnelsCounted) * SPEED.perFunnel +
+    usable * SPEED.perPower +
     segments * SPEED.perSegment -
     (grossTonnage / 10000) * SPEED.lossPer10kTons;
   const clamped = Math.min(SPEED.max, Math.max(SPEED.min, raw));
@@ -100,6 +112,8 @@ export function computeStats(ship: Ship): Stats {
   let lifeboatSeats = 0;
   let stokers = 0;
   let funnels = 0;
+  let power = 0;
+  let propellers = 0;
   let bridges = 0;
   let blockCells = 0;
 
@@ -119,7 +133,11 @@ export function computeStats(ship: Ship): Stats {
       lifeboatSeats += def.seats;
     }
     if (def.stokers) stokers += def.stokers;
-    if (part.type === "funnel") funnels += 1;
+    if (def.power) {
+      funnels += 1;
+      power += def.power;
+    }
+    if (part.type === "propeller") propellers += 1;
     if (part.type === "bridge") bridges += 1;
 
     const partMass = def.placement === "grid" ? def.mass * cells : def.mass;
@@ -135,7 +153,8 @@ export function computeStats(ship: Ship): Stats {
     (length * beam * HULL_DEPTH + blockCells) * GRT_PER_UNIT
   );
   const topSpeedKnots = computeSpeed(
-    funnels,
+    power,
+    propellers,
     ship.hull.lengthSegments,
     grossTonnage
   );
@@ -159,6 +178,17 @@ export function computeStats(ship: Ship): Stats {
     warnings.push({
       code: "no-funnels",
       message: "No funnels — she isn't going anywhere",
+    });
+  }
+  if (funnels > 0 && propellers === 0) {
+    warnings.push({
+      code: "no-propellers",
+      message: "No propellers — she can't move",
+    });
+  } else if (propellers > 0 && power > propellers * SPEED.powerPerProp) {
+    warnings.push({
+      code: "needs-propellers",
+      message: "Not enough propellers for your funnels",
     });
   }
   if (stability !== "Stable") {

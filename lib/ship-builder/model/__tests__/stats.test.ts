@@ -4,7 +4,8 @@ import {
   coverageLevel,
   TITANIC_REFERENCE,
 } from "../stats";
-import type { PlacedPart } from "../types";
+import { HULL_ID, type PlacedPart } from "../types";
+import { validateShip } from "../placement";
 import { attachPart, gridPart, testShip } from "../../testing";
 
 function fillLevel(level: number, lengthCells: number, beam = 4): PlacedPart[] {
@@ -60,11 +61,15 @@ describe("computeStats", () => {
       gridPart(`d${i}`, "deck-1x1", 0, i * 3, 1),
       attachPart(`f${i}`, "funnel", `d${i}`, "funnel"),
     ]);
+    parts.push(
+      attachPart("p0", "propeller", HULL_ID, "prop:0"),
+      attachPart("p1", "propeller", HULL_ID, "prop:1")
+    );
     const stats = computeStats(testShip(parts, 12));
     expect(stats.crew).toBe(12 * 60 + 4 * 40);
     expect(stats.grossTonnage).toBe((576 + 4) * 63);
-    // 14 + 4*2.2 + 12*0.25 - 36540/10000 = 22.146
-    expect(stats.topSpeedKnots).toBe(22.1);
+    // power 4, 2 props use 4: 14 + 4*1.5 + 12*0.25 - 36540/10000 = 19.346
+    expect(stats.topSpeedKnots).toBe(19.3);
   });
 
   it("formats people counts with thousands separators in the warning", () => {
@@ -141,14 +146,20 @@ describe("computeStats", () => {
 
 describe("computeSpeed", () => {
   it("clamps to the sane range", () => {
-    // 14 + 6*2.2 + 12*0.25 = 30.2 before tonnage loss
-    expect(computeSpeed(6, 12, 0)).toBe(30);
-    // 14 + 2.2 + 4*0.25 - 20 = -2.8
-    expect(computeSpeed(1, 4, 200000)).toBe(8);
+    // 14 + 8*1.5 + 20*0.25 = 31 before tonnage loss
+    expect(computeSpeed(8, 4, 20, 0)).toBe(30);
+    // 14 + 1.5 + 4*0.25 - 20 = -3.5
+    expect(computeSpeed(1, 1, 4, 200000)).toBe(8);
   });
 
-  it("is 0 with no funnels", () => {
-    expect(computeSpeed(0, 12, 0)).toBe(0);
+  it("is 0 with no funnels or no propellers", () => {
+    expect(computeSpeed(0, 3, 12, 0)).toBe(0);
+    expect(computeSpeed(2, 0, 12, 0)).toBe(0);
+  });
+
+  it("counts only the power the propellers can use", () => {
+    expect(computeSpeed(4, 1, 8, 0)).toBe(computeSpeed(2, 1, 8, 0));
+    expect(computeSpeed(4, 1, 8, 0)).toBeLessThan(computeSpeed(4, 2, 8, 0));
   });
 });
 
@@ -170,5 +181,103 @@ describe("TITANIC_REFERENCE", () => {
       lifeboatSeats: 1178,
       peopleAboard: 2224,
     });
+  });
+});
+
+describe("propulsion", () => {
+  const deckAt = (id: string, x: number, z: number) =>
+    gridPart(id, "deck-1x1", 0, x, z);
+  const square = (id: string, x: number): PlacedPart[] => [
+    deckAt(`${id}a`, x, 1),
+    deckAt(`${id}b`, x + 1, 1),
+    deckAt(`${id}c`, x, 2),
+    deckAt(`${id}d`, x + 1, 2),
+  ];
+  const codes = (parts: PlacedPart[]) =>
+    computeStats(testShip(parts)).warnings.map((w) => w.code);
+
+  it("has no speed without propellers, and warns", () => {
+    const parts = [
+      ...square("s", 4),
+      attachPart("f", "funnel", "sa", "funnel"),
+    ];
+    const stats = computeStats(testShip(parts));
+    expect(stats.topSpeedKnots).toBe(0);
+    expect(codes(parts)).toContain("no-propellers");
+    expect(codes(parts)).not.toContain("no-funnels");
+  });
+
+  it("has no speed without funnels", () => {
+    const parts = [attachPart("p", "propeller", HULL_ID, "prop:0")];
+    expect(computeStats(testShip(parts)).topSpeedKnots).toBe(0);
+    expect(codes(parts)).toContain("no-funnels");
+    expect(codes(parts)).not.toContain("no-propellers");
+  });
+
+  it("warns when funnels out-power the propellers", () => {
+    const parts = [
+      ...square("s", 4),
+      attachPart("f", "funnel-large", "sa", "funnel-lg:4:1"),
+      deckAt("e", 7, 0),
+      attachPart("f2", "funnel", "e", "funnel"),
+      attachPart("p", "propeller", HULL_ID, "prop:0"),
+    ];
+    // power 3 > 1 propeller * 2
+    expect(codes(parts)).toContain("needs-propellers");
+    expect(codes(parts)).not.toContain("no-propellers");
+    const enough = [...parts, attachPart("p2", "propeller", HULL_ID, "prop:1")];
+    expect(codes(enough)).not.toContain("needs-propellers");
+  });
+
+  it("counts a large funnel as two power and 75 stokers", () => {
+    const parts = [
+      ...square("s", 4),
+      attachPart("f", "funnel-large", "sa", "funnel-lg:4:1"),
+      attachPart("p", "propeller", HULL_ID, "prop:0"),
+    ];
+    const stats = computeStats(testShip(parts));
+    expect(stats.crew).toBe(8 * 60 + 75);
+    expect(stats.topSpeedKnots).toBeGreaterThan(0);
+  });
+
+  it("counts a large lifeboat's 90 seats", () => {
+    const parts = [
+      gridPart("a2", "deck-1x1", 0, 2, 0),
+      gridPart("a3", "deck-1x1", 0, 3, 0),
+      gridPart("b2", "deck-1x1", 1, 2, 0),
+      gridPart("b3", "deck-1x1", 1, 3, 0),
+      attachPart("dv2", "davit", "b2", "davit:2:0"),
+      attachPart("dv3", "davit", "b3", "davit:3:0"),
+      attachPart("big", "lifeboat-large", "dv2", "big-boat"),
+    ];
+    const stats = computeStats(testShip(parts));
+    expect(stats.lifeboats).toBe(1);
+    expect(stats.lifeboatSeats).toBe(90);
+  });
+
+  it("puts a Titanic-like ship near 21 knots", () => {
+    // 20 segments, beam 4, a two-level superstructure, three large funnels
+    // on deck blocks and three propellers.
+    const parts: PlacedPart[] = [];
+    for (let level = 0; level <= 1; level++) {
+      for (let x = 6; x < 42; x++) {
+        for (let z = 0; z < 4; z++) {
+          parts.push(gridPart(`L${level}-${x}-${z}`, "deck-1x1", level, x, z));
+        }
+      }
+    }
+    for (const x of [10, 20, 30]) {
+      parts.push(
+        attachPart(`f${x}`, "funnel-large", `L1-${x}-0`, `funnel-lg:${x}:0`)
+      );
+    }
+    for (let i = 0; i < 3; i++) {
+      parts.push(attachPart(`p${i}`, "propeller", HULL_ID, `prop:${i}`));
+    }
+    const ship = testShip(parts, 20, 4);
+    expect(validateShip(ship)).toEqual({ ok: true });
+    const { topSpeedKnots } = computeStats(ship);
+    expect(topSpeedKnots).toBeGreaterThanOrEqual(19);
+    expect(topSpeedKnots).toBeLessThanOrEqual(23);
   });
 });
