@@ -80,3 +80,13 @@ claim `edge:<level>:<x>:<z>`).
 - `cargo-crane`: top-mount, a pedestal crane with a slowly turning jib.
 - `lifeboat-freefall`: hull point `freefall` at the stern (one), 40 seats,
   orange boat on a ramp angled down to the sea.
+
+## Templates (Phase 4)
+
+The New ship dialog offers, per type, "Blank" plus templates that load as
+ordinary editable ships (block-built approximations, not replicas):
+
+- liner: Titanic, Olympic, Britannic, Carpathia, Lusitania
+- cruise: Wonder of the Seas, a smaller classic cruise ship
+- navy: Arleigh Burke destroyer, Coast Guard cutter
+- cargo: Ever Given, a small feeder container ship
