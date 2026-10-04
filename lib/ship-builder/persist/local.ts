@@ -104,23 +104,33 @@ function parseShipList(raw: unknown): SavedShip[] {
 }
 
 function parseEntry(entry: unknown): SavedShip | null {
-  if (
-    !isRecord(entry) ||
-    typeof entry.id !== "string" ||
-    typeof entry.savedAt !== "number" ||
-    !Number.isFinite(entry.savedAt)
-  ) {
-    return null;
-  }
+  if (!isRecord(entry) || typeof entry.id !== "string") return null;
   const parsed = parseShip(entry.ship);
   if (!parsed.ok) return null;
   return {
     id: entry.id,
     // The validated ship name is length-checked; entry.name is not.
     name: parsed.ship.name,
-    savedAt: entry.savedAt,
+    savedAt: finiteSavedAt(entry.savedAt),
     ship: parsed.ship,
   };
+}
+
+/** A bad timestamp sorts the entry last rather than hiding a good ship. */
+function finiteSavedAt(savedAt: unknown): number {
+  return typeof savedAt === "number" && Number.isFinite(savedAt) ? savedAt : 0;
+}
+
+/**
+ * JSON can't hold Infinity (a huge literal like 1e400 parses to it), so
+ * write such timestamps back as 0 instead of letting them become null.
+ */
+function normaliseSavedAt(entry: unknown): unknown {
+  return isRecord(entry) &&
+    typeof entry.savedAt === "number" &&
+    !Number.isFinite(entry.savedAt)
+    ? { ...entry, savedAt: 0 }
+    : entry;
 }
 
 /** Stored entries this build can't read; hidden from the list. */
@@ -168,7 +178,7 @@ function updateShips(update: (entries: unknown[]) => unknown[]): boolean {
   const stored = readStored(SHIPS_KEY);
   if (!stored.ok) return false;
   if (Array.isArray(stored.value)) {
-    return writeJson(SHIPS_KEY, update(stored.value));
+    return writeJson(SHIPS_KEY, update(stored.value.map(normaliseSavedAt)));
   }
   // Valid JSON that isn't an array is likely a newer format: keep a copy
   // before replacing it. Corrupt text has nothing worth keeping.

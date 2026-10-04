@@ -205,7 +205,22 @@ describe("My Ships", () => {
       expect(setItem).not.toHaveBeenCalled();
     });
 
-    it("skips non-finite savedAt but keeps it in storage", () => {
+    it("lists non-finite or missing savedAt at the bottom", () => {
+      const saved = saveShip({ ...ship, name: "Valid" }, null, 1)!;
+      const shipJson = JSON.stringify(ship);
+      localStorage.setItem(
+        SHIPS_KEY,
+        `[{"id":"inf","name":"Inf","savedAt":1e400,"ship":${shipJson}},` +
+          `{"id":"none","name":"None","ship":${shipJson}},` +
+          `${JSON.stringify(rawEntries()[0])}]`
+      );
+      const listed = listShips();
+      expect(listed.map((s) => s.id)).toEqual([saved.id, "inf", "none"]);
+      expect(listed.slice(1).map((s) => s.savedAt)).toEqual([0, 0]);
+      expect(countUnreadableShips()).toBe(0);
+    });
+
+    it("normalises non-finite savedAt to 0 on rewrite", () => {
       const saved = saveShip({ ...ship, name: "Valid" }, null, 1)!;
       localStorage.setItem(
         SHIPS_KEY,
@@ -213,11 +228,11 @@ describe("My Ships", () => {
           ship
         )}},${JSON.stringify(rawEntries()[0])}]`
       );
-      expect(listShips().map((s) => s.id)).toEqual([saved.id]);
       expect(renameShip(saved.id, "Renamed")).toBe(true);
-      expect(rawEntries().map((e) => (e as { id: string }).id)).toContain(
-        "inf"
+      expect(rawEntries()).toContainEqual(
+        expect.objectContaining({ id: "inf", savedAt: 0 })
       );
+      expect(listShips().map((s) => s.id)).toEqual([saved.id, "inf"]);
     });
   });
 
