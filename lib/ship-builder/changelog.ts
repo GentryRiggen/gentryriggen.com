@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.6.0",
+    date: "2026-10-04",
+    title: "Iceberg!",
+    highlights: [
+      "New Below deck section in the Hull panel: tap between the hull's sections to add watertight walls, and tap again to make them taller",
+      "The Sea trial button now has two choices: Waves, or Iceberg. Pick Iceberg, then tap the hull where you want it to hit",
+      "Watch the water fill each room below deck and spill over walls that are too low, just like on the Titanic",
+      "She either stays afloat, or the card tells you how long she lasted and which walls to make taller",
+      "Titanic, Olympic and the other ready-made ships come with their walls. Try the Titanic, then try Britannic, who got taller walls afterwards",
+    ],
+  },
+  {
     version: "2.5.0",
     date: "2026-10-04",
     title: "Sea trials",
