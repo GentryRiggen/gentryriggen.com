@@ -214,12 +214,7 @@ function davitPoints(
       claims: [davitClaim(part.id)],
     },
   ];
-  const neighbour = ship.parts.find(
-    (other) =>
-      other.type === "davit" &&
-      other.anchor.kind === "attach" &&
-      isNextDavit(base, resolveAttachPoint(ship, other.anchor, occupancy))
-  );
+  const neighbour = nextDavit(ship, part.anchor, base, occupancy);
   if (neighbour) {
     points.push({
       id: "big-boat",
@@ -230,6 +225,36 @@ function davitPoints(
     });
   }
   return points;
+}
+
+/**
+ * The davit one cell aft of this one on the same edge, if any. Looks only at
+ * the neighbouring cell, so finding big-boat points stays linear in davits.
+ */
+function nextDavit(
+  ship: Ship,
+  anchor: AttachAnchor,
+  base: AttachPoint,
+  occupancy: Occupancy
+): PlacedPart | undefined {
+  const parent = ship.parts.find((p) => p.id === anchor.parentId);
+  if (!parent || parent.anchor.kind !== "grid") return undefined;
+  const [, x, z] = anchor.pointId.split(":").map(Number);
+  const block = occupancy.get(
+    cellKey({ level: parent.anchor.level, x: x + 1, z })
+  );
+  if (!block) return undefined;
+  const pointId = `davit:${x + 1}:${z}`;
+  const davit = ship.parts.find(
+    (p) =>
+      p.type === "davit" &&
+      p.anchor.kind === "attach" &&
+      p.anchor.parentId === block.id &&
+      p.anchor.pointId === pointId
+  );
+  if (!davit || davit.anchor.kind !== "attach") return undefined;
+  const point = resolveAttachPoint(ship, davit.anchor, occupancy);
+  return isNextDavit(base, point) ? davit : undefined;
 }
 
 /** Same side, level and edge, one cell further aft. */
