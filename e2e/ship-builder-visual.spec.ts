@@ -22,6 +22,8 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const FROZEN_SECONDS = 3;
+/** Sim seconds into a trial that catches a top-heavy ship rolling over. */
+const CAPSIZE_SECONDS = 1.8;
 /**
  * Fraction of canvas pixels allowed to differ. SwiftShader is stable from run
  * to run (measured 0 differing pixels), so this only absorbs rare edge
@@ -59,20 +61,27 @@ interface Look {
   /** Template as [category, name]; omitted keeps the blank starter ship. */
   template?: [category: string, name: string];
   below?: boolean;
+  /** Narrow the hull and stack decks, so the ship is top-heavy. */
+  towerOfDecks?: boolean;
+  /** Start a sea trial held at this many seconds (see testClock.ts). */
+  trialSeconds?: number;
 }
 
 async function openFrozenScene(
   page: Page,
-  { time, sea, template, below }: Look
+  { time, sea, template, below, towerOfDecks, trialSeconds }: Look
 ) {
-  await page.addInitScript((freezeTime) => {
-    window.__SHIP_BUILDER_TEST__ = { freezeTime };
-    // Both side panels collapsed, so the canvas is the whole picture.
-    window.localStorage.setItem(
-      "ship-builder:ui:collapsed",
-      JSON.stringify({ left: true, right: true })
-    );
-  }, FROZEN_SECONDS);
+  await page.addInitScript(
+    ({ freezeTime, trialSeconds }) => {
+      window.__SHIP_BUILDER_TEST__ = { freezeTime, trialSeconds };
+      // Both side panels collapsed, so the canvas is the whole picture.
+      window.localStorage.setItem(
+        "ship-builder:ui:collapsed",
+        JSON.stringify({ left: true, right: true })
+      );
+    },
+    { freezeTime: FROZEN_SECONDS, trialSeconds }
+  );
   await page.goto("/ship-builder");
   await expect(page.getByRole("heading", { name: "Ship Builder" })).toBeVisible(
     { timeout: 60_000 }
@@ -88,8 +97,26 @@ async function openFrozenScene(
     await dialog.getByRole("button", { name: new RegExp(template[1]) }).click();
     await expect(dialog).toHaveCount(0);
   }
+  if (towerOfDecks) {
+    await page.evaluate(() => {
+      const store = () => window.__shipBuilderStore!.getState();
+      store().changeBeam(-10);
+      store().selectTool("deck-1x1");
+      for (let level = 0; level < 4; level++) {
+        for (let x = 2; x < 20; x++) {
+          for (let z = 0; z < 3; z++) {
+            store().placeAt({ kind: "grid", level, x, z });
+          }
+        }
+      }
+      store().cancel();
+    });
+  }
   await page.getByRole("button", { name: time, exact: true }).click();
   await page.getByRole("button", { name: `${sea} sea` }).click();
+  if (trialSeconds !== undefined) {
+    await page.getByRole("button", { name: "Sea trial" }).click();
+  }
   if (below) await page.getByRole("button", { name: "Below view" }).click();
   // Click the empty sky to drop focus rings and hover states off the controls.
   await page.mouse.move(0, 0);
@@ -145,5 +172,15 @@ test.describe("Ship Builder scene visuals", () => {
       below: true,
     });
     await expectScene(page, "titanic-below-night-calm.png");
+  });
+
+  test("top-heavy ship capsizing in a stormy sea", async ({ page }) => {
+    await openFrozenScene(page, {
+      time: "Day",
+      sea: "Stormy",
+      towerOfDecks: true,
+      trialSeconds: CAPSIZE_SECONDS,
+    });
+    await expectScene(page, "tower-capsizing-day-stormy.png");
   });
 });
