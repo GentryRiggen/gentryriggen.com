@@ -39,6 +39,8 @@ export default function Scene() {
           position={[30, 40, 20]}
           intensity={1.4}
           castShadow
+          shadow-bias={-0.0005}
+          shadow-normalBias={0.02}
           shadow-camera-left={-30}
           shadow-camera-right={30}
           shadow-camera-top={30}
