@@ -54,6 +54,16 @@ describe("SeaTrialButton menu", () => {
     expect(store().trial).toEqual({ status: "aiming" });
   });
 
+  it("comes back with the menu closed after aiming is cancelled", async () => {
+    const user = userEvent.setup();
+    render(<SeaTrialButton />);
+    await user.click(trigger());
+    await user.click(screen.getByRole("menuitem", { name: "Iceberg" }));
+    act(() => store().cancelAim());
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger()).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("works from the keyboard: arrows move, Enter picks, Esc closes", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);

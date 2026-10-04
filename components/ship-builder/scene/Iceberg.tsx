@@ -41,6 +41,7 @@ function IcebergBody({ iceberg, beam }: IcebergBodyProps) {
       ref={group}
       position={[strikeX + icebergOffset(0), 0, z]}
       rotation={[0, 0.5, 0]}
+      scale={0.8}
     >
       <mesh position={[0, 0.9, 0]} scale={[3.4, 2, 2.8]} castShadow>
         <icosahedronGeometry args={[1, 1]} />

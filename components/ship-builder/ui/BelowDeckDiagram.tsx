@@ -18,8 +18,6 @@ interface BelowDeckDiagramProps {
   className?: string;
 }
 
-const HEIGHT = 40;
-
 export default function BelowDeckDiagram({
   hull,
   water = {},
@@ -28,6 +26,7 @@ export default function BelowDeckDiagram({
 }: BelowDeckDiagramProps) {
   const length = hull.lengthSegments * CELLS_PER_SEGMENT;
   const specs = compartmentSpecsOf(hull);
+  const HEIGHT = length / 4;
   return (
     <svg
       viewBox={`0 0 ${length} ${HEIGHT}`}

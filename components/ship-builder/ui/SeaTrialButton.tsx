@@ -65,6 +65,12 @@ export default function SeaTrialButton() {
     trigger.current?.focus();
   }
 
+  /** Closes the menu first: this component stays mounted while aiming. */
+  function pick(action: () => void) {
+    setIsOpen(false);
+    action();
+  }
+
   function handleTriggerKeyDown(event: ReactKeyboardEvent) {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
@@ -113,7 +119,7 @@ export default function SeaTrialButton() {
             <button
               type="button"
               role="menuitem"
-              onClick={() => startTrial(seaState)}
+              onClick={() => pick(() => startTrial(seaState))}
               className={ITEM_CLASS}
             >
               <Waves
@@ -125,7 +131,7 @@ export default function SeaTrialButton() {
             <button
               type="button"
               role="menuitem"
-              onClick={aimIceberg}
+              onClick={() => pick(aimIceberg)}
               className={ITEM_CLASS}
             >
               <Snowflake
