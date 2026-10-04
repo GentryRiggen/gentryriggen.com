@@ -8,3 +8,5 @@ coverage
 package-lock.json
 
 .claude/worktrees
+
+lib/ship-builder/persist/__fixtures__/*/

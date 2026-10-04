@@ -1,0 +1,2358 @@
+{
+  "v": 4,
+  "name": "Ocean Breeze",
+  "hull": {
+    "lengthSegments": 12,
+    "beam": 5,
+    "bow": "bulbous",
+    "stern": "transom",
+    "paint": {
+      "topsides": "white",
+      "bottom": "navy"
+    }
+  },
+  "parts": [
+    {
+      "id": "p1",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 0,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 8,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p6",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 10,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p7",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 12,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p8",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 14,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p9",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 16,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pa",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 18,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pb",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 20,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pc",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 22,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pd",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 24,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pe",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 26,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pf",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 28,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pg",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 30,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "ph",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 32,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pi",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 34,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pj",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 0,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pk",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pl",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pm",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pn",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 8,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "po",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 10,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pp",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 12,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pq",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 14,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pr",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 16,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "ps",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 18,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pt",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 20,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pu",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 22,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pv",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 24,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pw",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 26,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "px",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 28,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "py",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 30,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "pz",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 32,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p10",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 34,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p11",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 0,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p12",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p13",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p14",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p15",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 8,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p16",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 10,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p17",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 12,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p18",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 14,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p19",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 16,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1a",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 18,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1b",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 20,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1c",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 22,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1d",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 24,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1e",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 26,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1f",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 28,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1g",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 30,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1h",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 32,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1i",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 34,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1j",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 0,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1k",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1l",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 0,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1m",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1n",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1o",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 5,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1p",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1q",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 7,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1r",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 8,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1s",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 9,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1t",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1u",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 5,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1v",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1w",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 7,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1x",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 8,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1y",
+      "type": "cabin-crew",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 9,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p1z",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 10,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p20",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 12,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p21",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 14,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p22",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 16,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p23",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 18,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p24",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 20,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p25",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 22,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p26",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 24,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p27",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 26,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p28",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 28,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p29",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 30,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2a",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 32,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2b",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 34,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2c",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 10,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2d",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 12,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2e",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 14,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2f",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 16,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2g",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 18,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2h",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 20,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2i",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 22,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2j",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 24,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2k",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 26,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2l",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 28,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2m",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 30,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2n",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 32,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2o",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 34,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2p",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 8,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2q",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 10,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2r",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 12,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2s",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 14,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2t",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 16,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2u",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 18,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2v",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 20,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2w",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 22,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2x",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 24,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2y",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 26,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p2z",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 28,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p30",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 8,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p31",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 10,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p32",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 12,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p33",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 14,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p34",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 16,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p35",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 18,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p36",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 20,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p37",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 22,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p38",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 24,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p39",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 26,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3a",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 28,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3b",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 8,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3c",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 10,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3d",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 12,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3e",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 14,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3f",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 16,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3g",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 18,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3h",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 20,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3i",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 22,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3j",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 24,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3k",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 26,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3l",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 28,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3m",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 8,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3n",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 10,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3o",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 12,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3p",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 8,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3q",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 10,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3r",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 12,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3s",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 14,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3t",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 15,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3u",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 16,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3v",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 17,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3w",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 18,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3x",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 19,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3y",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 20,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p3z",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 21,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p40",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 22,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p41",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 23,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p42",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 14,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p43",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 15,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p44",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 16,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p45",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 17,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p46",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 18,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p47",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 19,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p48",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 20,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p49",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 21,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4a",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 22,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4b",
+      "type": "cabin-2nd",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 23,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4c",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 24,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4d",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 26,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4e",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 28,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4f",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 24,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4g",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 26,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4h",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 28,
+        "z": 4
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4i",
+      "type": "bridge-5",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 11,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4j",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 12,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4k",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 14,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4l",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 16,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4m",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 18,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4n",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 20,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4o",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 22,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4p",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 24,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4q",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 12,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4r",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 12,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4s",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 16,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4t",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 18,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4u",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 20,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4v",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 22,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4w",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 24,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4x",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 16,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4y",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 18,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p4z",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 20,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p50",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 22,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p51",
+      "type": "deck-2x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 24,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p52",
+      "type": "pool",
+      "anchor": {
+        "kind": "grid",
+        "level": 2,
+        "x": 14,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p53",
+      "type": "funnel-modern",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p50",
+        "pointId": "funnel"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p54",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p3m",
+        "pointId": "davit:8:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p55",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p54",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p56",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p3m",
+        "pointId": "davit:9:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p57",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p56",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p58",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p3n",
+        "pointId": "davit:10:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p59",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p58",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5a",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p4e",
+        "pointId": "davit:28:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5b",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5a",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5c",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p4e",
+        "pointId": "davit:29:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5d",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5c",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5e",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1j",
+        "pointId": "edge:0:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5f",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1j",
+        "pointId": "edge:1:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5g",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1k",
+        "pointId": "edge:2:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5h",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1k",
+        "pointId": "edge:3:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5i",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1n",
+        "pointId": "edge:4:0"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5j",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p3p",
+        "pointId": "davit:8:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5k",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5j",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5l",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p3p",
+        "pointId": "davit:9:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5m",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5l",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5n",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p3q",
+        "pointId": "davit:10:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5o",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5n",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5p",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p4h",
+        "pointId": "davit:28:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5q",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5p",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5r",
+      "type": "davit",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p4h",
+        "pointId": "davit:29:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5s",
+      "type": "lifeboat-enclosed",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p5r",
+        "pointId": "boat"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5t",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1l",
+        "pointId": "edge:0:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5u",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1l",
+        "pointId": "edge:1:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5v",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1m",
+        "pointId": "edge:2:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5w",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1m",
+        "pointId": "edge:3:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5x",
+      "type": "raft-canister",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "p1t",
+        "pointId": "edge:4:4"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5y",
+      "type": "propeller",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "hull",
+        "pointId": "prop:1"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p5z",
+      "type": "propeller",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "hull",
+        "pointId": "prop:2"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "p60",
+      "type": "rudder",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "hull",
+        "pointId": "rudder"
+      },
+      "rotation": 0
+    }
+  ]
+}

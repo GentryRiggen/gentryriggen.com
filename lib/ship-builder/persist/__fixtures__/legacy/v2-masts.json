@@ -1,0 +1,162 @@
+{
+  "v": 2,
+  "name": "Two masts",
+  "hull": {
+    "lengthSegments": 8,
+    "beam": 4
+  },
+  "parts": [
+    {
+      "id": "d-2-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-2-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-2-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-2-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "mf",
+      "type": "mast-fore",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "hull",
+        "pointId": "mast-fore"
+      },
+      "rotation": 0
+    },
+    {
+      "id": "ma",
+      "type": "mast-aft",
+      "anchor": {
+        "kind": "attach",
+        "parentId": "hull",
+        "pointId": "mast-aft"
+      },
+      "rotation": 0
+    }
+  ]
+}

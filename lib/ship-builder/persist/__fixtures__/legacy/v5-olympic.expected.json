@@ -1,0 +1,13 @@
+{
+  "parts": 428,
+  "stats": {
+    "passengers": 560,
+    "crew": 1500,
+    "lifeboatSeats": 1098,
+    "teu": 0,
+    "grossTonnage": 84420,
+    "topSpeedKnots": 19.6,
+    "stability": "Stable",
+    "stabilityRatio": 0.1051
+  }
+}

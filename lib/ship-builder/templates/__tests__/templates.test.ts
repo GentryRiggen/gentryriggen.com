@@ -23,6 +23,7 @@ describe("ship templates", () => {
       ]);
       expect(parseShip(JSON.parse(JSON.stringify(ship)))).toEqual({
         ok: true,
+        dropped: 0,
         ship,
       });
     }

@@ -1,0 +1,284 @@
+{
+  "v": 1,
+  "name": "My first liner",
+  "hull": {
+    "lengthSegments": 10
+  },
+  "parts": [
+    {
+      "id": "d-2-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-2-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-2-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-2-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 2,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-3-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 3,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-4-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 4,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-5-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 5,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-5-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 5,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-5-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 5,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-5-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 5,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-6-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-6-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-6-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-6-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 6,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-7-0",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 7,
+        "z": 0
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-7-1",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 7,
+        "z": 1
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-7-2",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 7,
+        "z": 2
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-7-3",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 0,
+        "x": 7,
+        "z": 3
+      },
+      "rotation": 0
+    },
+    {
+      "id": "d-up",
+      "type": "deck-1x1",
+      "anchor": {
+        "kind": "grid",
+        "level": 1,
+        "x": 3,
+        "z": 1
+      },
+      "rotation": 0
+    }
+  ]
+}
