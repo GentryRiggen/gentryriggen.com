@@ -1,5 +1,6 @@
 import type { Ship } from "../model/types";
 import { ShipBuilder, range } from "./modernBuilder";
+import { wallRun } from "./bulkheads";
 import type { ShipTemplate } from "./types";
 
 /** Container levels stacked on hatch covers (the grid has levels 0-3). */
@@ -69,6 +70,7 @@ function buildEverGiven(): Ship {
   b.hull("propeller", "prop:1");
   b.hull("propeller", "prop:2");
   b.hull("rudder", "rudder");
+  b.withBulkheads(wallRun(1, 19, "deck"));
   return b.build();
 }
 
@@ -102,6 +104,7 @@ function buildFeeder(): Ship {
   b.hull("propeller", "prop:0");
   b.hull("propeller", "prop:2");
   b.hull("rudder", "rudder");
+  b.withBulkheads(wallRun(1, 9, "deck"));
   return b.build();
 }
 
