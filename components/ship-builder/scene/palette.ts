@@ -1,5 +1,7 @@
 export const PALETTE = {
   sky: "#bcd4e6",
+  /** Background and fog when the camera is under the water (the below view). */
+  underwater: "#0b3550",
   /** Ocean gradient: lighter water around the ship, deeper toward the horizon. */
   sea: { near: "#2b6788", far: "#163a54" },
   hull: "#15171a",

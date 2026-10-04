@@ -28,12 +28,57 @@ import {
   viewDistance,
   viewPosition,
   viewTarget,
+  type CameraPosition,
 } from "../cameraViews";
+import { DECK_Y, HULL_DRAFT } from "../coords";
 
 const VIEWS: CameraView[] = ["side", "top", "three-quarter"];
 const LENGTHS = [MIN_SEGMENTS, 8, MAX_SEGMENTS].map(
   (segments) => segments * CELLS_PER_SEGMENT
 );
+
+const BELOW_FOV_DEGREES = 45;
+
+/** The hull's bounding box: stern at -length/2, prow past +length/2. */
+function hullCorners(length: number, beam: number): CameraPosition[] {
+  const corners: CameraPosition[] = [];
+  for (const x of [-length / 2, length / 2 + PROW_LENGTH])
+    for (const y of [-HULL_DRAFT, DECK_Y])
+      for (const z of [-beam / 2, beam / 2]) corners.push([x, y, z]);
+  return corners;
+}
+
+/** Largest |normalised device coordinate| of any point, for a look-at camera. */
+function maxNdc(
+  position: CameraPosition,
+  target: CameraPosition,
+  points: CameraPosition[],
+  aspect: number
+): number {
+  const sub = (a: number[], b: number[]) => a.map((v, i) => v - b[i]);
+  const dot = (a: number[], b: number[]) =>
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const unit = (a: number[]) => a.map((v) => v / Math.hypot(a[0], a[1], a[2]));
+  const forward = unit(sub(target, position));
+  const right = unit([-forward[2], 0, forward[0]]);
+  const up = [
+    right[1] * forward[2] - right[2] * forward[1],
+    right[2] * forward[0] - right[0] * forward[2],
+    right[0] * forward[1] - right[1] * forward[0],
+  ];
+  const tan = Math.tan((BELOW_FOV_DEGREES / 2) * (Math.PI / 180));
+  return Math.max(
+    ...points.map((point) => {
+      const offset = sub(point, position);
+      const depth = dot(offset, forward);
+      if (depth <= 0) return Infinity;
+      return Math.max(
+        Math.abs(dot(offset, right) / depth / (tan * aspect)),
+        Math.abs(dot(offset, up) / depth / tan)
+      );
+    })
+  );
+}
 
 describe("viewPosition", () => {
   it.each(VIEWS)("keeps the %s preset inside the polar clamp", (view) => {
@@ -80,6 +125,21 @@ describe("below view", () => {
           expect(position[0]).toBeLessThan(0);
           const [x, y, z] = position.map((v, i) => v - BELOW_TARGET[i]);
           expect(Math.hypot(x, y, z)).toBeLessThanOrEqual(MAX_VIEW_DISTANCE);
+        }
+      }
+    }
+  });
+
+  it("fits the whole hull for every length at aspect 0.75 or wider", () => {
+    for (let segments = MIN_SEGMENTS; segments <= MAX_SEGMENTS; segments++) {
+      const length = segments * CELLS_PER_SEGMENT;
+      for (const beam of [MIN_BEAM, DEFAULT_BEAM, MAX_BEAM]) {
+        for (const aspect of [0.75, 1, 2]) {
+          const position = viewPosition("below", length, aspect, beam);
+          const corners = hullCorners(length, beam);
+          expect(maxNdc(position, BELOW_TARGET, corners, aspect)).toBeLessThan(
+            1
+          );
         }
       }
     }

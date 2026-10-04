@@ -68,9 +68,24 @@ function threeQuarterDistance(
 /** Camera offset from BELOW_TARGET, per unit of distance: stern, down, port. */
 const BELOW_OFFSET = [-0.55, -0.35, 0.6] as const;
 
-function belowPosition(distance: number): CameraPosition {
+/** Camera distance per cell of hull length in the below view. */
+const BELOW_DISTANCE_PER_CELL = 1.5;
+
+/**
+ * Below-view distance. The camera looks along the hull from the stern quarter
+ * with a wide hull in view, so it needs more room than the three-quarter view,
+ * and a narrow canvas needs proportionally more again.
+ */
+function belowPosition(
+  lengthCells: number,
+  aspect: number,
+  beam: number
+): CameraPosition {
   const [dx, dy, dz] = BELOW_OFFSET;
-  const d = Math.min(distance, MAX_VIEW_DISTANCE / Math.hypot(...BELOW_OFFSET));
+  const wanted =
+    (lengthCells * BELOW_DISTANCE_PER_CELL + 12 + beamAllowance(beam)) /
+    Math.min(1, aspect);
+  const d = Math.min(wanted, MAX_VIEW_DISTANCE / Math.hypot(...BELOW_OFFSET));
   return [d * dx, BELOW_TARGET[1] + d * dy, d * dz];
 }
 
@@ -97,7 +112,7 @@ export function viewPosition(
       return [d * dx, d * dy, d * dz];
     }
     case "below":
-      return belowPosition(distance);
+      return belowPosition(lengthCells, aspect, beam);
   }
 }
 

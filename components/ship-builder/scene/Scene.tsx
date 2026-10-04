@@ -17,6 +17,10 @@ import { PALETTE } from "./palette";
 import ShipParts from "./ShipParts";
 import { usePartLongPress } from "./usePartLongPress";
 
+/** Water swallows distance faster than air, so the fog closes in. */
+const UNDERWATER_FOG_NEAR = 40;
+const UNDERWATER_FOG_FAR = 200;
+
 export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
@@ -45,9 +49,22 @@ export default function Scene() {
           select(null);
         }}
       >
-        <color attach="background" args={[PALETTE.sky]} />
-        <fog attach="fog" args={[PALETTE.sky, 80, 260]} />
-        <Sky sunPosition={[100, 40, 80]} distance={450} />
+        {/* Both themes share one scene, so the sky and the water are the same
+            colours in light and dark mode. Seen from below, the ship must sit
+            in water rather than sky. */}
+        <color
+          attach="background"
+          args={[isBelow ? PALETTE.underwater : PALETTE.sky]}
+        />
+        <fog
+          attach="fog"
+          args={
+            isBelow
+              ? [PALETTE.underwater, UNDERWATER_FOG_NEAR, UNDERWATER_FOG_FAR]
+              : [PALETTE.sky, 80, 260]
+          }
+        />
+        {!isBelow && <Sky sunPosition={[100, 40, 80]} distance={450} />}
         <ambientLight intensity={0.55} />
         {/* The default ±5 shadow frustum clips anything past a few cells; this
             covers the longest hull (36 cells) from the light's angle. */}
