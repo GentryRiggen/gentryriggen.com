@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { getPartDef } from "../model/catalog";
-import { MAX_SEGMENTS, MIN_SEGMENTS } from "../model/grid";
+import { MAX_BEAM, MAX_SEGMENTS, MIN_BEAM, MIN_SEGMENTS } from "../model/grid";
 import { newId } from "../model/ids";
 import {
   canPlace,
@@ -8,9 +8,10 @@ import {
   clampName,
   emptyShip,
   place,
-  previewHullLength,
+  previewHullSize,
   removeParts,
-  setHullLength,
+  setHullSize,
+  type HullSize,
   type PartCandidate,
   type RuleResult,
 } from "../model/placement";
@@ -23,7 +24,7 @@ export type Tool =
 
 export type PendingRemoval =
   | { kind: "part"; ids: string[] }
-  | { kind: "hull"; lengthSegments: number; ids: string[] };
+  | { kind: "hull"; lengthSegments: number; beam: number; ids: string[] };
 
 export interface HoverState {
   candidate: PartCandidate;
@@ -68,6 +69,8 @@ export interface ShipBuilderState extends ShipBuilderData {
   confirmRemoval: () => void;
   cancelRemoval: () => void;
   changeHullLength: (delta: number) => void;
+  /** Widens or narrows the ship on the port side. */
+  changeBeam: (delta: number) => void;
   rename: (name: string) => void;
   undo: () => void;
   redo: () => void;
@@ -116,6 +119,10 @@ function hoverFor(ship: Ship, tool: Tool, anchor: Anchor): HoverState | null {
   return candidate ? { candidate, result: canPlace(ship, candidate) } : null;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 const CLEARED = {
   selectedId: null,
   hover: null,
@@ -140,6 +147,28 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       pendingRemoval: null,
       ...extra,
     });
+  }
+
+  /**
+   * Commits a resize, or asks first when it would remove parts. Growing can
+   * remove parts too: a wider beam leaves the old port-edge davits inboard.
+   */
+  function resizeHull(size: HullSize) {
+    const { ship } = get();
+    const target = { ...ship.hull, ...size };
+    const { lengthSegments, beam } = target;
+    if (
+      lengthSegments === ship.hull.lengthSegments &&
+      beam === ship.hull.beam
+    ) {
+      return;
+    }
+    const ids = previewHullSize(ship, target);
+    if (ids.length === 0) {
+      commit(setHullSize(ship, target));
+      return;
+    }
+    set({ pendingRemoval: { kind: "hull", lengthSegments, beam, ids } });
   }
 
   return {
@@ -210,7 +239,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const next =
         pendingRemoval.kind === "part"
           ? removeParts(ship, cascadeIds(ship, pendingRemoval.ids))
-          : setHullLength(ship, pendingRemoval.lengthSegments);
+          : setHullSize(ship, {
+              lengthSegments: pendingRemoval.lengthSegments,
+              beam: pendingRemoval.beam,
+            });
       commit(next, CLEARED);
     },
 
@@ -219,19 +251,19 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     changeHullLength(delta) {
-      const { ship } = get();
-      const current = ship.hull.lengthSegments;
-      const target = Math.min(
-        MAX_SEGMENTS,
-        Math.max(MIN_SEGMENTS, current + delta)
-      );
-      if (target === current) return;
-      const ids = target < current ? previewHullLength(ship, target) : [];
-      if (ids.length === 0) {
-        commit(setHullLength(ship, target));
-        return;
-      }
-      set({ pendingRemoval: { kind: "hull", lengthSegments: target, ids } });
+      const { lengthSegments } = get().ship.hull;
+      resizeHull({
+        lengthSegments: clamp(
+          lengthSegments + delta,
+          MIN_SEGMENTS,
+          MAX_SEGMENTS
+        ),
+      });
+    },
+
+    changeBeam(delta) {
+      const { beam } = get().ship.hull;
+      resizeHull({ beam: clamp(beam + delta, MIN_BEAM, MAX_BEAM) });
     },
 
     rename(name) {

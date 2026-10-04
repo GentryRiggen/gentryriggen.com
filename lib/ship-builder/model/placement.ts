@@ -33,6 +33,7 @@ import {
   type AttachPartDef,
   type Cell,
   type GridPartDef,
+  type Hull,
   type PlacedPart,
   type Ship,
 } from "./types";
@@ -314,20 +315,32 @@ export function removeParts(ship: Ship, ids: string[]): Ship {
   return { ...ship, parts: [...order, ...stuck] };
 }
 
-function withLength(ship: Ship, lengthSegments: number): Ship {
-  return { ...ship, hull: { ...ship.hull, lengthSegments } };
+/** A new hull length, beam, or both; omitted fields stay as they are. */
+export type HullSize = Partial<Hull>;
+
+function withSize(ship: Ship, size: HullSize): Ship {
+  return { ...ship, hull: { ...ship.hull, ...size } };
+}
+
+/** Ids of the parts a resize would remove. Callers clamp the size first. */
+export function previewHullSize(ship: Ship, size: HullSize): string[] {
+  return cascadeIds(withSize(ship, size), []);
+}
+
+export function setHullSize(ship: Ship, size: HullSize): Ship {
+  const resized = withSize(ship, size);
+  return removeParts(resized, cascadeIds(resized, []));
 }
 
 export function previewHullLength(
   ship: Ship,
   lengthSegments: number
 ): string[] {
-  return cascadeIds(withLength(ship, lengthSegments), []);
+  return previewHullSize(ship, { lengthSegments });
 }
 
 export function setHullLength(ship: Ship, lengthSegments: number): Ship {
-  const resized = withLength(ship, lengthSegments);
-  return removeParts(resized, cascadeIds(resized, []));
+  return setHullSize(ship, { lengthSegments });
 }
 
 function isIntegerIn(value: number, min: number, max: number): boolean {

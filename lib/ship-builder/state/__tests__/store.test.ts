@@ -5,7 +5,12 @@ import {
   useShipBuilderStore,
 } from "../store";
 import type { GridAnchor } from "../../model/types";
-import { gridPart, hasLoneSurrogate, testShip } from "../../testing";
+import {
+  attachPart,
+  gridPart,
+  hasLoneSurrogate,
+  testShip,
+} from "../../testing";
 
 const store = () => useShipBuilderStore.getState();
 const cell = (level: number, x: number, z: number): GridAnchor => ({
@@ -227,6 +232,7 @@ describe("hull length", () => {
     expect(store().pendingRemoval).toEqual({
       kind: "hull",
       lengthSegments: 7,
+      beam: 4,
       ids: ["aft"],
     });
     store().confirmRemoval();
@@ -256,6 +262,67 @@ describe("hull length", () => {
     expect(store().hover).not.toBeNull();
     store().changeHullLength(+1);
     expect(store().hover).toBeNull();
+  });
+});
+
+describe("beam", () => {
+  it("widens and narrows immediately when nothing is lost, within 3-7", () => {
+    store().changeBeam(+1);
+    expect(store().ship.hull).toEqual({ lengthSegments: 8, beam: 5 });
+    for (let i = 0; i < 10; i++) store().changeBeam(+1);
+    expect(store().ship.hull.beam).toBe(7);
+    for (let i = 0; i < 10; i++) store().changeBeam(-1);
+    expect(store().ship.hull.beam).toBe(3);
+    expect(store().past).toHaveLength(3 + 4);
+  });
+
+  it("asks before narrowing past parts, then applies both sizes", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("port", "deck-1x1", 0, 5, 3)], 6),
+      })
+    );
+    store().changeBeam(-1);
+    expect(store().ship.hull.beam).toBe(4);
+    expect(store().pendingRemoval).toEqual({
+      kind: "hull",
+      lengthSegments: 6,
+      beam: 3,
+      ids: ["port"],
+    });
+    store().confirmRemoval();
+    expect(store().ship.hull).toEqual({ lengthSegments: 6, beam: 3 });
+    expect(store().ship.parts).toHaveLength(0);
+    store().undo();
+    expect(store().ship.hull.beam).toBe(4);
+    expect(store().ship.parts).toHaveLength(1);
+  });
+
+  it("asks before widening strands a davit inside the hull", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([
+          gridPart("a", "deck-1x1", 0, 2, 3),
+          gridPart("b", "deck-1x1", 1, 2, 3),
+          attachPart("dv", "davit", "b", "davit:2:3"),
+        ]),
+      })
+    );
+    store().changeBeam(+1);
+    expect(store().pendingRemoval).toEqual({
+      kind: "hull",
+      lengthSegments: 8,
+      beam: 5,
+      ids: ["dv"],
+    });
+    store().cancelRemoval();
+    expect(store().ship.hull.beam).toBe(4);
+  });
+
+  it("keeps the beam when the hull length changes", () => {
+    store().changeBeam(+1);
+    store().changeHullLength(-1);
+    expect(store().ship.hull).toEqual({ lengthSegments: 7, beam: 5 });
   });
 });
 

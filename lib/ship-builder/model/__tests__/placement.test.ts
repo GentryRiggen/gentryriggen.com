@@ -6,8 +6,10 @@ import {
   MAX_NAME_LENGTH,
   place,
   previewHullLength,
+  previewHullSize,
   removeParts,
   setHullLength,
+  setHullSize,
   validateShip,
   type PartCandidate,
 } from "../placement";
@@ -514,6 +516,76 @@ describe("cascade removal", () => {
 
   it("removeParts drops exactly the given ids", () => {
     expect(removeParts(boatDeckShip(), ["lb", "dv"]).parts).toHaveLength(2);
+  });
+});
+
+describe("hull size", () => {
+  it("narrows the beam from the port side, dropping what falls off", () => {
+    const ship = testShip(
+      [
+        gridPart("stbd", "deck-1x1", 0, 2, 0),
+        gridPart("p4", "deck-1x1", 0, 2, 4),
+        gridPart("p5", "deck-1x1", 0, 2, 5),
+        gridPart("p6", "deck-1x1", 0, 2, 6),
+        gridPart("lone", "deck-1x1", 0, 4, 4),
+      ],
+      8,
+      5
+    );
+    expect(validateShip(ship)).toEqual(OK);
+    // Beam 3: z 5+ is out of bounds; z 4 is a wing cell with nothing inboard.
+    expect(previewHullSize(ship, { beam: 3 })).toEqual([
+      "p4",
+      "p5",
+      "p6",
+      "lone",
+    ]);
+    const narrowed = setHullSize(ship, { beam: 3 });
+    expect(narrowed.hull).toEqual({ lengthSegments: 8, beam: 3 });
+    expect(narrowed.parts.map((p) => p.id)).toEqual(["stbd"]);
+    expect(validateShip(narrowed)).toEqual(OK);
+  });
+
+  it("keeps a block that becomes a supported wing cell", () => {
+    const ship = testShip(
+      [
+        gridPart("a", "deck-1x1", 0, 2, 2),
+        gridPart("b", "deck-1x1", 0, 2, 3),
+        gridPart("c", "deck-1x1", 0, 2, 4),
+      ],
+      8,
+      5
+    );
+    expect(previewHullSize(ship, { beam: 3 })).toEqual([]);
+    expect(validateShip(setHullSize(ship, { beam: 3 }))).toEqual(OK);
+  });
+
+  it("widening drops a davit left inside the hull, with its boat", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 3),
+      gridPart("b", "deck-1x1", 1, 2, 3),
+      attachPart("dv", "davit", "b", "davit:2:3"),
+      attachPart("lb", "lifeboat-standard", "dv", "boat"),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(previewHullSize(ship, { beam: 5 })).toEqual(["dv", "lb"]);
+    expect(setHullSize(ship, { beam: 5 }).parts.map((p) => p.id)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("keeps the masts when their centerline moves", () => {
+    const ship = testShip([attachPart("m", "mast-fore", HULL_ID, "mast-fore")]);
+    expect(setHullSize(ship, { beam: 7 }).parts).toHaveLength(1);
+  });
+
+  it("changes length and beam together", () => {
+    const ship = testShip([gridPart("aft", "deck-1x1", 0, 20, 0)]);
+    const resized = setHullSize(ship, { lengthSegments: 6, beam: 6 });
+    expect(resized.hull).toEqual({ lengthSegments: 6, beam: 6 });
+    expect(resized.parts).toEqual([]);
+    expect(setHullSize(ship, {}).hull).toEqual(ship.hull);
   });
 });
 
