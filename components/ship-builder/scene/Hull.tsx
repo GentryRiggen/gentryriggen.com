@@ -26,6 +26,11 @@ function HullBand({ lengthCells, bottom, top, color, prow }: HullBandProps) {
   const height = top - bottom;
   const half = lengthCells / 2;
   const radius = GRID_WIDTH / 2;
+  // A fresh options object each render would make R3F rebuild the geometry.
+  const extrudeOptions = useMemo(
+    () => ({ depth: height, bevelEnabled: false }),
+    [height]
+  );
   return (
     <group>
       <mesh position={[0, bottom + height / 2, 0]} castShadow receiveShadow>
@@ -38,9 +43,7 @@ function HullBand({ lengthCells, bottom, top, color, prow }: HullBandProps) {
         rotation={[-Math.PI / 2, 0, 0]}
         castShadow
       >
-        <extrudeGeometry
-          args={[prow, { depth: height, bevelEnabled: false }]}
-        />
+        <extrudeGeometry args={[prow, extrudeOptions]} />
         <meshStandardMaterial color={color} />
       </mesh>
       {/* Stern: half cylinder facing -X, squashed to STERN_LENGTH. */}
@@ -67,6 +70,10 @@ interface DeckPlateProps {
 function DeckPlate({ lengthCells, prow }: DeckPlateProps) {
   const half = lengthCells / 2;
   const radius = GRID_WIDTH / 2;
+  const extrudeOptions = useMemo(
+    () => ({ depth: DECK_PLATE, bevelEnabled: false }),
+    []
+  );
   return (
     <group>
       <mesh position={[0, DECK_Y + DECK_PLATE / 2, 0]} receiveShadow>
@@ -78,9 +85,7 @@ function DeckPlate({ lengthCells, prow }: DeckPlateProps) {
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
       >
-        <extrudeGeometry
-          args={[prow, { depth: DECK_PLATE, bevelEnabled: false }]}
-        />
+        <extrudeGeometry args={[prow, extrudeOptions]} />
         <meshStandardMaterial color={PALETTE.deck} />
       </mesh>
       <mesh

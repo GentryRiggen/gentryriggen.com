@@ -204,4 +204,5 @@ function PartMesh({
   );
 }
 
+// Not `export default function` like the other components: memo() wraps it.
 export default memo(PartMesh);
