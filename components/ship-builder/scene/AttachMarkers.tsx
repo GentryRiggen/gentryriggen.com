@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { MeshBasicMaterial, SphereGeometry } from "three";
-import { openAttachPoints } from "@/lib/ship-builder/model/attach";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import type { AttachAnchor } from "@/lib/ship-builder/model/types";
@@ -40,7 +40,9 @@ export default function AttachMarkers() {
   const open = useMemo(() => {
     if (tool.kind !== "place") return [];
     const def = getPartDef(tool.type);
-    return def.placement === "attach" ? openAttachPoints(ship, def) : [];
+    return def.placement === "attach"
+      ? analyzeShip(ship).openAttachPoints(def)
+      : [];
   }, [ship, tool]);
 
   const length = gridLength(ship);

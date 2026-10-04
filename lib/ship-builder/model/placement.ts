@@ -8,6 +8,7 @@ import {
   resolveAttachPoint,
   rowExtent,
 } from "./attach";
+import { occupancyOf } from "./occupancyCache";
 import { ATTACH_POINT_LABELS, getPartDef } from "./catalog";
 import {
   buildOccupancy,
@@ -360,7 +361,7 @@ function canPlaceAttach(
 export function canPlace(
   ship: Ship,
   candidate: PartCandidate,
-  occupancy: Occupancy = buildOccupancy(ship),
+  occupancy: Occupancy = occupancyOf(ship),
   claimed?: ReadonlySet<string>
 ): RuleResult {
   const def = getPartDef(candidate.type);

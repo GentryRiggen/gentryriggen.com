@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Object3D } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCursor } from "@react-three/drei";
-import { buildOccupancy } from "@/lib/ship-builder/model/grid";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
@@ -71,7 +71,7 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
   }
   useCursor(interactive && ship.parts.some((part) => part.id === hoveredId));
 
-  const occupancy = useMemo(() => buildOccupancy(ship), [ship]);
+  const occupancy = useMemo(() => analyzeShip(ship).occupancy, [ship]);
   const poppingId = usePoppingPartId(ship.parts);
 
   // Press-and-hold deletes with or without an active tool.

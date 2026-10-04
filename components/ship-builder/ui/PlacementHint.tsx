@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { RotateCw } from "lucide-react";
 import PartIcon from "./icons/PartIcon";
 import { SWATCH_FILL } from "./PaintPanel";
-import { openAttachPoints } from "@/lib/ship-builder/model/attach";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { PAINT_COLORS } from "@/lib/ship-builder/model/paint";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -34,7 +34,9 @@ export default function PlacementHint({ onOpenColours }: PlacementHintProps) {
     if (tool.kind !== "place") return null;
     const def = getPartDef(tool.type);
     if (def.placement !== "attach") return null;
-    return openAttachPoints(ship, def).length === 0 ? def.emptyHint : null;
+    return analyzeShip(ship).openAttachPoints(def).length === 0
+      ? def.emptyHint
+      : null;
   }, [ship, tool]);
 
   if (tool.kind === "paint") {

@@ -1,7 +1,6 @@
 import { getPartDef } from "./catalog";
 import {
   beamOf,
-  buildOccupancy,
   cellKey,
   gridLength,
   isDecor,
@@ -17,13 +16,13 @@ import {
   type AttachPartDef,
   type AttachPoint,
   type Cell,
-  type PartType,
   type PointProvider,
   type PlacedPart,
   type Ship,
   type Side,
   type Vec3,
 } from "./types";
+import { occupancyOf } from "./occupancyCache";
 import { partAt, partById } from "./partIndex";
 
 const DAVIT_HEIGHT = 0.8;
@@ -389,7 +388,7 @@ function nearestOtherMastTop(
 export function aerialTarget(
   ship: Ship,
   mast: PlacedPart,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = occupancyOf(ship)
 ): Vec3 | undefined {
   if (mast.anchor.kind !== "attach" || mastHeight(mast) === undefined) {
     return undefined;
@@ -405,7 +404,7 @@ export function aerialTarget(
 export function stringTarget(
   ship: Ship,
   pole: PlacedPart,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = occupancyOf(ship)
 ): Vec3 | undefined {
   if (pole.anchor.kind !== "attach" || poleHeight(pole) === undefined) {
     return undefined;
@@ -569,7 +568,7 @@ const POINT_PROVIDERS: Record<
 export function attachPointsOf(
   ship: Ship,
   parentId: string,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = occupancyOf(ship)
 ): AttachPoint[] {
   if (parentId === HULL_ID) return hullPoints(ship);
   const part = partById(ship, parentId);
@@ -583,7 +582,7 @@ export function attachPointsOf(
 export function resolveAttachPoint(
   ship: Ship,
   anchor: AttachAnchor,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = occupancyOf(ship)
 ): AttachPoint | undefined {
   return attachPointsOf(ship, anchor.parentId, occupancy).find(
     (point) => point.id === anchor.pointId
@@ -622,7 +621,7 @@ export function isPointTaken(
   ship: Ship,
   parentId: string,
   pointId: string,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = occupancyOf(ship)
 ): boolean {
   const anchor: AttachAnchor = { kind: "attach", parentId, pointId };
   const point = resolveAttachPoint(ship, anchor, occupancy);
@@ -637,19 +636,34 @@ export function pointFitsPart(def: AttachPartDef, point: AttachPoint): boolean {
   );
 }
 
+/** What openAttachPoints reads from the ship; analyzeShip caches it. */
+export interface PointSource {
+  claimed: ReadonlySet<string>;
+  pointsOf(parentId: string): AttachPoint[];
+}
+
+function uncachedPointSource(ship: Ship): PointSource {
+  const occupancy = occupancyOf(ship);
+  return {
+    claimed: claimedKeys(ship, occupancy),
+    pointsOf: (parentId) => attachPointsOf(ship, parentId, occupancy),
+  };
+}
+
 /** Free points this attach part could go on right now. */
 export function openAttachPoints(
   ship: Ship,
-  def: AttachPartDef
+  def: AttachPartDef,
+  source: PointSource = uncachedPointSource(ship)
 ): { parentId: string; point: AttachPoint }[] {
-  const occupancy = buildOccupancy(ship);
-  const claimed = claimedKeys(ship, occupancy);
   const parentIds = [HULL_ID, ...ship.parts.map((part) => part.id)];
   return parentIds.flatMap((parentId) =>
-    attachPointsOf(ship, parentId, occupancy)
+    source
+      .pointsOf(parentId)
       .filter(
         (point) =>
-          pointFitsPart(def, point) && !overlapsClaims(parentId, point, claimed)
+          pointFitsPart(def, point) &&
+          !overlapsClaims(parentId, point, source.claimed)
       )
       .map((point) => ({ parentId, point }))
   );

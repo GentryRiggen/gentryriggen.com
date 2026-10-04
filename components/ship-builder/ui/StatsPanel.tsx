@@ -16,13 +16,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useMemo } from "react";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import {
   REFERENCE_SHIPS,
   type ShipKind,
   type ReferenceMetric,
 } from "@/lib/ship-builder/model/kinds";
 import {
-  computeStats,
   type CoverageLevel,
   type Stability,
   type Stats,
@@ -318,7 +318,7 @@ function Comparison({ stats, kind }: { stats: Stats; kind: ShipKind }) {
 
 export default function StatsPanel() {
   const ship = useShipBuilderStore((s) => s.ship);
-  const stats = useMemo(() => computeStats(ship), [ship]);
+  const stats = useMemo(() => analyzeShip(ship).stats, [ship]);
   const { passengers } = stats;
 
   return (

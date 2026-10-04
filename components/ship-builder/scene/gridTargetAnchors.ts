@@ -1,6 +1,6 @@
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import {
   beamOf,
-  buildOccupancy,
   cellKey,
   gridLength,
   isInsideHull,
@@ -28,7 +28,7 @@ const NEIGHBOUR_STEPS = [
  * water isn't covered in targets that could never be placed.
  */
 export function gridTargetAnchors(ship: Ship): GridTarget[] {
-  const occupancy = buildOccupancy(ship);
+  const { occupancy } = analyzeShip(ship);
   const targets: GridTarget[] = [];
   for (let x = 0; x < gridLength(ship); x++) {
     for (let z = -WING_REACH; z <= beamOf(ship) - 1 + WING_REACH; z++) {

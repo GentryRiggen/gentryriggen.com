@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { computeStats } from "@/lib/ship-builder/model/stats";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { COVERAGE_CLASSES, formatCoverage } from "./StatsPanel";
 
@@ -13,7 +13,7 @@ import { COVERAGE_CLASSES, formatCoverage } from "./StatsPanel";
  */
 export default function StatsHud() {
   const ship = useShipBuilderStore((s) => s.ship);
-  const stats = useMemo(() => computeStats(ship), [ship]);
+  const stats = useMemo(() => analyzeShip(ship).stats, [ship]);
   const done = stats.checks.filter((check) => check.ok).length;
   const allDone = done === stats.checks.length;
 

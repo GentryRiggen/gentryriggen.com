@@ -2,13 +2,8 @@ import type { ShipKind } from "./kinds";
 import { resolveAttachPoint } from "./attach";
 import { getPartDef } from "./catalog";
 import { hullSpeedModifier } from "./hullEnds";
-import {
-  beamOf,
-  buildOccupancy,
-  gridLength,
-  partCells,
-  type Occupancy,
-} from "./grid";
+import { occupancyOf } from "./occupancyCache";
+import { beamOf, gridLength, partCells, type Occupancy } from "./grid";
 import type { PlacedPart, Ship } from "./types";
 
 // Tunable constants — see the plan's calibration table.
@@ -147,7 +142,7 @@ function classifyStability(ratio: number): Stability {
 }
 
 export function computeStats(ship: Ship): Stats {
-  const occupancy = buildOccupancy(ship);
+  const occupancy = occupancyOf(ship);
   const length = gridLength(ship);
   const beam = beamOf(ship);
   const passengers = { first: 0, second: 0, third: 0, total: 0 };

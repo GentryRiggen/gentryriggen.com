@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
-import { computeStats } from "@/lib/ship-builder/model/stats";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useSeaState from "../hooks/useSeaState";
@@ -26,7 +26,7 @@ export default function ShipAnimation({ children }: ShipAnimationProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const reducedMotion = usePrefersReducedMotion();
   const { seaState } = useSeaState();
-  const stats = useMemo(() => computeStats(ship), [ship]);
+  const stats = useMemo(() => analyzeShip(ship).stats, [ship]);
   const { topSpeedKnots, stabilityRatio } = stats;
   const value = useMemo<ShipAnimationValue>(
     () => ({ topSpeedKnots, stabilityRatio, reducedMotion, seaState }),

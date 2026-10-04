@@ -1,9 +1,6 @@
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
-import {
-  beamOf,
-  buildOccupancy,
-  gridLength,
-} from "@/lib/ship-builder/model/grid";
+import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import type { PartType, Ship } from "@/lib/ship-builder/model/types";
 import { modelToWorld } from "./coords";
@@ -48,7 +45,7 @@ export function collectEffectAnchors(ship: Ship): EffectAnchors {
   const emitters = ship.parts.filter((part) => emitsEffect(part.type));
   if (emitters.length === 0) return anchors;
 
-  const occupancy = buildOccupancy(ship);
+  const { occupancy } = analyzeShip(ship);
   const length = gridLength(ship);
   const beam = beamOf(ship);
   for (const part of emitters) {

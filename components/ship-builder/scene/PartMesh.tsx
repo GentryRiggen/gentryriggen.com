@@ -7,10 +7,10 @@ import {
   resolveAttachPoint,
   stringTarget,
 } from "@/lib/ship-builder/model/attach";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   beamOf,
-  buildOccupancy,
   gridLength,
   rotatedFootprint,
   type Occupancy,
@@ -495,7 +495,7 @@ function PartMesh({
             seed={windowSeed(part.anchor)}
             balconyFaces={
               part.type === "cabin-balcony"
-                ? openFaces(part, occupancy ?? buildOccupancy(ship))
+                ? openFaces(part, occupancy ?? analyzeShip(ship).occupancy)
                 : undefined
             }
           />

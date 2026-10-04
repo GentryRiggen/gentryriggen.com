@@ -11,7 +11,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { openAttachPoints } from "@/lib/ship-builder/model/attach";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import {
   ATTACH_NEEDS_LABELS,
   CATEGORIES,
@@ -373,10 +373,11 @@ export default function CatalogPanel({ onPick }: CatalogPanelProps) {
   // Attach parts with nowhere to go; recomputed only when the ship changes.
   const blockedTypes = useMemo(() => {
     const blocked = new Set<string>();
+    const analysis = analyzeShip(ship);
     for (const def of visibleParts(kind, showAll)) {
       if (
         def.placement === "attach" &&
-        openAttachPoints(ship, def).length === 0
+        analysis.openAttachPoints(def).length === 0
       ) {
         blocked.add(def.type);
       }

@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { Object3D, type InstancedMesh } from "three";
-import { buildOccupancy, gridLength } from "@/lib/ship-builder/model/grid";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
+import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { DECK_Y } from "./coords";
 import { noRaycast } from "./noRaycast";
@@ -29,7 +30,7 @@ export default function Railings() {
   const lengthCells = gridLength(ship);
 
   const runs = useMemo(() => {
-    const occupancy = buildOccupancy(ship);
+    const { occupancy } = analyzeShip(ship);
     const all: SideRun[] = [];
     for (const run of railRuns(occupancy, lengthCells, 0))
       all.push({ ...run, side: 1 });
