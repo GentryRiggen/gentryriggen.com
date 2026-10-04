@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { computeStats } from "@/lib/ship-builder/model/stats";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import useSeaState from "../hooks/useSeaState";
 import BobGroup from "./BobGroup";
 import FunnelSmoke from "./FunnelSmoke";
 import PropellerBubbles from "./PropellerBubbles";
@@ -24,11 +25,12 @@ interface ShipAnimationProps {
 export default function ShipAnimation({ children }: ShipAnimationProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const reducedMotion = usePrefersReducedMotion();
+  const { seaState } = useSeaState();
   const stats = useMemo(() => computeStats(ship), [ship]);
   const { topSpeedKnots, stabilityRatio } = stats;
   const value = useMemo<ShipAnimationValue>(
-    () => ({ topSpeedKnots, stabilityRatio, reducedMotion }),
-    [topSpeedKnots, stabilityRatio, reducedMotion]
+    () => ({ topSpeedKnots, stabilityRatio, reducedMotion, seaState }),
+    [topSpeedKnots, stabilityRatio, reducedMotion, seaState]
   );
 
   return (

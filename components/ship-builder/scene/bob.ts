@@ -1,5 +1,6 @@
 import { STABILITY_THRESHOLDS } from "@/lib/ship-builder/model/stats";
 import { clamp, TAU } from "./animationMath";
+import { seaParams, type SeaState } from "./seaState";
 
 const DEG = Math.PI / 180;
 
@@ -31,15 +32,21 @@ export function rollAmplitudeDeg(stabilityRatio: number): number {
   return ROLL_STABLE_DEG + t * (ROLL_DANGEROUS_DEG - ROLL_STABLE_DEG);
 }
 
-/** Writes into `out` so the render loop reuses one object. */
+/**
+ * Writes into `out` so the render loop reuses one object. Rougher seas scale
+ * the bob and roll; calm is the original motion.
+ */
 export function bobPose(
   time: number,
   stabilityRatio: number,
-  out: ShipPose
+  out: ShipPose,
+  sea: SeaState = "calm"
 ): ShipPose {
-  out.y = BOB_AMPLITUDE * Math.sin((TAU * time) / BOB_PERIOD);
+  const { bobScale, rollScale } = seaParams(sea);
+  out.y = BOB_AMPLITUDE * bobScale * Math.sin((TAU * time) / BOB_PERIOD);
   out.roll =
     rollAmplitudeDeg(stabilityRatio) *
+    rollScale *
     DEG *
     Math.sin((TAU * time) / ROLL_PERIOD);
   out.pitch = PITCH_DEG * DEG * Math.sin((TAU * time) / PITCH_PERIOD + 1);

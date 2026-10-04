@@ -18,7 +18,7 @@ interface BobGroupProps {
 export default function BobGroup({ children }: BobGroupProps) {
   const group = useRef<Group>(null);
   const pose = useMemo(() => createShipPose(), []);
-  const { stabilityRatio, reducedMotion } = useShipAnimation();
+  const { stabilityRatio, reducedMotion, seaState } = useShipAnimation();
 
   useFrame((state) => {
     const target = group.current;
@@ -28,7 +28,7 @@ export default function BobGroup({ children }: BobGroupProps) {
       target.rotation.set(0, 0, 0);
       return;
     }
-    bobPose(state.clock.elapsedTime, stabilityRatio, pose);
+    bobPose(state.clock.elapsedTime, stabilityRatio, pose, seaState);
     target.position.y = pose.y;
     target.rotation.set(pose.roll, 0, pose.pitch);
   });
