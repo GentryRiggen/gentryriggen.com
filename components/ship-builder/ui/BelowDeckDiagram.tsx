@@ -53,7 +53,7 @@ function summaryLabel(hull: Hull): string {
 }
 
 /**
- * A side cut-away of the hull (bow on the left) showing its watertight walls,
+ * A side cut-away of the hull (bow on the right, as in the side view) showing its watertight walls,
  * and optionally the water in each compartment and the ones the iceberg
  * opened. Editable when `onCycle` is given, otherwise a read-only picture.
  */
@@ -72,8 +72,10 @@ export default function BelowDeckDiagram({
     (_, i) => i + 1
   );
   const waterlineY = levelY(WATERLINE_FRACTION);
-  const hullPath = `M0 ${DECK_Y} H${width} L${width - SEGMENT_WIDTH * 0.6} ${KEEL_Y} H${SEGMENT_WIDTH * 0.9} Z`;
-  const xOf = (cell: number) => (cell / CELLS_PER_SEGMENT) * SEGMENT_WIDTH;
+  const hullPath = `M0 ${DECK_Y} H${width} L${width - SEGMENT_WIDTH * 0.9} ${KEEL_Y} H${SEGMENT_WIDTH * 0.6} Z`;
+  // Cell 0 is the bow, which the drawing puts on the right like the side view.
+  const xOf = (cell: number) =>
+    width - (cell / CELLS_PER_SEGMENT) * SEGMENT_WIDTH;
 
   const handleKeyDown = (event: KeyboardEvent, at: number) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -111,9 +113,9 @@ export default function BelowDeckDiagram({
             <rect
               key={spec.id}
               data-testid={`below-deck-water-${spec.id}`}
-              x={xOf(spec.fromX)}
+              x={xOf(spec.toX)}
               y={top}
-              width={xOf(spec.toX) - xOf(spec.fromX)}
+              width={xOf(spec.fromX) - xOf(spec.toX)}
               height={KEEL_Y - top}
               className="fill-sky-500/70 dark:fill-sky-400/70"
             />
@@ -141,7 +143,7 @@ export default function BelowDeckDiagram({
 
       {slots.map((at) => {
         const wall = bulkheadAt(hull, at);
-        const x = at * SEGMENT_WIDTH;
+        const x = width - at * SEGMENT_WIDTH;
         return wall ? (
           <line
             key={at}
@@ -186,6 +188,24 @@ export default function BelowDeckDiagram({
           );
         })}
 
+      <text
+        aria-hidden="true"
+        x={2}
+        y={VIEW_HEIGHT - 1}
+        className="fill-slate-500 text-[6px] dark:fill-slate-400"
+      >
+        Stern
+      </text>
+      <text
+        aria-hidden="true"
+        x={width - 2}
+        y={VIEW_HEIGHT - 1}
+        textAnchor="end"
+        className="fill-slate-500 text-[6px] dark:fill-slate-400"
+      >
+        Bow
+      </text>
+
       {onCycle &&
         slots.map((at) => (
           <g
@@ -199,7 +219,7 @@ export default function BelowDeckDiagram({
             className="cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-500 [&:focus-visible>rect]:stroke-2"
           >
             <rect
-              x={at * SEGMENT_WIDTH - SEGMENT_WIDTH / 2}
+              x={width - at * SEGMENT_WIDTH - SEGMENT_WIDTH / 2}
               y={0}
               width={SEGMENT_WIDTH}
               height={VIEW_HEIGHT}

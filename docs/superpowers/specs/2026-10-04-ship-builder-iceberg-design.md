@@ -28,7 +28,7 @@ BulkheadHeight }`, `BulkheadHeight = "low" | "waterline" | "deck"`.
 ## Bulkhead editor
 
 - A "Below deck" section in the Hull panel: an SVG cut-away of the hull from
-  the side (bow left), main deck line on top, waterline dashed, a slot at
+  the side (bow on the right, matching the side view), main deck line on top, waterline dashed, a slot at
   each segment boundary.
 - Tapping a slot cycles none → low → waterline → deck → none. Each slot is a
   button with an accessible label ("Wall 3: up to the waterline. Tap to

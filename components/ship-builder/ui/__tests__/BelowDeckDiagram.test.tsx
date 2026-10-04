@@ -32,6 +32,38 @@ describe("BelowDeckDiagram", () => {
     expect(screen.queryByTestId("below-deck-wall-3")).not.toBeInTheDocument();
   });
 
+  it("puts the bow on the right, like the side view", () => {
+    render(<BelowDeckDiagram hull={hull} />);
+    // Walls nearer the bow (cell 0) sit further right.
+    const x = (at: number) =>
+      Number(screen.getByTestId(`below-deck-wall-${at}`).getAttribute("x1"));
+    expect(x(2)).toBeGreaterThan(x(4));
+    const bow = screen.getByText("Bow");
+    const stern = screen.getByText("Stern");
+    expect(bow).toHaveAttribute("aria-hidden", "true");
+    expect(stern).toHaveAttribute("aria-hidden", "true");
+    expect(Number(bow.getAttribute("x"))).toBeGreaterThan(
+      Number(stern.getAttribute("x"))
+    );
+  });
+
+  it("draws the water of the bow compartment at the right end", () => {
+    render(
+      <BelowDeckDiagram
+        hull={hull}
+        water={{ c0: 0.5, c2: 0.5 }}
+        opened={["c0"]}
+      />
+    );
+    const bowWater = Number(
+      screen.getByTestId("below-deck-water-c0").getAttribute("x")
+    );
+    const sternWater = Number(
+      screen.getByTestId("below-deck-water-c2").getAttribute("x")
+    );
+    expect(bowWater).toBeGreaterThan(sternWater);
+  });
+
   it("makes a button for each boundary with a plain-words label", () => {
     render(<BelowDeckDiagram hull={hull} onCycle={jest.fn()} />);
     expect(screen.getAllByRole("button")).toHaveLength(5);
