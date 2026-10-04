@@ -8,11 +8,13 @@ import {
   gridLength,
   inBounds,
   isForwardHalf,
+  isInsideHull,
   MAX_BEAM,
   MIN_BEAM,
   partCells,
   rotatedFootprint,
   topLevel,
+  WING_REACH,
 } from "../grid";
 import type { GridPartDef } from "../types";
 import { attachPart, gridPart, testShip } from "../../testing";
@@ -51,7 +53,8 @@ describe("grid", () => {
     expect(inBounds(ship, { level: 4, x: 0, z: 0 })).toBe(false);
     expect(inBounds(ship, { level: -1, x: 0, z: 0 })).toBe(false);
     expect(inBounds(ship, { level: 0, x: 12, z: 0 })).toBe(false);
-    expect(inBounds(ship, { level: 0, x: 0, z: 4 })).toBe(false);
+    expect(inBounds(ship, { level: 0, x: 0, z: 6 })).toBe(false);
+    expect(inBounds(ship, { level: 0, x: 0, z: -3 })).toBe(false);
     expect(inBounds(ship, { level: 0, x: -1, z: 0 })).toBe(false);
   });
 
@@ -63,6 +66,29 @@ describe("grid", () => {
 
   it("keeps inner columns of a wide hull in bounds", () => {
     expect(inBounds(testShip([], 4, 7), { level: 0, x: 0, z: 6 })).toBe(true);
+  });
+
+  it("reaches two wing columns past each hull edge, at every level", () => {
+    expect(WING_REACH).toBe(2);
+    for (const beam of [3, 4, 7]) {
+      const ship = testShip([], 4, beam);
+      for (const level of [0, 3]) {
+        expect(inBounds(ship, { level, x: 0, z: -2 })).toBe(true);
+        expect(inBounds(ship, { level, x: 0, z: -3 })).toBe(false);
+        expect(inBounds(ship, { level, x: 0, z: beam + 1 })).toBe(true);
+        expect(inBounds(ship, { level, x: 0, z: beam + 2 })).toBe(false);
+      }
+    }
+  });
+
+  it("separates inside-hull cells from wing cells", () => {
+    const ship = testShip([], 4, 3);
+    expect(isInsideHull(ship, { level: 0, x: 0, z: 0 })).toBe(true);
+    expect(isInsideHull(ship, { level: 2, x: 11, z: 2 })).toBe(true);
+    expect(isInsideHull(ship, { level: 0, x: 0, z: -1 })).toBe(false);
+    expect(isInsideHull(ship, { level: 0, x: 0, z: 3 })).toBe(false);
+    expect(isInsideHull(ship, { level: 0, x: 12, z: 1 })).toBe(false);
+    expect(isInsideHull(ship, { level: 4, x: 0, z: 1 })).toBe(false);
   });
 
   it("treats cells below half the length as the forward half", () => {

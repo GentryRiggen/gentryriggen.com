@@ -63,7 +63,10 @@ describe("canPlace — grid parts", () => {
     expect(canPlace(ship, gridCandidate("deck-1x1", 0, 24, 0))).toEqual(
       fail("Outside the hull")
     );
-    expect(canPlace(ship, gridCandidate("deck-1x1", 0, 0, 4))).toEqual(
+    expect(canPlace(ship, gridCandidate("deck-1x1", 0, 0, 6))).toEqual(
+      fail("Outside the hull")
+    );
+    expect(canPlace(ship, gridCandidate("deck-1x1", 0, 0, -3))).toEqual(
       fail("Outside the hull")
     );
     expect(canPlace(ship, gridCandidate("deck-1x1", 4, 0, 0))).toEqual(
@@ -72,7 +75,7 @@ describe("canPlace — grid parts", () => {
     expect(canPlace(ship, gridCandidate("deck-2x1", 0, 23, 0))).toEqual(
       fail("Outside the hull")
     );
-    expect(canPlace(ship, gridCandidate("deck-2x1", 0, 0, 3, 90))).toEqual(
+    expect(canPlace(ship, gridCandidate("deck-2x1", 0, 0, 5, 90))).toEqual(
       fail("Outside the hull")
     );
   });

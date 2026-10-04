@@ -17,6 +17,8 @@ export const DEFAULT_BEAM = 4;
  * `beamOf(ship)`.
  */
 export const GRID_WIDTH = DEFAULT_BEAM;
+/** Wing columns allowed past each hull edge. */
+export const WING_REACH = 2;
 export const MAX_LEVEL = 3;
 export const MIN_SEGMENTS = 4;
 export const MAX_SEGMENTS = 12;
@@ -66,15 +68,27 @@ export function partCells(part: PlacedPart): Cell[] {
   return footprintCells(def, part.anchor, part.rotation);
 }
 
-export function inBounds(ship: Ship, cell: Cell): boolean {
+function inLevelsAndLength(ship: Ship, cell: Cell): boolean {
   return (
     cell.level >= 0 &&
     cell.level <= MAX_LEVEL &&
     cell.x >= 0 &&
-    cell.x < gridLength(ship) &&
-    cell.z >= 0 &&
-    cell.z < beamOf(ship)
+    cell.x < gridLength(ship)
   );
+}
+
+/** Inside the hull or in a wing column, which may reach past either edge. */
+export function inBounds(ship: Ship, cell: Cell): boolean {
+  return (
+    inLevelsAndLength(ship, cell) &&
+    cell.z >= -WING_REACH &&
+    cell.z <= beamOf(ship) - 1 + WING_REACH
+  );
+}
+
+/** Over the hull itself (0 <= z < beam), as opposed to a wing cell. */
+export function isInsideHull(ship: Ship, cell: Cell): boolean {
+  return inLevelsAndLength(ship, cell) && cell.z >= 0 && cell.z < beamOf(ship);
 }
 
 export function isForwardHalf(ship: Ship, x: number): boolean {
