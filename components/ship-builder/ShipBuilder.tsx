@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import { SHIP_BUILDER_VERSION } from "@/lib/ship-builder/version";
 import useCollapsedPanels from "./hooks/useCollapsedPanels";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useServiceWorker from "./hooks/useServiceWorker";
@@ -56,6 +57,12 @@ export default function ShipBuilder() {
           ← gentryriggen.com
         </Link>
         <h1 className="text-lg font-semibold">Ship Builder</h1>
+        <span
+          data-testid="app-version"
+          className="-ml-2 self-end pb-0.5 text-xs text-slate-500 dark:text-slate-400"
+        >
+          v{SHIP_BUILDER_VERSION}
+        </span>
       </header>
       <ThemeToggle />
 

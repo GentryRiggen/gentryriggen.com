@@ -2,6 +2,7 @@ import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ShipBuilder from "../ShipBuilder";
+import { SHIP_BUILDER_VERSION } from "@/lib/ship-builder/version";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -111,5 +112,16 @@ describe("ShipBuilder shell", () => {
     await user.clear(input);
     await user.type(input, "Sea Dog");
     expect(input).toHaveValue("Sea Dog");
+  });
+});
+
+describe("ShipBuilder version", () => {
+  it("shows the app version beside the title", () => {
+    render(<ShipBuilder />);
+    expect(screen.getByRole("heading", { name: "Ship Builder" })).toBeVisible();
+    expect(screen.getByTestId("app-version")).toHaveTextContent(
+      `v${SHIP_BUILDER_VERSION}`
+    );
+    expect(SHIP_BUILDER_VERSION).toBe("1.4.0");
   });
 });
