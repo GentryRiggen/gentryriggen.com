@@ -347,7 +347,7 @@ describe("CatalogPanel", () => {
       ).toBeInTheDocument();
     });
 
-    it("puts the switch in the drawer's sticky header beside the search", () => {
+    it("keeps the switch inside the Parts panel", () => {
       render(
         <Drawer side="left" label="Parts" open onOpenChange={() => {}}>
           <CatalogPanel />

@@ -7,18 +7,38 @@ import {
   type PartType,
 } from "./types";
 
+/** In the order a ship is built, which is the order the Parts panel lists. */
 export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
   { id: "decks", name: "Decks" },
   { id: "cabins", name: "Cabins" },
   { id: "command", name: "Command" },
   { id: "funnels", name: "Funnels" },
+  { id: "propulsion", name: "Propulsion" },
   { id: "masts", name: "Masts" },
   { id: "lifeboats", name: "Lifeboat gear" },
   { id: "naval", name: "Naval" },
   { id: "cargo", name: "Cargo" },
   { id: "decor", name: "Decorations" },
-  { id: "propulsion", name: "Propulsion" },
 ];
+
+/** Short "what's missing" lines for parts tiles with nowhere to go. */
+export const ATTACH_NEEDS_LABELS: Record<AttachPointType, string> = {
+  "funnel-mount": "Needs a deck block",
+  "mast-mount": "No free mast spot",
+  "davit-point": "Needs a deck edge",
+  "boat-mount": "Needs a free davit",
+  "large-funnel-mount": "Needs a 2×2 deck",
+  "big-boat-mount": "Needs paired davits",
+  "prop-mount": "No free prop spot",
+  "rudder-mount": "Rudder spot taken",
+  "heli-mount": "Needs a helipad",
+  "freefall-mount": "No free stern spot",
+  "edge-mount": "Needs a deck edge",
+  "searchlight-mount": "Needs a bridge or mast",
+  "nest-mount": "Needs a mast",
+  "flag-mount": "Flag spot taken",
+  "aerial-mount": "Needs a 2nd mast",
+};
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "funnel-mount": "deck block with nothing on top",

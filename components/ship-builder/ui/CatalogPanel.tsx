@@ -1,15 +1,23 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { ChevronDown, Hammer, Paintbrush, Search, X } from "lucide-react";
 import {
   useContext,
+  useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { CATEGORIES, visibleParts } from "@/lib/ship-builder/model/catalog";
+import { openAttachPoints } from "@/lib/ship-builder/model/attach";
+import {
+  ATTACH_NEEDS_LABELS,
+  CATEGORIES,
+  visibleParts,
+} from "@/lib/ship-builder/model/catalog";
+import type { PaintColor } from "@/lib/ship-builder/model/paint";
 import { fuzzyFilter, type SearchField } from "@/lib/ship-builder/search/fuzzy";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
@@ -21,12 +29,16 @@ import {
   BOW_IDS,
   STERN_IDS,
   type BowShape,
+  type PartDef,
   type SternShape,
 } from "@/lib/ship-builder/model/types";
+import useHullSectionOpen from "../hooks/useHullSectionOpen";
 import useShowAllParts from "../hooks/useShowAllParts";
 import HullEndIcon, { type HullEndKind } from "./icons/HullEndIcon";
 import PartIcon from "./icons/PartIcon";
 import { DrawerHeaderSlot } from "./Drawer";
+import HullSizeControls from "./HullSizeControls";
+import PaintPanel from "./PaintPanel";
 import { inputClass } from "./styles";
 
 interface CatalogPanelProps {
@@ -36,6 +48,8 @@ interface CatalogPanelProps {
 
 const HEADING_CLASS =
   "text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+
+const DEFAULT_PAINT_COLOR: PaintColor = "red";
 
 interface HullEndTilesProps {
   label: string;
@@ -99,6 +113,123 @@ function hullTileFields(label: string, { def }: HullTile): SearchField[] {
   ];
 }
 
+interface ModeSwitchProps {
+  isPaint: boolean;
+  onChange: (isPaint: boolean) => void;
+}
+
+/** Build | Paint, a segmented control. The mode itself lives in the store. */
+function ModeSwitch({ isPaint, onChange }: ModeSwitchProps) {
+  const options = [
+    { paint: false, label: "Build", Icon: Hammer },
+    { paint: true, label: "Paint", Icon: Paintbrush },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label="Mode"
+      className="mx-2 mb-2 flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
+    >
+      {options.map(({ paint, label, Icon }) => {
+        const isOn = paint === isPaint;
+        return (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={isOn}
+            onClick={() => onChange(paint)}
+            className={`flex h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors ${
+              isOn
+                ? "bg-white text-sky-800 shadow dark:bg-slate-600 dark:text-sky-100"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            }`}
+          >
+            <Icon aria-hidden="true" className="h-4 w-4" />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface CategoryChipsProps {
+  chips: { id: string; name: string }[];
+  onChip: (id: string) => void;
+}
+
+function CategoryChips({ chips, onChip }: CategoryChipsProps) {
+  if (chips.length === 0) return null;
+  return (
+    <div
+      role="group"
+      aria-label="Categories"
+      className="flex gap-1.5 overflow-x-auto px-2"
+    >
+      {chips.map(({ id, name }) => (
+        // The button pads the touch area to 44px while the pill stays slim.
+        <button
+          key={id}
+          type="button"
+          aria-label={`Jump to ${name}`}
+          onClick={() => onChip(id)}
+          className="flex h-11 shrink-0 touch-manipulation items-center"
+        >
+          <span className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
+            {name}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface PartTileProps {
+  def: PartDef;
+  isActive: boolean;
+  isBlocked: boolean;
+  onSelect: (def: PartDef) => void;
+}
+
+/** A picture tile. Blocked tiles are dimmed but stay clickable. */
+function PartTile({ def, isActive, isBlocked, onSelect }: PartTileProps) {
+  const blockedBy = isBlocked && def.placement === "attach" ? def : null;
+  return (
+    <button
+      type="button"
+      aria-pressed={isActive}
+      title={
+        blockedBy
+          ? `${def.description}. ${blockedBy.emptyHint}`
+          : def.description
+      }
+      onClick={() => onSelect(def)}
+      className={`flex min-h-24 w-full touch-manipulation flex-col items-center justify-start gap-0.5 rounded-md border px-1 py-1.5 text-center transition-colors ${
+        isActive
+          ? "border-sky-500 bg-sky-50 dark:border-sky-400 dark:bg-sky-950"
+          : "border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+      }`}
+    >
+      <PartIcon
+        type={def.type}
+        className={`h-12 w-12 shrink-0 ${blockedBy ? "opacity-40" : ""}`}
+      />
+      <span
+        className={`text-[11px] font-medium leading-tight ${
+          blockedBy ? "text-slate-500 dark:text-slate-400" : ""
+        }`}
+      >
+        {def.name}
+      </span>
+      {blockedBy && (
+        <span className="text-[10px] leading-tight text-amber-700 dark:text-amber-300">
+          {ATTACH_NEEDS_LABELS[blockedBy.attachTo]}
+        </span>
+      )}
+    </button>
+  );
+}
+
 interface SearchBoxProps {
   query: string;
   onQueryChange: (query: string) => void;
@@ -116,7 +247,7 @@ function SearchBox({ query, onQueryChange }: SearchBoxProps) {
   }
 
   return (
-    <div className="px-2 pb-2">
+    <div className="px-2 pb-1">
       <div className="relative">
         <label htmlFor={inputId} className="sr-only">
           Search parts
@@ -162,7 +293,7 @@ interface ShowAllSwitchProps {
 function ShowAllSwitch({ isOn, onChange }: ShowAllSwitchProps) {
   const labelId = useId();
   return (
-    <div className="flex items-center justify-between gap-3 px-3 pb-2">
+    <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-2 dark:border-slate-800">
       <span id={labelId} className="text-xs text-slate-600 dark:text-slate-300">
         Show all parts
       </span>
@@ -172,7 +303,7 @@ function ShowAllSwitch({ isOn, onChange }: ShowAllSwitchProps) {
         aria-checked={isOn}
         aria-labelledby={labelId}
         onClick={() => onChange(!isOn)}
-        className="-my-2 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:focus-visible:outline-sky-400"
+        className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:focus-visible:outline-sky-400"
       >
         <span
           aria-hidden="true"
@@ -195,15 +326,26 @@ function ShowAllSwitch({ isOn, onChange }: ShowAllSwitchProps) {
 
 export default function CatalogPanel({ onPick }: CatalogPanelProps) {
   const [query, setQuery] = useState("");
+  const [isHullOpen, setHullOpen] = useHullSectionOpen();
+  const idPrefix = useId();
+  const lastColour = useRef<PaintColor>(DEFAULT_PAINT_COLOR);
   const headerSlot = useContext(DrawerHeaderSlot);
   const tool = useShipBuilderStore((s) => s.tool);
   const selectTool = useShipBuilderStore((s) => s.selectTool);
-  const bow = useShipBuilderStore((s) => s.ship.hull.bow);
-  const stern = useShipBuilderStore((s) => s.ship.hull.stern);
-  const kind = useShipBuilderStore((s) => s.ship.kind);
+  const selectPaint = useShipBuilderStore((s) => s.selectPaint);
+  const cancel = useShipBuilderStore((s) => s.cancel);
+  const ship = useShipBuilderStore((s) => s.ship);
   const { showAll, setShowAll } = useShowAllParts();
   const setBow = useShipBuilderStore((s) => s.setBow);
   const setStern = useShipBuilderStore((s) => s.setStern);
+
+  const { kind } = ship;
+  const { bow, stern } = ship.hull;
+  const isPaint = tool.kind === "paint";
+  const paintColour = tool.kind === "paint" ? tool.color : null;
+  useEffect(() => {
+    if (paintColour) lastColour.current = paintColour;
+  }, [paintColour]);
 
   const visibleBow = useMemo(
     () => fuzzyFilter(query, bowTiles, (t) => hullTileFields("Bow", t)),
@@ -228,92 +370,158 @@ export default function CatalogPanel({ onPick }: CatalogPanelProps) {
       ),
     })).filter(({ parts }) => parts.length > 0);
   }, [query, kind, showAll]);
+  // Attach parts with nowhere to go; recomputed only when the ship changes.
+  const blockedTypes = useMemo(() => {
+    const blocked = new Set<string>();
+    for (const def of visibleParts(kind, showAll)) {
+      if (
+        def.placement === "attach" &&
+        openAttachPoints(ship, def).length === 0
+      ) {
+        blocked.add(def.type);
+      }
+    }
+    return blocked;
+  }, [ship, kind, showAll]);
   const hasHull = visibleBow.length > 0 || visibleStern.length > 0;
   const hasResults = hasHull || visibleCategories.length > 0;
+  // A search always reveals matching hull shapes, even if the section is shut.
+  const isSearching = query.trim() !== "";
+  const showHullTiles = isHullOpen || isSearching;
 
-  const search = (
+  const sectionId = (id: string) => `${idPrefix}-section-${id}`;
+  const chips = [
+    ...(hasHull ? [{ id: "hull", name: "Hull" }] : []),
+    ...visibleCategories.map(({ category }) => ({
+      id: category.id,
+      name: category.name,
+    })),
+  ];
+
+  function handleChip(id: string) {
+    const prefersReducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    )?.matches;
+    document.getElementById(sectionId(id))?.scrollIntoView?.({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }
+
+  function handleMode(wantsPaint: boolean) {
+    if (wantsPaint) selectPaint(lastColour.current);
+    else cancel();
+  }
+
+  function handleSelectPart(def: PartDef) {
+    selectTool(def.type);
+    onPick?.();
+  }
+
+  const header = (
     <>
-      <SearchBox query={query} onQueryChange={setQuery} />
-      <ShowAllSwitch isOn={showAll} onChange={setShowAll} />
+      <ModeSwitch isPaint={isPaint} onChange={handleMode} />
+      {!isPaint && (
+        <>
+          <SearchBox query={query} onQueryChange={setQuery} />
+          <CategoryChips chips={chips} onChip={handleChip} />
+        </>
+      )}
     </>
   );
 
   return (
     <>
-      {/* In a drawer the box lives in its sticky header; alone, it sits on top. */}
-      {headerSlot === undefined && search}
-      {headerSlot && createPortal(search, headerSlot)}
-      <div className="space-y-5 p-4">
-        {!hasResults && (
-          <p
-            role="status"
-            className="text-sm text-slate-500 dark:text-slate-400"
-          >
-            No parts match
-          </p>
-        )}
-        {hasHull && (
-          <section>
-            <h2 className={HEADING_CLASS}>Hull</h2>
-            {visibleBow.length > 0 && (
-              <HullEndTiles
-                label="Bow"
-                selected={bow}
-                onSelect={(shape) => setBow(shape as BowShape)}
-                tiles={visibleBow}
-              />
-            )}
-            {visibleStern.length > 0 && (
-              <HullEndTiles
-                label="Stern"
-                selected={stern}
-                onSelect={(shape) => setStern(shape as SternShape)}
-                tiles={visibleStern}
-              />
-            )}
-          </section>
-        )}
-        {visibleCategories.map(({ category, parts }) => (
-          <section key={category.id}>
-            <h2 className={HEADING_CLASS}>{category.name}</h2>
-            <ul className="mt-2 space-y-1">
-              {parts.map((def) => {
-                const active = tool.kind === "place" && tool.type === def.type;
-                return (
-                  <li key={def.type}>
-                    <button
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => {
-                        selectTool(def.type);
-                        onPick?.();
-                      }}
-                      className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
-                        active
-                          ? "border-sky-500 bg-sky-50 dark:border-sky-400 dark:bg-sky-950"
-                          : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <PartIcon
-                        type={def.type}
-                        className="h-10 w-10 shrink-0"
+      {/* In a drawer the controls live in its sticky header; alone, on top. */}
+      {headerSlot === undefined && header}
+      {headerSlot && createPortal(header, headerSlot)}
+      {isPaint ? (
+        <PaintPanel onPick={onPick} />
+      ) : (
+        <div className="space-y-5 p-4">
+          {!hasResults && (
+            <p
+              role="status"
+              className="text-sm text-slate-500 dark:text-slate-400"
+            >
+              No parts match
+            </p>
+          )}
+          {hasHull && (
+            <section id={sectionId("hull")}>
+              <h2 className={HEADING_CLASS}>
+                <button
+                  type="button"
+                  aria-expanded={showHullTiles}
+                  aria-controls={`${idPrefix}-hull`}
+                  onClick={() => setHullOpen(!isHullOpen)}
+                  className="-my-2 flex min-h-11 w-full touch-manipulation items-center justify-between uppercase"
+                >
+                  Hull
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-4 w-4 transition-transform ${
+                      showHullTiles ? "" : "-rotate-90"
+                    }`}
+                  />
+                </button>
+              </h2>
+              <div id={`${idPrefix}-hull`} hidden={!showHullTiles}>
+                {visibleBow.length > 0 && (
+                  <HullEndTiles
+                    label="Bow"
+                    selected={bow}
+                    onSelect={(shape) => setBow(shape as BowShape)}
+                    tiles={visibleBow}
+                  />
+                )}
+                {visibleStern.length > 0 && (
+                  <HullEndTiles
+                    label="Stern"
+                    selected={stern}
+                    onSelect={(shape) => setStern(shape as SternShape)}
+                    tiles={visibleStern}
+                  />
+                )}
+                <HullSizeControls />
+              </div>
+            </section>
+          )}
+          {visibleCategories.map(({ category, parts }) => {
+            const activeDef = parts.find(
+              (def) => tool.kind === "place" && tool.type === def.type
+            );
+            return (
+              <section key={category.id} id={sectionId(category.id)}>
+                <h2 className={HEADING_CLASS}>{category.name}</h2>
+                <ul className="mt-2 grid grid-cols-3 gap-1.5">
+                  {parts.map((def) => (
+                    <li key={def.type}>
+                      <PartTile
+                        def={def}
+                        isActive={def === activeDef}
+                        isBlocked={blockedTypes.has(def.type)}
+                        onSelect={handleSelectPart}
                       />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium">
-                          {def.name}
-                        </span>
-                        <span className="block text-xs text-slate-500 dark:text-slate-400">
-                          {def.description}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
-      </div>
+                    </li>
+                  ))}
+                </ul>
+                {activeDef && (
+                  <p
+                    data-testid="part-detail"
+                    className="mt-2 rounded-md bg-sky-50 px-3 py-2 text-xs text-slate-700 dark:bg-sky-950 dark:text-slate-200"
+                  >
+                    <span className="font-medium">{activeDef.name}</span>
+                    {" · "}
+                    {activeDef.description}
+                  </p>
+                )}
+              </section>
+            );
+          })}
+          <ShowAllSwitch isOn={showAll} onChange={setShowAll} />
+        </div>
+      )}
     </>
   );
 }

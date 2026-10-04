@@ -20,6 +20,11 @@ async function place(page: Page, partName: RegExp, anchor: Anchor) {
   expect(result).toEqual({ ok: true });
 }
 
+/** Scope to the Parts panel; other regions have buttons with similar names. */
+function partsPanel(page: Page) {
+  return page.getByRole("complementary", { name: "Parts" });
+}
+
 async function partId(page: Page, index: number): Promise<string> {
   return page.evaluate(
     (i) => window.__shipBuilderStore!.getState().ship.parts[i].id,
@@ -123,8 +128,12 @@ test.describe("Ship Builder", () => {
         )
       )
       .toBe(0);
-    await page.getByRole("button", { name: "Lengthen hull" }).click();
-    await expect(page.getByTestId("hull-length")).toHaveText("9 segments");
+    await partsPanel(page)
+      .getByRole("button", { name: "Lengthen hull" })
+      .click();
+    await expect(partsPanel(page).getByTestId("hull-length")).toHaveText(
+      "9 segments"
+    );
   });
 
   test("shows the rule reason for an invalid placement", async ({ page }) => {
@@ -148,10 +157,11 @@ test.describe("Ship Builder", () => {
       Number(
         (await page.getByTestId("stat-tonnage").innerText()).replace(/\D/g, "")
       );
-    await expect(page.getByTestId("beam-width")).toHaveText("4 wide");
+    const beam = partsPanel(page).getByTestId("beam-width");
+    await expect(beam).toHaveText("4 wide");
     const before = await tonnage();
-    await page.getByRole("button", { name: "Wider" }).click();
-    await expect(page.getByTestId("beam-width")).toHaveText("5 wide");
+    await partsPanel(page).getByRole("button", { name: "Wider" }).click();
+    await expect(beam).toHaveText("5 wide");
     expect(await tonnage()).toBeGreaterThan(before);
   });
 
@@ -248,8 +258,12 @@ test.describe("Ship Builder", () => {
           await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x, z });
         }
       }
-      await page.getByRole("button", { name: "Paint", exact: true }).click();
-      await page.getByRole("button", { name: "Red", exact: true }).click();
+      await partsPanel(page)
+        .getByRole("button", { name: "Paint", exact: true })
+        .click();
+      await partsPanel(page)
+        .getByRole("button", { name: "Red", exact: true })
+        .click();
       await expect(
         page.getByText("Painting · tap a part or the hull")
       ).toBeVisible();
@@ -282,6 +296,9 @@ test.describe("Ship Builder", () => {
       await expect(
         page.getByRole("group", { name: "Paint colours" })
       ).toHaveCount(0);
+      await expect(
+        partsPanel(page).getByRole("button", { name: "Build", exact: true })
+      ).toHaveAttribute("aria-pressed", "true");
     } finally {
       await browser.close();
     }

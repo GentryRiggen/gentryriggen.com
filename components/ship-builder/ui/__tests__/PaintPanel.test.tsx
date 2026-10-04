@@ -1,7 +1,7 @@
 import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PaintBar, { SWATCH_FILL } from "../PaintBar";
+import PaintPanel, { SWATCH_FILL } from "../PaintPanel";
 import PlacementHint from "../PlacementHint";
 import { PAINT_COLORS } from "@/lib/ship-builder/model/paint";
 import {
@@ -15,19 +15,23 @@ beforeEach(() => {
   act(() => useShipBuilderStore.setState(createInitialState()));
 });
 
-describe("PaintBar", () => {
-  it("renders nothing outside paint mode", () => {
-    render(<PaintBar />);
-    expect(screen.queryByRole("group", { name: "Paint colours" })).toBeNull();
+describe("PaintPanel", () => {
+  it("explains how painting and washing off work", () => {
+    render(<PaintPanel />);
+    expect(
+      screen.getByText(/Tap a part or the hull to paint it/)
+    ).toBeVisible();
+    expect(screen.getByText(/wash the paint off/)).toBeVisible();
   });
 
   it("shows one named swatch per colour with the current one pressed", () => {
     act(() => store().selectPaint("red"));
-    render(<PaintBar />);
+    render(<PaintPanel />);
     for (const { name } of PAINT_COLORS) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
     expect(PAINT_COLORS).toHaveLength(12);
+    expect(screen.getByRole("group", { name: "Paint colours" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Red" })).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -39,27 +43,20 @@ describe("PaintBar", () => {
   });
 
   it("makes every swatch at least 44px", () => {
-    act(() => store().selectPaint("red"));
-    render(<PaintBar />);
+    render(<PaintPanel />);
     for (const { name } of PAINT_COLORS) {
       expect(screen.getByRole("button", { name })).toHaveClass("h-11", "w-11");
     }
   });
 
-  it("picks a colour", async () => {
+  it("picks a colour and calls onPick", async () => {
     const user = userEvent.setup();
+    const onPick = jest.fn();
     act(() => store().selectPaint("red"));
-    render(<PaintBar />);
+    render(<PaintPanel onPick={onPick} />);
     await user.click(screen.getByRole("button", { name: "Green" }));
     expect(store().tool).toEqual({ kind: "paint", color: "green" });
-  });
-
-  it("closes paint mode with the X button", async () => {
-    const user = userEvent.setup();
-    act(() => store().selectPaint("red"));
-    render(<PaintBar />);
-    await user.click(screen.getByRole("button", { name: "Close paint bar" }));
-    expect(store().tool).toEqual({ kind: "none" });
+    expect(onPick).toHaveBeenCalledTimes(1);
   });
 
   it("keeps each swatch fill in step with the palette", () => {

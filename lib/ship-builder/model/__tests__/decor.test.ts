@@ -32,13 +32,13 @@ const DECOR_TYPES = [
 const NON_STAIRS = ["deckchair", "bench", "deck-lamp", "ventilator"] as const;
 
 describe("decor catalog", () => {
-  it("lists the deck items under Decorations, before Propulsion", () => {
+  it("lists the deck items under Decorations, after the builder categories", () => {
     expect(partsInCategory("decor").map((d) => d.type)).toEqual(
       expect.arrayContaining([...DECOR_TYPES])
     );
     const ids = CATEGORIES.map((c) => c.id);
     expect(ids.indexOf("decor")).toBeGreaterThan(ids.indexOf("naval"));
-    expect(ids[ids.length - 1]).toBe("propulsion");
+    expect(ids[ids.length - 1]).toBe("decor");
   });
 
   it("makes every deck item a light 1×1 decor part; only the ventilator is liner-only", () => {

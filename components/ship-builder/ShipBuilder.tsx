@@ -14,7 +14,6 @@ import useWebGLSupport from "./hooks/useWebGLSupport";
 import CatalogPanel from "./ui/CatalogPanel";
 import Drawer from "./ui/Drawer";
 import Notice from "./ui/Notice";
-import PaintBar from "./ui/PaintBar";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
 import StatsPanel from "./ui/StatsPanel";
@@ -92,7 +91,6 @@ export default function ShipBuilder() {
         <main className="relative min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
           <Notice />
-          <PaintBar />
           <RemovalConfirm />
           <PlacementHint />
         </main>
