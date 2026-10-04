@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.2.0",
+    date: "2026-10-04",
+    title: "Famous ships",
+    highlights: [
+      "Start from a famous ship: Titanic, Olympic, Britannic, Carpathia or Lusitania",
+      "Or a modern one: Wonder of the Seas, Ocean Breeze, an Arleigh Burke destroyer, a Coast Guard cutter, the Ever Given or Little Hopper",
+      "Every template is an ordinary ship you can change, paint and save",
+    ],
+  },
+  {
     version: "2.1.1",
     date: "2026-10-04",
     title: "What's new",
