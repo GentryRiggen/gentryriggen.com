@@ -7,7 +7,6 @@ import {
   place,
   previewHullLength,
   removeParts,
-  removeWithCascade,
   setHullLength,
   validateShip,
   type PartCandidate,
@@ -308,9 +307,8 @@ describe("cascade removal", () => {
       gridPart("other", "deck-1x1", 0, 10, 1),
     ]);
     expect(cascadeIds(ship, ["a"])).toEqual(["a", "b", "dv", "lb"]);
-    expect(removeWithCascade(ship, "a").parts.map((p) => p.id)).toEqual([
-      "other",
-    ]);
+    const removed = removeParts(ship, cascadeIds(ship, ["a"]));
+    expect(removed.parts.map((p) => p.id)).toEqual(["other"]);
   });
 
   it("removes a 2x1 block when either supporting cell goes", () => {

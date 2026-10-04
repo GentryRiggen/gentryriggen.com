@@ -79,6 +79,18 @@ describe("useShipPersistence", () => {
     expect(store().ship).toEqual(shared);
   });
 
+  it("loads a shared ship on hashchange as an undoable edit", () => {
+    render(<Harness />);
+    const pastBefore = store().past.length;
+    act(() => {
+      window.location.hash = `ship=${encodeShip(shared)}`;
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(store().ship).toEqual(shared);
+    expect(store().past).toHaveLength(pastBefore + 1);
+    expect(window.location.hash).toBe("");
+  });
+
   it("restores the autosave when there is no hash", () => {
     saveAutosave(shared, "ship-3");
     render(<Harness />);

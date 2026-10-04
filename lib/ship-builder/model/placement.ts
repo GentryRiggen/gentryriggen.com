@@ -226,10 +226,6 @@ export function removeParts(ship: Ship, ids: string[]): Ship {
   return { ...ship, parts: ship.parts.filter((p) => !drop.has(p.id)) };
 }
 
-export function removeWithCascade(ship: Ship, partId: string): Ship {
-  return removeParts(ship, cascadeIds(ship, [partId]));
-}
-
 function withLength(ship: Ship, lengthSegments: number): Ship {
   return { ...ship, hull: { lengthSegments } };
 }
