@@ -95,7 +95,6 @@ export default function StatsPanel() {
   const stats = useMemo(() => computeStats(ship), [ship]);
   const { passengers } = stats;
   const reference = REFERENCE_SHIPS[ship.kind];
-  const isNavy = ship.kind === "navy";
 
   return (
     <div className="space-y-5 p-4">
@@ -146,10 +145,10 @@ export default function StatsPanel() {
           />
           <StatRow
             Icon={Weight}
-            label={isNavy ? "Displacement" : "Gross tonnage"}
+            label="Gross tonnage"
             testId="stat-tonnage"
             value={fmt(stats.grossTonnage)}
-            unit={isNavy ? "t" : "GRT"}
+            unit="GRT"
           />
           <StatRow
             Icon={Gauge}

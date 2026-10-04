@@ -30,12 +30,14 @@ function subscribe(listener: () => void): () => void {
 }
 
 function writeSnapshot(next: boolean): void {
+  // Kept current on every write, so a read that later throws falls back to
+  // the latest value rather than a stale one.
+  memorySnapshot = next;
   try {
     if (next) window.localStorage.setItem(STORAGE_KEY, ON);
     else window.localStorage.removeItem(STORAGE_KEY);
     isMemoryAuthoritative = false;
   } catch {
-    memorySnapshot = next;
     isMemoryAuthoritative = true;
   }
   listeners.forEach((listener) => listener());

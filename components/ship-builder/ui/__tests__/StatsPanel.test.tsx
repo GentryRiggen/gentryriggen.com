@@ -125,7 +125,7 @@ describe("StatsPanel", () => {
       expect(screen.queryByText("46,328")).not.toBeInTheDocument();
     });
 
-    it("compares a navy ship to a destroyer, using displacement", () => {
+    it("compares a navy ship to a destroyer by displacement", () => {
       render(<StatsPanel />);
       showKind("navy");
       expect(
@@ -136,10 +136,11 @@ describe("StatsPanel", () => {
       expect(within(reference()).getByText("9,200 t")).toBeVisible();
       expect(within(reference()).getByText("30+ kn")).toBeVisible();
       expect(within(reference()).getByText("about 300")).toBeVisible();
+      // The player's ship keeps its gross tonnage: displacement is a mass,
+      // which the model doesn't compute.
       expect(
         screen.getByTestId("stat-tonnage").closest("div")
-      ).toHaveTextContent(/Displacement/);
-      expect(screen.queryByText("Gross tonnage")).not.toBeInTheDocument();
+      ).toHaveTextContent(/Gross tonnage/);
     });
 
     it("compares a cargo ship to the Ever Given", () => {

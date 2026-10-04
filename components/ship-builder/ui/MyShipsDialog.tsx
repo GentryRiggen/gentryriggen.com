@@ -19,8 +19,7 @@ import {
   panelClass,
 } from "./styles";
 import trapTab from "./trapTab";
-
-const UNTITLED_NAME = "Untitled liner";
+import { KIND_DEFAULTS } from "@/lib/ship-builder/model/kinds";
 
 interface MyShipsDialogProps {
   onClose: () => void;
@@ -116,7 +115,8 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
         ) : (
           <ul className="max-h-96 space-y-2 overflow-y-auto">
             {ships.map((entry) => {
-              const displayName = entry.name || UNTITLED_NAME;
+              const displayName =
+                entry.name || KIND_DEFAULTS[entry.ship.kind].name;
               return (
                 <li
                   key={entry.id}
