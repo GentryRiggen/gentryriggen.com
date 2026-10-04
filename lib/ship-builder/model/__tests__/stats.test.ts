@@ -1,6 +1,7 @@
 import { REFERENCE_SHIPS, SHIP_KINDS } from "../kinds";
 import {
   computeSpeed,
+  DRIVETRAINS,
   computeStats,
   coverageLevel,
   TITANIC_REFERENCE,
@@ -194,6 +195,20 @@ describe("computeStats", () => {
     const parts = [0, 1, 2, 3].flatMap((level) => fillLevel(level, len));
     const codes = computeStats(testShip(parts, 4)).warnings.map((w) => w.code);
     expect(codes).toContain("top-heavy");
+  });
+});
+
+describe("drivetrains", () => {
+  it("keeps liners on 1910s steam figures", () => {
+    expect(computeSpeed(8, 3, 20, 84924)).toBe(
+      computeSpeed(8, 3, 20, 84924, 0, DRIVETRAINS.liner)
+    );
+  });
+
+  it("lets modern kinds use more power per propeller and lose less to size", () => {
+    const steam = computeSpeed(10, 2, 20, 180000, 0, DRIVETRAINS.liner);
+    const modern = computeSpeed(10, 2, 20, 180000, 0, DRIVETRAINS.cruise);
+    expect(modern).toBeGreaterThan(steam + 10);
   });
 });
 

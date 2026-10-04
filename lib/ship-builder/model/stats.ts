@@ -1,3 +1,4 @@
+import type { ShipKind } from "./kinds";
 import { resolveAttachPoint } from "./attach";
 import { getPartDef } from "./catalog";
 import { hullSpeedModifier } from "./hullEnds";
@@ -22,6 +23,30 @@ export const SPEED = {
   lossPer10kTons: 1,
   min: 8,
   max: 30,
+};
+
+/** How a ship's era turns power into speed. */
+export interface Drivetrain {
+  /** Power one propeller (or azipod) can use. */
+  powerPerProp: number;
+  /** Knots lost per 10,000 gross tons. */
+  lossPer10kTons: number;
+}
+
+/**
+ * Liners use 1910s steam engineering. Modern kinds have engines and
+ * propellers that handle far more power, and hull shapes that lose much
+ * less speed to size, so a giant cruise ship or box ship still makes about
+ * 22 knots.
+ */
+export const DRIVETRAINS: Record<ShipKind, Drivetrain> = {
+  liner: {
+    powerPerProp: SPEED.powerPerProp,
+    lossPer10kTons: SPEED.lossPer10kTons,
+  },
+  cruise: { powerPerProp: 5, lossPer10kTons: 0.5 },
+  navy: { powerPerProp: 5, lossPer10kTons: 0.5 },
+  cargo: { powerPerProp: 5, lossPer10kTons: 0.5 },
 };
 export const HULL_MASS_PER_CELL = 1;
 export const HULL_CENTROID_Y = -1;
@@ -87,15 +112,16 @@ export function computeSpeed(
   segments: number,
   grossTonnage: number,
   /** Knots from the hull's bow and stern, applied before the clamp. */
-  hullModifier = 0
+  hullModifier = 0,
+  drivetrain: Drivetrain = DRIVETRAINS.liner
 ): number {
   if (power === 0 || propellers === 0) return 0;
-  const usable = Math.min(power, propellers * SPEED.powerPerProp);
+  const usable = Math.min(power, propellers * drivetrain.powerPerProp);
   const raw =
     SPEED.base +
     usable * SPEED.perPower +
     segments * SPEED.perSegment -
-    (grossTonnage / 10000) * SPEED.lossPer10kTons +
+    (grossTonnage / 10000) * drivetrain.lossPer10kTons +
     hullModifier;
   const clamped = Math.min(SPEED.max, Math.max(SPEED.min, raw));
   return Math.round(clamped * 10) / 10;
@@ -167,7 +193,8 @@ export function computeStats(ship: Ship): Stats {
     propellers,
     ship.hull.lengthSegments,
     grossTonnage,
-    hullSpeedModifier(ship.hull.bow, ship.hull.stern)
+    hullSpeedModifier(ship.hull.bow, ship.hull.stern),
+    DRIVETRAINS[ship.kind]
   );
   const stabilityRatio = moment / mass / beam;
   const stability = classifyStability(stabilityRatio);
@@ -196,7 +223,10 @@ export function computeStats(ship: Ship): Stats {
       code: "no-propellers",
       message: "No propellers — she can't move",
     });
-  } else if (propellers > 0 && power > propellers * SPEED.powerPerProp) {
+  } else if (
+    propellers > 0 &&
+    power > propellers * DRIVETRAINS[ship.kind].powerPerProp
+  ) {
     warnings.push({
       code: "needs-propellers",
       message: "Not enough propellers for your funnels",

@@ -197,9 +197,9 @@ describe("block-top amenities", () => {
 });
 
 describe("funnel-modern", () => {
-  it("gives power 1 and no stokers", () => {
+  it("gives a strong diesel power of 4 and no stokers", () => {
     const def = getPartDef("funnel-modern");
-    expect(def.power).toBe(1);
+    expect(def.power).toBe(4);
     expect(def.stokers).toBeUndefined();
   });
 

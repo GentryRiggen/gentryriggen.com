@@ -24,6 +24,7 @@ export const CHANGELOG: readonly Release[] = [
       "Start from a famous ship: Titanic, Olympic, Britannic, Carpathia or Lusitania",
       "Or a modern one: Wonder of the Seas, Ocean Breeze, an Arleigh Burke destroyer, a Coast Guard cutter, the Ever Given or Little Hopper",
       "Every template is an ordinary ship you can change, paint and save",
+      "Modern ships have stronger engines, so giant cruise and cargo ships reach about 22 knots like the real ones",
     ],
   },
   {

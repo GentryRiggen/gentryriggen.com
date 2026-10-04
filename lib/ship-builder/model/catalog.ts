@@ -467,7 +467,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     attachTo: "funnel-mount",
     mass: 2,
     height: 3.2,
-    power: 1,
+    power: 4,
     emptyHint: "Place a deck block with nothing on top of it first",
   },
   azipod: {

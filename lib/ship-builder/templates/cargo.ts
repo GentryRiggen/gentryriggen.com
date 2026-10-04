@@ -53,7 +53,9 @@ function buildEverGiven(): Ship {
   b.cells("cabin-crew", 1, 38, 42, range(0, 7));
   b.cells("deck-1x1", 2, 40, 42, range(1, 6));
   b.grid("bridge-7", 3, 40, 0);
-  b.onTop("funnel-modern", 2, 41, 3);
+  // Twin uptakes either side of the centreline.
+  b.onTop("funnel-modern", 2, 41, 2);
+  b.onTop("funnel-modern", 2, 41, 4);
 
   // The stern deck holds the lifeboat stations.
   b.decks(0, 54, 60, range(0, 7));
