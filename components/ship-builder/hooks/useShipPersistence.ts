@@ -55,6 +55,9 @@ export default function useShipPersistence() {
         store.getState().setNotice("Couldn't load that ship");
         return false;
       }
+      // A share link is an explicit "replace my ship"; loadShip does nothing
+      // mid-trial, so leave the trial first.
+      store.getState().endTrial();
       store.getState().loadShip(result.ship, null);
       const notice = droppedPartsNotice(result.dropped);
       if (notice) store.getState().setNotice(notice);

@@ -10,6 +10,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { SHIP_BUILDER_VERSION } from "@/lib/ship-builder/version";
 import MyShipsDialog from "./MyShipsDialog";
 import NewShipDialog from "./NewShipDialog";
+import { TRIAL_PAUSED_TITLE } from "./seaTrialText";
 import ShareButton from "./ShareButton";
 import { buttonClass, inputClass, primaryButtonClass } from "./styles";
 
@@ -110,6 +111,7 @@ export default function AppHeader() {
           type="button"
           aria-haspopup="dialog"
           disabled={isTrialActive}
+          title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
           onClick={() => setNewOpen(true)}
           className={`${buttonClass} ${TOUCH_CLASS}`}
         >
@@ -127,6 +129,7 @@ export default function AppHeader() {
           ref={myShipsButtonRef}
           type="button"
           disabled={isTrialActive}
+          title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
           onClick={() => setShipsOpen(true)}
           className={`${buttonClass} ${TOUCH_CLASS}`}
         >

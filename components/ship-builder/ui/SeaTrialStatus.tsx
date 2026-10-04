@@ -1,7 +1,9 @@
 "use client";
 
 import { Square, Waves } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { focusSeaTrialButton } from "./SeaTrialButton";
 import { SEA_LABELS } from "./seaTrialText";
 import { panelClass } from "./styles";
 
@@ -9,6 +11,15 @@ import { panelClass } from "./styles";
 export default function SeaTrialStatus() {
   const trial = useShipBuilderStore((s) => s.trial);
   const endTrial = useShipBuilderStore((s) => s.endTrial);
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const isRunning = trial.status === "running";
+  const runId = trial.status === "idle" ? null : trial.runId;
+
+  // The button that started this run (Sea trial or Try again) is gone, so
+  // focus would drop to the page: hand it to Stop instead.
+  useEffect(() => {
+    if (isRunning) stopButton.current?.focus();
+  }, [isRunning, runId]);
 
   if (trial.status !== "running") return null;
   return (
@@ -24,8 +35,12 @@ export default function SeaTrialStatus() {
         Sea trial · {SEA_LABELS[trial.input.sea]}
       </span>
       <button
+        ref={stopButton}
         type="button"
-        onClick={endTrial}
+        onClick={() => {
+          endTrial();
+          focusSeaTrialButton();
+        }}
         className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-full bg-slate-100 px-4 text-sm font-medium text-slate-800 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:focus-visible:outline-sky-400"
       >
         <Square aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />

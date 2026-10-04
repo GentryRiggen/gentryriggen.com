@@ -7,6 +7,13 @@ import useSeaState from "../hooks/useSeaState";
 /** Id the result card uses to hand focus back here. */
 export const SEA_TRIAL_BUTTON_ID = "sea-trial-button";
 
+/** Puts focus back on the Sea trial button once it has re-rendered. */
+export function focusSeaTrialButton() {
+  requestAnimationFrame(() =>
+    document.getElementById(SEA_TRIAL_BUTTON_ID)?.focus()
+  );
+}
+
 /**
  * Starts a sea trial. It floats bottom-centre, the slot the placement hint
  * and the selection bar use while a tool or a part is active, so it only

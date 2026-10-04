@@ -78,7 +78,11 @@ export default function BobGroup({ children }: BobGroupProps) {
     target.position.y = bob.y - trialPlayback.sink * weight;
     target.rotation.set(
       // The sim's roll starts at the ship's list, so it replaces the idle list.
-      bob.roll + listAngle * (1 - weight) + trialPlayback.roll * weight,
+      // The idle roll fades out too: the sim's waves already roll her, and
+      // adding the idle roll on top would double the motion in a storm.
+      bob.roll * (1 - weight) +
+        listAngle * (1 - weight) +
+        trialPlayback.roll * weight,
       0,
       bob.pitch + trialPlayback.pitch * weight
     );

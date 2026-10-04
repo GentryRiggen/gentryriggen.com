@@ -125,3 +125,25 @@ describe("useKeyboardShortcuts", () => {
     expect(store().tool).toMatchObject({ rotation: 0 });
   });
 });
+
+describe("Escape during a sea trial", () => {
+  it("ends the trial and focuses the Sea trial button", () => {
+    const raf = jest
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((cb) => {
+        cb(0);
+        return 0;
+      });
+    render(
+      <>
+        <Harness />
+        <button id="sea-trial-button">Sea trial</button>
+      </>
+    );
+    act(() => store().startTrial("calm"));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store().trial.status).toBe("idle");
+    expect(document.activeElement?.id).toBe("sea-trial-button");
+    raf.mockRestore();
+  });
+});

@@ -68,3 +68,32 @@ describe("explainTrial", () => {
     }
   });
 });
+
+describe("explainTrial for a stable ship that the list capsized", () => {
+  it("blames the list, not top-heaviness", () => {
+    let found = 0;
+    for (let list = 7; list < 8; list += 0.1) {
+      const s = ship(0.06, list);
+      const state = runTrial({ ship: s, sea: "stormy" });
+      if (state.outcome !== "capsized") continue;
+      found += 1;
+      const summary = explainTrial(state, s, "stormy");
+      expect(summary.message).not.toMatch(/top-heavy/);
+      expect(summary.message).toMatch(/starboard/);
+    }
+    expect(found).toBeGreaterThan(0);
+  });
+
+  it("gives every capsized reason sensible wording", () => {
+    const s = ship(0.06);
+    for (const reason of ["stable", "rough-sea", null] as const) {
+      const state = {
+        ...runTrial({ ship: ship(0.22), sea: "stormy" }),
+        reason,
+      };
+      const summary = explainTrial(state, s, "stormy");
+      expect(summary.message).not.toMatch(/top-heavy/);
+      expect(summary.message).toMatch(/stormy sea/);
+    }
+  });
+});

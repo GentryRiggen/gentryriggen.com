@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { focusSeaTrialButton } from "../ui/SeaTrialButton";
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -27,8 +28,10 @@ export default function useKeyboardShortcuts() {
       // swallow the editing keys so Backspace never navigates away, and let
       // Escape leave the trial.
       if (state.trial.status !== "idle") {
-        if (key === "escape") state.endTrial();
-        else if (key === "delete" || key === "backspace")
+        if (key === "escape") {
+          state.endTrial();
+          focusSeaTrialButton();
+        } else if (key === "delete" || key === "backspace")
           event.preventDefault();
         else if ((event.metaKey || event.ctrlKey) && key === "z") {
           event.preventDefault();

@@ -14,7 +14,7 @@ import {
   useShipBuilderStore,
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
-import { SEA_TRIAL_BUTTON_ID } from "./SeaTrialButton";
+import { focusSeaTrialButton } from "./SeaTrialButton";
 import { SEA_LABELS } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 
@@ -69,9 +69,7 @@ function ResultCard({ trial }: ResultCardProps) {
   function handleBackToBuilding() {
     endTrial();
     // The card is about to unmount; put focus back where the trial began.
-    requestAnimationFrame(() =>
-      document.getElementById(SEA_TRIAL_BUTTON_ID)?.focus()
-    );
+    focusSeaTrialButton();
   }
 
   return (

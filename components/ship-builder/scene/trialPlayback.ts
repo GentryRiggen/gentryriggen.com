@@ -5,6 +5,7 @@ import {
   type SimState,
   type TrialInput,
 } from "@/lib/ship-builder/sim/types";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { MAX_FRAME_DELTA } from "./animationMath";
 
 /**
@@ -47,6 +48,20 @@ function createPlayback(): TrialPlayback {
 export function resetPlayback(target: TrialPlayback = trialPlayback) {
   Object.assign(target, createPlayback());
 }
+
+// Clear the last run's pose the moment a trial starts or ends, in the store
+// update itself: a reset in an effect would let one frame show the previous
+// run (a sunk ship on "Try again").
+useShipBuilderStore.subscribe((state, previous) => {
+  const { trial } = state;
+  const before = previous.trial;
+  if (trial === before) return;
+  const isNewRun =
+    trial.status === "running" &&
+    (before.status !== "running" || before.runId !== trial.runId);
+  const isLeaving = trial.status === "idle" && before.status !== "idle";
+  if (isNewRun || isLeaving) resetPlayback();
+});
 
 /** Copies the sim's current pose and milestones into the playback. */
 export function writePlayback(
@@ -121,4 +136,30 @@ export function jumpTrial(
     clock.state = stepTrial(input, clock.state);
   }
   return clock;
+}
+
+/**
+ * Shows the end of a trial without animating it (reduced motion). A ship that
+ * went over stays on the surface rolled upside down instead of sinking out of
+ * sight, so the result card has a ship behind it.
+ */
+export function writeInstantPlayback(
+  state: SimState,
+  target: TrialPlayback = trialPlayback
+) {
+  writePlayback(state, target);
+  if (state.outcome === "capsized") target.sink = 0;
+}
+
+/**
+ * Keeps the effects clock (bubbles rising, then fading) running after the sim
+ * is done and its runner is gone. Mutates `target.time`; the sim's own pose
+ * is left alone.
+ */
+export function advanceEffectsClock(
+  deltaSeconds: number,
+  speed = 1,
+  target: TrialPlayback = trialPlayback
+) {
+  target.time += Math.min(deltaSeconds, MAX_FRAME_DELTA) * speed;
 }

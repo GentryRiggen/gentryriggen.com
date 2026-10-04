@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import useCollapsedPanels from "./hooks/useCollapsedPanels";
@@ -46,6 +46,13 @@ export default function ShipBuilder() {
   const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
   const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
+
+  // The trial plays in the 3D scene: without WebGL, or once the builder is
+  // gone, nothing could end it and building would stay paused.
+  useEffect(() => {
+    if (webgl === false) useShipBuilderStore.getState().endTrial();
+  }, [webgl]);
+  useEffect(() => () => useShipBuilderStore.getState().endTrial(), []);
 
   function handleDrawerOpenChange(side: DrawerSide, open: boolean) {
     setOpenDrawer((current) =>

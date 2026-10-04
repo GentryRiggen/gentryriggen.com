@@ -218,3 +218,22 @@ describe("sea trial run", () => {
     expect(stepTrial(input, createTrial(input)).time).toBeCloseTo(SIM_STEP_S);
   });
 });
+
+describe("reason in the list blend window (7 to 8 degrees)", () => {
+  it("never calls a capsize 'stable' or 'top-heavy' for a stable ship", () => {
+    let capsizes = 0;
+    for (let list = 7; list < 8; list += 0.1) {
+      for (const sign of [1, -1]) {
+        for (const ratio of STABLE) {
+          for (const sea of SEAS) {
+            const state = runTrial(trialOf(ratio, sign * list, sea));
+            if (state.outcome !== "capsized") continue;
+            capsizes += 1;
+            expect(state.reason).toBe("lopsided");
+          }
+        }
+      }
+    }
+    expect(capsizes).toBeGreaterThan(0);
+  });
+});

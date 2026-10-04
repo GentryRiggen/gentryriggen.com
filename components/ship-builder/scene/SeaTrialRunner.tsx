@@ -10,7 +10,7 @@ import { testTrialSeconds, testTrialSpeed } from "./testClock";
 import {
   advanceTrial,
   jumpTrial,
-  resetPlayback,
+  writeInstantPlayback,
   writePlayback,
   type TrialClock,
 } from "./trialPlayback";
@@ -26,7 +26,6 @@ function TrialDriver({ input }: TrialDriverProps) {
   const finished = useRef(false);
 
   useEffect(() => {
-    resetPlayback();
     const started: TrialClock = { state: createTrial(input), leftover: 0 };
     const jumpTo = testTrialSeconds();
     if (jumpTo !== null) jumpTrial(input, started, jumpTo);
@@ -53,9 +52,8 @@ function InstantTrial({ input }: TrialDriverProps) {
   const finishTrial = useShipBuilderStore((s) => s.finishTrial);
 
   useEffect(() => {
-    resetPlayback();
     const result = runTrial(input);
-    writePlayback(result);
+    writeInstantPlayback(result);
     finishTrial(result);
   }, [finishTrial, input]);
 

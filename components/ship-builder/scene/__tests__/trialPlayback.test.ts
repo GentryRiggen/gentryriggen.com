@@ -3,6 +3,8 @@ import { SIM_STEP_S, type TrialInput } from "@/lib/ship-builder/sim/types";
 import {
   advanceTrial,
   jumpTrial,
+  advanceEffectsClock,
+  writeInstantPlayback,
   resetPlayback,
   writePlayback,
   type TrialClock,
@@ -115,5 +117,69 @@ describe("isHeavyTrialPose", () => {
     expect(isHeavyTrialPose({ roll: 0.3, sink: 0 })).toBe(false);
     expect(isHeavyTrialPose({ roll: -2, sink: 0 })).toBe(true);
     expect(isHeavyTrialPose({ roll: 0, sink: 2 })).toBe(true);
+  });
+});
+
+describe("playback reset by the store", () => {
+  it("clears the last run when a new trial starts or the trial ends", () => {
+    const { useShipBuilderStore } = jest.requireActual(
+      "@/lib/ship-builder/state/store"
+    );
+    const { trialPlayback } = jest.requireActual("../trialPlayback");
+    const store = useShipBuilderStore.getState();
+    store.startTrial("stormy");
+    writePlayback(runTrial(TOP_HEAVY), trialPlayback);
+    expect(trialPlayback.sink).toBeGreaterThan(0);
+    useShipBuilderStore.getState().startTrial("stormy");
+    expect(trialPlayback.sink).toBe(0);
+    expect(trialPlayback.capsizedAt).toBeNull();
+    writePlayback(runTrial(TOP_HEAVY), trialPlayback);
+    useShipBuilderStore.getState().endTrial();
+    expect(trialPlayback.roll).toBe(0);
+    expect(trialPlayback.doneAt).toBeNull();
+  });
+});
+
+describe("writeInstantPlayback", () => {
+  it("leaves a capsized ship rolled over on the surface, not sunk", () => {
+    const target: TrialPlayback = {} as TrialPlayback;
+    resetPlayback(target);
+    const result = runTrial(TOP_HEAVY);
+    expect(result.pose.sink).toBeGreaterThan(0);
+    writeInstantPlayback(result, target);
+    expect(Math.abs(target.roll)).toBeGreaterThan(2);
+    expect(target.sink).toBe(0);
+  });
+
+  it("does not touch a ship that survived", () => {
+    const target: TrialPlayback = {} as TrialPlayback;
+    resetPlayback(target);
+    writeInstantPlayback(runTrial(STEADY), target);
+    expect(target.sink).toBe(0);
+    expect(Math.abs(target.roll)).toBeLessThan(0.5);
+  });
+});
+
+describe("advanceEffectsClock", () => {
+  it("keeps bubbles moving and fades them out after the trial ends", () => {
+    const target: TrialPlayback = {} as TrialPlayback;
+    resetPlayback(target);
+    let clock = freshClock(TOP_HEAVY);
+    while (clock.state.phase !== "done") {
+      clock = advanceTrial(TOP_HEAVY, clock, 0.05);
+      writePlayback(clock.state, target);
+    }
+    const atDone = target.time;
+    expect(bubbleIntensity(target)).toBe(1);
+    // Real 60 fps frames after the sim has stopped.
+    for (let frame = 0; frame < 60; frame++)
+      advanceEffectsClock(1 / 60, 1, target);
+    expect(target.time).toBeCloseTo(atDone + 1, 5);
+    const midFade = bubbleIntensity(target);
+    expect(midFade).toBeGreaterThan(0);
+    expect(midFade).toBeLessThan(1);
+    for (let frame = 0; frame < 300; frame++)
+      advanceEffectsClock(1 / 60, 1, target);
+    expect(bubbleIntensity(target)).toBe(0);
   });
 });

@@ -210,3 +210,38 @@ describe("useShipPersistence", () => {
     expect(store().notice).toBeNull();
   });
 });
+
+describe("a share link opened during a sea trial", () => {
+  it("ends the trial and replaces the ship", () => {
+    act(() => {
+      store().startTrial("calm");
+    });
+    expect(store().trial.status).toBe("running");
+    window.history.replaceState(
+      null,
+      "",
+      `/ship-builder#ship=${encodeShip(shared)}`
+    );
+    render(<Harness />);
+    expect(store().trial.status).toBe("idle");
+    expect(store().ship).toEqual(shared);
+    expect(window.location.hash).toBe("");
+  });
+
+  it("also handles a link that arrives later, on hashchange", () => {
+    render(<Harness />);
+    act(() => {
+      store().startTrial("calm");
+    });
+    act(() => {
+      window.history.replaceState(
+        null,
+        "",
+        `/ship-builder#ship=${encodeShip(shared)}`
+      );
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(store().trial.status).toBe("idle");
+    expect(store().ship).toEqual(shared);
+  });
+});

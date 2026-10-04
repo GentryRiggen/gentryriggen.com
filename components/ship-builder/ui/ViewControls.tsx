@@ -17,6 +17,7 @@ import {
   useShipBuilderStore,
   type CameraView,
 } from "@/lib/ship-builder/state/store";
+import { TRIAL_PAUSED_TITLE } from "./seaTrialText";
 import useSeaState from "../hooks/useSeaState";
 import useTimeOfDay from "../hooks/useTimeOfDay";
 import type { SeaState } from "../scene/seaState";
@@ -113,6 +114,7 @@ export default function ViewControls() {
               aria-label={ariaLabel}
               aria-pressed={seaState === sea}
               disabled={isTrialActive}
+              title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
               onClick={() => setSeaState(sea)}
               className={`${seaState === sea ? SEGMENT_PRESSED : SEGMENT_IDLE} disabled:cursor-not-allowed disabled:opacity-60`}
             >

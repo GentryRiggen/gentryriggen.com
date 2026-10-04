@@ -221,8 +221,10 @@ export function reasonFor(
   outcome: TrialOutcome
 ): TrialReason {
   const tier = baseTier(input.ship);
+  // Same blend as severityOf: once the list adds any severity it can be the
+  // cause, so a stable ship in the 7 to 8 degree window is not called stable.
   if (
-    Math.abs(input.ship.listAngle) >= LOPSIDED_LIST &&
+    lopsidedStep(input.ship.listAngle) > 0 &&
     TABLE[tier][input.sea] !== outcome
   ) {
     return "lopsided";

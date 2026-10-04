@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import ParticleField, { type ParticleWriter } from "./ParticleField";
@@ -16,7 +17,9 @@ import {
   trialBubble,
   type HullBounds,
 } from "./trialEffects";
-import { trialPlayback } from "./trialPlayback";
+import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import { frozenTime, testTrialSeconds, testTrialSpeed } from "./testClock";
+import { advanceEffectsClock, trialPlayback } from "./trialPlayback";
 
 const BUBBLE_COLOR = "#e8f6ff";
 const SPLASH_COLOR = "#ffffff";
@@ -35,9 +38,20 @@ export default function SeaTrialEffects() {
     [halfLength, halfBeam]
   );
   const droplet = useMemo(() => createDroplet(), []);
+  const reducedMotion = usePrefersReducedMotion();
+  const isResult = useShipBuilderStore((s) => s.trial.status === "result");
+
+  // The runner stops with the sim, but bubbles keep rising and fade out behind
+  // the result card. A held test clock stays held.
+  useFrame((_, delta) => {
+    if (!isResult || reducedMotion) return;
+    if (frozenTime() !== null || testTrialSeconds() !== null) return;
+    advanceEffectsClock(delta, testTrialSpeed());
+  });
 
   const updateBubbles = useCallback(
     (writer: ParticleWriter) => {
+      if (reducedMotion) return 0;
       const intensity = bubbleIntensity(trialPlayback);
       if (intensity === 0) return 0;
       for (let slot = 0; slot < TRIAL_BUBBLE_COUNT; slot++) {
@@ -53,13 +67,13 @@ export default function SeaTrialEffects() {
       }
       return TRIAL_BUBBLE_COUNT;
     },
-    [bounds, droplet]
+    [bounds, droplet, reducedMotion]
   );
 
   const updateSplash = useCallback(
     (writer: ParticleWriter) => {
       const { capsizedAt, sinkingAt, time, roll } = trialPlayback;
-      if (capsizedAt === null) return 0;
+      if (reducedMotion || capsizedAt === null) return 0;
       const side = roll < 0 ? -1 : 1;
       for (let slot = 0; slot < SPLASH_DROPLET_COUNT; slot++) {
         splashDroplet(slot, time - capsizedAt, side, bounds, droplet);
@@ -86,7 +100,7 @@ export default function SeaTrialEffects() {
       }
       return TRIAL_SPLASH_CAPACITY;
     },
-    [bounds, droplet]
+    [bounds, droplet, reducedMotion]
   );
 
   if (!isActive) return null;

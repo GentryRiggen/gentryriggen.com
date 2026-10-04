@@ -36,6 +36,12 @@ function capsizedSummary(
       tips: [TIP_BALANCE, TIP_LOWER, ...(sea === "calm" ? [] : [TIP_CALMER])],
     };
   }
+  if (reason === "stable" || reason === "rough-sea" || reason === null) {
+    return {
+      message: `The ${where} was too much for her and rolled her over.`,
+      tips: [TIP_LOWER, TIP_WIDER, ...(sea === "calm" ? [] : [TIP_CALMER])],
+    };
+  }
   const how =
     reason === "dangerous"
       ? "She is very top-heavy, so even small waves can roll her over."

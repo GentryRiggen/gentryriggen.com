@@ -2,6 +2,7 @@
 
 import { Redo2, Undo2 } from "lucide-react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { TRIAL_PAUSED_TITLE } from "./seaTrialText";
 
 const BUTTON_CLASS =
   "inline-flex min-h-11 min-w-11 touch-manipulation items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-200 dark:hover:bg-slate-800";
@@ -19,6 +20,7 @@ export default function UndoRedo() {
       <button
         type="button"
         disabled={!canUndo || isTrialActive}
+        title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
         onClick={undo}
         className={BUTTON_CLASS}
       >
@@ -28,6 +30,7 @@ export default function UndoRedo() {
       <button
         type="button"
         disabled={!canRedo || isTrialActive}
+        title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
         onClick={redo}
         className={BUTTON_CLASS}
       >

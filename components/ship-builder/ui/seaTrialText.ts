@@ -6,3 +6,9 @@ export const SEA_LABELS: Record<SimSea, string> = {
   choppy: "Choppy sea",
   stormy: "Stormy sea",
 };
+
+/**
+ * Tooltip and accessible description for controls that are disabled while a
+ * trial runs or its result shows.
+ */
+export const TRIAL_PAUSED_TITLE = "Paused during the sea trial";
