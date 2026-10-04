@@ -5,7 +5,10 @@ import { parseShip } from "./schema";
 
 export const AUTOSAVE_KEY = "ship-builder:autosave";
 export const SHIPS_KEY = "ship-builder:ships";
-/** Holds a non-array SHIPS_KEY value (e.g. a newer format) we overwrote. */
+/**
+ * Holds a non-array SHIPS_KEY value (e.g. a newer format) we overwrote.
+ * Later, different values go to `<SHIPS_BACKUP_KEY>:<timestamp>` keys.
+ */
 export const SHIPS_BACKUP_KEY = "ship-builder:ships:backup";
 
 export interface SavedShip {
@@ -215,13 +218,31 @@ function updateShips(update: (entries: unknown[]) => unknown[]): boolean {
   return writeJson(SHIPS_KEY, update([]));
 }
 
-/** Writes `text` to the ships backup key unless it already holds something. */
+/**
+ * Copies `text` to {@link SHIPS_BACKUP_KEY}. If that key already holds
+ * something else (an earlier backup, or garbage), the copy goes to a fresh
+ * `<SHIPS_BACKUP_KEY>:<timestamp>` key instead, so no backup is ever lost.
+ * Returns false only when the copy couldn't be written.
+ */
 function backupShipsText(text: string | null): boolean {
   const store = storage();
   if (!store || text === null) return false;
   try {
-    if (store.getItem(SHIPS_BACKUP_KEY) !== null) return true;
-    store.setItem(SHIPS_BACKUP_KEY, text);
+    const existing = store.getItem(SHIPS_BACKUP_KEY);
+    if (existing === text) return true;
+    if (existing === null) {
+      store.setItem(SHIPS_BACKUP_KEY, text);
+      return true;
+    }
+    const base = `${SHIPS_BACKUP_KEY}:${Date.now()}`;
+    let key = base;
+    for (let n = 1; ; n++) {
+      const taken = store.getItem(key);
+      if (taken === text) return true;
+      if (taken === null) break;
+      key = `${base}-${n}`;
+    }
+    store.setItem(key, text);
     return true;
   } catch {
     return false;

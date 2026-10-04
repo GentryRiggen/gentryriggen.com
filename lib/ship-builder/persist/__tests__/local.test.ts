@@ -252,11 +252,62 @@ describe("My Ships", () => {
       expect(listShips()).toHaveLength(1);
     });
 
+    /** Every stored backup's text, sorted. */
+    function backups(): string[] {
+      const texts: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)!;
+        if (
+          key === SHIPS_BACKUP_KEY ||
+          key.startsWith(`${SHIPS_BACKUP_KEY}:`)
+        ) {
+          texts.push(localStorage.getItem(key)!);
+        }
+      }
+      return texts.sort();
+    }
+
     it("does not clobber an existing backup", () => {
       localStorage.setItem(SHIPS_BACKUP_KEY, "earlier");
       localStorage.setItem(SHIPS_KEY, wrapper);
       expect(saveShip(ship, null)).not.toBeNull();
       expect(localStorage.getItem(SHIPS_BACKUP_KEY)).toBe("earlier");
+      expect(backups()).toEqual(["earlier", wrapper].sort());
+    });
+
+    it("backs up a second, different value too", () => {
+      const second = JSON.stringify({ format: 2, ships: [{ id: "x" }] });
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null, 1)).not.toBeNull();
+      localStorage.setItem(SHIPS_KEY, second);
+      expect(saveShip(ship, null, 2)).not.toBeNull();
+      expect(backups()).toEqual([wrapper, second].sort());
+    });
+
+    it("keeps both backups when two land in the same millisecond", () => {
+      const third = JSON.stringify({ format: 3 });
+      jest.spyOn(Date, "now").mockReturnValue(1000);
+      localStorage.setItem(SHIPS_BACKUP_KEY, "first");
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null)).not.toBeNull();
+      localStorage.setItem(SHIPS_KEY, third);
+      expect(saveShip(ship, null)).not.toBeNull();
+      expect(backups()).toEqual(["first", wrapper, third].sort());
+    });
+
+    it("does not back up an identical value twice", () => {
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null, 1)).not.toBeNull();
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null, 2)).not.toBeNull();
+      expect(backups()).toEqual([wrapper]);
+    });
+
+    it("is not blocked by a garbage backup", () => {
+      localStorage.setItem(SHIPS_BACKUP_KEY, "garbage{");
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(saveShip(ship, null)).not.toBeNull();
+      expect(backups()).toEqual(["garbage{", wrapper].sort());
     });
 
     it("does not back up corrupt text", () => {
