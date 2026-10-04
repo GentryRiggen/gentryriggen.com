@@ -42,9 +42,9 @@ export default function PaintBar() {
     <div
       role="group"
       aria-label="Paint colours"
-      className={`absolute left-1/2 top-14 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-2xl border p-2 shadow-lg lg:top-3 ${panelClass}`}
+      className={`absolute inset-x-3 top-14 z-30 mx-auto flex w-fit items-center justify-center gap-1.5 rounded-2xl border p-2 shadow-lg lg:top-3 ${panelClass}`}
     >
-      <div className="flex flex-wrap items-center justify-center gap-2 p-1">
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
         {PAINT_COLORS.map(({ id, name }) => {
           const selected = tool.color === id;
           return (
