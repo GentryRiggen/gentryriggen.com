@@ -8,7 +8,7 @@ export default function CatalogPanel() {
   const selectTool = useShipBuilderStore((s) => s.selectTool);
 
   return (
-    <nav aria-label="Parts catalog" className="space-y-5 p-4">
+    <div className="space-y-5 p-4">
       {CATEGORIES.map((category) => (
         <section key={category.id}>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -42,6 +42,6 @@ export default function CatalogPanel() {
           </ul>
         </section>
       ))}
-    </nav>
+    </div>
   );
 }

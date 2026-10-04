@@ -78,7 +78,7 @@ export default function StatsPanel() {
   const { passengers } = stats;
 
   return (
-    <section aria-label="Ship stats" className="space-y-5 p-4">
+    <div className="space-y-5 p-4">
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Stats
@@ -166,6 +166,6 @@ export default function StatsPanel() {
           </dd>
         </dl>
       </div>
-    </section>
+    </div>
   );
 }
