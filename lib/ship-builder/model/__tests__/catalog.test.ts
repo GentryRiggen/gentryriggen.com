@@ -30,7 +30,7 @@ describe("catalog", () => {
     expect(CATALOG.funnel.power).toBe(1);
     expect(CATALOG["funnel-large"].power).toBe(2);
     expect(CATALOG["funnel-large"].stokers).toBe(75);
-    expect(CATALOG["lifeboat-large"].seats).toBe(90);
+    expect(CATALOG["lifeboat-large"].seats).toBe(150);
   });
 
   it("gives grid parts positive footprints and attach parts a target", () => {

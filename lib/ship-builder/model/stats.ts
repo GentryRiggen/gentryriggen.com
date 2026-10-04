@@ -17,7 +17,6 @@ export const SPEED = {
   base: 14,
   perPower: 1.5,
   powerPerProp: 2,
-  maxPowerCounted: 8,
   perSegment: 0.25,
   lossPer10kTons: 1,
   min: 8,
@@ -83,11 +82,7 @@ export function computeSpeed(
   grossTonnage: number
 ): number {
   if (power === 0 || propellers === 0) return 0;
-  const usable = Math.min(
-    power,
-    propellers * SPEED.powerPerProp,
-    SPEED.maxPowerCounted
-  );
+  const usable = Math.min(power, propellers * SPEED.powerPerProp);
   const raw =
     SPEED.base +
     usable * SPEED.perPower +

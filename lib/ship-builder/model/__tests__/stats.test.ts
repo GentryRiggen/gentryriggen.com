@@ -240,7 +240,7 @@ describe("propulsion", () => {
     expect(stats.topSpeedKnots).toBeGreaterThan(0);
   });
 
-  it("counts a large lifeboat's 90 seats", () => {
+  it("counts a large lifeboat's 150 seats", () => {
     const parts = [
       gridPart("a2", "deck-1x1", 0, 2, 0),
       gridPart("a3", "deck-1x1", 0, 3, 0),
@@ -252,7 +252,7 @@ describe("propulsion", () => {
     ];
     const stats = computeStats(testShip(parts));
     expect(stats.lifeboats).toBe(1);
-    expect(stats.lifeboatSeats).toBe(90);
+    expect(stats.lifeboatSeats).toBe(150);
   });
 
   it("puts a Titanic-like ship near 21 knots", () => {

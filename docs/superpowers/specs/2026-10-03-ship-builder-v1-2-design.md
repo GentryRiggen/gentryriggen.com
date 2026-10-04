@@ -43,8 +43,8 @@ Today an attach point is taken when another part's anchor names the same
 
 ## 3. Large lifeboat
 
-- Part `lifeboat-large`: category lifeboats, "Large lifeboat", "90 seats ·
-  hangs between two davits", seats 90, mass 0.4, height 0.5.
+- Part `lifeboat-large`: category lifeboats, "Large lifeboat", "150 seats ·
+  hangs between two davits", seats 150, mass 0.4, height 0.5.
 - Attach type `big-boat-mount`. A davit exposes point `big-boat` when another
   davit sits at the same level and side at `x + 1` (davit-point
   `davit:<x+1>:<z>` on any parent, same outward face). Position: midpoint of
