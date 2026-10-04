@@ -367,9 +367,38 @@ function Fitting({
           emphasis={emphasis}
         />
       );
-    default:
+    // Grid parts are drawn by PartMesh itself (Block, container, decor...),
+    // never as fittings. Listed so a new part type can't be forgotten.
+    case "deck-1x1":
+    case "deck-2x1":
+    case "cabin-1st":
+    case "cabin-2nd":
+    case "cabin-3rd":
+    case "cabin-crew":
+    case "cabin-balcony":
+    case "bridge-3":
+    case "bridge":
+    case "bridge-5":
+    case "bridge-6":
+    case "bridge-7":
+    case "container":
+    case "hatch-cover":
+    case "pool":
+    case "deckchair":
+    case "bench":
+    case "deck-lamp":
+    case "floodlight":
+    case "ventilator":
+    case "stairs":
       return null;
+    default:
+      return assertNever(type);
   }
+}
+
+/** Compile-time exhaustiveness check; renders nothing if it ever runs. */
+function assertNever(_type: never): null {
+  return null;
 }
 
 type TargetFinder = typeof aerialTarget;
