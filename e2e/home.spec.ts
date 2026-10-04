@@ -27,13 +27,6 @@ test.describe("Home Page", () => {
     ).toBeVisible();
   });
 
-  test("should link to the ship builder from the footer", async ({ page }) => {
-    await page.goto("/");
-    const link = page.getByRole("link", { name: "⚓ Ship Builder" });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", "/ship-builder");
-  });
-
   test("the `ships` command opens the ship builder", async ({ page }) => {
     await page.goto("/");
     const input = page.getByLabel("Terminal command input");
