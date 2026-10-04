@@ -265,19 +265,49 @@ describe("My Ships", () => {
       expect(localStorage.getItem(SHIPS_BACKUP_KEY)).toBeNull();
     });
 
-    it("refuses to overwrite when the backup can't be written", () => {
-      localStorage.setItem(SHIPS_KEY, wrapper);
+    function failBackupWrites() {
       const realSetItem = Storage.prototype.setItem;
       jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (
         this: Storage,
         key,
         value
       ) {
-        if (key === SHIPS_BACKUP_KEY) throw new Error("QuotaExceededError");
+        if (key.startsWith(SHIPS_BACKUP_KEY)) {
+          throw new Error("QuotaExceededError");
+        }
         realSetItem.call(this, key, value);
       });
+    }
+
+    it("refuses to overwrite when the backup can't be written", () => {
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      failBackupWrites();
       expect(saveShip(ship, null)).toBeNull();
       expect(localStorage.getItem(SHIPS_KEY)).toBe(wrapper);
+    });
+
+    it("counts it as one unreadable entry", () => {
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      expect(countUnreadableShips()).toBe(1);
+    });
+
+    it.each(["null", "{not json"])(
+      "does not count %s as unreadable",
+      (text) => {
+        localStorage.setItem(SHIPS_KEY, text);
+        expect(countUnreadableShips()).toBe(0);
+      }
+    );
+
+    it("can be cleared even when the backup can't be written", () => {
+      localStorage.setItem(SHIPS_KEY, wrapper);
+      failBackupWrites();
+      expect(countUnreadableShips()).toBe(1);
+      expect(clearUnreadableShips()).toBe(true);
+      expect(localStorage.getItem(SHIPS_KEY)).toBe("[]");
+      expect(countUnreadableShips()).toBe(0);
+      expect(saveShip(ship, null)).not.toBeNull();
+      expect(listShips()).toHaveLength(1);
     });
   });
 

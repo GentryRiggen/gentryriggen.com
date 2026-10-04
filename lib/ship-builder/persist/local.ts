@@ -137,15 +137,38 @@ function normaliseSavedAt(entry: unknown): unknown {
     : entry;
 }
 
-/** Stored entries this build can't read; hidden from the list. */
+/**
+ * Valid JSON that is neither an array nor null, e.g. a newer deploy's
+ * format. Corrupt text reads as null and is simply overwritten.
+ */
+function isUnknownFormat(value: unknown): boolean {
+  return value !== null && !Array.isArray(value);
+}
+
+/**
+ * Stored entries this build can't read; hidden from the list. A whole list
+ * in an unknown format counts as one, so the player can still clear it when
+ * it can't be backed up and is blocking every save.
+ */
 export function countUnreadableShips(): number {
   const raw = readJson(SHIPS_KEY);
+  if (isUnknownFormat(raw)) return 1;
   if (!Array.isArray(raw)) return 0;
   return raw.filter((entry) => !parseEntry(entry)).length;
 }
 
-/** Removes only the entries {@link countUnreadableShips} counts. */
+/**
+ * Removes only the entries {@link countUnreadableShips} counts. The player
+ * confirmed this, so an unknown-format list is replaced even when it can't
+ * be backed up first.
+ */
 export function clearUnreadableShips(): boolean {
+  const stored = readStored(SHIPS_KEY);
+  if (!stored.ok) return false;
+  if (isUnknownFormat(stored.value)) {
+    backupShipsText(stored.text);
+    return writeJson(SHIPS_KEY, []);
+  }
   return updateShips((entries) =>
     entries.filter((entry) => parseEntry(entry) !== null)
   );
@@ -184,21 +207,21 @@ function updateShips(update: (entries: unknown[]) => unknown[]): boolean {
   if (Array.isArray(stored.value)) {
     return writeJson(SHIPS_KEY, update(stored.value.map(normaliseSavedAt)));
   }
-  // Valid JSON that isn't an array is likely a newer format: keep a copy
-  // before replacing it. Corrupt text has nothing worth keeping.
-  if (stored.value !== null && !backupOnce(SHIPS_BACKUP_KEY, stored.text)) {
+  // Keep a copy of an unknown format before replacing it. Corrupt text has
+  // nothing worth keeping.
+  if (isUnknownFormat(stored.value) && !backupShipsText(stored.text)) {
     return false;
   }
   return writeJson(SHIPS_KEY, update([]));
 }
 
-/** Writes `text` to `key` unless it already holds something. */
-function backupOnce(key: string, text: string | null): boolean {
+/** Writes `text` to the ships backup key unless it already holds something. */
+function backupShipsText(text: string | null): boolean {
   const store = storage();
   if (!store || text === null) return false;
   try {
-    if (store.getItem(key) !== null) return true;
-    store.setItem(key, text);
+    if (store.getItem(SHIPS_BACKUP_KEY) !== null) return true;
+    store.setItem(SHIPS_BACKUP_KEY, text);
     return true;
   } catch {
     return false;
