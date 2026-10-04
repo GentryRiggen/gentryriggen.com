@@ -56,6 +56,43 @@ describe("RemovalConfirm", () => {
     await user.click(screen.getByRole("button", { name: "Remove" }));
     expect(store().ship.parts).toHaveLength(0);
   });
+
+  describe("focus", () => {
+    function openRemoval() {
+      act(() =>
+        useShipBuilderStore.setState({
+          ship: testShip([
+            gridPart("a", "deck-1x1", 0, 2, 1),
+            gridPart("b", "deck-1x1", 1, 2, 1),
+          ]),
+          selectedId: "a",
+        })
+      );
+      render(
+        <>
+          <button type="button">Elsewhere</button>
+          <RemovalConfirm />
+        </>
+      );
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      act(() => elsewhere.focus());
+      act(() => store().requestDelete());
+      return elsewhere;
+    }
+
+    it("moves focus to Keep on mount", () => {
+      openRemoval();
+      expect(screen.getByRole("button", { name: "Keep" })).toHaveFocus();
+    });
+
+    it("returns focus to the previous element when kept", async () => {
+      const user = userEvent.setup();
+      const elsewhere = openRemoval();
+      await user.click(screen.getByRole("button", { name: "Keep" }));
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(elsewhere).toHaveFocus();
+    });
+  });
 });
 
 describe("Notice", () => {

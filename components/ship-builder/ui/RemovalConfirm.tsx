@@ -1,15 +1,39 @@
 "use client";
 
-import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { useEffect, useRef } from "react";
+import {
+  useShipBuilderStore,
+  type PendingRemoval,
+} from "@/lib/ship-builder/state/store";
 import { buttonClass, dangerButtonClass, panelClass } from "./styles";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export default function RemovalConfirm() {
   const pending = useShipBuilderStore((s) => s.pendingRemoval);
+  if (!pending) return null;
+  return <RemovalDialog pending={pending} />;
+}
+
+interface RemovalDialogProps {
+  pending: PendingRemoval;
+}
+
+function RemovalDialog({ pending }: RemovalDialogProps) {
   const confirmRemoval = useShipBuilderStore((s) => s.confirmRemoval);
   const cancelRemoval = useShipBuilderStore((s) => s.cancelRemoval);
-  if (!pending) return null;
+  const keepRef = useRef<HTMLButtonElement>(null);
+
+  // Take focus for the dialog's lifetime, then hand it back to whatever had it.
+  useEffect(() => {
+    const previous = document.activeElement;
+    keepRef.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && document.contains(previous)) {
+        previous.focus();
+      }
+    };
+  }, []);
 
   const message =
     pending.kind === "part"
@@ -30,7 +54,12 @@ export default function RemovalConfirm() {
       >
         Remove
       </button>
-      <button type="button" onClick={cancelRemoval} className={buttonClass}>
+      <button
+        ref={keepRef}
+        type="button"
+        onClick={cancelRemoval}
+        className={buttonClass}
+      >
         Keep
       </button>
     </div>
