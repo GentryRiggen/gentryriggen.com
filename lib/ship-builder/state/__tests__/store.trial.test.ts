@@ -115,4 +115,40 @@ describe("sea trial slice", () => {
     act(() => store().undo());
     expect(store().ship.parts).toHaveLength(0);
   });
+
+  it("starts an iceberg trial with the hull's compartments", () => {
+    act(() => store().cycleBulkhead(2));
+    act(() => store().startTrial("calm", 4));
+
+    const { iceberg } = runningInput();
+    expect(iceberg?.impactX).toBe(4);
+    expect(iceberg?.length).toBe(store().ship.hull.lengthSegments * 3);
+    expect(iceberg?.compartments.map((c) => c.toX)).toEqual([
+      6,
+      iceberg?.length,
+    ]);
+  });
+
+  it("starts a waves trial without an iceberg", () => {
+    act(() => store().startTrial("calm"));
+    expect(runningInput().iceberg).toBeUndefined();
+  });
+});
+
+describe("bulkheads", () => {
+  it("cycles a wall with undo, and is paused during a trial", () => {
+    act(() => store().cycleBulkhead(1));
+    expect(store().ship.hull.bulkheads).toEqual([{ at: 1, height: "low" }]);
+    act(() => store().undo());
+    expect(store().ship.hull.bulkheads).toBeUndefined();
+
+    act(() => store().startTrial("calm"));
+    act(() => store().cycleBulkhead(1));
+    expect(store().ship.hull.bulkheads).toBeUndefined();
+  });
+
+  it("ignores a boundary outside the hull without touching history", () => {
+    act(() => store().cycleBulkhead(0));
+    expect(store().past).toHaveLength(0);
+  });
 });

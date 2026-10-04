@@ -8,6 +8,7 @@ import {
   resolveAttachPoint,
   rowExtent,
 } from "./attach";
+import { cleanBulkheads } from "./bulkheads";
 import { occupancyOf } from "./occupancyCache";
 import { ATTACH_POINT_LABELS, getPartDef } from "./catalog";
 import {
@@ -469,8 +470,9 @@ export function removeParts(ship: Ship, ids: string[]): Ship {
 /** A new hull length, beam, or both; omitted fields stay as they are. */
 export type HullSize = Partial<Hull>;
 
+/** Walls past a shorter hull's new stern go with the resize. */
 function withSize(ship: Ship, size: HullSize): Ship {
-  return { ...ship, hull: { ...ship.hull, ...size } };
+  return { ...ship, hull: cleanBulkheads({ ...ship.hull, ...size }) };
 }
 
 /** Ids of the parts a resize would remove. Callers clamp the size first. */

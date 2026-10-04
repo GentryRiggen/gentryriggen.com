@@ -134,6 +134,20 @@ export type BowShape = (typeof BOW_IDS)[number];
 export const STERN_IDS = ["counter", "cruiser", "transom", "canoe"] as const;
 export type SternShape = (typeof STERN_IDS)[number];
 
+/** How tall a watertight bulkhead is, lowest first. */
+export const BULKHEAD_HEIGHTS = ["low", "waterline", "deck"] as const;
+export type BulkheadHeight = (typeof BULKHEAD_HEIGHTS)[number];
+
+/** A watertight wall across the hull below deck. */
+export interface Bulkhead {
+  /**
+   * Segment boundary it stands on, 1 to lengthSegments - 1 (the wall is at
+   * cell x = at * CELLS_PER_SEGMENT). At most one per boundary.
+   */
+  at: number;
+  height: BulkheadHeight;
+}
+
 export interface Hull {
   lengthSegments: number;
   /** Width in cells, MIN_BEAM to MAX_BEAM. Inside-hull cells are 0 <= z < beam. */
@@ -142,6 +156,8 @@ export interface Hull {
   stern: SternShape;
   /** Paint per hull area. Absent means the default look. */
   paint?: Partial<Record<HullArea, PaintColor>>;
+  /** Watertight walls below deck, sorted by `at`. Absent means none. */
+  bulkheads?: Bulkhead[];
 }
 
 export interface Ship {

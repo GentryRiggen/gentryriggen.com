@@ -38,6 +38,15 @@ const OUTCOME_LOOKS: Record<TrialOutcome, OutcomeLook> = {
     Icon: Waves,
     badge: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
   },
+  afloat: {
+    Icon: ThumbsUp,
+    badge:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  },
+  sank: {
+    Icon: Waves,
+    badge: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  },
 };
 
 /** Shows how the trial went, with a way to try again or keep building. */

@@ -1,7 +1,14 @@
 import { create } from "zustand";
 import { analyzeShip } from "../model/analysis";
 import { getPartDef } from "../model/catalog";
-import { MAX_BEAM, MAX_SEGMENTS, MIN_BEAM, MIN_SEGMENTS } from "../model/grid";
+import { cycleBulkhead } from "../model/bulkheads";
+import {
+  gridLength,
+  MAX_BEAM,
+  MAX_SEGMENTS,
+  MIN_BEAM,
+  MIN_SEGMENTS,
+} from "../model/grid";
 import { newId } from "../model/ids";
 import {
   canPlace,
@@ -17,6 +24,7 @@ import {
   type RuleResult,
 } from "../model/placement";
 import type { ShipKind } from "../model/kinds";
+import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
 import type { SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
@@ -112,6 +120,11 @@ export interface ShipBuilderState extends ShipBuilderData {
   /** Reshapes the bow. Parts stay put: shapes only change the hull's ends. */
   setBow: (bow: BowShape) => void;
   setStern: (stern: SternShape) => void;
+  /**
+   * Taps the wall slot on this segment boundary: none → low → waterline →
+   * deck → none. Undoable.
+   */
+  cycleBulkhead: (at: number) => void;
   rename: (name: string) => void;
   undo: () => void;
   redo: () => void;
@@ -129,9 +142,10 @@ export interface ShipBuilderState extends ShipBuilderData {
   setCameraView: (view: CameraView) => void;
   /**
    * Starts a sea trial of the current ship in this sea, dropping any tool and
-   * selection. Also restarts a finished trial ("Try again").
+   * selection. Also restarts a finished trial ("Try again"). With `impactX`
+   * (cells from the bow) it is an iceberg trial struck there.
    */
-  startTrial: (sea: SimSea) => void;
+  startTrial: (sea: SimSea, impactX?: number) => void;
   /** Records how the running trial ended; ignored unless one is running. */
   finishTrial: (state: SimState) => void;
   /** Leaves the trial (running or finished) and goes back to building. */
@@ -394,6 +408,13 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       commit(setHullSize(ship, { stern }));
     },
 
+    cycleBulkhead(at) {
+      if (isTrialActive()) return;
+      const { ship } = get();
+      const next = cycleBulkhead(ship, at);
+      if (next !== ship) commit(next);
+    },
+
     rename(name) {
       set({ ship: { ...get().ship, name: clampName(name) } });
     },
@@ -486,12 +507,21 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       set({ camera: { view, nonce: get().camera.nonce + 1 } });
     },
 
-    startTrial(sea) {
+    startTrial(sea, impactX) {
       const { ship } = get();
       const { stats } = analyzeShip(ship);
       const input: TrialInput = {
         ship: simShipFromStats(stats, ship.hull.beam),
         sea,
+        ...(impactX === undefined
+          ? {}
+          : {
+              iceberg: {
+                compartments: compartmentSpecsOf(ship.hull),
+                length: gridLength(ship),
+                impactX,
+              },
+            }),
       };
       runId += 1;
       set({

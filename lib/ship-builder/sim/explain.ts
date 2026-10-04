@@ -122,6 +122,11 @@ export function explainTrial(
         title: "Steady as she goes!",
         ...steadySummary(ship, sea),
       };
+    // Task B replaces these with the full iceberg summaries.
+    case "afloat":
+      return { title: "She stayed afloat!", message: "", tips: [] };
+    case "sank":
+      return { title: "She sank", message: "", tips: [] };
     case null:
       return {
         title: "Sea trial under way",

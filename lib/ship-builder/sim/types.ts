@@ -24,11 +24,30 @@ export type SimSea = "calm" | "choppy" | "stormy";
 /** Seconds per simulation step. Callers accumulate frame time and step. */
 export const SIM_STEP_S = 1 / 60;
 
-export type TrialOutcome = "steady" | "recovered" | "capsized";
+export type TrialOutcome =
+  | "steady"
+  | "recovered"
+  | "capsized"
+  /** Iceberg trial: the flooding was contained. */
+  | "afloat"
+  /** Iceberg trial: the water spilled on until she went under. */
+  | "sank";
 
 /** Why the trial ended the way it did, for a plain-words explanation. */
 export type TrialReason =
-  "stable" | "top-heavy" | "dangerous" | "lopsided" | "rough-sea";
+  | "stable"
+  | "top-heavy"
+  | "dangerous"
+  | "lopsided"
+  | "rough-sea"
+  /** Iceberg: the walls kept the water in the opened compartments. */
+  | "held"
+  /** Iceberg: water spilled over walls that were too low. */
+  | "spilled"
+  /** Iceberg: the hull had no bulkheads at all. */
+  | "no-bulkheads"
+  /** Iceberg: the gash opened too many compartments to float. */
+  | "too-many-opened";
 
 export type SimPhase = "sailing" | "capsizing" | "sinking" | "done";
 
@@ -54,11 +73,36 @@ export interface SimShip {
   beam: number;
 }
 
-/** Reserved for Level 2: one watertight section of the hull. */
+/** Level 2: one watertight section of the hull, as the sim tracks it. */
 export interface Compartment {
   id: string;
-  /** 0 (dry) to 1 (full). */
+  /** 0 (dry) to 1 (full to the main deck). */
   water: number;
+  /** The iceberg opened it to the sea. */
+  opened: boolean;
+}
+
+/**
+ * One compartment's shape, from the hull's bulkheads (see
+ * `compartmentSpecsOf`). x is in cells from the bow; wall heights are a
+ * fraction of the hull's depth (1 reaches the main deck). The hull's own
+ * bow and stern ends count as walls of height 1.
+ */
+export interface CompartmentSpec {
+  id: string;
+  fromX: number;
+  toX: number;
+  bowWall: number;
+  sternWall: number;
+}
+
+/** An iceberg trial: the hull's compartments and where she was struck. */
+export interface IcebergInput {
+  compartments: CompartmentSpec[];
+  /** Hull length in cells. */
+  length: number;
+  /** Middle of the gash, cells from the bow. */
+  impactX: number;
 }
 
 /** Reserved for Level 3: things the player does while the sim runs. */
@@ -67,7 +111,15 @@ export type SimAction = never;
 /** Something that happened, for the result screen and later levels. */
 export interface SimEvent {
   at: number;
-  kind: "big-roll" | "recovered" | "capsized" | "sunk";
+  kind:
+    | "big-roll"
+    | "recovered"
+    | "capsized"
+    | "sunk"
+    /** Iceberg: water started coming in. */
+    | "flooding"
+    /** Iceberg: water spilled over a wall into the next compartment. */
+    | "spilled";
 }
 
 export interface SimState {
@@ -87,4 +139,6 @@ export interface SimState {
 export interface TrialInput {
   ship: SimShip;
   sea: SimSea;
+  /** Present for an iceberg trial; absent for the Level 1 waves trial. */
+  iceberg?: IcebergInput;
 }
