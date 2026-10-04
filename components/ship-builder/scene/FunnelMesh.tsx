@@ -13,6 +13,8 @@ interface FunnelMeshProps {
   bodyHeight: number;
   /** The black cap above the body. */
   capHeight: number;
+  /** Paint colour for the body; the band and cap keep their own colours. */
+  bodyColor?: string;
   tint: PartTint;
   emphasis: PartEmphasis;
 }
@@ -22,6 +24,7 @@ export default function FunnelMesh({
   topRadius,
   bodyHeight,
   capHeight,
+  bodyColor = PALETTE.funnel,
   tint,
   emphasis,
 }: FunnelMeshProps) {
@@ -38,7 +41,7 @@ export default function FunnelMesh({
         <cylinderGeometry
           args={[topRadius, baseRadius, bodyHeight, SEGMENTS]}
         />
-        <Surface color={PALETTE.funnel} {...surface} />
+        <Surface color={bodyColor} {...surface} />
       </mesh>
       <mesh position={[0, bandCentre, 0]}>
         <cylinderGeometry

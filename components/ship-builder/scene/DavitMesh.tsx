@@ -35,14 +35,20 @@ function getArm(outward: 1 | -1): BufferGeometry {
 
 interface DavitMeshProps {
   outward: 1 | -1;
+  color?: string;
   tint: PartTint;
   emphasis: PartEmphasis;
 }
 
-export default function DavitMesh({ outward, tint, emphasis }: DavitMeshProps) {
+export default function DavitMesh({
+  outward,
+  color = PALETTE.davit,
+  tint,
+  emphasis,
+}: DavitMeshProps) {
   return (
     <mesh geometry={getArm(outward)} castShadow>
-      <Surface color={PALETTE.davit} tint={tint} emphasis={emphasis} />
+      <Surface color={color} tint={tint} emphasis={emphasis} />
     </mesh>
   );
 }

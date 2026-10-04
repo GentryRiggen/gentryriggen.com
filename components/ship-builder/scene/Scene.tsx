@@ -40,6 +40,7 @@ export default function Scene() {
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
   const bow = useShipBuilderStore((s) => s.ship.hull.bow);
   const stern = useShipBuilderStore((s) => s.ship.hull.stern);
+  const paint = useShipBuilderStore((s) => s.ship.hull.paint);
   const select = useShipBuilderStore((s) => s.select);
   const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
   const wrapper = useRef<HTMLDivElement>(null);
@@ -112,7 +113,13 @@ export default function Scene() {
         />
         <Ocean seeThrough={isBelow} />
         <ShipAnimation>
-          <Hull lengthCells={lengthCells} beam={beam} bow={bow} stern={stern} />
+          <Hull
+            lengthCells={lengthCells}
+            beam={beam}
+            bow={bow}
+            stern={stern}
+            paint={paint}
+          />
           <Railings />
           <ShipParts onPartPress={startPress} />
           <GridTargets />

@@ -7,6 +7,7 @@ import { useCursor } from "@react-three/drei";
 import { buildOccupancy } from "@/lib/ship-builder/model/grid";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { isTap } from "./anchors";
 import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
 import PopIn from "./PopIn";
@@ -52,6 +53,7 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const selectedId = useShipBuilderStore((s) => s.selectedId);
   const pendingRemoval = useShipBuilderStore((s) => s.pendingRemoval);
   const select = useShipBuilderStore((s) => s.select);
+  const paintPart = useShipBuilderStore((s) => s.paintPart);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Parts are only selectable with no tool active.
@@ -125,7 +127,26 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
     }),
     [select, handlePointerDown]
   );
-  const handlers = interactive ? selectHandlers : occludeHandlers;
+  // In paint mode a tap paints the part. Pointer-over still swallows so the
+  // part occludes the hull behind it, and the press can become a hold-delete.
+  const paintHandlers = useMemo(
+    () => ({
+      ...occludeHandlers,
+      onClick: (event: ThreeEvent<MouseEvent>) => {
+        event.stopPropagation();
+        if (shouldSwallowClick() || !isTap(event)) return;
+        const id = partIdOf(event);
+        if (id) paintPart(id);
+      },
+    }),
+    [occludeHandlers, paintPart]
+  );
+  const handlers =
+    tool.kind === "paint"
+      ? paintHandlers
+      : interactive
+        ? selectHandlers
+        : occludeHandlers;
 
   const removing = new Set(pendingRemoval?.ids ?? []);
 
@@ -137,6 +158,7 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
             ship={ship}
             occupancy={occupancy}
             part={part}
+            color={part.color}
             partId={part.id}
             tint={removing.has(part.id) ? "removal" : null}
             emphasis={

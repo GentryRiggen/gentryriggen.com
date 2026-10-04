@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import type { BufferGeometry } from "three";
+import { Mesh, type BufferGeometry } from "three";
+import type { ThreeEvent } from "@react-three/fiber";
 import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
-import type { BowShape, SternShape } from "@/lib/ship-builder/model/types";
+import { paintHex, type HullArea } from "@/lib/ship-builder/model/paint";
+import type {
+  BowShape,
+  Hull as HullData,
+  SternShape,
+} from "@/lib/ship-builder/model/types";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { isTap } from "./anchors";
+import { shouldSwallowClick } from "./clickGuard";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
 import { buildEndGeometry } from "./hullGeometry";
 import { BULB_PROTRUSION, endSectionAt, type EndKind } from "./hullShapes";
@@ -25,6 +34,7 @@ interface HullProps {
   beam: number;
   bow: BowShape;
   stern: SternShape;
+  paint?: HullData["paint"];
 }
 
 interface EndMeshProps {
@@ -39,6 +49,8 @@ interface EndMeshProps {
   fixedY?: number;
   hasBottomCap?: boolean;
   isDeck?: boolean;
+  /** Set in paint mode: a tap on the mesh paints its band. */
+  onTap?: (event: ThreeEvent<MouseEvent>) => void;
 }
 
 function endLength(kind: EndKind, shape: BowShape | SternShape): number {
@@ -58,7 +70,7 @@ function useEndGeometry({
   fixedY,
   hasBottomCap = false,
   isDeck = false,
-}: Omit<EndMeshProps, "color">): BufferGeometry {
+}: Omit<EndMeshProps, "color" | "onTap">): BufferGeometry {
   const geometry = useMemo(() => {
     const length = endLength(kind, shape);
     return buildEndGeometry({
@@ -93,7 +105,8 @@ function EndMesh(props: EndMeshProps) {
       geometry={geometry}
       castShadow={!props.isDeck}
       receiveShadow
-      raycast={noRaycast}
+      raycast={props.onTap ? Mesh.prototype.raycast : noRaycast}
+      onClick={props.onTap}
     >
       <meshStandardMaterial color={props.color} />
     </mesh>
@@ -109,6 +122,7 @@ interface HullBandProps {
   bow: BowShape;
   stern: SternShape;
   isKeelBand?: boolean;
+  onTap?: (event: ThreeEvent<MouseEvent>) => void;
 }
 
 /** One colour band: the straight middle plus a lofted bow and stern. */
@@ -121,12 +135,19 @@ function HullBand({
   bow,
   stern,
   isKeelBand = false,
+  onTap,
 }: HullBandProps) {
   const height = top - bottom;
-  const shared = { lengthCells, beam, bottom, top, color };
+  const shared = { lengthCells, beam, bottom, top, color, onTap };
   return (
     <group>
-      <mesh position={[0, bottom + height / 2, 0]} castShadow receiveShadow>
+      <mesh
+        position={[0, bottom + height / 2, 0]}
+        castShadow
+        receiveShadow
+        raycast={onTap ? Mesh.prototype.raycast : noRaycast}
+        onClick={onTap}
+      >
         <boxGeometry args={[lengthCells, height, beam]} />
         <meshStandardMaterial color={color} />
       </mesh>
@@ -165,7 +186,7 @@ function DeckPlate({ lengthCells, beam, bow, stern }: HullProps) {
 }
 
 /** The bulbous bow's bulb: a squashed sphere in the red band. */
-function Bulb({ lengthCells }: { lengthCells: number }) {
+function Bulb({ lengthCells, color }: { lengthCells: number; color: string }) {
   const stemTip = bowLength("bulbous") - BULB_PROTRUSION;
   return (
     <mesh
@@ -175,12 +196,36 @@ function Bulb({ lengthCells }: { lengthCells: number }) {
       raycast={noRaycast}
     >
       <sphereGeometry args={[1, 20, 14]} />
-      <meshStandardMaterial color={PALETTE.antifouling} />
+      <meshStandardMaterial color={color} />
     </mesh>
   );
 }
 
-export default function Hull({ lengthCells, beam, bow, stern }: HullProps) {
+export default function Hull({
+  lengthCells,
+  beam,
+  bow,
+  stern,
+  paint,
+}: HullProps) {
+  const isPainting = useShipBuilderStore((s) => s.tool.kind === "paint");
+  const paintHull = useShipBuilderStore((s) => s.paintHull);
+  // Bands only take taps in paint mode, so they never block the grid targets
+  // sitting on the deck.
+  const tapFor = (area: HullArea) =>
+    isPainting
+      ? (event: ThreeEvent<MouseEvent>) => {
+          event.stopPropagation();
+          if (shouldSwallowClick() || !isTap(event)) return;
+          paintHull(area);
+        }
+      : undefined;
+  const bottomColor = paint?.bottom
+    ? paintHex(paint.bottom)
+    : PALETTE.antifouling;
+  const topsidesColor = paint?.topsides
+    ? paintHex(paint.topsides)
+    : PALETTE.hull;
   return (
     <group>
       <HullBand
@@ -188,19 +233,21 @@ export default function Hull({ lengthCells, beam, bow, stern }: HullProps) {
         beam={beam}
         bottom={-HULL_DRAFT}
         top={BOOT_TOP}
-        color={PALETTE.antifouling}
+        color={bottomColor}
         bow={bow}
         stern={stern}
         isKeelBand
+        onTap={tapFor("bottom")}
       />
       <HullBand
         lengthCells={lengthCells}
         beam={beam}
         bottom={BOOT_TOP}
         top={DECK_Y}
-        color={PALETTE.hull}
+        color={topsidesColor}
         bow={bow}
         stern={stern}
+        onTap={tapFor("topsides")}
       />
       <DeckPlate
         lengthCells={lengthCells}
@@ -208,7 +255,9 @@ export default function Hull({ lengthCells, beam, bow, stern }: HullProps) {
         bow={bow}
         stern={stern}
       />
-      {bow === "bulbous" && <Bulb lengthCells={lengthCells} />}
+      {bow === "bulbous" && (
+        <Bulb lengthCells={lengthCells} color={bottomColor} />
+      )}
       <HullDetails lengthCells={lengthCells} beam={beam} bow={bow} />
     </group>
   );

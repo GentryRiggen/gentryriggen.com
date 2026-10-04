@@ -9,6 +9,7 @@ import {
   gridLength,
   type Occupancy,
 } from "@/lib/ship-builder/model/grid";
+import { paintHex, type PaintColor } from "@/lib/ship-builder/model/paint";
 import type { PartCandidate } from "@/lib/ship-builder/model/placement";
 import type {
   GridPartDef,
@@ -37,6 +38,8 @@ interface PartMeshProps {
   partId?: string;
   /** The ship's occupancy, shared across parts so each doesn't rebuild it. */
   occupancy?: Occupancy;
+  /** Paint on the part's main surface; absent means the default look. */
+  color?: PaintColor;
   tint?: PartTint;
   emphasis?: PartEmphasis;
   onPointerOver?: (event: ThreeEvent<PointerEvent>) => void;
@@ -50,11 +53,12 @@ const BRIDGE_HEIGHT = 0.8;
 interface BlockProps {
   def: GridPartDef;
   size: { x: number; z: number };
+  color?: PaintColor;
   tint: PartTint;
   emphasis: PartEmphasis;
 }
 
-function Block({ def, size, tint, emphasis }: BlockProps) {
+function Block({ def, size, color, tint, emphasis }: BlockProps) {
   const surface = { tint, emphasis };
   // Blocks fill their level so stacks sit flush and fittings rest on top; the
   // 0.96 footprint inset keeps a visible seam between neighbours. The bridge
@@ -64,7 +68,10 @@ function Block({ def, size, tint, emphasis }: BlockProps) {
     <group>
       <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[size.x * 0.96, height, size.z * 0.96]} />
-        <Surface color={PALETTE.superstructure} {...surface} />
+        <Surface
+          color={color ? paintHex(color) : PALETTE.superstructure}
+          {...surface}
+        />
       </mesh>
       <BlockDetails
         def={def}
@@ -80,12 +87,14 @@ function Block({ def, size, tint, emphasis }: BlockProps) {
 interface FittingProps {
   type: PartType;
   side?: Side;
+  color?: PaintColor;
   tint: PartTint;
   emphasis: PartEmphasis;
 }
 
-function Fitting({ type, side, tint, emphasis }: FittingProps) {
+function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
   const surface = { tint, emphasis };
+  const painted = color ? paintHex(color) : undefined;
   // Starboard is world +Z (see coords.ts), so outboard is +Z there.
   const outward = side === "starboard" ? 1 : -1;
   switch (type) {
@@ -96,6 +105,7 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
           topRadius={0.38}
           bodyHeight={2.6}
           capHeight={0.6}
+          bodyColor={painted}
           tint={tint}
           emphasis={emphasis}
         />
@@ -108,6 +118,7 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
           topRadius={0.65}
           bodyHeight={3.4}
           capHeight={0.8}
+          bodyColor={painted}
           tint={tint}
           emphasis={emphasis}
         />
@@ -119,13 +130,13 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
         <Spinner enabled={!isGhost}>
           <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
             <cylinderGeometry args={[0.12, 0.12, 0.4, 12]} />
-            <Surface color={PALETTE.propeller} {...surface} />
+            <Surface color={painted ?? PALETTE.propeller} {...surface} />
           </mesh>
           {[0, 1, 2].map((i) => (
             <group key={i} rotation={[(i * 2 * Math.PI) / 3, 0, 0]}>
               <mesh position={[0, 0.32, 0]} castShadow>
                 <boxGeometry args={[0.06, 0.5, 0.16]} />
-                <Surface color={PALETTE.propeller} {...surface} />
+                <Surface color={painted ?? PALETTE.propeller} {...surface} />
               </mesh>
             </group>
           ))}
@@ -137,25 +148,32 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
       return (
         <mesh castShadow>
           <boxGeometry args={[0.6, 0.9, 0.08]} />
-          <Surface color={PALETTE.propeller} {...surface} />
+          <Surface color={painted ?? PALETTE.propeller} {...surface} />
         </mesh>
       );
     case "mast":
       return (
         <mesh position={[0, 3.5, 0]} castShadow>
           <cylinderGeometry args={[0.05, 0.08, 7, 8]} />
-          <Surface color={PALETTE.mast} {...surface} />
+          <Surface color={painted ?? PALETTE.mast} {...surface} />
         </mesh>
       );
     case "davit":
-      return <DavitMesh outward={outward} tint={tint} emphasis={emphasis} />;
+      return (
+        <DavitMesh
+          outward={outward}
+          color={painted}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
     case "lifeboat-large":
       return (
         <LifeboatMesh
           length={1.9}
           width={0.45}
           depth={0.35}
-          hullColor={PALETTE.lifeboat}
+          hullColor={painted ?? PALETTE.lifeboat}
           tint={tint}
           emphasis={emphasis}
         />
@@ -168,7 +186,9 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
           length={0.9}
           width={0.35}
           depth={collapsible ? 0.2 : 0.3}
-          hullColor={collapsible ? PALETTE.collapsible : PALETTE.lifeboat}
+          hullColor={
+            painted ?? (collapsible ? PALETTE.collapsible : PALETTE.lifeboat)
+          }
           tint={tint}
           emphasis={emphasis}
         />
@@ -184,6 +204,7 @@ function PartMesh({
   part,
   partId,
   occupancy,
+  color,
   tint = null,
   emphasis = null,
   onPointerOver,
@@ -207,7 +228,13 @@ function PartMesh({
     const { center, size } = footprintBase(def, part.anchor, part.rotation);
     return (
       <group position={modelToWorld(length, beam, center)} {...handlers}>
-        <Block def={def} size={size} tint={tint} emphasis={emphasis} />
+        <Block
+          def={def}
+          size={size}
+          color={color}
+          tint={tint}
+          emphasis={emphasis}
+        />
       </group>
     );
   }
@@ -220,6 +247,7 @@ function PartMesh({
       <Fitting
         type={part.type}
         side={point.side}
+        color={color}
         tint={tint}
         emphasis={emphasis}
       />
