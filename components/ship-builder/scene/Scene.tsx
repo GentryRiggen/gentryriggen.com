@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
-import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
@@ -38,8 +37,8 @@ function preventDefault(event: Event) {
 export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
-  const bow = useShipBuilderStore((s) => bowLength(s.ship.hull.bow));
-  const stern = useShipBuilderStore((s) => sternLength(s.ship.hull.stern));
+  const bow = useShipBuilderStore((s) => s.ship.hull.bow);
+  const stern = useShipBuilderStore((s) => s.ship.hull.stern);
   const select = useShipBuilderStore((s) => s.select);
   const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
   const wrapper = useRef<HTMLDivElement>(null);
@@ -112,12 +111,7 @@ export default function Scene() {
         />
         <Ocean seeThrough={isBelow} />
         <ShipAnimation>
-          <Hull
-            lengthCells={lengthCells}
-            beam={beam}
-            bowLength={bow}
-            sternLength={stern}
-          />
+          <Hull lengthCells={lengthCells} beam={beam} bow={bow} stern={stern} />
           <ShipParts onPartPress={startPress} />
           <GridTargets />
           <AttachMarkers />
