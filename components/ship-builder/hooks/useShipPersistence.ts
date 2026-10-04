@@ -75,8 +75,8 @@ export default function useShipPersistence() {
             .getState()
             .loadShip(saved.ship, saved.savedId, { resetHistory: true });
         } else if (saved.kind === "invalid") {
-          // The unreadable autosave stays put until the next change
-          // overwrites it.
+          // loadAutosave backed the unreadable autosave up, since the next
+          // change overwrites it.
           store.getState().setNotice(RESTORE_NOTICE);
         }
       }

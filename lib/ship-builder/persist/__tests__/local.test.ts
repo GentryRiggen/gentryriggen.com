@@ -1,4 +1,5 @@
 import {
+  AUTOSAVE_BACKUP_KEY,
   AUTOSAVE_KEY,
   clearUnreadableShips,
   countUnreadableShips,
@@ -99,6 +100,18 @@ describe("autosave", () => {
   ])("reports invalid for %s", (_label, text) => {
     localStorage.setItem(AUTOSAVE_KEY, text);
     expect(loadAutosave()).toEqual({ kind: "invalid" });
+    expect(localStorage.getItem(AUTOSAVE_BACKUP_KEY)).toBe(text);
+  });
+
+  it("keeps an earlier autosave backup when backing up a new one", () => {
+    localStorage.setItem(AUTOSAVE_BACKUP_KEY, "older");
+    localStorage.setItem(AUTOSAVE_KEY, "{newer");
+    loadAutosave();
+    expect(localStorage.getItem(AUTOSAVE_BACKUP_KEY)).toBe("older");
+    const copies = Object.keys(localStorage).filter((key) =>
+      key.startsWith(`${AUTOSAVE_BACKUP_KEY}:`)
+    );
+    expect(copies.map((key) => localStorage.getItem(key))).toEqual(["{newer"]);
   });
 
   it("returns false when storage throws", () => {

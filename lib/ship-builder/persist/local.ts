@@ -10,6 +10,12 @@ export const SHIPS_KEY = "ship-builder:ships";
  * Later, different values go to `<SHIPS_BACKUP_KEY>:<timestamp>` keys.
  */
 export const SHIPS_BACKUP_KEY = "ship-builder:ships:backup";
+/**
+ * Holds an autosave this build couldn't read (e.g. one written by a newer
+ * build), copied before the next autosave overwrites it. Later, different
+ * values go to `<AUTOSAVE_BACKUP_KEY>:<timestamp>` keys.
+ */
+export const AUTOSAVE_BACKUP_KEY = "ship-builder:autosave:backup";
 
 export interface SavedShip {
   id: string;
@@ -77,9 +83,12 @@ export function loadAutosave(): AutosaveResult {
   // Unreadable storage is reported when saving fails, not here.
   if (!stored.ok || !stored.text) return { kind: "none" };
   const raw = stored.value;
-  if (!isRecord(raw)) return { kind: "invalid" };
-  const parsed = parseShip(raw.ship);
-  if (!parsed.ok) return { kind: "invalid" };
+  const parsed = isRecord(raw) ? parseShip(raw.ship) : null;
+  if (!isRecord(raw) || !parsed?.ok) {
+    // The next change overwrites the autosave, so keep a copy first.
+    backupText(AUTOSAVE_BACKUP_KEY, stored.text);
+    return { kind: "invalid" };
+  }
   const savedId = typeof raw.savedId === "string" ? raw.savedId : null;
   return { kind: "ok", ship: parsed.ship, savedId };
 }
@@ -218,23 +227,27 @@ function updateShips(update: (entries: unknown[]) => unknown[]): boolean {
   return writeJson(SHIPS_KEY, update([]));
 }
 
-/**
- * Copies `text` to {@link SHIPS_BACKUP_KEY}. If that key already holds
- * something else (an earlier backup, or garbage), the copy goes to a fresh
- * `<SHIPS_BACKUP_KEY>:<timestamp>` key instead, so no backup is ever lost.
- * Returns false only when the copy couldn't be written.
- */
 function backupShipsText(text: string | null): boolean {
+  return backupText(SHIPS_BACKUP_KEY, text);
+}
+
+/**
+ * Copies `text` to `backupKey`. If that key already holds something else (an
+ * earlier backup, or garbage), the copy goes to a fresh
+ * `<backupKey>:<timestamp>` key instead, so no backup is ever lost. Returns
+ * false only when the copy couldn't be written.
+ */
+function backupText(backupKey: string, text: string | null): boolean {
   const store = storage();
   if (!store || text === null) return false;
   try {
-    const existing = store.getItem(SHIPS_BACKUP_KEY);
+    const existing = store.getItem(backupKey);
     if (existing === text) return true;
     if (existing === null) {
-      store.setItem(SHIPS_BACKUP_KEY, text);
+      store.setItem(backupKey, text);
       return true;
     }
-    const base = `${SHIPS_BACKUP_KEY}:${Date.now()}`;
+    const base = `${backupKey}:${Date.now()}`;
     let key = base;
     for (let n = 1; ; n++) {
       const taken = store.getItem(key);
