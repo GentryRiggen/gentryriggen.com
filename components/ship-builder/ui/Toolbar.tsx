@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   ArrowUpDown,
   Box,
+  CloudLightning,
   ChevronsLeftRight,
   ChevronsRightLeft,
   Eye,
@@ -14,11 +15,13 @@ import {
   Plus,
   Redo2,
   RotateCw,
+  Sailboat,
   Save,
   Ship,
   Trash2,
   Undo2,
   Waves,
+  Wind,
   type LucideIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -35,6 +38,8 @@ import {
   useShipBuilderStore,
   type CameraView,
 } from "@/lib/ship-builder/state/store";
+import useSeaState from "../hooks/useSeaState";
+import type { SeaState } from "../scene/seaState";
 import MyShipsDialog from "./MyShipsDialog";
 import ShareButton from "./ShareButton";
 import {
@@ -62,6 +67,22 @@ const CAMERA_VIEWS: {
   { view: "below", label: "Below", ariaLabel: "Below view", Icon: Waves },
 ];
 
+const SEA_STATES: {
+  sea: SeaState;
+  label: string;
+  ariaLabel: string;
+  Icon: LucideIcon;
+}[] = [
+  { sea: "calm", label: "Calm", ariaLabel: "Calm sea", Icon: Sailboat },
+  { sea: "choppy", label: "Choppy", ariaLabel: "Choppy sea", Icon: Wind },
+  {
+    sea: "stormy",
+    label: "Stormy",
+    ariaLabel: "Stormy sea",
+    Icon: CloudLightning,
+  },
+];
+
 /** The colour a fresh trip into paint mode starts with. */
 const DEFAULT_PAINT_COLOR = "red";
 
@@ -84,6 +105,7 @@ function ButtonLabel({ Icon, children }: ButtonLabelProps) {
 }
 
 export default function Toolbar() {
+  const { seaState, setSeaState } = useSeaState();
   const [shipsOpen, setShipsOpen] = useState(false);
   const myShipsButtonRef = useRef<HTMLButtonElement>(null);
   const ship = useShipBuilderStore((s) => s.ship);
@@ -264,6 +286,21 @@ export default function Toolbar() {
             aria-pressed={cameraView === view}
             onClick={() => setCameraView(view)}
             className={cameraView === view ? pressedButtonClass : buttonClass}
+          >
+            <ButtonLabel Icon={Icon}>{label}</ButtonLabel>
+          </button>
+        ))}
+      </div>
+
+      <div role="group" aria-label="Sea" className="flex items-center gap-1">
+        {SEA_STATES.map(({ sea, label, ariaLabel, Icon }) => (
+          <button
+            key={sea}
+            type="button"
+            aria-label={ariaLabel}
+            aria-pressed={seaState === sea}
+            onClick={() => setSeaState(sea)}
+            className={seaState === sea ? pressedButtonClass : buttonClass}
           >
             <ButtonLabel Icon={Icon}>{label}</ButtonLabel>
           </button>

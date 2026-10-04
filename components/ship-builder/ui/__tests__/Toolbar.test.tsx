@@ -141,3 +141,22 @@ describe("Toolbar", () => {
     expect(name).not.toHaveFocus();
   });
 });
+
+describe("Toolbar sea control", () => {
+  it("offers three sea states and remembers the choice", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const calm = screen.getByRole("button", { name: "Calm sea" });
+    const stormy = screen.getByRole("button", { name: "Stormy sea" });
+    expect(calm).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Choppy sea" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    await user.click(stormy);
+    expect(stormy).toHaveAttribute("aria-pressed", "true");
+    expect(calm).toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem("ship-builder:ui:sea")).toBe("stormy");
+    await user.click(calm);
+  });
+});
