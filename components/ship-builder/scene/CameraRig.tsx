@@ -5,14 +5,36 @@ import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import { CAMERA_TARGET, MAX_POLAR_ANGLE, viewPosition } from "./cameraViews";
+import {
+  CAMERA_TARGET,
+  MAX_POLAR_ANGLE,
+  shouldReframe,
+  viewPosition,
+} from "./cameraViews";
 
 export default function CameraRig() {
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
   const get = useThree((state) => state.get);
   const camera = useShipBuilderStore((s) => s.camera);
+  const lengthSegments = useShipBuilderStore((s) => s.ship.hull.lengthSegments);
+  // What the camera was last framed for: a new preset request always
+  // reframes, a hull length change only when it's big (e.g. a load).
+  const framed = useRef<{
+    camera: typeof camera;
+    lengthSegments: number;
+  } | null>(null);
 
   useEffect(() => {
+    const last = framed.current;
+    if (
+      last &&
+      last.camera === camera &&
+      !shouldReframe(last.lengthSegments, lengthSegments)
+    ) {
+      return;
+    }
+    framed.current = { camera, lengthSegments };
+
     const lengthCells = gridLength(useShipBuilderStore.getState().ship);
     const orbit = controls.current;
     // With damping on, update() only applies a fraction of any leftover drag
@@ -28,7 +50,7 @@ export default function CameraRig() {
       orbit.update();
       orbit.enableDamping = true;
     }
-  }, [camera, get]);
+  }, [camera, lengthSegments, get]);
 
   return (
     <OrbitControls

@@ -43,3 +43,17 @@ export function polarAngle(position: CameraPosition): number {
   const [x, y, z] = position.map((value, i) => value - CAMERA_TARGET[i]);
   return Math.atan2(Math.hypot(x, z), y);
 }
+
+/**
+ * Hull length changes bigger than this (in segments) since the last framing
+ * reframe the camera, e.g. loading a much longer ship. Single −/+ clicks stay
+ * under it so the camera doesn't jump while the player is editing.
+ */
+export const REFRAME_SEGMENT_THRESHOLD = 2;
+
+export function shouldReframe(
+  framedSegments: number,
+  lengthSegments: number
+): boolean {
+  return Math.abs(lengthSegments - framedSegments) > REFRAME_SEGMENT_THRESHOLD;
+}
