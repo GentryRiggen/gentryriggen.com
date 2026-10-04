@@ -10,6 +10,7 @@ jest.mock("../GridTargets", () => () => null);
 jest.mock("../Hull", () => () => null);
 jest.mock("../LongPressRing", () => () => null);
 jest.mock("../Ocean", () => () => null);
+jest.mock("../Railings", () => () => null);
 jest.mock("../ShipParts", () => () => null);
 jest.mock("../ShipAnimation", () => () => null);
 

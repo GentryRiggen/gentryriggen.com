@@ -7,6 +7,7 @@ import type { BowShape, SternShape } from "@/lib/ship-builder/model/types";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
 import { buildEndGeometry } from "./hullGeometry";
 import { BULB_PROTRUSION, endSectionAt, type EndKind } from "./hullShapes";
+import HullDetails from "./HullDetails";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
 
@@ -208,6 +209,7 @@ export default function Hull({ lengthCells, beam, bow, stern }: HullProps) {
         stern={stern}
       />
       {bow === "bulbous" && <Bulb lengthCells={lengthCells} />}
+      <HullDetails lengthCells={lengthCells} beam={beam} bow={bow} />
     </group>
   );
 }

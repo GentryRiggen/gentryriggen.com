@@ -14,6 +14,7 @@ import Hull from "./Hull";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import { PALETTE } from "./palette";
+import Railings from "./Railings";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
 import { usePartLongPress } from "./usePartLongPress";
@@ -112,6 +113,7 @@ export default function Scene() {
         <Ocean seeThrough={isBelow} />
         <ShipAnimation>
           <Hull lengthCells={lengthCells} beam={beam} bow={bow} stern={stern} />
+          <Railings />
           <ShipParts onPartPress={startPress} />
           <GridTargets />
           <AttachMarkers />
