@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
@@ -21,6 +21,18 @@ import { usePartLongPress } from "./usePartLongPress";
 const UNDERWATER_FOG_NEAR = 40;
 const UNDERWATER_FOG_FAR = 200;
 
+/**
+ * iOS Safari starts its own UI during a press-and-hold (callout, selection,
+ * drag preview) and then cancels the pointer, which would abort a hold-to-
+ * delete. Cancelling these events keeps the hold alive. `touchstart` is left
+ * alone on purpose: preventing it would suppress the click R3F needs for taps.
+ */
+const NATIVE_HOLD_EVENTS = ["contextmenu", "selectstart", "dragstart"] as const;
+
+function preventDefault(event: Event) {
+  event.preventDefault();
+}
+
 export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
@@ -28,6 +40,19 @@ export default function Scene() {
   const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
   const wrapper = useRef<HTMLDivElement>(null);
   const { ring, startPress } = usePartLongPress(wrapper);
+
+  useEffect(() => {
+    const element = wrapper.current;
+    if (!element) return;
+    for (const type of NATIVE_HOLD_EVENTS) {
+      element.addEventListener(type, preventDefault);
+    }
+    return () => {
+      for (const type of NATIVE_HOLD_EVENTS) {
+        element.removeEventListener(type, preventDefault);
+      }
+    };
+  }, []);
 
   return (
     // The canvas owns every touch gesture (orbit, pinch, pan, hold), so the

@@ -92,3 +92,24 @@ describe("ShipBuilder collapsible panels", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("ShipBuilder shell", () => {
+  it("disables text selection and the touch callout app-wide", () => {
+    const { container } = render(<ShipBuilder />);
+    expect(container.firstElementChild).toHaveClass(
+      "select-none",
+      "[-webkit-touch-callout:none]"
+    );
+  });
+
+  it("keeps the ship name input selectable and editable", async () => {
+    const user = userEvent.setup();
+    render(<ShipBuilder />);
+    const input = screen.getByRole("textbox", { name: "Ship name" });
+    expect(input).not.toHaveClass("select-none");
+    expect(input).toHaveClass("select-text");
+    await user.clear(input);
+    await user.type(input, "Sea Dog");
+    expect(input).toHaveValue("Sea Dog");
+  });
+});
