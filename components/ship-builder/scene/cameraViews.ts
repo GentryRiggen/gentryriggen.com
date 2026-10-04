@@ -18,9 +18,28 @@ export function viewDistance(lengthCells: number): number {
   return lengthCells * 0.9 + 12;
 }
 
+/** OrbitControls' maxDistance; presets never place the camera beyond it. */
+export const MAX_VIEW_DISTANCE = 120;
+
+const THREE_QUARTER_OFFSET = [0.65, 0.45, 0.65] as const;
+
+/**
+ * Three-quarter distance. The ship's length runs across the screen, so a
+ * narrow canvas (aspect < 1) needs proportionally more room to keep the prow
+ * in frame.
+ */
+function threeQuarterDistance(lengthCells: number, aspect: number): number {
+  const wanted = (lengthCells * 1.1 + 12) / Math.min(1, aspect);
+  return Math.min(
+    wanted,
+    MAX_VIEW_DISTANCE / Math.hypot(...THREE_QUARTER_OFFSET)
+  );
+}
+
 export function viewPosition(
   view: CameraView,
-  lengthCells: number
+  lengthCells: number,
+  aspect = 1
 ): CameraPosition {
   const distance = viewDistance(lengthCells);
   const [, targetY] = CAMERA_TARGET;
@@ -33,8 +52,11 @@ export function viewPosition(
       ];
     case "top":
       return [0, distance * 1.2, 0.01];
-    case "three-quarter":
-      return [distance * 0.65, distance * 0.45, distance * 0.65];
+    case "three-quarter": {
+      const [dx, dy, dz] = THREE_QUARTER_OFFSET;
+      const d = threeQuarterDistance(lengthCells, aspect);
+      return [d * dx, d * dy, d * dz];
+    }
   }
 }
 

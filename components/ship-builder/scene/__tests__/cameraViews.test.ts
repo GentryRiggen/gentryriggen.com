@@ -7,6 +7,7 @@ import type { CameraView } from "@/lib/ship-builder/state/store";
 import {
   CAMERA_TARGET,
   MAX_POLAR_ANGLE,
+  MAX_VIEW_DISTANCE,
   polarAngle,
   shouldReframe,
   shouldFrame,
@@ -89,5 +90,19 @@ describe("shouldFrame", () => {
       lengthSegments: 4,
     };
     expect(shouldFrame(seen, next)).toBe(true);
+  });
+});
+
+describe("three-quarter framing", () => {
+  it("backs off in narrow canvases", () => {
+    const wide = viewPosition("three-quarter", 36, 1.6);
+    const narrow = viewPosition("three-quarter", 36, 0.6);
+    expect(narrow[0]).toBeGreaterThan(wide[0]);
+  });
+
+  it("never exceeds the orbit max distance", () => {
+    const position = viewPosition("three-quarter", 36, 0.1);
+    const [x, y, z] = position.map((value, i) => value - CAMERA_TARGET[i]);
+    expect(Math.hypot(x, y, z)).toBeLessThanOrEqual(MAX_VIEW_DISTANCE);
   });
 });

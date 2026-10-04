@@ -8,6 +8,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
   CAMERA_TARGET,
   MAX_POLAR_ANGLE,
+  MAX_VIEW_DISTANCE,
   shouldFrame,
   type FrameRequest,
   viewPosition,
@@ -37,7 +38,13 @@ export default function CameraRig() {
       orbit.enableDamping = false;
       orbit.update();
     }
-    get().camera.position.set(...viewPosition(camera.view, lengthCells));
+    // Read the size here rather than subscribing to it, so a resize doesn't
+    // reframe the camera.
+    const { width, height } = get().size;
+    const aspect = height > 0 ? width / height : 1;
+    get().camera.position.set(
+      ...viewPosition(camera.view, lengthCells, aspect)
+    );
     if (orbit) {
       orbit.target.set(...CAMERA_TARGET);
       orbit.update();
@@ -54,7 +61,7 @@ export default function CameraRig() {
       // the target, which would let the camera sink below the waterline.
       enablePan={false}
       minDistance={6}
-      maxDistance={90}
+      maxDistance={MAX_VIEW_DISTANCE}
       maxPolarAngle={MAX_POLAR_ANGLE}
     />
   );
