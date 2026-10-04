@@ -7,17 +7,18 @@ import PartIcon from "./icons/PartIcon";
 import { dangerButtonClass, panelClass } from "./styles";
 
 /**
- * Offers Delete only while a part is selected. It shares the bottom-centre
- * slot with PlacementHint; selecting a part clears the tool, so they never
- * show together.
+ * Offers Delete only while a part is selected and no tool is active. It
+ * shares the bottom-centre slot with PlacementHint; the store clears the tool
+ * on select, and the tool check here keeps them apart regardless.
  */
 export default function SelectionBar() {
   const selected = useShipBuilderStore((s) =>
     s.selectedId ? s.ship.parts.find((p) => p.id === s.selectedId) : undefined
   );
+  const hasTool = useShipBuilderStore((s) => s.tool.kind !== "none");
   const requestDelete = useShipBuilderStore((s) => s.requestDelete);
 
-  if (!selected) return null;
+  if (!selected || hasTool) return null;
   const def = getPartDef(selected.type);
 
   return (

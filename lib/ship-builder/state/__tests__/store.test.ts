@@ -280,13 +280,18 @@ describe("removal", () => {
     expect(store().pendingRemoval).toBeNull();
   });
 
-  it("clears a pending cascade when a placement commits", () => {
+  it("drops the active tool when a part is selected", () => {
     store().selectTool("deck-1x1");
     store().select("a");
-    store().requestDelete();
-    expect(store().pendingRemoval).not.toBeNull();
-    expect(store().placeAt(cell(0, 5, 1))).toEqual({ ok: true });
-    expect(store().pendingRemoval).toBeNull();
+    expect(store().tool).toEqual({ kind: "none" });
+    expect(store().hover).toBeNull();
+    expect(store().selectedId).toBe("a");
+  });
+
+  it("keeps the tool when the selection is cleared", () => {
+    store().selectTool("deck-1x1");
+    store().select(null);
+    expect(store().tool.kind).toBe("place");
   });
 
   it("ignores a delete request for an unknown part", () => {

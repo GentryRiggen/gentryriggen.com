@@ -101,6 +101,28 @@ describe("HelpButton", () => {
     expect(screen.queryByText(/Pick a part on the left/)).toBeNull();
   });
 
+  it("dismisses the tip when the help popover opens", async () => {
+    const user = userEvent.setup();
+    render(<HelpButton />);
+    expect(screen.getByRole("note")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Help" }));
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(localStorage.getItem("ship-builder:ui:coach-seen")).toBe("1");
+  });
+
+  it("closes on Escape even when focus is elsewhere, and links aria-controls only while open", async () => {
+    const user = userEvent.setup();
+    render(<HelpButton />);
+    const help = screen.getByRole("button", { name: "Help" });
+    expect(help).not.toHaveAttribute("aria-controls");
+    await user.click(help);
+    expect(help).toHaveAttribute("aria-controls");
+    act(() => (document.activeElement as HTMLElement | null)?.blur());
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(help).not.toHaveAttribute("aria-controls");
+  });
+
   it("drops the tip once a part is picked", () => {
     render(<HelpButton />);
     act(() => store().selectTool("deck-1x1"));
@@ -124,5 +146,37 @@ describe("HelpButton", () => {
     expect(screen.queryByText(/Pick a part on the left/)).toBeNull();
     getItem.mockRestore();
     setItem.mockRestore();
+  });
+});
+
+describe("SelectionBar and PlacementHint", () => {
+  it("never show together: selecting a part drops the active tool", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("a", "deck-1x1", 0, 2, 1)]),
+      })
+    );
+    render(
+      <>
+        <PlacementHint />
+        <SelectionBar />
+      </>
+    );
+    act(() => store().selectTool("deck-1x1"));
+    act(() => store().select("a"));
+    expect(store().tool.kind).toBe("none");
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+  });
+
+  it("hides the bar while a tool is active even if a part is selected", () => {
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("a", "deck-1x1", 0, 2, 1)]),
+        selectedId: "a",
+      })
+    );
+    render(<SelectionBar />);
+    act(() => store().selectTool("deck-1x1"));
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
   });
 });

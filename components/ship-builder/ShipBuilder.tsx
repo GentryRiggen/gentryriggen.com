@@ -73,7 +73,7 @@ export default function ShipBuilder() {
             onPick={() => setOpenDrawer((d) => (d === "left" ? null : d))}
           />
         </Drawer>
-        <main className="relative min-w-0 flex-1">
+        <main className="relative isolate min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
           <ViewControls />
           <Notice />

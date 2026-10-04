@@ -83,14 +83,27 @@ export default function HelpButton() {
     if (isCoachVisible && toolKind !== "none") dismissCoach();
   }, [isCoachVisible, toolKind]);
 
-  // Tapping the ship or anywhere else closes the cheat sheet.
+  // The cheat sheet supersedes the first-run tip, which would cover it.
+  useEffect(() => {
+    if (open) dismissCoach();
+  }, [open]);
+
+  // Tapping the ship or anywhere else closes the cheat sheet; so does Escape,
+  // wherever focus is.
   useEffect(() => {
     if (!open) return;
+    function handleDocumentKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", handleDocumentKeyDown);
     function handlePointerDown(event: PointerEvent) {
       if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
     }
     document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
   }, [open]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -113,7 +126,7 @@ export default function HelpButton() {
           type="button"
           aria-label="Help"
           aria-expanded={open}
-          aria-controls={popoverId}
+          aria-controls={open ? popoverId : undefined}
           onClick={() => setOpen((current) => !current)}
           className={`${buttonClass} h-11 w-11 rounded-full p-0! shadow-sm`}
         >

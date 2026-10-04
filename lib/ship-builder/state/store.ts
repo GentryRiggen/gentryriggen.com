@@ -269,7 +269,18 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     select(id) {
-      set({ selectedId: id, pendingRemoval: null });
+      // A selection and a tool are mutually exclusive, so the bottom pills
+      // (Delete, placement hint) never stack: selecting drops the tool.
+      set(
+        id === null
+          ? { selectedId: null, pendingRemoval: null }
+          : {
+              selectedId: id,
+              pendingRemoval: null,
+              tool: { kind: "none" },
+              hover: null,
+            }
+      );
     },
 
     requestDelete() {

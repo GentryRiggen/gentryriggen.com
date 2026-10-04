@@ -82,7 +82,7 @@ export default function ShareButton({ className = "" }: ShareButtonProps) {
   }
 
   return (
-    <div ref={wrapperRef} className="relative" onKeyDown={handleKeyDown}>
+    <div ref={wrapperRef} className="sm:relative" onKeyDown={handleKeyDown}>
       <button
         ref={shareButtonRef}
         type="button"
@@ -96,7 +96,7 @@ export default function ShareButton({ className = "" }: ShareButtonProps) {
         <div
           role="dialog"
           aria-label="Share link"
-          className={`absolute right-0 top-full z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] space-y-2 rounded-lg border p-3 shadow-lg ${panelClass}`}
+          className={`absolute inset-x-2 top-full z-40 mt-1 sm:inset-x-auto sm:right-0 sm:mt-2 sm:w-80 space-y-2 rounded-lg border p-3 shadow-lg ${panelClass}`}
         >
           <input
             ref={linkInputRef}

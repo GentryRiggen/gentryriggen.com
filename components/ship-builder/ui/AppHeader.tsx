@@ -63,7 +63,7 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sm:gap-3 sm:px-4 dark:border-slate-800 dark:bg-slate-900">
+    <header className="relative flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-1 border-b border-slate-200 bg-white px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sm:gap-3 sm:px-4 dark:border-slate-800 dark:bg-slate-900">
       <Link
         href="/"
         aria-label="Back to gentryriggen.com"
@@ -99,7 +99,7 @@ export default function AppHeader() {
         onKeyDown={(event) => {
           if (event.key === "Escape") event.currentTarget.blur();
         }}
-        className={`min-h-11 min-w-0 flex-1 sm:w-48 sm:flex-none ${inputClass}`}
+        className={`order-last min-h-11 w-full min-w-0 sm:order-none sm:w-48 sm:flex-none ${inputClass}`}
       />
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
