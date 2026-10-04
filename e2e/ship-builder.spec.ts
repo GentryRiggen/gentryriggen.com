@@ -223,6 +223,70 @@ test.describe("Ship Builder", () => {
     }
   });
 
+  test("paints a tapped block and Esc leaves paint mode", async ({
+    browserName,
+    playwright,
+    baseURL,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "WebGL is only reliable in headless Chromium"
+    );
+    const browser = await playwright.chromium.launch({
+      args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
+    });
+    try {
+      const page = await browser.newPage({
+        baseURL,
+        viewport: { width: 1280, height: 800 },
+      });
+      await openBuilder(page);
+      await page.getByRole("button", { name: "Top view" }).click();
+      // A 2x2 patch covers the canvas centre wherever the grid lines fall.
+      for (const x of [11, 12]) {
+        for (const z of [1, 2]) {
+          await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x, z });
+        }
+      }
+      await page.getByRole("button", { name: "Paint", exact: true }).click();
+      await page.getByRole("button", { name: "Red", exact: true }).click();
+      await expect(
+        page.getByText("Painting · tap a part or the hull")
+      ).toBeVisible();
+
+      const box = await page.getByTestId("ship-canvas").boundingBox();
+      if (!box) throw new Error("canvas has no box");
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      // Move across the block first, as a real pointer would, so the scene has
+      // a pointer position before the press.
+      await page.mouse.move(centre.x - 3, centre.y - 3);
+      await page.mouse.move(centre.x + 3, centre.y + 3, { steps: 5 });
+      await page.mouse.down();
+      await page.mouse.up();
+
+      const paintedColors = () =>
+        page.evaluate(() =>
+          window
+            .__shipBuilderStore!.getState()
+            .ship.parts.map((part) => part.color)
+            .filter(Boolean)
+        );
+      await expect.poll(paintedColors).toEqual(["red"]);
+
+      await page.keyboard.press("Escape");
+      await expect
+        .poll(() =>
+          page.evaluate(() => window.__shipBuilderStore!.getState().tool.kind)
+        )
+        .toBe("none");
+      await expect(
+        page.getByRole("group", { name: "Paint colours" })
+      ).toHaveCount(0);
+    } finally {
+      await browser.close();
+    }
+  });
+
   test("renders the 3D scene", async ({ browserName, playwright, baseURL }) => {
     test.skip(
       browserName !== "chromium",
