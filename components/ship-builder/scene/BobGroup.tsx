@@ -28,6 +28,11 @@ const TRIAL_BLEND_SECONDS = 0.5;
  * pose (roll, pitch, sink) is added on top. Hull, parts, ghost and tap
  * targets share it, so taps still line up with what is drawn.
  */
+/** Aiming an iceberg still shows the ship as built, floating as usual. */
+function isBuilding(status: string): boolean {
+  return status === "idle" || status === "aiming";
+}
+
 export default function BobGroup({ children }: BobGroupProps) {
   const group = useRef<Group>(null);
   const pose = useMemo(() => createShipPose(), []);
@@ -50,15 +55,15 @@ export default function BobGroup({ children }: BobGroupProps) {
     // like a freshly placed part instead of unrolling through the water.
     const previous = previousStatus.current;
     previousStatus.current = status;
-    if (previous !== status && previous !== "idle" && wasHeavy.current) {
+    if (previous !== status && !isBuilding(previous) && wasHeavy.current) {
       const isRestarting = previous === "result" && status === "running";
-      if (status === "idle" || isRestarting) {
+      if (isBuilding(status) || isRestarting) {
         blend.current = isRestarting ? 1 : 0;
         popElapsed.current = 0;
       }
     }
 
-    const goal = status === "idle" ? 0 : 1;
+    const goal = isBuilding(status) ? 0 : 1;
     const rate = reducedMotion ? 1 : step / TRIAL_BLEND_SECONDS;
     blend.current = clamp(
       blend.current + clamp(goal - blend.current, -rate, rate),
@@ -93,7 +98,7 @@ export default function BobGroup({ children }: BobGroupProps) {
     } else if (target.scale.x !== 1) {
       target.scale.setScalar(1);
     }
-    if (status !== "idle") wasHeavy.current = isHeavyTrialPose(trialPlayback);
+    if (!isBuilding(status)) wasHeavy.current = isHeavyTrialPose(trialPlayback);
   });
 
   return <group ref={group}>{children}</group>;

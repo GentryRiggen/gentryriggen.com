@@ -63,12 +63,14 @@ export interface Notice {
 }
 
 /**
- * The sea trial: idle while building, running while the sim plays, then a
- * result until the player goes back to building. Anything but idle freezes the
- * ship: every action that would edit it does nothing (see `isTrialActive`).
+ * The sea trial: idle while building, aiming while the player picks where the
+ * iceberg hits, running while the sim plays, then a result until the player
+ * goes back to building. Anything but idle freezes the ship: every action that
+ * would edit it does nothing (see `isTrialActive`).
  */
 export type TrialSlice =
   | { status: "idle" }
+  | { status: "aiming" }
   | {
       status: "running";
       input: TrialInput;
@@ -146,6 +148,14 @@ export interface ShipBuilderState extends ShipBuilderData {
    * (cells from the bow) it is an iceberg trial struck there.
    */
   startTrial: (sea: SimSea, impactX?: number) => void;
+  /**
+   * Starts aiming an iceberg: freezes building and switches to the side view
+   * so the hull can be tapped. Works from building or a finished trial ("Try
+   * another spot"); does nothing while a trial runs.
+   */
+  aimIceberg: () => void;
+  /** Backs out of aiming and returns to building. */
+  cancelAim: () => void;
   /** Records how the running trial ended; ignored unless one is running. */
   finishTrial: (state: SimState) => void;
   /** Leaves the trial (running or finished) and goes back to building. */
@@ -529,6 +539,22 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         tool: { kind: "none" },
         ...CLEARED,
       });
+    },
+
+    aimIceberg() {
+      const { status } = get().trial;
+      if (status !== "idle" && status !== "result") return;
+      set({
+        trial: { status: "aiming" },
+        tool: { kind: "none" },
+        camera: { view: "side", nonce: get().camera.nonce + 1 },
+        ...CLEARED,
+      });
+    },
+
+    cancelAim() {
+      if (get().trial.status !== "aiming") return;
+      set({ trial: { status: "idle" } });
     },
 
     finishTrial(state) {

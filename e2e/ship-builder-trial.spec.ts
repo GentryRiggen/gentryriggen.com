@@ -54,6 +54,12 @@ function launch(playwright: { chromium: BrowserType }) {
   });
 }
 
+/** Opens the Sea trial menu and picks Waves, the trial v2.5 started directly. */
+async function startWavesTrial(page: Page) {
+  await page.getByRole("button", { name: "Sea trial" }).click();
+  await page.getByRole("menuitem", { name: "Waves" }).click();
+}
+
 const partCount = (page: Page) =>
   page.evaluate(() => window.__shipBuilderStore!.getState().ship.parts.length);
 
@@ -69,7 +75,7 @@ test.describe("Ship Builder sea trial", () => {
     try {
       const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
       const start = page.getByRole("button", { name: "Sea trial" });
-      await start.click();
+      await startWavesTrial(page);
 
       const card = page.getByRole("dialog");
       await expect(card).toBeVisible({ timeout: 30_000 });
@@ -107,7 +113,7 @@ test.describe("Ship Builder sea trial", () => {
     const browser = await launch(playwright);
     try {
       const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
-      await page.getByRole("button", { name: "Sea trial" }).click();
+      await startWavesTrial(page);
       const card = page.getByRole("dialog");
       await expect(card).toBeVisible({ timeout: 30_000 });
       await card.getByRole("button", { name: "Try again" }).click();
@@ -135,7 +141,7 @@ test.describe("Ship Builder sea trial", () => {
       expect(await partCount(page)).toBe(1);
 
       await page.keyboard.press("Escape");
-      await page.getByRole("button", { name: "Sea trial" }).click();
+      await startWavesTrial(page);
       const pill = page.getByRole("status").filter({ hasText: "Sea trial" });
       await expect(pill).toContainText("Calm sea");
       await expect(page.getByRole("button", { name: "Sea trial" })).toHaveCount(
@@ -184,7 +190,7 @@ test.describe("Ship Builder sea trial", () => {
     const browser = await launch(playwright);
     try {
       const page = await openBuilder(browser, baseURL, { trialSeconds: 2 });
-      await page.getByRole("button", { name: "Sea trial" }).click();
+      await startWavesTrial(page);
       await expect.poll(() => trialStatus(page)).toBe("running");
       await page.keyboard.press("Escape");
       await expect.poll(() => trialStatus(page)).toBe("idle");
@@ -202,7 +208,48 @@ test.describe("Ship Builder sea trial", () => {
       const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
       await page.getByRole("button", { name: "Sea trial" }).focus();
       await page.keyboard.press("Enter");
+      await expect(page.getByRole("menuitem", { name: "Waves" })).toBeFocused();
+      await page.keyboard.press("Enter");
       await expect(page.getByRole("dialog")).toBeVisible({ timeout: 30_000 });
+    } finally {
+      await browser.close();
+    }
+  });
+  test("an iceberg trial: aim, tap the hull, then try another spot", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const browser = await launch(playwright);
+    try {
+      const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
+      await page.getByRole("button", { name: "Sea trial" }).click();
+      await page.getByRole("menuitem", { name: "Iceberg" }).click();
+
+      await expect(page.getByText("Tap where the iceberg hits")).toBeVisible();
+      expect(await trialStatus(page)).toBe("aiming");
+
+      // Esc backs out, and the menu button comes back with focus.
+      await page.keyboard.press("Escape");
+      await expect.poll(() => trialStatus(page)).toBe("idle");
+      await expect(
+        page.getByRole("button", { name: "Sea trial" })
+      ).toBeFocused();
+
+      await page.getByRole("button", { name: "Sea trial" }).click();
+      await page.getByRole("menuitem", { name: "Iceberg" }).click();
+      // In the side view the hull's side sits a little below the canvas middle.
+      const canvas = page.getByTestId("ship-canvas");
+      const box = await canvas.boundingBox();
+      if (!box) throw new Error("no canvas box");
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.58);
+
+      const card = page.getByRole("dialog");
+      await expect(card).toBeVisible({ timeout: 30_000 });
+      await expect(
+        card.getByRole("button", { name: "Try another spot" })
+      ).toBeVisible();
+      await card.getByRole("button", { name: "Try another spot" }).click();
+      expect(await trialStatus(page)).toBe("aiming");
     } finally {
       await browser.close();
     }

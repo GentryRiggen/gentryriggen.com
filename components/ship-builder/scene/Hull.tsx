@@ -12,6 +12,7 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
+import IcebergAimLayer from "./IcebergAimLayer";
 import { shouldSwallowClick } from "./clickGuard";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
 import { buildEndGeometry } from "./hullGeometry";
@@ -210,6 +211,7 @@ export default function Hull({
 }: HullProps) {
   const isPainting = useShipBuilderStore((s) => s.tool.kind === "paint");
   const paintHull = useShipBuilderStore((s) => s.paintHull);
+  const isAiming = useShipBuilderStore((s) => s.trial.status === "aiming");
   // Bands only take taps in paint mode, so they never block the grid targets
   // sitting on the deck.
   const tapFor = (area: HullArea) =>
@@ -259,6 +261,7 @@ export default function Hull({
         <Bulb lengthCells={lengthCells} color={bottomColor} />
       )}
       <HullDetails lengthCells={lengthCells} beam={beam} bow={bow} />
+      {isAiming && <IcebergAimLayer lengthCells={lengthCells} beam={beam} />}
     </group>
   );
 }

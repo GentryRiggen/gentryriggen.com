@@ -6,6 +6,7 @@ import { createTrial, runTrial } from "@/lib/ship-builder/sim/seaTrial";
 import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import { publishLiveTrial } from "./liveTrial";
 import { testTrialSeconds, testTrialSpeed } from "./testClock";
 import {
   advanceTrial,
@@ -32,6 +33,7 @@ function TrialDriver({ input }: TrialDriverProps) {
     clock.current = started;
     finished.current = false;
     writePlayback(started.state);
+    if (input.iceberg) publishLiveTrial(started.state, 0, true);
   }, [input]);
 
   useFrame((_, delta) => {
@@ -39,7 +41,12 @@ function TrialDriver({ input }: TrialDriverProps) {
     if (!current || finished.current) return;
     advanceTrial(input, current, delta, testTrialSpeed(), testTrialSeconds());
     writePlayback(current.state);
-    if (current.state.phase !== "done") return;
+    const isDone = current.state.phase === "done";
+    // The below-deck inset and story clock only need ~10 updates a second.
+    if (input.iceberg) {
+      publishLiveTrial(current.state, performance.now(), isDone);
+    }
+    if (!isDone) return;
     finished.current = true;
     finishTrial(current.state);
   });
@@ -54,6 +61,7 @@ function InstantTrial({ input }: TrialDriverProps) {
   useEffect(() => {
     const result = runTrial(input);
     writeInstantPlayback(result);
+    if (input.iceberg) publishLiveTrial(result, 0, true);
     finishTrial(result);
   }, [finishTrial, input]);
 

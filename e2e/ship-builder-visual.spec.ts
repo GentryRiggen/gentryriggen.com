@@ -116,6 +116,7 @@ async function openFrozenScene(
   await page.getByRole("button", { name: `${sea} sea` }).click();
   if (trialSeconds !== undefined) {
     await page.getByRole("button", { name: "Sea trial" }).click();
+    await page.getByRole("menuitem", { name: "Waves" }).click();
   }
   if (below) await page.getByRole("button", { name: "Below view" }).click();
   // Click the empty sky to drop focus rings and hover states off the controls.

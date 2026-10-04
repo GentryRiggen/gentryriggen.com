@@ -2,7 +2,9 @@
 
 import { Square, Waves } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { formatStoryTime, storyMinutes } from "@/lib/ship-builder/sim/story";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { useLiveTrialState } from "../scene/liveTrial";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { SEA_LABELS } from "./seaTrialText";
 import { panelClass } from "./styles";
@@ -13,7 +15,8 @@ export default function SeaTrialStatus() {
   const endTrial = useShipBuilderStore((s) => s.endTrial);
   const stopButton = useRef<HTMLButtonElement>(null);
   const isRunning = trial.status === "running";
-  const runId = trial.status === "idle" ? null : trial.runId;
+  const runId = trial.status === "running" ? trial.runId : null;
+  const live = useLiveTrialState();
 
   // The button that started this run (Sea trial or Try again) is gone, so
   // focus would drop to the page: hand it to Stop instead.
@@ -22,6 +25,7 @@ export default function SeaTrialStatus() {
   }, [isRunning, runId]);
 
   if (trial.status !== "running") return null;
+  const isIceberg = trial.input.iceberg !== undefined;
   return (
     <div
       role="status"
@@ -32,8 +36,20 @@ export default function SeaTrialStatus() {
         className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400"
       />
       <span className="whitespace-nowrap">
-        Sea trial · {SEA_LABELS[trial.input.sea]}
+        {isIceberg ? "Iceberg trial" : "Sea trial"} ·{" "}
+        {SEA_LABELS[trial.input.sea]}
       </span>
+      {isIceberg && (
+        // Hidden from the live region: a clock ticking ten times a second
+        // would flood a screen reader.
+        <span
+          aria-hidden="true"
+          data-testid="story-clock"
+          className="whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400"
+        >
+          · {formatStoryTime(storyMinutes(live?.time ?? 0))}
+        </span>
+      )}
       <button
         ref={stopButton}
         type="button"

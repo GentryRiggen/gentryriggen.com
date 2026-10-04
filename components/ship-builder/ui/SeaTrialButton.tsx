@@ -1,6 +1,12 @@
 "use client";
 
-import { Sailboat } from "lucide-react";
+import { ChevronUp, Sailboat, Snowflake, Waves } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import useSeaState from "../hooks/useSeaState";
 
@@ -14,9 +20,15 @@ export function focusSeaTrialButton() {
   );
 }
 
+const MENU_ID = "sea-trial-menu";
+
+const ITEM_CLASS =
+  "flex min-h-11 w-full touch-manipulation items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800 dark:focus-visible:outline-sky-400";
+
 /**
- * Starts a sea trial. It floats bottom-centre, the slot the placement hint
- * and the selection bar use while a tool or a part is active, so it only
+ * Starts a sea trial: a menu button that offers Waves (the v2.5 trial) or
+ * Iceberg (aim, then strike). It floats bottom-centre, the slot the placement
+ * hint and the selection bar use while a tool or a part is active, so it only
  * shows when both are idle.
  */
 export default function SeaTrialButton() {
@@ -28,20 +40,127 @@ export default function SeaTrialButton() {
       s.pendingRemoval === null
   );
   const startTrial = useShipBuilderStore((s) => s.startTrial);
+  const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
   const { seaState } = useSeaState();
+  const [isOpen, setIsOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+
+  // Hand focus to the first item on open; close on a press outside.
+  useEffect(() => {
+    if (!isOpen) return;
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    function handlePointerDown(event: PointerEvent) {
+      if (!root.current?.contains(event.target as Node)) setIsOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen]);
 
   if (!isShown) return null;
+
+  function closeAndFocusTrigger() {
+    setIsOpen(false);
+    trigger.current?.focus();
+  }
+
+  /** Closes the menu first: this component stays mounted while aiming. */
+  function pick(action: () => void) {
+    setIsOpen(false);
+    action();
+  }
+
+  function handleTriggerKeyDown(event: ReactKeyboardEvent) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    setIsOpen(true);
+  }
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent) {
+    const items = Array.from(
+      menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
+    );
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const last = items.length - 1;
+    const moves: Record<string, number> = {
+      ArrowDown: index >= last ? 0 : index + 1,
+      ArrowUp: index <= 0 ? last : index - 1,
+      Home: 0,
+      End: last,
+    };
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAndFocusTrigger();
+    } else if (event.key === "Tab") {
+      setIsOpen(false);
+    } else if (event.key in moves) {
+      event.preventDefault();
+      items[moves[event.key]]?.focus();
+    }
+  }
+
   return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit justify-center">
-      <button
-        id={SEA_TRIAL_BUTTON_ID}
-        type="button"
-        onClick={() => startTrial(seaState)}
-        className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-sky-600 px-5 text-sm font-semibold text-white shadow-lg hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
-      >
-        <Sailboat aria-hidden="true" className="h-5 w-5 shrink-0" />
-        Sea trial
-      </button>
+    <div
+      ref={root}
+      className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit justify-center"
+    >
+      <div className="relative">
+        {isOpen && (
+          <div
+            ref={menu}
+            id={MENU_ID}
+            role="menu"
+            aria-label="Sea trial"
+            onKeyDown={handleMenuKeyDown}
+            className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-44 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => pick(() => startTrial(seaState))}
+              className={ITEM_CLASS}
+            >
+              <Waves
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
+              />
+              Waves
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => pick(aimIceberg)}
+              className={ITEM_CLASS}
+            >
+              <Snowflake
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
+              />
+              Iceberg
+            </button>
+          </div>
+        )}
+        <button
+          ref={trigger}
+          id={SEA_TRIAL_BUTTON_ID}
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? MENU_ID : undefined}
+          onClick={() => setIsOpen((open) => !open)}
+          onKeyDown={handleTriggerKeyDown}
+          className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-sky-600 px-5 text-sm font-semibold text-white shadow-lg hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
+        >
+          <Sailboat aria-hidden="true" className="h-5 w-5 shrink-0" />
+          Sea trial
+          <ChevronUp
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 ${isOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+      </div>
     </div>
   );
 }

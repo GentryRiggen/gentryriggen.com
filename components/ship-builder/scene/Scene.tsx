@@ -17,6 +17,8 @@ import { glowFor } from "./timeOfDay";
 import { environmentFor } from "./environmentModel";
 import { toRuntimeEnvironment } from "./environmentRuntime";
 import Hull from "./Hull";
+import HullGash from "./HullGash";
+import Iceberg from "./Iceberg";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import Railings from "./Railings";
@@ -107,12 +109,14 @@ export default function Scene() {
               paint={paint}
             />
           </GlowContext.Provider>
+          <HullGash />
           <Railings />
           <ShipParts glow={glow} onPartPress={startPress} />
           <GridTargets />
           <AttachMarkers />
           <GhostPreview />
         </ShipAnimation>
+        <Iceberg />
         <SeaTrialRunner />
         <SeaTrialEffects />
         <CameraRig />
