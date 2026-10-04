@@ -115,6 +115,28 @@ function BridgeIcon({ width }: BridgeIconProps) {
   );
 }
 
+const NAVAL_GREY = "#8a949c";
+const NAVAL_DARK = "#4b545b";
+const NAVAL_DECK = "#5d666d";
+const NAVAL_HELI = "#6f7b66";
+const NAVAL_TUBE = "#69727a";
+
+interface TurretIconProps {
+  /** Grows the whole drawing about its centre. */
+  scale: number;
+}
+
+/** Side view of a gun turret: a round base, a housing and a barrel. */
+function TurretIcon({ scale }: TurretIconProps) {
+  return (
+    <g transform={`translate(24 24) scale(${scale}) translate(-24 -24)`}>
+      <rect x={10} y={32} width={26} height={6} fill={NAVAL_DARK} />
+      <path d="M13 32 L16 20 H32 L35 32 Z" fill={NAVAL_GREY} />
+      <rect x={32} y={23} width={13} height={3.5} fill={NAVAL_DARK} />
+    </g>
+  );
+}
+
 const BLADE_ROTATIONS = [0, 120, 240] as const;
 
 const DRAWINGS: Record<PartType, () => ReactNode> = {
@@ -235,6 +257,43 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
     <g>
       <rect x={21} y={5} width={6} height={9} fill={PALETTE.davit} />
       <path d="M16 14 H32 L30 42 Q24 45 18 42 Z" fill={PALETTE.propeller} />
+    </g>
+  ),
+  "turret-small": () => <TurretIcon scale={1} />,
+  "turret-large": () => <TurretIcon scale={1.35} />,
+  "radar-mast": () => (
+    <g>
+      <rect x={22.5} y={14} width={3} height={30} fill={NAVAL_GREY} />
+      <line x1={18} y1={34} x2={30} y2={34} strokeWidth={2} />
+      <line x1={19} y1={26} x2={29} y2={26} strokeWidth={2} />
+      <rect x={22} y={10} width={4} height={4} fill={NAVAL_DARK} />
+      <path d="M10 8 Q24 -1 38 8" fill="none" strokeWidth={3} />
+    </g>
+  ),
+  helipad: () => (
+    <g>
+      <path d="M6 32 L24 24 L42 32 L24 42 Z" fill={NAVAL_DECK} />
+      <path
+        d="M17 31 V37 M25 28 V34 M17 34 L25 31"
+        stroke={PALETTE.superstructure}
+        strokeWidth={2}
+      />
+    </g>
+  ),
+  helicopter: () => (
+    <g>
+      <line x1={6} y1={13} x2={42} y2={13} strokeWidth={2.5} />
+      <line x1={24} y1={13} x2={24} y2={18} />
+      <ellipse cx={22} cy={25} rx={11} ry={7} fill={NAVAL_HELI} />
+      <path d="M32 23 L44 20 V24 L32 27 Z" fill={NAVAL_HELI} />
+      <line x1={10} y1={37} x2={34} y2={37} strokeWidth={2} />
+      <path d="M15 31 V37 M29 31 V37" />
+    </g>
+  ),
+  "rib-boat": () => (
+    <g>
+      <ellipse cx={24} cy={26} rx={20} ry={10} fill={NAVAL_TUBE} />
+      <ellipse cx={24} cy={26} rx={13} ry={5} fill={NAVAL_DARK} />
     </g>
   ),
 };

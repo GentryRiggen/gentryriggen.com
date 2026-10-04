@@ -2,6 +2,7 @@ import { act } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PART_TYPES } from "@/lib/ship-builder/model/types";
+import { visibleParts } from "@/lib/ship-builder/model/catalog";
 import CatalogPanel from "../CatalogPanel";
 import Drawer from "../Drawer";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
@@ -38,7 +39,9 @@ describe("CatalogPanel", () => {
 
   it("shows an icon for every part", () => {
     render(<CatalogPanel />);
-    expect(screen.getAllByTestId("part-icon")).toHaveLength(PART_TYPES.length);
+    expect(screen.getAllByTestId("part-icon")).toHaveLength(
+      visibleParts("liner", false).length
+    );
   });
 
   it("selects a part and toggles it off on a second click", async () => {

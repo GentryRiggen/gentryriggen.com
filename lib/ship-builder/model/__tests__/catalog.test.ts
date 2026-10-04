@@ -82,16 +82,18 @@ describe("visibleParts", () => {
   const types = (kind: Parameters<typeof visibleParts>[0], showAll: boolean) =>
     visibleParts(kind, showAll).map((d) => d.type);
 
-  it("marks only the four liner parts as liner-only", () => {
-    const restricted = PART_TYPES.filter((t) => CATALOG[t].kinds !== undefined);
-    expect(restricted).toEqual(expect.arrayContaining(LINER_ONLY));
-    expect(restricted).toHaveLength(LINER_ONLY.length);
-    for (const type of LINER_ONLY)
-      expect(CATALOG[type].kinds).toEqual(["liner"]);
+  it("marks exactly the four liner parts as liner-only", () => {
+    const linerOnly = PART_TYPES.filter(
+      (t) => CATALOG[t].kinds?.join() === "liner"
+    );
+    expect(linerOnly).toEqual(expect.arrayContaining(LINER_ONLY));
+    expect(linerOnly).toHaveLength(LINER_ONLY.length);
   });
 
-  it("lists every part for a liner", () => {
-    expect(types("liner", false)).toEqual([...PART_TYPES]);
+  it("lists shared and liner parts for a liner, none from other kinds", () => {
+    expect(types("liner", false)).toEqual(
+      PART_TYPES.filter((t) => CATALOG[t].kinds?.includes("liner") ?? true)
+    );
   });
 
   it.each(["cruise", "navy", "cargo"] as const)(

@@ -22,6 +22,13 @@ import BlockDetails from "./BlockDetails";
 import DavitMesh from "./DavitMesh";
 import FunnelMesh from "./FunnelMesh";
 import LifeboatMesh from "./LifeboatMesh";
+import {
+  HelicopterMesh,
+  HelipadMesh,
+  RadarMastMesh,
+  RibBoatMesh,
+  TurretMesh,
+} from "./navyParts";
 import { PALETTE } from "./palette";
 import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -97,6 +104,7 @@ function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
   const painted = color ? paintHex(color) : undefined;
   // Starboard is world +Z (see coords.ts), so outboard is +Z there.
   const outward = side === "starboard" ? 1 : -1;
+  const navy = { painted, tint, emphasis };
   switch (type) {
     case "funnel":
       return (
@@ -194,6 +202,24 @@ function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
         />
       );
     }
+    case "turret-small":
+    case "turret-large":
+      return (
+        <TurretMesh
+          large={type === "turret-large"}
+          painted={painted}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
+    case "radar-mast":
+      return <RadarMastMesh {...navy} />;
+    case "helipad":
+      return <HelipadMesh {...navy} />;
+    case "helicopter":
+      return <HelicopterMesh {...navy} />;
+    case "rib-boat":
+      return <RibBoatMesh {...navy} />;
     default:
       return null;
   }

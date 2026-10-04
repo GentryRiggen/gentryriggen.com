@@ -22,6 +22,12 @@ export const PART_TYPES = [
   "lifeboat-large",
   "propeller",
   "rudder",
+  "turret-small",
+  "turret-large",
+  "radar-mast",
+  "helipad",
+  "helicopter",
+  "rib-boat",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -33,7 +39,8 @@ export type PartCategory =
   | "funnels"
   | "masts"
   | "lifeboats"
-  | "propulsion";
+  | "propulsion"
+  | "naval";
 
 export type AttachPointType =
   | "funnel-mount"
@@ -43,7 +50,8 @@ export type AttachPointType =
   | "large-funnel-mount"
   | "big-boat-mount"
   | "prop-mount"
-  | "rudder-mount";
+  | "rudder-mount"
+  | "heli-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 

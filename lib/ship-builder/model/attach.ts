@@ -24,6 +24,8 @@ import { partAt, partById } from "./partIndex";
 
 const DAVIT_HEIGHT = 0.8;
 const DAVIT_REACH = 0.6;
+/** How far a helipad's surface rises above the deck tops it sits on. */
+const HELIPAD_THICKNESS = 0.15;
 
 /** Model y of a propeller shaft: below the keel (deck is y 0, keel ≈ −2.8). */
 export const PROP_MOUNT_Y = -3.1;
@@ -237,6 +239,24 @@ function davitPoints(
   return points;
 }
 
+/** A placed helipad exposes one point, at its centre top, for a helicopter. */
+function helipadPoints(
+  ship: Ship,
+  part: PlacedPart,
+  occupancy: Occupancy
+): AttachPoint[] {
+  if (part.anchor.kind !== "attach") return [];
+  const base = resolveAttachPoint(ship, part.anchor, occupancy);
+  if (!base) return [];
+  return [
+    {
+      id: "heli",
+      type: "heli-mount",
+      position: { ...base.position, y: base.position.y + HELIPAD_THICKNESS },
+    },
+  ];
+}
+
 /**
  * The davit one cell aft of this one on the same edge, if any. Looks only at
  * the neighbouring cell, so finding big-boat points stays linear in davits.
@@ -286,6 +306,7 @@ export function attachPointsOf(
   const part = partById(ship, parentId);
   if (!part) return [];
   if (part.type === "davit") return davitPoints(ship, part, occupancy);
+  if (part.type === "helipad") return helipadPoints(ship, part, occupancy);
   return blockPoints(ship, part, occupancy);
 }
 
