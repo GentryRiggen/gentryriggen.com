@@ -6,6 +6,16 @@ export const SERVICE_WORKER_URL = "/ship-builder-sw.js";
 /** Keeps the worker away from the rest of the site. */
 export const SERVICE_WORKER_SCOPE = "/ship-builder";
 
+function sameOrigin(urls: string[]): string[] {
+  return urls.filter((url) => {
+    try {
+      return new URL(url).origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  });
+}
+
 /** Same-origin resources this page has loaded, plus the page itself. */
 function collectCacheUrls(): string[] {
   if (typeof performance.getEntriesByType !== "function") {
@@ -13,15 +23,8 @@ function collectCacheUrls(): string[] {
   }
   const resources = performance
     .getEntriesByType("resource")
-    .map((entry) => entry.name)
-    .filter((url) => {
-      try {
-        return new URL(url).origin === window.location.origin;
-      } catch {
-        return false;
-      }
-    });
-  return [...resources, window.location.href];
+    .map((entry) => entry.name);
+  return [...sameOrigin(resources), window.location.href];
 }
 
 /**
@@ -43,8 +46,24 @@ export default function useServiceWorker(): void {
     }
 
     // Resources that finish loading after the first message (such as the
-    // lazily loaded 3D scene) are picked up by a second message on load.
+    // lazily loaded 3D scene) are picked up by a second message on load...
     window.addEventListener("load", postCacheUrls);
+
+    // ...and by an observer, for chunks that arrive after load but before the
+    // worker controls the page (they would otherwise never be cached).
+    let observer: PerformanceObserver | null = null;
+    if (typeof window.PerformanceObserver === "function") {
+      observer = new window.PerformanceObserver((list) => {
+        if (isCancelled || !worker) return;
+        const urls = sameOrigin(list.getEntries().map((entry) => entry.name));
+        if (urls.length > 0) worker.postMessage({ type: "CACHE_URLS", urls });
+      });
+      try {
+        observer.observe({ type: "resource", buffered: false });
+      } catch {
+        observer = null;
+      }
+    }
 
     async function register() {
       try {
@@ -63,6 +82,7 @@ export default function useServiceWorker(): void {
     return () => {
       isCancelled = true;
       window.removeEventListener("load", postCacheUrls);
+      observer?.disconnect();
     };
   }, []);
 }

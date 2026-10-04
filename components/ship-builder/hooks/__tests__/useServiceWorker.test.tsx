@@ -126,3 +126,44 @@ describe("useServiceWorker", () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 });
+
+describe("useServiceWorker late resources", () => {
+  it("posts resources that load after the worker is ready", async () => {
+    setNodeEnv("production");
+    const { container, postMessage } = makeContainer();
+    installServiceWorker(container);
+    mockResources([`${ORIGIN}/_next/static/chunks/app.js`]);
+
+    let observerCallback:
+      ((list: { getEntries(): { name: string }[] }) => void) | null = null;
+    class FakeObserver {
+      constructor(cb: typeof observerCallback) {
+        observerCallback = cb;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    Object.defineProperty(window, "PerformanceObserver", {
+      configurable: true,
+      value: FakeObserver,
+    });
+
+    renderHook(() => useServiceWorker());
+    await waitFor(() => expect(postMessage).toHaveBeenCalled());
+    postMessage.mockClear();
+
+    const lateChunk = `${ORIGIN}/_next/static/chunks/scene.js`;
+    observerCallback!({
+      getEntries: () => [
+        { name: lateChunk },
+        { name: "https://cdn.example.com/x.js" },
+      ],
+    });
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "CACHE_URLS",
+      urls: [lateChunk],
+    });
+    Reflect.deleteProperty(window, "PerformanceObserver");
+  });
+});
