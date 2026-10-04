@@ -1,4 +1,4 @@
-{"v":6,"kind":"cargo","name":"Little Hopper","hull":{"lengthSegments":10,"beam":4,"bow":"bulbous","stern":"transom","paint":{"topsides":"navy","bottom":"red"}},"parts":[
+{"v":6,"kind":"cargo","name":"Little Hopper","hull":{"lengthSegments":10,"beam":4,"bow":"bulbous","stern":"transom","paint":{"topsides":"navy","bottom":"red"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"}]},"parts":[
     {"id":"p1","type":"hatch-cover","anchor":{"kind":"grid","level":0,"x":2,"z":0},"rotation":0},
     {"id":"p2","type":"hatch-cover","anchor":{"kind":"grid","level":0,"x":2,"z":2},"rotation":0},
     {"id":"p3","type":"container","anchor":{"kind":"grid","level":1,"x":2,"z":0},"rotation":0},

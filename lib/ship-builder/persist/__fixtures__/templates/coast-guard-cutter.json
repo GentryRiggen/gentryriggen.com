@@ -1,4 +1,4 @@
-{"v":6,"kind":"navy","name":"Coast Guard cutter","hull":{"lengthSegments":8,"beam":4,"bow":"clipper","stern":"transom","paint":{"topsides":"white","bottom":"red"}},"parts":[
+{"v":6,"kind":"navy","name":"Coast Guard cutter","hull":{"lengthSegments":8,"beam":4,"bow":"clipper","stern":"transom","paint":{"topsides":"white","bottom":"red"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"}]},"parts":[
     {"id":"p1","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":0,"z":0},"rotation":0},
     {"id":"p2","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":2,"z":0},"rotation":0},
     {"id":"p3","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":4,"z":0},"rotation":0},

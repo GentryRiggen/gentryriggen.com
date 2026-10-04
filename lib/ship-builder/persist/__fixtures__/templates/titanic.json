@@ -1,4 +1,4 @@
-{"v":6,"kind":"liner","name":"RMS Titanic","hull":{"lengthSegments":20,"beam":4,"bow":"straight","stern":"counter","paint":{"topsides":"black","bottom":"red"}},"parts":[
+{"v":6,"kind":"liner","name":"RMS Titanic","hull":{"lengthSegments":20,"beam":4,"bow":"straight","stern":"counter","paint":{"topsides":"black","bottom":"red"},"bulkheads":[{"at":1,"height":"waterline"},{"at":2,"height":"waterline"},{"at":3,"height":"waterline"},{"at":4,"height":"waterline"},{"at":5,"height":"waterline"},{"at":6,"height":"waterline"},{"at":7,"height":"waterline"},{"at":8,"height":"waterline"},{"at":9,"height":"waterline"},{"at":10,"height":"deck"},{"at":11,"height":"deck"},{"at":12,"height":"deck"},{"at":13,"height":"deck"},{"at":14,"height":"deck"},{"at":15,"height":"deck"}]},"parts":[
     {"id":"p1","type":"deck-1x1","anchor":{"kind":"grid","level":0,"x":0,"z":0},"rotation":0},
     {"id":"p2","type":"deck-1x1","anchor":{"kind":"grid","level":0,"x":0,"z":1},"rotation":0},
     {"id":"p3","type":"deck-1x1","anchor":{"kind":"grid","level":0,"x":0,"z":2},"rotation":0},

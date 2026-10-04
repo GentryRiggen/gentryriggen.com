@@ -1,4 +1,4 @@
-{"v":6,"kind":"navy","name":"Arleigh Burke destroyer","hull":{"lengthSegments":14,"beam":4,"bow":"clipper","stern":"transom","paint":{"topsides":"grey","bottom":"grey"}},"parts":[
+{"v":6,"kind":"navy","name":"Arleigh Burke destroyer","hull":{"lengthSegments":14,"beam":4,"bow":"clipper","stern":"transom","paint":{"topsides":"grey","bottom":"grey"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"},{"at":10,"height":"deck"},{"at":11,"height":"deck"},{"at":12,"height":"deck"},{"at":13,"height":"deck"}]},"parts":[
     {"id":"p1","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":0,"z":0},"rotation":0},
     {"id":"p2","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":2,"z":0},"rotation":0},
     {"id":"p3","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":4,"z":0},"rotation":0},

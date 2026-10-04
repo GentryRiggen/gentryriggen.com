@@ -1,4 +1,4 @@
-{"v":6,"kind":"cruise","name":"Wonder of the Seas","hull":{"lengthSegments":20,"beam":7,"bow":"bulbous","stern":"transom","paint":{"topsides":"white","bottom":"navy"}},"parts":[
+{"v":6,"kind":"cruise","name":"Wonder of the Seas","hull":{"lengthSegments":20,"beam":7,"bow":"bulbous","stern":"transom","paint":{"topsides":"white","bottom":"navy"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"},{"at":10,"height":"deck"},{"at":11,"height":"deck"},{"at":12,"height":"deck"},{"at":13,"height":"deck"},{"at":14,"height":"deck"},{"at":15,"height":"deck"},{"at":16,"height":"deck"},{"at":17,"height":"deck"},{"at":18,"height":"deck"},{"at":19,"height":"deck"}]},"parts":[
     {"id":"p1","type":"cabin-crew","anchor":{"kind":"grid","level":0,"x":4,"z":0},"rotation":0},
     {"id":"p2","type":"cabin-crew","anchor":{"kind":"grid","level":0,"x":5,"z":0},"rotation":0},
     {"id":"p3","type":"cabin-crew","anchor":{"kind":"grid","level":0,"x":6,"z":0},"rotation":0},
