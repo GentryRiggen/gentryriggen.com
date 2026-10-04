@@ -3,7 +3,12 @@ import { test, expect } from "@playwright/test";
 test.describe("Ship Builder time of day", () => {
   test("switches to sunset and night and keeps the scene rendering", async ({
     page,
+    browserName,
   }) => {
+    test.skip(
+      browserName !== "chromium",
+      "WebGL is only reliable in headless Chromium"
+    );
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
 
