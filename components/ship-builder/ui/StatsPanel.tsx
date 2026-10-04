@@ -10,6 +10,7 @@ import {
   PartyPopper,
   Scale,
   ShieldCheck,
+  Waves,
   Users,
   UsersRound,
   Weight,
@@ -400,6 +401,12 @@ export default function StatsPanel() {
             testId="stat-speed"
             value={String(stats.topSpeedKnots)}
             unit="kn"
+          />
+          <StatRow
+            Icon={Waves}
+            label="Watertight compartments"
+            testId="stat-compartments"
+            value={fmt(stats.watertightCompartments)}
           />
           <StatRow
             Icon={Scale}

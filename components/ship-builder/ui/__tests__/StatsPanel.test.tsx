@@ -83,6 +83,15 @@ describe("StatsPanel", () => {
     expect(screen.getByTestId("stat-coverage")).toHaveTextContent(/^99%$/);
   });
 
+  it("counts watertight compartments from the walls", () => {
+    render(<StatsPanel />);
+    expect(screen.getByText("Watertight compartments")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-compartments")).toHaveTextContent(/^1$/);
+    act(() => useShipBuilderStore.getState().cycleBulkhead(2));
+    act(() => useShipBuilderStore.getState().cycleBulkhead(4));
+    expect(screen.getByTestId("stat-compartments")).toHaveTextContent(/^3$/);
+  });
+
   it("shows crew beds against crew", () => {
     render(<StatsPanel />);
     expect(screen.getByTestId("stat-crew-beds")).toHaveTextContent(/^0$/);

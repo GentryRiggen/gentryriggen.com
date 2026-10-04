@@ -120,6 +120,8 @@ export interface Stats {
   topSpeedKnots: number;
   stability: Stability;
   stabilityRatio: number;
+  /** Rooms the bulkheads divide the hull into: walls plus one. */
+  watertightCompartments: number;
   /**
    * Resting list from off-centre weight, in radians. Positive leans to
    * starboard, negative to port; exactly 0 for a balanced ship.
@@ -381,6 +383,7 @@ export function computeStats(ship: Ship): Stats {
     topSpeedKnots,
     stability,
     stabilityRatio,
+    watertightCompartments: (ship.hull.bulkheads?.length ?? 0) + 1,
     listAngle,
     balance,
     checks,

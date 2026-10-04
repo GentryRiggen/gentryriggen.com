@@ -543,3 +543,26 @@ describe("propulsion", () => {
     expect(topSpeedKnots).toBeLessThanOrEqual(23);
   });
 });
+
+describe("watertightCompartments", () => {
+  it("is one for a ship with no walls", () => {
+    expect(computeStats(testShip()).watertightCompartments).toBe(1);
+  });
+
+  it("is one more than the number of walls and leaves stability alone", () => {
+    const ship = testShip();
+    const walled = {
+      ...ship,
+      hull: {
+        ...ship.hull,
+        bulkheads: [
+          { at: 2, height: "low" as const },
+          { at: 5, height: "deck" as const },
+        ],
+      },
+    };
+    const stats = computeStats(walled);
+    expect(stats.watertightCompartments).toBe(3);
+    expect(stats.stabilityRatio).toBe(computeStats(ship).stabilityRatio);
+  });
+});
