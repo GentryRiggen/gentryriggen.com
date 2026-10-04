@@ -109,14 +109,15 @@ length) / L`.
      midships, so a bow-down ship lowers the bow walls) minus draft in depth
      units (`SINK_TO_DEPTH`). Water above a wall pours into the lower neighbour at
      `SPILL_RATE`; the first time any wall overflows she logs a `spilled` event.
-- `flooding` is logged at the first inflow.
+- Nothing floods until `ICEBERG_IMPACT_S` (1.5 s), when the scene's iceberg
+  touches the hull. `flooding` is logged at the first inflow.
 - Sinking: once the flooded fraction reaches `RESERVE` (0.2) the outcome is
   `sank`, the phase becomes `sinking` and `stepPlunge` takes her bow-first to
   a pitch of `PLUNGE_PITCH` and down to `PLUNGE_DEPTH`; the `sunk` event ends
   the trial.
 - Afloat: when inflow and spill both fall under `SETTLED_EPS` (checked each
   step, not over a window, because `SimState` has no slot for a settle
-  clock), or at `ICEBERG_MAX_S` (90 s) with the flooded fraction under
+  clock), or `ICEBERG_MAX_S` (90 s) after impact with the flooded fraction under
   `RESERVE`, the outcome is `afloat`. A settled ship has draft under 1.5 and
   `|pitch|` under 0.12.
 
@@ -124,8 +125,9 @@ length) / L`.
 `spilled` event happened before she sank, else `too-many-opened`; `held` when
 she stays afloat.
 
-Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, so the Titanic (about 31.75
-sim seconds) sinks in 159 story minutes.
+Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, counted from impact
+(`storyMinutesSinceImpact`), so the Titanic (about 31.75 sim seconds after the
+strike) sinks in 159 story minutes.
 
 ### Outcomes (enforced by `__tests__/flooding.test.ts`)
 

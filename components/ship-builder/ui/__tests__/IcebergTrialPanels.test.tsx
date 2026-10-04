@@ -1,3 +1,4 @@
+import { ICEBERG_IMPACT_S } from "@/lib/ship-builder/sim/flooding";
 import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import { createTrial } from "@/lib/ship-builder/sim/seaTrial";
@@ -53,8 +54,12 @@ describe("SeaTrialStatus story clock", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Iceberg trial");
     expect(screen.getByTestId("story-clock")).toHaveTextContent("0 minutes");
 
-    // 24 sim seconds at 5 story minutes per second is 2 hours.
-    act(() => publishLiveTrial(stateAt(24), 5000));
+    // The clock waits for the strike.
+    act(() => publishLiveTrial(stateAt(ICEBERG_IMPACT_S), 1000));
+    expect(screen.getByTestId("story-clock")).toHaveTextContent("0 minutes");
+
+    // 24 sim seconds after impact at 5 story minutes per second is 2 hours.
+    act(() => publishLiveTrial(stateAt(ICEBERG_IMPACT_S + 24), 5000));
     expect(screen.getByTestId("story-clock")).toHaveTextContent("2 hours");
   });
 });

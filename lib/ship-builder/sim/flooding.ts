@@ -39,7 +39,9 @@ export const TRIM_LEVER = 0.06;
 export const RESERVE = 0.2;
 /** Total inflow and spill below this (cells per second) means she has settled. */
 export const SETTLED_EPS = 0.01;
-/** An iceberg trial that has not sunk by now stays afloat. */
+/** Sim seconds until the iceberg meets the hull; no water comes in before. */
+export const ICEBERG_IMPACT_S = 1.5;
+/** An iceberg trial that has not sunk this long after impact stays afloat. */
 export const ICEBERG_MAX_S = 90;
 
 /** Bow-first plunge once she is past saving. */
@@ -93,6 +95,8 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   const { compartments: specs, length, impactX } = iceberg;
   const dt = SIM_STEP_S;
   const time = state.time + dt;
+  // The berg is still on its way in: nothing has touched the hull yet.
+  if (time < ICEBERG_IMPACT_S) return { ...state, time };
   const gash = gashOf(impactX, length);
   const middle = length / 2;
   const seaDepth = state.pose.sink * SINK_TO_DEPTH;
@@ -168,7 +172,7 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   }
 
   const hasSettled = movement < SETTLED_EPS && hasEvent(events, "flooding");
-  if (hasSettled || time >= ICEBERG_MAX_S) {
+  if (hasSettled || time >= ICEBERG_IMPACT_S + ICEBERG_MAX_S) {
     return {
       ...state,
       time,

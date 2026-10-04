@@ -2,7 +2,10 @@
 
 import { Square, Waves } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { formatStoryTime, storyMinutes } from "@/lib/ship-builder/sim/story";
+import {
+  formatStoryTime,
+  storyMinutesSinceImpact,
+} from "@/lib/ship-builder/sim/story";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { useLiveTrialState } from "../scene/liveTrial";
 import { focusSeaTrialButton } from "./SeaTrialButton";
@@ -47,7 +50,7 @@ export default function SeaTrialStatus() {
           data-testid="story-clock"
           className="whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400"
         >
-          · {formatStoryTime(storyMinutes(live?.time ?? 0))}
+          · {formatStoryTime(storyMinutesSinceImpact(live?.time ?? 0))}
         </span>
       )}
       <button

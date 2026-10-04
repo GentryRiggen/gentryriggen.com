@@ -1,5 +1,8 @@
-/** Sim seconds until the iceberg meets the hull. */
-export const ICEBERG_IMPACT_S = 1.5;
+import { ICEBERG_IMPACT_S } from "@/lib/ship-builder/sim/flooding";
+
+/** Sim seconds until the iceberg meets the hull (shared with the sim). */
+export { ICEBERG_IMPACT_S };
+
 /** The iceberg slides past the hull until this many sim seconds. */
 export const ICEBERG_SLIDE_S = 3;
 /** How far ahead of the strike spot the iceberg starts, in cells. */

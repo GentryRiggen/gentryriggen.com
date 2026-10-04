@@ -11,7 +11,12 @@ import {
   type TrialOutcome,
   type TrialReason,
 } from "./types";
-import { ICEBERG_MAX_S, stepFlooding, stepPlunge } from "./flooding";
+import {
+  ICEBERG_IMPACT_S,
+  ICEBERG_MAX_S,
+  stepFlooding,
+  stepPlunge,
+} from "./flooding";
 import { openedBy } from "./compartments";
 
 /**
@@ -441,7 +446,7 @@ export function stepTrial(
 /** Runs a whole trial without rendering: for tests and previews. */
 export function runTrial(
   input: TrialInput,
-  maxSeconds = input.iceberg ? ICEBERG_MAX_S + 30 : 30
+  maxSeconds = input.iceberg ? ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30 : 30
 ): SimState {
   let state = createTrial(input);
   while (state.phase !== "done" && state.time < maxSeconds) {

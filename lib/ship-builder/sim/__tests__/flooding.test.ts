@@ -7,7 +7,8 @@ import { TEMPLATES, findTemplate } from "../../templates";
 import { compartmentSpecsOf, openedBy } from "../compartments";
 import { createTrial, runTrial, stepTrial } from "../seaTrial";
 import { simShipFromStats } from "../simShip";
-import { formatStoryTime, storyMinutes } from "../story";
+import { ICEBERG_IMPACT_S } from "../flooding";
+import { formatStoryTime, storyMinutesSinceImpact } from "../story";
 import type { SimSea, SimState, TrialInput } from "../types";
 
 const HISTORIC_IMPACT_X = 5;
@@ -86,6 +87,28 @@ describe("iceberg trial outcomes", () => {
     expect(hasEvent(state, "spilled")).toBe(true);
   });
 
+  it("lets no water in before the iceberg arrives", () => {
+    const input = icebergInput(plainShip(null), 15);
+    let state = createTrial(input);
+    while (state.time + 0.2 < ICEBERG_IMPACT_S) {
+      state = stepTrial(input, state);
+      expect(state.compartments.every((c) => c.water === 0)).toBe(true);
+      expect(hasEvent(state, "flooding")).toBe(false);
+    }
+    while (state.time < ICEBERG_IMPACT_S + 0.5) {
+      state = stepTrial(input, state);
+    }
+    expect(hasEvent(state, "flooding")).toBe(true);
+    const flooding = state.events.find((e) => e.kind === "flooding");
+    expect(flooding?.at).toBeGreaterThanOrEqual(ICEBERG_IMPACT_S);
+  });
+
+  it("counts the stay-afloat limit from impact", () => {
+    expect(storyMinutesSinceImpact(0)).toBe(0);
+    expect(storyMinutesSinceImpact(ICEBERG_IMPACT_S)).toBe(0);
+    expect(storyMinutesSinceImpact(ICEBERG_IMPACT_S + 10)).toBe(50);
+  });
+
   it("sinks without any spill when the gash opens too many compartments", () => {
     const ship = emptyShip("liner", "Test", 10, 4);
     const walled: Ship = {
@@ -102,7 +125,7 @@ describe("iceberg trial outcomes", () => {
     const state = run(templateShip("titanic"), HISTORIC_IMPACT_X);
     expect(state.outcome).toBe("sank");
     expect(state.reason).toBe("spilled");
-    const minutes = storyMinutes(sunkAt(state));
+    const minutes = storyMinutesSinceImpact(sunkAt(state));
     expect(minutes).toBeGreaterThanOrEqual(150);
     expect(minutes).toBeLessThanOrEqual(170);
     expect(sunkAt(state)).toBeGreaterThanOrEqual(25);
@@ -176,6 +199,8 @@ describe("iceberg trial mechanics", () => {
 
   it("formats the sunk time for the result card", () => {
     const state = run(templateShip("titanic"), HISTORIC_IMPACT_X);
-    expect(formatStoryTime(storyMinutes(sunkAt(state)))).toMatch(/hours?/);
+    expect(formatStoryTime(storyMinutesSinceImpact(sunkAt(state)))).toMatch(
+      /hours?/
+    );
   });
 });

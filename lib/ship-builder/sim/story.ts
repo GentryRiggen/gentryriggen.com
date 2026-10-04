@@ -1,3 +1,5 @@
+import { ICEBERG_IMPACT_S } from "./flooding";
+
 /**
  * Story time: an iceberg trial plays in well under a minute, but the result
  * card talks in the hours a real ship would take. Tuned so the Titanic
@@ -8,6 +10,11 @@ export const STORY_MINUTES_PER_SIM_SECOND = 5;
 /** Whole story minutes for a sim time in seconds. */
 export function storyMinutes(simSeconds: number): number {
   return Math.round(simSeconds * STORY_MINUTES_PER_SIM_SECOND);
+}
+
+/** Whole story minutes since the iceberg struck (zero while it approaches). */
+export function storyMinutesSinceImpact(simSeconds: number): number {
+  return storyMinutes(Math.max(0, simSeconds - ICEBERG_IMPACT_S));
 }
 
 /** "2 hours 40 minutes", "1 hour", "35 minutes". */

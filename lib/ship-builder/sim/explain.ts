@@ -1,6 +1,6 @@
 import { STABILITY_THRESHOLDS } from "../model/stats";
 import { LOPSIDED_LIST } from "./seaTrial";
-import { formatStoryTime, storyMinutes } from "./story";
+import { formatStoryTime, storyMinutesSinceImpact } from "./story";
 import type {
   SimSea,
   SimShip,
@@ -118,7 +118,9 @@ function openedCount(state: SimState): number {
 
 function sankSummary(state: SimState): { message: string; tips: string[] } {
   const sunk = state.events.find((event) => event.kind === "sunk");
-  const afloatFor = formatStoryTime(storyMinutes(sunk?.at ?? state.time));
+  const afloatFor = formatStoryTime(
+    storyMinutesSinceImpact(sunk?.at ?? state.time)
+  );
   const lead = `She stayed afloat for ${afloatFor}.`;
   switch (state.reason) {
     case "no-bulkheads":

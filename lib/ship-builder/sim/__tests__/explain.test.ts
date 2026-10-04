@@ -1,5 +1,6 @@
 import { explainTrial } from "../explain";
 import { createTrial, runTrial } from "../seaTrial";
+import { ICEBERG_IMPACT_S } from "../flooding";
 import type {
   SimSea,
   SimShip,
@@ -146,7 +147,10 @@ describe("explainTrial for an iceberg trial", () => {
   });
 
   it("explains water spilling over low walls", () => {
-    const summary = explainTrial(icebergState("sank", "spilled", 3, 32), input);
+    const summary = explainTrial(
+      icebergState("sank", "spilled", 3, ICEBERG_IMPACT_S + 32),
+      input
+    );
     expect(summary.title).toBe("She sank");
     expect(summary.message).toBe(
       "She stayed afloat for 2 hours 40 minutes. Water spilled over the low walls near the bow."
@@ -159,7 +163,7 @@ describe("explainTrial for an iceberg trial", () => {
 
   it("explains a ship with no walls", () => {
     const summary = explainTrial(
-      icebergState("sank", "no-bulkheads", 1, 10),
+      icebergState("sank", "no-bulkheads", 1, ICEBERG_IMPACT_S + 10),
       input
     );
     expect(summary.message).toBe(
@@ -172,7 +176,7 @@ describe("explainTrial for an iceberg trial", () => {
 
   it("explains a gash that opened too many compartments", () => {
     const summary = explainTrial(
-      icebergState("sank", "too-many-opened", 4, 12),
+      icebergState("sank", "too-many-opened", 4, ICEBERG_IMPACT_S + 12),
       input
     );
     expect(summary.message).toBe(
