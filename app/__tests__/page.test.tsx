@@ -36,11 +36,11 @@ describe("Home Page", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a footer link to the ship builder", () => {
+  it("no longer links to the ship builder from the footer", () => {
     renderWithTheme(<Home />);
     expect(
-      screen.getByRole("link", { name: "⚓ Ship Builder" })
-    ).toHaveAttribute("href", "/ship-builder");
+      screen.queryByRole("link", { name: "⚓ Ship Builder" })
+    ).not.toBeInTheDocument();
   });
 
   it("renders the theme toggle", () => {
