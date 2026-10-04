@@ -8,7 +8,8 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
   CAMERA_TARGET,
   MAX_POLAR_ANGLE,
-  shouldReframe,
+  shouldFrame,
+  type FrameRequest,
   viewPosition,
 } from "./cameraViews";
 
@@ -17,23 +18,15 @@ export default function CameraRig() {
   const get = useThree((state) => state.get);
   const camera = useShipBuilderStore((s) => s.camera);
   const lengthSegments = useShipBuilderStore((s) => s.ship.hull.lengthSegments);
-  // What the camera was last framed for: a new preset request always
-  // reframes, a hull length change only when it's big (e.g. a load).
-  const framed = useRef<{
-    camera: typeof camera;
-    lengthSegments: number;
-  } | null>(null);
+  // The previous request, updated on every run so that repeated single-step
+  // length edits never add up to a reframe.
+  const seen = useRef<FrameRequest | null>(null);
 
   useEffect(() => {
-    const last = framed.current;
-    if (
-      last &&
-      last.camera === camera &&
-      !shouldReframe(last.lengthSegments, lengthSegments)
-    ) {
-      return;
-    }
-    framed.current = { camera, lengthSegments };
+    const next = { camera, lengthSegments };
+    const shouldPlace = shouldFrame(seen.current, next);
+    seen.current = next;
+    if (!shouldPlace) return;
 
     const lengthCells = gridLength(useShipBuilderStore.getState().ship);
     const orbit = controls.current;

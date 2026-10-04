@@ -9,6 +9,8 @@ import {
   MAX_POLAR_ANGLE,
   polarAngle,
   shouldReframe,
+  shouldFrame,
+  type FrameRequest,
   viewDistance,
   viewPosition,
 } from "../cameraViews";
@@ -52,9 +54,40 @@ describe("shouldReframe", () => {
     expect(shouldReframe(4, 6)).toBe(false);
   });
 
-  it("reframes when the hull changes a lot since the last framing", () => {
+  it("reframes when the hull length jumps from the previous length", () => {
     expect(shouldReframe(4, 12)).toBe(true);
     expect(shouldReframe(12, 4)).toBe(true);
     expect(shouldReframe(4, 7)).toBe(true);
+  });
+});
+
+describe("shouldFrame", () => {
+  const view: FrameRequest["camera"] = { view: "side", nonce: 0 };
+
+  it("always frames the first request", () => {
+    expect(shouldFrame(null, { camera: view, lengthSegments: 4 })).toBe(true);
+  });
+
+  it("does not reframe as single + clicks accumulate", () => {
+    let seen: FrameRequest = { camera: view, lengthSegments: 4 };
+    for (const lengthSegments of [5, 6, 7]) {
+      const next = { camera: view, lengthSegments };
+      expect(shouldFrame(seen, next)).toBe(false);
+      seen = next;
+    }
+  });
+
+  it("reframes when the length jumps in one step", () => {
+    const seen = { camera: view, lengthSegments: 4 };
+    expect(shouldFrame(seen, { camera: view, lengthSegments: 12 })).toBe(true);
+  });
+
+  it("reframes when a new preset is requested", () => {
+    const seen = { camera: view, lengthSegments: 4 };
+    const next: FrameRequest = {
+      camera: { view: "top", nonce: 1 },
+      lengthSegments: 4,
+    };
+    expect(shouldFrame(seen, next)).toBe(true);
   });
 });

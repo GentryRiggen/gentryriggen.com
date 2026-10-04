@@ -45,15 +45,35 @@ export function polarAngle(position: CameraPosition): number {
 }
 
 /**
- * Hull length changes bigger than this (in segments) since the last framing
- * reframe the camera, e.g. loading a much longer ship. Single −/+ clicks stay
- * under it so the camera doesn't jump while the player is editing.
+ * A hull length that differs from the previous length by more than this (in
+ * segments) reframes the camera, e.g. loading a much longer ship. Single −/+
+ * clicks stay under it so the camera doesn't jump while the player is editing.
  */
 export const REFRAME_SEGMENT_THRESHOLD = 2;
 
 export function shouldReframe(
-  framedSegments: number,
+  previousSegments: number,
   lengthSegments: number
 ): boolean {
-  return Math.abs(lengthSegments - framedSegments) > REFRAME_SEGMENT_THRESHOLD;
+  return (
+    Math.abs(lengthSegments - previousSegments) > REFRAME_SEGMENT_THRESHOLD
+  );
+}
+
+export interface FrameRequest {
+  camera: { view: CameraView; nonce: number };
+  lengthSegments: number;
+}
+
+/**
+ * Whether the camera should be placed for `next`, given the previous request
+ * (null on the first run). A new preset request always frames; a length change
+ * only when it jumped from the previous length.
+ */
+export function shouldFrame(
+  seen: FrameRequest | null,
+  next: FrameRequest
+): boolean {
+  if (!seen || seen.camera !== next.camera) return true;
+  return shouldReframe(seen.lengthSegments, next.lengthSegments);
 }
