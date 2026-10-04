@@ -5,9 +5,12 @@ import type { Object3D } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCursor } from "@react-three/drei";
 import { buildOccupancy } from "@/lib/ship-builder/model/grid";
+import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
+import PopIn from "./PopIn";
+import { singleAddedId } from "./pop";
 import type { PartPress } from "./usePartLongPress";
 
 /** The part a handler fired for; PartMesh tags its group with the id. */
@@ -31,6 +34,18 @@ function isHoldCandidate(event: ThreeEvent<PointerEvent>): boolean {
   );
 }
 
+/**
+ * The part the player just placed, for its pop-in. Parts present on mount and
+ * batches (a loaded ship, undo or redo of several) yield null.
+ */
+function usePoppingPartId(parts: Ship["parts"]): string | null {
+  const [seen, setSeen] = useState({ parts, poppingId: null as string | null });
+  if (seen.parts === parts) return seen.poppingId;
+  const poppingId = singleAddedId(seen.parts, parts);
+  setSeen({ parts, poppingId });
+  return poppingId;
+}
+
 export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const tool = useShipBuilderStore((s) => s.tool);
@@ -52,6 +67,7 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   useCursor(interactive && ship.parts.some((part) => part.id === hoveredId));
 
   const occupancy = useMemo(() => buildOccupancy(ship), [ship]);
+  const poppingId = usePoppingPartId(ship.parts);
 
   // Press-and-hold deletes with or without an active tool.
   const handlePointerDown = useCallback(
@@ -116,22 +132,23 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   return (
     <group>
       {ship.parts.map((part) => (
-        <PartMesh
-          key={part.id}
-          ship={ship}
-          occupancy={occupancy}
-          part={part}
-          partId={part.id}
-          tint={removing.has(part.id) ? "removal" : null}
-          emphasis={
-            selectedId === part.id
-              ? "selected"
-              : interactive && hoveredId === part.id
-                ? "hover"
-                : null
-          }
-          {...handlers}
-        />
+        <PopIn key={part.id} active={part.id === poppingId}>
+          <PartMesh
+            ship={ship}
+            occupancy={occupancy}
+            part={part}
+            partId={part.id}
+            tint={removing.has(part.id) ? "removal" : null}
+            emphasis={
+              selectedId === part.id
+                ? "selected"
+                : interactive && hoveredId === part.id
+                  ? "hover"
+                  : null
+            }
+            {...handlers}
+          />
+        </PopIn>
       ))}
     </group>
   );

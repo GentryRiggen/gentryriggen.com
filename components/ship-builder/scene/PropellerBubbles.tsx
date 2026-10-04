@@ -1,0 +1,80 @@
+"use client";
+
+import { useCallback, useMemo, useRef } from "react";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { clamp } from "./animationMath";
+import {
+  BUBBLE_LIFE,
+  BUBBLES_PER_PROPELLER,
+  bubbleCapacity,
+  bubbleState,
+  createBubbleState,
+} from "./bubbles";
+import { collectEffectAnchors } from "./effectAnchors";
+import ParticleField, { type ParticleWriter } from "./ParticleField";
+import { lifePhase, slotNoise } from "./particles";
+import { useShipAnimation } from "./ShipAnimationContext";
+import { spinRevPerSec } from "./spin";
+
+const BUBBLE_COLOR = "#e8f6ff";
+const FADE_SECONDS = 0.5;
+/** Bubbles start just behind the blades, scattered within this radius. */
+const START_AFT = 0.3;
+const SCATTER = 0.3;
+
+/** Bubbles streaming aft from spinning propellers, seen from below. */
+export default function PropellerBubbles() {
+  const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
+  const ship = useShipBuilderStore((s) => s.ship);
+  const { topSpeedKnots, reducedMotion } = useShipAnimation();
+  const anchors = useMemo(
+    () => (isBelow ? collectEffectAnchors(ship) : null),
+    [isBelow, ship]
+  );
+  const positions = anchors?.propellers;
+  const capacity = bubbleCapacity((positions?.length ?? 0) / 3);
+  const rev = spinRevPerSec(topSpeedKnots);
+  const emitting = isBelow && rev > 0 && !reducedMotion;
+  const intensity = useRef(0);
+  const bubble = useMemo(() => createBubbleState(), []);
+
+  const update = useCallback(
+    (writer: ParticleWriter, time: number, delta: number) => {
+      const step = delta / FADE_SECONDS;
+      intensity.current = clamp(
+        intensity.current + (emitting ? step : -step),
+        0,
+        1
+      );
+      if (intensity.current === 0 || !positions) return 0;
+
+      let slot = 0;
+      for (let p = 0; p < positions.length; p += 3) {
+        for (let i = 0; i < BUBBLES_PER_PROPELLER; i++, slot++) {
+          if (slot >= capacity) return slot;
+          const age = lifePhase(
+            time,
+            BUBBLE_LIFE,
+            i / BUBBLES_PER_PROPELLER + p * 0.211
+          );
+          bubbleState(age, rev, bubble);
+          writer.set(
+            slot,
+            positions[p] - START_AFT - bubble.aft,
+            positions[p + 1] + slotNoise(slot, 3) * SCATTER + bubble.rise,
+            positions[p + 2] + slotNoise(slot, 4) * SCATTER,
+            bubble.scale,
+            bubble.alpha * intensity.current
+          );
+        }
+      }
+      return slot;
+    },
+    [bubble, capacity, emitting, positions, rev]
+  );
+
+  if (capacity === 0) return null;
+  return (
+    <ParticleField capacity={capacity} color={BUBBLE_COLOR} update={update} />
+  );
+}

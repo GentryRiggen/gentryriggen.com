@@ -6,6 +6,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import BobGroup from "./BobGroup";
 import FunnelSmoke from "./FunnelSmoke";
+import PropellerBubbles from "./PropellerBubbles";
 import {
   ShipAnimationContext,
   type ShipAnimationValue,
@@ -35,6 +36,7 @@ export default function ShipAnimation({ children }: ShipAnimationProps) {
       <BobGroup>
         {children}
         <FunnelSmoke />
+        <PropellerBubbles />
       </BobGroup>
     </ShipAnimationContext.Provider>
   );
