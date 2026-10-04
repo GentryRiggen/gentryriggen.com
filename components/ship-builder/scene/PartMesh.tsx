@@ -17,11 +17,15 @@ import type {
   Side,
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
+import BlockDetails from "./BlockDetails";
+import DavitMesh from "./DavitMesh";
+import FunnelMesh from "./FunnelMesh";
+import LifeboatMesh from "./LifeboatMesh";
 import { PALETTE } from "./palette";
 import Spinner from "./Spinner";
+import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
-export type PartTint = keyof typeof PALETTE.tint | null;
-export type PartEmphasis = keyof typeof PALETTE.emphasis | null;
+export type { PartEmphasis, PartTint };
 
 interface PartMeshProps {
   ship: Ship;
@@ -39,25 +43,6 @@ interface PartMeshProps {
   onPointerOut?: (event: ThreeEvent<PointerEvent>) => void;
   onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
   onClick?: (event: ThreeEvent<MouseEvent>) => void;
-}
-
-interface SurfaceProps {
-  color: string;
-  tint: PartTint;
-  emphasis: PartEmphasis;
-}
-
-function Surface({ color, tint, emphasis }: SurfaceProps) {
-  const ghost = tint === "ghost-ok" || tint === "ghost-bad";
-  return (
-    <meshStandardMaterial
-      color={tint ? PALETTE.tint[tint] : color}
-      transparent={ghost}
-      opacity={ghost ? 0.55 : 1}
-      emissive={emphasis ? PALETTE.emphasis[emphasis] : "#000000"}
-      emissiveIntensity={emphasis ? 0.4 : 0}
-    />
-  );
 }
 
 const BRIDGE_HEIGHT = 0.8;
@@ -81,21 +66,13 @@ function Block({ def, size, tint, emphasis }: BlockProps) {
         <boxGeometry args={[size.x * 0.96, height, size.z * 0.96]} />
         <Surface color={PALETTE.superstructure} {...surface} />
       </mesh>
-      {def.passengers && (
-        <mesh position={[0, 0.6, 0]}>
-          <boxGeometry args={[size.x * 0.98, 0.12, size.z * 0.98]} />
-          <Surface
-            color={PALETTE.cabin[def.passengers.cabinClass]}
-            {...surface}
-          />
-        </mesh>
-      )}
-      {def.role === "bridge" && (
-        <mesh position={[0, 0.55, 0]}>
-          <boxGeometry args={[size.x * 0.98, 0.15, size.z * 0.98]} />
-          <Surface color={PALETTE.bridgeWindows} {...surface} />
-        </mesh>
-      )}
+      <BlockDetails
+        def={def}
+        size={size}
+        height={height}
+        tint={tint}
+        emphasis={emphasis}
+      />
     </group>
   );
 }
@@ -114,30 +91,26 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
   switch (type) {
     case "funnel":
       return (
-        <group>
-          <mesh position={[0, 1.3, 0]} castShadow>
-            <cylinderGeometry args={[0.38, 0.42, 2.6, 16]} />
-            <Surface color={PALETTE.funnel} {...surface} />
-          </mesh>
-          <mesh position={[0, 2.9, 0]} castShadow>
-            <cylinderGeometry args={[0.39, 0.39, 0.6, 16]} />
-            <Surface color={PALETTE.funnelTop} {...surface} />
-          </mesh>
-        </group>
+        <FunnelMesh
+          baseRadius={0.42}
+          topRadius={0.38}
+          bodyHeight={2.6}
+          capHeight={0.6}
+          tint={tint}
+          emphasis={emphasis}
+        />
       );
     case "funnel-large":
       // Centred on its point (the 2x2's centre, on top): body 3.4 + top 0.8.
       return (
-        <group>
-          <mesh position={[0, 1.7, 0]} castShadow>
-            <cylinderGeometry args={[0.65, 0.71, 3.4, 20]} />
-            <Surface color={PALETTE.funnel} {...surface} />
-          </mesh>
-          <mesh position={[0, 3.8, 0]} castShadow>
-            <cylinderGeometry args={[0.66, 0.66, 0.8, 20]} />
-            <Surface color={PALETTE.funnelTop} {...surface} />
-          </mesh>
-        </group>
+        <FunnelMesh
+          baseRadius={0.71}
+          topRadius={0.65}
+          bodyHeight={3.4}
+          capHeight={0.8}
+          tint={tint}
+          emphasis={emphasis}
+        />
       );
     case "propeller": {
       // Shaft along world X (the ship's length); blades spread around it.
@@ -167,37 +140,30 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
         </mesh>
       );
     case "davit":
-      return (
-        <group>
-          <mesh position={[0, 0.4, 0]}>
-            <boxGeometry args={[0.08, 0.8, 0.08]} />
-            <Surface color={PALETTE.davit} {...surface} />
-          </mesh>
-          <mesh position={[0, 0.8, outward * 0.3]}>
-            <boxGeometry args={[0.08, 0.08, 0.6]} />
-            <Surface color={PALETTE.davit} {...surface} />
-          </mesh>
-        </group>
-      );
+      return <DavitMesh outward={outward} tint={tint} emphasis={emphasis} />;
     case "lifeboat-large":
       return (
-        <mesh position={[0, -0.1 - 0.35 / 2, 0]} castShadow>
-          <boxGeometry args={[1.9, 0.35, 0.45]} />
-          <Surface color={PALETTE.lifeboat} {...surface} />
-        </mesh>
+        <LifeboatMesh
+          length={1.9}
+          width={0.45}
+          depth={0.35}
+          hullColor={PALETTE.lifeboat}
+          tint={tint}
+          emphasis={emphasis}
+        />
       );
     case "lifeboat-standard":
     case "lifeboat-collapsible": {
       const collapsible = type === "lifeboat-collapsible";
-      const height = collapsible ? 0.2 : 0.3;
       return (
-        <mesh position={[0, -0.1 - height / 2, 0]} castShadow>
-          <boxGeometry args={[0.9, height, 0.35]} />
-          <Surface
-            color={collapsible ? PALETTE.collapsible : PALETTE.lifeboat}
-            {...surface}
-          />
-        </mesh>
+        <LifeboatMesh
+          length={0.9}
+          width={0.35}
+          depth={collapsible ? 0.2 : 0.3}
+          hullColor={collapsible ? PALETTE.collapsible : PALETTE.lifeboat}
+          tint={tint}
+          emphasis={emphasis}
+        />
       );
     }
     default:
