@@ -6,6 +6,7 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import useCollapsedPanels from "./hooks/useCollapsedPanels";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
+import useServiceWorker from "./hooks/useServiceWorker";
 import useShipPersistence from "./hooks/useShipPersistence";
 import useTestHook from "./hooks/useTestHook";
 import useWebGLSupport from "./hooks/useWebGLSupport";
@@ -33,6 +34,7 @@ export default function ShipBuilder() {
   useTestHook();
   useShipPersistence();
   useKeyboardShortcuts();
+  useServiceWorker();
   const webgl = useWebGLSupport();
   const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
