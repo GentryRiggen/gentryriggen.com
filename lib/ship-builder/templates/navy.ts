@@ -1,5 +1,6 @@
 import type { Ship } from "../model/types";
 import { ShipBuilder, range } from "./modernBuilder";
+import { wallRun } from "./bulkheads";
 import type { ShipTemplate } from "./types";
 
 const ALL_ROWS = range(0, 4);
@@ -34,6 +35,7 @@ function buildDestroyer(): Ship {
   b.hull("propeller", "prop:0");
   b.hull("propeller", "prop:2");
   b.hull("rudder", "rudder");
+  b.withBulkheads(wallRun(1, 13, "deck"));
   return b.build();
 }
 
@@ -64,6 +66,7 @@ function buildCutter(): Ship {
   b.hull("propeller", "prop:0");
   b.hull("propeller", "prop:2");
   b.hull("rudder", "rudder");
+  b.withBulkheads(wallRun(1, 7, "deck"));
   return b.build();
 }
 

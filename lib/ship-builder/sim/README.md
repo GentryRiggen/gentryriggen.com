@@ -9,7 +9,10 @@ identical.
 - `seaTrial.ts`: `createTrial`, `stepTrial` (one `SIM_STEP_S` step, returns a
   new state), `runTrial` (headless, for tests).
 - `simShip.ts`: `simShipFromStats(stats, beam)`.
-- `explain.ts`: `explainTrial(state, ship, sea)` for the result card.
+- `flooding.ts`: Level 2, `stepFlooding` and `stepPlunge` plus the tuned
+  constants.
+- `compartments.ts`, `story.ts`: the hull's compartments and the story clock.
+- `explain.ts`: `explainTrial(state, input)` for the result card.
 
 ## The model
 
@@ -81,3 +84,61 @@ threshold the blend between tiers applies).
   `actions`: apply them first (before the phase step) to change the state or
   params, and record what happened with new `SimEvent` kinds for the result
   screen.
+
+## Level 2: the iceberg trial
+
+`input.iceberg` (`IcebergInput`) holds the hull's compartments
+(`compartmentSpecsOf`), its length and where she was struck (`impactX`, cells
+from the bow). `createTrial` makes one `Compartment` per spec, dry, with
+`opened` set for those the gash overlaps (`openedBy`). While she is `sailing`,
+`stepTrial` runs `stepFlooding` before the roll step; the waves still roll her
+and a wave capsize still wins, but the waves trial's 9 s timeout does not end
+an iceberg trial.
+
+Each fixed step in `flooding.ts` (constants are exported and tuned there):
+
+- Inflow: an opened compartment gains `INFLOW x (cells of gash inside it) x
+(sea level - water) / its length` per second. The sea level is `SEA_LEVEL`
+  (0.6 of the hull's depth) plus her draft, so a contained compartment
+  settles near 0.6 instead of filling.
+- Trim and draft: `pitch = -PITCH_GAIN x sum(water x length x (middle -
+centre)) / L^2` (bow down is negative); `sink = SINK_GAIN x sum(water x
+length) / L`.
+- Walls: a wall's height is its fraction (`low` 0.45, `waterline` 0.75, `deck`
+  1. minus the trim drop at its x (`TRIM_LEVER` per radian per cell from
+     midships, so a bow-down ship lowers the bow walls) minus draft in depth
+     units (`SINK_TO_DEPTH`). Water above a wall pours into the lower neighbour at
+     `SPILL_RATE`; the first time any wall overflows she logs a `spilled` event.
+- `flooding` is logged at the first inflow.
+- Sinking: once the flooded fraction reaches `RESERVE` (0.2) the outcome is
+  `sank`, the phase becomes `sinking` and `stepPlunge` takes her bow-first to
+  a pitch of `PLUNGE_PITCH` and down to `PLUNGE_DEPTH`; the `sunk` event ends
+  the trial.
+- Afloat: when inflow and spill both fall under `SETTLED_EPS` (checked each
+  step, not over a window, because `SimState` has no slot for a settle
+  clock), or at `ICEBERG_MAX_S` (90 s) with the flooded fraction under
+  `RESERVE`, the outcome is `afloat`. A settled ship has draft under 1.5 and
+  `|pitch|` under 0.12.
+
+`reason`: `no-bulkheads` when the hull has no walls, otherwise `spilled` if a
+`spilled` event happened before she sank, else `too-many-opened`; `held` when
+she stays afloat.
+
+Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, so the Titanic (about 31.75
+sim seconds) sinks in 159 story minutes.
+
+### Outcomes (enforced by `__tests__/flooding.test.ts`)
+
+| ship and hit                                     | outcome | reason            |
+| ------------------------------------------------ | ------- | ----------------- |
+| No bulkheads, any hit                            | sank    | `no-bulkheads`    |
+| 10 segments, deck-high walls, hit at x=9         | afloat  | `held`            |
+| Same, every wall `low`                           | sank    | `spilled`         |
+| Walls too far apart, gash opens most of the hull | sank    | `too-many-opened` |
+| Titanic and Olympic, hit at x=5                  | sank    | `spilled`         |
+| Britannic (deck-high walls), hit at x=5          | afloat  | `held`            |
+| Every template, hit at its middle, calm sea      | afloat  | `held`            |
+
+Titanic and Olympic have 15 walls, but the nine forward ones only reach the
+waterline, so the flooded bow spills over them aft; Britannic has the same 15
+at deck height.

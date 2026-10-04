@@ -1,6 +1,12 @@
 import { explainTrial } from "../explain";
-import { runTrial } from "../seaTrial";
-import type { SimSea, SimShip } from "../types";
+import { createTrial, runTrial } from "../seaTrial";
+import type {
+  SimSea,
+  SimShip,
+  SimState,
+  TrialInput,
+  TrialReason,
+} from "../types";
 
 const DEG = Math.PI / 180;
 
@@ -9,7 +15,7 @@ function ship(stabilityRatio: number, listDegrees = 0): SimShip {
 }
 
 function summaryOf(s: SimShip, sea: SimSea) {
-  return explainTrial(runTrial({ ship: s, sea }), s, sea);
+  return explainTrial(runTrial({ ship: s, sea }), { ship: s, sea });
 }
 
 describe("explainTrial", () => {
@@ -77,7 +83,7 @@ describe("explainTrial for a stable ship that the list capsized", () => {
       const state = runTrial({ ship: s, sea: "stormy" });
       if (state.outcome !== "capsized") continue;
       found += 1;
-      const summary = explainTrial(state, s, "stormy");
+      const summary = explainTrial(state, { ship: s, sea: "stormy" });
       expect(summary.message).not.toMatch(/top-heavy/);
       expect(summary.message).toMatch(/starboard/);
     }
@@ -91,9 +97,89 @@ describe("explainTrial for a stable ship that the list capsized", () => {
         ...runTrial({ ship: ship(0.22), sea: "stormy" }),
         reason,
       };
-      const summary = explainTrial(state, s, "stormy");
+      const summary = explainTrial(state, { ship: s, sea: "stormy" });
       expect(summary.message).not.toMatch(/top-heavy/);
       expect(summary.message).toMatch(/stormy sea/);
     }
+  });
+});
+
+describe("explainTrial for an iceberg trial", () => {
+  const input: TrialInput = {
+    ship: ship(0.05),
+    sea: "calm",
+    iceberg: { compartments: [], length: 30, impactX: 9 },
+  };
+
+  function icebergState(
+    outcome: "afloat" | "sank",
+    reason: TrialReason,
+    opened: number,
+    sunkAt?: number
+  ): SimState {
+    return {
+      ...createTrial(input),
+      outcome,
+      reason,
+      time: sunkAt ?? 20,
+      compartments: Array.from({ length: 6 }, (_, i) => ({
+        id: `c${i}`,
+        water: 0.3,
+        opened: i < opened,
+      })),
+      events: sunkAt ? [{ at: sunkAt, kind: "sunk" }] : [],
+    };
+  }
+
+  it("cheers when the walls held", () => {
+    const summary = explainTrial(icebergState("afloat", "held", 2), input);
+    expect(summary).toEqual({
+      title: "She stayed afloat!",
+      message: "The walls kept the water in 2 compartments.",
+      tips: [],
+    });
+  });
+
+  it("uses the singular for one compartment", () => {
+    const summary = explainTrial(icebergState("afloat", "held", 1), input);
+    expect(summary.message).toBe("The walls kept the water in 1 compartment.");
+  });
+
+  it("explains water spilling over low walls", () => {
+    const summary = explainTrial(icebergState("sank", "spilled", 3, 32), input);
+    expect(summary.title).toBe("She sank");
+    expect(summary.message).toBe(
+      "She stayed afloat for 2 hours 40 minutes. Water spilled over the low walls near the bow."
+    );
+    expect(summary.tips).toEqual([
+      "Make the walls near the bow taller.",
+      "Add more walls so each compartment is smaller.",
+    ]);
+  });
+
+  it("explains a ship with no walls", () => {
+    const summary = explainTrial(
+      icebergState("sank", "no-bulkheads", 1, 10),
+      input
+    );
+    expect(summary.message).toBe(
+      "She stayed afloat for 50 minutes. She had no walls below deck, so the water filled her."
+    );
+    expect(summary.tips).toEqual([
+      "Add walls in Below deck, in the Hull panel.",
+    ]);
+  });
+
+  it("explains a gash that opened too many compartments", () => {
+    const summary = explainTrial(
+      icebergState("sank", "too-many-opened", 4, 12),
+      input
+    );
+    expect(summary.message).toBe(
+      "She stayed afloat for 1 hour. The iceberg opened 4 compartments at once."
+    );
+    expect(summary.tips).toEqual([
+      "Add more walls so each compartment is smaller.",
+    ]);
   });
 });

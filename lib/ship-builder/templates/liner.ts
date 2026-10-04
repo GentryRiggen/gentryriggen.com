@@ -5,8 +5,10 @@ import {
   HULL_ID,
   type PartType,
   type PlacedPart,
+  type Bulkhead,
   type Ship,
 } from "../model/types";
+import { wallRun, wallsWithLowBow } from "./bulkheads";
 import type { ShipTemplate } from "./types";
 
 /*
@@ -217,6 +219,8 @@ interface GrandLinerSpec {
   /** The column of third-class berths, in the main block. */
   thirdClassX: number;
   boats: readonly Boat[];
+  /** Watertight walls below deck. */
+  bulkheads: readonly Bulkhead[];
 }
 
 function buildGrandLiner(spec: GrandLinerSpec): Ship {
@@ -294,6 +298,7 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
       bow: KIND_DEFAULTS.liner.bow,
       stern: KIND_DEFAULTS.liner.stern,
       paint: { ...spec.paint },
+      bulkheads: spec.bulkheads.map((wall) => ({ ...wall })),
     },
     parts: b.parts,
   };
@@ -323,6 +328,9 @@ const TITANIC: GrandLinerSpec = {
     ...boatsAt(range(20, 32, 2), [STANDARD]),
     ...boatsAt(range(34, 36, 2), [COLLAPSIBLE]),
   ],
+  // 15 walls make 16 compartments, but the forward ones only reach the
+  // waterline, so water that fills them spills over into the next.
+  bulkheads: wallsWithLowBow(15, 9),
 };
 
 const OLYMPIC: GrandLinerSpec = {
@@ -349,6 +357,8 @@ const BRITANNIC: GrandLinerSpec = {
     ...boatsAt(range(18, 32, 2), ["lifeboat-large"], true),
     ...boatsAt(range(36, 40, 2), [STANDARD]),
   ],
+  // Rebuilt with her walls raised all the way to the deck.
+  bulkheads: wallRun(1, 15, "deck"),
 };
 
 const LUSITANIA: GrandLinerSpec = {
@@ -360,6 +370,7 @@ const LUSITANIA: GrandLinerSpec = {
   lengthSegments: 18,
   beam: 5,
   funnelColor: "red",
+  bulkheads: wallRun(1, 13, "deck"),
   main: { from: 9, to: 44 },
   upper: { from: 12, to: 40 },
   topDeck: { from: 15, to: 37 },
@@ -411,6 +422,7 @@ function buildCarpathia(): Ship {
       bow: KIND_DEFAULTS.liner.bow,
       stern: KIND_DEFAULTS.liner.stern,
       paint: { topsides: "black", bottom: "red" },
+      bulkheads: wallRun(1, 11, "deck"),
     },
     parts: b.parts,
   };

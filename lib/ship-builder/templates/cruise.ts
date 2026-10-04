@@ -1,5 +1,6 @@
 import type { Ship } from "../model/types";
 import { ShipBuilder, range } from "./modernBuilder";
+import { wallRun } from "./bulkheads";
 import type { ShipTemplate } from "./types";
 
 /** Wonder of the Seas: a tall, wide megaship with pools and a waterslide. */
@@ -61,6 +62,7 @@ function buildWonderOfTheSeas(): Ship {
 
   b.hull("azipod", "prop:1");
   b.hull("azipod", "prop:2");
+  b.withBulkheads(wallRun(1, 19, "deck"));
   return b.build();
 }
 
@@ -98,6 +100,7 @@ function buildOceanBreeze(): Ship {
   b.hull("propeller", "prop:1");
   b.hull("propeller", "prop:2");
   b.hull("rudder", "rudder");
+  b.withBulkheads(wallRun(1, 11, "deck"));
   return b.build();
 }
 

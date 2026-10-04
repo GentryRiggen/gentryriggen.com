@@ -1,7 +1,13 @@
 import type { ShipKind } from "../model/kinds";
 import { cellKey, partCells } from "../model/grid";
 import { emptyShip } from "../model/placement";
-import type { PartType, PlacedPart, Rotation, Ship } from "../model/types";
+import type {
+  Bulkhead,
+  PartType,
+  PlacedPart,
+  Rotation,
+  Ship,
+} from "../model/types";
 
 /**
  * Builds a template ship one part at a time. Grid parts are remembered by
@@ -129,11 +135,22 @@ export class ShipBuilder {
     this.ship.hull.paint = { ...this.ship.hull.paint, ...paint };
   }
 
+  /** Sets the hull's watertight walls, one per segment boundary. */
+  withBulkheads(bulkheads: readonly Bulkhead[]): void {
+    this.ship.hull.bulkheads = bulkheads.map((wall) => ({ ...wall }));
+  }
+
   /** A fresh copy, so callers can't alter the builder's ship. */
   build(): Ship {
     return {
       ...this.ship,
-      hull: { ...this.ship.hull, paint: { ...this.ship.hull.paint } },
+      hull: {
+        ...this.ship.hull,
+        paint: { ...this.ship.hull.paint },
+        ...(this.ship.hull.bulkheads
+          ? { bulkheads: this.ship.hull.bulkheads.map((w) => ({ ...w })) }
+          : {}),
+      },
       parts: this.ship.parts.map((part) => ({ ...part })),
     };
   }
