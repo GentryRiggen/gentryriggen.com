@@ -377,4 +377,23 @@ test.describe("Ship Builder", () => {
       .toBeGreaterThan(0);
     await expect(page.getByText(/No propellers/)).toHaveCount(0);
   });
+
+  test("searches parts with a typo and keeps the panel header visible", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    const parts = page.getByRole("complementary", { name: "Parts" });
+    if (!(await parts.isVisible()))
+      await page.getByRole("button", { name: "Parts", exact: true }).click();
+
+    await page.getByRole("searchbox", { name: "Search parts" }).fill("funel");
+    await expect(page.getByRole("button", { name: /^Funnel/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Mast/ })).toHaveCount(0);
+
+    await page.getByRole("searchbox", { name: "Search parts" }).clear();
+    await parts.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await expect(
+      page.getByRole("searchbox", { name: "Search parts" })
+    ).toBeInViewport();
+  });
 });
