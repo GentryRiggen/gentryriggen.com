@@ -244,7 +244,7 @@ describe("funnel claims", () => {
           anchor: { kind: "grid", level: 1, x, z },
           rotation: 0,
         })
-      ).toEqual({ ok: false, reason: "Can't build over a funnel" });
+      ).toEqual({ ok: false, reason: "Can't build over a funnel or mast" });
     }
   });
 
@@ -466,7 +466,7 @@ describe("existing saves", () => {
       attachPart("f", "funnel", "a", "funnel"),
       ...davitPairParts(),
       attachPart("lb", "lifeboat-standard", "dv2", "boat"),
-      attachPart("mf", "mast-fore", HULL_ID, "mast-fore"),
+      attachPart("mf", "mast", HULL_ID, "mast-fore"),
     ]);
     expect(validateShip(ship)).toEqual(OK);
     expect(parseShip(JSON.parse(JSON.stringify(ship))).ok).toBe(true);

@@ -84,23 +84,12 @@ function Lifeboat({ length, depth, fill }: LifeboatProps) {
   );
 }
 
-interface MastProps {
-  direction: "left" | "right";
-}
-
-/** A tall pole; the arrow shows which way the mast leans on the ship. */
-function Mast({ direction }: MastProps) {
-  const dx = direction === "left" ? -1 : 1;
-  const tipX = 24 + dx * 14;
+/** A tall pole with a cross-tree. */
+function Mast() {
   return (
     <g>
-      <rect x={22} y={4} width={4} height={34} fill={PALETTE.mast} />
-      <line x1={17} y1={12} x2={31} y2={12} strokeWidth={2} />
-      <line x1={24} y1={43} x2={tipX - dx * 5} y2={43} strokeWidth={2} />
-      <polygon
-        points={`${tipX},43 ${tipX - dx * 6},39.5 ${tipX - dx * 6},46.5`}
-        fill="currentColor"
-      />
+      <rect x={22} y={4} width={4} height={40} fill={PALETTE.mast} />
+      <line x1={15} y1={12} x2={33} y2={12} strokeWidth={2} />
     </g>
   );
 }
@@ -194,8 +183,7 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       <rect x={9} y={4} width={30} height={9} fill={PALETTE.funnelTop} />
     </g>
   ),
-  "mast-fore": () => <Mast direction="left" />,
-  "mast-aft": () => <Mast direction="right" />,
+  mast: () => <Mast />,
   davit: () => (
     <g>
       <rect x={10} y={20} width={5} height={24} fill={PALETTE.davit} />

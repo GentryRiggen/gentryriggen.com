@@ -118,7 +118,7 @@ describe("canPlace — grid parts", () => {
       attachPart("f", "funnel", "a", "funnel"),
     ]);
     expect(canPlace(withFunnel, gridCandidate("deck-1x1", 1, 5, 1))).toEqual(
-      fail("Can't build over a funnel")
+      fail("Can't build over a funnel or mast")
     );
 
     expect(
@@ -148,7 +148,7 @@ describe("canPlace — grid parts", () => {
     for (const rotation of [0, 180] as const) {
       expect(
         canPlace(ship, gridCandidate("deck-2x1", 1, 4, 1, rotation))
-      ).toEqual(fail("Can't build over a funnel"));
+      ).toEqual(fail("Can't build over a funnel or mast"));
     }
   });
 
@@ -344,7 +344,7 @@ describe("canPlace — side support", () => {
       attachPart("f", "funnel", "b", "funnel"),
     ]);
     expect(canPlace(ship, gridCandidate("deck-1x1", 1, 5, 1))).toEqual(
-      fail("Can't build over a funnel")
+      fail("Can't build over a funnel or mast")
     );
   });
 });
@@ -373,14 +373,47 @@ describe("canPlace — attach parts (rules 4 and 5)", () => {
     );
   });
 
-  it("matches masts to their own mount", () => {
-    const ship = testShip();
+  it("puts a mast on either hull mount or on top of a deck block", () => {
+    const ship = testShip([gridPart("a", "deck-1x1", 0, 2, 1)]);
+    for (const [parent, point] of [
+      [HULL_ID, "mast-fore"],
+      [HULL_ID, "mast-aft"],
+      ["a", "mast"],
+    ]) {
+      expect(canPlace(ship, attachCandidate("mast", parent, point))).toEqual(
+        OK
+      );
+    }
+    expect(canPlace(ship, attachCandidate("mast", HULL_ID, "funnel"))).toEqual(
+      fail("Needs a free mast mount")
+    );
+  });
+
+  it("shares a block top between a mast and a funnel, never both", () => {
+    const withMast = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 1),
+      attachPart("m", "mast", "a", "mast"),
+    ]);
     expect(
-      canPlace(ship, attachCandidate("mast-fore", HULL_ID, "mast-fore"))
-    ).toEqual(OK);
-    expect(
-      canPlace(ship, attachCandidate("mast-fore", HULL_ID, "mast-aft"))
-    ).toEqual(fail("Needs a free mast mount"));
+      canPlace(withMast, attachCandidate("funnel", "a", "funnel"))
+    ).toEqual(fail("That spot is taken"));
+    const withFunnel = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 1),
+      attachPart("f", "funnel", "a", "funnel"),
+    ]);
+    expect(canPlace(withFunnel, attachCandidate("mast", "a", "mast"))).toEqual(
+      fail("That spot is taken")
+    );
+  });
+
+  it("refuses to build on top of a block holding a mast", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 1),
+      attachPart("m", "mast", "a", "mast"),
+    ]);
+    expect(canPlace(ship, gridCandidate("deck-1x1", 1, 2, 1))).toEqual(
+      fail("Can't build over a funnel or mast")
+    );
   });
 
   it("puts davits on uncovered outer-edge blocks at any level", () => {
@@ -631,7 +664,7 @@ describe("hull size", () => {
   });
 
   it("keeps the masts when their centerline moves", () => {
-    const ship = testShip([attachPart("m", "mast-fore", HULL_ID, "mast-fore")]);
+    const ship = testShip([attachPart("m", "mast", HULL_ID, "mast-fore")]);
     expect(setHullSize(ship, { beam: 7 }).parts).toHaveLength(1);
   });
 
@@ -651,7 +684,7 @@ describe("hull length", () => {
       gridPart("aft", "deck-1x1", 0, 20, 1),
       gridPart("aftTop", "deck-1x1", 1, 20, 1),
       gridPart("edge", "deck-2x1", 0, 11, 2), // covers x 11-12
-      attachPart("mast", "mast-aft", HULL_ID, "mast-aft"),
+      attachPart("mast", "mast", HULL_ID, "mast-aft"),
     ]);
     expect(previewHullLength(ship, 4)).toEqual(["aft", "aftTop", "edge"]);
     const shrunk = setHullLength(ship, 4);
@@ -711,8 +744,8 @@ function largestShip() {
       parts.push(attachPart(`lb${x}:${z}`, "lifeboat-standard", davit, "boat"));
     }
   }
-  parts.push(attachPart("mf", "mast-fore", HULL_ID, "mast-fore"));
-  parts.push(attachPart("ma", "mast-aft", HULL_ID, "mast-aft"));
+  parts.push(attachPart("mf", "mast", HULL_ID, "mast-fore"));
+  parts.push(attachPart("ma", "mast", HULL_ID, "mast-aft"));
   return testShip(parts, 12);
 }
 
@@ -745,7 +778,7 @@ describe("validateShip", () => {
 
   it("starts an empty ship 4 cells wide", () => {
     expect(emptyShip().hull).toEqual({ lengthSegments: 8, beam: 4 });
-    expect(emptyShip().v).toBe(2);
+    expect(emptyShip().v).toBe(3);
   });
 
   it("rejects a beam outside 3-7 cells or not a whole number", () => {
@@ -784,7 +817,7 @@ describe("validateShip", () => {
 
   it("rejects a rotated attach part", () => {
     const mast = {
-      ...attachPart("m", "mast-fore", HULL_ID, "mast-fore"),
+      ...attachPart("m", "mast", HULL_ID, "mast-fore"),
       rotation: 270 as const,
     };
     expect(validateShip(testShip([mast]))).toEqual(

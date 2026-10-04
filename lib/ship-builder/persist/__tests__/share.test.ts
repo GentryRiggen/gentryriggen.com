@@ -7,7 +7,7 @@ import {
   MAX_SHARE_LENGTH,
 } from "../share";
 import { MAX_BEAM, MAX_SEGMENTS, CELLS_PER_SEGMENT } from "../../model/grid";
-import type { PlacedPart, Ship } from "../../model/types";
+import { HULL_ID, type PlacedPart, type Ship } from "../../model/types";
 import { MAX_PARTS, parseShip } from "../schema";
 import { attachPart, gridPart, testShip } from "../../testing";
 
@@ -52,6 +52,33 @@ const ship = testShip(
   ],
   10
 );
+
+describe("share links from older versions", () => {
+  it("loads a v1 link with the default beam", () => {
+    const v1 = { ...ship, v: 1, hull: { lengthSegments: 10 } };
+    const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v1))}`;
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+  });
+
+  it("loads a v2 link with old mast types", () => {
+    const v2 = {
+      ...ship,
+      v: 2,
+      parts: [
+        ...ship.parts,
+        { ...attachPart("m", "mast", HULL_ID, "mast-fore"), type: "mast-fore" },
+      ],
+    };
+    const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v2))}`;
+    expect(decodeShareHash(hash)).toEqual({
+      kind: "ok",
+      ship: {
+        ...ship,
+        parts: [...ship.parts, attachPart("m", "mast", HULL_ID, "mast-fore")],
+      },
+    });
+  });
+});
 
 describe("share links", () => {
   it("round-trips a ship through the hash", () => {

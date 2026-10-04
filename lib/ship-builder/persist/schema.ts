@@ -9,7 +9,7 @@ import {
 import { MAX_NAME_LENGTH, validateShip } from "../model/placement";
 import { PART_TYPES, type Ship } from "../model/types";
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -65,8 +65,26 @@ const addDefaultBeam: Migration = (raw) => {
   return { ...raw, v: 2, hull: { ...hull, beam: DEFAULT_BEAM } };
 };
 
+/** v2 had separate fore and aft mast parts; v3 has one mast. */
+const mergeMasts: Migration = (raw) => {
+  const { parts } = raw;
+  if (!Array.isArray(parts)) return raw;
+  return {
+    ...raw,
+    v: 3,
+    parts: parts.map((part: unknown) =>
+      isRecord(part) && (part.type === "mast-fore" || part.type === "mast-aft")
+        ? { ...part, type: "mast" }
+        : part
+    ),
+  };
+};
+
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
-const MIGRATIONS: Record<number, Migration> = { 1: addDefaultBeam };
+const MIGRATIONS: Record<number, Migration> = {
+  1: addDefaultBeam,
+  2: mergeMasts,
+};
 
 export function migrate(
   raw: unknown,

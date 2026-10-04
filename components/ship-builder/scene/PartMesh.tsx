@@ -156,8 +156,7 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
           ))}
         </group>
       );
-    case "mast-fore":
-    case "mast-aft":
+    case "mast":
       return (
         <mesh position={[0, 3.5, 0]} castShadow>
           <cylinderGeometry args={[0.05, 0.08, 7, 8]} />

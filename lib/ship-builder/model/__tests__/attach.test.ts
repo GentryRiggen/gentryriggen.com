@@ -38,7 +38,7 @@ describe("attach points", () => {
     expect(points.map((p) => p.position.z)).toEqual([2.5, 2.5]);
   });
 
-  it("gives an uncovered deck block a centered funnel mount", () => {
+  it("gives an uncovered deck block a centered funnel and mast mount", () => {
     const ship = testShip([gridPart("a", "deck-2x1", 0, 4, 1)]);
     expect(attachPointsOf(ship, "a")).toEqual([
       {
@@ -47,7 +47,24 @@ describe("attach points", () => {
         position: { x: 5, y: 1, z: 1.5 },
         claims: ["top:0:4:1", "top:0:5:1"],
       },
+      {
+        id: "mast",
+        type: "mast-mount",
+        position: { x: 5, y: 1, z: 1.5 },
+        claims: ["top:0:4:1", "top:0:5:1"],
+      },
     ]);
+  });
+
+  it("gives an uncovered deck block a mast mount where the funnel goes", () => {
+    const ship = testShip([gridPart("a", "deck-2x1", 0, 2, 1)]);
+    const points = attachPointsOf(ship, "a");
+    const funnel = points.find((p) => p.id === "funnel");
+    expect(points.find((p) => p.id === "mast")).toEqual({
+      ...funnel,
+      id: "mast",
+      type: "mast-mount",
+    });
   });
 
   it("removes the funnel mount when something sits on the block", () => {
@@ -277,17 +294,18 @@ describe("attach points", () => {
       gridPart("a", "deck-1x1", 0, 2, 1),
       gridPart("b", "deck-1x1", 0, 3, 1),
       attachPart("f", "funnel", "a", "funnel"),
-      attachPart("m", "mast-fore", HULL_ID, "mast-fore"),
+      attachPart("m", "mast", HULL_ID, "mast-fore"),
     ]);
     const funnelDef = getPartDef("funnel") as AttachPartDef;
     expect(openAttachPoints(ship, funnelDef)).toEqual([
       { parentId: "b", point: expect.objectContaining({ id: "funnel" }) },
     ]);
-    const foreDef = getPartDef("mast-fore") as AttachPartDef;
-    expect(openAttachPoints(ship, foreDef)).toEqual([]);
-    const aftDef = getPartDef("mast-aft") as AttachPartDef;
-    expect(openAttachPoints(ship, aftDef).map((o) => o.point.id)).toEqual([
-      "mast-aft",
+    const mastDef = getPartDef("mast") as AttachPartDef;
+    expect(
+      openAttachPoints(ship, mastDef).map((o) => [o.parentId, o.point.id])
+    ).toEqual([
+      [HULL_ID, "mast-aft"],
+      ["b", "mast"],
     ]);
   });
 });

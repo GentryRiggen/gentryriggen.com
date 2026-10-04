@@ -72,22 +72,19 @@ export function emptyShip(
   lengthSegments = DEFAULT_SEGMENTS,
   beam = DEFAULT_BEAM
 ): Ship {
-  return { v: 2, name, hull: { lengthSegments, beam }, parts: [] };
+  return { v: 3, name, hull: { lengthSegments, beam }, parts: [] };
 }
 
-/** Whether a small or large funnel stands on the cell directly below. */
-function isUnderFunnel(ship: Ship, cell: Cell, occupancy: Occupancy): boolean {
+/** Whether an attach part (funnel or mast) claims the top of the cell below. */
+function isUnderTopMountedPart(
+  ship: Ship,
+  cell: Cell,
+  occupancy: Occupancy
+): boolean {
   const belowKey = `top:${cell.level - 1}:${cell.x}:${cell.z}`;
   return ship.parts.some((part) => {
     if (part.anchor.kind !== "attach") return false;
-    const def = getPartDef(part.type);
-    if (def.placement !== "attach") return false;
-    if (
-      def.attachTo !== "funnel-mount" &&
-      def.attachTo !== "large-funnel-mount"
-    ) {
-      return false;
-    }
+    if (getPartDef(part.type).placement !== "attach") return false;
     const point = resolveAttachPoint(ship, part.anchor, occupancy);
     return (
       point !== undefined &&
@@ -185,8 +182,8 @@ function canPlaceGrid(
     if (belowDef.placement === "grid" && belowDef.role === "bridge") {
       return fail("Can't build on top of the bridge");
     }
-    if (isUnderFunnel(ship, cell, occupancy)) {
-      return fail("Can't build over a funnel");
+    if (isUnderTopMountedPart(ship, cell, occupancy)) {
+      return fail("Can't build over a funnel or mast");
     }
     if (holdsDavitAt(ship, below, cell.x, cell.z)) {
       return fail("Can't build over a davit");

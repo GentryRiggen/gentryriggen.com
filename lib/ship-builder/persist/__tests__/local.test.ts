@@ -11,7 +11,13 @@ import {
   SHIPS_BACKUP_KEY,
   SHIPS_KEY,
 } from "../local";
-import { gridPart, hasLoneSurrogate, testShip } from "../../testing";
+import {
+  attachPart,
+  gridPart,
+  hasLoneSurrogate,
+  testShip,
+} from "../../testing";
+import { HULL_ID } from "../../model/types";
 
 const ship = testShip([gridPart("a", "deck-1x1", 0, 0, 0)]);
 
@@ -38,6 +44,31 @@ describe("autosave", () => {
       JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v1 }])
     );
     expect(listShips().map((s) => s.ship)).toEqual([ship]);
+  });
+
+  it("loads a v2 autosave and My Ships entry with old mast types", () => {
+    const v2 = {
+      ...ship,
+      v: 2,
+      parts: [
+        { ...attachPart("m", "mast", HULL_ID, "mast-aft"), type: "mast-aft" },
+      ],
+    };
+    const migrated = testShip([attachPart("m", "mast", HULL_ID, "mast-aft")]);
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: v2, savedId: "old" })
+    );
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      ship: migrated,
+      savedId: "old",
+    });
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v2 }])
+    );
+    expect(listShips().map((s) => s.ship)).toEqual([migrated]);
   });
 
   it("reports none when nothing is stored", () => {
@@ -138,7 +169,7 @@ describe("My Ships", () => {
       name: "From a newer deploy",
       savedAt: 5,
       ship: {
-        v: 3,
+        v: 4,
         name: "Future",
         hull: { lengthSegments: 8, beam: 4 },
         parts: [],

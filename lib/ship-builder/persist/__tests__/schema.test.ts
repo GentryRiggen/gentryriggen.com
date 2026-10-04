@@ -1,5 +1,6 @@
 import { CURRENT_VERSION, MAX_PARTS, migrate, parseShip } from "../schema";
 import { attachPart, gridPart, testShip } from "../../testing";
+import { HULL_ID } from "../../model/types";
 
 const validShip = testShip([
   gridPart("a", "deck-1x1", 0, 2, 0),
@@ -31,7 +32,7 @@ describe("parseShip", () => {
     ["null", null],
     ["a string", "ship"],
     ["an array", []],
-    ["a newer version", { ...validShip, v: 3 }],
+    ["a newer version", { ...validShip, v: 4 }],
     [
       "a beam too narrow",
       { ...validShip, hull: { ...validShip.hull, beam: 2 } },
@@ -131,7 +132,7 @@ describe("v1 to v2 migration", () => {
 
   it("overrides any beam already on a v1 hull", () => {
     const migrated = migrate({ ...v1, hull: { lengthSegments: 10, beam: 7 } });
-    expect(migrated).toMatchObject({ v: 2, hull: { beam: 4 } });
+    expect(migrated).toMatchObject({ v: 3, hull: { beam: 4 } });
   });
 
   it("does not mutate the input", () => {
@@ -156,6 +157,49 @@ describe("v1 to v2 migration", () => {
   });
 });
 
+describe("v2 to v3 migration", () => {
+  const v2 = {
+    v: 2,
+    name: "Masts",
+    hull: { lengthSegments: 8, beam: 4 },
+    parts: [
+      { ...attachPart("mf", "mast", HULL_ID, "mast-fore"), type: "mast-fore" },
+      { ...attachPart("ma", "mast", HULL_ID, "mast-aft"), type: "mast-aft" },
+      gridPart("a", "deck-1x1", 0, 2, 1),
+    ],
+  };
+
+  it("turns fore and aft masts into masts on the same anchors", () => {
+    expect(parseShip(JSON.parse(JSON.stringify(v2)))).toEqual({
+      ok: true,
+      ship: {
+        ...testShip([
+          attachPart("mf", "mast", HULL_ID, "mast-fore"),
+          attachPart("ma", "mast", HULL_ID, "mast-aft"),
+          gridPart("a", "deck-1x1", 0, 2, 1),
+        ]),
+        name: "Masts",
+      },
+    });
+  });
+
+  it("does not mutate the input", () => {
+    const input = JSON.parse(JSON.stringify(v2));
+    migrate(input);
+    expect(input).toEqual(v2);
+  });
+
+  it("runs v1 ships through both steps", () => {
+    const v1 = { ...v2, v: 1, hull: { lengthSegments: 8 } };
+    expect(parseShip(JSON.parse(JSON.stringify(v1))).ok).toBe(true);
+  });
+
+  it("leaves a ship with non-array parts unmigrated", () => {
+    const raw = { ...v2, parts: "none" };
+    expect(migrate(raw)).toBe(raw);
+  });
+});
+
 describe("migrate", () => {
   it("runs migrations up to the current version", () => {
     const migrated = migrate(
@@ -168,6 +212,7 @@ describe("migrate", () => {
           parts: raw.parts,
         }),
         1: (raw) => ({ ...raw, v: 2, hull: { lengthSegments: 6, beam: 5 } }),
+        2: (raw) => ({ ...raw, v: 3 }),
       }
     );
     expect(migrated).toEqual({

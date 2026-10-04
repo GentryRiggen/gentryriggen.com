@@ -158,12 +158,12 @@ function blockPoints(
 
   if (def.role === "deck" && !isCovered(part, occupancy)) {
     const size = rotatedFootprint(def.footprint, part.rotation);
-    points.push({
-      id: "funnel",
-      type: "funnel-mount",
-      position: { x: x + size.x / 2, y: level + 1, z: z + size.z / 2 },
-      claims: partCells(part).map(topClaim),
-    });
+    const position = { x: x + size.x / 2, y: level + 1, z: z + size.z / 2 };
+    const claims = partCells(part).map(topClaim);
+    points.push(
+      { id: "funnel", type: "funnel-mount", position, claims },
+      { id: "mast", type: "mast-mount", position, claims }
+    );
   }
 
   if (def.role === "deck") points.push(...largeFunnelPoints(part, occupancy));

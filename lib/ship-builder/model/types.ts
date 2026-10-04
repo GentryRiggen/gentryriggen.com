@@ -10,8 +10,7 @@ export const PART_TYPES = [
   "bridge-6",
   "bridge-7",
   "funnel",
-  "mast-fore",
-  "mast-aft",
+  "mast",
   "davit",
   "lifeboat-standard",
   "lifeboat-collapsible",
@@ -77,7 +76,7 @@ export interface Hull {
 }
 
 export interface Ship {
-  v: 2;
+  v: 3;
   name: string;
   hull: Hull;
   parts: PlacedPart[];
