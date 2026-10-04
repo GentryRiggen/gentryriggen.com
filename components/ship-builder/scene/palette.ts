@@ -12,6 +12,7 @@ export const PALETTE = {
   mast: "#5b4632",
   davit: "#e8e4d8",
   lifeboat: "#f7f7f2",
+  propeller: "#b08d57",
   collapsible: "#c8b78e",
   cabin: { first: "#b8912a", second: "#3f6fa8", third: "#6f7f5c" },
   tint: { "ghost-ok": "#22c55e", "ghost-bad": "#ef4444", removal: "#ef4444" },

@@ -124,6 +124,38 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
           </mesh>
         </group>
       );
+    case "funnel-large":
+      // Centred on its point (the 2x2's centre, on top): body 3.4 + top 0.8.
+      return (
+        <group>
+          <mesh position={[0, 1.7, 0]} castShadow>
+            <cylinderGeometry args={[0.65, 0.71, 3.4, 20]} />
+            <Surface color={PALETTE.funnel} {...surface} />
+          </mesh>
+          <mesh position={[0, 3.8, 0]} castShadow>
+            <cylinderGeometry args={[0.66, 0.66, 0.8, 20]} />
+            <Surface color={PALETTE.funnelTop} {...surface} />
+          </mesh>
+        </group>
+      );
+    case "propeller":
+      // Shaft along world X (the ship's length); blades spread around it.
+      return (
+        <group>
+          <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+            <cylinderGeometry args={[0.12, 0.12, 0.4, 12]} />
+            <Surface color={PALETTE.propeller} {...surface} />
+          </mesh>
+          {[0, 1, 2].map((i) => (
+            <group key={i} rotation={[(i * 2 * Math.PI) / 3, 0, 0]}>
+              <mesh position={[0, 0.32, 0]} castShadow>
+                <boxGeometry args={[0.06, 0.5, 0.16]} />
+                <Surface color={PALETTE.propeller} {...surface} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+      );
     case "mast-fore":
     case "mast-aft":
       return (
@@ -144,6 +176,13 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
             <Surface color={PALETTE.davit} {...surface} />
           </mesh>
         </group>
+      );
+    case "lifeboat-large":
+      return (
+        <mesh position={[0, -0.1 - 0.35 / 2, 0]} castShadow>
+          <boxGeometry args={[1.9, 0.35, 0.45]} />
+          <Surface color={PALETTE.lifeboat} {...surface} />
+        </mesh>
       );
     case "lifeboat-standard":
     case "lifeboat-collapsible": {
