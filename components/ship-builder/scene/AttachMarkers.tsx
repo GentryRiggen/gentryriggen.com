@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { MeshBasicMaterial, SphereGeometry } from "three";
 import { openAttachPoints } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
-import { gridLength } from "@/lib/ship-builder/model/grid";
+import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import type { AttachAnchor } from "@/lib/ship-builder/model/types";
 import { useCursor } from "@react-three/drei";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -44,6 +44,7 @@ export default function AttachMarkers() {
   }, [ship, tool]);
 
   const length = gridLength(ship);
+  const beam = beamOf(ship);
   return (
     <group>
       {open.map(({ parentId, point }) => {
@@ -55,7 +56,7 @@ export default function AttachMarkers() {
         return (
           <mesh
             key={`${parentId}/${point.id}`}
-            position={modelToWorld(length, point.position)}
+            position={modelToWorld(length, beam, point.position)}
             geometry={resources.sphere}
             material={resources.material}
             onPointerOver={(event) => {

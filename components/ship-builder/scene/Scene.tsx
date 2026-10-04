@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
-import { gridLength } from "@/lib/ship-builder/model/grid";
+import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
 import CameraRig from "./CameraRig";
@@ -19,6 +19,7 @@ import { usePartLongPress } from "./usePartLongPress";
 
 export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
+  const beam = useShipBuilderStore((s) => beamOf(s.ship));
   const select = useShipBuilderStore((s) => s.select);
   const wrapper = useRef<HTMLDivElement>(null);
   const { ring, startPress } = usePartLongPress(wrapper);
@@ -63,7 +64,7 @@ export default function Scene() {
           shadow-mapSize={[2048, 2048]}
         />
         <Ocean />
-        <Hull lengthCells={lengthCells} />
+        <Hull lengthCells={lengthCells} beam={beam} />
         <ShipParts onPartPress={startPress} />
         <GridTargets />
         <AttachMarkers />

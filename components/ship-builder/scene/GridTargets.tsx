@@ -11,7 +11,7 @@ import {
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   buildOccupancy,
-  GRID_WIDTH,
+  beamOf,
   gridLength,
   MAX_LEVEL,
   topLevel,
@@ -79,7 +79,7 @@ export default function GridTargets() {
     const occupancy = buildOccupancy(ship);
     const list: GridAnchor[] = [];
     for (let x = 0; x < gridLength(ship); x++) {
-      for (let z = 0; z < GRID_WIDTH; z++) {
+      for (let z = 0; z < beamOf(ship); z++) {
         const level = topLevel(occupancy, x, z) + 1;
         if (level <= MAX_LEVEL) list.push({ kind: "grid", level, x, z });
       }
@@ -91,7 +91,7 @@ export default function GridTargets() {
   return (
     <group>
       {anchors.map((anchor) => {
-        const [x, y, z] = modelToWorld(length, {
+        const [x, y, z] = modelToWorld(length, beamOf(ship), {
           x: anchor.x + 0.5,
           y: anchor.level,
           z: anchor.z + 0.5,

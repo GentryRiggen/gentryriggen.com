@@ -4,7 +4,11 @@ import { memo } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
-import { gridLength, type Occupancy } from "@/lib/ship-builder/model/grid";
+import {
+  beamOf,
+  gridLength,
+  type Occupancy,
+} from "@/lib/ship-builder/model/grid";
 import type { PartCandidate } from "@/lib/ship-builder/model/placement";
 import type {
   GridPartDef,
@@ -174,6 +178,7 @@ function PartMesh({
 }: PartMeshProps) {
   const def = getPartDef(part.type);
   const length = gridLength(ship);
+  const beam = beamOf(ship);
   const handlers = {
     onPointerOver,
     onPointerOut,
@@ -186,7 +191,7 @@ function PartMesh({
     if (part.anchor.kind !== "grid") return null;
     const { center, size } = footprintBase(def, part.anchor, part.rotation);
     return (
-      <group position={modelToWorld(length, center)} {...handlers}>
+      <group position={modelToWorld(length, beam, center)} {...handlers}>
         <Block def={def} size={size} tint={tint} emphasis={emphasis} />
       </group>
     );
@@ -196,7 +201,7 @@ function PartMesh({
   const point = resolveAttachPoint(ship, part.anchor, occupancy);
   if (!point) return null;
   return (
-    <group position={modelToWorld(length, point.position)} {...handlers}>
+    <group position={modelToWorld(length, beam, point.position)} {...handlers}>
       <Fitting
         type={part.type}
         side={point.side}

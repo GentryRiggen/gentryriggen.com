@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { Shape } from "three";
 import { PROW_LENGTH, STERN_LENGTH } from "@/lib/ship-builder/model/attach";
-import { GRID_WIDTH } from "@/lib/ship-builder/model/grid";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
 import { PALETTE } from "./palette";
 
@@ -12,20 +11,29 @@ const DECK_PLATE = 0.02;
 
 interface HullProps {
   lengthCells: number;
+  beam: number;
 }
 
 interface HullBandProps {
   lengthCells: number;
+  beam: number;
   bottom: number;
   top: number;
   color: string;
   prow: Shape;
 }
 
-function HullBand({ lengthCells, bottom, top, color, prow }: HullBandProps) {
+function HullBand({
+  lengthCells,
+  beam,
+  bottom,
+  top,
+  color,
+  prow,
+}: HullBandProps) {
   const height = top - bottom;
   const half = lengthCells / 2;
-  const radius = GRID_WIDTH / 2;
+  const radius = beam / 2;
   // A fresh options object each render would make R3F rebuild the geometry.
   const extrudeOptions = useMemo(
     () => ({ depth: height, bevelEnabled: false }),
@@ -34,7 +42,7 @@ function HullBand({ lengthCells, bottom, top, color, prow }: HullBandProps) {
   return (
     <group>
       <mesh position={[0, bottom + height / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[lengthCells, height, GRID_WIDTH]} />
+        <boxGeometry args={[lengthCells, height, beam]} />
         <meshStandardMaterial color={color} />
       </mesh>
       {/* Prow: triangle in XY, extruded along Z, turned so Z becomes up. */}
@@ -63,13 +71,14 @@ function HullBand({ lengthCells, bottom, top, color, prow }: HullBandProps) {
 
 interface DeckPlateProps {
   lengthCells: number;
+  beam: number;
   prow: Shape;
 }
 
 /** A thin tan plate over the whole hull top: box, prow and stern. */
-function DeckPlate({ lengthCells, prow }: DeckPlateProps) {
+function DeckPlate({ lengthCells, beam, prow }: DeckPlateProps) {
   const half = lengthCells / 2;
-  const radius = GRID_WIDTH / 2;
+  const radius = beam / 2;
   const extrudeOptions = useMemo(
     () => ({ depth: DECK_PLATE, bevelEnabled: false }),
     []
@@ -77,7 +86,7 @@ function DeckPlate({ lengthCells, prow }: DeckPlateProps) {
   return (
     <group>
       <mesh position={[0, DECK_Y + DECK_PLATE / 2, 0]} receiveShadow>
-        <boxGeometry args={[lengthCells, DECK_PLATE, GRID_WIDTH]} />
+        <boxGeometry args={[lengthCells, DECK_PLATE, beam]} />
         <meshStandardMaterial color={PALETTE.deck} />
       </mesh>
       <mesh
@@ -102,20 +111,21 @@ function DeckPlate({ lengthCells, prow }: DeckPlateProps) {
   );
 }
 
-export default function Hull({ lengthCells }: HullProps) {
+export default function Hull({ lengthCells, beam }: HullProps) {
   const prow = useMemo(() => {
     const shape = new Shape();
-    shape.moveTo(0, -GRID_WIDTH / 2);
+    shape.moveTo(0, -beam / 2);
     shape.lineTo(PROW_LENGTH, 0);
-    shape.lineTo(0, GRID_WIDTH / 2);
+    shape.lineTo(0, beam / 2);
     shape.closePath();
     return shape;
-  }, []);
+  }, [beam]);
 
   return (
     <group>
       <HullBand
         lengthCells={lengthCells}
+        beam={beam}
         bottom={-HULL_DRAFT}
         top={BOOT_TOP}
         color={PALETTE.antifouling}
@@ -123,12 +133,13 @@ export default function Hull({ lengthCells }: HullProps) {
       />
       <HullBand
         lengthCells={lengthCells}
+        beam={beam}
         bottom={BOOT_TOP}
         top={DECK_Y}
         color={PALETTE.hull}
         prow={prow}
       />
-      <DeckPlate lengthCells={lengthCells} prow={prow} />
+      <DeckPlate lengthCells={lengthCells} beam={beam} prow={prow} />
     </group>
   );
 }

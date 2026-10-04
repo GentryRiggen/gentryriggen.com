@@ -1,4 +1,4 @@
-import { GRID_WIDTH, rotatedFootprint } from "@/lib/ship-builder/model/grid";
+import { rotatedFootprint } from "@/lib/ship-builder/model/grid";
 import type {
   GridAnchor,
   GridPartDef,
@@ -15,13 +15,16 @@ export const LEVEL_HEIGHT = 1;
 
 export type WorldPosition = [number, number, number];
 
-/** Model → world: a 180° turn about Y so the bow faces +X. */
-export function modelToWorld(lengthCells: number, p: Vec3): WorldPosition {
-  return [
-    lengthCells / 2 - p.x,
-    DECK_Y + p.y * LEVEL_HEIGHT,
-    GRID_WIDTH / 2 - p.z,
-  ];
+/**
+ * Model → world: a 180° turn about Y so the bow faces +X, centred on the
+ * hull's length and beam (both in cells).
+ */
+export function modelToWorld(
+  lengthCells: number,
+  beam: number,
+  p: Vec3
+): WorldPosition {
+  return [lengthCells / 2 - p.x, DECK_Y + p.y * LEVEL_HEIGHT, beam / 2 - p.z];
 }
 
 export function footprintBase(
