@@ -11,7 +11,12 @@ const TOO_BIG_NOTICE =
 
 type CopyStatus = "pending" | "copied" | "failed";
 
-export default function ShareButton() {
+interface ShareButtonProps {
+  /** Extra classes for the button, such as a larger touch target. */
+  className?: string;
+}
+
+export default function ShareButton({ className = "" }: ShareButtonProps) {
   const [link, setLink] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("pending");
   const shareButtonRef = useRef<HTMLButtonElement>(null);
@@ -82,16 +87,16 @@ export default function ShareButton() {
         ref={shareButtonRef}
         type="button"
         onClick={handleShare}
-        className={buttonClass}
+        className={`${buttonClass} ${className}`}
       >
         <Share2 aria-hidden="true" className="h-4 w-4 shrink-0" />
-        <span className="sr-only sm:not-sr-only">Share</span>
+        <span className="sr-only lg:not-sr-only">Share</span>
       </button>
       {link && (
         <div
           role="dialog"
           aria-label="Share link"
-          className={`absolute bottom-full right-0 z-40 mb-2 w-[min(20rem,calc(100vw-2rem))] space-y-2 rounded-lg border p-3 shadow-lg ${panelClass}`}
+          className={`absolute right-0 top-full z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] space-y-2 rounded-lg border p-3 shadow-lg ${panelClass}`}
         >
           <input
             ref={linkInputRef}

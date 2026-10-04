@@ -45,7 +45,7 @@ function RemovalDialog({ pending }: RemovalDialogProps) {
     <div
       role="alertdialog"
       aria-label="Confirm removal"
-      className={`absolute left-1/2 top-16 z-30 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-3 shadow-lg ${panelClass}`}
+      className={`absolute left-1/2 top-40 z-30 max-w-[calc(100%-1.5rem)] lg:top-[7rem] flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-3 shadow-lg ${panelClass}`}
     >
       <p className="text-sm">{message}</p>
       <button

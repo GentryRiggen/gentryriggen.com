@@ -20,6 +20,11 @@ interface DrawerProps {
   collapsed?: boolean;
   /** Present when the aside can collapse at lg; called to flip the state. */
   onCollapsedChange?: () => void;
+  /**
+   * Replaces the visible label in the small-screen toggle (for a live
+   * summary). The button keeps the drawer label as its accessible name.
+   */
+  toggleContent?: ReactNode;
   children: ReactNode;
 }
 
@@ -43,6 +48,7 @@ export default function Drawer({
   onOpenChange,
   collapsed = false,
   onCollapsedChange,
+  toggleContent,
   children,
 }: DrawerProps) {
   const id = useId();
@@ -91,14 +97,15 @@ export default function Drawer({
       <button
         ref={toggleRef}
         type="button"
+        aria-label={toggleContent ? label : undefined}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
-        className={`absolute top-3 z-20 rounded-md border border-slate-300 bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 ${
-          left ? "left-3" : "right-20"
+        className={`absolute top-3 z-20 inline-flex min-h-11 items-center rounded-md border border-slate-300 bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 ${
+          left ? "left-3" : "right-3"
         }`}
       >
-        {label}
+        {toggleContent ?? label}
       </button>
       <aside
         ref={asideRef}
@@ -139,17 +146,8 @@ export default function Drawer({
             data-testid={`drawer-header-${label}`}
             className="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
           >
-            {/* On the right, keep the close button clear of the fixed ThemeToggle. */}
-            <div
-              className={`flex items-center gap-2 p-2 ${
-                left ? "" : "pr-20 lg:flex-row-reverse lg:pr-2"
-              }`}
-            >
-              <span
-                className={`min-w-0 flex-1 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 ${
-                  left ? "" : "lg:text-right"
-                }`}
-              >
+            <div className="flex items-center gap-2 p-2">
+              <span className="min-w-0 flex-1 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {label}
               </span>
               <button

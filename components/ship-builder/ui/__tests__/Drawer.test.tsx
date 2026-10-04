@@ -20,6 +20,24 @@ function renderDrawer() {
   };
 }
 
+describe("Drawer toggle content", () => {
+  it("shows custom content but keeps the drawer label as the name", () => {
+    render(
+      <Drawer
+        side="right"
+        label="Stats"
+        open={false}
+        onOpenChange={() => {}}
+        toggleContent={<span>12 knots</span>}
+      >
+        <p>Body</p>
+      </Drawer>
+    );
+    const toggle = screen.getByRole("button", { name: "Stats" });
+    expect(toggle).toHaveTextContent("12 knots");
+  });
+});
+
 describe("Drawer", () => {
   it("gives the close and collapse buttons 44px icon targets", () => {
     render(

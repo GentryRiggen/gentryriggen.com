@@ -2,7 +2,7 @@ import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NewShipDialog from "../NewShipDialog";
-import Toolbar from "../Toolbar";
+import AppHeader from "../AppHeader";
 import { TEMPLATES, type ShipTemplate } from "@/lib/ship-builder/templates";
 import { SHIP_KINDS, type ShipKind } from "@/lib/ship-builder/model/kinds";
 import { emptyShip } from "@/lib/ship-builder/model/placement";
@@ -11,6 +11,8 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+
+jest.mock("@/components/ThemeToggle", () => () => null);
 
 const store = () => useShipBuilderStore.getState();
 
@@ -181,11 +183,11 @@ function card0Grid(): string {
   return document.querySelector("ul")?.className ?? "";
 }
 
-describe("Toolbar New button", () => {
+describe("Header New button", () => {
   it("opens the dialog without changing the ship, and restores focus", async () => {
     const user = userEvent.setup();
     const before = store().ship;
-    render(<Toolbar />);
+    render(<AppHeader />);
     const newButton = screen.getByRole("button", { name: "New" });
     await user.click(newButton);
     expect(screen.getByRole("dialog", { name: "New ship" })).toBeVisible();
@@ -198,7 +200,7 @@ describe("Toolbar New button", () => {
 
   it("starts the chosen kind, undoable", async () => {
     const user = userEvent.setup();
-    render(<Toolbar />);
+    render(<AppHeader />);
     await user.click(screen.getByRole("button", { name: "New" }));
     await user.click(screen.getByRole("button", { name: /Cargo ship/ }));
     await user.click(screen.getByRole("button", { name: /Blank ship/ }));

@@ -2,22 +2,23 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import ThemeToggle from "@/components/ThemeToggle";
-import { SHIP_BUILDER_VERSION } from "@/lib/ship-builder/version";
 import useCollapsedPanels from "./hooks/useCollapsedPanels";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useServiceWorker from "./hooks/useServiceWorker";
 import useShipPersistence from "./hooks/useShipPersistence";
 import useTestHook from "./hooks/useTestHook";
 import useWebGLSupport from "./hooks/useWebGLSupport";
+import AppHeader from "./ui/AppHeader";
 import CatalogPanel from "./ui/CatalogPanel";
 import Drawer from "./ui/Drawer";
+import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
+import SelectionBar from "./ui/SelectionBar";
 import StatsPanel from "./ui/StatsPanel";
-import Toolbar from "./ui/Toolbar";
+import UndoRedo from "./ui/UndoRedo";
+import ViewControls from "./ui/ViewControls";
 import WebGLFallback from "./ui/WebGLFallback";
 
 type DrawerSide = "left" | "right";
@@ -48,24 +49,7 @@ export default function ShipBuilder() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden overscroll-none select-none bg-slate-100 [-webkit-touch-callout:none] text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="flex items-center gap-4 border-b border-slate-200 bg-white pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 pl-4 pr-20 dark:border-slate-800 dark:bg-slate-900">
-        <Link
-          href="/"
-          className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          ← gentryriggen.com
-        </Link>
-        <h1 className="text-lg font-semibold">Ship Builder</h1>
-        <Link
-          href="/ship-builder/versions"
-          data-testid="app-version"
-          aria-label={`Version ${SHIP_BUILDER_VERSION}: what's new`}
-          className="-ml-2 self-end pb-0.5 text-xs text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          v{SHIP_BUILDER_VERSION}
-        </Link>
-      </header>
-      <ThemeToggle />
+      <AppHeader />
 
       <div className="relative flex min-h-0 flex-1">
         {openDrawer && (
@@ -90,9 +74,13 @@ export default function ShipBuilder() {
         </Drawer>
         <main className="relative min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
+          <ViewControls />
           <Notice />
           <RemovalConfirm />
-          <PlacementHint />
+          <SelectionBar />
+          <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
+          <HelpButton />
+          <UndoRedo />
         </main>
         <Drawer
           side="right"
@@ -105,7 +93,6 @@ export default function ShipBuilder() {
           <StatsPanel />
         </Drawer>
       </div>
-      <Toolbar />
     </div>
   );
 }

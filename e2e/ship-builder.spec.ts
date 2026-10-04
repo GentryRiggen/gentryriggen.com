@@ -264,9 +264,7 @@ test.describe("Ship Builder", () => {
       await partsPanel(page)
         .getByRole("button", { name: "Red", exact: true })
         .click();
-      await expect(
-        page.getByText("Painting · tap a part or the hull")
-      ).toBeVisible();
+      await expect(page.getByText(/^Painting/)).toBeVisible();
 
       const box = await page.getByTestId("ship-canvas").boundingBox();
       if (!box) throw new Error("canvas has no box");

@@ -23,10 +23,10 @@ export default function Notice() {
   // when text arrives; a region that mounts with its text may go unannounced.
   // The keyed span inside is replaced on every notice, so a repeat of the same
   // text is still a DOM change the screen reader announces.
-  // Below lg it sits under the drawer toggles instead of covering them.
+  // It sits beneath the view controls (and, below lg, the drawer toggles).
   return (
     <div
-      className={`absolute left-1/2 top-14 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 lg:top-3 ${
+      className={`absolute left-1/2 top-32 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 lg:top-[4.5rem] ${
         notice
           ? `rounded-lg border px-4 py-2 text-sm shadow-lg ${panelClass}`
           : "pointer-events-none"
