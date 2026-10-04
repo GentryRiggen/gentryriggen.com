@@ -25,6 +25,11 @@ const FROZEN_SECONDS = 3;
 /** Sim seconds into a trial that catches a top-heavy ship rolling over. */
 const CAPSIZE_SECONDS = 1.8;
 /**
+ * Sim seconds into an iceberg strike on a wall-less hull that catch her
+ * going down by the bow: pitched about 0.17 rad with the deck near the sea.
+ */
+const SINKING_SECONDS = 3.5;
+/**
  * Fraction of canvas pixels allowed to differ. SwiftShader is stable from run
  * to run (measured 0 differing pixels), so this only absorbs rare edge
  * antialiasing; a horizon seam, a missing light or a changed fog colour moves
@@ -65,11 +70,28 @@ interface Look {
   towerOfDecks?: boolean;
   /** Start a sea trial held at this many seconds (see testClock.ts). */
   trialSeconds?: number;
+  /** Run an iceberg trial (tap the hull mid-ship) rather than a waves one. */
+  iceberg?: boolean;
+}
+
+/** Taps the hull's side while aiming, until the trial has started. */
+async function tapHullMidships(page: Page) {
+  await expect(page.getByText("Tap where the iceberg hits")).toBeVisible();
+  const box = await page.getByTestId("ship-canvas").boundingBox();
+  if (!box) throw new Error("no canvas box");
+  // The camera glides to the side view first, so keep tapping until it takes.
+  await expect(async () => {
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.58);
+    const status = await page.evaluate(
+      () => window.__shipBuilderStore!.getState().trial.status
+    );
+    expect(status).toBe("running");
+  }).toPass({ timeout: 15_000 });
 }
 
 async function openFrozenScene(
   page: Page,
-  { time, sea, template, below, towerOfDecks, trialSeconds }: Look
+  { time, sea, template, below, towerOfDecks, trialSeconds, iceberg }: Look
 ) {
   await page.addInitScript(
     ({ freezeTime, trialSeconds }) => {
@@ -116,7 +138,12 @@ async function openFrozenScene(
   await page.getByRole("button", { name: `${sea} sea` }).click();
   if (trialSeconds !== undefined) {
     await page.getByRole("button", { name: "Sea trial" }).click();
-    await page.getByRole("menuitem", { name: "Waves" }).click();
+    if (iceberg) {
+      await page.getByRole("menuitem", { name: "Iceberg" }).click();
+      await tapHullMidships(page);
+    } else {
+      await page.getByRole("menuitem", { name: "Waves" }).click();
+    }
   }
   if (below) await page.getByRole("button", { name: "Below view" }).click();
   // Click the empty sky to drop focus rings and hover states off the controls.
@@ -183,5 +210,17 @@ test.describe("Ship Builder scene visuals", () => {
       trialSeconds: CAPSIZE_SECONDS,
     });
     await expectScene(page, "tower-capsizing-day-stormy.png");
+  });
+
+  test("wall-less ship going down by the bow after an iceberg", async ({
+    page,
+  }) => {
+    await openFrozenScene(page, {
+      time: "Day",
+      sea: "Calm",
+      iceberg: true,
+      trialSeconds: SINKING_SECONDS,
+    });
+    await expectScene(page, "iceberg-sinking-day-calm.png");
   });
 });
