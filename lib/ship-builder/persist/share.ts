@@ -5,9 +5,17 @@ import {
 import type { Ship } from "../model/types";
 import { parseShip } from "./schema";
 
-export const MAX_SHARE_LENGTH = 20000;
-/** The largest valid ship serialises to about 83 KB of JSON. */
-export const MAX_JSON_LENGTH = 200_000;
+/**
+ * The most encoded characters a link may carry. A ship of MAX_PARTS blocks
+ * on the longest, widest hull with store-style ids compresses to about 25,000,
+ * so this leaves headroom for longer ids and attach parts.
+ */
+export const MAX_SHARE_LENGTH = 32000;
+/**
+ * A ship of MAX_PARTS blocks with store-style ids serialises to about 103 KB
+ * of JSON; the cap is about 2.4 times that.
+ */
+export const MAX_JSON_LENGTH = 250_000;
 export const SHARE_PATH = "/ship-builder";
 
 export type HashResult =
@@ -19,8 +27,14 @@ export function encodeShip(ship: Ship): string {
   return compressToEncodedURIComponent(JSON.stringify(ship));
 }
 
-export function buildShareUrl(ship: Ship, origin: string): string {
-  return `${origin}${SHARE_PATH}#ship=${encodeShip(ship)}`;
+/**
+ * The link for a ship, or null when the encoded ship is too long for
+ * decodeShareHash to accept, since such a link would never open.
+ */
+export function buildShareUrl(ship: Ship, origin: string): string | null {
+  const encoded = encodeShip(ship);
+  if (encoded.length > MAX_SHARE_LENGTH) return null;
+  return `${origin}${SHARE_PATH}#ship=${encoded}`;
 }
 
 /**

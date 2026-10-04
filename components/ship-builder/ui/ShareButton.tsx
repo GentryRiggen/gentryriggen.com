@@ -6,6 +6,9 @@ import { buildShareUrl } from "@/lib/ship-builder/persist/share";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { buttonClass, inputClass, panelClass } from "./styles";
 
+const TOO_BIG_NOTICE =
+  "This ship is too big to share — save it to My Ships instead";
+
 type CopyStatus = "pending" | "copied" | "failed";
 
 export default function ShareButton() {
@@ -46,6 +49,11 @@ export default function ShareButton() {
       useShipBuilderStore.getState().ship,
       window.location.origin
     );
+    if (url === null) {
+      setLink(null);
+      useShipBuilderStore.getState().setNotice(TOO_BIG_NOTICE);
+      return;
+    }
     setLink(url);
     setCopyStatus("pending");
     try {
