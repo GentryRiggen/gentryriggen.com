@@ -55,6 +55,17 @@ describe("Toolbar", () => {
     expect(store().notice?.text).toBe("Saved to My Ships");
   });
 
+  it("updates the same My Ships entry when saved twice", async () => {
+    const user = userEvent.setup();
+    render(<Toolbar />);
+    const save = screen.getByRole("button", { name: "Save" });
+    await user.click(save);
+    const savedId = store().savedId;
+    await user.click(save);
+    expect(listShips()).toHaveLength(1);
+    expect(store().savedId).toBe(savedId);
+  });
+
   it("sets camera presets", async () => {
     const user = userEvent.setup();
     render(<Toolbar />);

@@ -6,6 +6,7 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+import { gridPart, testShip } from "@/lib/ship-builder/testing";
 
 function Harness() {
   useKeyboardShortcuts();
@@ -82,6 +83,45 @@ describe("useKeyboardShortcuts", () => {
     render(<Harness />);
     act(() => store().selectTool("deck-2x1"));
     fireEvent.keyDown(screen.getByLabelText("Ship name"), { key: "r" });
+    expect(store().tool).toMatchObject({ rotation: 0 });
+  });
+
+  it("deletes the selection with the Delete key", () => {
+    render(<Harness />);
+    act(() => {
+      store().selectTool("deck-1x1");
+      store().placeAt({ kind: "grid", level: 0, x: 0, z: 0 });
+      store().cancel();
+      store().select(store().ship.parts[0].id);
+    });
+    fireEvent.keyDown(window, { key: "Delete" });
+    expect(store().ship.parts).toHaveLength(0);
+  });
+
+  it("cancels a pending removal with Escape and keeps the tool", () => {
+    render(<Harness />);
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([
+          gridPart("a", "deck-1x1", 0, 2, 1),
+          gridPart("b", "deck-1x1", 1, 2, 1),
+        ]),
+        selectedId: "a",
+        tool: { kind: "place", type: "deck-2x1", rotation: 0 },
+        pendingRemoval: { kind: "part", ids: ["a", "b"] },
+      })
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store().pendingRemoval).toBeNull();
+    expect(store().tool).toMatchObject({ kind: "place", type: "deck-2x1" });
+    expect(store().ship.parts).toHaveLength(2);
+  });
+
+  it("does not rotate on Ctrl+R or Alt+R", () => {
+    render(<Harness />);
+    act(() => store().selectTool("deck-2x1"));
+    fireEvent.keyDown(window, { key: "r", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "r", altKey: true });
     expect(store().tool).toMatchObject({ rotation: 0 });
   });
 });
