@@ -14,7 +14,7 @@ const INITIAL_COMMAND_DELAY = 600;
 const INTER_COMMAND_DELAY = 400;
 
 /** Number of scripted boot commands; the prompt appears after the last one */
-const BOOT_COMMAND_COUNT = 6;
+const BOOT_COMMAND_COUNT = 5;
 
 interface TerminalProps {
   onKill?: () => void;
@@ -162,12 +162,22 @@ export default function Terminal({
           startDelay={INTER_COMMAND_DELAY}
           onComplete={advanceCommand}
         >
-          <p className="whitespace-pre-wrap leading-relaxed">
-            Off the clock, I&apos;m all about my family 👨‍👩‍👦‍👦 — hanging out with my
-            beautiful wife and our two boys. When I&apos;m not with them,
-            you&apos;ll find me at the CrossFit box 🏋️ or out on the golf course
-            ⛳.
-          </p>
+          <div className="space-y-2">
+            <p className="whitespace-pre-wrap leading-relaxed">
+              Off the clock, I&apos;m all about my family 👨‍👩‍👦‍👦 — hanging out with
+              my beautiful wife and our two boys. When I&apos;m not with them,
+              you&apos;ll find me at the CrossFit box 🏋️ or out on the golf
+              course ⛳.
+            </p>
+            <p className="leading-relaxed">
+              ⚓ I also love building fun things for my kids, like a
+              ship-building game. Type{" "}
+              <span className="text-green-600 dark:text-green-300">
+                &apos;ships&apos;
+              </span>{" "}
+              to set sail.
+            </p>
+          </div>
         </CommandBlock>
       )}
 
@@ -228,23 +238,6 @@ export default function Terminal({
               </div>
             ))}
           </div>
-        </CommandBlock>
-      )}
-
-      {/* Command 6: cat ships.txt */}
-      {showBootContent && visibleCommands >= 5 && (
-        <CommandBlock
-          command="cat ships.txt"
-          startDelay={INTER_COMMAND_DELAY}
-          onComplete={advanceCommand}
-        >
-          <p className="leading-relaxed">
-            ⚓ New: a ship-building game. Type{" "}
-            <span className="text-green-600 dark:text-green-300">
-              &apos;ships&apos;
-            </span>{" "}
-            to set sail.
-          </p>
         </CommandBlock>
       )}
 
