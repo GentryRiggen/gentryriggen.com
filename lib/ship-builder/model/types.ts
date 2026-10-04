@@ -6,6 +6,7 @@ export const PART_TYPES = [
   "cabin-1st",
   "cabin-2nd",
   "cabin-3rd",
+  "cabin-crew",
   "bridge",
   "bridge-3",
   "bridge-5",
@@ -143,6 +144,8 @@ interface PartDefBase {
   /** Height in levels, used for the part's center of mass. */
   height: number;
   passengers?: { cabinClass: CabinClass; count: number };
+  /** Crew beds per occupied cell. Crew are not passengers. */
+  crewBerths?: number;
   seats?: number;
   stokers?: number;
   /** Engine power units a funnel provides. */

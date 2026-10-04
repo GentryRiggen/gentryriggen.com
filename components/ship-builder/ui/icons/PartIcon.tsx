@@ -166,6 +166,16 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       band={{ fill: PALETTE.cabin.third }}
     />
   ),
+  "cabin-crew": () => (
+    <Box
+      x={9}
+      bottom={40}
+      width={24}
+      height={22}
+      fill={PALETTE.superstructure}
+      band={{ fill: PALETTE.cabin.crew }}
+    />
+  ),
   "bridge-3": () => <BridgeIcon width={3} />,
   bridge: () => <BridgeIcon width={4} />,
   "bridge-5": () => <BridgeIcon width={5} />,

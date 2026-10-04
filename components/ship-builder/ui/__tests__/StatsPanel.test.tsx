@@ -66,6 +66,25 @@ describe("StatsPanel", () => {
     expect(screen.getByTestId("stat-coverage")).toHaveTextContent(/^99%$/);
   });
 
+  it("shows crew beds against crew", () => {
+    render(<StatsPanel />);
+    expect(screen.getByTestId("stat-crew-beds")).toHaveTextContent(/^0$/);
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([
+          gridPart("a", "cabin-crew", 0, 0, 0),
+          gridPart("b", "cabin-crew", 0, 1, 0),
+        ]),
+      })
+    );
+    expect(screen.getByTestId("stat-crew-beds")).toHaveTextContent(/^120/);
+    expect(
+      within(screen.getByRole("list", { name: "Warnings" })).getByText(
+        /Crew need beds: 120 of 480/
+      )
+    ).toBeInTheDocument();
+  });
+
   it("lists warnings and the Titanic reference", () => {
     render(<StatsPanel />);
     const warnings = screen.getByRole("list", { name: "Warnings" });

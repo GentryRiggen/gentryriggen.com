@@ -24,7 +24,12 @@ export const PALETTE = {
   collapsible: "#c8b78e",
   gunwale: "#8a5a2b",
   boatCover: "#e4dcc4",
-  cabin: { first: "#b8912a", second: "#3f6fa8", third: "#6f7f5c" },
+  cabin: {
+    first: "#b8912a",
+    second: "#3f6fa8",
+    third: "#6f7f5c",
+    crew: "#8a4f7d",
+  },
   tint: { "ghost-ok": "#22c55e", "ghost-bad": "#ef4444", removal: "#ef4444" },
   emphasis: { hover: "#facc15", selected: "#38bdf8" },
   gridTarget: "#0284c7",

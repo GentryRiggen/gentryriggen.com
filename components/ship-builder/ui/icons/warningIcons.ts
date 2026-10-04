@@ -2,6 +2,7 @@ import {
   CirclePlus,
   Factory,
   Fan,
+  BedDouble,
   LifeBuoy,
   Navigation,
   Navigation2,
@@ -17,5 +18,6 @@ export const warningIcons: Record<WarningCode, LucideIcon> = {
   "no-propellers": Fan,
   "needs-propellers": CirclePlus,
   "no-rudder": Navigation2,
+  "crew-berths": BedDouble,
   "top-heavy": TriangleAlert,
 };

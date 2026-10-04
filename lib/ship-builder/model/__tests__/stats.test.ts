@@ -61,6 +61,42 @@ describe("computeStats", () => {
     expect(stats.peopleAboard).toBe(800);
   });
 
+  it("counts crew berths without adding passengers", () => {
+    const stats = computeStats(
+      testShip([
+        gridPart("a", "cabin-crew", 0, 0, 0),
+        gridPart("b", "cabin-crew", 0, 1, 0),
+      ])
+    );
+    expect(stats.crewBerths).toBe(120);
+    expect(stats.passengers.total).toBe(0);
+    expect(stats.peopleAboard).toBe(480);
+  });
+
+  it("warns until every crew member has a bed", () => {
+    const find = (count: number) =>
+      computeStats(
+        testShip(
+          Array.from({ length: count }, (_, x) =>
+            gridPart(`q${x}`, "cabin-crew", 0, x, 0)
+          )
+        )
+      ).warnings.find((w) => w.code === "crew-berths");
+    expect(find(0)?.message).toBe("Crew need beds: 0 of 480");
+    expect(find(7)?.message).toBe("Crew need beds: 420 of 480");
+    expect(find(8)).toBeUndefined();
+  });
+
+  it("weighs crew quarters like other cabins", () => {
+    const withCrew = computeStats(
+      testShip([gridPart("a", "cabin-crew", 0, 0, 0)])
+    );
+    const withCabin = computeStats(
+      testShip([gridPart("a", "cabin-1st", 0, 0, 0)])
+    );
+    expect(withCrew.stabilityRatio).toBe(withCabin.stabilityRatio);
+  });
+
   it("adds stokers per funnel and computes speed", () => {
     const parts = [0, 1, 2, 3].flatMap((i) => [
       gridPart(`d${i}`, "deck-1x1", 0, i * 3, 1),
@@ -130,7 +166,7 @@ describe("computeStats", () => {
     expect(wide.stability).toBe("Stable");
   });
 
-  it("warns about lifeboats, bridge, funnels in order", () => {
+  it("warns about lifeboats, bridge, funnels, crew beds in order", () => {
     expect(computeStats(testShip()).warnings).toEqual([
       {
         code: "lifeboats",
@@ -138,6 +174,7 @@ describe("computeStats", () => {
       },
       { code: "no-bridge", message: "No bridge — someone has to steer" },
       { code: "no-funnels", message: "No funnels — she isn't going anywhere" },
+      { code: "crew-berths", message: "Crew need beds: 0 of 480" },
     ]);
   });
 

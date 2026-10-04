@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BedDouble,
   Gauge,
   HardHat,
   LifeBuoy,
@@ -113,6 +114,13 @@ export default function StatsPanel() {
             label="Crew"
             testId="stat-crew"
             value={fmt(stats.crew)}
+          />
+          <StatRow
+            Icon={BedDouble}
+            label="Crew beds"
+            testId="stat-crew-beds"
+            value={fmt(stats.crewBerths)}
+            detail={`of ${fmt(stats.crew)} crew`}
           />
           <StatRow
             Icon={UsersRound}

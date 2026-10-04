@@ -44,6 +44,7 @@ export type WarningCode =
   | "no-propellers"
   | "needs-propellers"
   | "no-rudder"
+  | "crew-berths"
   | "top-heavy";
 
 export interface StatWarning {
@@ -54,6 +55,7 @@ export interface StatWarning {
 export interface Stats {
   passengers: { first: number; second: number; third: number; total: number };
   crew: number;
+  crewBerths: number;
   peopleAboard: number;
   lifeboats: number;
   lifeboatSeats: number;
@@ -111,6 +113,7 @@ export function computeStats(ship: Ship): Stats {
   let lifeboats = 0;
   let lifeboatSeats = 0;
   let stokers = 0;
+  let crewBerths = 0;
   let funnels = 0;
   let power = 0;
   let propellers = 0;
@@ -129,6 +132,7 @@ export function computeStats(ship: Ship): Stats {
     if (def.passengers) {
       passengers[def.passengers.cabinClass] += def.passengers.count * cells;
     }
+    if (def.crewBerths) crewBerths += def.crewBerths * cells;
     if (def.seats) {
       lifeboats += 1;
       lifeboatSeats += def.seats;
@@ -200,6 +204,12 @@ export function computeStats(ship: Ship): Stats {
       message: "No rudder — she can't steer",
     });
   }
+  if (crewBerths < crew) {
+    warnings.push({
+      code: "crew-berths",
+      message: `Crew need beds: ${crewBerths.toLocaleString("en-US")} of ${crew.toLocaleString("en-US")}`,
+    });
+  }
   if (stability !== "Stable") {
     warnings.push({
       code: "top-heavy",
@@ -213,6 +223,7 @@ export function computeStats(ship: Ship): Stats {
   return {
     passengers,
     crew,
+    crewBerths,
     peopleAboard,
     lifeboats,
     lifeboatSeats,

@@ -40,7 +40,12 @@ export default function BlockDetails({
   const surface = { tint, emphasis };
   const isBridge = def.role === "bridge";
   const { x: sizeX, z: sizeZ } = size;
-  const hasWindows = isBridge || Boolean(def.passengers);
+  const stripeColor = def.passengers
+    ? PALETTE.cabin[def.passengers.cabinClass]
+    : def.crewBerths
+      ? PALETTE.cabin.crew
+      : null;
+  const hasWindows = isBridge || stripeColor !== null;
   const windows = useMemo(
     () =>
       hasWindows
@@ -71,7 +76,7 @@ export default function BlockDetails({
           </mesh>
         </>
       )}
-      {def.passengers && (
+      {stripeColor && (
         <mesh position={[0, CLASS_STRIPE_Y, 0]}>
           <boxGeometry
             args={[
@@ -80,13 +85,10 @@ export default function BlockDetails({
               size.z * TRIM_SCALE,
             ]}
           />
-          <Surface
-            color={PALETTE.cabin[def.passengers.cabinClass]}
-            {...surface}
-          />
+          <Surface color={stripeColor} {...surface} />
         </mesh>
       )}
-      {!def.passengers && (
+      {!stripeColor && (
         <mesh position={[0, height - 0.07, 0]}>
           <boxGeometry
             args={[size.x * TRIM_SCALE, DECK_LINE_HEIGHT, size.z * TRIM_SCALE]}

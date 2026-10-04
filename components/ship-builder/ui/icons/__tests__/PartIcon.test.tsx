@@ -38,7 +38,7 @@ describe("PartIcon", () => {
 describe("warningIcons", () => {
   it("has a distinct icon per warning code", () => {
     const icons = Object.values(warningIcons);
-    expect(icons).toHaveLength(7);
+    expect(icons).toHaveLength(8);
     expect(new Set(icons).size).toBe(icons.length);
   });
 });
