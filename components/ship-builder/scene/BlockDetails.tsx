@@ -8,6 +8,7 @@ import {
   CABIN_WINDOW_ROWS,
   type BlockSize,
 } from "./blockDetailGeometry";
+import { Balconies, type Face } from "./cruiseParts";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
@@ -17,6 +18,8 @@ interface BlockDetailsProps {
   height: number;
   tint: PartTint;
   emphasis: PartEmphasis;
+  /** Faces to give a balcony, for balcony cabins. */
+  balconyFaces?: Face[];
 }
 
 /** Trim that stands just proud of the 0.96 body, so it never z-fights. */
@@ -36,6 +39,7 @@ export default function BlockDetails({
   height,
   tint,
   emphasis,
+  balconyFaces,
 }: BlockDetailsProps) {
   const surface = { tint, emphasis };
   const isBridge = def.role === "bridge";
@@ -66,6 +70,9 @@ export default function BlockDetails({
 
   return (
     <>
+      {balconyFaces && (
+        <Balconies faces={balconyFaces} tint={tint} emphasis={emphasis} />
+      )}
       {windows && (
         <>
           <mesh geometry={windows.frames}>

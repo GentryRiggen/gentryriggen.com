@@ -6,6 +6,7 @@ import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   beamOf,
+  buildOccupancy,
   gridLength,
   type Occupancy,
 } from "@/lib/ship-builder/model/grid";
@@ -19,6 +20,16 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import BlockDetails from "./BlockDetails";
+import {
+  Azipod,
+  ClimbingWall,
+  EnclosedLifeboat,
+  ModernFunnel,
+  openFaces,
+  PoolMesh,
+  RaftCanister,
+  Waterslide,
+} from "./cruiseParts";
 import DavitMesh from "./DavitMesh";
 import FunnelMesh from "./FunnelMesh";
 import LifeboatMesh from "./LifeboatMesh";
@@ -35,6 +46,7 @@ import {
   FreefallBoatMesh,
   HatchCoverMesh,
 } from "./cargoParts";
+import type { Face } from "./cruiseParts";
 import { PALETTE } from "./palette";
 import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -69,10 +81,22 @@ interface BlockProps {
   color?: PaintColor;
   tint: PartTint;
   emphasis: PartEmphasis;
+  /** Balcony faces, for parts that have them. */
+  balconyFaces?: Face[];
 }
 
-function Block({ def, size, color, tint, emphasis }: BlockProps) {
+function Block({ def, size, color, tint, emphasis, balconyFaces }: BlockProps) {
   const surface = { tint, emphasis };
+  if (def.role === "amenity") {
+    return (
+      <PoolMesh
+        size={size}
+        color={color ? paintHex(color) : undefined}
+        tint={tint}
+        emphasis={emphasis}
+      />
+    );
+  }
   // Blocks fill their level so stacks sit flush and fittings rest on top; the
   // 0.96 footprint inset keeps a visible seam between neighbours. The bridge
   // is a lower wheelhouse: nothing stacks or attaches on it.
@@ -92,6 +116,7 @@ function Block({ def, size, color, tint, emphasis }: BlockProps) {
         height={height}
         tint={tint}
         emphasis={emphasis}
+        balconyFaces={balconyFaces}
       />
     </group>
   );
@@ -232,6 +257,27 @@ function Fitting({ type, side, color, tint, emphasis }: FittingProps) {
       return (
         <FreefallBoatMesh color={painted} tint={tint} emphasis={emphasis} />
       );
+    case "waterslide":
+      return <Waterslide color={painted} tint={tint} emphasis={emphasis} />;
+    case "climbing-wall":
+      return <ClimbingWall color={painted} tint={tint} emphasis={emphasis} />;
+    case "lifeboat-enclosed":
+      return (
+        <EnclosedLifeboat color={painted} tint={tint} emphasis={emphasis} />
+      );
+    case "raft-canister":
+      return (
+        <RaftCanister
+          color={painted}
+          outward={outward}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
+    case "funnel-modern":
+      return <ModernFunnel color={painted} tint={tint} emphasis={emphasis} />;
+    case "azipod":
+      return <Azipod color={painted} tint={tint} emphasis={emphasis} />;
     default:
       return null;
   }
@@ -288,6 +334,11 @@ function PartMesh({
             color={color}
             tint={tint}
             emphasis={emphasis}
+            balconyFaces={
+              part.type === "cabin-balcony"
+                ? openFaces(part, occupancy ?? buildOccupancy(ship))
+                : undefined
+            }
           />
         )}
       </group>
