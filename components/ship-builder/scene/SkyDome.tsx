@@ -14,8 +14,9 @@ const VERTEX = /* glsl */ `
   }
 `;
 
-// Tone mapping and colour space are applied like any lit surface, so the
-// horizon matches the fog (which is blended before the same tone mapping).
+// No tone mapping: three.js blends the fog after tone mapping, so the fogged
+// far sea is the plain horizon colour and the sky must be too, or the ocean's
+// edge shows against it. Only the colour space is converted.
 const FRAGMENT = /* glsl */ `
   uniform vec3 uZenith;
   uniform vec3 uHorizon;
@@ -35,7 +36,6 @@ const FRAGMENT = /* glsl */ `
     color += vec3(0.25, 0.32, 0.5) * uMoon * pow(moon, 120.0);
     color = mix(color, vec3(0.9, 0.93, 1.0), smoothstep(0.9993, 0.9996, moon) * uMoon);
     gl_FragColor = vec4(color, 1.0);
-    #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
 `;
@@ -54,6 +54,7 @@ export default function SkyDome({ environment }: SkyDomeProps) {
       side: BackSide,
       depthWrite: false,
       fog: false,
+      toneMapped: false,
       uniforms: {
         uZenith: { value: new Color() },
         uHorizon: { value: new Color() },
