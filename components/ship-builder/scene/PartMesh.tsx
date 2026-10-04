@@ -397,7 +397,8 @@ function Fitting({
 }
 
 /** Compile-time exhaustiveness check; renders nothing if it ever runs. */
-function assertNever(_type: never): null {
+function assertNever(type: never): null {
+  void type;
   return null;
 }
 

@@ -125,10 +125,12 @@ function holdsEdgePartAt(
   x: number,
   z: number
 ): boolean {
-  return (
-    partAt(ship, block.id, `davit:${x}:${z}`)?.type === "davit" ||
-    partAt(ship, block.id, `edge:${x}:${z}`)?.type === "raft-canister"
-  );
+  return [`davit:${x}:${z}`, `edge:${x}:${z}`].some((pointId) => {
+    const held = partAt(ship, block.id, pointId);
+    if (!held) return false;
+    const def = getPartDef(held.type);
+    return def.placement === "attach" && def.holdsEdge === true;
+  });
 }
 
 /**
@@ -185,6 +187,12 @@ function isCargo(type: PlacedPart["type"]): boolean {
   return def.placement === "grid" && def.role === "cargo";
 }
 
+/** Whether containers may stack on this grid part (a hatch cover). */
+function carriesCargo(type: PlacedPart["type"]): boolean {
+  const def = getPartDef(type);
+  return def.placement === "grid" && def.carriesCargo === true;
+}
+
 /**
  * Containers go on the main deck inside the hull, or on hatch covers and
  * other containers; nothing but containers goes on a container. A cell with
@@ -209,7 +217,7 @@ function checkCargo(
       }
       continue;
     }
-    if (below && !belowIsCargo && below.type !== "hatch-cover") {
+    if (below && !belowIsCargo && !carriesCargo(below.type)) {
       return fail("Containers stack on hatch covers or other containers");
     }
   }
@@ -233,7 +241,8 @@ function decorProblem(
       belowDef?.placement === "grid" && belowDef.role === "deck";
     if (!isOnDeckBlock) return "Decorations go on the deck or a deck block";
   }
-  if (type === "stairs") {
+  const def = getPartDef(type);
+  if (def.placement === "grid" && def.climbsToFacedBlock) {
     const faced = occupancy.get(cellKey(facingCell(cell, rotation)));
     const facedDef = faced && getPartDef(faced.type);
     const isClimbable =

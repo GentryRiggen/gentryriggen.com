@@ -2,6 +2,7 @@ import type { ShipKind } from "./kinds";
 import {
   PART_TYPES,
   type AttachPointType,
+  type GridPartDef,
   type PartCategory,
   type PartDef,
   type PartType,
@@ -86,7 +87,7 @@ function decorDef(
   name: string,
   description: string,
   height: number
-): PartDef {
+): GridPartDef {
   return {
     type,
     category: "decor",
@@ -189,6 +190,8 @@ export const CATALOG: Record<PartType, PartDef> = {
     stokers: 40,
     power: 1,
     emptyHint: "Place a deck block with nothing on top of it first",
+    exposes: "funnel",
+    smoke: "small",
   },
   mast: {
     type: "mast",
@@ -200,6 +203,8 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.5,
     height: 7,
     emptyHint: "Every mast spot is taken",
+    exposes: "mast",
+    hasCrowsNest: true,
   },
   davit: {
     type: "davit",
@@ -211,6 +216,8 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.1,
     height: 1,
     emptyHint: "Build a block on an outer edge of the ship",
+    exposes: "davit",
+    holdsEdge: true,
   },
   "lifeboat-standard": {
     type: "lifeboat-standard",
@@ -250,6 +257,8 @@ export const CATALOG: Record<PartType, PartDef> = {
     stokers: 75,
     power: 2,
     emptyHint: "Make a 2×2 of deck blocks with nothing on top",
+    exposes: "funnel",
+    smoke: "large",
   },
   "lifeboat-large": {
     type: "lifeboat-large",
@@ -274,6 +283,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.3,
     height: 0.5,
     emptyHint: "Every propeller spot is taken",
+    propels: true,
   },
   rudder: {
     type: "rudder",
@@ -285,6 +295,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.2,
     height: 0.9,
     emptyHint: "The rudder spot is taken",
+    steers: true,
   },
   "turret-small": {
     type: "turret-small",
@@ -321,6 +332,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.6,
     height: 6,
     emptyHint: "Every mast spot is taken",
+    exposes: "mast",
   },
   helipad: {
     type: "helipad",
@@ -333,6 +345,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 1,
     height: 0.15,
     emptyHint: "Make a 2×2 of deck blocks with nothing on top",
+    exposes: "helipad",
   },
   helicopter: {
     type: "helicopter",
@@ -381,6 +394,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     placement: "grid",
     role: "deck",
     footprint: { x: 2, z: 2 },
+    carriesCargo: true,
     mass: 0.3,
     height: 0.3,
   },
@@ -483,6 +497,7 @@ export const CATALOG: Record<PartType, PartDef> = {
     height: 0.4,
     seats: 25,
     emptyHint: "Build a block on an outer edge of the ship",
+    holdsEdge: true,
   },
   "funnel-modern": {
     type: "funnel-modern",
@@ -496,6 +511,8 @@ export const CATALOG: Record<PartType, PartDef> = {
     height: 3.2,
     power: 4,
     emptyHint: "Place a deck block with nothing on top of it first",
+    exposes: "funnel",
+    smoke: "small",
   },
   azipod: {
     type: "azipod",
@@ -508,6 +525,8 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.5,
     height: 0.7,
     emptyHint: "Every propeller spot is taken",
+    propels: true,
+    steers: true,
   },
   dome: {
     type: "dome",
@@ -632,12 +651,15 @@ export const CATALOG: Record<PartType, PartDef> = {
     ),
     kinds: ["liner"],
   },
-  stairs: decorDef(
-    "stairs",
-    "Stairs",
-    "Climbs up against the deck or cabin block it faces",
-    1
-  ),
+  stairs: {
+    ...decorDef(
+      "stairs",
+      "Stairs",
+      "Climbs up against the deck or cabin block it faces",
+      1
+    ),
+    climbsToFacedBlock: true,
+  },
 };
 
 export function getPartDef(type: PartType): PartDef {

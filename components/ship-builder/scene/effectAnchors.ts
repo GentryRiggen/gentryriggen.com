@@ -4,7 +4,8 @@ import {
   buildOccupancy,
   gridLength,
 } from "@/lib/ship-builder/model/grid";
-import type { Ship } from "@/lib/ship-builder/model/types";
+import { getPartDef } from "@/lib/ship-builder/model/catalog";
+import type { PartType, Ship } from "@/lib/ship-builder/model/types";
 import { modelToWorld } from "./coords";
 
 /** Height of a funnel's top above its attach point (see PartMesh). */
@@ -32,6 +33,11 @@ export interface EffectAnchors {
   propellers: number[];
 }
 
+function emitsEffect(type: PartType): boolean {
+  const def = getPartDef(type);
+  return def.placement === "attach" && (def.propels === true || !!def.smoke);
+}
+
 /** Where smoke and bubbles come from, resolved once per ship change. */
 export function collectEffectAnchors(ship: Ship): EffectAnchors {
   const anchors: EffectAnchors = {
@@ -39,14 +45,7 @@ export function collectEffectAnchors(ship: Ship): EffectAnchors {
     largeFunnels: [],
     propellers: [],
   };
-  const emitters = ship.parts.filter(
-    (part) =>
-      part.type === "funnel" ||
-      part.type === "funnel-large" ||
-      part.type === "propeller" ||
-      part.type === "funnel-modern" ||
-      part.type === "azipod"
-  );
+  const emitters = ship.parts.filter((part) => emitsEffect(part.type));
   if (emitters.length === 0) return anchors;
 
   const occupancy = buildOccupancy(ship);
@@ -57,11 +56,12 @@ export function collectEffectAnchors(ship: Ship): EffectAnchors {
     const point = resolveAttachPoint(ship, part.anchor, occupancy);
     if (!point) continue;
     const base = modelToWorld(length, beam, point.position);
-    if (part.type === "propeller" || part.type === "azipod") {
-      anchors.propellers.push(...base);
-    } else if (part.type === "funnel" || part.type === "funnel-modern") {
+    const def = getPartDef(part.type);
+    if (def.placement !== "attach") continue;
+    if (def.propels) anchors.propellers.push(...base);
+    if (def.smoke === "small") {
       anchors.smallFunnels.push(...funnelTop(base, FUNNEL_TOP_OFFSET.small));
-    } else {
+    } else if (def.smoke === "large") {
       anchors.largeFunnels.push(...funnelTop(base, FUNNEL_TOP_OFFSET.large));
     }
   }

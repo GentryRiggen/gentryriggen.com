@@ -215,7 +215,17 @@ export interface GridPartDef extends PartDefBase {
   role: "deck" | "cabin" | "bridge" | "cargo" | "amenity" | "decor";
   /** Size at rotation 0: x along the length, z across the beam. */
   footprint: { x: number; z: number };
+  /** Containers may stack on this part (a hatch cover). */
+  carriesCargo?: boolean;
+  /** Must face a deck or cabin block to climb to (stairs). */
+  climbsToFacedBlock?: boolean;
 }
+
+/** Which family of attach points a placed part exposes for other parts. */
+export type PointProvider = "mast" | "funnel" | "davit" | "helipad";
+
+/** How big the smoke plume of an engine-room funnel is. */
+export type SmokeSize = "small" | "large";
 
 export interface AttachPartDef extends PartDefBase {
   placement: "attach";
@@ -224,6 +234,18 @@ export interface AttachPartDef extends PartDefBase {
   allowedPointIds?: string[];
   /** Shown when there's nowhere free to put this part. */
   emptyHint: string;
+  /** The attach points this part offers other parts, when it offers any. */
+  exposes?: PointProvider;
+  /** A mast that offers a crow's nest point. */
+  hasCrowsNest?: boolean;
+  /** Counts toward the ship's propellers, and bubbles at the stern. */
+  propels?: boolean;
+  /** Counts toward the ship's rudders. */
+  steers?: boolean;
+  /** Sits on a cell's outer edge, so a cell with one can't be built over. */
+  holdsEdge?: boolean;
+  /** Puffs smoke of this size. */
+  smoke?: SmokeSize;
 }
 
 export type PartDef = GridPartDef | AttachPartDef;

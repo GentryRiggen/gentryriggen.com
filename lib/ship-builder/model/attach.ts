@@ -18,6 +18,7 @@ import {
   type AttachPoint,
   type Cell,
   type PartType,
+  type PointProvider,
   type PlacedPart,
   type Ship,
   type Side,
@@ -28,11 +29,6 @@ import { partAt, partById } from "./partIndex";
 const DAVIT_HEIGHT = 0.8;
 /** Height of a bridge above its level (see BRIDGE_HEIGHT in PartMesh). */
 const BRIDGE_ROOF = 0.8;
-/** Mast heights, matching the meshes. */
-const MAST_HEIGHTS: Partial<Record<PartType, number>> = {
-  mast: 7,
-  "radar-mast": 6,
-};
 /** Festoon lights hang this fraction of the way up a mast or funnel. */
 const STRING_FRACTION = 0.85;
 /** Underwater lights sit this far below the main deck (model y). */
@@ -342,18 +338,20 @@ function davitPoints(
 
 /** The mast heights a mast-like part has, or undefined for anything else. */
 function mastHeight(part: PlacedPart): number | undefined {
-  return MAST_HEIGHTS[part.type];
+  const def = getPartDef(part.type);
+  return def.placement === "attach" && def.exposes === "mast"
+    ? def.height
+    : undefined;
 }
 
-const FUNNEL_TYPES: readonly PartType[] = [
-  "funnel",
-  "funnel-large",
-  "funnel-modern",
-];
+function exposesFunnelPoints(part: PlacedPart): boolean {
+  const def = getPartDef(part.type);
+  return def.placement === "attach" && def.exposes === "funnel";
+}
 
 /** Height of anything lights can be strung from: a mast or a funnel. */
 function poleHeight(part: PlacedPart): number | undefined {
-  return FUNNEL_TYPES.includes(part.type)
+  return exposesFunnelPoints(part)
     ? getPartDef(part.type).height
     : mastHeight(part);
 }
@@ -472,7 +470,7 @@ function mastPoints(
       position: at(height - MAST_LIGHT_DROP),
     },
   ];
-  if (part.type === "mast") {
+  if (getPartDef(part.type).placement === "attach" && hasCrowsNest(part)) {
     points.push({
       id: "nest",
       type: "nest-mount",
@@ -486,6 +484,11 @@ function mastPoints(
     points.push(stringPoint(base.position, height));
   }
   return points;
+}
+
+function hasCrowsNest(part: PlacedPart): boolean {
+  const def = getPartDef(part.type);
+  return def.placement === "attach" && def.hasCrowsNest === true;
 }
 
 /** A placed helipad exposes one point, at its centre top, for a helicopter. */
@@ -524,11 +527,16 @@ function nextDavit(
   );
   if (!block) return undefined;
   const davit = partAt(ship, block.id, `davit:${x + 1}:${z}`);
-  if (davit?.type !== "davit" || davit.anchor.kind !== "attach") {
+  if (!davit || !isDavit(davit) || davit.anchor.kind !== "attach") {
     return undefined;
   }
   const point = resolveAttachPoint(ship, davit.anchor, occupancy);
   return isNextDavit(base, point) ? davit : undefined;
+}
+
+function isDavit(part: PlacedPart): boolean {
+  const def = getPartDef(part.type);
+  return def.placement === "attach" && def.exposes === "davit";
 }
 
 /** Same side, level and edge, one cell further aft. */
@@ -545,6 +553,18 @@ function isNextDavit(
   );
 }
 
+/** How each kind of point-offering part works out its points. */
+const POINT_PROVIDERS: Record<
+  PointProvider,
+  (ship: Ship, part: PlacedPart, occupancy: Occupancy) => AttachPoint[]
+> = {
+  davit: davitPoints,
+  helipad: helipadPoints,
+  funnel: funnelPoints,
+  mast: (ship, part, occupancy) =>
+    mastPoints(ship, part, mastHeight(part) ?? 0, occupancy),
+};
+
 /** Every attach point a parent currently exposes, taken or not. */
 export function attachPointsOf(
   ship: Ship,
@@ -554,13 +574,9 @@ export function attachPointsOf(
   if (parentId === HULL_ID) return hullPoints(ship);
   const part = partById(ship, parentId);
   if (!part) return [];
-  if (part.type === "davit") return davitPoints(ship, part, occupancy);
-  if (part.type === "helipad") return helipadPoints(ship, part, occupancy);
-  if (FUNNEL_TYPES.includes(part.type)) {
-    return funnelPoints(ship, part, occupancy);
-  }
-  const height = mastHeight(part);
-  if (height !== undefined) return mastPoints(ship, part, height, occupancy);
+  const def = getPartDef(part.type);
+  const provider = def.placement === "attach" ? def.exposes : undefined;
+  if (provider) return POINT_PROVIDERS[provider](ship, part, occupancy);
   return blockPoints(ship, part, occupancy);
 }
 
