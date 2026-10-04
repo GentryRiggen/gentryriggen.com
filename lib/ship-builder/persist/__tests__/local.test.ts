@@ -1,5 +1,7 @@
 import {
   AUTOSAVE_KEY,
+  clearUnreadableShips,
+  countUnreadableShips,
   deleteShip,
   listShips,
   loadAutosave,
@@ -159,6 +161,40 @@ describe("My Ships", () => {
       expect(renameShip(id, "Renamed")).toBe(true);
       expect(rawEntries()).toContainEqual(twin);
       expect(listShips().map((s) => s.name)).toEqual(["Renamed"]);
+    });
+
+    it("counts them", () => {
+      expect(countUnreadableShips()).toBe(0);
+      storeWithFuture();
+      localStorage.setItem(
+        SHIPS_KEY,
+        JSON.stringify([...rawEntries(), "junk", { id: 7, ship }])
+      );
+      expect(countUnreadableShips()).toBe(3);
+    });
+
+    it("clears only them", () => {
+      storeWithFuture();
+      const valid = rawEntries()[1];
+      localStorage.setItem(
+        SHIPS_KEY,
+        JSON.stringify([...rawEntries(), "junk"])
+      );
+      expect(clearUnreadableShips()).toBe(true);
+      expect(rawEntries()).toEqual([valid]);
+      expect(countUnreadableShips()).toBe(0);
+      expect(listShips().map((s) => s.name)).toEqual(["Valid"]);
+    });
+
+    it("refuses to clear when reading throws", () => {
+      storeWithFuture();
+      jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+      const setItem = jest.spyOn(Storage.prototype, "setItem");
+      expect(countUnreadableShips()).toBe(0);
+      expect(clearUnreadableShips()).toBe(false);
+      expect(setItem).not.toHaveBeenCalled();
     });
 
     it("skips non-finite savedAt but keeps it in storage", () => {

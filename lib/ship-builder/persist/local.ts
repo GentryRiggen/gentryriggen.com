@@ -94,27 +94,47 @@ function parseShipList(raw: unknown): SavedShip[] {
   if (!Array.isArray(raw)) return [];
   const newestById = new Map<string, SavedShip>();
   for (const entry of raw) {
-    if (
-      !isRecord(entry) ||
-      typeof entry.id !== "string" ||
-      typeof entry.savedAt !== "number" ||
-      !Number.isFinite(entry.savedAt)
-    ) {
-      continue;
-    }
-    const parsed = parseShip(entry.ship);
-    if (!parsed.ok) continue;
-    const existing = newestById.get(entry.id);
-    if (existing && existing.savedAt >= entry.savedAt) continue;
-    newestById.set(entry.id, {
-      id: entry.id,
-      // The validated ship name is length-checked; entry.name is not.
-      name: parsed.ship.name,
-      savedAt: entry.savedAt,
-      ship: parsed.ship,
-    });
+    const parsed = parseEntry(entry);
+    if (!parsed) continue;
+    const existing = newestById.get(parsed.id);
+    if (existing && existing.savedAt >= parsed.savedAt) continue;
+    newestById.set(parsed.id, parsed);
   }
   return [...newestById.values()].sort((a, b) => b.savedAt - a.savedAt);
+}
+
+function parseEntry(entry: unknown): SavedShip | null {
+  if (
+    !isRecord(entry) ||
+    typeof entry.id !== "string" ||
+    typeof entry.savedAt !== "number" ||
+    !Number.isFinite(entry.savedAt)
+  ) {
+    return null;
+  }
+  const parsed = parseShip(entry.ship);
+  if (!parsed.ok) return null;
+  return {
+    id: entry.id,
+    // The validated ship name is length-checked; entry.name is not.
+    name: parsed.ship.name,
+    savedAt: entry.savedAt,
+    ship: parsed.ship,
+  };
+}
+
+/** Stored entries this build can't read; hidden from the list. */
+export function countUnreadableShips(): number {
+  const raw = readJson(SHIPS_KEY);
+  if (!Array.isArray(raw)) return 0;
+  return raw.filter((entry) => !parseEntry(entry)).length;
+}
+
+/** Removes only the entries {@link countUnreadableShips} counts. */
+export function clearUnreadableShips(): boolean {
+  return updateShips((entries) =>
+    entries.filter((entry) => parseEntry(entry) !== null)
+  );
 }
 
 function entryId(entry: unknown): unknown {

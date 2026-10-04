@@ -2,7 +2,12 @@ import { act } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MyShipsDialog from "../MyShipsDialog";
-import { listShips, saveShip } from "@/lib/ship-builder/persist/local";
+import {
+  countUnreadableShips,
+  listShips,
+  saveShip,
+  SHIPS_KEY,
+} from "@/lib/ship-builder/persist/local";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -56,6 +61,38 @@ describe("MyShipsDialog", () => {
       within(dialog).getByRole("button", { name: "Confirm delete Olympic" })
     );
     expect(listShips()).toHaveLength(0);
+  });
+
+  it("hides the unreadable notice when every ship parses", () => {
+    saveShip({ ...testShip(), name: "Olympic" }, null);
+    render(<MyShipsDialog onClose={jest.fn()} />);
+    expect(screen.queryByText(/couldn't be read/)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Clear unreadable" })
+    ).toBeNull();
+  });
+
+  it("clears unreadable ships only after confirming", async () => {
+    saveShip({ ...testShip(), name: "Olympic" }, null);
+    const stored = JSON.parse(localStorage.getItem(SHIPS_KEY)!);
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([...stored, "junk", { id: "x", ship: { v: 99 } }])
+    );
+    const user = userEvent.setup();
+    render(<MyShipsDialog onClose={jest.fn()} />);
+    expect(
+      screen.getByText("2 saved ships couldn't be read.")
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear unreadable" }));
+    expect(countUnreadableShips()).toBe(2);
+    await user.click(
+      screen.getByRole("button", { name: "Confirm clear unreadable" })
+    );
+    expect(countUnreadableShips()).toBe(0);
+    expect(listShips().map((s) => s.name)).toEqual(["Olympic"]);
+    expect(screen.queryByText(/couldn't be read/)).toBeNull();
   });
 
   it("labels unnamed ships as Untitled liner", () => {

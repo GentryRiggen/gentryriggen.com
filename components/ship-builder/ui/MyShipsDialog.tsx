@@ -2,6 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
+  clearUnreadableShips,
+  countUnreadableShips,
   deleteShip,
   listShips,
   renameShip,
@@ -49,6 +51,10 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [unreadableCount, setUnreadableCount] = useState(() =>
+    countUnreadableShips()
+  );
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const loadShip = useShipBuilderStore((s) => s.loadShip);
   const rename = useShipBuilderStore((s) => s.rename);
   const savedId = useShipBuilderStore((s) => s.savedId);
@@ -94,6 +100,11 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
   function handleDelete(entry: SavedShip) {
     if (deleteShip(entry.id)) setShips(listShips());
     setConfirmingId(null);
+  }
+
+  function handleClearUnreadable() {
+    if (clearUnreadableShips()) setUnreadableCount(countUnreadableShips());
+    setIsConfirmingClear(false);
   }
 
   return (
@@ -194,6 +205,33 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
               );
             })}
           </ul>
+        )}
+
+        {unreadableCount > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+            <p className="flex-1">
+              {unreadableCount} saved {unreadableCount === 1 ? "ship" : "ships"}{" "}
+              couldn&apos;t be read.
+            </p>
+            {isConfirmingClear ? (
+              <button
+                type="button"
+                aria-label="Confirm clear unreadable"
+                onClick={handleClearUnreadable}
+                className={dangerButtonClass}
+              >
+                Confirm
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsConfirmingClear(true)}
+                className={buttonClass}
+              >
+                Clear unreadable
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
