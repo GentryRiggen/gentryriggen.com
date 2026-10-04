@@ -8,9 +8,10 @@ import {
 } from "../model/grid";
 import { PAINT_COLOR_IDS } from "../model/paint";
 import { MAX_NAME_LENGTH, validateShip } from "../model/placement";
+import { SHIP_KINDS } from "../model/kinds";
 import { BOW_IDS, PART_TYPES, STERN_IDS, type Ship } from "../model/types";
 
-export const CURRENT_VERSION = 5;
+export const CURRENT_VERSION = 6;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -42,6 +43,7 @@ const placedPart = z.object({
 
 export const shipSchema = z.object({
   v: z.literal(CURRENT_VERSION),
+  kind: z.enum(SHIP_KINDS),
   name: z.string().max(MAX_NAME_LENGTH),
   hull: z.object({
     lengthSegments: z.number().int().min(MIN_SEGMENTS).max(MAX_SEGMENTS),
@@ -103,12 +105,19 @@ const addHullEnds: Migration = (raw) => {
  */
 const addPaint: Migration = (raw) => ({ ...raw, v: 5 });
 
+/**
+ * v5 ships had no ship type; they were all ocean liners. Older builds back
+ * up v6 saves they can't read.
+ */
+const addKind: Migration = (raw) => ({ ...raw, v: 6, kind: "liner" });
+
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
 const MIGRATIONS: Record<number, Migration> = {
   1: addDefaultBeam,
   2: mergeMasts,
   3: addHullEnds,
   4: addPaint,
+  5: addKind,
 };
 
 export function migrate(

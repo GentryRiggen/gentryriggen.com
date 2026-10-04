@@ -15,6 +15,7 @@ import {
 } from "../placement";
 import { getPartDef } from "../catalog";
 import { WING_REACH } from "../grid";
+import { SHIP_KINDS } from "../kinds";
 import { HULL_ID, type PartType, type Rotation } from "../types";
 import { parseShip } from "../../persist/schema";
 import {
@@ -163,6 +164,27 @@ describe("canPlace — grid parts", () => {
       fail("The bridge must be in the forward half")
     );
   });
+
+  it("lets a cargo ship put the bridge in either half", () => {
+    const cargo = { ...testShip(), kind: "cargo" } as const; // length 24
+    for (const rotation of [0, 90, 180, 270] as const) {
+      expect(
+        canPlace(cargo, gridCandidate("bridge", 0, 12, 0, rotation))
+      ).toEqual(OK);
+    }
+    expect(canPlace(cargo, gridCandidate("bridge", 0, 18, 0))).toEqual(OK);
+    expect(canPlace(cargo, gridCandidate("bridge", 0, 1, 0))).toEqual(OK);
+  });
+
+  it.each(["liner", "cruise", "navy"] as const)(
+    "keeps the %s bridge in the forward half",
+    (kind) => {
+      const ship = { ...testShip(), kind };
+      expect(canPlace(ship, gridCandidate("bridge", 0, 12, 0))).toEqual(
+        fail("The bridge must be in the forward half")
+      );
+    }
+  );
 
   it("keeps the bridge on top of its stack (rule 3)", () => {
     // Hand-built, inconsistent ship: something floats above the target cells.
@@ -521,6 +543,38 @@ describe("clampName", () => {
 });
 
 describe("cascade removal", () => {
+  it("keeps an aft cargo bridge but drops the same bridge on other kinds", () => {
+    const parts = [
+      gridPart("s0", "deck-1x1", 0, 18, 0),
+      gridPart("s1", "deck-1x1", 0, 19, 0),
+      gridPart("s2", "deck-1x1", 0, 20, 0),
+      gridPart("br", "bridge-3", 1, 18, 0),
+      gridPart("other", "deck-1x1", 0, 2, 0),
+    ];
+    const cargo = { ...testShip(parts), kind: "cargo" } as const;
+    expect(validateShip(cargo)).toEqual(OK);
+    expect(cascadeIds(cargo, ["other"])).toEqual(["other"]);
+    expect(validateShip({ ...cargo, kind: "navy" }).ok).toBe(false);
+  });
+
+  it("still takes a cargo bridge whose support is removed", () => {
+    const cargo = {
+      ...testShip([
+        gridPart("s0", "deck-1x1", 0, 18, 0),
+        gridPart("s1", "deck-1x1", 0, 19, 0),
+        gridPart("s2", "deck-1x1", 0, 20, 0),
+        gridPart("br", "bridge-3", 1, 18, 0),
+      ]),
+      kind: "cargo",
+    } as const;
+    expect(cascadeIds(cargo, ["s0", "s1", "s2"])).toEqual([
+      "s0",
+      "s1",
+      "s2",
+      "br",
+    ]);
+  });
+
   it("removes everything supported by or attached to a part", () => {
     const ship = testShip([
       ...boatDeckShip().parts,
@@ -793,7 +847,39 @@ describe("validateShip", () => {
       bow: "straight",
       stern: "counter",
     });
-    expect(emptyShip().v).toBe(5);
+    expect(emptyShip().v).toBe(6);
+  });
+
+  it("applies each kind's defaults to a new ship", () => {
+    expect(emptyShip("cargo")).toMatchObject({
+      kind: "cargo",
+      hull: {
+        bow: "bulbous",
+        stern: "transom",
+        paint: { topsides: "navy", bottom: "red" },
+      },
+    });
+    expect(emptyShip("navy").hull).toMatchObject({
+      bow: "clipper",
+      paint: { topsides: "grey", bottom: "grey" },
+    });
+    expect(emptyShip("cruise").hull.paint).toEqual({
+      topsides: "white",
+      bottom: "navy",
+    });
+    expect(emptyShip("liner").hull.paint).toBeUndefined();
+    for (const kind of SHIP_KINDS) {
+      expect(validateShip(emptyShip(kind))).toEqual(OK);
+      expect(parseShip(JSON.parse(JSON.stringify(emptyShip(kind)))).ok).toBe(
+        true
+      );
+    }
+  });
+
+  it("does not share the paint object between ships", () => {
+    expect(emptyShip("cargo").hull.paint).not.toBe(
+      emptyShip("cargo").hull.paint
+    );
   });
 
   it("rejects a beam outside 3-7 cells or not a whole number", () => {

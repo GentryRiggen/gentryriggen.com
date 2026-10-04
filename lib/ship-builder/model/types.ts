@@ -1,3 +1,4 @@
+import type { ShipKind } from "./kinds";
 import type { HullArea, PaintColor } from "./paint";
 
 export const PART_TYPES = [
@@ -98,7 +99,8 @@ export interface Hull {
 }
 
 export interface Ship {
-  v: 5;
+  v: 6;
+  kind: ShipKind;
   name: string;
   hull: Hull;
   parts: PlacedPart[];

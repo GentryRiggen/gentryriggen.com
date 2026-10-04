@@ -34,7 +34,7 @@ describe("autosave", () => {
   });
 
   it("loads a v1 autosave and My Ships entry with the default beam", () => {
-    const v1 = { ...ship, v: 1, hull: { lengthSegments: 8 } };
+    const v1 = { ...ship, kind: undefined, v: 1, hull: { lengthSegments: 8 } };
     localStorage.setItem(
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v1, savedId: "old" })
@@ -47,8 +47,23 @@ describe("autosave", () => {
     expect(listShips().map((s) => s.ship)).toEqual([ship]);
   });
 
+  it("loads a v5 autosave and My Ships entry as a liner", () => {
+    const v5 = { ...ship, kind: undefined, v: 5 };
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: v5, savedId: "old" })
+    );
+    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v5 }])
+    );
+    expect(listShips().map((s) => s.ship)).toEqual([ship]);
+    expect(listShips()[0].ship.kind).toBe("liner");
+  });
+
   it("loads a v4 autosave and My Ships entry unchanged", () => {
-    const v4 = { ...ship, v: 4 };
+    const v4 = { ...ship, kind: undefined, v: 4 };
     localStorage.setItem(
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v4, savedId: "old" })
@@ -64,7 +79,7 @@ describe("autosave", () => {
   it("loads a v3 autosave and My Ships entry with the default ends", () => {
     const { bow, stern, ...hull } = ship.hull;
     expect([bow, stern]).toEqual(["straight", "counter"]);
-    const v3 = { ...ship, v: 3, hull };
+    const v3 = { ...ship, kind: undefined, v: 3, hull };
     localStorage.setItem(
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v3, savedId: "old" })
@@ -80,6 +95,7 @@ describe("autosave", () => {
   it("loads a v2 autosave and My Ships entry with old mast types", () => {
     const v2 = {
       ...ship,
+      kind: undefined,
       v: 2,
       parts: [
         { ...attachPart("m", "mast", HULL_ID, "mast-aft"), type: "mast-aft" },

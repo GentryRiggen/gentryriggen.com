@@ -55,7 +55,7 @@ const ship = testShip(
 
 describe("share links from older versions", () => {
   it("loads a v1 link with the default beam", () => {
-    const v1 = { ...ship, v: 1, hull: { lengthSegments: 10 } };
+    const v1 = { ...ship, kind: undefined, v: 1, hull: { lengthSegments: 10 } };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v1))}`;
     expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
   });
@@ -63,6 +63,7 @@ describe("share links from older versions", () => {
   it("loads a v2 link with old mast types", () => {
     const v2 = {
       ...ship,
+      kind: undefined,
       v: 2,
       parts: [
         ...ship.parts,
@@ -84,7 +85,7 @@ describe("share links from v3", () => {
   it("loads a v3 link with the default bow and stern", () => {
     const { bow, stern, ...hull } = ship.hull;
     expect([bow, stern]).toEqual(["straight", "counter"]);
-    const v3 = { ...ship, v: 3, hull };
+    const v3 = { ...ship, kind: undefined, v: 3, hull };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v3))}`;
     expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
   });
@@ -103,7 +104,7 @@ describe("share links from v3", () => {
 
 describe("share links from v4", () => {
   it("loads a v4 link unchanged", () => {
-    const v4 = { ...ship, v: 4 };
+    const v4 = { ...ship, kind: undefined, v: 4 };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v4))}`;
     expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
   });
@@ -117,6 +118,22 @@ describe("share links from v4", () => {
     expect(decodeShareHash(`#ship=${encodeShip(painted)}`)).toEqual({
       kind: "ok",
       ship: painted,
+    });
+  });
+});
+
+describe("share links from v5", () => {
+  it("loads a v5 link as a liner", () => {
+    const v5 = { ...ship, kind: undefined, v: 5 };
+    const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v5))}`;
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+  });
+
+  it("round-trips a cargo ship", () => {
+    const cargo = { ...ship, kind: "cargo" } as const;
+    expect(decodeShareHash(`#ship=${encodeShip(cargo)}`)).toEqual({
+      kind: "ok",
+      ship: cargo,
     });
   });
 });

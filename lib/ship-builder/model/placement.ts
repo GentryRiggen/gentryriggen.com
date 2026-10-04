@@ -41,6 +41,7 @@ import {
   type PlacedPart,
   type Ship,
 } from "./types";
+import { DEFAULT_KIND, KIND_DEFAULTS, type ShipKind } from "./kinds";
 import { partAt } from "./partIndex";
 
 export type RuleResult = { ok: true } | { ok: false; reason: string };
@@ -69,16 +70,30 @@ const OK: RuleResult = { ok: true };
 const fail = (reason: string): RuleResult => ({ ok: false, reason });
 
 export function emptyShip(
-  name = "Untitled liner",
+  kind: ShipKind = DEFAULT_KIND,
+  name = KIND_DEFAULTS[kind].name,
   lengthSegments = DEFAULT_SEGMENTS,
   beam = DEFAULT_BEAM
 ): Ship {
+  const { bow, stern, paint } = KIND_DEFAULTS[kind];
   return {
-    v: 5,
+    v: 6,
+    kind,
     name,
-    hull: { lengthSegments, beam, bow: "straight", stern: "counter" },
+    hull: {
+      lengthSegments,
+      beam,
+      bow,
+      stern,
+      ...(paint ? { paint: { ...paint } } : {}),
+    },
     parts: [],
   };
+}
+
+/** Container ships keep the bridge aft; every other kind keeps it forward. */
+function isBridgeSpotAllowed(ship: Ship, x: number): boolean {
+  return ship.kind === "cargo" || isForwardHalf(ship, x);
 }
 
 /** Whether an attach part (funnel or mast) claims the top of the cell below. */
@@ -198,7 +213,7 @@ function canPlaceGrid(
   if (!support.ok) return support;
 
   if (def.role === "bridge") {
-    if (cells.some((cell) => !isForwardHalf(ship, cell.x))) {
+    if (cells.some((cell) => !isBridgeSpotAllowed(ship, cell.x))) {
       return fail("The bridge must be in the forward half");
     }
     const covered = cells.some((cell) =>
@@ -287,7 +302,7 @@ function isStillSupported(
   const def = getPartDef(part.type);
   const cells = partCells(part);
   const isBridge = def.placement === "grid" && def.role === "bridge";
-  if (isBridge && cells.some((cell) => !isForwardHalf(ship, cell.x))) {
+  if (isBridge && cells.some((cell) => !isBridgeSpotAllowed(ship, cell.x))) {
     return false;
   }
   return cells.every((cell) => {
