@@ -26,6 +26,20 @@ describe("autosave", () => {
     expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "ship-1" });
   });
 
+  it("loads a v1 autosave and My Ships entry with the default beam", () => {
+    const v1 = { ...ship, v: 1, hull: { lengthSegments: 8 } };
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: v1, savedId: "old" })
+    );
+    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    localStorage.setItem(
+      SHIPS_KEY,
+      JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v1 }])
+    );
+    expect(listShips().map((s) => s.ship)).toEqual([ship]);
+  });
+
   it("reports none when nothing is stored", () => {
     expect(loadAutosave()).toEqual({ kind: "none" });
   });

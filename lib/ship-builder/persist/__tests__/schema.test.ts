@@ -114,6 +114,48 @@ describe("parseShip", () => {
   });
 });
 
+describe("v1 to v2 migration", () => {
+  const v1 = {
+    v: 1,
+    name: "Olympic",
+    hull: { lengthSegments: 10 },
+    parts: validShip.parts,
+  };
+
+  it("loads a v1 ship as v2 with the default beam", () => {
+    expect(parseShip(JSON.parse(JSON.stringify(v1)))).toEqual({
+      ok: true,
+      ship: { ...testShip(validShip.parts, 10, 4), name: "Olympic" },
+    });
+  });
+
+  it("overrides any beam already on a v1 hull", () => {
+    const migrated = migrate({ ...v1, hull: { lengthSegments: 10, beam: 7 } });
+    expect(migrated).toMatchObject({ v: 2, hull: { beam: 4 } });
+  });
+
+  it("does not mutate the input", () => {
+    const input = JSON.parse(JSON.stringify(v1));
+    migrate(input);
+    expect(input).toEqual(v1);
+  });
+
+  it.each([
+    ["no hull", { ...v1, hull: undefined }],
+    ["a null hull", { ...v1, hull: null }],
+    ["an array hull", { ...v1, hull: [10] }],
+    ["a string hull", { ...v1, hull: "long" }],
+  ])("leaves a v1 ship with %s unmigrated so parsing fails", (_label, raw) => {
+    expect(migrate(raw)).toBe(raw);
+    expect(parseShip(raw).ok).toBe(false);
+  });
+
+  it("still rejects a v1 ship that breaks the building rules", () => {
+    const floating = { ...v1, parts: [gridPart("a", "deck-1x1", 2, 0, 0)] };
+    expect(parseShip(floating).ok).toBe(false);
+  });
+});
+
 describe("migrate", () => {
   it("runs migrations up to the current version", () => {
     const migrated = migrate(

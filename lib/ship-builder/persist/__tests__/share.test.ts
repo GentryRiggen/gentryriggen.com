@@ -26,6 +26,15 @@ describe("share links", () => {
     });
   });
 
+  it("decodes a share link made by v1, before ships had a beam", () => {
+    const V1_LINK =
+      "N4IgbiBcCMA0IDsCGBbAplEB5ANgTxQAcBLAYxHgAsBXHHKUHNBAcwBdKBlNF9BNgM5RoABgC+8QkgBOgqAG1QxACaYkFEGzyEMkEMrSkA1gFoATAA9oGpAlKUA9tIYgjxBKr0tpKjUzBo9JAi8BZQZvAAXlDi8NIObEhsxA4IUACcsUqeIABGGlo6mAbGJtBWNnaOzpCgbh6Y3r7w-oHCoeFRMRIg8YnJqd2w2cUQ8IW6+khgxGyV9k4u9TlJifYaUtLMbACSOfmSDu67OcrTs5BmwSA9fUkpacESI3o4B5rakzjEAGZouQ4kiYBIkPDJVPBbAsanV3Cs2GtKBsZNs9qMNkd+Gi9ACkjc4gl7oMngBdMRAA";
+    expect(decodeShareHash(`#ship=${V1_LINK}`)).toEqual({
+      kind: "ok",
+      ship: { ...ship, name: "Olympic" },
+    });
+  });
+
   it("finds the ship key among other params", () => {
     expect(decodeShareHash(`#foo=1&ship=${encodeShip(ship)}`).kind).toBe("ok");
   });
