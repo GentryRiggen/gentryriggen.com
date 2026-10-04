@@ -11,7 +11,7 @@ import type {
   Ship,
   Side,
 } from "@/lib/ship-builder/model/types";
-import { footprintBase, modelToWorld } from "./coords";
+import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import { PALETTE } from "./palette";
 
 export type PartTint = keyof typeof PALETTE.tint | null;
@@ -46,6 +46,8 @@ function Surface({ color, tint, emphasis }: SurfaceProps) {
   );
 }
 
+const BRIDGE_HEIGHT = 0.8;
+
 interface BlockProps {
   def: GridPartDef;
   size: { x: number; z: number };
@@ -55,7 +57,10 @@ interface BlockProps {
 
 function Block({ def, size, tint, emphasis }: BlockProps) {
   const surface = { tint, emphasis };
-  const height = def.role === "bridge" ? 0.8 : 0.95;
+  // Blocks fill their level so stacks sit flush and fittings rest on top; the
+  // 0.96 footprint inset keeps a visible seam between neighbours. The bridge
+  // is a lower wheelhouse: nothing stacks or attaches on it.
+  const height = def.role === "bridge" ? BRIDGE_HEIGHT : LEVEL_HEIGHT;
   return (
     <group>
       <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
