@@ -1,8 +1,8 @@
 import { resolveAttachPoint } from "./attach";
 import { getPartDef } from "./catalog";
 import {
+  beamOf,
   buildOccupancy,
-  GRID_WIDTH,
   gridLength,
   partCells,
   type Occupancy,
@@ -94,6 +94,7 @@ function classifyStability(ratio: number): Stability {
 export function computeStats(ship: Ship): Stats {
   const occupancy = buildOccupancy(ship);
   const length = gridLength(ship);
+  const beam = beamOf(ship);
   const passengers = { first: 0, second: 0, third: 0, total: 0 };
   let lifeboats = 0;
   let lifeboatSeats = 0;
@@ -102,7 +103,7 @@ export function computeStats(ship: Ship): Stats {
   let bridges = 0;
   let blockCells = 0;
 
-  const hullMass = length * GRID_WIDTH * HULL_MASS_PER_CELL;
+  const hullMass = length * beam * HULL_MASS_PER_CELL;
   let mass = hullMass;
   let moment = hullMass * HULL_CENTROID_Y;
 
@@ -131,14 +132,14 @@ export function computeStats(ship: Ship): Stats {
   const peopleAboard = passengers.total + crew;
   const coverage = peopleAboard > 0 ? lifeboatSeats / peopleAboard : 1;
   const grossTonnage = Math.round(
-    (length * GRID_WIDTH * HULL_DEPTH + blockCells) * GRT_PER_UNIT
+    (length * beam * HULL_DEPTH + blockCells) * GRT_PER_UNIT
   );
   const topSpeedKnots = computeSpeed(
     funnels,
     ship.hull.lengthSegments,
     grossTonnage
   );
-  const stabilityRatio = moment / mass / GRID_WIDTH;
+  const stabilityRatio = moment / mass / beam;
   const stability = classifyStability(stabilityRatio);
 
   const warnings: StatWarning[] = [];

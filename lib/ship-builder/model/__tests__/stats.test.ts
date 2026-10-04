@@ -4,14 +4,13 @@ import {
   coverageLevel,
   TITANIC_REFERENCE,
 } from "../stats";
-import { GRID_WIDTH } from "../grid";
 import type { PlacedPart } from "../types";
 import { attachPart, gridPart, testShip } from "../../testing";
 
-function fillLevel(level: number, lengthCells: number): PlacedPart[] {
+function fillLevel(level: number, lengthCells: number, beam = 4): PlacedPart[] {
   const parts: PlacedPart[] = [];
   for (let x = 0; x < lengthCells; x++) {
-    for (let z = 0; z < GRID_WIDTH; z++) {
+    for (let z = 0; z < beam; z++) {
       parts.push(gridPart(`L${level}-${x}-${z}`, "deck-1x1", level, x, z));
     }
   }
@@ -104,6 +103,21 @@ describe("computeStats", () => {
     expect(computeStats(testShip(two, 4)).stability).toBe("Stable");
     expect(computeStats(testShip(three, 4)).stability).toBe("Top-heavy");
     expect(computeStats(testShip(four, 4)).stability).toBe("Dangerous");
+  });
+
+  it("scales an empty hull's tonnage with the beam", () => {
+    expect(computeStats(testShip([], 8, 3)).grossTonnage).toBe(18144);
+    expect(computeStats(testShip([], 8, 4)).grossTonnage).toBe(24192);
+    expect(computeStats(testShip([], 8, 7)).grossTonnage).toBe(42336);
+  });
+
+  it("finds the same blocks less stable on a narrow beam", () => {
+    const blocks = [0, 1, 2].flatMap((level) => fillLevel(level, 12, 3));
+    const narrow = computeStats(testShip(blocks, 4, 3));
+    const wide = computeStats(testShip(blocks, 4, 7));
+    expect(narrow.stabilityRatio).toBeGreaterThan(wide.stabilityRatio);
+    expect(narrow.stability).toBe("Top-heavy");
+    expect(wide.stability).toBe("Stable");
   });
 
   it("warns about lifeboats, bridge, funnels in order", () => {
