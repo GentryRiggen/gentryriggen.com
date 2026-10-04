@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { computeStats } from "@/lib/ship-builder/model/stats";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import FunnelSmoke from "./FunnelSmoke";
 import {
   ShipAnimationContext,
   type ShipAnimationValue,
@@ -30,6 +31,7 @@ export default function ShipAnimation({ children }: ShipAnimationProps) {
   return (
     <ShipAnimationContext.Provider value={value}>
       {children}
+      <FunnelSmoke />
     </ShipAnimationContext.Provider>
   );
 }
