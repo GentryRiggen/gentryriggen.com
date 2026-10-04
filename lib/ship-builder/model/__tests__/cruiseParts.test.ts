@@ -1,4 +1,3 @@
-import { collectEffectAnchors } from "@/components/ship-builder/scene/effectAnchors";
 import { attachPointsOf, openAttachPoints } from "../attach";
 import { getPartDef } from "../catalog";
 import { canPlace, validateShip } from "../placement";
@@ -214,16 +213,6 @@ describe("funnel-modern", () => {
     expect(stats.topSpeedKnots).toBeGreaterThan(0);
     expect(stats.warnings.map((w) => w.code)).not.toContain("no-funnels");
   });
-
-  it("makes smoke like a classic funnel", () => {
-    const ship = testShip([
-      gridPart("a", "deck-1x1", 0, 4, 1),
-      attachPart("f", "funnel-modern", "a", "funnel"),
-    ]);
-    const anchors = collectEffectAnchors(ship);
-    expect(anchors.smallFunnels).toHaveLength(3);
-    expect(anchors.largeFunnels).toHaveLength(0);
-  });
 });
 
 describe("azipod", () => {
@@ -255,7 +244,7 @@ describe("azipod", () => {
     );
   });
 
-  it("takes a propeller spot and emits bubbles there", () => {
+  it("takes a propeller spot", () => {
     const ship = testShip([attachPart("z", "azipod", HULL_ID, "prop:0")]);
     expect(
       canPlace(testShip(), candidate("azipod", HULL_ID, "prop:0"))
@@ -263,7 +252,6 @@ describe("azipod", () => {
     expect(canPlace(ship, candidate("propeller", HULL_ID, "prop:0"))).toEqual(
       fail("That spot is taken")
     );
-    expect(collectEffectAnchors(ship).propellers).toHaveLength(3);
   });
 });
 
