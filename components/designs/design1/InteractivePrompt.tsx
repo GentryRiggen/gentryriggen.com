@@ -173,6 +173,12 @@ export default function InteractivePrompt({
       setCommandHistory((prev) => [...prev, trimmed]);
       setHistoryIndex(-1);
 
+      // Typing anything else means the visitor wants to stay here.
+      if (navigationTimerRef.current) {
+        clearTimeout(navigationTimerRef.current);
+        navigationTimerRef.current = null;
+      }
+
       const result = getCommandResponse(trimmed, [...commandHistory, trimmed]);
 
       if (result.shouldClear) {

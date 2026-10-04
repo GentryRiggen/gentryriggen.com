@@ -49,6 +49,19 @@ describe("InteractivePrompt navigation", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it.each(["clear", "pwd"])(
+    "cancels the pending navigation when `%s` is typed next",
+    (next) => {
+      render(<InteractivePrompt onClear={jest.fn()} />);
+      runCommand("ships");
+      runCommand(next);
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      expect(assign).not.toHaveBeenCalled();
+    }
+  );
+
   it("cancels the pending navigation on unmount", () => {
     const { unmount } = render(<InteractivePrompt onClear={jest.fn()} />);
     runCommand("ships");
