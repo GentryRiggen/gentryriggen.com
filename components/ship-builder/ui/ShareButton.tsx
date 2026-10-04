@@ -1,5 +1,6 @@
 "use client";
 
+import { Share2 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { buildShareUrl } from "@/lib/ship-builder/persist/share";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -75,7 +76,8 @@ export default function ShareButton() {
         onClick={handleShare}
         className={buttonClass}
       >
-        Share
+        <Share2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span className="sr-only sm:not-sr-only">Share</span>
       </button>
       {link && (
         <div

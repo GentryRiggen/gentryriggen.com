@@ -2,6 +2,7 @@
 
 import { CATEGORIES, partsInCategory } from "@/lib/ship-builder/model/catalog";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import PartIcon from "./icons/PartIcon";
 
 interface CatalogPanelProps {
   /** Called after a part is picked (or unpicked). */
@@ -31,17 +32,20 @@ export default function CatalogPanel({ onPick }: CatalogPanelProps) {
                       selectTool(def.type);
                       onPick?.();
                     }}
-                    className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
                       active
                         ? "border-sky-500 bg-sky-50 dark:border-sky-400 dark:bg-sky-950"
                         : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
                   >
-                    <span className="block text-sm font-medium">
-                      {def.name}
-                    </span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">
-                      {def.description}
+                    <PartIcon type={def.type} className="h-10 w-10 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">
+                        {def.name}
+                      </span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">
+                        {def.description}
+                      </span>
                     </span>
                   </button>
                 </li>

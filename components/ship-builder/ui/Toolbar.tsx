@@ -1,5 +1,25 @@
 "use client";
 
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpDown,
+  Box,
+  ChevronsLeftRight,
+  ChevronsRightLeft,
+  Eye,
+  FilePlus,
+  Minus,
+  Plus,
+  Redo2,
+  RotateCw,
+  Save,
+  Ship,
+  Trash2,
+  Undo2,
+  Waves,
+  type LucideIcon,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
@@ -24,12 +44,40 @@ import {
   primaryButtonClass,
 } from "./styles";
 
-const CAMERA_VIEWS: { view: CameraView; label: string; ariaLabel: string }[] = [
-  { view: "side", label: "Side", ariaLabel: "Side view" },
-  { view: "top", label: "Top", ariaLabel: "Top view" },
-  { view: "three-quarter", label: "¾", ariaLabel: "Three-quarter view" },
-  { view: "below", label: "Below", ariaLabel: "Below view" },
+const CAMERA_VIEWS: {
+  view: CameraView;
+  label: string;
+  ariaLabel: string;
+  Icon: LucideIcon;
+}[] = [
+  { view: "side", label: "Side", ariaLabel: "Side view", Icon: Eye },
+  { view: "top", label: "Top", ariaLabel: "Top view", Icon: ArrowDownToLine },
+  {
+    view: "three-quarter",
+    label: "¾",
+    ariaLabel: "Three-quarter view",
+    Icon: Box,
+  },
+  { view: "below", label: "Below", ariaLabel: "Below view", Icon: Waves },
 ];
+
+const ICON_CLASS = "h-4 w-4 shrink-0";
+// Icons carry the meaning on a phone; the words stay for screen readers.
+const LABEL_CLASS = "sr-only sm:not-sr-only";
+
+interface ButtonLabelProps {
+  Icon: LucideIcon;
+  children: string;
+}
+
+function ButtonLabel({ Icon, children }: ButtonLabelProps) {
+  return (
+    <>
+      <Icon aria-hidden="true" className={ICON_CLASS} />
+      <span className={LABEL_CLASS}>{children}</span>
+    </>
+  );
+}
 
 export default function Toolbar() {
   const [shipsOpen, setShipsOpen] = useState(false);
@@ -94,6 +142,10 @@ export default function Toolbar() {
         aria-label="Hull length"
         className="flex items-center gap-1"
       >
+        <ArrowLeftRight
+          aria-hidden="true"
+          className={`${ICON_CLASS} text-slate-500 dark:text-slate-400`}
+        />
         <button
           type="button"
           aria-label="Shorten hull"
@@ -101,7 +153,7 @@ export default function Toolbar() {
           onClick={() => changeHullLength(-1)}
           className={buttonClass}
         >
-          −
+          <Minus aria-hidden="true" className={ICON_CLASS} />
         </button>
         <span
           data-testid="hull-length"
@@ -116,11 +168,15 @@ export default function Toolbar() {
           onClick={() => changeHullLength(1)}
           className={buttonClass}
         >
-          +
+          <Plus aria-hidden="true" className={ICON_CLASS} />
         </button>
       </div>
 
       <div role="group" aria-label="Beam" className="flex items-center gap-1">
+        <ArrowUpDown
+          aria-hidden="true"
+          className={`${ICON_CLASS} text-slate-500 dark:text-slate-400`}
+        />
         <button
           type="button"
           aria-label="Narrower"
@@ -128,7 +184,7 @@ export default function Toolbar() {
           onClick={() => changeBeam(-1)}
           className={buttonClass}
         >
-          ◂
+          <ChevronsRightLeft aria-hidden="true" className={ICON_CLASS} />
         </button>
         <span
           data-testid="beam-width"
@@ -143,7 +199,7 @@ export default function Toolbar() {
           onClick={() => changeBeam(1)}
           className={buttonClass}
         >
-          ▸
+          <ChevronsLeftRight aria-hidden="true" className={ICON_CLASS} />
         </button>
       </div>
 
@@ -154,7 +210,7 @@ export default function Toolbar() {
           onClick={undo}
           className={buttonClass}
         >
-          Undo
+          <ButtonLabel Icon={Undo2}>Undo</ButtonLabel>
         </button>
         <button
           type="button"
@@ -162,7 +218,7 @@ export default function Toolbar() {
           onClick={redo}
           className={buttonClass}
         >
-          Redo
+          <ButtonLabel Icon={Redo2}>Redo</ButtonLabel>
         </button>
         <button
           type="button"
@@ -170,7 +226,7 @@ export default function Toolbar() {
           onClick={rotate}
           className={buttonClass}
         >
-          Rotate
+          <ButtonLabel Icon={RotateCw}>Rotate</ButtonLabel>
         </button>
         <button
           type="button"
@@ -178,12 +234,12 @@ export default function Toolbar() {
           onClick={requestDelete}
           className={buttonClass}
         >
-          Delete
+          <ButtonLabel Icon={Trash2}>Delete</ButtonLabel>
         </button>
       </div>
 
       <div role="group" aria-label="Camera" className="flex items-center gap-1">
-        {CAMERA_VIEWS.map(({ view, label, ariaLabel }) => (
+        {CAMERA_VIEWS.map(({ view, label, ariaLabel, Icon }) => (
           <button
             key={view}
             type="button"
@@ -192,21 +248,21 @@ export default function Toolbar() {
             onClick={() => setCameraView(view)}
             className={cameraView === view ? pressedButtonClass : buttonClass}
           >
-            {label}
+            <ButtonLabel Icon={Icon}>{label}</ButtonLabel>
           </button>
         ))}
       </div>
 
       <div className="ml-auto flex items-center gap-1">
         <button type="button" onClick={newShip} className={buttonClass}>
-          New
+          <ButtonLabel Icon={FilePlus}>New</ButtonLabel>
         </button>
         <button
           type="button"
           onClick={handleSave}
           className={primaryButtonClass}
         >
-          Save
+          <ButtonLabel Icon={Save}>Save</ButtonLabel>
         </button>
         <ShareButton />
         <button
@@ -215,7 +271,7 @@ export default function Toolbar() {
           onClick={() => setShipsOpen(true)}
           className={buttonClass}
         >
-          My Ships
+          <ButtonLabel Icon={Ship}>My Ships</ButtonLabel>
         </button>
       </div>
 

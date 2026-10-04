@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, FolderOpen, Pencil, Trash2, X } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   clearUnreadableShips,
@@ -124,6 +125,7 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
             onClick={onClose}
             className={buttonClass}
           >
+            <X aria-hidden="true" className="h-4 w-4 shrink-0" />
             Close
           </button>
         </div>
@@ -169,6 +171,10 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
                     onClick={() => handleLoad(entry)}
                     className={buttonClass}
                   >
+                    <FolderOpen
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0"
+                    />
                     Load
                   </button>
                   <button
@@ -180,6 +186,7 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
                     }}
                     className={buttonClass}
                   >
+                    <Pencil aria-hidden="true" className="h-4 w-4 shrink-0" />
                     Rename
                   </button>
                   {confirmingId === entry.id ? (
@@ -189,6 +196,8 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
                       onClick={() => handleDelete(entry)}
                       className={dangerButtonClass}
                     >
+                      <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
                       Confirm
                     </button>
                   ) : (
@@ -198,6 +207,7 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
                       onClick={() => setConfirmingId(entry.id)}
                       className={buttonClass}
                     >
+                      <Trash2 aria-hidden="true" className="h-4 w-4 shrink-0" />
                       Delete
                     </button>
                   )}
@@ -228,6 +238,7 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
                 onClick={() => setIsConfirmingClear(true)}
                 className={buttonClass}
               >
+                <Trash2 aria-hidden="true" className="h-4 w-4 shrink-0" />
                 Clear unreadable
               </button>
             )}

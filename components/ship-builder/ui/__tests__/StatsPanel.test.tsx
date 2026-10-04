@@ -73,6 +73,9 @@ describe("StatsPanel", () => {
       within(warnings).getByText(/Lifeboats seat 0 of 480/)
     ).toBeInTheDocument();
     expect(within(warnings).getByText(/No bridge/)).toBeInTheDocument();
+    expect(within(warnings).getAllByTestId("warning-icon")).toHaveLength(
+      within(warnings).getAllByRole("listitem").length
+    );
     expect(screen.getByText("46,328")).toBeInTheDocument();
     expect(screen.getByText("2,224")).toBeInTheDocument();
   });

@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  Gauge,
+  HardHat,
+  LifeBuoy,
+  Scale,
+  ShieldCheck,
+  Users,
+  UsersRound,
+  Weight,
+  type LucideIcon,
+} from "lucide-react";
 import { useMemo } from "react";
 import {
   computeStats,
@@ -8,6 +19,7 @@ import {
   type Stability,
 } from "@/lib/ship-builder/model/stats";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { warningIcons } from "./icons/warningIcons";
 
 const COVERAGE_CLASSES: Record<CoverageLevel, string> = {
   red: "text-red-600 dark:text-red-400",
@@ -31,6 +43,7 @@ function formatCoverage(coverage: number): string {
 }
 
 interface StatRowProps {
+  Icon: LucideIcon;
   label: string;
   testId: string;
   value: string;
@@ -40,6 +53,7 @@ interface StatRowProps {
 }
 
 function StatRow({
+  Icon,
   label,
   testId,
   value,
@@ -49,7 +63,10 @@ function StatRow({
 }: StatRowProps) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
-      <dt className="text-sm text-slate-600 dark:text-slate-400">{label}</dt>
+      <dt className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+        <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+        {label}
+      </dt>
       <dd className="text-right">
         <span
           data-testid={testId}
@@ -85,42 +102,54 @@ export default function StatsPanel() {
         </h2>
         <dl className="mt-2 divide-y divide-slate-200 dark:divide-slate-800">
           <StatRow
+            Icon={Users}
             label="Passengers"
             testId="stat-passengers"
             value={fmt(passengers.total)}
             detail={`1st ${fmt(passengers.first)} · 2nd ${fmt(passengers.second)} · 3rd ${fmt(passengers.third)}`}
           />
-          <StatRow label="Crew" testId="stat-crew" value={fmt(stats.crew)} />
           <StatRow
+            Icon={HardHat}
+            label="Crew"
+            testId="stat-crew"
+            value={fmt(stats.crew)}
+          />
+          <StatRow
+            Icon={UsersRound}
             label="People aboard"
             testId="stat-people"
             value={fmt(stats.peopleAboard)}
           />
           <StatRow
+            Icon={LifeBuoy}
             label="Lifeboat seats"
             testId="stat-seats"
             value={fmt(stats.lifeboatSeats)}
             detail={`${stats.lifeboats} boats`}
           />
           <StatRow
+            Icon={ShieldCheck}
             label="Coverage"
             testId="stat-coverage"
             value={formatCoverage(stats.coverage)}
             valueClass={COVERAGE_CLASSES[stats.coverageLevel]}
           />
           <StatRow
+            Icon={Weight}
             label="Gross tonnage"
             testId="stat-tonnage"
             value={fmt(stats.grossTonnage)}
             unit="GRT"
           />
           <StatRow
+            Icon={Gauge}
             label="Top speed"
             testId="stat-speed"
             value={String(stats.topSpeedKnots)}
             unit="kn"
           />
           <StatRow
+            Icon={Scale}
             label="Stability"
             testId="stat-stability"
             value={stats.stability}
@@ -131,14 +160,22 @@ export default function StatsPanel() {
 
       {stats.warnings.length > 0 && (
         <ul aria-label="Warnings" className="space-y-1.5">
-          {stats.warnings.map((warning) => (
-            <li
-              key={warning.code}
-              className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
-            >
-              {warning.message}
-            </li>
-          ))}
+          {stats.warnings.map((warning) => {
+            const WarningIcon = warningIcons[warning.code];
+            return (
+              <li
+                key={warning.code}
+                className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+              >
+                <WarningIcon
+                  data-testid="warning-icon"
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0"
+                />
+                <span>{warning.message}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
 

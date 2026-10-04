@@ -1,6 +1,7 @@
 import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { PART_TYPES } from "@/lib/ship-builder/model/types";
 import CatalogPanel from "../CatalogPanel";
 import {
   createInitialState,
@@ -29,6 +30,11 @@ describe("CatalogPanel", () => {
     expect(
       screen.getByRole("button", { name: /Collapsible lifeboat/ })
     ).toBeInTheDocument();
+  });
+
+  it("shows an icon for every part", () => {
+    render(<CatalogPanel />);
+    expect(screen.getAllByTestId("part-icon")).toHaveLength(PART_TYPES.length);
   });
 
   it("selects a part and toggles it off on a second click", async () => {

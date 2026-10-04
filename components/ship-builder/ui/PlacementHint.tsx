@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import PartIcon from "./icons/PartIcon";
 import { openAttachPoints } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -34,9 +35,12 @@ export default function PlacementHint() {
       ) : noRoom ? (
         <span>{noRoom}</span>
       ) : (
-        <span>
-          Placing {def.name}
-          {rotateHint} · Esc to cancel
+        <span className="inline-flex items-center gap-2">
+          <PartIcon type={def.type} className="h-6 w-6 shrink-0" />
+          <span>
+            Placing {def.name}
+            {rotateHint} · Esc to cancel
+          </span>
         </span>
       )}
     </div>

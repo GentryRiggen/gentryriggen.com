@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import {
   useShipBuilderStore,
@@ -52,6 +53,7 @@ function RemovalDialog({ pending }: RemovalDialogProps) {
         onClick={confirmRemoval}
         className={dangerButtonClass}
       >
+        <Trash2 aria-hidden="true" className="h-4 w-4 shrink-0" />
         Remove
       </button>
       <button
@@ -60,6 +62,7 @@ function RemovalDialog({ pending }: RemovalDialogProps) {
         onClick={cancelRemoval}
         className={buttonClass}
       >
+        <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
         Keep
       </button>
     </div>
