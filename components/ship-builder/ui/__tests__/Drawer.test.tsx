@@ -49,4 +49,57 @@ describe("Drawer", () => {
     expect(aside).toHaveClass("invisible");
     expect(toggle).toHaveFocus();
   });
+
+  describe("collapsing at lg", () => {
+    function renderCollapsible(initial = false) {
+      function Harness() {
+        const [collapsed, setCollapsed] = useState(initial);
+        return (
+          <Drawer
+            side="left"
+            label="Parts"
+            open={false}
+            onOpenChange={() => {}}
+            collapsed={collapsed}
+            onCollapsedChange={() => setCollapsed((c) => !c)}
+          >
+            <button type="button">Inside</button>
+          </Drawer>
+        );
+      }
+      render(<Harness />);
+      return screen.getByLabelText("Parts", { selector: "aside" });
+    }
+
+    it("collapses to a rail and expands again", async () => {
+      const user = userEvent.setup();
+      const aside = renderCollapsible();
+      const collapse = screen.getByRole("button", { name: "Collapse Parts" });
+      expect(collapse).toHaveAttribute("aria-expanded", "true");
+      expect(collapse).toHaveClass("hidden", "lg:inline-flex");
+      expect(aside).not.toHaveClass("lg:w-10");
+
+      await user.click(collapse);
+      expect(aside).toHaveClass("lg:w-10");
+      expect(screen.getByTestId("drawer-content-Parts")).toHaveClass(
+        "lg:hidden"
+      );
+      const expand = screen.getByRole("button", { name: "Expand Parts" });
+      expect(expand).toHaveAttribute("aria-expanded", "false");
+
+      await user.click(expand);
+      expect(aside).not.toHaveClass("lg:w-10");
+      expect(
+        screen.getByRole("button", { name: "Collapse Parts" })
+      ).toBeInTheDocument();
+    });
+
+    it("renders the collapsed rail only at lg", () => {
+      renderCollapsible(true);
+      expect(screen.getByRole("button", { name: "Expand Parts" })).toHaveClass(
+        "hidden",
+        "lg:flex"
+      );
+    });
+  });
 });

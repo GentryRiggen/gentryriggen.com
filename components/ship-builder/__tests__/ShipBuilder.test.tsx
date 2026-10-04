@@ -53,3 +53,23 @@ describe("ShipBuilder drawers", () => {
     expect(screen.queryByTestId("drawer-backdrop")).toBeNull();
   });
 });
+
+describe("ShipBuilder collapsible panels", () => {
+  afterEach(() => window.localStorage.clear());
+
+  it("collapses and re-expands the Parts panel only", async () => {
+    const user = userEvent.setup();
+    render(<ShipBuilder />);
+    await user.click(screen.getByRole("button", { name: "Collapse Parts" }));
+    expect(
+      screen.getByRole("button", { name: "Expand Parts" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse Stats" })
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Expand Parts" }));
+    expect(
+      screen.getByRole("button", { name: "Collapse Parts" })
+    ).toBeInTheDocument();
+  });
+});

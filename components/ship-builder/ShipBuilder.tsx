@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import useCollapsedPanels from "./hooks/useCollapsedPanels";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useShipPersistence from "./hooks/useShipPersistence";
 import useTestHook from "./hooks/useTestHook";
@@ -33,6 +34,7 @@ export default function ShipBuilder() {
   useShipPersistence();
   useKeyboardShortcuts();
   const webgl = useWebGLSupport();
+  const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
 
   function handleDrawerOpenChange(side: DrawerSide, open: boolean) {
@@ -68,6 +70,8 @@ export default function ShipBuilder() {
           label="Parts"
           open={openDrawer === "left"}
           onOpenChange={(open) => handleDrawerOpenChange("left", open)}
+          collapsed={collapsed.left}
+          onCollapsedChange={() => collapsed.toggle("left")}
         >
           <CatalogPanel />
         </Drawer>
@@ -82,6 +86,8 @@ export default function ShipBuilder() {
           label="Stats"
           open={openDrawer === "right"}
           onOpenChange={(open) => handleDrawerOpenChange("right", open)}
+          collapsed={collapsed.right}
+          onCollapsedChange={() => collapsed.toggle("right")}
         >
           <StatsPanel />
         </Drawer>
