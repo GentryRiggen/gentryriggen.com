@@ -34,6 +34,19 @@ describe("SeaTrialButton menu", () => {
     expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
   });
 
+  it("stays closed when the button comes back after being hidden", async () => {
+    const user = userEvent.setup();
+    render(<SeaTrialButton />);
+    await user.click(trigger());
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    act(() => store().aimIceberg());
+    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    act(() => store().cancelAim());
+    expect(trigger()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("Waves starts the plain sea trial", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);

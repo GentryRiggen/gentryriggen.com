@@ -58,6 +58,9 @@ export default function SeaTrialButton() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [isOpen]);
 
+  // Hidden (aiming, a trial, a tool or a selection): forget the open menu so
+  // it doesn't pop back open when the button returns.
+  if (!isShown && isOpen) setIsOpen(false);
   if (!isShown) return null;
 
   function closeAndFocusTrigger() {
@@ -65,7 +68,7 @@ export default function SeaTrialButton() {
     trigger.current?.focus();
   }
 
-  /** Closes the menu first: this component stays mounted while aiming. */
+  /** Closes the menu first so it is not left open behind the new mode. */
   function pick(action: () => void) {
     setIsOpen(false);
     action();
