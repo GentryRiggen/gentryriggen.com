@@ -57,6 +57,15 @@ Prettier: double quotes, semicolons, trailing commas (es5), 80 char width, 2-spa
 
 <!-- BEGIN:nextjs-agent-rules -->
 
+### Ship Builder releases
+
+Every Ship Builder change that ships to users (anything in `components/ship-builder`, `lib/ship-builder`, `app/ship-builder` or `public/ship-builder-sw.js`) is a release:
+
+1. Bump `SHIP_BUILDER_VERSION` in `lib/ship-builder/version.ts` (semver: patch for fixes, minor for features, major for big new modes).
+2. Add a matching entry at the top of `CHANGELOG` in `lib/ship-builder/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/ship-builder components/ship-builder app/ship-builder`), in plain words a young builder or their parent would follow.
+
+The Versions page (`/ship-builder/versions`, linked from the version label) renders the changelog. `lib/ship-builder/__tests__/changelog.test.ts` fails if the version and the top entry disagree.
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.

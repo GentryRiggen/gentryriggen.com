@@ -184,6 +184,29 @@ describe("ship-builder service worker", () => {
       expect(response?.body).toBe("page");
     });
 
+    it("never caches a sub-page as the game page", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("versions"));
+      await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/ship-builder/versions`, { mode: "navigate" })
+      );
+      expect(worker.cacheKeys()).toEqual([`${ORIGIN}/ship-builder/versions`]);
+
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("game"));
+      await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/ship-builder`, { mode: "navigate" })
+      );
+      worker.fetchMock.mockRejectedValue(new TypeError("offline"));
+      const game = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/ship-builder`, { mode: "navigate" })
+      );
+      const versions = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/ship-builder/versions`, { mode: "navigate" })
+      );
+      expect(game?.body).toBe("game");
+      expect(versions?.body).toBe("versions");
+    });
+
     it("rethrows when offline with nothing cached", async () => {
       const worker = loadWorker();
       worker.fetchMock.mockRejectedValue(new TypeError("offline"));

@@ -57,12 +57,14 @@ export default function ShipBuilder() {
           ← gentryriggen.com
         </Link>
         <h1 className="text-lg font-semibold">Ship Builder</h1>
-        <span
+        <Link
+          href="/ship-builder/versions"
           data-testid="app-version"
-          className="-ml-2 self-end pb-0.5 text-xs text-slate-500 dark:text-slate-400"
+          aria-label={`Version ${SHIP_BUILDER_VERSION}: what's new`}
+          className="-ml-2 self-end pb-0.5 text-xs text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
         >
           v{SHIP_BUILDER_VERSION}
-        </span>
+        </Link>
       </header>
       <ThemeToggle />
 

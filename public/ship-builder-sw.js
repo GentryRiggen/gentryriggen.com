@@ -38,7 +38,16 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-/** True for the page itself ("/ship-builder", its .html file or sub-paths). */
+/** True for the game page itself ("/ship-builder", "/ship-builder.html"). */
+function isGamePath(pathname) {
+  return (
+    pathname === PAGE_PATH ||
+    pathname === `${PAGE_PATH}.html` ||
+    pathname === `${PAGE_PATH}/`
+  );
+}
+
+/** True for the game page or one of its sub-pages (e.g. /ship-builder/versions). */
 function isPagePath(pathname) {
   return (
     pathname === PAGE_PATH ||
@@ -74,10 +83,13 @@ function toSameOriginUrl(value) {
 /** Pages are stored without query/hash, plus under the canonical page path. */
 async function cachePage(cache, url, response) {
   const key = `${url.origin}${url.pathname}`;
-  await Promise.all([
-    cache.put(key, response.clone()),
-    cache.put(new URL(PAGE_PATH, url.origin).href, response.clone()),
-  ]);
+  const puts = [cache.put(key, response.clone())];
+  // Only the game itself doubles as the offline fallback; a sub-page such as
+  // the version history must never stand in for it.
+  if (isGamePath(url.pathname)) {
+    puts.push(cache.put(new URL(PAGE_PATH, url.origin).href, response.clone()));
+  }
+  await Promise.all(puts);
 }
 
 async function handleNavigation(request, url) {
