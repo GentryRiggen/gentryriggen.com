@@ -67,7 +67,7 @@ export default function Toolbar() {
 
   return (
     <footer
-      className={`flex flex-wrap items-center gap-2 border-t px-3 py-2 ${panelClass}`}
+      className={`flex flex-wrap items-center gap-2 border-t px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${panelClass}`}
     >
       <input
         aria-label="Ship name"

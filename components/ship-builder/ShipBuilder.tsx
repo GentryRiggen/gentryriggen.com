@@ -46,8 +46,8 @@ export default function ShipBuilder() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="flex items-center gap-4 border-b border-slate-200 bg-white py-3 pl-4 pr-20 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex h-[100dvh] flex-col overflow-hidden overscroll-none bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="flex items-center gap-4 border-b border-slate-200 bg-white pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 pl-4 pr-20 dark:border-slate-800 dark:bg-slate-900">
         <Link
           href="/"
           className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
