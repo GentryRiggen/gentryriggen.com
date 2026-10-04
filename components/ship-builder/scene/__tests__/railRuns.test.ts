@@ -2,7 +2,13 @@ import type { Occupancy } from "@/lib/ship-builder/model/grid";
 import type { PlacedPart } from "@/lib/ship-builder/model/types";
 import { railRuns, stanchionOffsets } from "../railRuns";
 
-const part = {} as PlacedPart;
+const part: PlacedPart = {
+  id: "b",
+  type: "deck-1x1",
+  anchor: { kind: "grid", level: 0, x: 0, z: 0 },
+  rotation: 0,
+};
+const decor: PlacedPart = { ...part, id: "c", type: "deckchair" };
 
 function occupy(...keys: string[]): Occupancy {
   return new Map(keys.map((key) => [key, part]));
@@ -24,6 +30,11 @@ describe("railRuns", () => {
     expect(railRuns(occupy("1:2:0", "0:2:1"), 4, 0)).toEqual([
       { start: 0, end: 4 },
     ]);
+  });
+
+  it("keeps the rail behind decor on an edge cell", () => {
+    const occupancy: Occupancy = new Map([["0:2:0", decor]]);
+    expect(railRuns(occupancy, 4, 0)).toEqual([{ start: 0, end: 4 }]);
   });
 
   it("returns nothing when every edge cell is covered", () => {

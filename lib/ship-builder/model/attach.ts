@@ -4,6 +4,7 @@ import {
   buildOccupancy,
   cellKey,
   gridLength,
+  isDecor,
   partCells,
   rotatedFootprint,
   WING_REACH,
@@ -131,7 +132,9 @@ export function rowExtent(
 ): { min: number; max: number } | undefined {
   let extent: { min: number; max: number } | undefined;
   for (let z = -WING_REACH; z <= beamOf(ship) - 1 + WING_REACH; z++) {
-    if (!occupancy.has(cellKey({ level, x, z }))) continue;
+    const occupant = occupancy.get(cellKey({ level, x, z }));
+    // Decor rides on a block; it doesn't widen a row's edge.
+    if (!occupant || isDecor(occupant)) continue;
     extent = { min: extent?.min ?? z, max: z };
   }
   return extent;
@@ -204,6 +207,8 @@ function blockPoints(
   if (def.placement !== "grid" || part.anchor.kind !== "grid") return [];
   // Cargo is plain stackable boxes: nothing mounts on or beside it.
   if (def.role === "cargo") return [];
+  // Decor exposes no points: nothing mounts on or beside it either.
+  if (def.role === "decor") return [];
   const { level, x, z } = part.anchor;
   if (def.role === "bridge") {
     const size = rotatedFootprint(def.footprint, part.rotation);

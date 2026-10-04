@@ -631,12 +631,8 @@ describe("cascade removal", () => {
     expect(validateShip(ship)).toEqual(OK);
     expect(cascadeIds(ship, ["q"])).toEqual(["q"]);
     const after = removeParts(ship, ["q"]);
-    expect(after.parts.map((part) => part.id).sort()).toEqual([
-      "a",
-      "c",
-      "p",
-      "r",
-    ]);
+    // p now hangs only off r, so it must move behind r to stay buildable.
+    expect(after.parts.map((part) => part.id)).toEqual(["a", "c", "r", "p"]);
     expect(validateShip(after)).toEqual(OK);
   });
 

@@ -14,8 +14,10 @@ import {
   beamOf,
   cellKey,
   DEFAULT_BEAM,
+  facingCell,
   footprintCells,
   inBounds,
+  isDecor,
   isInsideHull,
   isForwardHalf,
   MAX_BEAM,
@@ -27,6 +29,7 @@ import {
 } from "./grid";
 import {
   isGrounded,
+  isSolid,
   MAX_OVERHANG,
   neighbours,
   stepsToSupport,
@@ -160,7 +163,7 @@ function checkSupport(
   occupancy: Occupancy
 ): RuleResult {
   const own = new Set(cells.map(cellKey));
-  const isOccupied = (key: string) => occupancy.has(key) || own.has(key);
+  const isOccupied = (key: string) => isSolid(occupancy, key) || own.has(key);
   const isHeld = cells.every(
     (cell) =>
       stepsToSupport(ship, isOccupied, cell, MAX_OVERHANG) <= MAX_OVERHANG
@@ -169,7 +172,7 @@ function checkSupport(
   const touchesShip = cells.some(
     (cell) =>
       isGrounded(ship, occupancy, cell) ||
-      neighbours(cell).some((n) => occupancy.has(cellKey(n)))
+      neighbours(cell).some((n) => isSolid(occupancy, cellKey(n)))
   );
   return touchesShip
     ? fail("Too far from a support (max 2 cells)")
@@ -213,6 +216,34 @@ function checkCargo(
   return OK;
 }
 
+/** Why a decor item can't stand in this cell, or undefined when it can. */
+function decorProblem(
+  ship: Ship,
+  type: PlacedPart["type"],
+  cell: Cell,
+  rotation: PlacedPart["rotation"],
+  occupancy: Occupancy
+): string | undefined {
+  if (cell.level === 0) {
+    if (!isInsideHull(ship, cell)) return "Decorations go on the deck";
+  } else {
+    const below = occupancy.get(cellKey({ ...cell, level: cell.level - 1 }));
+    const belowDef = below && getPartDef(below.type);
+    const isOnDeckBlock =
+      belowDef?.placement === "grid" && belowDef.role === "deck";
+    if (!isOnDeckBlock) return "Decorations go on the deck or a deck block";
+  }
+  if (type === "stairs") {
+    const faced = occupancy.get(cellKey(facingCell(cell, rotation)));
+    const facedDef = faced && getPartDef(faced.type);
+    const isClimbable =
+      facedDef?.placement === "grid" &&
+      (facedDef.role === "deck" || facedDef.role === "cabin");
+    if (!isClimbable) return "Stairs need a deck or cabin block to climb to";
+  }
+  return undefined;
+}
+
 function canPlaceGrid(
   ship: Ship,
   def: GridPartDef,
@@ -242,12 +273,26 @@ function canPlaceGrid(
     if (belowDef.placement === "grid" && belowDef.role === "amenity") {
       return fail("Can't build on top of a pool");
     }
+    if (belowDef.placement === "grid" && belowDef.role === "decor") {
+      return fail("Nothing builds on a decoration");
+    }
     if (isUnderTopMountedPart(ship, cell, occupancy)) {
       return fail("Can't build over a funnel or mast");
     }
     if (holdsEdgePartAt(ship, below, cell.x, cell.z)) {
       return fail("Can't build over a davit or raft");
     }
+  }
+
+  if (def.role === "decor") {
+    const problem = decorProblem(
+      ship,
+      candidate.type,
+      cells[0],
+      candidate.rotation,
+      occupancy
+    );
+    return problem ? fail(problem) : OK;
   }
 
   const cargo = checkCargo(ship, def, cells, occupancy);
@@ -349,6 +394,13 @@ function isStillSupported(
   }
   const def = getPartDef(part.type);
   const cells = partCells(part);
+  if (isDecor(part)) {
+    return (
+      inBounds(ship, cells[0]) &&
+      decorProblem(ship, part.type, cells[0], part.rotation, occupancy) ===
+        undefined
+    );
+  }
   const isBridge = def.placement === "grid" && def.role === "bridge";
   if (isBridge && cells.some((cell) => !isBridgeSpotAllowed(ship, cell.x))) {
     return false;

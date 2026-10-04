@@ -45,6 +45,11 @@ export const PART_TYPES = [
   "crows-nest",
   "stern-flag",
   "wireless-aerial",
+  "deckchair",
+  "bench",
+  "deck-lamp",
+  "ventilator",
+  "stairs",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -195,9 +200,11 @@ export interface GridPartDef extends PartDefBase {
   placement: "grid";
   /**
    * `amenity` blocks (a pool) obey the support rules but nothing builds on
-   * them and they expose no attach points.
+   * them and they expose no attach points. `decor` parts (deck chairs,
+   * stairs) sit directly on the main deck or a deck block, nothing builds on
+   * them, they expose no points and they never hold up their neighbours.
    */
-  role: "deck" | "cabin" | "bridge" | "cargo" | "amenity";
+  role: "deck" | "cabin" | "bridge" | "cargo" | "amenity" | "decor";
   /** Size at rotation 0: x along the length, z across the beam. */
   footprint: { x: number; z: number };
 }

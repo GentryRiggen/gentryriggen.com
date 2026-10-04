@@ -1,4 +1,8 @@
-import { cellKey, type Occupancy } from "@/lib/ship-builder/model/grid";
+import {
+  cellKey,
+  isDecor,
+  type Occupancy,
+} from "@/lib/ship-builder/model/grid";
 
 /** A stretch of rail over cells [start, end) along the hull's length. */
 export interface RailRun {
@@ -18,8 +22,8 @@ export function railRuns(
   const runs: RailRun[] = [];
   let start: number | null = null;
   for (let x = 0; x <= lengthCells; x++) {
-    const isOpen =
-      x < lengthCells && !occupancy.has(cellKey({ level: 0, x, z: edgeZ }));
+    const occupant = occupancy.get(cellKey({ level: 0, x, z: edgeZ }));
+    const isOpen = x < lengthCells && (!occupant || isDecor(occupant));
     if (isOpen && start === null) start = x;
     if (!isOpen && start !== null) {
       runs.push({ start, end: x });

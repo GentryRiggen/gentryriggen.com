@@ -101,6 +101,27 @@ export function isForwardHalf(ship: Ship, x: number): boolean {
   return x < gridLength(ship) / 2;
 }
 
+/** Whether a placed part is a decor item (deck chair, stairs, ...). */
+export function isDecor(part: PlacedPart): boolean {
+  const def = getPartDef(part.type);
+  return def.placement === "grid" && def.role === "decor";
+}
+
+/**
+ * The cell a decor item faces. Rotation 0 faces +x (toward the stern), 90
+ * faces +z (port), 180 faces -x (bow) and 270 faces -z (starboard). Stairs
+ * climb up against this cell.
+ */
+export function facingCell(cell: Cell, rotation: Rotation): Cell {
+  const step = {
+    0: { dx: 1, dz: 0 },
+    90: { dx: 0, dz: 1 },
+    180: { dx: -1, dz: 0 },
+    270: { dx: 0, dz: -1 },
+  }[rotation];
+  return { level: cell.level, x: cell.x + step.dx, z: cell.z + step.dz };
+}
+
 export function buildOccupancy(ship: Ship): Occupancy {
   const occupancy: Occupancy = new Map();
   for (const part of ship.parts) {

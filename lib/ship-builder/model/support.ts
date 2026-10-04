@@ -1,4 +1,10 @@
-import { cellKey, isInsideHull, parseCellKey, type Occupancy } from "./grid";
+import {
+  cellKey,
+  isDecor,
+  isInsideHull,
+  parseCellKey,
+  type Occupancy,
+} from "./grid";
 import type { Cell, Ship } from "./types";
 
 /** How many steps sideways a cell may be from a grounded cell. */
@@ -41,17 +47,29 @@ export function isGrounded(
   occupancy: Occupancy,
   cell: Cell
 ): boolean {
-  return isGroundedBy(ship, (key) => occupancy.has(key), cell);
+  return isGroundedBy(ship, (key) => isSolid(occupancy, key), cell);
+}
+
+/**
+ * Whether a cell holds a part that can carry or bridge others. Decor items
+ * (deck chairs, stairs) fill a cell but hold nothing up, so support never
+ * flows through them.
+ */
+export function isSolid(occupancy: Occupancy, key: string): boolean {
+  const part = occupancy.get(key);
+  return part !== undefined && !isDecor(part);
 }
 
 /**
  * Multi-source BFS from every grounded occupied cell, walking 4-neighbour
- * through occupied cells on the same level.
+ * through occupied cells on the same level. Decor cells are left out: they
+ * have no support entry of their own and never bridge to a neighbour.
  */
 export function supportMap(ship: Ship, occupancy: Occupancy): SupportMap {
   const distances: SupportMap = new Map();
   const queue: Cell[] = [];
   for (const key of occupancy.keys()) {
+    if (!isSolid(occupancy, key)) continue;
     const cell = parseCellKey(key);
     if (isGrounded(ship, occupancy, cell)) {
       distances.set(key, 0);
@@ -63,7 +81,7 @@ export function supportMap(ship: Ship, occupancy: Occupancy): SupportMap {
     const next = distances.get(cellKey(cell))! + 1;
     for (const neighbour of neighbours(cell)) {
       const key = cellKey(neighbour);
-      if (occupancy.has(key) && !distances.has(key)) {
+      if (isSolid(occupancy, key) && !distances.has(key)) {
         distances.set(key, next);
         queue.push(neighbour);
       }

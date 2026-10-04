@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { PALETTE } from "@/components/ship-builder/scene/palette";
 import { paintHex } from "@/lib/ship-builder/model/paint";
 import { CRUISE_COLORS } from "@/components/ship-builder/scene/cruiseColors";
+import { DECOR_COLORS } from "@/components/ship-builder/scene/decorColors";
 import type { PartType } from "@/lib/ship-builder/model/types";
 
 interface PartIconProps {
@@ -510,6 +511,48 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       <rect x={6} y={10} width={3} height={32} fill={PALETTE.mast} />
       <rect x={39} y={14} width={3} height={28} fill={PALETTE.mast} />
       <path d="M8 11 L40 15 M8 15 L40 19" stroke={PALETTE.aerialWire} />
+    </g>
+  ),
+  deckchair: () => (
+    <g>
+      <path
+        d="M12 36 L30 36 L36 14 L30 14 Z"
+        fill={DECOR_COLORS.chairCushion}
+      />
+      <path d="M12 36 L12 42 M30 36 L30 42" />
+    </g>
+  ),
+  bench: () => (
+    <g>
+      <rect x={6} y={18} width={36} height={6} fill={DECOR_COLORS.benchWood} />
+      <rect x={6} y={26} width={36} height={6} fill={DECOR_COLORS.benchWood} />
+      <path d="M10 32 L10 42 M38 32 L38 42" stroke={DECOR_COLORS.benchLegs} />
+    </g>
+  ),
+  "deck-lamp": () => (
+    <g>
+      <path d="M24 44 L24 16" stroke={DECOR_COLORS.lampPost} strokeWidth={3} />
+      <path d="M18 44 L30 44" stroke={DECOR_COLORS.lampPost} strokeWidth={3} />
+      <circle cx={24} cy={11} r={6} fill={DECOR_COLORS.lampGlass} />
+    </g>
+  ),
+  ventilator: () => (
+    <g>
+      <rect x={18} y={30} width={12} height={14} fill={DECOR_COLORS.ventCowl} />
+      <path
+        d="M18 30 L18 20 Q18 8 34 8 Q36 8 36 12 Q30 14 30 22 L30 30 Z"
+        fill={DECOR_COLORS.ventCowl}
+      />
+      <ellipse cx={30} cy={22} rx={3} ry={6} fill={DECOR_COLORS.ventInside} />
+    </g>
+  ),
+  stairs: () => (
+    <g>
+      <path
+        d="M6 42 L6 34 L16 34 L16 26 L26 26 L26 18 L36 18 L36 10 L42 10 L42 42 Z"
+        fill={DECOR_COLORS.stairStep}
+      />
+      <path d="M8 30 L30 12" stroke={DECOR_COLORS.stairRail} />
     </g>
   ),
 };

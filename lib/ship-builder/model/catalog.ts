@@ -15,9 +15,9 @@ export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
   { id: "masts", name: "Masts" },
   { id: "lifeboats", name: "Lifeboat gear" },
   { id: "naval", name: "Naval" },
+  { id: "cargo", name: "Cargo" },
   { id: "decor", name: "Decorations" },
   { id: "propulsion", name: "Propulsion" },
-  { id: "cargo", name: "Cargo" },
 ];
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
@@ -50,6 +50,26 @@ function bridgeDef(type: PartType, width: number): PartDef {
     footprint: { x: 1, z: width },
     mass: 1,
     height: 1,
+  };
+}
+
+/** A 1×1 deck item: sits directly on the main deck or a deck block. */
+function decorDef(
+  type: PartType,
+  name: string,
+  description: string,
+  height: number
+): PartDef {
+  return {
+    type,
+    category: "decor",
+    name,
+    description: `${description} · on the deck or a deck block`,
+    placement: "grid",
+    role: "decor",
+    footprint: { x: 1, z: 1 },
+    mass: 0.05,
+    height,
   };
 }
 
@@ -519,6 +539,34 @@ export const CATALOG: Record<PartType, PartDef> = {
     height: 0.1,
     emptyHint: "Build a second mast to string wires to",
   },
+  deckchair: decorDef("deckchair", "Deck chair", "A seat for sunbathing", 0.4),
+  bench: decorDef(
+    "bench",
+    "Bench",
+    "A wooden deck bench · turns with rotation",
+    0.45
+  ),
+  "deck-lamp": decorDef(
+    "deck-lamp",
+    "Deck lamp",
+    "A lamp post for the evening",
+    1
+  ),
+  ventilator: {
+    ...decorDef(
+      "ventilator",
+      "Ventilator",
+      "Curved cowl air scoop · turns with rotation",
+      0.8
+    ),
+    kinds: ["liner"],
+  },
+  stairs: decorDef(
+    "stairs",
+    "Stairs",
+    "Climbs up against the deck or cabin block it faces",
+    1
+  ),
 };
 
 export function getPartDef(type: PartType): PartDef {
