@@ -299,7 +299,7 @@ describe("CatalogPanel", () => {
       expect(toggle()).toHaveAttribute("aria-checked", "false");
     });
 
-    it("hides liner-only parts and the empty Funnels category on a cruise ship", () => {
+    it("hides liner-only parts and lists the cruise funnel on a cruise ship", () => {
       showCruise();
       render(<CatalogPanel />);
       expect(funnelButton()).not.toBeInTheDocument();
@@ -307,8 +307,8 @@ describe("CatalogPanel", () => {
         screen.queryByRole("button", { name: /^(Collapsible|Large) lifeboat/ })
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("heading", { name: "Funnels" })
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: /^Modern funnel/ })
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "Lifeboat gear" })
       ).toBeInTheDocument();
@@ -336,11 +336,15 @@ describe("CatalogPanel", () => {
       showCruise();
       render(<CatalogPanel />);
       const box = screen.getByRole("searchbox", { name: "Search parts" });
-      await user.type(box, "funnel");
-      expect(funnelButton()).not.toBeInTheDocument();
+      await user.type(box, "collapsible");
+      expect(
+        screen.queryByRole("button", { name: /^Collapsible lifeboat/ })
+      ).not.toBeInTheDocument();
       expect(screen.getByRole("status")).toHaveTextContent("No parts match");
       await user.click(toggle());
-      expect(funnelButton()).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /^Collapsible lifeboat/ })
+      ).toBeInTheDocument();
     });
 
     it("puts the switch in the drawer's sticky header beside the search", () => {

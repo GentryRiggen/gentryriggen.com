@@ -43,7 +43,9 @@ export function collectEffectAnchors(ship: Ship): EffectAnchors {
     (part) =>
       part.type === "funnel" ||
       part.type === "funnel-large" ||
-      part.type === "propeller"
+      part.type === "propeller" ||
+      part.type === "funnel-modern" ||
+      part.type === "azipod"
   );
   if (emitters.length === 0) return anchors;
 
@@ -55,9 +57,9 @@ export function collectEffectAnchors(ship: Ship): EffectAnchors {
     const point = resolveAttachPoint(ship, part.anchor, occupancy);
     if (!point) continue;
     const base = modelToWorld(length, beam, point.position);
-    if (part.type === "propeller") {
+    if (part.type === "propeller" || part.type === "azipod") {
       anchors.propellers.push(...base);
-    } else if (part.type === "funnel") {
+    } else if (part.type === "funnel" || part.type === "funnel-modern") {
       anchors.smallFunnels.push(...funnelTop(base, FUNNEL_TOP_OFFSET.small));
     } else {
       anchors.largeFunnels.push(...funnelTop(base, FUNNEL_TOP_OFFSET.large));

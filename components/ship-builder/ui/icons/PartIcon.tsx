@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { PALETTE } from "@/components/ship-builder/scene/palette";
 import { paintHex } from "@/lib/ship-builder/model/paint";
+import { CRUISE_COLORS } from "@/components/ship-builder/scene/cruiseColors";
 import type { PartType } from "@/lib/ship-builder/model/types";
 
 interface PartIconProps {
@@ -339,6 +340,128 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
         transform="translate(0 -1)"
       />
       <circle cx={19} cy={14} r={2} fill={PALETTE.bridgeWindows} />
+    </g>
+  ),
+  "cabin-balcony": () => (
+    <g>
+      <Box
+        x={9}
+        bottom={38}
+        width={24}
+        height={20}
+        fill={PALETTE.superstructure}
+        band={{ fill: PALETTE.cabin.second }}
+      />
+      <rect
+        x={7}
+        y={34}
+        width={28}
+        height={4}
+        fill={CRUISE_COLORS.balconyRail}
+      />
+    </g>
+  ),
+  pool: () => (
+    <g>
+      <path d="M6 28 L24 18 L42 28 L24 40 Z" fill={CRUISE_COLORS.poolRim} />
+      <path
+        d="M11 28 L24 21.5 L37 28 L24 36 Z"
+        fill={CRUISE_COLORS.poolWater}
+      />
+    </g>
+  ),
+  waterslide: () => (
+    <g>
+      <rect
+        x={21}
+        y={5}
+        width={5}
+        height={38}
+        fill={CRUISE_COLORS.slideTower}
+      />
+      <path
+        d="M24 8 C40 12 40 18 24 21 C8 24 8 30 24 33 C36 35 38 39 30 43"
+        fill="none"
+        strokeWidth={4}
+        stroke={CRUISE_COLORS.slideTube}
+      />
+    </g>
+  ),
+  "climbing-wall": () => (
+    <g>
+      <rect x={12} y={5} width={24} height={38} fill={CRUISE_COLORS.wall} />
+      {CRUISE_COLORS.holds.flatMap((fill, i) => [
+        <circle
+          key={`a${i}`}
+          cx={19 + (i % 2) * 10}
+          cy={12 + i * 8}
+          r={2.5}
+          fill={fill}
+        />,
+        <circle
+          key={`b${i}`}
+          cx={24 + (i % 2) * -8}
+          cy={16 + i * 8}
+          r={2.5}
+          fill={fill}
+        />,
+      ])}
+    </g>
+  ),
+  "lifeboat-enclosed": () => (
+    <g>
+      <path
+        d="M5 26 Q5 15 24 15 Q43 15 43 26 Q43 34 24 34 Q5 34 5 26 Z"
+        fill={CRUISE_COLORS.enclosedBoat}
+      />
+      <rect
+        x={12}
+        y={21}
+        width={24}
+        height={5}
+        fill={CRUISE_COLORS.enclosedWindow}
+      />
+    </g>
+  ),
+  "raft-canister": () => (
+    <g>
+      <rect
+        x={6}
+        y={17}
+        width={36}
+        height={14}
+        rx={7}
+        fill={CRUISE_COLORS.raft}
+      />
+      <rect x={14} y={17} width={4} height={14} fill={CRUISE_COLORS.raftBand} />
+      <rect x={30} y={17} width={4} height={14} fill={CRUISE_COLORS.raftBand} />
+    </g>
+  ),
+  "funnel-modern": () => (
+    <path
+      d="M16 43 L19 7 Q24 5 29 7 L33 43 Z"
+      fill={CRUISE_COLORS.modernFunnel}
+    />
+  ),
+  azipod: () => (
+    <g>
+      <rect x={21} y={5} width={8} height={16} fill={CRUISE_COLORS.azipod} />
+      <rect
+        x={10}
+        y={20}
+        width={30}
+        height={12}
+        rx={6}
+        fill={CRUISE_COLORS.azipod}
+      />
+      <rect
+        x={5}
+        y={14}
+        width={5}
+        height={24}
+        rx={2}
+        fill={CRUISE_COLORS.azipodBlade}
+      />
     </g>
   ),
 };

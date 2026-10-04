@@ -47,6 +47,8 @@ export function claimsOf(parentId: string, point: AttachPoint): string[] {
 }
 
 const topClaim = (cell: Cell) => `top:${cell.level}:${cell.x}:${cell.z}`;
+/** Shared by davit and edge points, so one cell edge holds only one. */
+const edgeClaim = (cell: Cell) => `edge:${cell.level}:${cell.x}:${cell.z}`;
 const davitClaim = (davitId: string) => `davit:${davitId}`;
 
 function hullPoints(ship: Ship): AttachPoint[] {
@@ -193,7 +195,7 @@ function blockPoints(
 
   if (def.role === "deck") points.push(...largeFunnelPoints(part, occupancy));
 
-  if (def.role !== "bridge") {
+  if (def.role === "deck" || def.role === "cabin") {
     for (const cell of partCells(part)) {
       const covered = occupancy.has(
         cellKey({ ...cell, level: cell.level + 1 })
@@ -201,17 +203,29 @@ function blockPoints(
       if (covered) continue;
       const side = davitSide(ship, occupancy, cell);
       if (!side) continue;
-      points.push({
-        id: `davit:${cell.x}:${cell.z}`,
-        type: "davit-point",
-        position: {
-          x: cell.x + 0.5,
-          y: level + 1,
-          // On the cell's outward face.
-          z: side === "starboard" ? cell.z : cell.z + 1,
+      const position = {
+        x: cell.x + 0.5,
+        y: level + 1,
+        // On the cell's outward face.
+        z: side === "starboard" ? cell.z : cell.z + 1,
+      };
+      const claims = [edgeClaim(cell)];
+      points.push(
+        {
+          id: `davit:${cell.x}:${cell.z}`,
+          type: "davit-point",
+          position,
+          side,
+          claims,
         },
-        side,
-      });
+        {
+          id: `edge:${cell.x}:${cell.z}`,
+          type: "edge-mount",
+          position,
+          side,
+          claims,
+        }
+      );
     }
   }
 

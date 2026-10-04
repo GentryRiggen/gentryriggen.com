@@ -146,8 +146,8 @@ export function computeStats(ship: Ship): Stats {
       funnels += 1;
       power += def.power;
     }
-    if (part.type === "propeller") propellers += 1;
-    if (part.type === "rudder") rudders += 1;
+    if (part.type === "propeller" || part.type === "azipod") propellers += 1;
+    if (part.type === "rudder" || part.type === "azipod") rudders += 1;
     if (def.placement === "grid" && def.role === "bridge") bridges += 1;
 
     const partMass = def.placement === "grid" ? def.mass * cells : def.mass;

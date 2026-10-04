@@ -115,33 +115,37 @@ function isUnderTopMountedPart(
   });
 }
 
-function holdsDavitAt(
+/** Whether a davit or a raft canister sits on this cell's outer edge. */
+function holdsEdgePartAt(
   ship: Ship,
   block: PlacedPart,
   x: number,
   z: number
 ): boolean {
-  return partAt(ship, block.id, `davit:${x}:${z}`)?.type === "davit";
+  return (
+    partAt(ship, block.id, `davit:${x}:${z}`)?.type === "davit" ||
+    partAt(ship, block.id, `edge:${x}:${z}`)?.type === "raft-canister"
+  );
 }
 
 /**
- * A davit sits on the outermost cell of its row, so a cell placed further out
- * on that side would leave it stranded.
+ * A davit or raft sits on the outermost cell of its row, so a cell placed
+ * further out on that side would leave it stranded.
  */
-function isOutboardOfDavit(
+function isOutboardOfEdgePart(
   ship: Ship,
   cell: Cell,
   occupancy: Occupancy
 ): boolean {
   const extent = rowExtent(ship, occupancy, cell.level, cell.x);
   if (!extent) return false;
-  const holdsDavit = (edgeZ: number) => {
+  const holdsEdgePart = (edgeZ: number) => {
     const edge = occupancy.get(cellKey({ ...cell, z: edgeZ }));
-    return edge !== undefined && holdsDavitAt(ship, edge, cell.x, edgeZ);
+    return edge !== undefined && holdsEdgePartAt(ship, edge, cell.x, edgeZ);
   };
-  if (cell.z < extent.min && extent.min <= 0) return holdsDavit(extent.min);
+  if (cell.z < extent.min && extent.min <= 0) return holdsEdgePart(extent.min);
   if (cell.z > extent.max && extent.max >= beamOf(ship) - 1) {
-    return holdsDavit(extent.max);
+    return holdsEdgePart(extent.max);
   }
   return false;
 }
@@ -235,19 +239,22 @@ function canPlaceGrid(
     if (belowDef.placement === "grid" && belowDef.role === "bridge") {
       return fail("Can't build on top of the bridge");
     }
+    if (belowDef.placement === "grid" && belowDef.role === "amenity") {
+      return fail("Can't build on top of a pool");
+    }
     if (isUnderTopMountedPart(ship, cell, occupancy)) {
       return fail("Can't build over a funnel or mast");
     }
-    if (holdsDavitAt(ship, below, cell.x, cell.z)) {
-      return fail("Can't build over a davit");
+    if (holdsEdgePartAt(ship, below, cell.x, cell.z)) {
+      return fail("Can't build over a davit or raft");
     }
   }
 
   const cargo = checkCargo(ship, def, cells, occupancy);
   if (!cargo.ok) return cargo;
 
-  if (cells.some((cell) => isOutboardOfDavit(ship, cell, occupancy))) {
-    return fail("Can't build outboard of a davit");
+  if (cells.some((cell) => isOutboardOfEdgePart(ship, cell, occupancy))) {
+    return fail("Can't build outboard of a davit or raft");
   }
 
   const support = checkSupport(ship, cells, occupancy);

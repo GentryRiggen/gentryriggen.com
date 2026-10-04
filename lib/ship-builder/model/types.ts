@@ -32,6 +32,14 @@ export const PART_TYPES = [
   "hatch-cover",
   "cargo-crane",
   "lifeboat-freefall",
+  "cabin-balcony",
+  "pool",
+  "waterslide",
+  "climbing-wall",
+  "lifeboat-enclosed",
+  "raft-canister",
+  "funnel-modern",
+  "azipod",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -57,7 +65,8 @@ export type AttachPointType =
   | "prop-mount"
   | "rudder-mount"
   | "heli-mount"
-  | "freefall-mount";
+  | "freefall-mount"
+  | "edge-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -174,7 +183,11 @@ interface PartDefBase {
 
 export interface GridPartDef extends PartDefBase {
   placement: "grid";
-  role: "deck" | "cabin" | "bridge" | "cargo";
+  /**
+   * `amenity` blocks (a pool) obey the support rules but nothing builds on
+   * them and they expose no attach points.
+   */
+  role: "deck" | "cabin" | "bridge" | "cargo" | "amenity";
   /** Size at rotation 0: x along the length, z across the beam. */
   footprint: { x: number; z: number };
 }

@@ -102,6 +102,7 @@ describe("attach points", () => {
       type: "davit-point",
       position: { x: 2.5, y: 1, z: 0 },
       side: "starboard",
+      claims: ["edge:0:2:0"],
     });
   });
 
@@ -123,6 +124,7 @@ describe("attach points", () => {
       type: "davit-point",
       position: { x: 2.5, y: 2, z: 0 },
       side: "starboard",
+      claims: ["edge:1:2:0"],
     });
     const port = attachPointsOf(ship, "d")[0];
     expect(port).toMatchObject({ id: "davit:2:3", side: "port" });
@@ -236,6 +238,7 @@ describe("attach points", () => {
           type: "davit-point",
           position: { x: 5.5, y: 2, z: -2 },
           side: "starboard",
+          claims: ["edge:1:5:-2"],
         },
       ]);
       const withBoat = testShip([
@@ -256,6 +259,7 @@ describe("attach points", () => {
           type: "davit-point",
           position: { x: 5.5, y: 2, z: 6 },
           side: "port",
+          claims: ["edge:1:5:5"],
         },
       ]);
     });

@@ -124,7 +124,7 @@ describe("canPlace — grid parts", () => {
 
     expect(
       canPlace(boatDeckShip(), gridCandidate("deck-1x1", 2, 2, 0))
-    ).toEqual(fail("Can't build over a davit"));
+    ).toEqual(fail("Can't build over a davit or raft"));
   });
 
   it("keeps the bridge in the forward half (rule 3)", () => {
@@ -332,7 +332,7 @@ describe("canPlace — side support", () => {
   });
 
   it("refuses to build outboard of a davit in the same row", () => {
-    const BLOCKED = fail("Can't build outboard of a davit");
+    const BLOCKED = fail("Can't build outboard of a davit or raft");
     const ship = testShip([
       ...boatDeckShip().parts,
       gridPart("w0", "deck-1x1", 0, 2, -1),
