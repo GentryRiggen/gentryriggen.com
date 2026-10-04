@@ -34,6 +34,20 @@ describe("SeaTrialResult buttons", () => {
     ).toBeNull();
   });
 
+  it("shows a read-only below-deck picture for an iceberg result only", () => {
+    finishTrial(14);
+    const { unmount } = render(<SeaTrialResult />);
+    const picture = screen.getByTestId("result-below-deck");
+    expect(picture).toHaveClass("lg:hidden");
+    expect(screen.getByRole("img", { name: /^Below deck:/ })).toBeVisible();
+    unmount();
+
+    act(() => store().endTrial());
+    finishTrial();
+    render(<SeaTrialResult />);
+    expect(screen.queryByTestId("result-below-deck")).toBeNull();
+  });
+
   it("Try again repeats an iceberg trial at the same spot", async () => {
     const user = userEvent.setup();
     finishTrial(14);

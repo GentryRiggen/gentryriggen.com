@@ -43,6 +43,24 @@ describe("BelowDeckInset", () => {
   });
 });
 
+describe("BelowDeckInset on phones", () => {
+  it("hides below lg once the result card is up, and sits under the view controls on desktop", () => {
+    render(<BelowDeckInset />);
+    act(() => store().startTrial("calm", 12));
+    const inset = screen.getByTestId("below-deck-inset");
+    expect(inset).not.toHaveClass("hidden");
+    expect(inset).toHaveClass("lg:top-36");
+
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() => store().finishTrial(stateAt(10)));
+    expect(screen.getByTestId("below-deck-inset")).toHaveClass(
+      "hidden",
+      "lg:block"
+    );
+  });
+});
+
 describe("SeaTrialStatus story clock", () => {
   it("shows story time in an iceberg trial and not in a waves trial", () => {
     render(<SeaTrialStatus />);

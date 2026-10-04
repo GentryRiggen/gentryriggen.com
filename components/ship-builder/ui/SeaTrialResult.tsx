@@ -15,6 +15,8 @@ import {
   useShipBuilderStore,
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
+import BelowDeckDiagram from "./BelowDeckDiagram";
+import { belowDeckWater } from "./belowDeckWater";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { SEA_LABELS } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
@@ -65,8 +67,13 @@ function ResultCard({ trial }: ResultCardProps) {
   const startTrial = useShipBuilderStore((s) => s.startTrial);
   const endTrial = useShipBuilderStore((s) => s.endTrial);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
+  const hull = useShipBuilderStore((s) => s.ship.hull);
   const card = useRef<HTMLDivElement>(null);
   const { input, state } = trial;
+  const belowDeck = useMemo(
+    () => belowDeckWater(state.compartments),
+    [state.compartments]
+  );
   const summary = useMemo(() => explainTrial(state, input), [state, input]);
   const look = OUTCOME_LOOKS[state.outcome ?? "steady"];
 
@@ -111,6 +118,20 @@ function ResultCard({ trial }: ResultCardProps) {
       >
         {summary.message}
       </p>
+      {input.iceberg && (
+        // The floating inset would sit under this card on a phone.
+        <div
+          data-testid="result-below-deck"
+          className="mt-3 rounded-lg bg-slate-100 p-2 lg:hidden dark:bg-slate-800"
+        >
+          <BelowDeckDiagram
+            hull={hull}
+            water={belowDeck.water}
+            opened={belowDeck.opened}
+            className="h-auto w-full"
+          />
+        </div>
+      )}
       {summary.tips.length > 0 && (
         <div className="mt-3 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

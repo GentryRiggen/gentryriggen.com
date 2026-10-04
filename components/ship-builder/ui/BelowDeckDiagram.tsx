@@ -14,7 +14,7 @@ const SEGMENT_WIDTH = 24;
 const HULL_DEPTH = 64;
 const DECK_Y = 8;
 const KEEL_Y = DECK_Y + HULL_DEPTH;
-const VIEW_HEIGHT = KEEL_Y + 8;
+const VIEW_HEIGHT = KEEL_Y + 14;
 /** The waterline sits this far up the hull's depth. */
 const WATERLINE_FRACTION = 0.6;
 
@@ -191,17 +191,17 @@ export default function BelowDeckDiagram({
       <text
         aria-hidden="true"
         x={2}
-        y={VIEW_HEIGHT - 1}
-        className="fill-slate-500 text-[6px] dark:fill-slate-400"
+        y={VIEW_HEIGHT - 2}
+        className="fill-slate-500 text-[10px] dark:fill-slate-400"
       >
         Stern
       </text>
       <text
         aria-hidden="true"
         x={width - 2}
-        y={VIEW_HEIGHT - 1}
+        y={VIEW_HEIGHT - 2}
         textAnchor="end"
-        className="fill-slate-500 text-[6px] dark:fill-slate-400"
+        className="fill-slate-500 text-[10px] dark:fill-slate-400"
       >
         Bow
       </text>
