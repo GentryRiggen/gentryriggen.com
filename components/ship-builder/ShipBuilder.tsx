@@ -16,6 +16,7 @@ import Notice from "./ui/Notice";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
 import SelectionBar from "./ui/SelectionBar";
+import StatsHud from "./ui/StatsHud";
 import StatsPanel from "./ui/StatsPanel";
 import UndoRedo from "./ui/UndoRedo";
 import ViewControls from "./ui/ViewControls";
@@ -85,6 +86,7 @@ export default function ShipBuilder() {
         <Drawer
           side="right"
           label="Stats"
+          toggleContent={<StatsHud />}
           open={openDrawer === "right"}
           onOpenChange={(open) => handleDrawerOpenChange("right", open)}
           collapsed={collapsed.right}

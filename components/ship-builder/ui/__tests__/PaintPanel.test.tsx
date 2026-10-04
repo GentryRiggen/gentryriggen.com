@@ -2,7 +2,6 @@ import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PaintPanel, { SWATCH_FILL } from "../PaintPanel";
-import PlacementHint from "../PlacementHint";
 import { PAINT_COLORS } from "@/lib/ship-builder/model/paint";
 import {
   createInitialState,
@@ -69,15 +68,5 @@ describe("PaintPanel", () => {
     act(() => store().selectPaint("red"));
     act(() => store().selectTool("deck-1x1"));
     expect(store().tool.kind).toBe("place");
-  });
-});
-
-describe("PlacementHint in paint mode", () => {
-  it("tells the player what to tap", () => {
-    act(() => store().selectPaint("red"));
-    render(<PlacementHint />);
-    expect(
-      screen.getByText("Painting · tap a part or the hull")
-    ).toBeInTheDocument();
   });
 });

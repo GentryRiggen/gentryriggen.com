@@ -3,29 +3,11 @@
 import { useMemo } from "react";
 import { RotateCw } from "lucide-react";
 import PartIcon from "./icons/PartIcon";
+import { SWATCH_FILL } from "./PaintPanel";
 import { openAttachPoints } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
-import { PAINT_COLORS, type PaintColor } from "@/lib/ship-builder/model/paint";
+import { PAINT_COLORS } from "@/lib/ship-builder/model/paint";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-
-/**
- * Tailwind only sees complete class names, so each swatch fill is spelled out.
- * Typed against PaintColor so a new colour fails the build until it is added.
- */
-const SWATCH_FILL: Record<PaintColor, string> = {
-  buff: "bg-[#d9b97c]",
-  black: "bg-[#222222]",
-  white: "bg-[#f4f4f0]",
-  red: "bg-[#c8312b]",
-  navy: "bg-[#1f3a6b]",
-  sky: "bg-[#5aa9e0]",
-  green: "bg-[#3c8d4a]",
-  yellow: "bg-[#f2c744]",
-  orange: "bg-[#ee8a2c]",
-  pink: "bg-[#ec7fb0]",
-  purple: "bg-[#7b4bb0]",
-  grey: "bg-[#8a8f98]",
-};
 
 // Click-through pill: only the buttons inside it take pointer events. Raised
 // on phones so it clears the help and undo buttons in the bottom corners.
