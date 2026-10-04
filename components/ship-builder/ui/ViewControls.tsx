@@ -5,7 +5,10 @@ import {
   Box,
   CloudLightning,
   Eye,
+  Moon,
   Sailboat,
+  Sun,
+  Sunset,
   Waves,
   Wind,
   type LucideIcon,
@@ -15,7 +18,9 @@ import {
   type CameraView,
 } from "@/lib/ship-builder/state/store";
 import useSeaState from "../hooks/useSeaState";
+import useTimeOfDay from "../hooks/useTimeOfDay";
 import type { SeaState } from "../scene/seaState";
+import type { TimeOfDay } from "../scene/timeOfDay";
 
 const CAMERA_VIEWS: {
   view: CameraView;
@@ -50,6 +55,17 @@ const SEA_STATES: {
   },
 ];
 
+const TIMES_OF_DAY: {
+  time: TimeOfDay;
+  label: string;
+  ariaLabel: string;
+  Icon: LucideIcon;
+}[] = [
+  { time: "day", label: "Day", ariaLabel: "Day", Icon: Sun },
+  { time: "sunset", label: "Sunset", ariaLabel: "Sunset", Icon: Sunset },
+  { time: "night", label: "Night", ariaLabel: "Night", Icon: Moon },
+];
+
 const GROUP_CLASS =
   "pointer-events-auto flex items-center gap-0.5 rounded-lg border border-slate-300 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/90";
 const SEGMENT_BASE =
@@ -58,11 +74,14 @@ const SEGMENT_IDLE = `${SEGMENT_BASE} text-slate-700 hover:bg-slate-100 dark:tex
 const SEGMENT_PRESSED = `${SEGMENT_BASE} bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100`;
 
 /**
- * Camera and sea controls floating over the top of the 3D view. Below lg the
+ * Camera, sea and time-of-day controls floating over the top of the 3D view. Below lg the
  * drawer toggles use the top row, so these sit on a second row beneath them.
+ * The sea and time groups stack on the right so three groups never crowd a
+ * narrow viewport into overlapping.
  */
 export default function ViewControls() {
   const { seaState, setSeaState } = useSeaState();
+  const { timeOfDay, setTimeOfDay } = useTimeOfDay();
   const cameraView = useShipBuilderStore((s) => s.camera.view);
   const setCameraView = useShipBuilderStore((s) => s.setCameraView);
 
@@ -83,20 +102,37 @@ export default function ViewControls() {
           </button>
         ))}
       </div>
-      <div role="group" aria-label="Sea" className={GROUP_CLASS}>
-        {SEA_STATES.map(({ sea, label, ariaLabel, Icon }) => (
-          <button
-            key={sea}
-            type="button"
-            aria-label={ariaLabel}
-            aria-pressed={seaState === sea}
-            onClick={() => setSeaState(sea)}
-            className={seaState === sea ? SEGMENT_PRESSED : SEGMENT_IDLE}
-          >
-            <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-            <span className="sr-only xl:not-sr-only">{label}</span>
-          </button>
-        ))}
+      <div className="flex flex-col items-end gap-2">
+        <div role="group" aria-label="Sea" className={GROUP_CLASS}>
+          {SEA_STATES.map(({ sea, label, ariaLabel, Icon }) => (
+            <button
+              key={sea}
+              type="button"
+              aria-label={ariaLabel}
+              aria-pressed={seaState === sea}
+              onClick={() => setSeaState(sea)}
+              className={seaState === sea ? SEGMENT_PRESSED : SEGMENT_IDLE}
+            >
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="sr-only xl:not-sr-only">{label}</span>
+            </button>
+          ))}
+        </div>
+        <div role="group" aria-label="Time of day" className={GROUP_CLASS}>
+          {TIMES_OF_DAY.map(({ time, label, ariaLabel, Icon }) => (
+            <button
+              key={time}
+              type="button"
+              aria-label={ariaLabel}
+              aria-pressed={timeOfDay === time}
+              onClick={() => setTimeOfDay(time)}
+              className={timeOfDay === time ? SEGMENT_PRESSED : SEGMENT_IDLE}
+            >
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="sr-only xl:not-sr-only">{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

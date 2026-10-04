@@ -54,4 +54,22 @@ describe("ViewControls", () => {
     expect(localStorage.getItem("ship-builder:ui:sea")).toBe("stormy");
     await user.click(calm);
   });
+
+  it("offers day, sunset and night and remembers the choice", async () => {
+    const user = userEvent.setup();
+    render(<ViewControls />);
+    const day = screen.getByRole("button", { name: "Day" });
+    const sunset = screen.getByRole("button", { name: "Sunset" });
+    const night = screen.getByRole("button", { name: "Night" });
+    expect(day).toHaveAttribute("aria-pressed", "true");
+    expect(night).toHaveAttribute("aria-pressed", "false");
+    await user.click(night);
+    expect(night).toHaveAttribute("aria-pressed", "true");
+    expect(day).toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem("ship-builder:ui:time")).toBe("night");
+    await user.click(sunset);
+    expect(sunset).toHaveAttribute("aria-pressed", "true");
+    expect(night).toHaveAttribute("aria-pressed", "false");
+    await user.click(day);
+  });
 });
