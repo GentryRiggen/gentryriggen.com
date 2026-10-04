@@ -22,12 +22,14 @@ export interface SavedShip {
   name: string;
   savedAt: number;
   ship: Ship;
+  /** Parts that no longer fit and were removed from `ship` on load. */
+  dropped: number;
 }
 
 /** "invalid" means something is stored but this build can't read it. */
 export type AutosaveResult =
   | { kind: "none" }
-  | { kind: "ok"; ship: Ship; savedId: string | null }
+  | { kind: "ok"; ship: Ship; savedId: string | null; dropped: number }
   | { kind: "invalid" };
 
 function storage(): Storage | null {
@@ -90,7 +92,7 @@ export function loadAutosave(): AutosaveResult {
     return { kind: "invalid" };
   }
   const savedId = typeof raw.savedId === "string" ? raw.savedId : null;
-  return { kind: "ok", ship: parsed.ship, savedId };
+  return { kind: "ok", ship: parsed.ship, savedId, dropped: parsed.dropped };
 }
 
 export function saveAutosave(ship: Ship, savedId: string | null): boolean {
@@ -129,6 +131,7 @@ function parseEntry(entry: unknown): SavedShip | null {
     name: parsed.ship.name,
     savedAt: finiteSavedAt(entry.savedAt),
     ship: parsed.ship,
+    dropped: parsed.dropped,
   };
 }
 
@@ -200,6 +203,7 @@ export function saveShip(
     name: ship.name,
     savedAt: now,
     ship,
+    dropped: 0,
   };
   const saved = updateShips((entries) => [
     entry,

@@ -19,6 +19,7 @@ import {
   panelClass,
 } from "./styles";
 import trapTab from "./trapTab";
+import { droppedPartsNotice } from "@/lib/ship-builder/persist/schema";
 import { KIND_DEFAULTS } from "@/lib/ship-builder/model/kinds";
 
 interface MyShipsDialogProps {
@@ -36,6 +37,7 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const loadShip = useShipBuilderStore((s) => s.loadShip);
   const rename = useShipBuilderStore((s) => s.rename);
+  const setNotice = useShipBuilderStore((s) => s.setNotice);
   const savedId = useShipBuilderStore((s) => s.savedId);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -64,6 +66,8 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
 
   function handleLoad(entry: SavedShip) {
     loadShip(entry.ship, entry.id);
+    const notice = droppedPartsNotice(entry.dropped);
+    if (notice) setNotice(notice);
     onClose();
   }
 

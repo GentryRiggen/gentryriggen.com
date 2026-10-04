@@ -19,7 +19,9 @@ export const MAX_JSON_LENGTH = 250_000;
 export const SHARE_PATH = "/ship-builder";
 
 export type HashResult =
-  { kind: "none" } | { kind: "ok"; ship: Ship } | { kind: "invalid" };
+  | { kind: "none" }
+  | { kind: "ok"; ship: Ship; dropped: number }
+  | { kind: "invalid" };
 
 const INVALID: HashResult = { kind: "invalid" };
 
@@ -66,5 +68,7 @@ export function decodeShareHash(hash: string): HashResult {
   }
 
   const result = parseShip(raw);
-  return result.ok ? { kind: "ok", ship: result.ship } : INVALID;
+  return result.ok
+    ? { kind: "ok", ship: result.ship, dropped: result.dropped }
+    : INVALID;
 }

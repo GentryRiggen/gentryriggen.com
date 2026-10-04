@@ -57,7 +57,7 @@ describe("share links from older versions", () => {
   it("loads a v1 link with the default beam", () => {
     const v1 = { ...ship, kind: undefined, v: 1, hull: { lengthSegments: 10 } };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v1))}`;
-    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", dropped: 0, ship });
   });
 
   it("loads a v2 link with old mast types", () => {
@@ -73,6 +73,7 @@ describe("share links from older versions", () => {
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v2))}`;
     expect(decodeShareHash(hash)).toEqual({
       kind: "ok",
+      dropped: 0,
       ship: {
         ...ship,
         parts: [...ship.parts, attachPart("m", "mast", HULL_ID, "mast-fore")],
@@ -87,7 +88,7 @@ describe("share links from v3", () => {
     expect([bow, stern]).toEqual(["straight", "counter"]);
     const v3 = { ...ship, kind: undefined, v: 3, hull };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v3))}`;
-    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", dropped: 0, ship });
   });
 
   it("round-trips a ship with non-default ends", () => {
@@ -97,6 +98,7 @@ describe("share links from v3", () => {
     } as const;
     expect(decodeShareHash(`#ship=${encodeShip(shaped)}`)).toEqual({
       kind: "ok",
+      dropped: 0,
       ship: shaped,
     });
   });
@@ -106,7 +108,7 @@ describe("share links from v4", () => {
   it("loads a v4 link unchanged", () => {
     const v4 = { ...ship, kind: undefined, v: 4 };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v4))}`;
-    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", dropped: 0, ship });
   });
 
   it("round-trips a painted ship", () => {
@@ -117,6 +119,7 @@ describe("share links from v4", () => {
     } as const;
     expect(decodeShareHash(`#ship=${encodeShip(painted)}`)).toEqual({
       kind: "ok",
+      dropped: 0,
       ship: painted,
     });
   });
@@ -126,13 +129,14 @@ describe("share links from v5", () => {
   it("loads a v5 link as a liner", () => {
     const v5 = { ...ship, kind: undefined, v: 5 };
     const hash = `#ship=${compressToEncodedURIComponent(JSON.stringify(v5))}`;
-    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship });
+    expect(decodeShareHash(hash)).toEqual({ kind: "ok", dropped: 0, ship });
   });
 
   it("round-trips a cargo ship", () => {
     const cargo = { ...ship, kind: "cargo" } as const;
     expect(decodeShareHash(`#ship=${encodeShip(cargo)}`)).toEqual({
       kind: "ok",
+      dropped: 0,
       ship: cargo,
     });
   });
@@ -142,6 +146,7 @@ describe("share links", () => {
   it("round-trips a ship through the hash", () => {
     expect(decodeShareHash(`#ship=${encodeShip(ship)}`)).toEqual({
       kind: "ok",
+      dropped: 0,
       ship,
     });
   });
@@ -151,6 +156,7 @@ describe("share links", () => {
       "N4IgbiBcCMA0IDsCGBbAplEB5ANgTxQAcBLAYxHgAsBXHHKUHNBAcwBdKBlNF9BNgM5RoABgC+8QkgBOgqAG1QxACaYkFEGzyEMkEMrSkA1gFoATAA9oGpAlKUA9tIYgjxBKr0tpKjUzBo9JAi8BZQZvAAXlDi8NIObEhsxA4IUACcsUqeIABGGlo6mAbGJtBWNnaOzpCgbh6Y3r7w-oHCoeFRMRIg8YnJqd2w2cUQ8IW6+khgxGyV9k4u9TlJifYaUtLMbACSOfmSDu67OcrTs5BmwSA9fUkpacESI3o4B5rakzjEAGZouQ4kiYBIkPDJVPBbAsanV3Cs2GtKBsZNs9qMNkd+Gi9ACkjc4gl7oMngBdMRAA";
     expect(decodeShareHash(`#ship=${V1_LINK}`)).toEqual({
       kind: "ok",
+      dropped: 0,
       ship: { ...ship, name: "Olympic" },
     });
   });
@@ -171,7 +177,11 @@ describe("share links", () => {
     const url = buildShareUrl(largest, "https://gentryriggen.com");
     expect(url).not.toBeNull();
     const hash = new URL(url!).hash;
-    expect(decodeShareHash(hash)).toEqual({ kind: "ok", ship: largest });
+    expect(decodeShareHash(hash)).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship: largest,
+    });
   });
 
   it("keeps the largest ship well inside both length caps", () => {

@@ -1,4 +1,11 @@
-import { CURRENT_VERSION, MAX_PARTS, migrate, parseShip } from "../schema";
+import {
+  CURRENT_VERSION,
+  MAX_PARTS,
+  droppedPartsNotice,
+  migrate,
+  parseShip,
+} from "../schema";
+import { validateShip } from "../../model/placement";
 import { attachPart, gridPart, testShip } from "../../testing";
 import { HULL_ID } from "../../model/types";
 
@@ -10,7 +17,11 @@ const validShip = testShip([
 
 describe("parseShip", () => {
   it("accepts a valid ship", () => {
-    expect(parseShip(validShip)).toEqual({ ok: true, ship: validShip });
+    expect(parseShip(validShip)).toEqual({
+      ok: true,
+      dropped: 0,
+      ship: validShip,
+    });
   });
 
   it("round-trips a v2 ship of every beam through JSON", () => {
@@ -18,6 +29,7 @@ describe("parseShip", () => {
       const ship = testShip(validShip.parts, 8, beam);
       expect(parseShip(JSON.parse(JSON.stringify(ship)))).toEqual({
         ok: true,
+        dropped: 0,
         ship,
       });
     }
@@ -111,12 +123,58 @@ describe("parseShip", () => {
     });
   });
 
-  it("rejects data that breaks the building rules", () => {
-    const floating = testShip([gridPart("a", "deck-1x1", 2, 0, 0)]);
-    expect(parseShip(floating)).toEqual({
-      ok: false,
-      error: "Part a: Needs a deck beneath every cell",
-    });
+  it("drops a part that no longer fits and keeps the rest", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 0),
+      gridPart("floating", "deck-1x1", 2, 0, 0),
+      gridPart("b", "deck-1x1", 1, 2, 0),
+    ]);
+    const result = parseShip(JSON.parse(JSON.stringify(ship)));
+    expect(result).toMatchObject({ ok: true, dropped: 1 });
+    if (!result.ok) return;
+    expect(result.ship.parts.map((p) => p.id)).toEqual(["a", "b"]);
+    expect(validateShip(result.ship).ok).toBe(true);
+  });
+
+  it("drops parts that depended on a dropped part", () => {
+    const ship = testShip([
+      gridPart("floating", "deck-1x1", 2, 0, 0),
+      attachPart("dv", "davit", "floating", "davit:2:0"),
+      gridPart("a", "deck-1x1", 0, 2, 0),
+    ]);
+    const result = parseShip(JSON.parse(JSON.stringify(ship)));
+    expect(result).toMatchObject({ ok: true, dropped: 2 });
+    if (!result.ok) return;
+    expect(result.ship.parts.map((p) => p.id)).toEqual(["a"]);
+  });
+
+  it("keeps parts saved before the part that holds them up", () => {
+    const ship = testShip([
+      gridPart("b", "deck-1x1", 1, 2, 0),
+      gridPart("a", "deck-1x1", 0, 2, 0),
+    ]);
+    const result = parseShip(JSON.parse(JSON.stringify(ship)));
+    expect(result).toMatchObject({ ok: true, dropped: 0 });
+    if (!result.ok) return;
+    expect(result.ship.parts).toHaveLength(2);
+  });
+
+  it("still rejects a structurally broken ship", () => {
+    expect(parseShip({ ...validShip, kind: "raft" }).ok).toBe(false);
+    expect(
+      parseShip({ ...validShip, hull: { ...validShip.hull, beam: 99 } }).ok
+    ).toBe(false);
+    expect(parseShip({ ...validShip, parts: [{ id: "x" }] }).ok).toBe(false);
+  });
+
+  it("words the notice for one part and for several", () => {
+    expect(droppedPartsNotice(0)).toBeNull();
+    expect(droppedPartsNotice(1)).toBe(
+      "1 part didn't fit any more and was removed"
+    );
+    expect(droppedPartsNotice(2)).toBe(
+      "2 parts didn't fit any more and were removed"
+    );
   });
 });
 
@@ -131,6 +189,7 @@ describe("v1 to v2 migration", () => {
   it("loads a v1 ship as v2 with the default beam", () => {
     expect(parseShip(JSON.parse(JSON.stringify(v1)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: { ...testShip(validShip.parts, 10, 4), name: "Olympic" },
     });
   });
@@ -156,9 +215,9 @@ describe("v1 to v2 migration", () => {
     expect(parseShip(raw).ok).toBe(false);
   });
 
-  it("still rejects a v1 ship that breaks the building rules", () => {
+  it("drops the parts of a v1 ship that break the building rules", () => {
     const floating = { ...v1, parts: [gridPart("a", "deck-1x1", 2, 0, 0)] };
-    expect(parseShip(floating).ok).toBe(false);
+    expect(parseShip(floating)).toMatchObject({ ok: true, dropped: 1 });
   });
 });
 
@@ -177,6 +236,7 @@ describe("v2 to v3 migration", () => {
   it("turns fore and aft masts into masts on the same anchors", () => {
     expect(parseShip(JSON.parse(JSON.stringify(v2)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: {
         ...testShip([
           attachPart("mf", "mast", HULL_ID, "mast-fore"),
@@ -216,6 +276,7 @@ describe("v3 to v4 migration", () => {
   it("gives the hull the default bow and stern", () => {
     expect(parseShip(JSON.parse(JSON.stringify(v3)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: { ...testShip(v3.parts), name: "Plain" },
     });
     expect(migrate(v3)).toMatchObject({
@@ -236,6 +297,7 @@ describe("v3 to v4 migration", () => {
     for (const old of [v1, v2]) {
       expect(parseShip(JSON.parse(JSON.stringify(old)))).toEqual({
         ok: true,
+        dropped: 0,
         ship: { ...testShip(v3.parts), name: "Plain" },
       });
     }
@@ -249,6 +311,7 @@ describe("v3 to v4 migration", () => {
     } as const;
     expect(parseShip(JSON.parse(JSON.stringify(shaped)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: shaped,
     });
   });
@@ -271,6 +334,7 @@ describe("v4 to v5 migration", () => {
     expect(migrate({ ...v4, v: 4 })).toEqual({ ...v4, v: 6, kind: "liner" });
     expect(parseShip(JSON.parse(JSON.stringify(v4)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: { ...testShip(v4.parts), name: "Plain" },
     });
   });
@@ -283,6 +347,7 @@ describe("v4 to v5 migration", () => {
     for (const old of [v1, v3]) {
       expect(parseShip(JSON.parse(JSON.stringify(old)))).toEqual({
         ok: true,
+        dropped: 0,
         ship: { ...testShip(v4.parts), name: "Plain" },
       });
     }
@@ -297,6 +362,7 @@ describe("v4 to v5 migration", () => {
     } as const;
     expect(parseShip(JSON.parse(JSON.stringify(painted)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: painted,
     });
   });
@@ -352,6 +418,7 @@ describe("v5 to v6 migration", () => {
     expect(migrate(v5)).toEqual({ ...v5, v: 6, kind: "liner" });
     expect(parseShip(JSON.parse(JSON.stringify(v5)))).toEqual({
       ok: true,
+      dropped: 0,
       ship: { ...testShip(v5.parts), name: "Old liner" },
     });
   });
@@ -368,6 +435,7 @@ describe("v5 to v6 migration", () => {
       const ship = { ...testShip(v5.parts), kind };
       expect(parseShip(JSON.parse(JSON.stringify(ship)))).toEqual({
         ok: true,
+        dropped: 0,
         ship,
       });
     }

@@ -27,10 +27,42 @@ beforeEach(() => {
   jest.restoreAllMocks();
 });
 
+describe("ships with parts that no longer fit", () => {
+  const broken = testShip([
+    gridPart("a", "deck-1x1", 0, 0, 0),
+    gridPart("floating", "deck-1x1", 3, 0, 0),
+  ]);
+
+  it("loads the autosave without them and reports how many", () => {
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: broken, savedId: "s" })
+    );
+    expect(loadAutosave()).toMatchObject({ kind: "ok", dropped: 1 });
+  });
+
+  it("lists a saved ship without them, leaving the stored entry alone", () => {
+    const entry = { id: "s", name: "x", savedAt: 1, ship: broken };
+    localStorage.setItem(SHIPS_KEY, JSON.stringify([entry]));
+    const [listed] = listShips();
+    expect(listed.dropped).toBe(1);
+    expect(listed.ship.parts.map((p) => p.id)).toEqual(["a"]);
+    expect(countUnreadableShips()).toBe(0);
+    expect(JSON.parse(localStorage.getItem(SHIPS_KEY) ?? "[]")).toEqual([
+      entry,
+    ]);
+  });
+});
+
 describe("autosave", () => {
   it("round-trips the ship and savedId", () => {
     expect(saveAutosave(ship, "ship-1")).toBe(true);
-    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "ship-1" });
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship,
+      savedId: "ship-1",
+    });
   });
 
   it("loads a v1 autosave and My Ships entry with the default beam", () => {
@@ -39,7 +71,12 @@ describe("autosave", () => {
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v1, savedId: "old" })
     );
-    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship,
+      savedId: "old",
+    });
     localStorage.setItem(
       SHIPS_KEY,
       JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v1 }])
@@ -53,7 +90,12 @@ describe("autosave", () => {
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v5, savedId: "old" })
     );
-    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship,
+      savedId: "old",
+    });
     localStorage.setItem(
       SHIPS_KEY,
       JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v5 }])
@@ -68,7 +110,12 @@ describe("autosave", () => {
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v4, savedId: "old" })
     );
-    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship,
+      savedId: "old",
+    });
     localStorage.setItem(
       SHIPS_KEY,
       JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v4 }])
@@ -84,7 +131,12 @@ describe("autosave", () => {
       AUTOSAVE_KEY,
       JSON.stringify({ ship: v3, savedId: "old" })
     );
-    expect(loadAutosave()).toEqual({ kind: "ok", ship, savedId: "old" });
+    expect(loadAutosave()).toEqual({
+      kind: "ok",
+      dropped: 0,
+      ship,
+      savedId: "old",
+    });
     localStorage.setItem(
       SHIPS_KEY,
       JSON.stringify([{ id: "old", name: "Test", savedAt: 1, ship: v3 }])
@@ -108,6 +160,7 @@ describe("autosave", () => {
     );
     expect(loadAutosave()).toEqual({
       kind: "ok",
+      dropped: 0,
       ship: migrated,
       savedId: "old",
     });

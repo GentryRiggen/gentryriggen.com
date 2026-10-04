@@ -42,6 +42,39 @@ describe("useShipPersistence", () => {
     expect(window.location.hash).toBe("");
   });
 
+  it("removes parts that no longer fit from a shared ship and says so", () => {
+    const broken = testShip([
+      gridPart("a", "deck-1x1", 0, 0, 0),
+      gridPart("floating", "deck-1x1", 3, 0, 0),
+    ]);
+    window.history.replaceState(
+      null,
+      "",
+      `/ship-builder#ship=${encodeShip(broken)}`
+    );
+    render(<Harness />);
+    expect(store().ship.parts.map((p) => p.id)).toEqual(["a"]);
+    expect(store().notice?.text).toBe(
+      "1 part didn't fit any more and was removed"
+    );
+  });
+
+  it("removes parts that no longer fit from the autosave and says so", () => {
+    const broken = testShip([
+      gridPart("a", "deck-1x1", 0, 0, 0),
+      gridPart("floating", "deck-1x1", 3, 0, 0),
+    ]);
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ ship: broken, savedId: null })
+    );
+    render(<Harness />);
+    expect(store().ship.parts.map((p) => p.id)).toEqual(["a"]);
+    expect(store().notice?.text).toBe(
+      "1 part didn't fit any more and was removed"
+    );
+  });
+
   it("shows a notice for an invalid hash and restores the autosave", () => {
     saveAutosave(shared, "ship-3");
     window.history.replaceState(null, "", "/ship-builder#ship=garbage");

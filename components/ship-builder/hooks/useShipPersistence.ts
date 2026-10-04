@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { loadAutosave, saveAutosave } from "@/lib/ship-builder/persist/local";
+import { droppedPartsNotice } from "@/lib/ship-builder/persist/schema";
 import { decodeShareHash } from "@/lib/ship-builder/persist/share";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 
@@ -55,6 +56,8 @@ export default function useShipPersistence() {
         return false;
       }
       store.getState().loadShip(result.ship, null);
+      const notice = droppedPartsNotice(result.dropped);
+      if (notice) store.getState().setNotice(notice);
       return true;
     }
 
@@ -74,6 +77,8 @@ export default function useShipPersistence() {
           store
             .getState()
             .loadShip(saved.ship, saved.savedId, { resetHistory: true });
+          const notice = droppedPartsNotice(saved.dropped);
+          if (notice) store.getState().setNotice(notice);
         } else if (saved.kind === "invalid") {
           // loadAutosave backed the unreadable autosave up, since the next
           // change overwrites it.
