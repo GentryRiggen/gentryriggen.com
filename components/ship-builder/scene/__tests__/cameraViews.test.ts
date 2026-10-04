@@ -1,7 +1,11 @@
 import {
   CELLS_PER_SEGMENT,
+  DEFAULT_BEAM,
+  MAX_BEAM,
   MAX_SEGMENTS,
+  MIN_BEAM,
   MIN_SEGMENTS,
+  WING_REACH,
 } from "@/lib/ship-builder/model/grid";
 import { PROW_LENGTH } from "@/lib/ship-builder/model/attach";
 import { emptyShip } from "@/lib/ship-builder/model/placement";
@@ -9,15 +13,14 @@ import type { CameraView } from "@/lib/ship-builder/state/store";
 import {
   CAMERA_TARGET,
   clampTarget,
-  DEFAULT_BEAM,
   panBounds,
   PAN_MARGIN,
-  PAN_WING_REACH,
   shipBeam,
   MAX_POLAR_ANGLE,
   MAX_VIEW_DISTANCE,
   polarAngle,
   shouldReframe,
+  shouldReframeBeam,
   shouldFrame,
   type FrameRequest,
   viewDistance,
@@ -74,30 +77,69 @@ describe("shouldFrame", () => {
   const view: FrameRequest["camera"] = { view: "side", nonce: 0 };
 
   it("always frames the first request", () => {
-    expect(shouldFrame(null, { camera: view, lengthSegments: 4 })).toBe(true);
+    expect(
+      shouldFrame(null, { camera: view, lengthSegments: 4, beam: 4 })
+    ).toBe(true);
   });
 
   it("does not reframe as single + clicks accumulate", () => {
-    let seen: FrameRequest = { camera: view, lengthSegments: 4 };
+    let seen: FrameRequest = { camera: view, lengthSegments: 4, beam: 4 };
     for (const lengthSegments of [5, 6, 7]) {
-      const next = { camera: view, lengthSegments };
+      const next = { camera: view, lengthSegments, beam: 4 };
       expect(shouldFrame(seen, next)).toBe(false);
       seen = next;
     }
   });
 
   it("reframes when the length jumps in one step", () => {
-    const seen = { camera: view, lengthSegments: 4 };
-    expect(shouldFrame(seen, { camera: view, lengthSegments: 12 })).toBe(true);
+    const seen = { camera: view, lengthSegments: 4, beam: 4 };
+    expect(
+      shouldFrame(seen, { camera: view, lengthSegments: 12, beam: 4 })
+    ).toBe(true);
   });
 
   it("reframes when a new preset is requested", () => {
-    const seen = { camera: view, lengthSegments: 4 };
+    const seen = { camera: view, lengthSegments: 4, beam: 4 };
     const next: FrameRequest = {
       camera: { view: "top", nonce: 1 },
       lengthSegments: 4,
+      beam: 4,
     };
     expect(shouldFrame(seen, next)).toBe(true);
+  });
+
+  it("does not reframe for a single beam step", () => {
+    const seen = { camera: view, lengthSegments: 4, beam: 4 };
+    expect(shouldFrame(seen, { ...seen, beam: 5 })).toBe(false);
+    expect(shouldFrame(seen, { ...seen, beam: 6 })).toBe(false);
+  });
+
+  it("reframes when the beam jumps by more than two", () => {
+    const seen = { camera: view, lengthSegments: 4, beam: 3 };
+    expect(shouldFrame(seen, { ...seen, beam: 7 })).toBe(true);
+  });
+});
+
+describe("shouldReframeBeam", () => {
+  it("allows a change of two but not three", () => {
+    expect(shouldReframeBeam(3, 5)).toBe(false);
+    expect(shouldReframeBeam(7, 5)).toBe(false);
+    expect(shouldReframeBeam(3, 6)).toBe(true);
+    expect(shouldReframeBeam(MAX_BEAM, MIN_BEAM)).toBe(true);
+  });
+});
+
+describe("beam framing", () => {
+  it("backs the camera off for a wider ship", () => {
+    expect(viewDistance(24, MAX_BEAM)).toBeGreaterThan(viewDistance(24, 4));
+    expect(viewDistance(24, MIN_BEAM)).toBeLessThan(viewDistance(24, 4));
+    expect(viewDistance(24)).toBe(viewDistance(24, DEFAULT_BEAM));
+  });
+
+  it("applies the beam to every preset", () => {
+    const wide = viewPosition("three-quarter", 24, 1, MAX_BEAM);
+    const narrow = viewPosition("three-quarter", 24, 1, MIN_BEAM);
+    expect(wide[0]).toBeGreaterThan(narrow[0]);
   });
 });
 
@@ -123,8 +165,8 @@ describe("panBounds", () => {
       16 + PROW_LENGTH + PAN_MARGIN,
     ]);
     expect(bounds.z).toEqual([
-      -(2 + PAN_WING_REACH + PAN_MARGIN),
-      2 + PAN_WING_REACH + PAN_MARGIN,
+      -(2 + WING_REACH + PAN_MARGIN),
+      2 + WING_REACH + PAN_MARGIN,
     ]);
     expect(bounds.y).toEqual([0.5, 6]);
   });
@@ -164,13 +206,9 @@ describe("clampTarget", () => {
 });
 
 describe("shipBeam", () => {
-  it("defaults to four cells until the model has a beam", () => {
-    expect(shipBeam(emptyShip())).toBe(DEFAULT_BEAM);
-    expect(DEFAULT_BEAM).toBe(4);
-  });
-
-  it("reads the hull beam when present", () => {
+  it("reads the hull beam", () => {
     const ship = emptyShip();
+    expect(shipBeam(ship)).toBe(DEFAULT_BEAM);
     const wide = { ...ship, hull: { ...ship.hull, beam: 6 } };
     expect(shipBeam(wide)).toBe(6);
   });

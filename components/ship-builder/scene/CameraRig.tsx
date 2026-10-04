@@ -39,12 +39,13 @@ export default function CameraRig() {
   const seen = useRef<FrameRequest | null>(null);
 
   useEffect(() => {
-    const next = { camera, lengthSegments };
+    const next = { camera, lengthSegments, beam };
     const shouldPlace = shouldFrame(seen.current, next);
     seen.current = next;
     if (!shouldPlace) return;
 
-    const lengthCells = gridLength(useShipBuilderStore.getState().ship);
+    const { ship } = useShipBuilderStore.getState();
+    const lengthCells = gridLength(ship);
     const orbit = controls.current;
     // With damping on, update() only applies a fraction of any leftover drag
     // momentum, so a preset would drift off its pose. Flush the momentum with
@@ -58,14 +59,14 @@ export default function CameraRig() {
     const { width, height } = get().size;
     const aspect = height > 0 ? width / height : 1;
     get().camera.position.set(
-      ...viewPosition(camera.view, lengthCells, aspect)
+      ...viewPosition(camera.view, lengthCells, aspect, shipBeam(ship))
     );
     if (orbit) {
       orbit.target.set(...CAMERA_TARGET);
       orbit.update();
       orbit.enableDamping = true;
     }
-  }, [camera, lengthSegments, get]);
+  }, [camera, lengthSegments, beam, get]);
 
   // Keep the target near the ship after every pan (and damping step). The
   // camera moves by the same amount, so the view slides rather than turns.
