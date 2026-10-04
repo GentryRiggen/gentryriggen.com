@@ -41,6 +41,7 @@ import {
   type PlacedPart,
   type Ship,
 } from "./types";
+import { partAt } from "./partIndex";
 
 export type RuleResult = { ok: true } | { ok: false; reason: string };
 export type PartCandidate = Omit<PlacedPart, "id">;
@@ -104,13 +105,7 @@ function holdsDavitAt(
   x: number,
   z: number
 ): boolean {
-  return ship.parts.some(
-    (p) =>
-      p.type === "davit" &&
-      p.anchor.kind === "attach" &&
-      p.anchor.parentId === block.id &&
-      p.anchor.pointId === `davit:${x}:${z}`
-  );
+  return partAt(ship, block.id, `davit:${x}:${z}`)?.type === "davit";
 }
 
 /**

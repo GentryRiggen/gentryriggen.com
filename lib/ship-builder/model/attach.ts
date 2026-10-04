@@ -20,6 +20,7 @@ import {
   type Ship,
   type Side,
 } from "./types";
+import { partAt, partById } from "./partIndex";
 
 const DAVIT_HEIGHT = 0.8;
 const DAVIT_REACH = 0.6;
@@ -246,22 +247,17 @@ function nextDavit(
   base: AttachPoint,
   occupancy: Occupancy
 ): PlacedPart | undefined {
-  const parent = ship.parts.find((p) => p.id === anchor.parentId);
+  const parent = partById(ship, anchor.parentId);
   if (!parent || parent.anchor.kind !== "grid") return undefined;
   const [, x, z] = anchor.pointId.split(":").map(Number);
   const block = occupancy.get(
     cellKey({ level: parent.anchor.level, x: x + 1, z })
   );
   if (!block) return undefined;
-  const pointId = `davit:${x + 1}:${z}`;
-  const davit = ship.parts.find(
-    (p) =>
-      p.type === "davit" &&
-      p.anchor.kind === "attach" &&
-      p.anchor.parentId === block.id &&
-      p.anchor.pointId === pointId
-  );
-  if (!davit || davit.anchor.kind !== "attach") return undefined;
+  const davit = partAt(ship, block.id, `davit:${x + 1}:${z}`);
+  if (davit?.type !== "davit" || davit.anchor.kind !== "attach") {
+    return undefined;
+  }
   const point = resolveAttachPoint(ship, davit.anchor, occupancy);
   return isNextDavit(base, point) ? davit : undefined;
 }
@@ -287,7 +283,7 @@ export function attachPointsOf(
   occupancy: Occupancy = buildOccupancy(ship)
 ): AttachPoint[] {
   if (parentId === HULL_ID) return hullPoints(ship);
-  const part = ship.parts.find((p) => p.id === parentId);
+  const part = partById(ship, parentId);
   if (!part) return [];
   if (part.type === "davit") return davitPoints(ship, part, occupancy);
   return blockPoints(ship, part, occupancy);
