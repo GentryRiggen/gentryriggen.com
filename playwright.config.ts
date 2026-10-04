@@ -46,6 +46,13 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"] },
     },
 
+    /* The Ship Builder is also a touch app, so run its tests on an iPad. */
+    {
+      name: "ipad",
+      use: { ...devices["iPad Pro 11 landscape"] },
+      testMatch: /ship-builder/,
+    },
+
     /* Test against mobile viewports. */
     // {
     //   name: 'Mobile Chrome',

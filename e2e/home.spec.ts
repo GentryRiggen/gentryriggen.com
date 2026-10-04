@@ -34,6 +34,19 @@ test.describe("Home Page", () => {
     await expect(link).toHaveAttribute("href", "/ship-builder");
   });
 
+  test("the `ships` command opens the ship builder", async ({ page }) => {
+    await page.goto("/");
+    const input = page.getByLabel("Terminal command input");
+    // The prompt only appears once the boot sequence has finished typing.
+    await expect(input).toBeVisible({ timeout: 40000 });
+    await input.fill("ships");
+    await input.press("Enter");
+    await expect(page).toHaveURL(/\/ship-builder$/, { timeout: 10000 });
+    await expect(
+      page.getByRole("heading", { name: "Ship Builder" })
+    ).toBeVisible();
+  });
+
   test("should be responsive on mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");

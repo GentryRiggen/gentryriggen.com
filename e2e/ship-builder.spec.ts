@@ -140,6 +140,89 @@ test.describe("Ship Builder", () => {
     );
   });
 
+  test("Wider adds a column to the hull and raises the tonnage", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    const tonnage = async () =>
+      Number(
+        (await page.getByTestId("stat-tonnage").innerText()).replace(/\D/g, "")
+      );
+    await expect(page.getByTestId("beam-width")).toHaveText("4 wide");
+    const before = await tonnage();
+    await page.getByRole("button", { name: "Wider" }).click();
+    await expect(page.getByTestId("beam-width")).toHaveText("5 wide");
+    expect(await tonnage()).toBeGreaterThan(before);
+  });
+
+  test("a wing block beyond the hull edge counts in the stats", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x: 5, z: 0 });
+    await expect(page.getByTestId("stat-people")).toHaveText("480");
+    await place(page, /First-class cabins/, {
+      kind: "grid",
+      level: 0,
+      x: 5,
+      z: -1,
+    });
+    await expect(page.getByTestId("stat-people")).toHaveText("510");
+    expect(
+      await page.evaluate(
+        () => window.__shipBuilderStore!.getState().ship.parts.length
+      )
+    ).toBe(2);
+  });
+
+  test("holding a placed block deletes it", async ({
+    browserName,
+    playwright,
+    baseURL,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "WebGL is only reliable in headless Chromium"
+    );
+    const browser = await playwright.chromium.launch({
+      args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
+    });
+    try {
+      const page = await browser.newPage({
+        baseURL,
+        viewport: { width: 1280, height: 800 },
+      });
+      await openBuilder(page);
+      await page.getByRole("button", { name: "Top view" }).click();
+      // The top view looks at the middle of the hull, so a 2x2 patch of blocks
+      // covers the canvas centre wherever the grid lines fall.
+      for (const x of [11, 12]) {
+        for (const z of [1, 2]) {
+          await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x, z });
+        }
+      }
+      const count = () =>
+        page.evaluate(
+          () => window.__shipBuilderStore!.getState().ship.parts.length
+        );
+      expect(await count()).toBe(4);
+
+      const box = await page.getByTestId("ship-canvas").boundingBox();
+      if (!box) throw new Error("canvas has no box");
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      // Move across the block first, as a real pointer would, so the scene has
+      // a pointer position before the press.
+      await page.mouse.move(centre.x - 3, centre.y - 3);
+      await page.mouse.move(centre.x + 3, centre.y + 3, { steps: 5 });
+      await page.mouse.down();
+      await page.waitForTimeout(700);
+      await page.mouse.up();
+      await expect.poll(count).toBe(3);
+    } finally {
+      await browser.close();
+    }
+  });
+
   test("renders the 3D scene", async ({ browserName, playwright, baseURL }) => {
     test.skip(
       browserName !== "chromium",
