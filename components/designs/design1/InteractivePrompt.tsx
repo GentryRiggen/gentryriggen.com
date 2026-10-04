@@ -11,6 +11,10 @@ import {
 } from "react";
 import confetti from "canvas-confetti";
 import { getCommandResponse } from "./commandResponses";
+import { navigateTo } from "./navigate";
+
+/** Gives the visitor a moment to read the output before navigating away */
+const NAVIGATION_DELAY_MS = 1200;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,6 +84,15 @@ export default function InteractivePrompt({
   const inputRef = externalInputRef ?? internalRef;
 
   // Don't auto-focus — let the ghost hint play to entice the user to click
+
+  // Pending navigation timer (e.g. from `ships`), cancelled on unmount
+  const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (navigationTimerRef.current) clearTimeout(navigationTimerRef.current);
+    };
+  }, []);
 
   // Notify parent to scroll when new commands are added
   useEffect(() => {
@@ -187,6 +200,17 @@ export default function InteractivePrompt({
           if (Date.now() < end) requestAnimationFrame(frame);
         };
         frame();
+      }
+
+      if (result.navigateTo) {
+        const destination = result.navigateTo;
+        if (navigationTimerRef.current) {
+          clearTimeout(navigationTimerRef.current);
+        }
+        navigationTimerRef.current = setTimeout(
+          () => navigateTo(destination),
+          NAVIGATION_DELAY_MS
+        );
       }
 
       setExecutedCommands((prev) => [
