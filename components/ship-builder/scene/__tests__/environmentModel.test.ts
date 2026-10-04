@@ -60,7 +60,7 @@ describe("environmentFor", () => {
   it("keeps the ship readable at night but the sky darker than at sunset", () => {
     const night = environmentFor("night", "calm");
     const sunset = environmentFor("sunset", "calm");
-    expect(night.numbers.ambientIntensity).toBeGreaterThan(0.3);
+    expect(night.numbers.ambientIntensity).toBeGreaterThan(0.2);
     expect(night.numbers.lightIntensity).toBeGreaterThan(0.5);
     expect(luminance(night.colors.skyHorizon)).toBeLessThan(
       luminance(sunset.colors.skyHorizon)

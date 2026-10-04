@@ -42,11 +42,11 @@ export interface WindowGlow {
  * and sparse.
  */
 export const WINDOW_GLOW: Record<WindowGroup, WindowGlow> = {
-  first: { color: "#ffb92e", strength: 1.1, litFraction: 1 },
-  second: { color: "#fff1d6", strength: 0.85, litFraction: 0.8 },
-  third: { color: "#d8cc7a", strength: 0.6, litFraction: 0.45 },
-  crew: { color: "#9cc2ff", strength: 0.5, litFraction: 0.25 },
-  bridge: { color: "#b6f2cf", strength: 0.6, litFraction: 1 },
+  first: { color: "#ffb92e", strength: 2.2, litFraction: 1 },
+  second: { color: "#fff1d6", strength: 1.8, litFraction: 0.8 },
+  third: { color: "#d8cc7a", strength: 1.4, litFraction: 0.45 },
+  crew: { color: "#9cc2ff", strength: 1.1, litFraction: 0.25 },
+  bridge: { color: "#b6f2cf", strength: 1.5, litFraction: 1 },
 };
 
 /** The window lighting a block's windows follow, or null if it has none. */

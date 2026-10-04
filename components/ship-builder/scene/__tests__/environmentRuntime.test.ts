@@ -49,11 +49,18 @@ describe("easeEnvironment", () => {
   it("lands on the target and then stays there", () => {
     const current = toRuntimeEnvironment(day);
     const target = toRuntimeEnvironment(night);
+    const expectNumbersAtTarget = () => {
+      for (const [key, value] of Object.entries(target.numbers)) {
+        expect(
+          current.numbers[key as keyof typeof current.numbers]
+        ).toBeCloseTo(value, 9);
+      }
+    };
     easeEnvironment(current, target, 1);
-    expect(current.numbers).toEqual(target.numbers);
+    expectNumbersAtTarget();
     expect(current.colors.skyZenith.equals(target.colors.skyZenith)).toBe(true);
     easeEnvironment(current, target, 0.3);
-    expect(current.numbers).toEqual(target.numbers);
+    expectNumbersAtTarget();
   });
 
   it("leaves the target untouched", () => {

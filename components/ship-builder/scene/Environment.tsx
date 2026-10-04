@@ -18,6 +18,7 @@ import {
   type RuntimeEnvironment,
 } from "./environmentRuntime";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import type { GlowController } from "./GlowContext";
 import type { SeaState } from "./seaState";
 import SkyDome from "./SkyDome";
 import Stars from "./Stars";
@@ -34,7 +35,12 @@ interface EnvironmentProps {
   seaState: SeaState;
   /** Seen from below, the ship sits in water rather than sky. */
   isBelow: boolean;
+  /** Told the eased glow each frame, so lights fade in with the sky. */
+  glow: GlowController;
 }
+
+/** Within this of its target the glow snaps there, so day is exactly dark. */
+const GLOW_SNAP = 0.003;
 
 /**
  * The sky, fog, weather and lights for a time of day and sea state. Switching
@@ -45,6 +51,7 @@ export default function Environment({
   timeOfDay,
   seaState,
   isBelow,
+  glow,
 }: EnvironmentProps) {
   const target = useMemo(
     () => toRuntimeEnvironment(environmentFor(timeOfDay, seaState)),
@@ -66,6 +73,12 @@ export default function Environment({
     easeEnvironment(current, target, amount);
 
     const { colors, numbers, vectors } = current;
+    const glowTarget = target.numbers.glow;
+    glow.set(
+      Math.abs(numbers.glow - glowTarget) < GLOW_SNAP
+        ? glowTarget
+        : numbers.glow
+    );
     const water = isBelow ? colors.underwater : colors.skyHorizon;
     background.current?.copy(water);
     if (fog.current) {

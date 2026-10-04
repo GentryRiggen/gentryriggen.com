@@ -1,7 +1,14 @@
 "use client";
 
-import { AdditiveBlending, DoubleSide, type BufferGeometry } from "three";
-import { useGlow } from "./GlowContext";
+import { useRef } from "react";
+import {
+  AdditiveBlending,
+  DoubleSide,
+  type BufferGeometry,
+  type Mesh,
+  type MeshBasicMaterial,
+} from "three";
+import { useGlowEffect } from "./GlowContext";
 import {
   createBeamGeometry,
   createHaloGeometry,
@@ -35,9 +42,10 @@ interface AdditiveGlowProps {
 /**
  * One additive, unlit, non-blocking shape. It draws after the sea
  * (renderOrder) so the water doesn't paint over it, never writes depth, and
- * never takes a click. Renders nothing by day.
+ * never takes a click. Hidden by day; its opacity follows the eased glow
+ * without re-rendering.
  */
-function AdditiveGlow({
+export function AdditiveGlow({
   geometry,
   color,
   strength,
@@ -45,10 +53,16 @@ function AdditiveGlow({
   rotation,
   vertexColors = true,
 }: AdditiveGlowProps) {
-  const glow = useGlow();
-  if (glow <= 0) return null;
+  const mesh = useRef<Mesh>(null);
+  const material = useRef<MeshBasicMaterial>(null);
+  useGlowEffect((glow) => {
+    if (mesh.current) mesh.current.visible = glow > 0;
+    if (material.current) material.current.opacity = strength * glow;
+  });
   return (
     <mesh
+      ref={mesh}
+      visible={false}
       geometry={geometry}
       position={position}
       rotation={rotation}
@@ -57,10 +71,11 @@ function AdditiveGlow({
       frustumCulled={false}
     >
       <meshBasicMaterial
+        ref={material}
         color={color}
         vertexColors={vertexColors}
         transparent
-        opacity={strength * glow}
+        opacity={0}
         blending={AdditiveBlending}
         depthWrite={false}
         side={DoubleSide}

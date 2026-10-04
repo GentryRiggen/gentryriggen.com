@@ -7,10 +7,8 @@ import { useCursor } from "@react-three/drei";
 import { buildOccupancy } from "@/lib/ship-builder/model/grid";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import useTimeOfDay from "../hooks/useTimeOfDay";
 import { isTap } from "./anchors";
-import { GlowContext } from "./GlowContext";
-import { glowFor } from "./timeOfDay";
+import { GlowContext, type GlowController } from "./GlowContext";
 import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
 import PopIn from "./PopIn";
@@ -24,6 +22,8 @@ function partIdOf(event: { eventObject: Object3D }): string | null {
 }
 
 interface ShipPartsProps {
+  /** The eased glow every lit part follows. */
+  glow: GlowController;
   /** A primary press on a part, which may become a press-and-hold delete. */
   onPartPress: (press: PartPress) => void;
 }
@@ -50,7 +50,7 @@ function usePoppingPartId(parts: Ship["parts"]): string | null {
   return poppingId;
 }
 
-export default function ShipParts({ onPartPress }: ShipPartsProps) {
+export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const tool = useShipBuilderStore((s) => s.tool);
   const selectedId = useShipBuilderStore((s) => s.selectedId);
@@ -58,7 +58,6 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const select = useShipBuilderStore((s) => s.select);
   const paintPart = useShipBuilderStore((s) => s.paintPart);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const { timeOfDay } = useTimeOfDay();
 
   // Parts are only selectable with no tool active.
   const interactive = tool.kind === "none";
@@ -155,7 +154,7 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const removing = new Set(pendingRemoval?.ids ?? []);
 
   return (
-    <GlowContext.Provider value={glowFor(timeOfDay)}>
+    <GlowContext.Provider value={glow}>
       <group>
         {ship.parts.map((part) => (
           <PopIn key={part.id} active={part.id === poppingId}>

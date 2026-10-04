@@ -1,7 +1,8 @@
 "use client";
 
-import { DoubleSide, FrontSide } from "three";
-import { useGlow } from "./GlowContext";
+import { useRef } from "react";
+import { DoubleSide, FrontSide, type MeshStandardMaterial } from "three";
+import { useGlowEffect } from "./GlowContext";
 import { PALETTE } from "./palette";
 import type { PartEmphasis, PartTint } from "./Surface";
 
@@ -21,7 +22,8 @@ interface GlowSurfaceProps {
 /**
  * Like Surface, but it glows at sunset and night. By day (glow 0) it renders
  * exactly like a Surface. Ghost tints and hover/selection emphasis win over
- * the glow so editing feedback stays readable.
+ * the glow so editing feedback stays readable. The glow follows the eased sky
+ * by writing the material directly, so a fade re-renders nothing.
  */
 export default function GlowSurface({
   color,
@@ -31,24 +33,32 @@ export default function GlowSurface({
   emphasis,
   doubleSided = false,
 }: GlowSurfaceProps) {
-  const glow = useGlow();
+  const material = useRef<MeshStandardMaterial>(null);
   const ghost = tint === "ghost-ok" || tint === "ghost-bad";
-  const isGlowing = glow > 0 && !tint && !emphasis;
+  const isOverridden = Boolean(tint || emphasis);
+
+  useGlowEffect((glow) => {
+    const target = material.current;
+    if (!target) return;
+    // Lit surfaces skip tone mapping so they stay bright; switching it
+    // recompiles the shader, so only do it when crossing zero.
+    const isLit = glow > 0 && !isOverridden;
+    target.emissiveIntensity = emphasis ? 0.4 : isLit ? strength * glow : 0;
+    if (target.toneMapped === isLit) {
+      target.toneMapped = !isLit;
+      target.needsUpdate = true;
+    }
+  });
+
   return (
     <meshStandardMaterial
+      ref={material}
       color={tint ? PALETTE.tint[tint] : color}
       transparent={ghost}
       opacity={ghost ? 0.55 : 1}
       side={doubleSided ? DoubleSide : FrontSide}
-      emissive={
-        emphasis
-          ? PALETTE.emphasis[emphasis]
-          : isGlowing
-            ? glowColor
-            : "#000000"
-      }
-      emissiveIntensity={emphasis ? 0.4 : isGlowing ? strength * glow : 0}
-      toneMapped={!isGlowing}
+      emissive={emphasis ? PALETTE.emphasis[emphasis] : glowColor}
+      emissiveIntensity={emphasis ? 0.4 : 0}
     />
   );
 }

@@ -1,13 +1,18 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import { Object3D, type InstancedMesh } from "three";
+import {
+  AdditiveBlending,
+  Object3D,
+  type InstancedMesh,
+  type MeshBasicMaterial,
+  type MeshStandardMaterial,
+} from "three";
 import { bowLength } from "@/lib/ship-builder/model/hullEnds";
 import type { BowShape } from "@/lib/ship-builder/model/types";
-import useTimeOfDay from "../hooks/useTimeOfDay";
 import { BOOT_TOP, DECK_Y } from "./coords";
 import { LIGHT_COLORS } from "./lightColors";
-import { glowFor } from "./timeOfDay";
+import { useGlowEffect } from "./GlowContext";
 import { ANCHOR_Y, bowAnchorSpot } from "./hullShapes";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
@@ -18,8 +23,13 @@ const PORTHOLE_END_MARGIN = 1;
 /** Sits just proud of the hull side so it never z-fights. */
 const PORTHOLE_OFFSET = 0.012;
 const PORTHOLE_Y = (BOOT_TOP + DECK_Y) / 2 - 0.1;
-/** Portholes glow faintly, well below the cabin windows. */
-const PORTHOLE_GLOW = 0.7;
+/** Portholes glow a little less than the cabin windows, but must still read
+ * from the default distance, so each has a faint halo of its own. */
+const PORTHOLE_GLOW = 2.2;
+const PORTHOLE_HALO_RADIUS = 0.3;
+const PORTHOLE_HALO_OPACITY = 0.55;
+/** The halo sits just off the hull, in front of the porthole. */
+const PORTHOLE_HALO_OFFSET = 0.02;
 /** Anchor clearance from the hull surface (half its thickness plus a gap). */
 const ANCHOR_STANDOFF = 0.035;
 
@@ -35,53 +45,94 @@ function Portholes({
   beam,
 }: Pick<HullDetailsProps, "lengthCells" | "beam">) {
   const ref = useRef<InstancedMesh>(null);
+  const haloRef = useRef<InstancedMesh>(null);
+  const material = useRef<MeshStandardMaterial>(null);
+  const haloMaterial = useRef<MeshBasicMaterial>(null);
   const count = Math.max(0, lengthCells - 2 * PORTHOLE_END_MARGIN) * 2;
-  const { timeOfDay } = useTimeOfDay();
-  const glow = glowFor(timeOfDay);
-  const isLit = glow > 0;
 
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const dummy = new Object3D();
-    let index = 0;
-    for (const side of [1, -1]) {
-      for (
-        let i = PORTHOLE_END_MARGIN;
-        i < lengthCells - PORTHOLE_END_MARGIN;
-        i++
-      ) {
-        dummy.position.set(
-          i + 0.5 - lengthCells / 2,
-          PORTHOLE_Y,
-          side * (beam / 2 + PORTHOLE_OFFSET)
-        );
-        // Circles face +Z; the far side turns round to face -Z.
-        dummy.rotation.set(0, side === 1 ? 0 : Math.PI, 0);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(index++, dummy.matrix);
+  useGlowEffect((glow) => {
+    const lit = material.current;
+    if (lit) {
+      lit.emissiveIntensity = PORTHOLE_GLOW * glow;
+      if (lit.toneMapped === glow > 0) {
+        lit.toneMapped = glow === 0;
+        lit.needsUpdate = true;
       }
     }
-    mesh.instanceMatrix.needsUpdate = true;
+    if (haloRef.current) haloRef.current.visible = glow > 0;
+    if (haloMaterial.current) {
+      haloMaterial.current.opacity = PORTHOLE_HALO_OPACITY * glow;
+    }
+  });
+
+  useLayoutEffect(() => {
+    const dummy = new Object3D();
+    for (const [mesh, offset] of [
+      [ref.current, PORTHOLE_OFFSET],
+      [haloRef.current, PORTHOLE_HALO_OFFSET],
+    ] as const) {
+      if (!mesh) continue;
+      let index = 0;
+      for (const side of [1, -1]) {
+        for (
+          let i = PORTHOLE_END_MARGIN;
+          i < lengthCells - PORTHOLE_END_MARGIN;
+          i++
+        ) {
+          dummy.position.set(
+            i + 0.5 - lengthCells / 2,
+            PORTHOLE_Y,
+            side * (beam / 2 + offset)
+          );
+          // Circles face +Z; the far side turns round to face -Z.
+          dummy.rotation.set(0, side === 1 ? 0 : Math.PI, 0);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(index++, dummy.matrix);
+        }
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    }
   }, [lengthCells, beam, count]);
 
   if (count === 0) return null;
   return (
-    <instancedMesh
-      key={count}
-      ref={ref}
-      args={[undefined, undefined, count]}
-      raycast={noRaycast}
-      frustumCulled={false}
-    >
-      <circleGeometry args={[PORTHOLE_RADIUS, 12]} />
-      <meshStandardMaterial
-        color={PALETTE.porthole}
-        emissive={isLit ? LIGHT_COLORS.porthole : "#000000"}
-        emissiveIntensity={isLit ? PORTHOLE_GLOW * glow : 0}
-        toneMapped={!isLit}
-      />
-    </instancedMesh>
+    <>
+      <instancedMesh
+        key={`portholes:${count}`}
+        ref={ref}
+        args={[undefined, undefined, count]}
+        raycast={noRaycast}
+        frustumCulled={false}
+      >
+        <circleGeometry args={[PORTHOLE_RADIUS, 12]} />
+        <meshStandardMaterial
+          ref={material}
+          color={PALETTE.porthole}
+          emissive={LIGHT_COLORS.porthole}
+          emissiveIntensity={0}
+        />
+      </instancedMesh>
+      <instancedMesh
+        key={`halos:${count}`}
+        ref={haloRef}
+        args={[undefined, undefined, count]}
+        raycast={noRaycast}
+        frustumCulled={false}
+        renderOrder={4}
+        visible={false}
+      >
+        <circleGeometry args={[PORTHOLE_HALO_RADIUS, 12]} />
+        <meshBasicMaterial
+          ref={haloMaterial}
+          color={LIGHT_COLORS.porthole}
+          transparent
+          opacity={0}
+          blending={AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </instancedMesh>
+    </>
   );
 }
 

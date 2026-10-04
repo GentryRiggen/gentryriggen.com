@@ -12,6 +12,8 @@ import { shouldSwallowClick } from "./clickGuard";
 import GhostPreview from "./GhostPreview";
 import GridTargets from "./GridTargets";
 import Environment from "./Environment";
+import { createGlowController, GlowContext } from "./GlowContext";
+import { glowFor } from "./timeOfDay";
 import { environmentFor } from "./environmentModel";
 import { toRuntimeEnvironment } from "./environmentRuntime";
 import Hull from "./Hull";
@@ -48,6 +50,7 @@ export default function Scene() {
   const [environment] = useState(() =>
     toRuntimeEnvironment(environmentFor(timeOfDay, seaState))
   );
+  const [glow] = useState(() => createGlowController(glowFor(timeOfDay)));
   const wrapper = useRef<HTMLDivElement>(null);
   const { ring, startPress } = usePartLongPress(wrapper);
 
@@ -89,18 +92,21 @@ export default function Scene() {
           timeOfDay={timeOfDay}
           seaState={seaState}
           isBelow={isBelow}
+          glow={glow}
         />
         <Ocean seeThrough={isBelow} environment={environment} />
         <ShipAnimation>
-          <Hull
-            lengthCells={lengthCells}
-            beam={beam}
-            bow={bow}
-            stern={stern}
-            paint={paint}
-          />
+          <GlowContext.Provider value={glow}>
+            <Hull
+              lengthCells={lengthCells}
+              beam={beam}
+              bow={bow}
+              stern={stern}
+              paint={paint}
+            />
+          </GlowContext.Provider>
           <Railings />
-          <ShipParts onPartPress={startPress} />
+          <ShipParts glow={glow} onPartPress={startPress} />
           <GridTargets />
           <AttachMarkers />
           <GhostPreview />

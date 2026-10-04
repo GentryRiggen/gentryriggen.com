@@ -1,6 +1,6 @@
 import { PALETTE } from "./palette";
 import { seaParams, type SeaState } from "./seaState";
-import type { TimeOfDay } from "./timeOfDay";
+import { glowFor, type TimeOfDay } from "./timeOfDay";
 
 export type Vec3 = readonly [number, number, number];
 
@@ -38,6 +38,8 @@ export interface Environment {
     cloudCover: number;
     /** 0 no stars .. 1 full starfield. */
     starAmount: number;
+    /** How strongly lit windows, lamps and light parts glow (0 by day). */
+    glow: number;
   };
   vectors: {
     /** Unit vectors from the ship toward the sun and the moon. */
@@ -121,6 +123,7 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       seaRoughness: 0.35,
       cloudCover: 0,
       starAmount: 0,
+      glow: glowFor("day"),
     },
     vectors: {
       sunDirection: normalize([100, 40, 80]),
@@ -152,6 +155,7 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       seaRoughness: 0.26,
       cloudCover: 0,
       starAmount: 0.15,
+      glow: glowFor("sunset"),
     },
     vectors: {
       sunDirection: direction(9, 50),
@@ -177,12 +181,13 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       moonAmount: 1,
       fogNear: 70,
       fogFar: 240,
-      ambientIntensity: 0.58,
-      hemiIntensity: 0.6,
-      lightIntensity: 0.8,
+      ambientIntensity: 0.26,
+      hemiIntensity: 0.28,
+      lightIntensity: 0.65,
       seaRoughness: 0.3,
       cloudCover: 0,
       starAmount: 1,
+      glow: glowFor("night"),
     },
     vectors: {
       sunDirection: direction(-30, 0),

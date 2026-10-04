@@ -10,6 +10,7 @@ import {
 } from "./blockDetailGeometry";
 import { Balconies, type Face } from "./cruiseParts";
 import GlowSurface from "./GlowSurface";
+import { AdditiveGlow } from "./GlowShapes";
 import { isWindowLit, WINDOW_GLOW, windowGroupOf } from "./lightColors";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -27,6 +28,8 @@ interface BlockDetailsProps {
 }
 
 /** Trim that stands just proud of the 0.96 body, so it never z-fights. */
+/** Peak opacity of the bloom around each lit window. */
+const WINDOW_HALO_OPACITY = 0.32;
 const TRIM_SCALE = 0.975;
 const CLASS_STRIPE_Y = 0.3;
 const CLASS_STRIPE_HEIGHT = 0.07;
@@ -72,6 +75,7 @@ export default function BlockDetails({
     () => () => {
       windows?.glass?.dispose();
       windows?.litGlass?.dispose();
+      windows?.litHalo?.dispose();
       windows?.frames.dispose();
     },
     [windows]
@@ -101,6 +105,14 @@ export default function BlockDetails({
                 {...surface}
               />
             </mesh>
+          )}
+          {windows.litHalo && !tint && (
+            <AdditiveGlow
+              geometry={windows.litHalo}
+              color={windowGlow.color}
+              strength={WINDOW_HALO_OPACITY}
+              vertexColors={false}
+            />
           )}
         </>
       )}

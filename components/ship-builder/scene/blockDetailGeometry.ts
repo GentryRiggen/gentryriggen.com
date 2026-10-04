@@ -22,6 +22,8 @@ interface WindowRow {
 /** Faces sit at 0.96 of the footprint, the same inset the body box uses. */
 const FACE_INSET = 0.48;
 const FRAME_MARGIN = 0.03;
+/** How far a lit pane's bloom reaches past its edge. */
+const HALO_MARGIN = 0.07;
 
 function box(
   w: number,
@@ -74,6 +76,8 @@ export interface WindowGeometries {
   glass: BufferGeometry | null;
   /** Panes that light up at night. Null when none are. */
   litGlass: BufferGeometry | null;
+  /** Slightly larger flat panels over the lit panes: their night-time bloom. */
+  litHalo: BufferGeometry | null;
   frames: BufferGeometry;
 }
 
@@ -90,6 +94,7 @@ export function buildWindowGeometries(
 ): WindowGeometries {
   const glass: BoxGeometry[] = [];
   const litGlass: BoxGeometry[] = [];
+  const litHalo: BoxGeometry[] = [];
   const frames: BoxGeometry[] = [];
   for (const row of rows) {
     const length = row.face[0] === "x" ? size.z : size.x;
@@ -117,7 +122,23 @@ export function buildWindowGeometries(
         0.04,
         0.005
       );
-      (isLit(glass.length + litGlass.length) ? litGlass : glass).push(pane);
+      if (isLit(glass.length + litGlass.length)) {
+        litGlass.push(pane);
+        litHalo.push(
+          faceBox(
+            row.face,
+            size,
+            along,
+            row,
+            paneWidth + HALO_MARGIN * 2,
+            row.height + HALO_MARGIN * 2,
+            0.01,
+            0.03
+          )
+        );
+      } else {
+        glass.push(pane);
+      }
     }
     if (row.width === undefined) {
       // Light mullions break the continuous band into panes.
@@ -133,6 +154,7 @@ export function buildWindowGeometries(
   return {
     glass: glass.length > 0 ? mergeGeometries(glass) : null,
     litGlass: litGlass.length > 0 ? mergeGeometries(litGlass) : null,
+    litHalo: litHalo.length > 0 ? mergeGeometries(litHalo) : null,
     frames: mergeGeometries(frames),
   };
 }

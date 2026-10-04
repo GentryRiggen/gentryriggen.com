@@ -9,10 +9,12 @@ import {
   Vector3,
   AdditiveBlending,
   type InstancedMesh,
+  type MeshBasicMaterial,
 } from "three";
 import { UNDERWATER_MOUNT_Y } from "@/lib/ship-builder/model/attach";
+import useSeaState from "../hooks/useSeaState";
 import { DECK_Y } from "./coords";
-import { useGlow } from "./GlowContext";
+import { useGlowEffect } from "./GlowContext";
 import GlowSurface from "./GlowSurface";
 import { GlowHalo, GlowPool } from "./GlowShapes";
 import { LIGHT_COLORS } from "./lightColors";
@@ -24,6 +26,7 @@ import {
   stringLength,
   type Vec3Tuple,
 } from "./stringLightsMath";
+import { seaParams } from "./seaState";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface LightPartProps {
@@ -38,6 +41,7 @@ const WIRE_SEGMENTS = 24;
 const BULB_RADIUS = 0.07;
 const BULB_HALO_SCALE = 2.6;
 const BULB_DROP = 0.06;
+const BULB_HALO_OPACITY = 0.22;
 
 interface StringLightsProps extends LightPartProps {
   /** Offset to the far end, in this part's local (world) axes. */
@@ -47,12 +51,31 @@ interface StringLightsProps extends LightPartProps {
 const offColor = new Color(LIGHT_COLORS.bulbOff);
 const brightColors = LIGHT_COLORS.stringBulbs.map((hex) => new Color(hex));
 const scratch = new Color();
+const emphasisScratch = new Color();
+/** The same share of emphasis colour Surface adds as emissive. */
+const EMPHASIS_STRENGTH = 0.4;
 
-/** The colour of bulb `index` at glow level `glow` (0 unlit grey, 1 bright). */
-function bulbColor(index: number, glow: number, tint: PartTint): Color {
+/**
+ * The colour of bulb `index` at glow level `glow` (0 unlit grey, 1 bright).
+ * Hover and selection tint the bulbs the way they do any other part.
+ */
+function bulbColor(
+  index: number,
+  glow: number,
+  tint: PartTint,
+  emphasis: PartEmphasis
+): Color {
   if (tint) return scratch.set(PALETTE.tint[tint]);
   const bright = brightColors[index % brightColors.length];
-  return scratch.copy(offColor).lerp(bright, glow);
+  scratch.copy(offColor).lerp(bright, glow);
+  if (emphasis) {
+    scratch.add(
+      emphasisScratch
+        .set(PALETTE.emphasis[emphasis])
+        .multiplyScalar(EMPHASIS_STRENGTH)
+    );
+  }
+  return scratch;
 }
 
 /**
@@ -66,12 +89,15 @@ export function StringLightsMesh({
   tint,
   emphasis,
 }: StringLightsProps) {
-  const glow = useGlow();
   const [dx, dy, dz] = target;
   const length = stringLength(target);
   const count = bulbCountFor(length);
   const bulbs = useRef<InstancedMesh>(null);
   const halos = useRef<InstancedMesh>(null);
+  const bulbMaterial = useRef<MeshBasicMaterial>(null);
+  const haloMaterial = useRef<MeshBasicMaterial>(null);
+  const isGhost = tint === "ghost-ok" || tint === "ghost-bad";
+  const hasHalos = !tint;
 
   const wire = useMemo(() => {
     const points = Array.from({ length: WIRE_SEGMENTS + 1 }, (_, i) => {
@@ -103,19 +129,28 @@ export function StringLightsMesh({
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
-  }, [dx, dy, dz, count, glow, tint]);
+  }, [dx, dy, dz, count, hasHalos]);
 
-  useLayoutEffect(() => {
+  // Colours follow the eased glow by writing the instances directly.
+  useGlowEffect((glow) => {
     for (const mesh of [bulbs.current, halos.current]) {
       if (!mesh) continue;
       for (let i = 0; i < count; i++) {
-        mesh.setColorAt(i, bulbColor(i, glow, tint));
+        mesh.setColorAt(i, bulbColor(i, glow, tint, emphasis));
       }
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
-  }, [count, glow, tint]);
+    const isLit = glow > 0;
+    const body = bulbMaterial.current;
+    if (body && body.toneMapped === isLit) {
+      body.toneMapped = !isLit;
+      body.needsUpdate = true;
+    }
+    if (halos.current) halos.current.visible = isLit;
+    if (haloMaterial.current)
+      haloMaterial.current.opacity = BULB_HALO_OPACITY * glow;
+  });
 
-  const isGhost = tint === "ghost-ok" || tint === "ghost-bad";
   const surface = { tint, emphasis };
   return (
     <group>
@@ -134,12 +169,12 @@ export function StringLightsMesh({
       >
         <sphereGeometry args={[BULB_RADIUS, 8, 6]} />
         <meshBasicMaterial
+          ref={bulbMaterial}
           transparent={isGhost}
           opacity={isGhost ? 0.55 : 1}
-          toneMapped={glow === 0}
         />
       </instancedMesh>
-      {glow > 0 && !tint && (
+      {hasHalos && (
         <instancedMesh
           key={`halos:${count}`}
           ref={halos}
@@ -147,11 +182,13 @@ export function StringLightsMesh({
           frustumCulled={false}
           renderOrder={4}
           raycast={noRaycast}
+          visible={false}
         >
           <sphereGeometry args={[BULB_RADIUS, 8, 6]} />
           <meshBasicMaterial
+            ref={haloMaterial}
             transparent
-            opacity={0.22 * glow}
+            opacity={0}
             blending={AdditiveBlending}
             depthWrite={false}
             toneMapped={false}
@@ -269,6 +306,10 @@ interface UnderwaterLightProps {
 
 /** Local height of the sea surface for a part at the underwater mount. */
 const SURFACE_Y = -(DECK_Y + UNDERWATER_MOUNT_Y) + 0.08;
+/** The shimmer is a flat disc, so it fades as the waves rise past it. */
+const SHIMMER_FADE_AMPLITUDE = 0.5;
+const SHIMMER_MIN_SHARE = 0.15;
+const SHIMMER_STRENGTH = 0.5;
 
 /**
  * A lamp on the hull below the waterline. At night it glows teal, with a soft
@@ -282,6 +323,11 @@ export function UnderwaterLightMesh({
 }: UnderwaterLightProps) {
   const surface = { tint, emphasis };
   const outward = side === "starboard" ? 1 : -1;
+  const { seaState } = useSeaState();
+  const shimmer = Math.max(
+    SHIMMER_MIN_SHARE,
+    1 - seaParams(seaState).amplitude / SHIMMER_FADE_AMPLITUDE
+  );
   return (
     <group>
       <mesh
@@ -318,7 +364,7 @@ export function UnderwaterLightMesh({
       <GlowPool
         radius={1.2}
         color={LIGHT_COLORS.underwater}
-        strength={0.5}
+        strength={SHIMMER_STRENGTH * shimmer}
         position={[0, SURFACE_Y, outward * 0.8]}
       />
     </group>
