@@ -6,6 +6,7 @@ import {
   LifeBuoy,
   Navigation,
   Navigation2,
+  Scale,
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
@@ -20,4 +21,5 @@ export const warningIcons: Record<WarningCode, LucideIcon> = {
   "no-rudder": Navigation2,
   "crew-berths": BedDouble,
   "top-heavy": TriangleAlert,
+  lopsided: Scale,
 };

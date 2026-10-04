@@ -47,6 +47,26 @@ export const HULL_MASS_PER_CELL = 1;
 export const HULL_CENTROID_Y = -1;
 export const STABILITY_THRESHOLDS = { topHeavy: 0.15, dangerous: 0.3 };
 
+/**
+ * Side-to-side balance. The lateral offset of the centre of mass, as a share
+ * of the beam, turns into a resting list: `LIST_GAIN` radians per unit of
+ * offset share, amplified by top-heaviness (a tall ship leans further for the
+ * same lopsidedness), then capped.
+ */
+export const LIST = {
+  /** Offsets under this share of the beam are float noise: exactly level. */
+  deadZone: 0.01,
+  gain: 3,
+  /** Extra lean per unit of stabilityRatio. */
+  topHeavyGain: 2,
+  /** Never lean past this (radians, 25 degrees). */
+  maxAngle: (25 * Math.PI) / 180,
+  /** Under this (radians, 1.5 degrees) the balance label reads Level. */
+  levelAngle: (1.5 * Math.PI) / 180,
+  /** The "Sits level" check fails from here (radians, 4 degrees). */
+  checkAngle: (4 * Math.PI) / 180,
+};
+
 export const TITANIC_REFERENCE = {
   grossTonnage: 46328,
   topSpeedKnots: 21,
@@ -57,6 +77,7 @@ export const TITANIC_REFERENCE = {
 
 export type CoverageLevel = "red" | "amber" | "green";
 export type Stability = "Stable" | "Top-heavy" | "Dangerous";
+export type Balance = "Level" | "Leans to port" | "Leans to starboard";
 export type WarningCode =
   | "lifeboats"
   | "no-bridge"
@@ -65,7 +86,8 @@ export type WarningCode =
   | "needs-propellers"
   | "no-rudder"
   | "crew-berths"
-  | "top-heavy";
+  | "top-heavy"
+  | "lopsided";
 
 export interface StatWarning {
   code: WarningCode;
@@ -98,6 +120,12 @@ export interface Stats {
   topSpeedKnots: number;
   stability: Stability;
   stabilityRatio: number;
+  /**
+   * Resting list from off-centre weight, in radians. Positive leans to
+   * starboard, negative to port; exactly 0 for a balanced ship.
+   */
+  listAngle: number;
+  balance: Balance;
   /** Goals in build order. Only the ones that apply right now. */
   checks: Check[];
   warnings: StatWarning[];
@@ -112,6 +140,29 @@ export function coverageLevel(coverage: number): CoverageLevel {
 function partBaseY(ship: Ship, part: PlacedPart, occupancy: Occupancy): number {
   if (part.anchor.kind === "grid") return part.anchor.level;
   return resolveAttachPoint(ship, part.anchor, occupancy)?.position.y ?? 0;
+}
+
+/**
+ * Resting list for a lateral offset (cells toward port from the centreline).
+ * Weight to port leans her to port, which is a negative angle.
+ */
+export function computeListAngle(
+  lateralOffset: number,
+  beam: number,
+  stabilityRatio: number
+): number {
+  const share = Math.abs(lateralOffset) / beam;
+  if (share < LIST.deadZone) return 0;
+  const magnitude = Math.min(
+    LIST.maxAngle,
+    share * LIST.gain * (1 + Math.max(0, stabilityRatio) * LIST.topHeavyGain)
+  );
+  return lateralOffset > 0 ? -magnitude : magnitude;
+}
+
+function classifyBalance(listAngle: number): Balance {
+  if (Math.abs(listAngle) < LIST.levelAngle) return "Level";
+  return listAngle < 0 ? "Leans to port" : "Leans to starboard";
 }
 
 export function computeSpeed(
@@ -161,10 +212,14 @@ export function computeStats(ship: Ship): Stats {
   const hullMass = length * beam * HULL_MASS_PER_CELL;
   let mass = hullMass;
   let moment = hullMass * HULL_CENTROID_Y;
+  // Model z grows from starboard to port; the hull itself is symmetric.
+  const centreline = beam / 2;
+  let lateralMoment = 0;
 
   for (const part of ship.parts) {
     const def = getPartDef(part.type);
-    const cells = partCells(part).length;
+    const footprint = partCells(part);
+    const cells = footprint.length;
     blockCells += cells;
     if (def.passengers) {
       passengers[def.passengers.cabinClass] += def.passengers.count * cells;
@@ -189,6 +244,14 @@ export function computeStats(ship: Ship): Stats {
     const partMass = def.placement === "grid" ? def.mass * cells : def.mass;
     mass += partMass;
     moment += partMass * (partBaseY(ship, part, occupancy) + def.height / 2);
+    if (part.anchor.kind === "grid") {
+      for (const cell of footprint) {
+        lateralMoment += def.mass * (cell.z + 0.5 - centreline);
+      }
+    } else {
+      const point = resolveAttachPoint(ship, part.anchor, occupancy);
+      if (point) lateralMoment += partMass * (point.position.z - centreline);
+    }
   }
 
   passengers.total = passengers.first + passengers.second + passengers.third;
@@ -208,6 +271,12 @@ export function computeStats(ship: Ship): Stats {
   );
   const stabilityRatio = moment / mass / beam;
   const stability = classifyStability(stabilityRatio);
+  const listAngle = computeListAngle(
+    lateralMoment / mass,
+    beam,
+    stabilityRatio
+  );
+  const balance = classifyBalance(listAngle);
 
   const fmtN = (n: number) => n.toLocaleString("en-US");
   const { powerPerProp } = DRIVETRAINS[ship.kind];
@@ -283,6 +352,17 @@ export function computeStats(ship: Ship): Stats {
         : "Top-heavy — lower the superstructure, or widen or lengthen the hull"
   );
 
+  // Only listed while she is meaningfully lopsided, so level ships keep their
+  // existing checklist.
+  if (Math.abs(listAngle) >= LIST.checkAngle) {
+    const degrees = Math.round((Math.abs(listAngle) * 180) / Math.PI);
+    addCheck(
+      "lopsided",
+      "Sits level",
+      `She leans ${degrees}° to ${listAngle < 0 ? "port" : "starboard"} — balance the weight on both sides`
+    );
+  }
+
   const warnings: StatWarning[] = checks.flatMap((check) =>
     check.ok ? [] : [{ code: check.code, message: check.detail ?? check.label }]
   );
@@ -301,6 +381,8 @@ export function computeStats(ship: Ship): Stats {
     topSpeedKnots,
     stability,
     stabilityRatio,
+    listAngle,
+    balance,
     checks,
     warnings,
   };
