@@ -37,6 +37,7 @@ import useShowAllParts from "../hooks/useShowAllParts";
 import HullEndIcon, { type HullEndKind } from "./icons/HullEndIcon";
 import PartIcon from "./icons/PartIcon";
 import { DrawerHeaderSlot } from "./Drawer";
+import BelowDeck from "./BelowDeck";
 import HullSizeControls from "./HullSizeControls";
 import PaintPanel from "./PaintPanel";
 import { inputClass } from "./styles";
@@ -485,6 +486,7 @@ export default function CatalogPanel({ onPick }: CatalogPanelProps) {
                   />
                 )}
                 <HullSizeControls />
+                <BelowDeck />
               </div>
             </section>
           )}

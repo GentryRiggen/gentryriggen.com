@@ -74,6 +74,13 @@ describe("CatalogPanel", () => {
         "button"
       );
 
+    it("has a Below deck section for the walls", () => {
+      render(<CatalogPanel />);
+      expect(
+        screen.getByRole("heading", { name: "Below deck" })
+      ).toBeInTheDocument();
+    });
+
     it("comes first, with four bow tiles and four stern tiles", () => {
       render(<CatalogPanel />);
       const headings = screen.getAllByRole("heading", { level: 2 });
