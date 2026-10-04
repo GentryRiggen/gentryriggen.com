@@ -96,6 +96,104 @@ describe("tools", () => {
   });
 });
 
+describe("paint", () => {
+  function shipWithDeck() {
+    store().selectTool("deck-1x1");
+    store().placeAt(cell(0, 0, 0));
+    return store().ship.parts[0].id;
+  }
+
+  it("selectPaint enters paint mode and replaces a placement tool", () => {
+    store().selectTool("deck-1x1");
+    store().selectPaint("red");
+    expect(store().tool).toEqual({ kind: "paint", color: "red" });
+    store().selectPaint("navy");
+    expect(store().tool).toEqual({ kind: "paint", color: "navy" });
+  });
+
+  it("picking a part exits paint mode", () => {
+    store().selectPaint("red");
+    store().selectTool("deck-1x1");
+    expect(store().tool.kind).toBe("place");
+  });
+
+  it("cancel (Esc) leaves paint mode", () => {
+    store().selectPaint("red");
+    store().cancel();
+    expect(store().tool).toEqual({ kind: "none" });
+  });
+
+  it("loading a ship resets the paint tool", () => {
+    store().selectPaint("red");
+    store().loadShip(testShip([]), null);
+    expect(store().tool).toEqual({ kind: "none" });
+  });
+
+  it("paints a part, undoably", () => {
+    const id = shipWithDeck();
+    store().selectPaint("red");
+    store().paintPart(id);
+    expect(store().ship.parts[0].color).toBe("red");
+    store().undo();
+    expect(store().ship.parts[0].color).toBeUndefined();
+    store().redo();
+    expect(store().ship.parts[0].color).toBe("red");
+  });
+
+  it("painting a part with its own colour resets it", () => {
+    const id = shipWithDeck();
+    store().selectPaint("red");
+    store().paintPart(id);
+    store().paintPart(id);
+    expect("color" in store().ship.parts[0]).toBe(false);
+  });
+
+  it("repaints a part in another colour", () => {
+    const id = shipWithDeck();
+    store().selectPaint("red");
+    store().paintPart(id);
+    store().selectPaint("green");
+    store().paintPart(id);
+    expect(store().ship.parts[0].color).toBe("green");
+  });
+
+  it("ignores unknown ids and non-paint tools", () => {
+    const id = shipWithDeck();
+    store().paintPart(id);
+    expect(store().ship.parts[0].color).toBeUndefined();
+    store().selectPaint("red");
+    const before = store().past.length;
+    store().paintPart("nope");
+    expect(store().past).toHaveLength(before);
+  });
+
+  it("paints and resets hull areas independently, undoably", () => {
+    store().selectPaint("navy");
+    store().paintHull("topsides");
+    store().selectPaint("green");
+    store().paintHull("bottom");
+    expect(store().ship.hull.paint).toEqual({
+      topsides: "navy",
+      bottom: "green",
+    });
+    store().paintHull("bottom");
+    expect(store().ship.hull.paint).toEqual({ topsides: "navy" });
+    store().selectPaint("navy");
+    store().paintHull("topsides");
+    expect(store().ship.hull.paint).toBeUndefined();
+    store().undo();
+    expect(store().ship.hull.paint).toEqual({ topsides: "navy" });
+  });
+
+  it("keeps the ship valid", () => {
+    const id = shipWithDeck();
+    store().selectPaint("pink");
+    store().paintPart(id);
+    store().paintHull("topsides");
+    expect(validateShip(store().ship).ok).toBe(true);
+  });
+});
+
 describe("placement and history", () => {
   it("places with the active tool and keeps the tool selected", () => {
     store().selectTool("deck-2x1");

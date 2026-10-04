@@ -15,9 +15,11 @@ import {
   type PartCandidate,
   type RuleResult,
 } from "../model/placement";
+import type { HullArea, PaintColor } from "../model/paint";
 import type {
   Anchor,
   BowShape,
+  Hull,
   PartType,
   Rotation,
   Ship,
@@ -27,7 +29,9 @@ import type {
 export const HISTORY_LIMIT = 100;
 
 export type Tool =
-  { kind: "none" } | { kind: "place"; type: PartType; rotation: Rotation };
+  | { kind: "none" }
+  | { kind: "place"; type: PartType; rotation: Rotation }
+  | { kind: "paint"; color: PaintColor };
 
 export type PendingRemoval =
   | { kind: "part"; ids: string[] }
@@ -67,6 +71,12 @@ interface ShipBuilderData {
 
 export interface ShipBuilderState extends ShipBuilderData {
   selectTool: (type: PartType) => void;
+  /** Enters paint mode with this colour, replacing any placement tool. */
+  selectPaint: (color: PaintColor) => void;
+  /** Paints a part with the paint tool's colour; the same colour resets it. */
+  paintPart: (id: string) => void;
+  /** Paints a hull area; the same colour resets it. */
+  paintHull: (area: HullArea) => void;
   cancel: () => void;
   rotate: () => void;
   hoverAt: (anchor: Anchor | null) => void;
@@ -191,6 +201,35 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         return;
       }
       set({ tool: { kind: "place", type, rotation: 0 }, ...CLEARED });
+    },
+
+    selectPaint(color) {
+      set({ tool: { kind: "paint", color }, ...CLEARED });
+    },
+
+    paintPart(id) {
+      const { ship, tool } = get();
+      if (tool.kind !== "paint") return;
+      const part = ship.parts.find((p) => p.id === id);
+      if (!part) return;
+      const { color: current, ...rest } = part;
+      const painted =
+        current === tool.color ? rest : { ...rest, color: tool.color };
+      commit({
+        ...ship,
+        parts: ship.parts.map((p) => (p.id === id ? painted : p)),
+      });
+    },
+
+    paintHull(area) {
+      const { ship, tool } = get();
+      if (tool.kind !== "paint") return;
+      const { [area]: current, ...others } = ship.hull.paint ?? {};
+      const paint =
+        current === tool.color ? others : { ...others, [area]: tool.color };
+      const hull: Hull = { ...ship.hull, paint };
+      if (Object.keys(paint).length === 0) delete hull.paint;
+      commit({ ...ship, hull });
     },
 
     cancel() {
