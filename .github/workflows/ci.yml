@@ -70,6 +70,17 @@ jobs:
       - name: 🎬 Run E2E tests
         run: npm run test:e2e
 
+      # Visual diffs (expected, actual, diff images) live in the report.
+      - name: 📤 Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
   # ── Production build (waits for validate + e2e) ──
   build:
     name: 📦 Build

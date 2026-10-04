@@ -1,0 +1,7 @@
+/* Visual tests photograph the 3D scene only: hide the floating controls,
+   hints and the Next dev-tools badge so a hover state or a UI tweak never
+   shows up as a scene diff. */
+main > :not([data-testid="ship-canvas"]),
+nextjs-portal {
+  visibility: hidden !important;
+}
