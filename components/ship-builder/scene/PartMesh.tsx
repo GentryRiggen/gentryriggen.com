@@ -34,6 +34,7 @@ import {
   RaftCanister,
   Waterslide,
 } from "./cruiseParts";
+import { DeckDecorMesh } from "./deckDecor";
 import DavitMesh from "./DavitMesh";
 import {
   CrowsNestMesh,
@@ -366,7 +367,15 @@ function PartMesh({
     const { center, size } = footprintBase(def, part.anchor, part.rotation);
     return (
       <group position={modelToWorld(length, beam, center)} {...handlers}>
-        {def.role === "cargo" ? (
+        {def.role === "decor" ? (
+          <DeckDecorMesh
+            type={part.type}
+            color={color ? paintHex(color) : undefined}
+            rotation={part.rotation}
+            tint={tint}
+            emphasis={emphasis}
+          />
+        ) : def.role === "cargo" ? (
           <ContainerMesh
             partId={partId}
             color={color}
