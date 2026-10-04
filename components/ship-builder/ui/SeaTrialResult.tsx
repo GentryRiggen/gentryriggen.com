@@ -2,6 +2,7 @@
 
 import {
   LifeBuoy,
+  Crosshair,
   RotateCcw,
   ThumbsUp,
   Waves,
@@ -63,6 +64,7 @@ interface ResultCardProps {
 function ResultCard({ trial }: ResultCardProps) {
   const startTrial = useShipBuilderStore((s) => s.startTrial);
   const endTrial = useShipBuilderStore((s) => s.endTrial);
+  const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
   const card = useRef<HTMLDivElement>(null);
   const { input, state } = trial;
   const summary = useMemo(
@@ -127,12 +129,22 @@ function ResultCard({ trial }: ResultCardProps) {
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => startTrial(input.sea)}
+          onClick={() => startTrial(input.sea, input.iceberg?.impactX)}
           className={`${buttonClass} min-h-11 flex-1`}
         >
           <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />
           Try again
         </button>
+        {input.iceberg && (
+          <button
+            type="button"
+            onClick={aimIceberg}
+            className={`${buttonClass} min-h-11 flex-1`}
+          >
+            <Crosshair aria-hidden="true" className="h-4 w-4 shrink-0" />
+            Try another spot
+          </button>
+        )}
         <button
           type="button"
           onClick={handleBackToBuilding}

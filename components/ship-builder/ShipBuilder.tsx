@@ -16,6 +16,7 @@ import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
+import IcebergAimHint from "./ui/IcebergAimHint";
 import SeaTrialButton from "./ui/SeaTrialButton";
 import SeaTrialResult from "./ui/SeaTrialResult";
 import SeaTrialStatus from "./ui/SeaTrialStatus";
@@ -108,6 +109,7 @@ export default function ShipBuilder() {
           <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
           {/* The trial plays in the 3D scene, so it needs WebGL. */}
           {webgl && <SeaTrialButton />}
+          {webgl && <IcebergAimHint />}
           <SeaTrialStatus />
           <SeaTrialResult />
           <HelpButton />
