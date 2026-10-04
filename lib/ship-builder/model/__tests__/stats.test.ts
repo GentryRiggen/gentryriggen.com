@@ -565,4 +565,20 @@ describe("watertightCompartments", () => {
     expect(stats.watertightCompartments).toBe(3);
     expect(stats.stabilityRatio).toBe(computeStats(ship).stabilityRatio);
   });
+
+  it("ignores walls the sim ignores", () => {
+    const ship = testShip();
+    const odd = {
+      ...ship,
+      hull: {
+        ...ship.hull,
+        bulkheads: [
+          { at: 2, height: "low" as const },
+          { at: 2, height: "deck" as const },
+          { at: 999, height: "deck" as const },
+        ],
+      },
+    };
+    expect(computeStats(odd).watertightCompartments).toBe(2);
+  });
 });

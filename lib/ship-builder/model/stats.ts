@@ -2,6 +2,7 @@ import type { ShipKind } from "./kinds";
 import { resolveAttachPoint } from "./attach";
 import { getPartDef } from "./catalog";
 import { hullSpeedModifier } from "./hullEnds";
+import { compartmentSpecsOf } from "../sim/compartments";
 import { occupancyOf } from "./occupancyCache";
 import { beamOf, gridLength, partCells, type Occupancy } from "./grid";
 import type { PlacedPart, Ship } from "./types";
@@ -383,7 +384,7 @@ export function computeStats(ship: Ship): Stats {
     topSpeedKnots,
     stability,
     stabilityRatio,
-    watertightCompartments: (ship.hull.bulkheads?.length ?? 0) + 1,
+    watertightCompartments: compartmentSpecsOf(ship.hull).length,
     listAngle,
     balance,
     checks,
