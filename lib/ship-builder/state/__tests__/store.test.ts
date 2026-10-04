@@ -5,7 +5,11 @@ import {
   useShipBuilderStore,
 } from "../store";
 import { attachPointsOf } from "../../model/attach";
-import { previewHullSize, validateShip } from "../../model/placement";
+import {
+  emptyShip,
+  previewHullSize,
+  validateShip,
+} from "../../model/placement";
 import {
   BOW_IDS,
   HULL_ID,
@@ -564,12 +568,23 @@ describe("load, new, save, camera", () => {
     store().markSaved("ship-1");
     store().selectTool("deck-1x1");
     store().placeAt(cell(0, 0, 0));
-    store().newShip();
+    store().newShip("liner");
     expect(store().ship.parts).toHaveLength(0);
     expect(store().savedId).toBeNull();
     store().undo();
     expect(store().ship.parts).toHaveLength(1);
     expect(store().savedId).toBe("ship-1");
+  });
+
+  it("newShip starts a ship of the chosen kind with its defaults", () => {
+    store().newShip("cargo");
+    expect(store().ship).toEqual(emptyShip("cargo"));
+    expect(store().ship.hull.paint).toEqual({
+      topsides: "navy",
+      bottom: "red",
+    });
+    store().undo();
+    expect(store().ship.kind).toBe("liner");
   });
 
   it("truncates long names", () => {

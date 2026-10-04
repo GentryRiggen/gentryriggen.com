@@ -396,4 +396,23 @@ test.describe("Ship Builder", () => {
       page.getByRole("searchbox", { name: "Search parts" })
     ).toBeInViewport();
   });
+
+  test("starts a cargo ship from the New ship dialog", async ({ page }) => {
+    await openBuilder(page);
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "New ship" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: /Cargo ship/ }).click();
+    await expect(dialog).toHaveCount(0);
+
+    const ship = await page.evaluate(
+      () => window.__shipBuilderStore!.getState().ship
+    );
+    expect(ship.kind).toBe("cargo");
+    expect(ship.hull).toMatchObject({
+      bow: "bulbous",
+      stern: "transom",
+      paint: { topsides: "navy", bottom: "red" },
+    });
+  });
 });

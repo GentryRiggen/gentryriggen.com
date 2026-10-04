@@ -41,6 +41,7 @@ import {
 import useSeaState from "../hooks/useSeaState";
 import type { SeaState } from "../scene/seaState";
 import MyShipsDialog from "./MyShipsDialog";
+import NewShipDialog from "./NewShipDialog";
 import ShareButton from "./ShareButton";
 import {
   buttonClass,
@@ -107,6 +108,8 @@ function ButtonLabel({ Icon, children }: ButtonLabelProps) {
 export default function Toolbar() {
   const { seaState, setSeaState } = useSeaState();
   const [shipsOpen, setShipsOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
+  const newButtonRef = useRef<HTMLButtonElement>(null);
   const myShipsButtonRef = useRef<HTMLButtonElement>(null);
   const ship = useShipBuilderStore((s) => s.ship);
   const tool = useShipBuilderStore((s) => s.tool);
@@ -125,7 +128,6 @@ export default function Toolbar() {
   const cancel = useShipBuilderStore((s) => s.cancel);
   const requestDelete = useShipBuilderStore((s) => s.requestDelete);
   const setCameraView = useShipBuilderStore((s) => s.setCameraView);
-  const newShip = useShipBuilderStore((s) => s.newShip);
   const markSaved = useShipBuilderStore((s) => s.markSaved);
   const setNotice = useShipBuilderStore((s) => s.setNotice);
 
@@ -148,6 +150,11 @@ export default function Toolbar() {
   function handleShipsClose() {
     setShipsOpen(false);
     myShipsButtonRef.current?.focus();
+  }
+
+  function handleNewClose() {
+    setNewOpen(false);
+    newButtonRef.current?.focus();
   }
 
   return (
@@ -308,7 +315,13 @@ export default function Toolbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <button type="button" onClick={newShip} className={buttonClass}>
+        <button
+          ref={newButtonRef}
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setNewOpen(true)}
+          className={buttonClass}
+        >
           <ButtonLabel Icon={FilePlus}>New</ButtonLabel>
         </button>
         <button
@@ -330,6 +343,7 @@ export default function Toolbar() {
       </div>
 
       {shipsOpen && <MyShipsDialog onClose={handleShipsClose} />}
+      {newOpen && <NewShipDialog onClose={handleNewClose} />}
     </footer>
   );
 }

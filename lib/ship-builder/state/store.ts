@@ -15,6 +15,7 @@ import {
   type PartCandidate,
   type RuleResult,
 } from "../model/placement";
+import type { ShipKind } from "../model/kinds";
 import type { HullArea, PaintColor } from "../model/paint";
 import type {
   Anchor,
@@ -99,7 +100,8 @@ export interface ShipBuilderState extends ShipBuilderData {
     savedId: string | null,
     options?: { resetHistory?: boolean }
   ) => void;
-  newShip: () => void;
+  /** Starts a blank ship of this kind. Undoable. */
+  newShip: (kind: ShipKind) => void;
   markSaved: (savedId: string) => void;
   setNotice: (text: string | null) => void;
   setCameraView: (view: CameraView) => void;
@@ -383,8 +385,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       });
     },
 
-    newShip() {
-      commit(emptyShip(), {
+    newShip(kind) {
+      commit(emptyShip(kind), {
         savedId: null,
         tool: { kind: "none" },
         ...CLEARED,

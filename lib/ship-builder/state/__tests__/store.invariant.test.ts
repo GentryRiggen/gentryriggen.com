@@ -158,7 +158,7 @@ const ACTIONS: Action[] = [
   },
   { name: "undo", run: () => (store().undo(), "undo") },
   { name: "redo", run: () => (store().redo(), "redo") },
-  { name: "newShip", run: () => (store().newShip(), "newShip") },
+  { name: "newShip", run: () => (store().newShip("liner"), "newShip") },
 ];
 
 /** Placing is weighted up so ships grow tall enough to exercise cascades. */
