@@ -16,6 +16,7 @@ import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
+import BelowDeckInset from "./ui/BelowDeckInset";
 import IcebergAimHint from "./ui/IcebergAimHint";
 import SeaTrialButton from "./ui/SeaTrialButton";
 import SeaTrialResult from "./ui/SeaTrialResult";
@@ -111,6 +112,7 @@ export default function ShipBuilder() {
           {webgl && <SeaTrialButton />}
           {webgl && <IcebergAimHint />}
           <SeaTrialStatus />
+          {webgl && <BelowDeckInset />}
           <SeaTrialResult />
           <HelpButton />
           <UndoRedo />
