@@ -7,7 +7,10 @@ import { useCursor } from "@react-three/drei";
 import { buildOccupancy } from "@/lib/ship-builder/model/grid";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import useTimeOfDay from "../hooks/useTimeOfDay";
 import { isTap } from "./anchors";
+import { GlowContext } from "./GlowContext";
+import { glowFor } from "./timeOfDay";
 import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
 import PopIn from "./PopIn";
@@ -55,6 +58,7 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const select = useShipBuilderStore((s) => s.select);
   const paintPart = useShipBuilderStore((s) => s.paintPart);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const { timeOfDay } = useTimeOfDay();
 
   // Parts are only selectable with no tool active.
   const interactive = tool.kind === "none";
@@ -151,27 +155,29 @@ export default function ShipParts({ onPartPress }: ShipPartsProps) {
   const removing = new Set(pendingRemoval?.ids ?? []);
 
   return (
-    <group>
-      {ship.parts.map((part) => (
-        <PopIn key={part.id} active={part.id === poppingId}>
-          <PartMesh
-            ship={ship}
-            occupancy={occupancy}
-            part={part}
-            color={part.color}
-            partId={part.id}
-            tint={removing.has(part.id) ? "removal" : null}
-            emphasis={
-              selectedId === part.id
-                ? "selected"
-                : interactive && hoveredId === part.id
-                  ? "hover"
-                  : null
-            }
-            {...handlers}
-          />
-        </PopIn>
-      ))}
-    </group>
+    <GlowContext.Provider value={glowFor(timeOfDay)}>
+      <group>
+        {ship.parts.map((part) => (
+          <PopIn key={part.id} active={part.id === poppingId}>
+            <PartMesh
+              ship={ship}
+              occupancy={occupancy}
+              part={part}
+              color={part.color}
+              partId={part.id}
+              tint={removing.has(part.id) ? "removal" : null}
+              emphasis={
+                selectedId === part.id
+                  ? "selected"
+                  : interactive && hoveredId === part.id
+                    ? "hover"
+                    : null
+              }
+              {...handlers}
+            />
+          </PopIn>
+        ))}
+      </group>
+    </GlowContext.Provider>
   );
 }

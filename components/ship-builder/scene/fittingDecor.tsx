@@ -9,6 +9,9 @@ import {
   type BufferAttribute,
   type Mesh,
 } from "three";
+import GlowSurface from "./GlowSurface";
+import { GlowBeam } from "./GlowShapes";
+import { LIGHT_COLORS } from "./lightColors";
 import { PALETTE } from "./palette";
 import { useShipAnimation } from "./ShipAnimationContext";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -84,8 +87,23 @@ export function SearchlightMesh({ painted, tint, emphasis }: FittingMeshProps) {
       </mesh>
       <mesh position={[0.145, 0.18, 0]} rotation={[0, 0, -Math.PI / 2]}>
         <cylinderGeometry args={[0.06, 0.06, 0.01, 12]} />
-        <Surface color={PALETTE.lampLens} {...surface} />
+        <GlowSurface
+          color={PALETTE.lampLens}
+          glowColor={LIGHT_COLORS.searchBeam}
+          strength={2.4}
+          {...surface}
+        />
       </mesh>
+      {/* Tipped a little down so the beam reaches over the bow. */}
+      <GlowBeam
+        length={3}
+        startRadius={0.07}
+        endRadius={0.7}
+        color={LIGHT_COLORS.searchBeam}
+        strength={0.3}
+        position={[0.15, 0.18, 0]}
+        rotation={[0, 0, -0.1]}
+      />
     </group>
   );
 }

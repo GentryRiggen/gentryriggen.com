@@ -18,6 +18,7 @@ export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
   { id: "lifeboats", name: "Lifeboat gear" },
   { id: "naval", name: "Naval" },
   { id: "cargo", name: "Cargo" },
+  { id: "lights", name: "Lights" },
   { id: "decor", name: "Decorations" },
 ];
 
@@ -38,6 +39,9 @@ export const ATTACH_NEEDS_LABELS: Record<AttachPointType, string> = {
   "nest-mount": "Needs a mast",
   "flag-mount": "Flag spot taken",
   "aerial-mount": "Needs a 2nd mast",
+  "string-mount": "Needs 2 masts or funnels",
+  "nav-mount": "Needs a bridge",
+  "hull-light-mount": "No free hull spot",
 };
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
@@ -56,6 +60,9 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "nest-mount": "mast without a crow's nest",
   "flag-mount": "flagpole spot at the stern",
   "aerial-mount": "mast with another mast to string wires to",
+  "string-mount": "mast or funnel with another one to string lights to",
+  "nav-mount": "bridge roof without navigation lights",
+  "hull-light-mount": "spot on the hull below the waterline",
 };
 
 /** The 4-wide bridge keeps the original `bridge` id so old saves still load. */
@@ -572,6 +579,50 @@ export const CATALOG: Record<PartType, PartDef> = {
     "A lamp post for the evening",
     1
   ),
+  "string-lights": {
+    type: "string-lights",
+    category: "lights",
+    name: "String lights",
+    description:
+      "Party bulbs strung from a mast or funnel to the nearest other one",
+    placement: "attach",
+    attachTo: "string-mount",
+    mass: 0.05,
+    height: 0.1,
+    emptyHint: "Build two masts or funnels to string lights between",
+  },
+  "nav-lights": {
+    type: "nav-lights",
+    category: "lights",
+    name: "Navigation lights",
+    description:
+      "On the bridge roof · red on the port (left) side, green on the starboard (right) side, white on top",
+    placement: "attach",
+    attachTo: "nav-mount",
+    mass: 0.05,
+    height: 0.6,
+    emptyHint: "Build a bridge first",
+  },
+  floodlight: {
+    ...decorDef(
+      "floodlight",
+      "Floodlight",
+      "A bright light on a pole that lights up the deck · turns with rotation",
+      1
+    ),
+    category: "lights",
+  },
+  "underwater-light": {
+    type: "underwater-light",
+    category: "lights",
+    name: "Underwater light",
+    description: "Glows in the water beside the hull · sits on the hull side",
+    placement: "attach",
+    attachTo: "hull-light-mount",
+    mass: 0.05,
+    height: 0.2,
+    emptyHint: "Every spot on the hull has a light",
+  },
   ventilator: {
     ...decorDef(
       "ventilator",

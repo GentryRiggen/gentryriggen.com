@@ -156,6 +156,7 @@ describe("attach points", () => {
     ]);
     expect(attachPointsOf(bridgeShip, "br").map((p) => p.type)).toEqual([
       "searchlight-mount",
+      "nav-mount",
     ]);
   });
 

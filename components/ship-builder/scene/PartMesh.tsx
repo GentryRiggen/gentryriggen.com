@@ -5,12 +5,14 @@ import type { ThreeEvent } from "@react-three/fiber";
 import {
   aerialTarget,
   resolveAttachPoint,
+  stringTarget,
 } from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   beamOf,
   buildOccupancy,
   gridLength,
+  rotatedFootprint,
   type Occupancy,
 } from "@/lib/ship-builder/model/grid";
 import { paintHex, type PaintColor } from "@/lib/ship-builder/model/paint";
@@ -59,6 +61,11 @@ import {
   HatchCoverMesh,
 } from "./cargoParts";
 import type { Face } from "./cruiseParts";
+import {
+  NavLightsMesh,
+  StringLightsMesh,
+  UnderwaterLightMesh,
+} from "./lightParts";
 import { PALETTE } from "./palette";
 import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -95,9 +102,19 @@ interface BlockProps {
   emphasis: PartEmphasis;
   /** Balcony faces, for parts that have them. */
   balconyFaces?: Face[];
+  /** Varies which windows are lit from one block to the next. */
+  seed: number;
 }
 
-function Block({ def, size, color, tint, emphasis, balconyFaces }: BlockProps) {
+function Block({
+  def,
+  size,
+  color,
+  tint,
+  emphasis,
+  balconyFaces,
+  seed,
+}: BlockProps) {
   const surface = { tint, emphasis };
   if (def.role === "amenity") {
     return (
@@ -129,6 +146,7 @@ function Block({ def, size, color, tint, emphasis, balconyFaces }: BlockProps) {
         tint={tint}
         emphasis={emphasis}
         balconyFaces={balconyFaces}
+        seed={seed}
       />
     </group>
   );
@@ -142,6 +160,8 @@ interface FittingProps {
   emphasis: PartEmphasis;
   /** Offset from the part's origin to the other mast's top, for an aerial. */
   wireTarget?: [number, number, number];
+  /** Half the parent bridge's width, for navigation lights. */
+  bridgeHalfSpan?: number;
 }
 
 function Fitting({
@@ -151,6 +171,7 @@ function Fitting({
   tint,
   emphasis,
   wireTarget,
+  bridgeHalfSpan,
 }: FittingProps) {
   const surface = { tint, emphasis };
   const painted = color ? paintHex(color) : undefined;
@@ -320,22 +341,66 @@ function Fitting({
           emphasis={emphasis}
         />
       ) : null;
+    case "string-lights":
+      return wireTarget ? (
+        <StringLightsMesh
+          target={wireTarget}
+          painted={painted}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      ) : null;
+    case "nav-lights":
+      return (
+        <NavLightsMesh
+          halfSpan={bridgeHalfSpan ?? 1}
+          painted={painted}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
+    case "underwater-light":
+      return (
+        <UnderwaterLightMesh
+          side={side ?? "starboard"}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
     default:
       return null;
   }
 }
 
-/** Offset from an aerial's point to the nearest other mast's top, in world axes. */
-function aerialWireTarget(
+type TargetFinder = typeof aerialTarget;
+
+/** Offset from a wire's point to the other end, in world axes. */
+function wireTargetOffset(
   ship: Ship,
   parentId: string,
   from: Vec3,
+  find: TargetFinder,
   occupancy?: Occupancy
 ): [number, number, number] | undefined {
-  const mast = ship.parts.find((p) => p.id === parentId);
-  const top = mast && aerialTarget(ship, mast, occupancy);
+  const pole = ship.parts.find((p) => p.id === parentId);
+  const top = pole && find(ship, pole, occupancy);
   // World x and z run opposite to model x and z (see modelToWorld).
   return top && [from.x - top.x, top.y - from.y, from.z - top.z];
+}
+
+/** Half the width across the ship of the bridge a part sits on, in cells. */
+function bridgeHalfSpanOf(ship: Ship, parentId: string): number | undefined {
+  const bridge = ship.parts.find((p) => p.id === parentId);
+  const def = bridge && getPartDef(bridge.type);
+  if (!bridge || def?.placement !== "grid") return undefined;
+  return rotatedFootprint(def.footprint, bridge.rotation).z / 2;
+}
+
+/** A small number from a block's cell, so each block lights its own windows. */
+function windowSeed(anchor: PartCandidate["anchor"]): number {
+  return anchor.kind === "grid"
+    ? anchor.level * 53 + anchor.x * 31 + anchor.z * 17
+    : 0;
 }
 
 function PartMesh({
@@ -397,6 +462,7 @@ function PartMesh({
             color={color}
             tint={tint}
             emphasis={emphasis}
+            seed={windowSeed(part.anchor)}
             balconyFaces={
               part.type === "cabin-balcony"
                 ? openFaces(part, occupancy ?? buildOccupancy(ship))
@@ -420,13 +486,19 @@ function PartMesh({
         tint={tint}
         emphasis={emphasis}
         wireTarget={
-          part.type === "wireless-aerial"
-            ? aerialWireTarget(
+          part.type === "wireless-aerial" || part.type === "string-lights"
+            ? wireTargetOffset(
                 ship,
                 part.anchor.parentId,
                 point.position,
+                part.type === "string-lights" ? stringTarget : aerialTarget,
                 occupancy
               )
+            : undefined
+        }
+        bridgeHalfSpan={
+          part.type === "nav-lights"
+            ? bridgeHalfSpanOf(ship, part.anchor.parentId)
             : undefined
         }
       />

@@ -9,6 +9,8 @@ import {
   type BlockSize,
 } from "./blockDetailGeometry";
 import { Balconies, type Face } from "./cruiseParts";
+import GlowSurface from "./GlowSurface";
+import { isWindowLit, WINDOW_GLOW, windowGroupOf } from "./lightColors";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
@@ -20,6 +22,8 @@ interface BlockDetailsProps {
   emphasis: PartEmphasis;
   /** Faces to give a balcony, for balcony cabins. */
   balconyFaces?: Face[];
+  /** Varies which windows are lit from block to block; fixed per block. */
+  seed?: number;
 }
 
 /** Trim that stands just proud of the 0.96 body, so it never z-fights. */
@@ -40,6 +44,7 @@ export default function BlockDetails({
   tint,
   emphasis,
   balconyFaces,
+  seed = 0,
 }: BlockDetailsProps) {
   const surface = { tint, emphasis };
   const isBridge = def.role === "bridge";
@@ -50,19 +55,23 @@ export default function BlockDetails({
       ? PALETTE.cabin.crew
       : null;
   const hasWindows = isBridge || stripeColor !== null;
+  const windowGlow = WINDOW_GLOW[windowGroupOf(def) ?? "bridge"];
+  const { litFraction } = windowGlow;
   const windows = useMemo(
     () =>
       hasWindows
         ? buildWindowGeometries(
             { x: sizeX, z: sizeZ },
-            isBridge ? BRIDGE_WINDOW_ROWS : CABIN_WINDOW_ROWS
+            isBridge ? BRIDGE_WINDOW_ROWS : CABIN_WINDOW_ROWS,
+            (index) => isWindowLit(index, litFraction, seed)
           )
         : null,
-    [hasWindows, isBridge, sizeX, sizeZ]
+    [hasWindows, isBridge, sizeX, sizeZ, litFraction, seed]
   );
   useEffect(
     () => () => {
-      windows?.glass.dispose();
+      windows?.glass?.dispose();
+      windows?.litGlass?.dispose();
       windows?.frames.dispose();
     },
     [windows]
@@ -78,9 +87,21 @@ export default function BlockDetails({
           <mesh geometry={windows.frames}>
             <Surface color={PALETTE.windowFrame} {...surface} />
           </mesh>
-          <mesh geometry={windows.glass}>
-            <Surface color={PALETTE.bridgeWindows} {...surface} />
-          </mesh>
+          {windows.glass && (
+            <mesh geometry={windows.glass}>
+              <Surface color={PALETTE.bridgeWindows} {...surface} />
+            </mesh>
+          )}
+          {windows.litGlass && (
+            <mesh geometry={windows.litGlass}>
+              <GlowSurface
+                color={PALETTE.bridgeWindows}
+                glowColor={windowGlow.color}
+                strength={windowGlow.strength}
+                {...surface}
+              />
+            </mesh>
+          )}
         </>
       )}
       {stripeColor && (

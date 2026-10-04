@@ -64,15 +64,13 @@ describe("catalog entries", () => {
 });
 
 describe("searchlight points", () => {
-  it("appear on a bridge roof centre, and nothing else on a bridge", () => {
+  it("appear on a bridge roof centre, beside the navigation lights spot", () => {
     const ship = testShip([BRIDGE]);
     const points = attachPointsOf(ship, "br");
+    const roof = { x: 1.5, y: 0.8, z: 2 };
     expect(points).toEqual([
-      {
-        id: "light",
-        type: "searchlight-mount",
-        position: { x: 1.5, y: 0.8, z: 2 },
-      },
+      { id: "light", type: "searchlight-mount", position: roof },
+      { id: "nav", type: "nav-mount", position: roof },
     ]);
   });
 

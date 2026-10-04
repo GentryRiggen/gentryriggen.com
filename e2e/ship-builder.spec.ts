@@ -519,4 +519,71 @@ test.describe("Ship Builder", () => {
     );
     expect(left).toEqual(["ventilator"]);
   });
+  test("places string lights, navigation lights, a floodlight and an underwater light", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "New ship" });
+    await dialog.getByRole("button", { name: /Ocean liner/ }).click();
+    await dialog.getByRole("button", { name: /RMS Titanic/ }).click();
+    await expect(dialog).toHaveCount(0);
+
+    const ids = await page.evaluate(() => {
+      const { parts } = window.__shipBuilderStore!.getState().ship;
+      return {
+        bridge: parts.find((p) => p.type === "bridge" || p.type === "bridge-5")
+          ?.id,
+        mast: parts.find((p) => p.type === "mast")?.id,
+      };
+    });
+    expect(ids.bridge).toBeTruthy();
+    expect(ids.mast).toBeTruthy();
+
+    await place(page, /^String lights/, {
+      kind: "attach",
+      parentId: ids.mast!,
+      pointId: "string",
+    });
+    await place(page, /^Navigation lights/, {
+      kind: "attach",
+      parentId: ids.bridge!,
+      pointId: "nav",
+    });
+    await place(page, /^Underwater light/, {
+      kind: "attach",
+      parentId: "hull",
+      pointId: "uw:port:3",
+    });
+
+    // A floodlight goes on any free deck cell, like a deck lamp.
+    await page.getByRole("button", { name: /^Floodlight/ }).click();
+    const floodlit = await page.evaluate(() => {
+      const store = window.__shipBuilderStore!;
+      for (let level = 0; level < 4; level++) {
+        for (let x = 0; x < 40; x++) {
+          for (let z = 0; z < 6; z++) {
+            const result = store
+              .getState()
+              .placeAt({ kind: "grid", level, x, z });
+            if (result.ok) return true;
+          }
+        }
+      }
+      return false;
+    });
+    expect(floodlit).toBe(true);
+
+    const types = await page.evaluate(() =>
+      window.__shipBuilderStore!.getState().ship.parts.map((p) => p.type)
+    );
+    for (const type of [
+      "string-lights",
+      "nav-lights",
+      "underwater-light",
+      "floodlight",
+    ]) {
+      expect(types).toContain(type);
+    }
+  });
 });

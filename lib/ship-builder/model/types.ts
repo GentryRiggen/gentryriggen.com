@@ -50,6 +50,10 @@ export const PART_TYPES = [
   "deck-lamp",
   "ventilator",
   "stairs",
+  "string-lights",
+  "nav-lights",
+  "floodlight",
+  "underwater-light",
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -62,6 +66,7 @@ export type PartCategory =
   | "masts"
   | "lifeboats"
   | "decor"
+  | "lights"
   | "propulsion"
   | "naval"
   | "cargo";
@@ -81,7 +86,10 @@ export type AttachPointType =
   | "searchlight-mount"
   | "nest-mount"
   | "flag-mount"
-  | "aerial-mount";
+  | "aerial-mount"
+  | "string-mount"
+  | "nav-mount"
+  | "hull-light-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 

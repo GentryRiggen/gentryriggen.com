@@ -3,6 +3,9 @@
 import type { PartType, Rotation } from "@/lib/ship-builder/model/types";
 import { DECOR_COLORS } from "./decorColors";
 import { LEVEL_HEIGHT } from "./coords";
+import GlowSurface from "./GlowSurface";
+import { GlowBeam, GlowHalo, GlowPool } from "./GlowShapes";
+import { DECK_POOL_Y, LIGHT_COLORS } from "./lightColors";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface DecorProps {
@@ -112,13 +115,95 @@ export function DeckLamp({ color, tint, emphasis }: DecorProps) {
       </mesh>
       <mesh position={[0, 0.88, 0]}>
         <sphereGeometry args={[0.1, 12, 10]} />
-        <Surface color={DECOR_COLORS.lampGlass} {...surface} />
+        <GlowSurface
+          color={DECOR_COLORS.lampGlass}
+          glowColor={LIGHT_COLORS.deckLamp}
+          strength={1.6}
+          {...surface}
+        />
       </mesh>
+      <GlowHalo
+        radius={0.24}
+        color={LIGHT_COLORS.deckLamp}
+        strength={0.22}
+        position={[0, 0.88, 0]}
+      />
+      <GlowPool
+        radius={0.7}
+        color={LIGHT_COLORS.deckLamp}
+        strength={0.35}
+        position={[0, DECK_POOL_Y, 0]}
+      />
       <mesh position={[0, 0.99, 0]}>
         <coneGeometry args={[0.11, 0.07, 12]} />
         <Surface color={post} {...surface} />
       </mesh>
     </group>
+  );
+}
+
+const FLOOD_POLE_HEIGHT = 0.95;
+/** How far the lamp head tips down toward +X. */
+const FLOOD_TILT = 0.95;
+const FLOOD_BEAM_LENGTH = FLOOD_POLE_HEIGHT / Math.sin(FLOOD_TILT);
+/** Where the beam meets the deck, ahead of the pole. */
+const FLOOD_POOL_X = 0.04 + FLOOD_POLE_HEIGHT / Math.tan(FLOOD_TILT);
+
+/**
+ * A floodlight: a pole with a tipped lamp head that shines toward local +X.
+ * At night its lens glows and a soft pool of light falls on the deck ahead.
+ */
+export function Floodlight({
+  color,
+  rotation,
+  tint,
+  emphasis,
+}: DecorFacingProps) {
+  const surface = { tint, emphasis };
+  const post = color ?? DECOR_COLORS.lampPost;
+  return (
+    <Facing rotation={rotation}>
+      <mesh position={[0, 0.04, 0]} castShadow>
+        <cylinderGeometry args={[0.1, 0.12, 0.08, 12]} />
+        <Surface color={post} {...surface} />
+      </mesh>
+      <mesh position={[0, 0.04 + FLOOD_POLE_HEIGHT / 2, 0]} castShadow>
+        <cylinderGeometry args={[0.025, 0.035, FLOOD_POLE_HEIGHT, 8]} />
+        <Surface color={post} {...surface} />
+      </mesh>
+      <group
+        position={[0.04, 0.04 + FLOOD_POLE_HEIGHT, 0]}
+        rotation={[0, 0, -FLOOD_TILT]}
+      >
+        <mesh castShadow>
+          <boxGeometry args={[0.22, 0.17, 0.32]} />
+          <Surface color={post} {...surface} />
+        </mesh>
+        <mesh position={[0.115, 0, 0]}>
+          <boxGeometry args={[0.02, 0.13, 0.27]} />
+          <GlowSurface
+            color={LIGHT_COLORS.floodLens}
+            glowColor={LIGHT_COLORS.floodLens}
+            strength={2.2}
+            {...surface}
+          />
+        </mesh>
+        <GlowBeam
+          length={FLOOD_BEAM_LENGTH}
+          startRadius={0.14}
+          endRadius={0.6}
+          color={LIGHT_COLORS.floodBeam}
+          strength={0.28}
+          position={[0.12, 0, 0]}
+        />
+      </group>
+      <GlowPool
+        radius={0.95}
+        color={LIGHT_COLORS.floodBeam}
+        strength={0.6}
+        position={[FLOOD_POOL_X, DECK_POOL_Y, 0]}
+      />
+    </Facing>
   );
 }
 
@@ -165,6 +250,8 @@ export function DeckDecorMesh({ type, ...props }: DeckDecorMeshProps) {
       return <Bench {...props} />;
     case "deck-lamp":
       return <DeckLamp {...props} />;
+    case "floodlight":
+      return <Floodlight {...props} />;
     case "ventilator":
       return <Ventilator {...props} />;
     case "stairs":

@@ -69,15 +69,27 @@ function faceBox(
     : box(width, height, depth, along, row.y, distance);
 }
 
+export interface WindowGeometries {
+  /** Panes that stay dark at night. Null when every pane is lit. */
+  glass: BufferGeometry | null;
+  /** Panes that light up at night. Null when none are. */
+  litGlass: BufferGeometry | null;
+  frames: BufferGeometry;
+}
+
 /**
  * Dark glass panes plus the light frames behind them, as one merged geometry
- * each, so a block's windows cost two draw calls however many there are.
+ * each, so a block's windows cost a few draw calls however many there are.
+ * `isLit` picks, by pane number, which panes go to the lit group (a fixed
+ * pattern, so a block looks the same every render); omitted, none are lit.
  */
 export function buildWindowGeometries(
   size: BlockSize,
-  rows: WindowRow[]
-): { glass: BufferGeometry; frames: BufferGeometry } {
+  rows: WindowRow[],
+  isLit: (paneIndex: number) => boolean = () => false
+): WindowGeometries {
   const glass: BoxGeometry[] = [];
+  const litGlass: BoxGeometry[] = [];
   const frames: BoxGeometry[] = [];
   for (const row of rows) {
     const length = row.face[0] === "x" ? size.z : size.x;
@@ -95,9 +107,17 @@ export function buildWindowGeometries(
           0
         )
       );
-      glass.push(
-        faceBox(row.face, size, along, row, paneWidth, row.height, 0.04, 0.005)
+      const pane = faceBox(
+        row.face,
+        size,
+        along,
+        row,
+        paneWidth,
+        row.height,
+        0.04,
+        0.005
       );
+      (isLit(glass.length + litGlass.length) ? litGlass : glass).push(pane);
     }
     if (row.width === undefined) {
       // Light mullions break the continuous band into panes.
@@ -111,7 +131,8 @@ export function buildWindowGeometries(
     }
   }
   return {
-    glass: mergeGeometries(glass),
+    glass: glass.length > 0 ? mergeGeometries(glass) : null,
+    litGlass: litGlass.length > 0 ? mergeGeometries(litGlass) : null,
     frames: mergeGeometries(frames),
   };
 }

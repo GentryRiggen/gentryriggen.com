@@ -33,6 +33,12 @@ const MAST_HEIGHTS: Partial<Record<PartType, number>> = {
   mast: 7,
   "radar-mast": 6,
 };
+/** Festoon lights hang this fraction of the way up a mast or funnel. */
+const STRING_FRACTION = 0.85;
+/** Underwater lights sit this far below the main deck (model y). */
+export const UNDERWATER_MOUNT_Y = -1.8;
+/** Underwater lights are spaced this many cells apart along each side. */
+const UNDERWATER_SPACING = 2;
 /** A mast's searchlight sits this far below its top. */
 const MAST_LIGHT_DROP = 0.4;
 /** A crow's nest sits this far up a mast, as a fraction of its height. */
@@ -67,6 +73,32 @@ const topClaim = (cell: Cell) => `top:${cell.level}:${cell.x}:${cell.z}`;
 const edgeClaim = (cell: Cell) => `edge:${cell.level}:${cell.x}:${cell.z}`;
 const davitClaim = (davitId: string) => `davit:${davitId}`;
 
+/**
+ * Spots for underwater lights: every other cell along each side, keeping one
+ * cell clear at each end like the portholes. Starboard is model z 0, port is
+ * z = beam.
+ */
+function underwaterPoints(ship: Ship): AttachPoint[] {
+  const length = gridLength(ship);
+  const beam = beamOf(ship);
+  const points: AttachPoint[] = [];
+  for (let cell = 1; cell < length - 1; cell += UNDERWATER_SPACING) {
+    for (const side of ["starboard", "port"] as const) {
+      points.push({
+        id: `uw:${side}:${cell}`,
+        type: "hull-light-mount",
+        position: {
+          x: cell + 0.5,
+          y: UNDERWATER_MOUNT_Y,
+          z: side === "starboard" ? 0 : beam,
+        },
+        side,
+      });
+    }
+  }
+  return points;
+}
+
 function hullPoints(ship: Ship): AttachPoint[] {
   const length = gridLength(ship);
   const beam = beamOf(ship);
@@ -97,6 +129,7 @@ function hullPoints(ship: Ship): AttachPoint[] {
       },
     },
     ...propellers,
+    ...underwaterPoints(ship),
     {
       id: "rudder",
       type: "rudder-mount",
@@ -212,16 +245,14 @@ function blockPoints(
   const { level, x, z } = part.anchor;
   if (def.role === "bridge") {
     const size = rotatedFootprint(def.footprint, part.rotation);
+    const roof = {
+      x: x + size.x / 2,
+      y: level + BRIDGE_ROOF,
+      z: z + size.z / 2,
+    };
     return [
-      {
-        id: "light",
-        type: "searchlight-mount",
-        position: {
-          x: x + size.x / 2,
-          y: level + BRIDGE_ROOF,
-          z: z + size.z / 2,
-        },
-      },
+      { id: "light", type: "searchlight-mount", position: roof },
+      { id: "nav", type: "nav-mount", position: roof },
     ];
   }
   const points: AttachPoint[] = [];
@@ -314,17 +345,32 @@ function mastHeight(part: PlacedPart): number | undefined {
   return MAST_HEIGHTS[part.type];
 }
 
+const FUNNEL_TYPES: readonly PartType[] = [
+  "funnel",
+  "funnel-large",
+  "funnel-modern",
+];
+
+/** Height of anything lights can be strung from: a mast or a funnel. */
+function poleHeight(part: PlacedPart): number | undefined {
+  return FUNNEL_TYPES.includes(part.type)
+    ? getPartDef(part.type).height
+    : mastHeight(part);
+}
+
 /** The top of the other mast nearest to this one, if there is one. */
 function nearestOtherMastTop(
   ship: Ship,
   mast: PlacedPart,
   base: Vec3,
-  occupancy: Occupancy
+  occupancy: Occupancy,
+  heightOf: (part: PlacedPart) => number | undefined = mastHeight,
+  fraction = 1
 ): Vec3 | undefined {
   let nearest: Vec3 | undefined;
   let nearestDistance = Infinity;
   for (const other of ship.parts) {
-    const height = mastHeight(other);
+    const height = heightOf(other);
     if (height === undefined || other.id === mast.id) continue;
     if (other.anchor.kind !== "attach") continue;
     const point = resolveAttachPoint(ship, other.anchor, occupancy);
@@ -333,7 +379,7 @@ function nearestOtherMastTop(
       Math.abs(point.position.x - base.x) + Math.abs(point.position.z - base.z);
     if (distance >= nearestDistance) continue;
     nearestDistance = distance;
-    nearest = { ...point.position, y: point.position.y + height };
+    nearest = { ...point.position, y: point.position.y + height * fraction };
   }
   return nearest;
 }
@@ -352,6 +398,53 @@ export function aerialTarget(
   }
   const base = resolveAttachPoint(ship, mast.anchor, occupancy);
   return base && nearestOtherMastTop(ship, mast, base.position, occupancy);
+}
+
+/**
+ * Where string lights on this mast or funnel end: the lighting height of the
+ * nearest other mast or funnel, in model space. Undefined when there is none.
+ */
+export function stringTarget(
+  ship: Ship,
+  pole: PlacedPart,
+  occupancy: Occupancy = buildOccupancy(ship)
+): Vec3 | undefined {
+  if (pole.anchor.kind !== "attach" || poleHeight(pole) === undefined) {
+    return undefined;
+  }
+  const base = resolveAttachPoint(ship, pole.anchor, occupancy);
+  return (
+    base &&
+    nearestOtherMastTop(
+      ship,
+      pole,
+      base.position,
+      occupancy,
+      poleHeight,
+      STRING_FRACTION
+    )
+  );
+}
+
+function stringPoint(base: Vec3, height: number): AttachPoint {
+  return {
+    id: "string",
+    type: "string-mount",
+    position: { ...base, y: base.y + height * STRING_FRACTION },
+  };
+}
+
+/** A funnel's only point: where festoon lights hang, if another pole exists. */
+function funnelPoints(
+  ship: Ship,
+  part: PlacedPart,
+  occupancy: Occupancy
+): AttachPoint[] {
+  const height = poleHeight(part);
+  if (part.anchor.kind !== "attach" || height === undefined) return [];
+  const base = resolveAttachPoint(ship, part.anchor, occupancy);
+  if (!base || !stringTarget(ship, part, occupancy)) return [];
+  return [stringPoint(base.position, height)];
 }
 
 /**
@@ -388,6 +481,9 @@ function mastPoints(
   }
   if (nearestOtherMastTop(ship, part, base.position, occupancy)) {
     points.push({ id: "aerial", type: "aerial-mount", position: at(height) });
+  }
+  if (stringTarget(ship, part, occupancy)) {
+    points.push(stringPoint(base.position, height));
   }
   return points;
 }
@@ -460,6 +556,9 @@ export function attachPointsOf(
   if (!part) return [];
   if (part.type === "davit") return davitPoints(ship, part, occupancy);
   if (part.type === "helipad") return helipadPoints(ship, part, occupancy);
+  if (FUNNEL_TYPES.includes(part.type)) {
+    return funnelPoints(ship, part, occupancy);
+  }
   const height = mastHeight(part);
   if (height !== undefined) return mastPoints(ship, part, height, occupancy);
   return blockPoints(ship, part, occupancy);

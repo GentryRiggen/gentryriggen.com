@@ -4,7 +4,10 @@ import { useLayoutEffect, useRef } from "react";
 import { Object3D, type InstancedMesh } from "three";
 import { bowLength } from "@/lib/ship-builder/model/hullEnds";
 import type { BowShape } from "@/lib/ship-builder/model/types";
+import useTimeOfDay from "../hooks/useTimeOfDay";
 import { BOOT_TOP, DECK_Y } from "./coords";
+import { LIGHT_COLORS } from "./lightColors";
+import { glowFor } from "./timeOfDay";
 import { ANCHOR_Y, bowAnchorSpot } from "./hullShapes";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
@@ -15,6 +18,8 @@ const PORTHOLE_END_MARGIN = 1;
 /** Sits just proud of the hull side so it never z-fights. */
 const PORTHOLE_OFFSET = 0.012;
 const PORTHOLE_Y = (BOOT_TOP + DECK_Y) / 2 - 0.1;
+/** Portholes glow faintly, well below the cabin windows. */
+const PORTHOLE_GLOW = 0.7;
 /** Anchor clearance from the hull surface (half its thickness plus a gap). */
 const ANCHOR_STANDOFF = 0.035;
 
@@ -31,6 +36,9 @@ function Portholes({
 }: Pick<HullDetailsProps, "lengthCells" | "beam">) {
   const ref = useRef<InstancedMesh>(null);
   const count = Math.max(0, lengthCells - 2 * PORTHOLE_END_MARGIN) * 2;
+  const { timeOfDay } = useTimeOfDay();
+  const glow = glowFor(timeOfDay);
+  const isLit = glow > 0;
 
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -67,7 +75,12 @@ function Portholes({
       frustumCulled={false}
     >
       <circleGeometry args={[PORTHOLE_RADIUS, 12]} />
-      <meshStandardMaterial color={PALETTE.porthole} />
+      <meshStandardMaterial
+        color={PALETTE.porthole}
+        emissive={isLit ? LIGHT_COLORS.porthole : "#000000"}
+        emissiveIntensity={isLit ? PORTHOLE_GLOW * glow : 0}
+        toneMapped={!isLit}
+      />
     </instancedMesh>
   );
 }

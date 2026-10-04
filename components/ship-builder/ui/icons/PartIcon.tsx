@@ -3,6 +3,7 @@ import { PALETTE } from "@/components/ship-builder/scene/palette";
 import { paintHex } from "@/lib/ship-builder/model/paint";
 import { CRUISE_COLORS } from "@/components/ship-builder/scene/cruiseColors";
 import { DECOR_COLORS } from "@/components/ship-builder/scene/decorColors";
+import { LIGHT_COLORS } from "@/components/ship-builder/scene/lightColors";
 import type { PartType } from "@/lib/ship-builder/model/types";
 
 interface PartIconProps {
@@ -544,6 +545,66 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
         fill={DECOR_COLORS.ventCowl}
       />
       <ellipse cx={30} cy={22} rx={3} ry={6} fill={DECOR_COLORS.ventInside} />
+    </g>
+  ),
+  "string-lights": () => (
+    <g>
+      <rect x={6} y={8} width={3} height={34} fill={PALETTE.mast} />
+      <rect x={39} y={8} width={3} height={34} fill={PALETTE.mast} />
+      <path d="M8 10 Q24 34 40 10" stroke={PALETTE.aerialWire} />
+      {[
+        { x: 13, y: 20, fill: LIGHT_COLORS.stringBulbs[0] },
+        { x: 20, y: 25, fill: LIGHT_COLORS.stringBulbs[1] },
+        { x: 28, y: 25, fill: LIGHT_COLORS.stringBulbs[2] },
+        { x: 35, y: 20, fill: LIGHT_COLORS.stringBulbs[3] },
+      ].map((bulb) => (
+        <circle
+          key={bulb.x}
+          cx={bulb.x}
+          cy={bulb.y + 3}
+          r={3}
+          fill={bulb.fill}
+        />
+      ))}
+    </g>
+  ),
+  "nav-lights": () => (
+    <g>
+      <rect x={6} y={28} width={36} height={14} fill={PALETTE.superstructure} />
+      <rect x={10} y={32} width={28} height={5} fill={PALETTE.bridgeWindows} />
+      <rect x={22} y={14} width={3} height={14} fill={PALETTE.mast} />
+      <circle cx={23.5} cy={11} r={4} fill={LIGHT_COLORS.navMastheadOff} />
+      <circle cx={10} cy={25} r={4} fill={LIGHT_COLORS.navPort} />
+      <circle cx={38} cy={25} r={4} fill={LIGHT_COLORS.navStarboard} />
+    </g>
+  ),
+  floodlight: () => (
+    <g>
+      <path d="M13 44 L13 14" stroke={DECOR_COLORS.lampPost} strokeWidth={3} />
+      <path d="M8 44 L18 44" stroke={DECOR_COLORS.lampPost} strokeWidth={3} />
+      <path d="M16 10 L30 18 L28 22 L14 14 Z" fill={DECOR_COLORS.lampPost} />
+      <path
+        d="M29 17 L44 24 L44 40 L26 22 Z"
+        fill={LIGHT_COLORS.floodBeam}
+        fillOpacity={0.6}
+        stroke="none"
+      />
+    </g>
+  ),
+  "underwater-light": () => (
+    <g>
+      <path d="M6 12 L42 12 L42 44 L6 44 Z" fill={PALETTE.sea.near} />
+      <path d="M6 12 L42 12" stroke={PALETTE.railing} />
+      <rect x={6} y={12} width={8} height={32} fill={PALETTE.antifouling} />
+      <circle
+        cx={24}
+        cy={30}
+        r={13}
+        fill={LIGHT_COLORS.underwater}
+        fillOpacity={0.3}
+        stroke="none"
+      />
+      <circle cx={16} cy={30} r={4} fill={LIGHT_COLORS.underwater} />
     </g>
   ),
   stairs: () => (
