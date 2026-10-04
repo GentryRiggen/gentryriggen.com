@@ -63,7 +63,20 @@ describe("attach points", () => {
     expect(attachPointsOf(ship, "c")).toEqual([]);
   });
 
-  it("puts davit points on outboard edges at level 1 and up", () => {
+  it("puts a davit point on an uncovered level-0 edge block", () => {
+    const ship = testShip([gridPart("a", "deck-1x1", 0, 2, 0)]);
+    const point = attachPointsOf(ship, "a").find(
+      (p) => p.type === "davit-point"
+    );
+    expect(point).toEqual({
+      id: "davit:2:0",
+      type: "davit-point",
+      position: { x: 2.5, y: 1, z: 0 },
+      side: "starboard",
+    });
+  });
+
+  it("puts davit points on outboard edges at any level", () => {
     const ship = testShip([
       gridPart("a", "deck-1x1", 0, 2, 0),
       gridPart("b", "deck-1x1", 1, 2, 0),

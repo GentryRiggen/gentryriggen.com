@@ -168,7 +168,7 @@ function blockPoints(
 
   if (def.role === "deck") points.push(...largeFunnelPoints(part, occupancy));
 
-  if (def.role !== "bridge" && level >= 1) {
+  if (def.role !== "bridge") {
     for (const cell of partCells(part)) {
       const covered = occupancy.has(
         cellKey({ ...cell, level: cell.level + 1 })

@@ -339,16 +339,27 @@ describe("canPlace — attach parts (rules 4 and 5)", () => {
     ).toEqual(fail("Needs a free mast mount"));
   });
 
-  it("puts davits only on boat-deck edges at level 1 or higher", () => {
+  it("puts davits on uncovered outer-edge blocks at any level", () => {
     const ship = testShip([
       gridPart("a", "deck-1x1", 0, 2, 0),
       gridPart("b", "deck-1x1", 1, 2, 0),
+      gridPart("c", "deck-1x1", 0, 5, 0),
+      gridPart("i", "deck-1x1", 0, 5, 1),
     ]);
+    // Covered by "b": no point.
     expect(canPlace(ship, attachCandidate("davit", "a", "davit:2:0"))).toEqual(
       fail("Needs a free boat-deck edge")
     );
     expect(canPlace(ship, attachCandidate("davit", "b", "davit:2:0"))).toEqual(
       OK
+    );
+    // A lone block on the main deck takes a davit too.
+    expect(canPlace(ship, attachCandidate("davit", "c", "davit:5:0"))).toEqual(
+      OK
+    );
+    // Interior blocks still do not.
+    expect(canPlace(ship, attachCandidate("davit", "i", "davit:5:1"))).toEqual(
+      fail("Needs a free boat-deck edge")
     );
   });
 
