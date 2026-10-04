@@ -132,6 +132,14 @@ function Fitting({ type, side, tint, emphasis }: FittingProps) {
         </Spinner>
       );
     }
+    case "rudder":
+      // A flat vertical plate, thin across the ship and long fore-aft.
+      return (
+        <mesh castShadow>
+          <boxGeometry args={[0.6, 0.9, 0.08]} />
+          <Surface color={PALETTE.propeller} {...surface} />
+        </mesh>
+      );
     case "mast":
       return (
         <mesh position={[0, 3.5, 0]} castShadow>

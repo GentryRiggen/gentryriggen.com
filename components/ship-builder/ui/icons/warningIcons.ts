@@ -4,6 +4,7 @@ import {
   Fan,
   LifeBuoy,
   Navigation,
+  Navigation2,
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
@@ -15,5 +16,6 @@ export const warningIcons: Record<WarningCode, LucideIcon> = {
   "no-funnels": Factory,
   "no-propellers": Fan,
   "needs-propellers": CirclePlus,
+  "no-rudder": Navigation2,
   "top-heavy": TriangleAlert,
 };

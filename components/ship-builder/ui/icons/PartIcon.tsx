@@ -220,6 +220,13 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       <circle cx={24} cy={24} r={4} fill={PALETTE.davit} />
     </g>
   ),
+  // A rudder blade hanging from its stock, seen from the side.
+  rudder: () => (
+    <g>
+      <rect x={21} y={5} width={6} height={9} fill={PALETTE.davit} />
+      <path d="M16 14 H32 L30 42 Q24 45 18 42 Z" fill={PALETTE.propeller} />
+    </g>
+  ),
 };
 
 /** A flat drawing of a part, matching its 3D look. Decorative: aria-hidden. */

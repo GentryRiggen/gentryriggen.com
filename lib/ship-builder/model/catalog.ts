@@ -24,6 +24,7 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "large-funnel-mount": "2×2 of deck blocks with nothing on top",
   "big-boat-mount": "pair of side-by-side davits",
   "prop-mount": "propeller spot under the stern",
+  "rudder-mount": "rudder spot under the stern",
 };
 
 /** The 4-wide bridge keeps the original `bridge` id so old saves still load. */
@@ -199,6 +200,17 @@ export const CATALOG: Record<PartType, PartDef> = {
     mass: 0.3,
     height: 0.5,
     emptyHint: "Every propeller spot is taken",
+  },
+  rudder: {
+    type: "rudder",
+    category: "propulsion",
+    name: "Rudder",
+    description: "Under the stern · steers the ship",
+    placement: "attach",
+    attachTo: "rudder-mount",
+    mass: 0.2,
+    height: 0.9,
+    emptyHint: "The rudder spot is taken",
   },
 };
 

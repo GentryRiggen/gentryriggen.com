@@ -43,6 +43,7 @@ export type WarningCode =
   | "no-funnels"
   | "no-propellers"
   | "needs-propellers"
+  | "no-rudder"
   | "top-heavy";
 
 export interface StatWarning {
@@ -113,6 +114,7 @@ export function computeStats(ship: Ship): Stats {
   let funnels = 0;
   let power = 0;
   let propellers = 0;
+  let rudders = 0;
   let bridges = 0;
   let blockCells = 0;
 
@@ -137,6 +139,7 @@ export function computeStats(ship: Ship): Stats {
       power += def.power;
     }
     if (part.type === "propeller") propellers += 1;
+    if (part.type === "rudder") rudders += 1;
     if (def.placement === "grid" && def.role === "bridge") bridges += 1;
 
     const partMass = def.placement === "grid" ? def.mass * cells : def.mass;
@@ -189,6 +192,12 @@ export function computeStats(ship: Ship): Stats {
     warnings.push({
       code: "needs-propellers",
       message: "Not enough propellers for your funnels",
+    });
+  }
+  if (propellers > 0 && rudders === 0) {
+    warnings.push({
+      code: "no-rudder",
+      message: "No rudder — she can't steer",
     });
   }
   if (stability !== "Stable") {

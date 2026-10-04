@@ -392,6 +392,60 @@ describe("large lifeboat", () => {
   });
 });
 
+describe("rudder point", () => {
+  const rudderPoint = (length: number, beam: number) =>
+    attachPointsOf(testShip([], length, beam), HULL_ID).filter(
+      (p) => p.type === "rudder-mount"
+    );
+
+  it.each([3, 4, 5, 6, 7])(
+    "sits on the centreline just aft of the propellers on a %i-wide hull",
+    (beam) => {
+      const points = rudderPoint(8, beam);
+      expect(points).toHaveLength(1);
+      expect(points[0].id).toBe("rudder");
+      expect(points[0].position).toEqual({
+        x: 24.2,
+        y: PROP_MOUNT_Y,
+        z: beam / 2,
+      });
+      // Propellers sit at length - 0.5, so the rudder is aft of them.
+      const props = attachPointsOf(testShip([], 8, beam), HULL_ID).filter(
+        (p) => p.type === "prop-mount"
+      );
+      for (const prop of props) {
+        expect(points[0].position.x).toBeGreaterThan(prop.position.x);
+      }
+    }
+  );
+
+  it("takes one rudder, and rides the hull length", () => {
+    const ship = testShip([attachPart("r", "rudder", HULL_ID, "rudder")]);
+    expect(isPointTaken(ship, HULL_ID, "rudder")).toBe(true);
+    expect(
+      canPlace(ship, attachCandidate("rudder", HULL_ID, "rudder")).ok
+    ).toBe(false);
+    expect(
+      openAttachPoints(testShip([]), getPartDef("rudder") as AttachPartDef).map(
+        (o) => o.point.id
+      )
+    ).toEqual(["rudder"]);
+    expect(rudderPoint(4, 4)[0].position.x).toBeCloseTo(12.2);
+  });
+
+  it("does not take a propeller's point or the other way round", () => {
+    expect(
+      canPlace(testShip(), attachCandidate("rudder", HULL_ID, "prop:0")).ok
+    ).toBe(false);
+    expect(
+      canPlace(testShip(), attachCandidate("propeller", HULL_ID, "rudder")).ok
+    ).toBe(false);
+    expect(
+      canPlace(testShip(), attachCandidate("rudder", HULL_ID, "rudder"))
+    ).toEqual(OK);
+  });
+});
+
 describe("propeller points", () => {
   it.each([
     [3, 2],

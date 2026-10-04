@@ -28,6 +28,8 @@ const DAVIT_REACH = 0.6;
 export const PROP_MOUNT_Y = -3.1;
 /** Propellers sit this far forward of the hull's last cell. */
 const PROP_SETBACK = 0.5;
+/** The rudder hangs this far aft of the hull's last cell, behind the props. */
+const RUDDER_OFFSET = 0.2;
 
 export function propCount(beam: number): number {
   if (beam <= 3) return 2;
@@ -72,6 +74,11 @@ function hullPoints(ship: Ship): AttachPoint[] {
       },
     },
     ...propellers,
+    {
+      id: "rudder",
+      type: "rudder-mount",
+      position: { x: length + RUDDER_OFFSET, y: PROP_MOUNT_Y, z: centerline },
+    },
   ];
 }
 

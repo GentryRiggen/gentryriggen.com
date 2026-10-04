@@ -298,6 +298,26 @@ describe("propulsion", () => {
     expect(codes(enough)).not.toContain("needs-propellers");
   });
 
+  it("warns when there are propellers but no rudder", () => {
+    const propeller = attachPart("p", "propeller", HULL_ID, "prop:0");
+    const noRudder = computeStats(testShip([propeller])).warnings.find(
+      (w) => w.code === "no-rudder"
+    );
+    expect(noRudder?.message).toBe("No rudder — she can't steer");
+    const withRudder = [
+      propeller,
+      attachPart("r", "rudder", HULL_ID, "rudder"),
+    ];
+    expect(codes(withRudder)).not.toContain("no-rudder");
+  });
+
+  it("stays quiet about the rudder with no propellers", () => {
+    expect(codes([])).not.toContain("no-rudder");
+    expect(codes([attachPart("r", "rudder", HULL_ID, "rudder")])).not.toContain(
+      "no-rudder"
+    );
+  });
+
   it("counts a large funnel as two power and 75 stokers", () => {
     const parts = [
       ...square("s", 4),

@@ -23,6 +23,7 @@ describe("catalog", () => {
     });
     expect(partsInCategory("propulsion").map((d) => d.type)).toEqual([
       "propeller",
+      "rudder",
     ]);
   });
 
