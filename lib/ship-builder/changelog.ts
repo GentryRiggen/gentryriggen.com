@@ -17,6 +17,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.3.0",
+    date: "2026-10-04",
+    title: "A tidier shipyard",
+    highlights: [
+      'A "Ready to sail?" checklist shows what your ship still needs, and cheers when she\'s done',
+      "See how your ship measures up against the real one with side-by-side bars",
+      "Parts are big pictures now, in the order you build a ship, with buttons to jump to each group",
+      "Parts that can't go on yet are dimmed and tell you what they need, like a davit for a lifeboat",
+      "Paint has its own tab in the Parts panel, and the hull's length and width live with the bow and stern",
+      "Camera and sea buttons sit on the ocean, Delete shows up when you pick a part, and Rotate shows up while you place one",
+      "Save, Share and My Ships moved to the top, so the ship gets more room",
+      "Tap ? for tips on building, deleting and moving the camera",
+    ],
+  },
+  {
     version: "2.2.0",
     date: "2026-10-04",
     title: "Famous ships",
