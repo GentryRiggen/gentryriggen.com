@@ -10,6 +10,7 @@ import {
   SphereGeometry,
   type InstancedMesh,
 } from "three";
+import { FROZEN_STEP, frozenTime, sceneTime } from "./testClock";
 
 /** Writes one instance: position, uniform scale and opacity (0 to 1). */
 export interface ParticleWriter {
@@ -104,7 +105,8 @@ export default function ParticleField({
     const { writer, alphas } = resources;
     const mesh = writer.mesh;
     if (!mesh) return;
-    const count = update(writer, state.clock.elapsedTime, delta);
+    const step = frozenTime() === null ? delta : FROZEN_STEP;
+    const count = update(writer, sceneTime(state.clock.elapsedTime), step);
     mesh.count = count;
     if (count === 0) return;
     mesh.instanceMatrix.needsUpdate = true;

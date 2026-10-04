@@ -11,6 +11,7 @@ import {
 } from "three";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { frozenTime } from "./testClock";
 import type { RuntimeEnvironment } from "./environmentRuntime";
 import { cloudPuffs } from "./skyLayout";
 
@@ -109,8 +110,11 @@ export default function Clouds({ environment }: CloudsProps) {
     uniforms.uPixelsPerUnit.value =
       (state.size.height * state.viewport.dpr) / (2 * HALF_FOV_TAN);
     if (group.current && !reducedMotion) {
-      group.current.rotation.y +=
-        Math.min(delta, MAX_FRAME_DELTA) * DRIFT_SPEED;
+      const frozen = frozenTime();
+      if (frozen !== null) group.current.rotation.y = frozen * DRIFT_SPEED;
+      else
+        group.current.rotation.y +=
+          Math.min(delta, MAX_FRAME_DELTA) * DRIFT_SPEED;
     }
   });
 

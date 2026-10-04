@@ -22,6 +22,7 @@ import type { GlowController } from "./GlowContext";
 import type { SeaState } from "./seaState";
 import SkyDome from "./SkyDome";
 import Stars from "./Stars";
+import { frozenTime } from "./testClock";
 import type { TimeOfDay } from "./timeOfDay";
 
 /** Water swallows distance faster than air, so the fog closes in. */
@@ -66,10 +67,10 @@ export default function Environment({
   // Negative priority runs before the other frame callbacks without taking
   // over rendering, so the ocean and sky read an up-to-date `current`.
   useFrame((_, delta) => {
-    const amount = Math.min(
-      1,
-      Math.min(delta, MAX_FRAME_DELTA) * TRANSITION_RATE
-    );
+    const amount =
+      frozenTime() === null
+        ? Math.min(1, Math.min(delta, MAX_FRAME_DELTA) * TRANSITION_RATE)
+        : 1;
     easeEnvironment(current, target, amount);
 
     const { colors, numbers, vectors } = current;

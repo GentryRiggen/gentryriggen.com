@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { MAX_FRAME_DELTA, TAU } from "./animationMath";
 import { useShipAnimation } from "./ShipAnimationContext";
+import { frozenTime } from "./testClock";
 
 interface RotatorProps {
   /** Radians per second about the local Y axis. */
@@ -24,6 +25,11 @@ export default function Rotator({ speed, enabled, children }: RotatorProps) {
 
   useFrame((_, delta) => {
     if (!enabled || reducedMotion || !group.current) return;
+    const frozen = frozenTime();
+    if (frozen !== null) {
+      group.current.rotation.y = (speed * frozen) % TAU;
+      return;
+    }
     group.current.rotation.y =
       (group.current.rotation.y + speed * Math.min(delta, MAX_FRAME_DELTA)) %
       TAU;

@@ -6,6 +6,7 @@ import type { Group } from "three";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { popScale, POP_DURATION } from "./pop";
 import { useShipAnimation } from "./ShipAnimationContext";
+import { frozenTime } from "./testClock";
 
 interface PopTickerProps {
   /** The wrapper whose first child (the part's own group) is scaled. */
@@ -25,7 +26,11 @@ function PopTicker({ wrapper }: PopTickerProps) {
 
   useFrame((_, delta) => {
     if (elapsed.current >= POP_DURATION) return;
-    elapsed.current += Math.min(delta, MAX_FRAME_DELTA);
+    // Frozen scenes show the finished part, not a half-grown one.
+    elapsed.current =
+      frozenTime() === null
+        ? elapsed.current + Math.min(delta, MAX_FRAME_DELTA)
+        : POP_DURATION;
     wrapper.current?.children[0]?.scale.setScalar(popScale(elapsed.current));
   });
 

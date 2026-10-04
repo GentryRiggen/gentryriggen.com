@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { bobPose, createShipPose } from "./bob";
 import { useShipAnimation } from "./ShipAnimationContext";
+import { sceneTime } from "./testClock";
 
 interface BobGroupProps {
   children: ReactNode;
@@ -28,7 +29,7 @@ export default function BobGroup({ children }: BobGroupProps) {
       target.rotation.set(0, 0, 0);
       return;
     }
-    bobPose(state.clock.elapsedTime, stabilityRatio, pose, seaState);
+    bobPose(sceneTime(state.clock.elapsedTime), stabilityRatio, pose, seaState);
     target.position.y = pose.y;
     target.rotation.set(pose.roll, 0, pose.pitch);
   });

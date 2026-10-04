@@ -13,6 +13,7 @@ import {
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useSeaState from "../hooks/useSeaState";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { frozenTime } from "./testClock";
 import {
   OCEAN_SEGMENTS,
   OCEAN_SIZE,
@@ -149,8 +150,10 @@ export default function Ocean({ seeThrough, environment }: OceanProps) {
     const step = Math.min(delta, MAX_FRAME_DELTA);
     const { amplitude, speed } = target.current;
     // Reduced motion freezes the sea where it is: nothing moves on screen.
-    if (!reducedMotion) uniforms.uTime.value += step * speed;
-    const ease = Math.min(1, step * AMPLITUDE_EASE);
+    const frozen = frozenTime();
+    if (frozen !== null) uniforms.uTime.value = frozen * speed;
+    else if (!reducedMotion) uniforms.uTime.value += step * speed;
+    const ease = frozen !== null ? 1 : Math.min(1, step * AMPLITUDE_EASE);
     uniforms.uAmplitude.value += (amplitude - uniforms.uAmplitude.value) * ease;
     if (material.current) {
       material.current.color.copy(environment.colors.seaTint);

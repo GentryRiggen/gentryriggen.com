@@ -15,6 +15,7 @@ import {
   type PaintColor,
 } from "@/lib/ship-builder/model/paint";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { frozenTime } from "./testClock";
 import { LEVEL_HEIGHT } from "./coords";
 import { PALETTE } from "./palette";
 import { useShipAnimation } from "./ShipAnimationContext";
@@ -230,7 +231,11 @@ export function CargoCraneMesh({ color, tint, emphasis }: CargoCraneMeshProps) {
   useFrame((_, delta) => {
     const group = slew.current;
     if (!isAnimated || !group) return;
-    phase.current += Math.min(delta, MAX_FRAME_DELTA) * SWING_RATE;
+    const frozen = frozenTime();
+    phase.current =
+      frozen !== null
+        ? frozen * SWING_RATE
+        : phase.current + Math.min(delta, MAX_FRAME_DELTA) * SWING_RATE;
     group.rotation.y = CRANE_REST_ANGLE + Math.sin(phase.current) * SWING_RANGE;
   });
 

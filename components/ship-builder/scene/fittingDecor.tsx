@@ -14,6 +14,7 @@ import { GlowBeam } from "./GlowShapes";
 import { LIGHT_COLORS } from "./lightColors";
 import { PALETTE } from "./palette";
 import { useShipAnimation } from "./ShipAnimationContext";
+import { sceneTime } from "./testClock";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 export interface FittingMeshProps {
@@ -166,7 +167,7 @@ export function SternFlagMesh({
     if (isGhost || reducedMotion || !cloth.current) return;
     const position = cloth.current.geometry.attributes
       .position as BufferAttribute;
-    const t = clock.elapsedTime * WAVE_SPEED;
+    const t = sceneTime(clock.elapsedTime) * WAVE_SPEED;
     for (let i = 0; i < position.count; i++) {
       const u = -position.getX(i) / FLAG_LENGTH;
       position.setZ(i, Math.sin(t - u * WAVE_NUMBER) * WAVE_AMPLITUDE * u);

@@ -6,6 +6,7 @@ import type { Group } from "three";
 import { MAX_FRAME_DELTA, TAU } from "./animationMath";
 import { useShipAnimation } from "./ShipAnimationContext";
 import { spinRevPerSec } from "./spin";
+import { frozenTime } from "./testClock";
 
 interface SpinnerProps {
   /** False for ghost previews, which must stay still. */
@@ -22,6 +23,11 @@ export default function Spinner({ enabled, children }: SpinnerProps) {
     if (!enabled || reducedMotion || !group.current) return;
     const rate = spinRevPerSec(topSpeedKnots);
     if (rate === 0) return;
+    const frozen = frozenTime();
+    if (frozen !== null) {
+      group.current.rotation.x = (rate * TAU * frozen) % TAU;
+      return;
+    }
     group.current.rotation.x =
       (group.current.rotation.x +
         rate * TAU * Math.min(delta, MAX_FRAME_DELTA)) %
