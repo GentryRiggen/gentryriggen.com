@@ -12,7 +12,6 @@ const SEGMENTS = 16;
 const BAND_FLARE = 0.012;
 /** Tube radius of the rolled rim; its top stands this far proud of the cap. */
 export const RIM_TUBE = 0.03;
-const RIM_RISE = RIM_TUBE * 0.6;
 
 export interface FunnelDims {
   baseRadius: number;
