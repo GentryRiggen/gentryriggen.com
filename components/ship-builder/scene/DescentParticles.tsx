@@ -39,6 +39,7 @@ export default function DescentParticles() {
       droplet: createDroplet(),
       bodies: Array.from({ length: MAX_BODIES }, createBodyPoint),
       landed: Array.from({ length: MAX_BODIES }, (): Landing => ({
+        hasLanded: false,
         at: 0,
         x: 0,
       })),
@@ -75,11 +76,16 @@ export default function DescentParticles() {
     (writer: ParticleWriter) => {
       const { droplet, bodies, landed } = scratch;
       const bodyCount = descentBodies(trialPlayback, lengthCells, bodies);
-      const count = landings(trialPlayback, bodies, bodyCount, landed);
-      for (let p = 0; p < count; p++) {
-        const seconds = trialPlayback.time - landed[p].at;
+      landings(trialPlayback, bodies, bodyCount, landed);
+      // Each body owns its slots, so the first puff stays put when the
+      // second body lands; a body still falling writes invisible grains.
+      for (let p = 0; p < bodyCount; p++) {
+        const landing = landed[p];
+        const seconds = landing.hasLanded
+          ? trialPlayback.time - landing.at
+          : -1;
         for (let i = 0; i < SILT_PER_PUFF; i++) {
-          siltGrain(i + p * 7, seconds, landed[p].x, droplet);
+          siltGrain(i + p * 7, seconds, landing.x, droplet);
           writer.set(
             p * SILT_PER_PUFF + i,
             droplet.x,
@@ -90,7 +96,7 @@ export default function DescentParticles() {
           );
         }
       }
-      return count * SILT_PER_PUFF;
+      return bodyCount * SILT_PER_PUFF;
     },
     [lengthCells, scratch]
   );

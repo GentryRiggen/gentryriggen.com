@@ -1,6 +1,13 @@
 import { Euler, Matrix4, Object3D, Vector3 } from "three";
 import type { HalfPose } from "@/lib/ship-builder/sim/types";
-import { applyHalfPose, halfMatrix, worldXOf } from "../halfTransform";
+import {
+  applyBobCarry,
+  applyHalfPose,
+  BOB_HANDOFF_S,
+  bobCarryWeight,
+  halfMatrix,
+  worldXOf,
+} from "../halfTransform";
 
 const LENGTH = 30;
 
@@ -105,5 +112,38 @@ describe("applyHalfPose", () => {
     );
     expect(object.position.length()).toBeCloseTo(0, 12);
     expect(object.rotation.z).toBe(0);
+  });
+});
+
+describe("bob carry", () => {
+  it("hands the bob over from all at the break to none", () => {
+    expect(bobCarryWeight(-0.1)).toBe(0);
+    expect(bobCarryWeight(0)).toBe(1);
+    expect(bobCarryWeight(BOB_HANDOFF_S / 2)).toBeCloseTo(0.5, 10);
+    expect(bobCarryWeight(BOB_HANDOFF_S)).toBe(0);
+    expect(bobCarryWeight(BOB_HANDOFF_S * 4)).toBe(0);
+  });
+
+  it("puts a half carrying the bob where the bobbing whole ship was", () => {
+    // The whole ship's group adds the idle bob: up by `lift`, pitched by
+    // `bobPitch` on top of the sim's pitch, all about her own origin.
+    const [lift, bobPitch, pitch, sink, atX] = [0.18, 0.02, -0.3, 3.6, 18];
+    const whole = wholeShipMatrix(0, pitch + bobPitch, sink - lift);
+    const carry = applyBobCarry(new Object3D(), lift, bobPitch, -sink);
+    carry.updateMatrix();
+    const half = carry.matrix
+      .clone()
+      .multiply(halfMatrix(continuousHalf(atX, pitch, sink), LENGTH));
+    for (const point of SAMPLE_POINTS) {
+      const a = point.clone().applyMatrix4(whole);
+      const b = point.clone().applyMatrix4(half);
+      expect(b.distanceTo(a)).toBeLessThan(1e-9);
+    }
+  });
+
+  it("does nothing with no bob", () => {
+    const carry = applyBobCarry(new Object3D(), 0, 0, -5);
+    expect(carry.position.length()).toBe(0);
+    expect(carry.rotation.z).toBe(0);
   });
 });

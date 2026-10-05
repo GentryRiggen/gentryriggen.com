@@ -51,3 +51,14 @@ useShipBuilderStore.subscribe((state, previous) => {
   if (status === previous.trial.status) return;
   if (status === "idle" || status === "aiming") clearTrialTimeline();
 });
+
+/**
+ * Where the iceberg trial for `input` breaks her, cells from the bow, or null
+ * if she holds together (or it is not an iceberg trial). Known from the start
+ * because the timeline is worked out ahead.
+ */
+export function plannedBreakX(input: TrialInput | null): number | null {
+  if (!input?.iceberg) return null;
+  const { states } = trialTimelineFor(input);
+  return states[states.length - 1]?.breakup?.atX ?? null;
+}

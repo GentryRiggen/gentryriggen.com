@@ -137,36 +137,34 @@ export function siltGrain(
   return out;
 }
 
-/** A body's landing: when it touched down and where along the ship. */
+/** A body's landing: whether and when it touched down, and where. */
 export interface Landing {
+  hasLanded: boolean;
   at: number;
   x: number;
 }
 
 /**
- * Each `touched-bottom` event so far, with the world x of the body that
- * landed. The sim names the body on each event: the whole ship or the bow is
- * body 0, the stern body 1. Positions are the bodies' current x, which stops
- * changing once they rest.
- * Returns how many landings are in `out`.
+ * Each body's `touched-bottom` so far, in that body's slot (the whole ship or
+ * the bow is body 0, the stern body 1), with the world x where it landed, so
+ * a puff keeps its slot whichever half lands first. Positions are the bodies'
+ * current x, which stops changing once they rest. Fills `out[0..bodyCount)`.
  */
 export function landings(
   playback: TrialPlayback,
   bodies: readonly BodyPoint[],
   bodyCount: number,
   out: Landing[]
-): number {
-  let count = 0;
+): void {
+  for (let i = 0; i < bodyCount; i++) out[i].hasLanded = false;
   for (const event of playback.events) {
-    if (event.kind !== "touched-bottom" || count >= bodyCount) continue;
-    if (event.at > playback.time) continue;
+    if (event.kind !== "touched-bottom" || event.at > playback.time) continue;
     const index = event.body === "stern" ? 1 : 0;
-    if (index >= bodyCount) continue;
-    out[count].at = event.at;
-    out[count].x = bodies[index].x;
-    count += 1;
+    if (index >= bodyCount || out[index].hasLanded) continue;
+    out[index].hasLanded = true;
+    out[index].at = event.at;
+    out[index].x = bodies[index].x;
   }
-  return count;
 }
 
 /**

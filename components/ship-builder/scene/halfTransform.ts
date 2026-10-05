@@ -50,3 +50,38 @@ export function halfMatrix(
   out.multiply(step.makeTranslation(-px, 0, 0));
   return out;
 }
+
+/**
+ * Sim seconds over which the whole ship's idle bob is handed over to the
+ * halves after the break (about a second of the slow motion), so a choppy
+ * sea's rise and pitch fade out instead of snapping off.
+ */
+export const BOB_HANDOFF_S = 0.25;
+
+/** How much of the idle bob the halves still carry, 1 at the break to 0. */
+export function bobCarryWeight(sinceBreak: number): number {
+  if (sinceBreak < 0) return 0;
+  const t = Math.min(1, sinceBreak / BOB_HANDOFF_S);
+  return 1 - t * t * (3 - 2 * t);
+}
+
+/**
+ * Places the group a half hangs from so it carries the whole ship's bob: a
+ * rise of `lift` and a pitch of `pitch` about the ship's own origin (`pivotY`
+ * world y, her `-sink`), as the bobbing group applied to the whole ship.
+ * Mutates and returns `target`.
+ */
+export function applyBobCarry(
+  target: Object3D,
+  lift: number,
+  pitch: number,
+  pivotY: number
+): Object3D {
+  target.rotation.set(0, 0, pitch);
+  target.position.set(
+    pivotY * Math.sin(pitch),
+    lift + pivotY - pivotY * Math.cos(pitch),
+    0
+  );
+  return target;
+}

@@ -15,6 +15,7 @@ import {
   type ShipAnimationValue,
 } from "./ShipAnimationContext";
 import { trialPlayback } from "./trialPlayback";
+import { plannedBreakX } from "./trialTimeline";
 
 interface ShipAnimationProps {
   children: ReactNode;
@@ -48,7 +49,9 @@ function useBreakAtX(): number | null {
  * (speed, stability) with everything beneath it. Everything that belongs to
  * the ship, effects included, floats together in one bobbing group. Once she
  * breaks in two the same contents are drawn by `BrokenShip` instead; the
- * empty bobbing group stays so leaving the trial still pops her back.
+ * empty bobbing group stays so leaving the trial still pops her back. When an
+ * iceberg trial will break her, both are mounted for the whole trial and only
+ * one is shown, so neither the break nor a scrub across it mounts anything.
  */
 export default function ShipAnimation({ children }: ShipAnimationProps) {
   const ship = useShipBuilderStore((s) => s.ship);
@@ -68,17 +71,28 @@ export default function ShipAnimation({ children }: ShipAnimationProps) {
     [topSpeedKnots, stabilityRatio, reducedMotion, seaState, listAngle]
   );
 
+  const trialInput = useShipBuilderStore((s) =>
+    "input" in s.trial ? s.trial.input : null
+  );
+  const plannedAtX = useMemo(() => plannedBreakX(trialInput), [trialInput]);
   const atX = useBreakAtX();
   const isWhole = atX === null;
+  const halvesAtX = atX ?? plannedAtX;
 
   return (
     <ShipAnimationContext.Provider value={value}>
       <BobGroup>
-        {isWhole && children}
-        {isWhole && <FunnelSmoke />}
-        {isWhole && <PropellerBubbles />}
+        <group visible={isWhole}>
+          {children}
+          <FunnelSmoke />
+          <PropellerBubbles />
+        </group>
       </BobGroup>
-      {!isWhole && <BrokenShip atX={atX}>{children}</BrokenShip>}
+      {halvesAtX !== null && (
+        <BrokenShip atX={halvesAtX} isBroken={!isWhole}>
+          {children}
+        </BrokenShip>
+      )}
     </ShipAnimationContext.Provider>
   );
 }

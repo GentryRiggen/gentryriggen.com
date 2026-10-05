@@ -47,7 +47,8 @@ export default function BobGroup({ children }: BobGroupProps) {
   useFrame((state, delta) => {
     const target = group.current;
     if (!target) return;
-    const status = useShipBuilderStore.getState().trial.status;
+    const { trial } = useShipBuilderStore.getState();
+    const { status } = trial;
     const frozen = frozenTime() !== null;
     const step = frozen ? FROZEN_STEP : Math.min(delta, MAX_FRAME_DELTA);
 
@@ -56,7 +57,11 @@ export default function BobGroup({ children }: BobGroupProps) {
     const previous = previousStatus.current;
     previousStatus.current = status;
     if (previous !== status && !isBuilding(previous) && wasHeavy.current) {
-      const isRestarting = previous === "result" && status === "running";
+      // "Follow her down" carries on from where she sank: not a restart.
+      const isRestarting =
+        previous === "result" &&
+        trial.status === "running" &&
+        trial.from === "start";
       if (isBuilding(status) || isRestarting) {
         blend.current = isRestarting ? 1 : 0;
         popElapsed.current = 0;

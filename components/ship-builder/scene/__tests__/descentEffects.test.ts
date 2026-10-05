@@ -143,23 +143,36 @@ describe("siltGrain", () => {
 });
 
 describe("landings", () => {
-  it("lists only touches that have happened, at the body that landed", () => {
+  it("puts each touch in its body's slot, once it has happened", () => {
     const bodies = [
       { x: 8, y: -45, halfSpan: 5 },
       { x: -6, y: -45, halfSpan: 5 },
     ];
     const out: Landing[] = [
-      { at: 0, x: 0 },
-      { at: 0, x: 0 },
+      { hasLanded: false, at: 0, x: 0 },
+      { hasLanded: false, at: 0, x: 0 },
     ];
     const events = [
       { at: 40, kind: "touched-bottom" as const, body: "stern" as const },
       { at: 44, kind: "touched-bottom" as const, body: "bow" as const },
     ];
-    expect(landings(playback({ events, time: 42 }), bodies, 2, out)).toBe(1);
-    expect(out[0]).toEqual({ at: 40, x: -6 });
-    expect(landings(playback({ events, time: 50 }), bodies, 2, out)).toBe(2);
-    expect(out[1]).toEqual({ at: 44, x: 8 });
+    landings(playback({ events, time: 42 }), bodies, 2, out);
+    expect(out[0].hasLanded).toBe(false);
+    expect(out[1]).toEqual({ hasLanded: true, at: 40, x: -6 });
+    landings(playback({ events, time: 50 }), bodies, 2, out);
+    expect(out[0]).toEqual({ hasLanded: true, at: 44, x: 8 });
+    // The stern's puff has not moved now that the bow is down too.
+    expect(out[1]).toEqual({ hasLanded: true, at: 40, x: -6 });
+  });
+
+  it("forgets landings after a scrub back", () => {
+    const bodies = [{ x: 0, y: -45, halfSpan: 10 }];
+    const out: Landing[] = [{ hasLanded: false, at: 0, x: 0 }];
+    const events = [{ at: 40, kind: "touched-bottom" as const }];
+    landings(playback({ events, time: 41 }), bodies, 1, out);
+    expect(out[0].hasLanded).toBe(true);
+    landings(playback({ events, time: 30 }), bodies, 1, out);
+    expect(out[0].hasLanded).toBe(false);
   });
 });
 
