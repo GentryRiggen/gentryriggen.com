@@ -52,6 +52,22 @@ describe("SelectionBar", () => {
   });
 });
 
+describe("SelectionBar Done", () => {
+  it("deselects the part without removing it", async () => {
+    const user = userEvent.setup();
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: testShip([gridPart("a", "deck-1x1", 0, 2, 1)]),
+        selectedId: "a",
+      })
+    );
+    render(<SelectionBar />);
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(store().selectedId).toBeNull();
+    expect(store().ship.parts).toHaveLength(1);
+  });
+});
+
 describe("PlacementHint controls", () => {
   it("offers Rotate only while placing a grid part", async () => {
     const user = userEvent.setup();

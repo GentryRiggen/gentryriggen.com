@@ -1,13 +1,13 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import PartIcon from "./icons/PartIcon";
-import { dangerButtonClass, panelClass } from "./styles";
+import { buttonClass, dangerButtonClass, panelClass } from "./styles";
 
 /**
- * Offers Delete only while a part is selected and no tool is active. It
+ * Offers Done (deselect) and Delete only while a part is selected and no tool is active. It
  * shares the bottom-centre slot with PlacementHint; the store clears the tool
  * on select, and the tool check here keeps them apart regardless.
  */
@@ -17,6 +17,7 @@ export default function SelectionBar() {
   );
   const hasTool = useShipBuilderStore((s) => s.tool.kind !== "none");
   const requestDelete = useShipBuilderStore((s) => s.requestDelete);
+  const select = useShipBuilderStore((s) => s.select);
 
   if (!selected || hasTool) return null;
   const def = getPartDef(selected.type);
@@ -27,6 +28,14 @@ export default function SelectionBar() {
     >
       <PartIcon type={def.type} className="h-6 w-6 shrink-0" />
       <span className="truncate text-sm font-medium">{def.name}</span>
+      <button
+        type="button"
+        onClick={() => select(null)}
+        className={`${buttonClass} min-h-11 rounded-full px-4`}
+      >
+        <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
+        Done
+      </button>
       <button
         type="button"
         onClick={requestDelete}

@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.8.2",
+    date: "2026-10-05",
+    title: "A Done button for parts",
+    highlights: [
+      "When you pick a part on your ship, the bar at the bottom now has a Done button. Tap it to let go of the part without hunting for it in the parts drawer",
+    ],
+  },
+  {
     version: "2.8.1",
     date: "2026-10-05",
     title: "A clear view of the sinking",
