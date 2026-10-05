@@ -9,27 +9,27 @@
     {
       "id": 1,
       "subject": "Task 1: Bulkhead persistence, Below deck editor, stats row",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0]
     },
     {
       "id": 2,
       "subject": "Task 2: Flooding engine, iceberg summaries, template bulkheads",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0]
     },
     {
       "id": 3,
       "subject": "Task 3: Iceberg trial in the scene and UI",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0]
     },
     {
       "id": 4,
       "subject": "Task 4: Integrate, e2e, release",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [1, 2, 3]
     }
   ],
-  "lastUpdated": "2026-10-04T23:59:00Z"
+  "lastUpdated": "2026-10-05T01:30:00Z"
 }
