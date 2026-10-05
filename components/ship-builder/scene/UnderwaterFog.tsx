@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { Color, Fog } from "three";
 import { useFrame } from "@react-three/fiber";
-import { underwaterBlend } from "./descentEffects";
+import { isFloorNeeded, underwaterBlend } from "./descentEffects";
+import { trialPlayback } from "./trialPlayback";
 
 const DEEP_BLUE = "#031a30";
 /** At the sea floor the water closes in to this range. */
@@ -16,12 +17,14 @@ const DEEP_FOG_FAR = 70;
  * fog from its eased look every frame (at a lower frame priority), so this
  * runs after it and only adds to what it just wrote; coming back above the
  * surface needs no restore because the next frame starts from Environment's
- * values again.
+ * values again. Only while she is on her way to the floor (the same test as
+ * the SeaFloor): the below view while building keeps its clear water.
  */
 export default function UnderwaterFog() {
   const deep = useMemo(() => new Color(DEEP_BLUE), []);
 
   useFrame((state) => {
+    if (!isFloorNeeded(trialPlayback)) return;
     const blend = underwaterBlend(state.camera.position.y);
     if (blend === 0) return;
     const { background, fog } = state.scene;
