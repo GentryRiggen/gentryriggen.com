@@ -12,6 +12,7 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
+import { AO_OCCLUDER } from "./aoLayer";
 import IcebergAimLayer from "./IcebergAimLayer";
 import { shouldSwallowClick } from "./clickGuard";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
@@ -206,6 +207,7 @@ function PieceMesh({
 }) {
   return (
     <mesh
+      {...AO_OCCLUDER}
       geometry={geometry}
       castShadow={!isDeck}
       receiveShadow
@@ -341,6 +343,7 @@ function Bulb({ lengthCells, color }: { lengthCells: number; color: string }) {
     <mesh
       position={[lengthCells / 2 + stemTip - BULB_SETBACK, BULB_Y, 0]}
       scale={BULB_RADII}
+      {...AO_OCCLUDER}
       castShadow
       raycast={noRaycast}
     >

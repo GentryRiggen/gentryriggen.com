@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { AO_OCCLUDER } from "./aoLayer";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
@@ -58,7 +59,7 @@ export default function FunnelMesh({
   );
   return (
     <group rotation={[0, 0, FUNNEL_RAKE_RADIANS]}>
-      <mesh position={[0, bodyHeight / 2, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, bodyHeight / 2, 0]} castShadow>
         <cylinderGeometry
           args={[topRadius, baseRadius, bodyHeight, SEGMENTS]}
         />
@@ -67,7 +68,7 @@ export default function FunnelMesh({
       <mesh geometry={geometry.bands}>
         <Surface color={PALETTE.funnelBand} {...surface} />
       </mesh>
-      <mesh geometry={geometry.cap} castShadow>
+      <mesh {...AO_OCCLUDER} geometry={geometry.cap} castShadow>
         <Surface color={PALETTE.funnelTop} {...surface} />
       </mesh>
       <mesh geometry={geometry.opening}>

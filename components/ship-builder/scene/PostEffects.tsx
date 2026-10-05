@@ -14,12 +14,18 @@ import { N8AOPostPass } from "n8ao";
 import { ClearPass, EffectComposer, RenderPass } from "postprocessing";
 import {
   Color,
+  MeshBasicMaterial,
   MultiplyBlending,
   ShaderMaterial,
   UnsignedByteType,
   Vector2,
+  type Camera,
+  type Scene,
+  type WebGLRenderTarget,
+  type WebGLRenderer,
 } from "three";
 import type { RuntimeEnvironment } from "./environmentRuntime";
+import { AO_LAYER } from "./aoLayer";
 import { canRunOcclusion, createDeclineGate } from "./aoPolicy";
 import { testAoOverride } from "./testClock";
 
@@ -34,6 +40,37 @@ const AO_DISTANCE_FALLOFF = 1.2;
 
 /** Runs after the scene's own frame updates (priority 0) and its render. */
 const OCCLUSION_PRIORITY = 1;
+
+/**
+ * Draws only the occluders (see `AO_LAYER`) into the composer's depth, with a
+ * flat material since colour is wiped straight after. The camera's own layers
+ * are put back afterwards, so nothing else sees the change.
+ */
+class OccluderDepthPass extends RenderPass {
+  private readonly depthCamera: Camera;
+
+  constructor(scene: Scene, camera: Camera) {
+    super(scene, camera, new MeshBasicMaterial());
+    this.depthCamera = camera;
+  }
+
+  override render(
+    renderer: WebGLRenderer,
+    inputBuffer: WebGLRenderTarget | null,
+    outputBuffer: WebGLRenderTarget | null,
+    deltaTime?: number,
+    stencilTest?: boolean
+  ): void {
+    const { layers } = this.depthCamera;
+    const savedMask = layers.mask;
+    layers.set(AO_LAYER);
+    try {
+      super.render(renderer, inputBuffer, outputBuffer, deltaTime, stencilTest);
+    } finally {
+      layers.mask = savedMask;
+    }
+  }
+}
 
 interface PostEffectsProps {
   /** The live look; the occlusion tint follows its eased colour. */
@@ -74,14 +111,20 @@ function OcclusionLayer({ environment, onFailure }: OcclusionLayerProps) {
       multisampling: 0,
       frameBufferType: UnsignedByteType,
     });
-    // N8AO reads the composer's depth, so the scene is drawn once into it;
-    // the colour is then wiped to white, keeping the depth.
-    const depth = new RenderPass(scene, camera);
+    // N8AO reads the composer's depth, so the occluders are drawn once into
+    // it; the colour is then wiped to white, keeping the depth.
+    const depth = new OccluderDepthPass(scene, camera);
     const white = new ClearPass(true, false, false);
     white.overrideClearColor = new Color(1, 1, 1);
     white.overrideClearAlpha = 1;
     const occlusion = new N8AOPostPass(scene, camera);
     occlusion.setQualityMode("Performance");
+    // The default re-draws the transparent objects (sea, glass, glows) in two
+    // more passes to keep them out of the shading; the multiply-over-canvas
+    // approach has no need of that.
+    (
+      occlusion as N8AOPostPass & { autoDetectTransparency: boolean }
+    ).autoDetectTransparency = false;
     occlusion.configuration.halfRes = true;
     occlusion.configuration.aoRadius = AO_RADIUS;
     occlusion.configuration.intensity = AO_INTENSITY;

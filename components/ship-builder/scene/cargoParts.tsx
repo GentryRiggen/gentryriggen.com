@@ -20,6 +20,7 @@ import { LEVEL_HEIGHT } from "./coords";
 import { roundedBox } from "./roundedBox";
 import { PALETTE } from "./palette";
 import { useShipAnimation } from "./ShipAnimationContext";
+import { AO_OCCLUDER } from "./aoLayer";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface CargoMeshProps {
@@ -147,7 +148,7 @@ export function ContainerMesh({
   const hex = paintHex(containerColor(partId ?? "", color));
   return (
     <group rotation={[0, (rotation * Math.PI) / 180, 0]}>
-      <mesh geometry={geometry.body} castShadow receiveShadow>
+      <mesh {...AO_OCCLUDER} geometry={geometry.body} castShadow receiveShadow>
         <Surface color={hex} {...surface} />
       </mesh>
       <mesh geometry={geometry.ribs} castShadow>
@@ -185,7 +186,12 @@ export function HatchCoverMesh({
   const lidColor = color ? paintHex(color) : PALETTE.hatchCover;
   return (
     <group>
-      <mesh position={[0, HATCH_COAMING / 2, 0]} castShadow receiveShadow>
+      <mesh
+        {...AO_OCCLUDER}
+        position={[0, HATCH_COAMING / 2, 0]}
+        castShadow
+        receiveShadow
+      >
         <primitive
           object={roundedBox(size.x * 0.88, HATCH_COAMING, size.z * 0.88, 0.05)}
           attach="geometry"
@@ -193,6 +199,7 @@ export function HatchCoverMesh({
         <Surface color={PALETTE.hatchCoaming} {...surface} />
       </mesh>
       <mesh
+        {...AO_OCCLUDER}
         position={[0, HATCH_COAMING + HATCH_LID / 2, 0]}
         castShadow
         receiveShadow
@@ -254,11 +261,11 @@ export function CargoCraneMesh({ color, tint, emphasis }: CargoCraneMeshProps) {
   const cableLength = 0.9;
   return (
     <group>
-      <mesh position={[0, 0.04, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, 0.04, 0]} castShadow>
         <cylinderGeometry args={[0.34, 0.38, 0.08, 20]} />
         <Surface color={PALETTE.hatchCover} {...surface} />
       </mesh>
-      <mesh position={[0, PEDESTAL_HEIGHT / 2, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, PEDESTAL_HEIGHT / 2, 0]} castShadow>
         <cylinderGeometry args={[0.2, 0.26, PEDESTAL_HEIGHT, 20]} />
         <Surface color={body} {...surface} />
       </mesh>

@@ -3,6 +3,7 @@
 import { PALETTE } from "./palette";
 import Rotator from "./Rotator";
 import { roundedBox } from "./roundedBox";
+import { AO_OCCLUDER } from "./aoLayer";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 const NAVAL = {
@@ -49,12 +50,16 @@ export function TurretMesh({ painted, tint, emphasis, large }: TurretProps) {
     : { length: 0.7, radius: 0.05, offsets: [0] };
   return (
     <group>
-      <mesh position={[0, 0.06, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, 0.06, 0]} castShadow>
         <cylinderGeometry args={[radius, radius, 0.12, 28]} />
         <Surface color={NAVAL.dark} {...surface} />
       </mesh>
       <Rotator speed={TURRET_SPEED} enabled={!isGhost(tint)}>
-        <mesh position={[0, 0.12 + housing.y / 2, 0]} castShadow>
+        <mesh
+          {...AO_OCCLUDER}
+          position={[0, 0.12 + housing.y / 2, 0]}
+          castShadow
+        >
           <primitive
             object={roundedBox(
               housing.x,
@@ -134,7 +139,7 @@ export function HelipadMesh({ painted, tint, emphasis }: NavyMeshProps) {
   const markY = 0.155;
   return (
     <group>
-      <mesh position={[0, 0.075, 0]} castShadow receiveShadow>
+      <mesh {...AO_OCCLUDER} position={[0, 0.075, 0]} castShadow receiveShadow>
         <boxGeometry args={[1.9, 0.15, 1.9]} />
         <Surface color={painted ?? NAVAL.deck} {...surface} />
       </mesh>
@@ -158,7 +163,12 @@ export function HelicopterMesh({ painted, tint, emphasis }: NavyMeshProps) {
   const body = painted ?? NAVAL.heli;
   return (
     <group>
-      <mesh position={[0, 0.42, 0]} scale={[0.62, 0.3, 0.3]} castShadow>
+      <mesh
+        {...AO_OCCLUDER}
+        position={[0, 0.42, 0]}
+        scale={[0.62, 0.3, 0.3]}
+        castShadow
+      >
         <sphereGeometry args={[1, 14, 10]} />
         <Surface color={body} {...surface} />
       </mesh>

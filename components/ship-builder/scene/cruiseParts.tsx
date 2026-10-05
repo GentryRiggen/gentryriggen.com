@@ -13,6 +13,7 @@ import {
 } from "./funnelGeometry";
 import { getLifeboatGeometry } from "./lifeboatGeometry";
 import Spinner from "./Spinner";
+import { AO_OCCLUDER } from "./aoLayer";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface CruisePartProps {
@@ -110,7 +111,12 @@ export function PoolMesh({ size, color, tint, emphasis }: PoolMeshProps) {
   const surface = { tint, emphasis };
   return (
     <group>
-      <mesh position={[0, POOL_HEIGHT / 2, 0]} castShadow receiveShadow>
+      <mesh
+        {...AO_OCCLUDER}
+        position={[0, POOL_HEIGHT / 2, 0]}
+        castShadow
+        receiveShadow
+      >
         <boxGeometry args={[size.x * 0.96, POOL_HEIGHT, size.z * 0.96]} />
         <Surface color={color ?? CRUISE_COLORS.poolRim} {...surface} />
       </mesh>
@@ -152,11 +158,11 @@ export function Waterslide({ color, tint, emphasis }: CruisePartProps) {
   const surface = { tint, emphasis };
   return (
     <group>
-      <mesh position={[0, SLIDE_HEIGHT / 2, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, SLIDE_HEIGHT / 2, 0]} castShadow>
         <cylinderGeometry args={[0.1, 0.1, SLIDE_HEIGHT, 10]} />
         <Surface color={CRUISE_COLORS.slideTower} {...surface} />
       </mesh>
-      <mesh position={[0, SLIDE_HEIGHT + 0.05, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, SLIDE_HEIGHT + 0.05, 0]} castShadow>
         <cylinderGeometry args={[0.22, 0.22, 0.1, 12]} />
         <Surface color={CRUISE_COLORS.slideTower} {...surface} />
       </mesh>
@@ -185,7 +191,7 @@ export function ClimbingWall({ color, tint, emphasis }: CruisePartProps) {
   const surface = { tint, emphasis };
   return (
     <group>
-      <mesh position={[0, WALL_HEIGHT / 2, 0]} castShadow>
+      <mesh {...AO_OCCLUDER} position={[0, WALL_HEIGHT / 2, 0]} castShadow>
         <boxGeometry args={[0.1, WALL_HEIGHT, 0.8]} />
         <Surface color={color ?? CRUISE_COLORS.wall} {...surface} />
       </mesh>
@@ -285,7 +291,11 @@ export function ModernFunnel({ color, tint, emphasis }: CruisePartProps) {
   const surface = { tint, emphasis };
   return (
     <group rotation={[0, 0, FUNNEL_RAKE_RADIANS]}>
-      <mesh geometry={getModernFunnelGeometry().body} castShadow>
+      <mesh
+        {...AO_OCCLUDER}
+        geometry={getModernFunnelGeometry().body}
+        castShadow
+      >
         <Surface color={color ?? CRUISE_COLORS.modernFunnel} {...surface} />
       </mesh>
       <mesh geometry={getModernFunnelGeometry().grille}>

@@ -12,6 +12,7 @@ import {
 } from "three";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useSeaState from "../hooks/useSeaState";
+import { AO_OCCLUDER_MASK } from "./aoLayer";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { frozenTime } from "./testClock";
 import {
@@ -112,6 +113,8 @@ interface SeaUniforms {
  * (it blended in sRGB before). This keeps the deep blue either way.
  */
 const OPACITY = 0.98;
+/** Layer 0 only: drawn by the main render, absent from the AO depth pass. */
+const DEFAULT_LAYER_MASK = 0b1;
 const SEE_THROUGH_OPACITY = 0.35;
 
 export default function Ocean({ seeThrough, environment }: OceanProps) {
@@ -173,7 +176,14 @@ export default function Ocean({ seeThrough, environment }: OceanProps) {
   });
 
   return (
-    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh
+      geometry={geometry}
+      rotation={[-Math.PI / 2, 0, 0]}
+      receiveShadow
+      // The sea meets the hull, so the waterline darkens. Seen from below the
+      // surface must not hide the underwater ship from the depth pass.
+      layers-mask={seeThrough ? DEFAULT_LAYER_MASK : AO_OCCLUDER_MASK}
+    >
       <meshStandardMaterial
         ref={material}
         vertexColors
