@@ -9,6 +9,9 @@ import { defineConfig, devices } from "@playwright/test";
 /** Override to run beside another dev server (PLAYWRIGHT_PORT=3123). */
 const port = process.env.PLAYWRIGHT_PORT ?? "3000";
 
+/** The cross-browser projects run only the tests tagged @smoke. */
+const smokeOnly = process.env.E2E_FULL ? undefined : /@smoke/;
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -50,14 +53,18 @@ export default defineConfig({
       },
     },
 
+    /* CI does not run Firefox (pass --project=firefox to try it). */
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
     },
 
+    /* WebKit and the iPad run only the tests tagged @smoke (touch, pointer
+       and layout checks); Chromium runs everything. E2E_FULL=1 runs it all. */
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
+      grep: smokeOnly,
     },
 
     /* The Ship Builder is also a touch app, so run its tests on an iPad. */
@@ -65,6 +72,7 @@ export default defineConfig({
       name: "ipad",
       use: { ...devices["iPad Pro 11 landscape"] },
       testMatch: /ship-builder/,
+      grep: smokeOnly,
     },
 
     /* Test against mobile viewports. */

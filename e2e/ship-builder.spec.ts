@@ -62,31 +62,39 @@ async function expectBoatDeckStats(page: Page) {
 }
 
 test.describe("Ship Builder", () => {
-  test("builds a boat deck and updates stats", async ({ page }) => {
-    await openBuilder(page);
-    await expect(page.getByTestId("stat-people")).toHaveText("480");
-    await expect(page.getByTestId("stat-seats")).toHaveText("0");
-    await buildBoatDeck(page);
-    await expectBoatDeckStats(page);
-  });
+  test(
+    "builds a boat deck and updates stats",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await openBuilder(page);
+      await expect(page.getByTestId("stat-people")).toHaveText("480");
+      await expect(page.getByTestId("stat-seats")).toHaveText("0");
+      await buildBoatDeck(page);
+      await expectBoatDeckStats(page);
+    }
+  );
 
-  test("share link reopens the same ship", async ({ page, browser }) => {
-    await openBuilder(page);
-    await buildBoatDeck(page);
-    await page.getByRole("button", { name: "Share" }).click();
-    const link = await page.getByLabel("Share link URL").inputValue();
-    expect(link).toContain("/ship-builder#ship=");
+  test(
+    "share link reopens the same ship",
+    { tag: "@smoke" },
+    async ({ page, browser }) => {
+      await openBuilder(page);
+      await buildBoatDeck(page);
+      await page.getByRole("button", { name: "Share" }).click();
+      const link = await page.getByLabel("Share link URL").inputValue();
+      expect(link).toContain("/ship-builder#ship=");
 
-    const context = await browser.newContext();
-    const fresh = await context.newPage();
-    await fresh.goto(link);
-    await expect(
-      fresh.getByRole("heading", { name: "Ship Builder" })
-    ).toBeVisible();
-    await expectBoatDeckStats(fresh);
-    await expect(fresh).toHaveURL(/\/ship-builder$/);
-    await context.close();
-  });
+      const context = await browser.newContext();
+      const fresh = await context.newPage();
+      await fresh.goto(link);
+      await expect(
+        fresh.getByRole("heading", { name: "Ship Builder" })
+      ).toBeVisible();
+      await expectBoatDeckStats(fresh);
+      await expect(fresh).toHaveURL(/\/ship-builder$/);
+      await context.close();
+    }
+  );
 
   test("an invalid share link shows a notice", async ({ page }) => {
     await openBuilder(page, "#ship=not-a-ship");
@@ -96,45 +104,63 @@ test.describe("Ship Builder", () => {
     await expect(page.getByTestId("stat-people")).toHaveText("480");
   });
 
-  test("autosaves and restores after reload", async ({ page }) => {
-    await openBuilder(page);
-    await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x: 3, z: 1 });
-    await expect
-      .poll(() =>
-        page.evaluate(() => localStorage.getItem("ship-builder:autosave"))
-      )
-      .toContain("deck-1x1");
-    await page.reload();
-    await page.waitForFunction(() => Boolean(window.__shipBuilderStore));
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => window.__shipBuilderStore!.getState().ship.parts.length
+  test(
+    "autosaves and restores after reload",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await openBuilder(page);
+      await place(page, /Deck block 1×1/, {
+        kind: "grid",
+        level: 0,
+        x: 3,
+        z: 1,
+      });
+      await expect
+        .poll(() =>
+          page.evaluate(() => localStorage.getItem("ship-builder:autosave"))
         )
-      )
-      .toBe(1);
-  });
+        .toContain("deck-1x1");
+      await page.reload();
+      await page.waitForFunction(() => Boolean(window.__shipBuilderStore));
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => window.__shipBuilderStore!.getState().ship.parts.length
+          )
+        )
+        .toBe(1);
+    }
+  );
 
-  test("undo with the keyboard and lengthen the hull", async ({ page }) => {
-    await openBuilder(page);
-    await place(page, /Deck block 1×1/, { kind: "grid", level: 0, x: 0, z: 0 });
-    await page.getByRole("heading", { name: "Ship Builder" }).click();
-    await page.keyboard.press("Escape");
-    await page.keyboard.press("Control+z");
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => window.__shipBuilderStore!.getState().ship.parts.length
+  test(
+    "undo with the keyboard and lengthen the hull",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await openBuilder(page);
+      await place(page, /Deck block 1×1/, {
+        kind: "grid",
+        level: 0,
+        x: 0,
+        z: 0,
+      });
+      await page.getByRole("heading", { name: "Ship Builder" }).click();
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Control+z");
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => window.__shipBuilderStore!.getState().ship.parts.length
+          )
         )
-      )
-      .toBe(0);
-    await partsPanel(page)
-      .getByRole("button", { name: "Lengthen hull" })
-      .click();
-    await expect(partsPanel(page).getByTestId("hull-length")).toHaveText(
-      "9 segments"
-    );
-  });
+        .toBe(0);
+      await partsPanel(page)
+        .getByRole("button", { name: "Lengthen hull" })
+        .click();
+      await expect(partsPanel(page).getByTestId("hull-length")).toHaveText(
+        "9 segments"
+      );
+    }
+  );
 
   test("shows the rule reason for an invalid placement", async ({ page }) => {
     await openBuilder(page);
@@ -412,23 +438,25 @@ test.describe("Ship Builder", () => {
     ).toBeInViewport();
   });
 
-  test("loads the Titanic template from the New ship dialog", async ({
-    page,
-  }) => {
-    await openBuilder(page);
-    await page.getByRole("button", { name: "New", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "New ship" });
-    await dialog.getByRole("button", { name: /Ocean liner/ }).click();
-    await dialog.getByRole("button", { name: /RMS Titanic/ }).click();
-    await expect(dialog).toHaveCount(0);
+  test(
+    "loads the Titanic template from the New ship dialog",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await openBuilder(page);
+      await page.getByRole("button", { name: "New", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: "New ship" });
+      await dialog.getByRole("button", { name: /Ocean liner/ }).click();
+      await dialog.getByRole("button", { name: /RMS Titanic/ }).click();
+      await expect(dialog).toHaveCount(0);
 
-    await expect(page.getByLabel("Ship name")).toHaveValue("RMS Titanic");
-    const ship = await page.evaluate(
-      () => window.__shipBuilderStore!.getState().ship
-    );
-    expect(ship.name).toBe("RMS Titanic");
-    expect(ship.parts.length).toBeGreaterThan(50);
-  });
+      await expect(page.getByLabel("Ship name")).toHaveValue("RMS Titanic");
+      const ship = await page.evaluate(
+        () => window.__shipBuilderStore!.getState().ship
+      );
+      expect(ship.name).toBe("RMS Titanic");
+      expect(ship.parts.length).toBeGreaterThan(50);
+    }
+  );
 
   test("the stats checklist turns warnings into goals", async ({ page }) => {
     await openBuilder(page);

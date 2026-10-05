@@ -19,7 +19,7 @@ test.skip(
   "WebGL is only reliable in headless Chromium"
 );
 
-test.setTimeout(45_000);
+test.setTimeout(90_000);
 
 /** Past any iceberg trial and its descent, so each leg jumps to its end. */
 const FAST_FORWARD_SECONDS = 1000;

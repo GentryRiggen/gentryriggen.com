@@ -187,27 +187,6 @@ test.describe("Ship Builder iceberg", () => {
     }
   });
 
-  test("Try another spot returns to aiming", async ({
-    playwright,
-    baseURL,
-  }) => {
-    const browser = await launch(playwright);
-    try {
-      const page = await openBuilder(browser, baseURL);
-      await strikeMidships(page);
-      await expect(resultBar(page)).toBeVisible({ timeout: 60_000 });
-      const details = await openDetails(page);
-      await details.getByRole("button", { name: "Try another spot" }).click();
-
-      await expect(details).toHaveCount(0);
-      await expect(resultBar(page)).toHaveCount(0);
-      await expect(page.getByText("Tap where the iceberg hits")).toBeVisible();
-      expect(await trialStatus(page)).toBe("aiming");
-    } finally {
-      await browser.close();
-    }
-  });
-
   test("Cancel and Esc return to building, and building works again", async ({
     playwright,
     baseURL,

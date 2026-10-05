@@ -274,6 +274,8 @@ test.describe("Ship Builder sea trial", () => {
         details.getByRole("button", { name: "Try another spot" })
       ).toBeVisible();
       await details.getByRole("button", { name: "Try another spot" }).click();
+      await expect(details).toHaveCount(0);
+      await expect(resultBar(page)).toHaveCount(0);
       expect(await trialStatus(page)).toBe("aiming");
     } finally {
       await browser.close();
