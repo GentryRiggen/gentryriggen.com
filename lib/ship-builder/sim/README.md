@@ -15,6 +15,7 @@ identical.
 - `breakup.ts`, `power.ts`, `descent.ts`: Level 2b, breaking in two, the
   lights, and the way down to the sea floor.
 - `explain.ts`: `explainTrial(state, input)` for the result card.
+- Driving the ship (Drive mode) is a separate model in `lib/ship-builder/sail/`; a hard hit there hands over to a trial here.
 
 ## The model
 

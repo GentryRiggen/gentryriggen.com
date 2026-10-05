@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.9.0",
+    date: "2026-10-05",
+    title: "Take the wheel",
+    highlights: [
+      "You can drive your ship now. Tap Drive (a ship needs an engine), choose what is out there, and set sail",
+      "Pick icebergs, rocks, buoys and other ships to steer around, and how many of them. Pick nothing for wide open water",
+      "Three views: behind the ship, from above, and from the bridge. Switch whenever you like",
+      "The wheel and the throttle match your kind of ship, so a liner, a cruise ship, a warship and a cargo ship each feel different",
+      "Bump a buoy and you just slow down. Hit an iceberg, a rock or another ship hard and she sinks, the same way as in a sea trial",
+      "Arrow keys or W, A, S and D steer and change the throttle. Space stops, and Esc ends the drive",
+    ],
+  },
+  {
     version: "2.8.2",
     date: "2026-10-05",
     title: "A Done button for parts",
