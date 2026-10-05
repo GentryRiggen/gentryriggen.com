@@ -145,9 +145,9 @@ export interface Landing {
 
 /**
  * Each `touched-bottom` event so far, with the world x of the body that
- * landed. The sim logs one event per body and the heavier bow half lands
- * first, so the first event is the bow (body 0) and a second is the stern.
- * Positions are the bodies' current x, which stops changing once they rest.
+ * landed. The sim names the body on each event: the whole ship or the bow is
+ * body 0, the stern body 1. Positions are the bodies' current x, which stops
+ * changing once they rest.
  * Returns how many landings are in `out`.
  */
 export function landings(
@@ -160,8 +160,10 @@ export function landings(
   for (const event of playback.events) {
     if (event.kind !== "touched-bottom" || count >= bodyCount) continue;
     if (event.at > playback.time) continue;
+    const index = event.body === "stern" ? 1 : 0;
+    if (index >= bodyCount) continue;
     out[count].at = event.at;
-    out[count].x = bodies[count].x;
+    out[count].x = bodies[index].x;
     count += 1;
   }
   return count;

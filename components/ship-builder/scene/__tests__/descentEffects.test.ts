@@ -143,7 +143,7 @@ describe("siltGrain", () => {
 });
 
 describe("landings", () => {
-  it("lists only touches that have happened, bow first", () => {
+  it("lists only touches that have happened, at the body that landed", () => {
     const bodies = [
       { x: 8, y: -45, halfSpan: 5 },
       { x: -6, y: -45, halfSpan: 5 },
@@ -153,13 +153,13 @@ describe("landings", () => {
       { at: 0, x: 0 },
     ];
     const events = [
-      { at: 40, kind: "touched-bottom" as const },
-      { at: 44, kind: "touched-bottom" as const },
+      { at: 40, kind: "touched-bottom" as const, body: "stern" as const },
+      { at: 44, kind: "touched-bottom" as const, body: "bow" as const },
     ];
     expect(landings(playback({ events, time: 42 }), bodies, 2, out)).toBe(1);
-    expect(out[0]).toEqual({ at: 40, x: 8 });
+    expect(out[0]).toEqual({ at: 40, x: -6 });
     expect(landings(playback({ events, time: 50 }), bodies, 2, out)).toBe(2);
-    expect(out[1]).toEqual({ at: 44, x: -6 });
+    expect(out[1]).toEqual({ at: 44, x: 8 });
   });
 });
 

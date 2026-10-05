@@ -5,7 +5,12 @@ import {
   wholeSpan,
   type BodySpan,
 } from "./breakup";
-import { SIM_STEP_S, type SimState, type TrialInput } from "./types";
+import {
+  SIM_STEP_S,
+  type SimBody,
+  type SimState,
+  type TrialInput,
+} from "./types";
 
 /**
  * "Follow her down": after she has gone under, each body (the whole ship, or
@@ -125,6 +130,7 @@ export function stepDescent(state: SimState, input?: TrialInput): SimState {
   const { halves, breakup } = state;
   let next: SimState;
   let bodies: BodyStep<Body>[];
+  let names: SimBody[];
   if (halves && breakup) {
     const bow = stepBody(
       halves.bow,
@@ -139,6 +145,7 @@ export function stepDescent(state: SimState, input?: TrialInput): SimState {
       speed
     );
     bodies = [bow, stern];
+    names = ["bow", "stern"];
     next = { ...state, time, halves: { bow: bow.body, stern: stern.body } };
   } else {
     const whole = stepBody(
@@ -148,15 +155,19 @@ export function stepDescent(state: SimState, input?: TrialInput): SimState {
       speed
     );
     bodies = [whole];
+    names = ["ship"];
     next = { ...state, time, pose: whole.body };
   }
 
   let events = state.events;
-  for (const body of bodies) {
+  bodies.forEach((body, i) => {
     if (body.landedNow) {
-      events = [...events, { at: time, kind: "touched-bottom" }];
+      events = [
+        ...events,
+        { at: time, kind: "touched-bottom", body: names[i] },
+      ];
     }
-  }
+  });
   let lastTouch = time;
   for (const event of events) {
     if (event.kind === "touched-bottom") lastTouch = event.at;

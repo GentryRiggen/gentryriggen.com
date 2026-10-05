@@ -154,6 +154,9 @@ export type PowerState = "on" | "flickering" | "out";
 /** Reserved for Level 3: things the player does while the sim runs. */
 export type SimAction = never;
 
+/** A body that moves on its own: the whole ship, or one half once broken. */
+export type SimBody = "ship" | "bow" | "stern";
+
 /** Something that happened, for the result screen and later levels. */
 export interface SimEvent {
   at: number;
@@ -174,6 +177,8 @@ export interface SimEvent {
     | "broke"
     /** A body (the whole ship, or one half) landed on the sea floor. */
     | "touched-bottom";
+  /** For `touched-bottom`: which body landed. */
+  body?: SimBody;
 }
 
 export interface SimState {
