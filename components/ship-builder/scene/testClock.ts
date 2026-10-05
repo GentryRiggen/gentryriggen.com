@@ -7,7 +7,17 @@
  * production builds never read it.
  */
 
+import { sectorKey, SECTOR_SIZE } from "@/lib/ship-builder/sail/field";
+import type { Obstacle, ObstacleKind } from "@/lib/ship-builder/sail/types";
 import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
+
+/** An obstacle a test plants in the drive field (x ahead, z to starboard). */
+export interface TestDriveObstacle {
+  kind: ObstacleKind;
+  x: number;
+  z: number;
+  radius: number;
+}
 
 export interface ShipBuilderTestConfig {
   /** Seconds of scene time every animation should show. */
@@ -26,6 +36,8 @@ export interface ShipBuilderTestConfig {
    * device.
    */
   ao?: boolean;
+  /** Drive: obstacles placed in the field at the start of every sail. */
+  driveObstacles?: TestDriveObstacle[];
 }
 
 declare global {
@@ -79,4 +91,32 @@ export function testAoOverride(): boolean | null {
   if (typeof window === "undefined") return null;
   const ao = window.__SHIP_BUILDER_TEST__?.ao;
   return typeof ao === "boolean" ? ao : null;
+}
+
+/**
+ * Obstacles a test wants planted at the start of a drive, or an empty list.
+ * They carry the sector they sit in, so the field keeps them like any other.
+ */
+export function testDriveObstacles(): Obstacle[] {
+  if (!TEST_HOOKS_ENABLED) return [];
+  if (typeof window === "undefined") return [];
+  const planted = window.__SHIP_BUILDER_TEST__?.driveObstacles;
+  if (!Array.isArray(planted)) return [];
+  return planted.flatMap(({ kind, x, z, radius }, index) =>
+    [x, z, radius].every(Number.isFinite)
+      ? [
+          {
+            id: `test:${index}`,
+            kind,
+            x,
+            z,
+            radius,
+            sector: sectorKey(
+              Math.floor(x / SECTOR_SIZE),
+              Math.floor(z / SECTOR_SIZE)
+            ),
+          },
+        ]
+      : []
+  );
 }

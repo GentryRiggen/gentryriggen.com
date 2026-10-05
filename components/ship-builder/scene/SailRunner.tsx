@@ -18,6 +18,7 @@ import { publishSail } from "@/lib/ship-builder/state/sailLive";
 import { sailInput } from "@/lib/ship-builder/state/sailInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { testDriveObstacles } from "./testClock";
 
 interface SailingProps {
   config: DriveConfig;
@@ -44,7 +45,7 @@ function Sailing({ config }: SailingProps) {
   const leftover = useRef(0);
   const hasHit = useRef(false);
   if (state.current === null) {
-    state.current = syncField(createSail(), config);
+    state.current = syncField(createSail(testDriveObstacles()), config);
   }
 
   useEffect(() => {
