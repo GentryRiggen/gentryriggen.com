@@ -8,9 +8,9 @@ import {
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 /** Stations along the length, and steps around each half-section. */
-const STATIONS = 14;
+const STATIONS = 10;
 const SECTION_STEPS = 6;
-const COVER_STATIONS = 10;
+const COVER_STATIONS = 8;
 /** Where along the length (stern 0, bow 1) the boat is widest. */
 const BEAM_AT = 0.55;
 /** How far the rim rises at the ends, as a fraction of the depth. */

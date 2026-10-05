@@ -128,8 +128,8 @@ function Portholes({
           args={[
             PORTHOLE_RADIUS + PORTHOLE_RIM_TUBE / 2,
             PORTHOLE_RIM_TUBE,
-            6,
-            18,
+            4,
+            14,
           ]}
         />
         <meshStandardMaterial
