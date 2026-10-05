@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
 import { gridLength } from "@/lib/ship-builder/model/grid";
+import { getSailState } from "@/lib/ship-builder/state/sailLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { MAX_FRAME_DELTA } from "./animationMath";
@@ -22,6 +23,8 @@ import {
   viewPosition,
   viewTarget,
 } from "./cameraViews";
+import { chaseCamera } from "./driveCamera";
+import { sceneTime } from "./testClock";
 import { trialPlayback } from "./trialPlayback";
 
 // Left orbits (Shift/Ctrl/Meta + left pans, built into OrbitControls), the
@@ -37,6 +40,11 @@ const TOUCHES = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
 const FOLLOW_RATE = 3;
 /** The slow-mo side-on view: camera height as a share of its distance. */
 const SIDE_ON_HEIGHT = 0.25;
+/** How fast the drive camera closes on its pose, per second. */
+const DRIVE_RATE = 4;
+/** The chase camera's gentle sway: size in cells and speed in radians a second. */
+const SWAY_SIZE = 0.12;
+const SWAY_SPEED = 0.6;
 /** The wreck framing: camera height above the target, as a share of distance. */
 const WRECK_HEIGHT = 0.2;
 /** Closer than this to the goal the target is simply there. */
@@ -51,6 +59,8 @@ const RESULT_CARD_SELECTOR = "[data-sea-trial-result]";
 // Scratch values for the per-frame follow, so it allocates nothing.
 const offset = new Vector3();
 const underGoal: [number, number, number] = [0, 0, 0];
+const driveGoal = new Vector3();
+const driveLook = new Vector3();
 const canvasBox = { left: 0, top: 0, width: 0, height: 0 };
 const cardBox = { left: 0, top: 0, width: 0, height: 0 };
 
@@ -81,7 +91,10 @@ export default function CameraRig() {
     Math.max(bowLength(s.ship.hull.bow), sternLength(s.ship.hull.stern))
   );
   const view = camera.view;
+  const isSailing = useShipBuilderStore((s) => s.drive.status === "sailing");
   const reducedMotion = usePrefersReducedMotion();
+  // False until the drive camera has taken its first pose, which it snaps to.
+  const hasDrivePose = useRef(false);
   // True while the player orbits or pans, so the follow never fights a drag.
   const isDragging = useRef(false);
   // True from the first followed frame until the target is back at the view's.
@@ -99,6 +112,12 @@ export default function CameraRig() {
   const seen = useRef<FrameRequest | null>(null);
 
   useEffect(() => {
+    // While sailing the drive camera owns the view. Forgetting the request
+    // makes the builder's own view place the camera again when she is back.
+    if (isSailing) {
+      seen.current = null;
+      return;
+    }
     const next = { camera, lengthSegments, beam };
     const shouldPlace = shouldFrame(seen.current, next);
     seen.current = next;
@@ -126,7 +145,7 @@ export default function CameraRig() {
       orbit.update();
       orbit.enableDamping = true;
     }
-  }, [camera, lengthSegments, beam, get]);
+  }, [camera, lengthSegments, beam, isSailing, get]);
 
   // Keep the target near the ship after every pan (and damping step). The
   // camera moves by the same amount, so the view slides rather than turns.
@@ -300,6 +319,38 @@ export default function CameraRig() {
     orbit.update();
   });
 
+  // Sailing: no orbiting. The camera rides behind and above the ship, which
+  // stays at the origin, and eases to its pose as she speeds up.
+  useFrame((state, delta) => {
+    if (!isSailing) {
+      hasDrivePose.current = false;
+      return;
+    }
+    const sail = getSailState();
+    if (!sail) return;
+    const { camera: cam } = get();
+    if (cam instanceof PerspectiveCamera && cam.view?.enabled) {
+      cam.clearViewOffset();
+    }
+    const length = gridLength(useShipBuilderStore.getState().ship);
+    const pose = chaseCamera(sail, length);
+    driveGoal.set(...pose.position);
+    driveLook.set(...pose.target);
+    if (!reducedMotion) {
+      const sway = Math.sin(sceneTime(state.clock.elapsedTime) * SWAY_SPEED);
+      driveGoal.z += sway * SWAY_SIZE * length * 0.2;
+      driveGoal.y += Math.cos(sway * 2) * SWAY_SIZE;
+    }
+    const amount =
+      reducedMotion || !hasDrivePose.current
+        ? 1
+        : Math.min(1, Math.min(delta, MAX_FRAME_DELTA) * DRIVE_RATE);
+    hasDrivePose.current = true;
+    cam.position.lerp(driveGoal, amount);
+    cam.lookAt(driveLook);
+  });
+
+  if (isSailing) return null;
   return (
     <OrbitControls
       ref={controls}

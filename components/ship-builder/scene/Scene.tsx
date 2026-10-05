@@ -29,6 +29,9 @@ import ReflectionEnvironment from "./ReflectionEnvironment";
 import RenderInfoProbe from "./RenderInfoProbe";
 import SeaFloor from "./SeaFloor";
 import SeaTrialEffects from "./SeaTrialEffects";
+import SailBank from "./SailBank";
+import SailRunner from "./SailRunner";
+import SailWorld from "./SailWorld";
 import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
@@ -114,29 +117,33 @@ export default function Scene() {
         />
         <ReflectionEnvironment timeOfDay={timeOfDay} />
         <Ocean seeThrough={isBelow} environment={environment} />
-        <ShipAnimation>
-          <PoweredGlow glow={glow}>
-            {(powered) => (
-              <>
-                <Hull
-                  lengthCells={lengthCells}
-                  beam={beam}
-                  bow={bow}
-                  stern={stern}
-                  paint={paint}
-                />
-                <ShipParts glow={powered} onPartPress={startPress} />
-              </>
-            )}
-          </PoweredGlow>
-          <HullGash />
-          <Railings />
-          <GridTargets />
-          <AttachMarkers />
-          <GhostPreview />
-        </ShipAnimation>
+        <SailBank>
+          <ShipAnimation>
+            <PoweredGlow glow={glow}>
+              {(powered) => (
+                <>
+                  <Hull
+                    lengthCells={lengthCells}
+                    beam={beam}
+                    bow={bow}
+                    stern={stern}
+                    paint={paint}
+                  />
+                  <ShipParts glow={powered} onPartPress={startPress} />
+                </>
+              )}
+            </PoweredGlow>
+            <HullGash />
+            <Railings />
+            <GridTargets />
+            <AttachMarkers />
+            <GhostPreview />
+          </ShipAnimation>
+        </SailBank>
         <Iceberg />
         <SeaTrialRunner />
+        <SailRunner />
+        <SailWorld />
         <SeaTrialEffects />
         <TrialSound />
         <SeaFloor />

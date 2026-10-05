@@ -1,6 +1,6 @@
 import { createSail } from "@/lib/ship-builder/sail";
 import { DECK_Y } from "../coords";
-import { chaseCamera } from "../driveCamera";
+import { bankAngle, chaseCamera } from "../driveCamera";
 
 const LENGTH = 12;
 
@@ -42,5 +42,22 @@ describe("chaseCamera", () => {
         }
       }
     }
+  });
+});
+
+describe("bankAngle", () => {
+  it("leans toward the turn, more at speed, and not at all when stopped", () => {
+    expect(bankAngle({ rudder: 1, speed: 4 })).toBeGreaterThan(0);
+    expect(bankAngle({ rudder: -1, speed: 4 })).toBeLessThan(0);
+    expect(bankAngle({ rudder: 1, speed: 4 })).toBeGreaterThan(
+      bankAngle({ rudder: 1, speed: 1 })
+    );
+    expect(bankAngle({ rudder: 1, speed: 0 })).toBe(0);
+  });
+
+  it("stays small and finite", () => {
+    const angle = bankAngle({ rudder: 9, speed: Infinity });
+    expect(Math.abs(angle)).toBeLessThan(0.3);
+    expect(Number.isFinite(bankAngle({ rudder: NaN, speed: NaN }))).toBe(true);
   });
 });

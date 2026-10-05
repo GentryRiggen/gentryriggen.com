@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef } from "react";
+import { getSailState } from "@/lib/ship-builder/state/sailLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { clamp } from "./animationMath";
 import {
@@ -22,32 +23,43 @@ const FADE_SECONDS = 0.5;
 const START_AFT = 0.3;
 const SCATTER = 0.3;
 
+/** Cells per second at which a sailing ship's bubbles stream at full pace. */
+const FULL_PACE_SPEED = 4;
+
 /** Bubbles streaming aft from spinning propellers, seen from below. */
 export default function PropellerBubbles() {
   const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
+  const isSailing = useShipBuilderStore((s) => s.drive.status === "sailing");
   const ship = useShipBuilderStore((s) => s.ship);
   const { topSpeedKnots, reducedMotion } = useShipAnimation();
   const anchors = useMemo(
-    () => (isBelow ? collectEffectAnchors(ship) : null),
-    [isBelow, ship]
+    () => (isBelow || isSailing ? collectEffectAnchors(ship) : null),
+    [isBelow, isSailing, ship]
   );
   const positions = anchors?.propellers;
   const capacity = bubbleCapacity((positions?.length ?? 0) / 3);
   const rev = spinRevPerSec(topSpeedKnots);
-  const emitting = isBelow && rev > 0 && !reducedMotion;
+  const emitting = (isBelow || isSailing) && rev > 0 && !reducedMotion;
   const intensity = useRef(0);
   const bubble = useMemo(() => createBubbleState(), []);
 
   const update = useCallback(
     (writer: ParticleWriter, time: number, delta: number) => {
       const step = delta / FADE_SECONDS;
+      // Under way the stream follows her speed: none at rest, full at pace.
+      const sail = isSailing ? getSailState() : null;
+      const pace = sail
+        ? clamp(Math.abs(sail.speed) / FULL_PACE_SPEED, 0, 1)
+        : 1;
+      const isStreaming = emitting && pace > 0.02;
       intensity.current = clamp(
-        intensity.current + (emitting ? step : -step),
+        intensity.current + (isStreaming ? step : -step),
         0,
         1
       );
       if (intensity.current === 0 || !positions) return 0;
 
+      const liveRev = rev * pace;
       let slot = 0;
       for (let p = 0; p < positions.length; p += 3) {
         for (let i = 0; i < BUBBLES_PER_PROPELLER; i++, slot++) {
@@ -57,7 +69,7 @@ export default function PropellerBubbles() {
             BUBBLE_LIFE,
             i / BUBBLES_PER_PROPELLER + p * 0.211
           );
-          bubbleState(age, rev, bubble);
+          bubbleState(age, liveRev, bubble);
           writer.set(
             slot,
             positions[p] - START_AFT - bubble.aft,
@@ -70,7 +82,7 @@ export default function PropellerBubbles() {
       }
       return slot;
     },
-    [bubble, capacity, emitting, positions, rev]
+    [bubble, capacity, emitting, isSailing, positions, rev]
   );
 
   if (capacity === 0) return null;

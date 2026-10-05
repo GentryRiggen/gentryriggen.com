@@ -12,7 +12,7 @@ export interface DriveCameraPose {
 const MIN_LENGTH = 4;
 const MAX_LENGTH = 60;
 /** Cells per second beyond which the camera is as far back as it goes. */
-const SPEED_FOR_FULL_PULLBACK = 8;
+const SPEED_FOR_FULL_PULLBACK = 5;
 /** Camera distance behind the stern, in hull lengths, at rest and at speed. */
 const BASE_BACK = 0.9;
 const SPEED_BACK = 0.5;
@@ -22,6 +22,9 @@ const SPEED_HEIGHT = 0.1;
 /** The camera looks this far past the bow, in hull lengths, at this height. */
 const LOOK_AHEAD = 0.5;
 const LOOK_HEIGHT = 1.2;
+
+/** The most she leans into a turn, radians. */
+const MAX_BANK = 0.14;
 
 function finiteClamp(
   value: number,
@@ -57,4 +60,19 @@ export function chaseCamera(
     position: [-back, height, 0],
     target: [length / 2 + length * LOOK_AHEAD, LOOK_HEIGHT, 0],
   };
+}
+
+/**
+ * How far she leans into a turn (positive is toward starboard), from the
+ * rudder and how fast she is going. Visual only.
+ */
+export function bankAngle(sail: Pick<SailState, "rudder" | "speed">): number {
+  const speedShare = finiteClamp(
+    sail.speed / SPEED_FOR_FULL_PULLBACK,
+    -1,
+    1,
+    0
+  );
+  const rudder = finiteClamp(sail.rudder, -1, 1, 0);
+  return rudder * Math.abs(speedShare) * MAX_BANK;
 }

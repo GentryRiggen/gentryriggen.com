@@ -16,12 +16,37 @@ const BERG_STANDOFF = 2.8;
 const ICE_TOP = "#f5fbff";
 const ICE_UNDER = "#a9d8ee";
 
+/** The low-poly berg: a pale peak above the water, a bluer bulk below. */
+export function IcebergShape() {
+  return (
+    <>
+      <mesh position={[0, 0.9, 0]} scale={[3.4, 2, 2.8]} castShadow>
+        <icosahedronGeometry args={[1, 1]} />
+        <meshStandardMaterial color={ICE_TOP} flatShading />
+      </mesh>
+      <mesh position={[-1.4, 1.6, 0.4]} scale={[1.5, 1.7, 1.3]} castShadow>
+        <icosahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color={ICE_TOP} flatShading />
+      </mesh>
+      <mesh position={[0.2, -1.6, 0]} scale={[3.8, 2.4, 3.2]}>
+        <icosahedronGeometry args={[1, 1]} />
+        <meshStandardMaterial
+          color={ICE_UNDER}
+          flatShading
+          transparent
+          opacity={0.7}
+        />
+      </mesh>
+    </>
+  );
+}
+
 interface IcebergBodyProps {
   iceberg: IcebergInput;
   beam: number;
 }
 
-/** The low-poly berg: a pale peak above the water, a bluer bulk below. */
+/** The berg of an iceberg trial, placed beside the struck side. */
 function IcebergBody({ iceberg, beam }: IcebergBodyProps) {
   const group = useRef<Group>(null);
   const reducedMotion = usePrefersReducedMotion();
@@ -43,23 +68,7 @@ function IcebergBody({ iceberg, beam }: IcebergBodyProps) {
       rotation={[0, 0.5, 0]}
       scale={0.8}
     >
-      <mesh position={[0, 0.9, 0]} scale={[3.4, 2, 2.8]} castShadow>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial color={ICE_TOP} flatShading />
-      </mesh>
-      <mesh position={[-1.4, 1.6, 0.4]} scale={[1.5, 1.7, 1.3]} castShadow>
-        <icosahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial color={ICE_TOP} flatShading />
-      </mesh>
-      <mesh position={[0.2, -1.6, 0]} scale={[3.8, 2.4, 3.2]}>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial
-          color={ICE_UNDER}
-          flatShading
-          transparent
-          opacity={0.7}
-        />
-      </mesh>
+      <IcebergShape />
     </group>
   );
 }
