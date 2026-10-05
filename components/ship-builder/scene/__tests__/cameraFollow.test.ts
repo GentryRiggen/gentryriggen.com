@@ -1,5 +1,6 @@
 import type { HalfPose } from "@/lib/ship-builder/sim/types";
 import { FLOOR_DEPTH } from "@/lib/ship-builder/sim/descent";
+import { PLUNGE_DEPTH } from "@/lib/ship-builder/sim/flooding";
 import { cameraFollow } from "../cameraFollow";
 import { CAMERA_TARGET } from "../cameraViews";
 
@@ -40,10 +41,44 @@ describe("cameraFollow", () => {
     expect(cameraFollow({ ...base, speed: 0.25 }, LENGTH)?.isSideOn).toBe(true);
   });
 
-  it("aims at the midpoint of the halves' centres once broken", () => {
+  it("follows the half still up at the surface, not below the plunge", () => {
+    const breakup = { at: 5, atX: 12, angle: -0.2 };
+    // The stern half (8 long) stands up: its centre is 4 units above its pivot.
+    const rearing = cameraFollow(
+      {
+        ...base,
+        breakup,
+        halves: {
+          bow: half({ sink: 20, pitch: -1 }),
+          stern: half({ sink: 1, pitch: -Math.PI / 2 }),
+        },
+      },
+      LENGTH
+    );
+    expect(rearing?.target[0]).toBeCloseTo(-2, 5);
+    expect(rearing?.target[1]).toBeCloseTo(CAMERA_TARGET[1] - 1 + 4, 5);
+
+    const gone = cameraFollow(
+      {
+        ...base,
+        phase: "done",
+        breakup,
+        halves: {
+          bow: half({ sink: 20, pitch: -1 }),
+          stern: half({ sink: 30, pitch: -Math.PI / 2 }),
+        },
+      },
+      LENGTH
+    );
+    expect(gone?.target[1]).toBeCloseTo(CAMERA_TARGET[1] - PLUNGE_DEPTH, 5);
+    expect(gone?.isLow).toBe(false);
+  });
+
+  it("aims at the midpoint of the halves' centres on the way down", () => {
     const follow = cameraFollow(
       {
         ...base,
+        phase: "descending",
         breakup: { at: 5, atX: 12, angle: -0.2 },
         // Level halves, the bow one drifted 2 units forward and 2 deeper.
         halves: {
