@@ -96,46 +96,56 @@ test.describe("Ship Builder breakup", () => {
     const browser = await launch(playwright);
     try {
       const page = await openBuilder(browser, baseURL);
-      const night = page.getByRole("button", { name: "Night" });
+      const night = page.getByRole("button", { name: "Night", exact: true });
+      await expect(night).toHaveAttribute("aria-pressed", "false");
       await loadTitanic(page);
       await strikeNearTheBow(page);
       expect(await impactX(page)).toBeLessThan(15);
 
       // The trial jumps to where she sank and offers to follow her down
       // (the status bar first, then the result card).
-      await expect(night).toHaveAttribute("aria-pressed", "true");
+      // (The sky switches to night, but the time-of-day buttons are cleared
+      // along with the rest of the chrome, so only the store shows the trial.)
+      await expect(night).toHaveCount(0);
       await page
         .getByRole("button", { name: "Follow her down" })
         .first()
         .click({ timeout: 20_000 });
 
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 20_000 });
+      const bar = page.getByRole("region", { name: "Sea trial result" });
+      await expect(bar).toBeVisible({ timeout: 20_000 });
+      await expect(bar).toContainText("She sank");
+      await expect(bar.getByTestId("scrubber-mark-broke")).toHaveCount(1);
+      await expect(bar.getByTestId("scrubber-mark-touched-bottom")).toHaveCount(
+        1
+      );
       await expect(
-        card.getByRole("heading", { name: "She sank" })
-      ).toBeVisible();
-      await expect(card).toContainText("broke in two");
-      await expect(card).toContainText("sea floor");
-      await expect(card.getByTestId("scrubber-mark-broke")).toHaveCount(1);
-      await expect(
-        card.getByTestId("scrubber-mark-touched-bottom")
-      ).toHaveCount(1);
-      await expect(
-        card.getByRole("button", { name: "Follow her down" })
+        bar.getByRole("button", { name: "Follow her down" })
       ).toHaveCount(0);
+      // The write-up lives behind Details.
+      await bar.getByRole("button", { name: "Details" }).click();
+      const details = page.getByRole("dialog");
+      await expect(
+        details.getByRole("heading", { name: "She sank" })
+      ).toBeVisible();
+      await expect(details).toContainText("broke in two");
+      await expect(details).toContainText("sea floor");
+      await details.getByRole("button", { name: "Close" }).click();
+      await expect(details).toHaveCount(0);
 
       // Watch again plays it from the start; hold it early to see it running.
       await page.evaluate((seconds) => {
         window.__SHIP_BUILDER_TEST__!.trialSeconds = seconds;
       }, EARLY_SECONDS);
-      await card.getByRole("button", { name: "Watch again" }).click();
-      await expect(card).toHaveCount(0);
+      await bar.getByRole("button", { name: "Watch again" }).click();
+      await expect(bar).toHaveCount(0);
       expect(await trialStatus(page)).toBe("running");
       await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
 
       // Leaving puts the sky back as it was.
       await page.getByRole("button", { name: "Stop" }).click();
       expect(await trialStatus(page)).toBe("idle");
+      // The chrome is back and the saved time of day was never touched.
       await expect(night).toHaveAttribute("aria-pressed", "false");
     } finally {
       await browser.close();

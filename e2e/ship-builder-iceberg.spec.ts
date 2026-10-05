@@ -52,6 +52,18 @@ function launch(playwright: { chromium: BrowserType }) {
   });
 }
 
+/** The slim result bar shown once a trial ends. */
+const resultBar = (page: Page) =>
+  page.getByRole("region", { name: "Sea trial result" });
+
+/** Opens the Details sheet from the result bar and returns it. */
+async function openDetails(page: Page) {
+  await resultBar(page).getByRole("button", { name: "Details" }).click();
+  const details = page.getByRole("dialog");
+  await expect(details).toBeVisible();
+  return details;
+}
+
 const wallSlot = (page: Page, at: number) =>
   page.getByTestId(`below-deck-slot-${at}`);
 
@@ -145,11 +157,9 @@ test.describe("Ship Builder iceberg", () => {
       expect(await wallCount(page)).toBeGreaterThan(0);
 
       await strikeMidships(page);
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 30_000 });
-      await expect(
-        card.getByRole("heading", { name: "She stayed afloat!" })
-      ).toBeVisible();
+      const bar = resultBar(page);
+      await expect(bar).toBeVisible({ timeout: 30_000 });
+      await expect(bar).toContainText("She stayed afloat!");
     } finally {
       await browser.close();
     }
@@ -165,12 +175,13 @@ test.describe("Ship Builder iceberg", () => {
       expect(await wallCount(page)).toBe(0);
 
       await strikeMidships(page);
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 60_000 });
+      await expect(resultBar(page)).toBeVisible({ timeout: 60_000 });
+      await expect(resultBar(page)).toContainText("She sank");
+      const details = await openDetails(page);
       await expect(
-        card.getByRole("heading", { name: "She sank" })
+        details.getByRole("heading", { name: "She sank" })
       ).toBeVisible();
-      await expect(card).toContainText("Below deck");
+      await expect(details).toContainText("Below deck");
     } finally {
       await browser.close();
     }
@@ -184,11 +195,12 @@ test.describe("Ship Builder iceberg", () => {
     try {
       const page = await openBuilder(browser, baseURL);
       await strikeMidships(page);
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 60_000 });
-      await card.getByRole("button", { name: "Try another spot" }).click();
+      await expect(resultBar(page)).toBeVisible({ timeout: 60_000 });
+      const details = await openDetails(page);
+      await details.getByRole("button", { name: "Try another spot" }).click();
 
-      await expect(card).toHaveCount(0);
+      await expect(details).toHaveCount(0);
+      await expect(resultBar(page)).toHaveCount(0);
       await expect(page.getByText("Tap where the iceberg hits")).toBeVisible();
       expect(await trialStatus(page)).toBe("aiming");
     } finally {

@@ -60,6 +60,18 @@ async function startWavesTrial(page: Page) {
   await page.getByRole("menuitem", { name: "Waves" }).click();
 }
 
+/** The slim result bar shown once a trial ends. */
+const resultBar = (page: Page) =>
+  page.getByRole("region", { name: "Sea trial result" });
+
+/** Opens the Details sheet from the result bar and returns it. */
+async function openDetails(page: Page) {
+  await resultBar(page).getByRole("button", { name: "Details" }).click();
+  const details = page.getByRole("dialog");
+  await expect(details).toBeVisible();
+  return details;
+}
+
 const partCount = (page: Page) =>
   page.evaluate(() => window.__shipBuilderStore!.getState().ship.parts.length);
 
@@ -77,16 +89,24 @@ test.describe("Ship Builder sea trial", () => {
       const start = page.getByRole("button", { name: "Sea trial" });
       await startWavesTrial(page);
 
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 30_000 });
-      await expect(card.getByRole("heading", { level: 2 })).not.toHaveText("");
-      await expect(card).toBeFocused();
+      const bar = resultBar(page);
+      await expect(bar).toBeVisible({ timeout: 30_000 });
+      await expect(bar).toBeFocused();
+      // The bar is slim: the summary and Try again wait behind Details.
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      const details = await openDetails(page);
+      await expect(details.getByRole("heading", { level: 2 })).not.toHaveText(
+        ""
+      );
+      await expect(details).toBeFocused();
       await expect(
-        card.getByRole("button", { name: "Try again" })
+        details.getByRole("button", { name: "Try again" })
       ).toBeVisible();
+      await details.getByRole("button", { name: "Close" }).click();
+      await expect(details).toHaveCount(0);
 
-      await card.getByRole("button", { name: "Back to building" }).click();
-      await expect(card).toHaveCount(0);
+      await bar.getByRole("button", { name: "Back to building" }).click();
+      await expect(bar).toHaveCount(0);
       await expect(start).toBeVisible();
       await expect(start).toBeFocused();
 
@@ -114,11 +134,14 @@ test.describe("Ship Builder sea trial", () => {
     try {
       const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
       await startWavesTrial(page);
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 30_000 });
-      await card.getByRole("button", { name: "Try again" }).click();
-      await expect(card).toBeVisible({ timeout: 30_000 });
-      await expect(card).toBeFocused();
+      const bar = resultBar(page);
+      await expect(bar).toBeVisible({ timeout: 30_000 });
+      const details = await openDetails(page);
+      await details.getByRole("button", { name: "Try again" }).click();
+      // The first result is gone, then the rerun ends in a fresh result bar.
+      await expect(bar).toBeVisible({ timeout: 30_000 });
+      await expect(bar).toBeFocused();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
     } finally {
       await browser.close();
     }
@@ -165,16 +188,18 @@ test.describe("Ship Builder sea trial", () => {
         await page.evaluate(() => window.__shipBuilderStore!.getState().tool)
       ).toEqual({ kind: "none" });
 
-      // The parts panel is paused, and New / My Ships are off.
-      await expect(
-        page.getByRole("complementary", { name: "Parts" })
-      ).toContainText("Building is paused during the sea trial");
+      // Focus mode: the header, panels and view controls are cleared, so
+      // New / My Ships and the Parts panel cannot be reached at all.
       await expect(
         page.getByRole("button", { name: "New", exact: true })
-      ).toBeDisabled();
+      ).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "My Ships" })).toHaveCount(
+        0
+      );
       await expect(
-        page.getByRole("button", { name: "My Ships" })
-      ).toBeDisabled();
+        page.getByRole("complementary", { name: "Parts" })
+      ).toBeHidden();
+      await expect(page.getByRole("group", { name: "Camera" })).toHaveCount(0);
 
       await pill.getByRole("button", { name: "Stop" }).click();
       await expect(pill).toHaveCount(0);
@@ -210,7 +235,7 @@ test.describe("Ship Builder sea trial", () => {
       await page.keyboard.press("Enter");
       await expect(page.getByRole("menuitem", { name: "Waves" })).toBeFocused();
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 30_000 });
+      await expect(resultBar(page)).toBeVisible({ timeout: 30_000 });
     } finally {
       await browser.close();
     }
@@ -243,12 +268,12 @@ test.describe("Ship Builder sea trial", () => {
       if (!box) throw new Error("no canvas box");
       await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.58);
 
-      const card = page.getByRole("dialog");
-      await expect(card).toBeVisible({ timeout: 30_000 });
+      await expect(resultBar(page)).toBeVisible({ timeout: 30_000 });
+      const details = await openDetails(page);
       await expect(
-        card.getByRole("button", { name: "Try another spot" })
+        details.getByRole("button", { name: "Try another spot" })
       ).toBeVisible();
-      await card.getByRole("button", { name: "Try another spot" }).click();
+      await details.getByRole("button", { name: "Try another spot" }).click();
       expect(await trialStatus(page)).toBe("aiming");
     } finally {
       await browser.close();
