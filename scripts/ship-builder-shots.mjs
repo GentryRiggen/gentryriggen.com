@@ -32,19 +32,28 @@ const LOOKS = [
     time: "Day",
     view: "Side",
   },
+  // Close-ups: the camera can't get nearer, so these shoot at 3x pixel
+  // density and crop to the middle of the ship (funnels, boats, bridge).
   {
     id: "titanic-close",
     kind: "Ocean liner",
     name: "RMS Titanic",
     time: "Day",
-    zoom: 7,
+    crop: { x: 420, y: 300, width: 440, height: 260 },
   },
   {
     id: "titanic-close-night",
     kind: "Ocean liner",
     name: "RMS Titanic",
     time: "Night",
-    zoom: 7,
+    crop: { x: 420, y: 300, width: 440, height: 260 },
+  },
+  {
+    id: "titanic-bow",
+    kind: "Ocean liner",
+    name: "RMS Titanic",
+    time: "Day",
+    crop: { x: 760, y: 440, width: 300, height: 180 },
   },
   {
     id: "cruise-day",
@@ -63,6 +72,7 @@ try {
   for (const look of LOOKS) {
     const page = await browser.newPage({
       viewport: { width: 1280, height: 800 },
+      deviceScaleFactor: look.crop ? 3 : 1,
     });
     await page.addInitScript(() => {
       window.__SHIP_BUILDER_TEST__ = { freezeTime: 3 };
@@ -84,20 +94,14 @@ try {
     if (look.view) {
       await page.getByRole("button", { name: `${look.view} view` }).click();
     }
-    if (look.zoom) {
-      // Wheel toward the middle of the ship, a notch at a time.
-      const box = await page.getByTestId("ship-canvas").boundingBox();
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      for (let i = 0; i < look.zoom; i++) {
-        await page.mouse.wheel(0, -300);
-        await page.waitForTimeout(150);
-      }
-    }
     // Let pop-ins, the camera glide and lazy effects settle.
     await page.waitForTimeout(4000);
     const info = await page.evaluate(() => window.__shipBuilderRenderInfo?.());
     results[look.id] = info ?? null;
-    await page.screenshot({ path: join(outDir, `${label}-${look.id}.png`) });
+    await page.screenshot({
+      path: join(outDir, `${label}-${look.id}.png`),
+      ...(look.crop ? { clip: look.crop } : {}),
+    });
     await page.close();
   }
 } finally {
