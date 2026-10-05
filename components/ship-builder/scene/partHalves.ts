@@ -1,4 +1,8 @@
-import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
+import {
+  aerialTarget,
+  resolveAttachPoint,
+  stringTarget,
+} from "@/lib/ship-builder/model/attach";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   rotatedFootprint,
@@ -63,4 +67,31 @@ export function partHalves(
 
   for (const part of ship.parts) sideOf(part, new Set());
   return sides;
+}
+
+/**
+ * Wires (aerials, string lights) strung from a pole in one half to a pole in
+ * the other: they snap when she breaks, so neither half draws them.
+ */
+export function snappedWires(
+  ship: Ship,
+  atX: number,
+  occupancy?: Occupancy
+): Set<string> {
+  const byId = new Map(ship.parts.map((part) => [part.id, part]));
+  const snapped = new Set<string>();
+  for (const part of ship.parts) {
+    const isWire =
+      part.type === "wireless-aerial" || part.type === "string-lights";
+    if (!isWire || part.anchor.kind !== "attach") continue;
+    const pole = byId.get(part.anchor.parentId);
+    const from = resolveAttachPoint(ship, part.anchor, occupancy);
+    if (!pole || !from) continue;
+    const find = part.type === "string-lights" ? stringTarget : aerialTarget;
+    const to = find(ship, pole, occupancy);
+    if (to && halfOfX(from.position.x, atX) !== halfOfX(to.x, atX)) {
+      snapped.add(part.id);
+    }
+  }
+  return snapped;
 }

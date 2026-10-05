@@ -5,7 +5,8 @@ import {
   type PlacedPart,
   type Ship,
 } from "@/lib/ship-builder/model/types";
-import { halfOfX, partHalves } from "../partHalves";
+import { findTemplate } from "@/lib/ship-builder/templates";
+import { halfOfX, partHalves, snappedWires } from "../partHalves";
 
 function grid(id: string, x: number, rotation: 0 | 90 = 0): PlacedPart {
   return {
@@ -117,5 +118,23 @@ describe("partHalves", () => {
     expect(sides.get("loopA")).toBe("stern");
     expect(sides.get("loopB")).toBe("stern");
     expect(sides.get("lost")).toBe("stern");
+  });
+});
+
+describe("snappedWires", () => {
+  const titanic = findTemplate("titanic")!.build();
+  const aerialId = titanic.parts.find(
+    (part) => part.type === "wireless-aerial"
+  )!.id;
+
+  it("snaps the aerial strung between masts on either side of the break", () => {
+    expect(snappedWires(titanic, gridLength(titanic) / 2).has(aerialId)).toBe(
+      true
+    );
+  });
+
+  it("keeps a wire whose masts both stay in one half", () => {
+    // Breaking right at the stern leaves both masts in the bow half.
+    expect(snappedWires(titanic, gridLength(titanic)).size).toBe(0);
   });
 });

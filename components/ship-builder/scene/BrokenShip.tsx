@@ -17,7 +17,12 @@ import BreakBurst from "./BreakBurst";
 import GhostPreview from "./GhostPreview";
 import GridTargets from "./GridTargets";
 import { applyHalfPose } from "./halfTransform";
-import { HALF_SIDES, partHalves, type HalfSide } from "./partHalves";
+import {
+  HALF_SIDES,
+  partHalves,
+  snappedWires,
+  type HalfSide,
+} from "./partHalves";
 import PropellerBubbles from "./PropellerBubbles";
 import { ShipHalfContext, type ShipHalfValue } from "./shipHalf";
 import TornEdge from "./TornEdge";
@@ -36,6 +41,8 @@ interface HalfGroupProps {
   atX: number;
   lengthCells: number;
   sides: ReadonlyMap<string, HalfSide>;
+  /** Wires strung across the break, which neither half draws. */
+  snapped: ReadonlySet<string>;
   children: ReactNode;
 }
 
@@ -48,6 +55,7 @@ function HalfGroup({
   atX,
   lengthCells,
   sides,
+  snapped,
   children,
 }: HalfGroupProps) {
   const group = useRef<Group>(null);
@@ -61,9 +69,10 @@ function HalfGroup({
       atX,
       clip: local.clone(),
       // A part the map does not know (added mid-trial, never) rides aft.
-      includesPart: (partId) => (sides.get(partId) ?? "stern") === side,
+      includesPart: (partId) =>
+        !snapped.has(partId) && (sides.get(partId) ?? "stern") === side,
     }),
-    [side, atX, local, sides]
+    [side, atX, local, sides, snapped]
   );
 
   // Pose and cut are set before the first paint and then every frame.
@@ -104,6 +113,7 @@ export default function BrokenShip({ atX, children }: BrokenShipProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const lengthCells = gridLength(ship);
   const sides = useMemo(() => partHalves(ship, atX), [ship, atX]);
+  const snapped = useMemo(() => snappedWires(ship, atX), [ship, atX]);
   const contents = Children.toArray(children).filter(
     (child) => !isValidElement(child) || !BUILD_ONLY.has(child.type)
   );
@@ -117,6 +127,7 @@ export default function BrokenShip({ atX, children }: BrokenShipProps) {
           atX={atX}
           lengthCells={lengthCells}
           sides={sides}
+          snapped={snapped}
         >
           {contents}
           {/* The propellers are aft. */}
