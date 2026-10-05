@@ -6,6 +6,7 @@ import {
   BRIDGE_WINDOW_ROWS,
   buildWindowGeometries,
   CABIN_WINDOW_ROWS,
+  trimBand,
   type BlockSize,
 } from "./blockDetailGeometry";
 import { Balconies, type Face } from "./cruiseParts";
@@ -27,13 +28,15 @@ interface BlockDetailsProps {
   seed?: number;
 }
 
-/** Trim that stands just proud of the 0.96 body, so it never z-fights. */
 /** Peak opacity of the bloom around each lit window. */
 const WINDOW_HALO_OPACITY = 0.32;
-const TRIM_SCALE = 0.975;
+/** A bridge's glass and band: darker than a cabin's panes. */
+const BRIDGE_GLASS = "#1b2733";
 const CLASS_STRIPE_Y = 0.3;
 const CLASS_STRIPE_HEIGHT = 0.07;
 const DECK_LINE_HEIGHT = 0.03;
+/** Below the roof, clear of the body's rounded top edge. */
+const DECK_LINE_DROP = 0.1;
 
 /**
  * Windows and trim on a grid block's body: windows on every face of a cabin
@@ -66,10 +69,11 @@ export default function BlockDetails({
         ? buildWindowGeometries(
             { x: sizeX, z: sizeZ },
             isBridge ? BRIDGE_WINDOW_ROWS : CABIN_WINDOW_ROWS,
-            (index) => isWindowLit(index, litFraction, seed)
+            (index) => isWindowLit(index, litFraction, seed),
+            isBridge ? height : undefined
           )
         : null,
-    [hasWindows, isBridge, sizeX, sizeZ, litFraction, seed]
+    [hasWindows, isBridge, sizeX, sizeZ, height, litFraction, seed]
   );
   useEffect(
     () => () => {
@@ -93,13 +97,17 @@ export default function BlockDetails({
           </mesh>
           {windows.glass && (
             <mesh geometry={windows.glass}>
-              <Surface color={PALETTE.bridgeWindows} {...surface} />
+              <Surface
+                color={isBridge ? BRIDGE_GLASS : PALETTE.bridgeWindows}
+                finish="glass"
+                {...surface}
+              />
             </mesh>
           )}
           {windows.litGlass && (
             <mesh geometry={windows.litGlass}>
               <GlowSurface
-                color={PALETTE.bridgeWindows}
+                color={isBridge ? BRIDGE_GLASS : PALETTE.bridgeWindows}
                 glowColor={windowGlow.color}
                 strength={windowGlow.strength}
                 {...surface}
@@ -117,22 +125,18 @@ export default function BlockDetails({
         </>
       )}
       {stripeColor && (
-        <mesh position={[0, CLASS_STRIPE_Y, 0]}>
-          <boxGeometry
-            args={[
-              size.x * TRIM_SCALE,
-              CLASS_STRIPE_HEIGHT,
-              size.z * TRIM_SCALE,
-            ]}
-          />
+        <mesh
+          position={[0, CLASS_STRIPE_Y, 0]}
+          geometry={trimBand(size, CLASS_STRIPE_HEIGHT)}
+        >
           <Surface color={stripeColor} {...surface} />
         </mesh>
       )}
       {!stripeColor && (
-        <mesh position={[0, height - 0.07, 0]}>
-          <boxGeometry
-            args={[size.x * TRIM_SCALE, DECK_LINE_HEIGHT, size.z * TRIM_SCALE]}
-          />
+        <mesh
+          position={[0, height - DECK_LINE_DROP, 0]}
+          geometry={trimBand(size, DECK_LINE_HEIGHT)}
+        >
           <Surface color={PALETTE.deckLine} {...surface} />
         </mesh>
       )}

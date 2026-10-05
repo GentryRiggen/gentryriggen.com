@@ -26,6 +26,7 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import BlockDetails from "./BlockDetails";
+import { roundedBox } from "./roundedBox";
 import {
   Azipod,
   ClimbingWall,
@@ -133,8 +134,12 @@ function Block({
   const height = def.role === "bridge" ? BRIDGE_HEIGHT : LEVEL_HEIGHT;
   return (
     <group>
-      <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[size.x * 0.96, height, size.z * 0.96]} />
+      <mesh
+        position={[0, height / 2, 0]}
+        geometry={roundedBox(size.x * 0.96, height, size.z * 0.96)}
+        castShadow
+        receiveShadow
+      >
         <Surface
           color={color ? paintHex(color) : PALETTE.superstructure}
           {...surface}
