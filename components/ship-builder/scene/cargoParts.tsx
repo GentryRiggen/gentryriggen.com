@@ -17,6 +17,7 @@ import {
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { frozenTime } from "./testClock";
 import { LEVEL_HEIGHT } from "./coords";
+import { roundedBox } from "./roundedBox";
 import { PALETTE } from "./palette";
 import { useShipAnimation } from "./ShipAnimationContext";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
@@ -114,7 +115,10 @@ function getContainerGeometry(): ContainerGeometry {
   doors.push(box(0.025, ribHeight + 0.04, 0.025, doorX, midY, 0));
 
   sharedContainer = {
-    body: box(CONTAINER_LENGTH, CONTAINER_HEIGHT, CONTAINER_WIDTH, 0, midY, 0),
+    // The cached rounded box is shared, so copy it before moving it up.
+    body: roundedBox(CONTAINER_LENGTH, CONTAINER_HEIGHT, CONTAINER_WIDTH, 0.035)
+      .clone()
+      .translate(0, midY, 0),
     ribs: mergeGeometries(ribs),
     doors: mergeGeometries(doors),
   };
@@ -150,7 +154,7 @@ export function ContainerMesh({
         <Surface color={hex} {...surface} />
       </mesh>
       <mesh geometry={geometry.doors}>
-        <Surface color={PALETTE.containerSteel} {...surface} />
+        <Surface color={PALETTE.containerSteel} finish="metal" {...surface} />
       </mesh>
     </group>
   );
@@ -182,7 +186,10 @@ export function HatchCoverMesh({
   return (
     <group>
       <mesh position={[0, HATCH_COAMING / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[size.x * 0.88, HATCH_COAMING, size.z * 0.88]} />
+        <primitive
+          object={roundedBox(size.x * 0.88, HATCH_COAMING, size.z * 0.88, 0.05)}
+          attach="geometry"
+        />
         <Surface color={PALETTE.hatchCoaming} {...surface} />
       </mesh>
       <mesh
@@ -190,7 +197,10 @@ export function HatchCoverMesh({
         castShadow
         receiveShadow
       >
-        <boxGeometry args={[size.x * 0.96, HATCH_LID, size.z * 0.96]} />
+        <primitive
+          object={roundedBox(size.x * 0.96, HATCH_LID, size.z * 0.96, 0.06)}
+          attach="geometry"
+        />
         <Surface color={lidColor} {...surface} />
       </mesh>
       <mesh position={[0, LEVEL_HEIGHT + 0.005, 0]}>
@@ -245,11 +255,11 @@ export function CargoCraneMesh({ color, tint, emphasis }: CargoCraneMeshProps) {
   return (
     <group>
       <mesh position={[0, 0.04, 0]} castShadow>
-        <cylinderGeometry args={[0.34, 0.38, 0.08, 16]} />
+        <cylinderGeometry args={[0.34, 0.38, 0.08, 20]} />
         <Surface color={PALETTE.hatchCover} {...surface} />
       </mesh>
       <mesh position={[0, PEDESTAL_HEIGHT / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.2, 0.26, PEDESTAL_HEIGHT, 14]} />
+        <cylinderGeometry args={[0.2, 0.26, PEDESTAL_HEIGHT, 20]} />
         <Surface color={body} {...surface} />
       </mesh>
       <group
@@ -258,7 +268,10 @@ export function CargoCraneMesh({ color, tint, emphasis }: CargoCraneMeshProps) {
         rotation={[0, CRANE_REST_ANGLE, 0]}
       >
         <mesh position={[0, 0.2, 0]} castShadow>
-          <boxGeometry args={[0.5, 0.4, 0.42]} />
+          <primitive
+            object={roundedBox(0.5, 0.4, 0.42, 0.06)}
+            attach="geometry"
+          />
           <Surface color={body} {...surface} />
         </mesh>
         <mesh position={[0.12, 0.28, 0.215]}>
@@ -266,22 +279,31 @@ export function CargoCraneMesh({ color, tint, emphasis }: CargoCraneMeshProps) {
           <Surface color={PALETTE.bridgeWindows} {...surface} />
         </mesh>
         <mesh position={[-0.42, 0.2, 0]} castShadow>
-          <boxGeometry args={[0.4, 0.3, 0.38]} />
-          <Surface color={PALETTE.containerSteel} {...surface} />
+          <primitive
+            object={roundedBox(0.4, 0.3, 0.38, 0.05)}
+            attach="geometry"
+          />
+          <Surface color={PALETTE.containerSteel} finish="metal" {...surface} />
         </mesh>
         <group position={[0, 0.35, 0]} rotation={[0, 0, JIB_TILT]}>
           <mesh position={[JIB_LENGTH / 2, 0, 0]} castShadow>
-            <boxGeometry args={[JIB_LENGTH, 0.1, 0.12]} />
+            <primitive
+              object={roundedBox(JIB_LENGTH, 0.1, 0.12, 0.03)}
+              attach="geometry"
+            />
             <Surface color={body} {...surface} />
           </mesh>
         </group>
         <mesh position={[tipX, tipY - cableLength / 2, 0]}>
-          <cylinderGeometry args={[0.015, 0.015, cableLength, 5]} />
-          <Surface color={PALETTE.containerSteel} {...surface} />
+          <cylinderGeometry args={[0.02, 0.02, cableLength, 6]} />
+          <Surface color={PALETTE.containerSteel} finish="metal" {...surface} />
         </mesh>
         <mesh position={[tipX, tipY - cableLength - 0.04, 0]}>
-          <boxGeometry args={[0.14, 0.08, 0.14]} />
-          <Surface color={PALETTE.containerSteel} {...surface} />
+          <primitive
+            object={roundedBox(0.14, 0.08, 0.14, 0.02)}
+            attach="geometry"
+          />
+          <Surface color={PALETTE.containerSteel} finish="metal" {...surface} />
         </mesh>
       </group>
     </group>

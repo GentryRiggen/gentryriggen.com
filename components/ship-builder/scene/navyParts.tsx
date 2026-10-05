@@ -2,6 +2,7 @@
 
 import { PALETTE } from "./palette";
 import Rotator from "./Rotator";
+import { roundedBox } from "./roundedBox";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 const NAVAL = {
@@ -49,12 +50,20 @@ export function TurretMesh({ painted, tint, emphasis, large }: TurretProps) {
   return (
     <group>
       <mesh position={[0, 0.06, 0]} castShadow>
-        <cylinderGeometry args={[radius, radius, 0.12, 20]} />
+        <cylinderGeometry args={[radius, radius, 0.12, 28]} />
         <Surface color={NAVAL.dark} {...surface} />
       </mesh>
       <Rotator speed={TURRET_SPEED} enabled={!isGhost(tint)}>
         <mesh position={[0, 0.12 + housing.y / 2, 0]} castShadow>
-          <boxGeometry args={[housing.x, housing.y, housing.z]} />
+          <primitive
+            object={roundedBox(
+              housing.x,
+              housing.y,
+              housing.z,
+              large ? 0.12 : 0.07
+            )}
+            attach="geometry"
+          />
           <Surface color={base} {...surface} />
         </mesh>
         {barrel.offsets.map((z) => (
@@ -69,9 +78,9 @@ export function TurretMesh({ painted, tint, emphasis, large }: TurretProps) {
             castShadow
           >
             <cylinderGeometry
-              args={[barrel.radius, barrel.radius, barrel.length, 10]}
+              args={[barrel.radius, barrel.radius, barrel.length, 14]}
             />
-            <Surface color={NAVAL.dark} {...surface} />
+            <Surface color={NAVAL.dark} finish="metal" {...surface} />
           </mesh>
         ))}
       </Rotator>

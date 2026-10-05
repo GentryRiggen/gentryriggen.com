@@ -3,6 +3,7 @@
 import type { PartType, Rotation } from "@/lib/ship-builder/model/types";
 import { DECOR_COLORS } from "./decorColors";
 import { LEVEL_HEIGHT } from "./coords";
+import { roundedBox } from "./roundedBox";
 import GlowSurface from "./GlowSurface";
 import { GlowBeam, GlowHalo, GlowPool } from "./GlowShapes";
 import { DECK_POOL_Y, LIGHT_COLORS } from "./lightColors";
@@ -50,19 +51,31 @@ export function DeckChair({
   return (
     <Facing rotation={rotation}>
       <mesh position={[0.02, 0.12, 0]} castShadow>
-        <boxGeometry args={[0.46, 0.04, 0.32]} />
-        <Surface color={frame} {...surface} />
+        <primitive
+          object={roundedBox(0.46, 0.04, 0.32, 0.018)}
+          attach="geometry"
+        />
+        <Surface color={frame} finish="wood" {...surface} />
       </mesh>
       <mesh position={[0.02, 0.15, 0]}>
-        <boxGeometry args={[0.42, 0.03, 0.28]} />
+        <primitive
+          object={roundedBox(0.42, 0.03, 0.28, 0.014)}
+          attach="geometry"
+        />
         <Surface color={DECOR_COLORS.chairCushion} {...surface} />
       </mesh>
       <mesh position={[-0.28, 0.27, 0]} rotation={[0, 0, -0.9]} castShadow>
-        <boxGeometry args={[0.42, 0.04, 0.32]} />
-        <Surface color={frame} {...surface} />
+        <primitive
+          object={roundedBox(0.42, 0.04, 0.32, 0.018)}
+          attach="geometry"
+        />
+        <Surface color={frame} finish="wood" {...surface} />
       </mesh>
       <mesh position={[-0.28, 0.29, 0]} rotation={[0, 0, -0.9]}>
-        <boxGeometry args={[0.38, 0.03, 0.28]} />
+        <primitive
+          object={roundedBox(0.38, 0.03, 0.28, 0.014)}
+          attach="geometry"
+        />
         <Surface color={DECOR_COLORS.chairCushion} {...surface} />
       </mesh>
       {[-1, 1].map((side) => (
@@ -82,17 +95,26 @@ export function Bench({ color, rotation, tint, emphasis }: DecorFacingProps) {
   return (
     <Facing rotation={rotation}>
       <mesh position={[0.02, 0.22, 0]} castShadow>
-        <boxGeometry args={[0.3, 0.05, 0.8]} />
-        <Surface color={wood} {...surface} />
+        <primitive
+          object={roundedBox(0.3, 0.05, 0.8, 0.02)}
+          attach="geometry"
+        />
+        <Surface color={wood} finish="wood" {...surface} />
       </mesh>
       <mesh position={[-0.15, 0.42, 0]} rotation={[0, 0, -0.12]} castShadow>
-        <boxGeometry args={[0.04, 0.3, 0.8]} />
-        <Surface color={wood} {...surface} />
+        <primitive
+          object={roundedBox(0.04, 0.3, 0.8, 0.015)}
+          attach="geometry"
+        />
+        <Surface color={wood} finish="wood" {...surface} />
       </mesh>
       {[-1, 1].map((side) => (
         <mesh key={side} position={[0, 0.1, side * 0.34]}>
-          <boxGeometry args={[0.28, 0.2, 0.05]} />
-          <Surface color={DECOR_COLORS.benchLegs} {...surface} />
+          <primitive
+            object={roundedBox(0.28, 0.2, 0.05, 0.015)}
+            attach="geometry"
+          />
+          <Surface color={DECOR_COLORS.benchLegs} finish="metal" {...surface} />
         </mesh>
       ))}
     </Facing>
@@ -106,12 +128,12 @@ export function DeckLamp({ color, tint, emphasis }: DecorProps) {
   return (
     <group>
       <mesh position={[0, 0.04, 0]} castShadow>
-        <cylinderGeometry args={[0.1, 0.12, 0.08, 12]} />
-        <Surface color={post} {...surface} />
+        <cylinderGeometry args={[0.1, 0.12, 0.08, 16]} />
+        <Surface color={post} finish="metal" {...surface} />
       </mesh>
       <mesh position={[0, 0.45, 0]} castShadow>
-        <cylinderGeometry args={[0.025, 0.035, 0.8, 8]} />
-        <Surface color={post} {...surface} />
+        <cylinderGeometry args={[0.025, 0.035, 0.8, 10]} />
+        <Surface color={post} finish="metal" {...surface} />
       </mesh>
       <mesh position={[0, 0.88, 0]}>
         <sphereGeometry args={[0.1, 12, 10]} />
@@ -135,8 +157,8 @@ export function DeckLamp({ color, tint, emphasis }: DecorProps) {
         position={[0, DECK_POOL_Y, 0]}
       />
       <mesh position={[0, 0.99, 0]}>
-        <coneGeometry args={[0.11, 0.07, 12]} />
-        <Surface color={post} {...surface} />
+        <coneGeometry args={[0.11, 0.07, 16]} />
+        <Surface color={post} finish="metal" {...surface} />
       </mesh>
     </group>
   );
@@ -164,20 +186,23 @@ export function Floodlight({
   return (
     <Facing rotation={rotation}>
       <mesh position={[0, 0.04, 0]} castShadow>
-        <cylinderGeometry args={[0.1, 0.12, 0.08, 12]} />
-        <Surface color={post} {...surface} />
+        <cylinderGeometry args={[0.1, 0.12, 0.08, 16]} />
+        <Surface color={post} finish="metal" {...surface} />
       </mesh>
       <mesh position={[0, 0.04 + FLOOD_POLE_HEIGHT / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.025, 0.035, FLOOD_POLE_HEIGHT, 8]} />
-        <Surface color={post} {...surface} />
+        <cylinderGeometry args={[0.025, 0.035, FLOOD_POLE_HEIGHT, 10]} />
+        <Surface color={post} finish="metal" {...surface} />
       </mesh>
       <group
         position={[0.04, 0.04 + FLOOD_POLE_HEIGHT, 0]}
         rotation={[0, 0, -FLOOD_TILT]}
       >
         <mesh castShadow>
-          <boxGeometry args={[0.22, 0.17, 0.32]} />
-          <Surface color={post} {...surface} />
+          <primitive
+            object={roundedBox(0.22, 0.17, 0.32, 0.04)}
+            attach="geometry"
+          />
+          <Surface color={post} finish="metal" {...surface} />
         </mesh>
         <mesh position={[0.115, 0, 0]}>
           <boxGeometry args={[0.02, 0.13, 0.27]} />
@@ -222,15 +247,15 @@ export function Ventilator({
   return (
     <Facing rotation={rotation}>
       <mesh position={[0, 0.17, 0]} castShadow>
-        <cylinderGeometry args={[0.13, 0.16, 0.34, 14]} />
-        <Surface color={cowl} {...surface} />
+        <cylinderGeometry args={[0.13, 0.16, 0.34, 20]} />
+        <Surface color={cowl} finish="metal" {...surface} />
       </mesh>
       <mesh position={[0.02, 0.5, 0]} rotation={[0, 0, -0.5]} castShadow>
-        <cylinderGeometry args={[0.2, 0.13, 0.4, 14]} />
-        <Surface color={cowl} {...surface} />
+        <cylinderGeometry args={[0.2, 0.13, 0.4, 20]} />
+        <Surface color={cowl} finish="metal" {...surface} />
       </mesh>
       <mesh position={[0.17, 0.64, 0]} rotation={[0, 0, -0.5 - Math.PI / 2]}>
-        <circleGeometry args={[0.17, 14]} />
+        <circleGeometry args={[0.17, 20]} />
         <Surface color={DECOR_COLORS.ventInside} {...surface} />
       </mesh>
     </Facing>
@@ -300,7 +325,11 @@ export function Stairs({ color, rotation, tint, emphasis }: DecorFacingProps) {
             rotation={[0, 0, slope]}
           >
             <boxGeometry args={[railLength, 0.035, 0.035]} />
-            <Surface color={DECOR_COLORS.stairRail} {...surface} />
+            <Surface
+              color={DECOR_COLORS.stairRail}
+              finish="metal"
+              {...surface}
+            />
           </mesh>
           {[-0.4, 0.4].map((end) => (
             <mesh
@@ -313,7 +342,11 @@ export function Stairs({ color, rotation, tint, emphasis }: DecorFacingProps) {
               ]}
             >
               <boxGeometry args={[0.03, RAIL_HEIGHT, 0.03]} />
-              <Surface color={DECOR_COLORS.stairRail} {...surface} />
+              <Surface
+                color={DECOR_COLORS.stairRail}
+                finish="metal"
+                {...surface}
+              />
             </mesh>
           ))}
         </group>
