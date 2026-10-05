@@ -52,9 +52,15 @@ jobs:
         include:
           - name: Builder + home (all browsers)
             files: e2e/home.spec.ts e2e/ship-builder.spec.ts
-            args: ""
+            args: --grep-invert "holding a placed block|paints a tapped block|renders the 3D scene"
             workers: 2
             browsers: ""
+            no-webgl: 1
+          - name: WebGL builder scene
+            files: e2e/ship-builder.spec.ts
+            args: --project=chromium --grep "holding a placed block|paints a tapped block|renders the 3D scene"
+            workers: 1
+            browsers: chromium
           - name: WebGL iceberg + time
             files: e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts
             args: --project=chromium
@@ -95,6 +101,8 @@ jobs:
         run: npx playwright install --with-deps ${{ matrix.browsers }}
 
       - name: 🎬 Run E2E tests
+        env:
+          E2E_NO_WEBGL: ${{ matrix.no-webgl }}
         run: npx playwright test ${{ matrix.files }} ${{ matrix.args }} --workers=${{ matrix.workers }}
 
       # Visual diffs (expected, actual, diff images) live in the report.

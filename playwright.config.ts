@@ -38,7 +38,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        /* On Linux, Chromium renders WebGL in software, which makes every
+           click in a ship builder test wait on the 3D scene. The plain specs
+           don't need it (the app shows its fallback), so CI turns it off for
+           them; the WebGL specs start their own browsers. */
+        launchOptions: {
+          args: process.env.E2E_NO_WEBGL ? ["--disable-3d-apis"] : [],
+        },
+      },
     },
 
     {
