@@ -11,6 +11,9 @@ import useTestHook from "./hooks/useTestHook";
 import useWebGLSupport from "./hooks/useWebGLSupport";
 import AppHeader from "./ui/AppHeader";
 import CatalogPanel from "./ui/CatalogPanel";
+import DriveButton from "./ui/DriveButton";
+import DriveEndButton from "./ui/DriveEndButton";
+import DrivePicker from "./ui/DrivePicker";
 import Drawer from "./ui/Drawer";
 import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
@@ -47,10 +50,16 @@ export default function ShipBuilder() {
   const webgl = useWebGLSupport();
   const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
-  const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
-  // The sinking is the show: clear everything that is not part of it.
+  const isTrialActive = useShipBuilderStore(
+    (s) => s.trial.status !== "idle" || s.drive.status !== "idle"
+  );
+  // The sinking (or the sail) is the show: clear everything that is not part
+  // of it.
   const inFocus = useShipBuilderStore(
-    (s) => s.trial.status === "running" || s.trial.status === "result"
+    (s) =>
+      s.trial.status === "running" ||
+      s.trial.status === "result" ||
+      s.drive.status === "sailing"
   );
 
   // Adjusting state during render (not in an effect) so no frame shows a
@@ -63,6 +72,11 @@ export default function ShipBuilder() {
     if (webgl === false) useShipBuilderStore.getState().endTrial();
   }, [webgl]);
   useEffect(() => () => useShipBuilderStore.getState().endTrial(), []);
+  // Likewise the drive: it is sailed in the 3D scene.
+  useEffect(() => {
+    if (webgl === false) useShipBuilderStore.getState().endDrive();
+  }, [webgl]);
+  useEffect(() => () => useShipBuilderStore.getState().endDrive(), []);
 
   function handleDrawerOpenChange(side: DrawerSide, open: boolean) {
     setOpenDrawer((current) =>
@@ -99,7 +113,7 @@ export default function ShipBuilder() {
               role="note"
               className="m-3 rounded-lg bg-sky-50 p-3 text-sm text-sky-900 dark:bg-sky-950 dark:text-sky-200"
             >
-              Building is paused during the sea trial.
+              Building is paused while the ship is out.
             </p>
           )}
           {/* Inert, not hidden: the parts stay in view but cannot be picked. */}
@@ -120,7 +134,9 @@ export default function ShipBuilder() {
           <SelectionBar />
           <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
           {/* The trial plays in the 3D scene, so it needs WebGL. */}
-          {webgl && <SeaTrialButton />}
+          {webgl && <SeaTrialButton beside={<DriveButton />} />}
+          {webgl && <DrivePicker />}
+          {webgl && <DriveEndButton />}
           {webgl && <IcebergAimHint />}
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}

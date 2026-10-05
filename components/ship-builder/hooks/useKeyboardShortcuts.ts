@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { focusDriveButton } from "../ui/DriveButton";
 import { focusSeaTrialButton } from "../ui/SeaTrialButton";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -23,6 +24,19 @@ export default function useKeyboardShortcuts() {
       if (document.querySelector('[aria-modal="true"]')) return;
       const state = useShipBuilderStore.getState();
       const key = event.key.toLowerCase();
+
+      // Driving freezes the ship too; Escape leaves the drive.
+      if (state.drive.status !== "idle") {
+        if (key === "escape") {
+          state.endDrive();
+          focusDriveButton();
+        } else if (key === "delete" || key === "backspace")
+          event.preventDefault();
+        else if ((event.metaKey || event.ctrlKey) && key === "z") {
+          event.preventDefault();
+        }
+        return;
+      }
 
       // During a sea trial the ship is frozen (the store ignores edits too);
       // swallow the editing keys so Backspace never navigates away, and let

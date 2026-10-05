@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type ReactNode,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -31,7 +32,12 @@ const ITEM_CLASS =
  * hint and the selection bar use while a tool or a part is active, so it only
  * shows when both are idle.
  */
-export default function SeaTrialButton() {
+export default function SeaTrialButton({
+  beside,
+}: {
+  /** Another button shown next to this one, only while this one shows. */
+  beside?: ReactNode;
+}) {
   const isShown = useShipBuilderStore(
     (s) =>
       s.trial.status === "idle" &&
@@ -107,7 +113,7 @@ export default function SeaTrialButton() {
   return (
     <div
       ref={root}
-      className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit justify-center"
+      className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit items-center justify-center gap-2"
     >
       <div className="relative">
         {isOpen && (
@@ -164,6 +170,7 @@ export default function SeaTrialButton() {
           />
         </button>
       </div>
+      {beside}
     </div>
   );
 }
