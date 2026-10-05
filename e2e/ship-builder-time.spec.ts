@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 
+// Software WebGL on a CI runner can take most of the default timeout.
+test.setTimeout(90_000);
+
 test.describe("Ship Builder time of day", () => {
   test("switches to sunset and night and keeps the scene rendering", async ({
     page,
