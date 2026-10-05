@@ -13,6 +13,7 @@ import {
   Vector2,
 } from "three";
 import type { RuntimeEnvironment } from "./environmentRuntime";
+import { createDeclineGate } from "./aoPolicy";
 import { testAoOverride } from "./testClock";
 
 /**
@@ -132,22 +133,55 @@ function OcclusionLayer({ environment }: OcclusionLayerProps) {
   return null;
 }
 
+/** Monitor windows are 250 ms each, ten to a reading (~2.5 s). */
+const MONITOR_WINDOW_MS = 250;
+const MONITOR_WINDOW_COUNT = 10;
+/** Below this many frames per second AO is a candidate for switching off. */
+const DECLINE_FPS = 30;
+/** At or above this a reading counts as healthy and ends a decline streak. */
+const HEALTHY_FPS = 50;
+
 /**
- * Ambient occlusion over the scene. A struggling device (drei's
- * `PerformanceMonitor` reports a decline) turns it off for the rest of the
- * session; with it off the scene renders straight to the canvas as before.
- * Tests can force it either way with `__SHIP_BUILDER_TEST__.ao`, which also
- * stops the monitor, so a slow software renderer cannot change a screenshot.
+ * Ambient occlusion over the scene. A device that stays slow (drei's
+ * `PerformanceMonitor` reports sustained declines, see `createDeclineGate`)
+ * turns it off for the rest of the session; with it off the scene renders
+ * straight to the canvas as before. Tests can force it either way with
+ * `__SHIP_BUILDER_TEST__.ao`, which also stops the monitor, so a slow
+ * software renderer cannot change a screenshot.
  */
 export default function PostEffects({ environment }: PostEffectsProps) {
   const forced = testAoOverride();
   const [hasDeclined, setHasDeclined] = useState(false);
   const isEnabled = forced ?? !hasDeclined;
+  const gate = useRef(createDeclineGate());
+
+  useEffect(() => {
+    const gateNow = gate.current;
+    gateNow.restartWarmUp(performance.now());
+    // Frames stall while the tab is hidden; the dip on return is not the device.
+    const handleVisibility = () => {
+      if (!document.hidden) gateNow.restartWarmUp(performance.now());
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
 
   return (
     <>
-      {forced === null && (
-        <PerformanceMonitor onDecline={() => setHasDeclined(true)} />
+      {forced === null && !hasDeclined && (
+        <PerformanceMonitor
+          ms={MONITOR_WINDOW_MS}
+          iterations={MONITOR_WINDOW_COUNT}
+          bounds={() => [DECLINE_FPS, HEALTHY_FPS]}
+          onIncline={() => gate.current.noteIncline()}
+          onDecline={() => {
+            if (gate.current.noteDecline(performance.now(), document.hidden)) {
+              setHasDeclined(true);
+            }
+          }}
+        />
       )}
       {isEnabled && <OcclusionLayer environment={environment} />}
     </>
