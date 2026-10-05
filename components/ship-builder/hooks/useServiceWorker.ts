@@ -35,6 +35,8 @@ function collectCacheUrls(): string[] {
 export default function useServiceWorker(): void {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
+    // The e2e build is a production build; keep its pages out of the cache.
+    if (process.env.NEXT_PUBLIC_E2E === "1") return;
     if (!("serviceWorker" in navigator)) return;
 
     let isCancelled = false;

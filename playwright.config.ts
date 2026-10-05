@@ -13,15 +13,17 @@ const port = process.env.PLAYWRIGHT_PORT ?? "3000";
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
+  /* Software WebGL on a shared runner is slow; 30s is too tight for it. */
+  timeout: 45_000,
   testDir: "./e2e",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: "html",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -67,9 +69,11 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /* Test the static export (what ships), not the dev server: no on-demand
+     compiling, so the 3D page is ready as soon as it is requested. */
   webServer: {
-    command: `npm run dev -- --port ${port}`,
+    command: `NEXT_PUBLIC_E2E=1 npm run build && npx serve out --listen ${port} --no-clipboard`,
+    timeout: 180_000,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
   },

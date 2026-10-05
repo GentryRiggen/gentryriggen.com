@@ -2,6 +2,7 @@
 
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
+import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
 
 export interface RenderInfo {
   /** Draw calls in the last whole frame, shadow and effect passes included. */
@@ -25,7 +26,7 @@ export default function RenderInfoProbe() {
   const last = useRef<RenderInfo>({ calls: 0, triangles: 0 });
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
+    if (!TEST_HOOKS_ENABLED) return;
     const { info } = get().gl;
     info.autoReset = false;
     window.__shipBuilderRenderInfo = () => ({ ...last.current });
@@ -36,7 +37,7 @@ export default function RenderInfoProbe() {
   }, [get]);
 
   useFrame(({ gl }) => {
-    if (process.env.NODE_ENV === "production") return;
+    if (!TEST_HOOKS_ENABLED) return;
     last.current.calls = gl.info.render.calls;
     last.current.triangles = gl.info.render.triangles;
     gl.info.reset();
