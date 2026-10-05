@@ -10,6 +10,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { useLiveTrialState } from "../scene/liveTrial";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { FOLLOW_HER_DOWN, SEA_LABELS } from "./seaTrialText";
+import SoundToggle from "./SoundToggle";
 import { panelClass } from "./styles";
 
 /**
@@ -72,6 +73,7 @@ export default function SeaTrialStatus() {
           {FOLLOW_HER_DOWN}
         </button>
       )}
+      {isIceberg && <SoundToggle />}
       <button
         ref={stopButton}
         type="button"

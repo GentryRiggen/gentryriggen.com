@@ -36,6 +36,8 @@ describe("useTimeOfDay", () => {
         trial: {
           status: "running",
           runId: 1,
+          descending: false,
+          from: "start",
           input: { ...sim, iceberg: { impactX: 3 } } as never,
         },
       })
@@ -44,7 +46,13 @@ describe("useTimeOfDay", () => {
     expect(window.localStorage.getItem(KEY)).toBeNull();
     act(() =>
       useShipBuilderStore.setState({
-        trial: { status: "running", runId: 2, input: sim as never },
+        trial: {
+          status: "running",
+          runId: 2,
+          descending: false,
+          from: "start",
+          input: sim as never,
+        },
       })
     );
     expect(result.current.timeOfDay).toBe("day");

@@ -26,6 +26,7 @@ import { belowDeckWater } from "./belowDeckWater";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { FOLLOW_HER_DOWN, SEA_LABELS } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
+import SoundToggle from "./SoundToggle";
 import TrialScrubber from "./TrialScrubber";
 
 interface OutcomeLook {
@@ -205,6 +206,7 @@ function ResultCard({ trial }: ResultCardProps) {
               <Repeat aria-hidden="true" className="h-4 w-4 shrink-0" />
               Watch again
             </button>
+            <SoundToggle />
             {canFollow && (
               <button
                 type="button"

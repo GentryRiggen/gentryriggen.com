@@ -32,6 +32,7 @@ import SeaTrialEffects from "./SeaTrialEffects";
 import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
+import TrialSound from "../audio/TrialSound";
 import UnderwaterFog from "./UnderwaterFog";
 import { usePartLongPress } from "./usePartLongPress";
 
@@ -131,6 +132,7 @@ export default function Scene() {
         <Iceberg />
         <SeaTrialRunner />
         <SeaTrialEffects />
+        <TrialSound />
         <SeaFloor />
         <DescentParticles />
         <UnderwaterFog />
