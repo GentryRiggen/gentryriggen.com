@@ -73,10 +73,10 @@ export default function SeaTrialStatus() {
         <button
           type="button"
           onClick={descend}
-          className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-sky-600 px-4 text-sm font-medium text-white hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
+          className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-sky-600 px-4 max-sm:w-11 max-sm:px-0 text-sm font-medium text-white hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
         >
           <ArrowDownToLine aria-hidden="true" className="h-4 w-4 shrink-0" />
-          {FOLLOW_HER_DOWN}
+          <span className="max-sm:sr-only">{FOLLOW_HER_DOWN}</span>
         </button>
       )}
       {isIceberg && <SoundToggle />}
