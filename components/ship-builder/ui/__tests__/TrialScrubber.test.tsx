@@ -128,6 +128,19 @@ describe("TrialScrubber", () => {
   });
 });
 
+describe("TrialScrubber compact", () => {
+  it("hides the mark legend but keeps the Look back label for readers", () => {
+    const { container } = render(
+      <TrialScrubber timeline={timeline()} compact />
+    );
+    expect(container.querySelector("ul")).toBeNull();
+    expect(
+      screen.getByRole("slider", { name: "Look back" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Look back")).toHaveClass("sr-only");
+  });
+});
+
 describe("markLanes", () => {
   const mark = (at: number) => ({ kind: "broke" as const, label: "x", at });
 

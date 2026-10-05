@@ -3,14 +3,12 @@
 import {
   ArrowDownToLine,
   LifeBuoy,
-  Crosshair,
   Repeat,
-  RotateCcw,
   ThumbsUp,
   Waves,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   explainTrial,
   type TrialSummary,
@@ -21,10 +19,9 @@ import {
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
 import { trialTimelineFor } from "../scene/trialTimeline";
-import BelowDeckDiagram from "./BelowDeckDiagram";
-import { belowDeckWater } from "./belowDeckWater";
+import ResultDetails from "./ResultDetails";
 import { focusSeaTrialButton } from "./SeaTrialButton";
-import { FOLLOW_HER_DOWN, SEA_LABELS } from "./seaTrialText";
+import { FOLLOW_HER_DOWN } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 import SoundToggle from "./SoundToggle";
 import TrialScrubber from "./TrialScrubber";
@@ -93,18 +90,13 @@ interface ResultCardProps {
 }
 
 function ResultCard({ trial }: ResultCardProps) {
-  const startTrial = useShipBuilderStore((s) => s.startTrial);
   const endTrial = useShipBuilderStore((s) => s.endTrial);
-  const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
   const replay = useShipBuilderStore((s) => s.replay);
   const descend = useShipBuilderStore((s) => s.descend);
-  const hull = useShipBuilderStore((s) => s.ship.hull);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsButton = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const { input, state } = trial;
-  const belowDeck = useMemo(
-    () => belowDeckWater(state.compartments),
-    [state.compartments]
-  );
   const summary = useMemo(() => explainTrial(state, input), [state, input]);
   const extraLines = useMemo(() => extraSummaryLines(summary), [summary]);
   const timeline = useMemo(
@@ -127,129 +119,83 @@ function ResultCard({ trial }: ResultCardProps) {
     focusSeaTrialButton();
   }
 
+  function closeDetails() {
+    setDetailsOpen(false);
+    detailsButton.current?.focus();
+  }
+
   return (
-    <div
-      ref={card}
-      role="dialog"
-      aria-labelledby="sea-trial-title"
-      aria-describedby="sea-trial-message"
-      tabIndex={-1}
-      className={`absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto max-h-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl border p-4 shadow-xl outline-none sm:max-w-md ${panelClass}`}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${look.badge}`}
-        >
-          <look.Icon className="h-6 w-6" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Sea trial · {SEA_LABELS[input.sea]}
-          </p>
-          <h2 id="sea-trial-title" className="text-lg font-semibold">
-            {summary.title}
-          </h2>
-        </div>
-      </div>
-      <p
-        id="sea-trial-message"
-        className="mt-2 text-sm text-slate-700 dark:text-slate-300"
+    <>
+      <div
+        ref={card}
+        role="region"
+        aria-label="Sea trial result"
+        tabIndex={-1}
+        className={`absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex flex-col gap-2 rounded-2xl border p-2 shadow-xl outline-none sm:max-w-2xl ${panelClass}`}
       >
-        {summary.message}
-      </p>
-      {extraLines.length > 0 && (
-        <ul
-          data-testid="sea-trial-extra-lines"
-          className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300"
-        >
-          {extraLines.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      )}
-      {input.iceberg && (
-        // The floating inset would sit under this card on a phone.
-        <div
-          data-testid="result-below-deck"
-          className="mt-3 rounded-lg bg-slate-100 p-2 lg:hidden dark:bg-slate-800"
-        >
-          <BelowDeckDiagram
-            hull={hull}
-            water={belowDeck.water}
-            opened={belowDeck.opened}
-            className="h-auto w-full"
-          />
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${look.badge}`}
+          >
+            <look.Icon className="h-5 w-5" />
+          </span>
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {summary.title}
+          </p>
+          <button
+            ref={detailsButton}
+            type="button"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen(true)}
+            className={`${buttonClass} min-h-11`}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            onClick={handleBackToBuilding}
+            className={`${primaryButtonClass} min-h-11`}
+          >
+            Back to building
+          </button>
         </div>
-      )}
-      {summary.tips.length > 0 && (
-        <div className="mt-3 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Try this
-          </h3>
-          <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-800 dark:text-slate-200">
-            {summary.tips.map((tip) => (
-              <li key={tip}>{tip}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {timeline && (
-        <div className="mt-3 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
-          <TrialScrubber timeline={timeline} />
-          <div className="mt-2 flex flex-wrap gap-2">
+        {timeline && (
+          <div className="flex items-center gap-2">
+            <TrialScrubber timeline={timeline} compact />
             <button
               type="button"
               onClick={replay}
-              className={`${buttonClass} min-h-11 flex-1`}
+              className={`${buttonClass} min-h-11`}
             >
               <Repeat aria-hidden="true" className="h-4 w-4 shrink-0" />
-              Watch again
+              <span className="max-sm:sr-only">Watch again</span>
             </button>
             <SoundToggle />
             {canFollow && (
               <button
                 type="button"
                 onClick={descend}
-                className={`${buttonClass} min-h-11 flex-1`}
+                className={`${buttonClass} min-h-11`}
               >
                 <ArrowDownToLine
                   aria-hidden="true"
                   className="h-4 w-4 shrink-0"
                 />
-                {FOLLOW_HER_DOWN}
+                <span className="max-sm:sr-only">{FOLLOW_HER_DOWN}</span>
               </button>
             )}
           </div>
-        </div>
-      )}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => startTrial(input.sea, input.iceberg?.impactX)}
-          className={`${buttonClass} min-h-11 flex-1`}
-        >
-          <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />
-          Try again
-        </button>
-        {input.iceberg && (
-          <button
-            type="button"
-            onClick={aimIceberg}
-            className={`${buttonClass} min-h-11 flex-1`}
-          >
-            <Crosshair aria-hidden="true" className="h-4 w-4 shrink-0" />
-            Try another spot
-          </button>
         )}
-        <button
-          type="button"
-          onClick={handleBackToBuilding}
-          className={`${primaryButtonClass} min-h-11 flex-1`}
-        >
-          Back to building
-        </button>
       </div>
-    </div>
+      {detailsOpen && (
+        <ResultDetails
+          input={input}
+          summary={summary}
+          extraLines={extraLines}
+          onClose={closeDetails}
+        />
+      )}
+    </>
   );
 }

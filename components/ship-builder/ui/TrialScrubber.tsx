@@ -25,6 +25,8 @@ import { TIMELINE_MARKS } from "./seaTrialText";
 
 interface TrialScrubberProps {
   timeline: Timeline;
+  /** Slim form for the result bar: no mark legend, visible label hidden. */
+  compact?: boolean;
 }
 
 interface Mark {
@@ -117,7 +119,10 @@ function describeMoment(
  * so their dots do not hide each other. Tick marks show the big moments; Page Up
  * and Page Down jump between them.
  */
-export default function TrialScrubber({ timeline }: TrialScrubberProps) {
+export default function TrialScrubber({
+  timeline,
+  compact = false,
+}: TrialScrubberProps) {
   const inputId = useId();
   const start = timelineStart(timeline);
   const end = timelineEnd(timeline);
@@ -160,10 +165,14 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
   }
 
   return (
-    <div>
+    <div className={compact ? "min-w-0 flex-1" : undefined}>
       <label
         htmlFor={inputId}
-        className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+        className={
+          compact
+            ? "sr-only"
+            : "text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+        }
       >
         Look back
       </label>
@@ -202,7 +211,7 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
           ))}
         </svg>
       </div>
-      {marks.length > 0 && (
+      {marks.length > 0 && !compact && (
         <ul
           aria-hidden="true"
           className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400"

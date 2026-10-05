@@ -22,36 +22,49 @@ function finishTrial(impactX?: number) {
 }
 
 describe("SeaTrialResult buttons", () => {
-  it("offers only Try again and Back to building after a Waves trial", () => {
+  it("keeps Try again behind Details after a Waves trial", async () => {
+    const user = userEvent.setup();
     finishTrial();
     render(<SeaTrialResult />);
-    expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Back to building" })
     ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Details" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Try another spot" })
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Details" }));
+    expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Try another spot" })
     ).toBeNull();
   });
 
-  it("shows a read-only below-deck picture for an iceberg result only", () => {
+  it("has no below-deck picture in the result", () => {
     finishTrial(14);
-    const { unmount } = render(<SeaTrialResult />);
-    const picture = screen.getByTestId("result-below-deck");
-    expect(picture).toHaveClass("lg:hidden");
-    expect(screen.getByRole("img", { name: /^Below deck:/ })).toBeVisible();
-    unmount();
-
-    act(() => store().endTrial());
-    finishTrial();
     render(<SeaTrialResult />);
     expect(screen.queryByTestId("result-below-deck")).toBeNull();
+  });
+
+  it("opens the summary from Details and Close hands focus back", async () => {
+    const user = userEvent.setup();
+    finishTrial(14);
+    render(<SeaTrialResult />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const details = screen.getByRole("button", { name: "Details" });
+    await user.click(details);
+    expect(screen.getByRole("dialog")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(details).toHaveFocus();
   });
 
   it("Try again repeats an iceberg trial at the same spot", async () => {
     const user = userEvent.setup();
     finishTrial(14);
     render(<SeaTrialResult />);
+    await user.click(screen.getByRole("button", { name: "Details" }));
     await user.click(screen.getByRole("button", { name: "Try again" }));
     const { trial } = store();
     expect(trial.status).toBe("running");
@@ -64,6 +77,7 @@ describe("SeaTrialResult buttons", () => {
     const user = userEvent.setup();
     finishTrial(14);
     render(<SeaTrialResult />);
+    await user.click(screen.getByRole("button", { name: "Details" }));
     await user.click(screen.getByRole("button", { name: "Try another spot" }));
     expect(store().trial).toEqual({ status: "aiming" });
   });
