@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.7.0",
+    date: "2026-10-05",
+    title: "Shipshape",
+    highlights: [
+      "Ships look like a really nice toy now: soft shadows in the corners and a gentle shine on paint, glass and metal",
+      "Decks and cabins that touch join into one smooth wall with rounded corners, and windows only show on the outside",
+      "The hull curves at the bottom, rises at the bow and stern, and has brass-rimmed portholes and a stripe along the side",
+      "Funnels have rims, black tops and stripes, masts have rings and a lookout basket, and lifeboats are shaped like real boats",
+      "Railings are round and follow the curve of the bow and stern",
+      "On slower tablets the soft shadows switch off by themselves so building stays smooth",
+    ],
+  },
+  {
     version: "2.6.0",
     date: "2026-10-04",
     title: "Iceberg!",

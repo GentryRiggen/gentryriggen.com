@@ -95,7 +95,9 @@ async function openFrozenScene(
 ) {
   await page.addInitScript(
     ({ freezeTime, trialSeconds }) => {
-      window.__SHIP_BUILDER_TEST__ = { freezeTime, trialSeconds };
+      // AO forced on: the performance monitor could otherwise drop it on a
+      // slow runner and change the picture.
+      window.__SHIP_BUILDER_TEST__ = { freezeTime, trialSeconds, ao: true };
       // Both side panels collapsed, so the canvas is the whole picture.
       window.localStorage.setItem(
         "ship-builder:ui:collapsed",
