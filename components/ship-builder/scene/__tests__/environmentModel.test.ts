@@ -24,8 +24,8 @@ describe("environmentFor", () => {
     expect(env.colors.skyHorizon).toBe(PALETTE.sky);
     expect(env.colors.underwater).toBe(PALETTE.underwater);
     expect(env.numbers).toMatchObject({
-      ambientIntensity: 0.1,
-      hemiIntensity: 0.75,
+      ambientIntensity: 0.12,
+      hemiIntensity: 0.55,
       lightIntensity: 1.4,
       fogNear: 80,
       fogFar: 260,

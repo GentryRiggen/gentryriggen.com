@@ -18,6 +18,12 @@ export interface ShipBuilderTestConfig {
   trialSeconds?: number;
   /** Sea trial: play this many times faster, so a whole trial takes moments. */
   trialSpeed?: number;
+  /**
+   * Ambient occlusion: true forces it on, false off, and either also stops
+   * the performance monitor from switching it off. Unset leaves it to the
+   * device.
+   */
+  ao?: boolean;
 }
 
 declare global {
@@ -60,4 +66,15 @@ export function testTrialSpeed(): number {
   if (typeof window === "undefined") return 1;
   const speed = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.trialSpeed);
   return speed !== null && speed > 0 ? speed : 1;
+}
+
+/**
+ * Whether the test wants ambient occlusion forced on (true) or off (false);
+ * null leaves it to the device's performance, as in production.
+ */
+export function testAoOverride(): boolean | null {
+  if (process.env.NODE_ENV === "production") return null;
+  if (typeof window === "undefined") return null;
+  const ao = window.__SHIP_BUILDER_TEST__?.ao;
+  return typeof ao === "boolean" ? ao : null;
 }
