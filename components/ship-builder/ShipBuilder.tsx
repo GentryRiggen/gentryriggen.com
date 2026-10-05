@@ -12,7 +12,7 @@ import useWebGLSupport from "./hooks/useWebGLSupport";
 import AppHeader from "./ui/AppHeader";
 import CatalogPanel from "./ui/CatalogPanel";
 import DriveButton from "./ui/DriveButton";
-import DriveEndButton from "./ui/DriveEndButton";
+import DriveHud from "./ui/DriveHud";
 import DrivePicker from "./ui/DrivePicker";
 import Drawer from "./ui/Drawer";
 import HelpButton from "./ui/HelpButton";
@@ -136,7 +136,7 @@ export default function ShipBuilder() {
           {/* The trial plays in the 3D scene, so it needs WebGL. */}
           {webgl && <SeaTrialButton beside={<DriveButton />} />}
           {webgl && <DrivePicker />}
-          {webgl && <DriveEndButton />}
+          {webgl && <DriveHud />}
           {webgl && <IcebergAimHint />}
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}

@@ -11,7 +11,6 @@ import {
 } from "@/lib/ship-builder/state/store";
 import { TEMPLATES } from "@/lib/ship-builder/templates";
 import DriveButton from "../DriveButton";
-import DriveEndButton from "../DriveEndButton";
 import DrivePicker from "../DrivePicker";
 
 const store = () => useShipBuilderStore.getState();
@@ -149,19 +148,5 @@ describe("DriveButton with an engine", () => {
     render(<DriveButton />);
     await user.click(screen.getByRole("button", { name: "Drive" }));
     expect(store().drive.status).toBe("setup");
-  });
-});
-
-describe("DriveEndButton", () => {
-  it("shows only while sailing and ends the drive", async () => {
-    const user = userEvent.setup();
-    render(<DriveEndButton />);
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    act(() => {
-      store().openDrive();
-      store().startDrive({ seed: 1, kinds: [], density: "few" });
-    });
-    await user.click(screen.getByRole("button", { name: "End drive" }));
-    expect(store().drive.status).toBe("idle");
   });
 });
