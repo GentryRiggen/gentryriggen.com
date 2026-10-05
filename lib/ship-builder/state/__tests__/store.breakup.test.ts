@@ -2,6 +2,7 @@ import { act } from "react";
 import { emptyShip } from "../../model/placement";
 import { runTrial } from "../../sim/seaTrial";
 import type { SimState } from "../../sim/types";
+import { clearLiveTrial, publishLiveTrial } from "../liveTrialState";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -12,7 +13,13 @@ const store = () => useShipBuilderStore.getState();
 
 beforeEach(() => {
   act(() => useShipBuilderStore.setState(createInitialState()));
+  clearLiveTrial();
 });
+
+/** The running trial's published state, once she has gone under. */
+function publishSunk(): void {
+  publishLiveTrial(runTrial(running().input), 0, true);
+}
 
 function running(): Extract<TrialSlice, { status: "running" }> {
   const { trial } = store();
@@ -69,8 +76,9 @@ describe("descend", () => {
     expect(before.status === "result" && before.input).toBe(trial.input);
   });
 
-  it("works on a running iceberg trial, but not twice", () => {
+  it("works on a running iceberg trial once she has sunk, but not twice", () => {
     act(() => store().startTrial("calm", 5));
+    publishSunk();
     act(() => store().descend());
     const first = running();
     expect(first.descending).toBe(true);
@@ -79,8 +87,35 @@ describe("descend", () => {
     expect(running().runId).toBe(first.runId);
   });
 
+  it("does nothing while she is still afloat", () => {
+    act(() => store().startTrial("calm", 5));
+    const trial = store().trial;
+    act(() => store().descend());
+    expect(store().trial).toBe(trial);
+
+    const sailing = runTrial(running().input);
+    publishLiveTrial({ ...sailing, events: [] }, 0, true);
+    act(() => store().descend());
+    expect(store().trial).toBe(trial);
+  });
+
+  it("does nothing for a sank result with no sunk event", () => {
+    act(() => store().startTrial("calm", 5));
+    const end = runTrial(running().input);
+    act(() =>
+      store().finishTrial({
+        ...end,
+        events: end.events.filter((event) => event.kind !== "sunk"),
+      })
+    );
+    const result = store().trial;
+    act(() => store().descend());
+    expect(store().trial).toBe(result);
+  });
+
   it("keeps descending on the result after the descent", () => {
     act(() => store().startTrial("calm", 5));
+    publishSunk();
     act(() => store().descend());
     act(() => store().finishTrial(runTrial(running().input)));
     expect(store().trial).toMatchObject({

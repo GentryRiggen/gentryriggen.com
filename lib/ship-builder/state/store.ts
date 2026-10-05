@@ -28,6 +28,7 @@ import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
+import { getLiveTrialState } from "./liveTrialState";
 import type { HullArea, PaintColor } from "../model/paint";
 import type {
   Anchor,
@@ -629,7 +630,14 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const { trial } = get();
       if (trial.status !== "running" && trial.status !== "result") return;
       if (!trial.input.iceberg || trial.descending) return;
-      if (trial.status === "result" && trial.state.outcome !== "sank") return;
+      // Only a ship that has really gone under can be followed down.
+      const sunkEvents =
+        trial.status === "result"
+          ? trial.state.outcome === "sank"
+            ? trial.state.events
+            : []
+          : (getLiveTrialState()?.events ?? []);
+      if (!sunkEvents.some((event) => event.kind === "sunk")) return;
       runId += 1;
       set({
         trial: {
