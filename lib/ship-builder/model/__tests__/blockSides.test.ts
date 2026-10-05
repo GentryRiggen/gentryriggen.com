@@ -134,3 +134,94 @@ describe("sidesKey", () => {
     expect(sidesKey({ ...NO_JOINED_SIDES, top: true })).toBe("00001");
   });
 });
+
+describe("joinedSides symmetry", () => {
+  describe("sides", () => {
+    it("leaves both faces when a 1-wide block meets half of a 2-wide one", () => {
+      const parts = [
+        gridPart("a", "deck-2x1", 0, 3, 1, 90),
+        gridPart("b", "deck-1x1", 0, 4, 1),
+      ];
+      expect(joins(parts, 0).stern).toBe(false);
+      expect(joins(parts, 1).bow).toBe(false);
+    });
+
+    it("joins the 1-wide blocks only when they cover the 2-wide side", () => {
+      const parts = [
+        gridPart("a", "deck-2x1", 0, 3, 1),
+        gridPart("b", "deck-1x1", 0, 3, 2),
+      ];
+      expect(joins(parts, 0).port).toBe(false);
+      expect(joins(parts, 1).starboard).toBe(false);
+      const covered = [...parts, gridPart("c", "deck-1x1", 0, 4, 2)];
+      expect(joins(covered, 0).port).toBe(true);
+      expect(joins(covered, 1).starboard).toBe(true);
+      expect(joins(covered, 2).starboard).toBe(true);
+    });
+
+    it("keeps offset blocks apart on both sides", () => {
+      const parts = [
+        gridPart("a", "deck-2x1", 0, 3, 1, 90),
+        gridPart("b", "deck-2x1", 0, 4, 2, 90),
+      ];
+      expect(joins(parts, 0)).toEqual(NO_JOINED_SIDES);
+      expect(joins(parts, 1)).toEqual(NO_JOINED_SIDES);
+    });
+
+    it("gives a ghost the same verdict as the placed block", () => {
+      const placed = [gridPart("a", "deck-2x1", 0, 3, 1, 90)];
+      const ghost = gridPart("g", "deck-1x1", 0, 4, 1);
+      expect(joinedSides(testShip(placed), ghost).bow).toBe(false);
+      const full = [...placed, gridPart("c", "deck-1x1", 0, 4, 2)];
+      expect(joinedSides(testShip(full), ghost).bow).toBe(true);
+    });
+
+    it("does not join a bridge sideways to a wall block", () => {
+      const parts = [
+        gridPart("a", "deck-1x1", 0, 3, 1),
+        gridPart("b", "bridge", 0, 4, 1),
+      ];
+      expect(joins(parts, 0).stern).toBe(false);
+    });
+  });
+
+  describe("top", () => {
+    const row = [
+      gridPart("a", "deck-1x1", 0, 3, 1),
+      gridPart("b", "deck-1x1", 0, 4, 1),
+    ];
+
+    it("stays closed when the block above is inset where the top is flush", () => {
+      // a's stern is flush against b, but the cabin over a has an exposed
+      // stern, so opening a's top would leave a slot at that edge.
+      const parts = [...row, gridPart("u", "cabin-1st", 1, 3, 1)];
+      expect(joins(parts, 0).stern).toBe(true);
+      expect(joins(parts, 0).top).toBe(false);
+    });
+
+    it("opens the top when the blocks above are flush on the same side", () => {
+      const parts = [
+        ...row,
+        gridPart("u", "cabin-1st", 1, 3, 1),
+        gridPart("v", "cabin-1st", 1, 4, 1),
+      ];
+      expect(joins(parts, 0).top).toBe(true);
+      expect(joins(parts, 1).top).toBe(true);
+    });
+
+    it("opens the top under a block that carries on past the edge", () => {
+      const parts = [...row, gridPart("u", "deck-2x1", 1, 3, 1)];
+      expect(joins(parts, 0).top).toBe(true);
+    });
+
+    it("needs the block above to cover every cell, however stacked", () => {
+      const parts = [
+        gridPart("a", "deck-2x1", 0, 3, 1),
+        gridPart("u", "cabin-1st", 1, 3, 1),
+        gridPart("w", "cabin-1st", 2, 3, 1),
+      ];
+      expect(joins(parts, 0).top).toBe(false);
+      expect(joins(parts, 1).top).toBe(true);
+    });
+  });
+});
