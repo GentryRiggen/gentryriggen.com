@@ -128,11 +128,11 @@ length) / L`.
 she stays afloat.
 
 Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, counted from impact
-(`storyMinutesSinceImpact`), so the Titanic (about 31.9 sim seconds after the
-strike, breaking in two on the way) sinks in 159 story minutes.
+(`storyMinutesSinceImpact`), so the Titanic (about 33.3 sim seconds after the
+strike, breaking in two on the way) sinks in 167 story minutes.
 
 Tuning: `INFLOW` 5 (raised from 3 so the Titanic's breakup, which adds about
-5 s after the plunge starts, still ends near 160 story minutes), `SPILL_RATE` 20, `SINK_TO_DEPTH` 0.1, `TRIM_LEVER` 0.12,
+10 s after the plunge starts, still ends under 170 story minutes), `SPILL_RATE` 20, `SINK_TO_DEPTH` 0.1, `TRIM_LEVER` 0.12,
 `RESERVE` 0.3. Together they keep any hull of 8 or more segments with deck-high
 walls on every boundary afloat wherever the iceberg strikes (swept in the
 tests), while the Titanic's low walls still overflow.
@@ -191,11 +191,11 @@ A half's pitch lifts its own bow end, so:
 - Bow: eases to `BOW_FINAL_PITCH` (-1.05, about 60 degrees bow down) and sinks
   at up to 4 units/s. It waits with its deepest point no lower than
   `BOW_HOLD_DEPTH` (40), above the floor, flattening a long bow if needed.
-- Stern: for `STERN_SETTLE_S` (1.6 s) it eases back to level and bobs up to a
-  1-unit draft; over `STERN_RISE_S` (1.4 s) it rears to `STERN_FINAL_PITCH`
+- Stern: for `STERN_SETTLE_S` (1.8 s) it eases back to level and bobs up to a
+  1-unit draft; over `STERN_RISE_S` (2.4 s) it rears to `STERN_FINAL_PITCH`
   (-1.4: the broken end down, the stern about 80 degrees up); it hangs for
-  `STERN_HANG_S` (1.2 s), sinking slowly; then it slides straight down,
-  speeding up to 10 units/s.
+  `STERN_HANG_S` (1.4 s), sinking slowly; then it slides straight down,
+  speeding up (4 units/s each second) to 10 units/s.
 - `sunk` (and `done`) once the stern has played its whole part and both
   halves' highest points are `HALF_UNDER_DEPTH` (2) under.
 
@@ -255,5 +255,5 @@ steep enough by the time she is under, so she holds together.
 
 Timings for the Titanic struck at x=5 (`real`, sim seconds): flooding 1.5,
 lights flicker 11.6, lights out 24.6, breaks 25.1 (17 degrees, at wall 9,
-x=27), sunk 33.4; followed down, the stern lands 2.3 s and the bow 5.9 s after
+x=27), sunk 34.9; followed down, the stern lands 2.3 s and the bow 5.9 s after
 `startDescent`. In `never` mode she is sunk at 28.5.

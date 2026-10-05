@@ -48,11 +48,11 @@ const BOW_SINK_MAX = 4;
 export const BOW_HOLD_DEPTH = 40;
 
 /** The stern half settles back toward level for this long after the break. */
-export const STERN_SETTLE_S = 1.6;
+export const STERN_SETTLE_S = 1.8;
 /** Then rears up over this long... */
-export const STERN_RISE_S = 1.4;
+export const STERN_RISE_S = 2.4;
 /** ...and hangs nearly upright for this long before sliding under. */
-export const STERN_HANG_S = 1.2;
+export const STERN_HANG_S = 1.4;
 /**
  * The stern's upright pitch (radians). Negative because a half's pitch lifts
  * its bow end, and the stern half's bow end is the broken one: the broken end
@@ -65,7 +65,7 @@ const STERN_SETTLE_EASE = 1.5;
 const STERN_POSE_EASE = 5;
 const STERN_RISE_SINK_SPEED = 0.8;
 const STERN_HANG_SINK_SPEED = 0.4;
-const STERN_SLIDE_ACCEL = 5;
+const STERN_SLIDE_ACCEL = 4;
 const STERN_SLIDE_MAX = 10;
 
 /** A half counts as gone once its highest point is this far under. */
