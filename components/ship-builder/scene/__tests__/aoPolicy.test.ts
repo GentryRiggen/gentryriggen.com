@@ -1,8 +1,46 @@
 import {
   AO_DECLINE_STREAK_MS,
   AO_WARM_UP_MS,
+  canRunOcclusion,
   createDeclineGate,
 } from "../aoPolicy";
+
+describe("canRunOcclusion", () => {
+  const has =
+    (...names: string[]) =>
+    (name: string) =>
+      names.includes(name);
+
+  it("needs WebGL2", () => {
+    expect(
+      canRunOcclusion({
+        isWebGL2: false,
+        hasExtension: has("EXT_color_buffer_float"),
+      })
+    ).toBe(false);
+  });
+
+  it("accepts either colour-buffer extension", () => {
+    expect(
+      canRunOcclusion({
+        isWebGL2: true,
+        hasExtension: has("EXT_color_buffer_float"),
+      })
+    ).toBe(true);
+    expect(
+      canRunOcclusion({
+        isWebGL2: true,
+        hasExtension: has("EXT_color_buffer_half_float"),
+      })
+    ).toBe(true);
+  });
+
+  it("refuses when neither extension is present", () => {
+    expect(canRunOcclusion({ isWebGL2: true, hasExtension: has() })).toBe(
+      false
+    );
+  });
+});
 
 describe("createDeclineGate", () => {
   const started = () => {

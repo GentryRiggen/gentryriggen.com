@@ -1,5 +1,5 @@
 /**
- * When ambient occlusion should be given up on. Pure
+ * When ambient occlusion may run, and when it should be given up on. Pure
  * decisions, kept apart from the render loop so they can be tested.
  */
 
@@ -9,6 +9,28 @@ export const AO_WARM_UP_MS = 5000;
 export const AO_DECLINES_REQUIRED = 2;
 /** A decline older than this no longer counts towards the streak. */
 export const AO_DECLINE_STREAK_MS = 6000;
+
+/** What AO needs from the renderer. */
+export interface OcclusionCapabilities {
+  isWebGL2: boolean;
+  hasExtension: (name: string) => boolean;
+}
+
+/**
+ * N8AO draws into half-float and float buffers, which WebGL2 only allows
+ * when a colour-buffer-float extension is present. Without them the pass
+ * would produce nothing, so AO stays off and the plain render is used.
+ */
+export function canRunOcclusion({
+  isWebGL2,
+  hasExtension,
+}: OcclusionCapabilities): boolean {
+  return (
+    isWebGL2 &&
+    (hasExtension("EXT_color_buffer_float") ||
+      hasExtension("EXT_color_buffer_half_float"))
+  );
+}
 
 /**
  * Decides whether a performance decline should switch AO off. Declines are

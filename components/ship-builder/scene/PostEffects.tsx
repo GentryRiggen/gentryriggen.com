@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  Component,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { PerformanceMonitor } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { N8AOPostPass } from "n8ao";
@@ -13,7 +20,7 @@ import {
   Vector2,
 } from "three";
 import type { RuntimeEnvironment } from "./environmentRuntime";
-import { createDeclineGate } from "./aoPolicy";
+import { canRunOcclusion, createDeclineGate } from "./aoPolicy";
 import { testAoOverride } from "./testClock";
 
 /**
@@ -35,6 +42,8 @@ interface PostEffectsProps {
 
 interface OcclusionLayerProps {
   environment: RuntimeEnvironment;
+  /** Called when the composer throws; the plain render carries on alone. */
+  onFailure: () => void;
 }
 
 /**
@@ -50,7 +59,7 @@ interface OcclusionLayerProps {
  * canvas. Multiplying the sRGB-encoded factor onto the sRGB frame equals
  * multiplying linear light, so shading strength is unchanged.
  */
-function OcclusionLayer({ environment }: OcclusionLayerProps) {
+function OcclusionLayer({ environment, onFailure }: OcclusionLayerProps) {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
@@ -125,12 +134,45 @@ function OcclusionLayer({ environment }: OcclusionLayerProps) {
     renderer.autoClear = false;
     // The shadow maps were just drawn by the render above; skip a repeat.
     renderer.shadowMap.autoUpdate = false;
-    composer.render(delta);
-    renderer.shadowMap.autoUpdate = wasShadowUpdate;
-    renderer.autoClear = wasAutoClear;
+    try {
+      composer.render(delta);
+    } catch {
+      // The scene is already on the canvas, so a failing AO pass only costs
+      // the shading: stop using it rather than throwing every frame.
+      renderer.setRenderTarget(null);
+      onFailure();
+    } finally {
+      renderer.shadowMap.autoUpdate = wasShadowUpdate;
+      renderer.autoClear = wasAutoClear;
+    }
   }, OCCLUSION_PRIORITY);
 
   return null;
+}
+
+interface OcclusionBoundaryProps {
+  onFailure: () => void;
+  children: ReactNode;
+}
+
+/**
+ * Catches anything the AO layer throws while setting up, so the canvas keeps
+ * the plain render instead of going blank.
+ */
+class OcclusionBoundary extends Component<OcclusionBoundaryProps> {
+  state = { hasFailed: false };
+
+  static getDerivedStateFromError(): { hasFailed: boolean } {
+    return { hasFailed: true };
+  }
+
+  componentDidCatch(): void {
+    this.props.onFailure();
+  }
+
+  render(): ReactNode {
+    return this.state.hasFailed ? null : this.props.children;
+  }
 }
 
 /** Monitor windows are 250 ms each, ten to a reading (~2.5 s). */
@@ -144,16 +186,28 @@ const HEALTHY_FPS = 50;
 /**
  * Ambient occlusion over the scene. A device that stays slow (drei's
  * `PerformanceMonitor` reports sustained declines, see `createDeclineGate`)
- * turns it off for the rest of the session; with it off the scene renders
+ * turns it off for the rest of the session, as does a device without float
+ * colour buffers or any error in the AO pass; with it off the scene renders
  * straight to the canvas as before. Tests can force it either way with
  * `__SHIP_BUILDER_TEST__.ao`, which also stops the monitor, so a slow
  * software renderer cannot change a screenshot.
  */
 export default function PostEffects({ environment }: PostEffectsProps) {
   const forced = testAoOverride();
+  const renderer = useThree((state) => state.gl);
   const [hasDeclined, setHasDeclined] = useState(false);
-  const isEnabled = forced ?? !hasDeclined;
+  const [hasFailed, setHasFailed] = useState(false);
+  const isCapable = useMemo(
+    () =>
+      canRunOcclusion({
+        isWebGL2: renderer.capabilities.isWebGL2,
+        hasExtension: (name) => renderer.extensions.has(name),
+      }),
+    [renderer]
+  );
+  const isEnabled = isCapable && !hasFailed && (forced ?? !hasDeclined);
   const gate = useRef(createDeclineGate());
+  const handleFailure = () => setHasFailed(true);
 
   useEffect(() => {
     const gateNow = gate.current;
@@ -170,7 +224,7 @@ export default function PostEffects({ environment }: PostEffectsProps) {
 
   return (
     <>
-      {forced === null && !hasDeclined && (
+      {forced === null && isEnabled && (
         <PerformanceMonitor
           ms={MONITOR_WINDOW_MS}
           iterations={MONITOR_WINDOW_COUNT}
@@ -183,7 +237,11 @@ export default function PostEffects({ environment }: PostEffectsProps) {
           }}
         />
       )}
-      {isEnabled && <OcclusionLayer environment={environment} />}
+      {isEnabled && (
+        <OcclusionBoundary onFailure={handleFailure}>
+          <OcclusionLayer environment={environment} onFailure={handleFailure} />
+        </OcclusionBoundary>
+      )}
     </>
   );
 }
