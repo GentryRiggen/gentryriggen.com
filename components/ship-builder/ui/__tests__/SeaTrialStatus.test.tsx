@@ -64,3 +64,27 @@ describe("SeaTrialStatus Follow her down", () => {
     expect(followButton()).toBeNull();
   });
 });
+
+describe("SeaTrialStatus story clock", () => {
+  it("stops at the moment she sinks, however far the descent goes", () => {
+    render(<SeaTrialStatus />);
+    act(() => store().startTrial("calm", 5));
+    act(() => publishLiveTrial({ ...sunkState(), time: 30 }, 0, true));
+    const atSinking = screen.getByTestId("story-clock").textContent;
+    act(() => publishLiveTrial({ ...sunkState(), time: 80 }, 0, true));
+    expect(screen.getByTestId("story-clock").textContent).toBe(atSinking);
+  });
+
+  it("keeps counting while she is afloat", () => {
+    render(<SeaTrialStatus />);
+    act(() => store().startTrial("calm", 5));
+    const afloat = (time: number): SimState => ({
+      ...createTrial(INPUT),
+      time,
+    });
+    act(() => publishLiveTrial(afloat(10), 0, true));
+    const early = screen.getByTestId("story-clock").textContent;
+    act(() => publishLiveTrial(afloat(20), 0, true));
+    expect(screen.getByTestId("story-clock").textContent).not.toBe(early);
+  });
+});

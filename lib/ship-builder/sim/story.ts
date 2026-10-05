@@ -17,6 +17,19 @@ export function storyMinutesSinceImpact(simSeconds: number): number {
   return storyMinutes(Math.max(0, simSeconds - ICEBERG_IMPACT_S));
 }
 
+/**
+ * The sim time the story clock shows: it stops when she goes under (the
+ * `sunk` event). The descent to the sea floor is a journey for the camera,
+ * not more time passing for the people aboard.
+ */
+export function storyClockSeconds(
+  simSeconds: number,
+  events: readonly { kind: string; at: number }[]
+): number {
+  const sunk = events.find((event) => event.kind === "sunk");
+  return sunk ? Math.min(simSeconds, sunk.at) : simSeconds;
+}
+
 /** "2 hours 40 minutes", "1 hour", "35 minutes". */
 export function formatStoryTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);

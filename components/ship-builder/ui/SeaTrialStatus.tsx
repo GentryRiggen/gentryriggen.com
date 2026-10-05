@@ -4,6 +4,7 @@ import { ArrowDownToLine, Square, Waves } from "lucide-react";
 import { useEffect, useRef } from "react";
 import {
   formatStoryTime,
+  storyClockSeconds,
   storyMinutesSinceImpact,
 } from "@/lib/ship-builder/sim/story";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -60,7 +61,12 @@ export default function SeaTrialStatus() {
           data-testid="story-clock"
           className="whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400"
         >
-          · {formatStoryTime(storyMinutesSinceImpact(live?.time ?? 0))}
+          ·{" "}
+          {formatStoryTime(
+            storyMinutesSinceImpact(
+              storyClockSeconds(live?.time ?? 0, live?.events ?? [])
+            )
+          )}
         </span>
       )}
       {canFollow && (

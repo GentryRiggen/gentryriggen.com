@@ -99,6 +99,17 @@ describe("TrialScrubber", () => {
     expect(trialPlayback.scrubbing).toBe(false);
   });
 
+  it("does not count story time past the moment she sinks", () => {
+    render(<TrialScrubber timeline={timeline()} />);
+    const slider = screen.getByRole("slider", { name: "Look back" });
+    fireEvent.change(slider, { target: { value: "8" } });
+    const atSinking = slider.getAttribute("aria-valuetext")?.split(" after")[0];
+    fireEvent.change(slider, { target: { value: "10" } });
+    expect(slider.getAttribute("aria-valuetext")).toContain(
+      `${atSinking} after`
+    );
+  });
+
   it("never leaves scrubbing on after it unmounts", () => {
     const { unmount } = render(<TrialScrubber timeline={timeline()} />);
     fireEvent.change(screen.getByRole("slider"), { target: { value: "3" } });

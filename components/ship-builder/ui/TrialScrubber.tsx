@@ -9,10 +9,12 @@ import {
 } from "react";
 import {
   formatStoryTime,
+  storyClockSeconds,
   storyMinutesSinceImpact,
 } from "@/lib/ship-builder/sim/story";
 import {
   firstEvent,
+  timelineEvents,
   timelineEnd,
   timelineStart,
   type Timeline,
@@ -96,8 +98,13 @@ export function markLanes(marks: readonly Mark[], span: number): number[] {
 }
 
 /** "40 minutes after the iceberg · Lights out" for screen readers. */
-function describeMoment(time: number, marks: readonly Mark[]): string {
-  const clock = `${formatStoryTime(storyMinutesSinceImpact(time))} after the iceberg`;
+function describeMoment(
+  time: number,
+  marks: readonly Mark[],
+  events: readonly SimEvent[]
+): string {
+  const story = storyMinutesSinceImpact(storyClockSeconds(time, events));
+  const clock = `${formatStoryTime(story)} after the iceberg`;
   const latest = marks.filter((mark) => mark.at <= time).at(-1);
   return latest ? `${clock} · ${latest.label}` : clock;
 }
@@ -116,6 +123,7 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
   const end = timelineEnd(timeline);
   const span = Math.max(end - start, Number.EPSILON);
   const marks = useMemo(() => marksOf(timeline), [timeline]);
+  const events = useMemo(() => timelineEvents(timeline), [timeline]);
   const lanes = useMemo(() => markLanes(marks, span), [marks, span]);
   // The result shows the ship where the trial ended.
   const [time, setTime] = useState(end);
@@ -167,7 +175,7 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
           max={end}
           step="any"
           value={time}
-          aria-valuetext={describeMoment(time, marks)}
+          aria-valuetext={describeMoment(time, marks, events)}
           onChange={(event) => showMoment(Number(event.target.value))}
           onKeyDown={handleKeyDown}
           onKeyUp={handleRelease}
