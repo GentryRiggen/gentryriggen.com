@@ -13,7 +13,8 @@ import { shouldSwallowClick } from "./clickGuard";
 import GhostPreview from "./GhostPreview";
 import GridTargets from "./GridTargets";
 import Environment from "./Environment";
-import { createGlowController, GlowContext } from "./GlowContext";
+import { createGlowController } from "./GlowContext";
+import PoweredGlow from "./PoweredGlow";
 import { glowFor } from "./timeOfDay";
 import { environmentFor } from "./environmentModel";
 import { toRuntimeEnvironment } from "./environmentRuntime";
@@ -107,18 +108,22 @@ export default function Scene() {
         <ReflectionEnvironment timeOfDay={timeOfDay} />
         <Ocean seeThrough={isBelow} environment={environment} />
         <ShipAnimation>
-          <GlowContext.Provider value={glow}>
-            <Hull
-              lengthCells={lengthCells}
-              beam={beam}
-              bow={bow}
-              stern={stern}
-              paint={paint}
-            />
-          </GlowContext.Provider>
+          <PoweredGlow glow={glow}>
+            {(powered) => (
+              <>
+                <Hull
+                  lengthCells={lengthCells}
+                  beam={beam}
+                  bow={bow}
+                  stern={stern}
+                  paint={paint}
+                />
+                <ShipParts glow={powered} onPartPress={startPress} />
+              </>
+            )}
+          </PoweredGlow>
           <HullGash />
           <Railings />
-          <ShipParts glow={glow} onPartPress={startPress} />
           <GridTargets />
           <AttachMarkers />
           <GhostPreview />

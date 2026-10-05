@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import useTimeOfDay from "../useTimeOfDay";
 
 const KEY = "ship-builder:ui:time";
@@ -24,6 +25,32 @@ describe("useTimeOfDay", () => {
     window.localStorage.setItem(KEY, "hurricane");
     const { result } = renderHook(() => useTimeOfDay());
     expect(result.current.timeOfDay).toBe("day");
+  });
+
+  it("is night during an iceberg trial without changing the saved choice", () => {
+    const { result } = renderHook(() => useTimeOfDay());
+    const ship = useShipBuilderStore.getState().ship;
+    const sim = { ship: {}, sea: "calm" };
+    act(() =>
+      useShipBuilderStore.setState({
+        trial: {
+          status: "running",
+          runId: 1,
+          input: { ...sim, iceberg: { impactX: 3 } } as never,
+        },
+      })
+    );
+    expect(result.current.timeOfDay).toBe("night");
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+    act(() =>
+      useShipBuilderStore.setState({
+        trial: { status: "running", runId: 2, input: sim as never },
+      })
+    );
+    expect(result.current.timeOfDay).toBe("day");
+    act(() =>
+      useShipBuilderStore.setState({ trial: { status: "idle" }, ship })
+    );
   });
 
   // Keep this last: a failed write switches the module to its in-memory value.

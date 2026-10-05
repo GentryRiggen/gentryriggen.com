@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, type ComponentRef } from "react";
 import { MOUSE, TOUCH } from "three";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
 import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import { MAX_FRAME_DELTA } from "./animationMath";
+import { cameraFollow } from "./cameraFollow";
 import {
   clampTarget,
   MAX_VIEW_DISTANCE,
@@ -18,6 +21,7 @@ import {
   viewPosition,
   viewTarget,
 } from "./cameraViews";
+import { trialPlayback } from "./trialPlayback";
 
 // Left orbits (Shift/Ctrl/Meta + left pans, built into OrbitControls), the
 // wheel zooms and right pans. One finger orbits; two pinch and pan.
@@ -27,6 +31,15 @@ const MOUSE_BUTTONS = {
   RIGHT: MOUSE.PAN,
 };
 const TOUCHES = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
+
+/** How fast the follow closes on its goal, per second (about 0.3 s to settle). */
+const FOLLOW_RATE = 3;
+/** The slow-mo side-on view: camera height as a share of its distance. */
+const SIDE_ON_HEIGHT = 0.25;
+/** The wreck framing: camera height above the target, as a share of distance. */
+const WRECK_HEIGHT = 0.2;
+/** Closer than this to the goal the target is simply there. */
+const FOLLOW_EPSILON = 0.02;
 
 export default function CameraRig() {
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
@@ -39,6 +52,11 @@ export default function CameraRig() {
     Math.max(bowLength(s.ship.hull.bow), sternLength(s.ship.hull.stern))
   );
   const view = camera.view;
+  const reducedMotion = usePrefersReducedMotion();
+  // True while the player orbits or pans, so the follow never fights a drag.
+  const isDragging = useRef(false);
+  // True from the first followed frame until the target is back at the view's.
+  const isFollowing = useRef(false);
   // The previous request, updated on every run so that repeated single-step
   // length edits never add up to a reframe.
   const seen = useRef<FrameRequest | null>(null);
@@ -79,7 +97,8 @@ export default function CameraRig() {
   // maxPolarAngle only holds it above the target.
   const handleChange = useCallback(() => {
     const orbit = controls.current;
-    if (!orbit) return;
+    // The follow takes the target far below the usual pan box.
+    if (!orbit || isFollowing.current) return;
     const { target, object } = orbit;
     const [x, y, z] = clampTarget(
       [target.x, target.y, target.z],
@@ -100,6 +119,60 @@ export default function CameraRig() {
   // A shorter or narrower hull shrinks the box; pull the target back into it.
   useEffect(handleChange, [handleChange]);
 
+  // While a ship sinks the orbit target follows her, and the camera moves by
+  // the same amount so the player's orbit and zoom are kept. Afterwards the
+  // target eases back to the view's own. Reduced motion snaps instead.
+  useFrame((_, delta) => {
+    const orbit = controls.current;
+    if (!orbit) return;
+    const { phase, sink, halves, breakup, speed } = trialPlayback;
+    const follow = cameraFollow(
+      { phase, sink, halves, breakup, speed },
+      lengthCells
+    );
+    if (!follow && !isFollowing.current) return;
+    isFollowing.current = true;
+
+    const goal = follow ? follow.target : viewTarget(view);
+    const amount = reducedMotion
+      ? 1
+      : Math.min(1, Math.min(delta, MAX_FRAME_DELTA) * FOLLOW_RATE);
+    const { target, object } = orbit;
+    const dx = (goal[0] - target.x) * amount;
+    const dy = (goal[1] - target.y) * amount;
+    const dz = (goal[2] - target.z) * amount;
+    target.x += dx;
+    target.y += dy;
+    target.z += dz;
+    object.position.x += dx;
+    object.position.y += dy;
+    object.position.z += dz;
+
+    if (follow && !isDragging.current) {
+      const offset = object.position.clone().sub(target);
+      if (follow.isSideOn) {
+        // Swing round to whichever side she is nearer, keeping the distance.
+        const side = offset.z < 0 ? -1 : 1;
+        const length = offset.length() / Math.hypot(1, SIDE_ON_HEIGHT);
+        offset.x -= offset.x * amount;
+        offset.z += (side * length - offset.z) * amount;
+        offset.y += (length * SIDE_ON_HEIGHT - offset.y) * amount;
+      } else if (follow.isLow) {
+        // Only ever lower the camera; a player who went lower stays there.
+        const limit = Math.hypot(offset.x, offset.z) * WRECK_HEIGHT;
+        if (offset.y > limit) offset.y += (limit - offset.y) * amount;
+      }
+      object.position.copy(target).add(offset);
+    }
+
+    const distanceToGoal =
+      Math.abs(goal[0] - target.x) +
+      Math.abs(goal[1] - target.y) +
+      Math.abs(goal[2] - target.z);
+    if (!follow && distanceToGoal < FOLLOW_EPSILON) isFollowing.current = false;
+    orbit.update();
+  });
+
   return (
     <OrbitControls
       ref={controls}
@@ -110,6 +183,12 @@ export default function CameraRig() {
       mouseButtons={MOUSE_BUTTONS}
       touches={TOUCHES}
       onChange={handleChange}
+      onStart={() => {
+        isDragging.current = true;
+      }}
+      onEnd={() => {
+        isDragging.current = false;
+      }}
       minDistance={6}
       maxDistance={MAX_VIEW_DISTANCE}
       maxPolarAngle={maxPolarAngleFor(view)}
