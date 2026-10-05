@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, type RootState } from "@react-three/fiber";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
@@ -48,6 +48,11 @@ function preventDefault(event: Event) {
   event.preventDefault();
 }
 
+/** A broken ship's halves cut their hull with per-material clip planes. */
+function enableLocalClipping({ gl }: RootState) {
+  gl.localClippingEnabled = true;
+}
+
 export default function Scene() {
   const lengthCells = useShipBuilderStore((s) => gridLength(s.ship));
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
@@ -92,6 +97,7 @@ export default function Scene() {
       <Canvas
         shadows="percentage"
         camera={{ position: [24, 16, 24], fov: 45 }}
+        onCreated={enableLocalClipping}
         onPointerMissed={() => {
           // A hold that deleted the last part under the pointer releases onto
           // empty water; that click must not drop a pending removal.

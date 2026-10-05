@@ -12,7 +12,6 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
-import { AO_OCCLUDER } from "./aoLayer";
 import IcebergAimLayer from "./IcebergAimLayer";
 import { shouldSwallowClick } from "./clickGuard";
 import { BOOT_TOP, DECK_Y, HULL_DRAFT } from "./coords";
@@ -37,6 +36,7 @@ import {
 import HullDetails from "./HullDetails";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
+import { useAoOccluder, useClipMaterialProps } from "./shipHalf";
 import { FINISHES } from "./Surface";
 
 /** The bulb sits low and entirely under the waterline. */
@@ -184,12 +184,15 @@ function useMiddleGeometry(
   return geometry;
 }
 
+/** Cut at the break when the hull is one half of a broken ship. */
 function HullMaterial({ color }: { color: string }) {
+  const clip = useClipMaterialProps();
   return (
     <meshStandardMaterial
       color={color}
       roughness={PAINT.roughness}
       metalness={PAINT.metalness}
+      {...clip}
     />
   );
 }
@@ -205,9 +208,10 @@ function PieceMesh({
   isDeck?: boolean;
   onTap?: PieceProps["onTap"];
 }) {
+  const occluder = useAoOccluder();
   return (
     <mesh
-      {...AO_OCCLUDER}
+      {...occluder}
       geometry={geometry}
       castShadow={!isDeck}
       receiveShadow
@@ -339,11 +343,12 @@ function HullTrim({ plan, topsidesColor, onTap }: HullTrimProps) {
 /** The bulbous bow's bulb: a squashed sphere in the red band. */
 function Bulb({ lengthCells, color }: { lengthCells: number; color: string }) {
   const stemTip = bowLength("bulbous") - BULB_PROTRUSION;
+  const occluder = useAoOccluder();
   return (
     <mesh
       position={[lengthCells / 2 + stemTip - BULB_SETBACK, BULB_Y, 0]}
       scale={BULB_RADII}
-      {...AO_OCCLUDER}
+      {...occluder}
       castShadow
       raycast={noRaycast}
     >

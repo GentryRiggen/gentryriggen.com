@@ -16,6 +16,7 @@ import { useGlowEffect } from "./GlowContext";
 import { ANCHOR_Y, bowAnchorSpot } from "./hullShapes";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
+import { useClipMaterialProps } from "./shipHalf";
 import { FINISHES } from "./Surface";
 
 const PORTHOLE_RADIUS = 0.1;
@@ -53,6 +54,7 @@ function Portholes({
   const material = useRef<MeshStandardMaterial>(null);
   const haloMaterial = useRef<MeshBasicMaterial>(null);
   const count = Math.max(0, lengthCells - 2 * PORTHOLE_END_MARGIN) * 2;
+  const clip = useClipMaterialProps();
 
   useGlowEffect((glow) => {
     const lit = material.current;
@@ -115,6 +117,7 @@ function Portholes({
           color={PALETTE.porthole}
           emissive={LIGHT_COLORS.porthole}
           emissiveIntensity={0}
+          {...clip}
         />
       </instancedMesh>
       <instancedMesh
@@ -136,6 +139,7 @@ function Portholes({
           color={PALETTE.propeller}
           roughness={FINISHES.metal.roughness}
           metalness={FINISHES.metal.metalness}
+          {...clip}
         />
       </instancedMesh>
       <instancedMesh
@@ -156,6 +160,7 @@ function Portholes({
           blending={AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
+          {...clip}
         />
       </instancedMesh>
     </>
@@ -164,7 +169,8 @@ function Portholes({
 
 /** A small anchor drawn flat in XY, facing +Z, about 0.5 tall. */
 function Anchor() {
-  const metal = <meshStandardMaterial color={PALETTE.anchor} />;
+  const clip = useClipMaterialProps();
+  const metal = <meshStandardMaterial color={PALETTE.anchor} {...clip} />;
   return (
     <group>
       <mesh raycast={noRaycast}>

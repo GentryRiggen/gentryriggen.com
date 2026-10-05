@@ -9,6 +9,8 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { hullXOfImpact } from "./icebergAim";
 import { ICEBERG_IMPACT_S } from "./icebergMotion";
+import { halfOfX } from "./partHalves";
+import { useClipMaterialProps, useShipHalf } from "./shipHalf";
 import { trialPlayback } from "./trialPlayback";
 
 /** Highest and lowest points of the strip, around the waterline (y = 0). */
@@ -49,6 +51,7 @@ interface GashStripProps {
 function GashStrip({ impactX, length, beam }: GashStripProps) {
   const mesh = useRef<Mesh>(null);
   const reducedMotion = usePrefersReducedMotion();
+  const clip = useClipMaterialProps();
   const geometry = useMemo(() => buildGashGeometry(GASH_LENGTH), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
   const { fromX, toX } = gashOf(impactX, length);
@@ -68,9 +71,15 @@ function GashStrip({ impactX, length, beam }: GashStripProps) {
       position={[x, 0, beam / 2 + GASH_OFFSET]}
       visible={false}
     >
-      <meshBasicMaterial color={GASH_COLOR} />
+      <meshBasicMaterial color={GASH_COLOR} {...clip} />
     </mesh>
   );
+}
+
+/** Which half of a broken ship holds the middle of the gash. */
+function gashHalf(impactX: number, length: number, atX: number) {
+  const { fromX, toX } = gashOf(impactX, length);
+  return halfOfX((fromX + toX) / 2, atX);
 }
 
 /**
@@ -85,7 +94,15 @@ export default function HullGash() {
       : undefined
   );
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
+  const half = useShipHalf();
   if (!iceberg) return null;
+  // On a broken ship the gash goes with the half holding its middle.
+  if (
+    half &&
+    half.side !== gashHalf(iceberg.impactX, iceberg.length, half.atX)
+  ) {
+    return null;
+  }
   return (
     <GashStrip impactX={iceberg.impactX} length={iceberg.length} beam={beam} />
   );

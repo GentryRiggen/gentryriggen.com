@@ -13,6 +13,7 @@ import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
 import PopIn from "./PopIn";
 import { singleAddedId } from "./pop";
+import { useShipHalf } from "./shipHalf";
 import type { PartPress } from "./usePartLongPress";
 
 /** The part a handler fired for; PartMesh tags its group with the id. */
@@ -58,6 +59,11 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
   const select = useShipBuilderStore((s) => s.select);
   const paintPart = useShipBuilderStore((s) => s.paintPart);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // One half of a broken ship draws only the parts that go with it.
+  const half = useShipHalf();
+  const parts = half
+    ? ship.parts.filter((part) => half.includesPart(part.id))
+    : ship.parts;
 
   // Parts are only selectable with no tool active.
   const interactive = tool.kind === "none";
@@ -156,7 +162,7 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
   return (
     <GlowContext.Provider value={glow}>
       <group>
-        {ship.parts.map((part) => (
+        {parts.map((part) => (
           <PopIn key={part.id} active={part.id === poppingId}>
             <PartMesh
               ship={ship}

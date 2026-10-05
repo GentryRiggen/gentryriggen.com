@@ -18,6 +18,7 @@ import {
 import { DECK_TOP, makeSheer } from "./hullTrim";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
+import { useClipMaterialProps } from "./shipHalf";
 import { FINISHES } from "./Surface";
 
 const RAIL_HEIGHT = 0.38;
@@ -37,6 +38,7 @@ export default function Railings() {
   const ship = useShipBuilderStore((s) => s.ship);
   const { beam, bow, stern } = ship.hull;
   const lengthCells = gridLength(ship);
+  const clip = useClipMaterialProps();
 
   const paths = useMemo(() => {
     const { occupancy } = analyzeShip(ship);
@@ -117,6 +119,7 @@ export default function Railings() {
           color={PALETTE.railing}
           roughness={FINISHES.paint.roughness}
           metalness={FINISHES.paint.metalness}
+          {...clip}
         />
       </instancedMesh>
       <mesh geometry={topRail} raycast={noRaycast}>
@@ -124,6 +127,7 @@ export default function Railings() {
           color={PALETTE.railing}
           roughness={FINISHES.paint.roughness}
           metalness={FINISHES.paint.metalness}
+          {...clip}
         />
       </mesh>
     </group>

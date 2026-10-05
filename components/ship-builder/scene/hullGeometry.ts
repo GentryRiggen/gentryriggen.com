@@ -41,6 +41,24 @@ export interface MiddleGeometryOptions {
   hasTopCap: boolean;
 }
 
+/** A point on the hull's cross-section: world height, then signed width. */
+export type SectionPoint = [y: number, z: number];
+
+/**
+ * The cross-section as (y, z) points: down the +z side from the top height to
+ * the bottom one, then up the -z side. The middle section is this profile
+ * extruded; the torn edge of a broken ship follows it too.
+ */
+export function sectionProfile(
+  halfWidthAt: (y: number) => number,
+  heights: number[]
+): SectionPoint[] {
+  return [
+    ...[...heights].reverse().map((y): SectionPoint => [y, halfWidthAt(y)]),
+    ...heights.map((y): SectionPoint => [y, -halfWidthAt(y)]),
+  ];
+}
+
 /**
  * Extrudes the shared cross-section along x. Rings run down the +z side,
  * across the bottom and up the -z side, so every ring point has an end-loft
@@ -50,11 +68,7 @@ export function buildMiddleGeometry(
   options: MiddleGeometryOptions
 ): BufferGeometry {
   const { halfWidthAt, heights, length, hasBottomCap, hasTopCap } = options;
-  // (y, z) profile points: +z side top to bottom, then -z side bottom to top.
-  const profile: Array<[number, number]> = [
-    ...[...heights].reverse().map((y): [number, number] => [y, halfWidthAt(y)]),
-    ...heights.map((y): [number, number] => [y, -halfWidthAt(y)]),
-  ];
+  const profile = sectionProfile(halfWidthAt, heights);
   const sideCount = heights.length;
 
   const positions: number[] = [];
