@@ -32,4 +32,27 @@ describe("cardFraming", () => {
     const card = { left: 100, top: 52, width: 700, height: 736 };
     expect(cardFraming(canvas, card)?.scale).toBe(MIN_CARD_SCALE);
   });
+
+  it("lifts the wreck only by what a slim bottom bar covers", () => {
+    // A short, wide bar: 110px tall, 12px off the bottom of the canvas.
+    const bar = {
+      left: 112,
+      top: 50 + 740 - 12 - 110,
+      width: 676,
+      height: 110,
+    };
+    const framing = cardFraming(canvas, bar);
+    expect(framing?.scale).toBe(1);
+    expect(framing?.x).toBe(350);
+    // Centred in the clear strip above the bar, not squeezed into a corner.
+    expect(framing?.y).toBeCloseTo((740 - 12 - 110 - 12) / 2, 5);
+  });
+
+  it("keeps full size beside a centred bar on a wide screen", () => {
+    const wide = { left: 0, top: 0, width: 1600, height: 740 };
+    const bar = { left: 464, top: 618, width: 672, height: 110 };
+    const framing = cardFraming(wide, bar);
+    expect(framing?.scale).toBe(1);
+    expect(framing?.x).toBe(800);
+  });
 });

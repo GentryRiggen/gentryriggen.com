@@ -41,6 +41,16 @@ describe("SeaTrialResult buttons", () => {
     ).toBeNull();
   });
 
+  it("marks only the bar (not the Details sheet) for camera framing", async () => {
+    const user = userEvent.setup();
+    finishTrial();
+    const { container } = render(<SeaTrialResult />);
+    await user.click(screen.getByRole("button", { name: "Details" }));
+    const marked = container.querySelectorAll("[data-sea-trial-result]");
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveAttribute("role", "region");
+  });
+
   it("has no below-deck picture in the result", () => {
     finishTrial(14);
     render(<SeaTrialResult />);

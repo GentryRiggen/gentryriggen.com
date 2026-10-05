@@ -45,9 +45,8 @@ const FOLLOW_EPSILON = 0.02;
 const UNDER_CAMERA_DEPTH = 1.5;
 /** A tall subject (a stern on end) fills at most this share of the view. */
 const FIT_SHARE = 0.8;
-/** The result card, read (never changed) to keep the wreck out from under it. */
-const RESULT_CARD_SELECTOR =
-  '[role="dialog"][aria-labelledby="sea-trial-title"]';
+/** The slim result bar, read (never changed) to keep the wreck out from under it. */
+const RESULT_CARD_SELECTOR = "[data-sea-trial-result]";
 
 // Scratch values for the per-frame follow, so it allocates nothing.
 const offset = new Vector3();
