@@ -7,6 +7,8 @@
  * production builds never read it.
  */
 
+import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
+
 export interface ShipBuilderTestConfig {
   /** Seconds of scene time every animation should show. */
   freezeTime?: number;
@@ -37,7 +39,7 @@ export const FROZEN_STEP = 10;
 
 /** The fixed scene time, or null when the clock runs normally. */
 export function frozenTime(): number | null {
-  if (process.env.NODE_ENV === "production") return null;
+  if (!TEST_HOOKS_ENABLED) return null;
   if (typeof window === "undefined") return null;
   const time = window.__SHIP_BUILDER_TEST__?.freezeTime;
   return typeof time === "number" && Number.isFinite(time) ? time : null;
@@ -54,7 +56,7 @@ function finiteTestNumber(value: number | undefined): number | null {
 
 /** Seconds the test wants the sea trial held at, or null. */
 export function testTrialSeconds(): number | null {
-  if (process.env.NODE_ENV === "production") return null;
+  if (!TEST_HOOKS_ENABLED) return null;
   if (typeof window === "undefined") return null;
   const seconds = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.trialSeconds);
   return seconds !== null && seconds >= 0 ? seconds : null;
@@ -62,7 +64,7 @@ export function testTrialSeconds(): number | null {
 
 /** The sea trial playback speed multiplier; 1 when no test sets it. */
 export function testTrialSpeed(): number {
-  if (process.env.NODE_ENV === "production") return 1;
+  if (!TEST_HOOKS_ENABLED) return 1;
   if (typeof window === "undefined") return 1;
   const speed = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.trialSpeed);
   return speed !== null && speed > 0 ? speed : 1;
@@ -73,7 +75,7 @@ export function testTrialSpeed(): number {
  * null leaves it to the device's performance, as in production.
  */
 export function testAoOverride(): boolean | null {
-  if (process.env.NODE_ENV === "production") return null;
+  if (!TEST_HOOKS_ENABLED) return null;
   if (typeof window === "undefined") return null;
   const ao = window.__SHIP_BUILDER_TEST__?.ao;
   return typeof ao === "boolean" ? ao : null;

@@ -41,8 +41,41 @@ jobs:
 
   # ── Browser tests (runs in parallel with validate) ──
   e2e:
-    name: 🎭 E2E Tests
+    name: 🎭 E2E ${{ matrix.name }}
     runs-on: ubuntu-latest
+    # Software WebGL (SwiftShader) takes every core it can get, so those specs
+    # get their own jobs with one worker; running them beside the plain specs
+    # starves those and makes them time out.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Builder + home (all browsers)
+            files: e2e/home.spec.ts e2e/ship-builder.spec.ts
+            args: --grep-invert "holding a placed block|paints a tapped block|renders the 3D scene"
+            workers: 2
+            browsers: ""
+            no-webgl: 1
+          - name: WebGL builder scene
+            files: e2e/ship-builder.spec.ts
+            args: --project=chromium --grep "holding a placed block|paints a tapped block|renders the 3D scene"
+            workers: 1
+            browsers: chromium
+          - name: WebGL iceberg + time
+            files: e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts
+            args: --project=chromium
+            workers: 1
+            browsers: chromium
+          - name: WebGL sea trial
+            files: e2e/ship-builder-trial.spec.ts
+            args: --project=chromium
+            workers: 1
+            browsers: chromium
+          - name: WebGL visual
+            files: e2e/ship-builder-visual.spec.ts
+            args: --project=chromium
+            workers: 1
+            browsers: chromium
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
@@ -60,22 +93,24 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-playwright-${{ matrix.browsers || 'all' }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            ${{ runner.os }}-playwright-${{ matrix.browsers || 'all' }}-
 
       - name: 🌐 Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps ${{ matrix.browsers }}
 
       - name: 🎬 Run E2E tests
-        run: npm run test:e2e
+        env:
+          E2E_NO_WEBGL: ${{ matrix.no-webgl }}
+        run: npx playwright test ${{ matrix.files }} ${{ matrix.args }} --workers=${{ matrix.workers }}
 
       # Visual diffs (expected, actual, diff images) live in the report.
       - name: 📤 Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ strategy.job-index }}
           path: |
             playwright-report
             test-results

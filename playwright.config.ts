@@ -13,17 +13,19 @@ const port = process.env.PLAYWRIGHT_PORT ?? "3000";
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
+  /* Software WebGL on a shared runner is slow; 30s is too tight for it. */
+  timeout: 45_000,
   testDir: "./e2e",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: "html",
+  workers: process.env.CI ? 2 : undefined,
+  /* CI also prints each test as it finishes, so a long run shows progress. Reporter to use. See https://playwright.dev/docs/test-reporters */
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "html",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -36,7 +38,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        /* On Linux, Chromium renders WebGL in software, which makes every
+           click in a ship builder test wait on the 3D scene. The plain specs
+           don't need it (the app shows its fallback), so CI turns it off for
+           them; the WebGL specs start their own browsers. */
+        launchOptions: {
+          args: process.env.E2E_NO_WEBGL ? ["--disable-3d-apis"] : [],
+        },
+      },
     },
 
     {
@@ -67,9 +78,11 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /* Test the static export (what ships), not the dev server: no on-demand
+     compiling, so the 3D page is ready as soon as it is requested. */
   webServer: {
-    command: `npm run dev -- --port ${port}`,
+    command: `NEXT_PUBLIC_E2E=1 npm run build && npx serve out --listen ${port} --no-clipboard`,
+    timeout: 180_000,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
   },
