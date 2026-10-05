@@ -141,7 +141,7 @@ function ResultCard({ trial }: ResultCardProps) {
           >
             <look.Icon className="h-5 w-5" />
           </span>
-          <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+          <p className="min-w-0 flex-1 line-clamp-2 text-sm font-semibold">
             {summary.title}
           </p>
           <button
@@ -155,10 +155,17 @@ function ResultCard({ trial }: ResultCardProps) {
           </button>
           <button
             type="button"
+            aria-label="Back to building"
+            title="Back to building"
             onClick={handleBackToBuilding}
             className={`${primaryButtonClass} min-h-11`}
           >
-            Back to building
+            <span aria-hidden="true" className="max-sm:hidden">
+              Back to building
+            </span>
+            <span aria-hidden="true" className="sm:hidden">
+              Back
+            </span>
           </button>
         </div>
         {timeline && (
@@ -166,8 +173,9 @@ function ResultCard({ trial }: ResultCardProps) {
             <TrialScrubber timeline={timeline} compact />
             <button
               type="button"
+              title="Watch again"
               onClick={replay}
-              className={`${buttonClass} min-h-11`}
+              className={`${buttonClass} min-h-11 max-sm:min-w-11`}
             >
               <Repeat aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="max-sm:sr-only">Watch again</span>
@@ -176,8 +184,9 @@ function ResultCard({ trial }: ResultCardProps) {
             {canFollow && (
               <button
                 type="button"
+                title={FOLLOW_HER_DOWN}
                 onClick={descend}
-                className={`${buttonClass} min-h-11`}
+                className={`${buttonClass} min-h-11 max-sm:min-w-11`}
               >
                 <ArrowDownToLine
                   aria-hidden="true"
