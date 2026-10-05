@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.8.0",
+    date: "2026-10-05",
+    title: "The long way down",
+    highlights: [
+      "Iceberg trials happen at night now, and the ship's lights flicker and then go out as she floods",
+      "A long ship like the Titanic can crack in two as her stern lifts out of the water, in slow motion. The stern falls back, stands straight up, then slides under",
+      "Pick Real, Break her or Hold together before you aim, to choose whether she can break",
+      "When she sinks, tap Follow her down to ride with her all the way to the sea floor, and look around the wreck",
+      "Watch again replays the whole thing, and the slider on the result card lets you jump to any moment, like the break or the lights going out",
+      "Turn on the speaker button to hear the creaks, the crack and the bubbles (it starts muted)",
+    ],
+  },
+  {
     version: "2.7.0",
     date: "2026-10-05",
     title: "Shipshape",
