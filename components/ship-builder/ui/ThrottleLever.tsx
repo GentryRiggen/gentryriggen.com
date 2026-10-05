@@ -132,7 +132,7 @@ export default function ThrottleLever({ kind }: ThrottleLeverProps) {
       />
       <div
         data-testid="throttle-knob"
-        className={`absolute left-1/2 h-7 w-12 -translate-x-1/2 -translate-y-1/2 rounded-md border-2 shadow-md ${leverStyle.knobClass}`}
+        className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 border-2 shadow-md ${leverStyle.knobShapeClass} ${leverStyle.knobClass}`}
         style={{ top: `${topPercent}%` }}
       />
     </div>

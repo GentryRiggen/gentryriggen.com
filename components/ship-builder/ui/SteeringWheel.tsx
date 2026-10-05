@@ -31,6 +31,8 @@ function angleDelta(from: number, to: number): number {
 
 interface SteeringWheelProps {
   kind: ShipKind;
+  /** Overrides the kind's wheel size, e.g. a bigger wheel in the cockpit. */
+  sizeClass?: string;
 }
 
 /**
@@ -38,7 +40,7 @@ interface SteeringWheelProps {
  * `sailInput.rudder` and springs back to centre on release. Its picture
  * follows `sailInput` each frame, so the keyboard turns it too.
  */
-export default function SteeringWheel({ kind }: SteeringWheelProps) {
+export default function SteeringWheel({ kind, sizeClass }: SteeringWheelProps) {
   const { wheelStyle, label } = controlsForKind[kind];
   const reducedMotion = usePrefersReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -133,7 +135,7 @@ export default function SteeringWheel({ kind }: SteeringWheelProps) {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
-      className={`pointer-events-auto flex cursor-grab touch-none select-none items-center justify-center rounded-full active:cursor-grabbing ${wheelStyle.sizeClass} ${wheelStyle.backingClass}`}
+      className={`pointer-events-auto flex cursor-grab touch-none select-none items-center justify-center rounded-full active:cursor-grabbing ${sizeClass ?? wheelStyle.sizeClass} ${wheelStyle.backingClass}`}
     >
       <svg
         ref={rimRef}

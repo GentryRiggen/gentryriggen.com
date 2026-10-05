@@ -1,25 +1,18 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { useSyncExternalStore } from "react";
-import { CELLS_PER_KNOT } from "@/lib/ship-builder/sail/handling";
-import { getSailState, subscribeSail } from "@/lib/ship-builder/state/sailLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import useDriveKeys from "../hooks/useDriveKeys";
+import CockpitOverlay from "./CockpitOverlay";
 import { focusDriveButton } from "./DriveButton";
 import DriveViewSwitch from "./DriveViewSwitch";
 import SteeringWheel from "./SteeringWheel";
 import ThrottleLever from "./ThrottleLever";
+import useKnots from "./useKnots";
 import { panelClass } from "./styles";
 
-/** Whole knots, so the readout re-renders only when the number changes. */
-function getKnots(): number {
-  const sail = getSailState();
-  return sail ? Math.round(Math.abs(sail.speed) / CELLS_PER_KNOT) : 0;
-}
-
 function SpeedReadout() {
-  const knots = useSyncExternalStore(subscribeSail, getKnots, () => 0);
+  const knots = useKnots();
   return (
     <p
       aria-label={`Speed ${knots} knots`}
@@ -53,20 +46,27 @@ function EndDriveButton() {
 function SailingControls() {
   useDriveKeys();
   const kind = useShipBuilderStore((s) => s.ship.kind);
+  const isBridge = useShipBuilderStore(
+    (s) => s.drive.status === "sailing" && s.drive.view === "bridge"
+  );
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-col items-start gap-2">
           <DriveViewSwitch />
-          <SpeedReadout />
+          {!isBridge && <SpeedReadout />}
         </div>
         <EndDriveButton />
       </div>
-      <div className="flex items-end justify-between">
-        <SteeringWheel kind={kind} />
-        <ThrottleLever kind={kind} />
-      </div>
+      {isBridge ? (
+        <CockpitOverlay kind={kind} />
+      ) : (
+        <div className="flex items-end justify-between">
+          <SteeringWheel kind={kind} />
+          <ThrottleLever kind={kind} />
+        </div>
+      )}
     </div>
   );
 }
