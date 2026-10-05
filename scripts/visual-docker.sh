@@ -17,18 +17,28 @@ IMAGE="mcr.microsoft.com/playwright:v${VERSION}-noble"
 MODE="${1:-check}"
 SNAPSHOTS="e2e/ship-builder-visual.spec.ts-snapshots"
 
-PLAYWRIGHT_ARGS="e2e/ship-builder-visual.spec.ts --project=chromium --workers=1 --retries=0 --reporter=line"
+# VISUAL_GREP=capsizing runs just the matching tests (no spaces in it).
+PLAYWRIGHT_ARGS="e2e/ship-builder-visual.spec.ts ${VISUAL_GREP:+--grep=$VISUAL_GREP} --project=chromium --workers=1 --retries=0 --reporter=line"
 if [ "$MODE" = "update" ]; then
   PLAYWRIGHT_ARGS="$PLAYWRIGHT_ARGS --update-snapshots=all"
 fi
 
-docker run --rm --ipc=host \
+# CI renders on x86-64. Software GL gives faint per-pixel differences on other
+# CPUs (an Apple Silicon Docker is arm64), so render as amd64 too. This is
+# emulated, and so slow, on Apple Silicon; set VISUAL_PLATFORM=native to skip.
+PLATFORM="${VISUAL_PLATFORM:-linux/amd64}"
+PLATFORM_ARGS=()
+if [ "$PLATFORM" != "native" ]; then PLATFORM_ARGS=(--platform "$PLATFORM"); fi
+
+# VISUAL_CPUS=0.5 throttles the container, to mimic a slow shared runner.
+docker run --rm --ipc=host ${PLATFORM_ARGS[@]+"${PLATFORM_ARGS[@]}"} ${VISUAL_CPUS:+--cpus=$VISUAL_CPUS} \
   -v "$PWD":/repo \
   -v ship-builder-visual-npm-cache:/root/.npm \
   -e MODE="$MODE" \
   -e PLAYWRIGHT_ARGS="$PLAYWRIGHT_ARGS" \
   -e SNAPSHOTS="$SNAPSHOTS" \
   -e VISUAL_TOLERANCE="${VISUAL_TOLERANCE:-}" \
+  -e VISUAL_TRIAL_TOLERANCE="${VISUAL_TRIAL_TOLERANCE:-}" \
   -w /work \
   "$IMAGE" \
   bash -c '

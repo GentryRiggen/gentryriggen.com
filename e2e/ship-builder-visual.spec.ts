@@ -25,10 +25,12 @@ const FROZEN_SECONDS = 3;
 /** Sim seconds into a trial that catches a top-heavy ship rolling over. */
 const CAPSIZE_SECONDS = 1.8;
 /**
- * Sim seconds into an iceberg strike on a wall-less hull that catch her
- * going down by the bow: pitched about 0.17 rad with the deck near the sea.
+ * Sim seconds into an iceberg strike on the Titanic that catch the iceberg
+ * alongside her, with her lights still on and her funnels smoking. (An iceberg
+ * trial is always at night; a hull with no lights is a black shape on a black
+ * sea, so this uses the lit liner.)
  */
-const SINKING_SECONDS = 3.5;
+const STRIKE_SECONDS = 4.5;
 /**
  * Fraction of canvas pixels allowed to differ. SwiftShader is stable from run
  * to run (measured 0 differing pixels), so this only absorbs rare edge
@@ -231,18 +233,17 @@ test.describe("Ship Builder scene visuals", () => {
     );
   });
 
-  test("wall-less ship going down by the bow after an iceberg", async ({
-    page,
-  }) => {
+  test("Titanic struck by the iceberg at night", async ({ page }) => {
     await openFrozenScene(page, {
-      time: "Day",
+      time: "Night",
       sea: "Calm",
+      template: titanic,
       iceberg: true,
-      trialSeconds: SINKING_SECONDS,
+      trialSeconds: STRIKE_SECONDS,
     });
     await expectScene(
       page,
-      "iceberg-sinking-day-calm.png",
+      "titanic-iceberg-strike-night-calm.png",
       TRIAL_DIFF_PIXEL_RATIO
     );
   });
