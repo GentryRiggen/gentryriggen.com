@@ -94,6 +94,44 @@ export function endSectionAt(
     : STERN_SECTIONS[shape as SternShape](y, length);
 }
 
+/** Radius of the rounded bilge, as a share of the draft. */
+export const BILGE_RADIUS = 0.35 * HULL_DRAFT;
+
+/**
+ * The hull's half-width at world height `y`: the full half-beam above the
+ * bilge, rolling in along a quarter circle to a flat keel. The middle section
+ * and both ends are lofted from this one function, so they meet with no seam.
+ */
+export function hullHalfWidth(y: number, halfBeam: number): number {
+  const radius = Math.min(BILGE_RADIUS, halfBeam);
+  const arcTop = KEEL_Y + radius;
+  if (y >= arcTop) return halfBeam;
+  const drop = Math.min(radius, arcTop - Math.max(y, KEEL_Y));
+  return halfBeam - radius + Math.sqrt(radius * radius - drop * drop);
+}
+
+/** Heights where the bilge arc needs a row to read as round. */
+export function bilgeHeights(steps = 5): number[] {
+  return Array.from({ length: steps }, (_, i) => {
+    const angle = (Math.PI / 2) * ((i + 1) / (steps + 1));
+    return KEEL_Y + BILGE_RADIUS * (1 - Math.cos(angle));
+  });
+}
+
+/** How much the bow narrows at its waterline relative to the deck. */
+const BOW_FLARE = 0.12;
+
+/**
+ * Bow flare: a multiplier on the half-width of a bow slice. 1 at the hull
+ * end and at deck level; the sections below the deck pull in toward the stem,
+ * so the bow widens slightly toward the deck.
+ * `reachFraction` is the distance from the hull end divided by the reach.
+ */
+export function bowFlare(y: number, reachFraction: number): number {
+  const aboveWater = Math.min(1, Math.max(0, y / DECK_Y));
+  return 1 - BOW_FLARE * reachFraction * (1 - aboveWater) ** 2;
+}
+
 /** Points per side of the outline (plus the tip). */
 export const OUTLINE_STEPS = 12;
 
@@ -157,15 +195,15 @@ export function bowAnchorSpot(
   const section = BOW_SECTIONS[bow](ANCHOR_Y, length);
   const x = section.reach * 0.45;
   const delta = 0.02;
-  const slope =
-    (halfWidthAt(section, halfBeam, x + delta) -
-      halfWidthAt(section, halfBeam, x - delta)) /
-    (2 * delta);
+  const width = hullHalfWidth(ANCHOR_Y, halfBeam);
+  const flaredWidth = (at: number) =>
+    halfWidthAt(section, width, at) * bowFlare(ANCHOR_Y, at / section.reach);
+  const slope = (flaredWidth(x + delta) - flaredWidth(x - delta)) / (2 * delta);
   const normalX = -slope;
   const normalZ = side;
   return {
     x,
-    z: side * halfWidthAt(section, halfBeam, x),
+    z: side * flaredWidth(x),
     yaw: Math.atan2(normalX, normalZ),
   };
 }
