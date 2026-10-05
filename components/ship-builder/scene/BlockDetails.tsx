@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { sidesKey, type BlockSides } from "@/lib/ship-builder/model/blockSides";
 import type { GridPartDef } from "@/lib/ship-builder/model/types";
 import {
   BRIDGE_WINDOW_ROWS,
@@ -22,6 +23,8 @@ interface BlockDetailsProps {
   height: number;
   tint: PartTint;
   emphasis: PartEmphasis;
+  /** Sides joined to a neighbouring block: they get no windows or trim. */
+  joined: BlockSides;
   /** Faces to give a balcony, for balcony cabins. */
   balconyFaces?: Face[];
   /** Varies which windows are lit from block to block; fixed per block. */
@@ -47,6 +50,7 @@ export default function BlockDetails({
   def,
   size,
   height,
+  joined,
   tint,
   emphasis,
   balconyFaces,
@@ -63,6 +67,9 @@ export default function BlockDetails({
   const hasWindows = isBridge || stripeColor !== null;
   const windowGlow = WINDOW_GLOW[windowGroupOf(def) ?? "bridge"];
   const { litFraction } = windowGlow;
+  const joinedKey = sidesKey(joined);
+  const hasExposedWall =
+    !joined.bow || !joined.stern || !joined.starboard || !joined.port;
   const windows = useMemo(
     () =>
       hasWindows
@@ -70,17 +77,20 @@ export default function BlockDetails({
             { x: sizeX, z: sizeZ },
             isBridge ? BRIDGE_WINDOW_ROWS : CABIN_WINDOW_ROWS,
             (index) => isWindowLit(index, litFraction, seed),
-            isBridge ? height : undefined
+            isBridge ? height : undefined,
+            joined
           )
         : null,
-    [hasWindows, isBridge, sizeX, sizeZ, height, litFraction, seed]
+    // `joinedKey` stands for the mask, which is a fresh object each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasWindows, isBridge, sizeX, sizeZ, height, litFraction, seed, joinedKey]
   );
   useEffect(
     () => () => {
       windows?.glass?.dispose();
       windows?.litGlass?.dispose();
       windows?.litHalo?.dispose();
-      windows?.frames.dispose();
+      windows?.frames?.dispose();
     },
     [windows]
   );
@@ -92,9 +102,11 @@ export default function BlockDetails({
       )}
       {windows && (
         <>
-          <mesh geometry={windows.frames}>
-            <Surface color={PALETTE.windowFrame} {...surface} />
-          </mesh>
+          {windows.frames && (
+            <mesh geometry={windows.frames}>
+              <Surface color={PALETTE.windowFrame} {...surface} />
+            </mesh>
+          )}
           {windows.glass && (
             <mesh geometry={windows.glass}>
               <Surface
@@ -124,18 +136,18 @@ export default function BlockDetails({
           )}
         </>
       )}
-      {stripeColor && (
+      {stripeColor && hasExposedWall && (
         <mesh
           position={[0, CLASS_STRIPE_Y, 0]}
-          geometry={trimBand(size, CLASS_STRIPE_HEIGHT)}
+          geometry={trimBand(size, CLASS_STRIPE_HEIGHT, joined)}
         >
           <Surface color={stripeColor} {...surface} />
         </mesh>
       )}
-      {!stripeColor && (
+      {!stripeColor && hasExposedWall && (
         <mesh
           position={[0, height - DECK_LINE_DROP, 0]}
-          geometry={trimBand(size, DECK_LINE_HEIGHT)}
+          geometry={trimBand(size, DECK_LINE_HEIGHT, joined)}
         >
           <Surface color={PALETTE.deckLine} {...surface} />
         </mesh>

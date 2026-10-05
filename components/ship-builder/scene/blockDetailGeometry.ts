@@ -1,10 +1,10 @@
-import {
-  BoxGeometry,
-  type BufferGeometry,
-  ExtrudeGeometry,
-  Shape,
-} from "three";
+import { BoxGeometry, BufferGeometry, Float32BufferAttribute } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import {
+  NO_JOINED_SIDES,
+  sidesKey,
+  type BlockSides,
+} from "@/lib/ship-builder/model/blockSides";
 import { DEFAULT_BEVEL } from "./roundedBox";
 
 export interface BlockSize {
@@ -29,6 +29,28 @@ interface WindowRow {
 
 /** Faces sit at 0.96 of the footprint, the same inset the body box uses. */
 const FACE_INSET = 0.48;
+
+/**
+ * The block side a local face is on: world +x is the bow and +z the starboard
+ * side (see modelToWorld).
+ */
+const FACE_SIDE: Record<Face, keyof BlockSides> = {
+  "x+": "bow",
+  "x-": "stern",
+  "z+": "starboard",
+  "z-": "port",
+};
+
+/**
+ * The sides at the two ends of a face, along its width: the low end
+ * (smaller local x or z) and the high end.
+ */
+const FACE_ENDS: Record<Face, [keyof BlockSides, keyof BlockSides]> = {
+  "x+": ["port", "starboard"],
+  "x-": ["port", "starboard"],
+  "z+": ["stern", "bow"],
+  "z-": ["stern", "bow"],
+};
 const FRAME_MARGIN = 0.03;
 /** Frames stand this far off the body face, and reach this far into it. */
 const FRAME_PROUD = 0.02;
@@ -99,8 +121,8 @@ export interface WindowGeometries {
   litGlass: BufferGeometry | null;
   /** Slightly larger flat panels over the lit panes: their night-time bloom. */
   litHalo: BufferGeometry | null;
-  /** Each pane's frame (a ring with a wider sill) and a band's mullions. */
-  frames: BufferGeometry;
+  /** Each pane's frame (a ring with a wider sill) and a band's mullions. Null when no face has windows. */
+  frames: BufferGeometry | null;
 }
 
 /**
@@ -116,7 +138,9 @@ export function buildWindowGeometries(
   rows: WindowRow[],
   isLit: (paneIndex: number) => boolean = () => false,
   /** A bridge's height: its roof wings are merged into the frames. */
-  wingsHeight?: number
+  wingsHeight?: number,
+  /** Sides joined to a neighbour: nothing is built on those faces. */
+  joined: BlockSides = NO_JOINED_SIDES
 ): WindowGeometries {
   const glass: BoxGeometry[] = [];
   const litGlass: BoxGeometry[] = [];
@@ -126,9 +150,24 @@ export function buildWindowGeometries(
   const frameDepth = FRAME_PROUD + FRAME_BACK;
   const frameMid = (FRAME_PROUD - FRAME_BACK) / 2;
   for (const row of rows) {
+    if (joined[FACE_SIDE[row.face]]) continue;
     const length = row.face[0] === "x" ? size.z : size.x;
+    // A band reaches the cell edge where its face meets a joined side, and
+    // keeps clear of the rounded vertical edge where it does not.
+    const [lowEnd, highEnd] = FACE_ENDS[row.face];
+    const low = joined[lowEnd] ? length / 2 : length * 0.48 - DEFAULT_BEVEL;
+    const high = joined[highEnd] ? length / 2 : length * 0.48 - DEFAULT_BEVEL;
+    const bandCentre = (high - low) / 2;
+    const bandWidth = low + high;
     // Keep every window out of the rounded vertical edges of the body.
-    const paneWidth = row.width ?? length * 0.96 - EDGE_CLEARANCE * 2;
+    const paneWidth =
+      row.width ??
+      bandWidth -
+        2 * FRAME_MARGIN -
+        (joined[lowEnd] ? 0 : EDGE_CLEARANCE - DEFAULT_BEVEL - FRAME_MARGIN) -
+        (joined[highEnd] ? 0 : EDGE_CLEARANCE - DEFAULT_BEVEL - FRAME_MARGIN);
+    // Windows stay centred on the face; a continuous band follows its ends.
+    const shift = row.width === undefined ? bandCentre : 0;
     const frameWidth = paneWidth + FRAME_MARGIN * 2;
     const bar = (
       along: number,
@@ -155,16 +194,17 @@ export function buildWindowGeometries(
         faceBox(
           row.face,
           size,
-          0,
+          bandCentre,
           row,
-          length * 0.96 - DEFAULT_BEVEL * 2,
+          bandWidth,
           row.height + 0.12,
           BAND_PROUD + FRAME_BACK,
           (BAND_PROUD - FRAME_BACK) / 2
         )
       );
     }
-    for (const along of slotCentres(length, row)) {
+    for (const slot of slotCentres(length, row)) {
+      const along = slot + shift;
       bar(along, frameWidth, FRAME_MARGIN, row.height / 2 + FRAME_MARGIN / 2);
       const sideOffset = paneWidth / 2 + FRAME_MARGIN / 2;
       bar(along - sideOffset, FRAME_MARGIN, row.height, 0);
@@ -215,53 +255,157 @@ export function buildWindowGeometries(
       // Light mullions break the continuous band into panes.
       const panes = Math.max(2, Math.round(length));
       for (let i = 1; i < panes; i++) {
-        bar(-paneWidth / 2 + (paneWidth * i) / panes, 0.04, row.height, 0);
+        bar(
+          shift - paneWidth / 2 + (paneWidth * i) / panes,
+          0.04,
+          row.height,
+          0
+        );
       }
     }
   }
-  if (wingsHeight !== undefined)
-    frames.push(buildBridgeWings(size, wingsHeight));
+  if (wingsHeight !== undefined) {
+    const wings = buildBridgeWings(size, wingsHeight, joined);
+    if (wings) frames.push(wings);
+  }
   return {
     glass: glass.length > 0 ? mergeGeometries(glass) : null,
     litGlass: litGlass.length > 0 ? mergeGeometries(litGlass) : null,
     litHalo: litHalo.length > 0 ? mergeGeometries(litHalo) : null,
-    frames: mergeGeometries(frames),
+    frames: frames.length > 0 ? mergeGeometries(frames) : null,
   };
 }
 
 const trimCache = new Map<string, BufferGeometry>();
+const CORNER_SEGMENTS = 4;
+
+interface RibbonPoint {
+  x: number;
+  z: number;
+  /** Outward unit normal in the XZ plane. */
+  nx: number;
+  nz: number;
+}
+
+/** The sign (+1 or -1) of a block side along its axis, and that axis. */
+const TRIM_SIDES = [
+  { side: "bow", axis: "x", sign: 1 },
+  { side: "starboard", axis: "z", sign: 1 },
+  { side: "stern", axis: "x", sign: -1 },
+  { side: "port", axis: "z", sign: -1 },
+] as const;
 
 /**
- * A flat band that hugs the rounded body: the footprint outline pushed out by
- * TRIM_PROUD, with corner arcs concentric with the body's, so a stripe or a
- * deck line wraps the corners without poking out. Centred on the origin;
- * cached per size for the session (shared, never disposed).
+ * A flat band on the exposed vertical faces of the body: the footprint
+ * outline pushed out by TRIM_PROUD, as an open ribbon with no caps. Each
+ * exposed side is a straight run that ends at the cell edge where the next
+ * side is joined (so a neighbour's band carries on flush) and at the start of
+ * a corner arc, concentric with the body's, where it is not. Joined sides get
+ * no band. Centred on the origin; cached per size, height and mask (shared,
+ * never disposed).
  */
-export function trimBand(size: BlockSize, height: number): BufferGeometry {
-  const key = [size.x, size.z, height].join(":");
+export function trimBand(
+  size: BlockSize,
+  height: number,
+  joined: BlockSides = NO_JOINED_SIDES
+): BufferGeometry {
+  const key = [size.x, size.z, height, sidesKey(joined)].join(":");
   const cached = trimCache.get(key);
   if (cached) return cached;
-  const hx = size.x * FACE_INSET + TRIM_PROUD;
-  const hz = size.z * FACE_INSET + TRIM_PROUD;
-  const r = DEFAULT_BEVEL + TRIM_PROUD;
-  const shape = new Shape();
-  shape.moveTo(-hx + r, -hz);
-  shape.lineTo(hx - r, -hz);
-  shape.absarc(hx - r, -hz + r, r, -Math.PI / 2, 0, false);
-  shape.lineTo(hx, hz - r);
-  shape.absarc(hx - r, hz - r, r, 0, Math.PI / 2, false);
-  shape.lineTo(-hx + r, hz);
-  shape.absarc(-hx + r, hz - r, r, Math.PI / 2, Math.PI, false);
-  shape.lineTo(-hx, -hz + r);
-  shape.absarc(-hx + r, -hz + r, r, Math.PI, Math.PI * 1.5, false);
-  const geometry = new ExtrudeGeometry(shape, {
-    depth: height,
-    bevelEnabled: false,
-    curveSegments: 4,
-  });
-  // The shape lies in XY and extrudes along +Z: stand it up so +Z is +Y.
-  geometry.rotateX(-Math.PI / 2);
-  geometry.translate(0, -height / 2, 0);
+
+  const half = (axis: "x" | "z", sign: 1 | -1): number => {
+    const side = TRIM_SIDES.find((s) => s.axis === axis && s.sign === sign)!;
+    return (axis === "x" ? size.x : size.z) * (joined[side.side] ? 0.5 : 0.48);
+  };
+  const runs: RibbonPoint[][] = [];
+
+  for (const { side, axis, sign } of TRIM_SIDES) {
+    if (joined[side]) continue;
+    // Along the side, each end is the cell edge if the adjacent side is
+    // joined, else it stops a bevel short of the corner.
+    const alongAxis = axis === "x" ? "z" : "x";
+    const ends = ([-1, 1] as const).map((end) => {
+      const neighbour = TRIM_SIDES.find(
+        (s) => s.axis === alongAxis && s.sign === end
+      )!;
+      return joined[neighbour.side]
+        ? end * (alongAxis === "x" ? size.x : size.z) * 0.5
+        : end * (half(alongAxis, end) - DEFAULT_BEVEL);
+    });
+    const face = sign * (half(axis, sign) + TRIM_PROUD);
+    const normal = { nx: axis === "x" ? sign : 0, nz: axis === "z" ? sign : 0 };
+    runs.push(
+      ends.map((along) => ({
+        x: axis === "x" ? face : along,
+        z: axis === "x" ? along : face,
+        ...normal,
+      }))
+    );
+  }
+
+  // Corner arcs, only where both sides meeting at the corner are exposed.
+  const radius = DEFAULT_BEVEL + TRIM_PROUD;
+  for (const sx of [1, -1] as const) {
+    for (const sz of [1, -1] as const) {
+      const xSide = TRIM_SIDES.find((s) => s.axis === "x" && s.sign === sx)!;
+      const zSide = TRIM_SIDES.find((s) => s.axis === "z" && s.sign === sz)!;
+      if (joined[xSide.side] || joined[zSide.side]) continue;
+      const cx = sx * (half("x", sx) - DEFAULT_BEVEL);
+      const cz = sz * (half("z", sz) - DEFAULT_BEVEL);
+      const start = sx > 0 ? 0 : Math.PI;
+      const target = sz > 0 ? Math.PI / 2 : -Math.PI / 2;
+      let sweep = target - start;
+      if (sweep > Math.PI) sweep -= 2 * Math.PI;
+      if (sweep < -Math.PI) sweep += 2 * Math.PI;
+      const arc: RibbonPoint[] = [];
+      for (let i = 0; i <= CORNER_SEGMENTS; i++) {
+        const angle = start + (sweep * i) / CORNER_SEGMENTS;
+        const nx = Math.cos(angle);
+        const nz = Math.sin(angle);
+        arc.push({ x: cx + nx * radius, z: cz + nz * radius, nx, nz });
+      }
+      runs.push(arc);
+    }
+  }
+
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const top = height / 2;
+  const bottom = -height / 2;
+  for (const run of runs) {
+    for (let i = 0; i + 1 < run.length; i++) {
+      const a = run[i];
+      const b = run[i + 1];
+      // Wind each quad so it faces along the run's outward normal.
+      const faceUp = -(b.z - a.z) * a.nx + (b.x - a.x) * a.nz > 0;
+      const quad = faceUp
+        ? [
+            [a, bottom],
+            [b, bottom],
+            [b, top],
+            [a, bottom],
+            [b, top],
+            [a, top],
+          ]
+        : [
+            [a, bottom],
+            [b, top],
+            [b, bottom],
+            [a, bottom],
+            [a, top],
+            [b, top],
+          ];
+      for (const [point, y] of quad as [RibbonPoint, number][]) {
+        positions.push(point.x, y, point.z);
+        normals.push(point.nx, 0, point.nz);
+      }
+    }
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
   trimCache.set(key, geometry);
   return geometry;
 }
@@ -284,15 +428,18 @@ export const BRIDGE_WINDOW_ROWS: WindowRow[] = [
  */
 export function buildBridgeWings(
   size: BlockSize,
-  height: number
-): BufferGeometry {
+  height: number,
+  joined: BlockSides = NO_JOINED_SIDES
+): BufferGeometry | null {
   const parts: BoxGeometry[] = [];
   const reach = size.z * 0.5;
   const inner = size.z * FACE_INSET - 0.16;
   const deckLength = Math.min(size.x * 0.6, size.x - 0.3);
   const deckDepth = reach - inner;
   const deckY = height - 0.1;
-  for (const sign of [-1, 1]) {
+  for (const sign of [-1, 1] as const) {
+    // +z is the starboard side, -z the port side.
+    if (joined[sign > 0 ? "starboard" : "port"]) continue;
     parts.push(
       box(
         deckLength,
@@ -305,5 +452,5 @@ export function buildBridgeWings(
       box(deckLength, 0.07, 0.015, 0, deckY + 0.05, sign * (reach - 0.0075))
     );
   }
-  return mergeGeometries(parts);
+  return parts.length > 0 ? mergeGeometries(parts) : null;
 }

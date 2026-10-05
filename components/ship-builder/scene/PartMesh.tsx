@@ -8,6 +8,11 @@ import {
   stringTarget,
 } from "@/lib/ship-builder/model/attach";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
+import {
+  joinedSides,
+  NO_JOINED_SIDES,
+  type BlockSides,
+} from "@/lib/ship-builder/model/blockSides";
 import { getPartDef } from "@/lib/ship-builder/model/catalog";
 import {
   beamOf,
@@ -26,7 +31,7 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import BlockDetails from "./BlockDetails";
-import { roundedBox } from "./roundedBox";
+import { blockBody } from "./blockBody";
 import {
   Azipod,
   ClimbingWall,
@@ -99,6 +104,8 @@ const BRIDGE_HEIGHT = 0.8;
 interface BlockProps {
   def: GridPartDef;
   size: { x: number; z: number };
+  /** Sides merged into a neighbouring block: flat, flush, no details. */
+  joined: BlockSides;
   color?: PaintColor;
   tint: PartTint;
   emphasis: PartEmphasis;
@@ -111,6 +118,7 @@ interface BlockProps {
 function Block({
   def,
   size,
+  joined,
   color,
   tint,
   emphasis,
@@ -128,15 +136,16 @@ function Block({
       />
     );
   }
-  // Blocks fill their level so stacks sit flush and fittings rest on top; the
-  // 0.96 footprint inset keeps a visible seam between neighbours. The bridge
-  // is a lower wheelhouse: nothing stacks or attaches on it.
+  // Blocks fill their level so stacks sit flush and fittings rest on top. The
+  // 0.96 footprint inset only holds on exposed sides: joined sides run flush
+  // to the cell edge so neighbours read as one wall. The bridge is a lower
+  // wheelhouse: nothing stacks or attaches on it.
   const height = def.role === "bridge" ? BRIDGE_HEIGHT : LEVEL_HEIGHT;
   return (
     <group>
       <mesh
         position={[0, height / 2, 0]}
-        geometry={roundedBox(size.x * 0.96, height, size.z * 0.96)}
+        geometry={blockBody(size, height, joined)}
         castShadow
         receiveShadow
       >
@@ -149,6 +158,7 @@ function Block({
         def={def}
         size={size}
         height={height}
+        joined={joined}
         tint={tint}
         emphasis={emphasis}
         balconyFaces={balconyFaces}
@@ -490,6 +500,11 @@ function PartMesh({
           <Block
             def={def}
             size={size}
+            joined={
+              part.anchor.kind === "grid"
+                ? joinedSides(ship, part, occupancy)
+                : NO_JOINED_SIDES
+            }
             color={color}
             tint={tint}
             emphasis={emphasis}
