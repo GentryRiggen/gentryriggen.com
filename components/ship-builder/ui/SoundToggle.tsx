@@ -1,7 +1,7 @@
 "use client";
 
 import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { soundSetting, useSoundEnabled } from "../audio/soundSetting";
 import { isAudioSupported, trialSynth } from "../audio/synth";
 import { buttonClass, pressedButtonClass } from "./styles";
@@ -11,8 +11,8 @@ const isNeverSupported = () => false;
 
 /**
  * Speaker button for the trial's sounds. Off by default and remembered. The
- * audio engine can only start from a tap, so a remembered "on" starts it on
- * the player's first tap or key press anywhere.
+ * audio engine can only start from a tap; a remembered "on" is unlocked by
+ * `TrialSound` (see `useSoundUnlock`), which is mounted from page load.
  */
 export default function SoundToggle() {
   const isOn = useSoundEnabled();
@@ -22,20 +22,6 @@ export default function SoundToggle() {
     isAudioSupported,
     isNeverSupported
   );
-
-  useEffect(() => {
-    if (!isSupported || !isOn || trialSynth.isEnabled()) return;
-    const start = () => {
-      if (!trialSynth.enable()) soundSetting.set(false);
-    };
-    const options = { once: true } as const;
-    window.addEventListener("pointerdown", start, options);
-    window.addEventListener("keydown", start, options);
-    return () => {
-      window.removeEventListener("pointerdown", start);
-      window.removeEventListener("keydown", start);
-    };
-  }, [isSupported, isOn]);
 
   if (!isSupported) return null;
 

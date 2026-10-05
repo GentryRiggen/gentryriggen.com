@@ -27,6 +27,13 @@ export interface TrialSynth {
   /** Silences everything and suspends the context. */
   disable: () => void;
   isEnabled: () => boolean;
+  /**
+   * Cuts the held sounds at once and suspends the context (the tab went
+   * to the background and nothing is driving the beds). Stays enabled.
+   */
+  pause: () => void;
+  /** Wakes a paused context. The next `setAmbient` brings the beds back. */
+  resume: () => void;
   play: (cue: Cue) => void;
   setAmbient: (ambient: AmbientParams) => void;
   /** 0 clear to 1 heavily muffled (underwater, slow motion). */
@@ -39,6 +46,8 @@ const NOISE_SECONDS = 3;
 const CLEAR_CUTOFF_HZ = 14000;
 const MUFFLED_CUTOFF_HZ = 260;
 const MASTER_LEVEL = 0.8;
+/** Smallest change in muffle or speed (0 to 1) worth sending to the audio thread. */
+const MIN_PARAM_STEP = 0.01;
 
 interface Engine {
   ctx: AudioContext;
@@ -509,12 +518,21 @@ export function createTrialSynth(): TrialSynth {
   let beds: AmbientBeds | null = null;
   let isOn = false;
   let ambient: AmbientParams = { sea: false, hum: false };
+  // What the audio thread was last told, so a steady frame sends nothing.
+  let applied: AmbientParams | null = null;
+  let appliedMuffle: number | null = null;
+  let appliedSpeed: number | null = null;
 
   function applyAmbient() {
     if (!engine || !beds) return;
     const t = engine.ctx.currentTime;
-    beds.seaGain.gain.setTargetAtTime(ambient.sea ? SEA_LEVEL : 0, t, 0.4);
-    beds.humGain.gain.setTargetAtTime(ambient.hum ? HUM_LEVEL : 0, t, 0.3);
+    if (!applied || applied.sea !== ambient.sea) {
+      beds.seaGain.gain.setTargetAtTime(ambient.sea ? SEA_LEVEL : 0, t, 0.4);
+    }
+    if (!applied || applied.hum !== ambient.hum) {
+      beds.humGain.gain.setTargetAtTime(ambient.hum ? HUM_LEVEL : 0, t, 0.3);
+    }
+    applied = { sea: ambient.sea, hum: ambient.hum };
   }
 
   function enable(): boolean {
@@ -529,6 +547,9 @@ export function createTrialSynth(): TrialSynth {
     } catch {
       engine = null;
       beds = null;
+      applied = null;
+      appliedMuffle = null;
+      appliedSpeed = null;
       return false;
     }
     isOn = true;
@@ -539,6 +560,23 @@ export function createTrialSynth(): TrialSynth {
   function disable() {
     isOn = false;
     if (engine) void engine.ctx.suspend();
+  }
+
+  function pause() {
+    ambient = { sea: false, hum: false };
+    if (!engine || !beds) return;
+    // A suspended context would not run a fade, so cut the beds first.
+    const t = engine.ctx.currentTime;
+    for (const { gain } of [beds.seaGain, beds.humGain]) {
+      gain.cancelScheduledValues(t);
+      gain.setValueAtTime(0, t);
+    }
+    applied = { sea: false, hum: false };
+    void engine.ctx.suspend();
+  }
+
+  function resume() {
+    if (isOn && engine) void engine.ctx.resume();
   }
 
   function play(cue: Cue) {
@@ -569,6 +607,13 @@ export function createTrialSynth(): TrialSynth {
   function setMuffle(amount: number) {
     if (!engine) return;
     const m = Math.min(1, Math.max(0, amount));
+    if (
+      appliedMuffle !== null &&
+      Math.abs(m - appliedMuffle) < MIN_PARAM_STEP
+    ) {
+      return;
+    }
+    appliedMuffle = m;
     const cutoff = CLEAR_CUTOFF_HZ * (MUFFLED_CUTOFF_HZ / CLEAR_CUTOFF_HZ) ** m;
     const t = engine.ctx.currentTime;
     engine.muffle.frequency.setTargetAtTime(cutoff, t, 0.15);
@@ -577,6 +622,13 @@ export function createTrialSynth(): TrialSynth {
 
   function setSpeed(next: number) {
     if (!engine || !beds) return;
+    if (
+      appliedSpeed !== null &&
+      Math.abs(next - appliedSpeed) < MIN_PARAM_STEP
+    ) {
+      return;
+    }
+    appliedSpeed = next;
     const t = engine.ctx.currentTime;
     // The hum sags in slow motion, like a tape slowing down.
     const pitch = 0.5 + 0.5 * next;
@@ -589,6 +641,8 @@ export function createTrialSynth(): TrialSynth {
     enable,
     disable,
     isEnabled: () => isOn,
+    pause,
+    resume,
     play,
     setAmbient,
     setMuffle,

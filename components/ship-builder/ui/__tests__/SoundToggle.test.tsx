@@ -58,16 +58,6 @@ describe("SoundToggle", () => {
     expect(screen.getByRole("button", { name: "Sound off" })).toBeVisible();
   });
 
-  it("starts remembered sound on the first tap", async () => {
-    localStorage.setItem("ship-builder:ui:sound", "on");
-    const user = userEvent.setup();
-    render(<SoundToggle />);
-    await screen.findByRole("button", { name: "Sound on" });
-    expect(trialSynth.enable).not.toHaveBeenCalled();
-    await user.click(document.body);
-    expect(trialSynth.enable).toHaveBeenCalledTimes(1);
-  });
-
   it("renders nothing without Web Audio", () => {
     isAudioSupported.mockReturnValue(false);
     const { container } = render(<SoundToggle />);
