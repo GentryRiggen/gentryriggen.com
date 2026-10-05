@@ -48,6 +48,14 @@ export default function ShipBuilder() {
   const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
   const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
+  // The sinking is the show: clear everything that is not part of it.
+  const inFocus = useShipBuilderStore(
+    (s) => s.trial.status === "running" || s.trial.status === "result"
+  );
+
+  // Adjusting state during render (not in an effect) so no frame shows a
+  // drawer left open behind the trial.
+  if (inFocus && openDrawer !== null) setOpenDrawer(null);
 
   // The trial plays in the 3D scene: without WebGL, or once the builder is
   // gone, nothing could end it and building would stay paused.
@@ -64,10 +72,12 @@ export default function ShipBuilder() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden overscroll-none select-none bg-slate-100 [-webkit-touch-callout:none] text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <AppHeader />
+      <div hidden={inFocus}>
+        <AppHeader />
+      </div>
 
       <div className="relative flex min-h-0 flex-1">
-        {openDrawer && (
+        {openDrawer && !inFocus && (
           <div
             data-testid="drawer-backdrop"
             aria-hidden="true"
@@ -80,6 +90,7 @@ export default function ShipBuilder() {
           label="Parts"
           open={openDrawer === "left"}
           onOpenChange={(open) => handleDrawerOpenChange("left", open)}
+          hidden={inFocus}
           collapsed={collapsed.left}
           onCollapsedChange={() => collapsed.toggle("left")}
         >
@@ -103,7 +114,7 @@ export default function ShipBuilder() {
         </Drawer>
         <main className="relative isolate min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
-          <ViewControls />
+          {!inFocus && <ViewControls />}
           <Notice />
           <RemovalConfirm />
           <SelectionBar />
@@ -114,8 +125,8 @@ export default function ShipBuilder() {
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}
           <SeaTrialResult />
-          <HelpButton />
-          <UndoRedo />
+          {!inFocus && <HelpButton />}
+          {!inFocus && <UndoRedo />}
         </main>
         <Drawer
           side="right"
@@ -123,6 +134,7 @@ export default function ShipBuilder() {
           toggleContent={<StatsHud />}
           open={openDrawer === "right"}
           onOpenChange={(open) => handleDrawerOpenChange("right", open)}
+          hidden={inFocus}
           collapsed={collapsed.right}
           onCollapsedChange={() => collapsed.toggle("right")}
         >

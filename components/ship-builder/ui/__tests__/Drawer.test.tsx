@@ -172,3 +172,22 @@ describe("Drawer", () => {
     });
   });
 });
+
+describe("Drawer hidden", () => {
+  it("takes the drawer and its toggle out of the layout but keeps it mounted", () => {
+    render(
+      <Drawer
+        side="left"
+        label="Parts"
+        open={false}
+        onOpenChange={() => {}}
+        hidden
+      >
+        <p>Inside</p>
+      </Drawer>
+    );
+    expect(screen.queryByRole("button", { name: "Parts" })).toBeNull();
+    expect(screen.queryByRole("complementary", { name: "Parts" })).toBeNull();
+    expect(screen.getByText("Inside")).toBeInTheDocument();
+  });
+});

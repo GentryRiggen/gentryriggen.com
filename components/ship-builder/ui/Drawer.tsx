@@ -25,6 +25,8 @@ interface DrawerProps {
    * summary). The button keeps the drawer label as its accessible name.
    */
   toggleContent?: ReactNode;
+  /** Takes the drawer and its toggle out of the layout without unmounting it. */
+  hidden?: boolean;
   children: ReactNode;
 }
 
@@ -49,6 +51,7 @@ export default function Drawer({
   collapsed = false,
   onCollapsedChange,
   toggleContent,
+  hidden = false,
   children,
 }: DrawerProps) {
   const id = useId();
@@ -97,6 +100,7 @@ export default function Drawer({
       <button
         ref={toggleRef}
         type="button"
+        hidden={hidden}
         aria-label={toggleContent ? label : undefined}
         aria-expanded={open}
         aria-controls={id}
@@ -110,6 +114,7 @@ export default function Drawer({
       <aside
         ref={asideRef}
         id={id}
+        hidden={hidden}
         aria-label={label}
         className={`absolute inset-y-0 z-30 w-72 overflow-y-auto transition-[transform,visibility] lg:static lg:z-auto lg:translate-x-0 ${panelClass} ${
           left ? "left-0 border-r" : "right-0 border-l"

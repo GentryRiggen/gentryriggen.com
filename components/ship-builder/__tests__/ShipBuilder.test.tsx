@@ -124,3 +124,16 @@ describe("ShipBuilder version", () => {
     );
   });
 });
+
+describe("ShipBuilder focus mode", () => {
+  it("clears the chrome while a trial runs and brings it back after", () => {
+    render(<ShipBuilder />);
+    expect(screen.getByRole("group", { name: "Camera" })).toBeVisible();
+    act(() => useShipBuilderStore.getState().startTrial("calm", 12));
+    expect(screen.queryByRole("group", { name: "Camera" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Parts" })).toBeNull();
+    expect(screen.queryByRole("banner")).toBeNull();
+    act(() => useShipBuilderStore.getState().endTrial());
+    expect(screen.getByRole("group", { name: "Camera" })).toBeVisible();
+  });
+});
