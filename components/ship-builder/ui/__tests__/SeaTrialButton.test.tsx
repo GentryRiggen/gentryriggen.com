@@ -47,6 +47,16 @@ describe("SeaTrialButton menu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("is hidden while the drive picker or a drive is on", () => {
+    render(<SeaTrialButton />);
+    act(() => store().openDrive());
+    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    act(() => store().startDrive({ seed: 1, kinds: [], density: "few" }));
+    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    act(() => store().endDrive());
+    expect(trigger()).toBeVisible();
+  });
+
   it("Waves starts the plain sea trial", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);
