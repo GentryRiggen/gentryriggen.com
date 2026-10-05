@@ -42,9 +42,11 @@ export default function SeaTrialEffects() {
   const isResult = useShipBuilderStore((s) => s.trial.status === "result");
 
   // The runner stops with the sim, but bubbles keep rising and fade out behind
-  // the result card. A held test clock stays held.
+  // the result card. A held test clock stays held, and so does a moment the
+  // player scrubbed to: it stays as it was until they replay.
   useFrame((_, delta) => {
     if (!isResult || reducedMotion) return;
+    if (trialPlayback.scrubbing || trialPlayback.scrubbed) return;
     if (frozenTime() !== null || testTrialSeconds() !== null) return;
     advanceEffectsClock(delta, testTrialSpeed());
   });

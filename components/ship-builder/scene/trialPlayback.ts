@@ -50,6 +50,11 @@ export interface TrialPlayback {
   speed: number;
   /** The player is dragging the scrubber: jumps, not real playback. */
   scrubbing: boolean;
+  /**
+   * The player has scrubbed this result, so the moment they chose stays put:
+   * the effects clock stops until the trial is replayed or the result closes.
+   */
+  scrubbed?: boolean;
 }
 
 export const trialPlayback: TrialPlayback = createPlayback();
@@ -71,6 +76,7 @@ function createPlayback(): TrialPlayback {
     events: [],
     speed: 1,
     scrubbing: false,
+    scrubbed: false,
   };
 }
 

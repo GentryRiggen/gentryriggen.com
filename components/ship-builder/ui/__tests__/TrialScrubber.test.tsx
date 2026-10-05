@@ -8,7 +8,7 @@ import {
   type TrialInput,
 } from "@/lib/ship-builder/sim/types";
 import { resetPlayback, trialPlayback } from "../../scene/trialPlayback";
-import TrialScrubber from "../TrialScrubber";
+import TrialScrubber, { markLanes } from "../TrialScrubber";
 
 const INPUT: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
@@ -104,5 +104,38 @@ describe("TrialScrubber", () => {
     fireEvent.change(screen.getByRole("slider"), { target: { value: "3" } });
     unmount();
     expect(trialPlayback.scrubbing).toBe(false);
+  });
+
+  it("keeps the scrubbed moment (effects frozen) after release, until it closes", () => {
+    const { unmount } = render(<TrialScrubber timeline={timeline()} />);
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "3" } });
+    fireEvent.pointerUp(screen.getByRole("slider"));
+    expect(trialPlayback.scrubbing).toBe(false);
+    expect(trialPlayback.scrubbed).toBe(true);
+    unmount();
+    expect(trialPlayback.scrubbed).toBe(false);
+  });
+});
+
+describe("markLanes", () => {
+  const mark = (at: number) => ({ kind: "broke" as const, label: "x", at });
+
+  it("stacks marks that fall close together and keeps the rest on the track", () => {
+    const marks = [mark(1), mark(6), mark(6.4), mark(9)];
+    expect(markLanes(marks, 10)).toEqual([0, 0, 1, 0]);
+  });
+
+  it("wraps after a few lanes", () => {
+    const marks = [mark(5), mark(5.1), mark(5.2), mark(5.3)];
+    expect(markLanes(marks, 10)).toEqual([0, 1, 2, 0]);
+  });
+
+  it("stacks Lights out and Breaks in two, which are half a second apart", () => {
+    render(<TrialScrubber timeline={timeline()} />);
+    const lights = screen.getByTestId("scrubber-mark-power-out");
+    const broke = screen.getByTestId("scrubber-mark-broke");
+    expect(lights.getAttribute("transform")).not.toBe(
+      broke.getAttribute("transform")
+    );
   });
 });

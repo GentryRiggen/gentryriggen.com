@@ -73,6 +73,28 @@ function marksOf(timeline: Timeline): Mark[] {
   }).sort((a, b) => a.at - b.at);
 }
 
+/** Marks closer than this share of the track would overlap as dots. */
+const CLOSE_MARK_FRACTION = 0.06;
+const MARK_LANE_OFFSET_PX = 7;
+const MAX_MARK_LANES = 3;
+
+/**
+ * The row each mark's dot sits in: 0 on the track, then stacked upward while
+ * the marks before it are too close to sit side by side. Marks must be sorted
+ * by time.
+ */
+export function markLanes(marks: readonly Mark[], span: number): number[] {
+  const lanes: number[] = [];
+  marks.forEach((mark, index) => {
+    const previous = marks[index - 1];
+    const isClose =
+      previous !== undefined &&
+      (mark.at - previous.at) / span < CLOSE_MARK_FRACTION;
+    lanes.push(isClose ? (lanes[index - 1] + 1) % MAX_MARK_LANES : 0);
+  });
+  return lanes;
+}
+
 /** "40 minutes after the iceberg · Lights out" for screen readers. */
 function describeMoment(time: number, marks: readonly Mark[]): string {
   const clock = `${formatStoryTime(storyMinutesSinceImpact(time))} after the iceberg`;
@@ -83,7 +105,9 @@ function describeMoment(time: number, marks: readonly Mark[]): string {
 /**
  * Drags back and forth through an iceberg trial on its result screen. The ship
  * jumps to each moment (the scene sees `trialPlayback.scrubbing` and keeps
- * quiet) and stays there on release. Tick marks show the big moments; Page Up
+ * quiet) and stays there on release: `trialPlayback.scrubbed` freezes the
+ * effects clock until a replay. Marks that fall close together stack upward
+ * so their dots do not hide each other. Tick marks show the big moments; Page Up
  * and Page Down jump between them.
  */
 export default function TrialScrubber({ timeline }: TrialScrubberProps) {
@@ -92,6 +116,7 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
   const end = timelineEnd(timeline);
   const span = Math.max(end - start, Number.EPSILON);
   const marks = useMemo(() => marksOf(timeline), [timeline]);
+  const lanes = useMemo(() => markLanes(marks, span), [marks, span]);
   // The result shows the ship where the trial ended.
   const [time, setTime] = useState(end);
 
@@ -99,6 +124,7 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
   useEffect(
     () => () => {
       trialPlayback.scrubbing = false;
+      trialPlayback.scrubbed = false;
     },
     []
   );
@@ -106,6 +132,7 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
   function showMoment(next: number) {
     const clamped = Math.min(end, Math.max(start, next));
     trialPlayback.scrubbing = true;
+    trialPlayback.scrubbed = true;
     writeTimelinePlayback(timeline, clamped);
     setTime(clamped);
   }
@@ -154,13 +181,14 @@ export default function TrialScrubber({ timeline }: TrialScrubberProps) {
           aria-hidden="true"
           className="pointer-events-none absolute bottom-0.5 left-2 h-2 w-[calc(100%-1rem)] overflow-visible"
         >
-          {marks.map((mark) => (
+          {marks.map((mark, index) => (
             <circle
               key={mark.kind}
               data-testid={`scrubber-mark-${mark.kind}`}
               cx={`${((mark.at - start) / span) * 100}%`}
               cy="50%"
               r="3"
+              transform={`translate(0 ${-lanes[index] * MARK_LANE_OFFSET_PX})`}
               className={(MARK_COLORS[mark.kind] ?? FALLBACK_COLOR).tick}
             />
           ))}
