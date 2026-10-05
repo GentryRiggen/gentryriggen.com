@@ -1,6 +1,61 @@
 import type { Occupancy } from "@/lib/ship-builder/model/grid";
 import type { PlacedPart } from "@/lib/ship-builder/model/types";
-import { railRuns, stanchionOffsets } from "../railRuns";
+import {
+  pathLength,
+  pointAlong,
+  railPaths,
+  railRuns,
+  stanchionOffsets,
+} from "../railRuns";
+
+describe("railPaths", () => {
+  const plan = {
+    lengthCells: 6,
+    beam: 3,
+    bow: "straight",
+    stern: "counter",
+  } as const;
+
+  it("joins both sides round the bow and stern into one closed rail", () => {
+    const paths = railPaths(
+      [
+        { start: 0, end: 6, side: 1 },
+        { start: 0, end: 6, side: -1 },
+      ],
+      plan,
+      0.05
+    );
+    expect(paths).toHaveLength(1);
+    expect(paths[0].isClosed).toBe(true);
+    expect(paths[0].points.flat().every(Number.isFinite)).toBe(true);
+  });
+
+  it("keeps a mid-ship run on its edge, inset from the hull", () => {
+    const [path] = railPaths([{ start: 2, end: 4, side: 1 }], plan, 0.05);
+    expect(path.points).toEqual([
+      [1, 1.45],
+      [-1, 1.45],
+    ]);
+  });
+
+  it("carries a run that reaches the bow round to the tip", () => {
+    const [path] = railPaths([{ start: 0, end: 3, side: -1 }], plan, 0.05);
+    expect(path.points[0][1]).toBeCloseTo(0);
+    expect(path.points[0][0]).toBeGreaterThan(3);
+  });
+});
+
+describe("pointAlong", () => {
+  it("walks the route by distance", () => {
+    const route: [number, number][] = [
+      [0, 0],
+      [2, 0],
+      [2, 2],
+    ];
+    expect(pathLength(route, false)).toBe(4);
+    expect(pointAlong(route, 3, false)).toEqual([2, 1]);
+  });
+});
 
 const part: PlacedPart = {
   id: "b",
