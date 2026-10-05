@@ -22,6 +22,7 @@ import Iceberg from "./Iceberg";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import Railings from "./Railings";
+import RenderInfoProbe from "./RenderInfoProbe";
 import SeaTrialEffects from "./SeaTrialEffects";
 import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
@@ -120,6 +121,7 @@ export default function Scene() {
         <SeaTrialRunner />
         <SeaTrialEffects />
         <CameraRig />
+        <RenderInfoProbe />
       </Canvas>
       {ring && <LongPressRing key={ring.key} x={ring.x} y={ring.y} />}
     </div>
