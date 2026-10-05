@@ -1,7 +1,7 @@
 "use client";
 
 import { Crosshair, RotateCcw, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 import type { TrialSummary } from "@/lib/ship-builder/sim/explain";
 import {
   useShipBuilderStore,
@@ -34,10 +34,20 @@ export default function ResultDetails({
     sheet.current?.focus();
   }, []);
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") return;
+    // The global shortcut hook listens on window and would end the trial;
+    // React's root sits below window, so stopping here keeps it from seeing this.
+    event.stopPropagation();
+    onClose();
+  }
+
   return (
     <div
       ref={sheet}
       role="dialog"
+      aria-modal="true"
+      onKeyDown={handleKeyDown}
       aria-labelledby="sea-trial-title"
       aria-describedby="sea-trial-message"
       tabIndex={-1}

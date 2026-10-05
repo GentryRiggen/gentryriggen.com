@@ -6,7 +6,17 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import SeaTrialResult, { extraSummaryLines } from "../SeaTrialResult";
+
+function ShortcutsHost() {
+  useKeyboardShortcuts();
+  return null;
+}
+
+function renderShortcuts() {
+  render(<ShortcutsHost />);
+}
 
 const store = () => useShipBuilderStore.getState();
 
@@ -49,6 +59,28 @@ describe("SeaTrialResult buttons", () => {
     const marked = container.querySelectorAll("[data-sea-trial-result]");
     expect(marked).toHaveLength(1);
     expect(marked[0]).toHaveAttribute("role", "region");
+  });
+
+  it("Escape closes the Details sheet but leaves the trial on its result", async () => {
+    const user = userEvent.setup();
+    finishTrial(14);
+    render(<SeaTrialResult />);
+    await act(async () => {
+      renderShortcuts();
+    });
+    await user.click(screen.getByRole("button", { name: "Details" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(store().trial.status).toBe("result");
+  });
+
+  it("Escape with the sheet closed still ends the trial", async () => {
+    const user = userEvent.setup();
+    finishTrial(14);
+    render(<SeaTrialResult />);
+    renderShortcuts();
+    await user.keyboard("{Escape}");
+    expect(store().trial.status).toBe("idle");
   });
 
   it("has no below-deck picture in the result", () => {
