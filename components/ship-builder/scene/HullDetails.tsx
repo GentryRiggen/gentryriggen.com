@@ -16,8 +16,11 @@ import { useGlowEffect } from "./GlowContext";
 import { ANCHOR_Y, bowAnchorSpot } from "./hullShapes";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
+import { FINISHES } from "./Surface";
 
 const PORTHOLE_RADIUS = 0.1;
+/** A brass rim rings each porthole: a torus around the glass. */
+const PORTHOLE_RIM_TUBE = 0.02;
 /** Cells left clear of portholes at each end of the hull. */
 const PORTHOLE_END_MARGIN = 1;
 /** Sits just proud of the hull side so it never z-fights. */
@@ -45,6 +48,7 @@ function Portholes({
   beam,
 }: Pick<HullDetailsProps, "lengthCells" | "beam">) {
   const ref = useRef<InstancedMesh>(null);
+  const rimRef = useRef<InstancedMesh>(null);
   const haloRef = useRef<InstancedMesh>(null);
   const material = useRef<MeshStandardMaterial>(null);
   const haloMaterial = useRef<MeshBasicMaterial>(null);
@@ -69,6 +73,7 @@ function Portholes({
     const dummy = new Object3D();
     for (const [mesh, offset] of [
       [ref.current, PORTHOLE_OFFSET],
+      [rimRef.current, PORTHOLE_OFFSET],
       [haloRef.current, PORTHOLE_HALO_OFFSET],
     ] as const) {
       if (!mesh) continue;
@@ -110,6 +115,27 @@ function Portholes({
           color={PALETTE.porthole}
           emissive={LIGHT_COLORS.porthole}
           emissiveIntensity={0}
+        />
+      </instancedMesh>
+      <instancedMesh
+        key={`rims:${count}`}
+        ref={rimRef}
+        args={[undefined, undefined, count]}
+        raycast={noRaycast}
+        frustumCulled={false}
+      >
+        <torusGeometry
+          args={[
+            PORTHOLE_RADIUS + PORTHOLE_RIM_TUBE / 2,
+            PORTHOLE_RIM_TUBE,
+            6,
+            18,
+          ]}
+        />
+        <meshStandardMaterial
+          color={PALETTE.propeller}
+          roughness={FINISHES.metal.roughness}
+          metalness={FINISHES.metal.metalness}
         />
       </instancedMesh>
       <instancedMesh
