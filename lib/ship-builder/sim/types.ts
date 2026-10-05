@@ -49,7 +49,12 @@ export type TrialReason =
   /** Iceberg: the gash opened too many compartments to float. */
   | "too-many-opened";
 
-export type SimPhase = "sailing" | "capsizing" | "sinking" | "done";
+/**
+ * `descending` only follows a finished `sank` trial whose player chose
+ * "Follow her down" (see `startDescent`).
+ */
+export type SimPhase =
+  "sailing" | "capsizing" | "sinking" | "descending" | "done";
 
 /**
  * How the ship sits in the water, on top of the scene's gentle idle bob.
@@ -96,6 +101,13 @@ export interface CompartmentSpec {
   sternWall: number;
 }
 
+/**
+ * Whether a plunging ship may break in two: `real` lets the build decide
+ * (length and how steeply she plunges), `always` breaks any ship, `never`
+ * holds every ship together.
+ */
+export type BreakMode = "real" | "always" | "never";
+
 /** An iceberg trial: the hull's compartments and where she was struck. */
 export interface IcebergInput {
   compartments: CompartmentSpec[];
@@ -103,7 +115,41 @@ export interface IcebergInput {
   length: number;
   /** Middle of the gash, cells from the bow. */
   impactX: number;
+  /** Absent means `real`. */
+  breakMode?: BreakMode;
 }
+
+/**
+ * One half of a broken ship. The half rotates (roll, pitch) about a pivot on
+ * the keel line `pivotX` cells from the bow (world x = length / 2 - pivotX),
+ * then moves `driftX` world units toward the bow and `sink` down. Angles are
+ * radians; positive pitch lifts the bow end of that half.
+ */
+export interface HalfPose {
+  roll: number;
+  pitch: number;
+  sink: number;
+  pivotX: number;
+  driftX: number;
+}
+
+export interface SimHalves {
+  bow: HalfPose;
+  stern: HalfPose;
+}
+
+/** Where and when she broke. */
+export interface SimBreakup {
+  /** Sim seconds. */
+  at: number;
+  /** Cells from the bow. */
+  atX: number;
+  /** Her pitch when she broke, radians (negative, bow down). */
+  angle: number;
+}
+
+/** The ship's lights: on, failing, or dark. */
+export type PowerState = "on" | "flickering" | "out";
 
 /** Reserved for Level 3: things the player does while the sim runs. */
 export type SimAction = never;
@@ -119,7 +165,15 @@ export interface SimEvent {
     /** Iceberg: water started coming in. */
     | "flooding"
     /** Iceberg: water spilled over a wall into the next compartment. */
-    | "spilled";
+    | "spilled"
+    /** The lights started to fail. */
+    | "power-flicker"
+    /** The lights went out for good. */
+    | "power-out"
+    /** She broke in two (see `SimState.breakup`). */
+    | "broke"
+    /** A body (the whole ship, or one half) landed on the sea floor. */
+    | "touched-bottom";
 }
 
 export interface SimState {
@@ -134,6 +188,12 @@ export interface SimState {
   /** Set once the outcome is certain; the trial may still be animating. */
   outcome: TrialOutcome | null;
   reason: TrialReason | null;
+  /** Bending strain while plunging (0 otherwise); she breaks at her limit. */
+  strain: number;
+  power: PowerState;
+  /** Set once she breaks; `halves` then replaces `pose`. */
+  breakup: SimBreakup | null;
+  halves: SimHalves | null;
 }
 
 export interface TrialInput {

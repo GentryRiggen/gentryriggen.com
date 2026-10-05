@@ -1,6 +1,10 @@
 import { stepTrial } from "@/lib/ship-builder/sim/seaTrial";
 import {
   SIM_STEP_S,
+  type PowerState,
+  type SimBreakup,
+  type SimEvent,
+  type SimHalves,
   type SimPhase,
   type SimState,
   type TrialInput,
@@ -27,6 +31,18 @@ export interface TrialPlayback {
   sinkingAt: number | null;
   /** Sim time the trial finished, or null. */
   doneAt: number | null;
+  /** Bending strain while plunging (see SimState.strain). */
+  strain: number;
+  power: PowerState;
+  /** Set once she breaks; the scene then draws two halves. */
+  breakup: SimBreakup | null;
+  halves: SimHalves | null;
+  /** The sim's event log (shared, never mutated). */
+  events: readonly SimEvent[];
+  /** Playback rate the runner is using (1 normal, below 1 in slow-mo). */
+  speed: number;
+  /** The player is dragging the scrubber: jumps, not real playback. */
+  scrubbing: boolean;
 }
 
 export const trialPlayback: TrialPlayback = createPlayback();
@@ -41,6 +57,13 @@ function createPlayback(): TrialPlayback {
     capsizedAt: null,
     sinkingAt: null,
     doneAt: null,
+    strain: 0,
+    power: "on",
+    breakup: null,
+    halves: null,
+    events: [],
+    speed: 1,
+    scrubbing: false,
   };
 }
 
@@ -76,6 +99,11 @@ export function writePlayback(
   target.sink = state.pose.sink;
   target.phase = state.phase;
   target.time = state.time;
+  target.strain = state.strain;
+  target.power = state.power;
+  target.breakup = state.breakup;
+  target.halves = state.halves;
+  target.events = state.events;
   // A jump straight to the end has no frames in between, so a ship that never
   // went over must not look like one: only count real capsize phases or events.
   const isGoingOver = state.phase === "capsizing" || state.phase === "sinking";

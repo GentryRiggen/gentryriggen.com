@@ -1,3 +1,4 @@
+import { stepDescent } from "./descent";
 import { STABILITY_THRESHOLDS } from "../model/stats";
 import {
   SIM_STEP_S,
@@ -277,6 +278,10 @@ export function createTrial(input: TrialInput): SimState {
     events: [],
     outcome: null,
     reason: null,
+    strain: 0,
+    power: "on",
+    breakup: null,
+    halves: null,
   };
 }
 
@@ -429,6 +434,7 @@ export function stepTrial(
     if (flooded.phase !== "sailing") return flooded;
     return stepSailing(input, paramsOf(input), flooded);
   }
+  if (state.phase === "descending") return stepDescent(state);
   if (state.phase === "sinking" && state.outcome === "sank") {
     return stepPlunge(state);
   }

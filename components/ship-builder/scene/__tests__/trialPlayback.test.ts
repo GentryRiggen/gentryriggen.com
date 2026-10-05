@@ -93,6 +93,13 @@ describe("trial effects", () => {
       capsizedAt: 5,
       sinkingAt: null,
       doneAt: null,
+      strain: 0,
+      power: "on",
+      breakup: null,
+      halves: null,
+      events: [],
+      speed: 1,
+      scrubbing: false,
     };
     expect(bubbleIntensity({ ...base, capsizedAt: null })).toBe(0);
     expect(bubbleIntensity(base)).toBe(0);
