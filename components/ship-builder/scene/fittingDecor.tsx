@@ -3,12 +3,16 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
+  CylinderGeometry,
   PlaneGeometry,
   Quaternion,
+  SphereGeometry,
   Vector3,
   type BufferAttribute,
+  type BufferGeometry,
   type Mesh,
 } from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import GlowSurface from "./GlowSurface";
 import { GlowBeam } from "./GlowShapes";
 import { LIGHT_COLORS } from "./lightColors";
@@ -76,15 +80,15 @@ export function SearchlightMesh({ painted, tint, emphasis }: FittingMeshProps) {
     <group>
       <mesh position={[0, 0.06, 0]} castShadow>
         <cylinderGeometry args={[0.025, 0.04, 0.12, 8]} />
-        <Surface color={body} {...surface} />
+        <Surface color={body} finish="metal" {...surface} />
       </mesh>
       <mesh
         position={[0.04, 0.18, 0]}
         rotation={[0, 0, -Math.PI / 2]}
         castShadow
       >
-        <cylinderGeometry args={[0.07, 0.09, 0.2, 12]} />
-        <Surface color={body} {...surface} />
+        <cylinderGeometry args={[0.07, 0.09, 0.2, 16]} />
+        <Surface color={body} finish="metal" {...surface} />
       </mesh>
       <mesh position={[0.145, 0.18, 0]} rotation={[0, 0, -Math.PI / 2]}>
         <cylinderGeometry args={[0.06, 0.06, 0.01, 12]} />
@@ -117,15 +121,15 @@ export function CrowsNestMesh({ painted, tint, emphasis }: FittingMeshProps) {
     <group>
       <mesh position={[0, 0.02, 0]} castShadow>
         <cylinderGeometry args={[0.24, 0.2, 0.04, 14]} />
-        <Surface color={basket} {...surface} />
+        <Surface color={basket} finish="wood" {...surface} />
       </mesh>
       <mesh position={[0, 0.16, 0]} castShadow>
         <cylinderGeometry args={[0.26, 0.22, 0.24, 14, 1, true]} />
-        <Surface color={basket} doubleSided {...surface} />
+        <Surface color={basket} finish="wood" doubleSided {...surface} />
       </mesh>
       <mesh position={[0, 0.28, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.26, 0.015, 6, 20]} />
-        <Surface color={PALETTE.mast} {...surface} />
+        <Surface color={PALETTE.mast} finish="wood" {...surface} />
       </mesh>
     </group>
   );
@@ -179,7 +183,7 @@ export function SternFlagMesh({
     <group>
       <mesh position={[0, POLE_HEIGHT / 2, 0]} castShadow>
         <cylinderGeometry args={[0.02, 0.03, POLE_HEIGHT, 8]} />
-        <Surface color={PALETTE.railing} {...surface} />
+        <Surface color={PALETTE.railing} finish="wood" {...surface} />
       </mesh>
       <mesh
         ref={cloth}
@@ -193,7 +197,7 @@ export function SternFlagMesh({
   );
 }
 
-const WIRE_RADIUS = 0.008;
+const WIRE_RADIUS = 0.014;
 /** The two wires leave the mast top this far apart (across the ship). */
 const WIRE_SPREAD = 0.1;
 const Y_AXIS = new Vector3(0, 1, 0);
@@ -219,7 +223,7 @@ function Wire({ from, to, tint, emphasis }: WireProps) {
   }, [from, to]);
   return (
     <mesh position={middle} quaternion={orientation}>
-      <cylinderGeometry args={[WIRE_RADIUS, WIRE_RADIUS, length, 4]} />
+      <cylinderGeometry args={[WIRE_RADIUS, WIRE_RADIUS, length, 5]} />
       <Surface color={PALETTE.aerialWire} tint={tint} emphasis={emphasis} />
     </mesh>
   );
@@ -254,8 +258,68 @@ export function WirelessAerialMesh({
         <Wire key={key} from={from} to={to} tint={tint} emphasis={emphasis} />
       ))}
       <mesh position={[0, 0.03, 0]}>
-        <sphereGeometry args={[0.035, 8, 6]} />
-        <Surface color={PALETTE.aerialWire} tint={tint} emphasis={emphasis} />
+        <sphereGeometry args={[0.045, 10, 8]} />
+        <Surface
+          color={PALETTE.aerialWire}
+          finish="metal"
+          tint={tint}
+          emphasis={emphasis}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+export const MAST_HEIGHT = 7;
+const MAST_BASE_RADIUS = 0.085;
+const MAST_TOP_RADIUS = 0.04;
+/** Heights of the three rings, and the truck ball on the very top. */
+const MAST_RINGS = [1.2, 3.6, 5.8];
+const MAST_RING_COLOR = "#d9cdb4";
+
+/** Shared for the whole session, so never disposed. */
+let mastRings: BufferGeometry | undefined;
+
+/** The mast's rings and top ball, merged into one geometry. */
+function getMastRings(): BufferGeometry {
+  if (mastRings) return mastRings;
+  const radiusAt = (height: number) =>
+    MAST_TOP_RADIUS +
+    (MAST_BASE_RADIUS - MAST_TOP_RADIUS) * (1 - height / MAST_HEIGHT);
+  const parts: BufferGeometry[] = MAST_RINGS.map((height) => {
+    const radius = radiusAt(height) + 0.022;
+    return new CylinderGeometry(radius, radius, 0.1, 10).translate(
+      0,
+      height,
+      0
+    );
+  });
+  // The ball tops the mast without rising above its old end.
+  parts.push(
+    new SphereGeometry(MAST_TOP_RADIUS * 1.5, 10, 8).translate(
+      0,
+      MAST_HEIGHT - MAST_TOP_RADIUS,
+      0
+    )
+  );
+  mastRings = mergeGeometries(parts);
+  for (const part of parts) part.dispose();
+  return mastRings;
+}
+
+/** A tapered wooden mast with three rings and a truck ball on top. */
+export function MastMesh({ painted, tint, emphasis }: FittingMeshProps) {
+  const surface = { tint, emphasis };
+  return (
+    <group>
+      <mesh position={[0, MAST_HEIGHT / 2, 0]} castShadow>
+        <cylinderGeometry
+          args={[MAST_TOP_RADIUS, MAST_BASE_RADIUS, MAST_HEIGHT, 10]}
+        />
+        <Surface color={painted ?? PALETTE.mast} finish="wood" {...surface} />
+      </mesh>
+      <mesh geometry={getMastRings()}>
+        <Surface color={MAST_RING_COLOR} finish="metal" {...surface} />
       </mesh>
     </group>
   );

@@ -36,7 +36,7 @@ interface LightPartProps {
   emphasis: PartEmphasis;
 }
 
-const WIRE_RADIUS = 0.012;
+const WIRE_RADIUS = 0.018;
 const WIRE_SEGMENTS = 24;
 const BULB_RADIUS = 0.07;
 const BULB_HALO_SCALE = 2.6;

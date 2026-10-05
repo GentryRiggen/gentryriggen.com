@@ -1,11 +1,17 @@
 "use client";
 
-import { CatmullRomCurve3, TubeGeometry, Vector3 } from "three";
+import { BoxGeometry, CatmullRomCurve3, TubeGeometry, Vector3 } from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { BufferGeometry } from "three";
 import { cellKey, type Occupancy } from "@/lib/ship-builder/model/grid";
 import type { PartCandidate } from "@/lib/ship-builder/model/placement";
 import { CRUISE_COLORS } from "./cruiseColors";
 import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
+import {
+  buildModernFunnelBody,
+  buildModernFunnelGrille,
+} from "./funnelGeometry";
+import { getLifeboatGeometry } from "./lifeboatGeometry";
 import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
@@ -196,25 +202,47 @@ export function ClimbingWall({ color, tint, emphasis }: CruisePartProps) {
   );
 }
 
+const ENCLOSED_BOAT = {
+  length: 1.1,
+  width: 0.42,
+  depth: 0.2,
+  coverHeight: 0.2,
+};
+
+/** Shared for the whole session, so never disposed. */
+let enclosedWindows: BufferGeometry | undefined;
+
+/** A strip of windows down each side of the canopy, as one geometry. */
+function getEnclosedWindows(): BufferGeometry {
+  if (!enclosedWindows) {
+    const strips = [-1, 1].map((side) =>
+      new BoxGeometry(0.5, 0.08, 0.02).translate(0.05, 0.07, side * 0.17)
+    );
+    enclosedWindows = mergeGeometries(strips);
+    for (const strip of strips) strip.dispose();
+  }
+  return enclosedWindows;
+}
+
 /** A closed orange lifeboat with a canopy and a strip of windows. */
 export function EnclosedLifeboat({ color, tint, emphasis }: CruisePartProps) {
   const surface = { tint, emphasis };
+  const geometry = getLifeboatGeometry(ENCLOSED_BOAT);
   return (
-    <group position={[0, -0.22, 0]}>
-      <mesh scale={[1.1, 0.4, 0.42]} castShadow>
-        <sphereGeometry args={[0.5, 16, 12]} />
+    <group position={[0, -0.24, 0]}>
+      <mesh geometry={geometry.hull} castShadow>
         <Surface color={color ?? CRUISE_COLORS.enclosedBoat} {...surface} />
       </mesh>
-      <mesh position={[0, 0.08, 0]} scale={[0.9, 0.2, 0.36]}>
-        <sphereGeometry args={[0.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      <mesh geometry={geometry.cover}>
         <Surface color={CRUISE_COLORS.enclosedCanopy} {...surface} />
       </mesh>
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[0.05, 0.04, side * 0.2]}>
-          <boxGeometry args={[0.5, 0.08, 0.02]} />
-          <Surface color={CRUISE_COLORS.enclosedWindow} {...surface} />
-        </mesh>
-      ))}
+      <mesh geometry={getEnclosedWindows()}>
+        <Surface
+          color={CRUISE_COLORS.enclosedWindow}
+          finish="glass"
+          {...surface}
+        />
+      </mesh>
     </group>
   );
 }
@@ -248,27 +276,36 @@ export function RaftCanister({
   );
 }
 
-const FUNNEL_BODY_HEIGHT = 3.2;
-
 /**
- * A raked, tapering, single-colour stack. Its top sits 3.2 above its point
- * like the classic funnel, so smoke rises from the same place (see
- * FUNNEL_TOP_OFFSET in effectAnchors.ts).
+ * A raked, tapering, single-colour stack with a rounded top and a band of
+ * louvres. Its top sits 3.2 above its point like the classic funnel, so smoke
+ * rises from the same place (see FUNNEL_TOP_OFFSET in effectAnchors.ts).
  */
 export function ModernFunnel({ color, tint, emphasis }: CruisePartProps) {
   const surface = { tint, emphasis };
   return (
     <group rotation={[0, 0, FUNNEL_RAKE_RADIANS]}>
-      <mesh
-        position={[0, FUNNEL_BODY_HEIGHT / 2, 0]}
-        scale={[1.5, 1, 1]}
-        castShadow
-      >
-        <cylinderGeometry args={[0.2, 0.34, FUNNEL_BODY_HEIGHT, 16]} />
+      <mesh geometry={getModernFunnelGeometry().body} castShadow>
         <Surface color={color ?? CRUISE_COLORS.modernFunnel} {...surface} />
+      </mesh>
+      <mesh geometry={getModernFunnelGeometry().grille}>
+        <Surface color={MODERN_GRILLE_COLOR} finish="metal" {...surface} />
       </mesh>
     </group>
   );
+}
+
+const MODERN_GRILLE_COLOR = "#2e3338";
+
+/** Shared for the whole session, so never disposed. */
+let modernFunnel: { body: BufferGeometry; grille: BufferGeometry } | undefined;
+
+function getModernFunnelGeometry() {
+  modernFunnel ??= {
+    body: buildModernFunnelBody(),
+    grille: buildModernFunnelGrille(),
+  };
+  return modernFunnel;
 }
 
 /**

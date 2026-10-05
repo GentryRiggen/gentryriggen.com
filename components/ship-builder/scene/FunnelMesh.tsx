@@ -1,10 +1,17 @@
+import { useEffect, useMemo } from "react";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
+import {
+  buildFunnelBands,
+  buildFunnelCap,
+  buildFunnelOpening,
+  buildSteamPipe,
+} from "./funnelGeometry";
 
 const SEGMENTS = 16;
-const BAND_HEIGHT = 0.12;
-const BAND_FLARE = 0.012;
+const OPENING_COLOR = "#050505";
+const PIPE_COLOR = "#b08d57";
 
 interface FunnelMeshProps {
   /** Body radius at its base and at its top. */
@@ -13,12 +20,17 @@ interface FunnelMeshProps {
   bodyHeight: number;
   /** The black cap above the body. */
   capHeight: number;
-  /** Paint colour for the body; the band and cap keep their own colours. */
+  /** Paint colour for the body; the bands, cap and pipe keep their own. */
   bodyColor?: string;
   tint: PartTint;
   emphasis: PartEmphasis;
 }
 
+/**
+ * A liner funnel: a raked body with two bands, a black cap with a rolled rim
+ * and dark opening, and a steam pipe and whistle on the aft side. The rim,
+ * bands and pipe are each merged into one mesh.
+ */
 export default function FunnelMesh({
   baseRadius,
   topRadius,
@@ -29,12 +41,21 @@ export default function FunnelMesh({
   emphasis,
 }: FunnelMeshProps) {
   const surface = { tint, emphasis };
-  // The contrasting band sits just under the black cap, so follow the taper.
-  const bandCentre = bodyHeight - 0.4;
-  const bandRadius = (height: number) =>
-    topRadius +
-    (baseRadius - topRadius) * (1 - height / bodyHeight) +
-    BAND_FLARE;
+  const geometry = useMemo(() => {
+    const dims = { baseRadius, topRadius, bodyHeight, capHeight };
+    return {
+      bands: buildFunnelBands(dims),
+      cap: buildFunnelCap(dims),
+      opening: buildFunnelOpening(dims),
+      pipe: buildSteamPipe(dims),
+    };
+  }, [baseRadius, topRadius, bodyHeight, capHeight]);
+  useEffect(
+    () => () => {
+      for (const part of Object.values(geometry)) part.dispose();
+    },
+    [geometry]
+  );
   return (
     <group rotation={[0, 0, FUNNEL_RAKE_RADIANS]}>
       <mesh position={[0, bodyHeight / 2, 0]} castShadow>
@@ -43,22 +64,17 @@ export default function FunnelMesh({
         />
         <Surface color={bodyColor} {...surface} />
       </mesh>
-      <mesh position={[0, bandCentre, 0]}>
-        <cylinderGeometry
-          args={[
-            bandRadius(bandCentre + BAND_HEIGHT / 2),
-            bandRadius(bandCentre - BAND_HEIGHT / 2),
-            BAND_HEIGHT,
-            SEGMENTS,
-          ]}
-        />
+      <mesh geometry={geometry.bands}>
         <Surface color={PALETTE.funnelBand} {...surface} />
       </mesh>
-      <mesh position={[0, bodyHeight + capHeight / 2, 0]} castShadow>
-        <cylinderGeometry
-          args={[topRadius + 0.01, topRadius + 0.01, capHeight, SEGMENTS]}
-        />
+      <mesh geometry={geometry.cap} castShadow>
         <Surface color={PALETTE.funnelTop} {...surface} />
+      </mesh>
+      <mesh geometry={geometry.opening}>
+        <Surface color={OPENING_COLOR} {...surface} />
+      </mesh>
+      <mesh geometry={geometry.pipe}>
+        <Surface color={PIPE_COLOR} finish="metal" {...surface} />
       </mesh>
     </group>
   );

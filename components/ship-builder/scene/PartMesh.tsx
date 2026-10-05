@@ -41,6 +41,7 @@ import DavitMesh from "./DavitMesh";
 import {
   CrowsNestMesh,
   DomeMesh,
+  MastMesh,
   SearchlightMesh,
   SternFlagMesh,
   WirelessAerialMesh,
@@ -233,12 +234,7 @@ function Fitting({
         </mesh>
       );
     case "mast":
-      return (
-        <mesh position={[0, 3.5, 0]} castShadow>
-          <cylinderGeometry args={[0.05, 0.08, 7, 8]} />
-          <Surface color={painted ?? PALETTE.mast} {...surface} />
-        </mesh>
-      );
+      return <MastMesh {...navy} />;
     case "davit":
       return (
         <DavitMesh
