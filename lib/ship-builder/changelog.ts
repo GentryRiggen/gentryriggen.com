@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.8.1",
+    date: "2026-10-05",
+    title: "A clear view of the sinking",
+    highlights: [
+      "When a sea trial starts, the menus and buttons tuck away so you can see the whole ship, even on a small tablet",
+      "The Below deck picture is a small corner thumbnail now. Tap it to make it bigger for a moment",
+      "After a trial, a slim bar at the bottom lets you scrub back through it and watch again without covering the ship",
+      "Tap Details on that bar when you want to read what happened and get tips",
+    ],
+  },
+  {
     version: "2.8.0",
     date: "2026-10-05",
     title: "The long way down",
