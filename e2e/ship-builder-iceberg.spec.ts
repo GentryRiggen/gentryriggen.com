@@ -31,9 +31,10 @@ async function openBuilder(
     baseURL,
     viewport: { width: 1280, height: 800 },
   });
-  await page.addInitScript(() => {
-    window.__SHIP_BUILDER_TEST__ = { trialSeconds: FAST_FORWARD_SECONDS };
-  });
+  // The script runs in the page, so the value is passed in, not closed over.
+  await page.addInitScript((trialSeconds) => {
+    window.__SHIP_BUILDER_TEST__ = { trialSeconds };
+  }, FAST_FORWARD_SECONDS);
   await page.goto("/ship-builder");
   await expect(page.getByRole("heading", { name: "Ship Builder" })).toBeVisible(
     { timeout: 60_000 }
