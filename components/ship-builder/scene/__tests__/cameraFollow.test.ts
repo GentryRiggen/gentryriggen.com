@@ -41,9 +41,11 @@ describe("cameraFollow", () => {
     expect(cameraFollow({ ...base, speed: 0.25 }, LENGTH)?.isSideOn).toBe(true);
   });
 
-  it("follows the half still up at the surface, not below the plunge", () => {
-    const breakup = { at: 5, atX: 12, angle: -0.2 };
-    // The stern half (8 long) stands up: its centre is 4 units above its pivot.
+  const breakup = { at: 5, atX: 12, angle: -0.2 };
+
+  it("frames a stern standing on end, superstructure and all", () => {
+    // The stern half (8 long) stands straight up from 1 unit under: its keel
+    // runs from y = -1 to y = 7, with up to 5 more on top for its decks.
     const rearing = cameraFollow(
       {
         ...base,
@@ -56,7 +58,46 @@ describe("cameraFollow", () => {
       LENGTH
     );
     expect(rearing?.target[0]).toBeCloseTo(-2, 5);
-    expect(rearing?.target[1]).toBeCloseTo(CAMERA_TARGET[1] - 1 + 4, 5);
+    expect(rearing?.target[1]).toBeCloseTo((12 + -1) / 2, 5);
+    expect(rearing?.height).toBeCloseTo(13, 5);
+    expect(rearing?.isUnder).toBe(false);
+  });
+
+  it("keeps the usual framing while a half lies nearly level", () => {
+    const settling = cameraFollow(
+      {
+        ...base,
+        breakup,
+        halves: {
+          bow: half({ sink: 20, pitch: -1 }),
+          stern: half({ sink: 1 }),
+        },
+      },
+      LENGTH
+    );
+    // Level stern: centre x = (-10 + -2) / 2.
+    expect(settling?.target).toEqual([-6, CAMERA_TARGET[1] - 1, 0]);
+    expect(settling?.height).toBe(0);
+  });
+
+  it("aims just under the last half to go, not down in the dark", () => {
+    const slipping = cameraFollow(
+      {
+        ...base,
+        phase: "done",
+        breakup,
+        halves: {
+          bow: half({ sink: 30, pitch: -1 }),
+          // Its top (the stern tip) is 4 under the surface.
+          stern: half({ sink: 12, pitch: -Math.PI / 2 }),
+        },
+      },
+      LENGTH
+    );
+    expect(slipping?.target[0]).toBeCloseTo(-2, 5);
+    expect(slipping?.target[1]).toBeCloseTo(-4 - 3, 5);
+    expect(slipping?.isLow).toBe(false);
+    expect(slipping?.isUnder).toBe(true);
 
     const gone = cameraFollow(
       {
@@ -70,7 +111,7 @@ describe("cameraFollow", () => {
       },
       LENGTH
     );
-    expect(gone?.target[1]).toBeCloseTo(CAMERA_TARGET[1] - PLUNGE_DEPTH, 5);
+    expect(gone?.target[1]).toBeCloseTo(-PLUNGE_DEPTH, 5);
     expect(gone?.isLow).toBe(false);
   });
 

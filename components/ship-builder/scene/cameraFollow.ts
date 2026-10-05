@@ -8,6 +8,18 @@ import type { TrialPlayback } from "./trialPlayback";
 const FOLLOW_MIN_SINK = 0.5;
 /** Within this many units of the floor the camera takes the wreck framing. */
 const WRECK_MARGIN = 6;
+/**
+ * Room above a half's keel line for its decks, funnels and masts, so a stern
+ * standing on end is framed to the top of its superstructure.
+ */
+const SUPERSTRUCTURE_HEIGHT = 5;
+/** How far under the surface a standing half still counts as in view. */
+const VISIBLE_DEPTH = 2;
+/**
+ * Once both halves are under, the camera aims this far below the last one's
+ * highest point: just under the surface, where it and its bubbles go down.
+ */
+const UNDER_AIM_DEPTH = 3;
 
 export interface CameraFollow {
   /** Where the orbit target should be. */
@@ -16,6 +28,30 @@ export interface CameraFollow {
   isSideOn: boolean;
   /** Frame the wreck low, near the floor. */
   isLow: boolean;
+  /**
+   * World units of height the view should fit around the target (a stern
+   * standing on end), or 0 when any zoom will do.
+   */
+  height: number;
+  /**
+   * The target is just under the surface (the last half slipping away), so
+   * the camera should dip under too: the sea hides it from above.
+   */
+  isUnder: boolean;
+}
+
+/** A world point on a half's keel line, `along` world x from its pivot. */
+function keelPoint(
+  half: HalfPose,
+  lengthCells: number,
+  along: number
+): CameraPosition {
+  const pivot = lengthCells / 2 - half.pivotX;
+  return [
+    half.driftX + pivot + along * Math.cos(half.pitch),
+    -half.sink + along * Math.sin(half.pitch),
+    0,
+  ];
 }
 
 /**
@@ -29,12 +65,58 @@ function halfCentre(
   spanTo: number
 ): CameraPosition {
   const pivot = lengthCells / 2 - half.pivotX;
-  const middle = (spanFrom + spanTo) / 2 - pivot;
-  return [
-    half.driftX + pivot + middle * Math.cos(half.pitch),
-    -half.sink + middle * Math.sin(half.pitch),
-    0,
-  ];
+  return keelPoint(half, lengthCells, (spanFrom + spanTo) / 2 - pivot);
+}
+
+/** The higher and lower ends of a half's keel line, in world space. */
+function halfEnds(
+  half: HalfPose,
+  lengthCells: number,
+  spanFrom: number,
+  spanTo: number
+): { top: CameraPosition; bottom: CameraPosition } {
+  const pivot = lengthCells / 2 - half.pivotX;
+  const a = keelPoint(half, lengthCells, spanFrom - pivot);
+  const b = keelPoint(half, lengthCells, spanTo - pivot);
+  return a[1] >= b[1] ? { top: a, bottom: b } : { top: b, bottom: a };
+}
+
+/**
+ * At the surface the drama is whichever half is still up: frame what shows
+ * above the water, superstructure included. Once it too is under, aim just
+ * below its highest point, where it slips away, rather than down in the dark.
+ */
+function surfaceFraming(
+  ends: { top: CameraPosition; bottom: CameraPosition },
+  centre: CameraPosition
+): Pick<CameraFollow, "target" | "height" | "isUnder"> {
+  const { top, bottom } = ends;
+  const high = top[1] + SUPERSTRUCTURE_HEIGHT;
+  if (top[1] <= -VISIBLE_DEPTH) {
+    return {
+      target: [top[0], Math.max(-PLUNGE_DEPTH, top[1] - UNDER_AIM_DEPTH), 0],
+      height: 0,
+      isUnder: true,
+    };
+  }
+  const low = Math.max(bottom[1], -VISIBLE_DEPTH);
+  // Mostly level (settling back), the usual target height above it reads best.
+  const isStanding = high - low > SUPERSTRUCTURE_HEIGHT + CAMERA_TARGET[1];
+  if (!isStanding) {
+    return {
+      target: [centre[0], centre[1] + CAMERA_TARGET[1], 0],
+      height: 0,
+      isUnder: false,
+    };
+  }
+  // Where the keel crosses `low`, so a leaning stern is framed over its body.
+  const t = (top[1] - low) / Math.max(1e-6, top[1] - bottom[1]);
+  const lowX = top[0] + (bottom[0] - top[0]) * t;
+  return {
+    target: [(top[0] + lowX) / 2, (high + low) / 2, 0],
+    height: high - low,
+    isUnder: false,
+  };
 }
 
 /**
@@ -70,11 +152,17 @@ export function cameraFollow(
       x = (bow[0] + stern[0]) / 2;
       y = (bow[1] + stern[1]) / 2;
     } else {
-      // At the surface the drama is whichever half is still up (the stern
-      // rearing), and the camera stays near the surface as she slips under.
-      const upper = bow[1] > stern[1] ? bow : stern;
-      x = upper[0];
-      y = Math.max(-PLUNGE_DEPTH, upper[1]);
+      const bowEnds = halfEnds(halves.bow, lengthCells, breakX, half);
+      const sternEnds = halfEnds(halves.stern, lengthCells, -half, breakX);
+      const isBowUpper = bowEnds.top[1] > sternEnds.top[1];
+      const framing = isBowUpper
+        ? surfaceFraming(bowEnds, bow)
+        : surfaceFraming(sternEnds, stern);
+      return {
+        ...framing,
+        isSideOn: playback.speed < 1,
+        isLow: false,
+      };
     }
   } else if (sink < FOLLOW_MIN_SINK) {
     return null;
@@ -84,5 +172,7 @@ export function cameraFollow(
     target: [x, y + CAMERA_TARGET[1], 0],
     isSideOn: playback.speed < 1,
     isLow,
+    height: 0,
+    isUnder: false,
   };
 }

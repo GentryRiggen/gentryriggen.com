@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, type ComponentRef } from "react";
-import { MOUSE, TOUCH } from "three";
+import { MOUSE, PerspectiveCamera, TOUCH, Vector3 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
@@ -10,6 +10,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { cameraFollow } from "./cameraFollow";
+import { cardFraming, type CardFraming } from "./cardFraming";
 import {
   clampTarget,
   MAX_VIEW_DISTANCE,
@@ -40,6 +41,35 @@ const SIDE_ON_HEIGHT = 0.25;
 const WRECK_HEIGHT = 0.2;
 /** Closer than this to the goal the target is simply there. */
 const FOLLOW_EPSILON = 0.02;
+/** Following a half under the surface, the camera dips this far under. */
+const UNDER_CAMERA_DEPTH = 1.5;
+/** A tall subject (a stern on end) fills at most this share of the view. */
+const FIT_SHARE = 0.8;
+/** The result card, read (never changed) to keep the wreck out from under it. */
+const RESULT_CARD_SELECTOR =
+  '[role="dialog"][aria-labelledby="sea-trial-title"]';
+
+// Scratch values for the per-frame follow, so it allocates nothing.
+const offset = new Vector3();
+const underGoal: [number, number, number] = [0, 0, 0];
+const canvasBox = { left: 0, top: 0, width: 0, height: 0 };
+const cardBox = { left: 0, top: 0, width: 0, height: 0 };
+
+/** Copies an element's on-screen box into `out`. */
+function readBox(element: Element, out: typeof canvasBox): typeof canvasBox {
+  const rect = element.getBoundingClientRect();
+  out.left = rect.left;
+  out.top = rect.top;
+  out.width = rect.width;
+  out.height = rect.height;
+  return out;
+}
+
+/** Which result (or run) the follow belongs to, so settling is per screen. */
+function trialKey(): string {
+  const { trial } = useShipBuilderStore.getState();
+  return "runId" in trial ? `${trial.status}:${trial.runId}` : trial.status;
+}
 
 export default function CameraRig() {
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
@@ -57,6 +87,14 @@ export default function CameraRig() {
   const isDragging = useRef(false);
   // True from the first followed frame until the target is back at the view's.
   const isFollowing = useRef(false);
+  // The follow has reached its goal on this screen (`trialKey`) and lets go,
+  // so the player can orbit, zoom and pan the wreck freely.
+  const settledKey = useRef<string | null>(null);
+  // The player grabbed the camera once she was down; the follow lets go.
+  const hasTakenOver = useRef(false);
+  // How far the result card's framing has eased in (0 to 1), and its goal.
+  const cardBlend = useRef(0);
+  const lastCardFraming = useRef<CardFraming | null>(null);
   // The previous request, updated on every run so that repeated single-step
   // length edits never add up to a reframe.
   const seen = useRef<FrameRequest | null>(null);
@@ -119,28 +157,98 @@ export default function CameraRig() {
   // A shorter or narrower hull shrinks the box; pull the target back into it.
   useEffect(handleChange, [handleChange]);
 
+  // The card framing's view offset never outlives the rig.
+  useEffect(
+    () => () => {
+      const { camera } = get();
+      if (camera instanceof PerspectiveCamera) camera.clearViewOffset();
+    },
+    [get]
+  );
+
+  // While the result card is up, the scene is drawn off-centre (and a little
+  // smaller if need be) so the wreck sits in the clear part of the canvas.
+  // A view offset keeps the orbit target where it is, so orbiting still turns
+  // about the wreck. Eases in and out; reduced motion snaps.
+  const updateCardFraming = (amount: number) => {
+    const { camera, gl, size } = get();
+    if (!(camera instanceof PerspectiveCamera)) return;
+    const isResult = useShipBuilderStore.getState().trial.status === "result";
+    const card = isResult ? document.querySelector(RESULT_CARD_SELECTOR) : null;
+    const framing = card
+      ? cardFraming(readBox(gl.domElement, canvasBox), readBox(card, cardBox))
+      : null;
+    if (framing) lastCardFraming.current = framing;
+    const goal = framing ? 1 : 0;
+    cardBlend.current += (goal - cardBlend.current) * amount;
+    if (Math.abs(goal - cardBlend.current) < 0.001) cardBlend.current = goal;
+    const target = lastCardFraming.current;
+    if (cardBlend.current === 0 || !target) {
+      if (camera.view?.enabled) camera.clearViewOffset();
+      return;
+    }
+    const { width, height } = size;
+    const blend = cardBlend.current;
+    const scale = 1 + (target.scale - 1) * blend;
+    const x = width / 2 + (target.x - width / 2) * blend;
+    const y = height / 2 + (target.y - height / 2) * blend;
+    // Shows the window of a virtual view whose middle (the target) lands on
+    // (x, y) of the canvas, drawn `scale` times as large as usual.
+    camera.setViewOffset(
+      width,
+      height,
+      width / 2 - x / scale,
+      height / 2 - y / scale,
+      width / scale,
+      height / scale
+    );
+  };
+
   // While a ship sinks the orbit target follows her, and the camera moves by
-  // the same amount so the player's orbit and zoom are kept. Afterwards the
-  // target eases back to the view's own. Reduced motion snaps instead.
+  // the same amount so the player's orbit and zoom are kept. Once she is down
+  // and the camera has caught up (or the player grabs it), the follow lets go
+  // until the next screen. When the trial ends the target eases back to the
+  // view's own. Reduced motion snaps instead.
   useFrame((_, delta) => {
     const orbit = controls.current;
     if (!orbit) return;
+    const amount = reducedMotion
+      ? 1
+      : Math.min(1, Math.min(delta, MAX_FRAME_DELTA) * FOLLOW_RATE);
+    updateCardFraming(amount);
     const { phase, sink, halves, breakup, speed } = trialPlayback;
     const follow = cameraFollow(
       { phase, sink, halves, breakup, speed },
       lengthCells
     );
+    const isDown = follow !== null && phase === "done";
+    if (!isDown) {
+      settledKey.current = null;
+      hasTakenOver.current = false;
+    }
     if (!follow && !isFollowing.current) return;
     isFollowing.current = true;
+    const key = trialKey();
+    if (isDown && (hasTakenOver.current || settledKey.current === key)) return;
 
-    const goal = follow ? follow.target : viewTarget(view);
-    const amount = reducedMotion
-      ? 1
-      : Math.min(1, Math.min(delta, MAX_FRAME_DELTA) * FOLLOW_RATE);
     const { target, object } = orbit;
-    const dx = (goal[0] - target.x) * amount;
-    const dy = (goal[1] - target.y) * amount;
-    const dz = (goal[2] - target.z) * amount;
+    const goal = follow ? follow.target : viewTarget(view);
+    if (follow?.isUnder) {
+      // The orbit keeps the camera a little above its target, so to dip
+      // under the sea the target goes deep enough for that height to fit.
+      const across = Math.hypot(
+        object.position.x - target.x,
+        object.position.z - target.z
+      );
+      const rise = across / Math.tan(orbit.maxPolarAngle);
+      underGoal[0] = goal[0];
+      underGoal[1] = Math.min(goal[1], -rise - UNDER_CAMERA_DEPTH * 2);
+      underGoal[2] = goal[2];
+    }
+    const aim = follow?.isUnder ? underGoal : goal;
+    const dx = (aim[0] - target.x) * amount;
+    const dy = (aim[1] - target.y) * amount;
+    const dz = (aim[2] - target.z) * amount;
     target.x += dx;
     target.y += dy;
     target.z += dz;
@@ -149,7 +257,7 @@ export default function CameraRig() {
     object.position.z += dz;
 
     if (follow && !isDragging.current) {
-      const offset = object.position.clone().sub(target);
+      offset.copy(object.position).sub(target);
       if (follow.isSideOn) {
         // Swing round to whichever side she is nearer, keeping the distance.
         const side = offset.z < 0 ? -1 : 1;
@@ -157,19 +265,39 @@ export default function CameraRig() {
         offset.x -= offset.x * amount;
         offset.z += (side * length - offset.z) * amount;
         offset.y += (length * SIDE_ON_HEIGHT - offset.y) * amount;
+      } else if (follow.isUnder) {
+        // The sea hides what is under it from above: dip just under it.
+        const limit = -target.y - UNDER_CAMERA_DEPTH;
+        if (offset.y > limit) offset.y += (limit - offset.y) * amount;
       } else if (follow.isLow) {
         // Only ever lower the camera; a player who went lower stays there.
         const limit = Math.hypot(offset.x, offset.z) * WRECK_HEIGHT;
         if (offset.y > limit) offset.y += (limit - offset.y) * amount;
       }
+      const { camera } = get();
+      if (follow.height > 0 && camera instanceof PerspectiveCamera) {
+        // Back off (never in) until a stern standing on end fits.
+        const halfFov = (camera.fov * Math.PI) / 360;
+        const needed = Math.min(
+          MAX_VIEW_DISTANCE,
+          follow.height / 2 / Math.tan(halfFov) / FIT_SHARE
+        );
+        const distance = offset.length();
+        if (distance > 0 && distance < needed) {
+          offset.multiplyScalar(1 + ((needed - distance) / distance) * amount);
+        }
+      }
       object.position.copy(target).add(offset);
     }
 
     const distanceToGoal =
-      Math.abs(goal[0] - target.x) +
-      Math.abs(goal[1] - target.y) +
-      Math.abs(goal[2] - target.z);
-    if (!follow && distanceToGoal < FOLLOW_EPSILON) isFollowing.current = false;
+      Math.abs(aim[0] - target.x) +
+      Math.abs(aim[1] - target.y) +
+      Math.abs(aim[2] - target.z);
+    if (distanceToGoal < FOLLOW_EPSILON) {
+      if (!follow) isFollowing.current = false;
+      else if (isDown) settledKey.current = key;
+    }
     orbit.update();
   });
 
@@ -185,6 +313,10 @@ export default function CameraRig() {
       onChange={handleChange}
       onStart={() => {
         isDragging.current = true;
+        // Once she is down, a grab hands the camera to the player for good.
+        if (trialPlayback.phase === "done" && isFollowing.current) {
+          hasTakenOver.current = true;
+        }
       }}
       onEnd={() => {
         isDragging.current = false;
