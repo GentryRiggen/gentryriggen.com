@@ -6,7 +6,7 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
-import SeaTrialResult from "../SeaTrialResult";
+import SeaTrialResult, { extraSummaryLines } from "../SeaTrialResult";
 
 const store = () => useShipBuilderStore.getState();
 
@@ -74,5 +74,92 @@ describe("SeaTrialResult buttons", () => {
     render(<SeaTrialResult />);
     await user.click(screen.getByRole("button", { name: "Back to building" }));
     expect(store().trial.status).toBe("idle");
+  });
+});
+
+describe("SeaTrialResult replay controls", () => {
+  it("offers Watch again and the scrubber after an iceberg trial only", () => {
+    finishTrial();
+    const { unmount } = render(<SeaTrialResult />);
+    expect(screen.queryByRole("button", { name: "Watch again" })).toBeNull();
+    expect(screen.queryByRole("slider")).toBeNull();
+    unmount();
+
+    act(() => store().endTrial());
+    finishTrial(5);
+    render(<SeaTrialResult />);
+    expect(screen.getByRole("button", { name: "Watch again" })).toBeVisible();
+    expect(screen.getByRole("slider", { name: "Look back" })).toBeVisible();
+  });
+
+  it("Watch again plays the same trial from the start", async () => {
+    const user = userEvent.setup();
+    finishTrial(5);
+    const before = store().trial;
+    render(<SeaTrialResult />);
+    await user.click(screen.getByRole("button", { name: "Watch again" }));
+    const { trial } = store();
+    expect(trial).toMatchObject({ status: "running", from: "start" });
+    if (trial.status === "running" && before.status === "result") {
+      expect(trial.input).toBe(before.input);
+    }
+  });
+
+  it("offers Follow her down after she sank, and not once followed", async () => {
+    const user = userEvent.setup();
+    finishTrial(5);
+    expect(store().trial).toMatchObject({ state: { outcome: "sank" } });
+    const { unmount } = render(<SeaTrialResult />);
+    await user.click(screen.getByRole("button", { name: "Follow her down" }));
+    expect(store().trial).toMatchObject({
+      status: "running",
+      descending: true,
+      from: "end",
+    });
+    unmount();
+
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() => store().finishTrial(runTrial(trial.input)));
+    render(<SeaTrialResult />);
+    expect(
+      screen.queryByRole("button", { name: "Follow her down" })
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Watch again" })).toBeVisible();
+  });
+
+  it("does not offer Follow her down when she stayed afloat", () => {
+    act(() => store().startTrial("calm", 5));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() =>
+      store().finishTrial({ ...runTrial(trial.input), outcome: "afloat" })
+    );
+    render(<SeaTrialResult />);
+    expect(
+      screen.queryByRole("button", { name: "Follow her down" })
+    ).toBeNull();
+  });
+});
+
+describe("extraSummaryLines", () => {
+  it("reads any extra text fields after title, message and tips", () => {
+    expect(
+      extraSummaryLines({ title: "She sank", message: "Water.", tips: ["x"] })
+    ).toEqual([]);
+    const summary = {
+      title: "She sank",
+      message: "Water.",
+      tips: [],
+      power: "The lights flickered, then went out as she went down.",
+      breakup: "She broke in two at 19°, just behind wall 3.",
+      floor: "",
+      lines: ["She came to rest on the sea floor."],
+    };
+    expect(extraSummaryLines(summary)).toEqual([
+      summary.power,
+      summary.breakup,
+      "She came to rest on the sea floor.",
+    ]);
   });
 });

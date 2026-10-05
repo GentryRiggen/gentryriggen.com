@@ -1,6 +1,20 @@
 import { createTrial, runTrial } from "@/lib/ship-builder/sim/seaTrial";
-import { SIM_STEP_S, type TrialInput } from "@/lib/ship-builder/sim/types";
 import {
+  buildTimeline,
+  timelineEnd,
+  SLOW_MO_SPEED,
+  type Timeline,
+} from "@/lib/ship-builder/sim/timeline";
+import {
+  SIM_STEP_S,
+  type SimEvent,
+  type TrialInput,
+} from "@/lib/ship-builder/sim/types";
+import {
+  advanceTimelineClock,
+  isTimelineClockDone,
+  startTimelineClock,
+  writeTimelinePlayback,
   advanceTrial,
   jumpTrial,
   advanceEffectsClock,
@@ -145,6 +159,21 @@ describe("playback reset by the store", () => {
     expect(trialPlayback.roll).toBe(0);
     expect(trialPlayback.doneAt).toBeNull();
   });
+
+  it("keeps the sunk pose when following her down", () => {
+    const { useShipBuilderStore } = jest.requireActual(
+      "@/lib/ship-builder/state/store"
+    );
+    const { trialPlayback } = jest.requireActual("../trialPlayback");
+    useShipBuilderStore.getState().startTrial("calm", 5);
+    const sunk = { ...runTrial(TOP_HEAVY), outcome: "sank" as const };
+    useShipBuilderStore.getState().finishTrial(sunk);
+    writePlayback(sunk, trialPlayback);
+    useShipBuilderStore.getState().descend();
+    expect(useShipBuilderStore.getState().trial.status).toBe("running");
+    expect(trialPlayback.sink).toBe(sunk.pose.sink);
+    useShipBuilderStore.getState().endTrial();
+  });
 });
 
 describe("writeInstantPlayback", () => {
@@ -188,5 +217,78 @@ describe("advanceEffectsClock", () => {
     for (let frame = 0; frame < 300; frame++)
       advanceEffectsClock(1 / 60, 1, target);
     expect(bubbleIntensity(target)).toBe(0);
+  });
+});
+
+/** A still timeline of `seconds`, its last state logging these events. */
+function stillTimeline(seconds: number, events: SimEvent[] = []): Timeline {
+  const first = createTrial(STEADY);
+  const count = Math.round(seconds / SIM_STEP_S) + 1;
+  return {
+    states: Array.from({ length: count }, (_, i) => ({
+      ...first,
+      time: i * SIM_STEP_S,
+      events: i === count - 1 ? events : [],
+    })),
+    descended: false,
+  };
+}
+
+describe("timeline clock", () => {
+  it("plays at frame speed times the test speed and stops at the end", () => {
+    const clock = startTimelineClock(stillTimeline(2), 0);
+    advanceTimelineClock(clock, 0.05);
+    expect(clock.time).toBeCloseTo(0.05, 9);
+    advanceTimelineClock(clock, 0.05, 10);
+    expect(clock.time).toBeCloseTo(0.55, 9);
+    for (let i = 0; i < 100; i++) advanceTimelineClock(clock, 0.1, 10);
+    expect(clock.time).toBe(2);
+    expect(isTimelineClockDone(clock)).toBe(true);
+  });
+
+  it("slows down around the break", () => {
+    const clock = startTimelineClock(
+      stillTimeline(10, [{ at: 5, kind: "broke" }]),
+      5.2
+    );
+    advanceTimelineClock(clock, 0.1);
+    expect(clock.speed).toBe(SLOW_MO_SPEED);
+    expect(clock.time).toBeCloseTo(5.2 + 0.1 * SLOW_MO_SPEED, 9);
+  });
+
+  it("starts at a test jump and never moves past a test hold", () => {
+    const timeline = stillTimeline(10);
+    expect(startTimelineClock(timeline, 0, 3).time).toBe(3);
+    expect(startTimelineClock(timeline, 0, 500).time).toBe(10);
+    // "Follow her down" starts at the end even with an earlier jump time.
+    expect(startTimelineClock(timeline, 8, 3).time).toBe(8);
+
+    const held = startTimelineClock(timeline, 0, 3);
+    advanceTimelineClock(held, 0.1, 1, 3);
+    expect(held.time).toBe(3);
+  });
+});
+
+describe("writeTimelinePlayback", () => {
+  const TOP_HEAVY_TIMELINE = buildTimeline(TOP_HEAVY);
+
+  it("shows the state at a time with the milestones reached by then", () => {
+    const target: TrialPlayback = {} as TrialPlayback;
+    resetPlayback(target);
+    writeTimelinePlayback(
+      TOP_HEAVY_TIMELINE,
+      timelineEnd(TOP_HEAVY_TIMELINE),
+      target
+    );
+    expect(target.phase).toBe("done");
+    expect(target.capsizedAt).not.toBeNull();
+    expect(target.doneAt).toBe(target.time);
+
+    // Scrubbing back to the start forgets the later milestones.
+    writeTimelinePlayback(TOP_HEAVY_TIMELINE, 0, target);
+    expect(target.time).toBe(0);
+    expect(target.capsizedAt).toBeNull();
+    expect(target.sinkingAt).toBeNull();
+    expect(target.doneAt).toBeNull();
   });
 });

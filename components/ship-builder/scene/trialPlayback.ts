@@ -1,5 +1,12 @@
 import { stepTrial } from "@/lib/ship-builder/sim/seaTrial";
 import {
+  slowMoSpeed,
+  stateAt,
+  timelineEnd,
+  timelineEvents,
+  type Timeline,
+} from "@/lib/ship-builder/sim/timeline";
+import {
   SIM_STEP_S,
   type PowerState,
   type SimBreakup,
@@ -74,13 +81,15 @@ export function resetPlayback(target: TrialPlayback = trialPlayback) {
 
 // Clear the last run's pose the moment a trial starts or ends, in the store
 // update itself: a reset in an effect would let one frame show the previous
-// run (a sunk ship on "Try again").
+// run (a sunk ship on "Try again"). "Follow her down" picks up where the last
+// run ended, so it keeps the pose.
 useShipBuilderStore.subscribe((state, previous) => {
   const { trial } = state;
   const before = previous.trial;
   if (trial === before) return;
   const isNewRun =
     trial.status === "running" &&
+    trial.from === "start" &&
     (before.status !== "running" || before.runId !== trial.runId);
   const isLeaving =
     (trial.status === "idle" || trial.status === "aiming") &&
@@ -117,6 +126,110 @@ export function writePlayback(
   if (target.doneAt === null && state.phase === "done") {
     target.doneAt = state.time;
   }
+}
+
+/** When a timeline first reaches each milestone, in sim seconds. */
+interface Milestones {
+  /** She began to go over (capsizing or sinking), or logged `capsized`. */
+  goingOver: number | null;
+  capsized: number | null;
+  sinking: number | null;
+  done: number | null;
+}
+
+const milestonesByTimeline = new WeakMap<Timeline, Milestones>();
+
+function milestonesOf(timeline: Timeline): Milestones {
+  const known = milestonesByTimeline.get(timeline);
+  if (known) return known;
+  const firstWhere = (match: (state: SimState) => boolean) =>
+    timeline.states.find(match)?.time ?? null;
+  const milestones: Milestones = {
+    goingOver: firstWhere(
+      (s) => s.phase === "capsizing" || s.phase === "sinking"
+    ),
+    capsized:
+      timelineEvents(timeline).find((e) => e.kind === "capsized")?.at ?? null,
+    sinking: firstWhere((s) => s.phase === "sinking"),
+    done: firstWhere((s) => s.phase === "done"),
+  };
+  milestonesByTimeline.set(timeline, milestones);
+  return milestones;
+}
+
+/** `at` if it has already happened by `time`, else null. */
+function reached(at: number | null, time: number): number | null {
+  return at !== null && at <= time ? at : null;
+}
+
+/**
+ * Shows the timeline's state at `simTime`. Unlike `writePlayback`, which
+ * latches milestones as time moves forward, this works them out from the
+ * timeline, so it is right after a jump back ("Watch again", the scrubber).
+ */
+export function writeTimelinePlayback(
+  timeline: Timeline,
+  simTime: number,
+  target: TrialPlayback = trialPlayback
+) {
+  const state = stateAt(timeline, simTime);
+  const milestones = milestonesOf(timeline);
+  target.capsizedAt =
+    reached(milestones.capsized, state.time) ??
+    reached(milestones.goingOver, state.time);
+  target.sinkingAt = reached(milestones.sinking, state.time);
+  target.doneAt = reached(milestones.done, state.time);
+  writePlayback(state, target);
+}
+
+/** Plays a precomputed timeline (iceberg trials), see `advanceTimelineClock`. */
+export interface TimelineClock {
+  timeline: Timeline;
+  /** Sim seconds the playback has reached. */
+  time: number;
+  /** Slow-mo rate at `time` (1 normal), without any test speed-up. */
+  speed: number;
+}
+
+/**
+ * A clock at `from` (sim seconds), or at the test's jump time when one is set
+ * and later than `from`, never past the end.
+ */
+export function startTimelineClock(
+  timeline: Timeline,
+  from: number,
+  jumpTo: number | null = null
+): TimelineClock {
+  const time = Math.min(timelineEnd(timeline), Math.max(from, jumpTo ?? from));
+  return { timeline, time, speed: slowMoSpeed(timeline, time) };
+}
+
+/**
+ * Moves the playback on by `deltaSeconds` of (clamped) frame time, slowed by
+ * the timeline's slow-mo and sped up by `testSpeed`. Stops at the end, and
+ * never moves past `holdAt` (a test holding the trial at a moment). Mutates
+ * and returns `clock`.
+ */
+export function advanceTimelineClock(
+  clock: TimelineClock,
+  deltaSeconds: number,
+  testSpeed = 1,
+  holdAt: number | null = null
+): TimelineClock {
+  const speed = slowMoSpeed(clock.timeline, clock.time);
+  const step = Math.min(deltaSeconds, MAX_FRAME_DELTA) * speed * testSpeed;
+  const limit = Math.min(
+    timelineEnd(clock.timeline),
+    holdAt === null ? Infinity : Math.max(holdAt, clock.time)
+  );
+  clock.time = Math.min(limit, clock.time + step);
+  clock.speed = speed;
+  return clock;
+}
+
+/** True once the clock has played its whole timeline. */
+export function isTimelineClockDone(clock: TimelineClock): boolean {
+  return clock.time >= timelineEnd(clock.timeline);
 }
 
 /** Most sim steps one frame may run, so a slow frame cannot stall the page. */

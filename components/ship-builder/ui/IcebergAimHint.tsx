@@ -3,12 +3,14 @@
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import BreakModeSwitch from "./BreakModeSwitch";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { panelClass } from "./styles";
 
 /**
- * Shows while the player aims the iceberg: where to tap, and a way out. It
- * takes the bottom-centre slot the Sea trial button leaves free while aiming.
+ * Shows while the player aims the iceberg: how she may break, where to tap,
+ * and a way out. It takes the bottom-centre slot the Sea trial button leaves
+ * free while aiming.
  */
 export default function IcebergAimHint() {
   const isAiming = useShipBuilderStore((s) => s.trial.status === "aiming");
@@ -28,7 +30,12 @@ export default function IcebergAimHint() {
 
   if (!isAiming) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit max-w-full justify-center">
+    <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit max-w-full flex-col items-center gap-2">
+      <div
+        className={`pointer-events-auto max-w-full rounded-2xl border p-2 shadow-lg ${panelClass}`}
+      >
+        <BreakModeSwitch />
+      </div>
       <div
         role="status"
         className={`pointer-events-auto flex items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}

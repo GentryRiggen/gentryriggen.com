@@ -1,25 +1,32 @@
 "use client";
 
 import {
+  ArrowDownToLine,
   LifeBuoy,
   Crosshair,
+  Repeat,
   RotateCcw,
   ThumbsUp,
   Waves,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { explainTrial } from "@/lib/ship-builder/sim/explain";
+import {
+  explainTrial,
+  type TrialSummary,
+} from "@/lib/ship-builder/sim/explain";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import {
   useShipBuilderStore,
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
+import { trialTimelineFor } from "../scene/trialTimeline";
 import BelowDeckDiagram from "./BelowDeckDiagram";
 import { belowDeckWater } from "./belowDeckWater";
 import { focusSeaTrialButton } from "./SeaTrialButton";
-import { SEA_LABELS } from "./seaTrialText";
+import { FOLLOW_HER_DOWN, SEA_LABELS } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
+import TrialScrubber from "./TrialScrubber";
 
 interface OutcomeLook {
   Icon: LucideIcon;
@@ -52,6 +59,27 @@ const OUTCOME_LOOKS: Record<TrialOutcome, OutcomeLook> = {
   },
 };
 
+/** Summary fields shown on their own; any other text field is an extra line. */
+const SUMMARY_CORE_FIELDS = new Set(["title", "message", "tips"]);
+
+/**
+ * The explanation's extra lines (lights failing, the break, the sea floor)
+ * beyond the title, message and tips, in the order explainTrial gives them.
+ * Read generically so a summary without them (or with new ones) still works.
+ */
+export function extraSummaryLines(summary: TrialSummary): string[] {
+  return Object.entries(summary).flatMap(([key, value]: [string, unknown]) => {
+    if (SUMMARY_CORE_FIELDS.has(key)) return [];
+    if (typeof value === "string") return value.trim() ? [value] : [];
+    if (Array.isArray(value)) {
+      return value.filter(
+        (line): line is string => typeof line === "string" && line.trim() !== ""
+      );
+    }
+    return [];
+  });
+}
+
 /** Shows how the trial went, with a way to try again or keep building. */
 export default function SeaTrialResult() {
   const trial = useShipBuilderStore((s) => s.trial);
@@ -67,6 +95,8 @@ function ResultCard({ trial }: ResultCardProps) {
   const startTrial = useShipBuilderStore((s) => s.startTrial);
   const endTrial = useShipBuilderStore((s) => s.endTrial);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
+  const replay = useShipBuilderStore((s) => s.replay);
+  const descend = useShipBuilderStore((s) => s.descend);
   const hull = useShipBuilderStore((s) => s.ship.hull);
   const card = useRef<HTMLDivElement>(null);
   const { input, state } = trial;
@@ -75,6 +105,15 @@ function ResultCard({ trial }: ResultCardProps) {
     [state.compartments]
   );
   const summary = useMemo(() => explainTrial(state, input), [state, input]);
+  const extraLines = useMemo(() => extraSummaryLines(summary), [summary]);
+  const timeline = useMemo(
+    () => (input.iceberg ? trialTimelineFor(input, trial.descending) : null),
+    [input, trial.descending]
+  );
+  const canFollow =
+    input.iceberg !== undefined &&
+    !trial.descending &&
+    state.outcome === "sank";
   const look = OUTCOME_LOOKS[state.outcome ?? "steady"];
 
   useEffect(() => {
@@ -118,6 +157,16 @@ function ResultCard({ trial }: ResultCardProps) {
       >
         {summary.message}
       </p>
+      {extraLines.length > 0 && (
+        <ul
+          data-testid="sea-trial-extra-lines"
+          className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300"
+        >
+          {extraLines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
       {input.iceberg && (
         // The floating inset would sit under this card on a phone.
         <div
@@ -142,6 +191,34 @@ function ResultCard({ trial }: ResultCardProps) {
               <li key={tip}>{tip}</li>
             ))}
           </ul>
+        </div>
+      )}
+      {timeline && (
+        <div className="mt-3 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
+          <TrialScrubber timeline={timeline} />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={replay}
+              className={`${buttonClass} min-h-11 flex-1`}
+            >
+              <Repeat aria-hidden="true" className="h-4 w-4 shrink-0" />
+              Watch again
+            </button>
+            {canFollow && (
+              <button
+                type="button"
+                onClick={descend}
+                className={`${buttonClass} min-h-11 flex-1`}
+              >
+                <ArrowDownToLine
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0"
+                />
+                {FOLLOW_HER_DOWN}
+              </button>
+            )}
+          </div>
         </div>
       )}
       <div className="mt-4 flex flex-wrap gap-2">

@@ -26,7 +26,7 @@ import {
 import type { ShipKind } from "../model/kinds";
 import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
-import type { SimSea, SimState, TrialInput } from "../sim/types";
+import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
 import type { HullArea, PaintColor } from "../model/paint";
 import type {
@@ -67,6 +67,10 @@ export interface Notice {
  * iceberg hits, running while the sim plays, then a result until the player
  * goes back to building. Anything but idle freezes the ship: every action that
  * would edit it does nothing (see `isTrialActive`).
+ *
+ * An iceberg trial that sank can be followed down to the sea floor
+ * (`descend`): it runs again with `descending` set, continuing from where it
+ * ended. `replay` plays the same trial again from the start.
  */
 export type TrialSlice =
   | { status: "idle" }
@@ -76,8 +80,21 @@ export type TrialSlice =
       input: TrialInput;
       /** Changes per run, so "Try again" restarts the runner. */
       runId: number;
+      /** The descent to the sea floor is part of this run. */
+      descending: boolean;
+      /**
+       * Where playback begins: the start, or the end of the trial before its
+       * descent ("Follow her down" picks up where she sank).
+       */
+      from: "start" | "end";
     }
-  | { status: "result"; input: TrialInput; state: SimState; runId: number };
+  | {
+      status: "result";
+      input: TrialInput;
+      state: SimState;
+      runId: number;
+      descending: boolean;
+    };
 
 /** What undo/redo restore: the ship and which My Ships entry it belongs to. */
 interface HistoryEntry {
@@ -98,6 +115,11 @@ interface ShipBuilderData {
   notice: Notice | null;
   camera: { view: CameraView; nonce: number };
   trial: TrialSlice;
+  /**
+   * How iceberg trials may break the ship. Kept apart from `trial` so it
+   * survives leaving a trial; remembered for the session only.
+   */
+  breakMode: BreakMode;
 }
 
 export interface ShipBuilderState extends ShipBuilderData {
@@ -160,6 +182,20 @@ export interface ShipBuilderState extends ShipBuilderData {
   finishTrial: (state: SimState) => void;
   /** Leaves the trial (running or finished) and goes back to building. */
   endTrial: () => void;
+  /** Picks how the next iceberg trial may break the ship. */
+  setBreakMode: (mode: BreakMode) => void;
+  /**
+   * "Follow her down": continues an iceberg trial that sank on to the sea
+   * floor, from where she went under. Works on a finished `sank` result, and
+   * on a running iceberg trial (the status bar offers it once she has sunk,
+   * before the result shows). Does nothing once already descending.
+   */
+  descend: () => void;
+  /**
+   * "Watch again": plays the finished iceberg trial again from the start,
+   * descent included if it was taken.
+   */
+  replay: () => void;
 }
 
 export function createInitialState(): ShipBuilderData {
@@ -175,6 +211,7 @@ export function createInitialState(): ShipBuilderData {
     notice: null,
     camera: { view: "three-quarter", nonce: 0 },
     trial: { status: "idle" },
+    breakMode: "real",
   };
 }
 
@@ -462,6 +499,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const {
         camera,
         notice,
+        breakMode,
         ship: outgoing,
         savedId: outgoingId,
         past,
@@ -481,6 +519,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         savedId,
         camera,
         notice,
+        breakMode,
       });
     },
 
@@ -518,7 +557,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     startTrial(sea, impactX) {
-      const { ship } = get();
+      const { ship, breakMode } = get();
       const { stats } = analyzeShip(ship);
       const input: TrialInput = {
         ship: simShipFromStats(stats, ship.hull.beam),
@@ -530,12 +569,19 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
                 compartments: compartmentSpecsOf(ship.hull),
                 length: gridLength(ship),
                 impactX,
+                breakMode,
               },
             }),
       };
       runId += 1;
       set({
-        trial: { status: "running", input, runId },
+        trial: {
+          status: "running",
+          input,
+          runId,
+          descending: false,
+          from: "start",
+        },
         tool: { kind: "none" },
         ...CLEARED,
       });
@@ -566,12 +612,49 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           input: trial.input,
           state,
           runId: trial.runId,
+          descending: trial.descending,
         },
       });
     },
 
     endTrial() {
       set({ trial: { status: "idle" } });
+    },
+
+    setBreakMode(mode) {
+      set({ breakMode: mode });
+    },
+
+    descend() {
+      const { trial } = get();
+      if (trial.status !== "running" && trial.status !== "result") return;
+      if (!trial.input.iceberg || trial.descending) return;
+      if (trial.status === "result" && trial.state.outcome !== "sank") return;
+      runId += 1;
+      set({
+        trial: {
+          status: "running",
+          input: trial.input,
+          runId,
+          descending: true,
+          from: "end",
+        },
+      });
+    },
+
+    replay() {
+      const { trial } = get();
+      if (trial.status !== "result" || !trial.input.iceberg) return;
+      runId += 1;
+      set({
+        trial: {
+          status: "running",
+          input: trial.input,
+          runId,
+          descending: trial.descending,
+          from: "start",
+        },
+      });
     },
   };
 });
