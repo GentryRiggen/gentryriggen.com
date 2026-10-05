@@ -63,6 +63,10 @@ const LOOKS = [
   },
 ];
 
+// Ambient occlusion is forced on so a slow software renderer cannot switch it
+// off mid-run; set SHOTS_AO=0 to measure without it.
+const ambientOcclusion = process.env.SHOTS_AO !== "0";
+
 mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({
   args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
@@ -74,13 +78,13 @@ try {
       viewport: { width: 1280, height: 800 },
       deviceScaleFactor: look.crop ? 3 : 1,
     });
-    await page.addInitScript(() => {
-      window.__SHIP_BUILDER_TEST__ = { freezeTime: 3 };
+    await page.addInitScript((ao) => {
+      window.__SHIP_BUILDER_TEST__ = { freezeTime: 3, ao };
       window.localStorage.setItem(
         "ship-builder:ui:collapsed",
         JSON.stringify({ left: true, right: true })
       );
-    });
+    }, ambientOcclusion);
     await page.goto(`${baseURL}/ship-builder`);
     await page.waitForFunction(() => Boolean(window.__shipBuilderStore), null, {
       timeout: 120_000,

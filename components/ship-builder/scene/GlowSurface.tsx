@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { DoubleSide, FrontSide, type MeshStandardMaterial } from "three";
 import { useGlowEffect } from "./GlowContext";
 import { PALETTE } from "./palette";
-import type { PartEmphasis, PartTint } from "./Surface";
+import { FINISHES, type PartEmphasis, type PartTint } from "./Surface";
 
 interface GlowSurfaceProps {
   /** The colour by day, and the diffuse colour at night. */
@@ -59,6 +59,7 @@ export default function GlowSurface({
       side={doubleSided ? DoubleSide : FrontSide}
       emissive={emphasis ? PALETTE.emphasis[emphasis] : glowColor}
       emissiveIntensity={emphasis ? 0.4 : 0}
+      roughness={FINISHES.paint.roughness}
     />
   );
 }

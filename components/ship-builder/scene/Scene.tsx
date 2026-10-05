@@ -21,7 +21,9 @@ import HullGash from "./HullGash";
 import Iceberg from "./Iceberg";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
+import PostEffects from "./PostEffects";
 import Railings from "./Railings";
+import ReflectionEnvironment from "./ReflectionEnvironment";
 import RenderInfoProbe from "./RenderInfoProbe";
 import SeaTrialEffects from "./SeaTrialEffects";
 import SeaTrialRunner from "./SeaTrialRunner";
@@ -99,6 +101,7 @@ export default function Scene() {
           isBelow={isBelow}
           glow={glow}
         />
+        <ReflectionEnvironment timeOfDay={timeOfDay} />
         <Ocean seeThrough={isBelow} environment={environment} />
         <ShipAnimation>
           <GlowContext.Provider value={glow}>
@@ -121,6 +124,7 @@ export default function Scene() {
         <SeaTrialRunner />
         <SeaTrialEffects />
         <CameraRig />
+        <PostEffects environment={environment} />
         <RenderInfoProbe />
       </Canvas>
       {ring && <LongPressRing key={ring.key} x={ring.x} y={ring.y} />}

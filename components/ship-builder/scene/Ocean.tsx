@@ -106,7 +106,12 @@ interface SeaUniforms {
   uAmplitude: { value: number };
 }
 
-const OPACITY = 0.9;
+/**
+ * Nearly opaque: post-processing blends in linear light, where the ten
+ * per cent of bright sky showing through a 0.9 sea washes the water out
+ * (it blended in sRGB before). This keeps the deep blue either way.
+ */
+const OPACITY = 0.98;
 const SEE_THROUGH_OPACITY = 0.35;
 
 export default function Ocean({ seeThrough, environment }: OceanProps) {
@@ -142,6 +147,12 @@ export default function Ocean({ seeThrough, environment }: OceanProps) {
           "#include <begin_vertex>",
           "#include <begin_vertex>\ntransformed.z += seaH;"
         );
+      // The scene's reflection map is for metal and glass; the sea has its own
+      // colour and would only wash out, so it skips the image-based light.
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <lights_fragment_maps>",
+        ""
+      );
     },
     [uniforms]
   );

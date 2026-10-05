@@ -15,6 +15,8 @@ export interface Environment {
     ambient: string;
     hemiSky: string;
     hemiGround: string;
+    /** Tint of the soft contact shadows (ambient occlusion). */
+    aoColor: string;
     /** The key light: the sun by day, the moon at night. */
     light: string;
     /** Multiplies the ocean's own gradient. */
@@ -105,8 +107,9 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       skyHorizon: PALETTE.sky,
       sunColor: "#fff6e0",
       ambient: "#ffffff",
-      hemiSky: "#ffffff",
-      hemiGround: "#ffffff",
+      hemiSky: "#e2f0ff",
+      hemiGround: "#9fc3da",
+      aoColor: "#2e4f6e",
       light: "#ffffff",
       seaTint: "#ffffff",
       underwater: PALETTE.underwater,
@@ -117,8 +120,8 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       moonAmount: 0,
       fogNear: 80,
       fogFar: 260,
-      ambientIntensity: 0.55,
-      hemiIntensity: 0,
+      ambientIntensity: 0.12,
+      hemiIntensity: 0.55,
       lightIntensity: 1.4,
       seaRoughness: 0.35,
       cloudCover: 0,
@@ -139,6 +142,7 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       ambient: "#ffd0c4",
       hemiSky: "#d596b4",
       hemiGround: "#2d4170",
+      aoColor: "#4a3350",
       light: "#ffab66",
       seaTint: "#d2bff0",
       underwater: mixHex(PALETTE.underwater, "#03101c", 0.4),
@@ -171,6 +175,7 @@ const CLEAR: Record<TimeOfDay, Environment> = {
       ambient: "#8b9fe0",
       hemiSky: "#4a62a8",
       hemiGround: "#0c1530",
+      aoColor: "#050a1c",
       light: "#b3c8ff",
       seaTint: "#8da2d6",
       underwater: mixHex(PALETTE.underwater, "#020a14", 0.6),
@@ -196,6 +201,38 @@ const CLEAR: Record<TimeOfDay, Environment> = {
     },
   },
 };
+
+/**
+ * What the reflections show: a bright panel overhead, a softer one all round
+ * and the sea below, so metal and glass pick up the time of day's colours.
+ */
+export interface ReflectionLook {
+  top: string;
+  side: string;
+  bottom: string;
+  /** Strength of the whole reflection; low so paint colours stay true. */
+  intensity: number;
+}
+
+const REFLECTION: Record<TimeOfDay, ReflectionLook> = {
+  day: { top: "#cfe6ff", side: "#fff6e6", bottom: "#4f8fb5", intensity: 0.35 },
+  sunset: {
+    top: "#8f7fb8",
+    side: "#ffb88a",
+    bottom: "#3b3f78",
+    intensity: 0.3,
+  },
+  night: {
+    top: "#3a4c8a",
+    side: "#6f86c8",
+    bottom: "#0d1633",
+    intensity: 0.25,
+  },
+};
+
+export function reflectionFor(time: TimeOfDay): ReflectionLook {
+  return REFLECTION[time];
+}
 
 /** What the sky, light, sea and clouds turn toward as the weather closes in. */
 const STORM: Record<
@@ -263,6 +300,15 @@ export function environmentFor(time: TimeOfDay, sea: SeaState): Environment {
       light: mixHex(clear.colors.light, storm.light, overcast),
       ambient: mixHex(clear.colors.ambient, storm.ambient, overcast),
       seaTint: mixHex(clear.colors.seaTint, storm.seaTint, overcast),
+      // A grey sky has no blue to bounce; the other times keep their mood.
+      hemiSky:
+        time === "day"
+          ? mixHex(clear.colors.hemiSky, storm.ambient, overcast)
+          : clear.colors.hemiSky,
+      hemiGround:
+        time === "day"
+          ? mixHex(clear.colors.hemiGround, storm.seaTint, overcast)
+          : clear.colors.hemiGround,
       cloud: mixHex(clear.colors.cloud, storm.cloud, overcast),
       underwater: mixHex(
         clear.colors.underwater,

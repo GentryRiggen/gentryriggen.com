@@ -1,4 +1,4 @@
-import { environmentFor, mixHex } from "../environmentModel";
+import { environmentFor, mixHex, reflectionFor } from "../environmentModel";
 import { PALETTE } from "../palette";
 import { SEA_STATES } from "../seaState";
 import { TIMES_OF_DAY } from "../timeOfDay";
@@ -24,7 +24,8 @@ describe("environmentFor", () => {
     expect(env.colors.skyHorizon).toBe(PALETTE.sky);
     expect(env.colors.underwater).toBe(PALETTE.underwater);
     expect(env.numbers).toMatchObject({
-      ambientIntensity: 0.55,
+      ambientIntensity: 0.12,
+      hemiIntensity: 0.55,
       lightIntensity: 1.4,
       fogNear: 80,
       fogFar: 260,
@@ -105,6 +106,70 @@ describe("environmentFor", () => {
         environmentFor(time, "calm").vectors.lightPosition[1]
       ).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("day fill", () => {
+  it("replaces the white ambient with a blue sky over a sea-blue ground", () => {
+    const { colors, numbers } = environmentFor("day", "calm");
+    const [, , skyBlue] = channels(colors.hemiSky);
+    const [groundRed, , groundBlue] = channels(colors.hemiGround);
+    expect(skyBlue).toBeGreaterThan(240);
+    expect(groundBlue).toBeGreaterThan(groundRed);
+    expect(luminance(colors.hemiSky)).toBeGreaterThan(
+      luminance(colors.hemiGround)
+    );
+    expect(numbers.hemiIntensity).toBeGreaterThan(numbers.ambientIntensity);
+  });
+
+  it("keeps the total fill close to the old flat white ambient", () => {
+    const { numbers } = environmentFor("day", "calm");
+    const total = numbers.ambientIntensity + numbers.hemiIntensity;
+    expect(total).toBeGreaterThan(0.55 * 0.9);
+    expect(total).toBeLessThan(0.55 * 1.7);
+  });
+
+  it("greys the fill when stormy", () => {
+    const calm = environmentFor("day", "calm").colors.hemiSky;
+    const stormy = environmentFor("day", "stormy").colors.hemiSky;
+    expect(saturation(stormy)).toBeLessThan(saturation(calm));
+  });
+
+  it("leaves sunset and night moods alone in a storm", () => {
+    for (const time of ["sunset", "night"] as const) {
+      expect(environmentFor(time, "stormy").colors.hemiSky).toBe(
+        environmentFor(time, "calm").colors.hemiSky
+      );
+    }
+  });
+});
+
+describe("occlusion tint", () => {
+  it("is darkest at night and always darker than the sky", () => {
+    const [day, sunset, night] = TIMES_OF_DAY.map((time) =>
+      environmentFor(time, "calm")
+    );
+    expect(luminance(night.colors.aoColor)).toBeLessThan(
+      luminance(sunset.colors.aoColor)
+    );
+    expect(luminance(day.colors.aoColor)).toBeLessThan(
+      luminance(day.colors.skyHorizon)
+    );
+  });
+});
+
+describe("reflectionFor", () => {
+  it("keeps the reflections gentle so colours do not wash out", () => {
+    for (const time of TIMES_OF_DAY) {
+      expect(reflectionFor(time).intensity).toBeLessThanOrEqual(0.4);
+      expect(reflectionFor(time).intensity).toBeGreaterThan(0);
+    }
+  });
+
+  it("is dimmer at night than by day", () => {
+    expect(luminance(reflectionFor("night").side)).toBeLessThan(
+      luminance(reflectionFor("day").side)
+    );
   });
 });
 
