@@ -38,6 +38,19 @@ describe("powerLevel", () => {
     expect(powerLevel("out", 9.5, null, false, 9)).toBe(0);
   });
 
+  it("fades out from wherever the flicker had the lights, not a jump", () => {
+    for (const outAt of [2.2, 3.1, 7.45, 12]) {
+      for (const reduced of [false, true]) {
+        expect(powerLevel("out", outAt, 1, reduced, outAt)).toBeCloseTo(
+          powerLevel("flickering", outAt, 1, reduced),
+          10
+        );
+      }
+    }
+    // Straight from on to out, they die away from full brightness.
+    expect(powerLevel("out", 9, null, false, 9)).toBe(1);
+  });
+
   it("is deterministic", () => {
     expect(sample(false)).toEqual(sample(false));
   });

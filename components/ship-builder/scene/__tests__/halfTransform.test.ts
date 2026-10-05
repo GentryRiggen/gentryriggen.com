@@ -5,6 +5,7 @@ import {
   applyHalfPose,
   BOB_HANDOFF_S,
   bobCarryWeight,
+  breakOrigin,
   halfMatrix,
   worldXOf,
 } from "../halfTransform";
@@ -112,6 +113,16 @@ describe("applyHalfPose", () => {
     );
     expect(object.position.length()).toBeCloseTo(0, 12);
     expect(object.rotation.z).toBe(0);
+  });
+});
+
+describe("breakOrigin", () => {
+  it("is where both halves had their broken ends at the break", () => {
+    const [atX, pitch, sink] = [18, -0.3, 3.6];
+    const origin = breakOrigin(atX, LENGTH, pitch, sink, new Vector3());
+    const onKeel = new Vector3(worldXOf(atX, LENGTH), 0, 0);
+    const half = halfMatrix(continuousHalf(atX, pitch, sink), LENGTH);
+    expect(onKeel.applyMatrix4(half).distanceTo(origin)).toBeLessThan(1e-9);
   });
 });
 

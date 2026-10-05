@@ -105,6 +105,14 @@ export function descentBubble(
   return out;
 }
 
+/** Seconds the bubble trails take to fade once the descent is over. */
+export const TRAIL_FADE_SECONDS = 1;
+
+/** How much of the trails still shows `seconds` after the descent ended. */
+export function trailFade(seconds: number): number {
+  return clamp(1 - seconds / TRAIL_FADE_SECONDS, 0, 1);
+}
+
 /** 1 while a body is falling, easing to 0 as it settles on the sand. */
 export function trailIntensity(body: BodyPoint): number {
   const height = body.y + FLOOR_DEPTH;

@@ -85,3 +85,19 @@ export function applyBobCarry(
   );
   return target;
 }
+
+/**
+ * Where the break was the moment she broke, written into `out`: the point on
+ * the keel line at `atX` with the whole ship in the pose she broke from (both
+ * halves start there), so it stays put however far apart they move.
+ */
+export function breakOrigin(
+  atX: number,
+  lengthCells: number,
+  pitch: number,
+  sink: number,
+  out: Vector3
+): Vector3 {
+  const x = worldXOf(atX, lengthCells);
+  return out.set(x * Math.cos(pitch), x * Math.sin(pitch) - sink, 0);
+}

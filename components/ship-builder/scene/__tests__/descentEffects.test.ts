@@ -6,6 +6,8 @@ import {
   landings,
   siltGrain,
   SILT_SECONDS,
+  TRAIL_FADE_SECONDS,
+  trailFade,
   trailIntensity,
   underwaterBlend,
   type Landing,
@@ -139,6 +141,15 @@ describe("siltGrain", () => {
     siltGrain(3, 1, 5, out);
     expect(out.y).toBeGreaterThan(-FLOOR_DEPTH);
     expect(out.y).toBeLessThan(-FLOOR_DEPTH + 2);
+  });
+});
+
+describe("trailFade", () => {
+  it("fades the trails out over a moment after the descent", () => {
+    expect(trailFade(0)).toBe(1);
+    expect(trailFade(TRAIL_FADE_SECONDS / 2)).toBeCloseTo(0.5);
+    expect(trailFade(TRAIL_FADE_SECONDS)).toBe(0);
+    expect(trailFade(TRAIL_FADE_SECONDS * 3)).toBe(0);
   });
 });
 

@@ -46,10 +46,16 @@ export function powerLevel(
   outAt: number | null = null
 ): number {
   if (power === "on") return 1;
-  const floor = reducedMotion ? CALM_FLOOR : SAG_FLOOR;
   if (power === "out") {
     if (outAt === null) return 0;
-    return Math.max(0, 1 - (time - outAt) / FADE_OUT_SECONDS) * floor;
+    // Die away from however bright the flicker had them at that moment.
+    const from = powerLevel(
+      "flickering",
+      outAt,
+      flickerStartedAt,
+      reducedMotion
+    );
+    return Math.max(0, 1 - (time - outAt) / FADE_OUT_SECONDS) * from;
   }
 
   const elapsed = time - (flickerStartedAt ?? time);

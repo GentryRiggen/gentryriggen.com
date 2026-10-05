@@ -15,6 +15,7 @@ import {
   MAX_BODIES,
   siltGrain,
   SILT_PER_PUFF,
+  trailFade,
   trailIntensity,
   type Landing,
 } from "./descentEffects";
@@ -38,6 +39,9 @@ export default function DescentParticles() {
     () => ({
       droplet: createDroplet(),
       bodies: Array.from({ length: MAX_BODIES }, createBodyPoint),
+      // Scene time the descent ended (the trails then fade), or null.
+      trailEndedAt: null as number | null,
+      wasDescending: false,
       landed: Array.from({ length: MAX_BODIES }, (): Landing => ({
         hasLanded: false,
         at: 0,
@@ -48,15 +52,32 @@ export default function DescentParticles() {
   );
 
   const updateBubbles = useCallback(
-    (writer: ParticleWriter) => {
-      if (trialPlayback.phase !== "descending") return 0;
+    (writer: ParticleWriter, time: number) => {
       const { droplet, bodies } = scratch;
+      // Once the descent is over the trails keep rising for a moment and
+      // fade, rather than vanishing the instant the last half settles.
+      let fade = 1;
+      let afterwards = 0;
+      if (trialPlayback.phase === "descending") {
+        scratch.wasDescending = true;
+        scratch.trailEndedAt = null;
+      } else {
+        if (!scratch.wasDescending) return 0;
+        scratch.trailEndedAt ??= time;
+        afterwards = time - scratch.trailEndedAt;
+        fade = trailFade(afterwards);
+        if (fade <= 0) {
+          scratch.wasDescending = false;
+          return 0;
+        }
+      }
+      const bubbleTime = trialPlayback.time + afterwards;
       const count = descentBodies(trialPlayback, lengthCells, bodies);
       for (let b = 0; b < count; b++) {
-        const intensity = trailIntensity(bodies[b]);
+        const intensity = trailIntensity(bodies[b]) * fade;
         for (let i = 0; i < BUBBLES_PER_BODY; i++) {
           const slot = b * BUBBLES_PER_BODY + i;
-          descentBubble(slot, trialPlayback.time, bodies[b], droplet);
+          descentBubble(slot, bubbleTime, bodies[b], droplet);
           writer.set(
             slot,
             droplet.x,

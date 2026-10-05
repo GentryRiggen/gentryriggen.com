@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useMemo, useRef } from "react";
-import { Matrix4, Vector3 } from "three";
+import { Vector3 } from "three";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { clamp } from "./animationMath";
-import { halfMatrix, worldXOf } from "./halfTransform";
+import { breakOrigin } from "./halfTransform";
 import ParticleField, { type ParticleWriter } from "./ParticleField";
 import { slotNoise } from "./particles";
 import { createDroplet, type Droplet } from "./trialEffects";
@@ -29,11 +29,6 @@ const SPRAY_LIFE = 1.5;
 const BUBBLE_LIFE = 2.6;
 /** The whole burst is over this long after the break. */
 const BURST_SECONDS = 4;
-/**
- * The break point is caught from the halves this soon after the break; past
- * it the burst stays where it started instead of riding with the wreck.
- */
-const CAPTURE_SECONDS = 0.1;
 
 interface BurstFrame {
   /** Seconds since the break. */
@@ -130,12 +125,6 @@ function water(slot: number, frame: BurstFrame, out: Droplet): Droplet {
 
 type Emitter = (slot: number, frame: BurstFrame, out: Droplet) => Droplet;
 
-const breakPoint = new Vector3();
-const bowPoint = new Vector3();
-const sternPoint = new Vector3();
-const matrixBow = new Matrix4();
-const matrixStern = new Matrix4();
-
 /**
  * The burst the moment she breaks: dark debris, a few orange sparks and a
  * gush of spray and bubbles at the break. Everything is a function of the
@@ -152,32 +141,20 @@ export default function BreakBurst() {
     origin: new Vector3(),
     halfBeam,
   });
-  const hasOrigin = useRef(false);
 
   /** Brings the shared frame up to date; false when there is no burst. */
   const refreshFrame = useCallback((): boolean => {
-    const { breakup, halves, time } = trialPlayback;
+    const { breakup, halves, time, sink } = trialPlayback;
     const seconds = breakup ? time - breakup.at : -1;
     if (!breakup || !halves || seconds < 0 || seconds > BURST_SECONDS) {
-      // A later scrub back into the burst catches the break point afresh.
-      hasOrigin.current = false;
       return false;
     }
     const current = frame.current;
     current.seconds = seconds;
     current.halfBeam = halfBeam;
-    if (!hasOrigin.current || seconds <= CAPTURE_SECONDS) {
-      // Midway between where each half now has its broken end.
-      breakPoint.set(worldXOf(breakup.atX, lengthCells), 0, 0);
-      bowPoint
-        .copy(breakPoint)
-        .applyMatrix4(halfMatrix(halves.bow, lengthCells, matrixBow));
-      sternPoint
-        .copy(breakPoint)
-        .applyMatrix4(halfMatrix(halves.stern, lengthCells, matrixStern));
-      current.origin.copy(bowPoint).add(sternPoint).multiplyScalar(0.5);
-      hasOrigin.current = true;
-    }
+    // The burst stays where she broke instead of riding with the wreck. The
+    // playback keeps her whole pose where she broke.
+    breakOrigin(breakup.atX, lengthCells, breakup.angle, sink, current.origin);
     return true;
   }, [halfBeam, lengthCells]);
 
