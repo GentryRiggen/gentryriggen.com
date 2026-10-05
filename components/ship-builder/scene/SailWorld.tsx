@@ -2,10 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { Group } from "three";
+import { DoubleSide, type Group } from "three";
 import type { Obstacle } from "@/lib/ship-builder/sail";
 import { getSailState } from "@/lib/ship-builder/state/sailLive";
+import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { topCamera } from "./driveCamera";
+import { markerColor, markerRadius } from "./obstacleMarker";
 import ObstacleMesh from "./ObstacleMesh";
 
 /** Obstacles farther than this from the ship (cells) are hidden. */
@@ -13,7 +16,32 @@ const DRAW_DISTANCE = 130;
 
 type ObstacleLook = Pick<Obstacle, "id" | "kind" | "radius">;
 
+/** A flat ring on the water that lifts hazards out of the sea in top view. */
+function MarkerRing({ look }: { look: ObstacleLook }) {
+  return (
+    <mesh
+      name="obstacle-marker"
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0.4, 0]}
+      renderOrder={10}
+    >
+      <ringGeometry args={[0.82, 1, 40]} />
+      <meshBasicMaterial
+        color={markerColor(look.kind)}
+        side={DoubleSide}
+        depthTest={false}
+        toneMapped={false}
+        transparent
+        opacity={0.95}
+      />
+    </mesh>
+  );
+}
+
 function World() {
+  const isTop = useShipBuilderStore(
+    (s) => s.drive.status === "sailing" && s.drive.view === "top"
+  );
   const [looks, setLooks] = useState<ObstacleLook[]>([]);
   const groups = useRef(new Map<string, Group>());
   // Sectors only change when obstacles come or go, so their identity is a
@@ -29,6 +57,11 @@ function World() {
         sail.obstacles.map(({ id, kind, radius }) => ({ id, kind, radius }))
       );
     }
+    // Rings are sized for the top camera's height, so small things show.
+    const topHeight = isTop
+      ? topCamera(sail, gridLength(useShipBuilderStore.getState().ship))
+          .position[1]
+      : 0;
     const cos = Math.cos(sail.heading);
     const sin = Math.sin(sail.heading);
     for (const o of sail.obstacles) {
@@ -44,6 +77,11 @@ function World() {
       group.position.set(u, 0, v);
       // A plane heading of `a` is a yaw of `-a` about Y.
       group.rotation.y = sail.heading - (o.heading ?? 0);
+      const ring = group.getObjectByName("obstacle-marker");
+      if (ring) {
+        const size = markerRadius(o.radius, topHeight);
+        ring.scale.set(size, size, 1);
+      }
     }
   });
 
@@ -59,6 +97,7 @@ function World() {
           visible={false}
         >
           <ObstacleMesh obstacle={look} />
+          {isTop && <MarkerRing look={look} />}
         </group>
       ))}
     </>

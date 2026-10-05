@@ -6,6 +6,9 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { bowLength, sternLength } from "@/lib/ship-builder/model/hullEnds";
 import { gridLength } from "@/lib/ship-builder/model/grid";
+import type { Ship } from "@/lib/ship-builder/model/types";
+import type { SailState } from "@/lib/ship-builder/sail";
+import type { DriveView } from "@/lib/ship-builder/sail/driveConfig";
 import { getSailState } from "@/lib/ship-builder/state/sailLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
@@ -23,7 +26,14 @@ import {
   viewPosition,
   viewTarget,
 } from "./cameraViews";
-import { chaseCamera } from "./driveCamera";
+import {
+  bridgeCamera,
+  type BridgeLayout,
+  bridgeLayout,
+  chaseCamera,
+  topCamera,
+  type DriveCameraPose,
+} from "./driveCamera";
 import { sceneTime } from "./testClock";
 import { trialPlayback } from "./trialPlayback";
 
@@ -78,6 +88,37 @@ function readBox(element: Element, out: typeof canvasBox): typeof canvasBox {
 function trialKey(): string {
   const { trial } = useShipBuilderStore.getState();
   return "runId" in trial ? `${trial.status}:${trial.runId}` : trial.status;
+}
+
+const WORLD_UP: [number, number, number] = [0, 1, 0];
+
+const bridgeLayouts = new WeakMap<Ship, BridgeLayout>();
+
+/** The bridge spot of a ship, worked out once per ship (the drive never edits it). */
+function cachedBridgeLayout(ship: Ship): BridgeLayout {
+  let layout = bridgeLayouts.get(ship);
+  if (!layout) {
+    layout = bridgeLayout(ship);
+    bridgeLayouts.set(ship, layout);
+  }
+  return layout;
+}
+
+/** The camera pose for the chosen drive view. */
+function drivePose(
+  view: DriveView,
+  sail: SailState,
+  length: number,
+  ship: Ship
+): DriveCameraPose {
+  switch (view) {
+    case "top":
+      return topCamera(sail, length);
+    case "bridge":
+      return bridgeCamera(cachedBridgeLayout(ship));
+    case "chase":
+      return chaseCamera(sail, length);
+  }
 }
 
 export default function CameraRig() {
@@ -323,6 +364,7 @@ export default function CameraRig() {
   // stays at the origin, and eases to its pose as she speeds up.
   useFrame((state, delta) => {
     if (!isSailing) {
+      if (hasDrivePose.current) get().camera.up.set(...WORLD_UP);
       hasDrivePose.current = false;
       return;
     }
@@ -332,11 +374,14 @@ export default function CameraRig() {
     if (cam instanceof PerspectiveCamera && cam.view?.enabled) {
       cam.clearViewOffset();
     }
-    const length = gridLength(useShipBuilderStore.getState().ship);
-    const pose = chaseCamera(sail, length);
+    const { ship, drive } = useShipBuilderStore.getState();
+    const length = gridLength(ship);
+    const driveView = drive.status === "sailing" ? drive.view : "chase";
+    const pose = drivePose(driveView, sail, length, ship);
     driveGoal.set(...pose.position);
     driveLook.set(...pose.target);
-    if (!reducedMotion) {
+    cam.up.set(...(pose.up ?? WORLD_UP));
+    if (driveView === "chase" && !reducedMotion) {
       const sway = Math.sin(sceneTime(state.clock.elapsedTime) * SWAY_SPEED);
       driveGoal.z += sway * SWAY_SIZE * length * 0.2;
       driveGoal.y += Math.cos(sway * 2) * SWAY_SIZE;
