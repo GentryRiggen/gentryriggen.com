@@ -6,6 +6,7 @@ import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
 import CameraRig from "./CameraRig";
+import DescentParticles from "./DescentParticles";
 import useSeaState from "../hooks/useSeaState";
 import useTimeOfDay from "../hooks/useTimeOfDay";
 import { shouldSwallowClick } from "./clickGuard";
@@ -25,10 +26,12 @@ import PostEffects from "./PostEffects";
 import Railings from "./Railings";
 import ReflectionEnvironment from "./ReflectionEnvironment";
 import RenderInfoProbe from "./RenderInfoProbe";
+import SeaFloor from "./SeaFloor";
 import SeaTrialEffects from "./SeaTrialEffects";
 import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
+import UnderwaterFog from "./UnderwaterFog";
 import { usePartLongPress } from "./usePartLongPress";
 
 /**
@@ -123,6 +126,9 @@ export default function Scene() {
         <Iceberg />
         <SeaTrialRunner />
         <SeaTrialEffects />
+        <SeaFloor />
+        <DescentParticles />
+        <UnderwaterFog />
         <CameraRig />
         <PostEffects environment={environment} />
         <RenderInfoProbe />
