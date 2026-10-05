@@ -434,9 +434,9 @@ export function stepTrial(
     if (flooded.phase !== "sailing") return flooded;
     return stepSailing(input, paramsOf(input), flooded);
   }
-  if (state.phase === "descending") return stepDescent(state);
+  if (state.phase === "descending") return stepDescent(state, input);
   if (state.phase === "sinking" && state.outcome === "sank") {
-    return stepPlunge(state);
+    return stepPlunge(state, input);
   }
   const params = paramsOf(input);
   switch (state.phase) {

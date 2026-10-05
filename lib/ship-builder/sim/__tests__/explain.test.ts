@@ -1,7 +1,14 @@
+import { CELLS_PER_SEGMENT } from "../../model/grid";
+import { computeStats } from "../../model/stats";
+import { findTemplate } from "../../templates";
+import { compartmentSpecsOf } from "../compartments";
+import { startDescent } from "../descent";
 import { explainTrial } from "../explain";
-import { createTrial, runTrial } from "../seaTrial";
+import { createTrial, runTrial, stepTrial } from "../seaTrial";
 import { ICEBERG_IMPACT_S } from "../flooding";
+import { simShipFromStats } from "../simShip";
 import type {
+  BreakMode,
   SimSea,
   SimShip,
   SimState,
@@ -185,5 +192,97 @@ describe("explainTrial for an iceberg trial", () => {
     expect(summary.tips).toEqual([
       "Add more walls so each compartment is smaller.",
     ]);
+  });
+});
+
+describe("explainTrial for a ship that sank in the iceberg trial", () => {
+  function templateInput(
+    id: string,
+    impactX: number,
+    breakMode?: BreakMode,
+    walls = true
+  ): TrialInput {
+    const built = findTemplate(id)!.build();
+    const ship = walls
+      ? built
+      : { ...built, hull: { ...built.hull, bulkheads: [] } };
+    const length = ship.hull.lengthSegments * CELLS_PER_SEGMENT;
+    return {
+      ship: simShipFromStats(computeStats(ship), ship.hull.beam),
+      sea: "calm",
+      iceberg: {
+        compartments: compartmentSpecsOf(ship.hull),
+        length,
+        impactX,
+        ...(breakMode ? { breakMode } : {}),
+      },
+    };
+  }
+
+  function followedDown(input: TrialInput): SimState {
+    let state = startDescent(runTrial(input));
+    while (state.phase !== "done") state = stepTrial(input, state);
+    return state;
+  }
+
+  it("tells how the lights failed and where she broke", () => {
+    const input = templateInput("titanic", 5);
+    const summary = explainTrial(runTrial(input), input);
+    expect(summary.title).toBe("She sank");
+    expect(summary.lights).toBe(
+      "The lights flickered, then went out as she went down."
+    );
+    expect(summary.breakup).toBe(
+      "She was too long to take the strain and broke in two at 17°, just behind wall 9."
+    );
+    expect(summary.floor).toBeUndefined();
+  });
+
+  it("adds the sea floor once she has been followed down", () => {
+    const broken = templateInput("titanic", 5);
+    expect(explainTrial(followedDown(broken), broken).floor).toBe(
+      "Both halves came to rest on the sea floor."
+    );
+    const whole = templateInput("titanic", 5, "never");
+    expect(explainTrial(followedDown(whole), whole).floor).toBe(
+      "She came to rest on the sea floor."
+    );
+  });
+
+  it("says a short ship held together", () => {
+    const input = templateInput("coast-guard-cutter", 5, undefined, false);
+    expect(explainTrial(runTrial(input), input).breakup).toBe(
+      "Short and sturdy, she held together."
+    );
+  });
+
+  it("says she held because the player said so", () => {
+    const input = templateInput("titanic", 5, "never");
+    expect(explainTrial(runTrial(input), input).breakup).toBe(
+      "You told her to hold together."
+    );
+  });
+
+  it("drops the strain words when the player broke her", () => {
+    const input = templateInput("coast-guard-cutter", 5, "always", false);
+    expect(explainTrial(runTrial(input), input).breakup).toBe(
+      "She broke in two at 12°."
+    );
+  });
+
+  it("leaves the iceberg lines out when she stayed afloat and dry", () => {
+    const input = templateInput("britannic", 5);
+    const summary = explainTrial(runTrial(input), input);
+    expect(summary.breakup).toBeUndefined();
+    expect(summary.floor).toBeUndefined();
+  });
+
+  it("never mentions people", () => {
+    const input = templateInput("titanic", 5);
+    const s = explainTrial(followedDown(input), input);
+    const text = [s.title, s.message, s.lights, s.breakup, s.floor].join(" ");
+    expect(text).not.toMatch(
+      /drown|die|dead|passenger|crew|people|sailor|kill/i
+    );
   });
 });

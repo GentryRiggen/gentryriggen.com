@@ -1,7 +1,11 @@
 import { STABILITY_THRESHOLDS } from "../model/stats";
+import { HULL_STRENGTH, strainOf } from "./breakup";
+import { PLUNGE_PITCH } from "./flooding";
 import { LOPSIDED_LIST } from "./seaTrial";
 import { formatStoryTime, storyMinutesSinceImpact } from "./story";
 import type {
+  CompartmentSpec,
+  SimEvent,
   SimSea,
   SimShip,
   SimState,
@@ -16,6 +20,12 @@ export interface TrialSummary {
   message: string;
   /** What to change next time; empty when the ship did well. */
   tips: string[];
+  /** Iceberg trial: what happened to her lights, when they failed. */
+  lights?: string;
+  /** Iceberg trial that sank: whether she broke in two, and where. */
+  breakup?: string;
+  /** Present once she (or both halves) came to rest on the sea floor. */
+  floor?: string;
 }
 
 const SEA_WORDS: Record<SimSea, string> = {
@@ -141,6 +151,87 @@ function sankSummary(state: SimState): { message: string; tips: string[] } {
   }
 }
 
+const DEG = Math.PI / 180;
+
+function hasEvent(state: SimState, kind: SimEvent["kind"]): boolean {
+  return state.events.some((event) => event.kind === kind);
+}
+
+function lightsLine(state: SimState): string | undefined {
+  if (hasEvent(state, "power-out")) {
+    return "The lights flickered, then went out as she went down.";
+  }
+  if (hasEvent(state, "power-flicker")) {
+    return "The lights flickered when the water reached the engine room.";
+  }
+  return undefined;
+}
+
+/** "just behind wall 3": the wall nearest where she broke, counted from the bow. */
+function nearestWallWords(
+  specs: readonly CompartmentSpec[],
+  atX: number
+): string | undefined {
+  let best: { number: number; x: number } | undefined;
+  for (let i = 0; i < specs.length - 1; i++) {
+    const x = specs[i].toX;
+    if (!best || Math.abs(x - atX) < Math.abs(best.x - atX)) {
+      best = { number: i + 1, x };
+    }
+  }
+  if (!best) return undefined;
+  const side = atX >= best.x ? "just behind" : "just in front of";
+  return `${side} wall ${best.number}`;
+}
+
+function breakupLine(state: SimState, input: TrialInput): string | undefined {
+  const { iceberg } = input;
+  if (!iceberg || state.outcome !== "sank") return undefined;
+  if (state.breakup) {
+    const degrees = Math.round(Math.abs(state.breakup.angle) / DEG);
+    const where = nearestWallWords(iceberg.compartments, state.breakup.atX);
+    const lead =
+      iceberg.breakMode === "always"
+        ? `She broke in two at ${degrees}°`
+        : `She was too long to take the strain and broke in two at ${degrees}°`;
+    return where ? `${lead}, ${where}.` : `${lead}.`;
+  }
+  switch (iceberg.breakMode) {
+    case "never":
+      return "You told her to hold together.";
+    case "always":
+      return "She went down before she could break.";
+    default:
+      // A ship that could never reach her limit is short and sturdy; a long
+      // one that got lucky (she went down too gently) just held.
+      return strainOf(PLUNGE_PITCH, iceberg.length) < HULL_STRENGTH
+        ? "Short and sturdy, she held together."
+        : "She held together, but only just.";
+  }
+}
+
+function floorLine(state: SimState): string | undefined {
+  if (!hasEvent(state, "touched-bottom")) return undefined;
+  return state.halves
+    ? "Both halves came to rest on the sea floor."
+    : "She came to rest on the sea floor.";
+}
+
+/** The iceberg lines, only those that apply. */
+function icebergLines(
+  state: SimState,
+  input: TrialInput
+): Pick<TrialSummary, "lights" | "breakup" | "floor"> {
+  const lines: Pick<TrialSummary, "lights" | "breakup" | "floor"> = {};
+  const lights = lightsLine(state);
+  const breakup = breakupLine(state, input);
+  const floor = floorLine(state);
+  if (lights) lines.lights = lights;
+  if (breakup) lines.breakup = breakup;
+  if (floor) lines.floor = floor;
+  return lines;
+}
+
 /**
  * Plain-words summary of a finished trial for the result card. Kind in tone:
  * it talks about the ship, never about anyone aboard.
@@ -168,9 +259,14 @@ export function explainTrial(state: SimState, input: TrialInput): TrialSummary {
         title: "She stayed afloat!",
         message: `The walls kept the water in ${compartmentsWord(openedCount(state))}.`,
         tips: [],
+        ...icebergLines(state, input),
       };
     case "sank":
-      return { title: "She sank", ...sankSummary(state) };
+      return {
+        title: "She sank",
+        ...sankSummary(state),
+        ...icebergLines(state, input),
+      };
     case null:
       return {
         title: "Sea trial under way",

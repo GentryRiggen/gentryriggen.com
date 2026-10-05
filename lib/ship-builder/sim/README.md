@@ -12,6 +12,8 @@ identical.
 - `flooding.ts`: Level 2, `stepFlooding` and `stepPlunge` plus the tuned
   constants.
 - `compartments.ts`, `story.ts`: the hull's compartments and the story clock.
+- `breakup.ts`, `power.ts`, `descent.ts`: Level 2b, breaking in two, the
+  lights, and the way down to the sea floor.
 - `explain.ts`: `explainTrial(state, input)` for the result card.
 
 ## The model
@@ -114,7 +116,7 @@ length) / L`.
 - Sinking: once the flooded fraction reaches `RESERVE` (0.3) the outcome is
   `sank`, the phase becomes `sinking` and `stepPlunge` takes her bow-first to
   a pitch of `PLUNGE_PITCH` and down to `PLUNGE_DEPTH`; the `sunk` event ends
-  the trial.
+  the trial. A long ship may break in two on the way (Level 2b below).
 - Afloat: when inflow and spill both fall under `SETTLED_EPS` (checked each
   step, not over a window, because `SimState` has no slot for a settle
   clock), or `ICEBERG_MAX_S` (90 s) after impact with the flooded fraction under
@@ -126,10 +128,11 @@ length) / L`.
 she stays afloat.
 
 Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, counted from impact
-(`storyMinutesSinceImpact`), so the Titanic (about 31.75 sim seconds after the
-strike) sinks in 159 story minutes.
+(`storyMinutesSinceImpact`), so the Titanic (about 31.9 sim seconds after the
+strike, breaking in two on the way) sinks in 159 story minutes.
 
-Tuning: `INFLOW` 3, `SPILL_RATE` 20, `SINK_TO_DEPTH` 0.1, `TRIM_LEVER` 0.12,
+Tuning: `INFLOW` 5 (raised from 3 so the Titanic's breakup, which adds about
+5 s after the plunge starts, still ends near 160 story minutes), `SPILL_RATE` 20, `SINK_TO_DEPTH` 0.1, `TRIM_LEVER` 0.12,
 `RESERVE` 0.3. Together they keep any hull of 8 or more segments with deck-high
 walls on every boundary afloat wherever the iceberg strikes (swept in the
 tests), while the Titanic's low walls still overflow.
@@ -149,3 +152,108 @@ tests), while the Titanic's low walls still overflow.
 Titanic and Olympic have 15 walls, but the nine forward ones only reach the
 waterline, so the flooded bow spills over them aft; Britannic has the same 15
 at deck height.
+
+## Level 2b: breakup, power, descent
+
+### Breaking in two (`breakup.ts`)
+
+Each plunge step sets `strain = |pitch| x (length / REF_LENGTH)^2`
+(`REF_LENGTH` 60, the liner). At the start of the next step, if the strain has
+reached `strengthFor(breakMode)` she breaks:
+
+- `real` (also when `breakMode` is absent): `HULL_STRENGTH` 0.3. The plunge
+  only reaches `PLUNGE_PITCH` (-0.35), so hulls shorter than about 56 cells
+  can never break; a 60-cell liner breaks at about 17 degrees.
+- `always`: the strain at `ALWAYS_BREAK_PITCH` (0.21 rad, 12 degrees), so any
+  ship breaks once she tips that far.
+- `never`: `Infinity`; the plunge is exactly Level 2's.
+
+Where: the stern wall (`toX`) of the stern-most compartment holding more than
+`FLOODED_WATER` (0.5), clamped to `BREAK_MIN_FRACTION`..`BREAK_MAX_FRACTION`
+(0.35..0.7) of her length; `NO_WALLS_BREAK_FRACTION` (0.6) for a hull with no
+walls. The break step logs `broke`, sets `breakup = { at, atX, angle }` and
+`halves`, puts the lights out if they were not already, and sets `strain` back
+to 0. `pose` then stays where she broke.
+
+### Two bodies
+
+A `HalfPose` rotates its half about a pivot on the keel line at `pivotX`
+(cells from the bow, `atX` for both halves), then moves it `driftX` toward the
+bow and `sink` down: `T(driftX, -sink, 0) T(px, 0, 0) R(roll, 0, pitch)
+T(-px, 0, 0)` with `px = length / 2 - pivotX`. Both halves start from the
+whole ship's pose of the step before the break: pitch and roll unchanged,
+`driftX = px (cos pitch - 1)`, `sink = pose.sink - px sin pitch`, so nothing
+jumps (exact for zero roll; the plunge has damped her roll to a few
+thousandths by then).
+
+A half's pitch lifts its own bow end, so:
+
+- Bow: eases to `BOW_FINAL_PITCH` (-1.05, about 60 degrees bow down) and sinks
+  at up to 4 units/s. It waits with its deepest point no lower than
+  `BOW_HOLD_DEPTH` (40), above the floor, flattening a long bow if needed.
+- Stern: for `STERN_SETTLE_S` (1.6 s) it eases back to level and bobs up to a
+  1-unit draft; over `STERN_RISE_S` (1.4 s) it rears to `STERN_FINAL_PITCH`
+  (-1.4: the broken end down, the stern about 80 degrees up); it hangs for
+  `STERN_HANG_S` (1.2 s), sinking slowly; then it slides straight down,
+  speeding up to 10 units/s.
+- `sunk` (and `done`) once the stern has played its whole part and both
+  halves' highest points are `HALF_UNDER_DEPTH` (2) under.
+
+The stern sequence is short in sim seconds because the scene plays the break
+in slow motion.
+
+### Lights (`power.ts`)
+
+`power` goes `on` -> `flickering` -> `out`, never back, logging
+`power-flicker` and `power-out` once each (both, in order, if they happen in
+one step).
+
+- Flickering: the flooded fraction reaches `FLICKER_FLOODED` (0.2), or the
+  compartment holding the middle of the hull (the engine room) has more than
+  `FLOODED_WATER`. Checked while flooding and while plunging, so every sinking
+  flickers first.
+- Out: while plunging, once the strain reaches `POWER_OUT_STRAIN` (0.85) of
+  her strength (a moment before the break) or her sink reaches a third of
+  `PLUNGE_DEPTH`, whichever comes first.
+
+Waves trials never touch the lights.
+
+### The way down (`descent.ts`)
+
+`startDescent` turns a finished `sank` state into `descending`; `stepTrial`
+then runs `stepDescent`. Each body (the whole `pose`, or each half) falls at
+up to `DESCENT_SPEED` (4 units/s, reached over 1 s) toward `FLOOR_DEPTH` (45).
+Its pitch turns toward `REST_PITCH_BOW` (-0.25, nose dug in; whole ship and
+bow) or `REST_PITCH_STERN` (0.1), and its roll toward a `REST_ROLL` (0.08)
+list, spread over the time it has left to fall. A body touches down (one
+`touched-bottom` each) when its deepest keel point reaches the floor, then
+stays on the sand while it finishes turning. Phase `done` once every body has
+landed and settled, or `SETTLE_S` (1.5 s) after the last touchdown.
+
+### Tuning table (enforced by `__tests__/breakup.test.ts`)
+
+Calm sea. The smallest template, the coast guard cutter, keeps the water out
+wherever she is struck, so she sails without her walls here (as do the
+Ever Given and Arleigh Burke rows).
+
+| ship (length)                     | hit  | mode   | breaks |
+| --------------------------------- | ---- | ------ | ------ |
+| Titanic (60)                      | x=5  | real   | yes    |
+| Titanic (60)                      | x=5  | always | yes    |
+| Titanic (60)                      | x=5  | never  | no     |
+| Titanic (60)                      | x=55 | real   | no     |
+| Ever Given, no walls (60)         | x=5  | real   | yes    |
+| Lusitania (54)                    | x=49 | real   | no     |
+| Lusitania (54)                    | x=49 | always | yes    |
+| Arleigh Burke, no walls (42)      | x=5  | real   | no     |
+| Coast guard cutter, no walls (24) | x=5  | real   | no     |
+| Coast guard cutter, no walls (24) | x=5  | always | yes    |
+| Coast guard cutter, no walls (24) | x=5  | never  | no     |
+
+The Titanic struck at the stern starts her plunge stern-down and is not yet
+steep enough by the time she is under, so she holds together.
+
+Timings for the Titanic struck at x=5 (`real`, sim seconds): flooding 1.5,
+lights flicker 11.6, lights out 24.6, breaks 25.1 (17 degrees, at wall 9,
+x=27), sunk 33.4; followed down, the stern lands 2.3 s and the bow 5.9 s after
+`startDescent`. In `never` mode she is sunk at 28.5.
