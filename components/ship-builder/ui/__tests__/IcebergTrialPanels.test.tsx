@@ -1,6 +1,7 @@
 import { ICEBERG_IMPACT_S } from "@/lib/ship-builder/sim/flooding";
 import { act } from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createTrial } from "@/lib/ship-builder/sim/seaTrial";
 import type { SimState, TrialInput } from "@/lib/ship-builder/sim/types";
 import {
@@ -43,21 +44,30 @@ describe("BelowDeckInset", () => {
   });
 });
 
-describe("BelowDeckInset on phones", () => {
-  it("hides below lg once the result card is up, and sits under the view controls on desktop", () => {
+describe("BelowDeckInset thumbnail", () => {
+  it("stays up through the result and enlarges when tapped", async () => {
+    const user = userEvent.setup();
     render(<BelowDeckInset />);
     act(() => store().startTrial("calm", 12));
+    act(() => store().finishTrial(stateAt(10)));
     const inset = screen.getByTestId("below-deck-inset");
     expect(inset).not.toHaveClass("hidden");
-    expect(inset).toHaveClass("lg:top-36");
-
-    const { trial } = store();
-    if (trial.status !== "running") throw new Error("not running");
-    act(() => store().finishTrial(stateAt(10)));
-    expect(screen.getByTestId("below-deck-inset")).toHaveClass(
-      "hidden",
-      "lg:block"
+    expect(inset).toHaveAttribute("data-enlarged", "false");
+    await user.click(screen.getByRole("button", { name: /Below deck/ }));
+    expect(screen.getByTestId("below-deck-inset")).toHaveAttribute(
+      "data-enlarged",
+      "true"
     );
+  });
+});
+
+describe("SeaTrialStatus placement", () => {
+  it("sits on the top edge", () => {
+    render(<SeaTrialStatus />);
+    act(() => store().startTrial("calm"));
+    const status = screen.getByRole("status");
+    expect(status.className).not.toContain("top-[11.5rem]");
+    expect(status.className).toContain("top-[max(0.75rem");
   });
 });
 

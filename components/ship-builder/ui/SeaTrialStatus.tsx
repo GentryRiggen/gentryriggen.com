@@ -42,14 +42,14 @@ export default function SeaTrialStatus() {
   return (
     <div
       role="status"
-      className={`absolute left-1/2 top-[11.5rem] z-20 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg lg:top-3 ${panelClass}`}
+      className={`absolute left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
     >
       <Waves
         aria-hidden="true"
         className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400"
       />
-      {/* Narrow screens make room for Follow her down by dropping the name. */}
-      <span className={`whitespace-nowrap ${canFollow ? "max-sm:hidden" : ""}`}>
+      {/* Narrow screens keep the strip slim by dropping the name. */}
+      <span className="whitespace-nowrap max-sm:hidden">
         {isIceberg ? "Iceberg trial" : "Sea trial"} ·{" "}
         {SEA_LABELS[trial.input.sea]}
       </span>
