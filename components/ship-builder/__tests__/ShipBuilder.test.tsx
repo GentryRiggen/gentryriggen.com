@@ -136,4 +136,21 @@ describe("ShipBuilder focus mode", () => {
     act(() => useShipBuilderStore.getState().endTrial());
     expect(screen.getByRole("group", { name: "Camera" })).toBeVisible();
   });
+
+  it("keeps the chrome while the player is aiming an iceberg", () => {
+    render(<ShipBuilder />);
+    act(() => useShipBuilderStore.getState().aimIceberg());
+    expect(useShipBuilderStore.getState().trial.status).toBe("aiming");
+    expect(screen.getByRole("banner")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Parts" })).toBeVisible();
+  });
+
+  it("keeps the drawers mounted so their state survives a trial", () => {
+    render(<ShipBuilder />);
+    const parts = screen.getByRole("button", { name: "Parts" });
+    act(() => useShipBuilderStore.getState().startTrial("calm", 12));
+    expect(screen.queryByRole("button", { name: "Parts" })).toBeNull();
+    act(() => useShipBuilderStore.getState().endTrial());
+    expect(screen.getByRole("button", { name: "Parts" })).toBe(parts);
+  });
 });

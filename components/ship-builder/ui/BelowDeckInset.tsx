@@ -10,10 +10,10 @@ import { panelClass } from "./styles";
 const NO_COMPARTMENTS: readonly never[] = [];
 
 /**
- * A small read-only "Below deck" cut-away shown during an iceberg trial, with
- * the water rising in each compartment as the trial plays. Below the view
- * corner thumbnail that stays up through the result. Tap it to enlarge; it
- * shrinks again after a few seconds or another tap. Waves trials do not show it.
+ * A small read-only "Below deck" cut-away pinned to the top-left corner during
+ * an iceberg trial, with the water rising in each compartment as the trial
+ * plays. It stays up through the result. Tap it to enlarge; it shrinks again
+ * after a few seconds or another tap. Waves trials do not show it.
  */
 export default function BelowDeckInset() {
   const hull = useShipBuilderStore((s) => s.ship.hull);

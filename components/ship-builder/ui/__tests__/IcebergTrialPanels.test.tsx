@@ -61,6 +61,29 @@ describe("BelowDeckInset thumbnail", () => {
   });
 });
 
+describe("BelowDeckInset auto-shrink", () => {
+  afterEach(() => jest.useRealTimers());
+
+  it("shrinks back on its own after 4 seconds", () => {
+    jest.useFakeTimers();
+    render(<BelowDeckInset />);
+    act(() => store().startTrial("calm", 12));
+    const inset = screen.getByTestId("below-deck-inset");
+    act(() => {
+      screen.getByRole("button", { name: /Below deck/ }).click();
+    });
+    expect(inset).toHaveAttribute("data-enlarged", "true");
+    act(() => {
+      jest.advanceTimersByTime(3999);
+    });
+    expect(inset).toHaveAttribute("data-enlarged", "true");
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(inset).toHaveAttribute("data-enlarged", "false");
+  });
+});
+
 describe("SeaTrialStatus placement", () => {
   it("sits on the top edge", () => {
     render(<SeaTrialStatus />);
