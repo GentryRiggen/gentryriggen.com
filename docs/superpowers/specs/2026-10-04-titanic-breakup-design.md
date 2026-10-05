@@ -32,8 +32,9 @@ procedural sound, replay with a scrubber, and a wreck that stays to explore.
   - `always`: threshold such that any ship breaks once |pitch| reaches
     `ALWAYS_BREAK_PITCH` (about 12 degrees)
   - `never`: `Infinity` (today's plunge)
-- **Where:** the stern wall of the stern-most flooded compartment (water >
-  `FLOODED_WATER`), clamped to [0.35, 0.7] of length. With no bulkheads, 0.6.
+- **Where:** the bulkhead wall nearest the x where her main deck meets the
+  waterline in the pose she breaks from (so the crack opens at the surface,
+  in view); with no walls, that x itself. Clamped to [0.35, 0.7] of length.
 - On break: `breakup = { at, atX, angle }`, a `broke` event, and `halves` are
   created. Power goes out a moment before (see Power).
 

@@ -1,8 +1,6 @@
-import { FLOODED_WATER } from "./power";
 import {
   SIM_STEP_S,
   type BreakMode,
-  type Compartment,
   type CompartmentSpec,
   type HalfPose,
   type SimBreakup,
@@ -31,8 +29,6 @@ export const ALWAYS_BREAK_PITCH = 0.21;
 /** She breaks between these fractions of her length from the bow. */
 export const BREAK_MIN_FRACTION = 0.35;
 export const BREAK_MAX_FRACTION = 0.7;
-/** Where a hull with no walls breaks, as a fraction of its length. */
-export const NO_WALLS_BREAK_FRACTION = 0.6;
 
 /** The bow half dives to this pitch (radians, bow down). */
 export const BOW_FINAL_PITCH = -1.05;
@@ -93,22 +89,44 @@ export function strengthFor(
 }
 
 /**
- * Where she breaks, cells from the bow: the stern wall of the stern-most
- * flooded compartment (where the heavy flooded part meets the dry part),
- * kept away from the very ends. A hull with no walls breaks at 0.6 of her
- * length.
+ * The main deck's height above the keel line the pose turns about (world
+ * units). Matches the scene's `DECK_Y`.
+ */
+export const DECK_HEIGHT = 1.2;
+
+/**
+ * Where her main deck meets the sea, cells from the bow, for a pose: aft of
+ * it the deck is still dry. Null when she is (almost) level, so the deck
+ * never crosses the water.
+ */
+export function deckWaterlineX(pose: SimPose, length: number): number | null {
+  const sin = Math.sin(pose.pitch);
+  if (Math.abs(sin) < 1e-6) return null;
+  // A deck point `along` units toward the bow from midships sits at
+  // `along sin(pitch) + DECK_HEIGHT cos(pitch) - sink`; solve for zero.
+  const along = (pose.sink - DECK_HEIGHT * Math.cos(pose.pitch)) / sin;
+  return length / 2 - along;
+}
+
+/**
+ * Where she breaks, cells from the bow: at the wall nearest where her main
+ * deck meets the sea (with no walls, right there), so the crack opens at the
+ * surface where everyone can see it, kept away from the very ends. A level
+ * ship (never, in practice) breaks at her middle.
  */
 export function breakPositionOf(
   specs: readonly CompartmentSpec[],
-  compartments: readonly Compartment[],
+  pose: SimPose,
   length: number
 ): number {
-  if (specs.length <= 1) return NO_WALLS_BREAK_FRACTION * length;
-  let wallX = NO_WALLS_BREAK_FRACTION * length;
-  for (let i = specs.length - 1; i >= 0; i--) {
-    if ((compartments[i]?.water ?? 0) > FLOODED_WATER) {
+  const crossing = deckWaterlineX(pose, length) ?? length / 2;
+  let wallX = crossing;
+  let best = Infinity;
+  for (let i = 0; i < specs.length - 1; i++) {
+    const distance = Math.abs(specs[i].toX - crossing);
+    if (distance < best) {
+      best = distance;
       wallX = specs[i].toX;
-      break;
     }
   }
   return Math.min(

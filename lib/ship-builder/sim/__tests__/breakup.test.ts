@@ -7,26 +7,27 @@ import {
   BOW_FINAL_PITCH,
   HALF_UNDER_DEPTH,
   HULL_STRENGTH,
-  NO_WALLS_BREAK_FRACTION,
+  DECK_HEIGHT,
   REF_LENGTH,
   STERN_FINAL_PITCH,
   STERN_HANG_S,
   STERN_RISE_S,
   STERN_SETTLE_S,
   breakPositionOf,
+  deckWaterlineX,
   bowSpan,
   shallowestDepth,
   sternSpan,
   strainOf,
   strengthFor,
 } from "../breakup";
+import { DECK_Y } from "@/components/ship-builder/scene/coords";
 import { compartmentSpecsOf } from "../compartments";
 import { PLUNGE_DEPTH, PLUNGE_PITCH } from "../flooding";
 import { createTrial, runTrial, stepTrial } from "../seaTrial";
 import { simShipFromStats } from "../simShip";
 import type {
   BreakMode,
-  Compartment,
   CompartmentSpec,
   HalfPose,
   SimPose,
@@ -110,10 +111,6 @@ function spec(id: string, fromX: number, toX: number): CompartmentSpec {
   return { id, fromX, toX, bowWall: 1, sternWall: 1 };
 }
 
-function wet(...water: number[]): Compartment[] {
-  return water.map((w, i) => ({ id: `c${i}`, water: w, opened: false }));
-}
-
 describe("strain and strength", () => {
   it("grows with the pitch and the square of the length", () => {
     expect(strainOf(-0.3, REF_LENGTH)).toBeCloseTo(0.3);
@@ -152,21 +149,48 @@ describe("where she breaks", () => {
     spec("c3", 27, 36),
     spec("c4", 36, 60),
   ];
+  /** A bow-down pose whose main deck meets the sea `x` cells from the bow. */
+  function poseCrossingAt(x: number, pitch = -0.3): SimPose {
+    const along = 30 - x;
+    return {
+      roll: 0,
+      pitch,
+      sink: along * Math.sin(pitch) + DECK_HEIGHT * Math.cos(pitch),
+    };
+  }
 
-  it("breaks at the stern wall of the stern-most flooded compartment", () => {
-    expect(breakPositionOf(specs, wet(0.9, 0.8, 0.6, 0.2, 0), 60)).toBe(27);
-    expect(breakPositionOf(specs, wet(0.9, 0.8, 0.6, 0.7, 0), 60)).toBe(36);
+  it("matches the scene's deck height", () => {
+    expect(DECK_HEIGHT).toBe(DECK_Y);
+  });
+
+  it("finds where her main deck meets the sea", () => {
+    expect(deckWaterlineX(poseCrossingAt(33), 60)).toBeCloseTo(33);
+    expect(deckWaterlineX({ roll: 0, pitch: 0, sink: 1 }, 60)).toBeNull();
+  });
+
+  it("breaks at the wall nearest where the deck meets the sea", () => {
+    expect(breakPositionOf(specs, poseCrossingAt(25), 60)).toBe(27);
+    expect(breakPositionOf(specs, poseCrossingAt(33), 60)).toBe(36);
+    expect(breakPositionOf(specs, poseCrossingAt(30), 60)).toBe(27);
   });
 
   it("keeps the break away from the ends", () => {
-    expect(breakPositionOf(specs, wet(0.9, 0, 0, 0, 0), 60)).toBe(21);
-    expect(breakPositionOf(specs, wet(1, 1, 1, 1, 1), 60)).toBe(42);
+    expect(breakPositionOf(specs, poseCrossingAt(10), 60)).toBe(21);
+    const aft = [spec("c0", 0, 30), spec("c1", 30, 50), spec("c2", 50, 60)];
+    expect(breakPositionOf(aft, poseCrossingAt(48), 60)).toBe(42);
   });
 
-  it("breaks a hull with no walls at 0.6 of her length", () => {
-    expect(breakPositionOf([spec("c0", 0, 30)], wet(1), 30)).toBe(
-      NO_WALLS_BREAK_FRACTION * 30
-    );
+  it("breaks a hull with no walls where the deck meets the sea", () => {
+    const hull = [spec("c0", 0, 60)];
+    expect(breakPositionOf(hull, poseCrossingAt(31.5), 60)).toBeCloseTo(31.5);
+    expect(breakPositionOf(hull, poseCrossingAt(50), 60)).toBe(42);
+  });
+
+  it("breaks a level ship at her middle", () => {
+    expect(breakPositionOf(specs, { roll: 0, pitch: 0, sink: 2 }, 60)).toBe(27);
+    expect(
+      breakPositionOf([spec("c0", 0, 60)], { roll: 0, pitch: 0, sink: 2 }, 60)
+    ).toBe(30);
   });
 });
 
@@ -177,16 +201,18 @@ describe("the break", () => {
   const before = states[breakIndex - 1];
   const at = states[breakIndex];
 
-  it("breaks the Titanic in two near 17 degrees, behind the flooded bow", () => {
+  it("breaks the Titanic in two near 17 degrees, at the surface", () => {
     expect(at.breakup).not.toBeNull();
     expect(at.breakup!.angle).toBeLessThan(-0.29);
     expect(at.breakup!.angle).toBeGreaterThan(-0.32);
-    expect(at.breakup!.atX).toBe(27);
+    // Her deck meets the sea at about x=38; wall 13 (x=39) is just aft.
+    expect(deckWaterlineX(before.pose, 60)).toBeCloseTo(38.2, 0);
+    expect(at.breakup!.atX).toBe(39);
     expect(at.events.filter((e) => e.kind === "broke")).toEqual([
       { at: at.time, kind: "broke" },
     ]);
-    expect(at.halves!.bow.pivotX).toBe(27);
-    expect(at.halves!.stern.pivotX).toBe(27);
+    expect(at.halves!.bow.pivotX).toBe(39);
+    expect(at.halves!.stern.pivotX).toBe(39);
   });
 
   it("starts both halves exactly where the whole ship was", () => {
@@ -254,7 +280,8 @@ describe("the halves", () => {
   it("settles the stern back toward level first", () => {
     const settled = when(STERN_SETTLE_S - 0.05).halves!.stern;
     expect(Math.abs(settled.pitch)).toBeLessThan(0.05);
-    expect(settled.sink).toBeLessThan(broken[0].halves!.stern.sink);
+    // Its broken end floats at about a 1-unit draft.
+    expect(Math.abs(settled.sink - 1)).toBeLessThan(0.1);
   });
 
   it("then rears the stern up nearly upright and hangs there", () => {
@@ -267,7 +294,7 @@ describe("the halves", () => {
           when(t).halves!.stern.pitch,
           sternSpan(atX, length)
         )
-      ).toBeLessThan(-20);
+      ).toBeLessThan(-15);
     }
   });
 

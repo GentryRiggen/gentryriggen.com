@@ -128,8 +128,8 @@ length) / L`.
 she stays afloat.
 
 Story time: `STORY_MINUTES_PER_SIM_SECOND` is 5, counted from impact
-(`storyMinutesSinceImpact`), so the Titanic (about 33.3 sim seconds after the
-strike, breaking in two on the way) sinks in 167 story minutes.
+(`storyMinutesSinceImpact`), so the Titanic (about 32.3 sim seconds after the
+strike, breaking in two on the way) sinks in 161 story minutes.
 
 Tuning: `INFLOW` 5 (raised from 3 so the Titanic's breakup, which adds about
 10 s after the plunge starts, still ends under 170 story minutes), `SPILL_RATE` 20, `SINK_TO_DEPTH` 0.1, `TRIM_LEVER` 0.12,
@@ -168,10 +168,11 @@ reached `strengthFor(breakMode)` she breaks:
   ship breaks once she tips that far.
 - `never`: `Infinity`; the plunge is exactly Level 2's.
 
-Where: the stern wall (`toX`) of the stern-most compartment holding more than
-`FLOODED_WATER` (0.5), clamped to `BREAK_MIN_FRACTION`..`BREAK_MAX_FRACTION`
-(0.35..0.7) of her length; `NO_WALLS_BREAK_FRACTION` (0.6) for a hull with no
-walls. The break step logs `broke`, sets `breakup = { at, atX, angle }` and
+Where: at the wall nearest the point where her main deck (`DECK_HEIGHT` 1.2
+above the keel line, the scene's `DECK_Y`) meets the sea in the pose she
+breaks from (`deckWaterlineX`); with no walls, at that point itself. Clamped
+to `BREAK_MIN_FRACTION`..`BREAK_MAX_FRACTION` (0.35..0.7) of her length. So
+the crack opens at the surface, where the player can see it. The break step logs `broke`, sets `breakup = { at, atX, angle }` and
 `halves`, puts the lights out if they were not already, and sets `strain` back
 to 0. `pose` then stays where she broke.
 
@@ -254,6 +255,6 @@ The Titanic struck at the stern starts her plunge stern-down and is not yet
 steep enough by the time she is under, so she holds together.
 
 Timings for the Titanic struck at x=5 (`real`, sim seconds): flooding 1.5,
-lights flicker 11.6, lights out 24.6, breaks 25.1 (17 degrees, at wall 9,
-x=27), sunk 34.9; followed down, the stern lands 2.3 s and the bow 5.9 s after
-`startDescent`. In `never` mode she is sunk at 28.5.
+lights flicker 11.6, lights out 24.6, breaks 25.1 (17 degrees, at wall 13,
+x=39, where her deck meets the sea at about x=38), sunk 33.7; followed down,
+the halves land 5.5 s and 7.6 s after `startDescent`. In `never` mode she is sunk at 28.5.

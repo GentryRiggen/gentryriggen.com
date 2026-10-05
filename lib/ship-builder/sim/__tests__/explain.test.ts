@@ -233,7 +233,7 @@ describe("explainTrial for a ship that sank in the iceberg trial", () => {
       "The lights flickered, then went out as she went down."
     );
     expect(summary.breakup).toBe(
-      "She was too long to take the strain and broke in two at 17°, just behind wall 9."
+      "She was too long to take the strain and broke in two at 17°, just behind wall 13."
     );
     expect(summary.floor).toBeUndefined();
   });

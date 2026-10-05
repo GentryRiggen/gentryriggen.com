@@ -233,7 +233,7 @@ function breakApart(
   time: number
 ): SimState {
   const { length } = iceberg;
-  const atX = breakPositionOf(iceberg.compartments, state.compartments, length);
+  const atX = breakPositionOf(iceberg.compartments, state.pose, length);
   const dark = withPower(state, "out", time);
   return {
     ...dark,
