@@ -24,3 +24,8 @@ export default function useSeaState(): SeaStateControl {
   const seaState = seaSetting.useValue();
   return { seaState, setSeaState: seaSetting.set };
 }
+
+/** The chosen sea state right now, for code outside React (the store). */
+export function getSeaState(): SeaState {
+  return seaSetting.get();
+}

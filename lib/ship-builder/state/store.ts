@@ -29,6 +29,11 @@ import { simShipFromStats } from "../sim/simShip";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
 import { getLiveTrialState } from "./liveTrialState";
+import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
+import type { DriveConfig, DriveView } from "../sail/driveConfig";
+import type { SailImpact } from "../sail/types";
+import { publishSail } from "./sailLive";
+import { resetSailInput } from "./sailInput";
 import type { HullArea, PaintColor } from "../model/paint";
 import type {
   Anchor,
@@ -73,6 +78,15 @@ export interface Notice {
  * (`descend`): it runs again with `descending` set, continuing from where it
  * ended. `replay` plays the same trial again from the start.
  */
+/**
+ * Drive mode: idle while building, `setup` while the obstacle picker is open,
+ * `sailing` while the player steers. Both non-idle states freeze the ship.
+ */
+export type DriveSlice =
+  | { status: "idle" }
+  | { status: "setup" }
+  | { status: "sailing"; config: DriveConfig; runId: number; view: DriveView };
+
 export type TrialSlice =
   | { status: "idle" }
   | { status: "aiming" }
@@ -116,6 +130,7 @@ interface ShipBuilderData {
   notice: Notice | null;
   camera: { view: CameraView; nonce: number };
   trial: TrialSlice;
+  drive: DriveSlice;
   /**
    * How iceberg trials may break the ship. Kept apart from `trial` so it
    * survives leaving a trial; remembered for the session only.
@@ -179,6 +194,15 @@ export interface ShipBuilderState extends ShipBuilderData {
   aimIceberg: () => void;
   /** Backs out of aiming and returns to building. */
   cancelAim: () => void;
+  /** Opens the obstacle picker; only from building (no trial, no drive). */
+  openDrive: () => void;
+  /** Starts sailing with this obstacle field; only from the picker. */
+  startDrive: (config: DriveConfig) => void;
+  /** Leaves the picker or the drive and goes back to building. */
+  endDrive: () => void;
+  setDriveView: (view: DriveView) => void;
+  /** A hard hit: ends the drive and plays the sea trial struck where she hit. */
+  driveHit: (impact: SailImpact) => void;
   /** Records how the running trial ended; ignored unless one is running. */
   finishTrial: (state: SimState) => void;
   /** Leaves the trial (running or finished) and goes back to building. */
@@ -212,6 +236,7 @@ export function createInitialState(): ShipBuilderData {
     notice: null,
     camera: { view: "three-quarter", nonce: 0 },
     trial: { status: "idle" },
+    drive: { status: "idle" },
     breakMode: "real",
   };
 }
@@ -250,9 +275,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   let noticeId = 0;
   let runId = 0;
 
-  /** True while a trial runs or its result shows: the ship must not change. */
+  /** True while a trial or a drive is on: the ship must not change. */
   function isTrialActive(): boolean {
-    return get().trial.status !== "idle";
+    return get().trial.status !== "idle" || get().drive.status !== "idle";
   }
 
   /**
@@ -586,6 +611,42 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         tool: { kind: "none" },
         ...CLEARED,
       });
+    },
+
+    openDrive() {
+      if (get().trial.status !== "idle" || get().drive.status !== "idle") {
+        return;
+      }
+      set({ drive: { status: "setup" }, tool: { kind: "none" }, ...CLEARED });
+    },
+
+    startDrive(config) {
+      if (get().drive.status !== "setup") return;
+      runId += 1;
+      resetSailInput();
+      publishSail(null);
+      set({
+        drive: { status: "sailing", config, runId, view: "chase" },
+      });
+    },
+
+    endDrive() {
+      if (get().drive.status === "idle") return;
+      resetSailInput();
+      publishSail(null);
+      set({ drive: { status: "idle" } });
+    },
+
+    setDriveView(view) {
+      const { drive } = get();
+      if (drive.status !== "sailing") return;
+      set({ drive: { ...drive, view } });
+    },
+
+    driveHit(impact) {
+      if (get().drive.status !== "sailing") return;
+      get().endDrive();
+      get().startTrial(getSeaState(), impact.impactX);
     },
 
     aimIceberg() {
