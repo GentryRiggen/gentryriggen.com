@@ -73,6 +73,19 @@ jobs:
       - name: 🧪 Unit tests
         run: npm test
 
+      # Built here, beside the e2e jobs, so deploying does not wait on (or pay
+      # for) a separate build job.
+      - name: 🏗️ Build
+        run: npm run build
+
+      - name: 📤 Upload build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build
+          path: out
+          retention-days: 1
+
   # ── Browser tests (runs in parallel with validate) ──
   e2e:
     name: 🎭 E2E ${{ matrix.name }}
@@ -94,14 +107,12 @@ jobs:
             workers: 2
             browsers: chromium webkit
             no-webgl: 1
-          - name: WebGL builder scene
-            files: e2e/ship-builder.spec.ts
-            args: --project=chromium --grep "holding a placed block|paints a tapped block|renders the 3D scene"
-            workers: 1
-            browsers: chromium
-          - name: WebGL iceberg + time + breakup
-            files: e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts
-            args: --project=chromium
+          # The three pointer-sensitive builder tests join the other one-worker
+          # WebGL specs; --grep keeps ship-builder.spec.ts to just those three
+          # (it matches the file name, and "ship-builder-" is the other specs).
+          - name: WebGL builder + iceberg + time + breakup
+            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts
+            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene"
             workers: 1
             browsers: chromium
           - name: WebGL sea trial
@@ -154,42 +165,13 @@ jobs:
             test-results
           retention-days: 7
 
-  # ── Production build (waits for validate + e2e) ──
-  build:
-    name: 📦 Build
-    runs-on: ubuntu-latest
-    needs: [validate, e2e]
-    # e2e is skipped (not failed) when nothing it covers changed.
-    if: ${{ !cancelled() && needs.validate.result == 'success' && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v6
-
-      - name: ⚙️ Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: "npm"
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🏗️ Build
-        run: npm run build
-
-      - name: 📤 Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: build
-          path: out
-          retention-days: 1
-
   # ── Deploy (main branch only) ──
   deploy:
     name: 🚀 Deploy
     runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [validate, e2e]
+    # e2e is skipped (not failed) when nothing it covers changed.
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.validate.result == 'success' && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
