@@ -162,7 +162,7 @@ function lightsLine(state: SimState): string | undefined {
     return "The lights flickered, then went out as she went down.";
   }
   if (hasEvent(state, "power-flicker")) {
-    return "The lights flickered when the water reached the engine room.";
+    return "The lights flickered when the water reached the middle of the ship.";
   }
   return undefined;
 }

@@ -88,7 +88,7 @@ describe("edge-mount", () => {
       attachPart("r", "raft-canister", "a", "edge:4:0"),
     ]);
     expect(canPlace(ship, gridPart("x", "deck-1x1", 1, 4, 0))).toEqual(
-      fail("Can't build over a davit or raft")
+      fail("Can't build over a davit, raft, cannon or plank")
     );
     expect(canPlace(ship, gridPart("y", "deck-1x1", 0, 4, -1))).toEqual(
       fail("Can't build outboard of a davit or raft")

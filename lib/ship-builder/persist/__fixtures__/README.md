@@ -4,7 +4,7 @@ Real-shaped saves that every future build must still load. They are checked by
 `../__tests__/fixtures.test.ts`.
 
 - `templates/` every template, serialised as a save stores it.
-- `legacy/` hand-built ships at schema versions v1 to v6 (the v6 one has bulkheads). Never regenerated.
+- `legacy/` hand-built ships at schema versions v1 to v7 (the v6 one has bulkheads, the v7 one is a pirate sloop). Never regenerated.
 - `share/` share-link payloads (the text after `#ship=`), one of them in an old format.
 - `*.expected.json` part count and key stats for the fixture beside it.
 

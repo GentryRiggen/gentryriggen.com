@@ -12,7 +12,7 @@
  *
  * Layout (see __fixtures__/README.md):
  *   templates/<id>.json   every template, serialised as a save stores it
- *   legacy/<name>.json    hand-built ships at schema versions v1..v6 (v6 has bulkheads)
+ *   legacy/<name>.json    hand-built ships at schema versions v1..v7 (v6 has bulkheads, v7 is a pirate sloop)
  *   share/<name>.txt      share-link payloads (the text after `#ship=`)
  *   <name>.expected.json  part count and key stats beside each fixture
  *
@@ -176,11 +176,13 @@ describe("saved-ship fixtures", () => {
   describe("older schema versions", () => {
     const names = fixtureNames("legacy", ".json");
 
-    it("covers every version from v1 to v5", () => {
+    it("covers every version from v1 to v7", () => {
       const versions = names.map(
         (name) => (readJson(fixturePath("legacy", name, ".json")) as Ship).v
       );
-      expect(versions.sort()).toEqual(expect.arrayContaining([1, 2, 3, 4, 5]));
+      expect(versions.sort()).toEqual(
+        expect.arrayContaining([1, 2, 3, 4, 5, 6, 7])
+      );
     });
 
     it("keeps a v6 ship's bulkheads", () => {

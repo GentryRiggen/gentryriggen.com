@@ -51,6 +51,11 @@ const SAIL_BASE_Y = 2.3;
 const SAIL_TOP_FRACTION = 0.74;
 /** A wooden mast's crow's nest sits above its highest yard. */
 const WOOD_NEST_FRACTION = 0.88;
+/**
+ * The masthead flag base sits this far above the mast top, so it clears an
+ * aerial at the same top and rests on a wooden mast's cap.
+ */
+const MASTHEAD_RISE = 0.1;
 /** How far a helipad's surface rises above the deck tops it sits on. */
 const HELIPAD_THICKNESS = 0.15;
 /** The freefall boat sits this far forward of the stern tip's midpoint. */
@@ -514,7 +519,7 @@ function mastPoints(
     points.push({
       id: "masthead",
       type: "masthead-mount",
-      position: at(height),
+      position: at(height + MASTHEAD_RISE),
     });
   }
   if (getPartDef(part.type).placement === "attach" && hasCrowsNest(part)) {

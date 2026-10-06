@@ -124,7 +124,7 @@ describe("canPlace — grid parts", () => {
 
     expect(
       canPlace(boatDeckShip(), gridCandidate("deck-1x1", 2, 2, 0))
-    ).toEqual(fail("Can't build over a davit or raft"));
+    ).toEqual(fail("Can't build over a davit, raft, cannon or plank"));
   });
 
   it("keeps the bridge in the forward half (rule 3)", () => {

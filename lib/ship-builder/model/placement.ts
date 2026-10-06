@@ -297,7 +297,7 @@ function canPlaceGrid(
       return fail("Can't build over a funnel or mast");
     }
     if (holdsEdgePartAt(ship, below, cell.x, cell.z)) {
-      return fail("Can't build over a davit or raft");
+      return fail("Can't build over a davit, raft, cannon or plank");
     }
   }
 
