@@ -84,3 +84,14 @@ eye off the deck.
 Break in two: the walker rides whichever half they stand on (the break-line
 cell counts as the bow half), through `halfMatrix`; the break line blocks
 crossing, and the walk-button hiding in point 4 is lifted.
+
+## Changes made while planning
+
+- `startTrial` keeps its walk guard. A separate `sinkWhileWalking()` starts the
+  trial, so nothing else can start one mid-walk. `startWalk` is what loses its
+  guard (it may start while a trial is `running`; still not while aiming or at
+  a result).
+- The reduced-motion tilt cap is dropped. Reduced-motion trials are instant, so
+  there is never a sinking to ride and nothing to cap.
+- `SeaTrialStatus` must not steal focus when the run starts while walking:
+  Space is the jump key and would press its focused Stop button.

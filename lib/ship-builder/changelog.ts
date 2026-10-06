@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.13.0",
+    date: "2026-10-06",
+    title: "Walk the sinking ship",
+    highlights: [
+      "Now you can walk around your ship while she sinks. The deck tilts and the sea rises around you",
+      "While you walk there is a new Sink the ship button. Tap it and an iceberg hits her while you stay on deck",
+      "Start a sea trial first and tap Walk to climb aboard while she is already going down",
+      "If she breaks in two, the walk ends and you watch the rest, since walking on a broken ship is still to come",
+    ],
+  },
+  {
     version: "2.12.0",
     date: "2026-10-05",
     title: "Jump and climb all over",

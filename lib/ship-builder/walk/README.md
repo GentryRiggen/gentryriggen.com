@@ -24,7 +24,9 @@ Where the rest lives: the `walk` store slice and `state/walkLive.ts`,
 `state/walkInput.ts`; the scene in `components/ship-builder/scene/`
 (`WalkRunner`, `WalkEyes`, `walkCamera`); the controls in
 `components/ship-builder/ui/` (`WalkButton`, `WalkHud`, `WalkJoystick`,
-`WalkLookLayer`) and `hooks/useWalkKeys.ts`.
+`WalkLookLayer`) and `hooks/useWalkKeys.ts`. A walk can run during a sea
+trial: the ship's group carries the walker, and `WalkEyes` follows the deck
+fully as the trial pose blends in (`swayShare`).
 
 Tests: the model's unit tests are in `__tests__/`, and
 `e2e/ship-builder-walk.spec.ts` drives it in a real browser through the
