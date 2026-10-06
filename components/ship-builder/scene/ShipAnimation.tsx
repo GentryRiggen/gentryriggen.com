@@ -15,6 +15,7 @@ import {
   type ShipAnimationValue,
 } from "./ShipAnimationContext";
 import { trialPlayback } from "./trialPlayback";
+import WalkEyes from "./WalkEyes";
 import { plannedBreakX } from "./trialTimeline";
 
 interface ShipAnimationProps {
@@ -87,6 +88,7 @@ export default function ShipAnimation({ children }: ShipAnimationProps) {
           <FunnelSmoke />
           <PropellerBubbles />
         </group>
+        <WalkEyes />
       </BobGroup>
       {halvesAtX !== null && (
         <BrokenShip atX={halvesAtX} isBroken={!isWhole}>

@@ -50,6 +50,9 @@ const TOUCHES = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
 const FOLLOW_RATE = 3;
 /** The slow-mo side-on view: camera height as a share of its distance. */
 const SIDE_ON_HEIGHT = 0.25;
+/** The first-person lens: near plane (so railings never clip) and field of view. */
+const WALK_NEAR = 0.05;
+const WALK_FOV = 70;
 /** How fast the drive camera closes on its pose, per second. */
 const DRIVE_RATE = 4;
 /** The chase camera's gentle sway: size in cells and speed in radians a second. */
@@ -133,6 +136,8 @@ export default function CameraRig() {
   );
   const view = camera.view;
   const isSailing = useShipBuilderStore((s) => s.drive.status === "sailing");
+  const isWalking = useShipBuilderStore((s) => s.walk.status === "walking");
+  const isActive = isSailing || isWalking;
   const reducedMotion = usePrefersReducedMotion();
   // False until the drive camera has taken its first pose, which it snaps to.
   const hasDrivePose = useRef(false);
@@ -153,9 +158,10 @@ export default function CameraRig() {
   const seen = useRef<FrameRequest | null>(null);
 
   useEffect(() => {
-    // While sailing the drive camera owns the view. Forgetting the request
-    // makes the builder's own view place the camera again when she is back.
-    if (isSailing) {
+    // While sailing or walking another camera owns the view. Forgetting the
+    // request makes the builder's own view place the camera again when she is
+    // back.
+    if (isActive) {
       seen.current = null;
       return;
     }
@@ -186,7 +192,26 @@ export default function CameraRig() {
       orbit.update();
       orbit.enableDamping = true;
     }
-  }, [camera, lengthSegments, beam, isSailing, get]);
+  }, [camera, lengthSegments, beam, isActive, get]);
+
+  // Walking: a wider, close-in first-person lens (WalkCamera places it). The
+  // builder's lens is restored when the walk ends.
+  useEffect(() => {
+    if (!isWalking) return;
+    const { camera: cam } = get();
+    if (!(cam instanceof PerspectiveCamera)) return;
+    const { near, fov } = cam;
+    if (cam.view?.enabled) cam.clearViewOffset();
+    cam.near = WALK_NEAR;
+    cam.fov = WALK_FOV;
+    cam.updateProjectionMatrix();
+    return () => {
+      cam.near = near;
+      cam.fov = fov;
+      cam.up.set(...WORLD_UP);
+      cam.updateProjectionMatrix();
+    };
+  }, [isWalking, get]);
 
   // Keep the target near the ship after every pan (and damping step). The
   // camera moves by the same amount, so the view slides rather than turns.
@@ -395,7 +420,7 @@ export default function CameraRig() {
     cam.lookAt(driveLook);
   });
 
-  if (isSailing) return null;
+  if (isActive) return null;
   return (
     <OrbitControls
       ref={controls}

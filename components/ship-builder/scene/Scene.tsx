@@ -37,6 +37,7 @@ import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
 import TrialSound from "../audio/TrialSound";
 import UnderwaterFog from "./UnderwaterFog";
+import WalkRunner from "./WalkRunner";
 import { usePartLongPress } from "./usePartLongPress";
 
 /**
@@ -143,6 +144,7 @@ export default function Scene() {
         <Iceberg />
         <SeaTrialRunner />
         <SailRunner />
+        <WalkRunner />
         <SailWorld />
         <SeaTrialEffects />
         <TrialSound />

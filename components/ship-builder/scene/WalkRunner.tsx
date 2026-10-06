@@ -1,0 +1,49 @@
+"use client";
+
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { SIM_STEP_S } from "@/lib/ship-builder/sim/types";
+import { getWalkState, publishWalk } from "@/lib/ship-builder/state/walkLive";
+import { walkInput } from "@/lib/ship-builder/state/walkInput";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import {
+  stepWalker,
+  walkGridOf,
+  type WalkState,
+} from "@/lib/ship-builder/walk";
+import { MAX_FRAME_DELTA } from "./animationMath";
+
+/** Runs one walk: steps the walker in fixed steps and publishes it. */
+function Walking() {
+  const ship = useShipBuilderStore((s) => s.ship);
+  const grid = useMemo(() => walkGridOf(ship), [ship]);
+  // The store published the spawn when the walk started.
+  const state = useRef<WalkState | null>(getWalkState());
+  const leftover = useRef(0);
+
+  useFrame((_, delta) => {
+    const current = state.current;
+    if (!current) return;
+    leftover.current += Math.min(delta, MAX_FRAME_DELTA);
+    let next = current;
+    while (leftover.current >= SIM_STEP_S) {
+      leftover.current -= SIM_STEP_S;
+      next = stepWalker(next, walkInput, grid);
+    }
+    if (next === current) return;
+    state.current = next;
+    publishWalk(next);
+  });
+
+  return null;
+}
+
+/**
+ * Runs the walk while the store says she is walking. Renders nothing; the
+ * camera and HUD read what it publishes (see walkLive.ts).
+ */
+export default function WalkRunner() {
+  const walk = useShipBuilderStore((s) => s.walk);
+  if (walk.status !== "walking") return null;
+  return <Walking key={walk.runId} />;
+}
