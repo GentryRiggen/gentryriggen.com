@@ -124,3 +124,17 @@ describe("WalkHud", () => {
     ).not.toHaveClass("transition-opacity");
   });
 });
+
+describe("WalkHud Sink the ship", () => {
+  it("sinks the ship from walk mode, then goes away", async () => {
+    const user = userEvent.setup();
+    startWalking();
+    render(<WalkHud />);
+    await user.click(screen.getByRole("button", { name: "Sink the ship" }));
+    expect(store().trial).toMatchObject({ status: "running" });
+    expect(store().walk.status).toBe("walking");
+    expect(
+      screen.queryByRole("button", { name: "Sink the ship" })
+    ).not.toBeInTheDocument();
+  });
+});

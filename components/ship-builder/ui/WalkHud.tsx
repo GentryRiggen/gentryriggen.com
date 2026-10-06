@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, LogOut } from "lucide-react";
+import { ArrowUp, LogOut, Snowflake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
@@ -84,6 +84,23 @@ function WalkHint() {
   );
 }
 
+/** Strikes an iceberg at a fixed spot and keeps walking while she goes down. */
+function SinkShipButton() {
+  const canSink = useShipBuilderStore((s) => s.trial.status === "idle");
+  const sinkWhileWalking = useShipBuilderStore((s) => s.sinkWhileWalking);
+  if (!canSink) return null;
+  return (
+    <button
+      type="button"
+      onClick={sinkWhileWalking}
+      className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-nowrap rounded-full bg-rose-700 px-4 text-sm font-semibold text-white shadow-lg hover:bg-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 dark:bg-rose-500 dark:text-slate-900 dark:hover:bg-rose-400 dark:focus-visible:outline-rose-300"
+    >
+      <Snowflake aria-hidden="true" className="h-5 w-5 shrink-0" />
+      Sink the ship
+    </button>
+  );
+}
+
 function WalkingControls() {
   useWalkKeys();
 
@@ -91,7 +108,8 @@ function WalkingControls() {
     <div className="pointer-events-none absolute inset-0 z-10">
       <WalkLookLayer />
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex items-start justify-end">
+        <div className="flex items-start justify-end gap-2">
+          <SinkShipButton />
           <StopWalkingButton />
         </div>
         <div className="flex items-end justify-between">
