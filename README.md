@@ -1,175 +1,82 @@
 # gentryriggen.com
 
-Personal website built with Next.js, TypeScript, and Tailwind CSS.
+My personal site, [gentryriggen.com](https://gentryriggen.com). It is a
+terminal-style landing page you can type commands into, plus **Ship Builder**,
+a 3D ship-building toy that runs entirely in the browser.
 
-## Tech Stack
+## Highlights
 
-- **Framework**: Next.js 16+ (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Testing**: Jest + React Testing Library + Playwright
-- **Deployment**: Firebase Hosting
-- **CI/CD**: GitHub Actions
+- **Interactive terminal.** A boot sequence hands off to a command prompt.
+  Commands are resolved from one map in
+  `components/designs/design1/commandResponses.tsx`.
+- **Ship Builder** (`/ship-builder`). Design ships deck by deck, sail or drive
+  them, walk the decks, and watch them sink. It is a React Three Fiber app
+  that works offline as an installable PWA. Release notes live at
+  `/ship-builder/versions`.
+- **Static export.** No server, API routes or middleware. Everything is built
+  ahead of time and served from Firebase Hosting.
 
-## Getting Started
+## Tech stack
 
-### Prerequisites
+Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4,
+React Three Fiber, Jest + React Testing Library, Playwright, Firebase Hosting,
+GitHub Actions.
 
-- Node.js 20+
+## Getting started
 
-### Installation
-
-1. Clone the repository:
+Requires Node 24 (see `.mise.toml`).
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/GentryRiggen/gentryriggen.com.git
 cd gentryriggen.com
-```
-
-2. Install dependencies:
-
-```bash
 npm install
+npm run dev     # http://localhost:3000
 ```
 
-3. Run the development server:
+## Scripts
 
-```bash
-npm run dev
-```
+| Command                         | What it does                                      |
+| ------------------------------- | ------------------------------------------------- |
+| `npm run dev`                   | Dev server                                        |
+| `npm run build`                 | Production build (static export to `out/`)        |
+| `npm run lint` / `format:check` | ESLint / Prettier check                           |
+| `npm run type-check`            | `tsc --noEmit`                                    |
+| `npm test`                      | Jest unit tests                                   |
+| `npm run test:e2e`              | Playwright (starts the dev server itself)         |
+| `npm run test:visual`           | Visual snapshots, run in Docker for stable pixels |
+| `npm run validate`              | Lint, format, types, tests and build, as in CI    |
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
-- `npm test` - Run unit tests
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Generate test coverage report
-- `npm run test:e2e` - Run end-to-end tests
-- `npm run test:e2e:ui` - Run E2E tests with UI
-- `npm run test:all` - Run all tests (unit + E2E)
-
-## Project Structure
+## Project structure
 
 ```
-gentryriggen.com/
-├── app/                    # Next.js App Router
-│   ├── layout.tsx          # Root layout
-│   ├── page.tsx            # Landing page
-│   ├── globals.css         # Global styles
-│   └── __tests__/         # Page tests
-├── components/             # Reusable components
-│   ├── Header.tsx
-│   ├── Hero.tsx
-│   ├── Footer.tsx
-│   └── __tests__/         # Component tests
-├── e2e/                   # End-to-end tests
-├── .github/workflows/     # CI/CD workflows
-├── firebase.json          # Firebase configuration
-├── jest.config.js         # Jest configuration
-└── playwright.config.ts   # Playwright configuration
+app/                  App Router: layout, landing page, /ship-builder
+components/
+  designs/design1/    Terminal UI
+  ship-builder/       3D scene, UI, audio, hooks
+lib/ship-builder/     Model, simulation, persistence, templates, changelog
+e2e/                  Playwright tests and visual snapshots
+scripts/              Screenshot, icon and offline-check tooling
+docs/superpowers/     Design specs and implementation plans
 ```
 
 ## Testing
 
-### Unit Tests
-
-Unit tests are written using Jest and React Testing Library. They test individual components and their behavior.
-
-```bash
-npm test
-```
-
-### End-to-End Tests
-
-E2E tests are written using Playwright and test critical user flows.
-
-```bash
-npm run test:e2e
-```
+Unit tests live in `__tests__/` folders next to the code. E2E tests run on
+Chromium for everything; WebKit and an iPad profile run only the tests tagged
+`@smoke`. Set `E2E_FULL=1` to run everything on every project.
 
 ## Deployment
 
-### Firebase Hosting Setup
+Pushes to `main` run CI (lint, format, types, unit and e2e tests, build) and
+deploy `out/` to Firebase Hosting through GitHub Actions. The workflow needs
+two repository secrets: `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID`.
+Renovate keeps dependencies current.
 
-1. Install Firebase CLI globally (if not already installed):
+## Contributing
 
-```bash
-npm install -g firebase-tools
-```
-
-2. Login to Firebase:
-
-```bash
-firebase login
-```
-
-3. Initialize Firebase in your project:
-
-```bash
-firebase init hosting
-```
-
-4. Update `.firebaserc` with your Firebase project ID:
-
-```json
-{
-  "projects": {
-    "default": "your-firebase-project-id"
-  }
-}
-```
-
-5. Build and deploy:
-
-```bash
-npm run build
-firebase deploy
-```
-
-### Automated Deployment
-
-The project is configured with GitHub Actions for automated deployment:
-
-- **On Pull Requests**: Runs all tests (linting, unit tests, E2E tests)
-- **On Main Branch Push**: Runs tests, builds, and deploys to Firebase Hosting
-
-#### Required GitHub Secrets
-
-Set up the following secrets in your GitHub repository settings:
-
-- `FIREBASE_SERVICE_ACCOUNT`: Firebase service account JSON (for deployment)
-- `FIREBASE_PROJECT_ID`: Your Firebase project ID
-
-To get the service account:
-
-1. Go to Firebase Console → Project Settings → Service Accounts
-2. Click "Generate New Private Key"
-3. Copy the JSON content and add it as a GitHub secret
-
-## Development
-
-### Code Quality
-
-- **ESLint**: Code linting with Next.js recommended rules
-- **Prettier**: Code formatting
-- **TypeScript**: Type checking
-
-### Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Run tests: `npm run test:all`
-4. Ensure linting passes: `npm run lint`
-5. Ensure formatting is correct: `npm run format:check`
-6. Submit a pull request
+This is a personal project, but issues and suggestions are welcome. Run
+`npm run validate` before opening a pull request.
 
 ## License
 
-Private - All rights reserved.
+All rights reserved. No license is granted for reuse of this code.

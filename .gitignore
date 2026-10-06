@@ -23,6 +23,7 @@
 *.pem
 
 # debug
+*.log
 npm-debug.log*
 .pnpm-debug.log*
 
@@ -55,3 +56,7 @@ next-env.d.ts
 
 # agent worktrees
 /.claude/worktrees/
+
+# other agents' local guidance (CLAUDE.md is the source of truth)
+/AGENTS.md
+/.agents/
