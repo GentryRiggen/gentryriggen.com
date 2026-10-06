@@ -50,6 +50,9 @@ import type {
 
 export const HISTORY_LIMIT = 100;
 
+/** Where "Sink the ship" strikes her: this share of her length from the bow. */
+const SINK_IMPACT_FRACTION = 0.4;
+
 export type Tool =
   | { kind: "none" }
   | { kind: "place"; type: PartType; rotation: Rotation }
@@ -218,6 +221,11 @@ export interface ShipBuilderState extends ShipBuilderData {
   startWalk: () => void;
   /** Leaves walk mode and goes back to building. */
   stopWalk: () => void;
+  /**
+   * While walking with no trial on, starts an iceberg trial at a fixed spot
+   * and keeps walking; the walk ends when the trial's result arrives.
+   */
+  sinkWhileWalking: () => void;
   setDriveView: (view: DriveView) => void;
   /** A hard hit: ends the drive and plays the sea trial struck where she hit. */
   driveHit: (impact: SailImpact) => void;
@@ -301,6 +309,38 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       get().drive.status !== "idle" ||
       get().walk.status !== "idle"
     );
+  }
+
+  /** Starts the trial (the caller has checked it may); walking is untouched. */
+  function beginTrial(sea: SimSea, impactX?: number) {
+    const { ship, breakMode } = get();
+    const { stats } = analyzeShip(ship);
+    const input: TrialInput = {
+      ship: simShipFromStats(stats, ship.hull.beam),
+      sea,
+      ...(impactX === undefined
+        ? {}
+        : {
+            iceberg: {
+              compartments: compartmentSpecsOf(ship.hull),
+              length: gridLength(ship),
+              impactX,
+              breakMode,
+            },
+          }),
+    };
+    runId += 1;
+    set({
+      trial: {
+        status: "running",
+        input,
+        runId,
+        descending: false,
+        from: "start",
+      },
+      tool: { kind: "none" },
+      ...CLEARED,
+    });
   }
 
   /**
@@ -607,34 +647,13 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     startTrial(sea, impactX) {
       if (get().walk.status !== "idle") return;
-      const { ship, breakMode } = get();
-      const { stats } = analyzeShip(ship);
-      const input: TrialInput = {
-        ship: simShipFromStats(stats, ship.hull.beam),
-        sea,
-        ...(impactX === undefined
-          ? {}
-          : {
-              iceberg: {
-                compartments: compartmentSpecsOf(ship.hull),
-                length: gridLength(ship),
-                impactX,
-                breakMode,
-              },
-            }),
-      };
-      runId += 1;
-      set({
-        trial: {
-          status: "running",
-          input,
-          runId,
-          descending: false,
-          from: "start",
-        },
-        tool: { kind: "none" },
-        ...CLEARED,
-      });
+      beginTrial(sea, impactX);
+    },
+
+    sinkWhileWalking() {
+      if (get().walk.status !== "walking") return;
+      if (get().trial.status !== "idle") return;
+      beginTrial(getSeaState(), gridLength(get().ship) * SINK_IMPACT_FRACTION);
     },
 
     openDrive() {
@@ -660,7 +679,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     startWalk() {
-      if (isTrialActive()) return;
+      const { trial, drive, walk } = get();
+      if (drive.status !== "idle" || walk.status !== "idle") return;
+      // She can be walked while a trial runs, not while it is aiming or done.
+      if (trial.status !== "idle" && trial.status !== "running") return;
       const spawn = spawnOf(get().ship);
       if (spawn === null) return;
       runId += 1;
@@ -721,6 +743,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           descending: trial.descending,
         },
       });
+      // The walker rode her down; the result card takes over.
+      get().stopWalk();
     },
 
     endTrial() {

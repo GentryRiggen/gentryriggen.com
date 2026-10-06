@@ -1,4 +1,6 @@
 import { act } from "react";
+import { gridLength } from "../../model/grid";
+import { createTrial } from "../../sim/seaTrial";
 import { gridPart, testShip } from "../../testing";
 import { walkInput } from "../walkInput";
 import { getWalkState, publishWalk, subscribeWalk } from "../walkLive";
@@ -51,7 +53,7 @@ describe("walk slice", () => {
     expect(getWalkState()).toBeNull();
   });
 
-  it("does not start during setup, sailing or a trial", () => {
+  it("does not start during setup, sailing, an aim or a result", () => {
     load();
     act(() => store().openDrive());
     act(() => store().startWalk());
@@ -61,9 +63,25 @@ describe("walk slice", () => {
     expect(store().walk.status).toBe("idle");
     act(() => store().endDrive());
 
-    act(() => store().startTrial("calm"));
+    act(() => store().aimIceberg());
     act(() => store().startWalk());
     expect(store().walk.status).toBe("idle");
+    act(() => store().cancelAim());
+
+    act(() => store().startTrial("calm", 5));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("expected running");
+    act(() => store().finishTrial(createTrial(trial.input)));
+    act(() => store().startWalk());
+    expect(store().walk.status).toBe("idle");
+  });
+
+  it("starts while a trial is running", () => {
+    load();
+    act(() => store().startTrial("calm", 5));
+    act(() => store().startWalk());
+    expect(store().walk.status).toBe("walking");
+    expect(store().trial.status).toBe("running");
   });
 
   it("keeps the trial and the drive from starting while walking", () => {
@@ -107,5 +125,50 @@ describe("walk slice", () => {
     walkInput.forward = 1;
     act(() => store().startWalk());
     expect(walkInput.forward).toBe(0);
+  });
+});
+
+describe("sinking while walking", () => {
+  it("starts an iceberg trial, keeps the walk, and the result ends the walk", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().sinkWhileWalking());
+    expect(store().walk.status).toBe("walking");
+    const { trial } = store();
+    expect(trial).toMatchObject({
+      status: "running",
+      descending: false,
+      from: "start",
+    });
+    if (trial.status !== "running") throw new Error("expected running");
+    expect(trial.input.iceberg?.impactX).toBeCloseTo(
+      0.4 * gridLength(testShip())
+    );
+
+    act(() => store().finishTrial(createTrial(trial.input)));
+    expect(store().trial.status).toBe("result");
+    expect(store().walk).toEqual({ status: "idle" });
+    expect(getWalkState()).toBeNull();
+  });
+
+  it("does nothing unless walking with no trial", () => {
+    load();
+    act(() => store().sinkWhileWalking());
+    expect(store().trial.status).toBe("idle");
+
+    act(() => store().startWalk());
+    act(() => store().sinkWhileWalking());
+    const first = store().trial;
+    act(() => store().sinkWhileWalking());
+    expect(store().trial).toBe(first);
+  });
+
+  it("stopping the trial leaves the walk going", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().sinkWhileWalking());
+    act(() => store().endTrial());
+    expect(store().trial.status).toBe("idle");
+    expect(store().walk.status).toBe("walking");
   });
 });
