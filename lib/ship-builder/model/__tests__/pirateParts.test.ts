@@ -76,6 +76,34 @@ describe("pirate attach points", () => {
     expect(ids).not.toContain("sail:2");
   });
 
+  it.each([
+    ["mast-wood-short", 5],
+    ["mast-wood-tall", 7],
+    ["mast-wood-main", 9],
+  ] as const)(
+    "keeps stacked sails on %s clear of the deck, each other and the nest",
+    (mast, height) => {
+      const ship = {
+        ...pirate(),
+        parts: [attachPart("m", mast, HULL_ID, "mast-fore")],
+      };
+      const points = attachPointsOf(ship, "m");
+      const base = points.find((p) => p.id === "masthead")!.position.y - height;
+      const tallestSail = getPartDef("sail-square-large").height;
+      const ys = points
+        .filter((p) => p.type === "sail-mount")
+        .map((p) => p.position.y - base)
+        .sort((a, b) => a - b);
+      expect(ys[0]).toBeGreaterThanOrEqual(tallestSail);
+      for (let i = 1; i < ys.length; i++) {
+        expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(tallestSail);
+      }
+      const nest = points.find((p) => p.id === "nest")!.position.y - base;
+      expect(nest).toBeGreaterThan(ys[ys.length - 1]);
+      expect(nest).toBeLessThan(height);
+    }
+  );
+
   it("lets a sail go on a free spot only", () => {
     const base = {
       ...pirate(),

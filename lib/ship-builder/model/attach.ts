@@ -41,9 +41,16 @@ const NEST_FRACTION = 0.6;
 /** The stern flagpole stands this fraction of the stern's length aft. */
 const FLAG_SETBACK = 0.8;
 const DAVIT_REACH = 0.6;
-/** Sails hang at these fractions of a wooden mast's height, lowest first. */
-const SAIL_BASE_FRACTION = 0.3;
-const SAIL_STEP_FRACTION = 0.22;
+/**
+ * Sail spots on a wooden mast, lowest first. The lowest yard sits clear of the
+ * deck for the tallest sail (2.0 high) to hang under it; the highest sits at
+ * this fraction of the mast and the rest spread evenly between, so a main
+ * mast's three sails clear each other.
+ */
+const SAIL_BASE_Y = 2.3;
+const SAIL_TOP_FRACTION = 0.74;
+/** A wooden mast's crow's nest sits above its highest yard. */
+const WOOD_NEST_FRACTION = 0.88;
 /** How far a helipad's surface rises above the deck tops it sits on. */
 const HELIPAD_THICKNESS = 0.15;
 /** The freefall boat sits this far forward of the stern tip's midpoint. */
@@ -462,6 +469,12 @@ function funnelPoints(
   return [stringPoint(base.position, height)];
 }
 
+function sailSpotY(height: number, slots: number, index: number): number {
+  if (slots < 2) return SAIL_BASE_Y;
+  const top = height * SAIL_TOP_FRACTION;
+  return SAIL_BASE_Y + ((top - SAIL_BASE_Y) * index) / (slots - 1);
+}
+
 /**
  * A mast exposes a searchlight point near its top and, on a plain mast, a
  * crow's nest point; either kind exposes an aerial point while another mast
@@ -494,7 +507,7 @@ function mastPoints(
     points.push({
       id: `sail:${i}`,
       type: "sail-mount",
-      position: at(height * (SAIL_BASE_FRACTION + SAIL_STEP_FRACTION * i)),
+      position: at(sailSpotY(height, slots, i)),
     });
   }
   if (slots > 0) {
@@ -508,7 +521,7 @@ function mastPoints(
     points.push({
       id: "nest",
       type: "nest-mount",
-      position: at(height * NEST_FRACTION),
+      position: at(height * (slots > 0 ? WOOD_NEST_FRACTION : NEST_FRACTION)),
     });
   }
   if (nearestOtherMastTop(ship, part, base.position, occupancy)) {

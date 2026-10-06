@@ -185,10 +185,15 @@ const mast = (height: number): PirateMesh =>
     return <WoodMast height={height} {...props} />;
   };
 
+/**
+ * The jib point is 0.75 ahead of the foremast on a beakhead bow, so the sail
+ * stops just short of the mast (and the foresail's belly) instead of running
+ * through them.
+ */
 const JIB_CORNERS: TriangleSailProps["corners"] = [
-  [0.25, 0],
-  [-2.0, 0.1],
-  [-1.9, 3.2],
+  [0.3, 0],
+  [-0.4, 0.2],
+  [-0.35, 3],
 ];
 const LATEEN_CORNERS: TriangleSailProps["corners"] = [
   [0.9, 0.1],
