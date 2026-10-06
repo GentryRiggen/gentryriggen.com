@@ -61,6 +61,32 @@ describe("StatsPanel", () => {
     expect(screen.getByText("Cargo")).toBeInTheDocument();
   });
 
+  it("shows Sail area and Cannons rows only on a ship with sails and guns", () => {
+    render(<StatsPanel />);
+    expect(screen.queryByTestId("stat-sail-area")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("stat-cannons")).not.toBeInTheDocument();
+    act(() =>
+      useShipBuilderStore.setState({
+        ship: {
+          ...emptyShip("pirate"),
+          parts: [
+            attachPart("m", "mast-wood-short", "hull", "mast-fore"),
+            attachPart("s", "sail-square", "m", "sail:0"),
+            attachPart("c", "cannon-chaser", "hull", "bowgun"),
+          ],
+        },
+      })
+    );
+    expect(screen.getByTestId("stat-sail-area")).toHaveTextContent(/^3$/);
+    expect(screen.getByTestId("stat-cannons")).toHaveTextContent(/^1$/);
+    expect(
+      screen.getByRole("heading", { name: /Queen Anne's Revenge \(1718\)/ })
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("reference-ship")).getByText("Cannons")
+    ).toBeVisible();
+  });
+
   it("never shows 100% coverage while short of seats", () => {
     // 7 segments → 420 crew. 5 standard (65) + 2 collapsible (47) boats seat
     // 419, so coverage is 0.9976, which plain rounding would show as 100%.

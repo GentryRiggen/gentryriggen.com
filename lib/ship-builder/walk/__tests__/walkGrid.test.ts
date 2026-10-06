@@ -186,6 +186,21 @@ describe("walkGridOf: attach parts", () => {
     expect(walkGridOf(ship).blockers).toHaveLength(3);
   });
 
+  it("blocks for a wooden mast and a cannon, but not for sails or a boat", () => {
+    const ship = testShip([
+      gridPart("d", "deck-1x1", 0, 5, 0),
+      gridPart("e", "deck-1x1", 0, 8, 0),
+      attachPart("m", "mast-wood-tall", "d", "mast"),
+      attachPart("s", "sail-square", "m", "sail:0"),
+      attachPart("flag", "flag-jolly-roger", "m", "masthead"),
+      attachPart("jib", "sail-jib", "hull", "jib"),
+      attachPart("fig", "figurehead", "hull", "figurehead"),
+      attachPart("c", "cannon-deck", "d", "edge:5:0"),
+      attachPart("plank", "plank", "e", "edge:8:0"),
+    ]);
+    expect(walkGridOf(ship).blockers).toHaveLength(2);
+  });
+
   it("does not block for a nav light, searchlight or a flag", () => {
     const ship = testShip([
       gridPart("b", "bridge-3", 0, 5, 1),

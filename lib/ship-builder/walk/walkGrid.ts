@@ -25,7 +25,9 @@ const SURFACE_LEVELS = MAX_LEVEL + 2;
 /**
  * Attach parts nobody bumps into: lights, flags and aerials are too thin or
  * too high, boats hang outboard of the rail on their davits, props, rudders
- * and azipods are under the hull, and a helipad is a flat painted pad.
+ * and azipods are under the hull, and a helipad is a flat painted pad. On a
+ * pirate ship, sails and the Jolly Roger hang overhead, the figurehead is
+ * beyond the rail, and a rowboat or plank is over the side.
  */
 const NON_BLOCKING_ATTACH: ReadonlySet<PartType> = new Set<PartType>([
   "nav-lights",
@@ -45,6 +47,15 @@ const NON_BLOCKING_ATTACH: ReadonlySet<PartType> = new Set<PartType>([
   "lifeboat-enclosed",
   "lifeboat-freefall",
   "rib-boat",
+  "sail-square-small",
+  "sail-square",
+  "sail-square-large",
+  "sail-jib",
+  "sail-lateen",
+  "flag-jolly-roger",
+  "figurehead",
+  "rowboat",
+  "plank",
 ]);
 
 /**

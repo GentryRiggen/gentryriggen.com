@@ -3,6 +3,7 @@
 import type { PartType, Rotation } from "@/lib/ship-builder/model/types";
 import { DECOR_COLORS } from "./decorColors";
 import { LEVEL_HEIGHT } from "./coords";
+import { isPirateDecor, renderPirateDecor } from "./pirate/registry";
 import { roundedBox } from "./roundedBox";
 import GlowSurface from "./GlowSurface";
 import { GlowBeam, GlowHalo, GlowPool } from "./GlowShapes";
@@ -282,7 +283,7 @@ export function DeckDecorMesh({ type, ...props }: DeckDecorMeshProps) {
     case "stairs":
       return <Stairs {...props} />;
     default:
-      return null;
+      return isPirateDecor(type) ? renderPirateDecor(type, props) : null;
   }
 }
 

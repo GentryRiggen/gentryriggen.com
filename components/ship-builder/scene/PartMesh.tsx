@@ -75,6 +75,8 @@ import {
   UnderwaterLightMesh,
 } from "./lightParts";
 import { PALETTE } from "./palette";
+import { CaptainCabinTrim, HelmWheelMesh } from "./pirate/deco";
+import { isPirateFitting, renderPirateFitting } from "./pirate/registry";
 import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
@@ -101,6 +103,12 @@ interface PartMeshProps {
 }
 
 const BRIDGE_HEIGHT = 0.8;
+
+/** Wooden pirate blocks default to oak instead of white superstructure. */
+const WOODEN_BLOCK_COLORS: Partial<Record<PartType, PaintColor>> = {
+  "cabin-captain": "oak",
+  "helm-wheel": "oak",
+};
 
 interface BlockProps {
   def: GridPartDef;
@@ -403,9 +411,19 @@ function Fitting({
     case "floodlight":
     case "ventilator":
     case "stairs":
+    case "cabin-captain":
+    case "helm-wheel":
+    case "ship-anchor":
+    case "barrel-stack":
+    case "crate-stack":
+    case "treasure-chest":
+    case "pirate-crew":
+    case "parrot":
       return null;
     default:
-      return assertNever(type);
+      return isPirateFitting(type)
+        ? renderPirateFitting(type, { painted, tint, emphasis, side })
+        : assertNever(type);
   }
 }
 
@@ -499,24 +517,34 @@ function PartMesh({
             emphasis={emphasis}
           />
         ) : (
-          <Block
-            def={def}
-            size={size}
-            joined={
-              part.anchor.kind === "grid"
-                ? joinedSides(ship, part, occupancy)
-                : NO_JOINED_SIDES
-            }
-            color={color}
-            tint={tint}
-            emphasis={emphasis}
-            seed={windowSeed(part.anchor)}
-            balconyFaces={
-              part.type === "cabin-balcony"
-                ? openFaces(part, occupancy ?? analyzeShip(ship).occupancy)
-                : undefined
-            }
-          />
+          <>
+            <Block
+              def={def}
+              size={size}
+              joined={
+                part.anchor.kind === "grid"
+                  ? joinedSides(ship, part, occupancy)
+                  : NO_JOINED_SIDES
+              }
+              color={color ?? WOODEN_BLOCK_COLORS[part.type]}
+              tint={tint}
+              emphasis={emphasis}
+              seed={windowSeed(part.anchor)}
+              balconyFaces={
+                part.type === "cabin-balcony"
+                  ? openFaces(part, occupancy ?? analyzeShip(ship).occupancy)
+                  : undefined
+              }
+            />
+            {part.type === "helm-wheel" && (
+              <group position={[0, BRIDGE_HEIGHT, 0]}>
+                <HelmWheelMesh tint={tint} emphasis={emphasis} />
+              </group>
+            )}
+            {part.type === "cabin-captain" && (
+              <CaptainCabinTrim size={size} tint={tint} emphasis={emphasis} />
+            )}
+          </>
         )}
       </group>
     );

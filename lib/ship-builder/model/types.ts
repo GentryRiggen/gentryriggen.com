@@ -1,6 +1,37 @@
 import type { ShipKind } from "./kinds";
 import type { HullArea, PaintColor } from "./paint";
 
+/** Parts only pirate ships list; each task that draws them owns one group. */
+export const PIRATE_PART_TYPES = [
+  // sails.tsx
+  "mast-wood-short",
+  "mast-wood-tall",
+  "mast-wood-main",
+  "sail-square-small",
+  "sail-square",
+  "sail-square-large",
+  "sail-jib",
+  "sail-lateen",
+  "flag-jolly-roger",
+  // cannons.tsx
+  "cannon-deck",
+  "cannon-chaser",
+  "cannon-swivel",
+  // deco.tsx
+  "cabin-captain",
+  "helm-wheel",
+  "figurehead",
+  "ship-anchor",
+  "barrel-stack",
+  "crate-stack",
+  "treasure-chest",
+  "rowboat",
+  // crew.tsx
+  "plank",
+  "pirate-crew",
+  "parrot",
+] as const;
+
 export const PART_TYPES = [
   "deck-1x1",
   "deck-2x1",
@@ -54,6 +85,7 @@ export const PART_TYPES = [
   "nav-lights",
   "floodlight",
   "underwater-light",
+  ...PIRATE_PART_TYPES,
 ] as const;
 
 export type PartType = (typeof PART_TYPES)[number];
@@ -69,7 +101,9 @@ export type PartCategory =
   | "lights"
   | "propulsion"
   | "naval"
-  | "cargo";
+  | "cargo"
+  | "sails"
+  | "weapons";
 
 export type AttachPointType =
   | "funnel-mount"
@@ -89,7 +123,10 @@ export type AttachPointType =
   | "aerial-mount"
   | "string-mount"
   | "nav-mount"
-  | "hull-light-mount";
+  | "hull-light-mount"
+  | "sail-mount"
+  | "masthead-mount"
+  | "bow-mount";
 
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -223,6 +260,10 @@ interface PartDefBase {
   power?: number;
   /** Twenty-foot-equivalent container units this part carries. */
   teu?: number;
+  /** Canvas this part adds to a sailing ship's sail area. */
+  sailArea?: number;
+  /** Cannons this part adds to the ship's cannon count. */
+  cannons?: number;
   /** Ship kinds this part is listed for. Absent means every kind. */
   kinds?: ShipKind[];
 }
@@ -259,6 +300,8 @@ export interface AttachPartDef extends PartDefBase {
   emptyHint: string;
   /** The attach points this part offers other parts, when it offers any. */
   exposes?: PointProvider;
+  /** Sail spots a wooden mast offers, lowest first. */
+  sailSlots?: number;
   /** A mast that offers a crow's nest point. */
   hasCrowsNest?: boolean;
   /** Counts toward the ship's propellers, and bubbles at the stern. */

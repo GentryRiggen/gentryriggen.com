@@ -100,6 +100,7 @@ export type WarningCode =
   | "lifeboats"
   | "no-bridge"
   | "no-funnels"
+  | "no-sails"
   | "no-propellers"
   | "needs-propellers"
   | "no-rudder"
@@ -132,6 +133,10 @@ export interface Stats {
   lifeboatSeats: number;
   /** Container capacity in twenty-foot-equivalent units. */
   teu: number;
+  /** Cannons mounted, for pirate ships. */
+  cannons: number;
+  /** Total canvas up, which drives a pirate ship's speed. */
+  sailArea: number;
   coverage: number;
   coverageLevel: CoverageLevel;
   grossTonnage: number;
@@ -206,6 +211,34 @@ export function computeSpeed(
   return Math.round(clamped * 10) / 10;
 }
 
+/** Pirate speed: steady wind, so only sail area, length and weight matter. */
+export const SAIL_SPEED = {
+  base: 3,
+  perArea: 0.4,
+  perSegment: 0.2,
+  min: 3,
+  max: 14,
+};
+
+export function computeSailSpeed(
+  sailArea: number,
+  segments: number,
+  grossTonnage: number,
+  /** Knots from the hull's bow and stern, applied before the clamp. */
+  hullModifier = 0,
+  drivetrain: Drivetrain = DRIVETRAINS.pirate
+): number {
+  if (sailArea === 0) return 0;
+  const raw =
+    SAIL_SPEED.base +
+    sailArea * SAIL_SPEED.perArea +
+    segments * SAIL_SPEED.perSegment -
+    (grossTonnage / 10000) * drivetrain.lossPer10kTons +
+    hullModifier;
+  const clamped = Math.min(SAIL_SPEED.max, Math.max(SAIL_SPEED.min, raw));
+  return Math.round(clamped * 10) / 10;
+}
+
 function classifyStability(ratio: number): Stability {
   if (ratio >= STABILITY_THRESHOLDS.dangerous) return "Dangerous";
   if (ratio >= STABILITY_THRESHOLDS.topHeavy) return "Top-heavy";
@@ -221,6 +254,9 @@ export function computeStats(ship: Ship): Stats {
   let lifeboatSeats = 0;
   let stokers = 0;
   let teu = 0;
+  let cannons = 0;
+  let sails = 0;
+  let sailArea = 0;
   let crewBerths = 0;
   let funnels = 0;
   let power = 0;
@@ -251,6 +287,11 @@ export function computeStats(ship: Ship): Stats {
     }
     if (def.stokers) stokers += def.stokers;
     if (def.teu) teu += def.teu;
+    if (def.cannons) cannons += def.cannons;
+    if (def.sailArea) {
+      sails += 1;
+      sailArea += def.sailArea;
+    }
     if (def.power) {
       funnels += 1;
       power += def.power;
@@ -282,14 +323,23 @@ export function computeStats(ship: Ship): Stats {
   const grossTonnage = Math.round(
     (length * beam * HULL_DEPTH + blockCells) * GRT_PER_UNIT
   );
-  const topSpeedKnots = computeSpeed(
-    power,
-    propellers,
-    ship.hull.lengthSegments,
-    grossTonnage,
-    hullSpeedModifier(ship.hull.bow, ship.hull.stern),
-    DRIVETRAINS[ship.kind]
-  );
+  const isPirate = ship.kind === "pirate";
+  const hullModifier = hullSpeedModifier(ship.hull.bow, ship.hull.stern);
+  const topSpeedKnots = isPirate
+    ? computeSailSpeed(
+        sailArea,
+        ship.hull.lengthSegments,
+        grossTonnage,
+        hullModifier
+      )
+    : computeSpeed(
+        power,
+        propellers,
+        ship.hull.lengthSegments,
+        grossTonnage,
+        hullModifier,
+        DRIVETRAINS[ship.kind]
+      );
   const stabilityRatio = moment / mass / beam;
   const stability = classifyStability(stabilityRatio);
   const listAngle = computeListAngle(
@@ -318,36 +368,57 @@ export function computeStats(ship: Ship): Stats {
   // Listed in build order; checks that don't apply yet are left out.
   addCheck(
     "no-bridge",
-    "Bridge to steer from",
-    bridges === 0 ? "No bridge — someone has to steer" : null
+    isPirate ? "Helm to steer from" : "Bridge to steer from",
+    bridges === 0
+      ? isPirate
+        ? "No helm — someone has to steer"
+        : "No bridge — someone has to steer"
+      : null
   );
-  addCheck(
-    "no-funnels",
-    "Funnels for power",
-    funnels === 0 ? "No funnels — she isn't going anywhere" : null
-  );
-  if (funnels > 0 || propellers > 0) {
+  if (isPirate) {
     addCheck(
-      "no-propellers",
-      "Propellers to push her",
-      funnels > 0 && propellers === 0 ? "No propellers — she can't move" : null
+      "no-sails",
+      "Sails for speed",
+      sails === 0 ? "No sails — she isn't going anywhere" : null
     );
-  }
-  if (funnels > 0 && propellers > 0) {
+    if (sails > 0) {
+      addCheck(
+        "no-rudder",
+        "Rudder to steer",
+        rudders === 0 ? "No rudder — she can't steer" : null
+      );
+    }
+  } else {
     addCheck(
-      "needs-propellers",
-      "Enough propellers for the funnels",
-      power > propellers * powerPerProp
-        ? "Not enough propellers for your funnels"
-        : null
+      "no-funnels",
+      "Funnels for power",
+      funnels === 0 ? "No funnels — she isn't going anywhere" : null
     );
-  }
-  if (propellers > 0) {
-    addCheck(
-      "no-rudder",
-      "Rudder to steer",
-      rudders === 0 ? "No rudder — she can't steer" : null
-    );
+    if (funnels > 0 || propellers > 0) {
+      addCheck(
+        "no-propellers",
+        "Propellers to push her",
+        funnels > 0 && propellers === 0
+          ? "No propellers — she can't move"
+          : null
+      );
+    }
+    if (funnels > 0 && propellers > 0) {
+      addCheck(
+        "needs-propellers",
+        "Enough propellers for the funnels",
+        power > propellers * powerPerProp
+          ? "Not enough propellers for your funnels"
+          : null
+      );
+    }
+    if (propellers > 0) {
+      addCheck(
+        "no-rudder",
+        "Rudder to steer",
+        rudders === 0 ? "No rudder — she can't steer" : null
+      );
+    }
   }
   addCheck(
     "lifeboats",
@@ -396,6 +467,8 @@ export function computeStats(ship: Ship): Stats {
     lifeboats,
     lifeboatSeats,
     teu,
+    cannons,
+    sailArea,
     coverage,
     coverageLevel: coverageLevel(coverage),
     grossTonnage,

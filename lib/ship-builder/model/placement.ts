@@ -97,9 +97,11 @@ export function emptyShip(
   };
 }
 
-/** Container ships keep the bridge aft; every other kind keeps it forward. */
+/** Cargo and pirate ships may keep the bridge or helm aft; the rest, forward. */
 function isBridgeSpotAllowed(ship: Ship, x: number): boolean {
-  return ship.kind === "cargo" || isForwardHalf(ship, x);
+  return (
+    ship.kind === "cargo" || ship.kind === "pirate" || isForwardHalf(ship, x)
+  );
 }
 
 /** Whether an attach part (funnel or mast) claims the top of the cell below. */

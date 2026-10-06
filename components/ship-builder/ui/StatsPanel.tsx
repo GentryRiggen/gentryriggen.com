@@ -4,6 +4,7 @@ import {
   BedDouble,
   CircleCheck,
   Container,
+  Crosshair,
   Gauge,
   HardHat,
   LifeBuoy,
@@ -11,6 +12,7 @@ import {
   Scale,
   ShieldCheck,
   Waves,
+  Wind,
   Users,
   UsersRound,
   Weight,
@@ -243,7 +245,7 @@ function yourValue(stats: Stats, metric: ReferenceMetric): number {
     case "teu":
       return stats.teu;
     case "cannons":
-      return 0;
+      return stats.cannons;
   }
 }
 
@@ -388,6 +390,22 @@ export default function StatsPanel() {
               testId="stat-cargo"
               value={fmt(stats.teu)}
               unit="TEU"
+            />
+          )}
+          {stats.sailArea > 0 && (
+            <StatRow
+              Icon={Wind}
+              label="Sail area"
+              testId="stat-sail-area"
+              value={fmt(stats.sailArea)}
+            />
+          )}
+          {stats.cannons > 0 && (
+            <StatRow
+              Icon={Crosshair}
+              label="Cannons"
+              testId="stat-cannons"
+              value={fmt(stats.cannons)}
             />
           )}
           <StatRow

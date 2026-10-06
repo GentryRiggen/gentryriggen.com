@@ -5,6 +5,7 @@ import { CRUISE_COLORS } from "@/components/ship-builder/scene/cruiseColors";
 import { DECOR_COLORS } from "@/components/ship-builder/scene/decorColors";
 import { LIGHT_COLORS } from "@/components/ship-builder/scene/lightColors";
 import type { PartType } from "@/lib/ship-builder/model/types";
+import { PIRATE_ICONS } from "./pirateIcons";
 
 interface PartIconProps {
   type: PartType;
@@ -616,6 +617,7 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       <path d="M8 30 L30 12" stroke={DECOR_COLORS.stairRail} />
     </g>
   ),
+  ...PIRATE_ICONS,
 };
 
 /** A flat drawing of a part, matching its 3D look. Decorative: aria-hidden. */

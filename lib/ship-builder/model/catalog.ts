@@ -1,6 +1,7 @@
 import type { ShipKind } from "./kinds";
 import {
   PART_TYPES,
+  type AttachPartDef,
   type AttachPointType,
   type GridPartDef,
   type PartCategory,
@@ -16,8 +17,10 @@ export const CATEGORIES: readonly { id: PartCategory; name: string }[] = [
   { id: "funnels", name: "Funnels" },
   { id: "propulsion", name: "Propulsion" },
   { id: "masts", name: "Masts" },
+  { id: "sails", name: "Sails" },
   { id: "lifeboats", name: "Lifeboat gear" },
   { id: "naval", name: "Naval" },
+  { id: "weapons", name: "Cannons" },
   { id: "cargo", name: "Cargo" },
   { id: "lights", name: "Lights" },
   { id: "decor", name: "Decorations" },
@@ -43,6 +46,9 @@ export const ATTACH_NEEDS_LABELS: Record<AttachPointType, string> = {
   "string-mount": "Needs 2 masts or funnels",
   "nav-mount": "Needs a bridge",
   "hull-light-mount": "No free hull spot",
+  "sail-mount": "Needs a wooden mast",
+  "masthead-mount": "Needs a wooden mast",
+  "bow-mount": "No free bow spot",
 };
 
 export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
@@ -64,12 +70,67 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
   "string-mount": "mast or funnel with another one to string lights to",
   "nav-mount": "bridge roof without navigation lights",
   "hull-light-mount": "spot on the hull below the waterline",
+  "sail-mount": "free sail spot on a wooden mast",
+  "masthead-mount": "top of a wooden mast",
+  "bow-mount": "spot on the bow",
 };
+
+const PIRATE: ShipKind[] = ["pirate"];
+/** Parts that make no sense on a wooden sailing ship. */
+const NOT_PIRATE: ShipKind[] = ["liner", "cruise", "navy", "cargo"];
+
+function woodMastDef(
+  type: PartType,
+  name: string,
+  height: number,
+  sailSlots: number,
+  mass: number
+): PartDef {
+  return {
+    type,
+    kinds: PIRATE,
+    category: "masts",
+    name,
+    description: `Wooden mast · ${sailSlots} sail spot${sailSlots === 1 ? "" : "s"} · bow, stern or on a deck block`,
+    placement: "attach",
+    attachTo: "mast-mount",
+    mass,
+    height,
+    emptyHint: "Every mast spot is taken",
+    exposes: "mast",
+    hasCrowsNest: true,
+    sailSlots,
+  };
+}
+
+function sailDef(
+  type: PartType,
+  name: string,
+  sailArea: number,
+  height: number,
+  extra: Partial<AttachPartDef> = {}
+): PartDef {
+  return {
+    type,
+    kinds: PIRATE,
+    category: "sails",
+    name,
+    description: `Sail area ${sailArea} · more sail, more speed`,
+    placement: "attach",
+    attachTo: "sail-mount",
+    mass: 0.05 * sailArea,
+    height,
+    sailArea,
+    emptyHint: "Build a wooden mast with a free sail spot first",
+    ...extra,
+  };
+}
 
 /** The 4-wide bridge keeps the original `bridge` id so old saves still load. */
 function bridgeDef(type: PartType, width: number): PartDef {
   return {
     type,
+    kinds: NOT_PIRATE,
     category: "command",
     name: `Bridge · ${width} wide`,
     description: "Forward half, top of its stack",
@@ -195,6 +256,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   },
   mast: {
     type: "mast",
+    kinds: NOT_PIRATE,
     category: "masts",
     name: "Mast",
     description: "Bow, stern or on top of a deck block",
@@ -275,6 +337,7 @@ export const CATALOG: Record<PartType, PartDef> = {
   },
   propeller: {
     type: "propeller",
+    kinds: NOT_PIRATE,
     category: "propulsion",
     name: "Propeller",
     description: "Mounts under the stern · pushes the ship",
@@ -659,6 +722,174 @@ export const CATALOG: Record<PartType, PartDef> = {
       1
     ),
     climbsToFacedBlock: true,
+  },
+  "mast-wood-short": woodMastDef("mast-wood-short", "Short mast", 5, 1, 0.4),
+  "mast-wood-tall": woodMastDef("mast-wood-tall", "Tall mast", 7, 2, 0.5),
+  "mast-wood-main": woodMastDef("mast-wood-main", "Main mast", 9, 3, 0.6),
+  "sail-square-small": sailDef(
+    "sail-square-small",
+    "Small square sail",
+    2,
+    1.2
+  ),
+  "sail-square": sailDef("sail-square", "Square sail", 3, 1.6),
+  "sail-square-large": sailDef("sail-square-large", "Large square sail", 4, 2),
+  "sail-jib": sailDef("sail-jib", "Jib", 2, 1.4, {
+    attachTo: "bow-mount",
+    allowedPointIds: ["jib"],
+    emptyHint: "The jib spot at the bow is taken",
+  }),
+  "sail-lateen": sailDef("sail-lateen", "Lateen sail", 3, 1.6, {
+    allowedPointIds: ["sail:0"],
+    description: "Sail area 3 · triangular · on the lowest spot of a mast",
+  }),
+  "flag-jolly-roger": {
+    type: "flag-jolly-roger",
+    kinds: PIRATE,
+    category: "decor",
+    name: "Jolly Roger",
+    description: "The pirate flag · flies from the top of a wooden mast",
+    placement: "attach",
+    attachTo: "masthead-mount",
+    mass: 0.02,
+    height: 0.8,
+    emptyHint: "Build a wooden mast first",
+  },
+  "cannon-deck": {
+    type: "cannon-deck",
+    kinds: PIRATE,
+    category: "weapons",
+    name: "Deck cannon",
+    description:
+      "Counts toward your cannons · sits on a deck edge · tap to fire",
+    placement: "attach",
+    attachTo: "edge-mount",
+    mass: 0.25,
+    height: 0.4,
+    cannons: 1,
+    emptyHint: "Build a block on an outer edge of the ship",
+    holdsEdge: true,
+  },
+  "cannon-chaser": {
+    type: "cannon-chaser",
+    kinds: PIRATE,
+    category: "weapons",
+    name: "Bow chaser",
+    description: "A long gun in the bow · counts toward your cannons",
+    placement: "attach",
+    attachTo: "bow-mount",
+    allowedPointIds: ["bowgun"],
+    mass: 0.3,
+    height: 0.4,
+    cannons: 1,
+    emptyHint: "The bow gun spot is taken",
+  },
+  "cannon-swivel": {
+    type: "cannon-swivel",
+    kinds: PIRATE,
+    category: "weapons",
+    name: "Swivel gun",
+    description: "A small rail gun · just for show · tap to fire",
+    placement: "attach",
+    attachTo: "edge-mount",
+    mass: 0.08,
+    height: 0.4,
+    emptyHint: "Build a block on an outer edge of the ship",
+    holdsEdge: true,
+  },
+  "cabin-captain": {
+    type: "cabin-captain",
+    kinds: PIRATE,
+    category: "cabins",
+    name: "Captain's cabin",
+    description: "20 crew berths · stern windows",
+    placement: "grid",
+    role: "cabin",
+    footprint: { x: 1, z: 1 },
+    mass: 1,
+    height: 1,
+    crewBerths: 20,
+  },
+  "helm-wheel": {
+    type: "helm-wheel",
+    kinds: PIRATE,
+    category: "command",
+    name: "Ship's wheel",
+    description:
+      "The helm on a quarterdeck · top of its stack · anywhere on deck",
+    placement: "grid",
+    role: "bridge",
+    footprint: { x: 1, z: 2 },
+    mass: 0.6,
+    height: 1,
+  },
+  figurehead: {
+    type: "figurehead",
+    kinds: PIRATE,
+    category: "decor",
+    name: "Figurehead",
+    description: "A carved mermaid at the very front",
+    placement: "attach",
+    attachTo: "bow-mount",
+    allowedPointIds: ["figurehead"],
+    mass: 0.1,
+    height: 0.8,
+    emptyHint: "The figurehead spot is taken",
+  },
+  "ship-anchor": {
+    ...decorDef("ship-anchor", "Anchor", "A heavy iron anchor", 0.5),
+    kinds: PIRATE,
+  },
+  "barrel-stack": {
+    ...decorDef("barrel-stack", "Barrels", "Rum, we hope", 0.6),
+    kinds: PIRATE,
+  },
+  "crate-stack": {
+    ...decorDef("crate-stack", "Crates", "Stacked supplies", 0.6),
+    kinds: PIRATE,
+  },
+  "treasure-chest": {
+    ...decorDef(
+      "treasure-chest",
+      "Treasure chest",
+      "Gold, jewels and a lock",
+      0.35
+    ),
+    kinds: PIRATE,
+  },
+  rowboat: {
+    type: "rowboat",
+    kinds: PIRATE,
+    category: "lifeboats",
+    name: "Rowboat",
+    description: "12 seats · hangs from a davit",
+    placement: "attach",
+    attachTo: "boat-mount",
+    mass: 0.2,
+    height: 0.4,
+    seats: 12,
+    emptyHint: "Every davit has a boat — add another davit",
+  },
+  plank: {
+    type: "plank",
+    kinds: PIRATE,
+    category: "decor",
+    name: "Plank",
+    description: "Walk it, if you dare · sits on a deck edge",
+    placement: "attach",
+    attachTo: "edge-mount",
+    mass: 0.1,
+    height: 0.1,
+    emptyHint: "Build a block on an outer edge of the ship",
+    holdsEdge: true,
+  },
+  "pirate-crew": {
+    ...decorDef("pirate-crew", "Pirate", "A crewmate with a sword", 1),
+    kinds: PIRATE,
+  },
+  parrot: {
+    ...decorDef("parrot", "Parrot", "Squawks quietly", 0.4),
+    kinds: PIRATE,
   },
 };
 

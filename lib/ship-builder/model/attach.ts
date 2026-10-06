@@ -41,6 +41,9 @@ const NEST_FRACTION = 0.6;
 /** The stern flagpole stands this fraction of the stern's length aft. */
 const FLAG_SETBACK = 0.8;
 const DAVIT_REACH = 0.6;
+/** Sails hang at these fractions of a wooden mast's height, lowest first. */
+const SAIL_BASE_FRACTION = 0.3;
+const SAIL_STEP_FRACTION = 0.22;
 /** How far a helipad's surface rises above the deck tops it sits on. */
 const HELIPAD_THICKNESS = 0.15;
 /** The freefall boat sits this far forward of the stern tip's midpoint. */
@@ -147,6 +150,21 @@ function hullPoints(ship: Ship): AttachPoint[] {
         y: 0,
         z: centerline,
       },
+    },
+    {
+      id: "figurehead",
+      type: "bow-mount",
+      position: { x: -bowLength(ship.hull.bow) * 0.9, y: 0.4, z: centerline },
+    },
+    {
+      id: "jib",
+      type: "bow-mount",
+      position: { x: -bowLength(ship.hull.bow) * 0.75, y: 0.9, z: centerline },
+    },
+    {
+      id: "bowgun",
+      type: "bow-mount",
+      position: { x: -bowLength(ship.hull.bow) * 0.35, y: 0.3, z: centerline },
     },
   ];
 }
@@ -447,7 +465,8 @@ function funnelPoints(
 /**
  * A mast exposes a searchlight point near its top and, on a plain mast, a
  * crow's nest point; either kind exposes an aerial point while another mast
- * exists to string wires to.
+ * exists to string wires to. A wooden mast also exposes one sail spot per
+ * slot and a masthead for the flag.
  */
 function mastPoints(
   ship: Ship,
@@ -469,6 +488,22 @@ function mastPoints(
       position: at(height - MAST_LIGHT_DROP),
     },
   ];
+  const mastDef = getPartDef(part.type);
+  const slots = mastDef.placement === "attach" ? (mastDef.sailSlots ?? 0) : 0;
+  for (let i = 0; i < slots; i++) {
+    points.push({
+      id: `sail:${i}`,
+      type: "sail-mount",
+      position: at(height * (SAIL_BASE_FRACTION + SAIL_STEP_FRACTION * i)),
+    });
+  }
+  if (slots > 0) {
+    points.push({
+      id: "masthead",
+      type: "masthead-mount",
+      position: at(height),
+    });
+  }
   if (getPartDef(part.type).placement === "attach" && hasCrowsNest(part)) {
     points.push({
       id: "nest",

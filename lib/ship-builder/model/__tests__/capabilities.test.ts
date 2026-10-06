@@ -11,6 +11,12 @@ describe("part capabilities", () => {
   it("marks the parts that propel, steer and sit on a deck edge", () => {
     expect(typesWith("propels")).toEqual(["propeller", "azipod"]);
     expect(typesWith("steers")).toEqual(["rudder", "azipod"]);
-    expect(typesWith("holdsEdge")).toEqual(["davit", "raft-canister"]);
+    expect(typesWith("holdsEdge")).toEqual([
+      "davit",
+      "raft-canister",
+      "cannon-deck",
+      "cannon-swivel",
+      "plank",
+    ]);
   });
 });
