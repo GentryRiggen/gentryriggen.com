@@ -59,11 +59,16 @@ export default function BlockDetails({
   const surface = { tint, emphasis };
   const isBridge = def.role === "bridge";
   const { x: sizeX, z: sizeZ } = size;
-  const stripeColor = def.passengers
-    ? PALETTE.cabin[def.passengers.cabinClass]
-    : def.crewBerths
-      ? PALETTE.cabin.crew
-      : null;
+  // The captain's cabin is oak with stern windows only (CaptainCabinTrim), so
+  // it skips the class stripe and the all-round cabin windows.
+  const isCaptainCabin = def.type === "cabin-captain";
+  const stripeColor = isCaptainCabin
+    ? null
+    : def.passengers
+      ? PALETTE.cabin[def.passengers.cabinClass]
+      : def.crewBerths
+        ? PALETTE.cabin.crew
+        : null;
   const hasWindows = isBridge || stripeColor !== null;
   const windowGlow = WINDOW_GLOW[windowGroupOf(def) ?? "bridge"];
   const { litFraction } = windowGlow;
