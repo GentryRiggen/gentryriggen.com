@@ -181,8 +181,17 @@ export default function CameraRig() {
       orbit.update();
     }
     // Read the size here rather than subscribing to it, so a resize doesn't
-    // reframe the camera.
-    const { width, height } = get().size;
+    // reframe the camera. The canvas's container is measured in the layout:
+    // coming back from a drive or a walk the chrome has just come back, and
+    // the scene's size state still has the full-screen size until it catches
+    // up, which would frame her for the wrong shape.
+    const { size, gl } = get();
+    const box = (
+      gl.domElement.parentElement ?? gl.domElement
+    ).getBoundingClientRect();
+    const isMeasured = box.width > 0 && box.height > 0;
+    const width = isMeasured ? box.width : size.width;
+    const height = isMeasured ? box.height : size.height;
     const aspect = height > 0 ? width / height : 1;
     get().camera.position.set(
       ...viewPosition(camera.view, lengthCells, aspect, shipBeam(ship))
