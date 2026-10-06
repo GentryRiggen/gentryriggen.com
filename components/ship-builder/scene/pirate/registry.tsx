@@ -20,11 +20,11 @@ export const PIRATE_DECOR = {
 export type PirateDecorType = keyof typeof PIRATE_DECOR;
 
 export function isPirateFitting(type: string): type is PirateFittingType {
-  return type in PIRATE_FITTINGS;
+  return Object.hasOwn(PIRATE_FITTINGS, type);
 }
 
 export function isPirateDecor(type: string): type is PirateDecorType {
-  return type in PIRATE_DECOR;
+  return Object.hasOwn(PIRATE_DECOR, type);
 }
 
 export function renderPirateFitting(

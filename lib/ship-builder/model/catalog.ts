@@ -1,4 +1,4 @@
-import type { ShipKind } from "./kinds";
+import { SHIP_KINDS, type ShipKind } from "./kinds";
 import {
   PART_TYPES,
   type AttachPartDef,
@@ -77,7 +77,7 @@ export const ATTACH_POINT_LABELS: Record<AttachPointType, string> = {
 
 const PIRATE: ShipKind[] = ["pirate"];
 /** Parts that make no sense on a wooden sailing ship. */
-const NOT_PIRATE: ShipKind[] = ["liner", "cruise", "navy", "cargo"];
+const NOT_PIRATE: ShipKind[] = SHIP_KINDS.filter((kind) => kind !== "pirate");
 
 function woodMastDef(
   type: PartType,
