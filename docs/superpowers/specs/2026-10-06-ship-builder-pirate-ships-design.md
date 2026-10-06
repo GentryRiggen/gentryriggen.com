@@ -155,8 +155,9 @@ gets a JSON fixture in `persist/__fixtures__/templates/`.
 ### Release
 
 Minor release **2.13.0**: bump `SHIP_BUILDER_VERSION`, add the top
-`CHANGELOG` entry in plain words, and bump the service worker cache version
-if past releases do.
+`CHANGELOG` entry in plain words. The service worker cache version stays as
+is: static assets are content-hashed and the page is network-first, and
+earlier releases did not bump it.
 
 ### Delivery
 
