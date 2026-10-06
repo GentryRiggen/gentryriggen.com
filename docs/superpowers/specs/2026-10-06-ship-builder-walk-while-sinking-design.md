@@ -16,8 +16,9 @@ changes.
 - **"Hit with an iceberg"** is one tap in the walk HUD: an iceberg at a fixed default
   spot, `impactX = 0.2 * hull length` (cells from the bow), the existing sim.
   No aiming, no waves option.
-- **Ending.** The walker rides her down until she is under; then the existing
-  result card shows and the walk ends.
+- **Ending.** The walker rides her down until she has broken in two or gone
+  under (sim phase `descending` or `done`); then the walk ends and the trial
+  plays on to the existing result card, which is watched, not walked.
 - **Tilt comfort.** Full tilt by default; under `prefers-reduced-motion` the
   eye's roll and pitch are capped at about 25 degrees.
 - Out of scope: slope physics, drowning, flooded decks, break-in-two (stage 2).
@@ -34,9 +35,11 @@ changes.
 3. A new store action `sinkWhileWalking()` starts the iceberg trial from the
    walk state and leaves `walk` untouched. The HUD button calls it, and shows
    only while walking with `trial.status === "idle"`.
-4. Walk is hidden once she has broken in two (`trialPlayback.breakup` set), so
-   a walk never has to pick a half. Walkers already aboard when she breaks are
-   stage 2; until then the walk simply ends at the break (as a result would).
+4. One rule, `isWalkOver` (broken in two, or phase `descending` or `done`),
+   ends a walk in progress and hides the Walk button (also while a descent run
+   is on), so a walk never has to pick a half or follow her to the sea floor.
+   Walkers already aboard when she breaks are stage 2; until then the walk
+   simply ends there and the trial plays on.
 5. Spawn is unchanged (`spawnOf`). A mid-trial walk spawns near the bridge as
    usual, so she may already be tilted when you step out.
 
@@ -95,3 +98,6 @@ crossing, and the walk-button hiding in point 4 is lifted.
   there is never a sinking to ride and nothing to cap.
 - `SeaTrialStatus` must not steal focus when the run starts while walking:
   Space is the jump key and would press its focused Stop button.
+- The walk ends once she has broken or gone under (not only at the result), so
+  the walker is never left underwater during the "Follow her down" window; the
+  result card and Follow her down are watched, not walked.

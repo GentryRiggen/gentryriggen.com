@@ -17,7 +17,8 @@ const HINT_ID = "walk-button-hint";
 
 /**
  * Starts walking the decks. It sits beside the Sea trial button (which hands
- * it to `SeaTrialButton` as `beside`, so it shows and hides with it). A ship
+ * it to `SeaTrialButton` as `beside`, so it shows and hides with it), and
+ * `TrialWalkButton` renders it on its own while a trial runs. A ship
  * with nowhere to stand cannot be walked, so the button is disabled and says
  * why.
  */

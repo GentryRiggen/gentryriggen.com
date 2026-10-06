@@ -14,6 +14,7 @@ import {
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { trialPlayback } from "./trialPlayback";
 import { testWalkSpawn } from "./testClock";
+import { isWalkOver } from "./walkOver";
 
 /** Runs one walk: steps the walker in fixed steps and publishes it. */
 function Walking() {
@@ -34,10 +35,10 @@ function Walking() {
   }, []);
 
   useFrame((_, delta) => {
-    // She has broken in two and there is no half to ride yet (a later
-    // release): the walk ends and the trial plays on.
+    // She has broken or gone under: the walk ends and the trial plays on to
+    // its result (there is no half to ride yet, a later release).
     if (
-      trialPlayback.breakup !== null &&
+      isWalkOver(trialPlayback) &&
       useShipBuilderStore.getState().trial.status === "running"
     ) {
       stopWalk();

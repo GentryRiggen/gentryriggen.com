@@ -50,4 +50,40 @@ describe("TrialWalkButton", () => {
     );
     expect(walkButton()).toBeNull();
   });
+
+  it("hides once she has broken in two", () => {
+    render(<TrialWalkButton />);
+    act(() => store().startTrial("calm", 5));
+    act(() =>
+      publishLiveTrial(
+        {
+          ...createTrial(INPUT),
+          breakup: { at: 10, atX: 20, angle: -0.3 },
+        },
+        0,
+        true
+      )
+    );
+    expect(walkButton()).toBeNull();
+  });
+
+  it("hides while she descends to the sea floor", () => {
+    render(<TrialWalkButton />);
+    act(() => store().startTrial("calm", 5));
+    act(() =>
+      publishLiveTrial({ ...createTrial(INPUT), phase: "descending" }, 0, true)
+    );
+    expect(walkButton()).toBeNull();
+  });
+
+  it("hides during a descent run even before its live state arrives", () => {
+    render(<TrialWalkButton />);
+    act(() => store().startTrial("calm", 5));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("expected running");
+    act(() =>
+      useShipBuilderStore.setState({ trial: { ...trial, descending: true } })
+    );
+    expect(walkButton()).toBeNull();
+  });
 });

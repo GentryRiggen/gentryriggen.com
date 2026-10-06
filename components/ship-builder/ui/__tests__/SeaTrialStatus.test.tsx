@@ -104,6 +104,6 @@ describe("SeaTrialStatus focus", () => {
   it("still focuses Stop when a run starts from building", () => {
     render(<SeaTrialStatus />);
     act(() => store().startTrial("calm", 5));
-    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: "Stop" })).toHaveFocus();
   });
 });

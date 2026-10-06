@@ -113,7 +113,7 @@ function WalkingControls() {
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div
           className={`flex items-start justify-end gap-2 ${
-            isTrialShown ? "mt-14 md:mt-0" : ""
+            isTrialShown ? "mt-14 lg:mt-0" : ""
           }`}
         >
           <SinkShipButton />

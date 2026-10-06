@@ -44,6 +44,9 @@ export default function BobGroup({ children }: BobGroupProps) {
   const previousStatus = useRef("idle");
   const wasHeavy = useRef(false);
 
+  // Priority -1 runs this before the walker's eyes (WalkEyes, a child of this
+  // group, whose frame callback would otherwise register first and read last
+  // frame's pose). Negative priority leaves automatic rendering on.
   useFrame((state, delta) => {
     const target = group.current;
     if (!target) return;
@@ -105,7 +108,7 @@ export default function BobGroup({ children }: BobGroupProps) {
       target.scale.setScalar(1);
     }
     if (!isBuilding(status)) wasHeavy.current = isHeavyTrialPose(trialPlayback);
-  });
+  }, -1);
 
   return <group ref={group}>{children}</group>;
 }

@@ -49,7 +49,8 @@ export default function WalkEyes() {
     }
     const bob = hasHeadBob ? Math.sin(phase.current) * HEAD_BOB_SIZE : 0;
 
-    // The parent bob group moved this frame; refresh its matrices first.
+    // The bob group runs first (it has a lower frame priority), so it has
+    // already moved this frame; refresh its matrices.
     holder.updateWorldMatrix(true, false);
     eye.set(pose.eye[0], pose.eye[1] + bob, pose.eye[2]);
     look.set(...pose.target);
