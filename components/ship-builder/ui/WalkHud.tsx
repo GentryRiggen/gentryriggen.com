@@ -96,7 +96,7 @@ function SinkShipButton() {
       className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-nowrap rounded-full bg-rose-700 px-4 text-sm font-semibold text-white shadow-lg hover:bg-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 dark:bg-rose-500 dark:text-slate-900 dark:hover:bg-rose-400 dark:focus-visible:outline-rose-300"
     >
       <Snowflake aria-hidden="true" className="h-5 w-5 shrink-0" />
-      Sink the ship
+      Hit with an iceberg
     </button>
   );
 }

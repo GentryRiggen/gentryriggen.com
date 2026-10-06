@@ -125,16 +125,18 @@ describe("WalkHud", () => {
   });
 });
 
-describe("WalkHud Sink the ship", () => {
+describe("WalkHud Hit with an iceberg", () => {
   it("sinks the ship from walk mode, then goes away", async () => {
     const user = userEvent.setup();
     startWalking();
     render(<WalkHud />);
-    await user.click(screen.getByRole("button", { name: "Sink the ship" }));
+    await user.click(
+      screen.getByRole("button", { name: "Hit with an iceberg" })
+    );
     expect(store().trial).toMatchObject({ status: "running" });
     expect(store().walk.status).toBe("walking");
     expect(
-      screen.queryByRole("button", { name: "Sink the ship" })
+      screen.queryByRole("button", { name: "Hit with an iceberg" })
     ).not.toBeInTheDocument();
   });
 });

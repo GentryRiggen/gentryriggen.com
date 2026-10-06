@@ -51,7 +51,7 @@ import type {
 export const HISTORY_LIMIT = 100;
 
 /**
- * Where "Sink the ship" strikes her: this share of her length from the bow.
+ * Where "Hit with an iceberg" strikes her: this share of her length from the bow.
  * Near the bow is where the Titanic's hull is opened enough to sink her
  * (further aft she stays afloat). Well-built ships may still survive; that is
  * the sim.

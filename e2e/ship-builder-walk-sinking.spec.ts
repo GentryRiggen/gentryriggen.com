@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * Walking on the sinking ship: press Sink the ship while walking and keep
+ * Walking on the sinking ship: press Hit with an iceberg while walking and keep
  * walking as the trial plays, or press Walk while a trial is already running.
  * `trialSpeed` plays the trial faster so the whole sinking takes moments; the
  * break mode is "never" so she goes down in one piece, the only case the walk
@@ -41,12 +41,12 @@ const status = (page: Page) =>
   });
 
 test.describe("Ship Builder walk while sinking", () => {
-  test("sink the ship from walk mode and ride her down to the result", async ({
+  test("hit with an iceberg from walk mode and ride her down to the result", async ({
     page,
   }) => {
     await openTitanic(page);
     await page.getByRole("button", { name: "Walk", exact: true }).click();
-    await page.getByRole("button", { name: "Sink the ship" }).click();
+    await page.getByRole("button", { name: "Hit with an iceberg" }).click();
 
     await expect
       .poll(() => status(page))
@@ -55,7 +55,7 @@ test.describe("Ship Builder walk while sinking", () => {
         trial: "running",
       });
     await expect(
-      page.getByRole("button", { name: "Sink the ship" })
+      page.getByRole("button", { name: "Hit with an iceberg" })
     ).toHaveCount(0);
 
     await expect(

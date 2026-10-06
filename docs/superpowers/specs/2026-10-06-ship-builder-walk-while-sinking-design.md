@@ -13,7 +13,7 @@ changes.
 - **Ride-along.** The deck stays flat for the walker: no sliding on a slope, no
   walls-as-floors. The ship's roll, pitch and sink carry the walker with her.
 - **Anytime.** Walk can start before a trial or while one is running.
-- **"Sink the ship"** is one tap in the walk HUD: an iceberg at a fixed default
+- **"Hit with an iceberg"** is one tap in the walk HUD: an iceberg at a fixed default
   spot, `impactX = 0.2 * hull length` (cells from the bow), the existing sim.
   No aiming, no waves option.
 - **Ending.** The walker rides her down until she is under; then the existing
@@ -75,7 +75,7 @@ eye off the deck.
 - Unit: store transitions (walk to sink to result ends the walk; guards still
   refuse edits), sway share and tilt cap as pure functions, the default impact
   point.
-- E2E (`@smoke`-tagged): walk, press Sink the ship, wait for the result card,
+- E2E (`@smoke`-tagged): walk, press Hit with an iceberg, wait for the result card,
   walk is gone. Uses the existing `window.__shipBuilderWalk` and trial test
   hooks.
 
