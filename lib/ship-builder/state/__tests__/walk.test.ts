@@ -142,7 +142,7 @@ describe("sinking while walking", () => {
     });
     if (trial.status !== "running") throw new Error("expected running");
     expect(trial.input.iceberg?.impactX).toBeCloseTo(
-      0.4 * gridLength(testShip())
+      0.2 * gridLength(testShip())
     );
 
     act(() => store().finishTrial(createTrial(trial.input)));

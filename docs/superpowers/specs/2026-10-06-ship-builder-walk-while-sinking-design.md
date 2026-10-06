@@ -14,7 +14,7 @@ changes.
   walls-as-floors. The ship's roll, pitch and sink carry the walker with her.
 - **Anytime.** Walk can start before a trial or while one is running.
 - **"Sink the ship"** is one tap in the walk HUD: an iceberg at a fixed default
-  spot, `impactX = 0.4 * hull length` (cells from the bow), the existing sim.
+  spot, `impactX = 0.2 * hull length` (cells from the bow), the existing sim.
   No aiming, no waves option.
 - **Ending.** The walker rides her down until she is under; then the existing
   result card shows and the walk ends.

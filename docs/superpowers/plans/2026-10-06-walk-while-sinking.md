@@ -49,7 +49,7 @@ Spec: `docs/superpowers/specs/2026-10-06-ship-builder-walk-while-sinking-design.
 **Acceptance Criteria:**
 
 - [ ] `startWalk` starts when `trial.status` is `idle` or `running`, and is refused while aiming, at a result, during drive setup/sailing, or already walking.
-- [ ] `sinkWhileWalking` does nothing unless `walk.status === "walking"` and `trial.status === "idle"`; otherwise it starts a `running` iceberg trial with `impactX = 0.4 * gridLength(ship)`, `descending: false`, `from: "start"`, and leaves `walk` untouched.
+- [ ] `sinkWhileWalking` does nothing unless `walk.status === "walking"` and `trial.status === "idle"`; otherwise it starts a `running` iceberg trial with `impactX = 0.2 * gridLength(ship)`, `descending: false`, `from: "start"`, and leaves `walk` untouched.
 - [ ] `finishTrial` also leaves walk mode (walk idle, `getWalkState()` null, input reset).
 - [ ] `startTrial` still refuses while walking; building stays frozen while walking.
 
@@ -118,7 +118,7 @@ describe("sinking while walking", () => {
     });
     if (trial.status !== "running") throw new Error("expected running");
     expect(trial.input.iceberg?.impactX).toBeCloseTo(
-      0.4 * gridLength(testShip())
+      0.2 * gridLength(testShip())
     );
 
     act(() => store().finishTrial(createTrial(trial.input)));
@@ -171,7 +171,7 @@ Near the top of the store file (after the `HISTORY_LIMIT`-style constants) add:
 
 ```ts
 /** Where "Sink the ship" strikes her: this share of her length from the bow. */
-const SINK_IMPACT_FRACTION = 0.4;
+const SINK_IMPACT_FRACTION = 0.2;
 ```
 
 Inside the store closure, next to `isTrialActive`, extract the body of `startTrial` after its guard into a function, so both entry points share it:

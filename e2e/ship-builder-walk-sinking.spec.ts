@@ -61,6 +61,7 @@ test.describe("Ship Builder walk while sinking", () => {
     await expect(
       page.getByRole("region", { name: "Sea trial result" })
     ).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText("She sank")).toBeVisible();
     expect((await status(page)).walk).toBe("idle");
   });
 

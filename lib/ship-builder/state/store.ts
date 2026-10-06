@@ -50,8 +50,13 @@ import type {
 
 export const HISTORY_LIMIT = 100;
 
-/** Where "Sink the ship" strikes her: this share of her length from the bow. */
-const SINK_IMPACT_FRACTION = 0.4;
+/**
+ * Where "Sink the ship" strikes her: this share of her length from the bow.
+ * Near the bow is where the Titanic's hull is opened enough to sink her
+ * (further aft she stays afloat). Well-built ships may still survive; that is
+ * the sim.
+ */
+const SINK_IMPACT_FRACTION = 0.2;
 
 export type Tool =
   | { kind: "none" }
