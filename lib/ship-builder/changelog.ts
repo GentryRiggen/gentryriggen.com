@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.11.0",
+    date: "2026-10-05",
+    title: "See which way it turns",
+    highlights: [
+      "When you rotate a part, a white arrow on the see-through preview shows which way it will face before you place it",
+      "On a touch screen, tapping Rotate now shows the preview right away on the first spot the part fits, so you can see the turn without hovering",
+      "Placing a part now has a Done button next to Rotate, so you can stop placing without going back to the parts drawer",
+    ],
+  },
+  {
     version: "2.10.0",
     date: "2026-10-05",
     title: "Walk the decks",

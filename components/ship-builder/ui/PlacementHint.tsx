@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { RotateCw } from "lucide-react";
+import { Check, RotateCw } from "lucide-react";
 import PartIcon from "./icons/PartIcon";
 import { SWATCH_FILL } from "./PaintPanel";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
@@ -98,6 +98,10 @@ export default function PlacementHint({ onOpenColours }: PlacementHintProps) {
           Rotate
         </button>
       )}
+      <button type="button" onClick={cancel} className={HINT_PRIMARY_CLASS}>
+        <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
+        Done
+      </button>
     </div>
   );
 }
