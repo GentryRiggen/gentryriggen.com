@@ -2,13 +2,7 @@
 
 import { useRef } from "react";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
-
-/** Horizontal drag, in pixels, that turns at full speed. */
-const FULL_TURN_PX = 120;
-
-function clampTurn(value: number): number {
-  return Math.max(-1, Math.min(1, value));
-}
+import { lookTurn } from "./walkLook";
 
 /**
  * A transparent layer over the view: drag sideways to look around. The turn
@@ -27,7 +21,7 @@ export default function WalkLookLayer() {
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    walkInput.turn = clampTurn((event.clientX - drag.startX) / FULL_TURN_PX);
+    walkInput.turn = lookTurn(event.clientX - drag.startX);
   }
 
   function handlePointerEnd(event: React.PointerEvent<HTMLDivElement>) {
