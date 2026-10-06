@@ -4,7 +4,7 @@ import type { Hull, Ship } from "../types";
 
 function ship(bulkheads?: Hull["bulkheads"]): Ship {
   return {
-    v: 6,
+    v: 7,
     kind: "liner",
     name: "Test",
     hull: {

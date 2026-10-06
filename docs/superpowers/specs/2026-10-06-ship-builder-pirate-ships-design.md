@@ -25,19 +25,17 @@ rules to match. Builds on the v2 ship-types framework
 
 ### Sails replace power
 
-- New part role `sail`. A sail part has `sailArea`; a mast has a sail
-  capacity (short, tall, main).
-- Top speed comes from total sail area, capped by total mast capacity, minus
-  the existing weight loss. Pirate ships have no `power`, `stokers` or
-  propellers.
+- A sail part has `sailArea`; a wooden mast has a sail capacity (short, tall,
+  main) that is enforced by placement: it exposes that many `sail:<n>` spots.
+- Top speed comes from total sail area, minus the existing weight loss.
+  Pirate ships have no `power`, `stokers` or propellers.
 - Wind is steady with no direction. Sail trim does not exist.
 - A rudder is still required to steer.
 - Rules checklist for pirate ships:
   - "Sails for speed": no sails means "No sails, she can't move".
-  - "Masts for your sails": too much sail for the masts warns.
   - "No rudder": "No rudder, she can't steer" (unchanged text).
-- Bridge rule: the `helm-wheel` has the `bridge` role, so the existing
-  bridge rule applies unchanged (forward-half rule as for non-cargo kinds).
+- Bridge rule: the `helm-wheel` has the `bridge` role and, like cargo bridges,
+  may go in either half of the ship (a quarterdeck is aft).
 - Handling: agility sits between navy and cargo.
 - Sea trial and Drive reuse the wheel and throttle; the Drive HUD labels the
   throttle "Sails" for pirate ships. Sails billow while under way.
@@ -54,8 +52,8 @@ rules to match. Builds on the v2 ship-types framework
 ## 2. Parts and assets
 
 All parts are `kinds: ["pirate"]` (except where noted). Meshes are
-procedural three.js in a new `components/ship-builder/scene/pirateParts.tsx`,
-in the style of `navyParts.tsx`. The only image asset is the picker icon.
+procedural three.js in `components/ship-builder/scene/pirate/`, in four group
+files behind a registry, in the style of `navyParts.tsx`. The only image asset is the picker icon.
 
 ### Sails and masts
 
@@ -70,7 +68,8 @@ in the style of `navyParts.tsx`. The only image asset is the picker icon.
 
 - `cannon-deck`: edge-mount at deck-edge positions (shares the
   `edge:<level>:<x>:<z>` claim with davits, rafts and the plank), counts to
-  the cannons stat, tap for a small recoil and smoke puff.
+  the cannons stat, tap for a small recoil and smoke puff (a bubbling
+  `onClick`; selection handling is unchanged).
 - `cannon-chaser`: bow hull point.
 - `cannon-swivel`: rail-mounted, decorative, cheap.
 
@@ -80,19 +79,22 @@ in the style of `navyParts.tsx`. The only image asset is the picker icon.
   crew and berths).
 - `helm-wheel`: `bridge` role, a wheel with a binnacle, on a quarterdeck.
 - `figurehead`: bow hull point, a mermaid.
-- `anchor`, `barrel-stack`, `crate-stack`, `treasure-chest`: small deck decor
+- `ship-anchor`, `barrel-stack`, `crate-stack`, `treasure-chest`: small deck decor
   following the `deckDecor.tsx` pattern.
-- `rowboat`: boat-mount, 8 seats. It counts toward lifeboat seats and
-  replaces lifeboats for pirate ships.
+- `rowboat`: boat-mount, 12 seats (so lifeboat checks stay reachable on a
+  wooden ship). It counts toward lifeboat seats and replaces lifeboats for
+  pirate ships.
 
 ### Plank and crew
 
 - `plank`: edge-mount, a board over the sea.
 - `pirate-crew`: a small standing figure on a deck cell, several poses and
   colour variants (capsule body, hat and sword; no rig). Decorative.
-- `parrot`: a small bird on a rail or mast point.
-- Walk mode: crew and parrot do not block walking; the plank is walkable at
-  the edge. The plan verifies this against the walk-grid code.
+- `parrot`: a small bird, 1x1 deck decor.
+- Decor (crew, parrot, anchor, barrels, crates, chest) is 1x1 grid decor like
+  deck chairs, and blocks its own cell in walk mode as all decor does.
+  Sails, flag, figurehead, rowboat and plank do not block walking; wooden
+  masts and cannons do. Pirate crew is 5 per hull segment, not 60.
 
 ### Assets
 
@@ -136,8 +138,8 @@ gets a JSON fixture in `persist/__fixtures__/templates/`.
 - **Model:** pirate kind defaults, `isShipKind`, the save migration (old save
   loads, pirate save round-trips), catalog consistency (every pirate part
   has a mesh and a kind).
-- **Stats:** speed from sail area is capped by mast capacity, with the
-  weight loss; the no-sails, too-much-sail and no-rudder warnings; the
+- **Stats:** speed from sail area with the weight loss; the no-sails and
+  no-rudder warnings (sail capacity is enforced by placement); the
   cannons stat; a mixed ship (Show all parts) stays valid.
 - **Placement:** edge-mount conflicts (cannon, plank, davit, raft), mast and
   sail attach rules, crew and parrot do not block walking.
@@ -168,3 +170,23 @@ earlier releases did not bump it.
 - Review depth: model, rules and migration get a spec review plus an
   adversarial review; meshes and UI get one combined review; templates are
   covered by tests plus a spot-check.
+
+## Amendments (from the plan)
+
+Found while reading the code; the sections above are already corrected.
+
+1. **Sail capacity** is enforced by placement (each wooden mast exposes 1, 2
+   or 3 `sail:<n>` spots), so there is no "Too many sails for your masts"
+   check. The warnings are `no-sails`, `no-rudder`, plus the shared ones.
+2. **Helm anywhere:** the helm wheel (role `bridge`) may go in either half
+   like cargo bridges, because a real quarterdeck is aft. Rule in
+   `isBridgeSpotAllowed`.
+3. **Decor is decor:** crew, parrot, anchor, barrels, crates and chest are
+   1x1 grid decor like deck chairs (they block their own cell in walk mode,
+   as all decor does). The parrot is therefore deck decor, not a rail perch.
+4. **Rowboat** holds 12 seats (not 8) and pirate crew is 5 per segment (not
+   60), so lifeboat and berth checks stay reachable on a wooden ship.
+5. **Tap to fire:** cannons recoil and puff when tapped via a bubbling
+   `onClick`, with no change to selection handling.
+6. Shared parts that make no sense on a pirate ship (`bridge*`, `mast`,
+   `propeller`) get `kinds` listing the other four kinds.

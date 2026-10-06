@@ -25,6 +25,9 @@ export const SWATCH_FILL: Record<PaintColor, string> = {
   pink: "bg-[#ec7fb0]",
   purple: "bg-[#7b4bb0]",
   grey: "bg-[#8a8f98]",
+  oak: "bg-[#9a6b3f]",
+  "dark-oak": "bg-[#5a3a22]",
+  weathered: "bg-[#8b8479]",
 };
 
 const SWATCH_BASE =

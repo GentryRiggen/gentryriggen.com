@@ -31,7 +31,7 @@ import {
  * persist/__fixtures__, checked by persist/__tests__/fixtures.test.ts, fails
  * when an existing save stops loading in full.
  */
-export const CURRENT_VERSION = 6;
+export const CURRENT_VERSION = 7;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -142,6 +142,13 @@ const addPaint: Migration = (raw) => ({ ...raw, v: 5 });
  */
 const addKind: Migration = (raw) => ({ ...raw, v: 6, kind: "liner" });
 
+/**
+ * v6 to v7 adds the pirate kind, its hull ends, parts and paint colours and
+ * changes no data. The bump makes older builds back up v7 saves instead of
+ * rejecting them as invalid.
+ */
+const addPirates: Migration = (raw) => ({ ...raw, v: 7 });
+
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
 const MIGRATIONS: Record<number, Migration> = {
   1: addDefaultBeam,
@@ -149,6 +156,7 @@ const MIGRATIONS: Record<number, Migration> = {
   3: addHullEnds,
   4: addPaint,
   5: addKind,
+  6: addPirates,
 };
 
 export function migrate(

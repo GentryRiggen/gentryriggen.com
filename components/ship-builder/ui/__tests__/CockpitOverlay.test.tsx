@@ -40,8 +40,8 @@ describe("CockpitOverlay", () => {
 
   it("gives each kind a different look", () => {
     const consoles = SHIP_KINDS.map((k) => controlsForKind[k].cockpit);
-    expect(new Set(consoles.map((c) => c.consoleClass)).size).toBe(4);
-    expect(new Set(consoles.map((c) => c.instrumentName)).size).toBe(4);
+    expect(new Set(consoles.map((c) => c.consoleClass)).size).toBe(5);
+    expect(new Set(consoles.map((c) => c.instrumentName)).size).toBe(5);
     const variants = SHIP_KINDS.map(
       (k) => controlsForKind[k].wheelStyle.variant
     );

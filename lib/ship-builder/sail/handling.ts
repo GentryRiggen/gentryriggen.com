@@ -10,6 +10,7 @@ const AGILITY: Record<ShipKind, number> = {
   cruise: 0.95,
   liner: 0.85,
   cargo: 0.6,
+  pirate: 1.05,
 };
 
 const BASE_TURN_RATE = 0.5;

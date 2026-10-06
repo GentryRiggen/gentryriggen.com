@@ -41,6 +41,20 @@ const BOW_DRAWINGS: Record<BowShape, () => ReactNode> = {
       />
     </g>
   ),
+  // A full raked stem with a short bowsprit poking out above the deck.
+  beakhead: () => (
+    <g>
+      <path d="M3 12 H46 Q40 26 30 38 H3 Z" fill={PALETTE.hull} />
+      <line
+        x1={44}
+        y1={13}
+        x2={47}
+        y2={9}
+        stroke={PALETTE.hull}
+        strokeWidth={2}
+      />
+    </g>
+  ),
 };
 
 const STERN_DRAWINGS: Record<SternShape, () => ReactNode> = {
@@ -66,6 +80,8 @@ const STERN_DRAWINGS: Record<SternShape, () => ReactNode> = {
   canoe: () => (
     <path d="M2 25 Q8 14 18 12 H45 V38 H18 Q8 36 2 25 Z" fill={PALETTE.hull} />
   ),
+  // Tall and square, with a lip of castle above the deck at the back.
+  galleon: () => <path d="M45 12 H8 L4 6 H2 V38 H45 Z" fill={PALETTE.hull} />,
 };
 
 /** A bow or stern seen from the side, with the waterline. Decorative. */

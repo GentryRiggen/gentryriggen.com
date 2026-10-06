@@ -62,6 +62,11 @@ export const BOW_SECTIONS: Record<
         : length * (1 - (0.55 * y) / DECK_Y),
     exponent: 2.4,
   }),
+  // A full, raked stem with the deck reaching well ahead of the waterline.
+  beakhead: (y, length) => ({
+    reach: length * (0.55 + 0.45 * heightFraction(y) ** 1.2),
+    exponent: 1.2,
+  }),
 };
 
 export const STERN_SECTIONS: Record<
@@ -81,6 +86,11 @@ export const STERN_SECTIONS: Record<
     exponent: 8,
   }),
   canoe: (_y, length) => ({ reach: length, exponent: 1 }),
+  // A tall flat stern that overhangs: the castle leans out above the water.
+  galleon: (y, length) => ({
+    reach: length * (0.6 + 0.4 * heightFraction(y)),
+    exponent: 5,
+  }),
 };
 
 export function endSectionAt(

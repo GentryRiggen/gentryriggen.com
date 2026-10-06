@@ -39,6 +39,13 @@ export const BOW_SHAPES: Record<BowShape, HullEndDef<BowShape>> = {
     length: 2.2,
     speedModifier: -1.5,
   },
+  beakhead: {
+    id: "beakhead",
+    name: "Beakhead",
+    description: "A long beak under a bowsprit, like a galleon",
+    length: 3,
+    speedModifier: 0,
+  },
 };
 
 export const STERN_SHAPES: Record<SternShape, HullEndDef<SternShape>> = {
@@ -69,6 +76,13 @@ export const STERN_SHAPES: Record<SternShape, HullEndDef<SternShape>> = {
     description: "Pointed at both ends",
     length: 1.8,
     speedModifier: 0,
+  },
+  galleon: {
+    id: "galleon",
+    name: "Galleon",
+    description: "Tall and square with a window castle · a little slower",
+    length: 1.4,
+    speedModifier: -0.5,
   },
 };
 

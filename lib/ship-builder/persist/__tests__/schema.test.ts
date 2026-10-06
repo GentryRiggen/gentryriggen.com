@@ -45,7 +45,7 @@ describe("parseShip", () => {
     ["null", null],
     ["a string", "ship"],
     ["an array", []],
-    ["a newer version", { ...validShip, v: 7 }],
+    ["a newer version", { ...validShip, v: 8 }],
     ["an unknown bow", { ...validShip, hull: { ...validShip.hull, bow: "x" } }],
     [
       "a missing stern",
@@ -197,7 +197,7 @@ describe("v1 to v2 migration", () => {
 
   it("overrides any beam already on a v1 hull", () => {
     const migrated = migrate({ ...v1, hull: { lengthSegments: 10, beam: 7 } });
-    expect(migrated).toMatchObject({ v: 6, kind: "liner", hull: { beam: 4 } });
+    expect(migrated).toMatchObject({ v: 7, kind: "liner", hull: { beam: 4 } });
   });
 
   it("does not mutate the input", () => {
@@ -281,7 +281,7 @@ describe("v3 to v4 migration", () => {
       ship: { ...testShip(v3.parts), name: "Plain" },
     });
     expect(migrate(v3)).toMatchObject({
-      v: 6,
+      v: 7,
       hull: { bow: "straight", stern: "counter" },
     });
   });
@@ -332,7 +332,7 @@ describe("v4 to v5 migration", () => {
   };
 
   it("only bumps the version", () => {
-    expect(migrate({ ...v4, v: 4 })).toEqual({ ...v4, v: 6, kind: "liner" });
+    expect(migrate({ ...v4, v: 4 })).toEqual({ ...v4, v: 7, kind: "liner" });
     expect(parseShip(JSON.parse(JSON.stringify(v4)))).toEqual({
       ok: true,
       dropped: 0,
@@ -416,7 +416,7 @@ describe("v5 to v6 migration", () => {
   };
 
   it("adds the liner kind", () => {
-    expect(migrate(v5)).toEqual({ ...v5, v: 6, kind: "liner" });
+    expect(migrate(v5)).toEqual({ ...v5, v: 7, kind: "liner" });
     expect(parseShip(JSON.parse(JSON.stringify(v5)))).toEqual({
       ok: true,
       dropped: 0,
@@ -472,6 +472,7 @@ describe("migrate", () => {
         3: (raw) => ({ ...raw, v: 4 }),
         4: (raw) => ({ ...raw, v: 5 }),
         5: (raw) => ({ ...raw, v: 6 }),
+        6: (raw) => ({ ...raw, v: 7 }),
       }
     );
     expect(migrated).toEqual({
@@ -517,13 +518,13 @@ describe("bulkheads", () => {
     hull: { ...validShip.hull, lengthSegments, bulkheads },
   });
 
-  it("keeps valid walls and stays on version 6", () => {
+  it("keeps valid walls and stays on the current version", () => {
     const bulkheads = [
       { at: 2, height: "low" },
       { at: 5, height: "deck" },
     ];
     const result = parseShip(withWalls(bulkheads));
-    expect(result.ok && result.ship.v).toBe(6);
+    expect(result.ok && result.ship.v).toBe(CURRENT_VERSION);
     expect(result.ok && result.ship.hull.bulkheads).toEqual(bulkheads);
   });
 

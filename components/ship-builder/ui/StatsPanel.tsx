@@ -242,6 +242,8 @@ function yourValue(stats: Stats, metric: ReferenceMetric): number {
       return stats.crew;
     case "teu":
       return stats.teu;
+    case "cannons":
+      return 0;
   }
 }
 

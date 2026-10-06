@@ -81,7 +81,7 @@ describe("CatalogPanel", () => {
       ).toBeInTheDocument();
     });
 
-    it("comes first, with four bow tiles and four stern tiles", () => {
+    it("comes first, with five bow tiles and five stern tiles", () => {
       render(<CatalogPanel />);
       const headings = screen.getAllByRole("heading", { level: 2 });
       expect(headings[0]).toHaveTextContent("Hull");
@@ -90,12 +90,14 @@ describe("CatalogPanel", () => {
         "Clipper",
         "Bulbous",
         "Icebreaker",
+        "Beakhead",
       ]);
       expect(sternTiles().map((b) => b.textContent)).toEqual([
         "Counter",
         "Cruiser",
         "Transom",
         "Canoe",
+        "Galleon",
       ]);
     });
 
@@ -104,8 +106,8 @@ describe("CatalogPanel", () => {
       const icons = Array.from(
         container.querySelectorAll('[data-testid="hull-end-icon"]')
       );
-      expect(icons).toHaveLength(8);
-      expect(new Set(icons.map((i) => i.innerHTML)).size).toBe(8);
+      expect(icons).toHaveLength(10);
+      expect(new Set(icons.map((i) => i.innerHTML)).size).toBe(10);
     });
 
     it("marks the ship's current shapes pressed", () => {
@@ -115,9 +117,11 @@ describe("CatalogPanel", () => {
         "false",
         "false",
         "false",
+        "false",
       ]);
       expect(sternTiles().map((b) => b.getAttribute("aria-pressed"))).toEqual([
         "true",
+        "false",
         "false",
         "false",
         "false",

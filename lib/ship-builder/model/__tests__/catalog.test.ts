@@ -121,8 +121,8 @@ describe("visibleParts", () => {
     }
   });
 
-  it("gives every ship kind an engine, a propeller and lifeboats", () => {
-    for (const kind of SHIP_KINDS) {
+  it("gives every engine-driven kind an engine, a propeller and lifeboats", () => {
+    for (const kind of SHIP_KINDS.filter((k) => k !== "pirate")) {
       const defs = types(kind, false).map((type) => CATALOG[type]);
       expect(defs.some((def) => (def.power ?? 0) > 0)).toBe(true);
       expect(

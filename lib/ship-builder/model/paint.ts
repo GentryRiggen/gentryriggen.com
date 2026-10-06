@@ -11,6 +11,9 @@ export const PAINT_COLORS = [
   { id: "pink", name: "Pink", hex: "#ec7fb0" },
   { id: "purple", name: "Purple", hex: "#7b4bb0" },
   { id: "grey", name: "Grey", hex: "#8a8f98" },
+  { id: "oak", name: "Oak", hex: "#9a6b3f" },
+  { id: "dark-oak", name: "Dark oak", hex: "#5a3a22" },
+  { id: "weathered", name: "Weathered", hex: "#8b8479" },
 ] as const;
 
 export type PaintColor = (typeof PAINT_COLORS)[number]["id"];

@@ -30,6 +30,10 @@ const KIND_CARDS: Record<
     name: "Cargo ship",
     blurb: "Colourful containers, with the bridge at the back.",
   },
+  pirate: {
+    name: "Pirate ship",
+    blurb: "Masts, sails and cannons, with a Jolly Roger.",
+  },
 };
 
 const CARD_CLASS =

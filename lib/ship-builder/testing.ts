@@ -31,7 +31,7 @@ export function testShip(
   beam = 4
 ): Ship {
   return {
-    v: 6,
+    v: 7,
     kind: "liner",
     name: "Test",
     hull: { lengthSegments, beam, bow: "straight", stern: "counter" },

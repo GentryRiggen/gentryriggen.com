@@ -27,6 +27,8 @@ export interface Drivetrain {
   powerPerProp: number;
   /** Knots lost per 10,000 gross tons. */
   lossPer10kTons: number;
+  /** Crew each hull segment needs to run her. */
+  crewPerSegment: number;
 }
 
 /**
@@ -39,10 +41,25 @@ export const DRIVETRAINS: Record<ShipKind, Drivetrain> = {
   liner: {
     powerPerProp: SPEED.powerPerProp,
     lossPer10kTons: SPEED.lossPer10kTons,
+    crewPerSegment: CREW_PER_SEGMENT,
   },
-  cruise: { powerPerProp: 5, lossPer10kTons: 0.5 },
-  navy: { powerPerProp: 5, lossPer10kTons: 0.5 },
-  cargo: { powerPerProp: 5, lossPer10kTons: 0.5 },
+  cruise: {
+    powerPerProp: 5,
+    lossPer10kTons: 0.5,
+    crewPerSegment: CREW_PER_SEGMENT,
+  },
+  navy: {
+    powerPerProp: 5,
+    lossPer10kTons: 0.5,
+    crewPerSegment: CREW_PER_SEGMENT,
+  },
+  cargo: {
+    powerPerProp: 5,
+    lossPer10kTons: 0.5,
+    crewPerSegment: CREW_PER_SEGMENT,
+  },
+  // Wooden ships carry few hands; sails replace the power entirely.
+  pirate: { powerPerProp: 0, lossPer10kTons: 0.6, crewPerSegment: 5 },
 };
 export const HULL_MASS_PER_CELL = 1;
 export const HULL_CENTROID_Y = -1;
@@ -258,7 +275,8 @@ export function computeStats(ship: Ship): Stats {
   }
 
   passengers.total = passengers.first + passengers.second + passengers.third;
-  const crew = ship.hull.lengthSegments * CREW_PER_SEGMENT + stokers;
+  const crew =
+    ship.hull.lengthSegments * DRIVETRAINS[ship.kind].crewPerSegment + stokers;
   const peopleAboard = passengers.total + crew;
   const coverage = peopleAboard > 0 ? lifeboatSeats / peopleAboard : 1;
   const grossTonnage = Math.round(

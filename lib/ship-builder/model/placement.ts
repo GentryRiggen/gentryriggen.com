@@ -83,7 +83,7 @@ export function emptyShip(
 ): Ship {
   const { bow, stern, paint } = KIND_DEFAULTS[kind];
   return {
-    v: 6,
+    v: 7,
     kind,
     name,
     hull: {

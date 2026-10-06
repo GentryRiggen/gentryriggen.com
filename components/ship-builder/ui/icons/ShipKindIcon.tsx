@@ -100,6 +100,24 @@ const DRAWINGS: Record<ShipKind, () => ReactNode> = {
       {WATER_STRIP}
     </g>
   ),
+  // Three masts of cream sails over a brown wooden hull, a black flag on top.
+  pirate: () => (
+    <g>
+      {[28, 50, 72].map((x, i) => (
+        <g key={x}>
+          <line x1={x} y1={4 + i * 2} x2={x} y2={40} strokeWidth={1.6} />
+          <path
+            d={`M${x - 10} ${10 + i * 2} Q${x} ${14 + i * 2} ${x + 10} ${10 + i * 2} V27 Q${x} 31 ${x - 10} 27 Z`}
+            fill="#efe6cf"
+          />
+        </g>
+      ))}
+      <path d="M72 4 H84 V9 H72 Z" fill="#1c1c1f" />
+      <path d="M6 38 H94 L88 52 H16 Q8 48 6 38 Z" fill="#8a5a31" />
+      <path d="M16 52 H88 L89 48 H10 Z" fill="#4a2f18" stroke="none" />
+      {WATER_STRIP}
+    </g>
+  ),
 };
 
 /** A side-view picture of a ship kind; the figure carries no text. */

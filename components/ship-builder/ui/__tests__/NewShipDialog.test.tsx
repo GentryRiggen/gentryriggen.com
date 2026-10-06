@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe("NewShipDialog", () => {
-  it("shows four cards, each with an icon, a name and a line of text", () => {
+  it("shows five cards, each with an icon, a name and a line of text", () => {
     render(<NewShipDialog onClose={jest.fn()} />);
     const dialog = screen.getByRole("dialog", { name: "New ship" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
@@ -37,6 +37,7 @@ describe("NewShipDialog", () => {
       /Cruise ship/,
       /Navy ship/,
       /Cargo ship/,
+      /Pirate ship/,
     ]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
@@ -44,7 +45,7 @@ describe("NewShipDialog", () => {
     expect(icons.map((i) => i.getAttribute("data-kind"))).toEqual([
       ...SHIP_KINDS,
     ]);
-    expect(new Set(icons.map((i) => i.innerHTML)).size).toBe(4);
+    expect(new Set(icons.map((i) => i.innerHTML)).size).toBe(5);
   });
 
   it("makes the cards tall, with light and dark styles", () => {

@@ -29,7 +29,7 @@ describe("PaintPanel", () => {
     for (const { name } of PAINT_COLORS) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
-    expect(PAINT_COLORS).toHaveLength(12);
+    expect(PAINT_COLORS).toHaveLength(15);
     expect(screen.getByRole("group", { name: "Paint colours" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Red" })).toHaveAttribute(
       "aria-pressed",

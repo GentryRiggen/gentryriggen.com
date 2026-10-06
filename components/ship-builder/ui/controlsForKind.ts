@@ -166,4 +166,32 @@ export const controlsForKind: Record<ShipKind, ControlsStyle> = {
       wheelSizeClass: "h-36 w-36 sm:h-48 sm:w-48",
     },
   },
+  pirate: {
+    label: "Pirate helm",
+    wheelStyle: {
+      variant: "spoked",
+      sizeClass: "h-28 w-28 sm:h-36 sm:w-36",
+      rimClass: "stroke-amber-900 dark:stroke-amber-500",
+      spokeClass: "stroke-amber-800 dark:stroke-amber-400",
+      hubClass: "fill-amber-700 dark:fill-amber-300",
+      backingClass: "bg-amber-100/70 dark:bg-stone-900/70",
+    },
+    leverStyle: {
+      trackClass: "bg-amber-950/70 dark:bg-stone-950/80",
+      knobShapeClass: "h-9 w-12 rounded-md",
+      knobClass:
+        "bg-amber-700 border-amber-900 dark:bg-amber-400 dark:border-amber-200",
+    },
+    cockpit: {
+      consoleClass:
+        "border-t-4 border-amber-800 bg-gradient-to-t from-stone-950/90 to-amber-950/80 dark:border-amber-600 dark:from-stone-950/95 dark:to-stone-900/85",
+      readoutClass:
+        "border-amber-700 bg-amber-100 text-amber-950 dark:border-amber-500 dark:bg-stone-950 dark:text-amber-200",
+      gaugeClass: "stroke-amber-700 dark:stroke-amber-400",
+      needleClass: "stroke-red-800 dark:stroke-red-400",
+      instrumentName: "Sail trim",
+      captionClass: "text-amber-100 dark:text-amber-200",
+      wheelSizeClass: "h-32 w-32 sm:h-44 sm:w-44",
+    },
+  },
 };

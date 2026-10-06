@@ -1,7 +1,13 @@
 import type { HullArea, PaintColor } from "./paint";
 import type { BowShape, SternShape } from "./types";
 
-export const SHIP_KINDS = ["liner", "cruise", "navy", "cargo"] as const;
+export const SHIP_KINDS = [
+  "liner",
+  "cruise",
+  "navy",
+  "cargo",
+  "pirate",
+] as const;
 export type ShipKind = (typeof SHIP_KINDS)[number];
 
 export const DEFAULT_KIND: ShipKind = "liner";
@@ -35,6 +41,12 @@ export const KIND_DEFAULTS: Record<ShipKind, KindDefaults> = {
     stern: "transom",
     paint: { topsides: "navy", bottom: "red" },
   },
+  pirate: {
+    name: "Untitled pirate ship",
+    bow: "beakhead",
+    stern: "galleon",
+    paint: { topsides: "oak", bottom: "dark-oak" },
+  },
 };
 
 export function isShipKind(value: unknown): value is ShipKind {
@@ -43,7 +55,14 @@ export function isShipKind(value: unknown): value is ShipKind {
 
 /** Which of the player's computed stats a real-ship figure lines up with. */
 export type ReferenceMetric =
-  "tonnage" | "speed" | "seats" | "people" | "passengers" | "crew" | "teu";
+  | "tonnage"
+  | "speed"
+  | "seats"
+  | "people"
+  | "passengers"
+  | "crew"
+  | "teu"
+  | "cannons";
 
 export interface ReferenceFigure {
   metric: ReferenceMetric;
@@ -99,5 +118,15 @@ export const REFERENCE_SHIPS: Record<ShipKind, ReferenceShip> = {
       { metric: "teu", label: "Cargo", value: 20124, unit: "TEU" },
       { metric: "crew", label: "Crew", value: 25 },
     ],
+  },
+  pirate: {
+    title: "Queen Anne's Revenge (1718)",
+    figures: [
+      { metric: "speed", label: "Top speed", value: 11, unit: "kn" },
+      { metric: "crew", label: "Crew", value: 150 },
+      { metric: "cannons", label: "Cannons", value: 40 },
+    ],
+    // Gross tonnage means little for a ship this size.
+    note: "Displaced about 300 tons",
   },
 };

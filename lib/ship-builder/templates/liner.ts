@@ -289,7 +289,7 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
   }
 
   return {
-    v: 6,
+    v: 7,
     kind: "liner",
     name: spec.name,
     hull: {
@@ -413,7 +413,7 @@ function buildCarpathia(): Ship {
   addStern(b, beam);
 
   return {
-    v: 6,
+    v: 7,
     kind: "liner",
     name: "RMS Carpathia",
     hull: {

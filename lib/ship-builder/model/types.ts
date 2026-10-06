@@ -128,10 +128,17 @@ export const BOW_IDS = [
   "clipper",
   "bulbous",
   "icebreaker",
+  "beakhead",
 ] as const;
 export type BowShape = (typeof BOW_IDS)[number];
 
-export const STERN_IDS = ["counter", "cruiser", "transom", "canoe"] as const;
+export const STERN_IDS = [
+  "counter",
+  "cruiser",
+  "transom",
+  "canoe",
+  "galleon",
+] as const;
 export type SternShape = (typeof STERN_IDS)[number];
 
 /** How tall a watertight bulkhead is, lowest first. */
@@ -161,7 +168,7 @@ export interface Hull {
 }
 
 export interface Ship {
-  v: 6;
+  v: 7;
   kind: ShipKind;
   name: string;
   hull: Hull;

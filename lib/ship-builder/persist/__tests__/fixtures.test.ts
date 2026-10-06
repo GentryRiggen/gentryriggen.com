@@ -27,7 +27,7 @@ import { compressToEncodedURIComponent } from "lz-string";
 import { computeStats } from "../../model/stats";
 import type { Ship } from "../../model/types";
 import { TEMPLATES } from "../../templates";
-import { parseShip } from "../schema";
+import { CURRENT_VERSION, parseShip } from "../schema";
 import { decodeShareHash, encodeShip } from "../share";
 
 const ROOT = path.join(__dirname, "..", "__fixtures__");
@@ -193,7 +193,7 @@ describe("saved-ship fixtures", () => {
 
     it.each(names)("%s loads in full with the expected stats", (name) => {
       const ship = loadFixture("legacy", name);
-      expect(ship.v).toBe(6);
+      expect(ship.v).toBe(CURRENT_VERSION);
       expect(summarise(ship)).toEqual(
         readJson(fixturePath("legacy", name, ".expected.json"))
       );
