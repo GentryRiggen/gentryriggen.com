@@ -76,12 +76,12 @@ function buildSloop(): Ship {
       [17, 1],
     ],
     decor: [
-      ["ship-anchor", 1, 1],
-      ["barrel-stack", 4, 1],
-      ["treasure-chest", 10, 1],
-      ["pirate-crew", 12, 1],
+      ["ship-anchor", 0, 1],
+      ["barrel-stack", 1, 1],
+      ["treasure-chest", 15, 1],
+      ["pirate-crew", 12, 2],
     ],
-    boatXs: [8, 10],
+    boatXs: [9, 11],
     cannonXs: [3, 4],
   });
   const main = deckMast(b, "mast-wood-tall", 7, 3, [
@@ -109,7 +109,7 @@ function buildWhydah(): Ship {
     ],
     decor: [
       ["ship-anchor", 1, 1],
-      ["barrel-stack", 4, 2],
+      ["barrel-stack", 6, 2],
       ["crate-stack", 4, 1],
       ["treasure-chest", 19, 1],
       ["pirate-crew", 24, 2],

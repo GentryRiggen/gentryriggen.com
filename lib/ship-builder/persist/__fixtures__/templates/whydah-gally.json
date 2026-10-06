@@ -65,7 +65,7 @@
     {"id":"p1s","type":"cabin-captain","anchor":{"kind":"grid","level":1,"x":29,"z":2},"rotation":0},
     {"id":"p1t","type":"helm-wheel","anchor":{"kind":"grid","level":1,"x":25,"z":1},"rotation":0},
     {"id":"p1u","type":"ship-anchor","anchor":{"kind":"grid","level":1,"x":1,"z":1},"rotation":0},
-    {"id":"p1v","type":"barrel-stack","anchor":{"kind":"grid","level":1,"x":4,"z":2},"rotation":0},
+    {"id":"p1v","type":"barrel-stack","anchor":{"kind":"grid","level":1,"x":6,"z":2},"rotation":0},
     {"id":"p1w","type":"crate-stack","anchor":{"kind":"grid","level":1,"x":4,"z":1},"rotation":0},
     {"id":"p1x","type":"treasure-chest","anchor":{"kind":"grid","level":1,"x":19,"z":1},"rotation":0},
     {"id":"p1y","type":"pirate-crew","anchor":{"kind":"grid","level":1,"x":24,"z":2},"rotation":0},
