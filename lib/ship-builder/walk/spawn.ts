@@ -1,14 +1,29 @@
 import { getPartDef } from "../model/catalog";
 import { MAX_LEVEL, rotatedFootprint, WING_REACH } from "../model/grid";
 import type { Ship } from "../model/types";
-import { WALKER_RADIUS, type WalkGrid, type WalkState } from "./types";
+import { SIM_STEP_S } from "../sim/types";
+import { stepWalker } from "./step";
+import {
+  WALK_SPEED,
+  WALKER_RADIUS,
+  type WalkGrid,
+  type WalkState,
+} from "./types";
 import { walkGridOf } from "./walkGrid";
 
 const SURFACE_LEVELS = MAX_LEVEL + 2;
 /** A spawn spot must lead somewhere: at least this many connected cells. */
 const MIN_REGION_CELLS = 4;
 /** Yaw 0 looks at the bow. */
-const SPAWN_YAW = 0;
+const BOW_YAW = 0;
+/** The headings tried at the start, in order of preference (bow first). */
+const SPAWN_HEADINGS = [0, 1, -1, 2, -2, 3, -3, -4].map(
+  (step) => (step * Math.PI) / 4
+);
+/** How long a look-ahead walk lasts, in seconds. */
+const LOOK_AHEAD_S = 1.5;
+/** Facing this far of open walking is far enough to stop looking. */
+const OPEN_AHEAD_CELLS = WALK_SPEED * LOOK_AHEAD_S * 0.9;
 
 interface Spot {
   x: number;
@@ -80,9 +95,38 @@ function regionSizes(grid: WalkGrid, spots: Spot[]): Map<string, number> {
   return sizes;
 }
 
+/** How far a walker standing here can walk straight ahead of `yaw`. */
+function openAhead(grid: WalkGrid, start: WalkState): number {
+  let state = start;
+  const forward = { forward: 1, strafe: 0, turn: 0 };
+  for (let t = 0; t < LOOK_AHEAD_S; t += SIM_STEP_S) {
+    state = stepWalker(state, forward, grid);
+  }
+  return Math.hypot(state.x - start.x, state.z - start.z);
+}
+
 /**
- * A clear place to start walking, as a standing state facing the bow, or null
- * when there is nowhere to stand. It prefers the main deck (level 0) and goes
+ * The heading to start with: the bow when there is open deck that way, else
+ * the heading with the most room (tried right then left of the bow, in 45
+ * degree steps), so nobody starts with their nose against a wall.
+ */
+function spawnYaw(grid: WalkGrid, spot: WalkState): number {
+  let best = BOW_YAW;
+  let bestOpen = -1;
+  for (const yaw of SPAWN_HEADINGS) {
+    const open = openAhead(grid, { ...spot, yaw });
+    if (open >= OPEN_AHEAD_CELLS) return yaw;
+    if (open > bestOpen + 1e-6) {
+      best = yaw;
+      bestOpen = open;
+    }
+  }
+  return best;
+}
+
+/**
+ * A clear place to start walking, as a standing state facing open deck (the
+ * bow when it can), or null when there is nowhere to stand. It prefers the main deck (level 0) and goes
  * to the lowest roof only when the main deck is built over completely; it
  * skips cells too close to a funnel or mast and pockets cut off from the rest
  * of the deck; and among those it takes the cell nearest the bridge, or the
@@ -126,11 +170,12 @@ export function spawnOf(
     }
   }
   if (!best) return null;
-  return {
+  const standing: WalkState = {
     x: best.x + 0.5,
     z: best.z + 0.5,
-    yaw: SPAWN_YAW,
+    yaw: BOW_YAW,
     level: best.level,
     time: 0,
   };
+  return { ...standing, yaw: spawnYaw(grid, standing) };
 }

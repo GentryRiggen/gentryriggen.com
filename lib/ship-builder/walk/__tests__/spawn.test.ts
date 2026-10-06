@@ -32,6 +32,24 @@ describe("spawnOf", () => {
     expectStandable(ship, spawn);
   });
 
+  it("turns away from a wall right in front of the bow-facing start", () => {
+    // Cabins fill everything bow-ward of mid-ship, so the bow heading is a wall.
+    const wall = Array.from({ length: 12 }, (_, x) => x).flatMap((x) =>
+      [0, 1, 2, 3].map((z) => gridPart(`w${x}${z}`, "cabin-1st", 0, x, z))
+    );
+    const ship = testShip(wall);
+    const spawn = spawnOf(ship)!;
+    expect(spawn.yaw).not.toBe(0);
+    const grid = walkGridOf(ship);
+    let state = spawn;
+    for (let i = 0; i < 90; i++) {
+      state = stepWalker(state, { forward: 1, strafe: 0, turn: 0 }, grid);
+    }
+    expect(Math.hypot(state.x - spawn.x, state.z - spawn.z)).toBeGreaterThan(
+      1.5
+    );
+  });
+
   it("avoids blocked cells", () => {
     const blocked = [10, 11, 12, 13].flatMap((x) =>
       [0, 1, 2, 3].map((z) => gridPart(`c${x}${z}`, "cabin-1st", 0, x, z))
