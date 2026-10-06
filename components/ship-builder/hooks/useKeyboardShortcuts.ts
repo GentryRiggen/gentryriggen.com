@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { focusDriveButton } from "../ui/DriveButton";
 import { focusSeaTrialButton } from "../ui/SeaTrialButton";
+import { focusWalkButton } from "../ui/WalkButton";
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -24,6 +25,19 @@ export default function useKeyboardShortcuts() {
       if (document.querySelector('[aria-modal="true"]')) return;
       const state = useShipBuilderStore.getState();
       const key = event.key.toLowerCase();
+
+      // Walking freezes the ship too; Escape stops the walk.
+      if (state.walk.status !== "idle") {
+        if (key === "escape") {
+          state.stopWalk();
+          focusWalkButton();
+        } else if (key === "delete" || key === "backspace")
+          event.preventDefault();
+        else if ((event.metaKey || event.ctrlKey) && key === "z") {
+          event.preventDefault();
+        }
+        return;
+      }
 
       // Driving freezes the ship too; Escape leaves the drive.
       if (state.drive.status !== "idle") {

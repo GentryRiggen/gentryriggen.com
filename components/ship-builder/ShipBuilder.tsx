@@ -14,6 +14,8 @@ import CatalogPanel from "./ui/CatalogPanel";
 import DriveButton from "./ui/DriveButton";
 import DriveHud from "./ui/DriveHud";
 import DrivePicker from "./ui/DrivePicker";
+import WalkButton from "./ui/WalkButton";
+import WalkStopButton from "./ui/WalkStopButton";
 import Drawer from "./ui/Drawer";
 import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
@@ -51,7 +53,10 @@ export default function ShipBuilder() {
   const collapsed = useCollapsedPanels();
   const [openDrawer, setOpenDrawer] = useState<DrawerSide | null>(null);
   const isTrialActive = useShipBuilderStore(
-    (s) => s.trial.status !== "idle" || s.drive.status !== "idle"
+    (s) =>
+      s.trial.status !== "idle" ||
+      s.drive.status !== "idle" ||
+      s.walk.status !== "idle"
   );
   // The sinking (or the sail) is the show: clear everything that is not part
   // of it.
@@ -59,7 +64,8 @@ export default function ShipBuilder() {
     (s) =>
       s.trial.status === "running" ||
       s.trial.status === "result" ||
-      s.drive.status === "sailing"
+      s.drive.status === "sailing" ||
+      s.walk.status === "walking"
   );
 
   // Adjusting state during render (not in an effect) so no frame shows a
@@ -77,6 +83,11 @@ export default function ShipBuilder() {
     if (webgl === false) useShipBuilderStore.getState().endDrive();
   }, [webgl]);
   useEffect(() => () => useShipBuilderStore.getState().endDrive(), []);
+  // And the walk: it happens in the 3D scene too.
+  useEffect(() => {
+    if (webgl === false) useShipBuilderStore.getState().stopWalk();
+  }, [webgl]);
+  useEffect(() => () => useShipBuilderStore.getState().stopWalk(), []);
 
   function handleDrawerOpenChange(side: DrawerSide, open: boolean) {
     setOpenDrawer((current) =>
@@ -134,9 +145,19 @@ export default function ShipBuilder() {
           <SelectionBar />
           <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
           {/* The trial plays in the 3D scene, so it needs WebGL. */}
-          {webgl && <SeaTrialButton beside={<DriveButton />} />}
+          {webgl && (
+            <SeaTrialButton
+              beside={
+                <>
+                  <DriveButton />
+                  <WalkButton />
+                </>
+              }
+            />
+          )}
           {webgl && <DrivePicker />}
           {webgl && <DriveHud />}
+          {webgl && <WalkStopButton />}
           {webgl && <IcebergAimHint />}
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}

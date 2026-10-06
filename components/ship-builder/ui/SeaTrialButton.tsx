@@ -30,7 +30,7 @@ const ITEM_CLASS =
  * Starts a sea trial: a menu button that offers Waves (the v2.5 trial) or
  * Iceberg (aim, then strike). It floats bottom-centre, the slot the placement
  * hint and the selection bar use while a tool or a part is active, so it only
- * shows when both are idle, and not while a drive is on.
+ * shows when both are idle, and not while a drive or a walk is on.
  */
 export default function SeaTrialButton({
   beside,
@@ -42,6 +42,7 @@ export default function SeaTrialButton({
     (s) =>
       s.trial.status === "idle" &&
       s.drive.status === "idle" &&
+      s.walk.status === "idle" &&
       s.tool.kind === "none" &&
       s.selectedId === null &&
       s.pendingRemoval === null
