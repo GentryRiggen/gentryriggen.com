@@ -126,12 +126,7 @@ function TreasureChest({ color, tint, emphasis }: PirateDecorProps) {
         <Surface color={wood} finish="wood" {...surface} />
       </mesh>
       {/* The arched lid is a half cylinder lying along X. */}
-      <mesh
-        position={[0, 0.24, 0]}
-        rotation={[0, 0, Math.PI / 2]}
-        scale={[1, 1, 1]}
-        castShadow
-      >
+      <mesh position={[0, 0.24, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.16, 0.16, 0.5, 14, 1, false, 0, Math.PI]} />
         <Surface color={wood} finish="wood" doubleSided {...surface} />
       </mesh>

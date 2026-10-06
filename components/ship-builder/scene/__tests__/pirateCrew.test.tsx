@@ -1,5 +1,3 @@
-// deckDecor and the pirate registry import each other; load deckDecor first.
-import "../deckDecor";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import type { Rotation, Side } from "@/lib/ship-builder/model/types";
 import { PIRATE_ICONS } from "../../ui/icons/pirateIcons";

@@ -67,10 +67,13 @@ function HullEndTiles({ label, tiles, selected, onSelect }: HullEndTilesProps) {
         {label}
       </h3>
       <ul className="mt-1 grid grid-cols-4 gap-1.5">
-        {tiles.map(({ kind, def }) => {
+        {tiles.map(({ kind, def }, index) => {
           const isSelected = def.id === selected;
+          // A lone last tile spans the row instead of leaving a gap beside it.
+          const isLoneLast =
+            index === tiles.length - 1 && tiles.length % 4 === 1;
           return (
-            <li key={def.id}>
+            <li key={def.id} className={isLoneLast ? "col-span-4" : undefined}>
               <button
                 type="button"
                 aria-pressed={isSelected}

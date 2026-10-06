@@ -42,9 +42,6 @@ export function advanceShot(
 /** Everything is built along local +X; this turns +X to where the gun aims. */
 const AIM_YAW = { starboard: -Math.PI / 2, port: Math.PI / 2, forward: 0 };
 
-/** Smallest scale the puff rests at (a zero scale breaks normal matrices). */
-const PUFF_REST = 0.0001;
-
 type GunStyle = "wheeled" | "post" | "chaser";
 
 interface GunProps extends PirateMeshProps {
@@ -66,11 +63,14 @@ function Gun({ style, length, radius, side, tint, emphasis }: GunProps) {
   const surface = { tint, emphasis };
 
   useFrame((_, delta) => {
-    if (!barrel.current || !puff.current) return;
+    // At rest there is nothing to move: the barrel is home and the puff hidden.
+    if (shot.current === null || !barrel.current || !puff.current) return;
     shot.current = advanceShot(shot.current, delta);
     const elapsed = shot.current ?? -1;
+    const scale = puffScale(elapsed);
     barrel.current.position.x = -recoilOffset(elapsed);
-    puff.current.scale.setScalar(Math.max(puffScale(elapsed), PUFF_REST));
+    puff.current.visible = scale > 0;
+    if (scale > 0) puff.current.scale.setScalar(scale);
   });
 
   // Deliberately no stopPropagation: the tap must still select the part.
@@ -162,11 +162,7 @@ function Gun({ style, length, radius, side, tint, emphasis }: GunProps) {
           <Surface color={WOOD.iron} finish="metal" {...surface} />
         </mesh>
         {canFire && (
-          <mesh
-            ref={puff}
-            position={[muzzleX + 0.15, 0.03, 0]}
-            scale={PUFF_REST}
-          >
+          <mesh ref={puff} position={[muzzleX + 0.15, 0.03, 0]} visible={false}>
             <sphereGeometry args={[0.12, 10, 8]} />
             <Surface color={WOOD.bone} {...surface} />
           </mesh>

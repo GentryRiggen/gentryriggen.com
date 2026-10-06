@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   BufferGeometry,
-  DoubleSide,
   Float32BufferAttribute,
   PlaneGeometry,
   type BufferAttribute,
+  type Group,
   type Mesh,
 } from "three";
 import { useShipAnimation } from "../ShipAnimationContext";
@@ -21,6 +21,59 @@ const isGhost = (tint: PirateMeshProps["tint"]) =>
 /** How far a square sail bellies forward at its middle. */
 const BELLY = 0.28;
 const WOBBLE = 0.04;
+
+/**
+ * Shapes a square sail's cloth for time `t`: a belly toward the bow and a
+ * slow wobble, then refreshes the normals and bounds so the belly shades and
+ * culls correctly. The grid is small (63 vertices), so every frame is cheap.
+ */
+export function billowSail(
+  geometry: BufferGeometry,
+  width: number,
+  height: number,
+  t: number
+): void {
+  const position = geometry.attributes.position as BufferAttribute;
+  for (let i = 0; i < position.count; i++) {
+    const across = (position.getZ(i) / (width / 2)) ** 2;
+    const down = ((position.getY(i) + height / 2) / (height / 2)) ** 2;
+    const belly = BELLY * (1 - across) * (1 - down);
+    position.setX(
+      i,
+      belly + WOBBLE * Math.sin(t * 1.4 + position.getZ(i) * 2) * (1 - down)
+    );
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+}
+
+/** Flag length, and how far along it (0 at the pole, 1 at the tip) the skull sits. */
+const FLAG_LENGTH = 0.9;
+const SKULL_U = 0.4;
+/** Each skull face floats this far off the cloth so the ripple never buries it. */
+const SKULL_LIFT = 0.025;
+const FLAG_RIPPLE = 0.08;
+
+/** Sideways swing of the flag cloth at `u` along its length (0 at the pole). */
+export function flagRipple(u: number, t: number): number {
+  return Math.sin(t - u * 5) * FLAG_RIPPLE * u;
+}
+
+/** Slope of the ripple along the flag, per unit of `u`. */
+function flagRippleSlope(u: number, t: number): number {
+  return FLAG_RIPPLE * (Math.sin(t - u * 5) - 5 * u * Math.cos(t - u * 5));
+}
+
+/** Streams the flag cloth for time `t` (already scaled for speed). */
+export function rippleFlag(geometry: BufferGeometry, t: number): void {
+  const position = geometry.attributes.position as BufferAttribute;
+  for (let i = 0; i < position.count; i++) {
+    position.setZ(i, flagRipple(-position.getX(i) / FLAG_LENGTH, t));
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+}
 
 interface SquareSailProps extends PirateMeshProps {
   width: number;
@@ -47,19 +100,12 @@ function SquareSail({
 
   useFrame(({ clock }) => {
     if (isGhost(tint) || reducedMotion || !cloth.current) return;
-    const position = cloth.current.geometry.attributes
-      .position as BufferAttribute;
-    const t = sceneTime(clock.elapsedTime);
-    for (let i = 0; i < position.count; i++) {
-      const across = (position.getZ(i) / (width / 2)) ** 2;
-      const down = ((position.getY(i) + height / 2) / (height / 2)) ** 2;
-      const belly = BELLY * (1 - across) * (1 - down);
-      position.setX(
-        i,
-        belly + WOBBLE * Math.sin(t * 1.4 + position.getZ(i) * 2) * (1 - down)
-      );
-    }
-    position.needsUpdate = true;
+    billowSail(
+      cloth.current.geometry,
+      width,
+      height,
+      sceneTime(clock.elapsedTime)
+    );
   });
 
   const surface = { tint, emphasis };
@@ -135,7 +181,8 @@ function WoodMast({
 function JollyRoger({ tint, emphasis }: PirateMeshProps) {
   const { reducedMotion } = useShipAnimation();
   const cloth = useRef<Mesh>(null);
-  const length = 0.9;
+  const skull = useRef<Group>(null);
+  const length = FLAG_LENGTH;
   const geometry = useMemo(() => {
     const plane = new PlaneGeometry(length, 0.55, 8, 2);
     plane.translate(-length / 2, 0.3, 0);
@@ -144,14 +191,12 @@ function JollyRoger({ tint, emphasis }: PirateMeshProps) {
   useEffect(() => () => geometry.dispose(), [geometry]);
   useFrame(({ clock }) => {
     if (isGhost(tint) || reducedMotion || !cloth.current) return;
-    const position = cloth.current.geometry.attributes
-      .position as BufferAttribute;
     const t = sceneTime(clock.elapsedTime) * 4;
-    for (let i = 0; i < position.count; i++) {
-      const u = -position.getX(i) / length;
-      position.setZ(i, Math.sin(t - u * 5) * 0.08 * u);
-    }
-    position.needsUpdate = true;
+    rippleFlag(cloth.current.geometry, t);
+    // The skull rides the cloth: same height, tilted to the cloth's slope.
+    if (!skull.current) return;
+    skull.current.position.z = flagRipple(SKULL_U, t);
+    skull.current.rotation.y = Math.atan(flagRippleSlope(SKULL_U, t) / length);
   });
   const surface = { tint, emphasis };
   return (
@@ -163,14 +208,14 @@ function JollyRoger({ tint, emphasis }: PirateMeshProps) {
       <mesh ref={cloth} geometry={geometry} castShadow>
         <Surface color={WOOD.black} doubleSided {...surface} />
       </mesh>
-      {[1, -1].map((side) => (
-        <group key={side} position={[-length * 0.4, 0.3, side * 0.012]}>
-          <mesh>
+      <group ref={skull} position={[-length * SKULL_U, 0.3, 0]}>
+        {[1, -1].map((side) => (
+          <mesh key={side} position={[0, 0, side * SKULL_LIFT]}>
             <circleGeometry args={[0.08, 12]} />
-            <meshBasicMaterial color={WOOD.bone} side={DoubleSide} />
+            <Surface color={WOOD.bone} doubleSided {...surface} />
           </mesh>
-        </group>
-      ))}
+        ))}
+      </group>
     </group>
   );
 }
