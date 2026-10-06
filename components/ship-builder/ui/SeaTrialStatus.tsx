@@ -28,9 +28,11 @@ export default function SeaTrialStatus() {
   const live = useLiveTrialState();
 
   // The button that started this run (Sea trial or Try again) is gone, so
-  // focus would drop to the page: hand it to Stop instead.
+  // focus would drop to the page: hand it to Stop instead. Not while walking:
+  // Space jumps there, and a focused Stop button would take it as a press.
   useEffect(() => {
-    if (isRunning) stopButton.current?.focus();
+    const isWalking = useShipBuilderStore.getState().walk.status === "walking";
+    if (isRunning && !isWalking) stopButton.current?.focus();
   }, [isRunning, runId]);
 
   if (trial.status !== "running") return null;

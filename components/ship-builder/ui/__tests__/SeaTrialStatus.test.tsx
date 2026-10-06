@@ -7,6 +7,7 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+import { testShip } from "@/lib/ship-builder/testing";
 import { clearLiveTrial, publishLiveTrial } from "../../scene/liveTrial";
 import SeaTrialStatus from "../SeaTrialStatus";
 
@@ -86,5 +87,23 @@ describe("SeaTrialStatus story clock", () => {
     const early = screen.getByTestId("story-clock").textContent;
     act(() => publishLiveTrial(afloat(20), 0, true));
     expect(screen.getByTestId("story-clock").textContent).not.toBe(early);
+  });
+});
+
+describe("SeaTrialStatus focus", () => {
+  it("leaves focus alone when the run starts while walking", () => {
+    render(<SeaTrialStatus />);
+    act(() => {
+      store().loadShip(testShip(), null);
+      store().startWalk();
+    });
+    act(() => store().sinkWhileWalking());
+    expect(document.body).toHaveFocus();
+  });
+
+  it("still focuses Stop when a run starts from building", () => {
+    render(<SeaTrialStatus />);
+    act(() => store().startTrial("calm", 5));
+    expect(document.body).not.toHaveFocus();
   });
 });

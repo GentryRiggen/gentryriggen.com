@@ -12,12 +12,14 @@ import {
   type WalkState,
 } from "@/lib/ship-builder/walk";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { trialPlayback } from "./trialPlayback";
 import { testWalkSpawn } from "./testClock";
 
 /** Runs one walk: steps the walker in fixed steps and publishes it. */
 function Walking() {
   const ship = useShipBuilderStore((s) => s.ship);
   const grid = useMemo(() => walkGridOf(ship), [ship]);
+  const stopWalk = useShipBuilderStore((s) => s.stopWalk);
   // The store published the spawn when the walk started.
   const state = useRef<WalkState | null>(getWalkState());
   const leftover = useRef(0);
@@ -32,6 +34,15 @@ function Walking() {
   }, []);
 
   useFrame((_, delta) => {
+    // She has broken in two and there is no half to ride yet (a later
+    // release): the walk ends and the trial plays on.
+    if (
+      trialPlayback.breakup !== null &&
+      useShipBuilderStore.getState().trial.status === "running"
+    ) {
+      stopWalk();
+      return;
+    }
     const current = state.current;
     if (!current) return;
     leftover.current += Math.min(delta, MAX_FRAME_DELTA);
