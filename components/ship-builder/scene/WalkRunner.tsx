@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { SIM_STEP_S } from "@/lib/ship-builder/sim/types";
 import { getWalkState, publishWalk } from "@/lib/ship-builder/state/walkLive";
@@ -12,6 +12,7 @@ import {
   type WalkState,
 } from "@/lib/ship-builder/walk";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { testWalkSpawn } from "./testClock";
 
 /** Runs one walk: steps the walker in fixed steps and publishes it. */
 function Walking() {
@@ -20,6 +21,15 @@ function Walking() {
   // The store published the spawn when the walk started.
   const state = useRef<WalkState | null>(getWalkState());
   const leftover = useRef(0);
+
+  // A test can start the walker somewhere particular.
+  useEffect(() => {
+    const planted = testWalkSpawn();
+    const current = state.current;
+    if (!planted || !current) return;
+    state.current = { ...current, ...planted };
+    publishWalk(state.current);
+  }, []);
 
   useFrame((_, delta) => {
     const current = state.current;

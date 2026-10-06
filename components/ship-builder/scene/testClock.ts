@@ -10,6 +10,7 @@
 import { sectorKey, SECTOR_SIZE } from "@/lib/ship-builder/sail/field";
 import type { Obstacle, ObstacleKind } from "@/lib/ship-builder/sail/types";
 import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
+import type { WalkState } from "@/lib/ship-builder/walk";
 
 /** An obstacle a test plants in the drive field (x ahead, z to starboard). */
 export interface TestDriveObstacle {
@@ -38,6 +39,11 @@ export interface ShipBuilderTestConfig {
   ao?: boolean;
   /** Drive: obstacles placed in the field at the start of every sail. */
   driveObstacles?: TestDriveObstacle[];
+  /**
+   * Walk: where (model cells), which way (yaw) and on which level the walker
+   * starts, instead of the usual spawn.
+   */
+  walkSpawn?: Pick<WalkState, "x" | "z" | "yaw" | "level">;
 }
 
 declare global {
@@ -119,4 +125,19 @@ export function testDriveObstacles(): Obstacle[] {
         ]
       : []
   );
+}
+
+/** Where a test wants the walker to start, or null for the usual spawn. */
+export function testWalkSpawn(): Pick<
+  WalkState,
+  "x" | "z" | "yaw" | "level"
+> | null {
+  if (!TEST_HOOKS_ENABLED) return null;
+  if (typeof window === "undefined") return null;
+  const spawn = window.__SHIP_BUILDER_TEST__?.walkSpawn;
+  if (!spawn) return null;
+  const { x, z, yaw, level } = spawn;
+  return [x, z, yaw, level].every(Number.isFinite)
+    ? { x, z, yaw, level }
+    : null;
 }
