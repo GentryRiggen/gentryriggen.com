@@ -39,6 +39,9 @@ const KIND_CARDS: Record<
 const CARD_CLASS =
   "flex h-full min-h-32 w-full touch-manipulation flex-col items-center gap-1.5 rounded-lg border border-slate-300 bg-slate-50 p-2 text-center transition-colors hover:border-sky-500 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-sky-400 dark:hover:bg-sky-950 dark:focus-visible:outline-sky-400";
 
+/** An odd card out at the end of the two-column grid spans the full row. */
+const LAST_CARD_CLASS = "[&:last-child:nth-child(odd)]:col-span-2";
+
 const ICON_CLASS =
   "h-16 w-full max-w-40 shrink-0 rounded-md bg-sky-100 dark:bg-sky-100";
 
@@ -119,7 +122,7 @@ export default function NewShipDialog({ onClose }: NewShipDialogProps) {
         </div>
         {kind ? (
           <ul className="grid grid-cols-2 gap-3">
-            <li>
+            <li className={LAST_CARD_CLASS}>
               <button
                 type="button"
                 data-card
@@ -135,7 +138,7 @@ export default function NewShipDialog({ onClose }: NewShipDialogProps) {
               </button>
             </li>
             {TEMPLATES[kind].map((template) => (
-              <li key={template.id}>
+              <li key={template.id} className={LAST_CARD_CLASS}>
                 <button
                   type="button"
                   data-card
@@ -163,7 +166,7 @@ export default function NewShipDialog({ onClose }: NewShipDialogProps) {
             {SHIP_KINDS.map((shipKind) => {
               const { name, era, blurb } = KIND_CARDS[shipKind];
               return (
-                <li key={shipKind}>
+                <li key={shipKind} className={LAST_CARD_CLASS}>
                   <button
                     type="button"
                     data-card

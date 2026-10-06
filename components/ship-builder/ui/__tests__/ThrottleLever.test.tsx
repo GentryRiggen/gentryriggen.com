@@ -1,6 +1,6 @@
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { resetSailInput, sailInput } from "@/lib/ship-builder/state/sailInput";
-import ThrottleLever from "../ThrottleLever";
+import ThrottleLever, { throttleWord } from "../ThrottleLever";
 
 function pointer(
   type: "pointerDown" | "pointerMove",
@@ -65,5 +65,15 @@ describe("ThrottleLever", () => {
     const lever = screen.getByRole("slider");
     expect(lever.className).toContain("w-14");
     expect(lever.className).toContain("touch-none");
+  });
+
+  it("calls the lever Sails on a pirate ship and Throttle otherwise", () => {
+    const { unmount } = render(<ThrottleLever kind="pirate" />);
+    expect(screen.getByRole("slider")).toHaveAccessibleName(/sails$/i);
+    expect(throttleWord("pirate")).toBe("Sails");
+    unmount();
+    render(<ThrottleLever kind="navy" />);
+    expect(screen.getByRole("slider")).toHaveAccessibleName(/throttle$/i);
+    expect(throttleWord("navy")).toBe("Throttle");
   });
 });

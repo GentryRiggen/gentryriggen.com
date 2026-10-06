@@ -29,6 +29,11 @@ function describe(throttle: number): string {
   return `Ahead ${Math.round(throttle * 100)} percent`;
 }
 
+/** Pirate ships have no engine, so their lever sets the sails. */
+export function throttleWord(kind: ShipKind): "Sails" | "Throttle" {
+  return kind === "pirate" ? "Sails" : "Throttle";
+}
+
 interface ThrottleLeverProps {
   kind: ShipKind;
 }
@@ -109,7 +114,7 @@ export default function ThrottleLever({ kind }: ThrottleLeverProps) {
       ref={trackRef}
       role="slider"
       tabIndex={0}
-      aria-label={`${label} throttle`}
+      aria-label={`${label} ${throttleWord(kind).toLowerCase()}`}
       aria-orientation="vertical"
       aria-valuemin={Math.round(REVERSE_THROTTLE * 100)}
       aria-valuemax={FULL_THROTTLE * 100}

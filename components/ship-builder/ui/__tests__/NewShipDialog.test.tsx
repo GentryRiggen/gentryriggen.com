@@ -78,6 +78,34 @@ describe("NewShipDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("lets the odd last card span both columns", () => {
+    render(<NewShipDialog onClose={jest.fn()} />);
+    const last = document.querySelector(
+      'button[data-kind="pirate"]'
+    )?.parentElement;
+    expect(last?.className).toContain(
+      "[&:last-child:nth-child(odd)]:col-span-2"
+    );
+  });
+
+  it("lists Blank plus the four pirate templates and loads one", async () => {
+    const user = userEvent.setup();
+    const onClose = jest.fn();
+    render(<NewShipDialog onClose={onClose} />);
+    await user.click(screen.getByRole("button", { name: /Pirate ship/ }));
+    const ids = Array.from(document.querySelectorAll("[data-template]"), (el) =>
+      el.getAttribute("data-template")
+    );
+    expect(ids).toEqual(TEMPLATES.pirate.map((t) => t.id));
+    expect(ids).toHaveLength(4);
+    expect(document.querySelectorAll("[data-card]")).toHaveLength(5);
+    await user.click(
+      document.querySelector<HTMLElement>('[data-template="whydah-gally"]')!
+    );
+    expect(store().ship.kind).toBe("pirate");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("changes nothing on Cancel or Escape", async () => {
     const user = userEvent.setup();
     const before = store().ship;

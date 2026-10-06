@@ -34,7 +34,9 @@ describe("CockpitOverlay", () => {
       screen.getByRole("img", { name: new RegExp(label) })
     ).toHaveAttribute("data-variant", wheelStyle.variant);
     expect(
-      screen.getByRole("slider", { name: `${label} throttle` })
+      screen.getByRole("slider", {
+        name: `${label} ${kind === "pirate" ? "sails" : "throttle"}`,
+      })
     ).toBeVisible();
   });
 
