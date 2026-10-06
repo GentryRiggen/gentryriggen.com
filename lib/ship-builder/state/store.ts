@@ -34,6 +34,9 @@ import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
 import { resetSailInput } from "./sailInput";
+import { spawnOf } from "../walk";
+import { publishWalk } from "./walkLive";
+import { resetWalkInput } from "./walkInput";
 import type { HullArea, PaintColor } from "../model/paint";
 import type {
   Anchor,
@@ -87,6 +90,13 @@ export type DriveSlice =
   | { status: "setup" }
   | { status: "sailing"; config: DriveConfig; runId: number; view: DriveView };
 
+/**
+ * Walk mode: idle while building, `walking` while the player strolls the decks
+ * in first person. Like a drive it freezes the ship.
+ */
+export type WalkSlice =
+  { status: "idle" } | { status: "walking"; runId: number };
+
 export type TrialSlice =
   | { status: "idle" }
   | { status: "aiming" }
@@ -131,6 +141,7 @@ interface ShipBuilderData {
   camera: { view: CameraView; nonce: number };
   trial: TrialSlice;
   drive: DriveSlice;
+  walk: WalkSlice;
   /**
    * How iceberg trials may break the ship. Kept apart from `trial` so it
    * survives leaving a trial; remembered for the session only.
@@ -200,6 +211,13 @@ export interface ShipBuilderState extends ShipBuilderData {
   startDrive: (config: DriveConfig) => void;
   /** Leaves the picker or the drive and goes back to building. */
   endDrive: () => void;
+  /**
+   * Starts walking the decks from the spawn point; only from building, and
+   * only when the ship has somewhere to stand.
+   */
+  startWalk: () => void;
+  /** Leaves walk mode and goes back to building. */
+  stopWalk: () => void;
   setDriveView: (view: DriveView) => void;
   /** A hard hit: ends the drive and plays the sea trial struck where she hit. */
   driveHit: (impact: SailImpact) => void;
@@ -237,6 +255,7 @@ export function createInitialState(): ShipBuilderData {
     camera: { view: "three-quarter", nonce: 0 },
     trial: { status: "idle" },
     drive: { status: "idle" },
+    walk: { status: "idle" },
     breakMode: "real",
   };
 }
@@ -277,7 +296,11 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
   /** True while a trial or a drive is on: the ship must not change. */
   function isTrialActive(): boolean {
-    return get().trial.status !== "idle" || get().drive.status !== "idle";
+    return (
+      get().trial.status !== "idle" ||
+      get().drive.status !== "idle" ||
+      get().walk.status !== "idle"
+    );
   }
 
   /**
@@ -583,6 +606,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     startTrial(sea, impactX) {
+      if (get().walk.status !== "idle") return;
       const { ship, breakMode } = get();
       const { stats } = analyzeShip(ship);
       const input: TrialInput = {
@@ -614,9 +638,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     openDrive() {
-      if (get().trial.status !== "idle" || get().drive.status !== "idle") {
-        return;
-      }
+      if (isTrialActive()) return;
       set({ drive: { status: "setup" }, tool: { kind: "none" }, ...CLEARED });
     },
 
@@ -637,6 +659,27 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       set({ drive: { status: "idle" } });
     },
 
+    startWalk() {
+      if (isTrialActive()) return;
+      const spawn = spawnOf(get().ship);
+      if (spawn === null) return;
+      runId += 1;
+      resetWalkInput();
+      publishWalk(spawn);
+      set({
+        walk: { status: "walking", runId },
+        tool: { kind: "none" },
+        ...CLEARED,
+      });
+    },
+
+    stopWalk() {
+      if (get().walk.status === "idle") return;
+      resetWalkInput();
+      publishWalk(null);
+      set({ walk: { status: "idle" } });
+    },
+
     setDriveView(view) {
       const { drive } = get();
       if (drive.status !== "sailing") return;
@@ -650,6 +693,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     aimIceberg() {
+      if (get().walk.status !== "idle") return;
       const { status } = get().trial;
       if (status !== "idle" && status !== "result") return;
       set({
