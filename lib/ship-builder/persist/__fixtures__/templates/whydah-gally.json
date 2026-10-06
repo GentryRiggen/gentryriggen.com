@@ -1,4 +1,4 @@
-{"v":7,"kind":"pirate","name":"Whydah Gally","hull":{"lengthSegments":10,"beam":4,"bow":"beakhead","stern":"galleon","paint":{"topsides":"oak","bottom":"dark-oak"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"}]},"parts":[
+{"v":7,"kind":"pirate","name":"Whydah Gally","hull":{"lengthSegments":10,"beam":4,"bow":"beakhead","stern":"galleon","paint":{"topsides":"oak","bottom":"dark-oak"},"bulkheads":[{"at":1,"height":"waterline"},{"at":2,"height":"waterline"},{"at":3,"height":"waterline"},{"at":4,"height":"waterline"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"}]},"parts":[
     {"id":"p1","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":0,"z":0},"rotation":0},
     {"id":"p2","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":2,"z":0},"rotation":0},
     {"id":"p3","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":4,"z":0},"rotation":0},

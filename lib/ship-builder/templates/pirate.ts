@@ -1,5 +1,5 @@
-import type { PartType, Ship } from "../model/types";
-import { wallRun } from "./bulkheads";
+import type { Bulkhead, PartType, Ship } from "../model/types";
+import { wallsWithLowBow } from "./bulkheads";
 import { ShipBuilder, range } from "./modernBuilder";
 import type { ShipTemplate } from "./types";
 
@@ -20,6 +20,17 @@ interface Layout {
   boatXs: readonly number[];
   /** Cannons line both edges over this run of x (davits are skipped). */
   cannonXs: readonly number[];
+  /** Bulkheads from the bow up to this boundary only reach the waterline. */
+  lowBowUntil: number;
+}
+
+/**
+ * Walls on every boundary, but the bow half's only reach the waterline, so a
+ * strike near the bow spills water from one compartment into the next and sinks
+ * her, while a strike amidships (the walls there reach the deck) is held.
+ */
+function lowBowWalls(segments: number, lowUntil: number): Bulkhead[] {
+  return wallsWithLowBow(segments - 1, lowUntil);
 }
 
 /**
@@ -45,7 +56,7 @@ function buildHull(layout: Layout): ShipBuilder {
     for (const x of layout.boatXs) b.boat("rowboat", 0, x, z);
   }
 
-  b.withBulkheads(wallRun(1, segments - 1, "deck"));
+  b.withBulkheads(lowBowWalls(segments, layout.lowBowUntil));
   b.hull("sail-jib", "jib");
   b.hull("rudder", "rudder");
   return b;
@@ -83,6 +94,7 @@ function buildSloop(): Ship {
     ],
     boatXs: [9, 11],
     cannonXs: [3, 4],
+    lowBowUntil: 1,
   });
   const main = deckMast(b, "mast-wood-tall", 7, 3, [
     "sail-square-large",
@@ -116,6 +128,7 @@ function buildWhydah(): Ship {
     ],
     boatXs: [14, 16, 18],
     cannonXs: range(3, 24),
+    lowBowUntil: 4,
   });
   const main = deckMast(b, "mast-wood-main", 11, 4, [
     "sail-square-large",
@@ -155,6 +168,7 @@ function buildQueenAnnesRevenge(): Ship {
     ],
     boatXs: [17, 19, 21],
     cannonXs: range(3, 26),
+    lowBowUntil: 4,
   });
   const main = deckMast(b, "mast-wood-main", 13, 5, [
     "sail-square-large",
@@ -196,6 +210,7 @@ function buildGalleon(): Ship {
     ],
     boatXs: [20, 22, 24],
     cannonXs: range(3, 27),
+    lowBowUntil: 5,
   });
   const main = deckMast(b, "mast-wood-main", 15, 5, [
     "sail-square-large",
