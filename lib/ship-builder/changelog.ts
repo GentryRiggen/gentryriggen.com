@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.14.0",
+    date: "2026-10-06",
+    title: "Pirate ships!",
+    highlights: [
+      "Start a new pirate ship and build with wooden masts, sails, a captain's cabin, a ship's wheel, a figurehead and even a parrot",
+      "Cannons line the deck on both sides. Tap one to make it fire. Rowboats hang from davits, and a plank sticks out over the water",
+      "Sails make the speed: more sail means a faster ship. The drive lever is called Sails on a pirate ship",
+      "Try the four ready-made ships: a small sloop, the Whydah Gally, Queen Anne's Revenge and a ghostly black-sailed galleon",
+      "The New ship picker has five cards now, and the help tips mention pirates",
+    ],
+  },
+  {
     version: "2.13.0",
     date: "2026-10-06",
     title: "Walk the sinking ship",
