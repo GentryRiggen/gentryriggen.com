@@ -97,7 +97,7 @@ describe("walk slice", () => {
     const unsubscribe = subscribeWalk(listener);
     act(() => store().stopWalk());
     unsubscribe();
-    expect(walkInput).toEqual({ forward: 0, strafe: 0, turn: 0 });
+    expect(walkInput).toEqual({ forward: 0, strafe: 0, turn: 0, jump: false });
     expect(getWalkState()).toBeNull();
     expect(listener).toHaveBeenCalled();
   });

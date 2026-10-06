@@ -8,10 +8,14 @@ first person. The scene and controls live elsewhere; this folder is the rules.
   lives in the ship's model cells, and `yaw` is a heading in the ship-aligned
   world (yaw 0 looks at the bow).
 - `walkGrid.ts` (`walkGridOf(ship)`) works out where she can stand: open main
-  deck, the roofs of deck and cabin blocks, the stair links between levels and
-  the blocking circles for funnels, masts and the like.
+  deck, the roofs of deck, cabin, bridge and container blocks, the stair links
+  between levels, what fills a cell (`obstructionAt`), where an edge drops to
+  (`dropLevel`) and the blocking circles for funnels, masts and the like.
 - `step.ts` (`stepWalker`) moves the walker one fixed step with sliding
-  collision. Levels change only through stairs.
+  collision, then applies gravity and jumps. Feet height decides what a move
+  may cross (`entering`): a roof one level up once the feet reach it, low decor
+  once they are above it, an edge when airborne. Walking alone changes level
+  only through stairs.
 - `spawn.ts` (`spawnOf`) picks a clear start near the bridge, facing open deck.
   It returns `null` when there is nowhere to stand, which disables the Walk
   button.

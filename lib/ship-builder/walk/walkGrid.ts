@@ -14,6 +14,7 @@ import type { PartType, PlacedPart, Ship } from "../model/types";
 import {
   ATTACH_BLOCK_RADIUS,
   type BlockerCircle,
+  LOW_OBSTACLE_MAX,
   type StairLink,
   type WalkGrid,
 } from "./types";
@@ -46,6 +47,24 @@ const NON_BLOCKING_ATTACH: ReadonlySet<PartType> = new Set<PartType>([
   "rib-boat",
 ]);
 
+/**
+ * Blocks whose roof a person can stand on. Pools, decor and attach parts never
+ * are. Containers are floors but have no stairs of their own (you jump up).
+ */
+const FLOOR_ROLES = ["deck", "cabin", "bridge", "cargo"];
+/** Blocks stairs may climb to. */
+const STAIR_TARGET_ROLES = ["deck", "cabin", "bridge"];
+
+/**
+ * How far a roof sits below the whole-level top of its cell: the bridge is a
+ * lower block (see BRIDGE_HEIGHT in PartMesh) and a container is a little
+ * short of a level (CONTAINER_HEIGHT in cargoParts). Everything else is flush.
+ */
+const ROOF_DROP: Readonly<Record<string, number>> = {
+  bridge: 0.2,
+  cargo: 0.06,
+};
+
 function isGridRole(part: PlacedPart | undefined, ...roles: string[]) {
   if (!part) return false;
   const def = getPartDef(part.type);
@@ -75,8 +94,8 @@ const cache = new WeakMap<Ship, CacheEntry>();
  *  - the cell at level L free of parts (except stairs, which are walkable),
  *  - and a floor under it: the hull for level 0, otherwise a deck or cabin
  *    block at level L - 1 (so wing columns outside the hull need a deck).
- * Bridge, pool, cargo and decor are never floors and never walkable, so they
- * wall off their own cells. Level changes happen only through stair links.
+ * Pools and decor are never floors and never walkable, so they wall off their
+ * own cells; the roofs of decks, cabins, bridges and containers are floors. Level changes happen only through stair links.
  * The hull edge is a rail; the bow and stern tips beyond the grid are not
  * walkable.
  */
@@ -128,8 +147,7 @@ function buildWalkGrid(ship: Ship): WalkGrid {
             ? z >= 0 && z < beam
             : isGridRole(
                 occupancy.get(cellKey({ level: level - 1, x, z })),
-                "deck",
-                "cabin"
+                ...FLOOR_ROLES
               );
         if (hasFloor) walkable[index(x, z, level)] = 1;
       }
@@ -154,7 +172,7 @@ function buildWalkGrid(ship: Ship): WalkGrid {
     const faced = facingCell(cell, part.rotation);
     const block = occupancy.get(cellKey(faced));
     // The faced block's roof must be one level up and open to stand on.
-    if (!isGridRole(block, "deck", "cabin")) continue;
+    if (!isGridRole(block, ...STAIR_TARGET_ROLES)) continue;
     if (!isWalkable(faced.x, faced.z, cell.level + 1)) continue;
     const low = { x: cell.x, z: cell.z, level: cell.level };
     const high = { x: faced.x, z: faced.z, level: cell.level + 1 };
@@ -197,6 +215,30 @@ function buildWalkGrid(ship: Ship): WalkGrid {
       return null;
     },
     isWalkable,
+    obstructionAt(x, z, level) {
+      const part = occupancy.get(cellKey({ level, x, z }));
+      if (!part) return null;
+      const def = getPartDef(part.type);
+      if (def.placement !== "grid" || def.climbsToFacedBlock) return null;
+      if (FLOOR_ROLES.includes(def.role)) {
+        return { top: level + 1 - (ROOF_DROP[def.role] ?? 0), isFloor: true };
+      }
+      const isLow = def.height <= LOW_OBSTACLE_MAX;
+      return { top: isLow ? level + def.height : level + 10, isFloor: false };
+    },
+    dropLevel(x, z, level) {
+      for (let below = level - 1; below >= 0; below--) {
+        if (isWalkable(x, z, below)) return below;
+        if (occupancy.has(cellKey({ level: below, x, z }))) return null;
+      }
+      return null;
+    },
+    surfaceHeight(x, z, level) {
+      const block = occupancy.get(cellKey({ level: level - 1, x, z }));
+      const def = block && getPartDef(block.type);
+      const drop = def?.placement === "grid" ? ROOF_DROP[def.role] : undefined;
+      return level - (level > 0 ? (drop ?? 0) : 0);
+    },
     isBlocked: (x, z, level) => !isWalkable(x, z, level),
     stepLevel(fromX, fromZ, fromLevel, toX, toZ) {
       if (Math.abs(fromX - toX) + Math.abs(fromZ - toZ) !== 1) return null;

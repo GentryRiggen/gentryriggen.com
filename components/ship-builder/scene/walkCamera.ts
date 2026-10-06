@@ -1,6 +1,6 @@
 import { beamOf, facingCell, gridLength } from "@/lib/ship-builder/model/grid";
 import type { PlacedPart, Ship } from "@/lib/ship-builder/model/types";
-import type { WalkState } from "@/lib/ship-builder/walk";
+import { walkGridOf, type WalkState } from "@/lib/ship-builder/walk";
 import { DECK_Y, LEVEL_HEIGHT, modelToWorld } from "./coords";
 
 /** Eye height above the floor, in cells. */
@@ -54,9 +54,15 @@ export function floorHeight(state: WalkState, ship: Ship): number {
           ? state.z - cellZ
           : cellZ + 1 - state.z;
     const climbed = (progress - STAIRS_MARGIN) / (1 - 2 * STAIRS_MARGIN);
-    return state.level + Math.min(1, Math.max(0, climbed));
+    const top = walkGridOf(ship).surfaceHeight(
+      faced.x,
+      faced.z,
+      state.level + 1
+    );
+    const bottom = walkGridOf(ship).surfaceHeight(cellX, cellZ, state.level);
+    return bottom + (top - bottom) * Math.min(1, Math.max(0, climbed));
   }
-  return state.level;
+  return walkGridOf(ship).surfaceHeight(cellX, cellZ, state.level);
 }
 
 export interface WalkCameraPose {
@@ -84,7 +90,8 @@ export function walkCamera(state: WalkState, ship: Ship): WalkCameraPose {
 
   const [eyeX, , eyeZ] = modelToWorld(length, beam, { x, y: 0, z });
   const floor = floorHeight({ ...state, x, z, level }, ship);
-  const eyeY = DECK_Y + floor * LEVEL_HEIGHT + EYE_HEIGHT;
+  const lift = Math.max(0, finiteOr(state.lift ?? 0, 0));
+  const eyeY = DECK_Y + (floor + lift) * LEVEL_HEIGHT + EYE_HEIGHT;
   return {
     eye: [eyeX, eyeY, eyeZ],
     target: [

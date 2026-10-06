@@ -69,6 +69,13 @@ describe("WalkHud", () => {
     );
   });
 
+  it("asks for a jump when the jump button is pressed", () => {
+    startWalking();
+    render(<WalkHud />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Jump" }));
+    expect(walkInput.jump).toBe(true);
+  });
+
   it("walks with the keys while mounted", () => {
     startWalking();
     render(<WalkHud />);
@@ -80,7 +87,9 @@ describe("WalkHud", () => {
     jest.useFakeTimers();
     startWalking();
     render(<WalkHud />);
-    const hint = screen.getByText("Drag to look · stick to walk");
+    const hint = screen.getByText(
+      "Drag to look · stick to walk · jump to climb"
+    );
     expect(hint).toHaveClass("opacity-100");
     act(() => {
       jest.advanceTimersByTime(5000);
@@ -92,26 +101,26 @@ describe("WalkHud", () => {
     startWalking();
     render(<WalkHud />);
     fireEvent.keyDown(window, { key: "w" });
-    expect(screen.getByText("Drag to look · stick to walk")).toHaveClass(
-      "opacity-0"
-    );
+    expect(
+      screen.getByText("Drag to look · stick to walk · jump to climb")
+    ).toHaveClass("opacity-0");
   });
 
   it("fades the hint on a first touch of the view", () => {
     startWalking();
     render(<WalkHud />);
     fireEvent.pointerDown(screen.getByTestId("walk-look-layer"));
-    expect(screen.getByText("Drag to look · stick to walk")).toHaveClass(
-      "opacity-0"
-    );
+    expect(
+      screen.getByText("Drag to look · stick to walk · jump to climb")
+    ).toHaveClass("opacity-0");
   });
 
   it("does not animate the hint under reduced motion", () => {
     mockReducedMotion(true);
     startWalking();
     render(<WalkHud />);
-    expect(screen.getByText("Drag to look · stick to walk")).not.toHaveClass(
-      "transition-opacity"
-    );
+    expect(
+      screen.getByText("Drag to look · stick to walk · jump to climb")
+    ).not.toHaveClass("transition-opacity");
   });
 });

@@ -104,3 +104,21 @@ describe("floorHeight on stairs", () => {
     expect(high - low).toBeGreaterThan(0.8);
   });
 });
+
+describe("floorHeight on a bridge roof", () => {
+  const bridgeShip = testShip([
+    gridPart("b", "bridge-3", 0, 5, 1),
+    gridPart("s", "stairs", 0, 4, 1, 0),
+  ]);
+
+  it("stands a little under a whole level, as the bridge is a lower block", () => {
+    expect(floorHeight(state({ x: 5.5, z: 1.5, level: 1 }), bridgeShip)).toBe(
+      0.8
+    );
+  });
+
+  it("climbs the stairs to that lower roof", () => {
+    const top = floorHeight(state({ x: 4.99, z: 1.5, level: 0 }), bridgeShip);
+    expect(top).toBeCloseTo(0.8, 1);
+  });
+});

@@ -1,8 +1,9 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { ArrowUp, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useWalkKeys from "../hooks/useWalkKeys";
 import { focusWalkButton } from "./WalkButton";
@@ -32,6 +33,27 @@ function StopWalkingButton() {
   );
 }
 
+/** Asks for a jump on press; the walker only leaves the ground if it can. */
+function JumpButton() {
+  return (
+    <button
+      type="button"
+      aria-label="Jump"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        walkInput.jump = true;
+      }}
+      onKeyDown={(event) => {
+        // A focused button would take Space as a click; useWalkKeys jumps.
+        if (event.key === " ") event.preventDefault();
+      }}
+      className={`pointer-events-auto inline-flex h-16 w-16 touch-none select-none items-center justify-center rounded-full border text-sm font-semibold shadow-lg hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:hover:bg-slate-800 dark:focus-visible:outline-sky-400 ${panelClass}`}
+    >
+      <ArrowUp aria-hidden="true" className="h-6 w-6" />
+    </button>
+  );
+}
+
 /** A short first-time hint that fades after a few seconds or on first input. */
 function WalkHint() {
   const reducedMotion = usePrefersReducedMotion();
@@ -57,7 +79,7 @@ function WalkHint() {
         isDismissed ? "opacity-0" : "opacity-100"
       } ${reducedMotion ? "" : "transition-opacity duration-700"}`}
     >
-      Drag to look · stick to walk
+      Drag to look · stick to walk · jump to climb
     </p>
   );
 }
@@ -74,6 +96,7 @@ function WalkingControls() {
         </div>
         <div className="flex items-end justify-between">
           <WalkJoystick />
+          <JumpButton />
         </div>
       </div>
       <WalkHint />

@@ -40,6 +40,15 @@ describe("useWalkKeys", () => {
     expect(walkInput.forward).toBe(1);
   });
 
+  it("asks for a jump with Space, but not outside a walk", () => {
+    render(<Harness />);
+    fireEvent.keyDown(window, { key: " " });
+    expect(walkInput.jump).toBe(false);
+    startWalking();
+    fireEvent.keyDown(window, { key: " " });
+    expect(walkInput.jump).toBe(true);
+  });
+
   it("strafes with A/D", () => {
     render(<Harness />);
     startWalking();
@@ -72,7 +81,7 @@ describe("useWalkKeys", () => {
     render(<Harness />);
     fireEvent.keyDown(window, { key: "w" });
     fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(walkInput).toEqual({ forward: 0, strafe: 0, turn: 0 });
+    expect(walkInput).toEqual({ forward: 0, strafe: 0, turn: 0, jump: false });
   });
 
   it("leaves keys to a text field", () => {

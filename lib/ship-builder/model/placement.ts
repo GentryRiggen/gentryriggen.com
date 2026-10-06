@@ -249,8 +249,12 @@ function decorProblem(
     const facedDef = faced && getPartDef(faced.type);
     const isClimbable =
       facedDef?.placement === "grid" &&
-      (facedDef.role === "deck" || facedDef.role === "cabin");
-    if (!isClimbable) return "Stairs need a deck or cabin block to climb to";
+      (facedDef.role === "deck" ||
+        facedDef.role === "cabin" ||
+        facedDef.role === "bridge");
+    if (!isClimbable) {
+      return "Stairs need a deck, cabin or bridge block to climb to";
+    }
   }
   return undefined;
 }

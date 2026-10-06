@@ -404,3 +404,106 @@ describe("stepWalker: a real ship's stairs", () => {
     expect(down.level).toBe(0);
   });
 });
+
+describe("stepWalker: jumping", () => {
+  const flat = walkGridOf(testShip());
+  const JUMP: WalkInput = { forward: 0, strafe: 0, turn: 0, jump: true };
+  const STILL: WalkInput = { forward: 0, strafe: 0, turn: 0 };
+
+  /** Runs `seconds`, jumping on the first step only, tracking the highest lift. */
+  function leap(
+    start: WalkState,
+    grid: WalkGrid,
+    seconds: number,
+    forward = 0
+  ): { end: WalkState; peak: number } {
+    let state = start;
+    let peak = 0;
+    for (let i = 0; i < Math.round(seconds / SIM_STEP_S); i++) {
+      state = stepWalker(
+        state,
+        { forward, strafe: 0, turn: 0, jump: i === 0 },
+        grid
+      );
+      peak = Math.max(peak, state.lift ?? 0);
+    }
+    return { end: state, peak };
+  }
+
+  it("leaves the ground a little over a level and lands again", () => {
+    const { end, peak } = leap(at(12, 2), flat, 2);
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThan(1.3);
+    expect(end.lift).toBe(0);
+    expect(end.rise).toBe(0);
+    expect(end.level).toBe(0);
+  });
+
+  it("cannot jump again in the air", () => {
+    let state = stepWalker(at(12, 2), JUMP, flat);
+    for (let i = 0; i < 5; i++) state = stepWalker(state, JUMP, flat);
+    const rising = state.rise ?? 0;
+    expect(rising).toBeLessThan(4);
+    expect(stepWalker(state, JUMP, flat).rise).toBeLessThan(rising);
+  });
+
+  it("stays put on the ground without a jump", () => {
+    const end = stepWalker(at(12, 2), STILL, flat);
+    expect(end.lift).toBe(0);
+    expect(end.rise).toBe(0);
+  });
+
+  it("hops over a deck chair that would stop a walker", () => {
+    const grid = walkGridOf(testShip([gridPart("c", "deckchair", 0, 6, 1)]));
+    const blocked = walk(at(4.5, 1.5, TO_STERN), FORWARD, 3, grid);
+    expect(blocked.x).toBeLessThan(6);
+    const { end } = leap(at(4.5, 1.5, TO_STERN), grid, 3, 1);
+    expect(end.x).toBeGreaterThan(7);
+    expect(end.level).toBe(0);
+    expect(end.lift).toBe(0);
+  });
+
+  it("jumps up onto a cabin roof, one level, but cannot walk up", () => {
+    const grid = walkGridOf(testShip([gridPart("c", "cabin-1st", 0, 6, 1)]));
+    expect(walk(at(4.5, 1.5, TO_STERN), FORWARD, 3, grid).x).toBeLessThan(6);
+    const { end } = leap(at(5.7, 1.5, TO_STERN), grid, 3, 1);
+    expect(end.level).toBe(1);
+    expect(Math.floor(end.x)).toBeGreaterThanOrEqual(6);
+    expect(end.lift).toBe(0);
+  });
+
+  it("cannot jump onto a roof two levels up", () => {
+    const grid = walkGridOf(
+      testShip([
+        gridPart("a", "cabin-1st", 0, 6, 1),
+        gridPart("b", "cabin-2nd", 1, 6, 1),
+      ])
+    );
+    const { end } = leap(at(4.5, 1.5, TO_STERN), grid, 3, 1);
+    expect(end.level).toBe(0);
+    expect(end.x).toBeLessThan(6);
+  });
+
+  it("stays railed in on a roof when walking, and drops off the edge by jumping", () => {
+    const grid = walkGridOf(testShip([gridPart("d", "deck-1x1", 0, 5, 1)]));
+    const roof = at(5.5, 1.5, TO_STERN, 1);
+    expect(walk(roof, FORWARD, 2, grid).level).toBe(1);
+    const { end } = leap(roof, grid, 3, 1);
+    expect(end.level).toBe(0);
+    expect(end.x).toBeGreaterThan(6);
+    expect(end.lift).toBe(0);
+  });
+
+  it("cannot leap off the ship into the sea", () => {
+    const { end } = leap(at(12, 0.5, TO_STARBOARD), flat, 3, 1);
+    expect(end.z).toBeGreaterThan(0.2);
+    expect(end.level).toBe(0);
+  });
+
+  it("stands on a deck chair it lands on", () => {
+    const grid = walkGridOf(testShip([gridPart("c", "deckchair", 0, 5, 1)]));
+    const start = at(5.5, 1.5, TO_STERN);
+    const { end } = leap({ ...start }, grid, 0.2);
+    expect(end.lift).toBeGreaterThan(0);
+  });
+});

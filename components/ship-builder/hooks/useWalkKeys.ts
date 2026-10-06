@@ -31,7 +31,7 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * W/S or Up/Down walk, A/D strafe, Left/Right arrows and Q/E turn. Hold to
+ * W/S or Up/Down walk, A/D strafe, Left/Right arrows and Q/E turn, Space jumps. Hold to
  * move, release to stop. Active only while walking, and it leaves the keys
  * alone when a field or a modal dialog has the keyboard.
  *
@@ -58,6 +58,12 @@ export default function useWalkKeys(): void {
       if (document.querySelector('[aria-modal="true"]')) return;
       if (useShipBuilderStore.getState().walk.status !== "walking") return;
 
+      if (event.key === " ") {
+        // Space would otherwise press the focused button or scroll the page.
+        event.preventDefault();
+        walkInput.jump = true;
+        return;
+      }
       const direction = KEY_DIRECTIONS[event.key.toLowerCase()];
       if (!direction) return;
       // Arrows would otherwise scroll the page.

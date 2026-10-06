@@ -36,10 +36,13 @@ function Walking() {
     if (!current) return;
     leftover.current += Math.min(delta, MAX_FRAME_DELTA);
     let next = current;
+    const hadSteps = leftover.current >= SIM_STEP_S;
     while (leftover.current >= SIM_STEP_S) {
       leftover.current -= SIM_STEP_S;
       next = stepWalker(next, walkInput, grid);
     }
+    // A tap is one request, however many steps it took to be heard.
+    if (hadSteps) walkInput.jump = false;
     if (next === current) return;
     state.current = next;
     publishWalk(next);

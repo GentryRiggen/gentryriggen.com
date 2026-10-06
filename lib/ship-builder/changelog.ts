@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.12.0",
+    date: "2026-10-05",
+    title: "Jump and climb all over",
+    highlights: [
+      "You can jump now while you walk. Press Space, or tap the new round jump button next to the stick",
+      "Jump over deck chairs and benches, or land on top of them. Jump up onto a cabin, deck or bridge roof right beside you, a whole level up, with no stairs needed",
+      "Jump off the edge of a roof to drop down to the deck below. You still cannot jump off the ship into the sea",
+      "Bridge roofs and the tops of containers are walkable now, and stairs can climb up to a bridge",
+    ],
+  },
+  {
     version: "2.11.0",
     date: "2026-10-05",
     title: "See which way it turns",

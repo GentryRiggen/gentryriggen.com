@@ -219,14 +219,15 @@ describe("stairs facing", () => {
     }
   );
 
-  it("climbs against a cabin too, but not a bridge, pool, container or chair", () => {
+  it("climbs against a cabin or bridge too, but not a pool, container or chair", () => {
     const climbs = (type: PartType) =>
       canPlace(
         testShip([gridPart("b", type, 0, 5, 2)]),
         candidate("stairs", 0, 4, 2, 0)
       ).ok;
     expect(climbs("cabin-2nd")).toBe(true);
-    for (const type of ["bridge", "pool", "container", "deckchair"] as const) {
+    expect(climbs("bridge")).toBe(true);
+    for (const type of ["pool", "container", "deckchair"] as const) {
       expect(climbs(type)).toBe(false);
     }
   });

@@ -56,14 +56,22 @@ describe("walkGridOf: floors", () => {
 
   it.each([
     ["a pool", gridPart("x", "pool", 0, 5, 1)],
-    ["a container", gridPart("x", "container", 0, 5, 1)],
-    ["a bridge", gridPart("x", "bridge-3", 0, 5, 1)],
     ["a deck chair", gridPart("x", "deckchair", 0, 5, 1)],
     ["a ventilator", gridPart("x", "ventilator", 0, 5, 1)],
   ])("blocks %s and gives nothing to stand on", (_name, part) => {
     const grid = walkGridOf(testShip([part]));
     expect(grid.isBlocked(5, 1, 0)).toBe(true);
     expect(grid.floorLevel(5, 1)).toBeNull();
+  });
+
+  it.each([
+    ["a bridge", gridPart("x", "bridge-3", 0, 5, 1), 0.8],
+    ["a container", gridPart("x", "container", 0, 5, 1), 0.94],
+  ])("blocks %s but makes its roof a floor", (_name, part, top) => {
+    const grid = walkGridOf(testShip([part]));
+    expect(grid.isBlocked(5, 1, 0)).toBe(true);
+    expect(grid.floorLevel(5, 1)).toBe(1);
+    expect(grid.surfaceHeight(5, 1, 1)).toBeCloseTo(top);
   });
 
   it("gives no roof to a deck chair standing on a deck block", () => {
@@ -120,9 +128,11 @@ describe("walkGridOf: stairs", () => {
     expect(grid.stepLevel(4, 1, 0, 5, 1)).toBeNull();
   });
 
-  it("does not link to a faced block that is not a deck or cabin", () => {
-    const grid = stairsUp([gridPart("p", "bridge-3", 0, 5, 1)]);
-    expect(grid.stairs).toHaveLength(0);
+  it("links to a bridge, but not to a pool", () => {
+    expect(stairsUp([gridPart("b", "bridge-3", 0, 5, 1)]).stairs).toHaveLength(
+      2
+    );
+    expect(stairsUp([gridPart("p", "pool", 0, 5, 1)]).stairs).toHaveLength(0);
   });
 
   it("does not link when something stands on the roof it would reach", () => {
