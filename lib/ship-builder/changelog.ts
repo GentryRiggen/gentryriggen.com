@@ -17,6 +17,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.10.0",
+    date: "2026-10-05",
+    title: "Walk the decks",
+    highlights: [
+      "You can walk around your ship now, in first person. Tap Walk (the ship needs a deck to stand on) and look around from the deck",
+      "Drag on the screen to look around and use the stick to walk. On a keyboard use W, A, S and D to walk and the arrow keys to turn. Esc stops",
+      "Walk the decks and climb stairs up onto roofs. Stairs only go up onto the deck or cabin block they face, and you can walk back down the same way",
+      "Cabins, pools, funnels, masts, deck chairs and other things are in the way, so you walk around them. You cannot walk off the edge of a roof",
+      "The view sways gently with the ship on the waves, and it stays calm so it is easy on your eyes",
+      "Building is paused while you walk. Stop walking and your ship is just as you left it",
+      "The buttons along the bottom no longer bump into Undo and Redo on smaller screens",
+      "After a walk or a drive the ship comes back framed the way it was before, instead of closer up",
+    ],
+  },
+  {
     version: "2.9.0",
     date: "2026-10-05",
     title: "Take the wheel",

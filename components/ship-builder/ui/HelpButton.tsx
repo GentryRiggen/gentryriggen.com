@@ -39,6 +39,7 @@ const TIPS = [
   "Drag to turn the view. Two fingers pan and zoom (mouse: right-drag pans, wheel zooms).",
   "R rotates the part you are placing, Esc cancels, Cmd/Ctrl+Z undoes.",
   "Driving: arrow keys or W, A, S, D steer and set the throttle, Space stops, Esc ends the drive.",
+  "Walking: drag to look and use the stick to walk (or W, A, S, D to walk and the arrows to turn). Stairs lead up to roofs. Esc stops walking.",
 ];
 
 // Bottom-left, raised above the corner buttons' row when anchored to them.
