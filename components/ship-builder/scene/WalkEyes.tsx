@@ -14,14 +14,26 @@ import { walkCamera } from "./walkCamera";
 const HEAD_BOB_SIZE = 0.012;
 const HEAD_BOB_SPEED = 9;
 
+/**
+ * How much of the ship's own motion the eyes follow (0 is a perfectly level
+ * view, 1 is bolted to the deck). The eyes sit only 0.45 cells above the deck,
+ * so the full rise, fall and roll of the ship (up to about 0.16 cells at the
+ * eye) would swing the view like a boat ride; a quarter of it keeps a gentle
+ * sway that still moves with the ship.
+ */
+export const WALK_SWAY_SHARE = 0.25;
+
 const eye = new Vector3();
 const look = new Vector3();
+const levelEye = new Vector3();
+const levelLook = new Vector3();
 
 /**
  * Puts the camera at the walker's eyes. Rendered inside the ship's bobbing
  * group, so the ship's rise, fall and roll carry the view with her: the pose
  * is worked out in the ship's frame and taken to the world through the
- * group's own matrix each frame. The horizon stays level (world up).
+ * group's own matrix each frame, then eased back toward the still ship's view
+ * (see WALK_SWAY_SHARE) so the sway stays calm. The horizon stays level.
  */
 export default function WalkEyes() {
   const group = useRef<Group>(null);
@@ -47,8 +59,14 @@ export default function WalkEyes() {
     holder.updateWorldMatrix(true, false);
     eye.set(pose.eye[0], pose.eye[1] + bob, pose.eye[2]);
     look.set(...pose.target);
+    // The same point on a ship that is not moving (the bob group's parent has
+    // no transform of its own, so the ship's frame is the world's).
+    levelEye.copy(eye);
+    levelLook.copy(look);
     holder.localToWorld(eye);
     holder.localToWorld(look);
+    eye.lerpVectors(levelEye, eye, WALK_SWAY_SHARE);
+    look.lerpVectors(levelLook, look, WALK_SWAY_SHARE);
     const { camera } = get();
     camera.position.copy(eye);
     camera.up.set(0, 1, 0);
