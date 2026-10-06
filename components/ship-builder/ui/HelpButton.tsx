@@ -43,7 +43,7 @@ const TIPS = [
 
 // Bottom-left, raised above the corner buttons' row when anchored to them.
 const ANCHOR_CLASS =
-  "absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+3.5rem)] left-3 z-20";
+  "absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+7rem)] left-3 z-20";
 
 /** A "?" button with a gesture cheat sheet, plus a one-time first-run tip. */
 export default function HelpButton() {

@@ -113,66 +113,68 @@ export default function SeaTrialButton({
   }
 
   return (
-    <div
-      ref={root}
-      className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit items-center justify-center gap-2"
-    >
-      <div className="relative">
-        {isOpen && (
-          <div
-            ref={menu}
-            id={MENU_ID}
-            role="menu"
-            aria-label="Sea trial"
-            onKeyDown={handleMenuKeyDown}
-            className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-44 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+    <div className="pointer-events-none absolute inset-0 z-10 @container">
+      <div
+        ref={root}
+        className="absolute inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+3.5rem)] mx-auto flex w-fit items-center justify-center gap-2 @min-[700px]:bottom-[max(0.75rem,env(safe-area-inset-bottom))]"
+      >
+        <div className="relative">
+          {isOpen && (
+            <div
+              ref={menu}
+              id={MENU_ID}
+              role="menu"
+              aria-label="Sea trial"
+              onKeyDown={handleMenuKeyDown}
+              className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-44 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => pick(() => startTrial(seaState))}
+                className={ITEM_CLASS}
+              >
+                <Waves
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
+                />
+                Waves
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => pick(aimIceberg)}
+                className={ITEM_CLASS}
+              >
+                <Snowflake
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
+                />
+                Iceberg
+              </button>
+            </div>
+          )}
+          <button
+            ref={trigger}
+            id={SEA_TRIAL_BUTTON_ID}
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={isOpen}
+            aria-controls={isOpen ? MENU_ID : undefined}
+            onClick={() => setIsOpen((open) => !open)}
+            onKeyDown={handleTriggerKeyDown}
+            className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-nowrap rounded-full bg-sky-600 px-4 text-sm font-semibold text-white shadow-lg hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
           >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => pick(() => startTrial(seaState))}
-              className={ITEM_CLASS}
-            >
-              <Waves
-                aria-hidden="true"
-                className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
-              />
-              Waves
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => pick(aimIceberg)}
-              className={ITEM_CLASS}
-            >
-              <Snowflake
-                aria-hidden="true"
-                className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
-              />
-              Iceberg
-            </button>
-          </div>
-        )}
-        <button
-          ref={trigger}
-          id={SEA_TRIAL_BUTTON_ID}
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? MENU_ID : undefined}
-          onClick={() => setIsOpen((open) => !open)}
-          onKeyDown={handleTriggerKeyDown}
-          className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-sky-600 px-5 text-sm font-semibold text-white shadow-lg hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
-        >
-          <Sailboat aria-hidden="true" className="h-5 w-5 shrink-0" />
-          Sea trial
-          <ChevronUp
-            aria-hidden="true"
-            className={`h-4 w-4 shrink-0 ${isOpen ? "rotate-180" : ""}`}
-          />
-        </button>
+            <Sailboat aria-hidden="true" className="h-5 w-5 shrink-0" />
+            Sea trial
+            <ChevronUp
+              aria-hidden="true"
+              className={`h-4 w-4 shrink-0 ${isOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
+        {beside}
       </div>
-      {beside}
     </div>
   );
 }

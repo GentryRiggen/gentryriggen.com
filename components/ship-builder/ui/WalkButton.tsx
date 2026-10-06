@@ -42,7 +42,7 @@ export default function WalkButton() {
         disabled={!canWalk}
         aria-describedby={canWalk ? undefined : HINT_ID}
         onClick={startWalk}
-        className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-amber-600 px-5 text-sm font-semibold text-white shadow-lg hover:bg-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-slate-900 dark:hover:bg-amber-400 dark:focus-visible:outline-amber-300"
+        className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-nowrap rounded-full bg-amber-600 px-4 text-sm font-semibold text-white shadow-lg hover:bg-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-slate-900 dark:hover:bg-amber-400 dark:focus-visible:outline-amber-300"
       >
         <Footprints aria-hidden="true" className="h-5 w-5 shrink-0" />
         Walk
