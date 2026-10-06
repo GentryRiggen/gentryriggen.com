@@ -6,7 +6,7 @@ import { canPlace } from "@/lib/ship-builder/model/placement";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { footprintBase, modelToWorld } from "./coords";
-import { facingYaw } from "./deckDecor";
+import { facingYaw } from "./facingYaw";
 import { gridTargetAnchors } from "./gridTargetAnchors";
 import PartMesh from "./PartMesh";
 

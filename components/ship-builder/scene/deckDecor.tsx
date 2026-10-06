@@ -3,6 +3,7 @@
 import type { PartType, Rotation } from "@/lib/ship-builder/model/types";
 import { DECOR_COLORS } from "./decorColors";
 import { LEVEL_HEIGHT } from "./coords";
+import { facingYaw } from "./facingYaw";
 import { isPirateDecor, renderPirateDecor } from "./pirate/registry";
 import { roundedBox } from "./roundedBox";
 import GlowSurface from "./GlowSurface";
@@ -19,16 +20,6 @@ interface DecorProps {
 
 interface DecorFacingProps extends DecorProps {
   rotation: Rotation;
-}
-
-/**
- * Turns a mesh drawn facing local +X to face the model direction its rotation
- * names. Rotation 0 faces model +x (stern), 90 faces +z (port), 180 faces -x
- * (bow) and 270 faces -z (starboard). World X and Z are the model's x and z
- * reversed (see modelToWorld), hence the half turn.
- */
-export function facingYaw(rotation: Rotation): number {
-  return Math.PI - (rotation * Math.PI) / 180;
 }
 
 interface FacingProps {

@@ -1,5 +1,5 @@
 import Surface from "../Surface";
-import { facingYaw } from "../deckDecor";
+import { facingYaw } from "../facingYaw";
 import type { Rotation } from "@/lib/ship-builder/model/types";
 import type {
   PirateDecor,

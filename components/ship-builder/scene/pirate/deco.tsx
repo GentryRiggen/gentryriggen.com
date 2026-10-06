@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Surface, { type PartEmphasis, type PartTint } from "../Surface";
-import { facingYaw } from "../deckDecor";
+import { facingYaw } from "../facingYaw";
 import { LEVEL_HEIGHT } from "../coords";
 import {
   WOOD,
