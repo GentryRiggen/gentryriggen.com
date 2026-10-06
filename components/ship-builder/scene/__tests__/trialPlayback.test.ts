@@ -102,6 +102,7 @@ describe("trial effects", () => {
       roll: 0,
       pitch: 0,
       sink: 0,
+      blend: 0,
       phase: "capsizing",
       time: 5,
       capsizedAt: 5,

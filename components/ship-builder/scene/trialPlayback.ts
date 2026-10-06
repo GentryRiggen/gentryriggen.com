@@ -29,6 +29,11 @@ export interface TrialPlayback {
   roll: number;
   pitch: number;
   sink: number;
+  /**
+   * How much of the pose above shows on the ship (0 to 1), written by the
+   * ship's group each frame; the walker's eyes read it to follow the deck.
+   */
+  blend: number;
   phase: SimPhase;
   /** Sim seconds since the trial began. */
   time: number;
@@ -64,6 +69,7 @@ function createPlayback(): TrialPlayback {
     roll: 0,
     pitch: 0,
     sink: 0,
+    blend: 0,
     phase: "sailing",
     time: 0,
     capsizedAt: null,

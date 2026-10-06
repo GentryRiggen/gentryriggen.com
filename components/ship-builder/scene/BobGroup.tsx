@@ -85,6 +85,7 @@ export default function BobGroup({ children }: BobGroupProps) {
           seaState
         );
     const weight = blend.current;
+    trialPlayback.blend = weight;
     target.position.y = bob.y - trialPlayback.sink * weight;
     target.rotation.set(
       // The sim's roll starts at the ship's list, so it replaces the idle list.

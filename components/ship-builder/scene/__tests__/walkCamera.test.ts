@@ -6,6 +6,8 @@ import {
   EYE_HEIGHT,
   floorHeight,
   LOOK_DISTANCE,
+  swayShare,
+  WALK_SWAY_SHARE,
   walkCamera,
 } from "../walkCamera";
 
@@ -120,5 +122,19 @@ describe("floorHeight on a bridge roof", () => {
   it("climbs the stairs to that lower roof", () => {
     const top = floorHeight(state({ x: 4.99, z: 1.5, level: 0 }), bridgeShip);
     expect(top).toBeCloseTo(0.8, 1);
+  });
+});
+
+describe("swayShare", () => {
+  it("is the calm share with no trial pose and the whole motion at full blend", () => {
+    expect(swayShare(0)).toBe(WALK_SWAY_SHARE);
+    expect(swayShare(1)).toBe(1);
+    expect(swayShare(0.5)).toBeCloseTo((WALK_SWAY_SHARE + 1) / 2);
+  });
+
+  it("holds out-of-range and non-finite blends to the ends", () => {
+    expect(swayShare(-3)).toBe(WALK_SWAY_SHARE);
+    expect(swayShare(4)).toBe(1);
+    expect(swayShare(Number.NaN)).toBe(WALK_SWAY_SHARE);
   });
 });

@@ -9,6 +9,25 @@ export const EYE_HEIGHT = 0.45;
 export const LOOK_DISTANCE = 1;
 
 /**
+ * How much of the ship's own motion the eyes follow in calm water (0 is a
+ * perfectly level view, 1 is bolted to the deck). The eyes sit only 0.45 cells
+ * above the deck, so the full rise, fall and roll of a bobbing ship (up to
+ * about 0.16 cells at the eye) would swing the view like a boat ride; a
+ * quarter of it keeps a gentle sway that still moves with the ship.
+ */
+export const WALK_SWAY_SHARE = 0.25;
+
+/**
+ * The share of the ship's motion the eyes follow, given how much of the sea
+ * trial's pose is showing (0 to 1). A sinking ship is no gentle sway: the eyes
+ * must stay on the deck, so the share climbs to the whole motion.
+ */
+export function swayShare(blend: number): number {
+  const weight = Number.isFinite(blend) ? Math.min(1, Math.max(0, blend)) : 0;
+  return WALK_SWAY_SHARE + (1 - WALK_SWAY_SHARE) * weight;
+}
+
+/**
  * The flight's own length across its cell (see `Stairs` in deckDecor.tsx):
  * the steps start this far in from the back edge and the top step ends this
  * far short of the faced edge.

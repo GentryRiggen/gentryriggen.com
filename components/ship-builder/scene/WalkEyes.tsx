@@ -8,32 +8,26 @@ import { getWalkState } from "@/lib/ship-builder/state/walkLive";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { useShipAnimation } from "./ShipAnimationContext";
-import { walkCamera } from "./walkCamera";
+import { trialPlayback } from "./trialPlayback";
+import { swayShare, walkCamera } from "./walkCamera";
 
 /** Head-bob: size in cells and radians a second while moving. */
 const HEAD_BOB_SIZE = 0.012;
 const HEAD_BOB_SPEED = 9;
 
-/**
- * How much of the ship's own motion the eyes follow (0 is a perfectly level
- * view, 1 is bolted to the deck). The eyes sit only 0.45 cells above the deck,
- * so the full rise, fall and roll of the ship (up to about 0.16 cells at the
- * eye) would swing the view like a boat ride; a quarter of it keeps a gentle
- * sway that still moves with the ship.
- */
-export const WALK_SWAY_SHARE = 0.25;
-
 const eye = new Vector3();
 const look = new Vector3();
 const levelEye = new Vector3();
 const levelLook = new Vector3();
+const shipUp = new Vector3();
 
 /**
  * Puts the camera at the walker's eyes. Rendered inside the ship's bobbing
  * group, so the ship's rise, fall and roll carry the view with her: the pose
  * is worked out in the ship's frame and taken to the world through the
  * group's own matrix each frame, then eased back toward the still ship's view
- * (see WALK_SWAY_SHARE) so the sway stays calm. The horizon stays level.
+ * (see `swayShare`) so a calm sea's sway stays gentle; during a sea trial the
+ * view follows the deck fully.
  */
 export default function WalkEyes() {
   const group = useRef<Group>(null);
@@ -65,11 +59,16 @@ export default function WalkEyes() {
     levelLook.copy(look);
     holder.localToWorld(eye);
     holder.localToWorld(look);
-    eye.lerpVectors(levelEye, eye, WALK_SWAY_SHARE);
-    look.lerpVectors(levelLook, look, WALK_SWAY_SHARE);
+    const weight = trialPlayback.blend;
+    const share = swayShare(weight);
+    eye.lerpVectors(levelEye, eye, share);
+    look.lerpVectors(levelLook, look, share);
+    // Level horizon while the sea is calm; once she goes down, the view rolls
+    // and pitches with the deck.
+    shipUp.set(0, 1, 0).transformDirection(holder.matrixWorld);
     const { camera } = get();
     camera.position.copy(eye);
-    camera.up.set(0, 1, 0);
+    camera.up.set(0, 1, 0).lerp(shipUp, weight).normalize();
     camera.lookAt(look);
   });
 

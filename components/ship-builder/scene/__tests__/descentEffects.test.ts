@@ -20,6 +20,7 @@ function playback(overrides: Partial<TrialPlayback> = {}): TrialPlayback {
     roll: 0,
     pitch: 0,
     sink: 0,
+    blend: 0,
     phase: "sailing",
     time: 0,
     capsizedAt: null,
