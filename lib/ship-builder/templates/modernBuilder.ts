@@ -98,6 +98,20 @@ export class ShipBuilder {
     );
   }
 
+  /** A deck cannon on a block's outer edge. */
+  cannon(level: number, x: number, z: number): string {
+    return this.attach(
+      "cannon-deck",
+      this.blockAt(level, x, z),
+      `edge:${x}:${z}`
+    );
+  }
+
+  /** A sail on a free spot of a wooden mast. */
+  sail(type: PartType, mastId: string, slot: number): string {
+    return this.attach(type, mastId, `sail:${slot}`);
+  }
+
   /** A davit holding a boat; returns the boat's id. */
   boat(boat: PartType, level: number, x: number, z: number): string {
     const davit = this.attach(
