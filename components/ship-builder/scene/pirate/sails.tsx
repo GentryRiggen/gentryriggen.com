@@ -182,10 +182,9 @@ function JollyRoger({ tint, emphasis }: PirateMeshProps) {
   const { reducedMotion } = useShipAnimation();
   const cloth = useRef<Mesh>(null);
   const skull = useRef<Group>(null);
-  const length = FLAG_LENGTH;
   const geometry = useMemo(() => {
-    const plane = new PlaneGeometry(length, 0.55, 8, 2);
-    plane.translate(-length / 2, 0.3, 0);
+    const plane = new PlaneGeometry(FLAG_LENGTH, 0.55, 8, 2);
+    plane.translate(-FLAG_LENGTH / 2, 0.3, 0);
     return plane;
   }, []);
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -196,7 +195,9 @@ function JollyRoger({ tint, emphasis }: PirateMeshProps) {
     // The skull rides the cloth: same height, tilted to the cloth's slope.
     if (!skull.current) return;
     skull.current.position.z = flagRipple(SKULL_U, t);
-    skull.current.rotation.y = Math.atan(flagRippleSlope(SKULL_U, t) / length);
+    skull.current.rotation.y = Math.atan(
+      flagRippleSlope(SKULL_U, t) / FLAG_LENGTH
+    );
   });
   const surface = { tint, emphasis };
   return (
@@ -208,7 +209,7 @@ function JollyRoger({ tint, emphasis }: PirateMeshProps) {
       <mesh ref={cloth} geometry={geometry} castShadow>
         <Surface color={WOOD.black} doubleSided {...surface} />
       </mesh>
-      <group ref={skull} position={[-length * SKULL_U, 0.3, 0]}>
+      <group ref={skull} position={[-FLAG_LENGTH * SKULL_U, 0.3, 0]}>
         {[1, -1].map((side) => (
           <mesh key={side} position={[0, 0, side * SKULL_LIFT]}>
             <circleGeometry args={[0.08, 12]} />
