@@ -8,7 +8,6 @@ import {
 import { gridPart, testShip } from "@/lib/ship-builder/testing";
 import SeaTrialButton from "../SeaTrialButton";
 import WalkButton from "../WalkButton";
-import WalkStopButton from "../WalkStopButton";
 
 const store = () => useShipBuilderStore.getState();
 
@@ -50,18 +49,5 @@ describe("WalkButton", () => {
     expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
     act(() => store().stopWalk());
     expect(screen.getByRole("button", { name: "Walk" })).toBeInTheDocument();
-  });
-});
-
-describe("WalkStopButton", () => {
-  it("shows only while walking and stops the walk", async () => {
-    act(() => store().loadShip(testShip(), null));
-    render(<WalkStopButton />);
-    expect(screen.queryByRole("button", { name: "Stop walking" })).toBeNull();
-    act(() => store().startWalk());
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: "Stop walking" }));
-    expect(store().walk.status).toBe("idle");
   });
 });

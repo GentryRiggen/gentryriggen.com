@@ -15,7 +15,7 @@ import DriveButton from "./ui/DriveButton";
 import DriveHud from "./ui/DriveHud";
 import DrivePicker from "./ui/DrivePicker";
 import WalkButton from "./ui/WalkButton";
-import WalkStopButton from "./ui/WalkStopButton";
+import WalkHud from "./ui/WalkHud";
 import Drawer from "./ui/Drawer";
 import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
@@ -157,7 +157,7 @@ export default function ShipBuilder() {
           )}
           {webgl && <DrivePicker />}
           {webgl && <DriveHud />}
-          {webgl && <WalkStopButton />}
+          {webgl && <WalkHud />}
           {webgl && <IcebergAimHint />}
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}
