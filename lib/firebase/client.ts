@@ -5,8 +5,8 @@ import { firebaseConfig } from "./config";
 /** Only used by /admin; public pages talk to Firestore over REST instead. */
 
 export interface AuthUser {
+  uid: string;
   email: string | null;
-  emailVerified: boolean;
 }
 
 export const MAX_DOCS = 20_000;
@@ -32,17 +32,16 @@ export async function watchAuth(
 ): Promise<() => void> {
   const { mod, auth } = await authModule();
   return mod.onAuthStateChanged(auth, (user) =>
-    onChange(
-      user ? { email: user.email, emailVerified: user.emailVerified } : null
-    )
+    onChange(user ? { uid: user.uid, email: user.email } : null)
   );
 }
 
-export async function signInWithGoogle(): Promise<void> {
+export async function signInWithEmail(
+  email: string,
+  password: string
+): Promise<void> {
   const { mod, auth } = await authModule();
-  const provider = new mod.GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  await mod.signInWithPopup(auth, provider);
+  await mod.signInWithEmailAndPassword(auth, email, password);
 }
 
 export async function signOutUser(): Promise<void> {

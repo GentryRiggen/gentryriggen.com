@@ -1,21 +1,20 @@
-import { ADMIN_EMAIL, isAdminUser } from "../admin";
+import { ADMIN_UID, isAdminUser } from "../admin";
 
 describe("isAdminUser", () => {
-  it("accepts only the verified admin email", () => {
-    expect(isAdminUser({ email: ADMIN_EMAIL, emailVerified: true })).toBe(true);
-    expect(isAdminUser({ email: ADMIN_EMAIL, emailVerified: false })).toBe(
-      false
-    );
-    expect(isAdminUser({ email: "other@gmail.com", emailVerified: true })).toBe(
-      false
-    );
-    expect(isAdminUser({ email: null, emailVerified: true })).toBe(false);
-    expect(isAdminUser(null)).toBe(false);
+  it("accepts the admin uid", () => {
+    expect(
+      isAdminUser({ uid: ADMIN_UID, email: "gentry.riggen@gmail.com" })
+    ).toBe(true);
+    expect(isAdminUser({ uid: ADMIN_UID, email: null })).toBe(true);
   });
 
-  it("is case-insensitive on the email", () => {
+  it("rejects another uid, even with the admin email", () => {
     expect(
-      isAdminUser({ email: "Gentry.Riggen@Gmail.com", emailVerified: true })
-    ).toBe(true);
+      isAdminUser({ uid: "someone-else", email: "gentry.riggen@gmail.com" })
+    ).toBe(false);
+  });
+
+  it("rejects null", () => {
+    expect(isAdminUser(null)).toBe(false);
   });
 });

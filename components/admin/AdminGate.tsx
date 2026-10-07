@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Dashboard from "@/components/admin/Dashboard";
 import { isAdminUser } from "@/lib/analytics/admin";
 import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
-import {
-  signInWithGoogle,
-  signOutUser,
-  watchAuth,
-} from "@/lib/firebase/client";
+import { signInWithEmail, signOutUser, watchAuth } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 
 type State =
@@ -24,6 +20,9 @@ export default function AdminGate() {
     isFirebaseConfigured() ? { kind: "loading" } : { kind: "unconfigured" }
   );
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -56,12 +55,20 @@ export default function AdminGate() {
     };
   }, []);
 
-  function signIn() {
+  function signIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting) return;
     setError(null);
+    setSubmitting(true);
     setState((prev) => (prev.kind === "denied" ? { kind: "signedOut" } : prev));
-    signInWithGoogle().catch(() =>
-      setError("Sign-in failed or was cancelled. Try again.")
-    );
+    // One generic message for every failure: never say which part was wrong
+    // and never surface the raw Firebase error.
+    signInWithEmail(email, password)
+      .catch(() => {
+        setPassword("");
+        setError("Incorrect email or password.");
+      })
+      .finally(() => setSubmitting(false));
   }
 
   if (state.kind === "admin") {
@@ -103,13 +110,49 @@ export default function AdminGate() {
           </p>
         )}
         {(state.kind === "signedOut" || state.kind === "denied") && (
-          <button
-            type="button"
-            onClick={signIn}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
-          >
-            Sign in with Google
-          </button>
+          <form onSubmit={signIn} className="space-y-3 text-left">
+            <div className="space-y-1">
+              <label
+                htmlFor="admin-email"
+                className="block text-sm font-medium"
+              >
+                Email
+              </label>
+              <input
+                id="admin-email"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="admin-password"
+                className="block text-sm font-medium"
+              >
+                Password
+              </label>
+              <input
+                id="admin-password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+            >
+              Sign in
+            </button>
+          </form>
         )}
         {error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">

@@ -48,6 +48,8 @@ const config = {
 };
 const baseUrl = `http://${HOST}:${PORT}`;
 const ADMIN_EMAIL = "gentry.riggen@gmail.com";
+// Keep in sync with ADMIN_UID in lib/analytics/admin.ts and firestore.rules.
+const ADMIN_UID = "nmt3n9sdfCX2NfzVlTdyXsWzHqm2";
 
 let env: RulesTestEnvironment;
 
@@ -70,33 +72,35 @@ beforeEach(async () => {
   await env.clearFirestore();
 });
 
+type Provider = "google.com" | "password" | "anonymous";
+
 /**
- * Firestore client for a signed-in user. The token carries the same
- * `firebase.sign_in_provider` claim a real Firebase ID token has.
+ * Firestore client for a signed-in user. The emulator takes the uid directly
+ * and merges the token claims below into request.auth.token, so
+ * `firebase: { sign_in_provider }` mirrors a real Firebase ID token.
+ * Pass `provider: null` to omit the firebase claim entirely.
  */
 function signedIn(
-  email: string,
+  uid: string,
   opts: {
+    email?: string;
     verified?: boolean;
-    provider?: "google.com" | "password" | "anonymous";
+    provider?: Provider | null;
   } = {}
 ) {
-  const { verified, provider = "google.com" } = opts;
+  const { email, verified = true, provider = "password" } = opts;
   return env
-    .authenticatedContext("uid-" + email, {
-      email,
-      ...("verified" in opts
-        ? verified === undefined
-          ? {}
-          : { email_verified: verified }
-        : { email_verified: true }),
-      firebase: { sign_in_provider: provider },
+    .authenticatedContext(uid, {
+      ...(email === undefined ? {} : { email, email_verified: verified }),
+      ...(provider === null
+        ? {}
+        : { firebase: { sign_in_provider: provider } }),
     })
     .firestore();
 }
 
 const anon = () => env.unauthenticatedContext().firestore();
-const admin = () => signedIn(ADMIN_EMAIL);
+const admin = () => signedIn(ADMIN_UID, { email: ADMIN_EMAIL });
 
 const stamped = (patch: Record<string, unknown> = {}) => ({
   ...valid,
@@ -281,7 +285,10 @@ describe("create", () => {
   it("allows a signed-in non-admin to create", async () => {
     await assertSucceeds(
       addDoc(
-        collection(signedIn("someone.else@gmail.com"), "pageviews"),
+        collection(
+          signedIn("uid-someone-else", { email: "someone.else@gmail.com" }),
+          "pageviews"
+        ),
         stamped()
       )
     );
@@ -291,33 +298,52 @@ describe("create", () => {
 describe("read", () => {
   beforeEach(seed);
 
-  it("allows the verified Google admin", async () => {
+  it("allows the admin uid with password sign-in", async () => {
     await assertSucceeds(getDocs(collection(admin(), "pageviews")));
     await assertSucceeds(getDoc(doc(admin(), "pageviews/seed")));
   });
 
+  it("allows the admin uid regardless of email claims", async () => {
+    const noEmail = () => signedIn(ADMIN_UID);
+    await assertSucceeds(getDocs(collection(noEmail(), "pageviews")));
+    await assertSucceeds(getDoc(doc(noEmail(), "pageviews/seed")));
+  });
+
   const denied: [string, () => ReturnType<typeof anon>][] = [
     ["anonymous", () => anon()],
-    ["another signed-in account", () => signedIn("someone.else@gmail.com")],
     [
-      "the admin email, unverified",
-      () => signedIn(ADMIN_EMAIL, { verified: false }),
+      "another uid with password sign-in",
+      () => signedIn("uid-someone-else", { email: "someone.else@gmail.com" }),
     ],
     [
-      "the admin email, email_verified missing",
-      () => signedIn(ADMIN_EMAIL, { verified: undefined }),
+      "another uid with the admin email, verified, password sign-in",
+      () =>
+        signedIn("uid-impostor", {
+          email: ADMIN_EMAIL,
+          verified: true,
+          provider: "password",
+        }),
     ],
     [
-      "the admin email in a different case",
-      () => signedIn("Gentry.Riggen@gmail.com"),
+      "another uid with the admin email, verified, google sign-in",
+      () =>
+        signedIn("uid-impostor", {
+          email: ADMIN_EMAIL,
+          verified: true,
+          provider: "google.com",
+        }),
     ],
     [
-      "the admin email via password sign-in",
-      () => signedIn(ADMIN_EMAIL, { provider: "password" }),
+      "the admin uid via google sign-in",
+      () => signedIn(ADMIN_UID, { email: ADMIN_EMAIL, provider: "google.com" }),
     ],
     [
-      "the admin email via anonymous sign-in",
-      () => signedIn(ADMIN_EMAIL, { provider: "anonymous" }),
+      "the admin uid via anonymous sign-in",
+      () => signedIn(ADMIN_UID, { email: ADMIN_EMAIL, provider: "anonymous" }),
+    ],
+    [
+      "the admin uid with no provider claim",
+      () => signedIn(ADMIN_UID, { email: ADMIN_EMAIL, provider: null }),
     ],
   ];
   it.each(denied)("rejects list for %s", async (_label, client) => {

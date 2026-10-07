@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers-extended-cc:subagent-driven-development (recommended) or superpowers-extended-cc:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Privacy-friendly pageview analytics for `/` and `/ship-builder`, stored in Firestore, with a Google-sign-in `/admin` dashboard (per-site tabs plus a timezone-based visitor map) restricted to `gentry.riggen@gmail.com`.
+**Goal:** Privacy-friendly pageview analytics for `/` and `/ship-builder`, stored in Firestore, with an email/password `/admin` dashboard (per-site tabs plus a timezone-based visitor map) restricted to the admin Firebase UID (`ADMIN_UID`).
 
-**Architecture:** Public pages send one pageview per route change straight to the Firestore **REST API** (`documents:commit`, unauthenticated, no Firebase SDK in the visitor bundle). Firestore security rules allow only schema-valid creates from anyone and reads only for the admin email. `/admin` is a client-rendered page that loads the Firebase SDK (Auth + Firestore) lazily, gates on Google sign-in, fetches raw docs for a date window and aggregates them in the browser.
+**Architecture:** Public pages send one pageview per route change straight to the Firestore **REST API** (`documents:commit`, unauthenticated, no Firebase SDK in the visitor bundle). Firestore security rules allow only schema-valid creates from anyone and reads only for the admin UID with password sign-in. `/admin` is a client-rendered page that loads the Firebase SDK (Auth + Firestore) lazily, gates on email/password sign-in, fetches raw docs for a date window and aggregates them in the browser.
 
 **Tech Stack:** Next.js 16 static export, React 19, Tailwind 4, Firebase JS SDK 13 (admin only), Firestore REST (tracker), `@firebase/rules-unit-testing` + Firestore emulator, `world-atlas` + `topojson-client` (map outline), Jest, Playwright.
 
@@ -69,16 +69,15 @@ jest.rules.config.js
 **Acceptance Criteria:**
 
 - [ ] Firestore database exists in the `gentryriggen` project (production mode)
-- [ ] Google sign-in provider enabled
-- [ ] Authorized domains include `gentryriggen.com` (and `www.` if used)
+- [ ] Email/Password provider enabled, with "Enable create (sign-up)" disabled
 - [ ] A Web app is registered and its config object is available
 - [ ] The CI service account can deploy Firestore rules
 
 **Steps:**
 
 - [ ] **Step 1:** Firebase console → project `gentryriggen` → Build → Firestore Database → Create database → production mode → pick a location (cannot be changed later).
-- [ ] **Step 2:** Build → Authentication → Get started → Sign-in method → Google → Enable → set a support email → Save.
-- [ ] **Step 3:** Authentication → Settings → Authorized domains → add `gentryriggen.com` (and `www.gentryriggen.com` if it serves the site). `localhost` is there by default.
+- [ ] **Step 2:** Build → Authentication → Get started → Sign-in method → keep Email/Password enabled.
+- [ ] **Step 3:** Authentication → Settings → User actions → disable "Enable create (sign-up)" so no other account can be created.
 - [ ] **Step 4:** Project settings → Your apps → Add app → Web → register. Copy the `firebaseConfig` object (apiKey, authDomain, projectId, appId, and optionally storageBucket, messagingSenderId). These values are public by design.
 - [ ] **Step 5:** Google Cloud console → IAM → find the service account stored in the GitHub secret `FIREBASE_SERVICE_ACCOUNT` → add the role **Firebase Rules Admin** (needed so CI can run `firebase deploy --only firestore:rules`). Also confirm the Cloud Firestore API is enabled.
 - [ ] **Step 6 (recommended hardening):** Cloud console → APIs & Services → Credentials → the browser API key → Application restrictions → HTTP referrers: `https://gentryriggen.com/*`, `https://www.gentryriggen.com/*`, `http://localhost:3000/*`. Test sign-in and a pageview afterwards; if something breaks, loosen it. Also set a Cloud Billing budget alert. The API key is public and writes are unauthenticated, so anyone can spam valid-shaped events, and Firestore rules cannot rate limit.
@@ -2115,7 +2114,9 @@ git add -A && git commit -m "feat(analytics): timezone to map coordinates and la
 
 ### Task 7: Admin auth gate and page (SECURITY)
 
-**Goal:** `/admin` route that shows only a sign-in screen until a verified `gentry.riggen@gmail.com` Google account is signed in, plus the lazy Firebase client it needs.
+**Goal:** `/admin` route that shows only an email/password sign-in form until the admin (Firebase UID `ADMIN_UID`) is signed in, plus the lazy Firebase client it needs.
+
+**Superseded:** the original Google sign-in code in this task was replaced by email/password sign-in pinned to `ADMIN_UID` (see the design spec and the code in `lib/` and `components/admin/`). Treat the code blocks below as historical.
 
 **Files:**
 
@@ -2127,9 +2128,9 @@ git add -A && git commit -m "feat(analytics): timezone to map coordinates and la
 **Acceptance Criteria:**
 
 - [ ] Unconfigured Firebase shows a "not configured" message and never touches the SDK
-- [ ] Signed out shows a "Sign in with Google" button and no dashboard
-- [ ] A signed-in non-admin (or unverified admin email) sees "Not authorized", is signed out immediately, and the dashboard never renders
-- [ ] A verified admin sees the dashboard and the exclude-own-traffic flag is set in localStorage
+- [ ] Signed out shows an email and password form and no dashboard
+- [ ] A signed-in non-admin (including the admin email under another uid) sees "Not authorized", is signed out immediately, and the dashboard never renders
+- [ ] The admin uid sees the dashboard and the exclude-own-traffic flag is set in localStorage
 - [ ] `/admin` is `noindex` and disallowed in `robots.txt`, absent from the sitemap
 
 **Verify:** `npm test -- --testPathPatterns="admin|robots" && npm run type-check` → PASS

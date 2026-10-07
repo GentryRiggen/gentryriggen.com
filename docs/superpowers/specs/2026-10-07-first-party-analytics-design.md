@@ -4,8 +4,8 @@
 
 Hand-rolled, privacy-friendly analytics for the two parts of the site, the
 homepage (`/`) and Ship Builder (`/ship-builder`, including
-`/ship-builder/versions`). Events are stored in Firestore. A Google-sign-in
-`/admin` page, restricted to `gentry.riggen@gmail.com`, shows them per site,
+`/ship-builder/versions`). Events are stored in Firestore. An email/password
+`/admin` page, restricted to the admin's Firebase UID, shows them per site,
 including a map of where visitors are.
 
 ## Decisions
@@ -61,22 +61,24 @@ design.
 request.time`, and `site` in the allowed set. The doc id is capped at 64
   characters, and `site` must match `path` (`home` only for `/`, `ship-builder`
   only for `/ship-builder` and its subpaths).
-- `read`, `update`, `delete`: allowed only when
-  `request.auth.token.email == "gentry.riggen@gmail.com"`,
-  `request.auth.token.email_verified == true` and
-  `request.auth.token.firebase.sign_in_provider == 'google.com'`. Update and
-  delete are denied for everyone in practice. Pinning the admin `uid` is a
-  possible follow-up once the first sign-in reveals it.
+- `read`: allowed only when `isAdmin()`, which pins
+  `request.auth.uid == "nmt3n9sdfCX2NfzVlTdyXsWzHqm2"` (the real pin; the UID
+  is public, not a credential) and
+  `request.auth.token.firebase.sign_in_provider == 'password'`. `update` and
+  `delete` are denied for everyone. The UID must stay in sync with
+  `ADMIN_UID` in `lib/analytics/admin.ts`.
 - Known limit: the Firebase config is public, so valid-shaped writes can be
   spammed. Rules cannot prevent it. App Check can be added later if it
   happens.
 
 ## Auth
 
-Firebase Auth, Google provider only, `signInWithPopup`. Authorization lives in
-the Firestore rules, never in the UI. The `/admin` page is client-rendered:
+Firebase Auth, Email/Password provider only, `signInWithEmailAndPassword`.
+Firebase sign-UP must be disabled in the console so no other account can be
+created. Authorization lives in the Firestore rules, never in the UI. The `/admin` page is client-rendered:
 
-- Signed out: only a "Sign in with Google" button.
+- Signed out: only an email and password form. Every failure shows the same
+  "Incorrect email or password." message.
 - Signed in as another account: "Not authorized", signed out immediately, no
   data queried.
 - Signed in as admin: dashboard, and the exclude-own-traffic flag is set.
@@ -128,6 +130,7 @@ load only on `/admin`.
 
 ## Manual setup (owner)
 
-In the Firebase console: enable Firestore, enable the Google sign-in provider,
-and add the site's domain to Auth authorized domains. The implementation plan
-lists the exact steps.
+In the Firebase console: enable Firestore, keep the Email/Password
+provider enabled, and disable "Enable create (sign-up)" under Authentication >
+Settings > User actions. No authorized-domain step is needed. The
+implementation plan lists the exact steps.

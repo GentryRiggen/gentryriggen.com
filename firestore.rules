@@ -2,12 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Keep in sync with ADMIN_EMAIL in lib/analytics/admin.ts.
+    // The UID is the real pin (an email address can be claimed or changed, a
+    // UID cannot). The provider pin limits access to email/password sign-in.
+    // Keep the UID in sync with ADMIN_UID in lib/analytics/admin.ts.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "gentry.riggen@gmail.com"
-        && request.auth.token.email_verified == true
-        && request.auth.token.firebase.sign_in_provider == 'google.com';
+        && request.auth.uid == "nmt3n9sdfCX2NfzVlTdyXsWzHqm2"
+        && request.auth.token.firebase.sign_in_provider == 'password';
     }
 
     function validPageview() {

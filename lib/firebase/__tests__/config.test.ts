@@ -1,4 +1,4 @@
-import { isFirebaseConfigured } from "../config";
+import { firebaseConfig, isFirebaseConfigured } from "../config";
 
 describe("isFirebaseConfigured", () => {
   const base = {
@@ -18,5 +18,12 @@ describe("isFirebaseConfigured", () => {
 
   it("is false when projectId is empty", () => {
     expect(isFirebaseConfigured({ ...base, projectId: "" })).toBe(false);
+  });
+});
+
+describe("committed firebaseConfig", () => {
+  it("is configured for the gentryriggen project", () => {
+    expect(isFirebaseConfigured()).toBe(true);
+    expect(firebaseConfig.projectId).toBe("gentryriggen");
   });
 });
