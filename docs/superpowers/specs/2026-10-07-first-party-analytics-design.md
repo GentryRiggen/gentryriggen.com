@@ -58,11 +58,15 @@ design.
 
 - `create` on `pageviews`: allowed for anyone when the doc has exactly the
   fields above, with correct types and bounded string lengths, `ts ==
-request.time`, and `site` in the allowed set.
+request.time`, and `site` in the allowed set. The doc id is capped at 64
+  characters, and `site` must match `path` (`home` only for `/`, `ship-builder`
+  only for `/ship-builder` and its subpaths).
 - `read`, `update`, `delete`: allowed only when
-  `request.auth.token.email == "gentry.riggen@gmail.com"` and
-  `request.auth.token.email_verified == true`. Update and delete are denied
-  for everyone in practice.
+  `request.auth.token.email == "gentry.riggen@gmail.com"`,
+  `request.auth.token.email_verified == true` and
+  `request.auth.token.firebase.sign_in_provider == 'google.com'`. Update and
+  delete are denied for everyone in practice. Pinning the admin `uid` is a
+  possible follow-up once the first sign-in reveals it.
 - Known limit: the Firebase config is public, so valid-shaped writes can be
   spammed. Rules cannot prevent it. App Check can be added later if it
   happens.

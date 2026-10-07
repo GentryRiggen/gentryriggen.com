@@ -69,6 +69,14 @@ it("rejects another account and signs it out", async () => {
   expect(screen.getByText(/not authorized/i)).toBeInTheDocument();
 });
 
+it("still shows the denied message when sign-out rejects", async () => {
+  mockClient.signOutUser.mockRejectedValue(new Error("network"));
+  await renderGate();
+  act(() => emit({ email: "someone@gmail.com", emailVerified: true }));
+  expect(await screen.findByText(/not authorized/i)).toBeInTheDocument();
+  expect(mockClient.signOutUser).toHaveBeenCalled();
+});
+
 it("rejects the admin email when it is unverified", async () => {
   await renderGate();
   act(() => emit({ email: "gentry.riggen@gmail.com", emailVerified: false }));

@@ -6,7 +6,8 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null
         && request.auth.token.email == "gentry.riggen@gmail.com"
-        && request.auth.token.email_verified == true;
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     function validPageview() {
@@ -15,6 +16,9 @@ service cloud.firestore {
         && d.keys().hasAll(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
         && d.ts == request.time
         && d.site in ['home', 'ship-builder']
+        && d.path is string
+        && ((d.site == 'home' && d.path == '/')
+          || (d.site == 'ship-builder' && d.path.matches('^/ship-builder(/.*)?$')))
         && d.path is string && d.path.size() > 0 && d.path.size() <= 200
         && d.ref is string && d.ref.size() <= 100
         && d.device in ['mobile', 'tablet', 'desktop']
@@ -27,7 +31,7 @@ service cloud.firestore {
 
     match /pageviews/{id} {
       allow read: if isAdmin();
-      allow create: if validPageview();
+      allow create: if id.size() <= 64 && validPageview();
       allow update, delete: if false;
     }
 

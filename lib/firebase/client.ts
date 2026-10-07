@@ -70,9 +70,28 @@ export async function fetchPageviews(
       fs.limit(max)
     )
   );
-  const docs = snapshot.docs.map((d) => {
+  const docs: PageviewDoc[] = [];
+  for (const d of snapshot.docs) {
     const data = d.data();
-    return {
+    const strings = [
+      data.site,
+      data.path,
+      data.ref,
+      data.device,
+      data.browser,
+      data.os,
+      data.screen,
+      data.tz,
+      data.vid,
+    ];
+    // Skip malformed docs instead of crashing the whole dashboard.
+    if (
+      !(data.ts instanceof fs.Timestamp) ||
+      strings.some((v) => typeof v !== "string")
+    ) {
+      continue;
+    }
+    docs.push({
       site: data.site,
       path: data.path,
       ref: data.ref,
@@ -83,7 +102,7 @@ export async function fetchPageviews(
       tz: data.tz,
       vid: data.vid,
       ts: data.ts.toDate(),
-    } as PageviewDoc;
-  });
+    });
+  }
   return { docs, truncated: snapshot.size >= max };
 }

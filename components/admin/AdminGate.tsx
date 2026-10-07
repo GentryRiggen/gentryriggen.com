@@ -42,7 +42,8 @@ export default function AdminGate() {
         setState({ kind: "admin", email: user.email ?? "" });
       } else {
         setState({ kind: "denied", email: user.email ?? "unknown account" });
-        void signOutUser();
+        // Best effort: a failed sign-out must not become an unhandled rejection.
+        signOutUser().catch(() => {});
       }
     }).then((stop) => {
       if (cancelled) stop();

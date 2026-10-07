@@ -81,7 +81,7 @@ jest.rules.config.js
 - [ ] **Step 3:** Authentication → Settings → Authorized domains → add `gentryriggen.com` (and `www.gentryriggen.com` if it serves the site). `localhost` is there by default.
 - [ ] **Step 4:** Project settings → Your apps → Add app → Web → register. Copy the `firebaseConfig` object (apiKey, authDomain, projectId, appId, and optionally storageBucket, messagingSenderId). These values are public by design.
 - [ ] **Step 5:** Google Cloud console → IAM → find the service account stored in the GitHub secret `FIREBASE_SERVICE_ACCOUNT` → add the role **Firebase Rules Admin** (needed so CI can run `firebase deploy --only firestore:rules`). Also confirm the Cloud Firestore API is enabled.
-- [ ] **Step 6 (optional hardening):** Cloud console → APIs & Services → Credentials → the browser API key → Application restrictions → HTTP referrers: `https://gentryriggen.com/*`, `https://www.gentryriggen.com/*`, `http://localhost:3000/*`. Test sign-in and a pageview afterwards; if something breaks, loosen it.
+- [ ] **Step 6 (recommended hardening):** Cloud console → APIs & Services → Credentials → the browser API key → Application restrictions → HTTP referrers: `https://gentryriggen.com/*`, `https://www.gentryriggen.com/*`, `http://localhost:3000/*`. Test sign-in and a pageview afterwards; if something breaks, loosen it. Also set a Cloud Billing budget alert. The API key is public and writes are unauthenticated, so anyone can spam valid-shaped events, and Firestore rules cannot rate limit.
 
 Hand the config object to the implementer for Task 9 (or paste it into `lib/firebase/config.ts` yourself).
 

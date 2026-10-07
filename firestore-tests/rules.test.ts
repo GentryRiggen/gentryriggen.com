@@ -8,12 +8,15 @@ import {
 import {
   addDoc,
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { buildCommitBody, commitUrl, sendPageview } from "@/lib/analytics/send";
 import type { PageviewEvent } from "@/lib/analytics/types";
@@ -34,6 +37,17 @@ const valid: PageviewEvent = {
   tz: "America/Denver",
   vid: "0123456789abcdef",
 };
+
+const homeEvent: PageviewEvent = { ...valid, site: "home", path: "/" };
+
+const config = {
+  apiKey: "emulator",
+  authDomain: "x",
+  projectId: PROJECT_ID,
+  appId: "x",
+};
+const baseUrl = `http://${HOST}:${PORT}`;
+const ADMIN_EMAIL = "gentry.riggen@gmail.com";
 
 let env: RulesTestEnvironment;
 
@@ -56,14 +70,39 @@ beforeEach(async () => {
   await env.clearFirestore();
 });
 
-const anon = () => env.unauthenticatedContext().firestore();
-const admin = () =>
-  env
-    .authenticatedContext("admin-uid", {
-      email: "gentry.riggen@gmail.com",
-      email_verified: true,
+/**
+ * Firestore client for a signed-in user. The token carries the same
+ * `firebase.sign_in_provider` claim a real Firebase ID token has.
+ */
+function signedIn(
+  email: string,
+  opts: {
+    verified?: boolean;
+    provider?: "google.com" | "password" | "anonymous";
+  } = {}
+) {
+  const { verified, provider = "google.com" } = opts;
+  return env
+    .authenticatedContext("uid-" + email, {
+      email,
+      ...("verified" in opts
+        ? verified === undefined
+          ? {}
+          : { email_verified: verified }
+        : { email_verified: true }),
+      firebase: { sign_in_provider: provider },
     })
     .firestore();
+}
+
+const anon = () => env.unauthenticatedContext().firestore();
+const admin = () => signedIn(ADMIN_EMAIL);
+
+const stamped = (patch: Record<string, unknown> = {}) => ({
+  ...valid,
+  ts: serverTimestamp(),
+  ...patch,
+});
 
 async function seed() {
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -74,72 +113,131 @@ async function seed() {
   });
 }
 
+async function rest(docId: string, event: unknown, precondition = true) {
+  const body = buildCommitBody(PROJECT_ID, docId, event as PageviewEvent);
+  if (!precondition) {
+    delete (body.writes[0] as { currentDocument?: unknown }).currentDocument;
+  }
+  return fetch(commitUrl(config, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 describe("create", () => {
   it("allows a valid pageview from anyone (SDK)", async () => {
+    await assertSucceeds(addDoc(collection(anon(), "pageviews"), stamped()));
+  });
+
+  it.each([
+    ["a home event", { site: "home", path: "/" }],
+    ["a ship-builder subpath", { path: "/ship-builder/versions" }],
+  ])("allows %s", async (_label, patch) => {
     await assertSucceeds(
-      addDoc(collection(anon(), "pageviews"), {
-        ...valid,
-        ts: serverTimestamp(),
-      })
+      addDoc(collection(anon(), "pageviews"), stamped(patch))
     );
   });
 
   it("allows the exact REST request the tracker sends", async () => {
-    const ok = await sendPageview(valid, {
-      config: {
-        apiKey: "emulator",
-        authDomain: "x",
-        projectId: PROJECT_ID,
-        appId: "x",
-      },
-      baseUrl: `http://${HOST}:${PORT}`,
-    });
+    const before = Date.now();
+    const ok = await sendPageview(valid, { config, baseUrl });
     expect(ok).toBe(true);
     await env.withSecurityRulesDisabled(async (ctx) => {
       const snap = await getDocs(collection(ctx.firestore(), "pageviews"));
       expect(snap.size).toBe(1);
-      expect(snap.docs[0].data().ts).toBeDefined();
+      const ts = snap.docs[0].data().ts;
+      expect(typeof ts.toMillis).toBe("function");
+      expect(Math.abs(ts.toMillis() - before)).toBeLessThan(10_000);
     });
   });
 
-  it("rejects an invalid REST request too", async () => {
-    const config = {
-      apiKey: "emulator",
-      authDomain: "x",
-      projectId: PROJECT_ID,
-      appId: "x",
-    };
-    const body = buildCommitBody(PROJECT_ID, "bad1", {
-      ...valid,
-      extra: "nope",
-    } as PageviewEvent);
-    const response = await fetch(commitUrl(config, `http://${HOST}:${PORT}`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+  it("allows the REST request for a home event", async () => {
+    expect(await sendPageview(homeEvent, { config, baseUrl })).toBe(true);
+  });
+
+  it("rejects an invalid REST request with 403 PERMISSION_DENIED", async () => {
+    const response = await rest("bad1", { ...valid, extra: "nope" });
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain("PERMISSION_DENIED");
+  });
+
+  it("rejects a REST overwrite of an existing id (no precondition)", async () => {
+    await seed();
+    const response = await rest(
+      "seed",
+      { ...valid, path: "/ship-builder/x" },
+      false
+    );
+    expect(response.status).toBe(403);
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const snap = await getDoc(doc(ctx.firestore(), "pageviews/seed"));
+      expect(snap.data()?.path).toBe(valid.path);
     });
-    expect(response.ok).toBe(false);
   });
 
   const reject: [string, Record<string, unknown>][] = [
     ["an extra field", { extra: "x" }],
     ["a client-supplied timestamp", { ts: new Date() }],
+    ["a null timestamp", { ts: null }],
+    ["a string timestamp", { ts: "now" }],
     ["an unknown site", { site: "blog" }],
     ["an unknown device", { device: "fridge" }],
     ["an unknown screen bucket", { screen: "huge" }],
     ["an empty path", { path: "" }],
-    ["an oversized path", { path: "/" + "a".repeat(250) }],
-    ["an oversized referrer", { ref: "a".repeat(101) }],
+    ["a path not starting with a slash", { site: "home", path: "x" }],
+    ["home with a ship-builder path", { site: "home", path: "/ship-builder" }],
+    ["ship-builder with the home path", { site: "ship-builder", path: "/" }],
+    ["a ship-builder lookalike path", { path: "/ship-builderx" }],
+    ["an oversized path", { path: "/ship-builder/" + "a".repeat(250) }],
     ["a short visitor id", { vid: "short" }],
+    ["an empty browser", { browser: "" }],
+    ["an empty os", { os: "" }],
     ["a non-string path", { path: 42 }],
+    ["site as a list", { site: ["home"] }],
+    ["site as a map", { site: { a: "home" } }],
+    ["site as null", { site: null }],
+    ["device as a number", { device: 1 }],
+    ["screen as a number", { screen: 1 }],
+    ["ref as a number", { ref: 1 }],
+    ["tz as a number", { tz: 1 }],
+    ["vid as a number", { vid: 12345678 }],
+    ["browser as a list", { browser: ["Chrome"] }],
+    ["os as a map", { os: { a: "b" } }],
   ];
   it.each(reject)("rejects %s", async (_label, patch) => {
+    await assertFails(addDoc(collection(anon(), "pageviews"), stamped(patch)));
+  });
+
+  const lengths: [string, Record<string, unknown>, boolean][] = [
+    ["path 200", { path: "/ship-builder/" + "a".repeat(186) }, true],
+    ["path 201", { path: "/ship-builder/" + "a".repeat(187) }, false],
+    ["ref 100", { ref: "a".repeat(100) }, true],
+    ["ref 101", { ref: "a".repeat(101) }, false],
+    ["empty ref", { ref: "" }, true],
+    ["browser 30", { browser: "a".repeat(30) }, true],
+    ["browser 31", { browser: "a".repeat(31) }, false],
+    ["os 30", { os: "a".repeat(30) }, true],
+    ["os 31", { os: "a".repeat(31) }, false],
+    ["tz 64", { tz: "a".repeat(64) }, true],
+    ["tz 65", { tz: "a".repeat(65) }, false],
+    ["empty tz", { tz: "" }, true],
+    ["vid 8", { vid: "a".repeat(8) }, true],
+    ["vid 7", { vid: "a".repeat(7) }, false],
+    ["vid 64", { vid: "a".repeat(64) }, true],
+    ["vid 65", { vid: "a".repeat(65) }, false],
+  ];
+  it.each(lengths)("length boundary: %s", async (_label, patch, accepted) => {
+    const write = addDoc(collection(anon(), "pageviews"), stamped(patch));
+    await (accepted ? assertSucceeds(write) : assertFails(write));
+  });
+
+  it("accepts a 64-char doc id and rejects 65", async () => {
+    await assertSucceeds(
+      setDoc(doc(anon(), "pageviews/" + "a".repeat(64)), stamped())
+    );
     await assertFails(
-      addDoc(collection(anon(), "pageviews"), {
-        ...valid,
-        ts: serverTimestamp(),
-        ...patch,
-      })
+      setDoc(doc(anon(), "pageviews/" + "a".repeat(65)), stamped())
     );
   });
 
@@ -155,8 +253,37 @@ describe("create", () => {
   });
 
   it("rejects writes to any other collection", async () => {
-    await assertFails(
-      addDoc(collection(anon(), "other"), { ...valid, ts: serverTimestamp() })
+    await assertFails(addDoc(collection(anon(), "other"), stamped()));
+  });
+
+  it("rejects a valid write to a subcollection of pageviews", async () => {
+    await assertFails(setDoc(doc(anon(), "pageviews/x/sub/y"), stamped()));
+  });
+
+  it("rejects overwriting an existing id as anonymous", async () => {
+    await seed();
+    await assertFails(setDoc(doc(anon(), "pageviews/seed"), stamped()));
+  });
+
+  it("rejects a batch of one valid and one invalid create, writing neither", async () => {
+    const db = anon();
+    const batch = writeBatch(db);
+    batch.set(doc(db, "pageviews/good"), stamped());
+    batch.set(doc(db, "pageviews/bad"), stamped({ extra: "x" }));
+    await assertFails(batch.commit());
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const snap = await getDocs(collection(ctx.firestore(), "pageviews"));
+      expect(snap.size).toBe(0);
+    });
+  });
+
+  // Intended: creating is open to everyone, signed in or not.
+  it("allows a signed-in non-admin to create", async () => {
+    await assertSucceeds(
+      addDoc(
+        collection(signedIn("someone.else@gmail.com"), "pageviews"),
+        stamped()
+      )
     );
   });
 });
@@ -164,32 +291,45 @@ describe("create", () => {
 describe("read", () => {
   beforeEach(seed);
 
-  it("rejects anonymous reads", async () => {
-    await assertFails(getDocs(collection(anon(), "pageviews")));
-  });
-
-  it("rejects other signed-in accounts", async () => {
-    const other = env
-      .authenticatedContext("u2", {
-        email: "someone.else@gmail.com",
-        email_verified: true,
-      })
-      .firestore();
-    await assertFails(getDocs(collection(other, "pageviews")));
-  });
-
-  it("rejects the admin email when it is not verified", async () => {
-    const unverified = env
-      .authenticatedContext("u3", {
-        email: "gentry.riggen@gmail.com",
-        email_verified: false,
-      })
-      .firestore();
-    await assertFails(getDocs(collection(unverified, "pageviews")));
-  });
-
-  it("allows the verified admin", async () => {
+  it("allows the verified Google admin", async () => {
     await assertSucceeds(getDocs(collection(admin(), "pageviews")));
+    await assertSucceeds(getDoc(doc(admin(), "pageviews/seed")));
+  });
+
+  const denied: [string, () => ReturnType<typeof anon>][] = [
+    ["anonymous", () => anon()],
+    ["another signed-in account", () => signedIn("someone.else@gmail.com")],
+    [
+      "the admin email, unverified",
+      () => signedIn(ADMIN_EMAIL, { verified: false }),
+    ],
+    [
+      "the admin email, email_verified missing",
+      () => signedIn(ADMIN_EMAIL, { verified: undefined }),
+    ],
+    [
+      "the admin email in a different case",
+      () => signedIn("Gentry.Riggen@gmail.com"),
+    ],
+    [
+      "the admin email via password sign-in",
+      () => signedIn(ADMIN_EMAIL, { provider: "password" }),
+    ],
+    [
+      "the admin email via anonymous sign-in",
+      () => signedIn(ADMIN_EMAIL, { provider: "anonymous" }),
+    ],
+  ];
+  it.each(denied)("rejects list for %s", async (_label, client) => {
+    await assertFails(getDocs(collection(client(), "pageviews")));
+  });
+  it.each(denied)("rejects single get for %s", async (_label, client) => {
+    await assertFails(getDoc(doc(client(), "pageviews/seed")));
+  });
+
+  it("rejects collection-group queries, even for the admin", async () => {
+    await assertFails(getDocs(collectionGroup(admin(), "pageviews")));
+    await assertFails(getDocs(collectionGroup(anon(), "pageviews")));
   });
 });
 
