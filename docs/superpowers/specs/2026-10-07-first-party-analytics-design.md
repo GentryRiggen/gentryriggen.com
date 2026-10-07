@@ -26,8 +26,9 @@ including a map of where visitors are.
 ## Collection
 
 `AnalyticsTracker` (client component in the root layout) fires once per route
-change via `usePathname`. It lazy-loads the Firebase SDK after the page is
-idle so the terminal boot sequence and Ship Builder are not slowed.
+change via `usePathname`. It sends each view to the Firestore REST API
+(`documents:commit`, unauthenticated), so public pages ship no Firebase SDK.
+The SDK loads only on `/admin`.
 
 Skip conditions: `localhost`, non-production build, path under `/admin`, admin
 flag set, `navigator.webdriver`, bot-like user agent.
@@ -85,15 +86,18 @@ Tabs: Overview, Home (`/`), Ship Builder. Range picker: 7, 30, 90 days.
 
 Each tab shows:
 
-- Totals: views and unique visitors, with change versus the previous period.
+- Totals: views and daily visitors, with change versus the previous period.
+  Visitors are daily-unique: the visitor id rotates each UTC day, so one person
+  on two days counts twice.
 - Time series: views and uniques per day.
 - Breakdowns: top paths, referrers, device, browser, OS, screen.
 - Map: world map with dots sized by visitors, by timezone region.
 
 Overview shows the two sites side by side. Ship Builder also has a per-path
-table. Aggregation runs in the browser over raw docs for the selected range,
-with Firestore `count()` for totals. Daily rollup docs are deliberately out of
-scope until read volume demands them.
+table. Aggregation runs in the browser over raw docs for the selected range.
+Docs are queried by `ts` only and `site` is filtered in the browser, so no
+composite index is needed and totals come from the fetched docs. Daily rollup
+docs are deliberately out of scope until read volume demands them.
 
 Charts are plain SVG, with no charting library, styled with Tailwind in light
 and dark mode. The world outline asset and the timezone-to-coordinates table
@@ -103,12 +107,12 @@ load only on `/admin`.
 
 - `lib/analytics/`: pure, unit-tested logic (event building, UA and bot
   parsing, daily visitor id, aggregation, tz to coordinates).
-- `lib/firebase/`: SDK init and lazy loading.
+- `lib/firebase/`: web config, and the lazily loaded SDK client used by
+  `/admin` only.
 - `components/analytics/AnalyticsTracker.tsx`
 - `components/admin/`: dashboard components.
 - `app/admin/page.tsx`
-- `firestore.rules`, `firestore.indexes.json`; `firebase.json` updated so CI
-  deploys rules and indexes.
+- `firestore.rules`; `firebase.json` updated, and CI deploys the rules.
 
 ## Testing
 
