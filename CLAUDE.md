@@ -12,7 +12,7 @@ npm run format           # Prettier (write)
 npm run format:check     # Prettier (check)
 npm run type-check       # TypeScript --noEmit
 npm test                 # Jest unit tests
-npm test -- --testPathPattern=ComponentName  # Run single test file
+npm test -- --testPathPatterns=ComponentName  # Run single test file
 npm run test:watch       # Jest watch mode
 npm run test:e2e         # Playwright E2E tests (auto-starts dev server)
 npm run test:e2e:ui      # Playwright UI mode

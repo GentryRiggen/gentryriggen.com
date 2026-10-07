@@ -21,7 +21,7 @@ Two refinements discovered while planning; both are simplifications:
 
 - Run `npx prettier --write <files>` before every commit. The lefthook pre-commit runs eslint, `prettier --check` and `tsc --noEmit`, and rejects unformatted files.
 - `export default function` for components, `interface` for props, Tailwind only (no inline styles, every element works in light and dark), `"use client"` only where needed.
-- Unit tests live in `__tests__/` beside the code. Run one with `npm test -- --testPathPattern=<name>`.
+- Unit tests live in `__tests__/` beside the code. Run one with `npm test -- --testPathPatterns=<name>`.
 - Next.js 16 differs from older versions. Before using `usePathname` or the metadata API, skim `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/use-pathname.md`.
 - Firebase JS SDK is on a new major (13). If an import or signature in this plan doesn't type-check, check the installed package's types or Context7 before improvising. The modular API (`firebase/app`, `firebase/auth`, `firebase/firestore`) is expected to be unchanged.
 - ESLint's `react-hooks` rules forbid synchronous `setState` in effects. The code below only sets state inside async callbacks or initializers; keep it that way.
@@ -104,7 +104,7 @@ Hand the config object to the implementer for Task 9 (or paste it into `lib/fire
 - [ ] `isFirebaseConfigured()` is false while `apiKey`/`projectId` are empty
 - [ ] Spec reflects the two amendments above
 
-**Verify:** `npm test -- --testPathPattern=config && npm run type-check` → PASS
+**Verify:** `npm test -- --testPathPatterns=config && npm run type-check` → PASS
 
 **Steps:**
 
@@ -144,7 +144,7 @@ describe("isFirebaseConfigured", () => {
 
 - [ ] **Step 3: Run it, expect FAIL** (`Cannot find module '../config'`)
 
-Run: `npm test -- --testPathPattern=config`
+Run: `npm test -- --testPathPatterns=config`
 
 - [ ] **Step 4: Create `lib/firebase/config.ts`**
 
@@ -213,7 +213,7 @@ export interface PageviewDoc extends PageviewEvent {
 - [ ] **Step 7: Verify, format, commit**
 
 ```bash
-npm test -- --testPathPattern=config && npm run type-check
+npm test -- --testPathPatterns=config && npm run type-check
 npx prettier --write lib docs/superpowers/specs
 git add -A && git commit -m "feat(analytics): add firebase config scaffold, types and deps"
 ```
@@ -238,7 +238,7 @@ git add -A && git commit -m "feat(analytics): add firebase config scaffold, type
 - [ ] `ref` is recorded only for the first view of a page load and never for same-host referrers
 - [ ] `buildCommitBody` yields a Firestore `commit` payload with `ts` as a REQUEST_TIME transform and a create-only precondition
 
-**Verify:** `npm test -- --testPathPattern=lib/analytics` → all PASS
+**Verify:** `npm test -- --testPathPatterns=lib/analytics` → all PASS
 
 **Steps:**
 
@@ -620,7 +620,7 @@ describe("sendPageview", () => {
 
 - [ ] **Step 2: Run, expect FAIL** (modules not found)
 
-Run: `npm test -- --testPathPattern=lib/analytics`
+Run: `npm test -- --testPathPatterns=lib/analytics`
 
 - [ ] **Step 3: Implement**
 
@@ -949,7 +949,7 @@ export async function sendPageview(
 - [ ] **Step 4: Run, expect PASS; format; commit**
 
 ```bash
-npm test -- --testPathPattern=lib/analytics && npm run type-check
+npm test -- --testPathPatterns=lib/analytics && npm run type-check
 npx prettier --write lib
 git add -A && git commit -m "feat(analytics): pageview event building and Firestore REST sender"
 ```
@@ -1322,7 +1322,7 @@ git add -A && git commit -m "feat(analytics): firestore rules with emulator test
 - [ ] When `buildPageview` returns null nothing is sent
 - [ ] The tracker renders nothing
 
-**Verify:** `npm test -- --testPathPattern=AnalyticsTracker` → PASS
+**Verify:** `npm test -- --testPathPatterns=AnalyticsTracker` → PASS
 
 **Steps:**
 
@@ -1428,7 +1428,7 @@ export default function AnalyticsTracker() {
 - [ ] **Step 5: Verify, format, commit**
 
 ```bash
-npm test -- --testPathPattern="AnalyticsTracker|app/__tests__" && npm run type-check
+npm test -- --testPathPatterns="AnalyticsTracker|app/__tests__" && npm run type-check
 npx prettier --write components app
 git add -A && git commit -m "feat(analytics): track pageviews from the root layout"
 ```
@@ -1455,7 +1455,7 @@ git add -A && git commit -m "feat(analytics): track pageviews from the root layo
 - [ ] `places` groups by timezone
 - [ ] `pctChange` is null when the previous value is 0
 
-**Verify:** `npm test -- --testPathPattern=aggregate` → PASS
+**Verify:** `npm test -- --testPathPatterns=aggregate` → PASS
 
 **Steps:**
 
@@ -1735,7 +1735,7 @@ export function pctChange(current: number, previous: number): number | null {
 - [ ] **Step 4: Verify, format, commit**
 
 ```bash
-npm test -- --testPathPattern=aggregate && npm run type-check
+npm test -- --testPathPatterns=aggregate && npm run type-check
 npx prettier --write lib
 git add -A && git commit -m "feat(analytics): aggregate pageviews into dashboard summaries"
 ```
@@ -1759,7 +1759,7 @@ git add -A && git commit -m "feat(analytics): aggregate pageviews into dashboard
 - [ ] `geometryPath` turns Polygon and MultiPolygon coordinates into a compact SVG path
 - [ ] `landPath` converts a TopoJSON topology to a path string
 
-**Verify:** `npm test -- --testPathPattern=geo` → PASS
+**Verify:** `npm test -- --testPathPatterns=geo` → PASS
 
 **Steps:**
 
@@ -2106,7 +2106,7 @@ export function landPath(topology: Topology): string {
 - [ ] **Step 4: Verify, format, commit.** If `feature(...)` typing complains about `topology.objects.land`, cast it to the `GeometryCollection | GeometryObject` type from `topojson-specification` rather than using `any`.
 
 ```bash
-npm test -- --testPathPattern=geo && npm run type-check
+npm test -- --testPathPatterns=geo && npm run type-check
 npx prettier --write lib
 git add -A && git commit -m "feat(analytics): timezone to map coordinates and land outline"
 ```
@@ -2132,7 +2132,7 @@ git add -A && git commit -m "feat(analytics): timezone to map coordinates and la
 - [ ] A verified admin sees the dashboard and the exclude-own-traffic flag is set in localStorage
 - [ ] `/admin` is `noindex` and disallowed in `robots.txt`, absent from the sitemap
 
-**Verify:** `npm test -- --testPathPattern="admin|robots" && npm run type-check` → PASS
+**Verify:** `npm test -- --testPathPatterns="admin|robots" && npm run type-check` → PASS
 
 **Steps:**
 
@@ -2572,7 +2572,7 @@ export default function AdminPage() {
 - [ ] **Step 4: Run unit tests, expect PASS; run the e2e spec**
 
 ```bash
-npm test -- --testPathPattern="admin|robots" && npm run type-check
+npm test -- --testPathPatterns="admin|robots" && npm run type-check
 npx playwright test e2e/admin.spec.ts --project=chromium
 ```
 
@@ -2606,7 +2606,7 @@ git add -A && git commit -m "feat(admin): google sign-in gate restricted to the 
 - [ ] Loading, error, empty-range and truncated-data states are visible
 - [ ] Works in light and dark mode and at phone width
 
-**Verify:** `npm test -- --testPathPattern=Dashboard && npm run type-check && npm run lint` → PASS
+**Verify:** `npm test -- --testPathPatterns=Dashboard && npm run type-check && npm run lint` → PASS
 
 **Steps:**
 
@@ -3145,7 +3145,7 @@ export default function Dashboard() {
 - [ ] **Step 4: Run tests, type-check and lint.** Fix lint findings properly (e.g. if `react-hooks` flags the `useMemo` for `now`, derive `now` inside the `summaries` memo from a timestamp stored in `Loaded` instead).
 
 ```bash
-npm test -- --testPathPattern="Dashboard|AdminGate" && npm run type-check && npm run lint
+npm test -- --testPathPatterns="Dashboard|AdminGate" && npm run type-check && npm run lint
 ```
 
 - [ ] **Step 5: Look at it.** Run `npm run dev`, open `/admin`; with a mocked or real signed-in session confirm layout at 375px and 1280px in light and dark. (Real data needs Task 9. A quick visual check can use the Dashboard test fixtures via a temporary story-less page; do not commit that.)
