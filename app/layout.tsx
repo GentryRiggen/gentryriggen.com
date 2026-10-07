@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({
@@ -139,6 +140,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <AnalyticsTracker />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
