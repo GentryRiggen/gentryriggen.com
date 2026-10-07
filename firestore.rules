@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Keep in sync with ADMIN_EMAIL in lib/analytics/admin.ts.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == "gentry.riggen@gmail.com"
+        && request.auth.token.email_verified == true;
+    }
+
+    function validPageview() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
+        && d.keys().hasAll(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
+        && d.ts == request.time
+        && d.site in ['home', 'ship-builder']
+        && d.path is string && d.path.size() > 0 && d.path.size() <= 200
+        && d.ref is string && d.ref.size() <= 100
+        && d.device in ['mobile', 'tablet', 'desktop']
+        && d.browser is string && d.browser.size() > 0 && d.browser.size() <= 30
+        && d.os is string && d.os.size() > 0 && d.os.size() <= 30
+        && d.screen in ['<640', '640-1023', '1024-1439', '1440+']
+        && d.tz is string && d.tz.size() <= 64
+        && d.vid is string && d.vid.size() >= 8 && d.vid.size() <= 64;
+    }
+
+    match /pageviews/{id} {
+      allow read: if isAdmin();
+      allow create: if validPageview();
+      allow update, delete: if false;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

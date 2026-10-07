@@ -76,6 +76,15 @@ jobs:
       - name: 🧪 Unit tests
         run: npm test
 
+      - name: ☕ Setup Java (Firestore emulator)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: 🔐 Firestore rules tests
+        run: npm run test:rules
+
       # Built here, beside the e2e jobs, so deploying does not wait on (or pay
       # for) a separate build job.
       - name: 🏗️ Build
