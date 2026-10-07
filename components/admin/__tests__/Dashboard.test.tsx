@@ -72,10 +72,45 @@ it("refetches when the range changes", async () => {
   );
 });
 
-it("shows an error when loading fails", async () => {
-  mockClient.fetchPageviews.mockRejectedValue(new Error("permission-denied"));
-  render(<Dashboard />);
-  expect(await screen.findByRole("alert")).toHaveTextContent(/couldn.t load/i);
+describe("when loading fails", () => {
+  let consoleError: jest.SpyInstance;
+  beforeEach(() => {
+    consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => consoleError.mockRestore());
+
+  it("shows the Firebase error code and logs the error", async () => {
+    const failure = Object.assign(
+      new Error("Missing or insufficient permissions."),
+      {
+        code: "permission-denied",
+      }
+    );
+    mockClient.fetchPageviews.mockRejectedValue(failure);
+    render(<Dashboard />);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      /couldn.t load analytics \(permission-denied\)/i
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to load analytics",
+      failure
+    );
+  });
+
+  it("falls back to the message, then to a generic reason", async () => {
+    mockClient.fetchPageviews.mockRejectedValueOnce(new Error("network down"));
+    const { unmount } = render(<Dashboard />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "(network down)"
+    );
+    unmount();
+    mockClient.fetchPageviews.mockRejectedValueOnce("boom");
+    render(<Dashboard />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "(unknown error)"
+    );
+  });
 });
 
 it("warns when the data was truncated and hides the change figures", async () => {

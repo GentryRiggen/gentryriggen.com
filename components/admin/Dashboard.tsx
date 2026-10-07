@@ -17,11 +17,22 @@ const TABS: { id: Tab; label: string }[] = [
 const RANGES: Range[] = [7, 30, 90];
 const DAY_MS = 86_400_000;
 
+/** A short, safe-to-show reason for a failed load (this page is admin-only). */
+function describeError(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const { code, message } = error as { code?: unknown; message?: unknown };
+    if (typeof code === "string") return code;
+    if (typeof message === "string") return message.slice(0, 200);
+  }
+  return "unknown error";
+}
+
 interface Loaded {
   days: Range;
   docs: PageviewDoc[];
   truncated: boolean;
-  error: boolean;
+  /** Why loading failed (Firebase error code or message), else null. */
+  error: string | null;
   /** When the data was fetched; the summary windows end on this day. */
   at: Date;
 }
@@ -38,16 +49,17 @@ export default function Dashboard() {
     fetchPageviews(since)
       .then((result) => {
         if (!cancelled) {
-          setLoaded({ days, ...result, error: false, at: new Date() });
+          setLoaded({ days, ...result, error: null, at: new Date() });
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        console.error("Failed to load analytics", error);
         if (!cancelled) {
           setLoaded({
             days,
             docs: [],
             truncated: false,
-            error: true,
+            error: describeError(error),
             at: new Date(),
           });
         }
@@ -115,8 +127,8 @@ export default function Dashboard() {
       {!current && <p className="text-gray-600 dark:text-gray-400">Loading…</p>}
       {current?.error && (
         <p role="alert" className="text-red-600 dark:text-red-400">
-          Couldn&apos;t load analytics. Check that you are signed in as the
-          admin and that Firestore is set up.
+          Couldn&apos;t load analytics ({current.error}). Check that you are
+          signed in as the admin and that Firestore is set up.
         </p>
       )}
       {current?.truncated && (
