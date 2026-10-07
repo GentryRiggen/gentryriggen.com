@@ -1,4 +1,7 @@
-import { fetchPageviews } from "../client";
+import { FIRESTORE_MAX_LIMIT, MAX_DOCS, fetchPageviews } from "../client";
+
+// Read lazily: the firebase/firestore mock below only loads on first call.
+const mockLimit = jest.fn((n: number) => ({ n }));
 
 const good = {
   site: "home",
@@ -34,7 +37,7 @@ jest.mock("firebase/firestore", () => {
     collection: () => ({}),
     where: () => ({}),
     orderBy: () => ({}),
-    limit: () => ({}),
+    limit: (n: number) => mockLimit(n),
     query: () => ({}),
     getDocs: async () => {
       const docs = [
@@ -53,4 +56,14 @@ it("returns only well-formed docs and computes truncated from the raw size", asy
   expect(result.docs[0].ts).toEqual(new Date(1000));
   expect(result.docs[0].path).toBe("/");
   expect(result.truncated).toBe(true);
+});
+
+describe("query limit", () => {
+  it("never asks Firestore for more than its 10,000 document maximum", async () => {
+    mockLimit.mockClear();
+    await fetchPageviews(0);
+    expect(MAX_DOCS).toBeLessThanOrEqual(FIRESTORE_MAX_LIMIT);
+    const [requested] = mockLimit.mock.calls[0] as unknown as [number];
+    expect(requested).toBeLessThanOrEqual(FIRESTORE_MAX_LIMIT);
+  });
 });

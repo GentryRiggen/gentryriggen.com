@@ -9,7 +9,9 @@ export interface AuthUser {
   email: string | null;
 }
 
-export const MAX_DOCS = 20_000;
+/** Firestore rejects any query `limit` above 10,000, so that is the ceiling. */
+export const FIRESTORE_MAX_LIMIT = 10_000;
+export const MAX_DOCS = FIRESTORE_MAX_LIMIT;
 
 let appPromise: Promise<FirebaseApp> | null = null;
 
