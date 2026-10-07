@@ -1,4 +1,4 @@
-import { getVisitorId, utcDay } from "../visitor";
+import { getVisitorId, resetVisitorMemory, utcDay } from "../visitor";
 import { isExcluded, setExcluded } from "../exclude";
 
 function fakeStorage(initial: Record<string, string> = {}) {
@@ -13,6 +13,8 @@ function fakeStorage(initial: Record<string, string> = {}) {
 }
 
 describe("getVisitorId", () => {
+  beforeEach(resetVisitorMemory);
+
   const day1 = new Date("2026-10-07T01:00:00Z");
   const day1Late = new Date("2026-10-07T23:59:00Z");
   const day2 = new Date("2026-10-08T00:01:00Z");
@@ -40,6 +42,19 @@ describe("getVisitorId", () => {
       },
     };
     expect(getVisitorId(broken, day1).length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("keeps one id per day across calls when storage is blocked", () => {
+    const first = getVisitorId(null, day1);
+    expect(getVisitorId(null, day1Late)).toBe(first);
+    const broken = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("denied");
+      },
+    };
+    expect(getVisitorId(broken, day1)).toBe(first);
+    expect(getVisitorId(null, day2)).not.toBe(first);
   });
 
   it("ignores corrupt stored values", () => {

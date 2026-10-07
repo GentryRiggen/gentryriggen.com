@@ -78,10 +78,23 @@ it("shows an error when loading fails", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(/couldn.t load/i);
 });
 
-it("warns when the data was truncated", async () => {
-  mockClient.fetchPageviews.mockResolvedValue({ docs: [], truncated: true });
+it("warns when the data was truncated and hides the change figures", async () => {
+  mockClient.fetchPageviews.mockResolvedValue({
+    docs: [view({ vid: "a" })],
+    truncated: true,
+  });
   render(<Dashboard />);
   expect(
     await screen.findByText(/older views are missing/i)
   ).toBeInTheDocument();
+  expect(
+    within(screen.getByTestId("stat-views")).getByText(/change unavailable/i)
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/vs previous period/i)).not.toBeInTheDocument();
+});
+
+it("shows the change figures when the data is complete", async () => {
+  render(<Dashboard />);
+  const views = await screen.findByTestId("stat-views");
+  expect(within(views).queryByText(/change unavailable/i)).toBeNull();
 });

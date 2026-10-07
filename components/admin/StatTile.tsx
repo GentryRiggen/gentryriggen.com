@@ -3,7 +3,8 @@ import { pctChange } from "@/lib/analytics/aggregate";
 interface StatTileProps {
   label: string;
   value: number;
-  previous: number;
+  /** Null when the previous period can't be compared (e.g. truncated data). */
+  previous: number | null;
   testId?: string;
 }
 
@@ -13,7 +14,7 @@ export default function StatTile({
   previous,
   testId,
 }: StatTileProps) {
-  const change = pctChange(value, previous);
+  const change = previous === null ? null : pctChange(value, previous);
   return (
     <div
       data-testid={testId}
@@ -32,9 +33,11 @@ export default function StatTile({
               : "mt-1 text-sm text-red-600 dark:text-red-400"
         }
       >
-        {change === null
-          ? "no prior data"
-          : `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs previous period`}
+        {previous === null
+          ? "change unavailable"
+          : change === null
+            ? "no prior data"
+            : `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs previous period`}
       </div>
     </div>
   );

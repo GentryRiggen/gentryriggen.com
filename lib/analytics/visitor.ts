@@ -6,6 +6,15 @@ export function utcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+// Fallback when storage is blocked: keeps one id per day for the whole page
+// session, since the tracker asks for the id again on every route change.
+let memoryId: { d: string; id: string } | null = null;
+
+/** Test hook: forget the in-memory fallback id. */
+export function resetVisitorMemory(): void {
+  memoryId = null;
+}
+
 function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -37,11 +46,14 @@ export function getVisitorId(
   } catch {
     // Corrupt or unreadable value: fall through and mint a new id.
   }
+  if (memoryId?.d === day) return memoryId.id;
   const id = newId();
   try {
-    storage?.setItem(KEY, JSON.stringify({ d: day, id }));
+    if (!storage) throw new Error("no storage");
+    storage.setItem(KEY, JSON.stringify({ d: day, id }));
   } catch {
-    // Storage blocked: the id lasts for this page load only.
+    // Storage blocked: remember the id in memory so it lasts until a reload.
+    memoryId = { d: day, id };
   }
   return id;
 }

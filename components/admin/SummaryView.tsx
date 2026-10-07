@@ -4,7 +4,16 @@ import StatTile from "./StatTile";
 import TimeSeriesChart from "./TimeSeriesChart";
 import VisitorMap from "./VisitorMap";
 
-export default function SummaryView({ summary }: { summary: Summary }) {
+interface SummaryViewProps {
+  summary: Summary;
+  /** False when the data was truncated: the previous period is incomplete. */
+  comparable?: boolean;
+}
+
+export default function SummaryView({
+  summary,
+  comparable = true,
+}: SummaryViewProps) {
   const { totals, previous, series, breakdowns, places } = summary;
   return (
     <div className="space-y-4">
@@ -12,13 +21,13 @@ export default function SummaryView({ summary }: { summary: Summary }) {
         <StatTile
           label="Views"
           value={totals.views}
-          previous={previous.views}
+          previous={comparable ? previous.views : null}
           testId="stat-views"
         />
         <StatTile
           label="Daily visitors"
           value={totals.visitors}
-          previous={previous.visitors}
+          previous={comparable ? previous.visitors : null}
           testId="stat-visitors"
         />
       </div>

@@ -121,7 +121,8 @@ export default function Dashboard() {
       )}
       {current?.truncated && (
         <p className="text-amber-700 dark:text-amber-400">
-          Showing the newest views only; older views are missing for this range.
+          Showing the newest views only; older views are missing for this range,
+          so the change figures are hidden.
         </p>
       )}
       {summaries && tab === "overview" && (
@@ -145,11 +146,17 @@ export default function Dashboard() {
               </section>
             ))}
           </div>
-          <SummaryView summary={summaries.all} />
+          <SummaryView
+            summary={summaries.all}
+            comparable={!current?.truncated}
+          />
         </div>
       )}
       {summaries && tab !== "overview" && (
-        <SummaryView summary={summaries[tab]} />
+        <SummaryView
+          summary={summaries[tab]}
+          comparable={!current?.truncated}
+        />
       )}
     </main>
   );
