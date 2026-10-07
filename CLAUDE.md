@@ -56,7 +56,7 @@ npm run validate         # Full CI check (lint + format + types + tests + build)
 ### Testing
 
 - **Unit tests:** Jest + React Testing Library. Tests live alongside code in `__tests__/` directories. Components needing ThemeProvider use a `renderWithTheme()` helper. Next Image is mocked in tests.
-- **E2E tests:** Playwright in `e2e/`. Chromium runs every test; WebKit and the iPad project run only tests tagged `{ tag: "@smoke" }` (touch, pointer and layout checks), and CI skips Firefox. `E2E_FULL=1` runs everything on every project. CI skips e2e when a change touches nothing the browser tests cover (see the `changes` job in `.github/workflows/ci.yml`).
+- **E2E tests:** Playwright in `e2e/`. Chromium runs every test; WebKit and the iPad project run only tests tagged `{ tag: "@smoke" }` (touch, pointer and layout checks), and CI skips Firefox. `E2E_FULL=1` runs everything on every project. CI skips e2e when a change touches nothing the browser tests cover (see the `changes` job in `.github/workflows/ci.yml`). To skip them on purpose, put `[skip e2e]` in a commit message or the PR title (a squash merge carries the title to `main`, so the deploy skips them too). Unit tests, rules tests and the build still run.
 
 ### Formatting
 

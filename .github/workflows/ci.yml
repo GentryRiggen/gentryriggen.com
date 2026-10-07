@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
   # ── Does this change touch anything the browser tests cover? ──
-  # Docs-only commits and dev-dependency bumps skip the (slow) e2e jobs.
+  # Docs-only commits and dev-dependency bumps skip the (slow) e2e jobs, and
+  # so does anything marked [skip e2e] in a commit message or the PR title.
   changes:
     name: 🔎 Changes
     runs-on: ubuntu-latest
@@ -32,10 +33,25 @@ jobs:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then base="$PR_BASE"; else base="$PUSH_BEFORE"; fi
+          has_base=false
+          if git cat-file -e "$base^{commit}" 2>/dev/null; then has_base=true; fi
+          # Opt-out marker: [skip e2e] in the PR title or any commit message.
+          # (A squash merge carries the PR title into main's commit message.)
+          if [ "$has_base" = true ]; then
+            messages=$(git log --format=%B "$base..HEAD")
+          else
+            messages=$(git log -1 --format=%B HEAD)
+          fi
+          if printf '%s\n%s\n' "$PR_TITLE" "$messages" | grep -qiF '[skip e2e]'; then
+            echo "Found [skip e2e]: skipping browser tests."
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # A new branch or a force push has no usable base: run everything.
-          if ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+          if [ "$has_base" != true ]; then
             echo "e2e=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
