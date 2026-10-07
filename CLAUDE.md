@@ -36,6 +36,13 @@ npm run validate         # Full CI check (lint + format + types + tests + build)
 - `components/ThemeProvider.tsx` — React Context for dark/light mode. Class-based dark mode (`.dark` on `<html>`). Persists to localStorage.
 - `e2e/` — Playwright tests.
 
+### Analytics
+
+- `components/analytics/AnalyticsTracker.tsx` (in the root layout) records one pageview per route change by POSTing to the Firestore REST API (`lib/analytics/send.ts`). Public pages ship no Firebase SDK. Tracking is skipped on localhost, in dev builds, for bots, and in browsers that have signed in to `/admin`.
+- `firestore.rules` is the security boundary: anyone may create a schema-valid `pageviews` doc, only the admin (verified Google account for `ADMIN_EMAIL` in `lib/analytics/admin.ts`) may read. Test rules with `npm run test:rules` (Firestore emulator, needs Java 21+). CI deploys them after hosting.
+- `/admin` (`components/admin/`) is client-rendered Google sign-in plus a dashboard. The Firebase SDK (`lib/firebase/client.ts`) loads only there. Everything shown from stored docs (paths, referrers) is attacker-controlled: render as text only.
+- `lib/firebase/config.ts` holds the public Firebase web config. While `apiKey` is empty the tracker and admin do nothing.
+
 ### Key Patterns
 
 - **Server components by default.** Only add `"use client"` when the component uses hooks, event handlers, or browser APIs.
