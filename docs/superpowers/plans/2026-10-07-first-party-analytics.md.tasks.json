@@ -1,0 +1,74 @@
+{
+  "planPath": "docs/superpowers/plans/2026-10-07-first-party-analytics.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Firebase console setup (owner, manual)",
+      "status": "pending",
+      "description": "See plan section 'Task 0: Firebase console setup (owner, manual)' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": [\"Firestore created\", \"Google provider enabled\", \"Authorized domains set\", \"Web app config obtained\", \"CI service account has Firebase Rules Admin\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: Dependencies, config scaffold, spec amendments",
+      "status": "pending",
+      "description": "See plan section 'Task 1: Dependencies, config scaffold, spec amendments' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"package.json\", \"lib/firebase/config.ts\", \"lib/analytics/types.ts\"], \"verifyCommand\": \"npm test -- --testPathPattern=config && npm run type-check\", \"acceptanceCriteria\": [\"deps installed\", \"isFirebaseConfigured false while empty\", \"spec amended\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Pure analytics logic (collection side)",
+      "status": "pending",
+      "description": "See plan section 'Task 2: Pure analytics logic (collection side)' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"lib/analytics/site.ts\", \"lib/analytics/ua.ts\", \"lib/analytics/visitor.ts\", \"lib/analytics/exclude.ts\", \"lib/analytics/event.ts\", \"lib/analytics/send.ts\"], \"verifyCommand\": \"npm test -- --testPathPattern=lib/analytics\", \"acceptanceCriteria\": [\"siteForPath\", \"UA parsing\", \"daily visitor id\", \"buildPageview skip rules\", \"REST commit body\"]}\n```",
+      "blockedBy": [1]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Firestore rules and emulator tests (SECURITY)",
+      "status": "pending",
+      "description": "See plan section 'Task 3: Firestore rules and emulator tests (SECURITY)' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"firestore.rules\", \"firestore-tests/rules.test.ts\", \"jest.rules.config.js\", \"firebase.json\", \"jest.config.js\", \"package.json\", \".github/workflows/ci.yml\"], \"verifyCommand\": \"npm run test:rules\", \"acceptanceCriteria\": [\"valid create via SDK and REST\", \"invalid creates rejected\", \"reads admin-only\", \"update/delete denied\", \"test:rules in CI\"]}\n```",
+      "blockedBy": [1, 2]
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: AnalyticsTracker and layout wiring",
+      "status": "pending",
+      "description": "See plan section 'Task 4: AnalyticsTracker and layout wiring' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"components/analytics/AnalyticsTracker.tsx\", \"app/layout.tsx\"], \"verifyCommand\": \"npm test -- --testPathPattern=AnalyticsTracker\", \"acceptanceCriteria\": [\"sends per route change\", \"firstView only first\", \"null skips\", \"renders nothing\"]}\n```",
+      "blockedBy": [2]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Aggregation",
+      "status": "pending",
+      "description": "See plan section 'Task 5: Aggregation' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"lib/analytics/aggregate.ts\"], \"verifyCommand\": \"npm test -- --testPathPattern=aggregate\", \"acceptanceCriteria\": [\"totals\", \"site filter\", \"previous window\", \"zero-filled series\", \"breakdowns\", \"places\", \"pctChange\"]}\n```",
+      "blockedBy": [1, 2]
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Geo (timezone to map coordinates)",
+      "status": "pending",
+      "description": "See plan section 'Task 6: Geo (timezone to map coordinates)' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"lib/analytics/geo.ts\"], \"verifyCommand\": \"npm test -- --testPathPattern=geo\", \"acceptanceCriteria\": [\"locate\", \"aliases\", \"project\", \"geometryPath\", \"landPath\"]}\n```",
+      "blockedBy": [1]
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Admin auth gate and page (SECURITY)",
+      "status": "pending",
+      "description": "See plan section 'Task 7: Admin auth gate and page (SECURITY)' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"lib/analytics/admin.ts\", \"lib/firebase/client.ts\", \"components/admin/AdminGate.tsx\", \"app/admin/page.tsx\", \"app/robots.ts\"], \"verifyCommand\": \"npm test -- --testPathPattern=\\\"admin|robots\\\" && npm run type-check\", \"acceptanceCriteria\": [\"unconfigured state\", \"signed-out gate\", \"non-admin denied and signed out\", \"admin sees dashboard and exclusion flag set\", \"noindex and robots\"]}\n```",
+      "blockedBy": [2]
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Dashboard",
+      "status": "pending",
+      "description": "See plan section 'Task 8: Dashboard' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"components/admin/Dashboard.tsx\", \"components/admin/SummaryView.tsx\", \"components/admin/StatTile.tsx\", \"components/admin/TimeSeriesChart.tsx\", \"components/admin/BreakdownList.tsx\", \"components/admin/VisitorMap.tsx\"], \"verifyCommand\": \"npm test -- --testPathPattern=Dashboard && npm run type-check && npm run lint\", \"acceptanceCriteria\": [\"tabs\", \"range picker\", \"tiles/chart/breakdowns/map\", \"loading/error/truncated states\"]}\n```",
+      "blockedBy": [5, 6, 7]
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Go live: config, rules deploy in CI, docs, verification",
+      "status": "pending",
+      "description": "See plan section 'Task 9: Go live: config, rules deploy in CI, docs, verification' in docs/superpowers/plans/2026-10-07-first-party-analytics.md\n\n```json:metadata\n{\"files\": [\"lib/firebase/config.ts\", \".github/workflows/ci.yml\", \"CLAUDE.md\"], \"verifyCommand\": \"npm run validate && npm run test:rules\", \"acceptanceCriteria\": [\"real config\", \"CI deploys rules\", \"validate + test:rules + e2e pass\", \"production smoke test\"]}\n```",
+      "blockedBy": [0, 3, 4, 8]
+    }
+  ],
+  "lastUpdated": "2026-10-07T14:54:30.490816"
+}
