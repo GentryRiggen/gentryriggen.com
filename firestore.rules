@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The UID is the real pin (an email address can be claimed or changed, a
+    // UID cannot). The provider pin limits access to email/password sign-in.
+    // Keep the UID in sync with ADMIN_UID in lib/analytics/admin.ts.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == "nmt3n9sdfCX2NfzVlTdyXsWzHqm2"
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function validPageview() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
+        && d.keys().hasAll(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
+        && d.ts == request.time
+        && d.site in ['home', 'ship-builder']
+        && d.path is string
+        && ((d.site == 'home' && d.path == '/')
+          || (d.site == 'ship-builder' && d.path.matches('^/ship-builder(/.*)?$')))
+        && d.path is string && d.path.size() > 0 && d.path.size() <= 200
+        && d.ref is string && d.ref.size() <= 100
+        && d.device in ['mobile', 'tablet', 'desktop']
+        && d.browser is string && d.browser.size() > 0 && d.browser.size() <= 30
+        && d.os is string && d.os.size() > 0 && d.os.size() <= 30
+        && d.screen in ['<640', '640-1023', '1024-1439', '1440+']
+        && d.tz is string && d.tz.size() <= 64
+        && d.vid is string && d.vid.size() >= 8 && d.vid.size() <= 64;
+    }
+
+    match /pageviews/{id} {
+      allow read: if isAdmin();
+      allow create: if id.size() <= 64 && validPageview();
+      allow update, delete: if false;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

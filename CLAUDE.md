@@ -12,7 +12,7 @@ npm run format           # Prettier (write)
 npm run format:check     # Prettier (check)
 npm run type-check       # TypeScript --noEmit
 npm test                 # Jest unit tests
-npm test -- --testPathPattern=ComponentName  # Run single test file
+npm test -- --testPathPatterns=ComponentName  # Run single test file
 npm run test:watch       # Jest watch mode
 npm run test:e2e         # Playwright E2E tests (auto-starts dev server)
 npm run test:e2e:ui      # Playwright UI mode
@@ -35,6 +35,13 @@ npm run validate         # Full CI check (lint + format + types + tests + build)
 - `components/designs/design1/` — Interactive terminal UI: `Terminal.tsx` orchestrates a boot sequence of typing animations, then hands off to `InteractivePrompt.tsx` for command input. Commands are resolved via `commandResponses.tsx` (centralized command→response map supporting JSX, `shouldClear`, `shouldConfetti` flags).
 - `components/ThemeProvider.tsx` — React Context for dark/light mode. Class-based dark mode (`.dark` on `<html>`). Persists to localStorage.
 - `e2e/` — Playwright tests.
+
+### Analytics
+
+- `components/analytics/AnalyticsTracker.tsx` (in the root layout) records one pageview per route change by POSTing to the Firestore REST API (`lib/analytics/send.ts`). Public pages ship no Firebase SDK. Tracking is skipped on localhost, in dev builds, for bots, and in browsers that have signed in to `/admin`.
+- `firestore.rules` is the security boundary: anyone may create a schema-valid `pageviews` doc, only the admin (Firebase UID `ADMIN_UID` in `lib/analytics/admin.ts`, email/password sign-in) may read. Test rules with `npm run test:rules` (Firestore emulator, needs Java 21+). CI deploys them after hosting.
+- `/admin` (`components/admin/`) is client-rendered email/password sign-in plus a dashboard. The Firebase SDK (`lib/firebase/client.ts`) loads only there. Everything shown from stored docs (paths, referrers) is attacker-controlled: render as text only.
+- `lib/firebase/config.ts` holds the public Firebase web config. While `apiKey` is empty the tracker and admin do nothing.
 
 ### Key Patterns
 
