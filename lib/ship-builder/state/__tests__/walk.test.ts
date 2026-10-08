@@ -1,6 +1,6 @@
 import { act } from "react";
 import { gridLength } from "../../model/grid";
-import { createTrial } from "../../sim/seaTrial";
+import { createTrial, runTrial } from "../../sim/seaTrial";
 import { gridPart, testShip } from "../../testing";
 import { walkInput } from "../walkInput";
 import { getWalkState, publishWalk, subscribeWalk } from "../walkLive";
@@ -129,7 +129,7 @@ describe("walk slice", () => {
 });
 
 describe("sinking while walking", () => {
-  it("starts an iceberg trial, keeps the walk, and the result ends the walk", () => {
+  it("starts an iceberg trial and keeps the walk going", () => {
     load();
     act(() => store().startWalk());
     act(() => store().sinkWhileWalking());
@@ -144,11 +144,57 @@ describe("sinking while walking", () => {
     expect(trial.input.iceberg?.impactX).toBeCloseTo(
       0.2 * gridLength(testShip())
     );
+  });
 
-    act(() => store().finishTrial(createTrial(trial.input)));
-    expect(store().trial.status).toBe("result");
+  it("rides her down when she sinks, then waits for Stop to show the result", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().sinkWhileWalking());
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("expected running");
+    const sunk = runTrial(trial.input);
+    expect(sunk.outcome).toBe("sank");
+
+    const statuses: string[] = [];
+    const unsubscribe = useShipBuilderStore.subscribe((s) =>
+      statuses.push(s.trial.status)
+    );
+    act(() => store().finishTrial(sunk));
+    unsubscribe();
+    expect(statuses).toEqual(["running"]);
+    expect(store().trial).toMatchObject({
+      status: "running",
+      descending: true,
+      from: "end",
+    });
+    expect(store().walk.status).toBe("walking");
+
+    const descent = store().trial;
+    if (descent.status !== "running") throw new Error("expected running");
+    expect(descent.runId).not.toBe(trial.runId);
+    act(() => store().finishTrial(runTrial(descent.input)));
+    expect(store().trial).toMatchObject({
+      status: "result",
+      descending: true,
+    });
+    expect(store().walk.status).toBe("walking");
+
+    act(() => store().stopWalk());
     expect(store().walk).toEqual({ status: "idle" });
+    expect(store().trial.status).toBe("result");
     expect(getWalkState()).toBeNull();
+  });
+
+  it("keeps the walk when the result is not a sinking", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().sinkWhileWalking());
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("expected running");
+    const state = { ...createTrial(trial.input), events: [] };
+    act(() => store().finishTrial(state));
+    expect(store().trial.status).toBe("result");
+    expect(store().walk.status).toBe("walking");
   });
 
   it("does nothing unless walking with no trial", () => {
