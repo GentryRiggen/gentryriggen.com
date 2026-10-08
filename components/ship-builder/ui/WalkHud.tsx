@@ -2,6 +2,7 @@
 
 import { ArrowUp, LogOut, Snowflake } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
@@ -84,6 +85,31 @@ function WalkHint() {
   );
 }
 
+const OUTCOME_NOTES: Record<TrialOutcome, string> = {
+  sank: "She sank. Explore the wreck, or tap Stop walking to see how she did",
+  capsized: "She rolled over. Tap Stop walking to see how she did",
+  steady: "She made it! Tap Stop walking to see how she did",
+  recovered: "She made it! Tap Stop walking to see how she did",
+  afloat: "She made it! Tap Stop walking to see how she did",
+};
+
+/** Once the trial has finished, says how she did; Stop walking shows the card. */
+function OutcomeNote() {
+  const outcome = useShipBuilderStore((s) =>
+    s.trial.status === "result" ? (s.trial.state.outcome ?? "steady") : null
+  );
+  if (!outcome) return null;
+  return (
+    <p
+      role="status"
+      data-testid="walk-outcome"
+      className="pointer-events-none absolute inset-x-0 top-28 mx-auto w-fit max-w-[90%] rounded-full bg-slate-900/80 px-4 py-1.5 text-center text-sm font-medium text-white dark:bg-slate-100/90 dark:text-slate-900"
+    >
+      {OUTCOME_NOTES[outcome]}
+    </p>
+  );
+}
+
 /** Strikes an iceberg at a fixed spot and keeps walking while she goes down. */
 function SinkShipButton() {
   const canSink = useShipBuilderStore((s) => s.trial.status === "idle");
@@ -125,6 +151,7 @@ function WalkingControls() {
         </div>
       </div>
       <WalkHint />
+      <OutcomeNote />
     </div>
   );
 }

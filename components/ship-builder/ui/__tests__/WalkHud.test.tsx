@@ -4,6 +4,8 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+import { runTrial } from "@/lib/ship-builder/sim/seaTrial";
+import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import { testShip } from "@/lib/ship-builder/testing";
 import { resetWalkInput, walkInput } from "@/lib/ship-builder/state/walkInput";
 import WalkHud from "../WalkHud";
@@ -138,5 +140,48 @@ describe("WalkHud Hit with an iceberg", () => {
     expect(
       screen.queryByRole("button", { name: "Hit with an iceberg" })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("WalkHud outcome note", () => {
+  function finishWalkingTrial(outcome: TrialOutcome) {
+    startWalking();
+    act(() => store().sinkWhileWalking());
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() =>
+      store().finishTrial({ ...runTrial(trial.input), events: [], outcome })
+    );
+  }
+
+  it("says nothing while the trial is still running", () => {
+    startWalking();
+    act(() => store().sinkWhileWalking());
+    render(<WalkHud />);
+    expect(screen.queryByText(/Tap Stop walking/)).toBeNull();
+  });
+
+  it.each<[TrialOutcome, string]>([
+    [
+      "sank",
+      "She sank. Explore the wreck, or tap Stop walking to see how she did",
+    ],
+    ["capsized", "She rolled over. Tap Stop walking to see how she did"],
+    ["steady", "She made it! Tap Stop walking to see how she did"],
+    ["afloat", "She made it! Tap Stop walking to see how she did"],
+  ])("tells a walker how she did: %s", (outcome, text) => {
+    finishWalkingTrial(outcome);
+    render(<WalkHud />);
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it("stopping the walk after a result does not throw", async () => {
+    finishWalkingTrial("steady");
+    render(<WalkHud />);
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Stop walking" }));
+    expect(store().walk.status).toBe("idle");
+    expect(store().trial.status).toBe("result");
   });
 });
