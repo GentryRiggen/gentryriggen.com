@@ -277,3 +277,30 @@ Update the `descend` / `TrialSlice` doc comments to mention it.
 - Tasks 1 and 3 are independent. Task 2 needs Task 1. Task 4 needs Task 3. Task 5 needs everything.
 - Run Tasks 1→2 and 3→4 as two parallel implementers, then Task 5 on the merged branch, then `npm run validate` once.
 - Manual check (`npm run dev`, Titanic, Walk, Hit with an iceberg): the view stays on the deck through the break and under the water, and nothing flashes when the descent picks up.
+
+---
+
+### Task 6: Choose where to start walking (added 2026-10-07)
+
+**Goal:** Tapping Walk opens a small pop-up card asking "Where do you want to start?" with three big picture buttons, Front (bow), Middle and Back (stern). Each shows a side-view ship with a glowing marker where you'll start. Picking one starts the walk there.
+
+**Files:**
+
+- Modify: `lib/ship-builder/walk/spawn.ts`, `lib/ship-builder/walk/types.ts` (or spawn.ts) for `WalkStart`, `lib/ship-builder/state/store.ts` (`startWalk(start?)`), `components/ship-builder/ui/WalkButton.tsx`
+- Create: `components/ship-builder/ui/WalkStartPicker.tsx` (card + `WalkStartPicture` SVG)
+- Tests: `lib/ship-builder/walk/__tests__/spawn.test.ts`, `lib/ship-builder/state/__tests__/walk.test.ts`, `components/ship-builder/ui/__tests__/WalkButton.test.tsx` (+ a picker test), `e2e/ship-builder-walk.spec.ts`, `e2e/ship-builder-walk-sinking.spec.ts`
+- Docs: `lib/ship-builder/changelog.ts` (one more highlight in the unreleased 2.15.0 entry), `components/ship-builder/ui/HelpButton.tsx` walking line, walk `README.md`
+
+**Acceptance Criteria:**
+
+- [ ] `export type WalkStart = "bow" | "middle" | "stern"`. `spawnOf(ship, grid?, start = "middle")`: `middle` is exactly today's behaviour (nearest the bridge, else mid-ship). `bow` targets `{ x: 0, z: beam / 2 }`, and `stern` targets `{ x: grid.length, z: beam / 2 }`. The same rules apply as today: lowest level, useful regions, clear of blockers. Heading: a bow start tries facing aft (yaw PI) first; middle and stern keep the bow-first order. The existing spawn tests still pass, and new ones show bow spawns land near x=0 facing aft and stern spawns near the far end.
+- [ ] `startWalk(start?: WalkStart)` passes it to `spawnOf`. The default is `"middle"`, so existing callers and tests keep working.
+- [ ] `WalkButton`: when walking is possible, tapping it toggles the card (`aria-expanded`, `aria-controls`) instead of starting right away. The disabled "Add a deck to walk on" behaviour is unchanged. The card is `role="dialog"` with `aria-label="Where do you want to start?"` and a visible heading. It holds three `<button>`s with accessible names "Front (bow)", "Middle" and "Back (stern)". Picking one calls `startWalk(start)` and closes the card. Esc closes it and returns focus to Walk, and it must not reach the global Escape handler in `useKeyboardShortcuts` (stop propagation, or check what that handler does while idle). A pointerdown outside closes it. Focus goes to the Middle option on open. Works for the in-trial Walk button (`TrialWalkButton` renders `WalkButton`). The card opens upward from the button and is positioned so it stays on screen at 375px width (the Walk button is at the bottom; it sits right of Sea trial normally and bottom-centre in a trial).
+- [ ] `WalkStartPicture`: an inline SVG, about 96x40, `aria-hidden`. It shows a simple side-view ship with the bow pointing RIGHT (pointed bow, square stern, a small superstructure and funnel mid-ship, a water line), and a glowing marker (a filled circle with a soft ring) at the start spot: near the right tip for bow, mid-ship for middle, near the left end for stern. Colours come from Tailwind classes (`fill-slate-700 dark:fill-slate-300`, marker `fill-amber-500`), with light and dark variants and no inline styles. Each option button shows the picture above its two-line label (big word "Front", "Middle" or "Back", and small "bow", "bridge" or "stern"). Hit targets are at least 44px, using the existing `panelClass` styles for the card.
+- [ ] `prefers-reduced-motion`: no animation on the card. Otherwise a quick fade/scale-in is fine, using the existing keyframes in `app/globals.css` if one fits.
+- [ ] E2E: every `getByRole("button", { name: "Walk", exact: true }).click()` is followed by choosing a start (a small helper `startWalking(page, "Middle")` in each spec). Add one test to `ship-builder-walk.spec.ts`: choosing Front puts the walker (via `window.__shipBuilderWalk`) in the front quarter (`x < length / 4`), and Back puts them in the back quarter.
+- [ ] Changelog 2.15.0 gets a highlight: "When you tap Walk you can now pick where to start: at the front, in the middle or at the back of your ship". The help text's walking line mentions it.
+
+**Verify:** `npm test -- --testPathPatterns="walk|Walk"`, `npm run type-check`, `npm run lint`, `npx playwright test e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts --project=chromium`
+
+Commit as `feat(ship-builder): choose where to start walking`.
