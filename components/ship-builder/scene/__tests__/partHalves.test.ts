@@ -6,7 +6,8 @@ import {
   type Ship,
 } from "@/lib/ship-builder/model/types";
 import { findTemplate } from "@/lib/ship-builder/templates";
-import { halfOfX, partHalves, snappedWires } from "../partHalves";
+import { halfOfX, partHalves, snappedWires, walkHalfShip } from "../partHalves";
+import { halfWalkGrid, walkGridOf } from "@/lib/ship-builder/walk";
 
 function grid(id: string, x: number, rotation: 0 | 90 = 0): PlacedPart {
   return {
@@ -136,5 +137,26 @@ describe("snappedWires", () => {
   it("keeps a wire whose masts both stay in one half", () => {
     // Breaking right at the stern leaves both masts in the bow half.
     expect(snappedWires(titanic, gridLength(titanic)).size).toBe(0);
+  });
+});
+
+describe("walkHalfShip", () => {
+  it("leaves a block spanning the break only on the half that draws it", () => {
+    // A 2x1 deck over columns 4 and 5, centre 5: with the break at 5 it rides
+    // the stern, so the bow's column 4 has no deck in it.
+    const ship: Ship = { ...emptyShip(), parts: [grid("d", 4)] };
+    const atX = 5;
+    expect(partHalves(ship, atX).get("d")).toBe("stern");
+    expect(walkHalfShip(ship, "stern", atX).parts.map((p) => p.id)).toEqual([
+      "d",
+    ]);
+    const bowShip = walkHalfShip(ship, "bow", atX);
+    expect(bowShip.parts).toEqual([]);
+
+    const masked = halfWalkGrid(walkGridOf(ship), "bow", atX);
+    const bow = halfWalkGrid(walkGridOf(bowShip), "bow", atX);
+    expect(masked.obstructionAt(4, 0, 0)).not.toBeNull();
+    expect(bow.obstructionAt(4, 0, 0)).toBeNull();
+    expect(bow.isWalkable(4, 0, 0)).toBe(true);
   });
 });

@@ -88,6 +88,11 @@ Break in two: the walker rides whichever half they stand on (the break-line
 cell counts as the bow half), through `halfMatrix`; the break line blocks
 crossing, and the walk-button hiding in point 4 is lifted.
 
+Shipped in 2.15.0 with one change: the Walk button still hides once she has
+broken or gone under (`isPastBoarding`), but a walker already aboard stays on
+through the descent to the sea floor until they stop walking. See
+`docs/superpowers/plans/2026-10-07-ship-builder-stay-aboard.md`.
+
 ## Changes made while planning
 
 - `startTrial` keeps its walk guard. A separate `sinkWhileWalking()` starts the

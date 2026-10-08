@@ -81,7 +81,9 @@ export function extraSummaryLines(summary: TrialSummary): string[] {
 /** Shows how the trial went, with a way to try again or keep building. */
 export default function SeaTrialResult() {
   const trial = useShipBuilderStore((s) => s.trial);
-  if (trial.status !== "result") return null;
+  // A walker keeps the wreck to themselves; Stop walking brings the card.
+  const isWalking = useShipBuilderStore((s) => s.walk.status === "walking");
+  if (trial.status !== "result" || isWalking) return null;
   return <ResultCard key={trial.runId} trial={trial} />;
 }
 

@@ -2,13 +2,13 @@
 
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { useLiveTrialState } from "../scene/liveTrial";
-import { isWalkOver } from "../scene/walkOver";
+import { isPastBoarding } from "../scene/pastBoarding";
 import WalkButton from "./WalkButton";
 
 /**
  * The Walk button while a sea trial plays (the Sea trial button, which
  * normally carries it, is hidden then). It goes away once she has broken in two
- * or gone under (`isWalkOver`): there is nothing left to walk on.
+ * or gone under (`isPastBoarding`): there is no climbing aboard a wreck.
  */
 export default function TrialWalkButton() {
   const isShown = useShipBuilderStore(
@@ -20,7 +20,7 @@ export default function TrialWalkButton() {
   );
   const live = useLiveTrialState();
   if (!isShown) return null;
-  if (live && isWalkOver(live)) return null;
+  if (live && isPastBoarding(live)) return null;
   return (
     <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2">
       <WalkButton />

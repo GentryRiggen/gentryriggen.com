@@ -16,6 +16,9 @@ first person. The scene and controls live elsewhere; this folder is the rules.
   may cross (`entering`): a roof one level up once the feet reach it, low decor
   once they are above it, an edge when airborne. Walking alone changes level
   only through stairs.
+- `halfGrid.ts` (`halfWalkGrid`, `walkHalfOf`) cuts a grid at the break so only
+  one half's columns are walkable: the torn edge works like a rail, and a
+  walker rides the half they stood on.
 - `spawn.ts` (`spawnOf`) picks a clear start near the bridge, facing open deck.
   It returns `null` when there is nowhere to stand, which disables the Walk
   button.
@@ -26,7 +29,11 @@ Where the rest lives: the `walk` store slice and `state/walkLive.ts`,
 `components/ship-builder/ui/` (`WalkButton`, `WalkHud`, `WalkJoystick`,
 `WalkLookLayer`) and `hooks/useWalkKeys.ts`. A walk can run during a sea
 trial: the ship's group carries the walker, and `WalkEyes` follows the deck
-fully as the trial pose blends in (`swayShare`).
+fully as the trial pose blends in (`swayShare`). A walk outlives the trial:
+when she breaks, `WalkRunner` steps the walker on `halfWalkGrid` (their half
+only) and the `WalkEyes` in that half's group drives the camera; when she
+sinks, the store takes her on down to the sea floor, and the result waits
+until they stop walking.
 
 Tests: the model's unit tests are in `__tests__/`, and
 `e2e/ship-builder-walk.spec.ts` drives it in a real browser through the

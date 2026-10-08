@@ -87,7 +87,9 @@ export interface Notice {
  *
  * An iceberg trial that sank can be followed down to the sea floor
  * (`descend`): it runs again with `descending` set, continuing from where it
- * ended. `replay` plays the same trial again from the start.
+ * ended. `replay` plays the same trial again from the start. A walker aboard
+ * rides her down on their own: `finishTrial` starts the descent instead of
+ * showing the result, which waits until they stop walking.
  */
 /**
  * Drive mode: idle while building, `setup` while the obstacle picker is open,
@@ -244,7 +246,8 @@ export interface ShipBuilderState extends ShipBuilderData {
    * "Follow her down": continues an iceberg trial that sank on to the sea
    * floor, from where she went under. Works on a finished `sank` result, and
    * on a running iceberg trial (the status bar offers it once she has sunk,
-   * before the result shows). Does nothing once already descending.
+   * before the result shows). Does nothing once already descending. While
+   * someone walks, `finishTrial` does this itself when she sinks.
    */
   descend: () => void;
   /**
@@ -737,8 +740,28 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     finishTrial(state) {
-      const { trial } = get();
+      const { trial, walk } = get();
       if (trial.status !== "running") return;
+      // A walker aboard rides her all the way: a sinking goes on down to the
+      // sea floor, and the result waits until they stop walking.
+      const ridesDown =
+        walk.status === "walking" &&
+        trial.input.iceberg !== undefined &&
+        !trial.descending &&
+        state.events.some((event) => event.kind === "sunk");
+      if (ridesDown) {
+        runId += 1;
+        set({
+          trial: {
+            status: "running",
+            input: trial.input,
+            runId,
+            descending: true,
+            from: "end",
+          },
+        });
+        return;
+      }
       set({
         trial: {
           status: "result",
@@ -748,8 +771,6 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           descending: trial.descending,
         },
       });
-      // The walker rode her down; the result card takes over.
-      get().stopWalk();
     },
 
     endTrial() {

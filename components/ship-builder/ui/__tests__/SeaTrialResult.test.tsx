@@ -1,6 +1,7 @@
 import { act } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { testShip } from "@/lib/ship-builder/testing";
 import { runTrial } from "@/lib/ship-builder/sim/seaTrial";
 import {
   createInitialState,
@@ -217,5 +218,28 @@ describe("extraSummaryLines", () => {
       summary.breakup,
       "She came to rest on the sea floor.",
     ]);
+  });
+});
+
+describe("SeaTrialResult while walking", () => {
+  it("waits for the walk to stop, then shows the card", () => {
+    act(() => {
+      store().loadShip(testShip(), null);
+      store().startWalk();
+      store().sinkWhileWalking();
+    });
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() => store().finishTrial({ ...runTrial(trial.input), events: [] }));
+    expect(store().trial.status).toBe("result");
+    render(<SeaTrialResult />);
+    expect(
+      screen.queryByRole("region", { name: "Sea trial result" })
+    ).toBeNull();
+
+    act(() => store().stopWalk());
+    expect(
+      screen.getByRole("region", { name: "Sea trial result" })
+    ).toBeInTheDocument();
   });
 });
