@@ -23,7 +23,7 @@ export default function TrialWalkButton() {
   if (live && isPastBoarding(live)) return null;
   return (
     <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2">
-      <WalkButton />
+      <WalkButton align="center" />
     </div>
   );
 }
