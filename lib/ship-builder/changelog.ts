@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.15.0",
+    date: "2026-10-07",
+    title: "Stay aboard to the end",
+    highlights: [
+      "When you walk on a sinking ship, you stay on board the whole way now",
+      "If she breaks in two, you ride whichever half you are standing on. The torn edge is like a rail, so you cannot cross to the other half",
+      "If she sinks, you go all the way down to the sea floor with her and can keep exploring the wreck",
+      "When it is over, a note tells you how she did. Tap Stop walking to see the full result",
+    ],
+  },
+  {
     version: "2.14.0",
     date: "2026-10-06",
     title: "Pirate ships!",
