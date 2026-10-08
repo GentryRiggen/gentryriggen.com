@@ -28,6 +28,17 @@ function load(ship = testShip()) {
 }
 
 describe("walk slice", () => {
+  it("starts at the end the player picked", () => {
+    load();
+    act(() => store().startWalk("bow"));
+    const bow = getWalkState()!;
+    act(() => store().stopWalk());
+    act(() => store().startWalk("stern"));
+    const stern = getWalkState()!;
+    expect(bow.x).toBeLessThan(stern.x);
+    expect(bow.yaw).toBeCloseTo(Math.PI);
+  });
+
   it("starts walking at the spawn with a new runId per walk, and stops", () => {
     load();
     act(() => store().startWalk());

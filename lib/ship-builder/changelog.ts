@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.16.0",
+    date: "2026-10-07",
+    title: "Pick where to start walking",
+    highlights: [
+      "When you tap Walk you can now pick where to start: at the front (the bow), in the middle by the bridge, or at the back (the stern)",
+      "Each choice has a little picture of a ship with a glowing spot showing where you will start",
+      "Start at the front and you face back along the ship, so you are not staring at the rail",
+    ],
+  },
+  {
     version: "2.15.0",
     date: "2026-10-07",
     title: "Stay aboard to the end",

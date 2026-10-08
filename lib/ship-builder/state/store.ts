@@ -34,7 +34,7 @@ import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
 import { resetSailInput } from "./sailInput";
-import { spawnOf } from "../walk";
+import { spawnOf, type WalkStart } from "../walk";
 import { publishWalk } from "./walkLive";
 import { resetWalkInput } from "./walkInput";
 import type { HullArea, PaintColor } from "../model/paint";
@@ -222,10 +222,11 @@ export interface ShipBuilderState extends ShipBuilderData {
   /** Leaves the picker or the drive and goes back to building. */
   endDrive: () => void;
   /**
-   * Starts walking the decks from the spawn point; only from building, and
-   * only when the ship has somewhere to stand.
+   * Starts walking the decks from the front, middle (the default) or back of
+   * the ship; only from building, and only when the ship has somewhere to
+   * stand.
    */
-  startWalk: () => void;
+  startWalk: (start?: WalkStart) => void;
   /** Leaves walk mode and goes back to building. */
   stopWalk: () => void;
   /**
@@ -686,12 +687,12 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       set({ drive: { status: "idle" } });
     },
 
-    startWalk() {
+    startWalk(start = "middle") {
       const { trial, drive, walk } = get();
       if (drive.status !== "idle" || walk.status !== "idle") return;
       // She can be walked while a trial runs, not while it is aiming or done.
       if (trial.status !== "idle" && trial.status !== "running") return;
-      const spawn = spawnOf(get().ship);
+      const spawn = spawnOf(get().ship, undefined, start);
       if (spawn === null) return;
       runId += 1;
       resetWalkInput();

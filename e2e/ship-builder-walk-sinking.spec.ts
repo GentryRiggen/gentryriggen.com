@@ -45,10 +45,19 @@ const status = (page: Page) =>
     };
   });
 
+/** Taps Walk and starts from the middle of the ship. */
+async function startWalking(page: Page) {
+  await page.getByRole("button", { name: "Walk", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Where do you want to start?" })
+    .getByRole("button", { name: "Middle" })
+    .click();
+}
+
 test.describe("Ship Builder walk while sinking", () => {
   /** Walks, hits, and rides her down until the trial is over. */
   async function rideToTheEnd(page: Page) {
-    await page.getByRole("button", { name: "Walk", exact: true }).click();
+    await startWalking(page);
     await page.getByRole("button", { name: "Hit with an iceberg" }).click();
     await expect
       .poll(() => status(page))
@@ -95,7 +104,7 @@ test.describe("Ship Builder walk while sinking", () => {
     await page.evaluate(() =>
       window.__shipBuilderStore!.getState().startTrial("calm", 20)
     );
-    await page.getByRole("button", { name: "Walk", exact: true }).click();
+    await startWalking(page);
     await expect
       .poll(() => status(page))
       .toEqual({
