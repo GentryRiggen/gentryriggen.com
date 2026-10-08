@@ -19,8 +19,10 @@ first person. The scene and controls live elsewhere; this folder is the rules.
 - `halfGrid.ts` (`halfWalkGrid`, `walkHalfOf`) cuts a grid at the break so only
   one half's columns are walkable: the torn edge works like a rail, and a
   walker rides the half they stood on.
-- `spawn.ts` (`spawnOf`) picks a clear start near the bridge, facing open deck.
-  It returns `null` when there is nowhere to stand, which disables the Walk
+- `spawn.ts` (`spawnOf`) picks a clear start, facing open deck: near the
+  bridge by default (`"middle"`), or at the bow (facing aft) or stern end of
+  the centreline (`WalkStart`). The Walk button asks which with
+  `WalkStartPicker`. It returns `null` when there is nowhere to stand, which disables the Walk
   button.
 
 Where the rest lives: the `walk` store slice and `state/walkLive.ts`,

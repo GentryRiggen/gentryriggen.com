@@ -14,12 +14,19 @@ import { walkGridOf } from "./walkGrid";
 const SURFACE_LEVELS = MAX_LEVEL + 2;
 /** A spawn spot must lead somewhere: at least this many connected cells. */
 const MIN_REGION_CELLS = 4;
-/** Yaw 0 looks at the bow. */
-const BOW_YAW = 0;
+/** Yaw 0 looks at the bow; yaw PI looks at the stern. */
+const STERN_YAW = Math.PI;
 /** The headings tried at the start, in order of preference (bow first). */
 const SPAWN_HEADINGS = [0, 1, -1, 2, -2, 3, -3, -4].map(
   (step) => (step * Math.PI) / 4
 );
+/** The same headings turned to face aft first, for a start at the bow. */
+const BOW_START_HEADINGS = SPAWN_HEADINGS.map((yaw) =>
+  yaw + STERN_YAW > Math.PI ? yaw - STERN_YAW : yaw + STERN_YAW
+);
+
+/** Where the walk begins: the front, the bridge or middle, or the back. */
+export type WalkStart = "bow" | "middle" | "stern";
 /** How long a look-ahead walk lasts, in seconds. */
 const LOOK_AHEAD_S = 1.5;
 /** Facing this far of open walking is far enough to stop looking. */
@@ -33,8 +40,17 @@ interface Spot {
 
 const spotKey = (spot: Spot): string => `${spot.level}:${spot.x}:${spot.z}`;
 
-/** Where the player would like to start: the bridge, else mid-ship. */
-function preferredPoint(ship: Ship, grid: WalkGrid): { x: number; z: number } {
+/**
+ * Where the player would like to start: the bow tip or stern end on the
+ * centreline, or for the middle the bridge, else mid-ship.
+ */
+function preferredPoint(
+  ship: Ship,
+  grid: WalkGrid,
+  start: WalkStart
+): { x: number; z: number } {
+  if (start === "bow") return { x: 0, z: grid.beam / 2 };
+  if (start === "stern") return { x: grid.length, z: grid.beam / 2 };
   for (const part of ship.parts) {
     const def = getPartDef(part.type);
     if (def.placement !== "grid" || def.role !== "bridge") continue;
@@ -108,12 +124,17 @@ function openAhead(grid: WalkGrid, start: WalkState): number {
 /**
  * The heading to start with: the bow when there is open deck that way, else
  * the heading with the most room (tried right then left of the bow, in 45
- * degree steps), so nobody starts with their nose against a wall.
+ * degree steps), so nobody starts with their nose against a wall. A start at
+ * the bow looks aft first instead, back along the ship.
  */
-function spawnYaw(grid: WalkGrid, spot: WalkState): number {
-  let best = BOW_YAW;
+function spawnYaw(
+  grid: WalkGrid,
+  spot: WalkState,
+  headings: readonly number[]
+): number {
+  let best = headings[0];
   let bestOpen = -1;
-  for (const yaw of SPAWN_HEADINGS) {
+  for (const yaw of headings) {
     const open = openAhead(grid, { ...spot, yaw });
     if (open >= OPEN_AHEAD_CELLS) return yaw;
     if (open > bestOpen + 1e-6) {
@@ -130,11 +151,13 @@ function spawnYaw(grid: WalkGrid, spot: WalkState): number {
  * to the lowest roof only when the main deck is built over completely; it
  * skips cells too close to a funnel or mast and pockets cut off from the rest
  * of the deck; and among those it takes the cell nearest the bridge, or the
- * middle of the ship when there is no bridge.
+ * middle of the ship when there is no bridge. A `bow` or `stern` start takes
+ * the cell nearest that end of the centreline instead.
  */
 export function spawnOf(
   ship: Ship,
-  grid: WalkGrid = walkGridOf(ship)
+  grid: WalkGrid = walkGridOf(ship),
+  start: WalkStart = "middle"
 ): WalkState | null {
   const spots: Spot[] = [];
   for (let level = 0; level < SURFACE_LEVELS; level++) {
@@ -154,7 +177,7 @@ export function spawnOf(
     (sizes.get(spotKey(spot)) ?? 0) >= MIN_REGION_CELLS;
   const pool = spots.some(isUseful) ? spots.filter(isUseful) : spots;
   const lowest = Math.min(...pool.map((spot) => spot.level));
-  const target = preferredPoint(ship, grid);
+  const target = preferredPoint(ship, grid, start);
 
   let best: Spot | undefined;
   let bestDistance = Infinity;
@@ -170,12 +193,13 @@ export function spawnOf(
     }
   }
   if (!best) return null;
+  const headings = start === "bow" ? BOW_START_HEADINGS : SPAWN_HEADINGS;
   const standing: WalkState = {
     x: best.x + 0.5,
     z: best.z + 0.5,
-    yaw: BOW_YAW,
+    yaw: headings[0],
     level: best.level,
     time: 0,
   };
-  return { ...standing, yaw: spawnYaw(grid, standing) };
+  return { ...standing, yaw: spawnYaw(grid, standing, headings) };
 }
