@@ -4,9 +4,9 @@ import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import { getWalkState } from "@/lib/ship-builder/state/walkLive";
+import { getWalkHalf, getWalkState } from "@/lib/ship-builder/state/walkLive";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
-import { walkHalfOf, type WalkHalf } from "@/lib/ship-builder/walk";
+import type { WalkHalf } from "@/lib/ship-builder/walk";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { useShipAnimation } from "./ShipAnimationContext";
 import { trialPlayback } from "./trialPlayback";
@@ -49,9 +49,8 @@ export default function WalkEyes({ half }: WalkEyesProps) {
     const { ship, walk: status } = useShipBuilderStore.getState();
     if (!holder || !walk || status.status !== "walking") return;
     // One view at a time: the whole ship's, or the half the walker rides.
-    const { breakup } = trialPlayback;
-    const ridden = breakup ? walkHalfOf(walk.x, breakup.atX) : undefined;
-    if (ridden !== half) return;
+    const ridden = trialPlayback.breakup ? getWalkHalf() : null;
+    if ((ridden ?? undefined) !== half) return;
     const pose = walkCamera(walk, ship);
 
     const isMoving = walkInput.forward !== 0 || walkInput.strafe !== 0;

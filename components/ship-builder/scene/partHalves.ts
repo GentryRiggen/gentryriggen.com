@@ -70,6 +70,19 @@ export function partHalves(
 }
 
 /**
+ * The ship as one half carries it, for walking that half: only the parts
+ * `partHalves` gives to `side`, so a block that spans the break is solid on
+ * the half that draws it and gone from the other.
+ */
+export function walkHalfShip(ship: Ship, side: HalfSide, atX: number): Ship {
+  const sides = partHalves(ship, atX);
+  return {
+    ...ship,
+    parts: ship.parts.filter((part) => sides.get(part.id) === side),
+  };
+}
+
+/**
  * Wires (aerials, string lights) strung from a pole in one half to a pole in
  * the other: they snap when she breaks, so neither half draws them.
  */

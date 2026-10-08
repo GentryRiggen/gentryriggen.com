@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { SIM_STEP_S } from "@/lib/ship-builder/sim/types";
-import { getWalkState, publishWalk } from "@/lib/ship-builder/state/walkLive";
+import {
+  getWalkState,
+  publishWalk,
+  publishWalkHalf,
+} from "@/lib/ship-builder/state/walkLive";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
@@ -15,6 +19,7 @@ import {
   type WalkState,
 } from "@/lib/ship-builder/walk";
 import { MAX_FRAME_DELTA } from "./animationMath";
+import { walkHalfShip } from "./partHalves";
 import { trialPlayback } from "./trialPlayback";
 import { testWalkSpawn } from "./testClock";
 
@@ -41,17 +46,22 @@ function Walking() {
     const current = state.current;
     if (!current) return;
     const { breakup } = trialPlayback;
-    if (!breakup) halfGrid.current = null;
-    else if (halfGrid.current?.atX !== breakup.atX) {
-      // She has broken: the walker rides the half under their feet, for good.
+    if (!breakup) {
+      if (halfGrid.current) publishWalkHalf(null);
+      halfGrid.current = null;
+    } else if (halfGrid.current?.atX !== breakup.atX) {
+      // She has broken: the walker rides the half under their feet, for good,
+      // on that half's own parts.
+      const side = walkHalfOf(current.x, breakup.atX);
       halfGrid.current = {
         atX: breakup.atX,
         grid: halfWalkGrid(
-          grid,
-          walkHalfOf(current.x, breakup.atX),
+          walkGridOf(walkHalfShip(ship, side, breakup.atX)),
+          side,
           breakup.atX
         ),
       };
+      publishWalkHalf(side);
     }
     const stepGrid = halfGrid.current?.grid ?? grid;
     leftover.current += Math.min(delta, MAX_FRAME_DELTA);

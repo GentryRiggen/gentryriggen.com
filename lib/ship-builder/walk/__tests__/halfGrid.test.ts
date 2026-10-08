@@ -1,5 +1,5 @@
 import { gridPart, testShip } from "../../testing";
-import { halfWalkGrid, walkHalfOf } from "../halfGrid";
+import { halfWalkGrid, isColumnOn, walkHalfOf } from "../halfGrid";
 import { stepWalker } from "../step";
 import type { WalkInput, WalkState } from "../types";
 import { walkGridOf } from "../walkGrid";
@@ -9,16 +9,21 @@ const BREAK_AT = 4;
 const TO_STERN = Math.PI;
 
 describe("walkHalfOf", () => {
-  it("goes by the column's centre, as a grid part does", () => {
+  it("puts a walker ahead of the break on the bow", () => {
     expect(walkHalfOf(3.9, BREAK_AT)).toBe("bow");
-    expect(walkHalfOf(3, BREAK_AT)).toBe("bow");
     expect(walkHalfOf(4, BREAK_AT)).toBe("stern");
-    expect(walkHalfOf(4.9, BREAK_AT)).toBe("stern");
+    expect(walkHalfOf(4.3, 4.35)).toBe("bow");
   });
+});
 
-  it("puts the column centred exactly on the break aft", () => {
-    expect(walkHalfOf(3.5, 4)).toBe("bow");
-    expect(walkHalfOf(3.5, 3)).toBe("stern");
+describe("isColumnOn", () => {
+  it("keeps only columns wholly on the side, so a crossed one is neither", () => {
+    expect(isColumnOn("bow", 3, 4)).toBe(true);
+    expect(isColumnOn("stern", 4, 4)).toBe(true);
+    expect(isColumnOn("bow", 14, 14.35)).toBe(false);
+    expect(isColumnOn("stern", 14, 14.35)).toBe(false);
+    expect(isColumnOn("bow", 13, 14.35)).toBe(true);
+    expect(isColumnOn("stern", 15, 14.35)).toBe(true);
   });
 });
 
@@ -83,5 +88,16 @@ describe("halfWalkGrid", () => {
     const FORWARD: WalkInput = { forward: 1, strafe: 0, turn: 0 };
     expect(run(FORWARD).x).toBeLessThan(4);
     expect(run({ ...FORWARD, jump: true }).x).toBeLessThan(4);
+  });
+
+  it("leaves no floor over the gap when the break crosses a column", () => {
+    const cut = halfWalkGrid(whole, "stern", 4.35);
+    expect(cut.isWalkable(4, 1, 0)).toBe(false);
+    expect(cut.isWalkable(5, 1, 0)).toBe(true);
+    const start: WalkState = { x: 5.5, z: 1.5, yaw: 0, level: 0, time: 0 };
+    let state = start;
+    const TO_BOW: WalkInput = { forward: 1, strafe: 0, turn: 0 };
+    for (let i = 0; i < 120; i++) state = stepWalker(state, TO_BOW, cut);
+    expect(state.x).toBeGreaterThanOrEqual(5);
   });
 });
