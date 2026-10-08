@@ -34,10 +34,12 @@ describe("TrialWalkButton", () => {
     expect(walkButton()).toBeVisible();
   });
 
-  it("starts the walk and then goes away", () => {
+  it("asks where to start, walks from there and then goes away", () => {
     render(<TrialWalkButton />);
     act(() => store().startTrial("calm", 5));
     act(() => walkButton()!.click());
+    expect(store().walk.status).toBe("idle");
+    act(() => screen.getByRole("button", { name: "Front (bow)" }).click());
     expect(store().walk.status).toBe("walking");
     expect(walkButton()).toBeNull();
   });

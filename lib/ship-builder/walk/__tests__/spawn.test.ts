@@ -16,6 +16,38 @@ function expectStandable(ship: Parameters<typeof spawnOf>[0], s: WalkState) {
   }
 }
 
+describe("spawnOf start choices", () => {
+  const grid = walkGridOf(testShip());
+
+  it("starts at the bow facing aft, clear of the very tip", () => {
+    const spawn = spawnOf(testShip(), grid, "bow")!;
+    expect(spawn.x).toBeLessThan(grid.length / 4);
+    expect(spawn.yaw).toBeCloseTo(Math.PI);
+    expectStandable(testShip(), spawn);
+  });
+
+  it("starts at the stern facing the bow", () => {
+    const spawn = spawnOf(testShip(), grid, "stern")!;
+    expect(spawn.x).toBeGreaterThan((grid.length * 3) / 4);
+    expect(spawn.yaw).toBe(0);
+    expectStandable(testShip(), spawn);
+  });
+
+  it("starts in the middle by default, same as asking for the middle", () => {
+    expect(spawnOf(testShip(), grid, "middle")).toEqual(
+      spawnOf(testShip(), grid)
+    );
+  });
+
+  it("keeps the bridge for the middle start but not for the ends", () => {
+    const ship = testShip([gridPart("b", "bridge-3", 0, 5, 1)]);
+    const bow = spawnOf(ship, undefined, "bow")!;
+    const stern = spawnOf(ship, undefined, "stern")!;
+    expect(bow.x).toBeLessThan(stern.x);
+    expect(bow.x).toBeLessThan(3);
+  });
+});
+
 describe("spawnOf", () => {
   it("spawns mid-ship on the centreline of an empty deck, facing the bow", () => {
     const spawn = spawnOf(testShip())!;

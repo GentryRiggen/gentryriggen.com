@@ -47,8 +47,15 @@ const walker = (page: Page) =>
 const walkStatus = (page: Page) =>
   page.evaluate(() => window.__shipBuilderStore!.getState().walk.status);
 
-async function startWalking(page: Page) {
+type StartName = "Front (bow)" | "Middle" | "Back (stern)";
+
+/** Taps Walk, picks where to start, and waits for the walker to appear. */
+async function startWalking(page: Page, start: StartName = "Middle") {
   await page.getByRole("button", { name: "Walk", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Where do you want to start?" })
+    .getByRole("button", { name: start })
+    .click();
   await expect(
     page.getByRole("button", { name: "Stop walking" })
   ).toBeVisible();
@@ -165,6 +172,27 @@ test.describe("Ship Builder walk", () => {
         page.getByRole("button", { name: "Sea trial" })
       ).toBeVisible();
       expect(await walker(page)).toBeNull();
+    }
+  );
+
+  test(
+    "starts at the front or the back when asked",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await openBuilder(page);
+      await loadTitanic(page);
+      const length = await page.evaluate(() => {
+        const { hull } = window.__shipBuilderStore!.getState().ship;
+        return hull.lengthSegments * 3;
+      });
+
+      const front = await startWalking(page, "Front (bow)");
+      expect(front.x).toBeLessThan(length / 4);
+      await page.getByRole("button", { name: "Stop walking" }).click();
+      await expect(page.getByRole("button", { name: "Walk" })).toBeVisible();
+
+      const back = await startWalking(page, "Back (stern)");
+      expect(back.x).toBeGreaterThan((length * 3) / 4);
     }
   );
 
