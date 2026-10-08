@@ -34,7 +34,7 @@ export function WalkStartPicture({ start }: { start: WalkStart }) {
     <svg
       viewBox="0 0 96 40"
       aria-hidden="true"
-      className="h-10 w-24 shrink-0"
+      className="h-auto w-full max-w-24"
       focusable="false"
     >
       <rect
@@ -117,12 +117,14 @@ export default function WalkStartPicker({
     <div
       id={id}
       role="dialog"
-      aria-label="Where do you want to start?"
+      aria-labelledby={`${id}-title`}
       className={`pointer-events-auto absolute bottom-full ${
         align === "center" ? "left-1/2 -translate-x-1/2" : "right-0"
       } z-30 mb-2 flex w-[min(22rem,calc(100vw-1.5rem))] flex-col gap-2 rounded-2xl border p-3 shadow-xl motion-safe:animate-scaleUp ${panelClass}`}
     >
-      <h2 className="text-sm font-semibold">Where do you want to start?</h2>
+      <h2 id={`${id}-title`} className="text-sm font-semibold">
+        Where do you want to start?
+      </h2>
       <div className="grid grid-cols-3 gap-2">
         {OPTIONS.map(({ start, name, word, note }) => (
           <button

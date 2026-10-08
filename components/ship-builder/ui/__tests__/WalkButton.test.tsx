@@ -57,6 +57,34 @@ describe("WalkButton", () => {
     expect(store().walk.status).toBe("idle");
   });
 
+  it("stays closed once the ship can no longer be walked, even after a redo", async () => {
+    act(() => store().loadShip(testShip(), null));
+    const user = userEvent.setup();
+    render(<WalkButton />);
+    await user.click(screen.getByRole("button", { name: "Walk" }));
+    act(() => store().loadShip(NO_DECK, null));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    act(() => store().loadShip(testShip(), null));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("closes when focus tabs out of it", async () => {
+    act(() => store().loadShip(testShip(), null));
+    const user = userEvent.setup();
+    render(
+      <>
+        <WalkButton />
+        <button type="button">Elsewhere</button>
+      </>
+    );
+    await user.click(screen.getByRole("button", { name: "Walk" }));
+    // Middle has focus: Back, then out of the card.
+    await user.tab();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("closes on Escape, hands focus back and keeps the key to itself", async () => {
     act(() => store().loadShip(testShip(), null));
     const user = userEvent.setup();

@@ -2,7 +2,7 @@
 
 import { Footprints } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { FocusEvent, KeyboardEvent } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { spawnOf, type WalkStart } from "@/lib/ship-builder/walk";
 import WalkStartPicker from "./WalkStartPicker";
@@ -37,6 +37,10 @@ export default function WalkButton({ align = "end" }: WalkButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const cardId = useId();
+  // Adjusting state during render: a ship that can no longer be walked (an
+  // undo removed the deck) closes the card for good, so a redo cannot pop it
+  // back open.
+  if (isOpen && !canWalk) setIsOpen(false);
   const isCardOpen = isOpen && canWalk;
 
   useEffect(() => {
@@ -58,13 +62,24 @@ export default function WalkButton({ align = "end" }: WalkButtonProps) {
     document.getElementById(WALK_BUTTON_ID)?.focus();
   }
 
+  /** Tabbing out of the card (or the button) closes it. */
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    const next = event.relatedTarget as Node | null;
+    if (next && !event.currentTarget.contains(next)) setIsOpen(false);
+  }
+
   function handlePick(start: WalkStart) {
     setIsOpen(false);
     startWalk(start);
   }
 
   return (
-    <div ref={wrapperRef} className="relative" onKeyDown={handleKeyDown}>
+    <div
+      ref={wrapperRef}
+      className="relative"
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+    >
       {!canWalk && (
         <p
           id={HINT_ID}
@@ -78,6 +93,7 @@ export default function WalkButton({ align = "end" }: WalkButtonProps) {
         type="button"
         disabled={!canWalk}
         aria-describedby={canWalk ? undefined : HINT_ID}
+        aria-haspopup={canWalk ? "dialog" : undefined}
         aria-expanded={canWalk ? isCardOpen : undefined}
         aria-controls={isCardOpen ? cardId : undefined}
         onClick={() => setIsOpen((open) => !open)}
