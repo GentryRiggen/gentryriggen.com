@@ -31,6 +31,7 @@ import { sceneTime } from "./testClock";
 import TornEdge from "./TornEdge";
 import { breakXOf, localClipPlane } from "./tornEdgeGeometry";
 import { trialPlayback } from "./trialPlayback";
+import WalkEyes from "./WalkEyes";
 
 /** Building aids: the ship is frozen during a trial, so halves skip them. */
 const BUILD_ONLY: ReadonlySet<unknown> = new Set([
@@ -104,7 +105,9 @@ function HalfGroup({
     value.clip.copy(local).applyMatrix4(target.matrixWorld);
   };
   useLayoutEffect(place);
-  useFrame(place);
+  // Priority -1: the half is placed before its walker's eyes (a child) read
+  // its matrix, as BobGroup does for the whole ship.
+  useFrame(place, -1);
 
   return (
     <group ref={carry}>
@@ -112,6 +115,7 @@ function HalfGroup({
         <ShipHalfContext.Provider value={value}>
           {children}
           <TornEdge side={side} atX={atX} />
+          <WalkEyes half={side} />
         </ShipHalfContext.Provider>
       </group>
     </group>

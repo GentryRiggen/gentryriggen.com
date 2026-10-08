@@ -7,20 +7,23 @@ import { getWalkState, publishWalk } from "@/lib/ship-builder/state/walkLive";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
+  halfWalkGrid,
   stepWalker,
   walkGridOf,
+  walkHalfOf,
+  type WalkGrid,
   type WalkState,
 } from "@/lib/ship-builder/walk";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { trialPlayback } from "./trialPlayback";
 import { testWalkSpawn } from "./testClock";
-import { isWalkOver } from "./walkOver";
 
 /** Runs one walk: steps the walker in fixed steps and publishes it. */
 function Walking() {
   const ship = useShipBuilderStore((s) => s.ship);
   const grid = useMemo(() => walkGridOf(ship), [ship]);
-  const stopWalk = useShipBuilderStore((s) => s.stopWalk);
+  // Once she breaks: the grid cut to the walker's half, picked once.
+  const halfGrid = useRef<{ atX: number; grid: WalkGrid } | null>(null);
   // The store published the spawn when the walk started.
   const state = useRef<WalkState | null>(getWalkState());
   const leftover = useRef(0);
@@ -35,23 +38,28 @@ function Walking() {
   }, []);
 
   useFrame((_, delta) => {
-    // She has broken or gone under: the walk ends and the trial plays on to
-    // its result (there is no half to ride yet, a later release).
-    if (
-      isWalkOver(trialPlayback) &&
-      useShipBuilderStore.getState().trial.status === "running"
-    ) {
-      stopWalk();
-      return;
-    }
     const current = state.current;
     if (!current) return;
+    const { breakup } = trialPlayback;
+    if (!breakup) halfGrid.current = null;
+    else if (halfGrid.current?.atX !== breakup.atX) {
+      // She has broken: the walker rides the half under their feet, for good.
+      halfGrid.current = {
+        atX: breakup.atX,
+        grid: halfWalkGrid(
+          grid,
+          walkHalfOf(current.x, breakup.atX),
+          breakup.atX
+        ),
+      };
+    }
+    const stepGrid = halfGrid.current?.grid ?? grid;
     leftover.current += Math.min(delta, MAX_FRAME_DELTA);
     let next = current;
     const hadSteps = leftover.current >= SIM_STEP_S;
     while (leftover.current >= SIM_STEP_S) {
       leftover.current -= SIM_STEP_S;
-      next = stepWalker(next, walkInput, grid);
+      next = stepWalker(next, walkInput, stepGrid);
     }
     // A tap is one request, however many steps it took to be heard.
     if (hadSteps) walkInput.jump = false;
