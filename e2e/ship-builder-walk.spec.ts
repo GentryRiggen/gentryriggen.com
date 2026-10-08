@@ -176,6 +176,22 @@ test.describe("Ship Builder walk", () => {
   );
 
   test(
+    "the start card fits on a phone screen",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await openBuilder(page);
+      await loadTitanic(page);
+      await page.getByRole("button", { name: "Walk", exact: true }).click();
+      const box = await page
+        .getByRole("dialog", { name: "Where do you want to start?" })
+        .boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+    }
+  );
+
+  test(
     "starts at the front or the back when asked",
     { tag: "@smoke" },
     async ({ page }) => {
