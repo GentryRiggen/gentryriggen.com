@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.16.0",
+    date: "2026-10-07",
+    title: "Pick where to start walking",
+    highlights: [
+      "When you tap Walk you can now pick where to start: at the front (the bow), in the middle by the bridge, or at the back (the stern)",
+      "Each choice has a little picture of a ship with a glowing spot showing where you will start",
+      "Start at the front and you face back along the ship, so you are not staring at the rail",
+    ],
+  },
+  {
     version: "2.15.0",
     date: "2026-10-07",
     title: "Stay aboard to the end",
@@ -25,7 +35,6 @@ export const CHANGELOG: readonly Release[] = [
       "If she breaks in two, you ride whichever half you are standing on. The torn edge is like a rail, so you cannot cross to the other half",
       "If she sinks, you go all the way down to the sea floor with her and can keep exploring the wreck",
       "When it is over, a note tells you how she did. Tap Stop walking to see the full result",
-      "When you tap Walk you can now pick where to start: at the front, in the middle or at the back of your ship",
     ],
   },
   {
