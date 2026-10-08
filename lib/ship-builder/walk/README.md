@@ -16,6 +16,9 @@ first person. The scene and controls live elsewhere; this folder is the rules.
   may cross (`entering`): a roof one level up once the feet reach it, low decor
   once they are above it, an edge when airborne. Walking alone changes level
   only through stairs.
+- `halfGrid.ts` (`halfWalkGrid`, `walkHalfOf`) cuts a grid at the break so only
+  one half's columns are walkable: the torn edge works like a rail, and a
+  walker rides the half they stood on.
 - `spawn.ts` (`spawnOf`) picks a clear start near the bridge, facing open deck.
   It returns `null` when there is nowhere to stand, which disables the Walk
   button.
