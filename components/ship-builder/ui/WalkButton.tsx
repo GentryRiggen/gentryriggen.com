@@ -17,6 +17,11 @@ export function focusWalkButton() {
 
 const HINT_ID = "walk-button-hint";
 
+interface WalkButtonProps {
+  /** How the start card lines up over the button (centred in a trial). */
+  align?: "end" | "center";
+}
+
 /**
  * Starts walking the decks: tapping it opens a card to pick where to start
  * (front, middle or back). It sits beside the Sea trial button (which hands
@@ -25,7 +30,7 @@ const HINT_ID = "walk-button-hint";
  * with nowhere to stand cannot be walked, so the button is disabled and says
  * why.
  */
-export default function WalkButton() {
+export default function WalkButton({ align = "end" }: WalkButtonProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const startWalk = useShipBuilderStore((s) => s.startWalk);
   const canWalk = useMemo(() => spawnOf(ship) !== null, [ship]);
@@ -81,7 +86,9 @@ export default function WalkButton() {
         <Footprints aria-hidden="true" className="h-5 w-5 shrink-0" />
         Walk
       </button>
-      {isCardOpen && <WalkStartPicker id={cardId} onPick={handlePick} />}
+      {isCardOpen && (
+        <WalkStartPicker id={cardId} onPick={handlePick} align={align} />
+      )}
     </div>
   );
 }

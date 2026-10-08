@@ -93,6 +93,8 @@ interface WalkStartPickerProps {
   /** Id for the card, so the Walk button can point at it. */
   id: string;
   onPick: (start: WalkStart) => void;
+  /** Where the card sits over the button: its right edge, or its centre. */
+  align?: "end" | "center";
 }
 
 /**
@@ -100,7 +102,11 @@ interface WalkStartPickerProps {
  * for the front, middle and back of the ship. Focus lands on Middle. The Walk
  * button owns closing it (Esc, a press outside).
  */
-export default function WalkStartPicker({ id, onPick }: WalkStartPickerProps) {
+export default function WalkStartPicker({
+  id,
+  onPick,
+  align = "end",
+}: WalkStartPickerProps) {
   const middle = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -112,7 +118,9 @@ export default function WalkStartPicker({ id, onPick }: WalkStartPickerProps) {
       id={id}
       role="dialog"
       aria-label="Where do you want to start?"
-      className={`pointer-events-auto absolute bottom-full right-0 z-30 mb-2 flex w-[min(22rem,calc(100vw-1.5rem))] flex-col gap-2 rounded-2xl border p-3 shadow-xl motion-safe:animate-scaleUp ${panelClass}`}
+      className={`pointer-events-auto absolute bottom-full ${
+        align === "center" ? "left-1/2 -translate-x-1/2" : "right-0"
+      } z-30 mb-2 flex w-[min(22rem,calc(100vw-1.5rem))] flex-col gap-2 rounded-2xl border p-3 shadow-xl motion-safe:animate-scaleUp ${panelClass}`}
     >
       <h2 className="text-sm font-semibold">Where do you want to start?</h2>
       <div className="grid grid-cols-3 gap-2">
