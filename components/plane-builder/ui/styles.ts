@@ -1,5 +1,10 @@
-const base =
-  "inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-40";
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-sky-300 dark:focus-visible:ring-offset-slate-900";
+
+/** Keyboard focus ring for anything clickable that is not one of the buttons. */
+export const focusRingClass = focusRing;
+
+const base = `inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
 
 export const primaryButtonClass = `${base} bg-sky-600 text-white hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400`;
 

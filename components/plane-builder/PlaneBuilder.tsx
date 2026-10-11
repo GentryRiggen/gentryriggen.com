@@ -11,6 +11,7 @@ import LaunchOverlay from "./ui/LaunchOverlay";
 import LevelSelect from "./ui/LevelSelect";
 import Results from "./ui/Results";
 import Steering from "./ui/Steering";
+import { focusRingClass } from "./ui/styles";
 import WebGLFallback from "./ui/WebGLFallback";
 
 const BACKGROUND =
@@ -66,7 +67,7 @@ export default function PlaneBuilder() {
       {isRecovered ? (
         <div
           role="status"
-          className="absolute inset-x-4 top-4 z-20 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+          className="absolute inset-x-4 top-20 z-20 sm:top-24 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
         >
           <p className="flex-1">
             Your old save couldn&apos;t be read, so we started fresh. A copy was
@@ -75,7 +76,7 @@ export default function PlaneBuilder() {
           <button
             type="button"
             onClick={() => setIsRecovered(false)}
-            className="min-h-11 shrink-0 rounded-md px-3 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900"
+            className={`min-h-11 shrink-0 rounded-md px-3 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900 ${focusRingClass}`}
           >
             Dismiss
           </button>

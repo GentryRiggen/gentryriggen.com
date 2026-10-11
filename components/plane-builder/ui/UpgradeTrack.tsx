@@ -13,6 +13,8 @@ import { formatCoins } from "./format";
 import { coinButtonClass } from "./styles";
 
 const FLASH_MS = 600;
+/** Long enough for a screen reader to pick the message up before it clears. */
+const ANNOUNCE_MS = 2500;
 
 interface UpgradeTrackProps {
   track: TrackId;
@@ -31,26 +33,42 @@ export default function UpgradeTrack({
   onBuy,
 }: UpgradeTrackProps) {
   const [isFlashing, setIsFlashing] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const [announcement, setAnnouncement] = useState("");
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const announceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(flashTimer.current);
+      clearTimeout(announceTimer.current);
+    },
+    []
+  );
 
   const def = catalog[track];
   const label = TRACK_LABELS[track];
   const price = tierPrice(def, tier);
   const isMaxed = price === null;
-  const canAfford = !isMaxed && coins >= price;
+  const missing = isMaxed ? 0 : Math.max(0, price - coins);
+  const canAfford = !isMaxed && missing === 0;
+
+  let buyName = `Buy ${label} for ${price} coins`;
+  if (isMaxed) buyName = `${label} maxed`;
+  else if (!canAfford) buyName = `Buy ${label}, need ${missing} more coins`;
 
   const handleBuy = () => {
-    if (!onBuy(track)) return;
+    if (isMaxed || !onBuy(track)) return;
     setIsFlashing(true);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setIsFlashing(false), FLASH_MS);
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setIsFlashing(false), FLASH_MS);
+    setAnnouncement(`Bought ${def.parts[tier + 1]}!`);
+    clearTimeout(announceTimer.current);
+    announceTimer.current = setTimeout(() => setAnnouncement(""), ANNOUNCE_MS);
   };
 
   return (
     <li
-      className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800 ${
-        isFlashing ? "animate-pulse" : ""
+      className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 short:gap-2 short:p-2 dark:border-slate-700 dark:bg-slate-800 ${
+        isFlashing ? "motion-safe:animate-pulse" : ""
       }`}
     >
       <div className="min-w-0 flex-1">
@@ -59,8 +77,11 @@ export default function UpgradeTrack({
           <span className="font-medium text-slate-600 dark:text-slate-300">
             {def.parts[tier]}
           </span>
+          <span className="sr-only">
+            , tier {tier} of {MAX_TIER}
+          </span>
         </p>
-        <div aria-hidden="true" className="my-1 flex gap-1">
+        <div aria-hidden="true" className="my-1 flex gap-1 short:my-0.5">
           {Array.from({ length: MAX_TIER }, (_, i) => (
             <span
               key={i}
@@ -72,21 +93,24 @@ export default function UpgradeTrack({
             />
           ))}
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          {label} {tier + 1} → {TRACK_EFFECTS[track]}
-        </p>
+        {isMaxed ? null : (
+          <p className="text-sm text-slate-600 short:sr-only dark:text-slate-300">
+            Next: {TRACK_EFFECTS[track]}
+          </p>
+        )}
       </div>
       <button
         type="button"
         disabled={!canAfford}
-        aria-label={
-          isMaxed ? `${label} maxed` : `Buy ${label} for ${price} coins`
-        }
+        aria-label={buyName}
         onClick={handleBuy}
         className={coinButtonClass}
       >
         {isMaxed ? "Maxed" : `Buy 🪙${formatCoins(price)}`}
       </button>
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
     </li>
   );
 }

@@ -7,6 +7,11 @@ import { formatCoins } from "./format";
 import { cardClass, primaryButtonClass, secondaryButtonClass } from "./styles";
 import UpgradeTrack from "./UpgradeTrack";
 
+/**
+ * The upgrade panel: a bottom sheet on phones, a sidebar from `md:`. Only the
+ * upgrade list scrolls. The header (with the coin wallet) and the Launch!
+ * footer stay put, so Launch! is always on screen.
+ */
 export default function Hangar() {
   const levelId = usePlaneBuilderStore((s) => s.levelId);
   const lp = usePlaneBuilderStore((s) => s.progress.levels[s.levelId]);
@@ -19,29 +24,32 @@ export default function Hangar() {
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-end md:items-end md:justify-stretch">
       <section
         aria-label="Hangar"
-        className={`pointer-events-auto flex max-h-[50%] w-full flex-col gap-3 overflow-y-auto rounded-b-none p-3 md:max-h-none md:w-[22rem] md:rounded-2xl md:rounded-r-none md:p-4 ${cardClass}`}
+        className={`pointer-events-auto flex max-h-[50%] w-full flex-col rounded-b-none md:max-h-full md:w-[22rem] md:rounded-2xl md:rounded-r-none ${cardClass}`}
       >
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={goToLevels}
-            className={secondaryButtonClass}
-          >
-            ← Levels
-          </button>
-          {/* Task 12: the SoundToggle goes here. */}
-          <div data-slot="sound-toggle" />
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xl font-extrabold">{level.name}</h2>
-          <p
-            aria-label={`${lp.coins} coins`}
-            className="rounded-full bg-amber-100 px-3 py-1 text-lg font-bold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
-          >
-            🪙 {formatCoins(lp.coins)}
-          </p>
-        </div>
-        <ul className="flex flex-col gap-2">
+        <header className="flex shrink-0 flex-col gap-2 p-3 pb-2 md:p-4 md:pb-2 short:gap-1 short:p-2 short:pb-1">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={goToLevels}
+              className={secondaryButtonClass}
+            >
+              ← Levels
+            </button>
+            {/* Task 12: the SoundToggle goes here. */}
+            <div data-slot="sound-toggle" />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xl font-extrabold short:text-lg">
+              {level.name}
+            </h2>
+            <p className="rounded-full bg-amber-100 px-3 py-1 text-lg font-bold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+              <span aria-hidden="true">🪙 </span>
+              {formatCoins(lp.coins)}
+              <span className="sr-only"> coins</span>
+            </p>
+          </div>
+        </header>
+        <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-1 md:px-4 short:gap-1.5 short:px-2">
           {TRACK_IDS.map((track) => (
             <UpgradeTrack
               key={track}
@@ -53,13 +61,15 @@ export default function Hangar() {
             />
           ))}
         </ul>
-        <button
-          type="button"
-          onClick={startLaunch}
-          className={`${primaryButtonClass} min-h-14 text-xl`}
-        >
-          Launch!
-        </button>
+        <footer className="shrink-0 border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:p-4 dark:border-slate-700 short:p-2">
+          <button
+            type="button"
+            onClick={startLaunch}
+            className={`${primaryButtonClass} w-full min-h-14 text-xl short:min-h-11`}
+          >
+            Launch!
+          </button>
+        </footer>
       </section>
     </div>
   );

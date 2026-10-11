@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Landscape phones and other short screens. */
+@custom-variant short (@media (max-height: 32rem));
 
 * {
   scroll-behavior: smooth;

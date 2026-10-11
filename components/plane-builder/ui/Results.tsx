@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import type { EndReason } from "@/lib/plane-builder/sim/flight";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
@@ -18,13 +19,28 @@ export default function Results() {
   const last = usePlaneBuilderStore((s) => s.lastFlight);
   const openLevel = usePlaneBuilderStore((s) => s.openLevel);
   const flyAgain = usePlaneBuilderStore((s) => s.flyAgain);
+  const goToLevels = usePlaneBuilderStore((s) => s.goToLevels);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const hasFlight = last !== null;
+
+  useEffect(() => {
+    // Without a flight there is nothing to show, so go back to the levels.
+    if (!hasFlight && usePlaneBuilderStore.getState().screen === "results") {
+      goToLevels();
+    }
+  }, [hasFlight, goToLevels]);
+
+  useEffect(() => {
+    heading.current?.focus();
+  }, [hasFlight]);
+
   if (!last) return null;
 
   const level = LEVELS[levelId];
   const { result, payout } = last;
   const percent = percentOf(result.distance, level.finishDistance);
   const isAlmost = percent >= 90 && !result.finished;
-  const endLine = END_LINES[result.endReason];
+  const endLine = END_LINES[result.endReason] ?? "Flight over!";
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex items-end justify-center p-3 sm:items-center">
@@ -38,7 +54,13 @@ export default function Results() {
             New best!
           </p>
         ) : null}
-        {endLine ? <p className="text-lg font-semibold">{endLine}</p> : null}
+        <h2
+          ref={heading}
+          tabIndex={-1}
+          className="text-lg font-semibold focus:outline-none"
+        >
+          {endLine}
+        </h2>
         <p className="text-3xl font-extrabold">
           {Math.round(result.distance)} m
         </p>
@@ -50,12 +72,14 @@ export default function Results() {
             Almost there!
           </p>
         ) : null}
-        <p className="text-slate-700 dark:text-slate-200">
-          {formatCoins(payout.distancePay)} + {formatCoins(payout.coinPay)}{" "}
-          coins × {Number(payout.multiplier.toFixed(2))}
-        </p>
+        <ul className="text-slate-700 dark:text-slate-200">
+          <li>Distance: {formatCoins(payout.distancePay)} coins</li>
+          <li>Coins grabbed: {formatCoins(payout.coinPay)}</li>
+          <li>Coin boost: ×{Number(payout.multiplier.toFixed(2))}</li>
+        </ul>
         <p className="text-3xl font-extrabold text-amber-700 dark:text-amber-300">
-          +🪙{formatCoins(payout.total)}
+          <span aria-hidden="true">🪙 </span>
+          Total: +{formatCoins(payout.total)}
         </p>
         <div className="flex gap-3">
           <button

@@ -33,13 +33,13 @@ export const TRACK_LABELS: Record<TrackId, string> = {
   multiplier: "Coin boost",
 };
 
-/** Shown as "<label> <n> → <effect>". */
+/** Shown as "Next: <effect>", so each reads as what the next part does. */
 export const TRACK_EFFECTS: Record<TrackId, string> = {
   launcher: "launch faster",
   wings: "glide further",
-  engine: "more push",
+  engine: "zoom faster",
   fuel: "fly longer",
-  body: "less drag and more bump shields",
+  body: "fly smoother and survive more bumps",
   multiplier: "more coins every flight",
 };
 

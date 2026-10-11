@@ -6,15 +6,13 @@ import type { Group } from "three";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
-import CameraPose from "./CameraPose";
+import HangarCamera from "./HangarCamera";
 import PlaneModel from "./PlaneModel";
 import Sky from "./Sky";
 
 const TURN_RATE = 0.3;
 const POP_SECONDS = 0.3;
 const POP_SIZE = 0.2;
-const CAMERA_POSITION = [3.2, 1.2, -4.2] as const;
-const CAMERA_TARGET = [0, 0.1, 0] as const;
 
 interface HangarSceneProps {
   level: LevelDef;
@@ -49,7 +47,7 @@ export default function HangarScene({ level, tiers }: HangarSceneProps) {
 
   return (
     <>
-      <CameraPose position={CAMERA_POSITION} target={CAMERA_TARGET} />
+      <HangarCamera />
       <Sky palette={level.palette} />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}

@@ -9,7 +9,12 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { PLANE_BUILDER_VERSION } from "@/lib/plane-builder/version";
 import ConfirmRestart from "./ConfirmRestart";
 import { percentOf } from "./format";
-import { cardClass, primaryButtonClass, secondaryButtonClass } from "./styles";
+import {
+  cardClass,
+  focusRingClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "./styles";
 
 export default function LevelSelect() {
   const progress = usePlaneBuilderStore((s) => s.progress);
@@ -19,7 +24,10 @@ export default function LevelSelect() {
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-10 overflow-y-auto">
-      <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-6">
+      <div
+        inert={restartId !== null}
+        className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-6"
+      >
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-baseline gap-3">
             <h1 className="text-3xl font-extrabold text-sky-900 dark:text-sky-100">
@@ -27,7 +35,7 @@ export default function LevelSelect() {
             </h1>
             <Link
               href="/plane-builder/versions"
-              className="inline-flex min-h-11 items-center text-sm font-medium text-sky-800 underline dark:text-sky-300"
+              className={`inline-flex min-h-11 items-center rounded text-sm font-medium text-sky-800 underline dark:text-sky-300 ${focusRingClass}`}
             >
               v{PLANE_BUILDER_VERSION}
             </Link>
@@ -80,6 +88,8 @@ export default function LevelSelect() {
                         <button
                           type="button"
                           onClick={() => openLevel(id)}
+                          data-play-level={id}
+                          aria-label={`${lp.finished ? "Replay" : "Play"} ${level.name}`}
                           className={primaryButtonClass}
                         >
                           {lp.finished ? "Replay" : "Play"}
@@ -88,6 +98,7 @@ export default function LevelSelect() {
                           <button
                             type="button"
                             onClick={() => setRestartId(id)}
+                            aria-label={`Restart ${level.name}`}
                             className={secondaryButtonClass}
                           >
                             Restart
@@ -110,6 +121,11 @@ export default function LevelSelect() {
       {restartId ? (
         <ConfirmRestart
           levelId={restartId}
+          getFallbackFocus={() =>
+            document.querySelector<HTMLElement>(
+              `[data-play-level="${restartId}"]`
+            )
+          }
           onCancel={() => setRestartId(null)}
           onConfirm={() => {
             restart(restartId);

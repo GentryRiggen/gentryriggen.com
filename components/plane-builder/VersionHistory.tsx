@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CHANGELOG } from "@/lib/plane-builder/changelog";
 import { PLANE_BUILDER_VERSION } from "@/lib/plane-builder/version";
+import { focusRingClass } from "./ui/styles";
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
@@ -19,7 +20,7 @@ export default function VersionHistory() {
       <header className="border-b border-slate-200 bg-white pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 pl-4 pr-20 dark:border-slate-800 dark:bg-slate-900">
         <Link
           href="/plane-builder"
-          className="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          className={`rounded text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white ${focusRingClass}`}
         >
           ← Back to Plane Builder
         </Link>

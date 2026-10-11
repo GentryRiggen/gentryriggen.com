@@ -113,7 +113,7 @@ export default function Steering() {
         onPointerUp={() => setBoost(false)}
         onPointerCancel={() => setBoost(false)}
         onLostPointerCapture={() => setBoost(false)}
-        className="absolute bottom-6 right-6 flex size-20 touch-none select-none items-center justify-center rounded-full bg-orange-500 text-base font-extrabold text-white shadow-lg ring-4 ring-white/70 hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40 aria-pressed:bg-orange-300 aria-pressed:text-orange-950 dark:bg-orange-600 dark:ring-slate-200/40 dark:aria-pressed:bg-orange-400"
+        className="absolute bottom-6 right-6 flex size-20 touch-none select-none items-center justify-center rounded-full bg-orange-500 text-base font-extrabold text-white shadow-lg ring-4 ring-white/70 hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-700 dark:focus-visible:ring-sky-300 aria-pressed:bg-orange-300 aria-pressed:text-orange-950 dark:bg-orange-600 dark:ring-slate-200/40 dark:aria-pressed:bg-orange-400"
       >
         Boost
       </button>
