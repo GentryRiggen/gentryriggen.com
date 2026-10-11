@@ -8,6 +8,18 @@ import {
 } from "../catalog";
 import { planeStats } from "../stats";
 
+const names = (prefix: string) =>
+  Array.from({ length: MAX_TIER + 1 }, (_, i) => `${prefix} ${i + 1}`);
+
+const baseSpec = {
+  launcher: { basePrice: 10, from: 10, to: 50 },
+  wings: { basePrice: 10, from: 0.03, to: 0.15 },
+  engine: { basePrice: 10, from: 0, to: 12 },
+  fuel: { basePrice: 10, from: 3, to: 30 },
+  body: { basePrice: 10, from: 0.01, to: 0.003 },
+  multiplier: { basePrice: 10, from: 1, to: 3 },
+};
+
 const catalog = makeCatalog({
   launcher: { basePrice: 10, from: 10, to: 50 },
   wings: { basePrice: 10, from: 0.03, to: 0.15 },
@@ -16,12 +28,12 @@ const catalog = makeCatalog({
   body: { basePrice: 10, from: 0.01, to: 0.003 },
   multiplier: { basePrice: 10, from: 1, to: 3 },
   parts: {
-    launcher: ["Twig sling"],
-    wings: ["Stubs"],
-    engine: ["None"],
-    fuel: ["Cup"],
-    body: ["Box"],
-    multiplier: ["x1"],
+    launcher: names("Twig sling"),
+    wings: names("Stubs"),
+    engine: names("None"),
+    fuel: names("Cup"),
+    body: names("Box"),
+    multiplier: names("x"),
   },
 });
 
@@ -40,9 +52,21 @@ describe("catalog", () => {
     expect(tierPrice(catalog.engine, MAX_TIER)).toBeNull();
   });
 
-  it("pads part names so every tier has one", () => {
+  it("gives every tier a part name", () => {
     expect(catalog.wings.parts).toHaveLength(MAX_TIER + 1);
     expect(catalog.wings.parts[8]).toBe("Stubs 9");
+  });
+
+  it("throws when a track does not have exactly one name per tier", () => {
+    const parts = {
+      launcher: names("a"),
+      wings: ["Only one"],
+      engine: names("c"),
+      fuel: names("d"),
+      body: names("e"),
+      multiplier: names("f"),
+    };
+    expect(() => makeCatalog({ ...baseSpec, parts })).toThrow(/wings/);
   });
 });
 

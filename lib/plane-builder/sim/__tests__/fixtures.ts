@@ -1,5 +1,5 @@
 // lib/plane-builder/sim/__tests__/fixtures.ts
-import { makeCatalog } from "../../plane/catalog";
+import { MAX_TIER, makeCatalog } from "../../plane/catalog";
 import type { PlaneStats } from "../../plane/stats";
 import type { LevelDef } from "../../levels/types";
 
@@ -25,12 +25,12 @@ export function flatLevel(overrides: Partial<LevelDef> = {}): LevelDef {
       body: { basePrice: 1, from: 1, to: 1 },
       multiplier: { basePrice: 1, from: 1, to: 1 },
       parts: {
-        launcher: ["a"],
-        wings: ["a"],
-        engine: ["a"],
-        fuel: ["a"],
-        body: ["a"],
-        multiplier: ["a"],
+        launcher: Array.from({ length: MAX_TIER + 1 }, () => "a"),
+        wings: Array.from({ length: MAX_TIER + 1 }, () => "a"),
+        engine: Array.from({ length: MAX_TIER + 1 }, () => "a"),
+        fuel: Array.from({ length: MAX_TIER + 1 }, () => "a"),
+        body: Array.from({ length: MAX_TIER + 1 }, () => "a"),
+        multiplier: Array.from({ length: MAX_TIER + 1 }, () => "a"),
       },
     }),
     palette: {

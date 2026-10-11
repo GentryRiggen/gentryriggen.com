@@ -76,14 +76,17 @@ interface TrackSpec {
 }
 
 type CatalogSpec = Record<TrackId, TrackSpec> & {
-  /** Names for the first tiers; missing ones repeat the last with a number. */
+  /** One name per tier (MAX_TIER + 1 each); makeCatalog throws otherwise. */
   parts: Record<TrackId, readonly string[]>;
 };
 
-function padParts(names: readonly string[]): string[] {
-  return Array.from({ length: MAX_TIER + 1 }, (_, i) =>
-    i < names.length ? names[i] : `${names[names.length - 1]} ${i + 1}`
-  );
+function checkParts(id: TrackId, names: readonly string[]): readonly string[] {
+  if (names.length !== MAX_TIER + 1) {
+    throw new Error(
+      `Track "${id}" needs ${MAX_TIER + 1} part names, got ${names.length}`
+    );
+  }
+  return names;
 }
 
 export function makeCatalog(spec: CatalogSpec): PlaneCatalog {
@@ -92,7 +95,7 @@ export function makeCatalog(spec: CatalogSpec): PlaneCatalog {
     const def: TrackDef = {
       basePrice: track.basePrice,
       values: ladder(track.from, track.to, track.curve),
-      parts: padParts(spec.parts[id]),
+      parts: checkParts(id, spec.parts[id]),
     };
     return [id, def] as const;
   });
