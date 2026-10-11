@@ -9,6 +9,7 @@ import {
   type PlaneCatalog,
   type TrackId,
 } from "@/lib/plane-builder/plane/catalog";
+import { planeSynth } from "../audio/planeSynth";
 import { formatCoins } from "./format";
 import { coinButtonClass } from "./styles";
 
@@ -57,6 +58,7 @@ export default function UpgradeTrack({
 
   const handleBuy = () => {
     if (isMaxed || !onBuy(track)) return;
+    planeSynth.play("buy");
     setIsFlashing(true);
     clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setIsFlashing(false), FLASH_MS);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { planeSynth } from "../audio/planeSynth";
 import { MAX_AIM_PITCH, MAX_AIM_YAW } from "@/lib/plane-builder/sim/constants";
 import { aimFromDrag } from "@/lib/plane-builder/sim/aim";
 import { launchAim, resetLaunchAim } from "@/lib/plane-builder/state/launchAim";
@@ -28,6 +29,7 @@ function isTyping(target: EventTarget | null): boolean {
 function fire() {
   const aim = { ...launchAim };
   resetLaunchAim();
+  planeSynth.play("launch");
   usePlaneBuilderStore.getState().beginFlight(aim);
 }
 

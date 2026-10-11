@@ -3,6 +3,7 @@
 import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
+import { planeSynth } from "../audio/planeSynth";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 
@@ -19,6 +20,10 @@ export default function FinishCard({ unlocked }: FinishCardProps) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsAnnounced(true);
+  }, []);
+
+  useEffect(() => {
+    planeSynth.play("cheer");
   }, []);
 
   useEffect(() => {

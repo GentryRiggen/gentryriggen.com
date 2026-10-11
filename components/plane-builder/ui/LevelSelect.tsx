@@ -9,6 +9,7 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { PLANE_BUILDER_VERSION } from "@/lib/plane-builder/version";
 import ConfirmRestart from "./ConfirmRestart";
 import { percentOf } from "./format";
+import SoundToggle from "./SoundToggle";
 import {
   cardClass,
   focusRingClass,
@@ -29,7 +30,7 @@ export default function LevelSelect() {
         className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-6"
       >
         <header className="flex items-center justify-between gap-3">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline gap-3 rounded-2xl bg-white/80 px-3 dark:bg-slate-900/80">
             <h1 className="text-3xl font-extrabold text-sky-900 dark:text-sky-100">
               Plane Builder
             </h1>
@@ -40,8 +41,7 @@ export default function LevelSelect() {
               v{PLANE_BUILDER_VERSION}
             </Link>
           </div>
-          {/* Task 12: the SoundToggle goes here. */}
-          <div data-slot="sound-toggle" />
+          <SoundToggle />
         </header>
 
         <ul className="flex flex-col gap-4">

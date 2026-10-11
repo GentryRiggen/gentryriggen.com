@@ -5,6 +5,7 @@ import { LEVELS } from "@/lib/plane-builder/levels";
 import { TRACK_IDS } from "@/lib/plane-builder/plane/catalog";
 import { formatCoins } from "./format";
 import { cardClass, primaryButtonClass, secondaryButtonClass } from "./styles";
+import SoundToggle from "./SoundToggle";
 import UpgradeTrack from "./UpgradeTrack";
 
 /**
@@ -35,8 +36,7 @@ export default function Hangar() {
             >
               ← Levels
             </button>
-            {/* Task 12: the SoundToggle goes here. */}
-            <div data-slot="sound-toggle" />
+            <SoundToggle />
           </div>
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-xl font-extrabold short:text-lg">

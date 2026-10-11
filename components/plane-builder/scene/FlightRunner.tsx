@@ -26,6 +26,8 @@ import {
 import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import { engineLevel } from "../audio/flightCues";
+import { planeSynth } from "../audio/planeSynth";
 import PlaneModel from "./PlaneModel";
 
 /** Seconds the crash or landing stays on screen before the results. */
@@ -62,7 +64,7 @@ function makeDebris(): Debris[] {
 interface FlightRunnerProps {
   level: LevelDef;
   tiers: Tiers;
-  /** Called with each batch of sim events (Task 12 plays sound from it). */
+  /** Called with each batch of sim events, for sound. */
   onEvents?: (events: FlightEvent[]) => void;
 }
 
@@ -121,6 +123,9 @@ export default function FlightRunner({
 
   useEffect(() => () => debrisMaterial.dispose(), [debrisMaterial]);
 
+  // The hum stops with the flight (including when the tab is left mid-flight).
+  useEffect(() => () => planeSynth.setEngine(0), []);
+
   useFrame((_, delta) => {
     if (isPaused.current) return;
     const { state, stats } = run;
@@ -144,6 +149,14 @@ export default function FlightRunner({
       }
     }
     if (group && group.visible) poseGroup(group, state);
+    planeSynth.setEngine(
+      engineLevel(
+        stats.thrust > 0,
+        state.fuel,
+        state.phase === "flying",
+        flightInput.boost
+      )
+    );
 
     if (debrisAge.current !== null) {
       debrisAge.current += delta;

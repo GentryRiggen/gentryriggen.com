@@ -6,6 +6,7 @@ import {
   type Screen,
   usePlaneBuilderStore,
 } from "@/lib/plane-builder/state/store";
+import { playFlightEvents } from "../audio/flightCues";
 import ChaseCamera from "./ChaseCamera";
 import FinishGate from "./FinishGate";
 import FlightRunner from "./FlightRunner";
@@ -36,7 +37,12 @@ export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
       <Slingshot tier={tiers.launcher} />
       {screen === "launch" ? <LaunchPlane level={level} tiers={tiers} /> : null}
       {screen === "flight" ? (
-        <FlightRunner key={flightId} level={level} tiers={tiers} />
+        <FlightRunner
+          key={flightId}
+          level={level}
+          tiers={tiers}
+          onEvents={playFlightEvents}
+        />
       ) : null}
     </>
   );

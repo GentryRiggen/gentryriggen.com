@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import useWebGLSupport from "@/components/ship-builder/hooks/useWebGLSupport";
 import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import { soundSetting } from "./audio/soundSetting";
+import useSoundUnlock from "./audio/useSoundUnlock";
 import GameStage from "./scene/GameStage";
 import FlightHud from "./ui/FlightHud";
 import Hangar from "./ui/Hangar";
@@ -21,6 +23,7 @@ export default function PlaneBuilder() {
   const hasWebGL = useWebGLSupport();
   const screen = usePlaneBuilderStore((s) => s.screen);
   const [isRecovered, setIsRecovered] = useState(false);
+  useSoundUnlock(soundSetting.useValue());
 
   useEffect(() => {
     const result = loadProgress();
