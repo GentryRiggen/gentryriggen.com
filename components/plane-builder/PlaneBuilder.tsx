@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import useWebGLSupport from "@/components/ship-builder/hooks/useWebGLSupport";
 import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import Hangar from "./ui/Hangar";
+import LevelSelect from "./ui/LevelSelect";
+import Results from "./ui/Results";
 import WebGLFallback from "./ui/WebGLFallback";
 
 const BACKGROUND =
-  "bg-sky-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100";
+  "bg-gradient-to-b from-sky-300 to-sky-100 text-slate-900 dark:from-slate-950 dark:to-sky-950 dark:text-slate-100";
 
 export default function PlaneBuilder() {
   const hasWebGL = useWebGLSupport();
@@ -41,10 +44,21 @@ export default function PlaneBuilder() {
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${BACKGROUND}`}>
       {/* Task 10: the 3D Stage goes in an absolute inset-0 layer here. */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold">Plane Builder</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400">{screen}</p>
-      </div>
+      {screen === "levels" ? <LevelSelect /> : null}
+      {screen === "hangar" ? <Hangar /> : null}
+      {screen === "results" ? <Results /> : null}
+      {/* Task 11 replaces this placeholder with the launch and flight UI. */}
+      {screen === "launch" || screen === "flight" ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => usePlaneBuilderStore.getState().goToLevels()}
+            className="min-h-11 rounded-lg bg-white px-4 font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+          >
+            Launching… Back to levels
+          </button>
+        </div>
+      ) : null}
       {isRecovered ? (
         <div
           role="status"
