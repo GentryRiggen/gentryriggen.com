@@ -19,6 +19,11 @@ const SHIPS_LINE = (_: string, el: Element | null) =>
   el.textContent ===
     "⚓ I also love building fun things for my kids, like a ship-building game: /ship-builder (or type 'ships').";
 
+const PLANES_LINE = (_: string, el: Element | null) =>
+  el?.tagName === "P" &&
+  el.textContent ===
+    "✈️ And a plane game where you upgrade a slingshot plane until it reaches the finish line: /plane-builder (or type 'planes').";
+
 const queryPrompt = () => screen.queryByLabelText("Terminal command input");
 
 function advance(ms: number) {
@@ -68,6 +73,10 @@ describe("Terminal boot sequence", () => {
       "href",
       "/ship-builder"
     );
+    expect(screen.getByText(PLANES_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "/plane-builder" })
+    ).toHaveAttribute("href", "/plane-builder");
     expect(screen.queryByText("cat ships.txt")).not.toBeInTheDocument();
     expect(queryPrompt()).toBeInTheDocument();
   });

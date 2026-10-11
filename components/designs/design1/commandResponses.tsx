@@ -172,6 +172,7 @@ const HELP_TEXT = `Available commands:
   matrix           Enter the matrix
   confetti         Celebrate!
   ships            Play my ship-building game
+  planes           Play my plane-flying game
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -335,6 +336,23 @@ function shipsOutput(): ReactNode {
   );
 }
 
+function planesOutput(): ReactNode {
+  return (
+    <div className="space-y-1">
+      <p>A plane-flying game I made for my boys ✈️</p>
+      <p>
+        Taking off in a moment...{" "}
+        <a
+          href="/plane-builder"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /plane-builder
+        </a>
+      </p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Command matching & response
 // ---------------------------------------------------------------------------
@@ -373,6 +391,15 @@ export function getCommandResponse(
       output: shipsOutput(),
       shouldClear: false,
       navigateTo: "/ship-builder",
+    };
+  }
+
+  // --- planes ---
+  if (lower === "planes" || lower === "plane-builder") {
+    return {
+      output: planesOutput(),
+      shouldClear: false,
+      navigateTo: "/plane-builder",
     };
   }
 

@@ -35,6 +35,7 @@ beforeEach(() => {
       view({ vid: "a" }),
       view({ vid: "b", path: "/ship-builder", site: "ship-builder" }),
       view({ vid: "c", path: "/ship-builder/versions", site: "ship-builder" }),
+      view({ vid: "d", path: "/plane-builder", site: "plane-builder" }),
     ],
     truncated: false,
   });
@@ -44,8 +45,17 @@ it("loads data and shows the overview totals", async () => {
   render(<Dashboard />);
   expect(screen.getByText(/loading/i)).toBeInTheDocument();
   const views = await screen.findByTestId("stat-views");
-  expect(within(views).getByText("3")).toBeInTheDocument();
+  expect(within(views).getByText("4")).toBeInTheDocument();
   expect(screen.getByTestId("map")).toBeInTheDocument();
+});
+
+it("shows a Plane Builder tab scoped to its views", async () => {
+  render(<Dashboard />);
+  await screen.findByTestId("stat-views");
+  await userEvent.click(screen.getByRole("tab", { name: "Plane Builder" }));
+  expect(
+    within(screen.getByTestId("stat-views")).getByText("1")
+  ).toBeInTheDocument();
 });
 
 it("switches scope with the tabs", async () => {

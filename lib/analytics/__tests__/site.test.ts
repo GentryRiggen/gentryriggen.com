@@ -6,9 +6,13 @@ describe("siteForPath", () => {
     ["/ship-builder", "ship-builder"],
     ["/ship-builder/", "ship-builder"],
     ["/ship-builder/versions", "ship-builder"],
+    ["/plane-builder", "plane-builder"],
+    ["/plane-builder/", "plane-builder"],
+    ["/plane-builder/versions", "plane-builder"],
     ["/admin", null],
     ["/nope", null],
     ["/ship-builders", null],
+    ["/plane-builderx", null],
   ])("%s -> %s", (path, site) => {
     expect(siteForPath(path)).toBe(site);
   });

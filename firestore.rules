@@ -16,10 +16,11 @@ service cloud.firestore {
       return d.keys().hasOnly(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
         && d.keys().hasAll(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
         && d.ts == request.time
-        && d.site in ['home', 'ship-builder']
+        && d.site in ['home', 'ship-builder', 'plane-builder']
         && d.path is string
         && ((d.site == 'home' && d.path == '/')
-          || (d.site == 'ship-builder' && d.path.matches('^/ship-builder(/.*)?$')))
+          || (d.site == 'ship-builder' && d.path.matches('^/ship-builder(/.*)?$'))
+          || (d.site == 'plane-builder' && d.path.matches('^/plane-builder(/.*)?$')))
         && d.path is string && d.path.size() > 0 && d.path.size() <= 200
         && d.ref is string && d.ref.size() <= 100
         && d.device in ['mobile', 'tablet', 'desktop']
