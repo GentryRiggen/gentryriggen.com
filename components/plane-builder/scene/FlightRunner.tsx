@@ -26,6 +26,7 @@ import {
 import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
 import { engineLevel } from "../audio/flightCues";
 import { planeSynth } from "../audio/planeSynth";
 import PlaneModel from "./PlaneModel";
@@ -104,6 +105,7 @@ export default function FlightRunner({
   const endTimer = useRef(0);
   const hasCompleted = useRef(false);
   const isPaused = useRef(false);
+  const [holdSeconds] = useState(heldFlightSeconds);
 
   useLayoutEffect(() => {
     flightLive.set(run.state);
@@ -134,6 +136,7 @@ export default function FlightRunner({
     accumulator.current += Math.min(delta, MAX_FRAME);
     while (accumulator.current >= STEP) {
       accumulator.current -= STEP;
+      if (holdSeconds !== undefined && state.time >= holdSeconds) continue;
       const events = step(state, level, stats, flightInput);
       if (events.length === 0) continue;
       onEvents?.(events);

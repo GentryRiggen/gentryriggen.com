@@ -11,6 +11,7 @@ import {
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import { COIN_RADIUS } from "@/lib/plane-builder/sim/constants";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
+import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
 
 const COIN_SPIN = 2.5;
 const COIN_COLOR = "#fbbf24";
@@ -23,6 +24,7 @@ interface PickupsProps {
 
 /** Coins and rings. Ones the live flight has collected shrink to nothing. */
 export default function Pickups({ level }: PickupsProps) {
+  const isHeld = heldFlightSeconds() !== undefined;
   const coins = useRef<InstancedMesh>(null);
   const rings = useRef<InstancedMesh>(null);
   const coinGeometry = useMemo(
@@ -62,7 +64,7 @@ export default function Pickups({ level }: PickupsProps) {
     const flight = flightLive.get();
     const coinMesh = coins.current;
     if (coinMesh) {
-      const spin = clock.elapsedTime * COIN_SPIN;
+      const spin = (isHeld ? 0 : clock.elapsedTime) * COIN_SPIN;
       for (let i = 0; i < level.coins.length; i += 1) {
         const c = level.coins[i];
         dummy.position.set(c.x, c.y, c.z);

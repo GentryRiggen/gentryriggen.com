@@ -148,8 +148,15 @@ jobs:
             args: --project=chromium
             workers: 1
             browsers: chromium
+          # Plane Builder needs WebGL for its core loop (the specs launch
+          # software-rendering Chromium themselves), so it gets a one-worker job.
+          - name: WebGL plane builder
+            files: e2e/plane-builder.spec.ts
+            args: --project=chromium
+            workers: 1
+            browsers: chromium
           - name: WebGL visual
-            files: e2e/ship-builder-visual.spec.ts
+            files: e2e/ship-builder-visual.spec.ts e2e/plane-builder-visual.spec.ts
             args: --project=chromium
             workers: 1
             browsers: chromium
