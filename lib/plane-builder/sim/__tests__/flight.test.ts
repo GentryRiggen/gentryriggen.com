@@ -164,4 +164,167 @@ describe("flight sim", () => {
     }
     expect(s.endReason).toBe("stalled");
   });
+
+  describe("shields and obstacles", () => {
+    const wideBox = {
+      kind: "peak" as const,
+      hard: true,
+      center: { x: 60, y: 60, z: 0 },
+      half: { x: 25, y: 60, z: 40 },
+    };
+
+    it("lifts the plane over a wide obstacle after a shield hit", () => {
+      const level = flatLevel({ obstacles: [wideBox] });
+      const { state, events } = runFlight(
+        level,
+        { ...POWERED, shields: 1 },
+        AIM,
+        handsOff
+      );
+      expect(events.filter((e) => e.type === "shield")).toHaveLength(1);
+      expect(events.some((e) => e.type === "crash")).toBe(false);
+      expect(state.maxX).toBeGreaterThan(wideBox.center.x + wideBox.half.x);
+    });
+
+    it("never leaves the plane underground during grace", () => {
+      const level = flatLevel();
+      const s = launch(level, POWERED, AIM);
+      s.grace = 1;
+      s.y = -5;
+      s.pitch = -0.8;
+      step(s, level, POWERED, HANDS_OFF);
+      expect(s.y).toBeGreaterThanOrEqual(0);
+    });
+
+    it("bounces up when a shield is spent on the ground", () => {
+      const level = flatLevel();
+      const stats = { ...POWERED, shields: 1 };
+      const s = launch(level, stats, AIM);
+      s.y = -1;
+      s.pitch = -0.8;
+      const events = step(s, level, stats, HANDS_OFF);
+      expect(events.some((e) => e.type === "shield")).toBe(true);
+      expect(s.y).toBeGreaterThan(0);
+    });
+  });
+
+  describe("sliding", () => {
+    const slider = (level = flatLevel(), stats = POWERED) => {
+      const s = launch(level, stats, AIM);
+      s.phase = "sliding";
+      s.x = 100;
+      s.y = 0;
+      s.speed = 30;
+      return s;
+    };
+    const wall = {
+      kind: "wall" as const,
+      hard: true,
+      center: { x: 110, y: 10, z: 0 },
+      half: { x: 2, y: 10, z: 30 },
+    };
+
+    it("touches down shallow, slides on and lands", () => {
+      const level = flatLevel();
+      const s = launch(level, GLIDER, AIM);
+      let slidStartX: number | null = null;
+      const events: FlightEvent[] = [];
+      while (s.phase !== "done") {
+        events.push(...step(s, level, GLIDER, HANDS_OFF));
+        if (s.phase === "sliding" && slidStartX === null) slidStartX = s.x;
+      }
+      expect(slidStartX).not.toBeNull();
+      expect(s.x).toBeGreaterThan(slidStartX ?? Infinity);
+      expect(events.some((e) => e.type === "landed")).toBe(true);
+      expect(s.endReason).toBe("landed");
+    });
+
+    it("crashes sliding into a hard obstacle", () => {
+      const level = flatLevel({ obstacles: [wall] });
+      const s = slider(level);
+      const events: FlightEvent[] = [];
+      while (s.phase !== "done")
+        events.push(...step(s, level, POWERED, HANDS_OFF));
+      expect(s.endReason).toBe("crash");
+    });
+
+    it("spends a shield sliding into a hard obstacle", () => {
+      const level = flatLevel({ obstacles: [wall] });
+      const stats = { ...POWERED, shields: 1 };
+      const s = slider(level, stats);
+      const events: FlightEvent[] = [];
+      for (let i = 0; i < 60 * 3 && s.phase !== "done"; i += 1)
+        events.push(...step(s, level, stats, HANDS_OFF));
+      expect(events.filter((e) => e.type === "shield")).toHaveLength(1);
+      expect(s.endReason).not.toBe("crash");
+    });
+
+    it("slows sliding through a soft obstacle", () => {
+      const level = flatLevel({ obstacles: [{ ...wall, hard: false }] });
+      const s = slider(level);
+      const events: FlightEvent[] = [];
+      while (s.phase !== "done")
+        events.push(...step(s, level, POWERED, HANDS_OFF));
+      expect(events.filter((e) => e.type === "bump")).toHaveLength(1);
+      expect(s.endReason).toBe("landed");
+    });
+  });
+
+  describe("input guards", () => {
+    it("treats a non-finite aim as zero", () => {
+      const s = launch(flatLevel(), POWERED, {
+        pitch: NaN,
+        yaw: Infinity,
+        power: NaN,
+      });
+      expect(Number.isFinite(s.pitch)).toBe(true);
+      expect(Number.isFinite(s.heading)).toBe(true);
+      expect(Number.isFinite(s.speed)).toBe(true);
+    });
+
+    it("treats non-finite stick input as zero", () => {
+      const level = flatLevel();
+      const s = launch(level, POWERED, AIM);
+      step(s, level, POWERED, { pitch: NaN, bank: NaN, boost: false });
+      for (const v of [s.x, s.y, s.z, s.speed, s.pitch, s.heading, s.bank])
+        expect(Number.isFinite(v)).toBe(true);
+    });
+  });
+
+  describe("world features", () => {
+    it("lifts the plane in a wind zone", () => {
+      const calm = flatLevel();
+      const windy = flatLevel({
+        winds: [{ fromX: 0, toX: 1000, lift: 6, push: 0 }],
+      });
+      const run = (level: ReturnType<typeof flatLevel>) => {
+        const s = launch(level, POWERED, AIM);
+        for (let i = 0; i < 60; i += 1) step(s, level, POWERED, HANDS_OFF);
+        return s.y;
+      };
+      expect(run(windy)).toBeGreaterThan(run(calm) + 3);
+    });
+
+    it("misses a ring passed outside its radius", () => {
+      const level = flatLevel({
+        rings: [{ center: { x: 20, y: 60, z: 0 }, radius: 3 }],
+      });
+      const { state, events } = runFlight(level, POWERED, AIM, handsOff);
+      expect(state.maxX).toBeGreaterThan(20);
+      expect(events.some((e) => e.type === "ring")).toBe(false);
+      expect(state.rings).toBe(0);
+    });
+
+    it("times out when it never stalls or ends", () => {
+      const level = flatLevel({ finishDistance: 1e9 });
+      const s = launch(level, POWERED, AIM);
+      // Hold the plane aloft and creep forward so the stall check never fires.
+      while (s.phase !== "done") {
+        s.x = s.time * 0.6;
+        s.y = 50;
+        step(s, level, POWERED, HANDS_OFF);
+      }
+      expect(s.endReason).toBe("timeout");
+    });
+  });
 });

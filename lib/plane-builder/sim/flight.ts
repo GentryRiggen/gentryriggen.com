@@ -1,7 +1,7 @@
 // lib/plane-builder/sim/flight.ts
 import { RUNOUT } from "../levels/generate";
 import { terrainHeight } from "../levels/terrain";
-import type { LevelDef, ObstacleKind } from "../levels/types";
+import type { LevelDef, Obstacle, ObstacleKind } from "../levels/types";
 import type { PlaneStats } from "../plane/stats";
 import {
   BANK_RATE,
@@ -106,20 +106,24 @@ export interface FlightResult {
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
+/** Non-finite numbers (NaN, Infinity) become 0 so they can't poison the sim. */
+const finiteOrZero = (v: number) => (Number.isFinite(v) ? v : 0);
+
 export function launch(
   level: LevelDef,
   stats: PlaneStats,
   aim: LaunchAim
 ): FlightState {
-  const pitch = clamp(aim.pitch, 0, MAX_AIM_PITCH);
+  const pitch = clamp(finiteOrZero(aim.pitch), 0, MAX_AIM_PITCH);
+  const power = clamp(finiteOrZero(aim.power), 0, 1);
   return {
     time: 0,
     x: 0,
     y: LAUNCH_HEIGHT,
     z: 0,
-    speed: Math.max(MIN_SPEED, stats.launchSpeed * clamp(aim.power, 0, 1)),
+    speed: Math.max(MIN_SPEED, stats.launchSpeed * power),
     pitch,
-    heading: clamp(aim.yaw, -MAX_AIM_YAW, MAX_AIM_YAW),
+    heading: clamp(finiteOrZero(aim.yaw), -MAX_AIM_YAW, MAX_AIM_YAW),
     bank: 0,
     fuel: stats.fuel,
     shields: stats.shields,
@@ -152,8 +156,17 @@ function end(s: FlightState, reason: EndReason, events: FlightEvent[]) {
   if (reason === "stalled") events.push({ type: "stalled" });
 }
 
-/** Spends a shield (bounce on) or crashes. */
-function hardHit(s: FlightState, events: FlightEvent[], ground: number) {
+/**
+ * Spends a shield (bounce on) or crashes. Against an obstacle the plane is
+ * lifted clear over the box, so one shield never gets burnt twice on the same
+ * wide peak or wall.
+ */
+function hardHit(
+  s: FlightState,
+  events: FlightEvent[],
+  ground: number,
+  obstacle?: Obstacle
+) {
   if (s.grace > 0) return;
   if (s.shields > 0) {
     s.shields -= 1;
@@ -161,7 +174,14 @@ function hardHit(s: FlightState, events: FlightEvent[], ground: number) {
     s.speed *= SHIELD_SLOW;
     s.pitch = 0.25;
     s.heading *= -0.5;
-    s.y = Math.max(s.y, ground + 2);
+    s.phase = "flying";
+    s.y = obstacle
+      ? Math.max(
+          s.y,
+          obstacle.center.y + obstacle.half.y + PLANE_RADIUS + 1,
+          ground + 2
+        )
+      : Math.max(s.y, ground + 2);
     events.push({ type: "shield" });
   } else {
     end(s, "crash", events);
@@ -195,6 +215,28 @@ function trackProgress(s: FlightState, level: LevelDef, events: FlightEvent[]) {
   if (s.phase !== "done" && s.time > MAX_FLIGHT_TIME) end(s, "timeout", events);
 }
 
+/** Hard obstacles spend a shield or crash; soft ones slow the plane once. */
+function collideObstacles(
+  s: FlightState,
+  level: LevelDef,
+  events: FlightEvent[],
+  ground: number
+) {
+  for (let i = 0; i < level.obstacles.length && !isDone(s); i += 1) {
+    const o = level.obstacles[i];
+    if (Math.abs(s.x - o.center.x) > o.half.x + PLANE_RADIUS) continue;
+    if (Math.abs(s.z - o.center.z) > o.half.z + PLANE_RADIUS) continue;
+    if (Math.abs(s.y - o.center.y) > o.half.y + PLANE_RADIUS) continue;
+    if (o.hard) {
+      hardHit(s, events, ground, o);
+    } else if (!s.softHit[i]) {
+      s.softHit[i] = 1;
+      s.speed = Math.max(MIN_SPEED, s.speed * SOFT_SLOW);
+      events.push({ type: "bump", kind: o.kind });
+    }
+  }
+}
+
 /** Advances one STEP. Mutates `s`; returns what happened. */
 export function step(
   s: FlightState,
@@ -212,14 +254,20 @@ export function step(
     s.speed = Math.max(0, s.speed - SLIDE_DECEL * dt);
     s.pitch = 0;
     move(s, dt);
-    s.y = terrainHeight(level.terrain, s.x, s.z);
+    const slideGround = terrainHeight(level.terrain, s.x, s.z);
+    s.y = slideGround;
+    collideObstacles(s, level, events, slideGround);
+    if (isDone(s)) return events;
     trackProgress(s, level, events);
-    if (!isDone(s) && s.speed < 0.5) end(s, "landed", events);
+    if (!isDone(s) && s.phase === "sliding" && s.speed < 0.5)
+      end(s, "landed", events);
     return events;
   }
 
   // Steering: bank eases to the stick, banking turns the heading.
-  const bankTarget = clamp(input.bank, -1, 1) * MAX_BANK;
+  const stickBank = finiteOrZero(input.bank);
+  const stickPitch = finiteOrZero(input.pitch);
+  const bankTarget = clamp(stickBank, -1, 1) * MAX_BANK;
   s.bank += clamp(bankTarget - s.bank, -BANK_RATE * dt, BANK_RATE * dt);
   s.heading += TURN_RATE * Math.sin(s.bank) * dt;
 
@@ -235,8 +283,8 @@ export function step(
 
   // Pitch: the elevator asks for lift to chase the target angle, but can't
   // make more than the wings give at this speed, so slow planes sink.
-  const hold = input.pitch === 0 && s.time < LAUNCH_HOLD;
-  const target = hold ? s.launchPitch : clamp(input.pitch, -1, 1) * MAX_PITCH;
+  const hold = stickPitch === 0 && s.time < LAUNCH_HOLD;
+  const target = hold ? s.launchPitch : clamp(stickPitch, -1, 1) * MAX_PITCH;
   const v = Math.max(s.speed, 1);
   const weight = G * Math.cos(s.pitch);
   const wanted = weight + v * PITCH_GAIN * (target - s.pitch);
@@ -287,19 +335,7 @@ export function step(
 
   // Obstacles.
   const ground = terrainHeight(level.terrain, s.x, s.z);
-  for (let i = 0; i < level.obstacles.length && !isDone(s); i += 1) {
-    const o = level.obstacles[i];
-    if (Math.abs(s.x - o.center.x) > o.half.x + PLANE_RADIUS) continue;
-    if (Math.abs(s.z - o.center.z) > o.half.z + PLANE_RADIUS) continue;
-    if (Math.abs(s.y - o.center.y) > o.half.y + PLANE_RADIUS) continue;
-    if (o.hard) {
-      hardHit(s, events, ground);
-    } else if (!s.softHit[i]) {
-      s.softHit[i] = 1;
-      s.speed = Math.max(MIN_SPEED, s.speed * SOFT_SLOW);
-      events.push({ type: "bump", kind: o.kind });
-    }
-  }
+  collideObstacles(s, level, events, ground);
   if (isDone(s)) return events;
 
   // Ground.
@@ -312,6 +348,8 @@ export function step(
     } else {
       hardHit(s, events, ground);
       if (isDone(s)) return events;
+      // Even in grace, never end up below the ground.
+      s.y = Math.max(s.y, ground);
     }
   }
 

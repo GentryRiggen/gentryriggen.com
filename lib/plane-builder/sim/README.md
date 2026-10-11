@@ -37,7 +37,10 @@ real frame time needs, so frame rate never changes the result.
   hit, the same as hitting a hard obstacle.
 - **Shields and grace:** a hard hit spends a shield (bounce, slow down) and
   starts `SHIELD_GRACE` seconds in which further hard hits are ignored. With no
-  shield left it is a crash. Soft obstacles slow the plane once each and never
+  shield left it is a crash. A shield spent on an obstacle lifts the plane
+  clear over that box (so one wide peak costs one shield), and the ground
+  always keeps the plane above it, even during grace. Obstacles also count
+  while sliding. Soft obstacles slow the plane once each and never
   end the flight.
 - **Finish and runout:** `finish` fires once when `maxX` crosses
   `finishDistance`. The flight ends as `runout` at `finishDistance + RUNOUT`.
