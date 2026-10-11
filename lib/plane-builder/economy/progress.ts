@@ -69,6 +69,9 @@ export interface RecordedFlight {
   unlocked: LevelId | null;
 }
 
+/** Matches the save parser's ceiling. */
+const MAX_COINS = 1e9;
+
 export function recordFlight(
   p: Progress,
   id: LevelId,
@@ -76,10 +79,11 @@ export function recordFlight(
   earned: number
 ): RecordedFlight {
   const level = p.levels[id];
+  const pay = Number.isFinite(earned) && earned > 0 ? earned : 0;
   const isNewBest = result.distance > level.best;
   let next = withLevel(p, id, {
     ...level,
-    coins: level.coins + earned,
+    coins: Math.min(MAX_COINS, level.coins + pay),
     best: Math.max(level.best, result.distance),
     finished: level.finished || result.finished,
   });

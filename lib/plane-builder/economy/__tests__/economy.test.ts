@@ -95,6 +95,15 @@ describe("progress", () => {
     expect(again.progress.levels.meadow.best).toBe(100);
   });
 
+  it("caps coins and ignores bad earnings", () => {
+    const rich = recordFlight(newProgress(), "meadow", flight(), 5e12);
+    expect(rich.progress.levels.meadow.coins).toBe(1e9);
+    for (const bad of [NaN, Infinity, -50]) {
+      const r = recordFlight(newProgress(), "meadow", flight(), bad);
+      expect(r.progress.levels.meadow.coins).toBe(0);
+    }
+  });
+
   it("unlocks the next level once on finishing", () => {
     const r = recordFlight(
       newProgress(),

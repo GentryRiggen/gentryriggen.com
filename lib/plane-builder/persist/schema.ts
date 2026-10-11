@@ -3,7 +3,7 @@ import {
   type LevelProgress,
   type Progress,
 } from "../economy/progress";
-import { LEVEL_ORDER } from "../levels";
+import { LEVELS, LEVEL_ORDER, nextLevelId } from "../levels";
 import type { LevelId } from "../levels/types";
 import { MAX_TIER, TRACK_IDS, type Tiers } from "../plane/catalog";
 
@@ -16,6 +16,9 @@ export interface SaveV1 {
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** Sanity ceiling so a hand-edited save can't overflow displays or math. */
+export const MAX_COINS = 1e9;
 
 const isCount = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && v >= 0;
@@ -32,38 +35,42 @@ function parseTiers(raw: unknown): Tiers | null {
   return tiers;
 }
 
-function parseLevel(raw: unknown): LevelProgress | null {
+function parseLevel(raw: unknown, id: LevelId): LevelProgress | null {
   if (!isRecord(raw)) return null;
   const tiers = parseTiers(raw.tiers);
   if (!tiers || !isCount(raw.coins) || !isCount(raw.best)) return null;
   if (typeof raw.finished !== "boolean") return null;
   return {
     tiers,
-    coins: Math.floor(raw.coins),
-    best: raw.best,
+    coins: Math.min(MAX_COINS, Math.floor(raw.coins)),
+    best: Math.min(raw.best, LEVELS[id].finishDistance),
     finished: raw.finished,
   };
 }
 
 function parseProgress(raw: unknown): Progress | null {
-  if (!isRecord(raw) || !isRecord(raw.levels) || !Array.isArray(raw.unlocked))
-    return null;
+  if (!isRecord(raw) || !isRecord(raw.levels)) return null;
+  const rawUnlocked = raw.unlocked ?? ["meadow"];
+  if (!Array.isArray(rawUnlocked)) return null;
   const levels = {} as Record<LevelId, LevelProgress>;
   for (const id of LEVEL_ORDER) {
     if (raw.levels[id] === undefined) {
       levels[id] = newLevelProgress();
       continue;
     }
-    const level = parseLevel(raw.levels[id]);
+    const level = parseLevel(raw.levels[id], id);
     if (!level) return null;
     levels[id] = level;
   }
-  const known = new Set<string>(LEVEL_ORDER);
-  if (!raw.unlocked.every((u) => typeof u === "string" && known.has(u)))
-    return null;
-  const unlocked = LEVEL_ORDER.filter(
-    (id) => id === "meadow" || (raw.unlocked as string[]).includes(id)
-  );
+  // Unknown ids (say, from a newer build) are dropped; junk types are not.
+  if (!rawUnlocked.every((u) => typeof u === "string")) return null;
+  const open = new Set<string>(rawUnlocked);
+  // A finished level always opens the next one.
+  for (const id of LEVEL_ORDER) {
+    const after = nextLevelId(id);
+    if (levels[id].finished && after) open.add(after);
+  }
+  const unlocked = LEVEL_ORDER.filter((id) => id === "meadow" || open.has(id));
   return { levels, unlocked };
 }
 

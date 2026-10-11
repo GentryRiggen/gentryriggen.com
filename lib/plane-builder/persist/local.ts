@@ -9,6 +9,23 @@ export interface LoadResult {
   recovered: boolean;
 }
 
+const BACKUP_PREFIX = `${SAVE_KEY}:backup:`;
+
+/** Best effort; skipped when a backup already holds this exact text. */
+function backUp(raw: string) {
+  try {
+    const storage = window.localStorage;
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i);
+      if (key?.startsWith(BACKUP_PREFIX) && storage.getItem(key) === raw)
+        return;
+    }
+    storage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw);
+  } catch {
+    // A full disk or blocked storage shouldn't stop play.
+  }
+}
+
 export function loadProgress(): LoadResult {
   let raw: string | null;
   try {
@@ -24,11 +41,7 @@ export function loadProgress(): LoadResult {
     parsed = null;
   }
   if (parsed) return { progress: parsed, recovered: false };
-  try {
-    window.localStorage.setItem(`${SAVE_KEY}:backup:${Date.now()}`, raw);
-  } catch {
-    // Backup is best effort; a full disk shouldn't block play.
-  }
+  backUp(raw);
   return { progress: newProgress(), recovered: true };
 }
 
