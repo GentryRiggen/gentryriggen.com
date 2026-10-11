@@ -127,7 +127,8 @@ triggers a Ship Builder release.
 - `balance/`
   - A scripted "average pilot" that launches at full power at a fixed angle,
     flies straight and boosts early.
-  - Between flights it buys the upgrade that adds the most distance per coin.
+  - Between flights it buys the cheapest affordable upgrade (ties in track
+    order).
   - It repeats until it crosses the finish and reports the number of flights
     and each flight's earnings.
   - Used by the balance tests and as a tuning tool.
