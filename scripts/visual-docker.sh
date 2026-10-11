@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs the Ship Builder visual tests inside the official Playwright image, the
+# Runs the visual tests (Ship Builder by default; VISUAL_SPEC=plane-builder
+# for Plane Builder) inside the official Playwright image, the
 # same Linux rendering CI uses, so the committed baselines match CI.
 #
 #   scripts/visual-docker.sh          compare against the committed baselines
@@ -12,13 +13,16 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-VERSION="$(node -p "require('@playwright/test/package.json').version")"
+# The container installs from the lockfile, so match the image to that version
+# (the host's node_modules can lag behind it).
+VERSION="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
 IMAGE="mcr.microsoft.com/playwright:v${VERSION}-noble"
 MODE="${1:-check}"
-SNAPSHOTS="e2e/ship-builder-visual.spec.ts-snapshots"
+SPEC="${VISUAL_SPEC:-ship-builder}"
+SNAPSHOTS="e2e/${SPEC}-visual.spec.ts-snapshots"
 
 # VISUAL_GREP=capsizing runs just the matching tests (no spaces in it).
-PLAYWRIGHT_ARGS="e2e/ship-builder-visual.spec.ts ${VISUAL_GREP:+--grep=$VISUAL_GREP} --project=chromium --workers=1 --retries=0 --reporter=line"
+PLAYWRIGHT_ARGS="e2e/${SPEC}-visual.spec.ts ${VISUAL_GREP:+--grep=$VISUAL_GREP} --project=chromium --workers=1 --retries=0 --reporter=line"
 if [ "$MODE" = "update" ]; then
   PLAYWRIGHT_ARGS="$PLAYWRIGHT_ARGS --update-snapshots=all"
 fi

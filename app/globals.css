@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Landscape phones and other short screens. */
+@custom-variant short (@media (max-height: 32rem));
 
 * {
   scroll-behavior: smooth;
@@ -110,5 +112,42 @@ button:focus-visible {
   }
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+/* Plane builder: the FINISH! banner pops in, holds, then fades (2s total) */
+@keyframes pbFinishBanner {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.pb-finish-banner {
+  animation: pbFinishBanner 2s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-finish-banner {
+    animation-name: pbFinishBannerStill;
+  }
+  @keyframes pbFinishBannerStill {
+    0%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 }

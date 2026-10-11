@@ -23,6 +23,7 @@ const customJestConfig = {
     "/out/",
     "<rootDir>/.claude/",
     "<rootDir>/firestore-tests/",
+    "/__tests__/fixtures\\.ts$",
   ],
   modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   collectCoverageFrom: [

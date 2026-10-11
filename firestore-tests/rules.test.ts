@@ -137,6 +137,14 @@ describe("create", () => {
   it.each([
     ["a home event", { site: "home", path: "/" }],
     ["a ship-builder subpath", { path: "/ship-builder/versions" }],
+    [
+      "a plane-builder event",
+      { site: "plane-builder", path: "/plane-builder" },
+    ],
+    [
+      "a plane-builder subpath",
+      { site: "plane-builder", path: "/plane-builder/versions" },
+    ],
   ])("allows %s", async (_label, patch) => {
     await assertSucceeds(
       addDoc(collection(anon(), "pageviews"), stamped(patch))
@@ -193,6 +201,23 @@ describe("create", () => {
     ["home with a ship-builder path", { site: "home", path: "/ship-builder" }],
     ["ship-builder with the home path", { site: "ship-builder", path: "/" }],
     ["a ship-builder lookalike path", { path: "/ship-builderx" }],
+    [
+      "plane-builder with a ship-builder path",
+      { site: "plane-builder", path: "/ship-builder" },
+    ],
+    [
+      "ship-builder with a plane-builder path",
+      { site: "ship-builder", path: "/plane-builder" },
+    ],
+    [
+      "home with a plane-builder path",
+      { site: "home", path: "/plane-builder" },
+    ],
+    ["plane-builder with the home path", { site: "plane-builder", path: "/" }],
+    [
+      "a plane-builder lookalike path",
+      { site: "plane-builder", path: "/plane-builderx" },
+    ],
     ["an oversized path", { path: "/ship-builder/" + "a".repeat(250) }],
     ["a short visitor id", { vid: "short" }],
     ["an empty browser", { browser: "" }],

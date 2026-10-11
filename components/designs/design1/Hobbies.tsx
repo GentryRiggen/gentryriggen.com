@@ -22,6 +22,21 @@ export default function Hobbies() {
         </span>
         ).
       </p>
+      <p className="leading-relaxed">
+        ✈️ And a plane game where you upgrade a slingshot plane until it reaches
+        the finish line:{" "}
+        <a
+          href="/plane-builder"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /plane-builder
+        </a>{" "}
+        (or type{" "}
+        <span className="text-green-600 dark:text-green-300">
+          &apos;planes&apos;
+        </span>
+        ).
+      </p>
     </div>
   );
 }

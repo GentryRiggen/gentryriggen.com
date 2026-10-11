@@ -1,6 +1,30 @@
 import { render, screen } from "@testing-library/react";
 import { getCommandResponse } from "../commandResponses";
 
+describe("planes command", () => {
+  it.each(["planes", "plane-builder", "PLANES"])(
+    "responds to %s with a blurb, a link, and a navigation target",
+    (input) => {
+      const result = getCommandResponse(input, []);
+      render(<>{result.output}</>);
+
+      expect(
+        screen.getByText(/A plane-flying game I made for my boys/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /\/plane-builder/ })
+      ).toHaveAttribute("href", "/plane-builder");
+      expect(result.navigateTo).toBe("/plane-builder");
+      expect(result.shouldClear).toBe(false);
+    }
+  );
+
+  it("is listed in help", () => {
+    const result = getCommandResponse("help", []);
+    expect(result.output).toEqual(expect.stringMatching(/^\s+planes\s/m));
+  });
+});
+
 describe("ships command", () => {
   it.each(["ships", "ship-builder", "SHIPS"])(
     "responds to %s with a blurb, a link, and a navigation target",

@@ -148,8 +148,16 @@ jobs:
             args: --project=chromium
             workers: 1
             browsers: chromium
+          # Plane Builder needs WebGL for its core loop (the specs launch
+          # software-rendering Chromium themselves), so it gets a one-worker job.
+          # WebKit and the iPad run its @smoke tests (touch and pointer launch).
+          - name: WebGL plane builder
+            files: e2e/plane-builder.spec.ts
+            args: --project=chromium --project=webkit --project=ipad
+            workers: 1
+            browsers: chromium webkit
           - name: WebGL visual
-            files: e2e/ship-builder-visual.spec.ts
+            files: e2e/ship-builder-visual.spec.ts e2e/plane-builder-visual.spec.ts
             args: --project=chromium
             workers: 1
             browsers: chromium

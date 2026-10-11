@@ -1,0 +1,5 @@
+/* Visual tests photograph the game itself: hide the Next dev-tools badge so
+   it never shows up as a diff. */
+nextjs-portal {
+  visibility: hidden !important;
+}

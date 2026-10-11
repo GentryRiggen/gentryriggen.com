@@ -2,17 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { summarize } from "@/lib/analytics/aggregate";
-import type { PageviewDoc, Site } from "@/lib/analytics/types";
+import { SITES, type PageviewDoc, type Site } from "@/lib/analytics/types";
 import { fetchPageviews } from "@/lib/firebase/client";
 import SummaryView from "./SummaryView";
 
 type Tab = "overview" | Site;
 type Range = 7 | 30 | 90;
 
+const SITE_LABELS: Record<Site, string> = {
+  home: "Home (/)",
+  "ship-builder": "Ship Builder",
+  "plane-builder": "Plane Builder",
+};
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "home", label: "Home (/)" },
-  { id: "ship-builder", label: "Ship Builder" },
+  ...SITES.map((site) => ({ id: site, label: SITE_LABELS[site] })),
 ];
 const RANGES: Range[] = [7, 30, 90];
 const DAY_MS = 86_400_000;
@@ -74,13 +78,12 @@ export default function Dashboard() {
   const summaries = useMemo(() => {
     if (!current || current.error) return null;
     const options = { days: current.days, now: current.at };
+    const bySite = Object.fromEntries(
+      SITES.map((site) => [site, summarize(current.docs, { site, ...options })])
+    ) as Record<Site, ReturnType<typeof summarize>>;
     return {
       all: summarize(current.docs, { site: "all", ...options }),
-      home: summarize(current.docs, { site: "home", ...options }),
-      "ship-builder": summarize(current.docs, {
-        site: "ship-builder",
-        ...options,
-      }),
+      ...bySite,
     };
   }, [current]);
 
@@ -140,13 +143,13 @@ export default function Dashboard() {
       {summaries && tab === "overview" && (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            {(["home", "ship-builder"] as const).map((site) => (
+            {SITES.map((site) => (
               <section
                 key={site}
                 className="rounded-lg border border-gray-200 p-4 dark:border-gray-800"
               >
                 <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {site === "home" ? "Home (/)" : "Ship Builder"}
+                  {SITE_LABELS[site]}
                 </h2>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">
                   {summaries[site].totals.views.toLocaleString()}{" "}

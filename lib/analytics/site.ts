@@ -12,5 +12,8 @@ export function siteForPath(pathname: string): Site | null {
   if (path === "/ship-builder" || path.startsWith("/ship-builder/")) {
     return "ship-builder";
   }
+  if (path === "/plane-builder" || path.startsWith("/plane-builder/")) {
+    return "plane-builder";
+  }
   return null;
 }

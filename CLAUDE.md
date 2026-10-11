@@ -73,6 +73,15 @@ Every Ship Builder change that ships to users (anything in `components/ship-buil
 
 The Versions page (`/ship-builder/versions`, linked from the version label) renders the changelog. `lib/ship-builder/__tests__/changelog.test.ts` fails if the version and the top entry disagree.
 
+### Plane Builder releases
+
+Every Plane Builder change that ships to users (anything in `components/plane-builder`, `lib/plane-builder` or `app/plane-builder`) is a release:
+
+1. Bump `PLANE_BUILDER_VERSION` in `lib/plane-builder/version.ts` (semver: patch for fixes, minor for features, major for big new modes).
+2. Add a matching entry at the top of `CHANGELOG` in `lib/plane-builder/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/plane-builder components/plane-builder app/plane-builder`), in plain words a young pilot or their parent would follow.
+
+The Versions page (`/plane-builder/versions`) renders the changelog. `lib/plane-builder/__tests__/changelog.test.ts` fails if the version and the top entry disagree. 1.0.0 is the first release: until it ships, keep editing the 1.0.0 entry instead of bumping.
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
