@@ -4,10 +4,18 @@ import type { Progress } from "@/lib/plane-builder/economy/progress";
 // Headless Chromium has no GPU and no longer falls back to software WebGL on
 // its own, so ask for SwiftShader (the same flags the Ship Builder specs use).
 // WebKit ignores these.
+// Software WebGL for Chromium on CI. The flags are Chromium-only, and WebKit
+// refuses to launch with them.
 test.use({
-  launchOptions: {
-    args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
-  },
+  launchOptions: [
+    async ({ browserName }, use) =>
+      use(
+        browserName === "chromium"
+          ? { args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"] }
+          : {}
+      ),
+    { scope: "worker" },
+  ],
 });
 
 // Software WebGL renders slowly, and the sim runs no faster than the frames.
