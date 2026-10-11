@@ -171,13 +171,12 @@ triggers a Ship Builder release.
 
 ### Borrowed from Ship Builder (import only)
 
-- the sound synthesizer and the sound unlock and setting
-- `createStoredSetting`
-- `useWebGLSupport` and `WebGLFallback`
-- `usePrefersReducedMotion`
-- `SkyDome` and `Clouds`, if they import without dragging in ship state;
-  otherwise Plane Builder writes its own simple versions
+- `createStoredSetting`, `useWebGLSupport` and `usePrefersReducedMotion`
 - the test-hook pattern
+
+Ship Builder's synthesizer, `WebGLFallback`, `SkyDome` and `Clouds` are tied
+to ships (sea-trial cues, ship text, the sea environment), so Plane Builder
+has its own small versions that follow the same patterns.
 
 ## 3. Flight feel, planes and numbers
 
