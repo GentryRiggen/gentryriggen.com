@@ -10,6 +10,11 @@ jest.mock("@/components/ship-builder/hooks/useWebGLSupport", () => ({
   default: () => true,
 }));
 
+jest.mock("../scene/GameStage", () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 beforeEach(() => {
   window.localStorage.clear();
   store.setState(store.getInitialState(), true);

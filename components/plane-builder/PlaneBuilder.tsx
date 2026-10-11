@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import useWebGLSupport from "@/components/ship-builder/hooks/useWebGLSupport";
 import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import GameStage from "./scene/GameStage";
+import FlightHud from "./ui/FlightHud";
 import Hangar from "./ui/Hangar";
+import LaunchOverlay from "./ui/LaunchOverlay";
 import LevelSelect from "./ui/LevelSelect";
 import Results from "./ui/Results";
+import Steering from "./ui/Steering";
 import WebGLFallback from "./ui/WebGLFallback";
 
 const BACKGROUND =
@@ -19,7 +23,10 @@ export default function PlaneBuilder() {
 
   useEffect(() => {
     const result = loadProgress();
-    usePlaneBuilderStore.getState().hydrate(result.progress);
+    const store = usePlaneBuilderStore.getState();
+    // The store outlives the page, so drop any screen left from a past visit.
+    store.resetTransient();
+    store.hydrate(result.progress);
     // localStorage is only readable after mount, so this can't be initial state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsRecovered(result.recovered);
@@ -43,21 +50,18 @@ export default function PlaneBuilder() {
 
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${BACKGROUND}`}>
-      {/* Task 10: the 3D Stage goes in an absolute inset-0 layer here. */}
+      <div className="absolute inset-0">
+        <GameStage />
+      </div>
       {screen === "levels" ? <LevelSelect /> : null}
       {screen === "hangar" ? <Hangar /> : null}
       {screen === "results" ? <Results /> : null}
-      {/* Task 11 replaces this placeholder with the launch and flight UI. */}
-      {screen === "launch" || screen === "flight" ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={() => usePlaneBuilderStore.getState().goToLevels()}
-            className="min-h-11 rounded-lg bg-white px-4 font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-100"
-          >
-            Launching… Back to levels
-          </button>
-        </div>
+      {screen === "launch" ? <LaunchOverlay /> : null}
+      {screen === "flight" ? (
+        <>
+          <Steering />
+          <FlightHud />
+        </>
       ) : null}
       {isRecovered ? (
         <div

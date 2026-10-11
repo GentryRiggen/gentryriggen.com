@@ -18,7 +18,7 @@ export default function Stage({ children }: StageProps) {
     >
       <Canvas
         shadows="percentage"
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         camera={{ fov: 55, position: [-12, 6, 0], near: 0.1, far: 1500 }}
       >
         {children}

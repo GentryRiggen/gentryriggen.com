@@ -15,6 +15,7 @@ import { planeStats } from "../plane/stats";
 import type { FlightResult, LaunchAim } from "../sim/flight";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
+import { resetLaunchAim } from "./launchAim";
 
 export type Screen = "levels" | "hangar" | "launch" | "flight" | "results";
 
@@ -43,7 +44,9 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   buy: (track: TrackId) => BuyResult;
   startLaunch: () => void;
   beginFlight: (aim: LaunchAim) => void;
-  completeFlight: (result: FlightResult) => void;
+  /** `flightId` ignores a stale or duplicate call from an earlier flight. */
+  completeFlight: (result: FlightResult, flightId?: number) => void;
+  resetTransient: () => void;
   flyAgain: () => void;
   restart: (id: LevelId) => void;
 }
@@ -60,6 +63,11 @@ const initial: PlaneBuilderData = {
 export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   ...initial,
   hydrate: (progress) => set({ progress }),
+  resetTransient: () => {
+    resetFlightInput();
+    resetLaunchAim();
+    set({ screen: "levels", aim: null, lastFlight: null });
+  },
   openLevel: (id) => {
     if (!get().progress.unlocked.includes(id)) return;
     set({ screen: "hangar", levelId: id, lastFlight: null });
@@ -72,12 +80,17 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   },
   startLaunch: () => {
     resetFlightInput();
+    resetLaunchAim();
     set({ screen: "launch", aim: null });
   },
-  beginFlight: (aim) =>
-    set((s) => ({ screen: "flight", aim, flightId: s.flightId + 1 })),
-  completeFlight: (result) => {
-    const { progress, levelId } = get();
+  beginFlight: (aim) => {
+    resetLaunchAim();
+    set((s) => ({ screen: "flight", aim, flightId: s.flightId + 1 }));
+  },
+  completeFlight: (result, flightId) => {
+    const { progress, levelId, screen } = get();
+    if (screen !== "flight") return;
+    if (flightId !== undefined && flightId !== get().flightId) return;
     const level = LEVELS[levelId];
     const stats = planeStats(level.plane, progress.levels[levelId].tiers);
     const pay = payout(level, result, stats.multiplier);

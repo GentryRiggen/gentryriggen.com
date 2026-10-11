@@ -1,8 +1,14 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { Text } from "@react-three/drei";
-import { BoxGeometry, Color, type InstancedMesh, Object3D } from "three";
+import {
+  BoxGeometry,
+  CanvasTexture,
+  Color,
+  type InstancedMesh,
+  Object3D,
+  SRGBColorSpace,
+} from "three";
 import { terrainHeight } from "@/lib/plane-builder/levels/terrain";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 
@@ -11,6 +17,26 @@ const SEGMENTS = 14;
 const POST_WIDTH = 2;
 const BANNER_HEIGHT = 6;
 const BANNER_DEPTH = 0.6;
+
+/** "FINISH" drawn once on a canvas, so no font has to be fetched. */
+function createBannerTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 96px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("FINISH", canvas.width / 2, canvas.height / 2 + 6);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
 
 interface FinishGateProps {
   level: LevelDef;
@@ -50,7 +76,10 @@ export default function FinishGate({ level }: FinishGateProps) {
     mesh.computeBoundingSphere();
   }, [x, baseY, postZ]);
 
+  const bannerTexture = useMemo(() => createBannerTexture(), []);
+
   useLayoutEffect(() => () => postGeometry.dispose(), [postGeometry]);
+  useLayoutEffect(() => () => bannerTexture.dispose(), [bannerTexture]);
 
   return (
     <group>
@@ -66,17 +95,14 @@ export default function FinishGate({ level }: FinishGateProps) {
         <meshStandardMaterial color="#dc2626" roughness={0.6} />
       </mesh>
       {[-1, 1].map((side) => (
-        <Text
+        <mesh
           key={side}
           position={[x + side * (BANNER_DEPTH / 2 + 0.05), bannerY, 0]}
           rotation={[0, side < 0 ? -Math.PI / 2 : Math.PI / 2, 0]}
-          fontSize={4}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
         >
-          FINISH
-        </Text>
+          <planeGeometry args={[bannerWidth * 0.9, BANNER_HEIGHT * 0.9]} />
+          <meshBasicMaterial map={bannerTexture} toneMapped={false} />
+        </mesh>
       ))}
     </group>
   );
