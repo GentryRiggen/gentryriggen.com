@@ -4,100 +4,100 @@
     {
       "id": 1,
       "subject": "Task 1: Scaffold route, version, changelog, release rule",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 1."
     },
     {
       "id": 2,
       "subject": "Task 2: Upgrade catalog and plane stats",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 2.",
       "blockedBy": [1]
     },
     {
       "id": 3,
       "subject": "Task 3: Level data: seeded generator, terrain, three levels",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 3.",
       "blockedBy": [1]
     },
     {
       "id": 4,
       "subject": "Task 4: Flight sim",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 4.",
       "blockedBy": [3]
     },
     {
       "id": 5,
       "subject": "Task 5: Economy and progress rules",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 5.",
       "blockedBy": [4]
     },
     {
       "id": 6,
       "subject": "Task 6: Saving",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 6.",
       "blockedBy": [5]
     },
     {
       "id": 7,
       "subject": "Task 7: Balance pilot, balance tests and tuning",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 7.",
       "blockedBy": [5]
     },
     {
       "id": 8,
       "subject": "Task 8: Store, flight input and root component",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 8.",
       "blockedBy": [6, 7]
     },
     {
       "id": 9,
       "subject": "Task 9: Menu screens",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 9.",
       "blockedBy": [8]
     },
     {
       "id": 10,
       "subject": "Task 10: 3D world and plane models",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 10.",
       "blockedBy": [8]
     },
     {
       "id": 11,
       "subject": "Task 11: Launching, flying and flight HUD",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 11.",
       "blockedBy": [9, 10]
     },
     {
       "id": 12,
       "subject": "Task 12: Sound",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 12.",
       "blockedBy": [11]
     },
     {
       "id": 13,
       "subject": "Task 13: Site links and analytics (security boundary)",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 13.",
       "blockedBy": [1]
     },
     {
       "id": 14,
       "subject": "Task 14: E2E, visual snapshots and 1.0.0 release",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-10-11-plane-builder.md, Task 14.",
       "blockedBy": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
     }
   ],
-  "lastUpdated": "2026-10-11T11:10:37.769367"
+  "lastUpdated": "2026-10-11T13:16:40.316587"
 }
