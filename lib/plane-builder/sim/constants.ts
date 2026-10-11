@@ -44,4 +44,4 @@ export const CORRIDOR_TURN = 1.5;
 export const CORRIDOR_PUSH = 0.5;
 export const STALL_WINDOW = 3;
 export const STALL_PROGRESS = 1;
-export const MAX_FLIGHT_TIME = 600;
+export const MAX_FLIGHT_TIME = 120;

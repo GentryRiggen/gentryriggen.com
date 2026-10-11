@@ -238,10 +238,14 @@ Every value here is a starting point that the balance script tunes.
 
 These are enforced by tests.
 
-- Every level takes **30–40 flights** for the average pilot.
-- Until every track is maxed, each flight earns at least the price of the
-  cheapest upgrade left.
-- A starter plane (all tiers 0) lands at about 5% of the finish and never
+- Every level takes **22–40 flights** for the average pilot (about 26, 22 and 22 today).
+- The average pilot never has more than 2 dry flights in a row (a flight
+  that earns less than the cheapest upgrade left); Mountains allows 3.
+  Early payouts follow distance: the minimum payout is about 30% of the
+  cheapest first upgrade.
+- No flight lasts more than 90 s of sim time, and a fully upgraded plane
+  flies through the finish to the runout.
+- A starter plane (all tiers 0) lands at 2-4% of the finish and never
   reaches it.
 - Best distance never gets worse by more than 10% from one flight to the next
   for the average pilot.
