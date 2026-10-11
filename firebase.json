@@ -41,6 +41,24 @@
         ]
       },
       {
+        "source": "/plane-builder",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/plane-builder.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/admin",
         "headers": [
           {
