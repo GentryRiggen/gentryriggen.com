@@ -5,6 +5,8 @@ import {
   Color,
   ConeGeometry,
   CylinderGeometry,
+  DodecahedronGeometry,
+  IcosahedronGeometry,
   SphereGeometry,
   TetrahedronGeometry,
 } from "three";
@@ -19,10 +21,40 @@ const ROCK = "#8a8680";
 const SNOW = "#f5f8ff";
 const BIRD = "#3a3a46";
 const STRING = "#e8e8e8";
+const COCONUT = "#5b3a1e";
+const WINDOWS = "#cfe6f5";
+const ROOF = "#4a4f57";
+const ICE = "#e6f6ff";
+const ICE_DEEP = "#b4d8ee";
+const STORM = "#8a909c";
+const STORM_DARK = "#6b7080";
 
 interface Part {
   geometry: BufferGeometry;
   color: string;
+}
+
+const PALM_FROND_COUNT = 6;
+const PALM_CROWN = { x: 0.1, y: 0.28 };
+
+/** A palm frond: a flat blade drooping outward from the crown. */
+function palmFrond(index: number): BufferGeometry {
+  const angle = (index / PALM_FROND_COUNT) * Math.PI * 2 + 0.3;
+  return new BoxGeometry(0.36, 0.025, 0.1)
+    .translate(0.18, 0, 0)
+    .rotateZ(-0.5)
+    .rotateY(angle)
+    .translate(PALM_CROWN.x, PALM_CROWN.y, 0);
+}
+
+/** A sphere squashed and moved into a cloud puff. */
+function cloudPuff(
+  radius: number,
+  x: number,
+  y: number,
+  z: number
+): BufferGeometry {
+  return new SphereGeometry(radius, 8, 6).scale(1, 0.75, 1).translate(x, y, z);
 }
 
 /**
@@ -87,14 +119,92 @@ function parts(kind: ObstacleKind, palette: LevelPalette): Part[] {
           color: BIRD,
         },
       ];
-    // Stand-in shapes until the real models land.
     case "palm":
-      return parts("tree", palette);
+      return [
+        // Three tapered segments, each nudged sideways, make a leaning trunk.
+        ...[0, 1, 2].map((i) => ({
+          geometry: new CylinderGeometry(
+            0.05 - i * 0.012,
+            0.07 - i * 0.012,
+            0.24,
+            6
+          ).translate(0.02 + i * 0.04, -0.38 + i * 0.24, 0),
+          color: TRUNK,
+        })),
+        ...Array.from({ length: PALM_FROND_COUNT }, (_, i) => ({
+          geometry: palmFrond(i),
+          color: palette.soft,
+        })),
+        {
+          geometry: new SphereGeometry(0.04, 6, 5).translate(0.07, 0.23, 0.03),
+          color: COCONUT,
+        },
+        {
+          geometry: new SphereGeometry(0.04, 6, 5).translate(0.14, 0.23, -0.03),
+          color: COCONUT,
+        },
+      ];
     case "skyscraper":
+      return [
+        {
+          geometry: new BoxGeometry(0.8, 0.6, 0.8).translate(0, -0.2, 0),
+          color: palette.hard,
+        },
+        {
+          geometry: new BoxGeometry(0.55, 0.24, 0.55).translate(0, 0.22, 0),
+          color: palette.hard,
+        },
+        {
+          geometry: new BoxGeometry(0.3, 0.04, 0.3).translate(0, 0.36, 0),
+          color: ROOF,
+        },
+        {
+          geometry: new CylinderGeometry(0.012, 0.012, 0.12, 4).translate(
+            0,
+            0.44,
+            0
+          ),
+          color: ROOF,
+        },
+        // Window bands wrap each block, a hair proud of the walls.
+        ...[-0.35, -0.15, 0.05].map((y) => ({
+          geometry: new BoxGeometry(0.82, 0.06, 0.82).translate(0, y, 0),
+          color: WINDOWS,
+        })),
+        {
+          geometry: new BoxGeometry(0.57, 0.05, 0.57).translate(0, 0.22, 0),
+          color: WINDOWS,
+        },
+      ];
     case "iceberg":
-      return parts("wall", palette);
+      return [
+        {
+          geometry: new IcosahedronGeometry(0.5, 0)
+            .scale(1, 0.6, 0.9)
+            .translate(0, -0.2, 0),
+          color: ICE_DEEP,
+        },
+        {
+          geometry: new DodecahedronGeometry(0.32, 0)
+            .scale(0.9, 1.5, 0.9)
+            .translate(-0.12, -0.02, 0.02),
+          color: ICE,
+        },
+        {
+          geometry: new DodecahedronGeometry(0.2, 0)
+            .scale(1, 1.2, 1)
+            .translate(0.27, -0.2, -0.1),
+          color: ICE,
+        },
+      ];
     case "cloud":
-      return parts("balloon", palette);
+      return [
+        { geometry: cloudPuff(0.3, 0, 0.02, 0), color: STORM },
+        { geometry: cloudPuff(0.25, -0.22, -0.05, 0.05), color: STORM_DARK },
+        { geometry: cloudPuff(0.26, 0.22, -0.04, -0.04), color: STORM_DARK },
+        { geometry: cloudPuff(0.22, -0.06, 0.1, 0.2), color: STORM },
+        { geometry: cloudPuff(0.22, 0.08, 0.06, -0.22), color: STORM },
+      ];
     case "peak":
       return [
         {
