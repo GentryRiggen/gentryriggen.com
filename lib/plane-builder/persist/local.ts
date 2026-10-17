@@ -1,5 +1,5 @@
 import { newProgress, type Progress } from "../economy/progress";
-import { SAVE_VERSION, parseSave, type SaveV1 } from "./schema";
+import { RESET_BELOW, SAVE_VERSION, parseSave, type SaveV2 } from "./schema";
 
 export const SAVE_KEY = "plane-builder:save";
 
@@ -7,6 +7,22 @@ export interface LoadResult {
   progress: Progress;
   /** A save was there but unreadable; it was backed up and replaced. */
   recovered: boolean;
+  /** A save from before the last rebalance; it was backed up and started fresh. */
+  reset: boolean;
+}
+
+const fresh = (flags: Partial<LoadResult> = {}): LoadResult => ({
+  progress: newProgress(),
+  recovered: false,
+  reset: false,
+  ...flags,
+});
+
+/** Whether `raw` is a save from a version that starts fresh. */
+function isResetSave(raw: unknown): boolean {
+  if (typeof raw !== "object" || raw === null) return false;
+  const version = (raw as { version?: unknown }).version;
+  return Number.isInteger(version) && (version as number) < RESET_BELOW;
 }
 
 const BACKUP_PREFIX = `${SAVE_KEY}:backup:`;
@@ -31,22 +47,27 @@ export function loadProgress(): LoadResult {
   try {
     raw = window.localStorage.getItem(SAVE_KEY);
   } catch {
-    return { progress: newProgress(), recovered: false };
+    return fresh();
   }
-  if (raw === null) return { progress: newProgress(), recovered: false };
-  let parsed: Progress | null = null;
+  if (raw === null) return fresh();
+  let json: unknown;
   try {
-    parsed = parseSave(JSON.parse(raw));
+    json = JSON.parse(raw);
   } catch {
-    parsed = null;
+    json = undefined;
   }
-  if (parsed) return { progress: parsed, recovered: false };
+  if (isResetSave(json)) {
+    backUp(raw);
+    return fresh({ reset: true });
+  }
+  const parsed = json === undefined ? null : parseSave(json);
+  if (parsed) return fresh({ progress: parsed });
   backUp(raw);
-  return { progress: newProgress(), recovered: true };
+  return fresh({ recovered: true });
 }
 
 export function saveProgress(progress: Progress): boolean {
-  const save: SaveV1 = { version: SAVE_VERSION, progress };
+  const save: SaveV2 = { version: SAVE_VERSION, progress };
   try {
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(save));
     return true;

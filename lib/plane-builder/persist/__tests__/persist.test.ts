@@ -16,7 +16,7 @@ describe("parseSave", () => {
     const { mountains, ...rest } = progress.levels;
     void mountains;
     const parsed = parseSave({
-      version: 1,
+      version: SAVE_VERSION,
       progress: { ...progress, levels: rest },
     });
     expect(parsed?.levels.mountains).toEqual(newProgress().levels.mountains);
@@ -30,7 +30,7 @@ describe("parseSave", () => {
       (() => {
         const p = newProgress();
         p.levels.meadow.tiers.wings = 9;
-        return { version: 1, progress: p };
+        return { version: SAVE_VERSION, progress: p };
       })(),
     ],
     [
@@ -38,13 +38,13 @@ describe("parseSave", () => {
       (() => {
         const p = newProgress();
         p.levels.meadow.coins = -1;
-        return { version: 1, progress: p };
+        return { version: SAVE_VERSION, progress: p };
       })(),
     ],
     [
       "non-string unlock",
       {
-        version: 1,
+        version: SAVE_VERSION,
         progress: { ...newProgress(), unlocked: ["meadow", 7] },
       },
     ],
@@ -54,15 +54,14 @@ describe("parseSave", () => {
 
   it("orders unlocks and always includes the meadow", () => {
     const p = { ...newProgress(), unlocked: ["canyon"] };
-    expect(parseSave({ version: 1, progress: p })?.unlocked).toEqual([
-      "meadow",
-      "canyon",
-    ]);
+    expect(parseSave({ version: SAVE_VERSION, progress: p })?.unlocked).toEqual(
+      ["meadow", "canyon"]
+    );
   });
 });
 
 describe("parseSave tolerance and bounds", () => {
-  const wrap = (progress: unknown) => ({ version: 1, progress });
+  const wrap = (progress: unknown) => ({ version: SAVE_VERSION, progress });
 
   it("drops unknown level ids from unlocked", () => {
     const p = { ...newProgress(), unlocked: ["meadow", "moon", "canyon"] };
@@ -98,6 +97,7 @@ describe("local storage", () => {
     expect(loadProgress()).toEqual({
       progress: newProgress(),
       recovered: false,
+      reset: false,
     });
   });
 
@@ -106,6 +106,31 @@ describe("local storage", () => {
     p.levels.meadow.coins = 42;
     expect(saveProgress(p)).toBe(true);
     expect(loadProgress().progress.levels.meadow.coins).toBe(42);
+  });
+
+  it("starts a save from before 1.2 fresh, keeping a backup", () => {
+    const old = newProgress();
+    old.levels.meadow.coins = 900;
+    const raw = JSON.stringify({ version: 1, progress: old });
+    window.localStorage.setItem(SAVE_KEY, raw);
+    const r = loadProgress();
+    expect(r).toEqual({
+      progress: newProgress(),
+      recovered: false,
+      reset: true,
+    });
+    const backups = Object.keys(window.localStorage).filter((k) =>
+      k.startsWith(`${SAVE_KEY}:backup:`)
+    );
+    expect(backups).toHaveLength(1);
+    expect(window.localStorage.getItem(backups[0])).toBe(raw);
+  });
+
+  it("loads a current save without resetting it", () => {
+    const p = newProgress();
+    p.levels.meadow.coins = 42;
+    saveProgress(p);
+    expect(loadProgress()).toMatchObject({ recovered: false, reset: false });
   });
 
   it("backs up an unreadable save", () => {

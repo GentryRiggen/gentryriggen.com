@@ -1,7 +1,10 @@
 /** Metres a second to miles an hour. */
 const MPH = 2.237;
-/** Under this many times the stall speed the gauge warns that speed is dying. */
-const LOW = 1.4;
+/**
+ * Under this share of the stall speed the plane is dropping fast: red, "Slow!".
+ * Between it and the stall speed the plane is sinking: amber.
+ */
+const DROPPING = 0.75;
 /** The dial sweeps from -SWEEP to +SWEEP degrees, 0 pointing straight up. */
 const SWEEP = 120;
 const CX = 50;
@@ -11,7 +14,7 @@ const R = 40;
 interface SpeedometerProps {
   /** m/s. */
   speed: number;
-  /** Speed the wings stop holding the plane up at, m/s. */
+  /** Below this speed the wings can't hold the plane level, m/s. */
   stall: number;
   /** Full scale of the gauge, m/s. */
   top: number;
@@ -37,12 +40,12 @@ function arc(from: number, to: number): string {
   return `M ${start.x} ${start.y} A ${R} ${R} 0 ${isLarge} 1 ${end.x} ${end.y}`;
 }
 
-/** A round dial with a needle: red below a stall, amber near it, then green. */
+/** A round dial with a needle: red when dropping, amber when sinking, then green. */
 export default function Speedometer({ speed, stall, top }: SpeedometerProps) {
   const mph = Math.round(speed * MPH);
-  const isStalling = speed < stall;
-  const stallShare = clamp01(stall / top);
-  const lowShare = clamp01((stall * LOW) / top);
+  const isStalling = speed < stall * DROPPING;
+  const stallShare = clamp01((stall * DROPPING) / top);
+  const lowShare = clamp01(stall / top);
   const needle = angleOf(speed / top);
 
   return (

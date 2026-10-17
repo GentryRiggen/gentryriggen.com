@@ -15,13 +15,18 @@ import Steering from "./ui/Steering";
 import { focusRingClass } from "./ui/styles";
 import WebGLFallback from "./ui/WebGLFallback";
 
+const RECOVERED_NOTICE =
+  "Your old save couldn't be read, so we started fresh. A copy was kept.";
+const RESET_NOTICE =
+  "Plane Builder 1.2 is here! Everyone starts fresh to try the new rings, fuel cans and flags.";
+
 const BACKGROUND =
   "bg-gradient-to-b from-sky-300 to-sky-100 text-slate-900 dark:from-slate-950 dark:to-sky-950 dark:text-slate-100";
 
 export default function PlaneBuilder() {
   const hasWebGL = useWebGLSupport();
   const screen = usePlaneBuilderStore((s) => s.screen);
-  const [isRecovered, setIsRecovered] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   useSoundUnlock(soundSetting.useValue());
 
   useEffect(() => {
@@ -32,7 +37,9 @@ export default function PlaneBuilder() {
     store.hydrate(result.progress);
     // localStorage is only readable after mount, so this can't be initial state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsRecovered(result.recovered);
+    setNotice(
+      result.reset ? RESET_NOTICE : result.recovered ? RECOVERED_NOTICE : null
+    );
     // Subscribe only after hydrating, so the fresh initial progress can never
     // overwrite a real save.
     return usePlaneBuilderStore.subscribe((state, prev) => {
@@ -65,18 +72,15 @@ export default function PlaneBuilder() {
           <FlightHud />
         </>
       ) : null}
-      {isRecovered ? (
+      {notice ? (
         <div
           role="status"
           className="absolute inset-x-4 top-20 z-20 sm:top-24 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
         >
-          <p className="flex-1">
-            Your old save couldn&apos;t be read, so we started fresh. A copy was
-            kept.
-          </p>
+          <p className="flex-1">{notice}</p>
           <button
             type="button"
-            onClick={() => setIsRecovered(false)}
+            onClick={() => setNotice(null)}
             className={`min-h-11 shrink-0 rounded-md px-3 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900 ${focusRingClass}`}
           >
             Dismiss

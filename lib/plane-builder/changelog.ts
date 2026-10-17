@@ -21,6 +21,7 @@ export const CHANGELOG: readonly Release[] = [
     date: "2026-10-17",
     title: "More to do in every flight",
     highlights: [
+      "Everyone starts fresh in 1.2, so the new prices and prizes are fair for all (your old save is kept as a copy)",
       "Boost rings give your plane a burst of speed, and some come in chains you can fly straight through",
       "Fuel cans float in the sky: fly through one with an engine plane to top up your tank",
       "You can see the updrafts now, so you know where the air will lift you",

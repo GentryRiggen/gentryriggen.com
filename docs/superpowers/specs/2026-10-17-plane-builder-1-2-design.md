@@ -17,10 +17,10 @@ a flight.
   finishes a level sooner than the balance pilot.
 - **Fix:** once the fuel is gone, the plane drifts down at stall speed for
   20–35 sim seconds. That tail should be short and still end in a landing.
-- **Constraints:** saves keep working (no save-version bump), the sim stays
-  deterministic, and the ship-builder code is untouched.
-- **Out of scope:** new upgrade tracks, a new level, upgrade recommendations,
-  and save-format changes.
+- **Constraints:** the sim stays deterministic, and the ship-builder code is
+  untouched. Progress resets in 1.2 (see "Save reset").
+- **Out of scope:** new upgrade tracks, a new level and upgrade
+  recommendations.
 
 ## 1. Shorter glide, forgiving landings
 
@@ -153,6 +153,14 @@ milestoneBonus) × multiplier))`.
 - **Sounds:** new synth cues `fuel` and `flag`. Boost rings keep the `ring` cue.
 - The HUD reads the pop-up events from a small store fed by `onEvents`, not
   from the sim state.
+
+## Save reset
+
+- Added after the spec was approved, at the user's request: 1.2 resets
+  progress. `SAVE_VERSION` becomes 2, and a version-1 save starts fresh
+  (`RESET_BELOW = 2`), is kept as a backup copy, and shows a one-time note:
+  "Plane Builder 1.2 is here! Everyone starts fresh to try the new rings, fuel
+  cans and flags." Unreadable saves keep the existing recovered note.
 
 ## Release
 

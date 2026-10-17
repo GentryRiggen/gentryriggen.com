@@ -7,10 +7,15 @@ import { LEVELS, LEVEL_ORDER, nextLevelId } from "../levels";
 import type { LevelId } from "../levels/types";
 import { MAX_TIER, TRACK_IDS, type Tiers } from "../plane/catalog";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+/**
+ * Saves older than this come from before a rebalance (1.2 changed prices and
+ * pay), so loadProgress starts them fresh instead of migrating them.
+ */
+export const RESET_BELOW = 2;
 
-export interface SaveV1 {
-  version: 1;
+export interface SaveV2 {
+  version: 2;
   progress: Progress;
 }
 
