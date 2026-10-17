@@ -1,4 +1,4 @@
-import { payout } from "../economy/payout";
+import { coinBonus, payout } from "../economy/payout";
 import {
   buyUpgrade,
   newProgress,
@@ -124,12 +124,14 @@ export function playLevel(id: LevelId, maxFlights = 80): FlightLog[] {
   for (let i = 0; i < maxFlights; i += 1) {
     const stats = planeStats(LEVELS[id].plane, p.levels[id].tiers);
     const result = pilotFlight(id, stats);
-    const earned = payout(
+    const total = payout(
       LEVELS[id],
       result,
       stats.multiplier,
       p.levels[id].best
     ).total;
+    // The average pilot stops the coin gauge in the yellow.
+    const earned = total + coinBonus(total, "yellow");
     log.push({
       distance: result.distance,
       earned,

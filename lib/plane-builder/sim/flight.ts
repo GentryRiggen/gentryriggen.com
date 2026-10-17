@@ -52,6 +52,8 @@ export interface LaunchAim {
   yaw: number;
   /** How far the band was pulled, 0..1. */
   power: number;
+  /** Launch timing multiplier (see minigame/gauge); 1 when absent. */
+  boost?: number;
 }
 
 export interface StickInput {
@@ -128,12 +130,16 @@ export function launch(
 ): FlightState {
   const pitch = clamp(finiteOrZero(aim.pitch), 0, MAX_AIM_PITCH);
   const power = clamp(finiteOrZero(aim.power), 0, 1);
+  const boost = clamp(Number.isFinite(aim.boost) ? aim.boost! : 1, 0.5, 1.5);
   return {
     time: 0,
     x: 0,
     y: LAUNCH_HEIGHT,
     z: 0,
-    speed: Math.max(MIN_SPEED, stats.launchSpeed * power),
+    speed: Math.max(
+      MIN_SPEED,
+      Math.min(MAX_SPEED, stats.launchSpeed * power * boost)
+    ),
     pitch,
     heading: clamp(finiteOrZero(aim.yaw), -MAX_AIM_YAW, MAX_AIM_YAW),
     bank: 0,

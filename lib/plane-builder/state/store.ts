@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { payout, type Payout } from "../economy/payout";
+import { coinBonus, payout, type Payout } from "../economy/payout";
 import {
+  addCoins,
   buyUpgrade,
   newProgress,
   recordFlight,
@@ -9,6 +10,7 @@ import {
   type Progress,
 } from "../economy/progress";
 import { LEVELS } from "../levels";
+import { COIN_ZONE_MULTIPLIER, type GaugeZone } from "../minigame/gauge";
 import type { LevelId } from "../levels/types";
 import type { TrackId } from "../plane/catalog";
 import { planeStats } from "../plane/stats";
@@ -26,6 +28,14 @@ export interface FlightSummary {
   isNewBest: boolean;
   previousBest: number;
   unlocked: LevelId | null;
+  /** The after-flight coin gauge's result, once stopped (once per flight). */
+  bonus: CoinBonus | null;
+}
+
+export interface CoinBonus {
+  zone: GaugeZone;
+  multiplier: number;
+  extra: number;
 }
 
 interface PlaneBuilderData {
@@ -46,6 +56,8 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   buy: (track: TrackId) => BuyResult;
   startLaunch: () => void;
   beginFlight: (aim: LaunchAim) => void;
+  /** Stops the after-flight coin gauge; only the first call per flight pays. */
+  claimCoinBonus: (zone: GaugeZone) => void;
   /** `flightId` ignores a stale or duplicate call from an earlier flight. */
   completeFlight: (result: FlightResult, flightId?: number) => void;
   resetTransient: () => void;
@@ -110,6 +122,19 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
         isNewBest: recorded.isNewBest,
         previousBest,
         unlocked: recorded.unlocked,
+        bonus: null,
+      },
+    });
+  },
+  claimCoinBonus: (zone) => {
+    const { lastFlight, progress, levelId } = get();
+    if (!lastFlight || lastFlight.bonus) return;
+    const extra = coinBonus(lastFlight.payout.total, zone);
+    set({
+      progress: addCoins(progress, levelId, extra),
+      lastFlight: {
+        ...lastFlight,
+        bonus: { zone, multiplier: COIN_ZONE_MULTIPLIER[zone], extra },
       },
     });
   },

@@ -58,6 +58,35 @@ describe("plane builder store", () => {
     expect(store.getState().flightId).toBe(id + 1);
   });
 
+  it("pays the coin gauge once per flight", () => {
+    store.getState().openLevel("meadow");
+    store.getState().startLaunch();
+    store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+    store.getState().completeFlight({
+      distance: 300,
+      coins: 0,
+      rings: 0,
+      finished: false,
+      endReason: "crash",
+    });
+    const total = store.getState().lastFlight!.payout.total;
+    store.getState().claimCoinBonus("green");
+    const s = store.getState();
+    expect(s.lastFlight?.bonus).toEqual({
+      zone: "green",
+      multiplier: 2,
+      extra: total,
+    });
+    expect(s.progress.levels.meadow.coins).toBe(total * 2);
+    store.getState().claimCoinBonus("green");
+    expect(store.getState().progress.levels.meadow.coins).toBe(total * 2);
+  });
+
+  it("does nothing for the coin gauge without a flight", () => {
+    store.getState().claimCoinBonus("green");
+    expect(store.getState().progress.levels.meadow.coins).toBe(0);
+  });
+
   it("restart wipes one level", () => {
     const p = newProgress();
     p.levels.meadow.coins = 99;

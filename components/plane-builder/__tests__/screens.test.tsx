@@ -216,6 +216,7 @@ describe("Hangar after a flight", () => {
     isNewBest: true,
     previousBest: 0,
     unlocked,
+    bonus: null,
   });
 
   it("shows how the flight went above the upgrades", () => {

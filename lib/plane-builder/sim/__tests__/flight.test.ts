@@ -21,6 +21,20 @@ const HANDS_OFF: StickInput = { pitch: 0, bank: 0, boost: false };
 const handsOff = () => HANDS_OFF;
 
 describe("flight sim", () => {
+  it("launches faster with a timing boost, within limits", () => {
+    const level = flatLevel();
+    const plain = launch(level, POWERED, AIM).speed;
+    expect(launch(level, POWERED, { ...AIM, boost: 1.25 }).speed).toBeCloseTo(
+      plain * 1.25
+    );
+    expect(launch(level, POWERED, { ...AIM, boost: 9 }).speed).toBeCloseTo(
+      plain * 1.5
+    );
+    expect(
+      launch(level, POWERED, { ...AIM, boost: Number.NaN }).speed
+    ).toBeCloseTo(plain);
+  });
+
   it("is deterministic", () => {
     const level = flatLevel();
     const a = runFlight(level, POWERED, AIM, handsOff);

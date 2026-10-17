@@ -1,4 +1,5 @@
 import type { LevelDef } from "../levels/types";
+import { COIN_ZONE_MULTIPLIER, type GaugeZone } from "../minigame/gauge";
 import { MILESTONES } from "../sim/constants";
 import type { FlightResult } from "../sim/flight";
 
@@ -55,4 +56,9 @@ export function payout(
     multiplier,
     total,
   };
+}
+
+/** Extra coins the after-flight gauge adds on top of a flight's total. */
+export function coinBonus(total: number, zone: GaugeZone): number {
+  return Math.round(Math.max(0, total) * (COIN_ZONE_MULTIPLIER[zone] - 1));
 }

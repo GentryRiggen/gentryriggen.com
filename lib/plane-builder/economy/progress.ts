@@ -101,6 +101,16 @@ export function recordFlight(
   return { progress: next, isNewBest, unlocked };
 }
 
+/** Adds `amount` coins to one level's wallet (ignored unless positive). */
+export function addCoins(p: Progress, id: LevelId, amount: number): Progress {
+  if (!Number.isFinite(amount) || amount <= 0) return p;
+  const level = p.levels[id];
+  return withLevel(p, id, {
+    ...level,
+    coins: Math.min(MAX_COINS, level.coins + Math.round(amount)),
+  });
+}
+
 export function restartLevel(p: Progress, id: LevelId): Progress {
   return withLevel(p, id, newLevelProgress());
 }
