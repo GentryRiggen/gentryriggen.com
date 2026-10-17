@@ -1,12 +1,32 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { gaugeZone } from "@/lib/plane-builder/minigame/gauge";
+import type { GaugeZone } from "@/lib/plane-builder/minigame/gauge";
+import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import { planeSynth } from "../audio/planeSynth";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import type { EndReason } from "@/lib/plane-builder/sim/flight";
 import type { FlightSummary } from "@/lib/plane-builder/state/store";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import FinishCard from "./FinishCard";
 import { formatCoins, percentOf } from "./format";
+import { coinButtonClass } from "./styles";
+import TimingGauge from "./TimingGauge";
+
+const BONUS_LABELS: Record<GaugeZone, string> = {
+  green: "Jackpot!",
+  yellow: "Nice!",
+  red: "Kept your coins",
+};
+
+function isFocusedControl(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      ["BUTTON", "A", "INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  );
+}
 
 const END_LINES: Partial<Record<EndReason, string>> = {
   crash: "You crashed!",
@@ -22,6 +42,32 @@ interface LastFlightProps {
 /** How the flight just flown went, at the top of the hangar. */
 export default function LastFlight({ levelId, flight }: LastFlightProps) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const gaugePosition = useRef(0);
+  const claimCoinBonus = usePlaneBuilderStore((s) => s.claimCoinBonus);
+  const hasBonus = flight.bonus !== null;
+
+  useEffect(() => {
+    if (hasBonus) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== " " && event.key !== "Enter") return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isFocusedControl(event.target)) return;
+      event.preventDefault();
+      handleStop();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // handleStop only reads refs and the stable store action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasBonus, flight]);
+
+  function handleStop() {
+    const zone = gaugeZone(gaugePosition.current);
+    planeSynth.play(zone === "green" ? "cheer" : "coin");
+    claimCoinBonus(zone);
+  }
 
   useEffect(() => {
     heading.current?.focus();
@@ -81,6 +127,30 @@ export default function LastFlight({ levelId, flight }: LastFlightProps) {
         <span aria-hidden="true">🪙 </span>
         Total: +{formatCoins(payout.total)}
       </p>
+      {flight.bonus ? (
+        <p
+          role="status"
+          className="font-extrabold text-emerald-700 dark:text-emerald-300"
+        >
+          {BONUS_LABELS[flight.bonus.zone]} Coin bonus ×
+          {flight.bonus.multiplier}: +{formatCoins(flight.bonus.extra)}
+        </p>
+      ) : (
+        <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
+          <TimingGauge
+            isRunning
+            positionRef={gaugePosition}
+            ariaLabel="Coin bonus timing"
+          />
+          <button
+            type="button"
+            onClick={handleStop}
+            className={`${coinButtonClass} min-h-12 text-xl font-extrabold`}
+          >
+            Stop!
+          </button>
+        </div>
+      )}
     </section>
   );
 }

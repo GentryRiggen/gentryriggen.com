@@ -19,6 +19,7 @@ import {
 } from "@/lib/plane-builder/state/flightToasts";
 import { launch } from "@/lib/plane-builder/sim/flight";
 import { usePlaneBuilderStore as store } from "@/lib/plane-builder/state/store";
+import { stubFrames } from "../testing/frames";
 
 jest.mock("canvas-confetti", () => ({ __esModule: true, default: jest.fn() }));
 
@@ -270,6 +271,100 @@ describe("Hangar after a flight", () => {
     expect(
       screen.getByText(`${LEVELS.canyon.name} unlocked!`)
     ).toBeInTheDocument();
+  });
+});
+
+describe("Hangar coin bonus gauge", () => {
+  const flight = {
+    result: {
+      distance: 120,
+      coins: 5,
+      rings: 0,
+      finished: false,
+      endReason: "landed" as const,
+    },
+    payout: {
+      distancePay: 60,
+      coinPay: 5,
+      landingBonus: 0,
+      milestoneBonus: 0,
+      multiplier: 1,
+      total: 100,
+    },
+    isNewBest: false,
+    previousBest: 0,
+    unlocked: null,
+    bonus: null,
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it("shows the gauge and a Stop button until the bonus is claimed", () => {
+    stubFrames();
+    store.setState({ screen: "hangar", lastFlight: flight });
+    render(<Hangar />);
+    expect(
+      screen.getByRole("meter", { name: "Coin bonus timing" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop!" })).toBeInTheDocument();
+  });
+
+  it("pays the bonus for where the marker stopped", async () => {
+    const frames = stubFrames();
+    store.setState({
+      screen: "hangar",
+      lastFlight: flight,
+      progress: newProgress(),
+    });
+    render(<Hangar />);
+    act(() => frames.at(400));
+    await userEvent.click(screen.getByRole("button", { name: "Stop!" }));
+
+    expect(store.getState().lastFlight?.bonus).toMatchObject({
+      zone: "green",
+      multiplier: 2,
+    });
+    const results = screen.getByRole("region", { name: "Flight results" });
+    expect(results).toHaveTextContent("Jackpot!");
+    expect(results).toHaveTextContent("Coin bonus ×2: +100");
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Stop!" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("stops on Space when no control has focus", () => {
+    const frames = stubFrames();
+    store.setState({
+      screen: "hangar",
+      lastFlight: flight,
+      progress: newProgress(),
+    });
+    render(<Hangar />);
+    (document.activeElement as HTMLElement | null)?.blur();
+    act(() => frames.at(800));
+    act(() => {
+      document.body.dispatchEvent(
+        new KeyboardEvent("keydown", { key: " ", bubbles: true })
+      );
+    });
+    expect(store.getState().lastFlight?.bonus?.zone).toBe("red");
+    expect(
+      screen.getByRole("region", { name: "Flight results" })
+    ).toHaveTextContent("Kept your coins");
+  });
+
+  it("shows the earned bonus without a gauge when already claimed", () => {
+    store.setState({
+      screen: "hangar",
+      lastFlight: {
+        ...flight,
+        bonus: { zone: "yellow", multiplier: 1.5, extra: 50 },
+      },
+    });
+    render(<Hangar />);
+    expect(screen.getByText(/Nice! Coin bonus ×1.5: \+50/)).toBeInTheDocument();
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   });
 });
 
