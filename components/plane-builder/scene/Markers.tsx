@@ -7,7 +7,11 @@ import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import { MILESTONES } from "@/lib/plane-builder/sim/constants";
 import { createLabelTexture } from "./signTexture";
 
-const EDGE_GAP = 4;
+/**
+ * Markers stand this share of the way out to the corridor edge: the Canyon's
+ * rock walls and the Mountains' pass walls reach well inside the edge.
+ */
+const EDGE_SHARE = 0.6;
 const FLAG_POLE_HEIGHT = 14;
 const FLAG_WIDTH = 8;
 const FLAG_HEIGHT = 4;
@@ -59,9 +63,9 @@ interface MarkersProps {
   level: LevelDef;
 }
 
-/** Milestone flags along one edge of the corridor, distance signs on the other. */
+/** Milestone flags on one side of the corridor, distance signs on the other. */
 export default function Markers({ level }: MarkersProps) {
-  const edgeZ = level.corridorHalfWidth + EDGE_GAP;
+  const edgeZ = level.corridorHalfWidth * EDGE_SHARE;
   const flags = useMemo(() => buildFlags(level), [level]);
   const signs = useMemo(() => buildSigns(level, flags), [level, flags]);
   const flagTextures = useMemo(
