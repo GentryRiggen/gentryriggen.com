@@ -29,7 +29,7 @@ export default function FlightToasts() {
         <p
           key={visible.id}
           aria-hidden="true"
-          className="pb-finish-banner absolute inset-x-0 top-16 text-center text-4xl font-black text-white drop-shadow-lg [text-shadow:0_2px_0_rgb(15_23_42),0_0_8px_rgb(15_23_42)]"
+          className="pb-finish-banner absolute inset-x-3 top-40 text-center text-4xl font-black text-white drop-shadow-lg [text-shadow:0_2px_0_rgb(15_23_42),0_0_8px_rgb(15_23_42)]"
         >
           {visible.text}
         </p>
