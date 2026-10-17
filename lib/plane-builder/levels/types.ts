@@ -10,7 +10,17 @@ export interface Vec3 {
 }
 
 export type ObstacleKind =
-  "tree" | "barn" | "balloon" | "wall" | "arch" | "bird" | "peak";
+  | "tree"
+  | "barn"
+  | "balloon"
+  | "wall"
+  | "arch"
+  | "bird"
+  | "peak"
+  | "palm"
+  | "skyscraper"
+  | "iceberg"
+  | "cloud";
 
 /** An axis-aligned box. Rendering may draw a nicer shape inside it. */
 export interface Obstacle {

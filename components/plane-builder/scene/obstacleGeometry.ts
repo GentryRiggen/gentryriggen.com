@@ -87,6 +87,14 @@ function parts(kind: ObstacleKind, palette: LevelPalette): Part[] {
           color: BIRD,
         },
       ];
+    // Stand-in shapes until the real models land.
+    case "palm":
+      return parts("tree", palette);
+    case "skyscraper":
+    case "iceberg":
+      return parts("wall", palette);
+    case "cloud":
+      return parts("balloon", palette);
     case "peak":
       return [
         {
