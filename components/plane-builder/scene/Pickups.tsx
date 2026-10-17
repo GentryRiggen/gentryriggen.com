@@ -16,17 +16,22 @@ import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
 const COIN_SPIN = 2.5;
 const COIN_COLOR = "#fbbf24";
 const RING_COLOR = "#38bdf8";
+const CAN_COLOR = "#ef4444";
+const CAN_BOB = 0.6;
 const dummy = new Object3D();
 
 interface PickupsProps {
   level: LevelDef;
+  /** Fuel cans are only drawn for planes with an engine to burn them. */
+  hasEngine: boolean;
 }
 
-/** Coins and rings. Ones the live flight has collected shrink to nothing. */
-export default function Pickups({ level }: PickupsProps) {
+/** Coins, rings and fuel cans. Ones the live flight has collected shrink to nothing. */
+export default function Pickups({ level, hasEngine }: PickupsProps) {
   const isHeld = heldFlightSeconds() !== undefined;
   const coins = useRef<InstancedMesh>(null);
   const rings = useRef<InstancedMesh>(null);
+  const cans = useRef<InstancedMesh>(null);
   const coinGeometry = useMemo(
     () =>
       new CylinderGeometry(COIN_RADIUS * 0.5, COIN_RADIUS * 0.5, 0.25, 16)
@@ -36,13 +41,15 @@ export default function Pickups({ level }: PickupsProps) {
     []
   );
   const ringGeometry = useMemo(() => new TorusGeometry(1, 0.06, 8, 32), []);
+  const canGeometry = useMemo(() => new CylinderGeometry(1, 1, 2, 16), []);
 
   useLayoutEffect(
     () => () => {
       coinGeometry.dispose();
       ringGeometry.dispose();
+      canGeometry.dispose();
     },
-    [coinGeometry, ringGeometry]
+    [coinGeometry, ringGeometry, canGeometry]
   );
 
   useLayoutEffect(() => {
@@ -87,6 +94,19 @@ export default function Pickups({ level }: PickupsProps) {
       }
       ringMesh.instanceMatrix.needsUpdate = true;
     }
+    const canMesh = cans.current;
+    if (canMesh) {
+      const time = isHeld ? 0 : clock.elapsedTime;
+      for (let i = 0; i < level.fuelCans.length; i += 1) {
+        const c = level.fuelCans[i];
+        dummy.position.set(c.x, c.y + Math.sin(time * 2 + i) * CAN_BOB, c.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.setScalar(flight?.canTaken[i] ? 0 : 1);
+        dummy.updateMatrix();
+        canMesh.setMatrixAt(i, dummy.matrix);
+      }
+      canMesh.instanceMatrix.needsUpdate = true;
+    }
   });
 
   return (
@@ -117,6 +137,20 @@ export default function Pickups({ level }: PickupsProps) {
           emissiveIntensity={0.5}
         />
       </instancedMesh>
+      {hasEngine ? (
+        <instancedMesh
+          key={`${level.id}-cans`}
+          ref={cans}
+          args={[canGeometry, undefined, level.fuelCans.length]}
+          frustumCulled={false}
+        >
+          <meshStandardMaterial
+            color={CAN_COLOR}
+            emissive={CAN_COLOR}
+            emissiveIntensity={0.3}
+          />
+        </instancedMesh>
+      ) : null}
     </>
   );
 }

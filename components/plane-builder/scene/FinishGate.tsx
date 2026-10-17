@@ -1,42 +1,16 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
-import {
-  BoxGeometry,
-  CanvasTexture,
-  Color,
-  type InstancedMesh,
-  Object3D,
-  SRGBColorSpace,
-} from "three";
+import { BoxGeometry, Color, type InstancedMesh, Object3D } from "three";
 import { terrainHeight } from "@/lib/plane-builder/levels/terrain";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
+import { createLabelTexture } from "./signTexture";
 
 const SEGMENT = 2;
 const SEGMENTS = 14;
 const POST_WIDTH = 2;
 const BANNER_HEIGHT = 6;
 const BANNER_DEPTH = 0.6;
-
-/** "FINISH" drawn once on a canvas, so no font has to be fetched. */
-function createBannerTexture(): CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
-    ctx.fillStyle = "#dc2626";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 96px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("FINISH", canvas.width / 2, canvas.height / 2 + 6);
-  }
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  return texture;
-}
 
 interface FinishGateProps {
   level: LevelDef;
@@ -76,7 +50,10 @@ export default function FinishGate({ level }: FinishGateProps) {
     mesh.computeBoundingSphere();
   }, [x, baseY, postZ]);
 
-  const bannerTexture = useMemo(() => createBannerTexture(), []);
+  const bannerTexture = useMemo(
+    () => createLabelTexture("FINISH", "#dc2626", "#ffffff"),
+    []
+  );
 
   useLayoutEffect(() => () => postGeometry.dispose(), [postGeometry]);
   useLayoutEffect(() => () => bannerTexture.dispose(), [bannerTexture]);

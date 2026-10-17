@@ -11,11 +11,13 @@ import ChaseCamera from "./ChaseCamera";
 import FinishGate from "./FinishGate";
 import FlightRunner from "./FlightRunner";
 import LaunchPlane from "./LaunchPlane";
+import Markers from "./Markers";
 import Obstacles from "./Obstacles";
 import Pickups from "./Pickups";
 import Sky from "./Sky";
 import Slingshot from "./Slingshot";
 import Terrain from "./Terrain";
+import Winds from "./Winds";
 
 interface WorldSceneProps {
   level: LevelDef;
@@ -23,16 +25,20 @@ interface WorldSceneProps {
   screen: Screen;
 }
 
-/** The level's world: sky, ground, obstacles, pickups, finish and slingshot. */
+/** The level's world: sky, ground, obstacles, winds, pickups, flags, finish and slingshot. */
 export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
   const flightId = usePlaneBuilderStore((s) => s.flightId);
+  const hasEngine =
+    tiers.engine > 0 && level.plane.engine.values[tiers.engine] > 0;
   return (
     <>
       <ChaseCamera level={level} screen={screen} />
       <Sky palette={level.palette} />
       <Terrain level={level} />
       <Obstacles level={level} />
-      <Pickups level={level} />
+      <Winds level={level} />
+      <Pickups level={level} hasEngine={hasEngine} />
+      <Markers level={level} />
       <FinishGate level={level} />
       <Slingshot tier={tiers.launcher} />
       {screen === "launch" ? <LaunchPlane level={level} tiers={tiers} /> : null}
