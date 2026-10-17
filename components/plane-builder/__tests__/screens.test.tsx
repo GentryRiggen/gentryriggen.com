@@ -13,6 +13,10 @@ import {
 } from "@/lib/plane-builder/plane/catalog";
 import { planeStats } from "@/lib/plane-builder/plane/stats";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
+import {
+  clearFlightToasts,
+  flightToasts,
+} from "@/lib/plane-builder/state/flightToasts";
 import { launch } from "@/lib/plane-builder/sim/flight";
 import { usePlaneBuilderStore as store } from "@/lib/plane-builder/state/store";
 
@@ -269,7 +273,11 @@ describe("Hangar after a flight", () => {
 });
 
 describe("FlightHud", () => {
-  afterEach(() => flightLive.set(null));
+  afterEach(() => {
+    flightLive.set(null);
+    clearFlightToasts();
+    jest.useRealTimers();
+  });
 
   const fly = (speed: number, coins: number) => {
     const s = launch(
@@ -311,6 +319,22 @@ describe("FlightHud", () => {
     fly(5, 0);
     render(<FlightHud />);
     expect(screen.getByText("Slow!")).toBeInTheDocument();
+  });
+
+  it("pops up a toast, announces it politely and removes it after 1.2 s", () => {
+    jest.useFakeTimers();
+    store.setState({ screen: "flight", levelId: "meadow" });
+    fly(20, 0);
+    render(<FlightHud />);
+    act(() => flightToasts.push("Boost!"));
+    const texts = screen.getAllByText("Boost!");
+    expect(texts).toHaveLength(2);
+    const live = texts.find((el) => el.getAttribute("aria-live") === "polite");
+    expect(live).toHaveClass("sr-only");
+    act(() => {
+      jest.advanceTimersByTime(1300);
+    });
+    expect(screen.queryByText("Boost!")).not.toBeInTheDocument();
   });
 });
 

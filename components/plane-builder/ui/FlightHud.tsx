@@ -9,6 +9,7 @@ import {
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import useFlightSnapshot from "../hooks/useFlightSnapshot";
 import { formatCoins, percentOf } from "./format";
+import FlightToasts from "./FlightToasts";
 import Speedometer from "./Speedometer";
 
 /**
@@ -121,6 +122,7 @@ export default function FlightHud() {
           </p>
         </div>
       </div>
+      <FlightToasts />
       {isFinished ? (
         <p
           aria-hidden="true"

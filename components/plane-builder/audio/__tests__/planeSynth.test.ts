@@ -188,6 +188,8 @@ describe("flight cues", () => {
     expect(cueForEvent({ type: "coin", index: 0 })).toBe("coin");
     expect(cueForEvent({ type: "landed" })).toBe("land");
     expect(cueForEvent({ type: "crash" })).toBe("crash");
+    expect(cueForEvent({ type: "fuel", index: 0 })).toBe("fuel");
+    expect(cueForEvent({ type: "milestone", share: 0.5 })).toBe("flag");
     expect(cueForEvent({ type: "stalled" })).toBeNull();
   });
 

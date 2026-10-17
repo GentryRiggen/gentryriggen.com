@@ -15,6 +15,7 @@ import { planeStats } from "../plane/stats";
 import type { FlightResult, LaunchAim } from "../sim/flight";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
+import { clearFlightToasts } from "./flightToasts";
 import { resetLaunchAim } from "./launchAim";
 
 export type Screen = "levels" | "hangar" | "launch" | "flight";
@@ -66,6 +67,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   resetTransient: () => {
     resetFlightInput();
     resetLaunchAim();
+    clearFlightToasts();
     set({ screen: "levels", aim: null, lastFlight: null });
   },
   openLevel: (id) => {
@@ -81,6 +83,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   startLaunch: () => {
     resetFlightInput();
     resetLaunchAim();
+    clearFlightToasts();
     set({ screen: "launch", aim: null, lastFlight: null });
   },
   beginFlight: (aim) => {

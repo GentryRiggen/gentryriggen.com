@@ -13,6 +13,8 @@ export type PlaneCue =
   | "shield"
   | "crash"
   | "land"
+  | "fuel"
+  | "flag"
   | "cheer"
   | "buy";
 
@@ -267,6 +269,22 @@ const CUES: Record<PlaneCue, (engine: Engine) => void> = {
       freqEnd: 80,
       gain: 0.5,
       attack: 0.01,
+    });
+  },
+  // Two quick rising sine blips, like a glug.
+  fuel: (e) => {
+    arpeggio(e, [330, 494], 0.08, {
+      type: "sine",
+      duration: 0.14,
+      gain: 0.22,
+    });
+  },
+  // A short three-note fanfare, quieter than the cheer.
+  flag: (e) => {
+    arpeggio(e, [523, 659, 784], 0.09, {
+      type: "triangle",
+      duration: 0.16,
+      gain: 0.14,
     });
   },
   // A major chord that swells in.

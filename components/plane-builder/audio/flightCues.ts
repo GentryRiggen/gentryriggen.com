@@ -1,4 +1,8 @@
 import type { FlightEvent } from "@/lib/plane-builder/sim/flight";
+import {
+  flightToasts,
+  toastForEvent,
+} from "@/lib/plane-builder/state/flightToasts";
 import { planeSynth, type PlaneCue } from "./planeSynth";
 
 const CUE_FOR_EVENT: Partial<Record<FlightEvent["type"], PlaneCue>> = {
@@ -8,6 +12,8 @@ const CUE_FOR_EVENT: Partial<Record<FlightEvent["type"], PlaneCue>> = {
   shield: "shield",
   crash: "crash",
   landed: "land",
+  fuel: "fuel",
+  milestone: "flag",
 };
 
 /** The sound for a sim event, or null when it has none ("finish" cheers on the results card). */
@@ -15,11 +21,13 @@ export function cueForEvent(event: FlightEvent): PlaneCue | null {
   return CUE_FOR_EVENT[event.type] ?? null;
 }
 
-/** Plays the cue for each sim event. */
+/** Plays the cue and shows the pop-up for each sim event. */
 export function playFlightEvents(events: readonly FlightEvent[]) {
   for (const event of events) {
     const cue = cueForEvent(event);
     if (cue) planeSynth.play(cue);
+    const text = toastForEvent(event);
+    if (text) flightToasts.push(text);
   }
 }
 
