@@ -5,8 +5,11 @@ import { planeParts } from "./planeParts";
 export const SIDEBAR_MIN_WIDTH = 768;
 /** The sidebar's width (`md:w-[22rem]`) in px. */
 export const SIDEBAR_WIDTH = 352;
-/** The bottom sheet's tallest share of the screen (`max-h-[50%]`). */
-export const SHEET_SHARE = 0.5;
+/**
+ * The phone panel's share of the screen (`h-[72%]`): it leaves a strip at the
+ * top where the plane shows on its turntable.
+ */
+export const SHEET_SHARE = 0.72;
 
 const MAX_TIERS: Tiers = {
   launcher: MAX_TIER,

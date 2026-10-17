@@ -22,7 +22,7 @@ export const CHANGELOG: readonly Release[] = [
     title: "Swoop!",
     highlights: [
       "Out of fuel? Dive down hard, then pull up to swoop a little further before you land",
-      "The upgrade page now fills your whole phone screen, so everything is bigger and easier to tap",
+      "The upgrade page is much bigger on phones, with your plane turning at the top so you still see new parts appear",
       "When you beat a world, you go to the worlds list. The world you won shines green and the next one glows gold so you know where to go",
     ],
   },
