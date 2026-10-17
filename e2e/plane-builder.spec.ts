@@ -181,9 +181,9 @@ test.describe("Plane Builder", () => {
     });
     await expect(page.getByText("Desert Canyon unlocked!")).toBeVisible();
     await claimReward(page);
-    await expect(page.getByText("Desert Canyon unlocked!")).toBeVisible();
 
-    await page.getByRole("button", { name: "← Levels" }).click();
+    const canyon = page.getByRole("article", { name: "Desert Canyon" });
+    await expect(canyon.getByText("Next up!")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Play Desert Canyon" })
     ).toBeVisible();

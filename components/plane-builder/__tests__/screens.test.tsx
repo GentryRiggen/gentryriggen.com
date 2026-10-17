@@ -39,6 +39,45 @@ describe("LevelSelect", () => {
     expect(within(card).queryByRole("button")).not.toBeInTheDocument();
   });
 
+  describe("after a first finish", () => {
+    function finishMeadow() {
+      const p = newProgress();
+      p.levels.meadow.finished = true;
+      p.unlocked = ["meadow", "canyon"];
+      store.getState().hydrate(p);
+    }
+
+    it("lights up the won level and the next one, and focuses its Play", () => {
+      finishMeadow();
+      store.setState({ celebrate: { won: "meadow", next: "canyon" } });
+      render(<LevelSelect />);
+      const won = screen.getByRole("article", { name: LEVELS.meadow.name });
+      const next = screen.getByRole("article", { name: LEVELS.canyon.name });
+      expect(won).toHaveTextContent("Finished! 🏆");
+      expect(next).toHaveTextContent("Next up!");
+      expect(next).not.toHaveTextContent("Finished!");
+      expect(
+        screen.getByRole("button", { name: `Play ${LEVELS.canyon.name}` })
+      ).toHaveFocus();
+    });
+
+    it("shows a banner when every world is beaten", () => {
+      finishMeadow();
+      store.setState({ celebrate: { won: "canyon", next: null } });
+      render(<LevelSelect />);
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "You beat every world!"
+      );
+      expect(screen.queryByText("Next up!")).not.toBeInTheDocument();
+    });
+
+    it("shows no badges without a celebration", () => {
+      render(<LevelSelect />);
+      expect(screen.queryByText("Next up!")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
   it("opens the hangar from Play", async () => {
     render(<LevelSelect />);
     await userEvent.click(

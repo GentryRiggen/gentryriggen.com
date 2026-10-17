@@ -9,7 +9,7 @@ import {
   type BuyResult,
   type Progress,
 } from "../economy/progress";
-import { LEVELS } from "../levels";
+import { LEVELS, nextLevelId } from "../levels";
 import { COIN_ZONE_MULTIPLIER, type GaugeZone } from "../minigame/gauge";
 import type { LevelId } from "../levels/types";
 import type { TrackId } from "../plane/catalog";
@@ -34,6 +34,12 @@ export interface FlightSummary {
   seen: boolean;
 }
 
+export interface Celebration {
+  won: LevelId;
+  /** The level to point at next, or null once every world is beaten. */
+  next: LevelId | null;
+}
+
 export interface CoinBonus {
   zone: GaugeZone;
   multiplier: number;
@@ -49,6 +55,8 @@ interface PlaneBuilderData {
   flightId: number;
   /** The flight just flown, shown at the top of the hangar until the next. */
   lastFlight: FlightSummary | null;
+  /** Set after a first-time level finish; the levels screen celebrates it. */
+  celebrate: Celebration | null;
 }
 
 export interface PlaneBuilderState extends PlaneBuilderData {
@@ -75,6 +83,7 @@ const initial: PlaneBuilderData = {
   aim: null,
   flightId: 0,
   lastFlight: null,
+  celebrate: null,
 };
 
 export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
@@ -84,13 +93,13 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     resetFlightInput();
     resetLaunchAim();
     clearFlightToasts();
-    set({ screen: "levels", aim: null, lastFlight: null });
+    set({ screen: "levels", aim: null, lastFlight: null, celebrate: null });
   },
   openLevel: (id) => {
     if (!get().progress.unlocked.includes(id)) return;
-    set({ screen: "hangar", levelId: id, lastFlight: null });
+    set({ screen: "hangar", levelId: id, lastFlight: null, celebrate: null });
   },
-  goToLevels: () => set({ screen: "levels" }),
+  goToLevels: () => set({ screen: "levels", celebrate: null }),
   buy: (track) => {
     const r = buyUpgrade(get().progress, get().levelId, track);
     if (r.ok) set({ progress: r.progress });
@@ -144,9 +153,24 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     });
   },
   dismissFlightReward: () => {
-    const { lastFlight } = get();
+    const { lastFlight, levelId } = get();
     if (!lastFlight?.bonus || lastFlight.seen) return;
-    set({ lastFlight: { ...lastFlight, seen: true } });
+    const seen = { ...lastFlight, seen: true };
+    const isFirstFinish =
+      lastFlight.result.finished &&
+      lastFlight.previousBest < LEVELS[levelId].finishDistance;
+    if (!isFirstFinish) {
+      set({ lastFlight: seen });
+      return;
+    }
+    set({
+      lastFlight: seen,
+      screen: "levels",
+      celebrate: {
+        won: levelId,
+        next: lastFlight.unlocked ?? nextLevelId(levelId),
+      },
+    });
   },
   restart: (id) => set((s) => ({ progress: restartLevel(s.progress, id) })),
 }));

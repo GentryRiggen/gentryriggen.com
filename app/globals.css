@@ -168,12 +168,27 @@ button:focus-visible {
   }
 }
 
+@keyframes pbGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0.7);
+  }
+  50% {
+    box-shadow: 0 0 18px 4px rgb(251 191 36 / 0.7);
+  }
+}
+
+.pb-glow {
+  animation: pbGlow 1.6s ease-in-out infinite;
+}
+
 .pb-pop {
   animation: pbPop 0.35s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pb-pop {
+  .pb-pop,
+  .pb-glow {
     animation: none;
   }
 }

@@ -101,6 +101,54 @@ describe("plane builder store", () => {
     expect(store.getState().lastFlight?.seen).toBe(true);
   });
 
+  function flyAndDismiss(finished: boolean) {
+    store.getState().openLevel("meadow");
+    store.getState().startLaunch();
+    store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+    store.getState().completeFlight({
+      distance: finished ? LEVELS.meadow.finishDistance : 300,
+      coins: 0,
+      rings: 0,
+      finished,
+      endReason: finished ? "runout" : "crash",
+    });
+    store.getState().claimCoinBonus("red");
+    store.getState().dismissFlightReward();
+  }
+
+  it("goes to the levels screen celebrating a first finish", () => {
+    flyAndDismiss(true);
+    expect(store.getState()).toMatchObject({
+      screen: "levels",
+      celebrate: { won: "meadow", next: "canyon" },
+    });
+    store.getState().openLevel("canyon");
+    expect(store.getState().celebrate).toBeNull();
+  });
+
+  it("clears the celebration on goToLevels and resetTransient", () => {
+    flyAndDismiss(true);
+    store.getState().goToLevels();
+    expect(store.getState().celebrate).toBeNull();
+    flyAndDismiss(false);
+    store.setState({ celebrate: { won: "meadow", next: null } });
+    store.getState().resetTransient();
+    expect(store.getState().celebrate).toBeNull();
+  });
+
+  it("returns to the hangar after a replay finish", () => {
+    const p = newProgress();
+    p.levels.meadow.finished = true;
+    p.levels.meadow.best = LEVELS.meadow.finishDistance;
+    p.unlocked = ["meadow", "canyon"];
+    store.getState().hydrate(p);
+    flyAndDismiss(true);
+    expect(store.getState()).toMatchObject({
+      screen: "hangar",
+      celebrate: null,
+    });
+  });
+
   it("does nothing for the coin gauge without a flight", () => {
     store.getState().claimCoinBonus("green");
     expect(store.getState().progress.levels.meadow.coins).toBe(0);

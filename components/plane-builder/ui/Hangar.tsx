@@ -10,7 +10,7 @@ import SoundToggle from "./SoundToggle";
 import UpgradeTrack from "./UpgradeTrack";
 
 /**
- * The upgrade panel: a bottom sheet on phones, a sidebar from `md:`. Only the
+ * The upgrade panel: full screen on phones, a sidebar from `md:`. Only the
  * upgrade list (with the last flight's results above it) scrolls. The header
  * (with the coin wallet) and the Launch! footer stay put, so Launch! is always
  * on screen. Every flight comes back here.
@@ -25,12 +25,12 @@ export default function Hangar() {
   const level = LEVELS[levelId];
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-end md:items-end md:justify-stretch">
+    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col md:items-end">
       <section
         aria-label="Hangar"
-        className={`pointer-events-auto flex max-h-[50%] w-full flex-col rounded-b-none md:max-h-full md:w-[calc(22rem+env(safe-area-inset-right))] md:pr-[env(safe-area-inset-right)] md:rounded-2xl md:rounded-r-none ${cardClass}`}
+        className={`pointer-events-auto flex h-full w-full flex-col max-md:rounded-none pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] md:w-[calc(22rem+env(safe-area-inset-right))] md:pl-0 md:rounded-2xl md:rounded-r-none ${cardClass}`}
       >
-        <header className="flex shrink-0 flex-col gap-2 p-3 pb-2 md:p-4 md:pt-[max(1rem,env(safe-area-inset-top))] md:pb-2 short:gap-1 short:p-2 short:pb-1">
+        <header className="flex shrink-0 flex-col gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 md:p-4 md:pt-[max(1rem,env(safe-area-inset-top))] md:pb-2 short:gap-1 short:p-2 short:pt-[max(0.5rem,env(safe-area-inset-top))] short:pb-1">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"

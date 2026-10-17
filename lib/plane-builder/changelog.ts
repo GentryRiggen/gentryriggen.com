@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.0",
+    date: "2026-10-17",
+    title: "Swoop!",
+    highlights: [
+      "The upgrade page now fills your whole phone screen, so everything is bigger and easier to tap",
+      "When you beat a world, you go to the worlds list. The world you won shines green and the next one glows gold so you know where to go",
+    ],
+  },
+  {
     version: "1.3.1",
     date: "2026-10-17",
     title: "Room for the notch, trickier timing",

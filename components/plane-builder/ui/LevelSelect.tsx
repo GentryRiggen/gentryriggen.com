@@ -2,7 +2,7 @@
 
 import { Lock } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
@@ -21,7 +21,19 @@ export default function LevelSelect() {
   const progress = usePlaneBuilderStore((s) => s.progress);
   const openLevel = usePlaneBuilderStore((s) => s.openLevel);
   const restart = usePlaneBuilderStore((s) => s.restart);
+  const celebrate = usePlaneBuilderStore((s) => s.celebrate);
+  const nextPlayRef = useRef<HTMLButtonElement>(null);
   const [restartId, setRestartId] = useState<LevelId | null>(null);
+
+  const nextId = celebrate?.next ?? null;
+
+  // Point the player at what to play next.
+  useEffect(() => {
+    const button = nextPlayRef.current;
+    if (!button) return;
+    button.focus();
+    button.scrollIntoView?.({ block: "center" });
+  }, [nextId]);
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-10 overflow-y-auto">
@@ -44,6 +56,15 @@ export default function LevelSelect() {
           <SoundToggle />
         </header>
 
+        {celebrate && celebrate.next === null ? (
+          <p
+            role="status"
+            className="rounded-2xl bg-emerald-100 px-4 py-3 text-center text-lg font-extrabold text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-100"
+          >
+            You beat every world! 🏆
+          </p>
+        ) : null}
+
         <ul className="flex flex-col gap-4">
           {LEVEL_ORDER.map((id, index) => {
             const level = LEVELS[id];
@@ -55,12 +76,30 @@ export default function LevelSelect() {
               Object.values(lp.tiers).some((tier) => tier > 0);
             const percent = percentOf(lp.best, level.finishDistance);
             const previous = LEVELS[LEVEL_ORDER[index - 1] ?? id];
+            const isWon = celebrate?.won === id;
+            const isNext = nextId === id;
+            const highlightClass = isWon
+              ? "ring-4 ring-emerald-500 dark:ring-emerald-400"
+              : isNext
+                ? "pb-glow ring-4 ring-amber-400 dark:ring-amber-300"
+                : "";
             return (
               <li key={id}>
                 <article
                   aria-labelledby={`level-${id}`}
-                  className={`p-4 ${cardClass} ${isUnlocked ? "" : "opacity-80"}`}
+                  className={`p-4 ${cardClass} ${isUnlocked ? "" : "opacity-80"} ${highlightClass}`}
                 >
+                  {isWon || isNext ? (
+                    <p
+                      className={`mb-2 inline-block rounded-full px-3 py-1 text-sm font-extrabold ${
+                        isWon
+                          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-100"
+                          : "bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100"
+                      }`}
+                    >
+                      {isWon ? "Finished! 🏆" : "Next up!"}
+                    </p>
+                  ) : null}
                   <h2 id={`level-${id}`} className="text-xl font-bold">
                     {level.name}
                   </h2>
@@ -88,6 +127,7 @@ export default function LevelSelect() {
                         <button
                           type="button"
                           onClick={() => openLevel(id)}
+                          ref={isNext ? nextPlayRef : undefined}
                           data-play-level={id}
                           aria-label={`${lp.finished ? "Replay" : "Play"} ${level.name}`}
                           className={primaryButtonClass}
