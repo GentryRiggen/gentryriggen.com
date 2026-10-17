@@ -41,7 +41,8 @@ numbers) are unaffected.
 - **Boost rings:** flying through a ring adds `RING_BOOST` m/s (capped at
   `MAX_SPEED`) on top of its coins.
 - **Fuel cans:** planes with an engine collect a can they fly near and refill
-  `FUEL_CAN_SHARE` of the tank (never past full). Gliders ignore them.
+  `FUEL_CAN_SECONDS` of fuel (never past full), the same for every tank size,
+  so a big tank can't refill as fast as it burns. Gliders ignore them.
 - **Milestones:** crossing 25%, 50% and 75% of the finish distance fires one
   `milestone` event each, once per flight (based on the furthest point reached,
   so a bounce back never repeats one).

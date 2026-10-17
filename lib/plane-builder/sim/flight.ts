@@ -14,7 +14,7 @@ import {
   CORRIDOR_PUSH,
   CORRIDOR_TURN,
   FUEL_CAN_RADIUS,
-  FUEL_CAN_SHARE,
+  FUEL_CAN_SECONDS,
   G,
   LAND_ANGLE,
   LAND_SPEED,
@@ -397,7 +397,7 @@ export function step(
       const dz = c.z - s.z;
       if (dx * dx + dy * dy + dz * dz < FUEL_CAN_RADIUS * FUEL_CAN_RADIUS) {
         s.canTaken[i] = 1;
-        s.fuel = Math.min(stats.fuel, s.fuel + stats.fuel * FUEL_CAN_SHARE);
+        s.fuel = Math.min(stats.fuel, s.fuel + FUEL_CAN_SECONDS);
         events.push({ type: "fuel", index: i });
       }
     });

@@ -39,8 +39,11 @@ export const RING_COINS = 10;
 /** Speed a ring adds, m/s. */
 export const RING_BOOST = 8;
 export const FUEL_CAN_RADIUS = 3;
-/** Share of the tank a fuel can refills. */
-export const FUEL_CAN_SHARE = 0.25;
+/**
+ * Seconds of fuel a fuel can adds. Fixed, not a share of the tank: a share
+ * let a big tank refill as fast as it burned between cans and never run dry.
+ */
+export const FUEL_CAN_SECONDS = 3;
 /** Shares of the finish distance that are milestone flags. */
 export const MILESTONES = [0.25, 0.5, 0.75] as const;
 /** Soft hits multiply speed by this. */

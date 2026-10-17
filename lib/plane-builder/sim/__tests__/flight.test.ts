@@ -3,7 +3,7 @@ import { RUNOUT } from "../../levels/generate";
 import {
   CEILING,
   CORRIDOR_TURN,
-  FUEL_CAN_SHARE,
+  FUEL_CAN_SECONDS,
   MAX_SPEED,
   RING_BOOST,
 } from "../constants";
@@ -475,7 +475,7 @@ describe("pickups and milestones", () => {
     expect(t.speed).toBeLessThanOrEqual(MAX_SPEED);
   });
 
-  it("adds a quarter tank from a fuel can, capped at full", () => {
+  it("adds a few seconds of fuel from a fuel can, capped at full", () => {
     const level = flatLevel({ fuelCans: [{ x: 20, y: 3, z: 0 }] });
     const s = launch(level, POWERED, AIM);
     s.x = 19.5;
@@ -484,7 +484,7 @@ describe("pickups and milestones", () => {
     s.fuel = 2;
     const events = step(s, level, POWERED, HANDS_OFF);
     expect(events).toContainEqual({ type: "fuel", index: 0 });
-    expect(s.fuel).toBeCloseTo(2 - 1 / 60 + POWERED.fuel * FUEL_CAN_SHARE, 2);
+    expect(s.fuel).toBeCloseTo(2 - 1 / 60 + FUEL_CAN_SECONDS, 2);
 
     const full = launch(level, POWERED, AIM);
     full.x = 19.5;
@@ -492,6 +492,24 @@ describe("pickups and milestones", () => {
     full.z = 0;
     step(full, level, POWERED, HANDS_OFF);
     expect(full.fuel).toBeLessThanOrEqual(POWERED.fuel);
+  });
+
+  it("can't keep a big tank full by chasing fuel cans", () => {
+    // A can every 400 m along the line, and a pilot flying straight through
+    // them all with a huge tank: it must still run dry before the finish.
+    const fuelCans = Array.from({ length: 30 }, (_, i) => ({
+      x: 300 + i * 400,
+      y: 20,
+      z: 0,
+    }));
+    const level = flatLevel({ finishDistance: 4000, fuelCans });
+    const stats = { ...POWERED, fuel: 40, thrust: 22, drag: 0.014 };
+    const { state } = runFlight(level, stats, AIM, (s) => ({
+      ...HANDS_OFF,
+      pitch: Math.max(-1, Math.min(1, (20 - s.y) / 10)),
+    }));
+    expect(state.canTaken.some(Boolean)).toBe(true);
+    expect(state.finished).toBe(false);
   });
 
   it("ignores fuel cans without an engine", () => {

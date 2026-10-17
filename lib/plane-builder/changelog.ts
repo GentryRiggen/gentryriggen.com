@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.1",
+    date: "2026-10-17",
+    title: "Fair fuel",
+    highlights: [
+      "Fuel cans now give the same small top-up to every plane, so a big tank can't keep itself full forever",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-10-17",
     title: "Swoop!",
