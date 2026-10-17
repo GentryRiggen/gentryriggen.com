@@ -79,4 +79,116 @@ describe("planeParts", () => {
     expect(one.isGold).toBe(false);
     expect(planeParts("meadow", withTier({ multiplier: 8 })).isGold).toBe(true);
   });
+
+  describe("the newer worlds' planes", () => {
+    it("gives the beach a seaplane with floats and a high wing", () => {
+      for (const tiers of [STARTER_TIERS, MAXED]) {
+        const parts = planeParts("beach", tiers);
+        expect(parts.look).toBe("seaplane");
+        expect(parts.gear).toBe("floats");
+        expect(parts.wingHeight).toBeGreaterThan(0);
+        expect(parts.hasWingStruts).toBe(true);
+      }
+      expect(planeParts("beach", MAXED).bodyLength).toBeGreaterThan(
+        planeParts("beach", STARTER_TIERS).bodyLength
+      );
+    });
+
+    it("gives the jungle a stubby bush plane on big tyres", () => {
+      for (const tiers of [STARTER_TIERS, MAXED]) {
+        const parts = planeParts("jungle", tiers);
+        expect(parts.gear).toBe("tyres");
+        expect(parts.hasWingStruts).toBe(true);
+        expect(parts.girth).toBeGreaterThan(1.2);
+        expect(parts.bodyLength).toBeLessThan(
+          planeParts("meadow", tiers).bodyLength
+        );
+      }
+      expect(planeParts("jungle", withTier({ engine: 1 })).propellers).toBe(1);
+    });
+
+    it("gives the city a swept jet with no propeller and a tail that glows", () => {
+      for (const tiers of [STARTER_TIERS, MAXED]) {
+        const parts = planeParts("city", tiers);
+        expect(parts.propellers).toBe(0);
+        expect(parts.sweep).toBeGreaterThan(0);
+        expect(parts.hasJetTail).toBe(true);
+        expect(parts.hasIntakes).toBe(true);
+      }
+      const glow = (engine: number) =>
+        planeParts("city", withTier({ engine })).exhaustGlow;
+      expect(glow(0)).toBe(0);
+      expect(glow(1)).toBe(1);
+      expect(glow(4)).toBe(2);
+      expect(glow(8)).toBe(3);
+      expect(planeParts("city", MAXED).engineScale).toBeGreaterThan(
+        planeParts("city", STARTER_TIERS).engineScale
+      );
+    });
+
+    it("gives the glacier a boxy ski plane", () => {
+      for (const tiers of [STARTER_TIERS, MAXED]) {
+        const parts = planeParts("glacier", tiers);
+        expect(parts.gear).toBe("skis");
+        expect(parts.hasCabin).toBe(true);
+        expect(parts.wingHeight).toBeGreaterThan(0);
+        expect(parts.hasWingStruts).toBe(true);
+      }
+    });
+
+    it("gives the volcano a thick twin with pods that gain propellers", () => {
+      const start = planeParts("volcano", STARTER_TIERS);
+      const max = planeParts("volcano", MAXED);
+      expect(start.enginePods).toBe(2);
+      expect(max.enginePods).toBe(2);
+      expect(start.girth).toBeGreaterThan(1.3);
+      expect(start.hasPodPropellers).toBe(false);
+      expect(max.hasPodPropellers).toBe(true);
+      expect(max.propellers).toBe(0);
+      expect(max.engineScale).toBeGreaterThan(start.engineScale);
+    });
+
+    it("gives the storm twin booms and a pusher propeller", () => {
+      for (const tiers of [STARTER_TIERS, MAXED]) {
+        expect(planeParts("storm", tiers).hasTwinBooms).toBe(true);
+      }
+      expect(planeParts("storm", STARTER_TIERS).propellers).toBe(0);
+      expect(planeParts("storm", MAXED).propellers).toBe(1);
+    });
+
+    it("gives the islands a glowing glider with long thin wings", () => {
+      const start = planeParts("islands", STARTER_TIERS);
+      const max = planeParts("islands", MAXED);
+      for (const parts of [start, max]) {
+        expect(parts.hasGlowTrim).toBe(true);
+        expect(parts.hasPointedNose).toBe(true);
+        expect(parts.wingChord).toBeLessThan(0.6);
+        expect(parts.propellers).toBe(0);
+      }
+      expect(start.hasWinglets).toBe(false);
+      expect(max.hasWinglets).toBe(true);
+      expect(max.girth).toBeLessThan(start.girth);
+      expect(max.wingSpan / max.wingChord).toBeGreaterThan(
+        planeParts("meadow", MAXED).wingSpan
+      );
+    });
+
+    it("leaves the three original looks plain", () => {
+      for (const id of ["meadow", "canyon", "mountains"] as const) {
+        const parts = planeParts(id, MAXED);
+        expect(parts.girth).toBe(1);
+        expect(parts.wingHeight).toBe(0);
+        expect(parts.wingChord).toBe(1);
+        expect(parts.gear).toBe("none");
+        expect(parts.enginePods).toBe(0);
+        expect(parts.hasJetTail).toBe(false);
+        expect(parts.engineScale).toBe(1);
+      }
+    });
+
+    it("never repeats a look between worlds", () => {
+      const looks = LEVEL_ORDER.map((id) => planeParts(id, STARTER_TIERS).look);
+      expect(new Set(looks).size).toBe(LEVEL_ORDER.length);
+    });
+  });
 });

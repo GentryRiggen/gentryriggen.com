@@ -24,6 +24,7 @@ export const CHANGELOG: readonly Release[] = [
       "Seven new worlds after the Snowy Mountains: Sunny Beach, Jungle, Big City, Frozen Glacier, Volcano, Thunderstorm and Sky Islands",
       "Each world is a bit harder than the one before, with tougher things to dodge, stronger winds and longer trips to the finish",
       "Beat a world to open the next one. Your old saves keep all their progress",
+      "Every new world has its own plane: a seaplane, a bush plane, a little jet, a ski plane, a twin-engine, a twin-boom storm chaser and a sky glider",
     ],
   },
   {

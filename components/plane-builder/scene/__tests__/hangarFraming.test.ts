@@ -1,3 +1,6 @@
+import { LEVEL_ORDER } from "@/lib/plane-builder/levels";
+import { MAX_TIER, type Tiers } from "@/lib/plane-builder/plane/catalog";
+import { planeParts } from "../planeParts";
 import {
   HANGAR_PLANE_RADIUS,
   SIDEBAR_WIDTH,
@@ -34,6 +37,23 @@ describe("hangarFraming", () => {
   it("backs the camera off further on a narrow screen", () => {
     expect(hangarFraming(390, 844, FOV).distance).toBeGreaterThan(
       hangarFraming(1280, 800, FOV).distance
+    );
+  });
+
+  it.each(LEVEL_ORDER)("holds the maxed %s plane", (id) => {
+    const maxed: Tiers = {
+      launcher: MAX_TIER,
+      wings: MAX_TIER,
+      engine: MAX_TIER,
+      fuel: MAX_TIER,
+      body: MAX_TIER,
+      multiplier: MAX_TIER,
+    };
+    const parts = planeParts(id, maxed);
+    // Allow for a nose cone, propeller or exhaust flame past the body ends.
+    const reach = parts.bodyLength / 2 + 0.6;
+    expect(Math.hypot(parts.wingSpan / 2, reach)).toBeLessThanOrEqual(
+      HANGAR_PLANE_RADIUS
     );
   });
 });
