@@ -210,7 +210,7 @@ export default function LaunchOverlay() {
         ← Hangar
       </button>
       {hasGauge && isPulling ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 mx-auto w-72 max-w-[calc(100%-2rem)]">
+        <div className="pointer-events-none absolute inset-x-0 bottom-44 mx-auto w-72 max-w-[calc(100%-2rem)]">
           <TimingGauge
             isRunning
             positionRef={gaugePosition}

@@ -326,7 +326,7 @@ describe("Hangar coin bonus gauge", () => {
     });
     const results = screen.getByRole("region", { name: "Flight results" });
     expect(results).toHaveTextContent("Jackpot!");
-    expect(results).toHaveTextContent("Coin bonus ×2: +100");
+    expect(results).toHaveTextContent("Coins ×2: +100");
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Stop!" })
@@ -363,7 +363,7 @@ describe("Hangar coin bonus gauge", () => {
       },
     });
     render(<Hangar />);
-    expect(screen.getByText(/Nice! Coin bonus ×1.5: \+50/)).toBeInTheDocument();
+    expect(screen.getByText(/Nice! Coins ×1.5: \+50/)).toBeInTheDocument();
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   });
 });

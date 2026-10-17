@@ -17,7 +17,7 @@ import TimingGauge from "./TimingGauge";
 const BONUS_LABELS: Record<GaugeZone, string> = {
   green: "Jackpot!",
   yellow: "Nice!",
-  red: "Kept your coins",
+  red: "Kept your coins!",
 };
 
 function isFocusedControl(target: EventTarget | null): boolean {
@@ -132,8 +132,10 @@ export default function LastFlight({ levelId, flight }: LastFlightProps) {
           role="status"
           className="font-extrabold text-emerald-700 dark:text-emerald-300"
         >
-          {BONUS_LABELS[flight.bonus.zone]} Coin bonus ×
-          {flight.bonus.multiplier}: +{formatCoins(flight.bonus.extra)}
+          {BONUS_LABELS[flight.bonus.zone]}
+          {flight.bonus.extra > 0
+            ? ` Coins ×${flight.bonus.multiplier}: +${formatCoins(flight.bonus.extra)}`
+            : null}
         </p>
       ) : (
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
