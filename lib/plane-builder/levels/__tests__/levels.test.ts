@@ -4,14 +4,54 @@ import { LEVELS, LEVEL_ORDER } from "../index";
 import { CANYON_SPEC } from "../canyon";
 import { MEADOW_SPEC } from "../meadow";
 import { MOUNTAINS_SPEC } from "../mountains";
+import { BEACH_SPEC } from "../beach";
+import { JUNGLE_SPEC } from "../jungle";
+import { CITY_SPEC } from "../city";
+import { GLACIER_SPEC } from "../glacier";
+import { VOLCANO_SPEC } from "../volcano";
+import { STORM_SPEC } from "../storm";
+import { ISLANDS_SPEC } from "../islands";
 import { terrainHeight } from "../terrain";
 
 describe("levels", () => {
   it("are in order with growing finish lines", () => {
-    expect(LEVEL_ORDER).toEqual(["meadow", "canyon", "mountains"]);
-    expect(LEVEL_ORDER.map((id) => LEVELS[id].finishDistance)).toEqual([
-      2000, 4000, 6000,
+    expect(LEVEL_ORDER).toEqual([
+      "meadow",
+      "canyon",
+      "mountains",
+      "beach",
+      "jungle",
+      "city",
+      "glacier",
+      "volcano",
+      "storm",
+      "islands",
     ]);
+    expect(LEVEL_ORDER.map((id) => LEVELS[id].finishDistance)).toEqual([
+      2000, 4000, 6000, 7000, 7400, 7800, 8200, 8500, 8800, 9100,
+    ]);
+  });
+
+  it("never narrows the flyable corridor below 20 m", () => {
+    for (const id of LEVEL_ORDER) {
+      const level = LEVELS[id];
+      const hard = level.obstacles.filter((o) => o.hard);
+      const width = level.corridorHalfWidth;
+      for (let x = 0; x < level.finishDistance + 300; x += 2) {
+        const spans = hard
+          .filter((o) => Math.abs(x - o.center.x) <= o.half.x)
+          .map((o) => [o.center.z - o.half.z, o.center.z + o.half.z])
+          .sort((a, b) => a[0] - b[0]);
+        let edge = -width;
+        let widest = 0;
+        for (const [from, to] of spans) {
+          widest = Math.max(widest, from - edge);
+          edge = Math.max(edge, to);
+        }
+        widest = Math.max(widest, width - edge);
+        expect(widest).toBeGreaterThanOrEqual(20);
+      }
+    }
   });
 
   it("build the same every time", () => {
@@ -93,29 +133,37 @@ describe("1.2 level content", () => {
     }
   });
 
-  it.each([MEADOW_SPEC, CANYON_SPEC, MOUNTAINS_SPEC])(
-    "$id keeps set-piece windows free of generated hard obstacles",
-    (spec) => {
-      const plain = buildLevel({ ...spec, setPieces: [] });
-      const level = buildLevel(spec);
-      const placed = new Set(
-        spec.setPieces.flatMap((p) =>
-          (p.obstacles ?? []).map((o) => `${o.x},${o.z}`)
-        )
+  it.each([
+    MEADOW_SPEC,
+    CANYON_SPEC,
+    MOUNTAINS_SPEC,
+    BEACH_SPEC,
+    JUNGLE_SPEC,
+    CITY_SPEC,
+    GLACIER_SPEC,
+    VOLCANO_SPEC,
+    STORM_SPEC,
+    ISLANDS_SPEC,
+  ])("$id keeps set-piece windows free of generated hard obstacles", (spec) => {
+    const plain = buildLevel({ ...spec, setPieces: [] });
+    const level = buildLevel(spec);
+    const placed = new Set(
+      spec.setPieces.flatMap((p) =>
+        (p.obstacles ?? []).map((o) => `${o.x},${o.z}`)
+      )
+    );
+    for (const piece of spec.setPieces) {
+      const generated = level.obstacles.filter(
+        (o) =>
+          o.hard &&
+          !placed.has(`${o.center.x},${o.center.z}`) &&
+          o.center.x + o.half.x >= piece.fromX &&
+          o.center.x - o.half.x <= piece.toX
       );
-      for (const piece of spec.setPieces) {
-        const generated = level.obstacles.filter(
-          (o) =>
-            o.hard &&
-            !placed.has(`${o.center.x},${o.center.z}`) &&
-            o.center.x + o.half.x >= piece.fromX &&
-            o.center.x - o.half.x <= piece.toX
-        );
-        expect(generated).toEqual([]);
-      }
-      expect(plain.obstacles.length).toBeGreaterThan(0);
+      expect(generated).toEqual([]);
     }
-  );
+    expect(plain.obstacles.length).toBeGreaterThan(0);
+  });
 
   it("ramps hard obstacles: sparser in the first quarter than the last", () => {
     const level = LEVELS.canyon;

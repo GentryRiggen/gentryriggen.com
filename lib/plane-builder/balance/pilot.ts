@@ -5,7 +5,7 @@ import {
   recordFlight,
   type Progress,
 } from "../economy/progress";
-import { LEVELS } from "../levels";
+import { LEVELS, LEVEL_ORDER } from "../levels";
 import { terrainHeight } from "../levels/terrain";
 import type { LevelDef, LevelId } from "../levels/types";
 import { TRACK_IDS, tierPrice } from "../plane/catalog";
@@ -119,7 +119,7 @@ export interface FlightLog {
 
 export function playLevel(id: LevelId, maxFlights = 80): FlightLog[] {
   let p = newProgress();
-  p = { ...p, unlocked: ["meadow", "canyon", "mountains"] };
+  p = { ...p, unlocked: [...LEVEL_ORDER] };
   const log: FlightLog[] = [];
   for (let i = 0; i < maxFlights; i += 1) {
     const stats = planeStats(LEVELS[id].plane, p.levels[id].tiers);

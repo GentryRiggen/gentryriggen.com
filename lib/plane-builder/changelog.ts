@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.5.0",
+    date: "2026-10-17",
+    title: "Seven new worlds",
+    highlights: [
+      "Seven new worlds after the Snowy Mountains: Sunny Beach, Jungle, Big City, Frozen Glacier, Volcano, Thunderstorm and Sky Islands",
+      "Each world is a bit harder than the one before, with tougher things to dodge, stronger winds and longer trips to the finish",
+      "Beat a world to open the next one. Your old saves keep all their progress",
+    ],
+  },
+  {
     version: "1.4.1",
     date: "2026-10-17",
     title: "Fair fuel",

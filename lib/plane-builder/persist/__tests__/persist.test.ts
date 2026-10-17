@@ -3,6 +3,16 @@ import { newProgress } from "../../economy/progress";
 import { SAVE_KEY, loadProgress, saveProgress } from "../local";
 import { SAVE_VERSION, parseSave } from "../schema";
 
+const NEW_WORLDS = [
+  "beach",
+  "jungle",
+  "city",
+  "glacier",
+  "volcano",
+  "storm",
+  "islands",
+] as const;
+
 beforeEach(() => window.localStorage.clear());
 
 describe("parseSave", () => {
@@ -20,6 +30,29 @@ describe("parseSave", () => {
       progress: { ...progress, levels: rest },
     });
     expect(parsed?.levels.mountains).toEqual(newProgress().levels.mountains);
+  });
+
+  it("loads a 3-world save: new worlds start fresh and locked", () => {
+    const progress = newProgress();
+    const { mountains, canyon, meadow } = progress.levels;
+    const parsed = parseSave({
+      version: SAVE_VERSION,
+      progress: {
+        levels: { meadow, canyon, mountains },
+        unlocked: ["meadow", "canyon", "mountains"],
+      },
+    });
+    expect(parsed?.unlocked).toEqual(["meadow", "canyon", "mountains"]);
+    for (const id of NEW_WORLDS) {
+      expect(parsed?.levels[id]).toEqual(newProgress().levels[id]);
+    }
+  });
+
+  it("opens the first new world once the mountains are finished", () => {
+    const progress = newProgress();
+    progress.levels.mountains.finished = true;
+    const parsed = parseSave({ version: SAVE_VERSION, progress });
+    expect(parsed?.unlocked).toEqual(["meadow", "beach"]);
   });
 
   it.each([

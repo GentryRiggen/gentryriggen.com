@@ -1,7 +1,17 @@
 // lib/plane-builder/levels/types.ts
 import type { PlaneCatalog } from "../plane/catalog";
 
-export type LevelId = "meadow" | "canyon" | "mountains";
+export type LevelId =
+  | "meadow"
+  | "canyon"
+  | "mountains"
+  | "beach"
+  | "jungle"
+  | "city"
+  | "glacier"
+  | "volcano"
+  | "storm"
+  | "islands";
 
 export interface Vec3 {
   x: number;
