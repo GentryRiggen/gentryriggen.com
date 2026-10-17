@@ -139,7 +139,8 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">
+      {/* Extensions (e.g. ColorZilla) add attributes to <body> before hydration. */}
+      <body className="antialiased" suppressHydrationWarning>
         <AnalyticsTracker />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
