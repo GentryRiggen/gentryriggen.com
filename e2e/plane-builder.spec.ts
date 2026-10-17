@@ -22,6 +22,14 @@ test.use({
 test.setTimeout(120_000);
 const RESULTS_TIMEOUT = 90_000;
 
+/** Stops the after-flight coin gauge, then closes the reward card. */
+async function claimReward(page: Page) {
+  await page.getByRole("button", { name: "Stop!" }).click({
+    timeout: RESULTS_TIMEOUT,
+  });
+  await page.getByRole("button", { name: "Continue" }).click();
+}
+
 async function open(page: Page) {
   await page.goto("/plane-builder");
   await expect(
@@ -97,9 +105,8 @@ test.describe("Plane Builder", () => {
 
       await dragLaunch(page);
 
-      await expect(page.getByText(/Total: \+/)).toBeVisible({
-        timeout: RESULTS_TIMEOUT,
-      });
+      await claimReward(page);
+      await expect(page.getByText(/Total: \+/)).toBeVisible();
       const afterFlight = await meadow(page);
       expect(afterFlight.tiers.wings).toBe(1);
       expect(afterFlight.best).toBeGreaterThan(0);
@@ -147,9 +154,8 @@ test.describe("Plane Builder", () => {
     await page.waitForTimeout(1000);
     await page.keyboard.up("Space");
 
-    await expect(page.getByText(/Total: \+/)).toBeVisible({
-      timeout: RESULTS_TIMEOUT,
-    });
+    await claimReward(page);
+    await expect(page.getByText(/Total: \+/)).toBeVisible();
   });
 
   test("finishing the meadow unlocks the canyon", async ({ page }) => {
@@ -173,6 +179,8 @@ test.describe("Plane Builder", () => {
         store.getState().flightId
       );
     });
+    await expect(page.getByText("Desert Canyon unlocked!")).toBeVisible();
+    await claimReward(page);
     await expect(page.getByText("Desert Canyon unlocked!")).toBeVisible();
 
     await page.getByRole("button", { name: "← Levels" }).click();

@@ -64,4 +64,35 @@ describe("PlaneBuilder", () => {
     const hangar = screen.getByRole("region", { name: "Hangar" });
     expect(hangar.closest("[data-safe-area]")).toBeNull();
   });
+
+  it("shows the reward modal in the safe area before the hangar", async () => {
+    render(<PlaneBuilder />);
+    act(() => {
+      store.getState().openLevel("meadow");
+      store.getState().startLaunch();
+      store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+      store.getState().completeFlight({
+        distance: 100,
+        coins: 0,
+        rings: 0,
+        finished: false,
+        endReason: "landed",
+      });
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.closest("[data-safe-area]")).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "Hangar" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Stop!" }));
+    expect(screen.queryByRole("region", { name: "Hangar" })).toBeNull();
+    // Reduced motion is off in jsdom, so wait for the reveal to finish.
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Continue" }, { timeout: 3000 })
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("region", { name: "Hangar" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Flight results" })
+    ).toBeVisible();
+  });
 });

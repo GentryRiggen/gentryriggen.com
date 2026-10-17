@@ -82,6 +82,25 @@ describe("plane builder store", () => {
     expect(store.getState().progress.levels.meadow.coins).toBe(total * 2);
   });
 
+  it("dismisses the reward only after the bonus is claimed", () => {
+    store.getState().openLevel("meadow");
+    store.getState().startLaunch();
+    store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+    store.getState().completeFlight({
+      distance: 300,
+      coins: 0,
+      rings: 0,
+      finished: false,
+      endReason: "crash",
+    });
+    expect(store.getState().lastFlight?.seen).toBe(false);
+    store.getState().dismissFlightReward();
+    expect(store.getState().lastFlight?.seen).toBe(false);
+    store.getState().claimCoinBonus("red");
+    store.getState().dismissFlightReward();
+    expect(store.getState().lastFlight?.seen).toBe(true);
+  });
+
   it("does nothing for the coin gauge without a flight", () => {
     store.getState().claimCoinBonus("green");
     expect(store.getState().progress.levels.meadow.coins).toBe(0);

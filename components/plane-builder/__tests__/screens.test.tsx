@@ -1,5 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import FlightRewardModal from "../ui/FlightRewardModal";
 import Hangar from "../ui/Hangar";
 import LevelSelect from "../ui/LevelSelect";
 import FlightHud from "../ui/FlightHud";
@@ -219,6 +220,7 @@ describe("Hangar after a flight", () => {
     previousBest: 0,
     unlocked,
     bonus: null,
+    seen: true,
   });
 
   it("shows how the flight went above the upgrades", () => {
@@ -260,22 +262,16 @@ describe("Hangar after a flight", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("announces an unlock", () => {
+  it("notes an unlock without the animated card", () => {
     store.setState({ screen: "hangar", lastFlight: flight(true, "canyon") });
     render(<Hangar />);
-    expect(screen.getByText("Level complete!")).toBeInTheDocument();
     expect(
-      screen
-        .getAllByRole("status")
-        .some((el) => el.textContent?.includes("Level complete!"))
-    ).toBe(true);
-    expect(
-      screen.getByText(`${LEVELS.canyon.name} unlocked!`)
+      screen.getByText(`Level complete! ${LEVELS.canyon.name} unlocked!`)
     ).toBeInTheDocument();
   });
 });
 
-describe("Hangar coin bonus gauge", () => {
+describe("FlightRewardModal", () => {
   const flight = {
     result: {
       distance: 120,
@@ -292,32 +288,67 @@ describe("Hangar coin bonus gauge", () => {
       multiplier: 1,
       total: 100,
     },
-    isNewBest: false,
+    isNewBest: true,
     previousBest: 0,
     unlocked: null,
     bonus: null,
+    seen: false,
   };
 
-  afterEach(() => jest.restoreAllMocks());
+  function mockReducedMotion(matches: boolean) {
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+    }));
+  }
 
-  it("shows the gauge and a Stop button until the bonus is claimed", () => {
-    stubFrames();
-    store.setState({ screen: "hangar", lastFlight: flight });
-    render(<Hangar />);
-    expect(
-      screen.getByRole("meter", { name: "Coin bonus timing" })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Stop!" })).toBeInTheDocument();
-  });
-
-  it("pays the bonus for where the marker stopped", async () => {
+  function setup() {
     const frames = stubFrames();
     store.setState({
       screen: "hangar",
       lastFlight: flight,
       progress: newProgress(),
     });
-    render(<Hangar />);
+    render(<FlightRewardModal levelId="meadow" flight={flight} />);
+    return frames;
+  }
+
+  function Connected() {
+    const lastFlight = store((s) => s.lastFlight);
+    return lastFlight ? (
+      <FlightRewardModal levelId="meadow" flight={lastFlight} />
+    ) : null;
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    // @ts-expect-error jsdom has no matchMedia unless a test adds it
+    delete window.matchMedia;
+  });
+
+  it("is a labelled modal dialog with the gauge and Stop focused", () => {
+    setup();
+    const dialog = screen.getByRole("dialog", { name: /Nice landing!/ });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveTextContent("New best!");
+    expect(dialog).toHaveTextContent("120 m");
+    expect(dialog).toHaveTextContent("Coins earned +100");
+    expect(
+      within(dialog).getByRole("meter", { name: "Coin bonus timing" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop!" })).toHaveFocus();
+  });
+
+  it("pays once, then reveals the multiplier, a counted-up total and Continue", async () => {
+    const frames = stubFrames();
+    store.setState({
+      screen: "hangar",
+      lastFlight: flight,
+      progress: newProgress(),
+    });
+    render(<Connected />);
     act(() => frames.at(GAUGE_PERIOD * 250));
     await userEvent.click(screen.getByRole("button", { name: "Stop!" }));
 
@@ -325,47 +356,126 @@ describe("Hangar coin bonus gauge", () => {
       zone: "green",
       multiplier: 2,
     });
-    const results = screen.getByRole("region", { name: "Flight results" });
-    expect(results).toHaveTextContent("Jackpot!");
-    expect(results).toHaveTextContent("Coins ×2: +100");
-    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Stop!" })
     ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("reward-multiplier")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Continue" })
+    ).not.toBeInTheDocument();
+
+    act(() => frames.at(GAUGE_PERIOD * 250 + 300));
+    expect(screen.getByTestId("reward-multiplier")).toHaveTextContent(
+      "Jackpot! ×2"
+    );
+    expect(screen.getByTestId("reward-total")).toHaveTextContent("Total +100");
+
+    act(() => frames.at(GAUGE_PERIOD * 250 + 750));
+    act(() => frames.at(GAUGE_PERIOD * 250 + 750));
+    expect(screen.getByTestId("reward-total")).toHaveTextContent("Total +150");
+
+    act(() => frames.at(GAUGE_PERIOD * 250 + 1300));
+    expect(screen.getByTestId("reward-total")).toHaveTextContent("Total +200");
+    const next = screen.getByRole("button", { name: "Continue" });
+    expect(next).toHaveFocus();
+    expect(
+      screen.getByRole("dialog").querySelector("[aria-live='polite']")
+    ).toHaveTextContent("Total 200 coins");
+
+    await userEvent.click(next);
+    expect(store.getState().lastFlight?.seen).toBe(true);
+    expect(store.getState().progress.levels.meadow.coins).toBe(100);
   });
 
-  it("stops on Space when no control has focus", () => {
-    const frames = stubFrames();
-    store.setState({
-      screen: "hangar",
-      lastFlight: flight,
-      progress: newProgress(),
-    });
-    render(<Hangar />);
+  it("stops on Space when no control has focus, and Space then closes", () => {
+    const frames = setup();
     (document.activeElement as HTMLElement | null)?.blur();
     act(() => frames.at(GAUGE_PERIOD * 500));
-    act(() => {
-      document.body.dispatchEvent(
-        new KeyboardEvent("keydown", { key: " ", bubbles: true })
-      );
-    });
+    const press = () =>
+      act(() => {
+        document.body.dispatchEvent(
+          new KeyboardEvent("keydown", { key: " ", bubbles: true })
+        );
+      });
+    press();
     expect(store.getState().lastFlight?.bonus?.zone).toBe("red");
-    expect(
-      screen.getByRole("region", { name: "Flight results" })
-    ).toHaveTextContent("Kept your coins");
+    // Too early: the reveal is still running.
+    press();
+    expect(store.getState().lastFlight?.seen).toBe(false);
   });
 
-  it("shows the earned bonus without a gauge when already claimed", () => {
+  it("jumps straight to the end with reduced motion", () => {
+    mockReducedMotion(true);
+    const frames = stubFrames();
+    const claimed = {
+      ...flight,
+      bonus: { zone: "yellow" as const, multiplier: 1.5, extra: 50 },
+    };
+    store.setState({ screen: "hangar", lastFlight: claimed });
+    render(<FlightRewardModal levelId="meadow" flight={claimed} />);
+    act(() => frames.at(0));
+    expect(screen.getByTestId("reward-multiplier")).toHaveTextContent(
+      "Nice! ×1.5"
+    );
+    expect(screen.getByTestId("reward-total")).toHaveTextContent("Total +150");
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  });
+
+  it("announces an unlock on the finish card", () => {
+    stubFrames();
+    const finished = {
+      ...flight,
+      result: { ...flight.result, finished: true },
+      unlocked: "canyon" as const,
+    };
+    store.setState({ screen: "hangar", lastFlight: finished });
+    render(<FlightRewardModal levelId="meadow" flight={finished} />);
+    expect(screen.getByText("Level complete!")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${LEVELS.canyon.name} unlocked!`)
+    ).toBeInTheDocument();
+  });
+
+  it("keeps Tab inside the dialog", async () => {
+    setup();
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Stop!" })).toHaveFocus();
+  });
+});
+
+describe("Hangar summary after the bonus", () => {
+  it("shows the earned bonus without a gauge", () => {
     store.setState({
       screen: "hangar",
       lastFlight: {
-        ...flight,
+        result: {
+          distance: 120,
+          coins: 5,
+          rings: 0,
+          finished: false,
+          endReason: "landed",
+        },
+        payout: {
+          distancePay: 60,
+          coinPay: 5,
+          landingBonus: 0,
+          milestoneBonus: 0,
+          multiplier: 1,
+          total: 100,
+        },
+        isNewBest: false,
+        previousBest: 0,
+        unlocked: null,
         bonus: { zone: "yellow", multiplier: 1.5, extra: 50 },
+        seen: true,
       },
     });
     render(<Hangar />);
     expect(screen.getByText(/Nice! Coins ×1.5: \+50/)).toBeInTheDocument();
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Stop!" })
+    ).not.toBeInTheDocument();
   });
 });
 

@@ -151,3 +151,29 @@ button:focus-visible {
     }
   }
 }
+
+/* Plane builder: the after-flight reward lines pop in */
+@keyframes pbPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pb-pop {
+  animation: pbPop 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-pop {
+    animation: none;
+  }
+}

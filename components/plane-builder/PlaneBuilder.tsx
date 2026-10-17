@@ -8,6 +8,7 @@ import { soundSetting } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
 import GameStage from "./scene/GameStage";
 import FlightHud from "./ui/FlightHud";
+import FlightRewardModal from "./ui/FlightRewardModal";
 import Hangar from "./ui/Hangar";
 import LaunchOverlay from "./ui/LaunchOverlay";
 import LevelSelect from "./ui/LevelSelect";
@@ -26,6 +27,8 @@ const BACKGROUND =
 export default function PlaneBuilder() {
   const hasWebGL = useWebGLSupport();
   const screen = usePlaneBuilderStore((s) => s.screen);
+  const levelId = usePlaneBuilderStore((s) => s.levelId);
+  const lastFlight = usePlaneBuilderStore((s) => s.lastFlight);
   const [notice, setNotice] = useState<string | null>(null);
   useSoundUnlock(soundSetting.useValue());
 
@@ -58,13 +61,16 @@ export default function PlaneBuilder() {
     );
   }
 
+  const isRewardShown =
+    screen === "hangar" && lastFlight !== null && !lastFlight.seen;
+
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${BACKGROUND}`}>
       <div className="absolute inset-0">
         <GameStage />
       </div>
       {/* The hangar sheet runs edge to edge and pads itself. */}
-      {screen === "hangar" ? <Hangar /> : null}
+      {screen === "hangar" && !isRewardShown ? <Hangar /> : null}
       {/*
        * The 3D scene fills the screen (under the notch on an iPhone home-screen
        * app), but every other control sits inside the safe area. The insets
@@ -76,6 +82,9 @@ export default function PlaneBuilder() {
       >
         <div className="relative h-full w-full">
           {screen === "levels" ? <LevelSelect /> : null}
+          {isRewardShown && lastFlight ? (
+            <FlightRewardModal levelId={levelId} flight={lastFlight} />
+          ) : null}
           {screen === "launch" ? <LaunchOverlay /> : null}
           {screen === "flight" ? (
             <>

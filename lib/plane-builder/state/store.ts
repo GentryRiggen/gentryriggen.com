@@ -30,6 +30,8 @@ export interface FlightSummary {
   unlocked: LevelId | null;
   /** The after-flight coin gauge's result, once stopped (once per flight). */
   bonus: CoinBonus | null;
+  /** True once the player has dismissed the after-flight reward card. */
+  seen: boolean;
 }
 
 export interface CoinBonus {
@@ -58,6 +60,8 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   beginFlight: (aim: LaunchAim) => void;
   /** Stops the after-flight coin gauge; only the first call per flight pays. */
   claimCoinBonus: (zone: GaugeZone) => void;
+  /** Closes the reward card, once the coin bonus has been claimed. */
+  dismissFlightReward: () => void;
   /** `flightId` ignores a stale or duplicate call from an earlier flight. */
   completeFlight: (result: FlightResult, flightId?: number) => void;
   resetTransient: () => void;
@@ -123,6 +127,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
         previousBest,
         unlocked: recorded.unlocked,
         bonus: null,
+        seen: false,
       },
     });
   },
@@ -137,6 +142,11 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
         bonus: { zone, multiplier: COIN_ZONE_MULTIPLIER[zone], extra },
       },
     });
+  },
+  dismissFlightReward: () => {
+    const { lastFlight } = get();
+    if (!lastFlight?.bonus || lastFlight.seen) return;
+    set({ lastFlight: { ...lastFlight, seen: true } });
   },
   restart: (id) => set((s) => ({ progress: restartLevel(s.progress, id) })),
 }));
