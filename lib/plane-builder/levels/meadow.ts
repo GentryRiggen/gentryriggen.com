@@ -61,9 +61,9 @@ export const MEADOW_SPEC: LevelSpec = {
         float: 18 + (30 - Math.abs(z)) * 0.3,
       })),
       rings: [
-        { x: 1460, z: 0, h: 30 },
-        { x: 1500, z: 0, h: 34 },
-        { x: 1540, z: 0, h: 30 },
+        { x: 1460, z: 0, h: 36 },
+        { x: 1500, z: 0, h: 40 },
+        { x: 1540, z: 0, h: 36 },
       ],
     },
   ],

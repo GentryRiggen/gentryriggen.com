@@ -129,6 +129,23 @@ function place(
   return out;
 }
 
+/** Pickups must clear a hard box by this much to be reachable, m. */
+const PICKUP_CLEARANCE = 2;
+
+/** Whether a point sits inside (or right against) any hard obstacle. */
+function insideHard(obstacles: Obstacle[], p: Vec3, margin: number): boolean {
+  return obstacles.some(
+    (o) =>
+      o.hard &&
+      Math.abs(p.x - o.center.x) <= o.half.x + margin &&
+      Math.abs(p.y - o.center.y) <= o.half.y + margin &&
+      Math.abs(p.z - o.center.z) <= o.half.z + margin
+  );
+}
+
+const inWindow = (clear: Array<[number, number]>, x: number) =>
+  clear.some(([from, to]) => x >= from && x <= to);
+
 export function buildLevel(spec: LevelSpec): LevelDef {
   const rng = createRng(spec.seed);
   const clear = spec.setPieces.map((p): [number, number] => [p.fromX, p.toX]);
@@ -148,10 +165,13 @@ export function buildLevel(spec: LevelSpec): LevelDef {
     for (let i = 0; i < count; i += 1) {
       const rx = x + i * RING_CHAIN_GAP;
       if (rx >= end) break;
-      rings.push({
-        center: { x: rx, y: terrainHeight(spec.terrain, rx, z) + h, z },
-        radius: 6,
-      });
+      // Set pieces bring their own rings.
+      if (!inWindow(clear, rx)) {
+        rings.push({
+          center: { x: rx, y: terrainHeight(spec.terrain, rx, z) + h, z },
+          radius: 6,
+        });
+      }
       z = clamp(
         z + (rng() * 2 - 1) * 8,
         -spec.corridorHalfWidth * 0.8,
@@ -202,5 +222,17 @@ export function buildLevel(spec: LevelSpec): LevelDef {
   void ringEvery;
   void fuelEvery;
   void setPieces;
-  return { ...def, obstacles, coins, rings, fuelCans };
+  // Drop pickups that landed inside a hard obstacle: they could only be
+  // reached by crashing.
+  return {
+    ...def,
+    obstacles,
+    coins: coins.filter((c) => !insideHard(obstacles, c, PICKUP_CLEARANCE)),
+    rings: rings.filter(
+      (r) => !insideHard(obstacles, r.center, r.radius * 0.5)
+    ),
+    fuelCans: fuelCans.filter(
+      (c) => !insideHard(obstacles, c, PICKUP_CLEARANCE)
+    ),
+  };
 }

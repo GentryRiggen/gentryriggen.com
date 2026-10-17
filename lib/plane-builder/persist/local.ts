@@ -27,18 +27,23 @@ function isResetSave(raw: unknown): boolean {
 
 const BACKUP_PREFIX = `${SAVE_KEY}:backup:`;
 
-/** Best effort; skipped when a backup already holds this exact text. */
-function backUp(raw: string) {
+/**
+ * Best effort; skipped when a backup already holds this exact text. True when
+ * the text is safely in a backup.
+ */
+function backUp(raw: string): boolean {
   try {
     const storage = window.localStorage;
     for (let i = 0; i < storage.length; i += 1) {
       const key = storage.key(i);
       if (key?.startsWith(BACKUP_PREFIX) && storage.getItem(key) === raw)
-        return;
+        return true;
     }
     storage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw);
+    return true;
   } catch {
     // A full disk or blocked storage shouldn't stop play.
+    return false;
   }
 }
 
@@ -57,8 +62,11 @@ export function loadProgress(): LoadResult {
     json = undefined;
   }
   if (isResetSave(json)) {
-    backUp(raw);
-    return fresh({ reset: true });
+    const result = fresh({ reset: true });
+    // Replace the old save so the note shows once, but only once it is backed
+    // up, so a full disk never loses it.
+    if (backUp(raw)) saveProgress(result.progress);
+    return result;
   }
   const parsed = json === undefined ? null : parseSave(json);
   if (parsed) return fresh({ progress: parsed });

@@ -124,6 +124,7 @@ describe("local storage", () => {
     );
     expect(backups).toHaveLength(1);
     expect(window.localStorage.getItem(backups[0])).toBe(raw);
+    expect(loadProgress().reset).toBe(false);
   });
 
   it("loads a current save without resetting it", () => {

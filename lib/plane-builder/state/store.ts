@@ -88,6 +88,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   },
   beginFlight: (aim) => {
     resetLaunchAim();
+    clearFlightToasts();
     set((s) => ({ screen: "flight", aim, flightId: s.flightId + 1 }));
   },
   completeFlight: (result, flightId) => {

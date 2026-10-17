@@ -8,8 +8,8 @@ import type { LevelDef, WindZone } from "@/lib/plane-builder/levels/types";
 import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
 
 const STREAK_SPACING = 4;
-/** Streak speed is the wind strength times this, in m/s. */
-const SPEED_PER_STRENGTH = 3;
+/** Streak speed is the wind strength times this (a little over 1 so it reads). */
+const SPEED_PER_STRENGTH = 1.5;
 const LIFT_BAND = 60;
 const PUSH_MIN_HEIGHT = 2;
 const PUSH_BAND = 40;

@@ -136,4 +136,19 @@ describe("1.2 level content", () => {
       )
     ).toBe(true);
   });
+
+  it.each(LEVEL_ORDER)("%s keeps pickups out of hard obstacles", (id) => {
+    const level = LEVELS[id];
+    const inside = (p: { x: number; y: number; z: number }) =>
+      level.obstacles.some(
+        (o) =>
+          o.hard &&
+          Math.abs(p.x - o.center.x) <= o.half.x &&
+          Math.abs(p.y - o.center.y) <= o.half.y &&
+          Math.abs(p.z - o.center.z) <= o.half.z
+      );
+    expect(level.coins.filter(inside)).toEqual([]);
+    expect(level.rings.map((r) => r.center).filter(inside)).toEqual([]);
+    expect(level.fuelCans.filter(inside)).toEqual([]);
+  });
 });
