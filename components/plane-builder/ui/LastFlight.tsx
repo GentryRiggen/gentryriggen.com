@@ -67,6 +67,16 @@ export default function LastFlight({ levelId, flight }: LastFlightProps) {
         {formatCoins(payout.coinPay)} × boost{" "}
         {Number(payout.multiplier.toFixed(2))}
       </p>
+      {payout.landingBonus > 0 ? (
+        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          Nice landing +{formatCoins(payout.landingBonus)}
+        </p>
+      ) : null}
+      {payout.milestoneBonus > 0 ? (
+        <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+          Milestone flags +{formatCoins(payout.milestoneBonus)}
+        </p>
+      ) : null}
       <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-300">
         <span aria-hidden="true">🪙 </span>
         Total: +{formatCoins(payout.total)}

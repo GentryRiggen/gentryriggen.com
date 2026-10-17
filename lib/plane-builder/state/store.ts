@@ -93,8 +93,8 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     if (flightId !== undefined && flightId !== get().flightId) return;
     const level = LEVELS[levelId];
     const stats = planeStats(level.plane, progress.levels[levelId].tiers);
-    const pay = payout(level, result, stats.multiplier);
     const previousBest = progress.levels[levelId].best;
+    const pay = payout(level, result, stats.multiplier, previousBest);
     const recorded = recordFlight(progress, levelId, result, pay.total);
     resetFlightInput();
     set({

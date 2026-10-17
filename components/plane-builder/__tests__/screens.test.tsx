@@ -190,7 +190,11 @@ describe("Hangar", () => {
 });
 
 describe("Hangar after a flight", () => {
-  const flight = (finished: boolean, unlocked: "canyon" | null) => ({
+  const flight = (
+    finished: boolean,
+    unlocked: "canyon" | null,
+    bonuses = { landingBonus: 15, milestoneBonus: 0 }
+  ) => ({
     result: {
       distance: 120,
       coins: 5,
@@ -198,7 +202,13 @@ describe("Hangar after a flight", () => {
       finished,
       endReason: "landed" as const,
     },
-    payout: { distancePay: 60, coinPay: 5, multiplier: 1, total: 65 },
+    payout: {
+      distancePay: 60,
+      coinPay: 5,
+      ...bonuses,
+      multiplier: 1,
+      total: 65,
+    },
     isNewBest: true,
     previousBest: 0,
     unlocked,
@@ -214,9 +224,25 @@ describe("Hangar after a flight", () => {
       "Distance 60 + coins grabbed 5 × boost 1"
     );
     expect(results).toHaveTextContent("Total: +65");
+    expect(results).toHaveTextContent("Nice landing +15");
+    expect(results).not.toHaveTextContent("Milestone flags");
     expect(
       screen.getByRole("heading", { name: /^Nice landing!/ })
     ).toHaveFocus();
+  });
+
+  it("shows the milestone flag bonus when one was earned", () => {
+    store.setState({
+      screen: "hangar",
+      lastFlight: flight(false, null, {
+        landingBonus: 0,
+        milestoneBonus: 260,
+      }),
+    });
+    render(<Hangar />);
+    const results = screen.getByRole("region", { name: "Flight results" });
+    expect(results).toHaveTextContent("Milestone flags +260");
+    expect(results).not.toHaveTextContent("Nice landing +");
   });
 
   it("shows no results before the first flight", () => {

@@ -124,7 +124,12 @@ export function playLevel(id: LevelId, maxFlights = 80): FlightLog[] {
   for (let i = 0; i < maxFlights; i += 1) {
     const stats = planeStats(LEVELS[id].plane, p.levels[id].tiers);
     const result = pilotFlight(id, stats);
-    const earned = payout(LEVELS[id], result, stats.multiplier).total;
+    const earned = payout(
+      LEVELS[id],
+      result,
+      stats.multiplier,
+      p.levels[id].best
+    ).total;
     log.push({
       distance: result.distance,
       earned,

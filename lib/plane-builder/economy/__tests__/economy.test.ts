@@ -1,7 +1,7 @@
 import { LEVELS } from "../../levels";
 import { tierPrice } from "../../plane/catalog";
 import type { FlightResult } from "../../sim/flight";
-import { payout } from "../payout";
+import { LANDING_BONUS, MILESTONE_SHARE, payout } from "../payout";
 import {
   buyUpgrade,
   newProgress,
@@ -21,12 +21,68 @@ const flight = (over: Partial<FlightResult> = {}): FlightResult => ({
 
 describe("payout", () => {
   it("pays distance plus coins, times the multiplier", () => {
-    const p = payout(meadow, flight({ distance: 1000, coins: 20 }), 2);
+    const p = payout(
+      meadow,
+      flight({ distance: 1000, coins: 20, endReason: "crash" }),
+      2,
+      1000
+    );
     expect(p.total).toBe(Math.round((1000 * meadow.payPerMeter + 20) * 2));
   });
   it("never pays less than the level minimum", () => {
     expect(payout(meadow, flight({ distance: 0, coins: 0 }), 1).total).toBe(
       meadow.minPayout
+    );
+  });
+});
+
+describe("bonuses", () => {
+  const each = Math.round(
+    meadow.finishDistance * meadow.payPerMeter * MILESTONE_SHARE
+  );
+
+  it("pays each milestone the first time it is passed", () => {
+    const p = payout(meadow, flight({ distance: 1100, coins: 0 }), 1, 0);
+    expect(p.milestoneBonus).toBe(each * 2); // 25% and 50%
+    const again = payout(meadow, flight({ distance: 1100, coins: 0 }), 1, 1000);
+    expect(again.milestoneBonus).toBe(0);
+    const next = payout(meadow, flight({ distance: 1600, coins: 0 }), 1, 1100);
+    expect(next.milestoneBonus).toBe(each);
+  });
+
+  it("pays nothing more on a finished level", () => {
+    const p = payout(meadow, flight({ distance: 2000, coins: 0 }), 1, 2000);
+    expect(p.milestoneBonus).toBe(0);
+  });
+
+  it("pays a landing bonus only for a landing", () => {
+    const landed = payout(
+      meadow,
+      flight({ distance: 400, endReason: "landed" }),
+      1
+    );
+    expect(landed.landingBonus).toBe(
+      Math.round(landed.distancePay * LANDING_BONUS)
+    );
+    const crash = payout(
+      meadow,
+      flight({ distance: 400, endReason: "crash" }),
+      1
+    );
+    expect(crash.landingBonus).toBe(0);
+  });
+
+  it("multiplies the whole total", () => {
+    const p = payout(
+      meadow,
+      flight({ distance: 600, coins: 10, endReason: "landed" }),
+      2,
+      0
+    );
+    expect(p.total).toBe(
+      Math.round(
+        (p.distancePay + p.coinPay + p.landingBonus + p.milestoneBonus) * 2
+      )
     );
   });
 });
