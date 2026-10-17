@@ -63,30 +63,43 @@ export default function PlaneBuilder() {
       <div className="absolute inset-0">
         <GameStage />
       </div>
-      {screen === "levels" ? <LevelSelect /> : null}
+      {/* The hangar sheet runs edge to edge and pads itself. */}
       {screen === "hangar" ? <Hangar /> : null}
-      {screen === "launch" ? <LaunchOverlay /> : null}
-      {screen === "flight" ? (
-        <>
-          <Steering />
-          <FlightHud />
-        </>
-      ) : null}
-      {notice ? (
-        <div
-          role="status"
-          className="absolute inset-x-4 top-20 z-20 sm:top-24 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
-        >
-          <p className="flex-1">{notice}</p>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className={`min-h-11 shrink-0 rounded-md px-3 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900 ${focusRingClass}`}
-          >
-            Dismiss
-          </button>
+      {/*
+       * The 3D scene fills the screen (under the notch on an iPhone home-screen
+       * app), but every other control sits inside the safe area. The insets
+       * are 0 where nothing covers the screen, so other devices are unchanged.
+       */}
+      <div
+        data-safe-area
+        className="pointer-events-none absolute inset-0 pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
+      >
+        <div className="relative h-full w-full">
+          {screen === "levels" ? <LevelSelect /> : null}
+          {screen === "launch" ? <LaunchOverlay /> : null}
+          {screen === "flight" ? (
+            <>
+              <Steering />
+              <FlightHud />
+            </>
+          ) : null}
+          {notice ? (
+            <div
+              role="status"
+              className="pointer-events-auto absolute inset-x-4 top-20 z-20 sm:top-24 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+            >
+              <p className="flex-1">{notice}</p>
+              <button
+                type="button"
+                onClick={() => setNotice(null)}
+                className={`min-h-11 shrink-0 rounded-md px-3 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900 ${focusRingClass}`}
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

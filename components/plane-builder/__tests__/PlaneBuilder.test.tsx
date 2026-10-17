@@ -48,4 +48,20 @@ describe("PlaneBuilder", () => {
     await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
+
+  it("draws the level list inside the safe area", () => {
+    render(<PlaneBuilder />);
+    const level = screen.getByRole("article", { name: "Backyard Meadow" });
+    expect(level.closest("[data-safe-area]")).toHaveClass(
+      "pt-[env(safe-area-inset-top)]",
+      "pb-[env(safe-area-inset-bottom)]"
+    );
+  });
+
+  it("lets the hangar sheet run edge to edge", () => {
+    render(<PlaneBuilder />);
+    act(() => store.getState().openLevel("meadow"));
+    const hangar = screen.getByRole("region", { name: "Hangar" });
+    expect(hangar.closest("[data-safe-area]")).toBeNull();
+  });
 });

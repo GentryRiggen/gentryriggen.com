@@ -28,9 +28,9 @@ export default function Hangar() {
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-end md:items-end md:justify-stretch">
       <section
         aria-label="Hangar"
-        className={`pointer-events-auto flex max-h-[50%] w-full flex-col rounded-b-none md:max-h-full md:w-[22rem] md:rounded-2xl md:rounded-r-none ${cardClass}`}
+        className={`pointer-events-auto flex max-h-[50%] w-full flex-col rounded-b-none md:max-h-full md:w-[calc(22rem+env(safe-area-inset-right))] md:pr-[env(safe-area-inset-right)] md:rounded-2xl md:rounded-r-none ${cardClass}`}
       >
-        <header className="flex shrink-0 flex-col gap-2 p-3 pb-2 md:p-4 md:pb-2 short:gap-1 short:p-2 short:pb-1">
+        <header className="flex shrink-0 flex-col gap-2 p-3 pb-2 md:p-4 md:pt-[max(1rem,env(safe-area-inset-top))] md:pb-2 short:gap-1 short:p-2 short:pb-1">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"

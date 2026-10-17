@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.1",
+    date: "2026-10-17",
+    title: "Room for the notch",
+    highlights: [
+      "When you add Plane Builder to an iPhone home screen, the buttons, speedometer and level list no longer hide behind the notch or the clock",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-10-17",
     title: "Timing games",
