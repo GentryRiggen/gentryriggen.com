@@ -328,7 +328,7 @@ describe("FlightRewardModal", () => {
     delete window.matchMedia;
   });
 
-  it("is a labelled modal dialog with the gauge and Stop focused", () => {
+  it("is a labelled modal dialog with the gauge, focused on its heading", () => {
     setup();
     const dialog = screen.getByRole("dialog", { name: /Nice landing!/ });
     expect(dialog).toHaveAttribute("aria-modal", "true");
@@ -338,7 +338,9 @@ describe("FlightRewardModal", () => {
     expect(
       within(dialog).getByRole("meter", { name: "Coin bonus timing" })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Stop!" })).toHaveFocus();
+    // Not on Stop: a Space still held from flying would click it on release.
+    expect(screen.getByRole("button", { name: "Stop!" })).not.toHaveFocus();
+    expect(dialog.querySelector("h2")).toHaveFocus();
   });
 
   it("pays once, then reveals the multiplier, a counted-up total and Continue", async () => {

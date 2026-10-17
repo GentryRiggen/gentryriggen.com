@@ -49,6 +49,7 @@ export default function FlightRewardModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const gaugePosition = useRef(0);
   const isReducedMotion = usePrefersReducedMotion();
   const claimCoinBonus = usePlaneBuilderStore((s) => s.claimCoinBonus);
@@ -76,10 +77,13 @@ export default function FlightRewardModal({
     return () => cancelAnimationFrame(frame);
   }, [hasBonus]);
 
-  // Focus moves into the dialog, then to the next button as it appears.
+  // Focus starts on the heading, not Stop: Space is the flight's boost key, so
+  // a Space still held from the flight would otherwise "click" Stop on release.
+  // A fresh press stops the gauge through the key handler (repeats are
+  // ignored). Continue takes focus once the reveal is done.
   useEffect(() => {
     if (isDone) continueRef.current?.focus();
-    else if (!hasBonus) stopRef.current?.focus();
+    else if (!hasBonus) headingRef.current?.focus();
   }, [hasBonus, isDone]);
 
   function handleStop() {
@@ -150,7 +154,12 @@ export default function FlightRewardModal({
         className={`flex max-h-full w-full max-w-sm flex-col gap-2 overflow-y-auto p-4 text-center ${cardClass}`}
       >
         {result.finished ? <FinishCard unlocked={flight.unlocked} /> : null}
-        <h2 id="flight-reward-title" className="text-xl font-bold">
+        <h2
+          ref={headingRef}
+          id="flight-reward-title"
+          tabIndex={-1}
+          className="text-xl font-bold focus:outline-none"
+        >
           {endLineFor(result.endReason)}
           {flight.isNewBest ? (
             <span className="ml-2 font-extrabold text-sky-700 dark:text-sky-300">
