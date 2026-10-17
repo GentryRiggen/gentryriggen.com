@@ -14,7 +14,59 @@ export const MEADOW_SPEC: LevelSpec = {
   terrain: { seed: 11, amplitude: 18, wavelength: 140, flatUntil: 80 },
   coinEvery: 70,
   ringEvery: 220,
-  winds: [],
+  fuelEvery: 400,
+  winds: [600, 1100, 1600].map((fromX) => ({
+    fromX,
+    toX: fromX + 80,
+    lift: 2.5,
+    push: 0,
+  })),
+  setPieces: [
+    {
+      name: "Barn gate",
+      fromX: 960,
+      toX: 1100,
+      obstacles: [
+        {
+          kind: "barn",
+          hard: true,
+          x: 1000,
+          z: 18,
+          half: { x: 8, y: 6, z: 8 },
+        },
+        {
+          kind: "barn",
+          hard: true,
+          x: 1000,
+          z: -18,
+          half: { x: 8, y: 6, z: 8 },
+        },
+      ],
+      rings: [
+        { x: 960, z: 0, h: 12 },
+        { x: 1000, z: 0, h: 12 },
+        { x: 1040, z: 0, h: 12 },
+      ],
+    },
+    {
+      name: "Balloon arch",
+      fromX: 1480,
+      toX: 1560,
+      obstacles: [-30, -15, 0, 15, 30].map((z) => ({
+        kind: "balloon" as const,
+        hard: false,
+        x: 1500,
+        z,
+        half: { x: 2.5, y: 3, z: 2.5 },
+        float: 18 + (30 - Math.abs(z)) * 0.3,
+      })),
+      rings: [
+        { x: 1460, z: 0, h: 30 },
+        { x: 1500, z: 0, h: 34 },
+        { x: 1540, z: 0, h: 30 },
+      ],
+    },
+  ],
   features: [
     {
       kind: "tree",

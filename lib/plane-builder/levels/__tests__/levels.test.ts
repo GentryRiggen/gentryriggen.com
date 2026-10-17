@@ -1,7 +1,9 @@
 // lib/plane-builder/levels/__tests__/levels.test.ts
-import { buildLevel } from "../generate";
+import { buildLevel, RING_CHAIN_GAP } from "../generate";
 import { LEVELS, LEVEL_ORDER } from "../index";
+import { CANYON_SPEC } from "../canyon";
 import { MEADOW_SPEC } from "../meadow";
+import { MOUNTAINS_SPEC } from "../mountains";
 import { terrainHeight } from "../terrain";
 
 describe("levels", () => {
@@ -53,5 +55,85 @@ describe("terrainHeight", () => {
         0
       );
     }
+  });
+});
+
+describe("1.2 level content", () => {
+  it.each(LEVEL_ORDER)(
+    "%s ring chains stay in the corridor, 12-40 m up",
+    (id) => {
+      const level = LEVELS[id];
+      for (const r of level.rings) {
+        const ground = terrainHeight(level.terrain, r.center.x, r.center.z);
+        expect(Math.abs(r.center.z)).toBeLessThanOrEqual(
+          level.corridorHalfWidth
+        );
+        expect(r.center.y - ground).toBeGreaterThanOrEqual(11.99);
+        expect(r.center.y - ground).toBeLessThanOrEqual(40.01);
+      }
+    }
+  );
+
+  it.each(LEVEL_ORDER)("%s has rings in chains of 3+", (id) => {
+    const xs = LEVELS[id].rings.map((r) => r.center.x).sort((a, b) => a - b);
+    const close = xs.filter(
+      (x, i) => i > 0 && x - xs[i - 1] <= RING_CHAIN_GAP + 0.01
+    );
+    expect(close.length).toBeGreaterThanOrEqual(xs.length * 0.6);
+  });
+
+  it.each(LEVEL_ORDER)("%s has fuel cans from 300 m, 12-40 m up", (id) => {
+    const level = LEVELS[id];
+    expect(level.fuelCans.length).toBeGreaterThan(2);
+    for (const c of level.fuelCans) {
+      expect(c.x).toBeGreaterThanOrEqual(300);
+      const h = c.y - terrainHeight(level.terrain, c.x, c.z);
+      expect(h).toBeGreaterThanOrEqual(11.99);
+      expect(h).toBeLessThanOrEqual(40.01);
+    }
+  });
+
+  it.each([MEADOW_SPEC, CANYON_SPEC, MOUNTAINS_SPEC])(
+    "$id keeps set-piece windows free of generated hard obstacles",
+    (spec) => {
+      const plain = buildLevel({ ...spec, setPieces: [] });
+      const level = buildLevel(spec);
+      const placed = new Set(
+        spec.setPieces.flatMap((p) =>
+          (p.obstacles ?? []).map((o) => `${o.x},${o.z}`)
+        )
+      );
+      for (const piece of spec.setPieces) {
+        const generated = level.obstacles.filter(
+          (o) =>
+            o.hard &&
+            !placed.has(`${o.center.x},${o.center.z}`) &&
+            o.center.x + o.half.x >= piece.fromX &&
+            o.center.x - o.half.x <= piece.toX
+        );
+        expect(generated).toEqual([]);
+      }
+      expect(plain.obstacles.length).toBeGreaterThan(0);
+    }
+  );
+
+  it("ramps hard obstacles: sparser in the first quarter than the last", () => {
+    const level = LEVELS.canyon;
+    const hard = level.obstacles.filter((o) => o.hard && o.kind === "wall");
+    const q = level.finishDistance / 4;
+    const first = hard.filter((o) => o.center.x < q).length;
+    const last = hard.filter(
+      (o) => o.center.x >= 3 * q && o.center.x < 4 * q
+    ).length;
+    expect(first).toBeLessThan(last);
+  });
+
+  it("gives the meadow updrafts and the mountains one before the pass", () => {
+    expect(LEVELS.meadow.winds.filter((w) => w.lift > 0)).toHaveLength(3);
+    expect(
+      LEVELS.mountains.winds.some(
+        (w) => w.lift > 0 && w.fromX <= 5300 && w.toX >= 5300
+      )
+    ).toBe(true);
   });
 });

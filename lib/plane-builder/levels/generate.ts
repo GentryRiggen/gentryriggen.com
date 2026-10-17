@@ -21,7 +21,38 @@ export interface FeatureSpec {
   /** Only between these x (defaults: clearance → finish + runout). */
   fromX?: number;
   toX?: number;
+  /** Spacing widens early and tightens toward the finish. Default: `hard`. */
+  ramp?: boolean;
 }
+
+export interface SetPieceObstacle {
+  kind: ObstacleKind;
+  hard: boolean;
+  x: number;
+  z: number;
+  half: Vec3;
+  float?: number;
+}
+
+/** Heights (h) are above the terrain at (x, z). */
+export interface SetPiecePoint {
+  x: number;
+  z: number;
+  h: number;
+}
+
+export interface SetPiece {
+  name: string;
+  /** No generated hard obstacles in fromX..toX. */
+  fromX: number;
+  toX: number;
+  obstacles?: SetPieceObstacle[];
+  rings?: SetPiecePoint[];
+  fuelCans?: SetPiecePoint[];
+}
+
+/** Rings in a chain are this far apart along x, m. */
+export const RING_CHAIN_GAP = 40;
 
 export interface LevelSpec extends Omit<
   LevelDef,
@@ -32,12 +63,33 @@ export interface LevelSpec extends Omit<
   /** A 5-coin trail every this many metres. */
   coinEvery: number;
   ringEvery: number;
+  /** One fuel can every this many metres. */
+  fuelEvery: number;
+  setPieces: SetPiece[];
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function groundUnder(
+  spec: LevelSpec,
+  x: number,
+  z: number,
+  halfX: number
+): number {
+  return Math.max(
+    terrainHeight(spec.terrain, x - halfX, z),
+    terrainHeight(spec.terrain, x, z),
+    terrainHeight(spec.terrain, x + halfX, z)
+  );
 }
 
 function place(
   spec: LevelSpec,
   feature: FeatureSpec,
-  rng: () => number
+  rng: () => number,
+  clear: Array<[number, number]>
 ): Obstacle[] {
   const out: Obstacle[] = [];
   const start = Math.max(
@@ -46,21 +98,26 @@ function place(
   );
   const end = feature.toX ?? spec.finishDistance + RUNOUT;
   const width = spec.corridorHalfWidth;
+  const ramps = feature.ramp ?? feature.hard;
+  const spacingScale = (x: number): number =>
+    ramps ? 1.5 - 0.75 * clamp((x - start) / (end - start), 0, 1) : 1;
   for (
     let x = start + rng() * feature.every;
     x < end;
-    x += feature.every * (0.6 + rng() * 0.8)
+    x += feature.every * spacingScale(x) * (0.6 + rng() * 0.8)
   ) {
     const zs =
       feature.lateral === "edges"
         ? [width * (0.85 + rng() * 0.3), -width * (0.85 + rng() * 0.3)]
         : [(rng() * 2 - 1) * width * 0.9];
-    for (const z of zs) {
-      const ground = Math.max(
-        terrainHeight(spec.terrain, x - feature.half.x, z),
-        terrainHeight(spec.terrain, x, z),
-        terrainHeight(spec.terrain, x + feature.half.x, z)
+    const blocked =
+      feature.hard &&
+      clear.some(
+        ([from, to]) => x + feature.half.x >= from && x - feature.half.x <= to
       );
+    if (blocked) continue;
+    for (const z of zs) {
+      const ground = groundUnder(spec, x, z, feature.half.x);
       out.push({
         kind: feature.kind,
         hard: feature.hard,
@@ -74,7 +131,8 @@ function place(
 
 export function buildLevel(spec: LevelSpec): LevelDef {
   const rng = createRng(spec.seed);
-  const obstacles = spec.features.flatMap((f) => place(spec, f, rng));
+  const clear = spec.setPieces.map((p): [number, number] => [p.fromX, p.toX]);
+  const obstacles = spec.features.flatMap((f) => place(spec, f, rng, clear));
   const end = spec.finishDistance + RUNOUT;
   const coins: Vec3[] = [];
   for (let x = 120; x < end; x += spec.coinEvery) {
@@ -84,14 +142,65 @@ export function buildLevel(spec: LevelSpec): LevelDef {
   }
   const rings: Ring[] = [];
   for (let x = 200; x < end; x += spec.ringEvery) {
+    const count = 3 + Math.floor(rng() * 3); // 3-5
+    let z = (rng() * 2 - 1) * spec.corridorHalfWidth * 0.6;
+    let h = 15 + rng() * 20;
+    for (let i = 0; i < count; i += 1) {
+      const rx = x + i * RING_CHAIN_GAP;
+      if (rx >= end) break;
+      rings.push({
+        center: { x: rx, y: terrainHeight(spec.terrain, rx, z) + h, z },
+        radius: 6,
+      });
+      z = clamp(
+        z + (rng() * 2 - 1) * 8,
+        -spec.corridorHalfWidth * 0.8,
+        spec.corridorHalfWidth * 0.8
+      );
+      h = clamp(h + (rng() * 2 - 1) * 8, 12, 40);
+    }
+  }
+  const fuelCans: Vec3[] = [];
+  for (let x = 300; x < end; x += spec.fuelEvery) {
     const z = (rng() * 2 - 1) * spec.corridorHalfWidth * 0.6;
     const y = terrainHeight(spec.terrain, x, z) + 15 + rng() * 25;
-    rings.push({ center: { x, y, z }, radius: 6 });
+    fuelCans.push({ x, y, z });
   }
-  const { seed, features, coinEvery, ringEvery, ...def } = spec;
+  for (const piece of spec.setPieces) {
+    for (const o of piece.obstacles ?? []) {
+      const ground = groundUnder(spec, o.x, o.z, o.half.x);
+      obstacles.push({
+        kind: o.kind,
+        hard: o.hard,
+        half: o.half,
+        center: { x: o.x, y: ground + (o.float ?? 0) + o.half.y, z: o.z },
+      });
+    }
+    for (const r of piece.rings ?? []) {
+      rings.push({
+        center: {
+          x: r.x,
+          y: terrainHeight(spec.terrain, r.x, r.z) + r.h,
+          z: r.z,
+        },
+        radius: 6,
+      });
+    }
+    for (const c of piece.fuelCans ?? []) {
+      fuelCans.push({
+        x: c.x,
+        y: terrainHeight(spec.terrain, c.x, c.z) + c.h,
+        z: c.z,
+      });
+    }
+  }
+  const { seed, features, coinEvery, ringEvery, fuelEvery, setPieces, ...def } =
+    spec;
   void seed;
   void features;
   void coinEvery;
   void ringEvery;
-  return { ...def, obstacles, coins, rings, fuelCans: [] };
+  void fuelEvery;
+  void setPieces;
+  return { ...def, obstacles, coins, rings, fuelCans };
 }

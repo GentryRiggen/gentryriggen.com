@@ -13,12 +13,50 @@ export const MOUNTAINS_SPEC: LevelSpec = {
   terrain: { seed: 33, amplitude: 40, wavelength: 260, flatUntil: 80 },
   coinEvery: 90,
   ringEvery: 300,
-  winds: [1, 2, 3, 4, 5].map((k) => ({
-    fromX: 1000 * k,
-    toX: 1000 * k + 200,
-    lift: 0,
-    push: k % 2 ? 5 : -5,
-  })),
+  fuelEvery: 600,
+  winds: [
+    ...[1, 2, 3, 4, 5].map((k) => ({
+      fromX: 1000 * k,
+      toX: 1000 * k + 200,
+      lift: 0,
+      push: k % 2 ? 5 : -5,
+    })),
+    { fromX: 5200, toX: 5350, lift: 3, push: 0 },
+  ],
+  setPieces: [
+    {
+      name: "Twin peaks",
+      fromX: 2950,
+      toX: 3050,
+      obstacles: [
+        {
+          kind: "peak",
+          hard: true,
+          x: 3000,
+          z: 45,
+          half: { x: 25, y: 60, z: 25 },
+        },
+        {
+          kind: "peak",
+          hard: true,
+          x: 3000,
+          z: -45,
+          half: { x: 25, y: 60, z: 25 },
+        },
+      ],
+      rings: [
+        { x: 2960, z: 0, h: 20 },
+        { x: 3000, z: 0, h: 20 },
+        { x: 3040, z: 0, h: 20 },
+      ],
+    },
+    {
+      name: "Before the pass",
+      fromX: 5200,
+      toX: 5350,
+      fuelCans: [{ x: 5280, z: 0, h: 25 }],
+    },
+  ],
   features: [
     {
       kind: "peak",

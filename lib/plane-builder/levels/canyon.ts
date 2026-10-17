@@ -13,12 +13,45 @@ export const CANYON_SPEC: LevelSpec = {
   terrain: { seed: 22, amplitude: 10, wavelength: 200, flatUntil: 80 },
   coinEvery: 80,
   ringEvery: 260,
-  winds: [1200, 2400, 3400].map((fromX) => ({
-    fromX,
-    toX: fromX + 120,
-    lift: 3,
-    push: 0,
-  })),
+  fuelEvery: 500,
+  winds: [
+    ...[1200, 2400, 3400].map((fromX) => ({
+      fromX,
+      toX: fromX + 120,
+      lift: 3,
+      push: 0,
+    })),
+    { fromX: 2980, toX: 3120, lift: 3, push: 0 },
+  ],
+  setPieces: [
+    {
+      name: "Arch gauntlet",
+      fromX: 1930,
+      toX: 2270,
+      obstacles: [1950, 2050, 2150, 2250].map((x, i) => ({
+        kind: "arch" as const,
+        hard: true,
+        x,
+        z: i % 2 ? 14 : -14,
+        half: { x: 6, y: 20, z: 8 },
+      })),
+      rings: [1950, 2050, 2150, 2250].map((x, i) => ({
+        x,
+        z: i % 2 ? -14 : 14,
+        h: 15,
+      })),
+    },
+    {
+      name: "Updraft climb",
+      fromX: 2980,
+      toX: 3140,
+      rings: [3000, 3040, 3080, 3120].map((x, i) => ({
+        x,
+        z: 0,
+        h: 15 + i * 7,
+      })),
+    },
+  ],
   features: [
     {
       kind: "wall",
