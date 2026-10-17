@@ -7,6 +7,7 @@ import {
   usePlaneBuilderStore,
 } from "@/lib/plane-builder/state/store";
 import { playFlightEvents } from "../audio/flightCues";
+import BestWall from "./BestWall";
 import ChaseCamera from "./ChaseCamera";
 import FinishGate from "./FinishGate";
 import FlightRunner from "./FlightRunner";
@@ -28,6 +29,7 @@ interface WorldSceneProps {
 /** The level's world: sky, ground, obstacles, winds, pickups, flags, finish and slingshot. */
 export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
   const flightId = usePlaneBuilderStore((s) => s.flightId);
+  const best = usePlaneBuilderStore((s) => s.progress.levels[s.levelId].best);
   const hasEngine =
     tiers.engine > 0 && level.plane.engine.values[tiers.engine] > 0;
   return (
@@ -39,6 +41,7 @@ export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
       <Winds level={level} />
       <Pickups level={level} hasEngine={hasEngine} />
       <Markers level={level} />
+      <BestWall level={level} best={best} />
       <FinishGate level={level} />
       <Slingshot tier={tiers.launcher} />
       {screen === "launch" ? <LaunchPlane level={level} tiers={tiers} /> : null}

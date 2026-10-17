@@ -25,6 +25,7 @@ import {
 } from "@/lib/plane-builder/state/cameraShake";
 import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
+import { flightToasts } from "@/lib/plane-builder/state/flightToasts";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
 import { engineLevel } from "../audio/flightCues";
@@ -107,6 +108,11 @@ export default function FlightRunner({
   const hasCompleted = useRef(false);
   const isPaused = useRef(false);
   const [holdSeconds] = useState(heldFlightSeconds);
+  // The best before this flight: passing it pops "New best!" once.
+  const [previousBest] = useState(
+    () => usePlaneBuilderStore.getState().progress.levels[level.id].best
+  );
+  const hasPassedBest = useRef(false);
 
   useLayoutEffect(() => {
     flightLive.set(run.state);
@@ -151,6 +157,16 @@ export default function FlightRunner({
           if (group) group.visible = false;
         }
       }
+    }
+    if (
+      !hasPassedBest.current &&
+      previousBest > 0 &&
+      previousBest < level.finishDistance &&
+      state.maxX > previousBest
+    ) {
+      hasPassedBest.current = true;
+      flightToasts.push("New best!");
+      planeSynth.play("flag");
     }
     if (group && group.visible) poseGroup(group, state);
     planeSynth.setEngine(
