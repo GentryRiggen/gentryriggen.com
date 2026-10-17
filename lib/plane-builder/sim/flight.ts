@@ -7,6 +7,9 @@ import {
   BANK_RATE,
   BOOST_BURN,
   BOOST_THRUST,
+  CEILING,
+  CEILING_DIVE,
+  CEILING_FADE,
   COIN_RADIUS,
   CORRIDOR_PUSH,
   CORRIDOR_TURN,
@@ -188,6 +191,16 @@ function hardHit(
   }
 }
 
+/** Whether (x, z) is above a hard obstacle's footprint. */
+function overHardObstacle(level: LevelDef, x: number, z: number): boolean {
+  return level.obstacles.some(
+    (o) =>
+      o.hard &&
+      Math.abs(x - o.center.x) <= o.half.x + PLANE_RADIUS &&
+      Math.abs(z - o.center.z) <= o.half.z + PLANE_RADIUS
+  );
+}
+
 function move(s: FlightState, dt: number) {
   const flat = s.speed * Math.cos(s.pitch);
   s.x += flat * Math.cos(s.heading) * dt;
@@ -284,11 +297,18 @@ export function step(
   // Pitch: the elevator asks for lift to chase the target angle, but can't
   // make more than the wings give at this speed, so slow planes sink.
   const hold = stickPitch === 0 && s.time < LAUNCH_HOLD;
-  const target = hold ? s.launchPitch : clamp(stickPitch, -1, 1) * MAX_PITCH;
+  const asked = hold ? s.launchPitch : clamp(stickPitch, -1, 1) * MAX_PITCH;
+  // Thin air: climbing fades out near the ceiling, and above it the plane
+  // glides back down, unless that would drop it onto a hard obstacle.
+  const height = s.y - terrainHeight(level.terrain, s.x, s.z);
+  const floor = overHardObstacle(level, s.x, s.z) ? 0 : -CEILING_DIVE;
+  const roof = MAX_PITCH * clamp((CEILING - height) / CEILING_FADE, floor, 1);
+  const target = Math.min(asked, roof);
   const v = Math.max(s.speed, 1);
   const weight = G * Math.cos(s.pitch);
   const wanted = weight + v * PITCH_GAIN * (target - s.pitch);
-  const lift = clamp(wanted, 0, stats.lift * v * v * LIFT_HEADROOM);
+  const maxLift = stats.lift * v * v * LIFT_HEADROOM;
+  const lift = clamp(wanted, -maxLift, maxLift);
   s.pitch = clamp(s.pitch + ((lift - weight) / v) * dt, MIN_PITCH, MAX_PITCH);
 
   // Speed: drag, gravity along the path, and thrust while there's fuel.

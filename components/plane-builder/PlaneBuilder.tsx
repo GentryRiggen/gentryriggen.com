@@ -11,7 +11,6 @@ import FlightHud from "./ui/FlightHud";
 import Hangar from "./ui/Hangar";
 import LaunchOverlay from "./ui/LaunchOverlay";
 import LevelSelect from "./ui/LevelSelect";
-import Results from "./ui/Results";
 import Steering from "./ui/Steering";
 import { focusRingClass } from "./ui/styles";
 import WebGLFallback from "./ui/WebGLFallback";
@@ -59,7 +58,6 @@ export default function PlaneBuilder() {
       </div>
       {screen === "levels" ? <LevelSelect /> : null}
       {screen === "hangar" ? <Hangar /> : null}
-      {screen === "results" ? <Results /> : null}
       {screen === "launch" ? <LaunchOverlay /> : null}
       {screen === "flight" ? (
         <>

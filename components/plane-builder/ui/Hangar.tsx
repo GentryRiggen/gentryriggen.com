@@ -4,18 +4,21 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { TRACK_IDS } from "@/lib/plane-builder/plane/catalog";
 import { formatCoins } from "./format";
+import LastFlight from "./LastFlight";
 import { cardClass, primaryButtonClass, secondaryButtonClass } from "./styles";
 import SoundToggle from "./SoundToggle";
 import UpgradeTrack from "./UpgradeTrack";
 
 /**
  * The upgrade panel: a bottom sheet on phones, a sidebar from `md:`. Only the
- * upgrade list scrolls. The header (with the coin wallet) and the Launch!
- * footer stay put, so Launch! is always on screen.
+ * upgrade list (with the last flight's results above it) scrolls. The header
+ * (with the coin wallet) and the Launch! footer stay put, so Launch! is always
+ * on screen. Every flight comes back here.
  */
 export default function Hangar() {
   const levelId = usePlaneBuilderStore((s) => s.levelId);
   const lp = usePlaneBuilderStore((s) => s.progress.levels[s.levelId]);
+  const lastFlight = usePlaneBuilderStore((s) => s.lastFlight);
   const buy = usePlaneBuilderStore((s) => s.buy);
   const goToLevels = usePlaneBuilderStore((s) => s.goToLevels);
   const startLaunch = usePlaneBuilderStore((s) => s.startLaunch);
@@ -49,18 +52,23 @@ export default function Hangar() {
             </p>
           </div>
         </header>
-        <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-1 md:px-4 short:gap-1.5 short:px-2">
-          {TRACK_IDS.map((track) => (
-            <UpgradeTrack
-              key={track}
-              track={track}
-              catalog={level.plane}
-              tier={lp.tiers[track]}
-              coins={lp.coins}
-              onBuy={(t) => buy(t).ok}
-            />
-          ))}
-        </ul>
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-1 md:px-4 short:gap-1.5 short:px-2">
+          {lastFlight ? (
+            <LastFlight levelId={levelId} flight={lastFlight} />
+          ) : null}
+          <ul className="flex flex-col gap-2 short:gap-1.5">
+            {TRACK_IDS.map((track) => (
+              <UpgradeTrack
+                key={track}
+                track={track}
+                catalog={level.plane}
+                tier={lp.tiers[track]}
+                coins={lp.coins}
+                onBuy={(t) => buy(t).ok}
+              />
+            ))}
+          </ul>
+        </div>
         <footer className="shrink-0 border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:p-4 dark:border-slate-700 short:p-2">
           <button
             type="button"

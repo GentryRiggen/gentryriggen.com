@@ -2,11 +2,18 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Hangar from "../ui/Hangar";
 import LevelSelect from "../ui/LevelSelect";
-import Results from "../ui/Results";
+import FlightHud from "../ui/FlightHud";
 import UpgradeTrack from "../ui/UpgradeTrack";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
 import { LEVELS } from "@/lib/plane-builder/levels";
-import { MAX_TIER, tierPrice } from "@/lib/plane-builder/plane/catalog";
+import {
+  MAX_TIER,
+  STARTER_TIERS,
+  tierPrice,
+} from "@/lib/plane-builder/plane/catalog";
+import { planeStats } from "@/lib/plane-builder/plane/stats";
+import { flightLive } from "@/lib/plane-builder/state/flightLive";
+import { launch } from "@/lib/plane-builder/sim/flight";
 import { usePlaneBuilderStore as store } from "@/lib/plane-builder/state/store";
 
 jest.mock("canvas-confetti", () => ({ __esModule: true, default: jest.fn() }));
@@ -182,7 +189,7 @@ describe("Hangar", () => {
   });
 });
 
-describe("Results", () => {
+describe("Hangar after a flight", () => {
   const flight = (finished: boolean, unlocked: "canyon" | null) => ({
     result: {
       distance: 120,
@@ -197,50 +204,87 @@ describe("Results", () => {
     unlocked,
   });
 
-  it("shows new best and the total", () => {
-    store.setState({ screen: "results", lastFlight: flight(false, null) });
-    render(<Results />);
-    expect(screen.getByText("New best!")).toBeInTheDocument();
-    expect(screen.getByText("Distance: 60 coins")).toBeInTheDocument();
-    expect(screen.getByText("Coins grabbed: 5")).toBeInTheDocument();
-    expect(screen.getByText("Coin boost: ×1")).toBeInTheDocument();
-    expect(screen.getByText("Total: +65")).toBeInTheDocument();
+  it("shows how the flight went above the upgrades", () => {
+    store.setState({ screen: "hangar", lastFlight: flight(false, null) });
+    render(<Hangar />);
+    const results = screen.getByRole("region", { name: "Flight results" });
+    expect(results).toHaveTextContent("New best!");
+    expect(results).toHaveTextContent("120 m");
+    expect(results).toHaveTextContent(
+      "Distance 60 + coins grabbed 5 × boost 1"
+    );
+    expect(results).toHaveTextContent("Total: +65");
     expect(
-      screen.getByRole("heading", { name: "Nice landing!" })
+      screen.getByRole("heading", { name: /^Nice landing!/ })
     ).toHaveFocus();
   });
 
-  it("Upgrade opens the hangar and Fly again starts a launch", async () => {
-    store.setState({
-      screen: "results",
-      levelId: "meadow",
-      lastFlight: flight(false, null),
-    });
-    const { unmount } = render(<Results />);
-    await userEvent.click(screen.getByRole("button", { name: "Upgrade" }));
-    expect(store.getState().screen).toBe("hangar");
-    unmount();
-
-    store.setState({ screen: "results", lastFlight: flight(false, null) });
-    render(<Results />);
-    await userEvent.click(screen.getByRole("button", { name: "Fly again" }));
-    expect(store.getState().screen).toBe("launch");
-  });
-
-  it("goes back to the levels when there is no flight to show", () => {
-    store.setState({ screen: "results", lastFlight: null });
-    render(<Results />);
-    expect(store.getState().screen).toBe("levels");
+  it("shows no results before the first flight", () => {
+    store.getState().openLevel("meadow");
+    render(<Hangar />);
+    expect(
+      screen.queryByRole("region", { name: "Flight results" })
+    ).not.toBeInTheDocument();
   });
 
   it("announces an unlock", () => {
-    store.setState({ screen: "results", lastFlight: flight(true, "canyon") });
-    render(<Results />);
+    store.setState({ screen: "hangar", lastFlight: flight(true, "canyon") });
+    render(<Hangar />);
     expect(screen.getByText("Level complete!")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Level complete!");
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((el) => el.textContent?.includes("Level complete!"))
+    ).toBe(true);
     expect(
       screen.getByText(`${LEVELS.canyon.name} unlocked!`)
     ).toBeInTheDocument();
+  });
+});
+
+describe("FlightHud", () => {
+  afterEach(() => flightLive.set(null));
+
+  const fly = (speed: number, coins: number) => {
+    const s = launch(
+      LEVELS.meadow,
+      planeStats(LEVELS.meadow.plane, STARTER_TIERS),
+      {
+        pitch: 0.3,
+        yaw: 0,
+        power: 1,
+      }
+    );
+    s.speed = speed;
+    s.coins = coins;
+    flightLive.set(s);
+  };
+
+  it("counts the wallet plus the coins grabbed this flight", () => {
+    const p = newProgress();
+    p.levels.meadow.coins = 400;
+    store.getState().hydrate(p);
+    store.setState({ screen: "flight", levelId: "meadow" });
+    fly(20, 7);
+    render(<FlightHud />);
+    expect(screen.getByText("407")).toHaveTextContent("407 coins");
+    expect(screen.getByText("+7")).toBeInTheDocument();
+  });
+
+  it("shows the speed in mph and warns when it gets too slow", () => {
+    store.setState({ screen: "flight", levelId: "meadow" });
+    fly(20, 0);
+    const { unmount } = render(<FlightHud />);
+    expect(screen.getByRole("meter", { name: "Speed" })).toHaveAttribute(
+      "aria-valuenow",
+      "45"
+    );
+    expect(screen.queryByText("Slow!")).not.toBeInTheDocument();
+    unmount();
+
+    fly(5, 0);
+    render(<FlightHud />);
+    expect(screen.getByText("Slow!")).toBeInTheDocument();
   });
 });
 

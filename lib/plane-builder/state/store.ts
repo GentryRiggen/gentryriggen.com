@@ -17,7 +17,7 @@ import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
 import { resetLaunchAim } from "./launchAim";
 
-export type Screen = "levels" | "hangar" | "launch" | "flight" | "results";
+export type Screen = "levels" | "hangar" | "launch" | "flight";
 
 export interface FlightSummary {
   result: FlightResult;
@@ -34,6 +34,7 @@ interface PlaneBuilderData {
   aim: LaunchAim | null;
   /** Bumped per launch so the flight scene remounts fresh. */
   flightId: number;
+  /** The flight just flown, shown at the top of the hangar until the next. */
   lastFlight: FlightSummary | null;
 }
 
@@ -47,7 +48,6 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   /** `flightId` ignores a stale or duplicate call from an earlier flight. */
   completeFlight: (result: FlightResult, flightId?: number) => void;
   resetTransient: () => void;
-  flyAgain: () => void;
   restart: (id: LevelId) => void;
 }
 
@@ -81,7 +81,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   startLaunch: () => {
     resetFlightInput();
     resetLaunchAim();
-    set({ screen: "launch", aim: null });
+    set({ screen: "launch", aim: null, lastFlight: null });
   },
   beginFlight: (aim) => {
     resetLaunchAim();
@@ -98,7 +98,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     const recorded = recordFlight(progress, levelId, result, pay.total);
     resetFlightInput();
     set({
-      screen: "results",
+      screen: "hangar",
       progress: recorded.progress,
       lastFlight: {
         result,
@@ -109,7 +109,6 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
       },
     });
   },
-  flyAgain: () => get().startLaunch(),
   restart: (id) => set((s) => ({ progress: restartLevel(s.progress, id) })),
 }));
 

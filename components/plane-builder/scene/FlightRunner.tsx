@@ -11,7 +11,7 @@ import {
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
 import { planeStats } from "@/lib/plane-builder/plane/stats";
-import { STEP } from "@/lib/plane-builder/sim/constants";
+import { GAME_SPEED, STEP } from "@/lib/plane-builder/sim/constants";
 import {
   type FlightEvent,
   type FlightState,
@@ -31,7 +31,7 @@ import { engineLevel } from "../audio/flightCues";
 import { planeSynth } from "../audio/planeSynth";
 import PlaneModel from "./PlaneModel";
 
-/** Seconds the crash or landing stays on screen before the results. */
+/** Seconds the crash or landing stays on screen before the hangar. */
 const END_HOLD = 1.2;
 const MAX_FRAME = 0.1;
 const NOTIFY_EVERY = 6;
@@ -71,7 +71,8 @@ interface FlightRunnerProps {
 
 function poseGroup(group: Group, s: FlightState) {
   group.position.set(s.x, s.y, s.z);
-  group.rotation.set(-s.bank, -s.heading, s.pitch, "YZX");
+  // Rolling +x dips the +z wing, so a right turn (+bank) leans right.
+  group.rotation.set(s.bank, -s.heading, s.pitch, "YZX");
 }
 
 /**
@@ -133,7 +134,7 @@ export default function FlightRunner({
     const { state, stats } = run;
     const group = plane.current;
 
-    accumulator.current += Math.min(delta, MAX_FRAME);
+    accumulator.current += Math.min(delta, MAX_FRAME) * GAME_SPEED;
     while (accumulator.current >= STEP) {
       accumulator.current -= STEP;
       if (holdSeconds !== undefined && state.time >= holdSeconds) continue;

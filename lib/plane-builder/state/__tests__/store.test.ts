@@ -33,7 +33,7 @@ describe("plane builder store", () => {
     );
   });
 
-  it("goes launch → flight → results and pays out", () => {
+  it("goes launch → flight → hangar and pays out", () => {
     store.getState().openLevel("meadow");
     store.getState().startLaunch();
     expect(store.getState().screen).toBe("launch");
@@ -48,11 +48,12 @@ describe("plane builder store", () => {
       endReason: "landed",
     });
     const s = store.getState();
-    expect(s.screen).toBe("results");
+    expect(s.screen).toBe("hangar");
     expect(s.lastFlight?.isNewBest).toBe(true);
     expect(s.progress.levels.meadow.coins).toBe(s.lastFlight!.payout.total);
-    s.flyAgain();
+    s.startLaunch();
     expect(store.getState().screen).toBe("launch");
+    expect(store.getState().lastFlight).toBeNull();
     store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
     expect(store.getState().flightId).toBe(id + 1);
   });

@@ -5,6 +5,7 @@ import { flightLive } from "@/lib/plane-builder/state/flightLive";
 
 export interface FlightSnapshot {
   maxX: number;
+  speed: number;
   fuel: number;
   shields: number;
   coins: number;
@@ -18,6 +19,7 @@ function read(): FlightSnapshot | null {
   if (!s) return null;
   return {
     maxX: s.maxX,
+    speed: s.speed,
     fuel: s.fuel,
     shields: s.shields,
     coins: s.coins,

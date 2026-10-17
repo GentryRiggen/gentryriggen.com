@@ -1,12 +1,20 @@
 "use client";
 
 import { LEVELS } from "@/lib/plane-builder/levels";
-import { planeStats } from "@/lib/plane-builder/plane/stats";
+import {
+  planeStats,
+  stallSpeed,
+  topSpeed,
+} from "@/lib/plane-builder/plane/stats";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import useFlightSnapshot from "../hooks/useFlightSnapshot";
 import { formatCoins, percentOf } from "./format";
+import Speedometer from "./Speedometer";
 
-/** Read-only overlay of the running flight: distance, fuel, shields, coins. */
+/**
+ * Read-only overlay of the running flight: distance, speed, fuel, shields, and
+ * the coin wallet plus what this flight has grabbed so far.
+ */
 export default function FlightHud() {
   const snapshot = useFlightSnapshot();
   const levelId = usePlaneBuilderStore((s) => s.levelId);
@@ -21,6 +29,7 @@ export default function FlightHud() {
     stats.fuel > 0 ? Math.round(((snapshot?.fuel ?? 0) / stats.fuel) * 100) : 0;
   const shields = snapshot?.shields ?? 0;
   const isFinished = snapshot?.finished ?? false;
+  const grabbed = snapshot?.coins ?? 0;
 
   return (
     <div
@@ -63,6 +72,11 @@ export default function FlightHud() {
         </div>
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
+            <Speedometer
+              speed={snapshot?.speed ?? 0}
+              stall={stallSpeed(stats)}
+              top={topSpeed(stats)}
+            />
             {stats.thrust > 0 ? (
               <div
                 role="progressbar"
@@ -96,7 +110,14 @@ export default function FlightHud() {
             ) : null}
           </div>
           <p className="rounded-full bg-amber-100 px-3 py-1 text-lg font-bold text-amber-900 shadow dark:bg-amber-900/70 dark:text-amber-100">
-            🪙 {formatCoins(snapshot?.coins ?? 0)}
+            <span aria-hidden="true">🪙 </span>
+            {formatCoins(lp.coins + grabbed)}
+            <span className="sr-only"> coins</span>
+            {grabbed > 0 ? (
+              <span className="ml-1.5 text-base text-amber-700 dark:text-amber-300">
+                +{formatCoins(grabbed)}
+              </span>
+            ) : null}
           </p>
         </div>
       </div>

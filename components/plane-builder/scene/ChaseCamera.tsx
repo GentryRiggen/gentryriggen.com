@@ -26,8 +26,7 @@ interface ChaseCameraProps {
 
 /**
  * The only thing that moves the camera in the world scene. It holds the
- * slingshot view while launching, eases behind the plane during flight, and
- * leaves the camera where it is on the results screen.
+ * slingshot view while launching and eases behind the plane during flight.
  */
 export default function ChaseCamera({ level, screen }: ChaseCameraProps) {
   const camera = useThree((s) => s.camera);

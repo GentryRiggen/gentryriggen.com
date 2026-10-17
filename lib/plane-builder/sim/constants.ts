@@ -1,5 +1,7 @@
 // lib/plane-builder/sim/constants.ts
 export const STEP = 1 / 60;
+/** Sim seconds per real second. The scene plays flights this much faster. */
+export const GAME_SPEED = 1.5;
 export const G = 9.81;
 /** Steepest climb or dive the pilot can command, rad (35°). */
 export const MAX_PITCH = 0.61;
@@ -9,6 +11,12 @@ export const MIN_PITCH = -1.2;
 export const PITCH_GAIN = 1.6;
 /** Max lift = lift × v² × this (elevator authority). */
 export const LIFT_HEADROOM = 1.5;
+/** Thin air: no climbing above this height over the ground, m. */
+export const CEILING = 60;
+/** Climbing fades out over this many metres below CEILING. */
+export const CEILING_FADE = 15;
+/** Above the ceiling the plane noses down to this share of MAX_PITCH. */
+export const CEILING_DIVE = 0.5;
 export const MAX_BANK = 0.8;
 export const BANK_RATE = 2;
 /** Heading change per second at full bank, rad/s. */

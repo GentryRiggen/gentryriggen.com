@@ -6,7 +6,8 @@ import {
   makeCatalog,
   tierPrice,
 } from "../catalog";
-import { planeStats } from "../stats";
+import { LIFT_HEADROOM } from "../../sim/constants";
+import { planeStats, stallSpeed, topSpeed } from "../stats";
 
 const names = (prefix: string) =>
   Array.from({ length: MAX_TIER + 1 }, (_, i) => `${prefix} ${i + 1}`);
@@ -91,5 +92,23 @@ describe("planeStats", () => {
     });
     expect(stats.thrust).toBe(12);
     expect(stats.shields).toBe(2);
+  });
+});
+
+describe("speed limits", () => {
+  const stats = planeStats(catalog, STARTER_TIERS);
+
+  it("stalls where the wings can just hold the plane up", () => {
+    const v = stallSpeed(stats);
+    expect(stats.lift * v * v * LIFT_HEADROOM).toBeCloseTo(9.81, 5);
+  });
+
+  it("tops out at the launch speed without an engine", () => {
+    expect(topSpeed({ ...stats, thrust: 0 })).toBe(stats.launchSpeed);
+  });
+
+  it("tops out at the boosted engine speed when that is faster", () => {
+    const fast = { ...stats, thrust: 20, drag: 0.01 };
+    expect(topSpeed(fast)).toBeCloseTo(Math.sqrt(40 / 0.01), 5);
   });
 });

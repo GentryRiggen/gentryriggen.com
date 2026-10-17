@@ -1,6 +1,6 @@
 // lib/plane-builder/sim/__tests__/flight.test.ts
 import { RUNOUT } from "../../levels/generate";
-import { CORRIDOR_TURN } from "../constants";
+import { CEILING, CORRIDOR_TURN } from "../constants";
 import {
   launch,
   runFlight,
@@ -163,6 +163,51 @@ describe("flight sim", () => {
       events.push(...step(s, level, POWERED, HANDS_OFF));
     }
     expect(s.endReason).toBe("stalled");
+  });
+
+  describe("ceiling", () => {
+    const fullClimb = () => ({ ...HANDS_OFF, pitch: 1 });
+
+    it("can't climb far above the ceiling, even with full power", () => {
+      const level = flatLevel();
+      const strong = { ...POWERED, thrust: 60, fuel: 60 };
+      let top = 0;
+      runFlight(level, strong, AIM, (s) => {
+        top = Math.max(top, s.y);
+        return fullClimb();
+      });
+      expect(top).toBeGreaterThan(CEILING * 0.8);
+      expect(top).toBeLessThan(CEILING + 20);
+    });
+
+    it("glides back down to the ceiling from above it", () => {
+      const level = flatLevel();
+      const s = launch(level, POWERED, AIM);
+      s.y = CEILING + 60;
+      s.pitch = 0;
+      for (let i = 0; i < 60 * 10; i += 1) step(s, level, POWERED, fullClimb());
+      expect(s.y).toBeLessThan(CEILING + 10);
+    });
+
+    it("doesn't nose down onto a hard obstacle it is above", () => {
+      const level = flatLevel({
+        obstacles: [
+          {
+            kind: "peak",
+            hard: true,
+            center: { x: 400, y: 60, z: 0 },
+            half: { x: 400, y: 60, z: 40 },
+          },
+        ],
+      });
+      const s = launch(level, POWERED, AIM);
+      s.x = 50;
+      s.y = 125;
+      s.pitch = 0;
+      for (let i = 0; i < 60 * 3; i += 1) step(s, level, POWERED, HANDS_OFF);
+      expect(s.phase).toBe("flying");
+      expect(s.pitch).toBeGreaterThanOrEqual(-0.01);
+    });
   });
 
   describe("shields and obstacles", () => {

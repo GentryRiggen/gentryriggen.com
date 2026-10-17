@@ -14,13 +14,20 @@ same state, which is what lets the balance pilot and the tests trust it.
 ## Fixed step
 
 `step` advances exactly `STEP` (1/60 s). The scene runs as many steps as the
-real frame time needs, so frame rate never changes the result.
+real frame time needs, so frame rate never changes the result. It plays
+flights `GAME_SPEED` times faster than real time; sim seconds (and the balance
+numbers) are unaffected.
 
 ## Model
 
 - **Lift:** the elevator asks for the lift needed to chase the target pitch,
   but lift is capped at `lift x v^2 x LIFT_HEADROOM`. A slow plane cannot make
   enough lift, so the nose drops and it sinks gently.
+- **Thin air:** climbing fades out over `CEILING_FADE` metres below
+  `CEILING` (height above the ground), and above it the plane noses down to
+  glide back, unless it is over a hard obstacle (so a shield bounce clears the
+  box). The elevator can push down as hard as it can pull up, so even a fast
+  climb levels off near the ceiling.
 - **Energy trade:** gravity acts along the flight path, so climbing costs
   speed and diving gains it. Drag is `drag x v^2`.
 - **Engine:** thrust runs while there is fuel. Boost doubles thrust and burns

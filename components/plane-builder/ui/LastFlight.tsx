@@ -1,0 +1,76 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { LEVELS } from "@/lib/plane-builder/levels";
+import type { EndReason } from "@/lib/plane-builder/sim/flight";
+import type { FlightSummary } from "@/lib/plane-builder/state/store";
+import type { LevelId } from "@/lib/plane-builder/levels/types";
+import FinishCard from "./FinishCard";
+import { formatCoins, percentOf } from "./format";
+
+const END_LINES: Partial<Record<EndReason, string>> = {
+  crash: "You crashed!",
+  landed: "Nice landing!",
+  stalled: "You ran out of speed.",
+};
+
+interface LastFlightProps {
+  levelId: LevelId;
+  flight: FlightSummary;
+}
+
+/** How the flight just flown went, at the top of the hangar. */
+export default function LastFlight({ levelId, flight }: LastFlightProps) {
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    heading.current?.focus();
+  }, [flight]);
+
+  const level = LEVELS[levelId];
+  const { result, payout } = flight;
+  const percent = percentOf(result.distance, level.finishDistance);
+  const isAlmost = percent >= 90 && !result.finished;
+  const endLine = END_LINES[result.endReason] ?? "Flight over!";
+
+  return (
+    <section
+      aria-label="Flight results"
+      className="flex flex-col gap-1 rounded-xl bg-sky-50 p-3 text-center dark:bg-sky-950/60 short:p-2"
+    >
+      {result.finished ? <FinishCard unlocked={flight.unlocked} /> : null}
+      <h3
+        ref={heading}
+        tabIndex={-1}
+        className="font-semibold focus:outline-none"
+      >
+        {endLine}
+        {flight.isNewBest ? (
+          <span className="ml-2 font-extrabold text-sky-700 dark:text-sky-300">
+            New best!
+          </span>
+        ) : null}
+      </h3>
+      <p className="text-2xl font-extrabold">
+        {Math.round(result.distance)} m{" "}
+        <span className="text-base font-semibold text-slate-600 dark:text-slate-300">
+          ({percent}% of the way)
+        </span>
+      </p>
+      {isAlmost ? (
+        <p className="font-bold text-amber-700 dark:text-amber-300">
+          Almost there!
+        </p>
+      ) : null}
+      <p className="text-sm text-slate-700 dark:text-slate-200">
+        Distance {formatCoins(payout.distancePay)} + coins grabbed{" "}
+        {formatCoins(payout.coinPay)} × boost{" "}
+        {Number(payout.multiplier.toFixed(2))}
+      </p>
+      <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-300">
+        <span aria-hidden="true">🪙 </span>
+        Total: +{formatCoins(payout.total)}
+      </p>
+    </section>
+  );
+}

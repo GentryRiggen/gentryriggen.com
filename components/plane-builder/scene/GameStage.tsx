@@ -8,7 +8,7 @@ import WorldScene from "./WorldScene";
 
 /**
  * The 3D layer: the hangar turntable on the level and hangar screens, the
- * level's world on launch, flight and results. Reads everything from the store.
+ * level's world on launch and flight. Reads everything from the store.
  */
 export default function GameStage() {
   const screen = usePlaneBuilderStore((s) => s.screen);

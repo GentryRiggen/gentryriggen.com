@@ -1,4 +1,5 @@
 // lib/plane-builder/plane/stats.ts
+import { BOOST_THRUST, G, LIFT_HEADROOM, MAX_SPEED } from "../sim/constants";
 import type { PlaneCatalog, Tiers } from "./catalog";
 
 export interface PlaneStats {
@@ -28,4 +29,18 @@ export function planeStats(catalog: PlaneCatalog, tiers: Tiers): PlaneStats {
     shields: Math.ceil(tiers.body / 2),
     multiplier: catalog.multiplier.values[tiers.multiplier],
   };
+}
+
+/** Below this speed the wings can't hold the plane up, m/s. */
+export function stallSpeed(stats: PlaneStats): number {
+  return Math.sqrt(G / (stats.lift * LIFT_HEADROOM));
+}
+
+/** Fastest the plane gets: its launch, or flat out on boost, m/s. */
+export function topSpeed(stats: PlaneStats): number {
+  const boosted =
+    stats.thrust > 0
+      ? Math.sqrt((stats.thrust * BOOST_THRUST) / stats.drag)
+      : 0;
+  return Math.min(MAX_SPEED, Math.max(stats.launchSpeed, boosted));
 }

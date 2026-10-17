@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-10-17",
+    title: "Faster flights",
+    highlights: [
+      "Flights play faster, so each try takes less time",
+      "The air gets thin up high: planes can't climb much above the treetops any more, so flying really high and gliding forever no longer works",
+      "A speedometer shows how fast you're going, and turns red when you're about to run out of speed",
+      "The coin counter in the air now shows all your coins, plus the ones you grab on this flight",
+      "After every flight you land back in the hangar, with how you did at the top, ready to upgrade",
+      "Your plane now leans the way it's turning, like a real plane",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-10-11",
     title: "Plane Builder takes off",

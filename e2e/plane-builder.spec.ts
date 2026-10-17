@@ -104,7 +104,6 @@ test.describe("Plane Builder", () => {
       expect(afterFlight.tiers.wings).toBe(1);
       expect(afterFlight.best).toBeGreaterThan(0);
 
-      await page.getByRole("button", { name: "Upgrade" }).click();
       await expect(page.getByRole("region", { name: "Hangar" })).toBeVisible();
 
       await page.reload();
@@ -176,7 +175,6 @@ test.describe("Plane Builder", () => {
     });
     await expect(page.getByText("Desert Canyon unlocked!")).toBeVisible();
 
-    await page.getByRole("button", { name: "Upgrade" }).click();
     await page.getByRole("button", { name: "← Levels" }).click();
     await expect(
       page.getByRole("button", { name: "Play Desert Canyon" })
