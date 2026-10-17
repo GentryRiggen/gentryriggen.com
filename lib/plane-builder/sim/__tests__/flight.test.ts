@@ -12,6 +12,7 @@ import {
   runFlight,
   step,
   type FlightEvent,
+  type FlightState,
   type StickInput,
 } from "../flight";
 import { GLIDER, POWERED, flatLevel } from "./fixtures";
@@ -183,6 +184,64 @@ describe("flight sim", () => {
       events.push(...step(s, level, POWERED, HANDS_OFF));
     }
     expect(s.endReason).toBe("stalled");
+  });
+
+  describe("swoop", () => {
+    // Out of fuel at the ceiling over flat ground.
+    const glide = (pilot: (s: FlightState, phase: { n: number }) => number) => {
+      const level = flatLevel({ finishDistance: 100000 });
+      const stats = { ...POWERED, fuel: 0, lift: 0.04, drag: 0.012 };
+      const s = launch(level, stats, { pitch: 0, yaw: 0, power: 1 });
+      s.y = CEILING;
+      s.speed = 25;
+      const phase = { n: 0 };
+      while (s.phase !== "done" && s.time < 60)
+        step(s, level, stats, { ...HANDS_OFF, pitch: pilot(s, phase) });
+      return s;
+    };
+    // Dive to 25 m, pull up until the nose is above level, then a gentle hold.
+    const swoop = (s: FlightState, phase: { n: number }) => {
+      if (phase.n === 0 && s.y <= 25) phase.n = 1;
+      if (phase.n === 1 && s.pitch > 0) phase.n = 2;
+      return phase.n === 0 ? -1 : phase.n === 1 ? 1 : 0.05;
+    };
+
+    it("buys a little more distance than gliding hands-off", () => {
+      const handsOff = glide(() => 0).maxX;
+      const swooped = glide(swoop).maxX;
+      expect(swooped).toBeGreaterThan(handsOff * 1.05);
+      expect(swooped).toBeLessThan(handsOff * 1.6);
+    });
+
+    it("leaves hands-off and gentle gliding unchanged", () => {
+      const level = flatLevel({ finishDistance: 100000 });
+      const stats = { ...POWERED, fuel: 0 };
+      const a = launch(level, stats, AIM);
+      const b = launch(level, stats, AIM);
+      a.y = b.y = CEILING;
+      for (let i = 0; i < 120; i += 1) {
+        step(a, level, stats, HANDS_OFF);
+        step(b, level, stats, { ...HANDS_OFF, pitch: 0.001 });
+      }
+      expect(Math.abs(a.speed - b.speed)).toBeLessThan(0.5);
+    });
+
+    it("only tucks the wings once the fuel is gone", () => {
+      const level = flatLevel();
+      // No thrust either way, so only the fuel gauge differs.
+      const fuelled = { ...POWERED, thrust: 0, fuel: 20 };
+      const empty = { ...POWERED, thrust: 0, fuel: 0 };
+      const a = launch(level, fuelled, AIM);
+      const b = launch(level, empty, AIM);
+      for (const s of [a, b]) {
+        s.y = 40;
+        s.speed = 60;
+        s.pitch = 0;
+      }
+      step(a, level, fuelled, { ...HANDS_OFF, pitch: -1 });
+      step(b, level, empty, { ...HANDS_OFF, pitch: -1 });
+      expect(b.speed).toBeGreaterThan(a.speed);
+    });
   });
 
   describe("ceiling", () => {

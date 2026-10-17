@@ -33,6 +33,8 @@ import { planeSynth } from "../audio/planeSynth";
 import PlaneModel from "./PlaneModel";
 
 /** Seconds the crash or landing stays on screen before the hangar. */
+/** Sim seconds before the swoop tip may show (after the launch pop-up). */
+const SWOOP_TIP_AFTER = 2;
 const END_HOLD = 1.2;
 const MAX_FRAME = 0.1;
 const NOTIFY_EVERY = 6;
@@ -113,6 +115,7 @@ export default function FlightRunner({
     () => usePlaneBuilderStore.getState().progress.levels[level.id].best
   );
   const hasPassedBest = useRef(false);
+  const hasSwoopTip = useRef(false);
 
   useLayoutEffect(() => {
     flightLive.set(run.state);
@@ -167,6 +170,15 @@ export default function FlightRunner({
       hasPassedBest.current = true;
       flightToasts.push("New best!");
       planeSynth.play("flag");
+    }
+    if (
+      !hasSwoopTip.current &&
+      state.phase === "flying" &&
+      state.fuel <= 0 &&
+      state.time > SWOOP_TIP_AFTER
+    ) {
+      hasSwoopTip.current = true;
+      flightToasts.push("Out of fuel! Dive, then pull up!");
     }
     if (group && group.visible) poseGroup(group, state);
     planeSynth.setEngine(

@@ -29,6 +29,11 @@ numbers) are unaffected.
   glide back, unless it is over a hard obstacle (so a shield bounce clears the
   box). The elevator can push down as hard as it can pull up, so even a fast
   climb levels off near the ceiling.
+- **Swoop:** out of fuel, a hard dive (stick past `SWOOP_STICK` down) cuts
+  drag to `SWOOP_DRAG`, and a hard pull-up multiplies lift by `SWOOP_LIFT`, so
+  a dive then pull-up glides a little further than hands-off (about +25% for
+  an early plane, less for a strong one). Gentle steering and hands-off
+  gliding are unchanged.
 - **Energy trade:** gravity acts along the flight path, so climbing costs
   speed and diving gains it. Drag is `drag x v^2`.
 - **Engine:** thrust runs while there is fuel. Boost doubles thrust and burns

@@ -42,6 +42,9 @@ import {
   STALL_PROGRESS,
   STALL_WINDOW,
   STEP,
+  SWOOP_DRAG,
+  SWOOP_LIFT,
+  SWOOP_STICK,
   TURN_RATE,
 } from "./constants";
 
@@ -328,15 +331,23 @@ export function step(
   const floor = overHardObstacle(level, s.x, s.z) ? 0 : -CEILING_DIVE;
   const roof = MAX_PITCH * clamp((CEILING - height) / CEILING_FADE, floor, 1);
   const target = Math.min(asked, roof);
+  // Swoop: out of fuel, a hard dive tucks the wings (less drag) and a hard
+  // pull-up bites harder (more lift), so a dive and pull-up buys back a little
+  // distance. Gentle steering and hands-off gliding are unchanged.
+  const isUnpowered = s.fuel <= 0;
+  const isDiving = isUnpowered && stickPitch <= -SWOOP_STICK;
+  const isPulling = isUnpowered && stickPitch >= SWOOP_STICK;
   const v = Math.max(s.speed, 1);
   const weight = G * Math.cos(s.pitch);
   const wanted = weight + v * PITCH_GAIN * (target - s.pitch);
-  const maxLift = stats.lift * v * v * LIFT_HEADROOM;
+  const maxLift =
+    stats.lift * v * v * LIFT_HEADROOM * (isPulling ? SWOOP_LIFT : 1);
   const lift = clamp(wanted, -maxLift, maxLift);
   s.pitch = clamp(s.pitch + ((lift - weight) / v) * dt, MIN_PITCH, MAX_PITCH);
 
   // Speed: drag, gravity along the path, and thrust while there's fuel.
-  let accel = -stats.drag * s.speed * s.speed - G * Math.sin(s.pitch);
+  const drag = stats.drag * (isDiving ? SWOOP_DRAG : 1);
+  let accel = -drag * s.speed * s.speed - G * Math.sin(s.pitch);
   if (s.fuel > 0 && stats.thrust > 0) {
     accel += stats.thrust * (input.boost ? BOOST_THRUST : 1);
     s.fuel = Math.max(0, s.fuel - dt * (input.boost ? BOOST_BURN : 1));

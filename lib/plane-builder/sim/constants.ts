@@ -60,3 +60,9 @@ export const CORRIDOR_PUSH = 0.5;
 export const STALL_WINDOW = 3;
 export const STALL_PROGRESS = 1;
 export const MAX_FLIGHT_TIME = 120;
+/** Stick past this (either way) counts as a hard dive or pull-up. */
+export const SWOOP_STICK = 0.5;
+/** Out of fuel, in a hard dive: share of the normal drag. */
+export const SWOOP_DRAG = 0.3;
+/** Out of fuel, in a hard pull-up: lift multiplier. */
+export const SWOOP_LIFT = 2.5;
