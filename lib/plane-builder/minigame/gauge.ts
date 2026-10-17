@@ -8,9 +8,9 @@ import type { Tiers } from "../plane/catalog";
 export type GaugeZone = "green" | "yellow" | "red";
 
 /** Seconds for the marker to go end to end and back. */
-export const GAUGE_PERIOD = 1.6;
+export const GAUGE_PERIOD = 1.28;
 /** Half-widths of the zones around the middle, as shares of the bar. */
-export const GREEN_HALF = 0.08;
+export const GREEN_HALF = 0.06;
 export const YELLOW_HALF = 0.25;
 
 /** Launch speed multiplier for where the launch gauge stopped. */

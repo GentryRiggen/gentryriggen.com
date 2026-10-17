@@ -27,7 +27,8 @@ describe("timing gauge", () => {
 
   it("is green in the middle, yellow beside it, red at the ends", () => {
     expect(gaugeZone(0.5)).toBe("green");
-    expect(gaugeZone(0.57)).toBe("green");
+    expect(gaugeZone(0.555)).toBe("green");
+    expect(gaugeZone(0.57)).toBe("yellow");
     expect(gaugeZone(0.4)).toBe("yellow");
     expect(gaugeZone(0.7)).toBe("yellow");
     expect(gaugeZone(0.2)).toBe("red");

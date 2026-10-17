@@ -6,6 +6,7 @@ import FlightHud from "../ui/FlightHud";
 import UpgradeTrack from "../ui/UpgradeTrack";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
 import { LEVELS } from "@/lib/plane-builder/levels";
+import { GAUGE_PERIOD } from "@/lib/plane-builder/minigame/gauge";
 import {
   MAX_TIER,
   STARTER_TIERS,
@@ -317,7 +318,7 @@ describe("Hangar coin bonus gauge", () => {
       progress: newProgress(),
     });
     render(<Hangar />);
-    act(() => frames.at(400));
+    act(() => frames.at(GAUGE_PERIOD * 250));
     await userEvent.click(screen.getByRole("button", { name: "Stop!" }));
 
     expect(store.getState().lastFlight?.bonus).toMatchObject({
@@ -342,7 +343,7 @@ describe("Hangar coin bonus gauge", () => {
     });
     render(<Hangar />);
     (document.activeElement as HTMLElement | null)?.blur();
-    act(() => frames.at(800));
+    act(() => frames.at(GAUGE_PERIOD * 500));
     act(() => {
       document.body.dispatchEvent(
         new KeyboardEvent("keydown", { key: " ", bubbles: true })

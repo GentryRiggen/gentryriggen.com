@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import LaunchOverlay from "../LaunchOverlay";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
-import { LAUNCH_ZONE_BOOST } from "@/lib/plane-builder/minigame/gauge";
+import {
+  GAUGE_PERIOD,
+  LAUNCH_ZONE_BOOST,
+} from "@/lib/plane-builder/minigame/gauge";
 import { flightToasts } from "@/lib/plane-builder/state/flightToasts";
 import { launchAim } from "@/lib/plane-builder/state/launchAim";
 import { usePlaneBuilderStore as store } from "@/lib/plane-builder/state/store";
@@ -48,7 +51,7 @@ describe("LaunchOverlay", () => {
     expect(screen.getByRole("meter", { name: "Launch timing" })).toBeVisible();
     expect(launchAim.power).toBe(1);
 
-    act(() => frames.at(400));
+    act(() => frames.at(GAUGE_PERIOD * 250));
     fireEvent.keyUp(window, { key: " " });
 
     expect(beginFlight).toHaveBeenCalledTimes(1);
@@ -66,7 +69,7 @@ describe("LaunchOverlay", () => {
     const toast = jest.spyOn(flightToasts, "push");
     render(<LaunchOverlay />);
     fireEvent.keyDown(window, { key: " " });
-    act(() => frames.at(800));
+    act(() => frames.at(GAUGE_PERIOD * 500));
     fireEvent.keyUp(window, { key: " " });
     expect(beginFlight.mock.calls[0][0].boost).toBe(LAUNCH_ZONE_BOOST.red);
     expect(toast).toHaveBeenCalledWith("Oops!");

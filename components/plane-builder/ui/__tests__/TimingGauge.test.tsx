@@ -1,6 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import TimingGauge from "../TimingGauge";
 import { stubFrames } from "../../testing/frames";
+import { GAUGE_PERIOD } from "@/lib/plane-builder/minigame/gauge";
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -28,7 +29,7 @@ describe("TimingGauge", () => {
     render(<TimingGauge isRunning positionRef={positionRef} ariaLabel="t" />);
     expect(positionRef.current).toBe(0);
 
-    act(() => frames.at(400));
+    act(() => frames.at(GAUGE_PERIOD * 250));
     expect(positionRef.current).toBeCloseTo(0.5);
     expect(screen.getByRole("meter")).toHaveAttribute(
       "aria-valuetext",
@@ -49,11 +50,11 @@ describe("TimingGauge", () => {
     const { rerender } = render(
       <TimingGauge isRunning positionRef={positionRef} ariaLabel="t" />
     );
-    act(() => frames.at(400));
+    act(() => frames.at(GAUGE_PERIOD * 250));
     rerender(
       <TimingGauge isRunning={false} positionRef={positionRef} ariaLabel="t" />
     );
-    act(() => frames.at(800));
+    act(() => frames.at(GAUGE_PERIOD * 500));
     expect(positionRef.current).toBeCloseTo(0.5);
   });
 });

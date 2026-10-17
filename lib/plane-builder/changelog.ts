@@ -19,9 +19,10 @@ export const CHANGELOG: readonly Release[] = [
   {
     version: "1.3.1",
     date: "2026-10-17",
-    title: "Room for the notch",
+    title: "Room for the notch, trickier timing",
     highlights: [
       "When you add Plane Builder to an iPhone home screen, the buttons, speedometer and level list no longer hide behind the notch or the clock",
+      "The timing bars slide faster and the green zone is smaller, so a perfect launch or a coin jackpot takes real skill",
     ],
   },
   {
