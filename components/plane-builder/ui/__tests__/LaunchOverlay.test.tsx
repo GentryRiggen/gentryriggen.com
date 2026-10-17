@@ -59,7 +59,11 @@ describe("LaunchOverlay", () => {
       power: 1,
       boost: LAUNCH_ZONE_BOOST.green,
     });
-    expect(toast).toHaveBeenCalledWith("Perfect launch!");
+    expect(toast).toHaveBeenCalledWith("Perfect launch! +25% speed 🚀");
+    // Pushed after the flight starts, which clears earlier pop-ups.
+    expect(toast.mock.invocationCallOrder[0]).toBeGreaterThan(
+      beginFlight.mock.invocationCallOrder[0]
+    );
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   });
 
@@ -72,6 +76,6 @@ describe("LaunchOverlay", () => {
     act(() => frames.at(GAUGE_PERIOD * 500));
     fireEvent.keyUp(window, { key: " " });
     expect(beginFlight.mock.calls[0][0].boost).toBe(LAUNCH_ZONE_BOOST.red);
-    expect(toast).toHaveBeenCalledWith("Oops!");
+    expect(toast).toHaveBeenCalledWith("Oops! Weak launch 😬");
   });
 });

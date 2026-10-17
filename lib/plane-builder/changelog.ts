@@ -21,6 +21,7 @@ export const CHANGELOG: readonly Release[] = [
     date: "2026-10-17",
     title: "Room for the notch, trickier timing",
     highlights: [
+      "The slingshot now tells you how your launch went: Perfect, Good or Oops",
       'A see-through blue wall shows your best distance. Fly through it to see "New best!"',
       "When you add Plane Builder to an iPhone home screen, the buttons, speedometer and level list no longer hide behind the notch or the clock",
       "The timing bars slide faster and the green zone is smaller, so a perfect launch or a coin jackpot takes real skill",

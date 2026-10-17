@@ -20,9 +20,9 @@ const KEY_AIM_STEP = 0.05;
 const KEY_POWER_PER_SECOND = 1;
 
 const LAUNCH_TOASTS = {
-  green: "Perfect launch!",
-  yellow: "Good launch",
-  red: "Oops!",
+  green: "Perfect launch! +25% speed 🚀",
+  yellow: "Good launch!",
+  red: "Oops! Weak launch 😬",
 } as const;
 
 const clamp = (v: number, lo: number, hi: number) =>
@@ -75,8 +75,9 @@ export default function LaunchOverlay() {
       return;
     }
     const zone = gaugeZone(gaugePosition.current);
-    flightToasts.push(LAUNCH_TOASTS[zone]);
     fire(LAUNCH_ZONE_BOOST[zone]);
+    // After fire: starting a flight clears old pop-ups.
+    flightToasts.push(LAUNCH_TOASTS[zone]);
   }
 
   useEffect(() => {
