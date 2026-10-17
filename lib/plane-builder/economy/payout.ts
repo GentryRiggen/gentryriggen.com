@@ -1,4 +1,5 @@
 import type { LevelDef } from "../levels/types";
+import { MILESTONES } from "../sim/constants";
 import type { FlightResult } from "../sim/flight";
 
 export interface Payout {
@@ -10,8 +11,6 @@ export interface Payout {
   total: number;
 }
 
-/** Where the milestone flags stand, as shares of the level's finish distance. */
-const MILESTONE_SHARES = [0.25, 0.5, 0.75] as const;
 /** Each milestone flag pays this share of the whole level's distance pay, once. */
 export const MILESTONE_SHARE = 0.1;
 /** A landing pays this share of the distance pay on top. */
@@ -23,7 +22,7 @@ export function newMilestones(
   previousBest: number,
   distance: number
 ): number {
-  return MILESTONE_SHARES.filter((share) => {
+  return MILESTONES.filter((share) => {
     const at = level.finishDistance * share;
     return previousBest < at && distance >= at;
   }).length;

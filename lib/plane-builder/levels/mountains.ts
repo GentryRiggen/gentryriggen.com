@@ -86,12 +86,12 @@ export const MOUNTAINS_SPEC: LevelSpec = {
     },
   ],
   plane: makeCatalog({
-    launcher: { basePrice: 350, from: 55, to: 75 },
-    wings: { basePrice: 300, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 150, from: 0, to: 66 },
-    fuel: { basePrice: 180, from: 18, to: 90 },
-    body: { basePrice: 260, from: 0.014, to: 0.007 },
-    multiplier: { basePrice: 375, from: 1, to: 3 },
+    launcher: { basePrice: 620, from: 55, to: 75 },
+    wings: { basePrice: 530, from: 0.03, to: 0.04, curve: 0.65 },
+    engine: { basePrice: 95, from: 0, to: 66 },
+    fuel: { basePrice: 215, from: 18, to: 90 },
+    body: { basePrice: 1585, from: 0.014, to: 0.007 },
+    multiplier: { basePrice: 2285, from: 1, to: 3 },
     parts: {
       launcher: [
         "Steam catapult",

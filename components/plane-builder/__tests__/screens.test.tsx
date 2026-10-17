@@ -307,11 +307,11 @@ describe("FlightHud", () => {
 
   it("shows the speed in mph and warns when it gets too slow", () => {
     store.setState({ screen: "flight", levelId: "meadow" });
-    fly(20, 0);
+    fly(40, 0);
     const { unmount } = render(<FlightHud />);
     expect(screen.getByRole("meter", { name: "Speed" })).toHaveAttribute(
       "aria-valuenow",
-      "45"
+      "89"
     );
     expect(screen.queryByText("Slow!")).not.toBeInTheDocument();
     unmount();

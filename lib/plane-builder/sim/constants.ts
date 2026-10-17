@@ -10,7 +10,7 @@ export const MIN_PITCH = -1.2;
 /** How hard the elevator chases the target angle, 1/s. */
 export const PITCH_GAIN = 1.6;
 /** Max lift = lift × v² × this (elevator authority). */
-export const LIFT_HEADROOM = 1.5;
+export const LIFT_HEADROOM = 0.45;
 /** Thin air: no climbing above this height over the ground, m. */
 export const CEILING = 60;
 /** Climbing fades out over this many metres below CEILING. */
@@ -50,8 +50,8 @@ export const SHIELD_SLOW = 0.6;
 /** Seconds of no hard hits after a shield is spent. */
 export const SHIELD_GRACE = 1;
 /** Touch-downs shallower than this angle and slower than LAND_SPEED land. */
-export const LAND_ANGLE = -0.35;
-export const LAND_SPEED = 45;
+export const LAND_ANGLE = -0.9;
+export const LAND_SPEED = 55;
 export const SLIDE_DECEL = 10;
 /** Heading correction past the corridor edge, rad/s at one half-width over. */
 export const CORRIDOR_TURN = 1.5;

@@ -17,6 +17,22 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-10-17",
+    title: "More to do in every flight",
+    highlights: [
+      "Boost rings give your plane a burst of speed, and some come in chains you can fly straight through",
+      "Fuel cans float in the sky: fly through one with an engine plane to top up your tank",
+      "You can see the updrafts now, so you know where the air will lift you",
+      "Flags at the quarter, halfway and three-quarter marks pay a bonus the first time you reach them, and distance signs show how far you've gone",
+      "Land your plane safely for a landing bonus",
+      "New obstacle courses to fly through: the Barn gate and Balloon arch in the Meadow, the Arch gauntlet and Updraft climb in the Canyon, and Twin peaks and Before the pass in the Mountains",
+      "Gentler starts: some obstacles now have ramps you can glide over",
+      "Planes without fuel come down sooner, and landings are easier, so you spend less time gliding and more time flying",
+      "Upgrade prices were rebalanced in the Canyon and the Mountains, and the Meadow engine goes a bit faster",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-10-17",
     title: "Faster flights",

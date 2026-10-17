@@ -21,8 +21,9 @@ numbers) are unaffected.
 ## Model
 
 - **Lift:** the elevator asks for the lift needed to chase the target pitch,
-  but lift is capped at `lift x v^2 x LIFT_HEADROOM`. A slow plane cannot make
-  enough lift, so the nose drops and it sinks gently.
+  but lift is capped at `lift x v^2 x LIFT_HEADROOM` (0.45). A slow plane
+  cannot make enough lift, so the nose drops and it comes down within about
+  15 s, even with the best wings.
 - **Thin air:** climbing fades out over `CEILING_FADE` metres below
   `CEILING` (height above the ground), and above it the plane noses down to
   glide back, unless it is over a hard obstacle (so a shield bounce clears the
@@ -46,8 +47,9 @@ numbers) are unaffected.
 
 ## Ending a flight
 
-- **Landing vs crash:** touching down shallower than `LAND_ANGLE` and slower
-  than `LAND_SPEED` slides to a stop and lands. Steeper or faster is a hard
+- **Landing vs crash:** touching down shallower than `LAND_ANGLE` (-0.9 rad,
+  about 52 degrees, so a dead-stick glide still lands) and slower than
+  `LAND_SPEED` (55 m/s) slides to a stop and lands. Steeper or faster is a hard
   hit, the same as hitting a hard obstacle.
 - **Shields and grace:** a hard hit spends a shield (bounce, slow down) and
   starts `SHIELD_GRACE` seconds in which further hard hits are ignored. With no

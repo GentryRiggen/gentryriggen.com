@@ -1,6 +1,9 @@
 import { LEVELS, LEVEL_ORDER } from "../../levels";
 import { MAX_TIER, STARTER_TIERS, TRACK_IDS } from "../../plane/catalog";
-import { planeStats } from "../../plane/stats";
+import { planeStats, stallSpeed } from "../../plane/stats";
+import { CEILING } from "../../sim/constants";
+import { launch, step } from "../../sim/flight";
+import { flatLevel } from "../../sim/__tests__/fixtures";
 import { pilotFlight, playLevel, type FlightLog } from "../pilot";
 
 describe.each(LEVEL_ORDER)("%s balance", (id) => {
@@ -68,5 +71,28 @@ describe.each(LEVEL_ORDER)("%s balance", (id) => {
     for (const track of TRACK_IDS) maxed[track] = MAX_TIER;
     const result = pilotFlight(id, planeStats(LEVELS[id].plane, maxed));
     expect(result.endReason).toBe("runout");
+  });
+});
+
+describe("glide tail", () => {
+  const HANDS_OFF = { pitch: 0, bank: 0, boost: false };
+
+  it.each(LEVEL_ORDER)("%s planes come down within 15 s and land", (id) => {
+    for (const t of [0, 2, 4, 6, 8]) {
+      const tiers = { ...STARTER_TIERS };
+      for (const track of TRACK_IDS) tiers[track] = t;
+      const stats = { ...planeStats(LEVELS[id].plane, tiers), fuel: 0 };
+      const level = flatLevel({
+        finishDistance: 100000,
+        plane: LEVELS[id].plane,
+      });
+      const s = launch(level, stats, { pitch: 0, yaw: 0, power: 1 });
+      s.y = CEILING;
+      s.pitch = 0;
+      s.speed = stallSpeed(stats) * 1.5;
+      while (s.phase === "flying") step(s, level, stats, HANDS_OFF);
+      expect(s.time).toBeLessThanOrEqual(15);
+      expect(s.endReason === "crash").toBe(false);
+    }
   });
 });

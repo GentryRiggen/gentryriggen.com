@@ -252,7 +252,7 @@ describe("flight sim", () => {
       const stats = { ...POWERED, shields: 1 };
       const s = launch(level, stats, AIM);
       s.y = -1;
-      s.pitch = -0.8;
+      s.pitch = -1.1;
       const events = step(s, level, stats, HANDS_OFF);
       expect(events.some((e) => e.type === "shield")).toBe(true);
       expect(s.y).toBeGreaterThan(0);
