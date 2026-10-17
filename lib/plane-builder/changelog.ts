@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-10-17",
+    title: "Timing games",
+    highlights: [
+      "From the Garden spring level, the slingshot has a timing bar that slides back and forth: let go in the green for a big boost, yellow is a normal launch, and red is a weaker one",
+      "After every flight, stop the coin bar to win up to double coins (green is double, yellow is one and a half, red is the usual amount, so you never get fewer coins)",
+      "Prices went up a bit to match the extra coins",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-10-17",
     title: "More to do in every flight",

@@ -77,12 +77,12 @@ export const CANYON_SPEC: LevelSpec = {
     },
   ],
   plane: makeCatalog({
-    launcher: { basePrice: 1350, from: 36, to: 55 },
-    wings: { basePrice: 1125, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 85, from: 0, to: 40 },
-    fuel: { basePrice: 220, from: 10, to: 70 },
-    body: { basePrice: 1030, from: 0.014, to: 0.008 },
-    multiplier: { basePrice: 1645, from: 1, to: 2.5 },
+    launcher: { basePrice: 2025, from: 36, to: 55 },
+    wings: { basePrice: 1690, from: 0.03, to: 0.04, curve: 0.65 },
+    engine: { basePrice: 130, from: 0, to: 40 },
+    fuel: { basePrice: 330, from: 10, to: 70 },
+    body: { basePrice: 1545, from: 0.014, to: 0.008 },
+    multiplier: { basePrice: 2470, from: 1, to: 2.5 },
     parts: {
       launcher: [
         "Steel slingshot",

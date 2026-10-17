@@ -93,12 +93,12 @@ export const MEADOW_SPEC: LevelSpec = {
     },
   ],
   plane: makeCatalog({
-    launcher: { basePrice: 240, from: 26, to: 34 },
-    wings: { basePrice: 200, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 120, from: 0, to: 22 },
-    fuel: { basePrice: 140, from: 5.6, to: 40 },
-    body: { basePrice: 180, from: 0.014, to: 0.006 },
-    multiplier: { basePrice: 300, from: 1, to: 2 },
+    launcher: { basePrice: 360, from: 26, to: 34 },
+    wings: { basePrice: 300, from: 0.03, to: 0.04, curve: 0.65 },
+    engine: { basePrice: 180, from: 0, to: 22 },
+    fuel: { basePrice: 210, from: 5.6, to: 40 },
+    body: { basePrice: 270, from: 0.014, to: 0.006 },
+    multiplier: { basePrice: 450, from: 1, to: 2 },
     parts: {
       launcher: [
         "Twig slingshot",
