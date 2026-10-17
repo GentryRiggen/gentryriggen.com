@@ -10,6 +10,7 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import useFlightSnapshot from "../hooks/useFlightSnapshot";
 import { formatCoins, percentOf } from "./format";
 import FlightToasts from "./FlightToasts";
+import BoostEffect from "./BoostEffect";
 import Speedometer from "./Speedometer";
 
 /**
@@ -31,12 +32,15 @@ export default function FlightHud() {
   const shields = snapshot?.shields ?? 0;
   const isFinished = snapshot?.finished ?? false;
   const grabbed = snapshot?.coins ?? 0;
+  const isBoosting =
+    stats.thrust > 0 && (snapshot?.fuel ?? 0) > 0 && (snapshot?.boost ?? false);
 
   return (
     <div
       aria-live="off"
       className="pointer-events-none absolute inset-0 z-10 select-none"
     >
+      <BoostEffect isActive={isBoosting} />
       <div className="absolute inset-x-3 top-3 flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div

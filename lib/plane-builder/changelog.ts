@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.5.1",
+    date: "2026-10-17",
+    title: "Feel the boost",
+    highlights: [
+      "Boosting now shows speed lines and a warm glow, and the Boost button lights up when you hold Shift or Space",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-10-17",
     title: "Seven new worlds",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 
 export interface FlightSnapshot {
@@ -10,6 +11,8 @@ export interface FlightSnapshot {
   shields: number;
   coins: number;
   finished: boolean;
+  /** Boost held (Shift, Space or the button), whether or not it has fuel. */
+  boost: boolean;
 }
 
 let cached: FlightSnapshot | null = null;
@@ -24,6 +27,7 @@ function read(): FlightSnapshot | null {
     shields: s.shields,
     coins: s.coins,
     finished: s.finished,
+    boost: flightInput.boost,
   };
 }
 

@@ -152,6 +152,25 @@ button:focus-visible {
   }
 }
 
+/* Plane builder: speed lines streak outward while boosting */
+@keyframes pbSpeedLine {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(22vmin) scaleX(0.3);
+  }
+  30% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(72vmin) scaleX(1);
+  }
+}
+
+.pb-speed-line {
+  animation: pbSpeedLine 0.5s linear infinite;
+}
+
 /* Plane builder: the after-flight reward lines pop in */
 @keyframes pbPop {
   0% {

@@ -104,7 +104,8 @@ export default function Steering() {
         type="button"
         aria-label="Boost"
         disabled={!canBoost}
-        aria-pressed={isBoosting}
+        // Lit for keyboard boost too, so Shift or Space shows on screen.
+        aria-pressed={isBoosting || (canBoost && (snapshot?.boost ?? false))}
         onPointerDown={(event) => {
           event.stopPropagation();
           event.currentTarget.setPointerCapture(event.pointerId);

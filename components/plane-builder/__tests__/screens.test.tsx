@@ -4,6 +4,7 @@ import FlightRewardModal from "../ui/FlightRewardModal";
 import Hangar from "../ui/Hangar";
 import LevelSelect from "../ui/LevelSelect";
 import FlightHud from "../ui/FlightHud";
+import Steering from "../ui/Steering";
 import UpgradeTrack from "../ui/UpgradeTrack";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
 import { LEVELS } from "@/lib/plane-builder/levels";
@@ -14,6 +15,7 @@ import {
   tierPrice,
 } from "@/lib/plane-builder/plane/catalog";
 import { planeStats } from "@/lib/plane-builder/plane/stats";
+import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 import {
   clearFlightToasts,
@@ -541,6 +543,54 @@ describe("FlightHud", () => {
     s.coins = coins;
     flightLive.set(s);
   };
+
+  describe("boost", () => {
+    const withEngine = () => {
+      const p = newProgress();
+      p.levels.meadow.tiers.engine = 2;
+      store.getState().hydrate(p);
+      store.setState({ screen: "flight", levelId: "meadow" });
+    };
+    const flyWithFuel = (fuel: number) => {
+      fly(30, 0);
+      flightLive.get()!.fuel = fuel;
+    };
+    afterEach(() => {
+      flightInput.boost = false;
+    });
+
+    it("streaks speed lines while boost burns fuel", () => {
+      withEngine();
+      flyWithFuel(5);
+      flightInput.boost = true;
+      render(<FlightHud />);
+      expect(screen.getByTestId("boost-effect")).toBeInTheDocument();
+    });
+
+    it("shows nothing when boost isn't held or the tank is empty", () => {
+      withEngine();
+      flyWithFuel(5);
+      const { unmount } = render(<FlightHud />);
+      expect(screen.queryByTestId("boost-effect")).not.toBeInTheDocument();
+      unmount();
+
+      flyWithFuel(0);
+      flightInput.boost = true;
+      render(<FlightHud />);
+      expect(screen.queryByTestId("boost-effect")).not.toBeInTheDocument();
+    });
+
+    it("lights the Boost button for a keyboard boost", () => {
+      withEngine();
+      flyWithFuel(5);
+      flightInput.boost = true;
+      render(<Steering />);
+      expect(screen.getByRole("button", { name: "Boost" })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+    });
+  });
 
   it("counts the wallet plus the coins grabbed this flight", () => {
     const p = newProgress();
