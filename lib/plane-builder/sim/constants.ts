@@ -36,6 +36,13 @@ export const BOOST_BURN = 3;
 export const PLANE_RADIUS = 1;
 export const COIN_RADIUS = 2.5;
 export const RING_COINS = 10;
+/** Speed a ring adds, m/s. */
+export const RING_BOOST = 8;
+export const FUEL_CAN_RADIUS = 3;
+/** Share of the tank a fuel can refills. */
+export const FUEL_CAN_SHARE = 0.25;
+/** Shares of the finish distance that are milestone flags. */
+export const MILESTONES = [0.25, 0.5, 0.75] as const;
 /** Soft hits multiply speed by this. */
 export const SOFT_SLOW = 0.85;
 /** Shield hits multiply speed by this. */

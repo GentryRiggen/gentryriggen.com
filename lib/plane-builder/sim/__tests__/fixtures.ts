@@ -16,6 +16,7 @@ export function flatLevel(overrides: Partial<LevelDef> = {}): LevelDef {
     obstacles: [],
     coins: [],
     rings: [],
+    fuelCans: [],
     winds: [],
     plane: makeCatalog({
       launcher: { basePrice: 1, from: 1, to: 1 },

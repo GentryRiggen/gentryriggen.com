@@ -68,6 +68,8 @@ export interface LevelDef {
   obstacles: Obstacle[];
   coins: Vec3[];
   rings: Ring[];
+  /** Floating fuel cans; only planes with an engine collect them. */
+  fuelCans: Vec3[];
   winds: WindZone[];
   plane: PlaneCatalog;
   palette: LevelPalette;

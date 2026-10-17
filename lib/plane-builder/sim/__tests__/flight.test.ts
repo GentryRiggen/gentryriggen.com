@@ -1,6 +1,12 @@
 // lib/plane-builder/sim/__tests__/flight.test.ts
 import { RUNOUT } from "../../levels/generate";
-import { CEILING, CORRIDOR_TURN } from "../constants";
+import {
+  CEILING,
+  CORRIDOR_TURN,
+  FUEL_CAN_SHARE,
+  MAX_SPEED,
+  RING_BOOST,
+} from "../constants";
 import {
   launch,
   runFlight,
@@ -371,5 +377,87 @@ describe("flight sim", () => {
       }
       expect(s.endReason).toBe("timeout");
     });
+  });
+});
+
+describe("pickups and milestones", () => {
+  it("speeds up through a ring, capped at MAX_SPEED", () => {
+    const ring = { center: { x: 20, y: 3, z: 0 }, radius: 6 };
+    const level = flatLevel({ rings: [ring] });
+    const s = launch(level, GLIDER, { pitch: 0, yaw: 0, power: 1 });
+    s.x = 19.9;
+    s.y = 3;
+    s.pitch = 0;
+    const before = s.speed;
+    const events = step(s, level, GLIDER, HANDS_OFF);
+    expect(events.some((e) => e.type === "ring")).toBe(true);
+    expect(s.speed).toBeGreaterThan(before + RING_BOOST - 1);
+
+    const t = launch(level, GLIDER, { pitch: 0, yaw: 0, power: 1 });
+    t.x = 19.9;
+    t.y = 3;
+    t.pitch = 0;
+    t.speed = MAX_SPEED;
+    step(t, level, GLIDER, HANDS_OFF);
+    expect(t.speed).toBeLessThanOrEqual(MAX_SPEED);
+  });
+
+  it("adds a quarter tank from a fuel can, capped at full", () => {
+    const level = flatLevel({ fuelCans: [{ x: 20, y: 3, z: 0 }] });
+    const s = launch(level, POWERED, AIM);
+    s.x = 19.5;
+    s.y = 3;
+    s.z = 0;
+    s.fuel = 2;
+    const events = step(s, level, POWERED, HANDS_OFF);
+    expect(events).toContainEqual({ type: "fuel", index: 0 });
+    expect(s.fuel).toBeCloseTo(2 - 1 / 60 + POWERED.fuel * FUEL_CAN_SHARE, 2);
+
+    const full = launch(level, POWERED, AIM);
+    full.x = 19.5;
+    full.y = 3;
+    full.z = 0;
+    step(full, level, POWERED, HANDS_OFF);
+    expect(full.fuel).toBeLessThanOrEqual(POWERED.fuel);
+  });
+
+  it("ignores fuel cans without an engine", () => {
+    const level = flatLevel({ fuelCans: [{ x: 20, y: 3, z: 0 }] });
+    const s = launch(level, GLIDER, AIM);
+    s.x = 19.5;
+    s.y = 3;
+    s.z = 0;
+    const events = step(s, level, GLIDER, HANDS_OFF);
+    expect(events.some((e) => e.type === "fuel")).toBe(false);
+    expect(s.canTaken[0]).toBe(0);
+    expect(s.fuel).toBe(0);
+  });
+
+  it("fires each milestone once per flight", () => {
+    const level = flatLevel({ finishDistance: 400 });
+    const { events } = runFlight(
+      level,
+      { ...POWERED, fuel: 60 },
+      AIM,
+      handsOff
+    );
+    const shares = events
+      .filter((e) => e.type === "milestone")
+      .map((e) => (e as { share: number }).share);
+    expect(shares).toEqual([0.25, 0.5, 0.75]);
+  });
+
+  it("does not repeat a milestone after being pushed back", () => {
+    const level = flatLevel({ finishDistance: 400 });
+    const s = launch(level, POWERED, AIM);
+    s.x = 99.9;
+    s.maxX = 99.9;
+    s.y = 20;
+    s.pitch = 0;
+    const first = step(s, level, POWERED, HANDS_OFF);
+    expect(first.filter((e) => e.type === "milestone")).toHaveLength(1);
+    s.x = 90; // pushed back (shield bounce)
+    for (let i = 0; i < 60; i += 1) step(s, level, POWERED, HANDS_OFF);
+    expect(s.milestonesHit).toBe(1);
   });
 });

@@ -25,7 +25,7 @@ export interface FeatureSpec {
 
 export interface LevelSpec extends Omit<
   LevelDef,
-  "obstacles" | "coins" | "rings"
+  "obstacles" | "coins" | "rings" | "fuelCans"
 > {
   seed: number;
   features: FeatureSpec[];
@@ -93,5 +93,5 @@ export function buildLevel(spec: LevelSpec): LevelDef {
   void features;
   void coinEvery;
   void ringEvery;
-  return { ...def, obstacles, coins, rings };
+  return { ...def, obstacles, coins, rings, fuelCans: [] };
 }

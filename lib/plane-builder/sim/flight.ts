@@ -13,6 +13,8 @@ import {
   COIN_RADIUS,
   CORRIDOR_PUSH,
   CORRIDOR_TURN,
+  FUEL_CAN_RADIUS,
+  FUEL_CAN_SHARE,
   G,
   LAND_ANGLE,
   LAND_SPEED,
@@ -26,10 +28,12 @@ import {
   MAX_HEADING,
   MAX_PITCH,
   MAX_SPEED,
+  MILESTONES,
   MIN_PITCH,
   MIN_SPEED,
   PITCH_GAIN,
   PLANE_RADIUS,
+  RING_BOOST,
   RING_COINS,
   SHIELD_GRACE,
   SHIELD_SLOW,
@@ -63,6 +67,8 @@ export type EndReason = "landed" | "crash" | "stalled" | "runout" | "timeout";
 export type FlightEvent =
   | { type: "coin"; index: number }
   | { type: "ring"; index: number }
+  | { type: "fuel"; index: number }
+  | { type: "milestone"; share: number }
   | { type: "bump"; kind: ObstacleKind }
   | { type: "shield" }
   | { type: "crash" }
@@ -85,6 +91,8 @@ export interface FlightState {
   coins: number;
   rings: number;
   maxX: number;
+  /** Milestones crossed this flight, 0..MILESTONES.length. */
+  milestonesHit: number;
   launchPitch: number;
   phase: "flying" | "sliding" | "done";
   finished: boolean;
@@ -94,6 +102,7 @@ export interface FlightState {
   progressTimer: number;
   coinTaken: Uint8Array;
   ringTaken: Uint8Array;
+  canTaken: Uint8Array;
   softHit: Uint8Array;
 }
 
@@ -133,6 +142,7 @@ export function launch(
     coins: 0,
     rings: 0,
     maxX: 0,
+    milestonesHit: 0,
     launchPitch: pitch,
     phase: "flying",
     finished: false,
@@ -142,6 +152,7 @@ export function launch(
     progressTimer: 0,
     coinTaken: new Uint8Array(level.coins.length),
     ringTaken: new Uint8Array(level.rings.length),
+    canTaken: new Uint8Array(level.fuelCans.length),
     softHit: new Uint8Array(level.obstacles.length),
   };
 }
@@ -210,6 +221,13 @@ function move(s: FlightState, dt: number) {
 
 function trackProgress(s: FlightState, level: LevelDef, events: FlightEvent[]) {
   if (s.x > s.maxX) s.maxX = s.x;
+  while (
+    s.milestonesHit < MILESTONES.length &&
+    s.maxX >= level.finishDistance * MILESTONES[s.milestonesHit]
+  ) {
+    events.push({ type: "milestone", share: MILESTONES[s.milestonesHit] });
+    s.milestonesHit += 1;
+  }
   if (!s.finished && s.maxX >= level.finishDistance) {
     s.finished = true;
     events.push({ type: "finish" });
@@ -349,9 +367,24 @@ export function step(
       s.ringTaken[i] = 1;
       s.rings += 1;
       s.coins += RING_COINS;
+      s.speed = Math.min(MAX_SPEED, s.speed + RING_BOOST);
       events.push({ type: "ring", index: i });
     }
   });
+  if (stats.thrust > 0) {
+    level.fuelCans.forEach((c, i) => {
+      if (s.canTaken[i]) return;
+      const dx = c.x - s.x;
+      if (Math.abs(dx) > FUEL_CAN_RADIUS) return;
+      const dy = c.y - s.y;
+      const dz = c.z - s.z;
+      if (dx * dx + dy * dy + dz * dz < FUEL_CAN_RADIUS * FUEL_CAN_RADIUS) {
+        s.canTaken[i] = 1;
+        s.fuel = Math.min(stats.fuel, s.fuel + stats.fuel * FUEL_CAN_SHARE);
+        events.push({ type: "fuel", index: i });
+      }
+    });
+  }
 
   // Obstacles.
   const ground = terrainHeight(level.terrain, s.x, s.z);
