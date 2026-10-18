@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.6.0",
+    date: "2026-10-17",
+    title: "Prestige and the Sky Map",
+    highlights: [
+      "Beat all 10 worlds to Prestige: start every world again and move one square on the Sky Map",
+      "Squares on the Sky Map hold bonuses like Golden Wind, Rocket Fuel, Lucky Clover and rare Stars. They stack forever, so every run gets faster",
+      "The Sky Map goes on forever, and the best bonuses are far from the start",
+      "Worldwide leaderboards: highest prestige, fastest full run, and fastest finish in each world",
+      "Everyone on the leaderboards gets a fun made-up name like Speedy Falcon 42 (roll a new one any time). No real names",
+    ],
+  },
+  {
     version: "1.5.1",
     date: "2026-10-17",
     title: "Feel the boost",
