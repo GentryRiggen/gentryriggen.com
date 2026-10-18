@@ -98,15 +98,13 @@ export default function LevelSelect() {
           </section>
         ) : null}
 
-        {prestigeLevel >= 1 ? (
-          <button
-            type="button"
-            onClick={openMap}
-            className={secondaryButtonClass}
-          >
-            🗺️ Sky Map (Prestige {prestigeLevel})
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={openMap}
+          className={secondaryButtonClass}
+        >
+          🗺️ Sky Map{prestigeLevel >= 1 ? ` (Prestige ${prestigeLevel})` : ""}
+        </button>
 
         <ul className="flex flex-col gap-4">
           {LEVEL_ORDER.map((id, index) => {

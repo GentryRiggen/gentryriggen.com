@@ -248,3 +248,16 @@ test.describe("Plane Builder", () => {
     }
   );
 });
+
+test("opens the Sky Map from the worlds screen and goes back", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "🗺️ Sky Map" }).click();
+  await expect(page.getByRole("heading", { name: "Sky Map" })).toBeVisible();
+  await expect(page.getByText("How the Sky Map works")).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Plane Builder" })
+  ).toBeVisible();
+});

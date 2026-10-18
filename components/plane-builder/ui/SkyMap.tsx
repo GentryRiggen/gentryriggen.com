@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
-import { BONUS_INFO, squareAt } from "@/lib/plane-builder/prestige";
+import {
+  BONUS_INFO,
+  BONUS_KINDS,
+  squareAt,
+  type BonusKind,
+} from "@/lib/plane-builder/prestige";
 import BonusSummary from "./BonusSummary";
 import {
   cardClass,
@@ -22,9 +27,101 @@ const DIRECTIONS = [
   { name: "right", dx: 1, dy: 0, key: "ArrowRight" },
 ] as const;
 
-function squareLabel(x: number, y: number): string {
-  const kind = squareAt(x, y);
-  return kind ? BONUS_INFO[kind].name : "Empty sky";
+/**
+ * What a square is called to assistive tech. Unvisited squares only say
+ * whether something is there, never which bonus it is.
+ */
+function squareLabel(x: number, y: number, isVisited: boolean): string {
+  if (isVisited) return "visited square";
+  return squareAt(x, y) ? "mystery bonus" : "empty sky";
+}
+
+const CELL_CLASS =
+  "flex aspect-square items-center justify-center rounded-lg text-xl sm:text-2xl";
+
+type SquareState = "mystery" | "empty" | "visited";
+
+function squareState(kind: BonusKind | null, isVisited: boolean): SquareState {
+  if (isVisited) return "visited";
+  return kind ? "mystery" : "empty";
+}
+
+const STATE_CLASS: Record<SquareState, string> = {
+  mystery:
+    "pb-mystery bg-gradient-to-br from-violet-500 to-fuchsia-500 dark:from-violet-600 dark:to-fuchsia-600",
+  empty: "bg-slate-100 dark:bg-slate-800",
+  visited: "bg-emerald-100 dark:bg-emerald-900/50",
+};
+
+interface SquareFaceProps {
+  state: SquareState;
+  kind: BonusKind | null;
+}
+
+/** The picture inside a square: a gift, a trail mark, or the bonus you found. */
+function SquareFace({ state, kind }: SquareFaceProps) {
+  if (state === "mystery") {
+    return (
+      <span aria-hidden="true" className="pb-mystery-icon">
+        🎁
+      </span>
+    );
+  }
+  if (state === "visited") {
+    return (
+      <span
+        aria-hidden="true"
+        className="text-emerald-700 opacity-70 dark:text-emerald-200"
+      >
+        {kind ? BONUS_INFO[kind].emoji : "✓"}
+      </span>
+    );
+  }
+  return null;
+}
+
+interface HowItWorksProps {
+  isOpen: boolean;
+}
+
+function HowItWorks({ isOpen }: HowItWorksProps) {
+  return (
+    <details
+      open={isOpen}
+      className="mt-3 rounded-xl bg-sky-50 p-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+    >
+      <summary
+        className={`min-h-6 cursor-pointer rounded font-bold text-sky-900 dark:text-sky-100 ${focusRingClass}`}
+      >
+        How the Sky Map works
+      </summary>
+      <ul className="mt-2 list-disc space-y-1 pl-5">
+        <li>Beat all 10 worlds to Prestige.</li>
+        <li>Each Prestige lets you move one square on the map.</li>
+        <li>
+          A mystery square 🎁 holds a surprise bonus. Empty sky holds nothing.
+        </li>
+        <li>Squares you have visited are green. Bonuses stack forever.</li>
+        <li>
+          Rare prizes, like Stars, get more common farther from the start.
+        </li>
+      </ul>
+      <h2 className="mt-3 font-bold text-sky-900 dark:text-sky-100">
+        Bonuses you can win
+      </h2>
+      <ul className="mt-1 space-y-1">
+        {BONUS_KINDS.map((kind) => (
+          <li key={kind} data-legend={kind} className="flex gap-2">
+            <span aria-hidden="true">{BONUS_INFO[kind].emoji}</span>
+            <span>
+              <span className="font-semibold">{BONUS_INFO[kind].name}</span>:{" "}
+              {BONUS_INFO[kind].effect}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
 }
 
 export default function SkyMap() {
@@ -86,8 +183,8 @@ export default function SkyMap() {
           </header>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             {movePending
-              ? "Move one square to win a bonus."
-              : "Your bonuses stack forever."}
+              ? "Move one square to win a surprise bonus."
+              : "Browsing the map. Your bonuses stack forever."}
           </p>
           <div
             role="group"
@@ -102,38 +199,31 @@ export default function SkyMap() {
                 const dir = DIRECTIONS.find((d) => d.dx === ox && d.dy === oy);
                 const kind = squareAt(x, y);
                 const isVisited = visitedSet.has(`${x},${y}`);
-                const cellClass =
-                  "flex aspect-square items-center justify-center rounded-lg text-xl sm:text-2xl";
                 if (isPlayer) {
                   return (
                     <div
                       key={`${x},${y}`}
                       role="img"
                       aria-label="You are here"
-                      className={`${cellClass} bg-sky-200 ring-2 ring-sky-600 dark:bg-sky-800 dark:ring-sky-300`}
+                      className={`${CELL_CLASS} bg-sky-200 ring-2 ring-sky-600 dark:bg-sky-800 dark:ring-sky-300`}
                     >
                       ✈️
                     </div>
                   );
                 }
-                const content = isVisited ? (
-                  <span
-                    aria-hidden="true"
-                    className="h-1.5 w-1.5 rounded-full bg-slate-400/60 dark:bg-slate-500/60"
-                  />
-                ) : kind ? (
-                  <span aria-hidden="true">{BONUS_INFO[kind].emoji}</span>
-                ) : null;
+                const state = squareState(kind, isVisited);
+                const face = <SquareFace state={state} kind={kind} />;
                 if (dir && movePending) {
                   return (
                     <button
                       key={`${x},${y}`}
                       type="button"
                       onClick={() => handleMove(dir.dx, dir.dy)}
-                      aria-label={`Move ${dir.name}: ${squareLabel(x, y)}`}
-                      className={`${cellClass} touch-manipulation bg-amber-100 ring-2 ring-amber-500 hover:bg-amber-200 dark:bg-amber-900/50 dark:ring-amber-400 dark:hover:bg-amber-800/60 ${focusRingClass}`}
+                      aria-label={`Move ${dir.name}: ${squareLabel(x, y, isVisited)}`}
+                      data-square={state}
+                      className={`${CELL_CLASS} touch-manipulation ring-2 ring-offset-1 ring-offset-white hover:brightness-110 dark:ring-offset-slate-900 ring-amber-500 dark:ring-amber-400 ${STATE_CLASS[state]} ${focusRingClass}`}
                     >
-                      {content}
+                      {face}
                     </button>
                   );
                 }
@@ -141,9 +231,10 @@ export default function SkyMap() {
                   <div
                     key={`${x},${y}`}
                     aria-hidden="true"
-                    className={`${cellClass} bg-slate-100 dark:bg-slate-800`}
+                    data-square={state}
+                    className={`${CELL_CLASS} ${STATE_CLASS[state]} ${state === "visited" ? "ring-1 ring-emerald-400 dark:ring-emerald-500" : ""}`}
                   >
-                    {content}
+                    {face}
                   </div>
                 );
               })
@@ -162,7 +253,8 @@ export default function SkyMap() {
               </span>
             ) : null}
           </p>
-          <div className="mt-2">
+          <HowItWorks isOpen={level === 0} />
+          <div className="mt-3">
             <BonusSummary bonuses={bonuses} />
           </div>
           <div className="mt-4 flex gap-3">

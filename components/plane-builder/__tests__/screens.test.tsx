@@ -727,7 +727,9 @@ describe("Sky Map and prestige screens", () => {
       store.setState({ screen: "map" });
       render(<SkyMap />);
       expect(
-        within(screen.getByRole("group")).queryAllByRole("button")
+        within(
+          screen.getByRole("group", { name: "Sky Map squares" })
+        ).queryAllByRole("button")
       ).toHaveLength(0);
       expect(screen.getByRole("button", { name: "Start run" })).toBeEnabled();
       await userEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -808,6 +810,12 @@ describe("Sky Map and prestige screens", () => {
         screen.queryByRole("button", { name: "Prestige ⭐" })
       ).not.toBeInTheDocument();
       expect(screen.queryByText(/Sky Map \(Prestige/)).not.toBeInTheDocument();
+    });
+
+    it("opens the Sky Map before the first prestige", async () => {
+      render(<LevelSelect />);
+      await userEvent.click(screen.getByRole("button", { name: "🗺️ Sky Map" }));
+      expect(store.getState().screen).toBe("map");
     });
 
     it("confirms, prestiges and lands on the map", async () => {
