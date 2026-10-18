@@ -11,6 +11,7 @@ import { PLANE_BUILDER_VERSION } from "@/lib/plane-builder/version";
 import ConfirmPrestige from "./ConfirmPrestige";
 import ConfirmRestart from "./ConfirmRestart";
 import { percentOf } from "./format";
+import LeaderboardButton from "./LeaderboardButton";
 import SoundToggle from "./SoundToggle";
 import {
   cardClass,
@@ -62,6 +63,9 @@ export default function LevelSelect() {
           </div>
           <SoundToggle />
         </header>
+
+        {/* Renders nothing until leaderboards are reachable. */}
+        <LeaderboardButton />
 
         {celebrate && celebrate.next === null ? (
           <p
