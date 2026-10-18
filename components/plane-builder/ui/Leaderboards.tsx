@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchBoard } from "@/lib/leaderboard/client";
 import { randomNickname } from "@/lib/leaderboard/nickname";
+import { SCORE_PRESTIGE_UNIT } from "@/lib/leaderboard/types";
 import type { BoardKind, LeaderboardRow } from "@/lib/leaderboard/types";
 import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
@@ -14,6 +15,7 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from "./styles";
+import { medalFor } from "./standing";
 
 type Tab = "prestige" | "fastestRun" | "world";
 
@@ -23,13 +25,16 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "world", label: "Per world" },
 ];
 
-const SCORE_PRESTIGE_UNIT = 1e9;
 const FOCUSABLE = "button:not([disabled]), select";
 
 interface LeaderboardsProps {
   /** The signed-in anonymous uid, used to highlight your own row. */
   uid: string;
   onClose: () => void;
+  /** Which tab to open on; defaults to prestige. */
+  initialTab?: Tab;
+  /** Which world to open the per-world tab on; defaults to the first. */
+  initialWorld?: LevelId;
 }
 
 /** Row values are displayed as text only; nicknames come from the database. */
@@ -50,11 +55,16 @@ interface Loaded {
   rows: LeaderboardRow[] | null;
 }
 
-export default function Leaderboards({ uid, onClose }: LeaderboardsProps) {
+export default function Leaderboards({
+  uid,
+  onClose,
+  initialTab = "prestige",
+  initialWorld = LEVEL_ORDER[0],
+}: LeaderboardsProps) {
   const nickname = usePlaneBuilderStore((s) => s.progress.nickname);
   const setNickname = usePlaneBuilderStore((s) => s.setNickname);
-  const [tab, setTab] = useState<Tab>("prestige");
-  const [world, setWorld] = useState<LevelId>(LEVEL_ORDER[0]);
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [world, setWorld] = useState<LevelId>(initialWorld);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -124,17 +134,26 @@ export default function Leaderboards({ uid, onClose }: LeaderboardsProps) {
     };
   }, []);
 
+  // Data for a different tab is stale: treat it as still loading.
+  const current = loaded !== null && loaded.key === key ? loaded : null;
+
+  // Bring your own row into view once the board is there.
+  const hasRows = current !== null && current.rows !== null;
+  useEffect(() => {
+    if (!hasRows) return;
+    dialogRef.current
+      ?.querySelector("[data-own='true']")
+      ?.scrollIntoView?.({ block: "center" });
+  }, [hasRows, key]);
+
   const handleReroll = () => {
     setNickname(randomNickname());
     requestLeaderboardSubmit();
   };
 
-  // Data for a different tab is stale: treat it as still loading.
-  const current = loaded !== null && loaded.key === key ? loaded : null;
-
   return (
     <div
-      className="pointer-events-auto fixed inset-0 z-30 flex items-stretch justify-center bg-slate-900/50 sm:items-center sm:p-4"
+      className="pointer-events-auto fixed inset-0 z-40 flex items-stretch justify-center bg-slate-900/50 sm:items-center sm:p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -234,7 +253,16 @@ export default function Leaderboards({ uid, onClose }: LeaderboardsProps) {
                       : "odd:bg-slate-50 dark:odd:bg-slate-800/60"
                   }`}
                 >
-                  <span className="w-8 shrink-0 tabular-nums">{index + 1}</span>
+                  <span className="w-8 shrink-0 tabular-nums">
+                    {medalFor(index + 1) ? (
+                      <>
+                        <span aria-hidden="true">{medalFor(index + 1)}</span>
+                        <span className="sr-only">{index + 1}</span>
+                      </>
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
                   <span className="min-w-0 flex-1 truncate">
                     {row.nickname}
                   </span>

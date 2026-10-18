@@ -1,7 +1,7 @@
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 
 const MAX_SCORE_DISTANCE = 999_999_999;
-const SCORE_PRESTIGE_UNIT = 1e9;
+export const SCORE_PRESTIGE_UNIT = 1e9;
 
 export interface LeaderboardEntry {
   nickname: string;

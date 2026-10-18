@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
+import { LEADERBOARDS_ENABLED } from "@/lib/plane-builder/state/leaderboardSync";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import {
@@ -11,10 +12,13 @@ import {
 import type { GaugeZone } from "@/lib/plane-builder/minigame/gauge";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import type { FlightSummary } from "@/lib/plane-builder/state/store";
+import useLeaderboardStanding from "../hooks/useLeaderboardStanding";
 import { planeSynth } from "../audio/planeSynth";
 import { endLineFor } from "./endLines";
 import FinishCard from "./FinishCard";
+import FinishStanding from "./FinishStanding";
 import { formatCoins, percentOf } from "./format";
+import Leaderboards from "./Leaderboards";
 import { cardClass, coinButtonClass, primaryButtonClass } from "./styles";
 import TimingGauge from "./TimingGauge";
 
@@ -42,16 +46,20 @@ function isFocusedControl(target: EventTarget | null): boolean {
 interface FlightRewardModalProps {
   levelId: LevelId;
   flight: FlightSummary;
+  /** Off in tests and e2e by default; see LEADERBOARDS_ENABLED. */
+  leaderboardsEnabled?: boolean;
 }
 
 /** After a flight: stop the coin gauge, watch the coins add up, continue. */
 export default function FlightRewardModal({
   levelId,
   flight,
+  leaderboardsEnabled = LEADERBOARDS_ENABLED,
 }: FlightRewardModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
+  const seeBoardRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const gaugePosition = useRef(0);
   const isReducedMotion = usePrefersReducedMotion();
@@ -61,8 +69,13 @@ export default function FlightRewardModal({
     greenHalfFor(s.progress.prestige.bonuses.clover)
   );
   const [elapsed, setElapsed] = useState(0);
+  const [isBoardOpen, setIsBoardOpen] = useState(false);
 
   const { bonus, result, payout } = flight;
+  const { uid, standing } = useLeaderboardStanding(
+    leaderboardsEnabled && result.finished,
+    result.finished ? levelId : null
+  );
   const hasBonus = bonus !== null;
   const time = isReducedMotion ? REVEAL_END : elapsed;
   const isDone = hasBonus && time >= REVEAL_END;
@@ -99,13 +112,15 @@ export default function FlightRewardModal({
     claimCoinBonus(zone);
   }
 
-  const latest = useRef({ handleStop, dismiss, hasBonus, isDone });
+  const latest = useRef({ handleStop, dismiss, hasBonus, isDone, isBoardOpen });
   useEffect(() => {
-    latest.current = { handleStop, dismiss, hasBonus, isDone };
+    latest.current = { handleStop, dismiss, hasBonus, isDone, isBoardOpen };
   });
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      // The leaderboards sit on top and handle their own keys.
+      if (latest.current.isBoardOpen) return;
       if (event.key === "Tab") {
         const items = Array.from(
           dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []
@@ -151,88 +166,113 @@ export default function FlightRewardModal({
   const bonusLabel = bonus ? BONUS_LABELS[bonus.zone] : "";
 
   return (
-    <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-4">
+    <>
       <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="flight-reward-title"
-        className={`flex max-h-full w-full max-w-sm flex-col gap-2 overflow-y-auto p-4 text-center ${cardClass}`}
+        inert={isBoardOpen}
+        className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-4"
       >
-        {result.finished ? <FinishCard unlocked={flight.unlocked} /> : null}
-        <h2
-          ref={headingRef}
-          id="flight-reward-title"
-          tabIndex={-1}
-          className="text-xl font-bold focus:outline-none"
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="flight-reward-title"
+          className={`flex max-h-full w-full max-w-sm flex-col gap-2 overflow-y-auto p-4 text-center ${cardClass}`}
         >
-          {endLineFor(result.endReason)}
-          {flight.isNewBest ? (
-            <span className="ml-2 font-extrabold text-sky-700 dark:text-sky-300">
-              New best!
-            </span>
-          ) : null}
-        </h2>
-        <p className="text-2xl font-extrabold">
-          {Math.round(result.distance)} m{" "}
-          <span className="text-base font-semibold text-slate-600 dark:text-slate-300">
-            ({percent}% of the way)
-          </span>
-        </p>
-        <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
-          <span aria-hidden="true">🪙 </span>
-          Coins earned +{formatCoins(payout.total)}
-        </p>
-        <TimingGauge
-          isRunning={!hasBonus}
-          positionRef={gaugePosition}
-          ariaLabel="Coin bonus timing"
-          greenHalf={greenHalf}
-        />
-        {bonus && time >= MULTIPLIER_AT ? (
-          <>
-            <p
-              data-testid="reward-multiplier"
-              className="pb-pop text-xl font-extrabold text-emerald-700 dark:text-emerald-300"
-            >
-              {bonusLabel} ×{bonus.multiplier}
-            </p>
-            <p
-              data-testid="reward-total"
-              aria-hidden="true"
-              className="pb-pop text-4xl font-extrabold text-amber-700 dark:text-amber-300"
-            >
-              Total +{formatCoins(shownTotal)}
-            </p>
-          </>
-        ) : null}
-        <p aria-live="polite" className="sr-only">
-          {isDone && bonus
-            ? `${bonusLabel} Coins times ${bonus.multiplier}. Total ${formatCoins(payout.total + extra)} coins.`
-            : null}
-        </p>
-        {bonus ? (
-          isDone ? (
-            <button
-              ref={continueRef}
-              type="button"
-              onClick={dismiss}
-              className={`${primaryButtonClass} pb-pop min-h-14 text-2xl font-extrabold`}
-            >
-              Continue
-            </button>
-          ) : null
-        ) : (
-          <button
-            ref={stopRef}
-            type="button"
-            onClick={handleStop}
-            className={`${coinButtonClass} min-h-14 text-2xl font-extrabold`}
+          {result.finished ? <FinishCard unlocked={flight.unlocked} /> : null}
+          <h2
+            ref={headingRef}
+            id="flight-reward-title"
+            tabIndex={-1}
+            className="text-xl font-bold focus:outline-none"
           >
-            Stop!
-          </button>
-        )}
+            {endLineFor(result.endReason)}
+            {flight.isNewBest ? (
+              <span className="ml-2 font-extrabold text-sky-700 dark:text-sky-300">
+                New best!
+              </span>
+            ) : null}
+          </h2>
+          <p className="text-2xl font-extrabold">
+            {Math.round(result.distance)} m{" "}
+            <span className="text-base font-semibold text-slate-600 dark:text-slate-300">
+              ({percent}% of the way)
+            </span>
+          </p>
+          <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
+            <span aria-hidden="true">🪙 </span>
+            Coins earned +{formatCoins(payout.total)}
+          </p>
+          <TimingGauge
+            isRunning={!hasBonus}
+            positionRef={gaugePosition}
+            ariaLabel="Coin bonus timing"
+            greenHalf={greenHalf}
+          />
+          {bonus && time >= MULTIPLIER_AT ? (
+            <>
+              <p
+                data-testid="reward-multiplier"
+                className="pb-pop text-xl font-extrabold text-emerald-700 dark:text-emerald-300"
+              >
+                {bonusLabel} ×{bonus.multiplier}
+              </p>
+              <p
+                data-testid="reward-total"
+                aria-hidden="true"
+                className="pb-pop text-4xl font-extrabold text-amber-700 dark:text-amber-300"
+              >
+                Total +{formatCoins(shownTotal)}
+              </p>
+            </>
+          ) : null}
+          <p aria-live="polite" className="sr-only">
+            {isDone && bonus
+              ? `${bonusLabel} Coins times ${bonus.multiplier}. Total ${formatCoins(payout.total + extra)} coins.`
+              : null}
+          </p>
+          {bonus ? (
+            isDone ? (
+              <button
+                ref={continueRef}
+                type="button"
+                onClick={dismiss}
+                className={`${primaryButtonClass} pb-pop min-h-14 text-2xl font-extrabold`}
+              >
+                Continue
+              </button>
+            ) : null
+          ) : (
+            <button
+              ref={stopRef}
+              type="button"
+              onClick={handleStop}
+              className={`${coinButtonClass} min-h-14 text-2xl font-extrabold`}
+            >
+              Stop!
+            </button>
+          )}
+          {hasBonus && result.finished && uid !== null && standing ? (
+            <FinishStanding
+              levelId={levelId}
+              standing={standing}
+              buttonRef={seeBoardRef}
+              onOpenBoard={() => setIsBoardOpen(true)}
+            />
+          ) : null}
+        </div>
       </div>
-    </div>
+      {isBoardOpen && uid !== null ? (
+        <Leaderboards
+          uid={uid}
+          initialTab="world"
+          initialWorld={levelId}
+          onClose={() => {
+            setIsBoardOpen(false);
+            // Inert may have blurred the button; put focus back on purpose.
+            requestAnimationFrame(() => seeBoardRef.current?.focus());
+          }}
+        />
+      ) : null}
+    </>
   );
 }

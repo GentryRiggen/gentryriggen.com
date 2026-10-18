@@ -5,7 +5,7 @@ import * as board from "@/lib/leaderboard/client";
 import { isValidNickname } from "@/lib/leaderboard/nickname";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
-import LeaderboardButton from "../LeaderboardButton";
+import LeaderboardCard from "../LeaderboardCard";
 
 jest.mock("@/lib/leaderboard/auth");
 jest.mock("@/lib/leaderboard/client");
@@ -30,22 +30,20 @@ beforeEach(() => {
 });
 
 async function openBoards() {
-  render(<LeaderboardButton enabled />);
-  await userEvent.click(
-    await screen.findByRole("button", { name: /leaderboards/i })
-  );
+  render(<LeaderboardCard enabled />);
+  await userEvent.click(await screen.findByRole("button"));
   return screen.getByRole("dialog");
 }
 
 it("is hidden when there is no token", async () => {
   mockAuth.getIdToken.mockResolvedValue(null);
-  render(<LeaderboardButton enabled />);
+  render(<LeaderboardCard enabled />);
   await waitFor(() => expect(mockAuth.getIdToken).toHaveBeenCalled());
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
 
 it("makes no call when disabled", () => {
-  render(<LeaderboardButton enabled={false} />);
+  render(<LeaderboardCard enabled={false} />);
   expect(mockAuth.getIdToken).not.toHaveBeenCalled();
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
