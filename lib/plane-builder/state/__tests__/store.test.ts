@@ -45,6 +45,7 @@ describe("plane builder store", () => {
       coins: 4,
       rings: 0,
       finished: false,
+      finishTime: null,
       endReason: "landed",
     });
     const s = store.getState();
@@ -67,6 +68,7 @@ describe("plane builder store", () => {
       coins: 0,
       rings: 0,
       finished: false,
+      finishTime: null,
       endReason: "crash",
     });
     const total = store.getState().lastFlight!.payout.total;
@@ -91,6 +93,7 @@ describe("plane builder store", () => {
       coins: 0,
       rings: 0,
       finished: false,
+      finishTime: null,
       endReason: "crash",
     });
     expect(store.getState().lastFlight?.seen).toBe(false);
@@ -110,6 +113,7 @@ describe("plane builder store", () => {
       coins: 0,
       rings: 0,
       finished,
+      finishTime: finished ? 20 : null,
       endReason: finished ? "runout" : "crash",
     });
     store.getState().claimCoinBonus("red");
@@ -167,6 +171,7 @@ describe("plane builder store", () => {
     coins: 4,
     rings: 0,
     finished: false,
+    finishTime: null,
     endReason: "landed",
   } as const;
 

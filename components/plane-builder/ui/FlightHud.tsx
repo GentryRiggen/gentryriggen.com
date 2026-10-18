@@ -6,6 +6,7 @@ import {
   stallSpeed,
   topSpeed,
 } from "@/lib/plane-builder/plane/stats";
+import { applyBonuses } from "@/lib/plane-builder/prestige";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import useFlightSnapshot from "../hooks/useFlightSnapshot";
 import { formatCoins, percentOf } from "./format";
@@ -22,7 +23,8 @@ export default function FlightHud() {
   const levelId = usePlaneBuilderStore((s) => s.levelId);
   const lp = usePlaneBuilderStore((s) => s.progress.levels[s.levelId]);
   const level = LEVELS[levelId];
-  const stats = planeStats(level.plane, lp.tiers);
+  const bonuses = usePlaneBuilderStore((s) => s.progress.prestige.bonuses);
+  const stats = applyBonuses(planeStats(level.plane, lp.tiers), bonuses);
 
   const maxX = snapshot?.maxX ?? 0;
   const percent = percentOf(maxX, level.finishDistance);

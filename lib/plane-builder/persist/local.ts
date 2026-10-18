@@ -1,5 +1,5 @@
 import { newProgress, type Progress } from "../economy/progress";
-import { RESET_BELOW, SAVE_VERSION, parseSave, type SaveV2 } from "./schema";
+import { RESET_BELOW, SAVE_VERSION, parseSave, type SaveV3 } from "./schema";
 
 export const SAVE_KEY = "plane-builder:save";
 
@@ -75,7 +75,7 @@ export function loadProgress(): LoadResult {
 }
 
 export function saveProgress(progress: Progress): boolean {
-  const save: SaveV2 = { version: SAVE_VERSION, progress };
+  const save: SaveV3 = { version: SAVE_VERSION, progress };
   try {
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(save));
     return true;

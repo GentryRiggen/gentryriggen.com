@@ -13,6 +13,17 @@ export const GAUGE_PERIOD = 1.28;
 export const GREEN_HALF = 0.06;
 export const YELLOW_HALF = 0.25;
 
+/** Each Lucky Clover widens the green zone by this share. */
+const CLOVER_PER_COPY = 0.1;
+/** Widest the green zone gets (half-width, as a share of the bar). */
+export const MAX_GREEN_HALF = 0.2;
+
+/** Green half-width with `clovers` Lucky Clovers; never past yellow. */
+export function greenHalf(clovers: number): number {
+  const wide = GREEN_HALF * (1 + CLOVER_PER_COPY * Math.max(0, clovers));
+  return Math.min(MAX_GREEN_HALF, YELLOW_HALF, wide);
+}
+
 /** Launch speed multiplier for where the launch gauge stopped. */
 export const LAUNCH_ZONE_BOOST: Record<GaugeZone, number> = {
   green: 1.25,
@@ -41,9 +52,9 @@ export function gaugePosition(seconds: number, period = GAUGE_PERIOD): number {
   return phase < 0.5 ? phase * 2 : 2 - phase * 2;
 }
 
-export function gaugeZone(position: number): GaugeZone {
+export function gaugeZone(position: number, greenHalf = GREEN_HALF): GaugeZone {
   const off = Math.abs(position - 0.5);
-  if (off <= GREEN_HALF) return "green";
+  if (off <= greenHalf) return "green";
   if (off <= YELLOW_HALF) return "yellow";
   return "red";
 }

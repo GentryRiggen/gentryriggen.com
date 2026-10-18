@@ -10,6 +10,7 @@ import {
 } from "three";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
+import { applyBonuses } from "@/lib/plane-builder/prestige";
 import { planeStats } from "@/lib/plane-builder/plane/stats";
 import { GAME_SPEED, STEP } from "@/lib/plane-builder/sim/constants";
 import {
@@ -92,7 +93,8 @@ export default function FlightRunner({
   const flightId = usePlaneBuilderStore((s) => s.flightId);
   const completeFlight = usePlaneBuilderStore((s) => s.completeFlight);
   const [run] = useState(() => {
-    const stats = planeStats(level.plane, tiers);
+    const { bonuses } = usePlaneBuilderStore.getState().progress.prestige;
+    const stats = applyBonuses(planeStats(level.plane, tiers), bonuses);
     const state = launch(level, stats, aim ?? { pitch: 0, yaw: 0, power: 0.5 });
     return { stats, state };
   });

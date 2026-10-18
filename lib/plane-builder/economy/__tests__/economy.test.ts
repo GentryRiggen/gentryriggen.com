@@ -15,6 +15,7 @@ const flight = (over: Partial<FlightResult> = {}): FlightResult => ({
   coins: 5,
   rings: 0,
   finished: false,
+  finishTime: null,
   endReason: "landed",
   ...over,
 });

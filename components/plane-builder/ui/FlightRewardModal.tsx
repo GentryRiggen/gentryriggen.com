@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
-import { gaugeZone } from "@/lib/plane-builder/minigame/gauge";
+import {
+  gaugeZone,
+  greenHalf as greenHalfFor,
+} from "@/lib/plane-builder/minigame/gauge";
 import type { GaugeZone } from "@/lib/plane-builder/minigame/gauge";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import type { FlightSummary } from "@/lib/plane-builder/state/store";
@@ -54,6 +57,9 @@ export default function FlightRewardModal({
   const isReducedMotion = usePrefersReducedMotion();
   const claimCoinBonus = usePlaneBuilderStore((s) => s.claimCoinBonus);
   const dismiss = usePlaneBuilderStore((s) => s.dismissFlightReward);
+  const greenHalf = usePlaneBuilderStore((s) =>
+    greenHalfFor(s.progress.prestige.bonuses.clover)
+  );
   const [elapsed, setElapsed] = useState(0);
 
   const { bonus, result, payout } = flight;
@@ -88,7 +94,7 @@ export default function FlightRewardModal({
 
   function handleStop() {
     if (hasBonus) return;
-    const zone = gaugeZone(gaugePosition.current);
+    const zone = gaugeZone(gaugePosition.current, greenHalf);
     planeSynth.play(zone === "green" ? "cheer" : "coin");
     claimCoinBonus(zone);
   }
@@ -181,6 +187,7 @@ export default function FlightRewardModal({
           isRunning={!hasBonus}
           positionRef={gaugePosition}
           ariaLabel="Coin bonus timing"
+          greenHalf={greenHalf}
         />
         {bonus && time >= MULTIPLIER_AT ? (
           <>

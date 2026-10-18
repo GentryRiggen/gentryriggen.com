@@ -174,6 +174,7 @@ test.describe("Plane Builder", () => {
           coins: 0,
           rings: 0,
           finished: true,
+          finishTime: 20,
           endReason: "runout",
         },
         store.getState().flightId

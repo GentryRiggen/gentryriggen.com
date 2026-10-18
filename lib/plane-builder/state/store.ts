@@ -3,6 +3,9 @@ import { coinBonus, payout, type Payout } from "../economy/payout";
 import {
   addCoins,
   buyUpgrade,
+  canPrestige,
+  moveOnMap,
+  prestige,
   newProgress,
   recordFlight,
   restartLevel,
@@ -13,6 +16,7 @@ import { LEVELS, nextLevelId } from "../levels";
 import { COIN_ZONE_MULTIPLIER, type GaugeZone } from "../minigame/gauge";
 import type { LevelId } from "../levels/types";
 import type { TrackId } from "../plane/catalog";
+import { applyBonuses, coinFactor, type BonusKind } from "../prestige";
 import { planeStats } from "../plane/stats";
 import type { FlightResult, LaunchAim } from "../sim/flight";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
@@ -20,7 +24,7 @@ import { resetFlightInput } from "./flightInput";
 import { clearFlightToasts } from "./flightToasts";
 import { resetLaunchAim } from "./launchAim";
 
-export type Screen = "levels" | "hangar" | "launch" | "flight";
+export type Screen = "levels" | "hangar" | "launch" | "flight" | "map";
 
 export interface FlightSummary {
   result: FlightResult;
@@ -63,6 +67,11 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   hydrate: (progress: Progress) => void;
   openLevel: (id: LevelId) => void;
   goToLevels: () => void;
+  /** Prestiges (only once allowed) and opens the Sky Map for the owed move. */
+  doPrestige: () => void;
+  openMap: () => void;
+  /** Spends the owed Sky Map move; returns the bonus collected, if any. */
+  move: (dx: number, dy: number) => BonusKind | null;
   buy: (track: TrackId) => BuyResult;
   startLaunch: () => void;
   beginFlight: (aim: LaunchAim) => void;
@@ -88,7 +97,11 @@ const initial: PlaneBuilderData = {
 
 export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   ...initial,
-  hydrate: (progress) => set({ progress }),
+  // A move still owed (say the tab closed on the map) sends the player back.
+  hydrate: (progress) =>
+    set(
+      progress.prestige.movePending ? { progress, screen: "map" } : { progress }
+    ),
   resetTransient: () => {
     resetFlightInput();
     resetLaunchAim();
@@ -96,10 +109,32 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     set({ screen: "levels", aim: null, lastFlight: null, celebrate: null });
   },
   openLevel: (id) => {
-    if (!get().progress.unlocked.includes(id)) return;
+    const { progress } = get();
+    if (progress.prestige.movePending) {
+      set({ screen: "map" });
+      return;
+    }
+    if (!progress.unlocked.includes(id)) return;
     set({ screen: "hangar", levelId: id, lastFlight: null, celebrate: null });
   },
   goToLevels: () => set({ screen: "levels", celebrate: null }),
+  doPrestige: () => {
+    const { progress } = get();
+    if (!canPrestige(progress)) return;
+    set({
+      progress: prestige(progress),
+      screen: "map",
+      lastFlight: null,
+      celebrate: null,
+    });
+  },
+  openMap: () => set({ screen: "map", celebrate: null }),
+  move: (dx, dy) => {
+    const r = moveOnMap(get().progress, dx, dy);
+    if (!r.ok) return null;
+    set({ progress: r.progress });
+    return r.collected;
+  },
   buy: (track) => {
     const r = buyUpgrade(get().progress, get().levelId, track);
     if (r.ok) set({ progress: r.progress });
@@ -121,9 +156,19 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     if (screen !== "flight") return;
     if (flightId !== undefined && flightId !== get().flightId) return;
     const level = LEVELS[levelId];
-    const stats = planeStats(level.plane, progress.levels[levelId].tiers);
+    const { bonuses } = progress.prestige;
+    const stats = applyBonuses(
+      planeStats(level.plane, progress.levels[levelId].tiers),
+      bonuses
+    );
     const previousBest = progress.levels[levelId].best;
-    const pay = payout(level, result, stats.multiplier, previousBest);
+    const pay = payout(
+      level,
+      result,
+      stats.multiplier,
+      previousBest,
+      coinFactor(bonuses)
+    );
     const recorded = recordFlight(progress, levelId, result, pay.total);
     resetFlightInput();
     set({

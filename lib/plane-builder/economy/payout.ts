@@ -33,7 +33,8 @@ export function payout(
   level: LevelDef,
   result: FlightResult,
   multiplier: number,
-  previousBest = 0
+  previousBest = 0,
+  coinFactor = 1
 ): Payout {
   const distancePay = Math.round(result.distance * level.payPerMeter);
   const coinPay = result.coins;
@@ -42,11 +43,13 @@ export function payout(
   const milestoneBonus =
     newMilestones(level, previousBest, result.distance) *
     Math.round(level.finishDistance * level.payPerMeter * MILESTONE_SHARE);
-  const total = Math.max(
-    level.minPayout,
-    Math.round(
-      (distancePay + coinPay + landingBonus + milestoneBonus) * multiplier
-    )
+  const total = Math.round(
+    Math.max(
+      level.minPayout,
+      Math.round(
+        (distancePay + coinPay + landingBonus + milestoneBonus) * multiplier
+      )
+    ) * coinFactor
   );
   return {
     distancePay,

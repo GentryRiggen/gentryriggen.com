@@ -101,6 +101,8 @@ export interface FlightState {
   launchPitch: number;
   phase: "flying" | "sliding" | "done";
   finished: boolean;
+  /** Sim time when `finished` first became true; null until then. */
+  finishTime: number | null;
   endReason: EndReason | null;
   grace: number;
   progressMark: number;
@@ -117,6 +119,8 @@ export interface FlightResult {
   coins: number;
   rings: number;
   finished: boolean;
+  /** Sim seconds from launch to crossing the finish; null if never reached. */
+  finishTime: number | null;
   endReason: EndReason;
 }
 
@@ -155,6 +159,7 @@ export function launch(
     launchPitch: pitch,
     phase: "flying",
     finished: false,
+    finishTime: null,
     endReason: null,
     grace: 0,
     progressMark: 0,
@@ -239,6 +244,7 @@ function trackProgress(s: FlightState, level: LevelDef, events: FlightEvent[]) {
   }
   if (!s.finished && s.maxX >= level.finishDistance) {
     s.finished = true;
+    s.finishTime = s.time;
     events.push({ type: "finish" });
   }
   if (s.maxX >= level.finishDistance + RUNOUT) {
@@ -433,6 +439,7 @@ export function flightResult(s: FlightState, level: LevelDef): FlightResult {
     coins: s.coins,
     rings: s.rings,
     finished: s.finished,
+    finishTime: s.finishTime,
     endReason: s.endReason ?? "timeout",
   };
 }

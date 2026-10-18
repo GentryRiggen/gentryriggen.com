@@ -1,21 +1,24 @@
 import {
   newLevelProgress,
+  newPrestige,
   type LevelProgress,
+  type PrestigeState,
   type Progress,
 } from "../economy/progress";
 import { LEVELS, LEVEL_ORDER, nextLevelId } from "../levels";
 import type { LevelId } from "../levels/types";
+import { BONUS_KINDS, emptyBonuses } from "../prestige/bonuses";
 import { MAX_TIER, TRACK_IDS, type Tiers } from "../plane/catalog";
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 /**
  * Saves older than this come from before a rebalance (1.2 changed prices and
  * pay), so loadProgress starts them fresh instead of migrating them.
  */
 export const RESET_BELOW = 2;
 
-export interface SaveV2 {
-  version: 2;
+export interface SaveV3 {
+  version: typeof SAVE_VERSION;
   progress: Progress;
 }
 
@@ -53,6 +56,52 @@ function parseLevel(raw: unknown, id: LevelId): LevelProgress | null {
   };
 }
 
+/** Most moves, hence collected squares, a save may hold. */
+export const MAX_VISITED = 100_000;
+export const MAX_NICKNAME_LENGTH = 40;
+const VISITED_KEY = /^-?\d{1,6},-?\d{1,6}$/;
+
+const isWhole = (v: unknown, max = MAX_VISITED): v is number =>
+  typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max;
+
+function parsePrestige(raw: unknown): PrestigeState | null {
+  if (!isRecord(raw) || !isRecord(raw.bonuses)) return null;
+  const { level, x, y, visited, movePending } = raw;
+  if (!isWhole(level)) return null;
+  if (!Number.isInteger(x) || Math.abs(x as number) > MAX_VISITED) return null;
+  if (!Number.isInteger(y) || Math.abs(y as number) > MAX_VISITED) return null;
+  if (typeof movePending !== "boolean") return null;
+  if (!Array.isArray(visited) || visited.length > MAX_VISITED) return null;
+  if (!visited.every((v) => typeof v === "string" && VISITED_KEY.test(v)))
+    return null;
+  const bonuses = emptyBonuses();
+  for (const kind of BONUS_KINDS) {
+    const n = raw.bonuses[kind];
+    if (!isWhole(n)) return null;
+    bonuses[kind] = n;
+  }
+  return {
+    level,
+    x: x as number,
+    y: y as number,
+    visited: [...new Set(visited as string[])],
+    bonuses,
+    movePending,
+  };
+}
+
+function parseBestTimes(raw: unknown): Progress["bestTimes"] | null {
+  if (!isRecord(raw)) return null;
+  const times: Progress["bestTimes"] = {};
+  for (const id of LEVEL_ORDER) {
+    const t = raw[id];
+    if (t === undefined) continue;
+    if (typeof t !== "number" || !Number.isFinite(t) || t <= 0) return null;
+    times[id] = t;
+  }
+  return times;
+}
+
 function parseProgress(raw: unknown): Progress | null {
   if (!isRecord(raw) || !isRecord(raw.levels)) return null;
   const rawUnlocked = raw.unlocked ?? ["meadow"];
@@ -76,14 +125,55 @@ function parseProgress(raw: unknown): Progress | null {
     if (levels[id].finished && after) open.add(after);
   }
   const unlocked = LEVEL_ORDER.filter((id) => id === "meadow" || open.has(id));
-  return { levels, unlocked };
+  const prestige = parsePrestige(raw.prestige);
+  const bestTimes = parseBestTimes(raw.bestTimes);
+  if (!prestige || !bestTimes) return null;
+  if (!isCount(raw.lifetimeDistance) || !isWhole(raw.runFlights, 1e9))
+    return null;
+  const { fastestRun, nickname } = raw;
+  if (fastestRun !== null && !(isWhole(fastestRun, 1e9) && fastestRun >= 1))
+    return null;
+  if (
+    nickname !== null &&
+    !(typeof nickname === "string" && nickname.length <= MAX_NICKNAME_LENGTH)
+  )
+    return null;
+  return {
+    levels,
+    unlocked,
+    prestige,
+    lifetimeDistance: raw.lifetimeDistance,
+    runFlights: raw.runFlights,
+    fastestRun: fastestRun as number | null,
+    bestTimes,
+    nickname: nickname as string | null,
+  };
 }
 
 /** Future versions add `migrations[n]` turning version n into n + 1. */
 const migrations: Record<
   number,
   (raw: Record<string, unknown>) => Record<string, unknown>
-> = {};
+> = {
+  // v3 adds prestige and the run and lifetime stats.
+  2: (raw) => {
+    const { progress } = raw;
+    if (!isRecord(progress)) return { ...raw, version: 3 };
+    return {
+      ...raw,
+      version: 3,
+      progress: {
+        ...progress,
+        prestige: newPrestige(),
+        lifetimeDistance: 0,
+        runFlights: 0,
+        fastestRun: null,
+        bestTimes: {},
+        nickname: null,
+      },
+    };
+  },
+};
 
 /** A checked Progress, or null if `raw` isn't a save this build can read. */
 export function parseSave(raw: unknown): Progress | null {

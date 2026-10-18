@@ -248,6 +248,7 @@ describe("Hangar after a flight", () => {
       coins: 5,
       rings: 0,
       finished,
+      finishTime: finished ? 20 : null,
       endReason: "landed" as const,
     },
     payout: {
@@ -319,6 +320,7 @@ describe("FlightRewardModal", () => {
       coins: 5,
       rings: 0,
       finished: false,
+      finishTime: null,
       endReason: "landed" as const,
     },
     payout: {
@@ -496,6 +498,7 @@ describe("Hangar summary after the bonus", () => {
           coins: 5,
           rings: 0,
           finished: false,
+          finishTime: null,
           endReason: "landed",
         },
         payout: {

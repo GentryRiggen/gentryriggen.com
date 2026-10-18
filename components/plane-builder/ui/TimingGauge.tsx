@@ -24,6 +24,8 @@ interface TimingGaugeProps {
   /** Written every frame with the marker's position, 0 to 1. */
   positionRef: MutableRefObject<number>;
   ariaLabel: string;
+  /** Half-width of the green zone; wider with Lucky Clovers. */
+  greenHalf?: number;
   className?: string;
 }
 
@@ -32,6 +34,7 @@ export default function TimingGauge({
   isRunning,
   positionRef,
   ariaLabel,
+  greenHalf = GREEN_HALF,
   className = "",
 }: TimingGaugeProps) {
   const root = useRef<HTMLDivElement>(null);
@@ -52,7 +55,7 @@ export default function TimingGauge({
         "aria-valuenow",
         String(Math.round(position * 100))
       );
-      const next = gaugeZone(position);
+      const next = gaugeZone(position, greenHalf);
       if (next !== shownZone) {
         shownZone = next;
         setZone(next);
@@ -67,7 +70,7 @@ export default function TimingGauge({
     setZone("red");
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [isRunning, positionRef]);
+  }, [isRunning, positionRef, greenHalf]);
 
   return (
     <div
@@ -88,7 +91,7 @@ export default function TimingGauge({
       <div
         data-testid="gauge-zone-green"
         className="absolute inset-y-0 bg-emerald-500 dark:bg-emerald-400"
-        style={{ left: pct(0.5 - GREEN_HALF), width: pct(GREEN_HALF * 2) }}
+        style={{ left: pct(0.5 - greenHalf), width: pct(greenHalf * 2) }}
       />
       <div
         ref={marker}

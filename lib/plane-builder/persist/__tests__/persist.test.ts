@@ -32,11 +32,11 @@ describe("parseSave", () => {
     expect(parsed?.levels.mountains).toEqual(newProgress().levels.mountains);
   });
 
-  it("loads a 3-world save: new worlds start fresh and locked", () => {
+  it("loads a 3-world v2 save (migrated): new worlds start fresh and locked", () => {
     const progress = newProgress();
     const { mountains, canyon, meadow } = progress.levels;
     const parsed = parseSave({
-      version: SAVE_VERSION,
+      version: 2,
       progress: {
         levels: { meadow, canyon, mountains },
         unlocked: ["meadow", "canyon", "mountains"],

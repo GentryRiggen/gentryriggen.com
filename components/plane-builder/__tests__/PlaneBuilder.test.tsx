@@ -76,6 +76,7 @@ describe("PlaneBuilder", () => {
         coins: 0,
         rings: 0,
         finished: false,
+        finishTime: null,
         endReason: "landed",
       });
     });

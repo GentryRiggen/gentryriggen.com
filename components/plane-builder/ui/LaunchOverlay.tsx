@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   LAUNCH_ZONE_BOOST,
   gaugeZone,
+  greenHalf as greenHalfFor,
   hasLaunchGauge,
 } from "@/lib/plane-builder/minigame/gauge";
 import { flightToasts } from "@/lib/plane-builder/state/flightToasts";
@@ -62,10 +63,15 @@ export default function LaunchOverlay() {
   );
   const hasGaugeRef = useRef(hasGauge);
   const gaugePosition = useRef(0);
+  const greenHalf = usePlaneBuilderStore((s) =>
+    greenHalfFor(s.progress.prestige.bonuses.clover)
+  );
+  const greenHalfRef = useRef(greenHalf);
 
   useEffect(() => {
     hasGaugeRef.current = hasGauge;
-  }, [hasGauge]);
+    greenHalfRef.current = greenHalf;
+  }, [hasGauge, greenHalf]);
 
   /** Fires, boosted by where the gauge was when the band was let go. */
   function release() {
@@ -74,7 +80,7 @@ export default function LaunchOverlay() {
       fire();
       return;
     }
-    const zone = gaugeZone(gaugePosition.current);
+    const zone = gaugeZone(gaugePosition.current, greenHalfRef.current);
     fire(LAUNCH_ZONE_BOOST[zone]);
     // After fire: starting a flight clears old pop-ups.
     flightToasts.push(LAUNCH_TOASTS[zone]);
@@ -216,6 +222,7 @@ export default function LaunchOverlay() {
             isRunning
             positionRef={gaugePosition}
             ariaLabel="Launch timing"
+            greenHalf={greenHalf}
           />
         </div>
       ) : null}
