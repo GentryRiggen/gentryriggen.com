@@ -1,4 +1,4 @@
-import { squareAt } from "../board";
+import { squareAt, starShareAt } from "../board";
 import { BONUS_KINDS, type BonusKind } from "../bonuses";
 
 function tally(radius: number, cx = 0, cy = 0) {
@@ -46,13 +46,18 @@ describe("squareAt", () => {
     expect(share("coins") + share("fuel")).toBeGreaterThan(share("star"));
   });
 
-  it("makes stars rarer than 15% of squares and more common far away", () => {
-    const near = tally(5).share("star");
-    const far = tally(20, 500, 500).share("star");
-    expect(far).toBeGreaterThan(near);
-    // 15% of the 65% that aren't empty, give or take sampling noise.
-    expect(far).toBeLessThan(0.15 * 0.65 + 0.04);
-    expect(far).toBeGreaterThan(0.15 * 0.65 - 0.04);
+  it("keeps stars rare (at most 8% of bonus squares) and more common far away", () => {
+    expect(starShareAt(0)).toBeCloseTo(0.01);
+    expect(starShareAt(10)).toBeGreaterThan(starShareAt(2));
+    expect(starShareAt(1e6)).toBe(0.08);
+    // Far away, about 8% of the 65% that aren't empty, over three big areas.
+    const far =
+      (tally(20, 500, 500).share("star") +
+        tally(20, -700, 300).share("star") +
+        tally(20, 1000, -900).share("star")) /
+      3;
+    expect(far).toBeLessThan(0.08 * 0.65 + 0.015);
+    expect(far).toBeGreaterThan(0.08 * 0.65 - 0.015);
   });
 
   it("stays finite and fast at huge coordinates", () => {

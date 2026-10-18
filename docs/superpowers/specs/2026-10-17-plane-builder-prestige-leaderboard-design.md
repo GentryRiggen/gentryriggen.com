@@ -43,7 +43,7 @@
   from the start):
   - About 35% of squares are empty.
   - Otherwise the square holds a bonus kind, weighted. Common kinds dominate
-    near the start; `star` has a weight of about `min(15%, 2% + 1% × d)`.
+    near the start; `star` has a weight of about `min(8%, 1% + 0.5% × d)` of bonus squares (rare).
 - A visited square is collected once and is empty after that. Visited
   squares are stored as `"x,y"` strings, one added per prestige.
 

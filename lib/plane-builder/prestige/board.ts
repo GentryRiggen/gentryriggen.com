@@ -2,9 +2,14 @@ import type { BonusKind } from "./bonuses";
 
 /** Share of squares with nothing on them. */
 const EMPTY_SHARE = 0.35;
-const STAR_BASE = 0.02;
-const STAR_PER_STEP = 0.01;
-const STAR_MAX = 0.15;
+const STAR_BASE = 0.01;
+const STAR_PER_STEP = 0.005;
+const STAR_MAX = 0.08;
+
+/** Share of bonus squares that are stars, `distance` steps from the start. */
+export function starShareAt(distance: number): number {
+  return Math.min(STAR_MAX, STAR_BASE + STAR_PER_STEP * Math.max(0, distance));
+}
 
 /** Relative weights of the other kinds; they share what the star leaves. */
 const COMMON_WEIGHTS: readonly (readonly [BonusKind, number])[] = [
@@ -50,7 +55,7 @@ export function squareAt(x: number, y: number): BonusKind | null {
   if (unit(hash) < EMPTY_SHARE) return null;
   const roll = unit(mix(hash ^ 0x68e31da4));
   const distance = Math.abs(x) + Math.abs(y);
-  const starShare = Math.min(STAR_MAX, STAR_BASE + STAR_PER_STEP * distance);
+  const starShare = starShareAt(distance);
   if (roll < starShare) return "star";
   let pick = ((roll - starShare) / (1 - starShare)) * COMMON_TOTAL;
   for (const [kind, weight] of COMMON_WEIGHTS) {
