@@ -19,6 +19,7 @@ import type { TrackId } from "../plane/catalog";
 import { applyBonuses, coinFactor, type BonusKind } from "../prestige";
 import { planeStats } from "../plane/stats";
 import type { FlightResult, LaunchAim } from "../sim/flight";
+import { isValidNickname } from "@/lib/leaderboard/nickname";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
 import { clearFlightToasts } from "./flightToasts";
@@ -83,6 +84,8 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   completeFlight: (result: FlightResult, flightId?: number) => void;
   resetTransient: () => void;
   restart: (id: LevelId) => void;
+  /** Only accepts a generated nickname (see lib/leaderboard/nickname). */
+  setNickname: (name: string) => void;
 }
 
 const initial: PlaneBuilderData = {
@@ -218,6 +221,10 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     });
   },
   restart: (id) => set((s) => ({ progress: restartLevel(s.progress, id) })),
+  setNickname: (name) => {
+    if (!isValidNickname(name)) return;
+    set((s) => ({ progress: { ...s.progress, nickname: name } }));
+  },
 }));
 
 declare global {

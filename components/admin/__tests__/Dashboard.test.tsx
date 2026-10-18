@@ -5,6 +5,10 @@ import * as client from "@/lib/firebase/client";
 import type { PageviewDoc } from "@/lib/analytics/types";
 
 jest.mock("@/lib/firebase/client");
+jest.mock("../LeaderboardAdmin", () => ({
+  __esModule: true,
+  default: () => <div data-testid="leaderboard-admin" />,
+}));
 jest.mock("../VisitorMap", () => ({
   __esModule: true,
   default: () => <div data-testid="map" />,

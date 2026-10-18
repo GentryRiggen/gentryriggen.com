@@ -107,3 +107,54 @@ export async function fetchPageviews(
   }
   return { docs, truncated: snapshot.size >= max };
 }
+
+export interface LeaderboardAdminRow {
+  uid: string;
+  nickname: string;
+  prestige: number;
+  score: number;
+  lifetimeDistance: number;
+  updatedAt: Date | null;
+}
+
+export const LEADERBOARD_ADMIN_LIMIT = 50;
+
+/** The top players by score. Fields come from player writes: show as text. */
+export async function fetchLeaderboardTop(): Promise<LeaderboardAdminRow[]> {
+  const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
+  const db = fs.getFirestore(app);
+  const snapshot = await fs.getDocs(
+    fs.query(
+      fs.collection(db, "leaderboard"),
+      fs.orderBy("score", "desc"),
+      fs.limit(LEADERBOARD_ADMIN_LIMIT)
+    )
+  );
+  const rows: LeaderboardAdminRow[] = [];
+  for (const d of snapshot.docs) {
+    const data = d.data();
+    if (
+      typeof data.nickname !== "string" ||
+      typeof data.prestige !== "number" ||
+      typeof data.score !== "number" ||
+      typeof data.lifetimeDistance !== "number"
+    ) {
+      continue;
+    }
+    rows.push({
+      uid: d.id,
+      nickname: data.nickname,
+      prestige: data.prestige,
+      score: data.score,
+      lifetimeDistance: data.lifetimeDistance,
+      updatedAt:
+        data.updatedAt instanceof fs.Timestamp ? data.updatedAt.toDate() : null,
+    });
+  }
+  return rows;
+}
+
+export async function deleteLeaderboardEntry(uid: string): Promise<void> {
+  const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
+  await fs.deleteDoc(fs.doc(fs.getFirestore(app), "leaderboard", uid));
+}

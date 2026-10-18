@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { summarize } from "@/lib/analytics/aggregate";
 import { SITES, type PageviewDoc, type Site } from "@/lib/analytics/types";
 import { fetchPageviews } from "@/lib/firebase/client";
+import LeaderboardAdmin from "./LeaderboardAdmin";
 import SummaryView from "./SummaryView";
 
 type Tab = "overview" | Site;
@@ -173,6 +174,7 @@ export default function Dashboard() {
           comparable={!current?.truncated}
         />
       )}
+      <LeaderboardAdmin />
     </main>
   );
 }
