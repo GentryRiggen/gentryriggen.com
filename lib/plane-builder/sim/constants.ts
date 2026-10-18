@@ -42,8 +42,10 @@ export const FUEL_CAN_RADIUS = 3;
 /**
  * Seconds of fuel a fuel can adds. Fixed, not a share of the tank: a share
  * let a big tank refill as fast as it burned between cans and never run dry.
+ * One second: a can is a small top-up, not a free tank, so grabbing every can
+ * is not a shortcut past the upgrade prices.
  */
-export const FUEL_CAN_SECONDS = 3;
+export const FUEL_CAN_SECONDS = 1;
 /** Shares of the finish distance that are milestone flags. */
 export const MILESTONES = [0.25, 0.5, 0.75] as const;
 /** Soft hits multiply speed by this. */

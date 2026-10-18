@@ -46,6 +46,8 @@ export const TRACK_EFFECTS: Record<TrackId, string> = {
 export interface TrackDef {
   /** Price of tier 1; each later tier costs PRICE_GROWTH times more. */
   basePrice: number;
+  /** Overrides tier 1's price only, so a world can open with a cheap first buy. */
+  firstPrice?: number;
   /** Stat value at tiers 0..MAX_TIER. */
   values: readonly number[];
   /** Part name at tiers 0..MAX_TIER. */
@@ -65,11 +67,14 @@ export function ladder(from: number, to: number, curve = 1): number[] {
 /** Coins to go from `currentTier` to the next, or null at the top. */
 export function tierPrice(track: TrackDef, currentTier: number): number | null {
   if (currentTier >= MAX_TIER) return null;
+  if (currentTier === 0 && track.firstPrice !== undefined)
+    return track.firstPrice;
   return Math.round(track.basePrice * PRICE_GROWTH ** currentTier);
 }
 
 interface TrackSpec {
   basePrice: number;
+  firstPrice?: number;
   from: number;
   to: number;
   curve?: number;
@@ -94,6 +99,7 @@ export function makeCatalog(spec: CatalogSpec): PlaneCatalog {
     const track = spec[id];
     const def: TrackDef = {
       basePrice: track.basePrice,
+      firstPrice: track.firstPrice,
       values: ladder(track.from, track.to, track.curve),
       parts: checkParts(id, spec.parts[id]),
     };

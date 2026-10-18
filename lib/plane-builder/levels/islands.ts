@@ -104,12 +104,12 @@ export const ISLANDS_SPEC: LevelSpec = {
     },
   ],
   plane: makeCatalog({
-    launcher: { basePrice: 2600, from: 72, to: 120 },
-    wings: { basePrice: 2000, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 290, from: 0, to: 128 },
-    fuel: { basePrice: 600, from: 32, to: 90 },
-    body: { basePrice: 5800, from: 0.014, to: 0.0046 },
-    multiplier: { basePrice: 8300, from: 1, to: 3 },
+    launcher: { basePrice: 2340, from: 72, to: 120 },
+    wings: { basePrice: 1800, from: 0.03, to: 0.04, curve: 0.65 },
+    engine: { basePrice: 900, from: 0, to: 128 },
+    fuel: { basePrice: 900, from: 32, to: 90 },
+    body: { basePrice: 5220, firstPrice: 420, from: 0.014, to: 0.0046 },
+    multiplier: { basePrice: 7470, firstPrice: 210, from: 1, to: 3 },
     parts: {
       launcher: [
         "Cloud slingshot",

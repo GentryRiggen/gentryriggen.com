@@ -100,10 +100,10 @@ export const GLACIER_SPEC: LevelSpec = {
   plane: makeCatalog({
     launcher: { basePrice: 1700, from: 66, to: 108 },
     wings: { basePrice: 1350, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 230, from: 0, to: 104 },
-    fuel: { basePrice: 480, from: 26, to: 90 },
-    body: { basePrice: 4100, from: 0.014, to: 0.0046 },
-    multiplier: { basePrice: 5900, from: 1, to: 3 },
+    engine: { basePrice: 810, from: 0, to: 104 },
+    fuel: { basePrice: 810, from: 26, to: 90 },
+    body: { basePrice: 4100, firstPrice: 350, from: 0.014, to: 0.0046 },
+    multiplier: { basePrice: 5900, firstPrice: 175, from: 1, to: 3 },
     parts: {
       launcher: [
         "Ice slingshot",

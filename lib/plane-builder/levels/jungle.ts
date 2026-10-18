@@ -103,10 +103,10 @@ export const JUNGLE_SPEC: LevelSpec = {
   plane: makeCatalog({
     launcher: { basePrice: 1300, from: 62, to: 96 },
     wings: { basePrice: 1050, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 190, from: 0, to: 88 },
-    fuel: { basePrice: 400, from: 22, to: 90 },
-    body: { basePrice: 3100, from: 0.014, to: 0.0053 },
-    multiplier: { basePrice: 4500, from: 1, to: 3 },
+    engine: { basePrice: 630, from: 0, to: 88 },
+    fuel: { basePrice: 630, from: 22, to: 90 },
+    body: { basePrice: 3100, firstPrice: 280, from: 0.014, to: 0.0053 },
+    multiplier: { basePrice: 4500, firstPrice: 140, from: 1, to: 3 },
     parts: {
       launcher: [
         "Vine slingshot",

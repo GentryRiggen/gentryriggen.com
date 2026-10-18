@@ -96,10 +96,10 @@ export const VOLCANO_SPEC: LevelSpec = {
   plane: makeCatalog({
     launcher: { basePrice: 1950, from: 68, to: 114 },
     wings: { basePrice: 1550, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 250, from: 0, to: 112 },
-    fuel: { basePrice: 520, from: 28, to: 90 },
-    body: { basePrice: 4600, from: 0.014, to: 0.0046 },
-    multiplier: { basePrice: 6600, from: 1, to: 3 },
+    engine: { basePrice: 930, from: 0, to: 112 },
+    fuel: { basePrice: 930, from: 28, to: 90 },
+    body: { basePrice: 4600, firstPrice: 300, from: 0.014, to: 0.0046 },
+    multiplier: { basePrice: 6600, firstPrice: 190, from: 1, to: 3 },
     parts: {
       launcher: [
         "Rock slingshot",

@@ -97,10 +97,10 @@ export const CITY_SPEC: LevelSpec = {
   plane: makeCatalog({
     launcher: { basePrice: 1500, from: 64, to: 102 },
     wings: { basePrice: 1200, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 210, from: 0, to: 96 },
-    fuel: { basePrice: 440, from: 24, to: 90 },
-    body: { basePrice: 3600, from: 0.014, to: 0.0049 },
-    multiplier: { basePrice: 5200, from: 1, to: 3 },
+    engine: { basePrice: 720, from: 0, to: 96 },
+    fuel: { basePrice: 720, from: 24, to: 90 },
+    body: { basePrice: 3600, firstPrice: 360, from: 0.014, to: 0.0049 },
+    multiplier: { basePrice: 5200, firstPrice: 180, from: 1, to: 3 },
     parts: {
       launcher: [
         "Paper-plane thrower",

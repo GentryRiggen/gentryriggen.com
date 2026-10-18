@@ -53,6 +53,12 @@ describe("catalog", () => {
     expect(tierPrice(catalog.engine, MAX_TIER)).toBeNull();
   });
 
+  it("lets firstPrice cheapen only the first tier", () => {
+    const track = { ...catalog.engine, firstPrice: 3 };
+    expect(tierPrice(track, 0)).toBe(3);
+    expect(tierPrice(track, 1)).toBe(15);
+  });
+
   it("gives every tier a part name", () => {
     expect(catalog.wings.parts).toHaveLength(MAX_TIER + 1);
     expect(catalog.wings.parts[8]).toBe("Stubs 9");

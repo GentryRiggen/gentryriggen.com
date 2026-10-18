@@ -96,10 +96,10 @@ export const BEACH_SPEC: LevelSpec = {
   plane: makeCatalog({
     launcher: { basePrice: 1100, from: 60, to: 90 },
     wings: { basePrice: 900, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 170, from: 0, to: 80 },
-    fuel: { basePrice: 360, from: 20, to: 90 },
-    body: { basePrice: 2700, from: 0.014, to: 0.0058 },
-    multiplier: { basePrice: 3900, from: 1, to: 3 },
+    engine: { basePrice: 540, from: 0, to: 80 },
+    fuel: { basePrice: 540, from: 20, to: 90 },
+    body: { basePrice: 2700, firstPrice: 240, from: 0.014, to: 0.0058 },
+    multiplier: { basePrice: 3900, firstPrice: 120, from: 1, to: 3 },
     parts: {
       launcher: [
         "Beach catapult",

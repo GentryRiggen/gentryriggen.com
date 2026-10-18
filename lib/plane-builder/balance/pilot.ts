@@ -87,6 +87,27 @@ export function pilotFlight(id: LevelId, stats: PlaneStats): PilotResult {
   return { ...flightResult(state, level), time: state.time };
 }
 
+/**
+ * A kid who flies through every fuel can they can reach: the plane is pulled
+ * onto every can's height and lane, so the sim picks each one up (the tank cap
+ * still applies). Works on a copy so the shared level is never touched.
+ */
+export function canGrabberFlight(id: LevelId, stats: PlaneStats): PilotResult {
+  const level: LevelDef = {
+    ...LEVELS[id],
+    fuelCans: LEVELS[id].fuelCans.map((c) => ({ ...c })),
+  };
+  const sticks = pilotSticks(level, stats);
+  const { state } = runFlight(level, stats, PILOT_AIM, (s) => {
+    for (const can of level.fuelCans) {
+      can.y = s.y;
+      can.z = s.z;
+    }
+    return sticks(s);
+  });
+  return { ...flightResult(state, level), time: state.time };
+}
+
 export function cheapestPrice(p: Progress, id: LevelId): number | null {
   const prices = TRACK_IDS.map((t) =>
     tierPrice(LEVELS[id].plane[t], p.levels[id].tiers[t])
@@ -94,8 +115,30 @@ export function cheapestPrice(p: Progress, id: LevelId): number | null {
   return prices.length ? Math.min(...prices) : null;
 }
 
-function shop(p: Progress, id: LevelId): Progress {
+/** How the pilot spends coins: cheapest upgrade first, or engine and fuel first. */
+export type ShopStrategy = "cheapest" | "engine-fuel-first";
+
+/** The lower-tier of engine and fuel that can still be upgraded, if any. */
+function nextEngineOrFuel(p: Progress, id: LevelId): "engine" | "fuel" | null {
+  const open = (["engine", "fuel"] as const).filter(
+    (t) => tierPrice(LEVELS[id].plane[t], p.levels[id].tiers[t]) !== null
+  );
+  if (open.length === 0) return null;
+  return open.reduce((a, b) =>
+    p.levels[id].tiers[b] < p.levels[id].tiers[a] ? b : a
+  );
+}
+
+function shop(p: Progress, id: LevelId, strategy: ShopStrategy): Progress {
   for (;;) {
+    const priority =
+      strategy === "engine-fuel-first" ? nextEngineOrFuel(p, id) : null;
+    if (priority) {
+      const r = buyUpgrade(p, id, priority);
+      if (!r.ok) return p;
+      p = r.progress;
+      continue;
+    }
     const cheapest = cheapestPrice(p, id);
     if (cheapest === null || p.levels[id].coins < cheapest) return p;
     const track = TRACK_IDS.find(
@@ -115,15 +158,31 @@ export interface FlightLog {
   time: number;
   /** Cheapest upgrade price left before this flight's earnings (null = maxed). */
   cheapest: number | null;
+  /** True when, after this flight, the coins in hand still buy nothing. */
+  isDry: boolean;
 }
 
-export function playLevel(id: LevelId, maxFlights = 80): FlightLog[] {
+export interface PlayOptions {
+  maxFlights?: number;
+  /** Which pilot flies: the can-grabber (default) or one that ignores cans. */
+  flight?: (id: LevelId, stats: PlaneStats) => PilotResult;
+  shop?: ShopStrategy;
+}
+
+export function playLevel(
+  id: LevelId,
+  {
+    maxFlights = 80,
+    flight = canGrabberFlight,
+    shop: strategy = "cheapest",
+  }: PlayOptions = {}
+): FlightLog[] {
   let p = newProgress();
   p = { ...p, unlocked: [...LEVEL_ORDER] };
   const log: FlightLog[] = [];
   for (let i = 0; i < maxFlights; i += 1) {
     const stats = planeStats(LEVELS[id].plane, p.levels[id].tiers);
-    const result = pilotFlight(id, stats);
+    const result = flight(id, stats);
     const total = payout(
       LEVELS[id],
       result,
@@ -138,10 +197,14 @@ export function playLevel(id: LevelId, maxFlights = 80): FlightLog[] {
       endReason: result.endReason,
       time: result.time,
       cheapest: cheapestPrice(p, id),
+      isDry: false,
     });
     p = recordFlight(p, id, result, earned).progress;
+    const cheapest = cheapestPrice(p, id);
+    log[log.length - 1].isDry =
+      cheapest !== null && p.levels[id].coins < cheapest;
     if (result.finished) break;
-    p = shop(p, id);
+    p = shop(p, id, strategy);
   }
   return log;
 }

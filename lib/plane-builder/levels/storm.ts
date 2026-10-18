@@ -95,10 +95,10 @@ export const STORM_SPEC: LevelSpec = {
   plane: makeCatalog({
     launcher: { basePrice: 2250, from: 70, to: 118 },
     wings: { basePrice: 1750, from: 0.03, to: 0.04, curve: 0.65 },
-    engine: { basePrice: 270, from: 0, to: 120 },
-    fuel: { basePrice: 560, from: 30, to: 90 },
-    body: { basePrice: 5200, from: 0.014, to: 0.0046 },
-    multiplier: { basePrice: 7400, from: 1, to: 3 },
+    engine: { basePrice: 1050, from: 0, to: 120 },
+    fuel: { basePrice: 1050, from: 30, to: 90 },
+    body: { basePrice: 5200, firstPrice: 480, from: 0.014, to: 0.0046 },
+    multiplier: { basePrice: 7400, firstPrice: 240, from: 1, to: 3 },
     parts: {
       launcher: [
         "Wind-up launcher",
