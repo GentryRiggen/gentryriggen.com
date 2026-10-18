@@ -24,7 +24,8 @@ import {
 } from "firebase/firestore";
 import { buildCommitBody, commitUrl, sendPageview } from "@/lib/analytics/send";
 import type { PageviewEvent } from "@/lib/analytics/types";
-import { fetchBoard, submitEntry } from "@/lib/leaderboard/client";
+import { fetchBoard, runQueryUrl, submitEntry } from "@/lib/leaderboard/client";
+import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { scoreFor } from "@/lib/leaderboard/types";
 
 const PROJECT_ID = "demo-gentryriggen";
@@ -427,6 +428,14 @@ describe("leaderboard", () => {
     ...patch,
   });
 
+  const FULL_RUN = LEVEL_ORDER.reduce(
+    (sum, id) => sum + LEVELS[id].finishDistance,
+    0
+  );
+  const allTimes = Object.fromEntries(
+    LEVEL_ORDER.map((id) => [id, Math.floor(LEVELS[id].finishDistance / 120)])
+  );
+
   /** Seeds the player's doc as written `agoMs` milliseconds ago. */
   async function seedPlayer(
     patch: Record<string, unknown> = {},
@@ -446,7 +455,7 @@ describe("leaderboard", () => {
       await assertSucceeds(setDoc(lbDoc(player()), entry()));
     });
 
-    it("allows prestige 0, a fastestRun and empty bestTimes", async () => {
+    it("allows prestige 0 with empty bestTimes", async () => {
       await assertSucceeds(
         setDoc(
           lbDoc(player()),
@@ -455,17 +464,30 @@ describe("leaderboard", () => {
             score: 5,
             lifetimeDistance: 5.9,
             bestTimes: {},
+          })
+        )
+      );
+    });
+
+    it("allows a full run: every world, a fastestRun and 68800 m", async () => {
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            score: scoreFor(1, FULL_RUN),
+            lifetimeDistance: FULL_RUN,
+            bestTimes: allTimes,
             fastestRun: 600,
           })
         )
       );
     });
 
-    it("caps the distance part of the score at 999999999", async () => {
+    it("allows exactly 150000 m", async () => {
       await assertSucceeds(
         setDoc(
           lbDoc(player()),
-          entry({ prestige: 3, score: 3_999_999_999, lifetimeDistance: 5e11 })
+          entry({ score: scoreFor(1, 150000), lifetimeDistance: 150000 })
         )
       );
     });
@@ -514,6 +536,30 @@ describe("leaderboard", () => {
         { prestige: 10001, score: 10_001_000_001_000 },
       ],
       ["a float prestige", () => player(), { prestige: 1.5 }],
+      [
+        "prestige 2 on create",
+        () => player(),
+        { prestige: 2, score: 2_000_001_000 },
+      ],
+      [
+        "distance over 150000 on create",
+        () => player(),
+        { lifetimeDistance: 150001, score: 1_000_150_001 },
+      ],
+      [
+        "a fastestRun without every best time",
+        () => player(),
+        {
+          lifetimeDistance: FULL_RUN,
+          score: scoreFor(1, FULL_RUN),
+          fastestRun: 600,
+        },
+      ],
+      [
+        "a fastestRun with less than a full run of distance",
+        () => player(),
+        { bestTimes: allTimes, fastestRun: 600 },
+      ],
       ["a wrong score", () => player(), { score: 5_000_001_000 }],
       ["a float score", () => player(), { score: 1_000_001_000.5 }],
       [
@@ -577,20 +623,14 @@ describe("leaderboard", () => {
       );
     });
 
-    it("allows prestige + 1", async () => {
-      await assertSucceeds(
-        setDoc(lbDoc(player()), entry({ prestige: 2, score: 2_000_001_000 }))
-      );
-    });
-
-    it("allows exactly +2e6 distance and a changed nickname", async () => {
+    it("allows a gain the elapsed time supports and a changed nickname", async () => {
       await assertSucceeds(
         setDoc(
           lbDoc(player()),
           entry({
             nickname: "Brave Fox 3",
-            lifetimeDistance: 2_001_000.5,
-            score: 1_002_001_000,
+            lifetimeDistance: 20_000.5,
+            score: scoreFor(1, 20_000.5),
           })
         )
       );
@@ -606,9 +646,9 @@ describe("leaderboard", () => {
       );
     });
 
-    it("rejects prestige + 2", async () => {
+    it("rejects prestige earned without distance", async () => {
       await assertFails(
-        setDoc(lbDoc(player()), entry({ prestige: 3, score: 3_000_001_000 }))
+        setDoc(lbDoc(player()), entry({ prestige: 2, score: 2_000_001_000 }))
       );
     });
 
@@ -633,11 +673,12 @@ describe("leaderboard", () => {
       );
     });
 
-    it("rejects a distance jump over 2e6", async () => {
+    it("rejects a distance jump beyond 200 * secs + 9100", async () => {
+      // Seeded 60 s ago: at most 1000.5 + 12000 + 9100.
       await assertFails(
         setDoc(
           lbDoc(player()),
-          entry({ lifetimeDistance: 2_001_001, score: 1_002_001_001 })
+          entry({ lifetimeDistance: 22_200, score: scoreFor(1, 22_200) })
         )
       );
     });
@@ -651,6 +692,134 @@ describe("leaderboard", () => {
     it("rejects an extra field and a free-text nickname", async () => {
       await assertFails(setDoc(lbDoc(player()), entry({ extra: 1 })));
       await assertFails(setDoc(lbDoc(player()), entry({ nickname: "Hello" })));
+    });
+  });
+
+  describe("prestige tied to distance and time", () => {
+    it("allows prestige +3 when distance and elapsed time support it", async () => {
+      // 10 minutes ago: up to 200 * 600 + 9100 m more.
+      await seedPlayer(
+        { prestige: 1, lifetimeDistance: 200_000, score: scoreFor(1, 200_000) },
+        600_000
+      );
+      const distance = 3 * 68_800 + 100;
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            prestige: 4,
+            lifetimeDistance: distance,
+            score: scoreFor(4, distance),
+          })
+        )
+      );
+    });
+
+    it("allows the one free prestige of a migrated save", async () => {
+      await seedPlayer({ prestige: 0, lifetimeDistance: 0, score: 0 });
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({ prestige: 1, lifetimeDistance: 10, score: scoreFor(1, 10) })
+        )
+      );
+    });
+
+    it("rejects prestige 3 with only one lap of distance", async () => {
+      await seedPlayer(
+        { prestige: 1, lifetimeDistance: 68_800, score: scoreFor(1, 68_800) },
+        600_000
+      );
+      await assertFails(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            prestige: 3,
+            lifetimeDistance: 70_000,
+            score: scoreFor(3, 70_000),
+          })
+        )
+      );
+    });
+
+    it("rejects a distance jump the elapsed time cannot support", async () => {
+      await seedPlayer(
+        { prestige: 1, lifetimeDistance: 1000, score: scoreFor(1, 1000) },
+        600_000
+      );
+      await assertFails(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            lifetimeDistance: 1000 + 200 * 700 + 9100,
+            score: scoreFor(1, 1000 + 200 * 700 + 9100),
+          })
+        )
+      );
+    });
+
+    it("rejects a fastestRun update without a full run of distance", async () => {
+      await assertFails(
+        setDoc(lbDoc(player()), entry({ bestTimes: allTimes, fastestRun: 600 }))
+      );
+    });
+  });
+
+  describe("bans", () => {
+    const ban = (db: ReturnType<typeof anon>, uid = UID) =>
+      doc(db, `leaderboardBans/${uid}`);
+    const banPlayer = () =>
+      env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(ban(ctx.firestore()), { bannedAt: new Date() });
+      });
+
+    it("stops a banned uid creating an entry", async () => {
+      await banPlayer();
+      await assertFails(setDoc(lbDoc(player()), entry()));
+    });
+
+    it("stops a banned uid updating an entry", async () => {
+      await seedPlayer();
+      await banPlayer();
+      await assertFails(setDoc(lbDoc(player()), entry()));
+    });
+
+    it("does not stop other players", async () => {
+      await banPlayer();
+      await assertSucceeds(
+        setDoc(lbDoc(player("player-2"), "player-2"), entry())
+      );
+    });
+
+    it("lets the admin write and read bans", async () => {
+      await assertSucceeds(
+        setDoc(ban(admin()), { bannedAt: serverTimestamp() })
+      );
+      await assertSucceeds(getDoc(ban(admin())));
+      await assertSucceeds(deleteDoc(ban(admin())));
+    });
+
+    it("lets the admin ban and delete in one batch", async () => {
+      await seedPlayer();
+      const db = admin();
+      const batch = writeBatch(db);
+      batch.set(ban(db), { bannedAt: serverTimestamp() });
+      batch.delete(lbDoc(db));
+      await assertSucceeds(batch.commit());
+    });
+
+    it("stops players and everyone else reading or writing bans", async () => {
+      await banPlayer();
+      for (const db of [player(), player("someone-else"), anon()]) {
+        await assertFails(getDoc(ban(db)));
+        await assertFails(setDoc(ban(db), { bannedAt: new Date() }));
+        await assertFails(deleteDoc(ban(db)));
+      }
+      await assertFails(
+        setDoc(ban(signedIn(ADMIN_UID, { provider: "anonymous" })), {
+          bannedAt: new Date(),
+        })
+      );
     });
   });
 
@@ -707,6 +876,28 @@ describe("leaderboard", () => {
 
     it("rejects a list with a limit over 50", async () => {
       await assertFails(getDocs(query(col(anon()), limit(51))));
+    });
+
+    const runQuery = (structuredQuery: Record<string, unknown>) =>
+      fetch(runQueryUrl(config, baseUrl), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: "leaderboard" }],
+            ...structuredQuery,
+          },
+        }),
+      });
+
+    it("accepts a REST list without an offset and with offset 0", async () => {
+      expect((await runQuery({ limit: 50 })).status).toBe(200);
+      expect((await runQuery({ limit: 50, offset: 0 })).status).toBe(200);
+    });
+
+    it("rejects a list with an offset above 0", async () => {
+      expect((await runQuery({ limit: 50, offset: 1 })).status).toBe(403);
+      expect((await runQuery({ limit: 10, offset: 40 })).status).toBe(403);
     });
 
     it("rejects an unlimited list", async () => {
@@ -781,8 +972,9 @@ describe("leaderboard", () => {
         {
           ...restEntry,
           nickname: "Brave Fox 3",
-          prestige: 2,
-          score: scoreFor(2, 1000.5),
+          score: scoreFor(1, FULL_RUN),
+          lifetimeDistance: FULL_RUN,
+          bestTimes: allTimes,
           fastestRun: 700,
         },
         deps("player-2")

@@ -103,21 +103,60 @@ service cloud.firestore {
         && d.updatedAt == request.time;
     }
 
-    function validLeaderboardUpdate() {
+    // 68800 = sum of every world's finishDistance (checked by
+    // lib/leaderboard/__tests__/rulesSync.test.ts). A full run needs all of it.
+    // Coherence: a fastestRun needs every world's best time and a full run's
+    // worth of distance.
+    function coherent() {
+      let d = request.resource.data;
+      return d.fastestRun == null
+        || (d.bestTimes.keys().hasAll(['meadow', 'canyon', 'mountains', 'beach', 'jungle', 'city', 'glacier', 'volcano', 'storm', 'islands'])
+          && d.lifetimeDistance >= 68800);
+    }
+
+    function notBanned(uid) {
+      return !exists(/databases/$(database)/documents/leaderboardBans/$(uid));
+    }
+
+    // A first write is a fresh or migrated player: at most one prestige (a
+    // migrated v2 save can prestige once with almost no distance).
+    function validLeaderboardCreate(uid) {
+      let d = request.resource.data;
+      return d.prestige <= 1
+        && d.lifetimeDistance <= 150000
+        && coherent()
+        && notBanned(uid);
+    }
+
+    // Prestige must be earned by distance (one free prestige for migrated
+    // saves) and distance can grow no faster than the game can fly: at most
+    // 180 m per real second (MAX_SPEED 120 * GAME_SPEED 1.5), plus the 9100 m
+    // one flight can add, with a little slack in the per-second figure.
+    function validLeaderboardUpdate(uid) {
       let d = request.resource.data;
       let old = resource.data;
-      return (d.prestige == old.prestige || d.prestige == old.prestige + 1)
+      let secs = (request.time.toMillis() - old.updatedAt.toMillis()) / 1000;
+      return d.prestige >= old.prestige
+        && (d.prestige - 1) * 68800 <= d.lifetimeDistance
         && d.lifetimeDistance >= old.lifetimeDistance
-        && d.lifetimeDistance <= old.lifetimeDistance + 2000000
-        && request.time >= old.updatedAt + duration.value(10, 's');
+        && d.lifetimeDistance <= old.lifetimeDistance + 200 * secs + 9100
+        && secs >= 10
+        && coherent()
+        && notBanned(uid);
     }
 
     match /leaderboard/{uid} {
       allow get: if true;
-      allow list: if request.query.limit <= 50;
-      allow create: if isPlayer(uid) && validLeaderboard();
-      allow update: if isPlayer(uid) && validLeaderboard() && validLeaderboardUpdate();
+      allow list: if request.query.limit <= 50 && request.query.offset == 0;
+      allow create: if isPlayer(uid) && validLeaderboard() && validLeaderboardCreate(uid);
+      allow update: if isPlayer(uid) && validLeaderboard() && validLeaderboardUpdate(uid);
       allow delete: if isAdmin();
+    }
+
+    // Players removed from the leaderboard by the admin. A ban document stops
+    // the player's anonymous uid from writing leaderboard/{uid} again.
+    match /leaderboardBans/{uid} {
+      allow read, write: if isAdmin();
     }
 
     // Everything else is closed.

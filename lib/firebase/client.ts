@@ -154,7 +154,17 @@ export async function fetchLeaderboardTop(): Promise<LeaderboardAdminRow[]> {
   return rows;
 }
 
-export async function deleteLeaderboardEntry(uid: string): Promise<void> {
+/**
+ * Removes a player from the leaderboard and bans their uid, so the rules
+ * refuse any later write to leaderboard/{uid}. One batch: both or neither.
+ */
+export async function banAndDeleteLeaderboardEntry(uid: string): Promise<void> {
   const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
-  await fs.deleteDoc(fs.doc(fs.getFirestore(app), "leaderboard", uid));
+  const db = fs.getFirestore(app);
+  const batch = fs.writeBatch(db);
+  batch.set(fs.doc(db, "leaderboardBans", uid), {
+    bannedAt: fs.serverTimestamp(),
+  });
+  batch.delete(fs.doc(db, "leaderboard", uid));
+  await batch.commit();
 }

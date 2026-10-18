@@ -28,7 +28,7 @@ const rows = [
 beforeEach(() => {
   jest.clearAllMocks();
   mockClient.fetchLeaderboardTop.mockResolvedValue(rows);
-  mockClient.deleteLeaderboardEntry.mockResolvedValue();
+  mockClient.banAndDeleteLeaderboardEntry.mockResolvedValue();
 });
 
 it("lists entries as plain text", async () => {
@@ -38,18 +38,23 @@ it("lists entries as plain text", async () => {
   expect(screen.getByText("12.3 km")).toBeInTheDocument();
 });
 
-it("deletes only after confirming", async () => {
+it("deletes and bans only after confirming", async () => {
   const confirm = jest.spyOn(window, "confirm");
   render(<LeaderboardAdmin />);
-  const buttons = await screen.findAllByRole("button", { name: "Delete" });
+  const buttons = await screen.findAllByRole("button", {
+    name: "Delete and ban",
+  });
 
   confirm.mockReturnValueOnce(false);
   await userEvent.click(buttons[0]);
-  expect(mockClient.deleteLeaderboardEntry).not.toHaveBeenCalled();
+  expect(confirm).toHaveBeenCalledWith(
+    expect.stringMatching(/ban .*can't post again/)
+  );
+  expect(mockClient.banAndDeleteLeaderboardEntry).not.toHaveBeenCalled();
 
   confirm.mockReturnValueOnce(true);
   await userEvent.click(buttons[0]);
-  expect(mockClient.deleteLeaderboardEntry).toHaveBeenCalledWith("a");
+  expect(mockClient.banAndDeleteLeaderboardEntry).toHaveBeenCalledWith("a");
   await waitFor(() =>
     expect(screen.queryByText("<b>Evil</b>")).not.toBeInTheDocument()
   );

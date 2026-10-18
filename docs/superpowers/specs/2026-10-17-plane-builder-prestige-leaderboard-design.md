@@ -153,33 +153,49 @@ Caps keep the sim sane. The sim's speed is still clamped to `MAX_SPEED`.
 
 ### `firestore.rules` (security boundary)
 
-- **Read:** anyone, with `request.query.limit <= 50`. Only public, non-personal
-  fields are stored.
+- **Read:** anyone, with `request.query.limit <= 50` and
+  `request.query.offset == 0` (no paging past the top 50). Only public,
+  non-personal fields are stored.
 - **Create and update:**
   - `request.auth.uid == uid`, and the sign-in provider is `anonymous`.
   - The keys are exactly the listed fields.
   - The nickname is three space-separated parts, with words from the
     allowed lists and the number from 1 to 99.
-  - `prestige` is an int from 0 to 10,000. On update it is either the same
-    as before or one more.
+  - `prestige` is an int from 0 to 10,000, and never decreases.
   - `score` matches the formula.
-  - `lifetimeDistance` is a number from 0 to 1e12, never decreasing, rising
-    by at most 2,000,000 per write.
+  - `lifetimeDistance` is a number from 0 to 1e12, never decreasing.
   - Each `bestTimes` entry is a known world id, with a value at least that
     world's `finishDistance / MAX_SPEED` (rounded down, the physical
     minimum) and at most 600.
-  - `fastestRun` is null or an int from 10 to 100,000.
-  - `updatedAt == request.time`, and an update comes at least 10 s after the
-    previous one.
+  - `fastestRun` is null or an int from 10 to 100,000. Coherence: a
+    non-null `fastestRun` needs all 10 worlds in `bestTimes` and
+    `lifetimeDistance >= 68800` (the sum of every `finishDistance`; a sync
+    test checks the constant).
+  - `updatedAt == request.time`.
+  - Not banned: no `leaderboardBans/{uid}` document exists.
+- **Create only:** `prestige <= 1` and `lifetimeDistance <= 150000`.
+- **Update only:**
+  - `(prestige - 1) * 68800 <= lifetimeDistance`: prestige must be earned
+    by distance. The `- 1` is the one free prestige a migrated v2 save
+    gets.
+  - With `secs = (request.time - old.updatedAt) / 1000`, `secs >= 10` and
+    `lifetimeDistance <= old.lifetimeDistance + 200 * secs + 9100`. A
+    flight adds at most 9,100 m, and flying is capped at 180 m per real
+    second (`MAX_SPEED` 120 m/s times `GAME_SPEED` 1.5). There is no
+    per-write prestige or distance cap, so a legit player who was offline
+    can always catch up.
 - **Delete:** admin only (the existing `isAdmin()`).
+- **Bans:** `leaderboardBans/{uid}` is readable and writable by the admin
+  only. A ban stops that uid creating or updating its leaderboard doc.
 - **Tests:** rules tests in `firestore-tests/` cover each accept and reject
   case.
 
 ### Admin
 
 - A new section in `/admin` (`components/admin/`) lists the top leaderboard
-  rows, with a Delete button on each (it uses the existing admin SDK
-  client).
+  rows, with a "Delete and ban" button on each. It confirms first, then in one
+  batch deletes the row and writes `leaderboardBans/{uid}`, so the player
+  can't post again.
 
 ### Accepted risk
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  deleteLeaderboardEntry,
+  banAndDeleteLeaderboardEntry,
   fetchLeaderboardTop,
   type LeaderboardAdminRow,
 } from "@/lib/firebase/client";
@@ -27,14 +27,15 @@ export default function LeaderboardAdmin() {
   }, []);
 
   const handleDelete = async (row: LeaderboardAdminRow) => {
-    if (!window.confirm(`Delete "${row.nickname}" from the leaderboard?`)) {
+    const message = `Delete "${row.nickname}" and ban them? They will be removed from the leaderboard and can't post again.`;
+    if (!window.confirm(message)) {
       return;
     }
     try {
-      await deleteLeaderboardEntry(row.uid);
+      await banAndDeleteLeaderboardEntry(row.uid);
       setRows((current) => current?.filter((r) => r.uid !== row.uid) ?? null);
     } catch {
-      setError("Couldn't delete that entry.");
+      setError("Couldn't delete and ban that entry.");
     }
   };
 
@@ -82,7 +83,7 @@ export default function LeaderboardAdmin() {
                 onClick={() => void handleDelete(row)}
                 className="rounded-md border border-red-300 px-2 py-1 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
               >
-                Delete
+                Delete and ban
               </button>
             </li>
           ))}

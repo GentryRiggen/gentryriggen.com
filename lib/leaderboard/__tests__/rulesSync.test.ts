@@ -38,4 +38,20 @@ describe("firestore.rules stays in sync with the code", () => {
     const keys = [...(match?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1]);
     expect(keys).toEqual([...LEVEL_ORDER]);
   });
+
+  it("uses the sum of every finishDistance as the full-run distance", () => {
+    const total = LEVEL_ORDER.reduce(
+      (sum, id) => sum + LEVELS[id].finishDistance,
+      0
+    );
+    // The rules use it in the prestige check and the fastestRun coherence.
+    expect([...rules.matchAll(/68800/g)].length).toBeGreaterThanOrEqual(3);
+    expect(total).toBe(68800);
+  });
+
+  it("requires every world id in a fastestRun's bestTimes", () => {
+    const match = rules.match(/d\.bestTimes\.keys\(\)\.hasAll\(\[([^\]]*)\]\)/);
+    const keys = [...(match?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1]);
+    expect(keys).toEqual([...LEVEL_ORDER]);
+  });
 });
