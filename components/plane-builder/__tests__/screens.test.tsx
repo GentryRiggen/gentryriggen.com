@@ -3,9 +3,15 @@ import userEvent from "@testing-library/user-event";
 import FlightRewardModal from "../ui/FlightRewardModal";
 import Hangar from "../ui/Hangar";
 import LevelSelect from "../ui/LevelSelect";
+import SkyMap from "../ui/SkyMap";
 import FlightHud from "../ui/FlightHud";
 import Steering from "../ui/Steering";
 import UpgradeTrack from "../ui/UpgradeTrack";
+import {
+  BONUS_INFO,
+  emptyBonuses,
+  squareAt,
+} from "@/lib/plane-builder/prestige";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { GAUGE_PERIOD } from "@/lib/plane-builder/minigame/gauge";
@@ -679,5 +685,193 @@ describe("UpgradeTrack", () => {
     expect(row).not.toHaveTextContent("Wings 9");
     expect(row).not.toHaveTextContent("→");
     expect(screen.getByRole("button", { name: "Wings maxed" })).toBeDisabled();
+  });
+});
+
+describe("Sky Map and prestige screens", () => {
+  function withPrestige(
+    patch: Partial<ReturnType<typeof newProgress>["prestige"]>
+  ) {
+    const p = newProgress();
+    p.prestige = { ...p.prestige, ...patch };
+    return p;
+  }
+
+  function finishAll() {
+    const p = newProgress();
+    p.levels.islands.finished = true;
+    return p;
+  }
+
+  describe("SkyMap", () => {
+    it("shows a 7x7 window with the player and four move buttons while a move is pending", () => {
+      store.getState().hydrate(withPrestige({ level: 1, movePending: true }));
+      render(<SkyMap />);
+      expect(screen.getByRole("heading", { name: "Sky Map" })).toBeVisible();
+      expect(screen.getByText("⭐ Prestige 1")).toBeVisible();
+      expect(screen.getByRole("img", { name: "You are here" })).toBeVisible();
+      const group = screen.getByRole("group", { name: "Sky Map squares" });
+      expect(group.children).toHaveLength(49);
+      expect(within(group).getAllByRole("button")).toHaveLength(4);
+      expect(
+        screen.getByRole("button", { name: /^Move up: / })
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Start run" })).toBeDisabled();
+      expect(
+        screen.queryByRole("button", { name: "Back" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("has no move buttons and a working Back when no move is pending", async () => {
+      store.getState().hydrate(withPrestige({ level: 1 }));
+      store.setState({ screen: "map" });
+      render(<SkyMap />);
+      expect(
+        within(screen.getByRole("group")).queryAllByRole("button")
+      ).toHaveLength(0);
+      expect(screen.getByRole("button", { name: "Start run" })).toBeEnabled();
+      await userEvent.click(screen.getByRole("button", { name: "Back" }));
+      expect(store.getState().screen).toBe("levels");
+    });
+
+    it("moves on click, shows the collect message and enables Start run", async () => {
+      store.getState().hydrate(withPrestige({ level: 1, movePending: true }));
+      render(<SkyMap />);
+      const kind = squareAt(1, 0);
+      await userEvent.click(
+        screen.getByRole("button", { name: /^Move right: / })
+      );
+      const { prestige } = store.getState().progress;
+      expect(prestige.x).toBe(1);
+      expect(prestige.movePending).toBe(false);
+      expect(screen.getByRole("status")).toHaveTextContent(
+        kind
+          ? `+1 ${BONUS_INFO[kind].emoji} ${BONUS_INFO[kind].name}!`
+          : "Nothing here this time"
+      );
+      expect(screen.getByRole("button", { name: "Start run" })).toBeEnabled();
+    });
+
+    it("moves with an arrow key", async () => {
+      store.getState().hydrate(withPrestige({ level: 1, movePending: true }));
+      render(<SkyMap />);
+      await userEvent.keyboard("{ArrowDown}");
+      expect(store.getState().progress.prestige.y).toBe(1);
+      await userEvent.keyboard("{ArrowDown}");
+      expect(store.getState().progress.prestige.y).toBe(1);
+    });
+
+    it("says nothing is here on an empty square", async () => {
+      // Find an empty neighbour of a spot by walking the board.
+      let empty: [number, number] | null = null;
+      for (let x = -20; x < 20 && !empty; x++) {
+        if (squareAt(x, 5) === null) empty = [x, 5];
+      }
+      const [ex, ey] = empty ?? [0, 0];
+      store
+        .getState()
+        .hydrate(
+          withPrestige({ level: 1, movePending: true, x: ex - 1, y: ey })
+        );
+      render(<SkyMap />);
+      await userEvent.click(
+        screen.getByRole("button", { name: /^Move right: / })
+      );
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Nothing here this time"
+      );
+    });
+
+    it("summarises bonus counts and effects", () => {
+      store.getState().hydrate(
+        withPrestige({
+          level: 3,
+          bonuses: { ...emptyBonuses(), coins: 2, star: 1, shield: 3 },
+        })
+      );
+      store.setState({ screen: "map" });
+      render(<SkyMap />);
+      const coins = document.querySelector('[data-bonus="coins"]');
+      expect(coins).toHaveTextContent("×2");
+      expect(coins).toHaveTextContent("+20% coins");
+      expect(document.querySelector('[data-bonus="shield"]')).toHaveTextContent(
+        "+3 shields"
+      );
+      expect(screen.getByText(/×2\.4 coins/)).toBeInTheDocument();
+    });
+  });
+
+  describe("LevelSelect prestige entry", () => {
+    it("hides the Prestige card until every world is done", () => {
+      render(<LevelSelect />);
+      expect(
+        screen.queryByRole("button", { name: "Prestige ⭐" })
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Sky Map \(Prestige/)).not.toBeInTheDocument();
+    });
+
+    it("confirms, prestiges and lands on the map", async () => {
+      store.getState().hydrate(finishAll());
+      render(<LevelSelect />);
+      expect(
+        screen.getByText(/Your bonuses stack forever\./)
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Prestige ⭐" })
+      );
+      const dialog = screen.getByRole("dialog", { name: "Prestige?" });
+      expect(dialog).toHaveTextContent(
+        "All 10 worlds, coins and upgrades reset."
+      );
+      expect(store.getState().progress.prestige.level).toBe(0);
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Prestige ⭐" })
+      );
+      expect(store.getState().progress.prestige.level).toBe(1);
+      expect(store.getState().screen).toBe("map");
+    });
+
+    it("cancels without prestiging", async () => {
+      store.getState().hydrate(finishAll());
+      render(<LevelSelect />);
+      await userEvent.click(
+        screen.getByRole("button", { name: "Prestige ⭐" })
+      );
+      await userEvent.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(store.getState().progress.prestige.level).toBe(0);
+    });
+
+    it("offers the Sky Map from prestige 1", async () => {
+      store.getState().hydrate(withPrestige({ level: 2 }));
+      render(<LevelSelect />);
+      await userEvent.click(
+        screen.getByRole("button", { name: "🗺️ Sky Map (Prestige 2)" })
+      );
+      expect(store.getState().screen).toBe("map");
+    });
+  });
+
+  describe("Hangar prestige chip", () => {
+    it("is absent at prestige 0", () => {
+      render(<Hangar />);
+      expect(screen.queryByText(/⭐ Prestige/)).not.toBeInTheDocument();
+    });
+
+    it("opens the bonus summary", async () => {
+      store.getState().hydrate(
+        withPrestige({
+          level: 2,
+          bonuses: { ...emptyBonuses(), fuel: 4 },
+        })
+      );
+      render(<Hangar />);
+      await userEvent.click(
+        screen.getByRole("button", { name: "⭐ Prestige 2" })
+      );
+      expect(document.querySelector('[data-bonus="fuel"]')).toHaveTextContent(
+        "+40% fuel"
+      );
+    });
   });
 });

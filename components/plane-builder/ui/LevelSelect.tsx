@@ -3,15 +3,18 @@
 import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { canPrestige } from "@/lib/plane-builder/economy/progress";
 import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { PLANE_BUILDER_VERSION } from "@/lib/plane-builder/version";
+import ConfirmPrestige from "./ConfirmPrestige";
 import ConfirmRestart from "./ConfirmRestart";
 import { percentOf } from "./format";
 import SoundToggle from "./SoundToggle";
 import {
   cardClass,
+  coinButtonClass,
   focusRingClass,
   primaryButtonClass,
   secondaryButtonClass,
@@ -22,8 +25,12 @@ export default function LevelSelect() {
   const openLevel = usePlaneBuilderStore((s) => s.openLevel);
   const restart = usePlaneBuilderStore((s) => s.restart);
   const celebrate = usePlaneBuilderStore((s) => s.celebrate);
+  const doPrestige = usePlaneBuilderStore((s) => s.doPrestige);
+  const openMap = usePlaneBuilderStore((s) => s.openMap);
   const nextPlayRef = useRef<HTMLButtonElement>(null);
   const [restartId, setRestartId] = useState<LevelId | null>(null);
+  const [isPrestigeOpen, setIsPrestigeOpen] = useState(false);
+  const prestigeLevel = progress.prestige.level;
 
   const nextId = celebrate?.next ?? null;
 
@@ -38,7 +45,7 @@ export default function LevelSelect() {
   return (
     <div className="pointer-events-auto absolute inset-0 z-10 overflow-y-auto">
       <div
-        inert={restartId !== null}
+        inert={restartId !== null || isPrestigeOpen}
         className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-6"
       >
         <header className="flex items-center justify-between gap-3">
@@ -63,6 +70,38 @@ export default function LevelSelect() {
           >
             You beat every world! 🏆
           </p>
+        ) : null}
+
+        {canPrestige(progress) ? (
+          <section
+            aria-labelledby="prestige-card"
+            className={`p-4 ring-4 ring-amber-400 dark:ring-amber-300 ${cardClass}`}
+          >
+            <h2 id="prestige-card" className="text-xl font-extrabold">
+              Prestige ⭐
+            </h2>
+            <p className="text-slate-600 dark:text-slate-300">
+              Start every world again with a new bonus from the Sky Map. Your
+              bonuses stack forever.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsPrestigeOpen(true)}
+              className={`${coinButtonClass} mt-3`}
+            >
+              Prestige ⭐
+            </button>
+          </section>
+        ) : null}
+
+        {prestigeLevel >= 1 ? (
+          <button
+            type="button"
+            onClick={openMap}
+            className={secondaryButtonClass}
+          >
+            🗺️ Sky Map (Prestige {prestigeLevel})
+          </button>
         ) : null}
 
         <ul className="flex flex-col gap-4">
@@ -158,6 +197,15 @@ export default function LevelSelect() {
           })}
         </ul>
       </div>
+      {isPrestigeOpen ? (
+        <ConfirmPrestige
+          onCancel={() => setIsPrestigeOpen(false)}
+          onConfirm={() => {
+            setIsPrestigeOpen(false);
+            doPrestige();
+          }}
+        />
+      ) : null}
       {restartId ? (
         <ConfirmRestart
           levelId={restartId}

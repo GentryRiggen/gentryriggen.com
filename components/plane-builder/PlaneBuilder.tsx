@@ -12,6 +12,7 @@ import FlightRewardModal from "./ui/FlightRewardModal";
 import Hangar from "./ui/Hangar";
 import LaunchOverlay from "./ui/LaunchOverlay";
 import LevelSelect from "./ui/LevelSelect";
+import SkyMap from "./ui/SkyMap";
 import Steering from "./ui/Steering";
 import { focusRingClass } from "./ui/styles";
 import WebGLFallback from "./ui/WebGLFallback";
@@ -82,6 +83,7 @@ export default function PlaneBuilder() {
       >
         <div className="relative h-full w-full">
           {screen === "levels" ? <LevelSelect /> : null}
+          {screen === "map" ? <SkyMap /> : null}
           {isRewardShown && lastFlight ? (
             <FlightRewardModal levelId={levelId} flight={lastFlight} />
           ) : null}

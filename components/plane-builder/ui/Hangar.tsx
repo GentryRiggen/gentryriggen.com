@@ -1,11 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { TRACK_IDS } from "@/lib/plane-builder/plane/catalog";
+import BonusSummary from "./BonusSummary";
 import { formatCoins } from "./format";
 import LastFlight from "./LastFlight";
-import { cardClass, primaryButtonClass, secondaryButtonClass } from "./styles";
+import {
+  cardClass,
+  focusRingClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "./styles";
 import SoundToggle from "./SoundToggle";
 import UpgradeTrack from "./UpgradeTrack";
 
@@ -23,6 +30,8 @@ export default function Hangar() {
   const buy = usePlaneBuilderStore((s) => s.buy);
   const goToLevels = usePlaneBuilderStore((s) => s.goToLevels);
   const startLaunch = usePlaneBuilderStore((s) => s.startLaunch);
+  const prestige = usePlaneBuilderStore((s) => s.progress.prestige);
+  const [isBonusOpen, setIsBonusOpen] = useState(false);
   const level = LEVELS[levelId];
 
   return (
@@ -40,7 +49,33 @@ export default function Hangar() {
             >
               ← Levels
             </button>
-            <SoundToggle />
+            <div className="relative flex items-center gap-2">
+              {prestige.level >= 1 ? (
+                <>
+                  <button
+                    type="button"
+                    aria-expanded={isBonusOpen}
+                    aria-controls="hangar-bonuses"
+                    onClick={() => setIsBonusOpen((open) => !open)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setIsBonusOpen(false);
+                    }}
+                    className={`inline-flex min-h-11 items-center rounded-full bg-amber-100 px-3 text-sm font-bold text-amber-900 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-800/60 ${focusRingClass}`}
+                  >
+                    ⭐ Prestige {prestige.level}
+                  </button>
+                  {isBonusOpen ? (
+                    <div
+                      id="hangar-bonuses"
+                      className={`absolute top-full right-0 z-20 mt-2 w-72 max-w-[85vw] p-3 ${cardClass}`}
+                    >
+                      <BonusSummary bonuses={prestige.bonuses} />
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              <SoundToggle />
+            </div>
           </div>
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-xl font-extrabold short:text-lg">
