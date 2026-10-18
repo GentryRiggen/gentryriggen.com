@@ -13,13 +13,19 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { buildCommitBody, commitUrl, sendPageview } from "@/lib/analytics/send";
 import type { PageviewEvent } from "@/lib/analytics/types";
+import { fetchBoard, submitEntry } from "@/lib/leaderboard/client";
+import { scoreFor } from "@/lib/leaderboard/types";
 
 const PROJECT_ID = "demo-gentryriggen";
 const [HOST, PORT] = (
@@ -397,5 +403,398 @@ describe("update and delete", () => {
   it("rejects delete for everyone, including the admin", async () => {
     await assertFails(deleteDoc(doc(anon(), "pageviews/seed")));
     await assertFails(deleteDoc(doc(admin(), "pageviews/seed")));
+  });
+});
+
+describe("leaderboard", () => {
+  const UID = "player-1";
+  const player = (uid = UID, provider: Provider | null = "anonymous") =>
+    signedIn(uid, { provider });
+  const lbDoc = (db: ReturnType<typeof anon>, uid = UID) =>
+    doc(db, `leaderboard/${uid}`);
+
+  const baseEntry = {
+    nickname: "Happy Otter 7",
+    prestige: 1,
+    score: 1_000_001_000,
+    lifetimeDistance: 1000.5,
+    bestTimes: { meadow: 20, islands: 80.5 } as Record<string, unknown>,
+    fastestRun: null as number | null,
+  };
+  const entry = (patch: Record<string, unknown> = {}) => ({
+    ...baseEntry,
+    updatedAt: serverTimestamp(),
+    ...patch,
+  });
+
+  /** Seeds the player's doc as written `agoMs` milliseconds ago. */
+  async function seedPlayer(
+    patch: Record<string, unknown> = {},
+    agoMs = 60_000
+  ) {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(lbDoc(ctx.firestore()), {
+        ...baseEntry,
+        ...patch,
+        updatedAt: new Date(Date.now() - agoMs),
+      });
+    });
+  }
+
+  describe("create", () => {
+    it("allows the owner (anonymous provider) to create a valid entry", async () => {
+      await assertSucceeds(setDoc(lbDoc(player()), entry()));
+    });
+
+    it("allows prestige 0, a fastestRun and empty bestTimes", async () => {
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            prestige: 0,
+            score: 5,
+            lifetimeDistance: 5.9,
+            bestTimes: {},
+            fastestRun: 600,
+          })
+        )
+      );
+    });
+
+    it("caps the distance part of the score at 999999999", async () => {
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({ prestige: 3, score: 3_999_999_999, lifetimeDistance: 5e11 })
+        )
+      );
+    });
+
+    it("accepts the exact physical minimum for every world", async () => {
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            bestTimes: {
+              meadow: 16,
+              canyon: 33,
+              mountains: 50,
+              beach: 58,
+              jungle: 61,
+              city: 65,
+              glacier: 68,
+              volcano: 70,
+              storm: 73,
+              islands: 75,
+            },
+          })
+        )
+      );
+    });
+
+    const rejected: [string, () => ReturnType<typeof anon>, object][] = [
+      ["another uid", () => player("someone-else"), {}],
+      ["a non-anonymous provider", () => player(UID, "password"), {}],
+      ["google sign-in", () => player(UID, "google.com"), {}],
+      ["no provider claim", () => player(UID, null), {}],
+      ["a signed-out user", () => anon(), {}],
+      ["an extra field", () => player(), { extra: 1 }],
+      ["a missing field", () => player(), { fastestRun: undefined }],
+      ["a free-text nickname", () => player(), { nickname: "Bad Word" }],
+      ["an unlisted adjective", () => player(), { nickname: "Rude Otter 7" }],
+      ["an unlisted animal", () => player(), { nickname: "Happy Dragon 7" }],
+      ["nickname number 0", () => player(), { nickname: "Happy Otter 0" }],
+      ["nickname number 100", () => player(), { nickname: "Happy Otter 100" }],
+      ["a four-part nickname", () => player(), { nickname: "Happy Otter 7 x" }],
+      ["a non-string nickname", () => player(), { nickname: 7 }],
+      ["negative prestige", () => player(), { prestige: -1, score: -1e9 }],
+      [
+        "prestige over 10000",
+        () => player(),
+        { prestige: 10001, score: 10_001_000_001_000 },
+      ],
+      ["a float prestige", () => player(), { prestige: 1.5 }],
+      ["a wrong score", () => player(), { score: 5_000_001_000 }],
+      ["a float score", () => player(), { score: 1_000_001_000.5 }],
+      [
+        "an uncapped score",
+        () => player(),
+        { lifetimeDistance: 5e11, score: 1_000_000_000 + 5e11 },
+      ],
+      ["negative distance", () => player(), { lifetimeDistance: -1 }],
+      [
+        "distance over 1e12",
+        () => player(),
+        { lifetimeDistance: 2e12, score: 1_999_999_999 },
+      ],
+      ["string distance", () => player(), { lifetimeDistance: "9" }],
+      ["a too-fast best time", () => player(), { bestTimes: { meadow: 15.9 } }],
+      [
+        "a too-fast best time on another world",
+        () => player(),
+        { bestTimes: { islands: 74 } },
+      ],
+      ["a best time over 600", () => player(), { bestTimes: { meadow: 601 } }],
+      ["an unknown world key", () => player(), { bestTimes: { moon: 100 } }],
+      [
+        "a non-number best time",
+        () => player(),
+        { bestTimes: { meadow: "20" } },
+      ],
+      ["a non-map bestTimes", () => player(), { bestTimes: [20] }],
+      ["fastestRun below 10", () => player(), { fastestRun: 9 }],
+      ["fastestRun above 100000", () => player(), { fastestRun: 100001 }],
+      ["a float fastestRun", () => player(), { fastestRun: 20.5 }],
+      ["a string fastestRun", () => player(), { fastestRun: "20" }],
+      [
+        "a client-supplied updatedAt",
+        () => player(),
+        { updatedAt: new Date() },
+      ],
+    ];
+    it.each(rejected)("rejects %s", async (_label, client, patch) => {
+      const data: Record<string, unknown> = { ...entry(), ...patch };
+      for (const [k, v] of Object.entries(data)) {
+        if (v === undefined) delete data[k];
+      }
+      await assertFails(setDoc(lbDoc(client()), data));
+    });
+
+    it("rejects a document whose id belongs to another player", async () => {
+      await assertFails(setDoc(lbDoc(player(), "player-2"), entry()));
+    });
+  });
+
+  describe("update", () => {
+    beforeEach(() => seedPlayer());
+
+    it("allows the same prestige with more distance", async () => {
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({ lifetimeDistance: 5000.2, score: 1_000_005_000 })
+        )
+      );
+    });
+
+    it("allows prestige + 1", async () => {
+      await assertSucceeds(
+        setDoc(lbDoc(player()), entry({ prestige: 2, score: 2_000_001_000 }))
+      );
+    });
+
+    it("allows exactly +2e6 distance and a changed nickname", async () => {
+      await assertSucceeds(
+        setDoc(
+          lbDoc(player()),
+          entry({
+            nickname: "Brave Fox 3",
+            lifetimeDistance: 2_001_000.5,
+            score: 1_002_001_000,
+          })
+        )
+      );
+    });
+
+    it("allows updateDoc with a valid merged result", async () => {
+      await assertSucceeds(
+        updateDoc(lbDoc(player()), {
+          lifetimeDistance: 1001,
+          score: 1_000_001_001,
+          updatedAt: serverTimestamp(),
+        })
+      );
+    });
+
+    it("rejects prestige + 2", async () => {
+      await assertFails(
+        setDoc(lbDoc(player()), entry({ prestige: 3, score: 3_000_001_000 }))
+      );
+    });
+
+    it("rejects a prestige decrease", async () => {
+      await assertFails(
+        setDoc(lbDoc(player()), entry({ prestige: 0, score: 1000 }))
+      );
+    });
+
+    it("rejects a wrong score", async () => {
+      await assertFails(
+        setDoc(lbDoc(player()), entry({ score: 9_000_001_000 }))
+      );
+    });
+
+    it("rejects decreasing distance", async () => {
+      await assertFails(
+        setDoc(
+          lbDoc(player()),
+          entry({ lifetimeDistance: 999, score: 1_000_000_999 })
+        )
+      );
+    });
+
+    it("rejects a distance jump over 2e6", async () => {
+      await assertFails(
+        setDoc(
+          lbDoc(player()),
+          entry({ lifetimeDistance: 2_001_001, score: 1_002_001_001 })
+        )
+      );
+    });
+
+    it("rejects another uid, a non-anonymous provider and a signed-out user", async () => {
+      await assertFails(setDoc(lbDoc(player("someone-else")), entry()));
+      await assertFails(setDoc(lbDoc(player(UID, "password")), entry()));
+      await assertFails(setDoc(lbDoc(anon()), entry()));
+    });
+
+    it("rejects an extra field and a free-text nickname", async () => {
+      await assertFails(setDoc(lbDoc(player()), entry({ extra: 1 })));
+      await assertFails(setDoc(lbDoc(player()), entry({ nickname: "Hello" })));
+    });
+  });
+
+  describe("rate limit", () => {
+    it("rejects an update less than 10 s after the last write", async () => {
+      await seedPlayer({}, 2_000);
+      await assertFails(setDoc(lbDoc(player()), entry()));
+    });
+
+    it("allows an update more than 10 s after the last write", async () => {
+      await seedPlayer({}, 15_000);
+      await assertSucceeds(setDoc(lbDoc(player()), entry()));
+    });
+
+    it("rejects two quick writes in a row", async () => {
+      await assertSucceeds(setDoc(lbDoc(player()), entry()));
+      await assertFails(
+        setDoc(
+          lbDoc(player()),
+          entry({ lifetimeDistance: 2000, score: 1_000_002_000 })
+        )
+      );
+    });
+  });
+
+  describe("read", () => {
+    beforeEach(() => seedPlayer());
+    const col = (db: ReturnType<typeof anon>) => collection(db, "leaderboard");
+
+    it("lets anyone get a single entry", async () => {
+      await assertSucceeds(getDoc(lbDoc(anon())));
+      await assertSucceeds(getDoc(lbDoc(player("someone-else"))));
+    });
+
+    it("lets anyone list with a limit of 50 or less", async () => {
+      await assertSucceeds(getDocs(query(col(anon()), limit(50))));
+      await assertSucceeds(
+        getDocs(query(col(anon()), orderBy("score", "desc"), limit(50)))
+      );
+      await assertSucceeds(
+        getDocs(query(col(anon()), orderBy("bestTimes.meadow"), limit(10)))
+      );
+      await assertSucceeds(
+        getDocs(
+          query(
+            col(anon()),
+            where("fastestRun", ">", 0),
+            orderBy("fastestRun"),
+            limit(50)
+          )
+        )
+      );
+    });
+
+    it("rejects a list with a limit over 50", async () => {
+      await assertFails(getDocs(query(col(anon()), limit(51))));
+    });
+
+    it("rejects an unlimited list", async () => {
+      await assertFails(getDocs(col(anon())));
+      await assertFails(getDocs(query(col(anon()), orderBy("score"))));
+    });
+  });
+
+  describe("delete", () => {
+    beforeEach(() => seedPlayer());
+
+    it("allows the admin", async () => {
+      await assertSucceeds(deleteDoc(lbDoc(admin())));
+    });
+
+    it("rejects the owner and everyone else", async () => {
+      await assertFails(deleteDoc(lbDoc(player())));
+      await assertFails(deleteDoc(lbDoc(player("someone-else"))));
+      await assertFails(deleteDoc(lbDoc(anon())));
+      await assertFails(
+        deleteDoc(lbDoc(signedIn(ADMIN_UID, { provider: "anonymous" })))
+      );
+    });
+  });
+
+  describe("REST client", () => {
+    // The emulator accepts unsigned JWTs carrying the claims rules read.
+    const unsignedToken = (uid: string) => {
+      const part = (o: object) =>
+        Buffer.from(JSON.stringify(o)).toString("base64url");
+      return `${part({ alg: "none", typ: "JWT" })}.${part({
+        user_id: uid,
+        sub: uid,
+        aud: PROJECT_ID,
+        firebase: { sign_in_provider: "anonymous", identities: {} },
+      })}.`;
+    };
+    const deps = (uid: string) => ({
+      config,
+      baseUrl,
+      getSession: async () => ({ uid, idToken: unsignedToken(uid) }),
+    });
+    const restEntry = {
+      nickname: "Happy Otter 7",
+      prestige: 1,
+      score: scoreFor(1, 1000.5),
+      lifetimeDistance: 1000.5,
+      bestTimes: { meadow: 20, islands: 80.5 },
+      fastestRun: null,
+    };
+
+    it("creates the doc with the exact body the game sends", async () => {
+      expect(await submitEntry(restEntry, deps(UID))).toBe(true);
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const snap = await getDoc(lbDoc(ctx.firestore()));
+        expect(snap.data()?.score).toBe(1_000_001_000);
+        expect(snap.data()?.fastestRun).toBeNull();
+      });
+    });
+
+    it("rejects an immediate rewrite (rate limit) and a forged score", async () => {
+      expect(await submitEntry(restEntry, deps(UID))).toBe(true);
+      expect(await submitEntry(restEntry, deps(UID))).toBe(false);
+      expect(
+        await submitEntry({ ...restEntry, score: 9e12 }, deps("player-9"))
+      ).toBe(false);
+    });
+
+    it("reads boards back through runQuery", async () => {
+      await submitEntry(restEntry, deps(UID));
+      await submitEntry(
+        {
+          ...restEntry,
+          nickname: "Brave Fox 3",
+          prestige: 2,
+          score: scoreFor(2, 1000.5),
+          fastestRun: 700,
+        },
+        deps("player-2")
+      );
+      const prestige = await fetchBoard("prestige", { config, baseUrl });
+      expect(prestige?.map((r) => r.uid)).toEqual(["player-2", UID]);
+      const fastest = await fetchBoard("fastestRun", { config, baseUrl });
+      expect(fastest).toEqual([
+        { uid: "player-2", nickname: "Brave Fox 3", value: 700 },
+      ]);
+      const meadow = await fetchBoard({ world: "meadow" }, { config, baseUrl });
+      expect(meadow).toHaveLength(2);
+    });
   });
 });

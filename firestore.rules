@@ -37,6 +37,89 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- Plane Builder leaderboard -------------------------------------
+    // Keep the word lists in sync with lib/leaderboard/nickname.ts and the
+    // minimum times with floor(finishDistance / MAX_SPEED) per world in
+    // lib/plane-builder (both are checked by firestore-tests/sync.test.ts).
+
+    function validNickname(n) {
+      let adjectives = ['Happy', 'Sunny', 'Brave', 'Clever', 'Gentle', 'Jolly', 'Lucky', 'Swift', 'Bright', 'Cheery', 'Cosmic', 'Fluffy', 'Friendly', 'Mighty', 'Merry', 'Nimble', 'Plucky', 'Quick', 'Snappy', 'Speedy', 'Zippy', 'Breezy', 'Calm', 'Cozy', 'Daring', 'Eager', 'Fancy', 'Glad', 'Golden', 'Grand', 'Kind', 'Lively', 'Peppy', 'Proud', 'Silly', 'Smiley', 'Sparkly', 'Steady', 'Warm', 'Witty'];
+      let animals = ['Otter', 'Panda', 'Koala', 'Puffin', 'Fox', 'Owl', 'Bunny', 'Duck', 'Penguin', 'Dolphin', 'Turtle', 'Falcon', 'Eagle', 'Robin', 'Sparrow', 'Hawk', 'Seal', 'Whale', 'Llama', 'Alpaca', 'Badger', 'Beaver', 'Hedgehog', 'Kitten', 'Puppy', 'Pony', 'Lemur', 'Gecko', 'Parrot', 'Toucan', 'Walrus', 'Wombat', 'Squirrel', 'Raccoon', 'Giraffe', 'Zebra', 'Moose', 'Bison', 'Heron', 'Swan'];
+      return n is string && n.size() <= 40
+        && n.split(' ').size() == 3
+        && n.split(' ')[0] in adjectives
+        && n.split(' ')[1] in animals
+        && n.split(' ')[2].matches('[1-9][0-9]?');
+    }
+
+    // A world's best time is optional; when present it is a number between
+    // the physical minimum (finishDistance / MAX_SPEED, rounded down) and 600.
+    function validTime(times, world, minSeconds) {
+      return !(world in times)
+        || (times[world] is number
+          && times[world] >= minSeconds
+          && times[world] <= 600);
+    }
+
+    function validBestTimes(t) {
+      return t is map
+        && t.keys().hasOnly(['meadow', 'canyon', 'mountains', 'beach', 'jungle', 'city', 'glacier', 'volcano', 'storm', 'islands'])
+        && validTime(t, 'meadow', 16)
+        && validTime(t, 'canyon', 33)
+        && validTime(t, 'mountains', 50)
+        && validTime(t, 'beach', 58)
+        && validTime(t, 'jungle', 61)
+        && validTime(t, 'city', 65)
+        && validTime(t, 'glacier', 68)
+        && validTime(t, 'volcano', 70)
+        && validTime(t, 'storm', 73)
+        && validTime(t, 'islands', 75);
+    }
+
+    // min(floor(distance), 999999999), as in lib/leaderboard/types.ts.
+    function cappedDistance(distance) {
+      return math.floor(distance) > 999999999 ? 999999999 : math.floor(distance);
+    }
+
+    function isPlayer(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function validLeaderboard() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nickname', 'prestige', 'score', 'lifetimeDistance', 'bestTimes', 'fastestRun', 'updatedAt'])
+        && d.keys().hasAll(['nickname', 'prestige', 'score', 'lifetimeDistance', 'bestTimes', 'fastestRun', 'updatedAt'])
+        && validNickname(d.nickname)
+        && d.prestige is int && d.prestige >= 0 && d.prestige <= 10000
+        && d.lifetimeDistance is number
+        && d.lifetimeDistance >= 0 && d.lifetimeDistance <= 1000000000000
+        && d.score is int
+        && d.score == d.prestige * 1000000000 + cappedDistance(d.lifetimeDistance)
+        && validBestTimes(d.bestTimes)
+        && (d.fastestRun == null
+          || (d.fastestRun is int && d.fastestRun >= 10 && d.fastestRun <= 100000))
+        && d.updatedAt == request.time;
+    }
+
+    function validLeaderboardUpdate() {
+      let d = request.resource.data;
+      let old = resource.data;
+      return (d.prestige == old.prestige || d.prestige == old.prestige + 1)
+        && d.lifetimeDistance >= old.lifetimeDistance
+        && d.lifetimeDistance <= old.lifetimeDistance + 2000000
+        && request.time >= old.updatedAt + duration.value(10, 's');
+    }
+
+    match /leaderboard/{uid} {
+      allow get: if true;
+      allow list: if request.query.limit <= 50;
+      allow create: if isPlayer(uid) && validLeaderboard();
+      allow update: if isPlayer(uid) && validLeaderboard() && validLeaderboardUpdate();
+      allow delete: if isAdmin();
+    }
+
     // Everything else is closed.
     match /{document=**} {
       allow read, write: if false;
