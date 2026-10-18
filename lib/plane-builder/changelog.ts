@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.7.0",
+    date: "2026-10-18",
+    title: "Climb the leaderboards",
+    highlights: [
+      "A golden card at the top of the worlds list shows your spot in the world and who to beat next",
+      "See how far you are from the pilot ahead of you, or how much more to fly to reach the top 50",
+      "A little arrow pops up when you move up the leaderboard",
+      "When you finish a world, you see your place on that world's board and who you passed",
+      "The top three pilots get gold, silver and bronze medals",
+      "Opening the leaderboards jumps straight to your own name",
+    ],
+  },
+  {
     version: "1.6.0",
     date: "2026-10-17",
     title: "Prestige and the Sky Map",
