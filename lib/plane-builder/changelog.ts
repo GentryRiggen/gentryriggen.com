@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.8.0",
+    date: "2026-10-18",
+    title: "Mystery squares and fair fuel cans",
+    highlights: [
+      "Open the Sky Map any time from the worlds screen, even before your first Prestige",
+      "Bonus squares are now glowing mystery gifts: you know something is there, but not what, until you land on it",
+      "Squares you've visited turn green and show the bonus you found",
+      'A "How the Sky Map works" guide explains the map and lists every bonus you can win',
+      "Fuel cans now give 1 second of fuel instead of 3, so grabbing them helps without letting you skip the hard part",
+      "Engines and fuel tanks cost more, so building a good plane all round matters again",
+      "When you reach a new world, its first Coin Boost and Body upgrades are cheap, so you get to upgrade right away",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-10-18",
     title: "Climb the leaderboards",
