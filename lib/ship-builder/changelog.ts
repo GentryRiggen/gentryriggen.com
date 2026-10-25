@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.19.0",
+    date: "2026-10-25",
+    title: "All the way down",
+    highlights: [
+      "When your ship sinks, the camera now always follows her down to the sea floor, no button needed",
+      "Ships that tip over in a storm sink to the bottom too",
+      "Once she settles on the sand, rust slowly creeps over her, just like a real shipwreck",
+    ],
+  },
+  {
     version: "2.18.0",
     date: "2026-10-25",
     title: "Side davits",
