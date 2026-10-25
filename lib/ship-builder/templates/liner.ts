@@ -38,6 +38,13 @@ interface Range {
   to: number;
 }
 
+interface Seat {
+  type: "deckchair" | "bench";
+  x: number;
+  z: number;
+  rotation?: 0 | 90 | 180 | 270;
+}
+
 interface Boat {
   x: number;
   type: PartType;
@@ -221,6 +228,8 @@ interface GrandLinerSpec {
   /** The column of third-class berths, in the main block. */
   thirdClassX: number;
   boats: readonly Boat[];
+  /** Deck chairs and benches on the open boat deck (level 2 surface). */
+  seats?: readonly Seat[];
   /** Watertight walls below deck. */
   bulkheads: readonly Bulkhead[];
 }
@@ -267,6 +276,15 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
     mount(b, "dome", blockAt(b, 2, spec.domeX, funnelZ), "funnel");
   }
   addBoats(b, beam, 1, spec.boats);
+  // Seats go on the boat deck roof, so each is placed at level 2.
+  for (const seat of spec.seats ?? []) {
+    b.parts.push({
+      id: nextId(b),
+      type: seat.type,
+      anchor: { kind: "grid", level: 2, x: seat.x, z: seat.z },
+      rotation: seat.rotation ?? 0,
+    });
+  }
 
   const foremast = mount(
     b,
@@ -334,10 +352,18 @@ const TITANIC: GrandLinerSpec = {
   // 15 walls make 16 compartments, but the forward ones only reach the
   // waterline, so water that fills them spills over into the next.
   bulkheads: wallsWithLowBow(15, 9),
+  // A few places to rest on the open aft boat deck, behind the funnels.
+  seats: [
+    { type: "deckchair", x: 42, z: 1 },
+    { type: "deckchair", x: 42, z: 2 },
+    { type: "deckchair", x: 44, z: 1 },
+    { type: "bench", x: 44, z: 2, rotation: 90 },
+  ],
 };
 
 const OLYMPIC: GrandLinerSpec = {
   ...TITANIC,
+  seats: undefined,
   id: "olympic",
   name: "RMS Olympic",
   year: 1911,
@@ -349,6 +375,7 @@ const OLYMPIC: GrandLinerSpec = {
 
 const BRITANNIC: GrandLinerSpec = {
   ...TITANIC,
+  seats: undefined,
   id: "britannic",
   name: "HMHS Britannic",
   year: 1915,
@@ -366,6 +393,7 @@ const BRITANNIC: GrandLinerSpec = {
 
 const LUSITANIA: GrandLinerSpec = {
   ...TITANIC,
+  seats: undefined,
   id: "lusitania",
   name: "RMS Lusitania",
   year: 1907,
