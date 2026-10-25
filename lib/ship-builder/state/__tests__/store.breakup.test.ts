@@ -2,7 +2,7 @@ import { act } from "react";
 import { emptyShip } from "../../model/placement";
 import { runTrial } from "../../sim/seaTrial";
 import type { SimState } from "../../sim/types";
-import { clearLiveTrial, publishLiveTrial } from "../liveTrialState";
+import { clearLiveTrial } from "../liveTrialState";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -15,11 +15,6 @@ beforeEach(() => {
   act(() => useShipBuilderStore.setState(createInitialState()));
   clearLiveTrial();
 });
-
-/** The running trial's published state, once she has gone under. */
-function publishSunk(): void {
-  publishLiveTrial(runTrial(running().input), 0, true);
-}
 
 function running(): Extract<TrialSlice, { status: "running" }> {
   const { trial } = store();
@@ -64,85 +59,24 @@ describe("break mode", () => {
   });
 });
 
-describe("descend", () => {
-  it("continues a sunk result from where she ended, with a new run", () => {
+describe("descending", () => {
+  it("is set for every iceberg trial and not for a waves trial", () => {
+    act(() => store().startTrial("calm", 5));
+    expect(running().descending).toBe(true);
+    act(() => store().startTrial("calm"));
+    expect(running().descending).toBe(false);
+  });
+
+  it("has no descend action any more", () => {
+    expect("descend" in store()).toBe(false);
+  });
+
+  it("keeps descending on the result when she sinks", () => {
     finishSinkingTrial();
-    const before = store().trial;
-    act(() => store().descend());
-    const trial = running();
-
-    expect(trial).toMatchObject({ descending: true, from: "end" });
-    expect(before.status === "result" && before.runId).not.toBe(trial.runId);
-    expect(before.status === "result" && before.input).toBe(trial.input);
-  });
-
-  it("works on a running iceberg trial once she has sunk, but not twice", () => {
-    act(() => store().startTrial("calm", 5));
-    publishSunk();
-    act(() => store().descend());
-    const first = running();
-    expect(first.descending).toBe(true);
-
-    act(() => store().descend());
-    expect(running().runId).toBe(first.runId);
-  });
-
-  it("does nothing while she is still afloat", () => {
-    act(() => store().startTrial("calm", 5));
-    const trial = store().trial;
-    act(() => store().descend());
-    expect(store().trial).toBe(trial);
-
-    const sailing = runTrial(running().input);
-    publishLiveTrial({ ...sailing, events: [] }, 0, true);
-    act(() => store().descend());
-    expect(store().trial).toBe(trial);
-  });
-
-  it("does nothing for a sank result with no sunk event", () => {
-    act(() => store().startTrial("calm", 5));
-    const end = runTrial(running().input);
-    act(() =>
-      store().finishTrial({
-        ...end,
-        events: end.events.filter((event) => event.kind !== "sunk"),
-      })
-    );
-    const result = store().trial;
-    act(() => store().descend());
-    expect(store().trial).toBe(result);
-  });
-
-  it("keeps descending on the result after the descent", () => {
-    act(() => store().startTrial("calm", 5));
-    publishSunk();
-    act(() => store().descend());
-    act(() => store().finishTrial(runTrial(running().input)));
     expect(store().trial).toMatchObject({
       status: "result",
       descending: true,
     });
-
-    const result = store().trial;
-    act(() => store().descend());
-    expect(store().trial).toBe(result);
-  });
-
-  it("does nothing for a waves trial, an afloat result, or while idle", () => {
-    act(() => store().descend());
-    expect(store().trial.status).toBe("idle");
-
-    act(() => store().startTrial("calm"));
-    const waves = store().trial;
-    act(() => store().descend());
-    expect(store().trial).toBe(waves);
-
-    act(() => store().startTrial("calm", 5));
-    const afloat = { ...runTrial(running().input), outcome: "afloat" as const };
-    act(() => store().finishTrial(afloat));
-    const result = store().trial;
-    act(() => store().descend());
-    expect(store().trial).toBe(result);
   });
 });
 
@@ -153,17 +87,9 @@ describe("replay", () => {
     act(() => store().replay());
     const trial = running();
 
-    expect(trial).toMatchObject({ descending: false, from: "start" });
+    expect(trial).toMatchObject({ descending: true });
     expect(before.status === "result" && before.input).toBe(trial.input);
     expect(before.status === "result" && before.runId).not.toBe(trial.runId);
-  });
-
-  it("keeps the descent if it was taken", () => {
-    finishSinkingTrial();
-    act(() => store().descend());
-    act(() => store().finishTrial(runTrial(running().input)));
-    act(() => store().replay());
-    expect(running()).toMatchObject({ descending: true, from: "start" });
   });
 
   it("does nothing unless an iceberg result is showing", () => {
@@ -184,9 +110,8 @@ describe("replay", () => {
 });
 
 describe("leaving", () => {
-  it("endTrial, aimIceberg and cancelAim clear a descended trial", () => {
+  it("endTrial, aimIceberg and cancelAim clear a sunk trial", () => {
     finishSinkingTrial();
-    act(() => store().descend());
     act(() => store().endTrial());
     expect(store().trial).toEqual({ status: "idle" });
 

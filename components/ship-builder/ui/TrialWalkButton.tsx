@@ -14,7 +14,6 @@ export default function TrialWalkButton() {
   const isShown = useShipBuilderStore(
     (s) =>
       s.trial.status === "running" &&
-      !s.trial.descending &&
       s.walk.status === "idle" &&
       s.drive.status === "idle"
   );

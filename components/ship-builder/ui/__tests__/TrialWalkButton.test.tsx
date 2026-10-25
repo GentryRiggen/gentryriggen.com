@@ -77,15 +77,4 @@ describe("TrialWalkButton", () => {
     );
     expect(walkButton()).toBeNull();
   });
-
-  it("hides during a descent run even before its live state arrives", () => {
-    render(<TrialWalkButton />);
-    act(() => store().startTrial("calm", 5));
-    const { trial } = store();
-    if (trial.status !== "running") throw new Error("expected running");
-    act(() =>
-      useShipBuilderStore.setState({ trial: { ...trial, descending: true } })
-    );
-    expect(walkButton()).toBeNull();
-  });
 });

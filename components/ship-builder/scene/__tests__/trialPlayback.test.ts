@@ -160,21 +160,6 @@ describe("playback reset by the store", () => {
     expect(trialPlayback.roll).toBe(0);
     expect(trialPlayback.doneAt).toBeNull();
   });
-
-  it("keeps the sunk pose when following her down", () => {
-    const { useShipBuilderStore } = jest.requireActual(
-      "@/lib/ship-builder/state/store"
-    );
-    const { trialPlayback } = jest.requireActual("../trialPlayback");
-    useShipBuilderStore.getState().startTrial("calm", 5);
-    const sunk = { ...runTrial(TOP_HEAVY), outcome: "sank" as const };
-    useShipBuilderStore.getState().finishTrial(sunk);
-    writePlayback(sunk, trialPlayback);
-    useShipBuilderStore.getState().descend();
-    expect(useShipBuilderStore.getState().trial.status).toBe("running");
-    expect(trialPlayback.sink).toBe(sunk.pose.sink);
-    useShipBuilderStore.getState().endTrial();
-  });
 });
 
 describe("writeInstantPlayback", () => {
@@ -261,7 +246,7 @@ describe("timeline clock", () => {
     const timeline = stillTimeline(10);
     expect(startTimelineClock(timeline, 0, 3).time).toBe(3);
     expect(startTimelineClock(timeline, 0, 500).time).toBe(10);
-    // "Follow her down" starts at the end even with an earlier jump time.
+    // A clock that starts later than the jump time keeps its start.
     expect(startTimelineClock(timeline, 8, 3).time).toBe(8);
 
     const held = startTimelineClock(timeline, 0, 3);

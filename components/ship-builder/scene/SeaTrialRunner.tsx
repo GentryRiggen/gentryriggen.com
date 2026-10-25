@@ -11,11 +11,9 @@ import {
 import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
-import { MAX_FRAME_DELTA } from "./animationMath";
 import { publishLiveTrial } from "./liveTrial";
 import { testTrialSeconds, testTrialSpeed } from "./testClock";
 import {
-  advanceEffectsClock,
   advanceTimelineClock,
   advanceTrial,
   isTimelineClockDone,
@@ -29,12 +27,6 @@ import {
   type TrialClock,
 } from "./trialPlayback";
 import { trialTimelineFor } from "./trialTimeline";
-
-/**
- * Real seconds a sunk iceberg trial waits before its result, while the status
- * bar offers "Follow her down".
- */
-export const FOLLOW_OFFER_S = 4;
 
 interface TrialDriverProps {
   input: TrialInput;
@@ -87,34 +79,31 @@ function InstantTrial({ input }: TrialDriverProps) {
 interface IcebergDriverProps {
   input: TrialInput;
   descending: boolean;
-  from: "start" | "end";
 }
 
 /**
  * Plays an iceberg trial from its precomputed timeline: slow-mo at the break,
- * "Follow her down" continuing from where she sank, and a pause at the end of
- * a sinking so the status bar can offer to follow her.
+ * and, when she sinks, on down to the sea floor (`descending` is always set
+ * for an iceberg trial).
  */
-function IcebergDriver({ input, descending, from }: IcebergDriverProps) {
+function IcebergDriver({ input, descending }: IcebergDriverProps) {
   const finishTrial = useShipBuilderStore((s) => s.finishTrial);
   const clock = useRef<TimelineClock | null>(null);
-  const offeredFor = useRef(0);
   const finished = useRef(false);
 
   useEffect(() => {
     const timeline = trialTimelineFor(input, descending);
-    const start =
-      from === "end"
-        ? timelineEnd(trialTimelineFor(input))
-        : timelineStart(timeline);
-    const started = startTimelineClock(timeline, start, testTrialSeconds());
+    const started = startTimelineClock(
+      timeline,
+      timelineStart(timeline),
+      testTrialSeconds()
+    );
     clock.current = started;
-    offeredFor.current = 0;
     finished.current = false;
     trialPlayback.speed = started.speed;
     writeTimelinePlayback(timeline, started.time);
     publishLiveTrial(stateAt(timeline, started.time), 0, true);
-  }, [input, descending, from]);
+  }, [input, descending]);
 
   useFrame((_, delta) => {
     const current = clock.current;
@@ -135,14 +124,6 @@ function IcebergDriver({ input, descending, from }: IcebergDriverProps) {
     }
     trialPlayback.speed = 1;
     const last = timeline.states[timeline.states.length - 1];
-    const canFollow = !timeline.descended && last.outcome === "sank";
-    if (canFollow && offeredFor.current < FOLLOW_OFFER_S) {
-      const seconds = Math.min(delta, MAX_FRAME_DELTA) * testSpeed;
-      offeredFor.current += seconds;
-      // Bubbles keep rising and fading as they do once the result shows.
-      advanceEffectsClock(delta, testSpeed);
-      return;
-    }
     finished.current = true;
     finishTrial(last);
   });
@@ -181,7 +162,6 @@ export default function SeaTrialRunner() {
         key={trial.runId}
         input={trial.input}
         descending={trial.descending}
-        from={trial.from}
       />
     );
   }

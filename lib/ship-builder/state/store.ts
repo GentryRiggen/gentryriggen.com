@@ -29,7 +29,6 @@ import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
-import { getLiveTrialState } from "./liveTrialState";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
@@ -92,11 +91,10 @@ export interface Notice {
  * goes back to building. Anything but idle freezes the ship: every action that
  * would edit it does nothing (see `isTrialActive`).
  *
- * An iceberg trial that sank can be followed down to the sea floor
- * (`descend`): it runs again with `descending` set, continuing from where it
- * ended. `replay` plays the same trial again from the start. A walker aboard
- * rides her down on their own: `finishTrial` starts the descent instead of
- * showing the result, which waits until they stop walking.
+ * An iceberg trial always carries on to the sea floor if she sinks: it starts
+ * with `descending` set, so the descent is part of the one run. `replay` plays
+ * the same trial again from the start. The result waits until any walker
+ * stops walking.
  */
 /**
  * Drive mode: idle while building, `setup` while the obstacle picker is open,
@@ -122,13 +120,8 @@ export type TrialSlice =
       input: TrialInput;
       /** Changes per run, so "Try again" restarts the runner. */
       runId: number;
-      /** The descent to the sea floor is part of this run. */
+      /** The descent to the sea floor is part of this run (iceberg trials). */
       descending: boolean;
-      /**
-       * Where playback begins: the start, or the end of the trial before its
-       * descent ("Follow her down" picks up where she sank).
-       */
-      from: "start" | "end";
     }
   | {
       status: "result";
@@ -255,14 +248,6 @@ export interface ShipBuilderState extends ShipBuilderData {
   /** Picks how the next iceberg trial may break the ship. */
   setBreakMode: (mode: BreakMode) => void;
   /**
-   * "Follow her down": continues an iceberg trial that sank on to the sea
-   * floor, from where she went under. Works on a finished `sank` result, and
-   * on a running iceberg trial (the status bar offers it once she has sunk,
-   * before the result shows). Does nothing once already descending. While
-   * someone walks, `finishTrial` does this itself when she sinks.
-   */
-  descend: () => void;
-  /**
    * "Watch again": plays the finished iceberg trial again from the start,
    * descent included if it was taken.
    */
@@ -355,8 +340,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         status: "running",
         input,
         runId,
-        descending: false,
-        from: "start",
+        descending: input.iceberg !== undefined,
       },
       tool: { kind: "none" },
       ...CLEARED,
@@ -791,28 +775,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     finishTrial(state) {
-      const { trial, walk } = get();
+      const { trial } = get();
       if (trial.status !== "running") return;
-      // A walker aboard rides her all the way: a sinking goes on down to the
-      // sea floor, and the result waits until they stop walking.
-      const ridesDown =
-        walk.status === "walking" &&
-        trial.input.iceberg !== undefined &&
-        !trial.descending &&
-        state.events.some((event) => event.kind === "sunk");
-      if (ridesDown) {
-        runId += 1;
-        set({
-          trial: {
-            status: "running",
-            input: trial.input,
-            runId,
-            descending: true,
-            from: "end",
-          },
-        });
-        return;
-      }
       set({
         trial: {
           status: "result",
@@ -832,30 +796,6 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       set({ breakMode: mode });
     },
 
-    descend() {
-      const { trial } = get();
-      if (trial.status !== "running" && trial.status !== "result") return;
-      if (!trial.input.iceberg || trial.descending) return;
-      // Only a ship that has really gone under can be followed down.
-      const sunkEvents =
-        trial.status === "result"
-          ? trial.state.outcome === "sank"
-            ? trial.state.events
-            : []
-          : (getLiveTrialState()?.events ?? []);
-      if (!sunkEvents.some((event) => event.kind === "sunk")) return;
-      runId += 1;
-      set({
-        trial: {
-          status: "running",
-          input: trial.input,
-          runId,
-          descending: true,
-          from: "end",
-        },
-      });
-    },
-
     replay() {
       const { trial } = get();
       if (trial.status !== "result" || !trial.input.iceberg) return;
@@ -866,7 +806,6 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           input: trial.input,
           runId,
           descending: trial.descending,
-          from: "start",
         },
       });
     },
