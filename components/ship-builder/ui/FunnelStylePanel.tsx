@@ -117,11 +117,15 @@ export default function FunnelStylePanel({
   }, [shouldClose, onClose]);
 
   useEffect(() => {
+    // Captured and stopped, so the builder's own Escape (which also drops the
+    // selection) never sees it: Escape closes just the panel.
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      onClose();
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
   if (!part) return null;
@@ -141,10 +145,13 @@ export default function FunnelStylePanel({
 
   function changeText(raw: string) {
     const next = normalizeMarkText(raw);
+    // Keep the Letters box up even when the last letter is deleted.
+    setPendingMode("letters");
     setFunnelMark(partId, next ? { kind: "letters", text: next, color } : null);
   }
 
   function pickLogo(logo: FunnelLogo) {
+    setPendingMode("logo");
     setFunnelMark(partId, { kind: "logo", logo, color });
   }
 

@@ -302,6 +302,13 @@ const CLEARED = {
   pendingRemoval: null,
 } satisfies Partial<ShipBuilderData>;
 
+/** The selection, kept across undo and redo while that part still exists. */
+function keptSelection(selectedId: string | null, ship: Ship): string | null {
+  return selectedId && ship.parts.some((p) => p.id === selectedId)
+    ? selectedId
+    : null;
+}
+
 export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   // Lives outside the state so createInitialState() resets can't reuse ids.
   let noticeId = 0;
@@ -610,6 +617,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         past: past.slice(0, -1),
         future: [{ ship, savedId }, ...future],
         ...CLEARED,
+        selectedId: keptSelection(get().selectedId, previous.ship),
       });
     },
 
@@ -624,6 +632,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         past: [...past, { ship, savedId }].slice(-HISTORY_LIMIT),
         future: rest,
         ...CLEARED,
+        selectedId: keptSelection(get().selectedId, next.ship),
       });
     },
 

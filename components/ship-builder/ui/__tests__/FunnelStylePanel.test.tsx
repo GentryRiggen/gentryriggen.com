@@ -1,6 +1,7 @@
 import { act } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import FunnelStylePanel from "../FunnelStylePanel";
 import SelectionBar from "../SelectionBar";
 import type { PlacedPart } from "@/lib/ship-builder/model/types";
@@ -158,5 +159,80 @@ describe("SelectionBar Style button", () => {
     act(() => store().select("m1"));
     render(<SelectionBar />);
     expect(screen.queryByRole("button", { name: "Style" })).toBeNull();
+  });
+});
+
+function Shortcuts() {
+  useKeyboardShortcuts();
+  return null;
+}
+
+describe("FunnelStylePanel with a stored mark", () => {
+  it("keeps the Letters box (and focus) when the last letter is cleared", async () => {
+    const user = userEvent.setup();
+    act(() => {
+      store().select("f1");
+      store().setFunnelMark("f1", {
+        kind: "letters",
+        text: "WS",
+        color: "white",
+      });
+    });
+    render(<FunnelStylePanel partId="f1" onClose={jest.fn()} />);
+    const input = screen.getByLabelText("Letters", { selector: "input" });
+    await user.click(input);
+    await user.keyboard("{Backspace}{Backspace}");
+    expect(markOf("f1")).toBeUndefined();
+    const after = screen.getByLabelText("Letters", { selector: "input" });
+    expect(after).toBe(input);
+    expect(after).toHaveFocus();
+  });
+});
+
+describe("SelectionBar Style panel lifecycle", () => {
+  it("starts closed when a funnel is selected again", async () => {
+    const user = userEvent.setup();
+    act(() => store().select("f1"));
+    render(<SelectionBar />);
+    await user.click(screen.getByRole("button", { name: "Style" }));
+    expect(screen.getByText("Funnel style")).toBeVisible();
+    act(() => store().select("f2"));
+    expect(screen.queryByText("Funnel style")).toBeNull();
+    act(() => store().select("f1"));
+    expect(screen.queryByText("Funnel style")).toBeNull();
+  });
+
+  it("Escape closes only the panel and keeps the part selected", async () => {
+    const user = userEvent.setup();
+    act(() => store().select("f1"));
+    render(
+      <>
+        <Shortcuts />
+        <SelectionBar />
+      </>
+    );
+    await user.click(screen.getByRole("button", { name: "Style" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByText("Funnel style")).toBeNull();
+    expect(store().selectedId).toBe("f1");
+    await user.keyboard("{Escape}");
+    expect(store().selectedId).toBeNull();
+  });
+
+  it("Undo keeps the part selected while it still exists", async () => {
+    const user = userEvent.setup();
+    act(() => {
+      store().select("f1");
+      store().setFunnelMark("f1", {
+        kind: "logo",
+        logo: "anchor",
+        color: "white",
+      });
+    });
+    render(<SelectionBar />);
+    await user.click(screen.getByRole("button", { name: "Style" }));
+    act(() => store().undo());
+    expect(store().selectedId).toBe("f1");
+    expect(screen.getByText("Funnel style")).toBeVisible();
   });
 });
