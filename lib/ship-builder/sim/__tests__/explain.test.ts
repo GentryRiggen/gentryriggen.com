@@ -23,9 +23,10 @@ function ship(stabilityRatio: number, listDegrees = 0): SimShip {
 }
 
 function summaryOf(s: SimShip, sea: SimSea) {
-  return explainTrial(runTrial({ ship: s, sea, length: 30 }), {
+  return explainTrial(runTrial({ ship: s, sea, funnels: [], length: 30 }), {
     ship: s,
     sea,
+    funnels: [],
     length: 30,
   });
 }
@@ -92,12 +93,18 @@ describe("explainTrial for a stable ship that the list capsized", () => {
     let found = 0;
     for (let list = 7; list < 8; list += 0.1) {
       const s = ship(0.06, list);
-      const state = runTrial({ ship: s, sea: "stormy", length: 30 });
+      const state = runTrial({
+        ship: s,
+        sea: "stormy",
+        funnels: [],
+        length: 30,
+      });
       if (state.outcome !== "capsized") continue;
       found += 1;
       const summary = explainTrial(state, {
         ship: s,
         sea: "stormy",
+        funnels: [],
         length: 30,
       });
       expect(summary.message).not.toMatch(/top-heavy/);
@@ -110,12 +117,18 @@ describe("explainTrial for a stable ship that the list capsized", () => {
     const s = ship(0.06);
     for (const reason of ["stable", "rough-sea", null] as const) {
       const state = {
-        ...runTrial({ ship: ship(0.22), sea: "stormy", length: 30 }),
+        ...runTrial({
+          ship: ship(0.22),
+          sea: "stormy",
+          funnels: [],
+          length: 30,
+        }),
         reason,
       };
       const summary = explainTrial(state, {
         ship: s,
         sea: "stormy",
+        funnels: [],
         length: 30,
       });
       expect(summary.message).not.toMatch(/top-heavy/);
@@ -128,6 +141,7 @@ describe("explainTrial for an iceberg trial", () => {
   const input: TrialInput = {
     ship: ship(0.05),
     sea: "calm",
+    funnels: [],
     length: 30,
     iceberg: { compartments: [], length: 30, impactX: 9 },
   };
@@ -223,6 +237,7 @@ describe("explainTrial for a ship that sank in the iceberg trial", () => {
     return {
       ship: simShipFromStats(computeStats(ship), ship.hull.beam),
       sea: "calm",
+      funnels: [],
       length,
       iceberg: {
         compartments: compartmentSpecsOf(ship.hull),

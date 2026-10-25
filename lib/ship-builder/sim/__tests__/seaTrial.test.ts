@@ -20,6 +20,7 @@ function trialOf(
   return {
     ship: { stabilityRatio, listAngle: listDegrees * DEG, beam: 4 },
     sea,
+    funnels: [],
     length: 30,
   };
 }

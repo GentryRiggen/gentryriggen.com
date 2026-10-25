@@ -13,6 +13,7 @@ import TrialScrubber, { markLanes } from "../TrialScrubber";
 const INPUT: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  funnels: [],
   length: 30,
 };
 

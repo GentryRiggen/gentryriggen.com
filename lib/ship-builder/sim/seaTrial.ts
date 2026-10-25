@@ -19,6 +19,7 @@ import {
   stepPlunge,
 } from "./flooding";
 import { openedBy } from "./compartments";
+import { stepFunnelFalls } from "./funnelFall";
 
 /**
  * Level 1 sea trial: "physics-lite", deterministic and allocation-light.
@@ -282,6 +283,7 @@ export function createTrial(input: TrialInput): SimState {
     power: "on",
     breakup: null,
     halves: null,
+    funnelFalls: [],
   };
 }
 
@@ -428,6 +430,15 @@ export function stepTrial(
   input: TrialInput,
   state: SimState,
   actions: readonly SimAction[] = []
+): SimState {
+  if (state.phase === "done") return state;
+  return stepFunnelFalls(stepPhases(input, state, actions), input);
+}
+
+function stepPhases(
+  input: TrialInput,
+  state: SimState,
+  actions: readonly SimAction[]
 ): SimState {
   void actions;
   if (state.phase === "done") return state;

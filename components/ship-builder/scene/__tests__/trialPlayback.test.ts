@@ -30,11 +30,13 @@ import { isHeavyTrialPose } from "../trialPose";
 const TOP_HEAVY: TrialInput = {
   ship: { stabilityRatio: 0.5, listAngle: 0, beam: 3 },
   sea: "stormy",
+  funnels: [],
   length: 30,
 };
 const STEADY: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  funnels: [],
   length: 30,
 };
 

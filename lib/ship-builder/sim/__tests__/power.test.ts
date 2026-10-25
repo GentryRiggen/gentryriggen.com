@@ -37,6 +37,7 @@ function icebergInput(
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    funnels: [],
     length,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
@@ -69,6 +70,7 @@ function stateWithWater(...water: number[]): SimState {
   const input: TrialInput = {
     ship: { stabilityRatio: 0, listAngle: 0, beam: 4 },
     sea: "calm",
+    funnels: [],
     length: 30,
   };
   return {
@@ -166,6 +168,7 @@ describe("the lights in a trial", () => {
     const input: TrialInput = {
       ship: { stabilityRatio: 0.45, listAngle: 0, beam: 4 },
       sea: "stormy",
+      funnels: [],
       length: 30,
     };
     const state = runTrial(input);

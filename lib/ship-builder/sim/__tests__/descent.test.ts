@@ -34,6 +34,7 @@ function icebergInput(id: string, impactX: number, breakMode: BreakMode) {
   const input: TrialInput = {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    funnels: [],
     length,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
@@ -92,6 +93,7 @@ describe("startDescent", () => {
     const waves: TrialInput = {
       ship: { stabilityRatio: 0.45, listAngle: 0, beam: 4 },
       sea: "stormy",
+      funnels: [],
       length: 30,
     };
     // A capsize already went all the way down inside runTrial.

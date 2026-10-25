@@ -56,6 +56,7 @@ function icebergInput(
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    funnels: [],
     length,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),

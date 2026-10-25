@@ -176,9 +176,40 @@ export interface SimEvent {
     /** She broke in two (see `SimState.breakup`). */
     | "broke"
     /** A body (the whole ship, or one half) landed on the sea floor. */
-    | "touched-bottom";
+    | "touched-bottom"
+    /** A funnel snapped off in the sinking (see `funnelFall.ts`). */
+    | "funnel-broke";
   /** For `touched-bottom`: which body landed. */
   body?: SimBody;
+  /** For `funnel-broke`: which funnel (its part id). */
+  funnelId?: string;
+}
+
+/** A funnel as the sim sees it, in the ship's resting world frame (bow to +X, sink 0). */
+export interface TrialFunnel {
+  id: string;
+  /** Cells from the bow, of its base centre. */
+  cellX: number;
+  /** World y of its base (DECK_Y + mount level * LEVEL_HEIGHT). */
+  baseY: number;
+  /** World z of its base (beam / 2 - model z). */
+  baseZ: number;
+  /** Body height above its base (getPartDef(type).height). */
+  height: number;
+}
+
+/** A funnel that snapped off, and how it starts to fall. */
+export interface FunnelFall {
+  funnelId: string;
+  /** Sim seconds when it snapped. */
+  at: number;
+  /** World position of its base at that moment. */
+  origin: { x: number; y: number; z: number };
+  /** The carrying body's roll and pitch at that moment (radians). */
+  roll: number;
+  pitch: number;
+  /** Which way it topples across the ship: +1 toward +Z, -1 toward -Z. */
+  side: 1 | -1;
 }
 
 export interface SimState {
@@ -199,6 +230,13 @@ export interface SimState {
   /** Set once she breaks; `halves` then replaces `pose`. */
   breakup: SimBreakup | null;
   halves: SimHalves | null;
+  /** Funnels that have snapped off so far, in order. */
+  funnelFalls: FunnelFall[];
+  /**
+   * Which end of the ship goes down first, fixed at the first step funnels
+   * may break (see `stepFunnelFalls`). Absent until then.
+   */
+  funnelEnd?: "bow" | "stern";
 }
 
 export interface TrialInput {
@@ -208,4 +246,6 @@ export interface TrialInput {
   length: number;
   /** Present for an iceberg trial; absent for the Level 1 waves trial. */
   iceberg?: IcebergInput;
+  /** Her funnels, for deciding which break off in a sinking. */
+  funnels: TrialFunnel[];
 }
