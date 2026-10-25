@@ -11,20 +11,29 @@ import { test, expect, type Page } from "@playwright/test";
  * result.
  */
 
-// The sinking now always runs on to the sea floor, so under a loaded software
-// renderer (many workers) the whole drive takes close to two minutes.
-test.setTimeout(240_000);
+// The sail clamps each frame to 0.1 s of sim time, so on CI's software renderer
+// (well under 1 fps once the scene is busy) a drive at normal speed needs
+// minutes of wall clock. `driveSpeed` makes each frame buy more sim time, so
+// the time to reach the iceberg no longer depends on the frame rate.
+test.setTimeout(120_000);
+
+/** Sim speed-up for the sail, so only a few dozen frames reach the iceberg. */
+const DRIVE_SPEED = 10;
 
 /** Past any iceberg trial, so the result shows at once. */
 const FAST_FORWARD_SECONDS = 1000;
 
 async function openBuilder(page: Page) {
-  await page.addInitScript((trialSeconds) => {
-    window.__SHIP_BUILDER_TEST__ = {
-      trialSeconds,
-      driveObstacles: [{ kind: "iceberg", x: 60, z: 0, radius: 5 }],
-    };
-  }, FAST_FORWARD_SECONDS);
+  await page.addInitScript(
+    ({ trialSeconds, driveSpeed }) => {
+      window.__SHIP_BUILDER_TEST__ = {
+        trialSeconds,
+        driveSpeed,
+        driveObstacles: [{ kind: "iceberg", x: 60, z: 0, radius: 5 }],
+      };
+    },
+    { trialSeconds: FAST_FORWARD_SECONDS, driveSpeed: DRIVE_SPEED }
+  );
   await page.goto("/ship-builder");
   await expect(
     page.getByRole("heading", { name: "Ship Builder" })
@@ -114,7 +123,7 @@ test.describe("Ship Builder drive", () => {
 
       // Dead ahead, the iceberg ends the drive and the sinking plays.
       const result = page.getByRole("region", { name: "Sea trial result" });
-      await expect(result).toBeVisible({ timeout: 180_000 });
+      await expect(result).toBeVisible({ timeout: 90_000 });
       await expect(result).toContainText("She sank");
       expect(await driveState(page)).toBe("idle");
     }
