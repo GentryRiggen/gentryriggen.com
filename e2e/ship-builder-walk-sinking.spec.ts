@@ -59,9 +59,11 @@ test.describe("Ship Builder walk while sinking", () => {
   async function rideToTheEnd(page: Page) {
     await startWalking(page);
     await page.getByRole("button", { name: "Hit with an iceberg" }).click();
+    // Every iceberg trial is a descent from the start, so the walker rides
+    // her all the way down.
     await expect
       .poll(() => status(page))
-      .toEqual({ walk: "walking", trial: "running", descending: false });
+      .toEqual({ walk: "walking", trial: "running", descending: true });
     await expect(
       page.getByRole("button", { name: "Hit with an iceberg" })
     ).toHaveCount(0);
@@ -110,7 +112,7 @@ test.describe("Ship Builder walk while sinking", () => {
       .toEqual({
         walk: "walking",
         trial: "running",
-        descending: false,
+        descending: true,
       });
   });
 });
