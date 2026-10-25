@@ -38,11 +38,17 @@ import { spawnOf, type WalkStart } from "../walk";
 import { publishWalk } from "./walkLive";
 import { resetWalkInput } from "./walkInput";
 import type { HullArea, PaintColor } from "../model/paint";
+import {
+  isFunnelType,
+  type FunnelArea,
+  type FunnelMark,
+} from "../model/funnelLivery";
 import type {
   Anchor,
   BowShape,
   Hull,
   PartType,
+  PlacedPart,
   Rotation,
   Ship,
   SternShape,
@@ -167,6 +173,10 @@ export interface ShipBuilderState extends ShipBuilderData {
   paintPart: (id: string) => void;
   /** Paints a hull area; the same colour resets it. */
   paintHull: (area: HullArea) => void;
+  /** Sets one funnel area ship-wide; null resets it. Body also clears per-funnel `color`. */
+  paintFunnels: (area: FunnelArea, color: PaintColor | null) => void;
+  /** Sets or clears (null) the mark on one funnel part. Ignores non-funnels. */
+  setFunnelMark: (id: string, mark: FunnelMark | null) => void;
   cancel: () => void;
   rotate: () => void;
   hoverAt: (anchor: Anchor | null) => void;
@@ -433,6 +443,37 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const hull: Hull = { ...ship.hull, paint };
       if (Object.keys(paint).length === 0) delete hull.paint;
       commit({ ...ship, hull });
+    },
+
+    paintFunnels(area, color) {
+      if (isTrialActive()) return;
+      const { ship } = get();
+      const { [area]: _old, ...others } = ship.funnelPaint ?? {};
+      const funnelPaint =
+        color === null ? others : { ...others, [area]: color };
+      const next: Ship = { ...ship, funnelPaint };
+      if (Object.keys(funnelPaint).length === 0) delete next.funnelPaint;
+      if (area === "body") {
+        next.parts = ship.parts.map((part) => {
+          if (!isFunnelType(part.type) || part.color === undefined) return part;
+          const { color: _color, ...rest } = part;
+          return rest;
+        });
+      }
+      commit(next);
+    },
+
+    setFunnelMark(id, mark) {
+      if (isTrialActive()) return;
+      const { ship } = get();
+      const part = ship.parts.find((p) => p.id === id);
+      if (!part || !isFunnelType(part.type)) return;
+      const { mark: _old, ...rest } = part;
+      const updated: PlacedPart = mark ? { ...rest, mark } : rest;
+      commit({
+        ...ship,
+        parts: ship.parts.map((p) => (p.id === id ? updated : p)),
+      });
     },
 
     cancel() {

@@ -843,7 +843,7 @@ describe("validateShip", () => {
       bow: "straight",
       stern: "counter",
     });
-    expect(emptyShip().v).toBe(7);
+    expect(emptyShip().v).toBe(8);
   });
 
   it("applies each kind's defaults to a new ship", () => {

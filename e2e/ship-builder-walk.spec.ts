@@ -88,7 +88,7 @@ test.describe("Ship Builder walk", () => {
         );
         store.loadShip(
           {
-            v: 7,
+            v: 8,
             kind: "liner",
             name: "No deck",
             hull: {

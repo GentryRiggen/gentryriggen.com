@@ -45,7 +45,7 @@ describe("parseShip", () => {
     ["null", null],
     ["a string", "ship"],
     ["an array", []],
-    ["a newer version", { ...validShip, v: 8 }],
+    ["a newer version", { ...validShip, v: 9 }],
     ["an unknown bow", { ...validShip, hull: { ...validShip.hull, bow: "x" } }],
     [
       "a missing stern",
@@ -197,7 +197,7 @@ describe("v1 to v2 migration", () => {
 
   it("overrides any beam already on a v1 hull", () => {
     const migrated = migrate({ ...v1, hull: { lengthSegments: 10, beam: 7 } });
-    expect(migrated).toMatchObject({ v: 7, kind: "liner", hull: { beam: 4 } });
+    expect(migrated).toMatchObject({ v: 8, kind: "liner", hull: { beam: 4 } });
   });
 
   it("does not mutate the input", () => {
@@ -281,7 +281,7 @@ describe("v3 to v4 migration", () => {
       ship: { ...testShip(v3.parts), name: "Plain" },
     });
     expect(migrate(v3)).toMatchObject({
-      v: 7,
+      v: 8,
       hull: { bow: "straight", stern: "counter" },
     });
   });
@@ -332,7 +332,7 @@ describe("v4 to v5 migration", () => {
   };
 
   it("only bumps the version", () => {
-    expect(migrate({ ...v4, v: 4 })).toEqual({ ...v4, v: 7, kind: "liner" });
+    expect(migrate({ ...v4, v: 4 })).toEqual({ ...v4, v: 8, kind: "liner" });
     expect(parseShip(JSON.parse(JSON.stringify(v4)))).toEqual({
       ok: true,
       dropped: 0,
@@ -416,7 +416,7 @@ describe("v5 to v6 migration", () => {
   };
 
   it("adds the liner kind", () => {
-    expect(migrate(v5)).toEqual({ ...v5, v: 7, kind: "liner" });
+    expect(migrate(v5)).toEqual({ ...v5, v: 8, kind: "liner" });
     expect(parseShip(JSON.parse(JSON.stringify(v5)))).toEqual({
       ok: true,
       dropped: 0,
@@ -473,6 +473,7 @@ describe("migrate", () => {
         4: (raw) => ({ ...raw, v: 5 }),
         5: (raw) => ({ ...raw, v: 6 }),
         6: (raw) => ({ ...raw, v: 7 }),
+        7: (raw) => ({ ...raw, v: 8 }),
       }
     );
     expect(migrated).toEqual({
@@ -580,5 +581,49 @@ describe("bulkheads", () => {
       height: "low",
     }));
     expect(parseShip(withWalls(walls)).ok).toBe(false);
+  });
+});
+
+describe("funnel livery", () => {
+  const funnel = (extra: object) => ({
+    ...attachPart("f", "funnel", "d", "funnel"),
+    ...extra,
+  });
+  const deck = gridPart("d", "deck-1x1", 0, 2, 1);
+
+  it("reads a v7 ship with a painted funnel", () => {
+    const v7 = {
+      ...testShip([deck, funnel({ color: "red" })]),
+      v: 7,
+    };
+    const result = parseShip(JSON.parse(JSON.stringify(v7)));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.ship.v).toBe(8);
+    expect(result.ship.parts[1].color).toBe("red");
+    expect(result.ship.funnelPaint).toBeUndefined();
+  });
+
+  it("round-trips funnel paint and a mark", () => {
+    const ship = {
+      ...testShip([
+        deck,
+        funnel({ mark: { kind: "letters", text: "WS", color: "white" } }),
+      ]),
+      funnelPaint: { body: "red", bands: "black" },
+    } as const;
+    expect(parseShip(JSON.parse(JSON.stringify(ship)))).toEqual({
+      ok: true,
+      dropped: 0,
+      ship,
+    });
+  });
+
+  it.each([
+    ["too long", { kind: "letters", text: "abc", color: "white" }],
+    ["lowercase", { kind: "letters", text: "w", color: "white" }],
+    ["an unknown logo", { kind: "logo", logo: "skull", color: "red" }],
+  ])("rejects a mark with %s", (_name, mark) => {
+    const ship = testShip([deck, funnel({ mark })]);
+    expect(parseShip(JSON.parse(JSON.stringify(ship))).ok).toBe(false);
   });
 });

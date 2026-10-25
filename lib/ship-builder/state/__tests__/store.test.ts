@@ -626,3 +626,67 @@ describe("load, new, save, camera", () => {
     expect(store().notice?.text).toBe("Couldn't load that ship");
   });
 });
+
+describe("funnel livery", () => {
+  const livery = () => [
+    gridPart("d1", "deck-1x1", 0, 2, 1),
+    gridPart("d2", "deck-1x1", 0, 4, 1),
+    gridPart("d3", "deck-1x1", 0, 6, 1),
+    { ...attachPart("f1", "funnel", "d1", "funnel"), color: "red" as const },
+    attachPart("f2", "funnel", "d2", "funnel"),
+    { ...attachPart("m", "mast", "d3", "mast"), color: "red" as const },
+  ];
+
+  beforeEach(() => {
+    act(() => useShipBuilderStore.setState({ ship: testShip(livery()) }));
+  });
+
+  it("paints and resets a funnel area ship-wide", () => {
+    act(() => store().paintFunnels("top", "black"));
+    expect(store().ship.funnelPaint).toEqual({ top: "black" });
+    act(() => store().paintFunnels("top", null));
+    expect(store().ship.funnelPaint).toBeUndefined();
+  });
+
+  it("painting the body clears per-funnel colours but not other parts", () => {
+    act(() => store().paintFunnels("body", "buff"));
+    const { ship } = store();
+    expect(ship.funnelPaint).toEqual({ body: "buff" });
+    const colour = (id: string) => ship.parts.find((p) => p.id === id)?.color;
+    expect(colour("f1")).toBeUndefined();
+    expect(colour("f2")).toBeUndefined();
+    expect(colour("m")).toBe("red");
+  });
+
+  it("sets and clears a funnel's mark, one undo step each", () => {
+    const mark = { kind: "logo", logo: "star", color: "yellow" } as const;
+    const before = store().ship;
+    act(() => store().setFunnelMark("f2", mark));
+    expect(store().ship.parts.find((p) => p.id === "f2")?.mark).toEqual(mark);
+    act(() => store().undo());
+    expect(store().ship).toEqual(before);
+    act(() => store().setFunnelMark("f2", mark));
+    act(() => store().setFunnelMark("f2", null));
+    expect(store().ship.parts.find((p) => p.id === "f2")).not.toHaveProperty(
+      "mark"
+    );
+  });
+
+  it("ignores marks on parts that aren't funnels", () => {
+    const before = store().ship;
+    act(() =>
+      store().setFunnelMark("m", { kind: "logo", logo: "star", color: "red" })
+    );
+    expect(store().ship).toBe(before);
+  });
+
+  it("does nothing while a trial is running", () => {
+    act(() => store().startTrial("calm"));
+    const before = store().ship;
+    act(() => store().paintFunnels("top", "black"));
+    act(() =>
+      store().setFunnelMark("f2", { kind: "logo", logo: "star", color: "red" })
+    );
+    expect(store().ship).toBe(before);
+  });
+});
