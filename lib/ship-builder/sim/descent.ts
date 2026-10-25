@@ -43,6 +43,8 @@ const REST_EASE = 3;
 const REST_EASE_MIN_S = 0.4;
 /** The trial ends this long after the last touchdown at the latest. */
 export const SETTLE_S = 1.5;
+/** Rust takes this long to cover her; the trial lasts at least this long after the first touchdown. */
+export const RUST_IN_S = 4;
 /** Pitch and roll this close to resting count as settled. */
 const SETTLED_ANGLE = 0.01;
 /** Rounding slack for "its deepest point is on the floor". */
@@ -173,11 +175,16 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
     }
   });
   let lastTouch = time;
+  let firstTouch = time;
   for (const event of events) {
-    if (event.kind === "touched-bottom") lastTouch = event.at;
+    if (event.kind === "touched-bottom") {
+      lastTouch = event.at;
+      firstTouch = Math.min(firstTouch, event.at);
+    }
   }
   const isDone =
     bodies.every((b) => b.touched) &&
-    (bodies.every((b) => b.settled) || time - lastTouch >= SETTLE_S);
+    (bodies.every((b) => b.settled) || time - lastTouch >= SETTLE_S) &&
+    time - firstTouch >= RUST_IN_S;
   return { ...next, events, phase: isDone ? "done" : "descending" };
 }

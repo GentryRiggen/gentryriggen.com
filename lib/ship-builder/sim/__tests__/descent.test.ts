@@ -14,6 +14,7 @@ import {
   FLOOR_DEPTH,
   REST_PITCH_BOW,
   REST_PITCH_STERN,
+  RUST_IN_S,
   SETTLE_S,
   startDescent,
 } from "../descent";
@@ -139,10 +140,24 @@ describe.each([
       expect(body.pitch).toBeCloseTo(body.rest, 1);
       expect(Math.abs(body.roll)).toBeLessThan(0.1);
     }
-    const lastTouch = Math.max(...touchdowns(last));
-    expect(last.time - lastTouch).toBeLessThanOrEqual(SETTLE_S + 1e-9);
     expect(last.phase).toBe("done");
     expect(stepTrial(input, last)).toBe(last);
+  });
+
+  it("settles by SETTLE_S after the last touchdown, then waits out the rust", () => {
+    const lastTouch = Math.max(...touchdowns(last));
+    expect(last.time - lastTouch).toBeGreaterThanOrEqual(SETTLE_S - 1e-9);
+    const early = states.find((s) => s.time >= lastTouch + SETTLE_S);
+    expect(early?.phase).toBe(
+      early!.time - Math.min(...touchdowns(last)) >= RUST_IN_S
+        ? "done"
+        : "descending"
+    );
+  });
+
+  it("ends no earlier than the first touchdown plus RUST_IN_S", () => {
+    const firstTouch = Math.min(...touchdowns(last));
+    expect(last.time).toBeGreaterThanOrEqual(firstTouch + RUST_IN_S - 1e-9);
   });
 
   it("is the same every run", () => {

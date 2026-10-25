@@ -1,9 +1,9 @@
 import type { MeshStandardMaterial } from "three";
-import type { SimState } from "@/lib/ship-builder/sim/types";
+import { RUST_IN_S } from "@/lib/ship-builder/sim/descent";
+import type { SimEvent } from "@/lib/ship-builder/sim/types";
 
 /** 0 = clean, 1 = fully rusted. Shared by every patched material. */
 export const RUST: { value: number } = { value: 0 };
-export const RUST_IN_S = 4;
 export const RUST_MAX_MIX = 0.8;
 
 const RUST_BRIGHT = "vec3(0.545, 0.227, 0.102)"; // #8b3a1a
@@ -86,11 +86,17 @@ export function rustRef(material: MeshStandardMaterial | null): void {
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
-/** Rust amount for a trial state: 0 before the first touched-bottom, then a smoothstep to 1 over RUST_IN_S of sim time. */
-export function rustAmount(state: SimState | null): number {
-  if (!state) return 0;
-  const landed = state.events.find((e) => e.kind === "touched-bottom");
+/** What rust needs from playback (a `TrialPlayback` or a `SimState`). */
+export interface RustSnapshot {
+  time: number;
+  events: readonly SimEvent[];
+}
+
+/** Rust amount for the playback moment: 0 before the first touched-bottom, then a smoothstep to 1 over RUST_IN_S of sim time. */
+export function rustAmount(snapshot: RustSnapshot | null): number {
+  if (!snapshot) return 0;
+  const landed = snapshot.events.find((e) => e.kind === "touched-bottom");
   if (!landed) return 0;
-  const t = (state.time - landed.at) / RUST_IN_S;
+  const t = (snapshot.time - landed.at) / RUST_IN_S;
   return smoothstep(Math.min(1, Math.max(0, t)));
 }
