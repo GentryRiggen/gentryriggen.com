@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.19.1",
+    date: "2026-10-25",
+    title: "Small fixes",
+    highlights: [
+      "You can now build a deck above a side davit",
+      "Clearing a funnel's letters no longer closes the letters box",
+      "The Style panel only opens when you tap Style",
+      "Pressing Escape or Undo with the Style panel open no longer drops your selected funnel",
+      "The Walk button goes away once a ship starts tipping over or sinking in a storm",
+    ],
+  },
+  {
     version: "2.19.0",
     date: "2026-10-25",
     title: "All the way down",
