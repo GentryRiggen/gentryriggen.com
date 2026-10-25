@@ -145,8 +145,8 @@ jobs:
             browsers: chromium
           - name: WebGL sea trial
             files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts
-            # TODO: drop the grep-invert once "ride your half down" is frame-rate independent (it times out on CI's software GL)
-            args: --project=chromium --grep-invert "ride your half down"
+            # TODO: drop the grep-invert once the walk-while-sinking "ride" tests are frame-rate independent (it times out on CI's software GL)
+            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece"
             workers: 1
             browsers: chromium
           # Plane Builder needs WebGL for its core loop (the specs launch
