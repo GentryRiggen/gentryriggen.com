@@ -37,4 +37,37 @@ asked; then it binary-searches person `i`'s legs. While walking, a person's
 level is the level of the cell they are in, so a stair crossing switches
 level at the cell edge.
 
-Tests: `__tests__/plan.test.ts`.
+`evacuation.ts` plans a sinking for the iceberg trial (Task 4 draws it):
+
+- `planEvacuation(ship, grid, crowd, timeline)` is null unless the trial is an
+  iceberg trial that ends `sank`. Doom is the first state with that outcome;
+  before it everyone follows the crowd plan exactly.
+- Boats are lifeboat parts (catalog `seats > 0`) hanging from a `davit` or
+  `davit-side`. A boat's boarding spot is the walkable column nearest it on
+  the davit's deck: the davit's cell or the one inboard, at the block's level
+  or its roof, and the same two either side along the edge (a davit's own
+  cell is usually kept clear by its blocker). A boat with no spot gets no
+  riders but still launches.
+- At doom, people are matched to boats nearest first (one BFS from each
+  spot, `crowdGraphOf(...).reachFrom`), up to `min(BOAT_SHOWN_MAX, seats)`
+  per boat, halved when the boat id's hash is odd. If the timeline breaks
+  her, routes use the half grid (`halfWalkGrid`) of the half they stand on
+  from doom on, so nobody heads for a boat that will be torn away.
+- A boat launches at its last rider's arrival, `doom + LAUNCH_WAIT_S`, or
+  when water reaches its spot (checked every 0.25 s), whichever is first.
+  Late boarders go back to wandering from where they are. Extras follow the
+  crowd plan, then wander on their half once she breaks. Anyone not in a
+  boat floats from the first check that finds them at world `y <= 0`
+  (`poseWorldPoint` on the body that carries them), drifting outward.
+- `boatPoseAt` lowers a boat from its launch `origin` to the water over
+  `LOWER_S`, rows it `ROW_OUT` outboard over `ROW_S`, then bobs.
+
+Everything is worked out when the plan is made; `fateAt`, `poseAt` and
+`boatPoseAt` only read it, so they are pure in `t` and cheap.
+
+In practice on the big liners the window is short: "sank" is only decided
+as she starts to plunge, so the bow boats are already awash at doom, and the
+Titanic's boat-deck edge is cut into one-cell pieces by its davits. Only the
+few standing by a boat get a seat there (pinned in the tests).
+
+Tests: `__tests__/plan.test.ts`, `__tests__/evacuation.test.ts`.
