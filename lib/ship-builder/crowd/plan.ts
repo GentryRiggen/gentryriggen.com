@@ -1,11 +1,7 @@
 import { MAX_LEVEL, WING_REACH } from "../model/grid";
 import type { Stats as ShipStats } from "../model/stats";
 import type { Ship } from "../model/types";
-import {
-  ATTACH_BLOCK_RADIUS,
-  WALKER_RADIUS,
-  type WalkGrid,
-} from "../walk/types";
+import { WALKER_RADIUS, type WalkGrid } from "../walk/types";
 import { between, fnv1a, mulberry32 } from "./rng";
 import {
   type CrowdPlan,
@@ -25,8 +21,6 @@ import {
 const PER_FIGURE = 40;
 /** A block at MAX_LEVEL has its roof one level higher still. */
 const SURFACE_LEVELS = MAX_LEVEL + 2;
-/** People keep their centre this far from a blocker's centre. */
-const BLOCKER_CLEARANCE = ATTACH_BLOCK_RADIUS + WALKER_RADIUS;
 /** Random wander picks before scanning every candidate in order. */
 const WANDER_TRIES = 12;
 /** Start picks before giving up on spreading people out. */
@@ -78,7 +72,8 @@ function travelYaw(dx: number, dz: number): number {
   return Math.atan2(-dz, -dx);
 }
 
-function nearBlocker(
+/** Whether a person's centre at (cx, cz) would be inside a blocker's circle. */
+function insideBlocker(
   grid: WalkGrid,
   cx: number,
   cz: number,
@@ -86,7 +81,65 @@ function nearBlocker(
 ): boolean {
   return grid
     .blockersAt(level)
-    .some((b) => Math.hypot(cx - b.x, cz - b.z) < BLOCKER_CLEARANCE);
+    .some((b) => Math.hypot(cx - b.x, cz - b.z) < b.radius);
+}
+
+/** Whether the straight step from a to b passes inside a blocker's circle. */
+function stepHitsBlocker(
+  grid: WalkGrid,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+  level: number
+): boolean {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const span = dx * dx + dz * dz;
+  return grid.blockersAt(level).some((b) => {
+    const k =
+      span > 0
+        ? Math.min(1, Math.max(0, ((b.x - ax) * dx + (b.z - az) * dz) / span))
+        : 0;
+    return Math.hypot(ax + k * dx - b.x, az + k * dz - b.z) < b.radius;
+  });
+}
+
+/** Points tried across a cell when asking whether the player fits in it. */
+const FIT_SAMPLES = 5;
+
+/**
+ * Whether the player could stand somewhere in this walkable column: some
+ * point in it, kept WALKER_RADIUS off any side the player cannot step
+ * through, is clear of every blocker by WALKER_RADIUS plus its radius (the
+ * collision in `walk/step.ts`). A davit on the deck edge leaves room beside
+ * it; a funnel in the middle of a one-cell block does not.
+ */
+function playerFits(
+  grid: WalkGrid,
+  x: number,
+  z: number,
+  level: number
+): boolean {
+  const circles = grid.blockersAt(level);
+  if (circles.length === 0) return true;
+  const open = (dx: number, dz: number) =>
+    grid.stepLevel(x, z, level, x + dx, z + dz) !== null;
+  const x0 = x + (open(-1, 0) ? 0 : WALKER_RADIUS);
+  const x1 = x + 1 - (open(1, 0) ? 0 : WALKER_RADIUS);
+  const z0 = z + (open(0, -1) ? 0 : WALKER_RADIUS);
+  const z1 = z + 1 - (open(0, 1) ? 0 : WALKER_RADIUS);
+  for (let i = 0; i < FIT_SAMPLES; i++) {
+    for (let k = 0; k < FIT_SAMPLES; k++) {
+      const px = x0 + ((x1 - x0) * i) / (FIT_SAMPLES - 1);
+      const pz = z0 + ((z1 - z0) * k) / (FIT_SAMPLES - 1);
+      const clear = circles.every(
+        (b) => Math.hypot(px - b.x, pz - b.z) >= WALKER_RADIUS + b.radius
+      );
+      if (clear) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -108,7 +161,7 @@ export function seatsOf(ship: Ship, grid: WalkGrid): Seat[] {
     if (!DIRS.some(([dx, dz]) => grid.isWalkable(x + dx, z + dz, level))) {
       continue;
     }
-    if (nearBlocker(grid, x + 0.5, z + 0.5, level)) continue;
+    if (insideBlocker(grid, x + 0.5, z + 0.5, level)) continue;
     seats.push({
       partId: part.id,
       x: x + 0.5,
@@ -140,7 +193,9 @@ export interface Reach {
 
 /**
  * The columns people may stand in and the steps between them: every walkable
- * column clear of blockers, plus seat cells (entered only as an end point).
+ * column the player fits in whose centre is outside every blocker's circle,
+ * plus seat cells (entered only as an end point). A step is left out when the
+ * straight line between centres passes inside a blocker's circle.
  */
 export interface CrowdGraph {
   readonly nodes: readonly Column[];
@@ -181,7 +236,8 @@ function buildGraph(seats: Seat[], grid: WalkGrid): CrowdGraph {
     for (let z = -WING_REACH; z < grid.beam + WING_REACH; z++) {
       for (let x = 0; x < grid.length; x++) {
         if (!grid.isWalkable(x, z, level)) continue;
-        if (nearBlocker(grid, x + 0.5, z + 0.5, level)) continue;
+        if (insideBlocker(grid, x + 0.5, z + 0.5, level)) continue;
+        if (!playerFits(grid, x, z, level)) continue;
         index.set(key(x, z, level), nodes.length);
         nodes.push({ x, z, level });
       }
@@ -209,7 +265,13 @@ function buildGraph(seats: Seat[], grid: WalkGrid): CrowdGraph {
       const to = grid.stepLevel(x, z, level, x + dx, z + dz);
       if (to === null) continue;
       const m = index.get(key(x + dx, z + dz, to));
-      if (m !== undefined && m < walkableCount) adjacent[n].push(m);
+      if (m === undefined || m >= walkableCount) continue;
+      const ax = x + 0.5;
+      const az = z + 0.5;
+      const hits = (at: number) =>
+        stepHitsBlocker(grid, ax, az, ax + dx, az + dz, at);
+      if (hits(level) || (to !== level && hits(to))) continue;
+      adjacent[n].push(m);
     }
   }
   for (const s of seatNodes) {
@@ -217,6 +279,9 @@ function buildGraph(seats: Seat[], grid: WalkGrid): CrowdGraph {
     for (const [dx, dz] of DIRS) {
       const m = index.get(key(x + dx, z + dz, level));
       if (m === undefined || m >= walkableCount) continue;
+      const ax = x + 0.5;
+      const az = z + 0.5;
+      if (stepHitsBlocker(grid, ax, az, ax + dx, az + dz, level)) continue;
       adjacent[s].push(m);
       adjacent[m].push(s);
     }

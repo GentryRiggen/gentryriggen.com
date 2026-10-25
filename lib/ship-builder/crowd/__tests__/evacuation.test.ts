@@ -11,7 +11,10 @@ import {
   timelineEnd,
 } from "../../sim/timeline";
 import { trialFunnelsOf } from "../../sim/trialFunnels";
-import type { BreakMode, TrialInput } from "../../sim/types";
+import { poseWorldPoint } from "../../sim/funnelFall";
+import type { BreakMode, SimState, TrialInput } from "../../sim/types";
+import { DECK_Y, LEVEL_HEIGHT } from "../../model/worldFrame";
+import type { WalkGrid } from "../../walk/types";
 import { findTemplate } from "../../templates";
 import { attachPart, gridPart, testShip } from "../../testing";
 import { walkGridOf, walkHalfOf } from "../../walk";
@@ -24,7 +27,7 @@ import {
   ROW_S,
   planEvacuation,
 } from "../evacuation";
-import { planCrowd } from "../plan";
+import { crowdGraphOf, planCrowd } from "../plan";
 import type { CrowdPlan } from "../types";
 import { getPartDef } from "../../model/catalog";
 
@@ -76,6 +79,9 @@ interface Setup {
   ship: Ship;
   crowd: CrowdPlan;
   plan: EvacuationPlan;
+  grid: WalkGrid;
+  stateAt: (t: number) => SimState;
+  length: number;
   doomAt: number;
   end: number;
   breakAtX: number | null;
@@ -87,13 +93,17 @@ function setup(ship: Ship, breakMode: BreakMode = "never"): Setup {
   const timeline = timelineOf(inputOf(ship, SINK_FRACTION, breakMode));
   const plan = planEvacuation(ship, grid, crowd, timeline);
   if (!plan) throw new Error("expected an evacuation");
-  const doom = timeline.states.find((s) => s.outcome === "sank")!;
   const last = timeline.states[timeline.states.length - 1];
+  // Doom is the iceberg strike: the first water in.
+  const doom = last.events.find((e) => e.kind === "flooding")!.at;
   return {
     ship,
     crowd,
     plan,
-    doomAt: doom.time,
+    grid,
+    stateAt: timeline.stateAt,
+    length: timeline.input.length,
+    doomAt: doom,
     end: timeline.end,
     breakAtX: last.breakup?.atX ?? null,
   };
@@ -292,16 +302,87 @@ describe("planEvacuation", () => {
       }
     });
 
-    it("seats only the few already beside a boat: the doom comes late", () => {
-      // Pinned real behaviour. "sank" is decided as she starts to plunge,
-      // with the bow deck already going under, and the boat deck's edge
-      // walk is cut into one-cell pieces by the davits (their cells are
-      // kept clear of blockers), so only people standing by a boat get in.
-      const riders = s.plan.launches.flatMap((launch) => launch.riders);
-      expect(riders.length).toBeGreaterThan(0);
-      expect(riders.length).toBeLessThanOrEqual(6);
+    it("fills the boats with people who walked there", () => {
+      // 24 figures can never fill most of the 18 boats' shown seats, and
+      // the Titanic's decks are joined only by jumps (she has no stairs), so
+      // only people on the boat deck at the strike can reach a boat. Most of
+      // those must get a seat, and most of the shown seats they could fill.
+      const graph = crowdGraphOf(s.ship, s.grid);
+      const spots = new Set<number>();
       for (const launch of s.plan.launches) {
-        if (launch.riders.length > 0) expect(launch.at).toBeCloseTo(s.doomAt);
+        for (const id of launch.riders) {
+          const i = s.crowd.people.findIndex((p) => p.id === id);
+          const at = s.plan.poseAt(i, launch.at);
+          spots.add(
+            graph.nodeAt(Math.floor(at.x), Math.floor(at.z), at.level)!
+          );
+        }
+      }
+      let canReach = 0;
+      for (let i = 0; i < count; i++) {
+        const start = s.crowd.poseAt(i, s.doomAt);
+        const node = graph.nodeAt(
+          Math.floor(start.x),
+          Math.floor(start.z),
+          start.level
+        );
+        if (node === undefined) continue;
+        if ([...spots].some((spot) => graph.reachFrom(spot).dist[node] >= 0)) {
+          canReach++;
+        }
+      }
+      const shown = s.plan.launches.reduce(
+        (n, launch) => n + shownCap(s.ship, launch.boatId),
+        0
+      );
+      const riders = s.plan.launches.flatMap((launch) => launch.riders);
+      expect(riders.length).toBeGreaterThanOrEqual(
+        Math.ceil(0.75 * Math.min(shown, canReach))
+      );
+      expect(riders.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it("seats someone who walked more than 3 steps to their boat", () => {
+      const graph = crowdGraphOf(s.ship, s.grid);
+      let longest = 0;
+      for (const launch of s.plan.launches) {
+        for (const id of launch.riders) {
+          const i = s.crowd.people.findIndex((p) => p.id === id);
+          const at = s.plan.poseAt(i, launch.at);
+          const from = s.crowd.poseAt(i, s.doomAt);
+          const spot = graph.nodeAt(
+            Math.floor(at.x),
+            Math.floor(at.z),
+            at.level
+          )!;
+          const start = graph.nodeAt(
+            Math.floor(from.x),
+            Math.floor(from.z),
+            from.level
+          )!;
+          longest = Math.max(longest, graph.reachFrom(spot).dist[start]);
+        }
+      }
+      expect(longest).toBeGreaterThan(3);
+    });
+
+    it("lowers every boat before the water reaches its deck", () => {
+      for (const launch of s.plan.launches) {
+        expect(launch.origin.y).toBeGreaterThan(0);
+        const state = s.stateAt(launch.at);
+        for (const id of launch.riders) {
+          // A rider waits on the boat's deck spot.
+          const i = s.crowd.people.findIndex((p) => p.id === id);
+          const spot = s.plan.poseAt(i, launch.at);
+          const world = poseWorldPoint(state.pose, s.length, {
+            x: s.length / 2 - spot.x,
+            y: DECK_Y + spot.level * LEVEL_HEIGHT,
+            z: s.ship.hull.beam / 2 - spot.z,
+          });
+          expect(world.y).toBeGreaterThan(0);
+        }
+        // And the lowering is done before she is under.
+        expect(launch.at + LOWER_S).toBeLessThan(s.end);
       }
     });
   });
@@ -334,9 +415,7 @@ describe("planEvacuation", () => {
   });
 
   it("keeps stern-half people to stern-half boats once she breaks", () => {
-    // On the Titanic nobody stern-side gets near a boat in time, so this
-    // holds trivially there; the boat-deck ship puts it to work.
-    checkSternRouting(setup(titanic(), "always"));
+    expect(checkSternRouting(setup(titanic(), "always"))).toBeGreaterThan(0);
     expect(checkSternRouting(setup(boatDeckShip(), "always"))).toBeGreaterThan(
       0
     );

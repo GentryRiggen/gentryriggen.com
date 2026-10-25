@@ -19,9 +19,14 @@ plans where everyone is at every moment.
     faces the stern, the same as `scene/facingYaw.ts`). The seat's own cell is
     decor, so the walk grid never calls it walkable: people step into it from
     a neighbour to sit and step back out to leave.
-  - `crowdGraphOf(ship, grid)` is the walking graph: walkable columns whose
-    centre is clear of blockers by `ATTACH_BLOCK_RADIUS + WALKER_RADIUS`,
-    joined by `grid.stepLevel` (so level changes only happen on stairs), plus
+  - `crowdGraphOf(ship, grid)` is the walking graph. It blocks only what
+    blocks the player (`walk/step.ts`). A walkable column counts when the
+    player fits somewhere in it (clear of every blocker by `WALKER_RADIUS`
+    plus its radius), and its centre is outside every blocker's circle. A
+    step between two centres counts when the line between them misses every
+    blocker's circle. So a davit on the deck edge leaves its cell open, and
+    a funnel on a one-cell block closes it. Columns are joined by
+    `grid.stepLevel` (so level changes only happen on stairs), plus
     seat cells that are only ever an end point. Its BFS (`reachFrom`,
     `pathTo`) is cached per grid and ship parts, for later planners to reuse.
   - `planCrowd(ship, grid, stats)` starts everyone on distinct, spread-out
@@ -40,14 +45,15 @@ level at the cell edge.
 `evacuation.ts` plans a sinking for the iceberg trial (Task 4 draws it):
 
 - `planEvacuation(ship, grid, crowd, timeline)` is null unless the trial is an
-  iceberg trial that ends `sank`. Doom is the first state with that outcome;
-  before it everyone follows the crowd plan exactly.
+  iceberg trial that ends `sank`. Doom is the iceberg strike (the first
+  `flooding` event), or the first `sank` state if there is none, so the
+  whole flooding stretch is there for boarding. Before doom everyone
+  follows the crowd plan exactly.
 - Boats are lifeboat parts (catalog `seats > 0`) hanging from a `davit` or
   `davit-side`. A boat's boarding spot is the walkable column nearest it on
-  the davit's deck: the davit's cell or the one inboard, at the block's level
-  or its roof, and the same two either side along the edge (a davit's own
-  cell is usually kept clear by its blocker). A boat with no spot gets no
-  riders but still launches.
+  the davit's deck: the davit's cell or the one inboard, on the block's roof
+  or the block's own level. A boat with no spot gets no riders but still
+  launches.
 - At doom, people are matched to boats nearest first (one BFS from each
   spot, `crowdGraphOf(...).reachFrom`), up to `min(BOAT_SHOWN_MAX, seats)`
   per boat, halved when the boat id's hash is odd. If the timeline breaks
@@ -65,9 +71,9 @@ level at the cell edge.
 Everything is worked out when the plan is made; `fateAt`, `poseAt` and
 `boatPoseAt` only read it, so they are pure in `t` and cheap.
 
-In practice on the big liners the window is short: "sank" is only decided
-as she starts to plunge, so the bow boats are already awash at doom, and the
-Titanic's boat-deck edge is cut into one-cell pieces by its davits. Only the
-few standing by a boat get a seat there (pinned in the tests).
+On the Titanic, boats lower from 1 to 12 s after the strike, well before
+the bow goes under at about 22 s. Her decks are joined only by jumps (she
+has no stairs, and the crowd graph has no jump steps), so only the people on
+the boat deck at the strike can reach a boat. They all walk to one.
 
 Tests: `__tests__/plan.test.ts`, `__tests__/evacuation.test.ts`.

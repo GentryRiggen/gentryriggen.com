@@ -27,7 +27,7 @@ import {
 /** Seated figures drawn per boat. */
 export const BOAT_SHOWN_MAX = 4;
 /** A boat lowers this long after doom even if not full. */
-export const LAUNCH_WAIT_S = 18;
+export const LAUNCH_WAIT_S = 12;
 /** Davit to water. */
 export const LOWER_S = 6;
 /** World units outboard once on the water. */
@@ -346,8 +346,8 @@ function cutAt(track: Segment[], t: number): PersonPose {
 
 /**
  * Every lifeboat hanging from a davit, with its boarding spot: the walkable
- * column on the davit's deck nearest the boat, from the davit's cell and the
- * one inboard of it, and those either side along the edge.
+ * column nearest the davit point, its own cell or the one inboard of it, on
+ * the block's roof or (for a side davit) the block's own level.
  */
 function lifeboatsOf(
   ship: Ship,
@@ -384,22 +384,17 @@ function lifeboatsOf(
     const level = block.anchor.level;
     let spot = -1;
     let best = Infinity;
-    // The davit's own cell is usually kept clear by its blocker, so the
-    // cells either side of it along the edge count too.
-    for (const cx of [x, x - 1, x + 1]) {
-      for (const cz of [z, inboard]) {
-        for (const cl of [level + 1, level]) {
-          const node = graph.nodeAt(cx, cz, cl);
-          if (node === undefined || graph.seatOf[node] >= 0) continue;
-          const d = Math.hypot(
-            cx + 0.5 - hang.position.x,
-            cl - mount.position.y,
-            cz + 0.5 - mount.position.z
-          );
-          if (d < best) {
-            best = d;
-            spot = node;
-          }
+    for (const cz of [z, inboard]) {
+      for (const cl of [level + 1, level]) {
+        const node = graph.nodeAt(x, cz, cl);
+        if (node === undefined || graph.seatOf[node] >= 0) continue;
+        const d = Math.hypot(
+          cl - mount.position.y,
+          cz + 0.5 - mount.position.z
+        );
+        if (d < best) {
+          best = d;
+          spot = node;
         }
       }
     }
@@ -456,21 +451,30 @@ export function planEvacuation(
   const { input, end } = timeline;
   if (!input.iceberg) return null;
 
-  // Doom is the first recorded state that knows she will sink. An outcome
-  // never changes once set, so a binary search over the steps finds it.
-  if (timeline.stateAt(end).outcome !== "sank") return null;
-  let lo = 0;
-  let hi = Math.ceil(end / SIM_STEP_S);
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (timeline.stateAt(mid * SIM_STEP_S).outcome === "sank") hi = mid;
-    else lo = mid + 1;
+  // Doom is the iceberg strike (the first water in) of a trial that ends
+  // with her sunk, so the whole flooding stretch is there for boarding. A
+  // timeline with no flooding event falls back to the first "sank" state;
+  // an outcome never changes once set, so a binary search finds that.
+  const last = timeline.stateAt(end);
+  if (last.outcome !== "sank") return null;
+  const flooding = last.events.find((event) => event.kind === "flooding");
+  let doom: number;
+  if (flooding) {
+    doom = flooding.at;
+  } else {
+    let lo = 0;
+    let hi = Math.ceil(end / SIM_STEP_S);
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (timeline.stateAt(mid * SIM_STEP_S).outcome === "sank") hi = mid;
+      else lo = mid + 1;
+    }
+    doom = timeline.stateAt(lo * SIM_STEP_S).time;
   }
-  const doom = timeline.stateAt(lo * SIM_STEP_S).time;
 
   const length = input.length;
   const beam = grid.beam;
-  const breakup = timeline.stateAt(end).breakup;
+  const breakup = last.breakup;
   const atX = breakup?.atX ?? null;
   const breakAt = breakup?.at ?? Infinity;
 
