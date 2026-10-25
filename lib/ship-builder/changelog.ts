@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.17.0",
+    date: "2026-10-25",
+    title: "Funnel colours, letters and logos",
+    highlights: [
+      "Tap a funnel and press Style to paint its body, bands and top",
+      "Every funnel on your ship wears the same colours, just like real ships",
+      "Put one or two letters, or a logo like a star or an anchor, on each funnel",
+      "Titanic and her sisters now have their buff and black funnels, and Lusitania and Carpathia have Cunard red",
+    ],
+  },
+  {
     version: "2.16.0",
     date: "2026-10-07",
     title: "Pick where to start walking",
