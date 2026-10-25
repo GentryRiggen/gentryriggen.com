@@ -50,7 +50,7 @@ import {
   Waterslide,
 } from "./cruiseParts";
 import { DeckDecorMesh } from "./deckDecor";
-import DavitMesh from "./DavitMesh";
+import DavitMesh, { SideDavitMesh } from "./DavitMesh";
 import {
   CrowsNestMesh,
   DomeMesh,
@@ -302,6 +302,15 @@ function Fitting({
           emphasis={emphasis}
         />
       );
+    case "davit-side":
+      return (
+        <SideDavitMesh
+          outward={outward}
+          color={painted}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
     case "lifeboat-large":
       return (
         <LifeboatMesh
@@ -457,9 +466,6 @@ function Fitting({
     case "ship-anchor":
     case "barrel-stack":
     case "crate-stack":
-    case "davit-side":
-      // Task 2 draws the side davit.
-      return null;
     case "treasure-chest":
     case "pirate-crew":
     case "parrot":

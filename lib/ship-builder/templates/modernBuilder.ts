@@ -123,13 +123,19 @@ export class ShipBuilder {
   }
 
   /** A davit holding a boat; returns the boat's id. */
-  boat(boat: PartType, level: number, x: number, z: number): string {
-    const davit = this.attach(
-      "davit",
+  boat(
+    boat: PartType,
+    level: number,
+    x: number,
+    z: number,
+    davit: "davit" | "davit-side" = "davit"
+  ): string {
+    const davitId = this.attach(
+      davit,
       this.blockAt(level, x, z),
-      `davit:${x}:${z}`
+      davit === "davit-side" ? `side-davit:${x}:${z}` : `davit:${x}:${z}`
     );
-    return this.attach(boat, davit, "boat");
+    return this.attach(boat, davitId, "boat");
   }
 
   /** 1x1 blocks over x in [x0, x1) on each listed row z. */

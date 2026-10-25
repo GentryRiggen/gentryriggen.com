@@ -16,6 +16,10 @@ const HEIGHT = 0.8;
 
 /** Shared per direction for the whole session, so never disposed. */
 const armCache = new Map<1 | -1, BufferGeometry>();
+const sideArmCache = new Map<1 | -1, BufferGeometry>();
+
+const SIDE_REACH = 0.32;
+const SIDE_HEIGHT = 0.15;
 
 /**
  * A candy-cane arm with a foot plate, ending 0.6 outboard at 0.8 high with a
@@ -44,6 +48,31 @@ function getArm(outward: 1 | -1): BufferGeometry {
   return merged;
 }
 
+/**
+ * A short arm on a wall plate. The local origin is the mount point, at
+ * SIDE_DAVIT_MOUNT_Y above the deck (see the model's attach.ts): the plate sits
+ * flat against the wall at z 0, the arm runs straight out 0.32 at height 0.15,
+ * with a small brace beneath and a pulley block at the tip, over the boat.
+ */
+function getSideArm(outward: 1 | -1): BufferGeometry {
+  const cached = sideArmCache.get(outward);
+  if (cached) return cached;
+  const plate = new BoxGeometry(0.08, 0.3, 0.3);
+  plate.translate(0, 0.1, 0);
+  const arm = new BoxGeometry(0.06, 0.06, SIDE_REACH);
+  arm.translate(0, SIDE_HEIGHT, outward * (SIDE_REACH / 2));
+  const brace = new BoxGeometry(0.04, 0.04, 0.24);
+  brace.rotateX(outward * Math.atan2(0.12, 0.2));
+  brace.translate(0, SIDE_HEIGHT - 0.07, outward * 0.14);
+  const block = new BoxGeometry(0.09, 0.1, 0.09);
+  block.translate(0, SIDE_HEIGHT - 0.06, outward * SIDE_REACH);
+  const parts = [plate, arm, brace, block];
+  const merged = mergeGeometries(parts);
+  for (const part of parts) part.dispose();
+  sideArmCache.set(outward, merged);
+  return merged;
+}
+
 interface DavitMeshProps {
   outward: 1 | -1;
   color?: string;
@@ -59,6 +88,19 @@ export default function DavitMesh({
 }: DavitMeshProps) {
   return (
     <mesh geometry={getArm(outward)} castShadow>
+      <Surface color={color} finish="metal" tint={tint} emphasis={emphasis} />
+    </mesh>
+  );
+}
+
+export function SideDavitMesh({
+  outward,
+  color = PALETTE.davit,
+  tint,
+  emphasis,
+}: DavitMeshProps) {
+  return (
+    <mesh geometry={getSideArm(outward)} castShadow>
       <Surface color={color} finish="metal" tint={tint} emphasis={emphasis} />
     </mesh>
   );

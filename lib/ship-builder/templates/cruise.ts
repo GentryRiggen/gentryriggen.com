@@ -59,10 +59,10 @@ function buildWonderOfTheSeas(): Ship {
 
   for (const z of sides) {
     for (const x of [6, 7, 8, 50, 51, 52, 53]) {
-      b.boat("lifeboat-enclosed", 1, x, z);
+      b.boat("lifeboat-enclosed", 1, x, z, "davit-side");
     }
     for (const x of [10, 11, 12, 13, 46, 47, 48, 49]) {
-      b.boat("lifeboat-enclosed", 2, x, z);
+      b.boat("lifeboat-enclosed", 2, x, z, "davit-side");
     }
     for (const x of [14, 15, 16, 17, 18, 19, 40, 41, 42, 43, 44, 45]) {
       b.raft(2, x, z);
@@ -101,7 +101,7 @@ function buildOceanBreeze(): Ship {
 
   for (const z of sides) {
     for (const x of [8, 9, 10, 28, 29]) {
-      b.boat("lifeboat-enclosed", 1, x, z);
+      b.boat("lifeboat-enclosed", 1, x, z, "davit-side");
     }
     for (const x of range(0, 5)) b.raft(0, x, z);
   }
