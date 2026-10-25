@@ -160,6 +160,22 @@ describe("funnels breaking in an iceberg sinking", () => {
     );
   });
 
+  it("waits for her to tip before choosing the sinking end", () => {
+    // With no walls she settles level first, so the first sinking step has
+    // no pitch yet: the bow still goes down first after a hit near the bow.
+    const ship: Ship = {
+      ...titanic,
+      hull: { ...titanic.hull, bulkheads: [] },
+    };
+    const input = icebergInput(ship, 12);
+    const bowMost = [...trialFunnelsOf(ship)].sort(
+      (a, b) => a.cellX - b.cellX
+    )[0];
+    const last = statesOf(input).at(-1) as SimState;
+    expect(last.funnelEnd).toBe("bow");
+    expect(last.funnelFalls[0].funnelId).toBe(bowMost.id);
+  });
+
   it("breaks none when she stays afloat", () => {
     const ship = templateShip("britannic");
     expect(trialFunnelsOf(ship).length).toBeGreaterThan(0);
@@ -293,6 +309,20 @@ describe("fallingFunnelPose", () => {
     const sinking = fallingFunnelPose(fall, TOPPLE_S + FLOAT_S + 2);
     expect(sinking.position.y).toBeCloseTo(-2 * DESCENT_SPEED, 9);
     expect(fallingFunnelPose(fall, 1e4).position.y).toBe(-FLOOR_DEPTH);
+  });
+
+  it("never rises from under the water: it sinks from where it broke", () => {
+    const deep = { ...fall, origin: { x: 3, y: -4, z: 1 } };
+    for (let t = 0; t < 60; t += 0.25) {
+      const pose = fallingFunnelPose(deep, t);
+      expect(pose.position.y).toBeLessThanOrEqual(-4 + 1e-9);
+      expect(pose.position.y).toBeGreaterThanOrEqual(-FLOOR_DEPTH);
+    }
+    expect(fallingFunnelPose(deep, TOPPLE_S).rotation.x).toBeCloseTo(
+      Math.PI / 2,
+      9
+    );
+    expect(fallingFunnelPose(deep, 1e4).position.y).toBe(-FLOOR_DEPTH);
   });
 
   it("drifts about 1.5 toward its side", () => {

@@ -31,6 +31,7 @@ function playback(overrides: Partial<TrialPlayback> = {}): TrialPlayback {
     breakup: null,
     halves: null,
     events: [],
+    funnelFalls: [],
     speed: 1,
     scrubbing: false,
     ...overrides,

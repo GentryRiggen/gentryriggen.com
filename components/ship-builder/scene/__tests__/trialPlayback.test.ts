@@ -91,6 +91,30 @@ describe("writePlayback", () => {
     expect(target.sink).toBeGreaterThan(0);
   });
 
+  it("copies the sim's fallen funnels", () => {
+    const target: TrialPlayback = {} as TrialPlayback;
+    resetPlayback(target);
+    const state = runTrial(STEADY);
+    const falls = [
+      {
+        funnelId: "f1",
+        at: 4,
+        origin: { x: 1, y: 2, z: 0 },
+        roll: 0.4,
+        pitch: -0.2,
+        side: 1 as const,
+      },
+    ];
+    writePlayback({ ...state, funnelFalls: falls }, target);
+    expect(target.funnelFalls).toBe(falls);
+  });
+
+  it("starts with no fallen funnels", () => {
+    const target: TrialPlayback = {} as TrialPlayback;
+    resetPlayback(target);
+    expect(target.funnelFalls).toEqual([]);
+  });
+
   it("leaves a steady ship's milestones empty", () => {
     const target: TrialPlayback = {} as TrialPlayback;
     resetPlayback(target);
@@ -117,6 +141,7 @@ describe("trial effects", () => {
       breakup: null,
       halves: null,
       events: [],
+      funnelFalls: [],
       speed: 1,
       scrubbing: false,
     };
@@ -154,11 +179,24 @@ describe("playback reset by the store", () => {
     const { trialPlayback } = jest.requireActual("../trialPlayback");
     const store = useShipBuilderStore.getState();
     store.startTrial("stormy");
-    writePlayback(runTrial(TOP_HEAVY), trialPlayback);
+    const fall = {
+      funnelId: "f1",
+      at: 4,
+      origin: { x: 1, y: 2, z: 0 },
+      roll: 0.4,
+      pitch: -0.2,
+      side: 1 as const,
+    };
+    writePlayback(
+      { ...runTrial(TOP_HEAVY), funnelFalls: [fall] },
+      trialPlayback
+    );
     expect(trialPlayback.sink).toBeGreaterThan(0);
+    expect(trialPlayback.funnelFalls).toHaveLength(1);
     useShipBuilderStore.getState().startTrial("stormy");
     expect(trialPlayback.sink).toBe(0);
     expect(trialPlayback.capsizedAt).toBeNull();
+    expect(trialPlayback.funnelFalls).toEqual([]);
     writePlayback(runTrial(TOP_HEAVY), trialPlayback);
     useShipBuilderStore.getState().endTrial();
     expect(trialPlayback.roll).toBe(0);

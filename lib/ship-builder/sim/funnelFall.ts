@@ -21,6 +21,8 @@ export const TOPPLE_S = 1.2;
 export const FLOAT_S = 2.5;
 /** A weather capsize snaps a funnel once the ship has rolled this far. */
 const CAPSIZE_SNAP_ROLL = (100 * Math.PI) / 180;
+/** An iceberg sinking picks its sinking end once she has tipped this far. */
+const END_PITCH = 0.01;
 /** How far a fallen funnel drifts toward its side, world units, in all. */
 const DRIFT_TOTAL = 1.5;
 /** Height of the bob while it floats, and how long one bob takes. */
@@ -106,8 +108,18 @@ export function stepFunnelFalls(state: SimState, input: TrialInput): SimState {
     return state;
   }
 
-  const end: "bow" | "stern" =
-    state.funnelEnd ?? (bowPoseOf(state).pitch < 0 ? "bow" : "stern");
+  // An iceberg sinking can settle level before she tips: wait for the tip,
+  // or the end would be chosen from no pitch at all.
+  const pitch = bowPoseOf(state).pitch;
+  if (
+    !state.funnelEnd &&
+    input.iceberg &&
+    !sunk &&
+    Math.abs(pitch) < END_PITCH
+  ) {
+    return state;
+  }
+  const end: "bow" | "stern" = state.funnelEnd ?? (pitch < 0 ? "bow" : "stern");
   const withEnd = state.funnelEnd ? state : { ...state, funnelEnd: end };
 
   const funnel = orderFrom(input.funnels, end)[state.funnelFalls.length];
@@ -166,16 +178,27 @@ export function fallingFunnelPose(
     fall.side;
   const flat = (fall.side * Math.PI) / 2;
 
+  // One that snaps off already under the water does not come up to float:
+  // it topples where it is and sinks straight on from there.
+  const depth = Math.min(0, Math.max(-FLOOR_DEPTH, fall.origin.y));
+  const isUnder = depth < 0;
+
   let y: number;
   let rotation: { x: number; y: number; z: number };
   if (time < TOPPLE_S) {
     const s = smooth(time / TOPPLE_S);
-    y = fall.origin.y * (1 - s);
+    y = fall.origin.y + (depth - fall.origin.y) * s;
+    if (isUnder) {
+      y = Math.max(-FLOOR_DEPTH, y - DESCENT_SPEED * time);
+    }
     rotation = {
       x: fall.roll + (flat - fall.roll) * s,
       y: 0,
       z: fall.pitch * (1 - s),
     };
+  } else if (isUnder) {
+    rotation = { x: flat, y: 0, z: 0 };
+    y = Math.max(-FLOOR_DEPTH, depth - DESCENT_SPEED * time);
   } else {
     rotation = { x: flat, y: 0, z: 0 };
     y =
