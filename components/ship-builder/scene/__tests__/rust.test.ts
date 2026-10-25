@@ -62,6 +62,7 @@ describe("rust over a whole sunk timeline", () => {
   const iceberg: TrialInput = {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    funnels: [],
     length,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
@@ -72,6 +73,7 @@ describe("rust over a whole sunk timeline", () => {
   const weather: TrialInput = {
     ship: { stabilityRatio: 0.45, listAngle: 0, beam: 4 },
     sea: "stormy",
+    funnels: [],
     length: 30,
   };
 

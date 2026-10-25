@@ -27,6 +27,7 @@ import {
 import type { ShipKind } from "../model/kinds";
 import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
+import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
@@ -331,6 +332,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       ship: simShipFromStats(stats, ship.hull.beam),
       sea,
       length: gridLength(ship),
+      funnels: trialFunnelsOf(ship),
       ...(impactX === undefined
         ? {}
         : {

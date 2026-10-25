@@ -13,6 +13,7 @@ function icebergInput(id: string, breakMode: BreakMode): TrialInput {
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    funnels: [],
     length: ship.hull.lengthSegments * CELLS_PER_SEGMENT,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),

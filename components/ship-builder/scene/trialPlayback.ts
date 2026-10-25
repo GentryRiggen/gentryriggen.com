@@ -8,6 +8,7 @@ import {
 } from "@/lib/ship-builder/sim/timeline";
 import {
   SIM_STEP_S,
+  type FunnelFall,
   type PowerState,
   type SimBreakup,
   type SimEvent,
@@ -51,6 +52,11 @@ export interface TrialPlayback {
   halves: SimHalves | null;
   /** The sim's event log (shared, never mutated). */
   events: readonly SimEvent[];
+  /**
+   * Funnels that have snapped off so far (shared, never mutated). The scene
+   * hides each one on the ship and draws it falling from `fall.at`.
+   */
+  funnelFalls: readonly FunnelFall[];
   /** Playback rate the runner is using (1 normal, below 1 in slow-mo). */
   speed: number;
   /** The player is dragging the scrubber: jumps, not real playback. */
@@ -80,6 +86,7 @@ function createPlayback(): TrialPlayback {
     breakup: null,
     halves: null,
     events: [],
+    funnelFalls: [],
     speed: 1,
     scrubbing: false,
     scrubbed: false,
@@ -123,6 +130,7 @@ export function writePlayback(
   target.breakup = state.breakup;
   target.halves = state.halves;
   target.events = state.events;
+  target.funnelFalls = state.funnelFalls;
   // A jump straight to the end has no frames in between, so a ship that never
   // went over must not look like one: only count real capsize phases or events.
   const isGoingOver = state.phase === "capsizing" || state.phase === "sinking";

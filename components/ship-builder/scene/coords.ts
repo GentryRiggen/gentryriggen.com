@@ -1,3 +1,4 @@
+import { DECK_Y, LEVEL_HEIGHT } from "@/lib/ship-builder/model/worldFrame";
 import { rotatedFootprint } from "@/lib/ship-builder/model/grid";
 import type {
   GridAnchor,
@@ -6,12 +7,11 @@ import type {
   Vec3,
 } from "@/lib/ship-builder/model/types";
 
-/** Main deck height above the waterline (world y = 0). */
-export const DECK_Y = 1.2;
+export { DECK_Y, LEVEL_HEIGHT } from "@/lib/ship-builder/model/worldFrame";
+
 export const HULL_DRAFT = 1.6;
 /** Red antifouling shows this far above the waterline. */
 export const BOOT_TOP = 0.25;
-export const LEVEL_HEIGHT = 1;
 
 export type WorldPosition = [number, number, number];
 

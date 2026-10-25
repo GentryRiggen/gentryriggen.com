@@ -237,6 +237,25 @@ list, spread over the time it has left to fall. A body touches down (one
 stays on the sand while it finishes turning. Phase `done` once every body has
 landed and settled, or `SETTLE_S` (1.5 s) after the last touchdown.
 
+### Funnel falls (`funnelFall.ts`)
+
+In a sinking (`outcome` `sank` or `capsized`, once she is `sinking`,
+`descending` or has logged `sunk`) `stepTrial` runs `stepFunnelFalls` after
+each step. `input.funnels` (`trialFunnelsOf(ship)`) holds each funnel's base in
+the resting world frame. One or two funnels break one off, three or more break
+two; none break if she stays afloat. The sinking end is fixed at the first step
+(bow when pitch is negative, else stern; kept in `funnelEnd`) and funnels go
+nearest that end first, ties by id. The next one snaps when its base, placed
+by `poseWorldPoint` under its carrying body (the whole ship, or the half that
+holds it), reaches the water (`y <= 0`), or in a weather capsize once
+`|roll|` reaches 100 degrees, or at `sunk` (first) / `SECOND_FALL_GAP_S` after
+the first (second); the second is never sooner than that gap. Each fall records
+its origin, the body's roll and pitch, and the `side` it topples toward (the
+low side: positive roll sinks +Z). `fallingFunnelPose(fall, t)` is the pure
+motion the scene plays: topple (`TOPPLE_S`), float (`FLOAT_S`), then sink at
+`DESCENT_SPEED` to `FLOOR_DEPTH`, drifting about 1.5 toward its side. The
+outcome table is unchanged.
+
 ### Tuning table (enforced by `__tests__/breakup.test.ts`)
 
 Calm sea. The smallest template, the coast guard cutter, keeps the water out

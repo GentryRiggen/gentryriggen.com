@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.20.0",
+    date: "2026-10-25",
+    title: "Funnels break off",
+    highlights: [
+      "When a ship with funnels sinks, a funnel snaps off and crashes into the sea, just like on the Titanic",
+      "Big ships with three or more funnels lose a second one too",
+      "The broken funnels sink and land on the sea floor beside the wreck",
+    ],
+  },
+  {
     version: "2.19.1",
     date: "2026-10-25",
     title: "Small fixes",

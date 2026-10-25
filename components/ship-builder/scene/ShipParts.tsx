@@ -1,19 +1,21 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import type { Object3D } from "three";
-import type { ThreeEvent } from "@react-three/fiber";
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { Group, Object3D } from "three";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useCursor } from "@react-three/drei";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
+import { fallenIdsAt, funnelDependents, hiddenByFalls } from "./funnelFallView";
 import { GlowContext, type GlowController } from "./GlowContext";
 import { shouldSwallowClick } from "./clickGuard";
 import PartMesh from "./PartMesh";
 import PopIn from "./PopIn";
 import { singleAddedId } from "./pop";
 import { useShipHalf } from "./shipHalf";
+import { trialPlayback } from "./trialPlayback";
 import type { PartPress } from "./usePartLongPress";
 
 /** The part a handler fired for; PartMesh tags its group with the id. */
@@ -51,6 +53,47 @@ function usePoppingPartId(parts: Ship["parts"]): string | null {
   return poppingId;
 }
 
+/**
+ * Hides a funnel once it has snapped off in a sinking (`FallingFunnels` draws
+ * it falling), with anything hung from or strung to it. It follows the
+ * playback clock each frame, so scrubbing back puts them all back.
+ */
+function useHideFallenFunnels(
+  ship: Ship,
+  occupancy: ReturnType<typeof analyzeShip>["occupancy"]
+): (partId: string, group: Group | null) => void {
+  const groups = useRef(new Map<string, Group>());
+  const dependents = useMemo(
+    () => funnelDependents(ship, occupancy),
+    [ship, occupancy]
+  );
+  // How many funnels were gone at the last pass (-1: apply again). Falls
+  // come in order, so the count says which are gone; the sets are only
+  // rebuilt when it changes, not every frame.
+  const applied = useRef(0);
+  const lastDependents = useRef(dependents);
+  useFrame(() => {
+    const { funnelFalls, time } = trialPlayback;
+    let gone = 0;
+    for (const fall of funnelFalls) if (fall.at <= time) gone++;
+    if (lastDependents.current !== dependents) {
+      lastDependents.current = dependents;
+      applied.current = -1;
+    }
+    if (gone === applied.current) return;
+    applied.current = gone;
+    const hidden = hiddenByFalls(dependents, fallenIdsAt(funnelFalls, time));
+    for (const [id, group] of groups.current) group.visible = !hidden.has(id);
+  });
+  return useCallback((partId: string, group: Group | null) => {
+    if (group) {
+      groups.current.set(partId, group);
+      // A part that mounts mid-trial is shown or hidden on the next frame.
+      applied.current = -1;
+    } else groups.current.delete(partId);
+  }, []);
+}
+
 export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const tool = useShipBuilderStore((s) => s.tool);
@@ -79,6 +122,7 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
 
   const occupancy = useMemo(() => analyzeShip(ship).occupancy, [ship]);
   const poppingId = usePoppingPartId(ship.parts);
+  const registerPart = useHideFallenFunnels(ship, occupancy);
 
   // Press-and-hold deletes with or without an active tool.
   const handlePointerDown = useCallback(
@@ -163,25 +207,27 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
     <GlowContext.Provider value={glow}>
       <group>
         {parts.map((part) => (
-          <PopIn key={part.id} active={part.id === poppingId}>
-            <PartMesh
-              ship={ship}
-              occupancy={occupancy}
-              part={part}
-              color={part.color}
-              mark={part.mark}
-              partId={part.id}
-              tint={removing.has(part.id) ? "removal" : null}
-              emphasis={
-                selectedId === part.id
-                  ? "selected"
-                  : interactive && hoveredId === part.id
-                    ? "hover"
-                    : null
-              }
-              {...handlers}
-            />
-          </PopIn>
+          <group key={part.id} ref={(group) => registerPart(part.id, group)}>
+            <PopIn active={part.id === poppingId}>
+              <PartMesh
+                ship={ship}
+                occupancy={occupancy}
+                part={part}
+                color={part.color}
+                mark={part.mark}
+                partId={part.id}
+                tint={removing.has(part.id) ? "removal" : null}
+                emphasis={
+                  selectedId === part.id
+                    ? "selected"
+                    : interactive && hoveredId === part.id
+                      ? "hover"
+                      : null
+                }
+                {...handlers}
+              />
+            </PopIn>
+          </group>
         ))}
       </group>
     </GlowContext.Provider>

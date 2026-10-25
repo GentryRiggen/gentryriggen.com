@@ -25,6 +25,7 @@ function sinkingInput(): TrialInput {
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    funnels: [],
     length: ship.hull.lengthSegments * CELLS_PER_SEGMENT,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
@@ -37,6 +38,7 @@ function sinkingInput(): TrialInput {
 const CALM: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  funnels: [],
   length: 30,
 };
 
