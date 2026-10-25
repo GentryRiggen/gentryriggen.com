@@ -18,6 +18,7 @@ import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
 import { useClipMaterialProps } from "./shipHalf";
 import { FINISHES } from "./Surface";
+import { rustRef } from "./rust";
 
 const PORTHOLE_RADIUS = 0.1;
 /** A brass rim rings each porthole: a torus around the glass. */
@@ -136,6 +137,7 @@ function Portholes({
           ]}
         />
         <meshStandardMaterial
+          ref={rustRef}
           color={PALETTE.propeller}
           roughness={FINISHES.metal.roughness}
           metalness={FINISHES.metal.metalness}
@@ -170,7 +172,9 @@ function Portholes({
 /** A small anchor drawn flat in XY, facing +Z, about 0.5 tall. */
 function Anchor() {
   const clip = useClipMaterialProps();
-  const metal = <meshStandardMaterial color={PALETTE.anchor} {...clip} />;
+  const metal = (
+    <meshStandardMaterial ref={rustRef} color={PALETTE.anchor} {...clip} />
+  );
   return (
     <group>
       <mesh raycast={noRaycast}>

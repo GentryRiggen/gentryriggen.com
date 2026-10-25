@@ -38,6 +38,7 @@ import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
 import { useAoOccluder, useClipMaterialProps } from "./shipHalf";
 import { FINISHES } from "./Surface";
+import { rustRef } from "./rust";
 
 /** The bulb sits low and entirely under the waterline. */
 const BULB_Y = -0.9;
@@ -189,6 +190,7 @@ function HullMaterial({ color }: { color: string }) {
   const clip = useClipMaterialProps();
   return (
     <meshStandardMaterial
+      ref={rustRef}
       color={color}
       roughness={PAINT.roughness}
       metalness={PAINT.metalness}

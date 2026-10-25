@@ -27,6 +27,7 @@ import PostEffects from "./PostEffects";
 import Railings from "./Railings";
 import ReflectionEnvironment from "./ReflectionEnvironment";
 import RenderInfoProbe from "./RenderInfoProbe";
+import RustDriver from "./RustDriver";
 import SeaFloor from "./SeaFloor";
 import SeaTrialEffects from "./SeaTrialEffects";
 import SailBank from "./SailBank";
@@ -148,6 +149,7 @@ export default function Scene() {
         <SailWorld />
         <SeaTrialEffects />
         <TrialSound />
+        <RustDriver />
         <SeaFloor />
         <DescentParticles />
         <UnderwaterFog />
