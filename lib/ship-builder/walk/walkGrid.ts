@@ -41,6 +41,7 @@ const NON_BLOCKING_ATTACH: ReadonlySet<PartType> = new Set<PartType>([
   "rudder",
   "azipod",
   "helipad",
+  "davit-side",
   "lifeboat-standard",
   "lifeboat-collapsible",
   "lifeboat-large",

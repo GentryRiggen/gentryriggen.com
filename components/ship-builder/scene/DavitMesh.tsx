@@ -7,6 +7,10 @@ import {
   type BufferGeometry,
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import {
+  SIDE_DAVIT_HEIGHT,
+  SIDE_DAVIT_REACH,
+} from "@/lib/ship-builder/model/attach";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
@@ -18,8 +22,8 @@ const HEIGHT = 0.8;
 const armCache = new Map<1 | -1, BufferGeometry>();
 const sideArmCache = new Map<1 | -1, BufferGeometry>();
 
-const SIDE_REACH = 0.32;
-const SIDE_HEIGHT = 0.15;
+const SIDE_REACH = SIDE_DAVIT_REACH;
+const SIDE_HEIGHT = SIDE_DAVIT_HEIGHT;
 
 /**
  * A candy-cane arm with a foot plate, ending 0.6 outboard at 0.8 high with a
@@ -57,12 +61,13 @@ function getArm(outward: 1 | -1): BufferGeometry {
 function getSideArm(outward: 1 | -1): BufferGeometry {
   const cached = sideArmCache.get(outward);
   if (cached) return cached;
-  const plate = new BoxGeometry(0.08, 0.3, 0.3);
-  plate.translate(0, 0.1, 0);
+  const plate = new BoxGeometry(0.3, 0.3, 0.08);
+  plate.translate(0, 0.1, outward * 0.04);
   const arm = new BoxGeometry(0.06, 0.06, SIDE_REACH);
   arm.translate(0, SIDE_HEIGHT, outward * (SIDE_REACH / 2));
   const brace = new BoxGeometry(0.04, 0.04, 0.24);
-  brace.rotateX(outward * Math.atan2(0.12, 0.2));
+  // Low on the wall, rising to under the outer part of the arm.
+  brace.rotateX(-outward * Math.atan2(0.12, 0.2));
   brace.translate(0, SIDE_HEIGHT - 0.07, outward * 0.14);
   const block = new BoxGeometry(0.09, 0.1, 0.09);
   block.translate(0, SIDE_HEIGHT - 0.06, outward * SIDE_REACH);

@@ -349,9 +349,14 @@ function blockPoints(
 }
 
 /** How high a boat hangs above a davit's mount, and how far outboard. */
-const DAVIT_SHAPE: Record<string, { height: number; reach: number }> = {
+export const SIDE_DAVIT_REACH = 0.32;
+export const SIDE_DAVIT_HEIGHT = 0.15;
+const DAVIT_SHAPE: Record<
+  "davit" | "davit-side",
+  { height: number; reach: number }
+> = {
   davit: { height: DAVIT_HEIGHT, reach: DAVIT_REACH },
-  "davit-side": { height: 0.15, reach: 0.32 },
+  "davit-side": { height: SIDE_DAVIT_HEIGHT, reach: SIDE_DAVIT_REACH },
 };
 
 function davitPoints(
@@ -364,7 +369,8 @@ function davitPoints(
   if (!base) return [];
   // Starboard is low z, so outboard is -z there and +z on the port side.
   const outward = base.side === "starboard" ? -1 : 1;
-  const { height, reach } = DAVIT_SHAPE[part.type] ?? DAVIT_SHAPE.davit;
+  const { height, reach } =
+    DAVIT_SHAPE[part.type === "davit-side" ? "davit-side" : "davit"];
   const y = base.position.y + height;
   const z = base.position.z + outward * reach;
   const points: AttachPoint[] = [

@@ -122,13 +122,15 @@ function isUnderTopMountedPart(
   });
 }
 
-/** Whether a davit or a raft canister sits on this cell's outer edge. */
+/** Whether a davit, side davit or a raft canister sits on this cell's outer edge. */
 function holdsEdgePartAt(
   ship: Ship,
   block: PlacedPart,
   x: number,
   z: number
 ): boolean {
+  // A side davit hangs on the wall itself, so it holds the edge too.
+  if (partAt(ship, block.id, `side-davit:${x}:${z}`)) return true;
   return [`davit:${x}:${z}`, `edge:${x}:${z}`].some((pointId) => {
     const held = partAt(ship, block.id, pointId);
     if (!held) return false;
