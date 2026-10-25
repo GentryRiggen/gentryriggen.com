@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.18.0",
+    date: "2026-10-25",
+    title: "Side davits",
+    highlights: [
+      "New Side davit: hang a lifeboat right against the side of your ship, like on today's cruise ships",
+      "It fits under the decks above, so boats tuck in neatly instead of sticking out",
+      "Two side davits next to each other can hold a big lifeboat",
+      "Wonder of the Seas and Ocean Breeze now keep their lifeboats tucked along their sides",
+    ],
+  },
+  {
     version: "2.17.0",
     date: "2026-10-25",
     title: "Funnel colours, letters and logos",
