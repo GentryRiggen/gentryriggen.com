@@ -96,6 +96,11 @@ function buildOceanBreeze(): Ship {
   b.decks(2, 12, 14, [1, 2]);
   b.decks(2, 16, 26, [1, 2]);
   b.grid("pool", 2, 14, 1);
+  // Loungers around the pool, on the level 2 deck.
+  b.grid("deckchair", 3, 16, 1);
+  b.grid("deckchair", 3, 17, 1);
+  b.grid("deckchair", 3, 16, 2);
+  b.grid("bench", 3, 19, 2, 90);
 
   b.onTop("funnel-modern", 2, 22, 2, WAVE_MARK);
 

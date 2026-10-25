@@ -30,7 +30,9 @@ import RenderInfoProbe from "./RenderInfoProbe";
 import RustDriver from "./RustDriver";
 import SeaFloor from "./SeaFloor";
 import SeaTrialEffects from "./SeaTrialEffects";
+import Crowd from "./Crowd";
 import FallingFunnels from "./FallingFunnels";
+import LaunchedBoats from "./LaunchedBoats";
 import SailBank from "./SailBank";
 import SailRunner from "./SailRunner";
 import SailWorld from "./SailWorld";
@@ -150,6 +152,8 @@ export default function Scene() {
         <SailWorld />
         <SeaTrialEffects />
         <FallingFunnels />
+        <LaunchedBoats />
+        <Crowd />
         <TrialSound />
         <RustDriver />
         <SeaFloor />

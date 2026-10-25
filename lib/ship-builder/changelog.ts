@@ -17,6 +17,28 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.22.0",
+    date: "2026-10-25",
+    title: "Abandon ship!",
+    highlights: [
+      "When your ship is sinking, people hurry to the lifeboats and climb in",
+      "The lifeboats lower down the side and row away to safety, just like on the Titanic",
+      "Anyone left aboard rides her down and then floats on the water",
+      "You can watch it all from outside the ship during a sea trial, not just while walking",
+    ],
+  },
+  {
+    version: "2.21.0",
+    date: "2026-10-25",
+    title: "People on deck",
+    highlights: [
+      "When you walk your ship, people now stroll around the decks with you",
+      "Some of them sit down on deck chairs and benches for a rest",
+      "The more cabins your ship has, the more people come aboard, and crew wear matching uniforms",
+      "The RMS Titanic and Ocean Breeze now come with deck chairs and benches to sit on",
+    ],
+  },
+  {
     version: "2.20.0",
     date: "2026-10-25",
     title: "Funnels break off",

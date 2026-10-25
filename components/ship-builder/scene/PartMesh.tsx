@@ -61,6 +61,7 @@ import {
 } from "./fittingDecor";
 import FunnelMesh from "./FunnelMesh";
 import LifeboatMesh from "./LifeboatMesh";
+import { LIFEBOAT_HULLS } from "./lifeboatHulls";
 import {
   HelicopterMesh,
   HelipadMesh,
@@ -314,9 +315,7 @@ function Fitting({
     case "lifeboat-large":
       return (
         <LifeboatMesh
-          length={1.9}
-          width={0.45}
-          depth={0.35}
+          {...LIFEBOAT_HULLS[type]}
           hullColor={painted ?? PALETTE.lifeboat}
           tint={tint}
           emphasis={emphasis}
@@ -327,9 +326,7 @@ function Fitting({
       const collapsible = type === "lifeboat-collapsible";
       return (
         <LifeboatMesh
-          length={0.9}
-          width={0.35}
-          depth={collapsible ? 0.2 : 0.3}
+          {...LIFEBOAT_HULLS[type]}
           hullColor={
             painted ?? (collapsible ? PALETTE.collapsible : PALETTE.lifeboat)
           }
