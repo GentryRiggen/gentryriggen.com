@@ -11,7 +11,9 @@ import { test, expect, type Page } from "@playwright/test";
  * result.
  */
 
-test.setTimeout(120_000);
+// The sinking now always runs on to the sea floor, so under a loaded software
+// renderer (many workers) the whole drive takes close to two minutes.
+test.setTimeout(240_000);
 
 /** Past any iceberg trial, so the result shows at once. */
 const FAST_FORWARD_SECONDS = 1000;
@@ -112,7 +114,7 @@ test.describe("Ship Builder drive", () => {
 
       // Dead ahead, the iceberg ends the drive and the sinking plays.
       const result = page.getByRole("region", { name: "Sea trial result" });
-      await expect(result).toBeVisible({ timeout: 90_000 });
+      await expect(result).toBeVisible({ timeout: 180_000 });
       await expect(result).toContainText("She sank");
       expect(await driveState(page)).toBe("idle");
     }
