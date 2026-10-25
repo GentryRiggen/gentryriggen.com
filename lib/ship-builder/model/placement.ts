@@ -122,21 +122,36 @@ function isUnderTopMountedPart(
   });
 }
 
-/** Whether a davit, side davit or a raft canister sits on this cell's outer edge. */
+/** Whether a davit, raft canister, cannon or plank sits on this cell's outer edge. */
 function holdsEdgePartAt(
   ship: Ship,
   block: PlacedPart,
   x: number,
   z: number
 ): boolean {
-  // A side davit hangs on the wall itself, so it holds the edge too.
-  if (partAt(ship, block.id, `side-davit:${x}:${z}`)) return true;
   return [`davit:${x}:${z}`, `edge:${x}:${z}`].some((pointId) => {
     const held = partAt(ship, block.id, pointId);
     if (!held) return false;
     const def = getPartDef(held.type);
     return def.placement === "attach" && def.holdsEdge === true;
   });
+}
+
+/**
+ * A side davit hangs on the wall itself, so it holds the outer edge against
+ * building outboard of it. Unlike the parts above it does not stop a deck
+ * going up over its cell (it is meant to sit under decks).
+ */
+function holdsOutboardEdgeAt(
+  ship: Ship,
+  block: PlacedPart,
+  x: number,
+  z: number
+): boolean {
+  return (
+    partAt(ship, block.id, `side-davit:${x}:${z}`) !== undefined ||
+    holdsEdgePartAt(ship, block, x, z)
+  );
 }
 
 /**
@@ -152,7 +167,7 @@ function isOutboardOfEdgePart(
   if (!extent) return false;
   const holdsEdgePart = (edgeZ: number) => {
     const edge = occupancy.get(cellKey({ ...cell, z: edgeZ }));
-    return edge !== undefined && holdsEdgePartAt(ship, edge, cell.x, edgeZ);
+    return edge !== undefined && holdsOutboardEdgeAt(ship, edge, cell.x, edgeZ);
   };
   if (cell.z < extent.min && extent.min <= 0) return holdsEdgePart(extent.min);
   if (cell.z > extent.max && extent.max >= beamOf(ship) - 1) {

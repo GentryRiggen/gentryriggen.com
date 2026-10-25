@@ -373,6 +373,25 @@ describe("canPlace — side support", () => {
     expect(canPlace(bare, gridCandidate("deck-1x1", 1, 2, 4))).toEqual(OK);
   });
 
+  it("lets a deck go up over a side davit, which sits under decks", () => {
+    const ship = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 3),
+      gridPart("b", "deck-1x1", 1, 2, 3),
+      attachPart("dv", "davit-side", "b", "side-davit:2:3"),
+    ]);
+    expect(validateShip(ship)).toEqual(OK);
+    expect(canPlace(ship, gridCandidate("deck-1x1", 2, 2, 3))).toEqual(OK);
+    // A regular davit on the same cell still stops a block above it.
+    const davit = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 3),
+      gridPart("b", "deck-1x1", 1, 2, 3),
+      attachPart("dv", "davit", "b", "davit:2:3"),
+    ]);
+    expect(canPlace(davit, gridCandidate("deck-1x1", 2, 2, 3))).toEqual(
+      fail("Can't build over a davit, raft, cannon or plank")
+    );
+  });
+
   it("keeps the rule-6 checks on cells that have a part below", () => {
     const ship = testShip([
       gridPart("a", "deck-1x1", 0, 4, 1),
