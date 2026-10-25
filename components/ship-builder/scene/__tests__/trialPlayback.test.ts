@@ -30,10 +30,12 @@ import { isHeavyTrialPose } from "../trialPose";
 const TOP_HEAVY: TrialInput = {
   ship: { stabilityRatio: 0.5, listAngle: 0, beam: 3 },
   sea: "stormy",
+  length: 30,
 };
 const STEADY: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  length: 30,
 };
 
 function freshClock(input: TrialInput): TrialClock {
@@ -163,14 +165,14 @@ describe("playback reset by the store", () => {
 });
 
 describe("writeInstantPlayback", () => {
-  it("leaves a capsized ship rolled over on the surface, not sunk", () => {
+  it("shows a capsized ship where she ended, on the sea floor", () => {
     const target: TrialPlayback = {} as TrialPlayback;
     resetPlayback(target);
     const result = runTrial(TOP_HEAVY);
     expect(result.pose.sink).toBeGreaterThan(0);
     writeInstantPlayback(result, target);
-    expect(Math.abs(target.roll)).toBeGreaterThan(2);
-    expect(target.sink).toBe(0);
+    expect(target.sink).toBe(result.pose.sink);
+    expect(target.phase).toBe("done");
   });
 
   it("does not touch a ship that survived", () => {

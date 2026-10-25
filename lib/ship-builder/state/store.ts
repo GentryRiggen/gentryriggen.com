@@ -323,6 +323,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     const input: TrialInput = {
       ship: simShipFromStats(stats, ship.hull.beam),
       sea,
+      length: gridLength(ship),
       ...(impactX === undefined
         ? {}
         : {
@@ -340,7 +341,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         status: "running",
         input,
         runId,
-        descending: input.iceberg !== undefined,
+        descending: true,
       },
       tool: { kind: "none" },
       ...CLEARED,

@@ -22,6 +22,7 @@ function icebergInput(
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea,
+    length,
     iceberg: { compartments: compartmentSpecsOf(ship.hull), length, impactX },
   };
 }

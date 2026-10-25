@@ -33,6 +33,7 @@ function icebergInput(id: string, impactX: number, breakMode: BreakMode) {
   const input: TrialInput = {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    length,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
       length,
@@ -90,8 +91,11 @@ describe("startDescent", () => {
     const waves: TrialInput = {
       ship: { stabilityRatio: 0.45, listAngle: 0, beam: 4 },
       sea: "stormy",
+      length: 30,
     };
+    // A capsize already went all the way down inside runTrial.
     const capsized = runTrial(waves);
+    expect(capsized.events.some((e) => e.kind === "touched-bottom")).toBe(true);
     expect(startDescent(capsized)).toBe(capsized);
   });
 });

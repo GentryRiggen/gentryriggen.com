@@ -1,4 +1,4 @@
-import { stepDescent } from "./descent";
+import { startDescent, stepDescent } from "./descent";
 import { STABILITY_THRESHOLDS } from "../model/stats";
 import {
   SIM_STEP_S,
@@ -386,7 +386,7 @@ const stepCapsizing: StepFn = (_input, _params, state) => {
   };
 };
 
-/** Sinking: slowly down by the bow; the trial ends when she is under. */
+/** Sinking: slowly down by the bow; once she is under she descends. */
 const stepSinking: StepFn = (_input, _params, state) => {
   const dt = SIM_STEP_S;
   const time = state.time + dt;
@@ -401,7 +401,7 @@ const stepSinking: StepFn = (_input, _params, state) => {
   );
   const sink = Math.min(SINK_DEPTH, state.pose.sink + speed * dt);
   const done = sink >= SINK_DEPTH;
-  return {
+  const next: SimState = {
     ...state,
     time,
     phase: done ? "done" : "sinking",
@@ -413,6 +413,8 @@ const stepSinking: StepFn = (_input, _params, state) => {
     rollVelocity: 0,
     events: done ? addEvent(state.events, time, "sunk") : state.events,
   };
+  // She is under: on down to the sea floor (see descent.ts).
+  return done ? startDescent(next) : next;
 };
 
 /**
@@ -452,7 +454,7 @@ export function stepTrial(
 /** Runs a whole trial without rendering: for tests and previews. */
 export function runTrial(
   input: TrialInput,
-  maxSeconds = input.iceberg ? ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30 : 30
+  maxSeconds = input.iceberg ? ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30 : 60
 ): SimState {
   let state = createTrial(input);
   while (state.phase !== "done" && state.time < maxSeconds) {

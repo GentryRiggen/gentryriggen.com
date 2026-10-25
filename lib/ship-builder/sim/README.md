@@ -51,9 +51,12 @@ A port-listing ship is simulated as the exact mirror of a starboard one.
 `sailing` (up to 9 s) -> either `done` (outcome `steady` or `recovered`) or,
 once the roll passes the capsize angle (not before 1 s), `capsizing`: the
 outcome and reason are set at that moment, she rolls to 170 degrees, then
-`sinking`: `sink` grows to `SINK_DEPTH` with a slight bow-down pitch, then
-`done`. Events: `big-roll` (20 degrees from her resting list), `recovered`
-(back within 10 degrees), `capsized`, `sunk`.
+`sinking`: `sink` grows to `SINK_DEPTH` with a slight bow-down pitch, the
+`sunk` event, then `descending` (see "The way down"): she falls on to the sea
+floor, logs `touched-bottom`, and the trial is `done`. Her outcome stays
+`capsized`. Events: `big-roll` (20 degrees from her resting list),
+`recovered` (back within 10 degrees), `capsized`, `sunk`, `touched-bottom`.
+`runTrial` allows a weather trial 60 s to get all the way down.
 
 ## Outcomes (enforced by `__tests__/seaTrial.test.ts`)
 
@@ -222,7 +225,9 @@ Waves trials never touch the lights.
 
 ### The way down (`descent.ts`)
 
-`startDescent` turns a finished `sank` state into `descending`; `stepTrial`
+Every sinking goes on to the sea floor. `startDescent` turns a finished
+state that logged `sunk` into `descending` (a weather `stepSinking` calls it
+itself; an iceberg timeline appends it with `extendWithDescent`); `stepTrial`
 then runs `stepDescent`. Each body (the whole `pose`, or each half) falls at
 up to `DESCENT_SPEED` (4 units/s, reached over 1 s) toward `FLOOR_DEPTH` (45).
 Its pitch turns toward `REST_PITCH_BOW` (-0.25, nose dug in; whole ship and
@@ -257,5 +262,5 @@ steep enough by the time she is under, so she holds together.
 
 Timings for the Titanic struck at x=5 (`real`, sim seconds): flooding 1.5,
 lights flicker 11.6, lights out 24.6, breaks 25.1 (17 degrees, at wall 13,
-x=39, where her deck meets the sea at about x=38), sunk 33.7; followed down,
+x=39, where her deck meets the sea at about x=38), sunk 33.7; then on down,
 the halves land 5.5 s and 7.6 s after `startDescent`. In `never` mode she is sunk at 28.5.

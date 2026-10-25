@@ -1,3 +1,5 @@
+import { FLOOR_DEPTH } from "../descent";
+import { deepestDepth, wholeSpan } from "../breakup";
 import {
   SINK_DEPTH,
   TRIAL_DURATION_S,
@@ -18,6 +20,7 @@ function trialOf(
   return {
     ship: { stabilityRatio, listAngle: listDegrees * DEG, beam: 4 },
     sea,
+    length: 30,
   };
 }
 
@@ -150,7 +153,7 @@ describe("sea trial run", () => {
     expect(kinds).toEqual(["big-roll", "recovered"]);
   });
 
-  it("capsizes, sinks, then ends with sunk", () => {
+  it("capsizes, sinks, then follows her down to the sea floor", () => {
     const input = trialOf(0.45, 0, "stormy");
     let state: SimState = createTrial(input);
     const phases: string[] = [];
@@ -160,15 +163,45 @@ describe("sea trial run", () => {
       if (phases[phases.length - 1] !== state.phase) phases.push(state.phase);
       maxPitchDown = Math.min(maxPitchDown, state.pose.pitch);
     }
-    expect(phases).toEqual(["sailing", "capsizing", "sinking", "done"]);
+    expect(phases).toEqual([
+      "sailing",
+      "capsizing",
+      "sinking",
+      "descending",
+      "done",
+    ]);
     expect(state.outcome).toBe("capsized");
-    expect(Math.abs(state.pose.roll)).toBeGreaterThan(160 * DEG);
-    expect(Math.abs(state.pose.roll)).toBeLessThanOrEqual(170 * DEG + 1e-9);
-    expect(state.pose.sink).toBe(SINK_DEPTH);
     expect(maxPitchDown).toBeLessThan(0);
-    expect(state.events.map((e) => e.kind)).toContain("capsized");
-    expect(state.events[state.events.length - 1].kind).toBe("sunk");
-    expect(state.time).toBeLessThan(30);
+    const kinds = state.events.map((e) => e.kind);
+    expect(kinds).toContain("capsized");
+    expect(kinds.indexOf("sunk")).toBeLessThan(kinds.indexOf("touched-bottom"));
+    expect(state.time).toBeLessThan(60);
+  });
+
+  it("ends a capsize on the sea floor, sunk but still counted capsized", () => {
+    const input = trialOf(0.45, 0, "stormy");
+    const result = runTrial(input);
+    expect(result.phase).toBe("done");
+    expect(result.outcome).toBe("capsized");
+    expect(
+      result.events.filter((e) => e.kind === "touched-bottom")
+    ).toHaveLength(1);
+    expect(result.pose.sink).toBeGreaterThan(SINK_DEPTH);
+    const deepest = deepestDepth(
+      result.pose.sink,
+      result.pose.pitch,
+      wholeSpan(input.length)
+    );
+    expect(deepest).toBeCloseTo(FLOOR_DEPTH, 3);
+  });
+
+  it("leaves a trial that rolls and recovers on the surface", () => {
+    const result = runTrial(trialOf(0.06, 0, "stormy"));
+    expect(result.phase).toBe("done");
+    expect(result.events.map((e) => e.kind)).toEqual(["big-roll", "recovered"]);
+    expect(result.time).toBeGreaterThanOrEqual(TRIAL_DURATION_S);
+    expect(result.time).toBeLessThan(TRIAL_DURATION_S + 0.1);
+    expect(result.pose.sink).toBe(0);
   });
 
   it("sets the outcome the moment she capsizes, before she sinks", () => {

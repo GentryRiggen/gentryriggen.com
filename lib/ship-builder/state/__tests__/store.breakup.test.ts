@@ -60,11 +60,12 @@ describe("break mode", () => {
 });
 
 describe("descending", () => {
-  it("is set for every iceberg trial and not for a waves trial", () => {
+  it("is set for every trial, iceberg or waves", () => {
     act(() => store().startTrial("calm", 5));
     expect(running().descending).toBe(true);
     act(() => store().startTrial("calm"));
-    expect(running().descending).toBe(false);
+    expect(running().descending).toBe(true);
+    expect(running().input.length).toBeGreaterThan(0);
   });
 
   it("has no descend action any more", () => {

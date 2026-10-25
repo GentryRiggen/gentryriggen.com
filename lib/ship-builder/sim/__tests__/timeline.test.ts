@@ -25,6 +25,7 @@ function sinkingInput(): TrialInput {
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
     sea: "calm",
+    length: ship.hull.lengthSegments * CELLS_PER_SEGMENT,
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
       length: ship.hull.lengthSegments * CELLS_PER_SEGMENT,
@@ -36,6 +37,7 @@ function sinkingInput(): TrialInput {
 const CALM: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  length: 30,
 };
 
 /** A hand-built timeline whose last state logs these events. */

@@ -13,7 +13,8 @@ import {
 } from "./types";
 
 /**
- * "Follow her down": after she has gone under, each body (the whole ship, or
+ * The way down: after she has gone under (every sinking, iceberg or weather,
+ * goes on to the sea floor), each body (the whole ship, or
  * both halves) falls on to the sea floor at a steady speed, turning toward
  * how it will lie there: a ship or bow digs its nose into the sand, a stern
  * lands nearly level. A body touches down when its deepest point reaches the
@@ -48,11 +49,14 @@ const SETTLED_ANGLE = 0.01;
 const ON_FLOOR_EPS = 1e-6;
 
 /**
- * "Follow her down": continues a finished trial that sank, taking her (or
- * both halves) on to the sea floor. Any other state comes back unchanged.
+ * Continues a finished trial in which she went under (an iceberg `sank` or a
+ * capsized weather trial, both log `sunk`), taking her (or both halves) on to
+ * the sea floor. Any other state comes back unchanged.
  */
 export function startDescent(state: SimState): SimState {
-  if (state.phase !== "done" || state.outcome !== "sank") return state;
+  const hasSunk = state.events.some((e) => e.kind === "sunk");
+  const hasLanded = state.events.some((e) => e.kind === "touched-bottom");
+  if (state.phase !== "done" || !hasSunk || hasLanded) return state;
   return { ...state, phase: "descending" };
 }
 
@@ -119,10 +123,10 @@ function stepBody<T extends Body>(
  * the trial is `done` once every body has landed and settled, or
  * `SETTLE_S` after the last landing.
  */
-export function stepDescent(state: SimState, input?: TrialInput): SimState {
+export function stepDescent(state: SimState, input: TrialInput): SimState {
   if (state.phase !== "descending") return state;
   const time = state.time + SIM_STEP_S;
-  const length = input?.iceberg?.length ?? 0;
+  const { length } = input;
   const startedAt =
     state.events.find((e) => e.kind === "sunk")?.at ?? state.time;
   const speed =

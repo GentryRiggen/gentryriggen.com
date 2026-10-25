@@ -294,15 +294,14 @@ export function jumpTrial(
 
 /**
  * Shows the end of a trial without animating it (reduced motion). A ship that
- * went over stays on the surface rolled upside down instead of sinking out of
- * sight, so the result card has a ship behind it.
+ * went over is shown where she ended: on the sea floor, like an iceberg
+ * sinking, with the camera framing her there.
  */
 export function writeInstantPlayback(
   state: SimState,
   target: TrialPlayback = trialPlayback
 ) {
   writePlayback(state, target);
-  if (state.outcome === "capsized") target.sink = 0;
 }
 
 /**
