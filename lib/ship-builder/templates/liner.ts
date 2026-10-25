@@ -201,7 +201,6 @@ interface GrandLinerSpec {
   lengthSegments: number;
   beam: number;
   paint: { topsides: PaintColor; bottom: PaintColor };
-  funnelColor?: PaintColor;
   /** Funnel colours for the whole ship. */
   funnelPaint?: FunnelPaint;
   /** Last x of the forecastle, which starts at the bow. */
@@ -261,8 +260,7 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
       b,
       "funnel-large",
       blockAt(b, 2, x, funnelZ),
-      `funnel-lg:${x}:${funnelZ}`,
-      spec.funnelColor
+      `funnel-lg:${x}:${funnelZ}`
     );
   }
   if (spec.domeX !== undefined) {
@@ -374,7 +372,6 @@ const LUSITANIA: GrandLinerSpec = {
   blurb: "A super-fast liner and queen of the Atlantic.",
   lengthSegments: 18,
   beam: 5,
-  funnelColor: "red",
   funnelPaint: { body: "red", bands: "black", top: "black" },
   bulkheads: wallRun(1, 13, "deck"),
   main: { from: 9, to: 44 },

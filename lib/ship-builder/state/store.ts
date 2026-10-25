@@ -9,6 +9,7 @@ import {
   MIN_BEAM,
   MIN_SEGMENTS,
 } from "../model/grid";
+import type { FunnelPaint } from "../model/funnelLivery";
 import { newId } from "../model/ids";
 import {
   canPlace,
@@ -448,16 +449,22 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     paintFunnels(area, color) {
       if (isTrialActive()) return;
       const { ship } = get();
-      const { [area]: _old, ...others } = ship.funnelPaint ?? {};
-      const funnelPaint =
-        color === null ? others : { ...others, [area]: color };
+      const current = ship.funnelPaint?.[area] ?? null;
+      const hasBodyOverride =
+        area === "body" &&
+        ship.parts.some((p) => isFunnelType(p.type) && p.color !== undefined);
+      if (current === color && !hasBodyOverride) return;
+      const funnelPaint: FunnelPaint = { ...ship.funnelPaint };
+      if (color === null) delete funnelPaint[area];
+      else funnelPaint[area] = color;
       const next: Ship = { ...ship, funnelPaint };
       if (Object.keys(funnelPaint).length === 0) delete next.funnelPaint;
       if (area === "body") {
         next.parts = ship.parts.map((part) => {
           if (!isFunnelType(part.type) || part.color === undefined) return part;
-          const { color: _color, ...rest } = part;
-          return rest;
+          const cleared = { ...part };
+          delete cleared.color;
+          return cleared;
         });
       }
       commit(next);
@@ -468,8 +475,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const { ship } = get();
       const part = ship.parts.find((p) => p.id === id);
       if (!part || !isFunnelType(part.type)) return;
-      const { mark: _old, ...rest } = part;
-      const updated: PlacedPart = mark ? { ...rest, mark } : rest;
+      if (JSON.stringify(part.mark ?? null) === JSON.stringify(mark)) return;
+      const updated: PlacedPart = { ...part };
+      delete updated.mark;
+      if (mark) updated.mark = mark;
       commit({
         ...ship,
         parts: ship.parts.map((p) => (p.id === id ? updated : p)),

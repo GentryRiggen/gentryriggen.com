@@ -32,9 +32,15 @@ export function getFunnelMarkTexture(mark: FunnelMark): CanvasTexture | null {
   if (!context) return null;
   context.fillStyle = paintHex(mark.color);
   if (mark.kind === "letters") {
-    // Two letters fill about 80% of the width.
-    const fontSize = mark.text.length > 1 ? 130 : 190;
+    // Fit within 80% of the width, whatever the letters.
+    let fontSize = mark.text.length > 1 ? 130 : 190;
     context.font = `bold ${fontSize}px sans-serif`;
+    const width = context.measureText(mark.text).width;
+    const maxWidth = SIZE * 0.8;
+    if (width > maxWidth) {
+      fontSize = Math.floor((fontSize * maxWidth) / width);
+      context.font = `bold ${fontSize}px sans-serif`;
+    }
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(mark.text, SIZE / 2, SIZE / 2 + fontSize * 0.04);

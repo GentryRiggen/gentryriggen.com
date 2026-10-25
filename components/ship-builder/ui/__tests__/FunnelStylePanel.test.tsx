@@ -120,6 +120,31 @@ describe("FunnelStylePanel auto-close", () => {
   });
 });
 
+describe("FunnelStylePanel undo", () => {
+  it("shows the previous letters after Undo", async () => {
+    const user = userEvent.setup();
+    act(() => store().select("f1"));
+    render(<FunnelStylePanel partId="f1" onClose={jest.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Letters" }));
+    const input = screen.getByLabelText("Letters");
+    await user.type(input, "A");
+    await user.type(input, "B");
+    expect(input).toHaveValue("AB");
+    act(() => store().undo());
+    expect(screen.getByLabelText("Letters")).toHaveValue("A");
+  });
+
+  it("does not commit when Letters or Logo is chosen with nothing to set", async () => {
+    const user = userEvent.setup();
+    act(() => store().select("f1"));
+    render(<FunnelStylePanel partId="f1" onClose={jest.fn()} />);
+    const before = store().past.length;
+    await user.click(screen.getByRole("button", { name: "Letters" }));
+    await user.click(screen.getByRole("button", { name: "Logo" }));
+    expect(store().past).toHaveLength(before);
+  });
+});
+
 describe("SelectionBar Style button", () => {
   it("shows for a funnel and opens the panel", async () => {
     const user = userEvent.setup();

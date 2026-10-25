@@ -104,9 +104,12 @@ export default function FunnelStylePanel({
   const setFunnelMark = useShipBuilderStore((s) => s.setFunnelMark);
 
   const mark = part?.mark;
-  const [mode, setMode] = useState<MarkMode>(mark ? mark.kind : "none");
-  const [text, setText] = useState(mark?.kind === "letters" ? mark.text : "");
-  const [color, setColor] = useState<PaintColor>(mark?.color ?? "white");
+  // Only what has no stored mark yet stays local; the rest comes from the mark.
+  const [pendingMode, setPendingMode] = useState<MarkMode | null>(null);
+  const [pendingColor, setPendingColor] = useState<PaintColor>("white");
+  const mode: MarkMode = mark ? mark.kind : (pendingMode ?? "none");
+  const text = mark?.kind === "letters" ? mark.text : "";
+  const color: PaintColor = mark?.color ?? pendingColor;
 
   const shouldClose = selectedId !== partId || busy;
   useEffect(() => {
@@ -124,12 +127,13 @@ export default function FunnelStylePanel({
   if (!part) return null;
 
   function chooseMode(next: MarkMode) {
-    setMode(next);
+    setPendingMode(next);
     if (next === "none") setFunnelMark(partId, null);
     else if (next === "letters") {
+      if (mark?.kind === "letters") return;
       setFunnelMark(partId, text ? { kind: "letters", text, color } : null);
     } else if (mark?.kind === "logo") {
-      setFunnelMark(partId, { kind: "logo", logo: mark.logo, color });
+      return;
     } else {
       setFunnelMark(partId, null);
     }
@@ -137,7 +141,6 @@ export default function FunnelStylePanel({
 
   function changeText(raw: string) {
     const next = normalizeMarkText(raw);
-    setText(next);
     setFunnelMark(partId, next ? { kind: "letters", text: next, color } : null);
   }
 
@@ -147,10 +150,10 @@ export default function FunnelStylePanel({
 
   function pickMarkColor(next: PaintColor | null) {
     if (!next) return;
-    setColor(next);
-    if (mode === "letters" && text) {
-      setFunnelMark(partId, { kind: "letters", text, color: next });
-    } else if (mode === "logo" && mark?.kind === "logo") {
+    setPendingColor(next);
+    if (mark?.kind === "letters") {
+      setFunnelMark(partId, { kind: "letters", text: mark.text, color: next });
+    } else if (mark?.kind === "logo") {
       setFunnelMark(partId, { kind: "logo", logo: mark.logo, color: next });
     }
   }

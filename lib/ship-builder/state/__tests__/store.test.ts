@@ -672,6 +672,39 @@ describe("funnel livery", () => {
     );
   });
 
+  describe("no-op taps leave history alone", () => {
+    const mark = { kind: "logo", logo: "star", color: "yellow" } as const;
+
+    function expectUntouched(action: () => void) {
+      // Give redo something to lose.
+      act(() => store().paintFunnels("bands", "buff"));
+      act(() => store().undo());
+      const { past, future } = store();
+      expect(future.length).toBeGreaterThan(0);
+      act(action);
+      expect(store().past).toHaveLength(past.length);
+      expect(store().future).toBe(future);
+    }
+
+    it("Default on an already-default row", () => {
+      expectUntouched(() => store().paintFunnels("top", null));
+    });
+
+    it("re-tapping the current swatch", () => {
+      act(() => store().paintFunnels("top", "black"));
+      expectUntouched(() => store().paintFunnels("top", "black"));
+    });
+
+    it("None with no mark", () => {
+      expectUntouched(() => store().setFunnelMark("f2", null));
+    });
+
+    it("setting an identical mark", () => {
+      act(() => store().setFunnelMark("f2", mark));
+      expectUntouched(() => store().setFunnelMark("f2", { ...mark }));
+    });
+  });
+
   it("ignores marks on parts that aren't funnels", () => {
     const before = store().ship;
     act(() =>
