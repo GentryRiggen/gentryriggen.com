@@ -147,13 +147,18 @@ export function buildModernFunnelBody(): BufferGeometry {
 
 const GRILLE_SLATS = [2.35, 2.47, 2.59, 2.71];
 
+/** The modern funnel's body radius across the ship (Z) at a height. */
+export function modernFunnelRadiusAt(height: number): number {
+  return (
+    MODERN_TOP +
+    (MODERN_BASE - MODERN_TOP) * (1 - height / MODERN_FUNNEL_HEIGHT)
+  );
+}
+
 /** A band of dark louvres around the upper body, following the taper. */
 export function buildModernFunnelGrille(): BufferGeometry {
   const slats = GRILLE_SLATS.map((height) => {
-    const radius =
-      MODERN_TOP +
-      (MODERN_BASE - MODERN_TOP) * (1 - height / MODERN_FUNNEL_HEIGHT) +
-      0.012;
+    const radius = modernFunnelRadiusAt(height) + 0.012;
     const slat = new CylinderGeometry(radius, radius, 0.05, 20);
     slat.translate(0, height, 0);
     slat.scale(MODERN_FUNNEL_STRETCH, 1, 1);

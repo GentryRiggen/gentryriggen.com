@@ -6,10 +6,14 @@ import type { BufferGeometry } from "three";
 import { cellKey, type Occupancy } from "@/lib/ship-builder/model/grid";
 import type { PartCandidate } from "@/lib/ship-builder/model/placement";
 import { CRUISE_COLORS } from "./cruiseColors";
+import type { FunnelMark } from "@/lib/ship-builder/model/funnelLivery";
 import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
+import FunnelMarkDecals from "./FunnelMarkDecals";
 import {
   buildModernFunnelBody,
   buildModernFunnelGrille,
+  modernFunnelRadiusAt,
+  MODERN_FUNNEL_HEIGHT,
 } from "./funnelGeometry";
 import { getLifeboatGeometry } from "./lifeboatGeometry";
 import Spinner from "./Spinner";
@@ -287,8 +291,16 @@ export function RaftCanister({
  * louvres. Its top sits 3.2 above its point like the classic funnel, so smoke
  * rises from the same place (see FUNNEL_TOP_OFFSET in effectAnchors.ts).
  */
-export function ModernFunnel({ color, tint, emphasis }: CruisePartProps) {
+export function ModernFunnel({
+  color,
+  topColor,
+  mark,
+  tint,
+  emphasis,
+}: CruisePartProps & { topColor?: string; mark?: FunnelMark }) {
   const surface = { tint, emphasis };
+  const markHeight = MODERN_FUNNEL_HEIGHT * 0.45;
+  const markRadius = modernFunnelRadiusAt(markHeight);
   return (
     <group rotation={[0, 0, FUNNEL_RAKE_RADIANS]}>
       <mesh
@@ -299,8 +311,20 @@ export function ModernFunnel({ color, tint, emphasis }: CruisePartProps) {
         <Surface color={color ?? CRUISE_COLORS.modernFunnel} {...surface} />
       </mesh>
       <mesh geometry={getModernFunnelGeometry().grille}>
-        <Surface color={MODERN_GRILLE_COLOR} finish="metal" {...surface} />
+        <Surface
+          color={topColor ?? MODERN_GRILLE_COLOR}
+          finish="metal"
+          {...surface}
+        />
       </mesh>
+      {mark && (
+        <FunnelMarkDecals
+          mark={mark}
+          height={markHeight}
+          radius={markRadius}
+          size={markRadius * 1.4}
+        />
+      )}
     </group>
   );
 }

@@ -1,13 +1,16 @@
 import { useEffect, useMemo } from "react";
+import type { FunnelMark } from "@/lib/ship-builder/model/funnelLivery";
 import { AO_OCCLUDER } from "./aoLayer";
 import { PALETTE } from "./palette";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
+import FunnelMarkDecals from "./FunnelMarkDecals";
 import {
   buildFunnelBands,
   buildFunnelCap,
   buildFunnelOpening,
   buildSteamPipe,
+  funnelRadiusAt,
 } from "./funnelGeometry";
 
 const SEGMENTS = 16;
@@ -21,8 +24,13 @@ interface FunnelMeshProps {
   bodyHeight: number;
   /** The black cap above the body. */
   capHeight: number;
-  /** Paint colour for the body; the bands, cap and pipe keep their own. */
+  /** Paint colour for the body; the pipe keeps its own. */
   bodyColor?: string;
+  /** Colours for the two bands and the black cap, when painted. */
+  bandColor?: string;
+  topColor?: string;
+  /** Letters or a logo painted on both sides of the body. */
+  mark?: FunnelMark;
   tint: PartTint;
   emphasis: PartEmphasis;
 }
@@ -38,10 +46,18 @@ export default function FunnelMesh({
   bodyHeight,
   capHeight,
   bodyColor = PALETTE.funnel,
+  bandColor,
+  topColor,
+  mark,
   tint,
   emphasis,
 }: FunnelMeshProps) {
   const surface = { tint, emphasis };
+  const markHeight = bodyHeight * 0.55;
+  const markRadius = funnelRadiusAt(
+    { baseRadius, topRadius, bodyHeight, capHeight },
+    markHeight
+  );
   const geometry = useMemo(() => {
     const dims = { baseRadius, topRadius, bodyHeight, capHeight };
     return {
@@ -66,11 +82,19 @@ export default function FunnelMesh({
         <Surface color={bodyColor} {...surface} />
       </mesh>
       <mesh geometry={geometry.bands}>
-        <Surface color={PALETTE.funnelBand} {...surface} />
+        <Surface color={bandColor ?? PALETTE.funnelBand} {...surface} />
       </mesh>
       <mesh {...AO_OCCLUDER} geometry={geometry.cap} castShadow>
-        <Surface color={PALETTE.funnelTop} {...surface} />
+        <Surface color={topColor ?? PALETTE.funnelTop} {...surface} />
       </mesh>
+      {mark && (
+        <FunnelMarkDecals
+          mark={mark}
+          height={markHeight}
+          radius={markRadius}
+          size={markRadius * 1.3}
+        />
+      )}
       <mesh geometry={geometry.opening}>
         <Surface color={OPENING_COLOR} {...surface} />
       </mesh>
