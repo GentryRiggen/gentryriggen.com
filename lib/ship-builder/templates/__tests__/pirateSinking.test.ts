@@ -21,6 +21,7 @@ describe("hitting a pirate ship with an iceberg while walking", () => {
     const state = runTrial({
       ship: simShipFromStats(computeStats(ship), ship.hull.beam),
       sea,
+      length,
       iceberg: {
         compartments: compartmentSpecsOf(ship.hull),
         length,

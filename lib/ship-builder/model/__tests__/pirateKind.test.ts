@@ -40,12 +40,12 @@ describe("pirate kind", () => {
     ]);
   });
 
-  it("saves as v7 and reads v6 saves", () => {
-    expect(CURRENT_VERSION).toBe(7);
+  it("saves as v8 and reads v6 saves", () => {
+    expect(CURRENT_VERSION).toBe(8);
     const ship = emptyShip("pirate");
     const parsed = parseShip(JSON.parse(JSON.stringify(ship)));
     expect(parsed.ok).toBe(true);
     const v6 = { ...emptyShip("liner"), v: 6 };
-    expect(migrate(v6)).toEqual({ ...v6, v: 7 });
+    expect(migrate(v6)).toMatchObject({ ...v6, v: 8 });
   });
 });

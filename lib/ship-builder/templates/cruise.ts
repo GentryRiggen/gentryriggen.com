@@ -2,6 +2,15 @@ import type { Ship } from "../model/types";
 import { ShipBuilder, range } from "./modernBuilder";
 import { wallRun } from "./bulkheads";
 import type { ShipTemplate } from "./types";
+import type { FunnelMark, FunnelPaint } from "../model/funnelLivery";
+
+/** A navy wave on each funnel, on a light sky-blue funnel that shows on white. */
+const WAVE_MARK: FunnelMark = { kind: "logo", logo: "wave", color: "navy" };
+const CRUISE_FUNNEL_PAINT: FunnelPaint = {
+  body: "sky",
+  bands: "navy",
+  top: "navy",
+};
 
 /** Wonder of the Seas: a tall, wide megaship with pools and a waterslide. */
 function buildWonderOfTheSeas(): Ship {
@@ -43,17 +52,17 @@ function buildWonderOfTheSeas(): Ship {
   b.decks(3, 32, 40, innerPool);
   b.decks(3, 20, 40, sides);
 
-  b.onTop("funnel-modern", 2, 44, 2);
-  b.onTop("funnel-modern", 2, 44, 4);
+  b.onTop("funnel-modern", 2, 44, 2, WAVE_MARK);
+  b.onTop("funnel-modern", 2, 44, 4, WAVE_MARK);
   b.onTop("waterslide", 3, 26, 2);
   b.onTop("climbing-wall", 3, 36, 4);
 
   for (const z of sides) {
     for (const x of [6, 7, 8, 50, 51, 52, 53]) {
-      b.boat("lifeboat-enclosed", 1, x, z);
+      b.boat("lifeboat-enclosed", 1, x, z, "davit-side");
     }
     for (const x of [10, 11, 12, 13, 46, 47, 48, 49]) {
-      b.boat("lifeboat-enclosed", 2, x, z);
+      b.boat("lifeboat-enclosed", 2, x, z, "davit-side");
     }
     for (const x of [14, 15, 16, 17, 18, 19, 40, 41, 42, 43, 44, 45]) {
       b.raft(2, x, z);
@@ -63,7 +72,7 @@ function buildWonderOfTheSeas(): Ship {
   b.hull("azipod", "prop:1");
   b.hull("azipod", "prop:2");
   b.withBulkheads(wallRun(1, 19, "deck"));
-  return b.build();
+  return { ...b.build(), funnelPaint: { ...CRUISE_FUNNEL_PAINT } };
 }
 
 /** Ocean Breeze: a friendly mid-sized cruise ship from the nineties. */
@@ -88,11 +97,11 @@ function buildOceanBreeze(): Ship {
   b.decks(2, 16, 26, [1, 2]);
   b.grid("pool", 2, 14, 1);
 
-  b.onTop("funnel-modern", 2, 22, 2);
+  b.onTop("funnel-modern", 2, 22, 2, WAVE_MARK);
 
   for (const z of sides) {
     for (const x of [8, 9, 10, 28, 29]) {
-      b.boat("lifeboat-enclosed", 1, x, z);
+      b.boat("lifeboat-enclosed", 1, x, z, "davit-side");
     }
     for (const x of range(0, 5)) b.raft(0, x, z);
   }
@@ -101,7 +110,7 @@ function buildOceanBreeze(): Ship {
   b.hull("propeller", "prop:2");
   b.hull("rudder", "rudder");
   b.withBulkheads(wallRun(1, 11, "deck"));
-  return b.build();
+  return { ...b.build(), funnelPaint: { ...CRUISE_FUNNEL_PAINT } };
 }
 
 export const CRUISE_TEMPLATES: readonly ShipTemplate[] = [

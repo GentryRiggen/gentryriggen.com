@@ -7,6 +7,7 @@ import {
   MIN_SEGMENTS,
 } from "../model/grid";
 import { PAINT_COLOR_IDS } from "../model/paint";
+import { FUNNEL_LOGO_IDS, MARK_TEXT_PATTERN } from "../model/funnelLivery";
 import { MAX_NAME_LENGTH, removeParts, validateShip } from "../model/placement";
 import { SHIP_KINDS } from "../model/kinds";
 import { cleanBulkheads } from "../model/bulkheads";
@@ -31,7 +32,7 @@ import {
  * persist/__fixtures__, checked by persist/__tests__/fixtures.test.ts, fails
  * when an existing save stops loading in full.
  */
-export const CURRENT_VERSION = 7;
+export const CURRENT_VERSION = 8;
 export const MAX_PARTS = 1000;
 const MAX_ID_LENGTH = 64;
 
@@ -48,6 +49,19 @@ const attachAnchor = z.object({
   pointId: z.string().min(1).max(MAX_ID_LENGTH),
 });
 
+const funnelMark = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("letters"),
+    text: z.string().regex(MARK_TEXT_PATTERN),
+    color: z.enum(PAINT_COLOR_IDS),
+  }),
+  z.object({
+    kind: z.literal("logo"),
+    logo: z.enum(FUNNEL_LOGO_IDS),
+    color: z.enum(PAINT_COLOR_IDS),
+  }),
+]);
+
 const placedPart = z.object({
   id: z.string().min(1).max(MAX_ID_LENGTH),
   type: z.enum(PART_TYPES),
@@ -59,6 +73,7 @@ const placedPart = z.object({
     z.literal(270),
   ]),
   color: z.enum(PAINT_COLOR_IDS).optional(),
+  mark: funnelMark.optional(),
 });
 
 export const shipSchema = z.object({
@@ -89,6 +104,13 @@ export const shipSchema = z.object({
       .optional(),
   }),
   parts: z.array(placedPart).max(MAX_PARTS),
+  funnelPaint: z
+    .object({
+      body: z.enum(PAINT_COLOR_IDS).optional(),
+      bands: z.enum(PAINT_COLOR_IDS).optional(),
+      top: z.enum(PAINT_COLOR_IDS).optional(),
+    })
+    .optional(),
 });
 
 type RawShip = Record<string, unknown>;
@@ -149,6 +171,12 @@ const addKind: Migration = (raw) => ({ ...raw, v: 6, kind: "liner" });
  */
 const addPirates: Migration = (raw) => ({ ...raw, v: 7 });
 
+/**
+ * v7 to v8 adds funnel colours and marks and changes no data. The bump makes
+ * older builds back up v8 saves instead of dropping the livery.
+ */
+const addFunnelLivery: Migration = (raw) => ({ ...raw, v: 8 });
+
 /** MIGRATIONS[n] upgrades a version-n ship to version n + 1. */
 const MIGRATIONS: Record<number, Migration> = {
   1: addDefaultBeam,
@@ -157,6 +185,7 @@ const MIGRATIONS: Record<number, Migration> = {
   4: addPaint,
   5: addKind,
   6: addPirates,
+  7: addFunnelLivery,
 };
 
 export function migrate(

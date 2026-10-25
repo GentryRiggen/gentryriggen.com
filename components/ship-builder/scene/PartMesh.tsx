@@ -20,6 +20,12 @@ import {
   rotatedFootprint,
   type Occupancy,
 } from "@/lib/ship-builder/model/grid";
+import {
+  funnelColors,
+  isFunnelType,
+  type FunnelMark,
+  type FunnelPaint,
+} from "@/lib/ship-builder/model/funnelLivery";
 import { paintHex, type PaintColor } from "@/lib/ship-builder/model/paint";
 import type { PartCandidate } from "@/lib/ship-builder/model/placement";
 import type {
@@ -44,7 +50,7 @@ import {
   Waterslide,
 } from "./cruiseParts";
 import { DeckDecorMesh } from "./deckDecor";
-import DavitMesh from "./DavitMesh";
+import DavitMesh, { SideDavitMesh } from "./DavitMesh";
 import {
   CrowsNestMesh,
   DomeMesh,
@@ -94,6 +100,8 @@ interface PartMeshProps {
   occupancy?: Occupancy;
   /** Paint on the part's main surface; absent means the default look. */
   color?: PaintColor;
+  /** A funnel's painted letters or logo. */
+  mark?: FunnelMark;
   tint?: PartTint;
   emphasis?: PartEmphasis;
   onPointerOver?: (event: ThreeEvent<PointerEvent>) => void;
@@ -178,10 +186,27 @@ function Block({
   );
 }
 
+interface FunnelHexColors {
+  body?: string;
+  bands?: string;
+  top?: string;
+}
+
+function hexColors(paint: FunnelPaint): FunnelHexColors {
+  return {
+    body: paint.body && paintHex(paint.body),
+    bands: paint.bands && paintHex(paint.bands),
+    top: paint.top && paintHex(paint.top),
+  };
+}
+
 interface FittingProps {
   type: PartType;
   side?: Side;
   color?: PaintColor;
+  /** A funnel's body, band and top colours as hex. */
+  funnelPaint?: FunnelHexColors;
+  mark?: FunnelMark;
   tint: PartTint;
   emphasis: PartEmphasis;
   /** Offset from the part's origin to the other mast's top, for an aerial. */
@@ -194,6 +219,8 @@ function Fitting({
   type,
   side,
   color,
+  funnelPaint,
+  mark,
   tint,
   emphasis,
   wireTarget,
@@ -212,7 +239,10 @@ function Fitting({
           topRadius={0.38}
           bodyHeight={2.6}
           capHeight={0.6}
-          bodyColor={painted}
+          bodyColor={funnelPaint?.body}
+          bandColor={funnelPaint?.bands}
+          topColor={funnelPaint?.top}
+          mark={mark}
           tint={tint}
           emphasis={emphasis}
         />
@@ -225,7 +255,10 @@ function Fitting({
           topRadius={0.65}
           bodyHeight={3.4}
           capHeight={0.8}
-          bodyColor={painted}
+          bodyColor={funnelPaint?.body}
+          bandColor={funnelPaint?.bands}
+          topColor={funnelPaint?.top}
+          mark={mark}
           tint={tint}
           emphasis={emphasis}
         />
@@ -263,6 +296,15 @@ function Fitting({
     case "davit":
       return (
         <DavitMesh
+          outward={outward}
+          color={painted}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
+    case "davit-side":
+      return (
+        <SideDavitMesh
           outward={outward}
           color={painted}
           tint={tint}
@@ -338,7 +380,15 @@ function Fitting({
         />
       );
     case "funnel-modern":
-      return <ModernFunnel color={painted} tint={tint} emphasis={emphasis} />;
+      return (
+        <ModernFunnel
+          color={funnelPaint?.body}
+          topColor={funnelPaint?.top}
+          mark={mark}
+          tint={tint}
+          emphasis={emphasis}
+        />
+      );
     case "azipod":
       return <Azipod color={painted} tint={tint} emphasis={emphasis} />;
     case "dome":
@@ -470,6 +520,7 @@ function PartMesh({
   partId,
   occupancy,
   color,
+  mark,
   tint = null,
   emphasis = null,
   onPointerOver,
@@ -478,6 +529,9 @@ function PartMesh({
   onClick,
 }: PartMeshProps) {
   const def = getPartDef(part.type);
+  const funnelPaint = isFunnelType(part.type)
+    ? hexColors(funnelColors(ship, { color }))
+    : undefined;
   const length = gridLength(ship);
   const beam = beamOf(ship);
   const handlers = {
@@ -559,6 +613,8 @@ function PartMesh({
         type={part.type}
         side={point.side}
         color={color}
+        funnelPaint={funnelPaint}
+        mark={mark}
         tint={tint}
         emphasis={emphasis}
         wireTarget={

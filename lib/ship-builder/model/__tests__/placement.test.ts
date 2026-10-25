@@ -358,6 +358,21 @@ describe("canPlace — side support", () => {
     expect(canPlace(port, gridCandidate("deck-1x1", 0, 2, 5))).toEqual(OK);
   });
 
+  it("refuses to build outboard of a side davit's wall", () => {
+    const BLOCKED = fail("Can't build outboard of a davit or raft");
+    const port = testShip([
+      gridPart("a", "deck-1x1", 0, 2, 3),
+      gridPart("b", "deck-1x1", 1, 2, 3),
+      gridPart("w", "deck-1x1", 0, 2, 4),
+      attachPart("dv", "davit-side", "b", "side-davit:2:3"),
+    ]);
+    expect(validateShip(port)).toEqual(OK);
+    expect(canPlace(port, gridCandidate("deck-1x1", 1, 2, 4))).toEqual(BLOCKED);
+    expect(canPlace(port, gridCandidate("deck-1x1", 1, 2, 2))).toEqual(OK);
+    const bare = removeParts(port, ["dv"]);
+    expect(canPlace(bare, gridCandidate("deck-1x1", 1, 2, 4))).toEqual(OK);
+  });
+
   it("keeps the rule-6 checks on cells that have a part below", () => {
     const ship = testShip([
       gridPart("a", "deck-1x1", 0, 4, 1),
@@ -843,7 +858,7 @@ describe("validateShip", () => {
       bow: "straight",
       stern: "counter",
     });
-    expect(emptyShip().v).toBe(7);
+    expect(emptyShip().v).toBe(8);
   });
 
   it("applies each kind's defaults to a new ship", () => {

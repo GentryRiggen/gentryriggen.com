@@ -14,6 +14,7 @@ const store = () => useShipBuilderStore.getState();
 const INPUT: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  length: 30,
 };
 
 const walkButton = () => screen.queryByRole("button", { name: "Walk" });
@@ -74,17 +75,6 @@ describe("TrialWalkButton", () => {
     act(() => store().startTrial("calm", 5));
     act(() =>
       publishLiveTrial({ ...createTrial(INPUT), phase: "descending" }, 0, true)
-    );
-    expect(walkButton()).toBeNull();
-  });
-
-  it("hides during a descent run even before its live state arrives", () => {
-    render(<TrialWalkButton />);
-    act(() => store().startTrial("calm", 5));
-    const { trial } = store();
-    if (trial.status !== "running") throw new Error("expected running");
-    act(() =>
-      useShipBuilderStore.setState({ trial: { ...trial, descending: true } })
     );
     expect(walkButton()).toBeNull();
   });

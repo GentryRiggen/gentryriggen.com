@@ -148,8 +148,7 @@ describe("sinking while walking", () => {
     const { trial } = store();
     expect(trial).toMatchObject({
       status: "running",
-      descending: false,
-      from: "start",
+      descending: true,
     });
     if (trial.status !== "running") throw new Error("expected running");
     expect(trial.input.iceberg?.impactX).toBeCloseTo(
@@ -157,7 +156,7 @@ describe("sinking while walking", () => {
     );
   });
 
-  it("rides her down when she sinks, then waits for Stop to show the result", () => {
+  it("shows the result when she sinks, and the walk goes on until Stop", () => {
     load();
     act(() => store().startWalk());
     act(() => store().sinkWhileWalking());
@@ -166,27 +165,11 @@ describe("sinking while walking", () => {
     const sunk = runTrial(trial.input);
     expect(sunk.outcome).toBe("sank");
 
-    const statuses: string[] = [];
-    const unsubscribe = useShipBuilderStore.subscribe((s) =>
-      statuses.push(s.trial.status)
-    );
     act(() => store().finishTrial(sunk));
-    unsubscribe();
-    expect(statuses).toEqual(["running"]);
-    expect(store().trial).toMatchObject({
-      status: "running",
-      descending: true,
-      from: "end",
-    });
-    expect(store().walk.status).toBe("walking");
-
-    const descent = store().trial;
-    if (descent.status !== "running") throw new Error("expected running");
-    expect(descent.runId).not.toBe(trial.runId);
-    act(() => store().finishTrial(runTrial(descent.input)));
     expect(store().trial).toMatchObject({
       status: "result",
       descending: true,
+      runId: trial.runId,
     });
     expect(store().walk.status).toBe("walking");
 

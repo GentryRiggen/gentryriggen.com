@@ -1,5 +1,6 @@
 import { DoubleSide, FrontSide, MeshStandardMaterial } from "three";
 import { PALETTE } from "./palette";
+import { withRust } from "./rust";
 
 export type PartTint = keyof typeof PALETTE.tint | null;
 export type PartEmphasis = keyof typeof PALETTE.emphasis | null;
@@ -59,16 +60,18 @@ function lookKey(look: SurfaceLook): string {
 }
 
 function createMaterial(look: SurfaceLook): MeshStandardMaterial {
-  return new MeshStandardMaterial({
-    color: look.color,
-    transparent: look.opacity < 1,
-    opacity: look.opacity,
-    side: look.doubleSided ? DoubleSide : FrontSide,
-    emissive: look.emphasis ? PALETTE.emphasis[look.emphasis] : "#000000",
-    emissiveIntensity: look.emphasis ? 0.4 : 0,
-    roughness: FINISHES[look.finish].roughness,
-    metalness: FINISHES[look.finish].metalness,
-  });
+  return withRust(
+    new MeshStandardMaterial({
+      color: look.color,
+      transparent: look.opacity < 1,
+      opacity: look.opacity,
+      side: look.doubleSided ? DoubleSide : FrontSide,
+      emissive: look.emphasis ? PALETTE.emphasis[look.emphasis] : "#000000",
+      emissiveIntensity: look.emphasis ? 0.4 : 0,
+      roughness: FINISHES[look.finish].roughness,
+      metalness: FINISHES[look.finish].metalness,
+    })
+  );
 }
 
 /** The shared material for a surface look, made on first use. */

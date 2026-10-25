@@ -40,6 +40,7 @@ describe("sea trial slice", () => {
     const calm: TrialInput = {
       ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
       sea: "calm",
+      length: 30,
     };
     act(() => store().finishTrial(runTrial(calm)));
     expect(store().trial.status).toBe("idle");

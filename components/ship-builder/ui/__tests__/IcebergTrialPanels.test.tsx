@@ -17,6 +17,7 @@ const store = () => useShipBuilderStore.getState();
 const INPUT: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  length: 30,
 };
 
 function stateAt(time: number): SimState {

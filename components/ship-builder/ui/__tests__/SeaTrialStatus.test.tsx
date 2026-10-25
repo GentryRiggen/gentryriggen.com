@@ -1,6 +1,5 @@
 import { act } from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { createTrial } from "@/lib/ship-builder/sim/seaTrial";
 import type { SimState, TrialInput } from "@/lib/ship-builder/sim/types";
 import {
@@ -16,6 +15,7 @@ const store = () => useShipBuilderStore.getState();
 const INPUT: TrialInput = {
   ship: { stabilityRatio: 0, listAngle: 0, beam: 5 },
   sea: "calm",
+  length: 30,
 };
 
 function sunkState(): SimState {
@@ -36,29 +36,17 @@ beforeEach(() => {
 const followButton = () =>
   screen.queryByRole("button", { name: "Follow her down" });
 
-describe("SeaTrialStatus Follow her down", () => {
-  it("appears once an iceberg trial has sunk and descends when tapped", async () => {
-    const user = userEvent.setup();
+describe("SeaTrialStatus", () => {
+  it("never offers Follow her down, even once she has sunk", () => {
     render(<SeaTrialStatus />);
     act(() => store().startTrial("calm", 5));
     expect(followButton()).toBeNull();
-
-    act(() => publishLiveTrial(sunkState(), 0, true));
-    const follow = followButton();
-    expect(follow).toBeVisible();
-
-    await user.click(follow!);
-    expect(store().trial).toMatchObject({
-      status: "running",
-      descending: true,
-    });
-    // Already on the way down: no second offer.
     act(() => publishLiveTrial(sunkState(), 0, true));
     expect(followButton()).toBeNull();
     expect(screen.getByRole("button", { name: "Stop" })).toHaveFocus();
   });
 
-  it("never shows in a waves trial", () => {
+  it("never shows it in a waves trial", () => {
     render(<SeaTrialStatus />);
     act(() => store().startTrial("calm"));
     act(() => publishLiveTrial(sunkState(), 0, true));

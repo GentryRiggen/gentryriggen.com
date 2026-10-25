@@ -37,7 +37,6 @@ describe("useTimeOfDay", () => {
           status: "running",
           runId: 1,
           descending: false,
-          from: "start",
           input: { ...sim, iceberg: { impactX: 3 } } as never,
         },
       })
@@ -50,7 +49,6 @@ describe("useTimeOfDay", () => {
           status: "running",
           runId: 2,
           descending: false,
-          from: "start",
           input: sim as never,
         },
       })

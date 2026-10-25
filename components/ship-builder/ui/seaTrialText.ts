@@ -36,8 +36,6 @@ export const BREAK_MODE_OPTIONS: readonly {
   },
 ];
 
-export const FOLLOW_HER_DOWN = "Follow her down";
-
 /** The scrubber's tick marks: which events get one, and what they are called. */
 export const TIMELINE_MARKS: readonly {
   kind: SimEvent["kind"];

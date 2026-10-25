@@ -93,15 +93,13 @@ export function resetPlayback(target: TrialPlayback = trialPlayback) {
 
 // Clear the last run's pose the moment a trial starts or ends, in the store
 // update itself: a reset in an effect would let one frame show the previous
-// run (a sunk ship on "Try again"). "Follow her down" picks up where the last
-// run ended, so it keeps the pose.
+// run (a sunk ship on "Try again").
 useShipBuilderStore.subscribe((state, previous) => {
   const { trial } = state;
   const before = previous.trial;
   if (trial === before) return;
   const isNewRun =
     trial.status === "running" &&
-    trial.from === "start" &&
     (before.status !== "running" || before.runId !== trial.runId);
   const isLeaving =
     (trial.status === "idle" || trial.status === "aiming") &&
@@ -296,15 +294,14 @@ export function jumpTrial(
 
 /**
  * Shows the end of a trial without animating it (reduced motion). A ship that
- * went over stays on the surface rolled upside down instead of sinking out of
- * sight, so the result card has a ship behind it.
+ * went over is shown where she ended: on the sea floor, like an iceberg
+ * sinking, with the camera framing her there.
  */
 export function writeInstantPlayback(
   state: SimState,
   target: TrialPlayback = trialPlayback
 ) {
   writePlayback(state, target);
-  if (state.outcome === "capsized") target.sink = 0;
 }
 
 /**

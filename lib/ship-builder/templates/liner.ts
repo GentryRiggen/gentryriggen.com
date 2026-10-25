@@ -1,6 +1,7 @@
 import { propCount } from "../model/attach";
 import { KIND_DEFAULTS } from "../model/kinds";
 import type { PaintColor } from "../model/paint";
+import type { FunnelPaint } from "../model/funnelLivery";
 import {
   HULL_ID,
   type PartType,
@@ -200,7 +201,8 @@ interface GrandLinerSpec {
   lengthSegments: number;
   beam: number;
   paint: { topsides: PaintColor; bottom: PaintColor };
-  funnelColor?: PaintColor;
+  /** Funnel colours for the whole ship. */
+  funnelPaint?: FunnelPaint;
   /** Last x of the forecastle, which starts at the bow. */
   forecastle: number;
   /** The long level-0 block; a poop deck follows it. */
@@ -258,8 +260,7 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
       b,
       "funnel-large",
       blockAt(b, 2, x, funnelZ),
-      `funnel-lg:${x}:${funnelZ}`,
-      spec.funnelColor
+      `funnel-lg:${x}:${funnelZ}`
     );
   }
   if (spec.domeX !== undefined) {
@@ -289,7 +290,7 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
   }
 
   return {
-    v: 7,
+    v: 8,
     kind: "liner",
     name: spec.name,
     hull: {
@@ -301,6 +302,7 @@ function buildGrandLiner(spec: GrandLinerSpec): Ship {
       bulkheads: spec.bulkheads.map((wall) => ({ ...wall })),
     },
     parts: b.parts,
+    ...(spec.funnelPaint ? { funnelPaint: { ...spec.funnelPaint } } : {}),
   };
 }
 
@@ -312,6 +314,7 @@ const TITANIC: GrandLinerSpec = {
   lengthSegments: 20,
   beam: 4,
   paint: { topsides: "black", bottom: "red" },
+  funnelPaint: { body: "buff", bands: "buff", top: "black" },
   forecastle: 5,
   main: { from: 10, to: 49 },
   upper: { from: 14, to: 45 },
@@ -369,7 +372,7 @@ const LUSITANIA: GrandLinerSpec = {
   blurb: "A super-fast liner and queen of the Atlantic.",
   lengthSegments: 18,
   beam: 5,
-  funnelColor: "red",
+  funnelPaint: { body: "red", bands: "black", top: "black" },
   bulkheads: wallRun(1, 13, "deck"),
   main: { from: 9, to: 44 },
   upper: { from: 12, to: 40 },
@@ -413,7 +416,7 @@ function buildCarpathia(): Ship {
   addStern(b, beam);
 
   return {
-    v: 7,
+    v: 8,
     kind: "liner",
     name: "RMS Carpathia",
     hull: {
@@ -425,6 +428,7 @@ function buildCarpathia(): Ship {
       bulkheads: wallRun(1, 11, "deck"),
     },
     parts: b.parts,
+    funnelPaint: { body: "red", bands: "black", top: "black" },
   };
 }
 

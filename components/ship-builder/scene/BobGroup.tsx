@@ -60,11 +60,8 @@ export default function BobGroup({ children }: BobGroupProps) {
     const previous = previousStatus.current;
     previousStatus.current = status;
     if (previous !== status && !isBuilding(previous) && wasHeavy.current) {
-      // "Follow her down" carries on from where she sank: not a restart.
-      const isRestarting =
-        previous === "result" &&
-        trial.status === "running" &&
-        trial.from === "start";
+      // "Watch again" and "Try again" restart from a result.
+      const isRestarting = previous === "result" && trial.status === "running";
       if (isBuilding(status) || isRestarting) {
         blend.current = isRestarting ? 1 : 0;
         popElapsed.current = 0;

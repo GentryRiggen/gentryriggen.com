@@ -169,6 +169,7 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
               occupancy={occupancy}
               part={part}
               color={part.color}
+              mark={part.mark}
               partId={part.id}
               tint={removing.has(part.id) ? "removal" : null}
               emphasis={

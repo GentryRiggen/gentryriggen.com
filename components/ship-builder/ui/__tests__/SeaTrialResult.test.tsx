@@ -156,28 +156,18 @@ describe("SeaTrialResult replay controls", () => {
     render(<SeaTrialResult />);
     await user.click(screen.getByRole("button", { name: "Watch again" }));
     const { trial } = store();
-    expect(trial).toMatchObject({ status: "running", from: "start" });
+    expect(trial).toMatchObject({ status: "running" });
     if (trial.status === "running" && before.status === "result") {
       expect(trial.input).toBe(before.input);
     }
   });
 
-  it("offers Follow her down after she sank, and not once followed", async () => {
-    const user = userEvent.setup();
+  it("never offers Follow her down: she sinks all the way by herself", () => {
     finishTrial(5);
-    expect(store().trial).toMatchObject({ state: { outcome: "sank" } });
-    const { unmount } = render(<SeaTrialResult />);
-    await user.click(screen.getByRole("button", { name: "Follow her down" }));
     expect(store().trial).toMatchObject({
-      status: "running",
+      state: { outcome: "sank" },
       descending: true,
-      from: "end",
     });
-    unmount();
-
-    const { trial } = store();
-    if (trial.status !== "running") throw new Error("not running");
-    act(() => store().finishTrial(runTrial(trial.input)));
     render(<SeaTrialResult />);
     expect(
       screen.queryByRole("button", { name: "Follow her down" })

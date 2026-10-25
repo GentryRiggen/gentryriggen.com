@@ -201,6 +201,14 @@ describe("walkGridOf: attach parts", () => {
     expect(walkGridOf(ship).blockers).toHaveLength(2);
   });
 
+  it("does not block for a side davit", () => {
+    const ship = testShip([
+      gridPart("d", "deck-1x1", 0, 5, 0),
+      attachPart("v", "davit-side", "d", "side-davit:5:0"),
+    ]);
+    expect(walkGridOf(ship).blockers).toEqual([]);
+  });
+
   it("does not block for a nav light, searchlight or a flag", () => {
     const ship = testShip([
       gridPart("b", "bridge-3", 0, 5, 1),

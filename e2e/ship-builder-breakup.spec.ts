@@ -102,15 +102,11 @@ test.describe("Ship Builder breakup", () => {
       await strikeNearTheBow(page);
       expect(await impactX(page)).toBeLessThan(15);
 
-      // The trial jumps to where she sank and offers to follow her down
-      // (the status bar first, then the result card).
+      // The trial jumps to where she sank and carries on down to the sea
+      // floor by itself; the result card appears once she is there.
       // (The sky switches to night, but the time-of-day buttons are cleared
       // along with the rest of the chrome, so only the store shows the trial.)
       await expect(night).toHaveCount(0);
-      await page
-        .getByRole("button", { name: "Follow her down" })
-        .first()
-        .click({ timeout: 20_000 });
 
       const bar = page.getByRole("region", { name: "Sea trial result" });
       await expect(bar).toBeVisible({ timeout: 20_000 });

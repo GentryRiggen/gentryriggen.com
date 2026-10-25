@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowDownToLine,
   LifeBuoy,
   Repeat,
   ThumbsUp,
@@ -21,7 +20,6 @@ import {
 import { trialTimelineFor } from "../scene/trialTimeline";
 import ResultDetails from "./ResultDetails";
 import { focusSeaTrialButton } from "./SeaTrialButton";
-import { FOLLOW_HER_DOWN } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 import SoundToggle from "./SoundToggle";
 import TrialScrubber from "./TrialScrubber";
@@ -94,7 +92,6 @@ interface ResultCardProps {
 function ResultCard({ trial }: ResultCardProps) {
   const endTrial = useShipBuilderStore((s) => s.endTrial);
   const replay = useShipBuilderStore((s) => s.replay);
-  const descend = useShipBuilderStore((s) => s.descend);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsButton = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -105,10 +102,6 @@ function ResultCard({ trial }: ResultCardProps) {
     () => (input.iceberg ? trialTimelineFor(input, trial.descending) : null),
     [input, trial.descending]
   );
-  const canFollow =
-    input.iceberg !== undefined &&
-    !trial.descending &&
-    state.outcome === "sank";
   const look = OUTCOME_LOOKS[state.outcome ?? "steady"];
 
   useEffect(() => {
@@ -183,20 +176,6 @@ function ResultCard({ trial }: ResultCardProps) {
               <span className="max-sm:sr-only">Watch again</span>
             </button>
             <SoundToggle />
-            {canFollow && (
-              <button
-                type="button"
-                title={FOLLOW_HER_DOWN}
-                onClick={descend}
-                className={`${buttonClass} min-h-11 max-sm:min-w-11`}
-              >
-                <ArrowDownToLine
-                  aria-hidden="true"
-                  className="h-4 w-4 shrink-0"
-                />
-                <span className="max-sm:sr-only">{FOLLOW_HER_DOWN}</span>
-              </button>
-            )}
           </div>
         )}
       </div>

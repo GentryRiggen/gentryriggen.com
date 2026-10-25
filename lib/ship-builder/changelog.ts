@@ -17,6 +17,38 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.19.0",
+    date: "2026-10-25",
+    title: "All the way down",
+    highlights: [
+      "When your ship sinks, the camera now always follows her down to the sea floor, no button needed",
+      "Ships that tip over in a storm sink to the bottom too",
+      "Once she settles on the sand, rust slowly creeps over her, just like a real shipwreck",
+    ],
+  },
+  {
+    version: "2.18.0",
+    date: "2026-10-25",
+    title: "Side davits",
+    highlights: [
+      "New Side davit: hang a lifeboat right against the side of your ship, like on today's cruise ships",
+      "It fits under the decks above, so boats tuck in neatly instead of sticking out",
+      "Two side davits next to each other can hold a big lifeboat",
+      "Wonder of the Seas and Ocean Breeze now keep their lifeboats tucked along their sides",
+    ],
+  },
+  {
+    version: "2.17.0",
+    date: "2026-10-25",
+    title: "Funnel colours, letters and logos",
+    highlights: [
+      "Tap a funnel and press Style to paint its body, bands and top",
+      "Every funnel on your ship wears the same colours, just like real ships",
+      "Put one or two letters, or a logo like a star or an anchor, on each funnel",
+      "Titanic and her sisters now have their buff and black funnels, and Lusitania and Carpathia have Cunard red",
+    ],
+  },
+  {
     version: "2.16.0",
     date: "2026-10-07",
     title: "Pick where to start walking",

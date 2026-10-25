@@ -20,6 +20,7 @@ import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
 import { useClipMaterialProps } from "./shipHalf";
 import { FINISHES } from "./Surface";
+import { rustRef } from "./rust";
 
 const RAIL_HEIGHT = 0.38;
 const RAIL_RADIUS = 0.026;
@@ -116,6 +117,7 @@ export default function Railings() {
           args={[STANCHION_RADIUS, STANCHION_RADIUS, RAIL_HEIGHT, 6]}
         />
         <meshStandardMaterial
+          ref={rustRef}
           color={PALETTE.railing}
           roughness={FINISHES.paint.roughness}
           metalness={FINISHES.paint.metalness}
@@ -124,6 +126,7 @@ export default function Railings() {
       </instancedMesh>
       <mesh geometry={topRail} raycast={noRaycast}>
         <meshStandardMaterial
+          ref={rustRef}
           color={PALETTE.railing}
           roughness={FINISHES.paint.roughness}
           metalness={FINISHES.paint.metalness}

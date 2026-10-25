@@ -50,8 +50,8 @@ export type TrialReason =
   | "too-many-opened";
 
 /**
- * `descending` only follows a finished `sank` trial whose player chose
- * "Follow her down" (see `startDescent`).
+ * `descending` follows every sinking (a `sank` iceberg trial or a capsized
+ * weather trial) on to the sea floor (see `startDescent`).
  */
 export type SimPhase =
   "sailing" | "capsizing" | "sinking" | "descending" | "done";
@@ -204,6 +204,8 @@ export interface SimState {
 export interface TrialInput {
   ship: SimShip;
   sea: SimSea;
+  /** The ship's length in cells, bow to stern (same as `iceberg.length`). */
+  length: number;
   /** Present for an iceberg trial; absent for the Level 1 waves trial. */
   iceberg?: IcebergInput;
 }

@@ -1,3 +1,4 @@
+import type { FunnelMark, FunnelPaint } from "./funnelLivery";
 import type { ShipKind } from "./kinds";
 import type { HullArea, PaintColor } from "./paint";
 
@@ -47,6 +48,7 @@ export const PART_TYPES = [
   "funnel",
   "mast",
   "davit",
+  "davit-side",
   "lifeboat-standard",
   "lifeboat-collapsible",
   "funnel-large",
@@ -109,6 +111,7 @@ export type AttachPointType =
   | "funnel-mount"
   | "mast-mount"
   | "davit-point"
+  | "side-davit-point"
   | "boat-mount"
   | "large-funnel-mount"
   | "big-boat-mount"
@@ -158,6 +161,8 @@ export interface PlacedPart {
   rotation: Rotation;
   /** Paint on the part's main surface. Absent means the default look. */
   color?: PaintColor;
+  /** What's painted on a funnel's side. Absent means none. */
+  mark?: FunnelMark;
 }
 
 export const BOW_IDS = [
@@ -205,11 +210,13 @@ export interface Hull {
 }
 
 export interface Ship {
-  v: 7;
+  v: 8;
   kind: ShipKind;
   name: string;
   hull: Hull;
   parts: PlacedPart[];
+  /** Funnel colours for the whole ship. Absent means the default look. */
+  funnelPaint?: FunnelPaint;
 }
 
 export interface Cell {

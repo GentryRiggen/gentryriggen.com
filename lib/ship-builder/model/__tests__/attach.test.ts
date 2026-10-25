@@ -4,6 +4,7 @@ import {
   isPointTaken,
   openAttachPoints,
   resolveAttachPoint,
+  SIDE_DAVIT_MOUNT_Y,
 } from "../attach";
 import { getPartDef } from "../catalog";
 import { HULL_ID, type AttachPartDef } from "../types";
@@ -326,5 +327,78 @@ describe("attach points", () => {
       [HULL_ID, "mast-aft"],
       ["b", "mast"],
     ]);
+  });
+});
+
+describe("side davits", () => {
+  const sideShip = () =>
+    testShip([
+      gridPart("a", "cabin-1st", 0, 2, 0),
+      gridPart("b", "deck-1x1", 1, 2, 0),
+    ]);
+
+  it("offers side-davit points on covered and uncovered edge cells", () => {
+    const ship = sideShip();
+    const low = attachPointsOf(ship, "a");
+    expect(low.map((p) => p.id)).toContain("side-davit:2:0");
+    expect(low.map((p) => p.id)).not.toContain("davit:2:0");
+    expect(low.find((p) => p.id === "side-davit:2:0")).toEqual({
+      id: "side-davit:2:0",
+      type: "side-davit-point",
+      position: { x: 2.5, y: SIDE_DAVIT_MOUNT_Y, z: 0 },
+      side: "starboard",
+      claims: ["side:0:2:0"],
+    });
+    const high = attachPointsOf(ship, "b").map((p) => p.id);
+    expect(high).toContain("davit:2:0");
+    expect(high).toContain("side-davit:2:0");
+  });
+
+  it("hangs a side davit's boat mount close to the wall", () => {
+    const ship = testShip([
+      gridPart("a", "cabin-1st", 0, 2, 0),
+      attachPart("sd", "davit-side", "a", "side-davit:2:0"),
+    ]);
+    const [mount] = attachPointsOf(ship, "sd");
+    expect(mount.id).toBe("boat");
+    expect(mount.position.x).toBeCloseTo(2.5);
+    expect(mount.position.y).toBeCloseTo(SIDE_DAVIT_MOUNT_Y + 0.15);
+    expect(mount.position.z).toBeCloseTo(-0.32);
+  });
+
+  it("pairs adjacent side davits but not a side davit with a deck davit", () => {
+    const ship = testShip([
+      gridPart("a", "cabin-1st", 0, 2, 0),
+      gridPart("b", "cabin-1st", 0, 3, 0),
+      attachPart("s1", "davit-side", "a", "side-davit:2:0"),
+      attachPart("s2", "davit-side", "b", "side-davit:3:0"),
+    ]);
+    expect(attachPointsOf(ship, "s1").map((p) => p.id)).toContain("big-boat");
+    const mixed = testShip([
+      gridPart("a", "cabin-1st", 0, 2, 0),
+      gridPart("b", "cabin-1st", 0, 3, 0),
+      attachPart("s1", "davit-side", "a", "side-davit:2:0"),
+      attachPart("d2", "davit", "b", "davit:3:0"),
+    ]);
+    expect(attachPointsOf(mixed, "s1").map((p) => p.id)).not.toContain(
+      "big-boat"
+    );
+    expect(attachPointsOf(mixed, "d2").map((p) => p.id)).not.toContain(
+      "big-boat"
+    );
+  });
+
+  it("offers none on balconies or inner cells", () => {
+    const balcony = testShip([gridPart("c", "cabin-balcony", 0, 2, 0)]);
+    expect(
+      attachPointsOf(balcony, "c").filter((p) => p.type === "side-davit-point")
+    ).toEqual([]);
+    const inner = testShip([
+      gridPart("a", "cabin-1st", 0, 2, 0),
+      gridPart("b", "cabin-1st", 0, 2, 1),
+    ]);
+    expect(attachPointsOf(inner, "b").map((p) => p.id)).not.toContain(
+      "side-davit:2:1"
+    );
   });
 });

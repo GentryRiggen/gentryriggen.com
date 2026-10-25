@@ -19,7 +19,7 @@ import {
  */
 export interface Timeline {
   states: readonly SimState[];
-  /** True once "Follow her down" has been appended (see extendWithDescent). */
+  /** True once the descent to the sea floor has been appended (see extendWithDescent). */
   descended: boolean;
 }
 
@@ -72,8 +72,8 @@ export function buildTimeline(input: TrialInput): Timeline {
 }
 
 /**
- * "Follow her down": appends the descent to the sea floor to a timeline that
- * ended with her sinking. Any other timeline (afloat, or already descended)
+ * Appends the descent to the sea floor to a timeline that ended with her
+ * sinking (every sinking now goes on down; see `runTrial`). Any other timeline (afloat, or already descended)
  * comes back unchanged.
  */
 export function extendWithDescent(
@@ -81,7 +81,11 @@ export function extendWithDescent(
   input: TrialInput
 ): Timeline {
   const last = timeline.states[timeline.states.length - 1];
-  if (timeline.descended || last.phase !== "done" || last.outcome !== "sank") {
+  if (
+    timeline.descended ||
+    last.phase !== "done" ||
+    startDescent(last) === last
+  ) {
     return timeline;
   }
   const descent = recordUntilDone(input, startDescent(last), MAX_DESCENT_S);
