@@ -1,4 +1,4 @@
-{"v":8,"kind":"cruise","name":"Wonder of the Seas","hull":{"lengthSegments":20,"beam":7,"bow":"bulbous","stern":"transom","paint":{"topsides":"white","bottom":"navy"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"},{"at":10,"height":"deck"},{"at":11,"height":"deck"},{"at":12,"height":"deck"},{"at":13,"height":"deck"},{"at":14,"height":"deck"},{"at":15,"height":"deck"},{"at":16,"height":"deck"},{"at":17,"height":"deck"},{"at":18,"height":"deck"},{"at":19,"height":"deck"}]},"parts":[
+{"v":8,"kind":"cruise","name":"Wonder of the Seas","hull":{"lengthSegments":20,"beam":7,"bow":"bulbous","stern":"transom","paint":{"topsides":"white","bottom":"navy"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"},{"at":10,"height":"deck"},{"at":11,"height":"deck"},{"at":12,"height":"deck"},{"at":13,"height":"deck"},{"at":14,"height":"deck"},{"at":15,"height":"deck"},{"at":16,"height":"deck"},{"at":17,"height":"deck"},{"at":18,"height":"deck"},{"at":19,"height":"deck"}]},"funnelPaint":{"body":"sky","bands":"navy","top":"navy"},"parts":[
     {"id":"p1","type":"cabin-crew","anchor":{"kind":"grid","level":0,"x":4,"z":0},"rotation":0},
     {"id":"p2","type":"cabin-crew","anchor":{"kind":"grid","level":0,"x":5,"z":0},"rotation":0},
     {"id":"p3","type":"cabin-crew","anchor":{"kind":"grid","level":0,"x":6,"z":0},"rotation":0},
@@ -638,8 +638,8 @@
     {"id":"php","type":"deck-2x1","anchor":{"kind":"grid","level":3,"x":34,"z":6},"rotation":0},
     {"id":"phq","type":"deck-2x1","anchor":{"kind":"grid","level":3,"x":36,"z":6},"rotation":0},
     {"id":"phr","type":"deck-2x1","anchor":{"kind":"grid","level":3,"x":38,"z":6},"rotation":0},
-    {"id":"phs","type":"funnel-modern","anchor":{"kind":"attach","parentId":"pch","pointId":"funnel"},"rotation":0},
-    {"id":"pht","type":"funnel-modern","anchor":{"kind":"attach","parentId":"pdl","pointId":"funnel"},"rotation":0},
+    {"id":"phs","type":"funnel-modern","anchor":{"kind":"attach","parentId":"pch","pointId":"funnel"},"rotation":0,"mark":{"kind":"logo","logo":"wave","color":"navy"}},
+    {"id":"pht","type":"funnel-modern","anchor":{"kind":"attach","parentId":"pdl","pointId":"funnel"},"rotation":0,"mark":{"kind":"logo","logo":"wave","color":"navy"}},
     {"id":"phu","type":"waterslide","anchor":{"kind":"attach","parentId":"pgu","pointId":"funnel"},"rotation":0},
     {"id":"phv","type":"climbing-wall","anchor":{"kind":"attach","parentId":"pge","pointId":"funnel"},"rotation":0},
     {"id":"phw","type":"davit","anchor":{"kind":"attach","parentId":"p9f","pointId":"davit:6:0"},"rotation":0},

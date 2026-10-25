@@ -1,6 +1,7 @@
 import type { ShipKind } from "../model/kinds";
 import { cellKey, partCells } from "../model/grid";
 import { emptyShip } from "../model/placement";
+import type { FunnelMark } from "../model/funnelLivery";
 import type {
   Bulkhead,
   PartType,
@@ -75,8 +76,17 @@ export class ShipBuilder {
   }
 
   /** A part on the top of the block at (level, x, z), as a funnel would be. */
-  onTop(type: PartType, level: number, x: number, z: number): string {
-    return this.attach(type, this.blockAt(level, x, z), "funnel");
+  onTop(
+    type: PartType,
+    level: number,
+    x: number,
+    z: number,
+    mark?: FunnelMark
+  ): string {
+    const id = this.attach(type, this.blockAt(level, x, z), "funnel");
+    if (mark)
+      this.ship.parts.find((part) => part.id === id)!.mark = { ...mark };
+    return id;
   }
 
   /** A mast-style part on the top of the block at (level, x, z). */

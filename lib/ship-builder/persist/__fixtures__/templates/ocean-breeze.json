@@ -1,4 +1,4 @@
-{"v":8,"kind":"cruise","name":"Ocean Breeze","hull":{"lengthSegments":12,"beam":5,"bow":"bulbous","stern":"transom","paint":{"topsides":"white","bottom":"navy"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"},{"at":10,"height":"deck"},{"at":11,"height":"deck"}]},"parts":[
+{"v":8,"kind":"cruise","name":"Ocean Breeze","hull":{"lengthSegments":12,"beam":5,"bow":"bulbous","stern":"transom","paint":{"topsides":"white","bottom":"navy"},"bulkheads":[{"at":1,"height":"deck"},{"at":2,"height":"deck"},{"at":3,"height":"deck"},{"at":4,"height":"deck"},{"at":5,"height":"deck"},{"at":6,"height":"deck"},{"at":7,"height":"deck"},{"at":8,"height":"deck"},{"at":9,"height":"deck"},{"at":10,"height":"deck"},{"at":11,"height":"deck"}]},"funnelPaint":{"body":"sky","bands":"navy","top":"navy"},"parts":[
     {"id":"p1","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":0,"z":1},"rotation":0},
     {"id":"p2","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":2,"z":1},"rotation":0},
     {"id":"p3","type":"deck-2x1","anchor":{"kind":"grid","level":0,"x":4,"z":1},"rotation":0},
@@ -181,7 +181,7 @@
     {"id":"p50","type":"deck-2x1","anchor":{"kind":"grid","level":2,"x":22,"z":2},"rotation":0},
     {"id":"p51","type":"deck-2x1","anchor":{"kind":"grid","level":2,"x":24,"z":2},"rotation":0},
     {"id":"p52","type":"pool","anchor":{"kind":"grid","level":2,"x":14,"z":1},"rotation":0},
-    {"id":"p53","type":"funnel-modern","anchor":{"kind":"attach","parentId":"p50","pointId":"funnel"},"rotation":0},
+    {"id":"p53","type":"funnel-modern","anchor":{"kind":"attach","parentId":"p50","pointId":"funnel"},"rotation":0,"mark":{"kind":"logo","logo":"wave","color":"navy"}},
     {"id":"p54","type":"davit","anchor":{"kind":"attach","parentId":"p3m","pointId":"davit:8:0"},"rotation":0},
     {"id":"p55","type":"lifeboat-enclosed","anchor":{"kind":"attach","parentId":"p54","pointId":"boat"},"rotation":0},
     {"id":"p56","type":"davit","anchor":{"kind":"attach","parentId":"p3m","pointId":"davit:9:0"},"rotation":0},
