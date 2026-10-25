@@ -8,6 +8,7 @@ import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
+import { launchedIdsAt } from "./crowdView";
 import { fallenIdsAt, funnelDependents, hiddenByFalls } from "./funnelFallView";
 import { GlowContext, type GlowController } from "./GlowContext";
 import { shouldSwallowClick } from "./clickGuard";
@@ -15,6 +16,7 @@ import PartMesh from "./PartMesh";
 import PopIn from "./PopIn";
 import { singleAddedId } from "./pop";
 import { useShipHalf } from "./shipHalf";
+import { activeEvacuation } from "./trialTimeline";
 import { trialPlayback } from "./trialPlayback";
 import type { PartPress } from "./usePartLongPress";
 
@@ -53,12 +55,16 @@ function usePoppingPartId(parts: Ship["parts"]): string | null {
   return poppingId;
 }
 
+/** No launches: a trial she survives, or none on. */
+const NO_LAUNCHES: readonly { boatId: string; at: number }[] = [];
+
 /**
  * Hides a funnel once it has snapped off in a sinking (`FallingFunnels` draws
- * it falling), with anything hung from or strung to it. It follows the
- * playback clock each frame, so scrubbing back puts them all back.
+ * it falling), with anything hung from or strung to it, and a lifeboat once
+ * it lowers away (`LaunchedBoats` draws it). It follows the playback clock
+ * each frame, so scrubbing back puts them all back.
  */
-function useHideFallenFunnels(
+function useHideGoneParts(
   ship: Ship,
   occupancy: ReturnType<typeof analyzeShip>["occupancy"]
 ): (partId: string, group: Group | null) => void {
@@ -67,22 +73,32 @@ function useHideFallenFunnels(
     () => funnelDependents(ship, occupancy),
     [ship, occupancy]
   );
-  // How many funnels were gone at the last pass (-1: apply again). Falls
-  // come in order, so the count says which are gone; the sets are only
-  // rebuilt when it changes, not every frame.
+  // How many funnels and boats were gone at the last pass (-1: apply again).
+  // Both only grow with time, so the counts say which are gone; the sets are
+  // only rebuilt when one changes, not every frame.
   const applied = useRef(0);
   const lastDependents = useRef(dependents);
+  const lastLaunches = useRef(NO_LAUNCHES);
   useFrame(() => {
     const { funnelFalls, time } = trialPlayback;
+    const launches = activeEvacuation()?.launches ?? NO_LAUNCHES;
     let gone = 0;
     for (const fall of funnelFalls) if (fall.at <= time) gone++;
-    if (lastDependents.current !== dependents) {
+    let launched = 0;
+    for (const launch of launches) if (launch.at <= time) launched++;
+    if (
+      lastDependents.current !== dependents ||
+      lastLaunches.current !== launches
+    ) {
       lastDependents.current = dependents;
+      lastLaunches.current = launches;
       applied.current = -1;
     }
-    if (gone === applied.current) return;
-    applied.current = gone;
+    const key = gone * 4096 + launched;
+    if (key === applied.current) return;
+    applied.current = key;
     const hidden = hiddenByFalls(dependents, fallenIdsAt(funnelFalls, time));
+    for (const id of launchedIdsAt(launches, time)) hidden.add(id);
     for (const [id, group] of groups.current) group.visible = !hidden.has(id);
   });
   return useCallback((partId: string, group: Group | null) => {
@@ -122,7 +138,7 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
 
   const occupancy = useMemo(() => analyzeShip(ship).occupancy, [ship]);
   const poppingId = usePoppingPartId(ship.parts);
-  const registerPart = useHideFallenFunnels(ship, occupancy);
+  const registerPart = useHideGoneParts(ship, occupancy);
 
   // Press-and-hold deletes with or without an active tool.
   const handlePointerDown = useCallback(

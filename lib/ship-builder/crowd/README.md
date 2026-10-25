@@ -71,6 +71,18 @@ level at the cell edge.
 Everything is worked out when the plan is made; `fateAt`, `poseAt` and
 `boatPoseAt` only read it, so they are pure in `t` and cheap.
 
+`floatingSince(poseAt, bodyAt, from, to, frame)` is the water check on its
+own, and `floatPositionAt` the drift. The plan uses them, and so does the
+scene in a trial with no plan (the weather trial, or a sinking she survives),
+checking each frame.
+
+The scene (`components/ship-builder/scene/`) draws it: `Crowd.tsx` poses
+everyone in one frame callback as a few instanced meshes (`crowdBodies.ts`),
+riding the ship's group or her halves (`CrowdCarrier.tsx`), in their boats, or
+afloat. `LaunchedBoats.tsx` draws each boat once it leaves its davit, and
+`ShipParts` hides the one on the davit. `scene/trialTimeline.ts` caches the
+plan beside the trial's timeline.
+
 On the Titanic, boats lower from 1 to 12 s after the strike, well before
 the bow goes under at about 22 s. Her decks are joined only by jumps (she
 has no stairs, and the crowd graph has no jump steps), so only the people on

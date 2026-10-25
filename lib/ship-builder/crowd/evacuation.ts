@@ -92,7 +92,8 @@ interface Vec3 {
   z: number;
 }
 
-interface BodyPose {
+/** The pose of a body that carries people: the whole ship or one half. */
+export interface BodyPose {
   roll: number;
   pitch: number;
   sink: number;
@@ -137,11 +138,74 @@ interface Lifeboat {
   outward: 1 | -1;
 }
 
-interface Float {
+/** Someone who has gone into the water: when, where, and which way they drift. */
+export interface FloatStart {
   since: number;
+  /** World xz where the water reached them. */
   x: number;
   z: number;
   outward: 1 | -1;
+}
+
+type Float = FloatStart;
+
+/** The world point a person's feet are at, on the body that carries them. */
+export function personWorldPoint(
+  pose: PersonPose,
+  body: BodyPose,
+  length: number,
+  beam: number
+): Vec3 {
+  return poseWorldPoint(body, length, {
+    x: length / 2 - pose.x,
+    y: DECK_Y + pose.level * LEVEL_HEIGHT,
+    z: beam / 2 - pose.z,
+  });
+}
+
+/**
+ * When a person first finds themselves in the water (world y at or below 0),
+ * checked every `step` seconds from `from` while before `to`, and at `to`
+ * itself when `includeEnd` is set (and `to` is finite). `poseAt` is their
+ * model-frame pose and `bodyAt` the pose of whatever carries them at that
+ * spot, both at `t`. Null when they stay dry. Shared by the evacuation plan
+ * and by trials with no plan (the weather trial), which check each frame.
+ */
+export function floatingSince(
+  poseAt: (t: number) => PersonPose,
+  bodyAt: (t: number, cellsFromBow: number) => BodyPose,
+  from: number,
+  to: number,
+  frame: { length: number; beam: number },
+  options: { step?: number; includeEnd?: boolean } = {}
+): FloatStart | null {
+  const step = options.step ?? WATER_CHECK_S;
+  const at = (t: number): FloatStart | null => {
+    const pose = poseAt(t);
+    const world = personWorldPoint(
+      pose,
+      bodyAt(t, pose.x),
+      frame.length,
+      frame.beam
+    );
+    if (world.y > 0) return null;
+    return { since: t, x: world.x, z: world.z, outward: world.z >= 0 ? 1 : -1 };
+  };
+  for (let k = 0; from + k * step < to; k++) {
+    const found = at(from + k * step);
+    if (found) return found;
+  }
+  return options.includeEnd && Number.isFinite(to) ? at(to) : null;
+}
+
+/** Where a floater is at `t`: drifting outward for a few seconds, then still. */
+export function floatPositionAt(
+  float: FloatStart,
+  t: number
+): { x: number; z: number } {
+  const drift =
+    FLOAT_DRIFT_SPEED * Math.min(FLOAT_DRIFT_S, Math.max(0, t - float.since));
+  return { x: float.x, z: float.z + float.outward * drift };
 }
 
 interface Fate {
@@ -521,32 +585,24 @@ export function planEvacuation(
       ? crowd.poseAt(i, t)
       : trackPose(motion.track, t);
   };
-  const worldOf = (pose: PersonPose, state: SimState): Vec3 => {
-    const body = bodyAt(state, halfOfX(pose.x));
-    return poseWorldPoint(body, length, {
-      x: length / 2 - pose.x,
-      y: DECK_Y + pose.level * LEVEL_HEIGHT,
-      z: beam / 2 - pose.z,
-    });
-  };
-  /** The first check at or after `from` and before `until` that finds them in the water. */
-  const floatOf = (i: number, from: number, until: number): Float | null => {
-    for (let k = 0; k < checks.length; k++) {
-      const t = checks[k];
-      if (t < from) continue;
-      if (t >= until) break;
-      const world = worldOf(poseOf(i, t), checkStates[k]);
-      if (world.y <= 0) {
-        return {
-          since: t,
-          x: world.x,
-          z: world.z,
-          outward: world.z >= 0 ? 1 : -1,
-        };
-      }
-    }
-    return null;
-  };
+  const checkStateAt = new Map(checks.map((t, k) => [t, checkStates[k]]));
+  const bodyAtCheck = (t: number, cellsFromBow: number): BodyPose =>
+    bodyAt(checkStateAt.get(t) ?? timeline.stateAt(t), halfOfX(cellsFromBow));
+  /** The first check from doom and before `until` that finds them in the water. */
+  const floatOf = (i: number, until: number): Float | null =>
+    until > end
+      ? floatingSince(
+          (t) => poseOf(i, t),
+          bodyAtCheck,
+          doom,
+          end,
+          { length, beam },
+          { includeEnd: true }
+        )
+      : floatingSince((t) => poseOf(i, t), bodyAtCheck, doom, until, {
+          length,
+          beam,
+        });
 
   // Where everyone is at doom, and the graph they walk on from then.
   const starts = Array.from({ length: count }, (_, i) => crowd.poseAt(i, doom));
@@ -626,7 +682,7 @@ export function planEvacuation(
     for (let i = 0; i < count; i++) {
       if (boatOf[i] !== b) continue;
       // One who is caught by the water on the way never gets there.
-      const float = floatOf(i, doom, arrivals[i]);
+      const float = floatOf(i, arrivals[i]);
       if (float) {
         fates[i].float = float;
         fates[i].boatId = boat.id;
@@ -684,7 +740,7 @@ export function planEvacuation(
   for (let i = 0; i < count; i++) {
     const fate = fates[i];
     if (fate.seat || fate.float) continue;
-    fate.float = floatOf(i, doom, Infinity);
+    fate.float = floatOf(i, Infinity);
   }
 
   const fateAt = (i: number, t: number): PersonFate => {
@@ -693,12 +749,10 @@ export function planEvacuation(
     if (!(t >= doom)) return { kind: "aboard" };
     const { float, seat } = fate;
     if (float && t >= float.since) {
-      const drift =
-        FLOAT_DRIFT_SPEED * Math.min(FLOAT_DRIFT_S, t - float.since);
       return {
         kind: "floating",
         since: float.since,
-        at: { x: float.x, z: float.z + float.outward * drift },
+        at: floatPositionAt(float, t),
       };
     }
     if (seat && t >= seat.at) {

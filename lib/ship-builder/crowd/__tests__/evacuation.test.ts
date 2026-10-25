@@ -21,6 +21,8 @@ import { walkGridOf, walkHalfOf } from "../../walk";
 import {
   BOAT_SHOWN_MAX,
   type EvacuationPlan,
+  floatingSince,
+  floatPositionAt,
   LAUNCH_WAIT_S,
   LOWER_S,
   ROW_OUT,
@@ -467,5 +469,41 @@ describe("planEvacuation", () => {
         expect(after.level).toBe(before.level);
       }
     });
+  });
+});
+
+describe("floatingSince", () => {
+  const frame = { length: 20, beam: 4 };
+  const standing = () =>
+    ({ x: 10.5, z: 1.5, level: 0, yaw: 0, activity: "idle" }) as const;
+  /** A level hull sinking 0.1 a second: the deck reaches the water at DECK_Y / 0.1. */
+  const sinking = (t: number) => ({ roll: 0, pitch: 0, sink: 0.1 * t });
+
+  it("finds the first check with them at or under the water", () => {
+    const float = floatingSince(standing, sinking, 0, 100, frame);
+    expect(float).not.toBeNull();
+    expect(float!.since).toBeGreaterThanOrEqual(DECK_Y / 0.1 - 1e-9);
+    expect(float!.since).toBeLessThan(DECK_Y / 0.1 + 0.25 + 1e-9);
+    // Starboard of the centre line (model z < beam / 2) is world +z.
+    expect(float!.outward).toBe(1);
+  });
+
+  it("is null while they stay dry, and checks the end only when asked", () => {
+    const dry = DECK_Y / 0.1 - 0.01;
+    expect(floatingSince(standing, sinking, 0, dry, frame)).toBeNull();
+    const at = DECK_Y / 0.1 + 0.01;
+    expect(floatingSince(standing, sinking, at, at, frame)).toBeNull();
+    expect(
+      floatingSince(standing, sinking, at, at, frame, { includeEnd: true })
+        ?.since
+    ).toBe(at);
+  });
+
+  it("drifts a floater outward for a few seconds, then leaves them", () => {
+    const float = { since: 2, x: 1, z: 0.5, outward: -1 as const };
+    expect(floatPositionAt(float, 2)).toEqual({ x: 1, z: 0.5 });
+    const later = floatPositionAt(float, 4);
+    expect(later.z).toBeLessThan(0.5);
+    expect(floatPositionAt(float, 100)).toEqual(floatPositionAt(float, 50));
   });
 });

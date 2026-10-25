@@ -14,6 +14,7 @@ import { gridLength } from "@/lib/ship-builder/model/grid";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import AttachMarkers from "./AttachMarkers";
 import BreakBurst from "./BreakBurst";
+import CrowdCarrier from "./CrowdCarrier";
 import GhostPreview from "./GhostPreview";
 import GridTargets from "./GridTargets";
 import { bobPose, createShipPose } from "./bob";
@@ -116,6 +117,7 @@ function HalfGroup({
           {children}
           <TornEdge side={side} atX={atX} />
           <WalkEyes half={side} />
+          <CrowdCarrier carrier={side} />
         </ShipHalfContext.Provider>
       </group>
     </group>

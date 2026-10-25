@@ -1,10 +1,18 @@
 import {
+  type EvacuationPlan,
+  planEvacuation,
+} from "@/lib/ship-builder/crowd/evacuation";
+import type { Ship } from "@/lib/ship-builder/model/types";
+import {
   buildTimeline,
   extendWithDescent,
+  stateAt,
+  timelineEnd,
   type Timeline,
 } from "@/lib/ship-builder/sim/timeline";
 import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { crowdPlanFor } from "./crowdView";
 
 /**
  * The iceberg trial's precomputed timeline, kept outside React like
@@ -15,13 +23,23 @@ interface CachedTimeline {
   input: TrialInput;
   base: Timeline;
   descended: Timeline | null;
+  /** The ship the evacuation plans were made for. */
+  evacuationShip: Ship | null;
+  /** Evacuation plan per `descending`, worked out on first use. */
+  evacuations: Map<boolean, EvacuationPlan | null>;
 }
 
 let cached: CachedTimeline | null = null;
 
 function cacheFor(input: TrialInput): CachedTimeline {
   if (cached?.input !== input) {
-    cached = { input, base: buildTimeline(input), descended: null };
+    cached = {
+      input,
+      base: buildTimeline(input),
+      descended: null,
+      evacuationShip: null,
+      evacuations: new Map(),
+    };
   }
   return cached;
 }
@@ -40,7 +58,49 @@ export function trialTimelineFor(
   return entry.descended;
 }
 
-/** Forgets the cached timeline (the trial was left). */
+/**
+ * The evacuation of the iceberg trial for `input` on `ship` (who takes which
+ * lifeboat, when each lowers away), or null when she does not sink or it is
+ * not an iceberg trial. Worked out once beside the timeline it reads, from
+ * the same crowd walk mode shows, and forgotten with it.
+ */
+export function trialEvacuationFor(
+  input: TrialInput,
+  ship: Ship,
+  descending = false
+): EvacuationPlan | null {
+  if (!input.iceberg) return null;
+  const entry = cacheFor(input);
+  if (entry.evacuationShip !== ship) {
+    entry.evacuationShip = ship;
+    entry.evacuations = new Map();
+  }
+  if (!entry.evacuations.has(descending)) {
+    const timeline = trialTimelineFor(input, descending);
+    const { grid, plan } = crowdPlanFor(ship);
+    entry.evacuations.set(
+      descending,
+      planEvacuation(ship, grid, plan, {
+        input,
+        stateAt: (t) => stateAt(timeline, t),
+        end: timelineEnd(timeline),
+      })
+    );
+  }
+  return entry.evacuations.get(descending) ?? null;
+}
+
+/**
+ * The evacuation of the trial on show (running or its result), or null. For
+ * scene code that reads it every frame: a cached lookup after the first.
+ */
+export function activeEvacuation(): EvacuationPlan | null {
+  const { trial, ship } = useShipBuilderStore.getState();
+  if (trial.status !== "running" && trial.status !== "result") return null;
+  return trialEvacuationFor(trial.input, ship, trial.descending);
+}
+
+/** Forgets the cached timeline and its evacuation (the trial was left). */
 export function clearTrialTimeline(): void {
   cached = null;
 }

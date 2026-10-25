@@ -5,10 +5,18 @@ import { simShipFromStats } from "@/lib/ship-builder/sim/simShip";
 import { timelineEnd } from "@/lib/ship-builder/sim/timeline";
 import type { BreakMode, TrialInput } from "@/lib/ship-builder/sim/types";
 import { findTemplate } from "@/lib/ship-builder/templates";
-import { trialTimelineFor } from "../trialTimeline";
+import {
+  clearTrialTimeline,
+  trialEvacuationFor,
+  trialTimelineFor,
+} from "../trialTimeline";
 
-function icebergInput(id: string, breakMode: BreakMode): TrialInput {
-  const ship = findTemplate(id)?.build();
+function icebergInput(
+  id: string,
+  breakMode: BreakMode,
+  ship = findTemplate(id)?.build(),
+  impactX = 5
+): TrialInput {
   if (!ship) throw new Error(`no template ${id}`);
   return {
     ship: simShipFromStats(computeStats(ship), ship.hull.beam),
@@ -18,7 +26,7 @@ function icebergInput(id: string, breakMode: BreakMode): TrialInput {
     iceberg: {
       compartments: compartmentSpecsOf(ship.hull),
       length: ship.hull.lengthSegments * CELLS_PER_SEGMENT,
-      impactX: 5,
+      impactX,
       breakMode,
     },
   };
@@ -43,5 +51,37 @@ describe("trialTimelineFor with the descent", () => {
     const descending = trialTimelineFor(input, true);
     expect(descending.descended).toBe(true);
     expect(timelineEnd(descending)).toBeGreaterThan(timelineEnd(plain));
+  });
+});
+
+describe("trialEvacuationFor", () => {
+  const ship = findTemplate("titanic")!.build();
+  const length = ship.hull.lengthSegments * CELLS_PER_SEGMENT;
+  const input = icebergInput(
+    "titanic",
+    "never",
+    ship,
+    Math.round(length * 0.2)
+  );
+
+  it("plans the sinking once per input and ship, beside the timeline", () => {
+    const plan = trialEvacuationFor(input, ship, true);
+    expect(plan).not.toBeNull();
+    expect(plan!.launches.length).toBeGreaterThan(0);
+    expect(trialEvacuationFor(input, ship, true)).toBe(plan);
+    // The plain timeline gets its own plan.
+    expect(trialEvacuationFor(input, ship, false)).not.toBe(plan);
+  });
+
+  it("is forgotten with the timeline", () => {
+    const plan = trialEvacuationFor(input, ship, true);
+    clearTrialTimeline();
+    expect(trialEvacuationFor(input, ship, true)).not.toBe(plan);
+  });
+
+  it("is null for a weather trial", () => {
+    const { iceberg, ...weather } = input;
+    expect(iceberg).toBeDefined();
+    expect(trialEvacuationFor(weather, ship, true)).toBeNull();
   });
 });

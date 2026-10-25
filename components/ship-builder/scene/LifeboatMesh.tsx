@@ -1,9 +1,8 @@
 import { PALETTE } from "./palette";
 import { getLifeboatGeometry } from "./lifeboatGeometry";
+import { LIFEBOAT_HANG_OFFSET } from "./lifeboatHulls";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
-/** A boat hangs with its rim this far below its attach point. */
-const HANG_OFFSET = 0.1;
 const COVER_HEIGHT = 0.08;
 
 interface LifeboatMeshProps {
@@ -36,7 +35,7 @@ export default function LifeboatMesh({
     coverHeight: COVER_HEIGHT,
   });
   return (
-    <group position={[0, -HANG_OFFSET, 0]}>
+    <group position={[0, -LIFEBOAT_HANG_OFFSET, 0]}>
       <mesh geometry={geometry.hull} castShadow>
         <Surface color={hullColor} {...surface} />
       </mesh>
