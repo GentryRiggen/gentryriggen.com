@@ -8,6 +8,7 @@ import { compartmentSpecsOf } from "../compartments";
 import { DESCENT_SPEED, FLOOR_DEPTH, startDescent } from "../descent";
 import {
   FLOAT_S,
+  FUNNEL_REST_RADIUS,
   SECOND_FALL_GAP_S,
   TOPPLE_S,
   fallingFunnelPose,
@@ -26,6 +27,8 @@ import {
 } from "../types";
 
 const DEG = Math.PI / 180;
+/** Where a fallen funnel's axis rests: its radius above the sea floor. */
+const REST_Y = -FLOOR_DEPTH + FUNNEL_REST_RADIUS;
 
 function templateShip(id: string): Ship {
   const template = findTemplate(id);
@@ -211,13 +214,21 @@ describe("funnels breaking in an iceberg sinking", () => {
   });
 
   it("records each fall with the carrying half's pose when broken", () => {
-    const funnels = [funnel("bow", 10), funnel("mid", 25), funnel("aft", 50)];
+    const funnels = [funnel("bow", 10), funnel("mid", 40), funnel("aft", 50)];
     const input = icebergInput(titanic, 5, "always", funnels);
     const states = statesOf(input);
     const last = states.at(-1) as SimState;
     expect(last.breakup).not.toBeNull();
     expect(last.funnelFalls.length).toBeGreaterThan(0);
     const atX = (last.breakup as { atX: number }).atX;
+    const halvesUsed = new Set(
+      last.funnelFalls.map((fall) =>
+        funnels.find((f) => f.id === fall.funnelId)!.cellX < atX
+          ? "bow"
+          : "stern"
+      )
+    );
+    expect(halvesUsed.size).toBe(2);
     for (const fall of last.funnelFalls) {
       const at = states.find((s) => Math.abs(s.time - fall.at) < 1e-9);
       expect(at).toBeDefined();
@@ -277,6 +288,35 @@ describe("funnels breaking in a weather capsize", () => {
   });
 });
 
+describe("funnels breaking in a level iceberg sinking", () => {
+  it("drops one at sunk when she never tipped", () => {
+    const titanic = templateShip("titanic");
+    const input = icebergInput(titanic, 5, undefined, [
+      funnel("a", 20),
+      funnel("b", 40),
+    ]);
+    const level: SimState = {
+      ...createTrial(input),
+      outcome: "sank",
+      phase: "done",
+      pose: { roll: 0, pitch: 0, sink: 0 },
+      time: 30,
+      events: [{ at: 30, kind: "sunk" }],
+    };
+    // Not yet sunk: she waits for a tip that never comes.
+    const waiting = stepFunnelFalls(
+      { ...level, events: [], phase: "sinking" },
+      input
+    );
+    expect(waiting.funnelFalls).toHaveLength(0);
+    const hit = stepFunnelFalls(level, input);
+    expect(hit.funnelFalls).toHaveLength(1);
+    expect(hit.funnelFalls[0].at).toBe(30);
+    expect(hit.funnelEnd).toBe("stern");
+    expect(hit.events.some((e) => e.kind === "funnel-broke")).toBe(true);
+  });
+});
+
 describe("fallingFunnelPose", () => {
   const fall: FunnelFall = {
     funnelId: "a",
@@ -308,7 +348,7 @@ describe("fallingFunnelPose", () => {
     expect(Math.abs(mid.position.y)).toBeLessThanOrEqual(0.05 + 1e-9);
     const sinking = fallingFunnelPose(fall, TOPPLE_S + FLOAT_S + 2);
     expect(sinking.position.y).toBeCloseTo(-2 * DESCENT_SPEED, 9);
-    expect(fallingFunnelPose(fall, 1e4).position.y).toBe(-FLOOR_DEPTH);
+    expect(fallingFunnelPose(fall, 1e4).position.y).toBe(REST_Y);
   });
 
   it("never rises from under the water: it sinks from where it broke", () => {
@@ -316,13 +356,40 @@ describe("fallingFunnelPose", () => {
     for (let t = 0; t < 60; t += 0.25) {
       const pose = fallingFunnelPose(deep, t);
       expect(pose.position.y).toBeLessThanOrEqual(-4 + 1e-9);
-      expect(pose.position.y).toBeGreaterThanOrEqual(-FLOOR_DEPTH);
+      expect(pose.position.y).toBeGreaterThanOrEqual(REST_Y);
     }
     expect(fallingFunnelPose(deep, TOPPLE_S).rotation.x).toBeCloseTo(
       Math.PI / 2,
       9
     );
-    expect(fallingFunnelPose(deep, 1e4).position.y).toBe(-FLOOR_DEPTH);
+    expect(fallingFunnelPose(deep, 1e4).position.y).toBe(REST_Y);
+  });
+
+  it("floats on the water when it snaps just under the surface", () => {
+    const shallow = { ...fall, origin: { x: 3, y: -0.02, z: 1 } };
+    for (const t of [
+      TOPPLE_S,
+      TOPPLE_S + FLOAT_S / 2,
+      TOPPLE_S + FLOAT_S - 0.01,
+    ]) {
+      expect(
+        Math.abs(fallingFunnelPose(shallow, t).position.y)
+      ).toBeLessThanOrEqual(0.05 + 1e-9);
+    }
+    expect(fallingFunnelPose(shallow, TOPPLE_S).position.y).toBeCloseTo(0, 9);
+    expect(
+      fallingFunnelPose(shallow, TOPPLE_S + FLOAT_S + 2).position.y
+    ).toBeLessThan(-1);
+  });
+
+  it("lies on the floor, not in it, with a bigger radius sitting higher", () => {
+    expect(fallingFunnelPose(fall, 1e4).position.y).toBeGreaterThan(
+      -FLOOR_DEPTH
+    );
+    expect(fallingFunnelPose(fall, 1e4, 0.71).position.y).toBeCloseTo(
+      -FLOOR_DEPTH + 0.71,
+      9
+    );
   });
 
   it("drifts about 1.5 toward its side", () => {

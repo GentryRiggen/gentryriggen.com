@@ -23,6 +23,13 @@ export const FLOAT_S = 2.5;
 const CAPSIZE_SNAP_ROLL = (100 * Math.PI) / 180;
 /** An iceberg sinking picks its sinking end once she has tipped this far. */
 const END_PITCH = 0.01;
+/**
+ * A funnel that snaps off deeper than this is "already under water": it
+ * sinks on without floating. Shallower, it floats (and the scene splashes).
+ */
+export const SPLASH_DEPTH = 0.5;
+/** Body radius of a lying funnel by default (the small funnel's base). */
+export const FUNNEL_REST_RADIUS = 0.42;
 /** How far a fallen funnel drifts toward its side, world units, in all. */
 const DRIFT_TOTAL = 1.5;
 /** Height of the bob while it floats, and how long one bob takes. */
@@ -86,16 +93,33 @@ function bowPoseOf(state: SimState): { pitch: number } {
   return state.halves ? state.halves.bow : state.pose;
 }
 
-/** Funnels nearest the sinking end first; ties by id. */
+const orders = new WeakMap<
+  readonly TrialFunnel[],
+  Partial<Record<"bow" | "stern", TrialFunnel[]>>
+>();
+
+/**
+ * Funnels nearest the sinking end first; ties by id. Sorted once per trial
+ * (the input's funnel list is fixed for its run) and cached by that list.
+ */
 function orderFrom(
   funnels: readonly TrialFunnel[],
   end: "bow" | "stern"
 ): TrialFunnel[] {
+  let byEnd = orders.get(funnels);
+  if (!byEnd) {
+    byEnd = {};
+    orders.set(funnels, byEnd);
+  }
+  const cached = byEnd[end];
+  if (cached) return cached;
   const sign = end === "bow" ? 1 : -1;
-  return [...funnels].sort(
+  const sorted = [...funnels].sort(
     (a, b) =>
       sign * (a.cellX - b.cellX) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
   );
+  byEnd[end] = sorted;
+  return sorted;
 }
 
 /** Adds any falls that start this step; returns the state unchanged when none. */
@@ -161,10 +185,14 @@ function smooth(t: number): number {
   return c * c * (3 - 2 * c);
 }
 
-/** World transform of a fallen funnel's base at `t` seconds after it snapped. */
+/**
+ * World transform of a fallen funnel's base at `t` seconds after it snapped.
+ * `radius` is its body radius: it lies on the floor with its axis that far up.
+ */
 export function fallingFunnelPose(
   fall: FunnelFall,
-  t: number
+  t: number,
+  radius: number = FUNNEL_REST_RADIUS
 ): {
   position: { x: number; y: number; z: number };
   /** Euler XYZ, radians. */
@@ -177,11 +205,12 @@ export function fallingFunnelPose(
     Math.min(1, time / (sinkStart + FLOOR_DEPTH / DESCENT_SPEED)) *
     fall.side;
   const flat = (fall.side * Math.PI) / 2;
+  const floor = -FLOOR_DEPTH + radius;
 
   // One that snaps off already under the water does not come up to float:
   // it topples where it is and sinks straight on from there.
-  const depth = Math.min(0, Math.max(-FLOOR_DEPTH, fall.origin.y));
-  const isUnder = depth < 0;
+  const isUnder = fall.origin.y < -SPLASH_DEPTH;
+  const depth = isUnder ? Math.max(floor, fall.origin.y) : 0;
 
   let y: number;
   let rotation: { x: number; y: number; z: number };
@@ -189,7 +218,7 @@ export function fallingFunnelPose(
     const s = smooth(time / TOPPLE_S);
     y = fall.origin.y + (depth - fall.origin.y) * s;
     if (isUnder) {
-      y = Math.max(-FLOOR_DEPTH, y - DESCENT_SPEED * time);
+      y = Math.max(floor, y - DESCENT_SPEED * time);
     }
     rotation = {
       x: fall.roll + (flat - fall.roll) * s,
@@ -198,14 +227,14 @@ export function fallingFunnelPose(
     };
   } else if (isUnder) {
     rotation = { x: flat, y: 0, z: 0 };
-    y = Math.max(-FLOOR_DEPTH, depth - DESCENT_SPEED * time);
+    y = Math.max(floor, depth - DESCENT_SPEED * time);
   } else {
     rotation = { x: flat, y: 0, z: 0 };
     y =
       time < sinkStart
         ? BOB_HEIGHT *
           Math.sin((2 * Math.PI * (time - TOPPLE_S)) / BOB_PERIOD_S)
-        : -Math.min(FLOOR_DEPTH, DESCENT_SPEED * (time - sinkStart));
+        : Math.max(floor, -DESCENT_SPEED * (time - sinkStart));
   }
   return {
     position: { x: fall.origin.x, y, z: fall.origin.z + drift },

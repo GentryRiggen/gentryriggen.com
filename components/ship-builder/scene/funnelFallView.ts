@@ -6,7 +6,11 @@ import {
 import { isFunnelType } from "@/lib/ship-builder/model/funnelLivery";
 import { buildOccupancy, type Occupancy } from "@/lib/ship-builder/model/grid";
 import type { PlacedPart, Ship } from "@/lib/ship-builder/model/types";
-import { TOPPLE_S } from "@/lib/ship-builder/sim/funnelFall";
+import {
+  FUNNEL_REST_RADIUS,
+  SPLASH_DEPTH,
+  TOPPLE_S,
+} from "@/lib/ship-builder/sim/funnelFall";
 import type { FunnelFall } from "@/lib/ship-builder/sim/types";
 
 /**
@@ -23,9 +27,6 @@ export function fallenIdsAt(
   }
   return ids;
 }
-
-/** Deeper than this when it snaps, a funnel sinks without a splash. */
-const SPLASH_DEPTH = 0.5;
 
 /**
  * Seconds since a fallen funnel slapped onto the water; negative before it
@@ -95,6 +96,11 @@ export function funnelDependents(
     if (target) add(target.id, part.id);
   }
   return dependents;
+}
+
+/** Body radius of a funnel part, for where it lies on the sea floor. */
+export function funnelRadius(type: string): number {
+  return type === "funnel-large" ? 0.71 : FUNNEL_REST_RADIUS;
 }
 
 /** Every part hidden on the ship once the `fallen` funnels have gone. */

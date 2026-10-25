@@ -67,17 +67,30 @@ function useHideFallenFunnels(
     () => funnelDependents(ship, occupancy),
     [ship, occupancy]
   );
-  const anyHidden = useRef(false);
+  // How many funnels were gone at the last pass (-1: apply again). Falls
+  // come in order, so the count says which are gone; the sets are only
+  // rebuilt when it changes, not every frame.
+  const applied = useRef(0);
+  const lastDependents = useRef(dependents);
   useFrame(() => {
     const { funnelFalls, time } = trialPlayback;
-    if (funnelFalls.length === 0 && !anyHidden.current) return;
+    let gone = 0;
+    for (const fall of funnelFalls) if (fall.at <= time) gone++;
+    if (lastDependents.current !== dependents) {
+      lastDependents.current = dependents;
+      applied.current = -1;
+    }
+    if (gone === applied.current) return;
+    applied.current = gone;
     const hidden = hiddenByFalls(dependents, fallenIdsAt(funnelFalls, time));
-    anyHidden.current = hidden.size > 0;
     for (const [id, group] of groups.current) group.visible = !hidden.has(id);
   });
   return useCallback((partId: string, group: Group | null) => {
-    if (group) groups.current.set(partId, group);
-    else groups.current.delete(partId);
+    if (group) {
+      groups.current.set(partId, group);
+      // A part that mounts mid-trial is shown or hidden on the next frame.
+      applied.current = -1;
+    } else groups.current.delete(partId);
   }, []);
 }
 

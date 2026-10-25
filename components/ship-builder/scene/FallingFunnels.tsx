@@ -13,7 +13,7 @@ import type { FunnelFall } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { modelToWorld } from "./coords";
-import { funnelSplashSeconds } from "./funnelFallView";
+import { funnelRadius, funnelSplashSeconds } from "./funnelFallView";
 import ParticleField, { type ParticleWriter } from "./ParticleField";
 import PartMesh from "./PartMesh";
 import {
@@ -70,7 +70,8 @@ function FallingFunnel({ ship, part }: FallingFunnelProps) {
     if (!fall || !isFalling) return;
     const { position, rotation } = fallingFunnelPose(
       fall,
-      trialPlayback.time - fall.at
+      trialPlayback.time - fall.at,
+      funnelRadius(part.type)
     );
     target.position.set(position.x, position.y, position.z);
     target.rotation.set(rotation.x, rotation.y, rotation.z);

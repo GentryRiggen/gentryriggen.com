@@ -28,6 +28,14 @@ import {
 } from "./trialPlayback";
 import { trialTimelineFor } from "./trialTimeline";
 
+/**
+ * The drivers write the playback clock before every other frame hook reads
+ * it (the ship's pose, the funnel hide, the falling funnels), so they all see
+ * the same time on the same frame. Negative, because a positive priority
+ * would turn off R3F's automatic render.
+ */
+const RUNNER_PRIORITY = -1;
+
 interface TrialDriverProps {
   input: TrialInput;
 }
@@ -55,7 +63,7 @@ function TrialDriver({ input }: TrialDriverProps) {
     if (current.state.phase !== "done") return;
     finished.current = true;
     finishTrial(current.state);
-  });
+  }, RUNNER_PRIORITY);
 
   return null;
 }
@@ -126,7 +134,7 @@ function IcebergDriver({ input, descending }: IcebergDriverProps) {
     const last = timeline.states[timeline.states.length - 1];
     finished.current = true;
     finishTrial(last);
-  });
+  }, RUNNER_PRIORITY);
 
   return null;
 }
