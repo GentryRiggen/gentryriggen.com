@@ -115,6 +115,12 @@ describe("visibleParts", () => {
     }
   );
 
+  it("offers the side davit to liners and cruise ships, not pirates", () => {
+    expect(types("liner", false)).toContain("davit-side");
+    expect(types("cruise", false)).toContain("davit-side");
+    expect(types("pirate", false)).not.toContain("davit-side");
+  });
+
   it("lists every part for every kind when showAll is set", () => {
     for (const kind of SHIP_KINDS) {
       expect(types(kind, true)).toEqual([...PART_TYPES]);

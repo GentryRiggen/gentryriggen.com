@@ -235,6 +235,18 @@ const DRAWINGS: Record<PartType, () => ReactNode> = {
       <circle cx={36} cy={29} r={3} fill="none" />
     </g>
   ),
+  "davit-side": () => (
+    <g>
+      <rect x={8} y={14} width={6} height={30} fill={PALETTE.davit} />
+      <path
+        d="M14 18 Q24 12 30 18"
+        fill="none"
+        strokeWidth={3}
+        stroke={PALETTE.davit}
+      />
+      <line x1={30} y1={18} x2={30} y2={26} strokeWidth={1.5} />
+    </g>
+  ),
   "lifeboat-standard": () => (
     <Lifeboat length={36} depth={18} fill={PALETTE.lifeboat} />
   ),

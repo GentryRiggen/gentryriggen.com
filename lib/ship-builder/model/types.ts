@@ -48,6 +48,7 @@ export const PART_TYPES = [
   "funnel",
   "mast",
   "davit",
+  "davit-side",
   "lifeboat-standard",
   "lifeboat-collapsible",
   "funnel-large",
@@ -110,6 +111,7 @@ export type AttachPointType =
   | "funnel-mount"
   | "mast-mount"
   | "davit-point"
+  | "side-davit-point"
   | "boat-mount"
   | "large-funnel-mount"
   | "big-boat-mount"

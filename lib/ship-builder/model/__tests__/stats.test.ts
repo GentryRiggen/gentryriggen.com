@@ -125,6 +125,25 @@ describe("computeStats", () => {
     expect(lifeboats?.message).toContain("of 1,560 aboard");
   });
 
+  it("counts a side davit's boat like a deck-edge one", () => {
+    const side = computeStats(
+      testShip([
+        gridPart("a", "cabin-1st", 0, 2, 0),
+        attachPart("sd", "davit-side", "a", "side-davit:2:0"),
+        attachPart("lb", "lifeboat-standard", "sd", "boat"),
+      ])
+    );
+    const edge = computeStats(
+      testShip([
+        gridPart("a", "deck-1x1", 0, 2, 0),
+        attachPart("dv", "davit", "a", "davit:2:0"),
+        attachPart("lb", "lifeboat-standard", "dv", "boat"),
+      ])
+    );
+    expect(side.lifeboats).toBe(1);
+    expect(side.lifeboatSeats).toBe(edge.lifeboatSeats);
+  });
+
   it("sums lifeboat seats and coverage", () => {
     const stats = computeStats(
       testShip([

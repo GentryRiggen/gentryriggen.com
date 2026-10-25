@@ -25,6 +25,8 @@ import {
 import { occupancyOf } from "./occupancyCache";
 import { partAt, partById } from "./partIndex";
 
+/** Height of a side davit's mount on its wall (the scene's DavitMesh uses it). */
+export const SIDE_DAVIT_MOUNT_Y = 0.85;
 const DAVIT_HEIGHT = 0.8;
 /** Height of a bridge above its level (see BRIDGE_HEIGHT in PartMesh). */
 const BRIDGE_ROOF = 0.8;
@@ -299,37 +301,58 @@ function blockPoints(
       const covered = occupancy.has(
         cellKey({ ...cell, level: cell.level + 1 })
       );
-      if (covered) continue;
       const side = davitSide(ship, occupancy, cell);
       if (!side) continue;
-      const position = {
-        x: cell.x + 0.5,
-        y: level + 1,
-        // On the cell's outward face.
-        z: side === "starboard" ? cell.z : cell.z + 1,
-      };
-      const claims = [edgeClaim(cell)];
-      points.push(
-        {
-          id: `davit:${cell.x}:${cell.z}`,
-          type: "davit-point",
-          position,
+      if (!covered) {
+        const position = {
+          x: cell.x + 0.5,
+          y: level + 1,
+          // On the cell's outward face.
+          z: side === "starboard" ? cell.z : cell.z + 1,
+        };
+        const claims = [edgeClaim(cell)];
+        points.push(
+          {
+            id: `davit:${cell.x}:${cell.z}`,
+            type: "davit-point",
+            position,
+            side,
+            claims,
+          },
+          {
+            id: `edge:${cell.x}:${cell.z}`,
+            type: "edge-mount",
+            position,
+            side,
+            claims,
+          }
+        );
+      }
+      // Side davits hang on the wall, so a covered cell can still have one.
+      if (part.type !== "cabin-balcony") {
+        points.push({
+          id: `side-davit:${cell.x}:${cell.z}`,
+          type: "side-davit-point",
+          position: {
+            x: cell.x + 0.5,
+            y: level + SIDE_DAVIT_MOUNT_Y,
+            z: side === "starboard" ? cell.z : cell.z + 1,
+          },
           side,
-          claims,
-        },
-        {
-          id: `edge:${cell.x}:${cell.z}`,
-          type: "edge-mount",
-          position,
-          side,
-          claims,
-        }
-      );
+          claims: [`side:${level}:${cell.x}:${cell.z}`],
+        });
+      }
     }
   }
 
   return points;
 }
+
+/** How high a boat hangs above a davit's mount, and how far outboard. */
+const DAVIT_SHAPE: Record<string, { height: number; reach: number }> = {
+  davit: { height: DAVIT_HEIGHT, reach: DAVIT_REACH },
+  "davit-side": { height: 0.15, reach: 0.32 },
+};
 
 function davitPoints(
   ship: Ship,
@@ -341,8 +364,9 @@ function davitPoints(
   if (!base) return [];
   // Starboard is low z, so outboard is -z there and +z on the port side.
   const outward = base.side === "starboard" ? -1 : 1;
-  const y = base.position.y + DAVIT_HEIGHT;
-  const z = base.position.z + outward * DAVIT_REACH;
+  const { height, reach } = DAVIT_SHAPE[part.type] ?? DAVIT_SHAPE.davit;
+  const y = base.position.y + height;
+  const z = base.position.z + outward * reach;
   const points: AttachPoint[] = [
     {
       id: "boat",
@@ -352,7 +376,7 @@ function davitPoints(
       claims: [davitClaim(part.id)],
     },
   ];
-  const neighbour = nextDavit(ship, part.anchor, base, occupancy);
+  const neighbour = nextDavit(ship, part, part.anchor, base, occupancy);
   if (neighbour) {
     points.push({
       id: "big-boat",
@@ -567,19 +591,26 @@ function helipadPoints(
  */
 function nextDavit(
   ship: Ship,
+  self: PlacedPart,
   anchor: AttachAnchor,
   base: AttachPoint,
   occupancy: Occupancy
 ): PlacedPart | undefined {
   const parent = partById(ship, anchor.parentId);
   if (!parent || parent.anchor.kind !== "grid") return undefined;
-  const [, x, z] = anchor.pointId.split(":").map(Number);
+  const [prefix, ...coords] = anchor.pointId.split(":");
+  const [x, z] = coords.map(Number);
   const block = occupancy.get(
     cellKey({ level: parent.anchor.level, x: x + 1, z })
   );
   if (!block) return undefined;
-  const davit = partAt(ship, block.id, `davit:${x + 1}:${z}`);
-  if (!davit || !isDavit(davit) || davit.anchor.kind !== "attach") {
+  const davit = partAt(ship, block.id, `${prefix}:${x + 1}:${z}`);
+  if (
+    !davit ||
+    !isDavit(davit) ||
+    davit.type !== self.type ||
+    davit.anchor.kind !== "attach"
+  ) {
     return undefined;
   }
   const point = resolveAttachPoint(ship, davit.anchor, occupancy);

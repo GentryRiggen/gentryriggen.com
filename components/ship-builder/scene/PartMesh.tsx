@@ -457,6 +457,9 @@ function Fitting({
     case "ship-anchor":
     case "barrel-stack":
     case "crate-stack":
+    case "davit-side":
+      // Task 2 draws the side davit.
+      return null;
     case "treasure-chest":
     case "pirate-crew":
     case "parrot":
