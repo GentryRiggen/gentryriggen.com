@@ -10,6 +10,9 @@ export const LIFEBOAT_HULLS: Readonly<Record<string, LifeboatHull>> = {
   "lifeboat-standard": { length: 0.9, width: 0.35, depth: 0.3 },
   "lifeboat-collapsible": { length: 0.9, width: 0.35, depth: 0.2 },
   "lifeboat-large": { length: 1.9, width: 0.45, depth: 0.35 },
+  // As RibBoatMesh and the pirate Rowboat draw them.
+  "rib-boat": { length: 0.9, width: 0.45, depth: 0.1 },
+  rowboat: { length: 0.9, width: 0.38, depth: 0.2 },
 };
 
 /** A boat hangs with its rim this far below its attach point. */

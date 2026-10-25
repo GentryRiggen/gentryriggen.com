@@ -11,12 +11,11 @@ import {
   floatPositionAt,
 } from "@/lib/ship-builder/crowd/evacuation";
 import type { PersonPose } from "@/lib/ship-builder/crowd/types";
-import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { getWalkState } from "@/lib/ship-builder/state/walkLive";
-import { modelToWorld } from "./coords";
+import { boatSpotsOf } from "./boatSpots";
 import {
   armSwing,
   CREW_OUTFIT,
@@ -36,7 +35,6 @@ import {
   type Carrier,
   type ShipCrowd,
 } from "./crowdView";
-import { lifeboatHullOf, type LifeboatHull } from "./lifeboatHulls";
 import { noRaycast } from "./noRaycast";
 import { halfOfX, partHalves } from "./partHalves";
 import { activeEvacuation } from "./trialTimeline";
@@ -45,12 +43,6 @@ import { trialPlayback, type TrialPlayback } from "./trialPlayback";
 /** Height and rate of a floater's bob on the swell. */
 const FLOAT_BOB = 0.04;
 const FLOAT_BOB_RATE = 1.9;
-
-interface BoatSpot {
-  hull: LifeboatHull;
-  /** Hang point in the ship's frame (world units, inside the bob group). */
-  hang: { x: number; y: number; z: number };
-}
 
 /** Where she is broken in the playback (cells from the bow), or null. */
 function brokenAtX(playback: TrialPlayback): number | null {
@@ -66,22 +58,6 @@ function playbackBody(playback: TrialPlayback, cellsFromBow: number): BodyPose {
     return playback.halves[halfOfX(cellsFromBow, atX)];
   }
   return playback;
-}
-
-function boatSpotsOf(ship: Ship): Map<string, BoatSpot> {
-  const length = gridLength(ship);
-  const beam = beamOf(ship);
-  const spots = new Map<string, BoatSpot>();
-  for (const part of ship.parts) {
-    if (part.anchor.kind !== "attach" || !part.type.startsWith("lifeboat")) {
-      continue;
-    }
-    const point = resolveAttachPoint(ship, part.anchor);
-    if (!point) continue;
-    const [x, y, z] = modelToWorld(length, beam, point.position);
-    spots.set(part.id, { hull: lifeboatHullOf(part.type), hang: { x, y, z } });
-  }
-  return spots;
 }
 
 interface CrowdRunnerProps {
