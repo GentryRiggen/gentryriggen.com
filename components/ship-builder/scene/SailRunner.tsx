@@ -18,7 +18,7 @@ import { publishSail } from "@/lib/ship-builder/state/sailLive";
 import { sailInput } from "@/lib/ship-builder/state/sailInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { MAX_FRAME_DELTA } from "./animationMath";
-import { testDriveObstacles } from "./testClock";
+import { testDriveObstacles, testDriveSpeed } from "./testClock";
 
 interface SailingProps {
   config: DriveConfig;
@@ -61,7 +61,7 @@ function Sailing({ config }: SailingProps) {
   useFrame((_, delta) => {
     const current = state.current;
     if (!current || !canSail || hasHit.current) return;
-    leftover.current += Math.min(delta, MAX_FRAME_DELTA);
+    leftover.current += Math.min(delta, MAX_FRAME_DELTA) * testDriveSpeed();
     let next = current;
     while (leftover.current >= SIM_STEP_S && !next.impact) {
       leftover.current -= SIM_STEP_S;

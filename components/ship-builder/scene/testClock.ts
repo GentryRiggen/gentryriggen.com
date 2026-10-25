@@ -37,6 +37,12 @@ export interface ShipBuilderTestConfig {
    * device.
    */
   ao?: boolean;
+  /**
+   * Drive: play the sail this many times faster. The sail clamps each frame
+   * to MAX_FRAME_DELTA, so on a slow software renderer a drive crawls; this
+   * makes the sim time a frame buys independent of how few frames there are.
+   */
+  driveSpeed?: number;
   /** Drive: obstacles placed in the field at the start of every sail. */
   driveObstacles?: TestDriveObstacle[];
   /**
@@ -85,6 +91,14 @@ export function testTrialSpeed(): number {
   if (!TEST_HOOKS_ENABLED) return 1;
   if (typeof window === "undefined") return 1;
   const speed = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.trialSpeed);
+  return speed !== null && speed > 0 ? speed : 1;
+}
+
+/** The drive playback speed multiplier; 1 when no test sets it. */
+export function testDriveSpeed(): number {
+  if (!TEST_HOOKS_ENABLED) return 1;
+  if (typeof window === "undefined") return 1;
+  const speed = finiteTestNumber(window.__SHIP_BUILDER_TEST__?.driveSpeed);
   return speed !== null && speed > 0 ? speed : 1;
 }
 

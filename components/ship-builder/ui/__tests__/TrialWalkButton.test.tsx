@@ -7,6 +7,7 @@ import {
 } from "@/lib/ship-builder/state/store";
 import { testShip } from "@/lib/ship-builder/testing";
 import { clearLiveTrial, publishLiveTrial } from "../../scene/liveTrial";
+import { resetPlayback, trialPlayback } from "../../scene/trialPlayback";
 import TrialWalkButton from "../TrialWalkButton";
 
 const store = () => useShipBuilderStore.getState();
@@ -23,6 +24,7 @@ beforeEach(() => {
   act(() => useShipBuilderStore.setState(createInitialState()));
   act(() => {
     clearLiveTrial();
+    resetPlayback();
     store().loadShip(testShip(), null);
   });
 });
@@ -77,5 +79,26 @@ describe("TrialWalkButton", () => {
       publishLiveTrial({ ...createTrial(INPUT), phase: "descending" }, 0, true)
     );
     expect(walkButton()).toBeNull();
+  });
+
+  it.each([
+    ["capsizing", { phase: "capsizing" as const }],
+    ["sinking", { phase: "sinking" as const }],
+    ["descending", { phase: "descending" as const }],
+    ["capsized earlier", { capsizedAt: 4 }],
+  ])("hides in a weather trial (no live state) once she is %s", (_n, patch) => {
+    jest.useFakeTimers();
+    try {
+      render(<TrialWalkButton />);
+      act(() => store().startTrial("stormy"));
+      expect(walkButton()).toBeVisible();
+      Object.assign(trialPlayback, patch);
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+      expect(walkButton()).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

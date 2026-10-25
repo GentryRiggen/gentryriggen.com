@@ -29,6 +29,14 @@ export default function SelectionBar() {
 
   const [styleFor, setStyleFor] = useState<string | null>(null);
   const closeStyle = useCallback(() => setStyleFor(null), []);
+  // The panel belongs to the part it was opened for: a new selection starts
+  // closed, so reselecting a funnel later does not bring it back.
+  const selectedId = selected?.id ?? null;
+  const [seenId, setSeenId] = useState(selectedId);
+  if (seenId !== selectedId) {
+    setSeenId(selectedId);
+    setStyleFor(null);
+  }
 
   if (!selected || hasTool) return null;
   const def = getPartDef(selected.type);
