@@ -60,3 +60,38 @@ def mean_or_none(values: list[float]) -> float | None:
 
 def ref_path(refs_dir: str, part: str, entry: dict) -> str:
     return os.path.join(refs_dir, part, entry["file"])
+
+
+class SpecError(Exception):
+    """A user-facing problem with the spec, manifest or a reference."""
+
+
+def validate_crop(
+    crop: list[int] | None, width: int, height: int, label: str
+) -> None:
+    if not crop:
+        return
+    if len(crop) != 4:
+        raise SpecError(f"{label}: crop must be [x, y, w, h], got {crop}")
+    x, y, w, h = crop
+    if x < 0 or y < 0 or w <= 0 or h <= 0 or x + w > width or y + h > height:
+        raise SpecError(
+            f"{label}: crop {crop} is out of bounds for a {width}x{height} image"
+        )
+
+
+def validate_manifest(part: str, entries: list[dict], spec: dict) -> None:
+    views = {v["name"] for v in spec["views"]}
+    variants = {v["name"] for v in spec["variants"]}
+    if spec["scoreVariant"] not in variants:
+        raise SpecError(
+            f"scoreVariant '{spec['scoreVariant']}' matches no variant "
+            f"(have: {sorted(variants)})"
+        )
+    for entry in entries:
+        view = entry.get("view")
+        if view is not None and view not in views:
+            raise SpecError(
+                f"manifest entry '{entry['file']}' for {part} uses view "
+                f"'{view}', which is not in the spec (have: {sorted(views)})"
+            )

@@ -8,7 +8,9 @@ import importlib.util
 import json
 import os
 import sys
+import time
 import traceback
+from datetime import datetime
 
 import bpy
 import numpy as np
@@ -17,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
-from lib import gates, metrics, render, scoring  # noqa: E402
+from lib import gates, history as hist, metrics, render, scoring  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +28,12 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("part")
     ap.add_argument("--round-note", default="")
     ap.add_argument("--spec", default=None, help="override the spec path")
+    ap.add_argument(
+        "--blocker",
+        action="append",
+        default=[],
+        help="something that slowed this round (repeatable)",
+    )
     ap.add_argument("--refs-dir", default=os.path.join(ROOT, "assets", "refs"))
     ap.add_argument("--out-dir", default=os.path.join(ROOT, "assets", "out"))
     return ap.parse_args(argv)
@@ -87,26 +95,30 @@ def export_glb(objs: dict, path: str) -> int:
     return os.path.getsize(path)
 
 
-def score_refs(part: str, spec: dict, manifest: dict, refs_dir: str, renders: dict):
+def score_refs(part: str, manifest: dict, refs_dir: str, renders: dict):
     per_ref = []
     for entry in manifest.get(part, []):
         if not entry.get("mask") or not entry.get("view"):
             continue
         sil_rgba, look_rgba = renders[entry["view"]]
-        ref = scoring.apply_crop(
-            render.load_rgba(scoring.ref_path(refs_dir, part, entry)), entry.get("crop")
+        full = render.load_rgba(scoring.ref_path(refs_dir, part, entry))
+        scoring.validate_crop(
+            entry.get("crop"), full.shape[1], full.shape[0], entry["file"]
         )
+        ref = scoring.apply_crop(full, entry.get("crop"))
         per_ref.append(
             scoring.score_ref(entry, ref, sil_rgba[..., 3] > 0.5, look_rgba)
         )
     return per_ref
 
 
-def read_history(path: str) -> int:
+def read_history(path: str) -> tuple[int, str | None]:
+    """Highest round so far and the last line's timestamp (if any)."""
     if not os.path.exists(path):
-        return 0
-    rounds = [json.loads(line)["round"] for line in open(path) if line.strip()]
-    return max(rounds, default=0)
+        return 0, None
+    lines = [json.loads(line) for line in open(path) if line.strip()]
+    last = lines[-1].get("timestamp") if lines else None
+    return max((ln["round"] for ln in lines), default=0), last
 
 
 def fmt(v: float | None) -> str:
@@ -114,11 +126,15 @@ def fmt(v: float | None) -> str:
 
 
 def run(args: argparse.Namespace) -> None:
+    started = time.monotonic()
     spec_path = args.spec or os.path.join(ROOT, "assets", "parts", f"{args.part}.json")
     spec = json.load(open(spec_path))
     manifest = json.load(open(os.path.join(args.refs_dir, "manifest.json")))
+    scoring.validate_manifest(args.part, manifest.get(args.part, []), spec)
     part_mod = load_part_module(spec["script"])
     out = os.path.join(args.out_dir, args.part)
+    if args.spec:  # experiments never touch the real score log
+        out = os.path.join(out, "override")
     os.makedirs(os.path.join(out, "renders"), exist_ok=True)
 
     all_gates, tri_counts, byte_counts = [], {}, {}
@@ -148,14 +164,15 @@ def run(args: argparse.Namespace) -> None:
                 renders[view["name"]] = (render.load_rgba(sil), render.load_rgba(look))
                 bpy.data.objects.remove(cam)
 
-    per_ref = score_refs(args.part, spec, manifest, args.refs_dir, renders)
+    per_ref = score_refs(args.part, manifest, args.refs_dir, renders)
     sil = scoring.mean_or_none([r["silhouette"] for r in per_ref])
     det = scoring.mean_or_none([r["detail"] for r in per_ref])
     failed = [g for g in all_gates if not g["ok"]]
     total = 0.0 if failed else metrics.composite(sil, det, spec["weights"])
 
     history = os.path.join(out, "history.jsonl")
-    rnd = read_history(history) + 1
+    prev_round, prev_ts = read_history(history)
+    rnd = prev_round + 1
     result = {
         "round": rnd,
         "total": total,
@@ -167,10 +184,17 @@ def run(args: argparse.Namespace) -> None:
         "bytes": byte_counts,
         "note": args.round_note,
     }
+    line = hist.build_history_line(
+        result,
+        datetime.now().astimezone().isoformat(timespec="seconds"),
+        time.monotonic() - started,
+        prev_ts,
+        args.blocker,
+    )
     with open(os.path.join(out, "score.json"), "w") as f:
-        json.dump(result, f, indent=2)
+        json.dump(line, f, indent=2)
     with open(history, "a") as f:
-        f.write(json.dumps(result) + "\n")
+        f.write(json.dumps(line) + "\n")
 
     if failed:
         status = "gates=FAIL " + " | ".join(
@@ -187,6 +211,9 @@ def run(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     try:
         run(parse_args())
+    except scoring.SpecError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
     except BaseException:
         traceback.print_exc()
         sys.exit(1)

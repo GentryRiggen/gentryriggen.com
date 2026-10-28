@@ -125,17 +125,37 @@ def _eevee_name() -> str:
     return "BLENDER_EEVEE" if "BLENDER_EEVEE" in names else "BLENDER_EEVEE_NEXT"
 
 
-def _add_light(name: str, kind: str, rot_deg, energy: float) -> bpy.types.Object:
+def _add_light(
+    name: str, kind: str, from_dir_cam, energy: float, cam: bpy.types.Object
+) -> bpy.types.Object:
+    """Sun placed relative to the camera. from_dir_cam is (azimuth, elevation)
+    in degrees of the direction the light comes FROM, in the camera frame:
+    azimuth 0 is the camera position, negative is camera-left, 180 is behind
+    the subject; elevation is up from the camera's horizon."""
+    az, el = (math.radians(a) for a in from_dir_cam)
+    local = Vector(
+        (math.sin(az) * math.cos(el), math.sin(el), math.cos(az) * math.cos(el))
+    )
+    toward = cam.matrix_world.to_3x3() @ local  # camera looks down local -Z
     data = bpy.data.lights.new(name, kind)
     data.energy = energy
     obj = bpy.data.objects.new(name, data)
-    obj.rotation_euler = tuple(math.radians(a) for a in rot_deg)
+    obj.rotation_euler = (-toward).to_track_quat("-Z", "Y").to_euler()
     bpy.context.scene.collection.objects.link(obj)
     return obj
 
 
+# (azimuth, elevation) in the camera frame, energy
+LIGHT_RIG = {
+    "key": ((-35.0, 40.0), 3.0),
+    "fill": ((60.0, 15.0), 1.2),
+    "rim": ((165.0, 40.0), 2.0),
+}
+
+
 def render_look(path: str, res: int = 512) -> None:
-    """EEVEE, three-point sun rig, neutral grey world."""
+    """EEVEE, camera-relative three-point sun rig, neutral grey world. The
+    scene camera must already be placed."""
     scene = _setup(res, _eevee_name())
     scene.render.film_transparent = False
     world = bpy.data.worlds.new("grey")
@@ -144,10 +164,11 @@ def render_look(path: str, res: int = 512) -> None:
     bg.inputs["Color"].default_value = (0.5, 0.5, 0.5, 1.0)
     bg.inputs["Strength"].default_value = 0.6
     scene.world = world
+    bpy.context.view_layer.update()
+    cam = scene.camera
     lights = [
-        _add_light("key", "SUN", (50, 0, 35), 3.0),
-        _add_light("fill", "SUN", (60, 0, -70), 1.2),
-        _add_light("rim", "SUN", (-50, 0, 160), 2.0),
+        _add_light(n, "SUN", direction, energy, cam)
+        for n, (direction, energy) in LIGHT_RIG.items()
     ]
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
