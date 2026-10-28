@@ -1,0 +1,47 @@
+{
+  "id": "funnel",
+  "script": "funnel",
+  "slots": ["body", "bands", "cap", "opening", "pipe"],
+  "budget": { "maxTriangles": 4000, "maxBytes": 200000 },
+  "boundsTolerance": 0.03,
+  "weights": { "silhouette": 0.6, "detail": 0.4 },
+  "variants": [
+    {
+      "name": "funnel",
+      "dims": {
+        "baseRadius": 0.42,
+        "topRadius": 0.38,
+        "bodyHeight": 2.6,
+        "capHeight": 0.6
+      },
+      "expectedBounds": {
+        "min": [-0.4822, 0, -0.42],
+        "max": [0.42, 3.214, 0.42]
+      }
+    },
+    {
+      "name": "funnel-large",
+      "dims": {
+        "baseRadius": 0.71,
+        "topRadius": 0.65,
+        "bodyHeight": 3.4,
+        "capHeight": 0.8
+      },
+      "expectedBounds": {
+        "min": [-0.7687, 0, -0.71],
+        "max": [0.71, 4.214, 0.71]
+      }
+    }
+  ],
+  "views": [
+    { "name": "side", "azimuthDeg": 90, "elevationDeg": 0, "ortho": true },
+    { "name": "front", "azimuthDeg": 0, "elevationDeg": 0, "ortho": true },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "funnel"
+}
