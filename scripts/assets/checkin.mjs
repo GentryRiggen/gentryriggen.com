@@ -4,10 +4,14 @@
  * part in the game's lighting, and build one comparison sheet.
  *
  *   node scripts/assets/checkin.mjs <part> [--base http://localhost:3000]
+ *        [--skip-score] [--keep-glb]
  *        [score args, e.g. --round-note "text" --blocker "text"]
  *
  * Writes assets/out/<part>/checkin/{<view>-<build>.png, sheet.html,
- * sheet.png}. Exits 1 if the score run fails or any `new` page fails to load.
+ * sheet.png}. Exits 1 if the score run fails or any `new` page fails to load
+ * (error, timeout or console error). --skip-score reuses the existing
+ * score.json and glbs; --keep-glb leaves public/asset-studio/<part>/ in place
+ * (otherwise it is removed so a local build never ships WIP glbs).
  */
 import { spawn, spawnSync } from "node:child_process";
 import {
@@ -36,10 +40,20 @@ if (!part || part.startsWith("--")) {
   process.exit(1);
 }
 let base = "http://localhost:3000";
+let skipScore = false;
+let keepGlb = false;
 const scoreArgs = [];
 for (let i = 1; i < argv.length; i++) {
   if (argv[i] === "--base") base = argv[++i];
-  else scoreArgs.push(argv[i]);
+  else if (argv[i] === "--skip-score") skipScore = true;
+  else if (argv[i] === "--keep-glb") keepGlb = true;
+  else if (argv[i] === "--spec" || argv[i].startsWith("--spec=")) {
+    console.error(
+      "checkin does not support --spec: it screenshots the real part. " +
+        "Run assets:score with --spec for experiments instead."
+    );
+    process.exit(1);
+  } else scoreArgs.push(argv[i]);
 }
 
 const outDir = join(ROOT, "assets", "out", part);
@@ -62,6 +76,23 @@ async function answers(url) {
   }
 }
 
+let stopSpawnedServer = () => {};
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    stopSpawnedServer();
+    process.exit(130);
+  });
+}
+
+/** One definition of a failed page load: error, timeout or console error. */
+function loadProblem(shot) {
+  if (shot.error) return shot.error;
+  if (shot.consoleErrors.length) {
+    return `console errors: ${shot.consoleErrors.join(" | ")}`;
+  }
+  return null;
+}
+
 /** Reuses a server at `base`, else spawns one; returns a stop function. */
 async function ensureServer() {
   if (await answers(base)) return { url: base, stop: () => {} };
@@ -79,6 +110,7 @@ async function ensureServer() {
       // already gone
     }
   };
+  stopSpawnedServer = stop;
   const deadline = Date.now() + SERVER_TIMEOUT_MS;
   while (!(await answers(url))) {
     if (Date.now() > deadline || child.exitCode !== null) {
@@ -159,24 +191,67 @@ function delta(now, prev) {
   return ` (${d >= 0 ? "+" : ""}${d.toFixed(3)})`;
 }
 
+/** Crop region of the reference, plus a mask thumbnail when it has a mask.
+ * Drawn on canvases by the script at the end of the sheet. */
+function refHtml(ref) {
+  const src = pathToFileURL(join(ROOT, "assets", "refs", part, ref.file)).href;
+  const data = esc(
+    JSON.stringify({ src, crop: ref.crop ?? null, mask: ref.mask ?? null })
+  );
+  return `<div class="ref" data-ref="${data}"><canvas class="refimg"></canvas>${
+    ref.mask ? '<canvas class="refmask"></canvas>' : ""
+  }<p>${esc(ref.file)}</p></div>`;
+}
+
+const REF_SCRIPT = `
+const luma = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+window.__refsDone = Promise.all(
+  [...document.querySelectorAll(".ref")].map(async (el) => {
+    const cfg = JSON.parse(el.dataset.ref);
+    const img = new Image();
+    img.src = cfg.src;
+    await img.decode();
+    const [x, y, w, h] = cfg.crop ?? [0, 0, img.naturalWidth, img.naturalHeight];
+    const draw = (canvas, width) => {
+      const scale = Math.min(width / w, 400 / h);
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
+      return ctx;
+    };
+    const main = el.querySelector(".refimg");
+    draw(main, 260);
+    const thumb = el.querySelector(".refmask");
+    if (!thumb || !cfg.mask) return;
+    const ctx = draw(thumb, 110);
+    const data = ctx.getImageData(0, 0, thumb.width, thumb.height);
+    const m = cfg.mask;
+    const t = (m.threshold ?? 0.5) * 255;
+    for (let i = 0; i < data.data.length; i += 4) {
+      const [r, g, b, a] = data.data.slice(i, i + 4);
+      let on = m.mode === "alpha" ? a > t : luma(r, g, b) < t;
+      if (m.mode !== "alpha" && m.invert) on = !on;
+      data.data.set(on ? [255, 255, 255, 255] : [0, 0, 0, 255], i);
+    }
+    ctx.putImageData(data, 0, 0);
+  })
+);`;
+
 function buildSheet(spec, score, history, shots, manifestEntries, loadErrors) {
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const url = (p) => pathToFileURL(p).href;
   const rows = spec.views
     .map((v) => {
       const ref = manifestEntries.find((e) => e.view === v.name);
-      const refCell = ref
-        ? `<img src="${url(join(ROOT, "assets", "refs", part, ref.file))}">`
-        : "no ref";
+      const refCell = ref ? refHtml(ref) : "no ref";
       const img = (p) => `<img src="${url(p)}">`;
       const look = join(outDir, "renders", `${v.name}-look.png`);
       const cell = (build) => {
         const s = shots.find((x) => x.view === v.name && x.build === build);
-        const note = s.error ? `<p class="bad">${esc(s.error)}</p>` : "";
-        const errs = s.consoleErrors.length
-          ? `<p class="bad">console: ${esc(s.consoleErrors.join(" | "))}</p>`
-          : "";
-        return `${existsSync(s.file) ? img(s.file) : ""}${note}${errs}`;
+        const problem = loadProblem(s);
+        const note = problem ? `<p class="bad">${esc(problem)}</p>` : "";
+        return `${existsSync(s.file) ? img(s.file) : ""}${note}`;
       };
       return `<tr><th>${esc(v.name)}</th><td>${refCell}</td><td>${cell("old")}</td><td>${img(look)}</td><td>${cell("new")}</td></tr>`;
     })
@@ -203,6 +278,8 @@ th,td{border:1px solid #bbb;padding:6px;vertical-align:top;text-align:left}
 .grid img{width:400px;height:400px;display:block}
 .grid td{width:400px}
 .bad{color:#b00020}
+.ref canvas{display:inline-block;vertical-align:top;margin-right:6px;border:1px solid #ddd}
+.ref p{margin:4px 0;font-size:11px;color:#555}
 pre{white-space:pre-wrap;border:1px solid #bbb;padding:8px;background:#f6f6f6}
 </style>
 <h1>${esc(part)} check-in, round ${score.round}</h1>
@@ -214,17 +291,23 @@ pre{white-space:pre-wrap;border:1px solid #bbb;padding:8px;background:#f6f6f6}
 <h2>Score history</h2>
 <table><tr><th>round</th><th>total</th><th>sil</th><th>det</th><th>run s</th><th>since last s</th><th>note</th><th>blockers</th></tr>${historyRows}</table>
 ${process_ ? `<h2>Process</h2><pre>${esc(process_)}</pre>` : ""}
-${judge ? `<h2>Judge</h2><pre>${esc(judge)}</pre>` : ""}`;
+${judge ? `<h2>Judge</h2><pre>${esc(judge)}</pre>` : ""}
+<script>${REF_SCRIPT}</script>`;
 }
 
 async function main() {
-  const score = spawnSync(
-    "npm",
-    ["run", "assets:score", "--", part, ...scoreArgs],
-    { cwd: ROOT, stdio: "inherit" }
-  );
-  if (score.status !== 0) {
-    console.error("score run failed");
+  if (!skipScore) {
+    const score = spawnSync(
+      "npm",
+      ["run", "assets:score", "--", part, ...scoreArgs],
+      { cwd: ROOT, stdio: "inherit" }
+    );
+    if (score.status !== 0) {
+      console.error("score run failed");
+      return 1;
+    }
+  } else if (!existsSync(join(outDir, "score.json"))) {
+    console.error(`--skip-score: no score.json for ${part} yet`);
     return 1;
   }
 
@@ -247,7 +330,12 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({
-      args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
+      args: [
+        "--enable-unsafe-swiftshader",
+        "--use-angle=swiftshader",
+        // The sheet reads reference pixels to draw mask thumbnails.
+        "--allow-file-access-from-files",
+      ],
     });
     const shots = [];
     for (const v of spec.views) {
@@ -258,9 +346,9 @@ async function main() {
       }
     }
     const loadErrors = shots
-      .filter((s) => s.build === "new" && (s.error || s.consoleErrors.length))
-      .map((s) => `${s.view}: ${s.error ?? s.consoleErrors.join(" | ")}`);
-    const loadFailed = shots.some((s) => s.build === "new" && s.error);
+      .filter((s) => s.build === "new" && loadProblem(s))
+      .map((s) => `${s.view}: ${loadProblem(s)}`);
+    const loadFailed = loadErrors.length > 0;
 
     const sheetHtml = join(checkinDir, "sheet.html");
     writeFileSync(
@@ -278,6 +366,7 @@ async function main() {
       viewport: { width: 1740, height: 900 },
     });
     await page.goto(pathToFileURL(sheetHtml).href);
+    await page.evaluate(() => window.__refsDone);
     const png = join(checkinDir, "sheet.png");
     await page.screenshot({ path: png, fullPage: true });
     await page.close();
@@ -288,6 +377,7 @@ async function main() {
   } finally {
     await browser?.close();
     server.stop();
+    if (!keepGlb) rmSync(publicDir, { recursive: true, force: true });
   }
 }
 

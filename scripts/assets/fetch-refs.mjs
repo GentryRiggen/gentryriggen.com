@@ -36,6 +36,10 @@ for (const [part, entries] of Object.entries(manifest)) {
         headers: { "User-Agent": USER_AGENT },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const type = res.headers.get("content-type") ?? "";
+      if (!type.startsWith("image/")) {
+        throw new Error(`not an image (content-type "${type}")`);
+      }
       mkdirSync(dirname(target), { recursive: true });
       writeFileSync(target, Buffer.from(await res.arrayBuffer()));
       fetched++;
