@@ -19,6 +19,7 @@ import ReflectionEnvironment from "@/components/ship-builder/scene/ReflectionEnv
 import { environmentFor } from "@/components/ship-builder/scene/environmentModel";
 import { toRuntimeEnvironment } from "@/components/ship-builder/scene/environmentRuntime";
 import { glowFor } from "@/components/ship-builder/scene/timeOfDay";
+import { sceneHasPart } from "./sceneHasPart";
 import { cameraForView } from "./studioCamera";
 import type { StudioParams } from "./studioParams";
 import { STUDIO_PARTS } from "./studioParts";
@@ -30,12 +31,19 @@ function setStudioState(key: "studioReady" | "studioError", value: string) {
   document.body.dataset[key] = value;
 }
 
-/** Marks the page ready once the model (a suspended sibling) has drawn. */
+/**
+ * Marks the page ready once the model (a suspended sibling) has drawn: a few
+ * frames after it mounts, and only if the scene really holds a part.
+ */
 function ReadyProbe() {
   const frames = useRef(0);
+  const scene = useThree((s) => s.scene);
   useFrame(() => {
     frames.current += 1;
-    if (frames.current === SETTLE_FRAMES) setStudioState("studioReady", "1");
+    if (frames.current < SETTLE_FRAMES) return;
+    if (document.body.dataset.studioReady) return;
+    if (sceneHasPart(scene)) setStudioState("studioReady", "1");
+    else setStudioState("studioError", "No part in the scene");
   });
   return null;
 }
@@ -138,6 +146,8 @@ export default function AssetStudio({ params }: AssetStudioProps) {
 
   return (
     <div className="fixed inset-0">
+      {/* Keep the Next dev-tools badge out of check-in screenshots. */}
+      <style>{"nextjs-portal { display: none !important; }"}</style>
       <Canvas shadows="percentage" gl={{ preserveDrawingBuffer: true }}>
         <StudioCamera params={params} />
         <Environment
