@@ -60,3 +60,9 @@ next-env.d.ts
 # other agents' local guidance (CLAUDE.md is the source of truth)
 /AGENTS.md
 /.agents/
+
+# asset loop (Blender remakes)
+/assets/out/
+/assets/refs/*
+!/assets/refs/manifest.json
+/public/asset-studio/
