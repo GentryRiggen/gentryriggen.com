@@ -21,6 +21,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  rmdirSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -377,7 +378,14 @@ async function main() {
   } finally {
     await browser?.close();
     server.stop();
-    if (!keepGlb) rmSync(publicDir, { recursive: true, force: true });
+    if (!keepGlb) {
+      rmSync(publicDir, { recursive: true, force: true });
+      try {
+        rmdirSync(dirname(publicDir)); // only succeeds when empty
+      } catch {
+        // other parts still have files there
+      }
+    }
   }
 }
 
