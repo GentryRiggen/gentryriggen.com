@@ -56,8 +56,8 @@ export default function GlbPart({
 
   return (
     <group rotation={[0, 0, rakeRadians]}>
-      {meshes.map(({ slot, geometry }) => (
-        <mesh key={slot} geometry={geometry} castShadow>
+      {meshes.map(({ slot, geometry }, index) => (
+        <mesh key={`${slot}-${index}`} geometry={geometry} castShadow>
           <Surface
             color={slotColors[slot].color}
             finish={slotColors[slot].finish}

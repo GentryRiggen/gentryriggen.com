@@ -3,13 +3,14 @@
 import {
   Component,
   Suspense,
-  useEffect,
   useMemo,
   useRef,
   useState,
   type ErrorInfo,
   type ReactNode,
+  type RefObject,
 } from "react";
+import type { Group } from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrthographicCamera, PerspectiveCamera } from "@react-three/drei";
 import Environment from "@/components/ship-builder/scene/Environment";
@@ -35,14 +36,14 @@ function setStudioState(key: "studioReady" | "studioError", value: string) {
  * Marks the page ready once the model (a suspended sibling) has drawn: a few
  * frames after it mounts, and only if the scene really holds a part.
  */
-function ReadyProbe() {
+function ReadyProbe({ partRef }: { partRef: RefObject<Group | null> }) {
   const frames = useRef(0);
-  const scene = useThree((s) => s.scene);
   useFrame(() => {
     frames.current += 1;
     if (frames.current < SETTLE_FRAMES) return;
     if (document.body.dataset.studioReady) return;
-    if (sceneHasPart(scene)) setStudioState("studioReady", "1");
+    if (partRef.current && sceneHasPart(partRef.current))
+      setStudioState("studioReady", "1");
     else setStudioState("studioError", "No part in the scene");
   });
   return null;
@@ -139,10 +140,7 @@ export default function AssetStudio({ params }: AssetStudioProps) {
   const part = STUDIO_PARTS[params.part];
   const Model = params.build === "old" ? part.Old : part.New;
 
-  useEffect(() => {
-    delete document.body.dataset.studioReady;
-    delete document.body.dataset.studioError;
-  }, [params]);
+  const partRef = useRef<Group>(null);
 
   return (
     <div className="fixed inset-0">
@@ -160,8 +158,10 @@ export default function AssetStudio({ params }: AssetStudioProps) {
         <ReflectionEnvironment timeOfDay={timeOfDay} />
         <LoadBoundary key={`${params.build}-${params.variant}`}>
           <Suspense fallback={null}>
-            <Model variant={params.variant} />
-            <ReadyProbe />
+            <group ref={partRef}>
+              <Model variant={params.variant} />
+            </group>
+            <ReadyProbe partRef={partRef} />
           </Suspense>
         </LoadBoundary>
         <PostEffects environment={environment} />

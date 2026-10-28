@@ -14,4 +14,14 @@ describe("sceneHasPart", () => {
     scene.add(new Mesh(new BoxGeometry(1, 1, 1)));
     expect(sceneHasPart(scene)).toBe(true);
   });
+
+  it("ignores meshes outside the part group (a sky dome)", () => {
+    const scene = new Scene();
+    scene.add(new Mesh(new BoxGeometry(100, 100, 100)));
+    const part = new Group();
+    scene.add(part);
+    expect(sceneHasPart(part)).toBe(false);
+    part.add(new Mesh(new BoxGeometry(1, 1, 1)));
+    expect(sceneHasPart(part)).toBe(true);
+  });
 });
