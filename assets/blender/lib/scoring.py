@@ -30,6 +30,36 @@ def resize_nearest(mask: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
     return mask[np.ix_(rows, cols)]
 
 
+DETAIL_HEIGHT = 128
+
+
+def area_resize(rgba: np.ndarray, height: int) -> np.ndarray:
+    """Box-average resize to `height` rows, keeping the aspect ratio. Averaging
+    (not sampling) smooths away film grain and JPEG noise."""
+    h, w = rgba.shape[:2]
+    width = max(1, round(w * height / h))
+    rows = (np.arange(height) * h) // height
+    cols = (np.arange(width) * w) // width
+    summed = np.add.reduceat(np.add.reduceat(rgba, rows, axis=0), cols, axis=1)
+    # Upscaling repeats an index; reduceat then returns that one element.
+    row_n = np.maximum(np.diff(np.append(rows, h)), 1)
+    col_n = np.maximum(np.diff(np.append(cols, w)), 1)
+    return summed / (row_n[:, None] * col_n[None, :])[..., None]
+
+
+def detail_density(rgba: np.ndarray, mask: np.ndarray) -> float:
+    """Edge density inside the mask, measured on the mask's bounding box
+    scaled to DETAIL_HEIGHT rows, so a photo and a render compare at one
+    scale."""
+    ys, xs = np.nonzero(mask)
+    if len(ys) == 0:
+        return 0.0
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    box = area_resize(rgba[y0:y1, x0:x1], DETAIL_HEIGHT)
+    box_mask = resize_nearest(mask[y0:y1, x0:x1], box.shape[:2])
+    return metrics.edge_density(box, box_mask)
+
+
 def score_ref(
     entry: dict,
     ref_rgba: np.ndarray,
@@ -43,9 +73,16 @@ def score_ref(
     """
     mask = ref_mask(ref_rgba, entry["mask"])
     sil_mask = resize_nearest(sil_mask, look_rgba.shape[:2])
-    sil = metrics.iou(metrics.normalize_mask(mask), metrics.normalize_mask(sil_mask))
-    ref_density = metrics.edge_density(ref_rgba, mask)
-    look_density = metrics.edge_density(look_rgba, sil_mask)
+    # A photo may be from either side of the ship, which mirrors its lean, so
+    # the reference scores as whichever way round fits.
+    ref_norm = metrics.normalize_mask(mask)
+    sil_norm = metrics.normalize_mask(sil_mask)
+    sil = max(
+        metrics.iou(ref_norm, sil_norm),
+        metrics.iou(np.fliplr(ref_norm), sil_norm),
+    )
+    ref_density = detail_density(ref_rgba, mask)
+    look_density = detail_density(look_rgba, sil_mask)
     return {
         "file": entry["file"],
         "view": entry["view"],

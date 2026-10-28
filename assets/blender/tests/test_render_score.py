@@ -113,6 +113,7 @@ class RefScoringTest(unittest.TestCase):
         # A dark 20x40 bar on white, inside a 100x80 image, cropped from a margin.
         ref = np.ones((80, 100, 4), dtype=np.float32)
         ref[20:60, 30:50, :3] = 0.1
+        ref[38:42, 30:50, :3] = 0.4  # a band across the bar
         entry = {
             "file": "r.png",
             "view": "side",
@@ -130,9 +131,10 @@ class RefScoringTest(unittest.TestCase):
         sil[8:56, 20:44] = True
         look = np.ones((128, 128, 4), dtype=np.float32)
         look[16:112, 40:88, :3] = 0.1
+        look[52:60, 40:88, :3] = 0.4
         out = scoring.score_ref(entry, loaded, sil, look)
         self.assertGreater(out["silhouette"], 0.95)
-        self.assertGreater(out["detail"], 0.0)
+        self.assertGreater(out["detail"], 0.7)
 
     def test_wrong_shape_scores_lower(self) -> None:
         ref = np.ones((60, 60, 4), dtype=np.float32)
@@ -144,6 +146,37 @@ class RefScoringTest(unittest.TestCase):
         look = np.ones((64, 64, 4), dtype=np.float32)
         out = scoring.score_ref(entry, ref, sil, look)
         self.assertLess(out["silhouette"], 0.6)
+
+    def test_mirrored_ref_scores_like_the_original(self) -> None:
+        # A photo from the other side of the ship leans the other way.
+        ref = np.ones((60, 60, 4), dtype=np.float32)
+        for row in range(10, 50):  # a right-angled triangle, leaning left
+            ref[row, 10 : 10 + (row - 10), :3] = 0.1
+        entry = {"file": "r", "view": "side", "mask": {"mode": "luma"}}
+        sil = np.zeros((60, 60), dtype=bool)
+        for row in range(10, 50):  # the same triangle, mirrored
+            sil[row, 50 - (row - 10) : 50] = True
+        look = np.ones((60, 60, 4), dtype=np.float32)
+        out = scoring.score_ref(entry, ref, sil, look)
+        self.assertGreater(out["silhouette"], 0.95)
+
+    def test_detail_compares_at_one_scale(self) -> None:
+        # The same striped funnel drawn at two sizes has the same detail.
+        def striped(h: int, w: int, stripe: int) -> tuple[np.ndarray, np.ndarray]:
+            rgba = np.ones((h, w, 4), dtype=np.float32)
+            mask = np.zeros((h, w), dtype=bool)
+            mask[h // 8 : h - h // 8, w // 4 : 3 * w // 4] = True
+            rows = (np.arange(h) // stripe) % 2 == 0
+            rgba[rows[:, None] & mask, :3] = 0.2
+            rgba[~rows[:, None] & mask, :3] = 0.6
+            return rgba, mask
+
+        small, small_mask = striped(160, 80, 8)
+        big, big_mask = striped(480, 240, 24)
+        entry = {"file": "r", "view": "side", "mask": {"mode": "alpha"}}
+        small[..., 3] = small_mask.astype(np.float32)
+        out = scoring.score_ref(entry, small, big_mask, big)
+        self.assertGreater(out["detail"], 0.8)
 
     def test_alpha_mask_mode(self) -> None:
         rgba = np.zeros((4, 4, 4), dtype=np.float32)
