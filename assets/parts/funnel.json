@@ -34,8 +34,8 @@
     }
   ],
   "views": [
-    { "name": "side", "azimuthDeg": 90, "elevationDeg": 0, "ortho": true },
-    { "name": "front", "azimuthDeg": 0, "elevationDeg": 0, "ortho": true },
+    { "name": "front", "azimuthDeg": 90, "elevationDeg": 0, "ortho": true },
+    { "name": "side", "azimuthDeg": 0, "elevationDeg": 0, "ortho": true },
     {
       "name": "three-quarter",
       "azimuthDeg": 35,
