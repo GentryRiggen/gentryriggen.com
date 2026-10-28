@@ -11,8 +11,9 @@ class GatesTest(unittest.TestCase):
         self.assertTrue(near["ok"])
         far = gates.bounds_gate(emin, [10.5, 20.0, 30.0], emin, emax, 0.03)
         self.assertFalse(far["ok"])
-        self.assertIn("x", far["detail"])
-        self.assertNotIn("y", far["detail"].replace("extent", ""))
+        self.assertIn("x extent 10.5 vs 10", far["detail"])
+        self.assertNotIn("y extent", far["detail"])
+        self.assertNotIn("y centre", far["detail"])
 
     def test_slots_gate(self) -> None:
         self.assertTrue(gates.slots_gate({"hull", "pipe"}, ["hull", "pipe"])["ok"])
