@@ -155,6 +155,9 @@ def run(args: argparse.Namespace) -> None:
         ]
         all_gates += [dict(r, variant=name) for r in results]
         if name == spec["scoreVariant"]:
+            # Gates and the exported glb stay unraked; the renders match the
+            # game, which tilts the part. Framing stays on the unraked bounds.
+            render.apply_rake(objs.values(), spec.get("rakeRadians", 0.0))
             for view in spec["views"]:
                 cam = render.place_camera(view, eb["min"], eb["max"])
                 sil = os.path.join(out, "renders", f"{view['name']}-sil.png")

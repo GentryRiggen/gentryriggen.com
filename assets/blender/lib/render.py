@@ -5,7 +5,7 @@ import math
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 MARGIN = 1.1
 PERSPECTIVE_FOV_DEG = 30.0
@@ -94,6 +94,18 @@ def place_camera(view: dict, bounds_min, bounds_max) -> bpy.types.Object:
     return cam
 
 
+def apply_rake(objs, rake_radians: float) -> None:
+    """Tilt objects about three.js +Z through the origin, like the game's
+    `<group rotation={[0, 0, rake]}>`. Three +Z is Blender -Y, so this is a
+    rotation of -rake about Blender +Y."""
+    if not rake_radians:
+        return
+    rot = Matrix.Rotation(-rake_radians, 4, "Y")
+    for obj in objs:
+        obj.matrix_world = rot @ obj.matrix_world
+    bpy.context.view_layer.update()
+
+
 def _setup(res: int, engine: str) -> bpy.types.Scene:
     scene = bpy.context.scene
     scene.render.engine = engine
@@ -147,9 +159,9 @@ def _add_light(
 
 # (azimuth, elevation) in the camera frame, energy
 LIGHT_RIG = {
-    "key": ((-35.0, 40.0), 3.0),
-    "fill": ((60.0, 15.0), 1.2),
-    "rim": ((165.0, 40.0), 2.0),
+    "key": ((-35.0, 40.0), 1.6),
+    "fill": ((60.0, 15.0), 0.5),
+    "rim": ((165.0, 40.0), 0.8),
 }
 
 
@@ -162,7 +174,7 @@ def render_look(path: str, res: int = 512) -> None:
     world.use_nodes = True
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.5, 0.5, 0.5, 1.0)
-    bg.inputs["Strength"].default_value = 0.6
+    bg.inputs["Strength"].default_value = 0.4
     scene.world = world
     bpy.context.view_layer.update()
     cam = scene.camera

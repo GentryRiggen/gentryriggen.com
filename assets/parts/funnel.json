@@ -4,6 +4,7 @@
   "slots": ["body", "bands", "cap", "opening", "pipe"],
   "budget": { "maxTriangles": 4000, "maxBytes": 200000 },
   "boundsTolerance": 0.03,
+  "rakeRadians": 0.08726646259971647,
   "weights": { "silhouette": 0.6, "detail": 0.4 },
   "variants": [
     {

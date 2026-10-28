@@ -1,3 +1,6 @@
+import importlib.util
+import json
+import math
 import os
 import tempfile
 import unittest
@@ -42,6 +45,67 @@ class CameraTest(unittest.TestCase):
         cam = render.camera_for_view(view, self.BMIN, self.BMAX)
         self.assertEqual(cam["fovDeg"], 30.0)
         self.assertGreater(cam["position"][1], 2.0)
+
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+
+def _funnel_scene():
+    spec = json.load(open(os.path.join(ROOT, "assets", "parts", "funnel.json")))
+    path = os.path.join(ROOT, "assets", "blender", "parts", "funnel.py")
+    mod_spec = importlib.util.spec_from_file_location("funnel_part", path)
+    mod = importlib.util.module_from_spec(mod_spec)
+    mod_spec.loader.exec_module(mod)
+    for coll in (bpy.data.objects, bpy.data.meshes, bpy.data.materials):
+        for item in list(coll):
+            coll.remove(item)
+    variant = next(v for v in spec["variants"] if v["name"] == spec["scoreVariant"])
+    return spec, variant, mod.build(variant["dims"])
+
+
+class RakeTest(unittest.TestCase):
+    def test_rake_tilts_the_top_toward_minus_x(self) -> None:
+        # Like three's rotation=[0, 0, rake]: (0, 1, 0) -> (-sin, cos, 0).
+        bpy.ops.mesh.primitive_cube_add(size=0.0)
+        obj = bpy.context.active_object
+        obj.location = (0.0, 0.0, 1.0)  # three (0, 1, 0)
+        bpy.context.view_layer.update()
+        rake = math.radians(5)
+        render.apply_rake([obj], rake)
+        p = obj.matrix_world.translation
+        self.assertAlmostEqual(p.x, -math.sin(rake), places=5)
+        self.assertAlmostEqual(p.z, math.cos(rake), places=5)
+        self.assertAlmostEqual(p.y, 0.0, places=5)
+        bpy.data.objects.remove(obj)
+
+    def test_zero_rake_is_a_no_op(self) -> None:
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(1.0, 2.0, 3.0))
+        obj = bpy.context.active_object
+        render.apply_rake([obj], 0.0)
+        self.assertEqual(tuple(obj.location), (1.0, 2.0, 3.0))
+        bpy.data.objects.remove(obj)
+
+
+class LookExposureTest(unittest.TestCase):
+    def test_body_is_not_blown_out(self) -> None:
+        spec, variant, objs = _funnel_scene()
+        view = next(v for v in spec["views"] if v["name"] == "three-quarter")
+        eb = variant["expectedBounds"]
+        render.apply_rake(objs.values(), spec.get("rakeRadians", 0.0))
+        cam = render.place_camera(view, eb["min"], eb["max"])
+        with tempfile.TemporaryDirectory() as tmp:
+            sil_path = os.path.join(tmp, "sil.png")
+            look_path = os.path.join(tmp, "look.png")
+            render.render_silhouette(sil_path)
+            render.render_look(look_path)
+            sil = render.load_rgba(sil_path)[..., 3] > 0.5
+            look = render.load_rgba(look_path)
+            sil = scoring.resize_nearest(sil, look.shape[:2])
+        bpy.data.objects.remove(cam)
+        body = look[sil][:, :3]
+        self.assertGreater(len(body), 1000)
+        blown = float((body.max(axis=1) > 0.97).mean())
+        self.assertLess(blown, 0.02)
 
 
 class RefScoringTest(unittest.TestCase):

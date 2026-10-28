@@ -6,6 +6,7 @@ import {
   buildSteamPipe,
   type FunnelDims,
 } from "@/components/ship-builder/scene/funnelGeometry";
+import { FUNNEL_RAKE_RADIANS } from "@/components/ship-builder/scene/effectAnchors";
 import spec from "../parts/funnel.json";
 
 // The variant dims are copied from the `funnel` and `funnel-large` cases in
@@ -47,4 +48,10 @@ describe("funnel spec", () => {
       }
     }
   );
+});
+
+describe("funnel spec rake", () => {
+  it("matches the game's funnel rake", () => {
+    expect(spec.rakeRadians).toBe(FUNNEL_RAKE_RADIANS);
+  });
 });
