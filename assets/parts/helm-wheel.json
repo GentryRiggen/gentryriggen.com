@@ -1,0 +1,96 @@
+{
+  "id": "helm-wheel",
+  "script": "helm-wheel",
+  "slots": [
+    "paint-9a6b3f",
+    "windowFrame",
+    "paint-1b2733",
+    "paint-1b2733-paint",
+    "deckLine",
+    "paint-5a3a22",
+    "paint-c9a56b",
+    "paint-9a6b3f-wood",
+    "paint-e8b923"
+  ],
+  "slotColors": {
+    "paint-9a6b3f": {
+      "color": "#9a6b3f"
+    },
+    "windowFrame": {
+      "color": "#ffffff"
+    },
+    "paint-1b2733": {
+      "color": "#1b2733",
+      "finish": "glass"
+    },
+    "paint-1b2733-paint": {
+      "color": "#1b2733"
+    },
+    "deckLine": {
+      "color": "#d6cfbb"
+    },
+    "paint-5a3a22": {
+      "color": "#5a3a22",
+      "finish": "wood"
+    },
+    "paint-c9a56b": {
+      "color": "#c9a56b",
+      "finish": "wood"
+    },
+    "paint-9a6b3f-wood": {
+      "color": "#9a6b3f",
+      "finish": "wood"
+    },
+    "paint-e8b923": {
+      "color": "#e8b923",
+      "finish": "metal"
+    }
+  },
+  "todo": [
+    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
+    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/helm-wheel.py exposing build(dims).",
+    "Add reference images under assets/refs/manifest.json before scoring."
+  ],
+  "budget": {
+    "maxTriangles": 4000,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "helm-wheel",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.5, 0, -1],
+        "max": [0.5, 1.805, 1]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "helm-wheel",
+  "generated": "e8bd6f9481e696ea"
+}

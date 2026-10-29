@@ -1,0 +1,61 @@
+{
+  "id": "container",
+  "script": "container",
+  "slots": ["paint-ee8a2c", "containerSteel"],
+  "slotColors": {
+    "paint-ee8a2c": {
+      "color": "#ee8a2c"
+    },
+    "containerSteel": {
+      "color": "#5f666d",
+      "finish": "metal"
+    }
+  },
+  "todo": [
+    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
+    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/container.py exposing build(dims).",
+    "Add reference images under assets/refs/manifest.json before scoring."
+  ],
+  "budget": {
+    "maxTriangles": 4000,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "container",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.987, 0.03, -0.5],
+        "max": [0.96, 0.97, 0.5]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "container",
+  "generated": "ead59f24da51ea65"
+}

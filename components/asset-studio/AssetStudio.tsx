@@ -20,10 +20,24 @@ import ReflectionEnvironment from "@/components/ship-builder/scene/ReflectionEnv
 import { environmentFor } from "@/components/ship-builder/scene/environmentModel";
 import { toRuntimeEnvironment } from "@/components/ship-builder/scene/environmentRuntime";
 import { glowFor } from "@/components/ship-builder/scene/timeOfDay";
+import {
+  GlbSourceContext,
+  type GlbSource,
+} from "@/components/ship-builder/scene/GlbRegistryPart";
+import { glbLoadStatus } from "@/components/ship-builder/scene/glbLoadStatus";
+import { GLB_PARTS } from "@/components/ship-builder/scene/glbRegistry";
+import PartMesh from "@/components/ship-builder/scene/PartMesh";
+import { PALETTE } from "@/components/ship-builder/scene/palette";
+import { INNER_ROTATION } from "./innerRotation";
+import { paletteNames, partBounds, partSlots } from "./partBounds";
+import { specForPart } from "./partSpecs";
 import { sceneHasPart } from "./sceneHasPart";
 import { cameraForView } from "./studioCamera";
 import type { StudioParams } from "./studioParams";
-import { STUDIO_PARTS } from "./studioParts";
+import { buildStudioScene } from "./studioShip";
+import { studioSource } from "./studioSource";
+
+const PALETTE_NAMES = paletteNames(PALETTE);
 
 /** Frames drawn after the model loads before the studio calls itself ready. */
 const SETTLE_FRAMES = 3;
@@ -32,19 +46,43 @@ function setStudioState(key: "studioReady" | "studioError", value: string) {
   document.body.dataset[key] = value;
 }
 
+interface ReadyProbeProps {
+  partRef: RefObject<Group | null>;
+  /** True for the new build, which also waits for its glb. */
+  expectModel: boolean;
+  /** Undo this tilt before reading bounds (a funnel's rake). */
+  rakeRadians: number;
+}
+
 /**
- * Marks the page ready once the model (a suspended sibling) has drawn: a few
- * frames after it mounts, and only if the scene really holds a part.
+ * Marks the page ready once the part has drawn: a few frames in, with the
+ * scene really holding a part and, for the new build, its glb loaded (a part
+ * that fell back to the procedural mesh is an error, not a pass). Publishes
+ * the part's bounds as JSON in `data-studio-bounds`.
  */
-function ReadyProbe({ partRef }: { partRef: RefObject<Group | null> }) {
+function ReadyProbe({ partRef, expectModel, rakeRadians }: ReadyProbeProps) {
   const frames = useRef(0);
   useFrame(() => {
     frames.current += 1;
     if (frames.current < SETTLE_FRAMES) return;
     if (document.body.dataset.studioReady) return;
-    if (partRef.current && sceneHasPart(partRef.current))
+    if (expectModel) {
+      const status = glbLoadStatus();
+      if (status.failed > 0) {
+        setStudioState("studioError", "The glb failed to load or is invalid");
+        return;
+      }
+      if (status.loaded === 0 || status.pending > 0) return;
+    }
+    if (partRef.current && sceneHasPart(partRef.current)) {
+      const bounds = partBounds(partRef.current, rakeRadians);
+      document.body.dataset.studioBounds = JSON.stringify(bounds);
+      document.body.dataset.studioRake = String(rakeRadians);
+      document.body.dataset.studioSlots = JSON.stringify(
+        partSlots(partRef.current, PALETTE_NAMES)
+      );
       setStudioState("studioReady", "1");
-    else setStudioState("studioError", "No part in the scene");
+    } else setStudioState("studioError", "No part in the scene");
   });
   return null;
 }
@@ -83,10 +121,17 @@ interface StudioCameraProps {
 function StudioCamera({ params }: StudioCameraProps) {
   const aspect = useThree((s) => s.size.width / s.size.height);
   const camera = useMemo(() => {
-    const spec = STUDIO_PARTS[params.part].spec;
-    const variant = spec.variants.find((v) => v.name === params.variant);
-    const view = spec.views.find((v) => v.name === params.view);
-    if (!variant || !view) throw new Error("Unknown variant or view");
+    const spec = specForPart(params.part)?.spec;
+    const variant = spec?.variants.find((v) => v.name === params.variant);
+    const view = spec?.views.find((v) => v.name === params.view);
+    if (!variant || !view) {
+      // No spec yet (measuring): a generic three-quarter view.
+      return cameraForView(
+        { azimuthDeg: 35, elevationDeg: 20, ortho: false },
+        [-1.5, 0, -1.5],
+        [1.5, 3, 1.5]
+      );
+    }
     return cameraForView(
       view,
       variant.expectedBounds.min,
@@ -126,10 +171,14 @@ interface AssetStudioProps {
 }
 
 /**
- * One part, lit and post-processed like the game (same Environment, reflection
- * map and ambient occlusion as Scene.tsx, minus ocean and ship store), at the
- * origin in front of the game's sky. Screenshots of it are compared with the
- * Blender renders, so the viewport should be square.
+ * One Ship Builder part, drawn by the game's own PartMesh on a minimal ship
+ * (see studioShip.ts), lit and post-processed like the game (same Environment,
+ * reflection map and ambient occlusion as Scene.tsx, minus ocean and ship
+ * store), with the part's origin at the world origin in front of the game's
+ * sky. `build=old` forces the procedural mesh; `build=new` draws the glb
+ * (work in progress, copied to /asset-studio/<spec id>/ by the check-in).
+ * Screenshots are compared with the Blender renders, so keep the viewport
+ * square.
  */
 export default function AssetStudio({ params }: AssetStudioProps) {
   const timeOfDay = params.time.toLowerCase() as "day" | "sunset" | "night";
@@ -137,8 +186,32 @@ export default function AssetStudio({ params }: AssetStudioProps) {
     toRuntimeEnvironment(environmentFor(timeOfDay, "calm"))
   );
   const [glow] = useState(() => createGlowController(glowFor(timeOfDay)));
-  const part = STUDIO_PARTS[params.part];
-  const Model = params.build === "old" ? part.Old : part.New;
+  const found = specForPart(params.part);
+  const spec = found?.spec ?? null;
+  const rakeRadians =
+    INNER_ROTATION[params.type] ??
+    spec?.rakeRadians ??
+    GLB_PARTS[params.type]?.rakeRadians ??
+    0;
+  const source = useMemo<GlbSource>(
+    () => studioSource(params, spec),
+    [params, spec]
+  );
+  const scene = useMemo(() => {
+    if (params.build === "new" && !spec) {
+      setStudioState(
+        "studioError",
+        `No spec for ${params.part}: nothing to load`
+      );
+      return null;
+    }
+    try {
+      return buildStudioScene(params.type);
+    } catch (error) {
+      setStudioState("studioError", (error as Error).message);
+      return null;
+    }
+  }, [params.type, params.build, params.part, spec]);
 
   const partRef = useRef<Group>(null);
 
@@ -156,14 +229,29 @@ export default function AssetStudio({ params }: AssetStudioProps) {
           glow={glow}
         />
         <ReflectionEnvironment timeOfDay={timeOfDay} />
-        <LoadBoundary key={`${params.build}-${params.variant}`}>
-          <Suspense fallback={null}>
-            <group ref={partRef}>
-              <Model variant={params.variant} />
-            </group>
-            <ReadyProbe partRef={partRef} />
-          </Suspense>
-        </LoadBoundary>
+        {scene && (
+          <LoadBoundary key={`${params.build}-${params.variant}`}>
+            <Suspense fallback={null}>
+              <GlbSourceContext.Provider value={source}>
+                <group
+                  ref={partRef}
+                  position={[
+                    -scene.origin[0],
+                    -scene.origin[1],
+                    -scene.origin[2],
+                  ]}
+                >
+                  <PartMesh ship={scene.ship} part={scene.candidate} />
+                </group>
+              </GlbSourceContext.Provider>
+              <ReadyProbe
+                partRef={partRef}
+                expectModel={params.build === "new"}
+                rakeRadians={rakeRadians}
+              />
+            </Suspense>
+          </LoadBoundary>
+        )}
         <PostEffects environment={environment} />
       </Canvas>
     </div>

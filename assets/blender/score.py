@@ -186,6 +186,16 @@ def run(args: argparse.Namespace) -> None:
                 render.render_look(look)
                 renders[view["name"]] = (render.load_rgba(sil), render.load_rgba(look))
                 bpy.data.objects.remove(cam)
+        else:
+            # Other variants get one look render, for the family check-in.
+            look_view = next(
+                (v for v in spec["views"] if v["name"] == "three-quarter"),
+                spec["views"][-1],
+            )
+            render.apply_rake(objs.values(), spec.get("rakeRadians", 0.0))
+            cam = render.place_camera(look_view, eb["min"], eb["max"])
+            render.render_look(os.path.join(out, "renders", f"variant-{name}-look.png"))
+            bpy.data.objects.remove(cam)
 
     per_ref = score_refs(args.part, manifest, args.refs_dir, renders)
     sil = scoring.mean_or_none([r["silhouette"] for r in per_ref])

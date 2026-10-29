@@ -157,6 +157,50 @@ describe("slotMeshesOf", () => {
 });
 
 describe("GlbSlotPart", () => {
+  it("tilts the model and children by rakeRadians, but not the fallback", () => {
+    mockGltf.load = () => ({ scene: sceneWith("body") });
+    const { container } = render(
+      <GlbSlotPart
+        url="/models/test.glb"
+        slots={SLOTS}
+        tint={null}
+        emphasis={null}
+        rakeRadians={0.1}
+        fallback={<group name="fallback" />}
+      >
+        <group name="decals" />
+      </GlbSlotPart>
+    );
+    const raked = container.querySelector("group[rotation]");
+    expect(raked?.getAttribute("rotation")).toBe("0,0,0.1");
+    expect(raked?.querySelector("mesh")).not.toBeNull();
+    expect(raked?.querySelector('group[name="decals"]')).not.toBeNull();
+  });
+
+  it("adds no tilt group without a rake", () => {
+    mockGltf.load = () => ({ scene: sceneWith("body") });
+    const { container } = draw();
+    expect(container.querySelector("group[rotation]")).toBeNull();
+  });
+
+  it("draws the fallback outside the rake when the load fails", () => {
+    mockGltf.load = () => {
+      throw new Error("load failed");
+    };
+    const { container } = render(
+      <GlbSlotPart
+        url="/models/test.glb"
+        slots={SLOTS}
+        tint={null}
+        emphasis={null}
+        rakeRadians={0.1}
+        fallback={<group name="fallback" />}
+      />
+    );
+    expect(container.querySelector('group[name="fallback"]')).not.toBeNull();
+    expect(container.querySelector("group[rotation]")).toBeNull();
+  });
+
   it("draws each slot with its colour and finish, and the children", () => {
     mockGltf.load = () => ({ scene: sceneWith("body", "pipe") });
     const { container } = draw();

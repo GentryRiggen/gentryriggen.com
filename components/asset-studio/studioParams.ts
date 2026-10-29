@@ -1,32 +1,76 @@
-import { PART_SPECS } from "./partSpecs";
+import { PART_TYPES, type PartType } from "@/lib/ship-builder/model/types";
+import { specForPart, type PartSpec } from "./partSpecs";
 
 export const STUDIO_TIMES = ["Day", "Sunset", "Night"] as const;
 export type StudioTime = (typeof STUDIO_TIMES)[number];
 
+/** The view used when a part has no spec yet (measuring). */
+export const DEFAULT_VIEW = "three-quarter";
+
 export interface StudioParams {
+  /** The `part` query value (a Ship Builder part id or a spec id). */
   part: string;
+  /** The Ship Builder part drawn through PartMesh. */
+  type: PartType;
+  /** The spec variant (its glb is `<spec id>/<variant>.glb`); the part id when there is no spec. */
   variant: string;
   build: "old" | "new";
   view: string;
   time: StudioTime;
 }
 
-/** Reads `?part=&variant=&build=&view=&time=`; an unknown value is an error. */
+function isPartType(value: string): value is PartType {
+  return (PART_TYPES as readonly string[]).includes(value);
+}
+
+interface Resolved {
+  type: PartType;
+  spec: PartSpec | null;
+  variant: string;
+}
+
+/**
+ * Works out which game part and spec variant a query names. `part` is a part
+ * id (`funnel-large`) or a spec id (`funnel`); `variant` picks one of a
+ * spec's variants and, when it is itself a part id, the part drawn. For a
+ * single-variant part the variant is the part id.
+ */
+function resolve(part: string, variantParam: string | null): Resolved | string {
+  const found = specForPart(part);
+  const spec = found?.spec ?? null;
+  const variant = variantParam ?? found?.variant ?? part;
+  if (spec) {
+    if (!spec.variants.some((v) => v.name === variant)) {
+      return `Unknown variant "${variant}" for ${part}`;
+    }
+    const type = isPartType(variant) ? variant : isPartType(part) ? part : null;
+    if (!type) return `No Ship Builder part for "${part}" / "${variant}"`;
+    return { type, spec, variant };
+  }
+  if (!isPartType(part)) return `Unknown part "${part}"`;
+  if (variant !== part) return `Unknown variant "${variant}" for ${part}`;
+  return { type: part, spec: null, variant };
+}
+
+/**
+ * Reads `?part=&variant=&build=&view=&time=`; an unknown value is an error.
+ * `variant` defaults to the spec's scoring variant, or the part id for a part
+ * with no spec yet; `view` to the spec's first view named three-quarter.
+ */
 export function parseStudioParams(
   search: string
 ): StudioParams | { error: string } {
   const query = new URLSearchParams(search);
   const part = query.get("part") ?? "";
-  const spec = Object.hasOwn(PART_SPECS, part) ? PART_SPECS[part] : undefined;
-  if (!spec) return { error: `Unknown part "${part}"` };
+  const resolved = resolve(part, query.get("variant"));
+  if (typeof resolved === "string") return { error: resolved };
 
-  const variant = query.get("variant") ?? spec.scoreVariant;
-  if (!spec.variants.some((v) => v.name === variant)) {
-    return { error: `Unknown variant "${variant}" for ${part}` };
-  }
-  const view = query.get("view") ?? "";
-  if (!spec.views.some((v) => v.name === view)) {
+  const view = query.get("view") ?? DEFAULT_VIEW;
+  if (resolved.spec && !resolved.spec.views.some((v) => v.name === view)) {
     return { error: `Unknown view "${view}" for ${part}` };
+  }
+  if (!resolved.spec && view !== DEFAULT_VIEW) {
+    return { error: `Unknown view "${view}" for ${part} (no spec yet)` };
   }
   const build = query.get("build") ?? "";
   if (build !== "old" && build !== "new") {
@@ -36,5 +80,12 @@ export function parseStudioParams(
   if (!(STUDIO_TIMES as readonly string[]).includes(time)) {
     return { error: `Unknown time "${time}"` };
   }
-  return { part, variant, build, view, time: time as StudioTime };
+  return {
+    part,
+    type: resolved.type,
+    variant: resolved.variant,
+    build,
+    view,
+    time: time as StudioTime,
+  };
 }

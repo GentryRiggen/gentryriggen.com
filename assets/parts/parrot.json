@@ -1,0 +1,76 @@
+{
+  "id": "parrot",
+  "script": "parrot",
+  "slots": [
+    "paint-5a3a22",
+    "paint-c8312b",
+    "paint-f2c230",
+    "paint-2f7fc1",
+    "paint-3f9a4a"
+  ],
+  "slotColors": {
+    "paint-5a3a22": {
+      "color": "#5a3a22",
+      "finish": "wood"
+    },
+    "paint-c8312b": {
+      "color": "#c8312b"
+    },
+    "paint-f2c230": {
+      "color": "#f2c230"
+    },
+    "paint-2f7fc1": {
+      "color": "#2f7fc1"
+    },
+    "paint-3f9a4a": {
+      "color": "#3f9a4a"
+    }
+  },
+  "todo": [
+    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
+    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/parrot.py exposing build(dims).",
+    "Add reference images under assets/refs/manifest.json before scoring."
+  ],
+  "budget": {
+    "maxTriangles": 4000,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "parrot",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.11, 0, -0.063],
+        "max": [0.11, 0.435, 0.0887]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "parrot",
+  "generated": "0442c4f61633bd12"
+}

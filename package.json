@@ -8,6 +8,7 @@
     "assets:test": "scripts/assets/blender.sh -P assets/blender/tests/run.py",
     "assets:refs": "node scripts/assets/fetch-refs.mjs",
     "assets:checkin": "node scripts/assets/checkin.mjs",
+    "assets:measure": "node scripts/assets/measure.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

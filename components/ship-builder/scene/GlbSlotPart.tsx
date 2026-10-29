@@ -22,6 +22,8 @@ interface GlbSlotPartProps {
   emphasis: PartEmphasis;
   /** Drawn while the file loads, and for good if it fails. */
   fallback: ReactNode;
+  /** Tilt about Z, applied to the loaded model and `children` (not the fallback). */
+  rakeRadians?: number;
   /** Drawn with the loaded model only (e.g. decals fitted to its surface). */
   children?: ReactNode;
 }
@@ -70,13 +72,20 @@ class FallbackBoundary extends Component<FallbackBoundaryProps> {
 
 type SlotMeshesProps = Omit<GlbSlotPartProps, "fallback">;
 
-function SlotMeshes({ url, slots, tint, emphasis, children }: SlotMeshesProps) {
+function SlotMeshes({
+  url,
+  slots,
+  tint,
+  emphasis,
+  rakeRadians,
+  children,
+}: SlotMeshesProps) {
   // No Draco or meshopt: the files use neither, and Draco would fetch its
   // decoder from a CDN (breaking offline play).
   const { scene } = useGLTF(url, false, false);
   const meshes = slotMeshesOf(scene, Object.keys(slots), url);
-  return (
-    <Tracked state="loaded">
+  const content = (
+    <>
       {meshes.map(({ slot, geometry, matrix, baked }, index) => {
         const look = slots[slot];
         return (
@@ -98,6 +107,15 @@ function SlotMeshes({ url, slots, tint, emphasis, children }: SlotMeshesProps) {
         );
       })}
       {children}
+    </>
+  );
+  return (
+    <Tracked state="loaded">
+      {rakeRadians ? (
+        <group rotation={[0, 0, rakeRadians]}>{content}</group>
+      ) : (
+        content
+      )}
     </Tracked>
   );
 }
