@@ -1,21 +1,17 @@
 {
   "id": "stern-flag",
   "script": "stern-flag",
-  "slots": ["railing", "flag"],
+  "slots": ["pole", "fittings"],
   "slotColors": {
-    "railing": {
+    "pole": {
       "color": "#f3efe4",
       "finish": "wood"
     },
-    "flag": {
-      "color": "#d23c3c"
+    "fittings": {
+      "color": "#d4a94a",
+      "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/stern-flag.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -31,8 +27,8 @@
       "name": "stern-flag",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.7, 0, -0.03],
-        "max": [0.03, 1.5, 0.03]
+        "min": [-0.057, 0, -0.06],
+        "max": [0.057, 1.51, 0.06]
       }
     }
   ],
@@ -57,5 +53,8 @@
     }
   ],
   "scoreVariant": "stern-flag",
-  "generated": "249a3e86207e64cc"
+  "boundsFixed": true,
+  "ao": {
+    "strength": 0.15
+  }
 }
