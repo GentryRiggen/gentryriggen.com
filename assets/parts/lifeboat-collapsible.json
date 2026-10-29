@@ -33,7 +33,14 @@
   "variants": [
     {
       "name": "lifeboat-collapsible",
-      "dims": {},
+      "dims": {
+        "length": 0.9332,
+        "halfBeam": 0.1915,
+        "depth": 0.2,
+        "rimY": -0.1,
+        "sheer": 0.05,
+        "coverHeight": 0.08
+      },
       "expectedBounds": {
         "min": [-0.4666, -0.2993, -0.1915],
         "max": [0.4667, -0.0072, 0.1915]

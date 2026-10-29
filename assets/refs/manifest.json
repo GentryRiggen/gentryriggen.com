@@ -58,5 +58,467 @@
       "mask": null,
       "note": "Hikawa Maru: painted bands, whistle, side profile"
     }
+  ],
+  "lifeboat-standard": [
+    {
+      "file": "Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Lifeboats_on_Olympic_Boat_Deck.jpg/500px-Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic boat deck: wooden lifeboats swung in on davits, tarpaulin covers, davit arms and falls"
+    },
+    {
+      "file": "Boat_Deck_of_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Boat_Deck_of_Titanic.jpg/500px-Boat_Deck_of_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Boat_Deck_of_Titanic.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic boat deck: row of davit arms and boats beyond the bench, funnels behind"
+    },
+    {
+      "file": "Titanic_portside_second_class_boat_deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Titanic_portside_second_class_boat_deck.jpg/500px-Titanic_portside_second_class_boat_deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanic_portside_second_class_boat_deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic second-class boat deck: boats in davits, deckchairs stacked, rails"
+    },
+    {
+      "file": "SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg/500px-SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Open boats under tall black quadrant davits on a deck: clean proportions of hull vs davit"
+    },
+    {
+      "file": "Titanicboat_12.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Titanicboat_12.jpg/500px-Titanicboat_12.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanicboat_12.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Period photo of a crowded open lifeboat alongside the hull: sheer, pointed ends, gunwale"
+    }
+  ],
+  "lifeboat-large": [
+    {
+      "file": "Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Lifeboats_on_Olympic_Boat_Deck.jpg/500px-Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic boat deck: wooden lifeboats swung in on davits, tarpaulin covers, davit arms and falls"
+    },
+    {
+      "file": "Boat_Deck_of_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Boat_Deck_of_Titanic.jpg/500px-Boat_Deck_of_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Boat_Deck_of_Titanic.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic boat deck: row of davit arms and boats beyond the bench, funnels behind"
+    },
+    {
+      "file": "Titanic_portside_second_class_boat_deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Titanic_portside_second_class_boat_deck.jpg/500px-Titanic_portside_second_class_boat_deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanic_portside_second_class_boat_deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic second-class boat deck: boats in davits, deckchairs stacked, rails"
+    },
+    {
+      "file": "SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg/500px-SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Open boats under tall black quadrant davits on a deck: clean proportions of hull vs davit"
+    },
+    {
+      "file": "Titanicboat_12.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Titanicboat_12.jpg/500px-Titanicboat_12.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanicboat_12.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Period photo of a crowded open lifeboat alongside the hull: sheer, pointed ends, gunwale"
+    }
+  ],
+  "lifeboat-collapsible": [
+    {
+      "file": "Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Lifeboats_on_Olympic_Boat_Deck.jpg/500px-Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic boat deck: wooden lifeboats swung in on davits, tarpaulin covers, davit arms and falls"
+    },
+    {
+      "file": "Boat_Deck_of_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Boat_Deck_of_Titanic.jpg/500px-Boat_Deck_of_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Boat_Deck_of_Titanic.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic boat deck: row of davit arms and boats beyond the bench, funnels behind"
+    },
+    {
+      "file": "Titanic_portside_second_class_boat_deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Titanic_portside_second_class_boat_deck.jpg/500px-Titanic_portside_second_class_boat_deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanic_portside_second_class_boat_deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic second-class boat deck: boats in davits, deckchairs stacked, rails"
+    },
+    {
+      "file": "SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg/500px-SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Open boats under tall black quadrant davits on a deck: clean proportions of hull vs davit"
+    },
+    {
+      "file": "Titanicboat_12.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Titanicboat_12.jpg/500px-Titanicboat_12.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanicboat_12.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Period photo of a crowded open lifeboat alongside the hull: sheer, pointed ends, gunwale"
+    }
+  ],
+  "davit": [
+    {
+      "file": "Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Lifeboats_on_Olympic_Boat_Deck.jpg/500px-Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic boat deck: wooden lifeboats swung in on davits, tarpaulin covers, davit arms and falls"
+    },
+    {
+      "file": "Boat_Deck_of_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Boat_Deck_of_Titanic.jpg/500px-Boat_Deck_of_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Boat_Deck_of_Titanic.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic boat deck: row of davit arms and boats beyond the bench, funnels behind"
+    },
+    {
+      "file": "SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg/500px-SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Open boats under tall black quadrant davits on a deck: clean proportions of hull vs davit"
+    },
+    {
+      "file": "Princesse_Marie-Jose_Welin_davit.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Princesse_Marie-Jos%C3%A9_-_Welin_davit%2C_asset_AEiZ9KYIaiPIamYHdvVMc0BP.jpg/500px-Princesse_Marie-Jos%C3%A9_-_Welin_davit%2C_asset_AEiZ9KYIaiPIamYHdvVMc0BP.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Princesse_Marie-Jos%C3%A9_-_Welin_davit,_asset_AEiZ9KYIaiPIamYHdvVMc0BP.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Welin davit drawings: curved quadrant arm, boat in stowed and swung-out positions"
+    },
+    {
+      "file": "Roller_Gravity_Davit.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Roller_Gravity_Davit.JPG/500px-Roller_Gravity_Davit.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Roller_Gravity_Davit.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Modern gravity davit arm and enclosed boat in the stowed position, seen from below"
+    },
+    {
+      "file": "Enclosed_lifeboat.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Enclosed_lifeboat.jpg/500px-Enclosed_lifeboat.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Enclosed_lifeboat.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Orange/red enclosed lifeboat slung in davits against sea: canopy, hooks, davit arms"
+    }
+  ],
+  "davit-side": [
+    {
+      "file": "Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Lifeboats_on_Olympic_Boat_Deck.jpg/500px-Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Lifeboats_on_Olympic_Boat_Deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic boat deck: wooden lifeboats swung in on davits, tarpaulin covers, davit arms and falls"
+    },
+    {
+      "file": "Boat_Deck_of_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Boat_Deck_of_Titanic.jpg/500px-Boat_Deck_of_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Boat_Deck_of_Titanic.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic boat deck: row of davit arms and boats beyond the bench, funnels behind"
+    },
+    {
+      "file": "SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg/500px-SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:SS_Stevens_boat_deck_view_05_port_side_life_boats.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Open boats under tall black quadrant davits on a deck: clean proportions of hull vs davit"
+    },
+    {
+      "file": "Princesse_Marie-Jose_Welin_davit.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Princesse_Marie-Jos%C3%A9_-_Welin_davit%2C_asset_AEiZ9KYIaiPIamYHdvVMc0BP.jpg/500px-Princesse_Marie-Jos%C3%A9_-_Welin_davit%2C_asset_AEiZ9KYIaiPIamYHdvVMc0BP.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Princesse_Marie-Jos%C3%A9_-_Welin_davit,_asset_AEiZ9KYIaiPIamYHdvVMc0BP.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Welin davit drawings: curved quadrant arm, boat in stowed and swung-out positions"
+    },
+    {
+      "file": "Roller_Gravity_Davit.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Roller_Gravity_Davit.JPG/500px-Roller_Gravity_Davit.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Roller_Gravity_Davit.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Modern gravity davit arm and enclosed boat in the stowed position, seen from below"
+    },
+    {
+      "file": "Enclosed_lifeboat.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Enclosed_lifeboat.jpg/500px-Enclosed_lifeboat.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Enclosed_lifeboat.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Orange/red enclosed lifeboat slung in davits against sea: canopy, hooks, davit arms"
+    }
+  ],
+  "lifeboat-enclosed": [
+    {
+      "file": "Roller_Gravity_Davit.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Roller_Gravity_Davit.JPG/500px-Roller_Gravity_Davit.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Roller_Gravity_Davit.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Modern gravity davit arm and enclosed boat in the stowed position, seen from below"
+    },
+    {
+      "file": "Enclosed_lifeboat.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Enclosed_lifeboat.jpg/500px-Enclosed_lifeboat.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Enclosed_lifeboat.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Orange/red enclosed lifeboat slung in davits against sea: canopy, hooks, davit arms"
+    },
+    {
+      "file": "SPL_Princess_Anastasia_partially_enclosed_Lifeboat_15_Tallinn_25_April_2014.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/SPL_Princess_Anastasia_partially_enclosed_Lifeboat_15_Tallinn_25_April_2014.JPG/500px-SPL_Princess_Anastasia_partially_enclosed_Lifeboat_15_Tallinn_25_April_2014.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:SPL_Princess_Anastasia_partially_enclosed_Lifeboat_15_Tallinn_25_April_2014.JPG",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Partially enclosed cruise-ship lifeboat hung on falls: white hull, orange canopy, rubbing strake"
+    },
+    {
+      "file": "Island_Princess_Lifeboats_Training_Lifeboat_17_and_Lifeboat_15_Port_of_Tallinn_6_July_2022.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Island_Princess_Lifeboats_Training_Lifeboat_17_and_Lifeboat_15_Port_of_Tallinn_6_July_2022.jpg/500px-Island_Princess_Lifeboats_Training_Lifeboat_17_and_Lifeboat_15_Port_of_Tallinn_6_July_2022.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Island_Princess_Lifeboats_Training_Lifeboat_17_and_Lifeboat_15_Port_of_Tallinn_6_July_2022.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Two cruise tenders/lifeboats on the water: white hull, orange canopy, small windows"
+    },
+    {
+      "file": "Fully_enclosed_lifeboat_yellow.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Fully_enclosed_lifeboat_yellow.jpg/500px-Fully_enclosed_lifeboat_yellow.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Fully_enclosed_lifeboat_yellow.jpg",
+      "license": "Public domain",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Fully enclosed yellow lifeboat on cradle seen from the bow: domed canopy, hatch, searchlight"
+    }
+  ],
+  "lifeboat-freefall": [
+    {
+      "file": "Fully_enclosed_lifeboat_yellow.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Fully_enclosed_lifeboat_yellow.jpg/500px-Fully_enclosed_lifeboat_yellow.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Fully_enclosed_lifeboat_yellow.jpg",
+      "license": "Public domain",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Fully enclosed yellow lifeboat on cradle seen from the bow: domed canopy, hatch, searchlight"
+    },
+    {
+      "file": "Freefall_lifeboat.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Freefall_lifeboat.JPG/500px-Freefall_lifeboat.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Freefall_lifeboat.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Red freefall lifeboat on its slide rail, nose down on a bulk carrier stern"
+    },
+    {
+      "file": "Freefall_lifeboat_1.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/Freefall_lifeboat_1.JPG/500px-Freefall_lifeboat_1.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Freefall_lifeboat_1.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Freefall lifeboat tilted on its launch ramp against sky: streamlined enclosed shape"
+    },
+    {
+      "file": "Freefall_lifeboat_of_the_Bulk_carrier_Ikan_Kerapu,_August_2021_01.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Freefall_lifeboat_of_the_Bulk_carrier_Ikan_Kerapu%2C_August_2021_01.jpg/500px-Freefall_lifeboat_of_the_Bulk_carrier_Ikan_Kerapu%2C_August_2021_01.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Freefall_lifeboat_of_the_Bulk_carrier_Ikan_Kerapu,_August_2021_01.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Freefall lifeboat on the stern ramp, distant view"
+    },
+    {
+      "file": "Freefall_lifeboat_of_the_Bulk_carrier_W-Smash,_August_2021_01.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Freefall_lifeboat_of_the_Bulk_carrier_W-Smash%2C_August_2021_01.jpg/500px-Freefall_lifeboat_of_the_Bulk_carrier_W-Smash%2C_August_2021_01.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Freefall_lifeboat_of_the_Bulk_carrier_W-Smash,_August_2021_01.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Freefall lifeboat on stern ramp, distant view for placement"
+    }
+  ],
+  "rib-boat": [
+    {
+      "file": "RIB_720.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/RIB_720.jpg/500px-RIB_720.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:RIB_720.jpg",
+      "license": "CC BY 3.0 rs",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Black rigid inflatable: tubular collar tapering to the bow, console, outboard"
+    },
+    {
+      "file": "006_RHIB_SEACAT_2021.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/006_RHIB_SEACAT_2021.jpg/500px-006_RHIB_SEACAT_2021.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:006_RHIB_SEACAT_2021.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "RHIB alongside a ship: grey tube collar, rigid floor, boarding crew"
+    },
+    {
+      "file": "Thor_8.0,_Interboot_2023,_Friedrichshafen_(P1120662).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Thor_8.0%2C_Interboot_2023%2C_Friedrichshafen_%28P1120662%29.jpg/500px-Thor_8.0%2C_Interboot_2023%2C_Friedrichshafen_%28P1120662%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Thor_8.0,_Interboot_2023,_Friedrichshafen_(P1120662).jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Large RIB on trailer: tube collar, console with bimini, outboard on transom"
+    }
+  ],
+  "raft-canister": [
+    {
+      "file": "Life_raft_cylinder,_Royal_Daffodil_-_DSC00554.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Life_raft_cylinder%2C_Royal_Daffodil_-_DSC00554.JPG/500px-Life_raft_cylinder%2C_Royal_Daffodil_-_DSC00554.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Life_raft_cylinder,_Royal_Daffodil_-_DSC00554.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": [20, 60, 465, 270],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.6,
+        "invert": true
+      },
+      "note": "White GRP liferaft canister in a cradle with black webbing straps"
+    },
+    {
+      "file": "Life_raft_on_Aranda_20260827.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Life_raft_on_Aranda_20260827.jpg/500px-Life_raft_on_Aranda_20260827.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Life_raft_on_Aranda_20260827.jpg",
+      "license": "CC BY 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Liferaft canister on a deck frame: domed end caps, seam band, painted instructions"
+    },
+    {
+      "file": "Rescue_inflatable_raft_container_at_Moskva-705.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Rescue_inflatable_raft_container_at_Moskva-705.jpg/500px-Rescue_inflatable_raft_container_at_Moskva-705.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Rescue_inflatable_raft_container_at_Moskva-705.jpg",
+      "license": "CC0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Canister in a cradle with two retaining straps and a seam ring"
+    },
+    {
+      "file": "Madeira-Lobo_Marinho_(ship)-DSB_Life_raft_containers-02ASD.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Madeira-Lobo_Marinho_%28ship%29-DSB_Life_raft_containers-02ASD.jpg/500px-Madeira-Lobo_Marinho_%28ship%29-DSB_Life_raft_containers-02ASD.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Madeira-Lobo_Marinho_(ship)-DSB_Life_raft_containers-02ASD.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Row of liferaft canisters in tilted cradles along a rail"
+    }
   ]
 }
