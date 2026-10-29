@@ -1,0 +1,61 @@
+{
+  "id": "ship-anchor",
+  "script": "ship-anchor",
+  "slots": ["paint-33383d", "paint-5a3a22"],
+  "slotColors": {
+    "paint-33383d": {
+      "color": "#33383d",
+      "finish": "metal"
+    },
+    "paint-5a3a22": {
+      "color": "#5a3a22"
+    }
+  },
+  "todo": [
+    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
+    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/ship-anchor.py exposing build(dims).",
+    "Add reference images under assets/refs/manifest.json before scoring.",
+    "Some slots use the glass or wood finish; slotColors only records paint and metal, so set the finish in the registry entry."
+  ],
+  "budget": {
+    "maxTriangles": 4000,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "ship-anchor",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.365, -0.0234, -0.2813],
+        "max": [0.3, 0.1034, 0.2813]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "ship-anchor"
+}

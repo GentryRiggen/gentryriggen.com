@@ -1,5 +1,11 @@
-import { BoxGeometry, Group, Mesh } from "three";
-import { partBounds } from "../partBounds";
+import {
+  BoxGeometry,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+} from "three";
+import { paletteNames, partBounds, partSlots } from "../partBounds";
 
 describe("partBounds", () => {
   it("is null without geometry", () => {
@@ -28,5 +34,31 @@ describe("partBounds", () => {
       min: [-0.5, 0, -0.5],
       max: [0.5, 4, 0.5],
     });
+  });
+});
+
+describe("partSlots", () => {
+  it("groups meshes by shared paint and names palette colours", () => {
+    const red = new MeshStandardMaterial({ color: "#ff0000", roughness: 0.55 });
+    const steel = new MeshStandardMaterial({
+      color: "#112233",
+      roughness: 0.4,
+      metalness: 0.6,
+    });
+    const root = new Group();
+    root.add(
+      new Mesh(new BoxGeometry(), red),
+      new Mesh(new BoxGeometry(), red)
+    );
+    root.add(new Mesh(new BoxGeometry(), steel));
+    root.add(new Mesh(new BoxGeometry(), new MeshBasicMaterial()));
+    const slots = partSlots(root, paletteNames({ hull: { stern: "#ff0000" } }));
+    expect(slots.map((s) => [s.name, s.finish, s.meshes, s.triangles])).toEqual(
+      [
+        ["hull-stern", "paint", 2, 24],
+        ["paint-112233", "metal", 1, 12],
+        ["unlit", "paint", 1, 12],
+      ]
+    );
   });
 });

@@ -27,13 +27,16 @@ import {
 import { glbLoadStatus } from "@/components/ship-builder/scene/glbLoadStatus";
 import { GLB_PARTS } from "@/components/ship-builder/scene/glbRegistry";
 import PartMesh from "@/components/ship-builder/scene/PartMesh";
-import { partBounds } from "./partBounds";
+import { PALETTE } from "@/components/ship-builder/scene/palette";
+import { paletteNames, partBounds, partSlots } from "./partBounds";
 import { specForPart } from "./partSpecs";
 import { sceneHasPart } from "./sceneHasPart";
 import { cameraForView } from "./studioCamera";
 import type { StudioParams } from "./studioParams";
 import { buildStudioScene } from "./studioShip";
 import { studioSource } from "./studioSource";
+
+const PALETTE_NAMES = paletteNames(PALETTE);
 
 /** Frames drawn after the model loads before the studio calls itself ready. */
 const SETTLE_FRAMES = 3;
@@ -73,6 +76,9 @@ function ReadyProbe({ partRef, expectModel, rakeRadians }: ReadyProbeProps) {
     if (partRef.current && sceneHasPart(partRef.current)) {
       const bounds = partBounds(partRef.current, rakeRadians);
       document.body.dataset.studioBounds = JSON.stringify(bounds);
+      document.body.dataset.studioSlots = JSON.stringify(
+        partSlots(partRef.current, PALETTE_NAMES)
+      );
       setStudioState("studioReady", "1");
     } else setStudioState("studioError", "No part in the scene");
   });

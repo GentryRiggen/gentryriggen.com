@@ -24,6 +24,19 @@ export function specIndexSource(files) {
   return lines.join("\n");
 }
 
+/** Formats a file like the rest of the repo, so the format check stays green. */
+export function prettify(root, ...paths) {
+  spawnSync(
+    process.execPath,
+    [
+      join(root, "node_modules", "prettier", "bin", "prettier.cjs"),
+      "--write",
+      ...paths,
+    ],
+    { stdio: "ignore" }
+  );
+}
+
 export function writeSpecIndex(root) {
   const dir = join(root, "assets", "parts");
   const files = readdirSync(dir)
@@ -37,11 +50,6 @@ export function writeSpecIndex(root) {
     // first run
   }
   writeFileSync(path, specIndexSource(files));
-  // Format it like the rest of the repo, so the format check stays green.
-  spawnSync(
-    process.execPath,
-    [join(root, "node_modules", "prettier", "bin", "prettier.cjs"), "--write", path],
-    { stdio: "ignore" }
-  );
+  prettify(root, path);
   return readFileSync(path, "utf8") !== before;
 }
