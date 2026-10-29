@@ -55,6 +55,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "raft-canister",
-  "generated": "b7af07613208cf48"
+  "scoreVariant": "raft-canister"
 }
