@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.10.0",
+    date: "2026-10-29",
+    title: "A world worth flying through",
+    highlights: [
+      "Trees, barns, balloons, skyscrapers and the rest of the world are new: pine and leafy trees, a red barn with white doors, striped hot-air balloons with baskets, Art Deco and glass towers, and coconut palms",
+      "Canyon walls and rock arches are built from layered rock, icebergs are chunky blocks of ice, peaks wear snowy caps, and storm clouds are heaps of puffy lumps",
+      "Seagulls now have white bodies, dark wings and yellow beaks",
+      "Every one still fits the same invisible box as before, so nothing is harder or easier to hit",
+      "Each world keeps its own colours",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "2026-10-29",
     title: "Planes that look like real planes",

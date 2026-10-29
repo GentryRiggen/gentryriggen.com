@@ -98,6 +98,10 @@ Same loop, for `components/plane-builder`. `assets/plane-pieces.json` lists the 
 - `assets:checkin -- <unit> <unit> ...` builds the family sheet as for Ship Builder (use at most 7 rows per sheet: a taller page fails to screenshot). `assets:ship -- plane-<piece>` copies the glbs to `public/plane-builder/models/<spec>/<unit>.glb`.
 - In game, `PlaneGlbUnit` loads the glb and draws each mesh with the plane's own materials (palette, gold and glow trims apply; baked AO is multiplied in), falling back to the procedural unit while loading or on failure. `preloadPlaneModels()` fetches them on mount. Plane Builder has no service worker, so there is no offline cache.
 
+### Plane Builder obstacles
+
+Each obstacle kind is a spec `assets/parts/obstacle-<kind>.json` (`"game": "plane"`, one variant per glb) and a script `assets/blender/parts/obstacle-<kind>.py` (helpers in `lib/obstaclekit.py`). The model is built in metres at the obstacle's typical size and `finish()` fits its bounding box exactly into the unit box (-0.5..0.5): the game stretches that box to each obstacle's half-extents, and collision is the box, so the model fills it. Meshes are named by colour role: `soft` and `hard` take the level palette, the rest are the fixed colours in `components/plane-builder/scene/obstacleModels.ts`. `renderScale` in the spec stretches the model for the Blender renders and the studio only, so you judge it at the shape the game draws. All variants of a kind share one slot list. At load, `obstacleGeometryFromScene` merges the glb into one vertex-coloured geometry (slot colour x baked AO) and `Obstacles.tsx` draws one instanced mesh per variant, with the procedural shape as the fallback. `/asset-studio?game=plane&part=obstacle-tree&variant=pine&build=old|new` draws one in its level's palette. Variants are picked by a stable hash of the obstacle's position. Plane Builder has no service worker, so there is no offline cache to update.
+
 ## Ports and worktrees
 
 Checkout-safe by design:
