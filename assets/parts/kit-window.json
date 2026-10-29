@@ -1,0 +1,59 @@
+{
+  "id": "kit-window",
+  "script": "kit-window",
+  "slots": ["frame"],
+  "slotColors": {
+    "frame": {
+      "color": "#ffffff"
+    }
+  },
+  "budget": {
+    "maxTriangles": 400,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "kit-window",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.01, -0.185, -0.15],
+        "max": [0.032, 0.14, 0.15]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 60,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "kit-window",
+  "boundsFixed": true,
+  "kit": true,
+  "ao": {
+    "strength": 0.6,
+    "distance": 0.05,
+    "samples": 64,
+    "ground": false
+  }
+}

@@ -1,4 +1,4 @@
-import type { BufferGeometry } from "three";
+import { Quaternion, Vector3, type BufferGeometry, type Matrix4 } from "three";
 import { NO_JOINED_SIDES } from "@/lib/ship-builder/model/blockSides";
 import {
   BRIDGE_WINDOW_ROWS,
@@ -230,5 +230,90 @@ describe("trimBand", () => {
         expect(distance).toBeLessThanOrEqual(0.0675 + 1e-6);
       }
     }
+  });
+});
+
+describe("detail kit placements", () => {
+  const origin = new Vector3();
+  const outward = new Vector3(1, 0, 0);
+
+  /** Where a placement puts the kit piece's origin and its +X (outward) axis. */
+  function placed(matrix: Matrix4) {
+    const position = origin.clone().applyMatrix4(matrix);
+    const facing = outward.clone().transformDirection(matrix).round();
+    return { position, facing };
+  }
+
+  it("places one window piece per pane, facing out from its face", () => {
+    const g = buildWindowGeometries({ x: 1, z: 1 }, CABIN_WINDOW_ROWS);
+    expect(g.kit.windows).toHaveLength(4 * 2);
+    expect(g.kit.windscreens).toHaveLength(0);
+    expect(g.kit.wings).toHaveLength(0);
+    for (const matrix of g.kit.windows) {
+      const { position, facing } = placed(matrix);
+      // The face is 0.48 out from the centre, along the way the piece faces.
+      const lateral = Math.abs(position.x) > Math.abs(position.z);
+      expect(lateral ? Math.abs(position.x) : Math.abs(position.z)).toBeCloseTo(
+        0.48
+      );
+      expect(position.y).toBeCloseTo(0.62);
+      expect(facing.dot(position.clone().setY(0))).toBeGreaterThan(0);
+    }
+  });
+
+  it("scales a window piece from its modelled size to the pane", () => {
+    const g = buildWindowGeometries({ x: 1, z: 1 }, [
+      { face: "x+", y: 0.5, height: 0.44, width: 0.3, perCell: 1 },
+    ]);
+    const scale = new Vector3();
+    g.kit.windows[0].decompose(new Vector3(), new Quaternion(), scale);
+    expect(scale.y).toBeCloseTo(0.44 / 0.22);
+    expect(scale.z).toBeCloseTo(0.3 / 0.2);
+  });
+
+  it("places no kit pieces on a joined side", () => {
+    const joined = { ...NO_JOINED_SIDES, bow: true };
+    const g = buildWindowGeometries(
+      { x: 1, z: 1 },
+      CABIN_WINDOW_ROWS,
+      () => false,
+      undefined,
+      joined
+    );
+    expect(g.kit.windows).toHaveLength(3 * 2);
+    for (const matrix of g.kit.windows) {
+      expect(placed(matrix).position.x).toBeLessThan(0.4);
+    }
+  });
+
+  it("lays a bridge's front band as windscreen units and adds both wings", () => {
+    const g = buildWindowGeometries(
+      { x: 2, z: 2 },
+      BRIDGE_WINDOW_ROWS,
+      () => false,
+      0.8
+    );
+    expect(g.kit.windscreens.length).toBeGreaterThanOrEqual(2);
+    for (const matrix of g.kit.windscreens) {
+      expect(placed(matrix).facing.x).toBe(1);
+    }
+    expect(g.kit.wings).toHaveLength(2);
+    const sides = g.kit.wings.map((m) => placed(m).position.z).sort();
+    expect(sides[0]).toBeLessThan(0);
+    expect(sides[1]).toBeGreaterThan(0);
+    // The port wing is turned half a circle so it faces outboard (-Z).
+    const port = g.kit.wings.find((m) => placed(m).position.z < 0)!;
+    expect(new Vector3(0, 0, 1).transformDirection(port).z).toBeCloseTo(-1);
+  });
+
+  it("skips a wing on a joined side", () => {
+    const g = buildWindowGeometries(
+      { x: 2, z: 2 },
+      BRIDGE_WINDOW_ROWS,
+      () => false,
+      0.8,
+      { ...NO_JOINED_SIDES, port: true }
+    );
+    expect(g.kit.wings).toHaveLength(1);
   });
 });

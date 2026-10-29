@@ -1,4 +1,12 @@
-import { BoxGeometry, BufferGeometry, Float32BufferAttribute } from "three";
+import {
+  BoxGeometry,
+  BufferGeometry,
+  Euler,
+  Float32BufferAttribute,
+  Matrix4,
+  Quaternion,
+  Vector3,
+} from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
   NO_JOINED_SIDES,
@@ -114,6 +122,52 @@ function faceBox(
     : box(width, height, depth, along, row.y + dy, distance);
 }
 
+/**
+ * Sizes the detail kit's pieces are modelled at (assets/parts/kit-*.json): a
+ * placement scales a piece from these to the slot it fills.
+ */
+export const KIT_WINDOW = { width: 0.2, height: 0.22 };
+export const KIT_WINDSCREEN = { unit: 0.4, height: 0.26 };
+export const KIT_WING = { length: 1, depth: 0.19 };
+
+/** Where each kit piece goes on a block, as one matrix per instance. */
+export interface KitPlacements {
+  windows: Matrix4[];
+  windscreens: Matrix4[];
+  wings: Matrix4[];
+}
+
+/** Yaw that turns a piece facing +X to face outward from each block face. */
+const FACE_YAW: Record<Face, number> = {
+  "x+": 0,
+  "x-": Math.PI,
+  "z+": -Math.PI / 2,
+  "z-": Math.PI / 2,
+};
+
+/**
+ * A kit piece (modelled facing +X, its origin on the wall's face, centred on
+ * its opening) set on a block face: `along` the face from its centre, at
+ * height `y`, scaled `stretchY` tall and `stretchAlong` wide.
+ */
+function facePlacement(
+  face: Face,
+  size: BlockSize,
+  along: number,
+  y: number,
+  stretchY: number,
+  stretchAlong: number
+): Matrix4 {
+  const isXFace = face[0] === "x";
+  const sign = face[1] === "+" ? 1 : -1;
+  const distance = sign * (isXFace ? size.x : size.z) * FACE_INSET;
+  return new Matrix4().compose(
+    isXFace ? new Vector3(distance, y, along) : new Vector3(along, y, distance),
+    new Quaternion().setFromEuler(new Euler(0, FACE_YAW[face], 0)),
+    new Vector3(1, stretchY, stretchAlong)
+  );
+}
+
 export interface WindowGeometries {
   /** Panes that stay dark at night, and a bridge's dark band. */
   glass: BufferGeometry | null;
@@ -123,6 +177,12 @@ export interface WindowGeometries {
   litHalo: BufferGeometry | null;
   /** Each pane's frame (a ring with a wider sill) and a band's mullions. Null when no face has windows. */
   frames: BufferGeometry | null;
+  /**
+   * The same frames (and a bridge's wings) as detail-kit placements. The
+   * game draws these instead of `frames` once the kit's files have loaded;
+   * `frames` is the stand-in until then.
+   */
+  kit: KitPlacements;
 }
 
 /**
@@ -146,6 +206,7 @@ export function buildWindowGeometries(
   const litGlass: BoxGeometry[] = [];
   const litHalo: BoxGeometry[] = [];
   const frames: BufferGeometry[] = [];
+  const kit: KitPlacements = { windows: [], windscreens: [], wings: [] };
   let paneIndex = 0;
   const frameDepth = FRAME_PROUD + FRAME_BACK;
   const frameMid = (FRAME_PROUD - FRAME_BACK) / 2;
@@ -205,6 +266,18 @@ export function buildWindowGeometries(
     }
     for (const slot of slotCentres(length, row)) {
       const along = slot + shift;
+      if (row.width !== undefined) {
+        kit.windows.push(
+          facePlacement(
+            row.face,
+            size,
+            along,
+            row.y,
+            row.height / KIT_WINDOW.height,
+            paneWidth / KIT_WINDOW.width
+          )
+        );
+      }
       bar(along, frameWidth, FRAME_MARGIN, row.height / 2 + FRAME_MARGIN / 2);
       const sideOffset = paneWidth / 2 + FRAME_MARGIN / 2;
       bar(along - sideOffset, FRAME_MARGIN, row.height, 0);
@@ -252,6 +325,22 @@ export function buildWindowGeometries(
       }
     }
     if (row.width === undefined) {
+      // A band is a run of windscreen units edge to edge; neighbouring posts
+      // read as the mullions.
+      const units = Math.max(1, Math.round(frameWidth / KIT_WINDSCREEN.unit));
+      const pitch = frameWidth / units;
+      for (let i = 0; i < units; i++) {
+        kit.windscreens.push(
+          facePlacement(
+            row.face,
+            size,
+            shift - frameWidth / 2 + pitch * (i + 0.5),
+            row.y,
+            row.height / KIT_WINDSCREEN.height,
+            pitch / KIT_WINDSCREEN.unit
+          )
+        );
+      }
       // Light mullions break the continuous band into panes.
       const panes = Math.max(2, Math.round(length));
       for (let i = 1; i < panes; i++) {
@@ -267,12 +356,14 @@ export function buildWindowGeometries(
   if (wingsHeight !== undefined) {
     const wings = buildBridgeWings(size, wingsHeight, joined);
     if (wings) frames.push(wings);
+    kit.wings.push(...bridgeWingPlacements(size, wingsHeight, joined));
   }
   return {
     glass: glass.length > 0 ? mergeGeometries(glass) : null,
     litGlass: litGlass.length > 0 ? mergeGeometries(litGlass) : null,
     litHalo: litHalo.length > 0 ? mergeGeometries(litHalo) : null,
     frames: frames.length > 0 ? mergeGeometries(frames) : null,
+    kit,
   };
 }
 
@@ -421,6 +512,44 @@ export const BRIDGE_WINDOW_ROWS: WindowRow[] = [
   { face: "x-", y: 0.5, height: 0.22, width: 0.22, perCell: 2, band: true },
 ];
 
+/** Where a bridge's wings sit: the same numbers for the boxes and the kit. */
+function wingSpot(size: BlockSize, height: number) {
+  const reach = size.z * 0.5;
+  const inner = size.z * FACE_INSET - 0.16;
+  return {
+    reach,
+    inner,
+    deckLength: Math.min(size.x * 0.6, size.x - 0.3),
+    deckDepth: reach - inner,
+    deckY: height - 0.1,
+  };
+}
+
+/**
+ * The bridge wings as kit placements: the cab-end piece (built for the
+ * starboard side, outboard +Z) stretched to the deck, and turned half a
+ * circle on the port side.
+ */
+export function bridgeWingPlacements(
+  size: BlockSize,
+  height: number,
+  joined: BlockSides = NO_JOINED_SIDES
+): Matrix4[] {
+  const { inner, deckLength, deckDepth, deckY } = wingSpot(size, height);
+  const placements: Matrix4[] = [];
+  for (const sign of [-1, 1] as const) {
+    if (joined[sign > 0 ? "starboard" : "port"]) continue;
+    placements.push(
+      new Matrix4().compose(
+        new Vector3(0, deckY, sign * inner),
+        new Quaternion().setFromEuler(new Euler(0, sign > 0 ? 0 : Math.PI, 0)),
+        new Vector3(deckLength / KIT_WING.length, 1, deckDepth / KIT_WING.depth)
+      )
+    );
+  }
+  return placements;
+}
+
 /**
  * Small wings at both ends of a bridge's roof, across the ship, reaching the
  * cell edge but no further: a thin wing deck with a low screen at its outer
@@ -432,11 +561,7 @@ export function buildBridgeWings(
   joined: BlockSides = NO_JOINED_SIDES
 ): BufferGeometry | null {
   const parts: BoxGeometry[] = [];
-  const reach = size.z * 0.5;
-  const inner = size.z * FACE_INSET - 0.16;
-  const deckLength = Math.min(size.x * 0.6, size.x - 0.3);
-  const deckDepth = reach - inner;
-  const deckY = height - 0.1;
+  const { reach, inner, deckLength, deckDepth, deckY } = wingSpot(size, height);
   for (const sign of [-1, 1] as const) {
     // +z is the starboard side, -z the port side.
     if (joined[sign > 0 ? "starboard" : "port"]) continue;

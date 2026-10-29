@@ -12,6 +12,8 @@ import {
 } from "./blockDetailGeometry";
 import { Balconies, type Face } from "./cruiseParts";
 import GlowSurface from "./GlowSurface";
+import KitInstances from "./KitInstances";
+import { useKitGeometry } from "./kitModels";
 import { AdditiveGlow } from "./GlowShapes";
 import { isWindowLit, WINDOW_GLOW, windowGroupOf } from "./lightColors";
 import { PALETTE } from "./palette";
@@ -90,6 +92,13 @@ export default function BlockDetails({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasWindows, isBridge, sizeX, sizeZ, height, litFraction, seed, joinedKey]
   );
+  const windowKit = useKitGeometry("kit-window");
+  const windscreenKit = useKitGeometry("kit-windscreen");
+  const wingKit = useKitGeometry("kit-bridge-wing");
+  // A piece's frames draw from the kit once its file has loaded; the boxes in
+  // `windows.frames` stand in until then (and cover any piece that failed).
+  const kitFramesReady =
+    windowKit !== null && (!isBridge || (windscreenKit && wingKit));
   useEffect(
     () => () => {
       windows?.glass?.dispose();
@@ -107,10 +116,37 @@ export default function BlockDetails({
       )}
       {windows && (
         <>
-          {windows.frames && (
-            <mesh geometry={windows.frames}>
-              <Surface color={PALETTE.windowFrame} {...surface} />
-            </mesh>
+          {kitFramesReady ? (
+            <>
+              <KitInstances
+                geometry={windowKit}
+                matrices={windows.kit.windows}
+                color={PALETTE.windowFrame}
+                {...surface}
+              />
+              {windscreenKit && (
+                <KitInstances
+                  geometry={windscreenKit}
+                  matrices={windows.kit.windscreens}
+                  color={PALETTE.windowFrame}
+                  {...surface}
+                />
+              )}
+              {wingKit && (
+                <KitInstances
+                  geometry={wingKit}
+                  matrices={windows.kit.wings}
+                  color={PALETTE.windowFrame}
+                  {...surface}
+                />
+              )}
+            </>
+          ) : (
+            windows.frames && (
+              <mesh geometry={windows.frames}>
+                <Surface color={PALETTE.windowFrame} {...surface} />
+              </mesh>
+            )
           )}
           {windows.glass && (
             <mesh geometry={windows.glass}>
