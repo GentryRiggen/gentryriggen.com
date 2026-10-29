@@ -1,23 +1,18 @@
 {
   "id": "container",
   "script": "container",
-  "slots": ["paint-ee8a2c", "containerSteel"],
+  "slots": ["body", "steel"],
   "slotColors": {
-    "paint-ee8a2c": {
+    "body": {
       "color": "#ee8a2c"
     },
-    "containerSteel": {
+    "steel": {
       "color": "#5f666d",
       "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/container.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 1200,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -56,6 +51,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "container",
-  "generated": "ead59f24da51ea65"
+  "scoreVariant": "container"
 }
