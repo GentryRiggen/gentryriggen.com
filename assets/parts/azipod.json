@@ -1,20 +1,15 @@
 {
   "id": "azipod",
   "script": "azipod",
-  "slots": ["paint-8d98a5", "propeller"],
+  "slots": ["pod", "propeller"],
   "slotColors": {
-    "paint-8d98a5": {
+    "pod": {
       "color": "#8d98a5"
     },
     "propeller": {
       "color": "#b08d57"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/azipod.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -30,8 +25,8 @@
       "name": "azipod",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.525, -0.44, -0.44],
-        "max": [0.4, 0.6, 0.44]
+        "min": [-0.52, -0.42, -0.42],
+        "max": [0.4, 0.6, 0.42]
       }
     }
   ],
@@ -56,5 +51,7 @@
     }
   ],
   "scoreVariant": "azipod",
-  "generated": "44c322777ef6ca6d"
+  "ao": {
+    "ground": false
+  }
 }
