@@ -20,7 +20,7 @@
     "Add reference images under assets/refs/manifest.json before scoring."
   ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 800,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -59,6 +59,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "lifeboat-enclosed",
-  "generated": "615af783cd5d8f66"
+  "scoreVariant": "lifeboat-enclosed"
 }

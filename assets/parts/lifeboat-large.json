@@ -21,7 +21,7 @@
     "Add reference images under assets/refs/manifest.json before scoring."
   ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 800,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -33,7 +33,14 @@
   "variants": [
     {
       "name": "lifeboat-large",
-      "dims": {},
+      "dims": {
+        "length": 1.9428,
+        "halfBeam": 0.2461,
+        "depth": 0.35,
+        "rimY": -0.1,
+        "sheer": 0.09,
+        "coverHeight": 0.076
+      },
       "expectedBounds": {
         "min": [-0.9714, -0.4487, -0.2461],
         "max": [0.9714, -0.0044, 0.2461]
@@ -60,6 +67,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "lifeboat-large",
-  "generated": "5e7feadd4dc722a1"
+  "scoreVariant": "lifeboat-large"
 }

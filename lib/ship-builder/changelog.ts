@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.26.0",
+    date: "2026-10-28",
+    title: "Real lifeboats, davits and liferafts",
+    highlights: [
+      "Wooden lifeboats now have planked sides and a canvas cover, and hang from real curved davits",
+      "The orange enclosed lifeboat has a rounded roof with windows, and the freefall boat slides down its ramp",
+      "The rescue boat is a rubber RIB with fat grey tubes and a little steering console",
+      "Liferaft canisters sit on cradles with orange straps",
+    ],
+  },
+  {
     version: "2.25.0",
     date: "2026-10-28",
     title: "Real propellers, rudders and a sleek funnel",

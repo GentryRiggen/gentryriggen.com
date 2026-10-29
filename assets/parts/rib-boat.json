@@ -16,7 +16,7 @@
     "Add reference images under assets/refs/manifest.json before scoring."
   ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 800,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -55,6 +55,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "rib-boat",
-  "generated": "4bee26fc7b35c280"
+  "scoreVariant": "rib-boat"
 }

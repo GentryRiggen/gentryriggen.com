@@ -14,7 +14,7 @@
     "Add reference images under assets/refs/manifest.json before scoring."
   ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 450,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -53,6 +53,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "davit",
-  "generated": "f5b64329a02b3aa5"
+  "scoreVariant": "davit"
 }
