@@ -15,7 +15,7 @@
     }
   },
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 3000,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
