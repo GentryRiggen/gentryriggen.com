@@ -67,7 +67,7 @@ Prettier: double quotes, semicolons, trailing commas (es5), 80 char width, 2-spa
 Every Ship Builder change that ships to users (anything in `components/ship-builder`, `lib/ship-builder`, `app/ship-builder`, `public/ship-builder/models` or `public/ship-builder-sw.js`) is a release:
 
 1. Bump `SHIP_BUILDER_VERSION` in `lib/ship-builder/version.ts` (semver: patch for fixes, minor for features, major for big new modes).
-2. Add a matching entry at the top of `CHANGELOG` in `lib/ship-builder/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/ship-builder components/ship-builder app/ship-builder`), in plain words a young builder or their parent would follow.
+2. Add a matching entry at the top of `CHANGELOG` in `lib/ship-builder/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/ship-builder components/ship-builder app/ship-builder public/ship-builder/models`), in plain words a young builder or their parent would follow.
 
 The Versions page (`/ship-builder/versions`, linked from the version label) renders the changelog. `lib/ship-builder/__tests__/changelog.test.ts` fails if the version and the top entry disagree.
 
