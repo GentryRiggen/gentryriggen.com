@@ -1,0 +1,67 @@
+{
+  "id": "env-ship",
+  "script": "env-ship",
+  "slots": ["hull", "boot", "cabin", "windows"],
+  "slotColors": {
+    "hull": {
+      "color": "#35506a"
+    },
+    "boot": {
+      "color": "#8e2a22"
+    },
+    "cabin": {
+      "color": "#f1eee4"
+    },
+    "windows": {
+      "color": "#2c3e50"
+    }
+  },
+  "budget": {
+    "maxTriangles": 1500,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.08,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "ship",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-3.6, -0.5, -1.2],
+        "max": [5.52, 2.38, 1.2]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "ship",
+  "boundsFixed": true,
+  "ao": {
+    "strength": 0.6,
+    "distance": 0.3,
+    "samples": 64,
+    "ground": false
+  }
+}

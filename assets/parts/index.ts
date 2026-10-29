@@ -29,6 +29,10 @@ import deck2x1Spec from "./deck-2x1.json";
 import deckLampSpec from "./deck-lamp.json";
 import deckchairSpec from "./deckchair.json";
 import domeSpec from "./dome.json";
+import envBuoySpec from "./env-buoy.json";
+import envIcebergSpec from "./env-iceberg.json";
+import envRockSpec from "./env-rock.json";
+import envShipSpec from "./env-ship.json";
 import figureheadSpec from "./figurehead.json";
 import flagJollyRogerSpec from "./flag-jolly-roger.json";
 import floodlightSpec from "./floodlight.json";
@@ -116,6 +120,10 @@ export const PART_SPEC_LIST: readonly unknown[] = [
   deckLampSpec,
   deckchairSpec,
   domeSpec,
+  envBuoySpec,
+  envIcebergSpec,
+  envRockSpec,
+  envShipSpec,
   figureheadSpec,
   flagJollyRogerSpec,
   floodlightSpec,

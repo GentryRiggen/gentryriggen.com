@@ -1,0 +1,76 @@
+{
+  "id": "env-iceberg",
+  "script": "env-iceberg",
+  "slots": ["top", "under"],
+  "slotColors": {
+    "top": {
+      "color": "#f5fbff"
+    },
+    "under": {
+      "color": "#a9d8ee"
+    }
+  },
+  "budget": {
+    "maxTriangles": 1500,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.06,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "iceberg",
+      "dims": {
+        "shape": 0
+      },
+      "expectedBounds": {
+        "min": [-3.77, -4.0, -3.26],
+        "max": [3.98, 3.1, 3.11]
+      }
+    },
+    {
+      "name": "iceberg-b",
+      "dims": {
+        "shape": 1
+      },
+      "expectedBounds": {
+        "min": [-3.71, -4.0, -3.13],
+        "max": [3.99, 2.72, 3.08]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 50,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "iceberg",
+  "boundsFixed": true,
+  "ao": {
+    "strength": 0.6,
+    "distance": 0.8,
+    "samples": 64,
+    "ground": false,
+    "slots": {
+      "under": 0
+    }
+  }
+}
