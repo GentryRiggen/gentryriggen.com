@@ -274,5 +274,159 @@
       "mask": null,
       "note": "Funnel with blue louvred sides, big logo panel, silver exhaust pipes raking aft"
     }
+  ],
+  "ventilator": [
+    {
+      "file": "Warrior_Funnel_(5693897169).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6b/Warrior_Funnel_%285693897169%29.jpg/500px-Warrior_Funnel_%285693897169%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Warrior_Funnel_(5693897169).jpg",
+      "license": "CC BY 2.0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Cowl ventilators: tall tube with a bell mouth turned to face the wind"
+    },
+    {
+      "file": "HMS_Surprise_(replica_ship)_main_deck_2.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ce/HMS_Surprise_%28replica_ship%29_main_deck_2.JPG/500px-HMS_Surprise_%28replica_ship%29_main_deck_2.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:HMS_Surprise_(replica_ship)_main_deck_2.JPG",
+      "license": "CC BY 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Cowl vent beside deck fittings and wooden benches"
+    }
+  ],
+  "bench": [
+    {
+      "file": "HMS_Surprise_(replica_ship)_main_deck_2.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ce/HMS_Surprise_%28replica_ship%29_main_deck_2.JPG/500px-HMS_Surprise_%28replica_ship%29_main_deck_2.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:HMS_Surprise_(replica_ship)_main_deck_2.JPG",
+      "license": "CC BY 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Cowl vent beside deck fittings and wooden benches"
+    },
+    {
+      "file": "Life_raft_01.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Life_raft_01.jpg/500px-Life_raft_01.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Life_raft_01.jpg",
+      "license": "CC BY 3.0 de",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Slatted wooden deck benches filled with passengers: seat height and slat spacing"
+    },
+    {
+      "file": "Boat_Deck_of_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Boat_Deck_of_Titanic.jpg/500px-Boat_Deck_of_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Boat_Deck_of_Titanic.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Slatted bench on the Titanic boat deck"
+    }
+  ],
+  "deckchair": [
+    {
+      "file": "Titanic_deckchair_in_the_Titanic_Belfast_Museum_-_geograph.org.uk_-_7881468.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Titanic_deckchair_in_the_Titanic_Belfast_Museum_-_geograph.org.uk_-_7881468.jpg/500px-Titanic_deckchair_in_the_Titanic_Belfast_Museum_-_geograph.org.uk_-_7881468.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanic_deckchair_in_the_Titanic_Belfast_Museum_-_geograph.org.uk_-_7881468.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Titanic deckchair: slatted back, long footrest, wooden arms"
+    },
+    {
+      "file": "Titanic_portside_second_class_boat_deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Titanic_portside_second_class_boat_deck.jpg/500px-Titanic_portside_second_class_boat_deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanic_portside_second_class_boat_deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Stacked deckchairs on the Titanic promenade"
+    }
+  ],
+  "ship-anchor": [
+    {
+      "file": "Old_anchor,_Newcastle_-_geograph.org.uk_-_459204.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Old_anchor%2C_Newcastle_-_geograph.org.uk_-_459204.jpg/500px-Old_anchor%2C_Newcastle_-_geograph.org.uk_-_459204.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Old_anchor,_Newcastle_-_geograph.org.uk_-_459204.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "side",
+      "crop": [230, 0, 230, 330],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.2,
+        "invert": false
+      },
+      "note": "Admiralty anchor: long shank, ring, stock and curved arms with flukes"
+    },
+    {
+      "file": "Drake_Anchor_(2).JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Drake_Anchor_%282%29.JPG/500px-Drake_Anchor_%282%29.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Drake_Anchor_(2).JPG",
+      "license": "CC BY-SA 3.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Admiralty anchor on a plinth"
+    },
+    {
+      "file": "Anchor_from_the_HMS_Conway_at_Victoria_Dock,_Caernarfon_-_geograph.org.uk_-_771108.jpg",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Anchor_from_the_HMS_Conway_at_Victoria_Dock%2C_Caernarfon_-_geograph.org.uk_-_771108.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Anchor_from_the_HMS_Conway_at_Victoria_Dock,_Caernarfon_-_geograph.org.uk_-_771108.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Stocked anchor standing on its flukes"
+    },
+    {
+      "file": "SS_Greater_Detroit_Anchor.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/SS_Greater_Detroit_Anchor.jpg/500px-SS_Greater_Detroit_Anchor.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:SS_Greater_Detroit_Anchor.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Stockless anchor with big flukes and chain"
+    },
+    {
+      "file": "Royal_Naval_College,_Greenwich-_Anchor_1750_Ship_of_Line_6452.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/Royal_Naval_College%2C_Greenwich-_Anchor_1750_Ship_of_Line_6452.JPG/500px-Royal_Naval_College%2C_Greenwich-_Anchor_1750_Ship_of_Line_6452.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Royal_Naval_College,_Greenwich-_Anchor_1750_Ship_of_Line_6452.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Big wooden-stocked anchor laid on its side"
+    }
+  ],
+  "searchlight": [
+    {
+      "file": "Searchlight_aboard_USS_Missouri_(BB-63)_01_in_1944.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Searchlight_aboard_USS_Missouri_%28BB-63%29_01_in_1944.jpg/500px-Searchlight_aboard_USS_Missouri_%28BB-63%29_01_in_1944.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Searchlight_aboard_USS_Missouri_(BB-63)_01_in_1944.jpg",
+      "license": "Public domain",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Big drum searchlight on a pedestal: glass face, cylindrical housing"
+    },
+    {
+      "file": "A_ship-sized_searchlight,_for_sale_outside_the_North_St_Lawrence_Market,_2014_09_07_(7)_(14992466738).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/A_ship-sized_searchlight%2C_for_sale_outside_the_North_St_Lawrence_Market%2C_2014_09_07_%287%29_%2814992466738%29.jpg/500px-A_ship-sized_searchlight%2C_for_sale_outside_the_North_St_Lawrence_Market%2C_2014_09_07_%287%29_%2814992466738%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:A_ship-sized_searchlight,_for_sale_outside_the_North_St_Lawrence_Market,_2014_09_07_(7)_(14992466738).jpg",
+      "license": "Public domain",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Large searchlight lens and reflector"
+    }
   ]
 }
