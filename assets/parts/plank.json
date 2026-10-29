@@ -4,20 +4,22 @@
   "slots": ["paint-c9a56b", "paint-5a3a22", "paint-cdb98a"],
   "slotColors": {
     "paint-c9a56b": {
-      "color": "#c9a56b"
+      "color": "#c9a56b",
+      "finish": "wood"
     },
     "paint-5a3a22": {
-      "color": "#5a3a22"
+      "color": "#5a3a22",
+      "finish": "wood"
     },
     "paint-cdb98a": {
-      "color": "#cdb98a"
+      "color": "#cdb98a",
+      "finish": "wood"
     }
   },
   "todo": [
     "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
     "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/plank.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring.",
-    "Some slots use the glass or wood finish; slotColors only records paint and metal, so set the finish in the registry entry."
+    "Add reference images under assets/refs/manifest.json before scoring."
   ],
   "budget": {
     "maxTriangles": 4000,

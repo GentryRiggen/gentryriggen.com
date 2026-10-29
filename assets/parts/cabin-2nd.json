@@ -16,7 +16,8 @@
       "color": "#ffffff"
     },
     "bridgeWindows": {
-      "color": "#2c3e50"
+      "color": "#2c3e50",
+      "finish": "glass"
     },
     "bridgeWindows-paint": {
       "color": "#2c3e50"
@@ -28,8 +29,7 @@
   "todo": [
     "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
     "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/cabin-2nd.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring.",
-    "Some slots use the glass or wood finish; slotColors only records paint and metal, so set the finish in the registry entry."
+    "Add reference images under assets/refs/manifest.json before scoring."
   ],
   "budget": {
     "maxTriangles": 4000,

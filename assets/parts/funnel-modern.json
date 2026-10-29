@@ -21,7 +21,7 @@
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
-  "rakeRadians": 0,
+  "rakeRadians": 0.08726646259971647,
   "weights": {
     "silhouette": 0.6,
     "detail": 0.4
@@ -31,8 +31,8 @@
       "name": "funnel-modern",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.5872, -0.0444, -0.34],
-        "max": [0.5081, 3.19, 0.34]
+        "min": [-0.51, 0, -0.34],
+        "max": [0.51, 3.2, 0.34]
       }
     }
   ],

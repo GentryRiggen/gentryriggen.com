@@ -15,7 +15,7 @@
     "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
     "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/wireless-aerial.py exposing build(dims).",
     "Add reference images under assets/refs/manifest.json before scoring.",
-    "Bounds include the wire to another mast, whose distance depends on the studio ship. Model only the fixed hardware; keep the wire procedural (registry subParts) and set expectedBounds by hand."
+    "The measured box includes the wire to another mast, whose distance depends on the studio ship. The bounds cover the insulator ball and the two wire anchors only; the wires stay procedural (registry subParts)."
   ],
   "budget": {
     "maxTriangles": 4000,
@@ -23,6 +23,7 @@
   },
   "boundsTolerance": 0.03,
   "rakeRadians": 0,
+  "boundsFixed": true,
   "weights": {
     "silhouette": 0.6,
     "detail": 0.4
@@ -32,7 +33,7 @@
       "name": "wireless-aerial",
       "dims": {},
       "expectedBounds": {
-        "min": [-37.75, -0.015, -0.1113],
+        "min": [-0.045, -0.015, -0.114],
         "max": [0.045, 0.075, 0.114]
       }
     }

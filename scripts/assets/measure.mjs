@@ -6,6 +6,8 @@
  *
  * For each part it loads the studio's old (procedural) build, drawn by the
  * game's real PartMesh, and reads the part's bounding box. Then:
+ *  - a part whose bounds are hand-written (a `boundsFixed` spec, or a dynamic
+ *    shape such as a wire or a spinning prop) is skipped and reported;
  *  - a part with a spec (its id, or a variant of another spec such as
  *    funnel-large) gets that variant's `expectedBounds` updated;
  *  - a part without one gets a skeleton assets/parts/<id>.json (see below).
@@ -19,7 +21,8 @@
  * the studio's settle frame; a propeller's spin makes its Y/Z extent
  * approximate. Unlit glow meshes count in the bounds.
  *
- * Skeleton slots come from the `Surface` paints in the old mesh: one per
+ * `--refresh-skeletons` regenerates specs that still hold the generated todo
+ * list untouched. Skeleton slots come from the `Surface` paints in the old mesh: one per
  * distinct colour and finish, named after the palette key when the colour is
  * one (else paint-<hex>). Names are guesses; the spec's `todo` says so.
  */
@@ -33,23 +36,25 @@ import {
   ROOT,
   specPath,
 } from "./parts.mjs";
+import {
+  boundsLocked,
+  GENERATED_TODO,
+  HAND_BOUNDS,
+  skeleton,
+} from "./measureRules.mjs";
 import { prettify, writeSpecIndex } from "./specIndex.mjs";
 
 const READY_TIMEOUT_MS = 90_000;
 
-const DEFAULT_VIEWS = [
-  { name: "front", azimuthDeg: 90, elevationDeg: 0, ortho: true },
-  { name: "side", azimuthDeg: 0, elevationDeg: 0, ortho: true },
-  { name: "three-quarter", azimuthDeg: 35, elevationDeg: 20, ortho: false },
-];
-
 const argv = process.argv.slice(2);
 let base;
 let all = false;
+let refreshSkeletons = false;
 const ids = [];
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "--base") base = argv[++i];
   else if (argv[i] === "--all") all = true;
+  else if (argv[i] === "--refresh-skeletons") refreshSkeletons = true;
   else if (argv[i].startsWith("--")) {
     console.error(`unknown flag ${argv[i]}`);
     process.exit(1);
@@ -84,6 +89,7 @@ async function measureOne(browser, url, id) {
       return {
         bounds: JSON.parse(d.studioBounds),
         slots: JSON.parse(d.studioSlots),
+        rake: Number(d.studioRake ?? 0),
       };
     });
   } catch (err) {
@@ -91,75 +97,6 @@ async function measureOne(browser, url, id) {
   } finally {
     await page.close();
   }
-}
-
-/** Parts whose shape is not fixed by the part alone, and why. */
-const DYNAMIC = {
-  "wireless-aerial":
-    "Bounds include the wire to another mast, whose distance depends on the studio ship. Model only the fixed hardware; keep the wire procedural (registry subParts) and set expectedBounds by hand.",
-  "string-lights":
-    "Bounds include the string to another mast, whose distance depends on the studio ship. Model only the fixed hardware; keep the string and bulbs procedural (registry subParts) and set expectedBounds by hand.",
-  "nav-lights":
-    "Width comes from the bridge it sits on (props), not the part. Keep the bridge-wide spread procedural or model one lamp and repeat it.",
-  propeller:
-    "The blades spin: bounds are read at the settle frame, so Y/Z are approximate. Model the hub and one blade; keep the spinning group procedural (registry subParts).",
-};
-
-function skeleton(id, measured) {
-  const painted = measured.slots.filter((s) => s.name !== "unlit");
-  const unlit = measured.slots.find((s) => s.name === "unlit");
-  const slots = [];
-  const slotColors = {};
-  for (const s of painted) {
-    let name = s.name;
-    if (slotColors[name]) name = `${name}-${s.finish}`;
-    slots.push(name);
-    slotColors[name] =
-      s.finish === "metal"
-        ? { color: s.color, finish: "metal" }
-        : { color: s.color };
-  }
-  const todo = [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/" +
-      id +
-      ".py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring.",
-  ];
-  if (painted.length === 0) {
-    todo.unshift("No Surface paints found: list the slots by hand.");
-  }
-  if (painted.some((s) => s.finish === "glass" || s.finish === "wood")) {
-    todo.push(
-      "Some slots use the glass or wood finish; slotColors only records paint and metal, so set the finish in the registry entry."
-    );
-  }
-  if (DYNAMIC[id]) todo.push(DYNAMIC[id]);
-  if (unlit) {
-    todo.push(
-      `${unlit.meshes} unlit mesh(es) (glow, lights) are not slots; keep them procedural via the registry's subParts.`
-    );
-  }
-  return {
-    id,
-    script: id,
-    slots,
-    slotColors,
-    todo,
-    budget: { maxTriangles: 4000, maxBytes: 200000 },
-    boundsTolerance: 0.03,
-    rakeRadians: 0,
-    weights: { silhouette: 0.6, detail: 0.4 },
-    variants: [
-      {
-        name: id,
-        dims: {},
-        expectedBounds: measured.bounds,
-      },
-    ],
-    views: DEFAULT_VIEWS,
-    scoreVariant: id,
-  };
 }
 
 function extent(b) {
@@ -184,24 +121,56 @@ async function main() {
         continue;
       }
       if (found) {
-        const spec = JSON.parse(readFileSync(specPath(found.specId), "utf8"));
+        const file = specPath(found.specId);
+        const spec = JSON.parse(readFileSync(file, "utf8"));
         const variant = spec.variants.find((v) => v.name === found.variant);
-        const before = variant.expectedBounds;
-        const drift = Math.max(
-          ...m.bounds.min.map((v, i) => Math.abs(v - before.min[i])),
-          ...m.bounds.max.map((v, i) => Math.abs(v - before.max[i]))
-        );
-        if (drift > 0) {
-          variant.expectedBounds = m.bounds;
-          writeFileSync(specPath(found.specId), JSON.stringify(spec, null, 2));
-          touched.add(specPath(found.specId));
+        const extentOf = extent(m.bounds);
+        if (refreshSkeletons && spec.todo?.[0] === GENERATED_TODO) {
+          const fresh = skeleton(id, m);
+          if (spec.boundsFixed) fresh.boundsFixed = true;
+          if (boundsLocked(id, spec) && !HAND_BOUNDS[id]) {
+            fresh.variants = spec.variants;
+          }
+          writeFileSync(file, JSON.stringify(fresh, null, 2));
+          touched.add(file);
+          rows.push({
+            id,
+            status: "skeleton refreshed",
+            extent: extentOf,
+            slots: `${fresh.slots.length} derived`,
+          });
+        } else if (boundsLocked(id, spec)) {
+          // Measured bounds are not the part's own (wires, spin, props):
+          // the spec's hand-written box stays.
+          rows.push({
+            id,
+            status: `skipped: bounds are hand-written (${spec.boundsFixed ? "boundsFixed" : "dynamic shape"}); measured ${extentOf}`,
+            extent: extent(variant.expectedBounds),
+            slots: `${spec.slots.length} (spec)`,
+          });
+        } else {
+          const before = variant.expectedBounds;
+          const drift = Math.max(
+            ...m.bounds.min.map((v, i) => Math.abs(v - before.min[i])),
+            ...m.bounds.max.map((v, i) => Math.abs(v - before.max[i]))
+          );
+          const rakeMoved = Math.abs(m.rake - (spec.rakeRadians ?? 0)) > 1e-9;
+          if (drift > 0 || rakeMoved) {
+            variant.expectedBounds = m.bounds;
+            spec.rakeRadians = m.rake;
+            writeFileSync(file, JSON.stringify(spec, null, 2));
+            touched.add(file);
+          }
+          rows.push({
+            id,
+            status:
+              drift > 0 || rakeMoved
+                ? `updated ${found.specId}/${found.variant} (moved ${r4(drift)}${rakeMoved ? ", rake set" : ""})`
+                : `unchanged ${found.specId}/${found.variant}`,
+            extent: extentOf,
+            slots: `${spec.slots.length} (spec)`,
+          });
         }
-        rows.push({
-          id,
-          status: `updated ${found.specId}/${found.variant} (moved ${r4(drift)})`,
-          extent: extent(m.bounds),
-          slots: `${spec.slots.length} (spec)`,
-        });
       } else {
         const spec = skeleton(id, m);
         writeFileSync(specPath(id), JSON.stringify(spec, null, 2));
@@ -211,7 +180,7 @@ async function main() {
         rows.push({
           id,
           status: painted ? "new skeleton" : "new skeleton (slots TODO)",
-          extent: extent(m.bounds),
+          extent: extent(spec.variants[0].expectedBounds),
           slots: painted ? `${painted} derived` : "TODO",
         });
       }

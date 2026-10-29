@@ -28,6 +28,7 @@ import { glbLoadStatus } from "@/components/ship-builder/scene/glbLoadStatus";
 import { GLB_PARTS } from "@/components/ship-builder/scene/glbRegistry";
 import PartMesh from "@/components/ship-builder/scene/PartMesh";
 import { PALETTE } from "@/components/ship-builder/scene/palette";
+import { INNER_ROTATION } from "./innerRotation";
 import { paletteNames, partBounds, partSlots } from "./partBounds";
 import { specForPart } from "./partSpecs";
 import { sceneHasPart } from "./sceneHasPart";
@@ -76,6 +77,7 @@ function ReadyProbe({ partRef, expectModel, rakeRadians }: ReadyProbeProps) {
     if (partRef.current && sceneHasPart(partRef.current)) {
       const bounds = partBounds(partRef.current, rakeRadians);
       document.body.dataset.studioBounds = JSON.stringify(bounds);
+      document.body.dataset.studioRake = String(rakeRadians);
       document.body.dataset.studioSlots = JSON.stringify(
         partSlots(partRef.current, PALETTE_NAMES)
       );
@@ -187,7 +189,10 @@ export default function AssetStudio({ params }: AssetStudioProps) {
   const found = specForPart(params.part);
   const spec = found?.spec ?? null;
   const rakeRadians =
-    spec?.rakeRadians ?? GLB_PARTS[params.type]?.rakeRadians ?? 0;
+    INNER_ROTATION[params.type] ??
+    spec?.rakeRadians ??
+    GLB_PARTS[params.type]?.rakeRadians ??
+    0;
   const source = useMemo<GlbSource>(
     () => studioSource(params, spec),
     [params, spec]

@@ -15,7 +15,7 @@ export interface PartViewSpec {
 
 export interface SlotColorSpec {
   color: string;
-  finish?: "metal";
+  finish?: "metal" | "glass" | "wood";
 }
 
 /** The slice of a part spec (assets/parts/<id>.json) the studio reads. */

@@ -66,13 +66,17 @@ interface Spot {
   rotation: Rotation;
 }
 
-/** The first cell a grid part is allowed on, scanning up from the main deck. */
+/**
+ * The first cell a grid part is allowed on, scanning up from the main deck.
+ * Every cell is tried at rotation 0 before any other rotation, so a part only
+ * turns when it has to (stairs facing a block).
+ */
 function firstGridSpot(ship: Ship, type: PartType): Spot | null {
-  for (let level = 0; level <= MAX_LEVEL; level++) {
-    for (let x = 0; x < gridLength(ship) * 3; x++) {
-      for (let z = 0; z < beamOf(ship); z++) {
-        const anchor: GridAnchor = { kind: "grid", level, x, z };
-        for (const rotation of ROTATIONS) {
+  for (const rotation of ROTATIONS) {
+    for (let level = 0; level <= MAX_LEVEL; level++) {
+      for (let x = 0; x < gridLength(ship) * 3; x++) {
+        for (let z = 0; z < beamOf(ship); z++) {
+          const anchor: GridAnchor = { kind: "grid", level, x, z };
           if (canPlace(ship, { type, anchor, rotation }).ok) {
             return { anchor, rotation };
           }
