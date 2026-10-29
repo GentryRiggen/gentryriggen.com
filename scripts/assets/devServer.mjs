@@ -26,19 +26,39 @@ export function usesSymlinkedModules(root) {
   }
 }
 
-/** A free TCP port, asked of the OS. */
-export function freePort() {
+/** Resolves when nothing is listening on `port` (any address), else throws. */
+export function assertPortFree(port) {
   return new Promise((resolve, reject) => {
     const probe = createServer();
-    probe.once("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const { port } = probe.address();
-      probe.close(() => resolve(port));
-    });
+    probe.once("error", (error) =>
+      reject(
+        new Error(
+          error.code === "EADDRINUSE"
+            ? `port ${port} is already in use: stop what is using it, or set ASSETS_PORT to a free port`
+            : `cannot use port ${port}: ${error.message}`
+        )
+      )
+    );
+    // No host: binds every address, so a server on 0.0.0.0 or :: is seen too.
+    probe.listen(port, () => probe.close(() => resolve()));
   });
 }
 
-/** ASSETS_PORT when set (and valid), else a free port. */
+/** A free TCP port, asked of the OS and then bind-checked like any other. */
+export async function freePort() {
+  const port = await new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, () => {
+      const { port: picked } = probe.address();
+      probe.close(() => resolve(picked));
+    });
+  });
+  await assertPortFree(port);
+  return port;
+}
+
+/** ASSETS_PORT when set (valid and free), else a free port. */
 export async function pickPort(env = process.env) {
   if (env.ASSETS_PORT) {
     const port = Number(env.ASSETS_PORT);
@@ -47,6 +67,7 @@ export async function pickPort(env = process.env) {
         `ASSETS_PORT must be a port number, got "${env.ASSETS_PORT}"`
       );
     }
+    await assertPortFree(port);
     return port;
   }
   return freePort();
@@ -104,13 +125,31 @@ export async function ensureDevServer(root, { base } = {}) {
       process.exit(130);
     });
   }
+  const exited = () => child.exitCode !== null || child.signalCode !== null;
+  let spawnError = null;
+  child.once("error", (error) => {
+    spawnError = error;
+  });
   const deadline = Date.now() + SERVER_TIMEOUT_MS;
-  while (!(await answers(url))) {
-    if (Date.now() > deadline || child.exitCode !== null) {
+  for (;;) {
+    // Check the child first: a server that answers on the port is only ours
+    // while the process we spawned is still running.
+    if (spawnError || exited()) {
       stop();
-      throw new Error("dev server did not start");
+      throw new Error(
+        `next dev exited before it was ready${spawnError ? `: ${spawnError.message}` : ""}`
+      );
+    }
+    if (Date.now() > deadline) {
+      stop();
+      throw new Error("dev server did not start in time");
+    }
+    if (await answers(url)) {
+      if (exited()) {
+        throw new Error("next dev exited; something else answers on the port");
+      }
+      return { url, stop };
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  return { url, stop };
 }
