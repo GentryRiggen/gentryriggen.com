@@ -1,27 +1,22 @@
 {
   "id": "funnel-modern",
   "script": "funnel-modern",
-  "slots": ["paint-3b7cc4", "paint-2e3338"],
+  "slots": ["body", "grille"],
   "slotColors": {
-    "paint-3b7cc4": {
+    "body": {
       "color": "#3b7cc4"
     },
-    "paint-2e3338": {
+    "grille": {
       "color": "#2e3338",
       "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/funnel-modern.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
-  "rakeRadians": 0,
+  "rakeRadians": 0.08726646259971647,
   "weights": {
     "silhouette": 0.6,
     "detail": 0.4
@@ -31,8 +26,8 @@
       "name": "funnel-modern",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.5872, -0.0444, -0.34],
-        "max": [0.5081, 3.19, 0.34]
+        "min": [-0.51, 0, -0.34],
+        "max": [0.51, 3.2, 0.34]
       }
     }
   ],
@@ -56,5 +51,6 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "funnel-modern"
+  "scoreVariant": "funnel-modern",
+  "boundsFixed": true
 }
