@@ -58,5 +58,141 @@
       "mask": null,
       "note": "Hikawa Maru: painted bands, whistle, side profile"
     }
+  ],
+  "propeller": [
+    {
+      "file": "Schiffsschraube_IMMH.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Schiffsschraube_IMMH.jpg/500px-Schiffsschraube_IMMH.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Schiffsschraube_IMMH.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Four-blade bronze fixed-pitch propeller, front on: broad blades, hub boss, bolted cap"
+    },
+    {
+      "file": "1940s_warship_propeller.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9f/1940s_warship_propeller.jpg/500px-1940s_warship_propeller.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:1940s_warship_propeller.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Three-blade propeller: tapered conical hub, blade pitch and twist"
+    },
+    {
+      "file": "Propeller_of_TCG_Muavenet.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f1/Propeller_of_TCG_Muavenet.jpg/500px-Propeller_of_TCG_Muavenet.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Propeller_of_TCG_Muavenet.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Four-blade bronze propeller: wide round-tipped blades"
+    },
+    {
+      "file": "RMS_Olympic's_propellers.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/RMS_Olympic%27s_propellers.jpg/500px-RMS_Olympic%27s_propellers.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:RMS_Olympic%27s_propellers.jpg",
+      "license": "Public domain",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic stern in dock: three-blade wing propellers, centre four-blade, rudder"
+    },
+    {
+      "file": "Ship-propeller_2000.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/28/Ship-propeller_2000.jpg/500px-Ship-propeller_2000.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Ship-propeller_2000.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Five-blade propeller beside a rudder blade, with a person for scale"
+    },
+    {
+      "file": "Stern_of_Bro_Elisabeth_2.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c4/Stern_of_Bro_Elisabeth_2.jpg/500px-Stern_of_Bro_Elisabeth_2.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Stern_of_Bro_Elisabeth_2.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Propeller behind the rudder on a tanker stern: sizes and clearances"
+    }
+  ],
+  "rudder": [
+    {
+      "file": "Ship-propeller_2000.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/28/Ship-propeller_2000.jpg/500px-Ship-propeller_2000.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Ship-propeller_2000.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Five-blade propeller beside a rudder blade, with a person for scale"
+    },
+    {
+      "file": "Stern_of_Bro_Elisabeth_2.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c4/Stern_of_Bro_Elisabeth_2.jpg/500px-Stern_of_Bro_Elisabeth_2.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Stern_of_Bro_Elisabeth_2.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Propeller behind the rudder on a tanker stern: sizes and clearances"
+    },
+    {
+      "file": "Olympic_stern_and_rudder.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/Olympic_stern_and_rudder.jpg/500px-Olympic_stern_and_rudder.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Olympic_stern_and_rudder.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic stern: tall rudder, rudder post and propeller behind"
+    },
+    {
+      "file": "Propeller_and_rudder_Gerd_Knutsen.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Propeller_and_rudder_Gerd_Knutsen.jpg/500px-Propeller_and_rudder_Gerd_Knutsen.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Propeller_and_rudder_Gerd_Knutsen.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Rudder and propeller on a dry-docked hull"
+    }
+  ],
+  "azipod": [
+    {
+      "file": "Pod_Yersin.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f2/Pod_Yersin.JPG/500px-Pod_Yersin.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Pod_Yersin.JPG",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Red pod with a tractor propeller: streamlined pod body below a strut"
+    },
+    {
+      "file": "Siemens_Schottel_Propulsor.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Siemens_Schottel_Propulsor.jpg/500px-Siemens_Schottel_Propulsor.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Siemens_Schottel_Propulsor.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Azimuth pods in dock: tall strut, bulb pod and fixed-pitch propellers at both ends"
+    },
+    {
+      "file": "I11_591_Pod-Antriebsgondel.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/I11_591_Pod-Antriebsgondel.jpg/500px-I11_591_Pod-Antriebsgondel.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:I11_591_Pod-Antriebsgondel.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "White pod unit on stands: round pod body, strut, propeller at the front"
+    }
   ]
 }
