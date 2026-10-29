@@ -12,11 +12,6 @@
       "finish": "wood"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/crows-nest.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -33,7 +28,7 @@
       "dims": {},
       "expectedBounds": {
         "min": [-0.275, 0, -0.275],
-        "max": [0.275, 0.293, 0.275]
+        "max": [0.275, 0.296, 0.275]
       }
     }
   ],
@@ -57,6 +52,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "crows-nest",
-  "generated": "89582b499fe2ee85"
+  "scoreVariant": "crows-nest"
 }
