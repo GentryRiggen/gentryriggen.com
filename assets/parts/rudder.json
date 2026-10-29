@@ -1,17 +1,12 @@
 {
   "id": "rudder",
   "script": "rudder",
-  "slots": ["propeller"],
+  "slots": ["rudder"],
   "slotColors": {
-    "propeller": {
+    "rudder": {
       "color": "#b08d57"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/rudder.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -27,8 +22,8 @@
       "name": "rudder",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.3, -0.45, -0.04],
-        "max": [0.3, 0.45, 0.04]
+        "min": [-0.285, -0.45, -0.05],
+        "max": [0.305, 0.45, 0.05]
       }
     }
   ],
@@ -52,5 +47,8 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "rudder"
+  "scoreVariant": "rudder",
+  "ao": {
+    "ground": false
+  }
 }
