@@ -89,6 +89,15 @@ The funnel entries use `subParts` for their mark decals. Bounds for parts like t
 - `linear`, `hex_linear`, `srgb_to_linear`, `three_to_blender`: colour and frame conversion (three Y-up to Blender Z-up).
 - Baked ambient occlusion (`lib/ao.py`) runs for every part automatically; tune or disable it per slot with an `ao` block in the spec.
 
+## Plane Builder pieces
+
+Same loop, for `components/plane-builder`. `assets/plane-pieces.json` lists the pieces (`fuselage`, `wing`, `tail`, `propeller`, `gear`, `cabin`) and their units (`fuselage-prop`, `wing-straight`, `fin`, ...); a unit is one glb. Specs are `assets/parts/plane-<piece>.json` (`"game": "plane"`, one variant per unit, `dims.unit` for the script) and scripts `assets/blender/parts/plane-<piece>.py` (helpers in `lib/planekit.py`). A unit is built at the size the game scales it from (PlaneModel stretches the fuselage and wings, mirrors the left wing, scales propellers), and its meshes are named by the plane's paints: `body`, `trim`, `dark`, `fire`, `glow`.
+
+- `npm run assets:measure -- --game plane <piece...> | --all` measures each unit's old procedural build in the plane studio and writes or updates the spec.
+- `/asset-studio?game=plane&part=<piece>&variant=<unit>&build=old|new&view=` draws one unit through the game's own `Unit` component (`planeUnits.tsx`), with the unit's level palette and sky; propellers hold still.
+- `assets:checkin -- <unit> <unit> ...` builds the family sheet as for Ship Builder (use at most 7 rows per sheet: a taller page fails to screenshot). `assets:ship -- plane-<piece>` copies the glbs to `public/plane-builder/models/<spec>/<unit>.glb`.
+- In game, `PlaneGlbUnit` loads the glb and draws each mesh with the plane's own materials (palette, gold and glow trims apply; baked AO is multiplied in), falling back to the procedural unit while loading or on failure. `preloadPlaneModels()` fetches them on mount. Plane Builder has no service worker, so there is no offline cache.
+
 ## Ports and worktrees
 
 Checkout-safe by design:
