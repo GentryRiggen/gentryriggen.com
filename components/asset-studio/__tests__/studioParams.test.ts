@@ -6,6 +6,7 @@ describe("parseStudioParams", () => {
       parseStudioParams("?part=funnel&variant=funnel-large&build=new&view=side")
     ).toEqual({
       part: "funnel",
+      type: "funnel-large",
       variant: "funnel-large",
       build: "new",
       view: "side",
@@ -19,6 +20,29 @@ describe("parseStudioParams", () => {
         "?part=funnel&variant=funnel&build=old&view=front&time=Night"
       )
     ).toMatchObject({ time: "Night" });
+  });
+
+  it("takes a part id as the variant of its spec", () => {
+    expect(
+      parseStudioParams("?part=funnel-large&build=new&view=side")
+    ).toMatchObject({ type: "funnel-large", variant: "funnel-large" });
+    expect(parseStudioParams("?part=funnel&build=old&view=side")).toMatchObject(
+      { type: "funnel", variant: "funnel" }
+    );
+  });
+
+  it("accepts any game part without a spec, in the default view", () => {
+    expect(parseStudioParams("?part=rudder&build=old")).toEqual({
+      part: "rudder",
+      type: "rudder",
+      variant: "rudder",
+      build: "old",
+      view: "three-quarter",
+      time: "Day",
+    });
+    expect(
+      parseStudioParams("?part=rudder&build=old&view=side")
+    ).toHaveProperty("error");
   });
 
   it("rejects an unknown part", () => {
