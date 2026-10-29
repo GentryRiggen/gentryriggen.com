@@ -25,7 +25,7 @@ BASE_W = 0.34
 TOP_W = 0.2
 AFT_X = -0.5
 FORE_BASE = 0.5
-FORE_TOP = 0.2
+FORE_TOP = 0.12
 SHOULDER = 0.09
 CORNER_POINTS = 5
 
@@ -87,18 +87,23 @@ def body_mesh():
 
 
 def louvres() -> list:
-    """Thin slats standing proud of both flanks: a column on the aft part
-    from base to top, and a full-width band under the top (the logo sits
-    between them on the forward flank)."""
+    """One rectangular louvre panel high on each flank: a dark frame and
+    backing plate with nine slats across it, inset from the edges."""
+    y0, y1 = 1.95, 2.75
+    x0 = aft_x(y1) + 0.1
+    x1 = fore_x(y1) - 0.1
     parts = []
-    y = 0.42
-    while y < 2.78:
-        x1 = -0.2 if y < 2.0 else min(fore_x(y) - 0.14, 0.1)
-        x0 = aft_x(y) + 0.1
-        for side in (1, -1):
-            parts.append(box((x0 + x1) / 2, y, side * (half_width(y) + 0.004),
-                             x1 - x0, 0.034, 0.03))
-        y += 0.075
+    for side in (1, -1):
+        z = side * (half_width((y0 + y1) / 2) + 0.004)
+        w, h, t = x1 - x0, y1 - y0, 0.03
+        for cy in (y0 + t / 2, y1 - t / 2):
+            parts.append(box((x0 + x1) / 2, cy, z, w, t, 0.02))
+        for cx in (x0 + t / 2, x1 - t / 2):
+            parts.append(box(cx, (y0 + y1) / 2, z, t, h, 0.02))
+        for k in range(9):
+            y = y0 + 0.07 + (y1 - y0 - 0.14) * k / 8
+            parts.append(box((x0 + x1) / 2, y, z + side * 0.012,
+                             x1 - x0 - 0.06, 0.04, 0.03))
     return parts
 
 
