@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 
 from lib import history, scoring
@@ -36,6 +38,45 @@ class CropValidationTest(unittest.TestCase):
         for crop in ([10, 10, 91, 70], [0, 0, 100, 81], [-1, 0, 5, 5], [0, 0, 0, 5]):
             with self.assertRaises(scoring.SpecError, msg=str(crop)):
                 scoring.validate_crop(crop, 100, 80, "a.png")
+
+
+class MissingRefTest(unittest.TestCase):
+    def test_missing_ref_names_file_and_fix(self) -> None:
+        entries = [
+            {"file": "gone.jpg", "view": "side", "mask": {"mode": "luma"}},
+            {"file": "unscored.jpg", "view": None, "mask": None},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(scoring.SpecError) as ctx:
+                scoring.check_refs_exist(tmp, "funnel", entries)
+        self.assertEqual(
+            str(ctx.exception),
+            "missing ref gone.jpg: run npm run assets:refs -- funnel",
+        )
+
+    def test_present_ref_passes(self) -> None:
+        entries = [{"file": "a.jpg", "view": "side", "mask": {"mode": "luma"}}]
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "funnel"))
+            open(os.path.join(tmp, "funnel", "a.jpg"), "w").close()
+            scoring.check_refs_exist(tmp, "funnel", entries)
+
+
+class ArchiveDecisionTest(unittest.TestCase):
+    def test_empty_or_current_log_is_kept(self) -> None:
+        self.assertIsNone(history.archive_old_version(None, 2))
+        self.assertIsNone(history.archive_old_version({"scorerVersion": 2}, 2))
+
+    def test_other_or_missing_version_is_archived(self) -> None:
+        self.assertEqual(history.archive_old_version({"scorerVersion": 1}, 2), 1)
+        self.assertEqual(history.archive_old_version({"round": 3}, 2), 1)
+        self.assertEqual(history.archive_old_version({"scorerVersion": 3}, 2), 3)
+
+    def test_archive_filename(self) -> None:
+        self.assertEqual(
+            history.archive_filename(1, "2026-10-28T10:00:00-06:00"),
+            "history-v1-20261028T1000000600.jsonl",
+        )
 
 
 class HistoryLineTest(unittest.TestCase):

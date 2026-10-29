@@ -108,6 +108,51 @@ class LookExposureTest(unittest.TestCase):
         self.assertLess(blown, 0.02)
 
 
+class DetailDensityTest(unittest.TestCase):
+    @staticmethod
+    def part(background: float, stripe: int = 8) -> tuple[np.ndarray, np.ndarray]:
+        rgba = np.full((300, 200, 4), background, dtype=np.float32)
+        mask = np.zeros((300, 200), dtype=bool)
+        # A tapered body, so the bounding box holds background too.
+        for row in range(20, 280):
+            half = 30 + (row - 20) * 40 // 260
+            mask[row, 100 - half : 100 + half] = True
+        rows = (np.arange(300) // stripe) % 2 == 0
+        rgba[rows[:, None] & mask, :3] = 0.4
+        rgba[~rows[:, None] & mask, :3] = 0.5
+        return rgba, mask
+
+    def test_background_does_not_change_density(self) -> None:
+        white = scoring.detail_density(*self.part(1.0))
+        grey = scoring.detail_density(*self.part(0.5))
+        self.assertGreater(white, 0.0)
+        self.assertLess(abs(white - grey) / white, 0.10)
+
+    def test_more_interior_edges_score_higher(self) -> None:
+        sparse = scoring.detail_density(*self.part(0.5, stripe=24))
+        dense = scoring.detail_density(*self.part(0.5, stripe=8))
+        self.assertGreater(dense, sparse * 1.5)
+
+    def test_holes_in_the_mask_are_filled(self) -> None:
+        rgba, mask = self.part(0.5)
+        holed = mask.copy()
+        holed[100:140, 80:120] = False  # a bright rivet-sized hole
+        a = scoring.detail_density(rgba, mask)
+        b = scoring.detail_density(rgba, holed)
+        self.assertLess(abs(a - b) / a, 0.10)
+
+    def test_fill_and_erode_helpers(self) -> None:
+        ring = np.zeros((9, 9), dtype=bool)
+        ring[1:8, 1:8] = True
+        ring[3:6, 3:6] = False
+        self.assertTrue(scoring.fill_holes(ring)[4, 4])
+        solid = np.zeros((9, 9), dtype=bool)
+        solid[1:8, 1:8] = True
+        eroded = scoring.erode(solid, 2)
+        self.assertEqual(int(eroded.sum()), 9)
+        self.assertTrue(eroded[4, 4])
+
+
 class RefScoringTest(unittest.TestCase):
     def test_synthetic_ref_scores_end_to_end(self) -> None:
         # A dark 20x40 bar on white, inside a 100x80 image, cropped from a margin.

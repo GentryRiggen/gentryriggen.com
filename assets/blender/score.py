@@ -112,11 +112,22 @@ def score_refs(part: str, manifest: dict, refs_dir: str, renders: dict):
     return per_ref
 
 
-def read_history(path: str) -> tuple[int, str | None]:
-    """Highest round so far and the last line's timestamp (if any)."""
+def read_history(path: str, now: str) -> tuple[int, str | None]:
+    """Highest round so far and the last line's timestamp (if any). A log
+    written by another scorer version is archived and the rounds restart."""
     if not os.path.exists(path):
         return 0, None
     lines = [json.loads(line) for line in open(path) if line.strip()]
+    old = hist.archive_old_version(
+        lines[-1] if lines else None, scoring.SCORER_VERSION
+    )
+    if old is not None:
+        archive = os.path.join(os.path.dirname(path), "archive")
+        os.makedirs(archive, exist_ok=True)
+        dest = os.path.join(archive, hist.archive_filename(old, now))
+        os.replace(path, dest)
+        print(f"scorer v{old} -> v{scoring.SCORER_VERSION}: archived history to {dest}")
+        return 0, None
     last = lines[-1].get("timestamp") if lines else None
     return max((ln["round"] for ln in lines), default=0), last
 
@@ -131,6 +142,7 @@ def run(args: argparse.Namespace) -> None:
     spec = json.load(open(spec_path))
     manifest = json.load(open(os.path.join(args.refs_dir, "manifest.json")))
     scoring.validate_manifest(args.part, manifest.get(args.part, []), spec)
+    scoring.check_refs_exist(args.refs_dir, args.part, manifest.get(args.part, []))
     part_mod = load_part_module(spec["script"])
     out = os.path.join(args.out_dir, args.part)
     if args.spec:  # experiments never touch the real score log
@@ -174,10 +186,12 @@ def run(args: argparse.Namespace) -> None:
     total = 0.0 if failed else metrics.composite(sil, det, spec["weights"])
 
     history = os.path.join(out, "history.jsonl")
-    prev_round, prev_ts = read_history(history)
+    now = datetime.now().astimezone().isoformat(timespec="seconds")
+    prev_round, prev_ts = read_history(history, now)
     rnd = prev_round + 1
     result = {
         "round": rnd,
+        "scorerVersion": scoring.SCORER_VERSION,
         "total": total,
         "silhouette": sil,
         "detail": det,
@@ -189,7 +203,7 @@ def run(args: argparse.Namespace) -> None:
     }
     line = hist.build_history_line(
         result,
-        datetime.now().astimezone().isoformat(timespec="seconds"),
+        now,
         time.monotonic() - started,
         prev_ts,
         args.blocker,

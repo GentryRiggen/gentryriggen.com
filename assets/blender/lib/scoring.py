@@ -30,6 +30,10 @@ def resize_nearest(mask: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
     return mask[np.ix_(rows, cols)]
 
 
+# Bump when a scoring change makes old scores incomparable with new ones.
+# History from another version is archived and the rounds restart at 1.
+SCORER_VERSION = 2
+
 DETAIL_HEIGHT = 128
 
 
@@ -47,17 +51,58 @@ def area_resize(rgba: np.ndarray, height: int) -> np.ndarray:
     return summed / (row_n[:, None] * col_n[None, :])[..., None]
 
 
+DETAIL_ERODE = 2
+
+
+def fill_holes(mask: np.ndarray) -> np.ndarray:
+    """Fill background pockets the border can't reach (flood fill from the
+    border, numpy only)."""
+    outside = np.zeros_like(mask, dtype=bool)
+    outside[0, :] = ~mask[0, :]
+    outside[-1, :] |= ~mask[-1, :]
+    outside[:, 0] |= ~mask[:, 0]
+    outside[:, -1] |= ~mask[:, -1]
+    free = ~mask
+    while True:
+        grown = outside.copy()
+        grown[1:, :] |= outside[:-1, :]
+        grown[:-1, :] |= outside[1:, :]
+        grown[:, 1:] |= outside[:, :-1]
+        grown[:, :-1] |= outside[:, 1:]
+        grown &= free
+        if np.array_equal(grown, outside):
+            return ~outside
+        outside = grown
+
+
+def erode(mask: np.ndarray, pixels: int) -> np.ndarray:
+    """Min-filter: a pixel stays only if its whole (2n+1) square is set.
+    Pixels beyond the array count as unset."""
+    out = mask.copy()
+    for _ in range(pixels):
+        p = np.pad(out, 1, constant_values=False)
+        h, w = out.shape
+        nxt = out.copy()
+        for dy in range(3):
+            for dx in range(3):
+                nxt &= p[dy : dy + h, dx : dx + w]
+        out = nxt
+    return out
+
+
 def detail_density(rgba: np.ndarray, mask: np.ndarray) -> float:
-    """Edge density inside the mask, measured on the mask's bounding box
+    """Edge density on the mask's interior, measured on its bounding box
     scaled to DETAIL_HEIGHT rows, so a photo and a render compare at one
-    scale."""
+    scale. The mask is hole-filled then eroded by DETAIL_ERODE pixels so the
+    part-versus-background step never counts, only surface detail."""
     ys, xs = np.nonzero(mask)
     if len(ys) == 0:
         return 0.0
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     box = area_resize(rgba[y0:y1, x0:x1], DETAIL_HEIGHT)
-    box_mask = resize_nearest(mask[y0:y1, x0:x1], box.shape[:2])
-    return metrics.edge_density(box, box_mask)
+    box_mask = fill_holes(resize_nearest(mask[y0:y1, x0:x1], box.shape[:2]))
+    inner = erode(box_mask, DETAIL_ERODE)
+    return metrics.edge_density(box, inner if inner.any() else box_mask)
 
 
 def score_ref(
@@ -88,6 +133,8 @@ def score_ref(
         "view": entry["view"],
         "silhouette": sil,
         "detail": metrics.detail_score(look_density, ref_density),
+        "renderDensity": look_density,
+        "refDensity": ref_density,
     }
 
 
@@ -131,4 +178,18 @@ def validate_manifest(part: str, entries: list[dict], spec: dict) -> None:
             raise SpecError(
                 f"manifest entry '{entry['file']}' for {part} uses view "
                 f"'{view}', which is not in the spec (have: {sorted(views)})"
+            )
+
+
+def check_refs_exist(
+    refs_dir: str, part: str, entries: list[dict]
+) -> None:
+    """Fail early, with the fix, if a scored reference isn't downloaded."""
+    for entry in entries:
+        if not entry.get("mask") or not entry.get("view"):
+            continue
+        if not os.path.exists(ref_path(refs_dir, part, entry)):
+            raise SpecError(
+                f"missing ref {entry['file']}: "
+                f"run npm run assets:refs -- {part}"
             )
