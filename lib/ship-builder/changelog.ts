@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.30.0",
+    date: "2026-10-29",
+    title: "Icebergs, rocks, buoys and passing ships look real now",
+    highlights: [
+      "Icebergs look like the real North Atlantic ones: a pale, jagged peak above the water and a bluer, see-through bulk below. When you sail there are two different bergs to meet",
+      "Rocks are sea stacks and skerries with stripy layers of stone and a dark, wet band where the waves wash them, in three different shapes",
+      "Buoys are proper red channel buoys with a white band, a steel cage and a glowing lamp on top",
+      "The ship that passes you is now a little coaster with a red-bottomed hull, a wheelhouse, a funnel and hatches",
+    ],
+  },
+  {
     version: "2.29.0",
     date: "2026-10-29",
     title: "Real portholes, window frames and wheelhouse windscreens",

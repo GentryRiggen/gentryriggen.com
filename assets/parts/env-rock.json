@@ -1,0 +1,86 @@
+{
+  "id": "env-rock",
+  "script": "env-rock",
+  "slots": ["rock", "layer", "wet"],
+  "slotColors": {
+    "rock": {
+      "color": "#7b7f86"
+    },
+    "layer": {
+      "color": "#5d6168"
+    },
+    "wet": {
+      "color": "#34383e"
+    }
+  },
+  "budget": {
+    "maxTriangles": 400,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.05,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "rock",
+      "dims": {
+        "shape": 0
+      },
+      "expectedBounds": {
+        "min": [-0.85, -0.5, -0.81],
+        "max": [0.95, 1.01, 0.81]
+      }
+    },
+    {
+      "name": "rock-skerry",
+      "dims": {
+        "shape": 1
+      },
+      "expectedBounds": {
+        "min": [-1.07, -0.5, -1.02],
+        "max": [0.96, 0.59, 0.85]
+      }
+    },
+    {
+      "name": "rock-pair",
+      "dims": {
+        "shape": 2
+      },
+      "expectedBounds": {
+        "min": [-0.96, -0.5, -0.78],
+        "max": [0.93, 0.96, 0.8]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 40,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "rock",
+  "boundsFixed": true,
+  "ao": {
+    "strength": 0.6,
+    "distance": 0.25,
+    "samples": 64,
+    "ground": false
+  }
+}

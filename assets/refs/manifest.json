@@ -1900,5 +1900,123 @@
       "mask": null,
       "note": "Snowy rocky peaks"
     }
+  ],
+  "env-iceberg": [
+    {
+      "file": "Large iceberg in the Atlantic Ocean, off the coast of Labrador LCCN2012645586.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Large_iceberg_in_the_Atlantic_Ocean%2C_off_the_coast_of_Labrador_LCCN2012645586.jpg/500px-Large_iceberg_in_the_Atlantic_Ocean%2C_off_the_coast_of_Labrador_LCCN2012645586.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Large_iceberg_in_the_Atlantic_Ocean,_off_the_coast_of_Labrador_LCCN2012645586.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Labrador berg: pale weathered top, sharp facets, blue-green waterline"
+    },
+    {
+      "file": "Large iceberg in the Atlantic Ocean, off the coast of Labrador LCCN2012645605.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Large_iceberg_in_the_Atlantic_Ocean%2C_off_the_coast_of_Labrador_LCCN2012645605.jpg/500px-Large_iceberg_in_the_Atlantic_Ocean%2C_off_the_coast_of_Labrador_LCCN2012645605.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Large_iceberg_in_the_Atlantic_Ocean,_off_the_coast_of_Labrador_LCCN2012645605.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Second Labrador berg: tilted blocky shape, sloping top"
+    }
+  ],
+  "env-rock": [
+    {
+      "file": "Sea Stack - geograph.org.uk - 821645.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Sea_Stack_-_geograph.org.uk_-_821645.jpg/500px-Sea_Stack_-_geograph.org.uk_-_821645.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Sea_Stack_-_geograph.org.uk_-_821645.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Sea stack with horizontal strata"
+    },
+    {
+      "file": "Sea stack by Harlosh Point - geograph.org.uk - 1983174.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Sea_stack_by_Harlosh_Point_-_geograph.org.uk_-_1983174.jpg/500px-Sea_stack_by_Harlosh_Point_-_geograph.org.uk_-_1983174.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Sea_stack_by_Harlosh_Point_-_geograph.org.uk_-_1983174.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Stack with dark wet base"
+    },
+    {
+      "file": "Clett Rock - geograph.org.uk - 1293.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f4/Clett_Rock_-_geograph.org.uk_-_1293.jpg/500px-Clett_Rock_-_geograph.org.uk_-_1293.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Clett_Rock_-_geograph.org.uk_-_1293.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Clett Rock, layered flagstone stack"
+    }
+  ],
+  "env-buoy": [
+    {
+      "file": "Bogha Nan Ramfhear north cardinal buoy - geograph.org.uk - 2822596.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Bogha_Nan_Ramfhear_north_cardinal_buoy_-_geograph.org.uk_-_2822596.jpg/500px-Bogha_Nan_Ramfhear_north_cardinal_buoy_-_geograph.org.uk_-_2822596.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Bogha_Nan_Ramfhear_north_cardinal_buoy_-_geograph.org.uk_-_2822596.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Cardinal buoy: pillar body, cage topmark, lamp"
+    },
+    {
+      "file": "South Cardinal light and whistle buoy off of South Racheal Island.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/South_Cardinal_light_and_whistle_buoy_off_of_South_Racheal_Island.jpg/500px-South_Cardinal_light_and_whistle_buoy_off_of_South_Racheal_Island.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:South_Cardinal_light_and_whistle_buoy_off_of_South_Racheal_Island.jpg",
+      "license": "CC0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Cardinal buoy at sea"
+    },
+    {
+      "file": "De KT9 WTV2 op de splitsing van het Keeten en het Witte Tonnen Vlije (01).JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/De_KT9_WTV2_op_de_splitsing_van_het_Keeten_en_het_Witte_Tonnen_Vlije_%2801%29.JPG/500px-De_KT9_WTV2_op_de_splitsing_van_het_Keeten_en_het_Witte_Tonnen_Vlije_%2801%29.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:De_KT9_WTV2_op_de_splitsing_van_het_Keeten_en_het_Witte_Tonnen_Vlije_(01).JPG",
+      "license": "CC BY-SA 3.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Lateral channel buoy"
+    }
+  ],
+  "env-ship": [
+    {
+      "file": "Svitzer Kent Tug Boat - geograph.org.uk - 5894473.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Svitzer_Kent_Tug_Boat_-_geograph.org.uk_-_5894473.jpg/500px-Svitzer_Kent_Tug_Boat_-_geograph.org.uk_-_5894473.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Svitzer_Kent_Tug_Boat_-_geograph.org.uk_-_5894473.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Tug: hull, wheelhouse, funnel, rubbing strake"
+    },
+    {
+      "file": "Tug boat in Halifax Harbour on a foggy day.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Tug_boat_in_Halifax_Harbour_on_a_foggy_day.jpg/500px-Tug_boat_in_Halifax_Harbour_on_a_foggy_day.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Tug_boat_in_Halifax_Harbour_on_a_foggy_day.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Tug in North Atlantic port"
+    },
+    {
+      "file": "Kaap Hoorn (IMO 8411695) Delfzijl 1986.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/47/Kaap_Hoorn_%28IMO_8411695%29_Delfzijl_1986.jpg/500px-Kaap_Hoorn_%28IMO_8411695%29_Delfzijl_1986.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Kaap_Hoorn_(IMO_8411695)_Delfzijl_1986.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Small coaster: aft wheelhouse, funnel, low hull"
+    }
   ]
 }

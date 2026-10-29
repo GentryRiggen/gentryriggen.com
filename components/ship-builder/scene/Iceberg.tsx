@@ -7,17 +7,23 @@ import { beamOf } from "@/lib/ship-builder/model/grid";
 import type { IcebergInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import EnvGlb from "./EnvGlb";
+import {
+  ENV_MODELS,
+  ICE_TOP,
+  ICE_UNDER,
+  ICE_UNDER_OPACITY,
+  ICEBERG_SLOTS,
+} from "./envModels";
 import { hullXOfImpact } from "./icebergAim";
 import { icebergOffset } from "./icebergMotion";
 import { trialPlayback } from "./trialPlayback";
 
 /** How far the berg's middle sits from the hull's side, so they just touch. */
 const BERG_STANDOFF = 2.8;
-const ICE_TOP = "#f5fbff";
-const ICE_UNDER = "#a9d8ee";
 
-/** The low-poly berg: a pale peak above the water, a bluer bulk below. */
-export function IcebergShape() {
+/** The low-poly stand-in: a pale peak above the water, a bluer bulk below. */
+function ProceduralIceberg() {
   return (
     <>
       <mesh position={[0, 0.9, 0]} scale={[3.4, 2, 2.8]} castShadow>
@@ -34,10 +40,30 @@ export function IcebergShape() {
           color={ICE_UNDER}
           flatShading
           transparent
-          opacity={0.7}
+          opacity={ICE_UNDER_OPACITY}
         />
       </mesh>
     </>
+  );
+}
+
+interface IcebergShapeProps {
+  /** Which Blender berg: the trial always uses the first. */
+  variant?: (typeof ENV_MODELS.iceberg.variants)[number];
+}
+
+/**
+ * The berg: a Blender-made peak above the water and a bluer, see-through
+ * bulk below, or the procedural stand-in while it loads.
+ */
+export function IcebergShape({ variant = "iceberg" }: IcebergShapeProps) {
+  return (
+    <EnvGlb
+      model={ENV_MODELS.iceberg.model}
+      variant={variant}
+      slots={ICEBERG_SLOTS}
+      fallback={<ProceduralIceberg />}
+    />
   );
 }
 
