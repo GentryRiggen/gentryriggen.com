@@ -85,7 +85,16 @@ async function seedMeadow(
   }, patch);
 }
 
+/** Waits until every Blender plane model on screen has loaded (no stand-ins). */
+async function modelsLoaded(page: Page) {
+  await page.waitForFunction(() => {
+    const status = window.__shipBuilderModels?.();
+    return !status || status.pending === 0;
+  });
+}
+
 async function expectPage(page: Page, name: string) {
+  await modelsLoaded(page);
   // Move the pointer off the controls so no hover state is photographed.
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot(name, {
