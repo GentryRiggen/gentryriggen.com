@@ -1,2 +1,2 @@
 /** Bumped by hand with each release. */
-export const SHIP_BUILDER_VERSION = "2.27.0";
+export const SHIP_BUILDER_VERSION = "2.28.0";
