@@ -9,7 +9,7 @@ from lib.shapes import (box, cylinder, extrude, hex_linear, make_object, merge,
 CTRL = [(0, 0), (0.45, 0), (0.75, 0.06), (0.88, 0.25), (0.86, 0.48), (0.8, 0.6)]
 
 
-def catmull(pts, per=5):
+def catmull(pts, per=2):
     """Uniform Catmull-Rom through (y, z) control points."""
     p = [pts[0]] + pts + [pts[-1]]
     out = []
@@ -29,7 +29,7 @@ def quadrant(x0, x1):
     """A toothed fan plate in (z, y), pivot at (0, 0.5)."""
     cz, cy, r = 0.0, 0.5, 0.42
     prof = [(cz, cy)]
-    n = 9
+    n = 5
     for i in range(n + 1):
         a = math.radians(5 + 55 * i / n)  # swings from straight down toward +z
         rr = r if i % 2 == 0 else r - 0.035
@@ -39,14 +39,14 @@ def quadrant(x0, x1):
 
 def build(dims):
     base = cylinder(0.1, 0.12, 0.06, 10, 0.03)
-    collar = cylinder(0.075, 0.075, 0.07, 10, 0.1)
+    collar = cylinder(0.075, 0.075, 0.07, 6, 0.1)
     arm_pts = [(0.0, y, z) for y, z in catmull(CTRL)]
-    arm = tube(arm_pts, 0.05, 10)
+    arm = tube(arm_pts, 0.05, 6)
     cheeks = [quadrant(-0.075, -0.045), quadrant(0.045, 0.075)]
     pin = box(0, 0.5, 0, 0.17, 0.05, 0.05)
-    block = rounded_box((0, 0.74, 0.6), (0.1, 0.12, 0.1), 0.02, 2)
-    fall = tube([(0, 0.68, 0.6), (0, 0.5, 0.6)], 0.008, 5)
-    hook = rounded_box((0, 0.48, 0.6), (0.04, 0.05, 0.04), 0.01, 1)
+    block = rounded_box((0, 0.74, 0.6), (0.1, 0.12, 0.1), 0.02, 1)
+    fall = box(0, 0.59, 0.6, 0.014, 0.18, 0.014)
+    hook = box(0, 0.48, 0.6, 0.04, 0.05, 0.04)
     mesh = merge([base, collar, arm, pin, block, fall, hook] + cheeks)
     return {"davit": make_object("davit", mesh, hex_linear("#e8e4d8"),
                                  metallic=1.0, roughness=0.4)}

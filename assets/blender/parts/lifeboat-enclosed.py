@@ -23,12 +23,12 @@ def keel_d(s):
     return (RIM - KEEL) * (1 - 0.55 * abs(s) ** 2.2)
 
 
-STATIONS = [-1 + 2 * i / 16 for i in range(17)]
+STATIONS = [-1 + 2 * i / 8 for i in range(9)]
 
 
 def hull():
     secs = []
-    k = 10
+    k = 5
     for s in STATIONS:
         w, r, d = half(s), rim(s), keel_d(s)
         prof = [(w * _sp(math.cos(math.pi - math.pi * i / k), 0.8),
@@ -54,7 +54,7 @@ def strake():
     return merge(out)
 
 
-CS = [-0.78 + 1.42 * i / 9 for i in range(10)]
+CS = [-0.78 + 1.42 * i / 5 for i in range(6)]
 
 
 def c_half(s):
@@ -68,7 +68,7 @@ def c_height(s):
 
 def canopy():
     secs = []
-    k = 10
+    k = 5
     for s in CS:
         w, h, r = c_half(s), c_height(s), rim(s) - 0.004
         prof = [(w * _sp(math.cos(math.pi - math.pi * i / k), 0.7),
@@ -80,21 +80,21 @@ def canopy():
 def windows():
     out = []
     for side in (-1, 1):
-        for s in (-0.5, -0.28, -0.06, 0.16, 0.38):
+        for s in (-0.45, -0.2, 0.05, 0.3):
             h = c_height(s)
             wy = rim(s) + h * 0.5
             # canopy wall z at that height
             frac = 0.5
             z = side * (c_half(s) * (1 - frac ** (2 / 0.7)) ** (0.7 / 2) + 0.004)
-            out.append(rounded_box((s * L / 2, wy, z), (0.09, 0.05, 0.02), 0.008, 1))
+            out.append(box(s * L / 2, wy, z, 0.09, 0.05, 0.02))
     return merge(out)
 
 
 def build(dims):
     top_y = rim(0.0) + c_height(0.0) * 1.0
     # Hatch ring and lid on top, bow hatch, lifting hook.
-    hatch = cylinder(0.065, 0.075, 0.03, 12, rim(-0.35) + c_height(-0.35) + 0.0)
-    bow_hatch = rounded_box((0.47, rim(0.86) + 0.012, 0.0), (0.12, 0.03, 0.14), 0.01, 1)
+    hatch = cylinder(0.065, 0.075, 0.03, 8, rim(-0.35) + c_height(-0.35) + 0.0)
+    bow_hatch = box(0.38, rim(0.69) + 0.01, 0.0, 0.1, 0.025, 0.12)
     hook = rounded_box((0.0, top_y + 0.015, 0.0), (0.05, 0.05, 0.05), 0.012, 1)
     canopy_parts = [canopy(), hatch, bow_hatch, hook]
     return {
