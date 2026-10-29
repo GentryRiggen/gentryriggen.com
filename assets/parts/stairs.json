@@ -1,9 +1,9 @@
 {
   "id": "stairs",
   "script": "stairs",
-  "slots": ["paint-d9d2bf", "railing"],
+  "slots": ["steps", "railing"],
   "slotColors": {
-    "paint-d9d2bf": {
+    "steps": {
       "color": "#d9d2bf"
     },
     "railing": {
@@ -11,13 +11,8 @@
       "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/stairs.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2100,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -31,8 +26,8 @@
       "name": "stairs",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.463, 0, -0.4],
-        "max": [0.463, 1.3317, 0.4]
+        "min": [-0.475, 0, -0.385],
+        "max": [0.45, 1.4025, 0.385]
       }
     }
   ],
@@ -56,6 +51,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "stairs",
-  "generated": "26c3255d85204992"
+  "scoreVariant": "stairs"
 }

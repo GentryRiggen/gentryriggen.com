@@ -110,6 +110,28 @@ describe("GlbRegistryPart", () => {
     expect(container.querySelector('group[name="procedural"]')).toBeNull();
   });
 
+  it("turns a facing part with its rotation, and turns the fallback back", () => {
+    mockGltf.load = () => ({ scene: sceneWith("body") });
+    const facing: GlbPartEntry = { ...ENTRY, rakeRadians: 0, facing: true };
+    const context: GlbPartContext = { ...CONTEXT, rotation: 90 };
+    const turned = Math.PI - Math.PI / 2;
+    const { container } = draw("fake", { entries: { fake: facing } }, context);
+    const outer = container.querySelector("group[rotation]");
+    expect(Number(outer?.getAttribute("rotation")?.split(",")[1])).toBeCloseTo(
+      turned
+    );
+    mockGltf.load = () => {
+      throw new Error("load failed");
+    };
+    const failed = draw("fake", { entries: { fake: facing } }, context);
+    const back = failed.container.querySelector(
+      'group[name="procedural"]'
+    )?.parentElement;
+    expect(Number(back?.getAttribute("rotation")?.split(",")[1])).toBeCloseTo(
+      -turned
+    );
+  });
+
   it("reaches the real funnel entry through the registry", () => {
     mockGltf.load = () => ({ scene: sceneWith("body") });
     draw("funnel-large", {});

@@ -1,23 +1,15 @@
 {
   "id": "searchlight",
   "script": "searchlight",
-  "slots": ["lampBody", "lampLens"],
+  "slots": ["lampBody"],
   "slotColors": {
     "lampBody": {
       "color": "#59616a",
       "finish": "metal"
-    },
-    "lampLens": {
-      "color": "#fff4b8"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/searchlight.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 1700,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -31,8 +23,8 @@
       "name": "searchlight",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.06, 0, -0.09],
-        "max": [0.15, 0.27, 0.09]
+        "min": [-0.1197, 0, -0.114],
+        "max": [0.15, 0.284, 0.114]
       }
     }
   ],
@@ -56,6 +48,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "searchlight",
-  "generated": "f395b97d6fe70a0a"
+  "scoreVariant": "searchlight"
 }

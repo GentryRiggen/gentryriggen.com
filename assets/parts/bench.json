@@ -1,24 +1,19 @@
 {
   "id": "bench",
   "script": "bench",
-  "slots": ["paint-a8764a", "paint-4a4e55"],
+  "slots": ["wood", "iron"],
   "slotColors": {
-    "paint-a8764a": {
+    "wood": {
       "color": "#a8764a",
       "finish": "wood"
     },
-    "paint-4a4e55": {
+    "iron": {
       "color": "#4a4e55",
       "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/bench.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2200,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -32,8 +27,8 @@
       "name": "bench",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.17, 0, -0.4],
-        "max": [0.186, 0.5695, 0.4]
+        "min": [-0.2338, -0.0018, -0.4],
+        "max": [0.175, 0.5445, 0.4]
       }
     }
   ],
@@ -57,6 +52,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "bench",
-  "generated": "f82ae32d1cc4b30a"
+  "scoreVariant": "bench"
 }

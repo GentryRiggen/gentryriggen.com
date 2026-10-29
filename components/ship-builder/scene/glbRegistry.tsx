@@ -6,6 +6,11 @@ import FunnelMarkDecals from "./FunnelMarkDecals";
 import { funnelRadiusAt, type FunnelDims } from "./funnelGeometry";
 import type { GlbSlotLook } from "./glbSlots";
 import { CRUISE_COLORS } from "./cruiseColors";
+import { DECK_GLB_PARTS } from "./glbDeckParts";
+import { AerialWires, SternFlagCloth } from "./fittingDecor";
+import { LIGHT_COLORS } from "./lightColors";
+import { NavLightsLamps } from "./lightParts";
+import { RadarScanner } from "./navyParts";
 import { PALETTE } from "./palette";
 import type { PartEmphasis, PartTint } from "./Surface";
 
@@ -56,6 +61,12 @@ export interface GlbPartEntry {
    * side it is turned half a circle about the vertical so it faces outboard.
    */
   faceOutward?: boolean;
+  /**
+   * The model faces local +X and turns with the part's rotation, like a
+   * procedural deck fitting wrapped in `Facing` (see facingYaw). The model
+   * and its sub-parts turn; the fallback already carries its own facing.
+   */
+  facing?: boolean;
   /** How each slot of the file is drawn, given the part's paint. */
   slots: (context: GlbPartContext) => Record<string, GlbSlotLook>;
   /**
@@ -303,5 +314,87 @@ export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
     variant: "davit-side",
     faceOutward: true,
     slots: davitSlots,
+  },
+  ...DECK_GLB_PARTS,
+  mast: {
+    model: "mast",
+    variant: "mast",
+    slots: ({ painted }) => ({
+      mast: {
+        color: painted ?? PALETTE.mast,
+        finish: "wood",
+        castShadow: true,
+      },
+      rings: { color: "#d9cdb4", finish: "metal" },
+    }),
+  },
+  "crows-nest": {
+    model: "crows-nest",
+    variant: "crows-nest",
+    slots: ({ painted }) => ({
+      nestBasket: {
+        color: painted ?? PALETTE.nestBasket,
+        finish: "wood",
+        castShadow: true,
+      },
+      mast: { color: PALETTE.mast, finish: "wood" },
+    }),
+  },
+  "radar-mast": {
+    model: "radar-mast",
+    variant: "radar-mast",
+    slots: ({ painted }) => ({
+      mast: { color: painted ?? "#8a949c", castShadow: true },
+      equipment: { color: "#4b545b", castShadow: true },
+      dome: { color: "#e4e8ea" },
+    }),
+    subParts: ({ painted, tint, emphasis }) => (
+      <RadarScanner painted={painted} tint={tint} emphasis={emphasis} />
+    ),
+  },
+  "wireless-aerial": {
+    model: "wireless-aerial",
+    variant: "wireless-aerial",
+    slots: () => ({
+      spreader: { color: PALETTE.aerialWire, finish: "metal" },
+      insulator: { color: "#e6e0d2" },
+    }),
+    subParts: ({ wireTarget, tint, emphasis }) =>
+      wireTarget ? (
+        <AerialWires target={wireTarget} tint={tint} emphasis={emphasis} />
+      ) : null,
+  },
+  "stern-flag": {
+    model: "stern-flag",
+    variant: "stern-flag",
+    slots: () => ({
+      pole: { color: PALETTE.railing, finish: "wood", castShadow: true },
+      fittings: { color: "#d4a94a", finish: "metal" },
+    }),
+    subParts: ({ painted, tint, emphasis }) => (
+      <SternFlagCloth
+        painted={painted}
+        tint={tint}
+        emphasis={emphasis}
+        isGhost={tint === "ghost-ok" || tint === "ghost-bad"}
+      />
+    ),
+  },
+  "nav-lights": {
+    model: "nav-lights",
+    variant: "nav-lights",
+    slots: ({ painted }) => ({
+      housing: { color: painted ?? LIGHT_COLORS.housing, castShadow: true },
+      pole: { color: painted ?? PALETTE.mast },
+    }),
+    subParts: ({ painted, tint, emphasis, bridgeHalfSpan }) => (
+      <NavLightsLamps
+        halfSpan={bridgeHalfSpan ?? 1}
+        painted={painted}
+        tint={tint}
+        emphasis={emphasis}
+        bareMasthead
+      />
+    ),
   },
 };

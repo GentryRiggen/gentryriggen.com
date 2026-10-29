@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.27.0",
+    date: "2026-10-28",
+    title: "A properly dressed deck and real masts",
+    highlights: [
+      "The deck is dressed properly now: cowl ventilators, Titanic-style deck chairs, slatted benches, lamp posts, floodlights, searchlights, stairs and anchors all look much more like the real thing",
+      "Masts now have a yard and bands, the crow's nest is a proper barrel, and the radar mast, aerial, flag pole and nav lights have real fittings",
+    ],
+  },
+  {
     version: "2.26.0",
     date: "2026-10-28",
     title: "Real lifeboats, davits and liferafts",

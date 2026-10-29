@@ -1,30 +1,15 @@
 {
   "id": "nav-lights",
   "script": "nav-lights",
-  "slots": ["lampBody", "paint-8f3030", "paint-2f7a45", "mast", "paint-d8d8d4"],
+  "slots": ["housing", "pole"],
   "slotColors": {
-    "lampBody": {
+    "housing": {
       "color": "#59616a"
     },
-    "paint-8f3030": {
-      "color": "#8f3030"
-    },
-    "paint-2f7a45": {
-      "color": "#2f7a45"
-    },
-    "mast": {
+    "pole": {
       "color": "#5b4632"
-    },
-    "paint-d8d8d4": {
-      "color": "#d8d8d4"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/nav-lights.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring.",
-    "Width comes from the bridge it sits on (props), not the part. Keep the bridge-wide spread procedural or model one lamp and repeat it."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -40,8 +25,8 @@
       "name": "nav-lights",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.375, 0, -1.895],
-        "max": [0.075, 0.605, 1.895]
+        "min": [-0.4, 0, -0.1],
+        "max": [-0.2, 0.67, 0.1]
       }
     }
   ],
@@ -66,5 +51,5 @@
     }
   ],
   "scoreVariant": "nav-lights",
-  "generated": "98c9477fd189302d"
+  "boundsFixed": true
 }

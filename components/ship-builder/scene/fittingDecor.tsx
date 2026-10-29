@@ -149,8 +149,8 @@ interface SternFlagProps extends FittingMeshProps {
   isGhost: boolean;
 }
 
-/** A pole and a cloth flag that streams toward the stern (-X in world). */
-export function SternFlagMesh({
+/** The cloth of a stern flag, hinged on the pole, streaming toward -X. */
+export function SternFlagCloth({
   painted,
   tint,
   emphasis,
@@ -180,19 +180,27 @@ export function SternFlagMesh({
   });
 
   return (
+    <mesh
+      ref={cloth}
+      position={[0, POLE_HEIGHT - FLAG_HEIGHT / 2 - 0.04, 0]}
+      geometry={geometry}
+      castShadow
+    >
+      <Surface color={painted ?? PALETTE.flag} doubleSided {...surface} />
+    </mesh>
+  );
+}
+
+/** A pole and a cloth flag that streams toward the stern (-X in world). */
+export function SternFlagMesh(props: SternFlagProps) {
+  const surface = { tint: props.tint, emphasis: props.emphasis };
+  return (
     <group>
       <mesh position={[0, POLE_HEIGHT / 2, 0]} castShadow>
         <cylinderGeometry args={[0.02, 0.03, POLE_HEIGHT, 8]} />
         <Surface color={PALETTE.railing} finish="wood" {...surface} />
       </mesh>
-      <mesh
-        ref={cloth}
-        position={[0, POLE_HEIGHT - FLAG_HEIGHT / 2 - 0.04, 0]}
-        geometry={geometry}
-        castShadow
-      >
-        <Surface color={painted ?? PALETTE.flag} doubleSided {...surface} />
-      </mesh>
+      <SternFlagCloth {...props} />
     </group>
   );
 }
@@ -236,12 +244,8 @@ interface WirelessAerialProps {
   emphasis: PartEmphasis;
 }
 
-/** Two thin wires from this mast top to the top of the nearest other mast. */
-export function WirelessAerialMesh({
-  target,
-  tint,
-  emphasis,
-}: WirelessAerialProps) {
+/** The two wires from this mast top to the nearest other mast. */
+export function AerialWires({ target, tint, emphasis }: WirelessAerialProps) {
   const [dx, dy, dz] = target;
   const wires = useMemo(
     () =>
@@ -257,6 +261,19 @@ export function WirelessAerialMesh({
       {wires.map(({ key, from, to }) => (
         <Wire key={key} from={from} to={to} tint={tint} emphasis={emphasis} />
       ))}
+    </group>
+  );
+}
+
+/** Two thin wires from this mast top to the top of the nearest other mast. */
+export function WirelessAerialMesh({
+  target,
+  tint,
+  emphasis,
+}: WirelessAerialProps) {
+  return (
+    <group>
+      <AerialWires target={target} tint={tint} emphasis={emphasis} />
       <mesh position={[0, 0.03, 0]}>
         <sphereGeometry args={[0.045, 10, 8]} />
         <Surface

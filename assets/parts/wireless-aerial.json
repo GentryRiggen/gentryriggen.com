@@ -1,22 +1,16 @@
 {
   "id": "wireless-aerial",
   "script": "wireless-aerial",
-  "slots": ["aerialWire", "aerialWire-metal"],
+  "slots": ["spreader", "insulator"],
   "slotColors": {
-    "aerialWire": {
-      "color": "#2a2a2a"
-    },
-    "aerialWire-metal": {
+    "spreader": {
       "color": "#2a2a2a",
       "finish": "metal"
+    },
+    "insulator": {
+      "color": "#e6e0d2"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/wireless-aerial.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring.",
-    "The measured box includes the wire to another mast, whose distance depends on the studio ship. The bounds cover the insulator ball and the two wire anchors only; the wires stay procedural (registry subParts)."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -33,8 +27,8 @@
       "name": "wireless-aerial",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.045, -0.015, -0.114],
-        "max": [0.045, 0.075, 0.114]
+        "min": [-0.038, -0.012, -0.122],
+        "max": [0.038, 0.068, 0.122]
       }
     }
   ],
@@ -58,6 +52,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "wireless-aerial",
-  "generated": "39a0c4fa8c0d6225"
+  "scoreVariant": "wireless-aerial"
 }
