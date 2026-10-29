@@ -31,7 +31,7 @@ describe("parseStudioParams", () => {
     );
   });
 
-  it("accepts any game part without a spec, in the default view", () => {
+  it("accepts any game part, in the default view", () => {
     expect(parseStudioParams("?part=rudder&build=old")).toEqual({
       part: "rudder",
       type: "rudder",
@@ -40,9 +40,9 @@ describe("parseStudioParams", () => {
       view: "three-quarter",
       time: "Day",
     });
-    expect(
-      parseStudioParams("?part=rudder&build=old&view=side")
-    ).toHaveProperty("error");
+    expect(parseStudioParams("?part=rudder&build=old&view=top")).toHaveProperty(
+      "error"
+    );
   });
 
   it("rejects an unknown part", () => {

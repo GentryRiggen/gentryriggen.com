@@ -23,7 +23,7 @@
  * distinct colour and finish, named after the palette key when the colour is
  * one (else paint-<hex>). Names are guesses; the spec's `todo` says so.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 import { ensureDevServer } from "./devServer.mjs";
 import {
