@@ -87,7 +87,7 @@ function draw(
 
 describe("GlbRegistryPart", () => {
   it("draws its children for a part with no entry", () => {
-    const { container } = draw("rudder", {});
+    const { container } = draw("cannon-deck", {});
     expect(container.querySelector('group[name="procedural"]')).not.toBeNull();
     expect(requested).toEqual([]);
   });
