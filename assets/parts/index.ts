@@ -38,6 +38,10 @@ import hatchCoverSpec from "./hatch-cover.json";
 import helicopterSpec from "./helicopter.json";
 import helipadSpec from "./helipad.json";
 import helmWheelSpec from "./helm-wheel.json";
+import kitBridgeWingSpec from "./kit-bridge-wing.json";
+import kitPortholeSpec from "./kit-porthole.json";
+import kitWindowSpec from "./kit-window.json";
+import kitWindscreenSpec from "./kit-windscreen.json";
 import lifeboatCollapsibleSpec from "./lifeboat-collapsible.json";
 import lifeboatEnclosedSpec from "./lifeboat-enclosed.json";
 import lifeboatFreefallSpec from "./lifeboat-freefall.json";
@@ -121,6 +125,10 @@ export const PART_SPEC_LIST: readonly unknown[] = [
   helicopterSpec,
   helipadSpec,
   helmWheelSpec,
+  kitBridgeWingSpec,
+  kitPortholeSpec,
+  kitWindowSpec,
+  kitWindscreenSpec,
   lifeboatCollapsibleSpec,
   lifeboatEnclosedSpec,
   lifeboatFreefallSpec,

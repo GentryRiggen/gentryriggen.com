@@ -1,0 +1,60 @@
+{
+  "id": "kit-porthole",
+  "script": "kit-porthole",
+  "slots": ["rim"],
+  "slotColors": {
+    "rim": {
+      "color": "#b08d57",
+      "finish": "metal"
+    }
+  },
+  "budget": {
+    "maxTriangles": 96,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "kit-porthole",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.006, -0.138, -0.138],
+        "max": [0.03, 0.138, 0.138]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 60,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "kit-porthole",
+  "boundsFixed": true,
+  "kit": true,
+  "ao": {
+    "strength": 0.6,
+    "distance": 0.05,
+    "samples": 64,
+    "ground": false
+  }
+}

@@ -14,6 +14,7 @@ import { BOOT_TOP, DECK_Y } from "./coords";
 import { LIGHT_COLORS } from "./lightColors";
 import { useGlowEffect } from "./GlowContext";
 import { ANCHOR_Y, bowAnchorSpot } from "./hullShapes";
+import { useKitGeometry } from "./kitModels";
 import { noRaycast } from "./noRaycast";
 import { PALETTE } from "./palette";
 import { useClipMaterialProps } from "./shipHalf";
@@ -35,6 +36,8 @@ const PORTHOLE_HALO_RADIUS = 0.3;
 const PORTHOLE_HALO_OPACITY = 0.55;
 /** The halo sits just off the hull, in front of the porthole. */
 const PORTHOLE_HALO_OFFSET = 0.02;
+/** The kit rim's back stands on the hull side (it is modelled to x = 0). */
+const KIT_RIM_OFFSET = 0.004;
 /** Anchor clearance from the hull surface (half its thickness plus a gap). */
 const ANCHOR_STANDOFF = 0.035;
 
@@ -56,6 +59,8 @@ function Portholes({
   const haloMaterial = useRef<MeshBasicMaterial>(null);
   const count = Math.max(0, lengthCells - 2 * PORTHOLE_END_MARGIN) * 2;
   const clip = useClipMaterialProps();
+  // The riveted brass rim from the detail kit; the torus is its stand-in.
+  const rimKit = useKitGeometry("kit-porthole");
 
   useGlowEffect((glow) => {
     const lit = material.current;
@@ -74,10 +79,10 @@ function Portholes({
 
   useLayoutEffect(() => {
     const dummy = new Object3D();
-    for (const [mesh, offset] of [
-      [ref.current, PORTHOLE_OFFSET],
-      [rimRef.current, PORTHOLE_OFFSET],
-      [haloRef.current, PORTHOLE_HALO_OFFSET],
+    for (const [mesh, offset, rim] of [
+      [ref.current, PORTHOLE_OFFSET, false],
+      [rimRef.current, rimKit ? KIT_RIM_OFFSET : PORTHOLE_OFFSET, true],
+      [haloRef.current, PORTHOLE_HALO_OFFSET, false],
     ] as const) {
       if (!mesh) continue;
       let index = 0;
@@ -92,15 +97,21 @@ function Portholes({
             PORTHOLE_Y,
             side * (beam / 2 + offset)
           );
-          // Circles face +Z; the far side turns round to face -Z.
-          dummy.rotation.set(0, side === 1 ? 0 : Math.PI, 0);
+          // Circles face +Z; the far side turns round to face -Z. The kit rim
+          // is modelled facing +X, so it turns a quarter circle to face out.
+          const facing = side === 1 ? 0 : Math.PI;
+          dummy.rotation.set(
+            0,
+            rim && rimKit ? facing - Math.PI / 2 : facing,
+            0
+          );
           dummy.updateMatrix();
           mesh.setMatrixAt(index++, dummy.matrix);
         }
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
-  }, [lengthCells, beam, count]);
+  }, [lengthCells, beam, count, rimKit]);
 
   if (count === 0) return null;
   return (
@@ -122,20 +133,24 @@ function Portholes({
         />
       </instancedMesh>
       <instancedMesh
-        key={`rims:${count}`}
+        key={`rims:${count}:${rimKit ? "kit" : "torus"}`}
         ref={rimRef}
         args={[undefined, undefined, count]}
         raycast={noRaycast}
         frustumCulled={false}
       >
-        <torusGeometry
-          args={[
-            PORTHOLE_RADIUS + PORTHOLE_RIM_TUBE / 2,
-            PORTHOLE_RIM_TUBE,
-            4,
-            14,
-          ]}
-        />
+        {rimKit ? (
+          <primitive object={rimKit} attach="geometry" dispose={null} />
+        ) : (
+          <torusGeometry
+            args={[
+              PORTHOLE_RADIUS + PORTHOLE_RIM_TUBE / 2,
+              PORTHOLE_RIM_TUBE,
+              4,
+              14,
+            ]}
+          />
+        )}
         <meshStandardMaterial
           ref={rustRef}
           color={PALETTE.propeller}

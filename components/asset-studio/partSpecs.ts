@@ -29,6 +29,8 @@ export interface PartSpec {
   scoreVariant: string;
   /** Tilt about Z the game applies outside the model (a funnel's rake). */
   rakeRadians?: number;
+  /** A detail-kit piece (a window frame, a porthole rim): drawn by KitStudio, not as a game part. */
+  kit?: boolean;
   /** Work the modeller still has to do (slots not derived, and so on). */
   todo?: string[];
 }

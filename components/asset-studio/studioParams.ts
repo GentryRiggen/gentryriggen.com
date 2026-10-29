@@ -14,6 +14,8 @@ export interface StudioParams {
   type: PartType;
   /** The spec variant (its glb is `<spec id>/<variant>.glb`); the part id when there is no spec. */
   variant: string;
+  /** True for a detail-kit piece (KitStudio draws it; `type` is a placeholder). */
+  kit: boolean;
   build: "old" | "new";
   view: string;
   time: StudioTime;
@@ -39,6 +41,11 @@ function resolve(part: string, variantParam: string | null): Resolved | string {
   const found = specForPart(part);
   const spec = found?.spec ?? null;
   const variant = variantParam ?? found?.variant ?? part;
+  if (spec?.kit) {
+    if (variant !== spec.id) return `Unknown variant "${variant}" for ${part}`;
+    // A kit piece is no game part: `type` is never read for it.
+    return { type: "deck-1x1", spec, variant };
+  }
   if (spec) {
     if (!spec.variants.some((v) => v.name === variant)) {
       return `Unknown variant "${variant}" for ${part}`;
@@ -82,6 +89,7 @@ export function parseStudioParams(
   }
   return {
     part,
+    kit: resolved.spec?.kit === true,
     type: resolved.type,
     variant: resolved.variant,
     build,

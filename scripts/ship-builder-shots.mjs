@@ -61,6 +61,21 @@ const LOOKS = [
     name: "Wonder of the Seas",
     time: "Day",
   },
+  {
+    id: "cruise-close",
+    kind: "Cruise ship",
+    name: "Wonder of the Seas",
+    time: "Day",
+    crop: { x: 420, y: 300, width: 440, height: 260 },
+  },
+  { id: "cargo-day", kind: "Cargo ship", name: "Ever Given", time: "Day" },
+  {
+    id: "cargo-close",
+    kind: "Cargo ship",
+    name: "Ever Given",
+    time: "Day",
+    crop: { x: 420, y: 300, width: 440, height: 260 },
+  },
 ];
 
 // Ambient occlusion is forced on so a slow software renderer cannot switch it

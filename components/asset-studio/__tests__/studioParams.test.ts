@@ -6,6 +6,7 @@ describe("parseStudioParams", () => {
       parseStudioParams("?part=funnel&variant=funnel-large&build=new&view=side")
     ).toEqual({
       part: "funnel",
+      kit: false,
       type: "funnel-large",
       variant: "funnel-large",
       build: "new",
@@ -34,6 +35,7 @@ describe("parseStudioParams", () => {
   it("accepts any game part, in the default view", () => {
     expect(parseStudioParams("?part=rudder&build=old")).toEqual({
       part: "rudder",
+      kit: false,
       type: "rudder",
       variant: "rudder",
       build: "old",

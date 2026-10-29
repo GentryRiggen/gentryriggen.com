@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.29.0",
+    date: "2026-10-29",
+    title: "Real portholes, window frames and wheelhouse windscreens",
+    highlights: [
+      "Cabins and bridges now have real portholes, window frames and wheelhouse windscreens: each window has a chamfered frame, a sloped sill and a centre bar, and the bridge front has a raked windscreen with a sun visor",
+      "The hull's portholes have riveted brass rims with a little hinge lug",
+      "Bridges have proper wing cabs with a rail and a kick plate. Lit windows still glow at night, and the game stays just as smooth",
+    ],
+  },
+  {
     version: "2.28.0",
     date: "2026-10-28",
     title: "Cargo, navy, pirate and fun props",

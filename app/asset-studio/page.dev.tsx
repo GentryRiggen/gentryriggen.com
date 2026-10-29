@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import AssetStudio from "@/components/asset-studio/AssetStudio";
+import KitStudio from "@/components/asset-studio/KitStudio";
 import PlaneAssetStudio from "@/components/asset-studio/PlaneAssetStudio";
 import { parsePlaneStudioParams } from "@/components/asset-studio/planeStudioParams";
 import { parseStudioParams } from "@/components/asset-studio/studioParams";
@@ -41,5 +42,9 @@ export default function AssetStudioPage() {
     );
   }
   if ("game" in parsed) return <PlaneAssetStudio params={parsed} />;
-  return <AssetStudio params={parsed} />;
+  return parsed.kit ? (
+    <KitStudio params={parsed} />
+  ) : (
+    <AssetStudio params={parsed} />
+  );
 }

@@ -1460,5 +1460,143 @@
       "mask": null,
       "note": "Sea chest, domed lid, brass fittings"
     }
+  ],
+  "kit-porthole": [
+    {
+      "file": "Porthole_of_HMS_Gannet.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/22/Porthole_of_HMS_Gannet.jpg/500px-Porthole_of_HMS_Gannet.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Porthole_of_HMS_Gannet.jpg",
+      "license": "Public domain",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Riveted brass-rimmed porthole, close"
+    },
+    {
+      "file": "Porthole_Mayflower_II_ship_1956.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Porthole_Mayflower_II_ship_1956.jpg/500px-Porthole_Mayflower_II_ship_1956.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Porthole_Mayflower_II_ship_1956.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Round porthole with rim"
+    },
+    {
+      "file": "Cruise_ship_lifeboats,_cabins_and_portholes.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/Cruise_ship_lifeboats%2C_cabins_and_portholes.jpg/500px-Cruise_ship_lifeboats%2C_cabins_and_portholes.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Cruise_ship_lifeboats,_cabins_and_portholes.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Hull portholes in a row"
+    }
+  ],
+  "kit-window": [
+    {
+      "file": "'Glass_of_Thrones',_SS_Nomadic_-_geograph.org.uk_-_7900378.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/%27Glass_of_Thrones%27%2C_SS_Nomadic_-_geograph.org.uk_-_7900378.jpg/500px-%27Glass_of_Thrones%27%2C_SS_Nomadic_-_geograph.org.uk_-_7900378.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:'Glass_of_Thrones',_SS_Nomadic_-_geograph.org.uk_-_7900378.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Liner windows with frames and sills"
+    },
+    {
+      "file": "Purser's_Bureau,_on_the_Promenade_Deck,_Mauretania_(9410012802).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/61/Purser%27s_Bureau%2C_on_the_Promenade_Deck%2C_Mauretania_%289410012802%29.jpg/500px-Purser%27s_Bureau%2C_on_the_Promenade_Deck%2C_Mauretania_%289410012802%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Purser's_Bureau,_on_the_Promenade_Deck,_Mauretania_(9410012802).jpg",
+      "license": "No restrictions",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Liner promenade windows with mullions"
+    },
+    {
+      "file": "Princess_of_Scandinavia_(5695557394).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Princess_of_Scandinavia_%285695557394%29.jpg/500px-Princess_of_Scandinavia_%285695557394%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Princess_of_Scandinavia_(5695557394).jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Ferry superstructure window rows"
+    }
+  ],
+  "kit-windscreen": [
+    {
+      "file": "Queen_Mary_bridge.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/Queen_Mary_bridge.jpg/500px-Queen_Mary_bridge.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Queen_Mary_bridge.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Raked wheelhouse windscreen with mullions"
+    },
+    {
+      "file": "Ruby_Princess_bridge.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Ruby_Princess_bridge.jpg/500px-Ruby_Princess_bridge.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Ruby_Princess_bridge.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Cruise ship bridge front windows"
+    },
+    {
+      "file": "MV_Monte_Alegre_bridge_wing_010917.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/MV_Monte_Alegre_bridge_wing_010917.jpg/500px-MV_Monte_Alegre_bridge_wing_010917.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:MV_Monte_Alegre_bridge_wing_010917.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Wheelhouse windows and wing"
+    }
+  ],
+  "kit-bridge-wing": [
+    {
+      "file": "Bridge_Wing_1987.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/84/Bridge_Wing_1987.jpg/500px-Bridge_Wing_1987.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Bridge_Wing_1987.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Bridge wing deck with screen"
+    },
+    {
+      "file": "Bridge_Wing_of_a_Cargo_Ship_1.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/Bridge_Wing_of_a_Cargo_Ship_1.jpg/500px-Bridge_Wing_of_a_Cargo_Ship_1.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Bridge_Wing_of_a_Cargo_Ship_1.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Open bridge wing and dodger"
+    },
+    {
+      "file": "Diamond_Princess_bridge_wing_20140620.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Diamond_Princess_bridge_wing_20140620.jpg/500px-Diamond_Princess_bridge_wing_20140620.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Diamond_Princess_bridge_wing_20140620.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Liner bridge wing cab end"
+    },
+    {
+      "file": "Olympic_Bridge_Starboard_Entrance.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Olympic_Bridge_Starboard_Entrance.jpg/500px-Olympic_Bridge_Starboard_Entrance.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Olympic_Bridge_Starboard_Entrance.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Olympic (Titanic's sister) bridge wing cab"
+    }
   ]
 }

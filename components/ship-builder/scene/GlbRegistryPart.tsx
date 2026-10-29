@@ -5,6 +5,7 @@ import GlbSlotPart from "./GlbSlotPart";
 import type { GlbPartContext, GlbPartEntry } from "./glbRegistry";
 import { GLB_PARTS } from "./glbRegistry";
 import { facingYaw } from "./facingYaw";
+import type { KitName } from "./kitFiles";
 import { shipModelUrl } from "./shipModels";
 
 /**
@@ -19,6 +20,8 @@ export interface GlbSource {
   entries?: Partial<Record<string, GlbPartEntry>>;
   /** Where an entry's file is served from; default is the shipped model. */
   urlFor?: (entry: GlbPartEntry) => string;
+  /** Where a detail-kit piece's file is served from (see kitModels.ts). */
+  kitUrl?: (name: KitName) => string;
 }
 
 export const GlbSourceContext = createContext<GlbSource>({});
