@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import GlbSlotPart from "./GlbSlotPart";
 import type { GlbPartContext, GlbPartEntry } from "./glbRegistry";
 import { GLB_PARTS } from "./glbRegistry";
+import { facingYaw } from "./facingYaw";
 import { shipModelUrl } from "./shipModels";
 
 /**
@@ -48,16 +49,22 @@ export default function GlbRegistryPart({
   const url = source.urlFor
     ? source.urlFor(entry)
     : shipModelUrl(entry.model, entry.variant);
-  return (
+  const yaw = entry.facing ? facingYaw(context.rotation) : 0;
+  const part = (
     <GlbSlotPart
       url={url}
       slots={entry.slots(context)}
       tint={context.tint}
       emphasis={context.emphasis}
       rakeRadians={entry.rakeRadians}
-      fallback={children}
+      // The fallback is drawn inside the turned group, so it is turned back:
+      // the procedural part already faces itself.
+      fallback={
+        yaw ? <group rotation={[0, -yaw, 0]}>{children}</group> : children
+      }
     >
       {entry.subParts?.(context)}
     </GlbSlotPart>
   );
+  return yaw ? <group rotation={[0, yaw, 0]}>{part}</group> : part;
 }
