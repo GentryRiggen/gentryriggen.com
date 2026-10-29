@@ -7,8 +7,10 @@
  *    mimics Firebase's cleanUrls (/ship-builder -> ship-builder.html).
  * 3. In headless Chromium (SwiftShader WebGL): loads /ship-builder, waits for
  *    the 3D canvas, for the service worker to control the page and for every
- *    loaded /_next/static/ resource plus the page itself to be cached.
- * 4. Goes offline, reloads, and asserts the heading and the canvas render.
+ *    loaded /_next/static/ resource, part model (/ship-builder/models/) and
+ *    the page itself to be cached.
+ * 4. Goes offline, reloads, and asserts the heading and the canvas render and
+ *    every part model is still served.
  *
  * Exits non-zero on failure. Not part of CI; run it after changing the
  * service worker, the manifest or the build setup:
@@ -36,6 +38,7 @@ const TIMEOUT_MS = 60_000;
 
 const CONTENT_TYPES = {
   ".css": "text/css; charset=utf-8",
+  ".glb": "model/gltf-binary",
   ".html": "text/html; charset=utf-8",
   ".ico": "image/x-icon",
   ".jpeg": "image/jpeg",
@@ -116,24 +119,53 @@ function startServer() {
   });
 }
 
-/** True once the page and every loaded /_next/static/ resource are cached. */
+/**
+ * True once the page, every loaded /_next/static/ resource and every loaded
+ * part model (cached without its query) are cached.
+ */
 async function isEverythingCached(cacheName) {
   const cache = await caches.open(cacheName);
   const cached = new Set((await cache.keys()).map((request) => request.url));
-  const loadedStatic = performance
+  const loaded = performance
     .getEntriesByType("resource")
     .map((entry) => new URL(entry.name))
-    .filter(
-      (url) =>
-        url.origin === location.origin &&
-        url.pathname.startsWith("/_next/static/")
-    )
+    .filter((url) => url.origin === location.origin);
+  const loadedStatic = loaded
+    .filter((url) => url.pathname.startsWith("/_next/static/"))
     .map((url) => url.href);
+  const loadedModels = loaded
+    .filter((url) => url.pathname.startsWith("/ship-builder/models/"))
+    .map((url) => `${url.origin}${url.pathname}`);
   return (
     cached.has(`${location.origin}/ship-builder`) &&
     loadedStatic.length > 0 &&
-    loadedStatic.every((url) => cached.has(url))
+    loadedStatic.every((url) => cached.has(url)) &&
+    loadedModels.length > 0 &&
+    loadedModels.every((url) => cached.has(url))
   );
+}
+
+/** The part models this page loaded, fetched again (offline: from the cache). */
+async function refetchModels() {
+  const urls = [
+    ...new Set(
+      performance
+        .getEntriesByType("resource")
+        .map((entry) => new URL(entry.name))
+        .filter((url) => url.pathname.startsWith("/ship-builder/models/"))
+        .map((url) => `${url.origin}${url.pathname}`)
+    ),
+  ];
+  const results = await Promise.all(
+    urls.map(async (url) => {
+      try {
+        return { url, ok: (await fetch(url)).ok };
+      } catch {
+        return { url, ok: false };
+      }
+    })
+  );
+  return results;
 }
 
 async function checkOffline() {
@@ -187,6 +219,15 @@ async function checkOffline() {
     await page.reload({ waitUntil: "load" });
     await heading.waitFor();
     await canvas.waitFor();
+    await page.waitForLoadState("networkidle");
+    const models = await page.evaluate(refetchModels);
+    const missing = models.filter((model) => !model.ok).map((m) => m.url);
+    if (models.length === 0 || missing.length > 0) {
+      throw new Error(
+        `Part models not served offline: ${missing.join(", ") || "none loaded"}`
+      );
+    }
+    console.log(`Served ${models.length} part models offline.`);
 
     console.log("Checking the rest of the site is not served offline…");
     const homeLoaded = await page

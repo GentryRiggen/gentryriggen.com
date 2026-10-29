@@ -230,6 +230,49 @@ describe("ship-builder service worker", () => {
       expect(worker.fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it("serves part models network-first, cached without the query", async () => {
+      const worker = loadWorker();
+      const url = `${ORIGIN}/ship-builder/models/funnel/funnel.glb`;
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("model v1"));
+      await worker.dispatchFetch(makeRequest(`${url}?v=1`, { mode: "cors" }));
+      expect(worker.cacheKeys()).toEqual([url]);
+
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("model v2"));
+      const fresh = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(fresh?.body).toBe("model v2");
+
+      worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(offline?.body).toBe("model v2");
+    });
+
+    it("rethrows a model fetch when offline with nothing cached", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockRejectedValue(new TypeError("offline"));
+      await expect(
+        worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/ship-builder/models/funnel/funnel.glb`, {
+            mode: "cors",
+          })
+        )
+      ).rejects.toThrow("offline");
+    });
+
+    it("never treats a model as a page", async () => {
+      const worker = loadWorker();
+      expect(
+        worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/ship-builder/models/funnel/funnel.glb`, {
+            mode: "navigate",
+          })
+        )
+      ).toBeUndefined();
+    });
+
     it.each([
       ["opaque", { type: "opaque", ok: false }],
       ["cors", { type: "cors" }],
@@ -277,9 +320,10 @@ describe("ship-builder service worker", () => {
       "https://evil.example.com/_next/static/x.js",
       "javascript:alert(1)",
       42,
+      `${ORIGIN}/ship-builder/models/funnel/funnel.glb?v=2#x`,
     ];
 
-    it("caches only same-origin app and static URLs from window clients", async () => {
+    it("caches only same-origin app, static and model URLs from window clients", async () => {
       const worker = loadWorker();
       worker.fetchMock.mockImplementation(async (url) =>
         makeResponse(String(url))
@@ -293,10 +337,12 @@ describe("ship-builder service worker", () => {
       expect(worker.fetchMock.mock.calls.map(([url]) => url).sort()).toEqual([
         `${ORIGIN}/_next/static/chunks/a.js`,
         `${ORIGIN}/ship-builder`,
+        `${ORIGIN}/ship-builder/models/funnel/funnel.glb`,
       ]);
       expect(worker.cacheKeys().sort()).toEqual([
         `${ORIGIN}/_next/static/chunks/a.js`,
         `${ORIGIN}/ship-builder`,
+        `${ORIGIN}/ship-builder/models/funnel/funnel.glb`,
       ]);
     });
 
