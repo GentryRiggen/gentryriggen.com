@@ -1,3 +1,4 @@
+import { ENV_MODEL_URLS } from "../envModels";
 import { KIT_MODEL_URLS } from "../kitFiles";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -30,12 +31,12 @@ describe("ship models", () => {
     }
   });
 
-  it("lists each registry entry's file and each detail-kit file once", () => {
+  it("lists each registry entry's, detail-kit and sea-environment file once", () => {
     const urls = Object.values(GLB_PARTS).map((e) =>
       shipModelUrl(e.model, e.variant)
     );
     expect([...SHIP_MODEL_URLS].sort()).toEqual(
-      [...new Set([...urls, ...KIT_MODEL_URLS])].sort()
+      [...new Set([...urls, ...KIT_MODEL_URLS, ...ENV_MODEL_URLS])].sort()
     );
   });
 

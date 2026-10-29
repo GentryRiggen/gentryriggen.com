@@ -6,6 +6,8 @@ export interface GlbSlotLook {
   color: string;
   finish?: SurfaceFinish;
   castShadow?: boolean;
+  /** Draws the slot see-through (an iceberg's underwater bulk); default 1. */
+  opacity?: number;
   /** Puts the mesh on the ambient-occlusion layer (see aoLayer.ts). */
   aoOccluder?: boolean;
   /** Receives shadows from other parts (stacked containers, a pad). */

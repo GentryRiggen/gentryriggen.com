@@ -104,6 +104,7 @@ function SlotMeshes({
             <Surface
               color={look.color}
               finish={look.finish}
+              opacity={look.opacity}
               vertexColors={baked}
               tint={tint}
               emphasis={emphasis}
