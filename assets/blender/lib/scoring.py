@@ -32,7 +32,7 @@ def resize_nearest(mask: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
 
 # Bump when a scoring change makes old scores incomparable with new ones.
 # History from another version is archived and the rounds restart at 1.
-SCORER_VERSION = 2
+SCORER_VERSION = 3  # 3: the look render includes baked AO
 
 DETAIL_HEIGHT = 128
 
