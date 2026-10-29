@@ -48,16 +48,21 @@ export default function GlbRegistryPart({
   const url = source.urlFor
     ? source.urlFor(entry)
     : shipModelUrl(entry.model, entry.variant);
-  return (
+  const turned = entry.faceOutward && context.side === "port";
+  const part = (
     <GlbSlotPart
       url={url}
       slots={entry.slots(context)}
       tint={context.tint}
       emphasis={context.emphasis}
       rakeRadians={entry.rakeRadians}
-      fallback={children}
+      fallback={
+        turned ? <group rotation={[0, Math.PI, 0]}>{children}</group> : children
+      }
     >
       {entry.subParts?.(context)}
     </GlbSlotPart>
   );
+  return turned ? <group rotation={[0, Math.PI, 0]}>{part}</group> : part;
+  return turned ? <group rotation={[0, Math.PI, 0]}>{part}</group> : part;
 }
