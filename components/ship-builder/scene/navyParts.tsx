@@ -93,6 +93,25 @@ export function TurretMesh({ painted, tint, emphasis, large }: TurretProps) {
   );
 }
 
+/** The spinning scanner bar on a radar mast's top, above the pedestal. */
+export function RadarScanner({ tint, emphasis }: NavyMeshProps) {
+  const surface = { tint, emphasis };
+  return (
+    <group position={[0, 5.25, 0]}>
+      <Rotator speed={RADAR_SPEED} enabled={!isGhost(tint)}>
+        <mesh castShadow>
+          <boxGeometry args={[0.08, 0.2, 1.3]} />
+          <Surface color={PALETTE.gunwale} {...surface} />
+        </mesh>
+        <mesh position={[0, 0.17, 0]} castShadow>
+          <boxGeometry args={[0.1, 0.14, 0.14]} />
+          <Surface color={NAVAL.dark} {...surface} />
+        </mesh>
+      </Rotator>
+    </group>
+  );
+}
+
 /** A lattice mast topped by a spinning radar bar. */
 export function RadarMastMesh({ painted, tint, emphasis }: NavyMeshProps) {
   const surface = { tint, emphasis };
@@ -117,18 +136,7 @@ export function RadarMastMesh({ painted, tint, emphasis }: NavyMeshProps) {
         <cylinderGeometry args={[0.07, 0.07, 0.16, 10]} />
         <Surface color={NAVAL.dark} {...surface} />
       </mesh>
-      <group position={[0, 5.25, 0]}>
-        <Rotator speed={RADAR_SPEED} enabled={!isGhost(tint)}>
-          <mesh castShadow>
-            <boxGeometry args={[0.08, 0.2, 1.3]} />
-            <Surface color={PALETTE.gunwale} {...surface} />
-          </mesh>
-          <mesh position={[0, 0.17, 0]} castShadow>
-            <boxGeometry args={[0.1, 0.14, 0.14]} />
-            <Surface color={NAVAL.dark} {...surface} />
-          </mesh>
-        </Rotator>
-      </group>
+      <RadarScanner {...{ painted, tint, emphasis }} />
     </group>
   );
 }

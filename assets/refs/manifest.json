@@ -890,5 +890,145 @@
       "mask": null,
       "note": "Large searchlight lens and reflector"
     }
+  ],
+  "mast": [
+    {
+      "file": "Bridge_and_mast_of_Pori.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Bridge_and_mast_of_Pori.JPG/500px-Bridge_and_mast_of_Pori.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Bridge_and_mast_of_Pori.JPG",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Tubular mast above a wheelhouse with radar and lights"
+    },
+    {
+      "file": "Radar_mast_Abeille_Bourbon.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Radar_mast_Abeille_Bourbon.jpg/500px-Radar_mast_Abeille_Bourbon.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Radar_mast_Abeille_Bourbon.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": [50, 10, 330, 355],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.45,
+        "invert": false
+      },
+      "note": "Lattice radar mast: platform, radome and radar bars against bright sky"
+    },
+    {
+      "file": "Grand_mât_Hermione_Rochefort_sur_Mer.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg/500px-Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
+      "license": "CC0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Looking up a tall mast: top platform and rigging"
+    },
+    {
+      "file": "Steamship_wireless_T_antenna.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Steamship_wireless_T_antenna.jpg/500px-Steamship_wireless_T_antenna.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Steamship_wireless_T_antenna.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Steamer with a wire T aerial strung between the masts"
+    }
+  ],
+  "radar-mast": [
+    {
+      "file": "Bridge_and_mast_of_Pori.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Bridge_and_mast_of_Pori.JPG/500px-Bridge_and_mast_of_Pori.JPG",
+      "source": "https://commons.wikimedia.org/wiki/File:Bridge_and_mast_of_Pori.JPG",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Tubular mast above a wheelhouse with radar and lights"
+    },
+    {
+      "file": "Radar_mast_Abeille_Bourbon.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Radar_mast_Abeille_Bourbon.jpg/500px-Radar_mast_Abeille_Bourbon.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Radar_mast_Abeille_Bourbon.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": [50, 10, 330, 355],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.45,
+        "invert": false
+      },
+      "note": "Lattice radar mast: platform, radome and radar bars against bright sky"
+    },
+    {
+      "file": "Radar_Mast_of_the_Calmac_Ferry_Lord_of_the_Isles_(6170089823).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Radar_Mast_of_the_Calmac_Ferry_Lord_of_the_Isles_%286170089823%29.jpg/500px-Radar_Mast_of_the_Calmac_Ferry_Lord_of_the_Isles_%286170089823%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Radar_Mast_of_the_Calmac_Ferry_Lord_of_the_Isles_(6170089823).jpg",
+      "license": "CC BY-SA 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Yellow radar mast with a platform and lights on a ferry"
+    },
+    {
+      "file": "Clio_Radar_Antennas_on_the_Arched_Mast_Quay_8_Port_of_Tallinn_10_June_2017.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/Clio_Radar_Antennas_on_the_Arched_Mast_Quay_8_Port_of_Tallinn_10_June_2017.jpg/500px-Clio_Radar_Antennas_on_the_Arched_Mast_Quay_8_Port_of_Tallinn_10_June_2017.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Clio_Radar_Antennas_on_the_Arched_Mast_Quay_8_Port_of_Tallinn_10_June_2017.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Modern arched mast carrying radar scanners"
+    }
+  ],
+  "crows-nest": [
+    {
+      "file": "Grand_mât_Hermione_Rochefort_sur_Mer.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg/500px-Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
+      "license": "CC0",
+      "view": "front",
+      "crop": null,
+      "mask": null,
+      "note": "Looking up a tall mast: top platform and rigging"
+    },
+    {
+      "file": "Crow's-nest_(PSF).png",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Crow%27s-nest_%28PSF%29.png",
+      "source": "https://commons.wikimedia.org/wiki/File:Crow%27s-nest_(PSF).png",
+      "license": "Public domain",
+      "view": "side",
+      "crop": [0, 0, 324, 648],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
+      "note": "Drawing of a lookout barrel: cylindrical basket on the mast top, with lookouts"
+    },
+    {
+      "file": "A_crow's_nest_of_modern_means_-_geograph.org.uk_-_7444227.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/A_crow%27s_nest_of_modern_means_-_geograph.org.uk_-_7444227.jpg/500px-A_crow%27s_nest_of_modern_means_-_geograph.org.uk_-_7444227.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:A_crow%27s_nest_of_modern_means_-_geograph.org.uk_-_7444227.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Caged lookout platform with a rail on a lattice tower"
+    }
+  ],
+  "wireless-aerial": [
+    {
+      "file": "Steamship_wireless_T_antenna.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Steamship_wireless_T_antenna.jpg/500px-Steamship_wireless_T_antenna.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Steamship_wireless_T_antenna.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Steamer with a wire T aerial strung between the masts"
+    }
   ]
 }
