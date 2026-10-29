@@ -1,21 +1,13 @@
 {
   "id": "deck-lamp",
   "script": "deck-lamp",
-  "slots": ["paint-2f3338", "paint-ffe9a8"],
+  "slots": ["post"],
   "slotColors": {
-    "paint-2f3338": {
+    "post": {
       "color": "#2f3338",
       "finish": "metal"
-    },
-    "paint-ffe9a8": {
-      "color": "#ffe9a8"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/deck-lamp.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -32,7 +24,7 @@
       "dims": {},
       "expectedBounds": {
         "min": [-0.12, 0, -0.12],
-        "max": [0.12, 1.025, 0.12]
+        "max": [0.12, 1.039, 0.12]
       }
     }
   ],
@@ -56,6 +48,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "deck-lamp",
-  "generated": "206259b8da55b111"
+  "scoreVariant": "deck-lamp"
 }
