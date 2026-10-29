@@ -1,0 +1,62 @@
+{
+  "funnel": [
+    {
+      "file": "Titanic's_3rd_and_4rd_funnels.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Titanic%27s_3rd_and_4rd_funnels.jpg/500px-Titanic%27s_3rd_and_4rd_funnels.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Titanic%27s_3rd_and_4rd_funnels.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": [196, 0, 148, 300],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.55,
+        "invert": false
+      },
+      "note": "Titanic 3rd funnel against sky: rake, black top, forward steam pipes and whistles"
+    },
+    {
+      "file": "Queen_Mary_funnels.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Queen_Mary_funnels.jpg/500px-Queen_Mary_funnels.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Queen_Mary_funnels.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": [271, 129, 72, 98],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.55,
+        "invert": false
+      },
+      "note": "Queen Mary middle funnel: black top, hoop bands"
+    },
+    {
+      "file": "Funnel_for_Titanic.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Funnel_for_Titanic.jpg/500px-Funnel_for_Titanic.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Funnel_for_Titanic.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Titanic funnel from the deck: proportions, riveted plates, pipe"
+    },
+    {
+      "file": "Britannic_Funnel_in_transport.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/Britannic_Funnel_in_transport.jpg/500px-Britannic_Funnel_in_transport.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Britannic_Funnel_in_transport.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Britannic funnel on its side: oval section, hoop bands, inner frame"
+    },
+    {
+      "file": "Funnel_of_Hikawa_Maru_at_Yokohama_Port.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Funnel_of_Hikawa_Maru_at_Yokohama_Port.jpg/500px-Funnel_of_Hikawa_Maru_at_Yokohama_Port.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Funnel_of_Hikawa_Maru_at_Yokohama_Port.jpg",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Hikawa Maru: painted bands, whistle, side profile"
+    }
+  ]
+}

@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "assets:score": "scripts/assets/blender.sh -P assets/blender/score.py --",
+    "assets:test": "scripts/assets/blender.sh -P assets/blender/tests/run.py",
+    "assets:refs": "node scripts/assets/fetch-refs.mjs",
+    "assets:checkin": "node scripts/assets/checkin.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
