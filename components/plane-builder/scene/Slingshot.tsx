@@ -11,6 +11,9 @@ import {
 } from "three";
 import { LAUNCH_HEIGHT } from "@/lib/plane-builder/sim/constants";
 import { launchAim } from "@/lib/plane-builder/state/launchAim";
+import type { LevelPalette } from "@/lib/plane-builder/levels/types";
+import PropGlb from "./GlbProp";
+import type { PropName } from "./propModels";
 
 const POST_SPREAD = 1.4;
 const POST_HEIGHT = LAUNCH_HEIGHT;
@@ -45,14 +48,21 @@ export function pullPosition(
 
 interface SlingshotProps {
   tier: number;
+  palette: LevelPalette;
 }
+
+const FRAME_MODEL: Record<"wood" | "metal" | "powered", PropName> = {
+  wood: "slingshotWood",
+  metal: "slingshotMetal",
+  powered: "slingshotPowered",
+};
 
 const direction = new Vector3();
 const pouch = new Vector3();
 const tip = new Vector3();
 
 /** Two posts and a band; the band stretches with the shared `launchAim`. */
-export default function Slingshot({ tier }: SlingshotProps) {
+export default function Slingshot({ tier, palette }: SlingshotProps) {
   const bands = useRef<(Mesh | null)[]>([null, null]);
   const style = tier >= 6 ? "powered" : tier >= 3 ? "metal" : "wood";
   const materials = useMemo(() => {
@@ -102,23 +112,44 @@ export default function Slingshot({ tier }: SlingshotProps) {
 
   return (
     <group>
-      <mesh
-        geometry={BASE_GEOMETRY}
-        material={materials.frame}
-        position={[0, 0.15, 0]}
-        scale={[1.2, 0.3, POST_SPREAD * 2 + 0.6]}
-        castShadow
-        receiveShadow
-      />
+      <PropGlb
+        name={FRAME_MODEL[style]}
+        palette={palette}
+        fallback={
+          <>
+            <mesh
+              geometry={BASE_GEOMETRY}
+              material={materials.frame}
+              position={[0, 0.15, 0]}
+              scale={[1.2, 0.3, POST_SPREAD * 2 + 0.6]}
+              castShadow
+              receiveShadow
+            />
+            {[-1, 1].map((side) => (
+              <mesh
+                key={side}
+                geometry={POST_GEOMETRY}
+                material={materials.frame}
+                position={[0, POST_HEIGHT / 2, side * POST_SPREAD]}
+                scale={[1, POST_HEIGHT, 1]}
+                castShadow
+              />
+            ))}
+          </>
+        }
+      >
+        {(geometry) => (
+          <mesh geometry={geometry} castShadow receiveShadow>
+            <meshStandardMaterial
+              vertexColors
+              metalness={style === "wood" ? 0 : 0.1}
+              roughness={style === "wood" ? 0.9 : 0.5}
+            />
+          </mesh>
+        )}
+      </PropGlb>
       {[-1, 1].map((side, i) => (
         <group key={side}>
-          <mesh
-            geometry={POST_GEOMETRY}
-            material={materials.frame}
-            position={[0, POST_HEIGHT / 2, side * POST_SPREAD]}
-            scale={[1, POST_HEIGHT, 1]}
-            castShadow
-          />
           {style === "powered" ? (
             <mesh
               geometry={BASE_GEOMETRY}

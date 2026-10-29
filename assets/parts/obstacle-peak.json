@@ -1,0 +1,62 @@
+{
+  "id": "obstacle-peak",
+  "game": "plane",
+  "script": "obstacle-peak",
+  "slots": ["rock", "snow"],
+  "budget": {
+    "maxTriangles": 300,
+    "maxBytes": 120000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "renderScale": [0.3667, 1.0, 0.3667],
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "peak",
+      "dims": {
+        "variant": "peak"
+      },
+      "expectedBounds": {
+        "min": [-0.5, -0.5, -0.5],
+        "max": [0.5, 0.5, 0.5]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "top",
+      "azimuthDeg": 0,
+      "elevationDeg": 89,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "peak",
+  "ao": {
+    "ground": false,
+    "distance": 0.1,
+    "samples": 64,
+    "strength": 0.45
+  }
+}

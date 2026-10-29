@@ -1,0 +1,61 @@
+{
+  "id": "prop-slingshot-powered",
+  "game": "plane",
+  "script": "prop-slingshot-powered",
+  "slots": ["frame", "dark", "glow"],
+  "budget": {
+    "maxTriangles": 350,
+    "maxBytes": 120000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "powered",
+      "dims": {
+        "variant": "powered"
+      },
+      "expectedBounds": {
+        "min": [-0.6, 0, -1.7],
+        "max": [0.63, 2.9, 1.7]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "top",
+      "azimuthDeg": 0,
+      "elevationDeg": 89,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "powered",
+  "ao": {
+    "ground": false,
+    "distance": 0.3,
+    "samples": 64,
+    "strength": 0
+  }
+}

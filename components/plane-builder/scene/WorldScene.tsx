@@ -43,7 +43,7 @@ export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
       <Markers level={level} />
       <BestWall level={level} best={best} />
       <FinishGate level={level} />
-      <Slingshot tier={tiers.launcher} />
+      <Slingshot tier={tiers.launcher} palette={level.palette} />
       {screen === "launch" ? <LaunchPlane level={level} tiers={tiers} /> : null}
       {screen === "flight" ? (
         <FlightRunner

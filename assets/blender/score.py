@@ -79,6 +79,19 @@ def measure(objs: dict) -> tuple[list[float], list[float], int]:
     return lo.tolist(), hi.tolist(), tris
 
 
+def apply_render_scale(objs, scale, lo, hi):
+    """Stretch the objects for the renders only (after the glb is exported),
+    and the framing bounds with them. A unit-box obstacle model is drawn at
+    the typical size the game stretches it to. Returns the scaled bounds."""
+    if not scale:
+        return lo, hi
+    sx, sy, sz = scale
+    for obj in objs:
+        obj.scale = (sx, sz, sy)  # three (x, y, z) -> Blender (x, z, y)
+    bpy.context.view_layer.update()
+    return ([lo[0] * sx, lo[1] * sy, lo[2] * sz], [hi[0] * sx, hi[1] * sy, hi[2] * sz])
+
+
 def export_glb(objs: dict, path: str) -> int:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
@@ -178,8 +191,11 @@ def run(args: argparse.Namespace) -> None:
             # Gates and the exported glb stay unraked; the renders match the
             # game, which tilts the part. Framing stays on the unraked bounds.
             render.apply_rake(objs.values(), spec.get("rakeRadians", 0.0))
+            rmin, rmax = apply_render_scale(
+                objs.values(), spec.get("renderScale"), eb["min"], eb["max"]
+            )
             for view in spec["views"]:
-                cam = render.place_camera(view, eb["min"], eb["max"])
+                cam = render.place_camera(view, rmin, rmax)
                 sil = os.path.join(out, "renders", f"{view['name']}-sil.png")
                 look = os.path.join(out, "renders", f"{view['name']}-look.png")
                 render.render_silhouette(sil)
@@ -193,7 +209,10 @@ def run(args: argparse.Namespace) -> None:
                 spec["views"][-1],
             )
             render.apply_rake(objs.values(), spec.get("rakeRadians", 0.0))
-            cam = render.place_camera(look_view, eb["min"], eb["max"])
+            rmin, rmax = apply_render_scale(
+                objs.values(), spec.get("renderScale"), eb["min"], eb["max"]
+            )
+            cam = render.place_camera(look_view, rmin, rmax)
             render.render_look(os.path.join(out, "renders", f"variant-{name}-look.png"))
             bpy.data.objects.remove(cam)
 

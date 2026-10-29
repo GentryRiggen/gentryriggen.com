@@ -8,6 +8,8 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { soundSetting } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
 import GameStage from "./scene/GameStage";
+import { preloadObstacleModels } from "./scene/obstacleModels";
+import { preloadPropModels } from "./scene/propModels";
 import { preloadPlaneModels } from "./scene/planeGlbRegistry";
 import FlightHud from "./ui/FlightHud";
 import FlightRewardModal from "./ui/FlightRewardModal";
@@ -39,6 +41,8 @@ export default function PlaneBuilder() {
   useEffect(() => {
     // Fetch the Blender plane models up front so pieces rarely show stand-ins.
     preloadPlaneModels();
+    preloadObstacleModels();
+    preloadPropModels();
   }, []);
 
   useEffect(() => {

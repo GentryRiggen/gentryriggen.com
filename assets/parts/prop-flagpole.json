@@ -1,0 +1,61 @@
+{
+  "id": "prop-flagpole",
+  "game": "plane",
+  "script": "prop-flagpole",
+  "slots": ["pole_light", "pole_cap"],
+  "budget": {
+    "maxTriangles": 200,
+    "maxBytes": 120000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "flagpole",
+      "dims": {
+        "variant": "flagpole"
+      },
+      "expectedBounds": {
+        "min": [-0.5, 0, -8.05],
+        "max": [0.5, 14.62, 0.5]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "top",
+      "azimuthDeg": 0,
+      "elevationDeg": 89,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "flagpole",
+  "ao": {
+    "ground": false,
+    "distance": 0.3,
+    "samples": 64,
+    "strength": 0.3
+  }
+}

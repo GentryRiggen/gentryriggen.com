@@ -7,6 +7,7 @@ import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersR
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
 import HangarCamera from "./HangarCamera";
+import PropGlb from "./GlbProp";
 import PlaneModel from "./PlaneModel";
 import Sky from "./Sky";
 
@@ -49,14 +50,26 @@ export default function HangarScene({ level, tiers }: HangarSceneProps) {
     <>
       <HangarCamera />
       <Sky palette={level.palette} />
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -1.4, 0]}
-        receiveShadow
+      <PropGlb
+        name="hangar"
+        palette={level.palette}
+        fallback={
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, -1.4, 0]}
+            receiveShadow
+          >
+            <circleGeometry args={[14, 48]} />
+            <meshStandardMaterial color={level.palette.ground} roughness={1} />
+          </mesh>
+        }
       >
-        <circleGeometry args={[14, 48]} />
-        <meshStandardMaterial color={level.palette.ground} roughness={1} />
-      </mesh>
+        {(geometry) => (
+          <mesh geometry={geometry} position={[0, -1.4, 0]} receiveShadow>
+            <meshStandardMaterial vertexColors roughness={1} />
+          </mesh>
+        )}
+      </PropGlb>
       <PlaneModel
         ref={plane}
         levelId={level.id}
