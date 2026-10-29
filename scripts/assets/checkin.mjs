@@ -38,6 +38,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import { ensureDevServer } from "./devServer.mjs";
+import { pickFamilyRefs } from "./checkinRefs.mjs";
 import { readSpecs, resolvePart, ROOT } from "./parts.mjs";
 
 const LOAD_TIMEOUT_MS = 30_000;
@@ -294,7 +295,7 @@ function buildSheet(spec, score, history, shots, manifestEntries, loadErrors) {
   const outDir = outDirOf(spec.id);
   const rows = spec.views
     .map((v) => {
-      const refs = manifestEntries.filter((e) => e.view === v.name);
+      const refs = pickFamilyRefs(manifestEntries, view);
       const refCell = refs.length
         ? refs.map((r) => refHtml(spec.id, r)).join("")
         : "no ref";
