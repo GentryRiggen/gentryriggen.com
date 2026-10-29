@@ -50,7 +50,8 @@ if (failed.length > 0) {
 const spec = JSON.parse(
   readFileSync(join(ROOT, "assets", "parts", `${part}.json`), "utf8")
 );
-const shipDir = join(ROOT, "public", "ship-builder", "models", part);
+const game = spec.game === "plane" ? "plane-builder" : "ship-builder";
+const shipDir = join(ROOT, "public", game, "models", part);
 mkdirSync(shipDir, { recursive: true });
 for (const { name } of spec.variants) {
   const from = join(outDir, `${name}.glb`);
@@ -59,5 +60,5 @@ for (const { name } of spec.variants) {
     process.exit(1);
   }
   copyFileSync(from, join(shipDir, `${name}.glb`));
-  console.log(`shipped public/ship-builder/models/${part}/${name}.glb`);
+  console.log(`shipped public/${game}/models/${part}/${name}.glb`);
 }

@@ -11,24 +11,18 @@ import {
   Float32BufferAttribute,
   type Group,
   type Material,
-  type MeshStandardMaterial,
   SphereGeometry,
 } from "three";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
+import PlaneGlbUnit, { PROPELLER_SPEED } from "./PlaneGlbUnit";
+import type { PlaneMaterials } from "./planeMaterials";
+
+export type { PlaneMaterials } from "./planeMaterials";
 
 export const FUSELAGE_RADIUS = 0.22;
 export const CAPSULE_LENGTH = 1 + 2 * FUSELAGE_RADIUS;
-const PROPELLER_SPEED = 30;
 
 export type Vec3Tuple = [number, number, number];
-
-export interface PlaneMaterials {
-  body: MeshStandardMaterial;
-  trim: MeshStandardMaterial;
-  dark: MeshStandardMaterial;
-  fire: MeshStandardMaterial;
-  glow: MeshStandardMaterial;
-}
 
 /** Unit shapes shared by every plane; instances size them with `scale`. */
 function createDartGeometry(): BufferGeometry {
@@ -86,16 +80,14 @@ export function Part({
 interface PropellerProps {
   position: Vec3Tuple;
   size: number;
-  hubMaterial: Material;
-  bladeMaterial: Material;
+  materials: PlaneMaterials;
 }
 
-export function Propeller({
-  position,
+/** The old procedural propeller: a hub ball and one flat bar, spinning. */
+function ProceduralPropeller({
   size,
-  hubMaterial,
-  bladeMaterial,
-}: PropellerProps) {
+  materials,
+}: Omit<PropellerProps, "position">) {
   const spinner = useRef<Group>(null);
   const isReduced = usePrefersReducedMotion();
   useFrame((_, delta) => {
@@ -103,19 +95,30 @@ export function Propeller({
     spinner.current.rotation.x += Math.min(delta, 0.1) * PROPELLER_SPEED;
   });
   return (
-    <group position={position}>
+    <>
       <Part
         geometry={SHAPES.sphere}
-        material={hubMaterial}
+        material={materials.dark}
         scale={[size * 0.12, size * 0.12, size * 0.12]}
       />
       <group ref={spinner}>
         <Part
           geometry={SHAPES.box}
-          material={bladeMaterial}
+          material={materials.dark}
           scale={[0.03, size * 2, size * 0.14]}
         />
       </group>
+    </>
+  );
+}
+
+/** A propeller of radius `size`: the Blender model, else the old bar. */
+export function Propeller({ position, size, materials }: PropellerProps) {
+  return (
+    <group position={position} scale={size}>
+      <PlaneGlbUnit unit="propeller-blades" materials={materials}>
+        <ProceduralPropeller size={1} materials={materials} />
+      </PlaneGlbUnit>
     </group>
   );
 }

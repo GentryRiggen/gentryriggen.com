@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, type Ref } from "react";
-import { DoubleSide, type Group, MeshStandardMaterial } from "three";
+import type { Group } from "three";
 import type { LevelId, LevelPalette } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
 import {
@@ -15,7 +15,9 @@ import {
   TwinBooms,
   WingStruts,
 } from "./planeLookParts";
+import { createPlaneMaterials, disposePlaneMaterials } from "./planeMaterials";
 import { planeParts } from "./planeParts";
+import Unit, { finUnit, fuselageUnit, wingUnit } from "./planeUnits";
 import {
   CAPSULE_LENGTH,
   FUSELAGE_RADIUS,
@@ -24,21 +26,6 @@ import {
   SHAPES,
   type PlaneMaterials,
 } from "./planePrimitives";
-
-const GOLD = "#f5b82e";
-const DARK = "#2f3a4a";
-const FIRE = "#ff7a1a";
-const GLOW_TRIM_INTENSITY = 0.5;
-const GLOW_INTENSITY = 2;
-
-function trimEmissive(
-  isGold: boolean,
-  isGlowTrim: boolean,
-  trimColor: string
-): string {
-  if (isGold) return "#8a6400";
-  return isGlowTrim ? trimColor : "#000000";
-}
 
 interface PlaneModelProps {
   levelId: LevelId;
@@ -51,42 +38,12 @@ interface PlaneModelProps {
 /** The player's plane, built from primitives to match its upgrade tiers. */
 function PlaneModel({ levelId, tiers, palette, ref }: PlaneModelProps) {
   const parts = useMemo(() => planeParts(levelId, tiers), [levelId, tiers]);
-  const isGlowTrim = parts.hasGlowTrim && !parts.isGold;
   const materials = useMemo<PlaneMaterials>(
-    () => ({
-      body: new MeshStandardMaterial({
-        color: parts.isGold ? GOLD : palette.plane,
-        metalness: parts.isGold ? 0.3 : 0.1,
-        emissive: parts.isGold ? "#7a5200" : "#000000",
-        roughness: parts.isGold ? 0.35 : 0.6,
-        side: DoubleSide,
-      }),
-      trim: new MeshStandardMaterial({
-        color: parts.isGold ? "#ffe08a" : palette.trim,
-        metalness: parts.isGold ? 0.3 : 0,
-        emissive: trimEmissive(parts.isGold, isGlowTrim, palette.trim),
-        emissiveIntensity: isGlowTrim ? GLOW_TRIM_INTENSITY : 1,
-        roughness: parts.isGold ? 0.35 : 0.6,
-      }),
-      dark: new MeshStandardMaterial({ color: DARK, roughness: 0.5 }),
-      fire: new MeshStandardMaterial({
-        color: FIRE,
-        emissive: FIRE,
-        emissiveIntensity: 2.5,
-      }),
-      glow: new MeshStandardMaterial({
-        color: palette.trim,
-        emissive: palette.trim,
-        emissiveIntensity: GLOW_INTENSITY,
-      }),
-    }),
-    [palette.plane, palette.trim, parts.isGold, isGlowTrim]
+    () => createPlaneMaterials(parts, palette),
+    [palette, parts]
   );
 
-  useEffect(
-    () => () => Object.values(materials).forEach((m) => m.dispose()),
-    [materials]
-  );
+  useEffect(() => () => disposePlaneMaterials(materials), [materials]);
 
   const half = parts.wingSpan / 2;
   const tail = -parts.bodyLength / 2;
@@ -119,12 +76,12 @@ function PlaneModel({ levelId, tiers, palette, ref }: PlaneModelProps) {
         </>
       ) : (
         <>
-          <Part
-            geometry={SHAPES.fuselage}
-            material={materials.body}
+          <group
             position={[fuselageX, 0, 0]}
             scale={[bodyScaleX, parts.girth, parts.girth]}
-          />
+          >
+            <Unit name={fuselageUnit(parts)} materials={materials} />
+          </group>
           {parts.hasStripes
             ? [0.15, -0.25].map((at) => (
                 <Part
@@ -140,18 +97,15 @@ function PlaneModel({ levelId, tiers, palette, ref }: PlaneModelProps) {
             <TwinBooms parts={parts} materials={materials} />
           ) : (
             <>
-              <Part
-                geometry={SHAPES.box}
-                material={materials.body}
-                position={[tail + 0.12, 0.3, 0]}
-                scale={[0.4, 0.5, 0.05]}
-              />
-              <Part
-                geometry={SHAPES.box}
-                material={materials.body}
+              <group position={[tail + 0.12, 0.3, 0]}>
+                <Unit name={finUnit(parts)} materials={materials} />
+              </group>
+              <group
                 position={[tail + 0.12, 0.05, 0]}
-                scale={[0.3, 0.04, Math.max(0.8, parts.wingSpan * 0.4)]}
-              />
+                scale={[1, 1, Math.max(0.8, parts.wingSpan * 0.4)]}
+              >
+                <Unit name="stabilizer" materials={materials} />
+              </group>
             </>
           )}
           {wingLevels.map((y) =>
@@ -161,11 +115,9 @@ function PlaneModel({ levelId, tiers, palette, ref }: PlaneModelProps) {
                 position={[0.2, y + parts.wingHeight - 0.02, 0]}
                 rotation={[0, -side * parts.sweep, 0]}
               >
-                <Part
-                  geometry={SHAPES.halfWing}
-                  material={materials.body}
-                  scale={[parts.wingChord, 1, side * half]}
-                />
+                <group scale={[parts.wingChord, 1, side * half]}>
+                  <Unit name={wingUnit(parts)} materials={materials} />
+                </group>
                 <Part
                   geometry={SHAPES.box}
                   material={materials.trim}
@@ -226,17 +178,13 @@ function PlaneModel({ levelId, tiers, palette, ref }: PlaneModelProps) {
 
       {parts.propellers >= 1 && !parts.hasTwinBooms ? (
         <>
-          <Part
-            geometry={SHAPES.cone}
-            material={materials.dark}
-            position={[parts.bodyLength / 2 + 0.05, 0, 0]}
-            scale={[0.3, 0.2, 0.2]}
-          />
+          <group position={[parts.bodyLength / 2 + 0.05, 0, 0]}>
+            <Unit name="propeller-spinner" materials={materials} />
+          </group>
           <Propeller
             position={[parts.bodyLength / 2 + 0.25, 0, 0]}
             size={0.55 * parts.engineScale}
-            hubMaterial={materials.dark}
-            bladeMaterial={materials.dark}
+            materials={materials}
           />
         </>
       ) : null}
@@ -247,8 +195,7 @@ function PlaneModel({ levelId, tiers, palette, ref }: PlaneModelProps) {
         <Propeller
           position={[tail - 0.05, 0.05, 0]}
           size={0.4}
-          hubMaterial={materials.dark}
-          bladeMaterial={materials.dark}
+          materials={materials}
         />
       ) : null}
 

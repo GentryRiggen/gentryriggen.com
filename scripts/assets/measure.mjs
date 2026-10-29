@@ -3,6 +3,11 @@
  * Measures Ship Builder parts in the asset studio and writes their specs.
  *
  *   node scripts/assets/measure.mjs <part-id...> | --all  [--base url]
+ *   node scripts/assets/measure.mjs --game plane <piece...> | --all
+ *
+ * With --game plane the ids are plane pieces (assets/plane-pieces.json): every
+ * unit of a piece is measured in the plane studio and assets/parts/plane-<piece>.json
+ * is written (game "plane", one variant per unit) or its bounds updated.
  *
  * For each part it loads the studio's old (procedural) build, drawn by the
  * game's real PartMesh, and reads the part's bounding box. Then:
@@ -44,6 +49,7 @@ import {
   skeleton,
 } from "./measureRules.mjs";
 import { prettify, writeSpecIndex } from "./specIndex.mjs";
+import { measurePlanePiece, readPlanePieces } from "./measurePlane.mjs";
 
 const READY_TIMEOUT_MS = 90_000;
 
@@ -51,11 +57,13 @@ const argv = process.argv.slice(2);
 let base;
 let all = false;
 let refreshSkeletons = false;
+let game = "ship";
 const ids = [];
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "--base") base = argv[++i];
   else if (argv[i] === "--all") all = true;
   else if (argv[i] === "--refresh-skeletons") refreshSkeletons = true;
+  else if (argv[i] === "--game") game = argv[++i];
   else if (argv[i].startsWith("--")) {
     console.error(`unknown flag ${argv[i]}`);
     process.exit(1);
@@ -65,7 +73,15 @@ if (!all && ids.length === 0) {
   console.error("usage: measure.mjs <part-id...> | --all [--base url]");
   process.exit(1);
 }
-const targets = all ? allPartTypes() : ids;
+if (game !== "ship" && game !== "plane") {
+  console.error(`unknown game ${game} (ship or plane)`);
+  process.exit(1);
+}
+const targets = all
+  ? game === "plane"
+    ? Object.keys(readPlanePieces())
+    : allPartTypes()
+  : ids;
 
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
 
@@ -114,6 +130,11 @@ async function main() {
   const touched = new Set();
   try {
     for (const id of targets) {
+      if (game === "plane") {
+        const row = await measurePlanePiece(browser, server.url, id, touched);
+        rows.push(...row);
+        continue;
+      }
       const found = resolvePart(id, specs);
       const m = await measureOne(browser, server.url, id);
       if (m.error) {

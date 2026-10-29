@@ -50,6 +50,12 @@ import mastSpec from "./mast.json";
 import navLightsSpec from "./nav-lights.json";
 import parrotSpec from "./parrot.json";
 import pirateCrewSpec from "./pirate-crew.json";
+import planeCabinSpec from "./plane-cabin.json";
+import planeFuselageSpec from "./plane-fuselage.json";
+import planeGearSpec from "./plane-gear.json";
+import planePropellerSpec from "./plane-propeller.json";
+import planeTailSpec from "./plane-tail.json";
+import planeWingSpec from "./plane-wing.json";
 import plankSpec from "./plank.json";
 import poolSpec from "./pool.json";
 import propellerSpec from "./propeller.json";
@@ -127,6 +133,12 @@ export const PART_SPEC_LIST: readonly unknown[] = [
   navLightsSpec,
   parrotSpec,
   pirateCrewSpec,
+  planeCabinSpec,
+  planeFuselageSpec,
+  planeGearSpec,
+  planePropellerSpec,
+  planeTailSpec,
+  planeWingSpec,
   plankSpec,
   poolSpec,
   propellerSpec,

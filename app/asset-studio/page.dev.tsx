@@ -2,6 +2,8 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import AssetStudio from "@/components/asset-studio/AssetStudio";
+import PlaneAssetStudio from "@/components/asset-studio/PlaneAssetStudio";
+import { parsePlaneStudioParams } from "@/components/asset-studio/planeStudioParams";
 import { parseStudioParams } from "@/components/asset-studio/studioParams";
 
 function subscribe(): () => void {
@@ -20,7 +22,12 @@ function readServerSearch(): string | null {
 export default function AssetStudioPage() {
   const search = useSyncExternalStore(subscribe, readSearch, readServerSearch);
   const parsed = useMemo(
-    () => (search === null ? null : parseStudioParams(search)),
+    () =>
+      search === null
+        ? null
+        : new URLSearchParams(search).get("game") === "plane"
+          ? parsePlaneStudioParams(search)
+          : parseStudioParams(search),
     [search]
   );
 
@@ -33,5 +40,6 @@ export default function AssetStudioPage() {
       </p>
     );
   }
+  if ("game" in parsed) return <PlaneAssetStudio params={parsed} />;
   return <AssetStudio params={parsed} />;
 }
