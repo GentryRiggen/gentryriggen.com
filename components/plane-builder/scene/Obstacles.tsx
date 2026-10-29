@@ -3,6 +3,7 @@
 import {
   Component,
   Suspense,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -10,6 +11,10 @@ import {
 } from "react";
 import { useGLTF } from "@react-three/drei";
 import { type BufferGeometry, type InstancedMesh, Object3D } from "three";
+import {
+  trackGlbPart,
+  type GlbLoadStatus,
+} from "@/components/ship-builder/scene/glbLoadStatus";
 import type {
   LevelDef,
   Obstacle,
@@ -21,6 +26,17 @@ import {
   obstacleModelUrl,
   obstacleVariant,
 } from "./obstacleModels";
+
+interface TrackedProps {
+  state: keyof GlbLoadStatus;
+  children: ReactNode;
+}
+
+/** Counts a mounted batch for the `__shipBuilderModels` test hook. */
+function Tracked({ state, children }: TrackedProps) {
+  useEffect(() => trackGlbPart(state), [state]);
+  return children;
+}
 
 interface InstancesProps {
   geometry: BufferGeometry;
@@ -87,7 +103,11 @@ function Model({ url, items, level }: ModelProps) {
     [scene, level.palette, url]
   );
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
-  return <Instances geometry={geometry} items={items} />;
+  return (
+    <Tracked state="loaded">
+      <Instances geometry={geometry} items={items} />
+    </Tracked>
+  );
 }
 
 interface FallbackBoundaryProps {
@@ -110,7 +130,11 @@ class FallbackBoundary extends Component<FallbackBoundaryProps> {
   }
 
   render(): ReactNode {
-    return this.state.hasFailed ? this.props.fallback : this.props.children;
+    return this.state.hasFailed ? (
+      <Tracked state="failed">{this.props.fallback}</Tracked>
+    ) : (
+      this.props.children
+    );
   }
 }
 
@@ -140,7 +164,7 @@ function KindInstances({ kind, items, level }: KindInstancesProps) {
         const stand = <Procedural kind={kind} items={group} level={level} />;
         return (
           <FallbackBoundary key={url} fallback={stand}>
-            <Suspense fallback={stand}>
+            <Suspense fallback={<Tracked state="pending">{stand}</Tracked>}>
               <Model url={url} items={group} level={level} />
             </Suspense>
           </FallbackBoundary>

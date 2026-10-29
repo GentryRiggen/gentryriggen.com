@@ -65,7 +65,8 @@
   "scoreVariant": "pine",
   "ao": {
     "ground": false,
-    "distance": 0.12,
-    "samples": 64
+    "distance": 0.1,
+    "samples": 64,
+    "strength": 0.45
   }
 }
