@@ -9,7 +9,7 @@
     }
   },
   "budget": {
-    "maxTriangles": 700,
+    "maxTriangles": 96,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -24,7 +24,7 @@
       "dims": {},
       "expectedBounds": {
         "min": [-0.006, -0.138, -0.138],
-        "max": [0.038, 0.154, 0.138]
+        "max": [0.03, 0.138, 0.138]
       }
     }
   ],

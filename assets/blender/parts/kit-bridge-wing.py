@@ -7,7 +7,7 @@ only the last 0.03 or so stands clear of the bridge wall. Out there: the
 deck's edge, knee brackets under it, and a low dodger with a rail, kick plate
 and posts. The game turns the piece half a circle for the port side."""
 
-from lib.shapes import box, hex_linear, make_object, merge, rounded_box, tube
+from lib.shapes import box, hex_linear, make_object, merge
 
 LENGTH = 1.0
 DEPTH = 0.19
@@ -28,23 +28,20 @@ def dodger():
     parts = [box(0.0, 0.03, EDGE, LENGTH - 0.02, 0.05, 0.008)]  # kick plate
     for k in range(5):
         x = -LENGTH / 2 + 0.03 + k * (LENGTH - 0.06) / 4
-        parts.append(rounded_box((x, 0.054, EDGE), (0.02, 0.08, 0.016), 0.004, 1))
-    parts.append(tube([(-LENGTH / 2 + 0.01, RAIL_Y + 0.012, EDGE), (LENGTH / 2 - 0.01, RAIL_Y + 0.012, EDGE)], 0.011, 8))
+        parts.append(box(x, 0.054, EDGE, 0.02, 0.08, 0.016))
+    parts.append(box(0.0, RAIL_Y + 0.012, EDGE, LENGTH - 0.02, 0.016, 0.02))  # rail
     # the corner posts carry short return rails toward the wall
     for sign in (-1, 1):
         x = sign * (LENGTH / 2 - 0.01)
-        parts.append(tube([(x, RAIL_Y + 0.012, EDGE), (x, RAIL_Y + 0.012, EDGE - 0.05)], 0.009, 8))
+        parts.append(box(x, RAIL_Y + 0.012, EDGE - 0.025, 0.014, 0.014, 0.05))
     return parts
 
 
 def knees():
-    parts = []
-    for k in range(4):
-        x = -LENGTH / 2 + 0.08 + k * (LENGTH - 0.16) / 3
-        parts.append(
-            tube([(x, -DECK / 2, DEPTH - 0.012), (x, -DECK / 2 - 0.05, DEPTH - 0.162)], 0.008, 6)
-        )
-    return parts
+    return [
+        box(x, -DECK / 2 - 0.02, DEPTH - 0.03, 0.016, 0.04, 0.03)
+        for x in (-LENGTH / 2 + 0.1, 0.0, LENGTH / 2 - 0.1)
+    ]
 
 
 def build(dims: dict) -> dict:
@@ -52,6 +49,6 @@ def build(dims: dict) -> dict:
     return {
         "frame": make_object(
             "frame", merge(parts), hex_linear("#ffffff"),
-            roughness=0.5, closed=False, sharp_degrees=35,
+            roughness=0.5, closed=True, sharp_degrees=35,
         )
     }
