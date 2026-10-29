@@ -1,0 +1,65 @@
+{
+  "id": "env-buoy",
+  "script": "env-buoy",
+  "slots": ["body", "band", "frame"],
+  "slotColors": {
+    "body": {
+      "color": "#d9342b"
+    },
+    "band": {
+      "color": "#f4f1ea"
+    },
+    "frame": {
+      "color": "#3a3f45",
+      "finish": "metal"
+    }
+  },
+  "budget": {
+    "maxTriangles": 600,
+    "maxBytes": 200000
+  },
+  "boundsTolerance": 0.06,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "buoy",
+      "dims": {},
+      "expectedBounds": {
+        "min": [-0.82, -0.4, -0.82],
+        "max": [0.82, 1.7, 0.82]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "buoy",
+  "boundsFixed": true,
+  "ao": {
+    "strength": 0.6,
+    "distance": 0.2,
+    "samples": 64,
+    "ground": false
+  }
+}
