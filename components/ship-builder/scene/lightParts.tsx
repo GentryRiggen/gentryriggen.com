@@ -213,6 +213,10 @@ interface LampProps extends LightPartProps {
   position: Vec3Tuple;
   offColor: string;
   onColor: string;
+  /** The housing is part of the model already (the masthead light's). */
+  bare?: boolean;
+  /** A sidelight's screen: it blocks the light toward this side (-1 or 1). */
+  screen?: -1 | 1;
 }
 
 /** A small lamp: a housing with a coloured lens that glows and has a halo. */
@@ -223,14 +227,24 @@ function Lamp({
   painted,
   tint,
   emphasis,
+  bare,
+  screen,
 }: LampProps) {
   const surface = { tint, emphasis };
   return (
     <group position={position}>
-      <mesh position={[0, 0.04, 0]} castShadow>
-        <boxGeometry args={[0.13, 0.08, 0.13]} />
-        <Surface color={painted ?? LIGHT_COLORS.housing} {...surface} />
-      </mesh>
+      {!bare && (
+        <mesh position={[0, 0.04, 0]} castShadow>
+          <boxGeometry args={[0.13, 0.08, 0.13]} />
+          <Surface color={painted ?? LIGHT_COLORS.housing} {...surface} />
+        </mesh>
+      )}
+      {screen && (
+        <mesh position={[0, 0.14, screen * 0.085]} castShadow>
+          <boxGeometry args={[0.15, 0.17, 0.02]} />
+          <Surface color={painted ?? LIGHT_COLORS.housing} {...surface} />
+        </mesh>
+      )}
       <mesh position={[0, 0.13, 0]}>
         <sphereGeometry args={[0.075, 12, 8]} />
         <GlowSurface
@@ -261,6 +275,35 @@ export function NavLightsMesh({
   tint,
   emphasis,
 }: NavLightsProps) {
+  const surface = { tint, emphasis };
+  return (
+    <group>
+      <mesh position={[-MASTHEAD_SETBACK, MASTHEAD_HEIGHT / 2, 0]} castShadow>
+        <cylinderGeometry args={[0.02, 0.025, MASTHEAD_HEIGHT, 8]} />
+        <Surface color={painted ?? PALETTE.mast} {...surface} />
+      </mesh>
+      <NavLightsLamps
+        halfSpan={halfSpan}
+        painted={painted}
+        tint={tint}
+        emphasis={emphasis}
+      />
+    </group>
+  );
+}
+
+/**
+ * The lamps of the navigation lights: the two sidelights at the bridge's
+ * wings (each with a screen) and the masthead lens. `bareMasthead` leaves out
+ * the masthead housing, which the model draws.
+ */
+export function NavLightsLamps({
+  halfSpan,
+  painted,
+  tint,
+  emphasis,
+  bareMasthead,
+}: NavLightsProps & { bareMasthead?: boolean }) {
   const wing = Math.max(0.2, halfSpan * 0.96 - SIDELIGHT_INSET);
   const shared = { painted, tint, emphasis };
   return (
@@ -269,27 +312,22 @@ export function NavLightsMesh({
         position={[0, 0, -wing]}
         offColor={LIGHT_COLORS.navPortOff}
         onColor={LIGHT_COLORS.navPort}
+        screen={1}
         {...shared}
       />
       <Lamp
         position={[0, 0, wing]}
         offColor={LIGHT_COLORS.navStarboardOff}
         onColor={LIGHT_COLORS.navStarboard}
+        screen={-1}
         {...shared}
       />
-      <mesh position={[-MASTHEAD_SETBACK, MASTHEAD_HEIGHT / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.02, 0.025, MASTHEAD_HEIGHT, 8]} />
-        <Surface
-          color={painted ?? PALETTE.mast}
-          tint={tint}
-          emphasis={emphasis}
-        />
-      </mesh>
       <group position={[-MASTHEAD_SETBACK, MASTHEAD_HEIGHT - 0.1, 0]}>
         <Lamp
           position={[0, 0, 0]}
           offColor={LIGHT_COLORS.navMastheadOff}
           onColor={LIGHT_COLORS.navMasthead}
+          bare={bareMasthead}
           {...shared}
         />
       </group>
