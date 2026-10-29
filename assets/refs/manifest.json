@@ -67,7 +67,11 @@
       "license": "CC BY-SA 4.0",
       "view": "front",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Four-blade bronze fixed-pitch propeller, front on: broad blades, hub boss, bolted cap"
     },
     {
@@ -77,7 +81,11 @@
       "license": "CC BY-SA 3.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Three-blade propeller: tapered conical hub, blade pitch and twist"
     },
     {
@@ -87,7 +95,11 @@
       "license": "CC BY-SA 4.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Four-blade bronze propeller: wide round-tipped blades"
     },
     {
@@ -97,7 +109,11 @@
       "license": "Public domain",
       "view": "front",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Olympic stern in dock: three-blade wing propellers, centre four-blade, rudder"
     },
     {
@@ -107,7 +123,11 @@
       "license": "CC BY-SA 4.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Five-blade propeller beside a rudder blade, with a person for scale"
     },
     {
@@ -117,7 +137,11 @@
       "license": "CC BY-SA 3.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Propeller behind the rudder on a tanker stern: sizes and clearances"
     }
   ],
@@ -129,7 +153,11 @@
       "license": "CC BY-SA 4.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Five-blade propeller beside a rudder blade, with a person for scale"
     },
     {
@@ -139,7 +167,11 @@
       "license": "CC BY-SA 3.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Propeller behind the rudder on a tanker stern: sizes and clearances"
     },
     {
@@ -149,7 +181,11 @@
       "license": "Public domain",
       "view": "side",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Olympic stern: tall rudder, rudder post and propeller behind"
     },
     {
@@ -159,7 +195,11 @@
       "license": "CC BY-SA 3.0",
       "view": "side",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Rudder and propeller on a dry-docked hull"
     }
   ],
@@ -171,7 +211,11 @@
       "license": "CC BY-SA 3.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Red pod with a tractor propeller: streamlined pod body below a strut"
     },
     {
@@ -181,7 +225,11 @@
       "license": "CC BY-SA 3.0",
       "view": "three-quarter",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "Azimuth pods in dock: tall strut, bulb pod and fixed-pitch propellers at both ends"
     },
     {
@@ -191,7 +239,11 @@
       "license": "CC BY-SA 4.0",
       "view": "side",
       "crop": null,
-      "mask": null,
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.5,
+        "invert": false
+      },
       "note": "White pod unit on stands: round pod body, strut, propeller at the front"
     }
   ]
