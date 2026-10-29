@@ -1,0 +1,40 @@
+{
+  "fuselage": {
+    "units": {
+      "fuselage-prop": { "level": "canyon" },
+      "fuselage-sleek": { "level": "city" },
+      "fuselage-pod": { "level": "storm" }
+    }
+  },
+  "wing": {
+    "units": {
+      "wing-straight": { "level": "canyon" },
+      "wing-glider": { "level": "islands" }
+    }
+  },
+  "tail": {
+    "units": {
+      "fin": { "level": "canyon" },
+      "fin-swept": { "level": "city" },
+      "stabilizer": { "level": "canyon" }
+    }
+  },
+  "propeller": {
+    "units": {
+      "propeller-blades": { "level": "canyon", "spin": true },
+      "propeller-spinner": { "level": "canyon" }
+    }
+  },
+  "gear": {
+    "units": {
+      "float": { "level": "beach" },
+      "tyre": { "level": "jungle" },
+      "ski": { "level": "glacier" }
+    }
+  },
+  "cabin": {
+    "units": {
+      "cabin-box": { "level": "glacier" }
+    }
+  }
+}

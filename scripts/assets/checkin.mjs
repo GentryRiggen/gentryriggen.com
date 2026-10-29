@@ -143,12 +143,20 @@ async function shootOnce(browser, serverUrl, part, view, build, dir) {
     if (m.type() === "error") consoleErrors.push(m.text());
   });
   page.on("pageerror", (e) => consoleErrors.push(String(e)));
-  const query = new URLSearchParams({
-    part: part.id,
-    build,
-    view,
-    time: "Day",
-  });
+  // A plane piece is drawn by the plane studio: game=plane, the spec id as
+  // the piece and the unit (the spec variant) as the variant.
+  const query = new URLSearchParams(
+    part.spec.game === "plane"
+      ? {
+          game: "plane",
+          part: part.specId,
+          variant: part.variant,
+          build,
+          view,
+          time: "Day",
+        }
+      : { part: part.id, build, view, time: "Day" }
+  );
   const file = join(dir, `${part.id}-${view}-${build}.png`);
   let error = null;
   try {

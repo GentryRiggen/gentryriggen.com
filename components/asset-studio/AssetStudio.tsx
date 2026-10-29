@@ -38,11 +38,15 @@ import { buildStudioScene } from "./studioShip";
 import { studioSource } from "./studioSource";
 
 const PALETTE_NAMES = paletteNames(PALETTE);
+export { PALETTE_NAMES };
 
 /** Frames drawn after the model loads before the studio calls itself ready. */
 const SETTLE_FRAMES = 3;
 
-function setStudioState(key: "studioReady" | "studioError", value: string) {
+export function setStudioState(
+  key: "studioReady" | "studioError",
+  value: string
+) {
   document.body.dataset[key] = value;
 }
 
@@ -52,6 +56,8 @@ interface ReadyProbeProps {
   expectModel: boolean;
   /** Undo this tilt before reading bounds (a funnel's rake). */
   rakeRadians: number;
+  /** Colour -> slot name for the slot guess (default: Ship Builder's palette). */
+  names?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -60,7 +66,12 @@ interface ReadyProbeProps {
  * that fell back to the procedural mesh is an error, not a pass). Publishes
  * the part's bounds as JSON in `data-studio-bounds`.
  */
-function ReadyProbe({ partRef, expectModel, rakeRadians }: ReadyProbeProps) {
+export function ReadyProbe({
+  partRef,
+  expectModel,
+  rakeRadians,
+  names = PALETTE_NAMES,
+}: ReadyProbeProps) {
   const frames = useRef(0);
   useFrame(() => {
     frames.current += 1;
@@ -79,7 +90,7 @@ function ReadyProbe({ partRef, expectModel, rakeRadians }: ReadyProbeProps) {
       document.body.dataset.studioBounds = JSON.stringify(bounds);
       document.body.dataset.studioRake = String(rakeRadians);
       document.body.dataset.studioSlots = JSON.stringify(
-        partSlots(partRef.current, PALETTE_NAMES)
+        partSlots(partRef.current, names)
       );
       setStudioState("studioReady", "1");
     } else setStudioState("studioError", "No part in the scene");
@@ -96,7 +107,10 @@ interface LoadBoundaryState {
 }
 
 /** A load or slot error lands in the console and on `data-studio-error`. */
-class LoadBoundary extends Component<LoadBoundaryProps, LoadBoundaryState> {
+export class LoadBoundary extends Component<
+  LoadBoundaryProps,
+  LoadBoundaryState
+> {
   override state: LoadBoundaryState = { failed: false };
 
   static getDerivedStateFromError(): LoadBoundaryState {
@@ -114,11 +128,11 @@ class LoadBoundary extends Component<LoadBoundaryProps, LoadBoundaryState> {
 }
 
 interface StudioCameraProps {
-  params: StudioParams;
+  params: Pick<StudioParams, "part" | "variant" | "view">;
 }
 
 /** The camera, framed from the variant's bounds exactly as render.py does. */
-function StudioCamera({ params }: StudioCameraProps) {
+export function StudioCamera({ params }: StudioCameraProps) {
   const aspect = useThree((s) => s.size.width / s.size.height);
   const camera = useMemo(() => {
     const spec = specForPart(params.part)?.spec;

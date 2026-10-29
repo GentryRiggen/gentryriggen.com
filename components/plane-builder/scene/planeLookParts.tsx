@@ -2,6 +2,7 @@
 
 import type { Material } from "three";
 import type { PlaneParts } from "./planeParts";
+import Unit from "./planeUnits";
 import {
   FUSELAGE_RADIUS,
   Part,
@@ -28,7 +29,6 @@ const SIDES = [-1, 1] as const;
 const FLOAT_RADIUS = 0.1;
 const FLOAT_Y = -0.58;
 const FLOAT_Z = 0.4;
-const TYRE_RADIUS = 0.26;
 const TYRE_Y = -0.52;
 const TYRE_Z = 0.4;
 const SKI_Y = -0.55;
@@ -45,12 +45,12 @@ function Floats({ parts, materials }: LookPartProps) {
   const centreX = 0.05;
   return SIDES.map((side) => (
     <group key={`float-${side}`}>
-      <Part
-        geometry={SHAPES.capsuleX}
-        material={materials.trim}
+      <group
         position={[centreX, FLOAT_Y, side * FLOAT_Z]}
-        scale={[length / 3, FLOAT_RADIUS, FLOAT_RADIUS * 1.2]}
-      />
+        scale={[length, 1, 1]}
+      >
+        <Unit name="float" materials={materials} />
+      </group>
       {[0.28, -0.28].map((share) => (
         <Strut
           key={share}
@@ -70,20 +70,9 @@ function Tyres({ parts, materials }: LookPartProps) {
     <>
       {SIDES.map((side) => (
         <group key={`tyre-${side}`}>
-          <Part
-            geometry={SHAPES.cylinderX}
-            material={materials.dark}
-            position={[0.3, TYRE_Y, side * TYRE_Z]}
-            rotation={[0, Math.PI / 2, 0]}
-            scale={[0.18, TYRE_RADIUS, TYRE_RADIUS]}
-          />
-          <Part
-            geometry={SHAPES.cylinderX}
-            material={materials.trim}
-            position={[0.3, TYRE_Y, side * (TYRE_Z + 0.02)]}
-            rotation={[0, Math.PI / 2, 0]}
-            scale={[0.18, TYRE_RADIUS * 0.45, TYRE_RADIUS * 0.45]}
-          />
+          <group position={[0.3, TYRE_Y, side * TYRE_Z]} scale={[1, 1, side]}>
+            <Unit name="tyre" materials={materials} />
+          </group>
           <Strut
             x={0.3}
             from={[-0.12, side * 0.15]}
@@ -107,19 +96,9 @@ function Skis({ parts, materials }: LookPartProps) {
   const centreX = 0.1;
   return SIDES.map((side) => (
     <group key={`ski-${side}`}>
-      <Part
-        geometry={SHAPES.box}
-        material={materials.trim}
-        position={[centreX, SKI_Y, side * SKI_Z]}
-        scale={[length, 0.05, 0.12]}
-      />
-      <Part
-        geometry={SHAPES.box}
-        material={materials.trim}
-        position={[centreX + length / 2 + 0.08, SKI_Y + 0.05, side * SKI_Z]}
-        rotation={[0, 0, 0.5]}
-        scale={[0.25, 0.05, 0.12]}
-      />
+      <group position={[centreX, SKI_Y, side * SKI_Z]} scale={[length, 1, 1]}>
+        <Unit name="ski" materials={materials} />
+      </group>
       {[0.3, -0.3].map((share) => (
         <Strut
           key={share}
@@ -166,26 +145,9 @@ export function Cabin({ parts, materials }: LookPartProps) {
   const length = parts.bodyLength * 0.45;
   const width = bodyRadius(parts) * 1.8;
   return (
-    <>
-      <Part
-        geometry={SHAPES.box}
-        material={materials.body}
-        position={[0.2, 0.15, 0]}
-        scale={[length, 0.34, width]}
-      />
-      <Part
-        geometry={SHAPES.box}
-        material={materials.dark}
-        position={[0.25, 0.19, 0]}
-        scale={[length * 0.6, 0.12, width + 0.02]}
-      />
-      <Part
-        geometry={SHAPES.box}
-        material={materials.dark}
-        position={[0.2 + length / 2, 0.18, 0]}
-        scale={[0.04, 0.16, width * 0.8]}
-      />
-    </>
+    <group position={[0.2, 0.15, 0]} scale={[length, 1, width]}>
+      <Unit name="cabin-box" materials={materials} />
+    </group>
   );
 }
 
@@ -229,8 +191,7 @@ export function PusherPropeller({ parts, materials }: LookPartProps) {
     <Propeller
       position={[podBack - 0.06, 0, 0]}
       size={0.45 * parts.engineScale}
-      hubMaterial={materials.dark}
-      bladeMaterial={materials.dark}
+      materials={materials}
     />
   );
 }
@@ -260,8 +221,7 @@ export function EnginePods({ parts, materials }: LookPartProps) {
         <Propeller
           position={[front + 0.22, 0, 0]}
           size={0.4 * scale}
-          hubMaterial={materials.dark}
-          bladeMaterial={materials.dark}
+          materials={materials}
         />
       ) : null}
     </group>

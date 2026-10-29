@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.9.0",
+    date: "2026-10-29",
+    title: "Planes that look like real planes",
+    highlights: [
+      "Your plane's body, wings and tail are remade to look like little Piper Cubs, Cessnas and jets, with proper windows and a rounded nose",
+      "The propeller now has two curved blades with painted tips and a shiny nose spinner",
+      "Seaplane floats, big bush tyres and snow skis have more shape: floats have hatches, tyres have tread, skis curl up at the front",
+      "The snow plane's cabin has a sloping windscreen and side windows",
+      "Everything keeps your world's colours, and gold and glowing planes still shine",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-10-18",
     title: "Mystery squares and fair fuel cans",
