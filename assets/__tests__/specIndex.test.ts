@@ -1,5 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import * as rules from "../../scripts/assets/measureRules.mjs";
+
+const isPristine = (
+  rules as unknown as {
+    isPristine: (spec: unknown) => boolean;
+  }
+).isPristine;
 
 const PARTS_DIR = join(__dirname, "..", "parts");
 
@@ -14,6 +21,7 @@ interface Spec {
     expectedBounds: { min: number[]; max: number[] };
   }[];
   views: { name: string }[];
+  generated?: string;
 }
 
 const files = readdirSync(PARTS_DIR)
@@ -38,6 +46,13 @@ describe.each(specs)("spec %s", (file, spec: Spec) => {
     expect(file).toBe(`${spec.id}.json`);
     expect(spec.variants.map((v) => v.name)).toContain(spec.scoreVariant);
     expect(spec.views.map((v) => v.name)).toContain("three-quarter");
+  });
+
+  it("is not marked generated after someone edited it", () => {
+    // `assets:measure --refresh-skeletons` rewrites a spec that still carries
+    // a matching `generated` marker. If you edited this spec by hand, delete
+    // its "generated" line.
+    if ("generated" in spec) expect(isPristine(spec)).toBe(true);
   });
 
   it("has a non-empty expected box", () => {

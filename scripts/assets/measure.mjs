@@ -21,8 +21,8 @@
  * the studio's settle frame; a propeller's spin makes its Y/Z extent
  * approximate. Unlit glow meshes count in the bounds.
  *
- * `--refresh-skeletons` regenerates specs that still hold the generated todo
- * list untouched. Skeleton slots come from the `Surface` paints in the old mesh: one per
+ * `--refresh-skeletons` regenerates only specs still exactly as measure wrote
+ * them (their `generated` marker matches a hash of their content). Skeleton slots come from the `Surface` paints in the old mesh: one per
  * distinct colour and finish, named after the palette key when the colour is
  * one (else paint-<hex>). Names are guesses; the spec's `todo` says so.
  */
@@ -38,8 +38,9 @@ import {
 } from "./parts.mjs";
 import {
   boundsLocked,
-  GENERATED_TODO,
   HAND_BOUNDS,
+  isPristine,
+  seal,
   skeleton,
 } from "./measureRules.mjs";
 import { prettify, writeSpecIndex } from "./specIndex.mjs";
@@ -125,9 +126,10 @@ async function main() {
         const spec = JSON.parse(readFileSync(file, "utf8"));
         const variant = spec.variants.find((v) => v.name === found.variant);
         const extentOf = extent(m.bounds);
-        if (refreshSkeletons && spec.todo?.[0] === GENERATED_TODO) {
+        if (refreshSkeletons && isPristine(spec)) {
           const fresh = skeleton(id, m);
           if (spec.boundsFixed) fresh.boundsFixed = true;
+          seal(fresh);
           if (boundsLocked(id, spec) && !HAND_BOUNDS[id]) {
             fresh.variants = spec.variants;
           }
@@ -156,8 +158,10 @@ async function main() {
           );
           const rakeMoved = Math.abs(m.rake - (spec.rakeRadians ?? 0)) > 1e-9;
           if (drift > 0 || rakeMoved) {
+            const pristine = isPristine(spec);
             variant.expectedBounds = m.bounds;
             spec.rakeRadians = m.rake;
+            if (pristine) seal(spec); // a measure run is not an edit
             writeFileSync(file, JSON.stringify(spec, null, 2));
             touched.add(file);
           }

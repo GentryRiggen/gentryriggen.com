@@ -57,5 +57,6 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "crate-stack"
+  "scoreVariant": "crate-stack",
+  "generated": "93c0bc9320fc7356"
 }

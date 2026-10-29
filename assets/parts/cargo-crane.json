@@ -62,5 +62,6 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "cargo-crane"
+  "scoreVariant": "cargo-crane",
+  "generated": "d1c12fd50b618048"
 }

@@ -12,23 +12,32 @@ interface Measured {
   slots: Slot[];
   rake?: number;
 }
-const { boundsLocked, DYNAMIC, HAND_BOUNDS, skeleton, GENERATED_TODO } =
-  rules as unknown as {
-    boundsLocked: (id: string, spec?: { boundsFixed?: boolean }) => boolean;
-    DYNAMIC: Record<string, string>;
-    HAND_BOUNDS: Record<string, { min: number[]; max: number[] }>;
-    skeleton: (
-      id: string,
-      m: Measured
-    ) => Record<string, unknown> & {
-      slotColors: Record<string, { color: string; finish?: string }>;
-      variants: { expectedBounds: { min: number[]; max: number[] } }[];
-      todo: string[];
-      rakeRadians: number;
-      boundsFixed?: boolean;
-    };
-    GENERATED_TODO: string;
+const {
+  boundsLocked,
+  DYNAMIC,
+  HAND_BOUNDS,
+  skeleton,
+  GENERATED_TODO,
+  isPristine,
+  seal,
+} = rules as unknown as {
+  boundsLocked: (id: string, spec?: { boundsFixed?: boolean }) => boolean;
+  DYNAMIC: Record<string, string>;
+  HAND_BOUNDS: Record<string, { min: number[]; max: number[] }>;
+  skeleton: (
+    id: string,
+    m: Measured
+  ) => Record<string, unknown> & {
+    slotColors: Record<string, { color: string; finish?: string }>;
+    variants: { expectedBounds: { min: number[]; max: number[] } }[];
+    todo: string[];
+    rakeRadians: number;
+    boundsFixed?: boolean;
   };
+  GENERATED_TODO: string;
+  isPristine: (spec: Record<string, unknown>) => boolean;
+  seal: (spec: Record<string, unknown>) => Record<string, unknown>;
+};
 
 const BOUNDS = { min: [-1, 0, -1], max: [1, 2, 1] };
 const slot = (name: string, finish: string, color = "#112233"): Slot => ({
@@ -96,5 +105,39 @@ describe("skeleton", () => {
     );
     expect(spec.boundsFixed).toBe(true);
     expect(spec.todo).toContain(DYNAMIC["wireless-aerial"]);
+  });
+});
+
+describe("generated marker", () => {
+  const fresh = () =>
+    skeleton("thing", { bounds: BOUNDS, slots: [slot("body", "paint")] });
+
+  it("marks a skeleton as pristine", () => {
+    expect(isPristine(fresh())).toBe(true);
+  });
+
+  it("is lost by any edit, so an edited spec is left alone", () => {
+    const edited = fresh();
+    edited.slots = ["hull"];
+    expect(isPristine(edited)).toBe(false);
+    const nested = fresh();
+    nested.variants[0].expectedBounds.max[1] = 9;
+    expect(isPristine(nested)).toBe(false);
+    const todoDone = fresh();
+    todoDone.todo = [];
+    expect(isPristine(todoDone)).toBe(false);
+  });
+
+  it("is not fooled by key order or whitespace-only differences", () => {
+    const spec = fresh();
+    const reordered = Object.fromEntries(Object.entries(spec).reverse());
+    expect(isPristine(reordered)).toBe(true);
+  });
+
+  it("is never true for a hand-made spec, and sealing re-arms it", () => {
+    expect(isPristine({ id: "funnel" })).toBe(false);
+    const edited = fresh();
+    edited.slots = ["hull"];
+    expect(isPristine(seal(edited))).toBe(true);
   });
 });

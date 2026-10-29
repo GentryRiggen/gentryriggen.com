@@ -6,6 +6,48 @@ const DEFAULT_VIEWS = [
   { name: "three-quarter", azimuthDeg: 35, elevationDeg: 20, ortho: false },
 ];
 
+import { createHash } from "node:crypto";
+
+/** JSON with every object's keys sorted, so a hash ignores key order. */
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** A hash of the spec's content, not counting its `generated` marker. */
+export function specHash(spec) {
+  const rest = { ...spec };
+  delete rest.generated;
+  return createHash("sha256")
+    .update(canonical(rest))
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/** Stamps a spec as generated: the marker is the hash of everything else. */
+export function seal(spec) {
+  spec.generated = specHash(spec);
+  return spec;
+}
+
+/**
+ * True for a spec still exactly as `assets:measure` wrote it. Any edit by a
+ * person or a builder changes the hash, so the marker stops matching and the
+ * spec is no longer regenerated (and a Jest test asks for the stale marker to
+ * be removed).
+ */
+export function isPristine(spec) {
+  return (
+    typeof spec.generated === "string" && spec.generated === specHash(spec)
+  );
+}
+
 /** The first todo line of a generated skeleton: marks a spec nobody edited. */
 export const GENERATED_TODO =
   "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.";
@@ -82,7 +124,7 @@ export function skeleton(id, measured) {
     );
   }
   const hand = HAND_BOUNDS[id];
-  return {
+  return seal({
     id,
     script: id,
     slots,
@@ -102,5 +144,5 @@ export function skeleton(id, measured) {
     ],
     views: DEFAULT_VIEWS,
     scoreVariant: id,
-  };
+  });
 }
