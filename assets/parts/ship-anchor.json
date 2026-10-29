@@ -1,22 +1,17 @@
 {
   "id": "ship-anchor",
   "script": "ship-anchor",
-  "slots": ["paint-33383d", "paint-5a3a22"],
+  "slots": ["iron", "stock"],
   "slotColors": {
-    "paint-33383d": {
+    "iron": {
       "color": "#33383d",
       "finish": "metal"
     },
-    "paint-5a3a22": {
+    "stock": {
       "color": "#5a3a22",
       "finish": "wood"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/ship-anchor.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -32,8 +27,8 @@
       "name": "ship-anchor",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.365, -0.0234, -0.2813],
-        "max": [0.3, 0.1034, 0.2813]
+        "min": [-0.333, -0.018, -0.282],
+        "max": [0.3395, 0.1543, 0.282]
       }
     }
   ],
@@ -57,6 +52,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "ship-anchor",
-  "generated": "41c9c9f63c2f18a2"
+  "scoreVariant": "ship-anchor"
 }
