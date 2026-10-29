@@ -141,7 +141,16 @@ function readText(path) {
   return existsSync(path) ? readFileSync(path, "utf8").trim() : "";
 }
 
+/** One screenshot; a timeout is retried once (a cold dev server, or webpack
+ * recompiling mid-load, can stall the first attempt). */
 async function shoot(browser, serverUrl, part, view, build, dir) {
+  const first = await shootOnce(browser, serverUrl, part, view, build, dir);
+  if (!first.error?.startsWith("timed out")) return first;
+  console.log(`${part.id} ${view}-${build}: ${first.error}; retrying`);
+  return shootOnce(browser, serverUrl, part, view, build, dir);
+}
+
+async function shootOnce(browser, serverUrl, part, view, build, dir) {
   const page = await browser.newPage({
     viewport: { width: SIZE, height: SIZE },
   });
