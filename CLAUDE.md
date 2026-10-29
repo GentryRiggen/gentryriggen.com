@@ -62,11 +62,9 @@ npm run validate         # Full CI check (lint + format + types + tests + build)
 
 Prettier: double quotes, semicolons, trailing commas (es5), 80 char width, 2-space indent.
 
-<!-- BEGIN:nextjs-agent-rules -->
-
 ### Ship Builder releases
 
-Every Ship Builder change that ships to users (anything in `components/ship-builder`, `lib/ship-builder`, `app/ship-builder` or `public/ship-builder-sw.js`) is a release:
+Every Ship Builder change that ships to users (anything in `components/ship-builder`, `lib/ship-builder`, `app/ship-builder`, `public/ship-builder/models` or `public/ship-builder-sw.js`) is a release:
 
 1. Bump `SHIP_BUILDER_VERSION` in `lib/ship-builder/version.ts` (semver: patch for fixes, minor for features, major for big new modes).
 2. Add a matching entry at the top of `CHANGELOG` in `lib/ship-builder/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/ship-builder components/ship-builder app/ship-builder`), in plain words a young builder or their parent would follow.
@@ -81,6 +79,8 @@ Every Plane Builder change that ships to users (anything in `components/plane-bu
 2. Add a matching entry at the top of `CHANGELOG` in `lib/plane-builder/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/plane-builder components/plane-builder app/plane-builder`), in plain words a young pilot or their parent would follow.
 
 The Versions page (`/plane-builder/versions`) renders the changelog. `lib/plane-builder/__tests__/changelog.test.ts` fails if the version and the top entry disagree. 1.0.0 is the first release: until it ships, keep editing the 1.0.0 entry instead of bumping.
+
+<!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
 

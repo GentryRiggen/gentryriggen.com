@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.24.0",
+    date: "2026-10-28",
+    title: "Soft shadows",
+    highlights: [
+      "Parts now have soft shadows in their corners and seams, so they look more solid",
+      "Funnels show their plates, rim and guy ring better from far away",
+      "The ship models update right away when you are online, and the game starts from saved copies if your connection is slow",
+    ],
+  },
+  {
     version: "2.23.0",
     date: "2026-10-28",
     title: "Funnel makeover",
