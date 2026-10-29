@@ -60,6 +60,8 @@ import {
   WirelessAerialMesh,
 } from "./fittingDecor";
 import FunnelMesh from "./FunnelMesh";
+import GlbRegistryPart from "./GlbRegistryPart";
+import type { FunnelHexColors, GlbPartContext } from "./glbRegistry";
 import LifeboatMesh from "./LifeboatMesh";
 import { LIFEBOAT_HULLS } from "./lifeboatHulls";
 import {
@@ -185,12 +187,6 @@ function Block({
       />
     </group>
   );
-}
-
-interface FunnelHexColors {
-  body?: string;
-  bands?: string;
-  top?: string;
 }
 
 function hexColors(paint: FunnelPaint): FunnelHexColors {
@@ -529,6 +525,11 @@ function PartMesh({
   const funnelPaint = isFunnelType(part.type)
     ? hexColors(funnelColors(ship, { color }))
     : undefined;
+  const glbContext: GlbPartContext = {
+    painted: color ? paintHex(color) : undefined,
+    funnelPaint,
+    mark,
+  };
   const length = gridLength(ship);
   const beam = beamOf(ship);
   const handlers = {
@@ -544,59 +545,66 @@ function PartMesh({
     const { center, size } = footprintBase(def, part.anchor, part.rotation);
     return (
       <group position={modelToWorld(length, beam, center)} {...handlers}>
-        {def.role === "decor" ? (
-          <DeckDecorMesh
-            type={part.type}
-            color={color ? paintHex(color) : undefined}
-            rotation={part.rotation}
-            tint={tint}
-            emphasis={emphasis}
-          />
-        ) : def.role === "cargo" ? (
-          <ContainerMesh
-            partId={partId}
-            color={color}
-            rotation={part.rotation}
-            tint={tint}
-            emphasis={emphasis}
-          />
-        ) : part.type === "hatch-cover" ? (
-          <HatchCoverMesh
-            size={size}
-            color={color}
-            tint={tint}
-            emphasis={emphasis}
-          />
-        ) : (
-          <>
-            <Block
-              def={def}
-              size={size}
-              joined={
-                part.anchor.kind === "grid"
-                  ? joinedSides(ship, part, occupancy)
-                  : NO_JOINED_SIDES
-              }
-              color={color ?? WOODEN_BLOCK_COLORS[part.type]}
+        <GlbRegistryPart
+          type={part.type}
+          context={glbContext}
+          tint={tint}
+          emphasis={emphasis}
+        >
+          {def.role === "decor" ? (
+            <DeckDecorMesh
+              type={part.type}
+              color={color ? paintHex(color) : undefined}
+              rotation={part.rotation}
               tint={tint}
               emphasis={emphasis}
-              seed={windowSeed(part.anchor)}
-              balconyFaces={
-                part.type === "cabin-balcony"
-                  ? openFaces(part, occupancy ?? analyzeShip(ship).occupancy)
-                  : undefined
-              }
             />
-            {part.type === "helm-wheel" && (
-              <group position={[0, BRIDGE_HEIGHT, 0]}>
-                <HelmWheelMesh tint={tint} emphasis={emphasis} />
-              </group>
-            )}
-            {part.type === "cabin-captain" && (
-              <CaptainCabinTrim size={size} tint={tint} emphasis={emphasis} />
-            )}
-          </>
-        )}
+          ) : def.role === "cargo" ? (
+            <ContainerMesh
+              partId={partId}
+              color={color}
+              rotation={part.rotation}
+              tint={tint}
+              emphasis={emphasis}
+            />
+          ) : part.type === "hatch-cover" ? (
+            <HatchCoverMesh
+              size={size}
+              color={color}
+              tint={tint}
+              emphasis={emphasis}
+            />
+          ) : (
+            <>
+              <Block
+                def={def}
+                size={size}
+                joined={
+                  part.anchor.kind === "grid"
+                    ? joinedSides(ship, part, occupancy)
+                    : NO_JOINED_SIDES
+                }
+                color={color ?? WOODEN_BLOCK_COLORS[part.type]}
+                tint={tint}
+                emphasis={emphasis}
+                seed={windowSeed(part.anchor)}
+                balconyFaces={
+                  part.type === "cabin-balcony"
+                    ? openFaces(part, occupancy ?? analyzeShip(ship).occupancy)
+                    : undefined
+                }
+              />
+              {part.type === "helm-wheel" && (
+                <group position={[0, BRIDGE_HEIGHT, 0]}>
+                  <HelmWheelMesh tint={tint} emphasis={emphasis} />
+                </group>
+              )}
+              {part.type === "cabin-captain" && (
+                <CaptainCabinTrim size={size} tint={tint} emphasis={emphasis} />
+              )}
+            </>
+          )}
+        </GlbRegistryPart>
       </group>
     );
   }
@@ -606,31 +614,38 @@ function PartMesh({
   if (!point) return null;
   return (
     <group position={modelToWorld(length, beam, point.position)} {...handlers}>
-      <Fitting
+      <GlbRegistryPart
         type={part.type}
-        side={point.side}
-        color={color}
-        funnelPaint={funnelPaint}
-        mark={mark}
+        context={glbContext}
         tint={tint}
         emphasis={emphasis}
-        wireTarget={
-          part.type === "wireless-aerial" || part.type === "string-lights"
-            ? wireTargetOffset(
-                ship,
-                part.anchor.parentId,
-                point.position,
-                part.type === "string-lights" ? stringTarget : aerialTarget,
-                occupancy
-              )
-            : undefined
-        }
-        bridgeHalfSpan={
-          part.type === "nav-lights"
-            ? bridgeHalfSpanOf(ship, part.anchor.parentId)
-            : undefined
-        }
-      />
+      >
+        <Fitting
+          type={part.type}
+          side={point.side}
+          color={color}
+          funnelPaint={funnelPaint}
+          mark={mark}
+          tint={tint}
+          emphasis={emphasis}
+          wireTarget={
+            part.type === "wireless-aerial" || part.type === "string-lights"
+              ? wireTargetOffset(
+                  ship,
+                  part.anchor.parentId,
+                  point.position,
+                  part.type === "string-lights" ? stringTarget : aerialTarget,
+                  occupancy
+                )
+              : undefined
+          }
+          bridgeHalfSpan={
+            part.type === "nav-lights"
+              ? bridgeHalfSpanOf(ship, part.anchor.parentId)
+              : undefined
+          }
+        />
+      </GlbRegistryPart>
     </group>
   );
 }

@@ -1,15 +1,15 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { meshPositions, readGlb } from "@/assets/glbFile";
 import funnelSpec from "@/assets/parts/funnel.json";
-import { GLB_MARK_CLEARANCE } from "../FunnelMesh";
-import { funnelRadiusAt } from "../funnelGeometry";
 import {
-  FUNNEL_MODELS,
-  funnelModelUrl,
-  SHIP_MODEL_URLS,
-  shipModelUrl,
-} from "../shipModels";
+  FUNNEL_DIMS,
+  FUNNEL_LARGE_DIMS,
+  GLB_MARK_CLEARANCE,
+  GLB_PARTS,
+} from "../glbRegistry";
+import { funnelRadiusAt, type FunnelDims } from "../funnelGeometry";
+import { SHIP_MODEL_URLS, shipModelUrl } from "../shipModels";
 
 jest.mock("@react-three/drei", () => ({ useGLTF: { preload: jest.fn() } }));
 
@@ -29,23 +29,41 @@ describe("ship models", () => {
     }
   });
 
-  it("uses the funnel spec's variants and sizes", () => {
-    expect(FUNNEL_MODELS).toEqual(
-      funnelSpec.variants.map(({ name, dims }) => ({
-        dims,
-        url: shipModelUrl("funnel", name),
-      }))
+  it("lists each registry entry's file once", () => {
+    const urls = Object.values(GLB_PARTS).map((e) =>
+      shipModelUrl(e.model, e.variant)
     );
+    expect([...SHIP_MODEL_URLS].sort()).toEqual([...new Set(urls)].sort());
   });
 
-  it("finds a model only for the exact classic sizes", () => {
-    expect(funnelModelUrl(FUNNEL_MODELS[1].dims)).toBe(FUNNEL_MODELS[1].url);
+  it("uses the funnel spec's variants and sizes", () => {
     expect(
-      funnelModelUrl({ ...FUNNEL_MODELS[0].dims, bodyHeight: 2.7 })
-    ).toBeNull();
+      funnelSpec.variants.map(({ name, dims }) => ({ name, dims }))
+    ).toEqual([
+      { name: GLB_PARTS.funnel?.variant, dims: FUNNEL_DIMS },
+      { name: GLB_PARTS["funnel-large"]?.variant, dims: FUNNEL_LARGE_DIMS },
+    ]);
   });
 
-  it.each(FUNNEL_MODELS)(
+  it("draws every registered part from a variant its spec lists", () => {
+    for (const entry of Object.values(GLB_PARTS)) {
+      const spec = JSON.parse(
+        readFileSync(
+          join(process.cwd(), "assets", "parts", `${entry.model}.json`),
+          "utf8"
+        )
+      );
+      expect(spec.variants.map((v: { name: string }) => v.name)).toContain(
+        entry.variant
+      );
+    }
+  });
+
+  const FUNNELS: { dims: FunnelDims; url: string }[] = [
+    { dims: FUNNEL_DIMS, url: shipModelUrl("funnel", "funnel") },
+    { dims: FUNNEL_LARGE_DIMS, url: shipModelUrl("funnel", "funnel-large") },
+  ];
+  it.each(FUNNELS)(
     "$url keeps the marks clear of its plate seams",
     ({ dims, url }) => {
       // FunnelMesh's mark: centred at 55% height, 1.3x the radius square.
