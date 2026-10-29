@@ -12,7 +12,9 @@ import { useGLTF } from "@react-three/drei";
 import { AO_OCCLUDER } from "./aoLayer";
 import { trackGlbPart, type GlbLoadStatus } from "./glbLoadStatus";
 import { slotMeshesOf, type GlbSlotLook } from "./glbSlots";
+import Rotator from "./Rotator";
 import Spinner from "./Spinner";
+import Swinger from "./Swinger";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface GlbSlotPartProps {
@@ -96,6 +98,7 @@ function SlotMeshes({
             {...(look.aoOccluder ? AO_OCCLUDER : {})}
             geometry={geometry}
             castShadow={look.castShadow ?? false}
+            receiveShadow={look.receiveShadow ?? false}
             {...(matrix ? { matrix, matrixAutoUpdate: false } : {})}
           >
             <Surface
@@ -107,13 +110,32 @@ function SlotMeshes({
             />
           </mesh>
         );
-        return look.spin ? (
-          <Spinner key={`${slot}-${index}`} enabled={!isGhost}>
-            {drawn}
-          </Spinner>
-        ) : (
-          <Fragment key={`${slot}-${index}`}>{drawn}</Fragment>
-        );
+        if (look.spin) {
+          return (
+            <Spinner key={`${slot}-${index}`} enabled={!isGhost}>
+              {drawn}
+            </Spinner>
+          );
+        }
+        if (look.turn) {
+          return (
+            <Rotator
+              key={`${slot}-${index}`}
+              speed={look.turn}
+              enabled={!isGhost}
+            >
+              {drawn}
+            </Rotator>
+          );
+        }
+        if (look.swing) {
+          return (
+            <Swinger key={`${slot}-${index}`} enabled={!isGhost}>
+              {drawn}
+            </Swinger>
+          );
+        }
+        return <Fragment key={`${slot}-${index}`}>{drawn}</Fragment>;
       })}
       {children}
     </>

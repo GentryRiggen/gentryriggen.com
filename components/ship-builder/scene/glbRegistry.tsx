@@ -7,6 +7,7 @@ import { funnelRadiusAt, type FunnelDims } from "./funnelGeometry";
 import type { GlbSlotLook } from "./glbSlots";
 import { CRUISE_COLORS } from "./cruiseColors";
 import { DECK_GLB_PARTS } from "./glbDeckParts";
+import { PROP_GLB_PARTS } from "./glbPropParts";
 import { AerialWires, SternFlagCloth } from "./fittingDecor";
 import { LIGHT_COLORS } from "./lightColors";
 import { NavLightsLamps } from "./lightParts";
@@ -27,6 +28,8 @@ export interface FunnelHexColors {
  * from them (a ghost tint must reach every sub-part).
  */
 export interface GlbPartContext {
+  /** The part's id, which picks a container's colour; absent for ghosts. */
+  partId?: string;
   /** Paint on the part's main surface, as hex. */
   painted?: string;
   funnelPaint?: FunnelHexColors;
@@ -67,6 +70,12 @@ export interface GlbPartEntry {
    * and its sub-parts turn; the fallback already carries its own facing.
    */
   facing?: boolean;
+  /**
+   * The model turns by the rotation's plain angle about the vertical (0, 90,
+   * 180, 270 degrees), like the container mesh, not by `facingYaw`. The
+   * fallback carries its own turn, as with `facing`.
+   */
+  plainYaw?: boolean;
   /** How each slot of the file is drawn, given the part's paint. */
   slots: (context: GlbPartContext) => Record<string, GlbSlotLook>;
   /**
@@ -316,6 +325,7 @@ export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
     slots: davitSlots,
   },
   ...DECK_GLB_PARTS,
+  ...PROP_GLB_PARTS,
   mast: {
     model: "mast",
     variant: "mast",

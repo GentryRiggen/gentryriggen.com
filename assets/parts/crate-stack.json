@@ -1,24 +1,19 @@
 {
   "id": "crate-stack",
   "script": "crate-stack",
-  "slots": ["paint-9a6b3f", "paint-5a3a22"],
+  "slots": ["wood", "frame"],
   "slotColors": {
-    "paint-9a6b3f": {
+    "wood": {
       "color": "#9a6b3f",
       "finish": "wood"
     },
-    "paint-5a3a22": {
+    "frame": {
       "color": "#5a3a22",
       "finish": "wood"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/crate-stack.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2000,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -32,8 +27,8 @@
       "name": "crate-stack",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.1088, -0.006, -0.4003],
-        "max": [0.3088, 0.686, 0.4088]
+        "min": [-0.3088, -0.006, -0.4088],
+        "max": [0.1088, 0.686, 0.4003]
       }
     }
   ],
@@ -58,5 +53,5 @@
     }
   ],
   "scoreVariant": "crate-stack",
-  "generated": "93c0bc9320fc7356"
+  "boundsFixed": true
 }

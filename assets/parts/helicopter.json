@@ -1,25 +1,24 @@
 {
   "id": "helicopter",
   "script": "helicopter",
-  "slots": ["paint-6f7b66", "paint-4b545b", "paint-2b3036"],
+  "slots": ["body", "glass", "dark", "rotor"],
   "slotColors": {
-    "paint-6f7b66": {
+    "body": {
       "color": "#6f7b66"
     },
-    "paint-4b545b": {
+    "glass": {
+      "color": "#1d2a33",
+      "finish": "glass"
+    },
+    "dark": {
       "color": "#4b545b"
     },
-    "paint-2b3036": {
+    "rotor": {
       "color": "#2b3036"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/helicopter.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2200,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -33,8 +32,8 @@
       "name": "helicopter",
       "dims": {},
       "expectedBounds": {
-        "min": [-1.37, 0.02, -0.95],
-        "max": [0.95, 0.8625, 0.95]
+        "min": [-1.4564, 0.0227, -0.27],
+        "max": [0.95, 0.875, 0.27]
       }
     }
   ],
@@ -59,5 +58,5 @@
     }
   ],
   "scoreVariant": "helicopter",
-  "generated": "967e5590e5fdfd35"
+  "boundsFixed": true
 }

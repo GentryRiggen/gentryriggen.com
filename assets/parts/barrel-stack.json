@@ -1,24 +1,19 @@
 {
   "id": "barrel-stack",
   "script": "barrel-stack",
-  "slots": ["paint-9a6b3f", "paint-33383d"],
+  "slots": ["wood", "iron"],
   "slotColors": {
-    "paint-9a6b3f": {
+    "wood": {
       "color": "#9a6b3f",
       "finish": "wood"
     },
-    "paint-33383d": {
+    "iron": {
       "color": "#33383d",
       "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/barrel-stack.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2000,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -32,8 +27,8 @@
       "name": "barrel-stack",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.3309, 0, -0.335],
-        "max": [0.2809, 0.34, 0.335]
+        "min": [-0.2809, 0, -0.335],
+        "max": [0.3309, 0.34, 0.335]
       }
     }
   ],
@@ -58,5 +53,5 @@
     }
   ],
   "scoreVariant": "barrel-stack",
-  "generated": "0e5c4759935817e9"
+  "boundsFixed": true
 }

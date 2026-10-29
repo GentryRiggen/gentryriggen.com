@@ -228,9 +228,9 @@ const PEDESTAL_HEIGHT = 1.1;
 const JIB_LENGTH = 2.3;
 const JIB_TILT = 0.45;
 /** Radians per second of the swing's phase, and how far it swings either way. */
-const SWING_RATE = 0.35;
-const SWING_RANGE = 1.1;
-const CRANE_REST_ANGLE = 0.5;
+export const SWING_RATE = 0.35;
+export const SWING_RANGE = 1.1;
+export const CRANE_REST_ANGLE = 0.5;
 
 interface CargoCraneMeshProps extends CargoMeshProps {
   color?: string;
