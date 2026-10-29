@@ -124,6 +124,26 @@ function funnelMarks(dims: FunnelDims, { mark }: GlbPartContext): ReactNode {
   );
 }
 
+const MODERN_FUNNEL_DEFAULT_BODY = "#3b7cc4";
+const MODERN_FUNNEL_DEFAULT_TOP = "#2e3338";
+/** The glb shell's half-width across the ship at the mark's height (1.44). */
+const MODERN_FUNNEL_MARK_RADIUS = 0.2705;
+
+/** The modern funnel: the livery body colour and a dark metal grille. */
+function modernFunnelSlots({ funnelPaint }: GlbPartContext) {
+  return {
+    body: {
+      color: funnelPaint?.body ?? MODERN_FUNNEL_DEFAULT_BODY,
+      castShadow: true,
+      aoOccluder: true,
+    },
+    grille: {
+      color: funnelPaint?.top ?? MODERN_FUNNEL_DEFAULT_TOP,
+      finish: "metal" as const,
+    },
+  };
+}
+
 /** Every part drawn from a glb. Procedural-only parts are not listed. */
 export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
   funnel: {
@@ -173,5 +193,20 @@ export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
         spin: true,
       },
     }),
+  },
+  "funnel-modern": {
+    model: "funnel-modern",
+    variant: "funnel-modern",
+    rakeRadians: FUNNEL_RAKE_RADIANS,
+    slots: modernFunnelSlots,
+    subParts: ({ mark }) =>
+      mark ? (
+        <FunnelMarkDecals
+          mark={mark}
+          height={1.44}
+          radius={MODERN_FUNNEL_MARK_RADIUS + GLB_MARK_CLEARANCE}
+          size={0.36}
+        />
+      ) : null,
   },
 };
