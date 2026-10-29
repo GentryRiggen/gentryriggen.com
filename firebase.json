@@ -59,6 +59,15 @@
         ]
       },
       {
+        "source": "/ship-builder/models/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/admin",
         "headers": [
           {

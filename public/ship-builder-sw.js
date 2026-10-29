@@ -129,21 +129,31 @@ async function handleStaticAsset(request) {
   return response;
 }
 
-/** Models can change between releases: fresh when online, cached offline. */
+/** How long a model waits on the network before the cached copy is used. */
+const MODEL_NETWORK_TIMEOUT_MS = 3000;
+
+/**
+ * Models can change between releases: fresh when the network answers in time,
+ * the cached copy when it is offline or slow. A slow response still updates
+ * the cache when it arrives.
+ */
 async function handleModel(request, url) {
   const cache = await caches.open(CACHE);
   const key = `${url.origin}${url.pathname}`;
-  try {
-    const response = await fetch(request);
+  const network = fetch(request).then(async (response) => {
     if (isCacheable(response)) {
       await cache.put(key, response.clone()).catch(() => {});
     }
     return response;
-  } catch (error) {
-    const cached = await cache.match(key);
-    if (cached) return cached;
-    throw error;
-  }
+  });
+  const cached = await cache.match(key);
+  if (!cached) return network;
+  const slow = new Promise((resolve) =>
+    setTimeout(() => resolve(cached), MODEL_NETWORK_TIMEOUT_MS)
+  );
+  // A failed network falls back to the cache; a late one just warms it.
+  network.catch(() => {});
+  return Promise.race([network.catch(() => cached), slow]);
 }
 
 self.addEventListener("fetch", (event) => {

@@ -96,6 +96,8 @@ function loadWorker() {
     URL,
     Set,
     Promise,
+    // The 3s model timeout fires on the next tick in tests.
+    setTimeout: (fn: () => void) => setTimeout(fn, 0),
   });
 
   function dispatchFetch(request: FakeRequest) {
@@ -243,6 +245,32 @@ describe("ship-builder service worker", () => {
       );
       expect(fresh?.body).toBe("model v2");
 
+      worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(offline?.body).toBe("model v2");
+    });
+
+    it("serves the cached model when the network is slow, then updates it", async () => {
+      const worker = loadWorker();
+      const url = `${ORIGIN}/ship-builder/models/funnel/funnel.glb`;
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("model v1"));
+      await worker.dispatchFetch(makeRequest(url, { mode: "cors" }));
+
+      let arrive: (response: FakeResponse) => void = () => {};
+      worker.fetchMock.mockReturnValueOnce(
+        new Promise<FakeResponse>((resolve) => {
+          arrive = resolve;
+        })
+      );
+      const slow = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(slow?.body).toBe("model v1");
+
+      arrive(makeResponse("model v2"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
       const offline = await worker.dispatchFetch(
         makeRequest(url, { mode: "cors" })
