@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import AssetStudio from "@/components/asset-studio/AssetStudio";
 import KitStudio from "@/components/asset-studio/KitStudio";
+import ObstacleStudio from "@/components/asset-studio/ObstacleStudio";
 import PlaneAssetStudio from "@/components/asset-studio/PlaneAssetStudio";
 import { parsePlaneStudioParams } from "@/components/asset-studio/planeStudioParams";
 import { parseStudioParams } from "@/components/asset-studio/studioParams";
@@ -41,7 +42,13 @@ export default function AssetStudioPage() {
       </p>
     );
   }
-  if ("game" in parsed) return <PlaneAssetStudio params={parsed} />;
+  if ("game" in parsed) {
+    return parsed.part.startsWith("obstacle-") ? (
+      <ObstacleStudio params={parsed} />
+    ) : (
+      <PlaneAssetStudio params={parsed} />
+    );
+  }
   return parsed.kit ? (
     <KitStudio params={parsed} />
   ) : (

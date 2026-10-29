@@ -52,6 +52,17 @@ import mastWoodShortSpec from "./mast-wood-short.json";
 import mastWoodTallSpec from "./mast-wood-tall.json";
 import mastSpec from "./mast.json";
 import navLightsSpec from "./nav-lights.json";
+import obstacleArchSpec from "./obstacle-arch.json";
+import obstacleBalloonSpec from "./obstacle-balloon.json";
+import obstacleBarnSpec from "./obstacle-barn.json";
+import obstacleBirdSpec from "./obstacle-bird.json";
+import obstacleCloudSpec from "./obstacle-cloud.json";
+import obstacleIcebergSpec from "./obstacle-iceberg.json";
+import obstaclePalmSpec from "./obstacle-palm.json";
+import obstaclePeakSpec from "./obstacle-peak.json";
+import obstacleSkyscraperSpec from "./obstacle-skyscraper.json";
+import obstacleTreeSpec from "./obstacle-tree.json";
+import obstacleWallSpec from "./obstacle-wall.json";
 import parrotSpec from "./parrot.json";
 import pirateCrewSpec from "./pirate-crew.json";
 import planeCabinSpec from "./plane-cabin.json";
@@ -139,6 +150,17 @@ export const PART_SPEC_LIST: readonly unknown[] = [
   mastWoodTallSpec,
   mastSpec,
   navLightsSpec,
+  obstacleArchSpec,
+  obstacleBalloonSpec,
+  obstacleBarnSpec,
+  obstacleBirdSpec,
+  obstacleCloudSpec,
+  obstacleIcebergSpec,
+  obstaclePalmSpec,
+  obstaclePeakSpec,
+  obstacleSkyscraperSpec,
+  obstacleTreeSpec,
+  obstacleWallSpec,
   parrotSpec,
   pirateCrewSpec,
   planeCabinSpec,

@@ -917,7 +917,7 @@
       "note": "Lattice radar mast: platform, radome and radar bars against bright sky"
     },
     {
-      "file": "Grand_m\u00e2t_Hermione_Rochefort_sur_Mer.jpg",
+      "file": "Grand_mât_Hermione_Rochefort_sur_Mer.jpg",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg/500px-Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "source": "https://commons.wikimedia.org/wiki/File:Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "license": "CC0",
@@ -985,7 +985,7 @@
   ],
   "crows-nest": [
     {
-      "file": "Grand_m\u00e2t_Hermione_Rochefort_sur_Mer.jpg",
+      "file": "Grand_mât_Hermione_Rochefort_sur_Mer.jpg",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg/500px-Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "source": "https://commons.wikimedia.org/wiki/File:Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "license": "CC0",
@@ -1597,6 +1597,308 @@
       "crop": null,
       "mask": null,
       "note": "Olympic (Titanic's sister) bridge wing cab"
+    }
+  ],
+  "obstacle-tree": [
+    {
+      "file": "Isolated_pine_tree_on_Witton_Fell_-_geograph.org.uk_-_638627.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/Isolated_pine_tree_on_Witton_Fell_-_geograph.org.uk_-_638627.jpg/500px-Isolated_pine_tree_on_Witton_Fell_-_geograph.org.uk_-_638627.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Isolated_pine_tree_on_Witton_Fell_-_geograph.org.uk_-_638627.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Lone Scots pine: flat layered crown on a bare trunk"
+    },
+    {
+      "file": "Isolated_Scots_pine_tree,_Bratley_View,_New_Forest_-_geograph.org.uk_-_316635.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/Isolated_Scots_pine_tree%2C_Bratley_View%2C_New_Forest_-_geograph.org.uk_-_316635.jpg/500px-Isolated_Scots_pine_tree%2C_Bratley_View%2C_New_Forest_-_geograph.org.uk_-_316635.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Isolated_Scots_pine_tree,_Bratley_View,_New_Forest_-_geograph.org.uk_-_316635.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Scots pine silhouette: trunk and spreading layered boughs"
+    },
+    {
+      "file": "Isolated_pine_trees_Longstone_Moor_-_geograph.org.uk_-_4755219.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Isolated_pine_trees_Longstone_Moor_-_geograph.org.uk_-_4755219.jpg/500px-Isolated_pine_trees_Longstone_Moor_-_geograph.org.uk_-_4755219.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Isolated_pine_trees_Longstone_Moor_-_geograph.org.uk_-_4755219.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Pines on moor: crown shapes"
+    }
+  ],
+  "obstacle-barn": [
+    {
+      "file": "Red_Barn_in_Spring.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Red_Barn_in_Spring.JPG/500px-Red_Barn_in_Spring.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Red_Barn_in_Spring.JPG",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Red gambrel barn with white trim and cross-braced doors"
+    },
+    {
+      "file": "Eliason_Barn_Gypsum_Kansas_west_view.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Eliason_Barn_Gypsum_Kansas_west_view.jpg/500px-Eliason_Barn_Gypsum_Kansas_west_view.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Eliason_Barn_Gypsum_Kansas_west_view.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Red gambrel barn, side: long eave, gambrel roof"
+    }
+  ],
+  "obstacle-balloon": [
+    {
+      "file": "Colorado_Springs_Hot_Air_Balloon_Competition.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Colorado_Springs_Hot_Air_Balloon_Competition.jpg/500px-Colorado_Springs_Hot_Air_Balloon_Competition.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Colorado_Springs_Hot_Air_Balloon_Competition.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Hot-air balloons: round envelope, small basket"
+    },
+    {
+      "file": "Winthrop_Hot_Air_Balloon_Roundup.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/84/Winthrop_Hot_Air_Balloon_Roundup.jpg/500px-Winthrop_Hot_Air_Balloon_Roundup.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Winthrop_Hot_Air_Balloon_Roundup.jpg",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Hot-air balloon: banded envelope tapering to a basket"
+    }
+  ],
+  "obstacle-wall": [
+    {
+      "file": "Grand_Canyon_National_Park-Wall_of_Coconino_Sandstone_0597_(7706614152).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Grand_Canyon_National_Park-Wall_of_Coconino_Sandstone_0597_%287706614152%29.jpg/500px-Grand_Canyon_National_Park-Wall_of_Coconino_Sandstone_0597_%287706614152%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_National_Park-Wall_of_Coconino_Sandstone_0597_(7706614152).jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Layered sandstone cliff, vertical face with horizontal strata"
+    },
+    {
+      "file": "De_Chelly_Sandstone_(Lower_Permian;_Canyon_de_Chelly,_Arizona,_USA)_47.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/De_Chelly_Sandstone_%28Lower_Permian%3B_Canyon_de_Chelly%2C_Arizona%2C_USA%29_47.jpg/500px-De_Chelly_Sandstone_%28Lower_Permian%3B_Canyon_de_Chelly%2C_Arizona%2C_USA%29_47.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:De_Chelly_Sandstone_(Lower_Permian;_Canyon_de_Chelly,_Arizona,_USA)_47.jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Canyon walls: stepped ledges and strata"
+    },
+    {
+      "file": "De_Chelly_Sandstone_(Lower_Permian;_Canyon_de_Chelly,_Arizona,_USA)_27.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/De_Chelly_Sandstone_%28Lower_Permian%3B_Canyon_de_Chelly%2C_Arizona%2C_USA%29_27.jpg/500px-De_Chelly_Sandstone_%28Lower_Permian%3B_Canyon_de_Chelly%2C_Arizona%2C_USA%29_27.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:De_Chelly_Sandstone_(Lower_Permian;_Canyon_de_Chelly,_Arizona,_USA)_27.jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Strata banding"
+    }
+  ],
+  "obstacle-arch": [
+    {
+      "file": "Natural_Arch,_Aberdour_Bay_-_geograph.org.uk_-_108960.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Natural_Arch%2C_Aberdour_Bay_-_geograph.org.uk_-_108960.jpg/500px-Natural_Arch%2C_Aberdour_Bay_-_geograph.org.uk_-_108960.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Natural_Arch,_Aberdour_Bay_-_geograph.org.uk_-_108960.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Rock arch on coast"
+    },
+    {
+      "file": "Red_Rock_View_Through_Natural_Arch_(19356047114).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ac/Red_Rock_View_Through_Natural_Arch_%2819356047114%29.jpg/500px-Red_Rock_View_Through_Natural_Arch_%2819356047114%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Red_Rock_View_Through_Natural_Arch_(19356047114).jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Sandstone natural arch"
+    },
+    {
+      "file": "Bwa_Gwyn_-_a_natural_arch_-_geograph.org.uk_-_866648.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/Bwa_Gwyn_-_a_natural_arch_-_geograph.org.uk_-_866648.jpg/500px-Bwa_Gwyn_-_a_natural_arch_-_geograph.org.uk_-_866648.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Bwa_Gwyn_-_a_natural_arch_-_geograph.org.uk_-_866648.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Coastal sea arch"
+    }
+  ],
+  "obstacle-bird": [
+    {
+      "file": "Seagull_flying_(4).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Seagull_flying_%284%29.jpg/500px-Seagull_flying_%284%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Seagull_flying_(4).jpg",
+      "license": "CC BY-SA 2.5",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Gull in flight, wings spread, seen from below"
+    },
+    {
+      "file": "Yellow-legged_Gull_flying,_Ibiza.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/85/Yellow-legged_Gull_flying%2C_Ibiza.jpg/500px-Yellow-legged_Gull_flying%2C_Ibiza.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Yellow-legged_Gull_flying,_Ibiza.jpg",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Gull soaring, banked"
+    }
+  ],
+  "obstacle-palm": [
+    {
+      "file": "Cocos_nucifera_'Red_Spicata_Dwarf'_kz02.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Cocos_nucifera_%27Red_Spicata_Dwarf%27_kz02.jpg/500px-Cocos_nucifera_%27Red_Spicata_Dwarf%27_kz02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Cocos_nucifera_%27Red_Spicata_Dwarf%27_kz02.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Coconut palm grove: slender trunks, drooping fronds"
+    },
+    {
+      "file": "Coconut_Tree.JPG",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Coconut_Tree.JPG/500px-Coconut_Tree.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Coconut_Tree.JPG",
+      "license": "CC BY 3.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Palm crown: arching fronds"
+    },
+    {
+      "file": "Anse_Source_d'Argent_2-La_Digue.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Anse_Source_d%27Argent_2-La_Digue.jpg/500px-Anse_Source_d%27Argent_2-La_Digue.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Anse_Source_d%27Argent_2-La_Digue.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Leaning palm on a beach"
+    }
+  ],
+  "obstacle-skyscraper": [
+    {
+      "file": "30_Rockefeller_Plaza_viewed_from_5th_Avenue,_August_29,_2024_(cropped).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/30_Rockefeller_Plaza_viewed_from_5th_Avenue%2C_August_29%2C_2024_%28cropped%29.jpg/500px-30_Rockefeller_Plaza_viewed_from_5th_Avenue%2C_August_29%2C_2024_%28cropped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:30_Rockefeller_Plaza_viewed_from_5th_Avenue,_August_29,_2024_(cropped).jpg",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Art Deco tower: setbacks and a tapering top"
+    },
+    {
+      "file": "Bonn,_Post-Tower_--_2017_--_2136.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Bonn%2C_Post-Tower_--_2017_--_2136.jpg/500px-Bonn%2C_Post-Tower_--_2017_--_2136.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Bonn,_Post-Tower_--_2017_--_2136.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Glass tower: smooth tapered body"
+    },
+    {
+      "file": "Bonn,_Post-Tower_--_2017_--_2121.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Bonn%2C_Post-Tower_--_2017_--_2121.jpg/500px-Bonn%2C_Post-Tower_--_2017_--_2121.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Bonn,_Post-Tower_--_2017_--_2121.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Glass tower with banded windows"
+    }
+  ],
+  "obstacle-iceberg": [
+    {
+      "file": "Glacial_iceberg_in_Argentina.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/Glacial_iceberg_in_Argentina.jpg/500px-Glacial_iceberg_in_Argentina.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Glacial_iceberg_in_Argentina.jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Pinnacle and tabular ice blocks"
+    },
+    {
+      "file": "Iceberg_in_the_Arctic_with_its_underside_exposed.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/Iceberg_in_the_Arctic_with_its_underside_exposed.jpg/500px-Iceberg_in_the_Arctic_with_its_underside_exposed.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Iceberg_in_the_Arctic_with_its_underside_exposed.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Tabular iceberg: flat, rounded top, blue underside"
+    },
+    {
+      "file": "Icebergs_in_the_High_Arctic_-_20050907.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Icebergs_in_the_High_Arctic_-_20050907.jpg/500px-Icebergs_in_the_High_Arctic_-_20050907.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Icebergs_in_the_High_Arctic_-_20050907.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Tabular iceberg low and long"
+    }
+  ],
+  "obstacle-cloud": [
+    {
+      "file": "Anvil_shaped_cumulus_panorama_edit.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Anvil_shaped_cumulus_panorama_edit.jpg/500px-Anvil_shaped_cumulus_panorama_edit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Anvil_shaped_cumulus_panorama_edit.jpg",
+      "license": "GFDL 1.2",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Towering cumulus with cauliflower top and flat base"
+    },
+    {
+      "file": "Thunder_cloud_over_Gåseberg.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5f/Thunder_cloud_over_G%C3%A5seberg.jpg/500px-Thunder_cloud_over_G%C3%A5seberg.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Thunder_cloud_over_G%C3%A5seberg.jpg",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Dark storm cloud base"
+    }
+  ],
+  "obstacle-peak": [
+    {
+      "file": "Tall_snow-capped_mountain_peak_(Unsplash).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Tall_snow-capped_mountain_peak_%28Unsplash%29.jpg/500px-Tall_snow-capped_mountain_peak_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Tall_snow-capped_mountain_peak_(Unsplash).jpg",
+      "license": "CC0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Snow-capped volcano cone"
+    },
+    {
+      "file": "Mountains_in_snow,_Mountain_lake,_Chola_Valley,_Nepal,_Himalayas.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5a/Mountains_in_snow%2C_Mountain_lake%2C_Chola_Valley%2C_Nepal%2C_Himalayas.jpg/500px-Mountains_in_snow%2C_Mountain_lake%2C_Chola_Valley%2C_Nepal%2C_Himalayas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "source": "https://commons.wikimedia.org/wiki/File:Mountains_in_snow,_Mountain_lake,_Chola_Valley,_Nepal,_Himalayas.jpg",
+      "license": "CC BY 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Snowy rocky peaks"
     }
   ]
 }

@@ -1,4 +1,6 @@
 import { PLANE_UNITS } from "@/components/plane-builder/scene/planeGlbRegistry";
+import { OBSTACLE_VARIANTS } from "@/components/plane-builder/scene/obstacleModels";
+import type { ObstacleKind } from "@/lib/plane-builder/levels/types";
 import { DEFAULT_VIEW, STUDIO_TIMES } from "./studioParams";
 import { PART_SPECS } from "./partSpecs";
 
@@ -22,6 +24,10 @@ export function parsePlaneStudioParams(
 ): PlaneStudioParams | { error: string } {
   const query = new URLSearchParams(search);
   const part = query.get("part") ?? "";
+  const obstacle = part.replace(/^obstacle-/, "");
+  if (Object.hasOwn(OBSTACLE_VARIANTS, obstacle)) {
+    return parseObstacleParams(query, obstacle as ObstacleKind);
+  }
   const asUnit = PLANE_UNITS[part];
   const model = asUnit
     ? asUnit.model
@@ -51,6 +57,29 @@ export function parsePlaneStudioParams(
   const time = query.get("time") ?? "Day";
   if (!(STUDIO_TIMES as readonly string[]).includes(time)) {
     return { error: `Unknown time "${time}"` };
+  }
+  return { game: "plane", part: model, variant, build, view };
+}
+
+/** `?game=plane&part=obstacle-tree&variant=pine&build=old|new&view=`. */
+function parseObstacleParams(
+  query: URLSearchParams,
+  kind: ObstacleKind
+): PlaneStudioParams | { error: string } {
+  const model = `obstacle-${kind}`;
+  const spec = PART_SPECS[model] ?? null;
+  const variant =
+    query.get("variant") ?? spec?.scoreVariant ?? OBSTACLE_VARIANTS[kind][0];
+  if (!OBSTACLE_VARIANTS[kind].includes(variant)) {
+    return { error: `Unknown variant "${variant}" for ${model}` };
+  }
+  const view = query.get("view") ?? DEFAULT_VIEW;
+  if (spec && !spec.views.some((v) => v.name === view)) {
+    return { error: `Unknown view "${view}" for ${model}` };
+  }
+  const build = query.get("build") ?? "";
+  if (build !== "old" && build !== "new") {
+    return { error: `Unknown build "${build}" (old or new)` };
   }
   return { game: "plane", part: model, variant, build, view };
 }
