@@ -7,6 +7,8 @@
  * - Navigations to the Ship Builder page: network-first, falling back to the
  *   cached page when offline.
  * - /_next/static/* (content-hashed, immutable): cache-first.
+ * - /ship-builder/models/* (part models, not content-hashed): network-first,
+ *   falling back to the cached copy when offline; stored without the query.
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
  * - The page posts { type: "CACHE_URLS", urls } with the resources it has
@@ -17,6 +19,7 @@ const CACHE_PREFIX = "ship-builder-";
 const CACHE = `${CACHE_PREFIX}v1`;
 const PAGE_PATH = "/ship-builder";
 const STATIC_PREFIX = "/_next/static/";
+const MODEL_PREFIX = `${PAGE_PATH}/models/`;
 /** Upper bound on URLs accepted from one CACHE_URLS message. */
 const MAX_PRECACHE_URLS = 300;
 
@@ -47,8 +50,14 @@ function isGamePath(pathname) {
   );
 }
 
+/** True for a part model the game loads (public/ship-builder/models/). */
+function isModelAsset(pathname) {
+  return pathname.startsWith(MODEL_PREFIX);
+}
+
 /** True for the game page or one of its sub-pages (e.g. /ship-builder/versions). */
 function isPagePath(pathname) {
+  if (isModelAsset(pathname)) return false;
   return (
     pathname === PAGE_PATH ||
     pathname === `${PAGE_PATH}.html` ||
@@ -120,6 +129,23 @@ async function handleStaticAsset(request) {
   return response;
 }
 
+/** Models can change between releases: fresh when online, cached offline. */
+async function handleModel(request, url) {
+  const cache = await caches.open(CACHE);
+  const key = `${url.origin}${url.pathname}`;
+  try {
+    const response = await fetch(request);
+    if (isCacheable(response)) {
+      await cache.put(key, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(key);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -134,8 +160,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Range requests (media) need partial responses; leave them to the network.
-  if (isStaticAsset(url.pathname) && !request.headers.has("range")) {
+  if (request.headers.has("range")) return;
+  if (isStaticAsset(url.pathname)) {
     event.respondWith(handleStaticAsset(request));
+  } else if (isModelAsset(url.pathname)) {
+    event.respondWith(handleModel(request, url));
   }
   // Everything else passes through to the network.
 });
@@ -170,9 +199,12 @@ self.addEventListener("message", (event) => {
   for (const value of data.urls.slice(0, MAX_PRECACHE_URLS)) {
     const url = toSameOriginUrl(value);
     if (!url) continue;
-    if (!isPagePath(url.pathname) && !isStaticAsset(url.pathname)) continue;
+    const isModel = isModelAsset(url.pathname);
+    if (!isPagePath(url.pathname) && !isStaticAsset(url.pathname) && !isModel) {
+      continue;
+    }
     url.hash = "";
-    if (isPagePath(url.pathname)) url.search = "";
+    if (isPagePath(url.pathname) || isModel) url.search = "";
     if (seen.has(url.href)) continue;
     seen.add(url.href);
     urls.push(url);

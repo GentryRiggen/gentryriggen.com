@@ -24,7 +24,8 @@
     "test:visual:update": "scripts/visual-docker.sh update",
     "test:all": "npm test && npm run test:e2e",
     "validate": "npm run lint && npm run format:check && npm run type-check && npm test && npm run build",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "assets:ship": "node scripts/assets/ship.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

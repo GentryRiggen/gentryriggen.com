@@ -39,6 +39,7 @@ import SailWorld from "./SailWorld";
 import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
+import { preloadShipModels } from "./shipModels";
 import TrialSound from "../audio/TrialSound";
 import UnderwaterFog from "./UnderwaterFog";
 import WalkRunner from "./WalkRunner";
@@ -78,6 +79,9 @@ export default function Scene() {
   const [glow] = useState(() => createGlowController(glowFor(timeOfDay)));
   const wrapper = useRef<HTMLDivElement>(null);
   const { ring, startPress } = usePartLongPress(wrapper);
+
+  // Part models start loading with the scene, so parts rarely wait for them.
+  useEffect(() => preloadShipModels(), []);
 
   useEffect(() => {
     const element = wrapper.current;
