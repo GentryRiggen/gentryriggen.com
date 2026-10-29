@@ -30,7 +30,7 @@ def build(dims):
     ramp = merge([ramp_frame(m) for m in [slab] + rails + ribs])
     legs = merge([box(0.7, RC / 2 + 0.2, s * (RW / 2), 0.06, RC + 0.4, 0.06)
                   for s in (-1, 1)] +
-                 [box(-0.5, RC / 2 - 0.2, s * (RW / 2), 0.05, RC * 0.5, 0.05)
+                 [box(-0.5, 0.125, s * (RW / 2), 0.05, 0.25, 0.05)
                   for s in (-1, 1)])
     canopy = xf(lathe([(0.0, -0.3), (0.16, -0.22), (0.24, 0.0), (0.2, 0.22),
                        (0.0, 0.3)], 12),

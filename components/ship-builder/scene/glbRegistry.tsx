@@ -5,6 +5,7 @@ import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
 import FunnelMarkDecals from "./FunnelMarkDecals";
 import { funnelRadiusAt, type FunnelDims } from "./funnelGeometry";
 import type { GlbSlotLook } from "./glbSlots";
+import { CRUISE_COLORS } from "./cruiseColors";
 import { PALETTE } from "./palette";
 import type { PartEmphasis, PartTint } from "./Surface";
 
@@ -50,6 +51,11 @@ export interface GlbPartEntry {
   variant: string;
   /** Tilt about Z, like a funnel's rake. Applies to the model and sub-parts. */
   rakeRadians?: number;
+  /**
+   * The model is built for the starboard side (outboard is +Z). On the port
+   * side it is turned half a circle about the vertical so it faces outboard.
+   */
+  faceOutward?: boolean;
   /** How each slot of the file is drawn, given the part's paint. */
   slots: (context: GlbPartContext) => Record<string, GlbSlotLook>;
   /**
@@ -123,6 +129,24 @@ function funnelMarks(dims: FunnelDims, { mark }: GlbPartContext): ReactNode {
   );
 }
 
+const RIB_FLOOR_COLOR = "#4b545b";
+const RIB_TUBE_COLOR = "#69727a";
+
+/** An open lifeboat: hull in the paint (or the boat's own colour), cover and gunwale as wood. */
+function openBoatSlots(hullSlot: string, hullDefault: string) {
+  return ({ painted }: GlbPartContext) => ({
+    [hullSlot]: { color: painted ?? hullDefault, castShadow: true },
+    boatCover: { color: PALETTE.boatCover, finish: "wood" as const },
+    gunwale: { color: PALETTE.gunwale, finish: "wood" as const },
+  });
+}
+
+function davitSlots({ painted }: GlbPartContext) {
+  return {
+    davit: { color: painted ?? PALETTE.davit, finish: "metal" as const },
+  };
+}
+
 /** Every part drawn from a glb. Procedural-only parts are not listed. */
 export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
   funnel: {
@@ -138,5 +162,77 @@ export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
     rakeRadians: FUNNEL_RAKE_RADIANS,
     slots: funnelSlots,
     subParts: (context) => funnelMarks(FUNNEL_LARGE_DIMS, context),
+  },
+  "lifeboat-standard": {
+    model: "lifeboat-standard",
+    variant: "lifeboat-standard",
+    slots: openBoatSlots("lifeboat", PALETTE.lifeboat),
+  },
+  "lifeboat-large": {
+    model: "lifeboat-large",
+    variant: "lifeboat-large",
+    slots: openBoatSlots("lifeboat", PALETTE.lifeboat),
+  },
+  "lifeboat-collapsible": {
+    model: "lifeboat-collapsible",
+    variant: "lifeboat-collapsible",
+    slots: openBoatSlots("collapsible", PALETTE.collapsible),
+  },
+  "lifeboat-enclosed": {
+    model: "lifeboat-enclosed",
+    variant: "lifeboat-enclosed",
+    slots: ({ painted }) => ({
+      "paint-f08a24": {
+        color: painted ?? CRUISE_COLORS.enclosedBoat,
+        castShadow: true,
+      },
+      lifeboat: { color: CRUISE_COLORS.enclosedCanopy },
+      bridgeWindows: {
+        color: CRUISE_COLORS.enclosedWindow,
+        finish: "glass" as const,
+      },
+    }),
+  },
+  "lifeboat-freefall": {
+    model: "lifeboat-freefall",
+    variant: "lifeboat-freefall",
+    slots: ({ painted }) => ({
+      freefallRamp: { color: PALETTE.freefallRamp, castShadow: true },
+      freefallBoat: {
+        color: painted ?? PALETTE.freefallBoat,
+        castShadow: true,
+      },
+      bridgeWindows: { color: PALETTE.bridgeWindows },
+      containerSteel: { color: PALETTE.containerSteel },
+    }),
+  },
+  "rib-boat": {
+    model: "rib-boat",
+    variant: "rib-boat",
+    slots: ({ painted }) => ({
+      "paint-4b545b": { color: RIB_FLOOR_COLOR },
+      "paint-69727a": { color: painted ?? RIB_TUBE_COLOR, castShadow: true },
+    }),
+  },
+  "raft-canister": {
+    model: "raft-canister",
+    variant: "raft-canister",
+    faceOutward: true,
+    slots: ({ painted }) => ({
+      lifeboat: { color: painted ?? CRUISE_COLORS.raft, castShadow: true },
+      "paint-f08a24": { color: CRUISE_COLORS.raftBand },
+    }),
+  },
+  davit: {
+    model: "davit",
+    variant: "davit",
+    faceOutward: true,
+    slots: davitSlots,
+  },
+  "davit-side": {
+    model: "davit-side",
+    variant: "davit-side",
+    faceOutward: true,
+    slots: davitSlots,
   },
 };
