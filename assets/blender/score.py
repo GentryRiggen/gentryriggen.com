@@ -19,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
-from lib import gates, history as hist, metrics, render, scoring  # noqa: E402
+from lib import ao, gates, history as hist, metrics, render, scoring  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -91,6 +91,9 @@ def export_glb(objs: dict, path: str) -> int:
         export_apply=True,
         export_materials="EXPORT",
         export_yup=True,
+        # The baked AO attribute (lib/ao.py) becomes COLOR_0.
+        export_vertex_color="NAME",
+        export_vertex_color_name=ao.ATTRIBUTE,
     )
     return os.path.getsize(path)
 
@@ -150,11 +153,16 @@ def run(args: argparse.Namespace) -> None:
     os.makedirs(os.path.join(out, "renders"), exist_ok=True)
 
     all_gates, tri_counts, byte_counts = [], {}, {}
+    ao_means: dict[str, dict[str, float]] = {}
+    ao_seconds = 0.0
     renders: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for variant in spec["variants"]:
         name = variant["name"]
         clear_scene()
         objs = part_mod.build(variant["dims"])
+        baked_at = time.monotonic()
+        ao_means[name] = ao.bake(objs, spec)
+        ao_seconds += time.monotonic() - baked_at
         lo, hi, tris = measure(objs)
         size = export_glb(objs, os.path.join(out, f"{name}.glb"))
         tri_counts[name], byte_counts[name] = tris, size
@@ -199,6 +207,7 @@ def run(args: argparse.Namespace) -> None:
         "perRef": per_ref,
         "triangles": tri_counts,
         "bytes": byte_counts,
+        "ao": {"seconds": round(ao_seconds, 1), "meanBySlot": ao_means},
         "note": args.round_note,
     }
     line = hist.build_history_line(
