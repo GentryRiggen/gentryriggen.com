@@ -194,5 +194,85 @@
       "mask": null,
       "note": "White pod unit on stands: round pod body, strut, propeller at the front"
     }
+  ],
+  "funnel-modern": [
+    {
+      "file": "Avitak_Funnel_Port_of_Tallinn_17_March_2023.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Avitak_Funnel_Port_of_Tallinn_17_March_2023.jpg/500px-Avitak_Funnel_Port_of_Tallinn_17_March_2023.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Avitak_Funnel_Port_of_Tallinn_17_March_2023.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": [25, 20, 445, 240],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.55,
+        "invert": true
+      },
+      "note": "White raked cruise funnel: sloped back, louvre grille on the side, black exhaust pipes on top"
+    },
+    {
+      "file": "Ambience_Funnel_Port_of_Tallinn_23_May_2023.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Ambience_Funnel_Port_of_Tallinn_23_May_2023.jpg/500px-Ambience_Funnel_Port_of_Tallinn_23_May_2023.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Ambience_Funnel_Port_of_Tallinn_23_May_2023.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": [165, 45, 190, 255],
+      "mask": {
+        "mode": "luma",
+        "threshold": 0.42,
+        "invert": false
+      },
+      "note": "Round funnel with louvred crown ring and a bundle of exhaust pipes"
+    },
+    {
+      "file": "Celestyal_Olympia_Funnel_Port_of_Rhodes_23_August_2023.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Celestyal_Olympia_Funnel_Port_of_Rhodes_23_August_2023.jpg/500px-Celestyal_Olympia_Funnel_Port_of_Rhodes_23_August_2023.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Celestyal_Olympia_Funnel_Port_of_Rhodes_23_August_2023.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Funnel top: bridge-like wing around a louvred tower with raked exhaust pipes"
+    },
+    {
+      "file": "Explora_I_Funnel_Starboard_Side_Port_of_Rhodes_27_August_2024.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Explora_I_Funnel_Starboard_Side_Port_of_Rhodes_27_August_2024.jpg/500px-Explora_I_Funnel_Starboard_Side_Port_of_Rhodes_27_August_2024.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Explora_I_Funnel_Starboard_Side_Port_of_Rhodes_27_August_2024.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Swept black funnel with louvre bands and aft-raked pipes"
+    },
+    {
+      "file": "Hamburg_Funnel_Port_of_Tallinn_23_April_2023.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/Hamburg_Funnel_Port_of_Tallinn_23_April_2023.jpg/500px-Hamburg_Funnel_Port_of_Tallinn_23_April_2023.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Hamburg_Funnel_Port_of_Tallinn_23_April_2023.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Tapered round funnel with exhaust pipes and ladders"
+    },
+    {
+      "file": "Orient_Queen_Funnel_Port_of_Rhodes_21_August_2018.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Orient_Queen_Funnel_Port_of_Rhodes_21_August_2018.jpg/500px-Orient_Queen_Funnel_Port_of_Rhodes_21_August_2018.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Orient_Queen_Funnel_Port_of_Rhodes_21_August_2018.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Raked sail-style funnel with open top and pipes"
+    },
+    {
+      "file": "Crown_Iris_Funnel_Port_of_Rhodes_23_August_2023.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Crown_Iris_Funnel_Port_of_Rhodes_23_August_2023.jpg/500px-Crown_Iris_Funnel_Port_of_Rhodes_23_August_2023.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Crown_Iris_Funnel_Port_of_Rhodes_23_August_2023.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Funnel with blue louvred sides, big logo panel, silver exhaust pipes raking aft"
+    }
   ]
 }
