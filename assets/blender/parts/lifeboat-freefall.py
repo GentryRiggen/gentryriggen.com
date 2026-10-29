@@ -20,7 +20,7 @@ def torpedo():
     """A lathe along Y (nose at +Y) turned so the nose points to -X."""
     pts = [(0.0, -0.9), (0.04, -0.88), (0.1, -0.7), (0.19, -0.4), (0.25, 0.0),
            (0.27, 0.25), (0.245, 0.55), (0.18, 0.78), (0.08, 0.9), (0.0, 0.93)]
-    return xf(lathe(pts, 16), rz=math.pi / 2, move=(0.0, 0.31, 0.0))
+    return xf(lathe(pts, 12), rz=math.pi / 2, move=(0.0, 0.31, 0.0))
 
 
 def build(dims):

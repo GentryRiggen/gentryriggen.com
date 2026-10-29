@@ -18,7 +18,7 @@ def _sp(v: float, e: float) -> float:
 class OpenBoat:
     def __init__(self, length, half_beam, depth, rim_y, sheer, *, keel_end=0.2,
                  section=2.7, cap_w=0.016, wall=0.012, cover_h=0.08,
-                 stations=17, cover_span=(-0.7, 0.68)):
+                 stations=9, cover_span=(-0.7, 0.68)):
         self.L, self.depth, self.rim_y, self.sheer = length, depth, rim_y, sheer
         self.keel_end, self.section = keel_end, section
         self.cap_w, self.wall, self.cover_h = cap_w, wall, cover_h
@@ -46,7 +46,7 @@ class OpenBoat:
         return [-1 + 2 * i / (self.n - 1) for i in range(self.n)]
 
     # --- parts ----------------------------------------------------------
-    def hull(self, k: int = 8) -> Mesh:
+    def hull(self, k: int = 4) -> Mesh:
         secs = []
         for s in self._stations():
             w, r, d, th = self.half(s), self.rim(s), self.keel(s), self.thick(s)
@@ -103,14 +103,14 @@ class OpenBoat:
 
     def cover_stations(self):
         a, b = self.cover_span
-        return [a + (b - a) * i / 8 for i in range(9)]
+        return [a + (b - a) * i / 8 for i in range(6)]
 
     def _cover_amp(self, s):
         a, b = self.cover_span
         u = (s - a) / (b - a)  # 0..1
         return self.cover_h * (0.28 + 0.72 * math.sin(math.pi * u) ** 0.6)
 
-    def cover(self, k: int = 8) -> Mesh:
+    def cover(self, k: int = 4) -> Mesh:
         secs = []
         for s in self.cover_stations():
             w, r, amp = self.half(s), self.rim(s) + 0.008, self._cover_amp(s)

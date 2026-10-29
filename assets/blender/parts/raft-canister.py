@@ -11,21 +11,21 @@ R, HALF, Y0, Z0 = 0.125, 0.35, 0.15, -0.18
 
 def body():
     prof = [(0.0, -HALF)]
-    for i in range(1, 6):  # dome
-        a = math.pi / 2 * i / 5
+    for i in range(1, 4):  # dome
+        a = math.pi / 2 * i / 3
         prof.append((R * math.sin(a), -HALF + R * 0.7 * (1 - math.cos(a))))
-    for i in range(6):
-        prof.append((R, -HALF + R * 0.7 + (2 * HALF - 2 * R * 0.7) * i / 5))
-    for i in range(4, -1, -1):
-        a = math.pi / 2 * i / 5
+    for i in range(2):
+        prof.append((R, -HALF + R * 0.7 + (2 * HALF - 2 * R * 0.7) * i))
+    for i in range(2, -1, -1):
+        a = math.pi / 2 * i / 3
         prof.append((R * math.sin(a), HALF - R * 0.7 * (1 - math.cos(a))))
     prof.append((0.0, HALF))
     prof.sort(key=lambda p: p[1])
-    return lathe(prof, 14)
+    return lathe(prof, 10)
 
 
 def ring(radius, half_h, y):
-    return lathe([(radius, y - half_h), (radius, y + half_h)], 14)
+    return lathe([(radius, y - half_h), (radius, y + half_h)], 10)
 
 
 def to_x(mesh, **kw):
@@ -34,7 +34,7 @@ def to_x(mesh, **kw):
 
 def build(dims):
     white = [to_x(body())]
-    white.append(to_x(lathe([(R + 0.008, -0.025), (R + 0.008, 0.025)], 14)))  # seam band
+    white.append(to_x(lathe([(R + 0.008, -0.025), (R + 0.008, 0.025)], 10)))  # seam band
     # Saddle cradle: two plates under the straps, plus a rail along the base.
     for x in (-0.2, 0.2):
         white.append(box(x, 0.05, Z0, 0.07, 0.07, 0.2))
