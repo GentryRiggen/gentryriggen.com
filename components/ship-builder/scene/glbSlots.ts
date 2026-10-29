@@ -8,6 +8,8 @@ export interface GlbSlotLook {
   castShadow?: boolean;
   /** Puts the mesh on the ambient-occlusion layer (see aoLayer.ts). */
   aoOccluder?: boolean;
+  /** Turns about the shaft (local X) at the ship's pace, like a propeller. */
+  spin?: boolean;
 }
 
 /** One mesh of a loaded glb, named by its paint slot. */

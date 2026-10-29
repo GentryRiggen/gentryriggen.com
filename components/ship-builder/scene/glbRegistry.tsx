@@ -5,6 +5,7 @@ import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
 import FunnelMarkDecals from "./FunnelMarkDecals";
 import { funnelRadiusAt, type FunnelDims } from "./funnelGeometry";
 import type { GlbSlotLook } from "./glbSlots";
+import { CRUISE_COLORS } from "./cruiseColors";
 import { PALETTE } from "./palette";
 import type { PartEmphasis, PartTint } from "./Surface";
 
@@ -138,5 +139,39 @@ export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
     rakeRadians: FUNNEL_RAKE_RADIANS,
     slots: funnelSlots,
     subParts: (context) => funnelMarks(FUNNEL_LARGE_DIMS, context),
+  },
+  propeller: {
+    model: "propeller",
+    variant: "propeller",
+    slots: ({ painted }) => ({
+      propeller: {
+        color: painted ?? PALETTE.propeller,
+        castShadow: true,
+        spin: true,
+      },
+    }),
+  },
+  rudder: {
+    model: "rudder",
+    variant: "rudder",
+    slots: ({ painted }) => ({
+      rudder: { color: painted ?? PALETTE.propeller, castShadow: true },
+    }),
+  },
+  azipod: {
+    model: "azipod",
+    variant: "azipod",
+    slots: ({ painted }) => ({
+      pod: {
+        color: painted ?? CRUISE_COLORS.azipod,
+        castShadow: true,
+        aoOccluder: true,
+      },
+      propeller: {
+        color: CRUISE_COLORS.azipodBlade,
+        castShadow: true,
+        spin: true,
+      },
+    }),
   },
 };
