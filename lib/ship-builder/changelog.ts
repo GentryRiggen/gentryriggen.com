@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.23.0",
+    date: "2026-10-28",
+    title: "Funnel makeover",
+    highlights: [
+      "The classic funnels got a makeover: riveted plates, a rolled rim you can see into, a guy ring and a proper steam whistle",
+      "Painted letters and logos still sit neatly on the side",
+      "Funnels that break off in a sinking look the same as the ones on deck",
+      "The new funnels work offline too, once you have played online",
+    ],
+  },
+  {
     version: "2.22.0",
     date: "2026-10-25",
     title: "Abandon ship!",
