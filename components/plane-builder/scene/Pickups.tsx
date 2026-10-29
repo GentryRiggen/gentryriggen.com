@@ -1,17 +1,21 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
+  type BufferGeometry,
   CylinderGeometry,
   type InstancedMesh,
   Object3D,
   TorusGeometry,
 } from "three";
+import type { ReactNode } from "react";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import { COIN_RADIUS } from "@/lib/plane-builder/sim/constants";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
+import PropGlb from "./GlbProp";
+import type { PropName } from "./propModels";
 
 const COIN_SPIN = 2.5;
 const COIN_COLOR = "#fbbf24";
@@ -19,6 +23,65 @@ const RING_COLOR = "#38bdf8";
 const CAN_COLOR = "#ef4444";
 const CAN_BOB = 0.6;
 const dummy = new Object3D();
+
+interface PickupMeshProps {
+  meshRef: RefObject<InstancedMesh | null>;
+  name: PropName;
+  level: LevelDef;
+  count: number;
+  /** The old hand-built shape and its look, drawn while the glb loads. */
+  standIn: BufferGeometry;
+  standInMaterial: ReactNode;
+  /** The glow the pickup always had, in the colour it has always glowed. */
+  glow: { color: string; intensity: number };
+  metalness: number;
+  roughness: number;
+}
+
+/** One kind of pickup, instanced: from its glb, or the stand-in shape. */
+function PickupMesh({
+  meshRef,
+  name,
+  level,
+  count,
+  standIn,
+  standInMaterial,
+  glow,
+  metalness,
+  roughness,
+}: PickupMeshProps) {
+  return (
+    <PropGlb
+      name={name}
+      palette={level.palette}
+      fallback={
+        <instancedMesh
+          ref={meshRef}
+          args={[standIn, undefined, count]}
+          frustumCulled={false}
+        >
+          {standInMaterial}
+        </instancedMesh>
+      }
+    >
+      {(geometry) => (
+        <instancedMesh
+          ref={meshRef}
+          args={[geometry, undefined, count]}
+          frustumCulled={false}
+        >
+          <meshStandardMaterial
+            vertexColors
+            emissive={glow.color}
+            emissiveIntensity={glow.intensity}
+            metalness={metalness}
+            roughness={roughness}
+          />
+        </instancedMesh>
+      )}
+    </PropGlb>
+  );
+}
 
 interface PickupsProps {
   level: LevelDef;
@@ -111,45 +174,63 @@ export default function Pickups({ level, hasEngine }: PickupsProps) {
 
   return (
     <>
-      <instancedMesh
+      <PickupMesh
         key={`${level.id}-coins`}
-        ref={coins}
-        args={[coinGeometry, undefined, level.coins.length]}
-        frustumCulled={false}
-      >
-        <meshStandardMaterial
-          color={COIN_COLOR}
-          emissive={COIN_COLOR}
-          emissiveIntensity={0.35}
-          metalness={0.3}
-          roughness={0.3}
-        />
-      </instancedMesh>
-      <instancedMesh
-        key={`${level.id}-rings`}
-        ref={rings}
-        args={[ringGeometry, undefined, level.rings.length]}
-        frustumCulled={false}
-      >
-        <meshStandardMaterial
-          color={RING_COLOR}
-          emissive={RING_COLOR}
-          emissiveIntensity={0.5}
-        />
-      </instancedMesh>
-      {hasEngine ? (
-        <instancedMesh
-          key={`${level.id}-cans`}
-          ref={cans}
-          args={[canGeometry, undefined, level.fuelCans.length]}
-          frustumCulled={false}
-        >
+        meshRef={coins}
+        name="coin"
+        level={level}
+        count={level.coins.length}
+        standIn={coinGeometry}
+        standInMaterial={
           <meshStandardMaterial
-            color={CAN_COLOR}
-            emissive={CAN_COLOR}
-            emissiveIntensity={0.3}
+            color={COIN_COLOR}
+            emissive={COIN_COLOR}
+            emissiveIntensity={0.35}
+            metalness={0.3}
+            roughness={0.3}
           />
-        </instancedMesh>
+        }
+        glow={{ color: COIN_COLOR, intensity: 0.35 }}
+        metalness={0.3}
+        roughness={0.3}
+      />
+      <PickupMesh
+        key={`${level.id}-rings`}
+        meshRef={rings}
+        name="ring"
+        level={level}
+        count={level.rings.length}
+        standIn={ringGeometry}
+        standInMaterial={
+          <meshStandardMaterial
+            color={RING_COLOR}
+            emissive={RING_COLOR}
+            emissiveIntensity={0.5}
+          />
+        }
+        glow={{ color: RING_COLOR, intensity: 0.5 }}
+        metalness={0}
+        roughness={0.5}
+      />
+      {hasEngine ? (
+        <PickupMesh
+          key={`${level.id}-cans`}
+          meshRef={cans}
+          name="can"
+          level={level}
+          count={level.fuelCans.length}
+          standIn={canGeometry}
+          standInMaterial={
+            <meshStandardMaterial
+              color={CAN_COLOR}
+              emissive={CAN_COLOR}
+              emissiveIntensity={0.3}
+            />
+          }
+          glow={{ color: CAN_COLOR, intensity: 0.3 }}
+          metalness={0}
+          roughness={0.6}
+        />
       ) : null}
     </>
   );

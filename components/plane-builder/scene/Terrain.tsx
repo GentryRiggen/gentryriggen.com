@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import {
   BufferAttribute,
   Color,
+  type BufferGeometry,
   CylinderGeometry,
   type InstancedMesh,
   Object3D,
@@ -12,6 +13,7 @@ import {
 import { RUNOUT } from "@/lib/plane-builder/levels/generate";
 import { terrainHeight } from "@/lib/plane-builder/levels/terrain";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
+import PropGlb from "./GlbProp";
 
 const WIDTH = 400;
 const CELL = 8;
@@ -52,18 +54,16 @@ function buildTerrain(level: LevelDef): PlaneGeometry {
   return geometry;
 }
 
-interface TerrainProps {
+interface PolesProps {
   level: LevelDef;
+  geometry: BufferGeometry;
+  /** The model's poles are centred on y = 0, like the stand-in's. */
+  color?: string;
 }
 
-/** The ground, shaded from flat colour to hill colour, and the corridor poles. */
-export default function Terrain({ level }: TerrainProps) {
+/** The corridor poles, one every POLE_SPACING m down both edges. */
+function Poles({ level, geometry, color }: PolesProps) {
   const poles = useRef<InstancedMesh>(null);
-  const geometry = useMemo(() => buildTerrain(level), [level]);
-  const poleGeometry = useMemo(
-    () => new CylinderGeometry(0.25, 0.25, POLE_HEIGHT, 6),
-    []
-  );
   const poleCount = useMemo(
     () => (Math.floor(level.finishDistance / POLE_SPACING) + 1) * 2,
     [level.finishDistance]
@@ -85,7 +85,35 @@ export default function Terrain({ level }: TerrainProps) {
       }
     }
     mesh.instanceMatrix.needsUpdate = true;
-  }, [level]);
+  }, [level, geometry]);
+
+  return (
+    <instancedMesh
+      ref={poles}
+      args={[geometry, undefined, poleCount]}
+      frustumCulled={false}
+      castShadow
+    >
+      {color ? (
+        <meshStandardMaterial color={color} roughness={0.8} />
+      ) : (
+        <meshStandardMaterial vertexColors roughness={0.8} />
+      )}
+    </instancedMesh>
+  );
+}
+
+interface TerrainProps {
+  level: LevelDef;
+}
+
+/** The ground, shaded from flat colour to hill colour, and the corridor poles. */
+export default function Terrain({ level }: TerrainProps) {
+  const geometry = useMemo(() => buildTerrain(level), [level]);
+  const poleGeometry = useMemo(
+    () => new CylinderGeometry(0.25, 0.25, POLE_HEIGHT, 6),
+    []
+  );
 
   useLayoutEffect(
     () => () => {
@@ -100,15 +128,19 @@ export default function Terrain({ level }: TerrainProps) {
       <mesh geometry={geometry} receiveShadow>
         <meshStandardMaterial vertexColors roughness={1} />
       </mesh>
-      <instancedMesh
-        key={level.id}
-        ref={poles}
-        args={[poleGeometry, undefined, poleCount]}
-        frustumCulled={false}
-        castShadow
+      <PropGlb
+        name="corridorPole"
+        palette={level.palette}
+        fallback={
+          <Poles
+            level={level}
+            geometry={poleGeometry}
+            color={level.palette.trim}
+          />
+        }
       >
-        <meshStandardMaterial color={level.palette.trim} roughness={0.8} />
-      </instancedMesh>
+        {(poleModel) => <Poles level={level} geometry={poleModel} />}
+      </PropGlb>
     </>
   );
 }

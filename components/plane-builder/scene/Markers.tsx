@@ -5,6 +5,7 @@ import { DoubleSide } from "three";
 import { terrainHeight } from "@/lib/plane-builder/levels/terrain";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import { MILESTONES } from "@/lib/plane-builder/sim/constants";
+import PropGlb from "./GlbProp";
 import { createLabelTexture } from "./signTexture";
 
 /**
@@ -95,12 +96,24 @@ export default function Markers({ level }: MarkersProps) {
             key={`${level.id}-${flag.key}`}
             position={[flag.x, baseY, edgeZ]}
           >
-            <mesh position={[0, FLAG_POLE_HEIGHT / 2, 0]} castShadow>
-              <cylinderGeometry
-                args={[POLE_RADIUS, POLE_RADIUS, FLAG_POLE_HEIGHT, 8]}
-              />
-              <meshStandardMaterial color={POLE_COLOR} roughness={0.6} />
-            </mesh>
+            <PropGlb
+              name="flagPole"
+              palette={level.palette}
+              fallback={
+                <mesh position={[0, FLAG_POLE_HEIGHT / 2, 0]} castShadow>
+                  <cylinderGeometry
+                    args={[POLE_RADIUS, POLE_RADIUS, FLAG_POLE_HEIGHT, 8]}
+                  />
+                  <meshStandardMaterial color={POLE_COLOR} roughness={0.6} />
+                </mesh>
+              }
+            >
+              {(geometry) => (
+                <mesh geometry={geometry} castShadow>
+                  <meshStandardMaterial vertexColors roughness={0.6} />
+                </mesh>
+              )}
+            </PropGlb>
             {/* Faces back toward the plane and hangs out over the corridor. */}
             <mesh
               position={[
@@ -127,12 +140,24 @@ export default function Markers({ level }: MarkersProps) {
             key={`${level.id}-${sign.key}`}
             position={[sign.x, baseY, -edgeZ]}
           >
-            <mesh position={[0, SIGN_POST_HEIGHT / 2, 0]} castShadow>
-              <cylinderGeometry
-                args={[POLE_RADIUS, POLE_RADIUS, SIGN_POST_HEIGHT, 8]}
-              />
-              <meshStandardMaterial color={POLE_COLOR} roughness={0.6} />
-            </mesh>
+            <PropGlb
+              name="signPost"
+              palette={level.palette}
+              fallback={
+                <mesh position={[0, SIGN_POST_HEIGHT / 2, 0]} castShadow>
+                  <cylinderGeometry
+                    args={[POLE_RADIUS, POLE_RADIUS, SIGN_POST_HEIGHT, 8]}
+                  />
+                  <meshStandardMaterial color={POLE_COLOR} roughness={0.6} />
+                </mesh>
+              }
+            >
+              {(geometry) => (
+                <mesh geometry={geometry} castShadow>
+                  <meshStandardMaterial vertexColors roughness={0.6} />
+                </mesh>
+              )}
+            </PropGlb>
             <mesh
               position={[0, SIGN_POST_HEIGHT, 0]}
               rotation={[0, -Math.PI / 2, 0]}

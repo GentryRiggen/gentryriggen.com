@@ -76,12 +76,36 @@ export const FIXED_SLOT_COLORS: Readonly<Record<string, string>> = {
   trim: "#f6f3ea",
   basket: "#9a6b3a",
   beak: "#f2b632",
+  // Course props (propModels.ts): the same table and loader.
+  coin_gold: "#fbbf24",
+  coin_rim: "#d99a0b",
+  ring_blue: "#38bdf8",
+  ring_white: "#f4fbff",
+  can_red: "#ef4444",
+  can_dark: "#3f3f46",
+  can_cap: "#fbbf24",
+  check_black: "#111827",
+  check_white: "#f9fafb",
+  banner_red: "#dc2626",
+  banner_trim: "#f9fafb",
+  frame: "#8b5a2b",
+  dark: "#3f3f46",
+  glow: "#22d3ee",
+  pole_light: "#e5e7eb",
+  pole_cap: "#f59e0b",
+  sign_frame: "#334155",
+  wall_blue: "#38bdf8",
+  tarmac: "#4b5563",
+  paint_white: "#f3f4f6",
+  paint_yellow: "#facc15",
 };
 
 /** Slot colours a variant draws in place of the fixed table's (a storm's greys). */
 export const VARIANT_SLOT_COLORS: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = {
+  "slingshot/metal": { frame: "#9aa4b2" },
+  "slingshot-powered/powered": { frame: "#9aa4b2" },
   "cloud/storm": {
     cloud_top: "#dfe3ec",
     cloud_mid: "#b8bfcc",
@@ -92,6 +116,8 @@ export const VARIANT_SLOT_COLORS: Readonly<
 export const OBSTACLE_SLOTS: readonly string[] = [
   "soft",
   "hard",
+  "palette_trim",
+  "palette_ground",
   ...Object.keys(FIXED_SLOT_COLORS),
 ];
 
@@ -148,6 +174,12 @@ const SLOT_GAIN: Readonly<Record<string, number>> = {
   cloud_base: 2.1,
   windows: 1.5,
   snow: 1.3,
+  // Pickups keep their emissive glow (Pickups.tsx); these markers have none.
+  wall_blue: 1.6,
+  glow: 3,
+  paint_white: 1.2,
+  paint_yellow: 1.2,
+  check_white: 1.2,
 };
 
 /**
@@ -171,7 +203,9 @@ function kindOf(url: string): string {
 function slotColor(slot: string, palette: LevelPalette, url: string): string {
   if (slot === "soft") return palette.soft;
   if (slot === "hard") return palette.hard;
-  const variantKey = /obstacle-(\w+)\/(\w+)\.glb$/.exec(url);
+  if (slot === "palette_trim") return palette.trim;
+  if (slot === "palette_ground") return palette.ground;
+  const variantKey = /(?:obstacle|prop)-([\w-]+)\/([\w-]+)\.glb$/.exec(url);
   const own =
     variantKey && VARIANT_SLOT_COLORS[`${variantKey[1]}/${variantKey[2]}`];
   return own?.[slot] ?? FIXED_SLOT_COLORS[slot];

@@ -10,6 +10,7 @@ import {
 import { terrainHeight } from "@/lib/plane-builder/levels/terrain";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import { CEILING } from "@/lib/plane-builder/sim/constants";
+import PropGlb from "./GlbProp";
 
 const WALL_COLOR = "56, 189, 248";
 /** Opacity at the foot of the wall; it fades to clear at the top. */
@@ -20,6 +21,8 @@ const HEADROOM = CEILING + 30;
 const SIDE_MARGIN = 20;
 /** Ground samples across the corridor, to find the wall's foot and top. */
 const SAMPLES = 24;
+/** The pylon glb's height, m (assets/blender/parts/prop-bestpylon.py). */
+const PYLON_MODEL_HEIGHT = 130;
 
 /** A tall strip that is strong blue at the bottom and clear at the top. */
 function createFadeTexture(): CanvasTexture {
@@ -81,19 +84,38 @@ export default function BestWall({ level, best }: BestWallProps) {
 
   if (!isShown || !texture) return null;
   return (
-    <mesh
-      geometry={geometry}
-      // A plane faces +z; turn it to face the flight path along x.
-      rotation={[0, Math.PI / 2, 0]}
-      position={[best, foot + height / 2, 0]}
-      renderOrder={1}
-    >
-      <meshBasicMaterial
-        map={texture}
-        transparent
-        depthWrite={false}
-        side={DoubleSide}
-      />
-    </mesh>
+    <>
+      <mesh
+        geometry={geometry}
+        // A plane faces +z; turn it to face the flight path along x.
+        rotation={[0, Math.PI / 2, 0]}
+        position={[best, foot + height / 2, 0]}
+        renderOrder={1}
+      >
+        <meshBasicMaterial
+          map={texture}
+          transparent
+          depthWrite={false}
+          side={DoubleSide}
+        />
+      </mesh>
+      {/* A pylon at each end, as tall as the wall, so its edges read. */}
+      <PropGlb name="bestPylon" palette={level.palette} fallback={null}>
+        {(pylon) => (
+          <>
+            {[-1, 1].map((side) => (
+              <mesh
+                key={side}
+                geometry={pylon}
+                position={[best, foot, side * span]}
+                scale={[1, height / PYLON_MODEL_HEIGHT, 1]}
+              >
+                <meshStandardMaterial vertexColors roughness={0.6} />
+              </mesh>
+            ))}
+          </>
+        )}
+      </PropGlb>
+    </>
   );
 }

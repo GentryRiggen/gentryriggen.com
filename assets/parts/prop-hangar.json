@@ -1,0 +1,61 @@
+{
+  "id": "prop-hangar",
+  "game": "plane",
+  "script": "prop-hangar",
+  "slots": ["palette_ground", "tarmac", "paint_white", "paint_yellow"],
+  "budget": {
+    "maxTriangles": 450,
+    "maxBytes": 120000
+  },
+  "boundsTolerance": 0.03,
+  "rakeRadians": 0,
+  "weights": {
+    "silhouette": 0.6,
+    "detail": 0.4
+  },
+  "variants": [
+    {
+      "name": "hangar",
+      "dims": {
+        "variant": "hangar"
+      },
+      "expectedBounds": {
+        "min": [-14, 0, -14],
+        "max": [14, 0.2, 14]
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "front",
+      "azimuthDeg": 90,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "side",
+      "azimuthDeg": 0,
+      "elevationDeg": 0,
+      "ortho": true
+    },
+    {
+      "name": "top",
+      "azimuthDeg": 0,
+      "elevationDeg": 89,
+      "ortho": true
+    },
+    {
+      "name": "three-quarter",
+      "azimuthDeg": 35,
+      "elevationDeg": 20,
+      "ortho": false
+    }
+  ],
+  "scoreVariant": "hangar",
+  "ao": {
+    "ground": false,
+    "distance": 0.3,
+    "samples": 64,
+    "strength": 0.3
+  }
+}

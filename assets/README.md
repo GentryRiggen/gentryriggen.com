@@ -102,6 +102,10 @@ Same loop, for `components/plane-builder`. `assets/plane-pieces.json` lists the 
 
 Each obstacle kind is a spec `assets/parts/obstacle-<kind>.json` (`"game": "plane"`, one variant per glb) and a script `assets/blender/parts/obstacle-<kind>.py` (helpers in `lib/obstaclekit.py`). The model is built in metres at the obstacle's typical size and `finish()` fits its bounding box exactly into the unit box (-0.5..0.5): the game stretches that box to each obstacle's half-extents, and collision is the box, so the model fills it. Meshes are named by colour role: `soft` and `hard` take the level palette, the rest are the fixed colours in `components/plane-builder/scene/obstacleModels.ts`. `renderScale` in the spec stretches the model for the Blender renders and the studio only, so you judge it at the shape the game draws. All variants of a kind share one slot list. At load, `obstacleGeometryFromScene` merges the glb into one vertex-coloured geometry (slot colour x baked AO) and `Obstacles.tsx` draws one instanced mesh per variant, with the procedural shape as the fallback. `/asset-studio?game=plane&part=obstacle-tree&variant=pine&build=old|new` draws one in its level's palette. Variants are picked by a stable hash of the obstacle's position. Plane Builder has no service worker, so there is no offline cache to update.
 
+### Plane Builder course props
+
+Coins, rings, fuel cans, the finish gate (post and banner), the slingshot frame, flag and sign posts, corridor poles, the best-wall pylon and the hangar apron are specs `assets/parts/prop-<id>.json` with scripts `prop-<id>.py` (same kit as the obstacles, built with `finish(..., fit=False)` so the glb is in real metres). `components/plane-builder/scene/propModels.ts` maps each to its glb and `GlbProp.tsx` loads it with the obstacles' loader, with the old procedural shape as the stand-in. Anything that moves, glows or carries a label stays procedural: the slingshot band, the flag and sign boards, the banner's FINISH text and the best wall's fade. Pickups keep their emissive glow.
+
 ## Ports and worktrees
 
 Checkout-safe by design:

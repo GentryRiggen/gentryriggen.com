@@ -22,7 +22,12 @@ export const CHANGELOG: readonly Release[] = [
     title: "A world worth flying through",
     highlights: [
       "Trees, barns, balloons, skyscrapers and the rest of the world are new: pine and leafy trees, a red barn with white doors, striped hot-air balloons with baskets, Art Deco and glass towers, and coconut palms",
-      "Canyon walls and rock arches are built from layered rock, icebergs are chunky blocks of ice, peaks wear snowy caps, and storm clouds are heaps of puffy lumps",
+      "Canyon walls and rock arches are built from uneven layers of rock with cracks and a rubble slope at the foot, icebergs are chunky blocks of ice, and peaks wear big bright snowy caps",
+      "Clouds are soft white puffs on the Islands and tall grey thunderclouds in the Storm, and they no longer cast a black shadow",
+      "Towers have light blue glass bands, and trees and towers are lighter, so nothing looks black from behind your plane",
+      "Coins are gold with a star and a raised rim, rings are striped hoops, and fuel cans are red jerry cans with a spout and a cross",
+      "The finish gate has chequered posts and a framed banner, the slingshot is a forked wooden (or metal) frame, and flags, signs, corridor poles and the best-distance wall have new posts",
+      "The hangar floor is a marked airfield apron with a yellow cross and edge lights",
       "Seagulls now have white bodies, dark wings and yellow beaks",
       "Every one still fits the same invisible box as before, so nothing is harder or easier to hit",
       "Each world keeps its own colours",

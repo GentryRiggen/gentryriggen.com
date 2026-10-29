@@ -30,6 +30,31 @@ ROLE_COLORS = {
     "roof": "#6d747c",
     "ice": "#e6f6ff",
     "ice_deep": "#b4d8ee",
+    "coin_gold": "#fbbf24",
+    "coin_rim": "#d99a0b",
+    "ring_blue": "#38bdf8",
+    "ring_white": "#f4fbff",
+    "can_red": "#ef4444",
+    "can_dark": "#3f3f46",
+    "can_cap": "#fbbf24",
+    "check_black": "#111827",
+    "check_white": "#f9fafb",
+    "banner_red": "#dc2626",
+    "banner_trim": "#f9fafb",
+    "frame_wood": "#8b5a2b",
+    "frame_metal": "#9aa4b2",
+    "frame": "#8b5a2b",
+    "dark": "#3f3f46",
+    "glow": "#22d3ee",
+    "pole_light": "#e5e7eb",
+    "pole_cap": "#f59e0b",
+    "sign_frame": "#334155",
+    "wall_blue": "#38bdf8",
+    "tarmac": "#4b5563",
+    "paint_white": "#f3f4f6",
+    "paint_yellow": "#facc15",
+    "palette_trim": "#f59e0b",
+    "palette_ground": "#5f8f3f",
     "cloud_top": "#fbfcff",
     "cloud_mid": "#eef2f9",
     "cloud_base": "#dde5f0",
@@ -75,16 +100,18 @@ def finish(
     smooth: tuple[str, ...] = (),
     open_slots: tuple[str, ...] = (),
     colors: dict[str, str] | None = None,
+    fit: bool = True,
 ) -> dict:
     """Fit the slots' meshes (metres) into the unit box and make one Blender
     object per slot that has geometry. Slots named in `flat` are shaded
     faceted (rocks, ice), those in `smooth` fully rounded (clouds); those in
     `open_slots` are not closed shells, so their normals are kept as built.
-    `colors` overrides stand-in colours for this variant's renders."""
+    `colors` overrides stand-in colours for this variant's renders. `fit=False`
+    keeps the metres as built (course props, which the game places at real size)."""
     soft, hard = LEVEL_PAIRS[level]
     colors = dict(ROLE_COLORS, soft=soft, hard=hard, **(colors or {}))
     objects = {}
-    for name, meshes in fit_unit_box(slots).items():
+    for name, meshes in (fit_unit_box(slots) if fit else slots).items():
         if not meshes:
             continue
         objects[name] = make_object(
@@ -221,3 +248,35 @@ def ledge_cap(outline, y, up=True) -> Mesh:
         ) * (outline[i][1] - cz)
         faces.append((0, a, b) if (area > 0) != up else (0, b, a))
     return verts, faces
+
+
+# --- props -----------------------------------------------------------------------
+
+
+def rotate_x(mesh: Mesh, angle: float) -> Mesh:
+    """Rotate about +X."""
+    c, s = math.cos(angle), math.sin(angle)
+    return [(x, y * c - z * s, y * s + z * c) for x, y, z in mesh[0]], mesh[1]
+
+
+def rotate_z(mesh: Mesh, angle: float) -> Mesh:
+    """Rotate about +Z."""
+    c, s = math.cos(angle), math.sin(angle)
+    return [(x * c - y * s, x * s + y * c, z) for x, y, z in mesh[0]], mesh[1]
+
+
+def quad_up(x0, x1, z0, z1, y) -> Mesh:
+    """A flat rectangle facing +Y (paint on a pad)."""
+    return [(x0, y, z0), (x1, y, z0), (x1, y, z1), (x0, y, z1)], [(0, 3, 2, 1)]
+
+
+def quad_x(x, y0, y1, z0, z1, facing) -> Mesh:
+    """A flat rectangle in the plane x, facing +X (facing=1) or -X."""
+    verts = [(x, y0, z0), (x, y1, z0), (x, y1, z1), (x, y0, z1)]
+    return verts, [(0, 1, 2, 3)] if facing > 0 else [(0, 3, 2, 1)]
+
+
+def quad_z(z, x0, x1, y0, y1, facing) -> Mesh:
+    """A flat rectangle in the plane z, facing +Z (facing=1) or -Z."""
+    verts = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
+    return verts, [(0, 1, 2, 3)] if facing > 0 else [(0, 3, 2, 1)]

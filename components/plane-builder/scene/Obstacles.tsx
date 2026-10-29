@@ -1,42 +1,20 @@
 "use client";
 
-import {
-  Component,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import { type BufferGeometry, type InstancedMesh, Object3D } from "three";
-import {
-  trackGlbPart,
-  type GlbLoadStatus,
-} from "@/components/ship-builder/scene/glbLoadStatus";
 import type {
   LevelDef,
   Obstacle,
   ObstacleKind,
 } from "@/lib/plane-builder/levels/types";
+import { FallbackBoundary, Tracked } from "./GlbProp";
 import { buildObstacleGeometry } from "./obstacleGeometry";
 import {
   obstacleGeometryFromScene,
   obstacleModelUrl,
   obstacleVariant,
 } from "./obstacleModels";
-
-interface TrackedProps {
-  state: keyof GlbLoadStatus;
-  children: ReactNode;
-}
-
-/** Counts a mounted batch for the `__shipBuilderModels` test hook. */
-function Tracked({ state, children }: TrackedProps) {
-  useEffect(() => trackGlbPart(state), [state]);
-  return children;
-}
 
 interface InstancesProps {
   geometry: BufferGeometry;
@@ -121,34 +99,6 @@ function Model({ kind, url, items, level }: ModelProps) {
       />
     </Tracked>
   );
-}
-
-interface FallbackBoundaryProps {
-  fallback: ReactNode;
-  children: ReactNode;
-}
-
-/** Draws the fallback instead of anything its children throw. */
-class FallbackBoundary extends Component<FallbackBoundaryProps> {
-  state = { hasFailed: false };
-
-  static getDerivedStateFromError(): { hasFailed: boolean } {
-    return { hasFailed: true };
-  }
-
-  componentDidCatch(error: Error): void {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("obstacle glb fell back:", error.message);
-    }
-  }
-
-  render(): ReactNode {
-    return this.state.hasFailed ? (
-      <Tracked state="failed">{this.props.fallback}</Tracked>
-    ) : (
-      this.props.children
-    );
-  }
 }
 
 interface KindInstancesProps {

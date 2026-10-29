@@ -73,6 +73,18 @@ import planeTailSpec from "./plane-tail.json";
 import planeWingSpec from "./plane-wing.json";
 import plankSpec from "./plank.json";
 import poolSpec from "./pool.json";
+import propBestpylonSpec from "./prop-bestpylon.json";
+import propCanSpec from "./prop-can.json";
+import propCoinSpec from "./prop-coin.json";
+import propCorridorpoleSpec from "./prop-corridorpole.json";
+import propFlagpoleSpec from "./prop-flagpole.json";
+import propGatebannerSpec from "./prop-gatebanner.json";
+import propGatepostSpec from "./prop-gatepost.json";
+import propHangarSpec from "./prop-hangar.json";
+import propRingSpec from "./prop-ring.json";
+import propSignpostSpec from "./prop-signpost.json";
+import propSlingshotPoweredSpec from "./prop-slingshot-powered.json";
+import propSlingshotSpec from "./prop-slingshot.json";
 import propellerSpec from "./propeller.json";
 import radarMastSpec from "./radar-mast.json";
 import raftCanisterSpec from "./raft-canister.json";
@@ -171,6 +183,18 @@ export const PART_SPEC_LIST: readonly unknown[] = [
   planeWingSpec,
   plankSpec,
   poolSpec,
+  propBestpylonSpec,
+  propCanSpec,
+  propCoinSpec,
+  propCorridorpoleSpec,
+  propFlagpoleSpec,
+  propGatebannerSpec,
+  propGatepostSpec,
+  propHangarSpec,
+  propRingSpec,
+  propSignpostSpec,
+  propSlingshotPoweredSpec,
+  propSlingshotSpec,
   propellerSpec,
   radarMastSpec,
   raftCanisterSpec,
