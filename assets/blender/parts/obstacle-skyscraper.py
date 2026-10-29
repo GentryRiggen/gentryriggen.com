@@ -20,9 +20,9 @@ def octagon(r, cut):
 def deco():
     hard = [box(0, 36, 0, 20, 72, 20), box(0, 92, 0, 14.4, 40, 14.4),
             box(0, 120, 0, 9.0, 16, 9.0)]
-    bands = [box(0, y, 0, 20.5, 2.2, 20.5) for y in (8, 22, 36, 50, 64)]
-    bands += [box(0, y, 0, 14.9, 2.2, 14.9) for y in (80, 94, 106)]
-    bands += [box(0, 118, 0, 9.5, 2.2, 9.5)]
+    bands = [box(0, y, 0, 20.5, 4.2, 20.5) for y in (10, 25, 40, 55, 68)]
+    bands += [box(0, y, 0, 14.9, 4.2, 14.9) for y in (80, 94, 106)]
+    bands += [box(0, 118, 0, 9.5, 4.0, 9.5)]
     roof = [box(0, 129, 0, 6.0, 2.0, 6.0), box(0, 131.5, 0, 3.2, 3.0, 3.2),
             lathe([(0.0, 133), (0.7, 133), (0.1, 140), (0.0, 140)], 4)]
     return {"hard": hard, "windows": bands, "roof": roof}
@@ -30,7 +30,7 @@ def deco():
 
 def glass():
     body = extrude(octagon(8.0, 2.0), 0, 124, axis="y")
-    bands = [extrude(octagon(8.35, 2.1), y, y + 2.6, axis="y") for y in (14, 30, 46, 62, 78, 94, 110)]
+    bands = [extrude(octagon(8.35, 2.1), y, y + 5.0, axis="y") for y in (14, 30, 46, 62, 78, 94, 110)]
     podium = box(0, 5, 0, 20, 10, 20)
     roof = [box(0, 126, 0, 9, 4, 9), box(0, 131, 0, 4, 6, 4),
             lathe([(0.0, 134), (0.5, 134), (0.12, 140), (0.0, 140)], 4)]

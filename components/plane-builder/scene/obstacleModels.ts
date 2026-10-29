@@ -28,7 +28,7 @@ export const OBSTACLE_VARIANTS: Readonly<
   palm: ["palm"],
   skyscraper: ["deco", "glass"],
   iceberg: ["iceberg"],
-  cloud: ["cumulus"],
+  cloud: ["puff", "storm"],
 };
 
 /**
@@ -66,16 +66,27 @@ export const FIXED_SLOT_COLORS: Readonly<Record<string, string>> = {
   bird_light: "#eef0f4",
   string: "#e8e8e8",
   coconut: "#5b3a1e",
-  windows: "#cfe6f5",
+  windows: "#9bd3f7",
   roof: "#6d747c",
   ice: "#e6f6ff",
   ice_deep: "#b4d8ee",
-  storm: "#8a909c",
-  storm_dark: "#6b7080",
-  storm_light: "#aab0bc",
+  cloud_top: "#fbfcff",
+  cloud_mid: "#eef2f9",
+  cloud_base: "#dde5f0",
   trim: "#f6f3ea",
   basket: "#9a6b3a",
   beak: "#f2b632",
+};
+
+/** Slot colours a variant draws in place of the fixed table's (a storm's greys). */
+export const VARIANT_SLOT_COLORS: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  "cloud/storm": {
+    cloud_top: "#dfe3ec",
+    cloud_mid: "#b8bfcc",
+    cloud_base: "#939bab",
+  },
 };
 
 export const OBSTACLE_SLOTS: readonly string[] = [
@@ -104,9 +115,11 @@ export function preloadObstacleModels(): void {
  * Which variant an obstacle draws: a stable hash of where it stands, so a
  * level looks the same every run and every viewer.
  */
-export function obstacleVariant(obstacle: Obstacle): string {
+export function obstacleVariant(obstacle: Obstacle, levelId?: string): string {
   const variants = OBSTACLE_VARIANTS[obstacle.kind];
   if (variants.length === 1) return variants[0];
+  // Clouds follow the weather, not a hash: a storm level draws thunderheads.
+  if (obstacle.kind === "cloud") return levelId === "storm" ? "storm" : "puff";
   const { x, z } = obstacle.center;
   const hash =
     Math.imul(Math.round(x * 4), 73856093) ^
@@ -114,10 +127,54 @@ export function obstacleVariant(obstacle: Obstacle): string {
   return variants[(hash >>> 0) % variants.length];
 }
 
-function slotColor(slot: string, palette: LevelPalette): string {
+/**
+ * The baked AO never darkens below this, and a slot's colour is raised to
+ * `PAINT_LIFT` (a power under 1 brightens dark colours most). The sun sits
+ * ahead of the chase camera, so the faces it sees are lit only by the sky:
+ * without these, dark slot colours (a jungle's green, a city's steel) read as
+ * black from behind.
+ */
+const MIN_OCCLUSION = 0.75;
+const PAINT_LIFT = 0.7;
+
+/**
+ * Brightness multipliers (above 1 is fine, colours are floats): clouds are lit
+ * only by the cool sky from the camera's side, so their paint is pushed up to
+ * keep a white cloud white.
+ */
+const SLOT_GAIN: Readonly<Record<string, number>> = {
+  cloud_top: 2.6,
+  cloud_mid: 2.4,
+  cloud_base: 2.1,
+  windows: 1.5,
+  snow: 1.3,
+};
+
+/**
+ * Extra gain for a palette slot on one kind (`kind/slot`): the level palettes
+ * paint a city's towers steel and a jungle's trees deep green, which the sky
+ * alone lights to near black.
+ */
+const KIND_SLOT_GAIN: Readonly<Record<string, number>> = {
+  "skyscraper/hard": 2.0,
+  "tree/soft": 1.5,
+  "palm/soft": 1.5,
+  "barn/hard": 1.3,
+  "wall/soft": 1.5,
+  "arch/soft": 1.5,
+};
+
+function kindOf(url: string): string {
+  return /obstacle-(\w+)\//.exec(url)?.[1] ?? "";
+}
+
+function slotColor(slot: string, palette: LevelPalette, url: string): string {
   if (slot === "soft") return palette.soft;
   if (slot === "hard") return palette.hard;
-  return FIXED_SLOT_COLORS[slot];
+  const variantKey = /obstacle-(\w+)\/(\w+)\.glb$/.exec(url);
+  const own =
+    variantKey && VARIANT_SLOT_COLORS[`${variantKey[1]}/${variantKey[2]}`];
+  return own?.[slot] ?? FIXED_SLOT_COLORS[slot];
 }
 
 /**
@@ -138,11 +195,20 @@ export function obstacleGeometryFromScene(
       if (geometry.index) part.setIndex(geometry.index.clone());
       if (matrix) part.applyMatrix4(matrix);
       const count = part.getAttribute("position").count;
-      const paint = new Color(slotColor(slot, palette));
+      const paint = new Color(slotColor(slot, palette, url));
+      paint.setRGB(
+        paint.r ** PAINT_LIFT,
+        paint.g ** PAINT_LIFT,
+        paint.b ** PAINT_LIFT
+      );
+      const gain =
+        (SLOT_GAIN[slot] ?? 1) *
+        (KIND_SLOT_GAIN[`${kindOf(url)}/${slot}`] ?? 1);
+      paint.multiplyScalar(gain);
       const baked = geometry.getAttribute("color");
       const colors = new Float32Array(count * 3);
       for (let i = 0; i < count; i += 1) {
-        const occlusion = baked ? baked.getX(i) : 1;
+        const occlusion = baked ? Math.max(MIN_OCCLUSION, baked.getX(i)) : 1;
         colors[i * 3] = paint.r * occlusion;
         colors[i * 3 + 1] = paint.g * occlusion;
         colors[i * 3 + 2] = paint.b * occlusion;

@@ -1,43 +1,57 @@
 """Plane Builder obstacle: a canyon rock wall, 30 x 90 x 12 m (typical).
 
-A cliff of alternating strata: tall, bulging `hard` beds and recessed `soft`
-bands, every layer tapering a little so each ledge catches light. The lowest
-bed fills the box footprint, so the slab silhouette is the collision box.
-Slots: hard, soft."""
+A cliff of uneven strata: a sloping talus foot, then eight layers of different
+thickness, every one set back from the one below by a different amount, with
+tall `hard` beds and recessed `soft` bands, and two vertical cracks (a step in
+the face) that run up the long sides. The talus fills the box footprint, so
+the box is what the wall's foot looks like. Slots: hard, soft."""
 
-from lib.obstaclekit import finish
-from lib.shapes import loft
+from lib.obstaclekit import finish, ledge_cap, noise
+from lib.shapes import loft, merge
 
 HX, HZ = 15.0, 6.0
+CRACK_NEAR, CRACK_FAR = -4.5, 6.5  # x of the cracks on the -z / +z faces
 
 
-def outline(inset_x, inset_z, skew, seed):
+def outline(inset_x, inset_z, seed, crack=0.0):
+    """A closed (x, z) outline (8 points), set back from the box by the
+    insets, its corners wobbling a little and a step where each crack runs."""
     hx, hz = HX - inset_x, HZ - inset_z
-    j = [((seed * 7 + i * 5) % 7 - 3) * 0.2 for i in range(8)]
+    j = [noise(seed, i) * 0.55 for i in range(8)]
     return [
-        (-hx + skew, -hz + j[0]), (-hx * 0.35 + skew * 0.6, -hz * 0.92 + j[1]),
-        (hx * 0.3 + skew * 0.4, -hz + j[2]), (hx + skew * 0.2, -hz * 0.9 + j[3]),
-        (hx - j[4], hz * 0.2), (hx * 0.4, hz + j[5] * 0.4),
-        (-hx * 0.3, hz * 0.9 + j[6]), (-hx - j[7], hz * 0.5),
+        (-hx + j[0], -hz + j[1] * 0.4),
+        (CRACK_NEAR + j[2], -hz + j[3] * 0.3),
+        (CRACK_NEAR + 0.3, -hz + 1.0 + crack),
+        (hx + j[4] * 0.5, -hz + 1.0 + crack + j[5] * 0.3),
+        (hx + j[6] * 0.5, hz + j[7] * 0.4),
+        (CRACK_FAR + 0.3, hz + j[1] * 0.3),
+        (CRACK_FAR - 0.1, hz - 1.0 - crack),
+        (-hx + j[3] * 0.5, hz - 1.0 - crack + j[5] * 0.3),
     ]
 
 
-# (top y, inset x, inset z, skew, taper) per layer, bottom to top; the odd
-# layers are the recessed soft bands.
+# (top y, set back at the top: x, z, ledge to the next layer: x, z) bottom to
+# top. Thick `hard` beds alternate with thin recessed `soft` bands; ledges
+# differ from layer to layer, and the 3rd layer overhangs a little.
 LAYERS = [
-    (14, 0.0, 0.0, 0.0), (21, 1.8, 1.0, 0.6), (37, 0.5, 0.2, -0.8),
-    (44, 2.6, 1.3, 0.4), (62, 1.6, 0.6, 1.0), (69, 3.4, 1.7, -0.6),
-    (90, 3.6, 1.4, -1.0),
+    (12, 3.6, 2.0, 0.3, 0.2),
+    (19, 4.8, 2.6, 1.9, 0.7),
+    (36, 4.2, 2.1, 0.4, 0.2),
+    (43, 6.0, 3.1, 2.2, 0.9),
+    (62, 5.4, 2.7, 0.6, 0.3),
+    (69, 7.1, 3.3, 1.4, 0.6),
+    (90, 6.6, 3.2, 0.0, 0.0),
 ]
 
 
 def build(dims: dict) -> dict:
     slots = {"hard": [], "soft": []}
-    y0, prev = 0.0, outline(0.0, 0.0, 0.0, 0)
-    for i, (top, ix, iz, skew) in enumerate(LAYERS):
-        upper = outline(ix + 0.5, iz + 0.25, skew, i + 1)
-        lower = prev if i == 0 else outline(*LAYERS[i - 1][1:], i)
-        layer = loft([(y0, lower), (top, upper)], axis="y")
-        slots["soft" if i % 2 else "hard"].append(layer)
-        y0, prev = top, upper
-    return finish(slots, "canyon", flat=("hard", "soft"))
+    y0, prev = 0.0, outline(0.0, 0.0, 0)
+    for i, (top, ix, iz, lx, lz) in enumerate(LAYERS):
+        upper = outline(ix, iz, i + 1, crack=0.35 * (i % 3))
+        layer = [loft([(y0, prev), (top, upper)], axis="y", caps=False)]
+        layer.append(ledge_cap(upper, top))
+        slots["soft" if i % 2 else "hard"].append(merge(layer))
+        y0 = top
+        prev = outline(ix + lx, iz + lz, i + 11, crack=0.35 * (i % 3))
+    return finish(slots, "canyon", flat=("hard", "soft"), open_slots=("hard", "soft"))

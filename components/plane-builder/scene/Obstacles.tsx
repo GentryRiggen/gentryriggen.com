@@ -41,10 +41,12 @@ function Tracked({ state, children }: TrackedProps) {
 interface InstancesProps {
   geometry: BufferGeometry;
   items: Obstacle[];
+  /** Clouds are soft: they cast no shadow and take none (no acne, no black blob). */
+  hasShadows?: boolean;
 }
 
 /** One instanced mesh: `geometry` stretched to each obstacle's box. */
-function Instances({ geometry, items }: InstancesProps) {
+function Instances({ geometry, items, hasShadows = true }: InstancesProps) {
   const mesh = useRef<InstancedMesh>(null);
 
   useLayoutEffect(() => {
@@ -65,8 +67,8 @@ function Instances({ geometry, items }: InstancesProps) {
     <instancedMesh
       ref={mesh}
       args={[geometry, undefined, items.length]}
-      castShadow
-      receiveShadow
+      castShadow={hasShadows}
+      receiveShadow={hasShadows}
     >
       <meshStandardMaterial vertexColors roughness={0.85} />
     </instancedMesh>
@@ -86,16 +88,23 @@ function Procedural({ kind, items, level }: ProceduralProps) {
     [kind, level.palette]
   );
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
-  return <Instances geometry={geometry} items={items} />;
+  return (
+    <Instances
+      geometry={geometry}
+      items={items}
+      hasShadows={kind !== "cloud"}
+    />
+  );
 }
 
 interface ModelProps {
+  kind: ObstacleKind;
   url: string;
   items: Obstacle[];
   level: LevelDef;
 }
 
-function Model({ url, items, level }: ModelProps) {
+function Model({ kind, url, items, level }: ModelProps) {
   // No Draco or meshopt: the files use neither.
   const { scene } = useGLTF(url, false, false);
   const geometry = useMemo(
@@ -105,7 +114,11 @@ function Model({ url, items, level }: ModelProps) {
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <Tracked state="loaded">
-      <Instances geometry={geometry} items={items} />
+      <Instances
+        geometry={geometry}
+        items={items}
+        hasShadows={kind !== "cloud"}
+      />
     </Tracked>
   );
 }
@@ -149,13 +162,13 @@ function KindInstances({ kind, items, level }: KindInstancesProps) {
   const byVariant = useMemo(() => {
     const groups = new Map<string, Obstacle[]>();
     for (const o of items) {
-      const variant = obstacleVariant(o);
+      const variant = obstacleVariant(o, level.id);
       const list = groups.get(variant);
       if (list) list.push(o);
       else groups.set(variant, [o]);
     }
     return [...groups.entries()];
-  }, [items]);
+  }, [items, level.id]);
 
   return (
     <>
@@ -165,7 +178,7 @@ function KindInstances({ kind, items, level }: KindInstancesProps) {
         return (
           <FallbackBoundary key={url} fallback={stand}>
             <Suspense fallback={<Tracked state="pending">{stand}</Tracked>}>
-              <Model url={url} items={group} level={level} />
+              <Model kind={kind} url={url} items={group} level={level} />
             </Suspense>
           </FallbackBoundary>
         );

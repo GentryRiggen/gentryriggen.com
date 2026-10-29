@@ -51,6 +51,6 @@ def build(dims: dict) -> dict:
     shoulder = cone([(0, 11, 0.1), (22, 8.5, 0.15), (46, 4.4, 0.18), (60, 0, 0)], phase=0.3)
     shoulder = ([(x + 13, y, z - 4) for x, y, z in shoulder[0]], shoulder[1])
     # Snow: from the snow line up, a shade proud of the rock, hem ragged.
-    snow_ys = [56, 75, 100, 120]
-    snow = cone([(y, radius_at(y) * 1.06 + 0.15, 0.12 if y < 120 else 0.0) for y in snow_ys], drop=8.0)
+    snow_ys = [34, 60, 90, 120]
+    snow = cone([(y, radius_at(y) * 1.1 + 0.3, 0.12 if y < 120 else 0.0) for y in snow_ys], drop=9.0)
     return finish({"rock": [rock, shoulder], "snow": [snow]}, "mountains", flat=("rock", "snow"))

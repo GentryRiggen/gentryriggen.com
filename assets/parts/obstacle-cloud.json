@@ -2,7 +2,7 @@
   "id": "obstacle-cloud",
   "game": "plane",
   "script": "obstacle-cloud",
-  "slots": ["storm", "storm_dark", "storm_light"],
+  "slots": ["cloud_top", "cloud_mid", "cloud_base"],
   "budget": {
     "maxTriangles": 300,
     "maxBytes": 120000
@@ -16,9 +16,19 @@
   },
   "variants": [
     {
-      "name": "cumulus",
+      "name": "puff",
       "dims": {
-        "variant": "cumulus"
+        "variant": "puff"
+      },
+      "expectedBounds": {
+        "min": [-0.5, -0.5, -0.5],
+        "max": [0.5, 0.5, 0.5]
+      }
+    },
+    {
+      "name": "storm",
+      "dims": {
+        "variant": "storm"
       },
       "expectedBounds": {
         "min": [-0.5, -0.5, -0.5],
@@ -52,11 +62,8 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "cumulus",
+  "scoreVariant": "puff",
   "ao": {
-    "ground": false,
-    "distance": 0.1,
-    "samples": 64,
-    "strength": 0.35
+    "strength": 0
   }
 }

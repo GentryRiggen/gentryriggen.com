@@ -59,13 +59,22 @@ describe("obstacle models", () => {
 
   it("picks a stable variant, mixing both on a level that has several", () => {
     const trees = LEVELS.jungle.obstacles.filter((o) => o.kind === "tree");
-    const picks = trees.map(obstacleVariant);
-    expect(trees.map(obstacleVariant)).toEqual(picks);
+    const pick = (o: Obstacle) => obstacleVariant(o);
+    const picks = trees.map(pick);
+    expect(trees.map(pick)).toEqual(picks);
     expect(new Set(picks)).toEqual(new Set(OBSTACLE_VARIANTS.tree));
     const wall: Obstacle = LEVELS.canyon.obstacles.find(
       (o) => o.kind === "wall"
     ) as Obstacle;
     expect(obstacleVariant(wall)).toBe("wall");
+  });
+
+  it("draws thunderheads on the storm level and fair-weather puffs elsewhere", () => {
+    const cloud = LEVELS.storm.obstacles.find(
+      (o) => o.kind === "cloud"
+    ) as Obstacle;
+    expect(obstacleVariant(cloud, "storm")).toBe("storm");
+    expect(obstacleVariant(cloud, "islands")).toBe("puff");
   });
 });
 
@@ -104,6 +113,18 @@ describe("obstacleGeometryFromScene", () => {
     expect(soft[1] / trunk[1]).not.toBeCloseTo(0);
     expect(soft[1]).toBeLessThan(1);
     expect(trunk[0]).toBeGreaterThan(trunk[2]);
+  });
+
+  it("never lets the baked AO darken a slot below the floor", () => {
+    const scene = new Group();
+    scene.add(triangle("soft", 0.1), triangle("soft", 1));
+    const { palette } = LEVELS.meadow;
+    const color = obstacleGeometryFromScene(
+      scene,
+      palette,
+      "test.glb"
+    ).getAttribute("color");
+    expect(color.getY(0) / color.getY(3)).toBeCloseTo(0.75);
   });
 
   it("rejects a mesh that is not a known slot", () => {

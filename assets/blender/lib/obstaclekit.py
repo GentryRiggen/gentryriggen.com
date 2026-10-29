@@ -26,13 +26,13 @@ ROLE_COLORS = {
     "bird_light": "#eef0f4",
     "string": "#e8e8e8",
     "coconut": "#5b3a1e",
-    "windows": "#cfe6f5",
+    "windows": "#9bd3f7",
     "roof": "#6d747c",
     "ice": "#e6f6ff",
     "ice_deep": "#b4d8ee",
-    "storm": "#8a909c",
-    "storm_dark": "#6b7080",
-    "storm_light": "#aab0bc",
+    "cloud_top": "#fbfcff",
+    "cloud_mid": "#eef2f9",
+    "cloud_base": "#dde5f0",
     "trim": "#f6f3ea",
     "basket": "#9a6b3a",
     "beak": "#f2b632",
@@ -74,13 +74,15 @@ def finish(
     flat: tuple[str, ...] = (),
     smooth: tuple[str, ...] = (),
     open_slots: tuple[str, ...] = (),
+    colors: dict[str, str] | None = None,
 ) -> dict:
     """Fit the slots' meshes (metres) into the unit box and make one Blender
     object per slot that has geometry. Slots named in `flat` are shaded
     faceted (rocks, ice), those in `smooth` fully rounded (clouds); those in
-    `open_slots` are not closed shells, so their normals are kept as built."""
+    `open_slots` are not closed shells, so their normals are kept as built.
+    `colors` overrides stand-in colours for this variant's renders."""
     soft, hard = LEVEL_PAIRS[level]
-    colors = dict(ROLE_COLORS, soft=soft, hard=hard)
+    colors = dict(ROLE_COLORS, soft=soft, hard=hard, **(colors or {}))
     objects = {}
     for name, meshes in fit_unit_box(slots).items():
         if not meshes:
@@ -193,3 +195,29 @@ def ribbon(spine, widths, thick) -> Mesh:
 def prism_xz(poly, y0, y1) -> Mesh:
     """A closed (x, z) outline pushed up from y0 to y1 (rock layers, tiers)."""
     return extrude(poly, y0, y1, axis="y")
+
+
+# --- rock strata ---------------------------------------------------------------
+
+
+def noise(seed: int, i: int) -> float:
+    """A repeatable pseudo-random number in -1..1."""
+    return math.sin(seed * 12.9898 + i * 78.233) * 43758.5453 % 1.0 * 2 - 1
+
+
+def ledge_cap(outline, y, up=True) -> Mesh:
+    """A flat fan over a closed (x, z) outline at height y, facing up (or
+    down). The top of a rock layer is the ledge the next layer sits back from."""
+    cx = sum(p[0] for p in outline) / len(outline)
+    cz = sum(p[1] for p in outline) / len(outline)
+    verts = [(cx, y, cz)] + [(x, y, z) for x, z in outline]
+    n = len(outline)
+    faces = []
+    for i in range(n):
+        a, b = 1 + i, 1 + (i + 1) % n
+        # Counter-clockwise from above (looking down -Y) faces up.
+        area = (outline[i][0] - cx) * (outline[(i + 1) % n][1] - cz) - (
+            outline[(i + 1) % n][0] - cx
+        ) * (outline[i][1] - cz)
+        faces.append((0, a, b) if (area > 0) != up else (0, b, a))
+    return verts, faces
