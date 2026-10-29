@@ -77,10 +77,22 @@ async function answers(url) {
   }
 }
 
+/** Removes the copied glbs so a local build never ships WIP parts. */
+function cleanPublic() {
+  if (keepGlb) return;
+  rmSync(publicDir, { recursive: true, force: true });
+  try {
+    rmdirSync(dirname(publicDir)); // only succeeds when empty
+  } catch {
+    // other parts still have files there, or the dir is already gone
+  }
+}
+
 let stopSpawnedServer = () => {};
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     stopSpawnedServer();
+    cleanPublic();
     process.exit(130);
   });
 }
@@ -188,19 +200,26 @@ function fmt(v) {
 
 function delta(now, prev) {
   if (now == null || prev == null) return "";
-  const d = now - prev;
-  return ` (${d >= 0 ? "+" : ""}${d.toFixed(3)})`;
+  const text = (now - prev).toFixed(3);
+  if (Number(text) === 0) return " (0.000)"; // never "-0.000"
+  return ` (${Number(text) > 0 ? "+" : ""}${text})`;
 }
 
-/** Crop region of the reference, plus a mask thumbnail when it has a mask.
- * Drawn on canvases by the script at the end of the sheet. */
-function refHtml(ref) {
+/** One reference: its crop (or, for a general ref, the whole image scaled
+ * down), plus a mask thumbnail when it has a mask. Drawn on canvases by the
+ * script at the end of the sheet. */
+function refHtml(ref, general = false) {
   const src = pathToFileURL(join(ROOT, "assets", "refs", part, ref.file)).href;
   const data = esc(
-    JSON.stringify({ src, crop: ref.crop ?? null, mask: ref.mask ?? null })
+    JSON.stringify({
+      src,
+      file: ref.file,
+      crop: general ? null : (ref.crop ?? null),
+      mask: general ? null : (ref.mask ?? null),
+    })
   );
   return `<div class="ref" data-ref="${data}"><canvas class="refimg"></canvas>${
-    ref.mask ? '<canvas class="refmask"></canvas>' : ""
+    !general && ref.mask ? '<canvas class="refmask"></canvas>' : ""
   }<p>${esc(ref.file)}</p></div>`;
 }
 
@@ -211,7 +230,12 @@ window.__refsDone = Promise.all(
     const cfg = JSON.parse(el.dataset.ref);
     const img = new Image();
     img.src = cfg.src;
-    await img.decode();
+    try {
+      await img.decode();
+    } catch {
+      el.innerHTML = '<p class="bad">missing: ' + cfg.file + "</p>";
+      return;
+    }
     const [x, y, w, h] = cfg.crop ?? [0, 0, img.naturalWidth, img.naturalHeight];
     const draw = (canvas, width) => {
       const scale = Math.min(width / w, 400 / h);
@@ -244,8 +268,10 @@ function buildSheet(spec, score, history, shots, manifestEntries, loadErrors) {
   const url = (p) => pathToFileURL(p).href;
   const rows = spec.views
     .map((v) => {
-      const ref = manifestEntries.find((e) => e.view === v.name);
-      const refCell = ref ? refHtml(ref) : "no ref";
+      const refs = manifestEntries.filter((e) => e.view === v.name);
+      const refCell = refs.length
+        ? refs.map((r) => refHtml(r)).join("")
+        : "no ref";
       const img = (p) => `<img src="${url(p)}">`;
       const look = join(outDir, "renders", `${v.name}-look.png`);
       const cell = (build) => {
@@ -257,6 +283,10 @@ function buildSheet(spec, score, history, shots, manifestEntries, loadErrors) {
       return `<tr><th>${esc(v.name)}</th><td>${refCell}</td><td>${cell("old")}</td><td>${img(look)}</td><td>${cell("new")}</td></tr>`;
     })
     .join("");
+  const general = manifestEntries.filter((e) => !e.view);
+  const generalRow = general.length
+    ? `<tr><th>general refs</th><td colspan="4">${general.map((r) => refHtml(r, true)).join("")}</td></tr>`
+    : "";
   const historyRows = history
     .map(
       (h) =>
@@ -279,12 +309,13 @@ th,td{border:1px solid #bbb;padding:6px;vertical-align:top;text-align:left}
 .grid img{width:400px;height:400px;display:block}
 .grid td{width:400px}
 .bad{color:#b00020}
+.ref{display:inline-block;vertical-align:top;margin:0 8px 8px 0}
 .ref canvas{display:inline-block;vertical-align:top;margin-right:6px;border:1px solid #ddd}
 .ref p{margin:4px 0;font-size:11px;color:#555}
 pre{white-space:pre-wrap;border:1px solid #bbb;padding:8px;background:#f6f6f6}
 </style>
-<h1>${esc(part)} check-in, round ${score.round}</h1>
-<table class="grid"><tr><th></th><th>reference</th><th>old (in game)</th><th>new (Blender)</th><th>new (in game)</th></tr>${rows}</table>
+<h1>${esc(part)} check-in, round ${score.round} (scorer v${score.scorerVersion ?? 1})</h1>
+<table class="grid"><tr><th></th><th>reference</th><th>old (in game)</th><th>new (Blender)</th><th>new (in game)</th></tr>${rows}${generalRow}</table>
 <h2>Score: ${fmt(score.total)}${delta(score.total, prev?.total)}</h2>
 <p>sil ${fmt(score.silhouette)}${delta(score.silhouette, prev?.silhouette)}, det ${fmt(score.detail)}${delta(score.detail, prev?.detail)}</p>
 <p>triangles: ${tris}<br>bytes: ${bytes}</p>
@@ -327,9 +358,10 @@ async function main() {
     .map((l) => JSON.parse(l));
   const manifest = readJson(join(ROOT, "assets", "refs", "manifest.json"), {});
 
-  const server = await ensureServer();
+  let server;
   let browser;
   try {
+    server = await ensureServer();
     browser = await chromium.launch({
       args: [
         "--enable-unsafe-swiftshader",
@@ -377,15 +409,8 @@ async function main() {
     return loadFailed ? 1 : 0;
   } finally {
     await browser?.close();
-    server.stop();
-    if (!keepGlb) {
-      rmSync(publicDir, { recursive: true, force: true });
-      try {
-        rmdirSync(dirname(publicDir)); // only succeeds when empty
-      } catch {
-        // other parts still have files there
-      }
-    }
+    server?.stop();
+    cleanPublic();
   }
 }
 
