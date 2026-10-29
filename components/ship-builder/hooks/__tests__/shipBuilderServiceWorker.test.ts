@@ -100,10 +100,13 @@ function loadWorker() {
     setTimeout: (fn: () => void) => setTimeout(fn, 0),
   });
 
+  const waitUntil = jest.fn<void, [Promise<unknown>]>();
+
   function dispatchFetch(request: FakeRequest) {
     let responded: Promise<FakeResponse> | undefined;
     listeners.get("fetch")!({
       request,
+      waitUntil,
       respondWith: (promise: Promise<FakeResponse>) => {
         responded = promise;
       },
@@ -125,6 +128,7 @@ function loadWorker() {
     fetchMock,
     claim,
     dispatchFetch,
+    waitUntil,
     dispatchExtendable,
     cacheKeys: () => [...(stores.get("ship-builder-v1")?.keys() ?? [])],
   };
@@ -268,9 +272,11 @@ describe("ship-builder service worker", () => {
         makeRequest(url, { mode: "cors" })
       );
       expect(slow?.body).toBe("model v1");
+      // The pending network work is kept alive past the response.
+      const kept = worker.waitUntil.mock.calls.at(-1)![0];
 
       arrive(makeResponse("model v2"));
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await kept;
       worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
       const offline = await worker.dispatchFetch(
         makeRequest(url, { mode: "cors" })
