@@ -33,7 +33,14 @@
   "variants": [
     {
       "name": "lifeboat-standard",
-      "dims": {},
+      "dims": {
+        "length": 0.9334,
+        "halfBeam": 0.1916,
+        "depth": 0.3,
+        "rimY": -0.1,
+        "sheer": 0.07,
+        "coverHeight": 0.08
+      },
       "expectedBounds": {
         "min": [-0.4666, -0.3989, -0.1916],
         "max": [0.4667, -0.007, 0.1916]
