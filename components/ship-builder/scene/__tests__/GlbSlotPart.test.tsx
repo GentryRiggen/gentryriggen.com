@@ -29,6 +29,7 @@ jest.mock("../Surface", () => ({
       data-testid="surface"
       data-color={props.color}
       data-finish={props.finish ?? "paint"}
+      data-vertex-colors={props.vertexColors ? "on" : "off"}
       data-tint={props.tint ?? "none"}
       data-emphasis={props.emphasis ?? "none"}
     />
@@ -77,6 +78,7 @@ interface DrawnMesh {
   mesh: Element;
   color?: string;
   finish?: string;
+  vertexColors?: string;
   tint?: string;
   emphasis?: string;
 }
@@ -138,6 +140,14 @@ describe("slotMeshesOf", () => {
     expect(mesh.matrix?.elements.slice(12, 15)).toEqual([1, 2, 3]);
   });
 
+  it("marks meshes that carry baked AO (a colour attribute)", () => {
+    const scene = sceneWith("body", "pipe");
+    const body = (scene.children[0] as Mesh).geometry as BufferGeometry;
+    body.setAttribute("color", body.getAttribute("position").clone());
+    const meshes = slotMeshesOf(scene, ["body", "pipe"], "x.glb");
+    expect(meshes.map((m) => m.baked)).toEqual([true, false]);
+  });
+
   it("throws on a slot it was not given", () => {
     const scene = sceneWith("body", "funnel_extra");
     expect(() => slotMeshesOf(scene, ["body"], "x.glb")).toThrow(
@@ -160,6 +170,15 @@ describe("GlbSlotPart", () => {
     expect(drawn[1].mesh.hasAttribute("layers-mask")).toBe(false);
     expect(container.querySelector('group[name="decals"]')).not.toBeNull();
     expect(container.querySelector('group[name="fallback"]')).toBeNull();
+  });
+
+  it("turns on vertex colours only for slots with baked AO", () => {
+    const scene = sceneWith("body", "pipe");
+    const body = (scene.children[0] as Mesh).geometry as BufferGeometry;
+    body.setAttribute("color", body.getAttribute("position").clone());
+    mockGltf.load = () => ({ scene });
+    const drawn = drawnMeshes(draw().container);
+    expect(drawn.map((d) => d.vertexColors)).toEqual(["on", "off"]);
   });
 
   it.each([

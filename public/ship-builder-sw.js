@@ -8,7 +8,8 @@
  *   cached page when offline.
  * - /_next/static/* (content-hashed, immutable): cache-first.
  * - /ship-builder/models/* (part models, not content-hashed): network-first,
- *   falling back to the cached copy when offline; stored without the query.
+ *   falling back to the cached copy when offline or slow (3s); stored without
+ *   the query.
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
  * - The page posts { type: "CACHE_URLS", urls } with the resources it has
@@ -129,21 +130,35 @@ async function handleStaticAsset(request) {
   return response;
 }
 
-/** Models can change between releases: fresh when online, cached offline. */
-async function handleModel(request, url) {
+/** How long a model waits on the network before the cached copy is used. */
+const MODEL_NETWORK_TIMEOUT_MS = 3000;
+
+/**
+ * Models can change between releases: fresh when the network answers in time,
+ * the cached copy when it is offline or slow. A slow response still updates
+ * the cache when it arrives.
+ */
+async function handleModel(event, request, url) {
   const cache = await caches.open(CACHE);
   const key = `${url.origin}${url.pathname}`;
-  try {
-    const response = await fetch(request);
+  let stored = Promise.resolve();
+  const network = fetch(request).then((response) => {
     if (isCacheable(response)) {
-      await cache.put(key, response.clone()).catch(() => {});
+      // The caller gets the response now; the cache write finishes under
+      // waitUntil below.
+      stored = cache.put(key, response.clone()).catch(() => {});
     }
     return response;
-  } catch (error) {
-    const cached = await cache.match(key);
-    if (cached) return cached;
-    throw error;
-  }
+  });
+  // Keep the worker alive until the network answers and the cache is updated,
+  // even after a slow one has been answered from the cache.
+  event.waitUntil(network.then(() => stored).catch(() => {}));
+  const cached = await cache.match(key);
+  if (!cached) return network;
+  const slow = new Promise((resolve) =>
+    setTimeout(() => resolve(cached), MODEL_NETWORK_TIMEOUT_MS)
+  );
+  return Promise.race([network.catch(() => cached), slow]);
 }
 
 self.addEventListener("fetch", (event) => {
@@ -164,7 +179,7 @@ self.addEventListener("fetch", (event) => {
   if (isStaticAsset(url.pathname)) {
     event.respondWith(handleStaticAsset(request));
   } else if (isModelAsset(url.pathname)) {
-    event.respondWith(handleModel(request, url));
+    event.respondWith(handleModel(event, request, url));
   }
   // Everything else passes through to the network.
 });

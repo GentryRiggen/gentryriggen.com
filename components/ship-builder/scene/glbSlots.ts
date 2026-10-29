@@ -17,6 +17,8 @@ export interface SlotMesh {
   geometry: BufferGeometry;
   /** The node's transform within the file, or null when it has none. */
   matrix: Matrix4 | null;
+  /** The mesh carries baked ambient occlusion (glTF COLOR_0). */
+  baked: boolean;
 }
 
 /** A slot name for a mesh: its node name, else its material's. */
@@ -54,7 +56,12 @@ export function slotMeshesOf(
       const matrix = mesh.matrixWorld.equals(IDENTITY)
         ? null
         : mesh.matrixWorld.clone();
-      found.push({ slot: slotNameOf(mesh), geometry: mesh.geometry, matrix });
+      found.push({
+        slot: slotNameOf(mesh),
+        geometry: mesh.geometry,
+        matrix,
+        baked: mesh.geometry.hasAttribute("color"),
+      });
     });
     meshes = found;
     meshCache.set(scene, meshes);

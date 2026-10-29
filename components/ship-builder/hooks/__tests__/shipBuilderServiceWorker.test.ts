@@ -96,12 +96,17 @@ function loadWorker() {
     URL,
     Set,
     Promise,
+    // The 3s model timeout fires on the next tick in tests.
+    setTimeout: (fn: () => void) => setTimeout(fn, 0),
   });
+
+  const waitUntil = jest.fn<void, [Promise<unknown>]>();
 
   function dispatchFetch(request: FakeRequest) {
     let responded: Promise<FakeResponse> | undefined;
     listeners.get("fetch")!({
       request,
+      waitUntil,
       respondWith: (promise: Promise<FakeResponse>) => {
         responded = promise;
       },
@@ -123,6 +128,7 @@ function loadWorker() {
     fetchMock,
     claim,
     dispatchFetch,
+    waitUntil,
     dispatchExtendable,
     cacheKeys: () => [...(stores.get("ship-builder-v1")?.keys() ?? [])],
   };
@@ -243,6 +249,34 @@ describe("ship-builder service worker", () => {
       );
       expect(fresh?.body).toBe("model v2");
 
+      worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(offline?.body).toBe("model v2");
+    });
+
+    it("serves the cached model when the network is slow, then updates it", async () => {
+      const worker = loadWorker();
+      const url = `${ORIGIN}/ship-builder/models/funnel/funnel.glb`;
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("model v1"));
+      await worker.dispatchFetch(makeRequest(url, { mode: "cors" }));
+
+      let arrive: (response: FakeResponse) => void = () => {};
+      worker.fetchMock.mockReturnValueOnce(
+        new Promise<FakeResponse>((resolve) => {
+          arrive = resolve;
+        })
+      );
+      const slow = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(slow?.body).toBe("model v1");
+      // The pending network work is kept alive past the response.
+      const kept = worker.waitUntil.mock.calls.at(-1)![0];
+
+      arrive(makeResponse("model v2"));
+      await kept;
       worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
       const offline = await worker.dispatchFetch(
         makeRequest(url, { mode: "cors" })

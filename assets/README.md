@@ -41,6 +41,26 @@ scores them against reference images.
 4. A bounds Jest test next to the existing ones in `assets/__tests__/`.
 5. References in `assets/refs/manifest.json` (each entry: `file`, `url`, `license`, `view`, `crop`, `mask`).
 
+## Baked ambient occlusion
+
+`score.py` bakes Cycles AO into a vertex colour attribute on every slot
+(`lib/ao.py`); the glb export writes it as `COLOR_0` and the game multiplies
+the slot's paint by it. It needs nothing in the part script. Tune it with an
+optional `ao` block in the spec:
+
+```json
+"ao": { "strength": 0.7, "distance": 0.4, "samples": 128, "ground": true,
+        "slots": { "opening": 0 } }
+```
+
+- `strength`: how dark the darkest corners get (0 off, 1 the raw bake).
+- `distance`: metres a surface looks for something shading it.
+- `samples`: Cycles samples per vertex (keep the bake under ~10s).
+- `ground`: a deck plane at y = 0 is added while baking, so parts that stand
+  on the deck darken at their foot. Set `false` for parts that hang off the
+  hull or sit below the deck.
+- `slots`: per-slot strength. A slot at 0 gets no `COLOR_0` and draws flat.
+
 ## Timings (Blender 5.2.3, Apple silicon)
 
 - Score run, funnel, empty manifest: about 1-3s.

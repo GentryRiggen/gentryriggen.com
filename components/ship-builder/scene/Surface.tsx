@@ -28,6 +28,12 @@ interface SurfaceProps {
   doubleSided?: boolean;
   /** Defaults to satin paint. */
   finish?: SurfaceFinish;
+  /**
+   * Multiplies the paint by the geometry's vertex colours (a glb part's
+   * baked ambient occlusion). Only for geometry that has a `color`
+   * attribute. Ghost and removal tints ignore it and stay flat.
+   */
+  vertexColors?: boolean;
 }
 
 interface SurfaceLook {
@@ -37,6 +43,8 @@ interface SurfaceLook {
   emphasis: PartEmphasis;
   opacity: number;
   doubleSided: boolean;
+  /** Paint times the vertex colours; absent means flat. */
+  vertexColors?: boolean;
 }
 
 const GHOST_OPACITY = 0.55;
@@ -56,6 +64,7 @@ function lookKey(look: SurfaceLook): string {
     look.emphasis ?? "-",
     look.opacity,
     look.doubleSided ? "2" : "1",
+    look.vertexColors ? "vc" : "-",
   ].join("|");
 }
 
@@ -66,6 +75,7 @@ function createMaterial(look: SurfaceLook): MeshStandardMaterial {
       transparent: look.opacity < 1,
       opacity: look.opacity,
       side: look.doubleSided ? DoubleSide : FrontSide,
+      vertexColors: look.vertexColors ?? false,
       emissive: look.emphasis ? PALETTE.emphasis[look.emphasis] : "#000000",
       emissiveIntensity: look.emphasis ? 0.4 : 0,
       roughness: FINISHES[look.finish].roughness,
@@ -86,25 +96,36 @@ export function surfaceMaterial(look: SurfaceLook): MeshStandardMaterial {
 }
 
 /**
- * The material every part mesh uses: a ghost/removal tint replaces the colour,
- * and emphasis adds a hover/selection glow. Materials are shared (see above),
- * and `primitive` never disposes what it is given.
+ * The look a surface's props ask for: a ghost/removal tint replaces the
+ * colour (and drops baked vertex shading, so tints read flat), and ghosts
+ * are see-through.
  */
-export default function Surface({
+export function surfaceLook({
   color,
   tint,
   emphasis,
   opacity = 1,
   doubleSided = false,
   finish = "paint",
-}: SurfaceProps) {
+  vertexColors = false,
+}: SurfaceProps): SurfaceLook {
   const ghost = tint === "ghost-ok" || tint === "ghost-bad";
-  const material = surfaceMaterial({
+  return {
     color: tint ? PALETTE.tint[tint] : color,
     finish,
     emphasis,
     opacity: ghost ? GHOST_OPACITY : opacity,
     doubleSided,
-  });
+    vertexColors: vertexColors && !tint,
+  };
+}
+
+/**
+ * The material every part mesh uses: a ghost/removal tint replaces the colour,
+ * and emphasis adds a hover/selection glow. Materials are shared (see above),
+ * and `primitive` never disposes what it is given.
+ */
+export default function Surface(props: SurfaceProps) {
+  const material = surfaceMaterial(surfaceLook(props));
   return <primitive object={material} attach="material" />;
 }
