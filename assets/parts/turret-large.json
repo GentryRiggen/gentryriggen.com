@@ -1,26 +1,21 @@
 {
   "id": "turret-large",
   "script": "turret-large",
-  "slots": ["paint-4b545b", "paint-8a949c", "paint-4b545b-metal"],
+  "slots": ["base", "turret", "gun"],
   "slotColors": {
-    "paint-4b545b": {
+    "base": {
       "color": "#4b545b"
     },
-    "paint-8a949c": {
+    "turret": {
       "color": "#8a949c"
     },
-    "paint-4b545b-metal": {
+    "gun": {
       "color": "#4b545b",
       "finish": "metal"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/turret-large.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2000,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -60,5 +55,5 @@
     }
   ],
   "scoreVariant": "turret-large",
-  "generated": "da28ce61d3e53f5b"
+  "boundsFixed": true
 }
