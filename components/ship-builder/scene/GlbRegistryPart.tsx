@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import GlbSlotPart from "./GlbSlotPart";
 import type { GlbPartContext, GlbPartEntry } from "./glbRegistry";
 import { GLB_PARTS } from "./glbRegistry";
+import { facingYaw } from "./facingYaw";
 import { shipModelUrl } from "./shipModels";
 
 /**
@@ -48,7 +49,12 @@ export default function GlbRegistryPart({
   const url = source.urlFor
     ? source.urlFor(entry)
     : shipModelUrl(entry.model, entry.variant);
-  const turned = entry.faceOutward && context.side === "port";
+  // A port fitting that faces outward turns a half turn; a decor part turns
+  // with the player's rotation. The fallback already faces itself, so it is
+  // turned back by the same angle.
+  const yaw =
+    (entry.faceOutward && context.side === "port" ? Math.PI : 0) +
+    (entry.facing ? facingYaw(context.rotation) : 0);
   const part = (
     <GlbSlotPart
       url={url}
@@ -57,12 +63,11 @@ export default function GlbRegistryPart({
       emphasis={context.emphasis}
       rakeRadians={entry.rakeRadians}
       fallback={
-        turned ? <group rotation={[0, Math.PI, 0]}>{children}</group> : children
+        yaw ? <group rotation={[0, -yaw, 0]}>{children}</group> : children
       }
     >
       {entry.subParts?.(context)}
     </GlbSlotPart>
   );
-  return turned ? <group rotation={[0, Math.PI, 0]}>{part}</group> : part;
-  return turned ? <group rotation={[0, Math.PI, 0]}>{part}</group> : part;
+  return yaw ? <group rotation={[0, yaw, 0]}>{part}</group> : part;
 }

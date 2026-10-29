@@ -6,6 +6,7 @@ import FunnelMarkDecals from "./FunnelMarkDecals";
 import { funnelRadiusAt, type FunnelDims } from "./funnelGeometry";
 import type { GlbSlotLook } from "./glbSlots";
 import { CRUISE_COLORS } from "./cruiseColors";
+import { DECK_GLB_PARTS } from "./glbDeckParts";
 import { PALETTE } from "./palette";
 import type { PartEmphasis, PartTint } from "./Surface";
 
@@ -56,6 +57,11 @@ export interface GlbPartEntry {
    * side it is turned half a circle about the vertical so it faces outboard.
    */
   faceOutward?: boolean;
+   * The model faces local +X and turns with the part's rotation, like a
+   * procedural deck fitting wrapped in `Facing` (see facingYaw). The model
+   * and its sub-parts turn; the fallback already carries its own facing.
+   */
+  facing?: boolean;
   /** How each slot of the file is drawn, given the part's paint. */
   slots: (context: GlbPartContext) => Record<string, GlbSlotLook>;
   /**
@@ -304,4 +310,5 @@ export const GLB_PARTS: Partial<Record<PartType, GlbPartEntry>> = {
     faceOutward: true,
     slots: davitSlots,
   },
+  ...DECK_GLB_PARTS,
 };
