@@ -2,17 +2,15 @@
   "id": "plane-wing",
   "game": "plane",
   "script": "plane-wing",
-  "slots": ["body"],
+  "slots": ["body", "dark"],
   "slotColors": {
     "body": {
       "color": "#3b82c4"
+    },
+    "dark": {
+      "color": "#2f3a4a"
     }
   },
-  "todo": [
-    "Slot names are the plane's paints (body, trim, dark): keep only the ones the Blender build uses.",
-    "Add a script assets/blender/parts/plane-wing.py exposing build(dims) that returns one object per slot, for the unit named in dims.unit.",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -30,8 +28,8 @@
         "unit": "wing-straight"
       },
       "expectedBounds": {
-        "min": [-0.35, -0.03, 0],
-        "max": [0.35, 0.03, 1]
+        "min": [-0.35, -0.0268, 0],
+        "max": [0.35, 0.0336, 1]
       }
     },
     {
@@ -40,8 +38,8 @@
         "unit": "wing-glider"
       },
       "expectedBounds": {
-        "min": [-0.35, -0.03, 0],
-        "max": [0.35, 0.03, 1]
+        "min": [-0.35, -0.0233, 0],
+        "max": [0.35, 0.0291, 1]
       }
     }
   ],
@@ -74,5 +72,6 @@
   "scoreVariant": "wing-straight",
   "ao": {
     "ground": false
-  }
+  },
+  "boundsFixed": true
 }

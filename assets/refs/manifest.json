@@ -917,7 +917,7 @@
       "note": "Lattice radar mast: platform, radome and radar bars against bright sky"
     },
     {
-      "file": "Grand_mât_Hermione_Rochefort_sur_Mer.jpg",
+      "file": "Grand_m\u00e2t_Hermione_Rochefort_sur_Mer.jpg",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg/500px-Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "source": "https://commons.wikimedia.org/wiki/File:Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "license": "CC0",
@@ -985,7 +985,7 @@
   ],
   "crows-nest": [
     {
-      "file": "Grand_mât_Hermione_Rochefort_sur_Mer.jpg",
+      "file": "Grand_m\u00e2t_Hermione_Rochefort_sur_Mer.jpg",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg/500px-Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "source": "https://commons.wikimedia.org/wiki/File:Grand_m%C3%A2t_Hermione_Rochefort_sur_Mer.jpg",
       "license": "CC0",
@@ -1029,6 +1029,198 @@
       "crop": null,
       "mask": null,
       "note": "Steamer with a wire T aerial strung between the masts"
+    }
+  ],
+  "plane-fuselage": [
+    {
+      "file": "cub-bush.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Super-Cub_as_a_bush_plane.jpg/500px-Super-Cub_as_a_bush_plane.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASuper-Cub_as_a_bush_plane.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Cub fuselage: cowl, cabin windows, long taper to the tail"
+    },
+    {
+      "file": "citation.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Cessna_500_Citation_AN1631213.jpg/500px-Cessna_500_Citation_AN1631213.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACessna_500_Citation_AN1631213.jpg",
+      "license": "GFDL 1.2",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Jet fuselage: slim tube, pointed nose, window line"
+    },
+    {
+      "file": "ask13.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Schleicher_ASK_13_club_glider.jpg/500px-Schleicher_ASK_13_club_glider.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASchleicher_ASK_13_club_glider.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Glider fuselage: teardrop canopy, thin tail boom"
+    }
+  ],
+  "plane-wing": [
+    {
+      "file": "ask13.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Schleicher_ASK_13_club_glider.jpg/500px-Schleicher_ASK_13_club_glider.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASchleicher_ASK_13_club_glider.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": null,
+      "crop": null,
+      "mask": null,
+      "note": "Glider wing: very long, slim, rounded tip"
+    },
+    {
+      "file": "cub-bush.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Super-Cub_as_a_bush_plane.jpg/500px-Super-Cub_as_a_bush_plane.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASuper-Cub_as_a_bush_plane.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": [0, 70, 500, 110],
+      "mask": null,
+      "note": "Cub wing: constant chord, rounded tip, trim edge"
+    },
+    {
+      "file": "keoklevik.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Cessna_floatplane_on_the_Keoklevik_River.jpg/500px-Cessna_floatplane_on_the_Keoklevik_River.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACessna_floatplane_on_the_Keoklevik_River.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": [60, 170, 420, 70],
+      "mask": null,
+      "note": "Cessna wing: straight, thin, tips dip a little"
+    }
+  ],
+  "plane-tail": [
+    {
+      "file": "cub-bush.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Super-Cub_as_a_bush_plane.jpg/500px-Super-Cub_as_a_bush_plane.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASuper-Cub_as_a_bush_plane.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": [270, 120, 120, 100],
+      "mask": null,
+      "note": "Cub tail: rounded fin and rudder, flat stabiliser"
+    },
+    {
+      "file": "t41-tail.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Cessna_T-41_Mescalero_%2851674476003%29.jpg/500px-Cessna_T-41_Mescalero_%2851674476003%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACessna_T-41_Mescalero_%2851674476003%29.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": [0, 20, 230, 210],
+      "mask": null,
+      "note": "Cessna tail: swept fin, rudder, tailplane"
+    },
+    {
+      "file": "citation.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Cessna_500_Citation_AN1631213.jpg/500px-Cessna_500_Citation_AN1631213.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACessna_500_Citation_AN1631213.jpg",
+      "license": "GFDL 1.2",
+      "view": null,
+      "crop": [340, 50, 160, 150],
+      "mask": null,
+      "note": "Jet tail: sharply swept fin"
+    }
+  ],
+  "plane-propeller": [
+    {
+      "file": "beaver-comox.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Beaver_floatplane_at_Comox.jpg/500px-Beaver_floatplane_at_Comox.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABeaver_floatplane_at_Comox.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": null,
+      "crop": [110, 50, 200, 270],
+      "mask": null,
+      "note": "Two-blade propeller with polished spinner"
+    },
+    {
+      "file": "keoklevik.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Cessna_floatplane_on_the_Keoklevik_River.jpg/500px-Cessna_floatplane_on_the_Keoklevik_River.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACessna_floatplane_on_the_Keoklevik_River.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": [260, 180, 100, 100],
+      "mask": null,
+      "note": "Propeller seen from the side, tips painted"
+    },
+    {
+      "file": "skis.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Small_airplane_with_skis.jpg/500px-Small_airplane_with_skis.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASmall_airplane_with_skis.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": [330, 100, 150, 100],
+      "mask": null,
+      "note": "Spinner and cowl"
+    }
+  ],
+  "plane-gear": [
+    {
+      "file": "beaver-comox.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Beaver_floatplane_at_Comox.jpg/500px-Beaver_floatplane_at_Comox.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABeaver_floatplane_at_Comox.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": null,
+      "crop": [0, 200, 500, 131],
+      "mask": null,
+      "note": "Floats: long, narrow, rounded bow"
+    },
+    {
+      "file": "cub-bush.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Super-Cub_as_a_bush_plane.jpg/500px-Super-Cub_as_a_bush_plane.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASuper-Cub_as_a_bush_plane.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": [90, 160, 170, 110],
+      "mask": null,
+      "note": "Big soft tyre on a strut"
+    },
+    {
+      "file": "skis.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Small_airplane_with_skis.jpg/500px-Small_airplane_with_skis.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASmall_airplane_with_skis.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": [200, 190, 230, 80],
+      "mask": null,
+      "note": "Ski with an upturned toe"
+    }
+  ],
+  "plane-cabin": [
+    {
+      "file": "t41-tail.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Cessna_T-41_Mescalero_%2851674476003%29.jpg/500px-Cessna_T-41_Mescalero_%2851674476003%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACessna_T-41_Mescalero_%2851674476003%29.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": [230, 60, 270, 170],
+      "mask": null,
+      "note": "Cessna cabin: windshield, side windows, door"
+    },
+    {
+      "file": "cub-bush.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Super-Cub_as_a_bush_plane.jpg/500px-Super-Cub_as_a_bush_plane.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASuper-Cub_as_a_bush_plane.jpg",
+      "license": "CC BY 2.0",
+      "view": null,
+      "crop": [110, 90, 220, 110],
+      "mask": null,
+      "note": "Cub cabin: big windows, windshield"
+    },
+    {
+      "file": "skis.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Small_airplane_with_skis.jpg/500px-Small_airplane_with_skis.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASmall_airplane_with_skis.jpg",
+      "license": "Public domain",
+      "view": null,
+      "crop": [180, 90, 250, 130],
+      "mask": null,
+      "note": "Cabin windows, roof line"
     }
   ]
 }

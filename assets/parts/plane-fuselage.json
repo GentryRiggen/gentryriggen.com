@@ -2,17 +2,18 @@
   "id": "plane-fuselage",
   "game": "plane",
   "script": "plane-fuselage",
-  "slots": ["body"],
+  "slots": ["body", "trim", "dark"],
   "slotColors": {
     "body": {
       "color": "#3b82c4"
+    },
+    "trim": {
+      "color": "#f5d76e"
+    },
+    "dark": {
+      "color": "#2f3a4a"
     }
   },
-  "todo": [
-    "Slot names are the plane's paints (body, trim, dark): keep only the ones the Blender build uses.",
-    "Add a script assets/blender/parts/plane-fuselage.py exposing build(dims) that returns one object per slot, for the unit named in dims.unit.",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -30,8 +31,8 @@
         "unit": "fuselage-prop"
       },
       "expectedBounds": {
-        "min": [-0.72, -0.22, -0.2092],
-        "max": [0.72, 0.22, 0.2092]
+        "min": [-0.72, -0.235, -0.2205],
+        "max": [0.72, 0.235, 0.2205]
       }
     },
     {
@@ -40,8 +41,8 @@
         "unit": "fuselage-sleek"
       },
       "expectedBounds": {
-        "min": [-0.72, -0.22, -0.2092],
-        "max": [0.72, 0.22, 0.2092]
+        "min": [-0.72, -0.21, -0.2015],
+        "max": [0.72, 0.21, 0.2015]
       }
     },
     {
@@ -50,8 +51,8 @@
         "unit": "fuselage-pod"
       },
       "expectedBounds": {
-        "min": [-0.72, -0.22, -0.2092],
-        "max": [0.72, 0.22, 0.2092]
+        "min": [-0.72, -0.22, -0.2242],
+        "max": [0.72, 0.2224, 0.2242]
       }
     }
   ],

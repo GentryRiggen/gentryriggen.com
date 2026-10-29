@@ -5,17 +5,12 @@
   "slots": ["body", "dark"],
   "slotColors": {
     "body": {
-      "color": "#e8f2f8"
+      "color": "#3b82c4"
     },
     "dark": {
       "color": "#2f3a4a"
     }
   },
-  "todo": [
-    "Slot names are the plane's paints (body, trim, dark): keep only the ones the Blender build uses.",
-    "Add a script assets/blender/parts/plane-cabin.py exposing build(dims) that returns one object per slot, for the unit named in dims.unit.",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -33,8 +28,8 @@
         "unit": "cabin-box"
       },
       "expectedBounds": {
-        "min": [-0.5, -0.17, -0.52],
-        "max": [0.5225, 0.17, 0.52]
+        "min": [-0.5, -0.17, -0.53],
+        "max": [0.5054, 0.1839, 0.53]
       }
     }
   ],

@@ -2,17 +2,15 @@
   "id": "plane-propeller",
   "game": "plane",
   "script": "plane-propeller",
-  "slots": ["dark"],
+  "slots": ["dark", "trim"],
   "slotColors": {
     "dark": {
       "color": "#2f3a4a"
+    },
+    "trim": {
+      "color": "#f5d76e"
     }
   },
-  "todo": [
-    "Slot names are the plane's paints (body, trim, dark): keep only the ones the Blender build uses.",
-    "Add a script assets/blender/parts/plane-propeller.py exposing build(dims) that returns one object per slot, for the unit named in dims.unit.",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -30,8 +28,8 @@
         "unit": "propeller-blades"
       },
       "expectedBounds": {
-        "min": [-0.12, -1, -0.1141],
-        "max": [0.12, 1, 0.1141]
+        "min": [-0.05, -1, -0.115],
+        "max": [0.07, 1, 0.115]
       }
     },
     {
@@ -40,8 +38,8 @@
         "unit": "propeller-spinner"
       },
       "expectedBounds": {
-        "min": [-0.15, -0.1902, -0.2],
-        "max": [0.15, 0.1902, 0.2]
+        "min": [-0.15, -0.2008, -0.206],
+        "max": [0.15, 0.2008, 0.206]
       }
     }
   ],

@@ -2,17 +2,15 @@
   "id": "plane-tail",
   "game": "plane",
   "script": "plane-tail",
-  "slots": ["body"],
+  "slots": ["body", "trim"],
   "slotColors": {
     "body": {
       "color": "#3b82c4"
+    },
+    "trim": {
+      "color": "#f5d76e"
     }
   },
-  "todo": [
-    "Slot names are the plane's paints (body, trim, dark): keep only the ones the Blender build uses.",
-    "Add a script assets/blender/parts/plane-tail.py exposing build(dims) that returns one object per slot, for the unit named in dims.unit.",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -30,8 +28,8 @@
         "unit": "fin"
       },
       "expectedBounds": {
-        "min": [-0.2, -0.25, -0.025],
-        "max": [0.2, 0.25, 0.025]
+        "min": [-0.2, -0.25, -0.028],
+        "max": [0.2, 0.25, 0.028]
       }
     },
     {
@@ -40,8 +38,8 @@
         "unit": "fin-swept"
       },
       "expectedBounds": {
-        "min": [-0.2, -0.25, -0.025],
-        "max": [0.2, 0.25, 0.025]
+        "min": [-0.2, -0.25, -0.028],
+        "max": [0.2, 0.25, 0.028]
       }
     },
     {
@@ -50,8 +48,8 @@
         "unit": "stabilizer"
       },
       "expectedBounds": {
-        "min": [-0.15, -0.02, -0.5],
-        "max": [0.15, 0.02, 0.5]
+        "min": [-0.15, -0.0177, -0.5],
+        "max": [0.15, 0.0222, 0.5]
       }
     }
   ],

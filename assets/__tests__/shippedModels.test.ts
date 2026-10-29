@@ -10,10 +10,16 @@ import { readGlb, type GltfJson } from "../glbFile";
 
 const ROOT = join(__dirname, "..", "..");
 const PARTS_DIR = join(ROOT, "assets", "parts");
-const MODELS_DIR = join(ROOT, "public", "ship-builder", "models");
+
+/** Where a spec's committed glbs live: its game's models directory. */
+function modelsDir(spec: { id: string; game?: string }): string {
+  const game = spec.game === "plane" ? "plane-builder" : "ship-builder";
+  return join(ROOT, "public", game, "models", spec.id);
+}
 
 interface Spec {
   id: string;
+  game?: "plane";
   slots: string[];
   boundsTolerance: number;
   ao?: { strength?: number; slots?: Record<string, number> };
@@ -44,14 +50,14 @@ function positionBounds(gltf: GltfJson): { min: number[]; max: number[] } {
 const specs: Spec[] = readdirSync(PARTS_DIR)
   .filter((file) => file.endsWith(".json"))
   .map((file) => JSON.parse(readFileSync(join(PARTS_DIR, file), "utf8")));
-const shipped = specs.filter((spec) => existsSync(join(MODELS_DIR, spec.id)));
+const shipped = specs.filter((spec) => existsSync(modelsDir(spec)));
 const cases = shipped.flatMap((spec) =>
   spec.variants.map((variant) => ({
     part: spec.id,
     variant: variant.name,
     spec,
     expectedBounds: variant.expectedBounds,
-    path: join(MODELS_DIR, spec.id, `${variant.name}.glb`),
+    path: join(modelsDir(spec), `${variant.name}.glb`),
   }))
 );
 
@@ -60,8 +66,13 @@ describe("shipped models", () => {
     expect(shipped.map((spec) => spec.id)).toContain("funnel");
   });
 
+  it("ships the Plane Builder pieces", () => {
+    const planes = shipped.filter((spec) => spec.game === "plane");
+    expect(planes.map((spec) => spec.id)).toContain("plane-fuselage");
+  });
+
   it.each(shipped)("$id ships exactly its variants", (spec) => {
-    const files = readdirSync(join(MODELS_DIR, spec.id)).sort();
+    const files = readdirSync(modelsDir(spec)).sort();
     const expected = spec.variants.map((v) => `${v.name}.glb`).sort();
     expect(files).toEqual(expected);
   });

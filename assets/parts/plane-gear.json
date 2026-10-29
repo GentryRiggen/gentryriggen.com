@@ -5,17 +5,12 @@
   "slots": ["trim", "dark"],
   "slotColors": {
     "trim": {
-      "color": "#ff7a3d"
+      "color": "#f5d76e"
     },
     "dark": {
       "color": "#2f3a4a"
     }
   },
-  "todo": [
-    "Slot names are the plane's paints (body, trim, dark): keep only the ones the Blender build uses.",
-    "Add a script assets/blender/parts/plane-gear.py exposing build(dims) that returns one object per slot, for the unit named in dims.unit.",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -34,7 +29,7 @@
       },
       "expectedBounds": {
         "min": [-0.5, -0.1, -0.12],
-        "max": [0.5, 0.1, 0.12]
+        "max": [0.5, 0.109, 0.12]
       }
     },
     {
@@ -43,8 +38,8 @@
         "unit": "tyre"
       },
       "expectedBounds": {
-        "min": [-0.26, -0.26, -0.09],
-        "max": [0.26, 0.26, 0.11]
+        "min": [-0.268, -0.268, -0.09],
+        "max": [0.268, 0.268, 0.112]
       }
     },
     {
@@ -53,8 +48,8 @@
         "unit": "ski"
       },
       "expectedBounds": {
-        "min": [-0.5, -0.0319, -0.06],
-        "max": [0.7017, 0.1319, 0.06]
+        "min": [-0.5, -0.0238, -0.06],
+        "max": [0.7, 0.1483, 0.06]
       }
     }
   ],
