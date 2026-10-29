@@ -2,6 +2,7 @@
 
 import {
   Component,
+  Fragment,
   Suspense,
   useEffect,
   type ErrorInfo,
@@ -11,6 +12,7 @@ import { useGLTF } from "@react-three/drei";
 import { AO_OCCLUDER } from "./aoLayer";
 import { trackGlbPart, type GlbLoadStatus } from "./glbLoadStatus";
 import { slotMeshesOf, type GlbSlotLook } from "./glbSlots";
+import Spinner from "./Spinner";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface GlbSlotPartProps {
@@ -84,13 +86,13 @@ function SlotMeshes({
   // decoder from a CDN (breaking offline play).
   const { scene } = useGLTF(url, false, false);
   const meshes = slotMeshesOf(scene, Object.keys(slots), url);
+  const isGhost = tint === "ghost-ok" || tint === "ghost-bad";
   const content = (
     <>
       {meshes.map(({ slot, geometry, matrix, baked }, index) => {
         const look = slots[slot];
-        return (
+        const drawn = (
           <mesh
-            key={`${slot}-${index}`}
             {...(look.aoOccluder ? AO_OCCLUDER : {})}
             geometry={geometry}
             castShadow={look.castShadow ?? false}
@@ -104,6 +106,13 @@ function SlotMeshes({
               emphasis={emphasis}
             />
           </mesh>
+        );
+        return look.spin ? (
+          <Spinner key={`${slot}-${index}`} enabled={!isGhost}>
+            {drawn}
+          </Spinner>
+        ) : (
+          <Fragment key={`${slot}-${index}`}>{drawn}</Fragment>
         );
       })}
       {children}
