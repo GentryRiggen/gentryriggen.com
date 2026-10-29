@@ -43,7 +43,9 @@ export async function pickPort(env = process.env) {
   if (env.ASSETS_PORT) {
     const port = Number(env.ASSETS_PORT);
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error(`ASSETS_PORT must be a port number, got "${env.ASSETS_PORT}"`);
+      throw new Error(
+        `ASSETS_PORT must be a port number, got "${env.ASSETS_PORT}"`
+      );
     }
     return port;
   }
@@ -52,7 +54,12 @@ export async function pickPort(env = process.env) {
 
 /** The arguments `next` gets for a dev server (without the node binary). */
 export function nextDevArgs(root, port) {
-  const args = [join(root, "node_modules", "next", "dist", "bin", "next"), "dev", "-p", String(port)];
+  const args = [
+    join(root, "node_modules", "next", "dist", "bin", "next"),
+    "dev",
+    "-p",
+    String(port),
+  ];
   if (usesSymlinkedModules(root)) args.push("--webpack");
   return args;
 }
