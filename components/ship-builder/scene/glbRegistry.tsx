@@ -57,6 +57,7 @@ export interface GlbPartEntry {
    * side it is turned half a circle about the vertical so it faces outboard.
    */
   faceOutward?: boolean;
+  /**
    * The model faces local +X and turns with the part's rotation, like a
    * procedural deck fitting wrapped in `Facing` (see facingYaw). The model
    * and its sub-parts turn; the fallback already carries its own facing.
