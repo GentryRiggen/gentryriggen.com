@@ -16,6 +16,7 @@ interface Spec {
   id: string;
   slots: string[];
   boundsTolerance: number;
+  ao?: { strength?: number; slots?: Record<string, number> };
   variants: {
     name: string;
     expectedBounds: { min: number[]; max: number[] };
@@ -76,6 +77,17 @@ describe("shipped models", () => {
         const slots = [...spec.slots].sort();
         expect(nodeNames).toEqual(slots);
         expect(meshNames).toEqual(slots);
+      });
+
+      it("carries baked AO (COLOR_0) on every slot not set to strength 0", () => {
+        for (const mesh of gltf.meshes) {
+          const strength =
+            spec.ao?.slots?.[mesh.name ?? ""] ?? spec.ao?.strength ?? 0.7;
+          for (const primitive of mesh.primitives) {
+            const has = primitive.attributes.COLOR_0 !== undefined;
+            expect([mesh.name, has]).toEqual([mesh.name, strength > 0]);
+          }
+        }
       });
 
       it("keeps every node untransformed and flat", () => {
