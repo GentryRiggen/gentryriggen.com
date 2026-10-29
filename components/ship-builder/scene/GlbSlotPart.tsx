@@ -77,7 +77,7 @@ function SlotMeshes({ url, slots, tint, emphasis, children }: SlotMeshesProps) {
   const meshes = slotMeshesOf(scene, Object.keys(slots), url);
   return (
     <Tracked state="loaded">
-      {meshes.map(({ slot, geometry, matrix }, index) => {
+      {meshes.map(({ slot, geometry, matrix, baked }, index) => {
         const look = slots[slot];
         return (
           <mesh
@@ -90,6 +90,7 @@ function SlotMeshes({ url, slots, tint, emphasis, children }: SlotMeshesProps) {
             <Surface
               color={look.color}
               finish={look.finish}
+              vertexColors={baked}
               tint={tint}
               emphasis={emphasis}
             />
