@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readGlb, type GltfJson } from "../glbFile";
 
 /**
  * The glbs `npm run assets:ship` copies into public/ship-builder/models/ are
@@ -19,36 +20,6 @@ interface Spec {
     name: string;
     expectedBounds: { min: number[]; max: number[] };
   }[];
-}
-
-interface GltfJson {
-  nodes: {
-    name?: string;
-    mesh?: number;
-    children?: number[];
-    matrix?: number[];
-    translation?: number[];
-    rotation?: number[];
-    scale?: number[];
-  }[];
-  meshes: {
-    name?: string;
-    primitives: { attributes: Record<string, number> }[];
-  }[];
-  accessors: { min?: number[]; max?: number[] }[];
-}
-
-const GLB_MAGIC = 0x46546c67; // "glTF"
-const JSON_CHUNK = 0x4e4f534a; // "JSON"
-
-function readGltfJson(path: string): GltfJson {
-  const data = readFileSync(path);
-  if (data.readUInt32LE(0) !== GLB_MAGIC) throw new Error(`${path}: not a glb`);
-  const length = data.readUInt32LE(12);
-  if (data.readUInt32LE(16) !== JSON_CHUNK) {
-    throw new Error(`${path}: first chunk is not JSON`);
-  }
-  return JSON.parse(data.subarray(20, 20 + length).toString("utf8"));
 }
 
 function positionBounds(gltf: GltfJson): { min: number[]; max: number[] } {
@@ -97,7 +68,7 @@ describe("shipped models", () => {
   describe.each(cases)(
     "$part/$variant.glb",
     ({ spec, expectedBounds, path }) => {
-      const gltf = readGltfJson(path);
+      const gltf = readGlb(path).json;
 
       it("names every node and mesh by slot, one each", () => {
         const nodeNames = gltf.nodes.map((node) => node.name).sort();

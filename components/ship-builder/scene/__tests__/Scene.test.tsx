@@ -18,6 +18,7 @@ jest.mock("../ReflectionEnvironment", () => () => null);
 jest.mock("../Railings", () => () => null);
 jest.mock("../ShipParts", () => () => null);
 jest.mock("../ShipAnimation", () => () => null);
+jest.mock("../shipModels", () => ({ preloadShipModels: () => {} }));
 
 describe("Scene canvas wrapper", () => {
   it.each(["contextmenu", "selectstart", "dragstart"])(

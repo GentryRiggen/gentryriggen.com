@@ -98,7 +98,12 @@ try {
     if (look.view) {
       await page.getByRole("button", { name: `${look.view} view` }).click();
     }
-    // Let pop-ins, the camera glide and lazy effects settle.
+    // Let pop-ins, the camera glide, lazy effects and part models settle.
+    await page.waitForFunction(
+      () => window.__shipBuilderModels?.().pending === 0,
+      null,
+      { timeout: 30_000 }
+    );
     await page.waitForTimeout(4000);
     const info = await page.evaluate(() => window.__shipBuilderRenderInfo?.());
     results[look.id] = info ?? null;

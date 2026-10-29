@@ -161,6 +161,30 @@ async function openFrozenScene(
   if (below) await page.getByRole("button", { name: "Below view" }).click();
   // Click the empty sky to drop focus rings and hover states off the controls.
   await page.mouse.move(0, 0);
+  await waitForModels(page);
+}
+
+/**
+ * Waits until no part is still drawing its stand-in while its glb loads (see
+ * scene/glbLoadStatus.ts), and none fell back, so the picture shows the
+ * models every time.
+ */
+async function waitForModels(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          // Let the scene commit any parts the last step added.
+          await new Promise((r) => requestAnimationFrame(() => r(null)));
+          await new Promise((r) => requestAnimationFrame(() => r(null)));
+          const status = window.__shipBuilderModels?.();
+          return status
+            ? { pending: status.pending, failed: status.failed }
+            : null;
+        }),
+      { timeout: 30_000 }
+    )
+    .toEqual({ pending: 0, failed: 0 });
 }
 
 async function expectScene(
