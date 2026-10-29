@@ -11,6 +11,7 @@ scores them against reference images.
 - `npm run assets:score -- <part> --blocker "text"` (repeatable) records what slowed the round. A run with `--spec path` writes to `assets/out/<part>/override/` and never touches the real score log.
 - `npm run assets:refs [-- <part>]` downloads manifest references that are missing under `assets/refs/<part>/` (never overwrites). Prints `fetched N, kept M, failed K`.
 - `npm run assets:checkin -- <part> [--base url] [score args]` scores the part, screenshots the old and new part in the game's lighting (via the dev-only `/asset-studio` route) and builds `assets/out/<part>/checkin/sheet.png`, then opens it. It reuses a dev server at `--base` (default `http://localhost:3000`), otherwise starts `next dev -p 3123` and stops it afterwards. Exits 1 if any new part fails to load. `--skip-score` reuses the existing `score.json` and glbs; `--keep-glb` leaves `public/asset-studio/<part>/` in place (otherwise it is removed, so a local build never ships WIP glbs). Score args such as `--round-note` and `--blocker` pass through. The reference cell of each view shows every reference for that view (crop, mask thumbnail, file name), and a "general refs" row shows the `view: null` ones.
+- `npm run assets:ship -- <part> [score args]` scores the part and, when every gate passes, copies its variant glbs to `public/ship-builder/models/<part>/<variant>.glb` (committed; the game loads them). Exits 1 if the score run or any gate fails. `assets/__tests__/shippedModels.test.ts` checks each committed glb's slot names and bounds against the spec, so re-run this after changing a part's build script.
 
 `assets/out/` holds `score.json`, `history.jsonl` (one line per round: scores, `timestamp`, `runSeconds`, `sinceLastSeconds`, `blockers`), the `.glb` files, renders, and optional hand-written `judge.md` and `process.md` (shown on the sheet).
 
@@ -30,6 +31,7 @@ scores them against reference images.
 2. Edit `assets/blender/parts/<part>.py`, score again.
 3. Stop after 8 rounds, or when the last 3 rounds gained less than 0.01.
 4. Write `judge.md` from `assets/RUBRIC.md`, run `npm run assets:checkin -- <part>`, and wait for the user to approve the sheet.
+5. Once approved, `npm run assets:ship -- <part>` and commit the glbs.
 
 ## Adding a part
 
