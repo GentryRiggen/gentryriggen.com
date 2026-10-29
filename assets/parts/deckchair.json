@@ -1,24 +1,19 @@
 {
   "id": "deckchair",
   "script": "deckchair",
-  "slots": ["davit", "paint-3f9ad6", "davit-paint"],
+  "slots": ["frame", "legs", "cushion"],
   "slotColors": {
-    "davit": {
+    "frame": {
       "color": "#e8e4d8",
       "finish": "wood"
     },
-    "paint-3f9ad6": {
-      "color": "#3f9ad6"
-    },
-    "davit-paint": {
+    "legs": {
       "color": "#e8e4d8"
+    },
+    "cushion": {
+      "color": "#3f9ad6"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/deckchair.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -34,8 +29,8 @@
       "name": "deckchair",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.25, 0, -0.16],
-        "max": [0.4188, 0.4424, 0.16]
+        "min": [-0.2616, 0.0026, -0.192],
+        "max": [0.4512, 0.473, 0.192]
       }
     }
   ],
@@ -59,6 +54,5 @@
       "ortho": false
     }
   ],
-  "scoreVariant": "deckchair",
-  "generated": "55600c8a9e9f21c9"
+  "scoreVariant": "deckchair"
 }
