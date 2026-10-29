@@ -1,9 +1,10 @@
+"use client";
+
 import { createContext, useContext, type ReactNode } from "react";
 import GlbSlotPart from "./GlbSlotPart";
 import type { GlbPartContext, GlbPartEntry } from "./glbRegistry";
 import { GLB_PARTS } from "./glbRegistry";
 import { shipModelUrl } from "./shipModels";
-import type { PartEmphasis, PartTint } from "./Surface";
 
 /**
  * Where the registry draws from. The game uses the default (every entry, its
@@ -23,9 +24,8 @@ export const GlbSourceContext = createContext<GlbSource>({});
 
 interface GlbRegistryPartProps {
   type: string;
+  /** The part's paint, tint, emphasis and placement (see GlbPartContext). */
   context: GlbPartContext;
-  tint: PartTint;
-  emphasis: PartEmphasis;
   /** The procedural part: drawn while the model loads, if it fails, and for
    * any part with no registry entry. */
   children: ReactNode;
@@ -38,8 +38,6 @@ interface GlbRegistryPartProps {
 export default function GlbRegistryPart({
   type,
   context,
-  tint,
-  emphasis,
   children,
 }: GlbRegistryPartProps) {
   const source = useContext(GlbSourceContext);
@@ -54,8 +52,8 @@ export default function GlbRegistryPart({
     <GlbSlotPart
       url={url}
       slots={entry.slots(context)}
-      tint={tint}
-      emphasis={emphasis}
+      tint={context.tint}
+      emphasis={context.emphasis}
       rakeRadians={entry.rakeRadians}
       fallback={children}
     >

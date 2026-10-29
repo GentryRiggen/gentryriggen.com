@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import type { FunnelMark } from "@/lib/ship-builder/model/funnelLivery";
-import type { PartType } from "@/lib/ship-builder/model/types";
+import type { PartType, Rotation, Side } from "@/lib/ship-builder/model/types";
 import { FUNNEL_RAKE_RADIANS } from "./effectAnchors";
 import FunnelMarkDecals from "./FunnelMarkDecals";
 import { funnelRadiusAt, type FunnelDims } from "./funnelGeometry";
 import type { GlbSlotLook } from "./glbSlots";
 import { PALETTE } from "./palette";
+import type { PartEmphasis, PartTint } from "./Surface";
 
 /** A funnel's body, band and top colours as hex (from the ship's livery). */
 export interface FunnelHexColors {
@@ -14,12 +15,27 @@ export interface FunnelHexColors {
   top?: string;
 }
 
-/** What PartMesh knows about a placed part, for a registry entry to use. */
+/**
+ * What PartMesh knows about a placed part, for a registry entry to use: the
+ * same values its procedural fitting receives, so a sub-part can be built
+ * from them (a ghost tint must reach every sub-part).
+ */
 export interface GlbPartContext {
   /** Paint on the part's main surface, as hex. */
   painted?: string;
   funnelPaint?: FunnelHexColors;
   mark?: FunnelMark;
+  tint: PartTint;
+  emphasis: PartEmphasis;
+  /** Which side of the ship an attach part sits on. */
+  side?: Side;
+  /** Offset to the other mast's top, for an aerial or string lights. */
+  wireTarget?: [number, number, number];
+  /** Half the parent bridge's width, for navigation lights. */
+  bridgeHalfSpan?: number;
+  /** A grid part's footprint size in cells (after rotation). */
+  size?: { x: number; z: number };
+  rotation: Rotation;
 }
 
 /**

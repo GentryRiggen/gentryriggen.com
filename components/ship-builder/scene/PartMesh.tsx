@@ -529,6 +529,9 @@ function PartMesh({
     painted: color ? paintHex(color) : undefined,
     funnelPaint,
     mark,
+    tint,
+    emphasis,
+    rotation: part.rotation,
   };
   const length = gridLength(ship);
   const beam = beamOf(ship);
@@ -545,12 +548,7 @@ function PartMesh({
     const { center, size } = footprintBase(def, part.anchor, part.rotation);
     return (
       <group position={modelToWorld(length, beam, center)} {...handlers}>
-        <GlbRegistryPart
-          type={part.type}
-          context={glbContext}
-          tint={tint}
-          emphasis={emphasis}
-        >
+        <GlbRegistryPart type={part.type} context={{ ...glbContext, size }}>
           {def.role === "decor" ? (
             <DeckDecorMesh
               type={part.type}
@@ -610,15 +608,31 @@ function PartMesh({
   }
 
   if (part.anchor.kind !== "attach") return null;
+  const parentId = part.anchor.parentId;
   const point = resolveAttachPoint(ship, part.anchor, occupancy);
   if (!point) return null;
+  const wireTarget =
+    part.type === "wireless-aerial" || part.type === "string-lights"
+      ? wireTargetOffset(
+          ship,
+          parentId,
+          point.position,
+          part.type === "string-lights" ? stringTarget : aerialTarget,
+          occupancy
+        )
+      : undefined;
+  const bridgeHalfSpan =
+    part.type === "nav-lights" ? bridgeHalfSpanOf(ship, parentId) : undefined;
   return (
     <group position={modelToWorld(length, beam, point.position)} {...handlers}>
       <GlbRegistryPart
         type={part.type}
-        context={glbContext}
-        tint={tint}
-        emphasis={emphasis}
+        context={{
+          ...glbContext,
+          side: point.side,
+          wireTarget,
+          bridgeHalfSpan,
+        }}
       >
         <Fitting
           type={part.type}
@@ -628,22 +642,8 @@ function PartMesh({
           mark={mark}
           tint={tint}
           emphasis={emphasis}
-          wireTarget={
-            part.type === "wireless-aerial" || part.type === "string-lights"
-              ? wireTargetOffset(
-                  ship,
-                  part.anchor.parentId,
-                  point.position,
-                  part.type === "string-lights" ? stringTarget : aerialTarget,
-                  occupancy
-                )
-              : undefined
-          }
-          bridgeHalfSpan={
-            part.type === "nav-lights"
-              ? bridgeHalfSpanOf(ship, part.anchor.parentId)
-              : undefined
-          }
+          wireTarget={wireTarget}
+          bridgeHalfSpan={bridgeHalfSpan}
         />
       </GlbRegistryPart>
     </group>
