@@ -28,12 +28,25 @@ SHARP_DEGREES = 40
 GUY_RING = 0.945
 GUY_EYES = 6
 
+# The bell is wider than the pipe gap, so it stands this far further out.
+WHISTLE_OUTSET = 0.015
+
+
+def srgb_to_linear(c: float) -> float:
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def linear(r: float, g: float, b: float) -> tuple[float, float, float, float]:
+    """A palette (sRGB) colour as the linear Base Color Blender expects."""
+    return (srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), 1.0)
+
+
 COLORS = {
-    "body": (0.827, 0.608, 0.271, 1.0),
-    "bands": (0.953, 0.937, 0.894, 1.0),
-    "cap": (0.08, 0.08, 0.08, 1.0),
-    "opening": (0.02, 0.02, 0.02, 1.0),
-    "pipe": (0.69, 0.553, 0.341, 1.0),
+    "body": linear(0.827, 0.608, 0.271),
+    "bands": linear(0.953, 0.937, 0.894),
+    "cap": linear(0.08, 0.08, 0.08),
+    "opening": linear(0.02, 0.02, 0.02),
+    "pipe": linear(0.69, 0.553, 0.341),
 }
 METALLIC = {"pipe": 1.0}
 
@@ -207,7 +220,7 @@ def steam_pipe(dims: dict) -> list[Mesh]:
         (PIPE_RADIUS * 1.2, WHISTLE_HEIGHT + 0.02),
         (0.0, WHISTLE_HEIGHT + 0.02),
     ]
-    parts.append(translate(lathe(bell, 10), x_at(top), top - 0.02))
+    parts.append(translate(lathe(bell, 10), x_at(top) - WHISTLE_OUTSET, top - 0.02))
     return parts
 
 
@@ -219,7 +232,8 @@ def guy_ring(dims: dict) -> list[Mesh]:
     parts = [lathe(round_hoop(radius_at(dims, y - 0.025), radius_at(dims, y + 0.025),
                               y - 0.025, y + 0.025, 0.01, 3))]
     for k in range(GUY_EYES):
-        a = 2 * math.pi * (k + 0.5) / GUY_EYES
+        # Eyes at 0, 60, ... 300 degrees: none at -X, where the steam pipe runs.
+        a = 2 * math.pi * k / GUY_EYES
         verts, faces = box(0.0, y, wall + 0.02, 0.025, 0.05, 0.03)
         c, s_ = math.cos(a), math.sin(a)
         parts.append(([(x * c + z * s_, yy, -x * s_ + z * c) for x, yy, z in verts], faces))
@@ -231,10 +245,7 @@ def _make_object(name: str, mesh: Mesh) -> bpy.types.Object:
     bm = bmesh.new()
     bverts = [bm.verts.new((x, -z, y)) for x, y, z in verts]  # three -> Blender
     for f in faces:
-        try:
-            bm.faces.new([bverts[i] for i in f])
-        except ValueError:
-            pass  # a degenerate face from a profile point on the axis
+        bm.faces.new([bverts[i] for i in f])
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
     if name == "pipe":  # closed shapes only; the lathed walls are open
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
