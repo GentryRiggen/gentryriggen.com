@@ -1,23 +1,18 @@
 {
   "id": "radar-mast",
   "script": "radar-mast",
-  "slots": ["paint-8a949c", "paint-4b545b", "gunwale"],
+  "slots": ["mast", "equipment", "dome"],
   "slotColors": {
-    "paint-8a949c": {
+    "mast": {
       "color": "#8a949c"
     },
-    "paint-4b545b": {
+    "equipment": {
       "color": "#4b545b"
     },
-    "gunwale": {
-      "color": "#8a5a2b"
+    "dome": {
+      "color": "#e4e8ea"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/radar-mast.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
@@ -33,8 +28,8 @@
       "name": "radar-mast",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.35, 0, -0.65],
-        "max": [0.35, 5.49, 0.65]
+        "min": [-0.35, 0, -0.31],
+        "max": [0.35, 5.13, 0.31]
       }
     }
   ],
@@ -59,5 +54,5 @@
     }
   ],
   "scoreVariant": "radar-mast",
-  "generated": "d1178c37fd1182d6"
+  "boundsFixed": true
 }
