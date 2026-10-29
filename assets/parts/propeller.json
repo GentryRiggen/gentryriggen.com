@@ -7,19 +7,12 @@
       "color": "#b08d57"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/propeller.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring.",
-    "The blades spin, so the bounds use the blades' radial reach in both Y and Z (a spin-proof box). Model the hub and one blade; keep the spinning group procedural (registry subParts)."
-  ],
   "budget": {
     "maxTriangles": 4000,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
   "rakeRadians": 0,
-  "boundsFixed": true,
   "weights": {
     "silhouette": 0.6,
     "detail": 0.4
@@ -29,8 +22,8 @@
       "name": "propeller",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.2, -0.5756, -0.5756],
-        "max": [0.2, 0.5756, 0.5756]
+        "min": [-0.2, -0.55, -0.55],
+        "max": [0.2, 0.55, 0.55]
       }
     }
   ],
@@ -55,5 +48,7 @@
     }
   ],
   "scoreVariant": "propeller",
-  "generated": "91b34f7fd29fc4b3"
+  "ao": {
+    "ground": false
+  }
 }

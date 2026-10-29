@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.25.0",
+    date: "2026-10-28",
+    title: "Real propellers, rudders and a sleek funnel",
+    highlights: [
+      "Propellers, rudders and azipods now look like the real thing: curved bronze blades, a smooth shaped rudder and a streamlined pod",
+      "The modern cruise funnel has a new sleek swept fin, a louvre panel and exhaust pipes",
+      "The new parts work offline too, once you have played online",
+    ],
+  },
+  {
     version: "2.24.0",
     date: "2026-10-28",
     title: "Soft shadows",
