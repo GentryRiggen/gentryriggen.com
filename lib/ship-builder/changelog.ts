@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.28.0",
+    date: "2026-10-28",
+    title: "Cargo, navy, pirate and fun props",
+    highlights: [
+      "Containers, crates, barrels, treasure chests and parrots look like the real thing, with corrugated sides, planks, hoops, straps and a macaw",
+      "Gun turrets, helicopters, deck cranes and helipads are properly detailed, and the turrets, rotor and crane still move",
+      "The climbing wall and water slide on cruise ships have knobby holds and a flared coiling tube",
+    ],
+  },
+  {
     version: "2.27.0",
     date: "2026-10-28",
     title: "A properly dressed deck and real masts",

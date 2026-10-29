@@ -54,7 +54,8 @@ export default function GlbRegistryPart({
   // turned back by the same angle.
   const yaw =
     (entry.faceOutward && context.side === "port" ? Math.PI : 0) +
-    (entry.facing ? facingYaw(context.rotation) : 0);
+    (entry.facing ? facingYaw(context.rotation) : 0) +
+    (entry.plainYaw ? (context.rotation * Math.PI) / 180 : 0);
   const part = (
     <GlbSlotPart
       url={url}

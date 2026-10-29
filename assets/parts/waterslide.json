@@ -1,22 +1,17 @@
 {
   "id": "waterslide",
   "script": "waterslide",
-  "slots": ["paint-c9ced4", "paint-e2552d"],
+  "slots": ["tower", "tube"],
   "slotColors": {
-    "paint-c9ced4": {
+    "tower": {
       "color": "#c9ced4"
     },
-    "paint-e2552d": {
+    "tube": {
       "color": "#e2552d"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/waterslide.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 2200,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -30,8 +25,8 @@
       "name": "waterslide",
       "dims": {},
       "expectedBounds": {
-        "min": [-0.5262, 0, -0.4371],
-        "max": [0.4605, 2.5, 0.49]
+        "min": [-0.5734, 0, -0.4398],
+        "max": [0.4612, 2.6114, 0.4924]
       }
     }
   ],
@@ -56,5 +51,5 @@
     }
   ],
   "scoreVariant": "waterslide",
-  "generated": "799add177ae19632"
+  "boundsFixed": true
 }

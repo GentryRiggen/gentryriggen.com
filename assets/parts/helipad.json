@@ -1,22 +1,17 @@
 {
   "id": "helipad",
   "script": "helipad",
-  "slots": ["paint-5d666d", "railing"],
+  "slots": ["pad", "marking"],
   "slotColors": {
-    "paint-5d666d": {
+    "pad": {
       "color": "#5d666d"
     },
-    "railing": {
+    "marking": {
       "color": "#f3efe4"
     }
   },
-  "todo": [
-    "Slot names are guesses from the old mesh's paints (palette key or paint-<hex>); rename them to match the Blender build and merge or split as the model needs.",
-    "Fill variants[].dims if the part's size comes from props, and add a script assets/blender/parts/helipad.py exposing build(dims).",
-    "Add reference images under assets/refs/manifest.json before scoring."
-  ],
   "budget": {
-    "maxTriangles": 4000,
+    "maxTriangles": 1500,
     "maxBytes": 200000
   },
   "boundsTolerance": 0.03,
@@ -31,7 +26,7 @@
       "dims": {},
       "expectedBounds": {
         "min": [-0.95, 0, -0.95],
-        "max": [0.95, 0.161, 0.95]
+        "max": [0.95, 0.164, 0.95]
       }
     }
   ],
@@ -56,5 +51,5 @@
     }
   ],
   "scoreVariant": "helipad",
-  "generated": "1a7db21d062e7ad0"
+  "boundsFixed": true
 }

@@ -526,6 +526,7 @@ function PartMesh({
     ? hexColors(funnelColors(ship, { color }))
     : undefined;
   const glbContext: GlbPartContext = {
+    partId,
     painted: color ? paintHex(color) : undefined,
     funnelPaint,
     mark,

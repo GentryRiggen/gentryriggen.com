@@ -1222,5 +1222,243 @@
       "mask": null,
       "note": "Cabin windows, roof line"
     }
+  ],
+  "cargo-crane": [
+    {
+      "file": "Deck crane of the RV Kaimei.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/Deck_crane_of_the_RV_Kaimei.jpg/500px-Deck_crane_of_the_RV_Kaimei.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Deck_crane_of_the_RV_Kaimei.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Deck crane: pedestal, slewing cab, lattice-free jib and hook"
+    },
+    {
+      "file": "Deck crane(right) of JCG Settsu(PLH-07) at Port of Kobe July 22, 2017 01.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2a/Deck_crane%28right%29_of_JCG_Settsu%28PLH-07%29_at_Port_of_Kobe_July_22%2C_2017_01.jpg/500px-Deck_crane%28right%29_of_JCG_Settsu%28PLH-07%29_at_Port_of_Kobe_July_22%2C_2017_01.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Deck_crane(right)_of_JCG_Settsu(PLH-07)_at_Port_of_Kobe_July_22,_2017_01.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Ship deck crane with pedestal, cab and angled jib"
+    },
+    {
+      "file": "Deck view on the 'Hoegh Ranger' (15969681929).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Deck_view_on_the_%27Hoegh_Ranger%27_%2815969681929%29.jpg/500px-Deck_view_on_the_%27Hoegh_Ranger%27_%2815969681929%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Deck_view_on_the_'Hoegh_Ranger'_(15969681929).jpg",
+      "license": "No restrictions",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Deck cranes on a cargo ship"
+    }
+  ],
+  "container": [
+    {
+      "file": "Container stack on Edith Maersk (7098374635).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Container_stack_on_Edith_Maersk_%287098374635%29.jpg/500px-Container_stack_on_Edith_Maersk_%287098374635%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Container_stack_on_Edith_Maersk_(7098374635).jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Stacked ISO containers with corrugated sides"
+    },
+    {
+      "file": "Stack of lashed containers.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Stack_of_lashed_containers.jpg/500px-Stack_of_lashed_containers.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Stack_of_lashed_containers.jpg",
+      "license": "Attribution",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Container stack, corner castings and lashing"
+    },
+    {
+      "file": "40ft container carried on docks.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/40ft_container_carried_on_docks.jpg/500px-40ft_container_carried_on_docks.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:40ft_container_carried_on_docks.jpg",
+      "license": "Attribution",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Single 40ft container, door end"
+    }
+  ],
+  "crate-stack": [
+    {
+      "file": "Stacks of Apple Crates, Owl House Fruit Farm - geograph.org.uk - 1760680.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Stacks_of_Apple_Crates%2C_Owl_House_Fruit_Farm_-_geograph.org.uk_-_1760680.jpg/500px-Stacks_of_Apple_Crates%2C_Owl_House_Fruit_Farm_-_geograph.org.uk_-_1760680.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Stacks_of_Apple_Crates,_Owl_House_Fruit_Farm_-_geograph.org.uk_-_1760680.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Stacked slatted wooden crates"
+    },
+    {
+      "file": "Potato crates. - geograph.org.uk - 249543.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/Potato_crates._-_geograph.org.uk_-_249543.jpg/500px-Potato_crates._-_geograph.org.uk_-_249543.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Potato_crates._-_geograph.org.uk_-_249543.jpg",
+      "license": "CC BY-SA 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Wooden crates with corner posts"
+    }
+  ],
+  "barrel-stack": [
+    {
+      "file": "Oak Whiskey Barrels for maturing Confederation Oak Forty Creek.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Oak_Whiskey_Barrels_for_maturing_Confederation_Oak_Forty_Creek.jpg/500px-Oak_Whiskey_Barrels_for_maturing_Confederation_Oak_Forty_Creek.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Oak_Whiskey_Barrels_for_maturing_Confederation_Oak_Forty_Creek.jpg",
+      "license": "CC BY-SA 4.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Oak barrels with bulged staves and iron hoops"
+    },
+    {
+      "file": "Oak barrels at The Kernel Brewery, London.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Oak_barrels_at_The_Kernel_Brewery%2C_London.jpg/500px-Oak_barrels_at_The_Kernel_Brewery%2C_London.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Oak_barrels_at_The_Kernel_Brewery,_London.jpg",
+      "license": "CC BY 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Barrels, bulge and hoops"
+    }
+  ],
+  "turret-small": [
+    {
+      "file": "Turret of INS Delhi (C74). (42155995060).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Turret_of_INS_Delhi_%28C74%29._%2842155995060%29.jpg/500px-Turret_of_INS_Delhi_%28C74%29._%2842155995060%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Turret_of_INS_Delhi_(C74)._(42155995060).jpg",
+      "license": "CC BY 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Single gun mount with sloped faces"
+    },
+    {
+      "file": "Forward gun turret of the German destroyer Z39 at the Boston Navy Yard in August 1945.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/Forward_gun_turret_of_the_German_destroyer_Z39_at_the_Boston_Navy_Yard_in_August_1945.jpg/500px-Forward_gun_turret_of_the_German_destroyer_Z39_at_the_Boston_Navy_Yard_in_August_1945.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Forward_gun_turret_of_the_German_destroyer_Z39_at_the_Boston_Navy_Yard_in_August_1945.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Destroyer single-gun shield"
+    }
+  ],
+  "turret-large": [
+    {
+      "file": "Twin 6-inch gun turret on USS Cincinnati at Vancouver 1937.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6d/Twin_6-inch_gun_turret_on_USS_Cincinnati_at_Vancouver_1937.jpg/500px-Twin_6-inch_gun_turret_on_USS_Cincinnati_at_Vancouver_1937.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Twin_6-inch_gun_turret_on_USS_Cincinnati_at_Vancouver_1937.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Twin turret, sloped face, barrels from sleeves"
+    },
+    {
+      "file": "BL 6 inch Mk VII gun twin turret right elevation.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/BL_6_inch_Mk_VII_gun_twin_turret_right_elevation.jpg/500px-BL_6_inch_Mk_VII_gun_twin_turret_right_elevation.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:BL_6_inch_Mk_VII_gun_twin_turret_right_elevation.jpg",
+      "license": "Public domain",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Twin turret drawing"
+    },
+    {
+      "file": "HMS Rodney 6 inch gun turrets IWM A 95.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f5/HMS_Rodney_6_inch_gun_turrets_IWM_A_95.jpg/500px-HMS_Rodney_6_inch_gun_turrets_IWM_A_95.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:HMS_Rodney_6_inch_gun_turrets_IWM_A_95.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Triple turrets, sloped roof"
+    }
+  ],
+  "helicopter": [
+    {
+      "file": "Robinson R22.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Robinson_R22.jpg/500px-Robinson_R22.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Robinson_R22.jpg",
+      "license": "CC BY-SA 3.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Small helicopter: bubble cabin, skids, tail boom"
+    },
+    {
+      "file": "Robinson R22 Helicopter hovering.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Robinson_R22_Helicopter_hovering.jpg/500px-Robinson_R22_Helicopter_hovering.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Robinson_R22_Helicopter_hovering.jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Rotor, skids, tail boom"
+    },
+    {
+      "file": "Flickr - Official U.S. Navy Imagery - A Sailor directs a helicopter on the flight deck.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b3/Flickr_-_Official_U.S._Navy_Imagery_-_A_Sailor_directs_a_helicopter_on_the_flight_deck.jpg/500px-Flickr_-_Official_U.S._Navy_Imagery_-_A_Sailor_directs_a_helicopter_on_the_flight_deck.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Flickr_-_Official_U.S._Navy_Imagery_-_A_Sailor_directs_a_helicopter_on_the_flight_deck.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Navy helicopter on deck"
+    }
+  ],
+  "parrot": [
+    {
+      "file": "Scarlet Macaw (Ara macao) -two on perch.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6b/Scarlet_Macaw_%28Ara_macao%29_-two_on_perch.jpg/500px-Scarlet_Macaw_%28Ara_macao%29_-two_on_perch.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Scarlet_Macaw_(Ara_macao)_-two_on_perch.jpg",
+      "license": "CC BY 2.0",
+      "view": "side",
+      "crop": null,
+      "mask": null,
+      "note": "Macaw on a perch: red body, long tail, hooked beak"
+    }
+  ],
+  "treasure-chest": [
+    {
+      "file": "Treasure Chest (3981686321).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b4/Treasure_Chest_%283981686321%29.jpg/500px-Treasure_Chest_%283981686321%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Treasure_Chest_(3981686321).jpg",
+      "license": "CC BY 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Treasure chest: curved lid, iron bands, lock"
+    },
+    {
+      "file": "2011-174-78 Sea Chest, Exterior View (6153065429).jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/2011-174-78_Sea_Chest%2C_Exterior_View_%286153065429%29.jpg/500px-2011-174-78_Sea_Chest%2C_Exterior_View_%286153065429%29.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:2011-174-78_Sea_Chest,_Exterior_View_(6153065429).jpg",
+      "license": "CC BY 2.0",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Sea chest: domed lid, rope handles, banded"
+    },
+    {
+      "file": "Sea chest, China, early 1800s, camphorwood, painted red leather, brass - Cape Ann Museum - Gloucester, MA - DSC01270.jpg",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/Sea_chest%2C_China%2C_early_1800s%2C_camphorwood%2C_painted_red_leather%2C_brass_-_Cape_Ann_Museum_-_Gloucester%2C_MA_-_DSC01270.jpg/500px-Sea_chest%2C_China%2C_early_1800s%2C_camphorwood%2C_painted_red_leather%2C_brass_-_Cape_Ann_Museum_-_Gloucester%2C_MA_-_DSC01270.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Sea_chest,_China,_early_1800s,_camphorwood,_painted_red_leather,_brass_-_Cape_Ann_Museum_-_Gloucester,_MA_-_DSC01270.jpg",
+      "license": "Public domain",
+      "view": "three-quarter",
+      "crop": null,
+      "mask": null,
+      "note": "Sea chest, domed lid, brass fittings"
+    }
   ]
 }
