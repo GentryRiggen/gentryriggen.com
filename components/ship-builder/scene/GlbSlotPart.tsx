@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useGLTF } from "@react-three/drei";
 import { AO_OCCLUDER } from "./aoLayer";
+import { batchRef } from "./batchRegistry";
 import { trackGlbPart, type GlbLoadStatus } from "./glbLoadStatus";
 import { slotMeshesOf, type GlbSlotLook } from "./glbSlots";
 import Rotator from "./Rotator";
@@ -93,9 +94,11 @@ function SlotMeshes({
     <>
       {meshes.map(({ slot, geometry, matrix, baked }, index) => {
         const look = slots[slot];
+        const isStatic = !look.spin && !look.turn && !look.swing;
         const drawn = (
           <mesh
             {...(look.aoOccluder ? AO_OCCLUDER : {})}
+            ref={isStatic ? batchRef : undefined}
             geometry={geometry}
             castShadow={look.castShadow ?? false}
             receiveShadow={look.receiveShadow ?? false}
