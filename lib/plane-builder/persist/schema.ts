@@ -9,15 +9,17 @@ import { LEVELS, LEVEL_ORDER, nextLevelId } from "../levels";
 import type { LevelId } from "../levels/types";
 import { BONUS_KINDS, emptyBonuses } from "../prestige/bonuses";
 import { MAX_TIER, TRACK_IDS, type Tiers } from "../plane/catalog";
+import { isDateKey } from "../daily/daily";
+import { isGhost } from "../ghost/ghost";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 /**
  * Saves older than this come from before a rebalance (1.2 changed prices and
  * pay), so loadProgress starts them fresh instead of migrating them.
  */
 export const RESET_BELOW = 2;
 
-export interface SaveV3 {
+export interface SaveV4 {
   version: typeof SAVE_VERSION;
   progress: Progress;
 }
@@ -102,6 +104,26 @@ function parseBestTimes(raw: unknown): Progress["bestTimes"] | null {
   return times;
 }
 
+/** A bad ghost is dropped on its own; it never costs the player their save. */
+function parseGhosts(raw: unknown): Progress["ghosts"] {
+  const ghosts: Progress["ghosts"] = {};
+  if (!isRecord(raw)) return ghosts;
+  for (const id of LEVEL_ORDER) {
+    const ghost = raw[id];
+    if (isGhost(ghost)) ghosts[id] = { time: ghost.time, data: ghost.data };
+  }
+  return ghosts;
+}
+
+function parseDailyBest(raw: unknown): Progress["dailyBest"] {
+  if (!isRecord(raw)) return null;
+  const { date, time, ghost } = raw;
+  if (!isDateKey(date) || !isGhost(ghost)) return null;
+  if (typeof time !== "number" || !Number.isFinite(time) || time <= 0)
+    return null;
+  return { date, time, ghost: { time: ghost.time, data: ghost.data } };
+}
+
 function parseProgress(raw: unknown): Progress | null {
   if (!isRecord(raw) || !isRecord(raw.levels)) return null;
   const rawUnlocked = raw.unlocked ?? ["meadow"];
@@ -147,6 +169,8 @@ function parseProgress(raw: unknown): Progress | null {
     fastestRun: fastestRun as number | null,
     bestTimes,
     nickname: nickname as string | null,
+    ghosts: parseGhosts(raw.ghosts),
+    dailyBest: parseDailyBest(raw.dailyBest),
   };
 }
 
@@ -171,6 +195,16 @@ const migrations: Record<
         bestTimes: {},
         nickname: null,
       },
+    };
+  },
+  // v4 adds ghost flights and the daily challenge's best.
+  3: (raw) => {
+    const { progress } = raw;
+    if (!isRecord(progress)) return { ...raw, version: 4 };
+    return {
+      ...raw,
+      version: 4,
+      progress: { ...progress, ghosts: {}, dailyBest: null },
     };
   },
 };

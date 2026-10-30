@@ -54,4 +54,24 @@ describe("firestore.rules stays in sync with the code", () => {
     const keys = [...(match?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1]);
     expect(keys).toEqual([...LEVEL_ORDER]);
   });
+
+  it("has the same daily minimum times and world list as the best times", () => {
+    const body = rules.match(/function dailyMinimum\(world\) \{([^}]*)\}/);
+    const minimums = new Map(
+      [...(body?.[1] ?? "").matchAll(/'(\w+)': (\d+)/g)].map((m) => [
+        m[1],
+        Number(m[2]),
+      ])
+    );
+    expect([...minimums.keys()]).toEqual([...LEVEL_ORDER]);
+    for (const id of LEVEL_ORDER) {
+      expect(minimums.get(id)).toBe(
+        Math.floor(LEVELS[id].finishDistance / MAX_SPEED)
+      );
+    }
+    const worlds = rules.match(/d\.world in \[([^\]]*)\]/);
+    expect(
+      [...(worlds?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1])
+    ).toEqual([...LEVEL_ORDER]);
+  });
 });

@@ -22,7 +22,7 @@ type FirestoreValue =
   | { nullValue: null }
   | { mapValue: { fields: Record<string, FirestoreValue> } };
 
-const documentsUrl = (config: FirebaseWebConfig, baseUrl: string) =>
+export const documentsUrl = (config: FirebaseWebConfig, baseUrl: string) =>
   `${baseUrl}/v1/projects/${config.projectId}/databases/(default)/documents`;
 
 export function commitUrl(
