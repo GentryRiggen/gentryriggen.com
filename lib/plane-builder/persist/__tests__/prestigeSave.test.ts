@@ -11,8 +11,8 @@ const v3 = (patch: Record<string, unknown>) => {
 };
 
 describe("save v3", () => {
-  it("is version 3", () => {
-    expect(SAVE_VERSION).toBe(3);
+  it("is version 4", () => {
+    expect(SAVE_VERSION).toBe(4);
   });
 
   it("round-trips prestige data and stats", () => {
@@ -127,14 +127,14 @@ describe("v2 to v3 migration", () => {
     expect(parsed && canPrestige(parsed)).toBe(true);
   });
 
-  it("loads from storage without a reset, then saves as v3", () => {
+  it("loads from storage without a reset, then saves as v4", () => {
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(v2Save()));
     const result = loadProgress();
     expect(result).toMatchObject({ recovered: false, reset: false });
     expect(result.progress.levels.meadow.coins).toBe(321);
     saveProgress(result.progress);
     const stored = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
-    expect(stored.version).toBe(3);
+    expect(stored.version).toBe(4);
   });
 
   it("still resets a v1 save", () => {

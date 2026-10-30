@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.0",
+    date: "2026-10-30",
+    title: "Ghost planes and the daily challenge",
+    highlights: [
+      "Race your best! A glowing blue ghost of your fastest flight in each world flies along beside you, and a little readout tells you how far ahead or behind it you are",
+      "There is a new Daily challenge every day: everyone gets the same world and the same twist (a tailwind, a headwind, double coins or no boost), and a countdown shows when the next one starts",
+      "See your best time today, and check the Daily board to find your place among the top 20 pilots",
+      "The first time you reach the finish each day pays coins; after that you can keep flying to chase a faster time",
+      "A ghost button next to the sound button turns the ghost off if you would rather fly alone",
+    ],
+  },
+  {
     version: "1.11.0",
     date: "2026-10-30",
     title: "Smoother flights on phones and tablets",

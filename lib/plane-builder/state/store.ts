@@ -7,11 +7,19 @@ import {
   moveOnMap,
   prestige,
   newProgress,
+  recordDailyFlight,
   recordFlight,
   restartLevel,
   type BuyResult,
   type Progress,
 } from "../economy/progress";
+import {
+  coinMultiplierFor,
+  dailyFor,
+  utcDateKey,
+  type DailyChallenge,
+} from "../daily/daily";
+import type { Ghost } from "../ghost/ghost";
 import { LEVELS, nextLevelId } from "../levels";
 import { COIN_ZONE_MULTIPLIER, type GaugeZone } from "../minigame/gauge";
 import type { LevelId } from "../levels/types";
@@ -62,11 +70,15 @@ interface PlaneBuilderData {
   lastFlight: FlightSummary | null;
   /** Set after a first-time level finish; the levels screen celebrates it. */
   celebrate: Celebration | null;
+  /** The daily challenge being flown, or null on a normal world visit. */
+  daily: DailyChallenge | null;
 }
 
 export interface PlaneBuilderState extends PlaneBuilderData {
   hydrate: (progress: Progress) => void;
   openLevel: (id: LevelId) => void;
+  /** Opens today's (UTC) daily challenge world, even if it is still locked. */
+  openDaily: (now?: number) => void;
   goToLevels: () => void;
   /** Prestiges (only once allowed) and opens the Sky Map for the owed move. */
   doPrestige: () => void;
@@ -80,8 +92,15 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   claimCoinBonus: (zone: GaugeZone) => void;
   /** Closes the reward card, once the coin bonus has been claimed. */
   dismissFlightReward: () => void;
-  /** `flightId` ignores a stale or duplicate call from an earlier flight. */
-  completeFlight: (result: FlightResult, flightId?: number) => void;
+  /**
+   * `flightId` ignores a stale or duplicate call from an earlier flight.
+   * `ghost` is the recording of this flight (only kept if it is a best).
+   */
+  completeFlight: (
+    result: FlightResult,
+    flightId?: number,
+    ghost?: Ghost | null
+  ) => void;
   resetTransient: () => void;
   restart: (id: LevelId) => void;
   /** Only accepts a generated nickname (see lib/leaderboard/nickname). */
@@ -96,6 +115,7 @@ const initial: PlaneBuilderData = {
   flightId: 0,
   lastFlight: null,
   celebrate: null,
+  daily: null,
 };
 
 export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
@@ -109,7 +129,13 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     resetFlightInput();
     resetLaunchAim();
     clearFlightToasts();
-    set({ screen: "levels", aim: null, lastFlight: null, celebrate: null });
+    set({
+      screen: "levels",
+      aim: null,
+      lastFlight: null,
+      celebrate: null,
+      daily: null,
+    });
   },
   openLevel: (id) => {
     const { progress } = get();
@@ -118,9 +144,29 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
       return;
     }
     if (!progress.unlocked.includes(id)) return;
-    set({ screen: "hangar", levelId: id, lastFlight: null, celebrate: null });
+    set({
+      screen: "hangar",
+      levelId: id,
+      lastFlight: null,
+      celebrate: null,
+      daily: null,
+    });
   },
-  goToLevels: () => set({ screen: "levels", celebrate: null }),
+  openDaily: (now = Date.now()) => {
+    if (get().progress.prestige.movePending) {
+      set({ screen: "map" });
+      return;
+    }
+    const daily = dailyFor(utcDateKey(now));
+    set({
+      screen: "hangar",
+      levelId: daily.world,
+      lastFlight: null,
+      celebrate: null,
+      daily,
+    });
+  },
+  goToLevels: () => set({ screen: "levels", celebrate: null, daily: null }),
   doPrestige: () => {
     const { progress } = get();
     if (!canPrestige(progress)) return;
@@ -129,9 +175,10 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
       screen: "map",
       lastFlight: null,
       celebrate: null,
+      daily: null,
     });
   },
-  openMap: () => set({ screen: "map", celebrate: null }),
+  openMap: () => set({ screen: "map", celebrate: null, daily: null }),
   move: (dx, dy) => {
     const r = moveOnMap(get().progress, dx, dy);
     if (!r.ok) return null;
@@ -144,6 +191,13 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     return r;
   },
   startLaunch: () => {
+    // The day rolled over while the player was in the hangar: that daily is
+    // over, so go back to the worlds screen, where the card shows the new one.
+    const { daily } = get();
+    if (daily && utcDateKey(Date.now()) !== daily.date) {
+      set({ screen: "levels", daily: null, lastFlight: null });
+      return;
+    }
     resetFlightInput();
     resetLaunchAim();
     clearFlightToasts();
@@ -154,8 +208,8 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     clearFlightToasts();
     set((s) => ({ screen: "flight", aim, flightId: s.flightId + 1 }));
   },
-  completeFlight: (result, flightId) => {
-    const { progress, levelId, screen } = get();
+  completeFlight: (result, flightId, ghost = null) => {
+    const { progress, levelId, screen, daily } = get();
     if (screen !== "flight") return;
     if (flightId !== undefined && flightId !== get().flightId) return;
     const level = LEVELS[levelId];
@@ -165,14 +219,41 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
       bonuses
     );
     const previousBest = progress.levels[levelId].best;
-    const pay = payout(
+    // The challenge pays no milestone bonuses (they belong to a world's own
+    // best), a twist can double the coins, and only the first finish of each
+    // UTC day pays at all: later runs just chase the time.
+    const basePay = payout(
       level,
       result,
       stats.multiplier,
-      previousBest,
-      coinFactor(bonuses)
+      daily ? level.finishDistance : previousBest,
+      coinFactor(bonuses) * (daily ? coinMultiplierFor(daily.twist) : 1)
     );
-    const recorded = recordFlight(progress, levelId, result, pay.total);
+    // A flight that crossed midnight belongs to a day that is over: it
+    // records nothing for the daily.
+    const isDailyOpen = daily !== null && utcDateKey(Date.now()) === daily.date;
+    const isFirstDailyFinish =
+      isDailyOpen &&
+      result.finished &&
+      (progress.dailyBest?.date ?? "") < daily.date;
+    const pay =
+      daily && !isFirstDailyFinish ? { ...basePay, total: 0 } : basePay;
+    const recorded = daily
+      ? {
+          progress: isDailyOpen
+            ? recordDailyFlight(
+                progress,
+                levelId,
+                result,
+                pay.total,
+                daily.date,
+                ghost
+              )
+            : progress,
+          isNewBest: false,
+          unlocked: null,
+        }
+      : recordFlight(progress, levelId, result, pay.total, ghost);
     resetFlightInput();
     set({
       screen: "hangar",
@@ -205,6 +286,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     if (!lastFlight?.bonus || lastFlight.seen) return;
     const seen = { ...lastFlight, seen: true };
     const isFirstFinish =
+      get().daily === null &&
       lastFlight.result.finished &&
       lastFlight.previousBest < LEVELS[levelId].finishDistance;
     if (!isFirstFinish) {
