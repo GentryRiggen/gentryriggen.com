@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { loadAutosave, saveAutosave } from "@/lib/ship-builder/persist/local";
 import { droppedPartsNotice } from "@/lib/ship-builder/persist/schema";
 import { decodeShareHash } from "@/lib/ship-builder/persist/share";
+import { useSharedLinkStore } from "@/lib/ship-builder/state/sharedLink";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 
 export const AUTOSAVE_DELAY_MS = 500;
@@ -59,6 +60,7 @@ export default function useShipPersistence() {
       // mid-trial, so leave the trial first.
       store.getState().endTrial();
       store.getState().loadShip(result.ship, null);
+      useSharedLinkStore.getState().show(result.ship);
       const notice = droppedPartsNotice(result.dropped);
       if (notice) store.getState().setNotice(notice);
       return true;
