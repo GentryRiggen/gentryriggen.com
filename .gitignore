@@ -67,3 +67,4 @@ next-env.d.ts
 !/assets/refs/manifest.json
 /public/asset-studio/
 __pycache__/
+/perf-results.json
