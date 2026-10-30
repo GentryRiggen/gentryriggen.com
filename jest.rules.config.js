@@ -9,4 +9,6 @@ module.exports = createJestConfig({
   moduleNameMapper: { "^@/(.*)$": "<rootDir>/$1" },
   testMatch: ["<rootDir>/firestore-tests/**/*.test.ts"],
   testTimeout: 20000,
+  // Suites share one emulator and clear it between tests, so run them in turn.
+  maxWorkers: 1,
 });

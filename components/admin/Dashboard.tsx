@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { summarize } from "@/lib/analytics/aggregate";
 import { SITES, type PageviewDoc, type Site } from "@/lib/analytics/types";
-import { fetchPageviews } from "@/lib/firebase/client";
+import type { GameEvent } from "@/lib/analytics/gameEvents";
+import { fetchGameEvents, fetchPageviews } from "@/lib/firebase/client";
+import GamesView from "./GamesView";
 import LeaderboardAdmin from "./LeaderboardAdmin";
 import SummaryView from "./SummaryView";
 
-type Tab = "overview" | Site;
+type Tab = "overview" | Site | "games";
 type Range = 7 | 30 | 90;
 
 const SITE_LABELS: Record<Site, string> = {
@@ -18,6 +20,7 @@ const SITE_LABELS: Record<Site, string> = {
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   ...SITES.map((site) => ({ id: site, label: SITE_LABELS[site] })),
+  { id: "games", label: "Games" },
 ];
 const RANGES: Range[] = [7, 30, 90];
 const DAY_MS = 86_400_000;
@@ -30,6 +33,13 @@ function describeError(error: unknown): string {
     if (typeof message === "string") return message.slice(0, 200);
   }
   return "unknown error";
+}
+
+interface LoadedGames {
+  days: Range;
+  events: GameEvent[];
+  truncated: boolean;
+  error: string | null;
 }
 
 interface Loaded {
@@ -46,6 +56,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("overview");
   const [days, setDays] = useState<Range>(7);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [games, setGames] = useState<LoadedGames | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +84,32 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, [days]);
+
+  // Gameplay events load only once the Games tab is opened (and per range).
+  useEffect(() => {
+    if (tab !== "games") return;
+    let cancelled = false;
+    fetchGameEvents(days)
+      .then((result) => {
+        if (!cancelled) setGames({ days, ...result, error: null });
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to load game events", error);
+        if (!cancelled) {
+          setGames({
+            days,
+            events: [],
+            truncated: false,
+            error: describeError(error),
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, days]);
+
+  const currentGames = games !== null && games.days === days ? games : null;
 
   // Data for a different range is stale: treat it as still loading.
   const current = loaded !== null && loaded.days === days ? loaded : null;
@@ -128,14 +165,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {!current && <p className="text-gray-600 dark:text-gray-400">Loading…</p>}
-      {current?.error && (
+      {tab === "games" && !currentGames && (
+        <p className="text-gray-600 dark:text-gray-400">Loading…</p>
+      )}
+      {tab === "games" && currentGames?.error && (
+        <p role="alert" className="text-red-600 dark:text-red-400">
+          Couldn&apos;t load game events ({currentGames.error}).
+        </p>
+      )}
+      {tab === "games" && currentGames?.truncated && (
+        <p className="text-amber-700 dark:text-amber-400">
+          Showing the newest events only; older events are missing for this
+          range.
+        </p>
+      )}
+      {tab === "games" && currentGames && !currentGames.error && (
+        <GamesView events={currentGames.events} />
+      )}
+      {tab !== "games" && !current && (
+        <p className="text-gray-600 dark:text-gray-400">Loading…</p>
+      )}
+      {tab !== "games" && current?.error && (
         <p role="alert" className="text-red-600 dark:text-red-400">
           Couldn&apos;t load analytics ({current.error}). Check that you are
           signed in as the admin and that Firestore is set up.
         </p>
       )}
-      {current?.truncated && (
+      {tab !== "games" && current?.truncated && (
         <p className="text-amber-700 dark:text-amber-400">
           Showing the newest views only; older views are missing for this range,
           so the change figures are hidden.
@@ -168,7 +224,7 @@ export default function Dashboard() {
           />
         </div>
       )}
-      {summaries && tab !== "overview" && (
+      {summaries && tab !== "overview" && tab !== "games" && (
         <SummaryView
           summary={summaries[tab]}
           comparable={!current?.truncated}

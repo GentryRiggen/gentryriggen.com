@@ -1,4 +1,5 @@
 import type { FirebaseApp } from "firebase/app";
+import { parseGameEvent, type GameEvent } from "@/lib/analytics/gameEvents";
 import type { PageviewDoc } from "@/lib/analytics/types";
 import { firebaseConfig } from "./config";
 
@@ -106,6 +107,48 @@ export async function fetchPageviews(
     });
   }
   return { docs, truncated: snapshot.size >= max };
+}
+
+export interface GameEventsResult {
+  events: GameEvent[];
+  /** True when the fetch hit the cap, so the oldest events are missing. */
+  truncated: boolean;
+}
+
+/** Days of gameplay events the dashboard loads unless told otherwise. */
+export const GAME_EVENT_DAYS = 30;
+/** Enough for a busy month; a warning shows if it is ever reached. */
+export const GAME_EVENT_LIMIT = 5000;
+
+/**
+ * Gameplay events from the last `days` UTC days (today included), newest day
+ * first. Queries by `day` only, so no other field needs an index. Malformed
+ * docs are skipped.
+ */
+export async function fetchGameEvents(
+  days: number = GAME_EVENT_DAYS,
+  max: number = GAME_EVENT_LIMIT,
+  now: Date = new Date()
+): Promise<GameEventsResult> {
+  const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
+  const db = fs.getFirestore(app);
+  const firstDay = new Date(now.getTime() - (days - 1) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const snapshot = await fs.getDocs(
+    fs.query(
+      fs.collection(db, "gameEvents"),
+      fs.where("day", ">=", firstDay),
+      fs.orderBy("day", "desc"),
+      fs.limit(Math.min(max, MAX_DOCS))
+    )
+  );
+  const events: GameEvent[] = [];
+  for (const d of snapshot.docs) {
+    const event = parseGameEvent(d.data());
+    if (event) events.push(event);
+  }
+  return { events, truncated: snapshot.size >= max };
 }
 
 export interface LeaderboardAdminRow {
