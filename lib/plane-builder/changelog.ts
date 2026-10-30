@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.14.1",
+    date: "2026-10-30",
+    title: "Fairer leaderboards",
+    highlights: [
+      "The leaderboards now check that scores come from the real game, which helps keep cheaters off the top spots",
+    ],
+  },
+  {
     version: "1.14.0",
     date: "2026-10-30",
     title: "Share your best times",
