@@ -144,6 +144,20 @@ test.describe("Plane Builder", () => {
     }
   );
 
+  test("steps render quality down and exposes the level", async ({ page }) => {
+    await open(page);
+    const canvas = page.getByTestId("plane-canvas");
+    await expect(canvas).toHaveAttribute("data-quality", "0");
+    await page.evaluate(() => {
+      // Reports inside the cooldown change nothing; the first real step is one level.
+      const quality = window.__planeBuilderQuality!;
+      quality.setState({ changedAt: performance.now() - 60_000 });
+      quality.getState().report("decline");
+      quality.getState().report("decline");
+    });
+    await expect(canvas).toHaveAttribute("data-quality", "1");
+  });
+
   test("launches from the keyboard", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Play Backyard Meadow" }).click();

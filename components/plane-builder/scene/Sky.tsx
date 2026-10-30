@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   BackSide,
@@ -10,6 +10,8 @@ import {
   Object3D,
 } from "three";
 import type { LevelPalette } from "@/lib/plane-builder/levels/types";
+import { qualitySettings } from "@/lib/plane-builder/render/quality";
+import { useQualityLevel } from "@/lib/plane-builder/render/qualityStore";
 
 const FOG_NEAR = 150;
 const FOG_FAR = 900;
@@ -57,6 +59,16 @@ export default function Sky({ palette }: SkyProps) {
     }),
     [palette.sky, palette.horizon]
   );
+
+  const { shadowMapSize } = qualitySettings(useQualityLevel());
+  useLayoutEffect(() => {
+    const shadow = sun.current?.shadow;
+    if (!shadow || shadow.mapSize.x === shadowMapSize) return;
+    // A new size needs a new map: drop the old one and three makes another.
+    shadow.mapSize.set(shadowMapSize, shadowMapSize);
+    shadow.map?.dispose();
+    shadow.map = null;
+  }, [shadowMapSize]);
 
   useFrame(({ camera }) => {
     const { x, y, z } = camera.position;
