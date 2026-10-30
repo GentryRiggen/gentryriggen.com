@@ -220,21 +220,9 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
 
   const removing = new Set(pendingRemoval?.ids ?? []);
 
-  // Parts that look different from their plain selves are drawn on their own;
-  // everything else is merged into a few draw calls.
+  // Plain parts are merged into a few draw calls; see PartBatcher.
   const root = useRef<Group>(null);
-  const standOut = useMemo(
-    () =>
-      new Set(
-        [selectedId, hoveredId, poppingId, ...removing].filter(
-          (id): id is string => id !== null
-        )
-      ),
-    // `removing` is rebuilt every render from `pendingRemoval`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedId, hoveredId, poppingId, pendingRemoval]
-  );
-  useStaticBatch(root, ship, standOut);
+  useStaticBatch(root, ship);
 
   return (
     <GlowContext.Provider value={glow}>

@@ -6,29 +6,21 @@ import PartBatcher from "./PartBatcher";
 /**
  * Merges the ship's static parts under `root` into a few draw calls (see
  * PartBatcher.ts). `ship` is whatever changes the parts' geometry, paint or
- * places; `excluded` are the part ids drawn on their own right now.
+ * places; the merge follows it once edits go quiet.
  *
  * Call it after the other per-frame hooks that show or hide parts, so the
  * batch sees their result in the same frame.
  */
 export function useStaticBatch(
   root: RefObject<Group | null>,
-  ship: unknown,
-  excluded: ReadonlySet<string>
+  ship: unknown
 ): void {
-  const excludedRef = useRef(excluded);
   const batcher = useRef<PartBatcher | null>(null);
-
-  useLayoutEffect(() => {
-    excludedRef.current = excluded;
-  });
 
   useLayoutEffect(() => {
     const group = root.current;
     if (!group) return;
-    const created = new PartBatcher(group, {
-      excluded: () => excludedRef.current,
-    });
+    const created = new PartBatcher(group);
     batcher.current = created;
     return () => {
       created.dispose();

@@ -10,13 +10,23 @@ import type { Mesh } from "three";
 const registry = new Set<Mesh>();
 let epoch = 0;
 
-/** The `ref` of a batchable mesh. React calls it with null on unmount. */
-export function batchRef(mesh: Mesh | null): void {
-  if (mesh) registry.add(mesh);
-  epoch++;
+/**
+ * The `ref` of a batchable mesh. It must be this stable function, never an
+ * inline one, so a re-render does not look like a new mesh. Returns the
+ * cleanup React runs on unmount, which drops the mesh from the registry.
+ */
+export function batchRef(mesh: Mesh | null): (() => void) | void {
+  if (!mesh) return;
+  if (!registry.has(mesh)) {
+    registry.add(mesh);
+    epoch++;
+  }
+  return () => {
+    registry.delete(mesh);
+  };
 }
 
-/** Changes whenever a batchable mesh mounts or unmounts. */
+/** Changes whenever a batchable mesh mounts. */
 export function batchEpoch(): number {
   return epoch;
 }

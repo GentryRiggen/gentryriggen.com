@@ -1,7 +1,7 @@
 import {
   BufferAttribute,
-  Mesh,
   Matrix4,
+  Mesh,
   type BufferGeometry,
   type InstancedMesh,
   type Material,
@@ -10,14 +10,14 @@ import {
 import { batchableMeshes, batchEpoch } from "./batchRegistry";
 import { mergeGeometries, type MergeSource } from "./batchMerge";
 import { noRaycast } from "./noRaycast";
-import { isSharedSurfaceMaterial } from "./Surface";
+import { isSharedSurfaceMaterial, plainSurfaceMaterial } from "./Surface";
 
 /** Fewer than this many meshes sharing a look are not worth merging. */
 const MIN_GROUP_SIZE = 2;
-/** New meshes (a model finishing its load) wait this long for a rebuild. */
-const ADDITION_DELAY_MS = 200;
-/** A tree that is not on screen (a half before the break) waits longer. */
-const HIDDEN_DELAY_MS = 1000;
+/** A rebuild waits until this long after the last change (edits, pop-ins). */
+const QUIET_MS = 300;
+/** If the browser is never idle, a due rebuild still runs after this. */
+const IDLE_TIMEOUT_MS = 500;
 
 /** A run of meshes drawn together: same material, shadow flags and layers. */
 interface BatchGroup {
@@ -30,27 +30,28 @@ interface BatchGroup {
 /** A source mesh whose triangles live in a group's merged geometry. */
 interface Member {
   source: Mesh;
+  /** The plain look the merged copy is drawn with. */
   material: Material;
   geometry: BufferGeometry;
   group: BatchGroup;
   start: number;
   count: number;
+  /** Where the source sat (relative to the root) when merged. */
+  placed: Float32Array;
+  /** The instance matrices' version when merged (instanced sources). */
+  instanceVersion: number;
+  /** Set once the source no longer matches what was merged, for good. */
+  isOutdated: boolean;
   /** True while the merged copy is shown and the source hidden. */
   isBatched: boolean;
 }
 
-export interface PartBatcherOptions {
-  /** Part ids to leave out of a build (hovered, selected, being removed...). */
-  excluded: () => ReadonlySet<string>;
-}
-
-/** The id of the part a mesh belongs to, read from the part's group. */
-function partIdOf(mesh: Object3D): string | null {
-  for (let node: Object3D | null = mesh; node; node = node.parent) {
-    const id: unknown = node.userData.partId;
-    if (typeof id === "string") return id;
-  }
-  return null;
+/** A source left out of a build because it cannot be merged yet. */
+interface Skipped {
+  mesh: Mesh;
+  /** What it was waiting on; a change means it may be mergeable now. */
+  reason: () => string;
+  seen: string;
 }
 
 function isWithin(node: Object3D, root: Object3D): boolean {
@@ -80,6 +81,16 @@ function isOnScreen(node: Object3D): boolean {
   return true;
 }
 
+/** The scales between a mesh and the root that are not 1 (a part popping in). */
+function scaleSignature(mesh: Object3D, root: Object3D): string {
+  let signature = "";
+  for (let at = mesh.parent; at && at !== root; at = at.parent) {
+    const { x, y, z } = at.scale;
+    if (x !== 1 || y !== 1 || z !== 1) signature += `${x},${y},${z};`;
+  }
+  return signature;
+}
+
 /**
  * Merges a ship's static, opted-in meshes (see batchRegistry.ts) into a few
  * big ones, one per material look, so a ship of hundreds of parts costs a
@@ -87,59 +98,125 @@ function isOnScreen(node: Object3D): boolean {
  * picking, hover and events still reach them exactly as before.
  *
  * A source is drawn on its own whenever it differs from what was merged: its
- * material changed (hover, selection, removal tint, paint), an ancestor is
- * hidden (a funnel that fell), or it is unmounted. Each frame `update` only
- * compares references, then blanks or restores the piece's index range, so
- * emphasis costs no rebuild. A rebuild happens when the set of meshes changes.
+ * material changed (hover, selection, removal tint, paint), its place or
+ * geometry changed, an ancestor is hidden (a funnel that fell) or it is
+ * unmounted. Each frame `update` only compares references, then blanks or
+ * restores the piece's index range, so none of that costs a rebuild; moving
+ * the mouse never rebuilds.
+ *
+ * Merging is a pass over every triangle, so it is kept off edits: a rebuild
+ * waits until the ship has been quiet for QUIET_MS (and for an idle moment),
+ * and the parts that changed in the meantime simply draw themselves.
  */
 export default class PartBatcher {
   private readonly root: Object3D;
-  private readonly options: PartBatcherOptions;
   private readonly groups: BatchGroup[] = [];
   private members: Member[] = [];
-  private builtEpoch = -1;
-  private builtAt = Number.NEGATIVE_INFINITY;
-  private skippedParts = new Set<string>();
-  private isStale = false;
+  private skipped: Skipped[] = [];
+  private hasBuilt = false;
+  private seenEpoch = batchEpoch();
+  /** When the ship last changed since the build; null while it is current. */
+  private dirtyAt: number | null = null;
+  private idlePending = false;
+  private idleReady = false;
+  private isDisposed = false;
+  private rebuildCount = 0;
   private readonly rootInverse = new Matrix4();
   private readonly scratch = new Matrix4();
 
-  constructor(root: Object3D, options: PartBatcherOptions) {
+  constructor(root: Object3D) {
     this.root = root;
-    this.options = options;
+  }
+
+  /** How many times the merge has run (a test and profiling aid). */
+  get builds(): number {
+    return this.rebuildCount;
   }
 
   /** Call once per frame, before the scene is drawn. */
   update(now: number): void {
     const onScreen = isOnScreen(this.root);
-    if (this.shouldRebuild(now, onScreen)) this.build(now);
+    if (!this.hasBuilt) {
+      if (onScreen) this.build(now);
+    } else {
+      this.noteChanges(now);
+      if (
+        onScreen &&
+        this.dirtyAt !== null &&
+        now - this.dirtyAt >= QUIET_MS &&
+        this.isIdle()
+      ) {
+        this.build(now);
+      }
+    }
     this.sync();
   }
 
   /** Puts every source back and drops the merged meshes. */
   dispose(): void {
+    this.isDisposed = true;
     this.release();
   }
 
-  /** Forces the next `update` to rebuild (the ship changed). */
-  invalidate(): void {
-    this.isStale = true;
-    this.builtEpoch = -1;
+  /**
+   * The ship changed. Pieces that moved are drawn on their own at once; the
+   * merge itself follows once things are quiet.
+   */
+  invalidate(now: number = performance.now()): void {
+    if (!this.hasBuilt) return;
+    this.dirtyAt = now;
+    this.root.updateMatrixWorld(true);
+    this.rootInverse.copy(this.root.matrixWorld).invert();
+    for (const member of this.members) {
+      if (member.isOutdated) continue;
+      this.scratch
+        .multiplyMatrices(this.rootInverse, member.source.matrixWorld)
+        .toArray(PLACED_SCRATCH);
+      if (!sameMatrix(PLACED_SCRATCH, member.placed)) member.isOutdated = true;
+    }
   }
 
-  private shouldRebuild(now: number, onScreen: boolean): boolean {
-    const wait = onScreen ? ADDITION_DELAY_MS : HIDDEN_DELAY_MS;
-    const sinceBuild = now - this.builtAt;
-    if (this.members.some((m) => reachOf(m.source, this.root) === "gone")) {
-      // Something merged was removed: it must not linger on screen.
-      return onScreen;
+  private noteChanges(now: number): void {
+    const epoch = batchEpoch();
+    if (epoch !== this.seenEpoch) {
+      this.seenEpoch = epoch;
+      this.dirtyAt = now;
     }
-    if (this.isStale) return sinceBuild >= (onScreen ? 0 : wait);
-    if (sinceBuild < wait) return false;
-    if (this.builtEpoch !== batchEpoch()) return true;
-    if (this.skippedParts.size === 0) return false;
-    const excluded = this.options.excluded();
-    for (const id of this.skippedParts) if (!excluded.has(id)) return true;
+    for (const skip of this.skipped) {
+      const reason = skip.reason();
+      if (reason !== skip.seen) {
+        skip.seen = reason;
+        this.dirtyAt = now;
+      }
+    }
+    for (const member of this.members) {
+      const instances = (member.source as Partial<InstancedMesh>)
+        .instanceMatrix;
+      if (
+        instances &&
+        !member.isOutdated &&
+        instances.version !== member.instanceVersion
+      ) {
+        member.isOutdated = true;
+        this.dirtyAt = now;
+      }
+    }
+  }
+
+  /** True when the browser can spare the time for a merge. */
+  private isIdle(): boolean {
+    if (typeof requestIdleCallback === "undefined") return true;
+    if (this.idleReady) return true;
+    if (!this.idlePending) {
+      this.idlePending = true;
+      requestIdleCallback(
+        () => {
+          this.idlePending = false;
+          this.idleReady = !this.isDisposed;
+        },
+        { timeout: IDLE_TIMEOUT_MS }
+      );
+    }
     return false;
   }
 
@@ -148,6 +225,7 @@ export default class PartBatcher {
       if (member.isBatched) member.source.visible = true;
     }
     this.members = [];
+    this.skipped = [];
     for (const { mesh } of this.groups) {
       mesh.removeFromParent();
       mesh.geometry.dispose();
@@ -157,53 +235,69 @@ export default class PartBatcher {
 
   private build(now: number): void {
     this.release();
-    this.builtAt = now;
-    this.builtEpoch = batchEpoch();
-    this.isStale = false;
-    this.skippedParts = new Set();
+    this.hasBuilt = true;
+    this.rebuildCount++;
+    this.dirtyAt = null;
+    this.idleReady = false;
+    this.seenEpoch = batchEpoch();
     const { root } = this;
     root.updateMatrixWorld(true);
     this.rootInverse.copy(root.matrixWorld).invert();
-    const excluded = this.options.excluded();
 
-    const byLook = new Map<string, Mesh[]>();
+    const byLook = new Map<string, { base: Material; meshes: Mesh[] }>();
     for (const mesh of batchableMeshes()) {
-      if (!isWithin(mesh, root)) continue;
+      if (!isWithin(mesh, root) || !mesh.visible) continue;
       const material = mesh.material;
       if (
         Array.isArray(material) ||
         !isSharedSurfaceMaterial(material) ||
-        material.transparent ||
         !mesh.geometry.hasAttribute("position") ||
         !mesh.geometry.hasAttribute("normal")
       ) {
         continue;
       }
-      const partId = partIdOf(mesh);
-      if (partId && excluded.has(partId)) {
-        this.skippedParts.add(partId);
+      const base = plainSurfaceMaterial(material);
+      if (!base) {
+        // A removal tint or ghost: drawn on its own until it is plain again.
+        this.skipped.push({
+          mesh,
+          reason: () =>
+            plainSurfaceMaterial(mesh.material) ? "plain" : "tint",
+          seen: "tint",
+        });
+        continue;
+      }
+      const popping = scaleSignature(mesh, root);
+      if (popping) {
+        // Still scaling in: baking it now would freeze it part-grown.
+        this.skipped.push({
+          mesh,
+          reason: () => scaleSignature(mesh, root),
+          seen: popping,
+        });
         continue;
       }
       const key = [
-        material.uuid,
+        base.uuid,
         mesh.castShadow ? 1 : 0,
         mesh.receiveShadow ? 1 : 0,
         mesh.layers.mask,
         mesh.renderOrder,
       ].join("|");
-      const list = byLook.get(key);
-      if (list) list.push(mesh);
-      else byLook.set(key, [mesh]);
+      const entry = byLook.get(key);
+      if (entry) entry.meshes.push(mesh);
+      else byLook.set(key, { base, meshes: [mesh] });
     }
 
-    for (const meshes of byLook.values()) {
-      if (meshes.length >= MIN_GROUP_SIZE) this.buildGroup(meshes);
+    for (const { base, meshes } of byLook.values()) {
+      if (meshes.length >= MIN_GROUP_SIZE) this.buildGroup(base, meshes);
     }
   }
 
-  private buildGroup(meshes: Mesh[]): void {
+  private buildGroup(base: Material, meshes: Mesh[]): void {
     const first = meshes[0];
-    const material = first.material as Material & { vertexColors: boolean };
+    const withColor = (base as Material & { vertexColors: boolean })
+      .vertexColors;
     const sources: MergeSource[] = [];
     const spans: { mesh: Mesh; first: number; length: number }[] = [];
     for (const mesh of meshes) {
@@ -225,11 +319,8 @@ export default class PartBatcher {
       }
       spans.push({ mesh, first: before, length: placements });
     }
-    const { geometry, ranges } = mergeGeometries(
-      sources,
-      material.vertexColors
-    );
-    const merged = new Mesh(geometry, first.material);
+    const { geometry, ranges } = mergeGeometries(sources, withColor);
+    const merged = new Mesh(geometry, base);
     merged.castShadow = first.castShadow;
     merged.receiveShadow = first.receiveShadow;
     merged.layers.mask = first.layers.mask;
@@ -247,18 +338,25 @@ export default class PartBatcher {
     for (const { mesh, first: from, length } of spans) {
       const start = ranges[from].start;
       const last = ranges[from + length - 1];
+      const placed = new Float32Array(16);
+      new Matrix4()
+        .multiplyMatrices(this.rootInverse, mesh.matrixWorld)
+        .toArray(placed);
       this.members.push({
         source: mesh,
-        material: mesh.material as Material,
+        material: base,
         geometry: mesh.geometry,
         group,
         start,
         count: last.start + last.count - start,
-        // Starts shown; `sync` blanks it if it should not be.
+        placed,
+        instanceVersion:
+          (mesh as Partial<InstancedMesh>).instanceMatrix?.version ?? 0,
+        isOutdated: false,
         isBatched: false,
       });
     }
-    // Every piece starts shown in the merged mesh; `sync` fixes the rest.
+    // Every piece starts in the merged mesh; `sync` blanks any that differ.
     for (const member of this.members) {
       if (member.group === group) this.setBatched(member, true);
     }
@@ -269,6 +367,7 @@ export default class PartBatcher {
     for (const member of this.members) {
       const { source } = member;
       const shouldBatch =
+        !member.isOutdated &&
         source.material === member.material &&
         source.geometry === member.geometry &&
         reachOf(source, this.root) === "shown";
@@ -290,4 +389,11 @@ export default class PartBatcher {
     member.isBatched = isBatched;
     member.source.visible = !isBatched;
   }
+}
+
+const PLACED_SCRATCH = new Float32Array(16);
+
+function sameMatrix(a: Float32Array, b: Float32Array): boolean {
+  for (let i = 0; i < 16; i++) if (Math.abs(a[i] - b[i]) > 1e-5) return false;
+  return true;
 }
