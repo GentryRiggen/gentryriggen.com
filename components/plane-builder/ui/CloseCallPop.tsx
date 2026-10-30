@@ -52,7 +52,7 @@ export default function CloseCallPop() {
         key={visible.id}
         aria-hidden="true"
         data-testid="close-call"
-        className="pb-pop absolute inset-x-3 top-56 text-center text-3xl font-black text-amber-300 drop-shadow-lg [text-shadow:0_2px_0_rgb(15_23_42),0_0_8px_rgb(15_23_42)] dark:text-amber-200"
+        className="pb-pop absolute inset-x-3 top-[55%] text-center text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-lg [text-shadow:0_2px_0_rgb(15_23_42),0_0_8px_rgb(15_23_42)] dark:text-amber-200"
       >
         {nearMissText(visible.multiplier)}
         {visible.coins > 0 ? (

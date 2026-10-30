@@ -10,6 +10,8 @@ export interface Payout {
   milestoneBonus: number;
   /** Coins from near-miss combos (already counted in `total`). */
   nearMissPay?: number;
+  /** The near-miss share of `total` after the plane multiplier and bonuses. */
+  nearMissEarned?: number;
   multiplier: number;
   total: number;
 }
@@ -61,6 +63,10 @@ export function payout(
     landingBonus,
     milestoneBonus,
     nearMissPay,
+    nearMissEarned: Math.min(
+      total,
+      Math.round(nearMissPay * multiplier * coinFactor)
+    ),
     multiplier,
     total,
   };

@@ -58,9 +58,15 @@ export default function ChaseCamera({ level, screen }: ChaseCameraProps) {
       setFov(camera, baseFov.current);
       return;
     }
-    if (screen !== "flight") return;
+    if (screen !== "flight") {
+      nearMissKick.remaining = 0;
+      setFov(camera, baseFov.current);
+      return;
+    }
     const s = flightLive.get();
     if (!s) return;
+    // A finished or crashed flight ends any lens kick.
+    if (s.phase === "done") nearMissKick.remaining = 0;
 
     const cos = Math.cos(s.heading);
     const sin = Math.sin(s.heading);

@@ -239,7 +239,9 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
       result.finished &&
       (progress.dailyBest?.date ?? "") < daily.date;
     const pay =
-      daily && !isFirstDailyFinish ? { ...basePay, total: 0 } : basePay;
+      daily && !isFirstDailyFinish
+        ? { ...basePay, total: 0, nearMissEarned: 0 }
+        : basePay;
     const recorded = daily
       ? {
           progress: isDailyOpen

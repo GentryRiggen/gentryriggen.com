@@ -214,9 +214,13 @@ export default function FlightRewardModal({
               <span aria-hidden="true"> · </span>
               <span className="sr-only">, </span>
               Best combo ×{comboMultiplier(result.bestCombo ?? 0)}
-              <span aria-hidden="true"> · </span>
-              <span className="sr-only">, </span>+
-              {formatCoins(payout.nearMissPay ?? 0)} coins
+              {(payout.nearMissEarned ?? 0) > 0 && payout.total > 0 ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span className="sr-only">, </span>+
+                  {formatCoins(payout.nearMissEarned ?? 0)} coins
+                </>
+              ) : null}
             </p>
           ) : null}
           <TimingGauge
