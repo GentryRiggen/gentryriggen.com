@@ -137,7 +137,7 @@ export default class PartBatcher {
   update(now: number): void {
     const onScreen = isOnScreen(this.root);
     if (!this.hasBuilt) {
-      if (onScreen) this.build(now);
+      if (onScreen) this.build();
     } else {
       this.noteChanges(now);
       if (
@@ -146,7 +146,7 @@ export default class PartBatcher {
         now - this.dirtyAt >= QUIET_MS &&
         this.isIdle()
       ) {
-        this.build(now);
+        this.build();
       }
     }
     this.sync();
@@ -233,7 +233,7 @@ export default class PartBatcher {
     this.groups.length = 0;
   }
 
-  private build(now: number): void {
+  private build(): void {
     this.release();
     this.hasBuilt = true;
     this.rebuildCount++;
