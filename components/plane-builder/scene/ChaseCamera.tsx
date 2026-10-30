@@ -2,11 +2,15 @@
 
 import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Vector3 } from "three";
+import { type Camera, PerspectiveCamera, Vector3 } from "three";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
 import { terrainHeight } from "@/lib/plane-builder/levels/terrain";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import { cameraShake } from "@/lib/plane-builder/state/cameraShake";
+import {
+  KICK_SECONDS,
+  nearMissKick,
+} from "@/lib/plane-builder/state/nearMissPop";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 import type { Screen } from "@/lib/plane-builder/state/store";
 
@@ -18,6 +22,15 @@ const AHEAD = 10;
 const FOLLOW_RATE = 4;
 const SHAKE_SIZE = 0.35;
 const GROUND_CLEARANCE = 1.5;
+/** Degrees the lens widens at the peak of a near-miss kick. */
+const KICK_FOV = 4;
+
+/** Sets a perspective camera's field of view, only when it has changed. */
+function setFov(camera: Camera, fov: number) {
+  if (!(camera instanceof PerspectiveCamera) || camera.fov === fov) return;
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+}
 
 interface ChaseCameraProps {
   level: LevelDef;
@@ -33,6 +46,7 @@ export default function ChaseCamera({ level, screen }: ChaseCameraProps) {
   const isReducedMotion = usePrefersReducedMotion();
   const target = useRef(LAUNCH_TARGET.clone());
   const shake = useRef(new Vector3());
+  const baseFov = useRef(camera instanceof PerspectiveCamera ? camera.fov : 55);
   const wanted = useRef(new Vector3());
   const wantedTarget = useRef(new Vector3());
 
@@ -41,6 +55,7 @@ export default function ChaseCamera({ level, screen }: ChaseCameraProps) {
       camera.position.copy(LAUNCH_CAMERA);
       target.current.copy(LAUNCH_TARGET);
       camera.lookAt(target.current);
+      setFov(camera, baseFov.current);
       return;
     }
     if (screen !== "flight") return;
@@ -74,6 +89,14 @@ export default function ChaseCamera({ level, screen }: ChaseCameraProps) {
       }
     }
     camera.lookAt(target.current);
+
+    // Near miss: a quick widening of the lens, skipped for reduced motion.
+    const left = isReducedMotion ? 0 : nearMissKick.remaining;
+    nearMissKick.remaining = Math.max(0, nearMissKick.remaining - delta);
+    const kick = Math.sin(
+      (Math.min(left, KICK_SECONDS) / KICK_SECONDS) * Math.PI
+    );
+    setFov(camera, baseFov.current + KICK_FOV * kick);
   });
 
   return null;

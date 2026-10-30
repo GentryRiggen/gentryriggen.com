@@ -14,6 +14,7 @@ export type PlaneCue =
   | "crash"
   | "land"
   | "fuel"
+  | "nearMiss"
   | "flag"
   | "cheer"
   | "buy";
@@ -277,6 +278,17 @@ const CUES: Record<PlaneCue, (engine: Engine) => void> = {
       type: "sine",
       duration: 0.14,
       gain: 0.22,
+    });
+  },
+  // A quick rising whoosh: a sine sweep from 500 up to 1400 Hz.
+  nearMiss: (e) => {
+    tone(e, {
+      type: "sine",
+      start: e.ctx.currentTime,
+      duration: 0.16,
+      freq: 500,
+      freqEnd: 1400,
+      gain: 0.16,
     });
   },
   // A short three-note fanfare, quieter than the cheer.

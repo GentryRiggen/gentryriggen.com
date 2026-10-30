@@ -31,6 +31,7 @@ import { isValidNickname } from "@/lib/leaderboard/nickname";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
 import { clearFlightToasts } from "./flightToasts";
+import { clearNearMissPop, nearMissPop } from "./nearMissPop";
 import { resetLaunchAim } from "./launchAim";
 
 export type Screen = "levels" | "hangar" | "launch" | "flight" | "map";
@@ -129,6 +130,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     resetFlightInput();
     resetLaunchAim();
     clearFlightToasts();
+    clearNearMissPop();
     set({
       screen: "levels",
       aim: null,
@@ -312,9 +314,11 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
 declare global {
   interface Window {
     __planeBuilderStore?: typeof usePlaneBuilderStore;
+    __planeBuilderNearMissPop?: typeof nearMissPop;
   }
 }
 
 if (TEST_HOOKS_ENABLED && typeof window !== "undefined") {
   window.__planeBuilderStore = usePlaneBuilderStore;
+  window.__planeBuilderNearMissPop = nearMissPop;
 }
