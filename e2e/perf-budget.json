@@ -1,14 +1,14 @@
 {
   "ship-titanic-build": {
-    "calls": 1670,
+    "calls": 142,
     "triangles": 300707
   },
   "ship-titanic-sailing": {
-    "calls": 1782,
-    "triangles": 322745
+    "calls": 265,
+    "triangles": 328000
   },
   "ship-cruise-build": {
-    "calls": 3217,
+    "calls": 218,
     "triangles": 287247
   },
   "plane-hangar": {
@@ -28,7 +28,7 @@
     "triangles": 290334
   },
   "ship-titanic-iceberg-sinking": {
-    "calls": 1709,
+    "calls": 181,
     "triangles": 318443
   }
 }
