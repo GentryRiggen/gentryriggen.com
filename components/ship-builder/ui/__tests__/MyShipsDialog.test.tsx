@@ -1,6 +1,11 @@
 import { act } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {
+  recordBest,
+  EMPTY_PROGRESS,
+} from "@/lib/ship-builder/challenges/progress";
+import { challengeProgress } from "../../hooks/challengeProgress";
 import MyShipsDialog from "../MyShipsDialog";
 import {
   countUnreadableShips,
@@ -16,6 +21,7 @@ import { testShip } from "@/lib/ship-builder/testing";
 
 beforeEach(() => {
   localStorage.clear();
+  challengeProgress.resetMemory();
   act(() => useShipBuilderStore.setState(createInitialState()));
 });
 
@@ -34,6 +40,22 @@ describe("MyShipsDialog", () => {
     expect(useShipBuilderStore.getState().ship.hull.lengthSegments).toBe(10);
     expect(useShipBuilderStore.getState().savedId).toBe(saved.id);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("forgets a deleted ship's stars", async () => {
+    const saved = saveShip({ ...testShip(), name: "Olympic" }, null)!;
+    act(() =>
+      challengeProgress.set(
+        recordBest(EMPTY_PROGRESS, saved.id, "outlast", 170)
+      )
+    );
+    const user = userEvent.setup();
+    render(<MyShipsDialog onClose={jest.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Delete Olympic" }));
+    await user.click(
+      screen.getByRole("button", { name: "Confirm delete Olympic" })
+    );
+    expect(challengeProgress.get().designs).toEqual({});
   });
 
   it("renames a saved ship", async () => {

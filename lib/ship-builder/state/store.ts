@@ -30,6 +30,12 @@ import { simShipFromStats } from "../sim/simShip";
 import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
+import {
+  challengeDef,
+  CHALLENGE_STRIKE_FRACTION,
+  type ChallengeId,
+} from "../challenges/definitions";
+import { forgetUnsavedChallenges } from "../../../components/ship-builder/hooks/challengeProgress";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
@@ -123,6 +129,8 @@ export type TrialSlice =
       runId: number;
       /** The descent to the sea floor is part of this run (iceberg trials). */
       descending: boolean;
+      /** Set when the trial was started from the Challenges panel. */
+      challenge?: ChallengeId;
     }
   | {
       status: "result";
@@ -130,6 +138,7 @@ export type TrialSlice =
       state: SimState;
       runId: number;
       descending: boolean;
+      challenge?: ChallengeId;
     };
 
 /** What undo/redo restore: the ship and which My Ships entry it belongs to. */
@@ -212,6 +221,11 @@ export interface ShipBuilderState extends ShipBuilderData {
    * (cells from the bow) it is an iceberg trial struck there.
    */
   startTrial: (sea: SimSea, impactX?: number) => void;
+  /**
+   * Runs a challenge's own trial (fixed sea, strike and break mode, so the
+   * score is fair). Does nothing while walking, or mid-trial or drive.
+   */
+  startChallenge: (id: ChallengeId) => void;
   /**
    * Starts aiming an iceberg: freezes building and switches to the side view
    * so the hull can be tapped. Works from building or a finished trial ("Try
@@ -325,8 +339,13 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   }
 
   /** Starts the trial (the caller has checked it may); walking is untouched. */
-  function beginTrial(sea: SimSea, impactX?: number) {
-    const { ship, breakMode } = get();
+  function beginTrial(
+    sea: SimSea,
+    impactX?: number,
+    options: { breakMode?: BreakMode; challenge?: ChallengeId } = {}
+  ) {
+    const { ship } = get();
+    const breakMode = options.breakMode ?? get().breakMode;
     const { stats } = analyzeShip(ship);
     const input: TrialInput = {
       ship: simShipFromStats(stats, ship.hull.beam),
@@ -351,6 +370,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         input,
         runId,
         descending: true,
+        ...(options.challenge ? { challenge: options.challenge } : {}),
       },
       tool: { kind: "none" },
       ...CLEARED,
@@ -669,6 +689,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     newShip(kind) {
       if (isTrialActive()) return;
+      forgetUnsavedChallenges();
       commit(emptyShip(kind), {
         savedId: null,
         tool: { kind: "none" },
@@ -680,6 +701,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (isTrialActive()) return;
       const template = findTemplate(id);
       if (!template) return;
+      forgetUnsavedChallenges();
       commit(template.build(), {
         savedId: null,
         tool: { kind: "none" },
@@ -703,6 +725,21 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     startTrial(sea, impactX) {
       if (get().walk.status !== "idle") return;
       beginTrial(sea, impactX);
+    },
+
+    startChallenge(id) {
+      const { trial, drive, walk } = get();
+      if (walk.status !== "idle" || drive.status !== "idle") return;
+      if (trial.status !== "idle" && trial.status !== "result") return;
+      const { trial: def } = challengeDef(id);
+      const impactX =
+        def.kind === "iceberg"
+          ? gridLength(get().ship) * CHALLENGE_STRIKE_FRACTION
+          : undefined;
+      beginTrial(def.sea, impactX, {
+        challenge: id,
+        ...(def.kind === "iceberg" ? { breakMode: def.breakMode } : {}),
+      });
     },
 
     sinkWhileWalking() {
@@ -796,6 +833,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           state,
           runId: trial.runId,
           descending: trial.descending,
+          ...(trial.challenge ? { challenge: trial.challenge } : {}),
         },
       });
     },
@@ -818,6 +856,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           input: trial.input,
           runId,
           descending: trial.descending,
+          ...(trial.challenge ? { challenge: trial.challenge } : {}),
         },
       });
     },
