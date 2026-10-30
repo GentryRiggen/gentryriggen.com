@@ -17,6 +17,36 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.32.1",
+    date: "2026-10-30",
+    title: "Helping us make the game better",
+    highlights: [
+      "The game now counts a few things anonymously, like which challenges are tricky and which ships are popular, so we can make Ship Builder more fun. It never records names, ship names or anything about you",
+    ],
+  },
+  {
+    version: "2.32.0",
+    date: "2026-10-30",
+    title: "Big ships run much smoother",
+    highlights: [
+      "Ship Builder runs much smoother on big ships like the Titanic and the cruise liner, because the game now draws all the plain walls, windows and balconies together instead of one at a time",
+      "Building still feels instant: a new part shows up straight away and joins the rest of the ship a moment after you stop",
+    ],
+  },
+  {
+    version: "2.31.0",
+    date: "2026-10-30",
+    title: "Challenges: earn stars and climb the leaderboard",
+    highlights: [
+      "There is a new Challenges button at the top. Pick a challenge, watch your ship try it, and earn up to 3 stars. Your best stars are saved for each ship you build",
+      "Outlast the Titanic: an iceberg hits your ship, and the longer she stays afloat, the more stars you earn. Stay up for 2 hours 40 minutes (like the real Titanic) for 2 stars, or never sink for 3",
+      "Everyone off safely: the ship sinks, and you earn stars for every person who gets into a lifeboat. Add lifeboats along both sides to save more people",
+      "Shipshape: ride out a stormy sea. A ship that stays upright earns stars, and one that barely rolls earns all 3",
+      "After each challenge a card shows your stars and tells you what to change to earn the next one",
+      "The Leaderboard shows the top 20 captains by total stars and where you rank. Everyone gets a random animal name like Happy Otter 7, so no real names are ever shown",
+    ],
+  },
+  {
     version: "2.30.0",
     date: "2026-10-29",
     title: "Icebergs, rocks, buoys and passing ships look real now",

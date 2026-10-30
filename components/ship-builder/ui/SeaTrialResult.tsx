@@ -18,6 +18,7 @@ import {
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
 import { trialTimelineFor } from "../scene/trialTimeline";
+import ChallengeResult from "./ChallengeResult";
 import ResultDetails from "./ResultDetails";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
@@ -127,8 +128,15 @@ function ResultCard({ trial }: ResultCardProps) {
         data-sea-trial-result
         aria-label="Sea trial result"
         tabIndex={-1}
-        className={`absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex flex-col gap-2 rounded-2xl border p-2 shadow-xl outline-none sm:max-w-2xl ${panelClass}`}
+        className={`absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex max-h-[75dvh] flex-col gap-2 overflow-y-auto rounded-2xl border p-2 shadow-xl outline-none sm:max-w-2xl ${panelClass}`}
       >
+        {trial.challenge && (
+          <ChallengeResult
+            challenge={trial.challenge}
+            input={input}
+            state={state}
+          />
+        )}
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"

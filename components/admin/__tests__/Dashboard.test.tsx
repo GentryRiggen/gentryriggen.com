@@ -76,6 +76,57 @@ it("switches scope with the tabs", async () => {
   ).toBeInTheDocument();
 });
 
+describe("Games tab", () => {
+  const flight = {
+    site: "plane-builder" as const,
+    name: "flight_end" as const,
+    day: "2026-10-30",
+    props: {
+      world: "meadow",
+      outcome: "crash",
+      dist: 3,
+      crashX: 100,
+      obstacle: "tree",
+      tiers: 2,
+      daily: 0,
+    },
+  };
+
+  beforeEach(() => {
+    mockClient.fetchGameEvents.mockResolvedValue({
+      events: [flight, flight],
+      truncated: false,
+    });
+  });
+
+  it("loads game events only when the tab is opened", async () => {
+    render(<Dashboard />);
+    await screen.findByTestId("stat-views");
+    expect(mockClient.fetchGameEvents).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("tab", { name: "Games" }));
+    expect(
+      within(await screen.findByTestId("plane-flights")).getByText("2")
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("world-meadow")).toBeInTheDocument();
+    expect(mockClient.fetchGameEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows why loading failed", async () => {
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockClient.fetchGameEvents.mockRejectedValue(
+      Object.assign(new Error("x"), { code: "permission-denied" })
+    );
+    render(<Dashboard />);
+    await userEvent.click(screen.getByRole("tab", { name: "Games" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "permission-denied"
+    );
+    consoleError.mockRestore();
+  });
+});
+
 it("refetches when the range changes", async () => {
   render(<Dashboard />);
   await screen.findByTestId("stat-views");
