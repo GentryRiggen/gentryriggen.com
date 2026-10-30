@@ -55,9 +55,10 @@ export function compartmentSpecsOf(hull: Hull): CompartmentSpec[] {
  */
 export function gashOf(
   impactX: number,
-  length: number
+  length: number,
+  gashLength: number = GASH_LENGTH
 ): { fromX: number; toX: number } {
-  const half = GASH_LENGTH / 2;
+  const half = Math.min(gashLength, length) / 2;
   const centre = Math.min(Math.max(impactX, half), length - half);
   return { fromX: centre - half, toX: centre + half };
 }
@@ -66,9 +67,10 @@ export function gashOf(
 export function openedBy(
   specs: readonly CompartmentSpec[],
   impactX: number,
-  length: number
+  length: number,
+  gashLength: number = GASH_LENGTH
 ): string[] {
-  const gash = gashOf(impactX, length);
+  const gash = gashOf(impactX, length, gashLength);
   return specs
     .filter((spec) => spec.fromX < gash.toX && spec.toX > gash.fromX)
     .map((spec) => spec.id);

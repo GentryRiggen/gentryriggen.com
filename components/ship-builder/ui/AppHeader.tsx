@@ -1,13 +1,19 @@
 "use client";
 
-import { FilePlus, Save, Ship, type LucideIcon } from "lucide-react";
+import { FilePlus, Save, Ship, Trophy, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { MAX_NAME_LENGTH } from "@/lib/ship-builder/model/placement";
+import { totalStars } from "@/lib/ship-builder/challenges/progress";
 import { saveShip } from "@/lib/ship-builder/persist/local";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { SHIP_BUILDER_VERSION } from "@/lib/ship-builder/version";
+import {
+  adoptUnsavedChallenges,
+  challengeProgress,
+} from "@/lib/ship-builder/challenges/progressStore";
+import ChallengesDialog from "./ChallengesDialog";
 import MyShipsDialog from "./MyShipsDialog";
 import NewShipDialog from "./NewShipDialog";
 import { TRIAL_PAUSED_TITLE } from "./seaTrialText";
@@ -35,6 +41,9 @@ function ButtonLabel({ Icon, children }: ButtonLabelProps) {
 export default function AppHeader() {
   const [shipsOpen, setShipsOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  const [challengesOpen, setChallengesOpen] = useState(false);
+  const challengesButtonRef = useRef<HTMLButtonElement>(null);
+  const stars = totalStars(challengeProgress.useValue());
   const newButtonRef = useRef<HTMLButtonElement>(null);
   const myShipsButtonRef = useRef<HTMLButtonElement>(null);
   const ship = useShipBuilderStore((s) => s.ship);
@@ -48,6 +57,8 @@ export default function AppHeader() {
   function handleSave() {
     const saved = saveShip(ship, savedId);
     if (saved) {
+      // A ship saved for the first time takes the stars it earned unsaved.
+      if (savedId === null) adoptUnsavedChallenges(saved.id);
       markSaved(saved.id);
       setNotice("Saved to My Ships");
     } else {
@@ -58,6 +69,11 @@ export default function AppHeader() {
   function handleShipsClose() {
     setShipsOpen(false);
     myShipsButtonRef.current?.focus();
+  }
+
+  function handleChallengesClose() {
+    setChallengesOpen(false);
+    challengesButtonRef.current?.focus();
   }
 
   function handleNewClose() {
@@ -126,6 +142,26 @@ export default function AppHeader() {
         </button>
         <ShareButton className={TOUCH_CLASS} />
         <button
+          ref={challengesButtonRef}
+          type="button"
+          aria-haspopup="dialog"
+          disabled={isTrialActive}
+          title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
+          onClick={() => setChallengesOpen(true)}
+          className={`${buttonClass} ${TOUCH_CLASS}`}
+        >
+          <ButtonLabel Icon={Trophy}>Challenges</ButtonLabel>
+          {stars > 0 && (
+            <span
+              data-testid="header-stars"
+              className="rounded-full bg-amber-100 px-1.5 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+            >
+              <span className="sr-only">{stars} stars</span>
+              <span aria-hidden="true">{stars}</span>
+            </span>
+          )}
+        </button>
+        <button
           ref={myShipsButtonRef}
           type="button"
           disabled={isTrialActive}
@@ -140,6 +176,7 @@ export default function AppHeader() {
 
       {shipsOpen && <MyShipsDialog onClose={handleShipsClose} />}
       {newOpen && <NewShipDialog onClose={handleNewClose} />}
+      {challengesOpen && <ChallengesDialog onClose={handleChallengesClose} />}
     </header>
   );
 }
