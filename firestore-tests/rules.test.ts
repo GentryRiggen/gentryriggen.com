@@ -1095,9 +1095,11 @@ describe("plane daily challenge", () => {
 
     it("rejects extra and missing fields", async () => {
       await assertFails(setDoc(entryDoc(player()), entry({ admin: true })));
-      const { world: _world, ...noWorld } = entry();
+      const noWorld: Record<string, unknown> = entry();
+      delete noWorld.world;
       await assertFails(setDoc(entryDoc(player()), noWorld));
-      const { nickname: _nickname, ...noNickname } = entry();
+      const noNickname: Record<string, unknown> = entry();
+      delete noNickname.nickname;
       await assertFails(setDoc(entryDoc(player()), noNickname));
     });
 

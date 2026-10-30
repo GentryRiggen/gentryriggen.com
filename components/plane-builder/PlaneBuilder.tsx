@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import useWebGLSupport from "@/components/ship-builder/hooks/useWebGLSupport";
 import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
+import { useDailySync } from "@/lib/plane-builder/state/dailySync";
 import { useLeaderboardSync } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { soundSetting } from "./audio/soundSetting";
@@ -37,6 +38,7 @@ export default function PlaneBuilder() {
   const [notice, setNotice] = useState<string | null>(null);
   useSoundUnlock(soundSetting.useValue());
   useLeaderboardSync();
+  useDailySync();
 
   useEffect(() => {
     // Fetch the Blender plane models up front so pieces rarely show stand-ins.

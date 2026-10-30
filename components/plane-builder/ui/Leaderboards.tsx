@@ -2,9 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fetchBoard } from "@/lib/leaderboard/client";
+import { DAILY_BOARD_LIMIT, fetchDailyBoard } from "@/lib/leaderboard/daily";
+import { standingOn } from "@/lib/leaderboard/rank";
 import { randomNickname } from "@/lib/leaderboard/nickname";
 import { SCORE_PRESTIGE_UNIT } from "@/lib/leaderboard/types";
-import type { BoardKind, LeaderboardRow } from "@/lib/leaderboard/types";
+import type { LeaderboardRow } from "@/lib/leaderboard/types";
+import {
+  TWIST_INFO,
+  dailyFor,
+  utcDateKey,
+} from "@/lib/plane-builder/daily/daily";
 import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { requestLeaderboardSubmit } from "@/lib/plane-builder/state/leaderboardSync";
@@ -17,12 +24,13 @@ import {
 } from "./styles";
 import { medalFor } from "./standing";
 
-type Tab = "prestige" | "fastestRun" | "world";
+export type Tab = "prestige" | "fastestRun" | "world" | "daily";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "prestige", label: "Prestige" },
   { id: "fastestRun", label: "Fastest run" },
   { id: "world", label: "Per world" },
+  { id: "daily", label: "Daily" },
 ];
 
 const FOCUSABLE = "button:not([disabled]), select";
@@ -50,6 +58,21 @@ function formatValue(tab: Tab, value: number): string {
   return `${value.toFixed(1)} s`;
 }
 
+/** Where the player stands on the day's top 20, in words. */
+function dailyRankLine(
+  rows: LeaderboardRow[] | null,
+  uid: string,
+  myTime: number | null
+): string {
+  if (myTime === null) return "Reach the finish today to get on the board!";
+  if (rows === null) return `Your best today: ${myTime.toFixed(1)} s`;
+  const standing = standingOn(rows, uid, myTime, "asc", DAILY_BOARD_LIMIT);
+  if (standing.kind === "ranked") {
+    return `You're #${standing.rank} today with ${myTime.toFixed(1)} s!`;
+  }
+  return `Beat ${standing.cutoff.value.toFixed(1)} s to join the top ${DAILY_BOARD_LIMIT}. Your best: ${myTime.toFixed(1)} s`;
+}
+
 interface Loaded {
   key: string;
   rows: LeaderboardRow[] | null;
@@ -66,6 +89,10 @@ export default function Leaderboards({
   const [tab, setTab] = useState<Tab>(initialTab);
   const [world, setWorld] = useState<LevelId>(initialWorld);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [today] = useState(() => dailyFor(utcDateKey(Date.now())));
+  const dailyBest = usePlaneBuilderStore((s) =>
+    s.progress.dailyBest?.date === today.date ? s.progress.dailyBest.time : null
+  );
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const latestClose = useRef(onClose);
@@ -85,8 +112,11 @@ export default function Leaderboards({
   const key = tab === "world" ? `world:${world}` : tab;
   useEffect(() => {
     let isCancelled = false;
-    const kind: BoardKind = tab === "world" ? { world } : tab;
-    fetchBoard(kind)
+    const request =
+      tab === "daily"
+        ? fetchDailyBoard(today.date)
+        : fetchBoard(tab === "world" ? { world } : tab);
+    request
       .then((rows) => {
         if (!isCancelled) setLoaded({ key, rows });
       })
@@ -96,7 +126,7 @@ export default function Leaderboards({
     return () => {
       isCancelled = true;
     };
-  }, [tab, world, key]);
+  }, [tab, world, key, today.date]);
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -226,6 +256,22 @@ export default function Leaderboards({
               ))}
             </select>
           </label>
+        ) : null}
+
+        {tab === "daily" ? (
+          <div
+            data-testid="daily-board-summary"
+            className="mt-3 rounded-lg bg-violet-100 p-3 text-violet-950 dark:bg-violet-950/60 dark:text-violet-100"
+          >
+            <p className="font-bold">
+              Today: {LEVELS[today.world].name}{" "}
+              <span aria-hidden="true">{TWIST_INFO[today.twist].emoji}</span>{" "}
+              {TWIST_INFO[today.twist].name}
+            </p>
+            <p data-testid="daily-rank">
+              {dailyRankLine(current?.rows ?? null, uid, dailyBest)}
+            </p>
+          </div>
         ) : null}
 
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto">

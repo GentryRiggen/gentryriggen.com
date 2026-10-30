@@ -10,6 +10,8 @@ import {
 } from "three";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
+import { modsFor } from "@/lib/plane-builder/daily/daily";
+import { createGhostRecorder } from "@/lib/plane-builder/ghost/ghost";
 import { applyBonuses } from "@/lib/plane-builder/prestige";
 import { planeStats } from "@/lib/plane-builder/plane/stats";
 import { GAME_SPEED, STEP } from "@/lib/plane-builder/sim/constants";
@@ -96,7 +98,13 @@ export default function FlightRunner({
     const { bonuses } = usePlaneBuilderStore.getState().progress.prestige;
     const stats = applyBonuses(planeStats(level.plane, tiers), bonuses);
     const state = launch(level, stats, aim ?? { pitch: 0, yaw: 0, power: 0.5 });
-    return { stats, state };
+    const { daily } = usePlaneBuilderStore.getState();
+    return {
+      stats,
+      state,
+      mods: daily ? modsFor(daily.twist) : {},
+      recorder: createGhostRecorder(state),
+    };
   });
   const plane = useRef<Group>(null);
   const debrisMeshes = useRef<(Mesh | null)[]>([]);
@@ -142,14 +150,15 @@ export default function FlightRunner({
 
   useFrame((_, delta) => {
     if (isPaused.current) return;
-    const { state, stats } = run;
+    const { state, stats, mods, recorder } = run;
     const group = plane.current;
 
     accumulator.current += Math.min(delta, MAX_FRAME) * GAME_SPEED;
     while (accumulator.current >= STEP) {
       accumulator.current -= STEP;
       if (holdSeconds !== undefined && state.time >= holdSeconds) continue;
-      const events = step(state, level, stats, flightInput);
+      const events = step(state, level, stats, flightInput, mods);
+      recorder.record(state);
       if (events.length === 0) continue;
       onEvents?.(events);
       for (const event of events) {
@@ -218,7 +227,11 @@ export default function FlightRunner({
       if (endTimer.current >= END_HOLD) {
         hasCompleted.current = true;
         flightLive.notify();
-        completeFlight(flightResult(state, level), flightId);
+        completeFlight(
+          flightResult(state, level),
+          flightId,
+          run.recorder.finish()
+        );
       }
     }
   });
