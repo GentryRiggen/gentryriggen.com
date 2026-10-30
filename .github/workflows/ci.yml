@@ -157,6 +157,13 @@ jobs:
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit
+          # Draw calls and triangles per fixed scene against e2e/perf-budget.json
+          # (frame times are only reported). PERF_UPDATE=1 rewrites the budget.
+          - name: WebGL perf budget
+            files: e2e/perf.spec.ts
+            args: --project=chromium
+            workers: 1
+            browsers: chromium
           - name: WebGL visual
             files: e2e/ship-builder-visual.spec.ts e2e/plane-builder-visual.spec.ts
             args: --project=chromium
@@ -201,6 +208,15 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
+
+      # Only the perf job writes this file; the other jobs upload nothing.
+      - name: 📤 Upload perf results
+        if: always() && hashFiles('perf-results.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-results
+          path: perf-results.json
+          retention-days: 30
 
   # ── Deploy (main branch only) ──
   deploy:

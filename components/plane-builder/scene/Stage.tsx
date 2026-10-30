@@ -8,6 +8,7 @@ import {
   useQualityLevel,
   useQualityStore,
 } from "@/lib/plane-builder/render/qualityStore";
+import RenderInfoProbe from "./RenderInfoProbe";
 
 interface StageProps {
   children: ReactNode;
@@ -45,6 +46,7 @@ export default function Stage({ children }: StageProps) {
           onIncline={() => report("incline")}
         />
         {children}
+        <RenderInfoProbe />
       </Canvas>
     </div>
   );
