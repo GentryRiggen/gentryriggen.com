@@ -31,7 +31,8 @@ import { flightLive } from "@/lib/plane-builder/state/flightLive";
 import { flightToasts } from "@/lib/plane-builder/state/flightToasts";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
-import { engineLevel } from "../audio/flightCues";
+import { flightSoundFor } from "../audio/flightCues";
+import { SILENT_FLIGHT } from "../audio/planeBeds";
 import { planeSynth } from "../audio/planeSynth";
 import PlaneModel from "./PlaneModel";
 
@@ -146,7 +147,7 @@ export default function FlightRunner({
   useEffect(() => () => debrisMaterial.dispose(), [debrisMaterial]);
 
   // The hum stops with the flight (including when the tab is left mid-flight).
-  useEffect(() => () => planeSynth.setEngine(0), []);
+  useEffect(() => () => planeSynth.setFlight(SILENT_FLIGHT), []);
 
   useFrame((_, delta) => {
     if (isPaused.current) return;
@@ -192,13 +193,16 @@ export default function FlightRunner({
       flightToasts.push("Out of fuel! Dive, then pull up!");
     }
     if (group && group.visible) poseGroup(group, state);
-    planeSynth.setEngine(
-      engineLevel(
-        stats.thrust > 0,
-        state.fuel,
-        state.phase === "flying",
-        flightInput.boost
-      )
+    planeSynth.setFlight(
+      flightSoundFor({
+        hasThrust: stats.thrust > 0,
+        fuel: state.fuel,
+        phase: state.phase,
+        wantsBoost: flightInput.boost,
+        canBoost: !mods.noBoost,
+        speed: state.speed,
+        progressTimer: state.progressTimer,
+      })
     );
 
     if (debrisAge.current !== null) {

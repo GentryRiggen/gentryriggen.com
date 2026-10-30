@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { planeChannels } from "./channelSettings";
 import { planeSynth, isAudioSupported } from "./planeSynth";
 import { soundSetting } from "./soundSetting";
 
@@ -10,9 +11,22 @@ import { soundSetting } from "./soundSetting";
  * listeners go away once the audio has started, when sound is off, and on
  * unmount. If the engine cannot start, the setting is switched back off.
  *
- * It also pauses the synth while the tab is hidden and wakes it again.
+ * It also passes the music and sound-effects switches on to the synth, and
+ * pauses the synth while the tab is hidden and wakes it again.
  */
 export default function useSoundUnlock(isOn: boolean) {
+  const isMusicOn = planeChannels.music.useValue();
+  const isEffectsOn = planeChannels.effects.useValue();
+
+  // The music and effects switches apply whether or not audio is unlocked yet:
+  // the synth keeps them and acts once it is.
+  useEffect(() => {
+    planeSynth.setMusicEnabled(isMusicOn);
+  }, [isMusicOn]);
+  useEffect(() => {
+    planeSynth.setEffectsEnabled(isEffectsOn);
+  }, [isEffectsOn]);
+
   useEffect(() => {
     if (!isOn || !isAudioSupported() || planeSynth.isEnabled()) return;
     const remove = () => {

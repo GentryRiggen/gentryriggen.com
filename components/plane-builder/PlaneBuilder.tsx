@@ -7,6 +7,7 @@ import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
 import { useDailySync } from "@/lib/plane-builder/state/dailySync";
 import { useLeaderboardSync } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import PlaneMusic from "./audio/PlaneMusic";
 import { soundSetting } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
 import GameStage from "./scene/GameStage";
@@ -86,6 +87,7 @@ export default function PlaneBuilder() {
 
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${BACKGROUND}`}>
+      <PlaneMusic />
       <div className="absolute inset-0">
         <GameStage />
       </div>
