@@ -6,7 +6,9 @@ import {
   MAX_VALUE,
   NEVER_SINKS_MINUTES,
   NOT_SCORED,
+  SOLID_STABILITY_RATIO,
   STEADY_PEAK_ROLL_DEG,
+  STEADY_STABILITY_RATIO,
   starsFor,
   type ChallengeId,
   type Stars,
@@ -24,6 +26,8 @@ export interface ChallengeScore {
   sea?: SimSea;
   /** Shipshape: the most she rolled in that trial, in degrees. */
   peakRollDeg?: number;
+  /** Shipshape: whether she capsized in that trial. */
+  hasCapsized?: boolean;
 }
 
 function scored(id: ChallengeId, rawValue: number): ChallengeScore {
@@ -86,6 +90,8 @@ export interface ShipshapeRun {
   outcome: TrialOutcome | null;
   /** The most she rolled away from her resting list, in degrees. */
   peakRollDeg: number;
+  /** How high her weight sits (see `SOLID_STABILITY_RATIO`); lower is better. */
+  stabilityRatio: number;
 }
 
 function survived(outcome: TrialOutcome | null): boolean {
@@ -100,7 +106,11 @@ function runWeather(input: TrialInput, sea: SimSea): ShipshapeRun {
     state = stepTrial(trial, state);
     peak = Math.max(peak, Math.abs(state.pose.roll - trial.ship.listAngle));
   }
-  return { outcome: state.outcome, peakRollDeg: peak * DEG };
+  return {
+    outcome: state.outcome,
+    peakRollDeg: peak * DEG,
+    stabilityRatio: input.ship.stabilityRatio,
+  };
 }
 
 /** Runs the weather trial in every sea (cheap, deterministic) for the score. */
@@ -123,20 +133,34 @@ export function decidingSea(
 }
 
 /**
- * Shipshape: 1 star for riding out a choppy sea (calm comes with it), 2 for a
- * stormy one, 3 for a stormy one without heeling past `STEADY_PEAK_ROLL_DEG`.
+ * Shipshape: 1 star for riding out a choppy sea (calm comes with it). A
+ * stormy sea ridden out with her weight low enough (`SOLID_STABILITY_RATIO`)
+ * is 2 stars, and 3 if it is lower still (`STEADY_STABILITY_RATIO`) and she
+ * never heeled past `STEADY_PEAK_ROLL_DEG`.
  */
 export function scoreShipshape(
   runs: Readonly<Record<SimSea, ShipshapeRun>>
 ): ChallengeScore {
   const sea = decidingSea(runs);
   const run = runs[sea];
+  const stormy = runs.stormy;
   let value = 0;
   if (survived(runs.calm.outcome) && survived(runs.choppy.outcome)) {
     value = 1;
-    if (survived(runs.stormy.outcome)) {
-      value = runs.stormy.peakRollDeg <= STEADY_PEAK_ROLL_DEG ? 3 : 2;
+    if (
+      survived(stormy.outcome) &&
+      stormy.stabilityRatio <= SOLID_STABILITY_RATIO
+    ) {
+      const isSteady =
+        stormy.stabilityRatio <= STEADY_STABILITY_RATIO &&
+        stormy.peakRollDeg <= STEADY_PEAK_ROLL_DEG;
+      value = isSteady ? 3 : 2;
     }
   }
-  return { ...scored("shipshape", value), sea, peakRollDeg: run.peakRollDeg };
+  return {
+    ...scored("shipshape", value),
+    sea,
+    peakRollDeg: run.peakRollDeg,
+    hasCapsized: run.outcome === "capsized",
+  };
 }

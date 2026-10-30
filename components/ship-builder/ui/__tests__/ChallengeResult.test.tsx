@@ -106,6 +106,9 @@ describe("a challenge result", () => {
   });
 
   it("plays the trial that decides Shipshape and says what happened", () => {
+    act(() =>
+      store().loadShip(findTemplate("arleigh-burke")!.build(), "burke")
+    );
     finishChallenge("shipshape");
     render(<SeaTrialResult />);
     expect(
@@ -117,16 +120,27 @@ describe("a challenge result", () => {
     expect(screen.getByText(/Three stars/)).toBeInTheDocument();
   });
 
-  it("gives two stars when a stormy sea heels her hard", () => {
+  it("gives one star to a top-heavy ship that rides out the storm", () => {
     act(() =>
       store().loadShip(findTemplate("wonder-of-the-seas")!.build(), "wonder")
     );
     finishChallenge("shipshape");
     render(<SeaTrialResult />);
     expect(
+      screen.getByRole("img", { name: "1 of 3 stars" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/capsized/)).toBeNull();
+  });
+
+  it("gives the Titanic two stars for Shipshape", () => {
+    act(() => store().loadShip(findTemplate("titanic")!.build(), "titanic"));
+    finishChallenge("shipshape");
+    render(<SeaTrialResult />);
+    expect(
       screen.getByRole("img", { name: "2 of 3 stars" })
     ).toBeInTheDocument();
   });
+
   it("does not call a repeat a new best, and keeps the better value", () => {
     finishChallenge("shipshape");
     const { unmount } = render(<SeaTrialResult />);
@@ -150,6 +164,6 @@ describe("a challenge result", () => {
     act(() => store().loadShip(findTemplate("titanic")!.build(), null));
     finishChallenge("shipshape");
     render(<SeaTrialResult />);
-    expect(bestValue(challengeProgress.get(), "unsaved", "shipshape")).toBe(3);
+    expect(bestValue(challengeProgress.get(), "unsaved", "shipshape")).toBe(2);
   });
 });

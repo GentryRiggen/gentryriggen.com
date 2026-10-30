@@ -31,6 +31,17 @@ export const NOT_SCORED = -1;
  */
 export const STEADY_PEAK_ROLL_DEG = 28;
 
+/**
+ * Shipshape: how high her weight may sit (`stabilityRatio`, the lever of the
+ * weight above the waterline over her width; lower is steadier and below zero
+ * is ballasted) for each star. The stormy sim rolls every stable ship the
+ * same, so this margin is what tells ships apart: the Titanic (0.109) earns
+ * two stars, a low warship or pirate sloop three, a tall container ship or
+ * cruise liner one.
+ */
+export const SOLID_STABILITY_RATIO = 0.12;
+export const STEADY_STABILITY_RATIO = 0.06;
+
 export type ChallengeTrial =
   | {
       kind: "iceberg";
@@ -78,10 +89,10 @@ export const CHALLENGES: readonly ChallengeDef[] = [
   {
     id: "shipshape",
     title: "Shipshape",
-    blurb: "Ride out a stormy sea steadily, without rolling hard.",
+    blurb: "Ride out a stormy sea steadily, with your weight kept low.",
     trial: { kind: "waves", sea: "stormy" },
     starAt: [1, 2, 3],
-    tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight, so she rolls less.",
+    tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight, so her weight sits lower.",
   },
 ];
 

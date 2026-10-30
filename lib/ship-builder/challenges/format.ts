@@ -11,8 +11,8 @@ import {
 const SHIPSHAPE_SEAS = [
   "She capsized in a choppy sea",
   "Rode out a choppy sea",
-  "Rode out a stormy sea, but rolled hard",
-  "Rode out a stormy sea steadily",
+  "Rode out a stormy sea with her weight fairly high",
+  "Rode out a stormy sea with her weight kept low",
 ] as const;
 
 /** Said when a trial did not apply (see `NOT_SCORED`). */
@@ -51,8 +51,8 @@ export function describeGoal(id: ChallengeId, value: number): string | null {
       return target === 1
         ? "Ride out a choppy sea"
         : target === 2
-          ? "Ride out a stormy sea"
-          : `Ride out a stormy sea rolling under ${STEADY_PEAK_ROLL_DEG} degrees`;
+          ? "Ride out a stormy sea with your weight lower"
+          : `Ride out a stormy sea with your weight kept low, rolling under ${STEADY_PEAK_ROLL_DEG} degrees`;
   }
 }
 

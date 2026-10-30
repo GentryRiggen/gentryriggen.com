@@ -83,7 +83,11 @@ export default function ChallengeResult({
       </p>
       {score.sea !== undefined && score.peakRollDeg !== undefined && (
         <p className="text-xs text-slate-600 dark:text-slate-300">
-          {describeShipshapeRun(score.sea, score.peakRollDeg, score.value < 2)}
+          {describeShipshapeRun(
+            score.sea,
+            score.peakRollDeg,
+            score.hasCapsized === true
+          )}
         </p>
       )}
       {isScored && (

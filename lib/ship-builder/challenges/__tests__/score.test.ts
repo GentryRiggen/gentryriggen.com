@@ -135,8 +135,9 @@ describe("scoreEvacuation", () => {
 
 const run = (
   outcome: "steady" | "recovered" | "capsized",
-  peakRollDeg: number
-) => ({ outcome, peakRollDeg });
+  peakRollDeg: number,
+  stabilityRatio = 0.03
+) => ({ outcome, peakRollDeg, stabilityRatio });
 
 describe("scoreShipshape", () => {
   const calm = run("steady", 1);
@@ -154,19 +155,39 @@ describe("scoreShipshape", () => {
   it("gives one star for a choppy sea, decided by the stormy trial", () => {
     expect(
       scoreShipshape({ calm, choppy, stormy: run("capsized", 90) })
-    ).toMatchObject({ stars: 1, sea: "stormy", peakRollDeg: 90 });
+    ).toMatchObject({
+      stars: 1,
+      sea: "stormy",
+      peakRollDeg: 90,
+      hasCapsized: true,
+    });
   });
 
-  it("gives two stars for riding out a stormy sea with a hard roll", () => {
+  it("gives one star to a top-heavy ship that survives the storm", () => {
     expect(
-      scoreShipshape({ calm, choppy, stormy: run("recovered", 39) })
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 39, 0.137) })
+    ).toMatchObject({ stars: 1, hasCapsized: false });
+  });
+
+  it("gives two stars for a stormy sea ridden out with weight not low", () => {
+    expect(
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 27.7, 0.109) })
     ).toMatchObject({ stars: 2, sea: "stormy" });
+    expect(
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 39, 0.03) })
+    ).toMatchObject({ stars: 2 });
   });
 
-  it("gives three stars for a stormy sea rolled through steadily", () => {
+  it("gives three stars for a stormy sea with weight low and rolls steady", () => {
     expect(
-      scoreShipshape({ calm, choppy, stormy: run("recovered", 27.7) })
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 27.7, 0.049) })
     ).toMatchObject({ id: "shipshape", value: 3, stars: 3, isScored: true });
+  });
+
+  it("is measured from the ship, not only the sea", () => {
+    const ship = findTemplate("titanic")!.build();
+    const runs = shipshapeRuns(inputOf(ship, "stormy", false));
+    expect(runs.stormy.stabilityRatio).toBeCloseTo(0.109, 2);
   });
 
   it("names the sea that decided it", () => {
@@ -176,18 +197,19 @@ describe("scoreShipshape", () => {
     expect(decidingSea({ calm, choppy, stormy: choppy })).toBe("stormy");
   });
 
-  it("spreads the templates: a stable one earns 3, a top-heavier one less", () => {
+  it("spreads the templates over one, two and three stars", () => {
     const starsOf = (id: string) => {
       const ship = findTemplate(id)!.build();
       return scoreShipshape(shipshapeRuns(inputOf(ship, "stormy", false)))
         .stars;
     };
-    expect(starsOf("titanic")).toBe(3);
-    const all = Object.values(TEMPLATES)
-      .flat()
-      .map((t) => starsOf(t.id));
-    expect(Math.min(...all)).toBeLessThan(3);
-    expect(Math.max(...all)).toBe(3);
+    expect(starsOf("titanic")).toBe(2);
+    expect(starsOf("wonder-of-the-seas")).toBe(1);
+    expect(starsOf("arleigh-burke")).toBe(3);
+    const spread = [0, 0, 0, 0];
+    for (const t of Object.values(TEMPLATES).flat()) spread[starsOf(t.id)]++;
+    expect(spread.slice(1).every((count) => count > 0)).toBe(true);
+    expect(spread[0]).toBe(0);
   });
 });
 
