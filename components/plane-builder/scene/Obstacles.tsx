@@ -2,12 +2,26 @@
 
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
-import { type BufferGeometry, type InstancedMesh, Object3D } from "three";
+import { useFrame } from "@react-three/fiber";
+import {
+  type BufferGeometry,
+  type Group,
+  type InstancedMesh,
+  Object3D,
+} from "three";
 import type {
   LevelDef,
   Obstacle,
   ObstacleKind,
 } from "@/lib/plane-builder/levels/types";
+import {
+  chunkObstacles,
+  chunkSpan,
+  isChunkInRange,
+} from "@/lib/plane-builder/render/chunks";
+import { qualitySettings } from "@/lib/plane-builder/render/quality";
+import { useQualityStore } from "@/lib/plane-builder/render/qualityStore";
+import { lockedQuality } from "@/lib/plane-builder/testHooks";
 import { FallbackBoundary, Tracked } from "./GlbProp";
 import { buildObstacleGeometry } from "./obstacleGeometry";
 import {
@@ -16,6 +30,9 @@ import {
   obstacleVariant,
 } from "./obstacleModels";
 
+/** The course range (x) a slice covers, kept on its mesh for the culler. */
+type Span = [minX: number, maxX: number];
+
 interface InstancesProps {
   geometry: BufferGeometry;
   items: Obstacle[];
@@ -23,9 +40,14 @@ interface InstancesProps {
   hasShadows?: boolean;
 }
 
-/** One instanced mesh: `geometry` stretched to each obstacle's box. */
+/**
+ * One instanced mesh: `geometry` stretched to each obstacle's box. It holds one
+ * slice of the course, so the renderer culls it when it is out of view and it
+ * is hidden when it is beyond the quality level's draw distance.
+ */
 function Instances({ geometry, items, hasShadows = true }: InstancesProps) {
   const mesh = useRef<InstancedMesh>(null);
+  const [minX, maxX] = useMemo(() => chunkSpan(items), [items]);
 
   useLayoutEffect(() => {
     const instances = mesh.current;
@@ -45,11 +67,35 @@ function Instances({ geometry, items, hasShadows = true }: InstancesProps) {
     <instancedMesh
       ref={mesh}
       args={[geometry, undefined, items.length]}
+      userData={{ span: [minX, maxX] satisfies Span }}
       castShadow={hasShadows}
       receiveShadow={hasShadows}
     >
       <meshStandardMaterial vertexColors roughness={0.85} />
     </instancedMesh>
+  );
+}
+
+interface ChunksProps {
+  geometry: BufferGeometry;
+  items: Obstacle[];
+  hasShadows?: boolean;
+}
+
+/** `items` split along the course into separately culled instanced meshes. */
+function Chunks({ geometry, items, hasShadows }: ChunksProps) {
+  const chunks = useMemo(() => chunkObstacles(items), [items]);
+  return (
+    <>
+      {chunks.map((chunk) => (
+        <Instances
+          key={chunk.index}
+          geometry={geometry}
+          items={chunk.items}
+          hasShadows={hasShadows}
+        />
+      ))}
+    </>
   );
 }
 
@@ -67,11 +113,7 @@ function Procedural({ kind, items, level }: ProceduralProps) {
   );
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
   return (
-    <Instances
-      geometry={geometry}
-      items={items}
-      hasShadows={kind !== "cloud"}
-    />
+    <Chunks geometry={geometry} items={items} hasShadows={kind !== "cloud"} />
   );
 }
 
@@ -92,11 +134,7 @@ function Model({ kind, url, items, level }: ModelProps) {
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <Tracked state="loaded">
-      <Instances
-        geometry={geometry}
-        items={items}
-        hasShadows={kind !== "cloud"}
-      />
+      <Chunks geometry={geometry} items={items} hasShadows={kind !== "cloud"} />
     </Tracked>
   );
 }
@@ -107,7 +145,7 @@ interface KindInstancesProps {
   level: LevelDef;
 }
 
-/** One kind's obstacles: a draw call per variant, each from its glb. */
+/** One kind's obstacles: a draw call per variant and course slice, each from its glb. */
 function KindInstances({ kind, items, level }: KindInstancesProps) {
   const byVariant = useMemo(() => {
     const groups = new Map<string, Obstacle[]>();
@@ -143,6 +181,24 @@ interface ObstaclesProps {
 
 /** Instanced meshes per obstacle kind (and variant) in the level. */
 export default function Obstacles({ level }: ObstaclesProps) {
+  const root = useRef<Group>(null);
+  // One pass for all slices: hide those beyond this quality level's distance.
+  useFrame(({ camera }) => {
+    const quality = lockedQuality() ?? useQualityStore.getState().level;
+    const { obstacleDistance } = qualitySettings(quality);
+    root.current?.traverse((object) => {
+      const span = object.userData.span as Span | undefined;
+      if (span) {
+        object.visible = isChunkInRange(
+          span[0],
+          span[1],
+          camera.position.x,
+          obstacleDistance
+        );
+      }
+    });
+  });
+
   const groups = useMemo(() => {
     const byKind = new Map<ObstacleKind, Obstacle[]>();
     for (const o of level.obstacles) {
@@ -154,7 +210,7 @@ export default function Obstacles({ level }: ObstaclesProps) {
   }, [level]);
 
   return (
-    <>
+    <group ref={root}>
       {groups.map(([kind, items]) => (
         <KindInstances
           key={`${level.id}-${kind}`}
@@ -163,6 +219,6 @@ export default function Obstacles({ level }: ObstaclesProps) {
           level={level}
         />
       ))}
-    </>
+    </group>
   );
 }
