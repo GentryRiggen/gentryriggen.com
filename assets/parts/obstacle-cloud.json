@@ -64,6 +64,7 @@
   ],
   "scoreVariant": "puff",
   "ao": {
-    "strength": 0
+    "strength": 0,
+    "gradient": true
   }
 }

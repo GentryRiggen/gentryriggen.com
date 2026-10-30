@@ -142,6 +142,8 @@ export function obstacleModelUrlsFor(
 ): string[] {
   const urls = new Set<string>();
   for (const o of obstacles) {
+    // Clouds are sprite puffs; their glbs are only a fallback, not preloaded.
+    if (o.kind === "cloud") continue;
     urls.add(obstacleModelUrl(o.kind, obstacleVariant(o, levelId)));
   }
   return [...urls];
