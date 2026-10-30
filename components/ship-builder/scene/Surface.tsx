@@ -56,6 +56,7 @@ const GHOST_OPACITY = 0.55;
  * is a pure key.
  */
 const materialCache = new Map<string, MeshStandardMaterial>();
+const cachedMaterials = new WeakSet<MeshStandardMaterial>();
 
 function lookKey(look: SurfaceLook): string {
   return [
@@ -91,8 +92,14 @@ export function surfaceMaterial(look: SurfaceLook): MeshStandardMaterial {
   if (!material) {
     material = createMaterial(look);
     materialCache.set(key, material);
+    cachedMaterials.add(material);
   }
   return material;
+}
+
+/** Whether a material is one of the shared ones above (never mutated). */
+export function isSharedSurfaceMaterial(material: unknown): boolean {
+  return cachedMaterials.has(material as MeshStandardMaterial);
 }
 
 /**

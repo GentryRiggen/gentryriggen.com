@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import type { BufferGeometry, InstancedMesh, Matrix4 } from "three";
+import { batchRef } from "./batchRegistry";
 import Surface, {
   type PartEmphasis,
   type PartTint,
@@ -45,7 +46,14 @@ export default function KitInstances({
   }, [matrices, geometry, count]);
   if (count === 0) return null;
   return (
-    <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]}>
+    <instancedMesh
+      key={count}
+      ref={(mesh) => {
+        ref.current = mesh;
+        batchRef(mesh);
+      }}
+      args={[undefined, undefined, count]}
+    >
       <primitive object={geometry} attach="geometry" dispose={null} />
       <Surface
         color={color}
