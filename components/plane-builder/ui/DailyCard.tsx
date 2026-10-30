@@ -9,10 +9,12 @@ import {
   msUntilNextUtcDay,
   utcDateKey,
 } from "@/lib/plane-builder/daily/daily";
+import { planeLevelOf } from "@/lib/plane-builder/share/timeCard";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { LEADERBOARDS_ENABLED } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import Leaderboards from "./Leaderboards";
+import ShareTimeButton from "./ShareTimeButton";
 import { cardClass, primaryButtonClass, secondaryButtonClass } from "./styles";
 
 /** The clock, as whole seconds, so the card re-renders once a second. */
@@ -40,6 +42,8 @@ export default function DailyCard({
   );
   const openDaily = usePlaneBuilderStore((s) => s.openDaily);
   const dailyBest = usePlaneBuilderStore((s) => s.progress.dailyBest);
+  const nickname = usePlaneBuilderStore((s) => s.progress.nickname);
+  const levels = usePlaneBuilderStore((s) => s.progress.levels);
   const [uid, setUid] = useState<string | null>(null);
   const [isBoardOpen, setIsBoardOpen] = useState(false);
 
@@ -101,6 +105,17 @@ export default function DailyCard({
         >
           {bestToday === null ? "Fly today's challenge" : "Fly it again"}
         </button>
+        {bestToday !== null ? (
+          <ShareTimeButton
+            card={{
+              worldName: LEVELS[today.world].name,
+              time: bestToday,
+              nickname,
+              planeLevel: planeLevelOf(levels[today.world].tiers),
+              twist,
+            }}
+          />
+        ) : null}
         {leaderboardsEnabled && uid !== null ? (
           <button
             type="button"
