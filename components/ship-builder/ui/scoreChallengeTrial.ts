@@ -1,9 +1,10 @@
 import {
   countSaved,
+  notScored,
   scoreEvacuation,
   scoreOutlast,
   scoreShipshape,
-  shipshapeOutcomes,
+  shipshapeRuns,
   type ChallengeScore,
 } from "@/lib/ship-builder/challenges/score";
 import type { ChallengeId } from "@/lib/ship-builder/challenges/definitions";
@@ -28,10 +29,11 @@ export default function scoreChallengeTrial(
     case "outlast":
       return scoreOutlast(state);
     case "shipshape":
-      return scoreShipshape(shipshapeOutcomes(input));
+      return scoreShipshape(shipshapeRuns(input));
     case "evacuation": {
       const people = crowdPlanFor(ship).plan.people.length;
-      if (state.outcome !== "sank") return scoreEvacuation(people, people);
+      // Nothing to escape from: the card says so and nothing is saved.
+      if (state.outcome !== "sank") return notScored("evacuation");
       const plan = trialEvacuationFor(input, ship, true);
       if (!plan) return scoreEvacuation(people, 0);
       const end = timelineEnd(trialTimelineFor(input, true));

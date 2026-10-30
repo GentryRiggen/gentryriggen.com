@@ -18,8 +18,27 @@ export const NEVER_SINKS_MINUTES = 1440;
 /** Story minutes the real Titanic took to go down: 2 hours 40 minutes. */
 export const TITANIC_MINUTES = 160;
 
+/**
+ * Story-free value of a challenge that did not apply (a ship that stayed
+ * afloat has no sinking to escape). Never stored or sent to the board.
+ */
+export const NOT_SCORED = -1;
+
+/**
+ * Shipshape: the most a stormy sea may heel her, in degrees from her resting
+ * list, for the third star. A stable, level ship rolls about 27.7 degrees; a
+ * top-heavier one more.
+ */
+export const STEADY_PEAK_ROLL_DEG = 28;
+
 export type ChallengeTrial =
-  | { kind: "iceberg"; sea: SimSea; breakMode: BreakMode }
+  | {
+      kind: "iceberg";
+      sea: SimSea;
+      breakMode: BreakMode;
+      /** The gash runs the whole hull, so every ship really sinks. */
+      isWholeHull?: boolean;
+    }
   | { kind: "waves"; sea: SimSea };
 
 export interface ChallengeDef {
@@ -47,17 +66,22 @@ export const CHALLENGES: readonly ChallengeDef[] = [
     id: "evacuation",
     title: "Everyone off safely",
     blurb: "When she sinks, get as many people into lifeboats as you can.",
-    trial: { kind: "iceberg", sea: "calm", breakMode: "real" },
+    trial: {
+      kind: "iceberg",
+      sea: "calm",
+      breakMode: "real",
+      isWholeHull: true,
+    },
     starAt: [25, 75, 100],
     tip: "Add lifeboats on davits, spread along both sides of the deck, so every passenger has a seat nearby.",
   },
   {
     id: "shipshape",
     title: "Shipshape",
-    blurb: "Sail through rough seas without capsizing.",
+    blurb: "Ride out a stormy sea steadily, without rolling hard.",
     trial: { kind: "waves", sea: "stormy" },
     starAt: [1, 2, 3],
-    tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight.",
+    tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight, so she rolls less.",
   },
 ];
 

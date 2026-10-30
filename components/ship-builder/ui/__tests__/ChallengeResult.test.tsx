@@ -8,7 +8,7 @@ import {
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
 import { findTemplate } from "@/lib/ship-builder/templates";
-import { challengeProgress } from "../../hooks/challengeProgress";
+import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import SeaTrialResult from "../SeaTrialResult";
 
 const store = () => useShipBuilderStore.getState();
@@ -67,15 +67,66 @@ describe("a challenge result", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("gives a stable ship three stars for Shipshape", () => {
+  it("is not scored when she stays afloat: no stars, nothing saved", () => {
+    act(() => store().loadShip(findTemplate("britannic")!.build(), "brit"));
+    // An ordinary iceberg strike that this ship floats through.
+    act(() => store().startTrial("calm", 12));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    const state = runTrial(trial.input);
+    expect(state.outcome).toBe("afloat");
+    act(() =>
+      useShipBuilderStore.setState({
+        trial: {
+          status: "result",
+          input: trial.input,
+          state,
+          runId: trial.runId,
+          descending: true,
+          challenge: "evacuation",
+        },
+      })
+    );
+    render(<SeaTrialResult />);
+    expect(
+      screen.getByText(
+        "She stayed afloat, so there was no sinking to escape. Try it on a ship that can sink."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /of 3 stars/ })).toBeNull();
+    expect(screen.queryByText("New best!")).toBeNull();
+    expect(challengeProgress.get().designs).toEqual({});
+  });
+
+  it("sinks every template in the evacuation challenge", () => {
+    act(() => store().loadShip(findTemplate("britannic")!.build(), "brit"));
+    finishChallenge("evacuation");
+    render(<SeaTrialResult />);
+    expect(screen.getByText(/% of people saved/)).toBeInTheDocument();
+  });
+
+  it("plays the trial that decides Shipshape and says what happened", () => {
     finishChallenge("shipshape");
     render(<SeaTrialResult />);
     expect(
       screen.getByRole("img", { name: "3 of 3 stars" })
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/In the stormy sea she rolled/)
+    ).toBeInTheDocument();
     expect(screen.getByText(/Three stars/)).toBeInTheDocument();
   });
 
+  it("gives two stars when a stormy sea heels her hard", () => {
+    act(() =>
+      store().loadShip(findTemplate("wonder-of-the-seas")!.build(), "wonder")
+    );
+    finishChallenge("shipshape");
+    render(<SeaTrialResult />);
+    expect(
+      screen.getByRole("img", { name: "2 of 3 stars" })
+    ).toBeInTheDocument();
+  });
   it("does not call a repeat a new best, and keeps the better value", () => {
     finishChallenge("shipshape");
     const { unmount } = render(<SeaTrialResult />);

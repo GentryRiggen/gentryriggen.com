@@ -12,7 +12,7 @@ import { SHIP_BUILDER_VERSION } from "@/lib/ship-builder/version";
 import {
   adoptUnsavedChallenges,
   challengeProgress,
-} from "../hooks/challengeProgress";
+} from "@/lib/ship-builder/challenges/progressStore";
 import ChallengesDialog from "./ChallengesDialog";
 import MyShipsDialog from "./MyShipsDialog";
 import NewShipDialog from "./NewShipDialog";

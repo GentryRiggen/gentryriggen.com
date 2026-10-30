@@ -21,9 +21,26 @@ interface StoredChallenges {
   nickname: ChallengeProgress["nickname"];
 }
 
-/** Never throws: absent, corrupt or newer-format text reads as no progress. */
+/** True for stored text written by a newer build (a later `v`). */
+export function isNewerChallengesFormat(raw: string | null): boolean {
+  if (!raw) return false;
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (typeof data !== "object" || data === null) return false;
+    const { v } = data as { v?: unknown };
+    return typeof v === "number" && v > CHALLENGES_VERSION;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Never throws: absent, corrupt or newer-format text reads as no progress.
+ * Text from a newer build is only read past, never changed: the store does
+ * not write over it (see progressStore.ts).
+ */
 export function parseChallenges(raw: string | null): ChallengeProgress {
-  if (!raw) return EMPTY_PROGRESS;
+  if (!raw || isNewerChallengesFormat(raw)) return EMPTY_PROGRESS;
   try {
     const data: unknown = JSON.parse(raw);
     if (typeof data !== "object" || data === null) return EMPTY_PROGRESS;

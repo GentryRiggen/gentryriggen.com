@@ -7,7 +7,7 @@ import { standingOn } from "@/lib/leaderboard/rank";
 import { fetchShipBoard } from "@/lib/leaderboard/shipBoard";
 import type { LeaderboardRow } from "@/lib/leaderboard/types";
 import { totalStars } from "@/lib/ship-builder/challenges/progress";
-import { challengeProgress } from "../hooks/challengeProgress";
+import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import { SHIP_BOARD_ENABLED } from "../hooks/shipBoardSync";
 
 /** How many players the board shows; your own rank is added below. */

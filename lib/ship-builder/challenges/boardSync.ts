@@ -4,6 +4,12 @@ import { overallBests, totalStars, type ChallengeProgress } from "./progress";
 /** The server allows a write every 10 s; stay clear of that. */
 export const SUBMIT_INTERVAL_MS = 15_000;
 
+/**
+ * The most the total may rise in one write (one design's maximum); the
+ * rules refuse a bigger jump. A bigger gap is climbed over several writes.
+ */
+export const MAX_STARS_PER_WRITE = 9;
+
 export interface BoardSyncDeps {
   enabled: boolean;
   getProgress: () => ChallengeProgress;
@@ -40,13 +46,37 @@ export function createBoardSync(deps: BoardSyncDeps): BoardSync {
   const now = deps.now ?? Date.now;
   let lastSentAt = Number.NEGATIVE_INFINITY;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  /** The total the server last accepted, or null until one is. */
+  let accepted: number | null = null;
+  let hasFailed = false;
+
+  /**
+   * The total to send now. With a known base it steps up by at most
+   * `MAX_STARS_PER_WRITE`. With none, the full total is tried first; if that
+   * was refused (the server may hold a lower total), a small one is sent,
+   * which is always allowed, and the climb continues from there.
+   */
+  function totalToSend(target: number): number {
+    if (accepted !== null) {
+      return Math.min(target, accepted + MAX_STARS_PER_WRITE);
+    }
+    return hasFailed ? Math.min(target, MAX_STARS_PER_WRITE) : target;
+  }
 
   async function send(): Promise<void> {
     lastSentAt = now();
     try {
       const entry = entryOf(deps.getProgress(), deps.ensureNickname());
-      if (entry) await deps.submit(entry);
+      if (!entry) return;
+      const totalStars = totalToSend(entry.totalStars);
+      if (await deps.submit({ ...entry, totalStars })) {
+        accepted = totalStars;
+        if (totalStars < entry.totalStars) request();
+      } else {
+        hasFailed = true;
+      }
     } catch {
+      hasFailed = true;
       // Retried by the next trial; the game never waits on the board.
     }
   }

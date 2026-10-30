@@ -2,19 +2,26 @@ import { formatStoryTime } from "../sim/story";
 import {
   challengeDef,
   NEVER_SINKS_MINUTES,
+  NOT_SCORED,
+  STEADY_PEAK_ROLL_DEG,
   nextStarAt,
   type ChallengeId,
 } from "./definitions";
 
 const SHIPSHAPE_SEAS = [
-  "She capsized in a calm sea",
-  "Rode out a calm sea",
+  "She capsized in a choppy sea",
   "Rode out a choppy sea",
-  "Rode out a stormy sea",
+  "Rode out a stormy sea, but rolled hard",
+  "Rode out a stormy sea steadily",
 ] as const;
+
+/** Said when a trial did not apply (see `NOT_SCORED`). */
+export const NOT_SCORED_TEXT =
+  "She stayed afloat, so there was no sinking to escape. Try it on a ship that can sink.";
 
 /** A best value in plain words, e.g. "Stayed afloat 1 hour 40 minutes". */
 export function describeValue(id: ChallengeId, value: number): string {
+  if (value === NOT_SCORED) return NOT_SCORED_TEXT;
   switch (id) {
     case "outlast":
       return value >= NEVER_SINKS_MINUTES
@@ -42,10 +49,10 @@ export function describeGoal(id: ChallengeId, value: number): string | null {
         : `Save ${target}% of the people`;
     case "shipshape":
       return target === 1
-        ? "Ride out a calm sea"
+        ? "Ride out a choppy sea"
         : target === 2
-          ? "Ride out a choppy sea"
-          : "Ride out a stormy sea";
+          ? "Ride out a stormy sea"
+          : `Ride out a stormy sea rolling under ${STEADY_PEAK_ROLL_DEG} degrees`;
   }
 }
 
@@ -54,4 +61,15 @@ export function beatItHint(id: ChallengeId, value: number): string {
   const goal = describeGoal(id, value);
   if (goal === null) return "Three stars! You beat this one.";
   return `For the next star: ${goal.charAt(0).toLowerCase()}${goal.slice(1)}. ${challengeDef(id).tip}`;
+}
+
+/** Shipshape: what happened in the trial that decided the score. */
+export function describeShipshapeRun(
+  sea: string,
+  peakRollDeg: number,
+  hasCapsized: boolean
+): string {
+  return hasCapsized
+    ? `She capsized in the ${sea} sea.`
+    : `In the ${sea} sea she rolled ${Math.round(peakRollDeg)} degrees at most.`;
 }

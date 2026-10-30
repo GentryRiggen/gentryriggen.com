@@ -8,15 +8,16 @@ import {
 } from "@/lib/ship-builder/challenges/definitions";
 import {
   beatItHint,
+  describeShipshapeRun,
   describeValue,
 } from "@/lib/ship-builder/challenges/format";
 import { bestValue, designKeyOf } from "@/lib/ship-builder/challenges/progress";
-import type { SimState, TrialInput } from "@/lib/ship-builder/sim/types";
-import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
   challengeProgress,
   recordChallengeBest,
-} from "../hooks/challengeProgress";
+} from "@/lib/ship-builder/challenges/progressStore";
+import type { SimState, TrialInput } from "@/lib/ship-builder/sim/types";
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { requestShipBoardSubmit } from "../hooks/shipBoardSync";
 import ChallengeStars from "./ChallengeStars";
 import scoreChallengeTrial from "./scoreChallengeTrial";
@@ -30,7 +31,8 @@ interface ChallengeResultProps {
 
 /**
  * The stars a challenge trial earned, what to change to earn the next one,
- * and a button to try again. Saves the result once when it appears.
+ * and a button to try again. Saves the result once when it appears, unless
+ * the trial did not apply (then it says why and keeps nothing).
  */
 export default function ChallengeResult({
   challenge,
@@ -46,17 +48,20 @@ export default function ChallengeResult({
     () => scoreChallengeTrial(challenge, input, state, ship),
     [challenge, input, state, ship]
   );
+  const { isScored } = score;
   // Read before the result is saved, so "new best" compares with the old one.
   const [previous] = useState(() =>
     bestValue(challengeProgress.get(), designKey, challenge)
   );
-  const isNewBest = score.value > (previous ?? -1) && score.stars > 0;
+  const isNewBest =
+    isScored && score.value > (previous ?? -1) && score.stars > 0;
 
   useEffect(() => {
+    if (!isScored) return;
     if (recordChallengeBest(designKey, challenge, score.value)) {
       requestShipBoardSubmit();
     }
-  }, [designKey, challenge, score.value]);
+  }, [designKey, challenge, score.value, isScored]);
 
   return (
     <section
@@ -71,14 +76,21 @@ export default function ChallengeResult({
             New best!
           </span>
         )}
-        <ChallengeStars stars={score.stars} className="h-6 w-6" />
+        {isScored && <ChallengeStars stars={score.stars} className="h-6 w-6" />}
       </div>
       <p className="text-sm font-medium">
         {describeValue(challenge, score.value)}
       </p>
-      <p className="text-xs text-slate-600 dark:text-slate-300">
-        {beatItHint(challenge, score.value)}
-      </p>
+      {score.sea !== undefined && score.peakRollDeg !== undefined && (
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          {describeShipshapeRun(score.sea, score.peakRollDeg, score.value < 2)}
+        </p>
+      )}
+      {isScored && (
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          {beatItHint(challenge, score.value)}
+        </p>
+      )}
       <button
         type="button"
         onClick={() => startChallenge(challenge)}

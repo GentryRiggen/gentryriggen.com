@@ -2,6 +2,7 @@ import { recordBest, EMPTY_PROGRESS } from "../../challenges/progress";
 import {
   CHALLENGES_KEY,
   CHALLENGES_VERSION,
+  isNewerChallengesFormat,
   parseChallenges,
   serializeChallenges,
 } from "../challenges";
@@ -30,6 +31,18 @@ describe("challenge persistence", () => {
       expect(parseChallenges(raw)).toEqual(EMPTY_PROGRESS);
     }
   );
+
+  it("reads a newer format as empty and recognises it", () => {
+    const newer = JSON.stringify({
+      v: CHALLENGES_VERSION + 1,
+      designs: { a: { outlast: 170 } },
+      nickname: null,
+    });
+    expect(isNewerChallengesFormat(newer)).toBe(true);
+    expect(parseChallenges(newer)).toEqual(EMPTY_PROGRESS);
+    expect(isNewerChallengesFormat(`{"v":${CHALLENGES_VERSION}}`)).toBe(false);
+    expect(isNewerChallengesFormat("junk")).toBe(false);
+  });
 
   it("lives apart from ship saves, which still load without it", () => {
     expect(CHALLENGES_KEY).not.toBe(SHIPS_KEY);

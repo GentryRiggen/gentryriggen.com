@@ -4,7 +4,7 @@ import {
   recordBest,
   EMPTY_PROGRESS,
 } from "@/lib/ship-builder/challenges/progress";
-import { challengeProgress } from "../../hooks/challengeProgress";
+import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import ShipLeaderboard from "../ShipLeaderboard";
 
 jest.mock("@/lib/leaderboard/auth", () => ({

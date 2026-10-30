@@ -189,8 +189,10 @@ service cloud.firestore {
         && validNickname(d.nickname)
         && d.totalStars is int && d.totalStars >= 1 && d.totalStars <= 4500
         && validShipBests(d.bests)
-        // Every best was earned on some design, so the total is at least the
-        // stars of those bests; and a player with stars has a best.
+        // A player with stars has a best to show for them, and every best was
+        // earned on some design, so the total is at least the stars of those
+        // bests.
+        && d.bests.size() > 0
         && d.totalStars >= starsOf(d.bests, 'outlast', 60, 160, 1440)
           + starsOf(d.bests, 'evacuation', 25, 75, 100)
           + starsOf(d.bests, 'shipshape', 1, 2, 3)
@@ -204,13 +206,15 @@ service cloud.firestore {
 
     // Stars can grow no faster than the game can award them: at most 3 per
     // trial and a trial takes over 20 seconds, so 6 plus 1 per 5 seconds of
-    // slack. They may fall when a ship is deleted. Writes are 10 s apart.
+    // slack, and never more than 9 (one design's maximum) in a single write,
+    // so idle time cannot be banked into one big jump. They may fall when a
+    // ship is deleted. Writes are 10 s apart.
     function validShipUpdate(uid) {
       let d = request.resource.data;
       let old = resource.data;
       let secs = (request.time.toMillis() - old.updatedAt.toMillis()) / 1000;
       return secs >= 10
-        && d.totalStars <= old.totalStars + 6 + secs / 5
+        && d.totalStars <= old.totalStars + (secs / 5 < 3 ? 6 + secs / 5 : 9)
         && notBanned(uid);
     }
 

@@ -99,10 +99,25 @@ export function cryptoRandom(): number {
   return Math.random();
 }
 
+/**
+ * The numbers a generated nickname may end in: 1 to 99 without 69 and 88.
+ * firestore.rules still accept those two so existing players are unaffected.
+ */
+const NICKNAME_NUMBERS: readonly number[] = Array.from(
+  { length: 99 },
+  (_, i) => i + 1
+).filter((n) => n !== 69 && n !== 88);
+
 export function randomNickname(rng: () => number = cryptoRandom): string {
   const pick = (items: readonly string[]): string =>
     items[Math.min(items.length - 1, Math.floor(rng() * items.length))];
-  const n = 1 + Math.min(98, Math.floor(rng() * 99));
+  const n =
+    NICKNAME_NUMBERS[
+      Math.min(
+        NICKNAME_NUMBERS.length - 1,
+        Math.floor(rng() * NICKNAME_NUMBERS.length)
+      )
+    ];
   return `${pick(ADJECTIVES)} ${pick(ANIMALS)} ${n}`;
 }
 

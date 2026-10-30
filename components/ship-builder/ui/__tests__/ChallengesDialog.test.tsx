@@ -9,7 +9,7 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
-import { challengeProgress } from "../../hooks/challengeProgress";
+import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import ChallengesDialog from "../ChallengesDialog";
 
 beforeEach(() => {
@@ -76,6 +76,26 @@ describe("ChallengesDialog", () => {
     expect(trial.challenge).toBe("outlast");
     expect(trial.input.sea).toBe("calm");
     expect(trial.input.iceberg?.breakMode).toBe("real");
+  });
+
+  it("breaches the whole hull for the evacuation, so she really sinks", async () => {
+    const user = userEvent.setup();
+    render(<ChallengesDialog onClose={jest.fn()} />);
+    await user.click(screen.getByRole("button", { name: /Start Everyone/ }));
+    const { trial, ship } = useShipBuilderStore.getState();
+    if (trial.status !== "running") throw new Error("expected a running trial");
+    expect(trial.input.iceberg?.gashLength).toBe(trial.input.length);
+    expect(trial.input.length).toBeGreaterThan(0);
+    expect(ship.hull.lengthSegments).toBeGreaterThan(0);
+  });
+
+  it("leaves the Titanic challenge's gash at the usual size", async () => {
+    const user = userEvent.setup();
+    render(<ChallengesDialog onClose={jest.fn()} />);
+    await user.click(screen.getByRole("button", { name: /Start Outlast/ }));
+    const { trial } = useShipBuilderStore.getState();
+    if (trial.status !== "running") throw new Error("expected a running trial");
+    expect(trial.input.iceberg?.gashLength).toBeUndefined();
   });
 
   it("switches to the leaderboard tab (off in tests)", async () => {

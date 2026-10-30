@@ -2,7 +2,10 @@ import { randomNickname } from "@/lib/leaderboard/nickname";
 import { submitShipEntry } from "@/lib/leaderboard/shipBoard";
 import { createBoardSync } from "@/lib/ship-builder/challenges/boardSync";
 import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
-import { challengeProgress, setChallengeNickname } from "./challengeProgress";
+import {
+  challengeProgress,
+  setChallengeNickname,
+} from "@/lib/ship-builder/challenges/progressStore";
 
 /**
  * Whether Ship Builder talks to the leaderboard at all. Off wherever test

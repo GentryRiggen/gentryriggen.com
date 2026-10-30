@@ -14,15 +14,21 @@ import {
 } from "../../sim/timeline";
 import { trialFunnelsOf } from "../../sim/trialFunnels";
 import type { SimState, TrialInput } from "../../sim/types";
-import { findTemplate } from "../../templates";
+import { findTemplate, TEMPLATES } from "../../templates";
 import { walkGridOf } from "../../walk";
-import { CHALLENGE_STRIKE_FRACTION, NEVER_SINKS_MINUTES } from "../definitions";
+import {
+  CHALLENGE_STRIKE_FRACTION,
+  NEVER_SINKS_MINUTES,
+  NOT_SCORED,
+} from "../definitions";
 import {
   countSaved,
   scoreEvacuation,
   scoreOutlast,
+  decidingSea,
+  notScored,
   scoreShipshape,
-  shipshapeOutcomes,
+  shipshapeRuns,
 } from "../score";
 
 function inputOf(
@@ -74,6 +80,7 @@ describe("scoreOutlast", () => {
       id: "outlast",
       value: NEVER_SINKS_MINUTES,
       stars: 3,
+      isScored: true,
     });
   });
 
@@ -126,38 +133,85 @@ describe("scoreEvacuation", () => {
   });
 });
 
+const run = (
+  outcome: "steady" | "recovered" | "capsized",
+  peakRollDeg: number
+) => ({ outcome, peakRollDeg });
+
 describe("scoreShipshape", () => {
-  it("counts the seas survived in order", () => {
+  const calm = run("steady", 1);
+  const choppy = run("steady", 7);
+
+  it("gives nothing for capsizing in calm or choppy seas", () => {
     expect(
-      scoreShipshape({
-        calm: "capsized",
-        choppy: "steady",
-        stormy: "steady",
-      }).stars
-    ).toBe(0);
+      scoreShipshape({ calm: run("capsized", 90), choppy, stormy: choppy })
+    ).toMatchObject({ stars: 0, sea: "calm" });
     expect(
-      scoreShipshape({ calm: "steady", choppy: "capsized", stormy: "steady" })
-        .stars
-    ).toBe(1);
-    expect(
-      scoreShipshape({
-        calm: "steady",
-        choppy: "recovered",
-        stormy: "capsized",
-      }).stars
-    ).toBe(2);
-    expect(
-      scoreShipshape({
-        calm: "steady",
-        choppy: "steady",
-        stormy: "recovered",
-      })
-    ).toEqual({ id: "shipshape", value: 3, stars: 3 });
+      scoreShipshape({ calm, choppy: run("capsized", 90), stormy: choppy })
+    ).toMatchObject({ stars: 0, sea: "choppy" });
   });
 
-  it("gives a stable template three stars", () => {
-    const ship = findTemplate("titanic")!.build();
-    const outcomes = shipshapeOutcomes(inputOf(ship, "stormy", false));
-    expect(scoreShipshape(outcomes).stars).toBe(3);
+  it("gives one star for a choppy sea, decided by the stormy trial", () => {
+    expect(
+      scoreShipshape({ calm, choppy, stormy: run("capsized", 90) })
+    ).toMatchObject({ stars: 1, sea: "stormy", peakRollDeg: 90 });
+  });
+
+  it("gives two stars for riding out a stormy sea with a hard roll", () => {
+    expect(
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 39) })
+    ).toMatchObject({ stars: 2, sea: "stormy" });
+  });
+
+  it("gives three stars for a stormy sea rolled through steadily", () => {
+    expect(
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 27.7) })
+    ).toMatchObject({ id: "shipshape", value: 3, stars: 3, isScored: true });
+  });
+
+  it("names the sea that decided it", () => {
+    expect(
+      decidingSea({ calm, choppy: run("capsized", 90), stormy: choppy })
+    ).toBe("choppy");
+    expect(decidingSea({ calm, choppy, stormy: choppy })).toBe("stormy");
+  });
+
+  it("spreads the templates: a stable one earns 3, a top-heavier one less", () => {
+    const starsOf = (id: string) => {
+      const ship = findTemplate(id)!.build();
+      return scoreShipshape(shipshapeRuns(inputOf(ship, "stormy", false)))
+        .stars;
+    };
+    expect(starsOf("titanic")).toBe(3);
+    const all = Object.values(TEMPLATES)
+      .flat()
+      .map((t) => starsOf(t.id));
+    expect(Math.min(...all)).toBeLessThan(3);
+    expect(Math.max(...all)).toBe(3);
+  });
+});
+
+describe("the evacuation trial", () => {
+  it("sinks every template, so none is a free three stars", () => {
+    for (const template of Object.values(TEMPLATES).flat()) {
+      const ship = template.build();
+      const input = inputOf(ship, "calm", true);
+      const wholeHull = {
+        ...input,
+        iceberg: { ...input.iceberg!, gashLength: input.length },
+      };
+      const timeline = extendWithDescent(buildTimeline(wholeHull), wholeHull);
+      const last = timeline.states[timeline.states.length - 1];
+      expect([template.id, last.outcome]).toEqual([template.id, "sank"]);
+    }
+  });
+
+  it("is not scored when she stays afloat", () => {
+    expect(notScored("evacuation")).toEqual({
+      id: "evacuation",
+      value: NOT_SCORED,
+      stars: 0,
+      isScored: false,
+    });
   });
 });

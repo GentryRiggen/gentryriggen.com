@@ -1,4 +1,11 @@
-import { beatItHint, describeGoal, describeValue } from "../format";
+import { NOT_SCORED } from "../definitions";
+import {
+  beatItHint,
+  describeGoal,
+  describeShipshapeRun,
+  describeValue,
+  NOT_SCORED_TEXT,
+} from "../format";
 
 describe("format", () => {
   it("describes values in plain words", () => {
@@ -7,7 +14,20 @@ describe("format", () => {
     );
     expect(describeValue("outlast", 1440)).toBe("She never sank");
     expect(describeValue("evacuation", 50)).toBe("50% of people saved");
-    expect(describeValue("shipshape", 2)).toBe("Rode out a choppy sea");
+    expect(describeValue("shipshape", 1)).toBe("Rode out a choppy sea");
+    expect(describeValue("shipshape", 2)).toBe(
+      "Rode out a stormy sea, but rolled hard"
+    );
+    expect(describeValue("evacuation", NOT_SCORED)).toBe(NOT_SCORED_TEXT);
+    expect(NOT_SCORED_TEXT).toBe(
+      "She stayed afloat, so there was no sinking to escape. Try it on a ship that can sink."
+    );
+    expect(describeShipshapeRun("stormy", 39.2, false)).toBe(
+      "In the stormy sea she rolled 39 degrees at most."
+    );
+    expect(describeShipshapeRun("choppy", 90, true)).toBe(
+      "She capsized in the choppy sea."
+    );
   });
 
   it("names the next goal, or none at three stars", () => {

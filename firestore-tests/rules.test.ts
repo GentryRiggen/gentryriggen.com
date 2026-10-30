@@ -1041,12 +1041,18 @@ describe("shipLeaderboard", () => {
       );
     });
 
-    it("allows an empty bests map only with no stars to explain", async () => {
+    it("rejects stars with no best to explain them", async () => {
       await assertFails(
         setDoc(shipDoc(player()), entry({ totalStars: 0, bests: {} }))
       );
-      await assertSucceeds(
+      await assertFails(
         setDoc(shipDoc(player()), entry({ totalStars: 1, bests: {} }))
+      );
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 1, bests: { outlast: 60 } })
+        )
       );
     });
 
@@ -1141,10 +1147,13 @@ describe("shipLeaderboard", () => {
       );
     });
 
-    it("allows a bigger jump after a longer gap", async () => {
+    it("caps one write's rise at 9 stars, however long the gap", async () => {
       await seedPlayer({}, 600_000);
+      // The old doc holds 3 stars, so 12 is the most one write may reach.
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 13 })));
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 100 })));
       await assertSucceeds(
-        setDoc(shipDoc(player()), entry({ totalStars: 100 }))
+        setDoc(shipDoc(player()), entry({ totalStars: 12 }))
       );
     });
 
@@ -1168,6 +1177,32 @@ describe("shipLeaderboard", () => {
     it("rejects partial updates (updateDoc) that skip validation", async () => {
       await seedPlayer({}, 15_000);
       await assertFails(updateDoc(shipDoc(player()), { totalStars: 4500 }));
+    });
+
+    it("checks a partial write with a server time against the merged doc", async () => {
+      await seedPlayer({}, 15_000);
+      // The merged doc would hold 1 star for bests worth 3: refused even
+      // though the new fields alone look fine.
+      await assertFails(
+        updateDoc(shipDoc(player()), {
+          totalStars: 1,
+          updatedAt: serverTimestamp(),
+        })
+      );
+      // A bad nickname in the same shape is refused too.
+      await assertFails(
+        updateDoc(shipDoc(player()), {
+          nickname: "Evil Hacker 1",
+          updatedAt: serverTimestamp(),
+        })
+      );
+      // The merge only stands when the whole merged doc is valid.
+      await assertSucceeds(
+        updateDoc(shipDoc(player()), {
+          totalStars: 4,
+          updatedAt: serverTimestamp(),
+        })
+      );
     });
   });
 

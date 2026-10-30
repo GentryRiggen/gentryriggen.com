@@ -16,7 +16,7 @@ import {
   totalStars,
 } from "@/lib/ship-builder/challenges/progress";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import { challengeProgress } from "../hooks/challengeProgress";
+import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import ChallengeStars from "./ChallengeStars";
 import ShipLeaderboard from "./ShipLeaderboard";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";

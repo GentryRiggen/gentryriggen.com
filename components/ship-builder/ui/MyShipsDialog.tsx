@@ -18,7 +18,7 @@ import {
   inputClass,
   panelClass,
 } from "./styles";
-import { forgetChallengeDesign } from "../hooks/challengeProgress";
+import { forgetChallengeDesign } from "@/lib/ship-builder/challenges/progressStore";
 import trapTab from "./trapTab";
 import { droppedPartsNotice } from "@/lib/ship-builder/persist/schema";
 import { KIND_DEFAULTS } from "@/lib/ship-builder/model/kinds";

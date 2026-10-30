@@ -9,16 +9,32 @@ import {
 import type { ChallengeId } from "@/lib/ship-builder/challenges/definitions";
 import {
   CHALLENGES_KEY,
+  isNewerChallengesFormat,
   parseChallenges,
   serializeChallenges,
 } from "@/lib/ship-builder/persist/challenges";
-import { createStoredSetting } from "./createStoredSetting";
+import { createStoredSetting } from "../persist/storedSetting";
+
+function readRaw(): string | null {
+  try {
+    return window.localStorage.getItem(CHALLENGES_KEY);
+  } catch {
+    return null;
+  }
+}
 
 /** Stars and the leaderboard name, remembered per device. */
 export const challengeProgress = createStoredSetting<ChallengeProgress>({
   key: CHALLENGES_KEY,
   parse: parseChallenges,
-  serialize: serializeChallenges,
+  // A newer build's data is left exactly as it is: throwing makes the setting
+  // keep this session's progress in memory only, without touching storage.
+  serialize(value) {
+    if (isNewerChallengesFormat(readRaw())) {
+      throw new Error("Challenge progress is in a newer format; not saved");
+    }
+    return serializeChallenges(value);
+  },
   fallback: EMPTY_PROGRESS,
 });
 

@@ -1,10 +1,12 @@
 import type { EvacuationPlan } from "../crowd/evacuation";
 import { storyMinutesSinceImpact } from "../sim/story";
-import { runTrial } from "../sim/seaTrial";
+import { createTrial, stepTrial } from "../sim/seaTrial";
 import type { SimSea, SimState, TrialInput, TrialOutcome } from "../sim/types";
 import {
   MAX_VALUE,
   NEVER_SINKS_MINUTES,
+  NOT_SCORED,
+  STEADY_PEAK_ROLL_DEG,
   starsFor,
   type ChallengeId,
   type Stars,
@@ -13,8 +15,15 @@ import {
 /** What a trial earned: the value that is scored, and the stars it makes. */
 export interface ChallengeScore {
   id: ChallengeId;
+  /** `NOT_SCORED` when `isScored` is false. */
   value: number;
   stars: Stars;
+  /** False when the trial did not apply, so nothing is saved or sent. */
+  isScored: boolean;
+  /** Shipshape: the sea whose trial decided the score. */
+  sea?: SimSea;
+  /** Shipshape: the most she rolled in that trial, in degrees. */
+  peakRollDeg?: number;
 }
 
 function scored(id: ChallengeId, rawValue: number): ChallengeScore {
@@ -25,7 +34,12 @@ function scored(id: ChallengeId, rawValue: number): ChallengeScore {
       Number.isFinite(rawValue) ? Math.round(rawValue) : 0
     )
   );
-  return { id, value, stars: starsFor(id, value) };
+  return { id, value, stars: starsFor(id, value), isScored: true };
+}
+
+/** A trial that did not apply: no stars, nothing to save. */
+export function notScored(id: ChallengeId): ChallengeScore {
+  return { id, value: NOT_SCORED, stars: 0, isScored: false };
 }
 
 /**
@@ -63,34 +77,66 @@ export function countSaved(
 }
 
 const SEAS_IN_ORDER: readonly SimSea[] = ["calm", "choppy", "stormy"];
+const DEG = 180 / Math.PI;
+/** A weather trial that has not ended by now is not going to. */
+const MAX_WEATHER_S = 60;
+
+/** One sea's weather trial, run without rendering. */
+export interface ShipshapeRun {
+  outcome: TrialOutcome | null;
+  /** The most she rolled away from her resting list, in degrees. */
+  peakRollDeg: number;
+}
 
 function survived(outcome: TrialOutcome | null): boolean {
   return outcome === "steady" || outcome === "recovered";
 }
 
-/**
- * Shipshape: 1 star for riding out a calm sea, 2 for a choppy one and 3 for
- * a stormy one. A sea only counts once the gentler ones were survived.
- */
-export function scoreShipshape(
-  outcomes: Readonly<Record<SimSea, TrialOutcome | null>>
-): ChallengeScore {
-  let value = 0;
-  for (const sea of SEAS_IN_ORDER) {
-    if (!survived(outcomes[sea])) break;
-    value++;
+function runWeather(input: TrialInput, sea: SimSea): ShipshapeRun {
+  const trial: TrialInput = { ...input, sea };
+  let state = createTrial(trial);
+  let peak = 0;
+  while (state.phase !== "done" && state.time < MAX_WEATHER_S) {
+    state = stepTrial(trial, state);
+    peak = Math.max(peak, Math.abs(state.pose.roll - trial.ship.listAngle));
   }
-  return scored("shipshape", value);
+  return { outcome: state.outcome, peakRollDeg: peak * DEG };
 }
 
-/** Runs the waves trial in every sea (cheap, deterministic) for the score. */
-export function shipshapeOutcomes(
-  input: TrialInput
-): Record<SimSea, TrialOutcome | null> {
-  const outcomeIn = (sea: SimSea) => runTrial({ ...input, sea }).outcome;
+/** Runs the weather trial in every sea (cheap, deterministic) for the score. */
+export function shipshapeRuns(input: TrialInput): Record<SimSea, ShipshapeRun> {
   return {
-    calm: outcomeIn("calm"),
-    choppy: outcomeIn("choppy"),
-    stormy: outcomeIn("stormy"),
+    calm: runWeather(input, "calm"),
+    choppy: runWeather(input, "choppy"),
+    stormy: runWeather(input, "stormy"),
   };
+}
+
+/**
+ * The sea whose trial decides the score: the first she could not ride out,
+ * else the stormy one (which sets how steadily she did it).
+ */
+export function decidingSea(
+  runs: Readonly<Record<SimSea, ShipshapeRun>>
+): SimSea {
+  return SEAS_IN_ORDER.find((sea) => !survived(runs[sea].outcome)) ?? "stormy";
+}
+
+/**
+ * Shipshape: 1 star for riding out a choppy sea (calm comes with it), 2 for a
+ * stormy one, 3 for a stormy one without heeling past `STEADY_PEAK_ROLL_DEG`.
+ */
+export function scoreShipshape(
+  runs: Readonly<Record<SimSea, ShipshapeRun>>
+): ChallengeScore {
+  const sea = decidingSea(runs);
+  const run = runs[sea];
+  let value = 0;
+  if (survived(runs.calm.outcome) && survived(runs.choppy.outcome)) {
+    value = 1;
+    if (survived(runs.stormy.outcome)) {
+      value = runs.stormy.peakRollDeg <= STEADY_PEAK_ROLL_DEG ? 3 : 2;
+    }
+  }
+  return { ...scored("shipshape", value), sea, peakRollDeg: run.peakRollDeg };
 }

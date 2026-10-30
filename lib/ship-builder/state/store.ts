@@ -30,12 +30,13 @@ import { simShipFromStats } from "../sim/simShip";
 import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
+import { decidingSea, shipshapeRuns } from "../challenges/score";
 import {
   challengeDef,
   CHALLENGE_STRIKE_FRACTION,
   type ChallengeId,
 } from "../challenges/definitions";
-import { forgetUnsavedChallenges } from "../../../components/ship-builder/hooks/challengeProgress";
+import { forgetUnsavedChallenges } from "@/lib/ship-builder/challenges/progressStore";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
@@ -342,12 +343,19 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   function beginTrial(
     sea: SimSea,
     impactX?: number,
-    options: { breakMode?: BreakMode; challenge?: ChallengeId } = {}
+    options: {
+      breakMode?: BreakMode;
+      challenge?: ChallengeId;
+      /** Cells the gash runs (an iceberg trial); absent is the usual gash. */
+      gashLength?: number;
+      /** Picks the sea once the ship's input is known (weather challenges). */
+      chooseSea?: (input: TrialInput) => SimSea;
+    } = {}
   ) {
     const { ship } = get();
     const breakMode = options.breakMode ?? get().breakMode;
     const { stats } = analyzeShip(ship);
-    const input: TrialInput = {
+    const base: TrialInput = {
       ship: simShipFromStats(stats, ship.hull.beam),
       sea,
       length: gridLength(ship),
@@ -360,9 +368,15 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
               length: gridLength(ship),
               impactX,
               breakMode,
+              ...(options.gashLength === undefined
+                ? {}
+                : { gashLength: options.gashLength }),
             },
           }),
     };
+    const input = options.chooseSea
+      ? { ...base, sea: options.chooseSea(base) }
+      : base;
     runId += 1;
     set({
       trial: {
@@ -736,9 +750,18 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         def.kind === "iceberg"
           ? gridLength(get().ship) * CHALLENGE_STRIKE_FRACTION
           : undefined;
+      if (def.kind === "waves") {
+        // Play the trial that decides the score (see `decidingSea`).
+        beginTrial(def.sea, undefined, {
+          challenge: id,
+          chooseSea: (input) => decidingSea(shipshapeRuns(input)),
+        });
+        return;
+      }
       beginTrial(def.sea, impactX, {
         challenge: id,
-        ...(def.kind === "iceberg" ? { breakMode: def.breakMode } : {}),
+        breakMode: def.breakMode,
+        ...(def.isWholeHull ? { gashLength: gridLength(get().ship) } : {}),
       });
     },
 

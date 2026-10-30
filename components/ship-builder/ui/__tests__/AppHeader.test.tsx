@@ -6,7 +6,7 @@ import {
   recordBest,
   EMPTY_PROGRESS,
 } from "@/lib/ship-builder/challenges/progress";
-import { challengeProgress } from "../../hooks/challengeProgress";
+import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import { listShips } from "@/lib/ship-builder/persist/local";
 import {
   createInitialState,
