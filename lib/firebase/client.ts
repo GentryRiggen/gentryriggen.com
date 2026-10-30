@@ -1,4 +1,5 @@
 import type { FirebaseApp } from "firebase/app";
+import { parseGameEvent, type GameEvent } from "@/lib/analytics/gameEvents";
 import type { PageviewDoc } from "@/lib/analytics/types";
 import { firebaseConfig } from "./config";
 
@@ -106,6 +107,35 @@ export async function fetchPageviews(
     });
   }
   return { docs, truncated: snapshot.size >= max };
+}
+
+export interface GameEventsResult {
+  events: GameEvent[];
+  /** True when the fetch hit the cap, so the oldest events are missing. */
+  truncated: boolean;
+}
+
+/** Gameplay events since `sinceMs`, newest first. Malformed docs are skipped. */
+export async function fetchGameEvents(
+  sinceMs: number,
+  max: number = MAX_DOCS
+): Promise<GameEventsResult> {
+  const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
+  const db = fs.getFirestore(app);
+  const snapshot = await fs.getDocs(
+    fs.query(
+      fs.collection(db, "gameEvents"),
+      fs.where("createdAt", ">=", fs.Timestamp.fromMillis(sinceMs)),
+      fs.orderBy("createdAt", "desc"),
+      fs.limit(max)
+    )
+  );
+  const events: GameEvent[] = [];
+  for (const d of snapshot.docs) {
+    const event = parseGameEvent(d.data());
+    if (event) events.push(event);
+  }
+  return { events, truncated: snapshot.size >= max };
 }
 
 export interface LeaderboardAdminRow {

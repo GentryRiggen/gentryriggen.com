@@ -268,6 +268,117 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---- Gameplay analytics --------------------------------------------
+    // gameEvents/{id}: anonymous events from the two games, whose players are
+    // children. An event has NO user id, session id or free text: only an
+    // enum-and-small-number `props` map with a fixed schema per event name.
+    // Create only (never update or delete); only the admin reads. The schema
+    // mirrors GAME_EVENTS in lib/analytics/gameEvents.ts; the rules tests
+    // (firestore-tests/gameEvents.test.ts) feed every event and every enum
+    // value through these rules, so drift fails CI.
+
+    function worlds() {
+      return ['meadow', 'canyon', 'mountains', 'beach', 'jungle', 'city', 'glacier', 'volcano', 'storm', 'islands'];
+    }
+
+    function isFlag(v) {
+      return v is int && v >= 0 && v <= 1;
+    }
+
+    function isTenths(v) {
+      return v is int && v >= 0 && v <= 10;
+    }
+
+    // A crash position bucketed to 50 m, or -1 when the flight did not crash.
+    function isCrashX(v) {
+      return v is int && v >= -1 && v <= 12000 && (v == -1 || v % 50 == 0);
+    }
+
+    function validFlightEnd(p) {
+      return p.keys().hasOnly(['world', 'outcome', 'dist', 'crashX', 'obstacle', 'tiers', 'daily'])
+        && p.keys().hasAll(['world', 'outcome', 'dist', 'crashX', 'obstacle', 'tiers', 'daily'])
+        && p.world in worlds()
+        && p.outcome in ['finish', 'crash', 'landed', 'stalled', 'timeout', 'out_of_fuel']
+        && isTenths(p.dist)
+        && isCrashX(p.crashX)
+        && p.obstacle in ['tree', 'barn', 'balloon', 'wall', 'arch', 'bird', 'peak', 'palm', 'skyscraper', 'iceberg', 'cloud', 'none']
+        && p.tiers is int && p.tiers >= 0 && p.tiers <= 48
+        && isFlag(p.daily);
+    }
+
+    function validPlaneEvent(name, p) {
+      return (name == 'flight_end' && validFlightEnd(p))
+        || (name == 'upgrade_bought'
+          && p.keys().hasOnly(['part', 'tier']) && p.keys().hasAll(['part', 'tier'])
+          && p.part in ['launcher', 'wings', 'engine', 'fuel', 'body', 'multiplier']
+          && p.tier is int && p.tier >= 1 && p.tier <= 8)
+        || (name == 'world_unlocked'
+          && p.keys().hasOnly(['world']) && p.keys().hasAll(['world'])
+          && p.world in worlds())
+        || (name == 'daily_played'
+          && p.keys().hasOnly(['world', 'twist', 'finished']) && p.keys().hasAll(['world', 'twist', 'finished'])
+          && p.world in worlds()
+          && p.twist in ['tailwind', 'headwind', 'doubleCoins', 'noBoost']
+          && isFlag(p.finished))
+        || (name == 'quit_mid_flight'
+          && p.keys().hasOnly(['world', 'dist']) && p.keys().hasAll(['world', 'dist'])
+          && p.world in worlds()
+          && isTenths(p.dist));
+    }
+
+    function validShipEvent(name, p) {
+      return (name == 'trial_run'
+          && p.keys().hasOnly(['kind', 'outcome', 'sea']) && p.keys().hasAll(['kind', 'outcome', 'sea'])
+          && p.kind in ['weather', 'iceberg']
+          && p.outcome in ['steady', 'recovered', 'capsized', 'afloat', 'sank']
+          && p.sea in ['calm', 'choppy', 'stormy'])
+        || (name == 'challenge_result'
+          && p.keys().hasOnly(['id', 'stars']) && p.keys().hasAll(['id', 'stars'])
+          && p.id in ['outlast', 'evacuation', 'shipshape']
+          && p.stars is int && p.stars >= 0 && p.stars <= 3)
+        || (name == 'template_used'
+          && p.keys().hasOnly(['template']) && p.keys().hasAll(['template'])
+          && p.template is string && p.template.size() >= 1 && p.template.size() <= 40
+          && p.template.matches('^[a-z0-9-]+$'))
+        || (name == 'part_placed'
+          && p.keys().hasOnly(['category']) && p.keys().hasAll(['category'])
+          && p.category in ['decks', 'cabins', 'command', 'funnels', 'masts', 'lifeboats', 'decor', 'lights', 'propulsion', 'naval', 'cargo', 'sails', 'weapons'])
+        || (name == 'walk_started'
+          && p.keys().hasOnly(['start']) && p.keys().hasAll(['start'])
+          && p.start in ['bow', 'middle', 'stern'])
+        || (name == 'drive_started'
+          && p.keys().hasOnly(['density']) && p.keys().hasAll(['density'])
+          && p.density in ['few', 'some', 'many'])
+        || (name == 'ship_shared' && p.keys().size() == 0);
+    }
+
+    // The client sends its UTC day; the server clock decides what is plausible
+    // (today, or a day either side for clock skew).
+    function validGameDay(day) {
+      return day is string
+        && (day == dayString(request.time)
+          || day == dayString(request.time - duration.value(1, 'd'))
+          || day == dayString(request.time + duration.value(1, 'd')));
+    }
+
+    function validGameEvent() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['site', 'name', 'props', 'day', 'createdAt'])
+        && d.keys().hasAll(['site', 'name', 'props', 'day', 'createdAt'])
+        && d.createdAt == request.time
+        && validGameDay(d.day)
+        && d.name is string && d.name.size() <= 30
+        && d.props is map && d.props.size() <= 8
+        && ((d.site == 'plane-builder' && validPlaneEvent(d.name, d.props))
+          || (d.site == 'ship-builder' && validShipEvent(d.name, d.props)));
+    }
+
+    match /gameEvents/{id} {
+      allow read: if isAdmin();
+      allow create: if id.size() <= 64 && validGameEvent();
+      allow update, delete: if false;
+    }
+
     // Everything else is closed.
     match /{document=**} {
       allow read, write: if false;
