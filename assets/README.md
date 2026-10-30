@@ -112,7 +112,7 @@ Checkout-safe by design:
 
 - Dev servers: `checkin` and `measure` take their port from `ASSETS_PORT`, else a free one is picked; nothing assumes 3123 or 3000. A server is reused only when you pass `--base <url>` (or set `ASSETS_BASE`).
 - They stop only the server they spawned (its own process group); nothing uses `pkill`.
-- If `node_modules` is a symlink (a worktree), Next starts with `--webpack`, because Turbopack refuses to follow it. This is detected automatically (`scripts/assets/devServer.mjs`).
+- If `node_modules` is a symlink (a worktree where cloning failed), Next starts with `--webpack`, because Turbopack refuses to follow it. This is detected automatically (`scripts/assets/devServer.mjs`).
 - `scripts/assets/worktree.sh <name>` creates `.claude/worktrees/<name>` (gitignored) on a new branch `assets/<name>` from HEAD, symlinks `node_modules` and the downloaded `assets/refs/<part>/` folders from the main checkout, and prints how to run there. Remove it with `git worktree remove --force .claude/worktrees/<name> && git branch -D assets/<name>`.
 
 ### Parallel modelling
