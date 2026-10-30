@@ -56,6 +56,8 @@ const GHOST_OPACITY = 0.55;
  * is a pure key.
  */
 const materialCache = new Map<string, MeshStandardMaterial>();
+const cachedMaterials = new WeakSet<MeshStandardMaterial>();
+const looksByMaterial = new WeakMap<MeshStandardMaterial, SurfaceLook>();
 
 function lookKey(look: SurfaceLook): string {
   return [
@@ -91,8 +93,32 @@ export function surfaceMaterial(look: SurfaceLook): MeshStandardMaterial {
   if (!material) {
     material = createMaterial(look);
     materialCache.set(key, material);
+    cachedMaterials.add(material);
+    looksByMaterial.set(material, look);
   }
   return material;
+}
+
+/**
+ * The plain look of a shared material, for merging: the same paint with no
+ * hover or selection glow. Null for materials that are not shared, see-through
+ * ones (ghosts, glass) and removal tints, which are never merged.
+ */
+export function plainSurfaceMaterial(
+  material: unknown
+): MeshStandardMaterial | null {
+  const look = looksByMaterial.get(material as MeshStandardMaterial);
+  if (!look || look.opacity < 1) return null;
+  if ((Object.values(PALETTE.tint) as string[]).includes(look.color))
+    return null;
+  return look.emphasis
+    ? surfaceMaterial({ ...look, emphasis: null })
+    : (material as MeshStandardMaterial);
+}
+
+/** Whether a material is one of the shared ones above (never mutated). */
+export function isSharedSurfaceMaterial(material: unknown): boolean {
+  return cachedMaterials.has(material as MeshStandardMaterial);
 }
 
 /**

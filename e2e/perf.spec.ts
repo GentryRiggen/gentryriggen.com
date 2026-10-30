@@ -224,6 +224,29 @@ async function openShip(
     .click();
   await page.getByRole("button", { name: "Calm sea" }).click();
   await modelsLoaded(page);
+  await batchSettled(page);
+}
+
+/**
+ * Waits for the ship's static batch to be built: it follows the last model
+ * load by a quiet period, so the draw calls fall and then hold still.
+ */
+async function batchSettled(page: Page) {
+  let previous = -1;
+  await expect
+    .poll(
+      async () => {
+        await page.waitForTimeout(900);
+        const calls = await page.evaluate(
+          () => window.__shipBuilderRenderInfo?.().calls ?? -1
+        );
+        const steady = calls > 0 && calls === previous;
+        previous = calls;
+        return steady;
+      },
+      { timeout: 60_000 }
+    )
+    .toBe(true);
 }
 
 /** Waits until no glb is still drawing its stand-in. */
@@ -249,10 +272,14 @@ const TITANIC: [string, string] = ["Ocean liner", "RMS Titanic"];
 test.describe("Ship Builder budget", () => {
   test("Titanic in build view", async ({ page }) => {
     await openShip(page, { template: TITANIC });
-    record(
-      "ship-titanic-build",
-      await measure(page, "__shipBuilderRenderInfo")
-    );
+    const measured = await measure(page, "__shipBuilderRenderInfo");
+    // A hard ceiling, apart from the budget: it fails if the static batch
+    // silently stops merging (the ship was about 1,700 calls unbatched).
+    expect(
+      measured.calls,
+      "Titanic build view should stay batched"
+    ).toBeLessThan(400);
+    record("ship-titanic-build", measured);
   });
 
   test("Titanic sailing, chase camera", async ({ page }) => {
@@ -266,6 +293,7 @@ test.describe("Ship Builder budget", () => {
       .getByRole("button", { name: "Chase" })
       .click();
     await modelsLoaded(page);
+    await batchSettled(page);
     record(
       "ship-titanic-sailing",
       await measure(page, "__shipBuilderRenderInfo")
@@ -292,6 +320,7 @@ test.describe("Ship Builder budget", () => {
       expect(status).toBe("running");
     }).toPass({ timeout: 30_000 });
     await modelsLoaded(page);
+    await batchSettled(page);
     record(
       "ship-titanic-iceberg-sinking",
       await measure(page, "__shipBuilderRenderInfo")

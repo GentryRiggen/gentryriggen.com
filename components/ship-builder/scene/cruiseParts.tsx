@@ -18,6 +18,7 @@ import {
 import { getLifeboatGeometry } from "./lifeboatGeometry";
 import Spinner from "./Spinner";
 import { AO_OCCLUDER } from "./aoLayer";
+import { batchRef } from "./batchRegistry";
 import Surface, { type PartEmphasis, type PartTint } from "./Surface";
 
 interface CruisePartProps {
@@ -80,16 +81,16 @@ export function Balconies({ faces, tint, emphasis }: BalconiesProps) {
           : [0, BALCONY_Y, sign * edge];
         return (
           <group key={face} position={position} rotation={rotation}>
-            <mesh castShadow>
+            <mesh ref={batchRef} castShadow>
               <boxGeometry args={[0.8, 0.04, BALCONY_DEPTH]} />
               <Surface color={CRUISE_COLORS.balconyFloor} {...surface} />
             </mesh>
-            <mesh position={[0, 0.09, BALCONY_DEPTH / 2 - 0.01]}>
+            <mesh ref={batchRef} position={[0, 0.09, BALCONY_DEPTH / 2 - 0.01]}>
               <boxGeometry args={[0.8, 0.14, 0.02]} />
               <Surface color={CRUISE_COLORS.balconyRail} {...surface} />
             </mesh>
             {[-1, 1].map((end) => (
-              <mesh key={end} position={[end * 0.4, 0.09, 0]}>
+              <mesh ref={batchRef} key={end} position={[end * 0.4, 0.09, 0]}>
                 <boxGeometry args={[0.02, 0.14, BALCONY_DEPTH]} />
                 <Surface color={CRUISE_COLORS.balconyRail} {...surface} />
               </mesh>
