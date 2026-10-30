@@ -8,6 +8,8 @@ export interface Payout {
   coinPay: number;
   landingBonus: number;
   milestoneBonus: number;
+  /** Coins from near-miss combos (already counted in `total`). */
+  nearMissPay?: number;
   multiplier: number;
   total: number;
 }
@@ -40,6 +42,7 @@ export function payout(
   const coinPay = result.coins;
   const landingBonus =
     result.endReason === "landed" ? Math.round(distancePay * LANDING_BONUS) : 0;
+  const nearMissPay = Math.max(0, result.nearMissCoins ?? 0);
   const milestoneBonus =
     newMilestones(level, previousBest, result.distance) *
     Math.round(level.finishDistance * level.payPerMeter * MILESTONE_SHARE);
@@ -47,7 +50,8 @@ export function payout(
     Math.max(
       level.minPayout,
       Math.round(
-        (distancePay + coinPay + landingBonus + milestoneBonus) * multiplier
+        (distancePay + coinPay + nearMissPay + landingBonus + milestoneBonus) *
+          multiplier
       )
     ) * coinFactor
   );
@@ -56,6 +60,7 @@ export function payout(
     coinPay,
     landingBonus,
     milestoneBonus,
+    nearMissPay,
     multiplier,
     total,
   };
