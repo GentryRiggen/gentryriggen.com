@@ -27,10 +27,11 @@ export default function Steering() {
   const engineTier = usePlaneBuilderStore(
     (s) => s.progress.levels[s.levelId].tiers.engine
   );
+  const isNoBoost = usePlaneBuilderStore((s) => s.daily?.twist === "noBoost");
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const [isBoosting, setIsBoosting] = useState(false);
-  const canBoost = engineTier > 0 && (snapshot?.fuel ?? 0) > 0;
+  const canBoost = engineTier > 0 && (snapshot?.fuel ?? 0) > 0 && !isNoBoost;
 
   function update(next: Drag | null) {
     dragRef.current = next;

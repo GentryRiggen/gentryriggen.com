@@ -16,6 +16,7 @@ import {
   OBSTACLE_TYPICAL_SIZE,
   OBSTACLE_VARIANTS,
   obstacleGeometryFromScene,
+  obstacleModelUrlsFor,
   obstacleVariant,
 } from "../obstacleModels";
 
@@ -133,5 +134,22 @@ describe("obstacleGeometryFromScene", () => {
     expect(() =>
       obstacleGeometryFromScene(scene, LEVELS.meadow.palette, "x.glb")
     ).toThrow(/Unknown slot/);
+  });
+});
+
+describe("obstacleModelUrlsFor", () => {
+  it("lists only the models a level can draw, a subset of all of them", () => {
+    const jungle = obstacleModelUrlsFor(LEVELS.jungle.obstacles, "jungle");
+    expect(jungle.length).toBeGreaterThan(0);
+    expect(jungle.length).toBeLessThan(OBSTACLE_MODEL_URLS.length);
+    for (const url of jungle) expect(OBSTACLE_MODEL_URLS).toContain(url);
+    expect(jungle.some((url) => url.includes("obstacle-skyscraper"))).toBe(
+      false
+    );
+  });
+
+  it("has no duplicates", () => {
+    const urls = obstacleModelUrlsFor(LEVELS.city.obstacles, "city");
+    expect(new Set(urls).size).toBe(urls.length);
   });
 });

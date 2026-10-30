@@ -7,6 +7,7 @@ import {
   CHALLENGE_IDS,
   MAX_VALUE,
 } from "@/lib/ship-builder/challenges/definitions";
+import { DAILY_PLAN } from "@/lib/plane-builder/daily/daily";
 import { ADJECTIVES, ANIMALS } from "../nickname";
 
 const rules = readFileSync(join(process.cwd(), "firestore.rules"), "utf8");
@@ -84,5 +85,32 @@ describe("firestore.rules stays in sync with the code", () => {
         expect(rules).toContain(`b.${id} <= ${MAX_VALUE[id]}`);
       }
     });
+  });
+
+  it("has the same daily minimum times and world list as the best times", () => {
+    const body = rules.match(/function dailyMinimum\(world\) \{([^}]*)\}/);
+    const minimums = new Map(
+      [...(body?.[1] ?? "").matchAll(/'(\w+)': (\d+)/g)].map((m) => [
+        m[1],
+        Number(m[2]),
+      ])
+    );
+    expect([...minimums.keys()]).toEqual([...LEVEL_ORDER]);
+    for (const id of LEVEL_ORDER) {
+      expect(minimums.get(id)).toBe(
+        Math.floor(LEVELS[id].finishDistance / MAX_SPEED)
+      );
+    }
+  });
+
+  it("has the same daily plan as the client, indexed by the path date", () => {
+    const body = rules.match(
+      /function dailyPlan\(\) \{\s*return \[([^\]]*)\];/
+    );
+    const plan = [...(body?.[1] ?? "").matchAll(/'([^']*)'/g)].map((m) => m[1]);
+    expect(plan).toEqual([...DAILY_PLAN]);
+    expect(plan).toHaveLength(40);
+    expect(rules).toContain("dailyPlan()[day % 40]");
+    expect(rules).toContain("86400000");
   });
 });

@@ -48,11 +48,13 @@ test.use({
 });
 
 async function open(page: Page, holdFlightSeconds?: number) {
-  if (holdFlightSeconds !== undefined) {
-    await page.addInitScript((seconds) => {
-      window.__PLANE_BUILDER_TEST__ = { holdFlightSeconds: seconds };
-    }, holdFlightSeconds);
-  }
+  // Full quality always: adaptive steps must not depend on the runner's speed.
+  await page.addInitScript((seconds) => {
+    window.__PLANE_BUILDER_TEST__ = {
+      holdFlightSeconds: seconds,
+      lockQuality: 0,
+    };
+  }, holdFlightSeconds);
   await page.goto("/plane-builder");
   await expect(
     page.getByRole("heading", { name: "Plane Builder" })
