@@ -23,7 +23,7 @@ import {
   type GameEventName,
   type PropSpec,
 } from "@/lib/analytics/gameEvents";
-import { sendGameEvent } from "@/lib/analytics/gameSend";
+import { newDocId, sendGameEvent } from "@/lib/analytics/gameSend";
 
 const PROJECT_ID = "demo-gentryriggen";
 const [HOST, PORT] = (
@@ -75,6 +75,8 @@ const player = () =>
     .firestore();
 
 const today = () => new Date().toISOString().slice(0, 10);
+/** The only createdAt the rules accept: the start of today (UTC). */
+const midnight = () => new Date(`${today()}T00:00:00Z`);
 const dayOffset = (days: number) =>
   new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
@@ -87,8 +89,6 @@ function sampleValue(spec: PropSpec): string | number {
       return spec.values[0];
     case "int":
       return spec.step ? spec.step * 2 : spec.min === -1 ? 0 : spec.min;
-    case "slug":
-      return "titanic";
   }
 }
 
@@ -105,16 +105,15 @@ function docFor(name: GameEventName, patch: Record<string, unknown> = {}) {
     name,
     props: sampleProps(name),
     day: today(),
-    createdAt: serverTimestamp(),
+    createdAt: midnight(),
     ...patch,
   };
 }
 
-let nextId = 0;
 function create(
   db: ReturnType<typeof anon>,
   data: Record<string, unknown>,
-  id = `e${(nextId += 1)}`
+  id = newDocId()
 ) {
   return setDoc(doc(db, "gameEvents", id), data);
 }
@@ -154,7 +153,7 @@ describe("every event in the schema", () => {
             ? [...spec.values]
             : spec.kind === "int"
               ? [spec.min, spec.max - (spec.step ? spec.max % spec.step : 0)]
-              : ["a", "a-1", "x".repeat(spec.maxLength)];
+              : [];
         for (const value of legal) {
           const props = { ...sampleProps(name), [key]: value };
           await assertSucceeds(create(anon(), docFor(name, { props })));
@@ -169,25 +168,26 @@ describe("every event in the schema", () => {
       for (const [key, spec] of Object.entries(specs)) {
         const illegal: unknown[] =
           spec.kind === "enum"
-            ? ["nope", "", spec.values[0].toUpperCase(), 1, null, true]
-            : spec.kind === "int"
-              ? [
-                  spec.min - 1,
-                  spec.max + 1,
-                  "1",
-                  null,
-                  1.5,
-                  ...(spec.step ? [spec.step + 1] : []),
-                ]
-              : [
-                  "",
-                  "UPPER",
-                  "has space",
-                  "x".repeat(spec.maxLength + 1),
-                  "a/b",
-                  5,
-                  null,
-                ];
+            ? [
+                "nope",
+                "",
+                spec.values[0].toUpperCase(),
+                1,
+                null,
+                true,
+                // Free text must never get through, even slug-shaped.
+                "jane-doe-age-9-lives-on-elm-st",
+                "titanic-2",
+                `${spec.values[0]} `,
+              ]
+            : [
+                spec.min - 1,
+                spec.max + 1,
+                "1",
+                null,
+                1.5,
+                ...(spec.step ? [spec.step + 1] : []),
+              ];
         for (const value of illegal) {
           const props = { ...sampleProps(name), [key]: value };
           await assertFails(create(anon(), docFor(name, { props })));
@@ -257,25 +257,27 @@ describe("the event envelope", () => {
     }
   });
 
-  it("requires createdAt to be the server time", async () => {
-    await assertFails(
-      create(anon(), docFor("flight_end", { createdAt: new Date() }))
-    );
-    await assertFails(
-      create(anon(), docFor("flight_end", { createdAt: new Date(0) }))
-    );
-    await assertFails(
-      create(anon(), docFor("flight_end", { createdAt: "now" }))
-    );
+  it("requires createdAt to be exactly the start of today (UTC)", async () => {
+    const mid = midnight().getTime();
+    await assertSucceeds(create(anon(), docFor("flight_end")));
+    for (const createdAt of [
+      new Date(mid + 1),
+      new Date(mid + 3_600_000),
+      new Date(Date.now()),
+      new Date(mid - 86_400_000),
+      new Date(0),
+      "now",
+      serverTimestamp(),
+    ]) {
+      await assertFails(create(anon(), docFor("flight_end", { createdAt })));
+    }
   });
 
-  it("accepts today and a day either side, nothing else", async () => {
-    for (const day of [today(), dayOffset(-1), dayOffset(1)]) {
-      await assertSucceeds(create(anon(), docFor("flight_end", { day })));
-    }
+  it("accepts today's day and nothing else", async () => {
+    await assertSucceeds(create(anon(), docFor("flight_end")));
     for (const day of [
-      dayOffset(-2),
-      dayOffset(2),
+      dayOffset(-1),
+      dayOffset(1),
       "2020-01-01",
       "today",
       "",
@@ -297,9 +299,39 @@ describe("the event envelope", () => {
     await assertFails(create(anon(), docFor("flight_end", { props: {} })));
   });
 
-  it("rejects a document id over 64 characters", async () => {
-    await assertFails(create(anon(), docFor("flight_end"), "x".repeat(65)));
-    await assertSucceeds(create(anon(), docFor("flight_end"), "x".repeat(64)));
+  it("accepts only UUIDv4-shaped document ids", async () => {
+    const good = "3f2b8c1e-9a4d-4e7b-8c3a-1d5f6a7b8c9d";
+    await assertSucceeds(create(anon(), docFor("flight_end"), good));
+    for (const id of [
+      "e1",
+      "x".repeat(64),
+      "3f2b8c1e-9a4d-1e7b-8c3a-1d5f6a7b8c9d", // not version 4
+      "3f2b8c1e-9a4d-4e7b-0c3a-1d5f6a7b8c9d", // bad variant
+      "3F2B8C1E-9A4D-4E7B-8C3A-1D5F6A7B8C9D", // upper case
+      "3f2b8c1e9a4d4e7b8c3a1d5f6a7b8c9d", // no dashes
+      "1793377924223-abcdef", // time-based fallback of old
+      `${good}0`,
+    ]) {
+      await assertFails(create(anon(), docFor("flight_end"), id));
+    }
+  });
+
+  it("makes ids from the real client fallback that pass", async () => {
+    const original = globalThis.crypto.randomUUID;
+    Object.defineProperty(globalThis.crypto, "randomUUID", {
+      value: undefined,
+      configurable: true,
+    });
+    try {
+      for (let i = 0; i < 20; i += 1) {
+        await assertSucceeds(create(anon(), docFor("flight_end"), newDocId()));
+      }
+    } finally {
+      Object.defineProperty(globalThis.crypto, "randomUUID", {
+        value: original,
+        configurable: true,
+      });
+    }
   });
 
   it("rejects nested maps and arrays inside props", async () => {
@@ -348,12 +380,12 @@ describe("flight_end specifics", () => {
             writes: [
               {
                 update: {
-                  name: `projects/${PROJECT_ID}/databases/(default)/documents/gameEvents/d${Math.random().toString(36).slice(2)}`,
-                  fields: f,
+                  name: `projects/${PROJECT_ID}/databases/(default)/documents/gameEvents/${newDocId()}`,
+                  fields: {
+                    ...f,
+                    createdAt: { timestampValue: `${today()}T00:00:00Z` },
+                  },
                 },
-                updateTransforms: [
-                  { fieldPath: "createdAt", setToServerValue: "REQUEST_TIME" },
-                ],
                 currentDocument: { exists: false },
               },
             ],

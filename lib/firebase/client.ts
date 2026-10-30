@@ -115,19 +115,32 @@ export interface GameEventsResult {
   truncated: boolean;
 }
 
-/** Gameplay events since `sinceMs`, newest first. Malformed docs are skipped. */
+/** Days of gameplay events the dashboard loads unless told otherwise. */
+export const GAME_EVENT_DAYS = 30;
+/** Enough for a busy month; a warning shows if it is ever reached. */
+export const GAME_EVENT_LIMIT = 5000;
+
+/**
+ * Gameplay events from the last `days` UTC days (today included), newest day
+ * first. Queries by `day` only, so no other field needs an index. Malformed
+ * docs are skipped.
+ */
 export async function fetchGameEvents(
-  sinceMs: number,
-  max: number = MAX_DOCS
+  days: number = GAME_EVENT_DAYS,
+  max: number = GAME_EVENT_LIMIT,
+  now: Date = new Date()
 ): Promise<GameEventsResult> {
   const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
   const db = fs.getFirestore(app);
+  const firstDay = new Date(now.getTime() - (days - 1) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
   const snapshot = await fs.getDocs(
     fs.query(
       fs.collection(db, "gameEvents"),
-      fs.where("createdAt", ">=", fs.Timestamp.fromMillis(sinceMs)),
-      fs.orderBy("createdAt", "desc"),
-      fs.limit(max)
+      fs.where("day", ">=", firstDay),
+      fs.orderBy("day", "desc"),
+      fs.limit(Math.min(max, MAX_DOCS))
     )
   );
   const events: GameEvent[] = [];

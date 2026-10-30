@@ -89,7 +89,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (tab !== "games") return;
     let cancelled = false;
-    fetchGameEvents(Date.now() - days * DAY_MS)
+    fetchGameEvents(days)
       .then((result) => {
         if (!cancelled) setGames({ days, ...result, error: null });
       })

@@ -30,7 +30,11 @@ import { simShipFromStats } from "../sim/simShip";
 import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { trackGame } from "@/lib/analytics/trackGame";
-import { trackPartPlaced, trackTrialRun } from "../analytics";
+import {
+  trackPartPlaced,
+  trackTemplateUsed,
+  trackTrialRun,
+} from "../analytics";
 import { findTemplate } from "../templates";
 import { decidingSea, shipshapeRuns } from "../challenges/score";
 import {
@@ -718,7 +722,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (isTrialActive()) return;
       const template = findTemplate(id);
       if (!template) return;
-      trackGame("template_used", { template: id });
+      trackTemplateUsed(id);
       forgetUnsavedChallenges();
       commit(template.build(), {
         savedId: null,

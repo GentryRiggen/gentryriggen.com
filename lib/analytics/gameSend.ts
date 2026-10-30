@@ -19,7 +19,7 @@ function toValue(value: string | number): FirestoreValue {
 
 /**
  * A Firestore REST `commit` that creates one gameEvents doc. `createdAt` is
- * set by the server (REQUEST_TIME), which is what firestore.rules require.
+ * the start of the event's UTC day, which is all firestore.rules accept.
  */
 export function buildGameCommitBody(
   projectId: string,
@@ -40,21 +40,30 @@ export function buildGameCommitBody(
             name: { stringValue: event.name },
             day: { stringValue: event.day },
             props: { mapValue: { fields: props } },
+            // Day-granular on purpose (see firestore.rules).
+            createdAt: { timestampValue: `${event.day}T00:00:00Z` },
           },
         },
-        updateTransforms: [
-          { fieldPath: "createdAt", setToServerValue: "REQUEST_TIME" },
-        ],
         currentDocument: { exists: false },
       },
     ],
   };
 }
 
-function newDocId(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+/** A random UUIDv4 (the only id shape the rules accept); never time-based. */
+export function newDocId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  const hex = (n: number) =>
+    Array.from({ length: n }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join("");
+  const variant = "89ab"[Math.floor(Math.random() * 4)];
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-${variant}${hex(3)}-${hex(12)}`;
 }
 
 interface SendOptions {

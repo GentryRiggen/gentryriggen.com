@@ -14,9 +14,7 @@ export type GameSite = "plane-builder" | "ship-builder";
 export type PropSpec =
   | { kind: "enum"; values: readonly string[] }
   /** A whole number; `step` (when set) means a multiple of it, or -1 if `min` is -1. */
-  | { kind: "int"; min: number; max: number; step?: number }
-  /** A lowercase slug (letters, digits, hyphens): ids that grow over time. */
-  | { kind: "slug"; maxLength: number };
+  | { kind: "int"; min: number; max: number; step?: number };
 
 const WORLDS = [
   "meadow",
@@ -60,6 +58,35 @@ const PART_CATEGORIES = [
   "sails",
   "weapons",
 ] as const;
+
+/**
+ * The built-in ship templates. A closed list on purpose: a free-form id could
+ * carry text a child typed (or anything an attacker likes) onto the dashboard.
+ * A test keeps it equal to the template registry and to firestore.rules.
+ */
+export const TEMPLATE_IDS = [
+  "ever-given",
+  "little-hopper",
+  "wonder-of-the-seas",
+  "ocean-breeze",
+  "titanic",
+  "olympic",
+  "britannic",
+  "lusitania",
+  "carpathia",
+  "arleigh-burke",
+  "coast-guard-cutter",
+  "small-sloop",
+  "whydah-gally",
+  "queen-annes-revenge",
+  "black-pearl-galleon",
+] as const;
+
+export type TemplateId = (typeof TEMPLATE_IDS)[number];
+
+export function isTemplateId(id: string): id is TemplateId {
+  return (TEMPLATE_IDS as readonly string[]).includes(id);
+}
 
 /** The longest course is under 10 km; crash positions are 50 m buckets. */
 export const CRASH_BUCKET_METERS = 50;
@@ -163,7 +190,7 @@ export const GAME_EVENTS = {
   template_used: {
     site: "ship-builder",
     sample: 1,
-    props: { template: { kind: "slug", maxLength: 40 } },
+    props: { template: { kind: "enum", values: TEMPLATE_IDS } },
   },
   /** Fires on every placement, so only one in twenty is sent. */
   part_placed: {
@@ -216,7 +243,6 @@ export interface GameEvent<N extends GameEventName = GameEventName> {
 /** Events allowed per page load, so a runaway loop costs nothing. */
 export const MAX_EVENTS_PER_PAGE_LOAD = 50;
 
-const SLUG = /^[a-z0-9-]+$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidProp(spec: PropSpec, value: unknown): boolean {
@@ -228,13 +254,6 @@ function isValidProp(spec: PropSpec, value: unknown): boolean {
       if (value < spec.min || value > spec.max) return false;
       return !spec.step || value === -1 || value % spec.step === 0;
     }
-    case "slug":
-      return (
-        typeof value === "string" &&
-        value.length > 0 &&
-        value.length <= spec.maxLength &&
-        SLUG.test(value)
-      );
   }
 }
 

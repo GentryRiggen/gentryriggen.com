@@ -1,5 +1,5 @@
 import type { GameEvent } from "../gameEvents";
-import { buildGameCommitBody, sendGameEvent } from "../gameSend";
+import { buildGameCommitBody, newDocId, sendGameEvent } from "../gameSend";
 
 const event: GameEvent = {
   site: "plane-builder",
@@ -33,10 +33,41 @@ describe("buildGameCommitBody", () => {
     expect(write.update.fields.day).toEqual({ stringValue: "2026-10-30" });
   });
 
-  it("lets the server set createdAt", () => {
-    expect(write.updateTransforms).toEqual([
-      { fieldPath: "createdAt", setToServerValue: "REQUEST_TIME" },
-    ]);
+  it("stamps createdAt as the start of the event's UTC day, no server time", () => {
+    expect(write.update.fields.createdAt).toEqual({
+      timestampValue: "2026-10-30T00:00:00Z",
+    });
+    expect(write).not.toHaveProperty("updateTransforms");
+  });
+});
+
+describe("newDocId", () => {
+  const UUID_V4 =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it("is a UUIDv4", () => {
+    expect(newDocId()).toMatch(UUID_V4);
+  });
+
+  it("falls back to a random UUIDv4 with no clock in it", () => {
+    const original = globalThis.crypto.randomUUID;
+    Object.defineProperty(globalThis.crypto, "randomUUID", {
+      value: undefined,
+      configurable: true,
+    });
+    const now = jest.spyOn(Date, "now");
+    try {
+      const ids = new Set(Array.from({ length: 200 }, newDocId));
+      for (const id of ids) expect(id).toMatch(UUID_V4);
+      expect(ids.size).toBe(200);
+      expect(now).not.toHaveBeenCalled();
+    } finally {
+      now.mockRestore();
+      Object.defineProperty(globalThis.crypto, "randomUUID", {
+        value: original,
+        configurable: true,
+      });
+    }
   });
 });
 

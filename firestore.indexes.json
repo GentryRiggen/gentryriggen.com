@@ -1,0 +1,20 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "gameEvents",
+      "fieldPath": "props",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "gameEvents",
+      "fieldPath": "site",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "gameEvents",
+      "fieldPath": "name",
+      "indexes": []
+    }
+  ]
+}

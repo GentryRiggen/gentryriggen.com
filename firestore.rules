@@ -339,7 +339,9 @@ service cloud.firestore {
     // gameEvents/{id}: anonymous events from the two games, whose players are
     // children. An event has NO user id, session id or free text: only an
     // enum-and-small-number `props` map with a fixed schema per event name.
-    // Create only (never update or delete); only the admin reads. The schema
+    // Create only (never update or delete); only the admin reads. createdAt is
+    // only the UTC day's midnight (no finer time, so an event cannot be matched
+    // to a pageview); it is what a TTL policy expires on. The schema
     // mirrors GAME_EVENTS in lib/analytics/gameEvents.ts; the rules tests
     // (firestore-tests/gameEvents.test.ts) feed every event and every enum
     // value through these rules, so drift fails CI.
@@ -405,8 +407,7 @@ service cloud.firestore {
           && p.stars is int && p.stars >= 0 && p.stars <= 3)
         || (name == 'template_used'
           && p.keys().hasOnly(['template']) && p.keys().hasAll(['template'])
-          && p.template is string && p.template.size() >= 1 && p.template.size() <= 40
-          && p.template.matches('^[a-z0-9-]+$'))
+          && p.template in ['ever-given', 'little-hopper', 'wonder-of-the-seas', 'ocean-breeze', 'titanic', 'olympic', 'britannic', 'lusitania', 'carpathia', 'arleigh-burke', 'coast-guard-cutter', 'small-sloop', 'whydah-gally', 'queen-annes-revenge', 'black-pearl-galleon'])
         || (name == 'part_placed'
           && p.keys().hasOnly(['category']) && p.keys().hasAll(['category'])
           && p.category in ['decks', 'cabins', 'command', 'funnels', 'masts', 'lifeboats', 'decor', 'lights', 'propulsion', 'naval', 'cargo', 'sails', 'weapons'])
@@ -419,20 +420,22 @@ service cloud.firestore {
         || (name == 'ship_shared' && p.keys().size() == 0);
     }
 
-    // The client sends its UTC day; the server clock decides what is plausible
-    // (today, or a day either side for clock skew).
+    // The client sends its UTC day, which must be the server's UTC day.
     function validGameDay(day) {
-      return day is string
-        && (day == dayString(request.time)
-          || day == dayString(request.time - duration.value(1, 'd'))
-          || day == dayString(request.time + duration.value(1, 'd')));
+      return day is string && day == dayString(request.time);
+    }
+
+    // Document ids are random UUIDv4s, which nothing can guess or reuse to
+    // correlate events.
+    function validGameEventId(id) {
+      return id.matches('^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
     }
 
     function validGameEvent() {
       let d = request.resource.data;
       return d.keys().hasOnly(['site', 'name', 'props', 'day', 'createdAt'])
         && d.keys().hasAll(['site', 'name', 'props', 'day', 'createdAt'])
-        && d.createdAt == request.time
+        && d.createdAt == timestamp.date(request.time.year(), request.time.month(), request.time.day())
         && validGameDay(d.day)
         && d.name is string && d.name.size() <= 30
         && d.props is map && d.props.size() <= 8
@@ -442,7 +445,7 @@ service cloud.firestore {
 
     match /gameEvents/{id} {
       allow read: if isAdmin();
-      allow create: if id.size() <= 64 && validGameEvent();
+      allow create: if validGameEventId(id) && validGameEvent();
       allow update, delete: if false;
     }
 

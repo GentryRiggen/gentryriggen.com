@@ -5,7 +5,9 @@ import { TEMPLATES } from "@/lib/ship-builder/templates";
 import { OBSTACLE_KINDS as DRIVE_KINDS } from "@/lib/ship-builder/sail/driveConfig";
 import {
   GAME_EVENTS,
+  TEMPLATE_IDS,
   buildGameEvent,
+  isTemplateId,
   crashBucket,
   isValidGameProps,
   parseGameEvent,
@@ -23,14 +25,26 @@ describe("schema stays in step with the games", () => {
       ...TRACK_IDS,
     ]);
   });
-  it("accepts every template id (slug-shaped)", () => {
+  it("accepts every template id and the list equals the registry", () => {
     const ids = Object.values(TEMPLATES)
       .flat()
       .map((t) => t.id);
-    expect(ids.length).toBeGreaterThan(0);
+    expect([...TEMPLATE_IDS].sort()).toEqual([...ids].sort());
     for (const template of ids) {
       expect(isValidGameProps("template_used", { template })).toBe(true);
     }
+  });
+  it("rejects any template id that is not built in (no free text)", () => {
+    for (const template of [
+      "jane-doe-age-9-lives-on-elm-st",
+      "titanic2",
+      "Titanic",
+      "",
+    ]) {
+      expect(isValidGameProps("template_used", { template })).toBe(false);
+    }
+    expect(isTemplateId("titanic")).toBe(true);
+    expect(isTemplateId("jane-doe")).toBe(false);
   });
   it("has a ship kind list the dashboard can rely on", () => {
     expect(SHIP_KINDS.length).toBeGreaterThan(0);

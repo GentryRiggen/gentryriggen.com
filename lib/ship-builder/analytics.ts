@@ -1,3 +1,4 @@
+import { isTemplateId } from "@/lib/analytics/gameEvents";
 import { trackGame } from "@/lib/analytics/trackGame";
 import type { PartCategory } from "./model/types";
 import type { SimSea, SimState } from "./sim/types";
@@ -17,4 +18,9 @@ export function trackTrialRun(
 
 export function trackPartPlaced(category: PartCategory): void {
   trackGame("part_placed", { category });
+}
+
+/** Records a built-in template being used; any other id is not tracked. */
+export function trackTemplateUsed(id: string): void {
+  if (isTemplateId(id)) trackGame("template_used", { template: id });
 }
