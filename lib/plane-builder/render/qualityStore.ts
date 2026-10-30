@@ -3,14 +3,16 @@ import { TEST_HOOKS_ENABLED, lockedQuality } from "../testHooks";
 import {
   initialQuality,
   type QualityLevel,
+  type QualityState,
+  restartWarmup,
   type QualityTrend,
   stepQuality,
 } from "./quality";
 
-interface QualityStore {
-  level: QualityLevel;
-  changedAt: number;
+interface QualityStore extends QualityState {
   report: (trend: QualityTrend) => void;
+  /** Ignore the frame rate for a few seconds, e.g. as a flight loads in. */
+  startWarmup: () => void;
 }
 
 /** The current render quality level. Lives past screen changes and remounts. */
@@ -19,9 +21,11 @@ export const useQualityStore = create<QualityStore>((set, get) => ({
   report: (trend) => {
     if (lockedQuality() !== undefined) return;
     const state = get();
-    const next = stepQuality(state, trend, performance.now());
-    if (next !== state && next.level !== state.level) set(next);
+    const pixelRatio = window.devicePixelRatio || 1;
+    const next = stepQuality(state, trend, performance.now(), pixelRatio);
+    if (next !== state) set(next);
   },
+  startWarmup: () => set((s) => restartWarmup(s, performance.now())),
 }));
 
 declare global {
@@ -37,5 +41,5 @@ if (TEST_HOOKS_ENABLED && typeof window !== "undefined") {
 /** The level to draw at: a test's pinned level, else the adaptive one. */
 export function useQualityLevel(): QualityLevel {
   const level = useQualityStore((s) => s.level);
-  return (lockedQuality() ?? level) as QualityLevel;
+  return lockedQuality() ?? level;
 }

@@ -14,7 +14,6 @@ import { qualitySettings } from "@/lib/plane-builder/render/quality";
 import { useQualityLevel } from "@/lib/plane-builder/render/qualityStore";
 
 const FOG_NEAR = 150;
-const FOG_FAR = 900;
 const SKY_RADIUS = 1000;
 const SUN_OFFSET = { x: 30, y: 80, z: -40 };
 const SHADOW_RANGE = 70;
@@ -60,7 +59,7 @@ export default function Sky({ palette }: SkyProps) {
     [palette.sky, palette.horizon]
   );
 
-  const { shadowMapSize } = qualitySettings(useQualityLevel());
+  const { shadowMapSize, fogFar } = qualitySettings(useQualityLevel());
   useLayoutEffect(() => {
     const shadow = sun.current?.shadow;
     if (!shadow || shadow.mapSize.x === shadowMapSize) return;
@@ -82,7 +81,7 @@ export default function Sky({ palette }: SkyProps) {
 
   return (
     <>
-      <fog attach="fog" args={[palette.horizon, FOG_NEAR, FOG_FAR]} />
+      <fog attach="fog" args={[palette.horizon, FOG_NEAR, fogFar]} />
       <mesh ref={dome} renderOrder={-1} frustumCulled={false}>
         <sphereGeometry args={[SKY_RADIUS, 24, 16]} />
         <shaderMaterial

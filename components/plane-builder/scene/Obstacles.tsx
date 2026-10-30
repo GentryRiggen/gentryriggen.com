@@ -3,7 +3,12 @@
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { type BufferGeometry, type InstancedMesh, Object3D } from "three";
+import {
+  type BufferGeometry,
+  type Group,
+  type InstancedMesh,
+  Object3D,
+} from "three";
 import type {
   LevelDef,
   Obstacle,
@@ -25,6 +30,9 @@ import {
   obstacleVariant,
 } from "./obstacleModels";
 
+/** The course range (x) a slice covers, kept on its mesh for the culler. */
+type Span = [minX: number, maxX: number];
+
 interface InstancesProps {
   geometry: BufferGeometry;
   items: Obstacle[];
@@ -40,21 +48,6 @@ interface InstancesProps {
 function Instances({ geometry, items, hasShadows = true }: InstancesProps) {
   const mesh = useRef<InstancedMesh>(null);
   const [minX, maxX] = useMemo(() => chunkSpan(items), [items]);
-
-  useFrame(({ camera }) => {
-    const instances = mesh.current;
-    if (!instances) return;
-    const level = lockedQuality() ?? useQualityStore.getState().level;
-    const { obstacleDistance } = qualitySettings(
-      level as Parameters<typeof qualitySettings>[0]
-    );
-    instances.visible = isChunkInRange(
-      minX,
-      maxX,
-      camera.position.x,
-      obstacleDistance
-    );
-  });
 
   useLayoutEffect(() => {
     const instances = mesh.current;
@@ -74,6 +67,7 @@ function Instances({ geometry, items, hasShadows = true }: InstancesProps) {
     <instancedMesh
       ref={mesh}
       args={[geometry, undefined, items.length]}
+      userData={{ span: [minX, maxX] satisfies Span }}
       castShadow={hasShadows}
       receiveShadow={hasShadows}
     >
@@ -187,6 +181,24 @@ interface ObstaclesProps {
 
 /** Instanced meshes per obstacle kind (and variant) in the level. */
 export default function Obstacles({ level }: ObstaclesProps) {
+  const root = useRef<Group>(null);
+  // One pass for all slices: hide those beyond this quality level's distance.
+  useFrame(({ camera }) => {
+    const quality = lockedQuality() ?? useQualityStore.getState().level;
+    const { obstacleDistance } = qualitySettings(quality);
+    root.current?.traverse((object) => {
+      const span = object.userData.span as Span | undefined;
+      if (span) {
+        object.visible = isChunkInRange(
+          span[0],
+          span[1],
+          camera.position.x,
+          obstacleDistance
+        );
+      }
+    });
+  });
+
   const groups = useMemo(() => {
     const byKind = new Map<ObstacleKind, Obstacle[]>();
     for (const o of level.obstacles) {
@@ -198,7 +210,7 @@ export default function Obstacles({ level }: ObstaclesProps) {
   }, [level]);
 
   return (
-    <>
+    <group ref={root}>
       {groups.map(([kind, items]) => (
         <KindInstances
           key={`${level.id}-${kind}`}
@@ -207,6 +219,6 @@ export default function Obstacles({ level }: ObstaclesProps) {
           level={level}
         />
       ))}
-    </>
+    </group>
   );
 }

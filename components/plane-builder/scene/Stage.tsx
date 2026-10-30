@@ -13,9 +13,11 @@ interface StageProps {
   children: ReactNode;
 }
 
-/** Frame rates (for a 60 Hz screen) that count as struggling and as plenty. */
-const FPS_BOUNDS = (refreshRate: number): [number, number] =>
-  refreshRate > 90 ? [50, 90] : [40, 58];
+/**
+ * Frame rates that count as struggling (below) and as plenty (above). Fixed:
+ * the monitor's own refresh-rate guess latches on the best sample it sees.
+ */
+const FPS_BOUNDS = (): [number, number] => [40, 58];
 
 /**
  * The shared 3D canvas. Its children are the scene for the current screen. A
@@ -41,7 +43,6 @@ export default function Stage({ children }: StageProps) {
           bounds={FPS_BOUNDS}
           onDecline={() => report("decline")}
           onIncline={() => report("incline")}
-          flipflops={Infinity}
         />
         {children}
       </Canvas>

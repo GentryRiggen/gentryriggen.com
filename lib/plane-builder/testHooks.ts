@@ -1,3 +1,5 @@
+import { MAX_QUALITY_LEVEL, type QualityLevel } from "./render/quality";
+
 /**
  * Whether the page exposes its test hooks (the store on `window`). On in
  * development and in the e2e build (`NEXT_PUBLIC_E2E=1`), off in the build
@@ -31,7 +33,10 @@ export function heldFlightSeconds(): number | undefined {
  * A render quality level a test pinned (0 is full quality), which also stops
  * the adaptive step-downs so screenshots do not depend on machine speed.
  */
-export function lockedQuality(): number | undefined {
+export function lockedQuality(): QualityLevel | undefined {
   if (!TEST_HOOKS_ENABLED || typeof window === "undefined") return undefined;
-  return window.__PLANE_BUILDER_TEST__?.lockQuality;
+  const locked = window.__PLANE_BUILDER_TEST__?.lockQuality;
+  if (locked === undefined || !Number.isFinite(locked)) return undefined;
+  const level = Math.min(Math.max(Math.round(locked), 0), MAX_QUALITY_LEVEL);
+  return level as QualityLevel;
 }

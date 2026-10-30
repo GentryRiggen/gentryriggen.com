@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useQualityStore } from "@/lib/plane-builder/render/qualityStore";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
 import {
@@ -30,6 +32,8 @@ interface WorldSceneProps {
 export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
   const flightId = usePlaneBuilderStore((s) => s.flightId);
   const best = usePlaneBuilderStore((s) => s.progress.levels[s.levelId].best);
+  // A world loading in (models, shaders) stalls frames: don't read that as slow.
+  useEffect(() => useQualityStore.getState().startWarmup(), []);
   const hasEngine =
     tiers.engine > 0 && level.plane.engine.values[tiers.engine] > 0;
   return (
