@@ -37,6 +37,7 @@ import type {
 } from "@/lib/ship-builder/model/types";
 import { footprintBase, LEVEL_HEIGHT, modelToWorld } from "./coords";
 import { AO_OCCLUDER } from "./aoLayer";
+import { batchRef } from "./batchRegistry";
 import BlockDetails from "./BlockDetails";
 import { blockBody } from "./blockBody";
 import {
@@ -165,6 +166,7 @@ function Block({
     <group>
       <mesh
         {...AO_OCCLUDER}
+        ref={batchRef}
         position={[0, height / 2, 0]}
         geometry={blockBody(size, height, joined)}
         castShadow

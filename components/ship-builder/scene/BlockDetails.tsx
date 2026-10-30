@@ -10,6 +10,7 @@ import {
   trimBand,
   type BlockSize,
 } from "./blockDetailGeometry";
+import { batchRef } from "./batchRegistry";
 import { Balconies, type Face } from "./cruiseParts";
 import GlowSurface from "./GlowSurface";
 import KitInstances from "./KitInstances";
@@ -143,13 +144,13 @@ export default function BlockDetails({
             </>
           ) : (
             windows.frames && (
-              <mesh geometry={windows.frames}>
+              <mesh ref={batchRef} geometry={windows.frames}>
                 <Surface color={PALETTE.windowFrame} {...surface} />
               </mesh>
             )
           )}
           {windows.glass && (
-            <mesh geometry={windows.glass}>
+            <mesh ref={batchRef} geometry={windows.glass}>
               <Surface
                 color={isBridge ? BRIDGE_GLASS : PALETTE.bridgeWindows}
                 finish="glass"
@@ -179,6 +180,7 @@ export default function BlockDetails({
       )}
       {stripeColor && hasExposedWall && (
         <mesh
+          ref={batchRef}
           position={[0, CLASS_STRIPE_Y, 0]}
           geometry={trimBand(size, CLASS_STRIPE_HEIGHT, joined)}
         >
@@ -187,6 +189,7 @@ export default function BlockDetails({
       )}
       {!stripeColor && hasExposedWall && (
         <mesh
+          ref={batchRef}
           position={[0, height - DECK_LINE_DROP, 0]}
           geometry={trimBand(size, DECK_LINE_HEIGHT, joined)}
         >
