@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
+import RenderInfoProbe from "./RenderInfoProbe";
 
 interface StageProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export default function Stage({ children }: StageProps) {
         camera={{ fov: 55, position: [-12, 6, 0], near: 0.1, far: 1500 }}
       >
         {children}
+        <RenderInfoProbe />
       </Canvas>
     </div>
   );

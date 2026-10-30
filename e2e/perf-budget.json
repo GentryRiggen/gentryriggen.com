@@ -1,0 +1,34 @@
+{
+  "ship-titanic-build": {
+    "calls": 1670,
+    "triangles": 300707
+  },
+  "ship-titanic-sailing": {
+    "calls": 1782,
+    "triangles": 322745
+  },
+  "ship-cruise-build": {
+    "calls": 3217,
+    "triangles": 287247
+  },
+  "plane-hangar": {
+    "calls": 44,
+    "triangles": 7364
+  },
+  "plane-meadow-flight": {
+    "calls": 62,
+    "triangles": 131814
+  },
+  "plane-jungle-flight": {
+    "calls": 85,
+    "triangles": 456990
+  },
+  "plane-city-flight": {
+    "calls": 69,
+    "triangles": 447118
+  },
+  "ship-titanic-iceberg-sinking": {
+    "calls": 1709,
+    "triangles": 318443
+  }
+}
