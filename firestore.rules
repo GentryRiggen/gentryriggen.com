@@ -176,10 +176,11 @@ service cloud.firestore {
 
     function validShipBests(b) {
       return b is map
-        && b.keys().hasOnly(['outlast', 'evacuation', 'shipshape'])
+        && b.keys().hasOnly(['outlast', 'evacuation', 'shipshape', 'smooth'])
         && (!('outlast' in b) || (b.outlast is int && b.outlast >= 0 && b.outlast <= 1440))
         && (!('evacuation' in b) || (b.evacuation is int && b.evacuation >= 0 && b.evacuation <= 100))
-        && (!('shipshape' in b) || (b.shipshape is int && b.shipshape >= 0 && b.shipshape <= 3));
+        && (!('shipshape' in b) || (b.shipshape is int && b.shipshape >= 0 && b.shipshape <= 3))
+        && (!('smooth' in b) || (b.smooth is int && b.smooth >= 0 && b.smooth <= 350));
     }
 
     function validShipLeaderboard() {
@@ -187,7 +188,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['nickname', 'totalStars', 'bests', 'updatedAt'])
         && d.keys().hasAll(['nickname', 'totalStars', 'bests', 'updatedAt'])
         && validNickname(d.nickname)
-        && d.totalStars is int && d.totalStars >= 1 && d.totalStars <= 4500
+        && d.totalStars is int && d.totalStars >= 1 && d.totalStars <= 6000
         && validShipBests(d.bests)
         // A player with stars has a best to show for them, and every best was
         // earned on some design, so the total is at least the stars of those
@@ -196,6 +197,7 @@ service cloud.firestore {
         && d.totalStars >= starsOf(d.bests, 'outlast', 60, 160, 1440)
           + starsOf(d.bests, 'evacuation', 25, 75, 100)
           + starsOf(d.bests, 'shipshape', 1, 2, 3)
+          + starsOf(d.bests, 'smooth', 100, 200, 350)
         && d.updatedAt == request.time;
     }
 
@@ -206,7 +208,7 @@ service cloud.firestore {
 
     // Stars can grow no faster than the game can award them: at most 3 per
     // trial and a trial takes over 20 seconds, so 6 plus 1 per 5 seconds of
-    // slack, and never more than 9 (one design's maximum) in a single write,
+    // slack, and never more than 9 (three trials' worth) in a single write,
     // so idle time cannot be banked into one big jump. They may fall when a
     // ship is deleted. Writes are 10 s apart.
     function validShipUpdate(uid) {
@@ -403,7 +405,7 @@ service cloud.firestore {
           && p.sea in ['calm', 'choppy', 'stormy'])
         || (name == 'challenge_result'
           && p.keys().hasOnly(['id', 'stars']) && p.keys().hasAll(['id', 'stars'])
-          && p.id in ['outlast', 'evacuation', 'shipshape']
+          && p.id in ['outlast', 'evacuation', 'shipshape', 'smooth']
           && p.stars is int && p.stars >= 0 && p.stars <= 3)
         || (name == 'template_used'
           && p.keys().hasOnly(['template']) && p.keys().hasAll(['template'])

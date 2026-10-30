@@ -24,16 +24,20 @@ const FAST_FORWARD_SECONDS = 1000;
 
 async function openBuilder(
   browser: Browser,
-  baseURL: string | undefined
+  baseURL: string | undefined,
+  testConfig: NonNullable<Window["__SHIP_BUILDER_TEST__"]> = {}
 ): Promise<Page> {
   const context = await browser.newContext({
     baseURL,
     viewport: { width: 1280, height: 800 },
   });
   const page = await context.newPage();
-  await page.addInitScript((trialSeconds) => {
-    window.__SHIP_BUILDER_TEST__ = { trialSeconds };
-  }, FAST_FORWARD_SECONDS);
+  await page.addInitScript(
+    (config) => {
+      window.__SHIP_BUILDER_TEST__ = config;
+    },
+    { trialSeconds: FAST_FORWARD_SECONDS, ...testConfig }
+  );
   await page.goto("/ship-builder");
   await expect(page.getByRole("heading", { name: "Ship Builder" })).toBeVisible(
     { timeout: 60_000 }
@@ -100,6 +104,52 @@ test.describe("Ship Builder challenges", () => {
     }
   });
 
+  test("Smooth sailing ends on a hit with a card and stars for the distance", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const browser = await launch(playwright);
+    try {
+      // An iceberg dead ahead, 200 cells out; the sail runs 10x faster so the
+      // software renderer reaches it in a few dozen frames.
+      const page = await openBuilder(browser, baseURL, {
+        driveSpeed: 10,
+        driveObstacles: [{ kind: "iceberg", x: 200, z: 0, radius: 5 }],
+      });
+      await page.evaluate(() =>
+        window.__shipBuilderStore!.getState().newShipFromTemplate("titanic")
+      );
+
+      await page.getByRole("button", { name: "Challenges" }).click();
+      const panel = page.getByRole("dialog", { name: "Challenges" });
+      await panel.getByRole("button", { name: /Start Smooth sailing/ }).click();
+      await expect(panel).toHaveCount(0);
+
+      await expect(
+        page.getByRole("button", { name: "Stop sailing" })
+      ).toBeVisible();
+      await expect(page.getByLabel(/Sailed \d+ of 350 cells/)).toBeVisible();
+      // Full ahead; the planted iceberg ends the sail.
+      for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowUp");
+
+      const card = page.getByRole("region", {
+        name: "Challenge: Smooth sailing",
+      });
+      await expect(card).toBeVisible({ timeout: 90_000 });
+      await expect(card).toContainText("She ran into");
+      // Which thing ends the sail (the planted iceberg or a rock from the
+      // fixed field) decides the stars, so check the card's shape instead.
+      await expect(card).toContainText(/Got \d+ cells from the start/);
+      await expect(card.getByRole("img", { name: /of 3 stars/ })).toBeVisible();
+      await expect(card).toContainText("Try the challenge again");
+
+      await page.getByRole("button", { name: "Back to building" }).click();
+      await expect(card).toHaveCount(0);
+    } finally {
+      await browser.close();
+    }
+  });
+
   test("the panel fits a phone and keeps its buttons reachable", async ({
     playwright,
     baseURL,
@@ -118,6 +168,7 @@ test.describe("Ship Builder challenges", () => {
         /Start Outlast/,
         /Start Everyone/,
         /Start Shipshape/,
+        /Start Smooth sailing/,
       ]) {
         await panel.getByRole("button", { name }).scrollIntoViewIfNeeded();
         await expect(panel.getByRole("button", { name })).toBeVisible();

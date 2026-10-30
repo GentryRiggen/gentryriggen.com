@@ -14,7 +14,13 @@ import {
 } from "@/lib/ship-builder/sail";
 import type { DriveConfig } from "@/lib/ship-builder/sail/driveConfig";
 import { SIM_STEP_S } from "@/lib/ship-builder/sim/types";
+import {
+  NEW_SMOOTH_RUN,
+  trackSmooth,
+  type SmoothRun,
+} from "@/lib/ship-builder/challenges/smooth";
 import { publishSail } from "@/lib/ship-builder/state/sailLive";
+import { publishSmooth } from "@/lib/ship-builder/state/smoothLive";
 import { sailInput } from "@/lib/ship-builder/state/sailInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { MAX_FRAME_DELTA } from "./animationMath";
@@ -29,6 +35,8 @@ function Sailing({ config }: SailingProps) {
   const ship = useShipBuilderStore((s) => s.ship);
   const driveHit = useShipBuilderStore((s) => s.driveHit);
   const endDrive = useShipBuilderStore((s) => s.endDrive);
+  const finishSail = useShipBuilderStore((s) => s.finishSail);
+  const isChallenge = config.challenge !== undefined;
   const stats = useMemo(() => analyzeShip(ship).stats, [ship]);
   const length = gridLength(ship);
   const beam = beamOf(ship);
@@ -44,6 +52,7 @@ function Sailing({ config }: SailingProps) {
   const state = useRef<SailState | null>(null);
   const leftover = useRef(0);
   const hasHit = useRef(false);
+  const run = useRef<SmoothRun>(NEW_SMOOTH_RUN);
   if (state.current === null) {
     state.current = syncField(createSail(testDriveObstacles()), config);
   }
@@ -51,12 +60,14 @@ function Sailing({ config }: SailingProps) {
   useEffect(() => {
     // A ship with no speed has nothing to sail: back to the builder.
     if (!canSail) {
-      endDrive();
+      if (isChallenge) finishSail({ reach: 0, status: "cannot-sail" });
+      else endDrive();
       return;
     }
     if (state.current) publishSail(state.current);
+    publishSmooth(NEW_SMOOTH_RUN);
     return () => publishSail(null);
-  }, [canSail, endDrive]);
+  }, [canSail, endDrive, finishSail, isChallenge]);
 
   useFrame((_, delta) => {
     const current = state.current;
@@ -71,6 +82,17 @@ function Sailing({ config }: SailingProps) {
     if (next === current) return;
     state.current = next;
     publishSail(next);
+    if (isChallenge) {
+      // Smooth sailing: a hit or the finish line ends the sail with a card
+      // instead of the usual crash into a sea trial.
+      run.current = trackSmooth(run.current, next);
+      publishSmooth(run.current);
+      if (run.current.status !== "sailing") {
+        hasHit.current = true;
+        finishSail(run.current);
+      }
+      return;
+    }
     if (next.impact) {
       hasHit.current = true;
       driveHit(next.impact);

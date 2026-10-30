@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.35.0",
+    date: "2026-10-30",
+    title: "Smooth sailing and fairer stars",
+    highlights: [
+      "New challenge, Smooth sailing: steer your ship as far as you can without bumping a rock, an iceberg or another ship. Reach 100, 200 and 350 for the stars",
+      "Shipshape stars now really depend on how steady your ship is, so tall, narrow ships have to work harder for all 3",
+      "In Everyone off safely the iceberg's long tear now shows along the whole hull, even when the ship breaks in two",
+      "Your leaderboard stars catch up properly after you play offline or the internet blips",
+    ],
+  },
+  {
     version: "2.34.0",
     date: "2026-10-30",
     title: "Photo mode and sharing",

@@ -12,8 +12,12 @@ import {
  * from it when shown, so retuning a threshold needs no migration.
  */
 export const CHALLENGES_KEY = "ship-builder:challenges";
-/** Bump with a migration in `parseChallenges` if the stored shape changes. */
-export const CHALLENGES_VERSION = 1;
+/**
+ * Bump with a migration in `parseChallenges` if the stored shape changes, or
+ * when a challenge id is added (an older build would drop the new id's bests
+ * on its next save, so it leaves newer data alone instead). 2 added `smooth`.
+ */
+export const CHALLENGES_VERSION = 2;
 
 interface StoredChallenges {
   v: number;

@@ -44,7 +44,7 @@ describe("submitShipEntry", () => {
       fetchImpl,
       getSession: async () => ({ uid: "u1", idToken: "tok" }),
     });
-    expect(ok).toBe(true);
+    expect(ok).toBe("ok");
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toContain(":commit?key=KEY");
     expect(init.headers.Authorization).toBe("Bearer tok");
@@ -58,24 +58,32 @@ describe("submitShipEntry", () => {
     expect(write.currentDocument).toBeUndefined();
   });
 
-  it("is false without a session or on a rejected write", async () => {
+  it("tells a refusal from a failure to deliver", async () => {
+    const getSession = async () => ({ uid: "u1", idToken: "t" });
     expect(
       await submitShipEntry(entry, { config, getSession: async () => null })
-    ).toBe(false);
+    ).toBe("error");
     expect(
       await submitShipEntry(entry, {
         config,
-        fetchImpl: jest.fn().mockResolvedValue({ ok: false }),
-        getSession: async () => ({ uid: "u1", idToken: "t" }),
+        fetchImpl: jest.fn().mockResolvedValue({ ok: false, status: 403 }),
+        getSession,
       })
-    ).toBe(false);
+    ).toBe("refused");
+    expect(
+      await submitShipEntry(entry, {
+        config,
+        fetchImpl: jest.fn().mockResolvedValue({ ok: false, status: 503 }),
+        getSession,
+      })
+    ).toBe("error");
     expect(
       await submitShipEntry(entry, {
         config,
         fetchImpl: jest.fn().mockRejectedValue(new Error("offline")),
-        getSession: async () => ({ uid: "u1", idToken: "t" }),
+        getSession,
       })
-    ).toBe(false);
+    ).toBe("error");
   });
 });
 

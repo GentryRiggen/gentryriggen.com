@@ -1,6 +1,13 @@
+import type { Density } from "../sail/field";
+import type { ObstacleKind } from "../sail/types";
 import type { BreakMode, SimSea } from "../sim/types";
 
-export const CHALLENGE_IDS = ["outlast", "evacuation", "shipshape"] as const;
+export const CHALLENGE_IDS = [
+  "outlast",
+  "evacuation",
+  "shipshape",
+  "smooth",
+] as const;
 export type ChallengeId = (typeof CHALLENGE_IDS)[number];
 
 export type Stars = 0 | 1 | 2 | 3;
@@ -25,11 +32,33 @@ export const TITANIC_MINUTES = 160;
 export const NOT_SCORED = -1;
 
 /**
- * Shipshape: the most a stormy sea may heel her, in degrees from her resting
- * list, for the third star. A stable, level ship rolls about 27.7 degrees; a
- * top-heavier one more.
+ * Shipshape: how high her weight may sit (`stabilityRatio`, the lever of the
+ * weight above the waterline over her width; lower is steadier and below zero
+ * is ballasted) for each star. The stormy sim rolls every stable ship the
+ * same, so this margin is what tells ships apart: the Titanic (0.109) earns
+ * two stars, a low warship or pirate sloop three, a tall container ship or
+ * cruise liner one. A stormy sea rolls every stable ship the same, so roll
+ * angle does not enter into it.
  */
-export const STEADY_PEAK_ROLL_DEG = 28;
+export const SOLID_STABILITY_RATIO = 0.12;
+export const STEADY_STABILITY_RATIO = 0.06;
+
+/**
+ * Smooth sailing: cells from the start to the finish line. Reaching it
+ * without touching anything is the third star, and the most a result can be.
+ */
+export const SMOOTH_FINISH_CELLS = 350;
+
+/**
+ * Smooth sailing's field: the same rocks, icebergs and moving ships for every
+ * sail, so a score means the same thing each time. Buoys are left out: a bump
+ * on one is harmless, so they would only be noise.
+ */
+export const SMOOTH_FIELD: {
+  seed: number;
+  kinds: ObstacleKind[];
+  density: Density;
+} = { seed: 20241, kinds: ["iceberg", "rock", "ship"], density: "some" };
 
 export type ChallengeTrial =
   | {
@@ -39,7 +68,9 @@ export type ChallengeTrial =
       /** The gash runs the whole hull, so every ship really sinks. */
       isWholeHull?: boolean;
     }
-  | { kind: "waves"; sea: SimSea };
+  | { kind: "waves"; sea: SimSea }
+  /** A sail through `SMOOTH_FIELD`; scored by how far she gets clean. */
+  | { kind: "sail" };
 
 export interface ChallengeDef {
   id: ChallengeId;
@@ -78,10 +109,18 @@ export const CHALLENGES: readonly ChallengeDef[] = [
   {
     id: "shipshape",
     title: "Shipshape",
-    blurb: "Ride out a stormy sea steadily, without rolling hard.",
+    blurb: "Ride out a stormy sea steadily, with your weight kept low.",
     trial: { kind: "waves", sea: "stormy" },
     starAt: [1, 2, 3],
-    tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight, so she rolls less.",
+    tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight, so her weight sits lower.",
+  },
+  {
+    id: "smooth",
+    title: "Smooth sailing",
+    blurb: `Sail as far from the start as you can through rocks, icebergs and other ships without touching one. ${SMOOTH_FINISH_CELLS} cells is the finish line.`,
+    trial: { kind: "sail" },
+    starAt: [100, 200, SMOOTH_FINISH_CELLS],
+    tip: "Slow down near rocks and icebergs and turn early. Smaller ships turn faster. Only your farthest distance from the start counts, so circling does not help.",
   },
 ];
 
@@ -100,6 +139,7 @@ export const MAX_VALUE: Record<ChallengeId, number> = {
   outlast: NEVER_SINKS_MINUTES,
   evacuation: 100,
   shipshape: 3,
+  smooth: SMOOTH_FINISH_CELLS,
 };
 
 /** Stars a best value earns, 0 to 3. */

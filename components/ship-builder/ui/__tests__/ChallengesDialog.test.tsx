@@ -32,8 +32,11 @@ describe("ChallengesDialog", () => {
     expect(
       screen.getByRole("heading", { name: "Shipshape" })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Smooth sailing" })
+    ).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: "0 of 3 stars" })).toHaveLength(
-      3
+      4
     );
     expect(screen.getByTestId("total-stars")).toHaveTextContent("0");
   });

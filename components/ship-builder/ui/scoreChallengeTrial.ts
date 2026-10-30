@@ -28,6 +28,9 @@ export default function scoreChallengeTrial(
   switch (id) {
     case "outlast":
       return scoreOutlast(state);
+    case "smooth":
+      // A sail, not a sea trial: scored by SailChallengeResult.
+      return notScored("smooth");
     case "shipshape":
       return scoreShipshape(shipshapeRuns(input));
     case "evacuation": {

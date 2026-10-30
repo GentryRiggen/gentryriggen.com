@@ -16,7 +16,7 @@ describe("format", () => {
     expect(describeValue("evacuation", 50)).toBe("50% of people saved");
     expect(describeValue("shipshape", 1)).toBe("Rode out a choppy sea");
     expect(describeValue("shipshape", 2)).toBe(
-      "Rode out a stormy sea, but rolled hard"
+      "Rode out a stormy sea with her weight fairly high"
     );
     expect(describeValue("evacuation", NOT_SCORED)).toBe(NOT_SCORED_TEXT);
     expect(NOT_SCORED_TEXT).toBe(
