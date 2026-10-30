@@ -126,7 +126,7 @@ export const CHALLENGES: readonly ChallengeDef[] = [
     blurb: `Sail ${SMOOTH_FINISH_CELLS} cells through rocks, icebergs and other ships without touching one.`,
     trial: { kind: "sail" },
     starAt: [150, 300, SMOOTH_FINISH_CELLS],
-    tip: "Slow down near rocks and icebergs, and turn early. A smaller, nimbler ship turns faster, and a ship with more power gets out of trouble sooner.",
+    tip: "Slow down near rocks and icebergs and turn early. Smaller ships turn faster.",
   },
 ];
 
