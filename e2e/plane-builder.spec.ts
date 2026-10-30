@@ -149,13 +149,18 @@ test.describe("Plane Builder", () => {
     const canvas = page.getByTestId("plane-canvas");
     await expect(canvas).toHaveAttribute("data-quality", "0");
     await page.evaluate(() => {
-      // Reports inside the cooldown change nothing; the first real step is one level.
+      // Past the warm-up and cooldown: the first report steps, the second
+      // lands inside the new cooldown and changes nothing.
       const quality = window.__planeBuilderQuality!;
-      quality.setState({ changedAt: performance.now() - 60_000 });
+      quality.setState({
+        warmupUntil: 0,
+        changedAt: performance.now() - 60_000,
+      });
       quality.getState().report("decline");
       quality.getState().report("decline");
     });
-    await expect(canvas).toHaveAttribute("data-quality", "1");
+    // A 1x screen skips the step that changes nothing, so it lands on 1 or 2.
+    await expect(canvas).toHaveAttribute("data-quality", /^[12]$/);
   });
 
   test("launches from the keyboard", async ({ page }) => {
