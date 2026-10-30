@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.14.0",
+    date: "2026-10-30",
+    title: "Share your best times",
+    highlights: [
+      "After a flight or a Daily challenge, tap Share my time to send a picture card of your time, your world and your plane",
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-10-30",
     title: "Sounds, close calls, offline flying and puffier clouds",

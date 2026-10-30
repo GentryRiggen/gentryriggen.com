@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.34.0",
+    date: "2026-10-30",
+    title: "Photo mode and sharing",
+    highlights: [
+      "A new camera button opens photo mode: pick an angle, choose the time of day and the sea, and snap a picture of your ship with its name on it",
+      "Share the picture and a link to your ship with friends and family straight from your tablet or phone",
+      "When a friend opens your ship link they get a hello and can keep a copy, and if they had a ship of their own it is kept safe in My Ships first",
+    ],
+  },
+  {
     version: "2.33.0",
     date: "2026-10-30",
     title: "Sounds and music",
