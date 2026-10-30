@@ -153,7 +153,7 @@ jobs:
           # software-rendering Chromium themselves), so it gets a one-worker job.
           # WebKit and the iPad run its @smoke tests (touch and pointer launch).
           - name: WebGL plane builder
-            files: e2e/plane-builder.spec.ts
+            files: e2e/plane-builder.spec.ts e2e/plane-builder-offline.spec.ts
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit
