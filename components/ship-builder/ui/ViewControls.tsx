@@ -13,6 +13,7 @@ import {
   Wind,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import {
   useShipBuilderStore,
   type CameraView,
@@ -82,9 +83,12 @@ const SEGMENT_PRESSED = `${SEGMENT_BASE} bg-sky-100 text-sky-900 dark:bg-sky-900
  */
 export default function ViewControls({
   hideCamera = false,
+  children,
 }: {
   /** Photo mode keeps only the sea and time chips. */
   hideCamera?: boolean;
+  /** Extra controls, stacked under the time-of-day chips. */
+  children?: ReactNode;
 }) {
   const { seaState, setSeaState } = useSeaState();
   const { timeOfDay, setTimeOfDay } = useTimeOfDay();
@@ -149,6 +153,7 @@ export default function ViewControls({
             </button>
           ))}
         </div>
+        {children}
       </div>
     </div>
   );

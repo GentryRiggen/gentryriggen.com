@@ -155,7 +155,9 @@ export default function ShipBuilder() {
         </Drawer>
         <main className="relative isolate min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
-          {!isChromeHidden && <ViewControls />}
+          {!isChromeHidden && (
+            <ViewControls>{webgl && <PhotoButton />}</ViewControls>
+          )}
           {isPhoto && <PhotoMode />}
           <Notice />
           <RemovalConfirm />
@@ -170,7 +172,6 @@ export default function ShipBuilder() {
                 <>
                   <DriveButton />
                   <WalkButton />
-                  <PhotoButton />
                 </>
               }
             />
