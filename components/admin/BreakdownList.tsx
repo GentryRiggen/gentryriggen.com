@@ -3,9 +3,15 @@ import type { Count } from "@/lib/analytics/aggregate";
 interface BreakdownListProps {
   title: string;
   rows: Count[];
+  /** What the numbers count, for screen readers. Defaults to "views". */
+  unit?: string;
 }
 
-export default function BreakdownList({ title, rows }: BreakdownListProps) {
+export default function BreakdownList({
+  title,
+  rows,
+  unit = "views",
+}: BreakdownListProps) {
   const max = Math.max(1, ...rows.map((r) => r.views));
   return (
     <section className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
@@ -28,7 +34,7 @@ export default function BreakdownList({ title, rows }: BreakdownListProps) {
                 className="mt-1 block h-1 w-full overflow-hidden rounded [&::-moz-progress-bar]:bg-blue-500 [&::-webkit-progress-bar]:bg-gray-100 dark:[&::-webkit-progress-bar]:bg-gray-800 [&::-webkit-progress-value]:bg-blue-500 dark:[&::-webkit-progress-value]:bg-blue-400"
                 value={row.views}
                 max={max}
-                aria-label={`${row.key}: ${row.views} views`}
+                aria-label={`${row.key}: ${row.views} ${unit}`}
               />
             </li>
           ))}
