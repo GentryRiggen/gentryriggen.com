@@ -103,11 +103,26 @@ export async function commitDocument(
   fields: Record<string, FirestoreValue>,
   deps: ClientDeps = {}
 ): Promise<boolean> {
+  return (await commitDocumentResult(collection, fields, deps)) === "ok";
+}
+
+/**
+ * How a write ended: accepted, refused by the rules (HTTP 403), or not
+ * delivered at all (no config or session, a network error, a server error).
+ */
+export type CommitResult = "ok" | "refused" | "error";
+
+/** Like `commitDocument`, but tells a refusal from a failure to deliver. */
+export async function commitDocumentResult(
+  collection: string,
+  fields: Record<string, FirestoreValue>,
+  deps: ClientDeps = {}
+): Promise<CommitResult> {
   const config = deps.config ?? firebaseConfig;
-  if (!isFirebaseConfigured(config)) return false;
+  if (!isFirebaseConfigured(config)) return "error";
   try {
     const session = await (deps.getSession ?? getIdToken)();
-    if (!session) return false;
+    if (!session) return "error";
     const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
     const response = await fetchImpl(commitUrl(config, deps.baseUrl), {
       method: "POST",
@@ -119,9 +134,10 @@ export async function commitDocument(
         buildDocumentBody(config.projectId, collection, session.uid, fields)
       ),
     });
-    return response.ok;
+    if (response.ok) return "ok";
+    return response.status === 403 ? "refused" : "error";
   } catch {
-    return false;
+    return "error";
   }
 }
 

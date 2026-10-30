@@ -1,6 +1,7 @@
 import {
   BOARD_LIMIT,
-  commitDocument,
+  commitDocumentResult,
+  type CommitResult,
   int,
   numberOf,
   runBoardQuery,
@@ -38,12 +39,12 @@ export function shipEntryFields(
   };
 }
 
-/** Never throws; resolves to whether the write was accepted. */
+/** Never throws; resolves to how the write ended. */
 export function submitShipEntry(
   entry: ShipBoardEntry,
   deps: ClientDeps = {}
-): Promise<boolean> {
-  return commitDocument(SHIP_COLLECTION, shipEntryFields(entry), deps);
+): Promise<CommitResult> {
+  return commitDocumentResult(SHIP_COLLECTION, shipEntryFields(entry), deps);
 }
 
 export function buildShipBoardQuery() {

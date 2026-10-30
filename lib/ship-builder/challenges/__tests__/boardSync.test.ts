@@ -30,7 +30,7 @@ describe("createBoardSync", () => {
   afterEach(() => jest.useRealTimers());
 
   function make(enabled = true) {
-    const submit = jest.fn().mockResolvedValue(true);
+    const submit = jest.fn().mockResolvedValue("ok");
     const sync = createBoardSync({
       enabled,
       getProgress: () => starred,
@@ -89,7 +89,7 @@ describe("createBoardSync", () => {
     }
 
     it("tries the whole total on the first write", async () => {
-      const submit = jest.fn().mockResolvedValue(true);
+      const submit = jest.fn().mockResolvedValue("ok");
       const sync = createBoardSync({
         enabled: true,
         getProgress: () => big,
@@ -102,27 +102,64 @@ describe("createBoardSync", () => {
       expect(submit.mock.calls[0][0].totalStars).toBe(42);
     });
 
-    it("falls back to a small total after a refusal, then steps up", async () => {
-      const submit = jest
-        .fn()
-        .mockResolvedValueOnce(false)
-        .mockResolvedValue(true);
+    function makeBig(submit: jest.Mock) {
       const sync = createBoardSync({
         enabled: true,
         getProgress: () => big,
         ensureNickname: () => "Happy Otter 7",
         submit,
       });
-      const totals = async () => {
+      const totals = () => submit.mock.calls.map((c) => c[0].totalStars);
+      return { sync, totals };
+    }
+
+    it("retries the full total after one refusal (a rate limit)", async () => {
+      const submit = jest
+        .fn()
+        .mockResolvedValueOnce("refused")
+        .mockResolvedValue("ok");
+      const { sync, totals } = makeBig(submit);
+      sync.request();
+      await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS);
+      expect(totals()).toEqual([42, 42]);
+      sync.stop();
+    });
+
+    it("retries the full total after any number of network errors", async () => {
+      const submit = jest
+        .fn()
+        .mockResolvedValueOnce("error")
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValueOnce("error")
+        .mockResolvedValue("ok");
+      const { sync, totals } = makeBig(submit);
+      for (let i = 0; i < 4; i++) {
+        sync.request();
         await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS);
-        return submit.mock.calls.map((c) => c[0].totalStars);
-      };
+      }
+      expect(totals()).toEqual([42, 42, 42, 42]);
+      sync.stop();
+    });
+
+    it("steps up only after the full total was refused twice", async () => {
+      const submit = jest
+        .fn()
+        .mockResolvedValueOnce("refused")
+        .mockResolvedValueOnce("refused")
+        .mockResolvedValue("ok");
+      const { sync, totals } = makeBig(submit);
       sync.request();
-      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS * 6);
+      expect(totals()).toEqual([42, 42, MAX_STARS_PER_WRITE, 18, 27, 36, 42]);
+      sync.stop();
+    });
+
+    it("gives up retrying a refusal that keeps coming", async () => {
+      const submit = jest.fn().mockResolvedValue("refused");
+      const { sync } = makeBig(submit);
       sync.request();
-      expect(await totals()).toEqual([42, MAX_STARS_PER_WRITE]);
-      expect(await totals()).toEqual([42, 9, 18]);
-      expect(await totals()).toEqual([42, 9, 18, 27]);
+      await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS * 10);
+      expect(submit.mock.calls.length).toBeLessThanOrEqual(4);
       sync.stop();
     });
   });
