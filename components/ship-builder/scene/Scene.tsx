@@ -23,6 +23,7 @@ import HullGash from "./HullGash";
 import Iceberg from "./Iceberg";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
+import PhotoCapture from "./PhotoCapture";
 import PostEffects from "./PostEffects";
 import Railings from "./Railings";
 import ReflectionEnvironment from "./ReflectionEnvironment";
@@ -46,6 +47,7 @@ import WorldSound from "../audio/WorldSound";
 import UnderwaterFog from "./UnderwaterFog";
 import WalkRunner from "./WalkRunner";
 import { usePartLongPress } from "./usePartLongPress";
+import usePhotoStore from "../hooks/usePhotoStore";
 
 /**
  * iOS Safari starts its own UI during a press-and-hold (callout, selection,
@@ -71,6 +73,8 @@ export default function Scene() {
   const stern = useShipBuilderStore((s) => s.ship.hull.stern);
   const paint = useShipBuilderStore((s) => s.ship.hull.paint);
   const select = useShipBuilderStore((s) => s.select);
+  // Photo mode shows the ship clean: no building helpers.
+  const isPhoto = usePhotoStore((s) => s.isOpen);
   const isBelow = useShipBuilderStore((s) => s.camera.view === "below");
   const { seaState } = useSeaState();
   const { timeOfDay } = useTimeOfDay();
@@ -146,9 +150,9 @@ export default function Scene() {
             </PoweredGlow>
             <HullGash />
             <Railings />
-            <GridTargets />
-            <AttachMarkers />
-            <GhostPreview />
+            {!isPhoto && <GridTargets />}
+            {!isPhoto && <AttachMarkers />}
+            {!isPhoto && <GhostPreview />}
           </ShipAnimation>
         </SailBank>
         <Iceberg />
@@ -169,6 +173,7 @@ export default function Scene() {
         <UnderwaterFog />
         <CameraRig />
         <PostEffects environment={environment} />
+        <PhotoCapture />
         <RenderInfoProbe />
       </Canvas>
       {ring && <LongPressRing key={ring.key} x={ring.x} y={ring.y} />}
