@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("App Check", () => {
-  test("e2e runs make no reCAPTCHA or App Check network calls", async ({
+  test("e2e runs make no reCAPTCHA, App Check or Firestore calls on public pages and /admin", async ({
     page,
   }) => {
     const googleCalls: string[] = [];
@@ -17,6 +17,7 @@ test.describe("App Check", () => {
     });
     await page.goto("/");
     await page.goto("/plane-builder");
+    await page.goto("/admin");
     await page.waitForLoadState("networkidle");
     expect(googleCalls).toEqual([]);
   });

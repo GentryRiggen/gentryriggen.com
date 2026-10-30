@@ -1,6 +1,7 @@
 import {
   APP_CHECK_HEADER,
   EXPIRY_MARGIN_MS,
+  FAILURE_BACKOFF_MS,
   appCheckHeaders,
   canUseAppCheck,
   getAppCheckToken,
@@ -15,6 +16,7 @@ const prodEnv: AppCheckEnv = {
   userAgent: "Mozilla/5.0 (Macintosh) Chrome/120",
   webdriver: false,
   isProduction: true,
+  isE2E: false,
   storage: null,
 };
 
@@ -143,13 +145,17 @@ describe("getAppCheckToken", () => {
       await expect(getAppCheckToken("pageview", deps)).resolves.toBeNull();
     });
 
-    it("on a timeout, then recovers on the next call", async () => {
+    it("on a timeout, then recovers after the backoff", async () => {
       const { deps } = makeDeps({
         getRecaptchaToken: () => new Promise<string>(() => {}),
         timeoutMs: 10,
       });
       await expect(getAppCheckToken("pageview", deps)).resolves.toBeNull();
       const healthy = makeDeps();
+      await expect(
+        getAppCheckToken("pageview", healthy.deps)
+      ).resolves.toBeNull();
+      healthy.clock.advance(FAILURE_BACKOFF_MS + 1);
       await expect(getAppCheckToken("pageview", healthy.deps)).resolves.toBe(
         "AC"
       );
@@ -158,7 +164,8 @@ describe("getAppCheckToken", () => {
 
   describe("never loads anything", () => {
     const blocked: Array<[string, Partial<AppCheckEnv>]> = [
-      ["in dev and e2e builds", { isProduction: false }],
+      ["in dev builds", { isProduction: false }],
+      ["in e2e builds", { isE2E: true }],
       ["on localhost", { hostname: "localhost" }],
       ["for bots", { userAgent: "Googlebot/2.1" }],
       ["for webdriver browsers", { webdriver: true }],
@@ -182,7 +189,7 @@ describe("getAppCheckToken", () => {
     });
 
     it("on the server", () => {
-      expect(canUseAppCheck(null)).toBe(false);
+      expect(canUseAppCheck(null, "pageview")).toBe(false);
     });
 
     it("without a site key", async () => {
@@ -197,6 +204,47 @@ describe("getAppCheckToken", () => {
       await expect(getAppCheckToken("pageview")).resolves.toBeNull();
       expect(document.querySelector("script[src*='recaptcha']")).toBeNull();
     });
+  });
+});
+
+describe("leaderboard exclusions", () => {
+  it("still gets a token for the owner and for bot-like agents", async () => {
+    for (const patch of [
+      { storage: { getItem: () => "1", setItem: () => {} } },
+      { userAgent: "Googlebot/2.1" },
+    ]) {
+      resetAppCheck();
+      const { deps } = makeDeps({ getEnv: () => ({ ...prodEnv, ...patch }) });
+      await expect(getAppCheckToken("leaderboard", deps)).resolves.toBe("AC");
+    }
+  });
+
+  it("is still blocked in dev, e2e, localhost and webdriver", () => {
+    for (const patch of [
+      { isProduction: false },
+      { isE2E: true },
+      { hostname: "localhost" },
+      { webdriver: true },
+    ]) {
+      expect(canUseAppCheck({ ...prodEnv, ...patch }, "leaderboard")).toBe(
+        false
+      );
+    }
+  });
+});
+
+describe("failure backoff", () => {
+  it("skips new attempts for a minute after a failure", async () => {
+    const failing = jest.fn(async () => ({ ok: false }) as Response);
+    const { deps, clock } = makeDeps({
+      fetchImpl: failing as unknown as typeof fetch,
+    });
+    await expect(getAppCheckToken("pageview", deps)).resolves.toBeNull();
+    await expect(getAppCheckToken("pageview", deps)).resolves.toBeNull();
+    expect(failing).toHaveBeenCalledTimes(1);
+    clock.advance(FAILURE_BACKOFF_MS + 1);
+    await getAppCheckToken("pageview", deps);
+    expect(failing).toHaveBeenCalledTimes(2);
   });
 });
 

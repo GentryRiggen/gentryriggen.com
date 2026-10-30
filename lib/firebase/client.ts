@@ -1,6 +1,7 @@
 import type { FirebaseApp } from "firebase/app";
 import { parseGameEvent, type GameEvent } from "@/lib/analytics/gameEvents";
 import type { PageviewDoc } from "@/lib/analytics/types";
+import { browserEnv, isRealBrowser } from "./appCheck";
 import { firebaseConfig } from "./config";
 
 /** Only used by /admin; public pages talk to Firestore over REST instead. */
@@ -17,12 +18,12 @@ export const MAX_DOCS = FIRESTORE_MAX_LIMIT;
 let appPromise: Promise<FirebaseApp> | null = null;
 
 /**
- * App Check for the SDK path (production only: localhost has no reCAPTCHA
- * domain). Failure must never block /admin, so errors are swallowed.
+ * App Check for the SDK path (real browsers only: no dev, e2e, localhost or
+ * automation). Failure must never block /admin, so errors are swallowed.
  */
 async function initAppCheck(app: FirebaseApp): Promise<void> {
   const siteKey = firebaseConfig.recaptchaSiteKey;
-  if (!siteKey || process.env.NODE_ENV !== "production") return;
+  if (!siteKey || !isRealBrowser(browserEnv())) return;
   try {
     const { initializeAppCheck, ReCaptchaEnterpriseProvider } =
       await import("firebase/app-check");

@@ -35,6 +35,8 @@ export interface AppCheckEnv {
   userAgent: string;
   webdriver: boolean;
   isProduction: boolean;
+  /** True in e2e builds (NEXT_PUBLIC_E2E). */
+  isE2E: boolean;
   storage: KeyValueStorage | null;
 }
 
@@ -55,30 +57,54 @@ interface CachedToken {
   expiresAt: number;
 }
 
+/** After a failed attempt, skip new ones for this long. */
+export const FAILURE_BACKOFF_MS = 60_000;
+
 let cached: CachedToken | null = null;
+let failedUntil = 0;
 let inFlight: Promise<string | null> | null = null;
 
 /** Test hook: forget the cached token and any request in flight. */
 export function resetAppCheck(): void {
   cached = null;
   inFlight = null;
+  failedUntil = 0;
 }
 
-function browserEnv(): AppCheckEnv | null {
+export function browserEnv(): AppCheckEnv | null {
   if (typeof window === "undefined") return null;
   return {
     hostname: window.location.hostname,
     userAgent: navigator.userAgent,
     webdriver: navigator.webdriver === true,
     isProduction: process.env.NODE_ENV === "production",
+    isE2E: process.env.NEXT_PUBLIC_E2E === "1",
     storage: safeLocalStorage(),
   };
 }
 
-/** Same skips as analytics: dev/e2e builds, localhost, bots, the owner. */
-export function canUseAppCheck(env: AppCheckEnv | null): boolean {
-  if (!env || !env.isProduction) return false;
+/**
+ * A real visitor's browser: not dev, e2e, localhost or automation. Enough for
+ * anything that must carry a token (leaderboards, /admin) once Firestore
+ * enforces App Check.
+ */
+export function isRealBrowser(env: AppCheckEnv | null): env is AppCheckEnv {
+  if (!env || !env.isProduction || env.isE2E) return false;
   if (LOCAL_HOSTS.has(env.hostname)) return false;
+  return !env.webdriver;
+}
+
+/**
+ * Analytics sends nothing for the owner or for bots, so it does not load
+ * reCAPTCHA for them either. Leaderboards still write for those browsers,
+ * so they only need a real browser.
+ */
+export function canUseAppCheck(
+  env: AppCheckEnv | null,
+  action: AppCheckAction
+): boolean {
+  if (!isRealBrowser(env)) return false;
+  if (action === "leaderboard") return true;
   if (isExcluded(env.storage)) return false;
   return !isBot(env.userAgent, env.webdriver);
 }
@@ -186,17 +212,22 @@ export async function getAppCheckToken(
     const config = deps.config ?? firebaseConfig;
     const key = config.recaptchaSiteKey;
     if (!key || !config.apiKey || !config.appId) return null;
-    if (!canUseAppCheck((deps.getEnv ?? browserEnv)())) return null;
+    if (!canUseAppCheck((deps.getEnv ?? browserEnv)(), action)) return null;
 
     const now = deps.now ?? Date.now;
     if (cached && cached.expiresAt - EXPIRY_MARGIN_MS > now()) {
       return cached.token;
     }
-    if (deps.cachedOnly) return null;
+    if (deps.cachedOnly || now() < failedUntil) return null;
 
-    inFlight ??= acquire(action, config, key, deps, now).finally(() => {
-      inFlight = null;
-    });
+    inFlight ??= acquire(action, config, key, deps, now)
+      .then((token) => {
+        if (!token) failedUntil = now() + FAILURE_BACKOFF_MS;
+        return token;
+      })
+      .finally(() => {
+        inFlight = null;
+      });
     return await inFlight;
   } catch {
     return null;

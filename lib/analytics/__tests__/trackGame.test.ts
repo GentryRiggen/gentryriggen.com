@@ -10,6 +10,20 @@ const env: TrackEnv = {
   storage: null,
 };
 
+describe("createGameTracker flush", () => {
+  it("passes the flush flag through to send", () => {
+    const send = jest.fn();
+    const track = createGameTracker({
+      send,
+      canSend: () => true,
+      random: () => 0,
+    });
+    track("ship_shared", {});
+    track("ship_shared", {}, true);
+    expect(send.mock.calls.map((c) => c[1])).toEqual([false, true]);
+  });
+});
+
 describe("canTrack", () => {
   it("tracks a normal production visitor", () => {
     expect(canTrack(env)).toBe(true);
