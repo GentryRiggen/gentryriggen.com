@@ -145,6 +145,12 @@ export default function CameraRig() {
   const photoAngle = usePhotoStore((s) => s.angle);
   const photoNonce = usePhotoStore((s) => s.nonce);
   const wasPhoto = useRef(false);
+  // The camera as the builder had it, so leaving photo mode puts it back.
+  const beforePhoto = useRef<{
+    position: Vector3;
+    target: Vector3;
+    zoom: number;
+  } | null>(null);
   // False until the drive camera has taken its first pose, which it snaps to.
   const hasDrivePose = useRef(false);
   // True while the player orbits or pans, so the follow never fights a drag.
@@ -215,13 +221,34 @@ export default function CameraRig() {
     if (!isPhoto) {
       if (wasPhoto.current) {
         wasPhoto.current = false;
-        const state = useShipBuilderStore.getState();
-        state.setCameraView(state.camera.view);
+        const saved = beforePhoto.current;
+        beforePhoto.current = null;
+        const orbit = controls.current;
+        const { camera: cam } = get();
+        if (saved && orbit) {
+          orbit.enableDamping = false;
+          cam.position.copy(saved.position);
+          orbit.target.copy(saved.target);
+          cam.zoom = saved.zoom;
+          cam.updateProjectionMatrix();
+          orbit.update();
+          orbit.enableDamping = true;
+        } else {
+          const state = useShipBuilderStore.getState();
+          state.setCameraView(state.camera.view);
+        }
       }
       return;
     }
-    wasPhoto.current = true;
     const orbit = controls.current;
+    if (!wasPhoto.current && orbit) {
+      beforePhoto.current = {
+        position: get().camera.position.clone(),
+        target: orbit.target.clone(),
+        zoom: get().camera.zoom,
+      };
+    }
+    wasPhoto.current = true;
     const { ship } = useShipBuilderStore.getState();
     const { size, gl } = get();
     const box = (

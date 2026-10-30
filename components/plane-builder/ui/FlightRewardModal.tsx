@@ -14,7 +14,7 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import type { FlightSummary } from "@/lib/plane-builder/state/store";
 import useLeaderboardStanding from "../hooks/useLeaderboardStanding";
 import { TWIST_INFO } from "@/lib/plane-builder/daily/daily";
-import { planeLevelOf } from "@/lib/plane-builder/share/timeCard";
+import { planeTierName } from "@/lib/plane-builder/share/timeCard";
 import { planeSynth } from "../audio/planeSynth";
 import { endLineFor } from "./endLines";
 import FinishCard from "./FinishCard";
@@ -267,7 +267,7 @@ export default function FlightRewardModal({
                   worldName: LEVELS[levelId].name,
                   time: result.finishTime,
                   nickname,
-                  planeLevel: planeLevelOf(worldTiers),
+                  planeTier: planeTierName(worldTiers),
                   twist: daily ? TWIST_INFO[daily.twist] : undefined,
                 }}
               />

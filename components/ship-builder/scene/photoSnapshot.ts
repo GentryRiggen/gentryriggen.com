@@ -1,4 +1,5 @@
-type Snapshotter = () => Promise<HTMLCanvasElement | null>;
+/** Called with the copied frame; returns a function that stops waiting. */
+type Snapshotter = (onFrame: (canvas: HTMLCanvasElement) => void) => () => void;
 
 let snapshotter: Snapshotter | null = null;
 
@@ -17,10 +18,14 @@ export function registerSnapshotter(next: Snapshotter): () => void {
 export function takeSnapshot(): Promise<HTMLCanvasElement | null> {
   const current = snapshotter;
   if (!current) return Promise.resolve(null);
-  return Promise.race([
-    current(),
-    new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), SNAPSHOT_TIMEOUT_MS)
-    ),
-  ]);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      stopWaiting();
+      resolve(null);
+    }, SNAPSHOT_TIMEOUT_MS);
+    const stopWaiting = current((canvas) => {
+      clearTimeout(timer);
+      resolve(canvas);
+    });
+  });
 }

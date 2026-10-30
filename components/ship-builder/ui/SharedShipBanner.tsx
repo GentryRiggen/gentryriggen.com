@@ -1,6 +1,6 @@
 "use client";
 
-import { Gift } from "lucide-react";
+import { Gift, X } from "lucide-react";
 import { useEffect } from "react";
 import { saveShip } from "@/lib/ship-builder/persist/local";
 import { useSharedLinkStore } from "@/lib/ship-builder/state/sharedLink";
@@ -15,16 +15,19 @@ const SAVE_FAILED_NOTICE = "Couldn't save a copy: browser storage is full";
  */
 export default function SharedShipBanner() {
   const sharedShip = useSharedLinkStore((s) => s.ship);
+  const isBackedUp = useSharedLinkStore((s) => s.isBackedUp);
   const dismiss = useSharedLinkStore((s) => s.dismiss);
-  const currentShip = useShipBuilderStore((s) => s.ship);
 
   // Once the ship on screen is no longer the one from the link, the hello is
-  // out of date.
-  const isStale = sharedShip !== null && currentShip !== sharedShip;
+  // out of date. Watching the store (rather than comparing while rendering)
+  // keeps this to one explicit moment: the first change after arriving.
   useEffect(() => {
-    if (isStale) dismiss();
-  }, [isStale, dismiss]);
-  if (!sharedShip || isStale) return null;
+    if (!sharedShip) return;
+    return useShipBuilderStore.subscribe((state) => {
+      if (state.ship !== sharedShip) dismiss();
+    });
+  }, [sharedShip, dismiss]);
+  if (!sharedShip) return null;
 
   function handleKeep() {
     const { ship, savedId, markSaved, setNotice } =
@@ -57,6 +60,11 @@ export default function SharedShipBanner() {
           {sharedShip.name.trim() ? (
             <span className="ml-1 font-semibold">{sharedShip.name.trim()}</span>
           ) : null}
+          {isBackedUp ? (
+            <span className="block text-xs font-normal">
+              Your ship is safe in My Ships.
+            </span>
+          ) : null}
         </span>
       </p>
       <div className="flex items-center gap-2">
@@ -80,7 +88,7 @@ export default function SharedShipBanner() {
           onClick={dismiss}
           className="min-h-11 min-w-11 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
         >
-          ✕
+          <X aria-hidden="true" className="mx-auto h-4 w-4" />
         </button>
       </div>
     </section>

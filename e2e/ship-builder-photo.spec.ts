@@ -80,4 +80,32 @@ test.describe("Ship Builder photo mode", () => {
     await expect(banner).toBeHidden();
     await expect(page.getByText("Saved to My Ships")).toBeVisible();
   });
+
+  test("keeps the visitor's own ship safe when a link replaces it", async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    await page.getByRole("button", { name: "Share" }).click();
+    const link = await page.getByLabel("Share link URL").inputValue();
+    await page.getByRole("textbox", { name: "Ship name" }).fill("Old Faithful");
+    await page.evaluate(() => {
+      const store = window.__shipBuilderStore!.getState();
+      store.selectTool("deck-1x1");
+      store.placeAt({ kind: "grid", level: 0, x: 3, z: 1 });
+    });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => localStorage.getItem("ship-builder:autosave")),
+        { timeout: 30_000 }
+      )
+      .toContain("Old Faithful");
+
+    await page.goto("about:blank");
+    await page.goto(link);
+    const banner = page.getByRole("region", { name: "Shared ship" });
+    await expect(banner).toContainText("Your ship is safe in My Ships");
+    await page.getByRole("button", { name: "My Ships" }).click();
+    await expect(page.getByText("Old Faithful (backup)")).toBeVisible();
+  });
 });

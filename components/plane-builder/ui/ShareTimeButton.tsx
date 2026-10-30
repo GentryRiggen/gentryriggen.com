@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Share2 } from "lucide-react";
 import {
   cardFilename,
@@ -15,20 +15,36 @@ interface ShareTimeButtonProps {
   card: TimeCardData;
 }
 
-/** Makes a picture card of a finish time and shares it (or saves it). */
+/**
+ * Shares a picture card of a finish time (or saves it). The card is drawn
+ * ahead of time, so a tap goes straight to the share sheet: browsers only
+ * allow sharing right after a tap, not after a wait.
+ */
 export default function ShareTimeButton({ card }: ShareTimeButtonProps) {
+  const { worldName, time, nickname, planeTier, twist } = card;
+  const [blob, setBlob] = useState<Blob | null>(null);
   const [message, setMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
 
+  useEffect(() => {
+    let isCancelled = false;
+    setBlob(null);
+    void renderTimeCard({ worldName, time, nickname, planeTier, twist }).then(
+      (next) => {
+        if (!isCancelled) setBlob(next);
+      }
+    );
+    return () => {
+      isCancelled = true;
+    };
+  }, [worldName, time, nickname, planeTier, twist]);
+
   async function handleClick() {
+    if (!blob) return;
     setIsBusy(true);
     setMessage("");
     try {
-      const blob = await renderTimeCard(card);
-      if (!blob) {
-        setMessage("Couldn't make the picture");
-        return;
-      }
+      // No await before this call: the tap's permission must still be fresh.
       const outcome = await shareImage({
         blob,
         filename: cardFilename(card),
@@ -45,7 +61,7 @@ export default function ShareTimeButton({ card }: ShareTimeButtonProps) {
     <>
       <button
         type="button"
-        disabled={isBusy}
+        disabled={isBusy || !blob}
         onClick={handleClick}
         className={secondaryButtonClass}
       >

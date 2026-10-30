@@ -4,7 +4,7 @@ import { addAfterEffect, useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import { registerSnapshotter } from "./photoSnapshot";
 
-type Resolver = (canvas: HTMLCanvasElement | null) => void;
+type Resolver = (canvas: HTMLCanvasElement) => void;
 
 /**
  * Lets the page take a picture of the scene. The picture is copied from the
@@ -29,14 +29,16 @@ export default function PhotoCapture() {
       for (const resolve of resolvers) resolve(copy);
     });
 
-    const unregister = registerSnapshotter(
-      () => new Promise((resolve) => waiting.push(resolve))
-    );
+    const unregister = registerSnapshotter((onFrame) => {
+      waiting.push(onFrame);
+      return () => {
+        waiting = waiting.filter((resolve) => resolve !== onFrame);
+      };
+    });
 
     return () => {
       stopWatching();
       unregister();
-      for (const resolve of waiting) resolve(null);
       waiting = [];
     };
   }, [gl]);

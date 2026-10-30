@@ -5,15 +5,20 @@ export interface TimeCardData {
   time: number;
   /** The generated leaderboard nickname, if the player has one. */
   nickname: string | null;
-  /** How far the plane is upgraded, as a whole number. */
-  planeLevel: number;
+  /** A friendly name for the plane's upgrades; null for a starter plane. */
+  planeTier: string | null;
   /** Set on the daily challenge. */
   twist?: { name: string; emoji: string };
 }
 
-/** One "level" per upgrade bought across the plane's tracks. */
-export function planeLevelOf(tiers: Record<string, number>): number {
-  return Object.values(tiers).reduce((sum, tier) => sum + tier, 0);
+/** A friendly name for how upgraded the plane is; null for a starter plane. */
+export function planeTierName(tiers: Record<string, number>): string | null {
+  const total = Object.values(tiers).reduce((sum, tier) => sum + tier, 0);
+  if (total <= 0) return null;
+  if (total < 10) return "Zippy plane";
+  if (total < 24) return "Speedy plane";
+  if (total < 40) return "Super plane";
+  return "Rocket plane";
 }
 
 export const CARD_WIDTH = 1200;
@@ -29,7 +34,7 @@ export interface CardText {
   time: string;
   world: string;
   twist: string | null;
-  plane: string;
+  plane: string | null;
   nickname: string | null;
   footer: string;
 }
@@ -41,7 +46,7 @@ export function cardText(data: TimeCardData): CardText {
     time: formatCardTime(data.time),
     world: data.worldName,
     twist: data.twist ? `${data.twist.emoji} ${data.twist.name}` : null,
-    plane: `Plane level ${data.planeLevel}`,
+    plane: data.planeTier,
     nickname: nickname === "" ? null : nickname,
     footer: "Made in Plane Builder",
   };
@@ -146,8 +151,10 @@ export function drawTimeCard(
     ctx.fillText(text.twist, 70, y);
     y += 52;
   }
-  ctx.fillText(text.plane, 70, y);
-  y += 52;
+  if (text.plane) {
+    ctx.fillText(text.plane, 70, y);
+    y += 52;
+  }
   if (text.nickname) ctx.fillText(`Pilot: ${text.nickname}`, 70, y);
 
   ctx.fillStyle = "#14532d";
@@ -163,5 +170,11 @@ export function renderTimeCard(data: TimeCardData): Promise<Blob | null> {
   const ctx = canvas.getContext("2d");
   if (!ctx) return Promise.resolve(null);
   drawTimeCard(ctx, data);
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  return new Promise((resolve) =>
+    canvas.toBlob((blob) => {
+      canvas.width = 0;
+      canvas.height = 0;
+      resolve(blob);
+    }, "image/png")
+  );
 }

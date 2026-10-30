@@ -9,7 +9,7 @@ import {
   msUntilNextUtcDay,
   utcDateKey,
 } from "@/lib/plane-builder/daily/daily";
-import { planeLevelOf } from "@/lib/plane-builder/share/timeCard";
+import { planeTierName } from "@/lib/plane-builder/share/timeCard";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { LEADERBOARDS_ENABLED } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
@@ -111,7 +111,7 @@ export default function DailyCard({
               worldName: LEVELS[today.world].name,
               time: bestToday,
               nickname,
-              planeLevel: planeLevelOf(levels[today.world].tiers),
+              planeTier: planeTierName(levels[today.world].tiers),
               twist,
             }}
           />

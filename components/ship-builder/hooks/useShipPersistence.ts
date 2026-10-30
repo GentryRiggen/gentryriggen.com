@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { backUpShip } from "@/lib/ship-builder/persist/backup";
 import { loadAutosave, saveAutosave } from "@/lib/ship-builder/persist/local";
 import { droppedPartsNotice } from "@/lib/ship-builder/persist/schema";
 import { decodeShareHash } from "@/lib/ship-builder/persist/share";
@@ -59,8 +60,20 @@ export default function useShipPersistence() {
       // A share link is an explicit "replace my ship"; loadShip does nothing
       // mid-trial, so leave the trial first.
       store.getState().endTrial();
+      // The link replaces the ship, and the autosave would then overwrite
+      // it, so keep the visitor's own ship in My Ships first. On page load
+      // that ship is still only in the autosave.
+      const current = store.getState().ship;
+      const autosave = loadAutosave();
+      const mine =
+        current.parts.length > 0
+          ? current
+          : autosave.kind === "ok"
+            ? autosave.ship
+            : null;
+      const isBackedUp = mine !== null && backUpShip(mine) === "backed-up";
       store.getState().loadShip(result.ship, null);
-      useSharedLinkStore.getState().show(result.ship);
+      useSharedLinkStore.getState().show(result.ship, isBackedUp);
       const notice = droppedPartsNotice(result.dropped);
       if (notice) store.getState().setNotice(notice);
       return true;

@@ -1,13 +1,7 @@
 "use client";
 
 import { Camera, Download, Share2, X } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { pictureFilename } from "@/lib/share/caption";
 import {
   describeOutcome,
@@ -19,6 +13,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePhotoStore from "../hooks/usePhotoStore";
 import { takeSnapshot } from "../scene/photoSnapshot";
 import { PHOTO_ANGLES } from "../scene/photoAngles";
+import { PHOTO_BUTTON_ID } from "./PhotoButton";
 import { developPhoto, PHOTO_TITLE_FALLBACK } from "./photoShot";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 import ViewControls from "./ViewControls";
@@ -55,15 +50,53 @@ export default function PhotoMode() {
     [shotUrl]
   );
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Escape") return;
-      event.stopPropagation();
-      if (shot) setShot(null);
-      else exit();
-    },
-    [shot, exit]
-  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const shutterRef = useRef<HTMLButtonElement>(null);
+  const isPreviewOpen = shot !== null;
+
+  // Focus moves into photo mode on entry and goes back to the Photo button on
+  // exit (the button is rebuilt when the controls return, so wait a frame).
+  useEffect(() => {
+    shutterRef.current?.focus();
+    return () => {
+      requestAnimationFrame(() =>
+        document.getElementById(PHOTO_BUTTON_ID)?.focus()
+      );
+    };
+  }, []);
+
+  // Escape closes the preview, then leaves; Tab stays inside the open layer.
+  useEffect(() => {
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        if (isPreviewOpen) setShot(null);
+        else exit();
+        return;
+      }
+      if (event.key !== "Tab" || !rootRef.current) return;
+      const scope = isPreviewOpen
+        ? rootRef.current.querySelector<HTMLElement>('[role="dialog"]')
+        : rootRef.current;
+      const items = Array.from(
+        scope?.querySelectorAll<HTMLElement>("button:not([disabled])") ?? []
+      );
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const isInside = active instanceof Node && scope?.contains(active);
+      if (!isInside || (event.shiftKey && active === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [isPreviewOpen, exit]);
 
   async function handleShutter() {
     if (isBusy) return;
@@ -85,9 +118,9 @@ export default function PhotoMode() {
 
   return (
     <div
+      ref={rootRef}
       data-testid="photo-mode"
       className="pointer-events-none absolute inset-0 z-20"
-      onKeyDown={handleKeyDown}
     >
       <button
         type="button"
@@ -117,6 +150,7 @@ export default function PhotoMode() {
           ))}
         </div>
         <button
+          ref={shutterRef}
           type="button"
           aria-label="Take photo"
           disabled={isBusy}

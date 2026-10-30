@@ -4,7 +4,7 @@ import {
   cardFilename,
   cardText,
   drawTimeCard,
-  planeLevelOf,
+  planeTierName,
   shareMessage,
   type TimeCardData,
 } from "../timeCard";
@@ -13,7 +13,7 @@ const normal: TimeCardData = {
   worldName: "Sunny Meadow",
   time: 41.26,
   nickname: "Happy Otter 12",
-  planeLevel: 7,
+  planeTier: "Speedy plane",
 };
 const daily: TimeCardData = {
   ...normal,
@@ -77,7 +77,7 @@ describe("drawTimeCard", () => {
       expect.arrayContaining([
         "Sunny Meadow",
         "41.3 s",
-        "Plane level 7",
+        "Speedy plane",
         "💨 Tailwind",
         "Pilot: Happy Otter 12",
         "Made in Plane Builder",
@@ -107,8 +107,17 @@ describe("sharing text", () => {
   });
 });
 
-describe("planeLevelOf", () => {
-  it("adds up every upgrade", () => {
-    expect(planeLevelOf({ wings: 2, engine: 3, fuel: 0 })).toBe(5);
+describe("planeTierName", () => {
+  it("leaves a starter plane unnamed", () => {
+    expect(planeTierName({ wings: 0, engine: 0 })).toBeNull();
+  });
+  it("names planes by how many upgrades they have", () => {
+    expect(planeTierName({ wings: 2, engine: 3 })).toBe("Zippy plane");
+    expect(planeTierName({ wings: 12, engine: 3 })).toBe("Speedy plane");
+    expect(planeTierName({ wings: 30 })).toBe("Super plane");
+    expect(planeTierName({ wings: 45 })).toBe("Rocket plane");
+  });
+  it("skips the line on the card for a starter plane", () => {
+    expect(cardText({ ...normal, planeTier: null }).plane).toBeNull();
   });
 });

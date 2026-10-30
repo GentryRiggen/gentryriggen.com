@@ -4,6 +4,9 @@ import { Camera } from "lucide-react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePhotoStore from "../hooks/usePhotoStore";
 
+/** Where focus goes back to when photo mode ends. */
+export const PHOTO_BUTTON_ID = "photo-button";
+
 /**
  * Opens photo mode. It sits in the view controls (under the sea and time
  * chips), where nothing else competes for room, and only shows while the
@@ -22,6 +25,7 @@ export default function PhotoButton() {
   return (
     <div className="pointer-events-auto rounded-lg border border-slate-300 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
       <button
+        id={PHOTO_BUTTON_ID}
         type="button"
         aria-label="Photo"
         title="Photo mode"
