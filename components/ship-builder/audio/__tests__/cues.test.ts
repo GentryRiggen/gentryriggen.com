@@ -2,6 +2,7 @@ import {
   ambientFor,
   cuesFor,
   muffleFor,
+  challengeStingFor,
   stingFor,
   type PlaybackSnapshot,
 } from "../cues";
@@ -215,5 +216,17 @@ describe("stingFor", () => {
 
   it("has none before the outcome is known", () => {
     expect(stingFor(null)).toBeNull();
+  });
+});
+
+describe("challengeStingFor", () => {
+  it("keeps the stars to 0..3", () => {
+    expect(challengeStingFor(2)).toEqual({ kind: "challenge", stars: 2 });
+    expect(challengeStingFor(7)).toEqual({ kind: "challenge", stars: 3 });
+    expect(challengeStingFor(-1)).toEqual({ kind: "challenge", stars: 0 });
+    expect(challengeStingFor(Number.NaN)).toEqual({
+      kind: "challenge",
+      stars: 0,
+    });
   });
 });

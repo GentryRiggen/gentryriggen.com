@@ -85,6 +85,8 @@ export default function TrialSound() {
       useShipBuilderStore.subscribe((state, prev) => {
         if (state.trial.status !== "result") return;
         if (prev.trial.status !== "running") return;
+        // A challenge has its own, stars-aware sting (see ChallengeResult).
+        if (state.trial.challenge) return;
         const sting = stingFor(state.trial.state.outcome);
         if (sting) trialSynth.play(sting);
       }),

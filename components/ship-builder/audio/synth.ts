@@ -9,7 +9,7 @@ import {
   type MusicPlayer,
 } from "../../game-audio/musicPlayer";
 import type { MusicSpec } from "../../game-audio/music";
-import { softnessGain } from "../../game-audio/channels";
+import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
 import type { AmbientParams, Cue } from "./cues";
 import {
   buildShipBeds,
@@ -19,6 +19,7 @@ import {
 } from "./shipBeds";
 import {
   playBell,
+  playChallengeSting,
   playFunnelCrash,
   playHorn,
   playPaint,
@@ -70,6 +71,15 @@ export interface TrialSynth {
   setSpeed: (speed: number) => void;
   /** The world's held sounds: waves, wind, engine thrum, bow wave, rush. */
   setBeds: (levels: BedLevels) => void;
+  /** Whether a one-shot cue would be heard right now. */
+  canPlay: () => boolean;
+  /**
+   * A sound component calls this while it is mounted and calls the returned
+   * function on unmount. When the last one lets go, the held beds and music
+   * are torn down and the context is suspended; the next `acquire` rebuilds
+   * them.
+   */
+  acquire: () => () => void;
   /** Sound effects on or off (the held beds follow). */
   setEffectsEnabled: (isOn: boolean) => void;
   /** Music on or off. It only plays while the audio is unlocked. */
@@ -374,6 +384,8 @@ interface AmbientBeds {
   seaGain: GainNode;
   humGain: GainNode;
   humOscillators: { osc: OscillatorNode; base: number }[];
+  /** Stops the sources and unplugs the graph. */
+  dispose: () => void;
 }
 
 /** The two held sounds: sea bed noise and the ship's electrical hum. */
@@ -417,7 +429,20 @@ function buildAmbientBeds(engine: Engine): AmbientBeds {
     osc.start();
     return { osc, base };
   });
-  return { seaGain, humGain, humOscillators };
+  return {
+    seaGain,
+    humGain,
+    humOscillators,
+    dispose() {
+      for (const source of [sea, swell, ...humOscillators.map((h) => h.osc)]) {
+        source.stop();
+        source.disconnect();
+      }
+      for (const node of [seaGain, humGain, seaFilter, swellDepth, swellGain]) {
+        node.disconnect();
+      }
+    },
+  };
 }
 
 const SEA_LEVEL = 0.22;
@@ -433,6 +458,7 @@ const DUCK: Partial<Record<Cue["kind"], readonly [number, number]>> = {
   horn: [0.55, 1.3],
   bell: [0.3, 0.8],
   sting: [0.45, 1.6],
+  challenge: [0.5, 1.8],
   creak: [0.25, 0.8],
   groan: [0.25, 1],
 };
@@ -442,6 +468,9 @@ export function createTrialSynth(): TrialSynth {
   let beds: AmbientBeds | null = null;
   let worldBeds: ShipBeds | null = null;
   let music: MusicPlayer | null = null;
+  let stopWatchingMotion: (() => void) | null = null;
+  let holders = 0;
+  let lastMuffle = 0;
   let isOn = false;
   let isEffectsOn = true;
   let isMusicOn = true;
@@ -481,23 +510,47 @@ export function createTrialSynth(): TrialSynth {
     else music.stop();
   }
 
+  /** Applies the master level, which follows reduced motion and the muffle. */
+  function applyMaster() {
+    if (!engine) return;
+    engine.bus.gain.setTargetAtTime(
+      MASTER_LEVEL * softnessGain() * (1 - 0.35 * lastMuffle),
+      engine.ctx.currentTime,
+      0.15
+    );
+  }
+
+  /** The beds and music hang on the engine; they can be torn down and rebuilt. */
+  function buildGraph(built: Engine) {
+    beds = buildAmbientBeds(built);
+    worldBeds = buildShipBeds(built);
+    music = createMusicPlayer(built.ctx, built.bus);
+    applied = null;
+    stopWatchingMotion = watchReducedMotion(applyMaster);
+  }
+
+  function teardownGraph() {
+    stopWatchingMotion?.();
+    stopWatchingMotion = null;
+    music?.dispose();
+    worldBeds?.dispose();
+    beds?.dispose();
+    music = null;
+    worldBeds = null;
+    beds = null;
+    applied = null;
+  }
+
   function enable(): boolean {
     const Ctor = audioContextConstructor();
     if (!Ctor) return false;
     try {
-      if (!engine) {
-        engine = buildEngine(Ctor);
-        beds = buildAmbientBeds(engine);
-        worldBeds = buildShipBeds(engine);
-        music = createMusicPlayer(engine.ctx, engine.muffle);
-      }
+      if (!engine) engine = buildEngine(Ctor);
+      if (!beds) buildGraph(engine);
       void engine.ctx.resume();
     } catch {
+      teardownGraph();
       engine = null;
-      beds = null;
-      worldBeds = null;
-      music = null;
-      applied = null;
       appliedMuffle = null;
       appliedSpeed = null;
       return false;
@@ -508,6 +561,29 @@ export function createTrialSynth(): TrialSynth {
     applyWorld();
     applyMusic();
     return true;
+  }
+
+  function acquire(): () => void {
+    holders += 1;
+    if (holders === 1 && isOn && engine) {
+      // Back after the last sound component left: rebuild what it dropped.
+      if (!beds) buildGraph(engine);
+      isPaused = false;
+      void engine.ctx.resume();
+      applyAmbient();
+      applyWorld();
+      applyMusic();
+    }
+    let isReleased = false;
+    return () => {
+      if (isReleased) return;
+      isReleased = true;
+      holders -= 1;
+      if (holders > 0) return;
+      // Nothing is driving the audio any more: free the graph and go quiet.
+      teardownGraph();
+      if (engine) void engine.ctx.suspend();
+    };
   }
 
   function disable() {
@@ -542,8 +618,12 @@ export function createTrialSynth(): TrialSynth {
     applyMusic();
   }
 
+  function canPlay(): boolean {
+    return isOn && !!engine && !!beds && isEffectsOn && !isPaused;
+  }
+
   function play(cue: Cue) {
-    if (!isOn || !engine || !isEffectsOn || isPaused) return;
+    if (!canPlay() || !engine) return;
     const ducking = DUCK[cue.kind];
     if (ducking) music?.duck(ducking[0], ducking[1]);
     switch (cue.kind) {
@@ -581,6 +661,8 @@ export function createTrialSynth(): TrialSynth {
         return playBell(engine);
       case "sting":
         return playSting(engine, cue.outcome);
+      case "challenge":
+        return playChallengeSting(engine, cue.stars);
     }
   }
 
@@ -626,14 +708,11 @@ export function createTrialSynth(): TrialSynth {
       return;
     }
     appliedMuffle = m;
+    lastMuffle = m;
     const cutoff = CLEAR_CUTOFF_HZ * (MUFFLED_CUTOFF_HZ / CLEAR_CUTOFF_HZ) ** m;
     const t = engine.ctx.currentTime;
     engine.muffle.frequency.setTargetAtTime(cutoff, t, 0.15);
-    engine.bus.gain.setTargetAtTime(
-      MASTER_LEVEL * softnessGain() * (1 - 0.35 * m),
-      t,
-      0.15
-    );
+    applyMaster();
   }
 
   function setSpeed(next: number) {
@@ -664,6 +743,8 @@ export function createTrialSynth(): TrialSynth {
     setMuffle,
     setSpeed,
     setBeds,
+    canPlay,
+    acquire,
     setEffectsEnabled,
     setMusicEnabled,
     setMusic,

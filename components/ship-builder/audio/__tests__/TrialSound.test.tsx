@@ -1,6 +1,10 @@
 import { act } from "react";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {
+  createInitialState,
+  useShipBuilderStore,
+} from "@/lib/ship-builder/state/store";
 import { soundSetting } from "../soundSetting";
 import { trialSynth } from "../synth";
 import TrialSound from "../TrialSound";
@@ -18,6 +22,7 @@ jest.mock("../synth", () => ({
     setAmbient: jest.fn(),
     setMuffle: jest.fn(),
     setSpeed: jest.fn(),
+    acquire: jest.fn(() => jest.fn()),
     setMusicEnabled: jest.fn(),
     setEffectsEnabled: jest.fn(),
   },
@@ -48,6 +53,26 @@ describe("TrialSound unlock", () => {
     await user.click(document.body);
     await user.click(document.body);
     expect(trialSynth.enable).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["touchEnd", "click"] as const)(
+    "also unlocks on %s, for iOS",
+    (name) => {
+      localStorage.setItem("ship-builder:ui:sound", "on");
+      render(<TrialSound />);
+      fireEvent[name](document.body);
+      expect(trialSynth.enable).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it("holds the audio graph while mounted and lets go on unmount", () => {
+    const release = jest.fn();
+    (trialSynth.acquire as jest.Mock).mockReturnValueOnce(release);
+    const { unmount } = render(<TrialSound />);
+    expect(trialSynth.acquire).toHaveBeenCalledTimes(1);
+    expect(release).not.toHaveBeenCalled();
+    unmount();
+    expect(release).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing while sound is off", async () => {
@@ -97,5 +122,54 @@ describe("TrialSound lifecycle", () => {
   it("renders nothing", () => {
     const { container } = render(<TrialSound />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("TrialSound result sting", () => {
+  function finish(challenge?: "outlast") {
+    const store = useShipBuilderStore;
+    const input = { ship: {}, iceberg: {} } as never;
+    act(() => {
+      store.setState({
+        trial: {
+          status: "running",
+          input,
+          runId: 1,
+          descending: true,
+          ...(challenge ? { challenge } : {}),
+        },
+      });
+    });
+    act(() => {
+      store.setState({
+        trial: {
+          status: "result",
+          input,
+          state: { outcome: "sank" } as never,
+          runId: 1,
+          descending: true,
+          ...(challenge ? { challenge } : {}),
+        },
+      });
+    });
+  }
+
+  beforeEach(() => {
+    act(() => useShipBuilderStore.setState(createInitialState()));
+  });
+
+  it("stings once when an ordinary trial ends", () => {
+    render(<TrialSound />);
+    finish();
+    expect(trialSynth.play).toHaveBeenCalledWith({
+      kind: "sting",
+      outcome: "sank",
+    });
+  });
+
+  it("leaves a challenge's ending to the challenge sting", () => {
+    render(<TrialSound />);
+    finish("outlast");
+    expect(trialSynth.play).not.toHaveBeenCalled();
   });
 });

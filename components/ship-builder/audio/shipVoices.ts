@@ -268,3 +268,60 @@ export function playSting(engine: VoiceEngine, kind: StingKind) {
     attack: 0.5,
   });
 }
+
+/** Notes of the challenge sting: a bell-like note per star, rising in pitch. */
+const STAR_NOTES = [587.33, 739.99, 880] as const;
+
+/**
+ * The challenge result sting. No stars is a soft, low "try again" pair; each
+ * star adds a rising bell note, and three stars end on a bright ringing chord.
+ */
+export function playChallengeSting(engine: VoiceEngine, stars: number) {
+  const now = engine.ctx.currentTime;
+  const count = Math.min(3, Math.max(0, Math.round(stars)));
+  if (count === 0) {
+    for (const [i, freq] of [329.63, 293.66].entries()) {
+      tone(engine, {
+        type: "triangle",
+        start: now + i * 0.2,
+        duration: 0.5,
+        freq,
+        gain: 0.11,
+        attack: 0.02,
+      });
+    }
+    return;
+  }
+  for (let i = 0; i < count; i += 1) {
+    const start = now + i * 0.17;
+    tone(engine, {
+      type: "triangle",
+      start,
+      duration: 0.45,
+      freq: STAR_NOTES[i],
+      gain: 0.15,
+      attack: 0.006,
+    });
+    tone(engine, {
+      type: "sine",
+      start,
+      duration: 0.9,
+      freq: STAR_NOTES[i] * 2,
+      gain: 0.04 + 0.01 * i,
+      attack: 0.004,
+    });
+  }
+  if (count === 3) {
+    const chordAt = now + 3 * 0.17;
+    for (const freq of [587.33, 739.99, 880, 1174.66]) {
+      tone(engine, {
+        type: "sine",
+        start: chordAt,
+        duration: 1.5,
+        freq,
+        gain: 0.07,
+        attack: 0.05,
+      });
+    }
+  }
+}

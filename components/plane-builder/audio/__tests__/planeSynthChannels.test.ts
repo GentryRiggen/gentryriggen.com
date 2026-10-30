@@ -164,3 +164,63 @@ describe("plane synth sound pass", () => {
     expect(() => synth.setEngine(0)).not.toThrow();
   });
 });
+
+describe("plane synth lifetime", () => {
+  it("frees the engine, wind and music when the last holder leaves", () => {
+    const synth = createPlaneSynth();
+    const release = synth.acquire();
+    synth.setMusic(musicForWorld("meadow"));
+    synth.enable();
+    const [context] = audio.contexts;
+    const started = audio.sources.filter((s) => s.start.mock.calls.length > 0);
+    expect(started.length).toBeGreaterThan(0);
+    release();
+    expect(context.suspend).toHaveBeenCalled();
+    expect(
+      started
+        .filter((s) => !s.onended)
+        .every((s) => s.stop.mock.calls.length > 0)
+    ).toBe(true);
+    jest.advanceTimersByTime(5000);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("restarts cleanly on remount", () => {
+    const synth = createPlaneSynth();
+    const release = synth.acquire();
+    synth.enable();
+    release();
+    synth.setMusic(null);
+    const before = audio.sources.length;
+    synth.acquire();
+    synth.setMusic(musicForWorld("storm"));
+    expect(audio.contexts).toHaveLength(1);
+    expect(audio.sources.length).toBeGreaterThan(before);
+    expect(jest.getTimerCount()).toBe(1);
+    const sources = audio.sources.length;
+    synth.setFlight({ ...SILENT_FLIGHT, engine: 1, boosting: true });
+    expect(audio.sources.length).toBeGreaterThan(sources);
+  });
+
+  it("routes the music through the master bus", () => {
+    const synth = createPlaneSynth();
+    synth.acquire();
+    synth.setMusic(musicForWorld("meadow"));
+    synth.enable();
+    const bus = audio.nodes[0];
+    expect(
+      audio.nodes.some((n) =>
+        n.connect.mock.calls.some(([target]) => target === bus)
+      )
+    ).toBe(true);
+  });
+
+  it("has a DUCK-backed nearMiss cue", () => {
+    const synth = createPlaneSynth();
+    synth.acquire();
+    synth.enable();
+    const before = audio.sources.length;
+    synth.play("nearMiss");
+    expect(audio.sources.length).toBeGreaterThan(before);
+  });
+});

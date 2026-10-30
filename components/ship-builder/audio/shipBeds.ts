@@ -128,23 +128,29 @@ export function buildShipBeds(engine: VoiceEngine): ShipBeds {
   const rushFilter = filtered(white, "bandpass", 500, 0.5);
   rushFilter.connect(rushGain);
 
-  let applied: BedLevels | null = null;
+  // What the audio thread was last told. Reused, so an update allocates nothing.
+  const applied: BedLevels = { ...SILENT_BEDS };
+  let hasApplied = false;
 
   function changed(next: number, previous: number | undefined) {
-    return previous === undefined || Math.abs(next - previous) >= MIN_STEP;
+    return (
+      !hasApplied ||
+      previous === undefined ||
+      Math.abs(next - previous) >= MIN_STEP
+    );
   }
 
   function update(levels: BedLevels) {
     const t = ctx.currentTime;
-    if (changed(levels.wash, applied?.wash)) {
+    if (changed(levels.wash, applied.wash)) {
       washGain.gain.setTargetAtTime(WASH_GAIN * levels.wash, t, 0.5);
       washLfo.frequency.setTargetAtTime(0.1 + 0.25 * levels.wash, t, 1);
     }
-    if (changed(levels.wind, applied?.wind)) {
+    if (changed(levels.wind, applied.wind)) {
       windGain.gain.setTargetAtTime(WIND_GAIN * levels.wind, t, 0.6);
       windFilter.frequency.setTargetAtTime(380 + 900 * levels.wind, t, 0.6);
     }
-    if (changed(levels.thrum, applied?.thrum)) {
+    if (changed(levels.thrum, applied.thrum)) {
       thrumGain.gain.setTargetAtTime(
         levels.thrum > 0 ? THRUM_GAIN * (0.3 + 0.7 * levels.thrum) : 0,
         t,
@@ -155,15 +161,20 @@ export function buildShipBeds(engine: VoiceEngine): ShipBeds {
       }
       thrumFilter.frequency.setTargetAtTime(160 + 260 * levels.thrum, t, 0.3);
     }
-    if (changed(levels.bow, applied?.bow)) {
+    if (changed(levels.bow, applied.bow)) {
       bowGain.gain.setTargetAtTime(BOW_GAIN * levels.bow ** 1.3, t, 0.3);
       bowFilter.frequency.setTargetAtTime(500 + 1300 * levels.bow, t, 0.3);
     }
-    if (changed(levels.rush, applied?.rush)) {
+    if (changed(levels.rush, applied.rush)) {
       rushGain.gain.setTargetAtTime(RUSH_GAIN * levels.rush ** 1.5, t, 0.5);
       rushFilter.frequency.setTargetAtTime(300 + 1100 * levels.rush, t, 0.5);
     }
-    applied = { ...levels };
+    applied.wash = levels.wash;
+    applied.wind = levels.wind;
+    applied.thrum = levels.thrum;
+    applied.bow = levels.bow;
+    applied.rush = levels.rush;
+    hasApplied = true;
   }
 
   function silence() {
@@ -173,7 +184,7 @@ export function buildShipBeds(engine: VoiceEngine): ShipBeds {
       gain.gain.cancelScheduledValues(t);
       gain.gain.setValueAtTime(0, t);
     }
-    applied = null;
+    hasApplied = false;
   }
 
   function dispose() {

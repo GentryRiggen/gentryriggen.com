@@ -58,3 +58,16 @@ export const REDUCED_MOTION_GAIN = 0.7;
 export function softnessGain(): number {
   return prefersReducedMotion() ? REDUCED_MOTION_GAIN : 1;
 }
+
+/**
+ * Calls `onChange` whenever the reduced-motion preference changes; returns the
+ * function that stops listening.
+ */
+export function watchReducedMotion(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  if (typeof window.matchMedia !== "function") return () => {};
+  const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+  if (typeof media.addEventListener !== "function") return () => {};
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}

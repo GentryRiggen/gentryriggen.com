@@ -140,3 +140,100 @@ describe("ship synth channels", () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 });
+
+describe("ship synth lifetime", () => {
+  it("frees the graph and suspends when the last holder leaves", () => {
+    const synth = createTrialSynth();
+    const release = synth.acquire();
+    synth.setMusic(SHANTY);
+    synth.enable();
+    const [context] = audio.contexts;
+    const sources = [...audio.sources];
+    expect(sources.length).toBeGreaterThan(0);
+    release();
+    expect(context.suspend).toHaveBeenCalled();
+    // Every held source (beds, oscillators) was stopped.
+    const held = sources.filter((s) => s.start.mock.calls.length > 0);
+    expect(held.every((s) => s.stop.mock.calls.length > 0)).toBe(true);
+    jest.advanceTimersByTime(5000);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("waits for every holder before freeing", () => {
+    const synth = createTrialSynth();
+    const a = synth.acquire();
+    const b = synth.acquire();
+    synth.enable();
+    const [context] = audio.contexts;
+    a();
+    expect(context.suspend).not.toHaveBeenCalled();
+    b();
+    expect(context.suspend).toHaveBeenCalledTimes(1);
+  });
+
+  it("releasing twice does nothing extra", () => {
+    const synth = createTrialSynth();
+    const release = synth.acquire();
+    synth.enable();
+    const [context] = audio.contexts;
+    release();
+    release();
+    expect(context.suspend).toHaveBeenCalledTimes(1);
+  });
+
+  it("rebuilds cleanly on remount: music and beds come back", () => {
+    const synth = createTrialSynth();
+    const release = synth.acquire();
+    synth.setMusic(SHANTY);
+    synth.enable();
+    release();
+    synth.setMusic(null);
+    const before = audio.sources.length;
+    const again = synth.acquire();
+    synth.setMusic(SHANTY);
+    expect(audio.contexts).toHaveLength(1);
+    expect(audio.sources.length).toBeGreaterThan(before);
+    expect(audio.contexts[0].resume).toHaveBeenCalledTimes(2);
+    expect(jest.getTimerCount()).toBe(1);
+    synth.play({ kind: "place" });
+    again();
+  });
+
+  it("plays the challenge sting for each star count", () => {
+    const synth = createTrialSynth();
+    synth.acquire();
+    synth.enable();
+    for (const stars of [0, 1, 2, 3]) {
+      const before = audio.sources.length;
+      synth.play({ kind: "challenge", stars });
+      expect(audio.sources.length).toBeGreaterThan(before);
+    }
+  });
+
+  it("reports whether a cue would be heard", () => {
+    const synth = createTrialSynth();
+    expect(synth.canPlay()).toBe(false);
+    synth.acquire();
+    synth.enable();
+    expect(synth.canPlay()).toBe(true);
+    synth.setEffectsEnabled(false);
+    expect(synth.canPlay()).toBe(false);
+    synth.setEffectsEnabled(true);
+    synth.pause();
+    expect(synth.canPlay()).toBe(false);
+  });
+
+  it("routes the music through the master bus", () => {
+    const synth = createTrialSynth();
+    synth.acquire();
+    synth.setMusic(SHANTY);
+    synth.enable();
+    // The first gain made is the engine bus; the music's duck gain feeds a
+    // chain that ends at it.
+    const bus = audio.nodes[0];
+    const connectedToBus = audio.nodes.some((n) =>
+      n.connect.mock.calls.some(([target]) => target === bus)
+    );
+    expect(connectedToBus).toBe(true);
+  });
+});

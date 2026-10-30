@@ -10,7 +10,7 @@ import {
   createMusicPlayer,
   type MusicPlayer,
 } from "../../game-audio/musicPlayer";
-import { softnessGain } from "../../game-audio/channels";
+import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
 import {
   buildFlightBeds,
   SILENT_FLIGHT,
@@ -87,6 +87,15 @@ export interface PlaneSynth {
    * changes to the audio thread.
    */
   setFlight: (sound: FlightSound) => void;
+  /** Whether a one-shot cue would be heard right now. */
+  canPlay: () => boolean;
+  /**
+   * A sound component calls this while it is mounted and calls the returned
+   * function on unmount. When the last one lets go, the engine, wind and
+   * music are torn down and the context is suspended; the next `acquire`
+   * rebuilds them.
+   */
+  acquire: () => () => void;
   /** Sound effects on or off (the held sounds follow). */
   setEffectsEnabled: (isOn: boolean) => void;
   /** Music on or off. It only plays while the audio is unlocked. */
@@ -106,8 +115,6 @@ const STALL_FAST_S = 0.3;
 interface Engine {
   ctx: AudioContext;
   bus: GainNode;
-  /** The music joins here, past the master level. */
-  limiter: DynamicsCompressorNode;
   white: AudioBuffer;
   brown: AudioBuffer;
 }
@@ -138,7 +145,6 @@ function buildEngine(Ctor: AudioContextConstructor): Engine {
   return {
     ctx,
     bus,
-    limiter,
     white: buildNoise(ctx, false),
     brown: buildNoise(ctx, true),
   };
@@ -399,6 +405,8 @@ export function createPlaneSynth(): PlaneSynth {
   let engine: Engine | null = null;
   let beds: FlightBeds | null = null;
   let music: MusicPlayer | null = null;
+  let stopWatchingMotion: (() => void) | null = null;
+  let holders = 0;
   let isOn = false;
   let isEffectsOn = true;
   let isMusicOn = true;
@@ -421,20 +429,44 @@ export function createPlaneSynth(): PlaneSynth {
     else music.stop();
   }
 
+  function applyMaster() {
+    if (!engine) return;
+    engine.bus.gain.setTargetAtTime(
+      MASTER_LEVEL * softnessGain(),
+      engine.ctx.currentTime,
+      0.1
+    );
+    beds?.setCalm(softnessGain() < 1);
+  }
+
+  /** The beds and music hang on the engine; they can be torn down and rebuilt. */
+  function buildGraph(built: Engine) {
+    beds = buildFlightBeds(built, softnessGain() < 1);
+    // The music runs through the master bus like everything else, so the
+    // master level and reduced-motion softness apply to it too.
+    music = createMusicPlayer(built.ctx, built.bus);
+    stopWatchingMotion = watchReducedMotion(applyMaster);
+  }
+
+  function teardownGraph() {
+    stopWatchingMotion?.();
+    stopWatchingMotion = null;
+    music?.dispose();
+    beds?.dispose();
+    music = null;
+    beds = null;
+  }
+
   function enable(): boolean {
     const Ctor = audioContextConstructor();
     if (!Ctor) return false;
     try {
-      if (!engine) {
-        engine = buildEngine(Ctor);
-        beds = buildFlightBeds(engine, softnessGain() < 1);
-        music = createMusicPlayer(engine.ctx, engine.limiter);
-      }
+      if (!engine) engine = buildEngine(Ctor);
+      if (!beds) buildGraph(engine);
       void engine.ctx.resume();
     } catch {
+      teardownGraph();
       engine = null;
-      beds = null;
-      music = null;
       return false;
     }
     isOn = true;
@@ -442,6 +474,28 @@ export function createPlaneSynth(): PlaneSynth {
     applyBeds();
     applyMusic();
     return true;
+  }
+
+  function acquire(): () => void {
+    holders += 1;
+    if (holders === 1 && isOn && engine) {
+      // Back after the last sound component left: rebuild what it dropped.
+      if (!beds) buildGraph(engine);
+      isPaused = false;
+      void engine.ctx.resume();
+      applyBeds();
+      applyMusic();
+    }
+    let isReleased = false;
+    return () => {
+      if (isReleased) return;
+      isReleased = true;
+      holders -= 1;
+      if (holders > 0) return;
+      // Nothing is driving the audio any more: free the graph and go quiet.
+      teardownGraph();
+      if (engine) void engine.ctx.suspend();
+    };
   }
 
   function silenceBeds() {
@@ -471,8 +525,12 @@ export function createPlaneSynth(): PlaneSynth {
     applyMusic();
   }
 
+  function canPlay(): boolean {
+    return isOn && !!engine && !!beds && isEffectsOn && !isPaused;
+  }
+
   function play(cue: PlaneCue) {
-    if (!isOn || !engine || !isEffectsOn || isPaused) return;
+    if (!canPlay() || !engine) return;
     const ducking = DUCK[cue];
     if (ducking) music?.duck(ducking[0], ducking[1]);
     if (isSoundPassCue(cue)) SOUND_PASS_CUES[cue](engine);
@@ -502,8 +560,15 @@ export function createPlaneSynth(): PlaneSynth {
     }
   }
 
+  // Reused by `setEngine`, which runs every frame in older call sites.
+  const engineOnly: FlightSound = { ...SILENT_FLIGHT };
+
   function setEngine(next: number) {
-    setFlight({ ...flight, engine: Math.min(1, Math.max(0, next)) });
+    engineOnly.engine = Math.min(1, Math.max(0, next));
+    engineOnly.speed = flight.speed;
+    engineOnly.boosting = flight.boosting;
+    engineOnly.stall = flight.stall;
+    setFlight(engineOnly);
   }
 
   function setEffectsEnabled(next: boolean) {
@@ -536,6 +601,8 @@ export function createPlaneSynth(): PlaneSynth {
     play,
     setEngine,
     setFlight,
+    canPlay,
+    acquire,
     setEffectsEnabled,
     setMusicEnabled,
     setMusic,

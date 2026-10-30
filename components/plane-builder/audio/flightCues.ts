@@ -69,9 +69,13 @@ export interface FlightSoundInputs {
 
 /**
  * The held sounds of a flight: engine burn, wind from speed, the boost press
- * and how close a stall is. Only a plane in the air makes any of them.
+ * and how close a stall is. Only a plane in the air makes any of them. Pass
+ * `out` to reuse one object every frame instead of allocating.
  */
-export function flightSoundFor(inputs: FlightSoundInputs): FlightSound {
+export function flightSoundFor(
+  inputs: FlightSoundInputs,
+  out: FlightSound = { engine: 0, speed: 0, boosting: false, stall: 0 }
+): FlightSound {
   const isFlying = inputs.phase === "flying";
   const engine = engineLevel(
     inputs.hasThrust,
@@ -79,19 +83,18 @@ export function flightSoundFor(inputs: FlightSoundInputs): FlightSound {
     isFlying,
     inputs.wantsBoost && inputs.canBoost
   );
-  return {
-    engine,
-    speed: isFlying
-      ? clamp01((inputs.speed - MIN_SPEED) / (WIND_FULL_SPEED - MIN_SPEED))
-      : 0,
-    boosting: engine === 1,
-    stall: isFlying
-      ? clamp01(
-          (inputs.progressTimer - STALL_WARN_FROM) /
-            (STALL_WINDOW - STALL_WARN_FROM)
-        )
-      : 0,
-  };
+  out.engine = engine;
+  out.speed = isFlying
+    ? clamp01((inputs.speed - MIN_SPEED) / (WIND_FULL_SPEED - MIN_SPEED))
+    : 0;
+  out.boosting = engine === 1;
+  out.stall = isFlying
+    ? clamp01(
+        (inputs.progressTimer - STALL_WARN_FROM) /
+          (STALL_WINDOW - STALL_WARN_FROM)
+      )
+    : 0;
+  return out;
 }
 
 /** A ghost this close (m) as it swaps places with you is worth a whoosh. */

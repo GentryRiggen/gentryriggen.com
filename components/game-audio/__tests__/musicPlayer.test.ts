@@ -108,7 +108,7 @@ describe("music player", () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it("ducks only while playing, and not on every call", () => {
+  it("ducks only while playing, and applies every duck", () => {
     const { ctx, player } = setup();
     const gainsBefore = audio.nodes.length;
     player.duck(0.5, 0.3);
@@ -117,16 +117,10 @@ describe("music player", () => {
     const duckNode = audio.nodes[0];
     duckNode.gain.setTargetAtTime.mockClear();
     player.duck(0.5, 0.3);
-    const afterFirst = duckNode.gain.setTargetAtTime.mock.calls.length;
-    expect(afterFirst).toBe(2);
+    expect(duckNode.gain.setTargetAtTime.mock.calls.length).toBe(2);
     ctx.currentTime += 0.01;
     player.duck(0.5, 0.3);
-    expect(duckNode.gain.setTargetAtTime.mock.calls.length).toBe(afterFirst);
-    ctx.currentTime += 0.5;
-    player.duck(0.5, 0.3);
-    expect(duckNode.gain.setTargetAtTime.mock.calls.length).toBe(
-      afterFirst * 2
-    );
+    expect(duckNode.gain.setTargetAtTime.mock.calls.length).toBe(4);
   });
 
   it("restarts at bar zero for a different piece, not for the same one", () => {

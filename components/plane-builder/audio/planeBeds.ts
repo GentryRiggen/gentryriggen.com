@@ -24,6 +24,8 @@ export const SILENT_FLIGHT: FlightSound = {
 };
 
 export interface FlightBeds {
+  /** Under reduced motion the engine's propeller flutter is switched off. */
+  setCalm: (isCalm: boolean) => void;
   update: (sound: FlightSound) => void;
   /** Cuts the beds at once (the context is about to be suspended). */
   silence: () => void;
@@ -34,6 +36,7 @@ const ENGINE_GAIN = 0.1;
 const WIND_GAIN = 0.17;
 const ENGINE_BASE_HZ = 52;
 const MIN_STEP = 0.02;
+const FLUTTER_DEPTH = 0.16;
 
 export function buildFlightBeds(
   engine: VoiceEngine,
@@ -78,17 +81,14 @@ export function buildFlightBeds(
 
   // A slow propeller flutter on the engine's loudness (skipped when the
   // player asked for less motion).
-  let flutterRate: AudioParam | null = null;
-  if (!isCalm) {
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 12;
-    const depth = ctx.createGain();
-    depth.gain.value = 0.16;
-    lfo.connect(depth).connect(flutter.gain);
-    lfo.start();
-    nodes.push(lfo, depth);
-    flutterRate = lfo.frequency;
-  }
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 12;
+  const flutterDepth = ctx.createGain();
+  flutterDepth.gain.value = isCalm ? 0 : FLUTTER_DEPTH;
+  lfo.connect(flutterDepth).connect(flutter.gain);
+  lfo.start();
+  nodes.push(lfo, flutterDepth);
+  const flutterRate = lfo.frequency;
 
   // Wind: bandpassed white noise that rises and brightens with speed.
   const windSource = loopingNoise(ctx, engine.white);
@@ -101,18 +101,25 @@ export function buildFlightBeds(
   windSource.connect(windFilter).connect(windGain).connect(bus);
   nodes.push(windSource, windFilter, windGain);
 
-  let applied: FlightSound | null = null;
+  // What the audio thread was last told. Reused, so an update allocates nothing.
+  const applied: FlightSound = { ...SILENT_FLIGHT };
+  let hasApplied = false;
 
   function changed(next: number, previous: number | undefined) {
-    return previous === undefined || Math.abs(next - previous) >= MIN_STEP;
+    return (
+      !hasApplied ||
+      previous === undefined ||
+      Math.abs(next - previous) >= MIN_STEP
+    );
   }
 
   function update(sound: FlightSound) {
     const t = ctx.currentTime;
     const engineChanged =
-      changed(sound.engine, applied?.engine) ||
-      changed(sound.speed, applied?.speed) ||
-      sound.boosting !== applied?.boosting;
+      changed(sound.engine, applied.engine) ||
+      changed(sound.speed, applied.speed) ||
+      !hasApplied ||
+      sound.boosting !== applied.boosting;
     if (engineChanged) {
       const level = sound.engine;
       const open = sound.boosting ? 1.3 : 1;
@@ -126,13 +133,25 @@ export function buildFlightBeds(
         t,
         0.1
       );
-      flutterRate?.setTargetAtTime(10 + 12 * level, t, 0.2);
+      flutterRate.setTargetAtTime(10 + 12 * level, t, 0.2);
     }
-    if (changed(sound.speed, applied?.speed)) {
+    if (changed(sound.speed, applied.speed)) {
       windGain.gain.setTargetAtTime(WIND_GAIN * sound.speed ** 1.6, t, 0.15);
       windFilter.frequency.setTargetAtTime(350 + 2400 * sound.speed, t, 0.15);
     }
-    applied = { ...sound };
+    applied.engine = sound.engine;
+    applied.speed = sound.speed;
+    applied.boosting = sound.boosting;
+    applied.stall = sound.stall;
+    hasApplied = true;
+  }
+
+  function setCalm(isCalm: boolean) {
+    flutterDepth.gain.setTargetAtTime(
+      isCalm ? 0 : FLUTTER_DEPTH,
+      ctx.currentTime,
+      0.1
+    );
   }
 
   function silence() {
@@ -142,7 +161,7 @@ export function buildFlightBeds(
       gain.gain.cancelScheduledValues(t);
       gain.gain.setValueAtTime(0, t);
     }
-    applied = null;
+    hasApplied = false;
   }
 
   function dispose() {
@@ -158,5 +177,5 @@ export function buildFlightBeds(
     }
   }
 
-  return { update, silence, dispose };
+  return { setCalm, update, silence, dispose };
 }

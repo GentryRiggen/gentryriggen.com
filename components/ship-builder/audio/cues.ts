@@ -42,7 +42,9 @@ export type Cue =
   | { kind: "redo" }
   | { kind: "horn" }
   | { kind: "bell" }
-  | { kind: "sting"; outcome: "survived" | "sank" };
+  | { kind: "sting"; outcome: "survived" | "sank" }
+  /** A challenge was scored: 0 to 3 stars. */
+  | { kind: "challenge"; stars: number };
 
 /** Sounds that run for as long as they are true, not one-shot cues. */
 export interface AmbientParams {
@@ -175,4 +177,10 @@ export function stingFor(outcome: TrialOutcome | null): Cue | null {
   if (outcome === null) return null;
   const isLost = outcome === "sank" || outcome === "capsized";
   return { kind: "sting", outcome: isLost ? "sank" : "survived" };
+}
+
+/** The sting for a scored challenge, with its stars kept to 0..3. */
+export function challengeStingFor(stars: number): Cue {
+  const whole = Number.isFinite(stars) ? Math.round(stars) : 0;
+  return { kind: "challenge", stars: Math.min(3, Math.max(0, whole)) };
 }

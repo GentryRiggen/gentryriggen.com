@@ -7,6 +7,7 @@ import {
   shouldPlayMusic,
   softnessGain,
   type ChannelState,
+  watchReducedMotion,
 } from "../channels";
 
 const ON: ChannelState = {
@@ -89,5 +90,27 @@ describe("reduced motion", () => {
   it("leaves the mix alone otherwise", () => {
     mockPreference(false);
     expect(softnessGain()).toBe(1);
+  });
+});
+
+describe("watchReducedMotion", () => {
+  const original = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it("reports changes live and stops when told to", () => {
+    const listeners = new Set<() => void>();
+    window.matchMedia = jest.fn(() => ({
+      matches: false,
+      addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+    })) as never;
+    const onChange = jest.fn();
+    const stop = watchReducedMotion(onChange);
+    listeners.forEach((fn) => fn());
+    expect(onChange).toHaveBeenCalledTimes(1);
+    stop();
+    expect(listeners.size).toBe(0);
   });
 });

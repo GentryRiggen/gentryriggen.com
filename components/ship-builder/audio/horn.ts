@@ -8,6 +8,8 @@ let lastBlastAt = Number.NEGATIVE_INFINITY;
 /** Blows the ship's horn unless it is still sounding. Returns whether it did. */
 export function blowHorn(now: number = performance.now()): boolean {
   if (now - lastBlastAt < HORN_COOLDOWN_MS) return false;
+  // Sound off, effects off or the tab hidden: nothing sounds, so no cooldown.
+  if (!trialSynth.canPlay()) return false;
   lastBlastAt = now;
   trialSynth.play({ kind: "horn" });
   return true;
