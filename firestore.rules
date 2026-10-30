@@ -161,12 +161,13 @@ service cloud.firestore {
 
     // ---- Plane Builder daily challenge ---------------------------------
     // planeDaily/{yyyy-mm-dd}/entries/{uid}: one best time per pilot per UTC
-    // day. The day must be today or yesterday by the server clock (yesterday
-    // covers a flight that ends just after midnight). The world is the
-    // client's claim: the rules cannot run the seeded draw that picks the
-    // day's world, so they only check the time against that world's physical
-    // minimum. Keep the minimums in sync with validBestTimes (and
-    // lib/leaderboard/__tests__/rulesSync.test.ts checks them).
+    // day. The day must be today by the server clock, or yesterday during the
+    // first 15 minutes of today (a flight that ends just after midnight).
+    // The day's world is fixed by dailyPlan(), the same list as DAILY_PLAN in
+    // lib/plane-builder/daily/daily.ts (entry = day number mod 40, where the
+    // day number comes from the PATH date). The time must then be at least that
+    // world's physical minimum. Keep the minimums in sync with validBestTimes;
+    // lib/leaderboard/__tests__/rulesSync.test.ts checks all of it.
 
     function dayString(t) {
       return string(t.year()) + '-'
@@ -176,7 +177,60 @@ service cloud.firestore {
 
     function isRecentDay(date) {
       return date == dayString(request.time)
-        || date == dayString(request.time - duration.value(1, 'd'));
+        || (date == dayString(request.time - duration.value(1, 'd'))
+          && request.time.toMillis() % 86400000 < 900000);
+    }
+
+    function dailyPlan() {
+      return [
+        'volcano:noBoost',
+        'glacier:tailwind',
+        'islands:tailwind',
+        'glacier:headwind',
+        'beach:noBoost',
+        'storm:noBoost',
+        'volcano:doubleCoins',
+        'city:noBoost',
+        'islands:headwind',
+        'jungle:tailwind',
+        'mountains:headwind',
+        'jungle:noBoost',
+        'islands:noBoost',
+        'storm:doubleCoins',
+        'beach:headwind',
+        'mountains:tailwind',
+        'jungle:doubleCoins',
+        'storm:headwind',
+        'canyon:doubleCoins',
+        'meadow:tailwind',
+        'volcano:tailwind',
+        'islands:doubleCoins',
+        'canyon:noBoost',
+        'city:doubleCoins',
+        'glacier:noBoost',
+        'beach:doubleCoins',
+        'meadow:doubleCoins',
+        'canyon:tailwind',
+        'beach:tailwind',
+        'canyon:headwind',
+        'mountains:doubleCoins',
+        'city:headwind',
+        'glacier:doubleCoins',
+        'jungle:headwind',
+        'city:tailwind',
+        'mountains:noBoost',
+        'meadow:noBoost',
+        'volcano:headwind',
+        'storm:tailwind',
+        'meadow:headwind'
+      ];
+    }
+
+    // The world of the day named by the path (the date is already checked by
+    // isRecentDay, so int() cannot fail on it).
+    function dailyWorld(date) {
+      let day = int(math.floor(timestamp.date(int(date[0:4]), int(date[5:7]), int(date[8:10])).toMillis() / 86400000));
+      return dailyPlan()[day % 40].split(':')[0];
     }
 
     function dailyMinimum(world) {
@@ -186,12 +240,12 @@ service cloud.firestore {
       }[world];
     }
 
-    function validDailyEntry() {
+    function validDailyEntry(date) {
       let d = request.resource.data;
       return d.keys().hasOnly(['nickname', 'world', 'time', 'updatedAt'])
         && d.keys().hasAll(['nickname', 'world', 'time', 'updatedAt'])
         && validNickname(d.nickname)
-        && d.world in ['meadow', 'canyon', 'mountains', 'beach', 'jungle', 'city', 'glacier', 'volcano', 'storm', 'islands']
+        && d.world == dailyWorld(date)
         && d.time is number
         && d.time >= dailyMinimum(d.world)
         && d.time <= 600
@@ -208,9 +262,9 @@ service cloud.firestore {
       allow get: if true;
       allow list: if request.query.limit <= 50 && request.query.offset == 0;
       allow create: if isPlayer(uid) && isRecentDay(date)
-        && validDailyEntry() && notBanned(uid);
+        && validDailyEntry(date) && notBanned(uid);
       allow update: if isPlayer(uid) && isRecentDay(date)
-        && validDailyEntry() && validDailyUpdate() && notBanned(uid);
+        && validDailyEntry(date) && validDailyUpdate() && notBanned(uid);
       allow delete: if isAdmin();
     }
 

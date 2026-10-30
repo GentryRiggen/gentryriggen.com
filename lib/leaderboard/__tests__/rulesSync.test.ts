@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { MAX_SPEED } from "@/lib/plane-builder/sim/constants";
+import { DAILY_PLAN } from "@/lib/plane-builder/daily/daily";
 import { ADJECTIVES, ANIMALS } from "../nickname";
 
 const rules = readFileSync(join(process.cwd(), "firestore.rules"), "utf8");
@@ -69,9 +70,16 @@ describe("firestore.rules stays in sync with the code", () => {
         Math.floor(LEVELS[id].finishDistance / MAX_SPEED)
       );
     }
-    const worlds = rules.match(/d\.world in \[([^\]]*)\]/);
-    expect(
-      [...(worlds?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1])
-    ).toEqual([...LEVEL_ORDER]);
+  });
+
+  it("has the same daily plan as the client, indexed by the path date", () => {
+    const body = rules.match(
+      /function dailyPlan\(\) \{\s*return \[([^\]]*)\];/
+    );
+    const plan = [...(body?.[1] ?? "").matchAll(/'([^']*)'/g)].map((m) => m[1]);
+    expect(plan).toEqual([...DAILY_PLAN]);
+    expect(plan).toHaveLength(40);
+    expect(rules).toContain("dailyPlan()[day % 40]");
+    expect(rules).toContain("86400000");
   });
 });

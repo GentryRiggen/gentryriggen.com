@@ -22,7 +22,7 @@ const ghost = encodeGhost(
   }))
 );
 
-function fly(time: number, x: number) {
+function fly(time: number, x: number, finishTime: number | null = null) {
   const level = LEVELS.meadow;
   const state = launch(
     level,
@@ -35,6 +35,10 @@ function fly(time: number, x: number) {
   );
   state.time = time;
   state.maxX = x;
+  if (finishTime !== null) {
+    state.finished = true;
+    state.finishTime = finishTime;
+  }
   act(() => {
     flightLive.set(state);
     flightLive.notify();
@@ -72,6 +76,26 @@ describe("ghost readout", () => {
     fly(1.5, 60);
     expect(screen.getByTestId("ghost-gap")).toHaveTextContent(
       "Ghost: +0.5s behind"
+    );
+  });
+
+  it("reads even for a gap too small to show", () => {
+    render(<FlightHud />);
+    fly(1.02, 60);
+    expect(screen.getByTestId("ghost-gap")).toHaveTextContent("Ghost: even");
+  });
+
+  it("freezes at the finish instead of drifting through the runout", () => {
+    render(<FlightHud />);
+    // The ghost finished at 2 s; this plane crossed the line at 1.5 s and has
+    // flown on to 4 s of sim time.
+    fly(1.5, 120, 1.5);
+    expect(screen.getByTestId("ghost-gap")).toHaveTextContent(
+      "Ghost: +0.5s ahead"
+    );
+    fly(4, 400, 1.5);
+    expect(screen.getByTestId("ghost-gap")).toHaveTextContent(
+      "Ghost: +0.5s ahead"
     );
   });
 

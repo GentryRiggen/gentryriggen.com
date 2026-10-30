@@ -271,6 +271,9 @@ export function recordDailyFlight(
   if (!ghost || time === null || !Number.isFinite(time) || time <= 0) {
     return paid;
   }
+  // A newer day's best is never replaced by an older day's flight (a flight
+  // that began before midnight and ended after it).
+  if (p.dailyBest && p.dailyBest.date > date) return paid;
   const current = p.dailyBest?.date === date ? p.dailyBest.time : Infinity;
   if (time >= current) return paid;
   return { ...paid, dailyBest: { date, time, ghost } };

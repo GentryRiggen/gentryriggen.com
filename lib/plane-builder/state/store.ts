@@ -175,9 +175,10 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
       screen: "map",
       lastFlight: null,
       celebrate: null,
+      daily: null,
     });
   },
-  openMap: () => set({ screen: "map", celebrate: null }),
+  openMap: () => set({ screen: "map", celebrate: null, daily: null }),
   move: (dx, dy) => {
     const r = moveOnMap(get().progress, dx, dy);
     if (!r.ok) return null;
@@ -190,6 +191,13 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     return r;
   },
   startLaunch: () => {
+    // The day rolled over while the player was in the hangar: that daily is
+    // over, so go back to the worlds screen, where the card shows the new one.
+    const { daily } = get();
+    if (daily && utcDateKey(Date.now()) !== daily.date) {
+      set({ screen: "levels", daily: null, lastFlight: null });
+      return;
+    }
     resetFlightInput();
     resetLaunchAim();
     clearFlightToasts();
@@ -212,24 +220,36 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     );
     const previousBest = progress.levels[levelId].best;
     // The challenge pays no milestone bonuses (they belong to a world's own
-    // best), and a twist can double the coins.
-    const pay = payout(
+    // best), a twist can double the coins, and only the first finish of each
+    // UTC day pays at all: later runs just chase the time.
+    const basePay = payout(
       level,
       result,
       stats.multiplier,
       daily ? level.finishDistance : previousBest,
       coinFactor(bonuses) * (daily ? coinMultiplierFor(daily.twist) : 1)
     );
+    // A flight that crossed midnight belongs to a day that is over: it
+    // records nothing for the daily.
+    const isDailyOpen = daily !== null && utcDateKey(Date.now()) === daily.date;
+    const isFirstDailyFinish =
+      isDailyOpen &&
+      result.finished &&
+      (progress.dailyBest?.date ?? "") < daily.date;
+    const pay =
+      daily && !isFirstDailyFinish ? { ...basePay, total: 0 } : basePay;
     const recorded = daily
       ? {
-          progress: recordDailyFlight(
-            progress,
-            levelId,
-            result,
-            pay.total,
-            daily.date,
-            ghost
-          ),
+          progress: isDailyOpen
+            ? recordDailyFlight(
+                progress,
+                levelId,
+                result,
+                pay.total,
+                daily.date,
+                ghost
+              )
+            : progress,
           isNewBest: false,
           unlocked: null,
         }

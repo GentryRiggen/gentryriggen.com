@@ -4,6 +4,8 @@ import type { FlightState } from "../sim/flight";
 export const GHOST_INTERVAL = 0.1;
 /** Longest ghost kept: a flight lasts at most MAX_FLIGHT_TIME (120 s). */
 export const MAX_GHOST_SAMPLES = 1300;
+/** How far a saved ghost's time may differ from its length, in seconds. */
+const MAX_TIME_MISMATCH = 0.2;
 
 /** Metres and radians are stored as whole numbers of these. */
 const POSITION_UNIT = 0.1;
@@ -134,6 +136,9 @@ export function isGhost(value: unknown): value is Ghost {
     data.length >= FIELDS * 2 &&
     data.length <= FIELDS * MAX_GHOST_SAMPLES &&
     data.length % FIELDS === 0 &&
+    // The recorded length must match the time (a hand edit would not).
+    Math.abs(time - (data.length / FIELDS - 1) * GHOST_INTERVAL) <=
+      MAX_TIME_MISMATCH &&
     data.every((n) => Number.isInteger(n) && Math.abs(n) <= 1e7)
   );
 }

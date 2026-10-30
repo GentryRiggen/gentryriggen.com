@@ -17,6 +17,9 @@ import FlightToasts from "./FlightToasts";
 import BoostEffect from "./BoostEffect";
 import Speedometer from "./Speedometer";
 
+/** A gap smaller than this reads "even" (it would round to +0.0s). */
+const EVEN_SECONDS = 0.05;
+
 /**
  * Read-only overlay of the running flight: distance, speed, fuel, shields, and
  * the coin wallet plus what this flight has grabbed so far.
@@ -32,7 +35,12 @@ export default function FlightHud() {
   const ghost = useActiveGhost();
   const ghostGap =
     ghost && snapshot
-      ? secondsAheadOfGhost(ghost, snapshot.maxX, snapshot.time)
+      ? // Frozen at the finish: the plane flies on through the runout.
+        secondsAheadOfGhost(
+          ghost,
+          snapshot.maxX,
+          snapshot.finishTime ?? snapshot.time
+        )
       : null;
 
   const maxX = snapshot?.maxX ?? 0;
@@ -158,8 +166,11 @@ export default function FlightHud() {
                 }`}
               >
                 <span aria-hidden="true">👻 </span>
-                Ghost: +{Math.abs(ghostGap).toFixed(1)}s{" "}
-                {ghostGap >= 0 ? "ahead" : "behind"}
+                {Math.abs(ghostGap) < EVEN_SECONDS
+                  ? "Ghost: even"
+                  : `Ghost: +${Math.abs(ghostGap).toFixed(1)}s ${
+                      ghostGap >= 0 ? "ahead" : "behind"
+                    }`}
               </p>
             ) : null}
           </div>

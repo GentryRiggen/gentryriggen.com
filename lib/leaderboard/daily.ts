@@ -1,6 +1,6 @@
 import { firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/config";
 import type { FirebaseWebConfig } from "@/lib/firebase/config";
-import { isDateKey } from "@/lib/plane-builder/daily/daily";
+import { dailyFor, isDateKey } from "@/lib/plane-builder/daily/daily";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { getIdToken } from "./auth";
 import { documentsUrl } from "./client";
@@ -78,7 +78,15 @@ export function buildDailyQuery() {
   };
 }
 
-export function parseDailyBoard(json: unknown): LeaderboardRow[] {
+/**
+ * Rows of a day's board. With `world`, rows naming any other world are
+ * dropped (the rules already refuse them; this is defence in depth, and a
+ * server-side filter would need a composite index).
+ */
+export function parseDailyBoard(
+  json: unknown,
+  world?: string
+): LeaderboardRow[] {
   if (!Array.isArray(json)) return [];
   const rows: LeaderboardRow[] = [];
   for (const item of json) {
@@ -91,6 +99,10 @@ export function parseDailyBoard(json: unknown): LeaderboardRow[] {
     const nickname = (
       document.fields.nickname as { stringValue?: unknown } | undefined
     )?.stringValue;
+    const rowWorld = (
+      document.fields.world as { stringValue?: unknown } | undefined
+    )?.stringValue;
+    if (world !== undefined && rowWorld !== world) continue;
     const time = document.fields.time as
       { doubleValue?: unknown; integerValue?: unknown } | undefined;
     const value = Number(time?.doubleValue ?? time?.integerValue);
@@ -148,7 +160,7 @@ export async function fetchDailyBoard(
       }
     );
     if (!response.ok) return null;
-    return parseDailyBoard(await response.json());
+    return parseDailyBoard(await response.json(), dailyFor(date).world);
   } catch {
     return null;
   }

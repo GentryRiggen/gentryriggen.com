@@ -102,7 +102,7 @@ export default function FlightRunner({
     return {
       stats,
       state,
-      mods: daily ? modsFor(daily.twist) : {},
+      mods: modsFor(daily?.twist ?? null),
       recorder: createGhostRecorder(state),
     };
   });

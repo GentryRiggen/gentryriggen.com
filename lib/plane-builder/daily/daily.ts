@@ -1,6 +1,4 @@
-import { LEVEL_ORDER } from "../levels";
 import type { LevelId } from "../levels/types";
-import { createRng } from "../levels/rng";
 import type { FlightMods } from "../sim/flight";
 
 /** The little rule change that makes one day's flight different. */
@@ -75,33 +73,79 @@ export function msUntilNextUtcDay(now: number): number {
 
 /** "3:05:09" style clock for a countdown. */
 export function formatCountdown(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
+  // Never 24:00:00: the clock reads 23:59:59 for the whole first second.
+  const total = Math.min(86_399, Math.max(0, Math.ceil(ms / 1000)));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h}:${pad(m)}:${pad(s)}`;
 }
 
-/** FNV-1a, so neighbouring dates give unrelated seeds. */
-function seedFor(date: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < date.length; i += 1) {
-    h = Math.imul(h ^ date.charCodeAt(i), 0x01000193);
-  }
-  return h >>> 0;
+/**
+ * The daily plan: every world with every twist once, in a fixed shuffled
+ * order of 40. The day number picks the entry, so the plan repeats every
+ * 40 days. firestore.rules holds the same list (a test keeps them equal) and
+ * checks a daily entry's world against it, so a pilot cannot claim an easier
+ * world than the day's.
+ */
+export const DAILY_PLAN: readonly string[] = [
+  "volcano:noBoost",
+  "glacier:tailwind",
+  "islands:tailwind",
+  "glacier:headwind",
+  "beach:noBoost",
+  "storm:noBoost",
+  "volcano:doubleCoins",
+  "city:noBoost",
+  "islands:headwind",
+  "jungle:tailwind",
+  "mountains:headwind",
+  "jungle:noBoost",
+  "islands:noBoost",
+  "storm:doubleCoins",
+  "beach:headwind",
+  "mountains:tailwind",
+  "jungle:doubleCoins",
+  "storm:headwind",
+  "canyon:doubleCoins",
+  "meadow:tailwind",
+  "volcano:tailwind",
+  "islands:doubleCoins",
+  "canyon:noBoost",
+  "city:doubleCoins",
+  "glacier:noBoost",
+  "beach:doubleCoins",
+  "meadow:doubleCoins",
+  "canyon:tailwind",
+  "beach:tailwind",
+  "canyon:headwind",
+  "mountains:doubleCoins",
+  "city:headwind",
+  "glacier:doubleCoins",
+  "jungle:headwind",
+  "city:tailwind",
+  "mountains:noBoost",
+  "meadow:noBoost",
+  "volcano:headwind",
+  "storm:tailwind",
+  "meadow:headwind",
+];
+
+/** Whole days since 1970-01-01 (UTC) of a `yyyy-mm-dd` date. */
+export function dayNumberOf(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
 }
 
 /** The same world and twist for everyone on the same UTC day. */
 export function dailyFor(date: string): DailyChallenge {
-  const random = createRng(seedFor(date));
-  random();
-  const world = LEVEL_ORDER[Math.floor(random() * LEVEL_ORDER.length)];
-  const twist = DAILY_TWISTS[Math.floor(random() * DAILY_TWISTS.length)];
-  return { date, world, twist };
+  const entry = DAILY_PLAN[dayNumberOf(date) % DAILY_PLAN.length];
+  const [world, twist] = entry.split(":");
+  return { date, world: world as LevelId, twist: twist as DailyTwist };
 }
 
 /** How the twist changes the flight itself. */
-export function modsFor(twist: DailyTwist): FlightMods {
+export function modsFor(twist: DailyTwist | null): FlightMods {
   if (twist === "tailwind") return { accel: WIND_ACCEL };
   if (twist === "headwind") return { accel: -WIND_ACCEL };
   if (twist === "noBoost") return { noBoost: true };

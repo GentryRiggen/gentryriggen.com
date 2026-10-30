@@ -80,6 +80,22 @@ describe("parseDailyBoard", () => {
     ]);
   });
 
+  it("drops rows that name another world when asked for one world", () => {
+    const doc = (uid: string, world: string) => ({
+      document: {
+        name: `projects/p/databases/(default)/documents/planeDaily/d/entries/${uid}`,
+        fields: {
+          nickname: { stringValue: uid },
+          world: { stringValue: world },
+          time: { doubleValue: 50 },
+        },
+      },
+    });
+    const json = [doc("a", "meadow"), doc("b", "islands")];
+    expect(parseDailyBoard(json, "meadow").map((r) => r.uid)).toEqual(["a"]);
+    expect(parseDailyBoard(json)).toHaveLength(2);
+  });
+
   it("returns nothing for a non-array answer", () => {
     expect(parseDailyBoard({ error: "x" })).toEqual([]);
   });

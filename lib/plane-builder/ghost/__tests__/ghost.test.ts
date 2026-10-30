@@ -89,8 +89,15 @@ describe("secondsAheadOfGhost", () => {
 
 describe("isGhost", () => {
   it("accepts an encoded ghost", () => {
-    expect(isGhost(encodeGhost(2, straight(5)))).toBe(true);
+    expect(isGhost(encodeGhost(2, straight(21)))).toBe(true);
   });
+  it("rejects a time that disagrees with the length by more than 0.2 s", () => {
+    const g = encodeGhost(2, straight(21));
+    expect(isGhost({ ...g, time: 2.1 })).toBe(true);
+    expect(isGhost({ ...g, time: 2.4 })).toBe(false);
+    expect(isGhost({ ...g, time: 1.7 })).toBe(false);
+  });
+
   it.each([
     null,
     {},

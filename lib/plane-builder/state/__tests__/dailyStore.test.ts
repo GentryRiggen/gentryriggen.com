@@ -5,9 +5,14 @@ import { LEVELS } from "../../levels";
 import type { FlightResult } from "../../sim/flight";
 import { usePlaneBuilderStore as store } from "../store";
 
-beforeEach(() => store.setState(store.getInitialState(), true));
-
 const NOW = Date.parse("2026-10-30T12:00:00Z");
+
+beforeEach(() => {
+  jest.useFakeTimers({ now: NOW });
+  store.setState(store.getInitialState(), true);
+});
+afterEach(() => jest.useRealTimers());
+
 const ghost = encodeGhost(
   40,
   Array.from({ length: 10 }, (_, i) => ({
@@ -84,6 +89,54 @@ describe("daily challenge in the store", () => {
     store.getState().dismissFlightReward();
     expect(store.getState().screen).toBe("hangar");
     expect(store.getState().celebrate).toBeNull();
+  });
+});
+
+describe("daily coins and the day rolling over", () => {
+  const coinsOf = () => {
+    const { levelId, progress } = store.getState();
+    return progress.levels[levelId].coins;
+  };
+
+  it("pays only the first finish of the day", () => {
+    flyDaily(finished(40));
+    const first = coinsOf();
+    expect(first).toBeGreaterThan(0);
+    // A second, faster finish still sets the time but pays nothing.
+    store.getState().startLaunch();
+    store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+    store.getState().completeFlight(finished(35), undefined, ghost);
+    expect(coinsOf()).toBe(first);
+    expect(store.getState().progress.dailyBest?.time).toBe(35);
+  });
+
+  it("pays nothing for a flight that did not finish", () => {
+    flyDaily({ ...finished(40), finished: false, finishTime: null });
+    expect(coinsOf()).toBe(0);
+    expect(store.getState().progress.dailyBest).toBeNull();
+  });
+
+  it("records nothing for a flight that ends after midnight", () => {
+    store.getState().openDaily(NOW);
+    store.getState().startLaunch();
+    store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+    jest.setSystemTime(Date.parse("2026-10-31T00:00:05Z"));
+    store.getState().completeFlight(finished(40), undefined, ghost);
+    expect(store.getState().progress.dailyBest).toBeNull();
+    expect(coinsOf()).toBe(0);
+  });
+
+  it("sends the player back to the worlds screen when launching a stale daily", () => {
+    store.getState().openDaily(NOW);
+    jest.setSystemTime(Date.parse("2026-10-31T00:00:05Z"));
+    store.getState().startLaunch();
+    expect(store.getState()).toMatchObject({ screen: "levels", daily: null });
+  });
+
+  it("leaves the daily when opening the Sky Map", () => {
+    store.getState().openDaily(NOW);
+    store.getState().openMap();
+    expect(store.getState().daily).toBeNull();
   });
 });
 

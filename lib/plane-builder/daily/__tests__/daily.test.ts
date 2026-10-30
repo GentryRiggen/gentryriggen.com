@@ -4,7 +4,9 @@ import { STARTER_TIERS } from "../../plane/catalog";
 import { planeStats } from "../../plane/stats";
 import { launch, step } from "../../sim/flight";
 import {
+  DAILY_PLAN,
   DAILY_TWISTS,
+  dayNumberOf,
   coinMultiplierFor,
   dailyFor,
   formatCountdown,
@@ -44,10 +46,43 @@ describe("formatCountdown", () => {
     expect(formatCountdown(3_725_000)).toBe("1:02:05");
     expect(formatCountdown(0)).toBe("0:00:00");
     expect(formatCountdown(-5)).toBe("0:00:00");
+    expect(formatCountdown(86_400_000)).toBe("23:59:59");
+  });
+});
+
+describe("DAILY_PLAN", () => {
+  it("has every world with every twist exactly once", () => {
+    const expected = LEVEL_ORDER.flatMap((w) =>
+      DAILY_TWISTS.map((t) => `${w}:${t}`)
+    );
+    expect([...DAILY_PLAN].sort()).toEqual(expected.sort());
+  });
+
+  it("never repeats a world two days running, even across the wrap", () => {
+    DAILY_PLAN.forEach((entry, i) => {
+      const next = DAILY_PLAN[(i + 1) % DAILY_PLAN.length];
+      expect(next.split(":")[0]).not.toBe(entry.split(":")[0]);
+    });
+  });
+});
+
+describe("dayNumberOf", () => {
+  it("counts UTC days since the epoch", () => {
+    expect(dayNumberOf("1970-01-01")).toBe(0);
+    expect(dayNumberOf("2026-10-30")).toBe(
+      Math.floor(at("2026-10-30T00:00:00Z") / 864e5)
+    );
   });
 });
 
 describe("dailyFor", () => {
+  it("reads the plan by day number", () => {
+    const day = dayNumberOf("2026-10-30");
+    expect(
+      `${dailyFor("2026-10-30").world}:${dailyFor("2026-10-30").twist}`
+    ).toBe(DAILY_PLAN[day % DAILY_PLAN.length]);
+  });
+
   it("is the same for the same date", () => {
     expect(dailyFor("2026-10-30")).toEqual(dailyFor("2026-10-30"));
   });
@@ -97,6 +132,18 @@ describe("twists", () => {
   it("only double coins doubles coins", () => {
     expect(coinMultiplierFor("doubleCoins")).toBe(2);
     expect(coinMultiplierFor("tailwind")).toBe(1);
+  });
+
+  it("changes nothing when there is no daily", () => {
+    expect(modsFor(null)).toEqual({});
+    const run = (mods?: ReturnType<typeof modsFor>) => {
+      const s = launch(level, stats, { pitch: 0.3, yaw: 0, power: 1 });
+      for (let i = 0; i < 300; i += 1) {
+        step(s, level, stats, { pitch: 0, bank: 0, boost: true }, mods);
+      }
+      return [s.x, s.y, s.speed, s.fuel];
+    };
+    expect(run(modsFor(null))).toEqual(run());
   });
 
   it("no boost turns boost off", () => {

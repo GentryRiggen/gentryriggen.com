@@ -26,6 +26,7 @@ import { buildCommitBody, commitUrl, sendPageview } from "@/lib/analytics/send";
 import type { PageviewEvent } from "@/lib/analytics/types";
 import { fetchBoard, runQueryUrl, submitEntry } from "@/lib/leaderboard/client";
 import { fetchDailyBoard, submitDaily } from "@/lib/leaderboard/daily";
+import { dailyFor } from "@/lib/plane-builder/daily/daily";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { scoreFor } from "@/lib/leaderboard/types";
 
@@ -1003,13 +1004,19 @@ describe("plane daily challenge", () => {
   const minimum = (world: string) =>
     Math.floor(LEVELS[world as keyof typeof LEVELS].finishDistance / 120);
 
-  const entry = (patch: Record<string, unknown> = {}) => ({
+  /** The day's world, from the same plan the rules hold. */
+  const worldOn = (date: string) => dailyFor(date).world;
+  const otherWorld = (date: string) =>
+    LEVEL_ORDER.find((id) => id !== worldOn(date))!;
+  const entry = (patch: Record<string, unknown> = {}, date = dayKey()) => ({
     nickname: "Happy Otter 7",
-    world: "city",
+    world: worldOn(date),
     time: 80.25,
     updatedAt: serverTimestamp(),
     ...patch,
   });
+  /** Yesterday's board is only open in the first 15 minutes of the UTC day. */
+  const isYesterdayOpen = () => Date.now() % 86_400_000 < 900_000;
 
   async function seedEntry(
     patch: Record<string, unknown> = {},
@@ -1019,7 +1026,7 @@ describe("plane daily challenge", () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(entryDoc(ctx.firestore(), date), {
         nickname: "Happy Otter 7",
-        world: "city",
+        world: worldOn(date),
         time: 80.25,
         ...patch,
         updatedAt: new Date(Date.now() - agoMs),
@@ -1032,8 +1039,13 @@ describe("plane daily challenge", () => {
       await assertSucceeds(setDoc(entryDoc(player()), entry()));
     });
 
-    it("allows yesterday's board (a flight that ended after midnight)", async () => {
-      await assertSucceeds(setDoc(entryDoc(player(), dayKey(-1)), entry()));
+    it("opens yesterday's board only in the first 15 minutes of the day", async () => {
+      const write = setDoc(
+        entryDoc(player(), dayKey(-1)),
+        entry({}, dayKey(-1))
+      );
+      if (isYesterdayOpen()) await assertSucceeds(write);
+      else await assertFails(write);
     });
 
     it.each([
@@ -1041,7 +1053,9 @@ describe("plane daily challenge", () => {
       ["two days ago", -2],
       ["a week ago", -7],
     ])("rejects %s", async (_label, offset) => {
-      await assertFails(setDoc(entryDoc(player(), dayKey(offset)), entry()));
+      await assertFails(
+        setDoc(entryDoc(player(), dayKey(offset)), entry({}, dayKey(offset)))
+      );
     });
 
     it("rejects a date that is not a plain day string", async () => {
@@ -1055,21 +1069,38 @@ describe("plane daily challenge", () => {
       await assertFails(setDoc(entryDoc(player(UID, null)), entry()));
     });
 
-    it("accepts each world's exact minimum and rejects one below", async () => {
+    it("accepts the day's world at its exact minimum and rejects one below", async () => {
+      const world = worldOn(dayKey());
+      await assertFails(
+        setDoc(entryDoc(player()), entry({ time: minimum(world) - 0.01 }))
+      );
+      await assertSucceeds(
+        setDoc(entryDoc(player()), entry({ time: minimum(world) }))
+      );
+    });
+
+    it("rejects any world but the day's, even an easier one", async () => {
       for (const world of LEVEL_ORDER) {
-        const uid = `p-${world}`;
-        const min = minimum(world);
+        if (world === worldOn(dayKey())) continue;
+        await assertFails(
+          setDoc(entryDoc(player()), entry({ world, time: 600 }))
+        );
+      }
+    });
+
+    it("pins the world by the path date, not by what the client says", async () => {
+      const yesterday = worldOn(dayKey(-1));
+      if (isYesterdayOpen() && yesterday !== worldOn(dayKey())) {
         await assertFails(
           setDoc(
-            entryDoc(player(uid), dayKey(), uid),
-            entry({ world, time: min - 0.01 })
+            entryDoc(player(), dayKey(-1)),
+            entry({ world: worldOn(dayKey()) }, dayKey(-1))
           )
         );
-        await assertSucceeds(
-          setDoc(
-            entryDoc(player(uid), dayKey(), uid),
-            entry({ world, time: min })
-          )
+      }
+      if (yesterday !== worldOn(dayKey())) {
+        await assertFails(
+          setDoc(entryDoc(player()), entry({ world: yesterday }))
         );
       }
     });
@@ -1136,38 +1167,41 @@ describe("plane daily challenge", () => {
 
   describe("update", () => {
     it("allows a faster time after 10 s", async () => {
-      await seedEntry({ time: 80 }, 15_000);
+      await seedEntry({ time: 90 }, 15_000);
       await assertSucceeds(setDoc(entryDoc(player()), entry({ time: 79.5 })));
     });
 
     it("rejects a slower time", async () => {
-      await seedEntry({ time: 80 }, 15_000);
-      await assertFails(setDoc(entryDoc(player()), entry({ time: 80.5 })));
+      await seedEntry({ time: 90 }, 15_000);
+      await assertFails(setDoc(entryDoc(player()), entry({ time: 90.5 })));
     });
 
     it("rejects an update less than 10 s after the last write", async () => {
-      await seedEntry({ time: 80 }, 2_000);
-      await assertFails(setDoc(entryDoc(player()), entry({ time: 70 })));
+      await seedEntry({ time: 90 }, 2_000);
+      await assertFails(setDoc(entryDoc(player()), entry({ time: 79 })));
     });
 
     it("rejects updating someone else's entry", async () => {
-      await seedEntry({ time: 80 }, 15_000);
+      await seedEntry({ time: 90 }, 15_000);
       await assertFails(
-        setDoc(entryDoc(player("other"), dayKey(), UID), entry({ time: 70 }))
+        setDoc(entryDoc(player("other"), dayKey(), UID), entry({ time: 79 }))
       );
     });
 
     it("rejects changing a board that is more than a day old", async () => {
-      await seedEntry({ time: 80 }, 15_000, dayKey(-3));
+      await seedEntry({ time: 90 }, 15_000, dayKey(-3));
       await assertFails(
-        setDoc(entryDoc(player(), dayKey(-3)), entry({ time: 70 }))
+        setDoc(entryDoc(player(), dayKey(-3)), entry({ time: 79 }, dayKey(-3)))
       );
     });
 
-    it("rejects an update that sneaks below the new world's minimum", async () => {
-      await seedEntry({ time: 80 }, 15_000);
+    it("rejects switching the world on an update", async () => {
+      await seedEntry({ time: 90 }, 15_000);
       await assertFails(
-        setDoc(entryDoc(player()), entry({ world: "islands", time: 70 }))
+        setDoc(
+          entryDoc(player()),
+          entry({ world: otherWorld(dayKey()), time: 79 })
+        )
       );
     });
   });
@@ -1226,20 +1260,20 @@ describe("plane daily challenge", () => {
       expect(
         await submitDaily(
           day,
-          { nickname: "Happy Otter 7", world: "city", time: 71.4 },
+          { nickname: "Happy Otter 7", world: worldOn(day), time: 79.4 },
           deps(UID)
         )
       ).toBe(true);
       expect(
         await submitDaily(
           day,
-          { nickname: "Brave Fox 3", world: "meadow", time: 30 },
+          { nickname: "Brave Fox 3", world: worldOn(day), time: 77 },
           deps("p2")
         )
       ).toBe(true);
       expect(await fetchDailyBoard(day, { config, baseUrl })).toEqual([
-        { uid: "p2", nickname: "Brave Fox 3", value: 30 },
-        { uid: UID, nickname: "Happy Otter 7", value: 71.4 },
+        { uid: "p2", nickname: "Brave Fox 3", value: 77 },
+        { uid: UID, nickname: "Happy Otter 7", value: 79.4 },
       ]);
     });
 
@@ -1247,14 +1281,14 @@ describe("plane daily challenge", () => {
       expect(
         await submitDaily(
           dayKey(),
-          { nickname: "Happy Otter 7", world: "city", time: 1 },
+          { nickname: "Happy Otter 7", world: worldOn(dayKey()), time: 1 },
           deps(UID)
         )
       ).toBe(false);
       expect(
         await submitDaily(
           dayKey(-5),
-          { nickname: "Happy Otter 7", world: "city", time: 90 },
+          { nickname: "Happy Otter 7", world: worldOn(dayKey(-5)), time: 90 },
           deps(UID)
         )
       ).toBe(false);

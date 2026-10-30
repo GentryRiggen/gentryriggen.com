@@ -7,15 +7,16 @@ import { encodeGhost, type GhostPose } from "../../ghost/ghost";
 import type { FlightResult } from "../../sim/flight";
 import { SAVE_VERSION, parseSave } from "../schema";
 
-const poses: GhostPose[] = Array.from({ length: 12 }, (_, i) => ({
-  x: i * 6,
-  y: 8,
-  z: 0,
-  heading: 0,
-  pitch: 0,
-  bank: 0,
-}));
-const ghost = (time: number) => encodeGhost(time, poses);
+const posesFor = (time: number): GhostPose[] =>
+  Array.from({ length: Math.round(time * 10) + 1 }, (_, i) => ({
+    x: i * 6,
+    y: 8,
+    z: 0,
+    heading: 0,
+    pitch: 0,
+    bank: 0,
+  }));
+const ghost = (time: number) => encodeGhost(time, posesFor(time));
 
 const finish = (time: number): FlightResult => ({
   distance: 1000,
@@ -146,6 +147,23 @@ describe("recordDailyFlight", () => {
     );
     const b = recordDailyFlight(a, "canyon", finish(50), 0, day, ghost(50));
     expect(b.dailyBest).toEqual({ date: day, time: 50, ghost: ghost(50) });
+  });
+
+  it("never lets an older day replace a newer best", () => {
+    const a = recordDailyFlight(
+      newProgress(),
+      "canyon",
+      finish(50),
+      0,
+      "2026-10-31",
+      ghost(50)
+    );
+    const b = recordDailyFlight(a, "canyon", finish(30), 0, day, ghost(30));
+    expect(b.dailyBest).toEqual({
+      date: "2026-10-31",
+      time: 50,
+      ghost: ghost(50),
+    });
   });
 
   it("pays coins but leaves the world's own records alone", () => {
