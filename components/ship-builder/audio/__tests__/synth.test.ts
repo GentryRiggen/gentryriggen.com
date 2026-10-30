@@ -99,9 +99,10 @@ describe("trial synth", () => {
     synth.pause();
     expect(context.suspend).toHaveBeenCalledTimes(1);
     expect(synth.isEnabled()).toBe(true);
+    // Both trial beds are cut, along with the world beds.
     expect(
-      params.filter((p) => p.cancelScheduledValues.mock.calls.length > 0)
-    ).toHaveLength(2);
+      params.filter((p) => p.cancelScheduledValues.mock.calls.length > 0).length
+    ).toBeGreaterThanOrEqual(2);
 
     context.resume.mockClear();
     synth.resume();

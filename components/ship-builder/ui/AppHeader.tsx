@@ -12,6 +12,7 @@ import MyShipsDialog from "./MyShipsDialog";
 import NewShipDialog from "./NewShipDialog";
 import { TRIAL_PAUSED_TITLE } from "./seaTrialText";
 import ShareButton from "./ShareButton";
+import SoundToggle from "./SoundToggle";
 import { buttonClass, inputClass, primaryButtonClass } from "./styles";
 
 // 44px square at minimum, the comfortable touch size on an iPad.
@@ -135,6 +136,9 @@ export default function AppHeader() {
         >
           <ButtonLabel Icon={Ship}>My Ships</ButtonLabel>
         </button>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <SoundToggle hasChannels />
       </div>
       <ThemeToggle inline />
 

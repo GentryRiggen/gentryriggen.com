@@ -18,6 +18,8 @@ jest.mock("../synth", () => ({
     setAmbient: jest.fn(),
     setMuffle: jest.fn(),
     setSpeed: jest.fn(),
+    setMusicEnabled: jest.fn(),
+    setEffectsEnabled: jest.fn(),
   },
 }));
 

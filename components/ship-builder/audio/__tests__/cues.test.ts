@@ -1,4 +1,10 @@
-import { ambientFor, cuesFor, muffleFor, type PlaybackSnapshot } from "../cues";
+import {
+  ambientFor,
+  cuesFor,
+  muffleFor,
+  stingFor,
+  type PlaybackSnapshot,
+} from "../cues";
 
 function snap(over: Partial<PlaybackSnapshot> = {}): PlaybackSnapshot {
   return {
@@ -140,5 +146,74 @@ describe("muffleFor", () => {
     expect(muffleFor(-2, 1)).toBeGreaterThan(0.5);
     expect(muffleFor(3, 0.25)).toBeGreaterThan(0);
     expect(muffleFor(3, 0.25)).toBeLessThan(muffleFor(-2, 1));
+  });
+});
+
+describe("the sound-pass cues", () => {
+  it("cues a funnel crash for each funnel that snaps", () => {
+    const one = [{ kind: "funnel-broke" as const }];
+    const both = [...one, { kind: "funnel-broke" as const }];
+    expect(
+      kinds(cuesFor(snap({ time: 5 }), snap({ time: 5.02, events: one })))
+    ).toContain("funnel-crash");
+    expect(
+      kinds(
+        cuesFor(
+          snap({ time: 5, events: one }),
+          snap({ time: 5.02, events: one })
+        )
+      )
+    ).not.toContain("funnel-crash");
+    expect(
+      cuesFor(
+        snap({ time: 5, events: one }),
+        snap({ time: 5.02, events: both })
+      ).filter((c) => c.kind === "funnel-crash")
+    ).toHaveLength(1);
+  });
+
+  it("groans now and then while she settles, before she breaks", () => {
+    let groans = 0;
+    for (let t = 0; t < 10; t += 0.05) {
+      groans += kinds(
+        cuesFor(
+          snap({ time: t, phase: "sinking" }),
+          snap({ time: t + 0.05, phase: "sinking" })
+        )
+      ).filter((kind) => kind === "groan").length;
+    }
+    expect(groans).toBeGreaterThanOrEqual(2);
+    expect(groans).toBeLessThanOrEqual(4);
+  });
+
+  it("does not groan when she is sailing, or once she has broken", () => {
+    expect(
+      kinds(cuesFor(snap({ time: 3.0 }), snap({ time: 3.2 })))
+    ).not.toContain("groan");
+    const broke = [{ kind: "broke" as const }];
+    expect(
+      kinds(
+        cuesFor(
+          snap({ time: 3.0, phase: "sinking", events: broke }),
+          snap({ time: 3.2, phase: "sinking", events: broke })
+        )
+      )
+    ).not.toContain("groan");
+  });
+});
+
+describe("stingFor", () => {
+  it("is cheerful when she lives and sombre when she is lost", () => {
+    const survived = { kind: "sting", outcome: "survived" };
+    expect(stingFor("afloat")).toEqual(survived);
+    expect(stingFor("steady")).toEqual(survived);
+    expect(stingFor("recovered")).toEqual(survived);
+    const sank = { kind: "sting", outcome: "sank" };
+    expect(stingFor("sank")).toEqual(sank);
+    expect(stingFor("capsized")).toEqual(sank);
+  });
+
+  it("has none before the outcome is known", () => {
+    expect(stingFor(null)).toBeNull();
   });
 });
