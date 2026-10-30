@@ -29,6 +29,15 @@ export const CHANGELOG: readonly Release[] = [
     ],
   },
   {
+    version: "1.11.0",
+    date: "2026-10-30",
+    title: "Smoother flights on phones and tablets",
+    highlights: [
+      "Planes now fly smoother on phones and older tablets: the game only draws what you can see",
+      "If a flight starts to stutter, the game quietly lowers its detail a little, and only loads the pictures for the world you are in",
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-10-29",
     title: "A world worth flying through",
