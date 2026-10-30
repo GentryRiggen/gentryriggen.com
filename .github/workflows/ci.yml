@@ -264,3 +264,15 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" \
             npx --yes firebase-tools@15 deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID"
           rm -f "$RUNNER_TEMP/sa.json"
+
+      # Its own step, so a missing IAM role here never blocks the rules deploy.
+      # Needs the service account to hold Cloud Datastore Index Admin.
+      - name: 🗂️ Deploy Firestore indexes
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" \
+            npx --yes firebase-tools@15 deploy --only firestore:indexes --project "$FIREBASE_PROJECT_ID"
+          rm -f "$RUNNER_TEMP/sa.json"
