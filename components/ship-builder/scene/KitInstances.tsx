@@ -1,7 +1,8 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { BufferGeometry, InstancedMesh, Matrix4 } from "three";
+import { batchRef } from "./batchRegistry";
 import Surface, {
   type PartEmphasis,
   type PartTint,
@@ -33,7 +34,11 @@ export default function KitInstances({
   tint,
   emphasis,
 }: KitInstancesProps) {
-  const ref = useRef<InstancedMesh>(null);
+  const ref = useRef<InstancedMesh | null>(null);
+  const setMesh = useCallback((mesh: InstancedMesh | null) => {
+    ref.current = mesh;
+    return batchRef(mesh);
+  }, []);
   const count = matrices.length;
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -45,7 +50,11 @@ export default function KitInstances({
   }, [matrices, geometry, count]);
   if (count === 0) return null;
   return (
-    <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]}>
+    <instancedMesh
+      key={count}
+      ref={setMesh}
+      args={[undefined, undefined, count]}
+    >
       <primitive object={geometry} attach="geometry" dispose={null} />
       <Surface
         color={color}
