@@ -3,7 +3,7 @@ import type { FirebaseWebConfig } from "@/lib/firebase/config";
 import { dailyFor, isDateKey } from "@/lib/plane-builder/daily/daily";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { getIdToken } from "./auth";
-import { documentsUrl } from "./client";
+import { documentsUrl, leaderboardAppCheckHeaders } from "./client";
 import type { ClientDeps } from "./client";
 import type { LeaderboardRow } from "./types";
 
@@ -131,6 +131,7 @@ export async function submitDaily(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.idToken}`,
+        ...(await leaderboardAppCheckHeaders(deps)),
       },
       body: JSON.stringify(
         buildDailySubmitBody(config.projectId, date, session.uid, entry)
@@ -155,7 +156,10 @@ export async function fetchDailyBoard(
       dailyRunQueryUrl(config, date, deps.baseUrl),
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(await leaderboardAppCheckHeaders(deps)),
+        },
         body: JSON.stringify(buildDailyQuery()),
       }
     );

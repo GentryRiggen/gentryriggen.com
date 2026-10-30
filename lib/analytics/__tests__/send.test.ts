@@ -93,3 +93,42 @@ describe("sendPageview", () => {
     );
   });
 });
+
+describe("sendPageview App Check", () => {
+  it("sends the header when there is a token, and omits it otherwise", async () => {
+    const withToken = jest.fn().mockResolvedValue({ ok: true });
+    await sendPageview(event, {
+      config,
+      fetchImpl: withToken,
+      getAppCheckHeaders: async () => ({ "X-Firebase-AppCheck": "AC" }),
+    });
+    expect(withToken.mock.calls[0][1].headers["X-Firebase-AppCheck"]).toBe(
+      "AC"
+    );
+    const without = jest.fn().mockResolvedValue({ ok: true });
+    await sendPageview(event, {
+      config,
+      fetchImpl: without,
+      getAppCheckHeaders: async () => ({}),
+    });
+    expect(without.mock.calls[0][1].headers).toEqual({
+      "Content-Type": "application/json",
+    });
+  });
+
+  it("asks for a pageview token, cached-only when flushing on page hide", async () => {
+    const getAppCheckHeaders = jest.fn().mockResolvedValue({});
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+    await sendPageview(event, { config, fetchImpl, getAppCheckHeaders });
+    await sendPageview(event, {
+      config,
+      fetchImpl,
+      getAppCheckHeaders,
+      cachedAppCheckOnly: true,
+    });
+    expect(getAppCheckHeaders.mock.calls).toEqual([
+      ["pageview", false],
+      ["pageview", true],
+    ]);
+  });
+});

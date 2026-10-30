@@ -101,3 +101,30 @@ describe("sendGameEvent", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
+
+describe("sendGameEvent App Check", () => {
+  it("sends the header when there is a token, and omits it otherwise", async () => {
+    const getAppCheckHeaders = jest
+      .fn()
+      .mockResolvedValueOnce({ "X-Firebase-AppCheck": "AC" })
+      .mockResolvedValueOnce({});
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+    await sendGameEvent(event, { config, fetchImpl, getAppCheckHeaders });
+    await sendGameEvent(event, {
+      config,
+      fetchImpl,
+      getAppCheckHeaders,
+      cachedAppCheckOnly: true,
+    });
+    expect(fetchImpl.mock.calls[0][1].headers["X-Firebase-AppCheck"]).toBe(
+      "AC"
+    );
+    expect(fetchImpl.mock.calls[1][1].headers).toEqual({
+      "Content-Type": "application/json",
+    });
+    expect(getAppCheckHeaders.mock.calls).toEqual([
+      ["game_event", false],
+      ["game_event", true],
+    ]);
+  });
+});

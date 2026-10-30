@@ -166,15 +166,17 @@ export default function FlightRunner({
 
   // Leaving mid-flight (back to the hangar, or the tab closing) is a quit.
   useEffect(() => {
-    const reportQuit = () => {
+    const reportQuit = (flush = false) => {
       if (hasQuit.current || hasCompleted.current) return;
       if (run.state.phase === "done") return;
       hasQuit.current = true;
-      trackFlightQuit(run.state, level);
+      trackFlightQuit(run.state, level, flush);
     };
-    window.addEventListener("pagehide", reportQuit);
+    // Page hide must not wait on a new App Check token.
+    const onPageHide = () => reportQuit(true);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
-      window.removeEventListener("pagehide", reportQuit);
+      window.removeEventListener("pagehide", onPageHide);
       reportQuit();
     };
   }, [run, level]);

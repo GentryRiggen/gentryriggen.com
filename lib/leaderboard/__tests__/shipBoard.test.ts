@@ -137,3 +137,23 @@ describe("the board", () => {
     ).toBeNull();
   });
 });
+
+describe("ship board App Check headers", () => {
+  it("rides on the submit and the board read", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [] });
+    const deps = {
+      config,
+      fetchImpl,
+      getSession: async () => ({ uid: "u1", idToken: "t" }),
+      getAppCheckHeaders: async () => ({ "X-Firebase-AppCheck": "AC" }),
+    };
+    await submitShipEntry(entry, deps);
+    await fetchShipBoard(deps);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");
+    }
+  });
+});

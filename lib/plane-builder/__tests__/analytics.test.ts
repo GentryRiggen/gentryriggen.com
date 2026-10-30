@@ -1,4 +1,9 @@
-import { outcomeOf, sumTiers, trackFlightEnd } from "../analytics";
+import {
+  outcomeOf,
+  sumTiers,
+  trackFlightEnd,
+  trackFlightQuit,
+} from "../analytics";
 import { LEVELS } from "../levels";
 import { STARTER_TIERS } from "../plane/catalog";
 import { launch, type FlightState } from "../sim/flight";
@@ -74,4 +79,18 @@ describe("trackFlightEnd", () => {
 
 it("sums the tiers", () => {
   expect(sumTiers({ ...STARTER_TIERS, body: 8, engine: 8 })).toBe(16);
+});
+
+describe("trackFlightQuit flush", () => {
+  it("forwards the page-hide flag to trackGame", () => {
+    const state = { maxX: 10 } as never;
+    const level = { id: "meadow", finishDistance: 100 } as never;
+    (trackGame as jest.Mock).mockClear();
+    trackFlightQuit(state, level);
+    trackFlightQuit(state, level, true);
+    expect((trackGame as jest.Mock).mock.calls.map((c) => c[2])).toEqual([
+      false,
+      true,
+    ]);
+  });
 });

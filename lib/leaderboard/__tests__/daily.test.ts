@@ -141,3 +141,23 @@ describe("submitDaily and fetchDailyBoard", () => {
     ).toBeNull();
   });
 });
+
+describe("daily App Check headers", () => {
+  it("rides on the submit and the board read", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [] });
+    const deps = {
+      config,
+      fetchImpl,
+      getSession: session,
+      getAppCheckHeaders: async () => ({ "X-Firebase-AppCheck": "AC" }),
+    };
+    await submitDaily("2026-01-02", entry, deps);
+    await fetchDailyBoard("2026-01-02", deps);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");
+    }
+  });
+});

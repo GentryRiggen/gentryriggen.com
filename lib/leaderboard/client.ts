@@ -1,3 +1,4 @@
+import { appCheckHeaders } from "@/lib/firebase/appCheck";
 import { firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/config";
 import type { FirebaseWebConfig } from "@/lib/firebase/config";
 import { getIdToken } from "./auth";
@@ -13,6 +14,14 @@ export interface ClientDeps {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   getSession?: () => Promise<AuthSession | null>;
+  getAppCheckHeaders?: () => Promise<Record<string, string>>;
+}
+
+/** App Check header for Firestore REST calls (identitytoolkit gets none yet). */
+export function leaderboardAppCheckHeaders(
+  deps: ClientDeps
+): Promise<Record<string, string>> {
+  return (deps.getAppCheckHeaders ?? (() => appCheckHeaders("leaderboard")))();
 }
 
 export type FirestoreValue =
@@ -129,6 +138,7 @@ export async function commitDocumentResult(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.idToken}`,
+        ...(await leaderboardAppCheckHeaders(deps)),
       },
       body: JSON.stringify(
         buildDocumentBody(config.projectId, collection, session.uid, fields)
@@ -160,7 +170,10 @@ export async function runBoardQuery(
     const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
     const response = await fetchImpl(runQueryUrl(config, deps.baseUrl), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(await leaderboardAppCheckHeaders(deps)),
+      },
       body: JSON.stringify(body),
     });
     if (!response.ok) return null;

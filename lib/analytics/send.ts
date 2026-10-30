@@ -1,3 +1,4 @@
+import { appCheckHeaders, type AppCheckAction } from "@/lib/firebase/appCheck";
 import {
   firebaseConfig,
   isFirebaseConfigured,
@@ -54,6 +55,12 @@ interface SendOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   docId?: string;
+  /** Page-hide flushes pass true: use a cached token, never wait for one. */
+  cachedAppCheckOnly?: boolean;
+  getAppCheckHeaders?: (
+    action: AppCheckAction,
+    cachedOnly: boolean
+  ) => Promise<Record<string, string>>;
 }
 
 /** Fire-and-forget: never throws, resolves to whether the write was accepted. */
@@ -64,13 +71,19 @@ export async function sendPageview(
     baseUrl,
     fetchImpl = fetch,
     docId = newDocId(),
+    cachedAppCheckOnly = false,
+    getAppCheckHeaders = (action, cachedOnly) =>
+      appCheckHeaders(action, { cachedOnly }),
   }: SendOptions = {}
 ): Promise<boolean> {
   if (!isFirebaseConfigured(config)) return false;
   try {
     const response = await fetchImpl(commitUrl(config, baseUrl), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(await getAppCheckHeaders("pageview", cachedAppCheckOnly)),
+      },
       body: JSON.stringify(buildCommitBody(config.projectId, docId, event)),
       keepalive: true,
     });

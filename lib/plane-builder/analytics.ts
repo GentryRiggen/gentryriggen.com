@@ -48,9 +48,14 @@ export function trackFlightEnd(
 }
 
 /** Records a flight the player left before it ended. */
-export function trackFlightQuit(s: FlightState, level: LevelDef): void {
-  trackGame("quit_mid_flight", {
-    world: level.id,
-    dist: tenths(s.maxX, level.finishDistance),
-  });
+export function trackFlightQuit(
+  s: FlightState,
+  level: LevelDef,
+  flush = false
+): void {
+  trackGame(
+    "quit_mid_flight",
+    { world: level.id, dist: tenths(s.maxX, level.finishDistance) },
+    flush
+  );
 }

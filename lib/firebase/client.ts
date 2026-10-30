@@ -1,6 +1,7 @@
 import type { FirebaseApp } from "firebase/app";
 import { parseGameEvent, type GameEvent } from "@/lib/analytics/gameEvents";
 import type { PageviewDoc } from "@/lib/analytics/types";
+import { browserEnv, isRealBrowser } from "./appCheck";
 import { firebaseConfig } from "./config";
 
 /** Only used by /admin; public pages talk to Firestore over REST instead. */
@@ -16,11 +17,33 @@ export const MAX_DOCS = FIRESTORE_MAX_LIMIT;
 
 let appPromise: Promise<FirebaseApp> | null = null;
 
+/**
+ * App Check for the SDK path (real browsers only: no dev, e2e, localhost or
+ * automation). Failure must never block /admin, so errors are swallowed.
+ */
+async function initAppCheck(app: FirebaseApp): Promise<void> {
+  const siteKey = firebaseConfig.recaptchaSiteKey;
+  if (!siteKey || !isRealBrowser(browserEnv())) return;
+  try {
+    const { initializeAppCheck, ReCaptchaEnterpriseProvider } =
+      await import("firebase/app-check");
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch {
+    // Fail open: the admin dashboard works without App Check.
+  }
+}
+
 function getApp(): Promise<FirebaseApp> {
-  appPromise ??= import("firebase/app").then(
-    ({ getApps, initializeApp }) =>
-      getApps()[0] ?? initializeApp(firebaseConfig)
-  );
+  appPromise ??= import("firebase/app").then(async (appMod) => {
+    const existing = appMod.getApps()[0];
+    if (existing) return existing;
+    const app = appMod.initializeApp(firebaseConfig);
+    await initAppCheck(app);
+    return app;
+  });
   return appPromise;
 }
 

@@ -38,7 +38,7 @@ export function createGameTracker({
   random = Math.random,
   cap = MAX_EVENTS_PER_PAGE_LOAD,
 }: {
-  send: (event: GameEvent) => unknown;
+  send: (event: GameEvent, flush: boolean) => unknown;
   canSend: () => boolean;
   random?: () => number;
   cap?: number;
@@ -46,7 +46,8 @@ export function createGameTracker({
   let used = 0;
   return function track<N extends GameEventName>(
     name: N,
-    props: GameEventProps<N>
+    props: GameEventProps<N>,
+    flush = false
   ): void {
     try {
       if (used >= cap || !canSend()) return;
@@ -54,7 +55,7 @@ export function createGameTracker({
       const event = buildGameEvent(name, props);
       if (!event) return;
       used += 1;
-      void send(event);
+      void send(event, flush);
     } catch {
       // Analytics must never break the game.
     }
@@ -62,7 +63,7 @@ export function createGameTracker({
 }
 
 const tracker = createGameTracker({
-  send: (event) => sendGameEvent(event),
+  send: (event, flush) => sendGameEvent(event, { cachedAppCheckOnly: flush }),
   canSend: () =>
     typeof window !== "undefined" &&
     canTrack({
@@ -81,7 +82,9 @@ const tracker = createGameTracker({
  */
 export function trackGame<N extends GameEventName>(
   name: N,
-  props: GameEventProps<N>
+  props: GameEventProps<N>,
+  /** True on page hide: the send may only use an already-cached App Check token. */
+  flush = false
 ): void {
-  tracker(name, props);
+  tracker(name, props, flush);
 }
