@@ -27,6 +27,7 @@ import type { PageviewEvent } from "@/lib/analytics/types";
 import { fetchBoard, runQueryUrl, submitEntry } from "@/lib/leaderboard/client";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { scoreFor } from "@/lib/leaderboard/types";
+import { fetchShipBoard, submitShipEntry } from "@/lib/leaderboard/shipBoard";
 
 const PROJECT_ID = "demo-gentryriggen";
 const [HOST, PORT] = (
@@ -987,6 +988,345 @@ describe("leaderboard", () => {
       ]);
       const meadow = await fetchBoard({ world: "meadow" }, { config, baseUrl });
       expect(meadow).toHaveLength(2);
+    });
+  });
+});
+
+describe("shipLeaderboard", () => {
+  const UID = "sailor-1";
+  const player = (uid = UID, provider: Provider | null = "anonymous") =>
+    signedIn(uid, { provider });
+  const shipDoc = (db: ReturnType<typeof anon>, uid = UID) =>
+    doc(db, `shipLeaderboard/${uid}`);
+
+  const baseEntry = {
+    nickname: "Happy Otter 7",
+    totalStars: 3,
+    bests: { outlast: 170, evacuation: 50 } as Record<string, unknown>,
+  };
+  const entry = (patch: Record<string, unknown> = {}) => ({
+    ...baseEntry,
+    updatedAt: serverTimestamp(),
+    ...patch,
+  });
+
+  /** Seeds the player's doc as written `agoMs` milliseconds ago. */
+  async function seedPlayer(
+    patch: Record<string, unknown> = {},
+    agoMs = 60_000
+  ) {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(shipDoc(ctx.firestore()), {
+        ...baseEntry,
+        ...patch,
+        updatedAt: new Date(Date.now() - agoMs),
+      });
+    });
+  }
+
+  describe("create", () => {
+    it("allows the owner (anonymous provider) to create a valid entry", async () => {
+      await assertSucceeds(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("allows every best at its limit", async () => {
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({
+            totalStars: 9,
+            bests: { outlast: 1440, evacuation: 100, shipshape: 3 },
+          })
+        )
+      );
+    });
+
+    it("allows an empty bests map only with no stars to explain", async () => {
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ totalStars: 0, bests: {} }))
+      );
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 1, bests: {} }))
+      );
+    });
+
+    it("rejects someone else's uid, a signed-out user, and other providers", async () => {
+      await assertFails(setDoc(shipDoc(player("other"), UID), entry()));
+      await assertFails(setDoc(shipDoc(anon()), entry()));
+      await assertFails(setDoc(shipDoc(player(UID, "password")), entry()));
+      await assertFails(setDoc(shipDoc(player(UID, "google.com")), entry()));
+      await assertFails(setDoc(shipDoc(player(UID, null)), entry()));
+    });
+
+    const reject: [string, Record<string, unknown>][] = [
+      ["an extra field", { extra: "x" }],
+      ["a client-supplied updatedAt", { updatedAt: new Date() }],
+      ["a free-text nickname", { nickname: "Evil Hacker 1" }],
+      ["an html nickname", { nickname: "<b>Happy</b> Otter 7" }],
+      ["a nickname number of 0", { nickname: "Happy Otter 0" }],
+      ["a nickname number of 100", { nickname: "Happy Otter 100" }],
+      ["a very long nickname", { nickname: `Happy Otter ${"7".repeat(60)}` }],
+      ["a non-string nickname", { nickname: 7 }],
+      ["a float total", { totalStars: 3.5 }],
+      ["a string total", { totalStars: "3" }],
+      ["a negative total", { totalStars: -1 }],
+      ["a zero total", { totalStars: 0, bests: {} }],
+      ["a total above 60 on first write", { totalStars: 61 }],
+      ["bests that is not a map", { bests: [170] }],
+      ["an unknown challenge in bests", { bests: { outlast: 170, cheat: 1 } }],
+      ["a float outlast", { bests: { outlast: 170.5 } }],
+      ["an outlast above a day", { bests: { outlast: 1441 }, totalStars: 9 }],
+      ["a negative outlast", { bests: { outlast: -1 } }],
+      [
+        "an evacuation above 100",
+        { bests: { evacuation: 101 }, totalStars: 9 },
+      ],
+      ["a shipshape above 3", { bests: { shipshape: 4 }, totalStars: 9 }],
+      ["a string best", { bests: { outlast: "170" } }],
+      [
+        "a total lower than the bests need",
+        { totalStars: 2, bests: { outlast: 170, evacuation: 50 } },
+      ],
+    ];
+    it.each(reject)("rejects %s", async (_label, patch) => {
+      await assertFails(setDoc(shipDoc(player()), entry(patch)));
+    });
+
+    it("rejects a missing nickname, bests or total", async () => {
+      for (const key of ["nickname", "bests", "totalStars"]) {
+        const { [key]: _omitted, ...rest } = entry() as Record<string, unknown>;
+        void _omitted;
+        await assertFails(setDoc(shipDoc(player()), rest));
+      }
+    });
+
+    it("accepts a total higher than the bests need (more designs)", async () => {
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 40 }))
+      );
+    });
+
+    it("rejects an update-style partial write that leaves fields out", async () => {
+      await assertFails(
+        setDoc(shipDoc(player()), {
+          nickname: "Happy Otter 7",
+          updatedAt: serverTimestamp(),
+        })
+      );
+    });
+  });
+
+  describe("update", () => {
+    it("allows a valid improvement after 10 s", async () => {
+      await seedPlayer({}, 15_000);
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 6, bests: { outlast: 1440, evacuation: 50 } })
+        )
+      );
+    });
+
+    it("lets the total fall (a ship was deleted)", async () => {
+      await seedPlayer({ totalStars: 20 }, 15_000);
+      await assertSucceeds(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("rejects a jump in stars faster than the game can award", async () => {
+      await seedPlayer({}, 15_000);
+      // 3 + 6 + 15/5 = 12 is the most allowed.
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 13 })));
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 12 }))
+      );
+    });
+
+    it("allows a bigger jump after a longer gap", async () => {
+      await seedPlayer({}, 600_000);
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 100 }))
+      );
+    });
+
+    it("rejects an update by another player", async () => {
+      await seedPlayer({}, 15_000);
+      await assertFails(setDoc(shipDoc(player("other"), UID), entry()));
+      await assertFails(setDoc(shipDoc(anon()), entry()));
+    });
+
+    it("rejects invalid data on update too", async () => {
+      await seedPlayer({}, 15_000);
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ nickname: "Evil 1" }))
+      );
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ bests: { outlast: 9999 } }))
+      );
+      await assertFails(setDoc(shipDoc(player()), entry({ extra: 1 })));
+    });
+
+    it("rejects partial updates (updateDoc) that skip validation", async () => {
+      await seedPlayer({}, 15_000);
+      await assertFails(updateDoc(shipDoc(player()), { totalStars: 4500 }));
+    });
+  });
+
+  describe("rate limit", () => {
+    it("rejects an update less than 10 s after the last write", async () => {
+      await seedPlayer({}, 2_000);
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("rejects two quick writes in a row", async () => {
+      await assertSucceeds(setDoc(shipDoc(player()), entry()));
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+  });
+
+  describe("bans", () => {
+    const ban = (db: ReturnType<typeof anon>) =>
+      doc(db, `leaderboardBans/${UID}`);
+    const banPlayer = () =>
+      env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(ban(ctx.firestore()), { bannedAt: new Date() });
+      });
+
+    it("stops a banned uid creating or updating", async () => {
+      await banPlayer();
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("stops a banned uid updating an entry", async () => {
+      await seedPlayer({}, 15_000);
+      await banPlayer();
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("does not stop other players", async () => {
+      await banPlayer();
+      await assertSucceeds(
+        setDoc(shipDoc(player("sailor-2"), "sailor-2"), entry())
+      );
+    });
+  });
+
+  describe("read", () => {
+    beforeEach(() => seedPlayer());
+    const col = (db: ReturnType<typeof anon>) =>
+      collection(db, "shipLeaderboard");
+
+    it("lets anyone get a single entry", async () => {
+      await assertSucceeds(getDoc(shipDoc(anon())));
+      await assertSucceeds(getDoc(shipDoc(player("someone-else"))));
+    });
+
+    it("lets anyone list with a limit of 50 or less", async () => {
+      await assertSucceeds(
+        getDocs(query(col(anon()), orderBy("totalStars", "desc"), limit(50)))
+      );
+      await assertSucceeds(getDocs(query(col(anon()), limit(20))));
+    });
+
+    it("rejects unlimited lists, big limits and offsets", async () => {
+      await assertFails(getDocs(col(anon())));
+      await assertFails(getDocs(query(col(anon()), limit(51))));
+      await assertFails(getDocs(query(col(anon()), orderBy("totalStars"))));
+    });
+  });
+
+  describe("delete", () => {
+    beforeEach(() => seedPlayer());
+
+    it("allows the admin", async () => {
+      await assertSucceeds(deleteDoc(shipDoc(admin())));
+    });
+
+    it("rejects the owner and everyone else", async () => {
+      await assertFails(deleteDoc(shipDoc(player())));
+      await assertFails(deleteDoc(shipDoc(player("someone-else"))));
+      await assertFails(deleteDoc(shipDoc(anon())));
+      await assertFails(
+        deleteDoc(shipDoc(signedIn(ADMIN_UID, { provider: "anonymous" })))
+      );
+    });
+  });
+
+  describe("other collections stay closed", () => {
+    it("does not let a player write a plane leaderboard entry shape here", async () => {
+      await assertFails(
+        setDoc(shipDoc(player()), {
+          ...baseEntry,
+          prestige: 1,
+          updatedAt: serverTimestamp(),
+        })
+      );
+    });
+
+    it("does not open sibling collections", async () => {
+      await assertFails(
+        setDoc(doc(player(), `shipLeaderboardX/${UID}`), entry())
+      );
+    });
+  });
+
+  describe("REST client", () => {
+    // The emulator accepts unsigned JWTs carrying the claims rules read.
+    const unsignedToken = (uid: string) => {
+      const part = (o: object) =>
+        Buffer.from(JSON.stringify(o)).toString("base64url");
+      return `${part({ alg: "none", typ: "JWT" })}.${part({
+        user_id: uid,
+        sub: uid,
+        aud: PROJECT_ID,
+        firebase: { sign_in_provider: "anonymous", identities: {} },
+      })}.`;
+    };
+    const deps = (uid: string) => ({
+      config,
+      baseUrl,
+      getSession: async () => ({ uid, idToken: unsignedToken(uid) }),
+    });
+    const restEntry = {
+      nickname: "Happy Otter 7",
+      totalStars: 3,
+      bests: { outlast: 170, evacuation: 50 },
+    };
+
+    it("creates the doc with the exact body the game sends", async () => {
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe(true);
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const snap = await getDoc(shipDoc(ctx.firestore()));
+        expect(snap.data()?.totalStars).toBe(3);
+        expect(snap.data()?.bests).toEqual({ outlast: 170, evacuation: 50 });
+      });
+    });
+
+    it("rejects an immediate rewrite and a forged total", async () => {
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe(true);
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe(false);
+      expect(
+        await submitShipEntry(
+          { ...restEntry, totalStars: 4000 },
+          deps("sailor-9")
+        )
+      ).toBe(false);
+    });
+
+    it("reads the board back ordered by stars", async () => {
+      await submitShipEntry(restEntry, deps(UID));
+      await submitShipEntry(
+        {
+          nickname: "Brave Fox 3",
+          totalStars: 9,
+          bests: { outlast: 1440, evacuation: 100, shipshape: 3 },
+        },
+        deps("sailor-2")
+      );
+      const board = await fetchShipBoard({ config, baseUrl });
+      expect(board).toEqual([
+        { uid: "sailor-2", nickname: "Brave Fox 3", value: 9 },
+        { uid: UID, nickname: "Happy Otter 7", value: 3 },
+      ]);
     });
   });
 });

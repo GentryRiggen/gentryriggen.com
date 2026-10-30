@@ -159,6 +159,69 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ---- Ship Builder leaderboard --------------------------------------
+    // shipLeaderboard/{uid}: total stars across a player's designs plus their
+    // best value per challenge (lib/ship-builder/challenges). Keep the star
+    // thresholds in sync with starAt in challenges/definitions.ts (checked by
+    // lib/leaderboard/__tests__/rulesSync.test.ts).
+
+    // Stars a best value earns; a challenge that was never played is 0.
+    function starsOf(b, id, one, two, three) {
+      return !(id in b) ? 0
+        : b[id] >= three ? 3
+        : b[id] >= two ? 2
+        : b[id] >= one ? 1
+        : 0;
+    }
+
+    function validShipBests(b) {
+      return b is map
+        && b.keys().hasOnly(['outlast', 'evacuation', 'shipshape'])
+        && (!('outlast' in b) || (b.outlast is int && b.outlast >= 0 && b.outlast <= 1440))
+        && (!('evacuation' in b) || (b.evacuation is int && b.evacuation >= 0 && b.evacuation <= 100))
+        && (!('shipshape' in b) || (b.shipshape is int && b.shipshape >= 0 && b.shipshape <= 3));
+    }
+
+    function validShipLeaderboard() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nickname', 'totalStars', 'bests', 'updatedAt'])
+        && d.keys().hasAll(['nickname', 'totalStars', 'bests', 'updatedAt'])
+        && validNickname(d.nickname)
+        && d.totalStars is int && d.totalStars >= 1 && d.totalStars <= 4500
+        && validShipBests(d.bests)
+        // Every best was earned on some design, so the total is at least the
+        // stars of those bests; and a player with stars has a best.
+        && d.totalStars >= starsOf(d.bests, 'outlast', 60, 160, 1440)
+          + starsOf(d.bests, 'evacuation', 25, 75, 100)
+          + starsOf(d.bests, 'shipshape', 1, 2, 3)
+        && d.updatedAt == request.time;
+    }
+
+    // A first write may carry the stars of a few trials played offline.
+    function validShipCreate(uid) {
+      return request.resource.data.totalStars <= 60 && notBanned(uid);
+    }
+
+    // Stars can grow no faster than the game can award them: at most 3 per
+    // trial and a trial takes over 20 seconds, so 6 plus 1 per 5 seconds of
+    // slack. They may fall when a ship is deleted. Writes are 10 s apart.
+    function validShipUpdate(uid) {
+      let d = request.resource.data;
+      let old = resource.data;
+      let secs = (request.time.toMillis() - old.updatedAt.toMillis()) / 1000;
+      return secs >= 10
+        && d.totalStars <= old.totalStars + 6 + secs / 5
+        && notBanned(uid);
+    }
+
+    match /shipLeaderboard/{uid} {
+      allow get: if true;
+      allow list: if request.query.limit <= 50 && request.query.offset == 0;
+      allow create: if isPlayer(uid) && validShipLeaderboard() && validShipCreate(uid);
+      allow update: if isPlayer(uid) && validShipLeaderboard() && validShipUpdate(uid);
+      allow delete: if isAdmin();
+    }
+
     // Everything else is closed.
     match /{document=**} {
       allow read, write: if false;

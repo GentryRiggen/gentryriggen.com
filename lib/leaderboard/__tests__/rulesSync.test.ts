@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { MAX_SPEED } from "@/lib/plane-builder/sim/constants";
+import {
+  CHALLENGES,
+  CHALLENGE_IDS,
+  MAX_VALUE,
+} from "@/lib/ship-builder/challenges/definitions";
 import { ADJECTIVES, ANIMALS } from "../nickname";
 
 const rules = readFileSync(join(process.cwd(), "firestore.rules"), "utf8");
@@ -53,5 +58,31 @@ describe("firestore.rules stays in sync with the code", () => {
     const match = rules.match(/d\.bestTimes\.keys\(\)\.hasAll\(\[([^\]]*)\]\)/);
     const keys = [...(match?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1]);
     expect(keys).toEqual([...LEVEL_ORDER]);
+  });
+
+  describe("shipLeaderboard", () => {
+    it("has each challenge's star thresholds from definitions.ts", () => {
+      const found = new Map(
+        [
+          ...rules.matchAll(
+            /starsOf\(d\.bests, '(\w+)', (\d+), (\d+), (\d+)\)/g
+          ),
+        ].map((m) => [m[1], [Number(m[2]), Number(m[3]), Number(m[4])]])
+      );
+      expect([...found.keys()].sort()).toEqual([...CHALLENGE_IDS].sort());
+      for (const challenge of CHALLENGES) {
+        expect(found.get(challenge.id)).toEqual([...challenge.starAt]);
+      }
+    });
+
+    it("limits each best to MAX_VALUE and allows exactly the challenge ids", () => {
+      const keys = rules.match(/b\.keys\(\)\.hasOnly\(\[([^\]]*)\]\)/);
+      expect(
+        [...(keys?.[1] ?? "").matchAll(/'(\w+)'/g)].map((m) => m[1])
+      ).toEqual([...CHALLENGE_IDS]);
+      for (const id of CHALLENGE_IDS) {
+        expect(rules).toContain(`b.${id} <= ${MAX_VALUE[id]}`);
+      }
+    });
   });
 });

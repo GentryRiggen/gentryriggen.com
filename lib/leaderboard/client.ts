@@ -15,7 +15,7 @@ export interface ClientDeps {
   getSession?: () => Promise<AuthSession | null>;
 }
 
-type FirestoreValue =
+export type FirestoreValue =
   | { integerValue: string }
   | { doubleValue: number }
   | { stringValue: string }
@@ -39,38 +39,24 @@ export function runQueryUrl(
   return `${documentsUrl(config, baseUrl)}:runQuery?key=${config.apiKey}`;
 }
 
-const int = (n: number): FirestoreValue => ({ integerValue: String(n) });
+export const int = (n: number): FirestoreValue => ({ integerValue: String(n) });
 
 /**
- * A full-document write of `leaderboard/{uid}` (no updateMask, so the stored
+ * A full-document write of `<collection>/{uid}` (no updateMask, so the stored
  * doc is exactly these fields, as firestore.rules require). `updatedAt` is
  * set by the server.
  */
-export function buildSubmitBody(
+export function buildDocumentBody(
   projectId: string,
+  collection: string,
   uid: string,
-  entry: LeaderboardEntry
+  fields: Record<string, FirestoreValue>
 ) {
-  const bestTimes: Record<string, FirestoreValue> = {};
-  for (const [world, seconds] of Object.entries(entry.bestTimes)) {
-    if (typeof seconds === "number") {
-      bestTimes[world] = { doubleValue: seconds };
-    }
-  }
-  const fields: Record<string, FirestoreValue> = {
-    nickname: { stringValue: entry.nickname },
-    prestige: int(entry.prestige),
-    score: int(entry.score),
-    lifetimeDistance: { doubleValue: entry.lifetimeDistance },
-    bestTimes: { mapValue: { fields: bestTimes } },
-    fastestRun:
-      entry.fastestRun === null ? { nullValue: null } : int(entry.fastestRun),
-  };
   return {
     writes: [
       {
         update: {
-          name: `projects/${projectId}/databases/(default)/documents/${COLLECTION}/${uid}`,
+          name: `projects/${projectId}/databases/(default)/documents/${collection}/${uid}`,
           fields,
         },
         updateTransforms: [
@@ -81,9 +67,40 @@ export function buildSubmitBody(
   };
 }
 
-/** Never throws; resolves to whether the write was accepted. */
-export async function submitEntry(
-  entry: LeaderboardEntry,
+function entryFields(entry: LeaderboardEntry): Record<string, FirestoreValue> {
+  const bestTimes: Record<string, FirestoreValue> = {};
+  for (const [world, seconds] of Object.entries(entry.bestTimes)) {
+    if (typeof seconds === "number") {
+      bestTimes[world] = { doubleValue: seconds };
+    }
+  }
+  return {
+    nickname: { stringValue: entry.nickname },
+    prestige: int(entry.prestige),
+    score: int(entry.score),
+    lifetimeDistance: { doubleValue: entry.lifetimeDistance },
+    bestTimes: { mapValue: { fields: bestTimes } },
+    fastestRun:
+      entry.fastestRun === null ? { nullValue: null } : int(entry.fastestRun),
+  };
+}
+
+/** The Plane Builder entry as a `leaderboard/{uid}` write. */
+export function buildSubmitBody(
+  projectId: string,
+  uid: string,
+  entry: LeaderboardEntry
+) {
+  return buildDocumentBody(projectId, COLLECTION, uid, entryFields(entry));
+}
+
+/**
+ * Signs in anonymously and commits `<collection>/{uid}` with `fields`. Never
+ * throws; resolves to whether the write was accepted.
+ */
+export async function commitDocument(
+  collection: string,
+  fields: Record<string, FirestoreValue>,
   deps: ClientDeps = {}
 ): Promise<boolean> {
   const config = deps.config ?? firebaseConfig;
@@ -99,12 +116,41 @@ export async function submitEntry(
         Authorization: `Bearer ${session.idToken}`,
       },
       body: JSON.stringify(
-        buildSubmitBody(config.projectId, session.uid, entry)
+        buildDocumentBody(config.projectId, collection, session.uid, fields)
       ),
     });
     return response.ok;
   } catch {
     return false;
+  }
+}
+
+/** Never throws; resolves to whether the write was accepted. */
+export function submitEntry(
+  entry: LeaderboardEntry,
+  deps: ClientDeps = {}
+): Promise<boolean> {
+  return commitDocument(COLLECTION, entryFields(entry), deps);
+}
+
+/** Runs a structured query: the raw JSON reply, or null on any failure. */
+export async function runBoardQuery(
+  body: unknown,
+  deps: ClientDeps = {}
+): Promise<unknown> {
+  const config = deps.config ?? firebaseConfig;
+  if (!isFirebaseConfigured(config)) return null;
+  try {
+    const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
+    const response = await fetchImpl(runQueryUrl(config, deps.baseUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
   }
 }
 
@@ -133,7 +179,7 @@ export function buildBoardQuery(kind: BoardKind) {
   return { structuredQuery };
 }
 
-function numberOf(value: unknown): number | null {
+export function numberOf(value: unknown): number | null {
   if (typeof value !== "object" || value === null) return null;
   const v = value as { integerValue?: unknown; doubleValue?: unknown };
   const n =
@@ -142,7 +188,10 @@ function numberOf(value: unknown): number | null {
 }
 
 /** Reads `a.b` out of Firestore REST fields, descending through mapValues. */
-function valueAtPath(fields: Record<string, unknown>, path: string): unknown {
+export function valueAtPath(
+  fields: Record<string, unknown>,
+  path: string
+): unknown {
   let bag: Record<string, unknown> | undefined = fields;
   const parts = path.split(".");
   for (let i = 0; i < parts.length; i++) {
@@ -180,18 +229,6 @@ export async function fetchBoard(
   kind: BoardKind,
   deps: ClientDeps = {}
 ): Promise<LeaderboardRow[] | null> {
-  const config = deps.config ?? firebaseConfig;
-  if (!isFirebaseConfigured(config)) return null;
-  try {
-    const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
-    const response = await fetchImpl(runQueryUrl(config, deps.baseUrl), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildBoardQuery(kind)),
-    });
-    if (!response.ok) return null;
-    return parseBoard(await response.json(), kind);
-  } catch {
-    return null;
-  }
+  const json = await runBoardQuery(buildBoardQuery(kind), deps);
+  return json === null ? null : parseBoard(json, kind);
 }
