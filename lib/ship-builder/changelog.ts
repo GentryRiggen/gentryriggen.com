@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.31.0",
+    date: "2026-10-30",
+    title: "Challenges: earn stars and climb the leaderboard",
+    highlights: [
+      "There is a new Challenges button at the top. Pick a challenge, watch your ship try it, and earn up to 3 stars. Your best stars are saved for each ship you build",
+      "Outlast the Titanic: an iceberg hits your ship, and the longer she stays afloat, the more stars you earn. Stay up for 2 hours 40 minutes (like the real Titanic) for 2 stars, or never sink for 3",
+      "Everyone off safely: the ship sinks, and you earn stars for every person who gets into a lifeboat. Add lifeboats along both sides to save more people",
+      "Shipshape: ride out a stormy sea. A ship that stays upright earns stars, and one that barely rolls earns all 3",
+      "After each challenge a card shows your stars and tells you what to change to earn the next one",
+      "The Leaderboard shows the top 20 captains by total stars and where you rank. Everyone gets a random animal name like Happy Otter 7, so no real names are ever shown",
+    ],
+  },
+  {
     version: "2.30.0",
     date: "2026-10-29",
     title: "Icebergs, rocks, buoys and passing ships look real now",

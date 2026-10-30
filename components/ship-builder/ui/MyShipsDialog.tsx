@@ -18,6 +18,7 @@ import {
   inputClass,
   panelClass,
 } from "./styles";
+import { forgetChallengeDesign } from "@/lib/ship-builder/challenges/progressStore";
 import trapTab from "./trapTab";
 import { droppedPartsNotice } from "@/lib/ship-builder/persist/schema";
 import { KIND_DEFAULTS } from "@/lib/ship-builder/model/kinds";
@@ -81,7 +82,10 @@ export default function MyShipsDialog({ onClose }: MyShipsDialogProps) {
   }
 
   function handleDelete(entry: SavedShip) {
-    if (deleteShip(entry.id)) setShips(listShips());
+    if (deleteShip(entry.id)) {
+      forgetChallengeDesign(entry.id);
+      setShips(listShips());
+    }
     setConfirmingId(null);
   }
 

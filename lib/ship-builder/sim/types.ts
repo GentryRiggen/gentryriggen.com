@@ -115,6 +115,8 @@ export interface IcebergInput {
   length: number;
   /** Middle of the gash, cells from the bow. */
   impactX: number;
+  /** Cells the gash runs along the hull; absent means `GASH_LENGTH`. */
+  gashLength?: number;
   /** Absent means `real`. */
   breakMode?: BreakMode;
 }
