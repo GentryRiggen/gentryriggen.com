@@ -28,6 +28,7 @@ import { applyBonuses, coinFactor, type BonusKind } from "../prestige";
 import { planeStats } from "../plane/stats";
 import type { FlightResult, LaunchAim } from "../sim/flight";
 import { isValidNickname } from "@/lib/leaderboard/nickname";
+import { trackGame } from "@/lib/analytics/trackGame";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
 import { clearFlightToasts } from "./flightToasts";
@@ -187,7 +188,13 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   },
   buy: (track) => {
     const r = buyUpgrade(get().progress, get().levelId, track);
-    if (r.ok) set({ progress: r.progress });
+    if (r.ok) {
+      set({ progress: r.progress });
+      trackGame("upgrade_bought", {
+        part: track,
+        tier: r.progress.levels[get().levelId].tiers[track],
+      });
+    }
     return r;
   },
   startLaunch: () => {
@@ -255,6 +262,16 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
         }
       : recordFlight(progress, levelId, result, pay.total, ghost);
     resetFlightInput();
+    if (recorded.unlocked) {
+      trackGame("world_unlocked", { world: recorded.unlocked });
+    }
+    if (daily && isDailyOpen) {
+      trackGame("daily_played", {
+        world: levelId,
+        twist: daily.twist,
+        finished: result.finished ? 1 : 0,
+      });
+    }
     set({
       screen: "hangar",
       progress: recorded.progress,

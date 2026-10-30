@@ -29,6 +29,8 @@ import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
 import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
+import { trackGame } from "@/lib/analytics/trackGame";
+import { trackPartPlaced, trackTrialRun } from "../analytics";
 import { findTemplate } from "../templates";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
@@ -512,6 +514,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const result = place(ship, { id: newId("p"), ...candidate });
       if (!result.ok) return { ok: false, reason: result.reason };
       commit(result.ship);
+      trackPartPlaced(getPartDef(candidate.type).category);
       return { ok: true };
     },
 
@@ -680,6 +683,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (isTrialActive()) return;
       const template = findTemplate(id);
       if (!template) return;
+      trackGame("template_used", { template: id });
       commit(template.build(), {
         savedId: null,
         tool: { kind: "none" },
@@ -718,6 +722,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     startDrive(config) {
       if (get().drive.status !== "setup") return;
+      trackGame("drive_started", { density: config.density });
       runId += 1;
       resetSailInput();
       publishSail(null);
@@ -740,6 +745,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (trial.status !== "idle" && trial.status !== "running") return;
       const spawn = spawnOf(get().ship, undefined, start);
       if (spawn === null) return;
+      trackGame("walk_started", { start });
       runId += 1;
       resetWalkInput();
       publishWalk(spawn);
@@ -789,6 +795,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     finishTrial(state) {
       const { trial } = get();
       if (trial.status !== "running") return;
+      trackTrialRun(state, trial.input.sea, trial.input.iceberg !== undefined);
       set({
         trial: {
           status: "result",
