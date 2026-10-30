@@ -38,6 +38,7 @@ async function dragLaunch(page: Page) {
 
 test.describe("Plane Builder near misses", () => {
   test("the HUD pops 'Close call!' with the combo", async ({ page }, info) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await open(page);
     await page.getByRole("button", { name: "Play Backyard Meadow" }).click();
     await page.getByRole("button", { name: "Launch!" }).click();
@@ -46,7 +47,13 @@ test.describe("Plane Builder near misses", () => {
       page.getByRole("progressbar", { name: /distance/i })
     ).toBeVisible({ timeout: 30_000 });
 
-    await page.evaluate(() => window.__planeBuilderNearMissPop!.push(3, 3));
+    // Software WebGL is slow, so keep the pop alive while the shot is taken.
+    // The pop-in animation restarts on each push, so shoot it without motion.
+    await page.evaluate(() => {
+      const push = () => window.__planeBuilderNearMissPop!.push(3, 3);
+      push();
+      window.setInterval(push, 300);
+    });
     const pop = page.getByTestId("close-call");
     await expect(pop).toContainText("Close call! ×3");
     await page.screenshot({
