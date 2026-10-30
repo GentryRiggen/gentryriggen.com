@@ -5,8 +5,8 @@ import { SMOOTH_FINISH_CELLS } from "./definitions";
 export interface SmoothRun {
   /** The farthest she has been from the start, in cells. */
   reach: number;
-  /** How it ended: still going, past the finish line, hit, or given up. */
-  status: "sailing" | "finished" | "hit" | "gave-up";
+  /** How it ended: still going, past the finish line, hit, given up, or a ship with no way to sail. */
+  status: "sailing" | "finished" | "hit" | "gave-up" | "cannot-sail";
   /** What she hit, when `status` is "hit". */
   hitKind?: ObstacleKind;
 }

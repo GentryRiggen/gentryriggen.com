@@ -44,6 +44,16 @@ describe("challenge persistence", () => {
     expect(isNewerChallengesFormat("junk")).toBe(false);
   });
 
+  it("still reads progress saved before the Smooth sailing id (v1)", () => {
+    const v1 = JSON.stringify({
+      v: 1,
+      designs: { a: { outlast: 170 } },
+      nickname: null,
+    });
+    expect(isNewerChallengesFormat(v1)).toBe(false);
+    expect(parseChallenges(v1).designs).toEqual({ a: { outlast: 170 } });
+  });
+
   it("lives apart from ship saves, which still load without it", () => {
     expect(CHALLENGES_KEY).not.toBe(SHIPS_KEY);
     expect(CHALLENGES_KEY).not.toBe(AUTOSAVE_KEY);

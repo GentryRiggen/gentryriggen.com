@@ -173,8 +173,14 @@ describe("scoreShipshape", () => {
     expect(
       scoreShipshape({ calm, choppy, stormy: run("recovered", 27.7, 0.109) })
     ).toMatchObject({ stars: 2, sea: "stormy" });
+  });
+
+  it("does not look at the roll angle: only where her weight sits", () => {
     expect(
       scoreShipshape({ calm, choppy, stormy: run("recovered", 39, 0.03) })
+    ).toMatchObject({ stars: 3 });
+    expect(
+      scoreShipshape({ calm, choppy, stormy: run("recovered", 1, 0.109) })
     ).toMatchObject({ stars: 2 });
   });
 
@@ -197,19 +203,48 @@ describe("scoreShipshape", () => {
     expect(decidingSea({ calm, choppy, stormy: choppy })).toBe("stormy");
   });
 
-  it("spreads the templates over one, two and three stars", () => {
-    const starsOf = (id: string) => {
-      const ship = findTemplate(id)!.build();
-      return scoreShipshape(shipshapeRuns(inputOf(ship, "stormy", false)))
-        .stars;
-    };
-    expect(starsOf("titanic")).toBe(2);
-    expect(starsOf("wonder-of-the-seas")).toBe(1);
-    expect(starsOf("arleigh-burke")).toBe(3);
+  // Every template's weight ratio and Shipshape stars, pinned so a change to
+  // the stats or to the thresholds shows up here.
+  const PINNED: Record<string, [ratio: number, stars: number]> = {
+    titanic: [0.109, 2],
+    olympic: [0.105, 2],
+    britannic: [0.09, 2],
+    carpathia: [0.049, 3],
+    lusitania: [0.098, 2],
+    "wonder-of-the-seas": [0.137, 1],
+    "ocean-breeze": [0.08, 2],
+    "arleigh-burke": [0.024, 3],
+    "coast-guard-cutter": [0.028, 3],
+    "ever-given": [0.132, 1],
+    "little-hopper": [0.11, 2],
+    "small-sloop": [-0.038, 3],
+    "whydah-gally": [-0.026, 3],
+    "queen-annes-revenge": [-0.03, 3],
+    "black-pearl-galleon": [-0.032, 3],
+  };
+
+  it("pins every template's ratio and stars, spread over 1 to 3", () => {
+    const templates = Object.values(TEMPLATES).flat();
+    expect(templates.map((t) => t.id).sort()).toEqual(
+      Object.keys(PINNED).sort()
+    );
     const spread = [0, 0, 0, 0];
-    for (const t of Object.values(TEMPLATES).flat()) spread[starsOf(t.id)]++;
-    expect(spread.slice(1).every((count) => count > 0)).toBe(true);
-    expect(spread[0]).toBe(0);
+    for (const template of templates) {
+      const runs = shipshapeRuns(
+        inputOf(findTemplate(template.id)!.build(), "stormy", false)
+      );
+      const [ratio, stars] = PINNED[template.id];
+      expect([template.id, runs.stormy.stabilityRatio]).toEqual([
+        template.id,
+        expect.closeTo(ratio, 3),
+      ]);
+      expect([template.id, scoreShipshape(runs).stars]).toEqual([
+        template.id,
+        stars,
+      ]);
+      spread[stars]++;
+    }
+    expect(spread).toEqual([0, 2, 6, 7]);
   });
 });
 

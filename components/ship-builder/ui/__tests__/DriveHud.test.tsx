@@ -35,7 +35,7 @@ describe("DriveHud in a challenge sail", () => {
     render(<DriveHud />);
     act(() => store().startChallenge("smooth"));
     act(() => publishSmooth({ reach: 123.7, status: "sailing" }));
-    expect(screen.getByLabelText("Sailed 123 of 500 cells")).toBeVisible();
+    expect(screen.getByLabelText("Sailed 123 of 350 cells")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Stop sailing" }));
     expect(store().drive.status).toBe("idle");
     expect(store().sailResult?.run).toMatchObject({
@@ -47,7 +47,7 @@ describe("DriveHud in a challenge sail", () => {
   it("has no reach readout in an ordinary drive", () => {
     render(<DriveHud />);
     startSailing();
-    expect(screen.queryByLabelText(/of 500 cells/)).toBeNull();
+    expect(screen.queryByLabelText(/of 350 cells/)).toBeNull();
   });
 });
 

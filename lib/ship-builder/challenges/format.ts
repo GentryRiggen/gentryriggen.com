@@ -4,7 +4,6 @@ import {
   NEVER_SINKS_MINUTES,
   SMOOTH_FINISH_CELLS,
   NOT_SCORED,
-  STEADY_PEAK_ROLL_DEG,
   nextStarAt,
   type ChallengeId,
 } from "./definitions";
@@ -20,9 +19,15 @@ const SHIPSHAPE_SEAS = [
 export const NOT_SCORED_TEXT =
   "She stayed afloat, so there was no sinking to escape. Try it on a ship that can sink.";
 
+/** Said when a ship cannot sail, so Smooth sailing did not apply. */
+export const CANNOT_SAIL_TEXT =
+  "She has no way to sail, so there was nothing to score. Add an engine and a propeller and try again.";
+
 /** A best value in plain words, e.g. "Stayed afloat 1 hour 40 minutes". */
 export function describeValue(id: ChallengeId, value: number): string {
-  if (value === NOT_SCORED) return NOT_SCORED_TEXT;
+  if (value === NOT_SCORED) {
+    return id === "smooth" ? CANNOT_SAIL_TEXT : NOT_SCORED_TEXT;
+  }
   switch (id) {
     case "outlast":
       return value >= NEVER_SINKS_MINUTES
@@ -34,8 +39,8 @@ export function describeValue(id: ChallengeId, value: number): string {
       return SHIPSHAPE_SEAS[Math.max(0, Math.min(3, value))];
     case "smooth":
       return value >= SMOOTH_FINISH_CELLS
-        ? "Sailed the whole course"
-        : `Sailed ${value} cells clear`;
+        ? "Reached the finish line without a bump"
+        : `Got ${value} cells from the start without a bump`;
   }
 }
 
@@ -57,11 +62,11 @@ export function describeGoal(id: ChallengeId, value: number): string | null {
         ? "Ride out a choppy sea"
         : target === 2
           ? "Ride out a stormy sea with your weight lower"
-          : `Ride out a stormy sea with your weight kept low, rolling under ${STEADY_PEAK_ROLL_DEG} degrees`;
+          : `Ride out a stormy sea with your weight kept low`;
     case "smooth":
       return target >= SMOOTH_FINISH_CELLS
-        ? `Sail the whole ${SMOOTH_FINISH_CELLS}-cell course without a bump`
-        : `Sail ${target} cells without a bump`;
+        ? `Reach the finish line, ${SMOOTH_FINISH_CELLS} cells from the start, without a bump`
+        : `Get ${target} cells from the start without a bump`;
   }
 }
 
@@ -85,7 +90,7 @@ export function describeShipshapeRun(
 
 /** Smooth sailing: how the sail ended, in a sentence. */
 export function describeSailEnd(
-  end: "sailing" | "finished" | "hit" | "gave-up",
+  end: "sailing" | "finished" | "hit" | "gave-up" | "cannot-sail",
   hitKind: string | undefined
 ): string {
   switch (end) {
@@ -96,6 +101,7 @@ export function describeSailEnd(
     case "gave-up":
       return "You stopped the sail early.";
     case "sailing":
+    case "cannot-sail":
       return "";
   }
 }

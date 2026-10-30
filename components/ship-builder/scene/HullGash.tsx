@@ -9,7 +9,8 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { hullXOfImpact } from "./icebergAim";
 import { ICEBERG_IMPACT_S } from "./icebergMotion";
-import { halfOfX } from "./partHalves";
+import { hullHalfWidth } from "./hullShapes";
+import type { HalfSide } from "./partHalves";
 import { useClipMaterialProps, useShipHalf } from "./shipHalf";
 import { trialPlayback } from "./trialPlayback";
 
@@ -36,8 +37,17 @@ export function gashSegments(width: number): number {
   return Math.max(TOP_JAGS.length - 1, Math.round(width / JAG_SPACING));
 }
 
-/** A jagged dark strip, `width` cells long, centred on x = 0. */
-export function buildGashGeometry(width: number): ShapeGeometry {
+/**
+ * A jagged dark strip, `width` cells long, centred on x = 0. With a
+ * `halfBeam` it hugs the hull: each point sits where the hull's side is at
+ * its height (z relative to the full beam), so the strip does not float off
+ * the narrowing below the bilge. The gash itself stays on the parallel
+ * midbody (`gashOf` keeps it inside the hull's length).
+ */
+export function buildGashGeometry(
+  width: number,
+  halfBeam?: number
+): ShapeGeometry {
   const height = GASH_TOP - GASH_BOTTOM;
   const segments = gashSegments(width);
   const step = width / segments;
@@ -53,7 +63,15 @@ export function buildGashGeometry(width: number): ShapeGeometry {
     shape.lineTo(x, GASH_TOP - jagAt(TOP_JAGS, i) * height);
   }
   shape.closePath();
-  return new ShapeGeometry(shape);
+  const geometry = new ShapeGeometry(shape);
+  if (halfBeam !== undefined) {
+    const positions = geometry.getAttribute("position");
+    for (let i = 0; i < positions.count; i++) {
+      positions.setZ(i, hullHalfWidth(positions.getY(i), halfBeam) - halfBeam);
+    }
+    positions.needsUpdate = true;
+  }
+  return geometry;
 }
 
 interface GashStripProps {
@@ -70,7 +88,10 @@ function GashStrip({ impactX, length, gashLength, beam }: GashStripProps) {
   const clip = useClipMaterialProps();
   const { fromX, toX } = gashOf(impactX, length, gashLength);
   const width = toX - fromX;
-  const geometry = useMemo(() => buildGashGeometry(width), [width]);
+  const geometry = useMemo(
+    () => buildGashGeometry(width, beam / 2),
+    [width, beam]
+  );
   useEffect(() => () => geometry.dispose(), [geometry]);
   const x = hullXOfImpact((fromX + toX) / 2, length);
 
@@ -93,15 +114,21 @@ function GashStrip({ impactX, length, gashLength, beam }: GashStripProps) {
   );
 }
 
-/** Which half of a broken ship holds the middle of the gash. */
-function gashHalf(
+/**
+ * The halves of a broken ship the gash reaches. A gash across the break is
+ * drawn on both, and each half's clip plane cuts it at the break.
+ */
+export function gashHalves(
   impactX: number,
   length: number,
   gashLength: number | undefined,
   atX: number
-) {
+): HalfSide[] {
   const { fromX, toX } = gashOf(impactX, length, gashLength);
-  return halfOfX((fromX + toX) / 2, atX);
+  const sides: HalfSide[] = [];
+  if (fromX < atX) sides.push("bow");
+  if (toX > atX) sides.push("stern");
+  return sides;
 }
 
 /**
@@ -118,11 +145,15 @@ export default function HullGash() {
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
   const half = useShipHalf();
   if (!iceberg) return null;
-  // On a broken ship the gash goes with the half holding its middle.
+  // On a broken ship the gash goes with each half it reaches.
   if (
     half &&
-    half.side !==
-      gashHalf(iceberg.impactX, iceberg.length, iceberg.gashLength, half.atX)
+    !gashHalves(
+      iceberg.impactX,
+      iceberg.length,
+      iceberg.gashLength,
+      half.atX
+    ).includes(half.side)
   ) {
     return null;
   }

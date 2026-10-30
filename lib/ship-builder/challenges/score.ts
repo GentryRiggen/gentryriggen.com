@@ -9,7 +9,6 @@ import {
   NEVER_SINKS_MINUTES,
   NOT_SCORED,
   SOLID_STABILITY_RATIO,
-  STEADY_PEAK_ROLL_DEG,
   STEADY_STABILITY_RATIO,
   starsFor,
   type ChallengeId,
@@ -140,8 +139,9 @@ export function decidingSea(
 /**
  * Shipshape: 1 star for riding out a choppy sea (calm comes with it). A
  * stormy sea ridden out with her weight low enough (`SOLID_STABILITY_RATIO`)
- * is 2 stars, and 3 if it is lower still (`STEADY_STABILITY_RATIO`) and she
- * never heeled past `STEADY_PEAK_ROLL_DEG`.
+ * is 2 stars, and 3 if it is lower still (`STEADY_STABILITY_RATIO`). The
+ * roll angle is shown on the card but does not score: a stormy sea rolls
+ * every stable ship the same.
  */
 export function scoreShipshape(
   runs: Readonly<Record<SimSea, ShipshapeRun>>
@@ -156,10 +156,7 @@ export function scoreShipshape(
       survived(stormy.outcome) &&
       stormy.stabilityRatio <= SOLID_STABILITY_RATIO
     ) {
-      const isSteady =
-        stormy.stabilityRatio <= STEADY_STABILITY_RATIO &&
-        stormy.peakRollDeg <= STEADY_PEAK_ROLL_DEG;
-      value = isSteady ? 3 : 2;
+      value = stormy.stabilityRatio <= STEADY_STABILITY_RATIO ? 3 : 2;
     }
   }
   return {
@@ -176,6 +173,8 @@ export function scoreShipshape(
  * scores what it has.
  */
 export function scoreSmooth(run: SmoothRun): ChallengeScore {
+  // A ship that cannot sail has nothing to score: no stars, nothing saved.
+  if (run.status === "cannot-sail") return notScored("smooth");
   return {
     ...scored("smooth", run.reach),
     sailEnd: run.status,

@@ -33,12 +33,12 @@ describe("starsFor", () => {
     ["evacuation", 100, 3],
     ["shipshape", 0, 0],
     ["shipshape", 3, 3],
-    ["smooth", 149, 0],
-    ["smooth", 150, 1],
-    ["smooth", 299, 1],
-    ["smooth", 300, 2],
-    ["smooth", 499, 2],
-    ["smooth", 500, 3],
+    ["smooth", 99, 0],
+    ["smooth", 100, 1],
+    ["smooth", 199, 1],
+    ["smooth", 200, 2],
+    ["smooth", 349, 2],
+    ["smooth", 350, 3],
   ])("%s at %i earns %i stars", (id, value, stars) => {
     expect(starsFor(id, value)).toBe(stars);
   });

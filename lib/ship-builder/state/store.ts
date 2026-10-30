@@ -31,7 +31,11 @@ import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
 import { decidingSea, shipshapeRuns } from "../challenges/score";
-import { giveUpSmooth, type SmoothRun } from "../challenges/smooth";
+import {
+  giveUpSmooth,
+  NEW_SMOOTH_RUN,
+  type SmoothRun,
+} from "../challenges/smooth";
 import {
   challengeDef,
   CHALLENGE_STRIKE_FRACTION,
@@ -43,6 +47,7 @@ import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState"
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
+import { publishSmooth } from "./smoothLive";
 import { resetSailInput } from "./sailInput";
 import { spawnOf, type WalkStart } from "../walk";
 import { publishWalk } from "./walkLive";
@@ -771,6 +776,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         runId += 1;
         resetSailInput();
         publishSail(null);
+        // Before the first frame, so the HUD never shows the last run.
+        publishSmooth(NEW_SMOOTH_RUN);
         set({
           trial: { status: "idle" },
           sailResult: null,

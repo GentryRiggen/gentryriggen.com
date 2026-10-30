@@ -60,7 +60,7 @@ function Sailing({ config }: SailingProps) {
   useEffect(() => {
     // A ship with no speed has nothing to sail: back to the builder.
     if (!canSail) {
-      if (isChallenge) finishSail({ reach: 0, status: "gave-up" });
+      if (isChallenge) finishSail({ reach: 0, status: "cannot-sail" });
       else endDrive();
       return;
     }

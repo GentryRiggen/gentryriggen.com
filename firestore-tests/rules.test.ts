@@ -1344,7 +1344,7 @@ describe("shipLeaderboard", () => {
               outlast: 1440,
               evacuation: 100,
               shipshape: 3,
-              smooth: 500,
+              smooth: 350,
             },
           })
         )
@@ -1398,12 +1398,12 @@ describe("shipLeaderboard", () => {
         { bests: { evacuation: 101 }, totalStars: 9 },
       ],
       ["a shipshape above 3", { bests: { shipshape: 4 }, totalStars: 9 }],
-      ["a smooth above 500", { bests: { smooth: 501 }, totalStars: 9 }],
+      ["a smooth above 350", { bests: { smooth: 351 }, totalStars: 9 }],
       ["a negative smooth", { bests: { smooth: -1 }, totalStars: 9 }],
-      ["a float smooth", { bests: { smooth: 150.5 }, totalStars: 9 }],
+      ["a float smooth", { bests: { smooth: 100.5 }, totalStars: 9 }],
       [
         "a total lower than a smooth best needs",
-        { totalStars: 2, bests: { smooth: 500 } },
+        { totalStars: 2, bests: { smooth: 350 } },
       ],
       ["a string best", { bests: { outlast: "170" } }],
       [
@@ -1424,11 +1424,11 @@ describe("shipLeaderboard", () => {
     });
 
     it.each([
-      [150, 1],
-      [299, 1],
-      [300, 2],
-      [499, 2],
-      [500, 3],
+      [100, 1],
+      [199, 1],
+      [200, 2],
+      [349, 2],
+      [350, 3],
     ])(
       "needs a smooth best of %i to carry %i star(s)",
       async (smooth, stars) => {
@@ -1493,6 +1493,40 @@ describe("shipLeaderboard", () => {
       await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 100 })));
       await assertSucceeds(
         setDoc(shipDoc(player()), entry({ totalStars: 12 }))
+      );
+    });
+
+    it("accepts a smooth best on update, and refuses one that outruns its total", async () => {
+      await seedPlayer({}, 15_000);
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 5, bests: { outlast: 170, smooth: 350 } })
+        )
+      );
+      await env.clearFirestore();
+      await seedPlayer({}, 15_000);
+      // 2 (outlast 170) + 3 (smooth 350) = 5 stars needed, 4 sent.
+      await assertFails(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 4, bests: { outlast: 170, smooth: 350 } })
+        )
+      );
+      // A smooth above its range is refused on update too.
+      await assertFails(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 9, bests: { smooth: 351 } })
+        )
+      );
+    });
+
+    it("caps the total at 6000: 6000 is accepted and 6001 refused", async () => {
+      await seedPlayer({ totalStars: 5995 }, 15_000);
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 6001 })));
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 6000 }))
       );
     });
 

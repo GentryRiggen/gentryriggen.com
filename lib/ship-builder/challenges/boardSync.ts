@@ -1,5 +1,6 @@
 import type { CommitResult } from "@/lib/leaderboard/client";
 import type { ShipBoardEntry } from "@/lib/leaderboard/shipBoard";
+import { isChallengeId, starsFor } from "./definitions";
 import { overallBests, totalStars, type ChallengeProgress } from "./progress";
 
 /** The server allows a write every 10 s; stay clear of that. */
@@ -36,6 +37,33 @@ export function entryOf(
   const stars = totalStars(progress);
   if (stars < 1) return null;
   return { nickname, totalStars: stars, bests: overallBests(progress) };
+}
+
+/**
+ * The bests that may ride with a write whose total is `limit`: the rules
+ * refuse a total below the stars its bests are worth, so when a climb sends a
+ * small total, the bests that would not fit are left out until it catches up.
+ * The most valuable ones stay.
+ */
+export function fitBests(
+  bests: ShipBoardEntry["bests"],
+  limit: number
+): ShipBoardEntry["bests"] {
+  const ranked = Object.entries(bests)
+    .flatMap(([id, value]) =>
+      isChallengeId(id) && typeof value === "number"
+        ? [{ id, value, stars: starsFor(id, value) }]
+        : []
+    )
+    .sort((a, b) => b.stars - a.stars);
+  const fitted: Record<string, number> = {};
+  let sum = 0;
+  for (const best of ranked) {
+    if (sum + best.stars > limit) continue;
+    fitted[best.id] = best.value;
+    sum += best.stars;
+  }
+  return fitted;
 }
 
 /**
@@ -76,7 +104,12 @@ export function createBoardSync(deps: BoardSyncDeps): BoardSync {
       const entry = entryOf(deps.getProgress(), deps.ensureNickname());
       if (!entry) return;
       const totalStars = totalToSend(entry.totalStars);
-      const result = await deps.submit({ ...entry, totalStars });
+      // A climb's small total may be worth less than all the bests.
+      const bests =
+        totalStars < entry.totalStars
+          ? fitBests(entry.bests, totalStars)
+          : entry.bests;
+      const result = await deps.submit({ ...entry, totalStars, bests });
       if (result === "ok") {
         refusals = 0;
         accepted = totalStars;

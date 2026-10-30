@@ -180,7 +180,7 @@ service cloud.firestore {
         && (!('outlast' in b) || (b.outlast is int && b.outlast >= 0 && b.outlast <= 1440))
         && (!('evacuation' in b) || (b.evacuation is int && b.evacuation >= 0 && b.evacuation <= 100))
         && (!('shipshape' in b) || (b.shipshape is int && b.shipshape >= 0 && b.shipshape <= 3))
-        && (!('smooth' in b) || (b.smooth is int && b.smooth >= 0 && b.smooth <= 500));
+        && (!('smooth' in b) || (b.smooth is int && b.smooth >= 0 && b.smooth <= 350));
     }
 
     function validShipLeaderboard() {
@@ -197,7 +197,7 @@ service cloud.firestore {
         && d.totalStars >= starsOf(d.bests, 'outlast', 60, 160, 1440)
           + starsOf(d.bests, 'evacuation', 25, 75, 100)
           + starsOf(d.bests, 'shipshape', 1, 2, 3)
-          + starsOf(d.bests, 'smooth', 150, 300, 500)
+          + starsOf(d.bests, 'smooth', 100, 200, 350)
         && d.updatedAt == request.time;
     }
 

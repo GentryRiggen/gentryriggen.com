@@ -128,7 +128,7 @@ test.describe("Ship Builder challenges", () => {
       await expect(
         page.getByRole("button", { name: "Stop sailing" })
       ).toBeVisible();
-      await expect(page.getByLabel(/Sailed \d+ of 500 cells/)).toBeVisible();
+      await expect(page.getByLabel(/Sailed \d+ of 350 cells/)).toBeVisible();
       // Full ahead; the planted iceberg ends the sail.
       for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowUp");
 
@@ -139,7 +139,7 @@ test.describe("Ship Builder challenges", () => {
       await expect(card).toContainText("She ran into");
       // Which thing ends the sail (the planted iceberg or a rock from the
       // fixed field) decides the stars, so check the card's shape instead.
-      await expect(card).toContainText(/Sailed \d+ cells clear/);
+      await expect(card).toContainText(/Got \d+ cells from the start/);
       await expect(card.getByRole("img", { name: /of 3 stars/ })).toBeVisible();
       await expect(card).toContainText("Try the challenge again");
 

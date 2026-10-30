@@ -1,7 +1,12 @@
 import { createSail } from "../../sail/step";
 import type { SailImpact, SailState } from "../../sail/types";
-import { SMOOTH_FINISH_CELLS } from "../definitions";
-import { describeSailEnd, describeGoal, describeValue } from "../format";
+import { NOT_SCORED, SMOOTH_FINISH_CELLS } from "../definitions";
+import {
+  CANNOT_SAIL_TEXT,
+  describeGoal,
+  describeSailEnd,
+  describeValue,
+} from "../format";
 import { scoreSmooth } from "../score";
 import {
   giveUpSmooth,
@@ -69,18 +74,28 @@ describe("scoreSmooth", () => {
     scoreSmooth({ reach, status: "hit", hitKind: "rock" }).stars;
 
   it("earns stars by distance", () => {
-    expect([0, 149, 150, 299, 300, 499, 500].map(stars)).toEqual([
+    expect([0, 99, 100, 199, 200, 349, 350].map(stars)).toEqual([
       0, 0, 1, 1, 2, 2, 3,
     ]);
   });
 
   it("rounds and caps the stored value", () => {
-    expect(scoreSmooth({ reach: 150.6, status: "gave-up" }).value).toBe(151);
-    expect(scoreSmooth({ reach: 900, status: "finished" })).toMatchObject({
+    expect(scoreSmooth({ reach: 100.6, status: "gave-up" }).value).toBe(101);
+    expect(scoreSmooth({ reach: 600, status: "finished" })).toMatchObject({
       value: SMOOTH_FINISH_CELLS,
       stars: 3,
       isScored: true,
     });
+  });
+
+  it("is not scored for a ship that cannot sail", () => {
+    expect(scoreSmooth({ reach: 0, status: "cannot-sail" })).toEqual({
+      id: "smooth",
+      value: NOT_SCORED,
+      stars: 0,
+      isScored: false,
+    });
+    expect(describeValue("smooth", NOT_SCORED)).toBe(CANNOT_SAIL_TEXT);
   });
 
   it("carries how it ended", () => {
@@ -92,13 +107,19 @@ describe("scoreSmooth", () => {
 
 describe("Smooth sailing words", () => {
   it("names the distance and the next target", () => {
-    expect(describeValue("smooth", 120)).toBe("Sailed 120 cells clear");
-    expect(describeValue("smooth", 500)).toBe("Sailed the whole course");
-    expect(describeGoal("smooth", 0)).toBe("Sail 150 cells without a bump");
-    expect(describeGoal("smooth", 300)).toBe(
-      "Sail the whole 500-cell course without a bump"
+    expect(describeValue("smooth", 120)).toBe(
+      "Got 120 cells from the start without a bump"
     );
-    expect(describeGoal("smooth", 500)).toBeNull();
+    expect(describeValue("smooth", 350)).toBe(
+      "Reached the finish line without a bump"
+    );
+    expect(describeGoal("smooth", 0)).toBe(
+      "Get 100 cells from the start without a bump"
+    );
+    expect(describeGoal("smooth", 200)).toBe(
+      "Reach the finish line, 350 cells from the start, without a bump"
+    );
+    expect(describeGoal("smooth", 350)).toBeNull();
   });
 
   it("says how the sail ended", () => {

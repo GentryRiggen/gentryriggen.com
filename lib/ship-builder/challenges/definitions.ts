@@ -32,19 +32,13 @@ export const TITANIC_MINUTES = 160;
 export const NOT_SCORED = -1;
 
 /**
- * Shipshape: the most a stormy sea may heel her, in degrees from her resting
- * list, for the third star. A stable, level ship rolls about 27.7 degrees; a
- * top-heavier one more.
- */
-export const STEADY_PEAK_ROLL_DEG = 28;
-
-/**
  * Shipshape: how high her weight may sit (`stabilityRatio`, the lever of the
  * weight above the waterline over her width; lower is steadier and below zero
  * is ballasted) for each star. The stormy sim rolls every stable ship the
  * same, so this margin is what tells ships apart: the Titanic (0.109) earns
  * two stars, a low warship or pirate sloop three, a tall container ship or
- * cruise liner one.
+ * cruise liner one. A stormy sea rolls every stable ship the same, so roll
+ * angle does not enter into it.
  */
 export const SOLID_STABILITY_RATIO = 0.12;
 export const STEADY_STABILITY_RATIO = 0.06;
@@ -53,7 +47,7 @@ export const STEADY_STABILITY_RATIO = 0.06;
  * Smooth sailing: cells from the start to the finish line. Reaching it
  * without touching anything is the third star, and the most a result can be.
  */
-export const SMOOTH_FINISH_CELLS = 500;
+export const SMOOTH_FINISH_CELLS = 350;
 
 /**
  * Smooth sailing's field: the same rocks, icebergs and moving ships for every
@@ -123,10 +117,10 @@ export const CHALLENGES: readonly ChallengeDef[] = [
   {
     id: "smooth",
     title: "Smooth sailing",
-    blurb: `Sail ${SMOOTH_FINISH_CELLS} cells through rocks, icebergs and other ships without touching one.`,
+    blurb: `Sail as far from the start as you can through rocks, icebergs and other ships without touching one. ${SMOOTH_FINISH_CELLS} cells is the finish line.`,
     trial: { kind: "sail" },
-    starAt: [150, 300, SMOOTH_FINISH_CELLS],
-    tip: "Slow down near rocks and icebergs and turn early. Smaller ships turn faster.",
+    starAt: [100, 200, SMOOTH_FINISH_CELLS],
+    tip: "Slow down near rocks and icebergs and turn early. Smaller ships turn faster. Only your farthest distance from the start counts, so circling does not help.",
   },
 ];
 

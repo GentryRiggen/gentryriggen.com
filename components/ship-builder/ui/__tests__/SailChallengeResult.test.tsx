@@ -45,12 +45,12 @@ describe("the Smooth sailing challenge", () => {
   it("ends the sail and keeps the result when it finishes", () => {
     act(() => store().startChallenge("smooth"));
     act(() =>
-      store().finishSail({ reach: 320, status: "hit", hitKind: "rock" })
+      store().finishSail({ reach: 220, status: "hit", hitKind: "rock" })
     );
     expect(store().drive.status).toBe("idle");
     expect(store().sailResult).toMatchObject({
       challenge: "smooth",
-      run: { reach: 320, status: "hit" },
+      run: { reach: 220, status: "hit" },
     });
   });
 
@@ -79,23 +79,23 @@ describe("SailChallengeResult", () => {
   });
 
   it("shows stars, what she hit, and saves the best", () => {
-    sail(320);
+    sail(220);
     render(<SailChallengeResult />);
     expect(
       screen.getByRole("region", { name: "Challenge: Smooth sailing" })
-    ).toHaveTextContent("Sailed 320 cells clear");
+    ).toHaveTextContent("Got 220 cells from the start without a bump");
     expect(
       screen.getByRole("img", { name: "2 of 3 stars" })
     ).toBeInTheDocument();
     expect(screen.getByText("She ran into an iceberg.")).toBeInTheDocument();
     expect(screen.getByText("New best!")).toBeInTheDocument();
     expect(bestValue(challengeProgress.get(), "titanic-save", "smooth")).toBe(
-      320
+      220
     );
   });
 
   it("gives three stars for the finish line", () => {
-    sail(500, "finished");
+    sail(350, "finished");
     render(<SailChallengeResult />);
     expect(
       screen.getByRole("img", { name: "3 of 3 stars" })
@@ -112,6 +112,17 @@ describe("SailChallengeResult", () => {
     );
     expect(store().drive.status).toBe("sailing");
     expect(store().sailResult).toBeNull();
+  });
+
+  it("says so, and keeps nothing, for a ship that cannot sail", () => {
+    act(() => store().startChallenge("smooth"));
+    act(() => store().finishSail({ reach: 0, status: "cannot-sail" }));
+    render(<SailChallengeResult />);
+    expect(screen.getByText(/no way to sail/)).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /of 3 stars/ })).toBeNull();
+    expect(
+      bestValue(challengeProgress.get(), "titanic-save", "smooth")
+    ).toBeNull();
   });
 
   it("goes back to building", async () => {
