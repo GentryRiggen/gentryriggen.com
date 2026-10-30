@@ -5,6 +5,26 @@
  * `enable()`, which must run inside a click or key press.
  */
 
+import type { MusicSpec } from "../../game-audio/music";
+import {
+  createMusicPlayer,
+  type MusicPlayer,
+} from "../../game-audio/musicPlayer";
+import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
+import {
+  buildFlightBeds,
+  SILENT_FLIGHT,
+  type FlightBeds,
+  type FlightSound,
+} from "./planeBeds";
+import {
+  playBoost,
+  playDailySting,
+  playGhostPass,
+  playNearMiss,
+  playStallBeep,
+} from "./planeVoices";
+
 export type PlaneCue =
   | "launch"
   | "coin"
@@ -14,10 +34,25 @@ export type PlaneCue =
   | "crash"
   | "land"
   | "fuel"
-  | "nearMiss"
   | "flag"
   | "cheer"
-  | "buy";
+  | "buy"
+  | "boost"
+  | "nearMiss"
+  | "ghostPass"
+  | "daily";
+
+/** Cues whose voices live in `planeVoices.ts`. */
+type SoundPassCue = "boost" | "nearMiss" | "ghostPass" | "daily";
+
+function isSoundPassCue(cue: PlaneCue): cue is SoundPassCue {
+  return (
+    cue === "boost" ||
+    cue === "nearMiss" ||
+    cue === "ghostPass" ||
+    cue === "daily"
+  );
+}
 
 type AudioContextConstructor = typeof AudioContext;
 
@@ -46,27 +81,42 @@ export interface PlaneSynth {
   play: (cue: PlaneCue) => void;
   /** 0 (silent, no fuel) to 1 (boost); a normal burn is about 0.5. */
   setEngine: (level: number) => void;
+  /**
+   * The flight's held sounds in one call: engine, wind, the boost whoosh (on
+   * the press) and the stall warning. Call it every frame; it only sends
+   * changes to the audio thread.
+   */
+  setFlight: (sound: FlightSound) => void;
+  /** Whether a one-shot cue would be heard right now. */
+  canPlay: () => boolean;
+  /**
+   * A sound component calls this while it is mounted and calls the returned
+   * function on unmount. When the last one lets go, the engine, wind and
+   * music are torn down and the context is suspended; the next `acquire`
+   * rebuilds them.
+   */
+  acquire: () => () => void;
+  /** Sound effects on or off (the held sounds follow). */
+  setEffectsEnabled: (isOn: boolean) => void;
+  /** Music on or off. It only plays while the audio is unlocked. */
+  setMusicEnabled: (isOn: boolean) => void;
+  /** The bed to play, or null for none. */
+  setMusic: (spec: MusicSpec | null) => void;
+  /** 0 to 1: a screen can turn the bed down. */
+  setMusicLevel: (level: number) => void;
 }
 
 const NOISE_SECONDS = 2;
 const MASTER_LEVEL = 0.7;
-const ENGINE_GAIN = 0.1;
-const ENGINE_BASE_HZ = 55;
-const ENGINE_SPAN_HZ = 75;
-/** Smallest engine change worth sending to the audio thread. */
-const MIN_ENGINE_STEP = 0.02;
+/** Stall beeps come this often (seconds), faster as the stall nears. */
+const STALL_SLOW_S = 0.75;
+const STALL_FAST_S = 0.3;
 
 interface Engine {
   ctx: AudioContext;
   bus: GainNode;
   white: AudioBuffer;
   brown: AudioBuffer;
-}
-
-interface Hum {
-  gain: GainNode;
-  osc: OscillatorNode;
-  filter: BiquadFilterNode;
 }
 
 function buildNoise(ctx: AudioContext, isBrown: boolean): AudioBuffer {
@@ -89,7 +139,7 @@ function buildNoise(ctx: AudioContext, isBrown: boolean): AudioBuffer {
 function buildEngine(Ctor: AudioContextConstructor): Engine {
   const ctx = new Ctor();
   const bus = ctx.createGain();
-  bus.gain.value = MASTER_LEVEL;
+  bus.gain.value = MASTER_LEVEL * softnessGain();
   const limiter = ctx.createDynamicsCompressor();
   bus.connect(limiter).connect(ctx.destination);
   return {
@@ -186,7 +236,10 @@ function arpeggio(
   });
 }
 
-const CUES: Record<PlaneCue, (engine: Engine) => void> = {
+const CUES: Record<
+  Exclude<PlaneCue, SoundPassCue>,
+  (engine: Engine) => void
+> = {
   // Two quick square blips, 880 to 1320 Hz.
   coin: (e) => {
     arpeggio(e, [880, 1320], 0.07, {
@@ -280,17 +333,6 @@ const CUES: Record<PlaneCue, (engine: Engine) => void> = {
       gain: 0.22,
     });
   },
-  // A quick rising whoosh: a sine sweep from 500 up to 1400 Hz.
-  nearMiss: (e) => {
-    tone(e, {
-      type: "sine",
-      start: e.ctx.currentTime,
-      duration: 0.16,
-      freq: 500,
-      freqEnd: 1400,
-      gain: 0.16,
-    });
-  },
   // A short three-note fanfare, quieter than the cheer.
   flag: (e) => {
     arpeggio(e, [523, 659, 784], 0.09, {
@@ -335,103 +377,219 @@ const CUES: Record<PlaneCue, (engine: Engine) => void> = {
   },
 };
 
-/** A held sawtooth plus noise whose pitch and loudness follow the level. */
-function buildHum(engine: Engine): Hum {
-  const { ctx, bus } = engine;
-  const gain = ctx.createGain();
-  gain.gain.value = 0;
-  const filter = ctx.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.value = 400;
-  const osc = ctx.createOscillator();
-  osc.type = "sawtooth";
-  osc.frequency.value = ENGINE_BASE_HZ;
-  const rush = ctx.createBufferSource();
-  rush.buffer = engine.brown;
-  rush.loop = true;
-  const rushGain = ctx.createGain();
-  rushGain.gain.value = 0.6;
-  osc.connect(filter);
-  rush.connect(rushGain).connect(filter);
-  filter.connect(gain).connect(bus);
-  osc.start();
-  rush.start();
-  return { gain, osc, filter };
-}
+/** How much each cue dips the music, and for how long (seconds). */
+const DUCK: Partial<Record<PlaneCue, readonly [number, number]>> = {
+  coin: [0.12, 0.2],
+  ring: [0.3, 0.4],
+  bump: [0.5, 0.6],
+  shield: [0.3, 0.5],
+  crash: [0.75, 1.4],
+  land: [0.4, 0.8],
+  fuel: [0.15, 0.3],
+  flag: [0.25, 0.5],
+  cheer: [0.5, 1.5],
+  boost: [0.2, 0.6],
+  nearMiss: [0.2, 0.3],
+  ghostPass: [0.25, 0.5],
+  daily: [0.5, 1.8],
+};
+
+const SOUND_PASS_CUES: Record<SoundPassCue, (engine: Engine) => void> = {
+  boost: playBoost,
+  nearMiss: playNearMiss,
+  ghostPass: playGhostPass,
+  daily: playDailySting,
+};
 
 export function createPlaneSynth(): PlaneSynth {
   let engine: Engine | null = null;
-  let hum: Hum | null = null;
+  let beds: FlightBeds | null = null;
+  let music: MusicPlayer | null = null;
+  let stopWatchingMotion: (() => void) | null = null;
+  let holders = 0;
   let isOn = false;
-  // What the audio thread was last told, so a steady frame sends nothing.
-  let appliedLevel: number | null = null;
+  let isEffectsOn = true;
+  let isMusicOn = true;
+  let isPaused = false;
+  let wantedMusic: MusicSpec | null = null;
+  let musicLevel = 1;
+  let flight: FlightSound = SILENT_FLIGHT;
+  let wasBoosting = false;
+  let nextStallAt = 0;
+
+  function applyBeds() {
+    if (!beds) return;
+    beds.update(isOn && isEffectsOn && !isPaused ? flight : SILENT_FLIGHT);
+  }
+
+  function applyMusic() {
+    if (!music) return;
+    music.setLevel(musicLevel);
+    if (isOn && isMusicOn && !isPaused && wantedMusic) music.start(wantedMusic);
+    else music.stop();
+  }
+
+  function applyMaster() {
+    if (!engine) return;
+    engine.bus.gain.setTargetAtTime(
+      MASTER_LEVEL * softnessGain(),
+      engine.ctx.currentTime,
+      0.1
+    );
+    beds?.setCalm(softnessGain() < 1);
+  }
+
+  /** The beds and music hang on the engine; they can be torn down and rebuilt. */
+  function buildGraph(built: Engine) {
+    beds = buildFlightBeds(built, softnessGain() < 1);
+    // The music runs through the master bus like everything else, so the
+    // master level and reduced-motion softness apply to it too.
+    music = createMusicPlayer(built.ctx, built.bus);
+    stopWatchingMotion = watchReducedMotion(applyMaster);
+  }
+
+  function teardownGraph() {
+    stopWatchingMotion?.();
+    stopWatchingMotion = null;
+    music?.dispose();
+    beds?.dispose();
+    music = null;
+    beds = null;
+  }
 
   function enable(): boolean {
     const Ctor = audioContextConstructor();
     if (!Ctor) return false;
     try {
-      if (!engine) {
-        engine = buildEngine(Ctor);
-        hum = buildHum(engine);
-      }
+      if (!engine) engine = buildEngine(Ctor);
+      if (!beds) buildGraph(engine);
       void engine.ctx.resume();
     } catch {
+      teardownGraph();
       engine = null;
-      hum = null;
-      appliedLevel = null;
       return false;
     }
     isOn = true;
+    isPaused = false;
+    applyBeds();
+    applyMusic();
     return true;
   }
 
-  function silenceHum() {
-    appliedLevel = null;
-    if (!engine || !hum) return;
-    // A suspended context would not run a fade, so cut the hum first.
-    const t = engine.ctx.currentTime;
-    hum.gain.gain.cancelScheduledValues(t);
-    hum.gain.gain.setValueAtTime(0, t);
+  function acquire(): () => void {
+    holders += 1;
+    if (holders === 1 && isOn && engine) {
+      // Back after the last sound component left: rebuild what it dropped.
+      if (!beds) buildGraph(engine);
+      isPaused = false;
+      void engine.ctx.resume();
+      applyBeds();
+      applyMusic();
+    }
+    let isReleased = false;
+    return () => {
+      if (isReleased) return;
+      isReleased = true;
+      holders -= 1;
+      if (holders > 0) return;
+      // Nothing is driving the audio any more: free the graph and go quiet.
+      teardownGraph();
+      if (engine) void engine.ctx.suspend();
+    };
+  }
+
+  function silenceBeds() {
+    beds?.silence();
   }
 
   function disable() {
     isOn = false;
-    silenceHum();
+    silenceBeds();
+    music?.stop();
     if (engine) void engine.ctx.suspend();
   }
 
   function pause() {
-    silenceHum();
+    isPaused = true;
+    silenceBeds();
+    music?.pause();
     if (engine) void engine.ctx.suspend();
   }
 
   function resume() {
-    if (isOn && engine) void engine.ctx.resume();
+    if (!isOn || !engine) return;
+    isPaused = false;
+    void engine.ctx.resume();
+    applyBeds();
+    music?.resume();
+    applyMusic();
+  }
+
+  function canPlay(): boolean {
+    return isOn && !!engine && !!beds && isEffectsOn && !isPaused;
   }
 
   function play(cue: PlaneCue) {
-    if (!isOn || !engine) return;
-    CUES[cue](engine);
+    if (!canPlay() || !engine) return;
+    const ducking = DUCK[cue];
+    if (ducking) music?.duck(ducking[0], ducking[1]);
+    if (isSoundPassCue(cue)) SOUND_PASS_CUES[cue](engine);
+    else CUES[cue](engine);
   }
 
-  function setEngine(next: number) {
-    if (!isOn || !engine || !hum) return;
-    const level = Math.min(1, Math.max(0, next));
-    if (
-      appliedLevel !== null &&
-      Math.abs(level - appliedLevel) < MIN_ENGINE_STEP
-    ) {
+  function setFlight(next: FlightSound) {
+    flight = next;
+    if (!isOn || !engine || !isEffectsOn || isPaused) {
+      wasBoosting = next.boosting;
       return;
     }
-    appliedLevel = level;
-    const t = engine.ctx.currentTime;
-    hum.gain.gain.setTargetAtTime(ENGINE_GAIN * level, t, 0.1);
-    hum.osc.frequency.setTargetAtTime(
-      ENGINE_BASE_HZ + ENGINE_SPAN_HZ * level,
-      t,
-      0.1
-    );
-    hum.filter.frequency.setTargetAtTime(250 + 1100 * level, t, 0.1);
+    applyBeds();
+    if (next.boosting && !wasBoosting) play("boost");
+    wasBoosting = next.boosting;
+
+    // The stall warning paces itself on the audio clock, faster as it nears.
+    if (next.stall > 0) {
+      const now = engine.ctx.currentTime;
+      if (now >= nextStallAt) {
+        playStallBeep(engine, next.stall);
+        nextStallAt =
+          now + STALL_SLOW_S - (STALL_SLOW_S - STALL_FAST_S) * next.stall;
+      }
+    } else {
+      nextStallAt = 0;
+    }
+  }
+
+  // Reused by `setEngine`, which runs every frame in older call sites.
+  const engineOnly: FlightSound = { ...SILENT_FLIGHT };
+
+  function setEngine(next: number) {
+    engineOnly.engine = Math.min(1, Math.max(0, next));
+    engineOnly.speed = flight.speed;
+    engineOnly.boosting = flight.boosting;
+    engineOnly.stall = flight.stall;
+    setFlight(engineOnly);
+  }
+
+  function setEffectsEnabled(next: boolean) {
+    if (isEffectsOn === next) return;
+    isEffectsOn = next;
+    applyBeds();
+  }
+
+  function setMusicEnabled(next: boolean) {
+    isMusicOn = next;
+    applyMusic();
+  }
+
+  function setMusic(spec: MusicSpec | null) {
+    wantedMusic = spec;
+    applyMusic();
+  }
+
+  function setMusicLevel(level: number) {
+    musicLevel = level;
+    music?.setLevel(level);
   }
 
   return {
@@ -442,6 +600,13 @@ export function createPlaneSynth(): PlaneSynth {
     resume,
     play,
     setEngine,
+    setFlight,
+    canPlay,
+    acquire,
+    setEffectsEnabled,
+    setMusicEnabled,
+    setMusic,
+    setMusicLevel,
   };
 }
 

@@ -84,6 +84,12 @@ export default function FlightRewardModal({
   const level = LEVELS[levelId];
   const percent = percentOf(result.distance, level.finishDistance);
 
+  // The daily challenge has its own sting when the finish was reached.
+  const isDailyWin = isDaily && result.finished;
+  useEffect(() => {
+    if (isDailyWin) planeSynth.play("daily");
+  }, [isDailyWin]);
+
   // Drives the reveal clock from the moment the bonus is claimed.
   useEffect(() => {
     if (!hasBonus) return;

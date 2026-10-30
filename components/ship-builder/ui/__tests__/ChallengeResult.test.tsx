@@ -9,11 +9,18 @@ import {
 } from "@/lib/ship-builder/state/store";
 import { findTemplate } from "@/lib/ship-builder/templates";
 import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
+import { trialSynth } from "../../audio/synth";
 import SeaTrialResult from "../SeaTrialResult";
+
+jest.mock("../../audio/synth", () => ({
+  isAudioSupported: jest.fn(() => true),
+  trialSynth: { play: jest.fn() },
+}));
 
 const store = () => useShipBuilderStore.getState();
 
 beforeEach(() => {
+  jest.clearAllMocks();
   localStorage.clear();
   act(() => {
     challengeProgress.resetMemory();
@@ -28,6 +35,29 @@ function finishChallenge(id: "outlast" | "evacuation" | "shipshape") {
   if (trial.status !== "running") throw new Error("not running");
   act(() => store().finishTrial(runTrial(trial.input)));
 }
+
+describe("the challenge sting", () => {
+  it("plays once with the stars earned when the result appears", () => {
+    finishChallenge("outlast");
+    const { rerender } = render(<SeaTrialResult />);
+    expect(trialSynth.play).toHaveBeenCalledTimes(1);
+    expect(trialSynth.play).toHaveBeenCalledWith({
+      kind: "challenge",
+      stars: 1,
+    });
+    rerender(<SeaTrialResult />);
+    expect(trialSynth.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("is silent after an ordinary trial", () => {
+    act(() => store().startTrial("calm"));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() => store().finishTrial(runTrial(trial.input)));
+    render(<SeaTrialResult />);
+    expect(trialSynth.play).not.toHaveBeenCalled();
+  });
+});
 
 describe("a challenge result", () => {
   it("shows no challenge section after an ordinary trial", () => {
