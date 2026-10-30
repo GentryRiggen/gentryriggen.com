@@ -14,6 +14,7 @@ interface FakeResponse {
   redirected: boolean;
   body: string;
   clone: () => FakeResponse;
+  text: () => Promise<string>;
 }
 
 interface FakeRequest {
@@ -27,7 +28,7 @@ type Listener = (event: Record<string, unknown>) => void;
 
 function makeResponse(
   body: string,
-  overrides: Partial<Omit<FakeResponse, "clone" | "body">> = {}
+  overrides: Partial<Omit<FakeResponse, "clone" | "body" | "text">> = {}
 ): FakeResponse {
   const response: FakeResponse = {
     ok: true,
@@ -35,6 +36,7 @@ function makeResponse(
     redirected: false,
     body,
     clone: () => ({ ...response }),
+    text: async () => body,
     ...overrides,
   };
   return response;
@@ -71,6 +73,9 @@ function loadWorker() {
       put: async (request: FakeRequest | string, response: FakeResponse) => {
         store.set(keyOf(request), response);
       },
+      keys: async () => [...store.keys()].map((url) => ({ url })),
+      delete: async (request: { url: string } | string) =>
+        store.delete(keyOf(request as FakeRequest | string)),
     };
   }
 
@@ -188,6 +193,97 @@ describe("plane-builder service worker", () => {
       );
 
       expect(response?.body).toBe("page");
+    });
+
+    it("falls back to the cached page when the network is slow", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("page"));
+      await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/plane-builder`, { mode: "navigate" })
+      );
+
+      worker.fetchMock.mockReturnValueOnce(new Promise(() => {}));
+      const response = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/plane-builder`, { mode: "navigate" })
+      );
+
+      expect(response?.body).toBe("page");
+    });
+
+    it("waits for the network when nothing is cached yet", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("fresh"));
+      const response = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/plane-builder`, { mode: "navigate" })
+      );
+      expect(response?.body).toBe("fresh");
+    });
+
+    describe("pruning old build files", () => {
+      const html = (...files: string[]) =>
+        files.map((f) => `<script src="/_next/static/${f}"></script>`).join("");
+
+      async function visitWith(
+        worker: ReturnType<typeof loadWorker>,
+        body: string
+      ) {
+        worker.fetchMock.mockResolvedValueOnce(makeResponse(body));
+        await worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/plane-builder`, { mode: "navigate" })
+        );
+      }
+
+      it("drops static files the new page no longer references", async () => {
+        const worker = loadWorker();
+        await visitWith(worker, html("chunks/old.js", "chunks/kept.js"));
+        for (const file of ["chunks/old.js", "chunks/kept.js"]) {
+          worker.fetchMock.mockResolvedValueOnce(makeResponse(file));
+          await worker.dispatchFetch(
+            makeRequest(`${ORIGIN}/_next/static/${file}`)
+          );
+        }
+        worker.fetchMock.mockResolvedValueOnce(makeResponse("model"));
+        await worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/plane-builder/models/a/a.glb`)
+        );
+
+        await visitWith(worker, html("chunks/kept.js", "chunks/new.js"));
+
+        const keys = worker.cacheKeys();
+        expect(keys).not.toContain(`${ORIGIN}/_next/static/chunks/old.js`);
+        expect(keys).toContain(`${ORIGIN}/_next/static/chunks/kept.js`);
+        expect(keys).toContain(`${ORIGIN}/plane-builder/models/a/a.glb`);
+      });
+
+      it("keeps everything while the page's files are unchanged", async () => {
+        const worker = loadWorker();
+        await visitWith(worker, html("chunks/a.js"));
+        worker.fetchMock.mockResolvedValueOnce(makeResponse("lazy"));
+        await worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/_next/static/chunks/lazy.js`)
+        );
+
+        await visitWith(worker, html("chunks/a.js"));
+
+        expect(worker.cacheKeys()).toContain(
+          `${ORIGIN}/_next/static/chunks/lazy.js`
+        );
+      });
+
+      it("keeps everything when the new page names no static files", async () => {
+        const worker = loadWorker();
+        await visitWith(worker, html("chunks/a.js"));
+        worker.fetchMock.mockResolvedValueOnce(makeResponse("a"));
+        await worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/_next/static/chunks/a.js`)
+        );
+
+        await visitWith(worker, "<html>odd</html>");
+
+        expect(worker.cacheKeys()).toContain(
+          `${ORIGIN}/_next/static/chunks/a.js`
+        );
+      });
     });
 
     it("never caches a sub-page as the game page", async () => {

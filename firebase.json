@@ -68,6 +68,24 @@
         ]
       },
       {
+        "source": "/plane-builder/versions",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/plane-builder/versions.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/plane-builder/models/**",
         "headers": [
           {

@@ -4,7 +4,11 @@ import { useEffect } from "react";
 import { PLANE_MODEL_PATHS } from "@/lib/plane-builder/offline/modelPaths";
 
 export const SERVICE_WORKER_URL = "/plane-builder-sw.js";
-/** Keeps the worker away from the rest of the site. */
+/**
+ * Keeps the worker away from the rest of the site. No trailing slash on
+ * purpose: the game lives at "/plane-builder" itself, which a scope of
+ * "/plane-builder/" would not cover.
+ */
 export const SERVICE_WORKER_SCOPE = "/plane-builder";
 
 function sameOrigin(urls: string[]): string[] {

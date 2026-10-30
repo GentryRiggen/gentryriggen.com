@@ -5,7 +5,8 @@
  * - Only same-origin GET requests are ever handled; everything else goes
  *   straight to the network untouched.
  * - Navigations to the Plane Builder page: network-first, falling back to the
- *   cached page when offline.
+ *   cached page when offline or slow (3s). When a deploy changes the files the
+ *   page references, cached /_next/static/ files it no longer uses are pruned.
  * - /_next/static/* (content-hashed, immutable): cache-first.
  * - /plane-builder/models/* (part models, not content-hashed): network-first,
  *   falling back to the cached copy when offline or slow (3s); stored without
@@ -102,21 +103,78 @@ async function cachePage(cache, url, response) {
   await Promise.all(puts);
 }
 
-async function handleNavigation(request, url) {
-  const cache = await caches.open(CACHE);
+/** How long a page waits on the network before the cached page is used. */
+const NAVIGATION_NETWORK_TIMEOUT_MS = 3000;
+
+/** Matches every /_next/static/ path in a page's HTML. */
+const STATIC_REF_PATTERN = /\/_next\/static\/[^"'\s\\)<>?]+/g;
+
+function staticRefs(html) {
+  return new Set(html.match(STATIC_REF_PATTERN) ?? []);
+}
+
+function sameSet(a, b) {
+  if (a.size !== b.size) return false;
+  for (const value of a) if (!b.has(value)) return false;
+  return true;
+}
+
+/**
+ * A new deploy changes the hashed files the game page references, which
+ * would otherwise stay in the cache forever. When the page's references
+ * change, drop every cached /_next/static/ file the new page does not
+ * reference. Lazily loaded chunks are cache-first on demand, so any still
+ * needed are stored again when the page loads them. Does nothing when the
+ * references cannot be read or have not changed.
+ */
+async function pruneStaleStatic(cache, previous, response) {
+  let before;
+  let after;
   try {
-    const response = await fetch(request);
+    before = staticRefs(await previous.clone().text());
+    after = staticRefs(await response.clone().text());
+  } catch {
+    return;
+  }
+  if (after.size === 0 || sameSet(before, after)) return;
+  for (const request of await cache.keys()) {
+    const { pathname } = new URL(request.url);
+    if (isStaticAsset(pathname) && !after.has(pathname)) {
+      await cache.delete(request);
+    }
+  }
+}
+
+/**
+ * Network-first, but a slow network (lie-fi) falls back to the cached page
+ * after a few seconds. A late answer still updates the cache.
+ */
+async function handleNavigation(event, request, url) {
+  const cache = await caches.open(CACHE);
+  const key = `${url.origin}${url.pathname}`;
+  const network = fetch(request).then(async (response) => {
     if (isCacheable(response)) {
-      await cachePage(cache, url, response).catch(() => {});
+      try {
+        const previous = isGamePath(url.pathname)
+          ? await cache.match(key)
+          : undefined;
+        await cachePage(cache, url, response);
+        if (previous) await pruneStaleStatic(cache, previous, response);
+      } catch {
+        // Caching is best effort.
+      }
     }
     return response;
-  } catch (error) {
-    const cached =
-      (await cache.match(`${url.origin}${url.pathname}`)) ??
-      (await cache.match(new URL(PAGE_PATH, url.origin).href));
-    if (cached) return cached;
-    throw error;
-  }
+  });
+  event.waitUntil(network.catch(() => {}));
+  const cached =
+    (await cache.match(key)) ??
+    (await cache.match(new URL(PAGE_PATH, url.origin).href));
+  if (!cached) return network;
+  const slow = new Promise((resolve) =>
+    setTimeout(() => resolve(cached), NAVIGATION_NETWORK_TIMEOUT_MS)
+  );
+  return Promise.race([network.catch(() => cached), slow]);
 }
 
 async function handleStaticAsset(request) {
@@ -169,7 +227,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (isPagePath(url.pathname)) {
-      event.respondWith(handleNavigation(request, url));
+      event.respondWith(handleNavigation(event, request, url));
     }
     return;
   }
