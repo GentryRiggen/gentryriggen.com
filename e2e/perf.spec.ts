@@ -293,6 +293,7 @@ test.describe("Ship Builder budget", () => {
       .getByRole("button", { name: "Chase" })
       .click();
     await modelsLoaded(page);
+    await batchSettled(page);
     record(
       "ship-titanic-sailing",
       await measure(page, "__shipBuilderRenderInfo")
@@ -319,6 +320,7 @@ test.describe("Ship Builder budget", () => {
       expect(status).toBe("running");
     }).toPass({ timeout: 30_000 });
     await modelsLoaded(page);
+    await batchSettled(page);
     record(
       "ship-titanic-iceberg-sinking",
       await measure(page, "__shipBuilderRenderInfo")

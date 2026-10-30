@@ -4,8 +4,8 @@
     "triangles": 300707
   },
   "ship-titanic-sailing": {
-    "calls": 224,
-    "triangles": 315937
+    "calls": 265,
+    "triangles": 328000
   },
   "ship-cruise-build": {
     "calls": 218,
