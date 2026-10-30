@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.1",
+    date: "2026-10-30",
+    title: "Helping us make the game better",
+    highlights: [
+      "The game now counts a few things anonymously, like where planes crash and which worlds are hardest, so we can tune Plane Builder to be more fun. It never records names or anything about you",
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-10-30",
     title: "Ghost planes and the daily challenge",
