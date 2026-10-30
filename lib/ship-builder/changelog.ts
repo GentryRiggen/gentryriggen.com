@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.32.0",
+    date: "2026-10-30",
+    title: "Big ships run much smoother",
+    highlights: [
+      "Ship Builder runs much smoother on big ships like the Titanic and the cruise liner, because the game now draws all the plain walls, windows and balconies together instead of one at a time",
+      "Building still feels instant: a new part shows up straight away and joins the rest of the ship a moment after you stop",
+    ],
+  },
+  {
     version: "2.31.0",
     date: "2026-10-30",
     title: "Challenges: earn stars and climb the leaderboard",

@@ -19,6 +19,7 @@ import { useShipHalf } from "./shipHalf";
 import { activeEvacuation } from "./trialTimeline";
 import { trialPlayback } from "./trialPlayback";
 import type { PartPress } from "./usePartLongPress";
+import { useStaticBatch } from "./useStaticBatch";
 
 /** The part a handler fired for; PartMesh tags its group with the id. */
 function partIdOf(event: { eventObject: Object3D }): string | null {
@@ -219,9 +220,13 @@ export default function ShipParts({ glow, onPartPress }: ShipPartsProps) {
 
   const removing = new Set(pendingRemoval?.ids ?? []);
 
+  // Plain parts are merged into a few draw calls; see PartBatcher.
+  const root = useRef<Group>(null);
+  useStaticBatch(root, ship);
+
   return (
     <GlowContext.Provider value={glow}>
-      <group>
+      <group ref={root}>
         {parts.map((part) => (
           <group key={part.id} ref={(group) => registerPart(part.id, group)}>
             <PopIn active={part.id === poppingId}>
