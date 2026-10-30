@@ -16,6 +16,7 @@ import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { requestLeaderboardSubmit } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import useIsOnline from "../hooks/useIsOnline";
 import {
   cardClass,
   focusRingClass,
@@ -88,6 +89,7 @@ export default function Leaderboards({
   const setNickname = usePlaneBuilderStore((s) => s.setNickname);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [world, setWorld] = useState<LevelId>(initialWorld);
+  const isOnline = useIsOnline();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [today] = useState(() => dailyFor(utcDateKey(Date.now())));
   const dailyBest = usePlaneBuilderStore((s) =>
@@ -126,7 +128,7 @@ export default function Leaderboards({
     return () => {
       isCancelled = true;
     };
-  }, [tab, world, key, today.date]);
+  }, [tab, world, key, today.date, isOnline]);
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -280,8 +282,13 @@ export default function Leaderboards({
               Loading…
             </p>
           ) : current.rows === null ? (
-            <p role="alert" className="py-6 text-center">
-              Couldn&apos;t load the board. Try again in a bit.
+            <p
+              role={isOnline ? "alert" : "status"}
+              className="py-6 text-center"
+            >
+              {isOnline
+                ? "Couldn't load the board. Try again in a bit."
+                : "You're offline, so the boards are resting. Your flights are saved and will count when you're back online!"}
             </p>
           ) : current.rows.length === 0 ? (
             <p className="py-6 text-center">

@@ -9,10 +9,12 @@ import {
   topSpeed,
 } from "@/lib/plane-builder/plane/stats";
 import { applyBonuses } from "@/lib/plane-builder/prestige";
+import { comboMultiplier } from "@/lib/plane-builder/sim/flight";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import useActiveGhost from "../hooks/useActiveGhost";
 import useFlightSnapshot from "../hooks/useFlightSnapshot";
 import { formatCoins, percentOf } from "./format";
+import CloseCallPop from "./CloseCallPop";
 import FlightToasts from "./FlightToasts";
 import BoostEffect from "./BoostEffect";
 import Speedometer from "./Speedometer";
@@ -50,7 +52,8 @@ export default function FlightHud() {
     stats.fuel > 0 ? Math.round(((snapshot?.fuel ?? 0) / stats.fuel) * 100) : 0;
   const shields = snapshot?.shields ?? 0;
   const isFinished = snapshot?.finished ?? false;
-  const grabbed = snapshot?.coins ?? 0;
+  const grabbed = (snapshot?.coins ?? 0) + (snapshot?.nearMissCoins ?? 0);
+  const combo = snapshot?.combo ?? 0;
   const isBoosting =
     stats.thrust > 0 &&
     (snapshot?.fuel ?? 0) > 0 &&
@@ -147,6 +150,15 @@ export default function FlightHud() {
                 </span>
               ) : null}
             </p>
+            {combo > 1 ? (
+              <p
+                data-testid="combo-chip"
+                className="rounded-full bg-sky-100 px-3 py-0.5 text-sm font-bold text-sky-900 shadow dark:bg-sky-900/70 dark:text-sky-100"
+              >
+                <span aria-hidden="true">🔥 </span>
+                Combo ×{comboMultiplier(combo)}
+              </p>
+            ) : null}
             {daily ? (
               <p
                 data-testid="daily-twist"
@@ -177,6 +189,7 @@ export default function FlightHud() {
         </div>
       </div>
       <FlightToasts />
+      <CloseCallPop />
       {isFinished ? (
         <p
           aria-hidden="true"

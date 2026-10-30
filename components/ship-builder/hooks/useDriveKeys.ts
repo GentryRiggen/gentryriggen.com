@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { resetSailInput, sailInput } from "@/lib/ship-builder/state/sailInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { blowHorn } from "../audio/horn";
 
 /** The throttle settings the keys step through, so stop is always a stop. */
 const THROTTLE_STEPS = [-0.3, 0, 0.25, 0.5, 0.75, 1] as const;
@@ -30,7 +31,7 @@ function nextThrottle(current: number, direction: 1 | -1): number {
 
 /**
  * Arrow keys and WASD steer (hold to turn, release to centre) and step the
- * throttle; Space stops. Active only while sailing, and it leaves the keys
+ * throttle; Space stops and H sounds the horn. Active only while sailing, and it leaves the keys
  * alone when a field or a modal dialog has the keyboard.
  *
  * Escape is not handled here: `useKeyboardShortcuts` already ends the drive on
@@ -65,6 +66,8 @@ export default function useDriveKeys(): void {
         }
       } else if (key === "space") {
         sailInput.throttle = 0;
+      } else if (key === "h") {
+        if (!event.repeat) blowHorn();
       } else return;
 
       // Arrows and Space would otherwise scroll the page or press a button.

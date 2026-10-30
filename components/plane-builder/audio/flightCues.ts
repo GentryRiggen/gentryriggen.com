@@ -3,6 +3,8 @@ import {
   flightToasts,
   toastForEvent,
 } from "@/lib/plane-builder/state/flightToasts";
+import { MIN_SPEED, STALL_WINDOW } from "@/lib/plane-builder/sim/constants";
+import type { FlightSound } from "./planeBeds";
 import { planeSynth, type PlaneCue } from "./planeSynth";
 
 const CUE_FOR_EVENT: Partial<Record<FlightEvent["type"], PlaneCue>> = {
@@ -13,6 +15,7 @@ const CUE_FOR_EVENT: Partial<Record<FlightEvent["type"], PlaneCue>> = {
   crash: "crash",
   landed: "land",
   fuel: "fuel",
+  nearMiss: "nearMiss",
   milestone: "flag",
 };
 
@@ -40,4 +43,74 @@ export function engineLevel(
 ): number {
   if (!hasThrust || fuel <= 0 || !isFlying) return 0;
   return isBoosting ? 1 : 0.5;
+}
+
+/** Speed (m/s) at which the wind rush is at full. */
+export const WIND_FULL_SPEED = 70;
+/** Seconds without progress before the stall warning begins. */
+export const STALL_WARN_FROM = 1;
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+export interface FlightSoundInputs {
+  hasThrust: boolean;
+  fuel: number;
+  phase: "flying" | "sliding" | "done";
+  /** The player is holding boost. */
+  wantsBoost: boolean;
+  /** The day's twist has not switched boost off. */
+  canBoost: boolean;
+  /** m/s. */
+  speed: number;
+  /** Sim seconds since the plane last made progress (see the stall rule). */
+  progressTimer: number;
+}
+
+/**
+ * The held sounds of a flight: engine burn, wind from speed, the boost press
+ * and how close a stall is. Only a plane in the air makes any of them. Pass
+ * `out` to reuse one object every frame instead of allocating.
+ */
+export function flightSoundFor(
+  inputs: FlightSoundInputs,
+  out: FlightSound = { engine: 0, speed: 0, boosting: false, stall: 0 }
+): FlightSound {
+  const isFlying = inputs.phase === "flying";
+  const engine = engineLevel(
+    inputs.hasThrust,
+    inputs.fuel,
+    isFlying,
+    inputs.wantsBoost && inputs.canBoost
+  );
+  out.engine = engine;
+  out.speed = isFlying
+    ? clamp01((inputs.speed - MIN_SPEED) / (WIND_FULL_SPEED - MIN_SPEED))
+    : 0;
+  out.boosting = engine === 1;
+  out.stall = isFlying
+    ? clamp01(
+        (inputs.progressTimer - STALL_WARN_FROM) /
+          (STALL_WINDOW - STALL_WARN_FROM)
+      )
+    : 0;
+  return out;
+}
+
+/** A ghost this close (m) as it swaps places with you is worth a whoosh. */
+export const GHOST_PASS_RANGE = 30;
+
+/**
+ * Whether the ghost and the player just swapped places along the course
+ * (`dx` is the ghost's distance ahead, negative when it is behind) and were
+ * close enough to hear it.
+ */
+export function didGhostPass(
+  prevDx: number,
+  nextDx: number,
+  distance: number
+): boolean {
+  if (distance > GHOST_PASS_RANGE) return false;
+  return (prevDx < 0 && nextDx >= 0) || (prevDx > 0 && nextDx <= 0);
 }

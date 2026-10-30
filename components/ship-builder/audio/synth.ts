@@ -1,4 +1,33 @@
+import {
+  buildNoise,
+  noise,
+  tone,
+  type VoiceEngine,
+} from "../../game-audio/primitives";
+import {
+  createMusicPlayer,
+  type MusicPlayer,
+} from "../../game-audio/musicPlayer";
+import type { MusicSpec } from "../../game-audio/music";
+import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
 import type { AmbientParams, Cue } from "./cues";
+import {
+  buildShipBeds,
+  SILENT_BEDS,
+  type BedLevels,
+  type ShipBeds,
+} from "./shipBeds";
+import {
+  playBell,
+  playChallengeSting,
+  playFunnelCrash,
+  playHorn,
+  playPaint,
+  playPlace,
+  playRemove,
+  playSting,
+  playWhoosh,
+} from "./shipVoices";
 
 /**
  * Every sound here is synthesized with the Web Audio API (no audio files).
@@ -40,6 +69,25 @@ export interface TrialSynth {
   setMuffle: (amount: number) => void;
   /** Playback speed, which drags the pitch of the held tones down. */
   setSpeed: (speed: number) => void;
+  /** The world's held sounds: waves, wind, engine thrum, bow wave, rush. */
+  setBeds: (levels: BedLevels) => void;
+  /** Whether a one-shot cue would be heard right now. */
+  canPlay: () => boolean;
+  /**
+   * A sound component calls this while it is mounted and calls the returned
+   * function on unmount. When the last one lets go, the held beds and music
+   * are torn down and the context is suspended; the next `acquire` rebuilds
+   * them.
+   */
+  acquire: () => () => void;
+  /** Sound effects on or off (the held beds follow). */
+  setEffectsEnabled: (isOn: boolean) => void;
+  /** Music on or off. It only plays while the audio is unlocked. */
+  setMusicEnabled: (isOn: boolean) => void;
+  /** The bed to play, or null for none. */
+  setMusic: (spec: MusicSpec | null) => void;
+  /** 0 to 1: a scene can turn the bed down. */
+  setMusicLevel: (level: number) => void;
 }
 
 const NOISE_SECONDS = 3;
@@ -49,36 +97,15 @@ const MASTER_LEVEL = 0.8;
 /** Smallest change in muffle or speed (0 to 1) worth sending to the audio thread. */
 const MIN_PARAM_STEP = 0.01;
 
-interface Engine {
-  ctx: AudioContext;
-  /** Everything audible connects here: gain, then the muffle lowpass. */
-  bus: GainNode;
+interface Engine extends VoiceEngine {
+  /** Everything audible connects to `bus`: gain, then the muffle lowpass. */
   muffle: BiquadFilterNode;
-  white: AudioBuffer;
-  brown: AudioBuffer;
-}
-
-function buildNoise(ctx: AudioContext, isBrown: boolean): AudioBuffer {
-  const length = Math.floor(ctx.sampleRate * NOISE_SECONDS);
-  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < length; i += 1) {
-    const white = Math.random() * 2 - 1;
-    if (isBrown) {
-      last = (last + 0.02 * white) / 1.02;
-      data[i] = last * 3.5;
-    } else {
-      data[i] = white;
-    }
-  }
-  return buffer;
 }
 
 function buildEngine(Ctor: AudioContextConstructor): Engine {
   const ctx = new Ctor();
   const bus = ctx.createGain();
-  bus.gain.value = MASTER_LEVEL;
+  bus.gain.value = MASTER_LEVEL * softnessGain();
   const muffle = ctx.createBiquadFilter();
   muffle.type = "lowpass";
   muffle.frequency.value = CLEAR_CUTOFF_HZ;
@@ -99,113 +126,6 @@ function disconnectOnEnd(last: AudioScheduledSourceNode, nodes: AudioNode[]) {
   last.onended = () => {
     for (const node of nodes) node.disconnect();
   };
-}
-
-interface NoiseOptions {
-  buffer: AudioBuffer;
-  start: number;
-  duration: number;
-  filter: BiquadFilterType;
-  freq: number;
-  /** Where the filter ends up (a sweep), defaults to `freq`. */
-  freqEnd?: number;
-  q?: number;
-  gain: number;
-  attack?: number;
-  /** Randomly chop the loudness every `chop` seconds (tearing, gurgling). */
-  chop?: number;
-}
-
-/** A shaped burst of filtered noise. */
-function noise(engine: Engine, opts: NoiseOptions) {
-  const { ctx, bus } = engine;
-  const source = ctx.createBufferSource();
-  source.buffer = opts.buffer;
-  source.loop = true;
-  const filter = ctx.createBiquadFilter();
-  filter.type = opts.filter;
-  filter.Q.value = opts.q ?? 1;
-  filter.frequency.setValueAtTime(opts.freq, opts.start);
-  if (opts.freqEnd !== undefined) {
-    filter.frequency.exponentialRampToValueAtTime(
-      opts.freqEnd,
-      opts.start + opts.duration
-    );
-  }
-  const gain = ctx.createGain();
-  const attack = opts.attack ?? 0.005;
-  const end = opts.start + opts.duration;
-  gain.gain.setValueAtTime(0.0001, opts.start);
-  gain.gain.linearRampToValueAtTime(opts.gain, opts.start + attack);
-  gain.gain.exponentialRampToValueAtTime(0.0001, end);
-  if (opts.chop !== undefined) {
-    for (let t = opts.start + attack; t < end; t += opts.chop) {
-      const fade = 1 - (t - opts.start) / opts.duration;
-      gain.gain.setValueAtTime(
-        Math.max(0.0001, opts.gain * fade * (0.15 + Math.random() * 0.85)),
-        t
-      );
-    }
-    gain.gain.exponentialRampToValueAtTime(0.0001, end);
-  }
-  source.connect(filter).connect(gain).connect(bus);
-  source.start(opts.start, Math.random() * (NOISE_SECONDS - 0.1));
-  source.stop(end + 0.05);
-  disconnectOnEnd(source, [source, filter, gain]);
-}
-
-interface ToneOptions {
-  type: OscillatorType;
-  start: number;
-  duration: number;
-  freq: number;
-  freqEnd?: number;
-  detune?: number;
-  gain: number;
-  attack?: number;
-  /** Optional filter between the oscillator and the gain. */
-  filter?: {
-    type: BiquadFilterType;
-    freq: number;
-    freqEnd?: number;
-    q: number;
-  };
-}
-
-/** A shaped tone, optionally bent in pitch and run through a filter. */
-function tone(engine: Engine, opts: ToneOptions) {
-  const { ctx, bus } = engine;
-  const osc = ctx.createOscillator();
-  osc.type = opts.type;
-  osc.detune.value = opts.detune ?? 0;
-  osc.frequency.setValueAtTime(opts.freq, opts.start);
-  const end = opts.start + opts.duration;
-  if (opts.freqEnd !== undefined) {
-    osc.frequency.exponentialRampToValueAtTime(opts.freqEnd, end);
-  }
-  const gain = ctx.createGain();
-  const attack = opts.attack ?? 0.01;
-  gain.gain.setValueAtTime(0.0001, opts.start);
-  gain.gain.linearRampToValueAtTime(opts.gain, opts.start + attack);
-  gain.gain.exponentialRampToValueAtTime(0.0001, end);
-  const nodes: AudioNode[] = [osc, gain];
-  let head: AudioNode = osc;
-  if (opts.filter) {
-    const filter = ctx.createBiquadFilter();
-    filter.type = opts.filter.type;
-    filter.Q.value = opts.filter.q;
-    filter.frequency.setValueAtTime(opts.filter.freq, opts.start);
-    if (opts.filter.freqEnd !== undefined) {
-      filter.frequency.exponentialRampToValueAtTime(opts.filter.freqEnd, end);
-    }
-    head.connect(filter);
-    head = filter;
-    nodes.push(filter);
-  }
-  head.connect(gain).connect(bus);
-  osc.start(opts.start);
-  osc.stop(end + 0.05);
-  disconnectOnEnd(osc, nodes);
 }
 
 /** Stressed steel: low detuned saws through a resonant, bending bandpass. */
@@ -464,6 +384,8 @@ interface AmbientBeds {
   seaGain: GainNode;
   humGain: GainNode;
   humOscillators: { osc: OscillatorNode; base: number }[];
+  /** Stops the sources and unplugs the graph. */
+  dispose: () => void;
 }
 
 /** The two held sounds: sea bed noise and the ship's electrical hum. */
@@ -507,17 +429,56 @@ function buildAmbientBeds(engine: Engine): AmbientBeds {
     osc.start();
     return { osc, base };
   });
-  return { seaGain, humGain, humOscillators };
+  return {
+    seaGain,
+    humGain,
+    humOscillators,
+    dispose() {
+      for (const source of [sea, swell, ...humOscillators.map((h) => h.osc)]) {
+        source.stop();
+        source.disconnect();
+      }
+      for (const node of [seaGain, humGain, seaFilter, swellDepth, swellGain]) {
+        node.disconnect();
+      }
+    },
+  };
 }
 
 const SEA_LEVEL = 0.22;
 const HUM_LEVEL = 0.05;
 
+/** How much each loud cue dips the music, and for how long (seconds). */
+const DUCK: Partial<Record<Cue["kind"], readonly [number, number]>> = {
+  impact: [0.7, 2.2],
+  break: [0.85, 4],
+  "power-out": [0.5, 1.5],
+  touchdown: [0.5, 1],
+  "funnel-crash": [0.5, 1.8],
+  horn: [0.55, 1.3],
+  bell: [0.3, 0.8],
+  sting: [0.45, 1.6],
+  challenge: [0.5, 1.8],
+  creak: [0.25, 0.8],
+  groan: [0.25, 1],
+};
+
 export function createTrialSynth(): TrialSynth {
   let engine: Engine | null = null;
   let beds: AmbientBeds | null = null;
+  let worldBeds: ShipBeds | null = null;
+  let music: MusicPlayer | null = null;
+  let stopWatchingMotion: (() => void) | null = null;
+  let holders = 0;
+  let lastMuffle = 0;
   let isOn = false;
+  let isEffectsOn = true;
+  let isMusicOn = true;
+  let isPaused = false;
+  let wantedMusic: MusicSpec | null = null;
+  let musicLevel = 1;
   let ambient: AmbientParams = { sea: false, hum: false };
+  let worldLevels: BedLevels = SILENT_BEDS;
   // What the audio thread was last told, so a steady frame sends nothing.
   let applied: AmbientParams | null = null;
   let appliedMuffle: number | null = null;
@@ -526,44 +487,115 @@ export function createTrialSynth(): TrialSynth {
   function applyAmbient() {
     if (!engine || !beds) return;
     const t = engine.ctx.currentTime;
-    if (!applied || applied.sea !== ambient.sea) {
-      beds.seaGain.gain.setTargetAtTime(ambient.sea ? SEA_LEVEL : 0, t, 0.4);
+    const sea = ambient.sea && isEffectsOn;
+    const hum = ambient.hum && isEffectsOn;
+    if (!applied || applied.sea !== sea) {
+      beds.seaGain.gain.setTargetAtTime(sea ? SEA_LEVEL : 0, t, 0.4);
     }
-    if (!applied || applied.hum !== ambient.hum) {
-      beds.humGain.gain.setTargetAtTime(ambient.hum ? HUM_LEVEL : 0, t, 0.3);
+    if (!applied || applied.hum !== hum) {
+      beds.humGain.gain.setTargetAtTime(hum ? HUM_LEVEL : 0, t, 0.3);
     }
-    applied = { sea: ambient.sea, hum: ambient.hum };
+    applied = { sea, hum };
+  }
+
+  function applyWorld() {
+    if (!worldBeds) return;
+    worldBeds.update(isEffectsOn && !isPaused ? worldLevels : SILENT_BEDS);
+  }
+
+  function applyMusic() {
+    if (!music) return;
+    music.setLevel(musicLevel);
+    if (isOn && isMusicOn && !isPaused && wantedMusic) music.start(wantedMusic);
+    else music.stop();
+  }
+
+  /** Applies the master level, which follows reduced motion and the muffle. */
+  function applyMaster() {
+    if (!engine) return;
+    engine.bus.gain.setTargetAtTime(
+      MASTER_LEVEL * softnessGain() * (1 - 0.35 * lastMuffle),
+      engine.ctx.currentTime,
+      0.15
+    );
+  }
+
+  /** The beds and music hang on the engine; they can be torn down and rebuilt. */
+  function buildGraph(built: Engine) {
+    beds = buildAmbientBeds(built);
+    worldBeds = buildShipBeds(built);
+    music = createMusicPlayer(built.ctx, built.bus);
+    applied = null;
+    stopWatchingMotion = watchReducedMotion(applyMaster);
+  }
+
+  function teardownGraph() {
+    stopWatchingMotion?.();
+    stopWatchingMotion = null;
+    music?.dispose();
+    worldBeds?.dispose();
+    beds?.dispose();
+    music = null;
+    worldBeds = null;
+    beds = null;
+    applied = null;
   }
 
   function enable(): boolean {
     const Ctor = audioContextConstructor();
     if (!Ctor) return false;
     try {
-      if (!engine) {
-        engine = buildEngine(Ctor);
-        beds = buildAmbientBeds(engine);
-      }
+      if (!engine) engine = buildEngine(Ctor);
+      if (!beds) buildGraph(engine);
       void engine.ctx.resume();
     } catch {
+      teardownGraph();
       engine = null;
-      beds = null;
-      applied = null;
       appliedMuffle = null;
       appliedSpeed = null;
       return false;
     }
     isOn = true;
+    isPaused = false;
     applyAmbient();
+    applyWorld();
+    applyMusic();
     return true;
+  }
+
+  function acquire(): () => void {
+    holders += 1;
+    if (holders === 1 && isOn && engine) {
+      // Back after the last sound component left: rebuild what it dropped.
+      if (!beds) buildGraph(engine);
+      isPaused = false;
+      void engine.ctx.resume();
+      applyAmbient();
+      applyWorld();
+      applyMusic();
+    }
+    let isReleased = false;
+    return () => {
+      if (isReleased) return;
+      isReleased = true;
+      holders -= 1;
+      if (holders > 0) return;
+      // Nothing is driving the audio any more: free the graph and go quiet.
+      teardownGraph();
+      if (engine) void engine.ctx.suspend();
+    };
   }
 
   function disable() {
     isOn = false;
+    music?.stop();
+    worldBeds?.silence();
     if (engine) void engine.ctx.suspend();
   }
 
   function pause() {
     ambient = { sea: false, hum: false };
+    isPaused = true;
     if (!engine || !beds) return;
     // A suspended context would not run a fade, so cut the beds first.
     const t = engine.ctx.currentTime;
@@ -572,20 +604,35 @@ export function createTrialSynth(): TrialSynth {
       gain.setValueAtTime(0, t);
     }
     applied = { sea: false, hum: false };
+    worldBeds?.silence();
+    music?.pause();
     void engine.ctx.suspend();
   }
 
   function resume() {
-    if (isOn && engine) void engine.ctx.resume();
+    if (!isOn || !engine) return;
+    isPaused = false;
+    void engine.ctx.resume();
+    applyWorld();
+    music?.resume();
+    applyMusic();
+  }
+
+  function canPlay(): boolean {
+    return isOn && !!engine && !!beds && isEffectsOn && !isPaused;
   }
 
   function play(cue: Cue) {
-    if (!isOn || !engine) return;
+    if (!canPlay() || !engine) return;
+    const ducking = DUCK[cue.kind];
+    if (ducking) music?.duck(ducking[0], ducking[1]);
     switch (cue.kind) {
       case "impact":
         return playImpact(engine);
       case "creak":
         return playCreak(engine, cue.intensity);
+      case "groan":
+        return playCreak(engine, 0.3);
       case "flicker":
         return playFlicker(engine);
       case "power-out":
@@ -596,12 +643,59 @@ export function createTrialSynth(): TrialSynth {
         return playGurgle(engine);
       case "touchdown":
         return playTouchdown(engine);
+      case "funnel-crash":
+        return playFunnelCrash(engine);
+      case "place":
+        return playPlace(engine);
+      case "remove":
+        return playRemove(engine);
+      case "paint":
+        return playPaint(engine);
+      case "undo":
+        return playWhoosh(engine, false);
+      case "redo":
+        return playWhoosh(engine, true);
+      case "horn":
+        return playHorn(engine);
+      case "bell":
+        return playBell(engine);
+      case "sting":
+        return playSting(engine, cue.outcome);
+      case "challenge":
+        return playChallengeSting(engine, cue.stars);
     }
   }
 
   function setAmbient(next: AmbientParams) {
     ambient = next;
     applyAmbient();
+  }
+
+  function setBeds(levels: BedLevels) {
+    worldLevels = levels;
+    applyWorld();
+  }
+
+  function setEffectsEnabled(next: boolean) {
+    if (isEffectsOn === next) return;
+    isEffectsOn = next;
+    applyAmbient();
+    applyWorld();
+  }
+
+  function setMusicEnabled(next: boolean) {
+    isMusicOn = next;
+    applyMusic();
+  }
+
+  function setMusic(spec: MusicSpec | null) {
+    wantedMusic = spec;
+    applyMusic();
+  }
+
+  function setMusicLevel(level: number) {
+    musicLevel = level;
+    music?.setLevel(level);
   }
 
   function setMuffle(amount: number) {
@@ -614,10 +708,11 @@ export function createTrialSynth(): TrialSynth {
       return;
     }
     appliedMuffle = m;
+    lastMuffle = m;
     const cutoff = CLEAR_CUTOFF_HZ * (MUFFLED_CUTOFF_HZ / CLEAR_CUTOFF_HZ) ** m;
     const t = engine.ctx.currentTime;
     engine.muffle.frequency.setTargetAtTime(cutoff, t, 0.15);
-    engine.bus.gain.setTargetAtTime(MASTER_LEVEL * (1 - 0.35 * m), t, 0.15);
+    applyMaster();
   }
 
   function setSpeed(next: number) {
@@ -647,8 +742,15 @@ export function createTrialSynth(): TrialSynth {
     setAmbient,
     setMuffle,
     setSpeed,
+    setBeds,
+    canPlay,
+    acquire,
+    setEffectsEnabled,
+    setMusicEnabled,
+    setMusic,
+    setMusicLevel,
   };
 }
 
-/** The one synth the toggle and the trial's sound component share. */
+/** The one synth the toggle, the trial's sound and the scene share. */
 export const trialSynth: TrialSynth = createTrialSynth();

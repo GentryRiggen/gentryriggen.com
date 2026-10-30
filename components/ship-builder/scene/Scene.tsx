@@ -41,7 +41,9 @@ import SeaTrialRunner from "./SeaTrialRunner";
 import ShipAnimation from "./ShipAnimation";
 import ShipParts from "./ShipParts";
 import { preloadShipModels } from "./shipModels";
+import BuildSound from "../audio/BuildSound";
 import TrialSound from "../audio/TrialSound";
+import WorldSound from "../audio/WorldSound";
 import UnderwaterFog from "./UnderwaterFog";
 import WalkRunner from "./WalkRunner";
 import { usePartLongPress } from "./usePartLongPress";
@@ -163,6 +165,8 @@ export default function Scene() {
         <LaunchedBoats />
         <Crowd />
         <TrialSound />
+        <BuildSound />
+        <WorldSound />
         <RustDriver />
         <SeaFloor />
         <DescentParticles />

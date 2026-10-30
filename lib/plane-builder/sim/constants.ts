@@ -71,3 +71,18 @@ export const SWOOP_STICK = 0.5;
 export const SWOOP_DRAG = 0.3;
 /** Out of fuel, in a hard pull-up: lift multiplier. */
 export const SWOOP_LIFT = 2.5;
+/**
+ * Near miss: passing a hard obstacle with less than this much clear air (m)
+ * between the plane and the obstacle's collision box. All planes share
+ * PLANE_RADIUS, so one margin fits every plane size; the box is the same one
+ * the collision code uses, so a graze is always just short of a hit.
+ */
+export const NEAR_MISS_MARGIN = 3;
+/** A near miss within this many sim seconds of the last one extends the combo. */
+export const COMBO_WINDOW = 4;
+/** The combo multiplier never goes past this. */
+export const MAX_COMBO_MULTIPLIER = 5;
+/** Coins for a near miss at multiplier x1. */
+export const NEAR_MISS_COINS = 1;
+/** Most near-miss coins one flight can earn, so skimming never outpays flying. */
+export const NEAR_MISS_COIN_CAP = 30;

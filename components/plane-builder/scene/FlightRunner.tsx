@@ -29,10 +29,16 @@ import {
 } from "@/lib/plane-builder/state/cameraShake";
 import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
+import {
+  KICK_SECONDS,
+  nearMissKick,
+  nearMissPop,
+} from "@/lib/plane-builder/state/nearMissPop";
 import { flightToasts } from "@/lib/plane-builder/state/flightToasts";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
-import { engineLevel } from "../audio/flightCues";
+import { flightSoundFor, type FlightSoundInputs } from "../audio/flightCues";
+import { SILENT_FLIGHT, type FlightSound } from "../audio/planeBeds";
 import { planeSynth } from "../audio/planeSynth";
 import PlaneModel from "./PlaneModel";
 
@@ -115,6 +121,17 @@ export default function FlightRunner({
   const [debrisMaterial] = useState(
     () => new MeshStandardMaterial({ color: level.palette.plane })
   );
+  // Reused every frame, so the flight's sound allocates nothing.
+  const soundInputs = useRef<FlightSoundInputs>({
+    hasThrust: false,
+    fuel: 0,
+    phase: "flying",
+    wantsBoost: false,
+    canBoost: true,
+    speed: 0,
+    progressTimer: 0,
+  });
+  const soundOut = useRef<FlightSound>({ ...SILENT_FLIGHT });
   const accumulator = useRef(0);
   const frames = useRef(0);
   const endTimer = useRef(0);
@@ -163,7 +180,7 @@ export default function FlightRunner({
   }, [run, level]);
 
   // The hum stops with the flight (including when the tab is left mid-flight).
-  useEffect(() => () => planeSynth.setEngine(0), []);
+  useEffect(() => () => planeSynth.setFlight(SILENT_FLIGHT), []);
 
   useFrame((_, delta) => {
     if (isPaused.current) return;
@@ -181,6 +198,10 @@ export default function FlightRunner({
       for (const event of events) {
         if (event.type === "bump" || event.type === "shield") {
           cameraShake.remaining = SHAKE_SECONDS;
+        }
+        if (event.type === "nearMiss") {
+          nearMissPop.push(event.multiplier, event.coins);
+          nearMissKick.remaining = KICK_SECONDS;
         }
         if (event.type === "crash") {
           debrisAge.current = 0;
@@ -209,14 +230,15 @@ export default function FlightRunner({
       flightToasts.push("Out of fuel! Dive, then pull up!");
     }
     if (group && group.visible) poseGroup(group, state);
-    planeSynth.setEngine(
-      engineLevel(
-        stats.thrust > 0,
-        state.fuel,
-        state.phase === "flying",
-        flightInput.boost
-      )
-    );
+    const sound = soundInputs.current;
+    sound.hasThrust = stats.thrust > 0;
+    sound.fuel = state.fuel;
+    sound.phase = state.phase;
+    sound.wantsBoost = flightInput.boost;
+    sound.canBoost = !mods.noBoost;
+    sound.speed = state.speed;
+    sound.progressTimer = state.progressTimer;
+    planeSynth.setFlight(flightSoundFor(sound, soundOut.current));
 
     if (debrisAge.current !== null) {
       debrisAge.current += delta;
