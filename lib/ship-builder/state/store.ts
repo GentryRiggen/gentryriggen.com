@@ -31,9 +31,11 @@ import { trialFunnelsOf } from "../sim/trialFunnels";
 import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
 import { findTemplate } from "../templates";
 import { decidingSea, shipshapeRuns } from "../challenges/score";
+import { giveUpSmooth, type SmoothRun } from "../challenges/smooth";
 import {
   challengeDef,
   CHALLENGE_STRIKE_FRACTION,
+  SMOOTH_FIELD,
   type ChallengeId,
 } from "../challenges/definitions";
 import { forgetUnsavedChallenges } from "@/lib/ship-builder/challenges/progressStore";
@@ -120,6 +122,16 @@ export type DriveSlice =
 export type WalkSlice =
   { status: "idle" } | { status: "walking"; runId: number };
 
+/**
+ * How a challenge sail ended, shown on a card until the player goes back to
+ * building or tries again. The sail itself is over by then (`drive` is idle).
+ */
+export interface SailResult {
+  challenge: ChallengeId;
+  run: SmoothRun;
+  runId: number;
+}
+
 export type TrialSlice =
   | { status: "idle" }
   | { status: "aiming" }
@@ -162,6 +174,7 @@ interface ShipBuilderData {
   camera: { view: CameraView; nonce: number };
   trial: TrialSlice;
   drive: DriveSlice;
+  sailResult: SailResult | null;
   walk: WalkSlice;
   /**
    * How iceberg trials may break the ship. Kept apart from `trial` so it
@@ -228,6 +241,13 @@ export interface ShipBuilderState extends ShipBuilderData {
    */
   startChallenge: (id: ChallengeId) => void;
   /**
+   * Ends a challenge sail with how it went (a hit, the finish line, or the
+   * player stopping) and shows the result card. Ignored outside one.
+   */
+  finishSail: (run: SmoothRun) => void;
+  /** Closes the sail result card. */
+  dismissSailResult: () => void;
+  /**
    * Starts aiming an iceberg: freezes building and switches to the side view
    * so the hull can be tapped. Works from building or a finished trial ("Try
    * another spot"); does nothing while a trial runs.
@@ -284,6 +304,7 @@ export function createInitialState(): ShipBuilderData {
     camera: { view: "three-quarter", nonce: 0 },
     trial: { status: "idle" },
     drive: { status: "idle" },
+    sailResult: null,
     walk: { status: "idle" },
     breakMode: "real",
   };
@@ -746,6 +767,24 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (walk.status !== "idle" || drive.status !== "idle") return;
       if (trial.status !== "idle" && trial.status !== "result") return;
       const { trial: def } = challengeDef(id);
+      if (def.kind === "sail") {
+        runId += 1;
+        resetSailInput();
+        publishSail(null);
+        set({
+          trial: { status: "idle" },
+          sailResult: null,
+          drive: {
+            status: "sailing",
+            config: { ...SMOOTH_FIELD, challenge: id },
+            runId,
+            view: "chase",
+          },
+          tool: { kind: "none" },
+          ...CLEARED,
+        });
+        return;
+      }
       const impactX =
         def.kind === "iceberg"
           ? gridLength(get().ship) * CHALLENGE_STRIKE_FRACTION
@@ -763,6 +802,24 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         breakMode: def.breakMode,
         ...(def.isWholeHull ? { gashLength: gridLength(get().ship) } : {}),
       });
+    },
+
+    finishSail(run) {
+      const { drive } = get();
+      if (drive.status !== "sailing" || !drive.config.challenge) return;
+      const final = giveUpSmooth(run);
+      get().endDrive();
+      set({
+        sailResult: {
+          challenge: drive.config.challenge,
+          run: final,
+          runId: drive.runId,
+        },
+      });
+    },
+
+    dismissSailResult() {
+      set({ sailResult: null });
     },
 
     sinkWhileWalking() {

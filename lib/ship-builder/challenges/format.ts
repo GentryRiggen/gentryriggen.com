@@ -2,6 +2,7 @@ import { formatStoryTime } from "../sim/story";
 import {
   challengeDef,
   NEVER_SINKS_MINUTES,
+  SMOOTH_FINISH_CELLS,
   NOT_SCORED,
   STEADY_PEAK_ROLL_DEG,
   nextStarAt,
@@ -31,6 +32,10 @@ export function describeValue(id: ChallengeId, value: number): string {
       return `${value}% of people saved`;
     case "shipshape":
       return SHIPSHAPE_SEAS[Math.max(0, Math.min(3, value))];
+    case "smooth":
+      return value >= SMOOTH_FINISH_CELLS
+        ? "Sailed the whole course"
+        : `Sailed ${value} cells clear`;
   }
 }
 
@@ -53,6 +58,10 @@ export function describeGoal(id: ChallengeId, value: number): string | null {
         : target === 2
           ? "Ride out a stormy sea with your weight lower"
           : `Ride out a stormy sea with your weight kept low, rolling under ${STEADY_PEAK_ROLL_DEG} degrees`;
+    case "smooth":
+      return target >= SMOOTH_FINISH_CELLS
+        ? `Sail the whole ${SMOOTH_FINISH_CELLS}-cell course without a bump`
+        : `Sail ${target} cells without a bump`;
   }
 }
 
@@ -72,4 +81,21 @@ export function describeShipshapeRun(
   return hasCapsized
     ? `She capsized in the ${sea} sea.`
     : `In the ${sea} sea she rolled ${Math.round(peakRollDeg)} degrees at most.`;
+}
+
+/** Smooth sailing: how the sail ended, in a sentence. */
+export function describeSailEnd(
+  end: "sailing" | "finished" | "hit" | "gave-up",
+  hitKind: string | undefined
+): string {
+  switch (end) {
+    case "finished":
+      return "You crossed the finish line without touching a thing.";
+    case "hit":
+      return `She ran into ${hitKind === "ship" ? "another ship" : hitKind === "rock" ? "a rock" : "an iceberg"}.`;
+    case "gave-up":
+      return "You stopped the sail early.";
+    case "sailing":
+      return "";
+  }
 }

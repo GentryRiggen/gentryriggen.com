@@ -1,6 +1,13 @@
+import type { Density } from "../sail/field";
+import type { ObstacleKind } from "../sail/types";
 import type { BreakMode, SimSea } from "../sim/types";
 
-export const CHALLENGE_IDS = ["outlast", "evacuation", "shipshape"] as const;
+export const CHALLENGE_IDS = [
+  "outlast",
+  "evacuation",
+  "shipshape",
+  "smooth",
+] as const;
 export type ChallengeId = (typeof CHALLENGE_IDS)[number];
 
 export type Stars = 0 | 1 | 2 | 3;
@@ -42,6 +49,23 @@ export const STEADY_PEAK_ROLL_DEG = 28;
 export const SOLID_STABILITY_RATIO = 0.12;
 export const STEADY_STABILITY_RATIO = 0.06;
 
+/**
+ * Smooth sailing: cells from the start to the finish line. Reaching it
+ * without touching anything is the third star, and the most a result can be.
+ */
+export const SMOOTH_FINISH_CELLS = 500;
+
+/**
+ * Smooth sailing's field: the same rocks, icebergs and moving ships for every
+ * sail, so a score means the same thing each time. Buoys are left out: a bump
+ * on one is harmless, so they would only be noise.
+ */
+export const SMOOTH_FIELD: {
+  seed: number;
+  kinds: ObstacleKind[];
+  density: Density;
+} = { seed: 20241, kinds: ["iceberg", "rock", "ship"], density: "some" };
+
 export type ChallengeTrial =
   | {
       kind: "iceberg";
@@ -50,7 +74,9 @@ export type ChallengeTrial =
       /** The gash runs the whole hull, so every ship really sinks. */
       isWholeHull?: boolean;
     }
-  | { kind: "waves"; sea: SimSea };
+  | { kind: "waves"; sea: SimSea }
+  /** A sail through `SMOOTH_FIELD`; scored by how far she gets clean. */
+  | { kind: "sail" };
 
 export interface ChallengeDef {
   id: ChallengeId;
@@ -94,6 +120,14 @@ export const CHALLENGES: readonly ChallengeDef[] = [
     starAt: [1, 2, 3],
     tip: "Build fewer levels on top, keep heavy blocks low, widen the hull and balance the weight, so her weight sits lower.",
   },
+  {
+    id: "smooth",
+    title: "Smooth sailing",
+    blurb: `Sail ${SMOOTH_FINISH_CELLS} cells through rocks, icebergs and other ships without touching one.`,
+    trial: { kind: "sail" },
+    starAt: [150, 300, SMOOTH_FINISH_CELLS],
+    tip: "Slow down near rocks and icebergs, and turn early. A smaller, nimbler ship turns faster, and a ship with more power gets out of trouble sooner.",
+  },
 ];
 
 export function challengeDef(id: ChallengeId): ChallengeDef {
@@ -111,6 +145,7 @@ export const MAX_VALUE: Record<ChallengeId, number> = {
   outlast: NEVER_SINKS_MINUTES,
   evacuation: 100,
   shipshape: 3,
+  smooth: SMOOTH_FINISH_CELLS,
 };
 
 /** Stars a best value earns, 0 to 3. */

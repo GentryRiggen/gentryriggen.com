@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { SHIP_KINDS } from "@/lib/ship-builder/model/kinds";
 import { resetSailInput } from "@/lib/ship-builder/state/sailInput";
 import { publishSail } from "@/lib/ship-builder/state/sailLive";
+import { publishSmooth } from "@/lib/ship-builder/state/smoothLive";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -25,6 +26,28 @@ beforeEach(() => {
   act(() => {
     useShipBuilderStore.setState(createInitialState());
     publishSail(null);
+  });
+});
+
+describe("DriveHud in a challenge sail", () => {
+  it("shows how far she has got and stops with a result card", async () => {
+    const user = userEvent.setup();
+    render(<DriveHud />);
+    act(() => store().startChallenge("smooth"));
+    act(() => publishSmooth({ reach: 123.7, status: "sailing" }));
+    expect(screen.getByLabelText("Sailed 123 of 500 cells")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Stop sailing" }));
+    expect(store().drive.status).toBe("idle");
+    expect(store().sailResult?.run).toMatchObject({
+      reach: 123.7,
+      status: "gave-up",
+    });
+  });
+
+  it("has no reach readout in an ordinary drive", () => {
+    render(<DriveHud />);
+    startSailing();
+    expect(screen.queryByLabelText(/of 500 cells/)).toBeNull();
   });
 });
 

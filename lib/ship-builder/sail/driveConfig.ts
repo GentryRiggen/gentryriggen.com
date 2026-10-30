@@ -1,3 +1,4 @@
+import type { ChallengeId } from "../challenges/definitions";
 import type { Density } from "./field";
 import type { ObstacleKind } from "./types";
 
@@ -7,6 +8,8 @@ export interface DriveConfig {
   seed: number;
   kinds: ObstacleKind[];
   density: Density;
+  /** Set when the Challenges panel started this sail (see Smooth sailing). */
+  challenge?: ChallengeId;
 }
 
 /** What the picker remembers between visits; the seed is new for every sail. */

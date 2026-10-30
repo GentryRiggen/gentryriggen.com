@@ -6,7 +6,7 @@ import { overallBests, totalStars, type ChallengeProgress } from "./progress";
 export const SUBMIT_INTERVAL_MS = 15_000;
 
 /**
- * The most the total may rise in one write (one design's maximum); the
+ * The most the total may rise in one write (three trials' worth); the
  * rules refuse a bigger jump. A bigger gap is climbed over several writes.
  */
 export const MAX_STARS_PER_WRITE = 9;

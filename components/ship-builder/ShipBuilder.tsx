@@ -13,6 +13,7 @@ import AppHeader from "./ui/AppHeader";
 import CatalogPanel from "./ui/CatalogPanel";
 import DriveButton from "./ui/DriveButton";
 import DriveHud from "./ui/DriveHud";
+import SailChallengeResult from "./ui/SailChallengeResult";
 import DrivePicker from "./ui/DrivePicker";
 import WalkButton from "./ui/WalkButton";
 import TrialWalkButton from "./ui/TrialWalkButton";
@@ -164,6 +165,7 @@ export default function ShipBuilder() {
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}
           <SeaTrialResult />
+          <SailChallengeResult />
           {!inFocus && <HelpButton />}
           {!inFocus && <UndoRedo />}
         </main>

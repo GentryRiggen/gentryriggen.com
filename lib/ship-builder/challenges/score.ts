@@ -1,4 +1,6 @@
 import type { EvacuationPlan } from "../crowd/evacuation";
+import type { ObstacleKind } from "../sail/types";
+import type { SmoothRun } from "./smooth";
 import { storyMinutesSinceImpact } from "../sim/story";
 import { createTrial, stepTrial } from "../sim/seaTrial";
 import type { SimSea, SimState, TrialInput, TrialOutcome } from "../sim/types";
@@ -28,6 +30,9 @@ export interface ChallengeScore {
   peakRollDeg?: number;
   /** Shipshape: whether she capsized in that trial. */
   hasCapsized?: boolean;
+  /** Smooth sailing: how the sail ended, and what she hit if she did. */
+  sailEnd?: SmoothRun["status"];
+  hitKind?: ObstacleKind;
 }
 
 function scored(id: ChallengeId, rawValue: number): ChallengeScore {
@@ -162,5 +167,18 @@ export function scoreShipshape(
     sea,
     peakRollDeg: run.peakRollDeg,
     hasCapsized: run.outcome === "capsized",
+  };
+}
+
+/**
+ * Smooth sailing: the cells she got from the start before touching anything
+ * (the whole course if she crossed the finish line). A sail still going
+ * scores what it has.
+ */
+export function scoreSmooth(run: SmoothRun): ChallengeScore {
+  return {
+    ...scored("smooth", run.reach),
+    sailEnd: run.status,
+    ...(run.hitKind ? { hitKind: run.hitKind } : {}),
   };
 }

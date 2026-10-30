@@ -1339,8 +1339,13 @@ describe("shipLeaderboard", () => {
         setDoc(
           shipDoc(player()),
           entry({
-            totalStars: 9,
-            bests: { outlast: 1440, evacuation: 100, shipshape: 3 },
+            totalStars: 12,
+            bests: {
+              outlast: 1440,
+              evacuation: 100,
+              shipshape: 3,
+              smooth: 500,
+            },
           })
         )
       );
@@ -1393,6 +1398,13 @@ describe("shipLeaderboard", () => {
         { bests: { evacuation: 101 }, totalStars: 9 },
       ],
       ["a shipshape above 3", { bests: { shipshape: 4 }, totalStars: 9 }],
+      ["a smooth above 500", { bests: { smooth: 501 }, totalStars: 9 }],
+      ["a negative smooth", { bests: { smooth: -1 }, totalStars: 9 }],
+      ["a float smooth", { bests: { smooth: 150.5 }, totalStars: 9 }],
+      [
+        "a total lower than a smooth best needs",
+        { totalStars: 2, bests: { smooth: 500 } },
+      ],
       ["a string best", { bests: { outlast: "170" } }],
       [
         "a total lower than the bests need",
@@ -1410,6 +1422,28 @@ describe("shipLeaderboard", () => {
         await assertFails(setDoc(shipDoc(player()), rest));
       }
     });
+
+    it.each([
+      [150, 1],
+      [299, 1],
+      [300, 2],
+      [499, 2],
+      [500, 3],
+    ])(
+      "needs a smooth best of %i to carry %i star(s)",
+      async (smooth, stars) => {
+        const bests = { smooth };
+        await assertSucceeds(
+          setDoc(shipDoc(player()), entry({ totalStars: stars, bests }))
+        );
+        await env.clearFirestore();
+        if (stars > 1) {
+          await assertFails(
+            setDoc(shipDoc(player()), entry({ totalStars: stars - 1, bests }))
+          );
+        }
+      }
+    );
 
     it("accepts a total higher than the bests need (more designs)", async () => {
       await assertSucceeds(
@@ -1481,7 +1515,7 @@ describe("shipLeaderboard", () => {
 
     it("rejects partial updates (updateDoc) that skip validation", async () => {
       await seedPlayer({}, 15_000);
-      await assertFails(updateDoc(shipDoc(player()), { totalStars: 4500 }));
+      await assertFails(updateDoc(shipDoc(player()), { totalStars: 6000 }));
     });
 
     it("checks a partial write with a server time against the merged doc", async () => {
@@ -1633,7 +1667,7 @@ describe("shipLeaderboard", () => {
     };
 
     it("creates the doc with the exact body the game sends", async () => {
-      expect(await submitShipEntry(restEntry, deps(UID))).toBe(true);
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe("ok");
       await env.withSecurityRulesDisabled(async (ctx) => {
         const snap = await getDoc(shipDoc(ctx.firestore()));
         expect(snap.data()?.totalStars).toBe(3);
@@ -1642,14 +1676,14 @@ describe("shipLeaderboard", () => {
     });
 
     it("rejects an immediate rewrite and a forged total", async () => {
-      expect(await submitShipEntry(restEntry, deps(UID))).toBe(true);
-      expect(await submitShipEntry(restEntry, deps(UID))).toBe(false);
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe("ok");
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe("refused");
       expect(
         await submitShipEntry(
           { ...restEntry, totalStars: 4000 },
           deps("sailor-9")
         )
-      ).toBe(false);
+      ).toBe("refused");
     });
 
     it("reads the board back ordered by stars", async () => {
