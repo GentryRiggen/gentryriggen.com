@@ -22,6 +22,7 @@ import {
 import { qualitySettings } from "@/lib/plane-builder/render/quality";
 import { useQualityStore } from "@/lib/plane-builder/render/qualityStore";
 import { lockedQuality } from "@/lib/plane-builder/testHooks";
+import CloudPuffs from "./CloudPuffs";
 import { FallbackBoundary, Tracked } from "./GlbProp";
 import { buildObstacleGeometry } from "./obstacleGeometry";
 import {
@@ -175,6 +176,28 @@ function KindInstances({ kind, items, level }: KindInstancesProps) {
   );
 }
 
+interface CloudObstaclesProps {
+  items: Obstacle[];
+  level: LevelDef;
+}
+
+/**
+ * A level's clouds: soft sprite puffs, one draw call. Only if that fails does
+ * the old glb (then procedural) cloud draw in their place.
+ */
+function CloudObstacles({ items, level }: CloudObstaclesProps) {
+  return (
+    <FallbackBoundary
+      fallback={<KindInstances kind="cloud" items={items} level={level} />}
+    >
+      <CloudPuffs
+        items={items}
+        style={level.id === "storm" ? "storm" : "puff"}
+      />
+    </FallbackBoundary>
+  );
+}
+
 interface ObstaclesProps {
   level: LevelDef;
 }
@@ -211,14 +234,22 @@ export default function Obstacles({ level }: ObstaclesProps) {
 
   return (
     <group ref={root}>
-      {groups.map(([kind, items]) => (
-        <KindInstances
-          key={`${level.id}-${kind}`}
-          kind={kind}
-          items={items}
-          level={level}
-        />
-      ))}
+      {groups.map(([kind, items]) =>
+        kind === "cloud" ? (
+          <CloudObstacles
+            key={`${level.id}-${kind}`}
+            items={items}
+            level={level}
+          />
+        ) : (
+          <KindInstances
+            key={`${level.id}-${kind}`}
+            kind={kind}
+            items={items}
+            level={level}
+          />
+        )
+      )}
     </group>
   );
 }

@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.13.0",
+    date: "2026-10-30",
+    title: "Sounds, close calls, offline flying and puffier clouds",
+    highlights: [
+      "New sounds and music: the engine and wind change with your speed, there is a boost whoosh, a warning beep before a stall, a whoosh when your ghost passes, and a different tune for every world. Music and sound effects each have their own switch",
+      "Close calls! Skim past a tree, tower or rock without touching it, and string close calls together for a combo that pays bonus coins",
+      "Plane Builder now works without internet: visit once and you can keep flying offline, and the leaderboards tell you politely when you're offline",
+      "Clouds are soft and puffy, and the canyon walls and arches look like real weathered red rock",
+    ],
+  },
+  {
     version: "1.12.1",
     date: "2026-10-30",
     title: "Helping us make the game better",

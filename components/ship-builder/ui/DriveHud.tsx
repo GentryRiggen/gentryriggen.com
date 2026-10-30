@@ -1,7 +1,9 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { Megaphone, LogOut } from "lucide-react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { blowHorn } from "../audio/horn";
+import { useSoundEnabled } from "../audio/soundSetting";
 import useDriveKeys from "../hooks/useDriveKeys";
 import CockpitOverlay from "./CockpitOverlay";
 import { focusDriveButton } from "./DriveButton";
@@ -43,6 +45,23 @@ function EndDriveButton() {
   );
 }
 
+/** Sounds the ship's horn. Only shown when sound is on, as it makes no other change. */
+function HornButton() {
+  const isSoundOn = useSoundEnabled();
+  if (!isSoundOn) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => blowHorn()}
+      aria-keyshortcuts="H"
+      className={`pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-lg hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:hover:bg-slate-800 dark:focus-visible:outline-sky-400 ${panelClass}`}
+    >
+      <Megaphone aria-hidden="true" className="h-4 w-4 shrink-0" />
+      Horn
+    </button>
+  );
+}
+
 function SailingControls() {
   useDriveKeys();
   const kind = useShipBuilderStore((s) => s.ship.kind);
@@ -57,7 +76,10 @@ function SailingControls() {
           <DriveViewSwitch />
           {!isBridge && <SpeedReadout />}
         </div>
-        <EndDriveButton />
+        <div className="flex items-center gap-2">
+          <HornButton />
+          <EndDriveButton />
+        </div>
       </div>
       {isBridge ? (
         <CockpitOverlay kind={kind} />

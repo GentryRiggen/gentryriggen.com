@@ -1,2 +1,2 @@
 /** Bumped by hand with each release. */
-export const PLANE_BUILDER_VERSION = "1.12.1";
+export const PLANE_BUILDER_VERSION = "1.13.0";

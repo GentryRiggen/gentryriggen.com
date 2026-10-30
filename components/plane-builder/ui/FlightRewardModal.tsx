@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import usePrefersReducedMotion from "@/components/ship-builder/hooks/usePrefersReducedMotion";
 import { LEADERBOARDS_ENABLED } from "@/lib/plane-builder/state/leaderboardSync";
 import { LEVELS } from "@/lib/plane-builder/levels";
+import { comboMultiplier } from "@/lib/plane-builder/sim/flight";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import {
   gaugeZone,
@@ -82,6 +83,12 @@ export default function FlightRewardModal({
   const isDone = hasBonus && time >= REVEAL_END;
   const level = LEVELS[levelId];
   const percent = percentOf(result.distance, level.finishDistance);
+
+  // The daily challenge has its own sting when the finish was reached.
+  const isDailyWin = isDaily && result.finished;
+  useEffect(() => {
+    if (isDailyWin) planeSynth.play("daily");
+  }, [isDailyWin]);
 
   // Drives the reveal clock from the moment the bonus is claimed.
   useEffect(() => {
@@ -203,6 +210,25 @@ export default function FlightRewardModal({
             <span aria-hidden="true">🪙 </span>
             Coins earned +{formatCoins(payout.total)}
           </p>
+          {(result.nearMisses ?? 0) > 0 ? (
+            <p
+              data-testid="reward-near-misses"
+              className="text-base font-bold text-sky-800 dark:text-sky-200"
+            >
+              <span aria-hidden="true">🔥 </span>
+              Close calls {result.nearMisses}
+              <span aria-hidden="true"> · </span>
+              <span className="sr-only">, </span>
+              Best combo ×{comboMultiplier(result.bestCombo ?? 0)}
+              {(payout.nearMissEarned ?? 0) > 0 && payout.total > 0 ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span className="sr-only">, </span>+
+                  {formatCoins(payout.nearMissEarned ?? 0)} coins
+                </>
+              ) : null}
+            </p>
+          ) : null}
           <TimingGauge
             isRunning={!hasBonus}
             positionRef={gaugePosition}

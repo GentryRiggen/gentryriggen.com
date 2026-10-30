@@ -92,6 +92,17 @@ it("shows empty and error states", async () => {
   expect(await within(dialog).findByRole("alert")).toBeInTheDocument();
 });
 
+it("says the boards are resting when offline, not that something broke", async () => {
+  jest.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  mockBoard.fetchBoard.mockResolvedValue(null);
+  const dialog = await openBoards();
+  expect(
+    await within(dialog).findByText(/you're offline/i)
+  ).toBeInTheDocument();
+  expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+  jest.restoreAllMocks();
+});
+
 it("rerolls to a valid new nickname and closes on Escape", async () => {
   const dialog = await openBoards();
   expect(within(dialog).getByTestId("my-nickname")).toHaveTextContent(

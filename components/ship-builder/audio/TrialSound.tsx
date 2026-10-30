@@ -4,7 +4,13 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { trialPlayback } from "../scene/trialPlayback";
-import { ambientFor, cuesFor, muffleFor, type PlaybackSnapshot } from "./cues";
+import {
+  ambientFor,
+  cuesFor,
+  muffleFor,
+  stingFor,
+  type PlaybackSnapshot,
+} from "./cues";
 import { useSoundEnabled } from "./soundSetting";
 import { trialSynth } from "./synth";
 import useSoundUnlock from "./useSoundUnlock";
@@ -22,7 +28,7 @@ function createSnapshot(): PlaybackSnapshot {
 }
 
 function copyPlayback(target: PlaybackSnapshot) {
-  const { time, phase, strain, power, events, speed, scrubbing } =
+  const { time, phase, strain, power, events, speed, scrubbing, sinkingAt } =
     trialPlayback;
   target.time = time;
   target.phase = phase;
@@ -31,6 +37,7 @@ function copyPlayback(target: PlaybackSnapshot) {
   target.events = events;
   target.speed = speed;
   target.scrubbing = scrubbing;
+  target.sinkingAt = sinkingAt;
 }
 
 /**
@@ -71,6 +78,20 @@ export default function TrialSound() {
       trialSynth.setAmbient({ sea: false, hum: false });
     };
   }, []);
+
+  // The result sting plays once, when a running trial turns into its result.
+  useEffect(
+    () =>
+      useShipBuilderStore.subscribe((state, prev) => {
+        if (state.trial.status !== "result") return;
+        if (prev.trial.status !== "running") return;
+        // A challenge has its own, stars-aware sting (see ChallengeResult).
+        if (state.trial.challenge) return;
+        const sting = stingFor(state.trial.state.outcome);
+        if (sting) trialSynth.play(sting);
+      }),
+    []
+  );
 
   useFrame(({ camera }) => {
     const [before, next] = snapshots.current;

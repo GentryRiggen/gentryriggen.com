@@ -1,7 +1,7 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { trackGame } from "@/lib/analytics/trackGame";
 import {
   challengeDef,
@@ -19,6 +19,8 @@ import {
 } from "@/lib/ship-builder/challenges/progressStore";
 import type { SimState, TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { challengeStingFor } from "../audio/cues";
+import { trialSynth } from "../audio/synth";
 import { requestShipBoardSubmit } from "../hooks/shipBoardSync";
 import ChallengeStars from "./ChallengeStars";
 import scoreChallengeTrial from "./scoreChallengeTrial";
@@ -56,6 +58,16 @@ export default function ChallengeResult({
   );
   const isNewBest =
     isScored && score.value > (previous ?? -1) && score.stars > 0;
+
+  // The sting plays once, when the result first appears.
+  const hasStung = useRef(false);
+  const { stars } = score;
+  useEffect(() => {
+    // A trial that did not apply records nothing and makes no sound.
+    if (!isScored || hasStung.current) return;
+    hasStung.current = true;
+    trialSynth.play(challengeStingFor(stars));
+  }, [isScored, stars]);
 
   useEffect(() => {
     if (!isScored) return;

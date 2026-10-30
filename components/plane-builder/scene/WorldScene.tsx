@@ -9,6 +9,7 @@ import {
   usePlaneBuilderStore,
 } from "@/lib/plane-builder/state/store";
 import { playFlightEvents } from "../audio/flightCues";
+import GhostSound from "../audio/GhostSound";
 import useActiveGhost from "../hooks/useActiveGhost";
 import BestWall from "./BestWall";
 import ChaseCamera from "./ChaseCamera";
@@ -59,6 +60,9 @@ export default function WorldScene({ level, tiers, screen }: WorldSceneProps) {
           tiers={tiers}
           ghost={ghost}
         />
+      ) : null}
+      {screen === "flight" && ghost ? (
+        <GhostSound key={`ghost-sound-${flightId}`} ghost={ghost} />
       ) : null}
       {screen === "flight" ? (
         <FlightRunner

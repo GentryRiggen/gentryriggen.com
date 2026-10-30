@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.33.0",
+    date: "2026-10-30",
+    title: "Sounds and music",
+    highlights: [
+      "Your ship now has sounds: clicks as you build, a sea shanty while you work, engine and waves when you sail, a horn (press H), and creaks and rushing water if she sinks",
+      "Each challenge ends with its own little tune that gets happier the more stars you earn",
+      "Music and sound effects each have their own switch, in the new Sound button at the top",
+    ],
+  },
+  {
     version: "2.32.1",
     date: "2026-10-30",
     title: "Helping us make the game better",
