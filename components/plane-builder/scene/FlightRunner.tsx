@@ -10,6 +10,7 @@ import {
 } from "three";
 import type { LevelDef } from "@/lib/plane-builder/levels/types";
 import type { Tiers } from "@/lib/plane-builder/plane/catalog";
+import { trackFlightEnd, trackFlightQuit } from "@/lib/plane-builder/analytics";
 import { modsFor } from "@/lib/plane-builder/daily/daily";
 import { createGhostRecorder } from "@/lib/plane-builder/ghost/ghost";
 import { applyBonuses } from "@/lib/plane-builder/prestige";
@@ -118,6 +119,7 @@ export default function FlightRunner({
   const frames = useRef(0);
   const endTimer = useRef(0);
   const hasCompleted = useRef(false);
+  const hasQuit = useRef(false);
   const isPaused = useRef(false);
   const [holdSeconds] = useState(heldFlightSeconds);
   // The best before this flight: passing it pops "New best!" once.
@@ -144,6 +146,21 @@ export default function FlightRunner({
   }, []);
 
   useEffect(() => () => debrisMaterial.dispose(), [debrisMaterial]);
+
+  // Leaving mid-flight (back to the hangar, or the tab closing) is a quit.
+  useEffect(() => {
+    const reportQuit = () => {
+      if (hasQuit.current || hasCompleted.current) return;
+      if (run.state.phase === "done") return;
+      hasQuit.current = true;
+      trackFlightQuit(run.state, level);
+    };
+    window.addEventListener("pagehide", reportQuit);
+    return () => {
+      window.removeEventListener("pagehide", reportQuit);
+      reportQuit();
+    };
+  }, [run, level]);
 
   // The hum stops with the flight (including when the tab is left mid-flight).
   useEffect(() => () => planeSynth.setEngine(0), []);
@@ -226,6 +243,12 @@ export default function FlightRunner({
       endTimer.current += delta;
       if (endTimer.current >= END_HOLD) {
         hasCompleted.current = true;
+        trackFlightEnd(
+          state,
+          level,
+          tiers,
+          usePlaneBuilderStore.getState().daily !== null
+        );
         flightLive.notify();
         completeFlight(
           flightResult(state, level),

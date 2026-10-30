@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.32.1",
+    date: "2026-10-30",
+    title: "Helping us make the game better",
+    highlights: [
+      "The game now counts a few things anonymously, like which challenges are tricky and which ships are popular, so we can make Ship Builder more fun. It never records names, ship names or anything about you",
+    ],
+  },
+  {
     version: "2.32.0",
     date: "2026-10-30",
     title: "Big ships run much smoother",

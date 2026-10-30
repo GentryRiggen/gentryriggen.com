@@ -2,6 +2,7 @@
 
 import { RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { trackGame } from "@/lib/analytics/trackGame";
 import {
   challengeDef,
   type ChallengeId,
@@ -58,10 +59,11 @@ export default function ChallengeResult({
 
   useEffect(() => {
     if (!isScored) return;
+    trackGame("challenge_result", { id: challenge, stars: score.stars });
     if (recordChallengeBest(designKey, challenge, score.value)) {
       requestShipBoardSubmit();
     }
-  }, [designKey, challenge, score.value, isScored]);
+  }, [designKey, challenge, score.value, score.stars, isScored]);
 
   return (
     <section

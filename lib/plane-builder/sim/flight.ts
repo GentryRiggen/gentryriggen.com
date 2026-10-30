@@ -116,6 +116,8 @@ export interface FlightState {
   /** Sim time when `finished` first became true; null until then. */
   finishTime: number | null;
   endReason: EndReason | null;
+  /** The kind of obstacle that ended the flight; null for any other end. */
+  crashKind: ObstacleKind | null;
   grace: number;
   progressMark: number;
   progressTimer: number;
@@ -173,6 +175,7 @@ export function launch(
     finished: false,
     finishTime: null,
     endReason: null,
+    crashKind: null,
     grace: 0,
     progressMark: 0,
     progressTimer: 0,
@@ -224,6 +227,7 @@ function hardHit(
       : Math.max(s.y, ground + 2);
     events.push({ type: "shield" });
   } else {
+    s.crashKind = obstacle?.kind ?? null;
     end(s, "crash", events);
   }
 }

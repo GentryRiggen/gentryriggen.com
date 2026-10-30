@@ -2,6 +2,7 @@
 
 import { Share2 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { trackGame } from "@/lib/analytics/trackGame";
 import { buildShareUrl } from "@/lib/ship-builder/persist/share";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { buttonClass, inputClass, panelClass } from "./styles";
@@ -59,6 +60,7 @@ export default function ShareButton({ className = "" }: ShareButtonProps) {
       useShipBuilderStore.getState().setNotice(TOO_BIG_NOTICE);
       return;
     }
+    trackGame("ship_shared", {});
     setLink(url);
     setCopyStatus("pending");
     try {

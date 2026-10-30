@@ -21,7 +21,7 @@ export interface PageviewEnv {
   now?: Date;
 }
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+export const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 function bareHost(host: string): string {
   return host.replace(/^www\./, "");
