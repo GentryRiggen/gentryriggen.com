@@ -280,3 +280,81 @@ def quad_z(z, x0, x1, y0, y1, facing) -> Mesh:
     """A flat rectangle in the plane z, facing +Z (facing=1) or -Z."""
     verts = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
     return verts, [(0, 1, 2, 3)] if facing > 0 else [(0, 3, 2, 1)]
+
+
+# --- skinned rock and cloud ------------------------------------------------------
+
+
+def round_ring(cx, cz, hx, hz, n=10, squareness=3.5, turn=0.5):
+    """`n` (x, z) points round a rounded rectangle (a superellipse) of half
+    sizes hx, hz about (cx, cz). `turn` is the first angle in steps, so the
+    long faces hold points and the corners are rounded, not sharp."""
+    pts = []
+    for k in range(n):
+        a = 2 * math.pi * (k + turn) / n
+        c, s = math.cos(a), math.sin(a)
+        e = 2.0 / squareness
+        pts.append((cx + hx * math.copysign(abs(c) ** e, c),
+                    cz + hz * math.copysign(abs(s) ** e, s)))
+    return pts
+
+
+def skin(rings, cap_top=False, cap_bottom=False) -> Mesh:
+    """Skin a stack of rings, [(y, [(x, z), ...]), ...] bottom to top, all the
+    same point count, into quads facing outward. Optional fan caps close the
+    ends. Unlike `loft`, rings may differ freely in size and shape."""
+    n = len(rings[0][1])
+    verts = [(x, y, z) for y, pts in rings for x, z in pts]
+    faces = []
+    for r in range(len(rings) - 1):
+        lo = r * n
+        hi = lo + n
+        cx = sum(p[0] for p in rings[r][1]) / n
+        cz = sum(p[1] for p in rings[r][1]) / n
+        for i in range(n):
+            j = (i + 1) % n
+            quad = (lo + i, lo + j, hi + j, hi + i)
+            pts = [verts[k] for k in quad]
+            # Newell normal against the ring centre decides the winding.
+            nx = nz = 0.0
+            for p, q in zip(pts, pts[1:] + pts[:1]):
+                nx += (p[1] - q[1]) * (p[2] + q[2])
+                nz += (p[0] - q[0]) * (p[1] + q[1])
+            mx = sum(p[0] for p in pts) / 4 - cx
+            mz = sum(p[2] for p in pts) / 4 - cz
+            faces.append(quad if nx * mx + nz * mz >= 0 else quad[::-1])
+
+    def cap(ring_index, up):
+        pts = rings[ring_index][1]
+        y = rings[ring_index][0]
+        mid = len(verts)
+        verts.append((sum(p[0] for p in pts) / n, y, sum(p[1] for p in pts) / n))
+        base = ring_index * n
+        for i in range(n):
+            a, b = base + i, base + (i + 1) % n
+            ax, az = verts[a][0] - verts[mid][0], verts[a][2] - verts[mid][2]
+            bx, bz = verts[b][0] - verts[mid][0], verts[b][2] - verts[mid][2]
+            # Counter-clockwise seen from above faces up.
+            ccw = ax * bz - az * bx < 0
+            faces.append((mid, a, b) if ccw == up else (mid, b, a))
+
+    if cap_top:
+        cap(len(rings) - 1, True)
+    if cap_bottom:
+        cap(0, False)
+    return verts, faces
+
+
+def paint_gradient(obj, values_by_height) -> None:
+    """Write per-vertex brightness (the game multiplies a slot's paint by the
+    glb's COLOR_0, never below 0.75) as the `ao` attribute, and show it in the
+    Blender materials. `values_by_height(h)` takes a vertex's height in the unit
+    box (0 bottom, 1 top) and returns its brightness 0..1."""
+    from lib import ao
+
+    mesh = obj.data
+    layer = mesh.color_attributes.new(ao.ATTRIBUTE, "FLOAT_COLOR", "POINT")
+    for v, item in zip(mesh.vertices, layer.data):
+        value = values_by_height(v.co.z + 0.5)  # Blender Z is up
+        item.color = (value, value, value, 1.0)
+    ao._use_in_material(obj)

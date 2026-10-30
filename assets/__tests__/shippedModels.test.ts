@@ -22,7 +22,12 @@ interface Spec {
   game?: "plane";
   slots: string[];
   boundsTolerance: number;
-  ao?: { strength?: number; slots?: Record<string, number> };
+  ao?: {
+    strength?: number;
+    slots?: Record<string, number>;
+    /** The part script paints its own brightness gradient into COLOR_0. */
+    gradient?: boolean;
+  };
   variants: {
     name: string;
     expectedBounds: { min: number[]; max: number[] };
@@ -90,13 +95,16 @@ describe("shipped models", () => {
         expect(meshNames).toEqual(slots);
       });
 
-      it("carries baked AO (COLOR_0) on every slot not set to strength 0", () => {
+      it("carries baked AO (COLOR_0) on every slot not set to strength 0 (or painted)", () => {
         for (const mesh of gltf.meshes) {
           const strength =
             spec.ao?.slots?.[mesh.name ?? ""] ?? spec.ao?.strength ?? 0.7;
           for (const primitive of mesh.primitives) {
             const has = primitive.attributes.COLOR_0 !== undefined;
-            expect([mesh.name, has]).toEqual([mesh.name, strength > 0]);
+            expect([mesh.name, has]).toEqual([
+              mesh.name,
+              strength > 0 || Boolean(spec.ao?.gradient),
+            ]);
           }
         }
       });
