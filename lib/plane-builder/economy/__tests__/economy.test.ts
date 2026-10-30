@@ -30,6 +30,15 @@ describe("payout", () => {
     );
     expect(p.total).toBe(Math.round((1000 * meadow.payPerMeter + 20) * 2));
   });
+  it("adds near-miss coins before the multiplier", () => {
+    const base = flight({ distance: 1000, coins: 20, endReason: "crash" });
+    const skim = { ...base, nearMissCoins: 6, nearMisses: 3, bestCombo: 3 };
+    const plain = payout(meadow, base, 2, 1000);
+    const withSkim = payout(meadow, skim, 2, 1000);
+    expect(withSkim.nearMissPay).toBe(6);
+    expect(withSkim.total - plain.total).toBe(12);
+    expect(plain.nearMissPay).toBe(0);
+  });
   it("never pays less than the level minimum", () => {
     expect(payout(meadow, flight({ distance: 0, coins: 0 }), 1).total).toBe(
       meadow.minPayout

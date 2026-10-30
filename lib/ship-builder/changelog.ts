@@ -17,6 +17,37 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.35.0",
+    date: "2026-10-30",
+    title: "Smooth sailing and fairer stars",
+    highlights: [
+      "New challenge, Smooth sailing: steer your ship as far as you can without bumping a rock, an iceberg or another ship. Reach 100, 200 and 350 for the stars",
+      "Shipshape stars now really depend on how steady your ship is, so tall, narrow ships have to work harder for all 3",
+      "In Everyone off safely the iceberg's long tear now shows along the whole hull, even when the ship breaks in two",
+      "Your leaderboard stars catch up properly after you play offline or the internet blips",
+    ],
+  },
+  {
+    version: "2.34.0",
+    date: "2026-10-30",
+    title: "Photo mode and sharing",
+    highlights: [
+      "A new camera button opens photo mode: pick an angle, choose the time of day and the sea, and snap a picture of your ship with its name on it",
+      "Share the picture and a link to your ship with friends and family straight from your tablet or phone",
+      "When a friend opens your ship link they get a hello and can keep a copy, and if they had a ship of their own it is kept safe in My Ships first",
+    ],
+  },
+  {
+    version: "2.33.0",
+    date: "2026-10-30",
+    title: "Sounds and music",
+    highlights: [
+      "Your ship now has sounds: clicks as you build, a sea shanty while you work, engine and waves when you sail, a horn (press H), and creaks and rushing water if she sinks",
+      "Each challenge ends with its own little tune that gets happier the more stars you earn",
+      "Music and sound effects each have their own switch, in the new Sound button at the top",
+    ],
+  },
+  {
     version: "2.32.1",
     date: "2026-10-30",
     title: "Helping us make the game better",

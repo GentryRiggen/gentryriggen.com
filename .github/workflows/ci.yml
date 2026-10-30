@@ -139,7 +139,7 @@ jobs:
           # WebGL specs; --grep keeps ship-builder.spec.ts to just those three
           # (it matches the file name, and "ship-builder-" is the other specs).
           - name: WebGL builder + iceberg + time + breakup
-            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts
+            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
             args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene"
             workers: 1
             browsers: chromium
@@ -153,7 +153,7 @@ jobs:
           # software-rendering Chromium themselves), so it gets a one-worker job.
           # WebKit and the iPad run its @smoke tests (touch and pointer launch).
           - name: WebGL plane builder
-            files: e2e/plane-builder.spec.ts
+            files: e2e/plane-builder.spec.ts e2e/plane-builder-offline.spec.ts
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit

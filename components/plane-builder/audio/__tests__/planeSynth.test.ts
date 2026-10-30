@@ -90,6 +90,7 @@ const ALL_CUES: PlaneCue[] = [
   "shield",
   "crash",
   "land",
+  "nearMiss",
   "cheer",
   "buy",
 ];

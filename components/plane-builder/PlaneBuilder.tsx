@@ -7,8 +7,10 @@ import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
 import { useDailySync } from "@/lib/plane-builder/state/dailySync";
 import { useLeaderboardSync } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import PlaneMusic from "./audio/PlaneMusic";
 import { soundSetting } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
+import useServiceWorker from "./hooks/useServiceWorker";
 import GameStage from "./scene/GameStage";
 import { preloadObstacleModels } from "./scene/obstacleModels";
 import { preloadPropModels } from "./scene/propModels";
@@ -40,6 +42,7 @@ export default function PlaneBuilder() {
   useSoundUnlock(soundSetting.useValue());
   useLeaderboardSync();
   useDailySync();
+  useServiceWorker();
 
   useEffect(() => {
     // Fetch the Blender plane models up front so pieces rarely show stand-ins.
@@ -86,6 +89,7 @@ export default function PlaneBuilder() {
 
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${BACKGROUND}`}>
+      <PlaneMusic />
       <div className="absolute inset-0">
         <GameStage />
       </div>

@@ -2,6 +2,7 @@ import type {
   PowerState,
   SimEvent,
   SimPhase,
+  TrialOutcome,
 } from "@/lib/ship-builder/sim/types";
 
 /**
@@ -18,6 +19,8 @@ export interface PlaybackSnapshot {
   /** Playback rate (below 1 in slow-mo). */
   speed: number;
   scrubbing: boolean;
+  /** Sim time she began to sink; null (or absent) until then. */
+  sinkingAt?: number | null;
 }
 
 export type Cue =
@@ -27,7 +30,21 @@ export type Cue =
   | { kind: "power-out" }
   | { kind: "break" }
   | { kind: "gurgle" }
-  | { kind: "touchdown" };
+  | { kind: "touchdown" }
+  /** A low hull groan while she settles, before anything breaks. */
+  | { kind: "groan" }
+  /** A funnel snaps off and crashes down. */
+  | { kind: "funnel-crash" }
+  | { kind: "place" }
+  | { kind: "remove" }
+  | { kind: "paint" }
+  | { kind: "undo" }
+  | { kind: "redo" }
+  | { kind: "horn" }
+  | { kind: "bell" }
+  | { kind: "sting"; outcome: "survived" | "sank" }
+  /** A challenge was scored: 0 to 3 stars. */
+  | { kind: "challenge"; stars: number };
 
 /** Sounds that run for as long as they are true, not one-shot cues. */
 export interface AmbientParams {
@@ -44,6 +61,7 @@ const CREAK_SLOW_INTERVAL_S = 4.5;
 const CREAK_FAST_INTERVAL_S = 0.9;
 const FLICKER_INTERVAL_S = 0.22;
 const GURGLE_INTERVAL_S = 1.7;
+const GROAN_INTERVAL_S = 3.1;
 const UNDERWATER_MUFFLE = 0.85;
 const SLOW_MO_MUFFLE = 0.55;
 
@@ -95,6 +113,10 @@ export function cuesFor(prev: PlaybackSnapshot, next: PlaybackSnapshot): Cue[] {
     countOf(prev.events, "touched-bottom");
   for (let i = 0; i < newBottoms; i += 1) cues.push({ kind: "touchdown" });
 
+  const newFunnels =
+    countOf(next.events, "funnel-broke") - countOf(prev.events, "funnel-broke");
+  for (let i = 0; i < newFunnels; i += 1) cues.push({ kind: "funnel-crash" });
+
   const intensity = creakIntensity(next.strain);
   if (!hasBroken && intensity > 0) {
     const interval =
@@ -110,6 +132,17 @@ export function cuesFor(prev: PlaybackSnapshot, next: PlaybackSnapshot): Cue[] {
     crossedTick(prev.time, next.time, FLICKER_INTERVAL_S)
   ) {
     cues.push({ kind: "flicker" });
+  }
+
+  // While she settles but has not yet broken, the hull still groans.
+  const isSettling = next.phase === "sinking" || next.phase === "capsizing";
+  if (
+    isSettling &&
+    !hasBroken &&
+    intensity === 0 &&
+    crossedTick(prev.time, next.time, GROAN_INTERVAL_S)
+  ) {
+    cues.push({ kind: "groan" });
   }
 
   const isTakingWater =
@@ -137,4 +170,17 @@ export function muffleFor(cameraY: number, speed: number): number {
   const underwater = cameraY < 0 ? UNDERWATER_MUFFLE : 0;
   const slowness = clamp01((1 - speed) / 0.75);
   return Math.max(underwater, slowness * SLOW_MO_MUFFLE);
+}
+
+/** The result sting for how a trial ended. */
+export function stingFor(outcome: TrialOutcome | null): Cue | null {
+  if (outcome === null) return null;
+  const isLost = outcome === "sank" || outcome === "capsized";
+  return { kind: "sting", outcome: isLost ? "sank" : "survived" };
+}
+
+/** The sting for a scored challenge, with its stars kept to 0..3. */
+export function challengeStingFor(stars: number): Cue {
+  const whole = Number.isFinite(stars) ? Math.round(stars) : 0;
+  return { kind: "challenge", stars: Math.min(3, Math.max(0, whole)) };
 }

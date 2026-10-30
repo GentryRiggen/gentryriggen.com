@@ -2,6 +2,8 @@
 
 import { Volume2, VolumeX } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import ChannelToggles from "../../game-audio/ChannelToggles";
+import { planeChannels } from "../audio/channelSettings";
 import { isAudioSupported, planeSynth } from "../audio/planeSynth";
 import { soundSetting, useSoundEnabled } from "../audio/soundSetting";
 import { primaryButtonClass, secondaryButtonClass } from "./styles";
@@ -36,15 +38,23 @@ export default function SoundToggle() {
 
   const Icon = isOn ? Volume2 : VolumeX;
   return (
-    <button
-      type="button"
-      aria-pressed={isOn}
-      aria-label="Sound"
-      title={isOn ? "Sound on" : "Sound off"}
-      onClick={handleClick}
-      className={`min-w-11 px-3 ${isOn ? primaryButtonClass : secondaryButtonClass}`}
-    >
-      <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
-    </button>
+    <>
+      <button
+        type="button"
+        aria-pressed={isOn}
+        aria-label="Sound"
+        title={isOn ? "Sound on" : "Sound off"}
+        onClick={handleClick}
+        className={`min-w-11 px-3 ${isOn ? primaryButtonClass : secondaryButtonClass}`}
+      >
+        <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+      </button>
+      <ChannelToggles
+        settings={planeChannels}
+        isSoundOn={isOn}
+        buttonClass={secondaryButtonClass}
+        pressedButtonClass={primaryButtonClass}
+      />
+    </>
   );
 }
