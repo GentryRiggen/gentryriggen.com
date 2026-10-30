@@ -13,6 +13,7 @@ const CUE_FOR_EVENT: Partial<Record<FlightEvent["type"], PlaneCue>> = {
   crash: "crash",
   landed: "land",
   fuel: "fuel",
+  nearMiss: "nearMiss",
   milestone: "flag",
 };
 

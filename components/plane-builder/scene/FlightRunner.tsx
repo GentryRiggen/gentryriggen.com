@@ -29,6 +29,11 @@ import {
 } from "@/lib/plane-builder/state/cameraShake";
 import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
+import {
+  KICK_SECONDS,
+  nearMissKick,
+  nearMissPop,
+} from "@/lib/plane-builder/state/nearMissPop";
 import { flightToasts } from "@/lib/plane-builder/state/flightToasts";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { heldFlightSeconds } from "@/lib/plane-builder/testHooks";
@@ -181,6 +186,10 @@ export default function FlightRunner({
       for (const event of events) {
         if (event.type === "bump" || event.type === "shield") {
           cameraShake.remaining = SHAKE_SECONDS;
+        }
+        if (event.type === "nearMiss") {
+          nearMissPop.push(event.multiplier, event.coins);
+          nearMissKick.remaining = KICK_SECONDS;
         }
         if (event.type === "crash") {
           debrisAge.current = 0;

@@ -11,6 +11,7 @@ import {
   CEILING_DIVE,
   CEILING_FADE,
   COIN_RADIUS,
+  COMBO_WINDOW,
   CORRIDOR_PUSH,
   CORRIDOR_TURN,
   FUEL_CAN_RADIUS,
@@ -24,6 +25,7 @@ import {
   MAX_AIM_PITCH,
   MAX_AIM_YAW,
   MAX_BANK,
+  MAX_COMBO_MULTIPLIER,
   MAX_FLIGHT_TIME,
   MAX_HEADING,
   MAX_PITCH,
@@ -31,6 +33,9 @@ import {
   MILESTONES,
   MIN_PITCH,
   MIN_SPEED,
+  NEAR_MISS_COIN_CAP,
+  NEAR_MISS_COINS,
+  NEAR_MISS_MARGIN,
   PITCH_GAIN,
   PLANE_RADIUS,
   RING_BOOST,
@@ -88,6 +93,7 @@ export type FlightEvent =
   | { type: "milestone"; share: number }
   | { type: "bump"; kind: ObstacleKind }
   | { type: "shield" }
+  | { type: "nearMiss"; combo: number; multiplier: number; coins: number }
   | { type: "crash" }
   | { type: "landed" }
   | { type: "finish" }
@@ -107,6 +113,16 @@ export interface FlightState {
   shields: number;
   coins: number;
   rings: number;
+  /** Near misses this flight. */
+  nearMisses: number;
+  /** Coins earned from near misses (kept apart from `coins`). */
+  nearMissCoins: number;
+  /** Near misses in the running combo; 0 when there is none. */
+  combo: number;
+  /** Most near misses in one combo this flight. */
+  bestCombo: number;
+  /** Sim time of the latest near miss; the combo lapses COMBO_WINDOW later. */
+  lastNearMiss: number;
   maxX: number;
   /** Milestones crossed this flight, 0..MILESTONES.length. */
   milestonesHit: number;
@@ -125,6 +141,11 @@ export interface FlightState {
   ringTaken: Uint8Array;
   canTaken: Uint8Array;
   softHit: Uint8Array;
+  /**
+   * Per obstacle: the smallest clear gap (m) to its box while the plane was
+   * alongside it, Infinity before that, or -1 once it was hit (no near miss).
+   */
+  closest: Float32Array;
 }
 
 export interface FlightResult {
@@ -132,6 +153,10 @@ export interface FlightResult {
   distance: number;
   coins: number;
   rings: number;
+  /** Near-miss figures; absent in results saved or built before they existed. */
+  nearMisses?: number;
+  nearMissCoins?: number;
+  bestCombo?: number;
   finished: boolean;
   /** Sim seconds from launch to crossing the finish; null if never reached. */
   finishTime: number | null;
@@ -168,6 +193,11 @@ export function launch(
     shields: stats.shields,
     coins: 0,
     rings: 0,
+    nearMisses: 0,
+    nearMissCoins: 0,
+    combo: 0,
+    bestCombo: 0,
+    lastNearMiss: 0,
     maxX: 0,
     milestonesHit: 0,
     launchPitch: pitch,
@@ -183,6 +213,7 @@ export function launch(
     ringTaken: new Uint8Array(level.rings.length),
     canTaken: new Uint8Array(level.fuelCans.length),
     softHit: new Uint8Array(level.obstacles.length),
+    closest: new Float32Array(level.obstacles.length).fill(Infinity),
   };
 }
 
@@ -211,6 +242,7 @@ function hardHit(
   obstacle?: Obstacle
 ) {
   if (s.grace > 0) return;
+  s.combo = 0;
   if (s.shields > 0) {
     s.shields -= 1;
     s.grace = SHIELD_GRACE;
@@ -289,6 +321,8 @@ function collideObstacles(
     if (Math.abs(s.x - o.center.x) > o.half.x + PLANE_RADIUS) continue;
     if (Math.abs(s.z - o.center.z) > o.half.z + PLANE_RADIUS) continue;
     if (Math.abs(s.y - o.center.y) > o.half.y + PLANE_RADIUS) continue;
+    s.closest[i] = -1;
+    s.combo = 0;
     if (o.hard) {
       hardHit(s, events, ground, o);
     } else if (!s.softHit[i]) {
@@ -296,6 +330,56 @@ function collideObstacles(
       s.speed = Math.max(MIN_SPEED, s.speed * SOFT_SLOW);
       events.push({ type: "bump", kind: o.kind });
     }
+  }
+}
+
+/** The combo multiplier for the nth near miss in a row. */
+export function comboMultiplier(combo: number): number {
+  return Math.min(MAX_COMBO_MULTIPLIER, Math.max(1, combo));
+}
+
+/**
+ * Near misses. While the plane is alongside a hard obstacle (inside its
+ * collision box's x range) the smallest clear gap to the box is kept. When it
+ * flies past without ever touching it, a gap under NEAR_MISS_MARGIN is a near
+ * miss. Each obstacle counts once; one that was hit never counts.
+ */
+function trackNearMisses(
+  s: FlightState,
+  level: LevelDef,
+  events: FlightEvent[]
+) {
+  if (s.combo > 0 && s.time - s.lastNearMiss > COMBO_WINDOW) s.combo = 0;
+  for (let i = 0; i < level.obstacles.length; i += 1) {
+    const o = level.obstacles[i];
+    if (!o.hard || s.closest[i] < 0) continue;
+    const reach = o.half.x + PLANE_RADIUS;
+    const dx = s.x - o.center.x;
+    if (dx < -reach) continue;
+    if (dx <= reach) {
+      const gap = Math.max(
+        Math.abs(s.z - o.center.z) - (o.half.z + PLANE_RADIUS),
+        Math.abs(s.y - o.center.y) - (o.half.y + PLANE_RADIUS)
+      );
+      if (gap < s.closest[i]) s.closest[i] = gap;
+      continue;
+    }
+    // Past the obstacle: settle it once.
+    const gap = s.closest[i];
+    s.closest[i] = -1;
+    if (gap > NEAR_MISS_MARGIN) continue;
+    const isChained = s.combo > 0 && s.time - s.lastNearMiss <= COMBO_WINDOW;
+    s.combo = isChained ? s.combo + 1 : 1;
+    s.lastNearMiss = s.time;
+    s.bestCombo = Math.max(s.bestCombo, s.combo);
+    s.nearMisses += 1;
+    const multiplier = comboMultiplier(s.combo);
+    const coins = Math.min(
+      NEAR_MISS_COINS * multiplier,
+      NEAR_MISS_COIN_CAP - s.nearMissCoins
+    );
+    s.nearMissCoins += coins;
+    events.push({ type: "nearMiss", combo: s.combo, multiplier, coins });
   }
 }
 
@@ -432,6 +516,7 @@ export function step(
   const ground = terrainHeight(level.terrain, s.x, s.z);
   collideObstacles(s, level, events, ground);
   if (isDone(s)) return events;
+  trackNearMisses(s, level, events);
 
   // Ground.
   if (s.y <= ground) {
@@ -457,6 +542,9 @@ export function flightResult(s: FlightState, level: LevelDef): FlightResult {
     distance: Math.max(0, Math.min(s.maxX, level.finishDistance)),
     coins: s.coins,
     rings: s.rings,
+    nearMisses: s.nearMisses,
+    nearMissCoins: s.nearMissCoins,
+    bestCombo: s.bestCombo,
     finished: s.finished,
     finishTime: s.finishTime,
     endReason: s.endReason ?? "timeout",

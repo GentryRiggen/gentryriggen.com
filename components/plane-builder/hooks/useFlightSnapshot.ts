@@ -14,6 +14,10 @@ export interface FlightSnapshot {
   fuel: number;
   shields: number;
   coins: number;
+  /** Coins from near misses so far. */
+  nearMissCoins: number;
+  /** Near misses in the running combo. */
+  combo: number;
   finished: boolean;
   /** Boost held (Shift, Space or the button), whether or not it has fuel. */
   boost: boolean;
@@ -32,6 +36,8 @@ function read(): FlightSnapshot | null {
     fuel: s.fuel,
     shields: s.shields,
     coins: s.coins,
+    nearMissCoins: s.nearMissCoins,
+    combo: s.combo,
     finished: s.finished,
     boost: flightInput.boost,
   };
