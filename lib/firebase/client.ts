@@ -16,11 +16,33 @@ export const MAX_DOCS = FIRESTORE_MAX_LIMIT;
 
 let appPromise: Promise<FirebaseApp> | null = null;
 
+/**
+ * App Check for the SDK path (production only: localhost has no reCAPTCHA
+ * domain). Failure must never block /admin, so errors are swallowed.
+ */
+async function initAppCheck(app: FirebaseApp): Promise<void> {
+  const siteKey = firebaseConfig.recaptchaSiteKey;
+  if (!siteKey || process.env.NODE_ENV !== "production") return;
+  try {
+    const { initializeAppCheck, ReCaptchaEnterpriseProvider } =
+      await import("firebase/app-check");
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch {
+    // Fail open: the admin dashboard works without App Check.
+  }
+}
+
 function getApp(): Promise<FirebaseApp> {
-  appPromise ??= import("firebase/app").then(
-    ({ getApps, initializeApp }) =>
-      getApps()[0] ?? initializeApp(firebaseConfig)
-  );
+  appPromise ??= import("firebase/app").then(async (appMod) => {
+    const existing = appMod.getApps()[0];
+    if (existing) return existing;
+    const app = appMod.initializeApp(firebaseConfig);
+    await initAppCheck(app);
+    return app;
+  });
   return appPromise;
 }
 

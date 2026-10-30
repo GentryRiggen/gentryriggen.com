@@ -1,3 +1,4 @@
+import { appCheckHeaders, type AppCheckAction } from "@/lib/firebase/appCheck";
 import {
   firebaseConfig,
   isFirebaseConfigured,
@@ -71,6 +72,12 @@ interface SendOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   docId?: string;
+  /** Page-hide flushes pass true: use a cached token, never wait for one. */
+  cachedAppCheckOnly?: boolean;
+  getAppCheckHeaders?: (
+    action: AppCheckAction,
+    cachedOnly: boolean
+  ) => Promise<Record<string, string>>;
 }
 
 /**
@@ -84,13 +91,19 @@ export async function sendGameEvent(
     baseUrl,
     fetchImpl = fetch,
     docId = newDocId(),
+    cachedAppCheckOnly = false,
+    getAppCheckHeaders = (action, cachedOnly) =>
+      appCheckHeaders(action, { cachedOnly }),
   }: SendOptions = {}
 ): Promise<boolean> {
   if (!isFirebaseConfigured(config)) return false;
   try {
     const response = await fetchImpl(commitUrl(config, baseUrl), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(await getAppCheckHeaders("game_event", cachedAppCheckOnly)),
+      },
       body: JSON.stringify(buildGameCommitBody(config.projectId, docId, event)),
       keepalive: true,
     });

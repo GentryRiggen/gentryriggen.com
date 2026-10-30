@@ -286,3 +286,44 @@ describe("fetchBoard", () => {
     ).toBeNull();
   });
 });
+
+describe("App Check headers", () => {
+  const getSession = async () => ({ uid: "u1", idToken: "tok" });
+  const getAppCheckHeaders = async () => ({ "X-Firebase-AppCheck": "AC" });
+
+  it("rides on writes and on board reads when there is a token", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [] });
+    await submitEntry(entry, {
+      config,
+      fetchImpl,
+      getSession,
+      getAppCheckHeaders,
+    });
+    await fetchBoard("prestige", { config, fetchImpl, getAppCheckHeaders });
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");
+    }
+  });
+
+  it("is absent when there is no token", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [] });
+    await submitEntry(entry, {
+      config,
+      fetchImpl,
+      getSession,
+      getAppCheckHeaders: async () => ({}),
+    });
+    await fetchBoard("prestige", {
+      config,
+      fetchImpl,
+      getAppCheckHeaders: async () => ({}),
+    });
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1].headers).not.toHaveProperty("X-Firebase-AppCheck");
+    }
+  });
+});

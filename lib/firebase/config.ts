@@ -5,6 +5,8 @@ export interface FirebaseWebConfig {
   appId: string;
   storageBucket?: string;
   messagingSenderId?: string;
+  /** reCAPTCHA Enterprise site key for App Check (public by design). */
+  recaptchaSiteKey?: string;
 }
 
 /**
@@ -19,6 +21,7 @@ export const firebaseConfig: FirebaseWebConfig = {
   storageBucket: "gentryriggen.firebasestorage.app",
   messagingSenderId: "997603129413",
   appId: "1:997603129413:web:ba574fd8efcdf6d934cb2c",
+  recaptchaSiteKey: "6LfTyQguAAAAAK1zNNGMj6lUpSDH-IL6rUz-y79w",
 };
 
 export function isFirebaseConfigured(
