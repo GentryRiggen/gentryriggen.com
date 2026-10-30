@@ -72,8 +72,9 @@ export default function FlightRewardModal({
   const [isBoardOpen, setIsBoardOpen] = useState(false);
 
   const { bonus, result, payout } = flight;
+  const isDaily = usePlaneBuilderStore((s) => s.daily !== null);
   const { uid, standing } = useLeaderboardStanding(
-    leaderboardsEnabled && result.finished,
+    leaderboardsEnabled && result.finished && !isDaily,
     result.finished ? levelId : null
   );
   const hasBonus = bonus !== null;

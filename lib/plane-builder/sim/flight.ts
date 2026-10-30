@@ -67,6 +67,18 @@ export interface StickInput {
   boost: boolean;
 }
 
+/**
+ * Changes to the rules of one flight (the daily challenge's twist). Neither
+ * can push the plane past MAX_SPEED, so a finish time is never faster than the
+ * physical minimum that the leaderboard rules check.
+ */
+export interface FlightMods {
+  /** Extra acceleration along the path, m/s² (negative for a headwind). */
+  accel?: number;
+  /** Boost does nothing. */
+  noBoost?: boolean;
+}
+
 export type EndReason = "landed" | "crash" | "stalled" | "runout" | "timeout";
 
 export type FlightEvent =
@@ -288,7 +300,8 @@ export function step(
   s: FlightState,
   level: LevelDef,
   stats: PlaneStats,
-  input: StickInput
+  input: StickInput,
+  mods: FlightMods = {}
 ): FlightEvent[] {
   const events: FlightEvent[] = [];
   if (s.phase === "done") return events;
@@ -353,10 +366,12 @@ export function step(
 
   // Speed: drag, gravity along the path, and thrust while there's fuel.
   const drag = stats.drag * (isDiving ? SWOOP_DRAG : 1);
-  let accel = -drag * s.speed * s.speed - G * Math.sin(s.pitch);
+  let accel =
+    -drag * s.speed * s.speed - G * Math.sin(s.pitch) + (mods.accel ?? 0);
   if (s.fuel > 0 && stats.thrust > 0) {
-    accel += stats.thrust * (input.boost ? BOOST_THRUST : 1);
-    s.fuel = Math.max(0, s.fuel - dt * (input.boost ? BOOST_BURN : 1));
+    const isBoosting = input.boost && !mods.noBoost;
+    accel += stats.thrust * (isBoosting ? BOOST_THRUST : 1);
+    s.fuel = Math.max(0, s.fuel - dt * (isBoosting ? BOOST_BURN : 1));
   }
   s.speed = clamp(s.speed + accel * dt, MIN_SPEED, MAX_SPEED);
 

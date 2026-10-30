@@ -5,6 +5,7 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { TRACK_IDS } from "@/lib/plane-builder/plane/catalog";
 import BonusSummary from "./BonusSummary";
+import DailyBanner from "./DailyBanner";
 import { formatCoins } from "./format";
 import LastFlight from "./LastFlight";
 import {
@@ -13,6 +14,7 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from "./styles";
+import GhostToggle from "./GhostToggle";
 import SoundToggle from "./SoundToggle";
 import UpgradeTrack from "./UpgradeTrack";
 
@@ -74,6 +76,7 @@ export default function Hangar() {
                   ) : null}
                 </>
               ) : null}
+              <GhostToggle />
               <SoundToggle />
             </div>
           </div>
@@ -89,6 +92,7 @@ export default function Hangar() {
           </div>
         </header>
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-1 md:px-4 short:gap-1.5 short:px-2">
+          <DailyBanner />
           {lastFlight ? (
             <LastFlight levelId={levelId} flight={lastFlight} />
           ) : null}

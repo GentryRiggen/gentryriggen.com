@@ -31,6 +31,18 @@ describe("randomNickname", () => {
     }
   });
 
+  it("never generates 69 or 88, but still accepts them", () => {
+    const numbers = new Set<number>();
+    for (let i = 0; i < 1000; i++) {
+      numbers.add(Number(randomNickname(() => i / 1000).split(" ")[2]));
+    }
+    expect(numbers.has(69)).toBe(false);
+    expect(numbers.has(88)).toBe(false);
+    expect(numbers.size).toBe(97);
+    expect(isValidNickname("Happy Otter 69")).toBe(true);
+    expect(isValidNickname("Happy Otter 88")).toBe(true);
+  });
+
   it("clamps a misbehaving rng of exactly 1", () => {
     expect(isValidNickname(randomNickname(() => 1))).toBe(true);
   });

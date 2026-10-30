@@ -25,6 +25,9 @@ import {
 import { buildCommitBody, commitUrl, sendPageview } from "@/lib/analytics/send";
 import type { PageviewEvent } from "@/lib/analytics/types";
 import { fetchBoard, runQueryUrl, submitEntry } from "@/lib/leaderboard/client";
+import { fetchDailyBoard, submitDaily } from "@/lib/leaderboard/daily";
+import { dailyFor } from "@/lib/plane-builder/daily/daily";
+import { fetchShipBoard, submitShipEntry } from "@/lib/leaderboard/shipBoard";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { scoreFor } from "@/lib/leaderboard/types";
 
@@ -987,6 +990,683 @@ describe("leaderboard", () => {
       ]);
       const meadow = await fetchBoard({ world: "meadow" }, { config, baseUrl });
       expect(meadow).toHaveLength(2);
+    });
+  });
+});
+
+describe("plane daily challenge", () => {
+  const UID = "daily-player";
+  const player = (uid = UID, provider: Provider | null = "anonymous") =>
+    signedIn(uid, { provider });
+  const dayKey = (offsetDays = 0) =>
+    new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+  const entryDoc = (db: ReturnType<typeof anon>, date = dayKey(), uid = UID) =>
+    doc(db, `planeDaily/${date}/entries/${uid}`);
+  const minimum = (world: string) =>
+    Math.floor(LEVELS[world as keyof typeof LEVELS].finishDistance / 120);
+
+  /** The day's world, from the same plan the rules hold. */
+  const worldOn = (date: string) => dailyFor(date).world;
+  const otherWorld = (date: string) =>
+    LEVEL_ORDER.find((id) => id !== worldOn(date))!;
+  const entry = (patch: Record<string, unknown> = {}, date = dayKey()) => ({
+    nickname: "Happy Otter 7",
+    world: worldOn(date),
+    time: 80.25,
+    updatedAt: serverTimestamp(),
+    ...patch,
+  });
+  /** Yesterday's board is only open in the first 15 minutes of the UTC day. */
+  const isYesterdayOpen = () => Date.now() % 86_400_000 < 900_000;
+
+  async function seedEntry(
+    patch: Record<string, unknown> = {},
+    agoMs = 60_000,
+    date = dayKey()
+  ) {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(entryDoc(ctx.firestore(), date), {
+        nickname: "Happy Otter 7",
+        world: worldOn(date),
+        time: 80.25,
+        ...patch,
+        updatedAt: new Date(Date.now() - agoMs),
+      });
+    });
+  }
+
+  describe("create", () => {
+    it("allows a valid entry for today", async () => {
+      await assertSucceeds(setDoc(entryDoc(player()), entry()));
+    });
+
+    it("opens yesterday's board only in the first 15 minutes of the day", async () => {
+      const write = setDoc(
+        entryDoc(player(), dayKey(-1)),
+        entry({}, dayKey(-1))
+      );
+      if (isYesterdayOpen()) await assertSucceeds(write);
+      else await assertFails(write);
+    });
+
+    it.each([
+      ["tomorrow", 1],
+      ["two days ago", -2],
+      ["a week ago", -7],
+    ])("rejects %s", async (_label, offset) => {
+      await assertFails(
+        setDoc(entryDoc(player(), dayKey(offset)), entry({}, dayKey(offset)))
+      );
+    });
+
+    it("rejects a date that is not a plain day string", async () => {
+      await assertFails(setDoc(entryDoc(player(), `${dayKey()}x`), entry()));
+    });
+
+    it("rejects someone else's uid, signed-out and non-anonymous callers", async () => {
+      await assertFails(setDoc(entryDoc(player("other")), entry()));
+      await assertFails(setDoc(entryDoc(anon()), entry()));
+      await assertFails(setDoc(entryDoc(player(UID, "password")), entry()));
+      await assertFails(setDoc(entryDoc(player(UID, null)), entry()));
+    });
+
+    it("accepts the day's world at its exact minimum and rejects one below", async () => {
+      const world = worldOn(dayKey());
+      await assertFails(
+        setDoc(entryDoc(player()), entry({ time: minimum(world) - 0.01 }))
+      );
+      await assertSucceeds(
+        setDoc(entryDoc(player()), entry({ time: minimum(world) }))
+      );
+    });
+
+    it("rejects any world but the day's, even an easier one", async () => {
+      for (const world of LEVEL_ORDER) {
+        if (world === worldOn(dayKey())) continue;
+        await assertFails(
+          setDoc(entryDoc(player()), entry({ world, time: 600 }))
+        );
+      }
+    });
+
+    it("pins the world by the path date, not by what the client says", async () => {
+      const yesterday = worldOn(dayKey(-1));
+      if (isYesterdayOpen() && yesterday !== worldOn(dayKey())) {
+        await assertFails(
+          setDoc(
+            entryDoc(player(), dayKey(-1)),
+            entry({ world: worldOn(dayKey()) }, dayKey(-1))
+          )
+        );
+      }
+      if (yesterday !== worldOn(dayKey())) {
+        await assertFails(
+          setDoc(entryDoc(player()), entry({ world: yesterday }))
+        );
+      }
+    });
+
+    it("rejects a time over 600, zero, negative or not a number", async () => {
+      for (const time of [600.5, 0, -3, "50", null]) {
+        await assertFails(setDoc(entryDoc(player()), entry({ time })));
+      }
+      await assertSucceeds(setDoc(entryDoc(player()), entry({ time: 600 })));
+    });
+
+    it("rejects an unknown world", async () => {
+      for (const world of ["moon", "", 3, null]) {
+        await assertFails(setDoc(entryDoc(player()), entry({ world })));
+      }
+    });
+
+    it("rejects a made-up nickname", async () => {
+      for (const nickname of ["Bob", "Happy Otter", "Happy Otter 100", 5]) {
+        await assertFails(setDoc(entryDoc(player()), entry({ nickname })));
+      }
+    });
+
+    it("rejects extra and missing fields", async () => {
+      await assertFails(setDoc(entryDoc(player()), entry({ admin: true })));
+      const noWorld: Record<string, unknown> = entry();
+      delete noWorld.world;
+      await assertFails(setDoc(entryDoc(player()), noWorld));
+      const noNickname: Record<string, unknown> = entry();
+      delete noNickname.nickname;
+      await assertFails(setDoc(entryDoc(player()), noNickname));
+    });
+
+    it("rejects a forged updatedAt", async () => {
+      await assertFails(
+        setDoc(entryDoc(player()), entry({ updatedAt: new Date(0) }))
+      );
+    });
+
+    it("rejects a banned player", async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), `leaderboardBans/${UID}`), {
+          reason: "cheating",
+        });
+      });
+      await assertFails(setDoc(entryDoc(player()), entry()));
+    });
+
+    it("rejects writes elsewhere under planeDaily", async () => {
+      await assertFails(
+        setDoc(doc(player(), `planeDaily/${dayKey()}`), entry())
+      );
+      await assertFails(
+        setDoc(doc(player(), `planeDaily/${dayKey()}/other/${UID}`), entry())
+      );
+      await assertFails(
+        setDoc(
+          doc(player(), `planeDaily/${dayKey()}/entries/${UID}/deep/x`),
+          entry()
+        )
+      );
+    });
+  });
+
+  describe("update", () => {
+    it("allows a faster time after 10 s", async () => {
+      await seedEntry({ time: 90 }, 15_000);
+      await assertSucceeds(setDoc(entryDoc(player()), entry({ time: 79.5 })));
+    });
+
+    it("rejects a slower time", async () => {
+      await seedEntry({ time: 90 }, 15_000);
+      await assertFails(setDoc(entryDoc(player()), entry({ time: 90.5 })));
+    });
+
+    it("rejects an update less than 10 s after the last write", async () => {
+      await seedEntry({ time: 90 }, 2_000);
+      await assertFails(setDoc(entryDoc(player()), entry({ time: 79 })));
+    });
+
+    it("rejects updating someone else's entry", async () => {
+      await seedEntry({ time: 90 }, 15_000);
+      await assertFails(
+        setDoc(entryDoc(player("other"), dayKey(), UID), entry({ time: 79 }))
+      );
+    });
+
+    it("rejects changing a board that is more than a day old", async () => {
+      await seedEntry({ time: 90 }, 15_000, dayKey(-3));
+      await assertFails(
+        setDoc(entryDoc(player(), dayKey(-3)), entry({ time: 79 }, dayKey(-3)))
+      );
+    });
+
+    it("rejects switching the world on an update", async () => {
+      await seedEntry({ time: 90 }, 15_000);
+      await assertFails(
+        setDoc(
+          entryDoc(player()),
+          entry({ world: otherWorld(dayKey()), time: 79 })
+        )
+      );
+    });
+  });
+
+  describe("read and delete", () => {
+    beforeEach(() => seedEntry());
+    const board = (db: ReturnType<typeof anon>, date = dayKey()) =>
+      collection(db, `planeDaily/${date}/entries`);
+
+    it("lets anyone read an entry and the top of a board", async () => {
+      await assertSucceeds(getDoc(entryDoc(anon())));
+      await assertSucceeds(
+        getDocs(query(board(anon()), orderBy("time"), limit(20)))
+      );
+    });
+
+    it("rejects an unlimited or over-limit board query", async () => {
+      await assertFails(getDocs(query(board(anon()), orderBy("time"))));
+      await assertFails(
+        getDocs(query(board(anon()), orderBy("time"), limit(51)))
+      );
+    });
+
+    it("rejects collection-group reads of entries", async () => {
+      await assertFails(
+        getDocs(query(collectionGroup(anon(), "entries"), limit(10)))
+      );
+    });
+
+    it("lets only the admin delete", async () => {
+      await assertFails(deleteDoc(entryDoc(player())));
+      await assertFails(deleteDoc(entryDoc(anon())));
+      await assertSucceeds(deleteDoc(entryDoc(admin())));
+    });
+  });
+
+  describe("REST client", () => {
+    const unsignedToken = (uid: string) => {
+      const part = (o: object) =>
+        Buffer.from(JSON.stringify(o)).toString("base64url");
+      return `${part({ alg: "none", typ: "JWT" })}.${part({
+        user_id: uid,
+        sub: uid,
+        aud: PROJECT_ID,
+        firebase: { sign_in_provider: "anonymous", identities: {} },
+      })}.`;
+    };
+    const deps = (uid: string) => ({
+      config,
+      baseUrl,
+      getSession: async () => ({ uid, idToken: unsignedToken(uid) }),
+    });
+
+    it("submits with the exact body the game sends and reads it back", async () => {
+      const day = dayKey();
+      expect(
+        await submitDaily(
+          day,
+          { nickname: "Happy Otter 7", world: worldOn(day), time: 79.4 },
+          deps(UID)
+        )
+      ).toBe(true);
+      expect(
+        await submitDaily(
+          day,
+          { nickname: "Brave Fox 3", world: worldOn(day), time: 77 },
+          deps("p2")
+        )
+      ).toBe(true);
+      expect(await fetchDailyBoard(day, { config, baseUrl })).toEqual([
+        { uid: "p2", nickname: "Brave Fox 3", value: 77 },
+        { uid: UID, nickname: "Happy Otter 7", value: 79.4 },
+      ]);
+    });
+
+    it("is refused for a forged time and for an old day", async () => {
+      expect(
+        await submitDaily(
+          dayKey(),
+          { nickname: "Happy Otter 7", world: worldOn(dayKey()), time: 1 },
+          deps(UID)
+        )
+      ).toBe(false);
+      expect(
+        await submitDaily(
+          dayKey(-5),
+          { nickname: "Happy Otter 7", world: worldOn(dayKey(-5)), time: 90 },
+          deps(UID)
+        )
+      ).toBe(false);
+    });
+  });
+});
+
+describe("shipLeaderboard", () => {
+  const UID = "sailor-1";
+  const player = (uid = UID, provider: Provider | null = "anonymous") =>
+    signedIn(uid, { provider });
+  const shipDoc = (db: ReturnType<typeof anon>, uid = UID) =>
+    doc(db, `shipLeaderboard/${uid}`);
+
+  const baseEntry = {
+    nickname: "Happy Otter 7",
+    totalStars: 3,
+    bests: { outlast: 170, evacuation: 50 } as Record<string, unknown>,
+  };
+  const entry = (patch: Record<string, unknown> = {}) => ({
+    ...baseEntry,
+    updatedAt: serverTimestamp(),
+    ...patch,
+  });
+
+  /** Seeds the player's doc as written `agoMs` milliseconds ago. */
+  async function seedPlayer(
+    patch: Record<string, unknown> = {},
+    agoMs = 60_000
+  ) {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(shipDoc(ctx.firestore()), {
+        ...baseEntry,
+        ...patch,
+        updatedAt: new Date(Date.now() - agoMs),
+      });
+    });
+  }
+
+  describe("create", () => {
+    it("allows the owner (anonymous provider) to create a valid entry", async () => {
+      await assertSucceeds(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("allows every best at its limit", async () => {
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({
+            totalStars: 9,
+            bests: { outlast: 1440, evacuation: 100, shipshape: 3 },
+          })
+        )
+      );
+    });
+
+    it("rejects stars with no best to explain them", async () => {
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ totalStars: 0, bests: {} }))
+      );
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ totalStars: 1, bests: {} }))
+      );
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 1, bests: { outlast: 60 } })
+        )
+      );
+    });
+
+    it("rejects someone else's uid, a signed-out user, and other providers", async () => {
+      await assertFails(setDoc(shipDoc(player("other"), UID), entry()));
+      await assertFails(setDoc(shipDoc(anon()), entry()));
+      await assertFails(setDoc(shipDoc(player(UID, "password")), entry()));
+      await assertFails(setDoc(shipDoc(player(UID, "google.com")), entry()));
+      await assertFails(setDoc(shipDoc(player(UID, null)), entry()));
+    });
+
+    const reject: [string, Record<string, unknown>][] = [
+      ["an extra field", { extra: "x" }],
+      ["a client-supplied updatedAt", { updatedAt: new Date() }],
+      ["a free-text nickname", { nickname: "Evil Hacker 1" }],
+      ["an html nickname", { nickname: "<b>Happy</b> Otter 7" }],
+      ["a nickname number of 0", { nickname: "Happy Otter 0" }],
+      ["a nickname number of 100", { nickname: "Happy Otter 100" }],
+      ["a very long nickname", { nickname: `Happy Otter ${"7".repeat(60)}` }],
+      ["a non-string nickname", { nickname: 7 }],
+      ["a float total", { totalStars: 3.5 }],
+      ["a string total", { totalStars: "3" }],
+      ["a negative total", { totalStars: -1 }],
+      ["a zero total", { totalStars: 0, bests: {} }],
+      ["a total above 60 on first write", { totalStars: 61 }],
+      ["bests that is not a map", { bests: [170] }],
+      ["an unknown challenge in bests", { bests: { outlast: 170, cheat: 1 } }],
+      ["a float outlast", { bests: { outlast: 170.5 } }],
+      ["an outlast above a day", { bests: { outlast: 1441 }, totalStars: 9 }],
+      ["a negative outlast", { bests: { outlast: -1 } }],
+      [
+        "an evacuation above 100",
+        { bests: { evacuation: 101 }, totalStars: 9 },
+      ],
+      ["a shipshape above 3", { bests: { shipshape: 4 }, totalStars: 9 }],
+      ["a string best", { bests: { outlast: "170" } }],
+      [
+        "a total lower than the bests need",
+        { totalStars: 2, bests: { outlast: 170, evacuation: 50 } },
+      ],
+    ];
+    it.each(reject)("rejects %s", async (_label, patch) => {
+      await assertFails(setDoc(shipDoc(player()), entry(patch)));
+    });
+
+    it("rejects a missing nickname, bests or total", async () => {
+      for (const key of ["nickname", "bests", "totalStars"]) {
+        const { [key]: _omitted, ...rest } = entry() as Record<string, unknown>;
+        void _omitted;
+        await assertFails(setDoc(shipDoc(player()), rest));
+      }
+    });
+
+    it("accepts a total higher than the bests need (more designs)", async () => {
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 40 }))
+      );
+    });
+
+    it("rejects an update-style partial write that leaves fields out", async () => {
+      await assertFails(
+        setDoc(shipDoc(player()), {
+          nickname: "Happy Otter 7",
+          updatedAt: serverTimestamp(),
+        })
+      );
+    });
+  });
+
+  describe("update", () => {
+    it("allows a valid improvement after 10 s", async () => {
+      await seedPlayer({}, 15_000);
+      await assertSucceeds(
+        setDoc(
+          shipDoc(player()),
+          entry({ totalStars: 6, bests: { outlast: 1440, evacuation: 50 } })
+        )
+      );
+    });
+
+    it("lets the total fall (a ship was deleted)", async () => {
+      await seedPlayer({ totalStars: 20 }, 15_000);
+      await assertSucceeds(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("rejects a jump in stars faster than the game can award", async () => {
+      await seedPlayer({}, 15_000);
+      // 3 + 6 + 15/5 = 12 is the most allowed.
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 13 })));
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 12 }))
+      );
+    });
+
+    it("caps one write's rise at 9 stars, however long the gap", async () => {
+      await seedPlayer({}, 600_000);
+      // The old doc holds 3 stars, so 12 is the most one write may reach.
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 13 })));
+      await assertFails(setDoc(shipDoc(player()), entry({ totalStars: 100 })));
+      await assertSucceeds(
+        setDoc(shipDoc(player()), entry({ totalStars: 12 }))
+      );
+    });
+
+    it("rejects an update by another player", async () => {
+      await seedPlayer({}, 15_000);
+      await assertFails(setDoc(shipDoc(player("other"), UID), entry()));
+      await assertFails(setDoc(shipDoc(anon()), entry()));
+    });
+
+    it("rejects invalid data on update too", async () => {
+      await seedPlayer({}, 15_000);
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ nickname: "Evil 1" }))
+      );
+      await assertFails(
+        setDoc(shipDoc(player()), entry({ bests: { outlast: 9999 } }))
+      );
+      await assertFails(setDoc(shipDoc(player()), entry({ extra: 1 })));
+    });
+
+    it("rejects partial updates (updateDoc) that skip validation", async () => {
+      await seedPlayer({}, 15_000);
+      await assertFails(updateDoc(shipDoc(player()), { totalStars: 4500 }));
+    });
+
+    it("checks a partial write with a server time against the merged doc", async () => {
+      await seedPlayer({}, 15_000);
+      // The merged doc would hold 1 star for bests worth 3: refused even
+      // though the new fields alone look fine.
+      await assertFails(
+        updateDoc(shipDoc(player()), {
+          totalStars: 1,
+          updatedAt: serverTimestamp(),
+        })
+      );
+      // A bad nickname in the same shape is refused too.
+      await assertFails(
+        updateDoc(shipDoc(player()), {
+          nickname: "Evil Hacker 1",
+          updatedAt: serverTimestamp(),
+        })
+      );
+      // The merge only stands when the whole merged doc is valid.
+      await assertSucceeds(
+        updateDoc(shipDoc(player()), {
+          totalStars: 4,
+          updatedAt: serverTimestamp(),
+        })
+      );
+    });
+  });
+
+  describe("rate limit", () => {
+    it("rejects an update less than 10 s after the last write", async () => {
+      await seedPlayer({}, 2_000);
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("rejects two quick writes in a row", async () => {
+      await assertSucceeds(setDoc(shipDoc(player()), entry()));
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+  });
+
+  describe("bans", () => {
+    const ban = (db: ReturnType<typeof anon>) =>
+      doc(db, `leaderboardBans/${UID}`);
+    const banPlayer = () =>
+      env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(ban(ctx.firestore()), { bannedAt: new Date() });
+      });
+
+    it("stops a banned uid creating or updating", async () => {
+      await banPlayer();
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("stops a banned uid updating an entry", async () => {
+      await seedPlayer({}, 15_000);
+      await banPlayer();
+      await assertFails(setDoc(shipDoc(player()), entry()));
+    });
+
+    it("does not stop other players", async () => {
+      await banPlayer();
+      await assertSucceeds(
+        setDoc(shipDoc(player("sailor-2"), "sailor-2"), entry())
+      );
+    });
+  });
+
+  describe("read", () => {
+    beforeEach(() => seedPlayer());
+    const col = (db: ReturnType<typeof anon>) =>
+      collection(db, "shipLeaderboard");
+
+    it("lets anyone get a single entry", async () => {
+      await assertSucceeds(getDoc(shipDoc(anon())));
+      await assertSucceeds(getDoc(shipDoc(player("someone-else"))));
+    });
+
+    it("lets anyone list with a limit of 50 or less", async () => {
+      await assertSucceeds(
+        getDocs(query(col(anon()), orderBy("totalStars", "desc"), limit(50)))
+      );
+      await assertSucceeds(getDocs(query(col(anon()), limit(20))));
+    });
+
+    it("rejects unlimited lists, big limits and offsets", async () => {
+      await assertFails(getDocs(col(anon())));
+      await assertFails(getDocs(query(col(anon()), limit(51))));
+      await assertFails(getDocs(query(col(anon()), orderBy("totalStars"))));
+    });
+  });
+
+  describe("delete", () => {
+    beforeEach(() => seedPlayer());
+
+    it("allows the admin", async () => {
+      await assertSucceeds(deleteDoc(shipDoc(admin())));
+    });
+
+    it("rejects the owner and everyone else", async () => {
+      await assertFails(deleteDoc(shipDoc(player())));
+      await assertFails(deleteDoc(shipDoc(player("someone-else"))));
+      await assertFails(deleteDoc(shipDoc(anon())));
+      await assertFails(
+        deleteDoc(shipDoc(signedIn(ADMIN_UID, { provider: "anonymous" })))
+      );
+    });
+  });
+
+  describe("other collections stay closed", () => {
+    it("does not let a player write a plane leaderboard entry shape here", async () => {
+      await assertFails(
+        setDoc(shipDoc(player()), {
+          ...baseEntry,
+          prestige: 1,
+          updatedAt: serverTimestamp(),
+        })
+      );
+    });
+
+    it("does not open sibling collections", async () => {
+      await assertFails(
+        setDoc(doc(player(), `shipLeaderboardX/${UID}`), entry())
+      );
+    });
+  });
+
+  describe("REST client", () => {
+    // The emulator accepts unsigned JWTs carrying the claims rules read.
+    const unsignedToken = (uid: string) => {
+      const part = (o: object) =>
+        Buffer.from(JSON.stringify(o)).toString("base64url");
+      return `${part({ alg: "none", typ: "JWT" })}.${part({
+        user_id: uid,
+        sub: uid,
+        aud: PROJECT_ID,
+        firebase: { sign_in_provider: "anonymous", identities: {} },
+      })}.`;
+    };
+    const deps = (uid: string) => ({
+      config,
+      baseUrl,
+      getSession: async () => ({ uid, idToken: unsignedToken(uid) }),
+    });
+    const restEntry = {
+      nickname: "Happy Otter 7",
+      totalStars: 3,
+      bests: { outlast: 170, evacuation: 50 },
+    };
+
+    it("creates the doc with the exact body the game sends", async () => {
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe(true);
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const snap = await getDoc(shipDoc(ctx.firestore()));
+        expect(snap.data()?.totalStars).toBe(3);
+        expect(snap.data()?.bests).toEqual({ outlast: 170, evacuation: 50 });
+      });
+    });
+
+    it("rejects an immediate rewrite and a forged total", async () => {
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe(true);
+      expect(await submitShipEntry(restEntry, deps(UID))).toBe(false);
+      expect(
+        await submitShipEntry(
+          { ...restEntry, totalStars: 4000 },
+          deps("sailor-9")
+        )
+      ).toBe(false);
+    });
+
+    it("reads the board back ordered by stars", async () => {
+      await submitShipEntry(restEntry, deps(UID));
+      await submitShipEntry(
+        {
+          nickname: "Brave Fox 3",
+          totalStars: 9,
+          bests: { outlast: 1440, evacuation: 100, shipshape: 3 },
+        },
+        deps("sailor-2")
+      );
+      const board = await fetchShipBoard({ config, baseUrl });
+      expect(board).toEqual([
+        { uid: "sailor-2", nickname: "Brave Fox 3", value: 9 },
+        { uid: UID, nickname: "Happy Otter 7", value: 3 },
+      ]);
     });
   });
 });

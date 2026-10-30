@@ -10,8 +10,10 @@ import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import { PLANE_BUILDER_VERSION } from "@/lib/plane-builder/version";
 import ConfirmPrestige from "./ConfirmPrestige";
 import ConfirmRestart from "./ConfirmRestart";
+import DailyCard from "./DailyCard";
 import { percentOf } from "./format";
 import LeaderboardCard from "./LeaderboardCard";
+import GhostToggle from "./GhostToggle";
 import SoundToggle from "./SoundToggle";
 import {
   cardClass,
@@ -61,11 +63,16 @@ export default function LevelSelect() {
               v{PLANE_BUILDER_VERSION}
             </Link>
           </div>
-          <SoundToggle />
+          <div className="flex items-center gap-2">
+            <GhostToggle />
+            <SoundToggle />
+          </div>
         </header>
 
         {/* Renders nothing until leaderboards are reachable. */}
         <LeaderboardCard />
+
+        <DailyCard />
 
         {celebrate && celebrate.next === null ? (
           <p

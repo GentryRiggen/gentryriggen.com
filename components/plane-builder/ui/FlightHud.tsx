@@ -1,5 +1,7 @@
 "use client";
 
+import { TWIST_INFO } from "@/lib/plane-builder/daily/daily";
+import { secondsAheadOfGhost } from "@/lib/plane-builder/ghost/ghost";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import {
   planeStats,
@@ -8,11 +10,15 @@ import {
 } from "@/lib/plane-builder/plane/stats";
 import { applyBonuses } from "@/lib/plane-builder/prestige";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import useActiveGhost from "../hooks/useActiveGhost";
 import useFlightSnapshot from "../hooks/useFlightSnapshot";
 import { formatCoins, percentOf } from "./format";
 import FlightToasts from "./FlightToasts";
 import BoostEffect from "./BoostEffect";
 import Speedometer from "./Speedometer";
+
+/** A gap smaller than this reads "even" (it would round to +0.0s). */
+const EVEN_SECONDS = 0.05;
 
 /**
  * Read-only overlay of the running flight: distance, speed, fuel, shields, and
@@ -25,6 +31,17 @@ export default function FlightHud() {
   const level = LEVELS[levelId];
   const bonuses = usePlaneBuilderStore((s) => s.progress.prestige.bonuses);
   const stats = applyBonuses(planeStats(level.plane, lp.tiers), bonuses);
+  const daily = usePlaneBuilderStore((s) => s.daily);
+  const ghost = useActiveGhost();
+  const ghostGap =
+    ghost && snapshot
+      ? // Frozen at the finish: the plane flies on through the runout.
+        secondsAheadOfGhost(
+          ghost,
+          snapshot.maxX,
+          snapshot.finishTime ?? snapshot.time
+        )
+      : null;
 
   const maxX = snapshot?.maxX ?? 0;
   const percent = percentOf(maxX, level.finishDistance);
@@ -35,7 +52,10 @@ export default function FlightHud() {
   const isFinished = snapshot?.finished ?? false;
   const grabbed = snapshot?.coins ?? 0;
   const isBoosting =
-    stats.thrust > 0 && (snapshot?.fuel ?? 0) > 0 && (snapshot?.boost ?? false);
+    stats.thrust > 0 &&
+    (snapshot?.fuel ?? 0) > 0 &&
+    (snapshot?.boost ?? false) &&
+    daily?.twist !== "noBoost";
 
   return (
     <div
@@ -116,16 +136,44 @@ export default function FlightHud() {
               </p>
             ) : null}
           </div>
-          <p className="rounded-full bg-amber-100 px-3 py-1 text-lg font-bold text-amber-900 shadow dark:bg-amber-900/70 dark:text-amber-100">
-            <span aria-hidden="true">🪙 </span>
-            {formatCoins(lp.coins + grabbed)}
-            <span className="sr-only"> coins</span>
-            {grabbed > 0 ? (
-              <span className="ml-1.5 text-base text-amber-700 dark:text-amber-300">
-                +{formatCoins(grabbed)}
-              </span>
+          <div className="flex flex-col items-end gap-1.5">
+            <p className="rounded-full bg-amber-100 px-3 py-1 text-lg font-bold text-amber-900 shadow dark:bg-amber-900/70 dark:text-amber-100">
+              <span aria-hidden="true">🪙 </span>
+              {formatCoins(lp.coins + grabbed)}
+              <span className="sr-only"> coins</span>
+              {grabbed > 0 ? (
+                <span className="ml-1.5 text-base text-amber-700 dark:text-amber-300">
+                  +{formatCoins(grabbed)}
+                </span>
+              ) : null}
+            </p>
+            {daily ? (
+              <p
+                data-testid="daily-twist"
+                className="rounded-full bg-violet-100 px-3 py-0.5 text-sm font-bold text-violet-900 shadow dark:bg-violet-900/70 dark:text-violet-100"
+              >
+                <span aria-hidden="true">{TWIST_INFO[daily.twist].emoji} </span>
+                Daily: {TWIST_INFO[daily.twist].name}
+              </p>
             ) : null}
-          </p>
+            {ghostGap !== null ? (
+              <p
+                data-testid="ghost-gap"
+                className={`rounded-full px-3 py-0.5 text-sm font-bold shadow ${
+                  ghostGap >= 0
+                    ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/70 dark:text-emerald-100"
+                    : "bg-rose-100 text-rose-900 dark:bg-rose-900/70 dark:text-rose-100"
+                }`}
+              >
+                <span aria-hidden="true">👻 </span>
+                {Math.abs(ghostGap) < EVEN_SECONDS
+                  ? "Ghost: even"
+                  : `Ghost: +${Math.abs(ghostGap).toFixed(1)}s ${
+                      ghostGap >= 0 ? "ahead" : "behind"
+                    }`}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
       <FlightToasts />

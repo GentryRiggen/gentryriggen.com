@@ -260,7 +260,12 @@ function compartmentsOf(input: TrialInput): Compartment[] {
   const { iceberg } = input;
   if (!iceberg) return [];
   const opened = new Set(
-    openedBy(iceberg.compartments, iceberg.impactX, iceberg.length)
+    openedBy(
+      iceberg.compartments,
+      iceberg.impactX,
+      iceberg.length,
+      iceberg.gashLength
+    )
   );
   return iceberg.compartments.map((spec) => ({
     id: spec.id,

@@ -103,12 +103,12 @@ function sankReason(
 export function stepFlooding(input: TrialInput, state: SimState): SimState {
   const iceberg = input.iceberg;
   if (!iceberg || state.phase !== "sailing") return state;
-  const { compartments: specs, length, impactX } = iceberg;
+  const { compartments: specs, length, impactX, gashLength } = iceberg;
   const dt = SIM_STEP_S;
   const time = state.time + dt;
   // The berg is still on its way in: nothing has touched the hull yet.
   if (time < ICEBERG_IMPACT_S) return { ...state, time };
-  const gash = gashOf(impactX, length);
+  const gash = gashOf(impactX, length, gashLength);
   const middle = length / 2;
   const seaDepth = state.pose.sink * SINK_TO_DEPTH;
   const seaLevel = SEA_LEVEL + seaDepth;

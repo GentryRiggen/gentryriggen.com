@@ -132,9 +132,32 @@ export const OBSTACLE_MODEL_URLS: readonly string[] = (
   OBSTACLE_VARIANTS[kind].map((variant) => obstacleModelUrl(kind, variant))
 );
 
-/** Starts loading every obstacle model, so they rarely show their stand-in. */
-export function preloadObstacleModels(): void {
-  for (const url of OBSTACLE_MODEL_URLS) useGLTF.preload(url, false, false);
+/**
+ * The obstacle models one level draws: only its own kinds, and only the
+ * variants a clouds-or-hash pick can reach in it.
+ */
+export function obstacleModelUrlsFor(
+  obstacles: readonly Obstacle[],
+  levelId?: string
+): string[] {
+  const urls = new Set<string>();
+  for (const o of obstacles) {
+    urls.add(obstacleModelUrl(o.kind, obstacleVariant(o, levelId)));
+  }
+  return [...urls];
+}
+
+/**
+ * Starts loading a level's obstacle models, so they rarely show their
+ * stand-in. Other worlds' models load when that world is picked.
+ */
+export function preloadObstacleModels(
+  obstacles: readonly Obstacle[],
+  levelId?: string
+): void {
+  for (const url of obstacleModelUrlsFor(obstacles, levelId)) {
+    useGLTF.preload(url, false, false);
+  }
 }
 
 /**

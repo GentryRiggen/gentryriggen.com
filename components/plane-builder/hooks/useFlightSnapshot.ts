@@ -5,6 +5,10 @@ import { flightInput } from "@/lib/plane-builder/state/flightInput";
 import { flightLive } from "@/lib/plane-builder/state/flightLive";
 
 export interface FlightSnapshot {
+  /** Sim seconds since launch. */
+  time: number;
+  /** Sim seconds at the finish line, once crossed. */
+  finishTime: number | null;
   maxX: number;
   speed: number;
   fuel: number;
@@ -21,6 +25,8 @@ function read(): FlightSnapshot | null {
   const s = flightLive.get();
   if (!s) return null;
   return {
+    time: s.time,
+    finishTime: s.finishTime,
     maxX: s.maxX,
     speed: s.speed,
     fuel: s.fuel,

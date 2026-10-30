@@ -16,16 +16,16 @@
     "triangles": 7364
   },
   "plane-meadow-flight": {
-    "calls": 62,
-    "triangles": 131814
+    "calls": 76,
+    "triangles": 107094
   },
   "plane-jungle-flight": {
-    "calls": 85,
-    "triangles": 456990
+    "calls": 107,
+    "triangles": 289754
   },
   "plane-city-flight": {
-    "calls": 69,
-    "triangles": 447118
+    "calls": 89,
+    "triangles": 290334
   },
   "ship-titanic-iceberg-sinking": {
     "calls": 181,

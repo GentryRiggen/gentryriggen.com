@@ -6,6 +6,7 @@ import {
   type Tiers,
   type TrackId,
 } from "../plane/catalog";
+import type { Ghost } from "../ghost/ghost";
 import type { FlightResult } from "../sim/flight";
 import { squareAt } from "../prestige/board";
 import {
@@ -36,6 +37,15 @@ export interface PrestigeState {
   movePending: boolean;
 }
 
+/** Today's daily challenge result: the best finish and the flight itself. */
+export interface DailyBest {
+  /** The UTC day it was flown, `yyyy-mm-dd`. */
+  date: string;
+  /** Sim seconds to the finish. */
+  time: number;
+  ghost: Ghost;
+}
+
 export interface Progress {
   levels: Record<LevelId, LevelProgress>;
   /** In LEVEL_ORDER order; always starts with "meadow". */
@@ -51,6 +61,10 @@ export interface Progress {
   bestTimes: Partial<Record<LevelId, number>>;
   /** Leaderboard name; set by the leaderboard, null until then. */
   nickname: string | null;
+  /** The flight behind each world's best time. */
+  ghosts: Partial<Record<LevelId, Ghost>>;
+  /** The best daily challenge finish; only today's counts. */
+  dailyBest: DailyBest | null;
 }
 
 export function newPrestige(): PrestigeState {
@@ -81,6 +95,8 @@ export function newProgress(): Progress {
     fastestRun: null,
     bestTimes: {},
     nickname: null,
+    ghosts: {},
+    dailyBest: null,
   };
 }
 
@@ -189,7 +205,8 @@ export function recordFlight(
   p: Progress,
   id: LevelId,
   result: FlightResult,
-  earned: number
+  earned: number,
+  ghost: Ghost | null = null
 ): RecordedFlight {
   const level = p.levels[id];
   const pay = Number.isFinite(earned) && earned > 0 ? earned : 0;
@@ -221,16 +238,45 @@ export function recordFlight(
         }
       : p.bestTimes;
   const completedRun = !isRunFinished(p) && isRunFinished(next);
+  const isNewBestTime =
+    bestTimes !== p.bestTimes && bestTimes[id] !== p.bestTimes[id];
   next = {
     ...next,
     runFlights,
     bestTimes,
+    ghosts: ghost && isNewBestTime ? { ...p.ghosts, [id]: ghost } : p.ghosts,
     lifetimeDistance: p.lifetimeDistance + Math.max(0, result.distance),
     fastestRun: completedRun
       ? Math.min(p.fastestRun ?? Infinity, runFlights)
       : p.fastestRun,
   };
   return { progress: next, isNewBest, unlocked };
+}
+
+/**
+ * A daily challenge flight: it pays coins into the world's wallet and may set
+ * today's best time, but never touches the world's own best, bestTimes, stats
+ * or unlocks (a twisted flight must not count as a normal one).
+ */
+export function recordDailyFlight(
+  p: Progress,
+  id: LevelId,
+  result: FlightResult,
+  earned: number,
+  date: string,
+  ghost: Ghost | null
+): Progress {
+  const paid = addCoins(p, id, earned);
+  const time = result.finishTime;
+  if (!ghost || time === null || !Number.isFinite(time) || time <= 0) {
+    return paid;
+  }
+  // A newer day's best is never replaced by an older day's flight (a flight
+  // that began before midnight and ended after it).
+  if (p.dailyBest && p.dailyBest.date > date) return paid;
+  const current = p.dailyBest?.date === date ? p.dailyBest.time : Infinity;
+  if (time >= current) return paid;
+  return { ...paid, dailyBest: { date, time, ghost } };
 }
 
 /** Adds `amount` coins to one level's wallet (ignored unless positive). */
