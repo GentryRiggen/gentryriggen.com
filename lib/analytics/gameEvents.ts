@@ -183,7 +183,10 @@ export const GAME_EVENTS = {
     site: "ship-builder",
     sample: 1,
     props: {
-      id: { kind: "enum", values: ["outlast", "evacuation", "shipshape"] },
+      id: {
+        kind: "enum",
+        values: ["outlast", "evacuation", "shipshape", "smooth"],
+      },
       stars: { kind: "int", min: 0, max: 3 },
     },
   },

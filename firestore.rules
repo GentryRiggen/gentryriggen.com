@@ -405,7 +405,7 @@ service cloud.firestore {
           && p.sea in ['calm', 'choppy', 'stormy'])
         || (name == 'challenge_result'
           && p.keys().hasOnly(['id', 'stars']) && p.keys().hasAll(['id', 'stars'])
-          && p.id in ['outlast', 'evacuation', 'shipshape']
+          && p.id in ['outlast', 'evacuation', 'shipshape', 'smooth']
           && p.stars is int && p.stars >= 0 && p.stars <= 3)
         || (name == 'template_used'
           && p.keys().hasOnly(['template']) && p.keys().hasAll(['template'])
