@@ -55,8 +55,8 @@
   "scoreVariant": "wall",
   "ao": {
     "ground": false,
-    "distance": 0.1,
+    "distance": 0.15,
     "samples": 64,
-    "strength": 0.3
+    "strength": 0.7
   }
 }
