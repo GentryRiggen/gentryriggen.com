@@ -6,6 +6,7 @@ import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import useCollapsedPanels from "./hooks/useCollapsedPanels";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useServiceWorker from "./hooks/useServiceWorker";
+import usePhotoStore from "./hooks/usePhotoStore";
 import useShipPersistence from "./hooks/useShipPersistence";
 import useTestHook from "./hooks/useTestHook";
 import useWebGLSupport from "./hooks/useWebGLSupport";
@@ -20,6 +21,8 @@ import WalkHud from "./ui/WalkHud";
 import Drawer from "./ui/Drawer";
 import HelpButton from "./ui/HelpButton";
 import Notice from "./ui/Notice";
+import PhotoButton from "./ui/PhotoButton";
+import PhotoMode from "./ui/PhotoMode";
 import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
 import BelowDeckInset from "./ui/BelowDeckInset";
@@ -27,6 +30,7 @@ import IcebergAimHint from "./ui/IcebergAimHint";
 import SeaTrialButton from "./ui/SeaTrialButton";
 import SeaTrialResult from "./ui/SeaTrialResult";
 import SeaTrialStatus from "./ui/SeaTrialStatus";
+import SharedShipBanner from "./ui/SharedShipBanner";
 import SelectionBar from "./ui/SelectionBar";
 import StatsHud from "./ui/StatsHud";
 import StatsPanel from "./ui/StatsPanel";
@@ -69,9 +73,19 @@ export default function ShipBuilder() {
       s.walk.status === "walking"
   );
 
+  // Photo mode clears the screen of everything but the picture controls.
+  const isPhoto = usePhotoStore((s) => s.isOpen);
+  const isChromeHidden = inFocus || isPhoto;
+
   // Adjusting state during render (not in an effect) so no frame shows a
   // drawer left open behind the trial.
-  if (inFocus && openDrawer !== null) setOpenDrawer(null);
+  if (isChromeHidden && openDrawer !== null) setOpenDrawer(null);
+
+  // A trial, a drive or a walk takes over the view, so photo mode ends.
+  useEffect(() => {
+    if (inFocus) usePhotoStore.getState().exit();
+  }, [inFocus]);
+  useEffect(() => () => usePhotoStore.getState().exit(), []);
 
   // The trial plays in the 3D scene: without WebGL, or once the builder is
   // gone, nothing could end it and building would stay paused.
@@ -98,9 +112,10 @@ export default function ShipBuilder() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden overscroll-none select-none bg-slate-100 [-webkit-touch-callout:none] text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div hidden={inFocus}>
+      <div hidden={isChromeHidden}>
         <AppHeader />
       </div>
+      {!isChromeHidden && <SharedShipBanner />}
 
       <div className="relative flex min-h-0 flex-1">
         {openDrawer && !inFocus && (
@@ -116,7 +131,7 @@ export default function ShipBuilder() {
           label="Parts"
           open={openDrawer === "left"}
           onOpenChange={(open) => handleDrawerOpenChange("left", open)}
-          hidden={inFocus}
+          hidden={isChromeHidden}
           collapsed={collapsed.left}
           onCollapsedChange={() => collapsed.toggle("left")}
         >
@@ -140,18 +155,22 @@ export default function ShipBuilder() {
         </Drawer>
         <main className="relative isolate min-w-0 flex-1">
           {webgl === false ? <WebGLFallback /> : webgl ? <Scene /> : null}
-          {!inFocus && <ViewControls />}
+          {!isChromeHidden && <ViewControls />}
+          {isPhoto && <PhotoMode />}
           <Notice />
           <RemovalConfirm />
-          <SelectionBar />
-          <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
+          {!isPhoto && <SelectionBar />}
+          {!isPhoto && (
+            <PlacementHint onOpenColours={() => setOpenDrawer("left")} />
+          )}
           {/* The trial plays in the 3D scene, so it needs WebGL. */}
-          {webgl && (
+          {webgl && !isPhoto && (
             <SeaTrialButton
               beside={
                 <>
                   <DriveButton />
                   <WalkButton />
+                  <PhotoButton />
                 </>
               }
             />
@@ -164,8 +183,8 @@ export default function ShipBuilder() {
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}
           <SeaTrialResult />
-          {!inFocus && <HelpButton />}
-          {!inFocus && <UndoRedo />}
+          {!isChromeHidden && <HelpButton />}
+          {!isChromeHidden && <UndoRedo />}
         </main>
         <Drawer
           side="right"
@@ -173,7 +192,7 @@ export default function ShipBuilder() {
           toggleContent={<StatsHud />}
           open={openDrawer === "right"}
           onOpenChange={(open) => handleDrawerOpenChange("right", open)}
-          hidden={inFocus}
+          hidden={isChromeHidden}
           collapsed={collapsed.right}
           onCollapsedChange={() => collapsed.toggle("right")}
         >

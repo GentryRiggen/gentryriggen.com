@@ -11,6 +11,7 @@ import type { SailState } from "@/lib/ship-builder/sail";
 import type { DriveView } from "@/lib/ship-builder/sail/driveConfig";
 import { getSailState } from "@/lib/ship-builder/state/sailLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import usePhotoStore from "../hooks/usePhotoStore";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { cameraFollow } from "./cameraFollow";
@@ -34,6 +35,7 @@ import {
   topCamera,
   type DriveCameraPose,
 } from "./driveCamera";
+import { photoPose } from "./photoAngles";
 import { sceneTime } from "./testClock";
 import { trialPlayback } from "./trialPlayback";
 
@@ -139,6 +141,10 @@ export default function CameraRig() {
   const isWalking = useShipBuilderStore((s) => s.walk.status === "walking");
   const isActive = isSailing || isWalking;
   const reducedMotion = usePrefersReducedMotion();
+  const isPhoto = usePhotoStore((s) => s.isOpen);
+  const photoAngle = usePhotoStore((s) => s.angle);
+  const photoNonce = usePhotoStore((s) => s.nonce);
+  const wasPhoto = useRef(false);
   // False until the drive camera has taken its first pose, which it snaps to.
   const hasDrivePose = useRef(false);
   // True while the player orbits or pans, so the follow never fights a drag.
@@ -202,6 +208,45 @@ export default function CameraRig() {
       orbit.enableDamping = true;
     }
   }, [camera, lengthSegments, beam, isActive, get]);
+
+  // Photo mode: each preset places the camera; leaving it puts the builder's
+  // own view back.
+  useEffect(() => {
+    if (!isPhoto) {
+      if (wasPhoto.current) {
+        wasPhoto.current = false;
+        const state = useShipBuilderStore.getState();
+        state.setCameraView(state.camera.view);
+      }
+      return;
+    }
+    wasPhoto.current = true;
+    const orbit = controls.current;
+    const { ship } = useShipBuilderStore.getState();
+    const { size, gl } = get();
+    const box = (
+      gl.domElement.parentElement ?? gl.domElement
+    ).getBoundingClientRect();
+    const width = box.width > 0 ? box.width : size.width;
+    const height = box.height > 0 ? box.height : size.height;
+    const pose = photoPose(
+      photoAngle,
+      gridLength(ship),
+      height > 0 ? width / height : 1,
+      shipBeam(ship)
+    );
+    if (orbit) {
+      orbit.enableDamping = false;
+      orbit.update();
+    }
+    get().camera.position.set(...pose.position);
+    if (orbit) {
+      orbit.target.set(...pose.target);
+      orbit.update();
+      orbit.enableDamping = true;
+    }
+    // photoNonce re-places the camera when the same angle is chosen again.
+  }, [isPhoto, photoAngle, photoNonce, get]);
 
   // Walking: a wider, close-in first-person lens (WalkCamera places it). The
   // builder's lens is restored when the walk ends.
@@ -453,6 +498,8 @@ export default function CameraRig() {
       minDistance={6}
       maxDistance={MAX_VIEW_DISTANCE}
       maxPolarAngle={maxPolarAngleFor(view)}
+      autoRotate={isPhoto && !reducedMotion}
+      autoRotateSpeed={0.8}
     />
   );
 }

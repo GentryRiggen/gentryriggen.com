@@ -80,7 +80,12 @@ const SEGMENT_PRESSED = `${SEGMENT_BASE} bg-sky-100 text-sky-900 dark:bg-sky-900
  * The sea and time groups stack on the right so three groups never crowd a
  * narrow viewport into overlapping.
  */
-export default function ViewControls() {
+export default function ViewControls({
+  hideCamera = false,
+}: {
+  /** Photo mode keeps only the sea and time chips. */
+  hideCamera?: boolean;
+}) {
   const { seaState, setSeaState } = useSeaState();
   const { timeOfDay, setTimeOfDay } = useTimeOfDay();
   const cameraView = useShipBuilderStore((s) => s.camera.view);
@@ -89,23 +94,29 @@ export default function ViewControls() {
   const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
 
   return (
-    <div className="pointer-events-none absolute inset-x-3 top-16 z-10 flex flex-wrap items-start justify-between gap-2 lg:top-3">
-      <div role="group" aria-label="Camera" className={GROUP_CLASS}>
-        {CAMERA_VIEWS.map(({ view, label, ariaLabel, Icon }) => (
-          <button
-            key={view}
-            type="button"
-            aria-label={ariaLabel}
-            aria-pressed={cameraView === view}
-            onClick={() => setCameraView(view)}
-            className={cameraView === view ? SEGMENT_PRESSED : SEGMENT_IDLE}
-          >
-            <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-            <span className="sr-only xl:not-sr-only">{label}</span>
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-col items-end gap-2">
+    <div
+      className={`pointer-events-none absolute inset-x-3 z-10 flex flex-wrap items-start justify-between gap-2 lg:top-3 ${hideCamera ? "top-3" : "top-16"}`}
+    >
+      {!hideCamera && (
+        <div role="group" aria-label="Camera" className={GROUP_CLASS}>
+          {CAMERA_VIEWS.map(({ view, label, ariaLabel, Icon }) => (
+            <button
+              key={view}
+              type="button"
+              aria-label={ariaLabel}
+              aria-pressed={cameraView === view}
+              onClick={() => setCameraView(view)}
+              className={cameraView === view ? SEGMENT_PRESSED : SEGMENT_IDLE}
+            >
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="sr-only xl:not-sr-only">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div
+        className={`flex flex-col items-end gap-2 ${hideCamera ? "ml-auto" : ""}`}
+      >
         <div role="group" aria-label="Sea" className={GROUP_CLASS}>
           {SEA_STATES.map(({ sea, label, ariaLabel, Icon }) => (
             <button
