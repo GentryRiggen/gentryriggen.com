@@ -66,3 +66,45 @@ it("closes the menu on Escape or a tap outside", async () => {
   await userEvent.click(screen.getByText("Outside"));
   expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 });
+
+it("returns focus to the Menu button after a pick or a Tab", async () => {
+  render(
+    <div>
+      <JimHeader
+        onSignOut={jest.fn()}
+        menuItems={[{ label: "New chat", onSelect: jest.fn() }]}
+      />
+      <button type="button">After</button>
+    </div>
+  );
+  const menuButton = screen.getByRole("button", { name: "Menu" });
+  await userEvent.click(menuButton);
+  await userEvent.click(screen.getByRole("menuitem", { name: "New chat" }));
+  expect(menuButton).toHaveFocus();
+
+  await userEvent.click(menuButton);
+  expect(screen.getByRole("menuitem", { name: "New chat" })).toHaveFocus();
+  await userEvent.tab();
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  // Tab moves on from the button, not from nowhere.
+  expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+});
+
+it("jumps to the first and last item with Home and End", async () => {
+  render(
+    <JimHeader
+      onSignOut={jest.fn()}
+      menuItems={[
+        { label: "One", onSelect: jest.fn() },
+        { label: "Two", onSelect: jest.fn() },
+      ]}
+    />
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+  await userEvent.keyboard("{End}");
+  expect(screen.getByRole("menuitem", { name: "Sign out" })).toHaveFocus();
+  await userEvent.keyboard("{Home}");
+  expect(screen.getByRole("menuitem", { name: "One" })).toHaveFocus();
+  await userEvent.keyboard("{ArrowUp}");
+  expect(screen.getByRole("menuitem", { name: "Sign out" })).toHaveFocus();
+});

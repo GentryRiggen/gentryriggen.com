@@ -172,7 +172,11 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   }
 
   function showTab(next: JimTab) {
-    if (next === "notes") setNotesOpened(true);
+    if (next === "notes") {
+      setNotesOpened(true);
+      // A tap on a tab doesn't take focus on iOS: drop the keyboard by hand.
+      boxRef.current?.blur();
+    }
     setTab(next);
   }
 

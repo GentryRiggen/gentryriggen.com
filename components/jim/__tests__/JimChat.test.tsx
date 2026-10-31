@@ -248,6 +248,15 @@ describe("tabs", () => {
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
   });
 
+  it("drops the keyboard when Notes opens", async () => {
+    renderChat();
+    const box = screen.getByLabelText("Message");
+    box.focus();
+    // On iOS a tap on a button doesn't move focus, so click without it.
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    expect(box).not.toHaveFocus();
+  });
+
   it("keeps the conversation across a trip to Notes", async () => {
     send.mockResolvedValue({ reply: "ok", changed: [], commit: null });
     renderChat();

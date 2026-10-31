@@ -65,18 +65,25 @@ export default function JimHeader({
       return;
     }
     if (event.key === "Tab") {
+      // Back on the button first, so Tab moves on from there.
       setMenuOpen(false);
+      buttonRef.current?.focus();
       return;
     }
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-    event.preventDefault();
     const all = [
       ...(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ??
         []),
     ];
-    const at = all.indexOf(document.activeElement as HTMLElement);
-    const step = event.key === "ArrowDown" ? 1 : -1;
-    all[(at + step + all.length) % all.length]?.focus();
+    let next: number;
+    if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = all.length - 1;
+    else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      const at = all.indexOf(document.activeElement as HTMLElement);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      next = (at + step + all.length) % all.length;
+    } else return;
+    event.preventDefault();
+    all[next]?.focus();
   }
 
   return (
@@ -141,7 +148,7 @@ export default function JimHeader({
               role="menu"
               aria-label="Menu"
               onKeyDown={onMenuKeyDown}
-              className="absolute top-full right-0 z-20 mt-1 min-w-44 rounded-xl border border-ayu-line bg-ayu-raised py-1 shadow-lg shadow-black/30"
+              className="absolute top-full right-0 z-20 mt-1 min-w-44 overflow-hidden rounded-xl border border-ayu-raised bg-ayu-panel shadow-xl shadow-black/50"
             >
               {items.map((item) => (
                 <button
@@ -151,9 +158,11 @@ export default function JimHeader({
                   tabIndex={-1}
                   onClick={() => {
                     setMenuOpen(false);
+                    // Before onSelect, which may move focus on purpose.
+                    buttonRef.current?.focus();
                     item.onSelect();
                   }}
-                  className="flex min-h-11 w-full items-center px-4 text-left text-base text-ayu-text hover:bg-ayu-panel focus:bg-ayu-panel focus:outline-none"
+                  className="flex min-h-11 w-full items-center px-4 text-left text-base text-ayu-text hover:bg-ayu-raised focus:bg-ayu-raised focus:outline-none"
                 >
                   {item.label}
                 </button>
