@@ -8,9 +8,15 @@ import {
 import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import {
   noteShipSeason,
+  refreshShipSeason,
   resetShipSeasonForTests,
 } from "../../hooks/shipBoardSync";
 import ShipLeaderboard from "../ShipLeaderboard";
+
+jest.mock("../../hooks/shipBoardSync", () => ({
+  ...jest.requireActual("../../hooks/shipBoardSync"),
+  refreshShipSeason: jest.fn(),
+}));
 
 jest.mock("@/lib/leaderboard/auth", () => ({
   getIdToken: jest.fn(),
@@ -24,6 +30,7 @@ import { fetchShipBoard } from "@/lib/leaderboard/shipBoard";
 
 const mockedToken = jest.mocked(getIdToken);
 const mockedBoard = jest.mocked(fetchShipBoard);
+const mockedRefresh = jest.mocked(refreshShipSeason);
 
 function rows(count: number) {
   return Array.from({ length: count }, (_, i) => ({
@@ -37,6 +44,8 @@ beforeEach(() => {
   localStorage.clear();
   mockedToken.mockReset();
   mockedBoard.mockReset();
+  // By default the read on open finds the season already known.
+  mockedRefresh.mockReset().mockImplementation(async () => 1);
   act(() => challengeProgress.resetMemory());
   act(() => resetShipSeasonForTests());
   act(() => noteShipSeason(1));
@@ -47,6 +56,7 @@ describe("ShipLeaderboard", () => {
     render(<ShipLeaderboard enabled={false} />);
     expect(screen.getByText(/switched off/)).toBeInTheDocument();
     expect(mockedToken).not.toHaveBeenCalled();
+    expect(mockedRefresh).not.toHaveBeenCalled();
   });
 
   it("shows the top 20 and your own rank", async () => {
@@ -96,8 +106,43 @@ describe("ShipLeaderboard", () => {
 describe("ShipLeaderboard seasons", () => {
   const me = { uid: "me", nickname: "Brave Fox 3", value: 2 };
 
+  it("reads the season again when the board opens", async () => {
+    mockedToken.mockResolvedValue({ uid: "me", idToken: "t" });
+    mockedBoard.mockResolvedValue(rows(3));
+    render(<ShipLeaderboard enabled />);
+    expect(mockedRefresh).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Happy Otter 1")).toBeInTheDocument();
+  });
+
+  it("says it couldn't reach the board when the season read fails", async () => {
+    act(() => resetShipSeasonForTests());
+    mockedRefresh.mockResolvedValue(null);
+    render(<ShipLeaderboard enabled />);
+    expect(await screen.findByText(/Couldn.t reach/)).toBeInTheDocument();
+    expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
+    expect(mockedBoard).not.toHaveBeenCalled();
+  });
+
+  it("shows a newer season found when the board opens", async () => {
+    mockedToken.mockResolvedValue({ uid: "me", idToken: "t" });
+    mockedBoard.mockResolvedValue(rows(3));
+    act(() => noteShipSeason(2));
+    mockedRefresh.mockImplementation(async () => {
+      noteShipSeason(3);
+      return 3;
+    });
+    render(<ShipLeaderboard enabled />);
+    const picker = await screen.findByRole("combobox", { name: "Season" });
+    await waitFor(() => expect(picker).toHaveValue("3"));
+    expect(within(picker).getAllByRole("option")[0]).toHaveTextContent(
+      "Season 3 (now)"
+    );
+    await waitFor(() => expect(mockedBoard).toHaveBeenCalledWith(3));
+  });
+
   it("waits for the season before reading the board", async () => {
     act(() => resetShipSeasonForTests());
+    mockedRefresh.mockReturnValue(new Promise(() => {}));
     mockedToken.mockResolvedValue({ uid: "me", idToken: "t" });
     mockedBoard.mockResolvedValue(rows(3));
     render(<ShipLeaderboard enabled />);

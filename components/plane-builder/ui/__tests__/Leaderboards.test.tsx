@@ -4,6 +4,7 @@ import * as auth from "@/lib/leaderboard/auth";
 import * as board from "@/lib/leaderboard/client";
 import { isValidNickname } from "@/lib/leaderboard/nickname";
 import { newProgress } from "@/lib/plane-builder/economy/progress";
+import { refreshLeaderboardSeason } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import LeaderboardCard from "../LeaderboardCard";
 
@@ -12,13 +13,16 @@ jest.mock("@/lib/leaderboard/client");
 jest.mock("@/lib/plane-builder/state/leaderboardSync", () => ({
   LEADERBOARDS_ENABLED: true,
   requestLeaderboardSubmit: jest.fn(),
+  refreshLeaderboardSeason: jest.fn().mockResolvedValue(1),
 }));
 
 const mockAuth = jest.mocked(auth);
 const mockBoard = jest.mocked(board);
+const mockRefresh = jest.mocked(refreshLeaderboardSeason);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockRefresh.mockReset().mockResolvedValue(1);
   usePlaneBuilderStore.setState({
     currentSeason: 1,
     newSeasonNote: false,
@@ -163,8 +167,41 @@ describe("seasons", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("reads the season again when the board opens", async () => {
+    await openBoards();
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("says it couldn't load when the season read fails", async () => {
+    usePlaneBuilderStore.setState({ currentSeason: null });
+    mockRefresh.mockResolvedValue(null);
+    const dialog = await openBoards();
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Couldn't load the board. Try again in a bit."
+    );
+    expect(within(dialog).queryByText("Loading…")).not.toBeInTheDocument();
+    expect(mockBoard.fetchBoard).not.toHaveBeenCalled();
+  });
+
+  it("shows a newer season found when the board opens", async () => {
+    mockRefresh.mockImplementation(async () => {
+      usePlaneBuilderStore.getState().applySeason(4);
+      return 4;
+    });
+    const dialog = await openBoards();
+    const picker = within(dialog).getByRole("combobox", { name: "Season" });
+    await waitFor(() => expect(picker).toHaveValue("4"));
+    expect(within(picker).getAllByRole("option")[0]).toHaveTextContent(
+      "Season 4 (now)"
+    );
+    await waitFor(() =>
+      expect(mockBoard.fetchBoard).toHaveBeenCalledWith("prestige", 4)
+    );
+  });
+
   it("shows loading, not an error, while the season is unknown", async () => {
     usePlaneBuilderStore.setState({ currentSeason: null });
+    mockRefresh.mockReturnValue(new Promise(() => {}));
     const dialog = await openBoards();
     expect(within(dialog).getByRole("status")).toHaveTextContent("Loading…");
     expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();

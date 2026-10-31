@@ -14,7 +14,10 @@ import {
 } from "@/lib/plane-builder/daily/daily";
 import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
-import { requestLeaderboardSubmit } from "@/lib/plane-builder/state/leaderboardSync";
+import {
+  refreshLeaderboardSeason,
+  requestLeaderboardSubmit,
+} from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import SeasonPicker from "@/components/leaderboard/SeasonPicker";
 import useIsOnline from "../hooks/useIsOnline";
@@ -100,6 +103,8 @@ export default function Leaderboards({
   const [world, setWorld] = useState<LevelId>(initialWorld);
   const isOnline = useIsOnline();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  /** The season read on open failed, and none was known before it. */
+  const [isSeasonUnreachable, setIsSeasonUnreachable] = useState(false);
   const [today] = useState(() => dailyFor(utcDateKey(Date.now())));
   const dailyBest = usePlaneBuilderStore((s) =>
     s.progress.dailyBest?.date === today.date ? s.progress.dailyBest.time : null
@@ -118,6 +123,22 @@ export default function Leaderboards({
       usePlaneBuilderStore.getState().setNickname(randomNickname());
       requestLeaderboardSubmit();
     }
+  }, []);
+
+  // Read the season again on open: a missed first read or a season started
+  // during this visit shows now, not after the next flight.
+  useEffect(() => {
+    let isCancelled = false;
+    refreshLeaderboardSeason()
+      .then((n) => {
+        if (!isCancelled) setIsSeasonUnreachable(n === null);
+      })
+      .catch(() => {
+        if (!isCancelled) setIsSeasonUnreachable(true);
+      });
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   const boardKey = tab === "world" ? `world:${world}` : tab;
@@ -178,8 +199,14 @@ export default function Leaderboards({
     };
   }, []);
 
-  // Data for a different tab is stale: treat it as still loading.
-  const current = loaded !== null && loaded.key === key ? loaded : null;
+  // Data for a different tab is stale: treat it as still loading. A season
+  // board with no season to read is shown as one that couldn't load.
+  const current =
+    loaded !== null && loaded.key === key
+      ? loaded
+      : tab !== "daily" && season === null && isSeasonUnreachable
+        ? { key, rows: null }
+        : null;
 
   // Bring your own row into view once the board is there.
   const hasRows = current !== null && current.rows !== null;

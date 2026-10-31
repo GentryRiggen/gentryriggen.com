@@ -65,12 +65,13 @@ function setup(over: Partial<Sync> = {}) {
     readOwnEntry: jest.fn().mockResolvedValue("missing"),
     ...over,
   };
-  const stop = createLeaderboardSync({
+  const sync = createLeaderboardSync({
     enabled: true,
     now: () => Date.now(),
     ...deps,
-  }).start();
-  return { ...deps, stop };
+  });
+  const stop = sync.start();
+  return { ...deps, stop, sync };
 }
 
 const sent = (submit: jest.Mock, i: number) =>
@@ -330,6 +331,67 @@ describe("seasons", () => {
     await settle();
     expect(readSeason).toHaveBeenCalledTimes(2);
     stop();
+  });
+});
+
+describe("refreshSeason (the board opening)", () => {
+  it("reads the season again even when the last read is fresh", async () => {
+    const { readSeason, sync, stop } = setup();
+    await settle();
+    expect(readSeason).toHaveBeenCalledTimes(1);
+    await expect(sync.refreshSeason()).resolves.toBe(2);
+    expect(readSeason).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
+  it("applies a newer season: resets season stats and sets the note", async () => {
+    const readSeason = jest
+      .fn()
+      .mockResolvedValueOnce({ number: 2, startedAt: null })
+      .mockResolvedValue({ number: 3, startedAt: null });
+    const { sync, stop } = setup({ readSeason });
+    await settle();
+    expect(usePlaneBuilderStore.getState().currentSeason).toBe(2);
+    await expect(sync.refreshSeason()).resolves.toBe(3);
+    const s = usePlaneBuilderStore.getState();
+    expect(s.currentSeason).toBe(3);
+    expect(s.newSeasonNote).toBe(true);
+    expect(s.progress.season).toMatchObject({ number: 3, distance: 0 });
+    stop();
+  });
+
+  it("retries a failed first read, and says null while none is known", async () => {
+    const readSeason = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ number: 2, startedAt: null });
+    const { sync, stop } = setup({ readSeason });
+    await settle();
+    await expect(sync.refreshSeason()).resolves.toBeNull();
+    expect(usePlaneBuilderStore.getState().currentSeason).toBeNull();
+    await expect(sync.refreshSeason()).resolves.toBe(2);
+    expect(readSeason).toHaveBeenCalledTimes(3);
+    expect(usePlaneBuilderStore.getState().currentSeason).toBe(2);
+    stop();
+  });
+
+  it("keeps the season last read when a re-read fails", async () => {
+    const readSeason = jest
+      .fn()
+      .mockResolvedValueOnce({ number: 2, startedAt: null })
+      .mockRejectedValue(new Error("offline"));
+    const { sync, stop } = setup({ readSeason });
+    await settle();
+    await expect(sync.refreshSeason()).resolves.toBe(2);
+    stop();
+  });
+
+  it("makes no read when disabled", async () => {
+    const readSeason = jest.fn();
+    const sync = createLeaderboardSync({ enabled: false, readSeason });
+    await expect(sync.refreshSeason()).resolves.toBeNull();
+    expect(readSeason).not.toHaveBeenCalled();
   });
 });
 

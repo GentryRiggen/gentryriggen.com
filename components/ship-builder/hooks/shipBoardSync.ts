@@ -90,6 +90,9 @@ const sync = createBoardSync({
 /** Call after the stars change. */
 export const requestShipBoardSubmit = sync.request;
 
+/** Called when the board opens, so a new or missed season shows. */
+export const refreshShipSeason = sync.refreshSeason;
+
 /** Mount once in ShipBuilder: reads the season so a new one resets first. */
 export function useShipBoardSync(): void {
   useEffect(() => {

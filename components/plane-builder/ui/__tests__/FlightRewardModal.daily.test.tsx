@@ -17,6 +17,7 @@ jest.mock("@/lib/leaderboard/daily", () => ({
 jest.mock("@/lib/plane-builder/state/leaderboardSync", () => ({
   LEADERBOARDS_ENABLED: true,
   requestLeaderboardSubmit: jest.fn(),
+  refreshLeaderboardSeason: jest.fn().mockResolvedValue(1),
 }));
 
 const mockAuth = jest.mocked(auth);

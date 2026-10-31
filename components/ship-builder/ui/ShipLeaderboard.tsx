@@ -9,7 +9,11 @@ import type { LeaderboardRow } from "@/lib/leaderboard/types";
 import { entryOf } from "@/lib/ship-builder/challenges/boardSync";
 import { challengeProgress } from "@/lib/ship-builder/challenges/progressStore";
 import SeasonPicker from "@/components/leaderboard/SeasonPicker";
-import { SHIP_BOARD_ENABLED, useShipSeason } from "../hooks/shipBoardSync";
+import {
+  SHIP_BOARD_ENABLED,
+  refreshShipSeason,
+  useShipSeason,
+} from "../hooks/shipBoardSync";
 
 /** How many players the board shows; your own rank is added below. */
 export const BOARD_SHOWN = 20;
@@ -39,6 +43,25 @@ export default function ShipLeaderboard({
   const season = picked ?? current;
   const isPast = season !== current;
   const [fetched, setFetched] = useState<Load>({ status: "loading" });
+  /** The season read on open failed, and none was known before it. */
+  const [isSeasonUnreachable, setIsSeasonUnreachable] = useState(false);
+
+  // Read the season again on open: a missed first read or a season started
+  // during this visit shows now, not on the next submit.
+  useEffect(() => {
+    if (!enabled) return;
+    let isCancelled = false;
+    refreshShipSeason()
+      .then((n) => {
+        if (!isCancelled) setIsSeasonUnreachable(n === null);
+      })
+      .catch(() => {
+        if (!isCancelled) setIsSeasonUnreachable(true);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [enabled]);
 
   useEffect(() => {
     // The board waits for the season (read when Ship Builder starts).
@@ -87,6 +110,13 @@ export default function ShipLeaderboard({
     );
   }
   if (current === null) {
+    if (isSeasonUnreachable) {
+      return (
+        <p role="status" className="text-sm text-slate-600 dark:text-slate-400">
+          Couldn&apos;t reach the leaderboard. Try again later.
+        </p>
+      );
+    }
     return (
       <p role="status" className="text-sm text-slate-600 dark:text-slate-400">
         Loading the leaderboard…

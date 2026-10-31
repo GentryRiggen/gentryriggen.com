@@ -59,6 +59,12 @@ export interface BoardSync {
   start: () => void;
   /** Stops any waiting submit. */
   stop: () => void;
+  /**
+   * Reads the season now, however fresh the last read (the board opening):
+   * a newer one is handed on as any read is. Resolves to the season known
+   * after it, or null when none has been read.
+   */
+  refreshSeason: () => Promise<number | null>;
 }
 
 /**
@@ -252,5 +258,11 @@ export function createBoardSync(deps: BoardSyncDeps): BoardSync {
     timer = null;
   }
 
-  return { request, start, stop };
+  function refreshSeason(): Promise<number | null> {
+    if (!deps.enabled) return Promise.resolve(null);
+    seasonReadAt = Number.NEGATIVE_INFINITY;
+    return currentSeason();
+  }
+
+  return { request, start, stop, refreshSeason };
 }

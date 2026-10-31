@@ -239,6 +239,52 @@ describe("createBoardSync", () => {
       sync.stop();
     });
 
+    it("refreshSeason reads again even when the last read is fresh", async () => {
+      const readSeason = jest
+        .fn()
+        .mockResolvedValueOnce({ number: 2, startedAt: LONG_AGO })
+        .mockResolvedValue({ number: 3, startedAt: LONG_AGO });
+      const { sync, onSeason } = makeSync({ readSeason });
+      sync.start();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(onSeason).toHaveBeenLastCalledWith(2);
+      await expect(sync.refreshSeason()).resolves.toBe(3);
+      expect(readSeason).toHaveBeenCalledTimes(2);
+      expect(onSeason).toHaveBeenLastCalledWith(3);
+    });
+
+    it("refreshSeason retries a failed first read, null while none is known", async () => {
+      const readSeason = jest
+        .fn()
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ number: 2, startedAt: LONG_AGO });
+      const { sync, onSeason } = makeSync({ readSeason });
+      sync.start();
+      await jest.advanceTimersByTimeAsync(0);
+      await expect(sync.refreshSeason()).resolves.toBeNull();
+      expect(onSeason).not.toHaveBeenCalled();
+      await expect(sync.refreshSeason()).resolves.toBe(2);
+      expect(onSeason).toHaveBeenCalledWith(2);
+    });
+
+    it("refreshSeason keeps the season last read when a re-read fails", async () => {
+      const readSeason = jest
+        .fn()
+        .mockResolvedValueOnce({ number: 2, startedAt: LONG_AGO })
+        .mockRejectedValue(new Error("offline"));
+      const { sync } = makeSync({ readSeason });
+      sync.start();
+      await jest.advanceTimersByTimeAsync(0);
+      await expect(sync.refreshSeason()).resolves.toBe(2);
+    });
+
+    it("refreshSeason makes no read when disabled", async () => {
+      const { sync, readSeason } = makeSync({ enabled: false });
+      await expect(sync.refreshSeason()).resolves.toBeNull();
+      expect(readSeason).not.toHaveBeenCalled();
+    });
+
     it("caps the first write by the time since the season began", async () => {
       let big: ChallengeProgress = EMPTY_PROGRESS;
       for (let i = 0; i < 14; i++) {

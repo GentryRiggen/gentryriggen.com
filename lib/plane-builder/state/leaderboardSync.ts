@@ -69,6 +69,12 @@ export interface LeaderboardSync {
   request: () => void;
   /** Starts watching the store for finished flights and prestiges. */
   start: () => () => void;
+  /**
+   * Reads the season now, however fresh the last read (the board opening):
+   * a newer one is applied as any read is. Resolves to the season known
+   * after it, or null when none has been read.
+   */
+  refreshSeason: () => Promise<number | null>;
 }
 
 /** What the board holds for the player, as far as the climb is concerned. */
@@ -328,13 +334,22 @@ export function createLeaderboardSync(
     };
   };
 
-  return { request, start };
+  function refreshSeason(): Promise<number | null> {
+    if (!enabled) return Promise.resolve(null);
+    seasonReadAt = Number.NEGATIVE_INFINITY;
+    return currentSeason();
+  }
+
+  return { request, start, refreshSeason };
 }
 
 const sync = createLeaderboardSync();
 
 /** Used by the nickname reroll, which should reach the board too. */
 export const requestLeaderboardSubmit = sync.request;
+
+/** Called when the leaderboards open, so a new or missed season shows. */
+export const refreshLeaderboardSeason = sync.refreshSeason;
 
 /** Mount once in PlaneBuilder. */
 export function useLeaderboardSync(): void {
