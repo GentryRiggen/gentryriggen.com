@@ -9,20 +9,25 @@ import { focusRingClass } from "./styles";
 import { formatKm, medalFor, prestigeOf } from "./standing";
 import type { Standing } from "@/lib/leaderboard/rank";
 
+/** Holds `season:rank`, so a new season's first rank is not a "climb". */
 export const LAST_RANK_KEY = "plane-builder:last-rank";
 
-function readLastRank(): number | null {
+/** The last rank shown in `season`, or null (none, or another season's). */
+function readLastRank(season: number): number | null {
   try {
-    const value = Number(window.localStorage.getItem(LAST_RANK_KEY));
-    return Number.isInteger(value) && value > 0 ? value : null;
+    const raw = window.localStorage.getItem(LAST_RANK_KEY) ?? "";
+    const [stored, value] = raw.split(":").map(Number);
+    return stored === season && Number.isInteger(value) && value > 0
+      ? value
+      : null;
   } catch {
     return null;
   }
 }
 
-function writeLastRank(rank: number): void {
+function writeLastRank(season: number, rank: number): void {
   try {
-    window.localStorage.setItem(LAST_RANK_KEY, String(rank));
+    window.localStorage.setItem(LAST_RANK_KEY, `${season}:${rank}`);
   } catch {
     // Private mode or blocked storage: the pill just won't show next time.
   }
@@ -78,16 +83,17 @@ export default function LeaderboardCard({
   const myPrestige = usePlaneBuilderStore((s) => s.progress.season.prestiges);
   const [isOpen, setIsOpen] = useState(false);
   const [upBy, setUpBy] = useState<number | null>(null);
+  const season = usePlaneBuilderStore((s) => s.currentSeason);
   const rank = standing?.kind === "ranked" ? standing.rank : null;
 
-  // Remember the last rank shown so a climb can be celebrated.
+  // Remember the last rank shown (per season) so a climb can be celebrated.
   useEffect(() => {
-    if (rank === null) return;
-    const last = readLastRank();
+    if (rank === null || season === null) return;
+    const last = readLastRank(season);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (last !== null && rank < last) setUpBy(last - rank);
-    writeLastRank(rank);
-  }, [rank]);
+    writeLastRank(season, rank);
+  }, [rank, season]);
 
   if (!enabled || uid === null) return null;
 

@@ -165,7 +165,7 @@ it("is hidden when disabled or signed out", async () => {
 });
 
 it("shows an up pill when the rank improved, then remembers it", async () => {
-  window.localStorage.setItem(LAST_RANK_KEY, "5");
+  window.localStorage.setItem(LAST_RANK_KEY, "2:5");
   mockBoard.fetchBoard.mockResolvedValue([
     row("a", "Top Cat", 3 * UNIT),
     row("b", "Quick Hen", 2 * UNIT),
@@ -173,11 +173,11 @@ it("shows an up pill when the rank improved, then remembers it", async () => {
   ]);
   render(<LeaderboardCard enabled />);
   expect(await screen.findByText("▲ up 2!")).toBeVisible();
-  expect(window.localStorage.getItem(LAST_RANK_KEY)).toBe("3");
+  expect(window.localStorage.getItem(LAST_RANK_KEY)).toBe("2:3");
 });
 
 it("shows no pill when the rank did not improve", async () => {
-  window.localStorage.setItem(LAST_RANK_KEY, "2");
+  window.localStorage.setItem(LAST_RANK_KEY, "2:2");
   mockBoard.fetchBoard.mockResolvedValue([
     row("a", "Top Cat", 3 * UNIT),
     row("b", "Quick Hen", 2 * UNIT),
@@ -186,7 +186,33 @@ it("shows no pill when the rank did not improve", async () => {
   render(<LeaderboardCard enabled />);
   await screen.findByText(/#3 in the world/);
   expect(screen.queryByText(/▲/)).not.toBeInTheDocument();
-  expect(window.localStorage.getItem(LAST_RANK_KEY)).toBe("3");
+  expect(window.localStorage.getItem(LAST_RANK_KEY)).toBe("2:3");
+});
+
+it("shows no pill against last season's rank", async () => {
+  window.localStorage.setItem(LAST_RANK_KEY, "1:40");
+  mockBoard.fetchBoard.mockResolvedValue([
+    row("a", "Top Cat", 3 * UNIT),
+    row("b", "Quick Hen", 2 * UNIT),
+    row("me", "Speedy Falcon 42", UNIT + 500),
+  ]);
+  render(<LeaderboardCard enabled />);
+  await screen.findByText(/#3 in the world/);
+  expect(screen.queryByText(/▲/)).not.toBeInTheDocument();
+  expect(window.localStorage.getItem(LAST_RANK_KEY)).toBe("2:3");
+});
+
+it("shows no pill against a rank saved before seasons", async () => {
+  window.localStorage.setItem(LAST_RANK_KEY, "40");
+  mockBoard.fetchBoard.mockResolvedValue([
+    row("a", "Top Cat", 3 * UNIT),
+    row("b", "Quick Hen", 2 * UNIT),
+    row("me", "Speedy Falcon 42", UNIT + 500),
+  ]);
+  render(<LeaderboardCard enabled />);
+  await screen.findByText(/#3 in the world/);
+  expect(screen.queryByText(/▲/)).not.toBeInTheDocument();
+  expect(window.localStorage.getItem(LAST_RANK_KEY)).toBe("2:3");
 });
 
 it("opens the leaderboards when tapped", async () => {
