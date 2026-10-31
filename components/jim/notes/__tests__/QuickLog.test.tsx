@@ -118,3 +118,30 @@ it("starts each sheet empty again", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Log workout" }));
   expect(screen.getByLabelText("Workout")).toHaveValue("");
 });
+
+it("locks the page behind the sheet while it is open", async () => {
+  const onLog = jest.fn();
+  render(
+    <div data-notes-scroller style={{ overflow: "auto" }}>
+      <button type="button">Behind</button>
+      <QuickLog today={TODAY} onLog={onLog} />
+    </div>
+  );
+  const scroller = document.querySelector<HTMLElement>(
+    "[data-notes-scroller]"
+  )!;
+  const behind = screen.getByRole("button", { name: "Behind" });
+  await userEvent.click(screen.getByRole("button", { name: "Log workout" }));
+  expect(scroller.style.overflow).toBe("hidden");
+  expect(behind).toHaveAttribute("inert");
+  // The opener row is behind the sheet too.
+  expect(
+    screen.getByRole("button", { name: "Log injection", hidden: true })
+      .parentElement
+  ).toHaveAttribute("inert");
+  expect(screen.getByTestId("quicklog-backdrop")).toHaveClass("touch-none");
+  await userEvent.keyboard("{Escape}");
+  expect(scroller.style.overflow).toBe("auto");
+  expect(behind).not.toHaveAttribute("inert");
+  expect(screen.getByRole("button", { name: "Log workout" })).toHaveFocus();
+});

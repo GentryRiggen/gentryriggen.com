@@ -18,10 +18,19 @@ jest.mock("@/lib/jim/api", () => {
   const actual = jest.requireActual("@/lib/jim/api");
   return { ...actual, streamToJim: jest.fn() };
 });
-jest.mock("../notes/NotesShell", () => ({
-  __esModule: true,
-  default: () => null,
-}));
+/** How often the (hidden) Notes tree rendered. */
+let notesRenders = 0;
+jest.mock("../notes/NotesShell", () => {
+  const { memo } = jest.requireActual("react");
+  return {
+    __esModule: true,
+    // Memoized like the real one, so only changed props redraw it.
+    default: memo(() => {
+      notesRenders += 1;
+      return null;
+    }),
+  };
+});
 
 const send = jest.mocked(api.streamToJim);
 const UID = "uid-1";
@@ -69,6 +78,7 @@ async function sendText(text: string) {
 
 beforeEach(() => {
   renders.clear();
+  notesRenders = 0;
   send.mockReset();
   window.localStorage.clear();
 });
@@ -122,4 +132,22 @@ it("aborts the turn that is out on New chat and on leaving", async () => {
   await sendText("two");
   unmount();
   expect(second.signal()?.aborted).toBe(true);
+});
+
+it("leaves the Notes tree alone while a reply streams", async () => {
+  const turn = streamed();
+  renderChat();
+  await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+  await userEvent.click(screen.getByRole("tab", { name: "Chat" }));
+  await sendText("what's new?");
+  turn.emit({ t: "delta", text: "One" });
+  await screen.findByText("One");
+  const before = notesRenders;
+  expect(before).toBeGreaterThan(0);
+  for (const word of [" two", " three", " four"]) {
+    turn.emit({ t: "delta", text: word });
+  }
+  await screen.findByText("One two three four");
+  turn.emit({ t: "step", text: "Searching notes" });
+  expect(notesRenders).toBe(before);
 });

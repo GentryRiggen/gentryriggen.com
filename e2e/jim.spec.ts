@@ -176,13 +176,13 @@ async function mockServer(
       return;
     }
     if (url.pathname === "/api/search") {
-      const q = url.searchParams.get("q") ?? "";
+      const { q } = route.request().postDataJSON() as { q: string };
       calls.search.push(q);
       await reply(200, { results: q === "zzz" ? [] : SEARCH_RESULTS });
       return;
     }
     if (url.pathname === "/api/note") {
-      const path = url.searchParams.get("path");
+      const { path } = route.request().postDataJSON() as { path: string };
       if (path === GARDEN_NOTE.path) await reply(200, GARDEN_NOTE);
       else await reply(404, { error: "not found" });
       return;

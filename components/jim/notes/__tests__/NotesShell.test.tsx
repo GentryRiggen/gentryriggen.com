@@ -226,6 +226,53 @@ it("loads once more when a todo saves while a load is out", async () => {
   expect(await screen.findByText("No open todos.")).toBeInTheDocument();
 });
 
+it("a save still out when Home is left refetches and shows right on return", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const save = deferred<view.TodoResult>();
+  toggleTodo.mockReturnValue(save.promise);
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Water the plants" })
+  );
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  // Back while it still saves: ticked and busy, and a re-tap sends nothing.
+  await userEvent.click(screen.getByRole("tab", { name: "Home" }));
+  const box = screen.getByRole("checkbox", { name: "Water the plants" });
+  expect(box).toHaveAttribute("aria-checked", "true");
+  expect(box).toHaveAttribute("aria-busy", "true");
+  await userEvent.click(box);
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
+
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    todos: VIEW_FIXTURE.todos.filter((t) => t.order !== 3),
+  });
+  await act(async () => save.resolve({ ok: true, sha: "s" }));
+  expect(fetchView).toHaveBeenCalledTimes(2);
+  await userEvent.click(screen.getByRole("tab", { name: "Home" }));
+  expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
+});
+
+it("hides the all-notes search on People, which has its own", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  expect(screen.getByLabelText("Search notes")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("tab", { name: "People" }));
+  expect(screen.queryByLabelText("Search notes")).toBeNull();
+  expect(screen.getByLabelText("Search people")).toBeInTheDocument();
+});
+
+it("is memoized, so a chat redraw leaves it alone", () => {
+  expect((NotesShell as unknown as { $$typeof: symbol }).$$typeof).toBe(
+    Symbol.for("react.memo")
+  );
+});
+
 describe("search", () => {
   const RESULTS = [
     { path: "home/garden.md", title: "Garden", snippet: "the plants" },

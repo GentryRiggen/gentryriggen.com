@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -17,6 +18,7 @@ import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
+import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import { timeLabel } from "@/lib/jim/notesData";
 import { fetchView, getCachedView, type ViewData } from "@/lib/jim/view";
@@ -66,8 +68,11 @@ function Skeleton() {
   );
 }
 
-/** The Notes tab: its page bar, the data, and the five read-only pages. */
-export default function NotesShell({
+/**
+ * The Notes tab: its page bar, the data, and the five read-only pages.
+ * Memoized: it sits (hidden) beside a chat that redraws every streamed frame.
+ */
+export default memo(function NotesShell({
   api,
   getToken,
   active,
@@ -142,6 +147,8 @@ export default function NotesShell({
     again.current = true;
     return inflight.current;
   }, [load]);
+
+  const saves = useTodoSaves({ data, api, getToken, onChanged: reload });
 
   // Load on the first open, and again on a later open once the data is old.
   useEffect(() => {
@@ -262,15 +269,7 @@ export default function NotesShell({
         <Skeleton />
       );
   } else if (page === "home") {
-    body = (
-      <NotesHome
-        data={data}
-        api={api}
-        getToken={getToken}
-        onChanged={reload}
-        onLog={onLog}
-      />
-    );
+    body = <NotesHome data={data} saves={saves} onLog={onLog} />;
   } else if (page === "health") {
     body = <NotesHealth data={data} />;
   } else if (page === "training") {
@@ -330,6 +329,7 @@ export default function NotesShell({
 
       <div
         ref={scrollerRef}
+        data-notes-scroller
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         <div
@@ -338,7 +338,8 @@ export default function NotesShell({
           aria-labelledby={`jim-notes-tab-${page}`}
           className="mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         >
-          {found === null && (
+          {/* People has its own search. */}
+          {found === null && (searching || page !== "people") && (
             <div className="mb-4">
               <SearchField value={search} onChange={onSearch} />
             </div>
@@ -375,4 +376,4 @@ export default function NotesShell({
       </div>
     </div>
   );
-}
+});

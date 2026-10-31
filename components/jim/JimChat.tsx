@@ -399,16 +399,27 @@ export default function JimChat({
     onSignOut();
   }
 
+  // The latest send and turn state, for the stable quick-log callback.
+  const sendRef = useRef(send);
+  const sendingRef = useRef(sending);
+  useLayoutEffect(() => {
+    sendRef.current = send;
+    sendingRef.current = sending;
+  });
+
   /**
    * A quick log on Notes: sent as a message, and Chat shows Jim's reply as
    * it comes. While another turn is out it waits in the box instead.
+   * Stable, so the (memoized) Notes tree doesn't redraw with every frame
+   * of a streaming reply.
    */
-  function logFromNotes(text: string) {
+  const logFromNotes = useCallback((text: string) => {
     stuck.current = true;
     setTab("chat");
-    if (sending) putBack(text);
-    else void send(text);
-  }
+    if (sendingRef.current) {
+      setDraft((current) => (current ? `${text}\n${current}` : text));
+    } else void sendRef.current(text);
+  }, []);
 
   function restoreHeld() {
     if (held === null) return;

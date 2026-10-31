@@ -2,7 +2,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as view from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
-import NotesHome from "../NotesHome";
+import NotesHomePage from "../NotesHome";
+import useTodoSaves from "../useTodoSaves";
 
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
@@ -10,6 +11,20 @@ jest.mock("@/lib/jim/view", () => {
 });
 
 const toggleTodo = jest.mocked(view.toggleTodo);
+
+interface HomeProps {
+  data: view.ViewData;
+  api: string;
+  getToken: () => Promise<string | null>;
+  onChanged: () => Promise<view.ViewData | null>;
+  onLog: (text: string) => void;
+}
+
+/** Home with its saves, as the shell holds them. */
+function NotesHome({ data, api, getToken, onChanged, onLog }: HomeProps) {
+  const saves = useTodoSaves({ data, api, getToken, onChanged });
+  return <NotesHomePage data={data} saves={saves} onLog={onLog} />;
+}
 const API = "https://jim.example.test";
 const getToken = jest.fn().mockResolvedValue("t");
 const PLANTS = VIEW_FIXTURE.todos.find((t) => t.order === 3)!;
@@ -235,4 +250,18 @@ it("drops a finished check once fresh data arrives", async () => {
   ).toBeNull();
   // The Undo stays offered for the rest of its 5 seconds.
   expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+});
+
+it("unticking a box ticked this session sends the done line, not the open one", async () => {
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  // The refetch lands but the page hasn't been given the new data yet.
+  renderHome();
+  await userEvent.click(box());
+  await act(async () => {});
+  expect(box()).toHaveAttribute("aria-checked", "true");
+  await userEvent.click(box());
+  await act(async () => {});
+  expect(toggleTodo).toHaveBeenCalledTimes(2);
+  expect(toggleTodo.mock.calls[1][0]).toEqual(AFTER.doneTodos[0]);
+  expect(toggleTodo.mock.calls[1][1]).toBe(false);
 });

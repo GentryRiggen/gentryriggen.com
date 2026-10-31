@@ -521,10 +521,10 @@ export async function searchNotes(
   api: string = JIM_API,
   timeoutMs: number = CALL_TIMEOUT_MS
 ): Promise<SearchResult[]> {
-  const q = encodeURIComponent(query.slice(0, SEARCH_MAX));
+  // In the body, not the URL: request logs keep full URLs.
   const res = await callJim(
-    `/api/search?q=${q}`,
-    { method: "GET" },
+    "/api/search",
+    { method: "POST", body: { q: query.slice(0, SEARCH_MAX) } },
     getToken,
     fetchFn,
     api,
@@ -568,8 +568,8 @@ export async function fetchNote(
   timeoutMs: number = CALL_TIMEOUT_MS
 ): Promise<Note | null> {
   const res = await callJim(
-    `/api/note?path=${encodeURIComponent(path)}`,
-    { method: "GET" },
+    "/api/note",
+    { method: "POST", body: { path } },
     getToken,
     fetchFn,
     api,

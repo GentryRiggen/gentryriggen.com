@@ -178,17 +178,19 @@ describe("searchNotes", () => {
       { path: "home/garden.md", title: "Garden", snippet: "Water the plants" },
     ]);
     const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe(`${API}/api/search?q=plants%20%26%20pots`);
-    expect(init.method).toBe("GET");
+    // In the body, never the URL (request logs keep full URLs).
+    expect(url).toBe(`${API}/api/search`);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ q: "plants & pots" });
     expect(init.headers.Authorization).toBe("Bearer t1");
   });
 
   it("caps the query at 100 characters", async () => {
     const fetchFn = jest.fn().mockResolvedValue(json(200, { results: [] }));
     await searchNotes("a".repeat(150), async () => "t", fetchFn, API);
-    expect(fetchFn.mock.calls[0][0]).toBe(
-      `${API}/api/search?q=${"a".repeat(100)}`
-    );
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
+      q: "a".repeat(100),
+    });
   });
 
   it("retries once after a 401, then is denied", async () => {
@@ -241,14 +243,15 @@ describe("fetchNote", () => {
     body: "## Beds\n- Tomatoes",
   };
 
-  it("gets a note by its encoded path", async () => {
+  it("asks for a note by its path in the body", async () => {
     const fetchFn = jest.fn().mockResolvedValue(json(200, NOTE));
     await expect(
       fetchNote("home/garden.md", async () => "t", fetchFn, API)
     ).resolves.toEqual(NOTE);
-    expect(fetchFn.mock.calls[0][0]).toBe(
-      `${API}/api/note?path=home%2Fgarden.md`
-    );
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe(`${API}/api/note`);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ path: "home/garden.md" });
   });
 
   it("is null for a note that isn't there (404)", async () => {

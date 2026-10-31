@@ -13,9 +13,7 @@ const EMPTY = normalizeView({ today: "2026-10-31" }) as ViewData;
 
 /** NotesHome's wiring; these tests never tick a box. */
 const HOME = {
-  api: "https://jim.example.test",
-  getToken: async () => "t",
-  onChanged: async () => null,
+  saves: { marks: {}, toast: null, toggle: () => {}, undo: () => {} },
   onLog: () => {},
 };
 

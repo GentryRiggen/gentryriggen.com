@@ -1,12 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import type { ViewData } from "@/lib/jim/view";
 import NotesHome from "../NotesHome";
 
 const HOME = {
-  api: "https://jim.example.test",
-  getToken: async () => "t",
-  onChanged: async () => null,
+  saves: { marks: {}, toast: null, toggle: () => {}, undo: () => {} },
   onLog: () => {},
 };
 
@@ -50,4 +48,15 @@ it("hides the card when there is nothing to show", () => {
     training: { lifts: [], workouts: [] },
   });
   expect(screen.queryByRole("region", { name: "Today" })).toBeNull();
+});
+
+it("moves on to the next meeting as the clock passes the last one", () => {
+  // Standup runs 16:00 to its end; afterwards nothing is left today.
+  renderAt("2026-10-31T15:00:00Z");
+  const card = () => screen.getByRole("region", { name: "Today" });
+  expect(within(card()).getByText(/Team standup/)).toBeInTheDocument();
+  act(() => {
+    jest.advanceTimersByTime(4 * 60 * 60 * 1000);
+  });
+  expect(within(card()).queryByText(/Team standup/)).toBeNull();
 });

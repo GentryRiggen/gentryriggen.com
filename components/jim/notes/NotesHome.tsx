@@ -1,15 +1,16 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import QuickLog from "@/components/jim/notes/QuickLog";
+import {
+  todoKey,
+  type DoneToast,
+  type Mark,
+  type Toast,
+  type TodoSaves,
+} from "@/components/jim/notes/useTodoSaves";
 import {
   eventsByDay,
   localDay,
@@ -19,7 +20,6 @@ import {
 import {
   addDays,
   daysBetween,
-  doneLine,
   dueLabel,
   fmtDay,
   fmtShort,
@@ -27,51 +27,14 @@ import {
   isRecurring,
   todoTitle,
 } from "@/lib/jim/todos";
-import {
-  TODO_MESSAGES,
-  toggleTodo,
-  type TodoResult,
-  type CalendarEvent,
-  type ViewData,
-  type ViewTodo,
-} from "@/lib/jim/view";
+import type { CalendarEvent, ViewData, ViewTodo } from "@/lib/jim/view";
 
 interface NotesHomeProps {
   data: ViewData;
-  /** The server's base URL. */
-  api: string;
-  getToken: (force?: boolean) => Promise<string | null>;
-  /**
-   * A todo was saved (or may have been): fetch the notes again. Resolves to
-   * the fresh payload, or null if that failed.
-   */
-  onChanged: () => Promise<ViewData | null>;
+  /** The checkbox saves, kept by the shell so they outlive this page. */
+  saves: TodoSaves;
   /** Sends a quick-log sentence as a chat message and switches to Chat. */
   onLog: (text: string) => void;
-}
-
-/** How long "Done · Undo" (or a failure) stays up. */
-const TOAST_MS = 5_000;
-
-/** A todo's box as shown: checked or not, and whether it is saving. */
-interface Mark {
-  done: boolean;
-  pending: boolean;
-}
-
-type ToastBody =
-  | {
-      kind: "done";
-      todo: ViewTodo;
-      /** The refetch after the save, which has the line as it is now. */
-      fresh: Promise<ViewData | null>;
-    }
-  | { kind: "error"; message: string };
-
-type Toast = ToastBody & { id: number };
-
-function todoKey(t: Pick<ViewTodo, "order" | "text">): string {
-  return `${t.order}-${t.text}`;
 }
 
 const AREA_LABEL: Record<string, string> = {
@@ -165,7 +128,17 @@ function ago(days: number): string {
 
 /** Three quick facts for today; rows without data are left out. */
 function TodayCard({ data }: { data: ViewData }) {
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  // "Now" moves on: again when fresh data lands, and every minute.
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const first = setTimeout(tick, 0);
+    const timer = setInterval(tick, 60_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [data]);
   const { meeting, injectionDays, workouts } = todaySummary(data, now);
   const rows: { label: string; value: ReactNode }[] = [];
   if (meeting) {
@@ -369,7 +342,7 @@ function Todos({ data, marks, onToggle }: TodosProps) {
 
 interface ToastBarProps {
   toast: Toast | null;
-  onUndo: (toast: Extract<Toast, { kind: "done" }>) => void;
+  onUndo: (toast: DoneToast) => void;
 }
 
 /** Floats above the home bar; always in the page, so it is announced. */
@@ -413,102 +386,7 @@ function ToastBar({ toast, onUndo }: ToastBarProps) {
 }
 
 /** Home: the calendar this week, then what's due, with boxes to tick. */
-export default function NotesHome({
-  data,
-  api,
-  getToken,
-  onChanged,
-  onLog,
-}: NotesHomeProps) {
-  const [marks, setMarks] = useState<Record<string, Mark>>({});
-  const [toast, setToast] = useState<Toast | null>(null);
-  const toastId = useRef(0);
-  /** Todos saving now: a second tap on one is ignored. */
-  const saving = useRef(new Set<string>());
-  /** The todo requests, sent one at a time. */
-  const queue = useRef<Promise<void>>(Promise.resolve());
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  // Fresh data has the truth: keep only the boxes still saving.
-  const [marksFor, setMarksFor] = useState(data);
-  if (marksFor !== data) {
-    setMarksFor(data);
-    setMarks((prev) =>
-      Object.fromEntries(Object.entries(prev).filter(([, m]) => m.pending))
-    );
-  }
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), TOAST_MS);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
-  const show = useCallback((next: ToastBody) => {
-    toastId.current += 1;
-    setToast({ ...next, id: toastId.current });
-  }, []);
-
-  /**
-   * Ticks a todo (or unticks it). The box changes at once; the requests go
-   * one at a time, in tap order. `line` is the line to send when it isn't
-   * the todo as listed (an Undo sends the line the check-off produced).
-   */
-  const toggle = useCallback(
-    (todo: ViewTodo, done: boolean, line?: Promise<ViewTodo | null>) => {
-      const key = todoKey(todo);
-      if (saving.current.has(key)) return;
-      saving.current.add(key);
-      setMarks((prev) => ({ ...prev, [key]: { done, pending: true } }));
-      if (!done) setToast(null);
-      queue.current = queue.current.then(async () => {
-        const target = line ? await line : todo;
-        const result: TodoResult = target
-          ? await toggleTodo(target, done, getToken, undefined, api)
-          : { ok: false, reason: "changed", message: TODO_MESSAGES.changed };
-        saving.current.delete(key);
-        if (!mounted.current) return;
-        if (result.ok) {
-          setMarks((prev) => ({ ...prev, [key]: { done, pending: false } }));
-          const fresh = onChanged();
-          if (done) show({ kind: "done", todo, fresh });
-          return;
-        }
-        // Back to what the list says, and why.
-        setMarks((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-        show({ kind: "error", message: result.message });
-        if (result.reason !== "denied") void onChanged();
-      });
-    },
-    [api, getToken, onChanged, show]
-  );
-
-  /** Undo sends the line as it is now, once the refetch has it. */
-  const undo = useCallback(
-    (toast: Extract<Toast, { kind: "done" }>) => {
-      toggle(
-        toast.todo,
-        false,
-        toast.fresh.then(
-          (fresh) => (fresh ? doneLine(fresh, toast.todo) : null),
-          () => null
-        )
-      );
-    },
-    [toggle]
-  );
-
+export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -523,8 +401,8 @@ export default function NotesHome({
         <QuickLog today={data.today} onLog={onLog} />
       </div>
       <Calendar data={data} />
-      <Todos data={data} marks={marks} onToggle={toggle} />
-      <ToastBar toast={toast} onUndo={undo} />
+      <Todos data={data} marks={saves.marks} onToggle={saves.toggle} />
+      <ToastBar toast={saves.toast} onUndo={saves.undo} />
     </div>
   );
 }

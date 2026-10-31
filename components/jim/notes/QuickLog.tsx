@@ -83,6 +83,35 @@ function Field({
 const FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Makes everything but `sheet` inert (every sibling along its way up to the
+ * body) and stops the Notes list behind it scrolling. Returns the undo.
+ */
+function lockBehind(sheet: HTMLElement): () => void {
+  const undo: (() => void)[] = [];
+  for (
+    let node: HTMLElement = sheet;
+    node.parentElement && node !== document.body;
+    node = node.parentElement
+  ) {
+    for (const sibling of node.parentElement.children) {
+      if (sibling === node || !(sibling instanceof HTMLElement)) continue;
+      if (sibling.hasAttribute("inert")) continue;
+      sibling.setAttribute("inert", "");
+      undo.push(() => sibling.removeAttribute("inert"));
+    }
+  }
+  const scroller = sheet.closest<HTMLElement>("[data-notes-scroller]");
+  if (scroller) {
+    const before = scroller.style.overflow;
+    scroller.style.overflow = "hidden";
+    undo.push(() => {
+      scroller.style.overflow = before;
+    });
+  }
+  return () => undo.forEach((fn) => fn());
+}
+
 interface SheetProps {
   kind: Kind;
   today: string;
@@ -93,6 +122,7 @@ interface SheetProps {
 /** A bottom sheet over the visible screen (above the keyboard on iOS). */
 function Sheet({ kind, today, onSend, onClose }: SheetProps) {
   const titleId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [dose, setDose] = useState("");
   const [site, setSite] = useState("");
@@ -105,6 +135,14 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
     const first =
       panelRef.current?.querySelector<HTMLElement>("input, textarea");
     first?.focus();
+  }, []);
+
+  // While open, the page behind stays put (iOS scrolls it through the
+  // backdrop otherwise) and can't be reached.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    return lockBehind(root);
   }, []);
 
   // Escape closes even when focus has left the sheet (a dismissed keyboard).
@@ -151,21 +189,22 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
 
   return (
     <div
-      className="fixed inset-x-0 top-[var(--jim-vt,0px)] z-30 flex h-[var(--jim-vh,100dvh)] flex-col justify-end"
+      ref={rootRef}
+      className="fixed inset-x-0 top-[var(--jim-vt,0px)] z-30 flex h-[var(--jim-vh,100dvh)] touch-none flex-col justify-end overscroll-contain"
       onKeyDown={onKeyDown}
     >
       <div
         data-testid="quicklog-backdrop"
         aria-hidden="true"
         onClick={onClose}
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 touch-none bg-black/50"
       />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative max-h-full overflow-y-auto overscroll-contain rounded-t-2xl bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl"
+        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-2xl bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl"
       >
         <form onSubmit={submit} className="mx-auto w-full max-w-[45rem]">
           <div className="flex items-center justify-between gap-3">
@@ -311,10 +350,19 @@ export default function QuickLog({ today, onLog }: QuickLogProps) {
   const [open, setOpen] = useState<Kind | null>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
+  /** Focus goes back to the opener once the sheet (and its lock) is gone. */
+  const refocus = useRef(false);
+
   const close = useCallback(() => {
+    refocus.current = true;
     setOpen(null);
-    openerRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (open !== null || !refocus.current) return;
+    refocus.current = false;
+    openerRef.current?.focus();
+  }, [open]);
 
   return (
     <>
