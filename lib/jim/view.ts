@@ -231,23 +231,58 @@ export function getCachedView(): CachedView | null {
   return cache;
 }
 
+/** Bumped on sign-out, so a fetch still out then can't refill the cache. */
+let generation = 0;
+
+/** The fetch out now, shared: the early wake-up's and Notes' are one call. */
+let inflight: {
+  api: string;
+  generation: number;
+  promise: Promise<ViewData>;
+} | null = null;
+
 export function clearViewCache(): void {
   cache = null;
+  inflight = null;
+  generation += 1;
 }
 
 /**
  * Fetches the Notes data. On a 401 the ID token is force-refreshed and the
  * request is tried once more, like chat. A good payload also becomes the
- * cached one. Throws JimError: waking (offline, a 503, a dropped connection
- * or the timeout; trying again is safe), denied, or server.
+ * cached one. A call while another for the same server is out joins it.
+ * Throws JimError: waking (offline, a 503, a dropped connection or the
+ * timeout; trying again is safe), denied, or server.
  */
-export async function fetchView(
+export function fetchView(
   getToken: (force?: boolean) => Promise<string | null> = getIdToken,
-  fetchFn: typeof fetch = fetch,
+  fetchFn?: typeof fetch,
   api: string = JIM_API,
   timeoutMs: number = VIEW_TIMEOUT_MS
 ): Promise<ViewData> {
+  if (inflight && inflight.api === api && inflight.generation === generation) {
+    return inflight.promise;
+  }
+  const promise = loadView(getToken, fetchFn, api, timeoutMs, generation);
+  const entry = { api, generation, promise };
+  inflight = entry;
+  const settle = () => {
+    if (inflight === entry) inflight = null;
+  };
+  promise.then(settle, settle);
+  return promise;
+}
+
+async function loadView(
+  getToken: (force?: boolean) => Promise<string | null>,
+  fetchFn: typeof fetch | undefined,
+  api: string,
+  timeoutMs: number,
+  startedIn: number
+): Promise<ViewData> {
   if (!isJimConnected(api)) throw new JimError("server");
+  // Looked up here, so a missing fetch rejects instead of throwing.
+  const doFetch = fetchFn ?? fetch;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<never>((_resolve, reject) => {
@@ -258,10 +293,11 @@ export async function fetchView(
   });
   try {
     const data = await Promise.race([
-      requestView(getToken, fetchFn, api, controller.signal),
+      requestView(getToken, doFetch, api, controller.signal),
       timedOut,
     ]);
-    cache = { data, at: Date.now() };
+    // Signed out meanwhile: hand it back, but don't keep it.
+    if (startedIn === generation) cache = { data, at: Date.now() };
     return data;
   } catch (err) {
     if (controller.signal.aborted) throw new JimError("waking");

@@ -80,34 +80,75 @@ function isReply(value: unknown): value is JimReply {
 }
 
 /**
- * Sends one message and resolves to Jim's reply. On a 401 the ID token is
- * force-refreshed and the request is tried once more. Gives up after
- * `timeoutMs`. Throws JimError.
+ * How long an open stream may stay silent. The server pings every 15 s, so
+ * this much quiet means the connection is gone (a lift, a tunnel).
  */
-export async function sendToJim(
-  session: string,
+export const JIM_IDLE_MS = 45_000;
+
+/** What Jim is doing while a streamed turn runs (pings are not passed on). */
+export type JimStreamEvent =
+  | { t: "step"; text: string }
+  | { t: "delta"; text: string }
+  | { t: "reply"; text: string }
+  | { t: "saving" };
+
+const NDJSON = "application/x-ndjson";
+
+/**
+ * Sends one message and resolves to Jim's reply, passing what he is doing to
+ * `onEvent` as it streams in. A server that answers with plain JSON instead
+ * (one without streaming) still works. On a 401 the ID token is
+ * force-refreshed and the request is tried once more. Gives up after
+ * `timeoutMs` in all, or after `idleMs` with no bytes on an open stream; a
+ * stream that ends without its final `done` is uncertain. Throws JimError.
+ */
+export async function streamToJim(
   text: string,
+  session: string,
   getToken: (force?: boolean) => Promise<string | null> = getIdToken,
+  onEvent: (event: JimStreamEvent) => void = () => {},
   fetchFn: typeof fetch = fetch,
   api: string = JIM_API,
-  timeoutMs: number = JIM_TIMEOUT_MS
+  timeoutMs: number = JIM_TIMEOUT_MS,
+  idleMs: number = JIM_IDLE_MS
 ): Promise<JimReply> {
   if (!isJimConnected(api)) throw new JimError("server");
   const controller = new AbortController();
   const progress = { sent: false };
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  let giveUp: (err: JimError) => void = () => {};
   // Also ends a wait that fetch's signal can't reach (a hung token refresh).
-  const timedOut = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => {
+  const stopped = new Promise<never>((_resolve, reject) => {
+    giveUp = (err) => {
       controller.abort();
-      reject(new JimError(progress.sent ? "uncertain" : "waking"));
-    }, timeoutMs);
+      reject(err);
+    };
   });
+  const timer = setTimeout(
+    () => giveUp(new JimError(progress.sent ? "uncertain" : "waking")),
+    timeoutMs
+  );
+  // Armed once the stream opens and again by every chunk.
+  const stillThere = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => giveUp(new JimError("uncertain")), idleMs);
+  };
+  async function run(): Promise<JimReply> {
+    const res = await request(
+      session,
+      text,
+      getToken,
+      fetchFn,
+      api,
+      controller,
+      progress
+    );
+    const type = res.headers.get("content-type") ?? "";
+    if (!type.includes(NDJSON)) return readJson(res);
+    return readStream(res, onEvent, stillThere);
+  }
   try {
-    return await Promise.race([
-      request(session, text, getToken, fetchFn, api, controller, progress),
-      timedOut,
-    ]);
+    return await Promise.race([run(), stopped]);
   } catch (err) {
     if (controller.signal.aborted) {
       throw new JimError(progress.sent ? "uncertain" : "waking");
@@ -115,7 +156,24 @@ export async function sendToJim(
     throw err;
   } finally {
     clearTimeout(timer);
+    clearTimeout(idleTimer);
   }
+}
+
+/**
+ * Wakes the server (Cloud Run starts it cold) while Gentry types: a
+ * fire-and-forget `GET /api/health`, which needs no sign-in.
+ */
+export function wakeJim(
+  api: string = JIM_API,
+  fetchFn: typeof fetch | undefined = typeof fetch === "function"
+    ? fetch
+    : undefined
+): void {
+  if (!isJimConnected(api) || !fetchFn) return;
+  fetchFn(`${api}/api/health`, { method: "GET", cache: "no-store" }).catch(
+    () => {}
+  );
 }
 
 export function isOffline(): boolean {
@@ -130,7 +188,7 @@ async function request(
   api: string,
   controller: AbortController,
   progress: { sent: boolean }
-): Promise<JimReply> {
+): Promise<Response> {
   async function post(force: boolean): Promise<Response> {
     let token: string | null;
     try {
@@ -148,6 +206,7 @@ async function request(
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          Accept: NDJSON,
         },
         body: JSON.stringify({ session, text }),
         signal: controller.signal,
@@ -173,7 +232,10 @@ async function request(
   // after the turn ran and saved.
   if (res.status >= 500) throw new JimError("uncertain");
   if (!res.ok) throw new JimError("server");
+  return res;
+}
 
+async function readJson(res: Response): Promise<JimReply> {
   let body: unknown;
   try {
     body = await res.json();
@@ -183,4 +245,82 @@ async function request(
   }
   if (!isReply(body)) throw new JimError("uncertain");
   return { reply: body.reply, changed: body.changed, commit: body.commit };
+}
+
+/** Reads NDJSON lines until `done`; anything short of it is uncertain. */
+async function readStream(
+  res: Response,
+  onEvent: (event: JimStreamEvent) => void,
+  stillThere: () => void
+): Promise<JimReply> {
+  const reader = res.body?.getReader();
+  if (!reader) throw new JimError("uncertain");
+  const decoder = new TextDecoder();
+  /** Jim has started on the turn, so an error now may follow a save. */
+  let started = false;
+  let buffer = "";
+
+  function handle(line: string): JimReply | null {
+    if (!line.trim()) return null;
+    let event: unknown;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      throw new JimError("uncertain");
+    }
+    if (typeof event !== "object" || event === null) return null;
+    const e = event as Record<string, unknown>;
+    switch (e.t) {
+      case "step":
+      case "delta":
+      case "reply":
+        if (typeof e.text !== "string") return null;
+        started = true;
+        onEvent({ t: e.t, text: e.text });
+        return null;
+      case "saving":
+        started = true;
+        onEvent({ t: "saving" });
+        return null;
+      case "done":
+        if (!isReply(e)) throw new JimError("uncertain");
+        return { reply: e.reply, changed: e.changed, commit: e.commit };
+      case "error":
+        // A 503 before any step is the sync or the lock: the turn never ran.
+        throw new JimError(
+          e.status === 503 && !started ? "waking" : "uncertain"
+        );
+      default:
+        // Pings, and anything a newer server adds.
+        return null;
+    }
+  }
+
+  stillThere();
+  try {
+    for (;;) {
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch {
+        // The connection dropped mid-turn.
+        throw new JimError("uncertain");
+      }
+      if (chunk.done) break;
+      stillThere();
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let end: number;
+      while ((end = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 1);
+        const reply = handle(line);
+        if (reply) return reply;
+      }
+    }
+    const reply = handle(buffer + decoder.decode());
+    if (reply) return reply;
+    throw new JimError("uncertain");
+  } finally {
+    reader.cancel().catch(() => {});
+  }
 }

@@ -1,3 +1,5 @@
+import { createServer, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import { VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
 
@@ -34,21 +36,31 @@ interface MockOptions {
 interface MockCalls {
   view: number;
   chat: number;
+  health: number;
 }
 
 async function mockServer(
   page: Page,
   options: MockOptions = {}
 ): Promise<MockCalls> {
-  const calls: MockCalls = { view: 0, chat: 0 };
+  const calls: MockCalls = { view: 0, chat: 0, health: 0 };
   const cors = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   };
   await page.route(`${API}/**`, async (route) => {
     if (route.request().method() === "OPTIONS") {
       await route.fulfill({ status: 204, headers: cors });
+      return;
+    }
+    if (route.request().url().endsWith("/api/health")) {
+      calls.health += 1;
+      await route.fulfill({
+        status: 200,
+        headers: { ...cors, "Content-Type": "application/json" },
+        body: JSON.stringify({ ok: true }),
+      });
       return;
     }
     if (route.request().url().endsWith("/api/view")) {
@@ -77,14 +89,37 @@ async function mockServer(
     if (text.startsWith("slow: ")) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
+    const result = {
+      reply: text.includes("remember") ? "Saved it." : LONG_REPLY,
+      changed: text.includes("remember") ? ["lists/todos.md"] : [],
+      commit: null,
+    };
+    // The page asks for a stream; the whole stream arrives at once here (a
+    // real streaming server is in the "streams" test below).
+    const wantsStream =
+      route.request().headers()["accept"] === "application/x-ndjson";
+    if (!wantsStream) {
+      await route.fulfill({
+        status: 200,
+        headers: { ...cors, "Content-Type": "application/json" },
+        body: JSON.stringify(result),
+      });
+      return;
+    }
+    const events: object[] = [
+      { t: "step", text: "Searching notes" },
+      { t: "ping" },
+      { t: "reply", text: result.reply },
+    ];
+    // "cut: " ends the stream before done, as a dropped signal would.
+    if (!text.startsWith("cut: ")) {
+      if (result.changed.length) events.push({ t: "saving" });
+      events.push({ t: "done", ...result });
+    }
     await route.fulfill({
       status: 200,
-      headers: { ...cors, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reply: text.includes("remember") ? "Saved it." : LONG_REPLY,
-        changed: text.includes("remember") ? ["lists/todos.md"] : [],
-        commit: null,
-      }),
+      headers: { ...cors, "Content-Type": "application/x-ndjson" },
+      body: events.map((e) => `${JSON.stringify(e)}\n`).join(""),
     });
   });
   return calls;
@@ -529,6 +564,9 @@ test(
 
 test("Notes loads once and is instant on the way back", async ({ page }) => {
   const calls = await signedIn(page);
+  // Signing in wakes the server and fetches Notes before it is opened.
+  await expect.poll(() => calls.health).toBe(1);
+  await expect.poll(() => calls.view).toBe(1);
   await openNotes(page);
   await page.getByRole("tab", { name: "Chat" }).click();
   await page.getByRole("tab", { name: "Notes" }).click();
@@ -588,3 +626,213 @@ test("a dropped connection after sending keeps the message out of the box", asyn
   await putBack.click();
   await expect(box).toHaveValue("drop: remember the milk");
 });
+
+test("a stream cut off before it finishes says check before resending", async ({
+  page,
+}) => {
+  const calls = await signedIn(page);
+  const box = page.getByLabel("Message");
+  await box.fill("cut: remember the milk");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(
+    page.getByText("Jim may have saved this — check before sending again")
+  ).toBeVisible();
+  await expect(page.getByRole("log").getByText("Saved it.")).toBeVisible();
+  await expect(box).toHaveValue("");
+  expect(calls.chat).toBe(1);
+});
+
+test("the chat survives a reload and New chat clears it", async ({ page }) => {
+  await signedIn(page);
+  await send(page, "remember the milk", "Saved it.");
+  await page.reload();
+  const log = page.getByRole("log");
+  await expect(log.getByText("remember the milk")).toBeVisible();
+  await expect(log.getByText("Saved it.")).toBeVisible();
+  await expect(page.getByText("Saved: lists/todos.md")).toBeVisible();
+
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "New chat" }).click();
+  await expect(log.getByText("remember the milk")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await expect(log.getByText("remember the milk")).toHaveCount(0);
+});
+
+/**
+ * A real streaming server on localhost (Playwright's route can only answer
+ * all at once): each step of the turn waits for the test to let it go on.
+ */
+async function streamingServer() {
+  const gates: (() => void)[] = [];
+  const waiting: ((go: () => void) => void)[] = [];
+  /** Resolves when the server reaches its next pause. */
+  const paused = () =>
+    new Promise<() => void>((resolve) => {
+      const go = gates.shift();
+      if (go) resolve(go);
+      else waiting.push(resolve);
+    });
+  const pause = () =>
+    new Promise<void>((resolve) => {
+      const next = waiting.shift();
+      if (next) next(resolve);
+      else gates.push(resolve);
+    });
+  let chats = 0;
+  let lastResponse: ServerResponse | null = null;
+  const server = createServer(async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Authorization, Content-Type, Accept"
+    );
+    res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    if (req.method === "OPTIONS") {
+      res.writeHead(204).end();
+      return;
+    }
+    if (req.url !== "/api/chat") {
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "busy" }));
+      return;
+    }
+    chats += 1;
+    lastResponse = res;
+    const send = (event: object) => res.write(`${JSON.stringify(event)}\n`);
+    res.writeHead(200, {
+      "Content-Type": "application/x-ndjson",
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "no-store",
+    });
+    send({ t: "step", text: "Searching notes" });
+    await pause();
+    send({
+      t: "delta",
+      text: "Here's what is on the list:\n\n- **Renew** the",
+    });
+    send({ t: "delta", text: " registration (due Friday)\n- Call about" });
+    await pause();
+    send({ t: "reply", text: LONG_REPLY });
+    send({ t: "saving" });
+    await pause();
+    send({
+      t: "done",
+      reply: LONG_REPLY,
+      changed: ["lists/todos.md"],
+      commit: "abc",
+    });
+    res.end();
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${port}`,
+    paused,
+    chats: () => chats,
+    /** Drops the connection mid-stream, like losing signal. */
+    drop: () => lastResponse?.socket?.destroy(),
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+}
+
+test(
+  "streams the steps and the reply as Jim writes it",
+  { tag: "@smoke" },
+  async ({ page }, testInfo) => {
+    const server = await streamingServer();
+    try {
+      await page.addInitScript((api) => {
+        window.__JIM_TEST__ = { signedIn: true, api };
+      }, server.url);
+      await page.goto("/jim");
+      const box = page.getByLabel("Message");
+      await box.fill("remember to renew the registration");
+      await page.getByRole("button", { name: "Send" }).click();
+
+      let go = await server.paused();
+      await expect(page.getByText("Jim is thinking…")).toBeVisible();
+      await expect(page.getByText("Searching notes…")).toBeVisible();
+      await box.blur();
+      await page.screenshot({
+        path: shotName(page, testInfo, "stream-step", "ayu"),
+        animations: "disabled",
+      });
+
+      go();
+      go = await server.paused();
+      await expect(page.getByRole("log").getByText("Call about")).toBeVisible();
+      await expect(page.getByText("Jim is thinking…")).toHaveCount(0);
+      await noSidewaysScroll(page);
+      await page.screenshot({
+        path: shotName(page, testInfo, "stream-text", "ayu"),
+        animations: "disabled",
+      });
+
+      go();
+      go = await server.paused();
+      await expect(page.getByText("Saving…")).toBeVisible();
+      await expect(
+        page.getByRole("log").getByText(/that\/should\/wrap/)
+      ).toBeVisible();
+      await page.screenshot({
+        path: shotName(page, testInfo, "stream-saving", "ayu"),
+        animations: "disabled",
+      });
+
+      go();
+      await expect(page.getByText("Saved: lists/todos.md")).toBeVisible();
+      await expect(page.getByText("Saving…")).toHaveCount(0);
+      expect(server.chats()).toBe(1);
+    } finally {
+      await server.close();
+    }
+  }
+);
+
+test(
+  "losing signal mid-stream keeps the message and never sends it twice",
+  { tag: "@smoke" },
+  async ({ page }, testInfo) => {
+    const server = await streamingServer();
+    try {
+      await page.addInitScript((api) => {
+        window.__JIM_TEST__ = { signedIn: true, api };
+      }, server.url);
+      await page.goto("/jim");
+      const box = page.getByLabel("Message");
+      await box.fill("remember to renew the registration");
+      await page.getByRole("button", { name: "Send" }).click();
+      await server.paused();
+      await expect(page.getByText("Searching notes…")).toBeVisible();
+      server.drop();
+      await expect(
+        page.getByText("Jim may have saved this — check before sending again")
+      ).toBeVisible();
+      await expect(box).toHaveValue("");
+      await expect(
+        page.getByRole("log").getByText("remember to renew the registration")
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Put my message back" })
+      ).toBeVisible();
+      await box.blur();
+      await page.screenshot({
+        path: shotName(page, testInfo, "stream-dropped", "ayu"),
+        animations: "disabled",
+      });
+      // A reload doesn't bring it back as unsent either.
+      await page.reload();
+      await expect(
+        page.getByRole("log").getByText("remember to renew the registration")
+      ).toBeVisible();
+      await expect(
+        page.getByText("Jim may have saved this — check before sending again")
+      ).toBeVisible();
+      await expect(page.getByLabel("Message")).toHaveValue("");
+      expect(server.chats()).toBe(1);
+    } finally {
+      await server.close();
+    }
+  }
+);

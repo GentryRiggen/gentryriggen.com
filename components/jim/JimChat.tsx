@@ -13,22 +13,39 @@ import { ArrowUp } from "lucide-react";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
-import { JimError, sendToJim, type JimErrorKind } from "@/lib/jim/api";
+import {
+  JimError,
+  streamToJim,
+  type JimErrorKind,
+  type JimStreamEvent,
+} from "@/lib/jim/api";
+import {
+  clearHistory,
+  loadHistory,
+  saveHistory,
+  type ChatMessage,
+} from "@/lib/jim/history";
 import JimMarkdown from "@/lib/jim/markdown";
 
 interface JimChatProps {
+  /** The signed-in user, whose chat is kept on this device. */
+  uid: string;
   /** The server's base URL. */
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onSignOut: () => void;
 }
 
-interface Message {
-  id: number;
-  from: "me" | "jim";
+type Message = ChatMessage;
+
+/** The reply being written: Jim's latest step, his text so far, saving. */
+interface Live {
+  step: string | null;
   text: string;
-  changed?: string[];
+  saving: boolean;
 }
+
+const NO_LIVE: Live = { step: null, text: "", saving: false };
 
 const ERRORS: Record<JimErrorKind, string> = {
   waking: "Jim is waking up, one moment",
@@ -44,6 +61,11 @@ const SLOW_MS = 20_000;
 /** Closer than this to the bottom counts as reading the latest message. */
 const STICK_PX = 80;
 
+/** "Searching notes" → "Searching notes…" (one ellipsis, however sent). */
+function stepLabel(step: string | null): string {
+  return `${(step ?? "").replace(/[.…\s]+$/, "")}…`;
+}
+
 function isPhone(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
 }
@@ -52,14 +74,26 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
-  const [session] = useState(() => crypto.randomUUID());
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function JimChat({
+  uid,
+  api,
+  getToken,
+  onSignOut,
+}: JimChatProps) {
+  // Back from this device: a reload keeps the conversation and its session.
+  const [kept] = useState(() => loadHistory(uid));
+  const [session, setSession] = useState(
+    () => kept?.session ?? crypto.randomUUID()
+  );
+  const [messages, setMessages] = useState<Message[]>(
+    () => kept?.messages ?? []
+  );
+  const [live, setLive] = useState<Live>(NO_LIVE);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   /** A message Jim may have acted on, kept out of the box until asked for. */
-  const [held, setHeld] = useState<string | null>(null);
+  const [held, setHeld] = useState<{ id: number; text: string } | null>(null);
   const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
   const [tab, setTab] = useState<JimTab>("chat");
@@ -69,7 +103,14 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
-  const nextId = useRef(0);
+  const nextId = useRef(
+    (kept?.messages ?? []).reduce((max, m) => Math.max(max, m.id + 1), 0)
+  );
+  /** Bumped by New chat: a turn still out then is dropped when it lands. */
+  const chatRun = useRef(0);
+  /** Reply text as it streams in, drawn once per animation frame. */
+  const liveText = useRef("");
+  const frame = useRef<number | null>(null);
   /** False once Gentry scrolls up to read; true again at the bottom. */
   const stuck = useRef(true);
   const lastTop = useRef(0);
@@ -96,6 +137,26 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   useEffect(() => {
     if (stuck.current) scrollToEnd(true);
   }, [messages, sending, scrollToEnd]);
+
+  // A reply growing as it streams keeps its end in view (no smooth scroll:
+  // it would lag behind the text).
+  useEffect(() => {
+    if (stuck.current) scrollToEnd(false);
+  }, [live, scrollToEnd]);
+
+  // Keep the chat on this device. A message still out is stored as
+  // uncertain, so a reload mid-turn never offers it as unsent.
+  useEffect(() => {
+    saveHistory(uid, { session, messages });
+  }, [uid, session, messages]);
+
+  useEffect(
+    () => () => {
+      chatRun.current += 1;
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    []
+  );
 
   // The keyboard opening, the box growing or a banner appearing shrinks the
   // list: keep the latest message in view while it does. Only the scroller
@@ -128,21 +189,71 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     lastTop.current = el.scrollTop;
   }
 
+  function stopDrawing() {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+  }
+
+  function onStream(event: JimStreamEvent) {
+    switch (event.t) {
+      case "step":
+        // Text before a tool call was provisional: back to the indicator.
+        stopDrawing();
+        liveText.current = "";
+        setLive((prev) => ({ ...prev, step: event.text, text: "" }));
+        break;
+      case "delta":
+        liveText.current += event.text;
+        if (frame.current === null) {
+          frame.current = requestAnimationFrame(() => {
+            frame.current = null;
+            setLive((prev) => ({ ...prev, text: liveText.current }));
+          });
+        }
+        break;
+      case "reply":
+        // The whole reply: shown as is, whatever the deltas made of it.
+        stopDrawing();
+        liveText.current = event.text;
+        setLive((prev) => ({ ...prev, text: event.text }));
+        break;
+      case "saving":
+        setLive((prev) => ({ ...prev, saving: true }));
+        break;
+    }
+  }
+
   async function send() {
     const text = draft.trim();
     if (!text || sending) return;
     const id = nextId.current++;
+    const run = chatRun.current;
     setError(null);
     setHeld(null);
     setSlow(false);
     setSending(true);
     setDraft("");
+    stopDrawing();
+    liveText.current = "";
+    setLive(NO_LIVE);
     stuck.current = true;
-    setMessages((prev) => [...prev, { id, from: "me", text }]);
+    setMessages((prev) => [...prev, { id, from: "me", text, pending: true }]);
+    const settle = (m: Message): Message =>
+      m.id === id ? { id, from: "me", text } : m;
     try {
-      const reply = await sendToJim(session, text, getToken, undefined, api);
+      const reply = await streamToJim(
+        text,
+        session,
+        getToken,
+        (event) => {
+          if (run === chatRun.current) onStream(event);
+        },
+        undefined,
+        api
+      );
+      if (run !== chatRun.current) return;
       setMessages((prev) => [
-        ...prev,
+        ...prev.map(settle),
         {
           id: nextId.current++,
           from: "jim",
@@ -151,20 +262,59 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
         },
       ]);
     } catch (err) {
+      if (run !== chatRun.current) return;
       const kind = err instanceof JimError ? err.kind : "server";
       setError(kind);
       if (kind === "uncertain") {
-        // Jim may already have it: leave it in the conversation and keep a
-        // copy aside, so a quick resend can't save it twice.
-        setHeld(text);
+        // Jim may already have it: leave it in the conversation (with what
+        // he wrote so far) and keep a copy aside, so a quick resend can't
+        // save it twice.
+        const partial = liveText.current;
+        setMessages((prev) => [
+          ...prev.map((m) =>
+            m.id === id ? { ...settle(m), uncertain: true } : m
+          ),
+          ...(partial
+            ? [
+                {
+                  id: nextId.current++,
+                  from: "jim" as const,
+                  text: partial,
+                  uncertain: true,
+                },
+              ]
+            : []),
+        ]);
+        setHeld({ id, text });
       } else {
         // It never ran: take it back and return it to the box.
         setMessages((prev) => prev.filter((m) => m.id !== id));
         putBack(text);
       }
     } finally {
-      setSending(false);
+      if (run === chatRun.current) {
+        stopDrawing();
+        liveText.current = "";
+        setLive(NO_LIVE);
+        setSending(false);
+      }
     }
+  }
+
+  /** Clears the conversation here and on this device; Jim starts afresh. */
+  function newChat() {
+    chatRun.current += 1;
+    stopDrawing();
+    liveText.current = "";
+    clearHistory(uid);
+    setMessages([]);
+    setSession(crypto.randomUUID());
+    setLive(NO_LIVE);
+    setSending(false);
+    setError(null);
+    setHeld(null);
+    setSlow(false);
+    stuck.current = true;
   }
 
   function putBack(text: string) {
@@ -190,7 +340,7 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
 
   function restoreHeld() {
     if (held === null) return;
-    putBack(held);
+    putBack(held.text);
     setHeld(null);
     setError(null);
     boxRef.current?.focus({ preventScroll: true });
@@ -223,7 +373,12 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
       data-keyboard={keyboardOpen ? "open" : "closed"}
       className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
     >
-      <JimHeader onSignOut={onSignOut} tab={tab} onTab={showTab} />
+      <JimHeader
+        onSignOut={onSignOut}
+        tab={tab}
+        onTab={showTab}
+        menuItems={[{ label: "New chat", onSelect: newChat }]}
+      />
 
       <div className="relative min-h-0 flex-1">
         <div
@@ -249,11 +404,16 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
               )}
               {messages.map((m) =>
                 m.from === "me" ? (
-                  <div
-                    key={m.id}
-                    className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]"
-                  >
-                    {m.text}
+                  <div key={m.id} className="ml-auto max-w-[85%] min-w-0">
+                    <div className="rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
+                      {m.text}
+                    </div>
+                    {/* The banner says it for the message just sent. */}
+                    {m.uncertain && held?.id !== m.id && (
+                      <p className="mt-1 px-1 text-right text-xs text-ayu-subtle">
+                        {ERRORS.uncertain}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
@@ -269,12 +429,31 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
                 )
               )}
               {sending && (
-                <p
-                  role="status"
-                  className="mr-auto rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
-                >
-                  {slow ? "Still working…" : "Jim is thinking…"}
-                </p>
+                <div className="mr-auto max-w-[92%] min-w-0">
+                  {live.text ? (
+                    <div
+                      aria-busy="true"
+                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5"
+                    >
+                      <JimMarkdown text={live.text} />
+                    </div>
+                  ) : (
+                    <p
+                      role="status"
+                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
+                    >
+                      {slow ? "Still working…" : "Jim is thinking…"}
+                    </p>
+                  )}
+                  {(live.saving || live.step) && (
+                    <p
+                      role="status"
+                      className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
+                    >
+                      {live.saving ? "Saving…" : stepLabel(live.step)}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>

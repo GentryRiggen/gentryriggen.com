@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import JimChat from "@/components/jim/JimChat";
 import JimHeader from "@/components/jim/JimHeader";
 import { ADMIN_UID, isAdminUser } from "@/lib/analytics/admin";
@@ -14,9 +14,10 @@ import {
   watchAuth,
 } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { isJimConnected, JIM_API } from "@/lib/jim/api";
+import { isJimConnected, JIM_API, wakeJim } from "@/lib/jim/api";
+import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
-import { clearViewCache } from "@/lib/jim/view";
+import { clearViewCache, fetchView } from "@/lib/jim/view";
 import { jimTestHook } from "@/lib/jim/testHooks";
 
 type GetToken = (force?: boolean) => Promise<string | null>;
@@ -26,7 +27,7 @@ type State =
   | { kind: "unconfigured" }
   | { kind: "signedOut" }
   | { kind: "denied"; email: string }
-  | { kind: "owner"; api: string; getToken: GetToken };
+  | { kind: "owner"; uid: string; api: string; getToken: GetToken };
 
 const e2eToken: GetToken = async () => "e2e-token";
 
@@ -47,6 +48,8 @@ export default function JimGate() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  /** The sign-in the server was last woken for. */
+  const wokeFor = useRef<string | null>(null);
 
   useEffect(() => {
     // Off gentryriggen.com the server would refuse every request: go there
@@ -69,15 +72,24 @@ export default function JimGate() {
     void watch((user) => {
       if (cancelled) return;
       if (!user) {
-        // Notes data (health, people) must not outlive the sign-in.
+        // Notes data (health, people) and the kept chat must not outlive the
+        // sign-in, even one that expired while the page was closed.
+        wokeFor.current = null;
         clearViewCache();
+        clearHistory();
         // Keep the "Not authorized" message when our own sign-out echoes back.
         setState((prev) =>
           prev.kind === "denied" ? prev : { kind: "signedOut" }
         );
       } else if (isAdminUser(user)) {
         setExcluded(safeLocalStorage());
-        setState({ kind: "owner", api, getToken });
+        setState({ kind: "owner", uid: user.uid, api, getToken });
+        if (wokeFor.current !== user.uid && isJimConnected(api)) {
+          wokeFor.current = user.uid;
+          // Start the server (and the Notes data) while Gentry types.
+          wakeJim(api);
+          fetchView(getToken, undefined, api).catch(() => {});
+        }
       } else {
         setState({ kind: "denied", email: user.email ?? "unknown account" });
         // Best effort: a failed sign-out must not become an unhandled rejection.
@@ -113,6 +125,8 @@ export default function JimGate() {
 
   function signOut() {
     clearViewCache();
+    // Every chat kept on this device, in case the phone was lent.
+    clearHistory();
     signOutUser().catch(() => {});
   }
 
@@ -120,6 +134,7 @@ export default function JimGate() {
     if (isJimConnected(state.api)) {
       return (
         <JimChat
+          uid={state.uid}
           api={state.api}
           getToken={state.getToken}
           onSignOut={signOut}

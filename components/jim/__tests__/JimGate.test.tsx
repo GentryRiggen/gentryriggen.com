@@ -5,6 +5,7 @@ import * as client from "@/lib/firebase/client";
 import * as config from "@/lib/firebase/config";
 import * as api from "@/lib/jim/api";
 import * as host from "@/lib/jim/host";
+import { historyKey, loadHistory, saveHistory } from "@/lib/jim/history";
 import { fetchView, getCachedView } from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import JimGate from "../JimGate";
@@ -17,11 +18,19 @@ jest.mock("@/lib/jim/api", () => {
   const actual = jest.requireActual("@/lib/jim/api");
   return {
     ...actual,
+    wakeJim: jest.fn(),
     get JIM_API() {
       return mockApi ?? actual.JIM_API;
     },
   };
 });
+// The early prefetch is watched, not run; the cache itself is real.
+jest.mock("@/lib/jim/view", () => ({
+  ...jest.requireActual("@/lib/jim/view"),
+  fetchView: jest.fn(),
+}));
+const realView =
+  jest.requireActual<typeof import("@/lib/jim/view")>("@/lib/jim/view");
 jest.mock("@/lib/jim/host", () => ({
   ...jest.requireActual("@/lib/jim/host"),
   jimRedirectTarget: jest.fn(() => null),
@@ -29,8 +38,16 @@ jest.mock("@/lib/jim/host", () => ({
 }));
 jest.mock("../JimChat", () => ({
   __esModule: true,
-  default: ({ api, onSignOut }: { api: string; onSignOut: () => void }) => (
-    <div data-testid="chat" data-api={api}>
+  default: ({
+    api,
+    uid,
+    onSignOut,
+  }: {
+    api: string;
+    uid: string;
+    onSignOut: () => void;
+  }) => (
+    <div data-testid="chat" data-api={api} data-uid={uid}>
       <button type="button" onClick={onSignOut}>
         Chat sign out
       </button>
@@ -44,6 +61,7 @@ let emit: (user: client.AuthUser | null) => void;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(fetchView).mockRejectedValue(new api.JimError("waking"));
   window.localStorage.clear();
   delete window.__JIM_TEST__;
   mockApi = undefined;
@@ -166,7 +184,7 @@ it("stays put on gentryriggen.com", async () => {
 
 /** Puts a Notes payload in the session cache, as opening Notes would. */
 async function fillViewCache() {
-  await fetchView(
+  await realView.fetchView(
     async () => "t",
     (async () =>
       ({
@@ -198,4 +216,55 @@ it("forgets the Notes data when the sign-in goes away", async () => {
   await fillViewCache();
   act(() => emit(null));
   expect(getCachedView()).toBeNull();
+});
+
+describe("early wake-up and kept chat", () => {
+  const prefetch = jest.mocked(fetchView);
+
+  it("wakes the server and fetches Notes once the owner is in", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    await renderGate();
+    expect(api.wakeJim).not.toHaveBeenCalled();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    expect(await screen.findByTestId("chat")).toHaveAttribute(
+      "data-uid",
+      ADMIN_UID
+    );
+    expect(api.wakeJim).toHaveBeenCalledTimes(1);
+    expect(api.wakeJim).toHaveBeenCalledWith("https://jim.example.test");
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    expect(prefetch.mock.calls[0][2]).toBe("https://jim.example.test");
+    // The same sign-in reported again doesn't wake it twice.
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    expect(api.wakeJim).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't wake anything for a stranger or with no server", async () => {
+    await renderGate();
+    act(() => emit({ uid: "someone-else", email: "x@y.com" }));
+    await screen.findByText(/Not authorized/);
+    expect(api.wakeJim).not.toHaveBeenCalled();
+    expect(prefetch).not.toHaveBeenCalled();
+  });
+
+  it("wipes the kept chat on sign out", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    saveHistory(ADMIN_UID, {
+      session: "s",
+      messages: [{ id: 0, from: "me", text: "remember the milk" }],
+    });
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Chat sign out" })
+    );
+    expect(window.localStorage.getItem(historyKey(ADMIN_UID))).toBeNull();
+  });
+
+  it("wipes any kept chat when the sign-in is gone", async () => {
+    saveHistory(ADMIN_UID, { session: "s", messages: [] });
+    await renderGate();
+    act(() => emit(null));
+    expect(loadHistory(ADMIN_UID)).toBeNull();
+  });
 });
