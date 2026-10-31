@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.38.0",
+    date: "2026-10-31",
+    title: "Life rafts that really work",
+    highlights: [
+      "Life raft canisters now save people. When your ship sinks, each one is thrown over the side, pops open into an orange raft, and people jump down into it one after another before it drifts away",
+      "Life raft seats now count toward enough lifeboats on the result card, and Fill every seat fills the rafts too",
+    ],
+  },
+  {
     version: "2.37.0",
     date: "2026-10-31",
     title: "Leaderboard seasons",

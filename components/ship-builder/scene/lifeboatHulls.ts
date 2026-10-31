@@ -13,6 +13,8 @@ export const LIFEBOAT_HULLS: Readonly<Record<string, LifeboatHull>> = {
   // As RibBoatMesh and the pirate Rowboat draw them.
   "rib-boat": { length: 0.9, width: 0.45, depth: 0.1 },
   rowboat: { length: 0.9, width: 0.38, depth: 0.2 },
+  // The raft a canister opens into, as InflatedRaft draws it.
+  "raft-canister": { length: 0.8, width: 0.8, depth: 0.12 },
 };
 
 /** A boat hangs with its rim this far below its attach point. */

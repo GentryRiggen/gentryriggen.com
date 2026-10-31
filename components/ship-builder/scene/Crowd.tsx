@@ -43,6 +43,8 @@ import { trialPlayback, type TrialPlayback } from "./trialPlayback";
 /** Height and rate of a floater's bob on the swell. */
 const FLOAT_BOB = 0.04;
 const FLOAT_BOB_RATE = 1.9;
+/** How high a jump into a raft rises above the straight line, mid-leap. */
+const JUMP_ARC = 0.35;
 
 /** Where she is broken in the playback (cells from the bow), or null. */
 function brokenAtX(playback: TrialPlayback): number | null {
@@ -69,7 +71,8 @@ interface CrowdRunnerProps {
  * Everyone, drawn in world space as a few instanced meshes and posed in one
  * frame callback. Aboard (walking the decks, or hurrying to a boat) they ride
  * the group that carries them; in a boat they sit in it, on its davit or out
- * on the water; in the sea they float on their backs. Filling every seat,
+ * on the water, or jumping from the deck edge into a raft; in the sea they
+ * float on their backs. Filling every seat,
  * anyone with no way to their boat shrinks away and appears in it.
  */
 function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
@@ -262,6 +265,40 @@ function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
           "sit",
           0
         );
+        continue;
+      }
+      if (fate.kind === "jumping") {
+        // A leap in an arc from the deck edge down into their raft seat.
+        const launch = scratch.launchById.get(fate.boatId);
+        const spot = boats.get(fate.boatId);
+        if (!launch || !spot) {
+          writePerson(meshes, i, slot, null, "stand", 0);
+          continue;
+        }
+        const seats = boatSeatOffsets(launch.riders.length, spot.hull);
+        const seat = seats[Math.min(fate.seat, seats.length - 1)];
+        const raft = launchedBoatMatrix(
+          evacuation,
+          launch,
+          spot.hull,
+          time,
+          scratch.boat
+        );
+        scratch.local.makeTranslation(seat?.x ?? 0, seat?.y ?? 0, seat?.z ?? 0);
+        scratch.place.multiplyMatrices(raft, scratch.local);
+        const to = scratch.place.elements;
+        const { from, progress: p } = fate;
+        const dx = to[12] - from.x;
+        const dz = to[14] - from.z;
+        const arc = JUMP_ARC * 4 * p * (1 - p);
+        scratch.place
+          .makeRotationY(Math.atan2(-dz, dx))
+          .setPosition(
+            from.x + dx * p,
+            from.y + (to[13] - from.y) * p + arc,
+            from.z + dz * p
+          );
+        writePerson(meshes, i, slot, scratch.place, "stand", 0);
         continue;
       }
       const pose = evacuation.poseAt(i, time);

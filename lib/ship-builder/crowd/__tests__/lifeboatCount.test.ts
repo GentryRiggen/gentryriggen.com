@@ -61,4 +61,27 @@ describe("lifeboatCount", () => {
     expect(countOf(ship).seats).toBe(65);
     expect(hungLifeboats(ship).map((boat) => boat.part.id)).toEqual(["b"]);
   });
+
+  it("counts life raft canisters on a deck edge as launchable craft", () => {
+    const ship = testShip(
+      [
+        gridPart("c0", "cabin-3rd", 0, 2, 0),
+        gridPart("c1", "cabin-3rd", 0, 5, 0),
+        attachPart("d", "davit", "c0", "davit:2:0"),
+        attachPart("b", "lifeboat-standard", "d", "boat"),
+        attachPart("r", "raft-canister", "c1", "edge:5:0"),
+        // Not on any edge point of its block: nowhere to throw it from.
+        attachPart("r2", "raft-canister", "c1", "edge:99:0"),
+      ],
+      4,
+      4
+    );
+    expect(countOf(ship).seats).toBe(65 + 25);
+    expect(
+      hungLifeboats(ship).map((boat) => [boat.part.id, boat.kind])
+    ).toEqual([
+      ["b", "davit"],
+      ["r", "raft"],
+    ]);
+  });
 });

@@ -49,8 +49,10 @@ level at the cell edge.
 
 `lifeboatCount(ship, stats)` (`lifeboatCount.ts`) is the real sum behind
 "did we build enough lifeboats?": `seats` adds the catalog seats of every
-lifeboat hanging from a `davit` or `davit-side`, `people` is passengers plus
-crew berths. Real counts, not figures (the Titanic: 1098 seats, 2300 aboard).
+lifeboat hanging from a `davit` or `davit-side` and of every `raft-canister`
+on a block's deck edge (both from `hungLifeboats`, which tags each `davit` or
+`raft`), `people` is passengers plus crew berths. Real counts, not figures
+(the Titanic: 1098 seats, 2300 aboard).
 
 `evacuation.ts` plans a sinking for the iceberg and storm trials:
 
@@ -62,13 +64,21 @@ crew berths. Real counts, not figures (the Titanic: 1098 seats, 2300 aboard).
   crowd plan exactly. A capsize in the waves trial gets no plan.
 - `input.lifeboats` picks how the boats fill: absent or `titanic` is Like
   the Titanic (below, unchanged), `fill` is Fill every seat (its own
-  section). Either way every davit boat launches, riders or not. The result
+  section). Either way every davit boat and raft launches, riders or not. The result
   card's lifeboat line uses the real counts (`lifeboatCount`), not figures.
 - Boats are lifeboat parts (catalog `seats > 0`) hanging from a `davit` or
-  `davit-side`. A boat's boarding spot is the walkable column nearest it on
-  the davit's deck: the davit's cell or the one inboard, on the block's roof
-  or the block's own level. A boat with no spot gets no riders but still
-  launches.
+  `davit-side`, and raft canisters on a deck edge. A boat's boarding spot is
+  the walkable column nearest it on the davit's (or raft's) deck: the point's
+  cell or the one inboard, on the block's roof or the block's own level. A
+  boat with no spot gets no riders but still launches.
+- Rafts (`launch.kind === "raft"`) are thrown, not lowered: riders wait at
+  the spot while the canister falls (`RAFT_DROP_S`, landing `RAFT_THROW`
+  outboard) and opens (`RAFT_INFLATE_S`); from `launch.ready` they jump in
+  one after another (`JUMP_GAP_S` apart, `JUMP_S` each, fate `jumping` with
+  the world point they left), and from `launch.departs` (the last one in) it
+  drifts `RAFT_DRIFT` outboard over `RAFT_DRIFT_S`. A raft launches early
+  enough for all that before the water reaches its spot. A rider the water
+  reaches before their jump floats (Fill every seat: fades into the raft).
   Like the Titanic:
 
 - At doom, people are matched to boats nearest first (one BFS from each
@@ -123,7 +133,9 @@ afloat; a `transfer` shrinks to nothing where they stand. `boatSeatOffsets`
 (`crowdView.ts`) seats up to `BOAT_SHOWN_MAX` in one row and packs more in
 two rows, so every Fill every seat rider shows (at most `MAX_PEOPLE`, so the
 instanced meshes keep their size). `LaunchedBoats.tsx` draws each boat once
-it leaves its davit, and `ShipParts` hides the one on the davit.
+it leaves its davit (a raft: its canister tumbling down, then the orange raft
+growing open), `Crowd.tsx` arcs a `jumping` rider from the deck edge to their
+raft seat, and `ShipParts` hides the one on the davit.
 `scene/trialTimeline.ts` caches the plan beside the trial's timeline, per
 descent and lifeboat choice.
 
