@@ -1,9 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
-import { eventsByDay, localDay, timeLabel } from "@/lib/jim/notesData";
+import {
+  eventsByDay,
+  localDay,
+  timeLabel,
+  todaySummary,
+} from "@/lib/jim/notesData";
 import {
   addDays,
   daysBetween,
@@ -128,6 +139,53 @@ function Calendar({ data }: { data: ViewData }) {
           </p>
         </>
       )}
+    </Section>
+  );
+}
+
+function ago(days: number): string {
+  if (days === 0) return "today";
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+/** Three quick facts for today; rows without data are left out. */
+function TodayCard({ data }: { data: ViewData }) {
+  const [now] = useState(() => new Date());
+  const { meeting, injectionDays, workouts } = todaySummary(data, now);
+  const rows: { label: string; value: ReactNode }[] = [];
+  if (meeting) {
+    rows.push({
+      label: "Next",
+      value: (
+        <>
+          <span className="text-ayu-blue tabular-nums">{meeting.time}</span>{" "}
+          {meeting.subject}
+        </>
+      ),
+    });
+  }
+  if (injectionDays !== null) {
+    rows.push({ label: "Injection", value: ago(injectionDays) });
+  }
+  if (workouts !== null) {
+    rows.push({ label: "Workouts this week", value: workouts });
+  }
+  if (!rows.length) return null;
+  return (
+    <Section title="Today">
+      <ul className="divide-y divide-ayu-line overflow-hidden rounded-xl bg-ayu-panel">
+        {rows.map((r) => (
+          <li
+            key={r.label}
+            className="flex items-baseline justify-between gap-4 px-4 py-2.5"
+          >
+            <span className="shrink-0 text-sm text-ayu-subtle">{r.label}</span>
+            <span className="min-w-0 text-right text-ayu-text [overflow-wrap:anywhere]">
+              {r.value}
+            </span>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }
@@ -417,6 +475,7 @@ export default function NotesHome({
   return (
     <div className="space-y-8">
       <p className="text-lg font-semibold text-ayu-text">{date}</p>
+      <TodayCard data={data} />
       <Calendar data={data} />
       <Todos data={data} marks={marks} onToggle={toggle} />
       <ToastBar toast={toast} onUndo={(todo) => void toggle(todo, false)} />
