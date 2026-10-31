@@ -12,6 +12,9 @@ import {
   explainTrial,
   type TrialSummary,
 } from "@/lib/ship-builder/sim/explain";
+import { lifeboatCount } from "@/lib/ship-builder/crowd/lifeboatCount";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
+import { isTimelineTrial, trialKindOf } from "@/lib/ship-builder/sim/trialKind";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import {
   useShipBuilderStore,
@@ -21,6 +24,7 @@ import { trialTimelineFor } from "../scene/trialTimeline";
 import ChallengeResult from "./ChallengeResult";
 import ResultDetails from "./ResultDetails";
 import { focusSeaTrialButton } from "./SeaTrialButton";
+import { lifeboatLines } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 import SoundToggle from "./SoundToggle";
 import TrialScrubber from "./TrialScrubber";
@@ -100,10 +104,23 @@ function ResultCard({ trial }: ResultCardProps) {
   const summary = useMemo(() => explainTrial(state, input), [state, input]);
   const extraLines = useMemo(() => extraSummaryLines(summary), [summary]);
   const timeline = useMemo(
-    () => (input.iceberg ? trialTimelineFor(input, trial.descending) : null),
+    () =>
+      isTimelineTrial(input) ? trialTimelineFor(input, trial.descending) : null,
     [input, trial.descending]
   );
   const look = OUTCOME_LOOKS[state.outcome ?? "steady"];
+  // Building is frozen while the result shows, so the store's ship is hers.
+  const ship = useShipBuilderStore((s) => s.ship);
+  const lifeboats = useMemo(
+    () =>
+      state.outcome === "sank"
+        ? lifeboatLines(
+            lifeboatCount(ship, analyzeShip(ship).stats),
+            input.lifeboats ?? "titanic"
+          )
+        : null,
+    [state.outcome, ship, input.lifeboats]
+  );
 
   useEffect(() => {
     card.current?.focus();
@@ -171,9 +188,14 @@ function ResultCard({ trial }: ResultCardProps) {
             </span>
           </button>
         </div>
+        {lifeboats && <LifeboatLine lines={lifeboats} />}
         {timeline && (
           <div className="flex items-center gap-2">
-            <TrialScrubber timeline={timeline} compact />
+            <TrialScrubber
+              timeline={timeline}
+              isStorm={trialKindOf(input) === "storm"}
+              compact
+            />
             <button
               type="button"
               title="Watch again"
@@ -192,9 +214,30 @@ function ResultCard({ trial }: ResultCardProps) {
           input={input}
           summary={summary}
           extraLines={extraLines}
+          lifeboatLines={lifeboats}
           onClose={closeDetails}
         />
       )}
     </>
+  );
+}
+
+interface LifeboatLineProps {
+  lines: string[];
+}
+
+/** "Did we build enough lifeboats?": the real seats and people, and the verdict. */
+export function LifeboatLine({ lines }: LifeboatLineProps) {
+  return (
+    <p
+      data-testid="lifeboat-line"
+      className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300"
+    >
+      <LifeBuoy
+        aria-hidden="true"
+        className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400"
+      />
+      <span>{lines.join(" ")}</span>
+    </p>
   );
 }

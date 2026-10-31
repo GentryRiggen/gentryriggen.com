@@ -17,9 +17,10 @@
 
 /**
  * The sea states the scene offers (scene/seaState.ts has the same union; lib
- * can't import from components).
+ * can't import from components). `wild` is the storm trial's own sea: a
+ * steep, fast cross sea, never offered on the main screen.
  */
-export type SimSea = "calm" | "choppy" | "stormy";
+export type SimSea = "calm" | "choppy" | "stormy" | "wild";
 
 /** Seconds per simulation step. Callers accumulate frame time and step. */
 export const SIM_STEP_S = 1 / 60;
@@ -30,7 +31,7 @@ export type TrialOutcome =
   | "capsized"
   /** Iceberg trial: the flooding was contained. */
   | "afloat"
-  /** Iceberg trial: the water spilled on until she went under. */
+  /** Iceberg or storm trial: the water spilled on until she went under. */
   | "sank";
 
 /** Why the trial ended the way it did, for a plain-words explanation. */
@@ -47,7 +48,9 @@ export type TrialReason =
   /** Iceberg: the hull had no bulkheads at all. */
   | "no-bulkheads"
   /** Iceberg: the gash opened too many compartments to float. */
-  | "too-many-opened";
+  | "too-many-opened"
+  /** Storm: the waves filled her (or rolled her over) until she sank. */
+  | "storm";
 
 /**
  * `descending` follows every sinking (a `sank` iceberg trial or a capsized
@@ -83,7 +86,7 @@ export interface Compartment {
   id: string;
   /** 0 (dry) to 1 (full to the main deck). */
   water: number;
-  /** The iceberg opened it to the sea. */
+  /** The iceberg opened it to the sea (never set in a storm). */
   opened: boolean;
 }
 
@@ -120,6 +123,25 @@ export interface IcebergInput {
   /** Absent means `real`. */
   breakMode?: BreakMode;
 }
+
+/**
+ * A storm trial: the hull's compartments. Waves breaking over her fill every
+ * compartment from above, so she always sinks (see `stepFlooding`).
+ */
+export interface StormInput {
+  compartments: CompartmentSpec[];
+  /** Hull length in cells. */
+  length: number;
+  /** Absent means `real`. */
+  breakMode?: BreakMode;
+}
+
+/**
+ * How the crowd boards the lifeboats in a sinking: `titanic` as it was (some
+ * boats leave half-empty), `fill` takes everyone there are seats for. The sim
+ * itself ignores it.
+ */
+export type LifeboatMode = "titanic" | "fill";
 
 /**
  * One half of a broken ship. The half rotates (roll, pitch) about a pivot on
@@ -248,6 +270,10 @@ export interface TrialInput {
   length: number;
   /** Present for an iceberg trial; absent for the Level 1 waves trial. */
   iceberg?: IcebergInput;
+  /** Present for a storm trial (never together with `iceberg`). */
+  storm?: StormInput;
+  /** How the crowd boards the boats; absent means `titanic`. Not read by the sim. */
+  lifeboats?: LifeboatMode;
   /** Her funnels, for deciding which break off in a sinking. */
   funnels: TrialFunnel[];
 }

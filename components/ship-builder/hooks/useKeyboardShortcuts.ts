@@ -58,6 +58,7 @@ export default function useKeyboardShortcuts() {
       if (state.trial.status !== "idle") {
         if (key === "escape") {
           if (state.trial.status === "aiming") state.cancelAim();
+          else if (state.trial.status === "setup") state.cancelTrialSetup();
           else state.endTrial();
           focusSeaTrialButton();
         } else if (key === "delete" || key === "backspace")

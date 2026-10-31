@@ -19,8 +19,8 @@ import {
   type CameraView,
 } from "@/lib/ship-builder/state/store";
 import { TRIAL_PAUSED_TITLE } from "./seaTrialText";
-import useSeaState from "../hooks/useSeaState";
-import useTimeOfDay from "../hooks/useTimeOfDay";
+import { useMainSeaState } from "../hooks/useSeaState";
+import { useMainTimeOfDay } from "../hooks/useTimeOfDay";
 import type { SeaState } from "../scene/seaState";
 import type { TimeOfDay } from "../scene/timeOfDay";
 
@@ -90,11 +90,13 @@ export default function ViewControls({
   /** Extra controls, stacked under the time-of-day chips. */
   children?: ReactNode;
 }) {
-  const { seaState, setSeaState } = useSeaState();
-  const { timeOfDay, setTimeOfDay } = useTimeOfDay();
+  // The main-screen choices themselves: a trial's own look never lights a chip.
+  const { seaState, setSeaState } = useMainSeaState();
+  const { timeOfDay, setTimeOfDay } = useMainTimeOfDay();
   const cameraView = useShipBuilderStore((s) => s.camera.view);
   const setCameraView = useShipBuilderStore((s) => s.setCameraView);
-  // The trial plays in the sea it started in, so the sea can't change under it.
+  // A trial has its own sea and time (picked on its card), so the main
+  // choices pause until it ends.
   const isTrialActive = useShipBuilderStore((s) => s.trial.status !== "idle");
 
   return (
@@ -145,8 +147,10 @@ export default function ViewControls({
               type="button"
               aria-label={ariaLabel}
               aria-pressed={timeOfDay === time}
+              disabled={isTrialActive}
+              title={isTrialActive ? TRIAL_PAUSED_TITLE : undefined}
               onClick={() => setTimeOfDay(time)}
-              className={timeOfDay === time ? SEGMENT_PRESSED : SEGMENT_IDLE}
+              className={`${timeOfDay === time ? SEGMENT_PRESSED : SEGMENT_IDLE} disabled:cursor-not-allowed disabled:opacity-60`}
             >
               <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="sr-only xl:not-sr-only">{label}</span>

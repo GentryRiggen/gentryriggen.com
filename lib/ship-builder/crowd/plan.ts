@@ -210,25 +210,37 @@ export interface CrowdGraph {
 }
 
 const graphs = new WeakMap<WalkGrid, WeakMap<object, CrowdGraph>>();
+const jumpGraphs = new WeakMap<WalkGrid, WeakMap<object, CrowdGraph>>();
 /** Keep at most this many BFS results per graph. */
 const REACH_CACHE = 512;
 
-/** The crowd's walking graph, built once per grid and ship parts. */
-export function crowdGraphOf(ship: Ship, grid: WalkGrid): CrowdGraph {
-  let byParts = graphs.get(grid);
+/**
+ * The crowd's walking graph, built once per grid and ship parts. With
+ * `jumps`, it also joins side-by-side columns one level apart that no stair
+ * joins (a hop up onto a roof or down off it, as the player jumps): only the
+ * lifeboat rush uses that one, so the everyday crowd keeps to the stairs.
+ */
+export function crowdGraphOf(
+  ship: Ship,
+  grid: WalkGrid,
+  options: { jumps?: boolean } = {}
+): CrowdGraph {
+  const jumps = options.jumps === true;
+  const cache = jumps ? jumpGraphs : graphs;
+  let byParts = cache.get(grid);
   if (!byParts) {
     byParts = new WeakMap();
-    graphs.set(grid, byParts);
+    cache.set(grid, byParts);
   }
   let graph = byParts.get(ship.parts);
   if (!graph) {
-    graph = buildGraph(seatsOf(ship, grid), grid);
+    graph = buildGraph(seatsOf(ship, grid), grid, jumps);
     byParts.set(ship.parts, graph);
   }
   return graph;
 }
 
-function buildGraph(seats: Seat[], grid: WalkGrid): CrowdGraph {
+function buildGraph(seats: Seat[], grid: WalkGrid, jumps: boolean): CrowdGraph {
   const nodes: Column[] = [];
   const index = new Map<string, number>();
   const key = (x: number, z: number, level: number) => `${x},${z},${level}`;
@@ -272,6 +284,27 @@ function buildGraph(seats: Seat[], grid: WalkGrid): CrowdGraph {
         stepHitsBlocker(grid, ax, az, ax + dx, az + dz, at);
       if (hits(level) || (to !== level && hits(to))) continue;
       adjacent[n].push(m);
+    }
+  }
+  if (jumps) {
+    // A hop between neighbouring columns one level apart, both ways, where
+    // no stair already joins them and nothing stands in the way.
+    for (let n = 0; n < walkableCount; n++) {
+      const { x, z, level } = nodes[n];
+      for (const [dx, dz] of DIRS) {
+        for (const to of [level - 1, level + 1]) {
+          const m = index.get(key(x + dx, z + dz, to));
+          if (m === undefined || m >= walkableCount) continue;
+          if (adjacent[n].includes(m)) continue;
+          const ax = x + 0.5;
+          const az = z + 0.5;
+          const hits = (at: number) =>
+            stepHitsBlocker(grid, ax, az, ax + dx, az + dz, at);
+          if (hits(level) || hits(to)) continue;
+          adjacent[n].push(m);
+          if (!adjacent[m].includes(n)) adjacent[m].push(n);
+        }
+      }
     }
   }
   for (const s of seatNodes) {

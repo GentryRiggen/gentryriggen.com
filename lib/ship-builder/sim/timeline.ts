@@ -1,5 +1,5 @@
 import { startDescent } from "./descent";
-import { ICEBERG_IMPACT_S, ICEBERG_MAX_S } from "./flooding";
+import { ICEBERG_IMPACT_S, ICEBERG_MAX_S, STORM_SUNK_BY_S } from "./flooding";
 import { createTrial, stepTrial } from "./seaTrial";
 import {
   SIM_STEP_S,
@@ -32,8 +32,13 @@ export const SLOW_MO_HOLD_S = 0.8;
 /** Sim seconds after the break by which playback is back to normal. */
 export const SLOW_MO_RECOVER_S = 2;
 
-/** Longest a trial may run before the timeline stops recording it. */
-const MAX_TRIAL_S = ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30;
+/**
+ * Longest a trial may run before the timeline stops recording it: an iceberg
+ * trial that stays afloat, or a storm (sunk by `STORM_SUNK_BY_S`), with room
+ * to spare.
+ */
+const MAX_TRIAL_S =
+  Math.max(ICEBERG_IMPACT_S + ICEBERG_MAX_S, STORM_SUNK_BY_S) + 30;
 /** Longest the descent to the floor may run. */
 const MAX_DESCENT_S = 120;
 

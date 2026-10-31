@@ -110,6 +110,7 @@ describe("a challenge result", () => {
         trial: {
           status: "result",
           input: trial.input,
+          look: trial.look,
           state,
           runId: trial.runId,
           descending: true,

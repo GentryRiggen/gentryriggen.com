@@ -5,6 +5,7 @@ import {
   wholeSpan,
   type BodySpan,
 } from "./breakup";
+import { trialKindOf } from "./trialKind";
 import {
   SIM_STEP_S,
   type SimBody,
@@ -31,7 +32,10 @@ const DESCENT_RAMP_S = 1;
 export const REST_PITCH_BOW = -0.25;
 /** Resting pitch of the stern half: nearly level. */
 export const REST_PITCH_STERN = 0.1;
-/** A small resting list (radians), toward the side she was already rolled. */
+/**
+ * A small resting list (radians), toward the side she was already rolled. Not
+ * used by a capsized storm ship, which keeps her roll.
+ */
 export const REST_ROLL = 0.08;
 /**
  * Pitch and roll turn toward resting at this many "gaps" over the time left
@@ -95,10 +99,14 @@ function stepBody<T extends Body>(
   body: T,
   span: BodySpan,
   restPitch: number,
-  speed: number
+  speed: number,
+  isCapsized: boolean
 ): BodyStep<T> {
   const isDown = isOnFloor(body, span);
-  const restRoll = (Math.sign(body.roll) || 1) * REST_ROLL;
+  // A capsized storm ship goes down, and lies, upside down: no righting.
+  const restRoll = isCapsized
+    ? body.roll
+    : (Math.sign(body.roll) || 1) * REST_ROLL;
   const timeLeft = isDown
     ? 0
     : (FLOOR_DEPTH - deepestDepth(body.sink, body.pitch, span)) / DESCENT_SPEED;
@@ -134,6 +142,10 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
   const speed =
     DESCENT_SPEED * Math.min(1, (time - startedAt) / DESCENT_RAMP_S);
   const { halves, breakup } = state;
+  // Only the storm ship lies upside down; other trials settle to a list.
+  const isCapsized =
+    trialKindOf(input) === "storm" &&
+    state.events.some((e) => e.kind === "capsized");
   let next: SimState;
   let bodies: BodyStep<Body>[];
   let names: SimBody[];
@@ -142,13 +154,15 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
       halves.bow,
       bowSpan(breakup.atX),
       REST_PITCH_BOW,
-      speed
+      speed,
+      isCapsized
     );
     const stern = stepBody(
       halves.stern,
       sternSpan(breakup.atX, length),
       REST_PITCH_STERN,
-      speed
+      speed,
+      isCapsized
     );
     bodies = [bow, stern];
     names = ["bow", "stern"];
@@ -158,7 +172,8 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
       state.pose,
       wholeSpan(length),
       REST_PITCH_BOW,
-      speed
+      speed,
+      isCapsized
     );
     bodies = [whole];
     names = ["ship"];

@@ -29,6 +29,11 @@ plans where everyone is at every moment.
     `grid.stepLevel` (so level changes only happen on stairs), plus
     seat cells that are only ever an end point. Its BFS (`reachFrom`,
     `pathTo`) is cached per grid and ship parts, for later planners to reuse.
+    `crowdGraphOf(ship, grid, { jumps: true })` is the same nodes (same
+    indices) plus hops: side-by-side columns one level apart that no stair
+    joins, both ways, when the line between them misses every blocker at
+    both levels. Only the Fill every seat rush uses it (cached separately);
+    the everyday crowd keeps to the stairs.
   - `planCrowd(ship, grid, stats)` starts everyone on distinct, spread-out
     columns, then builds each schedule as legs: walk (cell centre to cell
     centre at `PERSON_SPEED`, facing the way they go), sit (on the seat,
@@ -42,18 +47,30 @@ asked; then it binary-searches person `i`'s legs. While walking, a person's
 level is the level of the cell they are in, so a stair crossing switches
 level at the cell edge.
 
-`evacuation.ts` plans a sinking for the iceberg trial (Task 4 draws it):
+`lifeboatCount(ship, stats)` (`lifeboatCount.ts`) is the real sum behind
+"did we build enough lifeboats?": `seats` adds the catalog seats of every
+lifeboat hanging from a `davit` or `davit-side`, `people` is passengers plus
+crew berths. Real counts, not figures (the Titanic: 1098 seats, 2300 aboard).
 
-- `planEvacuation(ship, grid, crowd, timeline)` is null unless the trial is an
-  iceberg trial that ends `sank`. Doom is the iceberg strike (the first
-  `flooding` event), or the first `sank` state if there is none, so the
-  whole flooding stretch is there for boarding. Before doom everyone
-  follows the crowd plan exactly.
+`evacuation.ts` plans a sinking for the iceberg and storm trials:
+
+- `planEvacuation(ship, grid, crowd, timeline)` is null unless the trial
+  floods (`floodOf(input)`, iceberg or storm) and ends `sank`. Doom is the
+  first `flooding` event (the iceberg strike, or the storm's first wash
+  aboard at 10 s), or the first `sank` state if there is none, so the whole
+  flooding stretch is there for boarding. Before doom everyone follows the
+  crowd plan exactly. A capsize in the waves trial gets no plan.
+- `input.lifeboats` picks how the boats fill: absent or `titanic` is Like
+  the Titanic (below, unchanged), `fill` is Fill every seat (its own
+  section). Either way every davit boat launches, riders or not. The result
+  card's lifeboat line uses the real counts (`lifeboatCount`), not figures.
 - Boats are lifeboat parts (catalog `seats > 0`) hanging from a `davit` or
   `davit-side`. A boat's boarding spot is the walkable column nearest it on
   the davit's deck: the davit's cell or the one inboard, on the block's roof
   or the block's own level. A boat with no spot gets no riders but still
   launches.
+  Like the Titanic:
+
 - At doom, people are matched to boats nearest first (one BFS from each
   spot, `crowdGraphOf(...).reachFrom`), up to `min(BOAT_SHOWN_MAX, seats)`
   per boat, halved when the boat id's hash is odd. If the timeline breaks
@@ -66,26 +83,57 @@ level at the cell edge.
   boat floats from the first check that finds them at world `y <= 0`
   (`poseWorldPoint` on the body that carries them), drifting outward.
 - `boatPoseAt` lowers a boat from its launch `origin` to the water over
-  `LOWER_S`, rows it `ROW_OUT` outboard over `ROW_S`, then bobs.
+  `LOWER_S`, rows it `ROW_OUT` outboard over `ROW_S`, then bobs (both
+  modes).
+
+Fill every seat (`lifeboats: "fill"`), so a kid can see whether there were
+enough boats:
+
+- Saved figures: all of them when `lifeboatCount` seats >= people, else
+  `round(figures * seats / people)`. Nobody is saved with no davit boats.
+- Each boat's share of the saved is by its seats (largest remainder), with
+  no `BOAT_SHOWN_MAX` cap and no odd-hash halving. People are matched
+  nearest first: a walk on the jump graph (same half once she breaks),
+  then anyone with no way there, by straight distance.
+- A rider with a way walks it (hops included). One with none stands still
+  and fades out over `FADE_S` (fate `transfer`, `fade` 0 to 1), and is in
+  the seat at doom plus the straight distance at `PERSON_SPEED` (at least
+  `FADE_S`). A walker the water would catch fades out just before it and is
+  seated as it would have reached them.
+- A boat waits for all of its riders (no `LAUNCH_WAIT_S`; an empty boat
+  still uses it), but leaves no later than the water reaching its boarding
+  spot (and `LOWER_S` before the timeline ends). Anyone not seated by then
+  fades out over the last `FADE_S` and is seated as she leaves. So every
+  saved figure ends `in-boat`.
+- The rest do as in Like the Titanic: follow the crowd plan,
+  wander on their half once she breaks, float when the water reaches them.
 
 Everything is worked out when the plan is made; `fateAt`, `poseAt` and
 `boatPoseAt` only read it, so they are pure in `t` and cheap.
 
 `floatingSince(poseAt, bodyAt, from, to, frame)` is the water check on its
 own, and `floatPositionAt` the drift. The plan uses them, and so does the
-scene in a trial with no plan (the weather trial, or a sinking she survives),
+scene in a trial with no plan (the waves trial, or a sinking she survives),
 checking each frame.
 
 The scene (`components/ship-builder/scene/`) draws it: `Crowd.tsx` poses
 everyone in one frame callback as a few instanced meshes (`crowdBodies.ts`),
 riding the ship's group or her halves (`CrowdCarrier.tsx`), in their boats, or
-afloat. `LaunchedBoats.tsx` draws each boat once it leaves its davit, and
-`ShipParts` hides the one on the davit. `scene/trialTimeline.ts` caches the
-plan beside the trial's timeline.
+afloat; a `transfer` shrinks to nothing where they stand. `boatSeatOffsets`
+(`crowdView.ts`) seats up to `BOAT_SHOWN_MAX` in one row and packs more in
+two rows, so every Fill every seat rider shows (at most `MAX_PEOPLE`, so the
+instanced meshes keep their size). `LaunchedBoats.tsx` draws each boat once
+it leaves its davit, and `ShipParts` hides the one on the davit.
+`scene/trialTimeline.ts` caches the plan beside the trial's timeline, per
+descent and lifeboat choice.
 
 On the Titanic, boats lower from 1 to 12 s after the strike, well before
 the bow goes under at about 22 s. Her decks are joined only by jumps (she
-has no stairs, and the crowd graph has no jump steps), so only the people on
-the boat deck at the strike can reach a boat. They all walk to one.
+has no stairs, and the plain crowd graph has no jump steps), so like the
+Titanic only the people on the boat deck at the strike can reach a boat.
+They all walk to one. Filling every seat, the jump graph joins all her
+decks: 11 of 24 figures (1098 of 2300) are saved, every one walking (and
+hopping) to a boat, and 13 are left aboard. The storm evacuates the same
+way from its first wash aboard.
 
 Tests: `__tests__/plan.test.ts`, `__tests__/evacuation.test.ts`.

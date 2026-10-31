@@ -2,6 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
+import { isTimelineTrial } from "@/lib/ship-builder/sim/trialKind";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { trialPlayback } from "../scene/trialPlayback";
 import {
@@ -41,9 +42,9 @@ function copyPlayback(target: PlaybackSnapshot) {
 }
 
 /**
- * Plays the iceberg trial's sounds. Mount it inside the Canvas. Each frame it
- * compares the playback with the previous frame, turns the change into cues
- * and hands them to the synth. It renders nothing and never re-renders on a
+ * Plays the iceberg and storm trials' sounds. Mount it inside the Canvas.
+ * Each frame it compares the playback with the previous frame, turns the
+ * change into cues and hands them to the synth. It renders nothing and never re-renders on a
  * frame: it reads the shared playback, the store and the camera directly.
  *
  * It also owns the audio's lifecycle: it unlocks remembered sound on the first
@@ -102,7 +103,8 @@ export default function TrialSound() {
     if (!isEnabled || !trialSynth.isEnabled()) return;
 
     const { trial } = useShipBuilderStore.getState();
-    const isPlaying = trial.status === "running" && !!trial.input.iceberg;
+    const isPlaying =
+      trial.status === "running" && isTimelineTrial(trial.input);
     if (!isPlaying) {
       trialSynth.setAmbient({ sea: false, hum: false });
       return;

@@ -20,7 +20,10 @@ describe("iceberg aiming", () => {
     const { nonce } = store().camera;
     act(() => store().aimIceberg());
 
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
     expect(store().camera.view).toBe("side");
     expect(store().camera.nonce).toBeGreaterThan(nonce);
     expect(store().placeAt({ kind: "grid", level: 0, x: 2, z: 0 })).toEqual({
@@ -46,7 +49,10 @@ describe("iceberg aiming", () => {
     if (trial.status !== "running") throw new Error("not running");
     act(() => store().finishTrial(runTrial(trial.input)));
     act(() => store().aimIceberg());
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
   });
 
   it("starts the iceberg trial from aiming at the tapped spot", () => {

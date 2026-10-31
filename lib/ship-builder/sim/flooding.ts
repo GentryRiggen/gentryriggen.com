@@ -7,11 +7,11 @@ import {
 } from "./breakup";
 import { gashOf } from "./compartments";
 import { POWER_OUT_STRAIN, shouldFlicker, withPower } from "./power";
+import { floodOf, trialKindOf, type FloodSpec } from "./trialKind";
 import {
   SIM_STEP_S,
   type Compartment,
   type CompartmentSpec,
-  type IcebergInput,
   type SimBreakup,
   type SimEvent,
   type SimHalves,
@@ -55,6 +55,36 @@ export const ICEBERG_IMPACT_S = 1.5;
 /** An iceberg trial that has not sunk this long after impact stays afloat. */
 export const ICEBERG_MAX_S = 90;
 
+/**
+ * The storm: nothing comes aboard before this (sim seconds), so she is
+ * battered by the wild sea for a while first.
+ */
+export const STORM_START_S = 10;
+/**
+ * How fast waves breaking over the deck fill a compartment: a fraction of
+ * its depth per second while it is dry, slowing as it fills (see
+ * `STORM_TRICKLE`). Tuned so every build sinks 60 to 120 s into the storm.
+ */
+export const STORM_INFLOW = 0.007;
+/**
+ * The slowest a filling compartment takes water, as a share of `STORM_INFLOW`:
+ * inflow slows as she fills but never below this, so the last quarter still
+ * fills. Once a compartment is full it stops taking water (water spilling
+ * over its walls carries the storm on aft).
+ */
+export const STORM_TRICKLE = 0.25;
+/**
+ * The waves break hardest over the bow. The weight along the hull is
+ * `(p + 1) (1 - x)^p` (x runs 0 at the bow to 1 at the stern, p is this), so
+ * its average over the whole ship is 1 however the walls divide her: walls
+ * never change how much comes aboard, only where it piles up. Deck-high walls
+ * let the bow compartments fill and stop taking water, which is what slows
+ * her.
+ */
+export const STORM_BOW_POWER = 4;
+/** The storm trial's window: every build has sunk by this (sim seconds). */
+export const STORM_SUNK_BY_S = 120;
+
 /** Bow-first plunge once she is past saving. */
 export const PLUNGE_PITCH = -0.35;
 const PLUNGE_PITCH_RATE = 0.1;
@@ -88,9 +118,11 @@ function overlapOf(
 
 /** Why a ship that went under sank, for the result card. */
 function sankReason(
+  input: TrialInput,
   specs: readonly CompartmentSpec[],
   events: readonly SimEvent[]
 ): TrialReason {
+  if (trialKindOf(input) === "storm") return "storm";
   if (specs.length === 1) return "no-bulkheads";
   return hasEvent(events, "spilled") ? "spilled" : "too-many-opened";
 }
@@ -101,14 +133,20 @@ function sankReason(
  * plunge). Returns a new state; it does not advance the roll.
  */
 export function stepFlooding(input: TrialInput, state: SimState): SimState {
-  const iceberg = input.iceberg;
-  if (!iceberg || state.phase !== "sailing") return state;
-  const { compartments: specs, length, impactX, gashLength } = iceberg;
+  const flood = floodOf(input);
+  if (!flood || state.phase !== "sailing") return state;
+  const { compartments: specs, length } = flood;
+  const { iceberg } = input;
   const dt = SIM_STEP_S;
   const time = state.time + dt;
-  // The berg is still on its way in: nothing has touched the hull yet.
-  if (time < ICEBERG_IMPACT_S) return { ...state, time };
-  const gash = gashOf(impactX, length, gashLength);
+  // The berg is still on its way in, or the storm has not yet built: nothing
+  // has come aboard.
+  if (time < (iceberg ? ICEBERG_IMPACT_S : STORM_START_S)) {
+    return { ...state, time };
+  }
+  const gash = iceberg
+    ? gashOf(iceberg.impactX, length, iceberg.gashLength)
+    : null;
   const middle = length / 2;
   const seaDepth = state.pose.sink * SINK_TO_DEPTH;
   const seaLevel = SEA_LEVEL + seaDepth;
@@ -119,9 +157,11 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   let movement = 0;
 
   for (let i = 0; i < specs.length; i++) {
-    if (!state.compartments[i].opened) continue;
-    const inflow =
-      INFLOW * overlapOf(specs[i], gash) * Math.max(0, seaLevel - water[i]);
+    const inflow = gash
+      ? state.compartments[i].opened
+        ? INFLOW * overlapOf(specs[i], gash) * Math.max(0, seaLevel - water[i])
+        : 0
+      : stormInflowOf(specs[i], water[i], length);
     if (inflow <= 0) continue;
     water[i] = Math.min(1, water[i] + (inflow * dt) / lengthOf(specs[i]));
     movement += inflow;
@@ -185,12 +225,13 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
       compartments,
       events,
       outcome: "sank",
-      reason: sankReason(specs, events),
+      reason: sankReason(input, specs, events),
     };
   }
 
+  // A storm never lets up: only an iceberg trial can end afloat.
   const hasSettled = movement < SETTLED_EPS && hasEvent(events, "flooding");
-  if (hasSettled || time >= ICEBERG_IMPACT_S + ICEBERG_MAX_S) {
+  if (iceberg && (hasSettled || time >= ICEBERG_IMPACT_S + ICEBERG_MAX_S)) {
     return {
       ...state,
       time,
@@ -214,6 +255,30 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   };
 }
 
+/** Average bow-heavy storm weight over a compartment (1 over the whole hull). */
+function stormWashOf(spec: CompartmentSpec, length: number): number {
+  const exponent = STORM_BOW_POWER + 1;
+  const bow = 1 - spec.fromX / length;
+  const stern = 1 - spec.toX / length;
+  const span = (spec.toX - spec.fromX) / length;
+  return span > 0 ? (bow ** exponent - stern ** exponent) / span : 0;
+}
+
+/**
+ * Storm water coming over the deck into one compartment (cells x depth per
+ * second): heavier toward the bow, slowing as the compartment fills but never
+ * stopping.
+ */
+function stormInflowOf(
+  spec: CompartmentSpec,
+  water: number,
+  length: number
+): number {
+  const wash = stormWashOf(spec, length);
+  const room = Math.max(STORM_TRICKLE, 1 - water);
+  return water >= 1 ? 0 : STORM_INFLOW * lengthOf(spec) * wash * room;
+}
+
 /** A ship that went under: both halves, or the whole ship, are gone. */
 function sunk(state: SimState, time: number): SimState {
   return {
@@ -227,13 +292,9 @@ function sunk(state: SimState, time: number): SimState {
  * The step she breaks: the halves start exactly where the whole ship was
  * (her pose from the step before), and the lights go out if they had not.
  */
-function breakApart(
-  state: SimState,
-  iceberg: IcebergInput,
-  time: number
-): SimState {
-  const { length } = iceberg;
-  const atX = breakPositionOf(iceberg.compartments, state.pose, length);
+function breakApart(state: SimState, flood: FloodSpec, time: number): SimState {
+  const { length } = flood;
+  const atX = breakPositionOf(flood.compartments, state.pose, length);
   const dark = withPower(state, "out", time);
   return {
     ...dark,
@@ -260,22 +321,22 @@ function stepBroken(
 }
 
 /**
- * Plunging: she goes down by the bow, then the trial ends. In an iceberg
- * trial the bending strain builds as she tips; past her strength she breaks
- * in two (see breakup.ts) and the halves take over from `pose`.
+ * Plunging: she goes down by the bow, then the trial ends. In an iceberg or
+ * storm trial the bending strain builds as she tips; past her strength she
+ * breaks in two (see breakup.ts) and the halves take over from `pose`.
  */
 export function stepPlunge(state: SimState, input?: TrialInput): SimState {
-  const iceberg = input?.iceberg;
-  if (iceberg && state.halves && state.breakup) {
-    return stepBroken(state, state.halves, state.breakup, iceberg.length);
+  const flood = input ? floodOf(input) : null;
+  if (flood && state.halves && state.breakup) {
+    return stepBroken(state, state.halves, state.breakup, flood.length);
   }
   const dt = SIM_STEP_S;
   const time = state.time + dt;
-  const strength = iceberg
-    ? strengthFor(iceberg.breakMode, iceberg.length)
+  const strength = flood
+    ? strengthFor(flood.breakMode, flood.length)
     : Infinity;
-  if (iceberg && state.strain >= strength) {
-    return breakApart(state, iceberg, time);
+  if (flood && state.strain >= strength) {
+    return breakApart(state, flood, time);
   }
   const speed = Math.min(
     PLUNGE_SPEED_MAX,
@@ -286,8 +347,11 @@ export function stepPlunge(state: SimState, input?: TrialInput): SimState {
     PLUNGE_PITCH,
     state.pose.pitch - PLUNGE_PITCH_RATE * dt
   );
-  const roll = state.pose.roll * Math.max(0, 1 - PLUNGE_ROLL_DAMPING * dt);
-  const strain = iceberg ? strainOf(pitch, iceberg.length) : 0;
+  // A storm capsize goes down still upside down; otherwise the roll fades.
+  const roll = hasEvent(state.events, "capsized")
+    ? state.pose.roll
+    : state.pose.roll * Math.max(0, 1 - PLUNGE_ROLL_DAMPING * dt);
+  const strain = flood ? strainOf(pitch, flood.length) : 0;
   const isDark =
     strain >= POWER_OUT_STRAIN * strength || sink >= PLUNGE_DEPTH / 3;
   const plunged = withPower(
@@ -299,7 +363,7 @@ export function stepPlunge(state: SimState, input?: TrialInput): SimState {
       rollVelocity: 0,
       strain,
     },
-    iceberg ? (isDark ? "out" : "flickering") : state.power,
+    flood ? (isDark ? "out" : "flickering") : state.power,
     time
   );
   return sink >= PLUNGE_DEPTH ? sunk(plunged, time) : plunged;

@@ -156,6 +156,7 @@ async function openFrozenScene(
       await tapHullMidships(page);
     } else {
       await page.getByRole("menuitem", { name: "Waves" }).click();
+      await page.getByRole("button", { name: "Go!" }).click();
     }
   }
   if (below) await page.getByRole("button", { name: "Below view" }).click();

@@ -10,14 +10,16 @@ import {
   timelineEnd,
   type Timeline,
 } from "@/lib/ship-builder/sim/timeline";
+import { isTimelineTrial } from "@/lib/ship-builder/sim/trialKind";
 import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { crowdPlanFor } from "./crowdView";
 
 /**
- * The iceberg trial's precomputed timeline, kept outside React like
- * `trialPlayback`: thousands of states are worked out once per trial input,
- * then the runner, "Watch again" and the scrubber all read the same one.
+ * A timeline trial's (iceberg or storm) precomputed timeline, kept outside
+ * React like `trialPlayback`: thousands of states are worked out once per
+ * trial input, then the runner, "Watch again" and the scrubber all read the
+ * same one.
  */
 interface CachedTimeline {
   input: TrialInput;
@@ -25,11 +27,22 @@ interface CachedTimeline {
   descended: Timeline | null;
   /** The ship the evacuation plans were made for. */
   evacuationShip: Ship | null;
-  /** Evacuation plan per `descending`, worked out on first use. */
-  evacuations: Map<boolean, EvacuationPlan | null>;
+  /**
+   * Evacuation plan per `descending` and lifeboat choice (`evacuationKey`),
+   * worked out on first use.
+   */
+  evacuations: Map<string, EvacuationPlan | null>;
 }
 
 let cached: CachedTimeline | null = null;
+
+/**
+ * What an evacuation plan depends on beyond the input object the cache is
+ * keyed by: the descent and how the lifeboats are filled.
+ */
+function evacuationKey(input: TrialInput, descending: boolean): string {
+  return `${descending}:${input.lifeboats ?? "titanic"}`;
+}
 
 function cacheFor(input: TrialInput): CachedTimeline {
   if (cached?.input !== input) {
@@ -59,9 +72,9 @@ export function trialTimelineFor(
 }
 
 /**
- * The evacuation of the iceberg trial for `input` on `ship` (who takes which
+ * The evacuation of the timeline trial for `input` on `ship` (who takes which
  * lifeboat, when each lowers away), or null when she does not sink or it is
- * not an iceberg trial. Worked out once beside the timeline it reads, from
+ * a waves trial. Worked out once beside the timeline it reads, from
  * the same crowd walk mode shows, and forgotten with it.
  */
 export function trialEvacuationFor(
@@ -69,17 +82,18 @@ export function trialEvacuationFor(
   ship: Ship,
   descending = false
 ): EvacuationPlan | null {
-  if (!input.iceberg) return null;
+  if (!isTimelineTrial(input)) return null;
   const entry = cacheFor(input);
   if (entry.evacuationShip !== ship) {
     entry.evacuationShip = ship;
     entry.evacuations = new Map();
   }
-  if (!entry.evacuations.has(descending)) {
+  const key = evacuationKey(input, descending);
+  if (!entry.evacuations.has(key)) {
     const timeline = trialTimelineFor(input, descending);
     const { grid, plan } = crowdPlanFor(ship);
     entry.evacuations.set(
-      descending,
+      key,
       planEvacuation(ship, grid, plan, {
         input,
         stateAt: (t) => stateAt(timeline, t),
@@ -87,7 +101,7 @@ export function trialEvacuationFor(
       })
     );
   }
-  return entry.evacuations.get(descending) ?? null;
+  return entry.evacuations.get(key) ?? null;
 }
 
 /**
@@ -109,16 +123,18 @@ export function clearTrialTimeline(): void {
 useShipBuilderStore.subscribe((state, previous) => {
   const { status } = state.trial;
   if (status === previous.trial.status) return;
-  if (status === "idle" || status === "aiming") clearTrialTimeline();
+  if (status === "idle" || status === "setup" || status === "aiming") {
+    clearTrialTimeline();
+  }
 });
 
 /**
- * Where the iceberg trial for `input` breaks her, cells from the bow, or null
- * if she holds together (or it is not an iceberg trial). Known from the start
+ * Where the timeline trial for `input` breaks her, cells from the bow, or
+ * null if she holds together (or it is a waves trial). Known from the start
  * because the timeline is worked out ahead.
  */
 export function plannedBreakX(input: TrialInput | null): number | null {
-  if (!input?.iceberg) return null;
+  if (!input || !isTimelineTrial(input)) return null;
   const { states } = trialTimelineFor(input);
   return states[states.length - 1]?.breakup?.atX ?? null;
 }

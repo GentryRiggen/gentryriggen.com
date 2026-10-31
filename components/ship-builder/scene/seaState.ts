@@ -1,7 +1,15 @@
+import { WAVES, WILD_WAVES } from "@/lib/ship-builder/sim/seaWaves";
 import { clamp } from "./animationMath";
 
+/** The main screen's seas, the ones the sea chips offer. */
 export const SEA_STATES = ["calm", "choppy", "stormy"] as const;
 export type SeaState = (typeof SEA_STATES)[number];
+
+/**
+ * Any sea the scene can show: the main screen's three plus the storm trial's
+ * own wild sea, which the chips never offer.
+ */
+export type SceneSea = SeaState | "wild";
 
 export const DEFAULT_SEA_STATE: SeaState = "calm";
 
@@ -22,9 +30,56 @@ export interface SeaParams {
   cloudCover: number;
   /** How far the light and sky turn grey and dim; 0 leaves them untouched. */
   overcast: number;
+  /** Each of `SEA_WAVES`' share of the peak height; they sum to 1. */
+  weights: readonly number[];
 }
 
-const SEA_PARAMS: Record<SeaState, SeaParams> = {
+/** The sim's three waves, then its six wild ones, as the scene draws them. */
+export interface Wave {
+  dirX: number;
+  dirY: number;
+  wavelength: number;
+  /** Radians per unit of time at speed 1. */
+  omega: number;
+  /** Starting phase, radians. */
+  phase: number;
+}
+
+/**
+ * Every wave the sea can sum, with the sim's directions, wavelengths and
+ * frequencies (built from `lib/ship-builder/sim/seaWaves.ts`, so they stay in
+ * step). The three main waves start at phase 0, as the scene always drew
+ * them; the wild ones keep the sim's phases. Each sea weighs them by its own
+ * `weights`: the main seas give the wild ones 0 and the wild sea the main
+ * ones 0, so one shader draws every sea and eases between them.
+ */
+export const SEA_WAVES: readonly Wave[] = [
+  ...WAVES.map(({ dirX, dirY, wavelength, omega }) => ({
+    dirX,
+    dirY,
+    wavelength,
+    omega,
+    phase: 0,
+  })),
+  ...WILD_WAVES.map(({ dirX, dirY, wavelength, omega, phase }) => ({
+    dirX,
+    dirY,
+    wavelength,
+    omega,
+    phase,
+  })),
+];
+
+const MAIN_WEIGHTS: readonly number[] = [
+  ...WAVES.map((w) => w.weight),
+  ...WILD_WAVES.map(() => 0),
+];
+const WILD_WEIGHTS: readonly number[] = [
+  ...WAVES.map(() => 0),
+  ...WILD_WAVES.map((w) => w.weight),
+];
+
+const SEA_PARAMS: Record<SceneSea, SeaParams> = {
   // Calm is the original look: a barely visible swell and the original bob.
   calm: {
     amplitude: 0.03,
@@ -33,6 +88,7 @@ const SEA_PARAMS: Record<SeaState, SeaParams> = {
     rollScale: 1,
     cloudCover: 0.2,
     overcast: 0,
+    weights: MAIN_WEIGHTS,
   },
   choppy: {
     amplitude: 0.2,
@@ -41,6 +97,7 @@ const SEA_PARAMS: Record<SeaState, SeaParams> = {
     rollScale: 1.6,
     cloudCover: 0.55,
     overcast: 0.25,
+    weights: MAIN_WEIGHTS,
   },
   stormy: {
     amplitude: 0.45,
@@ -49,10 +106,22 @@ const SEA_PARAMS: Record<SeaState, SeaParams> = {
     rollScale: 2.4,
     cloudCover: 1,
     overcast: 0.85,
+    weights: MAIN_WEIGHTS,
+  },
+  // The storm trial's wild sea: a steep cross sea, as fast as the sim's
+  // (WILD_SPEED 2), under a dark, closed-in sky.
+  wild: {
+    amplitude: 0.65,
+    speed: 2,
+    bobScale: 3.6,
+    rollScale: 3,
+    cloudCover: 1,
+    overcast: 1,
+    weights: WILD_WEIGHTS,
   },
 };
 
-export function seaParams(sea: SeaState): SeaParams {
+export function seaParams(sea: SceneSea): SeaParams {
   return SEA_PARAMS[sea];
 }
 
@@ -78,33 +147,23 @@ export function seaFade(distance: number): number {
   return near * (1 - smoothstep(SEA_FAR_START, SEA_FAR_END, distance));
 }
 
-export interface Wave {
-  dirX: number;
-  dirY: number;
-  wavelength: number;
-  /** Share of the peak height; the weights sum to 1. */
-  weight: number;
-  /** Radians per unit of time at speed 1. */
-  omega: number;
-}
-
-export const WAVES: readonly Wave[] = [
-  { dirX: 0.8, dirY: 0.6, wavelength: 9, weight: 0.5, omega: 1.1 },
-  { dirX: -0.5, dirY: 0.866, wavelength: 5.5, weight: 0.3, omega: 1.5 },
-  { dirX: 0.2, dirY: -0.98, wavelength: 3.2, weight: 0.2, omega: 2 },
-];
-
-/** CPU twin of the vertex shader's height, used to pin down its behaviour. */
+/**
+ * CPU twin of the vertex shader's height, used to pin down its behaviour.
+ * `weights` defaults to the main seas' (calm, choppy and stormy share them).
+ */
 export function seaHeight(
   x: number,
   y: number,
   time: number,
-  amplitude: number
+  amplitude: number,
+  weights: readonly number[] = MAIN_WEIGHTS
 ): number {
-  const sum = WAVES.reduce((total, w) => {
+  const sum = SEA_WAVES.reduce((total, w, i) => {
+    const weight = weights[i] ?? 0;
+    if (weight === 0) return total;
     const k = (Math.PI * 2) / w.wavelength;
-    const phase = k * (w.dirX * x + w.dirY * y) + w.omega * time;
-    return total + w.weight * Math.sin(phase);
+    const phase = k * (w.dirX * x + w.dirY * y) + w.omega * time + w.phase;
+    return total + weight * Math.sin(phase);
   }, 0);
   return sum * amplitude * seaFade(Math.hypot(x, y));
 }

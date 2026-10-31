@@ -1,6 +1,7 @@
 import { STABILITY_THRESHOLDS } from "../model/stats";
 import { HULL_STRENGTH, strainOf } from "./breakup";
 import { PLUNGE_PITCH } from "./flooding";
+import { floodOf } from "./trialKind";
 import { LOPSIDED_LIST } from "./seaTrial";
 import { formatStoryTime, storyMinutesSinceImpact } from "./story";
 import type {
@@ -32,6 +33,7 @@ const SEA_WORDS: Record<SimSea, string> = {
   calm: "calm sea",
   choppy: "choppy sea",
   stormy: "stormy sea",
+  wild: "wild sea",
 };
 
 const TIP_LOWER = "Build fewer levels on top, or move heavy blocks lower down.";
@@ -133,6 +135,15 @@ function sankSummary(state: SimState): { message: string; tips: string[] } {
   );
   const lead = `She stayed afloat for ${afloatFor}.`;
   switch (state.reason) {
+    case "storm":
+      return {
+        // A storm sinking that began when she rolled over (a top-heavy build)
+        // is a different story from one where water filled her.
+        message: hasEvent(state, "capsized")
+          ? "Big waves rolled her over and she sank."
+          : "The storm was too strong. Waves filled her up until she sank.",
+        tips: [],
+      };
     case "no-bulkheads":
       return {
         message: `${lead} She had no walls below deck, so the water filled her.`,
@@ -185,18 +196,18 @@ function nearestWallWords(
 }
 
 function breakupLine(state: SimState, input: TrialInput): string | undefined {
-  const { iceberg } = input;
-  if (!iceberg || state.outcome !== "sank") return undefined;
+  const flood = floodOf(input);
+  if (!flood || state.outcome !== "sank") return undefined;
   if (state.breakup) {
     const degrees = Math.round(Math.abs(state.breakup.angle) / DEG);
-    const where = nearestWallWords(iceberg.compartments, state.breakup.atX);
+    const where = nearestWallWords(flood.compartments, state.breakup.atX);
     const lead =
-      iceberg.breakMode === "always"
+      flood.breakMode === "always"
         ? `She broke in two at ${degrees}°`
         : `She was too long to take the strain and broke in two at ${degrees}°`;
     return where ? `${lead}, ${where}.` : `${lead}.`;
   }
-  switch (iceberg.breakMode) {
+  switch (flood.breakMode) {
     case "never":
       return "You told her to hold together.";
     case "always":
@@ -204,7 +215,7 @@ function breakupLine(state: SimState, input: TrialInput): string | undefined {
     default:
       // A ship that could never reach her limit is short and sturdy; a long
       // one that got lucky (she went down too gently) just held.
-      return strainOf(PLUNGE_PITCH, iceberg.length) < HULL_STRENGTH
+      return strainOf(PLUNGE_PITCH, flood.length) < HULL_STRENGTH
         ? "Short and sturdy, she held together."
         : "She held together, but only just.";
   }
@@ -217,7 +228,7 @@ function floorLine(state: SimState): string | undefined {
     : "She came to rest on the sea floor.";
 }
 
-/** The iceberg lines, only those that apply. */
+/** The iceberg and storm lines, only those that apply. */
 function icebergLines(
   state: SimState,
   input: TrialInput

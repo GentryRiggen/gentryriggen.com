@@ -1,8 +1,10 @@
 "use client";
 
+import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
   DEFAULT_SEA_STATE,
   isSeaState,
+  type SceneSea,
   type SeaState,
 } from "../scene/seaState";
 import { createStoredSetting } from "./createStoredSetting";
@@ -15,17 +17,37 @@ const seaSetting = createStoredSetting<SeaState>({
 });
 
 interface SeaStateControl {
-  seaState: SeaState;
+  /** The sea on show: the trial's while one is on, else the main choice. */
+  seaState: SceneSea;
+  /** Changes the main-screen choice (never a trial's). */
   setSeaState: (next: SeaState) => void;
 }
 
-/** The chosen sea state, remembered per device and not saved with the ship. */
+/**
+ * The sea the scene shows. The main-screen choice is remembered per device
+ * and not saved with the ship; while a trial is on (aiming, running or its
+ * result) its own look's sea shows instead, without changing that choice.
+ */
 export default function useSeaState(): SeaStateControl {
-  const seaState = seaSetting.useValue();
-  return { seaState, setSeaState: seaSetting.set };
+  const chosen = seaSetting.useValue();
+  const trialSea = useShipBuilderStore((s) =>
+    s.trial.status === "idle" ? null : s.trial.look.sea
+  );
+  return { seaState: trialSea ?? chosen, setSeaState: seaSetting.set };
 }
 
-/** The chosen sea state right now, for code outside React (the store). */
+/**
+ * The main-screen sea choice itself, whatever a trial shows: for the sea
+ * chips, which set it and must not light up a trial's sea.
+ */
+export function useMainSeaState(): {
+  seaState: SeaState;
+  setSeaState: (next: SeaState) => void;
+} {
+  return { seaState: seaSetting.useValue(), setSeaState: seaSetting.set };
+}
+
+/** The main-screen sea right now, for code outside React (the store). */
 export function getSeaState(): SeaState {
   return seaSetting.get();
 }

@@ -16,24 +16,37 @@ const timeSetting = createStoredSetting<TimeOfDay>({
 });
 
 interface TimeOfDayControl {
+  /** The time on show: the trial's while one is on, else the main choice. */
   timeOfDay: TimeOfDay;
+  /** Changes the main-screen choice (never a trial's). */
   setTimeOfDay: (next: TimeOfDay) => void;
 }
 
 /**
- * The chosen time of day, remembered per device and not saved with the ship.
- * An iceberg trial (running or showing its result) always happens at night;
- * that only changes what is reported, never the saved choice.
+ * The time of day the scene shows. The main-screen choice is remembered per
+ * device and not saved with the ship; while a trial is on (aiming, running or
+ * its result) its own look's time shows instead, without changing that choice.
  */
 export default function useTimeOfDay(): TimeOfDayControl {
   const chosen = timeSetting.useValue();
-  const isIcebergTrial = useShipBuilderStore(
-    (s) =>
-      (s.trial.status === "running" || s.trial.status === "result") &&
-      s.trial.input.iceberg !== undefined
+  const trialTime = useShipBuilderStore((s) =>
+    s.trial.status === "idle" ? null : s.trial.look.time
   );
   return {
-    timeOfDay: isIcebergTrial ? "night" : chosen,
+    timeOfDay: trialTime ?? chosen,
     setTimeOfDay: timeSetting.set,
   };
+}
+
+/**
+ * The main-screen time of day itself, whatever a trial shows: for the time
+ * chips, which set it and must not light up a trial's time.
+ */
+export function useMainTimeOfDay(): TimeOfDayControl {
+  return { timeOfDay: timeSetting.useValue(), setTimeOfDay: timeSetting.set };
+}
+
+/** The main-screen time of day right now, for code outside React (the store). */
+export function getTimeOfDay(): TimeOfDay {
+  return timeSetting.get();
 }

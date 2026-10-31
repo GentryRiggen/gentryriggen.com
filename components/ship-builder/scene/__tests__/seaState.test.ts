@@ -6,8 +6,12 @@ import {
   seaFade,
   seaHeight,
   seaParams,
-  WAVES,
+  SEA_WAVES,
 } from "../seaState";
+import {
+  WAVES as SIM_WAVES,
+  WILD_WAVES,
+} from "@/lib/ship-builder/sim/seaWaves";
 import { bobPose, createShipPose } from "../bob";
 
 describe("seaParams", () => {
@@ -33,6 +37,58 @@ describe("seaParams", () => {
   });
 });
 
+describe("the wild sea", () => {
+  it("is rougher than stormy, overcast and fully clouded", () => {
+    const wild = seaParams("wild");
+    const stormy = seaParams("stormy");
+    for (const key of ["amplitude", "speed", "bobScale", "rollScale"] as const)
+      expect(wild[key]).toBeGreaterThan(stormy[key]);
+    expect(wild.cloudCover).toBe(1);
+    expect(wild.overcast).toBeGreaterThanOrEqual(stormy.overcast);
+  });
+
+  it("is never one of the main-screen seas", () => {
+    expect(SEA_STATES).toEqual(["calm", "choppy", "stormy"]);
+    expect(isSeaState("wild")).toBe(false);
+  });
+
+  it("only uses the wild components, and the others only the three", () => {
+    const wild = seaParams("wild").weights;
+    const calm = seaParams("calm").weights;
+    expect(wild.slice(0, SIM_WAVES.length).every((w) => w === 0)).toBe(true);
+    expect(calm.slice(SIM_WAVES.length).every((w) => w === 0)).toBe(true);
+    for (const sea of [...SEA_STATES, "wild" as const]) {
+      const { weights } = seaParams(sea);
+      expect(weights).toHaveLength(SEA_WAVES.length);
+      expect(weights.reduce((sum, w) => sum + w, 0)).toBeCloseTo(1);
+    }
+  });
+});
+
+describe("SEA_WAVES mirror the sim's waves", () => {
+  it("has the sim's three waves, then its six wild ones", () => {
+    const sim = [...SIM_WAVES, ...WILD_WAVES];
+    expect(SEA_WAVES).toHaveLength(sim.length);
+    SEA_WAVES.forEach((wave, i) => {
+      expect(wave.dirX).toBe(sim[i].dirX);
+      expect(wave.dirY).toBe(sim[i].dirY);
+      expect(wave.wavelength).toBe(sim[i].wavelength);
+      expect(wave.omega).toBe(sim[i].omega);
+    });
+    // The weights per sea are the sim's weights.
+    const calm = seaParams("calm").weights;
+    const wild = seaParams("wild").weights;
+    SIM_WAVES.forEach((wave, i) => expect(calm[i]).toBe(wave.weight));
+    WILD_WAVES.forEach((wave, i) =>
+      expect(wild[SIM_WAVES.length + i]).toBe(wave.weight)
+    );
+    // The wild sea keeps the sim's phases; the three keep the scene's own 0.
+    WILD_WAVES.forEach((wave, i) =>
+      expect(SEA_WAVES[SIM_WAVES.length + i].phase).toBe(wave.phase)
+    );
+  });
+});
+
 describe("isSeaState", () => {
   it("accepts only the three states", () => {
     expect(SEA_STATES.every(isSeaState)).toBe(true);
@@ -50,8 +106,53 @@ describe("seaFade", () => {
 });
 
 describe("seaHeight", () => {
-  it("has weights that sum to one", () => {
-    expect(WAVES.reduce((sum, w) => sum + w.weight, 0)).toBeCloseTo(1);
+  it("keeps the calm, choppy and stormy surface as it was", () => {
+    // The three-wave sum the scene drew before the wild sea was added.
+    const legacy = (x: number, y: number, t: number, amplitude: number) => {
+      const sum = SIM_WAVES.reduce((total, w) => {
+        const k = (Math.PI * 2) / w.wavelength;
+        return (
+          total +
+          w.weight * Math.sin(k * (w.dirX * x + w.dirY * y) + w.omega * t)
+        );
+      }, 0);
+      return sum * amplitude * seaFade(Math.hypot(x, y));
+    };
+    for (const sea of SEA_STATES) {
+      const { amplitude, weights } = seaParams(sea);
+      for (const [x, y, t] of [
+        [0, 0, 0],
+        [10, 5, 3],
+        [-7, 12, 9.5],
+        [30, -20, 41],
+      ]) {
+        expect(seaHeight(x, y, t, amplitude, weights)).toBeCloseTo(
+          legacy(x, y, t, amplitude),
+          10
+        );
+        expect(seaHeight(x, y, t, amplitude)).toBeCloseTo(
+          legacy(x, y, t, amplitude),
+          10
+        );
+      }
+    }
+  });
+
+  it("is bigger in the wild sea than stormy, still clear of the deck", () => {
+    const peakOf = (sea: "stormy" | "wild") => {
+      const { amplitude, weights } = seaParams(sea);
+      let peak = 0;
+      for (let x = -8; x <= 8; x += 0.5)
+        for (let y = -8; y <= 8; y += 0.5)
+          for (let t = 0; t < 20 && Math.hypot(x, y) <= 8; t += 0.7)
+            peak = Math.max(
+              peak,
+              Math.abs(seaHeight(x, y, t, amplitude, weights))
+            );
+      return peak;
+    };
+    expect(peakOf("wild")).toBeGreaterThan(peakOf("stormy"));
+    expect(peakOf("wild")).toBeLessThanOrEqual(0.5);
   });
 
   it("stays within 0.35 units near the ship even when stormy", () => {

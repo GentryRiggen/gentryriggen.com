@@ -1,4 +1,5 @@
 import { DESCENT_SPEED, FLOOR_DEPTH } from "./descent";
+import { isTimelineTrial, trialKindOf } from "./trialKind";
 import type {
   FunnelFall,
   SimEvent,
@@ -21,7 +22,7 @@ export const TOPPLE_S = 1.2;
 export const FLOAT_S = 2.5;
 /** A weather capsize snaps a funnel once the ship has rolled this far. */
 const CAPSIZE_SNAP_ROLL = (100 * Math.PI) / 180;
-/** An iceberg sinking picks its sinking end once she has tipped this far. */
+/** An iceberg or storm sinking picks its sinking end once she has tipped this far. */
 const END_PITCH = 0.01;
 /**
  * A funnel that snaps off deeper than this is "already under water": it
@@ -137,7 +138,7 @@ export function stepFunnelFalls(state: SimState, input: TrialInput): SimState {
   const pitch = bowPoseOf(state).pitch;
   if (
     !state.funnelEnd &&
-    input.iceberg &&
+    isTimelineTrial(input) &&
     !sunk &&
     Math.abs(pitch) < END_PITCH
   ) {
@@ -157,7 +158,9 @@ export function stepFunnelFalls(state: SimState, input: TrialInput): SimState {
     z: funnel.baseZ,
   });
   const submerged = origin.y <= 0;
-  const rolledOver = !input.iceberg && Math.abs(body.roll) >= CAPSIZE_SNAP_ROLL;
+  const rolledOver =
+    trialKindOf(input) !== "iceberg" &&
+    Math.abs(body.roll) >= CAPSIZE_SNAP_ROLL;
   const timedOut = first ? state.time >= first.at + SECOND_FALL_GAP_S : sunk;
   if (!submerged && !rolledOver && !timedOut) return withEnd;
 

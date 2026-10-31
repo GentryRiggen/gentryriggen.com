@@ -12,7 +12,14 @@ import {
 } from "../../sim/timeline";
 import { trialFunnelsOf } from "../../sim/trialFunnels";
 import { poseWorldPoint } from "../../sim/funnelFall";
-import type { BreakMode, SimState, TrialInput } from "../../sim/types";
+import type {
+  BreakMode,
+  LifeboatMode,
+  SimState,
+  TrialInput,
+} from "../../sim/types";
+import { MIN_SEGMENTS } from "../../model/grid";
+import { emptyShip } from "../../model/placement";
 import { DECK_Y, LEVEL_HEIGHT } from "../../model/worldFrame";
 import type { WalkGrid } from "../../walk/types";
 import { findTemplate } from "../../templates";
@@ -29,6 +36,7 @@ import {
   ROW_S,
   planEvacuation,
 } from "../evacuation";
+import { lifeboatCount } from "../lifeboatCount";
 import { crowdGraphOf, planCrowd } from "../plan";
 import type { CrowdPlan } from "../types";
 import { getPartDef } from "../../model/catalog";
@@ -505,5 +513,202 @@ describe("floatingSince", () => {
     const later = floatPositionAt(float, 4);
     expect(later.z).toBeLessThan(0.5);
     expect(floatPositionAt(float, 100)).toEqual(floatPositionAt(float, 50));
+  });
+});
+
+/** A storm trial on `ship`: always sinks. */
+function stormInputOf(ship: Ship, lifeboats?: LifeboatMode): TrialInput {
+  const length = gridLength(ship);
+  return {
+    ship: simShipFromStats(analyzeShip(ship).stats, ship.hull.beam),
+    sea: "wild",
+    length,
+    funnels: trialFunnelsOf(ship),
+    storm: { compartments: compartmentSpecsOf(ship.hull), length },
+    ...(lifeboats ? { lifeboats } : {}),
+  };
+}
+
+interface Trial {
+  ship: Ship;
+  crowd: CrowdPlan;
+  plan: EvacuationPlan | null;
+  end: number;
+}
+
+function trialOf(ship: Ship, input: TrialInput): Trial {
+  const grid = walkGridOf(ship);
+  const crowd = planCrowd(ship, grid, analyzeShip(ship).stats);
+  const timeline = timelineOf(input);
+  expect(timeline.states[timeline.states.length - 1].outcome).toBe("sank");
+  return {
+    ship,
+    crowd,
+    plan: planEvacuation(ship, grid, crowd, timeline),
+    end: timeline.end,
+  };
+}
+
+function icebergTrial(
+  ship: Ship,
+  lifeboats?: LifeboatMode,
+  breakMode: BreakMode = "never"
+): Trial {
+  const input = inputOf(ship, SINK_FRACTION, breakMode);
+  return trialOf(ship, lifeboats ? { ...input, lifeboats } : input);
+}
+
+/** Every lifeboat that hangs from a davit, by id. */
+function davitBoatIds(ship: Ship): string[] {
+  const byId = new Map(ship.parts.map((p) => [p.id, p]));
+  return ship.parts
+    .filter((part) => {
+      if ((getPartDef(part.type).seats ?? 0) <= 0) return false;
+      if (part.anchor.kind !== "attach") return false;
+      const davit = byId.get(part.anchor.parentId);
+      return davit?.type === "davit" || davit?.type === "davit-side";
+    })
+    .map((part) => part.id);
+}
+
+function inBoatAtEnd(t: Trial): number {
+  let n = 0;
+  for (let i = 0; i < t.crowd.people.length; i++) {
+    if (t.plan!.fateAt(i, t.end).kind === "in-boat") n++;
+  }
+  return n;
+}
+
+describe("Fill every seat", () => {
+  /**
+   * Enough seats for everyone aboard: the Little Hopper, with her walls
+   * taken out so the iceberg sinks her.
+   */
+  const roomy = (): Ship => {
+    const ship = findTemplate("little-hopper")!.build();
+    return { ...ship, hull: { ...ship.hull, bulkheads: [] } };
+  };
+
+  it("titanic fill boards everyone", () => {
+    const ship = roomy();
+    const count = lifeboatCount(ship, analyzeShip(ship).stats);
+    expect(count.seats).toBeGreaterThanOrEqual(count.people);
+    const t = icebergTrial(ship, "fill");
+    const figures = t.crowd.people.length;
+    expect(figures).toBeGreaterThan(1);
+    for (let i = 0; i < figures; i++) {
+      expect(t.plan!.fateAt(i, t.end).kind).toBe("in-boat");
+    }
+    const riders = t.plan!.launches.flatMap((launch) => launch.riders);
+    expect(new Set(riders).size).toBe(figures);
+  });
+
+  it("fill leaves the shortfall aboard", () => {
+    const ship = titanic();
+    const { seats, people } = lifeboatCount(ship, analyzeShip(ship).stats);
+    expect(seats).toBeLessThan(people);
+    const t = icebergTrial(ship, "fill");
+    const figures = t.crowd.people.length;
+    const saved = Math.round((figures * seats) / people);
+    expect(inBoatAtEnd(t)).toBe(saved);
+  });
+
+  it("spreads riders across the boats by their seats, with no cap", () => {
+    const t = icebergTrial(titanic(), "fill");
+    const riders = t.plan!.launches.reduce((n, l) => n + l.riders.length, 0);
+    const seatsOf = (id: string) =>
+      getPartDef(t.ship.parts.find((p) => p.id === id)!.type).seats ?? 0;
+    const total = t.plan!.launches.reduce((n, l) => n + seatsOf(l.boatId), 0);
+    for (const launch of t.plan!.launches) {
+      const share = (riders * seatsOf(launch.boatId)) / total;
+      expect(launch.riders.length).toBeGreaterThanOrEqual(Math.floor(share));
+      expect(launch.riders.length).toBeLessThanOrEqual(Math.ceil(share));
+    }
+  });
+
+  it("seats riders in the boat that carries them and keeps them there", () => {
+    const t = icebergTrial(roomy(), "fill", "always");
+    for (const launch of t.plan!.launches) {
+      launch.riders.forEach((id, seat) => {
+        const i = t.crowd.people.findIndex((p) => p.id === id);
+        for (const at of [launch.at + 1, t.end]) {
+          expect(t.plan!.fateAt(i, at)).toEqual({
+            kind: "in-boat",
+            boatId: launch.boatId,
+            seat,
+          });
+        }
+      });
+    }
+  });
+
+  it("fades out anyone who cannot walk there before they appear in the boat", () => {
+    const t = icebergTrial(roomy(), "fill");
+    let faded = 0;
+    for (let i = 0; i < t.crowd.people.length; i++) {
+      let prev = t.plan!.fateAt(i, 0);
+      for (let at = 0; at <= t.end; at += 0.05) {
+        const fate = t.plan!.fateAt(i, at);
+        if (fate.kind === "transfer") {
+          faded++;
+          expect(fate.fade).toBeGreaterThanOrEqual(0);
+          expect(fate.fade).toBeLessThanOrEqual(1);
+          if (prev.kind === "transfer") {
+            expect(fate.fade).toBeGreaterThanOrEqual(prev.fade);
+          }
+        }
+        if (prev.kind === "transfer") {
+          expect(["transfer", "in-boat"]).toContain(fate.kind);
+        }
+        if (prev.kind === "in-boat") expect(fate.kind).toBe("in-boat");
+        prev = fate;
+      }
+    }
+    // The little hopper's decks are not all joined, even by hops.
+    expect(faded).toBeGreaterThan(0);
+  });
+
+  it("launches every boat before the water reaches its deck", () => {
+    const t = icebergTrial(titanic(), "fill");
+    for (const launch of t.plan!.launches) {
+      expect(launch.origin.y).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("every sinking lowers every boat", () => {
+  it("every boat launches in both modes", () => {
+    for (const mode of ["titanic", "fill"] as const) {
+      for (const t of [
+        icebergTrial(titanic(), mode),
+        trialOf(titanic(), stormInputOf(titanic(), mode)),
+      ]) {
+        const ids = davitBoatIds(t.ship);
+        expect(ids.length).toBeGreaterThan(0);
+        const launched = new Map(
+          t.plan!.launches.map((launch) => [launch.boatId, launch.at])
+        );
+        for (const id of ids) {
+          expect(launched.get(id)).toBeLessThan(t.end);
+        }
+      }
+    }
+  });
+
+  it("storm gets an evacuation", () => {
+    const ship = titanic();
+    const t = trialOf(ship, stormInputOf(ship));
+    expect(t.plan).not.toBeNull();
+    expect(t.plan!.launches.some((l) => l.riders.length > 0)).toBe(true);
+  });
+
+  it("no lifeboats storm", () => {
+    const ship = emptyShip("liner", "Tiny", MIN_SEGMENTS, 1);
+    for (const mode of ["titanic", "fill"] as const) {
+      const t = trialOf(ship, stormInputOf(ship, mode));
+      expect(t.plan).not.toBeNull();
+      expect(t.plan!.launches).toEqual([]);
+      expect(inBoatAtEnd(t)).toBe(0);
+    }
   });
 });

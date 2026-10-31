@@ -54,10 +54,11 @@ function launch(playwright: { chromium: BrowserType }) {
   });
 }
 
-/** Opens the Sea trial menu and picks Waves, the trial v2.5 started directly. */
+/** Opens the Sea trial menu, picks Waves and presses Go on its card. */
 async function startWavesTrial(page: Page) {
   await page.getByRole("button", { name: "Sea trial" }).click();
   await page.getByRole("menuitem", { name: "Waves" }).click();
+  await page.getByRole("button", { name: "Go!" }).click();
 }
 
 /** The slim result bar shown once a trial ends. */
@@ -234,6 +235,9 @@ test.describe("Ship Builder sea trial", () => {
       await page.getByRole("button", { name: "Sea trial" }).focus();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("menuitem", { name: "Waves" })).toBeFocused();
+      await page.keyboard.press("Enter");
+      // The Waves card opens with Go focused.
+      await expect(page.getByRole("button", { name: "Go!" })).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(resultBar(page)).toBeVisible({ timeout: 30_000 });
     } finally {

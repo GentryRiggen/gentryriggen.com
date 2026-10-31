@@ -16,16 +16,47 @@ jobs:
   # ── Does this change touch anything the browser tests cover? ──
   # Docs-only commits and dev-dependency bumps skip the (slow) e2e jobs, and
   # so does anything marked [skip e2e] in a commit message or the PR title.
+  #
+  # On a push to main it also checks whether this exact code (the same git
+  # tree, which a squash merge keeps) already passed a pull request run. If so
+  # the checks and e2e are skipped, and main only builds and deploys.
   changes:
     name: 🔎 Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
+      verified: ${{ steps.verified.outputs.verified }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      # A matching tree means the same files ran through the same workflow
+      # (ci.yml is part of the tree), so a pass there is a pass here.
+      - name: ♻️ Already verified in a pull request?
+        id: verified
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          tree=$(git rev-parse 'HEAD^{tree}')
+          shas=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?event=pull_request&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.head_repository.full_name == \"$REPO\") | .head_sha" || true)
+          for sha in $shas; do
+            pr_tree=$(gh api "repos/$REPO/git/commits/$sha" --jq .tree.sha 2>/dev/null || true)
+            if [ "$pr_tree" = "$tree" ]; then
+              echo "Tree $tree already passed in the pull request run for $sha."
+              echo "verified=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "No passing pull request run for tree $tree: running everything."
+          echo "verified=false" >> "$GITHUB_OUTPUT"
 
       - name: 🔎 Decide whether e2e is needed
         id: filter
@@ -34,7 +65,13 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           PR_TITLE: ${{ github.event.pull_request.title }}
+          VERIFIED: ${{ steps.verified.outputs.verified }}
         run: |
+          if [ "$VERIFIED" = "true" ]; then
+            echo "Already verified in a pull request: skipping browser tests."
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$EVENT" = "pull_request" ]; then base="$PR_BASE"; else base="$PUSH_BEFORE"; fi
           has_base=false
           if git cat-file -e "$base^{commit}" 2>/dev/null; then has_base=true; fi
@@ -64,9 +101,14 @@ jobs:
           fi
 
   # ── Static checks + unit tests ──
+  # Code a pull request already verified skips the checks; the build still
+  # runs because deploy needs its output.
   validate:
     name: ✅ Validate
+    needs: changes
     runs-on: ubuntu-latest
+    env:
+      CHECKS: ${{ needs.changes.outputs.verified != 'true' }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
@@ -81,24 +123,30 @@ jobs:
         run: npm ci
 
       - name: 🔍 Lint
+        if: env.CHECKS == 'true'
         run: npm run lint
 
       - name: 💅 Format check
+        if: env.CHECKS == 'true'
         run: npm run format:check
 
       - name: 🔷 Type check
+        if: env.CHECKS == 'true'
         run: npm run type-check
 
       - name: 🧪 Unit tests
+        if: env.CHECKS == 'true'
         run: npm test
 
       - name: ☕ Setup Java (Firestore emulator)
+        if: env.CHECKS == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - name: 🔐 Firestore rules tests
+        if: env.CHECKS == 'true'
         run: npm run test:rules
 
       # Built here, beside the e2e jobs, so deploying does not wait on (or pay

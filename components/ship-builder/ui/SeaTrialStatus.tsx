@@ -7,12 +7,27 @@ import {
   storyClockSeconds,
   storyMinutesSinceImpact,
 } from "@/lib/ship-builder/sim/story";
+import { isTimelineTrial, trialKindOf } from "@/lib/ship-builder/sim/trialKind";
+import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { useLiveTrialState } from "../scene/liveTrial";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { SEA_LABELS } from "./seaTrialText";
 import SoundToggle from "./SoundToggle";
+import TrialSpeedSwitch from "./TrialSpeedSwitch";
 import { panelClass } from "./styles";
+
+/** The trial's name in the pill: the storm's wild sea goes without saying. */
+function trialName(input: TrialInput): string {
+  switch (trialKindOf(input)) {
+    case "storm":
+      return "Shipwreck storm";
+    case "iceberg":
+      return `Iceberg trial · ${SEA_LABELS[input.sea]}`;
+    case "waves":
+      return `Sea trial · ${SEA_LABELS[input.sea]}`;
+  }
+}
 
 /**
  * The pill that shows while a sea trial is playing, with a way to stop.
@@ -34,11 +49,12 @@ export default function SeaTrialStatus() {
   }, [isRunning, runId]);
 
   if (trial.status !== "running") return null;
-  const isIceberg = trial.input.iceberg !== undefined;
+  // The iceberg and the storm: the story clock and the trial's sounds.
+  const isTimeline = isTimelineTrial(trial.input);
   return (
     <div
       role="status"
-      className={`absolute left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
+      className={`absolute left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border max-sm:rounded-3xl max-sm:pb-1 py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
     >
       <Waves
         aria-hidden="true"
@@ -46,10 +62,9 @@ export default function SeaTrialStatus() {
       />
       {/* Narrow screens keep the strip slim by dropping the name. */}
       <span className="whitespace-nowrap max-sm:hidden">
-        {isIceberg ? "Iceberg trial" : "Sea trial"} ·{" "}
-        {SEA_LABELS[trial.input.sea]}
+        {trialName(trial.input)}
       </span>
-      {isIceberg && (
+      {isTimeline && (
         // Hidden from the live region: a clock ticking ten times a second
         // would flood a screen reader.
         <span
@@ -65,7 +80,11 @@ export default function SeaTrialStatus() {
           )}
         </span>
       )}
-      {isIceberg && <SoundToggle />}
+      {isTimeline && <SoundToggle />}
+      {/* Below sm the switch gets its own row so the pill fits a phone. */}
+      <div className="flex max-sm:order-last max-sm:basis-full max-sm:justify-center max-sm:pr-1">
+        <TrialSpeedSwitch />
+      </div>
       <button
         ref={stopButton}
         type="button"

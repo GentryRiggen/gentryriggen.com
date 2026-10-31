@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronUp, Sailboat, Snowflake, Waves } from "lucide-react";
+import {
+  ChevronUp,
+  Sailboat,
+  Snowflake,
+  Tornado,
+  Waves,
+  type LucideIcon,
+} from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -9,7 +16,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
-import useSeaState from "../hooks/useSeaState";
 
 /** Id the result card uses to hand focus back here. */
 export const SEA_TRIAL_BUTTON_ID = "sea-trial-button";
@@ -27,8 +33,8 @@ const ITEM_CLASS =
   "flex min-h-11 w-full touch-manipulation items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800 dark:focus-visible:outline-sky-400";
 
 /**
- * Starts a sea trial: a menu button that offers Waves (the v2.5 trial) or
- * Iceberg (aim, then strike). It floats bottom-centre, the slot the placement
+ * Starts a sea trial: a menu button that offers Waves, Shipwreck storm (each
+ * opens its setup card) or Iceberg (its aim card, then strike). It floats bottom-centre, the slot the placement
  * hint and the selection bar use while a tool or a part is active, so it only
  * shows when both are idle, and not while a drive or a walk is on.
  */
@@ -47,9 +53,17 @@ export default function SeaTrialButton({
       s.selectedId === null &&
       s.pendingRemoval === null
   );
-  const startTrial = useShipBuilderStore((s) => s.startTrial);
+  const openTrialSetup = useShipBuilderStore((s) => s.openTrialSetup);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
-  const { seaState } = useSeaState();
+  const items: { label: string; Icon: LucideIcon; onPick: () => void }[] = [
+    { label: "Waves", Icon: Waves, onPick: () => openTrialSetup("waves") },
+    {
+      label: "Shipwreck storm",
+      Icon: Tornado,
+      onPick: () => openTrialSetup("storm"),
+    },
+    { label: "Iceberg", Icon: Snowflake, onPick: aimIceberg },
+  ];
   const [isOpen, setIsOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -126,32 +140,23 @@ export default function SeaTrialButton({
               role="menu"
               aria-label="Sea trial"
               onKeyDown={handleMenuKeyDown}
-              className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-44 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+              className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
             >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => pick(() => startTrial(seaState))}
-                className={ITEM_CLASS}
-              >
-                <Waves
-                  aria-hidden="true"
-                  className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
-                />
-                Waves
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => pick(aimIceberg)}
-                className={ITEM_CLASS}
-              >
-                <Snowflake
-                  aria-hidden="true"
-                  className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
-                />
-                Iceberg
-              </button>
+              {items.map(({ label, Icon, onPick }) => (
+                <button
+                  key={label}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => pick(onPick)}
+                  className={ITEM_CLASS}
+                >
+                  <Icon
+                    aria-hidden="true"
+                    className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-400"
+                  />
+                  {label}
+                </button>
+              ))}
             </div>
           )}
           <button

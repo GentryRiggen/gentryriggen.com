@@ -96,3 +96,39 @@ describe("SeaTrialStatus focus", () => {
     expect(screen.getByRole("button", { name: "Stop" })).toHaveFocus();
   });
 });
+
+describe("SeaTrialStatus in the storm", () => {
+  it("names the Shipwreck storm and shows the story clock", () => {
+    render(<SeaTrialStatus />);
+    act(() =>
+      useShipBuilderStore.setState({
+        trial: {
+          status: "running",
+          input: {
+            ...INPUT,
+            sea: "wild",
+            storm: { compartments: [], length: 30 },
+          },
+          look: { sea: "wild", time: "night" },
+          runId: 1,
+          descending: true,
+        },
+      })
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Shipwreck storm");
+    expect(screen.getByRole("status")).not.toHaveTextContent("Wild storm");
+    expect(screen.getByTestId("story-clock")).toBeInTheDocument();
+  });
+});
+
+describe("SeaTrialStatus speed switch on phones", () => {
+  it("wraps the pill and gives the switch its own row below sm", () => {
+    render(<SeaTrialStatus />);
+    act(() => store().startTrial("calm", 5));
+    const pill = screen.getByRole("status");
+    expect(pill.className).toContain("flex-wrap");
+    const row = screen.getByRole("group", { name: "Speed" }).parentElement;
+    expect(row?.className).toContain("max-sm:basis-full");
+    expect(row?.className).toContain("max-sm:order-last");
+  });
+});

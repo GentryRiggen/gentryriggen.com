@@ -60,6 +60,13 @@ describe("useKeyboardShortcuts", () => {
     expect(store().trial.status).toBe("idle");
   });
 
+  it("Escape closes a trial setup card", () => {
+    render(<Harness />);
+    act(() => store().openTrialSetup("waves"));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store().trial).toEqual({ status: "idle" });
+  });
+
   it("Escape does not cancel aiming behind a modal dialog", () => {
     render(
       <>

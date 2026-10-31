@@ -40,6 +40,7 @@ function showResult() {
       trial: {
         status: "result",
         input: INPUT,
+        look: { sea: "calm", time: "day" },
         state: createTrial(INPUT),
         runId: 1,
         descending: false,

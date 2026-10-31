@@ -15,11 +15,14 @@ import {
 import {
   ICEBERG_IMPACT_S,
   ICEBERG_MAX_S,
+  STORM_SUNK_BY_S,
   stepFlooding,
   stepPlunge,
 } from "./flooding";
 import { openedBy } from "./compartments";
 import { stepFunnelFalls } from "./funnelFall";
+import { WAVES, WILD_WAVES, type SeaWave } from "./seaWaves";
+import { floodOf, isTimelineTrial, trialKindOf } from "./trialKind";
 
 /**
  * Level 1 sea trial: "physics-lite", deterministic and allocation-light.
@@ -40,6 +43,11 @@ export const TRIAL_DURATION_S = 9;
 const SEA_RAMP_S = 1.5;
 /** A capsize is only declared after this long, so it never happens at once. */
 const CAPSIZE_GRACE_S = 1;
+/**
+ * In the storm she cannot capsize before this, however bad the build: she is
+ * held at her capsize angle instead, so the storm always plays a while.
+ */
+export const STORM_NO_CAPSIZE_S = 30;
 
 /** Roll away from the resting list that counts as a big roll. */
 const BIG_ROLL = 20 * DEG;
@@ -68,9 +76,19 @@ export const HEAVY_LIST = 18 * DEG;
 /** The lopsided step fades in over this much list before its threshold. */
 const LOPSIDED_BLEND = 1 * DEG;
 
+/** Share of the capsize angle the storm holds her at before STORM_NO_CAPSIZE_S. */
+const STORM_HOLD = 0.98;
+/** Share of her roll speed she keeps (turned back) when the hold stops her. */
+const STORM_HOLD_BOUNCE = 0.5;
+
 /** Roll oscillator: natural frequency (rad/s) and damping ratio. */
 const NATURAL_FREQ = 3;
 const DAMPING = 0.35;
+
+/** The wild sea's peak wave slope (radians): steeper than stormy. */
+export const WILD_SLOPE = 0.5;
+/** The wild sea's speed multiplier: faster than stormy. */
+export const WILD_SPEED = 2;
 
 interface SeaWaves {
   /** Peak wave slope in radians. */
@@ -80,19 +98,14 @@ interface SeaWaves {
 }
 
 // Mirrors the amplitudes and speeds in components/ship-builder/scene/seaState.ts
-// (lib can't import components); the slope scales the scene amplitude.
-const SEAS: Record<SimSea, SeaWaves> = {
+// (lib can't import components); the slope scales the scene amplitude. The
+// waves themselves are in seaWaves.ts.
+export const SEAS: Record<SimSea, SeaWaves> = {
   calm: { slope: 0.03 * 1.3, speed: 0.6 },
   choppy: { slope: 0.2 * 0.75, speed: 1 },
   stormy: { slope: 0.45 * 0.7, speed: 1.6 },
+  wild: { slope: WILD_SLOPE, speed: WILD_SPEED },
 };
-
-/** The scene's three waves: weights sum to 1; frequencies in rad/s. */
-const WAVES = [
-  { weight: 0.5, omega: 1.1, phase: 0.6 },
-  { weight: 0.3, omega: 1.5, phase: 2.1 },
-  { weight: 0.2, omega: 2, phase: 4.0 },
-] as const;
 
 /** Severity tiers: 0 stable, 1 top-heavy, 2 dangerous, 3 and 4 beyond. */
 const MAX_SEVERITY = 4;
@@ -167,6 +180,7 @@ interface TrialParams {
   /** Angle past which she cannot recover. */
   capsizeAngle: number;
   list: number;
+  waves: readonly SeaWave[];
 }
 
 function paramsOf(input: TrialInput): TrialParams {
@@ -178,13 +192,14 @@ function paramsOf(input: TrialInput): TrialParams {
     side: input.ship.listAngle < 0 ? -1 : 1,
     capsizeAngle: byTier(CAPSIZE_ANGLE_BY_SEVERITY, severity),
     list: input.ship.listAngle,
+    waves: input.sea === "wild" ? WILD_WAVES : WAVES,
   };
 }
 
 /** Deterministic wave height in -1..1; the same every run. */
-function wave(time: number, speed: number): number {
+function wave(time: number, speed: number, waves: readonly SeaWave[]): number {
   let sum = 0;
-  for (const w of WAVES) {
+  for (const w of waves) {
     sum += w.weight * Math.sin(w.omega * speed * time + w.phase);
   }
   return sum * smoothstep(0, SEA_RAMP_S, time);
@@ -214,9 +229,24 @@ function baseTier(ship: SimShip): 0 | 1 | 2 {
  * explain why a trial ended; the outcome itself comes from the oscillator.
  */
 const TABLE: Record<0 | 1 | 2, Record<SimSea, TrialOutcome>> = {
-  0: { calm: "steady", choppy: "steady", stormy: "recovered" },
-  1: { calm: "steady", choppy: "recovered", stormy: "capsized" },
-  2: { calm: "recovered", choppy: "capsized", stormy: "capsized" },
+  0: {
+    calm: "steady",
+    choppy: "steady",
+    stormy: "recovered",
+    wild: "recovered",
+  },
+  1: {
+    calm: "steady",
+    choppy: "recovered",
+    stormy: "capsized",
+    wild: "capsized",
+  },
+  2: {
+    calm: "recovered",
+    choppy: "capsized",
+    stormy: "capsized",
+    wild: "capsized",
+  },
 };
 
 const TIER_REASON: Record<0 | 1 | 2, TrialReason> = {
@@ -255,10 +285,22 @@ type StepFn = (
   state: SimState
 ) => SimState;
 
-/** Level 2: dry compartments, those the gash touches marked as opened. */
+/**
+ * Level 2: dry compartments, those the gash touches marked as opened. A storm
+ * opens none: its water comes over the deck.
+ */
 function compartmentsOf(input: TrialInput): Compartment[] {
   const { iceberg } = input;
-  if (!iceberg) return [];
+  if (!iceberg) {
+    const flood = floodOf(input);
+    return flood
+      ? flood.compartments.map((spec) => ({
+          id: spec.id,
+          water: 0,
+          opened: false,
+        }))
+      : [];
+  }
   const opened = new Set(
     openedBy(
       iceberg.compartments,
@@ -312,7 +354,7 @@ const stepSailing: StepFn = (input, params, state) => {
     NATURAL_FREQ *
     params.push *
     params.side *
-    wave(time, params.speed);
+    wave(time, params.speed, params.waves);
   const restoringHere = righting(roll, capsizeAngle);
   const restingTorque = righting(list, capsizeAngle);
   const accel =
@@ -320,8 +362,20 @@ const stepSailing: StepFn = (input, params, state) => {
     NATURAL_FREQ * NATURAL_FREQ * (restoringHere - restingTorque) +
     heeling;
 
-  const rollVelocity = state.rollVelocity + accel * dt;
-  const nextRoll = roll + rollVelocity * dt;
+  let rollVelocity = state.rollVelocity + accel * dt;
+  let nextRoll = roll + rollVelocity * dt;
+  const isStorm = trialKindOf(input) === "storm";
+  // The storm holds her at the brink until it has played a while.
+  if (
+    isStorm &&
+    time < STORM_NO_CAPSIZE_S &&
+    Math.abs(nextRoll) > capsizeAngle * STORM_HOLD
+  ) {
+    // A soft wall: she bounces back at part of her speed, so she keeps moving.
+    const side = Math.sign(nextRoll);
+    nextRoll = side * capsizeAngle * STORM_HOLD;
+    rollVelocity = -side * Math.abs(rollVelocity) * STORM_HOLD_BOUNCE;
+  }
   const deviation = Math.abs(nextRoll - list);
 
   let events = state.events;
@@ -334,6 +388,8 @@ const stepSailing: StepFn = (input, params, state) => {
   }
 
   if (Math.abs(nextRoll) > capsizeAngle && time >= CAPSIZE_GRACE_S) {
+    // In the storm a capsize is a sinking: over she goes, then down.
+    const outcome: TrialOutcome = isStorm ? "sank" : "capsized";
     return {
       ...state,
       time,
@@ -341,13 +397,14 @@ const stepSailing: StepFn = (input, params, state) => {
       pose: { ...state.pose, roll: nextRoll },
       rollVelocity: Math.sign(nextRoll) * Math.max(Math.abs(rollVelocity), 0.2),
       events: addEvent(events, time, "capsized"),
-      outcome: "capsized",
-      reason: reasonFor(input, "capsized"),
+      outcome,
+      reason: isStorm ? "storm" : reasonFor(input, "capsized"),
     };
   }
 
-  // An iceberg trial ends when the flooding settles or she sinks.
-  if (time >= TRIAL_DURATION_S && !input.iceberg) {
+  // An iceberg trial ends when the flooding settles or she sinks; a storm
+  // when she sinks.
+  if (time >= TRIAL_DURATION_S && !isTimelineTrial(input)) {
     const outcome = hasEvent(events, "big-roll") ? "recovered" : "steady";
     return {
       ...state,
@@ -447,10 +504,14 @@ function stepPhases(
 ): SimState {
   void actions;
   if (state.phase === "done") return state;
-  if (input.iceberg && state.phase === "sailing") {
+  if (isTimelineTrial(input) && state.phase === "sailing") {
     const flooded = stepFlooding(input, state);
     if (flooded.phase !== "sailing") return flooded;
-    return stepSailing(input, paramsOf(input), flooded);
+    // The iceberg trial's clock moves in both steps (two SIM_STEP_S per step
+    // while she sails, which its tuning assumes); the storm's moves once, so
+    // its waves and inflow run in real sim seconds.
+    const from = input.iceberg ? flooded : { ...flooded, time: state.time };
+    return stepSailing(input, paramsOf(input), from);
   }
   if (state.phase === "descending") return stepDescent(state, input);
   if (state.phase === "sinking" && state.outcome === "sank") {
@@ -467,10 +528,17 @@ function stepPhases(
   }
 }
 
+/** Long enough for any trial of this kind to reach the sea floor. */
+function runLimitOf(input: TrialInput): number {
+  if (input.iceberg) return ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30;
+  if (input.storm) return STORM_SUNK_BY_S + 60;
+  return 60;
+}
+
 /** Runs a whole trial without rendering: for tests and previews. */
 export function runTrial(
   input: TrialInput,
-  maxSeconds = input.iceberg ? ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30 : 60
+  maxSeconds = runLimitOf(input)
 ): SimState {
   let state = createTrial(input);
   while (state.phase !== "done" && state.time < maxSeconds) {

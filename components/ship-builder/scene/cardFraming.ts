@@ -75,3 +75,22 @@ export function cardFraming(
     scale: Math.max(MIN_CARD_SCALE, scale),
   };
 }
+
+/**
+ * How far down the canvas a setup card may reach before it would cover the
+ * ship, which sits about the middle (with room for her height).
+ */
+const SHIP_CLEAR_SHARE = 0.65;
+
+/**
+ * Whether a trial setup card (or the iceberg's aim card) climbs high enough
+ * to cover the ship, so the scene should be framed above it. A low card on a
+ * wide screen leaves her where she is, still tappable.
+ */
+export function reachesShip(
+  canvas: ScreenRect,
+  card: ScreenRect | null
+): boolean {
+  if (!card || canvas.height <= 0 || card.height <= 0) return false;
+  return card.top - canvas.top < canvas.height * SHIP_CLEAR_SHARE;
+}

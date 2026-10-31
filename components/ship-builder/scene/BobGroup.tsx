@@ -28,9 +28,12 @@ const TRIAL_BLEND_SECONDS = 0.5;
  * pose (roll, pitch, sink) is added on top. Hull, parts, ghost and tap
  * targets share it, so taps still line up with what is drawn.
  */
-/** Aiming an iceberg still shows the ship as built, floating as usual. */
+/**
+ * A setup card or aiming an iceberg still shows the ship as built, floating
+ * as usual.
+ */
 function isBuilding(status: string): boolean {
-  return status === "idle" || status === "aiming";
+  return status === "idle" || status === "setup" || status === "aiming";
 }
 
 export default function BobGroup({ children }: BobGroupProps) {

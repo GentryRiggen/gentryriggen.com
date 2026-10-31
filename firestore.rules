@@ -400,9 +400,9 @@ service cloud.firestore {
     function validShipEvent(name, p) {
       return (name == 'trial_run'
           && p.keys().hasOnly(['kind', 'outcome', 'sea']) && p.keys().hasAll(['kind', 'outcome', 'sea'])
-          && p.kind in ['weather', 'iceberg']
+          && p.kind in ['weather', 'storm', 'iceberg']
           && p.outcome in ['steady', 'recovered', 'capsized', 'afloat', 'sank']
-          && p.sea in ['calm', 'choppy', 'stormy'])
+          && p.sea in ['calm', 'choppy', 'stormy', 'wild'])
         || (name == 'challenge_result'
           && p.keys().hasOnly(['id', 'stars']) && p.keys().hasAll(['id', 'stars'])
           && p.id in ['outlast', 'evacuation', 'shipshape', 'smooth']

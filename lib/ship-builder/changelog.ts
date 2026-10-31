@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.36.0",
+    date: "2026-10-30",
+    title: "Shipwreck storm and trial setup",
+    highlights: [
+      "New sea trial, Shipwreck storm: a wild sea throws huge waves over your ship until she sinks, every time. Can everyone get off in time?",
+      "Choose the sea and the time of day when you start a trial. The iceberg trial is no longer stuck at night",
+      "Fast-forward any trial, and its replay, at 1x, 2x, 3x, 5x, 10x or 20x. The ship does exactly the same thing at every speed",
+      "New Fill every seat switch puts people in every seat of every lifeboat. The result card now shows how many lifeboats were used",
+    ],
+  },
+  {
     version: "2.35.0",
     date: "2026-10-30",
     title: "Smooth sailing and fairer stars",

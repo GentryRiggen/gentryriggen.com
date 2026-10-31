@@ -15,13 +15,20 @@ identical.
 - `breakup.ts`, `power.ts`, `descent.ts`: Level 2b, breaking in two, the
   lights, and the way down to the sea floor.
 - `explain.ts`: `explainTrial(state, input)` for the result card.
+- `trialKind.ts`: `trialKindOf` (`waves`, `storm`, `iceberg`), `floodOf` (the
+  compartments, length and break mode of a flooding trial, or null) and
+  `isTimelineTrial` (iceberg or storm).
+- `seaWaves.ts`: the summed sine waves, `WAVES` (calm, choppy, stormy) and
+  `WILD_WAVES` (the storm's wild sea), with the scene's directions and
+  wavelengths so the scene can be checked against them.
 - Driving the ship (Drive mode) is a separate model in `lib/ship-builder/sail/`; a hard hit there hands over to a trial here.
 
 ## The model
 
 Roll is a damped oscillator (`NATURAL_FREQ` 3 rad/s, damping 0.35) pushed by
-three summed sine waves (same weights and frequencies as the scene's sea,
-scaled by the sea's speed; they fade in over 1.5 s). Its righting torque is
+summed sine waves (`seaWaves.ts`: three, or six in the wild sea; same weights
+and frequencies as the scene's sea, scaled by the sea's speed; they fade in
+over 1.5 s). Its righting torque is
 proportional up to a knee (60% of the capsize angle), fades to nothing at the
 capsize angle and pushes her over beyond it. The ship rests at her `listAngle`.
 
@@ -42,7 +49,7 @@ Both the push and the capsize angle come from one severity number
 | 3    | 55                  | 35 deg        |
 | 4    | 70                  | 8 deg         |
 
-Wave slope per sea: calm 0.039, choppy 0.15, stormy 0.315 rad.
+Wave slope per sea: calm 0.039, choppy 0.15, stormy 0.315, wild 0.5 rad.
 
 A port-listing ship is simulated as the exact mirror of a starboard one.
 
@@ -225,7 +232,9 @@ Waves trials never touch the lights.
 
 ### The way down (`descent.ts`)
 
-Every sinking goes on to the sea floor. `startDescent` turns a finished
+Every sinking goes on to the sea floor. Every ship settles to a small list
+(`REST_ROLL`), except a capsized storm ship, which keeps her roll all the way
+down and lies upside down. `startDescent` turns a finished
 state that logged `sunk` into `descending` (a weather `stepSinking` calls it
 itself; an iceberg timeline appends it with `extendWithDescent`); `stepTrial`
 then runs `stepDescent`. Each body (the whole `pose`, or each half) falls at
@@ -283,3 +292,63 @@ Timings for the Titanic struck at x=5 (`real`, sim seconds): flooding 1.5,
 lights flicker 11.6, lights out 24.6, breaks 25.1 (17 degrees, at wall 13,
 x=39, where her deck meets the sea at about x=38), sunk 33.7; then on down,
 the halves land 5.5 s and 7.6 s after `startDescent`. In `never` mode she is sunk at 28.5.
+
+## The wild sea
+
+The storm trial's own sea (`sea: "wild"`; never on the main screen). Steeper
+and faster than stormy: `WILD_SLOPE` 0.5 rad, `WILD_SPEED` 2 (stormy is
+0.315 and 1.6). Instead of the three `WAVES` it sums the six `WILD_WAVES`
+(`seaWaves.ts`): a cross sea from six directions whose frequencies (0.93,
+1.27, 1.61, 1.94, 2.37, 2.83 rad/s at speed 1) never line up, so the big rolls
+come without a steady rhythm. Weights sum to 1 as before. A stable ship rolls
+about 37 degrees in it (and capsizes in none of the templates); it still rolls
+harder than in the stormy sea (tested). In a waves trial the outcome table
+treats wild like stormy (`TABLE`), though the menus never offer that.
+
+## The storm trial
+
+`input.storm` (`StormInput`: compartments, length, optional `breakMode`;
+never set together with `iceberg`) with `sea: "wild"`. It always sinks, over a
+moderately long run: every template and degenerate build (one block, no walls,
+every wall low or deck-high, 4 and 20 segments) has logged `sunk` between 60
+and 120 sim seconds (`STORM_SUNK_BY_S`), enforced by
+`__tests__/storm.test.ts`.
+
+It reuses the iceberg pipeline (`floodOf` gives `stepFlooding`, `stepPlunge`,
+breakup, power, funnels and descent their hull): compartments start dry and
+none is `opened`. Differences from the iceberg:
+
+- Water: nothing comes aboard before `STORM_START_S` (10 s), so she is
+  battered for a while first. Then every compartment takes deck wash from
+  above: `STORM_INFLOW` (0.007) x its length x a bow weight (the average of
+  `(p + 1)(1 - x)^p` over the compartment, `p` = `STORM_BOW_POWER` 4, which
+  averages 1 over the whole hull) x the room left (`1 - water`, but never
+  under `STORM_TRICKLE`, 0.25) per second. The same water comes aboard
+  however the walls divide her, but deck-high walls let the bow compartments
+  fill and stop taking water, which buys 15 to 25 s (bare hulls sink about
+  65 to 72 s in, walled ones 84 to 94 s). It never stops while any
+  compartment has room.
+  Spill, trim, draft, `RESERVE` and the plunge are the iceberg's.
+- She never ends afloat: no settle, no 90 s limit, no 9 s waves timeout.
+- Capsize: before `STORM_NO_CAPSIZE_S` (30 s) she cannot capsize; the roll is
+  held at 0.98 of her capsize angle instead (a soft wall: she bounces back at
+  half her speed, so she keeps moving). A later capsize logs `capsized`
+  but sets outcome `sank`, reason `storm`: she rolls over, then `stepPlunge`
+  takes her down (keeping her upside down), with the lights, breakup and
+  `sunk` like any flooding sinking.
+- `reason` is always `storm`; `explainTrial` says "The storm was too strong.
+  Waves filled her up until she sank." with the lights, breakup and floor
+  lines.
+- Clock: the storm's clock moves one `SIM_STEP_S` per step. (While an iceberg
+  trial sails, both `stepFlooding` and `stepSailing` move the clock, so each of
+  its steps is two `SIM_STEP_S`; its tuning assumes that, so it is left.)
+
+`input.lifeboats` (`LifeboatMode`, `titanic` or `fill`) is for the crowd; the
+sim ignores it.
+
+Timings (sim seconds, default `real` break mode): a 60-cell liner (Titanic,
+Ever Given) floods from 10, flickers 55.2, lights out 84.2, breaks 85.4, sunk
+93.7; shorter or 54-cell hulls hold together and are sunk at about 87.4; with
+no walls at about 85.8. A top-heavy or dangerous ship is held up until 30 s,
+capsizes at 30 to 34 s and is sunk about 6 s later (the 60 to 120 s window is
+for the templates, which are all stable enough not to capsize).

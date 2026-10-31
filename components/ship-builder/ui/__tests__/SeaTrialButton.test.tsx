@@ -18,7 +18,7 @@ function trigger() {
 }
 
 describe("SeaTrialButton menu", () => {
-  it("is a menu button that opens on click and lists Waves and Iceberg", async () => {
+  it("is a menu button that opens on click and lists the three trials", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);
     expect(trigger()).toHaveAttribute("aria-haspopup", "menu");
@@ -29,8 +29,12 @@ describe("SeaTrialButton menu", () => {
     expect(trigger()).toHaveAttribute("aria-expanded", "true");
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
       "Waves",
+      "Shipwreck storm",
       "Iceberg",
     ]);
+    for (const item of screen.getAllByRole("menuitem")) {
+      expect(item.querySelector("svg")).not.toBeNull();
+    }
     expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
   });
 
@@ -57,16 +61,28 @@ describe("SeaTrialButton menu", () => {
     expect(trigger()).toBeVisible();
   });
 
-  it("Waves starts the plain sea trial", async () => {
+  it("Waves opens its setup card", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);
     await user.click(trigger());
     await user.click(screen.getByRole("menuitem", { name: "Waves" }));
-    const { trial } = store();
-    expect(trial.status).toBe("running");
-    if (trial.status === "running") {
-      expect(trial.input.iceberg).toBeUndefined();
-    }
+    expect(store().trial).toEqual({
+      status: "setup",
+      kind: "waves",
+      look: { sea: "calm", time: "day" },
+    });
+  });
+
+  it("Shipwreck storm opens its setup card", async () => {
+    const user = userEvent.setup();
+    render(<SeaTrialButton />);
+    await user.click(trigger());
+    await user.click(screen.getByRole("menuitem", { name: "Shipwreck storm" }));
+    expect(store().trial).toEqual({
+      status: "setup",
+      kind: "storm",
+      look: { sea: "wild", time: "day" },
+    });
   });
 
   it("Iceberg starts aiming", async () => {
@@ -74,7 +90,10 @@ describe("SeaTrialButton menu", () => {
     render(<SeaTrialButton />);
     await user.click(trigger());
     await user.click(screen.getByRole("menuitem", { name: "Iceberg" }));
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
   });
 
   it("comes back with the menu closed after aiming is cancelled", async () => {
@@ -94,6 +113,10 @@ describe("SeaTrialButton menu", () => {
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: "Shipwreck storm" })
+    ).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("menuitem", { name: "Iceberg" })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
@@ -105,8 +128,11 @@ describe("SeaTrialButton menu", () => {
     expect(trigger()).toHaveFocus();
 
     await user.keyboard("{ArrowUp}");
-    await user.keyboard("{ArrowDown}{Enter}");
-    expect(store().trial).toEqual({ status: "aiming" });
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
   });
 
   it("closes on a press outside", async () => {

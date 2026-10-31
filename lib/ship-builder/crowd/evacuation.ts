@@ -1,12 +1,14 @@
-import { resolveAttachPoint } from "../model/attach";
 import { getPartDef } from "../model/catalog";
-import { buildOccupancy, rotatedFootprint } from "../model/grid";
+import { rotatedFootprint } from "../model/grid";
 import type { PlacedPart, Ship } from "../model/types";
 import { DECK_Y, LEVEL_HEIGHT } from "../model/worldFrame";
+import { analyzeShip } from "../model/analysis";
 import { poseWorldPoint } from "../sim/funnelFall";
+import { floodOf } from "../sim/trialKind";
 import { SIM_STEP_S, type SimState, type TrialInput } from "../sim/types";
 import { halfWalkGrid, type WalkHalf, walkHalfOf } from "../walk/halfGrid";
 import type { WalkGrid } from "../walk/types";
+import { hungLifeboats, peopleAboard } from "./lifeboatCount";
 import { type CrowdGraph, crowdGraphOf, pathTo } from "./plan";
 import { between, fnv1a, mulberry32 } from "./rng";
 import {
@@ -24,8 +26,10 @@ import {
  * every lookup reads it.
  */
 
-/** Seated figures drawn per boat. */
+/** Seated figures drawn per boat (Like the Titanic; Fill every seat has no cap). */
 export const BOAT_SHOWN_MAX = 4;
+/** Fill every seat: how long a figure with no way to its boat takes to fade out. */
+export const FADE_S = 0.6;
 /** A boat lowers this long after doom even if not full. */
 export const LAUNCH_WAIT_S = 12;
 /** Davit to water. */
@@ -43,6 +47,8 @@ const FLOAT_DRIFT_S = 5;
 /** Height and period of a launched boat's bob once it has rowed out. */
 const BOAT_BOB_HEIGHT = 0.04;
 const BOAT_BOB_PERIOD_S = 2.4;
+/** Fill every seat: a figure with no way to a boat ranks behind every walker. */
+const NO_WAY_COST = 1e6;
 /** Wander schedules after doom run this far past the timeline's end. */
 const WANDER_MARGIN_S = 1;
 
@@ -57,7 +63,7 @@ export interface BoatLaunch {
   pitch: number;
   /** Outboard direction in world z: +1 or -1. */
   outward: 1 | -1;
-  /** People seated in it (ids), at most BOAT_SHOWN_MAX. */
+  /** People seated in it (ids): at most BOAT_SHOWN_MAX like the Titanic. */
   riders: readonly string[];
 }
 
@@ -67,6 +73,11 @@ export type PersonFate =
   /** Walking to a boat's boarding spot; `until` is when that walk ends. */
   | { kind: "boarding"; boatId: string; until: number }
   | { kind: "in-boat"; boatId: string; seat: number }
+  /**
+   * Fill every seat only: fading out where they are (`fade` 0 to 1, then
+   * gone) on the way to a seat in `boatId` they cannot walk to in time.
+   */
+  | { kind: "transfer"; boatId: string; fade: number }
   /** In the water at world `at` (xz), drifting outward for a few seconds. */
   | { kind: "floating"; since: number; at: { x: number; z: number } };
 
@@ -125,6 +136,8 @@ interface Motion {
 
 interface Lifeboat {
   id: string;
+  /** Catalog seats (real people). */
+  seats: number;
   /** Shown seats, after the half-empty cap. */
   cap: number;
   /** Which half carries it once she breaks (by its block, as the scene draws it). */
@@ -216,6 +229,8 @@ interface Fate {
   boardUntil: number;
   /** Set when they get a seat. */
   seat: { boatId: string; seat: number; at: number } | null;
+  /** Fill every seat: when they start fading out on the way to their seat. */
+  fadeFrom: number | null;
 }
 
 function travelYaw(dx: number, dz: number): number {
@@ -420,25 +435,8 @@ function lifeboatsOf(
   graphOf: (half: WalkHalf | null) => CrowdGraph,
   atX: number | null
 ): Lifeboat[] {
-  const occupancy = buildOccupancy(ship);
-  const byId = new Map(ship.parts.map((part) => [part.id, part]));
   const boats: Lifeboat[] = [];
-  for (const part of ship.parts) {
-    const seats = getPartDef(part.type).seats ?? 0;
-    if (seats <= 0 || part.anchor.kind !== "attach") continue;
-    const davit = byId.get(part.anchor.parentId);
-    if (
-      !davit ||
-      (davit.type !== "davit" && davit.type !== "davit-side") ||
-      davit.anchor.kind !== "attach"
-    ) {
-      continue;
-    }
-    const block = byId.get(davit.anchor.parentId);
-    const hang = resolveAttachPoint(ship, part.anchor, occupancy);
-    const mount = resolveAttachPoint(ship, davit.anchor, occupancy);
-    if (!block || block.anchor.kind !== "grid" || !hang || !mount) continue;
-
+  for (const { part, seats, block, hang, mount } of hungLifeboats(ship)) {
     const starboard = mount.side === "starboard";
     const half = atX === null ? null : blockHalf(block, atX);
     const graph = graphOf(half);
@@ -472,6 +470,7 @@ function lifeboatsOf(
     const shown = Math.min(BOAT_SHOWN_MAX, seats);
     boats.push({
       id: part.id,
+      seats,
       cap: fnv1a(part.id) % 2 === 1 ? Math.ceil(shown / 2) : shown,
       half,
       rest,
@@ -513,10 +512,11 @@ export function planEvacuation(
   timeline: { input: TrialInput; stateAt(t: number): SimState; end: number }
 ): EvacuationPlan | null {
   const { input, end } = timeline;
-  if (!input.iceberg) return null;
+  if (!floodOf(input)) return null;
+  const fill = input.lifeboats === "fill";
 
-  // Doom is the iceberg strike (the first water in) of a trial that ends
-  // with her sunk, so the whole flooding stretch is there for boarding. A
+  // Doom is the iceberg strike or the storm's first wash aboard (the first
+  // water in) of a trial that ends with her sunk, so the whole flooding stretch is there for boarding. A
   // timeline with no flooding event falls back to the first "sank" state;
   // an outcome never changes once set, so a binary search finds that.
   const last = timeline.stateAt(end);
@@ -544,17 +544,23 @@ export function planEvacuation(
 
   // She breaks at a known place, so everyone keeps to their own half from
   // doom on: nobody heads for a boat that will be torn away from them.
-  const halfGraphs = new Map<WalkHalf, CrowdGraph>();
-  const fullGraph = crowdGraphOf(ship, grid);
-  const graphOf = (half: WalkHalf | null): CrowdGraph => {
-    if (half === null || atX === null) return fullGraph;
-    let graph = halfGraphs.get(half);
-    if (!graph) {
-      graph = crowdGraphOf(ship, halfWalkGrid(grid, half, atX));
-      halfGraphs.set(half, graph);
-    }
-    return graph;
+  // Filling every seat, the way to a boat may also hop between decks
+  // (`jumps`); wandering keeps to the stairs. The two graphs share nodes.
+  const graphsOf = (jumps: boolean) => {
+    const halfGraphs = new Map<WalkHalf, CrowdGraph>();
+    const full = crowdGraphOf(ship, grid, { jumps });
+    return (half: WalkHalf | null): CrowdGraph => {
+      if (half === null || atX === null) return full;
+      let graph = halfGraphs.get(half);
+      if (!graph) {
+        graph = crowdGraphOf(ship, halfWalkGrid(grid, half, atX), { jumps });
+        halfGraphs.set(half, graph);
+      }
+      return graph;
+    };
   };
+  const wanderGraphOf = graphsOf(false);
+  const graphOf = fill ? graphsOf(true) : wanderGraphOf;
   const halfOfX = (x: number): WalkHalf | null =>
     atX === null ? null : walkHalfOf(x, atX);
 
@@ -609,123 +615,71 @@ export function planEvacuation(
   const halves = starts.map((pose) => halfOfX(pose.x));
   const startNodes = starts.map((pose, i) => nodeOf(graphOf(halves[i]), pose));
 
-  // Everyone, nearest first, takes the nearest boat with a shown seat free.
-  const pairs: { dist: number; i: number; b: number }[] = [];
-  boats.forEach((boat, b) => {
-    if (boat.spot < 0 || boat.cap <= 0) return;
-    const reach = graphOf(boat.half).reachFrom(boat.spot);
-    for (let i = 0; i < count; i++) {
-      const node = startNodes[i];
-      if (node === undefined || halves[i] !== boat.half) continue;
-      const dist = reach.dist[node];
-      if (dist >= 0) pairs.push({ dist, i, b });
-    }
-  });
-  pairs.sort((p, q) => p.dist - q.dist || p.i - q.i || p.b - q.b);
-  const boatOf = new Int32Array(count).fill(-1);
-  const filled = new Int32Array(boats.length);
-  for (const { i, b } of pairs) {
-    if (boatOf[i] >= 0 || filled[b] >= boats[b].cap) continue;
-    boatOf[i] = b;
-    filled[b]++;
-  }
-
-  // Boarders walk to their boat's spot and wait there; the rest wander on,
-  // following the crowd plan until she breaks.
-  const arrivals = new Float64Array(count).fill(Infinity);
-  for (let i = 0; i < count; i++) {
-    const b = boatOf[i];
-    const graph = graphOf(halves[i]);
-    if (b >= 0) {
-      const boat = boats[b];
-      const reach = graph.reachFrom(boat.spot);
-      const path = pathTo(reach, startNodes[i]!).reverse();
-      const track: Segment[] = [];
-      const at = walkPath(track, graph, doom, starts[i], path);
-      const spot = centre(graph, boat.spot);
-      standFrom(track, at.t, { ...spot, yaw: at.yaw, activity: "idle" });
-      arrivals[i] = at.t;
-      motions.push({ crowdUntil: doom, track });
-    } else if (atX === null) {
-      motions.push({ crowdUntil: Infinity, track: [] });
-    } else {
-      const from = Math.max(doom, breakAt);
-      const pose = crowd.poseAt(i, from);
-      const track: Segment[] = [];
-      wanderFrom(
-        track,
-        graphOf(walkHalfOf(pose.x, atX)),
-        from,
-        pose,
-        horizon,
-        mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0)
-      );
-      motions.push({ crowdUntil: from, track });
-    }
-    fates.push({ float: null, boatId: null, boardUntil: doom, seat: null });
-  }
-
-  // When each boat leaves: its last rider aboard, the wait run out, or the
-  // water at its boarding spot, whichever comes first.
-  const launches: BoatLaunch[] = [];
-  boats.forEach((boat, b) => {
-    let flooded = Infinity;
+  /** When the water first reaches a boat's boarding spot, or Infinity. */
+  const floodedAt = (boat: Lifeboat): number => {
     for (let k = 0; k < checks.length; k++) {
       const body = bodyAt(checkStates[k], boat.half);
-      if (poseWorldPoint(body, length, boat.spotRest).y <= 0) {
-        flooded = checks[k];
-        break;
-      }
+      if (poseWorldPoint(body, length, boat.spotRest).y <= 0) return checks[k];
     }
-    const boarders: number[] = [];
-    let lastArrival = -Infinity;
-    for (let i = 0; i < count; i++) {
-      if (boatOf[i] !== b) continue;
-      // One who is caught by the water on the way never gets there.
-      const float = floatOf(i, arrivals[i]);
-      if (float) {
-        fates[i].float = float;
-        fates[i].boatId = boat.id;
-        fates[i].boardUntil = float.since;
-        continue;
-      }
-      boarders.push(i);
-      lastArrival = Math.max(lastArrival, arrivals[i]);
+    return Infinity;
+  };
+
+  // The per-person setup both lifeboat modes share.
+  /** A fate before any boat is decided: aboard, heading nowhere. */
+  const newFate = (): Fate => ({
+    float: null,
+    boatId: null,
+    boardUntil: doom,
+    seat: null,
+    fadeFrom: null,
+  });
+  /** Each person's own wander, the same every run. */
+  const wanderRandom = (i: number) =>
+    mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0);
+  /**
+   * Person `i` walks from doom to `boat`'s boarding spot and waits there.
+   * Returns when they get there.
+   */
+  const walkToBoat = (i: number, boat: Lifeboat): number => {
+    const graph = graphOf(halves[i]);
+    const path = pathTo(graph.reachFrom(boat.spot), startNodes[i]!).reverse();
+    const track: Segment[] = [];
+    const at = walkPath(track, graph, doom, starts[i], path);
+    const spot = centre(graph, boat.spot);
+    standFrom(track, at.t, { ...spot, yaw: at.yaw, activity: "idle" });
+    motions.push({ crowdUntil: doom, track });
+    return at.t;
+  };
+  /**
+   * Person `i` has no boat: they follow the crowd plan until she breaks
+   * (forever if she never does), then wander on their half.
+   */
+  const wanderOn = (i: number): void => {
+    if (atX === null) {
+      motions.push({ crowdUntil: Infinity, track: [] });
+      return;
     }
-    const at = Math.max(
-      doom,
-      Math.min(
-        doom + LAUNCH_WAIT_S,
-        flooded,
-        boarders.length > 0 ? lastArrival : Infinity
-      )
+    const from = Math.max(doom, breakAt);
+    const pose = crowd.poseAt(i, from);
+    const track: Segment[] = [];
+    wanderFrom(
+      track,
+      wanderGraphOf(walkHalfOf(pose.x, atX)),
+      from,
+      pose,
+      horizon,
+      wanderRandom(i)
     );
-    const riders = boarders
-      .filter((i) => arrivals[i] <= at)
-      .sort((p, q) => arrivals[p] - arrivals[q] || p - q);
-    riders.forEach((i, seat) => {
-      fates[i].boatId = boat.id;
-      fates[i].boardUntil = arrivals[i];
-      fates[i].seat = { boatId: boat.id, seat, at: arrivals[i] };
-    });
-    // Anyone not there yet goes back to wandering when the boat leaves.
-    for (const i of boarders) {
-      if (arrivals[i] <= at) continue;
-      fates[i].boatId = boat.id;
-      fates[i].boardUntil = at;
-      const track = motions[i].track;
-      const pose = cutAt(track, at);
-      wanderFrom(
-        track,
-        graphOf(halves[i]),
-        at,
-        pose,
-        horizon,
-        mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0)
-      );
-    }
+    motions.push({ crowdUntil: from, track });
+  };
+
+  const launchOf = (
+    boat: Lifeboat,
+    at: number,
+    riders: readonly number[]
+  ): BoatLaunch => {
     const body = bodyAt(timeline.stateAt(at), boat.half);
-    launches.push({
+    return {
       boatId: boat.id,
       at,
       origin: poseWorldPoint(body, length, boat.rest),
@@ -733,8 +687,237 @@ export function planEvacuation(
       pitch: body.pitch,
       outward: boat.outward,
       riders: riders.map((i) => people[i].id),
+    };
+  };
+
+  // Fill every seat: as many figures as the real seats would save, nearest
+  // first, spread over the boats by their seats. Each boat waits for all of
+  // hers (walking there, or fading out and into the boat when there is no
+  // way, or no time) unless the water reaches her boarding spot first.
+  const fillBoats = (): void => {
+    // The real seats: the same boats `lifeboatCount` sums (both read
+    // `hungLifeboats`), against everyone aboard.
+    const boatSeats = boats.reduce((n, boat) => n + boat.seats, 0);
+    const aboard = peopleAboard(analyzeShip(ship).stats);
+    const saved =
+      boatSeats <= 0
+        ? 0
+        : boatSeats >= aboard
+          ? count
+          : Math.min(count, Math.round((count * boatSeats) / aboard));
+    // Each boat's share by its seats, largest remainder.
+    const share = boats.map((boat) =>
+      boatSeats > 0 ? (saved * boat.seats) / boatSeats : 0
+    );
+    const quota = share.map(Math.floor);
+    const spare = saved - quota.reduce((n, q) => n + q, 0);
+    share
+      .map((s, b) => ({ b, rest: s - quota[b] }))
+      .sort((p, q) => q.rest - p.rest || p.b - q.b)
+      .slice(0, spare)
+      .forEach(({ b }) => quota[b]++);
+
+    const straight = (i: number, boat: Lifeboat): number => {
+      const pose = starts[i];
+      const to = boat.spotRest;
+      return Math.hypot(
+        length / 2 - pose.x - to.x,
+        DECK_Y + pose.level * LEVEL_HEIGHT - to.y,
+        beam / 2 - pose.z - to.z
+      );
+    };
+    // Nearest first: a walk on the graph, then (far behind) anyone with no
+    // way there, by the straight distance.
+    const pairs: { cost: number; i: number; b: number; walks: boolean }[] = [];
+    boats.forEach((boat, b) => {
+      if (quota[b] <= 0) return;
+      const reach =
+        boat.spot >= 0 ? graphOf(boat.half).reachFrom(boat.spot) : null;
+      for (let i = 0; i < count; i++) {
+        const node = startNodes[i];
+        const dist =
+          reach && node !== undefined && halves[i] === boat.half
+            ? reach.dist[node]
+            : -1;
+        pairs.push({
+          cost: dist >= 0 ? dist : NO_WAY_COST + straight(i, boat),
+          i,
+          b,
+          walks: dist >= 0,
+        });
+      }
     });
-  });
+    pairs.sort((p, q) => p.cost - q.cost || p.i - q.i || p.b - q.b);
+    const boatOf = new Int32Array(count).fill(-1);
+    const walks = new Uint8Array(count);
+    const filled = new Int32Array(boats.length);
+    for (const pair of pairs) {
+      const { i, b } = pair;
+      if (boatOf[i] >= 0 || filled[b] >= quota[b]) continue;
+      boatOf[i] = b;
+      walks[i] = pair.walks ? 1 : 0;
+      filled[b]++;
+    }
+
+    // When each rider would be in their seat, and when they start to fade.
+    const target = new Float64Array(count).fill(Infinity);
+    const fadeFrom: (number | null)[] = new Array(count).fill(null);
+    for (let i = 0; i < count; i++) {
+      const b = boatOf[i];
+      fates.push(newFate());
+      if (b >= 0 && walks[i]) {
+        target[i] = walkToBoat(i, boats[b]);
+      } else if (b >= 0) {
+        // No way there: they fade out where they stand, and are in the
+        // boat about when a walk there would have taken.
+        const track: Segment[] = [];
+        standFrom(track, doom, { ...starts[i], activity: "idle" });
+        target[i] =
+          doom + Math.max(FADE_S, straight(i, boats[b]) / PERSON_SPEED);
+        fadeFrom[i] = doom;
+        motions.push({ crowdUntil: doom, track });
+      } else {
+        wanderOn(i);
+      }
+    }
+    // A walker the water catches on the way fades into the boat instead.
+    for (let i = 0; i < count; i++) {
+      if (boatOf[i] < 0 || !walks[i]) continue;
+      const float = floatOf(i, target[i]);
+      if (!float) continue;
+      target[i] = float.since;
+      fadeFrom[i] = Math.max(doom, float.since - FADE_S);
+    }
+
+    boats.forEach((boat, b) => {
+      const riders: number[] = [];
+      let last = -Infinity;
+      for (let i = 0; i < count; i++) {
+        if (boatOf[i] !== b) continue;
+        riders.push(i);
+        last = Math.max(last, target[i]);
+      }
+      const at = Math.max(
+        doom,
+        Math.min(
+          riders.length > 0 ? last : doom + LAUNCH_WAIT_S,
+          floodedAt(boat),
+          end - LOWER_S
+        )
+      );
+      // Anyone not there when she must go fades into her as she leaves.
+      const seatAt = (i: number) => Math.min(target[i], at);
+      for (const i of riders) {
+        if (target[i] <= at) continue;
+        fadeFrom[i] = Math.min(
+          fadeFrom[i] ?? Infinity,
+          Math.max(doom, at - FADE_S)
+        );
+      }
+      riders.sort((p, q) => seatAt(p) - seatAt(q) || p - q);
+      riders.forEach((i, seat) => {
+        const fate = fates[i];
+        fate.boatId = boat.id;
+        fate.fadeFrom = fadeFrom[i];
+        fate.boardUntil = fadeFrom[i] ?? seatAt(i);
+        fate.seat = { boatId: boat.id, seat, at: seatAt(i) };
+      });
+      launches.push(launchOf(boat, at, riders));
+    });
+  };
+
+  const launches: BoatLaunch[] = [];
+  if (fill) {
+    fillBoats();
+  } else {
+    // Everyone, nearest first, takes the nearest boat with a shown seat free.
+    const pairs: { dist: number; i: number; b: number }[] = [];
+    boats.forEach((boat, b) => {
+      if (boat.spot < 0 || boat.cap <= 0) return;
+      const reach = graphOf(boat.half).reachFrom(boat.spot);
+      for (let i = 0; i < count; i++) {
+        const node = startNodes[i];
+        if (node === undefined || halves[i] !== boat.half) continue;
+        const dist = reach.dist[node];
+        if (dist >= 0) pairs.push({ dist, i, b });
+      }
+    });
+    pairs.sort((p, q) => p.dist - q.dist || p.i - q.i || p.b - q.b);
+    const boatOf = new Int32Array(count).fill(-1);
+    const filled = new Int32Array(boats.length);
+    for (const { i, b } of pairs) {
+      if (boatOf[i] >= 0 || filled[b] >= boats[b].cap) continue;
+      boatOf[i] = b;
+      filled[b]++;
+    }
+
+    // Boarders walk to their boat's spot and wait there; the rest wander on,
+    // following the crowd plan until she breaks.
+    const arrivals = new Float64Array(count).fill(Infinity);
+    for (let i = 0; i < count; i++) {
+      const b = boatOf[i];
+      if (b >= 0) {
+        arrivals[i] = walkToBoat(i, boats[b]);
+      } else {
+        wanderOn(i);
+      }
+      fates.push(newFate());
+    }
+
+    // When each boat leaves: its last rider aboard, the wait run out, or the
+    // water at its boarding spot, whichever comes first.
+    boats.forEach((boat, b) => {
+      const flooded = floodedAt(boat);
+      const boarders: number[] = [];
+      let lastArrival = -Infinity;
+      for (let i = 0; i < count; i++) {
+        if (boatOf[i] !== b) continue;
+        // One who is caught by the water on the way never gets there.
+        const float = floatOf(i, arrivals[i]);
+        if (float) {
+          fates[i].float = float;
+          fates[i].boatId = boat.id;
+          fates[i].boardUntil = float.since;
+          continue;
+        }
+        boarders.push(i);
+        lastArrival = Math.max(lastArrival, arrivals[i]);
+      }
+      const at = Math.max(
+        doom,
+        Math.min(
+          doom + LAUNCH_WAIT_S,
+          flooded,
+          boarders.length > 0 ? lastArrival : Infinity
+        )
+      );
+      const riders = boarders
+        .filter((i) => arrivals[i] <= at)
+        .sort((p, q) => arrivals[p] - arrivals[q] || p - q);
+      riders.forEach((i, seat) => {
+        fates[i].boatId = boat.id;
+        fates[i].boardUntil = arrivals[i];
+        fates[i].seat = { boatId: boat.id, seat, at: arrivals[i] };
+      });
+      // Anyone not there yet goes back to wandering when the boat leaves.
+      for (const i of boarders) {
+        if (arrivals[i] <= at) continue;
+        fates[i].boatId = boat.id;
+        fates[i].boardUntil = at;
+        const track = motions[i].track;
+        const pose = cutAt(track, at);
+        wanderFrom(
+          track,
+          graphOf(halves[i]),
+          at,
+          pose,
+          horizon,
+          wanderRandom(i)
+        );
+      }
+      launches.push(launchOf(boat, at, riders));
+    });
+  }
 
   // Everyone not in a boat ends up in the water.
   for (let i = 0; i < count; i++) {
@@ -757,6 +940,10 @@ export function planEvacuation(
     }
     if (seat && t >= seat.at) {
       return { kind: "in-boat", boatId: seat.boatId, seat: seat.seat };
+    }
+    if (seat && fate.fadeFrom !== null && t >= fate.fadeFrom) {
+      const fade = Math.min(1, (t - fate.fadeFrom) / FADE_S);
+      return { kind: "transfer", boatId: seat.boatId, fade };
     }
     if (fate.boatId && t < fate.boardUntil) {
       return { kind: "boarding", boatId: fate.boatId, until: fate.boardUntil };

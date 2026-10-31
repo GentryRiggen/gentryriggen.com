@@ -3,10 +3,12 @@
 import { Crosshair, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import type { TrialSummary } from "@/lib/ship-builder/sim/explain";
+import { trialKindOf } from "@/lib/ship-builder/sim/trialKind";
 import {
   useShipBuilderStore,
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
+import { LifeboatLine } from "./SeaTrialResult";
 import { SEA_LABELS } from "./seaTrialText";
 import { buttonClass, panelClass } from "./styles";
 
@@ -16,6 +18,8 @@ interface ResultDetailsProps {
   input: ResultTrial["input"];
   summary: TrialSummary;
   extraLines: string[];
+  /** The lifeboat line when she sank, else null. */
+  lifeboatLines?: string[] | null;
   onClose: () => void;
 }
 
@@ -24,11 +28,13 @@ export default function ResultDetails({
   input,
   summary,
   extraLines,
+  lifeboatLines = null,
   onClose,
 }: ResultDetailsProps) {
-  const startTrial = useShipBuilderStore((s) => s.startTrial);
+  const retryTrial = useShipBuilderStore((s) => s.retryTrial);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
   const sheet = useRef<HTMLDivElement>(null);
+  const isStorm = trialKindOf(input) === "storm";
 
   useEffect(() => {
     sheet.current?.focus();
@@ -56,7 +62,9 @@ export default function ResultDetails({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Sea trial · {SEA_LABELS[input.sea]}
+            {isStorm
+              ? "Shipwreck storm"
+              : `Sea trial · ${SEA_LABELS[input.sea]}`}
           </p>
           <h2 id="sea-trial-title" className="text-lg font-semibold">
             {summary.title}
@@ -87,6 +95,11 @@ export default function ResultDetails({
           ))}
         </ul>
       )}
+      {lifeboatLines && (
+        <div className="mt-2">
+          <LifeboatLine lines={lifeboatLines} />
+        </div>
+      )}
       {summary.tips.length > 0 && (
         <div className="mt-3 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -102,7 +115,7 @@ export default function ResultDetails({
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => startTrial(input.sea, input.iceberg?.impactX)}
+          onClick={retryTrial}
           className={`${buttonClass} min-h-11 flex-1`}
         >
           <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />

@@ -27,9 +27,8 @@ describe("useTimeOfDay", () => {
     expect(result.current.timeOfDay).toBe("day");
   });
 
-  it("is night during an iceberg trial without changing the saved choice", () => {
+  it("shows a trial's own time without changing the saved choice", () => {
     const { result } = renderHook(() => useTimeOfDay());
-    const ship = useShipBuilderStore.getState().ship;
     const sim = { ship: {}, sea: "calm" };
     act(() =>
       useShipBuilderStore.setState({
@@ -38,25 +37,14 @@ describe("useTimeOfDay", () => {
           runId: 1,
           descending: false,
           input: { ...sim, iceberg: { impactX: 3 } } as never,
+          look: { sea: "calm", time: "sunset" },
         },
       })
     );
-    expect(result.current.timeOfDay).toBe("night");
+    expect(result.current.timeOfDay).toBe("sunset");
     expect(window.localStorage.getItem(KEY)).toBeNull();
-    act(() =>
-      useShipBuilderStore.setState({
-        trial: {
-          status: "running",
-          runId: 2,
-          descending: false,
-          input: sim as never,
-        },
-      })
-    );
+    act(() => useShipBuilderStore.setState({ trial: { status: "idle" } }));
     expect(result.current.timeOfDay).toBe("day");
-    act(() =>
-      useShipBuilderStore.setState({ trial: { status: "idle" }, ship })
-    );
   });
 
   // Keep this last: a failed write switches the module to its in-memory value.

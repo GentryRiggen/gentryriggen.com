@@ -1,5 +1,5 @@
 import { PALETTE } from "./palette";
-import { seaParams, type SeaState } from "./seaState";
+import { seaParams, type SceneSea } from "./seaState";
 import { glowFor, type TimeOfDay } from "./timeOfDay";
 
 export type Vec3 = readonly [number, number, number];
@@ -286,7 +286,7 @@ const STORM_UNDERWATER_DARKEN = 0.25;
  * The look of `time` in `sea`: calm is clear sky, choppy partly cloudy,
  * stormy overcast, darker, greyer and with the horizon closed in by fog.
  */
-export function environmentFor(time: TimeOfDay, sea: SeaState): Environment {
+export function environmentFor(time: TimeOfDay, sea: SceneSea): Environment {
   const clear = CLEAR[time];
   const storm = STORM[time];
   const { cloudCover, overcast } = seaParams(sea);

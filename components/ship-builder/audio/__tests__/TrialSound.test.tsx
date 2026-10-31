@@ -134,6 +134,7 @@ describe("TrialSound result sting", () => {
         trial: {
           status: "running",
           input,
+          look: { sea: "calm", time: "day" },
           runId: 1,
           descending: true,
           ...(challenge ? { challenge } : {}),
@@ -145,6 +146,7 @@ describe("TrialSound result sting", () => {
         trial: {
           status: "result",
           input,
+          look: { sea: "calm", time: "day" },
           state: { outcome: "sank" } as never,
           runId: 1,
           descending: true,

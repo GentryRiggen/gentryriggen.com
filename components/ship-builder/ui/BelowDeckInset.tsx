@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { isTimelineTrial } from "@/lib/ship-builder/sim/trialKind";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { useLiveTrialState } from "../scene/liveTrial";
 import BelowDeckDiagram from "./BelowDeckDiagram";
@@ -11,16 +12,16 @@ const NO_COMPARTMENTS: readonly never[] = [];
 
 /**
  * A small read-only "Below deck" cut-away pinned to the top-left corner during
- * an iceberg trial, with the water rising in each compartment as the trial
+ * an iceberg or storm trial, with the water rising in each compartment as the trial
  * plays. It stays up through the result. Tap it to enlarge; it shrinks again
  * after a few seconds or another tap. Waves trials do not show it.
  */
 export default function BelowDeckInset() {
   const hull = useShipBuilderStore((s) => s.ship.hull);
-  const isIceberg = useShipBuilderStore(
+  const isFlooding = useShipBuilderStore(
     (s) =>
       (s.trial.status === "running" || s.trial.status === "result") &&
-      s.trial.input.iceberg !== undefined
+      isTimelineTrial(s.trial.input)
   );
   const live = useLiveTrialState();
   const compartments = live?.compartments ?? NO_COMPARTMENTS;
@@ -37,7 +38,7 @@ export default function BelowDeckInset() {
     return () => clearTimeout(timer);
   }, [enlarged]);
 
-  if (!isIceberg) return null;
+  if (!isFlooding) return null;
   return (
     <section
       aria-label="Below deck"

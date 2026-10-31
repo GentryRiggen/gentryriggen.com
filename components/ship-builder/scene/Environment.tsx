@@ -19,7 +19,7 @@ import {
 } from "./environmentRuntime";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import type { GlowController } from "./GlowContext";
-import type { SeaState } from "./seaState";
+import type { SceneSea } from "./seaState";
 import SkyDome from "./SkyDome";
 import Stars from "./Stars";
 import { frozenTime } from "./testClock";
@@ -33,7 +33,7 @@ interface EnvironmentProps {
   /** The live look, eased each frame; shared with the ocean. */
   current: RuntimeEnvironment;
   timeOfDay: TimeOfDay;
-  seaState: SeaState;
+  seaState: SceneSea;
   /** Seen from below, the ship sits in water rather than sky. */
   isBelow: boolean;
   /** Told the eased glow each frame, so lights fade in with the sky. */

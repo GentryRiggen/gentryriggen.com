@@ -84,4 +84,28 @@ describe("trialEvacuationFor", () => {
     expect(iceberg).toBeDefined();
     expect(trialEvacuationFor(weather, ship, true)).toBeNull();
   });
+
+  it("plans each lifeboat choice on its own", () => {
+    const titanicPlan = trialEvacuationFor(input, ship, true);
+    const fillInput: TrialInput = { ...input, lifeboats: "fill" };
+    const fillPlan = trialEvacuationFor(fillInput, ship, true);
+    expect(fillPlan).not.toBeNull();
+    expect(fillPlan).not.toBe(titanicPlan);
+    // Filling every seat seats every figure the seats would save.
+    const titanicRiders = titanicPlan!.launches.flatMap((l) => l.riders);
+    const fillRiders = fillPlan!.launches.flatMap((l) => l.riders);
+    expect(fillRiders.length).toBeGreaterThan(titanicRiders.length);
+  });
+
+  it("plans the storm trial's sinking too", () => {
+    const { iceberg, ...rest } = input;
+    const storm: TrialInput = {
+      ...rest,
+      sea: "wild",
+      storm: { compartments: iceberg!.compartments, length: iceberg!.length },
+    };
+    const plan = trialEvacuationFor(storm, ship, true);
+    expect(plan).not.toBeNull();
+    expect(plan!.launches.length).toBeGreaterThan(0);
+  });
 });

@@ -72,4 +72,32 @@ describe("ViewControls", () => {
     expect(night).toHaveAttribute("aria-pressed", "false");
     await user.click(day);
   });
+
+  it("keeps showing the main choices while a trial shows its own", () => {
+    render(<ViewControls />);
+    act(() => store().openTrialSetup("storm"));
+    act(() => store().setTrialLook({ time: "night" }));
+    expect(screen.getByRole("button", { name: "Calm sea" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(screen.getByRole("button", { name: "Day" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(screen.getByRole("button", { name: "Night" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
+
+  it("pauses the sea and time chips while a trial is on", () => {
+    render(<ViewControls />);
+    act(() => store().startTrial("calm"));
+    for (const name of ["Calm sea", "Stormy sea", "Day", "Sunset", "Night"]) {
+      expect(screen.getByRole("button", { name })).toBeDisabled();
+    }
+    act(() => store().endTrial());
+    expect(screen.getByRole("button", { name: "Night" })).toBeEnabled();
+  });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { SeaState } from "./seaState";
+import type { SceneSea } from "./seaState";
 
 export interface ShipAnimationValue {
   topSpeedKnots: number;
@@ -9,7 +9,7 @@ export interface ShipAnimationValue {
   /** When true every effect is off or static. */
   reducedMotion: boolean;
   /** How rough the water is; scales the ship's bob and roll. */
-  seaState: SeaState;
+  seaState: SceneSea;
   /** Resting lean from off-centre weight, radians; positive is starboard. */
   listAngle: number;
 }
