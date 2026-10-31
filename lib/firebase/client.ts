@@ -77,6 +77,17 @@ export async function signOutUser(): Promise<void> {
   await mod.signOut(auth);
 }
 
+/**
+ * The signed-in user's Firebase ID token (for /jim's server), or null when
+ * nobody is signed in. `force` skips the cached token, e.g. after a 401.
+ */
+export async function getIdToken(force = false): Promise<string | null> {
+  const { auth } = await authModule();
+  await auth.authStateReady();
+  const user = auth.currentUser;
+  return user ? user.getIdToken(force) : null;
+}
+
 export interface PageviewsResult {
   docs: PageviewDoc[];
   /** True when the fetch hit MAX_DOCS, so the oldest views are missing. */
