@@ -7,6 +7,7 @@ const HOME = {
   api: "https://jim.example.test",
   getToken: async () => "t",
   onChanged: () => {},
+  onLog: () => {},
 };
 
 function renderAt(iso: string, data: ViewData = VIEW_FIXTURE) {

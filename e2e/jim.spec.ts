@@ -676,6 +676,34 @@ test("a todo that changed on the Mac reverts and says so", async ({ page }) => {
   await expect(box).toHaveAttribute("aria-checked", "false");
 });
 
+test(
+  "a quick log sends a plain sentence and Chat shows Jim's reply",
+  { tag: "@smoke" },
+  async ({ page }) => {
+    const calls = await signedIn(page);
+    await openNotes(page);
+    await page.getByRole("button", { name: "Log injection" }).click();
+    const sheet = page.getByRole("dialog", { name: "Log injection" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByLabel("Dose")).toBeFocused();
+    await sheet.getByLabel("Dose").fill("100 mg");
+    await sheet.getByLabel("Site").fill("left glute");
+    await sheet.getByRole("button", { name: "Send to Jim" }).click();
+    await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    const log = page.getByRole("log");
+    await expect(
+      log.getByText("Log my injection today: 100 mg, left glute.")
+    ).toBeVisible();
+    await expect(log.getByText(/^Here's what/)).toBeVisible();
+    expect(calls.messages).toEqual([
+      "Log my injection today: 100 mg, left glute.",
+    ]);
+  }
+);
+
 test("Notes loads once and is instant on the way back", async ({ page }) => {
   const calls = await signedIn(page);
   // Signing in wakes the server and fetches Notes before it is opened.

@@ -25,6 +25,8 @@ interface NotesShellProps {
   getToken: (force?: boolean) => Promise<string | null>;
   /** The Notes tab is showing: load (or refresh stale data) then. */
   active: boolean;
+  /** Sends a quick-log sentence as a chat message and switches to Chat. */
+  onLog: (text: string) => void;
 }
 
 type Page = "home" | "health" | "training" | "golf" | "people";
@@ -63,7 +65,12 @@ function Skeleton() {
 }
 
 /** The Notes tab: its page bar, the data, and the five read-only pages. */
-export default function NotesShell({ api, getToken, active }: NotesShellProps) {
+export default function NotesShell({
+  api,
+  getToken,
+  active,
+  onLog,
+}: NotesShellProps) {
   const [data, setData] = useState<ViewData | null>(
     () => getCachedView()?.data ?? null
   );
@@ -180,7 +187,13 @@ export default function NotesShell({ api, getToken, active }: NotesShellProps) {
       );
   } else if (page === "home") {
     body = (
-      <NotesHome data={data} api={api} getToken={getToken} onChanged={reload} />
+      <NotesHome
+        data={data}
+        api={api}
+        getToken={getToken}
+        onChanged={reload}
+        onLog={onLog}
+      />
     );
   } else if (page === "health") {
     body = <NotesHealth data={data} />;

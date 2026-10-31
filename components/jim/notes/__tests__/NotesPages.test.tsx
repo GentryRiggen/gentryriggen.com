@@ -16,6 +16,7 @@ const HOME = {
   api: "https://jim.example.test",
   getToken: async () => "t",
   onChanged: () => {},
+  onLog: () => {},
 };
 
 describe("NotesHome", () => {

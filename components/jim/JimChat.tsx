@@ -223,8 +223,9 @@ export default function JimChat({
     }
   }
 
-  async function send() {
-    const text = draft.trim();
+  /** Sends the box, or `given` (a quick log) leaving the box alone. */
+  async function send(given?: string) {
+    const text = (given ?? draft).trim();
     if (!text || sending) return;
     const id = nextId.current++;
     const run = chatRun.current;
@@ -232,7 +233,7 @@ export default function JimChat({
     setHeld(null);
     setSlow(false);
     setSending(true);
-    setDraft("");
+    if (given === undefined) setDraft("");
     stopDrawing();
     liveText.current = "";
     setLive(NO_LIVE);
@@ -328,6 +329,17 @@ export default function JimChat({
       boxRef.current?.blur();
     }
     setTab(next);
+  }
+
+  /**
+   * A quick log on Notes: sent as a message, and Chat shows Jim's reply as
+   * it comes. While another turn is out it waits in the box instead.
+   */
+  function logFromNotes(text: string) {
+    stuck.current = true;
+    setTab("chat");
+    if (sending) putBack(text);
+    else void send(text);
   }
 
   function restoreHeld() {
@@ -528,6 +540,7 @@ export default function JimChat({
               api={api}
               getToken={getToken}
               active={tab === "notes"}
+              onLog={logFromNotes}
             />
           </div>
         )}

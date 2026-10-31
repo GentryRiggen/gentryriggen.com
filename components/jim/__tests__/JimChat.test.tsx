@@ -10,8 +10,18 @@ jest.mock("@/lib/jim/api", () => {
 });
 jest.mock("../notes/NotesShell", () => ({
   __esModule: true,
-  default: ({ active }: { active: boolean }) => (
-    <div data-testid="notes" data-active={String(active)} />
+  default: ({
+    active,
+    onLog,
+  }: {
+    active: boolean;
+    onLog: (text: string) => void;
+  }) => (
+    <div data-testid="notes" data-active={String(active)}>
+      <button type="button" onClick={() => onLog("Log my workout today: Ran.")}>
+        Fake log
+      </button>
+    </div>
   ),
 }));
 
@@ -465,5 +475,42 @@ describe("kept chat", () => {
     expect(screen.queryByText("Late.")).not.toBeInTheDocument();
     expect(screen.queryByText("first")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+  });
+});
+
+describe("quick log from Notes", () => {
+  it("sends the sentence, switches to Chat and keeps the draft", async () => {
+    const reply = deferred<api.JimReply>();
+    send.mockReturnValue(reply.promise);
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "half typed");
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake log" }));
+    expect(screen.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(send.mock.calls[0][0]).toBe("Log my workout today: Ran.");
+    expect(
+      within(screen.getByRole("log")).getByText("Log my workout today: Ran.")
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Message")).toHaveValue("half typed");
+    await act(async () =>
+      reply.resolve({ reply: "Logged.", changed: [], commit: null })
+    );
+    expect(screen.getByText("Logged.")).toBeInTheDocument();
+  });
+
+  it("waits in the box while another turn is out", async () => {
+    send.mockReturnValue(new Promise(() => {}));
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "first");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake log" }));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("Message")).toHaveValue(
+      "Log my workout today: Ran."
+    );
   });
 });

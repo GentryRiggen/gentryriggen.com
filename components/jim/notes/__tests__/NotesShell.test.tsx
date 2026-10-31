@@ -48,6 +48,7 @@ function renderShell(active = true) {
       api="https://jim.example.test"
       getToken={getToken}
       active={active}
+      onLog={jest.fn()}
     />
   );
 }

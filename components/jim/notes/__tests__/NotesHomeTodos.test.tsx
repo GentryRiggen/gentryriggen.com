@@ -29,6 +29,7 @@ function renderHome(onChanged = jest.fn()) {
       api={API}
       getToken={getToken}
       onChanged={onChanged}
+      onLog={jest.fn()}
     />
   );
   return onChanged;
@@ -158,6 +159,7 @@ it("drops a finished check once fresh data arrives", async () => {
       api={API}
       getToken={getToken}
       onChanged={jest.fn()}
+      onLog={jest.fn()}
     />
   );
   await userEvent.click(box());
@@ -170,6 +172,7 @@ it("drops a finished check once fresh data arrives", async () => {
       api={API}
       getToken={getToken}
       onChanged={jest.fn()}
+      onLog={jest.fn()}
     />
   );
   expect(

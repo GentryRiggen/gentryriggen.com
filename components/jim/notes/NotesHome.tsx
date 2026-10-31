@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import QuickLog from "@/components/jim/notes/QuickLog";
 import {
   eventsByDay,
   localDay,
@@ -39,6 +40,8 @@ interface NotesHomeProps {
   getToken: (force?: boolean) => Promise<string | null>;
   /** A todo was saved (or may have been): fetch the notes again. */
   onChanged: () => void;
+  /** Sends a quick-log sentence as a chat message and switches to Chat. */
+  onLog: (text: string) => void;
 }
 
 /** How long "Done · Undo" (or a failure) stays up. */
@@ -403,6 +406,7 @@ export default function NotesHome({
   api,
   getToken,
   onChanged,
+  onLog,
 }: NotesHomeProps) {
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [toast, setToast] = useState<Toast | null>(null);
@@ -475,7 +479,10 @@ export default function NotesHome({
   return (
     <div className="space-y-8">
       <p className="text-lg font-semibold text-ayu-text">{date}</p>
-      <TodayCard data={data} />
+      <div className="space-y-3">
+        <TodayCard data={data} />
+        <QuickLog today={data.today} onLog={onLog} />
+      </div>
       <Calendar data={data} />
       <Todos data={data} marks={marks} onToggle={toggle} />
       <ToastBar toast={toast} onUndo={(todo) => void toggle(todo, false)} />
