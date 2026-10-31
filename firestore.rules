@@ -263,6 +263,27 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/seasons/$(game)).data.number;
     }
 
+    // Seconds since the current season began (the same doc as currentSeason,
+    // so no extra read). A first write in a new season can hold no more than
+    // the game could award since then, so the create caps are not a free
+    // jump to the top of a fresh board.
+    function secsSinceSeasonStart(game) {
+      return (request.time.toMillis()
+        - get(/databases/$(database)/documents/seasons/$(game)).data.startedAt.toMillis()) / 1000;
+    }
+
+    // As validLeaderboardUpdate: 200 m per second plus one flight's 9100 m.
+    function planeSeasonCreate() {
+      return request.resource.data.lifetimeDistance
+        <= 200 * secsSinceSeasonStart('plane') + 9100;
+    }
+
+    // As validShipUpdate: 6 stars plus 1 per 5 seconds.
+    function shipSeasonCreate() {
+      return request.resource.data.totalStars
+        <= 6 + secsSinceSeasonStart('ship') / 5;
+    }
+
     // The admin may only change an entry's name (to another generated one).
     function adminRename() {
       return isAdmin()
@@ -276,7 +297,8 @@ service cloud.firestore {
       allow list: if request.query.limit <= 50 && request.query.offset == 0;
       allow create: if isPlayer(uid)
         && season == string(currentSeason('plane'))
-        && validLeaderboard() && validLeaderboardCreate(uid);
+        && validLeaderboard() && validLeaderboardCreate(uid)
+        && planeSeasonCreate();
       allow update: if (isPlayer(uid)
           && season == string(currentSeason('plane'))
           && validLeaderboard() && validLeaderboardUpdate(uid))
@@ -289,12 +311,26 @@ service cloud.firestore {
       allow list: if request.query.limit <= 50 && request.query.offset == 0;
       allow create: if isPlayer(uid)
         && season == string(currentSeason('ship'))
-        && validShipLeaderboard() && validShipCreate(uid);
+        && validShipLeaderboard() && validShipCreate(uid)
+        && shipSeasonCreate();
       allow update: if (isPlayer(uid)
           && season == string(currentSeason('ship'))
           && validShipLeaderboard() && validShipUpdate(uid))
         || adminRename();
       allow delete: if isAdmin();
+    }
+
+    // ---- Board settings ------------------------------------------------
+    // boardSettings/{game}: switches the admin sets for a game's board. Only
+    // the plane board has one: `hidden` hides it from players (the client
+    // treats a missing or unreadable doc as hidden).
+    match /boardSettings/{game} {
+      allow get: if true;
+      allow create, update: if isAdmin()
+        && game in ['plane']
+        && request.resource.data.keys().hasOnly(['hidden'])
+        && request.resource.data.keys().hasAll(['hidden'])
+        && request.resource.data.hidden is bool;
     }
 
     // ---- Plane Builder daily challenge ---------------------------------

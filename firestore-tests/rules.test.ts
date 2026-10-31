@@ -119,21 +119,25 @@ const stamped = (patch: Record<string, unknown> = {}) => ({
   ...patch,
 });
 
-/** Seeds the season docs (null leaves one out). */
-async function seedSeasons(plane: number | null = 2, ship: number | null = 2) {
+const DAY_MS = 86_400_000;
+
+/**
+ * Seeds the season docs (null leaves one out), started `startedAgoMs` ago: a
+ * day by default, so the time-since-start create cap is out of the way.
+ */
+async function seedSeasons(
+  plane: number | null = 2,
+  ship: number | null = 2,
+  startedAgoMs = DAY_MS
+) {
+  const startedAt = new Date(Date.now() - startedAgoMs);
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     if (plane !== null) {
-      await setDoc(doc(db, "seasons/plane"), {
-        number: plane,
-        startedAt: new Date(),
-      });
+      await setDoc(doc(db, "seasons/plane"), { number: plane, startedAt });
     }
     if (ship !== null) {
-      await setDoc(doc(db, "seasons/ship"), {
-        number: ship,
-        startedAt: new Date(),
-      });
+      await setDoc(doc(db, "seasons/ship"), { number: ship, startedAt });
     }
   });
 }
@@ -2186,5 +2190,138 @@ describe("season paths", () => {
     expect(plane?.number).toBe(3);
     expect(plane?.startedAt).toBeInstanceOf(Date);
     expect((await fetchSeason("ship", deps))?.number).toBe(2);
+  });
+});
+
+describe("a new season's first writes are capped by time since it began", () => {
+  const UID = "player-1";
+  const player = (uid = UID) => signedIn(uid, { provider: "anonymous" });
+  const planeDoc = (uid = UID) =>
+    doc(player(uid), `planeSeasons/2/entries/${uid}`);
+  const shipDoc = (uid = UID) =>
+    doc(player(uid), `shipSeasons/2/entries/${uid}`);
+  const plane = (distance: number) => ({
+    nickname: "Happy Otter 7",
+    prestige: 1,
+    score: scoreFor(1, distance),
+    lifetimeDistance: distance,
+    bestTimes: {},
+    fastestRun: null,
+    updatedAt: serverTimestamp(),
+  });
+  const ship = (totalStars: number) => ({
+    nickname: "Happy Otter 7",
+    totalStars,
+    bests: { outlast: 1440, evacuation: 100, shipshape: 3, smooth: 350 },
+    updatedAt: serverTimestamp(),
+  });
+
+  it("refuses a create at the old caps right after the season starts", async () => {
+    await seedSeasons(2, 2, 0);
+    await assertFails(setDoc(planeDoc(), plane(150_000)));
+    await assertFails(setDoc(shipDoc(), ship(60)));
+    // Just over one flight's worth, and just over 6 stars.
+    await assertFails(setDoc(planeDoc("p2"), plane(12_000)));
+    await assertFails(setDoc(shipDoc("p2"), ship(13)));
+  });
+
+  it("accepts a modest create right after the season starts", async () => {
+    await seedSeasons(2, 2, 0);
+    await assertSucceeds(setDoc(planeDoc(), plane(5000)));
+    await assertSucceeds(
+      setDoc(shipDoc(), { ...ship(3), bests: { outlast: 170, evacuation: 50 } })
+    );
+  });
+
+  it("allows 200 m and a fifth of a star per second since the start", async () => {
+    // 60 s in: up to 200 * 60 + 9100 = 21100 m and 6 + 12 = 18 stars.
+    await seedSeasons(2, 2, 60_000);
+    await assertFails(setDoc(planeDoc("p2"), plane(21_500)));
+    await assertSucceeds(setDoc(planeDoc(), plane(21_000)));
+    await assertFails(setDoc(shipDoc("p2"), ship(19)));
+    await assertSucceeds(setDoc(shipDoc(), ship(18)));
+  });
+
+  it("accepts the full create caps well after the start", async () => {
+    await seedSeasons(2, 2, 3_600_000);
+    await assertSucceeds(setDoc(planeDoc(), plane(150_000)));
+    await assertSucceeds(setDoc(shipDoc(), ship(60)));
+    // The old caps still hold.
+    await assertFails(setDoc(planeDoc("p2"), plane(150_001)));
+    await assertFails(setDoc(shipDoc("p2"), ship(61)));
+  });
+
+  it("leaves updates to the per-write limits", async () => {
+    await seedSeasons(2, 2, 0);
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `planeSeasons/2/entries/${UID}`), {
+        ...plane(5000),
+        updatedAt: new Date(Date.now() - 60_000),
+      });
+    });
+    // 5000 + 200 * 60 + 9100 allows 25000 on update.
+    await assertSucceeds(setDoc(planeDoc(), plane(25_000)));
+  });
+});
+
+describe("boardSettings", () => {
+  const settings = (db: ReturnType<typeof anon>, game = "plane") =>
+    doc(db, `boardSettings/${game}`);
+
+  it("lets anyone get the settings, but not list them", async () => {
+    await assertSucceeds(getDoc(settings(anon())));
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(settings(ctx.firestore()), { hidden: true });
+    });
+    await assertSucceeds(getDoc(settings(anon())));
+    await assertSucceeds(
+      getDoc(settings(signedIn("player-1", { provider: "anonymous" })))
+    );
+    await assertFails(
+      getDocs(query(collection(anon(), "boardSettings"), limit(5)))
+    );
+  });
+
+  it("lets the admin create and update the plane switch", async () => {
+    await assertSucceeds(setDoc(settings(admin()), { hidden: true }));
+    await assertSucceeds(setDoc(settings(admin()), { hidden: false }));
+    await assertSucceeds(updateDoc(settings(admin()), { hidden: true }));
+  });
+
+  it.each([
+    ["a signed-out user", () => anon()],
+    ["a player", () => signedIn("player-1", { provider: "anonymous" })],
+    [
+      "the admin uid via anonymous sign-in",
+      () => signedIn(ADMIN_UID, { provider: "anonymous" }),
+    ],
+    ["another password user", () => signedIn("uid-someone-else")],
+  ])("refuses writes by %s", async (_label, client) => {
+    await assertFails(setDoc(settings(client()), { hidden: false }));
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(settings(ctx.firestore()), { hidden: true });
+    });
+    await assertFails(setDoc(settings(client()), { hidden: false }));
+    await assertFails(deleteDoc(settings(client())));
+  });
+
+  it("refuses extra keys, missing keys and a non-bool", async () => {
+    for (const data of [
+      { hidden: true, extra: 1 },
+      {},
+      { shown: true },
+      { hidden: "false" },
+      { hidden: 0 },
+      { hidden: null },
+    ]) {
+      await assertFails(setDoc(settings(admin()), data));
+    }
+  });
+
+  it("refuses any game but plane, and delete", async () => {
+    await assertFails(setDoc(settings(admin(), "ship"), { hidden: true }));
+    await assertFails(setDoc(settings(admin(), "daily"), { hidden: true }));
+    await assertSucceeds(setDoc(settings(admin()), { hidden: true }));
+    await assertFails(deleteDoc(settings(admin())));
   });
 });
