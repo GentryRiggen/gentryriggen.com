@@ -87,9 +87,10 @@ export default defineConfig({
   ],
 
   /* Test the static export (what ships), not the dev server: no on-demand
-     compiling, so the 3D page is ready as soon as it is requested. */
+     compiling, so the 3D page is ready as soon as it is requested. CI builds
+     the e2e export once and sets E2E_PREBUILT so each shard only serves it. */
   webServer: {
-    command: `NEXT_PUBLIC_E2E=1 npm run build && npx serve out --listen ${port} --no-clipboard`,
+    command: `${process.env.E2E_PREBUILT ? "" : "NEXT_PUBLIC_E2E=1 npm run build && "}npx serve out --listen ${port} --no-clipboard`,
     timeout: 180_000,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,

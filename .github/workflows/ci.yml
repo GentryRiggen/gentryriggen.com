@@ -94,65 +94,138 @@ jobs:
           fi
           changed=$(git diff --name-only "$base" HEAD)
           echo "$changed"
-          if echo "$changed" | grep -Eq '^(app|components|lib|public|e2e|scripts)/|^(package(-lock)?\.json|next\.config\.ts|playwright\.config\.ts|tsconfig\.json|postcss\.config\.[a-z]+|\.github/workflows/ci\.yml)$'; then
+          if echo "$changed" | grep -Eq '^(app|components|lib|public|e2e|scripts|\.github/actions)/|^(package(-lock)?\.json|next\.config\.ts|playwright\.config\.ts|tsconfig\.json|postcss\.config\.[a-z]+|\.github/workflows/ci\.yml)$'; then
             echo "e2e=true" >> "$GITHUB_OUTPUT"
           else
             echo "e2e=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # ── Static checks + unit tests ──
-  # Code a pull request already verified skips the checks; the build still
-  # runs because deploy needs its output.
-  validate:
-    name: ✅ Validate
+      # The e2e matrix lists spec files by hand; a spec missing from every
+      # list would never run in CI, so that fails here instead.
+      - name: 🧾 Every e2e spec has a CI group
+        run: |
+          missing=0
+          for spec in e2e/*.spec.ts; do
+            if ! grep -qF "$spec" .github/workflows/ci.yml; then
+              echo "::error file=$spec::$spec is in no e2e group in .github/workflows/ci.yml"
+              missing=1
+            fi
+          done
+          exit $missing
+
+  # ── Static checks, unit tests and rules tests, in parallel ──
+  # Code a pull request already verified skips all three on main.
+  checks:
+    name: ✅ Lint, format, types
     needs: changes
+    if: needs.changes.outputs.verified != 'true'
     runs-on: ubuntu-latest
-    env:
-      CHECKS: ${{ needs.changes.outputs.verified != 'true' }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: ⚙️ Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: "npm"
-
-      - name: 📦 Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup
 
       - name: 🔍 Lint
-        if: env.CHECKS == 'true'
         run: npm run lint
 
       - name: 💅 Format check
-        if: env.CHECKS == 'true'
         run: npm run format:check
 
       - name: 🔷 Type check
-        if: env.CHECKS == 'true'
         run: npm run type-check
 
+  # One file (the plane balance sweep, about 130 s) outweighs whole shards,
+  # and Jest can't split a file, so it gets its own job and the shards skip it.
+  unit:
+    name: 🧪 Unit tests ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.verified != 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 1/3
+            args: --shard=1/3
+            ignore: /plane-builder/balance/__tests__/balance.test.ts$
+          - name: 2/3
+            args: --shard=2/3
+            ignore: /plane-builder/balance/__tests__/balance.test.ts$
+          - name: 3/3
+            args: --shard=3/3
+            ignore: /plane-builder/balance/__tests__/balance.test.ts$
+          - name: plane balance
+            args: lib/plane-builder/balance/__tests__/balance.test.ts
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
       - name: 🧪 Unit tests
-        if: env.CHECKS == 'true'
-        run: npm test
+        env:
+          JEST_EXTRA_IGNORE: ${{ matrix.ignore }}
+        run: npx jest ${{ matrix.args }}
+
+  rules:
+    name: 🔐 Firestore rules tests
+    needs: changes
+    if: needs.changes.outputs.verified != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
 
       - name: ☕ Setup Java (Firestore emulator)
-        if: env.CHECKS == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
+      - name: 💾 Cache Firestore emulator
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/firebase/emulators
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('package-lock.json') }}
+
       - name: 🔐 Firestore rules tests
-        if: env.CHECKS == 'true'
         run: npm run test:rules
 
-      # Built here, beside the e2e jobs, so deploying does not wait on (or pay
-      # for) a separate build job.
+  # ── Builds ──
+  # The production build always runs: deploy ships it, and a pull request has
+  # to prove it builds before main may skip its checks. The e2e build
+  # (NEXT_PUBLIC_E2E=1) runs once and every e2e shard serves it.
+  # Next's cache is restored everywhere but saved only from main, so pull
+  # requests never fill the Actions cache with per-commit entries.
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: 💾 Restore Next.js build cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-
+
       - name: 🏗️ Build
         run: npm run build
+
+      - name: 💾 Save Next.js build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
 
       - name: 📤 Upload build artifacts
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -162,23 +235,62 @@ jobs:
           path: out
           retention-days: 1
 
-  # ── Browser tests (runs in parallel with validate) ──
+  e2e-build:
+    name: 🏗️ Build for e2e
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: 💾 Restore Next.js build cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-
+
+      - name: 🏗️ Build
+        env:
+          NEXT_PUBLIC_E2E: "1"
+        run: npm run build
+
+      - name: 💾 Save Next.js build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+
+      - name: 📤 Upload e2e build
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-build
+          path: out
+          retention-days: 1
+
+  # ── Browser tests (each shard serves the one e2e build) ──
   e2e:
     name: 🎭 E2E ${{ matrix.name }}
-    needs: changes
+    needs: [changes, e2e-build]
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     # Software WebGL (SwiftShader) takes every core it can get, so those specs
     # get their own jobs with one worker; running them beside the plain specs
-    # starves those and makes them time out.
+    # starves those and makes them time out. The slow groups are split with
+    # Playwright's --shard so no single job runs much past five minutes.
     strategy:
       fail-fast: false
       matrix:
         include:
           # Chromium runs every test; WebKit and the iPad run the @smoke ones
           # (see playwright.config.ts). Firefox is left out.
-          - name: Builder + home (Chromium, WebKit, iPad)
-            files: e2e/home.spec.ts e2e/ship-builder.spec.ts
+          - name: Builder + home + admin (Chromium, WebKit, iPad)
+            files: e2e/home.spec.ts e2e/ship-builder.spec.ts e2e/admin.spec.ts e2e/app-check.spec.ts
             args: --project=chromium --project=webkit --project=ipad --grep-invert "holding a placed block|paints a tapped block|renders the 3D scene"
             workers: 2
             browsers: chromium webkit
@@ -186,34 +298,71 @@ jobs:
           # The three pointer-sensitive builder tests join the other one-worker
           # WebGL specs; --grep keeps ship-builder.spec.ts to just those three
           # (it matches the file name, and "ship-builder-" is the other specs).
-          - name: WebGL builder + iceberg + time + breakup
+          - name: WebGL builder + iceberg + time + breakup (1/3)
             files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
-            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene"
+            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=1/3
             workers: 1
             browsers: chromium
-          - name: WebGL sea trial
-            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            # TODO: drop the grep-invert once the walk-while-sinking "ride" tests are frame-rate independent (it times out on CI's software GL)
-            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece"
+          - name: WebGL builder + iceberg + time + breakup (2/3)
+            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
+            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=2/3
+            workers: 1
+            browsers: chromium
+          - name: WebGL builder + iceberg + time + breakup (3/3)
+            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
+            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=3/3
+            workers: 1
+            browsers: chromium
+          # TODO: drop the grep-invert once the walk-while-sinking "ride" tests are frame-rate independent (it times out on CI's software GL)
+          - name: WebGL sea trial (1/3)
+            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
+            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece" --shard=1/3
+            workers: 1
+            browsers: chromium
+          - name: WebGL sea trial (2/3)
+            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
+            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece" --shard=2/3
+            workers: 1
+            browsers: chromium
+          - name: WebGL sea trial (3/3)
+            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
+            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece" --shard=3/3
             workers: 1
             browsers: chromium
           # Plane Builder needs WebGL for its core loop (the specs launch
           # software-rendering Chromium themselves), so it gets a one-worker job.
           # WebKit and the iPad run its @smoke tests (touch and pointer launch).
           - name: WebGL plane builder
-            files: e2e/plane-builder.spec.ts e2e/plane-builder-offline.spec.ts
+            files: e2e/plane-builder.spec.ts e2e/plane-builder-offline.spec.ts e2e/plane-builder-ghost.spec.ts e2e/plane-builder-near-miss.spec.ts
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit
           # Draw calls and triangles per fixed scene against e2e/perf-budget.json
           # (frame times are only reported). PERF_UPDATE=1 rewrites the budget.
-          - name: WebGL perf budget
+          - name: WebGL perf budget (1/2)
             files: e2e/perf.spec.ts
-            args: --project=chromium
+            args: --project=chromium --shard=1/2
             workers: 1
             browsers: chromium
-          - name: WebGL visual
-            files: e2e/ship-builder-visual.spec.ts e2e/plane-builder-visual.spec.ts
+            perf: perf-results-1-of-2
+          - name: WebGL perf budget (2/2)
+            files: e2e/perf.spec.ts
+            args: --project=chromium --shard=2/2
+            workers: 1
+            browsers: chromium
+            perf: perf-results-2-of-2
+          - name: WebGL visual (ship 1/2)
+            files: e2e/ship-builder-visual.spec.ts
+            args: --project=chromium --shard=1/2
+            workers: 1
+            browsers: chromium
+          - name: WebGL visual (ship 2/2)
+            files: e2e/ship-builder-visual.spec.ts
+            args: --project=chromium --shard=2/2
+            workers: 1
+            browsers: chromium
+          - name: WebGL visual (plane)
+            files: e2e/plane-builder-visual.spec.ts
             args: --project=chromium
             workers: 1
             browsers: chromium
@@ -221,14 +370,7 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: ⚙️ Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: "npm"
-
-      - name: 📦 Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup
 
       - name: 💾 Cache Playwright browsers
         uses: actions/cache@v5
@@ -241,9 +383,17 @@ jobs:
       - name: 🌐 Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browsers }}
 
+      - name: 📥 Download e2e build
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-build
+          path: out
+
+      # E2E_PREBUILT makes Playwright's web server serve out/ as is.
       - name: 🎬 Run E2E tests
         env:
           E2E_NO_WEBGL: ${{ matrix.no-webgl }}
+          E2E_PREBUILT: "1"
         run: npx playwright test ${{ matrix.files }} ${{ matrix.args }} --workers=${{ matrix.workers }}
 
       # Visual diffs (expected, actual, diff images) live in the report.
@@ -257,22 +407,30 @@ jobs:
             test-results
           retention-days: 7
 
-      # Only the perf job writes this file; the other jobs upload nothing.
+      # Only the perf jobs write this file; each shard uploads its own half.
       - name: 📤 Upload perf results
-        if: always() && hashFiles('perf-results.json') != ''
+        if: always() && matrix.perf && hashFiles('perf-results.json') != ''
         uses: actions/upload-artifact@v7
         with:
-          name: perf-results
+          name: ${{ matrix.perf }}
           path: perf-results.json
           retention-days: 30
 
   # ── Deploy (main branch only) ──
+  # checks, unit, rules and e2e are skipped (not failed) when a pull request
+  # already verified this tree, and e2e also when nothing it covers changed.
   deploy:
     name: 🚀 Deploy
     runs-on: ubuntu-latest
-    needs: [validate, e2e]
-    # e2e is skipped (not failed) when nothing it covers changed.
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.validate.result == 'success' && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
+    needs: [changes, checks, unit, rules, build, e2e-build, e2e]
+    if: >-
+      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.changes.result == 'success' && needs.build.result == 'success'
+      && contains(fromJSON('["success","skipped"]'), needs.checks.result)
+      && contains(fromJSON('["success","skipped"]'), needs.unit.result)
+      && contains(fromJSON('["success","skipped"]'), needs.rules.result)
+      && contains(fromJSON('["success","skipped"]'), needs.e2e-build.result)
+      && contains(fromJSON('["success","skipped"]'), needs.e2e.result) }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
