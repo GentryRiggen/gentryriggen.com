@@ -198,35 +198,38 @@ export interface OwnEntry {
   updatedAt: number | null;
 }
 
-function parseOwnEntry(json: unknown): OwnEntry | null {
-  const fields = (json as { fields?: Record<string, unknown> } | null)?.fields;
-  if (typeof fields !== "object" || fields === null) return null;
+/** A document's `updatedAt` in ms, or null when absent or unreadable. */
+export function updatedAtOf(fields: Record<string, unknown>): number | null {
+  const stamp = (fields.updatedAt as { timestampValue?: unknown } | undefined)
+    ?.timestampValue;
+  const updatedAt = typeof stamp === "string" ? Date.parse(stamp) : NaN;
+  return Number.isFinite(updatedAt) ? updatedAt : null;
+}
+
+function parseOwnEntry(fields: Record<string, unknown>): OwnEntry | null {
   const nickname = (fields.nickname as { stringValue?: unknown } | undefined)
     ?.stringValue;
   const prestige = numberOf(fields.prestige);
   const lifetimeDistance = numberOf(fields.lifetimeDistance);
   if (typeof nickname !== "string" || prestige === null) return null;
   if (lifetimeDistance === null) return null;
-  const stamp = (fields.updatedAt as { timestampValue?: unknown } | undefined)
-    ?.timestampValue;
-  const updatedAt = typeof stamp === "string" ? Date.parse(stamp) : NaN;
   return {
     nickname,
     prestige,
     lifetimeDistance,
-    updatedAt: Number.isFinite(updatedAt) ? updatedAt : null,
+    updatedAt: updatedAtOf(fields),
   };
 }
 
 /**
- * GET of the player's own entry in `season` (needs the anonymous uid, not
- * the token: reads are public). The entry, "missing" when there is none, or
+ * GET of the player's own doc in `collection` (needs the anonymous uid, not
+ * the token: reads are public). Its fields, "missing" when there is none, or
  * null on any failure. Never throws.
  */
-export async function fetchOwnEntry(
-  season: number,
+export async function fetchOwnFields(
+  collection: string,
   deps: ClientDeps = {}
-): Promise<OwnEntry | "missing" | null> {
+): Promise<Record<string, unknown> | "missing" | null> {
   const config = deps.config ?? firebaseConfig;
   if (!isFirebaseConfigured(config)) return null;
   try {
@@ -234,17 +237,34 @@ export async function fetchOwnEntry(
     if (!session) return null;
     const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
     const base = documentsUrl(config, deps.baseUrl ?? DEFAULT_BASE_URL);
-    const path = `${seasonCollection("plane", season)}/${session.uid}`;
+    const path = `${collection}/${session.uid}`;
     const response = await fetchImpl(`${base}/${path}?key=${config.apiKey}`, {
       method: "GET",
       headers: { ...(await leaderboardAppCheckHeaders(deps)) },
     });
     if (response.status === 404) return "missing";
     if (!response.ok) return null;
-    return parseOwnEntry(await response.json());
+    const json: unknown = await response.json();
+    const fields = (json as { fields?: unknown } | null)?.fields;
+    return typeof fields === "object" && fields !== null
+      ? (fields as Record<string, unknown>)
+      : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * The player's own entry in `season`, "missing" when there is none, or null
+ * on any failure. Never throws.
+ */
+export async function fetchOwnEntry(
+  season: number,
+  deps: ClientDeps = {}
+): Promise<OwnEntry | "missing" | null> {
+  const fields = await fetchOwnFields(seasonCollection("plane", season), deps);
+  if (fields === null || fields === "missing") return fields;
+  return parseOwnEntry(fields);
 }
 
 /**

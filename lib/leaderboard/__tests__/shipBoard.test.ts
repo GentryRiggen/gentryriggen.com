@@ -1,5 +1,6 @@
 import {
   buildShipBoardQuery,
+  fetchOwnShipEntry,
   fetchShipBoard,
   parseShipBoard,
   shipEntryFields,
@@ -193,5 +194,72 @@ describe("ship board App Check headers", () => {
     for (const call of fetchImpl.mock.calls) {
       expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");
     }
+  });
+});
+
+describe("fetchOwnShipEntry", () => {
+  const getSession = async () => ({ uid: "uid-1", idToken: "tok" });
+  const doc = {
+    name: "projects/proj/databases/(default)/documents/shipSeasons/2/entries/uid-1",
+    fields: {
+      nickname: { stringValue: "Brave Panda 3" },
+      totalStars: { integerValue: "12" },
+      bests: { mapValue: { fields: { outlast: { integerValue: "170" } } } },
+      updatedAt: { timestampValue: "2026-10-30T12:00:00.000Z" },
+    },
+  };
+
+  it("GETs the player's own doc in the season and parses it", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => doc });
+    expect(
+      await fetchOwnShipEntry(2, { config, fetchImpl, getSession })
+    ).toEqual({
+      nickname: "Brave Panda 3",
+      totalStars: 12,
+      updatedAt: Date.parse("2026-10-30T12:00:00.000Z"),
+    });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(
+      "https://firestore.googleapis.com/v1/projects/proj/databases/(default)/documents/shipSeasons/2/entries/uid-1?key=KEY"
+    );
+    expect(init.method).toBe("GET");
+  });
+
+  it("is 'missing' on a 404", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+    expect(await fetchOwnShipEntry(2, { config, fetchImpl, getSession })).toBe(
+      "missing"
+    );
+  });
+
+  it("is null on errors, junk, a bad name, no session or no config", async () => {
+    const run = (deps: Parameters<typeof fetchOwnShipEntry>[1]) =>
+      fetchOwnShipEntry(2, { config, getSession, ...deps });
+    const replying = (json: unknown) =>
+      jest.fn().mockResolvedValue({ ok: true, json: async () => json });
+    expect(
+      await run({
+        fetchImpl: jest.fn().mockResolvedValue({ ok: false, status: 500 }),
+      })
+    ).toBeNull();
+    expect(
+      await run({ fetchImpl: jest.fn().mockRejectedValue(new Error("x")) })
+    ).toBeNull();
+    expect(await run({ fetchImpl: replying({ fields: {} }) })).toBeNull();
+    expect(
+      await run({
+        fetchImpl: replying({
+          fields: { ...doc.fields, nickname: { stringValue: "<b>" } },
+        }),
+      })
+    ).toBeNull();
+    const fetchImpl = jest.fn();
+    expect(await run({ fetchImpl, getSession: async () => null })).toBeNull();
+    expect(
+      await run({ fetchImpl, config: { ...config, apiKey: "" } })
+    ).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

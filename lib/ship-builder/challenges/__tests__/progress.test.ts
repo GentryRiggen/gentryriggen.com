@@ -7,6 +7,7 @@ import {
 } from "../definitions";
 import {
   EMPTY_PROGRESS,
+  startShipSeason,
   UNSAVED_KEY,
   adoptUnsaved,
   designKeyOf,
@@ -116,6 +117,7 @@ describe("parseProgress", () => {
     expect(parsed).toEqual({
       designs: { a: { outlast: 170, evacuation: 50 } },
       nickname: "Happy Otter 7",
+      season: { number: 0, designs: {} },
     });
   });
 
@@ -134,6 +136,7 @@ describe("parseProgress", () => {
     expect(parsed).toEqual({
       designs: { a: { outlast: 1440, shipshape: 0 } },
       nickname: null,
+      season: { number: 0, designs: {} },
     });
   });
 
@@ -144,7 +147,94 @@ describe("parseProgress", () => {
     expect(({} as Record<string, unknown>).outlast).toBeUndefined();
   });
 
+  it("reads the season and its stars", () => {
+    const parsed = parseProgress(
+      {
+        designs: { a: { outlast: 170 } },
+        nickname: null,
+        season: { number: 3, designs: { a: { outlast: 70, cheat: 2 } } },
+      },
+      isValidNickname
+    );
+    expect(parsed.season).toEqual({
+      number: 3,
+      designs: { a: { outlast: 70 } },
+    });
+  });
+
+  it.each([null, "x", -1, 2.5, { number: "2" }])(
+    "reads a bad season %p as season 0",
+    (season) => {
+      const parsed = parseProgress({ designs: {}, season }, isValidNickname);
+      expect(parsed.season.number).toBe(0);
+    }
+  );
+
   it.each([null, 5, "x", [], undefined])("reads %p as empty", (raw) => {
     expect(parseProgress(raw, isValidNickname)).toEqual(EMPTY_PROGRESS);
+  });
+});
+
+describe("season stars", () => {
+  const allTime = recordBest(EMPTY_PROGRESS, "a", "outlast", 1440);
+
+  it("startShipSeason empties season stars, keeps all-time stars", () => {
+    const started = startShipSeason(allTime, 2);
+    expect(started.season).toEqual({ number: 2, designs: {} });
+    expect(started.designs).toEqual(allTime.designs);
+    expect(totalStars(started)).toBe(3);
+  });
+
+  it("recordBest records into both", () => {
+    const started = startShipSeason(allTime, 2);
+    const next = recordBest(started, "b", "evacuation", 50);
+    expect(next.designs.b).toEqual({ evacuation: 50 });
+    expect(next.season.designs.b).toEqual({ evacuation: 50 });
+  });
+
+  it("recordBest records a season best that is not an all-time best", () => {
+    const started = startShipSeason(allTime, 2);
+    const next = recordBest(started, "a", "outlast", 100);
+    expect(next).not.toBe(started);
+    expect(next.designs.a.outlast).toBe(1440);
+    expect(next.season.designs.a).toEqual({ outlast: 100 });
+    expect(recordBest(next, "a", "outlast", 90)).toBe(next);
+  });
+
+  it("dropDesign drops from both", () => {
+    const both = recordBest(startShipSeason(allTime, 2), "a", "outlast", 100);
+    const dropped = dropDesign(both, "a");
+    expect(dropped.designs).toEqual({});
+    expect(dropped.season.designs).toEqual({});
+  });
+
+  it("drops a design held only in the season", () => {
+    const progress = {
+      ...EMPTY_PROGRESS,
+      season: { number: 2, designs: { a: { outlast: 70 } } },
+    };
+    expect(dropDesign(progress, "a").season.designs).toEqual({});
+  });
+
+  it("adoptUnsaved merges in both", () => {
+    let progress = startShipSeason(EMPTY_PROGRESS, 2);
+    progress = recordBest(progress, "ship-1", "outlast", 170);
+    progress = recordBest(progress, UNSAVED_KEY, "outlast", 100);
+    progress = recordBest(progress, UNSAVED_KEY, "evacuation", 50);
+    const moved = adoptUnsaved(progress, "ship-1");
+    for (const designs of [moved.designs, moved.season.designs]) {
+      expect(designs[UNSAVED_KEY]).toBeUndefined();
+      expect(designs["ship-1"]).toEqual({ outlast: 170, evacuation: 50 });
+    }
+  });
+
+  it("adoptUnsaved moves season stars when only the season has them", () => {
+    const progress = {
+      ...EMPTY_PROGRESS,
+      designs: { [UNSAVED_KEY]: { outlast: 170 } },
+      season: { number: 2, designs: { [UNSAVED_KEY]: { outlast: 70 } } },
+    };
+    const moved = adoptUnsaved(progress, "ship-1");
+    expect(moved.season.designs).toEqual({ "ship-1": { outlast: 70 } });
   });
 });

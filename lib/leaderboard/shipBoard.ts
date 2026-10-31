@@ -2,11 +2,13 @@ import {
   BOARD_LIMIT,
   commitDocumentResult,
   type CommitResult,
+  fetchOwnFields,
   int,
   numberOf,
   runBoardQuery,
   type ClientDeps,
   type FirestoreValue,
+  updatedAtOf,
 } from "./client";
 import { isValidNickname } from "./nickname";
 import { seasonCollection, seasonQueryTarget } from "./season";
@@ -98,4 +100,30 @@ export async function fetchShipBoard(
   const { parent } = seasonQueryTarget("ship", season);
   const json = await runBoardQuery(buildShipBoardQuery(season), deps, parent);
   return json === null ? null : parseShipBoard(json);
+}
+
+/** What the game needs of its own ship board entry. */
+export interface OwnShipEntry {
+  nickname: string;
+  totalStars: number;
+  /** When the entry was last written (ms since epoch), or null if unreadable. */
+  updatedAt: number | null;
+}
+
+/**
+ * The player's own entry in `season`, "missing" when there is none, or null
+ * on any failure (a name the rules would not admit counts as one). Never
+ * throws.
+ */
+export async function fetchOwnShipEntry(
+  season: number,
+  deps: ClientDeps = {}
+): Promise<OwnShipEntry | "missing" | null> {
+  const fields = await fetchOwnFields(seasonCollection("ship", season), deps);
+  if (fields === null || fields === "missing") return fields;
+  const nickname = (fields.nickname as { stringValue?: unknown } | undefined)
+    ?.stringValue;
+  const totalStars = numberOf(fields.totalStars);
+  if (!isValidNickname(nickname) || totalStars === null) return null;
+  return { nickname, totalStars, updatedAt: updatedAtOf(fields) };
 }

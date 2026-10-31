@@ -54,6 +54,37 @@ describe("challenge persistence", () => {
     expect(parseChallenges(v1).designs).toEqual({ a: { outlast: 170 } });
   });
 
+  it("reads a save from before seasons (v2) as season 0", () => {
+    const v2 = JSON.stringify({
+      v: 2,
+      designs: { a: { outlast: 170 } },
+      nickname: "Happy Otter 7",
+    });
+    expect(CHALLENGES_VERSION).toBe(3);
+    const parsed = parseChallenges(v2);
+    expect(parsed.designs).toEqual({ a: { outlast: 170 } });
+    expect(parsed.season).toEqual({ number: 0, designs: {} });
+  });
+
+  it("round-trips the season and its stars", () => {
+    const progress = recordBest(
+      { ...EMPTY_PROGRESS, season: { number: 2, designs: {} } },
+      "a",
+      "outlast",
+      170
+    );
+    const text = serializeChallenges(progress);
+    expect(parseChallenges(text)).toEqual(progress);
+  });
+
+  it("stores a season number even with no stars yet", () => {
+    const text = serializeChallenges({
+      ...EMPTY_PROGRESS,
+      season: { number: 2, designs: {} },
+    });
+    expect(parseChallenges(text).season.number).toBe(2);
+  });
+
   it("lives apart from ship saves, which still load without it", () => {
     expect(CHALLENGES_KEY).not.toBe(SHIPS_KEY);
     expect(CHALLENGES_KEY).not.toBe(AUTOSAVE_KEY);

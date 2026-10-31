@@ -3,6 +3,7 @@ import {
   dropDesign,
   EMPTY_PROGRESS,
   recordBest,
+  startShipSeason,
   UNSAVED_KEY,
   type ChallengeProgress,
 } from "@/lib/ship-builder/challenges/progress";
@@ -13,7 +14,10 @@ import {
   parseChallenges,
   serializeChallenges,
 } from "@/lib/ship-builder/persist/challenges";
-import { createStoredSetting } from "../persist/storedSetting";
+import {
+  createStoredSetting,
+  type StoredSetting,
+} from "../persist/storedSetting";
 
 function readRaw(): string | null {
   try {
@@ -23,8 +27,13 @@ function readRaw(): string | null {
   }
 }
 
-/** Stars and the leaderboard name, remembered per device. */
-export const challengeProgress = createStoredSetting<ChallengeProgress>({
+/**
+ * The name the save held before this session changed it; undefined until
+ * first asked for or until the name is first set.
+ */
+let loadedNickname: string | null | undefined;
+
+const setting = createStoredSetting<ChallengeProgress>({
   key: CHALLENGES_KEY,
   parse: parseChallenges,
   // A newer build's data is left exactly as it is: throwing makes the setting
@@ -37,6 +46,30 @@ export const challengeProgress = createStoredSetting<ChallengeProgress>({
   },
   fallback: EMPTY_PROGRESS,
 });
+
+/** Stars and the leaderboard name, remembered per device. */
+export const challengeProgress: StoredSetting<ChallengeProgress> = {
+  ...setting,
+  resetMemory() {
+    loadedNickname = undefined;
+    setting.resetMemory();
+  },
+};
+
+function noteLoadedNickname(): void {
+  if (loadedNickname === undefined) {
+    loadedNickname = challengeProgress.get().nickname;
+  }
+}
+
+/**
+ * The name the save loaded with, before anything this session set: the board
+ * sync takes a different name on the board as the admin's, never this one.
+ */
+export function loadedChallengeNickname(): string | null {
+  noteLoadedNickname();
+  return loadedNickname ?? null;
+}
 
 /** Records a value; returns whether it beat what was stored. */
 export function recordChallengeBest(
@@ -70,5 +103,17 @@ export function forgetUnsavedChallenges(): void {
 }
 
 export function setChallengeNickname(nickname: string): void {
+  noteLoadedNickname();
   challengeProgress.set({ ...challengeProgress.get(), nickname });
+}
+
+/**
+ * Moves the stars into season `number` when that is newer than theirs: the
+ * season's stars start from zero, all-time stars stay. Returns whether it did.
+ */
+export function applyShipSeason(number: number): boolean {
+  const before = challengeProgress.get();
+  if (number <= before.season.number) return false;
+  challengeProgress.set(startShipSeason(before, number));
+  return true;
 }

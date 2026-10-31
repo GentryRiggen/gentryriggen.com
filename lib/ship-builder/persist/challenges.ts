@@ -15,14 +15,17 @@ export const CHALLENGES_KEY = "ship-builder:challenges";
 /**
  * Bump with a migration in `parseChallenges` if the stored shape changes, or
  * when a challenge id is added (an older build would drop the new id's bests
- * on its next save, so it leaves newer data alone instead). 2 added `smooth`.
+ * on its next save, so it leaves newer data alone instead). 2 added `smooth`;
+ * 3 added `season` (an older save reads as season 0, so the first season
+ * read starts its season stars from zero).
  */
-export const CHALLENGES_VERSION = 2;
+export const CHALLENGES_VERSION = 3;
 
 interface StoredChallenges {
   v: number;
   designs: ChallengeProgress["designs"];
   nickname: ChallengeProgress["nickname"];
+  season: ChallengeProgress["season"];
 }
 
 /** True for stored text written by a newer build (a later `v`). */
@@ -59,7 +62,9 @@ export function serializeChallenges(
 ): string | null {
   if (
     progress.nickname === null &&
-    Object.keys(progress.designs).length === 0
+    Object.keys(progress.designs).length === 0 &&
+    progress.season.number === 0 &&
+    Object.keys(progress.season.designs).length === 0
   ) {
     return null;
   }
@@ -67,6 +72,7 @@ export function serializeChallenges(
     v: CHALLENGES_VERSION,
     designs: progress.designs,
     nickname: progress.nickname,
+    season: progress.season,
   };
   return JSON.stringify(stored);
 }

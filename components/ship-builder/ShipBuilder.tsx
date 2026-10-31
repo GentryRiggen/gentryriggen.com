@@ -8,6 +8,7 @@ import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useServiceWorker from "./hooks/useServiceWorker";
 import usePhotoStore from "./hooks/usePhotoStore";
 import useShipPersistence from "./hooks/useShipPersistence";
+import { useShipBoardSync } from "./hooks/shipBoardSync";
 import useTestHook from "./hooks/useTestHook";
 import useWebGLSupport from "./hooks/useWebGLSupport";
 import AppHeader from "./ui/AppHeader";
@@ -54,6 +55,7 @@ const Scene = dynamic(() => import("./scene/Scene"), {
 export default function ShipBuilder() {
   useTestHook();
   useShipPersistence();
+  useShipBoardSync();
   useKeyboardShortcuts();
   useServiceWorker();
   const webgl = useWebGLSupport();
