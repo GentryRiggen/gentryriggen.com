@@ -3,11 +3,11 @@ import { firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/config";
 import type { FirebaseWebConfig } from "@/lib/firebase/config";
 import { getIdToken } from "./auth";
 import type { AuthSession } from "./auth";
+import { seasonCollection, seasonQueryTarget } from "./season";
 import type { BoardKind, LeaderboardEntry, LeaderboardRow } from "./types";
 
 const DEFAULT_BASE_URL = "https://firestore.googleapis.com";
 export const BOARD_LIMIT = 50;
-const COLLECTION = "leaderboard";
 
 export interface ClientDeps {
   config?: FirebaseWebConfig;
@@ -41,11 +41,18 @@ export function commitUrl(
   return `${documentsUrl(config, baseUrl)}:commit?key=${config.apiKey}`;
 }
 
+/**
+ * A structured query's endpoint. With a `parent` document path (such as
+ * "planeSeasons/3"), the query runs on that document's subcollections.
+ */
 export function runQueryUrl(
   config: FirebaseWebConfig,
-  baseUrl: string = DEFAULT_BASE_URL
+  baseUrl: string = DEFAULT_BASE_URL,
+  parent = ""
 ): string {
-  return `${documentsUrl(config, baseUrl)}:runQuery?key=${config.apiKey}`;
+  const root = documentsUrl(config, baseUrl);
+  const base = parent === "" ? root : `${root}/${parent}`;
+  return `${base}:runQuery?key=${config.apiKey}`;
 }
 
 export const int = (n: number): FirestoreValue => ({ integerValue: String(n) });
@@ -94,13 +101,19 @@ function entryFields(entry: LeaderboardEntry): Record<string, FirestoreValue> {
   };
 }
 
-/** The Plane Builder entry as a `leaderboard/{uid}` write. */
+/** The Plane Builder entry as a write of the season's `{collection}/{uid}`. */
 export function buildSubmitBody(
   projectId: string,
   uid: string,
-  entry: LeaderboardEntry
+  entry: LeaderboardEntry,
+  season: number
 ) {
-  return buildDocumentBody(projectId, COLLECTION, uid, entryFields(entry));
+  return buildDocumentBody(
+    projectId,
+    seasonCollection("plane", season),
+    uid,
+    entryFields(entry)
+  );
 }
 
 /**
@@ -151,31 +164,46 @@ export async function commitDocumentResult(
   }
 }
 
-/** Never throws; resolves to whether the write was accepted. */
+/**
+ * Writes the entry to `season`'s board. Never throws; resolves to whether
+ * the write was accepted.
+ */
 export function submitEntry(
   entry: LeaderboardEntry,
+  season: number,
   deps: ClientDeps = {}
 ): Promise<boolean> {
-  return commitDocument(COLLECTION, entryFields(entry), deps);
+  return commitDocument(
+    seasonCollection("plane", season),
+    entryFields(entry),
+    deps
+  );
 }
 
-/** Runs a structured query: the raw JSON reply, or null on any failure. */
+/**
+ * Runs a structured query (under `parent`, a document path, when given): the
+ * raw JSON reply, or null on any failure.
+ */
 export async function runBoardQuery(
   body: unknown,
-  deps: ClientDeps = {}
+  deps: ClientDeps = {},
+  parent = ""
 ): Promise<unknown> {
   const config = deps.config ?? firebaseConfig;
   if (!isFirebaseConfigured(config)) return null;
   try {
     const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
-    const response = await fetchImpl(runQueryUrl(config, deps.baseUrl), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(await leaderboardAppCheckHeaders(deps)),
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await fetchImpl(
+      runQueryUrl(config, deps.baseUrl, parent),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await leaderboardAppCheckHeaders(deps)),
+        },
+        body: JSON.stringify(body),
+      }
+    );
     if (!response.ok) return null;
     return await response.json();
   } catch {
@@ -189,10 +217,11 @@ function orderField(kind: BoardKind): string {
   return `bestTimes.${kind.world}`;
 }
 
-export function buildBoardQuery(kind: BoardKind) {
+export function buildBoardQuery(kind: BoardKind, season: number) {
   const direction = kind === "prestige" ? "DESCENDING" : "ASCENDING";
+  const { collectionId } = seasonQueryTarget("plane", season);
   const structuredQuery: Record<string, unknown> = {
-    from: [{ collectionId: COLLECTION }],
+    from: [{ collectionId }],
     orderBy: [{ field: { fieldPath: orderField(kind) }, direction }],
     limit: BOARD_LIMIT,
   };
@@ -253,11 +282,13 @@ export function parseBoard(json: unknown, kind: BoardKind): LeaderboardRow[] {
   return rows;
 }
 
-/** The top 50 rows, or null on any failure. Reads need no auth. */
+/** `season`'s top 50 rows, or null on any failure. Reads need no auth. */
 export async function fetchBoard(
   kind: BoardKind,
+  season: number,
   deps: ClientDeps = {}
 ): Promise<LeaderboardRow[] | null> {
-  const json = await runBoardQuery(buildBoardQuery(kind), deps);
+  const { parent } = seasonQueryTarget("plane", season);
+  const json = await runBoardQuery(buildBoardQuery(kind, season), deps, parent);
   return json === null ? null : parseBoard(json, kind);
 }

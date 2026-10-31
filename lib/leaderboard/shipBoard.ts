@@ -9,14 +9,14 @@ import {
   type FirestoreValue,
 } from "./client";
 import { isValidNickname } from "./nickname";
+import { seasonCollection, seasonQueryTarget } from "./season";
 import type { LeaderboardRow } from "./types";
-
-export const SHIP_COLLECTION = "shipLeaderboard";
 
 /**
  * A Ship Builder player's standing: stars across all their designs and their
  * best value per challenge (see lib/ship-builder/challenges). Mirrored by
- * `shipLeaderboard` in firestore.rules.
+ * `shipSeasons/{n}/entries` (and the frozen season 1 `shipLeaderboard`) in
+ * firestore.rules.
  */
 export interface ShipBoardEntry {
   nickname: string;
@@ -24,7 +24,7 @@ export interface ShipBoardEntry {
   bests: Readonly<Record<string, number | undefined>>;
 }
 
-/** `fields` of a full-document write of `shipLeaderboard/{uid}`. */
+/** `fields` of a full-document write of a ship board entry. */
 export function shipEntryFields(
   entry: ShipBoardEntry
 ): Record<string, FirestoreValue> {
@@ -39,18 +39,24 @@ export function shipEntryFields(
   };
 }
 
-/** Never throws; resolves to how the write ended. */
+/** Writes to `season`'s board. Never throws; resolves to how the write ended. */
 export function submitShipEntry(
   entry: ShipBoardEntry,
+  season: number,
   deps: ClientDeps = {}
 ): Promise<CommitResult> {
-  return commitDocumentResult(SHIP_COLLECTION, shipEntryFields(entry), deps);
+  return commitDocumentResult(
+    seasonCollection("ship", season),
+    shipEntryFields(entry),
+    deps
+  );
 }
 
-export function buildShipBoardQuery() {
+export function buildShipBoardQuery(season: number) {
+  const { collectionId } = seasonQueryTarget("ship", season);
   return {
     structuredQuery: {
-      from: [{ collectionId: SHIP_COLLECTION }],
+      from: [{ collectionId }],
       orderBy: [
         { field: { fieldPath: "totalStars" }, direction: "DESCENDING" },
       ],
@@ -81,10 +87,15 @@ export function parseShipBoard(json: unknown): LeaderboardRow[] {
   return rows;
 }
 
-/** The top 50 by total stars, or null on any failure. Reads need no auth. */
+/**
+ * `season`'s top 50 by total stars, or null on any failure. Reads need no
+ * auth.
+ */
 export async function fetchShipBoard(
+  season: number,
   deps: ClientDeps = {}
 ): Promise<LeaderboardRow[] | null> {
-  const json = await runBoardQuery(buildShipBoardQuery(), deps);
+  const { parent } = seasonQueryTarget("ship", season);
+  const json = await runBoardQuery(buildShipBoardQuery(season), deps, parent);
   return json === null ? null : parseShipBoard(json);
 }

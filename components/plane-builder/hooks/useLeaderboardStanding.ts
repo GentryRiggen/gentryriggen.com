@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getIdToken } from "@/lib/leaderboard/auth";
 import { fetchBoard } from "@/lib/leaderboard/client";
+import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { standingOn } from "@/lib/leaderboard/rank";
 import type { Standing } from "@/lib/leaderboard/rank";
 import { scoreFor } from "@/lib/leaderboard/types";
@@ -52,7 +53,7 @@ export default function useLeaderboardStanding(
       .then(async (session) => {
         if (!session) return publish(null, null);
         publish(session.uid, undefined);
-        const rows = await fetchBoard(kind);
+        const rows = await fetchBoard(kind, FIRST_SEASON);
         publish(session.uid, rows ?? null);
       })
       .catch(() => publish(null, null));

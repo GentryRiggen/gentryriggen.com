@@ -39,7 +39,7 @@ describe("shipEntryFields", () => {
 describe("submitShipEntry", () => {
   it("commits a full write of shipLeaderboard/{uid} with a server time", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
-    const ok = await submitShipEntry(entry, {
+    const ok = await submitShipEntry(entry, 1, {
       config,
       fetchImpl,
       getSession: async () => ({ uid: "u1", idToken: "tok" }),
@@ -61,24 +61,24 @@ describe("submitShipEntry", () => {
   it("tells a refusal from a failure to deliver", async () => {
     const getSession = async () => ({ uid: "u1", idToken: "t" });
     expect(
-      await submitShipEntry(entry, { config, getSession: async () => null })
+      await submitShipEntry(entry, 1, { config, getSession: async () => null })
     ).toBe("error");
     expect(
-      await submitShipEntry(entry, {
+      await submitShipEntry(entry, 1, {
         config,
         fetchImpl: jest.fn().mockResolvedValue({ ok: false, status: 403 }),
         getSession,
       })
     ).toBe("refused");
     expect(
-      await submitShipEntry(entry, {
+      await submitShipEntry(entry, 1, {
         config,
         fetchImpl: jest.fn().mockResolvedValue({ ok: false, status: 503 }),
         getSession,
       })
     ).toBe("error");
     expect(
-      await submitShipEntry(entry, {
+      await submitShipEntry(entry, 1, {
         config,
         fetchImpl: jest.fn().mockRejectedValue(new Error("offline")),
         getSession,
@@ -99,7 +99,7 @@ describe("the board", () => {
   });
 
   it("asks for the top 50 by total stars", () => {
-    expect(buildShipBoardQuery().structuredQuery).toEqual({
+    expect(buildShipBoardQuery(1).structuredQuery).toEqual({
       from: [{ collectionId: "shipLeaderboard" }],
       orderBy: [
         { field: { fieldPath: "totalStars" }, direction: "DESCENDING" },
@@ -127,14 +127,52 @@ describe("the board", () => {
       ok: true,
       json: async () => [row("a", "Happy Otter 7", 9)],
     });
-    expect(await fetchShipBoard({ config, fetchImpl })).toHaveLength(1);
+    expect(await fetchShipBoard(1, { config, fetchImpl })).toHaveLength(1);
     expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBeUndefined();
     expect(
-      await fetchShipBoard({
+      await fetchShipBoard(1, {
         config,
         fetchImpl: jest.fn().mockResolvedValue({ ok: false }),
       })
     ).toBeNull();
+  });
+});
+
+describe("ship seasons", () => {
+  const getSession = async () => ({ uid: "u1", idToken: "tok" });
+
+  it("writes season 1 to shipLeaderboard and later seasons to shipSeasons/{n}/entries", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+    await submitShipEntry(entry, 1, { config, fetchImpl, getSession });
+    await submitShipEntry(entry, 2, { config, fetchImpl, getSession });
+    const names = fetchImpl.mock.calls.map(
+      ([, init]) => JSON.parse(init.body).writes[0].update.name
+    );
+    expect(names).toEqual([
+      "projects/proj/databases/(default)/documents/shipLeaderboard/u1",
+      "projects/proj/databases/(default)/documents/shipSeasons/2/entries/u1",
+    ]);
+  });
+
+  it("queries season 1 at the root and later seasons under their season doc", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [] });
+    await fetchShipBoard(1, { config, fetchImpl });
+    await fetchShipBoard(2, { config, fetchImpl });
+    const [[rootUrl, rootInit], [seasonUrl, seasonInit]] = fetchImpl.mock.calls;
+    expect(rootUrl).toBe(
+      "https://firestore.googleapis.com/v1/projects/proj/databases/(default)/documents:runQuery?key=KEY"
+    );
+    expect(JSON.parse(rootInit.body).structuredQuery.from).toEqual([
+      { collectionId: "shipLeaderboard" },
+    ]);
+    expect(seasonUrl).toBe(
+      "https://firestore.googleapis.com/v1/projects/proj/databases/(default)/documents/shipSeasons/2:runQuery?key=KEY"
+    );
+    expect(JSON.parse(seasonInit.body).structuredQuery.from).toEqual([
+      { collectionId: "entries" },
+    ]);
   });
 });
 
@@ -149,8 +187,8 @@ describe("ship board App Check headers", () => {
       getSession: async () => ({ uid: "u1", idToken: "t" }),
       getAppCheckHeaders: async () => ({ "X-Firebase-AppCheck": "AC" }),
     };
-    await submitShipEntry(entry, deps);
-    await fetchShipBoard(deps);
+    await submitShipEntry(entry, 1, deps);
+    await fetchShipBoard(1, deps);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     for (const call of fetchImpl.mock.calls) {
       expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");

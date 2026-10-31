@@ -38,7 +38,7 @@ describe("scoreFor", () => {
 
 describe("buildSubmitBody", () => {
   it("encodes the exact REST document with a REQUEST_TIME transform", () => {
-    expect(buildSubmitBody("proj", "uid-1", entry)).toEqual({
+    expect(buildSubmitBody("proj", "uid-1", entry, 1)).toEqual({
       writes: [
         {
           update: {
@@ -68,11 +68,12 @@ describe("buildSubmitBody", () => {
   });
 
   it("encodes a fastestRun as an integer and empty bestTimes as an empty map", () => {
-    const body = buildSubmitBody("proj", "u", {
-      ...entry,
-      bestTimes: {},
-      fastestRun: 900,
-    });
+    const body = buildSubmitBody(
+      "proj",
+      "u",
+      { ...entry, bestTimes: {}, fastestRun: 900 },
+      1
+    );
     const { fields } = body.writes[0].update;
     expect(fields.fastestRun).toEqual({ integerValue: "900" });
     expect(fields.bestTimes).toEqual({ mapValue: { fields: {} } });
@@ -95,7 +96,7 @@ describe("submitEntry", () => {
 
   it("posts with the bearer token and resolves true on success", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
-    expect(await submitEntry(entry, { config, fetchImpl, getSession })).toBe(
+    expect(await submitEntry(entry, 1, { config, fetchImpl, getSession })).toBe(
       true
     );
     const [url, init] = fetchImpl.mock.calls[0];
@@ -103,20 +104,20 @@ describe("submitEntry", () => {
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBe("Bearer tok");
     expect(JSON.parse(init.body)).toEqual(
-      buildSubmitBody("proj", "uid-1", entry)
+      buildSubmitBody("proj", "uid-1", entry, 1)
     );
   });
 
   it("resolves false when rejected, offline, signed out or unconfigured", async () => {
     expect(
-      await submitEntry(entry, {
+      await submitEntry(entry, 1, {
         config,
         getSession,
         fetchImpl: jest.fn().mockResolvedValue({ ok: false }),
       })
     ).toBe(false);
     expect(
-      await submitEntry(entry, {
+      await submitEntry(entry, 1, {
         config,
         getSession,
         fetchImpl: jest.fn().mockRejectedValue(new Error("offline")),
@@ -124,14 +125,14 @@ describe("submitEntry", () => {
     ).toBe(false);
     const fetchImpl = jest.fn();
     expect(
-      await submitEntry(entry, {
+      await submitEntry(entry, 1, {
         config,
         fetchImpl,
         getSession: async () => null,
       })
     ).toBe(false);
     expect(
-      await submitEntry(entry, {
+      await submitEntry(entry, 1, {
         config: { ...config, apiKey: "" },
         fetchImpl,
         getSession,
@@ -142,7 +143,7 @@ describe("submitEntry", () => {
 
   it("never throws when the session lookup throws", async () => {
     await expect(
-      submitEntry(entry, {
+      submitEntry(entry, 1, {
         config,
         getSession: async () => {
           throw new Error("boom");
@@ -152,11 +153,76 @@ describe("submitEntry", () => {
   });
 });
 
+describe("seasons", () => {
+  const getSession = async () => ({ uid: "uid-1", idToken: "tok" });
+
+  it("writes season 1 to leaderboard/{uid} and later seasons to planeSeasons/{n}/entries/{uid}", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+    await submitEntry(entry, 1, { config, fetchImpl, getSession });
+    await submitEntry(entry, 3, { config, fetchImpl, getSession });
+    const names = fetchImpl.mock.calls.map(
+      ([, init]) => JSON.parse(init.body).writes[0].update.name
+    );
+    expect(names).toEqual([
+      "projects/proj/databases/(default)/documents/leaderboard/uid-1",
+      "projects/proj/databases/(default)/documents/planeSeasons/3/entries/uid-1",
+    ]);
+    for (const [url] of fetchImpl.mock.calls)
+      expect(url).toBe(commitUrl(config));
+  });
+
+  it("queries season 1 at the root and later seasons under their season doc", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [] });
+    await fetchBoard("prestige", 1, { config, fetchImpl });
+    await fetchBoard("prestige", 3, { config, fetchImpl });
+    const [[rootUrl, rootInit], [seasonUrl, seasonInit]] = fetchImpl.mock.calls;
+    expect(rootUrl).toBe(runQueryUrl(config));
+    expect(JSON.parse(rootInit.body).structuredQuery.from).toEqual([
+      { collectionId: "leaderboard" },
+    ]);
+    expect(seasonUrl).toContain("documents/planeSeasons/3:runQuery");
+    expect(seasonUrl).toBe(
+      "https://firestore.googleapis.com/v1/projects/proj/databases/(default)/documents/planeSeasons/3:runQuery?key=KEY"
+    );
+    expect(JSON.parse(seasonInit.body).structuredQuery.from).toEqual([
+      { collectionId: "entries" },
+    ]);
+  });
+
+  it("builds a season query on the entries subcollection", () => {
+    expect(buildBoardQuery("prestige", 2).structuredQuery.from).toEqual([
+      { collectionId: "entries" },
+    ]);
+  });
+
+  it("parses rows of a season board", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          document: {
+            name: "projects/proj/databases/(default)/documents/planeSeasons/2/entries/u9",
+            fields: {
+              nickname: { stringValue: "Happy Otter 7" },
+              score: { integerValue: "5" },
+            },
+          },
+        },
+      ],
+    });
+    expect(await fetchBoard("prestige", 2, { config, fetchImpl })).toEqual([
+      { uid: "u9", nickname: "Happy Otter 7", value: 5 },
+    ]);
+  });
+});
+
 describe("buildBoardQuery", () => {
   const from = [{ collectionId: "leaderboard" }];
 
   it("prestige: score descending, limit 50", () => {
-    expect(buildBoardQuery("prestige")).toEqual({
+    expect(buildBoardQuery("prestige", 1)).toEqual({
       structuredQuery: {
         from,
         orderBy: [{ field: { fieldPath: "score" }, direction: "DESCENDING" }],
@@ -166,7 +232,7 @@ describe("buildBoardQuery", () => {
   });
 
   it("fastestRun: ascending with a > 0 filter", () => {
-    expect(buildBoardQuery("fastestRun")).toEqual({
+    expect(buildBoardQuery("fastestRun", 1)).toEqual({
       structuredQuery: {
         from,
         where: {
@@ -185,7 +251,7 @@ describe("buildBoardQuery", () => {
   });
 
   it("a world: bestTimes.<id> ascending", () => {
-    expect(buildBoardQuery({ world: "canyon" })).toEqual({
+    expect(buildBoardQuery({ world: "canyon" }, 1)).toEqual({
       structuredQuery: {
         from,
         orderBy: [
@@ -217,7 +283,7 @@ describe("fetchBoard", () => {
       doc("a", { score: { integerValue: "3000000005" } }),
       doc("b", { score: { integerValue: "1" } }),
     ]);
-    expect(await fetchBoard("prestige", { config, fetchImpl })).toEqual([
+    expect(await fetchBoard("prestige", 1, { config, fetchImpl })).toEqual([
       { uid: "a", nickname: "Nick a", value: 3000000005 },
       { uid: "b", nickname: "Nick b", value: 1 },
     ]);
@@ -228,7 +294,7 @@ describe("fetchBoard", () => {
 
   it("parses fastestRun and per-world values, skipping bad rows", async () => {
     expect(
-      await fetchBoard("fastestRun", {
+      await fetchBoard("fastestRun", 1, {
         config,
         fetchImpl: ok([
           doc("a", { fastestRun: { integerValue: "900" } }),
@@ -239,47 +305,44 @@ describe("fetchBoard", () => {
     ).toEqual([{ uid: "a", nickname: "Nick a", value: 900 }]);
 
     expect(
-      await fetchBoard(
-        { world: "canyon" },
-        {
-          config,
-          fetchImpl: ok([
-            doc("a", {
-              bestTimes: {
-                mapValue: { fields: { canyon: { doubleValue: 41.25 } } },
-              },
-            }),
-            doc("nope", { bestTimes: { mapValue: { fields: {} } } }),
-          ]),
-        }
-      )
+      await fetchBoard({ world: "canyon" }, 1, {
+        config,
+        fetchImpl: ok([
+          doc("a", {
+            bestTimes: {
+              mapValue: { fields: { canyon: { doubleValue: 41.25 } } },
+            },
+          }),
+          doc("nope", { bestTimes: { mapValue: { fields: {} } } }),
+        ]),
+      })
     ).toEqual([{ uid: "a", nickname: "Nick a", value: 41.25 }]);
   });
 
   it("returns an empty list for an empty or non-array response", async () => {
-    expect(await fetchBoard("prestige", { config, fetchImpl: ok([]) })).toEqual(
-      []
-    );
     expect(
-      await fetchBoard("prestige", { config, fetchImpl: ok({ error: 1 }) })
+      await fetchBoard("prestige", 1, { config, fetchImpl: ok([]) })
+    ).toEqual([]);
+    expect(
+      await fetchBoard("prestige", 1, { config, fetchImpl: ok({ error: 1 }) })
     ).toEqual([]);
   });
 
   it("returns null on HTTP errors, network errors and when unconfigured", async () => {
     expect(
-      await fetchBoard("prestige", {
+      await fetchBoard("prestige", 1, {
         config,
         fetchImpl: jest.fn().mockResolvedValue({ ok: false }),
       })
     ).toBeNull();
     expect(
-      await fetchBoard("prestige", {
+      await fetchBoard("prestige", 1, {
         config,
         fetchImpl: jest.fn().mockRejectedValue(new Error("offline")),
       })
     ).toBeNull();
     expect(
-      await fetchBoard("prestige", {
+      await fetchBoard("prestige", 1, {
         config: { ...config, projectId: "" },
         fetchImpl: ok([]),
       })
@@ -295,13 +358,13 @@ describe("App Check headers", () => {
     const fetchImpl = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => [] });
-    await submitEntry(entry, {
+    await submitEntry(entry, 1, {
       config,
       fetchImpl,
       getSession,
       getAppCheckHeaders,
     });
-    await fetchBoard("prestige", { config, fetchImpl, getAppCheckHeaders });
+    await fetchBoard("prestige", 1, { config, fetchImpl, getAppCheckHeaders });
     for (const call of fetchImpl.mock.calls) {
       expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");
     }
@@ -311,13 +374,13 @@ describe("App Check headers", () => {
     const fetchImpl = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => [] });
-    await submitEntry(entry, {
+    await submitEntry(entry, 1, {
       config,
       fetchImpl,
       getSession,
       getAppCheckHeaders: async () => ({}),
     });
-    await fetchBoard("prestige", {
+    await fetchBoard("prestige", 1, {
       config,
       fetchImpl,
       getAppCheckHeaders: async () => ({}),

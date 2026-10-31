@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getIdToken } from "@/lib/leaderboard/auth";
 import { standingOn } from "@/lib/leaderboard/rank";
+import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { fetchShipBoard } from "@/lib/leaderboard/shipBoard";
 import type { LeaderboardRow } from "@/lib/leaderboard/types";
 import { totalStars } from "@/lib/ship-builder/challenges/progress";
@@ -39,7 +40,7 @@ export default function ShipLeaderboard({
     };
     getIdToken()
       .then(async (session) => {
-        const rows = session ? await fetchShipBoard() : null;
+        const rows = session ? await fetchShipBoard(FIRST_SEASON) : null;
         publish(
           session && rows
             ? { status: "ready", uid: session.uid, rows }

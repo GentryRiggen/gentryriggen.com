@@ -145,16 +145,18 @@ service cloud.firestore {
         && notBanned(uid);
     }
 
+    // Season 1 of the plane board, frozen when seasons began: players can no
+    // longer write it, the admin may only rename or delete an entry.
     match /leaderboard/{uid} {
       allow get: if true;
       allow list: if request.query.limit <= 50 && request.query.offset == 0;
-      allow create: if isPlayer(uid) && validLeaderboard() && validLeaderboardCreate(uid);
-      allow update: if isPlayer(uid) && validLeaderboard() && validLeaderboardUpdate(uid);
+      allow create: if false;
+      allow update: if adminRename();
       allow delete: if isAdmin();
     }
 
     // Players removed from the leaderboard by the admin. A ban document stops
-    // the player's anonymous uid from writing leaderboard/{uid} again.
+    // the player's anonymous uid from writing any season's entry again.
     match /leaderboardBans/{uid} {
       allow read, write: if isAdmin();
     }
@@ -220,11 +222,78 @@ service cloud.firestore {
         && notBanned(uid);
     }
 
+    // Season 1 of the ship board, frozen like leaderboard/{uid} above.
     match /shipLeaderboard/{uid} {
       allow get: if true;
       allow list: if request.query.limit <= 50 && request.query.offset == 0;
-      allow create: if isPlayer(uid) && validShipLeaderboard() && validShipCreate(uid);
-      allow update: if isPlayer(uid) && validShipLeaderboard() && validShipUpdate(uid);
+      allow create: if false;
+      allow update: if adminRename();
+      allow delete: if isAdmin();
+    }
+
+    // ---- Leaderboard seasons -------------------------------------------
+    // seasons/{game} holds each game's current season number (the games
+    // count separately). No doc means season 1, the frozen boards above; the
+    // admin starts season 2 by creating the doc and each later season by
+    // adding exactly one. Entries of season n >= 2 live in
+    // planeSeasons/{n}/entries/{uid} and shipSeasons/{n}/entries/{uid}, with
+    // the same checks as before seasons, and only the current season can be
+    // written. With no season doc, get() fails and every season write is
+    // refused. The number must be an int: string(2.0) is '2.0', which would
+    // match no season path. lib/leaderboard/season.ts mirrors the paths.
+
+    match /seasons/{game} {
+      allow get: if true;
+      allow create: if isAdmin()
+        && game in ['plane', 'ship']
+        && request.resource.data.keys().hasOnly(['number', 'startedAt'])
+        && request.resource.data.keys().hasAll(['number', 'startedAt'])
+        && request.resource.data.number is int
+        && request.resource.data.number == 2
+        && request.resource.data.startedAt == request.time;
+      allow update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['number', 'startedAt'])
+        && request.resource.data.keys().hasAll(['number', 'startedAt'])
+        && request.resource.data.number is int
+        && request.resource.data.number == resource.data.number + 1
+        && request.resource.data.startedAt == request.time;
+    }
+
+    function currentSeason(game) {
+      return get(/databases/$(database)/documents/seasons/$(game)).data.number;
+    }
+
+    // The admin may only change an entry's name (to another generated one).
+    function adminRename() {
+      return isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nickname', 'updatedAt'])
+        && validNickname(request.resource.data.nickname)
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    match /planeSeasons/{season}/entries/{uid} {
+      allow get: if true;
+      allow list: if request.query.limit <= 50 && request.query.offset == 0;
+      allow create: if isPlayer(uid)
+        && season == string(currentSeason('plane'))
+        && validLeaderboard() && validLeaderboardCreate(uid);
+      allow update: if (isPlayer(uid)
+          && season == string(currentSeason('plane'))
+          && validLeaderboard() && validLeaderboardUpdate(uid))
+        || adminRename();
+      allow delete: if isAdmin();
+    }
+
+    match /shipSeasons/{season}/entries/{uid} {
+      allow get: if true;
+      allow list: if request.query.limit <= 50 && request.query.offset == 0;
+      allow create: if isPlayer(uid)
+        && season == string(currentSeason('ship'))
+        && validShipLeaderboard() && validShipCreate(uid);
+      allow update: if (isPlayer(uid)
+          && season == string(currentSeason('ship'))
+          && validShipLeaderboard() && validShipUpdate(uid))
+        || adminRename();
       allow delete: if isAdmin();
     }
 

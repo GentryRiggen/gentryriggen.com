@@ -138,7 +138,7 @@ it("opens the board on the world's tab over the popup and restores focus", async
     within(boardDialog).getByRole("tab", { name: "Per world", selected: true })
   ).toBeVisible();
   expect(within(boardDialog).getByRole("combobox")).toHaveValue("meadow");
-  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" });
+  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 1);
   expect(
     await within(boardDialog).findByText("Me Pilot 1", {
       selector: "span",

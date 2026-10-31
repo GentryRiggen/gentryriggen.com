@@ -1,4 +1,5 @@
 import { randomNickname } from "@/lib/leaderboard/nickname";
+import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { submitShipEntry } from "@/lib/leaderboard/shipBoard";
 import { createBoardSync } from "@/lib/ship-builder/challenges/boardSync";
 import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
@@ -25,7 +26,8 @@ const sync = createBoardSync({
     setChallengeNickname(nickname);
     return nickname;
   },
-  submit: (entry) => submitShipEntry(entry),
+  // Placeholder until the season number is wired in.
+  submit: (entry) => submitShipEntry(entry, FIRST_SEASON),
 });
 
 /** Call after the stars change. */

@@ -27,6 +27,7 @@ import type { PageviewEvent } from "@/lib/analytics/types";
 import { fetchBoard, runQueryUrl, submitEntry } from "@/lib/leaderboard/client";
 import { fetchDailyBoard, submitDaily } from "@/lib/leaderboard/daily";
 import { dailyFor } from "@/lib/plane-builder/daily/daily";
+import { fetchSeason } from "@/lib/leaderboard/season";
 import { fetchShipBoard, submitShipEntry } from "@/lib/leaderboard/shipBoard";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { scoreFor } from "@/lib/leaderboard/types";
@@ -117,6 +118,31 @@ const stamped = (patch: Record<string, unknown> = {}) => ({
   ts: serverTimestamp(),
   ...patch,
 });
+
+/** Seeds the season docs (null leaves one out). */
+async function seedSeasons(plane: number | null = 2, ship: number | null = 2) {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    if (plane !== null) {
+      await setDoc(doc(db, "seasons/plane"), {
+        number: plane,
+        startedAt: new Date(),
+      });
+    }
+    if (ship !== null) {
+      await setDoc(doc(db, "seasons/ship"), {
+        number: ship,
+        startedAt: new Date(),
+      });
+    }
+  });
+}
+
+/** Clears everything and seeds season 2 for both games again. */
+async function resetFirestore() {
+  await env.clearFirestore();
+  await seedSeasons();
+}
 
 async function seed() {
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -410,12 +436,13 @@ describe("update and delete", () => {
   });
 });
 
-describe("leaderboard", () => {
+describe("plane season entries (season 2)", () => {
   const UID = "player-1";
+  beforeEach(() => seedSeasons());
   const player = (uid = UID, provider: Provider | null = "anonymous") =>
     signedIn(uid, { provider });
   const lbDoc = (db: ReturnType<typeof anon>, uid = UID) =>
-    doc(db, `leaderboard/${uid}`);
+    doc(db, `planeSeasons/2/entries/${uid}`);
 
   const baseEntry = {
     nickname: "Happy Otter 7",
@@ -850,7 +877,8 @@ describe("leaderboard", () => {
 
   describe("read", () => {
     beforeEach(() => seedPlayer());
-    const col = (db: ReturnType<typeof anon>) => collection(db, "leaderboard");
+    const col = (db: ReturnType<typeof anon>) =>
+      collection(db, "planeSeasons/2/entries");
 
     it("lets anyone get a single entry", async () => {
       await assertSucceeds(getDoc(lbDoc(anon())));
@@ -882,12 +910,12 @@ describe("leaderboard", () => {
     });
 
     const runQuery = (structuredQuery: Record<string, unknown>) =>
-      fetch(runQueryUrl(config, baseUrl), {
+      fetch(runQueryUrl(config, baseUrl, "planeSeasons/2"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           structuredQuery: {
-            from: [{ collectionId: "leaderboard" }],
+            from: [{ collectionId: "entries" }],
             ...structuredQuery,
           },
         }),
@@ -953,7 +981,7 @@ describe("leaderboard", () => {
     };
 
     it("creates the doc with the exact body the game sends", async () => {
-      expect(await submitEntry(restEntry, deps(UID))).toBe(true);
+      expect(await submitEntry(restEntry, 2, deps(UID))).toBe(true);
       await env.withSecurityRulesDisabled(async (ctx) => {
         const snap = await getDoc(lbDoc(ctx.firestore()));
         expect(snap.data()?.score).toBe(1_000_001_000);
@@ -962,15 +990,15 @@ describe("leaderboard", () => {
     });
 
     it("rejects an immediate rewrite (rate limit) and a forged score", async () => {
-      expect(await submitEntry(restEntry, deps(UID))).toBe(true);
-      expect(await submitEntry(restEntry, deps(UID))).toBe(false);
+      expect(await submitEntry(restEntry, 2, deps(UID))).toBe(true);
+      expect(await submitEntry(restEntry, 2, deps(UID))).toBe(false);
       expect(
-        await submitEntry({ ...restEntry, score: 9e12 }, deps("player-9"))
+        await submitEntry({ ...restEntry, score: 9e12 }, 2, deps("player-9"))
       ).toBe(false);
     });
 
     it("reads boards back through runQuery", async () => {
-      await submitEntry(restEntry, deps(UID));
+      await submitEntry(restEntry, 2, deps(UID));
       await submitEntry(
         {
           ...restEntry,
@@ -980,15 +1008,19 @@ describe("leaderboard", () => {
           bestTimes: allTimes,
           fastestRun: 700,
         },
+        2,
         deps("player-2")
       );
-      const prestige = await fetchBoard("prestige", { config, baseUrl });
+      const prestige = await fetchBoard("prestige", 2, { config, baseUrl });
       expect(prestige?.map((r) => r.uid)).toEqual(["player-2", UID]);
-      const fastest = await fetchBoard("fastestRun", { config, baseUrl });
+      const fastest = await fetchBoard("fastestRun", 2, { config, baseUrl });
       expect(fastest).toEqual([
         { uid: "player-2", nickname: "Brave Fox 3", value: 700 },
       ]);
-      const meadow = await fetchBoard({ world: "meadow" }, { config, baseUrl });
+      const meadow = await fetchBoard({ world: "meadow" }, 2, {
+        config,
+        baseUrl,
+      });
       expect(meadow).toHaveLength(2);
     });
   });
@@ -1297,12 +1329,13 @@ describe("plane daily challenge", () => {
   });
 });
 
-describe("shipLeaderboard", () => {
+describe("ship season entries (season 2)", () => {
   const UID = "sailor-1";
+  beforeEach(() => seedSeasons());
   const player = (uid = UID, provider: Provider | null = "anonymous") =>
     signedIn(uid, { provider });
   const shipDoc = (db: ReturnType<typeof anon>, uid = UID) =>
-    doc(db, `shipLeaderboard/${uid}`);
+    doc(db, `shipSeasons/2/entries/${uid}`);
 
   const baseEntry = {
     nickname: "Happy Otter 7",
@@ -1436,7 +1469,7 @@ describe("shipLeaderboard", () => {
         await assertSucceeds(
           setDoc(shipDoc(player()), entry({ totalStars: stars, bests }))
         );
-        await env.clearFirestore();
+        await resetFirestore();
         if (stars > 1) {
           await assertFails(
             setDoc(shipDoc(player()), entry({ totalStars: stars - 1, bests }))
@@ -1504,7 +1537,7 @@ describe("shipLeaderboard", () => {
           entry({ totalStars: 5, bests: { outlast: 170, smooth: 350 } })
         )
       );
-      await env.clearFirestore();
+      await resetFirestore();
       await seedPlayer({}, 15_000);
       // 2 (outlast 170) + 3 (smooth 350) = 5 stars needed, 4 sent.
       await assertFails(
@@ -1621,7 +1654,7 @@ describe("shipLeaderboard", () => {
   describe("read", () => {
     beforeEach(() => seedPlayer());
     const col = (db: ReturnType<typeof anon>) =>
-      collection(db, "shipLeaderboard");
+      collection(db, "shipSeasons/2/entries");
 
     it("lets anyone get a single entry", async () => {
       await assertSucceeds(getDoc(shipDoc(anon())));
@@ -1701,7 +1734,7 @@ describe("shipLeaderboard", () => {
     };
 
     it("creates the doc with the exact body the game sends", async () => {
-      expect(await submitShipEntry(restEntry, deps(UID))).toBe("ok");
+      expect(await submitShipEntry(restEntry, 2, deps(UID))).toBe("ok");
       await env.withSecurityRulesDisabled(async (ctx) => {
         const snap = await getDoc(shipDoc(ctx.firestore()));
         expect(snap.data()?.totalStars).toBe(3);
@@ -1710,31 +1743,448 @@ describe("shipLeaderboard", () => {
     });
 
     it("rejects an immediate rewrite and a forged total", async () => {
-      expect(await submitShipEntry(restEntry, deps(UID))).toBe("ok");
-      expect(await submitShipEntry(restEntry, deps(UID))).toBe("refused");
+      expect(await submitShipEntry(restEntry, 2, deps(UID))).toBe("ok");
+      expect(await submitShipEntry(restEntry, 2, deps(UID))).toBe("refused");
       expect(
         await submitShipEntry(
           { ...restEntry, totalStars: 4000 },
+          2,
           deps("sailor-9")
         )
       ).toBe("refused");
     });
 
     it("reads the board back ordered by stars", async () => {
-      await submitShipEntry(restEntry, deps(UID));
+      await submitShipEntry(restEntry, 2, deps(UID));
       await submitShipEntry(
         {
           nickname: "Brave Fox 3",
           totalStars: 9,
           bests: { outlast: 1440, evacuation: 100, shipshape: 3 },
         },
+        2,
         deps("sailor-2")
       );
-      const board = await fetchShipBoard({ config, baseUrl });
+      const board = await fetchShipBoard(2, { config, baseUrl });
       expect(board).toEqual([
         { uid: "sailor-2", nickname: "Brave Fox 3", value: 9 },
         { uid: UID, nickname: "Happy Otter 7", value: 3 },
       ]);
     });
+  });
+});
+
+describe("seasons", () => {
+  const seasonDoc = (db: ReturnType<typeof anon>, game = "plane") =>
+    doc(db, `seasons/${game}`);
+  const season = (number: unknown, patch: Record<string, unknown> = {}) => ({
+    number,
+    startedAt: serverTimestamp(),
+    ...patch,
+  });
+  const nonAdmins: [string, () => ReturnType<typeof anon>][] = [
+    ["a signed-out user", () => anon()],
+    ["a player", () => signedIn("player-1", { provider: "anonymous" })],
+    [
+      "the admin uid via anonymous sign-in",
+      () => signedIn(ADMIN_UID, { provider: "anonymous" }),
+    ],
+    ["another password user", () => signedIn("uid-someone-else")],
+  ];
+
+  it("lets anyone get a season doc, but not list them", async () => {
+    await seedSeasons();
+    await assertSucceeds(getDoc(seasonDoc(anon())));
+    await assertSucceeds(getDoc(seasonDoc(anon(), "ship")));
+    await assertFails(getDocs(query(collection(anon(), "seasons"), limit(5))));
+    await assertFails(getDocs(query(collection(admin(), "seasons"), limit(5))));
+  });
+
+  it("lets anyone get a missing season doc", async () => {
+    await assertSucceeds(getDoc(seasonDoc(anon())));
+  });
+
+  it.each(nonAdmins)("refuses create and update by %s", async (_l, client) => {
+    await assertFails(setDoc(seasonDoc(client()), season(2)));
+    await seedSeasons();
+    await assertFails(setDoc(seasonDoc(client()), season(3)));
+    await assertFails(updateDoc(seasonDoc(client()), { number: 3 }));
+    await assertFails(deleteDoc(seasonDoc(client())));
+  });
+
+  it("lets the admin create season 2 for each game, and nothing else", async () => {
+    await assertFails(setDoc(seasonDoc(admin()), season(1)));
+    await assertFails(setDoc(seasonDoc(admin()), season(3)));
+    await assertFails(setDoc(seasonDoc(admin()), season("2")));
+    await assertFails(setDoc(seasonDoc(admin()), season(2.5)));
+    await assertSucceeds(setDoc(seasonDoc(admin()), season(2)));
+    await assertSucceeds(setDoc(seasonDoc(admin(), "ship"), season(2)));
+    await assertFails(setDoc(seasonDoc(admin(), "boat"), season(2)));
+    await assertFails(setDoc(seasonDoc(admin(), "daily"), season(2)));
+  });
+
+  it("refuses a client-supplied startedAt and extra or missing keys", async () => {
+    await assertFails(
+      setDoc(seasonDoc(admin()), season(2, { startedAt: new Date() }))
+    );
+    await assertFails(setDoc(seasonDoc(admin()), season(2, { extra: 1 })));
+    await assertFails(setDoc(seasonDoc(admin()), { number: 2 }));
+    await assertFails(
+      setDoc(seasonDoc(admin()), { startedAt: serverTimestamp() })
+    );
+    await seedSeasons();
+    await assertFails(setDoc(seasonDoc(admin()), season(3, { extra: 1 })));
+    await assertFails(
+      setDoc(seasonDoc(admin()), season(3, { startedAt: new Date() }))
+    );
+    await assertFails(updateDoc(seasonDoc(admin()), { number: 3 }));
+  });
+
+  it("season must go up by exactly one", async () => {
+    await seedSeasons();
+    await assertFails(setDoc(seasonDoc(admin()), season(4)));
+    await assertFails(setDoc(seasonDoc(admin()), season(2)));
+    await assertFails(setDoc(seasonDoc(admin()), season(1)));
+    await assertFails(setDoc(seasonDoc(admin()), season(3.0001)));
+    await assertSucceeds(setDoc(seasonDoc(admin()), season(3)));
+    await assertSucceeds(
+      updateDoc(seasonDoc(admin(), "ship"), {
+        number: 3,
+        startedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it("refuses delete, even for the admin", async () => {
+    await seedSeasons();
+    await assertFails(deleteDoc(seasonDoc(admin())));
+    await assertFails(deleteDoc(seasonDoc(anon())));
+  });
+
+  it("does not open subcollections of a season doc", async () => {
+    await seedSeasons();
+    await assertFails(setDoc(doc(admin(), "seasons/plane/x/y"), season(2)));
+  });
+});
+
+describe("season paths", () => {
+  const PLAYER = "player-1";
+  const player = (uid = PLAYER) => signedIn(uid, { provider: "anonymous" });
+  const planeEntry = (patch: Record<string, unknown> = {}) => ({
+    nickname: "Happy Otter 7",
+    prestige: 1,
+    score: scoreFor(1, 1000.5),
+    lifetimeDistance: 1000.5,
+    bestTimes: { meadow: 20 },
+    fastestRun: null,
+    updatedAt: serverTimestamp(),
+    ...patch,
+  });
+  const shipEntry = (patch: Record<string, unknown> = {}) => ({
+    nickname: "Happy Otter 7",
+    totalStars: 3,
+    bests: { outlast: 170, evacuation: 50 },
+    updatedAt: serverTimestamp(),
+    ...patch,
+  });
+  const planePath = (season: number | string, uid = PLAYER) =>
+    `planeSeasons/${season}/entries/${uid}`;
+  const shipPath = (season: number | string, uid = PLAYER) =>
+    `shipSeasons/${season}/entries/${uid}`;
+  /** Seeds a doc as written a minute ago. */
+  const seedAt = (path: string, data: Record<string, unknown>) =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), path), {
+        ...data,
+        updatedAt: new Date(Date.now() - 60_000),
+      });
+    });
+  const stored = async (path: string) => {
+    let data: Record<string, unknown> | undefined;
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      data = (await getDoc(doc(ctx.firestore(), path))).data();
+    });
+    return data;
+  };
+
+  it("writes to a past season are refused", async () => {
+    await seedSeasons(3, 3);
+    await assertFails(setDoc(doc(player(), planePath(2)), planeEntry()));
+    await assertFails(setDoc(doc(player(), shipPath(2)), shipEntry()));
+    await assertFails(setDoc(doc(player(), planePath(1)), planeEntry()));
+    await assertFails(setDoc(doc(player(), planePath(4)), planeEntry()));
+    await assertSucceeds(setDoc(doc(player(), planePath(3)), planeEntry()));
+    await assertSucceeds(setDoc(doc(player(), shipPath(3)), shipEntry()));
+  });
+
+  it("refuses updates to an entry in a past season", async () => {
+    await seedSeasons(3, 3);
+    await seedAt(planePath(2), planeEntry());
+    await seedAt(shipPath(2), shipEntry());
+    await assertFails(
+      setDoc(
+        doc(player(), planePath(2)),
+        planeEntry({ lifetimeDistance: 2000, score: scoreFor(1, 2000) })
+      )
+    );
+    await assertFails(
+      setDoc(doc(player(), shipPath(2)), shipEntry({ totalStars: 4 }))
+    );
+  });
+
+  it("refuses a season path that only looks like the current number", async () => {
+    await seedSeasons();
+    await assertFails(setDoc(doc(player(), planePath("02")), planeEntry()));
+    await assertFails(setDoc(doc(player(), shipPath("2.0")), shipEntry()));
+  });
+
+  it("each game has its own season number", async () => {
+    await seedSeasons(3, 2);
+    await assertSucceeds(setDoc(doc(player(), planePath(3)), planeEntry()));
+    await assertFails(setDoc(doc(player(), shipPath(3)), shipEntry()));
+    await assertSucceeds(setDoc(doc(player(), shipPath(2)), shipEntry()));
+  });
+
+  it("no season doc → season-path writes refused", async () => {
+    for (const season of [1, 2]) {
+      await assertFails(setDoc(doc(player(), planePath(season)), planeEntry()));
+      await assertFails(setDoc(doc(player(), shipPath(season)), shipEntry()));
+    }
+    // One game's season doc does not open the other.
+    await seedSeasons(2, null);
+    await assertSucceeds(setDoc(doc(player(), planePath(2)), planeEntry()));
+    await assertFails(setDoc(doc(player(), shipPath(2)), shipEntry()));
+  });
+
+  it("legacy collections refuse player writes", async () => {
+    await seedSeasons();
+    await assertFails(
+      setDoc(doc(player(), `leaderboard/${PLAYER}`), planeEntry())
+    );
+    await assertFails(
+      setDoc(doc(player(), `shipLeaderboard/${PLAYER}`), shipEntry())
+    );
+    await seedAt(`leaderboard/${PLAYER}`, planeEntry());
+    await seedAt(`shipLeaderboard/${PLAYER}`, shipEntry());
+    await assertFails(
+      setDoc(
+        doc(player(), `leaderboard/${PLAYER}`),
+        planeEntry({ lifetimeDistance: 2000, score: scoreFor(1, 2000) })
+      )
+    );
+    await assertFails(
+      setDoc(
+        doc(player(), `shipLeaderboard/${PLAYER}`),
+        shipEntry({ totalStars: 4 })
+      )
+    );
+    // Even the admin cannot create legacy entries.
+    await assertFails(
+      setDoc(doc(admin(), "leaderboard/new-player"), planeEntry())
+    );
+  });
+
+  it("legacy collections stay readable", async () => {
+    await seedAt(`leaderboard/${PLAYER}`, planeEntry());
+    await seedAt(`shipLeaderboard/${PLAYER}`, shipEntry());
+    await assertSucceeds(getDoc(doc(anon(), `leaderboard/${PLAYER}`)));
+    await assertSucceeds(
+      getDocs(query(collection(anon(), "shipLeaderboard"), limit(50)))
+    );
+    await assertFails(
+      getDocs(query(collection(anon(), "leaderboard"), limit(51)))
+    );
+  });
+
+  it("fresh season entry from a veteran is accepted", async () => {
+    await seedSeasons();
+    // A big season-1 standing does not carry over.
+    await seedAt(
+      `leaderboard/${PLAYER}`,
+      planeEntry({
+        prestige: 40,
+        score: scoreFor(40, 5e6),
+        lifetimeDistance: 5e6,
+      })
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(player(), planePath(2)),
+        planeEntry({
+          prestige: 1,
+          lifetimeDistance: 120000,
+          score: scoreFor(1, 120000),
+        })
+      )
+    );
+    // The create limits still hold in a new season.
+    await assertFails(
+      setDoc(
+        doc(player("player-2"), planePath(2, "player-2")),
+        planeEntry({ prestige: 2, score: scoreFor(2, 1000.5) })
+      )
+    );
+    await assertFails(
+      setDoc(
+        doc(player("player-2"), shipPath(2, "player-2")),
+        shipEntry({ totalStars: 61 })
+      )
+    );
+  });
+
+  describe("admin can rename an entry, nothing else", () => {
+    const renamed = { nickname: "Brave Fox 3", updatedAt: serverTimestamp() };
+    const cases: [string, string, Record<string, unknown>][] = [
+      ["plane season 2", planePath(2), planeEntry()],
+      ["ship season 2", shipPath(2), shipEntry()],
+      ["plane season 1 (legacy)", `leaderboard/${PLAYER}`, planeEntry()],
+      ["ship season 1 (legacy)", `shipLeaderboard/${PLAYER}`, shipEntry()],
+    ];
+
+    it.each(cases)("on %s", async (_label, path, data) => {
+      await seedSeasons(3, 3);
+      await seedAt(path, data);
+      const before = await stored(path);
+      await assertSucceeds(updateDoc(doc(admin(), path), renamed));
+      const after = await stored(path);
+      expect(after?.nickname).toBe("Brave Fox 3");
+      const { nickname: _a, updatedAt: _b, ...restBefore } = before!;
+      const { nickname: _c, updatedAt: _d, ...restAfter } = after!;
+      void [_a, _b, _c, _d];
+      expect(restAfter).toEqual(restBefore);
+    });
+
+    it.each(cases)(
+      "refuses other changes on %s",
+      async (_label, path, data) => {
+        await seedSeasons(3, 3);
+        await seedAt(path, data);
+        const ref = () => doc(admin(), path);
+        const isPlane = "score" in data;
+        const scoreChange = isPlane
+          ? { score: scoreFor(1, 2000), lifetimeDistance: 2000 }
+          : { totalStars: 9 };
+        const bestsChange = isPlane
+          ? { bestTimes: { meadow: 16 } }
+          : { bests: { outlast: 1440 } };
+        await assertFails(updateDoc(ref(), { ...renamed, ...scoreChange }));
+        await assertFails(updateDoc(ref(), { ...renamed, ...bestsChange }));
+        await assertFails(
+          updateDoc(ref(), { ...renamed, nickname: "Rude Name 7" })
+        );
+        await assertFails(updateDoc(ref(), { ...renamed, nickname: "Bob" }));
+        await assertFails(updateDoc(ref(), { nickname: "Brave Fox 3" }));
+        await assertFails(
+          updateDoc(ref(), { nickname: "Brave Fox 3", updatedAt: new Date() })
+        );
+        await assertFails(updateDoc(ref(), { ...renamed, extra: 1 }));
+        await assertFails(setDoc(ref(), { nickname: "Brave Fox 3" }));
+        // Not the admin: no rename.
+        await assertFails(
+          updateDoc(doc(signedIn("uid-someone-else"), path), renamed)
+        );
+        await assertFails(
+          updateDoc(
+            doc(signedIn(ADMIN_UID, { provider: "anonymous" }), path),
+            renamed
+          )
+        );
+      }
+    );
+
+    it("cannot create an entry in the current season", async () => {
+      await seedSeasons();
+      await assertFails(setDoc(doc(admin(), planePath(2)), planeEntry()));
+      await assertFails(setDoc(doc(admin(), shipPath(2)), shipEntry()));
+    });
+  });
+
+  it("admin can delete any season's entry; players cannot", async () => {
+    await seedSeasons(3, 3);
+    const paths = [
+      `leaderboard/${PLAYER}`,
+      `shipLeaderboard/${PLAYER}`,
+      planePath(2),
+      planePath(3),
+      shipPath(2),
+      shipPath(3),
+    ];
+    for (const path of paths) {
+      await seedAt(path, path.startsWith("ship") ? shipEntry() : planeEntry());
+      await assertFails(deleteDoc(doc(player(), path)));
+      await assertFails(deleteDoc(doc(anon(), path)));
+      await assertFails(
+        deleteDoc(doc(signedIn(ADMIN_UID, { provider: "anonymous" }), path))
+      );
+      await assertSucceeds(deleteDoc(doc(admin(), path)));
+      expect(await stored(path)).toBeUndefined();
+    }
+  });
+
+  it("lists a season's entries with a limit and no offset", async () => {
+    await seedSeasons(3, 3);
+    await seedAt(planePath(2), planeEntry());
+    const board = (db: ReturnType<typeof anon>, path: string) =>
+      collection(db, path);
+    for (const path of ["planeSeasons/2/entries", "shipSeasons/3/entries"]) {
+      await assertSucceeds(getDocs(query(board(anon(), path), limit(50))));
+      await assertFails(getDocs(query(board(anon(), path), limit(51))));
+      await assertFails(getDocs(board(anon(), path)));
+    }
+    await assertSucceeds(getDoc(doc(anon(), planePath(2))));
+  });
+
+  it("ban blocks writes in every season of both games", async () => {
+    for (const season of [2, 3, 4]) {
+      await resetFirestore();
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, `leaderboardBans/${PLAYER}`), {
+          bannedAt: new Date(),
+        });
+        await setDoc(doc(db, "seasons/plane"), {
+          number: season,
+          startedAt: new Date(),
+        });
+        await setDoc(doc(db, "seasons/ship"), {
+          number: season,
+          startedAt: new Date(),
+        });
+      });
+      await assertFails(setDoc(doc(player(), planePath(season)), planeEntry()));
+      await assertFails(setDoc(doc(player(), shipPath(season)), shipEntry()));
+      // An existing entry cannot be updated either.
+      await seedAt(planePath(season), planeEntry());
+      await seedAt(shipPath(season), shipEntry());
+      await assertFails(
+        setDoc(
+          doc(player(), planePath(season)),
+          planeEntry({ lifetimeDistance: 2000, score: scoreFor(1, 2000) })
+        )
+      );
+      await assertFails(
+        setDoc(doc(player(), shipPath(season)), shipEntry({ totalStars: 4 }))
+      );
+      // Other players are unaffected.
+      await assertSucceeds(
+        setDoc(
+          doc(player("player-2"), planePath(season, "player-2")),
+          planeEntry()
+        )
+      );
+    }
+  });
+
+  it("fetchSeason reads the season over REST without auth", async () => {
+    const deps = { config, baseUrl, getAppCheckHeaders: async () => ({}) };
+    expect(await fetchSeason("plane", deps)).toEqual({
+      number: 1,
+      startedAt: null,
+    });
+    await seedSeasons(3, 2);
+    const plane = await fetchSeason("plane", deps);
+    expect(plane?.number).toBe(3);
+    expect(plane?.startedAt).toBeInstanceOf(Date);
+    expect((await fetchSeason("ship", deps))?.number).toBe(2);
   });
 });

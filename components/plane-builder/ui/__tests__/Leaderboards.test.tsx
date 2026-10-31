@@ -50,7 +50,7 @@ it("makes no call when disabled", () => {
 
 it("shows prestige rows as text and highlights your own", async () => {
   const dialog = await openBoards();
-  expect(mockBoard.fetchBoard).toHaveBeenCalledWith("prestige");
+  expect(mockBoard.fetchBoard).toHaveBeenCalledWith("prestige", 1);
   expect(await within(dialog).findByText("<i>Zed</i>")).toBeInTheDocument();
   expect(dialog.querySelector("i")).toBeNull();
   expect(within(dialog).getByText("⭐ 2 · 12.3 km")).toBeInTheDocument();
@@ -67,18 +67,18 @@ it("fetches the fastest run and per-world boards", async () => {
   await userEvent.click(
     within(dialog).getByRole("tab", { name: "Fastest run" })
   );
-  expect(mockBoard.fetchBoard).toHaveBeenCalledWith("fastestRun");
+  expect(mockBoard.fetchBoard).toHaveBeenCalledWith("fastestRun", 1);
   expect(await within(dialog).findByText("12 flights")).toBeInTheDocument();
 
   mockBoard.fetchBoard.mockResolvedValue([
     { uid: "x", nickname: "A", value: 12.44 },
   ]);
   await userEvent.click(within(dialog).getByRole("tab", { name: "Per world" }));
-  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" });
+  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 1);
   expect(await within(dialog).findByText("12.4 s")).toBeInTheDocument();
 
   await userEvent.selectOptions(within(dialog).getByRole("combobox"), "canyon");
-  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "canyon" });
+  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "canyon" }, 1);
 });
 
 it("shows empty and error states", async () => {

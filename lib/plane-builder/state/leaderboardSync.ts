@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { randomNickname } from "@/lib/leaderboard/nickname";
 import { submitEntry } from "@/lib/leaderboard/client";
+import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { scoreFor, type LeaderboardEntry } from "@/lib/leaderboard/types";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { usePlaneBuilderStore } from "./store";
@@ -50,7 +51,7 @@ export function createLeaderboardSync(
   deps: LeaderboardSyncDeps = {}
 ): LeaderboardSync {
   const enabled = deps.enabled ?? LEADERBOARDS_ENABLED;
-  const submit = deps.submit ?? ((entry) => submitEntry(entry));
+  const submit = deps.submit ?? ((entry) => submitEntry(entry, FIRST_SEASON));
   const intervalMs = deps.intervalMs ?? SUBMIT_INTERVAL_MS;
   const now = deps.now ?? Date.now;
   let lastSentAt = Number.NEGATIVE_INFINITY;

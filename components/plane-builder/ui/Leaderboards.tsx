@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fetchBoard } from "@/lib/leaderboard/client";
+import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { DAILY_BOARD_LIMIT, fetchDailyBoard } from "@/lib/leaderboard/daily";
 import { standingOn } from "@/lib/leaderboard/rank";
 import { randomNickname } from "@/lib/leaderboard/nickname";
@@ -117,7 +118,7 @@ export default function Leaderboards({
     const request =
       tab === "daily"
         ? fetchDailyBoard(today.date)
-        : fetchBoard(tab === "world" ? { world } : tab);
+        : fetchBoard(tab === "world" ? { world } : tab, FIRST_SEASON);
     request
       .then((rows) => {
         if (!isCancelled) setLoaded({ key, rows });
