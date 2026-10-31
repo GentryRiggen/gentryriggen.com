@@ -28,7 +28,7 @@ import type { ShipKind } from "../model/kinds";
 import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
 import { trialFunnelsOf } from "../sim/trialFunnels";
-import { isTimelineTrial } from "../sim/trialKind";
+import { isTimelineTrial, trialKindOf } from "../sim/trialKind";
 import type {
   BreakMode,
   LifeboatMode,
@@ -1070,7 +1070,12 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     finishTrial(state) {
       const { trial } = get();
       if (trial.status !== "running") return;
-      trackTrialRun(state, trial.input.sea, trial.input.iceberg !== undefined);
+      const kind = trialKindOf(trial.input);
+      trackTrialRun(
+        state,
+        trial.input.sea,
+        kind === "waves" ? "weather" : kind
+      );
       set({
         trial: {
           status: "result",

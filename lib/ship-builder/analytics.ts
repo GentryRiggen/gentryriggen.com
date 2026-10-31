@@ -7,13 +7,10 @@ import type { SimSea, SimState } from "./sim/types";
 export function trackTrialRun(
   state: SimState,
   sea: SimSea,
-  isIceberg: boolean
+  kind: "weather" | "storm" | "iceberg"
 ): void {
-  // The analytics schema has no wild sea (storm trial) yet: not tracked until
-  // gameEvents.ts and firestore.rules add it.
-  if (sea === "wild") return;
   trackGame("trial_run", {
-    kind: isIceberg ? "iceberg" : "weather",
+    kind,
     outcome: state.outcome ?? "steady",
     sea,
   });

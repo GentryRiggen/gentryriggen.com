@@ -171,12 +171,12 @@ export const GAME_EVENTS = {
     site: "ship-builder",
     sample: 1,
     props: {
-      kind: { kind: "enum", values: ["weather", "iceberg"] },
+      kind: { kind: "enum", values: ["weather", "storm", "iceberg"] },
       outcome: {
         kind: "enum",
         values: ["steady", "recovered", "capsized", "afloat", "sank"],
       },
-      sea: { kind: "enum", values: ["calm", "choppy", "stormy"] },
+      sea: { kind: "enum", values: ["calm", "choppy", "stormy", "wild"] },
     },
   },
   challenge_result: {

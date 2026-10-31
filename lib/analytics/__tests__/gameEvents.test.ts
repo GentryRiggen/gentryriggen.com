@@ -14,6 +14,19 @@ import {
   tenths,
 } from "../gameEvents";
 
+describe("trial_run", () => {
+  it("accepts the storm kind and the wild sea, and nothing else new", () => {
+    const base = { kind: "storm", outcome: "sank", sea: "wild" };
+    expect(isValidGameProps("trial_run", base)).toBe(true);
+    expect(isValidGameProps("trial_run", { ...base, kind: "tornado" })).toBe(
+      false
+    );
+    expect(isValidGameProps("trial_run", { ...base, sea: "tsunami" })).toBe(
+      false
+    );
+  });
+});
+
 describe("schema stays in step with the games", () => {
   it("lists every world, in order", () => {
     expect([...GAME_EVENTS.flight_end.props.world.values]).toEqual([

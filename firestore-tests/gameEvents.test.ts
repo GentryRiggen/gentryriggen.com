@@ -162,6 +162,23 @@ describe("every event in the schema", () => {
     }
   });
 
+  it("accepts a storm trial in the wild sea and rejects unknown ones", async () => {
+    const props = { kind: "storm", outcome: "sank", sea: "wild" };
+    await assertSucceeds(create(anon(), docFor("trial_run", { props })));
+    await assertFails(
+      create(
+        anon(),
+        docFor("trial_run", { props: { ...props, kind: "tornado" } })
+      )
+    );
+    await assertFails(
+      create(
+        anon(),
+        docFor("trial_run", { props: { ...props, sea: "tsunami" } })
+      )
+    );
+  });
+
   it("rejects values outside every prop's range", async () => {
     for (const name of GAME_EVENT_NAMES) {
       const specs: Record<string, PropSpec> = GAME_EVENTS[name].props;
