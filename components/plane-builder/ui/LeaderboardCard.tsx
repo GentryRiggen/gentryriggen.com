@@ -72,7 +72,7 @@ export default function LeaderboardCard({
 }: LeaderboardCardProps) {
   const { uid, standing } = useLeaderboardStanding(enabled, null);
   const nickname = usePlaneBuilderStore((s) => s.progress.nickname);
-  const myPrestige = usePlaneBuilderStore((s) => s.progress.prestige.level);
+  const myPrestige = usePlaneBuilderStore((s) => s.progress.season.prestiges);
   const [isOpen, setIsOpen] = useState(false);
   const [upBy, setUpBy] = useState<number | null>(null);
   const rank = standing?.kind === "ranked" ? standing.rank : null;

@@ -8,6 +8,13 @@ import {
   MAX_VALUE,
 } from "@/lib/ship-builder/challenges/definitions";
 import { DAILY_PLAN } from "@/lib/plane-builder/daily/daily";
+import {
+  CREATE_MAX_DISTANCE,
+  CREATE_MAX_PRESTIGE,
+  RUN_DISTANCE,
+  UPDATE_FLIGHT_METRES,
+  UPDATE_METRES_PER_SECOND,
+} from "@/lib/plane-builder/state/leaderboardSync";
 import { ADJECTIVES, ANIMALS } from "../nickname";
 
 const rules = readFileSync(join(process.cwd(), "firestore.rules"), "utf8");
@@ -53,6 +60,17 @@ describe("firestore.rules stays in sync with the code", () => {
     // The rules use it in the prestige check and the fastestRun coherence.
     expect([...rules.matchAll(/68800/g)].length).toBeGreaterThanOrEqual(3);
     expect(total).toBe(68800);
+  });
+
+  it("has the plane create and update limits the board climb keeps to", () => {
+    expect(rules).toContain(`d.prestige <= ${CREATE_MAX_PRESTIGE}\n`);
+    expect(rules).toContain(`d.lifetimeDistance <= ${CREATE_MAX_DISTANCE}\n`);
+    expect(rules).toContain(
+      `d.lifetimeDistance <= old.lifetimeDistance + ${UPDATE_METRES_PER_SECOND} * secs + ${UPDATE_FLIGHT_METRES}\n`
+    );
+    expect(rules).toContain(
+      `(d.prestige - 1) * ${RUN_DISTANCE} <= d.lifetimeDistance`
+    );
   });
 
   it("requires every world id in a fastestRun's bestTimes", () => {

@@ -1,7 +1,9 @@
 import {
   newLevelProgress,
   newPrestige,
+  newSeason,
   type LevelProgress,
+  type PlaneSeason,
   type PrestigeState,
   type Progress,
 } from "../economy/progress";
@@ -12,14 +14,14 @@ import { MAX_TIER, TRACK_IDS, type Tiers } from "../plane/catalog";
 import { isDateKey } from "../daily/daily";
 import { isGhost } from "../ghost/ghost";
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 /**
  * Saves older than this come from before a rebalance (1.2 changed prices and
  * pay), so loadProgress starts them fresh instead of migrating them.
  */
 export const RESET_BELOW = 2;
 
-export interface SaveV4 {
+export interface SaveV5 {
   version: typeof SAVE_VERSION;
   progress: Progress;
 }
@@ -124,6 +126,20 @@ function parseDailyBest(raw: unknown): Progress["dailyBest"] {
   return { date, time, ghost: { time: ghost.time, data: ghost.data } };
 }
 
+const isFastestRun = (v: unknown): v is number | null =>
+  v === null || (isWhole(v, 1e9) && v >= 1);
+
+function parseSeason(raw: unknown): PlaneSeason | null {
+  if (!isRecord(raw)) return null;
+  const { number, prestiges, distance, fastestRun, runCounts } = raw;
+  const bestTimes = parseBestTimes(raw.bestTimes);
+  if (!isWhole(number, 1e9) || !isWhole(prestiges) || !isCount(distance))
+    return null;
+  if (!bestTimes || !isFastestRun(fastestRun)) return null;
+  if (typeof runCounts !== "boolean") return null;
+  return { number, prestiges, distance, bestTimes, fastestRun, runCounts };
+}
+
 function parseProgress(raw: unknown): Progress | null {
   if (!isRecord(raw) || !isRecord(raw.levels)) return null;
   const rawUnlocked = raw.unlocked ?? ["meadow"];
@@ -149,12 +165,12 @@ function parseProgress(raw: unknown): Progress | null {
   const unlocked = LEVEL_ORDER.filter((id) => id === "meadow" || open.has(id));
   const prestige = parsePrestige(raw.prestige);
   const bestTimes = parseBestTimes(raw.bestTimes);
-  if (!prestige || !bestTimes) return null;
+  const season = parseSeason(raw.season);
+  if (!prestige || !bestTimes || !season) return null;
   if (!isCount(raw.lifetimeDistance) || !isWhole(raw.runFlights, 1e9))
     return null;
   const { fastestRun, nickname } = raw;
-  if (fastestRun !== null && !(isWhole(fastestRun, 1e9) && fastestRun >= 1))
-    return null;
+  if (!isFastestRun(fastestRun)) return null;
   if (
     nickname !== null &&
     !(typeof nickname === "string" && nickname.length <= MAX_NICKNAME_LENGTH)
@@ -166,11 +182,12 @@ function parseProgress(raw: unknown): Progress | null {
     prestige,
     lifetimeDistance: raw.lifetimeDistance,
     runFlights: raw.runFlights,
-    fastestRun: fastestRun as number | null,
+    fastestRun,
     bestTimes,
     nickname: nickname as string | null,
     ghosts: parseGhosts(raw.ghosts),
     dailyBest: parseDailyBest(raw.dailyBest),
+    season,
   };
 }
 
@@ -205,6 +222,17 @@ const migrations: Record<
       ...raw,
       version: 4,
       progress: { ...progress, ghosts: {}, dailyBest: null },
+    };
+  },
+  // v5 adds leaderboard season stats; season 0 means the first season read
+  // starts them from zero.
+  4: (raw) => {
+    const { progress } = raw;
+    if (!isRecord(progress)) return { ...raw, version: 5 };
+    return {
+      ...raw,
+      version: 5,
+      progress: { ...progress, season: newSeason() },
     };
   },
 };

@@ -24,13 +24,16 @@ const row = (uid: string, nickname: string, value: number): LeaderboardRow => ({
   value,
 });
 
-function setPlayer(prestige: number, lifetimeDistance: number) {
+/** The board ranks this season's stats, not the all-time ones. */
+function setPlayer(prestiges: number, distance: number) {
   const base = newProgress();
   usePlaneBuilderStore.setState({
+    currentSeason: 2,
     progress: {
       ...base,
-      prestige: { ...base.prestige, level: prestige },
-      lifetimeDistance,
+      prestige: { ...base.prestige, level: prestiges + 5 },
+      lifetimeDistance: distance + 9_000_000,
+      season: { ...base.season, number: 2, prestiges, distance },
       nickname: "Speedy Falcon 42",
     },
   });
@@ -42,6 +45,20 @@ beforeEach(() => {
   setPlayer(1, 500);
   mockAuth.getIdToken.mockResolvedValue({ uid: "me", idToken: "t" });
   mockBoard.fetchBoard.mockResolvedValue([]);
+});
+
+it("reads the current season's board", async () => {
+  render(<LeaderboardCard enabled />);
+  await waitFor(() =>
+    expect(mockBoard.fetchBoard).toHaveBeenCalledWith("prestige", 2)
+  );
+});
+
+it("still offers the board before the season is read", async () => {
+  usePlaneBuilderStore.setState({ currentSeason: null });
+  render(<LeaderboardCard enabled />);
+  expect(await screen.findByText("See who's flying 🏆")).toBeVisible();
+  expect(mockBoard.fetchBoard).not.toHaveBeenCalled();
 });
 
 it("shows rank and the rival to pass", async () => {

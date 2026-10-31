@@ -10,6 +10,7 @@ import {
   recordDailyFlight,
   recordFlight,
   restartLevel,
+  startSeason,
   type BuyResult,
   type Progress,
 } from "../economy/progress";
@@ -28,6 +29,7 @@ import { applyBonuses, coinFactor, type BonusKind } from "../prestige";
 import { planeStats } from "../plane/stats";
 import type { FlightResult, LaunchAim } from "../sim/flight";
 import { isValidNickname } from "@/lib/leaderboard/nickname";
+import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { trackGame } from "@/lib/analytics/trackGame";
 import { TEST_HOOKS_ENABLED } from "../testHooks";
 import { resetFlightInput } from "./flightInput";
@@ -74,6 +76,10 @@ interface PlaneBuilderData {
   celebrate: Celebration | null;
   /** The daily challenge being flown, or null on a normal world visit. */
   daily: DailyChallenge | null;
+  /** The leaderboard's current season, or null until it has been read. */
+  currentSeason: number | null;
+  /** True after a new season reset the season stats, until dismissed. */
+  newSeasonNote: boolean;
 }
 
 export interface PlaneBuilderState extends PlaneBuilderData {
@@ -107,6 +113,12 @@ export interface PlaneBuilderState extends PlaneBuilderData {
   restart: (id: LevelId) => void;
   /** Only accepts a generated nickname (see lib/leaderboard/nickname). */
   setNickname: (name: string) => void;
+  /**
+   * Records the season the board is on; a newer one than the save's starts
+   * the season stats from zero (and shows the new-season note).
+   */
+  applySeason: (n: number) => void;
+  dismissNewSeasonNote: () => void;
 }
 
 const initial: PlaneBuilderData = {
@@ -118,15 +130,27 @@ const initial: PlaneBuilderData = {
   lastFlight: null,
   celebrate: null,
   daily: null,
+  currentSeason: null,
+  newSeasonNote: false,
 };
+
+/** Progress moved into season `n` when that is newer than its own. */
+function inSeason(progress: Progress, n: number | null): Progress {
+  return n !== null && n > progress.season.number
+    ? startSeason(progress, n)
+    : progress;
+}
 
 export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   ...initial,
   // A move still owed (say the tab closed on the map) sends the player back.
-  hydrate: (progress) =>
+  // A season read before the save loaded applies to it too.
+  hydrate: (loaded) => {
+    const progress = inSeason(loaded, get().currentSeason);
     set(
       progress.prestige.movePending ? { progress, screen: "map" } : { progress }
-    ),
+    );
+  },
   resetTransient: () => {
     resetFlightInput();
     resetLaunchAim();
@@ -328,6 +352,24 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     if (!isValidNickname(name)) return;
     set((s) => ({ progress: { ...s.progress, nickname: name } }));
   },
+  applySeason: (n) => {
+    const { progress } = get();
+    const next = inSeason(progress, n);
+    if (next === progress) {
+      set({ currentSeason: n });
+      return;
+    }
+    // Season 1 is the frozen board from before seasons, and a player who has
+    // never flown has nothing that went back to zero.
+    const hasPlayed =
+      progress.season.number > 0 || progress.lifetimeDistance > 0;
+    set({
+      currentSeason: n,
+      progress: next,
+      newSeasonNote: get().newSeasonNote || (n > FIRST_SEASON && hasPlayed),
+    });
+  },
+  dismissNewSeasonNote: () => set({ newSeasonNote: false }),
 }));
 
 declare global {

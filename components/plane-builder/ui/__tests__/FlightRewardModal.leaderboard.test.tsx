@@ -49,12 +49,20 @@ const flight: FlightSummary = {
   seen: false,
 };
 
+/** Sets this season's best time (the board ranks the season). */
 function setBestTime(seconds: number | null) {
+  const base = newProgress();
   usePlaneBuilderStore.setState({
+    currentSeason: 2,
     progress: {
-      ...newProgress(),
+      ...base,
       nickname: "Me Pilot 1",
-      bestTimes: seconds === null ? {} : { meadow: seconds },
+      bestTimes: { meadow: 5 },
+      season: {
+        ...base.season,
+        number: 2,
+        bestTimes: seconds === null ? {} : { meadow: seconds },
+      },
     },
   });
 }
@@ -138,7 +146,7 @@ it("opens the board on the world's tab over the popup and restores focus", async
     within(boardDialog).getByRole("tab", { name: "Per world", selected: true })
   ).toBeVisible();
   expect(within(boardDialog).getByRole("combobox")).toHaveValue("meadow");
-  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 1);
+  expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 2);
   expect(
     await within(boardDialog).findByText("Me Pilot 1", {
       selector: "span",

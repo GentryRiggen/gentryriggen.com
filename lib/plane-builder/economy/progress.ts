@@ -1,3 +1,4 @@
+import { scoreFor, type LeaderboardEntry } from "@/lib/leaderboard/types";
 import { LEVELS, LEVEL_ORDER, nextLevelId } from "../levels";
 import type { LevelId } from "../levels/types";
 import {
@@ -46,6 +47,22 @@ export interface DailyBest {
   ghost: Ghost;
 }
 
+/**
+ * What counts on the leaderboard this season: only play since the season
+ * began (the all-time stats above stay as they are).
+ */
+export interface PlaneSeason {
+  /** The season these stats belong to; 0 = never seen a season. */
+  number: number;
+  prestiges: number;
+  /** Distance flown this season, m. */
+  distance: number;
+  bestTimes: Partial<Record<LevelId, number>>;
+  fastestRun: number | null;
+  /** True when the current run began inside this season (only then can it set fastestRun). */
+  runCounts: boolean;
+}
+
 export interface Progress {
   levels: Record<LevelId, LevelProgress>;
   /** In LEVEL_ORDER order; always starts with "meadow". */
@@ -65,6 +82,8 @@ export interface Progress {
   ghosts: Partial<Record<LevelId, Ghost>>;
   /** The best daily challenge finish; only today's counts. */
   dailyBest: DailyBest | null;
+  /** This season's leaderboard stats. */
+  season: PlaneSeason;
 }
 
 export function newPrestige(): PrestigeState {
@@ -75,6 +94,17 @@ export function newPrestige(): PrestigeState {
     visited: [],
     bonuses: emptyBonuses(),
     movePending: false,
+  };
+}
+
+export function newSeason(number = 0, runCounts = true): PlaneSeason {
+  return {
+    number,
+    prestiges: 0,
+    distance: 0,
+    bestTimes: {},
+    fastestRun: null,
+    runCounts,
   };
 }
 
@@ -97,6 +127,28 @@ export function newProgress(): Progress {
     nickname: null,
     ghosts: {},
     dailyBest: null,
+    season: newSeason(),
+  };
+}
+
+/**
+ * Begins season `number`: its stats start from zero, everything else stays.
+ * A run already under way can't set the season's fastest run.
+ */
+export function startSeason(p: Progress, number: number): Progress {
+  return { ...p, season: newSeason(number, p.runFlights === 0) };
+}
+
+/** The leaderboard entry: the nickname plus this season's stats. */
+export function seasonEntry(p: Progress): LeaderboardEntry {
+  const { prestiges, distance, bestTimes, fastestRun } = p.season;
+  return {
+    nickname: p.nickname ?? "",
+    prestige: prestiges,
+    score: scoreFor(prestiges, distance),
+    lifetimeDistance: distance,
+    bestTimes,
+    fastestRun,
   };
 }
 
@@ -126,6 +178,11 @@ export function prestige(p: Progress): Progress {
     unlocked: ["meadow"],
     runFlights: 0,
     prestige: { ...p.prestige, level: p.prestige.level + 1, movePending: true },
+    season: {
+      ...p.season,
+      prestiges: p.season.prestiges + 1,
+      runCounts: true,
+    },
   };
 }
 
@@ -230,13 +287,14 @@ export function recordFlight(
   }
   const runFlights = p.runFlights + 1;
   const finishTime = result.finishTime;
-  const bestTimes =
-    finishTime !== null && Number.isFinite(finishTime) && finishTime > 0
-      ? {
-          ...p.bestTimes,
-          [id]: Math.min(p.bestTimes[id] ?? Infinity, finishTime),
-        }
-      : p.bestTimes;
+  const hasTime =
+    finishTime !== null && Number.isFinite(finishTime) && finishTime > 0;
+  const bestTimes = hasTime
+    ? {
+        ...p.bestTimes,
+        [id]: Math.min(p.bestTimes[id] ?? Infinity, finishTime),
+      }
+    : p.bestTimes;
   const completedRun = !isRunFinished(p) && isRunFinished(next);
   const isNewBestTime =
     bestTimes !== p.bestTimes && bestTimes[id] !== p.bestTimes[id];
@@ -249,6 +307,20 @@ export function recordFlight(
     fastestRun: completedRun
       ? Math.min(p.fastestRun ?? Infinity, runFlights)
       : p.fastestRun,
+    season: {
+      ...p.season,
+      distance: p.season.distance + Math.max(0, result.distance),
+      bestTimes: hasTime
+        ? {
+            ...p.season.bestTimes,
+            [id]: Math.min(p.season.bestTimes[id] ?? Infinity, finishTime),
+          }
+        : p.season.bestTimes,
+      fastestRun:
+        completedRun && p.season.runCounts
+          ? Math.min(p.season.fastestRun ?? Infinity, runFlights)
+          : p.season.fastestRun,
+    },
   };
   return { progress: next, isNewBest, unlocked };
 }
