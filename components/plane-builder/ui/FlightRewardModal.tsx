@@ -13,6 +13,7 @@ import {
 import type { GaugeZone } from "@/lib/plane-builder/minigame/gauge";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
 import type { FlightSummary } from "@/lib/plane-builder/state/store";
+import useDailyRank from "../hooks/useDailyRank";
 import useLeaderboardStanding from "../hooks/useLeaderboardStanding";
 import { TWIST_INFO } from "@/lib/plane-builder/daily/daily";
 import { planeTierName } from "@/lib/plane-builder/share/timeCard";
@@ -54,7 +55,10 @@ interface FlightRewardModalProps {
   leaderboardsEnabled?: boolean;
 }
 
-/** After a flight: stop the coin gauge, watch the coins add up, continue. */
+/**
+ * After a flight: stop the coin gauge, watch the coins add up, continue. A
+ * daily-challenge flight has no gauge: it shows the time and today's rank.
+ */
 export default function FlightRewardModal({
   levelId,
   flight,
@@ -88,9 +92,23 @@ export default function FlightRewardModal({
     leaderboardsEnabled && !isBoardHidden && result.finished && !isDaily,
     result.finished ? levelId : null
   );
+  // Today's best on the daily (this run included), which is what the board
+  // ranks. A run that ended after midnight recorded nothing, so it has none.
+  const dailyBestTime = usePlaneBuilderStore((s) =>
+    s.daily !== null && s.progress.dailyBest?.date === s.daily.date
+      ? s.progress.dailyBest.time
+      : null
+  );
+  const dailyRank = useDailyRank(
+    leaderboardsEnabled && !isBoardHidden && isDaily && result.finished,
+    daily?.date ?? null,
+    dailyBestTime
+  );
   const hasBonus = bonus !== null;
   const time = isReducedMotion ? REVEAL_END : elapsed;
   const isDone = hasBonus && time >= REVEAL_END;
+  // The daily pays no gauge bonus, so its Continue is there from the start.
+  const canContinue = isDaily || isDone;
   const level = LEVELS[levelId];
   const percent = percentOf(result.distance, level.finishDistance);
 
@@ -117,11 +135,12 @@ export default function FlightRewardModal({
   // Focus starts on the heading, not Stop: Space is the flight's boost key, so
   // a Space still held from the flight would otherwise "click" Stop on release.
   // A fresh press stops the gauge through the key handler (repeats are
-  // ignored). Continue takes focus once the reveal is done.
+  // ignored). Continue takes focus once the reveal is done, or straight away
+  // on the daily; a held Space's key repeats are blocked so it cannot click.
   useEffect(() => {
-    if (isDone) continueRef.current?.focus();
+    if (canContinue) continueRef.current?.focus();
     else if (!hasBonus) headingRef.current?.focus();
-  }, [hasBonus, isDone]);
+  }, [hasBonus, canContinue]);
 
   function handleStop() {
     if (hasBonus) return;
@@ -130,9 +149,21 @@ export default function FlightRewardModal({
     claimCoinBonus(zone);
   }
 
-  const latest = useRef({ handleStop, dismiss, hasBonus, isDone, isBoardOpen });
+  const latest = useRef({
+    handleStop,
+    dismiss,
+    hasBonus,
+    canContinue,
+    isBoardOpen,
+  });
   useEffect(() => {
-    latest.current = { handleStop, dismiss, hasBonus, isDone, isBoardOpen };
+    latest.current = {
+      handleStop,
+      dismiss,
+      hasBonus,
+      canContinue,
+      isBoardOpen,
+    };
   });
 
   useEffect(() => {
@@ -162,14 +193,19 @@ export default function FlightRewardModal({
         return;
       }
       if (event.key !== " " && event.key !== "Enter") return;
-      if (event.repeat) return;
+      // A key held from the flight repeats; blocking the repeat's default
+      // also stops a focused button from clicking when it is let go.
+      if (event.repeat) {
+        event.preventDefault();
+        return;
+      }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       // A focused button handles Space and Enter itself.
       if (isFocusedControl(event.target)) return;
       event.preventDefault();
       const state = latest.current;
-      if (!state.hasBonus) state.handleStop();
-      else if (state.isDone) state.dismiss();
+      if (state.canContinue) state.dismiss();
+      else if (!state.hasBonus) state.handleStop();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -216,10 +252,39 @@ export default function FlightRewardModal({
               ({percent}% of the way)
             </span>
           </p>
-          <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
-            <span aria-hidden="true">🪙 </span>
-            Coins earned +{formatCoins(payout.total)}
-          </p>
+          {isDaily && result.finished && result.finishTime !== null ? (
+            <p
+              data-testid="daily-run-time"
+              className="text-lg font-bold text-violet-800 dark:text-violet-200"
+            >
+              <span aria-hidden="true">⏱️ </span>
+              Your time: {result.finishTime.toFixed(1)} s
+              {dailyRank !== null ? (
+                <span data-testid="daily-run-rank">
+                  <span aria-hidden="true"> · </span>
+                  <span className="sr-only">, </span>#{dailyRank} today
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          {isDaily && !result.finished ? (
+            <p className="text-lg font-bold text-violet-800 dark:text-violet-200">
+              Reach the finish to set a time!
+            </p>
+          ) : null}
+          {isDaily && payout.total === 0 ? (
+            <p
+              data-testid="daily-no-coins"
+              className="font-semibold text-slate-700 dark:text-slate-200"
+            >
+              Daily challenge: no coins today, just your best time
+            </p>
+          ) : (
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
+              <span aria-hidden="true">🪙 </span>
+              Coins earned +{formatCoins(payout.total)}
+            </p>
+          )}
           {(result.nearMisses ?? 0) > 0 ? (
             <p
               data-testid="reward-near-misses"
@@ -239,13 +304,15 @@ export default function FlightRewardModal({
               ) : null}
             </p>
           ) : null}
-          <TimingGauge
-            isRunning={!hasBonus}
-            positionRef={gaugePosition}
-            ariaLabel="Coin bonus timing"
-            greenHalf={greenHalf}
-          />
-          {bonus && time >= MULTIPLIER_AT ? (
+          {isDaily ? null : (
+            <TimingGauge
+              isRunning={!hasBonus}
+              positionRef={gaugePosition}
+              ariaLabel="Coin bonus timing"
+              greenHalf={greenHalf}
+            />
+          )}
+          {!isDaily && bonus && time >= MULTIPLIER_AT ? (
             <>
               <p
                 data-testid="reward-multiplier"
@@ -267,8 +334,8 @@ export default function FlightRewardModal({
               ? `${bonusLabel} Coins times ${bonus.multiplier}. Total ${formatCoins(payout.total + extra)} coins.`
               : null}
           </p>
-          {bonus ? (
-            isDone ? (
+          {isDaily || bonus ? (
+            canContinue ? (
               <button
                 ref={continueRef}
                 type="button"
@@ -288,7 +355,7 @@ export default function FlightRewardModal({
               Stop!
             </button>
           )}
-          {isDone && result.finished && result.finishTime !== null ? (
+          {canContinue && result.finished && result.finishTime !== null ? (
             <div className="flex flex-wrap justify-center gap-2">
               <ShareTimeButton
                 card={{

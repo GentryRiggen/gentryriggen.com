@@ -90,6 +90,23 @@ describe("daily challenge in the store", () => {
     expect(store.getState().screen).toBe("hangar");
     expect(store.getState().celebrate).toBeNull();
   });
+
+  it("closes a daily flight's reward without a coin bonus", () => {
+    flyDaily(finished(40));
+    store.getState().dismissFlightReward();
+    expect(store.getState().lastFlight?.seen).toBe(true);
+    expect(store.getState().lastFlight?.bonus).toBeNull();
+    expect(store.getState().screen).toBe("hangar");
+  });
+
+  it("still needs the coin bonus to close a normal flight's reward", () => {
+    store.getState().openLevel("meadow");
+    store.getState().startLaunch();
+    store.getState().beginFlight({ pitch: 0.3, yaw: 0, power: 1 });
+    store.getState().completeFlight(finished(40), undefined, ghost);
+    store.getState().dismissFlightReward();
+    expect(store.getState().lastFlight?.seen).toBe(false);
+  });
 });
 
 describe("daily coins and the day rolling over", () => {

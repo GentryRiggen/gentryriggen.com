@@ -344,11 +344,14 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     });
   },
   dismissFlightReward: () => {
-    const { lastFlight, levelId } = get();
-    if (!lastFlight?.bonus || lastFlight.seen) return;
+    const { lastFlight, levelId, daily } = get();
+    if (!lastFlight || lastFlight.seen) return;
+    // A normal flight closes once the coin bonus is claimed; a daily flight
+    // has no gauge, so it closes straight away.
+    if (!lastFlight.bonus && daily === null) return;
     const seen = { ...lastFlight, seen: true };
     const isFirstFinish =
-      get().daily === null &&
+      daily === null &&
       lastFlight.result.finished &&
       lastFlight.previousBest < LEVELS[levelId].finishDistance;
     if (!isFirstFinish) {
