@@ -2,6 +2,10 @@ import { act } from "react";
 import { getSeaState } from "@/components/ship-builder/hooks/useSeaState";
 import { getTimeOfDay } from "@/components/ship-builder/hooks/useTimeOfDay";
 import { trialChoicesSetting } from "@/components/ship-builder/hooks/useTrialChoices";
+import {
+  getTrialSpeed,
+  trialSpeedSetting,
+} from "@/components/ship-builder/hooks/useTrialSpeed";
 import type { DriveConfig } from "../../sail/driveConfig";
 import { runTrial } from "../../sim/seaTrial";
 import {
@@ -202,6 +206,23 @@ describe("storm results", () => {
     act(() => store().startSetupTrial());
     act(() => store().finishTrial(runTrial(running().input)));
   }
+
+  it("plays every new run at 1x, whatever speed the last one ended on", () => {
+    act(() => trialSpeedSetting.set(20));
+    act(() => store().openTrialSetup("storm"));
+    act(() => store().startSetupTrial());
+    expect(getTrialSpeed()).toBe(1);
+
+    act(() => trialSpeedSetting.set(10));
+    act(() => store().finishTrial(runTrial(running().input)));
+    act(() => store().replay());
+    expect(getTrialSpeed()).toBe(1);
+
+    act(() => trialSpeedSetting.set(5));
+    act(() => store().finishTrial(runTrial(running().input)));
+    act(() => store().startTrial("calm"));
+    expect(getTrialSpeed()).toBe(1);
+  });
 
   it("replays a finished storm", () => {
     finishStorm();

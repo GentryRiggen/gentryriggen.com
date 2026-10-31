@@ -24,7 +24,10 @@ interface TrialSpeedControl {
   setSpeed: (next: TrialSpeed) => void;
 }
 
-/** How fast trials play (1x up to 20x), remembered per device. */
+/**
+ * How fast the trial plays (1x up to 20x). Every new run (start, Try again,
+ * replay) puts it back to 1x (the store's `beginTrial` and `replay`).
+ */
 export default function useTrialSpeed(): TrialSpeedControl {
   return {
     speed: trialSpeedSetting.useValue(),

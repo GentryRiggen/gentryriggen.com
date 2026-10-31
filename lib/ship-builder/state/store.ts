@@ -59,6 +59,7 @@ import { forgetUnsavedChallenges } from "@/lib/ship-builder/challenges/progressS
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
 import { getTimeOfDay } from "../../../components/ship-builder/hooks/useTimeOfDay";
 import { getTrialChoices } from "../../../components/ship-builder/hooks/useTrialChoices";
+import { trialSpeedSetting } from "../../../components/ship-builder/hooks/useTrialSpeed";
 import type { TimeOfDay } from "../../../components/ship-builder/scene/timeOfDay";
 import { isSeaState } from "../../../components/ship-builder/scene/seaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
@@ -480,6 +481,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       ? { ...base, sea: options.chooseSea(base) }
       : base;
     runId += 1;
+    // Fast-forward is for the run it was picked in; every new run starts at 1x.
+    trialSpeedSetting.set(1);
     set({
       trial: {
         status: "running",
@@ -1108,6 +1111,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const { trial } = get();
       if (trial.status !== "result" || !isTimelineTrial(trial.input)) return;
       runId += 1;
+      trialSpeedSetting.set(1);
       set({
         trial: {
           status: "running",
