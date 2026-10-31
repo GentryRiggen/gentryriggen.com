@@ -7,6 +7,22 @@ jest.mock("@/lib/jim/api", () => {
   const actual = jest.requireActual("@/lib/jim/api");
   return { ...actual, sendToJim: jest.fn() };
 });
+jest.mock("../notes/NotesShell", () => ({
+  __esModule: true,
+  default: ({
+    active,
+    onDone,
+  }: {
+    active: boolean;
+    onDone: (title: string) => void;
+  }) => (
+    <div data-testid="notes" data-active={String(active)}>
+      <button type="button" onClick={() => onDone("Water the plants")}>
+        Fake done
+      </button>
+    </div>
+  ),
+}));
 
 const send = jest.mocked(api.sendToJim);
 const getToken = jest.fn().mockResolvedValue("t");
@@ -213,4 +229,58 @@ it("says it is still working after 20 seconds", async () => {
   } finally {
     jest.useRealTimers();
   }
+});
+
+describe("tabs", () => {
+  it("opens on Chat and switches to Notes and back", async () => {
+    renderChat();
+    const chatTab = screen.getByRole("tab", { name: "Chat" });
+    const notesTab = screen.getByRole("tab", { name: "Notes" });
+    expect(chatTab).toHaveAttribute("aria-selected", "true");
+    // Notes isn't built (or fetched) until it is first opened.
+    expect(screen.queryByTestId("notes")).not.toBeInTheDocument();
+    await userEvent.click(notesTab);
+    expect(notesTab).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("notes")).toHaveAttribute("data-active", "true");
+    await userEvent.click(chatTab);
+    // Kept mounted, so its data and scroll survive the switch.
+    expect(screen.getByTestId("notes")).toHaveAttribute("data-active", "false");
+    expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  });
+
+  it("keeps the conversation across a trip to Notes", async () => {
+    send.mockResolvedValue({ reply: "ok", changed: [], commit: null });
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "hello");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("ok");
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Chat" }));
+    expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(screen.getByText("ok")).toBeInTheDocument();
+  });
+
+  it("puts Done: <title> in the box and switches to Chat without sending", async () => {
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "draft");
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake done" }));
+    expect(screen.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByLabelText("Message")).toHaveValue(
+      "draft\nDone: Water the plants"
+    );
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("puts Done: <title> alone in an empty box", async () => {
+    renderChat();
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake done" }));
+    expect(screen.getByLabelText("Message")).toHaveValue(
+      "Done: Water the plants"
+    );
+  });
 });

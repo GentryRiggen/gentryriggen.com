@@ -53,3 +53,43 @@ it("keeps the start number of an ordered list", () => {
   const { container } = render(<JimMarkdown text={"3. third\n4. fourth"} />);
   expect(container.querySelector("ol")).toHaveAttribute("start", "3");
 });
+
+it("renders a pipe table, scrollable on its own, cells as inline text", () => {
+  const { container } = render(
+    <JimMarkdown
+      text={
+        "Intro\n| Rank | Theme |\n| --- | :-: |\n| 1 | **Focus** |\n| 2 | Learner | extra |\n\nAfter"
+      }
+    />
+  );
+  const table = container.querySelector("table");
+  expect(table).not.toBeNull();
+  expect(table?.parentElement?.className).toContain("overflow-x-auto");
+  expect(screen.getAllByRole("columnheader").map((c) => c.textContent)).toEqual(
+    ["Rank", "Theme"]
+  );
+  expect(screen.getAllByRole("row")).toHaveLength(3);
+  expect(screen.getByText("Focus").tagName).toBe("STRONG");
+  // A row with an extra cell keeps it rather than dropping text.
+  expect(container).toHaveTextContent("extra");
+  expect(screen.getByText("After").tagName).toBe("P");
+});
+
+it("treats a lone pipe line as text, not a table", () => {
+  const { container } = render(<JimMarkdown text={"a | b\nc"} />);
+  expect(container.querySelector("table")).toBeNull();
+  expect(container).toHaveTextContent("a | b");
+});
+
+it("can show relative links as their label only", () => {
+  const { container } = render(
+    <JimMarkdown
+      links="label"
+      text="Met at [the meeting](../meetings/2026-01-01-x.md), see [site](https://x.test)"
+    />
+  );
+  expect(container.querySelector("a")).toBeNull();
+  expect(container).toHaveTextContent(
+    "Met at the meeting, see site (https://x.test)"
+  );
+});

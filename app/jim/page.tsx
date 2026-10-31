@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     capable: true,
     title: "Jim",
     // "default" keeps the status bar out of the page and lets it take the
-    // theme color below, so it matches light and dark mode.
+    // theme color below (Ayu Mirage's background).
     statusBarStyle: "default",
   },
   // Next renders `capable` as mobile-web-app-capable; older iOS versions only
@@ -47,10 +47,9 @@ export const viewport: Viewport = {
   // Android Chrome: shrink the page for the keyboard (iOS ignores this; the
   // chat follows the visual viewport there instead).
   interactiveWidget: "resizes-content",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#030712" },
-  ],
+  // Ayu Mirage in light and dark alike; the page draws it the same way.
+  themeColor: "#1f2430",
+  colorScheme: "dark",
 };
 
 export default function JimPage() {

@@ -19,7 +19,8 @@ const SIGNED_OUT_CODES = new Set([
   "auth/user-disabled",
 ]);
 
-function tokenErrorKind(err: unknown): JimErrorKind {
+/** Why a token couldn't be fetched: signed out (denied) or a passing hiccup. */
+export function tokenErrorKind(err: unknown): JimErrorKind {
   const code =
     typeof err === "object" && err !== null && "code" in err
       ? (err as { code: unknown }).code
@@ -117,7 +118,7 @@ export async function sendToJim(
   }
 }
 
-function isOffline(): boolean {
+export function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 

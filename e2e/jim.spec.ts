@@ -1,11 +1,19 @@
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
+import { VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
 
 /**
  * /jim is a private chat that is used mostly on an iPhone. Runs on Chromium
  * (desktop), the `iphone` project (WebKit, touch) and the WebKit smoke set.
- * The server URL is mocked through the e2e-only `__JIM_TEST__` hook, and the
- * screenshots in test-results/jim/ are for a human to look at.
+ * The server URL is mocked through the e2e-only `__JIM_TEST__` hook (the
+ * Notes data is an invented fixture), and the screenshots in
+ * test-results/jim/ are for a human to look at.
  */
+
+// Calendar times are UTC in the payload and shown in local time.
+test.use({ timezoneId: "America/Denver" });
+
+/** Ayu Mirage's background, in light and dark mode alike. */
+const AYU_BG = "rgb(31, 36, 48)";
 
 const API = "https://jim.example.test";
 const SHOTS = "test-results/jim";
@@ -18,7 +26,21 @@ const LONG_REPLY = [
   "- Read https://example.com/a/very/long/link/that/should/wrap/instead/of/scrolling/sideways",
 ].join("\n");
 
-async function mockServer(page: Page) {
+interface MockOptions {
+  /** Refuse the first /api/view call with a 401 (an expired token). */
+  viewExpiredOnce?: boolean;
+}
+
+interface MockCalls {
+  view: number;
+  chat: number;
+}
+
+async function mockServer(
+  page: Page,
+  options: MockOptions = {}
+): Promise<MockCalls> {
+  const calls: MockCalls = { view: 0, chat: 0 };
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
@@ -29,6 +51,24 @@ async function mockServer(page: Page) {
       await route.fulfill({ status: 204, headers: cors });
       return;
     }
+    if (route.request().url().endsWith("/api/view")) {
+      calls.view += 1;
+      if (options.viewExpiredOnce && calls.view === 1) {
+        await route.fulfill({
+          status: 401,
+          headers: { ...cors, "Content-Type": "application/json" },
+          body: JSON.stringify({ error: "expired" }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        headers: { ...cors, "Content-Type": "application/json" },
+        body: JSON.stringify(VIEW_FIXTURE),
+      });
+      return;
+    }
+    calls.chat += 1;
     const { text } = route.request().postDataJSON() as { text: string };
     if (text.startsWith("drop: ")) {
       await route.abort("connectionreset");
@@ -47,15 +87,38 @@ async function mockServer(page: Page) {
       }),
     });
   });
+  return calls;
 }
 
-async function signedIn(page: Page) {
+async function signedIn(
+  page: Page,
+  options: MockOptions = {}
+): Promise<MockCalls> {
   await page.addInitScript((api) => {
     window.__JIM_TEST__ = { signedIn: true, api };
   }, API);
-  await mockServer(page);
+  const calls = await mockServer(page, options);
   await page.goto("/jim");
   await expect(page.getByLabel("Message")).toBeVisible();
+  return calls;
+}
+
+async function openNotes(page: Page) {
+  await page.getByRole("tab", { name: "Notes" }).click();
+  await expect(page.getByText("Water the plants")).toBeVisible();
+}
+
+/** Every visible button and tab on screen is at least 44px tall. */
+async function bigTargets(page: Page) {
+  const small = await page.evaluate(() =>
+    [...document.querySelectorAll("button, [role=tab], summary, input")]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.height < 44;
+      })
+      .map((el) => el.textContent?.trim() || el.getAttribute("aria-label"))
+  );
+  expect(small).toEqual([]);
 }
 
 async function send(page: Page, text: string, reply: string | RegExp) {
@@ -148,13 +211,11 @@ test.describe("Jim", () => {
       "content",
       "Jim"
     );
-    // The status bar follows light and dark mode.
+    // The status bar is Ayu Mirage in light and dark mode: the first
+    // theme-color (the one Safari uses) stays put after the theme script.
     await expect(
-      page.locator('meta[name="theme-color"][media*="dark"]')
-    ).toHaveAttribute("content", "#030712");
-    await expect(
-      page.locator('meta[name="theme-color"][media*="light"]')
-    ).toHaveAttribute("content", "#ffffff");
+      page.locator('meta[name="theme-color"]').first()
+    ).toHaveAttribute("content", "#1f2430");
   });
 
   test("says Jim isn't connected when there is no server URL", async ({
@@ -264,6 +325,15 @@ for (const width of [undefined, 320]) {
             // Wait for the settled state (an empty box disables Send).
             await expect(sendButton).toBeDisabled();
             await expect(box).toHaveJSProperty("value", "");
+            // Ayu Mirage whatever the system scheme.
+            expect(
+              await page.evaluate(
+                () => getComputedStyle(document.body).backgroundColor
+              )
+            ).toBe(AYU_BG);
+            await expect(
+              page.locator('meta[name="theme-color"]').first()
+            ).toHaveAttribute("content", "#1f2430");
             await page.screenshot({
               path: shotName(page, testInfo, "chat", scheme),
               animations: "disabled",
@@ -272,8 +342,117 @@ for (const width of [undefined, 320]) {
         );
       });
     }
+
+    test(
+      "every Notes page fits the screen with big targets",
+      { tag: "@smoke" },
+      async ({ page }, testInfo) => {
+        await signedIn(page);
+        await openNotes(page);
+        const shot = async (name: string) => {
+          await noSidewaysScroll(page);
+          await bigTargets(page);
+          await page.screenshot({
+            path: shotName(page, testInfo, name, "ayu"),
+            animations: "disabled",
+          });
+        };
+        // The bottom bar clears the home bar and the tabs are thumb-sized.
+        const notesTab = await page
+          .getByRole("tab", { name: "Notes" })
+          .boundingBox();
+        expect(notesTab?.height).toBeGreaterThanOrEqual(44);
+        await expect(page.getByRole("tab", { name: "Notes" })).toBeInViewport({
+          ratio: 1,
+        });
+        await expect(page.getByRole("tab", { name: "People" })).toBeInViewport({
+          ratio: 1,
+        });
+        await shot("notes-home");
+        await page.getByText(/^Later/).click();
+        await expect(page.getByText("Book the dentist")).toBeVisible();
+        await shot("notes-home-later");
+
+        await page.getByRole("tab", { name: "Health" }).click();
+        await expect(page.getByText("Hemoglobin")).toBeVisible();
+        // A new page opens at its top, not where the last one was scrolled.
+        await expect(
+          page.getByRole("button", { name: "Refresh" })
+        ).toBeInViewport();
+        await shot("notes-health");
+
+        await page.getByRole("tab", { name: "Training" }).click();
+        await expect(page.getByText("Back squat")).toBeVisible();
+        // A new page opens at its top, not where the last one was scrolled.
+        await expect(
+          page.getByRole("button", { name: "Refresh" })
+        ).toBeInViewport();
+        await shot("notes-training");
+
+        await page.getByRole("tab", { name: "Golf" }).click();
+        await expect(page.getByText("Cedar Ridge").first()).toBeVisible();
+        await shot("notes-golf");
+
+        await page.getByRole("tab", { name: "People" }).click();
+        const search = page.getByLabel("Search people");
+        await expect(search).toBeVisible();
+        expect(
+          await fontSize(page, "#jim-people-search")
+        ).toBeGreaterThanOrEqual(16);
+        await shot("notes-people");
+
+        await page.getByRole("button", { name: /Sam Okafor/ }).click();
+        await expect(
+          page.getByRole("heading", { name: "Sam Okafor" })
+        ).toBeVisible();
+        // A wide table scrolls inside itself, never the page.
+        await expect(page.locator("table")).toBeVisible();
+        await shot("notes-person-table");
+
+        await page.getByRole("button", { name: "People" }).click();
+        await page.getByRole("button", { name: /Alex Rivera/ }).click();
+        await expect(page.getByText("Jun 16, 1990")).toBeVisible();
+        await shot("notes-person");
+      }
+    );
   });
 }
+
+test(
+  "Done on a Notes todo puts it in the chat box without sending",
+  { tag: "@smoke" },
+  async ({ page }) => {
+    const calls = await signedIn(page);
+    await openNotes(page);
+    await page.getByRole("button", { name: "Done: Water the plants" }).click();
+    await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    const box = page.getByLabel("Message");
+    await expect(box).toBeVisible();
+    await expect(box).toHaveValue("Done: Water the plants");
+    await expect(page.getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(calls.chat).toBe(0);
+  }
+);
+
+test("Notes loads once and is instant on the way back", async ({ page }) => {
+  const calls = await signedIn(page);
+  await openNotes(page);
+  await page.getByRole("tab", { name: "Chat" }).click();
+  await page.getByRole("tab", { name: "Notes" }).click();
+  await expect(page.getByText("Water the plants")).toBeVisible();
+  expect(calls.view).toBe(1);
+});
+
+test("Notes refreshes an expired sign-in and tries once more", async ({
+  page,
+}) => {
+  const calls = await signedIn(page, { viewExpiredOnce: true });
+  await openNotes(page);
+  expect(calls.view).toBe(2);
+});
 
 test("a reply that lands while scrolled up does not yank the view", async ({
   page,

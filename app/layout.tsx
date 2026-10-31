@@ -92,8 +92,9 @@ export default function RootLayout({
                   document.documentElement.classList.remove('dark');
                 }
                 // Set initial theme-color for iOS Safari browser chrome
+                // (not on /jim, which is always Ayu Mirage).
                 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-                if (themeColorMeta) {
+                if (themeColorMeta && !/^\/jim(\/|$)/.test(location.pathname)) {
                   themeColorMeta.setAttribute('content', theme === 'dark' ? '#030712' : '#ffffff');
                 }
               })();

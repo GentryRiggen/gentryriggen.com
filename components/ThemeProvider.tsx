@@ -62,9 +62,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     localStorage.setItem("theme", theme);
 
-    // Update theme-color meta tag for iOS Safari browser chrome
+    // Update theme-color meta tag for iOS Safari browser chrome (not on
+    // /jim, whose status bar is always Ayu Mirage).
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) {
+    if (themeColorMeta && !/^\/jim(\/|$)/.test(window.location.pathname)) {
       themeColorMeta.setAttribute(
         "content",
         theme === "dark" ? "#030712" : "#ffffff"
