@@ -37,6 +37,22 @@ export const LOWER_S = 6;
 /** World units outboard once on the water. */
 export const ROW_OUT = 3;
 export const ROW_S = 5;
+/** A raft canister falls from the deck edge to the water in this long… */
+export const RAFT_DROP_S = 1;
+/** …landing this far outboard, world units… */
+export const RAFT_THROW = 0.5;
+/** …then pops open over this long. */
+export const RAFT_INFLATE_S = 1;
+/** Launch to riders jumping in. */
+export const RAFT_READY_S = RAFT_DROP_S + RAFT_INFLATE_S;
+/** One jump from the deck edge into the raft. */
+export const JUMP_S = 0.7;
+/** Riders go one after another, this far apart. */
+export const JUMP_GAP_S = 0.35;
+/** Once everyone is in, the raft drifts this far outboard… */
+export const RAFT_DRIFT = 2;
+/** …over this long. */
+export const RAFT_DRIFT_S = 6;
 
 /** Sim seconds between checks for water reaching a person or a boat deck. */
 const WATER_CHECK_S = 0.25;
@@ -53,10 +69,16 @@ const NO_WAY_COST = 1e6;
 const WANDER_MARGIN_S = 1;
 
 export interface BoatLaunch {
-  /** The lifeboat part id. */
+  /** The lifeboat (or raft canister) part id. */
   boatId: string;
-  /** Sim seconds the boat starts lowering. */
+  /** Lowered from a davit, or a canister thrown over to inflate. */
+  kind: "davit" | "raft";
+  /** Sim seconds the boat starts lowering (a raft: is thrown over). */
   at: number;
+  /** A raft is afloat and open: riders start jumping in. A davit boat: `at`. */
+  ready: number;
+  /** A raft drifts away from here (its last rider in). A davit boat: `at`. */
+  departs: number;
   /** World transform of the boat at `at` (from the carrying body's pose then). */
   origin: { x: number; y: number; z: number };
   roll: number;
@@ -73,6 +95,17 @@ export type PersonFate =
   /** Walking to a boat's boarding spot; `until` is when that walk ends. */
   | { kind: "boarding"; boatId: string; until: number }
   | { kind: "in-boat"; boatId: string; seat: number }
+  /**
+   * Jumping from the deck edge (world `from`, where they stood as they
+   * leapt) into seat `seat` of raft `boatId`, `progress` 0 to 1.
+   */
+  | {
+      kind: "jumping";
+      boatId: string;
+      seat: number;
+      progress: number;
+      from: { x: number; y: number; z: number };
+    }
   /**
    * Fill every seat only: fading out where they are (`fade` 0 to 1, then
    * gone) on the way to a seat in `boatId` they cannot walk to in time.
@@ -136,6 +169,7 @@ interface Motion {
 
 interface Lifeboat {
   id: string;
+  kind: "davit" | "raft";
   /** Catalog seats (real people). */
   seats: number;
   /** Shown seats, after the half-empty cap. */
@@ -231,6 +265,8 @@ interface Fate {
   seat: { boatId: string; seat: number; at: number } | null;
   /** Fill every seat: when they start fading out on the way to their seat. */
   fadeFrom: number | null;
+  /** A raft rider's leap: when it starts and the world point they leave. */
+  jump: { at: number; from: Vec3 } | null;
 }
 
 function travelYaw(dx: number, dz: number): number {
@@ -424,9 +460,10 @@ function cutAt(track: Segment[], t: number): PersonPose {
 }
 
 /**
- * Every lifeboat hanging from a davit, with its boarding spot: the walkable
- * column nearest the davit point, its own cell or the one inboard of it, on
- * the block's roof or (for a side davit) the block's own level.
+ * Every lifeboat hanging from a davit, and every raft canister, with its
+ * boarding spot: the walkable column nearest the davit (or raft) point, its
+ * own cell or the one inboard of it, on the block's roof or (for a side
+ * davit) the block's own level.
  */
 function lifeboatsOf(
   ship: Ship,
@@ -436,7 +473,7 @@ function lifeboatsOf(
   atX: number | null
 ): Lifeboat[] {
   const boats: Lifeboat[] = [];
-  for (const { part, seats, block, hang, mount } of hungLifeboats(ship)) {
+  for (const { part, kind, seats, block, hang, mount } of hungLifeboats(ship)) {
     const starboard = mount.side === "starboard";
     const half = atX === null ? null : blockHalf(block, atX);
     const graph = graphOf(half);
@@ -470,6 +507,7 @@ function lifeboatsOf(
     const shown = Math.min(BOAT_SHOWN_MAX, seats);
     boats.push({
       id: part.id,
+      kind,
       seats,
       cap: fnv1a(part.id) % 2 === 1 ? Math.ceil(shown / 2) : shown,
       half,
@@ -632,7 +670,18 @@ export function planEvacuation(
     boardUntil: doom,
     seat: null,
     fadeFrom: null,
+    jump: null,
   });
+  /**
+   * The latest a boat can launch, in both modes: a davit boat before the
+   * water reaches its spot and `LOWER_S` before the end; a raft early enough
+   * before either to drop, open and take its `jumpers` in.
+   */
+  const latestLaunch = (boat: Lifeboat, jumpers: number): number => {
+    if (boat.kind === "davit") return Math.min(floodedAt(boat), end - LOWER_S);
+    const lead = RAFT_READY_S + JUMP_S + Math.max(0, jumpers - 1) * JUMP_GAP_S;
+    return Math.min(floodedAt(boat), end) - lead;
+  };
   /** Each person's own wander, the same every run. */
   const wanderRandom = (i: number) =>
     mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0);
@@ -673,20 +722,89 @@ export function planEvacuation(
     motions.push({ crowdUntil: from, track });
   };
 
+  /**
+   * A raft's riders, seated in order: each waits at the edge until the raft
+   * is open, then jumps in, one after another. One the water reaches first
+   * floats (Fill every seat: fades into the raft instead). A rider already
+   * fading in (Fill every seat, no way there) appears once it is open.
+   * Returns who made it, in seat order, and when the last one is in.
+   */
+  const jumpIn = (
+    at: number,
+    riders: readonly number[]
+  ): { riders: number[]; departs: number } => {
+    const ready = at + RAFT_READY_S;
+    const kept: number[] = [];
+    let departs = ready;
+    const keep = (i: number, seatAt: number) => {
+      const seat = fates[i].seat!;
+      fates[i].seat = { ...seat, seat: kept.length, at: seatAt };
+      kept.push(i);
+      departs = Math.max(departs, seatAt);
+    };
+    let jumps = 0;
+    for (const i of riders) {
+      const fate = fates[i];
+      if (fate.fadeFrom !== null) {
+        keep(i, Math.max(fate.seat!.at, ready));
+        continue;
+      }
+      const jumpAt = ready + jumps * JUMP_GAP_S;
+      const pose = poseOf(i, jumpAt);
+      const body = bodyAt(timeline.stateAt(jumpAt), halfOfX(pose.x));
+      const from = personWorldPoint(pose, body, length, beam);
+      // The checks stop short of the jump; it counts too.
+      const float =
+        floatOf(i, jumpAt) ??
+        (from.y > 0
+          ? null
+          : {
+              since: jumpAt,
+              x: from.x,
+              z: from.z,
+              outward: from.z >= 0 ? 1 : -1,
+            });
+      if (float && fill) {
+        fate.fadeFrom = Math.max(doom, float.since - FADE_S);
+        fate.boardUntil = fate.fadeFrom;
+        keep(i, Math.max(float.since, ready));
+        continue;
+      }
+      if (float) {
+        fate.float = float;
+        fate.seat = null;
+        fate.boardUntil = float.since;
+        continue;
+      }
+      jumps++;
+      fate.jump = { at: jumpAt, from };
+      fate.boardUntil = jumpAt;
+      keep(i, jumpAt + JUMP_S);
+    }
+    return { riders: kept, departs };
+  };
+
   const launchOf = (
     boat: Lifeboat,
     at: number,
     riders: readonly number[]
   ): BoatLaunch => {
     const body = bodyAt(timeline.stateAt(at), boat.half);
+    const raft =
+      boat.kind === "raft"
+        ? jumpIn(at, riders)
+        : { riders: [...riders], departs: at };
     return {
       boatId: boat.id,
+      kind: boat.kind,
       at,
+      ready: boat.kind === "raft" ? at + RAFT_READY_S : at,
+      departs: raft.departs,
       origin: poseWorldPoint(body, length, boat.rest),
       roll: body.roll,
       pitch: body.pitch,
       outward: boat.outward,
-      riders: riders.map((i) => people[i].id),
+      riders: raft.riders.map((i) => people[i].id),
     };
   };
 
@@ -797,12 +915,13 @@ export function planEvacuation(
         riders.push(i);
         last = Math.max(last, target[i]);
       }
+      // Only walkers jump into a raft; the rest fade in.
+      const jumpers = riders.filter((i) => fadeFrom[i] === null).length;
       const at = Math.max(
         doom,
         Math.min(
           riders.length > 0 ? last : doom + LAUNCH_WAIT_S,
-          floodedAt(boat),
-          end - LOWER_S
+          latestLaunch(boat, jumpers)
         )
       );
       // Anyone not there when she must go fades into her as she leaves.
@@ -867,7 +986,6 @@ export function planEvacuation(
     // When each boat leaves: its last rider aboard, the wait run out, or the
     // water at its boarding spot, whichever comes first.
     boats.forEach((boat, b) => {
-      const flooded = floodedAt(boat);
       const boarders: number[] = [];
       let lastArrival = -Infinity;
       for (let i = 0; i < count; i++) {
@@ -887,7 +1005,7 @@ export function planEvacuation(
         doom,
         Math.min(
           doom + LAUNCH_WAIT_S,
-          flooded,
+          latestLaunch(boat, boarders.length),
           boarders.length > 0 ? lastArrival : Infinity
         )
       );
@@ -941,6 +1059,15 @@ export function planEvacuation(
     if (seat && t >= seat.at) {
       return { kind: "in-boat", boatId: seat.boatId, seat: seat.seat };
     }
+    if (seat && fate.jump && t >= fate.jump.at) {
+      return {
+        kind: "jumping",
+        boatId: seat.boatId,
+        seat: seat.seat,
+        progress: Math.min(1, (t - fate.jump.at) / JUMP_S),
+        from: fate.jump.from,
+      };
+    }
     if (seat && fate.fadeFrom !== null && t >= fate.fadeFrom) {
       const fade = Math.min(1, (t - fate.fadeFrom) / FADE_S);
       return { kind: "transfer", boatId: seat.boatId, fade };
@@ -959,6 +1086,26 @@ export function planEvacuation(
   const boatPoseAt: EvacuationPlan["boatPoseAt"] = (launch, t) => {
     const s = Math.max(0, t - launch.at);
     const { origin, roll, pitch, outward } = launch;
+    if (launch.kind === "raft") {
+      // Thrown over: it falls, speeding up, out to the water, waits there
+      // while everyone jumps in, then drifts away and bobs.
+      const drop = Math.min(1, s / RAFT_DROP_S);
+      const drift = smooth((t - launch.departs) / RAFT_DRIFT_S);
+      const afloat = s - RAFT_DROP_S;
+      const bob =
+        afloat > 0
+          ? BOAT_BOB_HEIGHT *
+            Math.sin((2 * Math.PI * afloat) / BOAT_BOB_PERIOD_S)
+          : 0;
+      return {
+        position: {
+          x: origin.x,
+          y: origin.y * (1 - drop * drop) + bob,
+          z: origin.z + outward * (RAFT_THROW * drop + RAFT_DRIFT * drift),
+        },
+        rotation: { x: roll * (1 - drop), y: 0, z: pitch * (1 - drop) },
+      };
+    }
     const lower = smooth(s / LOWER_S);
     const row = smooth((s - LOWER_S) / ROW_S);
     const afloat = s - LOWER_S - ROW_S;

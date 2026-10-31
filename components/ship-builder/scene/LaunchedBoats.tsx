@@ -3,9 +3,11 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Matrix4, type Group } from "three";
-import type {
-  BoatLaunch,
-  EvacuationPlan,
+import {
+  type BoatLaunch,
+  type EvacuationPlan,
+  RAFT_DROP_S,
+  RAFT_INFLATE_S,
 } from "@/lib/ship-builder/crowd/evacuation";
 import { resolveAttachPoint } from "@/lib/ship-builder/model/attach";
 import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
@@ -13,7 +15,12 @@ import type { PlacedPart, Ship } from "@/lib/ship-builder/model/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { modelToWorld } from "./coords";
 import { launchedBoatMatrix } from "./crowdBodies";
-import { lifeboatHullOf } from "./lifeboatHulls";
+import { smoothstep } from "./crowdView";
+import {
+  LIFEBOAT_HANG_OFFSET,
+  LIFEBOAT_HULLS,
+  lifeboatHullOf,
+} from "./lifeboatHulls";
 import PartMesh from "./PartMesh";
 import { trialEvacuationFor } from "./trialTimeline";
 import { trialPlayback } from "./trialPlayback";
@@ -49,6 +56,9 @@ function LaunchedBoat({ ship, part, plan, launch }: LaunchedBoatProps) {
     return [-x, -y, -z];
   }, [ship, part]);
 
+  const canister = useRef<Group>(null);
+  const raft = useRef<Group>(null);
+
   useFrame(() => {
     const target = group.current;
     if (!target) return;
@@ -58,13 +68,84 @@ function LaunchedBoat({ ship, part, plan, launch }: LaunchedBoatProps) {
     if (!isLaunched) return;
     launchedBoatMatrix(plan, launch, hull, time, matrix);
     matrix.decompose(target.position, target.quaternion, target.scale);
+    if (launch.kind !== "raft") return;
+    // The canister tumbles down; on the water it pops open into the raft.
+    const since = time - launch.at;
+    const isOpen = since >= RAFT_DROP_S;
+    if (canister.current) {
+      canister.current.visible = !isOpen;
+      canister.current.rotation.x = -launch.outward * since * CANISTER_SPIN;
+    }
+    if (raft.current) {
+      raft.current.visible = isOpen;
+      const grow = smoothstep((since - RAFT_DROP_S) / RAFT_INFLATE_S);
+      raft.current.scale.setScalar(RAFT_FOLDED + (1 - RAFT_FOLDED) * grow);
+    }
   });
 
+  const mesh = (
+    <group position={offset}>
+      <PartMesh ship={ship} part={part} color={part.color} mark={part.mark} />
+    </group>
+  );
   return (
     <group ref={group} visible={false}>
-      <group position={offset}>
-        <PartMesh ship={ship} part={part} color={part.color} mark={part.mark} />
-      </group>
+      {launch.kind === "raft" ? (
+        <>
+          <group ref={canister}>{mesh}</group>
+          <group ref={raft} visible={false}>
+            <InflatedRaft outward={launch.outward} />
+          </group>
+        </>
+      ) : (
+        mesh
+      )}
+    </group>
+  );
+}
+
+/** Radians per second a thrown raft canister turns over as it falls. */
+const CANISTER_SPIN = 5;
+/** An opening raft starts at this fraction of its size. */
+const RAFT_FOLDED = 0.15;
+const RAFT_ORANGE = "#f08a24";
+const RAFT_FLOOR_GREY = "#3d434a";
+
+interface InflatedRaftProps {
+  /** Outboard in world z: +1 or -1. The arch leans to the outboard side. */
+  outward: 1 | -1;
+}
+
+/**
+ * The orange raft a canister opens into, round like a real one, with its
+ * origin where a lifeboat's hang point would be: the floor sits
+ * `LIFEBOAT_HANG_OFFSET` below it, where riders sit (`boatSeatOffsets`).
+ */
+function InflatedRaft({ outward }: InflatedRaftProps) {
+  const radius = LIFEBOAT_HULLS["raft-canister"].width / 2;
+  const floor = -LIFEBOAT_HANG_OFFSET;
+  return (
+    <group>
+      <mesh position={[0, floor - 0.02, 0]} receiveShadow>
+        <cylinderGeometry args={[radius, radius, 0.03, 20]} />
+        <meshStandardMaterial color={RAFT_FLOOR_GREY} roughness={0.9} />
+      </mesh>
+      {[0, 0.09].map((y) => (
+        <mesh
+          key={y}
+          position={[0, floor + y, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+          castShadow
+        >
+          <torusGeometry args={[radius, 0.05, 10, 28]} />
+          <meshStandardMaterial color={RAFT_ORANGE} roughness={0.6} />
+        </mesh>
+      ))}
+      {/* The canopy's arch, left open so the riders show. */}
+      <mesh position={[0, floor + 0.1, outward * radius * 0.35]} castShadow>
+        <torusGeometry args={[radius * 0.9, 0.025, 8, 24, Math.PI]} />
+        <meshStandardMaterial color={RAFT_ORANGE} roughness={0.6} />
+      </mesh>
     </group>
   );
 }

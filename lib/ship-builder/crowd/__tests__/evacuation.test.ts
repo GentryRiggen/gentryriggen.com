@@ -32,6 +32,9 @@ import {
   floatPositionAt,
   LAUNCH_WAIT_S,
   LOWER_S,
+  RAFT_DRIFT,
+  RAFT_DROP_S,
+  RAFT_READY_S,
   ROW_OUT,
   ROW_S,
   planEvacuation,
@@ -671,6 +674,122 @@ describe("Fill every seat", () => {
   it("launches every boat before the water reaches its deck", () => {
     const t = icebergTrial(titanic(), "fill");
     for (const launch of t.plan!.launches) {
+      expect(launch.origin.y).toBeGreaterThan(0);
+    }
+  });
+});
+
+/**
+ * The boat deck ship with life raft canisters on its edges instead of
+ * davits: every raft can be walked to.
+ */
+function raftDeckShip(): Ship {
+  const segments = 12;
+  const length = segments * 3;
+  const parts: PlacedPart[] = [];
+  for (let x = 2; x < length - 2; x++) {
+    for (let z = 0; z < 4; z++) {
+      parts.push(gridPart(`c${x}_${z}`, "cabin-3rd", 0, x, z));
+    }
+  }
+  for (let x = 4; x < length - 4; x += 3) {
+    for (const z of [0, 3]) {
+      parts.push(
+        attachPart(
+          `r${x}_${z}`,
+          "raft-canister",
+          `c${x}_${z}`,
+          `edge:${x}:${z}`
+        )
+      );
+    }
+  }
+  return { ...testShip(parts, segments, 4), name: "Raft deck" };
+}
+
+describe("life rafts", () => {
+  const s = setup(raftDeckShip());
+  const rafts = s.plan.launches;
+
+  it("throws every raft over the side", () => {
+    expect(rafts.length).toBe(20);
+    for (const launch of rafts) {
+      expect(launch.kind).toBe("raft");
+      expect(launch.ready).toBeCloseTo(launch.at + RAFT_READY_S, 9);
+      expect(launch.origin.y).toBeGreaterThan(0);
+    }
+    expect(rafts.some((launch) => launch.riders.length > 0)).toBe(true);
+  });
+
+  it("drops each raft to the water, then drifts it away once everyone is in", () => {
+    for (const launch of rafts) {
+      const before = s.plan.boatPoseAt(launch, launch.at);
+      expect(before.position.y).toBeCloseTo(launch.origin.y, 9);
+      const landed = s.plan.boatPoseAt(launch, launch.at + RAFT_DROP_S);
+      expect(Math.abs(landed.position.y)).toBeLessThan(0.05);
+      expect(launch.departs).toBeGreaterThanOrEqual(launch.ready);
+      const waiting = s.plan.boatPoseAt(launch, launch.departs);
+      const away = s.plan.boatPoseAt(launch, launch.departs + 30);
+      expect(
+        (away.position.z - waiting.position.z) * launch.outward
+      ).toBeCloseTo(RAFT_DRIFT, 6);
+    }
+  });
+
+  it("has riders wait on deck, then jump into the raft once it is ready", () => {
+    let jumpers = 0;
+    for (const launch of rafts) {
+      launch.riders.forEach((id, seat) => {
+        const i = s.crowd.people.findIndex((p) => p.id === id);
+        let prev = s.plan.fateAt(i, s.doomAt);
+        let jumped = false;
+        for (let t = s.doomAt; t <= s.end; t += 0.05) {
+          const fate = s.plan.fateAt(i, t);
+          if (fate.kind === "in-boat") {
+            expect(t).toBeGreaterThanOrEqual(launch.ready);
+            expect(fate).toEqual({
+              kind: "in-boat",
+              boatId: launch.boatId,
+              seat,
+            });
+          }
+          if (fate.kind === "jumping") {
+            jumped = true;
+            expect(t).toBeGreaterThanOrEqual(launch.ready);
+            expect(fate.boatId).toBe(launch.boatId);
+            expect(fate.progress).toBeGreaterThanOrEqual(0);
+            expect(fate.progress).toBeLessThan(1);
+            expect(fate.from.y).toBeGreaterThan(0);
+            if (prev.kind === "jumping") {
+              expect(fate.progress).toBeGreaterThanOrEqual(prev.progress);
+            } else {
+              expect(prev.kind).toBe("boarding");
+            }
+          }
+          if (prev.kind === "jumping") {
+            expect(["jumping", "in-boat"]).toContain(fate.kind);
+          }
+          if (prev.kind === "in-boat") expect(fate.kind).toBe("in-boat");
+          prev = fate;
+        }
+        expect(jumped).toBe(true);
+        expect(prev.kind).toBe("in-boat");
+        jumpers++;
+      });
+    }
+    expect(jumpers).toBeGreaterThan(0);
+  });
+
+  it("fills every raft seat it can in Fill every seat", () => {
+    const t = icebergTrial(raftDeckShip(), "fill");
+    const { seats, people } = lifeboatCount(t.ship, analyzeShip(t.ship).stats);
+    expect(seats).toBe(20 * 25);
+    const figures = t.crowd.people.length;
+    const saved =
+      seats >= people ? figures : Math.round((figures * seats) / people);
+    expect(inBoatAtEnd(t)).toBe(saved);
+    for (const launch of t.plan!.launches) {
+      expect(launch.kind).toBe("raft");
       expect(launch.origin.y).toBeGreaterThan(0);
     }
   });

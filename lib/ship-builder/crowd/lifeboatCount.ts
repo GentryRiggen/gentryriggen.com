@@ -4,23 +4,29 @@ import { buildOccupancy } from "../model/grid";
 import type { Stats as ShipStats } from "../model/stats";
 import type { AttachPoint, GridAnchor, PlacedPart, Ship } from "../model/types";
 
-/** A lifeboat the evacuation can lower: hung from a davit on a grid block. */
+/**
+ * A craft the evacuation can launch: a lifeboat hung from a davit on a grid
+ * block, or a life raft canister on a grid block's deck edge.
+ */
 export interface HungLifeboat {
   part: PlacedPart;
+  /** Lowered from a davit, or thrown over the side to inflate. */
+  kind: "davit" | "raft";
   /** Catalog seats (real people). */
   seats: number;
-  /** The grid block the davit stands on. */
+  /** The grid block the davit (or raft canister) stands on. */
   block: PlacedPart & { anchor: GridAnchor };
-  /** Where the boat hangs. */
+  /** Where the boat hangs (a raft: its edge point). */
   hang: AttachPoint;
-  /** Where the davit stands. */
+  /** Where the davit stands (a raft: its edge point too). */
   mount: AttachPoint;
 }
 
 /**
  * Every lifeboat that hangs from a davit (`davit` or `davit-side`) standing
- * on a grid block, with both points resolved. The evacuation lowers exactly
- * these boats and the seat count sums exactly these, so the two always agree.
+ * on a grid block, and every raft canister on a grid block's edge, with
+ * their points resolved. The evacuation launches exactly these and the seat
+ * count sums exactly these, so the two always agree.
  */
 export function hungLifeboats(
   ship: Ship,
@@ -31,6 +37,21 @@ export function hungLifeboats(
   for (const part of ship.parts) {
     const seats = getPartDef(part.type).seats ?? 0;
     if (seats <= 0 || part.anchor.kind !== "attach") continue;
+    if (part.type === "raft-canister") {
+      const block = byId.get(part.anchor.parentId);
+      if (!block || block.anchor.kind !== "grid") continue;
+      const edge = resolveAttachPoint(ship, part.anchor, occupancy);
+      if (!edge) continue;
+      boats.push({
+        part,
+        kind: "raft",
+        seats,
+        block: { ...block, anchor: block.anchor },
+        hang: edge,
+        mount: edge,
+      });
+      continue;
+    }
     const davit = byId.get(part.anchor.parentId);
     if (
       !davit ||
@@ -46,6 +67,7 @@ export function hungLifeboats(
     if (!hang || !mount) continue;
     boats.push({
       part,
+      kind: "davit",
       seats,
       block: { ...block, anchor: block.anchor },
       hang,
@@ -57,9 +79,9 @@ export function hungLifeboats(
 
 /**
  * The real lifeboat sum for "did we build enough lifeboats?": the catalog
- * `seats` of every boat the evacuation lowers (`hungLifeboats`), against
- * everyone aboard (passengers plus crew berths). Real counts, not crowd
- * figures.
+ * `seats` of every boat and raft the evacuation launches (`hungLifeboats`),
+ * against everyone aboard (passengers plus crew berths). Real counts, not
+ * crowd figures.
  */
 export function lifeboatCount(
   ship: Ship,
