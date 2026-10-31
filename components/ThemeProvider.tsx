@@ -7,6 +7,7 @@ import {
   useState,
   useCallback,
 } from "react";
+import { isJimPath } from "@/lib/theme/themeScript";
 
 type Theme = "light" | "dark";
 
@@ -65,7 +66,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Update theme-color meta tag for iOS Safari browser chrome (not on
     // /jim, whose status bar is always Ayu Mirage).
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta && !/^\/jim(\/|$)/.test(window.location.pathname)) {
+    if (themeColorMeta && !isJimPath(window.location.pathname)) {
       themeColorMeta.setAttribute(
         "content",
         theme === "dark" ? "#030712" : "#ffffff"
