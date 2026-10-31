@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -106,6 +107,17 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
     first?.focus();
   }, []);
 
+  // Escape closes even when focus has left the sheet (a dismissed keyboard).
+  useEffect(() => {
+    function onEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    }
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [onClose]);
+
   const ready = kind === "injection" ? clean(dose) !== "" : clean(text) !== "";
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -121,11 +133,6 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
     if (event.key !== "Tab" || !panelRef.current) return;
     const items = [
       ...panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
@@ -259,11 +266,11 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                   </Field>
                   <fieldset className="min-w-0 space-y-1">
                     <legend className="text-sm text-ayu-subtle">For</legend>
-                    <div className="flex rounded-xl border border-ayu-muted p-0.5">
+                    <div className="flex rounded-xl border border-ayu-muted">
                       {(["work", "personal"] as const).map((a) => (
                         <label
                           key={a}
-                          className={`flex min-h-10 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-[10px] text-sm font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ayu-accent ${
+                          className={`relative flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-[10px] text-sm font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ayu-accent ${
                             area === a
                               ? "bg-ayu-accent text-ayu-bg"
                               : "text-ayu-subtle"
@@ -275,7 +282,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                             value={a}
                             checked={area === a}
                             onChange={() => setArea(a)}
-                            className="sr-only"
+                            className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
                           />
                           {a === "work" ? "Work" : "Personal"}
                         </label>
@@ -304,10 +311,10 @@ export default function QuickLog({ today, onLog }: QuickLogProps) {
   const [open, setOpen] = useState<Kind | null>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
-  function close() {
+  const close = useCallback(() => {
     setOpen(null);
     openerRef.current?.focus();
-  }
+  }, []);
 
   return (
     <>
