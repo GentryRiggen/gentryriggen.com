@@ -79,9 +79,9 @@ export function hungLifeboats(
 
 /**
  * The real lifeboat sum for "did we build enough lifeboats?": the catalog
- * `seats` of every boat and raft the evacuation launches (`hungLifeboats`), against
- * everyone aboard (passengers plus crew berths). Real counts, not crowd
- * figures.
+ * `seats` of every boat and raft the evacuation launches (`hungLifeboats`),
+ * against everyone aboard (passengers plus crew berths). Real counts, not
+ * crowd figures.
  */
 export function lifeboatCount(
   ship: Ship,
