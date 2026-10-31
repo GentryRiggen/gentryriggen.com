@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.38.1",
+    date: "2026-10-31",
+    title: "Every trial starts at normal speed",
+    highlights: [
+      "Fast-forward no longer sticks. Each new sea trial, Try again and replay starts at 1x, so you never miss the start of a sinking",
+    ],
+  },
+  {
     version: "2.38.0",
     date: "2026-10-31",
     title: "Life rafts that really work",
