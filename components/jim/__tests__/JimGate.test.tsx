@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as admin from "@/lib/analytics/admin";
 import { ADMIN_UID } from "@/lib/analytics/admin";
 import * as client from "@/lib/firebase/client";
 import * as config from "@/lib/firebase/config";
@@ -36,24 +37,40 @@ jest.mock("@/lib/jim/host", () => ({
   jimRedirectTarget: jest.fn(() => null),
   goTo: jest.fn(),
 }));
-jest.mock("../JimChat", () => ({
-  __esModule: true,
-  default: ({
-    api,
-    uid,
-    onSignOut,
-  }: {
-    api: string;
-    uid: string;
-    onSignOut: () => void;
-  }) => (
-    <div data-testid="chat" data-api={api} data-uid={uid}>
-      <button type="button" onClick={onSignOut}>
-        Chat sign out
-      </button>
-    </div>
-  ),
-}));
+jest.mock("@/lib/analytics/admin", () => {
+  const actual = jest.requireActual("@/lib/analytics/admin");
+  return { ...actual, isAdminUser: jest.fn(actual.isAdminUser) };
+});
+jest.mock("../JimChat", () => {
+  const { useState } = jest.requireActual("react");
+  return {
+    __esModule: true,
+    default: function FakeChat({
+      api,
+      uid,
+      onSignOut,
+    }: {
+      api: string;
+      uid: string;
+      onSignOut: () => void;
+    }) {
+      // The uid it was first built for: a remount takes the new one.
+      const [mountedFor] = useState(uid);
+      return (
+        <div
+          data-testid="chat"
+          data-api={api}
+          data-uid={uid}
+          data-mounted-for={mountedFor}
+        >
+          <button type="button" onClick={onSignOut}>
+            Chat sign out
+          </button>
+        </div>
+      );
+    },
+  };
+});
 
 const mockClient = jest.mocked(client);
 const mockConfig = jest.mocked(config);
@@ -259,6 +276,25 @@ describe("early wake-up and kept chat", () => {
       await screen.findByRole("button", { name: "Chat sign out" })
     );
     expect(window.localStorage.getItem(historyKey(ADMIN_UID))).toBeNull();
+  });
+
+  it("builds a fresh chat when the signed-in user changes", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    jest
+      .mocked(admin.isAdminUser)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true);
+    await renderGate();
+    act(() => emit({ uid: "owner-a", email: "a@x.com" }));
+    expect(await screen.findByTestId("chat")).toHaveAttribute(
+      "data-mounted-for",
+      "owner-a"
+    );
+    act(() => emit({ uid: "owner-b", email: "b@x.com" }));
+    expect(screen.getByTestId("chat")).toHaveAttribute(
+      "data-mounted-for",
+      "owner-b"
+    );
   });
 
   it("wipes any kept chat when the sign-in is gone", async () => {

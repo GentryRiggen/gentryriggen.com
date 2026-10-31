@@ -134,6 +134,7 @@ export default function JimGate() {
     if (isJimConnected(state.api)) {
       return (
         <JimChat
+          key={state.uid}
           uid={state.uid}
           api={state.api}
           getToken={state.getToken}

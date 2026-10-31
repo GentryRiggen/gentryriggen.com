@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -66,6 +67,52 @@ function stepLabel(step: string | null): string {
   return `${(step ?? "").replace(/[.…\s]+$/, "")}…`;
 }
 
+interface MessageListProps {
+  messages: Message[];
+  /** The message the error banner speaks for, if any. */
+  heldId: number | null;
+}
+
+/**
+ * The finished messages. Memoized: a streaming reply redraws every frame,
+ * and only its own bubble should re-render, not every message above it.
+ */
+const MessageList = memo(function MessageList({
+  messages,
+  heldId,
+}: MessageListProps) {
+  return (
+    <>
+      {messages.map((m) =>
+        m.from === "me" ? (
+          <div key={m.id} className="ml-auto max-w-[85%] min-w-0">
+            <div className="rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
+              {m.text}
+            </div>
+            {/* The banner says it for the message just sent. */}
+            {m.uncertain && heldId !== m.id && (
+              <p className="mt-1 px-1 text-right text-xs text-ayu-subtle">
+                {ERRORS.uncertain}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
+            <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
+              <JimMarkdown text={m.text} />
+            </div>
+            {m.changed && m.changed.length > 0 && (
+              <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
+                Saved: {m.changed.join(", ")}
+              </p>
+            )}
+          </div>
+        )
+      )}
+    </>
+  );
+});
+
 function isPhone(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
 }
@@ -108,6 +155,10 @@ export default function JimChat({
   );
   /** Bumped by New chat: a turn still out then is dropped when it lands. */
   const chatRun = useRef(0);
+  /** Cancels the turn that is out (New chat, sign-out, leaving the page). */
+  const turn = useRef<AbortController | null>(null);
+  /** Signed out: nothing more is kept on this device. */
+  const signedOut = useRef(false);
   /** Reply text as it streams in, drawn once per animation frame. */
   const liveText = useRef("");
   const frame = useRef<number | null>(null);
@@ -147,12 +198,14 @@ export default function JimChat({
   // Keep the chat on this device. A message still out is stored as
   // uncertain, so a reload mid-turn never offers it as unsent.
   useEffect(() => {
+    if (signedOut.current) return;
     saveHistory(uid, { session, messages });
   }, [uid, session, messages]);
 
   useEffect(
     () => () => {
       chatRun.current += 1;
+      turn.current?.abort();
       if (frame.current !== null) cancelAnimationFrame(frame.current);
     },
     []
@@ -241,6 +294,8 @@ export default function JimChat({
     setMessages((prev) => [...prev, { id, from: "me", text, pending: true }]);
     const settle = (m: Message): Message =>
       m.id === id ? { id, from: "me", text } : m;
+    const controller = new AbortController();
+    turn.current = controller;
     try {
       const reply = await streamToJim(
         text,
@@ -250,7 +305,10 @@ export default function JimChat({
           if (run === chatRun.current) onStream(event);
         },
         undefined,
-        api
+        api,
+        undefined,
+        undefined,
+        controller.signal
       );
       if (run !== chatRun.current) return;
       setMessages((prev) => [
@@ -293,6 +351,7 @@ export default function JimChat({
         putBack(text);
       }
     } finally {
+      if (turn.current === controller) turn.current = null;
       if (run === chatRun.current) {
         stopDrawing();
         liveText.current = "";
@@ -305,6 +364,7 @@ export default function JimChat({
   /** Clears the conversation here and on this device; Jim starts afresh. */
   function newChat() {
     chatRun.current += 1;
+    turn.current?.abort();
     stopDrawing();
     liveText.current = "";
     clearHistory(uid);
@@ -329,6 +389,14 @@ export default function JimChat({
       boxRef.current?.blur();
     }
     setTab(next);
+  }
+
+  /** Drops the turn that is out and keeps nothing more on this device. */
+  function signOut() {
+    signedOut.current = true;
+    chatRun.current += 1;
+    turn.current?.abort();
+    onSignOut();
   }
 
   /**
@@ -378,7 +446,7 @@ export default function JimChat({
       className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
     >
       <JimHeader
-        onSignOut={onSignOut}
+        onSignOut={signOut}
         tab={tab}
         onTab={showTab}
         menuItems={[{ label: "New chat", onSelect: newChat }]}
@@ -406,32 +474,7 @@ export default function JimChat({
                   Ask Jim something, or tell him something to remember.
                 </p>
               )}
-              {messages.map((m) =>
-                m.from === "me" ? (
-                  <div key={m.id} className="ml-auto max-w-[85%] min-w-0">
-                    <div className="rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
-                      {m.text}
-                    </div>
-                    {/* The banner says it for the message just sent. */}
-                    {m.uncertain && held?.id !== m.id && (
-                      <p className="mt-1 px-1 text-right text-xs text-ayu-subtle">
-                        {ERRORS.uncertain}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
-                    <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
-                      <JimMarkdown text={m.text} />
-                    </div>
-                    {m.changed && m.changed.length > 0 && (
-                      <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
-                        Saved: {m.changed.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                )
-              )}
+              <MessageList messages={messages} heldId={held?.id ?? null} />
               {sending && (
                 <div className="mr-auto max-w-[92%] min-w-0">
                   {live.text ? (

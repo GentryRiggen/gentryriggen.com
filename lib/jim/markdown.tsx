@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 
 /**
  * A small Markdown renderer for Jim's replies: paragraphs, headings, `-` and
@@ -186,10 +186,7 @@ function renderLines(
   );
 }
 
-export default function JimMarkdown({
-  text,
-  links = "label-url",
-}: JimMarkdownProps) {
+function JimMarkdown({ text, links = "label-url" }: JimMarkdownProps) {
   const blocks = parseBlocks(text);
   return (
     <div className="space-y-3 [overflow-wrap:anywhere]">
@@ -283,3 +280,6 @@ export default function JimMarkdown({
     </div>
   );
 }
+
+/** Memoized: the same text never parses twice in a row. */
+export default memo(JimMarkdown);

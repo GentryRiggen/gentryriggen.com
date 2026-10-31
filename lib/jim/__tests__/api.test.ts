@@ -589,3 +589,73 @@ it("wakes the server with a GET to /api/health and ignores how it goes", async (
   wakeJim("", never);
   expect(never).not.toHaveBeenCalled();
 });
+
+describe("W2 follow-ups", () => {
+  it("counts any event but a ping as Jim having started, so a later 503 is uncertain", async () => {
+    // An event a newer server adds, or one with an odd shape, still means
+    // the turn is running.
+    for (const first of [
+      { t: "thinking" },
+      { t: "step" },
+      { t: "delta", text: 5 },
+    ]) {
+      const fetchFn = jest
+        .fn()
+        .mockResolvedValue(
+          ndjson([
+            line(first),
+            line({ t: "error", error: "failed", status: 503 }),
+          ])
+        );
+      expect(
+        await kindOf(
+          streamToJim("x", "s", async () => "t", undefined, fetchFn, API)
+        )
+      ).toBe("uncertain");
+    }
+  });
+
+  it("stops when the caller aborts, before or during the turn", async () => {
+    const before = new AbortController();
+    before.abort();
+    const never = jest.fn();
+    await expect(
+      streamToJim(
+        "x",
+        "s",
+        async () => "t",
+        undefined,
+        never,
+        API,
+        undefined,
+        undefined,
+        before.signal
+      )
+    ).rejects.toBeInstanceOf(JimError);
+    expect(never).not.toHaveBeenCalled();
+
+    const during = new AbortController();
+    let fetchSignal: AbortSignal | undefined;
+    const fetchFn = jest.fn((_url: string, init: RequestInit) => {
+      fetchSignal = init.signal ?? undefined;
+      return Promise.resolve(
+        ndjson([line({ t: "step", text: "Searching notes" })], { hang: true })
+      );
+    });
+    const turn = streamToJim(
+      "x",
+      "s",
+      async () => "t",
+      undefined,
+      fetchFn as unknown as typeof fetch,
+      API,
+      undefined,
+      undefined,
+      during.signal
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    during.abort();
+    expect(await kindOf(turn)).toBe("uncertain");
+    expect(fetchSignal?.aborted).toBe(true);
+  });
+});

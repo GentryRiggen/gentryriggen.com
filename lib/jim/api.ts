@@ -100,7 +100,8 @@ const NDJSON = "application/x-ndjson";
  * (one without streaming) still works. On a 401 the ID token is
  * force-refreshed and the request is tried once more. Gives up after
  * `timeoutMs` in all, or after `idleMs` with no bytes on an open stream; a
- * stream that ends without its final `done` is uncertain. Throws JimError.
+ * stream that ends without its final `done` is uncertain. `signal` lets the
+ * page drop the turn (New chat, leaving the page). Throws JimError.
  */
 export async function streamToJim(
   text: string,
@@ -110,9 +111,11 @@ export async function streamToJim(
   fetchFn: typeof fetch = fetch,
   api: string = JIM_API,
   timeoutMs: number = JIM_TIMEOUT_MS,
-  idleMs: number = JIM_IDLE_MS
+  idleMs: number = JIM_IDLE_MS,
+  signal?: AbortSignal
 ): Promise<JimReply> {
   if (!isJimConnected(api)) throw new JimError("server");
+  if (signal?.aborted) throw new JimError("waking");
   const controller = new AbortController();
   const progress = { sent: false };
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -124,10 +127,10 @@ export async function streamToJim(
       reject(err);
     };
   });
-  const timer = setTimeout(
-    () => giveUp(new JimError(progress.sent ? "uncertain" : "waking")),
-    timeoutMs
-  );
+  const quit = () =>
+    giveUp(new JimError(progress.sent ? "uncertain" : "waking"));
+  const timer = setTimeout(quit, timeoutMs);
+  signal?.addEventListener("abort", quit, { once: true });
   // Armed once the stream opens and again by every chunk.
   const stillThere = () => {
     clearTimeout(idleTimer);
@@ -157,6 +160,7 @@ export async function streamToJim(
   } finally {
     clearTimeout(timer);
     clearTimeout(idleTimer);
+    signal?.removeEventListener("abort", quit);
   }
 }
 
@@ -270,16 +274,18 @@ async function readStream(
     }
     if (typeof event !== "object" || event === null) return null;
     const e = event as Record<string, unknown>;
+    // Anything but a ping (or the error itself) means Jim is on the turn,
+    // even an event this page doesn't know.
+    const wasStarted = started;
+    if (e.t !== "ping") started = true;
     switch (e.t) {
       case "step":
       case "delta":
       case "reply":
         if (typeof e.text !== "string") return null;
-        started = true;
         onEvent({ t: e.t, text: e.text });
         return null;
       case "saving":
-        started = true;
         onEvent({ t: "saving" });
         return null;
       case "done":
@@ -288,7 +294,7 @@ async function readStream(
       case "error":
         // A 503 before any step is the sync or the lock: the turn never ran.
         throw new JimError(
-          e.status === 503 && !started ? "waking" : "uncertain"
+          e.status === 503 && !wasStarted ? "waking" : "uncertain"
         );
       default:
         // Pings, and anything a newer server adds.
