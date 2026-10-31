@@ -132,11 +132,13 @@ describe("FlightRewardModal on a daily run", () => {
     setup(finishedFlight);
     render(<Connected />);
     expect(screen.getByTestId("daily-run-time")).toHaveTextContent("40.0 s");
-    expect(await screen.findByText("#2 today")).toBeVisible();
+    const rank = await screen.findByTestId("daily-run-rank");
+    expect(rank).toHaveTextContent(/^#2 today$/);
+    expect(rank.closest("[aria-live='polite']")).not.toBeNull();
     expect(mockDaily.fetchDailyBoard).toHaveBeenCalledWith(DATE);
   });
 
-  it("ranks today's best, not a slower run", async () => {
+  it("ranks today's best, and names it, after a slower run", async () => {
     setup(
       {
         ...finishedFlight,
@@ -147,7 +149,9 @@ describe("FlightRewardModal on a daily run", () => {
     render(<Connected />);
     expect(screen.getByTestId("daily-run-time")).toHaveTextContent("60.0 s");
     // With 60 s the player would be #3; their best of 40 s holds #2.
-    expect(await screen.findByText("#2 today")).toBeVisible();
+    expect(await screen.findByTestId("daily-run-rank")).toHaveTextContent(
+      "#2 today with your best of 40.0 s"
+    );
   });
 
   it("shows no rank when the board cannot load", async () => {
@@ -179,71 +183,107 @@ describe("FlightRewardModal on a daily run", () => {
     expect(mockAuth.getIdToken).not.toHaveBeenCalled();
   });
 
-  it("nudges a crashed run toward the finish", async () => {
+  it("tells a crash before the day's first finish that the finish pays", async () => {
     setup(crashedFlight, null);
     render(<Connected />);
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("500 m");
     expect(dialog).toHaveTextContent("% of the way");
-    expect(dialog).toHaveTextContent("Reach the finish to set a time!");
     expect(dialog).toHaveTextContent(
-      "Daily challenge: no coins today, just your best time"
+      "Daily challenge: reach the finish to earn today's coins!"
     );
+    expect(dialog).not.toHaveTextContent("Reach the finish to set a time!");
+    expect(dialog).not.toHaveTextContent("no coins today");
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
     expect(screen.queryByTestId("daily-run-time")).not.toBeInTheDocument();
     await act(async () => {});
     expect(mockDaily.fetchDailyBoard).not.toHaveBeenCalled();
   });
 
-  it("shows the coins on the first finish of the day, which pays", async () => {
+  it("nudges a crash after today's coins were paid toward a time", async () => {
+    setup(crashedFlight, 40.04);
+    render(<Connected />);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Reach the finish to set a time!");
+    expect(dialog).toHaveTextContent(
+      "Daily challenge: no coins today, just your best time"
+    );
+    await act(async () => {});
+    expect(mockDaily.fetchDailyBoard).not.toHaveBeenCalled();
+  });
+
+  it("gives the day's paying run the normal coin gauge", async () => {
     setup({
       ...finishedFlight,
       payout: { ...finishedFlight.payout, distancePay: 80, total: 80 },
     });
-    render(<Connected />);
+    render(<Connected leaderboardsEnabled={false} />);
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("Coins earned +80");
-    expect(dialog).not.toHaveTextContent("no coins today");
-    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
-    await act(async () => {});
+    expect(dialog).not.toHaveTextContent("Daily challenge:");
+    expect(screen.getByRole("meter")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop!" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Continue" })
+    ).not.toBeInTheDocument();
   });
 
-  it("goes straight to a focused Continue that closes it", async () => {
+  it("shows Continue at once, with focus on the heading", async () => {
     setup(finishedFlight);
     render(<Connected />);
     const next = screen.getByRole("button", { name: "Continue" });
-    expect(next).toHaveFocus();
+    expect(next).not.toHaveFocus();
+    expect(screen.getByRole("dialog").querySelector("h2")).toHaveFocus();
     await userEvent.click(next);
     expect(usePlaneBuilderStore.getState().lastFlight?.seen).toBe(true);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it.each([" ", "Enter"])("closes on %p when no control has focus", (key) => {
-    setup(finishedFlight);
-    render(<Connected leaderboardsEnabled={false} />);
-    (document.activeElement as HTMLElement | null)?.blur();
-    act(() => {
-      document.body.dispatchEvent(
-        new KeyboardEvent("keydown", { key, bubbles: true })
-      );
-    });
-    expect(usePlaneBuilderStore.getState().lastFlight?.seen).toBe(true);
-  });
-
-  it("ignores a Space still held from flying", () => {
-    setup(finishedFlight);
-    render(<Connected leaderboardsEnabled={false} />);
-    const next = screen.getByRole("button", { name: "Continue" });
-    const held = new KeyboardEvent("keydown", {
-      key: " ",
-      repeat: true,
+  const key = (
+    type: "keydown" | "keyup",
+    k: string,
+    target: EventTarget = document.activeElement ?? document.body,
+    repeat = false
+  ) => {
+    const event = new KeyboardEvent(type, {
+      key: k,
+      repeat,
       bubbles: true,
       cancelable: true,
     });
     act(() => {
-      next.dispatchEvent(held);
+      target.dispatchEvent(event);
     });
-    // Blocking the repeat's default stops the button from clicking on release.
-    expect(held.defaultPrevented).toBe(true);
+    return event;
+  };
+
+  it.each([" ", "Enter"])("closes on a fresh %p press", (k) => {
+    setup(finishedFlight);
+    render(<Connected leaderboardsEnabled={false} />);
+    key("keydown", k);
+    expect(usePlaneBuilderStore.getState().lastFlight?.seen).toBe(true);
+  });
+
+  it("does not close when a Space held from flying is let go", () => {
+    setup(finishedFlight);
+    render(<Connected leaderboardsEnabled={false} />);
+    const next = screen.getByRole("button", { name: "Continue" });
+    // Repeats of the held key are blocked and do nothing.
+    expect(key("keydown", " ", undefined, true).defaultPrevented).toBe(true);
     expect(usePlaneBuilderStore.getState().lastFlight?.seen).toBe(false);
+    // Its release, even on a focused button, cannot click it.
+    next.focus();
+    expect(key("keyup", " ", next).defaultPrevented).toBe(true);
+    expect(usePlaneBuilderStore.getState().lastFlight?.seen).toBe(false);
+  });
+
+  it("lets a Space pressed in the popup click the focused Continue", () => {
+    setup(finishedFlight);
+    render(<Connected leaderboardsEnabled={false} />);
+    const next = screen.getByRole("button", { name: "Continue" });
+    next.focus();
+    // The button handles its own key; the popup leaves the keyup alone.
+    expect(key("keydown", " ", next).defaultPrevented).toBe(false);
+    expect(key("keyup", " ", next).defaultPrevented).toBe(false);
   });
 });

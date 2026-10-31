@@ -91,8 +91,16 @@ describe("daily challenge in the store", () => {
     expect(store.getState().celebrate).toBeNull();
   });
 
-  it("closes a daily flight's reward without a coin bonus", () => {
+  it("still needs the coin bonus to close the day's paying daily flight", () => {
     flyDaily(finished(40));
+    expect(store.getState().lastFlight?.payout.total).toBeGreaterThan(0);
+    store.getState().dismissFlightReward();
+    expect(store.getState().lastFlight?.seen).toBe(false);
+  });
+
+  it("closes a daily flight that paid nothing without a coin bonus", () => {
+    flyDaily({ ...finished(40), finished: false, finishTime: null });
+    expect(store.getState().lastFlight?.payout.total).toBe(0);
     store.getState().dismissFlightReward();
     expect(store.getState().lastFlight?.seen).toBe(true);
     expect(store.getState().lastFlight?.bonus).toBeNull();

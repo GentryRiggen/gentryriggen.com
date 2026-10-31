@@ -99,6 +99,12 @@ export default function FlightRewardModal({
       ? s.progress.dailyBest.time
       : null
   );
+  // The daily pays only the day's first finish (see completeFlight): once a
+  // finish is on record for the day, today's coins are already paid.
+  const isDailyPaid = usePlaneBuilderStore(
+    (s) =>
+      s.daily !== null && (s.progress.dailyBest?.date ?? "") >= s.daily.date
+  );
   const dailyRank = useDailyRank(
     leaderboardsEnabled && !isBoardHidden && isDaily && result.finished,
     daily?.date ?? null,
@@ -107,8 +113,10 @@ export default function FlightRewardModal({
   const hasBonus = bonus !== null;
   const time = isReducedMotion ? REVEAL_END : elapsed;
   const isDone = hasBonus && time >= REVEAL_END;
-  // The daily pays no gauge bonus, so its Continue is there from the start.
-  const canContinue = isDaily || isDone;
+  // A daily run that paid nothing has no gauge: Continue is there from the
+  // start. The day's paying run gets the normal coin flow.
+  const isNoCoinDaily = isDaily && payout.total === 0;
+  const canContinue = isNoCoinDaily || isDone;
   const level = LEVELS[levelId];
   const percent = percentOf(result.distance, level.finishDistance);
 
@@ -135,12 +143,13 @@ export default function FlightRewardModal({
   // Focus starts on the heading, not Stop: Space is the flight's boost key, so
   // a Space still held from the flight would otherwise "click" Stop on release.
   // A fresh press stops the gauge through the key handler (repeats are
-  // ignored). Continue takes focus once the reveal is done, or straight away
-  // on the daily; a held Space's key repeats are blocked so it cannot click.
+  // ignored). Continue takes focus once the reveal is done. A no-coin daily
+  // shows Continue at once but focus still starts on the heading, and a fresh
+  // Space or Enter closes it through the key handler.
   useEffect(() => {
-    if (canContinue) continueRef.current?.focus();
+    if (isDone) continueRef.current?.focus();
     else if (!hasBonus) headingRef.current?.focus();
-  }, [hasBonus, canContinue]);
+  }, [hasBonus, isDone]);
 
   function handleStop() {
     if (hasBonus) return;
@@ -207,8 +216,25 @@ export default function FlightRewardModal({
       if (state.canContinue) state.dismiss();
       else if (!state.hasBonus) state.handleStop();
     }
+    // Keys pressed down while the popup was open. A Space or Enter let go
+    // without one (held from the flight) must not click a focused button,
+    // which Firefox and Safari do on keyup.
+    const pressed = new Set<string>();
+    function onKeyDownCapture(event: KeyboardEvent) {
+      if (!event.repeat) pressed.add(event.key);
+    }
+    function onKeyUp(event: KeyboardEvent) {
+      if (event.key !== " " && event.key !== "Enter") return;
+      if (!pressed.delete(event.key)) event.preventDefault();
+    }
+    document.addEventListener("keydown", onKeyDownCapture, true);
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keyup", onKeyUp, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDownCapture, true);
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keyup", onKeyUp, true);
+    };
   }, []);
 
   const extra = bonus?.extra ?? 0;
@@ -259,25 +285,38 @@ export default function FlightRewardModal({
             >
               <span aria-hidden="true">⏱️ </span>
               Your time: {result.finishTime.toFixed(1)} s
+            </p>
+          ) : null}
+          {isDaily && result.finished ? (
+            <p
+              aria-live="polite"
+              className="font-bold text-violet-800 dark:text-violet-200"
+            >
               {dailyRank !== null ? (
                 <span data-testid="daily-run-rank">
-                  <span aria-hidden="true"> · </span>
-                  <span className="sr-only">, </span>#{dailyRank} today
+                  #{dailyRank} today
+                  {dailyBestTime !== null &&
+                  result.finishTime !== null &&
+                  result.finishTime > dailyBestTime
+                    ? ` with your best of ${dailyBestTime.toFixed(1)} s`
+                    : null}
                 </span>
               ) : null}
             </p>
           ) : null}
-          {isDaily && !result.finished ? (
+          {isNoCoinDaily && !result.finished && isDailyPaid ? (
             <p className="text-lg font-bold text-violet-800 dark:text-violet-200">
               Reach the finish to set a time!
             </p>
           ) : null}
-          {isDaily && payout.total === 0 ? (
+          {isNoCoinDaily ? (
             <p
               data-testid="daily-no-coins"
               className="font-semibold text-slate-700 dark:text-slate-200"
             >
-              Daily challenge: no coins today, just your best time
+              {isDailyPaid
+                ? "Daily challenge: no coins today, just your best time"
+                : "Daily challenge: reach the finish to earn today's coins!"}
             </p>
           ) : (
             <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
@@ -304,7 +343,7 @@ export default function FlightRewardModal({
               ) : null}
             </p>
           ) : null}
-          {isDaily ? null : (
+          {isNoCoinDaily ? null : (
             <TimingGauge
               isRunning={!hasBonus}
               positionRef={gaugePosition}
@@ -312,7 +351,7 @@ export default function FlightRewardModal({
               greenHalf={greenHalf}
             />
           )}
-          {!isDaily && bonus && time >= MULTIPLIER_AT ? (
+          {!isNoCoinDaily && bonus && time >= MULTIPLIER_AT ? (
             <>
               <p
                 data-testid="reward-multiplier"
@@ -334,7 +373,7 @@ export default function FlightRewardModal({
               ? `${bonusLabel} Coins times ${bonus.multiplier}. Total ${formatCoins(payout.total + extra)} coins.`
               : null}
           </p>
-          {isDaily || bonus ? (
+          {isNoCoinDaily || bonus ? (
             canContinue ? (
               <button
                 ref={continueRef}
