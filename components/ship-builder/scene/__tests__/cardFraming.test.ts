@@ -1,4 +1,4 @@
-import { cardFraming, MIN_CARD_SCALE } from "../cardFraming";
+import { cardFraming, reachesShip, MIN_CARD_SCALE } from "../cardFraming";
 
 const canvas = { left: 100, top: 50, width: 700, height: 740 };
 
@@ -54,5 +54,25 @@ describe("cardFraming", () => {
     const framing = cardFraming(wide, bar);
     expect(framing?.scale).toBe(1);
     expect(framing?.x).toBe(800);
+  });
+});
+
+describe("reachesShip", () => {
+  const canvas = { left: 0, top: 100, width: 360, height: 600 };
+
+  it("is true when a setup card climbs over the middle of a phone canvas", () => {
+    expect(
+      reachesShip(canvas, { left: 12, top: 280, width: 336, height: 400 })
+    ).toBe(true);
+  });
+
+  it("is false for a low card that leaves the ship clear", () => {
+    expect(
+      reachesShip(canvas, { left: 12, top: 560, width: 336, height: 120 })
+    ).toBe(false);
+  });
+
+  it("is false without a card", () => {
+    expect(reachesShip(canvas, null)).toBe(false);
   });
 });

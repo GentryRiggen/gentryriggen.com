@@ -38,6 +38,14 @@ export default function useTimeOfDay(): TimeOfDayControl {
   };
 }
 
+/**
+ * The main-screen time of day itself, whatever a trial shows: for the time
+ * chips, which set it and must not light up a trial's time.
+ */
+export function useMainTimeOfDay(): TimeOfDayControl {
+  return { timeOfDay: timeSetting.useValue(), setTimeOfDay: timeSetting.set };
+}
+
 /** The main-screen time of day right now, for code outside React (the store). */
 export function getTimeOfDay(): TimeOfDay {
   return timeSetting.get();

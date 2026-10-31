@@ -3,6 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { testShip } from "@/lib/ship-builder/testing";
 import { runTrial } from "@/lib/ship-builder/sim/seaTrial";
+import { analyzeShip } from "@/lib/ship-builder/model/analysis";
+import { lifeboatCount } from "@/lib/ship-builder/crowd/lifeboatCount";
+import { trialChoicesSetting } from "../../hooks/useTrialChoices";
 import {
   createInitialState,
   useShipBuilderStore,
@@ -234,5 +237,78 @@ describe("SeaTrialResult while walking", () => {
     expect(
       screen.getByRole("region", { name: "Sea trial result" })
     ).toBeInTheDocument();
+  });
+});
+
+describe("SeaTrialResult storm", () => {
+  function finishStorm(template: string, lifeboats: "fill" | "titanic") {
+    trialChoicesSetting.set({ lifeboats });
+    act(() => store().newShipFromTemplate(template));
+    act(() => store().openTrialSetup("storm"));
+    act(() => store().startSetupTrial());
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("not running");
+    act(() => store().finishTrial(runTrial(trial.input)));
+  }
+
+  afterEach(() => window.localStorage.clear());
+
+  it("Try again runs the same storm again", async () => {
+    const user = userEvent.setup();
+    finishStorm("little-hopper", "fill");
+    const before = store().trial;
+    render(<SeaTrialResult />);
+    await user.click(screen.getByRole("button", { name: "Details" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    const { trial } = store();
+    expect(trial.status).toBe("running");
+    if (trial.status === "running" && before.status === "result") {
+      expect(trial.input.storm).toBeDefined();
+      expect(trial.input.sea).toBe("wild");
+      expect(trial.input).toEqual(before.input);
+    }
+  });
+
+  it("says everyone fit when the seats were enough", () => {
+    finishStorm("little-hopper", "fill");
+    const ship = store().ship;
+    const { seats, people } = lifeboatCount(ship, analyzeShip(ship).stats);
+    expect(seats).toBeGreaterThanOrEqual(people);
+    render(<SeaTrialResult />);
+    const line = screen.getByTestId("lifeboat-line");
+    expect(line).toHaveTextContent("Everyone fit in the lifeboats!");
+    expect(line).toHaveTextContent(
+      `Lifeboat seats: ${seats.toLocaleString()}. People aboard: ${people.toLocaleString()}.`
+    );
+  });
+
+  it("counts who was left when the seats ran short", () => {
+    finishStorm("titanic", "fill");
+    render(<SeaTrialResult />);
+    const line = screen.getByTestId("lifeboat-line");
+    // 18 davit boats: 1,098 seats for 2,300 people.
+    expect(line).toHaveTextContent(
+      `Not enough lifeboats: ${(1202).toLocaleString()} people were left on board.`
+    );
+    expect(line).toHaveTextContent(
+      `Lifeboat seats: ${(1098).toLocaleString()}. People aboard: ${(2300).toLocaleString()}.`
+    );
+  });
+
+  it("says some boats left half-empty in Titanic mode", () => {
+    finishStorm("little-hopper", "titanic");
+    render(<SeaTrialResult />);
+    const line = screen.getByTestId("lifeboat-line");
+    expect(line).toHaveTextContent(
+      "Some boats left half-empty, like the Titanic."
+    );
+    expect(line).toHaveTextContent(/Lifeboat seats: .*\. People aboard: .*\./);
+  });
+
+  it("has no lifeboat line when she did not sink", () => {
+    finishTrial();
+    render(<SeaTrialResult />);
+    expect(store().trial).toMatchObject({ state: { outcome: "steady" } });
+    expect(screen.queryByTestId("lifeboat-line")).toBeNull();
   });
 });

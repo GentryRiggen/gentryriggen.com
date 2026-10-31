@@ -123,7 +123,9 @@ export function clearTrialTimeline(): void {
 useShipBuilderStore.subscribe((state, previous) => {
   const { status } = state.trial;
   if (status === previous.trial.status) return;
-  if (status === "idle" || status === "aiming") clearTrialTimeline();
+  if (status === "idle" || status === "setup" || status === "aiming") {
+    clearTrialTimeline();
+  }
 });
 
 /**

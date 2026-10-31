@@ -36,6 +36,17 @@ export default function useSeaState(): SeaStateControl {
   return { seaState: trialSea ?? chosen, setSeaState: seaSetting.set };
 }
 
+/**
+ * The main-screen sea choice itself, whatever a trial shows: for the sea
+ * chips, which set it and must not light up a trial's sea.
+ */
+export function useMainSeaState(): {
+  seaState: SeaState;
+  setSeaState: (next: SeaState) => void;
+} {
+  return { seaState: seaSetting.useValue(), setSeaState: seaSetting.set };
+}
+
 /** The main-screen sea right now, for code outside React (the store). */
 export function getSeaState(): SeaState {
   return seaSetting.get();

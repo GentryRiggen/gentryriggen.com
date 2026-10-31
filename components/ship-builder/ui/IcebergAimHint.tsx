@@ -4,13 +4,21 @@ import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import BreakModeSwitch from "./BreakModeSwitch";
+import LifeboatSwitch from "./LifeboatSwitch";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { panelClass } from "./styles";
+import {
+  CARD_CANCEL_CLASS,
+  CARD_PLACE_CLASS,
+  CARD_SLOT_CLASS,
+} from "./TrialSetupCard";
+import TrialTimeRow from "./TrialTimeRow";
 
 /**
- * Shows while the player aims the iceberg: how she may break, where to tap,
- * and a way out. It takes the bottom-centre slot the Sea trial button leaves
- * free while aiming.
+ * The iceberg's setup card, shown while the player aims: the time of day,
+ * the lifeboats, how she may break, where to tap, and a way out. Tapping the
+ * hull starts the trial. It takes the bottom-centre slot the Sea trial button
+ * leaves free while aiming.
  */
 export default function IcebergAimHint() {
   const isAiming = useShipBuilderStore((s) => s.trial.status === "aiming");
@@ -30,26 +38,33 @@ export default function IcebergAimHint() {
 
   if (!isAiming) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto flex w-fit max-w-full flex-col items-center gap-2">
-      <div
-        className={`pointer-events-auto max-w-full rounded-2xl border p-2 shadow-lg ${panelClass}`}
-      >
-        <BreakModeSwitch />
-      </div>
-      <div
-        role="status"
-        className={`pointer-events-auto flex items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
-      >
-        <span>Tap where the iceberg hits</span>
-        <button
-          ref={cancelButton}
-          type="button"
-          onClick={handleCancel}
-          className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-full bg-slate-100 px-4 text-sm font-medium text-slate-800 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:focus-visible:outline-sky-400"
+    <div className={CARD_SLOT_CLASS}>
+      <div data-trial-setup-card className={`${CARD_PLACE_CLASS} sm:max-w-3xl`}>
+        {/* Kept low so the hull stays free to tap: no title (the pill says
+          what to do), and the rows sit side by side from sm up. */}
+        <section
+          aria-label="Iceberg"
+          className={`pointer-events-auto grid max-h-[calc(100cqh-10rem)] w-full min-w-0 gap-3 overflow-y-auto rounded-2xl border p-3 shadow-lg sm:grid-cols-3 ${panelClass}`}
         >
-          <X aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-          Cancel
-        </button>
+          <TrialTimeRow />
+          <LifeboatSwitch />
+          <BreakModeSwitch />
+        </section>
+        <div
+          role="status"
+          className={`pointer-events-auto flex items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
+        >
+          <span>Tap where the iceberg hits</span>
+          <button
+            ref={cancelButton}
+            type="button"
+            onClick={handleCancel}
+            className={CARD_CANCEL_CLASS}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

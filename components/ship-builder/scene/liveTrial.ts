@@ -40,7 +40,10 @@ useShipBuilderStore.subscribe((state, previous) => {
   const isNewRun =
     trial.status === "running" &&
     (before.status !== "running" || before.runId !== trial.runId);
-  const isLeaving = trial.status === "idle" || trial.status === "aiming";
+  const isLeaving =
+    trial.status === "idle" ||
+    trial.status === "setup" ||
+    trial.status === "aiming";
   if (isNewRun || (isLeaving && before.status !== trial.status)) {
     clearLiveTrial();
   }

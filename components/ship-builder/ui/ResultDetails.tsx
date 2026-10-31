@@ -8,6 +8,7 @@ import {
   useShipBuilderStore,
   type TrialSlice,
 } from "@/lib/ship-builder/state/store";
+import { LifeboatLine } from "./SeaTrialResult";
 import { SEA_LABELS } from "./seaTrialText";
 import { buttonClass, panelClass } from "./styles";
 
@@ -17,6 +18,8 @@ interface ResultDetailsProps {
   input: ResultTrial["input"];
   summary: TrialSummary;
   extraLines: string[];
+  /** The lifeboat line when she sank, else null. */
+  lifeboatLines?: string[] | null;
   onClose: () => void;
 }
 
@@ -25,9 +28,10 @@ export default function ResultDetails({
   input,
   summary,
   extraLines,
+  lifeboatLines = null,
   onClose,
 }: ResultDetailsProps) {
-  const startTrial = useShipBuilderStore((s) => s.startTrial);
+  const retryTrial = useShipBuilderStore((s) => s.retryTrial);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
   const sheet = useRef<HTMLDivElement>(null);
   const isStorm = trialKindOf(input) === "storm";
@@ -91,6 +95,11 @@ export default function ResultDetails({
           ))}
         </ul>
       )}
+      {lifeboatLines && (
+        <div className="mt-2">
+          <LifeboatLine lines={lifeboatLines} />
+        </div>
+      )}
       {summary.tips.length > 0 && (
         <div className="mt-3 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -104,18 +113,14 @@ export default function ResultDetails({
         </div>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        {/* startTrial only makes waves and iceberg trials; a storm is not
-            restarted from here (yet). */}
-        {!isStorm && (
-          <button
-            type="button"
-            onClick={() => startTrial(input.sea, input.iceberg?.impactX)}
-            className={`${buttonClass} min-h-11 flex-1`}
-          >
-            <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />
-            Try again
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={retryTrial}
+          className={`${buttonClass} min-h-11 flex-1`}
+        >
+          <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />
+          Try again
+        </button>
         {input.iceberg && (
           <button
             type="button"

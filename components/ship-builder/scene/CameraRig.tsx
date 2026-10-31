@@ -15,7 +15,7 @@ import usePhotoStore from "../hooks/usePhotoStore";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { cameraFollow } from "./cameraFollow";
-import { cardFraming, type CardFraming } from "./cardFraming";
+import { cardFraming, reachesShip, type CardFraming } from "./cardFraming";
 import {
   clampTarget,
   MAX_VIEW_DISTANCE,
@@ -70,6 +70,8 @@ const UNDER_CAMERA_DEPTH = 1.5;
 const FIT_SHARE = 0.8;
 /** The slim result bar, read (never changed) to keep the wreck out from under it. */
 const RESULT_CARD_SELECTOR = "[data-sea-trial-result]";
+/** A trial setup card or the iceberg's aim card, framed above when it is tall. */
+const SETUP_CARD_SELECTOR = "[data-trial-setup-card]";
 
 // Scratch values for the per-frame follow, so it allocates nothing.
 const offset = new Vector3();
@@ -338,11 +340,22 @@ export default function CameraRig() {
   const updateCardFraming = (amount: number) => {
     const { camera, gl, size } = get();
     if (!(camera instanceof PerspectiveCamera)) return;
-    const isResult = useShipBuilderStore.getState().trial.status === "result";
-    const card = isResult ? document.querySelector(RESULT_CARD_SELECTOR) : null;
-    const framing = card
-      ? cardFraming(readBox(gl.domElement, canvasBox), readBox(card, cardBox))
-      : null;
+    const { status } = useShipBuilderStore.getState().trial;
+    const isSetup = status === "setup" || status === "aiming";
+    const selector =
+      status === "result"
+        ? RESULT_CARD_SELECTOR
+        : isSetup
+          ? SETUP_CARD_SELECTOR
+          : null;
+    const card = selector ? document.querySelector(selector) : null;
+    const canvasRect = readBox(gl.domElement, canvasBox);
+    const cardRect = card ? readBox(card, cardBox) : null;
+    // A setup card only moves the ship when it would cover her (a phone).
+    const framing =
+      cardRect && (!isSetup || reachesShip(canvasRect, cardRect))
+        ? cardFraming(canvasRect, cardRect)
+        : null;
     if (framing) lastCardFraming.current = framing;
     const goal = framing ? 1 : 0;
     cardBlend.current += (goal - cardBlend.current) * amount;

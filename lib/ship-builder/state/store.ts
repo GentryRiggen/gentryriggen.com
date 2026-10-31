@@ -28,7 +28,14 @@ import type { ShipKind } from "../model/kinds";
 import { compartmentSpecsOf } from "../sim/compartments";
 import { simShipFromStats } from "../sim/simShip";
 import { trialFunnelsOf } from "../sim/trialFunnels";
-import type { BreakMode, SimSea, SimState, TrialInput } from "../sim/types";
+import { isTimelineTrial } from "../sim/trialKind";
+import type {
+  BreakMode,
+  LifeboatMode,
+  SimSea,
+  SimState,
+  TrialInput,
+} from "../sim/types";
 import { trackGame } from "@/lib/analytics/trackGame";
 import {
   trackPartPlaced,
@@ -51,7 +58,9 @@ import {
 import { forgetUnsavedChallenges } from "@/lib/ship-builder/challenges/progressStore";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
 import { getTimeOfDay } from "../../../components/ship-builder/hooks/useTimeOfDay";
+import { getTrialChoices } from "../../../components/ship-builder/hooks/useTrialChoices";
 import type { TimeOfDay } from "../../../components/ship-builder/scene/timeOfDay";
+import { isSeaState } from "../../../components/ship-builder/scene/seaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
@@ -109,17 +118,6 @@ export interface Notice {
 }
 
 /**
- * The sea trial: idle while building, aiming while the player picks where the
- * iceberg hits, running while the sim plays, then a result until the player
- * goes back to building. Anything but idle freezes the ship: every action that
- * would edit it does nothing (see `isTrialActive`).
- *
- * An iceberg trial always carries on to the sea floor if she sinks: it starts
- * with `descending` set, so the descent is part of the one run. `replay` plays
- * the same trial again from the start. The result waits until any walker
- * stops walking.
- */
-/**
  * Drive mode: idle while building, `setup` while the obstacle picker is open,
  * `sailing` while the player steers. Both non-idle states freeze the ship.
  */
@@ -161,8 +159,24 @@ function mainLook(): TrialLook {
   return { sea: getSeaState(), time: getTimeOfDay() };
 }
 
+/** The trials that open a setup card with a Go button. */
+export type SetupKind = "waves" | "storm";
+
+/**
+ * The sea trial: idle while building, `setup` while a Waves or Shipwreck
+ * storm card is open, aiming while the player picks where the iceberg hits,
+ * running while the sim plays, then a result until the player goes back to
+ * building. Anything but idle freezes the ship: every action that would edit
+ * it does nothing (see `isTrialActive`).
+ *
+ * A timeline trial (iceberg or storm) always carries on to the sea floor if
+ * she sinks: it starts with `descending` set, so the descent is part of the
+ * one run. `replay` plays the same trial again from the start. The result
+ * waits until any walker stops walking.
+ */
 export type TrialSlice =
   | { status: "idle" }
+  | { status: "setup"; kind: SetupKind; look: TrialLook }
   | { status: "aiming"; look: TrialLook }
   | {
       status: "running";
@@ -266,6 +280,24 @@ export interface ShipBuilderState extends ShipBuilderData {
    * (cells from the bow) it is an iceberg trial struck there.
    */
   startTrial: (sea: SimSea, impactX?: number) => void;
+  /**
+   * Opens a trial's setup card (from building or a finished trial): the
+   * Waves card on the remembered sea, the storm card in the wild sea, both
+   * on the main-screen time. Freezes the ship like a trial.
+   */
+  openTrialSetup: (kind: SetupKind) => void;
+  /**
+   * Changes the open card's look (or the aiming iceberg's). The storm keeps
+   * its wild sea and the Waves card only takes the main-screen seas. Never
+   * touches the main-screen choices.
+   */
+  setTrialLook: (patch: Partial<TrialLook>) => void;
+  /** Closes the setup card and goes back to building. */
+  cancelTrialSetup: () => void;
+  /** Go: starts the open card's trial with its look (and lifeboats). */
+  startSetupTrial: () => void;
+  /** "Try again": runs the finished trial again with the same choices. */
+  retryTrial: () => void;
   /**
    * Runs a challenge's own trial (fixed sea, strike and break mode, so the
    * score is fair). Does nothing while walking, or mid-trial or drive.
@@ -404,11 +436,25 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       chooseSea?: (input: TrialInput) => SimSea;
       /** The scene's sea and time; absent is the main-screen choices. */
       look?: TrialLook;
+      /** A Shipwreck storm (no `impactX`): water over the deck until she sinks. */
+      storm?: boolean;
+      /** How the crowd boards the boats; absent leaves the input without it. */
+      lifeboats?: LifeboatMode;
     } = {}
   ) {
     const { ship } = get();
     const breakMode = options.breakMode ?? get().breakMode;
     const { stats } = analyzeShip(ship);
+    const storm =
+      options.storm && impactX === undefined
+        ? {
+            storm: {
+              compartments: compartmentSpecsOf(ship.hull),
+              length: gridLength(ship),
+              breakMode,
+            },
+          }
+        : {};
     const base: TrialInput = {
       ship: simShipFromStats(stats, ship.hull.beam),
       sea,
@@ -427,6 +473,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
                 : { gashLength: options.gashLength }),
             },
           }),
+      ...storm,
+      ...(options.lifeboats ? { lifeboats: options.lifeboats } : {}),
     };
     const input = options.chooseSea
       ? { ...base, sea: options.chooseSea(base) }
@@ -795,7 +843,77 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     startTrial(sea, impactX) {
       if (get().walk.status !== "idle") return;
-      beginTrial(sea, impactX);
+      const { trial } = get();
+      // Striking the aimed iceberg keeps the aim card's time and lifeboats.
+      const fromAim =
+        trial.status === "aiming" && impactX !== undefined
+          ? { look: trial.look, lifeboats: getTrialChoices().lifeboats }
+          : {};
+      beginTrial(sea, impactX, fromAim);
+    },
+
+    openTrialSetup(kind) {
+      const { trial, drive, walk } = get();
+      if (walk.status !== "idle" || drive.status !== "idle") return;
+      if (trial.status !== "idle" && trial.status !== "result") return;
+      const time = getTimeOfDay();
+      const sea: SimSea = kind === "storm" ? "wild" : getTrialChoices().waveSea;
+      set({
+        trial: { status: "setup", kind, look: { sea, time } },
+        tool: { kind: "none" },
+        ...CLEARED,
+      });
+    },
+
+    setTrialLook(patch) {
+      const { trial } = get();
+      if (trial.status !== "setup" && trial.status !== "aiming") return;
+      // Only the Waves card picks a sea, and only a main-screen one.
+      const canPickSea =
+        trial.status === "setup" &&
+        trial.kind === "waves" &&
+        isSeaState(patch.sea);
+      const look: TrialLook = {
+        sea: canPickSea ? (patch.sea ?? trial.look.sea) : trial.look.sea,
+        time: patch.time ?? trial.look.time,
+      };
+      set({ trial: { ...trial, look } });
+    },
+
+    cancelTrialSetup() {
+      if (get().trial.status !== "setup") return;
+      set({ trial: { status: "idle" } });
+    },
+
+    startSetupTrial() {
+      const { trial, walk } = get();
+      if (trial.status !== "setup" || walk.status !== "idle") return;
+      if (trial.kind === "waves") {
+        beginTrial(trial.look.sea, undefined, { look: trial.look });
+        return;
+      }
+      beginTrial("wild", undefined, {
+        look: trial.look,
+        storm: true,
+        lifeboats: getTrialChoices().lifeboats,
+      });
+    },
+
+    retryTrial() {
+      const { trial, walk } = get();
+      if (trial.status !== "result" || walk.status !== "idle") return;
+      // Building is frozen while the result shows, so the same input is the
+      // same ship: run it again with the same look.
+      runId += 1;
+      set({
+        trial: {
+          status: "running",
+          input: trial.input,
+          look: trial.look,
+          runId,
+          descending: trial.descending,
+        },
+      });
     },
 
     startChallenge(id) {
@@ -863,7 +981,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     sinkWhileWalking() {
       if (get().walk.status !== "walking") return;
       if (get().trial.status !== "idle") return;
-      beginTrial(getSeaState(), gridLength(get().ship) * SINK_IMPACT_FRACTION);
+      beginTrial(getSeaState(), gridLength(get().ship) * SINK_IMPACT_FRACTION, {
+        lifeboats: getTrialChoices().lifeboats,
+      });
     },
 
     openDrive() {
@@ -923,7 +1043,11 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     driveHit(impact) {
       if (get().drive.status !== "sailing") return;
       get().endDrive();
-      get().startTrial(getSeaState(), impact.impactX);
+      if (get().walk.status !== "idle") return;
+      // No card: the main-screen look and the remembered lifeboats.
+      beginTrial(getSeaState(), impact.impactX, {
+        lifeboats: getTrialChoices().lifeboats,
+      });
     },
 
     aimIceberg() {
@@ -970,7 +1094,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     replay() {
       const { trial } = get();
-      if (trial.status !== "result" || !trial.input.iceberg) return;
+      if (trial.status !== "result" || !isTimelineTrial(trial.input)) return;
       runId += 1;
       set({
         trial: {
