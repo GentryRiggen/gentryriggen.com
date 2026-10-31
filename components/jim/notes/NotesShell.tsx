@@ -84,6 +84,7 @@ export default function NotesShell({
   const [query, setQuery] = useState("");
 
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const selectedTabRef = useRef<HTMLButtonElement>(null);
   const inflight = useRef(false);
   /** Where the People list was scrolled to before a profile opened. */
   const listTop = useRef(0);
@@ -124,6 +125,14 @@ export default function NotesShell({
       el.scrollTo({ top, behavior: "instant" });
     }
   }, [page, person]);
+
+  // Keep the selected pill in view when the row is scrolled sideways.
+  useEffect(() => {
+    const tab = selectedTabRef.current;
+    if (tab && typeof tab.scrollIntoView === "function") {
+      tab.scrollIntoView({ inline: "nearest", block: "nearest" });
+    }
+  }, [page]);
 
   function goTo(next: Page) {
     if (next === page && person === null) return;
@@ -188,11 +197,13 @@ export default function NotesShell({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-ayu-line pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+      <div className="shrink-0 border-b border-ayu-line">
+        {/* Pills size to their text and the row scrolls sideways on its own
+            when they don't fit; the page never does. */}
         <div
           role="tablist"
           aria-label="Notes pages"
-          className="mx-auto grid w-full max-w-[45rem] grid-cols-5 gap-0.5 px-1 py-1.5 sm:gap-1 sm:px-3"
+          className="mx-auto flex w-full max-w-[45rem] scroll-px-4 gap-1 overflow-x-auto overscroll-x-contain py-1.5 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {PAGES.map((p) => {
             const selected = p.id === page;
@@ -204,8 +215,9 @@ export default function NotesShell({
                 id={`jim-notes-tab-${p.id}`}
                 aria-selected={selected}
                 aria-controls="jim-notes-page"
+                ref={selected ? selectedTabRef : undefined}
                 onClick={() => goTo(p.id)}
-                className={`min-h-11 min-w-0 rounded-full px-1 text-[0.8125rem] font-medium sm:text-sm ${
+                className={`min-h-11 shrink-0 rounded-full px-3.5 text-sm font-medium whitespace-nowrap ${
                   selected
                     ? "bg-ayu-accent text-ayu-bg"
                     : "text-ayu-subtle hover:bg-ayu-panel hover:text-ayu-text"

@@ -117,20 +117,41 @@ describe("golfSummary", () => {
 });
 
 describe("people", () => {
-  const [alex, sam, morgan, pat, plumber] = VIEW_FIXTURE.people;
+  const [wren, sam, jordan, pat, plumber] = VIEW_FIXTURE.people;
 
   it("groups like the Mac viewer", () => {
-    expect(personGroup(alex)).toBe("Family");
+    expect(personGroup(wren)).toBe("Family");
     expect(personGroup(sam)).toBe("Work");
-    expect(personGroup(morgan)).toBe("Friends");
+    expect(personGroup(jordan)).toBe("Friends");
     expect(personGroup(pat)).toBe("Family");
     expect(personGroup(plumber)).toBe("Others");
   });
 
+  it("uses the server's group when it sends one", () => {
+    // The server's group wins over tags.
+    expect(personGroup({ ...wren, group: "other" })).toBe("Others");
+    expect(personGroup({ ...plumber, group: "friends" })).toBe("Friends");
+    expect(personGroup({ ...plumber, group: "work" })).toBe("Work");
+    // Pat has no group: tags decide.
+    expect(pat.group).toBeUndefined();
+    expect(personGroup(pat)).toBe("Family");
+  });
+
+  it("falls back to tags for a missing or unknown group", () => {
+    expect(personGroup({ ...plumber, group: undefined })).toBe("Others");
+    expect(
+      personGroup({
+        ...plumber,
+        tags: ["friend"],
+        group: "mystery" as unknown as "other",
+      })
+    ).toBe("Friends");
+  });
+
   it("works out age and signs", () => {
-    expect(ageOn(alex.birth, TODAY)).toBe(36);
+    expect(ageOn(wren.birth, TODAY)).toBe(36);
     expect(ageOn({ y: 1990, m: 11, d: 3, unsure: false }, TODAY)).toBe(35);
-    expect(ageOn(morgan.birth, TODAY)).toBeNull();
+    expect(ageOn(jordan.birth, TODAY)).toBeNull();
     expect(sunSign(6, 16)).toBe("Gemini");
     expect(sunSign(12, 25)).toBe("Capricorn");
     expect(chineseZodiac({ y: 1990, m: 6, d: 16, unsure: false })).toBe(
@@ -141,7 +162,7 @@ describe("people", () => {
   });
 
   it("lists birthday, age, next birthday and signs", () => {
-    expect(personFacts(alex, TODAY)).toEqual([
+    expect(personFacts(wren, TODAY)).toEqual([
       ["Birthday", "Jun 16, 1990"],
       ["Age", "36"],
       ["Next", "in 228 days"],
@@ -150,7 +171,7 @@ describe("people", () => {
   });
 
   it("marks an unsure birthday and skips the age with no year", () => {
-    expect(personFacts(morgan, TODAY)).toEqual([
+    expect(personFacts(jordan, TODAY)).toEqual([
       ["Birthday", "Nov 3 (unconfirmed)"],
       ["Next", "in 3 days"],
       ["Signs", "Scorpio"],

@@ -16,6 +16,7 @@ import {
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { isJimConnected, JIM_API } from "@/lib/jim/api";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
+import { clearViewCache } from "@/lib/jim/view";
 import { jimTestHook } from "@/lib/jim/testHooks";
 
 type GetToken = (force?: boolean) => Promise<string | null>;
@@ -68,6 +69,8 @@ export default function JimGate() {
     void watch((user) => {
       if (cancelled) return;
       if (!user) {
+        // Notes data (health, people) must not outlive the sign-in.
+        clearViewCache();
         // Keep the "Not authorized" message when our own sign-out echoes back.
         setState((prev) =>
           prev.kind === "denied" ? prev : { kind: "signedOut" }
@@ -109,6 +112,7 @@ export default function JimGate() {
   }
 
   function signOut() {
+    clearViewCache();
     signOutUser().catch(() => {});
   }
 

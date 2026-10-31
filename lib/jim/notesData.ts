@@ -319,7 +319,18 @@ export const PERSON_GROUPS: PersonGroup[] = [
   "Others",
 ];
 
+const SERVER_GROUPS: Record<string, PersonGroup> = {
+  family: "Family",
+  friends: "Friends",
+  work: "Work",
+  other: "Others",
+};
+
+/** The server's group when it sends one, else the Mac viewer's tag rules. */
 export function personGroup(p: Person): PersonGroup {
+  const fromServer =
+    typeof p.group === "string" ? SERVER_GROUPS[p.group] : undefined;
+  if (fromServer) return fromServer;
   const tags = (p.tags ?? []).map((t) => String(t).toLowerCase());
   const about = p.about ?? "";
   if (

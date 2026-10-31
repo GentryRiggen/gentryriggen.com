@@ -365,10 +365,21 @@ for (const width of [undefined, 320]) {
         await expect(page.getByRole("tab", { name: "Notes" })).toBeInViewport({
           ratio: 1,
         });
-        await expect(page.getByRole("tab", { name: "People" })).toBeInViewport({
-          ratio: 1,
-        });
         await shot("notes-home");
+        // Each page pill, once selected, sits well inside the screen.
+        for (const name of ["People", "Golf", "Training", "Health", "Home"]) {
+          const tab = page.getByRole("tab", { name });
+          await tab.click();
+          await expect(tab).toHaveAttribute("aria-selected", "true");
+          const width = page.viewportSize()?.width ?? 0;
+          await expect
+            .poll(async () => {
+              const box = await tab.boundingBox();
+              return box ? Math.min(box.x, width - (box.x + box.width)) : -1;
+            })
+            .toBeGreaterThanOrEqual(12);
+          await noSidewaysScroll(page);
+        }
         await page.getByText(/^Later/).click();
         await expect(page.getByText("Book the dentist")).toBeVisible();
         await shot("notes-home-later");
@@ -410,7 +421,7 @@ for (const width of [undefined, 320]) {
         await shot("notes-person-table");
 
         await page.getByRole("button", { name: "People" }).click();
-        await page.getByRole("button", { name: /Alex Rivera/ }).click();
+        await page.getByRole("button", { name: /Wren Rivera/ }).click();
         await expect(page.getByText("Jun 16, 1990")).toBeVisible();
         await shot("notes-person");
       }

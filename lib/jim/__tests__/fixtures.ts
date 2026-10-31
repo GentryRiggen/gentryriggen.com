@@ -284,8 +284,9 @@ export const VIEW_FIXTURE: ViewData = {
   ],
   people: [
     {
-      path: "people/alex-rivera.md",
-      name: "Alex Rivera",
+      path: "people/wren-rivera.md",
+      group: "family",
+      name: "Wren Rivera",
       tags: ["family", "brother"],
       strengths: ["Learner", "Achiever"],
       strengthTips: [],
@@ -305,6 +306,7 @@ export const VIEW_FIXTURE: ViewData = {
     },
     {
       path: "people/sam-okafor.md",
+      group: "work",
       name: "Sam Okafor",
       tags: ["work", "coworker"],
       strengths: [],
@@ -328,8 +330,9 @@ export const VIEW_FIXTURE: ViewData = {
       ].join("\n"),
     },
     {
-      path: "people/morgan-lee.md",
-      name: "Morgan Lee",
+      path: "people/jordan-lee.md",
+      group: "friends",
+      name: "Jordan Lee",
       tags: ["friend"],
       strengths: [],
       strengthTips: [],
@@ -355,6 +358,7 @@ export const VIEW_FIXTURE: ViewData = {
     },
     {
       path: "people/river-plumbing.md",
+      group: "other",
       name: "River Plumbing",
       tags: ["service"],
       strengths: [],

@@ -105,7 +105,7 @@ describe("NotesHealth", () => {
     expect(screen.getByText("Oct 28")).toBeInTheDocument();
     expect(screen.getByText("50 mg · 3 days ago")).toBeInTheDocument();
     expect(screen.getByText("Nov 20")).toBeInTheDocument();
-    expect(screen.getByText(/about, in 20 days/)).toBeInTheDocument();
+    expect(screen.getByText("in about 20 days")).toBeInTheDocument();
     expect(screen.getByText(/Set aside until the next draw/)).toHaveTextContent(
       "Estradiol"
     );
@@ -223,8 +223,8 @@ describe("NotesPeople", () => {
         onOpen={jest.fn()}
       />
     );
-    expect(screen.getByRole("button", { name: /Morgan Lee/ })).toBeVisible();
-    expect(screen.queryByText("Alex Rivera")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Jordan Lee/ })).toBeVisible();
+    expect(screen.queryByText("Wren Rivera")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Search people")).toHaveValue("college");
   });
 
@@ -243,12 +243,12 @@ describe("NotesPeople", () => {
 
 describe("NotesPerson", () => {
   it("shows facts, strengths and the Markdown body with note links as labels", () => {
-    const alex = VIEW_FIXTURE.people[0];
+    const wren = VIEW_FIXTURE.people[0];
     const { container } = render(
-      <NotesPerson person={alex} today="2026-10-31" onBack={jest.fn()} />
+      <NotesPerson person={wren} today="2026-10-31" onBack={jest.fn()} />
     );
     expect(
-      screen.getByRole("heading", { name: "Alex Rivera" })
+      screen.getByRole("heading", { name: "Wren Rivera" })
     ).toBeInTheDocument();
     expect(screen.getByText("Jun 16, 1990")).toBeInTheDocument();
     expect(screen.getByText("36")).toBeInTheDocument();

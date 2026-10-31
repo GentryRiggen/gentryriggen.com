@@ -139,6 +139,8 @@ export interface Person {
   birth: Birth | null;
   zodiac: string | null;
   died: string | null;
+  /** The server's grouping; when absent the page groups by tags. */
+  group?: "family" | "friends" | "work" | "other";
   /** The person file's Markdown body. */
   body: string;
   updated: string;

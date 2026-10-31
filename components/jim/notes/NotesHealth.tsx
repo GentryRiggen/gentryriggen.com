@@ -26,10 +26,11 @@ function ago(n: number): string {
   return n > 0 ? `${n} days ago` : `in ${-n} days`;
 }
 
-function until(n: number): string {
-  if (n === 0) return "today";
-  if (n === 1) return "tomorrow";
-  return n > 0 ? `in ${n} days` : `${-n} days ago`;
+/** "in about 20 days"; it's an estimate, so "about" leads. */
+function nextDrawWhen(n: number): string {
+  if (n === 0) return "about today";
+  if (n === 1) return "about tomorrow";
+  return n > 0 ? `in about ${n} days` : `about ${-n} days ago`;
 }
 
 function LabTile({ card }: { card: LabCard }) {
@@ -97,7 +98,7 @@ export default function NotesHealth({ data }: NotesHealthProps) {
           <Stat
             label="Next lab draw"
             value={fmtShort(h.nextDraw)}
-            detail={`about, ${until(daysBetween(data.today, h.nextDraw))}`}
+            detail={nextDrawWhen(daysBetween(data.today, h.nextDraw))}
           />
         ) : null}
         {h.prescribedWeekly ? (
