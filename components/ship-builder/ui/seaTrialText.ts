@@ -5,6 +5,7 @@ export const SEA_LABELS: Record<SimSea, string> = {
   calm: "Calm sea",
   choppy: "Choppy sea",
   stormy: "Stormy sea",
+  wild: "Wild storm",
 };
 
 /**

@@ -84,7 +84,10 @@ export function countSaved(
   return saved;
 }
 
-const SEAS_IN_ORDER: readonly SimSea[] = ["calm", "choppy", "stormy"];
+/** The seas the Shipshape score runs her through (not the storm's wild sea). */
+export type ShipshapeSea = Exclude<SimSea, "wild">;
+
+const SEAS_IN_ORDER: readonly ShipshapeSea[] = ["calm", "choppy", "stormy"];
 const DEG = 180 / Math.PI;
 /** A weather trial that has not ended by now is not going to. */
 const MAX_WEATHER_S = 60;
@@ -102,7 +105,7 @@ function survived(outcome: TrialOutcome | null): boolean {
   return outcome === "steady" || outcome === "recovered";
 }
 
-function runWeather(input: TrialInput, sea: SimSea): ShipshapeRun {
+function runWeather(input: TrialInput, sea: ShipshapeSea): ShipshapeRun {
   const trial: TrialInput = { ...input, sea };
   let state = createTrial(trial);
   let peak = 0;
@@ -118,7 +121,9 @@ function runWeather(input: TrialInput, sea: SimSea): ShipshapeRun {
 }
 
 /** Runs the weather trial in every sea (cheap, deterministic) for the score. */
-export function shipshapeRuns(input: TrialInput): Record<SimSea, ShipshapeRun> {
+export function shipshapeRuns(
+  input: TrialInput
+): Record<ShipshapeSea, ShipshapeRun> {
   return {
     calm: runWeather(input, "calm"),
     choppy: runWeather(input, "choppy"),
@@ -131,8 +136,8 @@ export function shipshapeRuns(input: TrialInput): Record<SimSea, ShipshapeRun> {
  * else the stormy one (which sets how steadily she did it).
  */
 export function decidingSea(
-  runs: Readonly<Record<SimSea, ShipshapeRun>>
-): SimSea {
+  runs: Readonly<Record<ShipshapeSea, ShipshapeRun>>
+): ShipshapeSea {
   return SEAS_IN_ORDER.find((sea) => !survived(runs[sea].outcome)) ?? "stormy";
 }
 
@@ -144,7 +149,7 @@ export function decidingSea(
  * every stable ship the same.
  */
 export function scoreShipshape(
-  runs: Readonly<Record<SimSea, ShipshapeRun>>
+  runs: Readonly<Record<ShipshapeSea, ShipshapeRun>>
 ): ChallengeScore {
   const sea = decidingSea(runs);
   const run = runs[sea];

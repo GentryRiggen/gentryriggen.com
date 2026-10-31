@@ -9,6 +9,9 @@ export function trackTrialRun(
   sea: SimSea,
   isIceberg: boolean
 ): void {
+  // The analytics schema has no wild sea (storm trial) yet: not tracked until
+  // gameEvents.ts and firestore.rules add it.
+  if (sea === "wild") return;
   trackGame("trial_run", {
     kind: isIceberg ? "iceberg" : "weather",
     outcome: state.outcome ?? "steady",
