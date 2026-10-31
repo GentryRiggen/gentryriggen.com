@@ -41,6 +41,7 @@ const ghost = encodeGhost(
 beforeEach(() => {
   jest.useFakeTimers({ now: Date.parse(`${TODAY}T22:30:00Z`) });
   usePlaneBuilderStore.setState(usePlaneBuilderStore.getInitialState(), true);
+  usePlaneBuilderStore.setState({ isBoardHidden: false });
   mockAuth.getIdToken.mockResolvedValue({ uid: "me", idToken: "t" });
 });
 
@@ -103,6 +104,16 @@ describe("DailyCard", () => {
     expect(state.screen).toBe("hangar");
     expect(state.daily).toEqual(dailyFor(TODAY));
     expect(state.levelId).toBe(dailyFor(TODAY).world);
+  });
+
+  it("has no board button while the board is hidden", async () => {
+    usePlaneBuilderStore.setState({ isBoardHidden: true });
+    render(<DailyCard leaderboardsEnabled />);
+    await act(async () => {});
+    expect(
+      screen.queryByRole("button", { name: /daily board/i })
+    ).not.toBeInTheDocument();
+    expect(mockAuth.getIdToken).not.toHaveBeenCalled();
   });
 
   it("has no board button while leaderboards are off", () => {

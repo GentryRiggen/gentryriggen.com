@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as auth from "@/lib/leaderboard/auth";
 import * as board from "@/lib/leaderboard/client";
@@ -54,6 +54,7 @@ function setBestTime(seconds: number | null) {
   const base = newProgress();
   usePlaneBuilderStore.setState({
     currentSeason: 2,
+    isBoardHidden: false,
     progress: {
       ...base,
       nickname: "Me Pilot 1",
@@ -118,6 +119,20 @@ it("shows nothing extra when the board cannot load", async () => {
   expect(screen.getByRole("dialog")).toBeVisible();
 });
 
+it("shows no standing or board while the board is hidden", async () => {
+  usePlaneBuilderStore.setState({ isBoardHidden: true });
+  mockBoard.fetchBoard.mockResolvedValue([row("me", "Me Pilot 1", 20)]);
+  renderModal();
+  await act(async () => {});
+  expect(screen.getByRole("dialog")).toBeVisible();
+  expect(screen.queryByTestId("finish-standing")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /see board/i })
+  ).not.toBeInTheDocument();
+  expect(mockAuth.getIdToken).not.toHaveBeenCalled();
+  expect(mockBoard.fetchBoard).not.toHaveBeenCalled();
+});
+
 it("makes no calls when leaderboards are off", () => {
   render(
     <FlightRewardModal
@@ -145,7 +160,9 @@ it("opens the board on the world's tab over the popup and restores focus", async
   expect(
     within(boardDialog).getByRole("tab", { name: "Per world", selected: true })
   ).toBeVisible();
-  expect(within(boardDialog).getByRole("combobox")).toHaveValue("meadow");
+  expect(
+    within(boardDialog).getByRole("combobox", { name: "World" })
+  ).toHaveValue("meadow");
   expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 2);
   expect(
     await within(boardDialog).findByText("Me Pilot 1", {

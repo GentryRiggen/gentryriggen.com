@@ -81,6 +81,11 @@ interface PlaneBuilderData {
   /** True after a new season reset the season stats, until dismissed. */
   newSeasonNote: boolean;
   /**
+   * Whether the admin has hidden the board from players. Starts true and
+   * stays so unless the switch reads as shown (see lib/leaderboard/boardSettings).
+   */
+  isBoardHidden: boolean;
+  /**
    * The nickname the save held when it loaded: the name last sent to the
    * board before this visit, so the board sync can tell an admin's rename
    * from a reroll the player made since.
@@ -125,6 +130,7 @@ export interface PlaneBuilderState extends PlaneBuilderData {
    */
   applySeason: (n: number) => void;
   dismissNewSeasonNote: () => void;
+  setBoardHidden: (hidden: boolean) => void;
 }
 
 const initial: PlaneBuilderData = {
@@ -138,6 +144,7 @@ const initial: PlaneBuilderData = {
   daily: null,
   currentSeason: null,
   newSeasonNote: false,
+  isBoardHidden: true,
   loadedNickname: null,
 };
 
@@ -380,6 +387,7 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
     });
   },
   dismissNewSeasonNote: () => set({ newSeasonNote: false }),
+  setBoardHidden: (hidden) => set({ isBoardHidden: hidden }),
 }));
 
 declare global {

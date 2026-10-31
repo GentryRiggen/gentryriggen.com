@@ -29,6 +29,7 @@ function setPlayer(prestiges: number, distance: number) {
   const base = newProgress();
   usePlaneBuilderStore.setState({
     currentSeason: 2,
+    isBoardHidden: false,
     progress: {
       ...base,
       prestige: { ...base.prestige, level: prestiges + 5 },
@@ -45,6 +46,15 @@ beforeEach(() => {
   setPlayer(1, 500);
   mockAuth.getIdToken.mockResolvedValue({ uid: "me", idToken: "t" });
   mockBoard.fetchBoard.mockResolvedValue([]);
+});
+
+it("shows nothing and fetches nothing while the board is hidden", async () => {
+  usePlaneBuilderStore.setState({ isBoardHidden: true });
+  const { container } = render(<LeaderboardCard enabled />);
+  await Promise.resolve();
+  expect(container).toBeEmptyDOMElement();
+  expect(mockAuth.getIdToken).not.toHaveBeenCalled();
+  expect(mockBoard.fetchBoard).not.toHaveBeenCalled();
 });
 
 it("reads the current season's board", async () => {

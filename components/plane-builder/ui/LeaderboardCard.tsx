@@ -68,8 +68,11 @@ interface LeaderboardCardProps {
 
 /** The worlds list's world-rank card; opens the leaderboards when tapped. */
 export default function LeaderboardCard({
-  enabled = LEADERBOARDS_ENABLED,
+  enabled: isAllowed = LEADERBOARDS_ENABLED,
 }: LeaderboardCardProps) {
+  // The admin can hide the board from players; then there is no card.
+  const isBoardHidden = usePlaneBuilderStore((s) => s.isBoardHidden);
+  const enabled = isAllowed && !isBoardHidden;
   const { uid, standing } = useLeaderboardStanding(enabled, null);
   const nickname = usePlaneBuilderStore((s) => s.progress.nickname);
   const myPrestige = usePlaneBuilderStore((s) => s.progress.season.prestiges);

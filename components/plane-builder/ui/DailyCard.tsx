@@ -33,8 +33,11 @@ interface DailyCardProps {
 
 /** Today's challenge: world, twist, countdown, your best time, and the board. */
 export default function DailyCard({
-  leaderboardsEnabled = LEADERBOARDS_ENABLED,
+  leaderboardsEnabled: isAllowed = LEADERBOARDS_ENABLED,
 }: DailyCardProps) {
+  // The admin can hide the board from players; then there is no button.
+  const isBoardHidden = usePlaneBuilderStore((s) => s.isBoardHidden);
+  const leaderboardsEnabled = isAllowed && !isBoardHidden;
   const now = useSyncExternalStore(
     subscribeToClock,
     readClock,

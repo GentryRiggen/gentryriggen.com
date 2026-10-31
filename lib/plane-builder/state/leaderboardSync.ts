@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { fetchBoardHidden } from "@/lib/leaderboard/boardSettings";
 import { randomNickname } from "@/lib/leaderboard/nickname";
 import {
   fetchOwnEntry,
@@ -57,6 +58,8 @@ export interface LeaderboardSyncDeps {
   readSeason?: () => Promise<SeasonInfo | null>;
   /** The player's entry in a season, "missing", or null if it can't be read. */
   readOwnEntry?: (season: number) => Promise<OwnEntry | "missing" | null>;
+  /** Whether the admin hid the board from players (failure → hidden). */
+  readBoardHidden?: () => Promise<boolean>;
   intervalMs?: number;
   now?: () => number;
 }
@@ -152,6 +155,8 @@ export function createLeaderboardSync(
   const submit = deps.submit ?? submitEntryResult;
   const readSeason = deps.readSeason ?? (() => fetchSeason("plane"));
   const readOwnEntry = deps.readOwnEntry ?? ((n) => fetchOwnEntry(n));
+  const readBoardHidden =
+    deps.readBoardHidden ?? (() => fetchBoardHidden("plane"));
   const intervalMs = deps.intervalMs ?? SUBMIT_INTERVAL_MS;
   const now = deps.now ?? Date.now;
   let lastSentAt = Number.NEGATIVE_INFINITY;
@@ -304,6 +309,11 @@ export function createLeaderboardSync(
   const start = (): (() => void) => {
     if (!enabled) return () => {};
     void currentSeason();
+    // Read once per start; the board stays hidden unless this says shown.
+    // Submits carry on either way (the admin board needs them).
+    readBoardHidden()
+      .catch(() => true)
+      .then((hidden) => usePlaneBuilderStore.getState().setBoardHidden(hidden));
     const unsubscribe = usePlaneBuilderStore.subscribe((state, prev) => {
       const isFlightDone =
         state.lastFlight !== null && state.lastFlight !== prev.lastFlight;

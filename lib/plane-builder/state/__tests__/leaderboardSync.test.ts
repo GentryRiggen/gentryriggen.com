@@ -21,6 +21,9 @@ jest.mock("@/lib/leaderboard/client", () => ({
   submitEntryResult: jest.fn(),
   fetchOwnEntry: jest.fn(),
 }));
+jest.mock("@/lib/leaderboard/boardSettings", () => ({
+  fetchBoardHidden: jest.fn().mockResolvedValue(true),
+}));
 jest.mock("@/lib/leaderboard/season", () => ({
   ...jest.requireActual("@/lib/leaderboard/season"),
   fetchSeason: jest.fn(),
@@ -185,6 +188,65 @@ it("setNickname only accepts generated names", () => {
   expect(usePlaneBuilderStore.getState().progress.nickname).toBe(
     "Happy Otter 7"
   );
+});
+
+describe("board hidden switch", () => {
+  it("starts hidden and reads the switch once on start", async () => {
+    expect(usePlaneBuilderStore.getState().isBoardHidden).toBe(true);
+    const readBoardHidden = jest.fn().mockResolvedValue(false);
+    const sync = createLeaderboardSync({
+      enabled: true,
+      submit: jest.fn().mockResolvedValue("ok"),
+      readSeason: jest.fn().mockResolvedValue({ number: 2, startedAt: null }),
+      readOwnEntry: jest.fn().mockResolvedValue("missing"),
+      readBoardHidden,
+    });
+    const stop = sync.start();
+    await settle();
+    expect(readBoardHidden).toHaveBeenCalledTimes(1);
+    expect(usePlaneBuilderStore.getState().isBoardHidden).toBe(false);
+    usePlaneBuilderStore.setState({ lastFlight: flight() });
+    await settle();
+    expect(readBoardHidden).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it("keeps submitting while the board is hidden", async () => {
+    const readBoardHidden = jest.fn().mockResolvedValue(true);
+    const submit = jest.fn().mockResolvedValue("ok");
+    const stop = createLeaderboardSync({
+      enabled: true,
+      submit,
+      readSeason: jest.fn().mockResolvedValue({ number: 2, startedAt: null }),
+      readOwnEntry: jest.fn().mockResolvedValue("missing"),
+      readBoardHidden,
+    }).start();
+    usePlaneBuilderStore.setState({ lastFlight: flight() });
+    await settle();
+    expect(usePlaneBuilderStore.getState().isBoardHidden).toBe(true);
+    expect(submit).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it("stays hidden when the read fails", async () => {
+    const stop = createLeaderboardSync({
+      enabled: true,
+      submit: jest.fn().mockResolvedValue("ok"),
+      readSeason: jest.fn().mockResolvedValue(null),
+      readOwnEntry: jest.fn().mockResolvedValue("missing"),
+      readBoardHidden: jest.fn().mockRejectedValue(new Error("offline")),
+    }).start();
+    await settle();
+    expect(usePlaneBuilderStore.getState().isBoardHidden).toBe(true);
+    stop();
+  });
+
+  it("makes no read when disabled", async () => {
+    const readBoardHidden = jest.fn();
+    createLeaderboardSync({ enabled: false, readBoardHidden }).start();
+    await settle();
+    expect(readBoardHidden).not.toHaveBeenCalled();
+  });
 });
 
 describe("seasons", () => {

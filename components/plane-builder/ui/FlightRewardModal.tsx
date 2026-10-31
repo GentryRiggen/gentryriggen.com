@@ -82,8 +82,10 @@ export default function FlightRewardModal({
     (s) => s.progress.levels[levelId].tiers
   );
   const nickname = usePlaneBuilderStore((s) => s.progress.nickname);
+  // The admin can hide the board from players: no standing, no "See board".
+  const isBoardHidden = usePlaneBuilderStore((s) => s.isBoardHidden);
   const { uid, standing } = useLeaderboardStanding(
-    leaderboardsEnabled && result.finished && !isDaily,
+    leaderboardsEnabled && !isBoardHidden && result.finished && !isDaily,
     result.finished ? levelId : null
   );
   const hasBonus = bonus !== null;
