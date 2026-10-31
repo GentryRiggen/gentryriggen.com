@@ -48,3 +48,8 @@ it("renders fenced code as a block with the text untouched", () => {
   expect(container.querySelector("strong")).toBeNull();
   expect(container.querySelector("li")).toBeNull();
 });
+
+it("keeps the start number of an ordered list", () => {
+  const { container } = render(<JimMarkdown text={"3. third\n4. fourth"} />);
+  expect(container.querySelector("ol")).toHaveAttribute("start", "3");
+});

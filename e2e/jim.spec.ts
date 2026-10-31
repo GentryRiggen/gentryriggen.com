@@ -55,8 +55,11 @@ async function signedIn(page: Page) {
 }
 
 async function send(page: Page, text: string, reply: string | RegExp) {
-  await page.getByLabel("Message").fill(text);
+  const box = page.getByLabel("Message");
+  await box.fill(text);
   await page.getByRole("button", { name: "Send" }).click();
+  // The box keeps focus, so the phone keyboard stays up for the next message.
+  await expect(box).toBeFocused();
   await expect(page.getByRole("log").getByText(reply).last()).toBeVisible();
 }
 
@@ -128,6 +131,26 @@ test.describe("Jim", () => {
     ).toHaveAttribute("href", "/jim-icons/apple-touch-icon.png");
     const manifest = await page.request.get("/jim.webmanifest");
     expect(await manifest.json()).toMatchObject({ start_url: "/jim" });
+    // Not the homepage's canonical or share card.
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://gentryriggen.com/jim"
+    );
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+      "content",
+      "https://gentryriggen.com/jim"
+    );
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      "Jim"
+    );
+    // The status bar follows light and dark mode.
+    await expect(
+      page.locator('meta[name="theme-color"][media*="dark"]')
+    ).toHaveAttribute("content", "#030712");
+    await expect(
+      page.locator('meta[name="theme-color"][media*="light"]')
+    ).toHaveAttribute("content", "#ffffff");
   });
 
   test("says Jim isn't connected when there is no server URL", async ({
@@ -176,8 +199,12 @@ for (const width of [undefined, 320]) {
               .getByRole("button", { name: "Sign in" })
               .boundingBox();
             expect(button?.height).toBeGreaterThanOrEqual(44);
+            await expect(
+              page.getByRole("button", { name: "Sign in" })
+            ).toBeEnabled();
             await page.screenshot({
               path: shotName(page, testInfo, "sign-in", scheme),
+              animations: "disabled",
             });
           }
         );
@@ -207,6 +234,13 @@ for (const width of [undefined, 320]) {
             expect(await fontSize(page, "#jim-message")).toBeGreaterThanOrEqual(
               16
             );
+            // Send must not inherit the site-wide `transition: all` (it made
+            // the button lag a state behind in screenshots).
+            expect(
+              await sendButton.evaluate(
+                (el) => getComputedStyle(el).transitionProperty
+              )
+            ).not.toContain("all");
             const size = await sendButton.boundingBox();
             expect(size?.width).toBeGreaterThanOrEqual(44);
             expect(size?.height).toBeGreaterThanOrEqual(44);
@@ -221,9 +255,14 @@ for (const width of [undefined, 320]) {
             ).toBeInViewport();
             await expect(box).toBeInViewport({ ratio: 1 });
             await box.fill("");
+            await box.blur();
 
+            // Wait for the settled state (an empty box disables Send).
+            await expect(sendButton).toBeDisabled();
+            await expect(box).toHaveJSProperty("value", "");
             await page.screenshot({
               path: shotName(page, testInfo, "chat", scheme),
+              animations: "disabled",
             });
           }
         );

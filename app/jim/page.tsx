@@ -5,6 +5,15 @@ export const metadata: Metadata = {
   title: "Jim",
   description: "Private chat.",
   robots: { index: false, follow: false },
+  // Replace the layout's homepage canonical and share cards.
+  alternates: { canonical: "https://gentryriggen.com/jim" },
+  openGraph: {
+    title: "Jim",
+    description: "Private chat.",
+    url: "https://gentryriggen.com/jim",
+    type: "website",
+  },
+  twitter: { card: "summary", title: "Jim", description: "Private chat." },
   // Home-screen app: only this route links the manifest.
   manifest: "/jim.webmanifest",
   appleWebApp: {

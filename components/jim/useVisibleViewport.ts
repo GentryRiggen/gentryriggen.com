@@ -4,6 +4,8 @@ import { useEffect, useState, type RefObject } from "react";
 
 /** The keyboard is up when it hides more than this much of the screen. */
 const KEYBOARD_MIN_PX = 120;
+/** Above this visual-viewport scale the page is pinch-zoomed. */
+const ZOOMED = 1.01;
 
 /**
  * Keeps `el` exactly over the part of the screen you can see. iOS Safari does
@@ -25,6 +27,14 @@ export default function useVisibleViewport(
 
     function update() {
       if (!vv || !node) return;
+      if (vv.scale > ZOOMED) {
+        // A pinch-zoom also shrinks the visual viewport; that is not the
+        // keyboard, so leave the layout at full height until zoomed back out.
+        node.style.removeProperty("--jim-vh");
+        node.style.removeProperty("--jim-vt");
+        setKeyboardOpen(false);
+        return;
+      }
       node.style.setProperty("--jim-vh", `${vv.height}px`);
       node.style.setProperty("--jim-vt", `${vv.offsetTop}px`);
       setKeyboardOpen(window.innerHeight - vv.height > KEYBOARD_MIN_PX);

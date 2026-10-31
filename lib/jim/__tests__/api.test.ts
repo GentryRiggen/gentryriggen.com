@@ -1,4 +1,4 @@
-import { isJimConnected, JimError, sendToJim } from "../api";
+import { isJimConnected, JIM_TIMEOUT_MS, JimError, sendToJim } from "../api";
 
 const API = "https://jim.example.test";
 
@@ -108,4 +108,50 @@ it("never calls out when Jim has no URL yet", async () => {
     "server"
   );
   expect(fetchFn).not.toHaveBeenCalled();
+});
+
+it("is waking when getting a token fails for a passing reason", async () => {
+  const offline = jest
+    .fn()
+    .mockRejectedValue(
+      Object.assign(new Error("net"), { code: "auth/network-request-failed" })
+    );
+  const fetchFn = jest.fn();
+  expect(await kindOf(sendToJim("s", "x", offline, fetchFn, API))).toBe(
+    "waking"
+  );
+  expect(fetchFn).not.toHaveBeenCalled();
+});
+
+it.each(["auth/user-token-expired", "auth/user-disabled"])(
+  "is denied when getting a token fails with %s",
+  async (code) => {
+    const gone = jest
+      .fn()
+      .mockRejectedValue(Object.assign(new Error("gone"), { code }));
+    expect(await kindOf(sendToJim("s", "x", gone, jest.fn(), API))).toBe(
+      "denied"
+    );
+  }
+);
+
+it("gives up as waking when the server takes too long", async () => {
+  let signal: AbortSignal | undefined;
+  const hang = jest.fn(
+    (_url: unknown, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        signal = init?.signal ?? undefined;
+        signal?.addEventListener("abort", () =>
+          reject(new DOMException("aborted", "AbortError"))
+        );
+      })
+  );
+  expect(
+    await kindOf(sendToJim("s", "x", async () => "t", hang, API, 20))
+  ).toBe("waking");
+  expect(signal?.aborted).toBe(true);
+});
+
+it("waits about 90 seconds by default", () => {
+  expect(JIM_TIMEOUT_MS).toBe(90_000);
 });

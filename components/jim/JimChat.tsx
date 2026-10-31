@@ -57,7 +57,6 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
   const nextId = useRef(0);
   /** False once Gentry scrolls up to read; true again at the bottom. */
@@ -81,18 +80,20 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   }, [messages, sending, scrollToEnd]);
 
   // The keyboard opening, the box growing or a banner appearing shrinks the
-  // list: keep the latest message in view while it does.
+  // list: keep the latest message in view while it does. Only the scroller
+  // is watched; new messages take the smooth path above.
   useEffect(() => {
-    if (typeof ResizeObserver === "undefined") return;
+    const scroller = scrollerRef.current;
+    if (typeof ResizeObserver === "undefined" || !scroller) return;
     const observer = new ResizeObserver(() => {
       if (stuck.current) scrollToEnd(false);
     });
-    if (scrollerRef.current) observer.observe(scrollerRef.current);
-    if (contentRef.current) observer.observe(contentRef.current);
+    observer.observe(scroller);
     return () => observer.disconnect();
   }, [scrollToEnd]);
 
-  // Grow the box with its text, up to its max height (then it scrolls).
+  // Grow the box with its text, up to its max height (10rem, or 30% of the
+  // visible screen when that is less), then it scrolls.
   useLayoutEffect(() => {
     const box = boxRef.current;
     if (!box) return;
@@ -141,6 +142,8 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Inside the tap, so iOS keeps the keyboard up for the next message.
+    boxRef.current?.focus({ preventScroll: true });
     void send();
   }
 
@@ -148,7 +151,10 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     // Phones: Return is a new line and the Send button sends.
     // Desktop: Enter sends, Shift+Enter is a new line.
     if (event.key !== "Enter" || event.shiftKey || phone) return;
-    if (event.nativeEvent.isComposing) return;
+    // Mid-composition (IME); Safari reports its commit Enter as keyCode 229.
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+      return;
+    }
     event.preventDefault();
     void send();
   }
@@ -168,7 +174,6 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         <div
-          ref={contentRef}
           role="log"
           aria-label="Conversation"
           className="mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
@@ -243,7 +248,7 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
               placeholder="Message Jim"
               enterKeyHint={phone ? "enter" : "send"}
               autoComplete="off"
-              className="max-h-40 min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-gray-300 bg-white px-4 py-2.5 text-base leading-6 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-blue-400"
+              className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-gray-300 bg-white px-4 py-2.5 text-base leading-6 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-blue-400"
             />
             <button
               type="submit"
@@ -251,7 +256,7 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
               disabled={!canSend}
               // Keep the keyboard up: a tap on Send must not blur the box.
               onPointerDown={(e) => e.preventDefault()}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:bg-blue-500 dark:hover:bg-blue-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 transition-colors! duration-150! text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:bg-blue-500 dark:hover:bg-blue-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
             >
               <ArrowUp
                 aria-hidden="true"

@@ -14,11 +14,12 @@ interface JimMarkdownProps {
 type Block =
   | { kind: "p"; lines: string[] }
   | { kind: "h"; level: number; text: string }
-  | { kind: "ul" | "ol"; items: string[] }
+  | { kind: "ul" | "ol"; items: string[]; start?: number }
   | { kind: "pre"; lines: string[] };
 
 const BULLET = /^\s*[-*+]\s+(.*)$/;
 const NUMBERED = /^\s*\d+[.)]\s+(.*)$/;
+const LEADING_NUMBER = /^\s*(\d+)/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*```/;
 
@@ -62,7 +63,11 @@ function parseBlocks(text: string): Block[] {
         i += 1;
         item = i < lines.length ? list.pattern.exec(lines[i]) : null;
       }
-      blocks.push({ kind: list.kind, items });
+      const start =
+        list.kind === "ol"
+          ? Number((LEADING_NUMBER.exec(line) as RegExpExecArray)[1])
+          : undefined;
+      blocks.push({ kind: list.kind, items, start });
       continue;
     }
     const para: string[] = [];
@@ -156,6 +161,7 @@ export default function JimMarkdown({ text }: JimMarkdownProps) {
             return (
               <List
                 key={key}
+                start={block.start !== 1 ? block.start : undefined}
                 className={`space-y-1 pl-5 ${block.kind === "ul" ? "list-disc" : "list-decimal"}`}
               >
                 {block.items.map((item, i) => (

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import sitemap from "@/app/sitemap";
 import { siteForPath } from "@/lib/analytics/site";
+import { JIM_API } from "@/lib/jim/api";
 
 interface Header {
   key: string;
@@ -35,3 +36,19 @@ it("keeps /jim out of the sitemap and the pageview analytics", () => {
   expect(sitemap().some((entry) => entry.url.includes("/jim"))).toBe(false);
   expect(siteForPath("/jim")).toBeNull();
 });
+
+// Runs once JIM_API is set: the page can only reach the server if the CSP
+// lists it on both paths Firebase Hosting serves the page from.
+(JIM_API ? it : it.skip).each(["/jim", "/jim.html"])(
+  "%s lets the page call the server in JIM_API",
+  (source) => {
+    const csp = headersFor(source).find(
+      (h) => h.key === "Content-Security-Policy"
+    );
+    const connectSrc = csp?.value
+      .split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith("connect-src "));
+    expect(connectSrc?.split(/\s+/)).toContain(new URL(JIM_API).origin);
+  }
+);

@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import JimChat from "../JimChat";
@@ -137,4 +137,22 @@ it("does not send an empty message", async () => {
   expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   await userEvent.type(screen.getByLabelText("Message"), "   {Enter}");
   expect(send).not.toHaveBeenCalled();
+});
+
+it("ignores the Enter that commits an IME composition in Safari", async () => {
+  renderChat();
+  const box = screen.getByLabelText("Message");
+  await userEvent.type(box, "ni");
+  fireEvent.keyDown(box, { key: "Enter", keyCode: 229 });
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("keeps the box focused after tapping Send, so the keyboard stays up", async () => {
+  send.mockResolvedValue({ reply: "ok", changed: [], commit: null });
+  renderChat();
+  const box = screen.getByLabelText("Message");
+  await userEvent.type(box, "hi");
+  box.blur();
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  expect(box).toHaveFocus();
 });
