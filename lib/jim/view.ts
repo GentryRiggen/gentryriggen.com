@@ -231,23 +231,66 @@ export function getCachedView(): CachedView | null {
   return cache;
 }
 
+/** Bumped on sign-out, so a fetch still out then can't refill the cache. */
+let generation = 0;
+
+/** The fetch out now, shared: the early wake-up's and Notes' are one call. */
+let inflight: {
+  api: string;
+  generation: number;
+  promise: Promise<ViewData>;
+} | null = null;
+
+/** Keeps each good payload on the device too (set while signed in). */
+let saver: ((data: ViewData) => void) | null = null;
+
+export function setViewSaver(next: ((data: ViewData) => void) | null): void {
+  saver = next;
+}
+
 export function clearViewCache(): void {
   cache = null;
+  inflight = null;
+  saver = null;
+  generation += 1;
 }
 
 /**
  * Fetches the Notes data. On a 401 the ID token is force-refreshed and the
  * request is tried once more, like chat. A good payload also becomes the
- * cached one. Throws JimError: waking (offline, a 503, a dropped connection
- * or the timeout; trying again is safe), denied, or server.
+ * cached one. A call while another for the same server is out joins it.
+ * Throws JimError: waking (offline, a 503, a dropped connection or the
+ * timeout; trying again is safe), denied, or server.
  */
-export async function fetchView(
+export function fetchView(
   getToken: (force?: boolean) => Promise<string | null> = getIdToken,
-  fetchFn: typeof fetch = fetch,
+  fetchFn?: typeof fetch,
   api: string = JIM_API,
   timeoutMs: number = VIEW_TIMEOUT_MS
 ): Promise<ViewData> {
+  if (inflight && inflight.api === api && inflight.generation === generation) {
+    return inflight.promise;
+  }
+  const promise = loadView(getToken, fetchFn, api, timeoutMs, generation);
+  const entry = { api, generation, promise };
+  inflight = entry;
+  const settle = () => {
+    if (inflight === entry) inflight = null;
+  };
+  promise.then(settle, settle);
+  return promise;
+}
+
+async function loadView(
+  getToken: (force?: boolean) => Promise<string | null>,
+  fetchFn: typeof fetch | undefined,
+  api: string,
+  timeoutMs: number,
+  startedIn: number
+): Promise<ViewData> {
   if (!isJimConnected(api)) throw new JimError("server");
+  // Looked up here, so a missing fetch rejects instead of throwing.
+  const doFetch = fetchFn ?? fetch;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<never>((_resolve, reject) => {
@@ -258,10 +301,14 @@ export async function fetchView(
   });
   try {
     const data = await Promise.race([
-      requestView(getToken, fetchFn, api, controller.signal),
+      requestView(getToken, doFetch, api, controller.signal),
       timedOut,
     ]);
-    cache = { data, at: Date.now() };
+    // Signed out meanwhile: hand it back, but don't keep it.
+    if (startedIn === generation) {
+      cache = { data, at: Date.now() };
+      saver?.(data);
+    }
     return data;
   } catch (err) {
     if (controller.signal.aborted) throw new JimError("waking");
@@ -312,4 +359,249 @@ async function requestView(
   const data = normalizeView(body);
   if (!data) throw new JimError("server");
   return data;
+}
+
+// ---------- writes, search and single notes ----------
+
+/** Todo, search and note calls are small: past this the server is gone. */
+export const CALL_TIMEOUT_MS = 15_000;
+
+type GetToken = (force?: boolean) => Promise<string | null>;
+
+/**
+ * One signed-in call to Jim's server: the bearer token, a forced refresh and
+ * one more try on a 401, and a time limit. Resolves to the response for any
+ * other status. Throws JimError: waking (offline, no connection, the time
+ * limit), denied (no user, a second 401, or a 403) or server (no URL).
+ */
+export async function callJim(
+  path: string,
+  init: { method: "GET" | "POST" | "DELETE"; body?: unknown },
+  getToken: GetToken,
+  fetchFn: typeof fetch | undefined,
+  api: string,
+  timeoutMs: number
+): Promise<Response> {
+  if (!isJimConnected(api)) throw new JimError("server");
+  const doFetch = fetchFn ?? fetch;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new JimError("waking"));
+    }, timeoutMs);
+  });
+
+  async function send(force: boolean): Promise<Response> {
+    let token: string | null;
+    try {
+      token = await getToken(force);
+    } catch (err) {
+      throw new JimError(tokenErrorKind(err));
+    }
+    if (!token) throw new JimError("denied");
+    if (isOffline()) throw new JimError("waking");
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+    };
+    if (init.body !== undefined) headers["Content-Type"] = "application/json";
+    try {
+      return await doFetch(`${api}${path}`, {
+        method: init.method,
+        headers,
+        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+        signal: controller.signal,
+      });
+    } catch {
+      throw new JimError("waking");
+    }
+  }
+
+  async function run(): Promise<Response> {
+    let res = await send(false);
+    if (res.status === 401) res = await send(true);
+    if (res.status === 401 || res.status === 403) {
+      throw new JimError("denied");
+    }
+    return res;
+  }
+
+  try {
+    return await Promise.race([run(), timedOut]);
+  } catch (err) {
+    if (controller.signal.aborted) throw new JimError("waking");
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readJson(res: Response): Promise<unknown> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export type TodoResult =
+  | { ok: true; sha: string | null }
+  | { ok: false; reason: "changed" | "failed" | "denied"; message: string };
+
+export const TODO_MESSAGES = {
+  changed: "That todo changed. Pull to refresh.",
+  failed: "Couldn't save. Try again.",
+  denied: "Jim didn't accept your sign-in. Sign out and back in.",
+};
+
+/**
+ * Checks a todo off (or back on). The server finds the line by the
+ * payload's `order`, `text`, `area` and `project` and refuses (409) if it
+ * changed, so a stale list can never tick a different line. Never throws.
+ */
+export async function toggleTodo(
+  todo: Pick<ViewTodo, "order" | "text" | "area" | "project">,
+  done: boolean,
+  getToken: GetToken = getIdToken,
+  fetchFn?: typeof fetch,
+  api: string = JIM_API,
+  timeoutMs: number = CALL_TIMEOUT_MS
+): Promise<TodoResult> {
+  let res: Response;
+  try {
+    res = await callJim(
+      "/api/todo",
+      {
+        method: "POST",
+        body: {
+          order: todo.order,
+          text: todo.text,
+          // Tell apart lines whose text differs only in their tags.
+          area: todo.area ?? "",
+          project: todo.project ?? "",
+          done,
+        },
+      },
+      getToken,
+      fetchFn,
+      api,
+      timeoutMs
+    );
+  } catch (err) {
+    const reason =
+      err instanceof JimError && err.kind === "denied" ? "denied" : "failed";
+    return { ok: false, reason, message: TODO_MESSAGES[reason] };
+  }
+  if (res.status === 409) {
+    const body = await readJson(res);
+    const message =
+      isRecord(body) && typeof body.error === "string" && body.error.trim()
+        ? body.error
+        : TODO_MESSAGES.changed;
+    return { ok: false, reason: "changed", message };
+  }
+  if (!res.ok) {
+    return { ok: false, reason: "failed", message: TODO_MESSAGES.failed };
+  }
+  const body = await readJson(res);
+  return {
+    ok: true,
+    sha: isRecord(body) && typeof body.sha === "string" ? body.sha : null,
+  };
+}
+
+export interface SearchResult {
+  /** Repo-relative, e.g. "home/garden.md". */
+  path: string;
+  title: string;
+  snippet: string;
+}
+
+/** The server takes at most this many characters. */
+export const SEARCH_MAX = 100;
+
+/**
+ * Keyword search across the notes. Throws JimError: waking (a 503, offline,
+ * the time limit), denied, or server.
+ */
+export async function searchNotes(
+  query: string,
+  getToken: GetToken = getIdToken,
+  fetchFn?: typeof fetch,
+  api: string = JIM_API,
+  timeoutMs: number = CALL_TIMEOUT_MS
+): Promise<SearchResult[]> {
+  // In the body, not the URL: request logs keep full URLs.
+  const res = await callJim(
+    "/api/search",
+    { method: "POST", body: { q: query.slice(0, SEARCH_MAX) } },
+    getToken,
+    fetchFn,
+    api,
+    timeoutMs
+  );
+  if (res.status === 503) throw new JimError("waking");
+  if (!res.ok) throw new JimError("server");
+  const body = await readJson(res);
+  if (!isRecord(body) || !Array.isArray(body.results)) {
+    throw new JimError("server");
+  }
+  return body.results
+    .filter(
+      (r): r is SearchResult =>
+        isRecord(r) &&
+        typeof r.path === "string" &&
+        typeof r.title === "string" &&
+        typeof r.snippet === "string"
+    )
+    .map(({ path, title, snippet }) => ({ path, title, snippet }));
+}
+
+export interface Note {
+  path: string;
+  title: string;
+  /** YYYY-MM-DD from the frontmatter, or "". */
+  updated: string;
+  /** The Markdown body, frontmatter removed. */
+  body: string;
+}
+
+/**
+ * One note by its repo-relative path; null when it isn't there (404).
+ * Throws JimError: waking, denied, or server.
+ */
+export async function fetchNote(
+  path: string,
+  getToken: GetToken = getIdToken,
+  fetchFn?: typeof fetch,
+  api: string = JIM_API,
+  timeoutMs: number = CALL_TIMEOUT_MS
+): Promise<Note | null> {
+  const res = await callJim(
+    "/api/note",
+    { method: "POST", body: { path } },
+    getToken,
+    fetchFn,
+    api,
+    timeoutMs
+  );
+  if (res.status === 404) return null;
+  if (res.status === 503) throw new JimError("waking");
+  if (!res.ok) throw new JimError("server");
+  const body = await readJson(res);
+  if (
+    !isRecord(body) ||
+    typeof body.path !== "string" ||
+    typeof body.title !== "string" ||
+    typeof body.body !== "string"
+  ) {
+    throw new JimError("server");
+  }
+  return {
+    path: body.path,
+    title: body.title,
+    updated: typeof body.updated === "string" ? body.updated : "",
+    body: body.body,
+  };
 }

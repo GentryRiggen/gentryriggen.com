@@ -1,34 +1,54 @@
 "use client";
 
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, MessageCircle, NotebookText } from "lucide-react";
-import JimHeader from "@/components/jim/JimHeader";
+import { ArrowUp } from "lucide-react";
+import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import NotesShell from "@/components/jim/notes/NotesShell";
+import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
-import { JimError, sendToJim, type JimErrorKind } from "@/lib/jim/api";
+import {
+  JimError,
+  streamToJim,
+  type JimErrorKind,
+  type JimStreamEvent,
+} from "@/lib/jim/api";
+import {
+  clearHistory,
+  loadHistory,
+  saveHistory,
+  type ChatMessage,
+} from "@/lib/jim/history";
 import JimMarkdown from "@/lib/jim/markdown";
 
 interface JimChatProps {
+  /** The signed-in user, whose chat is kept on this device. */
+  uid: string;
   /** The server's base URL. */
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onSignOut: () => void;
 }
 
-interface Message {
-  id: number;
-  from: "me" | "jim";
+type Message = ChatMessage;
+
+/** The reply being written: Jim's latest step, his text so far, saving. */
+interface Live {
+  step: string | null;
   text: string;
-  changed?: string[];
+  saving: boolean;
 }
+
+const NO_LIVE: Live = { step: null, text: "", saving: false };
 
 const ERRORS: Record<JimErrorKind, string> = {
   waking: "Jim is waking up, one moment",
@@ -38,18 +58,80 @@ const ERRORS: Record<JimErrorKind, string> = {
   rejected: "Jim couldn't take that message. Try a shorter one.",
 };
 
-type Tab = "chat" | "notes";
-
-const TABS: { id: Tab; label: string; Icon: typeof MessageCircle }[] = [
-  { id: "chat", label: "Chat", Icon: MessageCircle },
-  { id: "notes", label: "Notes", Icon: NotebookText },
-];
-
 /** After this long, the thinking indicator says it is still working. */
 const SLOW_MS = 20_000;
 
 /** Closer than this to the bottom counts as reading the latest message. */
 const STICK_PX = 80;
+
+/** "Searching notes" → "Searching notes…" (one ellipsis, however sent). */
+function stepLabel(step: string | null): string {
+  return `${(step ?? "").replace(/[.…\s]+$/, "")}…`;
+}
+
+interface MessageListProps {
+  messages: Message[];
+  /** The message the error banner speaks for, if any. */
+  heldId: number | null;
+}
+
+/**
+ * The finished messages. Memoized: a streaming reply redraws every frame,
+ * and only its own bubble should re-render, not every message above it.
+ */
+const MessageList = memo(function MessageList({
+  messages,
+  heldId,
+}: MessageListProps) {
+  return (
+    <>
+      {messages.map((m) =>
+        m.from === "me" ? (
+          <div key={m.id} className="ml-auto max-w-[85%] min-w-0">
+            <div className="rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
+              {m.text}
+            </div>
+            {/* The banner says it for the message just sent. */}
+            {m.uncertain && heldId !== m.id && (
+              <p className="mt-1 px-1 text-right text-xs text-ayu-subtle">
+                {ERRORS.uncertain}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
+            <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
+              <JimMarkdown text={m.text} />
+            </div>
+            {m.changed && m.changed.length > 0 && (
+              <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
+                Saved: {m.changed.join(", ")}
+              </p>
+            )}
+          </div>
+        )
+      )}
+    </>
+  );
+});
+
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+/** False while the device says it has no connection. */
+function useOnline(): boolean {
+  return useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine !== false,
+    () => true
+  );
+}
 
 function isPhone(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
@@ -59,29 +141,54 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
-  const [session] = useState(() => crypto.randomUUID());
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function JimChat({
+  uid,
+  api,
+  getToken,
+  onSignOut,
+}: JimChatProps) {
+  // Back from this device: a reload keeps the conversation and its session.
+  const [kept] = useState(() => loadHistory(uid));
+  const [session, setSession] = useState(
+    () => kept?.session ?? crypto.randomUUID()
+  );
+  const [messages, setMessages] = useState<Message[]>(
+    () => kept?.messages ?? []
+  );
+  const [live, setLive] = useState<Live>(NO_LIVE);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   /** A message Jim may have acted on, kept out of the box until asked for. */
-  const [held, setHeld] = useState<string | null>(null);
+  const [held, setHeld] = useState<{ id: number; text: string } | null>(null);
   const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
-  const [tab, setTab] = useState<Tab>("chat");
+  const [tab, setTab] = useState<JimTab>("chat");
   /** Notes is built (and fetches) only once it has been opened. */
   const [notesOpened, setNotesOpened] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
-  const nextId = useRef(0);
+  const nextId = useRef(
+    (kept?.messages ?? []).reduce((max, m) => Math.max(max, m.id + 1), 0)
+  );
+  /** Bumped by New chat: a turn still out then is dropped when it lands. */
+  const chatRun = useRef(0);
+  /** Cancels the turn that is out (New chat, sign-out, leaving the page). */
+  const turn = useRef<AbortController | null>(null);
+  /** Signed out: nothing more is kept on this device. */
+  const signedOut = useRef(false);
+  /** Reply text as it streams in, drawn once per animation frame. */
+  const liveText = useRef("");
+  const frame = useRef<number | null>(null);
   /** False once Gentry scrolls up to read; true again at the bottom. */
   const stuck = useRef(true);
   const lastTop = useRef(0);
 
   const keyboardOpen = useVisibleViewport(rootRef);
+  const online = useOnline();
+  const briefing = useMorningBriefing(getToken, api);
 
   const scrollToEnd = useCallback((smooth: boolean) => {
     const el = scrollerRef.current;
@@ -103,6 +210,28 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   useEffect(() => {
     if (stuck.current) scrollToEnd(true);
   }, [messages, sending, scrollToEnd]);
+
+  // A reply growing as it streams keeps its end in view (no smooth scroll:
+  // it would lag behind the text).
+  useEffect(() => {
+    if (stuck.current) scrollToEnd(false);
+  }, [live, scrollToEnd]);
+
+  // Keep the chat on this device. A message still out is stored as
+  // uncertain, so a reload mid-turn never offers it as unsent.
+  useEffect(() => {
+    if (signedOut.current) return;
+    saveHistory(uid, { session, messages });
+  }, [uid, session, messages]);
+
+  useEffect(
+    () => () => {
+      chatRun.current += 1;
+      turn.current?.abort();
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    []
+  );
 
   // The keyboard opening, the box growing or a banner appearing shrinks the
   // list: keep the latest message in view while it does. Only the scroller
@@ -135,21 +264,78 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     lastTop.current = el.scrollTop;
   }
 
-  async function send() {
-    const text = draft.trim();
-    if (!text || sending) return;
+  function stopDrawing() {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+  }
+
+  function onStream(event: JimStreamEvent) {
+    switch (event.t) {
+      case "step":
+        // Text before a tool call was provisional: back to the indicator.
+        stopDrawing();
+        liveText.current = "";
+        setLive((prev) => ({ ...prev, step: event.text, text: "" }));
+        break;
+      case "delta":
+        liveText.current += event.text;
+        if (frame.current === null) {
+          frame.current = requestAnimationFrame(() => {
+            frame.current = null;
+            setLive((prev) => ({ ...prev, text: liveText.current }));
+          });
+        }
+        break;
+      case "reply":
+        // The whole reply: shown as is, whatever the deltas made of it.
+        stopDrawing();
+        liveText.current = event.text;
+        setLive((prev) => ({ ...prev, text: event.text }));
+        break;
+      case "saving":
+        setLive((prev) => ({ ...prev, saving: true }));
+        break;
+    }
+  }
+
+  /** Sends the box, or `given` (a quick log) leaving the box alone. */
+  async function send(given?: string) {
+    const text = (given ?? draft).trim();
+    // Offline it would only bounce back: the box keeps it meanwhile.
+    if (!text || sending || !online) return;
     const id = nextId.current++;
+    const run = chatRun.current;
     setError(null);
     setHeld(null);
     setSlow(false);
     setSending(true);
-    setDraft("");
+    if (given === undefined) setDraft("");
+    stopDrawing();
+    liveText.current = "";
+    setLive(NO_LIVE);
     stuck.current = true;
-    setMessages((prev) => [...prev, { id, from: "me", text }]);
+    setMessages((prev) => [...prev, { id, from: "me", text, pending: true }]);
+    const settle = (m: Message): Message =>
+      m.id === id ? { id, from: "me", text } : m;
+    const controller = new AbortController();
+    turn.current = controller;
     try {
-      const reply = await sendToJim(session, text, getToken, undefined, api);
+      const reply = await streamToJim(
+        text,
+        session,
+        getToken,
+        (event) => {
+          if (run === chatRun.current) onStream(event);
+        },
+        undefined,
+        api,
+        undefined,
+        undefined,
+        controller.signal
+      );
+      if (run !== chatRun.current) return;
       setMessages((prev) => [
-        ...prev,
+        ...prev.map(settle),
         {
           id: nextId.current++,
           from: "jim",
@@ -158,42 +344,110 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
         },
       ]);
     } catch (err) {
+      if (run !== chatRun.current) return;
       const kind = err instanceof JimError ? err.kind : "server";
       setError(kind);
       if (kind === "uncertain") {
-        // Jim may already have it: leave it in the conversation and keep a
-        // copy aside, so a quick resend can't save it twice.
-        setHeld(text);
+        // Jim may already have it: leave it in the conversation (with what
+        // he wrote so far) and keep a copy aside, so a quick resend can't
+        // save it twice.
+        const partial = liveText.current;
+        setMessages((prev) => [
+          ...prev.map((m) =>
+            m.id === id ? { ...settle(m), uncertain: true } : m
+          ),
+          ...(partial
+            ? [
+                {
+                  id: nextId.current++,
+                  from: "jim" as const,
+                  text: partial,
+                  uncertain: true,
+                },
+              ]
+            : []),
+        ]);
+        setHeld({ id, text });
       } else {
         // It never ran: take it back and return it to the box.
         setMessages((prev) => prev.filter((m) => m.id !== id));
         putBack(text);
       }
     } finally {
-      setSending(false);
+      if (turn.current === controller) turn.current = null;
+      if (run === chatRun.current) {
+        stopDrawing();
+        liveText.current = "";
+        setLive(NO_LIVE);
+        setSending(false);
+      }
     }
+  }
+
+  /** Clears the conversation here and on this device; Jim starts afresh. */
+  function newChat() {
+    chatRun.current += 1;
+    turn.current?.abort();
+    stopDrawing();
+    liveText.current = "";
+    clearHistory(uid);
+    setMessages([]);
+    setSession(crypto.randomUUID());
+    setLive(NO_LIVE);
+    setSending(false);
+    setError(null);
+    setHeld(null);
+    setSlow(false);
+    stuck.current = true;
   }
 
   function putBack(text: string) {
     setDraft((current) => (current ? `${text}\n${current}` : text));
   }
 
-  function showTab(next: Tab) {
+  function showTab(next: JimTab) {
     if (next === "notes") setNotesOpened(true);
+    // A tap on a tab doesn't take focus on iOS: drop the keyboard by hand,
+    // whichever field (the box, a search, a quick log) has it.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setTab(next);
   }
 
-  /** A todo's Done on Notes: the line goes in the box for Gentry to send. */
-  const doneFromNotes = useCallback((title: string) => {
-    const line = `Done: ${title}`;
-    setDraft((current) => (current.trim() ? `${current}\n${line}` : line));
+  /** Drops the turn that is out and keeps nothing more on this device. */
+  function signOut() {
+    signedOut.current = true;
+    chatRun.current += 1;
+    turn.current?.abort();
+    onSignOut();
+  }
+
+  // The latest send and turn state, for the stable quick-log callback.
+  const sendRef = useRef(send);
+  const holdRef = useRef(sending || !online);
+  useLayoutEffect(() => {
+    sendRef.current = send;
+    holdRef.current = sending || !online;
+  });
+
+  /**
+   * A quick log on Notes: sent as a message, and Chat shows Jim's reply as
+   * it comes. While another turn is out (or offline) it waits in the box.
+   * Stable, so the (memoized) Notes tree doesn't redraw with every frame
+   * of a streaming reply.
+   */
+  const logFromNotes = useCallback((text: string) => {
     stuck.current = true;
     setTab("chat");
+    if (holdRef.current) {
+      setDraft((current) => (current ? `${text}\n${current}` : text));
+    } else void sendRef.current(text);
   }, []);
 
   function restoreHeld() {
     if (held === null) return;
-    putBack(held);
+    putBack(held.text);
     setHeld(null);
     setError(null);
     boxRef.current?.focus({ preventScroll: true });
@@ -218,14 +472,23 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     void send();
   }
 
-  const canSend = draft.trim().length > 0 && !sending;
+  const canSend = draft.trim().length > 0 && !sending && online;
 
   return (
     <div
       ref={rootRef}
+      data-keyboard={keyboardOpen ? "open" : "closed"}
       className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
     >
-      <JimHeader onSignOut={onSignOut} />
+      <JimHeader
+        onSignOut={signOut}
+        tab={tab}
+        onTab={showTab}
+        menuItems={[
+          { label: "New chat", onSelect: newChat },
+          ...(briefing.item ? [briefing.item] : []),
+        ]}
+      />
 
       <div className="relative min-h-0 flex-1">
         <div
@@ -249,43 +512,56 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
                   Ask Jim something, or tell him something to remember.
                 </p>
               )}
-              {messages.map((m) =>
-                m.from === "me" ? (
-                  <div
-                    key={m.id}
-                    className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]"
-                  >
-                    {m.text}
-                  </div>
-                ) : (
-                  <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
-                    <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
-                      <JimMarkdown text={m.text} />
-                    </div>
-                    {m.changed && m.changed.length > 0 && (
-                      <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
-                        Saved: {m.changed.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                )
-              )}
+              <MessageList messages={messages} heldId={held?.id ?? null} />
               {sending && (
-                <p
-                  role="status"
-                  className="mr-auto rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
-                >
-                  {slow ? "Still working…" : "Jim is thinking…"}
-                </p>
+                <div className="mr-auto max-w-[92%] min-w-0">
+                  {live.text ? (
+                    <div
+                      aria-busy="true"
+                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5"
+                    >
+                      <JimMarkdown text={live.text} />
+                    </div>
+                  ) : (
+                    <p
+                      role="status"
+                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
+                    >
+                      {slow ? "Still working…" : "Jim is thinking…"}
+                    </p>
+                  )}
+                  {(live.saving || live.step) && (
+                    <p
+                      role="status"
+                      className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
+                    >
+                      {live.saving ? "Saving…" : stepLabel(live.step)}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
+          {/* Clears the home bar, except over the keyboard: nothing sits
+              between the box and the keys. */}
           <form
             onSubmit={onSubmit}
-            className="shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pb-2 pl-[env(safe-area-inset-left)]"
+            className={`shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+              keyboardOpen
+                ? "pb-2"
+                : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+            }`}
           >
             <div className="mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+              {!online && (
+                <p
+                  role="status"
+                  className="mb-2 rounded-lg bg-ayu-panel px-3 py-2 text-sm text-ayu-subtle"
+                >
+                  You&apos;re offline
+                </p>
+              )}
               {error && (
                 <p
                   role="alert"
@@ -350,51 +626,16 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
             className={`absolute inset-0 bg-ayu-bg ${tab === "notes" ? "" : "invisible"}`}
           >
             <NotesShell
+              uid={uid}
               api={api}
               getToken={getToken}
               active={tab === "notes"}
-              onDone={doneFromNotes}
+              onLog={logFromNotes}
             />
           </div>
         )}
       </div>
-
-      {/* Hidden while the keyboard is up, like any phone app's tab bar. */}
-      {!keyboardOpen && (
-        <nav
-          aria-label="Jim"
-          className="shrink-0 border-t border-ayu-line bg-ayu-panel pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
-        >
-          <div
-            role="tablist"
-            aria-label="Jim"
-            className="mx-auto flex w-full max-w-[45rem]"
-          >
-            {TABS.map(({ id, label, Icon }) => {
-              const selected = tab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`jim-tab-${id}`}
-                  aria-selected={selected}
-                  aria-controls={`jim-${id}`}
-                  onClick={() => showTab(id)}
-                  className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-                    selected
-                      ? "text-ayu-accent"
-                      : "text-ayu-subtle hover:text-ayu-text"
-                  }`}
-                >
-                  <Icon aria-hidden="true" className="size-6" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      )}
+      {briefing.notice}
     </div>
   );
 }

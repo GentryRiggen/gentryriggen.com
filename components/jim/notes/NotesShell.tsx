@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -12,21 +13,28 @@ import { RefreshCw } from "lucide-react";
 import NotesGolf from "@/components/jim/notes/NotesGolf";
 import NotesHealth from "@/components/jim/notes/NotesHealth";
 import NotesHome from "@/components/jim/notes/NotesHome";
+import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
+import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
+import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
-import { timeLabel } from "@/lib/jim/notesData";
+import { localDay, timeLabel } from "@/lib/jim/notesData";
+import { loadView } from "@/lib/jim/offlineStore";
+import { fmtShort } from "@/lib/jim/todos";
 import { fetchView, getCachedView, type ViewData } from "@/lib/jim/view";
 
 interface NotesShellProps {
+  /** The signed-in user, whose last payload is kept on this device. */
+  uid: string;
   /** The server's base URL. */
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   /** The Notes tab is showing: load (or refresh stale data) then. */
   active: boolean;
-  /** Puts "Done: <title>" in the chat box and switches to Chat. */
-  onDone: (title: string) => void;
+  /** Sends a quick-log sentence as a chat message and switches to Chat. */
+  onLog: (text: string) => void;
 }
 
 type Page = "home" | "health" | "training" | "golf" | "people";
@@ -50,6 +58,15 @@ const LOAD_ERRORS: Record<JimErrorKind, string> = {
   rejected: "Couldn't load your notes.",
 };
 
+/** "9:14am" today, "Oct 30, 9:14am" before. */
+function asOfLabel(at: number): string {
+  const iso = new Date(at).toISOString();
+  const time = timeLabel(iso);
+  return localDay(iso) === localDay(new Date().toISOString())
+    ? time
+    : `${fmtShort(localDay(iso))}, ${time}`;
+}
+
 function Skeleton() {
   return (
     <div aria-busy="true" className="space-y-4">
@@ -64,12 +81,16 @@ function Skeleton() {
   );
 }
 
-/** The Notes tab: its page bar, the data, and the five read-only pages. */
-export default function NotesShell({
+/**
+ * The Notes tab: its page bar, the data, and the five read-only pages.
+ * Memoized: it sits (hidden) beside a chat that redraws every streamed frame.
+ */
+export default memo(function NotesShell({
+  uid,
   api,
   getToken,
   active,
-  onDone,
+  onLog,
 }: NotesShellProps) {
   const [data, setData] = useState<ViewData | null>(
     () => getCachedView()?.data ?? null
@@ -77,35 +98,89 @@ export default function NotesShell({
   const [loadedAt, setLoadedAt] = useState<number | null>(
     () => getCachedView()?.at ?? null
   );
+  /** What shows came from this device, not the server (no signal). */
+  const [fromDevice, setFromDevice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   const [page, setPage] = useState<Page>("home");
   const [person, setPerson] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  /** The search across all notes; while it has text it replaces the page. */
+  const [search, setSearch] = useState("");
+  /** A note opened from the search results. */
+  const [found, setFound] = useState<string | null>(null);
+  const searching = search.trim() !== "";
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLButtonElement>(null);
-  const inflight = useRef(false);
-  /** Where the People list was scrolled to before a profile opened. */
+  const inflight = useRef<Promise<ViewData | null> | null>(null);
+  /** Whether anything is showing, for the offline fallback. */
+  const hasData = useRef(data !== null);
+  /** A change landed while a load was out: load once more after it. */
+  const again = useRef(false);
+  /** Where the People list (or the results) was scrolled to before a
+   * profile or note opened. */
   const listTop = useRef(0);
   const restoreTop = useRef<number | null>(null);
 
-  const load = useCallback(async () => {
-    if (inflight.current) return;
-    inflight.current = true;
+  /**
+   * Loads the notes; a call while a load is out joins it. Resolves to the
+   * payload the last round fetched, or null when that round failed.
+   */
+  const load = useCallback((): Promise<ViewData | null> => {
+    if (inflight.current) return inflight.current;
     setLoading(true);
     setError(null);
-    try {
-      const next = await fetchView(getToken, undefined, api);
-      setData(next);
-      setLoadedAt(getCachedView()?.at ?? Date.now());
-    } catch (err) {
-      setError(err instanceof JimError ? err.kind : "server");
-    } finally {
-      inflight.current = false;
-      setLoading(false);
-    }
-  }, [api, getToken]);
+    const run = (async () => {
+      let latest: ViewData | null = null;
+      try {
+        do {
+          again.current = false;
+          try {
+            latest = await fetchView(getToken, undefined, api);
+            hasData.current = true;
+            setData(latest);
+            setLoadedAt(getCachedView()?.at ?? Date.now());
+            setFromDevice(false);
+            setError(null);
+          } catch (err) {
+            latest = null;
+            const kind = err instanceof JimError ? err.kind : "server";
+            setError(kind);
+            // Nothing showing yet (no signal on opening): the last payload
+            // kept on this device. Not when the sign-in itself was refused.
+            if (!hasData.current && kind !== "denied") {
+              const saved = await loadView(uid);
+              if (saved && !hasData.current) {
+                hasData.current = true;
+                setData(saved.payload);
+                setLoadedAt(saved.savedAt);
+                setFromDevice(true);
+              }
+            }
+          }
+        } while (again.current);
+        return latest;
+      } finally {
+        inflight.current = null;
+        setLoading(false);
+      }
+    })();
+    inflight.current = run;
+    return run;
+  }, [api, getToken, uid]);
+
+  /**
+   * A todo was saved: refetch in the background, once more after any load
+   * now out (it may predate the save). Resolves to the fresh payload.
+   */
+  const reload = useCallback((): Promise<ViewData | null> => {
+    if (!inflight.current) return load();
+    again.current = true;
+    return inflight.current;
+  }, [load]);
+
+  const saves = useTodoSaves({ data, api, getToken, onChanged: reload });
 
   // Load on the first open, and again on a later open once the data is old.
   useEffect(() => {
@@ -124,7 +199,7 @@ export default function NotesShell({
     if (el && typeof el.scrollTo === "function") {
       el.scrollTo({ top, behavior: "instant" });
     }
-  }, [page, person]);
+  }, [page, person, searching, found]);
 
   // Keep the selected pill in view when the row is scrolled sideways.
   useEffect(() => {
@@ -135,7 +210,10 @@ export default function NotesShell({
   }, [page]);
 
   function goTo(next: Page) {
-    if (next === page && person === null) return;
+    if (searching) {
+      setSearch("");
+      setFound(null);
+    } else if (next === page && person === null) return;
     if (person !== null && next === "people")
       restoreTop.current = listTop.current;
     setPerson(null);
@@ -152,8 +230,59 @@ export default function NotesShell({
     setPerson(null);
   }
 
+  function onSearch(value: string) {
+    setSearch(value);
+    if (!value.trim()) setFound(null);
+  }
+
+  function openFound(path: string) {
+    listTop.current = scrollerRef.current?.scrollTop ?? 0;
+    setFound(path);
+  }
+
+  function closeFound() {
+    restoreTop.current = listTop.current;
+    setFound(null);
+  }
+
   let body: ReactNode;
-  if (!data) {
+  if (searching) {
+    // A person in the payload opens as their profile; anything else is
+    // fetched as a note. The results stay mounted, so back is instant.
+    const foundPerson =
+      found?.startsWith("people/") && data
+        ? data.people.find((p) => p.path === found)
+        : undefined;
+    body = (
+      <>
+        <div hidden={found !== null}>
+          <NotesSearch
+            query={search}
+            api={api}
+            getToken={getToken}
+            onOpen={openFound}
+          />
+        </div>
+        {found !== null &&
+          (foundPerson && data ? (
+            <NotesPerson
+              person={foundPerson}
+              today={data.today}
+              onBack={closeFound}
+              backLabel="Results"
+            />
+          ) : (
+            <NotesNote
+              key={found}
+              path={found}
+              api={api}
+              getToken={getToken}
+              onBack={closeFound}
+            />
+          ))}
+      </>
+    );
+  } else if (!data) {
     body =
       error && !loading ? (
         <div className="space-y-3 py-8 text-center">
@@ -172,7 +301,7 @@ export default function NotesShell({
         <Skeleton />
       );
   } else if (page === "home") {
-    body = <NotesHome data={data} onDone={onDone} />;
+    body = <NotesHome data={data} saves={saves} onLog={onLog} />;
   } else if (page === "health") {
     body = <NotesHealth data={data} />;
   } else if (page === "training") {
@@ -194,6 +323,10 @@ export default function NotesShell({
   }
 
   const updated = loadedAt ? timeLabel(new Date(loadedAt).toISOString()) : null;
+  const offlineLine =
+    fromDevice && loadedAt
+      ? `${error === "server" || error === "rejected" ? "Couldn't refresh" : "Offline"} · as of ${asOfLabel(loadedAt)}`
+      : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -232,26 +365,35 @@ export default function NotesShell({
 
       <div
         ref={scrollerRef}
+        data-notes-scroller
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         <div
           id="jim-notes-page"
           role="tabpanel"
           aria-labelledby={`jim-notes-tab-${page}`}
-          className="mx-auto w-full max-w-[45rem] py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
+          className="mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         >
-          {data && (
+          {/* People has its own search. */}
+          {found === null && (searching || page !== "people") && (
+            <div className="mb-4">
+              <SearchField value={search} onChange={onSearch} />
+            </div>
+          )}
+          {data && !searching && (
             <div className="mb-5 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
               <p className="min-w-0" aria-live="polite">
                 {error === "denied"
                   ? LOAD_ERRORS.denied
-                  : error
-                    ? `Couldn't refresh. Showing what loaded${updated ? ` at ${updated}` : ""}.`
-                    : data.stale
-                      ? "Jim couldn't sync, so these may be behind."
-                      : updated
-                        ? `Updated ${updated}`
-                        : null}
+                  : offlineLine
+                    ? offlineLine
+                    : error
+                      ? `Couldn't refresh. Showing what loaded${updated ? ` at ${updated}` : ""}.`
+                      : data.stale
+                        ? "Jim couldn't sync, so these may be behind."
+                        : updated
+                          ? `Updated ${updated}`
+                          : null}
               </p>
               <button
                 type="button"
@@ -272,4 +414,4 @@ export default function NotesShell({
       </div>
     </div>
   );
-}
+});

@@ -3,14 +3,28 @@ import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import * as view from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import * as offline from "@/lib/jim/offlineStore";
 import NotesShell from "../NotesShell";
+
+jest.mock("@/lib/jim/offlineStore", () => ({
+  loadView: jest.fn(async () => null),
+}));
 
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
-  return { ...actual, fetchView: jest.fn() };
+  return {
+    ...actual,
+    fetchView: jest.fn(),
+    toggleTodo: jest.fn(),
+    searchNotes: jest.fn(),
+    fetchNote: jest.fn(),
+  };
 });
 
 const fetchView = jest.mocked(view.fetchView);
+const toggleTodo = jest.mocked(view.toggleTodo);
+const searchNotes = jest.mocked(view.searchNotes);
+const fetchNote = jest.mocked(view.fetchNote);
 const getToken = jest.fn().mockResolvedValue("t");
 
 /** fetchView that also fills the cache, like the real one. */
@@ -44,16 +58,21 @@ function deferred<T>() {
 function renderShell(active = true) {
   return render(
     <NotesShell
+      uid="uid-1"
       api="https://jim.example.test"
       getToken={getToken}
       active={active}
-      onDone={jest.fn()}
+      onLog={jest.fn()}
     />
   );
 }
 
 beforeEach(() => {
   fetchView.mockReset();
+  toggleTodo.mockReset();
+  searchNotes.mockReset();
+  fetchNote.mockReset();
+  jest.mocked(offline.loadView).mockReset().mockResolvedValue(null);
   (jest.requireActual("@/lib/jim/view") as typeof view).clearViewCache();
 });
 
@@ -173,4 +192,211 @@ it("moves between pages and into a profile and back", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
   await userEvent.click(screen.getByRole("tab", { name: "People" }));
   expect(screen.getByLabelText("Search people")).toBeInTheDocument();
+});
+
+it("refetches in the background after a todo is checked off", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  renderShell();
+  await screen.findByText("Water the plants");
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    todos: VIEW_FIXTURE.todos.filter((t) => t.order !== 3),
+  });
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Water the plants" })
+  );
+  expect(fetchView).toHaveBeenCalledTimes(2);
+  // No skeleton meanwhile, and the ticked todo is gone once it lands.
+  expect(screen.queryByText("Loading notes…")).not.toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Undo" })).toBeVisible();
+  expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
+});
+
+it("loads once more when a todo saves while a load is out", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const slow = deferred<view.ViewData>();
+  fetchView.mockReturnValueOnce(slow.promise);
+  await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  const save = deferred<view.TodoResult>();
+  toggleTodo.mockReturnValue(save.promise);
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Water the plants" })
+  );
+  await act(async () => save.resolve({ ok: true, sha: "s" }));
+  expect(fetchView).toHaveBeenCalledTimes(2);
+  fetchView.mockResolvedValueOnce({ ...VIEW_FIXTURE, todos: [] });
+  await act(async () => slow.resolve(VIEW_FIXTURE));
+  expect(fetchView).toHaveBeenCalledTimes(3);
+  expect(await screen.findByText("No open todos.")).toBeInTheDocument();
+});
+
+it("a save still out when Home is left refetches and shows right on return", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const save = deferred<view.TodoResult>();
+  toggleTodo.mockReturnValue(save.promise);
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Water the plants" })
+  );
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  // Back while it still saves: ticked and busy, and a re-tap sends nothing.
+  await userEvent.click(screen.getByRole("tab", { name: "Home" }));
+  const box = screen.getByRole("checkbox", { name: "Water the plants" });
+  expect(box).toHaveAttribute("aria-checked", "true");
+  expect(box).toHaveAttribute("aria-busy", "true");
+  await userEvent.click(box);
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
+
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    todos: VIEW_FIXTURE.todos.filter((t) => t.order !== 3),
+  });
+  await act(async () => save.resolve({ ok: true, sha: "s" }));
+  expect(fetchView).toHaveBeenCalledTimes(2);
+  await userEvent.click(screen.getByRole("tab", { name: "Home" }));
+  expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
+});
+
+it("hides the all-notes search on People, which has its own", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  expect(screen.getByLabelText("Search notes")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("tab", { name: "People" }));
+  expect(screen.queryByLabelText("Search notes")).toBeNull();
+  expect(screen.getByLabelText("Search people")).toBeInTheDocument();
+});
+
+it("is memoized, so a chat redraw leaves it alone", () => {
+  expect((NotesShell as unknown as { $$typeof: symbol }).$$typeof).toBe(
+    Symbol.for("react.memo")
+  );
+});
+
+describe("offline", () => {
+  // A past day, so the label carries its date.
+  const SAVED_AT = new Date(2025, 9, 30, 21, 5).getTime();
+
+  it("shows the payload kept on this device when there's no signal", async () => {
+    fetchView.mockRejectedValue(new api.JimError("waking"));
+    jest
+      .mocked(offline.loadView)
+      .mockResolvedValue({ payload: VIEW_FIXTURE, savedAt: SAVED_AT });
+    renderShell();
+    expect(await screen.findByText("Water the plants")).toBeInTheDocument();
+    expect(offline.loadView).toHaveBeenCalledWith("uid-1");
+    expect(
+      screen.getByText("Offline · as of Oct 30, 9:05pm")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("swaps in fresh data once the signal is back", async () => {
+    fetchView.mockRejectedValueOnce(new api.JimError("waking"));
+    jest
+      .mocked(offline.loadView)
+      .mockResolvedValue({ payload: VIEW_FIXTURE, savedAt: SAVED_AT });
+    renderShell();
+    await screen.findByText(/^Offline · as of/);
+    fetchView.mockResolvedValueOnce({ ...VIEW_FIXTURE, todos: [] });
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("No open todos.")).toBeInTheDocument();
+    expect(screen.queryByText(/^Offline/)).toBeNull();
+    expect(screen.getByText(/^Updated /)).toBeInTheDocument();
+  });
+
+  it("keeps what's showing rather than the device copy on a failed refresh", async () => {
+    fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+    renderShell();
+    await screen.findByText("Water the plants");
+    fetchView.mockRejectedValueOnce(new api.JimError("waking"));
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText(/^Couldn't refresh/)).toBeInTheDocument();
+    expect(offline.loadView).not.toHaveBeenCalled();
+  });
+
+  it("never falls back when the sign-in was refused", async () => {
+    fetchView.mockRejectedValue(new api.JimError("denied"));
+    jest
+      .mocked(offline.loadView)
+      .mockResolvedValue({ payload: VIEW_FIXTURE, savedAt: SAVED_AT });
+    renderShell();
+    expect(
+      await screen.findByText(
+        "Jim didn't accept your sign-in. Sign out and back in."
+      )
+    ).toBeInTheDocument();
+    expect(offline.loadView).not.toHaveBeenCalled();
+    expect(screen.queryByText("Water the plants")).toBeNull();
+  });
+
+  it("offers Try again when nothing is kept either", async () => {
+    fetchView.mockRejectedValue(new api.JimError("waking"));
+    renderShell();
+    expect(
+      await screen.findByRole("button", { name: "Try again" })
+    ).toBeInTheDocument();
+  });
+});
+
+describe("search", () => {
+  const RESULTS = [
+    { path: "home/garden.md", title: "Garden", snippet: "the plants" },
+    { path: "people/sam-okafor.md", title: "Sam Okafor", snippet: "data" },
+  ];
+
+  it("replaces the page with results, opens notes and people, and clears", async () => {
+    fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+    searchNotes.mockResolvedValue(RESULTS);
+    fetchNote.mockResolvedValue({
+      path: "home/garden.md",
+      title: "Garden",
+      updated: "2026-10-12",
+      body: "- Tomatoes",
+    });
+    renderShell();
+    await screen.findByText("Water the plants");
+    const field = screen.getByLabelText("Search notes");
+    await userEvent.type(field, "plants");
+    expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Garden/ })
+    );
+    expect(await screen.findByText("Tomatoes")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Search notes")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Results" }));
+    expect(screen.getByLabelText("Search notes")).toHaveValue("plants");
+    expect(searchNotes).toHaveBeenCalledTimes(1);
+
+    // A person in the payload opens as their profile.
+    await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
+    expect(
+      screen.getByRole("heading", { name: "Sam Okafor" })
+    ).toBeInTheDocument();
+    expect(fetchNote).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole("button", { name: "Results" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByLabelText("Search notes")).toHaveValue("");
+    expect(screen.getByText("Water the plants")).toBeInTheDocument();
+  });
+
+  it("a page pill leaves the search for that page", async () => {
+    fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+    searchNotes.mockResolvedValue(RESULTS);
+    renderShell();
+    await screen.findByText("Water the plants");
+    await userEvent.type(screen.getByLabelText("Search notes"), "plants");
+    await userEvent.click(screen.getByRole("tab", { name: "Home" }));
+    expect(screen.getByLabelText("Search notes")).toHaveValue("");
+    expect(screen.getByText("Water the plants")).toBeInTheDocument();
+  });
 });

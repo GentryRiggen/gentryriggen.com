@@ -53,3 +53,22 @@ it.each(["/jim", "/jim.html"])(
     expect(connectSrc?.split(/\s+/)).toContain(new URL(JIM_API).origin);
   }
 );
+
+it.each(["/jim", "/jim.html"])(
+  "%s allows only its own worker and manifest",
+  (source) => {
+    const directives = headersFor(source)
+      .find((h) => h.key === "Content-Security-Policy")
+      ?.value.split(";")
+      .map((d) => d.trim());
+    expect(directives).toContain("worker-src 'self'");
+    expect(directives).toContain("manifest-src 'self'");
+  }
+);
+
+it("serves the /jim service worker fresh, so updates land", () => {
+  expect(headersFor("/jim-sw.js")).toContainEqual({
+    key: "Cache-Control",
+    value: "no-cache",
+  });
+});

@@ -12,6 +12,7 @@ import type {
   HealthData,
   Lift,
   Person,
+  ViewData,
 } from "@/lib/jim/view";
 
 /**
@@ -452,4 +453,73 @@ export function personFacts(p: Person, today: string): [string, string][] {
     if (sun || cz) facts.push(["Signs", [sun, cz].filter(Boolean).join(" · ")]);
   }
   return facts;
+}
+
+// ---------- today ----------
+
+export interface TodaySummary {
+  /** The next (or current) timed event today, from today's snapshot. */
+  meeting: { time: string; subject: string } | null;
+  /** Days since the latest injection, or null with none logged. */
+  injectionDays: number | null;
+  /** Days trained this week (Mon–Sun), or null with no training at all. */
+  workouts: number | null;
+}
+
+const FULL_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The Today card: what's next, and two numbers worth a glance. */
+export function todaySummary(
+  data: Pick<ViewData, "today" | "calendar" | "health" | "training">,
+  now: Date
+): TodaySummary {
+  const { today, calendar } = data;
+
+  let meeting: TodaySummary["meeting"] = null;
+  if (
+    calendar?.fetchedAt &&
+    !Number.isNaN(Date.parse(calendar.fetchedAt)) &&
+    localDay(calendar.fetchedAt) === today
+  ) {
+    const next = calendar.events
+      .filter(
+        (e) =>
+          typeof e?.start === "string" &&
+          !e.allDay &&
+          localDay(e.start) === today &&
+          Date.parse(e.end || e.start) > now.getTime()
+      )
+      .sort((a, b) => a.start.localeCompare(b.start))[0];
+    if (next) meeting = { time: timeLabel(next.start), subject: next.subject };
+  }
+
+  const shots = data.health.injections
+    .map((i) => i?.date)
+    .filter((d): d is string => typeof d === "string" && FULL_DATE.test(d))
+    .filter((d) => d <= today)
+    .sort();
+  const last = shots[shots.length - 1];
+  const injectionDays = last ? daysBetween(last, today) : null;
+
+  const { workouts: logged, lifts } = data.training;
+  let workouts: number | null = null;
+  if (logged.length || lifts.length) {
+    const dow = new Date(`${today}T12:00:00Z`).getUTCDay();
+    const monday = addDays(today, -((dow + 6) % 7));
+    const sunday = addDays(monday, 6);
+    const days = new Set(
+      [...logged, ...lifts]
+        .map((x) => x?.date)
+        .filter(
+          (d): d is string =>
+            typeof d === "string" &&
+            FULL_DATE.test(d) &&
+            d >= monday &&
+            d <= sunday
+        )
+    );
+    workouts = days.size;
+  }
+
+  return { meeting, injectionDays, workouts };
 }
