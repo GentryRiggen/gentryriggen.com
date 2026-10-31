@@ -514,3 +514,46 @@ describe("quick log from Notes", () => {
     );
   });
 });
+
+describe("offline", () => {
+  function goOffline(offline: boolean) {
+    Object.defineProperty(navigator, "onLine", {
+      value: !offline,
+      configurable: true,
+    });
+    act(() => {
+      window.dispatchEvent(new Event(offline ? "offline" : "online"));
+    });
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, "onLine");
+  });
+
+  it("says so, keeps the text and holds Send until the signal is back", async () => {
+    renderChat();
+    const box = screen.getByLabelText("Message");
+    await userEvent.type(box, "remember the milk");
+    goOffline(true);
+    expect(screen.getByText("You're offline")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(send).not.toHaveBeenCalled();
+    expect(box).toHaveValue("remember the milk");
+
+    goOffline(false);
+    expect(screen.queryByText("You're offline")).toBeNull();
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+  });
+
+  it("puts a quick log in the box instead of sending it", async () => {
+    renderChat();
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    goOffline(true);
+    await userEvent.click(screen.getByRole("button", { name: "Fake log" }));
+    expect(send).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Message")).toHaveValue(
+      "Log my workout today: Ran."
+    );
+  });
+});

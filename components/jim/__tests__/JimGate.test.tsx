@@ -7,6 +7,8 @@ import * as config from "@/lib/firebase/config";
 import * as api from "@/lib/jim/api";
 import * as host from "@/lib/jim/host";
 import { historyKey, loadHistory, saveHistory } from "@/lib/jim/history";
+import * as offline from "@/lib/jim/offlineStore";
+import * as push from "@/lib/jim/push";
 import { fetchView, getCachedView } from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import JimGate from "../JimGate";
@@ -41,6 +43,13 @@ jest.mock("@/lib/analytics/admin", () => {
   const actual = jest.requireActual("@/lib/analytics/admin");
   return { ...actual, isAdminUser: jest.fn(actual.isAdminUser) };
 });
+jest.mock("@/lib/jim/push", () => ({
+  disablePush: jest.fn(async () => {}),
+}));
+jest.mock("@/lib/jim/offlineStore", () => ({
+  clearAll: jest.fn(async () => {}),
+  saveView: jest.fn(async () => {}),
+}));
 jest.mock("../JimChat", () => {
   const { useState } = jest.requireActual("react");
   return {
@@ -180,7 +189,7 @@ it("signs out from the not-connected screen", async () => {
   act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
   await userEvent.click(await screen.findByRole("button", { name: "Menu" }));
   await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
-  expect(mockClient.signOutUser).toHaveBeenCalled();
+  await waitFor(() => expect(mockClient.signOutUser).toHaveBeenCalled());
 });
 
 it("sends other domains to gentryriggen.com/jim before loading sign-in", async () => {
@@ -302,5 +311,60 @@ describe("early wake-up and kept chat", () => {
     await renderGate();
     act(() => emit(null));
     expect(loadHistory(ADMIN_UID)).toBeNull();
+  });
+});
+
+describe("device storage and the morning briefing", () => {
+  it("sign-out wipes the kept payloads and turns this device's push off", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    mockClient.getIdToken.mockResolvedValue("tok");
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Chat sign out" })
+    );
+    expect(offline.clearAll).toHaveBeenCalled();
+    expect(push.disablePush).toHaveBeenCalledTimes(1);
+    const [getToken, , api] = jest.mocked(push.disablePush).mock.calls[0];
+    expect(api).toBe("https://jim.example.test");
+    // The token was taken before the sign-out went through.
+    await expect(getToken!()).resolves.toBe("tok");
+    await waitFor(() => expect(mockClient.signOutUser).toHaveBeenCalled());
+  });
+
+  it("signs out even when no token comes (offline)", async () => {
+    jest.useFakeTimers();
+    try {
+      window.__JIM_TEST__ = { api: "https://jim.example.test" };
+      mockClient.getIdToken.mockReturnValue(new Promise(() => {}));
+      await renderGate();
+      act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+      act(() => screen.getByRole("button", { name: "Chat sign out" }).click());
+      expect(offline.clearAll).toHaveBeenCalled();
+      expect(mockClient.signOutUser).not.toHaveBeenCalled();
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(2_000);
+      });
+      expect(mockClient.signOutUser).toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("wipes the kept payloads when the sign-in goes away", async () => {
+    await renderGate();
+    act(() => emit(null));
+    expect(offline.clearAll).toHaveBeenCalled();
+  });
+
+  it("keeps each good Notes payload under the owner's uid", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    await fillViewCache();
+    expect(offline.saveView).toHaveBeenCalledWith(
+      ADMIN_UID,
+      expect.objectContaining({ today: VIEW_FIXTURE.today })
+    );
   });
 });

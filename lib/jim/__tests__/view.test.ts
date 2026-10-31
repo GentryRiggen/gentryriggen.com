@@ -5,6 +5,7 @@ import {
   fetchView,
   getCachedView,
   normalizeView,
+  setViewSaver,
 } from "../view";
 import { VIEW_FIXTURE } from "./fixtures";
 
@@ -218,5 +219,45 @@ describe("normalizeView", () => {
     expect(normalizeView({ today: "2026-10-31", stale: true })?.stale).toBe(
       true
     );
+  });
+});
+
+describe("keeping payloads on the device", () => {
+  it("hands each good payload to the saver, until sign-out", async () => {
+    const saver = jest.fn();
+    setViewSaver(saver);
+    const fetchFn = jest.fn().mockResolvedValue(json(200, VIEW_FIXTURE));
+    await fetchView(async () => "t", fetchFn, API);
+    expect(saver).toHaveBeenCalledTimes(1);
+    expect(saver.mock.calls[0][0].today).toBe("2026-10-31");
+
+    clearViewCache();
+    await fetchView(async () => "t", fetchFn, API);
+    expect(saver).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't save a payload whose fetch outlived the sign-in", async () => {
+    const saver = jest.fn();
+    setViewSaver(saver);
+    let answer: (res: Response) => void = () => {};
+    const fetchFn = jest.fn(
+      () => new Promise<Response>((resolve) => (answer = resolve))
+    );
+    const out = fetchView(async () => "t", fetchFn, API);
+    await Promise.resolve();
+    await Promise.resolve();
+    clearViewCache();
+    setViewSaver(saver);
+    answer(json(200, VIEW_FIXTURE));
+    await out;
+    expect(saver).not.toHaveBeenCalled();
+  });
+
+  it("doesn't save a failed fetch", async () => {
+    const saver = jest.fn();
+    setViewSaver(saver);
+    const fetchFn = jest.fn().mockResolvedValue(json(500, {}));
+    await expect(fetchView(async () => "t", fetchFn, API)).rejects.toThrow();
+    expect(saver).not.toHaveBeenCalled();
   });
 });

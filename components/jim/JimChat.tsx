@@ -7,12 +7,14 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
 import { ArrowUp } from "lucide-react";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import NotesShell from "@/components/jim/notes/NotesShell";
+import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
   JimError,
@@ -113,6 +115,24 @@ const MessageList = memo(function MessageList({
   );
 });
 
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+/** False while the device says it has no connection. */
+function useOnline(): boolean {
+  return useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine !== false,
+    () => true
+  );
+}
+
 function isPhone(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
 }
@@ -167,6 +187,8 @@ export default function JimChat({
   const lastTop = useRef(0);
 
   const keyboardOpen = useVisibleViewport(rootRef);
+  const online = useOnline();
+  const briefing = useMorningBriefing(getToken, api);
 
   const scrollToEnd = useCallback((smooth: boolean) => {
     const el = scrollerRef.current;
@@ -279,7 +301,8 @@ export default function JimChat({
   /** Sends the box, or `given` (a quick log) leaving the box alone. */
   async function send(given?: string) {
     const text = (given ?? draft).trim();
-    if (!text || sending) return;
+    // Offline it would only bounce back: the box keeps it meanwhile.
+    if (!text || sending || !online) return;
     const id = nextId.current++;
     const run = chatRun.current;
     setError(null);
@@ -401,22 +424,22 @@ export default function JimChat({
 
   // The latest send and turn state, for the stable quick-log callback.
   const sendRef = useRef(send);
-  const sendingRef = useRef(sending);
+  const holdRef = useRef(sending || !online);
   useLayoutEffect(() => {
     sendRef.current = send;
-    sendingRef.current = sending;
+    holdRef.current = sending || !online;
   });
 
   /**
    * A quick log on Notes: sent as a message, and Chat shows Jim's reply as
-   * it comes. While another turn is out it waits in the box instead.
+   * it comes. While another turn is out (or offline) it waits in the box.
    * Stable, so the (memoized) Notes tree doesn't redraw with every frame
    * of a streaming reply.
    */
   const logFromNotes = useCallback((text: string) => {
     stuck.current = true;
     setTab("chat");
-    if (sendingRef.current) {
+    if (holdRef.current) {
       setDraft((current) => (current ? `${text}\n${current}` : text));
     } else void sendRef.current(text);
   }, []);
@@ -448,7 +471,7 @@ export default function JimChat({
     void send();
   }
 
-  const canSend = draft.trim().length > 0 && !sending;
+  const canSend = draft.trim().length > 0 && !sending && online;
 
   return (
     <div
@@ -460,7 +483,10 @@ export default function JimChat({
         onSignOut={signOut}
         tab={tab}
         onTab={showTab}
-        menuItems={[{ label: "New chat", onSelect: newChat }]}
+        menuItems={[
+          { label: "New chat", onSelect: newChat },
+          ...(briefing.item ? [briefing.item] : []),
+        ]}
       />
 
       <div className="relative min-h-0 flex-1">
@@ -527,6 +553,14 @@ export default function JimChat({
             }`}
           >
             <div className="mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+              {!online && (
+                <p
+                  role="status"
+                  className="mb-2 rounded-lg bg-ayu-panel px-3 py-2 text-sm text-ayu-subtle"
+                >
+                  You&apos;re offline
+                </p>
+              )}
               {error && (
                 <p
                   role="alert"
@@ -591,6 +625,7 @@ export default function JimChat({
             className={`absolute inset-0 bg-ayu-bg ${tab === "notes" ? "" : "invisible"}`}
           >
             <NotesShell
+              uid={uid}
               api={api}
               getToken={getToken}
               active={tab === "notes"}
@@ -599,6 +634,7 @@ export default function JimChat({
           </div>
         )}
       </div>
+      {briefing.notice}
     </div>
   );
 }

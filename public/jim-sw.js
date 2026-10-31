@@ -1,0 +1,311 @@
+/* Jim service worker: /jim opens without signal, and the morning briefing
+ * arrives as a notification.
+ *
+ * Registered by lib/jim/serviceWorker.ts with scope "/jim", so it only
+ * controls the /jim page. Rules:
+ * - Only same-origin GET requests are ever handled; everything else (the
+ *   Jim server, Firebase, any POST) goes straight to the network untouched.
+ *   Nothing under /api/ is ever cached.
+ * - Navigations to /jim: network-first, falling back to the cached page when
+ *   offline or slow (4s). When a deploy changes the files the page
+ *   references, cached /_next/static/ files it no longer uses are pruned.
+ * - /_next/static/* (content-hashed, immutable): cache-first.
+ * - Install precaches /jim and the /_next/static/ files its HTML names; the
+ *   page also posts { type: "CACHE_URLS", urls } with what it has loaded
+ *   (chunks loaded before the worker took control).
+ * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
+ *   cached, so opaque or cross-origin responses never enter the cache.
+ * - push: { title, body, url } becomes a notification (a generic one when
+ *   the payload can't be read: iOS wants one for every push). A tap focuses
+ *   an open /jim or opens it.
+ */
+
+const CACHE_PREFIX = "jim-shell-";
+const CACHE = `${CACHE_PREFIX}v1`;
+const PAGE_PATH = "/jim";
+const STATIC_PREFIX = "/_next/static/";
+const ICON = "/jim-icons/icon-192.png";
+const NOTIFICATION_TAG = "jim-morning";
+/** Upper bound on URLs accepted from one CACHE_URLS message. */
+const MAX_PRECACHE_URLS = 300;
+/** How long a page waits on the network before the cached page is used. */
+const NAVIGATION_NETWORK_TIMEOUT_MS = 4000;
+/** Matches every /_next/static/ path in a page's HTML. */
+const STATIC_REF_PATTERN = /\/_next\/static\/[^"'\s\\)<>?]+/g;
+
+/** True for the page itself ("/jim", "/jim/", "/jim.html"); nothing else. */
+function isPagePath(pathname) {
+  return (
+    pathname === PAGE_PATH ||
+    pathname === `${PAGE_PATH}/` ||
+    pathname === `${PAGE_PATH}.html`
+  );
+}
+
+function isStaticAsset(pathname) {
+  return pathname.startsWith(STATIC_PREFIX);
+}
+
+function isApi(pathname) {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+function isCacheable(response) {
+  return (
+    Boolean(response) &&
+    response.ok &&
+    response.type === "basic" &&
+    !response.redirected
+  );
+}
+
+/** Parses a same-origin URL, or returns null for anything else. */
+function toSameOriginUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function pageKey() {
+  return new URL(PAGE_PATH, self.location.origin).href;
+}
+
+function staticRefs(html) {
+  return new Set(html.match(STATIC_REF_PATTERN) ?? []);
+}
+
+function sameSet(a, b) {
+  if (a.size !== b.size) return false;
+  for (const value of a) if (!b.has(value)) return false;
+  return true;
+}
+
+/** Caches the page and every /_next/static/ file its HTML names. */
+async function precachePage() {
+  const cache = await caches.open(CACHE);
+  const response = await fetch(pageKey(), { credentials: "same-origin" });
+  if (!isCacheable(response)) return;
+  const html = await response.clone().text();
+  await cache.put(pageKey(), response);
+  await Promise.all(
+    [...staticRefs(html)].map(async (path) => {
+      try {
+        const href = new URL(path, self.location.origin).href;
+        if (await cache.match(href)) return;
+        const asset = await fetch(href, { credentials: "same-origin" });
+        if (isCacheable(asset)) await cache.put(href, asset);
+      } catch {
+        // One missing file must not fail the install.
+      }
+    })
+  );
+}
+
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  // Best effort: an install while offline still installs.
+  event.waitUntil(precachePage().catch(() => {}));
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE)
+          .map((key) => caches.delete(key))
+      );
+      await self.clients.claim();
+    })()
+  );
+});
+
+/**
+ * A new deploy changes the hashed files the page references, which would
+ * otherwise stay in the cache forever. When the page's references change,
+ * drop every cached /_next/static/ file the new page does not reference.
+ * Lazily loaded chunks are cache-first on demand, so any still needed are
+ * stored again when the page loads them.
+ */
+async function pruneStaleStatic(cache, previous, response) {
+  let before;
+  let after;
+  try {
+    before = staticRefs(await previous.clone().text());
+    after = staticRefs(await response.clone().text());
+  } catch {
+    return;
+  }
+  if (after.size === 0 || sameSet(before, after)) return;
+  for (const request of await cache.keys()) {
+    const { pathname } = new URL(request.url);
+    if (isStaticAsset(pathname) && !after.has(pathname)) {
+      await cache.delete(request);
+    }
+  }
+}
+
+/**
+ * Network-first, but a slow network (lie-fi) falls back to the cached page
+ * after a few seconds. A late answer still updates the cache. Every form of
+ * the page is stored as /jim, without its query.
+ */
+async function handleNavigation(event, request) {
+  const cache = await caches.open(CACHE);
+  const network = fetch(request).then(async (response) => {
+    if (isCacheable(response)) {
+      try {
+        const previous = await cache.match(pageKey());
+        await cache.put(pageKey(), response.clone());
+        if (previous) await pruneStaleStatic(cache, previous, response);
+      } catch {
+        // Caching is best effort.
+      }
+    }
+    return response;
+  });
+  event.waitUntil(network.catch(() => {}));
+  const cached = await cache.match(pageKey());
+  if (!cached) return network;
+  const slow = new Promise((resolve) =>
+    setTimeout(() => resolve(cached), NAVIGATION_NETWORK_TIMEOUT_MS)
+  );
+  return Promise.race([network.catch(() => cached), slow]);
+}
+
+async function handleStaticAsset(request) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (isCacheable(response)) {
+    await cache.put(request, response.clone()).catch(() => {});
+  }
+  return response;
+}
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+  const url = toSameOriginUrl(request.url);
+  if (!url || isApi(url.pathname)) return;
+
+  if (request.mode === "navigate") {
+    if (isPagePath(url.pathname)) {
+      event.respondWith(handleNavigation(event, request));
+    }
+    return;
+  }
+
+  // Range requests (media) need partial responses; leave them to the network.
+  if (request.headers.has("range")) return;
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(handleStaticAsset(request));
+  }
+  // Everything else passes through to the network.
+});
+
+async function precache(urls) {
+  const cache = await caches.open(CACHE);
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        if (!isPagePath(url.pathname) && (await cache.match(url.href))) {
+          return;
+        }
+        const response = await fetch(url.href, { credentials: "same-origin" });
+        if (!isCacheable(response)) return;
+        await cache.put(
+          isPagePath(url.pathname) ? pageKey() : url.href,
+          response
+        );
+      } catch {
+        // Ignore individual failures; the page still works online.
+      }
+    })
+  );
+}
+
+self.addEventListener("message", (event) => {
+  const { data, source } = event;
+  // Only accept messages from our own pages (window clients are same-origin).
+  if (!source || source.type !== "window") return;
+  if (!data || data.type !== "CACHE_URLS" || !Array.isArray(data.urls)) return;
+
+  const seen = new Set();
+  const urls = [];
+  for (const value of data.urls.slice(0, MAX_PRECACHE_URLS)) {
+    const url = toSameOriginUrl(value);
+    if (!url) continue;
+    if (!isPagePath(url.pathname) && !isStaticAsset(url.pathname)) continue;
+    url.hash = "";
+    if (isPagePath(url.pathname)) url.search = "";
+    if (seen.has(url.href)) continue;
+    seen.add(url.href);
+    urls.push(url);
+  }
+
+  if (urls.length > 0) event.waitUntil(precache(urls));
+});
+
+/** Where a tap goes: the payload's /jim URL, or /jim. */
+function targetUrl(value) {
+  const url = toSameOriginUrl(value);
+  return url && isPagePath(url.pathname) ? url.href : pageKey();
+}
+
+/** The notification a push shows. Never throws. */
+function notificationFor(data) {
+  let payload = null;
+  try {
+    payload = data ? data.json() : null;
+  } catch {
+    payload = null;
+  }
+  const ok =
+    payload !== null &&
+    typeof payload === "object" &&
+    typeof payload.title === "string" &&
+    payload.title !== "";
+  return {
+    title: ok ? payload.title : "Jim",
+    options: {
+      body: ok && typeof payload.body === "string" ? payload.body : "",
+      icon: ICON,
+      badge: ICON,
+      tag: NOTIFICATION_TAG,
+      data: { url: targetUrl(ok ? payload.url : null) },
+    },
+  };
+}
+
+self.addEventListener("push", (event) => {
+  const { title, options } = notificationFor(event.data);
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = targetUrl(event.notification.data && event.notification.data.url);
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of windows) {
+        const at = toSameOriginUrl(client.url);
+        if (at && isPagePath(at.pathname) && "focus" in client) {
+          await client.focus();
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })()
+  );
+});

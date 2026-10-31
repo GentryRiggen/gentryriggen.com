@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import * as view from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import * as offline from "@/lib/jim/offlineStore";
 import NotesShell from "../NotesShell";
+
+jest.mock("@/lib/jim/offlineStore", () => ({
+  loadView: jest.fn(async () => null),
+}));
 
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
@@ -53,6 +58,7 @@ function deferred<T>() {
 function renderShell(active = true) {
   return render(
     <NotesShell
+      uid="uid-1"
       api="https://jim.example.test"
       getToken={getToken}
       active={active}
@@ -66,6 +72,7 @@ beforeEach(() => {
   toggleTodo.mockReset();
   searchNotes.mockReset();
   fetchNote.mockReset();
+  jest.mocked(offline.loadView).mockReset().mockResolvedValue(null);
   (jest.requireActual("@/lib/jim/view") as typeof view).clearViewCache();
 });
 
@@ -271,6 +278,72 @@ it("is memoized, so a chat redraw leaves it alone", () => {
   expect((NotesShell as unknown as { $$typeof: symbol }).$$typeof).toBe(
     Symbol.for("react.memo")
   );
+});
+
+describe("offline", () => {
+  // A past day, so the label carries its date.
+  const SAVED_AT = new Date(2025, 9, 30, 21, 5).getTime();
+
+  it("shows the payload kept on this device when there's no signal", async () => {
+    fetchView.mockRejectedValue(new api.JimError("waking"));
+    jest
+      .mocked(offline.loadView)
+      .mockResolvedValue({ payload: VIEW_FIXTURE, savedAt: SAVED_AT });
+    renderShell();
+    expect(await screen.findByText("Water the plants")).toBeInTheDocument();
+    expect(offline.loadView).toHaveBeenCalledWith("uid-1");
+    expect(
+      screen.getByText("Offline · as of Oct 30, 9:05pm")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("swaps in fresh data once the signal is back", async () => {
+    fetchView.mockRejectedValueOnce(new api.JimError("waking"));
+    jest
+      .mocked(offline.loadView)
+      .mockResolvedValue({ payload: VIEW_FIXTURE, savedAt: SAVED_AT });
+    renderShell();
+    await screen.findByText(/^Offline · as of/);
+    fetchView.mockResolvedValueOnce({ ...VIEW_FIXTURE, todos: [] });
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("No open todos.")).toBeInTheDocument();
+    expect(screen.queryByText(/^Offline/)).toBeNull();
+    expect(screen.getByText(/^Updated /)).toBeInTheDocument();
+  });
+
+  it("keeps what's showing rather than the device copy on a failed refresh", async () => {
+    fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+    renderShell();
+    await screen.findByText("Water the plants");
+    fetchView.mockRejectedValueOnce(new api.JimError("waking"));
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText(/^Couldn't refresh/)).toBeInTheDocument();
+    expect(offline.loadView).not.toHaveBeenCalled();
+  });
+
+  it("never falls back when the sign-in was refused", async () => {
+    fetchView.mockRejectedValue(new api.JimError("denied"));
+    jest
+      .mocked(offline.loadView)
+      .mockResolvedValue({ payload: VIEW_FIXTURE, savedAt: SAVED_AT });
+    renderShell();
+    expect(
+      await screen.findByText(
+        "Jim didn't accept your sign-in. Sign out and back in."
+      )
+    ).toBeInTheDocument();
+    expect(offline.loadView).not.toHaveBeenCalled();
+    expect(screen.queryByText("Water the plants")).toBeNull();
+  });
+
+  it("offers Try again when nothing is kept either", async () => {
+    fetchView.mockRejectedValue(new api.JimError("waking"));
+    renderShell();
+    expect(
+      await screen.findByRole("button", { name: "Try again" })
+    ).toBeInTheDocument();
+  });
 });
 
 describe("search", () => {

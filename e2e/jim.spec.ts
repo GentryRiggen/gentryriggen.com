@@ -51,6 +51,8 @@ interface MockCalls {
   search: string[];
   /** Each /api/chat message, in order. */
   messages: string[];
+  /** Each /api/push call ("POST /api/push/subscribe"), in order. */
+  push: string[];
 }
 
 /** Invented search hits and the one note behind them. */
@@ -102,13 +104,14 @@ async function mockServer(
     todo: [],
     search: [],
     messages: [],
+    push: [],
   };
   /** Todos checked off on the "server": the next view leaves them out. */
   const done = new Set<number>();
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
   };
   await page.route(`${API}/**`, async (route) => {
     if (route.request().method() === "OPTIONS") {
@@ -172,6 +175,15 @@ async function mockServer(
         if (body.done) done.add(body.order);
         else done.delete(body.order);
         await reply(200, { ok: true, commit: "c0ffee1234", sha: "c0ffee1" });
+      }
+      return;
+    }
+    if (url.pathname.startsWith("/api/push/")) {
+      calls.push.push(`${route.request().method()} ${url.pathname}`);
+      if (url.pathname === "/api/push/key") {
+        await reply(200, { publicKey: "AQID_w" });
+      } else {
+        await route.fulfill({ status: 204, headers: cors });
       }
       return;
     }
@@ -1068,3 +1080,193 @@ test(
     }
   }
 );
+
+/** The Notes payload kept in IndexedDB for this uid, or null. */
+async function keptView(page: Page): Promise<unknown> {
+  return page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const open = indexedDB.open("jim", 1);
+        open.onupgradeneeded = () => open.result.createObjectStore("kv");
+        open.onerror = () => resolve(null);
+        open.onsuccess = () => {
+          const db = open.result;
+          const get = db
+            .transaction("kv", "readonly")
+            .objectStore("kv")
+            .getAll();
+          get.onsuccess = () => {
+            db.close();
+            resolve(get.result.length ? get.result[0] : null);
+          };
+          get.onerror = () => resolve(null);
+        };
+      })
+  );
+}
+
+test(
+  "opens Notes from the device and holds Send without signal",
+  { tag: "@smoke" },
+  async ({ page, context }, testInfo) => {
+    await signedIn(page);
+    // The early fetch keeps the payload on the device.
+    await expect.poll(() => keptView(page)).not.toBeNull();
+
+    // Back later with no way to reach Jim.
+    await page.route(`${API}/**`, (route) =>
+      route.abort("internetdisconnected")
+    );
+    await page.reload();
+    await expect(page.getByLabel("Message")).toBeVisible();
+    await context.setOffline(true);
+    try {
+      await expect(page.getByText("You're offline")).toBeVisible();
+      const box = page.getByLabel("Message");
+      await box.fill("remember the milk");
+      await expect(page.getByRole("button", { name: "Send" })).toBeDisabled();
+      await expect(box).toHaveValue("remember the milk");
+
+      await page.getByRole("tab", { name: "Notes" }).click();
+      await expect(page.getByText("Water the plants")).toBeVisible();
+      await expect(page.getByText(/^Offline · as of /)).toBeVisible();
+      await noSidewaysScroll(page);
+      await page.screenshot({
+        path: shotName(page, testInfo, "notes-offline", "ayu"),
+        animations: "disabled",
+      });
+      await page.setViewportSize({ width: 320, height: 568 });
+      await noSidewaysScroll(page);
+      await page.screenshot({
+        path: shotName(page, testInfo, "notes-offline", "ayu"),
+        animations: "disabled",
+      });
+
+      // Signal back: Send works again and the text is still there.
+      await context.setOffline(false);
+      await page.getByRole("tab", { name: "Chat" }).click();
+      await expect(page.getByText("You're offline")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Send" })).toBeEnabled();
+      await expect(page.getByLabel("Message")).toHaveValue("remember the milk");
+    } finally {
+      await context.setOffline(false);
+    }
+  }
+);
+
+test(
+  "Morning briefing in the menu, and its Home Screen hint on an iPhone",
+  { tag: "@smoke" },
+  async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "iphone",
+      "the hint is for iOS in a browser tab"
+    );
+    const calls = await signedIn(page);
+    for (const width of [393, 320]) {
+      await page.setViewportSize({ width, height: width === 320 ? 568 : 852 });
+      await page.getByRole("button", { name: "Menu" }).click();
+      const item = page.getByRole("menuitem", {
+        name: "Morning briefing: Off",
+      });
+      await expect(item).toBeInViewport({ ratio: 1 });
+      await bigTargets(page);
+      await noSidewaysScroll(page);
+      await page.screenshot({
+        path: shotName(page, testInfo, "menu-briefing", "ayu"),
+        animations: "disabled",
+      });
+      await item.click();
+      const hint = page.getByRole("alertdialog");
+      await expect(hint).toContainText(
+        "Add Jim to your Home Screen first (Share → Add to Home Screen), then turn this on there."
+      );
+      await bigTargets(page);
+      await noSidewaysScroll(page);
+      await page.screenshot({
+        path: shotName(page, testInfo, "briefing-hint", "ayu"),
+        animations: "disabled",
+      });
+      await page.getByRole("button", { name: "OK" }).click();
+      await expect(hint).toHaveCount(0);
+    }
+    expect(calls.push).toEqual([]);
+  }
+);
+
+test("turns the morning briefing on, and sign-out turns it off and wipes the device", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "stands in for the push service on Chromium"
+  );
+  // A stand-in service worker registration and push service.
+  await page.addInitScript(() => {
+    let sub: PushSubscription | null = null;
+    const make = () =>
+      ({
+        endpoint: "https://push.example.test/device",
+        options: {
+          applicationServerKey: new Uint8Array([1, 2, 3, 255]).buffer,
+        },
+        toJSON: () => ({
+          endpoint: "https://push.example.test/device",
+          keys: { p256dh: "p", auth: "a" },
+        }),
+        unsubscribe: async () => {
+          sub = null;
+          return true;
+        },
+      }) as unknown as PushSubscription;
+    const registration = {
+      pushManager: {
+        getSubscription: async () => sub,
+        subscribe: async () => (sub = make()),
+      },
+    };
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        getRegistration: async () => registration,
+        ready: Promise.resolve(registration),
+        register: async () => registration,
+      },
+    });
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: { requestPermission: async () => "granted" },
+    });
+    Object.defineProperty(window, "__pushOn", {
+      configurable: true,
+      get: () => sub !== null,
+    });
+  });
+  const calls = await signedIn(page);
+  await expect.poll(() => keptView(page)).not.toBeNull();
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "Morning briefing: Off" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText(
+    "Morning briefing is on. A test notification is on its way."
+  );
+  expect(calls.push).toEqual([
+    "GET /api/push/key",
+    "POST /api/push/subscribe",
+    "POST /api/push/test",
+  ]);
+  await page.getByRole("button", { name: "OK" }).click();
+  await page.getByRole("button", { name: "Menu" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "Morning briefing: On" })
+  ).toBeVisible();
+
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect.poll(() => calls.push.length).toBe(4);
+  expect(calls.push[3]).toBe("DELETE /api/push/subscribe");
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { __pushOn: boolean }).__pushOn)
+    )
+    .toBe(false);
+  await expect.poll(() => keptView(page)).toBeNull();
+});

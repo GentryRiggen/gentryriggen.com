@@ -20,10 +20,14 @@ import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
-import { timeLabel } from "@/lib/jim/notesData";
+import { localDay, timeLabel } from "@/lib/jim/notesData";
+import { loadView } from "@/lib/jim/offlineStore";
+import { fmtShort } from "@/lib/jim/todos";
 import { fetchView, getCachedView, type ViewData } from "@/lib/jim/view";
 
 interface NotesShellProps {
+  /** The signed-in user, whose last payload is kept on this device. */
+  uid: string;
   /** The server's base URL. */
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
@@ -54,6 +58,15 @@ const LOAD_ERRORS: Record<JimErrorKind, string> = {
   rejected: "Couldn't load your notes.",
 };
 
+/** "9:14am" today, "Oct 30, 9:14am" before. */
+function asOfLabel(at: number): string {
+  const iso = new Date(at).toISOString();
+  const time = timeLabel(iso);
+  return localDay(iso) === localDay(new Date().toISOString())
+    ? time
+    : `${fmtShort(localDay(iso))}, ${time}`;
+}
+
 function Skeleton() {
   return (
     <div aria-busy="true" className="space-y-4">
@@ -73,6 +86,7 @@ function Skeleton() {
  * Memoized: it sits (hidden) beside a chat that redraws every streamed frame.
  */
 export default memo(function NotesShell({
+  uid,
   api,
   getToken,
   active,
@@ -84,6 +98,8 @@ export default memo(function NotesShell({
   const [loadedAt, setLoadedAt] = useState<number | null>(
     () => getCachedView()?.at ?? null
   );
+  /** What shows came from this device, not the server (no signal). */
+  const [fromDevice, setFromDevice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   const [page, setPage] = useState<Page>("home");
@@ -98,6 +114,8 @@ export default memo(function NotesShell({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLButtonElement>(null);
   const inflight = useRef<Promise<ViewData | null> | null>(null);
+  /** Whether anything is showing, for the offline fallback. */
+  const hasData = useRef(data !== null);
   /** A change landed while a load was out: load once more after it. */
   const again = useRef(false);
   /** Where the People list (or the results) was scrolled to before a
@@ -120,12 +138,26 @@ export default memo(function NotesShell({
           again.current = false;
           try {
             latest = await fetchView(getToken, undefined, api);
+            hasData.current = true;
             setData(latest);
             setLoadedAt(getCachedView()?.at ?? Date.now());
+            setFromDevice(false);
             setError(null);
           } catch (err) {
             latest = null;
-            setError(err instanceof JimError ? err.kind : "server");
+            const kind = err instanceof JimError ? err.kind : "server";
+            setError(kind);
+            // Nothing showing yet (no signal on opening): the last payload
+            // kept on this device. Not when the sign-in itself was refused.
+            if (!hasData.current && kind !== "denied") {
+              const saved = await loadView(uid);
+              if (saved && !hasData.current) {
+                hasData.current = true;
+                setData(saved.payload);
+                setLoadedAt(saved.savedAt);
+                setFromDevice(true);
+              }
+            }
           }
         } while (again.current);
         return latest;
@@ -136,7 +168,7 @@ export default memo(function NotesShell({
     })();
     inflight.current = run;
     return run;
-  }, [api, getToken]);
+  }, [api, getToken, uid]);
 
   /**
    * A todo was saved: refetch in the background, once more after any load
@@ -291,6 +323,10 @@ export default memo(function NotesShell({
   }
 
   const updated = loadedAt ? timeLabel(new Date(loadedAt).toISOString()) : null;
+  const offlineLine =
+    fromDevice && loadedAt
+      ? `${error === "server" || error === "rejected" ? "Couldn't refresh" : "Offline"} · as of ${asOfLabel(loadedAt)}`
+      : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -349,13 +385,15 @@ export default memo(function NotesShell({
               <p className="min-w-0" aria-live="polite">
                 {error === "denied"
                   ? LOAD_ERRORS.denied
-                  : error
-                    ? `Couldn't refresh. Showing what loaded${updated ? ` at ${updated}` : ""}.`
-                    : data.stale
-                      ? "Jim couldn't sync, so these may be behind."
-                      : updated
-                        ? `Updated ${updated}`
-                        : null}
+                  : offlineLine
+                    ? offlineLine
+                    : error
+                      ? `Couldn't refresh. Showing what loaded${updated ? ` at ${updated}` : ""}.`
+                      : data.stale
+                        ? "Jim couldn't sync, so these may be behind."
+                        : updated
+                          ? `Updated ${updated}`
+                          : null}
               </p>
               <button
                 type="button"

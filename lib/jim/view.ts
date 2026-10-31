@@ -241,9 +241,17 @@ let inflight: {
   promise: Promise<ViewData>;
 } | null = null;
 
+/** Keeps each good payload on the device too (set while signed in). */
+let saver: ((data: ViewData) => void) | null = null;
+
+export function setViewSaver(next: ((data: ViewData) => void) | null): void {
+  saver = next;
+}
+
 export function clearViewCache(): void {
   cache = null;
   inflight = null;
+  saver = null;
   generation += 1;
 }
 
@@ -297,7 +305,10 @@ async function loadView(
       timedOut,
     ]);
     // Signed out meanwhile: hand it back, but don't keep it.
-    if (startedIn === generation) cache = { data, at: Date.now() };
+    if (startedIn === generation) {
+      cache = { data, at: Date.now() };
+      saver?.(data);
+    }
     return data;
   } catch (err) {
     if (controller.signal.aborted) throw new JimError("waking");
@@ -363,9 +374,9 @@ type GetToken = (force?: boolean) => Promise<string | null>;
  * other status. Throws JimError: waking (offline, no connection, the time
  * limit), denied (no user, a second 401, or a 403) or server (no URL).
  */
-async function callJim(
+export async function callJim(
   path: string,
-  init: { method: "GET" | "POST"; body?: unknown },
+  init: { method: "GET" | "POST" | "DELETE"; body?: unknown },
   getToken: GetToken,
   fetchFn: typeof fetch | undefined,
   api: string,

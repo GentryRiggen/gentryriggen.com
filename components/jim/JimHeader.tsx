@@ -148,7 +148,7 @@ export default function JimHeader({
               role="menu"
               aria-label="Menu"
               onKeyDown={onMenuKeyDown}
-              className="absolute top-full right-0 z-20 mt-1 min-w-44 overflow-hidden rounded-xl border border-ayu-raised bg-ayu-panel shadow-xl shadow-black/50"
+              className="absolute top-full right-0 z-20 mt-1 min-w-52 overflow-hidden rounded-xl border border-ayu-raised bg-ayu-panel shadow-xl shadow-black/50"
             >
               {items.map((item) => (
                 <button
@@ -162,7 +162,7 @@ export default function JimHeader({
                     buttonRef.current?.focus();
                     item.onSelect();
                   }}
-                  className="flex min-h-11 w-full items-center px-4 text-left text-base text-ayu-text hover:bg-ayu-raised focus:bg-ayu-raised focus:outline-none"
+                  className="flex min-h-11 w-full items-center px-4 text-left text-base whitespace-nowrap text-ayu-text hover:bg-ayu-raised focus:bg-ayu-raised focus:outline-none"
                 >
                   {item.label}
                 </button>

@@ -17,7 +17,10 @@ import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { isJimConnected, JIM_API, wakeJim } from "@/lib/jim/api";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
-import { clearViewCache, fetchView } from "@/lib/jim/view";
+import { clearAll, saveView } from "@/lib/jim/offlineStore";
+import { disablePush } from "@/lib/jim/push";
+import { registerJimServiceWorker } from "@/lib/jim/serviceWorker";
+import { clearViewCache, fetchView, setViewSaver } from "@/lib/jim/view";
 import { jimTestHook } from "@/lib/jim/testHooks";
 
 type GetToken = (force?: boolean) => Promise<string | null>;
@@ -30,6 +33,9 @@ type State =
   | { kind: "owner"; uid: string; api: string; getToken: GetToken };
 
 const e2eToken: GetToken = async () => "e2e-token";
+
+/** How long sign-out waits for a token to tell the server, at most. */
+const SIGN_OUT_TOKEN_MS = 2_000;
 
 /** watchAuth for the e2e hook: the owner is already signed in. */
 async function watchAsOwner(
@@ -59,6 +65,7 @@ export default function JimGate() {
       goTo(target);
       return;
     }
+    void registerJimServiceWorker();
     const hook = jimTestHook();
     // The e2e hook (compiled out of the shipped build) stands in for Firebase.
     const fake = hook?.signedIn === true;
@@ -77,13 +84,17 @@ export default function JimGate() {
         wokeFor.current = null;
         clearViewCache();
         clearHistory();
+        void clearAll();
         // Keep the "Not authorized" message when our own sign-out echoes back.
         setState((prev) =>
           prev.kind === "denied" ? prev : { kind: "signedOut" }
         );
       } else if (isAdminUser(user)) {
         setExcluded(safeLocalStorage());
-        setState({ kind: "owner", uid: user.uid, api, getToken });
+        // Each good Notes payload is kept on the device for offline opens.
+        const uid = user.uid;
+        setViewSaver((data) => void saveView(uid, data));
+        setState({ kind: "owner", uid, api, getToken });
         if (wokeFor.current !== user.uid && isJimConnected(api)) {
           wokeFor.current = user.uid;
           // Start the server (and the Notes data) while Gentry types.
@@ -125,9 +136,28 @@ export default function JimGate() {
 
   function signOut() {
     clearViewCache();
-    // Every chat kept on this device, in case the phone was lent.
+    // Every chat and Notes payload kept on this device, in case the phone
+    // was lent.
     clearHistory();
-    signOutUser().catch(() => {});
+    void clearAll();
+    if (state.kind !== "owner") {
+      signOutUser().catch(() => {});
+      return;
+    }
+    // This device's morning briefing goes too. The token is taken before
+    // signing out (after, there is none); the wait is capped, so a dead
+    // network never holds sign-out up for long.
+    const { getToken, api } = state;
+    const token = Promise.race([
+      Promise.resolve()
+        .then(() => getToken())
+        .catch(() => null),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), SIGN_OUT_TOKEN_MS)
+      ),
+    ]);
+    void disablePush(() => token, undefined, api);
+    void token.then(() => signOutUser().catch(() => {}));
   }
 
   if (state.kind === "owner") {

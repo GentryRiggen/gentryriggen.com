@@ -14,6 +14,15 @@
         ]
       },
       {
+        "source": "/jim-sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/ship-builder.webmanifest",
         "headers": [
           {
@@ -134,7 +143,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com"
+            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; worker-src 'self'; manifest-src 'self'"
           },
           {
             "key": "X-Frame-Options",
@@ -147,7 +156,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com"
+            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; worker-src 'self'; manifest-src 'self'"
           },
           {
             "key": "X-Frame-Options",
