@@ -66,5 +66,10 @@ export function lifeboatCount(
   stats: ShipStats
 ): { seats: number; people: number } {
   const seats = hungLifeboats(ship).reduce((n, boat) => n + boat.seats, 0);
-  return { seats, people: stats.passengers.total + stats.crewBerths };
+  return { seats, people: peopleAboard(stats) };
+}
+
+/** Everyone aboard in real counts: passengers plus crew berths. */
+export function peopleAboard(stats: ShipStats): number {
+  return stats.passengers.total + stats.crewBerths;
 }

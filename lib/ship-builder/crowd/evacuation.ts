@@ -8,7 +8,7 @@ import { floodOf } from "../sim/trialKind";
 import { SIM_STEP_S, type SimState, type TrialInput } from "../sim/types";
 import { halfWalkGrid, type WalkHalf, walkHalfOf } from "../walk/halfGrid";
 import type { WalkGrid } from "../walk/types";
-import { hungLifeboats, lifeboatCount } from "./lifeboatCount";
+import { hungLifeboats, peopleAboard } from "./lifeboatCount";
 import { type CrowdGraph, crowdGraphOf, pathTo } from "./plan";
 import { between, fnv1a, mulberry32 } from "./rng";
 import {
@@ -83,8 +83,6 @@ export type PersonFate =
 
 export interface EvacuationPlan {
   launches: readonly BoatLaunch[];
-  /** Figures matched to no boat at doom: they stay aboard and go down with her. */
-  leftAboard: number;
   /** What person `i` is doing at sim time `t`. Pure. */
   fateAt(i: number, t: number): PersonFate;
   /** Model-frame pose for an aboard or boarding person at `t` (boarding walks to the boat). */
@@ -625,6 +623,56 @@ export function planEvacuation(
     }
     return Infinity;
   };
+
+  // The per-person setup both lifeboat modes share.
+  /** A fate before any boat is decided: aboard, heading nowhere. */
+  const newFate = (): Fate => ({
+    float: null,
+    boatId: null,
+    boardUntil: doom,
+    seat: null,
+    fadeFrom: null,
+  });
+  /** Each person's own wander, the same every run. */
+  const wanderRandom = (i: number) =>
+    mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0);
+  /**
+   * Person `i` walks from doom to `boat`'s boarding spot and waits there.
+   * Returns when they get there.
+   */
+  const walkToBoat = (i: number, boat: Lifeboat): number => {
+    const graph = graphOf(halves[i]);
+    const path = pathTo(graph.reachFrom(boat.spot), startNodes[i]!).reverse();
+    const track: Segment[] = [];
+    const at = walkPath(track, graph, doom, starts[i], path);
+    const spot = centre(graph, boat.spot);
+    standFrom(track, at.t, { ...spot, yaw: at.yaw, activity: "idle" });
+    motions.push({ crowdUntil: doom, track });
+    return at.t;
+  };
+  /**
+   * Person `i` has no boat: they follow the crowd plan until she breaks
+   * (forever if she never does), then wander on their half.
+   */
+  const wanderOn = (i: number): void => {
+    if (atX === null) {
+      motions.push({ crowdUntil: Infinity, track: [] });
+      return;
+    }
+    const from = Math.max(doom, breakAt);
+    const pose = crowd.poseAt(i, from);
+    const track: Segment[] = [];
+    wanderFrom(
+      track,
+      wanderGraphOf(walkHalfOf(pose.x, atX)),
+      from,
+      pose,
+      horizon,
+      wanderRandom(i)
+    );
+    motions.push({ crowdUntil: from, track });
+  };
+
   const launchOf = (
     boat: Lifeboat,
     at: number,
@@ -647,15 +695,16 @@ export function planEvacuation(
   // hers (walking there, or fading out and into the boat when there is no
   // way, or no time) unless the water reaches her boarding spot first.
   const fillBoats = (): void => {
-    const real = lifeboatCount(ship, analyzeShip(ship).stats);
-    // The same boats `lifeboatCount` sums (both read `hungLifeboats`).
+    // The real seats: the same boats `lifeboatCount` sums (both read
+    // `hungLifeboats`), against everyone aboard.
     const boatSeats = boats.reduce((n, boat) => n + boat.seats, 0);
+    const aboard = peopleAboard(analyzeShip(ship).stats);
     const saved =
       boatSeats <= 0
         ? 0
-        : real.seats >= real.people
+        : boatSeats >= aboard
           ? count
-          : Math.min(count, Math.round((count * real.seats) / real.people));
+          : Math.min(count, Math.round((count * boatSeats) / aboard));
     // Each boat's share by its seats, largest remainder.
     const share = boats.map((boat) =>
       boatSeats > 0 ? (saved * boat.seats) / boatSeats : 0
@@ -709,30 +758,15 @@ export function planEvacuation(
       walks[i] = pair.walks ? 1 : 0;
       filled[b]++;
     }
-    leftAboard = boatOf.reduce((n, b) => (b < 0 ? n + 1 : n), 0);
 
     // When each rider would be in their seat, and when they start to fade.
     const target = new Float64Array(count).fill(Infinity);
     const fadeFrom: (number | null)[] = new Array(count).fill(null);
     for (let i = 0; i < count; i++) {
       const b = boatOf[i];
-      fates.push({
-        float: null,
-        boatId: null,
-        boardUntil: doom,
-        seat: null,
-        fadeFrom: null,
-      });
+      fates.push(newFate());
       if (b >= 0 && walks[i]) {
-        const boat = boats[b];
-        const graph = graphOf(halves[i]);
-        const path = pathTo(graph.reachFrom(boat.spot), startNodes[i]!);
-        const track: Segment[] = [];
-        const at = walkPath(track, graph, doom, starts[i], path.reverse());
-        const spot = centre(graph, boat.spot);
-        standFrom(track, at.t, { ...spot, yaw: at.yaw, activity: "idle" });
-        target[i] = at.t;
-        motions.push({ crowdUntil: doom, track });
+        target[i] = walkToBoat(i, boats[b]);
       } else if (b >= 0) {
         // No way there: they fade out where they stand, and are in the
         // boat about when a walk there would have taken.
@@ -742,21 +776,8 @@ export function planEvacuation(
           doom + Math.max(FADE_S, straight(i, boats[b]) / PERSON_SPEED);
         fadeFrom[i] = doom;
         motions.push({ crowdUntil: doom, track });
-      } else if (atX === null) {
-        motions.push({ crowdUntil: Infinity, track: [] });
       } else {
-        const from = Math.max(doom, breakAt);
-        const pose = crowd.poseAt(i, from);
-        const track: Segment[] = [];
-        wanderFrom(
-          track,
-          wanderGraphOf(walkHalfOf(pose.x, atX)),
-          from,
-          pose,
-          horizon,
-          mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0)
-        );
-        motions.push({ crowdUntil: from, track });
+        wanderOn(i);
       }
     }
     // A walker the water catches on the way fades into the boat instead.
@@ -806,7 +827,6 @@ export function planEvacuation(
   };
 
   const launches: BoatLaunch[] = [];
-  let leftAboard = 0;
   if (fill) {
     fillBoats();
   } else {
@@ -824,13 +844,11 @@ export function planEvacuation(
     });
     pairs.sort((p, q) => p.dist - q.dist || p.i - q.i || p.b - q.b);
     const boatOf = new Int32Array(count).fill(-1);
-    leftAboard = count;
     const filled = new Int32Array(boats.length);
     for (const { i, b } of pairs) {
       if (boatOf[i] >= 0 || filled[b] >= boats[b].cap) continue;
       boatOf[i] = b;
       filled[b]++;
-      leftAboard--;
     }
 
     // Boarders walk to their boat's spot and wait there; the rest wander on,
@@ -838,40 +856,12 @@ export function planEvacuation(
     const arrivals = new Float64Array(count).fill(Infinity);
     for (let i = 0; i < count; i++) {
       const b = boatOf[i];
-      const graph = graphOf(halves[i]);
       if (b >= 0) {
-        const boat = boats[b];
-        const reach = graph.reachFrom(boat.spot);
-        const path = pathTo(reach, startNodes[i]!).reverse();
-        const track: Segment[] = [];
-        const at = walkPath(track, graph, doom, starts[i], path);
-        const spot = centre(graph, boat.spot);
-        standFrom(track, at.t, { ...spot, yaw: at.yaw, activity: "idle" });
-        arrivals[i] = at.t;
-        motions.push({ crowdUntil: doom, track });
-      } else if (atX === null) {
-        motions.push({ crowdUntil: Infinity, track: [] });
+        arrivals[i] = walkToBoat(i, boats[b]);
       } else {
-        const from = Math.max(doom, breakAt);
-        const pose = crowd.poseAt(i, from);
-        const track: Segment[] = [];
-        wanderFrom(
-          track,
-          graphOf(walkHalfOf(pose.x, atX)),
-          from,
-          pose,
-          horizon,
-          mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0)
-        );
-        motions.push({ crowdUntil: from, track });
+        wanderOn(i);
       }
-      fates.push({
-        float: null,
-        boatId: null,
-        boardUntil: doom,
-        seat: null,
-        fadeFrom: null,
-      });
+      fates.push(newFate());
     }
 
     // When each boat leaves: its last rider aboard, the wait run out, or the
@@ -922,7 +912,7 @@ export function planEvacuation(
           at,
           pose,
           horizon,
-          mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0)
+          wanderRandom(i)
         );
       }
       launches.push(launchOf(boat, at, riders));
@@ -986,5 +976,5 @@ export function planEvacuation(
     };
   };
 
-  return { launches, leftAboard, fateAt, poseAt, boatPoseAt };
+  return { launches, fateAt, poseAt, boatPoseAt };
 }

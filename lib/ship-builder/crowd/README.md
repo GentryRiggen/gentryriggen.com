@@ -62,8 +62,8 @@ crew berths. Real counts, not figures (the Titanic: 1098 seats, 2300 aboard).
   crowd plan exactly. A capsize in the waves trial gets no plan.
 - `input.lifeboats` picks how the boats fill: absent or `titanic` is Like
   the Titanic (below, unchanged), `fill` is Fill every seat (its own
-  section). Either way every davit boat launches, riders or not, and
-  `leftAboard` is the number of figures matched to no boat at doom.
+  section). Either way every davit boat launches, riders or not. The result
+  card's lifeboat line uses the real counts (`lifeboatCount`), not figures.
 - Boats are lifeboat parts (catalog `seats > 0`) hanging from a `davit` or
   `davit-side`. A boat's boarding spot is the walkable column nearest it on
   the davit's deck: the davit's cell or the one inboard, on the block's roof
@@ -105,7 +105,7 @@ enough boats:
   spot (and `LOWER_S` before the timeline ends). Anyone not seated by then
   fades out over the last `FADE_S` and is seated as she leaves. So every
   saved figure ends `in-boat`.
-- The rest (`leftAboard`) do as in Like the Titanic: follow the crowd plan,
+- The rest do as in Like the Titanic: follow the crowd plan,
   wander on their half once she breaks, float when the water reaches them.
 
 Everything is worked out when the plan is made; `fateAt`, `poseAt` and

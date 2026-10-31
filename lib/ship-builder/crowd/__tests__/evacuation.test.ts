@@ -596,7 +596,6 @@ describe("Fill every seat", () => {
     const t = icebergTrial(ship, "fill");
     const figures = t.crowd.people.length;
     expect(figures).toBeGreaterThan(1);
-    expect(t.plan!.leftAboard).toBe(0);
     for (let i = 0; i < figures; i++) {
       expect(t.plan!.fateAt(i, t.end).kind).toBe("in-boat");
     }
@@ -611,7 +610,6 @@ describe("Fill every seat", () => {
     const t = icebergTrial(ship, "fill");
     const figures = t.crowd.people.length;
     const saved = Math.round((figures * seats) / people);
-    expect(t.plan!.leftAboard).toBe(figures - saved);
     expect(inBoatAtEnd(t)).toBe(saved);
   });
 
@@ -702,13 +700,6 @@ describe("every sinking lowers every boat", () => {
     const t = trialOf(ship, stormInputOf(ship));
     expect(t.plan).not.toBeNull();
     expect(t.plan!.launches.some((l) => l.riders.length > 0)).toBe(true);
-    // Titanic mode: leftAboard counts everyone not matched to a boat at
-    // doom, so never more than those who did not get a seat.
-    const riders = t.plan!.launches.flatMap((l) => l.riders).length;
-    expect(t.plan!.leftAboard).toBeGreaterThanOrEqual(0);
-    expect(t.plan!.leftAboard).toBeLessThanOrEqual(
-      t.crowd.people.length - riders
-    );
   });
 
   it("no lifeboats storm", () => {
@@ -717,7 +708,7 @@ describe("every sinking lowers every boat", () => {
       const t = trialOf(ship, stormInputOf(ship, mode));
       expect(t.plan).not.toBeNull();
       expect(t.plan!.launches).toEqual([]);
-      expect(t.plan!.leftAboard).toBe(t.crowd.people.length);
+      expect(inBoatAtEnd(t)).toBe(0);
     }
   });
 });

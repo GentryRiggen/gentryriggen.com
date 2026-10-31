@@ -67,8 +67,10 @@ export const STORM_START_S = 10;
  */
 export const STORM_INFLOW = 0.007;
 /**
- * A full compartment still takes this share of `STORM_INFLOW`, so walls slow
- * the storm (the water piles up in the bow) but never stop it.
+ * The slowest a filling compartment takes water, as a share of `STORM_INFLOW`:
+ * inflow slows as she fills but never below this, so the last quarter still
+ * fills. Once a compartment is full it stops taking water (water spilling
+ * over its walls carries the storm on aft).
  */
 export const STORM_TRICKLE = 0.25;
 /**
