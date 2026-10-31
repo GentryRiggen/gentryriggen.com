@@ -276,3 +276,12 @@ UI per game: heading "Plane Builder leaderboard" / "Ship Builder leaderboard"; "
 - [ ] **Step 2:** Add to CLAUDE.md: seasons live in `seasons/{game}`; entries in `planeSeasons|shipSeasons/{n}/entries`; season 1 is the legacy collections; the reset is "Start new season" in `/admin`.
 - [ ] **Step 3: Run** `npm run validate`, `npm run test:rules`, `npm run test:e2e` — all PASS.
 - [ ] **Step 4: Commit** `chore: Plane Builder <v> / Ship Builder <v> releases`
+
+## Addendum (Gentry, 2026-10-30): hide the Plane Builder board from players
+
+Gentry wants the Plane Builder leaderboard hidden from players, visible only in `/admin`, with a switch.
+
+- **Rules (Task 1 fix round):** `match /boardSettings/{game}`: `get: if true`; `create, update: if isAdmin() && game in ['plane'] && keys exactly ['hidden'] && hidden is bool`; no delete/list. Tests: anyone gets; non-admin write refused; extra keys / non-bool refused; game other than plane refused.
+- **Client (Task 4):** `lib/leaderboard/boardSettings.ts`: `fetchBoardHidden(game: "plane", deps?): Promise<boolean>` — REST GET of `boardSettings/plane`; returns `hidden` when the doc reads as a bool; **missing doc, bad doc or any failure → `true` (hidden)**. Plane store gets `isBoardHidden: boolean` (initial `true`), set from that read when the game starts. While hidden: no Leaderboards entry point/button/card (`LeaderboardCard`, `Leaderboards` opener), no finish standing/rank (`FinishStanding`, `useLeaderboardStanding` disabled), no "See board" in the reward modal, and the Task 6 daily modal shows no rank. Submits keep running (the admin board needs the data). Tests: hidden → no board UI and no board fetches; shown → today's behaviour; fetch failure → hidden.
+- **Admin (Task 5):** on the Plane Builder admin board, a "Show leaderboard to players" checkbox reflecting `boardSettings/plane.hidden` (missing → unchecked), saving via `setBoardHidden(game: "plane", hidden: boolean): Promise<void>` (setDoc). Test: toggling calls `setBoardHidden("plane", false)` / `(…, true)`.
+- Ship Builder board unchanged.
