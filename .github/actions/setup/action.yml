@@ -8,7 +8,7 @@ runs:
     # (any lockfile change), so a miss is no slower than before.
     - name: ⚙️ Setup Node
       id: node
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: "24"
         cache: "npm"
