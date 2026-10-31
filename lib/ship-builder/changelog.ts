@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.37.0",
+    date: "2026-10-31",
+    title: "Leaderboard seasons",
+    highlights: [
+      "Leaderboards now have seasons! When a new season starts, everyone begins at zero on the board. Your ships and stars stay yours, and the season picker lets you look back at old seasons",
+      "You will see a New season! note when a fresh season begins",
+      "The board counts the stars you earned this season",
+    ],
+  },
+  {
     version: "2.36.1",
     date: "2026-10-30",
     title: "Steady pictures for our checks",

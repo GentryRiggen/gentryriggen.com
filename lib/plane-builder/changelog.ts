@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.15.0",
+    date: "2026-10-30",
+    title: "Leaderboard seasons",
+    highlights: [
+      "Leaderboards now have seasons! When a new season starts, everyone begins at zero on the board. Your planes and coins stay yours, and the season picker lets you look back at old seasons",
+      "You will see a New season! note when a fresh season begins",
+      'Daily challenge flights now tell you if they pay coins: your first finish each day pays, and other runs say "no coins today, just your best time"',
+      "Daily challenge results show your time and rank for today",
+      "Holding the boost key no longer skips past your result card",
+      "The leaderboard may be hidden from time to time",
+    ],
+  },
+  {
     version: "1.14.1",
     date: "2026-10-30",
     title: "Fairer leaderboards",
