@@ -119,7 +119,11 @@ interface SheetProps {
   onClose: () => void;
 }
 
-/** A bottom sheet over the visible screen (above the keyboard on iOS). */
+/**
+ * A bottom sheet over the visible screen (above the keyboard on iOS). With
+ * the keyboard up (the chat root's data-keyboard) it drops the home-bar
+ * padding: nothing sits between the sheet and the keys.
+ */
 function Sheet({ kind, today, onSend, onClose }: SheetProps) {
   const titleId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -204,7 +208,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-2xl bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl"
+        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-2xl bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl in-data-[keyboard=open]:pb-4"
       >
         <form onSubmit={submit} className="mx-auto w-full max-w-[45rem]">
           <div className="flex items-center justify-between gap-3">
@@ -230,7 +234,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                         id={id}
                         value={dose}
                         onChange={(e) => setDose(e.target.value)}
-                        placeholder="100 mg"
+                        placeholder="Dose"
                         autoComplete="off"
                         className={FIELD}
                       />
@@ -242,7 +246,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                         id={id}
                         value={site}
                         onChange={(e) => setSite(e.target.value)}
-                        placeholder="left glute"
+                        placeholder="Site"
                         autoComplete="off"
                         className={FIELD}
                       />

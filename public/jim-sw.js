@@ -150,27 +150,34 @@ async function pruneStaleStatic(cache, previous, response) {
   }
 }
 
+/** Keeps a fresh page as /jim, pruning what the last deploy left. */
+async function storePage(response) {
+  if (!isCacheable(response)) return;
+  try {
+    const cache = await caches.open(CACHE);
+    const previous = await cache.match(pageKey());
+    await cache.put(pageKey(), response.clone());
+    if (previous) await pruneStaleStatic(cache, previous, response);
+  } catch {
+    // Caching is best effort.
+  }
+}
+
 /**
  * Network-first, but a slow network (lie-fi) falls back to the cached page
  * after a few seconds. A late answer still updates the cache. Every form of
- * the page is stored as /jim, without its query.
+ * the page is stored as /jim, without its query. `network` is started (and
+ * handed to waitUntil) by the fetch listener before anything is awaited.
  */
-async function handleNavigation(event, request) {
-  const cache = await caches.open(CACHE);
-  const network = fetch(request).then(async (response) => {
-    if (isCacheable(response)) {
-      try {
-        const previous = await cache.match(pageKey());
-        await cache.put(pageKey(), response.clone());
-        if (previous) await pruneStaleStatic(cache, previous, response);
-      } catch {
-        // Caching is best effort.
-      }
-    }
-    return response;
-  });
-  event.waitUntil(network.catch(() => {}));
-  const cached = await cache.match(pageKey());
+async function handleNavigation(network) {
+  let cached;
+  try {
+    const cache = await caches.open(CACHE);
+    cached = await cache.match(pageKey());
+  } catch {
+    // No cache to fall back on: the network alone.
+    return network;
+  }
   if (!cached) return network;
   const slow = new Promise((resolve) =>
     setTimeout(() => resolve(cached), NAVIGATION_NETWORK_TIMEOUT_MS)
@@ -197,7 +204,18 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (isPagePath(url.pathname)) {
-      event.respondWith(handleNavigation(event, request));
+      // Started here, and waitUntil called before any await (WebKit
+      // rejects a late one), so a slow answer can still update the cache.
+      const network = fetch(request).then(async (response) => {
+        await storePage(response);
+        return response;
+      });
+      try {
+        event.waitUntil(network.catch(() => {}));
+      } catch {
+        // The page still gets its answer.
+      }
+      event.respondWith(handleNavigation(network));
     }
     return;
   }

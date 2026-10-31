@@ -79,8 +79,13 @@ function loadWorker() {
     };
   }
 
+  /** Set to make caches.open throw (WebKit's InvalidStateError). */
+  const broken = { open: false };
   const caches = {
-    open: async (name: string) => openStore(name),
+    open: async (name: string) => {
+      if (broken.open) throw new Error("InvalidStateError");
+      return openStore(name);
+    },
     keys: async () => [...stores.keys()],
     delete: async (name: string) => stores.delete(name),
   };
@@ -106,11 +111,13 @@ function loadWorker() {
     setTimeout: (fn: () => void) => setTimeout(fn, 0),
   });
 
+  const waitUntil = jest.fn();
+
   function dispatchFetch(request: FakeRequest) {
     let responded: Promise<FakeResponse> | undefined;
     listeners.get("fetch")!({
       request,
-      waitUntil: () => {},
+      waitUntil,
       respondWith: (promise: Promise<FakeResponse>) => {
         responded = promise;
       },
@@ -129,6 +136,8 @@ function loadWorker() {
 
   return {
     stores,
+    broken,
+    waitUntil,
     fetchMock,
     showNotification,
     matchAll,
@@ -221,6 +230,24 @@ describe("fetch", () => {
         )
       )?.body
     ).toBe("page");
+  });
+
+  it("calls waitUntil before anything is awaited", () => {
+    const worker = loadWorker();
+    worker.fetchMock.mockReturnValue(new Promise(() => {}));
+    worker.dispatchFetch(makeRequest(PAGE, { mode: "navigate" }));
+    // Synchronously, inside the fetch event.
+    expect(worker.waitUntil).toHaveBeenCalledTimes(1);
+  });
+
+  it("still serves the page when the cache can't be opened", async () => {
+    const worker = loadWorker();
+    worker.broken.open = true;
+    worker.fetchMock.mockResolvedValue(makeResponse("page"));
+    const response = await worker.dispatchFetch(
+      makeRequest(PAGE, { mode: "navigate" })
+    );
+    expect(response?.body).toBe("page");
   });
 
   it("serves static files cache-first and never caches a failed one", async () => {

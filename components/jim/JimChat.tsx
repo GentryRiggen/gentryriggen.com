@@ -406,10 +406,11 @@ export default function JimChat({
   }
 
   function showTab(next: JimTab) {
-    if (next === "notes") {
-      setNotesOpened(true);
-      // A tap on a tab doesn't take focus on iOS: drop the keyboard by hand.
-      boxRef.current?.blur();
+    if (next === "notes") setNotesOpened(true);
+    // A tap on a tab doesn't take focus on iOS: drop the keyboard by hand,
+    // whichever field (the box, a search, a quick log) has it.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
     setTab(next);
   }

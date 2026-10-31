@@ -27,6 +27,11 @@ describe("NotesHome", () => {
     expect(within(cal).queryByText("Too far out")).not.toBeInTheDocument();
     expect(within(cal).queryByText("Already past")).not.toBeInTheDocument();
     expect(within(cal).getByText(/^Calendar as of Oct 31/)).toBeInTheDocument();
+    // The snapshot refreshes itself; nothing asks for a Mac.
+    expect(
+      within(cal).getByText(/Refreshes every morning\.$/)
+    ).toBeInTheDocument();
+    expect(within(cal).queryByText(/Mac/)).toBeNull();
     expect(within(cal).getByText("Today")).toBeInTheDocument();
   });
 

@@ -112,8 +112,8 @@ function Calendar({ data }: { data: ViewData }) {
             </div>
           )}
           <p className="text-sm text-ayu-subtle">
-            {stamp ? `Calendar as of ${stamp}.` : "Calendar time unknown."} Say
-            &ldquo;refresh&rdquo; to Jim on the Mac for the latest.
+            {stamp ? `Calendar as of ${stamp}.` : "Calendar time unknown."}{" "}
+            Refreshes every morning.
           </p>
         </>
       )}

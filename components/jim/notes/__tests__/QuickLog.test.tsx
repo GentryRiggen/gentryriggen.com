@@ -11,17 +11,14 @@ const TODAY = "2026-10-31";
 describe("sentences", () => {
   it("logs an injection today or on another day", () => {
     expect(
-      injectionSentence(
-        { dose: "100 mg", site: "left glute", date: TODAY },
-        TODAY
-      )
-    ).toBe("Log my injection today: 100 mg, left glute.");
+      injectionSentence({ dose: "1 ml", site: "right arm", date: TODAY }, TODAY)
+    ).toBe("Log my injection today: 1 ml, right arm.");
     expect(
       injectionSentence(
-        { dose: " 100 mg. ", site: "", date: "2026-10-30" },
+        { dose: " 1 ml. ", site: "", date: "2026-10-30" },
         TODAY
       )
-    ).toBe("Log my injection on 2026-10-30: 100 mg.");
+    ).toBe("Log my injection on 2026-10-30: 1 ml.");
   });
 
   it("logs a workout", () => {
@@ -89,11 +86,11 @@ it("sends an injection as a sentence and closes", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Log injection" }));
   const sendIt = screen.getByRole("button", { name: "Send to Jim" });
   expect(sendIt).toBeDisabled();
-  await userEvent.type(screen.getByLabelText("Dose"), "100 mg");
-  await userEvent.type(screen.getByLabelText("Site"), "left glute");
+  await userEvent.type(screen.getByLabelText("Dose"), "1 ml");
+  await userEvent.type(screen.getByLabelText("Site"), "right arm");
   await userEvent.click(sendIt);
   expect(onLog).toHaveBeenCalledWith(
-    "Log my injection today: 100 mg, left glute."
+    "Log my injection today: 1 ml, right arm."
   );
   expect(screen.queryByRole("dialog")).toBeNull();
 });
@@ -144,4 +141,18 @@ it("locks the page behind the sheet while it is open", async () => {
   expect(scroller.style.overflow).toBe("auto");
   expect(behind).not.toHaveAttribute("inert");
   expect(screen.getByRole("button", { name: "Log workout" })).toHaveFocus();
+});
+
+it("drops the home-bar padding while the keyboard is up, with neutral hints", async () => {
+  render(
+    <div data-keyboard="open">
+      <QuickLog today={TODAY} onLog={jest.fn()} />
+    </div>
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Log injection" }));
+  const panel = screen.getByRole("dialog", { name: "Log injection" });
+  // Keyed off the chat root's data-keyboard, which JimChat sets.
+  expect(panel.className).toContain("in-data-[keyboard=open]:pb-4");
+  expect(screen.getByLabelText("Dose")).toHaveAttribute("placeholder", "Dose");
+  expect(screen.getByLabelText("Site")).toHaveAttribute("placeholder", "Site");
 });

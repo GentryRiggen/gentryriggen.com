@@ -557,3 +557,19 @@ describe("offline", () => {
     );
   });
 });
+
+it("drops the keyboard from any field when switching tabs", async () => {
+  renderChat();
+  await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+  // A field on Notes (here the fake's button) has focus...
+  const field = screen.getByRole("button", { name: "Fake log" });
+  field.focus();
+  expect(field).toHaveFocus();
+  // fireEvent: like an iOS tap, it doesn't move focus to the tab itself.
+  fireEvent.click(screen.getByRole("tab", { name: "Chat" }));
+  expect(field).not.toHaveFocus();
+  // ...and the box does too, going the other way.
+  screen.getByLabelText("Message").focus();
+  fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+  expect(screen.getByLabelText("Message")).not.toHaveFocus();
+});

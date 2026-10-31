@@ -788,8 +788,8 @@ test(
     const sheet = page.getByRole("dialog", { name: "Log injection" });
     await expect(sheet).toBeVisible();
     await expect(sheet.getByLabel("Dose")).toBeFocused();
-    await sheet.getByLabel("Dose").fill("100 mg");
-    await sheet.getByLabel("Site").fill("left glute");
+    await sheet.getByLabel("Dose").fill("1 ml");
+    await sheet.getByLabel("Site").fill("right arm");
     await sheet.getByRole("button", { name: "Send to Jim" }).click();
     await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute(
       "aria-selected",
@@ -797,11 +797,11 @@ test(
     );
     const log = page.getByRole("log");
     await expect(
-      log.getByText("Log my injection today: 100 mg, left glute.")
+      log.getByText("Log my injection today: 1 ml, right arm.")
     ).toBeVisible();
     await expect(log.getByText(/^Here's what/)).toBeVisible();
     expect(calls.messages).toEqual([
-      "Log my injection today: 100 mg, left glute.",
+      "Log my injection today: 1 ml, right arm.",
     ]);
   }
 );

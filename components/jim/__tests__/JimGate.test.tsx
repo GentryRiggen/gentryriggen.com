@@ -340,6 +340,9 @@ describe("device storage and the morning briefing", () => {
       await renderGate();
       act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
       act(() => screen.getByRole("button", { name: "Chat sign out" }).click());
+      // The sign-in form shows at once, before Firebase hears of it.
+      expect(screen.queryByTestId("chat")).toBeNull();
+      expect(screen.getByLabelText("Email")).toBeInTheDocument();
       expect(offline.clearAll).toHaveBeenCalled();
       expect(mockClient.signOutUser).not.toHaveBeenCalled();
       await act(async () => {

@@ -158,6 +158,9 @@ export default function JimGate() {
     ]);
     void disablePush(() => token, undefined, api);
     void token.then(() => signOutUser().catch(() => {}));
+    // Out now on this screen; Firebase catches up once the token is in.
+    wokeFor.current = null;
+    setState({ kind: "signedOut" });
   }
 
   if (state.kind === "owner") {
