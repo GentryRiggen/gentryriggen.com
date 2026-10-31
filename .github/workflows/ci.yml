@@ -186,7 +186,7 @@ jobs:
           java-version: "21"
 
       - name: 💾 Cache Firestore emulator
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/firebase/emulators
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('package-lock.json') }}
@@ -210,7 +210,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: 💾 Restore Next.js build cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: .next/cache
           key: ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
@@ -222,7 +222,7 @@ jobs:
 
       - name: 💾 Save Next.js build cache
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: .next/cache
           key: ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
@@ -247,7 +247,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: 💾 Restore Next.js build cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: .next/cache
           key: ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
@@ -261,7 +261,7 @@ jobs:
 
       - name: 💾 Save Next.js build cache
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: .next/cache
           key: ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
@@ -373,7 +373,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: 💾 Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ matrix.browsers || 'all' }}-${{ hashFiles('**/package-lock.json') }}
