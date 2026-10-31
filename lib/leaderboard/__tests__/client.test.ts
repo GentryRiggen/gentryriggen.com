@@ -3,8 +3,10 @@ import {
   buildSubmitBody,
   commitUrl,
   fetchBoard,
+  fetchOwnEntry,
   runQueryUrl,
   submitEntry,
+  submitEntryResult,
 } from "../client";
 import { scoreFor } from "../types";
 import type { LeaderboardEntry } from "../types";
@@ -350,6 +352,98 @@ describe("fetchBoard", () => {
   });
 });
 
+describe("submitEntryResult", () => {
+  const getSession = async () => ({ uid: "uid-1", idToken: "tok" });
+
+  it("tells a refusal from a failure to deliver", async () => {
+    const reply = (value: unknown) => ({
+      config,
+      getSession,
+      fetchImpl: jest.fn().mockResolvedValue(value),
+    });
+    expect(await submitEntryResult(entry, 2, reply({ ok: true }))).toBe("ok");
+    expect(
+      await submitEntryResult(entry, 2, reply({ ok: false, status: 403 }))
+    ).toBe("refused");
+    expect(
+      await submitEntryResult(entry, 2, reply({ ok: false, status: 500 }))
+    ).toBe("error");
+  });
+});
+
+describe("fetchOwnEntry", () => {
+  const getSession = async () => ({ uid: "uid-1", idToken: "tok" });
+  const doc = {
+    name: "projects/proj/databases/(default)/documents/planeSeasons/2/entries/uid-1",
+    fields: {
+      nickname: { stringValue: "Brave Panda 3" },
+      prestige: { integerValue: "2" },
+      lifetimeDistance: { doubleValue: 140000.5 },
+    },
+  };
+
+  it("GETs the player's own doc in the season and parses it", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => doc });
+    expect(await fetchOwnEntry(2, { config, fetchImpl, getSession })).toEqual({
+      nickname: "Brave Panda 3",
+      prestige: 2,
+      lifetimeDistance: 140000.5,
+    });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(
+      "https://firestore.googleapis.com/v1/projects/proj/databases/(default)/documents/planeSeasons/2/entries/uid-1?key=KEY"
+    );
+    expect(init.method).toBe("GET");
+  });
+
+  it("reads season 1 from the legacy collection", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => doc });
+    await fetchOwnEntry(1, { config, fetchImpl, getSession });
+    expect(fetchImpl.mock.calls[0][0]).toContain(
+      "documents/leaderboard/uid-1?"
+    );
+  });
+
+  it("is 'missing' on a 404", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+    expect(await fetchOwnEntry(2, { config, fetchImpl, getSession })).toBe(
+      "missing"
+    );
+  });
+
+  it("is null on errors, junk, no session or no config", async () => {
+    const run = (deps: Parameters<typeof fetchOwnEntry>[1]) =>
+      fetchOwnEntry(2, { config, getSession, ...deps });
+    expect(
+      await run({
+        fetchImpl: jest.fn().mockResolvedValue({ ok: false, status: 500 }),
+      })
+    ).toBeNull();
+    expect(
+      await run({
+        fetchImpl: jest.fn().mockRejectedValue(new Error("offline")),
+      })
+    ).toBeNull();
+    expect(
+      await run({
+        fetchImpl: jest
+          .fn()
+          .mockResolvedValue({ ok: true, json: async () => ({ fields: {} }) }),
+      })
+    ).toBeNull();
+    const fetchImpl = jest.fn();
+    expect(await run({ fetchImpl, getSession: async () => null })).toBeNull();
+    expect(
+      await run({ fetchImpl, config: { ...config, apiKey: "" } })
+    ).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
 describe("App Check headers", () => {
   const getSession = async () => ({ uid: "u1", idToken: "tok" });
   const getAppCheckHeaders = async () => ({ "X-Firebase-AppCheck": "AC" });
@@ -365,6 +459,13 @@ describe("App Check headers", () => {
       getAppCheckHeaders,
     });
     await fetchBoard("prestige", 1, { config, fetchImpl, getAppCheckHeaders });
+    await fetchOwnEntry(2, {
+      config,
+      fetchImpl,
+      getSession,
+      getAppCheckHeaders,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
     for (const call of fetchImpl.mock.calls) {
       expect(call[1].headers["X-Firebase-AppCheck"]).toBe("AC");
     }

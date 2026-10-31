@@ -168,16 +168,73 @@ export async function commitDocumentResult(
  * Writes the entry to `season`'s board. Never throws; resolves to whether
  * the write was accepted.
  */
-export function submitEntry(
+export async function submitEntry(
   entry: LeaderboardEntry,
   season: number,
   deps: ClientDeps = {}
 ): Promise<boolean> {
-  return commitDocument(
+  return (await submitEntryResult(entry, season, deps)) === "ok";
+}
+
+/** Like `submitEntry`, but tells a refusal from a failure to deliver. */
+export function submitEntryResult(
+  entry: LeaderboardEntry,
+  season: number,
+  deps: ClientDeps = {}
+): Promise<CommitResult> {
+  return commitDocumentResult(
     seasonCollection("plane", season),
     entryFields(entry),
     deps
   );
+}
+
+/** What the game needs of its own board entry. */
+export interface OwnEntry {
+  nickname: string;
+  prestige: number;
+  lifetimeDistance: number;
+}
+
+function parseOwnEntry(json: unknown): OwnEntry | null {
+  const fields = (json as { fields?: Record<string, unknown> } | null)?.fields;
+  if (typeof fields !== "object" || fields === null) return null;
+  const nickname = (fields.nickname as { stringValue?: unknown } | undefined)
+    ?.stringValue;
+  const prestige = numberOf(fields.prestige);
+  const lifetimeDistance = numberOf(fields.lifetimeDistance);
+  if (typeof nickname !== "string" || prestige === null) return null;
+  if (lifetimeDistance === null) return null;
+  return { nickname, prestige, lifetimeDistance };
+}
+
+/**
+ * GET of the player's own entry in `season` (needs the anonymous uid, not
+ * the token: reads are public). The entry, "missing" when there is none, or
+ * null on any failure. Never throws.
+ */
+export async function fetchOwnEntry(
+  season: number,
+  deps: ClientDeps = {}
+): Promise<OwnEntry | "missing" | null> {
+  const config = deps.config ?? firebaseConfig;
+  if (!isFirebaseConfigured(config)) return null;
+  try {
+    const session = await (deps.getSession ?? getIdToken)();
+    if (!session) return null;
+    const fetchImpl = deps.fetchImpl ?? ((...args) => fetch(...args));
+    const base = documentsUrl(config, deps.baseUrl ?? DEFAULT_BASE_URL);
+    const path = `${seasonCollection("plane", season)}/${session.uid}`;
+    const response = await fetchImpl(`${base}/${path}?key=${config.apiKey}`, {
+      method: "GET",
+      headers: { ...(await leaderboardAppCheckHeaders(deps)) },
+    });
+    if (response.status === 404) return "missing";
+    if (!response.ok) return null;
+    return parseOwnEntry(await response.json());
+  } catch {
+    return null;
+  }
 }
 
 /**
