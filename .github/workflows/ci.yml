@@ -94,11 +94,24 @@ jobs:
           fi
           changed=$(git diff --name-only "$base" HEAD)
           echo "$changed"
-          if echo "$changed" | grep -Eq '^(app|components|lib|public|e2e|scripts)/|^(package(-lock)?\.json|next\.config\.ts|playwright\.config\.ts|tsconfig\.json|postcss\.config\.[a-z]+|\.github/workflows/ci\.yml)$'; then
+          if echo "$changed" | grep -Eq '^(app|components|lib|public|e2e|scripts|\.github/actions)/|^(package(-lock)?\.json|next\.config\.ts|playwright\.config\.ts|tsconfig\.json|postcss\.config\.[a-z]+|\.github/workflows/ci\.yml)$'; then
             echo "e2e=true" >> "$GITHUB_OUTPUT"
           else
             echo "e2e=false" >> "$GITHUB_OUTPUT"
           fi
+
+      # The e2e matrix lists spec files by hand; a spec missing from every
+      # list would never run in CI, so that fails here instead.
+      - name: 🧾 Every e2e spec has a CI group
+        run: |
+          missing=0
+          for spec in e2e/*.spec.ts; do
+            if ! grep -qF "$spec" .github/workflows/ci.yml; then
+              echo "::error file=$spec::$spec is in no e2e group in .github/workflows/ci.yml"
+              missing=1
+            fi
+          done
+          exit $missing
 
   # ── Static checks, unit tests and rules tests, in parallel ──
   # Code a pull request already verified skips all three on main.
@@ -166,7 +179,12 @@ jobs:
       - name: 🔐 Firestore rules tests
         run: npm run test:rules
 
-  # ── Production build (always; deploy ships its output) ──
+  # ── Builds ──
+  # The production build always runs: deploy ships it, and a pull request has
+  # to prove it builds before main may skip its checks. The e2e build
+  # (NEXT_PUBLIC_E2E=1) runs once and every e2e shard serves it.
+  # Next's cache is restored everywhere but saved only from main, so pull
+  # requests never fill the Actions cache with per-commit entries.
   build:
     name: 🏗️ Build
     runs-on: ubuntu-latest
@@ -176,16 +194,23 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: 💾 Cache Next.js build
-        uses: actions/cache@v5
+      - name: 💾 Restore Next.js build cache
+        uses: actions/cache/restore@v5
         with:
           path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          key: ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-
 
       - name: 🏗️ Build
         run: npm run build
+
+      - name: 💾 Save Next.js build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
 
       - name: 📤 Upload build artifacts
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -195,10 +220,48 @@ jobs:
           path: out
           retention-days: 1
 
-  # ── Browser tests (in parallel with everything above) ──
+  e2e-build:
+    name: 🏗️ Build for e2e
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: 💾 Restore Next.js build cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-
+
+      - name: 🏗️ Build
+        env:
+          NEXT_PUBLIC_E2E: "1"
+        run: npm run build
+
+      - name: 💾 Save Next.js build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+
+      - name: 📤 Upload e2e build
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-build
+          path: out
+          retention-days: 1
+
+  # ── Browser tests (each shard serves the one e2e build) ──
   e2e:
     name: 🎭 E2E ${{ matrix.name }}
-    needs: changes
+    needs: [changes, e2e-build]
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     # Software WebGL (SwiftShader) takes every core it can get, so those specs
@@ -261,11 +324,13 @@ jobs:
             args: --project=chromium --shard=1/2
             workers: 1
             browsers: chromium
+            perf: perf-results-1-of-2
           - name: WebGL perf budget (2/2)
             files: e2e/perf.spec.ts
             args: --project=chromium --shard=2/2
             workers: 1
             browsers: chromium
+            perf: perf-results-2-of-2
           - name: WebGL visual (ship)
             files: e2e/ship-builder-visual.spec.ts
             args: --project=chromium
@@ -293,9 +358,17 @@ jobs:
       - name: 🌐 Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browsers }}
 
+      - name: 📥 Download e2e build
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-build
+          path: out
+
+      # E2E_PREBUILT makes Playwright's web server serve out/ as is.
       - name: 🎬 Run E2E tests
         env:
           E2E_NO_WEBGL: ${{ matrix.no-webgl }}
+          E2E_PREBUILT: "1"
         run: npx playwright test ${{ matrix.files }} ${{ matrix.args }} --workers=${{ matrix.workers }}
 
       # Visual diffs (expected, actual, diff images) live in the report.
@@ -309,12 +382,12 @@ jobs:
             test-results
           retention-days: 7
 
-      # Only the perf jobs write this file; each shard uploads its own.
+      # Only the perf jobs write this file; each shard uploads its own half.
       - name: 📤 Upload perf results
-        if: always() && hashFiles('perf-results.json') != ''
+        if: always() && matrix.perf && hashFiles('perf-results.json') != ''
         uses: actions/upload-artifact@v7
         with:
-          name: perf-results-${{ strategy.job-index }}
+          name: ${{ matrix.perf }}
           path: perf-results.json
           retention-days: 30
 
@@ -324,13 +397,14 @@ jobs:
   deploy:
     name: 🚀 Deploy
     runs-on: ubuntu-latest
-    needs: [changes, checks, unit, rules, build, e2e]
+    needs: [changes, checks, unit, rules, build, e2e-build, e2e]
     if: >-
       ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       && needs.changes.result == 'success' && needs.build.result == 'success'
       && contains(fromJSON('["success","skipped"]'), needs.checks.result)
       && contains(fromJSON('["success","skipped"]'), needs.unit.result)
       && contains(fromJSON('["success","skipped"]'), needs.rules.result)
+      && contains(fromJSON('["success","skipped"]'), needs.e2e-build.result)
       && contains(fromJSON('["success","skipped"]'), needs.e2e.result) }}
     steps:
       - name: 📥 Checkout

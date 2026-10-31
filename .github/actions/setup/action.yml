@@ -4,19 +4,24 @@ description: Node 24 and node_modules, restored from cache when the lockfile is 
 runs:
   using: composite
   steps:
+    # npm's download cache stays as the fallback for a node_modules miss
+    # (any lockfile change), so a miss is no slower than before.
     - name: ⚙️ Setup Node
+      id: node
       uses: actions/setup-node@v6
       with:
         node-version: "24"
+        cache: "npm"
 
-    # Caching node_modules itself (not just npm's download cache) skips
-    # `npm ci` entirely on a hit, which saves about 45 s per job.
+    # Caching node_modules itself skips `npm ci` entirely on a hit, about 45 s
+    # per job. The key carries the exact Node version and the runner's
+    # architecture so modules built for another Node are never restored.
     - name: 💾 Cache node_modules
       id: modules
       uses: actions/cache@v5
       with:
         path: node_modules
-        key: ${{ runner.os }}-node24-modules-${{ hashFiles('package-lock.json') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-node${{ steps.node.outputs.node-version }}-modules-${{ hashFiles('package-lock.json') }}
 
     - name: 📦 Install dependencies
       if: steps.modules.outputs.cache-hit != 'true'
