@@ -69,7 +69,8 @@ interface CrowdRunnerProps {
  * Everyone, drawn in world space as a few instanced meshes and posed in one
  * frame callback. Aboard (walking the decks, or hurrying to a boat) they ride
  * the group that carries them; in a boat they sit in it, on its davit or out
- * on the water; in the sea they float on their backs.
+ * on the water; in the sea they float on their backs. Filling every seat,
+ * anyone with no way to their boat shrinks away and appears in it.
  */
 function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
   const { grid, plan } = crowd;
@@ -98,6 +99,7 @@ function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
       place: new Matrix4(),
       local: new Matrix4(),
       boat: new Matrix4(),
+      shrink: new Matrix4(),
       carriers: new Map<Carrier, Matrix4 | null>(),
       transform: { x: 0, y: 0, z: 0, rotationY: 0 },
       floats: new Array<FloatStart | null>(count).fill(null),
@@ -263,6 +265,15 @@ function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
         continue;
       }
       const pose = evacuation.poseAt(i, time);
+      if (fate.kind === "transfer") {
+        // Fill every seat, no way to the boat: shrink away where they
+        // stand; they reappear in their seat.
+        const size = 1 - fate.fade;
+        const place = size > 0 ? aboard(pose) : null;
+        place?.multiply(scratch.shrink.makeScale(size, size, size));
+        writePerson(meshes, i, slot, place, "stand", 0);
+        continue;
+      }
       const kind = pose.activity === "sit" ? "sit" : "stand";
       const swing = armSwing(pose.activity === "walk", time, i);
       writePerson(meshes, i, slot, aboard(pose), kind, swing);

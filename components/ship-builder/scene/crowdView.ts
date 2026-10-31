@@ -108,22 +108,36 @@ export function carrierOf(cellsFromBow: number, atX: number | null): Carrier {
 }
 
 /**
- * Where each rider sits in a boat, relative to its hang point: in a row down
- * the middle, spread along its length, at the rim (a sitter drops into the
- * hull). At most BOAT_SHOWN_MAX.
+ * Where each rider sits in a boat, relative to its hang point, at the rim (a
+ * sitter drops into the hull): up to BOAT_SHOWN_MAX in a row down the
+ * middle, spread along its length. More (only when filling every seat) pack
+ * in two rows side by side, closer together, so every rider shows.
  */
 export function boatSeatOffsets(
   count: number,
   hull: LifeboatHull
 ): { x: number; y: number; z: number }[] {
-  const n = Math.max(0, Math.min(BOAT_SHOWN_MAX, Math.floor(count)));
+  const n = Math.max(0, Math.floor(count));
   const room = hull.length - 2 * PERSON_HALF_WIDTH - 0.04;
-  const spacing = n > 1 ? Math.min(0.22, room / (n - 1)) : 0;
-  return Array.from({ length: n }, (_, k) => ({
-    x: (k - (n - 1) / 2) * spacing,
-    y: -LIFEBOAT_HANG_OFFSET,
-    z: 0,
-  }));
+  if (n <= BOAT_SHOWN_MAX) {
+    const spacing = n > 1 ? Math.min(0.22, room / (n - 1)) : 0;
+    return Array.from({ length: n }, (_, k) => ({
+      x: (k - (n - 1) / 2) * spacing,
+      y: -LIFEBOAT_HANG_OFFSET,
+      z: 0,
+    }));
+  }
+  const perRow = Math.ceil(n / 2);
+  const spacing = Math.min(0.22, room / (perRow - 1));
+  return Array.from({ length: n }, (_, k) => {
+    const row = k % 2;
+    const along = Math.floor(k / 2);
+    return {
+      x: (along - (perRow - 1) / 2) * spacing,
+      y: -LIFEBOAT_HANG_OFFSET,
+      z: (row === 0 ? -1 : 1) * (hull.width / 4),
+    };
+  });
 }
 
 /** How deep a boat afloat sits: this much of its hull is under the water. */

@@ -128,11 +128,31 @@ describe("carrierOf", () => {
 describe("boatSeatOffsets", () => {
   const hull = { length: 0.9, width: 0.35, depth: 0.3 };
 
-  it("seats at most BOAT_SHOWN_MAX", () => {
+  it("seats every rider, in one row up to BOAT_SHOWN_MAX", () => {
     expect(boatSeatOffsets(0, hull)).toHaveLength(0);
     expect(boatSeatOffsets(2, hull)).toHaveLength(2);
     expect(boatSeatOffsets(4, hull)).toHaveLength(BOAT_SHOWN_MAX);
-    expect(boatSeatOffsets(9, hull)).toHaveLength(BOAT_SHOWN_MAX);
+    expect(
+      new Set(boatSeatOffsets(BOAT_SHOWN_MAX, hull).map((s) => s.z)).size
+    ).toBe(1);
+    expect(boatSeatOffsets(9, hull)).toHaveLength(9);
+  });
+
+  it("packs a full boat in two rows, all inside the hull, none on top of another", () => {
+    for (const type of Object.keys(LIFEBOAT_HULLS)) {
+      const size = LIFEBOAT_HULLS[type];
+      for (const n of [5, 9, 24]) {
+        const seats = boatSeatOffsets(n, size);
+        expect(seats).toHaveLength(n);
+        expect(new Set(seats.map((s) => `${s.x},${s.z}`)).size).toBe(n);
+        for (const seat of seats) {
+          expect(Math.abs(seat.x) + PERSON_HALF_WIDTH).toBeLessThanOrEqual(
+            size.length / 2
+          );
+          expect(Math.abs(seat.z)).toBeLessThan(size.width / 2);
+        }
+      }
+    }
   });
 
   it("spreads them along the boat's length, inside its hull", () => {

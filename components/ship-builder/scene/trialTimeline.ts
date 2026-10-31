@@ -27,11 +27,22 @@ interface CachedTimeline {
   descended: Timeline | null;
   /** The ship the evacuation plans were made for. */
   evacuationShip: Ship | null;
-  /** Evacuation plan per `descending`, worked out on first use. */
-  evacuations: Map<boolean, EvacuationPlan | null>;
+  /**
+   * Evacuation plan per `descending` and lifeboat choice (`evacuationKey`),
+   * worked out on first use.
+   */
+  evacuations: Map<string, EvacuationPlan | null>;
 }
 
 let cached: CachedTimeline | null = null;
+
+/**
+ * What an evacuation plan depends on beyond the input object the cache is
+ * keyed by: the descent and how the lifeboats are filled.
+ */
+function evacuationKey(input: TrialInput, descending: boolean): string {
+  return `${descending}:${input.lifeboats ?? "titanic"}`;
+}
 
 function cacheFor(input: TrialInput): CachedTimeline {
   if (cached?.input !== input) {
@@ -77,11 +88,12 @@ export function trialEvacuationFor(
     entry.evacuationShip = ship;
     entry.evacuations = new Map();
   }
-  if (!entry.evacuations.has(descending)) {
+  const key = evacuationKey(input, descending);
+  if (!entry.evacuations.has(key)) {
     const timeline = trialTimelineFor(input, descending);
     const { grid, plan } = crowdPlanFor(ship);
     entry.evacuations.set(
-      descending,
+      key,
       planEvacuation(ship, grid, plan, {
         input,
         stateAt: (t) => stateAt(timeline, t),
@@ -89,7 +101,7 @@ export function trialEvacuationFor(
       })
     );
   }
-  return entry.evacuations.get(descending) ?? null;
+  return entry.evacuations.get(key) ?? null;
 }
 
 /**
