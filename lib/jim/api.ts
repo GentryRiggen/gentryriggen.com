@@ -6,8 +6,12 @@ import { getIdToken } from "@/lib/firebase/client";
  */
 export const JIM_API = "https://jim-997603129413.us-central1.run.app";
 
-/** A reply slower than this counts as Jim not answering (waking). */
-export const JIM_TIMEOUT_MS = 90_000;
+/**
+ * How long to wait for a reply: a little over the server's own limit (Cloud
+ * Run allows 300 s), so the page never gives up on a turn that can still
+ * finish and save.
+ */
+export const JIM_TIMEOUT_MS = 305_000;
 
 /** Token errors that mean the sign-in itself is gone, not a passing hiccup. */
 const SIGNED_OUT_CODES = new Set([
@@ -33,15 +37,20 @@ export interface JimReply {
 }
 
 /**
- * - waking: the network failed, the reply took longer than JIM_TIMEOUT_MS,
- *   or the server said 503 (cold start, busy).
+ * - waking: the message never reached Jim, so it is safe to send again:
+ *   offline, a token could not be fetched, a time-out before it was sent,
+ *   or the server said 503 (busy or cold; the turn did not run).
+ * - uncertain: the message went out but no reply came back (the connection
+ *   dropped, the body was cut off, or JIM_TIMEOUT_MS passed). Jim may have
+ *   acted on it, so sending again could save it twice.
  * - denied: no signed-in user (or Firebase says the sign-in expired or was
  *   disabled), a token the server still refused after one refresh, or a 403.
  *   Any other failure to get a token (offline, a PWA waking up) is waking.
  * - rejected: the server refused the message itself (400, 413).
  * - server: anything else (5xx, a reply in the wrong shape, no URL).
  */
-export type JimErrorKind = "waking" | "server" | "denied" | "rejected";
+export type JimErrorKind =
+  "waking" | "uncertain" | "server" | "denied" | "rejected";
 
 export class JimError extends Error {
   readonly kind: JimErrorKind;
@@ -83,15 +92,32 @@ export async function sendToJim(
 ): Promise<JimReply> {
   if (!isJimConnected(api)) throw new JimError("server");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const progress = { sent: false };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Also ends a wait that fetch's signal can't reach (a hung token refresh).
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new JimError(progress.sent ? "uncertain" : "waking"));
+    }, timeoutMs);
+  });
   try {
-    return await request(session, text, getToken, fetchFn, api, controller);
+    return await Promise.race([
+      request(session, text, getToken, fetchFn, api, controller, progress),
+      timedOut,
+    ]);
   } catch (err) {
-    if (controller.signal.aborted) throw new JimError("waking");
+    if (controller.signal.aborted) {
+      throw new JimError(progress.sent ? "uncertain" : "waking");
+    }
     throw err;
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
 async function request(
@@ -100,7 +126,8 @@ async function request(
   getToken: (force?: boolean) => Promise<string | null>,
   fetchFn: typeof fetch,
   api: string,
-  controller: AbortController
+  controller: AbortController,
+  progress: { sent: boolean }
 ): Promise<JimReply> {
   async function post(force: boolean): Promise<Response> {
     let token: string | null;
@@ -110,6 +137,9 @@ async function request(
       throw new JimError(tokenErrorKind(err));
     }
     if (!token) throw new JimError("denied");
+    if (isOffline()) throw new JimError("waking");
+    // From here the server may get the message and act on it.
+    progress.sent = true;
     try {
       return await fetchFn(`${api}/api/chat`, {
         method: "POST",
@@ -121,12 +151,16 @@ async function request(
         signal: controller.signal,
       });
     } catch {
-      throw new JimError("waking");
+      throw new JimError("uncertain");
     }
   }
 
   let res = await post(false);
-  if (res.status === 401) res = await post(true);
+  if (res.status === 401) {
+    // The server refused the token, so that try did not run.
+    progress.sent = false;
+    res = await post(true);
+  }
 
   if (res.status === 401 || res.status === 403) throw new JimError("denied");
   if (res.status === 503) throw new JimError("waking");
@@ -139,7 +173,8 @@ async function request(
   try {
     body = await res.json();
   } catch {
-    throw new JimError("server");
+    // A 200 whose body never arrived whole: the turn ran.
+    throw new JimError("uncertain");
   }
   if (!isReply(body)) throw new JimError("server");
   return { reply: body.reply, changed: body.changed, commit: body.commit };

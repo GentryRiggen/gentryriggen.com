@@ -31,10 +31,14 @@ interface Message {
 
 const ERRORS: Record<JimErrorKind, string> = {
   waking: "Jim is waking up, one moment",
+  uncertain: "Jim may have saved this — check before sending again",
   server: "Couldn't reach Jim",
   denied: "Jim didn't accept your sign-in. Sign out and back in.",
   rejected: "Jim couldn't take that message. Try a shorter one.",
 };
+
+/** After this long, the thinking indicator says it is still working. */
+const SLOW_MS = 20_000;
 
 /** Closer than this to the bottom counts as reading the latest message. */
 const STICK_PX = 80;
@@ -53,6 +57,9 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
+  /** A message Jim may have acted on, kept out of the box until asked for. */
+  const [held, setHeld] = useState<string | null>(null);
+  const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -73,6 +80,13 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
       behavior: smooth && !prefersReducedMotion() ? "smooth" : "instant",
     });
   }, []);
+
+  // A long turn (Jim can take minutes) gets a calmer note after a while.
+  useEffect(() => {
+    if (!sending) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_MS);
+    return () => clearTimeout(timer);
+  }, [sending]);
 
   // New messages slide into view, unless Gentry scrolled up to read.
   useEffect(() => {
@@ -115,6 +129,8 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     if (!text || sending) return;
     const id = nextId.current++;
     setError(null);
+    setHeld(null);
+    setSlow(false);
     setSending(true);
     setDraft("");
     stuck.current = true;
@@ -131,13 +147,32 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
         },
       ]);
     } catch (err) {
-      // Take the message back and return it to the box to send again.
-      setMessages((prev) => prev.filter((m) => m.id !== id));
-      setDraft((current) => (current ? `${text}\n${current}` : text));
-      setError(err instanceof JimError ? err.kind : "server");
+      const kind = err instanceof JimError ? err.kind : "server";
+      setError(kind);
+      if (kind === "uncertain") {
+        // Jim may already have it: leave it in the conversation and keep a
+        // copy aside, so a quick resend can't save it twice.
+        setHeld(text);
+      } else {
+        // It never ran: take it back and return it to the box.
+        setMessages((prev) => prev.filter((m) => m.id !== id));
+        putBack(text);
+      }
     } finally {
       setSending(false);
     }
+  }
+
+  function putBack(text: string) {
+    setDraft((current) => (current ? `${text}\n${current}` : text));
+  }
+
+  function restoreHeld() {
+    if (held === null) return;
+    putBack(held);
+    setHeld(null);
+    setError(null);
+    boxRef.current?.focus({ preventScroll: true });
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -209,7 +244,7 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
               role="status"
               className="mr-auto rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-gray-500 dark:bg-gray-900 dark:text-gray-400"
             >
-              Jim is thinking…
+              {slow ? "Still working…" : "Jim is thinking…"}
             </p>
           )}
         </div>
@@ -225,13 +260,22 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
           {error && (
             <p
               role="alert"
-              className={`mb-2 rounded-lg px-3 py-2 text-sm ${
-                error === "waking"
+              className={`mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-3 py-2 text-sm ${
+                error === "waking" || error === "uncertain"
                   ? "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
                   : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200"
               }`}
             >
-              {ERRORS[error]}
+              <span>{ERRORS[error]}</span>
+              {held !== null && (
+                <button
+                  type="button"
+                  onClick={restoreHeld}
+                  className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
+                >
+                  Put my message back
+                </button>
+              )}
             </p>
           )}
           <div className="flex items-end gap-2">

@@ -156,3 +156,61 @@ it("keeps the box focused after tapping Send, so the keyboard stays up", async (
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
   expect(box).toHaveFocus();
 });
+
+it("keeps the message and warns when Jim may have saved it", async () => {
+  send.mockRejectedValue(new api.JimError("uncertain"));
+  renderChat();
+  const box = screen.getByLabelText("Message");
+  await userEvent.type(box, "remember the milk");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  expect(
+    await screen.findByText(
+      "Jim may have saved this — check before sending again"
+    )
+  ).toBeInTheDocument();
+  // Not put back automatically, so one tap can't save it twice.
+  expect(box).toHaveValue("");
+  expect(
+    within(screen.getByRole("log")).getByText("remember the milk")
+  ).toBeInTheDocument();
+
+  await userEvent.click(
+    screen.getByRole("button", { name: "Put my message back" })
+  );
+  expect(box).toHaveValue("remember the milk");
+  expect(
+    screen.queryByRole("button", { name: "Put my message back" })
+  ).not.toBeInTheDocument();
+});
+
+it("still puts the draft back when the server was busy (503)", async () => {
+  send.mockRejectedValue(new api.JimError("waking"));
+  renderChat();
+  const box = screen.getByLabelText("Message");
+  await userEvent.type(box, "hi");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  await screen.findByText("Jim is waking up, one moment");
+  expect(box).toHaveValue("hi");
+  expect(
+    screen.queryByRole("button", { name: "Put my message back" })
+  ).not.toBeInTheDocument();
+});
+
+it("says it is still working after 20 seconds", async () => {
+  jest.useFakeTimers();
+  try {
+    send.mockReturnValue(new Promise(() => {}));
+    renderChat();
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "big question" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(screen.getByText("Jim is thinking…")).toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(19_000));
+    expect(screen.queryByText(/Still working/)).not.toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(1_500));
+    expect(screen.getByText("Still working…")).toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
+});

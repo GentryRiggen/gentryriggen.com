@@ -76,12 +76,44 @@ it("is denied on 403 and when there is no signed-in user", async () => {
   expect(never).not.toHaveBeenCalled();
 });
 
-it("is waking when the network fails or the server says 503", async () => {
-  const token = async () => "t";
-  const offline = jest.fn().mockRejectedValue(new TypeError("Load failed"));
-  expect(await kindOf(sendToJim("s", "x", token, offline, API))).toBe("waking");
+it("is waking when the server says 503 (the turn did not run)", async () => {
   const busy = jest.fn().mockResolvedValue(json(503, { error: "busy" }));
-  expect(await kindOf(sendToJim("s", "x", token, busy, API))).toBe("waking");
+  expect(await kindOf(sendToJim("s", "x", async () => "t", busy, API))).toBe(
+    "waking"
+  );
+});
+
+it("is waking without calling out when the phone is offline", async () => {
+  const online = jest.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  try {
+    const fetchFn = jest.fn();
+    expect(
+      await kindOf(sendToJim("s", "x", async () => "t", fetchFn, API))
+    ).toBe("waking");
+    expect(fetchFn).not.toHaveBeenCalled();
+  } finally {
+    online.mockRestore();
+  }
+});
+
+it("is uncertain when the connection drops after the message went out", async () => {
+  const dropped = jest.fn().mockRejectedValue(new TypeError("Load failed"));
+  expect(await kindOf(sendToJim("s", "x", async () => "t", dropped, API))).toBe(
+    "uncertain"
+  );
+});
+
+it("is uncertain when the reply body is cut off", async () => {
+  const cut = jest.fn().mockResolvedValue({
+    status: 200,
+    ok: true,
+    json: async () => {
+      throw new TypeError("network error");
+    },
+  } as unknown as Response);
+  expect(await kindOf(sendToJim("s", "x", async () => "t", cut, API))).toBe(
+    "uncertain"
+  );
 });
 
 it("is a server error on 500 or a malformed reply", async () => {
@@ -135,7 +167,7 @@ it.each(["auth/user-token-expired", "auth/user-disabled"])(
   }
 );
 
-it("gives up as waking when the server takes too long", async () => {
+it("is uncertain when it gives up on a message the server has", async () => {
   let signal: AbortSignal | undefined;
   const hang = jest.fn(
     (_url: unknown, init?: RequestInit) =>
@@ -148,10 +180,19 @@ it("gives up as waking when the server takes too long", async () => {
   );
   expect(
     await kindOf(sendToJim("s", "x", async () => "t", hang, API, 20))
-  ).toBe("waking");
+  ).toBe("uncertain");
   expect(signal?.aborted).toBe(true);
 });
 
-it("waits about 90 seconds by default", () => {
-  expect(JIM_TIMEOUT_MS).toBe(90_000);
+it("is waking when it gives up before the message went out", async () => {
+  const slowToken = () => new Promise<string>(() => {});
+  const fetchFn = jest.fn();
+  expect(await kindOf(sendToJim("s", "x", slowToken, fetchFn, API, 20))).toBe(
+    "waking"
+  );
+  expect(fetchFn).not.toHaveBeenCalled();
+});
+
+it("waits as long as the server can take (Cloud Run allows 300 s)", () => {
+  expect(JIM_TIMEOUT_MS).toBe(305_000);
 });

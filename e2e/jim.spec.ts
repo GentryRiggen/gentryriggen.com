@@ -30,6 +30,10 @@ async function mockServer(page: Page) {
       return;
     }
     const { text } = route.request().postDataJSON() as { text: string };
+    if (text.startsWith("drop: ")) {
+      await route.abort("connectionreset");
+      return;
+    }
     if (text.startsWith("slow: ")) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
@@ -287,4 +291,31 @@ test("a reply that lands while scrolled up does not yank the view", async ({
   await expect(page.getByText("Saved it.")).toHaveCount(1);
   await page.waitForTimeout(600);
   await expect(first).toBeInViewport();
+});
+
+test("a dropped connection after sending keeps the message out of the box", async ({
+  page,
+}, testInfo) => {
+  await signedIn(page);
+  const box = page.getByLabel("Message");
+  await box.fill("drop: remember the milk");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(
+    page.getByText("Jim may have saved this — check before sending again")
+  ).toBeVisible();
+  await expect(box).toHaveValue("");
+  await expect(
+    page.getByRole("log").getByText("drop: remember the milk")
+  ).toBeVisible();
+  const putBack = page.getByRole("button", { name: "Put my message back" });
+  await expect(putBack).toBeInViewport({ ratio: 1 });
+  expect((await putBack.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await noSidewaysScroll(page);
+  await box.blur();
+  await page.screenshot({
+    path: shotName(page, testInfo, "maybe-saved", "light"),
+    animations: "disabled",
+  });
+  await putBack.click();
+  await expect(box).toHaveValue("drop: remember the milk");
 });
