@@ -1,4 +1,6 @@
 import {
+  doneLine,
+  withoutDone,
   addDays,
   daysBetween,
   dueLabel,
@@ -128,5 +130,45 @@ describe("dueLabel", () => {
     expect(dueLabel("2026-11-05", TODAY)).toBe("in 5d");
     expect(dueLabel("2026-11-15", TODAY)).toBe("Nov 15");
     expect(dueLabel("", TODAY)).toBe("no date");
+  });
+});
+
+describe("doneLine", () => {
+  const todo = {
+    text: "Water the plants (due 2026-10-31)",
+    due: "2026-10-31",
+    path: "lists/todos.md",
+    area: "personal",
+    project: "",
+    done: false,
+    done_on: "",
+    order: 3,
+  };
+  const done = (order: number, extra: Partial<typeof todo> = {}) => ({
+    ...todo,
+    text: "Water the plants (due 2026-10-31) (done 2026-10-31)",
+    done: true,
+    done_on: "2026-10-31",
+    order,
+    ...extra,
+  });
+
+  it("finds the checked-off line by its text without the done stamp", () => {
+    expect(
+      doneLine({ todos: [], doneTodos: [done(9), done(4)] }, todo)
+    ).toMatchObject({ order: 4 });
+    expect(withoutDone(done(4).text)).toBe(todo.text);
+  });
+
+  it("tells apart lines that differ only in their tags, and open lines", () => {
+    expect(
+      doneLine(
+        {
+          todos: [{ ...todo, order: 5 }],
+          doneTodos: [done(3, { area: "work" }), done(3, { project: "yard" })],
+        },
+        todo
+      )
+    ).toBeNull();
   });
 });

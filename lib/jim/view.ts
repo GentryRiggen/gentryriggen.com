@@ -446,11 +446,11 @@ export const TODO_MESSAGES = {
 
 /**
  * Checks a todo off (or back on). The server finds the line by the
- * payload's `order` and `text` and refuses (409) if either changed, so a
- * stale list can never tick a different line. Never throws.
+ * payload's `order`, `text`, `area` and `project` and refuses (409) if it
+ * changed, so a stale list can never tick a different line. Never throws.
  */
 export async function toggleTodo(
-  todo: Pick<ViewTodo, "order" | "text">,
+  todo: Pick<ViewTodo, "order" | "text" | "area" | "project">,
   done: boolean,
   getToken: GetToken = getIdToken,
   fetchFn?: typeof fetch,
@@ -461,7 +461,17 @@ export async function toggleTodo(
   try {
     res = await callJim(
       "/api/todo",
-      { method: "POST", body: { order: todo.order, text: todo.text, done } },
+      {
+        method: "POST",
+        body: {
+          order: todo.order,
+          text: todo.text,
+          // Tell apart lines whose text differs only in their tags.
+          area: todo.area ?? "",
+          project: todo.project ?? "",
+          done,
+        },
+      },
       getToken,
       fetchFn,
       api,

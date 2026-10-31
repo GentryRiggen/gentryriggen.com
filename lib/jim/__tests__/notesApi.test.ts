@@ -2,7 +2,12 @@ import { JimError } from "../api";
 import { CALL_TIMEOUT_MS, fetchNote, searchNotes, toggleTodo } from "../view";
 
 const API = "https://jim.example.test";
-const TODO = { order: 3, text: "Water the plants (due 2026-10-31)" };
+const TODO = {
+  order: 3,
+  text: "Water the plants (due 2026-10-31)",
+  area: "personal",
+  project: "garden",
+};
 
 function json(status: number, body: unknown): Response {
   return {
@@ -43,6 +48,8 @@ describe("toggleTodo", () => {
     expect(JSON.parse(init.body)).toEqual({
       order: 3,
       text: "Water the plants (due 2026-10-31)",
+      area: "personal",
+      project: "garden",
       done: true,
     });
   });

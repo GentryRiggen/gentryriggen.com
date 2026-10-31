@@ -92,7 +92,7 @@ export default function NotesShell({
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLButtonElement>(null);
-  const inflight = useRef(false);
+  const inflight = useRef<Promise<ViewData | null> | null>(null);
   /** A change landed while a load was out: load once more after it. */
   const again = useRef(false);
   /** Where the People list (or the results) was scrolled to before a
@@ -100,33 +100,47 @@ export default function NotesShell({
   const listTop = useRef(0);
   const restoreTop = useRef<number | null>(null);
 
-  const load = useCallback(async () => {
-    if (inflight.current) return;
-    inflight.current = true;
+  /**
+   * Loads the notes; a call while a load is out joins it. Resolves to the
+   * payload the last round fetched, or null when that round failed.
+   */
+  const load = useCallback((): Promise<ViewData | null> => {
+    if (inflight.current) return inflight.current;
     setLoading(true);
     setError(null);
-    try {
-      do {
-        again.current = false;
-        try {
-          const next = await fetchView(getToken, undefined, api);
-          setData(next);
-          setLoadedAt(getCachedView()?.at ?? Date.now());
-          setError(null);
-        } catch (err) {
-          setError(err instanceof JimError ? err.kind : "server");
-        }
-      } while (again.current);
-    } finally {
-      inflight.current = false;
-      setLoading(false);
-    }
+    const run = (async () => {
+      let latest: ViewData | null = null;
+      try {
+        do {
+          again.current = false;
+          try {
+            latest = await fetchView(getToken, undefined, api);
+            setData(latest);
+            setLoadedAt(getCachedView()?.at ?? Date.now());
+            setError(null);
+          } catch (err) {
+            latest = null;
+            setError(err instanceof JimError ? err.kind : "server");
+          }
+        } while (again.current);
+        return latest;
+      } finally {
+        inflight.current = null;
+        setLoading(false);
+      }
+    })();
+    inflight.current = run;
+    return run;
   }, [api, getToken]);
 
-  /** A todo was saved: refetch in the background, after any load now out. */
-  const reload = useCallback(() => {
-    if (inflight.current) again.current = true;
-    else void load();
+  /**
+   * A todo was saved: refetch in the background, once more after any load
+   * now out (it may predate the save). Resolves to the fresh payload.
+   */
+  const reload = useCallback((): Promise<ViewData | null> => {
+    if (!inflight.current) return load();
+    again.current = true;
+    return inflight.current;
   }, [load]);
 
   // Load on the first open, and again on a later open once the data is old.

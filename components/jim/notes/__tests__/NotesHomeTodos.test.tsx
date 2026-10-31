@@ -22,7 +22,23 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function renderHome(onChanged = jest.fn()) {
+/** The payload after the save: the line now carries its done stamp. */
+const AFTER: view.ViewData = {
+  ...VIEW_FIXTURE,
+  todos: VIEW_FIXTURE.todos.filter((t) => t.order !== 3),
+  doneTodos: [
+    {
+      ...PLANTS,
+      text: `${PLANTS.text} (done 2026-10-31)`,
+      done: true,
+      done_on: "2026-10-31",
+    },
+  ],
+};
+
+function renderHome(
+  onChanged = jest.fn<Promise<view.ViewData | null>, []>(async () => AFTER)
+) {
   render(
     <NotesHome
       data={VIEW_FIXTURE}
@@ -76,13 +92,14 @@ it("checks at once, shows it saving, then offers Undo and refetches", async () =
   expect(onChanged).toHaveBeenCalledTimes(1);
 });
 
-it("Undo unchecks the same todo line", async () => {
+it("Undo unchecks the line as the refetch shows it (with its done stamp)", async () => {
   toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
   const onChanged = renderHome();
   await userEvent.click(box());
   await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+  await act(async () => {});
   expect(toggleTodo).toHaveBeenLastCalledWith(
-    PLANTS,
+    AFTER.doneTodos[0],
     false,
     getToken,
     undefined,
@@ -90,6 +107,33 @@ it("Undo unchecks the same todo line", async () => {
   );
   expect(box()).toHaveAttribute("aria-checked", "false");
   expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  expect(onChanged).toHaveBeenCalledTimes(2);
+});
+
+it("an Undo tapped before the refetch lands waits for it", async () => {
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  const refetch = deferred<view.ViewData | null>();
+  renderHome(jest.fn(() => refetch.promise));
+  await userEvent.click(box());
+  await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
+  expect(box()).toHaveAttribute("aria-busy", "true");
+  await act(async () => refetch.resolve(AFTER));
+  expect(toggleTodo).toHaveBeenCalledTimes(2);
+  expect(toggleTodo.mock.calls[1][0].text).toMatch(/\(done 2026-10-31\)$/);
+});
+
+it("an Undo whose line is gone after the refetch reverts and says it changed", async () => {
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  const onChanged = renderHome(
+    jest.fn(async () => ({ ...AFTER, doneTodos: [] }))
+  );
+  await userEvent.click(box());
+  await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+  expect(
+    await screen.findByText("That todo changed. Pull to refresh.")
+  ).toBeInTheDocument();
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
   expect(onChanged).toHaveBeenCalledTimes(2);
 });
 
@@ -143,12 +187,23 @@ it("reverts with Couldn't save when the server is busy or gone", async () => {
   expect(box()).toHaveAttribute("aria-checked", "false");
 });
 
-it("keeps other todos tappable while one saves", async () => {
-  toggleTodo.mockReturnValue(new Promise(() => {}));
+it("sends a second todo's tap only once the first settles", async () => {
+  const first = deferred<view.TodoResult>();
+  toggleTodo
+    .mockReturnValueOnce(first.promise)
+    .mockResolvedValueOnce({ ok: true, sha: "s" });
   renderHome();
   await userEvent.click(box());
   await userEvent.click(box("Renew the car registration"));
+  // Both boxes show at once; only one request is out.
+  expect(box("Renew the car registration")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  expect(toggleTodo).toHaveBeenCalledTimes(1);
+  await act(async () => first.resolve({ ok: true, sha: "s" }));
   expect(toggleTodo).toHaveBeenCalledTimes(2);
+  expect(toggleTodo.mock.calls[1][0].text).toMatch(/^Renew the car/);
 });
 
 it("drops a finished check once fresh data arrives", async () => {
@@ -158,7 +213,7 @@ it("drops a finished check once fresh data arrives", async () => {
       data={VIEW_FIXTURE}
       api={API}
       getToken={getToken}
-      onChanged={jest.fn()}
+      onChanged={jest.fn(async () => null)}
       onLog={jest.fn()}
     />
   );
@@ -171,7 +226,7 @@ it("drops a finished check once fresh data arrives", async () => {
       }}
       api={API}
       getToken={getToken}
-      onChanged={jest.fn()}
+      onChanged={jest.fn(async () => null)}
       onLog={jest.fn()}
     />
   );

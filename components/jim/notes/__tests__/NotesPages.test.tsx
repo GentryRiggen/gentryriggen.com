@@ -15,7 +15,7 @@ const EMPTY = normalizeView({ today: "2026-10-31" }) as ViewData;
 const HOME = {
   api: "https://jim.example.test",
   getToken: async () => "t",
-  onChanged: () => {},
+  onChanged: async () => null,
   onLog: () => {},
 };
 

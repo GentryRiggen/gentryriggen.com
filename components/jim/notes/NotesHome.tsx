@@ -19,6 +19,7 @@ import {
 import {
   addDays,
   daysBetween,
+  doneLine,
   dueLabel,
   fmtDay,
   fmtShort,
@@ -27,7 +28,9 @@ import {
   todoTitle,
 } from "@/lib/jim/todos";
 import {
+  TODO_MESSAGES,
   toggleTodo,
+  type TodoResult,
   type CalendarEvent,
   type ViewData,
   type ViewTodo,
@@ -38,8 +41,11 @@ interface NotesHomeProps {
   /** The server's base URL. */
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
-  /** A todo was saved (or may have been): fetch the notes again. */
-  onChanged: () => void;
+  /**
+   * A todo was saved (or may have been): fetch the notes again. Resolves to
+   * the fresh payload, or null if that failed.
+   */
+  onChanged: () => Promise<ViewData | null>;
   /** Sends a quick-log sentence as a chat message and switches to Chat. */
   onLog: (text: string) => void;
 }
@@ -54,7 +60,13 @@ interface Mark {
 }
 
 type ToastBody =
-  { kind: "done"; todo: ViewTodo } | { kind: "error"; message: string };
+  | {
+      kind: "done";
+      todo: ViewTodo;
+      /** The refetch after the save, which has the line as it is now. */
+      fresh: Promise<ViewData | null>;
+    }
+  | { kind: "error"; message: string };
 
 type Toast = ToastBody & { id: number };
 
@@ -357,7 +369,7 @@ function Todos({ data, marks, onToggle }: TodosProps) {
 
 interface ToastBarProps {
   toast: Toast | null;
-  onUndo: (todo: ViewTodo) => void;
+  onUndo: (toast: Extract<Toast, { kind: "done" }>) => void;
 }
 
 /** Floats above the home bar; always in the page, so it is announced. */
@@ -382,7 +394,7 @@ function ToastBar({ toast, onUndo }: ToastBarProps) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => onUndo(toast.todo)}
+                  onClick={() => onUndo(toast)}
                   className="min-h-11 rounded-full px-3 font-medium text-ayu-accent hover:bg-ayu-panel"
                 >
                   Undo
@@ -413,6 +425,8 @@ export default function NotesHome({
   const toastId = useRef(0);
   /** Todos saving now: a second tap on one is ignored. */
   const saving = useRef(new Set<string>());
+  /** The todo requests, sent one at a time. */
+  const queue = useRef<Promise<void>>(Promise.resolve());
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -442,32 +456,57 @@ export default function NotesHome({
     setToast({ ...next, id: toastId.current });
   }, []);
 
+  /**
+   * Ticks a todo (or unticks it). The box changes at once; the requests go
+   * one at a time, in tap order. `line` is the line to send when it isn't
+   * the todo as listed (an Undo sends the line the check-off produced).
+   */
   const toggle = useCallback(
-    async (todo: ViewTodo, done: boolean) => {
+    (todo: ViewTodo, done: boolean, line?: Promise<ViewTodo | null>) => {
       const key = todoKey(todo);
       if (saving.current.has(key)) return;
       saving.current.add(key);
       setMarks((prev) => ({ ...prev, [key]: { done, pending: true } }));
       if (!done) setToast(null);
-      const result = await toggleTodo(todo, done, getToken, undefined, api);
-      saving.current.delete(key);
-      if (!mounted.current) return;
-      if (result.ok) {
-        setMarks((prev) => ({ ...prev, [key]: { done, pending: false } }));
-        if (done) show({ kind: "done", todo });
-        onChanged();
-        return;
-      }
-      // Back to what the list says, and why.
-      setMarks((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
+      queue.current = queue.current.then(async () => {
+        const target = line ? await line : todo;
+        const result: TodoResult = target
+          ? await toggleTodo(target, done, getToken, undefined, api)
+          : { ok: false, reason: "changed", message: TODO_MESSAGES.changed };
+        saving.current.delete(key);
+        if (!mounted.current) return;
+        if (result.ok) {
+          setMarks((prev) => ({ ...prev, [key]: { done, pending: false } }));
+          const fresh = onChanged();
+          if (done) show({ kind: "done", todo, fresh });
+          return;
+        }
+        // Back to what the list says, and why.
+        setMarks((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        show({ kind: "error", message: result.message });
+        if (result.reason !== "denied") void onChanged();
       });
-      show({ kind: "error", message: result.message });
-      if (result.reason !== "denied") onChanged();
     },
     [api, getToken, onChanged, show]
+  );
+
+  /** Undo sends the line as it is now, once the refetch has it. */
+  const undo = useCallback(
+    (toast: Extract<Toast, { kind: "done" }>) => {
+      toggle(
+        toast.todo,
+        false,
+        toast.fresh.then(
+          (fresh) => (fresh ? doneLine(fresh, toast.todo) : null),
+          () => null
+        )
+      );
+    },
+    [toggle]
   );
 
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
@@ -485,7 +524,7 @@ export default function NotesHome({
       </div>
       <Calendar data={data} />
       <Todos data={data} marks={marks} onToggle={toggle} />
-      <ToastBar toast={toast} onUndo={(todo) => void toggle(todo, false)} />
+      <ToastBar toast={toast} onUndo={undo} />
     </div>
   );
 }

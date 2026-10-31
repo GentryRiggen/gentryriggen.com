@@ -112,3 +112,31 @@ export function groupTodos(todos: ViewTodo[], today: string): TodoGroups {
   }
   return groups;
 }
+
+/** A todo's text without the "(done YYYY-MM-DD)" a check-off adds. */
+export function withoutDone(text: string): string {
+  return text.replace(/\s*\(done \d{4}-\d{2}-\d{2}\)/g, "").trim();
+}
+
+/**
+ * The line a todo became once checked off, from a fresh payload: done, the
+ * same text apart from its "(done …)" stamp, the same area and project, and
+ * the nearest line to where it was. Null when it isn't there (it changed).
+ */
+export function doneLine(
+  data: { todos: ViewTodo[]; doneTodos: ViewTodo[] },
+  todo: ViewTodo
+): ViewTodo | null {
+  const want = withoutDone(todo.text);
+  const found = [...data.todos, ...data.doneTodos].filter(
+    (t) =>
+      t.done &&
+      withoutDone(t.text) === want &&
+      t.area === todo.area &&
+      t.project === todo.project
+  );
+  found.sort(
+    (a, b) => Math.abs(a.order - todo.order) - Math.abs(b.order - todo.order)
+  );
+  return found[0] ?? null;
+}

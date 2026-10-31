@@ -6,7 +6,7 @@ import NotesHome from "../NotesHome";
 const HOME = {
   api: "https://jim.example.test",
   getToken: async () => "t",
-  onChanged: () => {},
+  onChanged: async () => null,
   onLog: () => {},
 };
 

@@ -40,7 +40,13 @@ interface MockCalls {
   chat: number;
   health: number;
   /** Each /api/todo body, in order. */
-  todo: { order: number; text: string; done: boolean }[];
+  todo: {
+    order: number;
+    text: string;
+    area: string;
+    project: string;
+    done: boolean;
+  }[];
   /** Each /api/search query, in order. */
   search: string[];
   /** Each /api/chat message, in order. */
@@ -134,6 +140,15 @@ async function mockServer(
         body: JSON.stringify({
           ...VIEW_FIXTURE,
           todos: VIEW_FIXTURE.todos.filter((t) => !done.has(t.order)),
+          // A checked-off line carries its done stamp, as the server writes it.
+          doneTodos: VIEW_FIXTURE.todos
+            .filter((t) => done.has(t.order))
+            .map((t) => ({
+              ...t,
+              text: `${t.text} (done 2026-10-31)`,
+              done: true,
+              done_on: "2026-10-31",
+            })),
         }),
       });
       return;
@@ -718,6 +733,8 @@ test(
       {
         order: 3,
         text: "Water the plants (due 2026-10-31; every 1 week, Saturdays)",
+        area: "personal",
+        project: "",
         done: true,
       },
     ]);
@@ -726,7 +743,14 @@ test(
     expect(calls.view).toBeGreaterThanOrEqual(2);
     await undo.click();
     await expect(page.getByText("Water the plants")).toBeVisible();
-    expect(calls.todo[1]).toMatchObject({ order: 3, done: false });
+    // Undo sends the line as it is now, done stamp included.
+    expect(calls.todo[1]).toEqual({
+      order: 3,
+      text: "Water the plants (due 2026-10-31; every 1 week, Saturdays) (done 2026-10-31)",
+      area: "personal",
+      project: "",
+      done: false,
+    });
     expect(calls.chat).toBe(0);
   }
 );
