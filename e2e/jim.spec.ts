@@ -31,19 +31,74 @@ const LONG_REPLY = [
 interface MockOptions {
   /** Refuse the first /api/view call with a 401 (an expired token). */
   viewExpiredOnce?: boolean;
+  /** How /api/todo answers (200 by default). */
+  todoStatus?: number;
 }
 
 interface MockCalls {
   view: number;
   chat: number;
   health: number;
+  /** Each /api/todo body, in order. */
+  todo: { order: number; text: string; done: boolean }[];
+  /** Each /api/search query, in order. */
+  search: string[];
+  /** Each /api/chat message, in order. */
+  messages: string[];
 }
+
+/** Invented search hits and the one note behind them. */
+const SEARCH_RESULTS = [
+  {
+    path: "home/garden.md",
+    title: "Garden",
+    snippet: "…water the plants on Saturdays, more in a dry week…",
+  },
+  {
+    path: "people/sam-okafor.md",
+    title: "Sam Okafor",
+    snippet: "Works on the data team.",
+  },
+  {
+    path: "work/a-project-with-a-really-long-file-name-that-has-to-wrap.md",
+    title: "A project with a really long title that has to wrap somewhere",
+    snippet: "Mentions the plants once.",
+  },
+];
+
+const GARDEN_NOTE = {
+  path: "home/garden.md",
+  title: "Garden",
+  updated: "2026-10-12",
+  body: [
+    "## Beds",
+    "- Tomatoes along the **south** fence",
+    "- Water the plants on Saturdays (see [the list](../lists/todos.md))",
+    "",
+    "## Supplies",
+    "| Item | Where | Bought | Notes |",
+    "| --- | --- | --- | --- |",
+    "| Hose | Garage, left wall | 2026-04-02 | Fifty feet, the green one |",
+    "| Seeds | Kitchen drawer | 2026-03-15 | Heirloom, keep dry |",
+    "",
+    "More at https://example.com/a/very/long/link/about/gardening/that/should/wrap",
+  ].join("\n"),
+};
 
 async function mockServer(
   page: Page,
   options: MockOptions = {}
 ): Promise<MockCalls> {
-  const calls: MockCalls = { view: 0, chat: 0, health: 0 };
+  const calls: MockCalls = {
+    view: 0,
+    chat: 0,
+    health: 0,
+    todo: [],
+    search: [],
+    messages: [],
+  };
+  /** Todos checked off on the "server": the next view leaves them out. */
+  const done = new Set<number>();
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
@@ -76,12 +131,50 @@ async function mockServer(
       await route.fulfill({
         status: 200,
         headers: { ...cors, "Content-Type": "application/json" },
-        body: JSON.stringify(VIEW_FIXTURE),
+        body: JSON.stringify({
+          ...VIEW_FIXTURE,
+          todos: VIEW_FIXTURE.todos.filter((t) => !done.has(t.order)),
+        }),
       });
+      return;
+    }
+    const url = new URL(route.request().url());
+    const reply = (status: number, body: unknown) =>
+      route.fulfill({
+        status,
+        headers: { ...cors, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    if (url.pathname === "/api/todo") {
+      const body = route.request().postDataJSON() as MockCalls["todo"][0];
+      calls.todo.push(body);
+      const status = options.todoStatus ?? 200;
+      if (status === 409) {
+        await reply(409, { error: "That todo changed. Pull to refresh." });
+      } else if (status !== 200) {
+        await reply(status, { error: "busy" });
+      } else {
+        if (body.done) done.add(body.order);
+        else done.delete(body.order);
+        await reply(200, { ok: true, commit: "c0ffee1234", sha: "c0ffee1" });
+      }
+      return;
+    }
+    if (url.pathname === "/api/search") {
+      const q = url.searchParams.get("q") ?? "";
+      calls.search.push(q);
+      await reply(200, { results: q === "zzz" ? [] : SEARCH_RESULTS });
+      return;
+    }
+    if (url.pathname === "/api/note") {
+      const path = url.searchParams.get("path");
+      if (path === GARDEN_NOTE.path) await reply(200, GARDEN_NOTE);
+      else await reply(404, { error: "not found" });
       return;
     }
     calls.chat += 1;
     const { text } = route.request().postDataJSON() as { text: string };
+    calls.messages.push(text);
     if (text.startsWith("drop: ")) {
       await route.abort("connectionreset");
       return;
@@ -544,23 +637,44 @@ for (const width of [undefined, 320]) {
 }
 
 test(
-  "Done on a Notes todo puts it in the chat box without sending",
+  "a Notes todo box checks it off, offers Undo, and the list refreshes",
   { tag: "@smoke" },
   async ({ page }) => {
     const calls = await signedIn(page);
     await openNotes(page);
-    await page.getByRole("button", { name: "Done: Water the plants" }).click();
-    await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
-    const box = page.getByLabel("Message");
-    await expect(box).toBeVisible();
-    await expect(box).toHaveValue("Done: Water the plants");
-    await expect(page.getByRole("button", { name: "Send" })).toBeEnabled();
+    const box = page.getByRole("checkbox", { name: "Water the plants" });
+    expect((await box.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await box.click();
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeVisible();
+    await expect(undo).toBeInViewport({ ratio: 1 });
+    expect(calls.todo).toEqual([
+      {
+        order: 3,
+        text: "Water the plants (due 2026-10-31; every 1 week, Saturdays)",
+        done: true,
+      },
+    ]);
+    // The background refetch drops it from the list.
+    await expect(page.getByText("Water the plants")).toHaveCount(0);
+    expect(calls.view).toBeGreaterThanOrEqual(2);
+    await undo.click();
+    await expect(page.getByText("Water the plants")).toBeVisible();
+    expect(calls.todo[1]).toMatchObject({ order: 3, done: false });
     expect(calls.chat).toBe(0);
   }
 );
+
+test("a todo that changed on the Mac reverts and says so", async ({ page }) => {
+  await signedIn(page, { todoStatus: 409 });
+  await openNotes(page);
+  const box = page.getByRole("checkbox", { name: "Water the plants" });
+  await box.click();
+  await expect(
+    page.getByText("That todo changed. Pull to refresh.")
+  ).toBeVisible();
+  await expect(box).toHaveAttribute("aria-checked", "false");
+});
 
 test("Notes loads once and is instant on the way back", async ({ page }) => {
   const calls = await signedIn(page);

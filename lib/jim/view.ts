@@ -349,3 +349,238 @@ async function requestView(
   if (!data) throw new JimError("server");
   return data;
 }
+
+// ---------- writes, search and single notes ----------
+
+/** Todo, search and note calls are small: past this the server is gone. */
+export const CALL_TIMEOUT_MS = 15_000;
+
+type GetToken = (force?: boolean) => Promise<string | null>;
+
+/**
+ * One signed-in call to Jim's server: the bearer token, a forced refresh and
+ * one more try on a 401, and a time limit. Resolves to the response for any
+ * other status. Throws JimError: waking (offline, no connection, the time
+ * limit), denied (no user, a second 401, or a 403) or server (no URL).
+ */
+async function callJim(
+  path: string,
+  init: { method: "GET" | "POST"; body?: unknown },
+  getToken: GetToken,
+  fetchFn: typeof fetch | undefined,
+  api: string,
+  timeoutMs: number
+): Promise<Response> {
+  if (!isJimConnected(api)) throw new JimError("server");
+  const doFetch = fetchFn ?? fetch;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new JimError("waking"));
+    }, timeoutMs);
+  });
+
+  async function send(force: boolean): Promise<Response> {
+    let token: string | null;
+    try {
+      token = await getToken(force);
+    } catch (err) {
+      throw new JimError(tokenErrorKind(err));
+    }
+    if (!token) throw new JimError("denied");
+    if (isOffline()) throw new JimError("waking");
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+    };
+    if (init.body !== undefined) headers["Content-Type"] = "application/json";
+    try {
+      return await doFetch(`${api}${path}`, {
+        method: init.method,
+        headers,
+        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+        signal: controller.signal,
+      });
+    } catch {
+      throw new JimError("waking");
+    }
+  }
+
+  async function run(): Promise<Response> {
+    let res = await send(false);
+    if (res.status === 401) res = await send(true);
+    if (res.status === 401 || res.status === 403) {
+      throw new JimError("denied");
+    }
+    return res;
+  }
+
+  try {
+    return await Promise.race([run(), timedOut]);
+  } catch (err) {
+    if (controller.signal.aborted) throw new JimError("waking");
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readJson(res: Response): Promise<unknown> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export type TodoResult =
+  | { ok: true; sha: string | null }
+  | { ok: false; reason: "changed" | "failed" | "denied"; message: string };
+
+export const TODO_MESSAGES = {
+  changed: "That todo changed. Pull to refresh.",
+  failed: "Couldn't save. Try again.",
+  denied: "Jim didn't accept your sign-in. Sign out and back in.",
+};
+
+/**
+ * Checks a todo off (or back on). The server finds the line by the
+ * payload's `order` and `text` and refuses (409) if either changed, so a
+ * stale list can never tick a different line. Never throws.
+ */
+export async function toggleTodo(
+  todo: Pick<ViewTodo, "order" | "text">,
+  done: boolean,
+  getToken: GetToken = getIdToken,
+  fetchFn?: typeof fetch,
+  api: string = JIM_API,
+  timeoutMs: number = CALL_TIMEOUT_MS
+): Promise<TodoResult> {
+  let res: Response;
+  try {
+    res = await callJim(
+      "/api/todo",
+      { method: "POST", body: { order: todo.order, text: todo.text, done } },
+      getToken,
+      fetchFn,
+      api,
+      timeoutMs
+    );
+  } catch (err) {
+    const reason =
+      err instanceof JimError && err.kind === "denied" ? "denied" : "failed";
+    return { ok: false, reason, message: TODO_MESSAGES[reason] };
+  }
+  if (res.status === 409) {
+    const body = await readJson(res);
+    const message =
+      isRecord(body) && typeof body.error === "string" && body.error.trim()
+        ? body.error
+        : TODO_MESSAGES.changed;
+    return { ok: false, reason: "changed", message };
+  }
+  if (!res.ok) {
+    return { ok: false, reason: "failed", message: TODO_MESSAGES.failed };
+  }
+  const body = await readJson(res);
+  return {
+    ok: true,
+    sha: isRecord(body) && typeof body.sha === "string" ? body.sha : null,
+  };
+}
+
+export interface SearchResult {
+  /** Repo-relative, e.g. "home/garden.md". */
+  path: string;
+  title: string;
+  snippet: string;
+}
+
+/** The server takes at most this many characters. */
+export const SEARCH_MAX = 100;
+
+/**
+ * Keyword search across the notes. Throws JimError: waking (a 503, offline,
+ * the time limit), denied, or server.
+ */
+export async function searchNotes(
+  query: string,
+  getToken: GetToken = getIdToken,
+  fetchFn?: typeof fetch,
+  api: string = JIM_API,
+  timeoutMs: number = CALL_TIMEOUT_MS
+): Promise<SearchResult[]> {
+  const q = encodeURIComponent(query.slice(0, SEARCH_MAX));
+  const res = await callJim(
+    `/api/search?q=${q}`,
+    { method: "GET" },
+    getToken,
+    fetchFn,
+    api,
+    timeoutMs
+  );
+  if (res.status === 503) throw new JimError("waking");
+  if (!res.ok) throw new JimError("server");
+  const body = await readJson(res);
+  if (!isRecord(body) || !Array.isArray(body.results)) {
+    throw new JimError("server");
+  }
+  return body.results
+    .filter(
+      (r): r is SearchResult =>
+        isRecord(r) &&
+        typeof r.path === "string" &&
+        typeof r.title === "string" &&
+        typeof r.snippet === "string"
+    )
+    .map(({ path, title, snippet }) => ({ path, title, snippet }));
+}
+
+export interface Note {
+  path: string;
+  title: string;
+  /** YYYY-MM-DD from the frontmatter, or "". */
+  updated: string;
+  /** The Markdown body, frontmatter removed. */
+  body: string;
+}
+
+/**
+ * One note by its repo-relative path; null when it isn't there (404).
+ * Throws JimError: waking, denied, or server.
+ */
+export async function fetchNote(
+  path: string,
+  getToken: GetToken = getIdToken,
+  fetchFn?: typeof fetch,
+  api: string = JIM_API,
+  timeoutMs: number = CALL_TIMEOUT_MS
+): Promise<Note | null> {
+  const res = await callJim(
+    `/api/note?path=${encodeURIComponent(path)}`,
+    { method: "GET" },
+    getToken,
+    fetchFn,
+    api,
+    timeoutMs
+  );
+  if (res.status === 404) return null;
+  if (res.status === 503) throw new JimError("waking");
+  if (!res.ok) throw new JimError("server");
+  const body = await readJson(res);
+  if (
+    !isRecord(body) ||
+    typeof body.path !== "string" ||
+    typeof body.title !== "string" ||
+    typeof body.body !== "string"
+  ) {
+    throw new JimError("server");
+  }
+  return {
+    path: body.path,
+    title: body.title,
+    updated: typeof body.updated === "string" ? body.updated : "",
+    body: body.body,
+  };
+}

@@ -7,10 +7,11 @@ import NotesShell from "../NotesShell";
 
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
-  return { ...actual, fetchView: jest.fn() };
+  return { ...actual, fetchView: jest.fn(), toggleTodo: jest.fn() };
 });
 
 const fetchView = jest.mocked(view.fetchView);
+const toggleTodo = jest.mocked(view.toggleTodo);
 const getToken = jest.fn().mockResolvedValue("t");
 
 /** fetchView that also fills the cache, like the real one. */
@@ -47,13 +48,13 @@ function renderShell(active = true) {
       api="https://jim.example.test"
       getToken={getToken}
       active={active}
-      onDone={jest.fn()}
     />
   );
 }
 
 beforeEach(() => {
   fetchView.mockReset();
+  toggleTodo.mockReset();
   (jest.requireActual("@/lib/jim/view") as typeof view).clearViewCache();
 });
 
@@ -173,4 +174,43 @@ it("moves between pages and into a profile and back", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
   await userEvent.click(screen.getByRole("tab", { name: "People" }));
   expect(screen.getByLabelText("Search people")).toBeInTheDocument();
+});
+
+it("refetches in the background after a todo is checked off", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  renderShell();
+  await screen.findByText("Water the plants");
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    todos: VIEW_FIXTURE.todos.filter((t) => t.order !== 3),
+  });
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Water the plants" })
+  );
+  expect(fetchView).toHaveBeenCalledTimes(2);
+  // No skeleton meanwhile, and the ticked todo is gone once it lands.
+  expect(screen.queryByText("Loading notes…")).not.toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Undo" })).toBeVisible();
+  expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
+});
+
+it("loads once more when a todo saves while a load is out", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const slow = deferred<view.ViewData>();
+  fetchView.mockReturnValueOnce(slow.promise);
+  await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  const save = deferred<view.TodoResult>();
+  toggleTodo.mockReturnValue(save.promise);
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Water the plants" })
+  );
+  await act(async () => save.resolve({ ok: true, sha: "s" }));
+  expect(fetchView).toHaveBeenCalledTimes(2);
+  fetchView.mockResolvedValueOnce({ ...VIEW_FIXTURE, todos: [] });
+  await act(async () => slow.resolve(VIEW_FIXTURE));
+  expect(fetchView).toHaveBeenCalledTimes(3);
+  expect(await screen.findByText("No open todos.")).toBeInTheDocument();
 });

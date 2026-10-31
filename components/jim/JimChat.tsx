@@ -330,14 +330,6 @@ export default function JimChat({
     setTab(next);
   }
 
-  /** A todo's Done on Notes: the line goes in the box for Gentry to send. */
-  const doneFromNotes = useCallback((title: string) => {
-    const line = `Done: ${title}`;
-    setDraft((current) => (current.trim() ? `${current}\n${line}` : line));
-    stuck.current = true;
-    setTab("chat");
-  }, []);
-
   function restoreHeld() {
     if (held === null) return;
     putBack(held.text);
@@ -536,7 +528,6 @@ export default function JimChat({
               api={api}
               getToken={getToken}
               active={tab === "notes"}
-              onDone={doneFromNotes}
             />
           </div>
         )}

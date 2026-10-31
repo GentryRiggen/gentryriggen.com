@@ -11,9 +11,16 @@ import NotesTraining from "../NotesTraining";
 
 const EMPTY = normalizeView({ today: "2026-10-31" }) as ViewData;
 
+/** NotesHome's wiring; these tests never tick a box. */
+const HOME = {
+  api: "https://jim.example.test",
+  getToken: async () => "t",
+  onChanged: () => {},
+};
+
 describe("NotesHome", () => {
   it("shows the calendar for today and the next 7 days, with an as-of line", () => {
-    render(<NotesHome data={VIEW_FIXTURE} onDone={jest.fn()} />);
+    render(<NotesHome data={VIEW_FIXTURE} {...HOME} />);
     const cal = screen.getByRole("region", { name: "Calendar" });
     expect(within(cal).getByText("Team standup")).toBeInTheDocument();
     expect(within(cal).getByText("Harvest festival")).toBeInTheDocument();
@@ -25,12 +32,7 @@ describe("NotesHome", () => {
   });
 
   it("says calmly when there is no calendar snapshot yet", () => {
-    render(
-      <NotesHome
-        data={{ ...VIEW_FIXTURE, calendar: null }}
-        onDone={jest.fn()}
-      />
-    );
+    render(<NotesHome data={{ ...VIEW_FIXTURE, calendar: null }} {...HOME} />);
     expect(screen.getByText("No calendar snapshot yet.")).toBeInTheDocument();
     // The todos still show.
     expect(screen.getByText("Water the plants")).toBeInTheDocument();
@@ -43,7 +45,7 @@ describe("NotesHome", () => {
           ...VIEW_FIXTURE,
           calendar: { fetchedAt: "2026-09-02T15:00:00Z", events: [] },
         }}
-        onDone={jest.fn()}
+        {...HOME}
       />
     );
     expect(screen.getByText(/^Calendar as of Sep 2/)).toBeInTheDocument();
@@ -53,7 +55,7 @@ describe("NotesHome", () => {
   });
 
   it("groups todos overdue, today, next 7 days and later, in order", () => {
-    render(<NotesHome data={VIEW_FIXTURE} onDone={jest.fn()} />);
+    render(<NotesHome data={VIEW_FIXTURE} {...HOME} />);
     const todos = screen.getByRole("region", { name: "Todos" });
     const headings = within(todos)
       .getAllByRole("heading", { level: 3 })
@@ -76,7 +78,7 @@ describe("NotesHome", () => {
   });
 
   it("keeps Later collapsed until opened", async () => {
-    render(<NotesHome data={VIEW_FIXTURE} onDone={jest.fn()} />);
+    render(<NotesHome data={VIEW_FIXTURE} {...HOME} />);
     const later = screen.getByText(/^Later/).closest("details");
     expect(later).not.toHaveAttribute("open");
     await userEvent.click(screen.getByText(/^Later/));
@@ -84,17 +86,8 @@ describe("NotesHome", () => {
     expect(screen.getByText("Book the dentist")).toBeVisible();
   });
 
-  it("hands Done: <title> to the chat", async () => {
-    const onDone = jest.fn();
-    render(<NotesHome data={VIEW_FIXTURE} onDone={onDone} />);
-    await userEvent.click(
-      screen.getByRole("button", { name: "Done: Water the plants" })
-    );
-    expect(onDone).toHaveBeenCalledWith("Water the plants");
-  });
-
   it("says so when there are no open todos", () => {
-    render(<NotesHome data={EMPTY} onDone={jest.fn()} />);
+    render(<NotesHome data={EMPTY} {...HOME} />);
     expect(screen.getByText("No open todos.")).toBeInTheDocument();
   });
 });

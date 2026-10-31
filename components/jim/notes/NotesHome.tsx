@@ -1,4 +1,7 @@
-import { Check } from "lucide-react";
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import { eventsByDay, localDay, timeLabel } from "@/lib/jim/notesData";
 import {
@@ -11,12 +14,38 @@ import {
   isRecurring,
   todoTitle,
 } from "@/lib/jim/todos";
-import type { CalendarEvent, ViewData, ViewTodo } from "@/lib/jim/view";
+import {
+  toggleTodo,
+  type CalendarEvent,
+  type ViewData,
+  type ViewTodo,
+} from "@/lib/jim/view";
 
 interface NotesHomeProps {
   data: ViewData;
-  /** Puts "Done: <title>" in the chat box (Gentry sends it). */
-  onDone: (title: string) => void;
+  /** The server's base URL. */
+  api: string;
+  getToken: (force?: boolean) => Promise<string | null>;
+  /** A todo was saved (or may have been): fetch the notes again. */
+  onChanged: () => void;
+}
+
+/** How long "Done · Undo" (or a failure) stays up. */
+const TOAST_MS = 5_000;
+
+/** A todo's box as shown: checked or not, and whether it is saving. */
+interface Mark {
+  done: boolean;
+  pending: boolean;
+}
+
+type ToastBody =
+  { kind: "done"; todo: ViewTodo } | { kind: "error"; message: string };
+
+type Toast = ToastBody & { id: number };
+
+function todoKey(t: Pick<ViewTodo, "order" | "text">): string {
+  return `${t.order}-${t.text}`;
 }
 
 const AREA_LABEL: Record<string, string> = {
@@ -106,11 +135,14 @@ function Calendar({ data }: { data: ViewData }) {
 interface TodoRowProps {
   todo: ViewTodo;
   today: string;
-  onDone: (title: string) => void;
+  mark: Mark | undefined;
+  onToggle: (todo: ViewTodo, done: boolean) => void;
 }
 
-function TodoRow({ todo, today, onDone }: TodoRowProps) {
+function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
   const title = todoTitle(todo.text) || todo.text;
+  const checked = mark ? mark.done : todo.done;
+  const pending = mark?.pending ?? false;
   const n = todo.due ? daysBetween(today, todo.due) : null;
   const tone =
     n === null
@@ -121,11 +153,43 @@ function TodoRow({ todo, today, onDone }: TodoRowProps) {
           ? "text-ayu-accent"
           : "text-ayu-subtle";
   return (
-    <li className="flex items-center gap-3 py-1.5 pr-1.5 pl-4">
+    <li className="flex items-center gap-1 py-1.5 pr-4 pl-1">
+      {/* 44px to tap, a 22px box to see. A tap while it saves does nothing. */}
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        aria-busy={pending || undefined}
+        aria-label={title}
+        onClick={() => {
+          if (!pending) onToggle(todo, !checked);
+        }}
+        className="group flex size-11 shrink-0 items-center justify-center rounded-full transition-colors! duration-150!"
+      >
+        <span
+          aria-hidden="true"
+          className={`flex size-[22px] items-center justify-center rounded-md border-2 ${
+            checked
+              ? "border-ayu-accent bg-ayu-accent text-ayu-bg"
+              : "border-ayu-muted group-hover:border-ayu-accent"
+          }`}
+        >
+          {pending ? (
+            <LoaderCircle
+              className={`size-3.5 animate-spin motion-reduce:animate-none ${checked ? "" : "text-ayu-accent"}`}
+              strokeWidth={3}
+            />
+          ) : (
+            checked && <Check className="size-4" strokeWidth={3} />
+          )}
+        </span>
+      </button>
       <div className="min-w-0 flex-1 py-1">
         <span
           data-title
-          className="block text-ayu-text [overflow-wrap:anywhere]"
+          className={`block [overflow-wrap:anywhere] ${
+            checked ? "text-ayu-subtle line-through" : "text-ayu-text"
+          }`}
         >
           {title}
         </span>
@@ -141,51 +205,60 @@ function TodoRow({ todo, today, onDone }: TodoRowProps) {
           {isRecurring(todo.text) && <Chip>repeats</Chip>}
         </span>
       </div>
-      <button
-        type="button"
-        aria-label={`Done: ${title}`}
-        onClick={() => onDone(title)}
-        className="flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-ayu-muted px-3 text-sm text-ayu-text hover:border-ayu-accent hover:text-ayu-accent"
-      >
-        <Check aria-hidden="true" className="size-4" strokeWidth={2.5} />
-        Done
-      </button>
     </li>
   );
 }
 
-interface TodoGroupProps {
-  title: string;
+interface TodoListProps {
   todos: ViewTodo[];
   today: string;
-  onDone: (title: string) => void;
+  marks: Record<string, Mark>;
+  onToggle: (todo: ViewTodo, done: boolean) => void;
+}
+
+function TodoList({ todos, today, marks, onToggle }: TodoListProps) {
+  return (
+    <Rows>
+      {todos.map((t) => (
+        <TodoRow
+          key={todoKey(t)}
+          todo={t}
+          today={today}
+          mark={marks[todoKey(t)]}
+          onToggle={onToggle}
+        />
+      ))}
+    </Rows>
+  );
+}
+
+interface TodoGroupProps extends TodoListProps {
+  title: string;
   tone?: string;
 }
 
-function TodoGroup({ title, todos, today, onDone, tone }: TodoGroupProps) {
-  if (!todos.length) return null;
+function TodoGroup({ title, tone, ...list }: TodoGroupProps) {
+  if (!list.todos.length) return null;
   return (
     <div className="space-y-1.5">
       <h3 className={`text-sm font-medium ${tone ?? "text-ayu-text"}`}>
         {title}
       </h3>
-      <Rows>
-        {todos.map((t) => (
-          <TodoRow
-            key={`${t.order}-${t.text}`}
-            todo={t}
-            today={today}
-            onDone={onDone}
-          />
-        ))}
-      </Rows>
+      <TodoList {...list} />
     </div>
   );
 }
 
-function Todos({ data, onDone }: NotesHomeProps) {
+interface TodosProps {
+  data: ViewData;
+  marks: Record<string, Mark>;
+  onToggle: (todo: ViewTodo, done: boolean) => void;
+}
+
+function Todos({ data, marks, onToggle }: TodosProps) {
   const g = groupTodos(data.todos, data.today);
   const open = g.overdue.length + g.today.length + g.week.length;
+  const list = { today: data.today, marks, onToggle };
   return (
     <Section
       title="Todos"
@@ -199,21 +272,10 @@ function Todos({ data, onDone }: NotesHomeProps) {
         title="Overdue"
         tone="text-ayu-red"
         todos={g.overdue}
-        today={data.today}
-        onDone={onDone}
+        {...list}
       />
-      <TodoGroup
-        title="Today"
-        todos={g.today}
-        today={data.today}
-        onDone={onDone}
-      />
-      <TodoGroup
-        title="Next 7 days"
-        todos={g.week}
-        today={data.today}
-        onDone={onDone}
-      />
+      <TodoGroup title="Today" todos={g.today} {...list} />
+      <TodoGroup title="Next 7 days" todos={g.week} {...list} />
       {g.later.length > 0 && (
         <details className="group space-y-1.5">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-ayu-text [&::-webkit-details-marker]:hidden">
@@ -225,24 +287,127 @@ function Todos({ data, onDone }: NotesHomeProps) {
               ›
             </span>
           </summary>
-          <Rows>
-            {g.later.map((t) => (
-              <TodoRow
-                key={`${t.order}-${t.text}`}
-                todo={t}
-                today={data.today}
-                onDone={onDone}
-              />
-            ))}
-          </Rows>
+          <TodoList todos={g.later} {...list} />
         </details>
       )}
     </Section>
   );
 }
 
-/** Home: the calendar this week, then what's due. */
-export default function NotesHome({ data, onDone }: NotesHomeProps) {
+interface ToastBarProps {
+  toast: Toast | null;
+  onUndo: (todo: ViewTodo) => void;
+}
+
+/** Floats above the home bar; always in the page, so it is announced. */
+function ToastBar({ toast, onUndo }: ToastBarProps) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
+      <div role="status" aria-live="polite" className="contents">
+        {toast && (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto flex max-w-full items-center gap-2 rounded-full py-1 pr-1 pl-5 shadow-lg ${
+              toast.kind === "error"
+                ? "bg-ayu-raised text-ayu-red"
+                : "bg-ayu-raised text-ayu-text"
+            } ${toast.kind === "error" ? "pr-5" : ""}`}
+          >
+            {toast.kind === "done" ? (
+              <>
+                <span className="min-h-11 content-center">Done</span>
+                <span aria-hidden="true" className="text-ayu-subtle">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onUndo(toast.todo)}
+                  className="min-h-11 rounded-full px-3 font-medium text-ayu-accent hover:bg-ayu-panel"
+                >
+                  Undo
+                </button>
+              </>
+            ) : (
+              <span className="min-h-11 content-center [overflow-wrap:anywhere]">
+                {toast.message}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Home: the calendar this week, then what's due, with boxes to tick. */
+export default function NotesHome({
+  data,
+  api,
+  getToken,
+  onChanged,
+}: NotesHomeProps) {
+  const [marks, setMarks] = useState<Record<string, Mark>>({});
+  const [toast, setToast] = useState<Toast | null>(null);
+  const toastId = useRef(0);
+  /** Todos saving now: a second tap on one is ignored. */
+  const saving = useRef(new Set<string>());
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // Fresh data has the truth: keep only the boxes still saving.
+  const [marksFor, setMarksFor] = useState(data);
+  if (marksFor !== data) {
+    setMarksFor(data);
+    setMarks((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([, m]) => m.pending))
+    );
+  }
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const show = useCallback((next: ToastBody) => {
+    toastId.current += 1;
+    setToast({ ...next, id: toastId.current });
+  }, []);
+
+  const toggle = useCallback(
+    async (todo: ViewTodo, done: boolean) => {
+      const key = todoKey(todo);
+      if (saving.current.has(key)) return;
+      saving.current.add(key);
+      setMarks((prev) => ({ ...prev, [key]: { done, pending: true } }));
+      if (!done) setToast(null);
+      const result = await toggleTodo(todo, done, getToken, undefined, api);
+      saving.current.delete(key);
+      if (!mounted.current) return;
+      if (result.ok) {
+        setMarks((prev) => ({ ...prev, [key]: { done, pending: false } }));
+        if (done) show({ kind: "done", todo });
+        onChanged();
+        return;
+      }
+      // Back to what the list says, and why.
+      setMarks((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      show({ kind: "error", message: result.message });
+      if (result.reason !== "denied") onChanged();
+    },
+    [api, getToken, onChanged, show]
+  );
+
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -253,7 +418,8 @@ export default function NotesHome({ data, onDone }: NotesHomeProps) {
     <div className="space-y-8">
       <p className="text-lg font-semibold text-ayu-text">{date}</p>
       <Calendar data={data} />
-      <Todos data={data} onDone={onDone} />
+      <Todos data={data} marks={marks} onToggle={toggle} />
+      <ToastBar toast={toast} onUndo={(todo) => void toggle(todo, false)} />
     </div>
   );
 }

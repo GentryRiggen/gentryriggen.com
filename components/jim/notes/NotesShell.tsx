@@ -25,8 +25,6 @@ interface NotesShellProps {
   getToken: (force?: boolean) => Promise<string | null>;
   /** The Notes tab is showing: load (or refresh stale data) then. */
   active: boolean;
-  /** Puts "Done: <title>" in the chat box and switches to Chat. */
-  onDone: (title: string) => void;
 }
 
 type Page = "home" | "health" | "training" | "golf" | "people";
@@ -65,12 +63,7 @@ function Skeleton() {
 }
 
 /** The Notes tab: its page bar, the data, and the five read-only pages. */
-export default function NotesShell({
-  api,
-  getToken,
-  active,
-  onDone,
-}: NotesShellProps) {
+export default function NotesShell({ api, getToken, active }: NotesShellProps) {
   const [data, setData] = useState<ViewData | null>(
     () => getCachedView()?.data ?? null
   );
@@ -86,6 +79,8 @@ export default function NotesShell({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLButtonElement>(null);
   const inflight = useRef(false);
+  /** A change landed while a load was out: load once more after it. */
+  const again = useRef(false);
   /** Where the People list was scrolled to before a profile opened. */
   const listTop = useRef(0);
   const restoreTop = useRef<number | null>(null);
@@ -96,16 +91,28 @@ export default function NotesShell({
     setLoading(true);
     setError(null);
     try {
-      const next = await fetchView(getToken, undefined, api);
-      setData(next);
-      setLoadedAt(getCachedView()?.at ?? Date.now());
-    } catch (err) {
-      setError(err instanceof JimError ? err.kind : "server");
+      do {
+        again.current = false;
+        try {
+          const next = await fetchView(getToken, undefined, api);
+          setData(next);
+          setLoadedAt(getCachedView()?.at ?? Date.now());
+          setError(null);
+        } catch (err) {
+          setError(err instanceof JimError ? err.kind : "server");
+        }
+      } while (again.current);
     } finally {
       inflight.current = false;
       setLoading(false);
     }
   }, [api, getToken]);
+
+  /** A todo was saved: refetch in the background, after any load now out. */
+  const reload = useCallback(() => {
+    if (inflight.current) again.current = true;
+    else void load();
+  }, [load]);
 
   // Load on the first open, and again on a later open once the data is old.
   useEffect(() => {
@@ -172,7 +179,9 @@ export default function NotesShell({
         <Skeleton />
       );
   } else if (page === "home") {
-    body = <NotesHome data={data} onDone={onDone} />;
+    body = (
+      <NotesHome data={data} api={api} getToken={getToken} onChanged={reload} />
+    );
   } else if (page === "health") {
     body = <NotesHealth data={data} />;
   } else if (page === "training") {
