@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.36.1",
+    date: "2026-10-30",
+    title: "Steady pictures for our checks",
+    highlights: [
+      "Behind the scenes: our automatic picture checks of a ship rolling over in a storm work again, so we spot it if the scene ever looks wrong. Nothing changes when you play",
+    ],
+  },
+  {
     version: "2.36.0",
     date: "2026-10-30",
     title: "Shipwreck storm and trial setup",
