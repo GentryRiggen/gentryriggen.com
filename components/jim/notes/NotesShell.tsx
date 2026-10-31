@@ -12,8 +12,10 @@ import { RefreshCw } from "lucide-react";
 import NotesGolf from "@/components/jim/notes/NotesGolf";
 import NotesHealth from "@/components/jim/notes/NotesHealth";
 import NotesHome from "@/components/jim/notes/NotesHome";
+import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
+import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import { timeLabel } from "@/lib/jim/notesData";
@@ -82,13 +84,19 @@ export default function NotesShell({
   const [page, setPage] = useState<Page>("home");
   const [person, setPerson] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  /** The search across all notes; while it has text it replaces the page. */
+  const [search, setSearch] = useState("");
+  /** A note opened from the search results. */
+  const [found, setFound] = useState<string | null>(null);
+  const searching = search.trim() !== "";
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLButtonElement>(null);
   const inflight = useRef(false);
   /** A change landed while a load was out: load once more after it. */
   const again = useRef(false);
-  /** Where the People list was scrolled to before a profile opened. */
+  /** Where the People list (or the results) was scrolled to before a
+   * profile or note opened. */
   const listTop = useRef(0);
   const restoreTop = useRef<number | null>(null);
 
@@ -138,7 +146,7 @@ export default function NotesShell({
     if (el && typeof el.scrollTo === "function") {
       el.scrollTo({ top, behavior: "instant" });
     }
-  }, [page, person]);
+  }, [page, person, searching, found]);
 
   // Keep the selected pill in view when the row is scrolled sideways.
   useEffect(() => {
@@ -149,7 +157,10 @@ export default function NotesShell({
   }, [page]);
 
   function goTo(next: Page) {
-    if (next === page && person === null) return;
+    if (searching) {
+      setSearch("");
+      setFound(null);
+    } else if (next === page && person === null) return;
     if (person !== null && next === "people")
       restoreTop.current = listTop.current;
     setPerson(null);
@@ -166,8 +177,59 @@ export default function NotesShell({
     setPerson(null);
   }
 
+  function onSearch(value: string) {
+    setSearch(value);
+    if (!value.trim()) setFound(null);
+  }
+
+  function openFound(path: string) {
+    listTop.current = scrollerRef.current?.scrollTop ?? 0;
+    setFound(path);
+  }
+
+  function closeFound() {
+    restoreTop.current = listTop.current;
+    setFound(null);
+  }
+
   let body: ReactNode;
-  if (!data) {
+  if (searching) {
+    // A person in the payload opens as their profile; anything else is
+    // fetched as a note. The results stay mounted, so back is instant.
+    const foundPerson =
+      found?.startsWith("people/") && data
+        ? data.people.find((p) => p.path === found)
+        : undefined;
+    body = (
+      <>
+        <div hidden={found !== null}>
+          <NotesSearch
+            query={search}
+            api={api}
+            getToken={getToken}
+            onOpen={openFound}
+          />
+        </div>
+        {found !== null &&
+          (foundPerson && data ? (
+            <NotesPerson
+              person={foundPerson}
+              today={data.today}
+              onBack={closeFound}
+              backLabel="Results"
+            />
+          ) : (
+            <NotesNote
+              key={found}
+              path={found}
+              api={api}
+              getToken={getToken}
+              onBack={closeFound}
+            />
+          ))}
+      </>
+    );
+  } else if (!data) {
     body =
       error && !loading ? (
         <div className="space-y-3 py-8 text-center">
@@ -262,7 +324,12 @@ export default function NotesShell({
           aria-labelledby={`jim-notes-tab-${page}`}
           className="mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         >
-          {data && (
+          {found === null && (
+            <div className="mb-4">
+              <SearchField value={search} onChange={onSearch} />
+            </div>
+          )}
+          {data && !searching && (
             <div className="mb-5 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
               <p className="min-w-0" aria-live="polite">
                 {error === "denied"

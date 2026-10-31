@@ -7,11 +7,19 @@ import NotesShell from "../NotesShell";
 
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
-  return { ...actual, fetchView: jest.fn(), toggleTodo: jest.fn() };
+  return {
+    ...actual,
+    fetchView: jest.fn(),
+    toggleTodo: jest.fn(),
+    searchNotes: jest.fn(),
+    fetchNote: jest.fn(),
+  };
 });
 
 const fetchView = jest.mocked(view.fetchView);
 const toggleTodo = jest.mocked(view.toggleTodo);
+const searchNotes = jest.mocked(view.searchNotes);
+const fetchNote = jest.mocked(view.fetchNote);
 const getToken = jest.fn().mockResolvedValue("t");
 
 /** fetchView that also fills the cache, like the real one. */
@@ -56,6 +64,8 @@ function renderShell(active = true) {
 beforeEach(() => {
   fetchView.mockReset();
   toggleTodo.mockReset();
+  searchNotes.mockReset();
+  fetchNote.mockReset();
   (jest.requireActual("@/lib/jim/view") as typeof view).clearViewCache();
 });
 
@@ -214,4 +224,59 @@ it("loads once more when a todo saves while a load is out", async () => {
   await act(async () => slow.resolve(VIEW_FIXTURE));
   expect(fetchView).toHaveBeenCalledTimes(3);
   expect(await screen.findByText("No open todos.")).toBeInTheDocument();
+});
+
+describe("search", () => {
+  const RESULTS = [
+    { path: "home/garden.md", title: "Garden", snippet: "the plants" },
+    { path: "people/sam-okafor.md", title: "Sam Okafor", snippet: "data" },
+  ];
+
+  it("replaces the page with results, opens notes and people, and clears", async () => {
+    fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+    searchNotes.mockResolvedValue(RESULTS);
+    fetchNote.mockResolvedValue({
+      path: "home/garden.md",
+      title: "Garden",
+      updated: "2026-10-12",
+      body: "- Tomatoes",
+    });
+    renderShell();
+    await screen.findByText("Water the plants");
+    const field = screen.getByLabelText("Search notes");
+    await userEvent.type(field, "plants");
+    expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Garden/ })
+    );
+    expect(await screen.findByText("Tomatoes")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Search notes")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Results" }));
+    expect(screen.getByLabelText("Search notes")).toHaveValue("plants");
+    expect(searchNotes).toHaveBeenCalledTimes(1);
+
+    // A person in the payload opens as their profile.
+    await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
+    expect(
+      screen.getByRole("heading", { name: "Sam Okafor" })
+    ).toBeInTheDocument();
+    expect(fetchNote).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole("button", { name: "Results" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByLabelText("Search notes")).toHaveValue("");
+    expect(screen.getByText("Water the plants")).toBeInTheDocument();
+  });
+
+  it("a page pill leaves the search for that page", async () => {
+    fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+    searchNotes.mockResolvedValue(RESULTS);
+    renderShell();
+    await screen.findByText("Water the plants");
+    await userEvent.type(screen.getByLabelText("Search notes"), "plants");
+    await userEvent.click(screen.getByRole("tab", { name: "Home" }));
+    expect(screen.getByLabelText("Search notes")).toHaveValue("");
+    expect(screen.getByText("Water the plants")).toBeInTheDocument();
+  });
 });

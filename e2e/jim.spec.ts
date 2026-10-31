@@ -550,6 +550,72 @@ for (const width of [undefined, 320]) {
     );
 
     test(
+      "Home's Today card, boxes, quick log, search and a note fit the screen",
+      { tag: "@smoke" },
+      async ({ page }, testInfo) => {
+        // Before the standup, so the Today card has its next meeting.
+        await page.clock.setFixedTime(new Date("2026-10-31T15:00:00Z"));
+        await signedIn(page);
+        await openNotes(page);
+        const shot = async (name: string) => {
+          await noSidewaysScroll(page);
+          await bigTargets(page);
+          await page.screenshot({
+            path: shotName(page, testInfo, name, "ayu"),
+            animations: "disabled",
+          });
+        };
+        const today = page.getByRole("region", { name: "Today" });
+        await expect(today.getByText("Team standup")).toBeVisible();
+        await expect(today.getByText("3 days ago")).toBeVisible();
+        expect(
+          await fontSize(page, "#jim-notes-search")
+        ).toBeGreaterThanOrEqual(16);
+        await shot("notes-home-today");
+
+        // Tick a box: the toast sits above the home bar, on screen.
+        await page
+          .getByRole("checkbox", { name: "Renew the car registration" })
+          .click();
+        const undo = page.getByRole("button", { name: "Undo" });
+        await expect(undo).toBeInViewport({ ratio: 1 });
+        await shot("notes-home-toast");
+
+        await page.getByRole("button", { name: "Add todo" }).click();
+        const sheet = page.getByRole("dialog", { name: "Add todo" });
+        await expect(sheet).toBeInViewport({ ratio: 1 });
+        await sheet.getByLabel("Todo").fill("Call the vet about the dog");
+        for (const id of await sheet.locator("input").all()) {
+          if ((await id.getAttribute("type")) === "radio") continue;
+          expect(
+            await id.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+          ).toBeGreaterThanOrEqual(16);
+        }
+        await sheet.getByLabel("Todo").blur();
+        await shot("notes-quicklog");
+        await page.keyboard.press("Escape");
+        await expect(sheet).toHaveCount(0);
+
+        await page.getByLabel("Search notes").fill("plants");
+        await expect(
+          page.getByRole("button", { name: /Garden/ })
+        ).toBeVisible();
+        await page.getByLabel("Search notes").blur();
+        await shot("notes-search");
+
+        await page.getByRole("button", { name: /Garden/ }).click();
+        await expect(
+          page.getByRole("heading", { name: "Garden" })
+        ).toBeVisible();
+        await expect(page.locator("table")).toBeVisible();
+        await shot("notes-note");
+        await page.getByRole("button", { name: "Results" }).click();
+        await page.getByRole("button", { name: "Clear search" }).click();
+        await expect(page.getByText("Water the plants")).toBeVisible();
+      }
+    );
+
+    test(
       "every Notes page fits the screen with big targets",
       { tag: "@smoke" },
       async ({ page }, testInfo) => {

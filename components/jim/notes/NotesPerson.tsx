@@ -9,6 +9,8 @@ interface NotesPersonProps {
   person: Person;
   today: string;
   onBack: () => void;
+  /** Where the back button goes ("People", or "Results" from a search). */
+  backLabel?: string;
 }
 
 /** One person's profile: key facts, strengths, then their whole note. */
@@ -16,6 +18,7 @@ export default function NotesPerson({
   person,
   today,
   onBack,
+  backLabel = "People",
 }: NotesPersonProps) {
   const facts = personFacts(person, today);
   const strengths = Array.isArray(person.strengths) ? person.strengths : [];
@@ -34,7 +37,7 @@ export default function NotesPerson({
         className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-ayu-panel"
       >
         <ChevronLeft aria-hidden="true" className="size-5" />
-        People
+        {backLabel}
       </button>
       <header className="space-y-1">
         <h2 className="text-2xl font-semibold text-ayu-text [overflow-wrap:anywhere]">
