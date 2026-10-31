@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { THEME_SCRIPT } from "@/lib/theme/themeScript";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -81,23 +82,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon.svg" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                const savedTheme = localStorage.getItem('theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-                if (theme === 'dark') {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-                // Set initial theme-color for iOS Safari browser chrome
-                const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-                if (themeColorMeta) {
-                  themeColorMeta.setAttribute('content', theme === 'dark' ? '#030712' : '#ffffff');
-                }
-              })();
-            `,
+            __html: THEME_SCRIPT,
           }}
         />
         <script

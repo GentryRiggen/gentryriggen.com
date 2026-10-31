@@ -9,8 +9,9 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, MessageCircle, NotebookText } from "lucide-react";
 import JimHeader from "@/components/jim/JimHeader";
+import NotesShell from "@/components/jim/notes/NotesShell";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import { JimError, sendToJim, type JimErrorKind } from "@/lib/jim/api";
 import JimMarkdown from "@/lib/jim/markdown";
@@ -37,6 +38,13 @@ const ERRORS: Record<JimErrorKind, string> = {
   rejected: "Jim couldn't take that message. Try a shorter one.",
 };
 
+type Tab = "chat" | "notes";
+
+const TABS: { id: Tab; label: string; Icon: typeof MessageCircle }[] = [
+  { id: "chat", label: "Chat", Icon: MessageCircle },
+  { id: "notes", label: "Notes", Icon: NotebookText },
+];
+
 /** After this long, the thinking indicator says it is still working. */
 const SLOW_MS = 20_000;
 
@@ -61,6 +69,9 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   const [held, setHeld] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
+  const [tab, setTab] = useState<Tab>("chat");
+  /** Notes is built (and fetches) only once it has been opened. */
+  const [notesOpened, setNotesOpened] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -167,6 +178,19 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     setDraft((current) => (current ? `${text}\n${current}` : text));
   }
 
+  function showTab(next: Tab) {
+    if (next === "notes") setNotesOpened(true);
+    setTab(next);
+  }
+
+  /** A todo's Done on Notes: the line goes in the box for Gentry to send. */
+  const doneFromNotes = useCallback((title: string) => {
+    const line = `Done: ${title}`;
+    setDraft((current) => (current.trim() ? `${current}\n${line}` : line));
+    stuck.current = true;
+    setTab("chat");
+  }, []);
+
   function restoreHeld() {
     if (held === null) return;
     putBack(held);
@@ -199,118 +223,178 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   return (
     <div
       ref={rootRef}
-      className="fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100"
+      className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
     >
       <JimHeader onSignOut={onSignOut} />
 
-      <div
-        ref={scrollerRef}
-        onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-      >
+      <div className="relative min-h-0 flex-1">
         <div
-          role="log"
-          aria-label="Conversation"
-          className="mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
+          id="jim-chat"
+          role="tabpanel"
+          aria-labelledby="jim-tab-chat"
+          className={`absolute inset-0 flex flex-col ${tab === "chat" ? "" : "invisible"}`}
         >
-          {messages.length === 0 && !sending && (
-            <p className="py-10 text-center text-gray-500 dark:text-gray-400">
-              Ask Jim something, or tell him something to remember.
-            </p>
-          )}
-          {messages.map((m) =>
-            m.from === "me" ? (
-              <div
-                key={m.id}
-                className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-blue-600 px-4 py-2.5 whitespace-pre-wrap text-white [overflow-wrap:anywhere] dark:bg-blue-500"
-              >
-                {m.text}
-              </div>
-            ) : (
-              <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
-                <div className="rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 dark:bg-gray-900">
-                  <JimMarkdown text={m.text} />
-                </div>
-                {m.changed && m.changed.length > 0 && (
-                  <p className="mt-1 px-1 text-xs text-gray-500 [overflow-wrap:anywhere] dark:text-gray-400">
-                    Saved: {m.changed.join(", ")}
-                  </p>
-                )}
-              </div>
-            )
-          )}
-          {sending && (
-            <p
-              role="status"
-              className="mr-auto rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-gray-500 dark:bg-gray-900 dark:text-gray-400"
+          <div
+            ref={scrollerRef}
+            onScroll={onScroll}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
+            <div
+              role="log"
+              aria-label="Conversation"
+              className="mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
             >
-              {slow ? "Still working…" : "Jim is thinking…"}
-            </p>
-          )}
+              {messages.length === 0 && !sending && (
+                <p className="py-10 text-center text-ayu-subtle">
+                  Ask Jim something, or tell him something to remember.
+                </p>
+              )}
+              {messages.map((m) =>
+                m.from === "me" ? (
+                  <div
+                    key={m.id}
+                    className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]"
+                  >
+                    {m.text}
+                  </div>
+                ) : (
+                  <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
+                    <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
+                      <JimMarkdown text={m.text} />
+                    </div>
+                    {m.changed && m.changed.length > 0 && (
+                      <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
+                        Saved: {m.changed.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                )
+              )}
+              {sending && (
+                <p
+                  role="status"
+                  className="mr-auto rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
+                >
+                  {slow ? "Still working…" : "Jim is thinking…"}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <form
+            onSubmit={onSubmit}
+            className="shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pb-2 pl-[env(safe-area-inset-left)]"
+          >
+            <div className="mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+              {error && (
+                <p
+                  role="alert"
+                  className={`mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-3 py-2 text-sm ${
+                    error === "waking" || error === "uncertain"
+                      ? "bg-ayu-accent/15 text-ayu-accent"
+                      : "bg-ayu-red/15 text-ayu-red"
+                  }`}
+                >
+                  <span>{ERRORS[error]}</span>
+                  {held !== null && (
+                    <button
+                      type="button"
+                      onClick={restoreHeld}
+                      className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
+                    >
+                      Put my message back
+                    </button>
+                  )}
+                </p>
+              )}
+              <div className="flex items-end gap-2">
+                <label htmlFor="jim-message" className="sr-only">
+                  Message
+                </label>
+                <textarea
+                  id="jim-message"
+                  ref={boxRef}
+                  rows={1}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  placeholder="Message Jim"
+                  enterKeyHint={phone ? "enter" : "send"}
+                  autoComplete="off"
+                  className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-ayu-muted bg-ayu-panel px-4 py-2.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  aria-label="Send"
+                  disabled={!canSend}
+                  // Keep the keyboard up: a tap on Send must not blur the box.
+                  onPointerDown={(e) => e.preventDefault()}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ayu-accent transition-colors! duration-150! text-ayu-bg hover:bg-ayu-orange disabled:bg-ayu-raised disabled:text-ayu-subtle"
+                >
+                  <ArrowUp
+                    aria-hidden="true"
+                    className="size-5"
+                    strokeWidth={2.5}
+                  />
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
+
+        {notesOpened && (
+          <div
+            id="jim-notes"
+            role="tabpanel"
+            aria-labelledby="jim-tab-notes"
+            className={`absolute inset-0 bg-ayu-bg ${tab === "notes" ? "" : "invisible"}`}
+          >
+            <NotesShell
+              api={api}
+              getToken={getToken}
+              active={tab === "notes"}
+              onDone={doneFromNotes}
+            />
+          </div>
+        )}
       </div>
 
-      <form
-        onSubmit={onSubmit}
-        className={`shrink-0 border-t border-gray-200 bg-white pt-2 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] dark:border-gray-800 dark:bg-gray-950 ${
-          keyboardOpen ? "pb-2" : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-        }`}
-      >
-        <div className="mx-auto w-full max-w-[45rem] px-3 sm:px-4">
-          {error && (
-            <p
-              role="alert"
-              className={`mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-3 py-2 text-sm ${
-                error === "waking" || error === "uncertain"
-                  ? "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
-                  : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200"
-              }`}
-            >
-              <span>{ERRORS[error]}</span>
-              {held !== null && (
+      {/* Hidden while the keyboard is up, like any phone app's tab bar. */}
+      {!keyboardOpen && (
+        <nav
+          aria-label="Jim"
+          className="shrink-0 border-t border-ayu-line bg-ayu-panel pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
+        >
+          <div
+            role="tablist"
+            aria-label="Jim"
+            className="mx-auto flex w-full max-w-[45rem]"
+          >
+            {TABS.map(({ id, label, Icon }) => {
+              const selected = tab === id;
+              return (
                 <button
+                  key={id}
                   type="button"
-                  onClick={restoreHeld}
-                  className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
+                  role="tab"
+                  id={`jim-tab-${id}`}
+                  aria-selected={selected}
+                  aria-controls={`jim-${id}`}
+                  onClick={() => showTab(id)}
+                  className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
+                    selected
+                      ? "text-ayu-accent"
+                      : "text-ayu-subtle hover:text-ayu-text"
+                  }`}
                 >
-                  Put my message back
+                  <Icon aria-hidden="true" className="size-6" />
+                  {label}
                 </button>
-              )}
-            </p>
-          )}
-          <div className="flex items-end gap-2">
-            <label htmlFor="jim-message" className="sr-only">
-              Message
-            </label>
-            <textarea
-              id="jim-message"
-              ref={boxRef}
-              rows={1}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Message Jim"
-              enterKeyHint={phone ? "enter" : "send"}
-              autoComplete="off"
-              className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-gray-300 bg-white px-4 py-2.5 text-base leading-6 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-blue-400"
-            />
-            <button
-              type="submit"
-              aria-label="Send"
-              disabled={!canSend}
-              // Keep the keyboard up: a tap on Send must not blur the box.
-              onPointerDown={(e) => e.preventDefault()}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 transition-colors! duration-150! text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:bg-blue-500 dark:hover:bg-blue-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
-            >
-              <ArrowUp
-                aria-hidden="true"
-                className="size-5"
-                strokeWidth={2.5}
-              />
-            </button>
+              );
+            })}
           </div>
-        </div>
-      </form>
+        </nav>
+      )}
     </div>
   );
 }

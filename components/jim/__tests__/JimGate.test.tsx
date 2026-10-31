@@ -5,6 +5,8 @@ import * as client from "@/lib/firebase/client";
 import * as config from "@/lib/firebase/config";
 import * as api from "@/lib/jim/api";
 import * as host from "@/lib/jim/host";
+import { fetchView, getCachedView } from "@/lib/jim/view";
+import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import JimGate from "../JimGate";
 
 jest.mock("@/lib/firebase/client");
@@ -27,8 +29,12 @@ jest.mock("@/lib/jim/host", () => ({
 }));
 jest.mock("../JimChat", () => ({
   __esModule: true,
-  default: ({ api }: { api: string }) => (
-    <div data-testid="chat" data-api={api} />
+  default: ({ api, onSignOut }: { api: string; onSignOut: () => void }) => (
+    <div data-testid="chat" data-api={api}>
+      <button type="button" onClick={onSignOut}>
+        Chat sign out
+      </button>
+    </div>
   ),
 }));
 
@@ -157,4 +163,40 @@ it("sends other domains to gentryriggen.com/jim before loading sign-in", async (
 it("stays put on gentryriggen.com", async () => {
   await renderGate();
   expect(host.goTo).not.toHaveBeenCalled();
+});
+
+/** Puts a Notes payload in the session cache, as opening Notes would. */
+async function fillViewCache() {
+  await fetchView(
+    async () => "t",
+    (async () =>
+      ({
+        status: 200,
+        ok: true,
+        json: async () => VIEW_FIXTURE,
+      }) as Response) as typeof fetch,
+    "https://jim.example.test"
+  );
+  expect(getCachedView()).not.toBeNull();
+}
+
+it("forgets the Notes data on sign out", async () => {
+  window.__JIM_TEST__ = { api: "https://jim.example.test" };
+  await renderGate();
+  act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+  await fillViewCache();
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Chat sign out" })
+  );
+  expect(getCachedView()).toBeNull();
+});
+
+it("forgets the Notes data when the sign-in goes away", async () => {
+  window.__JIM_TEST__ = { api: "https://jim.example.test" };
+  await renderGate();
+  act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+  await screen.findByTestId("chat");
+  await fillViewCache();
+  act(() => emit(null));
+  expect(getCachedView()).toBeNull();
 });

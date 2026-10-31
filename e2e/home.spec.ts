@@ -103,3 +103,19 @@ test.describe("Home Page", () => {
     );
   });
 });
+
+/* The inline theme script in app/layout.tsx runs on every page; a syntax
+   error there breaks them all, so check a few kinds of page. */
+for (const path of ["/", "/jim", "/ship-builder/versions"]) {
+  test(
+    `${path} loads without script errors`,
+    { tag: "@smoke" },
+    async ({ page }) => {
+      const errors: string[] = [];
+      page.on("pageerror", (err) => errors.push(err.message));
+      await page.goto(path);
+      await page.waitForLoadState("load");
+      expect(errors).toEqual([]);
+    }
+  );
+}

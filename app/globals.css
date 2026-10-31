@@ -4,6 +4,27 @@
 /* Landscape phones and other short screens. */
 @custom-variant short (@media (max-height: 32rem));
 
+/* Ayu Mirage, for /jim only (chat and Notes, in light and dark alike). One
+   set of tokens: use them as bg-ayu-bg, text-ayu-text, border-ayu-line… */
+@theme {
+  --color-ayu-bg: #1f2430;
+  --color-ayu-panel: #242936;
+  --color-ayu-raised: #2d3240;
+  --color-ayu-line: #171b24;
+  --color-ayu-text: #cccac2;
+  /* The palette's muted grey is 3.6:1 on the background: borders and
+     decoration only. Secondary text uses ayu-subtle (4.6:1 on a panel). */
+  --color-ayu-muted: #707a8c;
+  --color-ayu-subtle: #8a9199;
+  --color-ayu-accent: #ffcc66;
+  --color-ayu-orange: #ffad66;
+  --color-ayu-green: #d5ff80;
+  --color-ayu-cyan: #95e6cb;
+  --color-ayu-blue: #73d0ff;
+  --color-ayu-purple: #dfbfff;
+  --color-ayu-red: #f28779;
+}
+
 * {
   scroll-behavior: smooth;
 }
@@ -243,4 +264,22 @@ button:focus-visible {
   .pb-mystery-icon {
     animation: none;
   }
+}
+
+/* /jim draws Ayu Mirage edge to edge: the page behind it (iOS overscroll,
+   the home-screen app's launch) matches, native controls are dark, and the
+   site's purple focus ring and slow `transition: all` give way. */
+html:has(.jim-app),
+html:has(.jim-app) body {
+  background-color: var(--color-ayu-bg);
+  color-scheme: dark;
+}
+
+.jim-app :is(a, button) {
+  transition-property: color, background-color, border-color, opacity;
+  transition-duration: 150ms;
+}
+
+.jim-app :is(a, button):focus-visible {
+  outline-color: var(--color-ayu-accent);
 }

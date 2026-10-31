@@ -5,8 +5,8 @@
   "start_url": "/jim",
   "scope": "/jim",
   "display": "standalone",
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#1f2430",
+  "background_color": "#1f2430",
   "icons": [
     {
       "src": "/jim-icons/icon-192.png",
@@ -27,13 +27,5 @@
       "purpose": "maskable"
     }
   ],
-  "description": "Private chat.",
-  "user_preferences": {
-    "color_scheme": {
-      "dark": {
-        "theme_color": "#030712",
-        "background_color": "#030712"
-      }
-    }
-  }
+  "description": "Private chat."
 }
