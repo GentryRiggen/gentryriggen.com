@@ -17,7 +17,7 @@ import type {
   EvacuationPlan,
 } from "@/lib/ship-builder/crowd/evacuation";
 import { OUTFIT_COUNT } from "@/lib/ship-builder/crowd/types";
-import { boatAfloatLift } from "./crowdView";
+import { boatAfloatLift, raftAfloatLift } from "./crowdView";
 import type { LifeboatHull } from "./lifeboatHulls";
 import { FINISHES } from "./Surface";
 import { withRust } from "./rust";
@@ -206,7 +206,8 @@ const euler = new Euler();
 
 /**
  * A launched boat's world transform at `t`: `boatPoseAt`, lifted so the hull
- * rides on the water (`boatAfloatLift`). Its origin is the boat's hang point.
+ * rides on the water (`boatAfloatLift`, or `raftAfloatLift` for a raft). Its
+ * origin is the boat's hang point (a raft's: its deck edge point).
  */
 export function launchedBoatMatrix(
   plan: EvacuationPlan,
@@ -217,11 +218,12 @@ export function launchedBoatMatrix(
 ): Matrix4 {
   const { position, rotation } = plan.boatPoseAt(launch, t);
   euler.set(rotation.x, rotation.y, rotation.z);
+  const since = t - launch.at;
+  const lift =
+    launch.kind === "raft"
+      ? raftAfloatLift(since)
+      : boatAfloatLift(hull, since);
   return out
     .makeRotationFromEuler(euler)
-    .setPosition(
-      position.x,
-      position.y + boatAfloatLift(hull, t - launch.at),
-      position.z
-    );
+    .setPosition(position.x, position.y + lift, position.z);
 }

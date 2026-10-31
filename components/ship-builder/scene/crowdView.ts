@@ -1,4 +1,8 @@
-import { BOAT_SHOWN_MAX, LOWER_S } from "@/lib/ship-builder/crowd/evacuation";
+import {
+  BOAT_SHOWN_MAX,
+  LOWER_S,
+  RAFT_DROP_S,
+} from "@/lib/ship-builder/crowd/evacuation";
 import { crowdSize, planCrowd } from "@/lib/ship-builder/crowd/plan";
 import type { CrowdPlan, PersonPose } from "@/lib/ship-builder/crowd/types";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
@@ -40,7 +44,7 @@ function stairsUp(grid: WalkGrid): Map<string, StairLink> {
   return links;
 }
 
-function smoothstep(t: number): number {
+export function smoothstep(t: number): number {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
 }
@@ -156,6 +160,21 @@ export function boatAfloatLift(
   return (
     smoothstep(sinceLaunch / LOWER_S) *
     (LIFEBOAT_HANG_OFFSET + AFLOAT_DRAFT * hull.depth)
+  );
+}
+
+/** An open raft's floor sits this far above the water. */
+const RAFT_FLOOR = 0.03;
+
+/**
+ * How far a raft is lifted above `boatPoseAt`, `sinceLaunch` seconds after it
+ * is thrown: its origin is the deck edge it went from, so on the water the
+ * lift puts its floor (where a sitter's seat, `LIFEBOAT_HANG_OFFSET` below
+ * the origin, lands) just above the surface.
+ */
+export function raftAfloatLift(sinceLaunch: number): number {
+  return (
+    smoothstep(sinceLaunch / RAFT_DROP_S) * (LIFEBOAT_HANG_OFFSET + RAFT_FLOOR)
   );
 }
 
