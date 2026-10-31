@@ -170,7 +170,7 @@ export type TrialSlice =
       look: TrialLook;
       /** Changes per run, so "Try again" restarts the runner. */
       runId: number;
-      /** The descent to the sea floor is part of this run (iceberg trials). */
+      /** The descent to the sea floor is part of this run (timeline trials). */
       descending: boolean;
       /** Set when the trial was started from the Challenges panel. */
       challenge?: ChallengeId;

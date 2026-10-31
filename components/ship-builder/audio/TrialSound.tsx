@@ -42,9 +42,9 @@ function copyPlayback(target: PlaybackSnapshot) {
 }
 
 /**
- * Plays the iceberg and storm trials' sounds. Mount it inside the Canvas. Each frame it
- * compares the playback with the previous frame, turns the change into cues
- * and hands them to the synth. It renders nothing and never re-renders on a
+ * Plays the iceberg and storm trials' sounds. Mount it inside the Canvas.
+ * Each frame it compares the playback with the previous frame, turns the
+ * change into cues and hands them to the synth. It renders nothing and never re-renders on a
  * frame: it reads the shared playback, the store and the camera directly.
  *
  * It also owns the audio's lifecycle: it unlocks remembered sound on the first

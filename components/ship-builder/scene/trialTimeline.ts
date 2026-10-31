@@ -17,9 +17,9 @@ import { crowdPlanFor } from "./crowdView";
 
 /**
  * A timeline trial's (iceberg or storm) precomputed timeline, kept outside
- * React like
- * `trialPlayback`: thousands of states are worked out once per trial input,
- * then the runner, "Watch again" and the scrubber all read the same one.
+ * React like `trialPlayback`: thousands of states are worked out once per
+ * trial input, then the runner, "Watch again" and the scrubber all read the
+ * same one.
  */
 interface CachedTimeline {
   input: TrialInput;

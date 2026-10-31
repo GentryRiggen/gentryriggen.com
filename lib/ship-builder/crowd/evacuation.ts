@@ -1,6 +1,5 @@
-import { resolveAttachPoint } from "../model/attach";
 import { getPartDef } from "../model/catalog";
-import { buildOccupancy, rotatedFootprint } from "../model/grid";
+import { rotatedFootprint } from "../model/grid";
 import type { PlacedPart, Ship } from "../model/types";
 import { DECK_Y, LEVEL_HEIGHT } from "../model/worldFrame";
 import { analyzeShip } from "../model/analysis";
@@ -9,7 +8,7 @@ import { floodOf } from "../sim/trialKind";
 import { SIM_STEP_S, type SimState, type TrialInput } from "../sim/types";
 import { halfWalkGrid, type WalkHalf, walkHalfOf } from "../walk/halfGrid";
 import type { WalkGrid } from "../walk/types";
-import { lifeboatCount } from "./lifeboatCount";
+import { hungLifeboats, lifeboatCount } from "./lifeboatCount";
 import { type CrowdGraph, crowdGraphOf, pathTo } from "./plan";
 import { between, fnv1a, mulberry32 } from "./rng";
 import {
@@ -438,25 +437,8 @@ function lifeboatsOf(
   graphOf: (half: WalkHalf | null) => CrowdGraph,
   atX: number | null
 ): Lifeboat[] {
-  const occupancy = buildOccupancy(ship);
-  const byId = new Map(ship.parts.map((part) => [part.id, part]));
   const boats: Lifeboat[] = [];
-  for (const part of ship.parts) {
-    const seats = getPartDef(part.type).seats ?? 0;
-    if (seats <= 0 || part.anchor.kind !== "attach") continue;
-    const davit = byId.get(part.anchor.parentId);
-    if (
-      !davit ||
-      (davit.type !== "davit" && davit.type !== "davit-side") ||
-      davit.anchor.kind !== "attach"
-    ) {
-      continue;
-    }
-    const block = byId.get(davit.anchor.parentId);
-    const hang = resolveAttachPoint(ship, part.anchor, occupancy);
-    const mount = resolveAttachPoint(ship, davit.anchor, occupancy);
-    if (!block || block.anchor.kind !== "grid" || !hang || !mount) continue;
-
+  for (const { part, seats, block, hang, mount } of hungLifeboats(ship)) {
     const starboard = mount.side === "starboard";
     const half = atX === null ? null : blockHalf(block, atX);
     const graph = graphOf(half);
@@ -666,6 +648,7 @@ export function planEvacuation(
   // way, or no time) unless the water reaches her boarding spot first.
   const fillBoats = (): void => {
     const real = lifeboatCount(ship, analyzeShip(ship).stats);
+    // The same boats `lifeboatCount` sums (both read `hungLifeboats`).
     const boatSeats = boats.reduce((n, boat) => n + boat.seats, 0);
     const saved =
       boatSeats <= 0
