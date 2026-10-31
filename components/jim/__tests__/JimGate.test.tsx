@@ -4,6 +4,7 @@ import { ADMIN_UID } from "@/lib/analytics/admin";
 import * as client from "@/lib/firebase/client";
 import * as config from "@/lib/firebase/config";
 import * as api from "@/lib/jim/api";
+import * as host from "@/lib/jim/host";
 import JimGate from "../JimGate";
 
 jest.mock("@/lib/firebase/client");
@@ -11,6 +12,11 @@ jest.mock("@/lib/firebase/config");
 jest.mock("@/lib/jim/api", () => ({
   ...jest.requireActual("@/lib/jim/api"),
   JIM_API: "",
+}));
+jest.mock("@/lib/jim/host", () => ({
+  ...jest.requireActual("@/lib/jim/host"),
+  jimRedirectTarget: jest.fn(() => null),
+  goTo: jest.fn(),
 }));
 jest.mock("../JimChat", () => ({
   __esModule: true,
@@ -116,4 +122,20 @@ it("signs out from the not-connected screen", async () => {
     await screen.findByRole("button", { name: "Sign out" })
   );
   expect(mockClient.signOutUser).toHaveBeenCalled();
+});
+
+it("sends other domains to gentryriggen.com/jim before loading sign-in", async () => {
+  jest.mocked(host.jimRedirectTarget).mockReturnValueOnce(host.JIM_URL);
+  render(<JimGate />);
+  await waitFor(() =>
+    expect(host.goTo).toHaveBeenCalledWith("https://gentryriggen.com/jim")
+  );
+  expect(mockClient.watchAuth).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+});
+
+it("stays put on gentryriggen.com", async () => {
+  await renderGate();
+  expect(host.goTo).not.toHaveBeenCalled();
 });

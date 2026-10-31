@@ -15,6 +15,7 @@ import {
 } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { isJimConnected, JIM_API } from "@/lib/jim/api";
+import { goTo, jimRedirectTarget } from "@/lib/jim/host";
 import { jimTestHook } from "@/lib/jim/testHooks";
 
 type GetToken = (force?: boolean) => Promise<string | null>;
@@ -47,6 +48,13 @@ export default function JimGate() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // Off gentryriggen.com the server would refuse every request: go there
+    // first, before Firebase loads or the form shows.
+    const target = jimRedirectTarget(window.location.hostname);
+    if (target) {
+      goTo(target);
+      return;
+    }
     const hook = jimTestHook();
     // The e2e hook (compiled out of the shipped build) stands in for Firebase.
     const fake = hook?.signedIn === true;
@@ -129,13 +137,18 @@ export default function JimGate() {
     );
   }
 
+  // Blank (just the background) while sign-in is checked or the page is
+  // moving to gentryriggen.com, so the form never flashes.
+  if (state.kind === "loading") {
+    return (
+      <main aria-busy="true" className="min-h-dvh bg-white dark:bg-gray-950" />
+    );
+  }
+
   return (
     <main className="flex min-h-dvh items-center justify-center bg-white px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <div className="w-full max-w-sm space-y-5 py-8 text-center">
         <h1 className="text-3xl font-semibold">Jim</h1>
-        {state.kind === "loading" && (
-          <p className="text-gray-600 dark:text-gray-400">Checking sign-in…</p>
-        )}
         {state.kind === "unconfigured" && (
           <p className="text-gray-600 dark:text-gray-400">
             Firebase is not configured for this build.
