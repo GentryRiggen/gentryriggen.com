@@ -195,12 +195,16 @@ export async function fetchAdminSeason(game: SeasonGame): Promise<SeasonInfo> {
 }
 
 /**
- * Transaction: reads seasons/{game}, writes number + 1 (2 if missing),
- * startedAt serverTimestamp. Returns the new number.
+ * Transaction: reads seasons/{game}; if its number (1 when missing) is not
+ * `expected` (the season the admin saw), throws without writing; else writes
+ * expected + 1 with startedAt serverTimestamp. Returns the new number.
  */
-export async function startNewSeason(game: SeasonGame): Promise<number> {
+export async function startNewSeason(
+  game: SeasonGame,
+  expected: number
+): Promise<number> {
   const { db, ops } = await adminBoard();
-  return ops.startSeason(db, game);
+  return ops.startSeason(db, game, expected);
 }
 
 /** Top 50 of a season: plane by score, ship by total stars. Show as text. */
@@ -223,7 +227,8 @@ export async function deleteBoardEntry(
 
 /**
  * One batch: ban doc + delete uid from every season 1..current of both games
- * + planeDaily today and yesterday (UTC). Deleting a missing doc is fine.
+ * + planeDaily from two days ago through tomorrow (UTC, by this browser's
+ * clock). Deleting a missing doc is fine.
  */
 export async function banAndDeleteEverywhere(uid: string): Promise<void> {
   const { db, ops } = await adminBoard();

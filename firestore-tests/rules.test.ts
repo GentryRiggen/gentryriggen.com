@@ -41,6 +41,7 @@ import {
   readBoardHidden,
   readSeason,
   renameEntry,
+  SeasonChangedError,
   startSeason,
   writeBoardHidden,
 } from "@/lib/firebase/adminBoard";
@@ -2372,20 +2373,43 @@ describe("admin board tools", () => {
   };
 
   it("startSeason creates season 2, then adds one each time", async () => {
-    expect(await startSeason(adminDb(), "plane")).toBe(2);
-    expect(await startSeason(adminDb(), "plane")).toBe(3);
-    expect(await startSeason(adminDb(), "ship")).toBe(2);
+    expect(await startSeason(adminDb(), "plane", 1)).toBe(2);
+    expect(await startSeason(adminDb(), "plane", 2)).toBe(3);
+    expect(await startSeason(adminDb(), "ship", 1)).toBe(2);
     const plane = await readSeason(adminDb(), "plane");
     expect(plane.number).toBe(3);
     expect(plane.startedAt).toBeInstanceOf(Date);
     expect((await readSeason(adminDb(), "ship")).number).toBe(2);
   });
 
+  it("startSeason only starts the season after the one confirmed", async () => {
+    await seedSeasons(2, null);
+    expect(await startSeason(adminDb(), "plane", 2)).toBe(3);
+    // A second click, or a stale tab that still shows season 2.
+    await expect(startSeason(adminDb(), "plane", 2)).rejects.toThrow(
+      SeasonChangedError
+    );
+    expect((await readSeason(adminDb(), "plane")).number).toBe(3);
+    // A tab that thinks no season was started yet.
+    await expect(startSeason(adminDb(), "ship", 2)).rejects.toThrow(
+      SeasonChangedError
+    );
+    await expect(startSeason(adminDb(), "plane", 1)).rejects.toThrow(
+      SeasonChangedError
+    );
+    expect((await readSeason(adminDb(), "ship")).number).toBe(1);
+    expect((await readSeason(adminDb(), "plane")).number).toBe(3);
+  });
+
   it("startSeason is refused for anyone but the admin", async () => {
     const player = signedIn(UID, { provider: "anonymous" });
-    await assertFails(startSeason(player as unknown as Firestore, "plane"));
+    await assertFails(startSeason(player as unknown as Firestore, "plane", 1));
     await assertFails(
-      startSeason(signedIn("uid-someone-else") as unknown as Firestore, "plane")
+      startSeason(
+        signedIn("uid-someone-else") as unknown as Firestore,
+        "plane",
+        1
+      )
     );
   });
 
@@ -2420,12 +2444,17 @@ describe("admin board tools", () => {
     await seedDoc(`leaderboard/${UID}`, planeEntry);
     await seedDoc(`planeSeasons/3/entries/${UID}`, planeEntry);
     await seedDoc(`shipSeasons/2/entries/${UID}`, shipEntry);
-    await seedDoc(paths[paths.length - 2], {
-      nickname: "Happy Otter 7",
-      world: "meadow",
-      time: 30,
-      updatedAt: new Date(),
-    });
+    // Daily entries from two days ago through tomorrow, by this clock.
+    const dailyPaths = paths.filter((p) => p.startsWith("planeDaily/"));
+    expect(dailyPaths).toHaveLength(4);
+    for (const path of dailyPaths) {
+      await seedDoc(path, {
+        nickname: "Happy Otter 7",
+        world: "meadow",
+        time: 30,
+        updatedAt: new Date(),
+      });
+    }
     await seedDoc(`planeSeasons/3/entries/player-2`, planeEntry);
     await assertSucceeds(banEverywhere(adminDb(), UID, now));
     for (const path of paths) expect(await exists(path)).toBe(false);

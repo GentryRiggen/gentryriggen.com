@@ -18,7 +18,7 @@ describe("nextSeasonNumber", () => {
 });
 
 describe("banDeletePaths", () => {
-  it("covers every season of both games and today's and yesterday's daily", () => {
+  it("covers every season of both games and the daily from two days ago to tomorrow", () => {
     expect(
       banDeletePaths("u1", 3, 1, new Date("2026-10-01T00:05:00Z"))
     ).toEqual([
@@ -26,8 +26,10 @@ describe("banDeletePaths", () => {
       "planeSeasons/2/entries/u1",
       "planeSeasons/3/entries/u1",
       "shipLeaderboard/u1",
+      "planeDaily/2026-10-02/entries/u1",
       "planeDaily/2026-10-01/entries/u1",
       "planeDaily/2026-09-30/entries/u1",
+      "planeDaily/2026-09-29/entries/u1",
     ]);
   });
 });

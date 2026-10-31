@@ -104,11 +104,32 @@ it("starts a new season after confirming and loads it", async () => {
   expect(confirm).toHaveBeenCalledWith(
     "Start Season 4 for Plane Builder? Everyone starts from zero. Season 3 stays viewable."
   );
-  expect(mockClient.startNewSeason).toHaveBeenCalledWith("plane");
+  expect(mockClient.startNewSeason).toHaveBeenCalledWith("plane", 3);
   await waitFor(() =>
     expect(mockClient.fetchAdminBoard).toHaveBeenLastCalledWith("plane", 4)
   );
   expect(await screen.findByText(/^Season 4, started/)).toBeInTheDocument();
+});
+
+it("reloads the season when it changed elsewhere before confirming", async () => {
+  render(<SeasonBoardAdmin game="plane" />);
+  await screen.findByText("Happy Fox 3");
+  mockClient.startNewSeason.mockRejectedValue(new Error("season changed"));
+  mockClient.fetchAdminSeason.mockResolvedValue({
+    number: 4,
+    startedAt: new Date("2026-10-30T12:00:00Z"),
+  });
+  await userEvent.click(
+    screen.getByRole("button", { name: "Start new season" })
+  );
+  expect(mockClient.startNewSeason).toHaveBeenCalledWith("plane", 3);
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Couldn't save that change."
+  );
+  expect(await screen.findByText(/^Season 4, started/)).toBeInTheDocument();
+  await waitFor(() =>
+    expect(mockClient.fetchAdminBoard).toHaveBeenLastCalledWith("plane", 4)
+  );
 });
 
 it("does nothing when starting a season is cancelled", async () => {
@@ -210,6 +231,36 @@ it("shows an error when loading fails", async () => {
   mockClient.fetchAdminBoard.mockRejectedValue(new Error("nope"));
   render(<SeasonBoardAdmin game="plane" />);
   expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't load/i);
+  expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+});
+
+it("clears a load error when another season loads", async () => {
+  mockClient.fetchAdminBoard.mockImplementation(async (_game, season) => {
+    if (season === 3) throw new Error("nope");
+    return planeRows;
+  });
+  render(<SeasonBoardAdmin game="plane" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't load/i);
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Season" }),
+    "2"
+  );
+  expect(await screen.findByText("Happy Fox 3")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+it("keeps a load error (not Loading…) after a successful save", async () => {
+  mockClient.fetchAdminBoard.mockRejectedValue(new Error("nope"));
+  render(<SeasonBoardAdmin game="plane" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't load/i);
+  const box = screen.getByRole("checkbox", {
+    name: "Show leaderboard to players",
+  });
+  await waitFor(() => expect(box).toBeEnabled());
+  await userEvent.click(box);
+  expect(mockClient.setBoardHidden).toHaveBeenCalledWith("plane", false);
+  expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
+  expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
 });
 
 describe("show leaderboard to players (plane only)", () => {
@@ -249,6 +300,18 @@ describe("show leaderboard to players (plane only)", () => {
       "Couldn't save that change."
     );
     expect(box).not.toBeChecked();
+  });
+
+  it("stays disabled and unchecked, with no board error, when its read fails", async () => {
+    mockClient.fetchAdminBoardHidden.mockRejectedValue(new Error("nope"));
+    render(<SeasonBoardAdmin game="plane" />);
+    expect(await screen.findByText("Happy Fox 3")).toBeInTheDocument();
+    const box = screen.getByRole("checkbox", {
+      name: "Show leaderboard to players",
+    });
+    expect(box).toBeDisabled();
+    expect(box).not.toBeChecked();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("is not shown on the ship board", async () => {

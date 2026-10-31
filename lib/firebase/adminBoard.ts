@@ -45,6 +45,8 @@ const MAX_BATCH_WRITES = 500;
 const DAY_MS = 86_400_000;
 
 const GAMES: SeasonGame[] = ["plane", "ship"];
+/** Days around the admin's "today" whose daily entries a ban removes. */
+const DAILY_DAY_OFFSETS = [1, 0, -1, -2];
 
 function isSeasonNumber(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= FIRST_SEASON;
@@ -79,16 +81,37 @@ export async function readSeason(
   return { number: data.number, startedAt: toDate(data.startedAt) };
 }
 
+/** Thrown when the stored season is not the one the admin confirmed. */
+export class SeasonChangedError extends Error {
+  constructor(game: SeasonGame, expected: number, found: number) {
+    super(
+      `${game} is on season ${found}, not ${expected}: reload before starting one.`
+    );
+    this.name = "SeasonChangedError";
+  }
+}
+
 /**
- * Reads the current number and writes the next one in a transaction, with an
- * explicit number (the rules accept exactly old + 1), so a double click or a
- * second tab cannot skip a season: the loser retries, then is refused.
+ * Starts the season after `expected` (the number the admin saw and confirmed;
+ * 1 means the season doc must be missing). In a transaction, it reads the
+ * stored number, throws SeasonChangedError when it differs from `expected`,
+ * and writes expected + 1 explicitly (the rules accept exactly old + 1). A
+ * stale tab, a second tab or a double click therefore cannot start a season
+ * nobody confirmed: a contended transaction retries, re-reads the new number
+ * and throws.
  */
-export function startSeason(db: Firestore, game: SeasonGame): Promise<number> {
+export function startSeason(
+  db: Firestore,
+  game: SeasonGame,
+  expected: number
+): Promise<number> {
   const ref = doc(db, "seasons", game);
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const number = nextSeasonNumber(snap.exists() ? snap.data() : undefined);
+    if (number - 1 !== expected) {
+      throw new SeasonChangedError(game, expected, number - 1);
+    }
     tx.set(ref, { number, startedAt: serverTimestamp() });
     return number;
   });
@@ -171,7 +194,9 @@ const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /**
  * Every doc a ban removes: the uid's entry in each season 1..current of both
- * games, and today's and yesterday's (UTC) daily challenge.
+ * games, and the daily challenge for the UTC days from two days ago through
+ * tomorrow. The window is wide because `now` is the admin's clock, not the
+ * server's; deleting a missing doc costs nothing.
  */
 export function banDeletePaths(
   uid: string,
@@ -189,8 +214,10 @@ export function banDeletePaths(
       paths.push(`${seasonCollection(game, season)}/${uid}`);
     }
   }
-  for (const ms of [now.getTime(), now.getTime() - DAY_MS]) {
-    paths.push(`planeDaily/${dayKey(ms)}/entries/${uid}`);
+  for (const offset of DAILY_DAY_OFFSETS) {
+    paths.push(
+      `planeDaily/${dayKey(now.getTime() + offset * DAY_MS)}/entries/${uid}`
+    );
   }
   return paths;
 }

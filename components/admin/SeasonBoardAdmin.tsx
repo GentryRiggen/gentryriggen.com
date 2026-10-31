@@ -32,9 +32,10 @@ const buttonClass =
 const dangerClass =
   "rounded-md border px-2 py-1 disabled:opacity-50 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950";
 
+/** The result of loading one season's board: its rows, or null on failure. */
 interface LoadedBoard {
   season: number;
-  rows: AdminBoardRow[];
+  rows: AdminBoardRow[] | null;
 }
 
 /**
@@ -47,7 +48,8 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
   const [season, setSeason] = useState<SeasonInfo | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [board, setBoard] = useState<LoadedBoard | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [seasonFailed, setSeasonFailed] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState<boolean | null>(null);
 
@@ -60,16 +62,15 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
         setSelected(info.number);
       })
       .catch(() => {
-        if (!isCancelled) setError(LOAD_ERROR);
+        if (!isCancelled) setSeasonFailed(true);
       });
     if (game === "plane") {
+      // On failure the switch stays disabled and unchecked (hidden === null).
       fetchAdminBoardHidden("plane")
         .then((value) => {
           if (!isCancelled) setHidden(value);
         })
-        .catch(() => {
-          if (!isCancelled) setError(LOAD_ERROR);
-        });
+        .catch(() => {});
     }
     return () => {
       isCancelled = true;
@@ -84,7 +85,7 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
         if (!isCancelled) setBoard({ season: selected, rows });
       })
       .catch(() => {
-        if (!isCancelled) setError(LOAD_ERROR);
+        if (!isCancelled) setBoard({ season: selected, rows: null });
       });
     return () => {
       isCancelled = true;
@@ -94,12 +95,12 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
   /** Runs a write; on refusal shows the save error and returns false. */
   const save = async (write: () => Promise<void>): Promise<boolean> => {
     setBusy(true);
-    setError(null);
+    setSaveError(null);
     try {
       await write();
       return true;
     } catch {
-      setError(SAVE_ERROR);
+      setSaveError(SAVE_ERROR);
       return false;
     } finally {
       setBusy(false);
@@ -108,7 +109,7 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
 
   const removeRow = (uid: string) =>
     setBoard((current) =>
-      current
+      current?.rows
         ? { ...current, rows: current.rows.filter((r) => r.uid !== uid) }
         : current
     );
@@ -118,18 +119,21 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
     const next = season.number + 1;
     const message = `Start Season ${next} for ${gameName}? Everyone starts from zero. Season ${season.number} stays viewable.`;
     if (!window.confirm(message)) return;
-    let started = 0;
-    const ok = await save(async () => {
-      started = await startNewSeason(game);
+    let started: number | null = null;
+    // Refused when the stored season is no longer the one shown (started
+    // elsewhere); either way, reload the season as it now stands.
+    await save(async () => {
+      started = await startNewSeason(game, season.number);
     });
-    if (!ok) return;
     try {
       const info = await fetchAdminSeason(game);
       setSeason(info);
       setSelected(info.number);
     } catch {
-      setSeason({ number: started, startedAt: null });
-      setSelected(started);
+      if (started !== null) {
+        setSeason({ number: started, startedAt: null });
+        setSelected(started);
+      }
     }
   };
 
@@ -141,7 +145,7 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
     );
     if (!ok) return;
     setBoard((current) =>
-      current
+      current?.rows
         ? {
             ...current,
             rows: current.rows.map((r) =>
@@ -177,7 +181,11 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
   };
 
   const titleId = `season-board-admin-${game}`;
-  const shownBoard = board !== null && board.season === selected ? board : null;
+  const current = board !== null && board.season === selected ? board : null;
+  const loading = !seasonFailed && current === null;
+  const loadFailed = seasonFailed || current?.rows === null;
+  const rows = current?.rows ?? null;
+  const shownSeason = current?.season ?? 0;
   const seasonNumbers = season
     ? Array.from({ length: season.number }, (_, i) => season.number - i)
     : [];
@@ -236,20 +244,20 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
           )}
         </div>
       )}
-      {error && (
+      {(loadFailed || saveError) && (
         <p role="alert" className="mt-2 text-red-600 dark:text-red-400">
-          {error}
+          {[loadFailed && LOAD_ERROR, saveError].filter(Boolean).join(" ")}
         </p>
       )}
-      {!shownBoard && !error && (
+      {loading && (
         <p className="mt-2 text-gray-600 dark:text-gray-400">Loading…</p>
       )}
-      {shownBoard?.rows.length === 0 && (
+      {rows?.length === 0 && (
         <p className="mt-2 text-gray-600 dark:text-gray-400">No entries yet.</p>
       )}
-      {shownBoard && shownBoard.rows.length > 0 && (
+      {rows && rows.length > 0 && (
         <ul className="mt-2 divide-y divide-gray-200 dark:divide-gray-800">
-          {shownBoard.rows.map((row) => (
+          {rows.map((row) => (
             <li
               key={row.uid}
               className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm"
@@ -274,7 +282,7 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void handleRename(row, shownBoard.season)}
+                onClick={() => void handleRename(row, shownSeason)}
                 className={buttonClass}
               >
                 New name
@@ -282,7 +290,7 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void handleDelete(row, shownBoard.season)}
+                onClick={() => void handleDelete(row, shownSeason)}
                 className={dangerClass}
               >
                 Delete
