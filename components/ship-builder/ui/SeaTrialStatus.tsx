@@ -14,6 +14,7 @@ import { useLiveTrialState } from "../scene/liveTrial";
 import { focusSeaTrialButton } from "./SeaTrialButton";
 import { SEA_LABELS } from "./seaTrialText";
 import SoundToggle from "./SoundToggle";
+import TrialSpeedSwitch from "./TrialSpeedSwitch";
 import { panelClass } from "./styles";
 
 /** The trial's name in the pill: the storm's wild sea goes without saying. */
@@ -80,6 +81,7 @@ export default function SeaTrialStatus() {
         </span>
       )}
       {isTimeline && <SoundToggle />}
+      <TrialSpeedSwitch />
       <button
         ref={stopButton}
         type="button"

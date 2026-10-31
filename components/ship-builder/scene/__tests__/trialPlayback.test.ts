@@ -320,3 +320,34 @@ describe("writeTimelinePlayback", () => {
     expect(target.doneAt).toBeNull();
   });
 });
+
+describe("same timeline at 1x and 3x", () => {
+  it("advanceTrial gives the same state, events and pose", () => {
+    const slow = freshClock(TOP_HEAVY);
+    for (let frame = 0; frame < 60; frame++)
+      advanceTrial(TOP_HEAVY, slow, 1 / 60, 1);
+    const fast = freshClock(TOP_HEAVY);
+    for (let frame = 0; frame < 20; frame++)
+      advanceTrial(TOP_HEAVY, fast, 1 / 60, 3);
+    expect(fast.state.time).toBeCloseTo(slow.state.time, 6);
+    expect(fast.state.events).toEqual(slow.state.events);
+    expect(fast.state.pose).toEqual(slow.state.pose);
+  });
+
+  it("advanceTimelineClock reaches the same time on a storm timeline", () => {
+    const input: TrialInput = {
+      ...STEADY,
+      sea: "wild",
+      storm: { compartments: [], length: 30 },
+    };
+    const timeline = buildTimeline(input);
+    const slow = startTimelineClock(timeline, 0);
+    for (let frame = 0; frame < 60; frame++)
+      advanceTimelineClock(slow, 1 / 60, 1);
+    const fast = startTimelineClock(timeline, 0);
+    for (let frame = 0; frame < 20; frame++)
+      advanceTimelineClock(fast, 1 / 60, 3);
+    expect(fast.time).toBeCloseTo(slow.time, 6);
+    expect(fast.speed).toBe(slow.speed);
+  });
+});

@@ -13,6 +13,7 @@ import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { publishLiveTrial } from "./liveTrial";
+import { getTrialSpeed } from "../hooks/useTrialSpeed";
 import { testTrialSeconds, testTrialSpeed } from "./testClock";
 import {
   advanceTimelineClock,
@@ -59,7 +60,13 @@ function TrialDriver({ input }: TrialDriverProps) {
   useFrame((_, delta) => {
     const current = clock.current;
     if (!current || finished.current) return;
-    advanceTrial(input, current, delta, testTrialSpeed(), testTrialSeconds());
+    advanceTrial(
+      input,
+      current,
+      delta,
+      testTrialSpeed() * getTrialSpeed(),
+      testTrialSeconds()
+    );
     writePlayback(current.state);
     if (current.state.phase !== "done") return;
     finished.current = true;
@@ -117,7 +124,7 @@ function TimelineDriver({ input, descending }: TimelineDriverProps) {
   useFrame((_, delta) => {
     const current = clock.current;
     if (!current || finished.current) return;
-    const testSpeed = testTrialSpeed();
+    const testSpeed = testTrialSpeed() * getTrialSpeed();
     const { timeline } = current;
     if (!isTimelineClockDone(current)) {
       advanceTimelineClock(current, delta, testSpeed, testTrialSeconds());
