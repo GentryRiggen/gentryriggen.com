@@ -1,4 +1,9 @@
-import { cardFraming, reachesShip, MIN_CARD_SCALE } from "../cardFraming";
+import {
+  cardEaseAmount,
+  cardFraming,
+  reachesShip,
+  MIN_CARD_SCALE,
+} from "../cardFraming";
 
 const canvas = { left: 100, top: 50, width: 700, height: 740 };
 
@@ -74,5 +79,24 @@ describe("reachesShip", () => {
 
   it("is false without a card", () => {
     expect(reachesShip(canvas, null)).toBe(false);
+  });
+});
+
+describe("cardEaseAmount", () => {
+  it("eases by the frame time on a live clock", () => {
+    expect(cardEaseAmount(0.05, false, false)).toBeCloseTo(0.15, 5);
+    // A long frame is capped, so one slow frame never snaps it.
+    expect(cardEaseAmount(2, false, false)).toBeCloseTo(0.3, 5);
+  });
+
+  it("snaps under reduced motion", () => {
+    expect(cardEaseAmount(0.016, true, false)).toBe(1);
+  });
+
+  it("snaps on a frozen test clock, however slow the frames", () => {
+    // A visual test holds a trial after its setup card closes: the framing
+    // must be gone in one frame, not eased out over seconds of slow frames.
+    expect(cardEaseAmount(0.016, false, true)).toBe(1);
+    expect(cardEaseAmount(2, false, true)).toBe(1);
   });
 });

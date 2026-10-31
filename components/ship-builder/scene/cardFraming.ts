@@ -1,3 +1,5 @@
+import { MAX_FRAME_DELTA } from "./animationMath";
+
 /** A screen rectangle in CSS pixels. */
 export interface ScreenRect {
   left: number;
@@ -93,4 +95,22 @@ export function reachesShip(
 ): boolean {
   if (!card || canvas.height <= 0 || card.height <= 0) return false;
   return card.top - canvas.top < canvas.height * SHIP_CLEAR_SHARE;
+}
+
+/** Rate (per second) the card framing eases in and out, like the camera follow. */
+const CARD_EASE_RATE = 3;
+
+/**
+ * How far the card framing eases toward its goal this frame (0 to 1). Reduced
+ * motion snaps, and so does a frozen test clock: a visual test that closes a
+ * setup card and holds the scene must see the framing gone at once, not eased
+ * out over the many seconds a software renderer's slow frames would take.
+ */
+export function cardEaseAmount(
+  deltaSeconds: number,
+  reducedMotion: boolean,
+  frozen: boolean
+): number {
+  if (reducedMotion || frozen) return 1;
+  return Math.min(1, Math.min(deltaSeconds, MAX_FRAME_DELTA) * CARD_EASE_RATE);
 }

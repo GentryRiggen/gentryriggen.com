@@ -15,7 +15,12 @@ import usePhotoStore from "../hooks/usePhotoStore";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { cameraFollow } from "./cameraFollow";
-import { cardFraming, reachesShip, type CardFraming } from "./cardFraming";
+import {
+  cardEaseAmount,
+  cardFraming,
+  reachesShip,
+  type CardFraming,
+} from "./cardFraming";
 import {
   clampTarget,
   MAX_VIEW_DISTANCE,
@@ -36,7 +41,7 @@ import {
   type DriveCameraPose,
 } from "./driveCamera";
 import { photoPose } from "./photoAngles";
-import { sceneTime } from "./testClock";
+import { frozenTime, sceneTime } from "./testClock";
 import { trialPlayback } from "./trialPlayback";
 
 // Left orbits (Shift/Ctrl/Meta + left pans, built into OrbitControls), the
@@ -393,7 +398,9 @@ export default function CameraRig() {
     const amount = reducedMotion
       ? 1
       : Math.min(1, Math.min(delta, MAX_FRAME_DELTA) * FOLLOW_RATE);
-    updateCardFraming(amount);
+    updateCardFraming(
+      cardEaseAmount(delta, reducedMotion, frozenTime() !== null)
+    );
     const { phase, sink, halves, breakup, speed } = trialPlayback;
     const follow = cameraFollow(
       { phase, sink, halves, breakup, speed },
