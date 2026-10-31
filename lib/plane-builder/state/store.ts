@@ -80,6 +80,12 @@ interface PlaneBuilderData {
   currentSeason: number | null;
   /** True after a new season reset the season stats, until dismissed. */
   newSeasonNote: boolean;
+  /**
+   * The nickname the save held when it loaded: the name last sent to the
+   * board before this visit, so the board sync can tell an admin's rename
+   * from a reroll the player made since.
+   */
+  loadedNickname: string | null;
 }
 
 export interface PlaneBuilderState extends PlaneBuilderData {
@@ -132,6 +138,7 @@ const initial: PlaneBuilderData = {
   daily: null,
   currentSeason: null,
   newSeasonNote: false,
+  loadedNickname: null,
 };
 
 /** Progress moved into season `n` when that is newer than its own. */
@@ -147,8 +154,11 @@ export const usePlaneBuilderStore = create<PlaneBuilderState>()((set, get) => ({
   // A season read before the save loaded applies to it too.
   hydrate: (loaded) => {
     const progress = inSeason(loaded, get().currentSeason);
+    const loadedNickname = loaded.nickname;
     set(
-      progress.prestige.movePending ? { progress, screen: "map" } : { progress }
+      progress.prestige.movePending
+        ? { progress, loadedNickname, screen: "map" }
+        : { progress, loadedNickname }
     );
   },
   resetTransient: () => {

@@ -276,12 +276,36 @@ describe("adopts a name the admin set", () => {
     nickname,
     prestige: 0,
     lifetimeDistance: 1500,
+    updatedAt: null,
   });
 
   beforeEach(() => {
-    usePlaneBuilderStore.setState((s) => ({
-      progress: { ...s.progress, nickname: "Happy Otter 7" },
-    }));
+    const { progress } = usePlaneBuilderStore.getState();
+    usePlaneBuilderStore
+      .getState()
+      .hydrate({ ...progress, nickname: "Happy Otter 7" });
+  });
+
+  it("does not revert a reroll when the sync started before the save loaded", async () => {
+    // PlaneBuilder starts the sync before its hydrate effect runs.
+    usePlaneBuilderStore.setState(usePlaneBuilderStore.getInitialState(), true);
+    const { submit, stop } = setup({
+      readOwnEntry: jest.fn().mockResolvedValue(own("Happy Otter 7")),
+    });
+    usePlaneBuilderStore.getState().hydrate({
+      ...newProgress(),
+      nickname: "Happy Otter 7",
+      season: season(),
+    });
+    await settle();
+    usePlaneBuilderStore.getState().setNickname("Swift Falcon 2");
+    usePlaneBuilderStore.setState({ lastFlight: flight() });
+    await settle();
+    expect(usePlaneBuilderStore.getState().progress.nickname).toBe(
+      "Swift Falcon 2"
+    );
+    expect(sent(submit, 0).nickname).toBe("Swift Falcon 2");
+    stop();
   });
 
   it("takes the board's name when it differs from the one last sent", async () => {
@@ -330,7 +354,7 @@ describe("adopts a name the admin set", () => {
  * A stand-in for the season entry doc and the plane rules in
  * firestore.rules (validLeaderboardCreate / validLeaderboardUpdate).
  */
-function fakeServer() {
+function fakeServer(seasonStartedAt = Number.NEGATIVE_INFINITY) {
   let doc: (LeaderboardEntry & { updatedAt: number }) | null = null;
   const log: { entry: LeaderboardEntry; result: CommitResult }[] = [];
   const coherent = (d: LeaderboardEntry) =>
@@ -340,7 +364,14 @@ function fakeServer() {
   const allowed = (d: LeaderboardEntry): boolean => {
     if (d.score !== scoreFor(d.prestige, d.lifetimeDistance)) return false;
     if (!coherent(d)) return false;
-    if (doc === null) return d.prestige <= 1 && d.lifetimeDistance <= 150000;
+    if (doc === null) {
+      const sinceStart = (Date.now() - seasonStartedAt) / 1000;
+      return (
+        d.prestige <= 1 &&
+        d.lifetimeDistance <= 150000 &&
+        d.lifetimeDistance <= 200 * sinceStart + 9100
+      );
+    }
     const secs = (Date.now() - doc.updatedAt) / 1000;
     return (
       secs >= 10 &&
@@ -368,8 +399,17 @@ function fakeServer() {
             nickname: doc.nickname,
             prestige: doc.prestige,
             lifetimeDistance: doc.lifetimeDistance,
+            updatedAt: doc.updatedAt,
           }
     ),
+    /** The admin's "New name": only the name and updatedAt change. */
+    rename(nickname: string) {
+      if (doc) doc = { ...doc, nickname, updatedAt: Date.now() };
+    },
+    /** Puts an entry on the board as if written earlier. */
+    seed(entry: LeaderboardEntry) {
+      doc = { ...entry, updatedAt: Date.now() };
+    },
   };
 }
 
@@ -468,6 +508,98 @@ describe("refused first write climbs back", () => {
     const writes = server.log.length;
     await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS * 5);
     expect(server.log.length).toBe(writes);
+    stop();
+  });
+});
+
+describe("climb edge cases", () => {
+  const allTimes = Object.fromEntries(LEVEL_ORDER.map((id) => [id, 100]));
+  const big = () =>
+    usePlaneBuilderStore.setState((s) => ({
+      progress: {
+        ...s.progress,
+        nickname: "Happy Otter 7",
+        season: season({
+          prestiges: 4,
+          distance: 600000,
+          bestTimes: allTimes,
+          fastestRun: 12,
+        }),
+      },
+    }));
+  const target = () => seasonEntry(usePlaneBuilderStore.getState().progress);
+
+  it("early in a season the first write fits the time since it began", async () => {
+    big();
+    const startedAt = Date.now() - 60_000;
+    const server = fakeServer(startedAt);
+    const { stop } = setup({
+      ...server,
+      readSeason: jest
+        .fn()
+        .mockResolvedValue({ number: 2, startedAt: new Date(startedAt) }),
+    });
+    usePlaneBuilderStore.setState({ lastFlight: flight() });
+    await settle();
+    for (let i = 0; i < 100 && server.doc?.score !== target().score; i++) {
+      await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS);
+    }
+    expect(server.log[0].result).toBe("ok");
+    expect(server.log[0].entry.lifetimeDistance).toBeLessThanOrEqual(
+      200 * 60 + 9100
+    );
+    expect(server.log.every((l) => l.result === "ok")).toBe(true);
+    expect(server.doc).toMatchObject(target());
+    stop();
+  });
+
+  it("an admin rename resets the climb's clock", async () => {
+    big();
+    const server = fakeServer();
+    const { stop } = setup(server);
+    usePlaneBuilderStore.setState({ lastFlight: flight() });
+    await settle();
+    await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS);
+    expect(server.log.map((l) => l.result)).toEqual(["ok", "ok"]);
+    // Renamed 15 s before the next write: only 15 s of climb are allowed.
+    await jest.advanceTimersByTimeAsync(15_000);
+    server.rename("Brave Panda 3");
+    await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS - 15_000);
+    expect(server.log).toHaveLength(3);
+    expect(server.log[2].result).toBe("ok");
+    expect(server.log[2].entry.nickname).toBe("Brave Panda 3");
+    stop();
+  });
+
+  it("never sends less than the board already holds", async () => {
+    const server = fakeServer();
+    server.seed({
+      nickname: "Happy Otter 7",
+      prestige: 3,
+      score: scoreFor(3, 300000),
+      lifetimeDistance: 300000,
+      bestTimes: {},
+      fastestRun: null,
+    });
+    await jest.advanceTimersByTimeAsync(60_000);
+    usePlaneBuilderStore.setState((s) => ({
+      progress: {
+        ...s.progress,
+        nickname: "Happy Otter 7",
+        season: season({ prestiges: 1, distance: 100000 }),
+      },
+    }));
+    const { stop } = setup(server);
+    usePlaneBuilderStore.setState({ lastFlight: flight() });
+    await settle();
+    expect(server.log[0].result).toBe("ok");
+    expect(server.log[0].entry).toMatchObject({
+      prestige: 3,
+      lifetimeDistance: 300000,
+    });
+    // Nothing left to climb: no more writes until the next flight.
+    await jest.advanceTimersByTimeAsync(SUBMIT_INTERVAL_MS * 4);
+    expect(server.log).toHaveLength(1);
     stop();
   });
 });

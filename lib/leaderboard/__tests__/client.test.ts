@@ -379,6 +379,7 @@ describe("fetchOwnEntry", () => {
       nickname: { stringValue: "Brave Panda 3" },
       prestige: { integerValue: "2" },
       lifetimeDistance: { doubleValue: 140000.5 },
+      updatedAt: { timestampValue: "2026-10-30T12:00:00.000Z" },
     },
   };
 
@@ -390,6 +391,7 @@ describe("fetchOwnEntry", () => {
       nickname: "Brave Panda 3",
       prestige: 2,
       lifetimeDistance: 140000.5,
+      updatedAt: Date.parse("2026-10-30T12:00:00.000Z"),
     });
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(

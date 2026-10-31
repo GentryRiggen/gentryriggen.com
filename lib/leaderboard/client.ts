@@ -194,6 +194,8 @@ export interface OwnEntry {
   nickname: string;
   prestige: number;
   lifetimeDistance: number;
+  /** When the entry was last written (ms since epoch), or null if unreadable. */
+  updatedAt: number | null;
 }
 
 function parseOwnEntry(json: unknown): OwnEntry | null {
@@ -205,7 +207,15 @@ function parseOwnEntry(json: unknown): OwnEntry | null {
   const lifetimeDistance = numberOf(fields.lifetimeDistance);
   if (typeof nickname !== "string" || prestige === null) return null;
   if (lifetimeDistance === null) return null;
-  return { nickname, prestige, lifetimeDistance };
+  const stamp = (fields.updatedAt as { timestampValue?: unknown } | undefined)
+    ?.timestampValue;
+  const updatedAt = typeof stamp === "string" ? Date.parse(stamp) : NaN;
+  return {
+    nickname,
+    prestige,
+    lifetimeDistance,
+    updatedAt: Number.isFinite(updatedAt) ? updatedAt : null,
+  };
 }
 
 /**

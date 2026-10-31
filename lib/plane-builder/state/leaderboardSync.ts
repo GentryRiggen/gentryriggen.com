@@ -77,27 +77,48 @@ export interface ClimbBase {
 }
 
 /**
+ * The most a season's first write may hold, `secsSinceStart` seconds after
+ * the season began (unknown: just the fixed cap). Early in a season the
+ * rules allow only what could have been flown since it started.
+ */
+export function firstWriteMax(secsSinceStart: number | null): number {
+  if (secsSinceStart === null) return CREATE_MAX_DISTANCE;
+  return Math.min(
+    CREATE_MAX_DISTANCE,
+    CLIMB_METRES_PER_SECOND * Math.max(0, secsSinceStart) + CLIMB_FLIGHT_METRES
+  );
+}
+
+/**
  * The entry to send now on the way to `target`. With no entry on the board
- * (`base` null) a first write's limits apply; otherwise the distance rises by
- * at most what the rules allow since the base was written. Prestige never
- * runs ahead of the distance it needs. Until the real stats are reached, no
- * fastest run rides along (it needs a full run's distance behind it).
+ * (`base` null) a first write's limits apply (`createMax`); otherwise the
+ * distance rises by at most what the rules allow since the base was written,
+ * and never sends less than the board holds (the rules refuse a step down).
+ * Prestige never runs ahead of the distance it needs. Until the real stats
+ * are reached, no fastest run rides along (it needs a full run's distance).
  */
 export function climbEntry(
   target: LeaderboardEntry,
-  base: ClimbBase | null
+  base: ClimbBase | null,
+  createMax: number = CREATE_MAX_DISTANCE
 ): LeaderboardEntry {
   const maxDistance =
     base === null
-      ? CREATE_MAX_DISTANCE
+      ? createMax
       : base.distance +
         CLIMB_METRES_PER_SECOND * Math.max(0, base.secs) +
         CLIMB_FLIGHT_METRES;
-  const lifetimeDistance = Math.min(target.lifetimeDistance, maxDistance);
-  const prestige = Math.min(
-    target.prestige,
-    base === null ? CREATE_MAX_PRESTIGE : Infinity,
-    Math.floor(lifetimeDistance / RUN_DISTANCE) + 1
+  const lifetimeDistance = Math.max(
+    Math.min(target.lifetimeDistance, maxDistance),
+    base?.distance ?? 0
+  );
+  const prestige = Math.max(
+    Math.min(
+      target.prestige,
+      base === null ? CREATE_MAX_PRESTIGE : Infinity,
+      Math.floor(lifetimeDistance / RUN_DISTANCE) + 1
+    ),
+    base?.prestige ?? 0
   );
   if (
     lifetimeDistance === target.lifetimeDistance &&
@@ -116,9 +137,12 @@ export function climbEntry(
 
 interface Accepted {
   season: number;
+  nickname: string;
   prestige: number;
   distance: number;
   at: number;
+  /** The board's updatedAt the first time this write was read back. */
+  seenUpdatedAt?: number | null;
 }
 
 export function createLeaderboardSync(
@@ -135,8 +159,13 @@ export function createLeaderboardSync(
   let season: number | null = null;
   let seasonReadAt = Number.NEGATIVE_INFINITY;
   let seasonRead: Promise<number | null> | null = null;
-  /** The name this client last saw on the board (sent or adopted). */
-  let lastSentName: string | null = null;
+  /** When the current season began (ms), if known. */
+  let seasonStartedAt: number | null = null;
+  /**
+   * The name this client last saw on the board (sent or adopted) this
+   * visit; undefined until then, when the save's loaded name stands in.
+   */
+  let lastSentName: string | null | undefined = undefined;
   /** The last write the server accepted, so the climb knows its time. */
   let accepted: Accepted | null = null;
   /**
@@ -158,6 +187,7 @@ export function createLeaderboardSync(
         // A failed re-read keeps the season last read; none read means none.
         if (info === null) return season;
         season = info.number;
+        seasonStartedAt = info.startedAt?.getTime() ?? null;
         seasonReadAt = now();
         usePlaneBuilderStore.getState().applySeason(info.number);
         return season;
@@ -167,7 +197,11 @@ export function createLeaderboardSync(
 
   /** Takes a name the admin gave the entry; never a name not yet sent. */
   function adoptName(onBoard: string): void {
-    if (onBoard === lastSentName) return;
+    const known =
+      lastSentName === undefined
+        ? usePlaneBuilderStore.getState().loadedNickname
+        : lastSentName;
+    if (onBoard === known) return;
     lastSentName = onBoard;
     usePlaneBuilderStore.getState().setNickname(onBoard);
   }
@@ -189,10 +223,18 @@ export function createLeaderboardSync(
       }
       return { known: false, base: null };
     }
+    // Only this client's own last write (not, say, an admin rename since,
+    // which moves updatedAt) lets the climb count time from it.
     const isMine =
       mine !== null &&
+      mine.nickname === own.nickname &&
       mine.prestige === own.prestige &&
-      mine.distance === own.lifetimeDistance;
+      mine.distance === own.lifetimeDistance &&
+      (mine.seenUpdatedAt === undefined ||
+        mine.seenUpdatedAt === own.updatedAt);
+    if (isMine && mine.seenUpdatedAt === undefined) {
+      mine.seenUpdatedAt = own.updatedAt;
+    }
     return {
       known: true,
       base: {
@@ -215,13 +257,18 @@ export function createLeaderboardSync(
       if (store.progress.nickname === null) store.setNickname(randomNickname());
       const target = seasonEntry(usePlaneBuilderStore.getState().progress);
       const { known, base } = baseFor(n, own);
-      const entry = known || refusals >= 2 ? climbEntry(target, base) : target;
+      const createMax = firstWriteMax(
+        seasonStartedAt === null ? null : (now() - seasonStartedAt) / 1000
+      );
+      const entry =
+        known || refusals >= 2 ? climbEntry(target, base, createMax) : target;
       const result = await submit(entry, n);
       if (result === "ok") {
         refusals = 0;
         lastSentName = entry.nickname;
         accepted = {
           season: n,
+          nickname: entry.nickname,
           prestige: entry.prestige,
           distance: entry.lifetimeDistance,
           at: now(),
@@ -256,7 +303,6 @@ export function createLeaderboardSync(
 
   const start = (): (() => void) => {
     if (!enabled) return () => {};
-    lastSentName = usePlaneBuilderStore.getState().progress.nickname;
     void currentSeason();
     const unsubscribe = usePlaneBuilderStore.subscribe((state, prev) => {
       const isFlightDone =
