@@ -912,6 +912,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
           look: trial.look,
           runId,
           descending: trial.descending,
+          ...(trial.challenge ? { challenge: trial.challenge } : {}),
         },
       });
     },
@@ -1052,10 +1053,16 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
 
     aimIceberg() {
       if (get().walk.status !== "idle") return;
-      const { status } = get().trial;
-      if (status !== "idle" && status !== "result") return;
+      const { trial } = get();
+      if (trial.status !== "idle" && trial.status !== "result") return;
+      // "Try another spot" keeps the iceberg card's look (a Night pick stays
+      // Night); a fresh aim starts from the main screen.
+      const look =
+        trial.status === "result" && trial.input.iceberg
+          ? trial.look
+          : mainLook();
       set({
-        trial: { status: "aiming", look: mainLook() },
+        trial: { status: "aiming", look },
         tool: { kind: "none" },
         camera: { view: "side", nonce: get().camera.nonce + 1 },
         ...CLEARED,

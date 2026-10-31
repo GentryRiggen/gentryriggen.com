@@ -108,13 +108,14 @@ export const TIMELINE_MARKS: readonly {
 /**
  * The result card's lifeboat line for a ship that sank: the real seats
  * against the real people, then whether they were enough ("Fill every seat")
- * or the Titanic's half-empty boats.
+ * or the Titanic's half-empty boats, or that she had none at all.
  */
 export function lifeboatLines(
   { seats, people }: { seats: number; people: number },
   mode: LifeboatMode
 ): string[] {
   const counts = `Lifeboat seats: ${seats.toLocaleString()}. People aboard: ${people.toLocaleString()}.`;
+  if (seats === 0) return [counts, "She had no lifeboats."];
   if (mode === "titanic") {
     return [counts, "Some boats left half-empty, like the Titanic."];
   }

@@ -65,4 +65,33 @@ describe("TrialSpeedSwitch", () => {
     expect(screen.getByRole("button", { name: "20x" })).toHaveFocus();
     expect(getTrialSpeed()).toBe(20);
   });
+
+  it("Home and End jump to the slowest and fastest", async () => {
+    const user = userEvent.setup();
+    render(<TrialSpeedSwitch />);
+    screen.getByRole("button", { name: "1x" }).focus();
+    await user.keyboard("{End}");
+    expect(screen.getByRole("button", { name: "20x" })).toHaveFocus();
+    expect(getTrialSpeed()).toBe(20);
+    await user.keyboard("{Home}");
+    expect(screen.getByRole("button", { name: "1x" })).toHaveFocus();
+    expect(getTrialSpeed()).toBe(1);
+  });
+
+  it("is a single Tab stop on the picked speed", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">before</button>
+        <TrialSpeedSwitch />
+        <button type="button">after</button>
+      </>
+    );
+    await user.click(screen.getByRole("button", { name: "5x" }));
+    screen.getByRole("button", { name: "before" }).focus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "5x" })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "after" })).toHaveFocus();
+  });
 });

@@ -137,8 +137,11 @@ function sankSummary(state: SimState): { message: string; tips: string[] } {
   switch (state.reason) {
     case "storm":
       return {
-        message:
-          "The storm was too strong. Waves filled her up until she sank.",
+        // A storm sinking that began when she rolled over (a top-heavy build)
+        // is a different story from one where water filled her.
+        message: hasEvent(state, "capsized")
+          ? "Big waves rolled her over and she sank."
+          : "The storm was too strong. Waves filled her up until she sank.",
         tips: [],
       };
     case "no-bulkheads":

@@ -186,6 +186,19 @@ describe("the storm trial", () => {
     expect(summary.lights).toBeDefined();
     expect(summary.breakup).toBeDefined();
   });
+
+  it("explains a storm capsize as rolling over", () => {
+    const input = stormInput(plainShip(10, null), {
+      stabilityRatio: 0.45,
+      listAngle: 0.25,
+      beam: 4,
+    });
+    const state = runTrial(input);
+    expect(state.events.some((e) => e.kind === "capsized")).toBe(true);
+    const summary = explainTrial(state, input);
+    expect(summary.title).toBe("She sank");
+    expect(summary.message).toBe("Big waves rolled her over and she sank.");
+  });
 });
 
 describe("the wild sea", () => {

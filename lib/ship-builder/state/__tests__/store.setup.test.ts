@@ -229,3 +229,51 @@ describe("storm results", () => {
     expect(store().trial.status).toBe("idle");
   });
 });
+
+describe("aiming again from a result", () => {
+  function result(): Extract<TrialSlice, { status: "result" }> {
+    const { trial } = store();
+    if (trial.status !== "result") throw new Error("no result");
+    return trial;
+  }
+
+  it("Try again on a challenge result keeps the challenge", () => {
+    act(() => store().startChallenge("outlast"));
+    act(() => store().finishTrial(runTrial(running().input)));
+    expect(result().challenge).toBe("outlast");
+    act(() => store().retryTrial());
+    expect(running().challenge).toBe("outlast");
+  });
+
+  it("Try again without a challenge stays untagged", () => {
+    act(() => store().aimIceberg());
+    act(() => store().startTrial("choppy", 4));
+    act(() => store().finishTrial(runTrial(running().input)));
+    act(() => store().retryTrial());
+    expect(running().challenge).toBeUndefined();
+  });
+
+  it("Try another spot keeps the iceberg card's look", () => {
+    act(() => store().aimIceberg());
+    act(() => store().setTrialLook({ time: "night" }));
+    act(() => store().startTrial("choppy", 4));
+    act(() => store().finishTrial(runTrial(running().input)));
+    act(() => store().aimIceberg());
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "choppy", time: "night" },
+    });
+  });
+
+  it("aiming after a waves result starts from the main look", () => {
+    act(() => store().openTrialSetup("waves"));
+    act(() => store().setTrialLook({ sea: "stormy", time: "night" }));
+    act(() => store().startSetupTrial());
+    act(() => store().finishTrial(runTrial(running().input)));
+    act(() => store().aimIceberg());
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "choppy", time: "sunset" },
+    });
+  });
+});
