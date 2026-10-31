@@ -12,8 +12,8 @@ import {
 import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
-import { publishLiveTrial } from "./liveTrial";
 import { getTrialSpeed } from "../hooks/useTrialSpeed";
+import { publishLiveTrial } from "./liveTrial";
 import { testTrialSeconds, testTrialSpeed } from "./testClock";
 import {
   advanceTimelineClock,

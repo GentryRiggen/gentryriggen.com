@@ -120,3 +120,15 @@ describe("SeaTrialStatus in the storm", () => {
     expect(screen.getByTestId("story-clock")).toBeInTheDocument();
   });
 });
+
+describe("SeaTrialStatus speed switch on phones", () => {
+  it("wraps the pill and gives the switch its own row below sm", () => {
+    render(<SeaTrialStatus />);
+    act(() => store().startTrial("calm", 5));
+    const pill = screen.getByRole("status");
+    expect(pill.className).toContain("flex-wrap");
+    const row = screen.getByRole("group", { name: "Speed" }).parentElement;
+    expect(row?.className).toContain("max-sm:basis-full");
+    expect(row?.className).toContain("max-sm:order-last");
+  });
+});

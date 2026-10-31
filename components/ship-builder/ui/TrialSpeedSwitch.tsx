@@ -10,7 +10,7 @@ import useTrialSpeed, {
 const ICONS = { 1: Play, 2: FastForward, 3: ChevronsRight } as const;
 
 const OPTION_CLASS =
-  "inline-flex min-h-11 touch-manipulation items-center justify-center gap-1 rounded-full px-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:focus-visible:outline-sky-400";
+  "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center gap-1 rounded-full px-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:focus-visible:outline-sky-400";
 
 const PRESSED_CLASS =
   "bg-white text-sky-800 shadow-sm dark:bg-slate-950 dark:text-sky-200";

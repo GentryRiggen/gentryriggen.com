@@ -232,8 +232,9 @@ Waves trials never touch the lights.
 
 ### The way down (`descent.ts`)
 
-Every sinking goes on to the sea floor (a ship that capsized keeps her roll
-all the way down and lies upside down; any other settles to a small list). `startDescent` turns a finished
+Every sinking goes on to the sea floor. Every ship settles to a small list
+(`REST_ROLL`), except a capsized storm ship, which keeps her roll all the way
+down and lies upside down. `startDescent` turns a finished
 state that logged `sunk` into `descending` (a weather `stepSinking` calls it
 itself; an iceberg timeline appends it with `extendWithDescent`); `stepTrial`
 then runs `stepDescent`. Each body (the whole `pose`, or each half) falls at

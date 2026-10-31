@@ -166,3 +166,18 @@ describe.each([
     expect(descend(input)).toEqual(states);
   });
 });
+
+describe("a waves capsize on the way down", () => {
+  it("still settles to the small resting list", () => {
+    const input: TrialInput = {
+      ship: { stabilityRatio: 0.45, listAngle: 0, beam: 4 },
+      sea: "stormy",
+      funnels: [],
+      length: 30,
+    };
+    const states = descend(input);
+    const last = states[states.length - 1];
+    expect(last.events.some((e) => e.kind === "capsized")).toBe(true);
+    expect(Math.abs(last.pose.roll)).toBeLessThan(0.1);
+  });
+});

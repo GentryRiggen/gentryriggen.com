@@ -54,7 +54,7 @@ export default function SeaTrialStatus() {
   return (
     <div
       role="status"
-      className={`absolute left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
+      className={`absolute left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border max-sm:rounded-3xl max-sm:pb-1 py-1 pl-4 pr-1 text-sm font-medium shadow-lg ${panelClass}`}
     >
       <Waves
         aria-hidden="true"
@@ -81,7 +81,10 @@ export default function SeaTrialStatus() {
         </span>
       )}
       {isTimeline && <SoundToggle />}
-      <TrialSpeedSwitch />
+      {/* Below sm the switch gets its own row so the pill fits a phone. */}
+      <div className="flex max-sm:order-last max-sm:basis-full max-sm:justify-center max-sm:pr-1">
+        <TrialSpeedSwitch />
+      </div>
       <button
         ref={stopButton}
         type="button"
