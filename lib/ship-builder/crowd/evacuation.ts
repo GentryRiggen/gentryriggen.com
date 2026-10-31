@@ -673,13 +673,15 @@ export function planEvacuation(
     jump: null,
   });
   /**
-   * How long before the water (or the timeline's end) a boat must launch:
-   * a raft needs time to drop, open and take its `riders` jumping in.
+   * The latest a boat can launch, in both modes: a davit boat before the
+   * water reaches its spot and `LOWER_S` before the end; a raft early enough
+   * before either to drop, open and take its `jumpers` in.
    */
-  const raftLead = (boat: Lifeboat, riders: number): number =>
-    boat.kind === "raft"
-      ? RAFT_READY_S + JUMP_S + Math.max(0, riders - 1) * JUMP_GAP_S
-      : 0;
+  const latestLaunch = (boat: Lifeboat, jumpers: number): number => {
+    if (boat.kind === "davit") return Math.min(floodedAt(boat), end - LOWER_S);
+    const lead = RAFT_READY_S + JUMP_S + Math.max(0, jumpers - 1) * JUMP_GAP_S;
+    return Math.min(floodedAt(boat), end) - lead;
+  };
   /** Each person's own wander, the same every run. */
   const wanderRandom = (i: number) =>
     mulberry32((people[i].seed ^ 0x5bd1e995) >>> 0);
@@ -913,13 +915,13 @@ export function planEvacuation(
         riders.push(i);
         last = Math.max(last, target[i]);
       }
-      const lead = raftLead(boat, riders.length);
+      // Only walkers jump into a raft; the rest fade in.
+      const jumpers = riders.filter((i) => fadeFrom[i] === null).length;
       const at = Math.max(
         doom,
         Math.min(
           riders.length > 0 ? last : doom + LAUNCH_WAIT_S,
-          floodedAt(boat) - lead,
-          end - Math.max(LOWER_S, lead)
+          latestLaunch(boat, jumpers)
         )
       );
       // Anyone not there when she must go fades into her as she leaves.
@@ -984,7 +986,6 @@ export function planEvacuation(
     // When each boat leaves: its last rider aboard, the wait run out, or the
     // water at its boarding spot, whichever comes first.
     boats.forEach((boat, b) => {
-      const flooded = floodedAt(boat);
       const boarders: number[] = [];
       let lastArrival = -Infinity;
       for (let i = 0; i < count; i++) {
@@ -1000,13 +1001,11 @@ export function planEvacuation(
         boarders.push(i);
         lastArrival = Math.max(lastArrival, arrivals[i]);
       }
-      const lead = raftLead(boat, boarders.length);
       const at = Math.max(
         doom,
         Math.min(
           doom + LAUNCH_WAIT_S,
-          flooded - lead,
-          lead > 0 ? end - lead : Infinity,
+          latestLaunch(boat, boarders.length),
           boarders.length > 0 ? lastArrival : Infinity
         )
       );

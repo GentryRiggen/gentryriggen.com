@@ -72,8 +72,8 @@ interface CrowdRunnerProps {
  * frame callback. Aboard (walking the decks, or hurrying to a boat) they ride
  * the group that carries them; in a boat they sit in it, on its davit or out
  * on the water, or jumping from the deck edge into a raft; in the sea they
- * float on their backs. Filling every seat,
- * anyone with no way to their boat shrinks away and appears in it.
+ * float on their backs. Filling every seat, anyone with no way to their boat
+ * shrinks away and appears in it.
  */
 function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
   const { grid, plan } = crowd;
@@ -286,16 +286,20 @@ function CrowdRunner({ ship, crowd }: CrowdRunnerProps) {
         );
         scratch.local.makeTranslation(seat?.x ?? 0, seat?.y ?? 0, seat?.z ?? 0);
         scratch.place.multiplyMatrices(raft, scratch.local);
-        const to = scratch.place.elements;
+        // Read the seat out before the matrix is reused for the jumper.
+        const seatAt = scratch.place.elements;
+        const toX = seatAt[12];
+        const toY = seatAt[13];
+        const toZ = seatAt[14];
         const { from, progress: p } = fate;
-        const dx = to[12] - from.x;
-        const dz = to[14] - from.z;
+        const dx = toX - from.x;
+        const dz = toZ - from.z;
         const arc = JUMP_ARC * 4 * p * (1 - p);
         scratch.place
           .makeRotationY(Math.atan2(-dz, dx))
           .setPosition(
             from.x + dx * p,
-            from.y + (to[13] - from.y) * p + arc,
+            from.y + (toY - from.y) * p + arc,
             from.z + dz * p
           );
         writePerson(meshes, i, slot, scratch.place, "stand", 0);
