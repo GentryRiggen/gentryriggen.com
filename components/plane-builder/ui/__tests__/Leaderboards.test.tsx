@@ -20,6 +20,9 @@ const mockBoard = jest.mocked(board);
 beforeEach(() => {
   jest.clearAllMocks();
   usePlaneBuilderStore.setState({
+    currentSeason: 1,
+    newSeasonNote: false,
+    isBoardHidden: false,
     progress: { ...newProgress(), nickname: "Speedy Falcon 42" },
   });
   mockAuth.getIdToken.mockResolvedValue({ uid: "me", idToken: "t" });
@@ -77,7 +80,10 @@ it("fetches the fastest run and per-world boards", async () => {
   expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 1);
   expect(await within(dialog).findByText("12.4 s")).toBeInTheDocument();
 
-  await userEvent.selectOptions(within(dialog).getByRole("combobox"), "canyon");
+  await userEvent.selectOptions(
+    within(dialog).getByRole("combobox", { name: "World" }),
+    "canyon"
+  );
   expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "canyon" }, 1);
 });
 
@@ -115,4 +121,71 @@ it("rerolls to a valid new nickname and closes on Escape", async () => {
   expect(isValidNickname(name)).toBe(true);
   await userEvent.keyboard("{Escape}");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+describe("seasons", () => {
+  beforeEach(() => {
+    usePlaneBuilderStore.setState({ currentSeason: 3 });
+  });
+
+  it("opens on the current season and fetches a past one when picked", async () => {
+    const dialog = await openBoards();
+    expect(mockBoard.fetchBoard).toHaveBeenCalledWith("prestige", 3);
+    const picker = within(dialog).getByRole("combobox", { name: "Season" });
+    expect(picker).toHaveValue("3");
+    await userEvent.selectOptions(picker, "2");
+    expect(mockBoard.fetchBoard).toHaveBeenCalledWith("prestige", 2);
+    // Your own row is still marked on a past season's board.
+    await waitFor(() =>
+      expect(dialog.querySelector("[data-own='true']")).toHaveTextContent(
+        "Speedy Falcon 42"
+      )
+    );
+
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Fastest run" })
+    );
+    expect(mockBoard.fetchBoard).toHaveBeenCalledWith("fastestRun", 2);
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Per world" })
+    );
+    expect(mockBoard.fetchBoard).toHaveBeenCalledWith({ world: "meadow" }, 2);
+  });
+
+  it("has no season picker on the daily tab", async () => {
+    const dialog = await openBoards();
+    expect(
+      within(dialog).getByRole("combobox", { name: "Season" })
+    ).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("tab", { name: "Daily" }));
+    expect(
+      within(dialog).queryByRole("combobox", { name: "Season" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows loading, not an error, while the season is unknown", async () => {
+    usePlaneBuilderStore.setState({ currentSeason: null });
+    const dialog = await openBoards();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Loading…");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+    expect(mockBoard.fetchBoard).not.toHaveBeenCalled();
+    expect(
+      within(dialog).queryByRole("combobox", { name: "Season" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("tells a returning pilot about the new season until dismissed", async () => {
+    usePlaneBuilderStore.setState({ newSeasonNote: true });
+    const dialog = await openBoards();
+    expect(
+      within(dialog).getByText(
+        "New season! Everyone starts from zero. Fly to get on the board."
+      )
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Got it" })
+    );
+    expect(usePlaneBuilderStore.getState().newSeasonNote).toBe(false);
+    expect(within(dialog).queryByText(/New season!/)).not.toBeInTheDocument();
+  });
 });

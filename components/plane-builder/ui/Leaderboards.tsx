@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fetchBoard } from "@/lib/leaderboard/client";
-import { FIRST_SEASON } from "@/lib/leaderboard/season";
 import { DAILY_BOARD_LIMIT, fetchDailyBoard } from "@/lib/leaderboard/daily";
 import { standingOn } from "@/lib/leaderboard/rank";
 import { randomNickname } from "@/lib/leaderboard/nickname";
@@ -17,6 +16,7 @@ import { LEVEL_ORDER, LEVELS } from "@/lib/plane-builder/levels";
 import type { LevelId } from "@/lib/plane-builder/levels/types";
 import { requestLeaderboardSubmit } from "@/lib/plane-builder/state/leaderboardSync";
 import { usePlaneBuilderStore } from "@/lib/plane-builder/state/store";
+import SeasonPicker from "@/components/leaderboard/SeasonPicker";
 import useIsOnline from "../hooks/useIsOnline";
 import {
   cardClass,
@@ -88,7 +88,15 @@ export default function Leaderboards({
 }: LeaderboardsProps) {
   const nickname = usePlaneBuilderStore((s) => s.progress.nickname);
   const setNickname = usePlaneBuilderStore((s) => s.setNickname);
+  const currentSeason = usePlaneBuilderStore((s) => s.currentSeason);
+  const newSeasonNote = usePlaneBuilderStore((s) => s.newSeasonNote);
+  const dismissNewSeasonNote = usePlaneBuilderStore(
+    (s) => s.dismissNewSeasonNote
+  );
   const [tab, setTab] = useState<Tab>(initialTab);
+  /** A past season the player picked; null follows the current one. */
+  const [pickedSeason, setPickedSeason] = useState<number | null>(null);
+  const season = pickedSeason ?? currentSeason;
   const [world, setWorld] = useState<LevelId>(initialWorld);
   const isOnline = useIsOnline();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -112,13 +120,16 @@ export default function Leaderboards({
     }
   }, []);
 
-  const key = tab === "world" ? `world:${world}` : tab;
+  const boardKey = tab === "world" ? `world:${world}` : tab;
+  // The season boards wait for the season (read when the game starts).
+  const key = tab === "daily" ? boardKey : `${season}:${boardKey}`;
   useEffect(() => {
+    if (tab !== "daily" && season === null) return;
     let isCancelled = false;
     const request =
       tab === "daily"
         ? fetchDailyBoard(today.date)
-        : fetchBoard(tab === "world" ? { world } : tab, FIRST_SEASON);
+        : fetchBoard(tab === "world" ? { world } : tab, season ?? 0);
     request
       .then((rows) => {
         if (!isCancelled) setLoaded({ key, rows });
@@ -129,7 +140,7 @@ export default function Leaderboards({
     return () => {
       isCancelled = true;
     };
-  }, [tab, world, key, today.date, isOnline]);
+  }, [tab, world, key, season, today.date, isOnline]);
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -225,6 +236,24 @@ export default function Leaderboards({
           </button>
         </div>
 
+        {newSeasonNote ? (
+          <div
+            role="status"
+            className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-emerald-100 p-3 font-semibold text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100"
+          >
+            <p>
+              New season! Everyone starts from zero. Fly to get on the board.
+            </p>
+            <button
+              type="button"
+              onClick={dismissNewSeasonNote}
+              className={secondaryButtonClass}
+            >
+              Got it
+            </button>
+          </div>
+        ) : null}
+
         <div role="tablist" aria-label="Board" className="mt-3 flex gap-1">
           {TABS.map(({ id, label }) => (
             <button
@@ -243,6 +272,16 @@ export default function Leaderboards({
             </button>
           ))}
         </div>
+
+        {tab !== "daily" && currentSeason !== null ? (
+          <div className="mt-3">
+            <SeasonPicker
+              current={currentSeason}
+              value={season ?? currentSeason}
+              onChange={(n) => setPickedSeason(n === currentSeason ? null : n)}
+            />
+          </div>
+        ) : null}
 
         {tab === "world" ? (
           <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
