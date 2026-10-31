@@ -344,6 +344,84 @@ for (const width of [undefined, 320]) {
     }
 
     test(
+      "the keyboard leaves only the header, the chat and the box",
+      { tag: "@smoke" },
+      async ({ page }, testInfo) => {
+        await signedIn(page);
+        const root = page.locator(".jim-app");
+        await send(page, "what's on my list?", /^Here's what/);
+        await expect(root).toHaveAttribute("data-keyboard", "closed");
+
+        // The header is one slim row, with the switch and the menu in it.
+        const header = page.getByRole("banner");
+        expect((await header.boundingBox())?.height).toBeLessThanOrEqual(49);
+        await expect(header.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+          "aria-selected",
+          "true"
+        );
+        await bigTargets(page);
+        await noSidewaysScroll(page);
+
+        // The menu holds Sign out and fits the screen.
+        await page.getByRole("button", { name: "Menu" }).click();
+        const signOut = page.getByRole("menuitem", { name: "Sign out" });
+        await expect(signOut).toBeInViewport({ ratio: 1 });
+        await bigTargets(page);
+        await noSidewaysScroll(page);
+        await page.screenshot({
+          path: shotName(page, testInfo, "menu", "ayu"),
+          animations: "disabled",
+        });
+        await page.keyboard.press("Escape");
+        await expect(signOut).toHaveCount(0);
+
+        // Simulate the iOS keyboard as a home-screen app sees it: the whole
+        // window (innerHeight too) shrinks while the box has focus.
+        const box = page.getByLabel("Message");
+        await box.focus();
+        const full = page.viewportSize() ?? { width: 0, height: 0 };
+        const above = full.height - Math.round(full.height * 0.5);
+        await page.setViewportSize({ width: full.width, height: above });
+        await expect(root).toHaveAttribute("data-keyboard", "open");
+        await expect(box).toBeFocused();
+        await expect(box).toBeInViewport({ ratio: 1 });
+        await expect(header).toBeInViewport({ ratio: 1 });
+        // Nothing between the box and the keyboard: the composer ends at the
+        // bottom edge, with only its own 8px under the box.
+        const form = page.locator("form").filter({ has: box });
+        await expect
+          .poll(async () => {
+            const r = await form.boundingBox();
+            return r ? Math.round(r.y + r.height) : -1;
+          })
+          .toBe(above);
+        const boxBottom = await box.evaluate(
+          (el) => el.getBoundingClientRect().bottom
+        );
+        expect(above - boxBottom).toBeLessThanOrEqual(9);
+        // The end of the latest reply stays in view above the box.
+        await expect(
+          page.getByRole("log").getByText(/that\/should\/wrap/)
+        ).toBeInViewport();
+        await noSidewaysScroll(page);
+        await page.screenshot({
+          path: shotName(page, testInfo, "chat-keyboard", "ayu"),
+          animations: "disabled",
+        });
+
+        // Keyboard down again: the full height is back.
+        await page.setViewportSize(full);
+        await box.blur();
+        await expect(root).toHaveAttribute("data-keyboard", "closed");
+        await expect(box).toBeInViewport({ ratio: 1 });
+        await page.screenshot({
+          path: shotName(page, testInfo, "chat-keyboard-down", "ayu"),
+          animations: "disabled",
+        });
+      }
+    );
+
+    test(
       "every Notes page fits the screen with big targets",
       { tag: "@smoke" },
       async ({ page }, testInfo) => {
@@ -357,14 +435,15 @@ for (const width of [undefined, 320]) {
             animations: "disabled",
           });
         };
-        // The bottom bar clears the home bar and the tabs are thumb-sized.
-        const notesTab = await page
-          .getByRole("tab", { name: "Notes" })
-          .boundingBox();
-        expect(notesTab?.height).toBeGreaterThanOrEqual(44);
-        await expect(page.getByRole("tab", { name: "Notes" })).toBeInViewport({
-          ratio: 1,
+        // The switch sits in the header and the tabs are thumb-sized.
+        const notesTab = page.getByRole("banner").getByRole("tab", {
+          name: "Notes",
         });
+        expect((await notesTab.boundingBox())?.height).toBeGreaterThanOrEqual(
+          44
+        );
+        await expect(notesTab).toBeInViewport({ ratio: 1 });
+        await expect(page.getByRole("navigation")).toHaveCount(0);
         await shot("notes-home");
         // Each page pill, once selected, sits well inside the screen.
         for (const name of ["People", "Golf", "Training", "Health", "Home"]) {

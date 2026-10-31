@@ -9,8 +9,8 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, MessageCircle, NotebookText } from "lucide-react";
-import JimHeader from "@/components/jim/JimHeader";
+import { ArrowUp } from "lucide-react";
+import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import { JimError, sendToJim, type JimErrorKind } from "@/lib/jim/api";
@@ -38,13 +38,6 @@ const ERRORS: Record<JimErrorKind, string> = {
   rejected: "Jim couldn't take that message. Try a shorter one.",
 };
 
-type Tab = "chat" | "notes";
-
-const TABS: { id: Tab; label: string; Icon: typeof MessageCircle }[] = [
-  { id: "chat", label: "Chat", Icon: MessageCircle },
-  { id: "notes", label: "Notes", Icon: NotebookText },
-];
-
 /** After this long, the thinking indicator says it is still working. */
 const SLOW_MS = 20_000;
 
@@ -69,7 +62,7 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   const [held, setHeld] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
-  const [tab, setTab] = useState<Tab>("chat");
+  const [tab, setTab] = useState<JimTab>("chat");
   /** Notes is built (and fetches) only once it has been opened. */
   const [notesOpened, setNotesOpened] = useState(false);
 
@@ -178,7 +171,7 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
     setDraft((current) => (current ? `${text}\n${current}` : text));
   }
 
-  function showTab(next: Tab) {
+  function showTab(next: JimTab) {
     if (next === "notes") setNotesOpened(true);
     setTab(next);
   }
@@ -223,9 +216,10 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
   return (
     <div
       ref={rootRef}
+      data-keyboard={keyboardOpen ? "open" : "closed"}
       className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
     >
-      <JimHeader onSignOut={onSignOut} />
+      <JimHeader onSignOut={onSignOut} tab={tab} onTab={showTab} />
 
       <div className="relative min-h-0 flex-1">
         <div
@@ -281,9 +275,15 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
             </div>
           </div>
 
+          {/* Clears the home bar, except over the keyboard: nothing sits
+              between the box and the keys. */}
           <form
             onSubmit={onSubmit}
-            className="shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pb-2 pl-[env(safe-area-inset-left)]"
+            className={`shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+              keyboardOpen
+                ? "pb-2"
+                : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+            }`}
           >
             <div className="mx-auto w-full max-w-[45rem] px-3 sm:px-4">
               {error && (
@@ -358,43 +358,6 @@ export default function JimChat({ api, getToken, onSignOut }: JimChatProps) {
           </div>
         )}
       </div>
-
-      {/* Hidden while the keyboard is up, like any phone app's tab bar. */}
-      {!keyboardOpen && (
-        <nav
-          aria-label="Jim"
-          className="shrink-0 border-t border-ayu-line bg-ayu-panel pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
-        >
-          <div
-            role="tablist"
-            aria-label="Jim"
-            className="mx-auto flex w-full max-w-[45rem]"
-          >
-            {TABS.map(({ id, label, Icon }) => {
-              const selected = tab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`jim-tab-${id}`}
-                  aria-selected={selected}
-                  aria-controls={`jim-${id}`}
-                  onClick={() => showTab(id)}
-                  className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-                    selected
-                      ? "text-ayu-accent"
-                      : "text-ayu-subtle hover:text-ayu-text"
-                  }`}
-                >
-                  <Icon aria-hidden="true" className="size-6" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      )}
     </div>
   );
 }

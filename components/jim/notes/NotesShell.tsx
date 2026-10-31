@@ -238,7 +238,7 @@ export default function NotesShell({
           id="jim-notes-page"
           role="tabpanel"
           aria-labelledby={`jim-notes-tab-${page}`}
-          className="mx-auto w-full max-w-[45rem] py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
+          className="mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         >
           {data && (
             <div className="mb-5 flex items-center justify-between gap-3 text-sm text-ayu-subtle">

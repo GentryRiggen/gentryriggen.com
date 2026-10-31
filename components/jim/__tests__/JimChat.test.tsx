@@ -284,3 +284,54 @@ describe("tabs", () => {
     );
   });
 });
+
+describe("layout", () => {
+  it("has the Chat | Notes switch in the header and no bottom bar", () => {
+    renderChat();
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("tab", { name: "Chat" })).toBeVisible();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("signs out from the header menu", async () => {
+    const onSignOut = jest.fn();
+    render(
+      <JimChat
+        api="https://jim.example.test"
+        getToken={getToken}
+        onSignOut={onSignOut}
+      />
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+    expect(onSignOut).toHaveBeenCalled();
+  });
+
+  it("clears the home bar only while the keyboard is down", () => {
+    const vv = Object.assign(new EventTarget(), {
+      width: 393,
+      height: 800,
+      offsetTop: 0,
+      scale: 1,
+    });
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: vv,
+    });
+    try {
+      renderChat();
+      const composer = screen.getByLabelText("Message").closest("form")!;
+      expect(composer.className).toContain("safe-area-inset-bottom");
+      act(() => {
+        vv.height = 460;
+        vv.dispatchEvent(new Event("resize"));
+      });
+      expect(composer.className).not.toContain("safe-area-inset-bottom");
+    } finally {
+      Object.defineProperty(window, "visualViewport", {
+        configurable: true,
+        value: undefined,
+      });
+    }
+  });
+});

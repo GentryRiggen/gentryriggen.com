@@ -143,9 +143,8 @@ it("signs out from the not-connected screen", async () => {
   mockApi = "";
   await renderGate();
   act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
-  await userEvent.click(
-    await screen.findByRole("button", { name: "Sign out" })
-  );
+  await userEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
   expect(mockClient.signOutUser).toHaveBeenCalled();
 });
 
