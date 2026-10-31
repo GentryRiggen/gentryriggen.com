@@ -4,7 +4,7 @@ import { getIdToken } from "@/lib/firebase/client";
  * The Cloud Run server that answers /jim. Empty until it is deployed: while
  * it is empty the page says Jim isn't connected and never calls out.
  */
-export const JIM_API = "";
+export const JIM_API = "https://jim-997603129413.us-central1.run.app";
 
 /** A reply slower than this counts as Jim not answering (waking). */
 export const JIM_TIMEOUT_MS = 90_000;

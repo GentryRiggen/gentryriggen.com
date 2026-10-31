@@ -134,7 +134,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "frame-ancestors 'none'; connect-src 'self' https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com"
+            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com"
           },
           {
             "key": "X-Frame-Options",
@@ -147,7 +147,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "frame-ancestors 'none'; connect-src 'self' https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com"
+            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com"
           },
           {
             "key": "X-Frame-Options",

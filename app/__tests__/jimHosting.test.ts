@@ -37,11 +37,12 @@ it("keeps /jim out of the sitemap and the pageview analytics", () => {
   expect(siteForPath("/jim")).toBeNull();
 });
 
-// Runs once JIM_API is set: the page can only reach the server if the CSP
-// lists it on both paths Firebase Hosting serves the page from.
-(JIM_API ? it : it.skip).each(["/jim", "/jim.html"])(
+// The page can only reach the server if the CSP lists it on both paths
+// Firebase Hosting serves the page from.
+it.each(["/jim", "/jim.html"])(
   "%s lets the page call the server in JIM_API",
   (source) => {
+    expect(JIM_API).toMatch(/^https:\/\//);
     const csp = headersFor(source).find(
       (h) => h.key === "Content-Security-Policy"
     );

@@ -9,10 +9,17 @@ import JimGate from "../JimGate";
 
 jest.mock("@/lib/firebase/client");
 jest.mock("@/lib/firebase/config");
-jest.mock("@/lib/jim/api", () => ({
-  ...jest.requireActual("@/lib/jim/api"),
-  JIM_API: "",
-}));
+// The real URL by default; a test sets it to "" for the not-connected state.
+let mockApi: string | undefined;
+jest.mock("@/lib/jim/api", () => {
+  const actual = jest.requireActual("@/lib/jim/api");
+  return {
+    ...actual,
+    get JIM_API() {
+      return mockApi ?? actual.JIM_API;
+    },
+  };
+});
 jest.mock("@/lib/jim/host", () => ({
   ...jest.requireActual("@/lib/jim/host"),
   jimRedirectTarget: jest.fn(() => null),
@@ -33,6 +40,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   window.localStorage.clear();
   delete window.__JIM_TEST__;
+  mockApi = undefined;
   mockConfig.isFirebaseConfigured.mockReturnValue(true);
   mockClient.signOutUser.mockResolvedValue();
   mockClient.signInWithEmail.mockResolvedValue();
@@ -94,6 +102,7 @@ it("signs out anyone who is not the owner", async () => {
 });
 
 it("says Jim isn't connected while there is no server URL", async () => {
+  mockApi = "";
   expect(api.JIM_API).toBe("");
   await renderGate();
   act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
@@ -115,7 +124,17 @@ it("opens the chat for the owner when the server URL is set", async () => {
   );
 });
 
+it("opens the chat on the deployed server for the owner", async () => {
+  await renderGate();
+  act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+  expect(await screen.findByTestId("chat")).toHaveAttribute(
+    "data-api",
+    "https://jim-997603129413.us-central1.run.app"
+  );
+});
+
 it("signs out from the not-connected screen", async () => {
+  mockApi = "";
   await renderGate();
   act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
   await userEvent.click(
