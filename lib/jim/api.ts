@@ -40,14 +40,15 @@ export interface JimReply {
  * - waking: the message never reached Jim, so it is safe to send again:
  *   offline, a token could not be fetched, a time-out before it was sent,
  *   or the server said 503 (busy or cold; the turn did not run).
- * - uncertain: the message went out but no reply came back (the connection
- *   dropped, the body was cut off, or JIM_TIMEOUT_MS passed). Jim may have
- *   acted on it, so sending again could save it twice.
+ * - uncertain: the message went out but no usable reply came back (the
+ *   connection dropped, the body was cut off or malformed, a 5xx other than
+ *   503, or JIM_TIMEOUT_MS passed). Jim may have acted on it, so sending
+ *   again could save it twice.
  * - denied: no signed-in user (or Firebase says the sign-in expired or was
  *   disabled), a token the server still refused after one refresh, or a 403.
  *   Any other failure to get a token (offline, a PWA waking up) is waking.
  * - rejected: the server refused the message itself (400, 413).
- * - server: anything else (5xx, a reply in the wrong shape, no URL).
+ * - server: anything else where the turn never ran (another 4xx, no URL).
  */
 export type JimErrorKind =
   "waking" | "uncertain" | "server" | "denied" | "rejected";
@@ -167,6 +168,9 @@ async function request(
   if (res.status === 400 || res.status === 413) {
     throw new JimError("rejected");
   }
+  // Any other 5xx (500, 502, Cloud Run's 504 at its time limit) can come
+  // after the turn ran and saved.
+  if (res.status >= 500) throw new JimError("uncertain");
   if (!res.ok) throw new JimError("server");
 
   let body: unknown;
@@ -176,6 +180,6 @@ async function request(
     // A 200 whose body never arrived whole: the turn ran.
     throw new JimError("uncertain");
   }
-  if (!isReply(body)) throw new JimError("server");
+  if (!isReply(body)) throw new JimError("uncertain");
   return { reply: body.reply, changed: body.changed, commit: body.commit };
 }

@@ -116,12 +116,28 @@ it("is uncertain when the reply body is cut off", async () => {
   );
 });
 
-it("is a server error on 500 or a malformed reply", async () => {
-  const token = async () => "t";
-  const boom = jest.fn().mockResolvedValue(json(500, {}));
-  expect(await kindOf(sendToJim("s", "x", token, boom, API))).toBe("server");
+it.each([500, 502, 504])(
+  "is uncertain on %d, which can come after the turn ran",
+  async (status) => {
+    const fail = jest.fn().mockResolvedValue(json(status, {}));
+    expect(await kindOf(sendToJim("s", "x", async () => "t", fail, API))).toBe(
+      "uncertain"
+    );
+  }
+);
+
+it("is uncertain on a 200 with a malformed reply", async () => {
   const odd = jest.fn().mockResolvedValue(json(200, { reply: 3 }));
-  expect(await kindOf(sendToJim("s", "x", token, odd, API))).toBe("server");
+  expect(await kindOf(sendToJim("s", "x", async () => "t", odd, API))).toBe(
+    "uncertain"
+  );
+});
+
+it("is a server error on other refusals, where the turn never ran", async () => {
+  const missing = jest.fn().mockResolvedValue(json(404, {}));
+  expect(await kindOf(sendToJim("s", "x", async () => "t", missing, API))).toBe(
+    "server"
+  );
 });
 
 it("is rejected when the message is too long or malformed", async () => {
