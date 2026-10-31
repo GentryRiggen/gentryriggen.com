@@ -95,10 +95,14 @@ function stepBody<T extends Body>(
   body: T,
   span: BodySpan,
   restPitch: number,
-  speed: number
+  speed: number,
+  isCapsized: boolean
 ): BodyStep<T> {
   const isDown = isOnFloor(body, span);
-  const restRoll = (Math.sign(body.roll) || 1) * REST_ROLL;
+  // A ship that capsized goes down, and lies, upside down: no righting.
+  const restRoll = isCapsized
+    ? body.roll
+    : (Math.sign(body.roll) || 1) * REST_ROLL;
   const timeLeft = isDown
     ? 0
     : (FLOOR_DEPTH - deepestDepth(body.sink, body.pitch, span)) / DESCENT_SPEED;
@@ -134,6 +138,7 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
   const speed =
     DESCENT_SPEED * Math.min(1, (time - startedAt) / DESCENT_RAMP_S);
   const { halves, breakup } = state;
+  const isCapsized = state.events.some((e) => e.kind === "capsized");
   let next: SimState;
   let bodies: BodyStep<Body>[];
   let names: SimBody[];
@@ -142,13 +147,15 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
       halves.bow,
       bowSpan(breakup.atX),
       REST_PITCH_BOW,
-      speed
+      speed,
+      isCapsized
     );
     const stern = stepBody(
       halves.stern,
       sternSpan(breakup.atX, length),
       REST_PITCH_STERN,
-      speed
+      speed,
+      isCapsized
     );
     bodies = [bow, stern];
     names = ["bow", "stern"];
@@ -158,7 +165,8 @@ export function stepDescent(state: SimState, input: TrialInput): SimState {
       state.pose,
       wholeSpan(length),
       REST_PITCH_BOW,
-      speed
+      speed,
+      isCapsized
     );
     bodies = [whole];
     names = ["ship"];

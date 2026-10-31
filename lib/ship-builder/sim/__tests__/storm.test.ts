@@ -9,6 +9,7 @@ import type { Bulkhead, BulkheadHeight, Ship } from "../../model/types";
 import { emptyShip } from "../../model/placement";
 import { TEMPLATES } from "../../templates";
 import { compartmentSpecsOf } from "../compartments";
+import { startDescent } from "../descent";
 import { explainTrial } from "../explain";
 import { STORM_START_S } from "../flooding";
 import {
@@ -92,7 +93,7 @@ describe("the storm trial", () => {
       listAngle: 0.25,
       beam: 4,
     };
-    for (const listAngle of [0.25, -0.25, 0.1]) {
+    for (const listAngle of [0.25, -0.25, 0.1, 0.35, -0.35]) {
       const state = runTrial(
         stormInput(plainShip(10, null), { ...dangerous, listAngle })
       );
@@ -103,6 +104,55 @@ describe("the storm trial", () => {
       expect(state.reason).toBe("storm");
       expect(state.events.some((e) => e.kind === "sunk")).toBe(true);
     }
+  });
+
+  it("deck-high walls buy at least 8 s over no walls", () => {
+    for (const segments of [MIN_SEGMENTS, 10, MAX_SEGMENTS]) {
+      const bare = sunkAt(runTrial(stormInput(plainShip(segments, null))));
+      const walled = sunkAt(runTrial(stormInput(plainShip(segments, "deck"))));
+      expect(walled - bare).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it("keeps moving while she is held from capsizing", () => {
+    const input = stormInput(plainShip(10, null), {
+      stabilityRatio: 0.45,
+      listAngle: 0.35,
+      beam: 4,
+    });
+    let state = createTrial(input);
+    const rolls: number[] = [];
+    let pinned = 0;
+    let longestPin = 0;
+    while (state.time < STORM_NO_CAPSIZE_S - 0.5) {
+      state = stepTrial(input, state);
+      rolls.push(state.pose.roll);
+      pinned = state.rollVelocity === 0 ? pinned + 1 : 0;
+      longestPin = Math.max(longestPin, pinned);
+    }
+    expect(state.phase).toBe("sailing");
+    expect(longestPin).toBeLessThan(5);
+    const late = rolls.slice(-300);
+    expect(Math.max(...late) - Math.min(...late)).toBeGreaterThan(0.001);
+  });
+
+  it("a capsized storm ship stays upside down on the way down", () => {
+    const input = stormInput(plainShip(10, null), {
+      stabilityRatio: 0.45,
+      listAngle: 0.25,
+      beam: 4,
+    });
+    let state = startDescent(runTrial(input));
+    expect(state.phase).toBe("descending");
+    expect(state.events.some((e) => e.kind === "capsized")).toBe(true);
+    const over = Math.abs(state.pose.roll);
+    expect(over).toBeGreaterThan(1.5);
+    let steps = 0;
+    while (state.phase !== "done" && steps++ < 20000) {
+      state = stepTrial(input, state);
+      expect(Math.abs(state.pose.roll)).toBeGreaterThan(over - 0.05);
+    }
+    expect(state.phase).toBe("done");
   });
 
   it("storm is deterministic", () => {

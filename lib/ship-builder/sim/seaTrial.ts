@@ -78,6 +78,8 @@ const LOPSIDED_BLEND = 1 * DEG;
 
 /** Share of the capsize angle the storm holds her at before STORM_NO_CAPSIZE_S. */
 const STORM_HOLD = 0.98;
+/** Share of her roll speed she keeps (turned back) when the hold stops her. */
+const STORM_HOLD_BOUNCE = 0.5;
 
 /** Roll oscillator: natural frequency (rad/s) and damping ratio. */
 const NATURAL_FREQ = 3;
@@ -369,8 +371,10 @@ const stepSailing: StepFn = (input, params, state) => {
     time < STORM_NO_CAPSIZE_S &&
     Math.abs(nextRoll) > capsizeAngle * STORM_HOLD
   ) {
-    nextRoll = Math.sign(nextRoll) * capsizeAngle * STORM_HOLD;
-    rollVelocity = 0;
+    // A soft wall: she bounces back at part of her speed, so she keeps moving.
+    const side = Math.sign(nextRoll);
+    nextRoll = side * capsizeAngle * STORM_HOLD;
+    rollVelocity = -side * Math.abs(rollVelocity) * STORM_HOLD_BOUNCE;
   }
   const deviation = Math.abs(nextRoll - list);
 

@@ -65,17 +65,21 @@ export const STORM_START_S = 10;
  * its depth per second while it is dry, slowing as it fills (see
  * `STORM_TRICKLE`). Tuned so every build sinks 60 to 120 s into the storm.
  */
-export const STORM_INFLOW = 0.005;
+export const STORM_INFLOW = 0.007;
 /**
  * A full compartment still takes this share of `STORM_INFLOW`, so walls slow
  * the storm (the water piles up in the bow) but never stop it.
  */
 export const STORM_TRICKLE = 0.25;
 /**
- * The waves break hardest over the bow: the inflow weight runs from
- * 1 + this at the bow to 1 - this at the stern.
+ * The waves break hardest over the bow. The weight along the hull is
+ * `(p + 1) (1 - x)^p` (x runs 0 at the bow to 1 at the stern, p is this), so
+ * its average over the whole ship is 1 however the walls divide her: walls
+ * never change how much comes aboard, only where it piles up. Deck-high walls
+ * let the bow compartments fill and stop taking water, which is what slows
+ * her.
  */
-export const STORM_BOW_BIAS = 0.6;
+export const STORM_BOW_POWER = 4;
 /** The storm trial's window: every build has sunk by this (sim seconds). */
 export const STORM_SUNK_BY_S = 120;
 
@@ -249,6 +253,15 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   };
 }
 
+/** Average bow-heavy storm weight over a compartment (1 over the whole hull). */
+function stormWashOf(spec: CompartmentSpec, length: number): number {
+  const exponent = STORM_BOW_POWER + 1;
+  const bow = 1 - spec.fromX / length;
+  const stern = 1 - spec.toX / length;
+  const span = (spec.toX - spec.fromX) / length;
+  return span > 0 ? (bow ** exponent - stern ** exponent) / span : 0;
+}
+
 /**
  * Storm water coming over the deck into one compartment (cells x depth per
  * second): heavier toward the bow, slowing as the compartment fills but never
@@ -259,8 +272,7 @@ function stormInflowOf(
   water: number,
   length: number
 ): number {
-  const centre = (spec.fromX + spec.toX) / 2;
-  const wash = 1 + STORM_BOW_BIAS * (1 - (2 * centre) / length);
+  const wash = stormWashOf(spec, length);
   const room = Math.max(STORM_TRICKLE, 1 - water);
   return water >= 1 ? 0 : STORM_INFLOW * lengthOf(spec) * wash * room;
 }

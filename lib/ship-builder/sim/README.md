@@ -232,7 +232,8 @@ Waves trials never touch the lights.
 
 ### The way down (`descent.ts`)
 
-Every sinking goes on to the sea floor. `startDescent` turns a finished
+Every sinking goes on to the sea floor (a ship that capsized keeps her roll
+all the way down and lies upside down; any other settles to a small list). `startDescent` turns a finished
 state that logged `sunk` into `descending` (a weather `stepSinking` calls it
 itself; an iceberg timeline appends it with `extendWithDescent`); `stepTrial`
 then runs `stepDescent`. Each body (the whole `pose`, or each half) falls at
@@ -318,14 +319,19 @@ none is `opened`. Differences from the iceberg:
 
 - Water: nothing comes aboard before `STORM_START_S` (10 s), so she is
   battered for a while first. Then every compartment takes deck wash from
-  above: `STORM_INFLOW` (0.005) x its length x a bow weight (1 +
-  `STORM_BOW_BIAS` 0.6 at the bow to 1 - 0.6 at the stern) x the room left
-  (`1 - water`, but never under `STORM_TRICKLE`, 0.25) per second. Walls slow
-  it (water piles up in the bow, whose inflow slows as it fills) but never
-  stop it. Spill, trim, draft, `RESERVE` and the plunge are the iceberg's.
+  above: `STORM_INFLOW` (0.007) x its length x a bow weight (the average of
+  `(p + 1)(1 - x)^p` over the compartment, `p` = `STORM_BOW_POWER` 4, which
+  averages 1 over the whole hull) x the room left (`1 - water`, but never
+  under `STORM_TRICKLE`, 0.25) per second. The same water comes aboard
+  however the walls divide her, but deck-high walls let the bow compartments
+  fill and stop taking water, which buys 15 to 25 s (bare hulls sink about
+  65 to 72 s in, walled ones 84 to 94 s). It never stops while any
+  compartment has room.
+  Spill, trim, draft, `RESERVE` and the plunge are the iceberg's.
 - She never ends afloat: no settle, no 90 s limit, no 9 s waves timeout.
 - Capsize: before `STORM_NO_CAPSIZE_S` (30 s) she cannot capsize; the roll is
-  held at 0.98 of her capsize angle instead. A later capsize logs `capsized`
+  held at 0.98 of her capsize angle instead (a soft wall: she bounces back at
+  half her speed, so she keeps moving). A later capsize logs `capsized`
   but sets outcome `sank`, reason `storm`: she rolls over, then `stepPlunge`
   takes her down (keeping her upside down), with the lights, breakup and
   `sunk` like any flooding sinking.
