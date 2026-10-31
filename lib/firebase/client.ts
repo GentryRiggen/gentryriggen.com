@@ -1,6 +1,8 @@
 import type { FirebaseApp } from "firebase/app";
 import { parseGameEvent, type GameEvent } from "@/lib/analytics/gameEvents";
 import type { PageviewDoc } from "@/lib/analytics/types";
+import type { SeasonGame, SeasonInfo } from "@/lib/leaderboard/season";
+import type { AdminBoardRow } from "./adminBoard";
 import { browserEnv, isRealBrowser } from "./appCheck";
 import { firebaseConfig } from "./config";
 
@@ -174,63 +176,81 @@ export async function fetchGameEvents(
   return { events, truncated: snapshot.size >= max };
 }
 
-export interface LeaderboardAdminRow {
-  uid: string;
-  nickname: string;
-  prestige: number;
-  score: number;
-  lifetimeDistance: number;
-  updatedAt: Date | null;
+export type { AdminBoardRow } from "./adminBoard";
+
+/** Firestore plus the admin board operations, loaded on first use. */
+async function adminBoard() {
+  const [app, fs, ops] = await Promise.all([
+    getApp(),
+    import("firebase/firestore"),
+    import("./adminBoard"),
+  ]);
+  return { db: fs.getFirestore(app), ops };
 }
 
-export const LEADERBOARD_ADMIN_LIMIT = 50;
-
-/** The top players by score. Fields come from player writes: show as text. */
-export async function fetchLeaderboardTop(): Promise<LeaderboardAdminRow[]> {
-  const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
-  const db = fs.getFirestore(app);
-  const snapshot = await fs.getDocs(
-    fs.query(
-      fs.collection(db, "leaderboard"),
-      fs.orderBy("score", "desc"),
-      fs.limit(LEADERBOARD_ADMIN_LIMIT)
-    )
-  );
-  const rows: LeaderboardAdminRow[] = [];
-  for (const d of snapshot.docs) {
-    const data = d.data();
-    if (
-      typeof data.nickname !== "string" ||
-      typeof data.prestige !== "number" ||
-      typeof data.score !== "number" ||
-      typeof data.lifetimeDistance !== "number"
-    ) {
-      continue;
-    }
-    rows.push({
-      uid: d.id,
-      nickname: data.nickname,
-      prestige: data.prestige,
-      score: data.score,
-      lifetimeDistance: data.lifetimeDistance,
-      updatedAt:
-        data.updatedAt instanceof fs.Timestamp ? data.updatedAt.toDate() : null,
-    });
-  }
-  return rows;
+/** The game's current season (missing doc → season 1, no start date). */
+export async function fetchAdminSeason(game: SeasonGame): Promise<SeasonInfo> {
+  const { db, ops } = await adminBoard();
+  return ops.readSeason(db, game);
 }
 
 /**
- * Removes a player from the leaderboard and bans their uid, so the rules
- * refuse any later write to leaderboard/{uid}. One batch: both or neither.
+ * Transaction: reads seasons/{game}, writes number + 1 (2 if missing),
+ * startedAt serverTimestamp. Returns the new number.
  */
-export async function banAndDeleteLeaderboardEntry(uid: string): Promise<void> {
-  const [app, fs] = await Promise.all([getApp(), import("firebase/firestore")]);
-  const db = fs.getFirestore(app);
-  const batch = fs.writeBatch(db);
-  batch.set(fs.doc(db, "leaderboardBans", uid), {
-    bannedAt: fs.serverTimestamp(),
-  });
-  batch.delete(fs.doc(db, "leaderboard", uid));
-  await batch.commit();
+export async function startNewSeason(game: SeasonGame): Promise<number> {
+  const { db, ops } = await adminBoard();
+  return ops.startSeason(db, game);
+}
+
+/** Top 50 of a season: plane by score, ship by total stars. Show as text. */
+export async function fetchAdminBoard(
+  game: SeasonGame,
+  season: number
+): Promise<AdminBoardRow[]> {
+  const { db, ops } = await adminBoard();
+  return ops.readBoard(db, game, season);
+}
+
+export async function deleteBoardEntry(
+  game: SeasonGame,
+  season: number,
+  uid: string
+): Promise<void> {
+  const { db, ops } = await adminBoard();
+  await ops.deleteEntry(db, game, season, uid);
+}
+
+/**
+ * One batch: ban doc + delete uid from every season 1..current of both games
+ * + planeDaily today and yesterday (UTC). Deleting a missing doc is fine.
+ */
+export async function banAndDeleteEverywhere(uid: string): Promise<void> {
+  const { db, ops } = await adminBoard();
+  await ops.banEverywhere(db, uid);
+}
+
+/** updateDoc({ nickname, updatedAt }); the rules allow nothing else. */
+export async function renameBoardEntry(
+  game: SeasonGame,
+  season: number,
+  uid: string,
+  nickname: string
+): Promise<void> {
+  const { db, ops } = await adminBoard();
+  await ops.renameEntry(db, game, season, uid, nickname);
+}
+
+/** Whether the board is hidden from players (missing or bad doc → hidden). */
+export async function fetchAdminBoardHidden(game: "plane"): Promise<boolean> {
+  const { db, ops } = await adminBoard();
+  return ops.readBoardHidden(db, game);
+}
+
+export async function setBoardHidden(
+  game: "plane",
+  hidden: boolean
+): Promise<void> {
+  const { db, ops } = await adminBoard();
+  await ops.writeBoardHidden(db, game, hidden);
 }

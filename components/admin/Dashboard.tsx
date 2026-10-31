@@ -6,7 +6,7 @@ import { SITES, type PageviewDoc, type Site } from "@/lib/analytics/types";
 import type { GameEvent } from "@/lib/analytics/gameEvents";
 import { fetchGameEvents, fetchPageviews } from "@/lib/firebase/client";
 import GamesView from "./GamesView";
-import LeaderboardAdmin from "./LeaderboardAdmin";
+import SeasonBoardAdmin from "./SeasonBoardAdmin";
 import SummaryView from "./SummaryView";
 
 type Tab = "overview" | Site | "games";
@@ -230,7 +230,8 @@ export default function Dashboard() {
           comparable={!current?.truncated}
         />
       )}
-      <LeaderboardAdmin />
+      <SeasonBoardAdmin game="plane" />
+      <SeasonBoardAdmin game="ship" />
     </main>
   );
 }

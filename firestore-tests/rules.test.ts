@@ -21,6 +21,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type Firestore,
 } from "firebase/firestore";
 import { buildCommitBody, commitUrl, sendPageview } from "@/lib/analytics/send";
 import type { PageviewEvent } from "@/lib/analytics/types";
@@ -31,6 +32,18 @@ import { fetchSeason } from "@/lib/leaderboard/season";
 import { fetchShipBoard, submitShipEntry } from "@/lib/leaderboard/shipBoard";
 import { LEVELS, LEVEL_ORDER } from "@/lib/plane-builder/levels";
 import { scoreFor } from "@/lib/leaderboard/types";
+import { randomNickname } from "@/lib/leaderboard/nickname";
+import {
+  banDeletePaths,
+  banEverywhere,
+  deleteEntry,
+  readBoard,
+  readBoardHidden,
+  readSeason,
+  renameEntry,
+  startSeason,
+  writeBoardHidden,
+} from "@/lib/firebase/adminBoard";
 
 const PROJECT_ID = "demo-gentryriggen";
 const [HOST, PORT] = (
@@ -2323,5 +2336,117 @@ describe("boardSettings", () => {
     await assertFails(setDoc(settings(admin(), "daily"), { hidden: true }));
     await assertSucceeds(setDoc(settings(admin()), { hidden: true }));
     await assertFails(deleteDoc(settings(admin())));
+  });
+});
+
+// The /admin board tools run these exact functions against the SDK, so the
+// rules must accept every write they make, and refuse them for anyone else.
+describe("admin board tools", () => {
+  const UID = "player-1";
+  const adminDb = () => admin() as unknown as Firestore;
+  const seedDoc = (path: string, data: Record<string, unknown>) =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), path), data);
+    });
+  const exists = async (path: string) => {
+    let found = false;
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      found = (await getDoc(doc(ctx.firestore(), path))).exists();
+    });
+    return found;
+  };
+  const planeEntry = {
+    nickname: "Happy Otter 7",
+    prestige: 1,
+    score: scoreFor(1, 1000.5),
+    lifetimeDistance: 1000.5,
+    bestTimes: { meadow: 20 },
+    fastestRun: null,
+    updatedAt: new Date(Date.now() - 60_000),
+  };
+  const shipEntry = {
+    nickname: "Happy Otter 7",
+    totalStars: 3,
+    bests: { outlast: 170 },
+    updatedAt: new Date(Date.now() - 60_000),
+  };
+
+  it("startSeason creates season 2, then adds one each time", async () => {
+    expect(await startSeason(adminDb(), "plane")).toBe(2);
+    expect(await startSeason(adminDb(), "plane")).toBe(3);
+    expect(await startSeason(adminDb(), "ship")).toBe(2);
+    const plane = await readSeason(adminDb(), "plane");
+    expect(plane.number).toBe(3);
+    expect(plane.startedAt).toBeInstanceOf(Date);
+    expect((await readSeason(adminDb(), "ship")).number).toBe(2);
+  });
+
+  it("startSeason is refused for anyone but the admin", async () => {
+    const player = signedIn(UID, { provider: "anonymous" });
+    await assertFails(startSeason(player as unknown as Firestore, "plane"));
+    await assertFails(
+      startSeason(signedIn("uid-someone-else") as unknown as Firestore, "plane")
+    );
+  });
+
+  it("reads, renames and deletes entries in season 1 and later seasons", async () => {
+    await seedSeasons(2, 2);
+    await seedDoc(`leaderboard/${UID}`, planeEntry);
+    await seedDoc(`planeSeasons/2/entries/${UID}`, planeEntry);
+    await seedDoc(`shipLeaderboard/${UID}`, shipEntry);
+    await seedDoc(`shipSeasons/2/entries/${UID}`, shipEntry);
+    for (const game of ["plane", "ship"] as const) {
+      for (const season of [1, 2]) {
+        const rows = await readBoard(adminDb(), game, season);
+        expect(rows.map((r) => r.uid)).toEqual([UID]);
+        const nickname = randomNickname();
+        await assertSucceeds(
+          renameEntry(adminDb(), game, season, UID, nickname)
+        );
+        expect((await readBoard(adminDb(), game, season))[0].nickname).toBe(
+          nickname
+        );
+        await assertSucceeds(deleteEntry(adminDb(), game, season, UID));
+        expect(await readBoard(adminDb(), game, season)).toEqual([]);
+      }
+    }
+  });
+
+  it("banEverywhere bans and clears every board in one batch, missing docs included", async () => {
+    await seedSeasons(3, 2);
+    const now = new Date();
+    const paths = banDeletePaths(UID, 3, 2, now);
+    // Seed only some of the paths: deleting the missing ones is fine.
+    await seedDoc(`leaderboard/${UID}`, planeEntry);
+    await seedDoc(`planeSeasons/3/entries/${UID}`, planeEntry);
+    await seedDoc(`shipSeasons/2/entries/${UID}`, shipEntry);
+    await seedDoc(paths[paths.length - 2], {
+      nickname: "Happy Otter 7",
+      world: "meadow",
+      time: 30,
+      updatedAt: new Date(),
+    });
+    await seedDoc(`planeSeasons/3/entries/player-2`, planeEntry);
+    await assertSucceeds(banEverywhere(adminDb(), UID, now));
+    for (const path of paths) expect(await exists(path)).toBe(false);
+    expect(await exists(`leaderboardBans/${UID}`)).toBe(true);
+    expect(await exists(`planeSeasons/3/entries/player-2`)).toBe(true);
+  });
+
+  it("banEverywhere is refused for anyone but the admin", async () => {
+    await seedSeasons(2, 2);
+    await seedDoc(`planeSeasons/2/entries/${UID}`, planeEntry);
+    await assertFails(
+      banEverywhere(signedIn("uid-someone-else") as unknown as Firestore, UID)
+    );
+    expect(await exists(`planeSeasons/2/entries/${UID}`)).toBe(true);
+  });
+
+  it("reads and writes the plane board's hidden switch", async () => {
+    expect(await readBoardHidden(adminDb(), "plane")).toBe(true);
+    await assertSucceeds(writeBoardHidden(adminDb(), "plane", false));
+    expect(await readBoardHidden(adminDb(), "plane")).toBe(false);
+    await assertSucceeds(writeBoardHidden(adminDb(), "plane", true));
+    expect(await readBoardHidden(adminDb(), "plane")).toBe(true);
   });
 });
