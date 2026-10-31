@@ -96,3 +96,27 @@ describe("SeaTrialStatus focus", () => {
     expect(screen.getByRole("button", { name: "Stop" })).toHaveFocus();
   });
 });
+
+describe("SeaTrialStatus in the storm", () => {
+  it("names the Shipwreck storm and shows the story clock", () => {
+    render(<SeaTrialStatus />);
+    act(() =>
+      useShipBuilderStore.setState({
+        trial: {
+          status: "running",
+          input: {
+            ...INPUT,
+            sea: "wild",
+            storm: { compartments: [], length: 30 },
+          },
+          look: { sea: "wild", time: "night" },
+          runId: 1,
+          descending: true,
+        },
+      })
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Shipwreck storm");
+    expect(screen.getByRole("status")).not.toHaveTextContent("Wild storm");
+    expect(screen.getByTestId("story-clock")).toBeInTheDocument();
+  });
+});

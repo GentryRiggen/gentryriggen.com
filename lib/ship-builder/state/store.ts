@@ -50,6 +50,8 @@ import {
 } from "../challenges/definitions";
 import { forgetUnsavedChallenges } from "@/lib/ship-builder/challenges/progressStore";
 import { getSeaState } from "../../../components/ship-builder/hooks/useSeaState";
+import { getTimeOfDay } from "../../../components/ship-builder/hooks/useTimeOfDay";
+import type { TimeOfDay } from "../../../components/ship-builder/scene/timeOfDay";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
 import type { SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
@@ -143,12 +145,29 @@ export interface SailResult {
   runId: number;
 }
 
+/**
+ * How the scene looks during a trial: its sea and time of day. The scene
+ * shows these instead of the main-screen choices while the trial is on
+ * (aiming, running or its result), and never changes those choices. Scene
+ * only: the sim reads `input.sea`, never this.
+ */
+export interface TrialLook {
+  sea: SimSea;
+  time: TimeOfDay;
+}
+
+/** The main-screen sea and time, the look a trial gets by default. */
+function mainLook(): TrialLook {
+  return { sea: getSeaState(), time: getTimeOfDay() };
+}
+
 export type TrialSlice =
   | { status: "idle" }
-  | { status: "aiming" }
+  | { status: "aiming"; look: TrialLook }
   | {
       status: "running";
       input: TrialInput;
+      look: TrialLook;
       /** Changes per run, so "Try again" restarts the runner. */
       runId: number;
       /** The descent to the sea floor is part of this run (iceberg trials). */
@@ -159,6 +178,7 @@ export type TrialSlice =
   | {
       status: "result";
       input: TrialInput;
+      look: TrialLook;
       state: SimState;
       runId: number;
       descending: boolean;
@@ -382,6 +402,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       gashLength?: number;
       /** Picks the sea once the ship's input is known (weather challenges). */
       chooseSea?: (input: TrialInput) => SimSea;
+      /** The scene's sea and time; absent is the main-screen choices. */
+      look?: TrialLook;
     } = {}
   ) {
     const { ship } = get();
@@ -414,6 +436,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       trial: {
         status: "running",
         input,
+        look: options.look ?? mainLook(),
         runId,
         descending: true,
         ...(options.challenge ? { challenge: options.challenge } : {}),
@@ -908,7 +931,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       const { status } = get().trial;
       if (status !== "idle" && status !== "result") return;
       set({
-        trial: { status: "aiming" },
+        trial: { status: "aiming", look: mainLook() },
         tool: { kind: "none" },
         camera: { view: "side", nonce: get().camera.nonce + 1 },
         ...CLEARED,
@@ -928,6 +951,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         trial: {
           status: "result",
           input: trial.input,
+          look: trial.look,
           state,
           runId: trial.runId,
           descending: trial.descending,
@@ -952,6 +976,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         trial: {
           status: "running",
           input: trial.input,
+          look: trial.look,
           runId,
           descending: trial.descending,
           ...(trial.challenge ? { challenge: trial.challenge } : {}),

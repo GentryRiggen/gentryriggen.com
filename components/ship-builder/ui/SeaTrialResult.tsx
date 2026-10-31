@@ -12,6 +12,7 @@ import {
   explainTrial,
   type TrialSummary,
 } from "@/lib/ship-builder/sim/explain";
+import { isTimelineTrial } from "@/lib/ship-builder/sim/trialKind";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import {
   useShipBuilderStore,
@@ -100,7 +101,8 @@ function ResultCard({ trial }: ResultCardProps) {
   const summary = useMemo(() => explainTrial(state, input), [state, input]);
   const extraLines = useMemo(() => extraSummaryLines(summary), [summary]);
   const timeline = useMemo(
-    () => (input.iceberg ? trialTimelineFor(input, trial.descending) : null),
+    () =>
+      isTimelineTrial(input) ? trialTimelineFor(input, trial.descending) : null,
     [input, trial.descending]
   );
   const look = OUTCOME_LOOKS[state.outcome ?? "steady"];

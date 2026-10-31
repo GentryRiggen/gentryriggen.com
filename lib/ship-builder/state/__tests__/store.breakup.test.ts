@@ -118,7 +118,10 @@ describe("leaving", () => {
 
     finishSinkingTrial();
     act(() => store().aimIceberg());
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
     act(() => store().cancelAim());
     expect(store().trial).toEqual({ status: "idle" });
   });

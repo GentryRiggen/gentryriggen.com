@@ -1,6 +1,6 @@
 import { STABILITY_THRESHOLDS } from "@/lib/ship-builder/model/stats";
 import { clamp, TAU } from "./animationMath";
-import { seaParams, type SeaState } from "./seaState";
+import { seaParams, type SceneSea } from "./seaState";
 
 const DEG = Math.PI / 180;
 
@@ -40,7 +40,7 @@ export function bobPose(
   time: number,
   stabilityRatio: number,
   out: ShipPose,
-  sea: SeaState = "calm"
+  sea: SceneSea = "calm"
 ): ShipPose {
   const { bobScale, rollScale } = seaParams(sea);
   out.y = BOB_AMPLITUDE * bobScale * Math.sin((TAU * time) / BOB_PERIOD);

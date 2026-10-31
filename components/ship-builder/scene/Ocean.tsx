@@ -31,8 +31,8 @@ import {
   SEA_NEAR_FACTOR,
   SEA_NEAR_FULL_RADIUS,
   SEA_NEAR_RADIUS,
+  SEA_WAVES,
   seaParams,
-  WAVES,
 } from "./seaState";
 
 /** A segmented plane with a per-vertex radial gradient around the origin. */
@@ -71,19 +71,25 @@ interface OceanProps {
   environment: RuntimeEnvironment;
 }
 
-/** Rate at which the wave height eases toward a newly chosen sea state. */
+/** Rate at which the wave height and mix ease toward a newly chosen sea. */
 const AMPLITUDE_EASE = 3;
 
 const glsl = (n: number) => n.toFixed(4);
 
-/** The same wave sum as `seaHeight`, with its slope for the lighting. */
-const WAVE_SUM = WAVES.map((w) => {
+const WAVE_COUNT = SEA_WAVES.length;
+
+/**
+ * The same wave sum as `seaHeight`, with its slope for the lighting. Each
+ * wave's share comes from `uWeights`, so every sea is the one shader (and the
+ * one mesh): a sea that leaves a wave out gives it weight 0.
+ */
+const WAVE_SUM = SEA_WAVES.map((w, i) => {
   const k = (Math.PI * 2) / w.wavelength;
   return `{
     vec2 dir = vec2(${glsl(w.dirX)}, ${glsl(w.dirY)});
-    float phase = dot(dir, seaP) * ${glsl(k)} + uTime * ${glsl(w.omega)};
-    seaH += ${glsl(w.weight)} * sin(phase);
-    seaSlope += ${glsl(w.weight * k)} * cos(phase) * dir;
+    float phase = dot(dir, seaP) * ${glsl(k)} + uTime * ${glsl(w.omega)} + ${glsl(w.phase)};
+    seaH += uWeights[${i}] * sin(phase);
+    seaSlope += uWeights[${i}] * ${glsl(k)} * cos(phase) * dir;
   }`;
 }).join("\n");
 
@@ -119,6 +125,8 @@ const SEA_VERTEX = /* glsl */ `
 interface SeaUniforms {
   uTime: { value: number };
   uAmplitude: { value: number };
+  /** Each of `SEA_WAVES`' share of the height, eased like the amplitude. */
+  uWeights: { value: number[] };
   /** Ship x, ship z, sin(heading), cos(heading) while sailing. */
   uWorld: { value: Vector4 };
 }
@@ -144,6 +152,7 @@ export default function Ocean({ seeThrough, environment }: OceanProps) {
     () => ({
       uTime: { value: 0 },
       uAmplitude: { value: seaParams(seaState).amplitude },
+      uWeights: { value: [...seaParams(seaState).weights] },
       uWorld: { value: new Vector4(0, 0, 0, 1) },
     }),
     // Built once: later sea states ease in from useFrame.
@@ -157,11 +166,12 @@ export default function Ocean({ seeThrough, environment }: OceanProps) {
     () => (shader: WebGLProgramParametersWithUniforms) => {
       shader.uniforms.uTime = uniforms.uTime;
       shader.uniforms.uAmplitude = uniforms.uAmplitude;
+      shader.uniforms.uWeights = uniforms.uWeights;
       shader.uniforms.uWorld = uniforms.uWorld;
       shader.vertexShader = shader.vertexShader
         .replace(
           "#include <common>",
-          "#include <common>\nuniform float uTime;\nuniform float uAmplitude;\nuniform vec4 uWorld;"
+          `#include <common>\nuniform float uTime;\nuniform float uAmplitude;\nuniform float uWeights[${WAVE_COUNT}];\nuniform vec4 uWorld;`
         )
         .replace("#include <beginnormal_vertex>", SEA_VERTEX)
         .replace(
@@ -192,13 +202,15 @@ export default function Ocean({ seeThrough, environment }: OceanProps) {
     } else {
       uniforms.uWorld.value.set(0, 0, 0, 1);
     }
-    const { amplitude, speed } = target.current;
+    const { amplitude, speed, weights } = target.current;
     // Reduced motion freezes the sea where it is: nothing moves on screen.
     const frozen = frozenTime();
     if (frozen !== null) uniforms.uTime.value = frozen * speed;
     else if (!reducedMotion) uniforms.uTime.value += step * speed;
     const ease = frozen !== null ? 1 : Math.min(1, step * AMPLITUDE_EASE);
     uniforms.uAmplitude.value += (amplitude - uniforms.uAmplitude.value) * ease;
+    const mix = uniforms.uWeights.value;
+    for (let i = 0; i < WAVE_COUNT; i++) mix[i] += (weights[i] - mix[i]) * ease;
     if (material.current) {
       material.current.color.copy(environment.colors.seaTint);
       material.current.roughness = environment.numbers.seaRoughness;

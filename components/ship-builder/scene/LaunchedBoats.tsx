@@ -71,8 +71,8 @@ function LaunchedBoat({ ship, part, plan, launch }: LaunchedBoatProps) {
 
 /**
  * The lifeboats that lower away in a sinking, with the boat's own mesh. Only
- * mounted while an iceberg trial runs or shows its result, and only for a
- * trial she does not survive (it has an evacuation plan).
+ * mounted while an iceberg or storm trial runs or shows its result, and only
+ * for a trial she does not survive (it has an evacuation plan).
  */
 export default function LaunchedBoats() {
   const trial = useShipBuilderStore((s) => s.trial);
@@ -81,7 +81,7 @@ export default function LaunchedBoats() {
   const input = isShown ? trial.input : null;
   const descending = isShown ? trial.descending : false;
   const plan = useMemo(
-    () => (input?.iceberg ? trialEvacuationFor(input, ship, descending) : null),
+    () => (input ? trialEvacuationFor(input, ship, descending) : null),
     [input, ship, descending]
   );
   const byId = useMemo(

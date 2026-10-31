@@ -3,6 +3,7 @@
 import { Crosshair, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import type { TrialSummary } from "@/lib/ship-builder/sim/explain";
+import { trialKindOf } from "@/lib/ship-builder/sim/trialKind";
 import {
   useShipBuilderStore,
   type TrialSlice,
@@ -29,6 +30,7 @@ export default function ResultDetails({
   const startTrial = useShipBuilderStore((s) => s.startTrial);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
   const sheet = useRef<HTMLDivElement>(null);
+  const isStorm = trialKindOf(input) === "storm";
 
   useEffect(() => {
     sheet.current?.focus();
@@ -56,7 +58,9 @@ export default function ResultDetails({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Sea trial · {SEA_LABELS[input.sea]}
+            {isStorm
+              ? "Shipwreck storm"
+              : `Sea trial · ${SEA_LABELS[input.sea]}`}
           </p>
           <h2 id="sea-trial-title" className="text-lg font-semibold">
             {summary.title}
@@ -100,14 +104,18 @@ export default function ResultDetails({
         </div>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => startTrial(input.sea, input.iceberg?.impactX)}
-          className={`${buttonClass} min-h-11 flex-1`}
-        >
-          <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />
-          Try again
-        </button>
+        {/* startTrial only makes waves and iceberg trials; a storm is not
+            restarted from here (yet). */}
+        {!isStorm && (
+          <button
+            type="button"
+            onClick={() => startTrial(input.sea, input.iceberg?.impactX)}
+            className={`${buttonClass} min-h-11 flex-1`}
+          >
+            <RotateCcw aria-hidden="true" className="h-4 w-4 shrink-0" />
+            Try again
+          </button>
+        )}
         {input.iceberg && (
           <button
             type="button"

@@ -122,7 +122,10 @@ describe("SeaTrialResult buttons", () => {
     render(<SeaTrialResult />);
     await user.click(screen.getByRole("button", { name: "Details" }));
     await user.click(screen.getByRole("button", { name: "Try another spot" }));
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
   });
 
   it("Back to building ends the trial", async () => {

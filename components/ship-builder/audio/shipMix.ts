@@ -1,21 +1,23 @@
 import type { Ship } from "@/lib/ship-builder/model/types";
 import type { SimPhase } from "@/lib/ship-builder/sim/types";
-import type { SeaState } from "../scene/seaState";
+import type { SceneSea } from "../scene/seaState";
 import type { Cue } from "./cues";
 import { SILENT_BEDS, type BedLevels } from "./shipBeds";
 
 /** What the player is doing, which decides the held sounds and the music. */
 export type ShipMode = "build" | "sail" | "walk" | "trial";
 
-const WASH_FOR_SEA: Record<SeaState, number> = {
+const WASH_FOR_SEA: Record<SceneSea, number> = {
   calm: 0.25,
   choppy: 0.55,
   stormy: 0.95,
+  wild: 1,
 };
-const WIND_FOR_SEA: Record<SeaState, number> = {
+const WIND_FOR_SEA: Record<SceneSea, number> = {
   calm: 0.12,
   choppy: 0.4,
   stormy: 0.9,
+  wild: 1,
 };
 /** Seconds after she starts sinking until the water rush is at full. */
 const RUSH_FULL_AFTER_S = 18;
@@ -44,7 +46,7 @@ export function modeFor({
 
 export interface WorldInputs {
   mode: ShipMode;
-  seaState: SeaState;
+  seaState: SceneSea;
   /** Throttle, -0.3 (slow astern) to 1; only read while sailing. */
   throttle: number;
   /** Speed as a share of the ship's top speed (sign ignored). */

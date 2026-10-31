@@ -74,7 +74,10 @@ describe("SeaTrialButton menu", () => {
     render(<SeaTrialButton />);
     await user.click(trigger());
     await user.click(screen.getByRole("menuitem", { name: "Iceberg" }));
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
   });
 
   it("comes back with the menu closed after aiming is cancelled", async () => {
@@ -106,7 +109,10 @@ describe("SeaTrialButton menu", () => {
 
     await user.keyboard("{ArrowUp}");
     await user.keyboard("{ArrowDown}{Enter}");
-    expect(store().trial).toEqual({ status: "aiming" });
+    expect(store().trial).toEqual({
+      status: "aiming",
+      look: { sea: "calm", time: "day" },
+    });
   });
 
   it("closes on a press outside", async () => {

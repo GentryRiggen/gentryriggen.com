@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { createTrial, runTrial } from "@/lib/ship-builder/sim/seaTrial";
+import { isTimelineTrial } from "@/lib/ship-builder/sim/trialKind";
 import {
   stateAt,
   timelineEnd,
@@ -84,17 +85,17 @@ function InstantTrial({ input }: TrialDriverProps) {
   return null;
 }
 
-interface IcebergDriverProps {
+interface TimelineDriverProps {
   input: TrialInput;
   descending: boolean;
 }
 
 /**
- * Plays an iceberg trial from its precomputed timeline: slow-mo at the break,
- * and, when she sinks, on down to the sea floor (`descending` is always set
- * for an iceberg trial).
+ * Plays a timeline trial (the iceberg or the storm) from its precomputed
+ * timeline: slow-mo at the break, and, when she sinks, on down to the sea
+ * floor (`descending` is always set for these trials).
  */
-function IcebergDriver({ input, descending }: IcebergDriverProps) {
+function TimelineDriver({ input, descending }: TimelineDriverProps) {
   const finishTrial = useShipBuilderStore((s) => s.finishTrial);
   const clock = useRef<TimelineClock | null>(null);
   const finished = useRef(false);
@@ -139,8 +140,8 @@ function IcebergDriver({ input, descending }: IcebergDriverProps) {
   return null;
 }
 
-/** Reduced motion: shows the end of the iceberg trial (and descent) at once. */
-function InstantIcebergTrial({ input, descending }: IcebergDriverProps) {
+/** Reduced motion: shows the end of a timeline trial (and descent) at once. */
+function InstantTimelineTrial({ input, descending }: TimelineDriverProps) {
   const finishTrial = useShipBuilderStore((s) => s.finishTrial);
 
   useEffect(() => {
@@ -163,8 +164,8 @@ export default function SeaTrialRunner() {
   const trial = useShipBuilderStore((s) => s.trial);
   const reducedMotion = usePrefersReducedMotion();
   if (trial.status !== "running") return null;
-  if (trial.input.iceberg) {
-    const Driver = reducedMotion ? InstantIcebergTrial : IcebergDriver;
+  if (isTimelineTrial(trial.input)) {
+    const Driver = reducedMotion ? InstantTimelineTrial : TimelineDriver;
     return (
       <Driver
         key={trial.runId}
