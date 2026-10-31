@@ -14,7 +14,7 @@
 
 - Sim and crowd: pure TypeScript, deterministic, no `Math.random`, fixed `SIM_STEP_S`.
 - Every choice segment shows an icon AND a word, `min-h-11`, light and dark mode, fits a 360px-wide viewport.
-- Icons (lucide): Waves `Waves`, Shipwreck storm `Tornado`, Iceberg `Snowflake`; Calm `Sailboat`, Choppy `Wind`, Stormy `CloudLightning`; Day `Sun`, Sunset `Sunset`, Night `Moon`; Like the Titanic `Ship`, Fill every seat `Users`; 1x `Play`, 2x `FastForward`, 3x `ChevronsRight`.
+- Icons (lucide): Waves `Waves`, Shipwreck storm `Tornado`, Iceberg `Snowflake`; Calm `Sailboat`, Choppy `Wind`, Stormy `CloudLightning`; Day `Sun`, Sunset `Sunset`, Night `Moon`; Like the Titanic `Ship`, Fill every seat `Users`; 1x `Play`, 2x `FastForward`, 3x `ChevronsRight`, 5x `Rabbit`, 10x `Rocket`, 20x `Zap`.
 - Storm: sinks every template and degenerate build; `sunk` between 60 and 120 sim s at 1x; no capsize before 30 s; a storm capsize still ends `sank` with evacuation.
 - Lifeboat default: `fill`. Main-screen sea/time chips unchanged and never written by a trial.
 - Analytics: only `kind: "storm"` and `sea: "wild"` added to `trial_run`; no new props.

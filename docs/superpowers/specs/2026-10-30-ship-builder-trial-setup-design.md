@@ -30,7 +30,7 @@ see whether the lifeboats were enough for everyone.
    The forced night for Iceberg goes away.
 3. **Shipwreck storm**, a new trial in the Sea trial menu: wild, chaotic waves
    that always sink the ship, over a moderately long run.
-4. **Speed 1x / 2x / 3x** while any trial plays (and on its replay).
+4. **Speed 1x to 20x** while any trial plays (and on its replay).
 5. **Lifeboat switch** the kids flip: "Like the Titanic" (today's behaviour) or
    "Fill every seat" (people board as long as there are seats; the rest stay on
    board). Either way, every lifeboat is lowered during a sinking.
@@ -51,7 +51,7 @@ see whether the lifeboats were enough for everyone.
 
 - A "Shipwreck storm" that some ship survives. It must always sink.
 - A storm that is over in a few seconds (a quick capsize). It should feel long.
-- Fast-forward that changes what happens. 2x and 3x play the same trial
+- Fast-forward that changes what happens. Every speed plays the same trial
   faster, nothing else.
 - "Fill every seat" that leaves people behind when there were enough seats
   (for example because they couldn't walk to a boat, or a boat can't draw that
@@ -110,10 +110,10 @@ running or showing its result, and the main-screen time otherwise. The
 "iceberg is always night" rule is removed. The trial's time is scene-only; the
 sim never reads it.
 
-## Speed 1x / 2x / 3x
+## Speed 1x to 20x
 
-- A small segmented control (`Play` 1x, `FastForward` 2x, `ChevronsRight` 3x,
-  each with its label "1x", "2x", "3x") shows in the running trial's status
+- A small segmented control (`Play` 1x, `FastForward` 2x, `ChevronsRight` 3x, `Rabbit` 5x,
+  `Rocket` 10x, `Zap` 20x, each with its label "1x" ... "20x") shows in the running trial's status
   area and on the result card while a replay plays **(our call on placement;
   next to the existing trial status, not covering the ship)**.
 - It multiplies the playback rate the runner already has. It composes with the

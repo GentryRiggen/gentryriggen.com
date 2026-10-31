@@ -321,14 +321,14 @@ describe("writeTimelinePlayback", () => {
   });
 });
 
-describe("same timeline at 1x and 3x", () => {
+describe("same timeline at 1x and 20x", () => {
   it("advanceTrial gives the same state, events and pose", () => {
     const slow = freshClock(TOP_HEAVY);
     for (let frame = 0; frame < 60; frame++)
       advanceTrial(TOP_HEAVY, slow, 1 / 60, 1);
     const fast = freshClock(TOP_HEAVY);
-    for (let frame = 0; frame < 20; frame++)
-      advanceTrial(TOP_HEAVY, fast, 1 / 60, 3);
+    for (let frame = 0; frame < 3; frame++)
+      advanceTrial(TOP_HEAVY, fast, 1 / 60, 20);
     expect(fast.state.time).toBeCloseTo(slow.state.time, 6);
     expect(fast.state.events).toEqual(slow.state.events);
     expect(fast.state.pose).toEqual(slow.state.pose);
@@ -345,8 +345,8 @@ describe("same timeline at 1x and 3x", () => {
     for (let frame = 0; frame < 60; frame++)
       advanceTimelineClock(slow, 1 / 60, 1);
     const fast = startTimelineClock(timeline, 0);
-    for (let frame = 0; frame < 20; frame++)
-      advanceTimelineClock(fast, 1 / 60, 3);
+    for (let frame = 0; frame < 3; frame++)
+      advanceTimelineClock(fast, 1 / 60, 20);
     expect(fast.time).toBeCloseTo(slow.time, 6);
     expect(fast.speed).toBe(slow.speed);
   });
