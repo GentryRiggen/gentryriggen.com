@@ -142,6 +142,10 @@
         "source": "/jim",
         "headers": [
           {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
             "key": "Content-Security-Policy",
             "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; worker-src 'self'; manifest-src 'self'"
           },
@@ -154,6 +158,10 @@
       {
         "source": "/jim.html",
         "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
           {
             "key": "Content-Security-Policy",
             "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; worker-src 'self'; manifest-src 'self'"
