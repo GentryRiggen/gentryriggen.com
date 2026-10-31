@@ -49,6 +49,8 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const [board, setBoard] = useState<LoadedBoard | null>(null);
   const [seasonFailed, setSeasonFailed] = useState(false);
+  /** Bumped by Try again to read the season (and switch) once more. */
+  const [seasonAttempt, setSeasonAttempt] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState<boolean | null>(null);
@@ -75,7 +77,12 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
     return () => {
       isCancelled = true;
     };
-  }, [game]);
+  }, [game, seasonAttempt]);
+
+  const retrySeason = () => {
+    setSeasonFailed(false);
+    setSeasonAttempt((n) => n + 1);
+  };
 
   useEffect(() => {
     if (selected === null) return;
@@ -248,6 +255,15 @@ export default function SeasonBoardAdmin({ game }: SeasonBoardAdminProps) {
         <p role="alert" className="mt-2 text-red-600 dark:text-red-400">
           {[loadFailed && LOAD_ERROR, saveError].filter(Boolean).join(" ")}
         </p>
+      )}
+      {seasonFailed && (
+        <button
+          type="button"
+          onClick={retrySeason}
+          className={`mt-2 ${buttonClass}`}
+        >
+          Try again
+        </button>
       )}
       {loading && (
         <p className="mt-2 text-gray-600 dark:text-gray-400">Loading…</p>

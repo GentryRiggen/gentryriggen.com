@@ -234,6 +234,21 @@ it("shows an error when loading fails", async () => {
   expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
 });
 
+it("retries a failed season read with Try again", async () => {
+  mockClient.fetchAdminSeason.mockRejectedValueOnce(new Error("offline"));
+  render(<SeasonBoardAdmin game="plane" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't load/i);
+  expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByText("Happy Fox 3")).toBeInTheDocument();
+  expect(screen.getByText(/Season 3, started/)).toBeInTheDocument();
+  expect(mockClient.fetchAdminSeason).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Try again" })
+  ).not.toBeInTheDocument();
+});
+
 it("clears a load error when another season loads", async () => {
   mockClient.fetchAdminBoard.mockImplementation(async (_game, season) => {
     if (season === 3) throw new Error("nope");
