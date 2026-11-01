@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-11-01",
+    title: "Retro all the way",
+    highlights: [
+      "The universe picker now looks like the start screen, with glowing pixel letters and game cartridges for each universe",
+      "Music plays on the start screen. Tap anywhere to start it, and use the speaker button to turn it off",
+      "The start screen sky follows the real time of day: sunrise, daytime, sunset and starry nights",
+      "Turn on Match my weather to see rain, snow or sunshine like outside your window. If the weather cannot be found, you get clear skies",
+    ],
+  },
+  {
     version: "1.2.1",
     date: "2026-11-01",
     title: "The story, read aloud",
