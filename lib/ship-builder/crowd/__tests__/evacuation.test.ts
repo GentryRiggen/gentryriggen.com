@@ -232,6 +232,17 @@ describe("planEvacuation", () => {
       );
     });
 
+    it("gives every davit boat with riders a boarding spot, whole-ship", () => {
+      const davits = s.plan.launches.filter(
+        (l) => l.kind === "davit" && l.riders.length > 0
+      );
+      expect(davits.length).toBeGreaterThan(0);
+      for (const launch of davits) {
+        expect(launch.spot).not.toBeNull();
+        expect(launch.half).toBeNull();
+      }
+    });
+
     it("matches the crowd plan before doom", () => {
       for (let i = 0; i < count; i++) {
         for (let t = 0; t < s.doomAt; t += s.doomAt / 23) {

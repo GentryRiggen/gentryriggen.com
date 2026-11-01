@@ -37,6 +37,13 @@ only) and the `WalkEyes` in that half's group drives the camera; when she
 sinks, the store takes her on down to the sea floor, and the result waits
 until they stop walking.
 
+`escape.ts` is the pure model of getting off a sinking ship: the phases
+(aboard, jumping, in a boat, swimming, frozen), which boat a walker can board
+(`boardableBoat`, by its spot, window and half), which boat picks a swimmer up
+(`pickupBoat`), and `stepSwimmer` (swim, kick, warmth, the hull as an
+obstacle). It works in the resting world frame, with `walkerRestPoint` mapping
+a deck walker into it.
+
 Tests: the model's unit tests are in `__tests__/`, and
 `e2e/ship-builder-walk.spec.ts` drives it in a real browser through the
 `window.__shipBuilderWalk` and `walkSpawn` test hooks (see
