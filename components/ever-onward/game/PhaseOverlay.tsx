@@ -1,8 +1,8 @@
 "use client";
 
 import type { PhaseDef } from "@/lib/ever-onward/engine/types";
-import ListenButton from "../narration/ListenButton";
 import LanternPicker from "./LanternPicker";
+import PhaseBriefing from "./PhaseBriefing";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -10,9 +10,7 @@ import {
   retroLabelClass,
   retroPanelClass,
   retroPrimaryButtonClass,
-  retroSecondaryButtonClass,
 } from "./retro/retroStyles";
-import { useTypewriter } from "./retro/useTypewriter";
 
 interface PhaseOverlayProps {
   phase: PhaseDef;
@@ -26,6 +24,7 @@ interface PhaseOverlayProps {
   lantern?: { value: number; onChange: (lantern: number) => void };
 }
 
+/** The intro card shown when a run starts and whenever a new part begins. */
 export default function PhaseOverlay({
   phase,
   clipId,
@@ -34,9 +33,6 @@ export default function PhaseOverlay({
   onContinue,
   lantern,
 }: PhaseOverlayProps) {
-  const intro = phase.intro ?? "";
-  const typedIntro = useTypewriter(intro);
-  const isTyping = typedIntro.length < intro.length;
   return (
     <div
       role="dialog"
@@ -49,54 +45,37 @@ export default function PhaseOverlay({
         <CrtOverlay />
       </div>
       <div
-        className={`${retroPanelClass} lm-fade-up relative my-auto w-full max-w-md space-y-5 p-5 text-center sm:p-8`}
+        className={`${retroPanelClass} lm-fade-up relative my-auto w-full max-w-md space-y-5 p-5 sm:max-w-lg sm:p-8`}
       >
-        <p className={`${retroLabelClass} leading-normal`}>
-          Part {number} of {total}
-        </p>
-        <RetroHeading
-          as="h2"
-          id="lm-phase-title"
-          className="text-xl leading-normal break-words sm:text-2xl"
-        >
-          {phase.title}
-        </RetroHeading>
-        {intro && (
-          <>
-            <p className="sr-only">{intro}</p>
-            <p
-              aria-hidden="true"
-              className="min-h-24 text-left font-mono text-base text-slate-200"
-            >
-              {typedIntro}
-              {isTyping && <span className="text-amber-300">▌</span>}
-            </p>
-          </>
-        )}
-        {intro && clipId && (
-          <div>
-            <ListenButton
-              clipId={clipId}
-              label="Listen"
-              accessibleLabel="Listen to this introduction"
-              className={`${retroSecondaryButtonClass} gap-2`}
-            />
-          </div>
-        )}
+        <div className="space-y-3 text-center">
+          <p className={`${retroLabelClass} leading-normal`}>
+            Part {number} of {total}
+          </p>
+          <RetroHeading
+            as="h2"
+            id="lm-phase-title"
+            className="text-xl leading-normal break-words sm:text-2xl"
+          >
+            {phase.title}
+          </RetroHeading>
+        </div>
+        <PhaseBriefing phase={phase} clipId={clipId} isStaggered />
         {lantern && (
           <LanternPicker value={lantern.value} onChange={lantern.onChange} />
         )}
-        <button
-          type="button"
-          autoFocus
-          onClick={onContinue}
-          className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-slate-950`}
-        >
-          <span aria-hidden="true" className="motion-safe:animate-pulse">
-            ▶
-          </span>
-          <span className={pixelClass}>Continue</span>
-        </button>
+        <div className="text-center">
+          <button
+            type="button"
+            autoFocus
+            onClick={onContinue}
+            className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-slate-950`}
+          >
+            <span aria-hidden="true" className="motion-safe:animate-pulse">
+              ▶
+            </span>
+            <span className={pixelClass}>Continue</span>
+          </button>
+        </div>
       </div>
     </div>
   );

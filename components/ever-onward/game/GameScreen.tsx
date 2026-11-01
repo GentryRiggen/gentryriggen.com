@@ -38,7 +38,7 @@ import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
 import ProbeRaces from "./ProbeRaces";
 import StickyHud from "./StickyHud";
-import StoryLog from "./StoryLog";
+import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
 import MemoryGarden from "./MemoryGarden";
 import TideClock from "./TideClock";
@@ -294,6 +294,8 @@ export default function GameScreen({
           </nav>
         )}
 
+        <StoryTicker def={def} run={run} endingIds={ENDING_STORY_IDS} />
+
         {run.complete ? (
           <EmberPanel
             def={def}
@@ -344,7 +346,6 @@ export default function GameScreen({
           primaryRef={readoutRef}
         />
         {countdown && <CountdownBar view={countdown} />}
-        <StoryLog def={def} run={run} />
         {!run.complete && (
           <div className="space-y-2">
             {next && (

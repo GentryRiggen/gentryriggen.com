@@ -16,7 +16,8 @@ export const PHASES: readonly PhaseDef[] = [
     id: PHASE_COAST,
     title: "The Coast",
     intro:
-      "One lighthouse. One lamp. One job: keep the light on. How hard can that be?",
+      "This is your lighthouse, and you are its keeper. Out on the dark water, little ships are looking for home, and your light is the only thing that shows them the way. Flash the lamp, guide them into the harbor, and build more lighthouses along the coast. Every ship you save matters.",
+    goal: "Guide ships home and light the whole coast.",
     manualResource: "coins",
     manualLabel: "Flash the light",
     isDone: (run) => run.resources.lighthouses >= COAST_LIGHTHOUSES,
@@ -29,7 +30,8 @@ export const PHASES: readonly PhaseDef[] = [
     id: PHASE_NIGHT,
     title: "No More Night",
     intro:
-      "The coast is lit. The town has a request: could the streetlights work too? And the next town? And the next?",
+      "The coast is glowing, and the town noticed. Now they want streetlights, then the next town's, then the one after that. Crank the generator and wire up the grid. Nobody asks what the dark was for, and you are far too busy to wonder.",
+    goal: "Power the grid until there is no more night.",
     manualResource: "power",
     manualLabel: "Crank the generator",
     isDone: (run) => run.resources.night <= 0.001,
@@ -47,7 +49,8 @@ export const PHASES: readonly PhaseDef[] = [
     id: PHASE_SKY,
     title: "The Sky",
     intro:
-      "The night is gone from the ground. But the sun is wasting light all day, and the stars are only just sitting there.",
+      "The ground is bright, but look up. The sun pours light into the sky all day and nobody catches any of it, and the stars just sit there, burning for no one. You have a better idea. Aim your collectors and put every bit of that light to work.",
+    goal: "Collect the sky's light until the last star is used.",
     manualResource: "energy",
     manualLabel: "Aim a collector",
     isDone: (run) => run.resources.stars <= 0.5,
@@ -63,7 +66,8 @@ export const PHASES: readonly PhaseDef[] = [
     id: PHASE_LAST,
     title: "The Last Light",
     intro:
-      "The sky is empty and quiet. Light does not last forever, and now it is up to you which lights stay.",
+      "The sky is empty and very quiet. Light does not last forever, and every flame you tend is a choice. One small flame is left, and one small boat is still out on the dark water. It is up to you which lights stay.",
+    goal: "Tend the flame and bring the last ship home.",
     manualResource: "resolve",
     manualLabel: "Tend the flame",
     isDone: () => false,
