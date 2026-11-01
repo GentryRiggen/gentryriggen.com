@@ -1,4 +1,5 @@
 import type { UniverseDef } from "../engine/types";
+import { lightUniverse } from "./light";
 
 /** A universe that is announced but not built yet. */
 export interface LockedUniverse {
@@ -8,7 +9,7 @@ export interface LockedUniverse {
 }
 
 /** Playable universes, in hub order. Add a universe by importing it here. */
-export const PLAYABLE_UNIVERSES: readonly UniverseDef[] = [];
+export const PLAYABLE_UNIVERSES: readonly UniverseDef[] = [lightUniverse];
 
 /** Shown after the playable ones as "coming soon". */
 export const LOCKED_UNIVERSES: readonly LockedUniverse[] = [
