@@ -12,6 +12,8 @@ interface ResourcesProps {
   run: RunState;
   /** The phase's main currency lives in the HUD, so it is left out here. */
   primaryId: string;
+  /** Resources shown elsewhere (e.g. by the countdown bar), left out here. */
+  hiddenIds?: readonly string[];
 }
 
 function formatResource(id: string, value: number): string {
@@ -22,12 +24,19 @@ function formatResource(id: string, value: number): string {
   return formatNumber(Math.floor(value));
 }
 
-export default function Resources({ def, run, primaryId }: ResourcesProps) {
+export default function Resources({
+  def,
+  run,
+  primaryId,
+  hiddenIds = [],
+}: ResourcesProps) {
   const phaseId = def.phases[run.phase].id;
   const shown = def.resources.filter(
     (r) => r.phases === undefined || r.phases.includes(phaseId)
   );
-  const others = shown.filter((r) => r.id !== primaryId);
+  const others = shown.filter(
+    (r) => r.id !== primaryId && !hiddenIds.includes(r.id)
+  );
   return (
     <dl
       aria-label="Resources"
@@ -38,7 +47,9 @@ export default function Resources({ def, run, primaryId }: ResourcesProps) {
           key={r.id}
           className={`${retroInsetClass} flex flex-col gap-2 px-3 py-2`}
         >
-          <dt className={`${retroLabelClass} truncate`}>{r.label}</dt>
+          <dt className={`${retroLabelClass} break-words leading-snug!`}>
+            {r.label}
+          </dt>
           <dd className={`${pixelClass} text-xs text-amber-100`}>
             <AnimatedValue
               value={run.resources[r.id] ?? 0}

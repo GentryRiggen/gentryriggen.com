@@ -15,3 +15,4 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: jest.fn(),
   })),
 });
+window.scrollTo = jest.fn();

@@ -27,7 +27,7 @@ export const retroHeadingClass =
   "text-amber-300 [text-shadow:2px_2px_0_#78350f] drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]";
 
 /** Small cyan label above a value. */
-export const retroLabelClass = `${pixelClass} text-[8px] leading-none text-cyan-200`;
+export const retroLabelClass = `${pixelClass} text-[10px] leading-none text-cyan-200`;
 
 /** A chunky pixel panel: square corners, thick border, hard shadow. */
 export const retroPanelClass =

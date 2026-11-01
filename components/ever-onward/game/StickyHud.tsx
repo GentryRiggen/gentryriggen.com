@@ -8,7 +8,11 @@ import AnimatedValue from "./AnimatedValue";
 import EffectFloater, { type Effect } from "./EffectFloater";
 import RateReadout from "./RateReadout";
 import NextUpgradeBar from "./NextUpgradeBar";
-import { pixelClass, retroLabelClass } from "./retro/retroStyles";
+import {
+  pixelClass,
+  retroFocusClass,
+  retroLabelClass,
+} from "./retro/retroStyles";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface StickyHudProps {
@@ -27,6 +31,8 @@ interface StickyHudProps {
   /** A warning to keep in sight (e.g. out of oil), or null. */
   alert?: string | null;
   onSelectNext: () => void;
+  /** Takes the player to the thing that fixes the warning. */
+  onSelectAlert?: () => void;
 }
 
 const ICONS: Record<string, string> = {
@@ -56,14 +62,17 @@ export default function StickyHud({
   next,
   alert = null,
   onSelectNext,
+  onSelectAlert,
 }: StickyHudProps) {
   return (
     <div
       ref={hudRef}
       data-testid="lm-hud"
+      role="region"
+      aria-label="Status"
       aria-hidden={isCovered}
       inert={isCovered}
-      className="fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-[0_4px_0_#78350f] lg:left-[55%]"
+      className="fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-[0_4px_0_#78350f] lg:left-[45%]"
     >
       <div className="relative mx-auto max-w-xl px-4 py-2">
         <div className="flex items-center justify-between gap-3">
@@ -90,13 +99,16 @@ export default function StickyHud({
           {/* A small chip in the same row, so the bar never changes height
               when the warning comes and goes. The full text is in the page. */}
           {alert && (
-            <p
+            <button
+              type="button"
               data-testid="lm-hud-alert"
               title={alert}
-              className={`${pixelClass} shrink-0 animate-pulse border-2 border-red-500 bg-red-950 px-1.5 py-1 text-[8px] leading-none text-red-200 motion-reduce:animate-none`}
+              aria-label={alert}
+              onClick={onSelectAlert}
+              className={`${pixelClass} -my-2.5 min-h-11 shrink-0 animate-pulse touch-manipulation border-2 border-red-500 bg-red-950 px-2 py-1 text-[10px] leading-none text-red-200 motion-reduce:animate-none ${retroFocusClass}`}
             >
               ⚠ {alert.split("!")[0]}!
-            </p>
+            </button>
           )}
         </div>
         {/* Reserves the bar's height when there is no goal yet. */}

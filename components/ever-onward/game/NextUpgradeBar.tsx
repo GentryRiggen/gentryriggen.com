@@ -25,17 +25,17 @@ export default function NextUpgradeBar({
       data-testid={testId}
       onClick={onSelect}
       aria-label={`Next goal: ${next.upgrade.name}, ${label}. Go to upgrade`}
-      className={`block w-full touch-manipulation px-1 py-1.5 text-left ${retroFocusClass}`}
+      className={`block min-h-11 w-full touch-manipulation px-1 py-1.5 text-left ${retroFocusClass}`}
     >
       <span className="flex items-baseline justify-between gap-3">
-        <span className={`${pixelClass} truncate text-[8px] text-cyan-200`}>
+        <span className={`${pixelClass} truncate text-[10px] text-cyan-200`}>
           <span aria-hidden="true" className="mr-1.5 text-amber-300">
             ▶︎
           </span>
           {next.upgrade.name}
         </span>
         <span
-          className={`${pixelClass} shrink-0 text-[8px] tabular-nums ${
+          className={`${pixelClass} shrink-0 text-[10px] tabular-nums ${
             next.isReady ? "text-amber-300" : "text-slate-200"
           }`}
         >

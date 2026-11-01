@@ -158,6 +158,7 @@ export function lightCountdown(run: RunState): CountdownView | null {
   const next = STAR_MARKS.find((mark) => stars > mark);
   return {
     label: "Stars left",
+    resourceId: "stars",
     value: stars,
     max: TOTAL_STARS,
     marks: STAR_MARKS,

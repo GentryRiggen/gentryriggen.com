@@ -18,7 +18,7 @@ export default function CountdownBar({ view }: CountdownBarProps) {
       className={`${retroInsetClass} space-y-2 p-3`}
     >
       <p className="flex items-baseline justify-between gap-3">
-        <span className={`${pixelClass} text-[8px] text-cyan-200`}>
+        <span className={`${pixelClass} text-[10px] text-cyan-200`}>
           {view.label}
         </span>
         <span

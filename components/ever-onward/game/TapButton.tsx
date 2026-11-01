@@ -74,7 +74,7 @@ export default function TapButton({
     <>
       <div
         aria-hidden="true"
-        className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 h-36 bg-linear-to-t from-[#02030a] via-[#02030a]/85 to-transparent lg:left-[55%] ${
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 h-28 bg-linear-to-t from-[#02030a] via-[#02030a]/60 to-transparent lg:left-[45%] ${
           isCovered ? "invisible" : ""
         }`}
       />
@@ -82,7 +82,7 @@ export default function TapButton({
         data-testid="lm-tap-fab"
         aria-hidden={isCovered}
         inert={isCovered}
-        className={`pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 lg:left-[77.5%] ${
+        className={`pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 lg:left-[72.5%] ${
           isCovered ? "invisible" : ""
         }`}
       >
@@ -108,7 +108,7 @@ export default function TapButton({
           aria-label={label}
           onClick={handleClick}
           onContextMenu={(e) => e.preventDefault()}
-          className={`${pixelClass} pointer-events-auto flex size-20 touch-manipulation select-none flex-col items-center justify-center gap-1.5 border-4 text-[8px] leading-none transition-transform [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] active:translate-y-0.5 sm:size-24 sm:text-[9px] ${tone} ${retroFocusClass}`}
+          className={`${pixelClass} pointer-events-auto flex size-20 touch-manipulation select-none flex-col items-center justify-center gap-1.5 border-4 text-[10px] leading-none transition-transform [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] active:translate-y-0.5 sm:size-24 sm:text-[11px] ${tone} ${retroFocusClass}`}
         >
           <PixelIcon name={look.icon} className="size-8 sm:size-10" />
           <span aria-hidden="true">{isStorm ? "x3!" : shortLabel}</span>
