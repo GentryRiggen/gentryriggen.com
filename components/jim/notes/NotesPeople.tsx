@@ -1,5 +1,11 @@
 import { Cake, CalendarClock, Heart, Search } from "lucide-react";
-import { Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import type { ReactNode } from "react";
+import {
+  Empty,
+  onPlainClick,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
 import { PERSON_GROUPS, personGroup } from "@/lib/jim/notesData";
 import { fmtShort, stripMd } from "@/lib/jim/todos";
 import type { Person, UpcomingDate, ViewData } from "@/lib/jim/view";
@@ -9,6 +15,36 @@ interface NotesPeopleProps {
   query: string;
   onQuery: (query: string) => void;
   onOpen: (path: string) => void;
+  /** A person's address: rows become real links (⌘-click opens a tab). */
+  hrefFor?: (path: string) => string;
+}
+
+interface OpenRowProps {
+  path: string;
+  className: string;
+  onOpen: (path: string) => void;
+  hrefFor?: (path: string) => string;
+  children: ReactNode;
+}
+
+/** A row that opens a person: a link when it has an address. */
+function OpenRow({ path, className, onOpen, hrefFor, children }: OpenRowProps) {
+  if (!hrefFor) {
+    return (
+      <button type="button" onClick={() => onOpen(path)} className={className}>
+        {children}
+      </button>
+    );
+  }
+  return (
+    <a
+      href={hrefFor(path)}
+      onClick={onPlainClick(() => onOpen(path))}
+      className={className}
+    >
+      {children}
+    </a>
+  );
 }
 
 function initials(name: string): string {
@@ -48,6 +84,7 @@ export default function NotesPeople({
   query,
   onQuery,
   onOpen,
+  hrefFor,
 }: NotesPeopleProps) {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const people = data.people
@@ -117,13 +154,14 @@ export default function NotesPeople({
               return (
                 <li key={`${d.kind}-${d.path}-${d.on}-${d.name}`}>
                   {opens ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpen(d.path)}
+                    <OpenRow
+                      path={d.path}
+                      onOpen={onOpen}
+                      hrefFor={hrefFor}
                       className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-white/[0.04]"
                     >
                       {body}
-                    </button>
+                    </OpenRow>
                   ) : (
                     <div className="flex min-h-14 w-full items-center gap-3 px-4 py-2">
                       {body}
@@ -148,13 +186,18 @@ export default function NotesPeople({
               {people.length}
             </span>
           </h3>
-          <Rows>
+          {/* One panel of rows; cards in columns where the page is wide. */}
+          <ul className="jim-card divide-y divide-white/[0.05] overflow-hidden @2xl:grid @2xl:grid-cols-2 @2xl:gap-3 @2xl:divide-y-0 @2xl:overflow-visible @2xl:border-0 @2xl:bg-transparent @2xl:bg-none @2xl:shadow-none @4xl:grid-cols-3">
             {people.map((p) => (
-              <li key={p.path}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(p.path)}
-                  className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-white/[0.04]"
+              <li
+                key={p.path}
+                className="@2xl:jim-card @2xl:overflow-hidden @2xl:transition-colors @2xl:hover:border-ayu-accent/30"
+              >
+                <OpenRow
+                  path={p.path}
+                  onOpen={onOpen}
+                  hrefFor={hrefFor}
+                  className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-white/[0.04] @2xl:min-h-16"
                 >
                   <span
                     aria-hidden="true"
@@ -175,10 +218,10 @@ export default function NotesPeople({
                   <span aria-hidden="true" className="text-ayu-subtle">
                     ›
                   </span>
-                </button>
+                </OpenRow>
               </li>
             ))}
-          </Rows>
+          </ul>
         </div>
       ))}
     </div>

@@ -1,6 +1,12 @@
 import { Fragment } from "react";
-import { ChevronLeft, Mail, Phone, Search } from "lucide-react";
-import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import { Mail, Phone, Search } from "lucide-react";
+import {
+  BackLink,
+  Chip,
+  Empty,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
 import { fmtShort } from "@/lib/jim/todos";
 import type { DirectoryPerson, Person, WorkDirectory } from "@/lib/jim/view";
 
@@ -181,6 +187,8 @@ interface DirectoryCardProps {
   onOpen: (id: number) => void;
   onProfile: (path: string) => void;
   onBack: () => void;
+  /** The back link's address; without one it is a plain button. */
+  backHref?: string;
 }
 
 /** One directory person: manager chain, facts, DISC, strengths, reports. */
@@ -191,19 +199,11 @@ export function DirectoryCard({
   onOpen,
   onProfile,
   onBack,
+  backHref,
 }: DirectoryCardProps) {
   const everyone = byId(directory);
   const p = everyone.get(id);
-  const back = (
-    <button
-      type="button"
-      onClick={onBack}
-      className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
-    >
-      <ChevronLeft aria-hidden="true" className="size-5" />
-      Work
-    </button>
-  );
+  const back = <BackLink label="Work" onBack={onBack} href={backHref} />;
   if (!p) {
     return (
       <article className="space-y-5">

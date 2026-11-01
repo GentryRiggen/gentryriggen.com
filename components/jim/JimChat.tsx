@@ -5,21 +5,39 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
-import { ArrowUp, Check, Square, Volume2 } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  Lock,
+  Maximize2,
+  SquarePen,
+  Square,
+  Sunrise,
+  Volume2,
+} from "lucide-react";
 import AppLockSheet from "@/components/jim/AppLockSheet";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
+import JimSidebar, { type SidebarAction } from "@/components/jim/JimSidebar";
+import { onPlainClick } from "@/components/jim/notes/NotesUi";
+import useBasePage from "@/components/jim/useBasePage";
+import useJimRouter, { type JimLocation } from "@/components/jim/useJimRouter";
+import useWideLayout from "@/components/jim/useWideLayout";
 import JimUpdatePill from "@/components/jim/JimUpdatePill";
 import useJimUpdate from "@/components/jim/useJimUpdate";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
 import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
-import NotesShell from "@/components/jim/notes/NotesShell";
+import NotesShell, {
+  type NotesRouting,
+} from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import usePersonas from "@/components/jim/usePersonas";
 import type { AppLock } from "@/components/jim/useAppLock";
@@ -39,6 +57,15 @@ import {
 } from "@/lib/jim/history";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/jim/draft";
 import JimMarkdown from "@/lib/jim/markdown";
+import {
+  CHAT_ROUTE,
+  formatJimPath,
+  HOME_ROUTE,
+  isDetail,
+  type JimRoute,
+  type NotesPage,
+  type NotesRoute,
+} from "@/lib/jim/routes";
 import {
   allowedSay,
   clearSayFromLocation,
@@ -222,6 +249,31 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/** True while a field has the keys: Esc and shortcuts are the field's then. */
+function isTyping(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT")
+  );
+}
+
+function isMac(): boolean {
+  return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+}
+
+/** Notes before it has been opened: Home, as a fresh entry. */
+const NOTES_START: JimLocation = {
+  route: HOME_ROUTE,
+  key: "notes-start",
+  depth: 0,
+  back: null,
+  from: null,
+  nav: "initial",
+};
+
 export default function JimChat({
   uid,
   api,
@@ -249,14 +301,30 @@ export default function JimChat({
   const [held, setHeld] = useState<{ id: number; text: string } | null>(null);
   const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
-  const [tab, setTab] = useState<JimTab>("chat");
+  const [mac] = useState(isMac);
+  const { location, navigate, goBack } = useJimRouter();
+  const route = location.route;
+  const tab: JimTab = route.kind === "chat" ? "chat" : "notes";
+  const wide = useWideLayout();
+  /** The last Notes entry: what Notes shows (hidden) while Chat does. */
+  const [notesLocation, setNotesLocation] = useState<JimLocation>(() =>
+    route.kind === "chat" ? NOTES_START : location
+  );
+  if (route.kind !== "chat" && notesLocation !== location) {
+    setNotesLocation(location);
+  }
+  const notesRoute = notesLocation.route as NotesRoute;
+  const basePage = useBasePage(notesRoute);
   /** Notes is built (and fetches) only once it has been opened. */
-  const [notesOpened, setNotesOpened] = useState(false);
+  const notesOpened = notesLocation !== NOTES_START;
+  /** The search across all notes: in the page only, never the address. */
+  const [notesSearch, setNotesSearch] = useState("");
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(
     (kept?.messages ?? []).reduce((max, m) => Math.max(max, m.id + 1), 0)
   );
@@ -378,14 +446,16 @@ export default function JimChat({
     });
     observer.observe(scroller);
     return () => observer.disconnect();
-  }, [scrollToEnd, locked]);
+  }, [scrollToEnd, locked, wide, tab]);
 
-  // Unlocked: the list is drawn afresh, at its end.
+  // Unlocked, or the chat moved (the desktop docks it beside Notes): the
+  // list is drawn afresh, at its end.
+  const chatDocked = wide && tab === "notes";
   useLayoutEffect(() => {
     if (locked) return;
     stuck.current = true;
     scrollToEnd(false);
-  }, [locked, scrollToEnd]);
+  }, [locked, scrollToEnd, wide, chatDocked]);
 
   // Grow the box with its text, up to its max height (10rem, or 30% of the
   // visible screen when that is less), then it scrolls.
@@ -551,17 +621,55 @@ export default function JimChat({
   }
 
   function showTab(next: JimTab) {
-    if (next === "notes") setNotesOpened(true);
     // A tap on a tab doesn't take focus on iOS: drop the keyboard by hand,
     // whichever field (the box, a search, a quick log) has it.
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    setTab(next);
+    if (next === "chat") {
+      navigate(CHAT_ROUTE);
+      return;
+    }
+    // Chat was opened from the Notes entry just before it: step back to
+    // it (its scroll and back link intact) rather than stack another.
+    if (
+      route.kind === "chat" &&
+      notesOpened &&
+      location.depth === notesLocation.depth + 1 &&
+      location.depth > 0
+    ) {
+      window.history.back();
+      return;
+    }
+    navigate(notesRoute);
+  }
+
+  /** A Notes page from the sidebar: leaves any search for it. */
+  function goToRoute(next: JimRoute) {
+    if (next.kind === "page" && notesSearch) setNotesSearch("");
+    navigate(next);
+  }
+
+  /** The sidebar's search: results show in the page, never the address. */
+  function searchFromSidebar(value: string) {
+    setNotesSearch(value);
+    if (value.trim() && route.kind !== "page") {
+      navigate({ kind: "page", page: basePage });
+    }
+  }
+
+  /** Leaves no person's or note's address behind on a shared screen. */
+  function forgetAddress() {
+    try {
+      window.history.replaceState(window.history.state, "", "/jim");
+    } catch {
+      // Best effort.
+    }
   }
 
   /** Drops the turn that is out and keeps nothing more on this device. */
   function signOut() {
+    forgetAddress();
     clearDraft(uid);
     signedOut.current = true;
     stopReading();
@@ -572,6 +680,7 @@ export default function JimChat({
 
   /** Too many wrong PINs or a forgotten one: out, and the device wiped. */
   function wipe(notice: string) {
+    forgetAddress();
     setLockSheetOpen(false);
     signedOut.current = true;
     stopReading();
@@ -583,9 +692,12 @@ export default function JimChat({
   // The latest send and turn state, for the stable quick-log callback.
   const sendRef = useRef(send);
   const holdRef = useRef(sending || !online);
+  /** On a phone a quick log switches to Chat; on a desktop it is beside. */
+  const wideRef = useRef(wide);
   useLayoutEffect(() => {
     sendRef.current = send;
     holdRef.current = sending || !online;
+    wideRef.current = wide;
   });
 
   /**
@@ -594,13 +706,16 @@ export default function JimChat({
    * Stable, so the (memoized) Notes tree doesn't redraw with every frame
    * of a streaming reply.
    */
-  const logFromNotes = useCallback((text: string) => {
-    stuck.current = true;
-    setTab("chat");
-    if (holdRef.current) {
-      setDraft((current) => (current ? `${text}\n${current}` : text));
-    } else void sendRef.current(text);
-  }, []);
+  const logFromNotes = useCallback(
+    (text: string) => {
+      stuck.current = true;
+      if (!wideRef.current) navigate(CHAT_ROUTE);
+      if (holdRef.current) {
+        setDraft((current) => (current ? `${text}\n${current}` : text));
+      } else void sendRef.current(text);
+    },
+    [navigate]
+  );
 
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
@@ -610,11 +725,14 @@ export default function JimChat({
    * he reads it and taps Send himself. No focus: the box is still hidden in
    * this tap, and a late focus would fight iOS.
    */
-  const draftFromNotes = useCallback((text: string) => {
-    stuck.current = true;
-    setTab("chat");
-    setDraft((current) => (current ? `${text}\n${current}` : text));
-  }, []);
+  const draftFromNotes = useCallback(
+    (text: string) => {
+      stuck.current = true;
+      if (!wideRef.current) navigate(CHAT_ROUTE);
+      setDraft((current) => (current ? `${text}\n${current}` : text));
+    },
+    [navigate]
+  );
 
   function restoreHeld() {
     if (held === null) return;
@@ -649,10 +767,389 @@ export default function JimChat({
   const keepDraft = useCallback(() => saveDraft(uid, draftRef.current), [uid]);
   const jimUpdate = useJimUpdate({ onBeforeUpdate: keepDraft });
 
+  const routing = useMemo<NotesRouting>(
+    () => ({
+      route: notesRoute,
+      basePage,
+      entryKey: notesLocation.key,
+      navType: notesLocation.nav,
+      backLabel: notesLocation.back,
+      backFrom: notesLocation.from,
+      navigate,
+      goBack,
+      search: notesSearch,
+      onSearch: setNotesSearch,
+      wide,
+    }),
+    [notesRoute, basePage, notesLocation, navigate, goBack, notesSearch, wide]
+  );
+
+  // The browser tab names the page (Notes names its own). Locked: just Jim.
+  useEffect(() => {
+    if (locked) document.title = "Jim";
+    else if (route.kind === "chat") document.title = "Chat · Jim";
+  }, [locked, route]);
+  useEffect(
+    () => () => {
+      document.title = "Jim";
+    },
+    []
+  );
+
+  // Desktop keys: ⌘K (Ctrl+K) to search, Esc back out of a profile or note.
+  const keysRef = useRef({ route, basePage, sheetOpen: false });
+  useLayoutEffect(() => {
+    keysRef.current = {
+      route,
+      basePage,
+      sheetOpen: personas.open || lockSheetOpen,
+    };
+  });
+  useEffect(() => {
+    if (!wide || locked) return;
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      const { route: at, basePage: under, sheetOpen } = keysRef.current;
+      if (
+        event.key.toLowerCase() === "k" &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+      if (
+        event.key === "Escape" &&
+        isDetail(at) &&
+        !sheetOpen &&
+        !isTyping(event.target) &&
+        !document.querySelector("[role=dialog]")
+      ) {
+        event.preventDefault();
+        goBack({ kind: "page", page: under });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [wide, locked, goBack]);
+
   if (locked) return null;
 
-  return (
+  const lockItem =
+    lock && onWipe
+      ? {
+          label: `App lock: ${lock.enabled ? "On" : "Off"}`,
+          onSelect: () => setLockSheetOpen(true),
+        }
+      : null;
+
+  const chatBody = (
     <>
+      <div
+        ref={scrollerRef}
+        onScroll={onScroll}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
+        <div
+          role="log"
+          aria-label="Conversation"
+          className={`mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] transition-[padding] duration-200 motion-reduce:transition-none sm:py-6 ${
+            // Room under the last message for the now-playing bar,
+            // which floats over the list instead of pushing it up.
+            barShown ? "pb-[4.25rem]! sm:pb-[4.75rem]!" : ""
+          }`}
+        >
+          {messages.length === 0 && !sending && (
+            <div className="jim-rise flex flex-col items-center px-2 pt-[min(12vh,5rem)] pb-6 text-center">
+              <JimMark size="lg" />
+              <h2 className="mt-5 text-2xl font-semibold tracking-tight text-ayu-text">
+                What&apos;s on your mind?
+              </h2>
+              <p className="mt-2 max-w-xs text-ayu-subtle">
+                Ask Jim something, or tell him something to remember.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {STARTERS.map((starter) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    onClick={() => {
+                      setDraft(starter);
+                      boxRef.current?.focus({ preventScroll: true });
+                    }}
+                    className="min-h-11 rounded-full border border-white/[0.08] bg-ayu-panel/70 px-4 text-sm text-ayu-text backdrop-blur hover:border-ayu-accent/40 hover:text-ayu-accent"
+                  >
+                    {starter.trim()}
+                    {starter.endsWith(" ") ? "…" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <MessageList
+            messages={messages}
+            heldId={held?.id ?? null}
+            speakingId={reader.speakingId}
+            onListen={reader.supported ? reader.toggle : null}
+          />
+          {sending && (
+            <div className="jim-rise mr-auto max-w-[92%] min-w-0">
+              {live.text ? (
+                <div
+                  aria-busy="true"
+                  className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3"
+                >
+                  <JimMarkdown
+                    text={live.text}
+                    links={live.final ? "label-url" : "plain"}
+                  />
+                </div>
+              ) : (
+                <p
+                  role="status"
+                  className="jim-card flex items-center gap-3 rounded-[1.25rem] rounded-bl-md px-4 py-3 text-ayu-subtle"
+                >
+                  <span aria-hidden="true" className="flex gap-1">
+                    {[0, 150, 300].map((delay) => (
+                      <span
+                        key={delay}
+                        className={`jim-dot size-1.5 rounded-full bg-ayu-accent ${
+                          delay === 150
+                            ? "[animation-delay:150ms]"
+                            : delay === 300
+                              ? "[animation-delay:300ms]"
+                              : ""
+                        }`}
+                      />
+                    ))}
+                  </span>
+                  {slow ? "Still working…" : "Jim is thinking…"}
+                </p>
+              )}
+              {(live.saving || live.step) && (
+                <p
+                  role="status"
+                  className="mt-1.5 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
+                >
+                  {live.saving ? "Saving…" : stepLabel(live.step)}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Clears the home bar, except over the keyboard: nothing sits
+        between the box and the keys. */}
+      <form
+        onSubmit={onSubmit}
+        className={`shrink-0 pt-1 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+          // Over the keyboard the pill sits 4px off the keys (its own
+          // border and padding make up the rest of the 8px).
+          keyboardOpen ? "pb-1" : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        }`}
+      >
+        <div className="relative mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+          {/* Floats just above the composer (and so above the keyboard),
+            over the end of the list: showing it moves nothing. */}
+          <div className="absolute inset-x-3 bottom-full sm:inset-x-4">
+            <NowPlayingBar
+              state={reader.state}
+              onTogglePause={reader.togglePause}
+              onSpeed={reader.setSpeed}
+              onStop={reader.stop}
+              onDismiss={reader.dismiss}
+            />
+          </div>
+          {!online && (
+            <p
+              role="status"
+              className="jim-rise mb-2 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-ayu-panel/80 px-3 py-2 text-sm text-ayu-subtle backdrop-blur"
+            >
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-ayu-muted"
+              />
+              You&apos;re offline
+            </p>
+          )}
+          {error && (
+            <p
+              role="alert"
+              className={`jim-rise mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-sm backdrop-blur ${
+                error === "waking" || error === "uncertain"
+                  ? "border-ayu-accent/25 bg-ayu-accent/10 text-ayu-accent"
+                  : "border-ayu-red/25 bg-ayu-red/10 text-ayu-red"
+              }`}
+            >
+              <span>{ERRORS[error]}</span>
+              {held !== null && (
+                <button
+                  type="button"
+                  onClick={restoreHeld}
+                  className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
+                >
+                  Put my message back
+                </button>
+              )}
+            </p>
+          )}
+          <div className="jim-glass flex items-end gap-2 rounded-[1.6rem] border border-white/[0.08] p-1 shadow-[0_12px_40px_-16px_rgb(0_0_0/0.8)] transition-colors duration-200 focus-within:border-ayu-accent/50 focus-within:shadow-[0_0_0_4px_rgb(255_204_102/0.08),0_12px_40px_-16px_rgb(0_0_0/0.8)]">
+            <label htmlFor="jim-message" className="sr-only">
+              Message
+            </label>
+            <textarea
+              id="jim-message"
+              ref={boxRef}
+              rows={1}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Message Jim"
+              enterKeyHint={phone ? "enter" : "send"}
+              autoComplete="off"
+              className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="Send"
+              disabled={!canSend}
+              // Keep the keyboard up: a tap on Send must not blur the box.
+              onPointerDown={(e) => e.preventDefault()}
+              className={`flex size-11 shrink-0 items-center justify-center rounded-full duration-200! ${
+                canSend
+                  ? "jim-glow text-ayu-bg hover:brightness-110"
+                  : "bg-white/[0.06] text-ayu-subtle"
+              }`}
+            >
+              <ArrowUp
+                aria-hidden="true"
+                className="size-5"
+                strokeWidth={2.5}
+              />
+            </button>
+          </div>
+        </div>
+      </form>
+    </>
+  );
+
+  const notes = notesOpened && (
+    <NotesShell
+      uid={uid}
+      api={api}
+      getToken={getToken}
+      active={tab === "notes"}
+      onLog={logFromNotes}
+      onDraft={draftFromNotes}
+      routing={routing}
+    />
+  );
+
+  const updatePill = jimUpdate.isUpdateReady && (
+    <JimUpdatePill onUpdate={jimUpdate.update} disabled={sending} />
+  );
+
+  let layout: ReactNode;
+  if (wide) {
+    const active: "chat" | NotesPage | null =
+      route.kind === "chat"
+        ? "chat"
+        : route.kind === "notFound"
+          ? null
+          : basePage;
+    const actions: SidebarAction[] = [
+      { label: "New chat", icon: SquarePen, onSelect: newChat },
+      ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
+      ...(briefing.item ? [{ ...briefing.item, icon: Sunrise }] : []),
+      ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
+    ];
+    layout = (
+      <div
+        ref={rootRef}
+        // Behind a sheet nothing can be clicked, focused or read.
+        inert={personas.open || lockSheetOpen}
+        data-keyboard={keyboardOpen ? "open" : "closed"}
+        data-layout="wide"
+        className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text"
+      >
+        <JimSidebar
+          active={active}
+          onNavigate={goToRoute}
+          busy={sending}
+          search={notesSearch}
+          onSearch={searchFromSidebar}
+          searchRef={searchRef}
+          shortcut={mac ? "⌘K" : "Ctrl K"}
+          persona={{
+            name: personas.activeName ?? null,
+            onOpen: personas.menuItem.onSelect,
+          }}
+          actions={actions}
+          onSignOut={signOut}
+        />
+        <main className="relative min-w-0 flex-1">
+          {updatePill}
+          {route.kind === "chat" && (
+            <section
+              aria-label="Chat with Jim"
+              className="absolute inset-0 flex flex-col"
+            >
+              <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.06] px-8">
+                <h1 className="text-lg font-semibold tracking-tight text-ayu-text">
+                  Chat
+                </h1>
+                {personas.activeName && (
+                  <span className="text-sm text-ayu-subtle">
+                    as {personas.activeName}
+                  </span>
+                )}
+              </div>
+              {chatBody}
+            </section>
+          )}
+          {notesOpened && (
+            <div
+              id="jim-notes"
+              className={`absolute inset-0 ${route.kind === "chat" ? "invisible" : ""}`}
+            >
+              {notes}
+            </div>
+          )}
+        </main>
+        {route.kind !== "chat" && (
+          <aside
+            aria-label="Chat with Jim"
+            className="flex w-[24rem] shrink-0 flex-col border-l border-white/[0.06] bg-ayu-bg/60 xl:w-[26rem]"
+          >
+            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] pr-3 pl-5">
+              <JimMark busy={sending} />
+              <h2 className="min-w-0 flex-1 truncate font-semibold tracking-tight text-ayu-text">
+                Chat with Jim
+              </h2>
+              <a
+                href={formatJimPath(CHAT_ROUTE)}
+                onClick={onPlainClick(() => navigate(CHAT_ROUTE))}
+                aria-label="Open chat full width"
+                title="Open chat full width"
+                className="flex size-10 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+              >
+                <Maximize2 aria-hidden="true" className="size-4" />
+              </a>
+            </div>
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              {chatBody}
+            </div>
+          </aside>
+        )}
+        {briefing.notice}
+      </div>
+    );
+  } else {
+    layout = (
       <div
         ref={rootRef}
         // Behind the persona sheet nothing can be tapped, focused or read.
@@ -670,215 +1167,19 @@ export default function JimChat({
             personas.menuItem,
             ...(reader.menuItem ? [reader.menuItem] : []),
             ...(briefing.item ? [briefing.item] : []),
-            ...(lock && onWipe
-              ? [
-                  {
-                    label: `App lock: ${lock.enabled ? "On" : "Off"}`,
-                    onSelect: () => setLockSheetOpen(true),
-                  },
-                ]
-              : []),
+            ...(lockItem ? [lockItem] : []),
           ]}
         />
 
         <div className="relative min-h-0 flex-1">
-          {jimUpdate.isUpdateReady && (
-            <JimUpdatePill onUpdate={jimUpdate.update} disabled={sending} />
-          )}
+          {updatePill}
           <div
             id="jim-chat"
             role="tabpanel"
             aria-labelledby="jim-tab-chat"
             className={`absolute inset-0 flex flex-col ${tab === "chat" ? "" : "invisible"}`}
           >
-            <div
-              ref={scrollerRef}
-              onScroll={onScroll}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-            >
-              <div
-                role="log"
-                aria-label="Conversation"
-                className={`mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] transition-[padding] duration-200 motion-reduce:transition-none sm:py-6 ${
-                  // Room under the last message for the now-playing bar,
-                  // which floats over the list instead of pushing it up.
-                  barShown ? "pb-[4.25rem]! sm:pb-[4.75rem]!" : ""
-                }`}
-              >
-                {messages.length === 0 && !sending && (
-                  <div className="jim-rise flex flex-col items-center px-2 pt-[min(12vh,5rem)] pb-6 text-center">
-                    <JimMark size="lg" />
-                    <h2 className="mt-5 text-2xl font-semibold tracking-tight text-ayu-text">
-                      What&apos;s on your mind?
-                    </h2>
-                    <p className="mt-2 max-w-xs text-ayu-subtle">
-                      Ask Jim something, or tell him something to remember.
-                    </p>
-                    <div className="mt-6 flex flex-wrap justify-center gap-2">
-                      {STARTERS.map((starter) => (
-                        <button
-                          key={starter}
-                          type="button"
-                          onClick={() => {
-                            setDraft(starter);
-                            boxRef.current?.focus({ preventScroll: true });
-                          }}
-                          className="min-h-11 rounded-full border border-white/[0.08] bg-ayu-panel/70 px-4 text-sm text-ayu-text backdrop-blur hover:border-ayu-accent/40 hover:text-ayu-accent"
-                        >
-                          {starter.trim()}
-                          {starter.endsWith(" ") ? "…" : ""}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <MessageList
-                  messages={messages}
-                  heldId={held?.id ?? null}
-                  speakingId={reader.speakingId}
-                  onListen={reader.supported ? reader.toggle : null}
-                />
-                {sending && (
-                  <div className="jim-rise mr-auto max-w-[92%] min-w-0">
-                    {live.text ? (
-                      <div
-                        aria-busy="true"
-                        className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3"
-                      >
-                        <JimMarkdown
-                          text={live.text}
-                          links={live.final ? "label-url" : "plain"}
-                        />
-                      </div>
-                    ) : (
-                      <p
-                        role="status"
-                        className="jim-card flex items-center gap-3 rounded-[1.25rem] rounded-bl-md px-4 py-3 text-ayu-subtle"
-                      >
-                        <span aria-hidden="true" className="flex gap-1">
-                          {[0, 150, 300].map((delay) => (
-                            <span
-                              key={delay}
-                              className={`jim-dot size-1.5 rounded-full bg-ayu-accent ${
-                                delay === 150
-                                  ? "[animation-delay:150ms]"
-                                  : delay === 300
-                                    ? "[animation-delay:300ms]"
-                                    : ""
-                              }`}
-                            />
-                          ))}
-                        </span>
-                        {slow ? "Still working…" : "Jim is thinking…"}
-                      </p>
-                    )}
-                    {(live.saving || live.step) && (
-                      <p
-                        role="status"
-                        className="mt-1.5 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
-                      >
-                        {live.saving ? "Saving…" : stepLabel(live.step)}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Clears the home bar, except over the keyboard: nothing sits
-              between the box and the keys. */}
-            <form
-              onSubmit={onSubmit}
-              className={`shrink-0 pt-1 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
-                // Over the keyboard the pill sits 4px off the keys (its own
-                // border and padding make up the rest of the 8px).
-                keyboardOpen
-                  ? "pb-1"
-                  : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-              }`}
-            >
-              <div className="relative mx-auto w-full max-w-[45rem] px-3 sm:px-4">
-                {/* Floats just above the composer (and so above the keyboard),
-                  over the end of the list: showing it moves nothing. */}
-                <div className="absolute inset-x-3 bottom-full sm:inset-x-4">
-                  <NowPlayingBar
-                    state={reader.state}
-                    onTogglePause={reader.togglePause}
-                    onSpeed={reader.setSpeed}
-                    onStop={reader.stop}
-                    onDismiss={reader.dismiss}
-                  />
-                </div>
-                {!online && (
-                  <p
-                    role="status"
-                    className="jim-rise mb-2 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-ayu-panel/80 px-3 py-2 text-sm text-ayu-subtle backdrop-blur"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="size-1.5 rounded-full bg-ayu-muted"
-                    />
-                    You&apos;re offline
-                  </p>
-                )}
-                {error && (
-                  <p
-                    role="alert"
-                    className={`jim-rise mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-sm backdrop-blur ${
-                      error === "waking" || error === "uncertain"
-                        ? "border-ayu-accent/25 bg-ayu-accent/10 text-ayu-accent"
-                        : "border-ayu-red/25 bg-ayu-red/10 text-ayu-red"
-                    }`}
-                  >
-                    <span>{ERRORS[error]}</span>
-                    {held !== null && (
-                      <button
-                        type="button"
-                        onClick={restoreHeld}
-                        className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
-                      >
-                        Put my message back
-                      </button>
-                    )}
-                  </p>
-                )}
-                <div className="jim-glass flex items-end gap-2 rounded-[1.6rem] border border-white/[0.08] p-1 shadow-[0_12px_40px_-16px_rgb(0_0_0/0.8)] transition-colors duration-200 focus-within:border-ayu-accent/50 focus-within:shadow-[0_0_0_4px_rgb(255_204_102/0.08),0_12px_40px_-16px_rgb(0_0_0/0.8)]">
-                  <label htmlFor="jim-message" className="sr-only">
-                    Message
-                  </label>
-                  <textarea
-                    id="jim-message"
-                    ref={boxRef}
-                    rows={1}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    placeholder="Message Jim"
-                    enterKeyHint={phone ? "enter" : "send"}
-                    autoComplete="off"
-                    className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
-                  />
-                  <button
-                    type="submit"
-                    aria-label="Send"
-                    disabled={!canSend}
-                    // Keep the keyboard up: a tap on Send must not blur the box.
-                    onPointerDown={(e) => e.preventDefault()}
-                    className={`flex size-11 shrink-0 items-center justify-center rounded-full duration-200! ${
-                      canSend
-                        ? "jim-glow text-ayu-bg hover:brightness-110"
-                        : "bg-white/[0.06] text-ayu-subtle"
-                    }`}
-                  >
-                    <ArrowUp
-                      aria-hidden="true"
-                      className="size-5"
-                      strokeWidth={2.5}
-                    />
-                  </button>
-                </div>
-              </div>
-            </form>
+            {chatBody}
           </div>
 
           {notesOpened && (
@@ -888,19 +1189,18 @@ export default function JimChat({
               aria-labelledby="jim-tab-notes"
               className={`absolute inset-0 ${tab === "notes" ? "" : "invisible"}`}
             >
-              <NotesShell
-                uid={uid}
-                api={api}
-                getToken={getToken}
-                active={tab === "notes"}
-                onLog={logFromNotes}
-                onDraft={draftFromNotes}
-              />
+              {notes}
             </div>
           )}
         </div>
         {briefing.notice}
       </div>
+    );
+  }
+
+  return (
+    <>
+      {layout}
       <PersonaSheet
         personas={personas}
         playingKey={reader.state.key}

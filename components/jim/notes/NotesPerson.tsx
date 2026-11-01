@@ -1,5 +1,4 @@
-import { ChevronLeft } from "lucide-react";
-import { Chip, Empty } from "@/components/jim/notes/NotesUi";
+import { BackLink, Chip, Empty } from "@/components/jim/notes/NotesUi";
 import JimMarkdown from "@/lib/jim/markdown";
 import { personFacts } from "@/lib/jim/notesData";
 import { fmtShort, stripMd } from "@/lib/jim/todos";
@@ -11,6 +10,8 @@ interface NotesPersonProps {
   onBack: () => void;
   /** Where the back button goes ("People", or "Results" from a search). */
   backLabel?: string;
+  /** The back link's address; without one it is a plain button. */
+  backHref?: string;
 }
 
 /** One person's profile: key facts, strengths, then their whole note. */
@@ -19,6 +20,7 @@ export default function NotesPerson({
   today,
   onBack,
   backLabel = "People",
+  backHref,
 }: NotesPersonProps) {
   const facts = personFacts(person, today);
   const strengths = Array.isArray(person.strengths) ? person.strengths : [];
@@ -31,14 +33,7 @@ export default function NotesPerson({
 
   return (
     <article className="space-y-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
-      >
-        <ChevronLeft aria-hidden="true" className="size-5" />
-        {backLabel}
-      </button>
+      <BackLink label={backLabel} onBack={onBack} href={backHref} />
       <header className="space-y-1">
         <h2 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text [overflow-wrap:anywhere]">
           {person.name}

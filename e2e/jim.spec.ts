@@ -14,6 +14,23 @@ import { MONEY_FIXTURE, VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
 // Calendar times are UTC in the payload and shown in local time.
 test.use({ timezoneId: "America/Denver" });
 
+/** The desktop layout's breakpoint (Tailwind's lg), as JimChat uses it. */
+const DESKTOP_MIN = 1024;
+
+/**
+ * The phone layout's tests run below the desktop breakpoint on the desktop
+ * browsers too (their default 1280px window is a desktop now); the iPhone
+ * keeps its own screen. The desktop layout has its own tests, at 1440.
+ */
+test.use({
+  viewport: async ({}, provide, testInfo) => {
+    const own = testInfo.project.use.viewport ?? { width: 1280, height: 720 };
+    await provide(
+      own.width >= DESKTOP_MIN ? { width: 820, height: own.height } : own
+    );
+  },
+});
+
 /** Ayu Mirage's background, in light and dark mode alike. */
 const AYU_BG = "rgb(31, 36, 48)";
 
@@ -631,19 +648,17 @@ for (const width of [undefined, 320]) {
         await expect(sheet).toHaveCount(0);
 
         await page.getByLabel("Search notes").fill("plants");
-        await expect(
-          page.getByRole("button", { name: /Garden/ })
-        ).toBeVisible();
+        await expect(page.getByRole("link", { name: /Garden/ })).toBeVisible();
         await page.getByLabel("Search notes").blur();
         await shot("notes-search");
 
-        await page.getByRole("button", { name: /Garden/ }).click();
+        await page.getByRole("link", { name: /Garden/ }).click();
         await expect(
           page.getByRole("heading", { name: "Garden" })
         ).toBeVisible();
         await expect(page.locator("table")).toBeVisible();
         await shot("notes-note");
-        await page.getByRole("button", { name: "Results" }).click();
+        await page.getByRole("link", { name: "Results" }).click();
         await page.getByRole("button", { name: "Clear search" }).click();
         await expect(page.getByText("Water the plants")).toBeVisible();
       }
@@ -721,7 +736,7 @@ for (const width of [undefined, 320]) {
         ).toBeGreaterThanOrEqual(16);
         await shot("notes-people");
 
-        await page.getByRole("button", { name: /Sam Okafor/ }).click();
+        await page.getByRole("link", { name: /Sam Okafor/ }).click();
         await expect(
           page.getByRole("heading", { name: "Sam Okafor" })
         ).toBeVisible();
@@ -729,8 +744,8 @@ for (const width of [undefined, 320]) {
         await expect(page.locator("table")).toBeVisible();
         await shot("notes-person-table");
 
-        await page.getByRole("button", { name: "People" }).click();
-        await page.getByRole("button", { name: /Wren Rivera/ }).click();
+        await page.getByRole("link", { name: "People" }).click();
+        await page.getByRole("link", { name: /Wren Rivera/ }).click();
         await expect(page.getByText("Jun 16, 1990")).toBeVisible();
         await shot("notes-person");
 
@@ -1464,4 +1479,221 @@ test("money never rests on the device, open or after sign-out", async ({
   await expect(page.getByText("Hill Hardware")).toHaveCount(0);
   const after = await everythingKept(page);
   for (const v of values) expect(after).not.toContain(v);
+});
+
+/** Every app address serves the one page; a reload keeps the place. */
+test.describe("Jim routes", () => {
+  test(
+    "a deep link reloads to the same profile, and Back returns to the list",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      // Counts page loads, and any same-origin 404 (Next fetching data for
+      // an address it doesn't know would show up here).
+      await page.addInitScript(() => {
+        const n = Number(sessionStorage.getItem("jim-loads") ?? "0");
+        sessionStorage.setItem("jim-loads", String(n + 1));
+      });
+      const missing: string[] = [];
+      page.on("response", (response) => {
+        const url = new URL(response.url());
+        if (
+          url.origin === new URL(page.url()).origin &&
+          response.status() === 404
+        )
+          missing.push(url.pathname);
+      });
+      const loads = () =>
+        page.evaluate(() => Number(sessionStorage.getItem("jim-loads")));
+      await signedIn(page);
+      await page.goto("/jim/notes/people/sam-okafor");
+      const heading = page.getByRole("heading", { name: "Sam Okafor" });
+      await expect(heading).toBeVisible();
+      await expect(page).toHaveTitle("Sam Okafor · Jim");
+      // Hydrating at a deep address doesn't bounce or reload the page.
+      await page.waitForTimeout(1000);
+      expect(await loads()).toBe(2);
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people/sam-okafor");
+      // Next's router must not 404, bounce or hard-reload the page here.
+      await page.evaluate(() => {
+        (window as { __stillHere?: boolean }).__stillHere = true;
+      });
+      await page.reload();
+      await expect(heading).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people/sam-okafor");
+
+      // Opened from its address: Back (the link) goes up to the list.
+      await page.getByRole("link", { name: "People" }).click();
+      await expect(page.getByLabel("Search people")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people");
+      await page.evaluate(() => {
+        (window as { __stillHere?: boolean }).__stillHere = true;
+      });
+
+      // List → profile → browser Back: the list, at the same spot.
+      const scroller = page.locator("[data-notes-scroller]");
+      // Instant: the site's smooth scrolling would still be on its way.
+      await scroller.evaluate((el) =>
+        el.scrollTo({ top: 120, behavior: "instant" })
+      );
+      await expect
+        .poll(() => scroller.evaluate((el) => el.scrollTop))
+        .toBe(120);
+      const top = 120;
+      // The scroll event (which records the spot) lands on the next frame.
+      await page.evaluate(
+        () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)))
+      );
+      await page.getByRole("link", { name: /Wren Rivera/ }).click();
+      await expect(
+        page.getByRole("heading", { name: "Wren Rivera" })
+      ).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe(
+        "/jim/notes/people/wren-rivera"
+      );
+      await page.goBack();
+      await expect(page.getByLabel("Search people")).toBeVisible();
+      await expect
+        .poll(() => scroller.evaluate((el) => el.scrollTop))
+        .toBe(top);
+      await page.goForward();
+      await expect(
+        page.getByRole("heading", { name: "Wren Rivera" })
+      ).toBeVisible();
+      // All of it in the one page: no reload since.
+      expect(
+        await page.evaluate(
+          () => (window as { __stillHere?: boolean }).__stillHere
+        )
+      ).toBe(true);
+      expect(await loads()).toBe(3);
+      expect(missing).toEqual([]);
+    }
+  );
+
+  test(
+    "Chat and Notes have addresses, and an unknown one says so",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await signedIn(page);
+      await openNotes(page);
+      expect(new URL(page.url()).pathname).toBe("/jim/notes");
+      await page.getByRole("tab", { name: "Chat" }).click();
+      expect(new URL(page.url()).pathname).toBe("/jim/chat");
+      await page.goBack();
+      await expect(page.getByText("Water the plants")).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Notes" })).toHaveAttribute(
+        "aria-selected",
+        "true"
+      );
+
+      await page.goto("/jim/notes/nothing-here");
+      await expect(
+        page.getByText("Nothing lives at this address")
+      ).toBeVisible();
+      await page.getByRole("link", { name: "Go to Notes home" }).click();
+      await expect(page.getByText("Water the plants")).toBeVisible();
+
+      // A search never reaches the address.
+      await page.getByLabel("Search notes").fill("plants");
+      await page.getByRole("link", { name: /Garden/ }).click();
+      await expect(page.getByRole("heading", { name: "Garden" })).toBeVisible();
+      expect(page.url()).not.toContain("plants");
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/note/home/garden");
+    }
+  );
+});
+
+/** Shots for a human: the desktop layout at 1440×900. */
+const DESKTOP_SHOTS = `${SHOTS}/desktop`;
+
+test.describe("Jim desktop", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test(
+    "sidebar, page and docked chat; the chat sends from the dock",
+    { tag: "@smoke" },
+    async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name === "iphone", "a desktop layout");
+      await page.clock.setFixedTime(new Date("2026-10-31T15:00:00Z"));
+      await signedIn(page);
+      const shot = async (name: string) => {
+        await noSidewaysScroll(page);
+        await page.screenshot({
+          path: `${DESKTOP_SHOTS}/${name}-${testInfo.project.name}.png`,
+          animations: "disabled",
+        });
+      };
+      const nav = page.getByRole("navigation", { name: "Jim" });
+      await expect(nav).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Notes" })).toHaveCount(0);
+      await send(page, "what's on my list?", /^Here's what/);
+      await shot("chat");
+
+      await nav.getByRole("link", { name: "Home" }).click();
+      await expect(page.getByText("Water the plants")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes");
+      const dock = page.getByRole("complementary", { name: "Chat with Jim" });
+      // Sidebar, page and chat side by side, all on screen.
+      const sidebar = await nav.boundingBox();
+      const center = await page.locator("#jim-notes-page").boundingBox();
+      const chat = await dock.boundingBox();
+      expect(sidebar && center && chat).toBeTruthy();
+      if (sidebar && center && chat) {
+        expect(sidebar.x).toBeLessThan(center.x);
+        expect(center.x + center.width).toBeLessThanOrEqual(chat.x);
+        expect(chat.x + chat.width).toBeLessThanOrEqual(1440);
+        expect(chat.width).toBeGreaterThanOrEqual(360);
+      }
+      // The day and the todos side by side.
+      const today = await page
+        .getByRole("region", { name: "Today" })
+        .boundingBox();
+      const todo = await page
+        .getByRole("checkbox", { name: "Renew the car registration" })
+        .boundingBox();
+      expect(today && todo && todo.x > today.x + today.width - 1).toBe(true);
+      await expect(dock.getByText("Saved: lists/todos.md")).toHaveCount(0);
+      await shot("notes-home");
+
+      // The one conversation, sent from the dock, without leaving the page.
+      await dock.getByLabel("Message").fill("remember the milk");
+      await dock.getByLabel("Message").press("Enter");
+      await expect(dock.getByText("Saved it.")).toBeVisible();
+      await expect(dock.getByText("what's on my list?")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes");
+
+      await nav.getByRole("link", { name: "People" }).click();
+      await expect(nav.getByRole("link", { name: "People" })).toHaveAttribute(
+        "aria-current",
+        "page"
+      );
+      await page.getByRole("link", { name: /Sam Okafor/ }).click();
+      await expect(
+        page.getByRole("heading", { name: "Sam Okafor" })
+      ).toBeVisible();
+      await expect(page).toHaveTitle("Sam Okafor · Jim");
+      await shot("person");
+      // Esc steps back out of a profile.
+      await page.keyboard.press("Escape");
+      await expect(page.getByLabel("Search people")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people");
+
+      await nav.getByRole("link", { name: "Training" }).click();
+      await expect(page.getByText("Back squat")).toBeVisible();
+      await expect(page).toHaveTitle("Training · Jim");
+      await shot("training");
+
+      await nav.getByRole("link", { name: "Health" }).click();
+      await expect(page.getByText("Hemoglobin")).toBeVisible();
+      await shot("health");
+
+      // ⌘K (Ctrl+K) finds the search; the query stays out of the address.
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(page.getByLabel("Search notes")).toBeFocused();
+      await page.keyboard.type("plants");
+      await expect(page.getByRole("link", { name: /Garden/ })).toBeVisible();
+      expect(page.url()).not.toContain("plants");
+      await shot("search");
+    }
+  );
 });

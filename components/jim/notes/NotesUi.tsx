@@ -1,4 +1,6 @@
-import { useId, type ReactNode } from "react";
+import { useId, type MouseEvent, type ReactNode } from "react";
+import { ChevronLeft } from "lucide-react";
+import { isPlainClick } from "@/components/jim/useJimRouter";
 
 /**
  * Small shared pieces for the Notes pages (Ayu Mirage tokens throughout).
@@ -115,4 +117,57 @@ export function Chip({ children, tone = "plain" }: ChipProps) {
       {children}
     </span>
   );
+}
+
+interface BackLinkProps {
+  /** Where it goes, in words ("People", "Results"). */
+  label: string;
+  onBack: () => void;
+  /** Its address: a real link, so ⌘-click opens it in a new tab. */
+  href?: string;
+}
+
+const BACK_CLASS =
+  "-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]";
+
+/** "‹ People" above a profile, a note or a card. */
+export function BackLink({ label, onBack, href }: BackLinkProps) {
+  const content = (
+    <>
+      <ChevronLeft aria-hidden="true" className="size-5" />
+      {label}
+    </>
+  );
+  if (href === undefined) {
+    return (
+      <button type="button" onClick={onBack} className={BACK_CLASS}>
+        {content}
+      </button>
+    );
+  }
+  return (
+    <a
+      href={href}
+      onClick={(event) => {
+        if (!isPlainClick(event)) return;
+        event.preventDefault();
+        onBack();
+      }}
+      className={`${BACK_CLASS} w-fit`}
+    >
+      {content}
+    </a>
+  );
+}
+
+/**
+ * Opens `href` in the app on a plain click; anything else (⌘-click, a
+ * middle click) is left to the browser.
+ */
+export function onPlainClick(open: () => void) {
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainClick(event)) return;
+    event.preventDefault();
+    open();
+  };
 }
