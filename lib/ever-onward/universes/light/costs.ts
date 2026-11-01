@@ -1,4 +1,8 @@
-/** Base cost of every upgrade; the shop cost is this times costGrowth ^ level. */
+/**
+ * Base cost of every upgrade; the shop cost is this times costGrowth ^ level.
+ * The night's opening buys (crank, gen1, gen2) were cut when its costScale
+ * went from 2 to 2.6 (Round 5), so the opening keeps its prices.
+ */
 export const COSTS: Record<string, number> = {
   "wick-1": 278,
   "wick-2": 11770,
@@ -50,9 +54,9 @@ export const COSTS: Record<string, number> = {
   keeper: 88,
   lighthouse: 3700,
   contract: 13420,
-  crank: 105,
-  gen1: 105,
-  gen2: 360,
+  crank: 72,
+  gen1: 72,
+  gen2: 248,
   gen3: 4500,
   gen4: 45000,
   aim: 163,

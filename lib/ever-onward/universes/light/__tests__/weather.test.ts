@@ -15,6 +15,7 @@ import {
   forecastStep,
   isOut,
   isWeatherOpen,
+  outageLeft,
   outageFactor,
   readiness,
   stageSecondsLeft,
@@ -88,7 +89,7 @@ describe("the weather desk", () => {
     const waited = idle(newRun(def), 600);
     expect(isWeatherOpen(waited)).toBe(false);
 
-    const early = tick(def, nightRun({ gen2: 2 }), 1);
+    const early = tick(def, nightRun({ gen2: 1 }), 1);
     expect(isWeatherOpen(early)).toBe(false);
 
     const opened = tick(def, nightRun(), 1);
@@ -203,8 +204,11 @@ describe("the weather desk", () => {
     expect(stormResultLine(missed)).toMatch(
       /The storm hit Rivertown and its lights went out for a while/
     );
-    // left alone it comes back on its own
-    expect(isOut(idle(missed, 125), 0)).toBe(false);
+    // left alone it comes back on its own, a second at a time
+    expect(outageLeft(idle(missed, 60), 0)).toBeCloseTo(
+      outageLeft(missed, 0) - 60,
+      0
+    );
     // a crew fixes it fast, and learns from it
     const fixing = shield(missed, 0);
     const fixed = idle(fixing, 15);
@@ -228,7 +232,7 @@ describe("the weather desk", () => {
     expect(lowest).toBeGreaterThanOrEqual(1000);
   });
 
-  it("forms a new storm every two to three minutes of play", () => {
+  it("forms a new storm about every two minutes of play", () => {
     let run = tick(def, nightRun(), 1);
     const forecastAt: number[] = [];
     let was = weatherStage(run);
@@ -241,8 +245,8 @@ describe("the weather desk", () => {
     const gaps = forecastAt.slice(1).map((t, i) => t - forecastAt[i]);
     expect(gaps.length).toBeGreaterThan(3);
     for (const gap of gaps) {
-      expect(gap).toBeGreaterThanOrEqual(130);
-      expect(gap).toBeLessThanOrEqual(170);
+      expect(gap).toBeGreaterThanOrEqual(90);
+      expect(gap).toBeLessThanOrEqual(125);
     }
   });
 

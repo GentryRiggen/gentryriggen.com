@@ -145,7 +145,7 @@ const tendsWeather =
   };
 
 /** Points of (chance x readiness) a move must gain to be worth it. */
-const WEATHER_MOVE_GAIN = 8;
+const WEATHER_MOVE_GAIN = 4;
 
 /**
  * Hauls full nets in and sets them again. A bot with real attention misses
@@ -278,8 +278,13 @@ function wantsKnowhow(run: RunState, patience: number): boolean {
     const missing =
       (p.costs.find((c) => c.resource === "knowhow")?.amount ?? 0) -
       (run.resources.knowhow ?? 0);
+    // Once dimmed for it, stay dimmed until it is done (no flip-flopping
+    // while the power dips for a purchase).
+    const isDimmed = lampStep(run) === 0;
     return (
-      powerOk && missing > 0 && missing / Math.max(softRate, 1e-6) <= patience
+      (powerOk || isDimmed) &&
+      missing > 0 &&
+      missing / Math.max(softRate, 1e-6) <= patience
     );
   });
 }

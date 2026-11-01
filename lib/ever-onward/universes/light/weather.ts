@@ -14,8 +14,9 @@ import { TUNING } from "./tuning";
  * on a ready crew pays a bonus. One that lands on a town with no crew puts
  * its lights out for a while: a small dip, never a loss. A crew sent there
  * fixes it fast (and learns from it); left alone it comes back on its own.
- * Nothing expires, nothing is taken, and ignoring the desk costs only the
- * bonus and a little dimming.
+ * After each storm the crews come home to rest, so every storm is a new
+ * choice. Nothing expires, nothing is taken, and ignoring the desk costs
+ * only the bonus and a little dimming.
  *
  * All state lives in `run.resources` (hidden numbers) and one flag, so a save
  * without them simply reads as "not opened yet". Time is the engine's `dt`.
@@ -358,6 +359,12 @@ function landfall(run: RunState, income: number): void {
   const share = Math.max(handShare, vaneShare);
   r.wxFronts = frontsSoFar(run) + 1;
   r.wxLastTown = town;
+  // The crews come home to rest after every storm; send them out again for
+  // the next one.
+  for (const t of TOWN_INDEXES) {
+    r[`wxShield${t}`] = 0;
+    r[`wxReady${t}`] = 0;
+  }
   if (share <= 0) {
     r.wxLastKind = KINDS.indexOf("flicker");
     r.wxLastPayout = 0;

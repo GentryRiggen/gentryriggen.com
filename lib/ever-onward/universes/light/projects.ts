@@ -83,20 +83,6 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     botValue: 0.15,
   },
   {
-    id: "rush-pricing",
-    phase: PHASE_NIGHT,
-    name: "Rush-hour pricing",
-    description:
-      "Power costs a bit more at rush hour. Every rush pays 50% more.",
-    tradeOff: "The rush comes a quarter less often.",
-    costs: cost(90),
-    revealWhen: (run) => (run.resources.rushRides ?? 0) >= 3,
-    effectPreview: projectPreviewOf("rush-pricing", [
-      { label: "A rush pays", read: rushBonus },
-    ]),
-    botValue: 0.1,
-  },
-  {
     id: BAROMETERS_ID,
     phase: PHASE_NIGHT,
     name: "Better barometers",
@@ -114,20 +100,18 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     botValue: 0.12,
   },
   {
-    id: SPARE_PARTS_ID,
+    id: "rush-pricing",
     phase: PHASE_NIGHT,
-    name: "Spare parts depot",
+    name: "Rush-hour pricing",
     description:
-      "A shed of ladders, fuses and sandbags. Crews get ready and fix dark towns twice as fast.",
-    tradeOff: "Costs power you could put into a plant.",
-    costs: cost(140, 4000),
-    revealWhen: (run) =>
-      (run.resources.wxFlickered ?? 0) >= 1 || frontsSoFar(run) >= 3,
-    effectPreview: projectPreviewOf(SPARE_PARTS_ID, [
-      { label: "Crew ready in", read: readySeconds, suffix: " s" },
-      { label: "Fix in", read: fixSeconds, suffix: " s" },
+      "Power costs a bit more at rush hour. Every rush pays 50% more.",
+    tradeOff: "The rush comes a quarter less often.",
+    costs: cost(90),
+    revealWhen: (run) => (run.resources.rushRides ?? 0) >= 3,
+    effectPreview: projectPreviewOf("rush-pricing", [
+      { label: "A rush pays", read: rushBonus },
     ]),
-    botValue: 0.12,
+    botValue: 0.1,
   },
   {
     id: "lamplighters",
@@ -149,6 +133,40 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     botValue: 0.15,
   },
   {
+    id: "co-op",
+    phase: PHASE_NIGHT,
+    name: "Power co-op",
+    description: "The steam plants share their coal. Each one makes 25% more.",
+    tradeOff: "The grid strains 15% faster.",
+    costs: cost(190),
+    // Every steam plant built, the dam still a way off: something to do.
+    revealWhen: (run) => owned(run, "gen2") >= 7,
+    effectPreview: projectPreviewOf("co-op", [
+      POWER_PER_SECOND,
+      {
+        label: "Strain",
+        read: (run) => strainPerSecond(run) * 60,
+        suffix: "% a minute",
+      },
+    ]),
+  },
+  {
+    id: SPARE_PARTS_ID,
+    phase: PHASE_NIGHT,
+    name: "Spare parts depot",
+    description:
+      "A shed of ladders, fuses and sandbags. Crews get ready and fix dark towns twice as fast.",
+    tradeOff: "Costs power you could put into a plant.",
+    costs: cost(140, 4000),
+    revealWhen: (run) =>
+      (run.resources.wxFlickered ?? 0) >= 1 || frontsSoFar(run) >= 3,
+    effectPreview: projectPreviewOf(SPARE_PARTS_ID, [
+      { label: "Crew ready in", read: readySeconds, suffix: " s" },
+      { label: "Fix in", read: fixSeconds, suffix: " s" },
+    ]),
+    botValue: 0.12,
+  },
+  {
     id: "fish-ladders",
     phase: PHASE_NIGHT,
     name: "Fish ladders",
@@ -158,23 +176,6 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     costs: cost(150, 8000),
     revealWhen: (run) => owned(run, "gen3") >= 1,
     effectPreview: projectPreviewOf("fish-ladders", [POWER_PER_SECOND]),
-  },
-  {
-    id: "co-op",
-    phase: PHASE_NIGHT,
-    name: "Power co-op",
-    description: "The steam plants share their coal. Each one makes 25% more.",
-    tradeOff: "The grid strains 15% faster.",
-    costs: cost(190),
-    revealWhen: (run) => owned(run, "gen3") >= 2,
-    effectPreview: projectPreviewOf("co-op", [
-      POWER_PER_SECOND,
-      {
-        label: "Strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
-      },
-    ]),
   },
   {
     id: "wind-maps",

@@ -5,7 +5,7 @@ export const TUNING = {
    * and the bigger collector steps made the night and the sky quicker, so
    * they are priced up to keep the run about two hours.
    */
-  costScale: { coast: 3.35, night: 2, sky: 1.9, last: 1.15 } as Record<
+  costScale: { coast: 3.35, night: 2.9, sky: 1.9, last: 1.15 } as Record<
     string,
     number
   >,
@@ -194,12 +194,12 @@ export const TUNING = {
   /** The Weather Desk, a side machine of No More Night (see weather.ts). */
   weather: {
     /** It opens with this many steam plants (about a third of the way in). */
-    openAtSteamPlants: 3,
+    openAtSteamPlants: 2,
     /** Seconds after it opens until the first front forms. */
     firstFormSeconds: 40,
     /** Seconds a front takes to form. */
-    formMin: 70,
-    formSpread: 40,
+    formMin: 35,
+    formSpread: 25,
     /** The forecast comes in steps, the storm's path firming up each time. */
     forecastSteps: 3,
     stepSeconds: 20,
