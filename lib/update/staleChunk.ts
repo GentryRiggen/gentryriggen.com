@@ -7,7 +7,7 @@
 const CHUNK_MESSAGE =
   /ChunkLoadError|Loading chunk [\w-]+ failed|Loading CSS chunk|Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
 
-export const RELOAD_STAMP_KEY = "ever-onward:chunk-reload";
+export const RELOAD_STAMP_KEY = "app:chunk-reload";
 /** At most one automatic reload in this long. */
 export const RELOAD_WINDOW_MS = 60_000;
 

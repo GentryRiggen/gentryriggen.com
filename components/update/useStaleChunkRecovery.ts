@@ -5,17 +5,18 @@ import {
   claimReload,
   isAppScriptLoadFailure,
   isChunkLoadFailure,
-} from "@/lib/ever-onward/staleChunk";
+} from "@/lib/update/staleChunk";
 
 /**
  * Self-heals a tab that outlived a deploy: when one of the app's chunks is
- * gone, save the game and reload once (at most once a minute).
+ * gone, run `onBeforeReload` (save the game) and reload once (at most once a
+ * minute).
  */
-export function useStaleChunkRecovery(saveNow: () => void): void {
+export function useStaleChunkRecovery(onBeforeReload: () => void): void {
   useEffect(() => {
     const recover = () => {
       if (!claimReload(window.sessionStorage, Date.now())) return;
-      saveNow();
+      onBeforeReload();
       window.location.reload();
     };
     // Script load failures don't bubble, so listen while capturing.
@@ -33,5 +34,5 @@ export function useStaleChunkRecovery(saveNow: () => void): void {
       window.removeEventListener("error", handleError, true);
       window.removeEventListener("unhandledrejection", handleRejection);
     };
-  }, [saveNow]);
+  }, [onBeforeReload]);
 }

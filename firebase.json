@@ -152,6 +152,24 @@
         ]
       },
       {
+        "source": "/ship-builder/version.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/plane-builder/version.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/plane-builder/versions",
         "headers": [
           {

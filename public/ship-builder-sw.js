@@ -12,6 +12,8 @@
  *   the query.
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
+ * - /ship-builder/version.json is never handled, cached or precached.
+ * - The page posts { type: "SKIP_WAITING" } to make a waiting worker take over.
  * - The page posts { type: "CACHE_URLS", urls } with the resources it has
  *   already loaded, so a single online visit is enough to play offline.
  */
@@ -58,12 +60,20 @@ function isModelAsset(pathname) {
 
 /** True for the game page or one of its sub-pages (e.g. /ship-builder/versions). */
 function isPagePath(pathname) {
-  if (isModelAsset(pathname)) return false;
+  if (isModelAsset(pathname) || isVersionFile(pathname)) return false;
   return (
     pathname === PAGE_PATH ||
     pathname === `${PAGE_PATH}.html` ||
     pathname.startsWith(`${PAGE_PATH}/`)
   );
+}
+
+/**
+ * The deployed-version file the page polls for updates. It must always come
+ * from the network, so the worker never stores or serves it.
+ */
+function isVersionFile(pathname) {
+  return pathname === `${PAGE_PATH}/version.json`;
 }
 
 function isStaticAsset(pathname) {
@@ -166,6 +176,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = toSameOriginUrl(request.url);
   if (!url) return;
+  if (isVersionFile(url.pathname)) return;
 
   if (request.mode === "navigate") {
     if (isPagePath(url.pathname)) {
@@ -207,6 +218,11 @@ self.addEventListener("message", (event) => {
   const { data, source } = event;
   // Only accept messages from our own pages (window clients are same-origin).
   if (!source || source.type !== "window") return;
+  // The page asks a waiting worker to take over when the player taps Update.
+  if (data && data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
   if (!data || data.type !== "CACHE_URLS" || !Array.isArray(data.urls)) return;
 
   const seen = new Set();
