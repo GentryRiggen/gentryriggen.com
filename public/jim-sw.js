@@ -1,5 +1,5 @@
-/* Jim service worker: /jim opens without signal, and the morning briefing
- * arrives as a notification.
+/* Jim service worker: /jim opens without signal, and Jim's pushes (morning
+ * brief, reminders, heads-ups, wrap-ups) arrive as notifications.
  *
  * Registered by lib/jim/serviceWorker.ts with scope "/jim", so it only
  * controls the /jim page. Rules:
@@ -20,8 +20,10 @@
  *   cached, so opaque or cross-origin responses never enter the cache.
  * - A new worker waits (no automatic skipWaiting) until a page posts
  *   { type: "SKIP_WAITING" }; the page then reloads on controllerchange.
- * - push: { title, body, url } becomes a notification (a generic one when
- *   the payload can't be read: iOS wants one for every push). A tap focuses
+ * - push: { title, body, url, tag } becomes a notification (a generic one
+ *   when the payload can't be read: iOS wants one for every push). The tag
+ *   ("jim-" plus a kind, e.g. jim-quiz) keeps kinds from replacing each
+ *   other; a missing or odd one falls back to "jim-morning". A tap focuses
  *   an open /jim or opens it; a URL with a query (/jim?say=quiz%20me) is kept,
  *   and an open page is sent a JIM_SAY message instead.
  */

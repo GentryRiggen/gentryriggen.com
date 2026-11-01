@@ -75,7 +75,7 @@ describe("NotesReminders", () => {
     );
   });
 
-  it("sends the device's offset, not Denver's or Z", async () => {
+  it("sends the device's offset, not the server's zone or Z", async () => {
     jest.spyOn(Date.prototype, "getTimezoneOffset").mockReturnValue(-330);
     m.listReminders.mockResolvedValue([]);
     m.addReminder.mockResolvedValue(rem("cccccccccccc", "Stretch", "x"));

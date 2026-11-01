@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchView, getCachedView } from "@/lib/jim/view";
 import { onOpenIntent } from "@/lib/jim/openUrl";
 
+/** The device's date as YYYY-MM-DD. */
+function deviceToday(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 type GetToken = (force?: boolean) => Promise<string | null>;
 
 export interface Reflection {
@@ -34,7 +41,10 @@ export default function useReflection(
     return onOpenIntent((intent) => {
       if (!intent.reflect) return;
       const mine = ++run.current;
-      const cached = getCachedView()?.data.reflection?.question;
+      // Only a view from today may supply the question; yesterday's is fetched past.
+      const view = getCachedView()?.data;
+      const cached =
+        view && view.today === deviceToday() ? view.reflection?.question : null;
       if (cached) {
         setQuestion(cached);
         return;

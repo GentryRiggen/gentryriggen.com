@@ -2,7 +2,7 @@
  * Jim's addresses. Everything lives in the one /jim page; the path under it
  * names the page showing, and nothing more: never a search, never note text.
  * A person or note appears only by the path it already has in the repo
- * (`people/andrew-jenkins.md` → /jim/notes/people/andrew-jenkins).
+ * (`people/jane-doe.md` → /jim/notes/people/jane-doe).
  *
  *   /jim, /jim/chat                 Chat
  *   /jim/notes                      Notes home

@@ -40,11 +40,21 @@ function reflect() {
   act(() => emitOpenIntent({ listen: null, reflect: true }));
 }
 
+function localToday(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   window.localStorage.clear();
   cached.mockReturnValue({
-    data: { ...VIEW_FIXTURE, reflection: { question: QUESTION } },
+    data: {
+      ...VIEW_FIXTURE,
+      today: localToday(),
+      reflection: { question: QUESTION },
+    },
     at: Date.now(),
   });
   send.mockResolvedValue({ reply: "Noted.", changed: [], commit: null });
@@ -114,4 +124,24 @@ it("does nothing when the question can't be fetched", async () => {
   reflect();
   await waitFor(() => expect(fetched).toHaveBeenCalled());
   expect(screen.getByPlaceholderText("Message Jim")).toBeInTheDocument();
+});
+
+it("ignores a cached view from another day and fetches", async () => {
+  cached.mockReturnValue({
+    data: {
+      ...VIEW_FIXTURE,
+      today: "2020-01-01",
+      reflection: { question: "Yesterday's question" },
+    },
+    at: Date.now(),
+  });
+  fetched.mockResolvedValue({
+    ...VIEW_FIXTURE,
+    reflection: { question: QUESTION },
+  });
+  renderChat();
+  reflect();
+  expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+  expect(screen.queryByText("Yesterday's question")).not.toBeInTheDocument();
+  expect(fetched).toHaveBeenCalledTimes(1);
 });

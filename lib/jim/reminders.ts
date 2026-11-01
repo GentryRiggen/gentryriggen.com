@@ -137,7 +137,7 @@ export async function getReminder(
   }
 }
 
-/** `at` is "YYYY-MM-DDTHH:MM" (Denver) or an ISO time with offset. */
+/** `at` is "YYYY-MM-DDTHH:MM" (the server's time zone) or an ISO time with offset. */
 export async function addReminder(
   at: string,
   text: string,
