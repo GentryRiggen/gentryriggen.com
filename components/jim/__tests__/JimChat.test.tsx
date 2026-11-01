@@ -14,12 +14,24 @@ jest.mock("../notes/NotesShell", () => ({
     active,
     onLog,
     onDraft,
+    routing,
   }: {
     active: boolean;
     onLog: (text: string) => void;
     onDraft: (text: string) => void;
+    routing?: { route: { kind: string; page?: string; slug?: string } };
   }) => (
-    <div data-testid="notes" data-active={String(active)}>
+    <div
+      data-testid="notes"
+      data-active={String(active)}
+      data-route={
+        routing
+          ? [routing.route.kind, routing.route.page ?? routing.route.slug]
+              .filter(Boolean)
+              .join(":")
+          : ""
+      }
+    >
       <button type="button" onClick={() => onLog("Log my workout today: Ran.")}>
         Fake log
       </button>
@@ -58,7 +70,19 @@ function deferred<T>() {
 beforeEach(() => {
   send.mockReset();
   window.localStorage.clear();
+  // Each test opens /jim, as the app does.
+  window.history.replaceState(null, "", "/jim");
 });
+
+/** matchMedia that answers true for the desktop width (and nothing else). */
+function desktopMedia() {
+  return jest.fn().mockImplementation((query: string) => ({
+    matches: query.includes("min-width: 1024px"),
+    media: query,
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  })) as unknown as typeof window.matchMedia;
+}
 
 it("shows the message, then Jim's reply and the files it saved", async () => {
   const reply = deferred<api.JimReply>();
@@ -277,6 +301,197 @@ describe("tabs", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Chat" }));
     expect(screen.getByText("hello")).toBeInTheDocument();
     expect(screen.getByText("ok")).toBeInTheDocument();
+  });
+});
+
+describe("routes", () => {
+  it("gives Chat and Notes their own addresses, with Back between them", async () => {
+    renderChat();
+    expect(document.title).toBe("Chat · Jim");
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    expect(window.location.pathname).toBe("/jim/notes");
+    expect(screen.getByTestId("notes")).toHaveAttribute(
+      "data-route",
+      "page:home"
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Chat" }));
+    expect(window.location.pathname).toBe("/jim/chat");
+    // Browser Back returns to Notes.
+    act(() => window.history.back());
+    await screen.findByText(
+      (_, el) => el?.getAttribute("data-active") === "true"
+    );
+    expect(window.location.pathname).toBe("/jim/notes");
+    expect(screen.getByRole("tab", { name: "Notes" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+  });
+
+  it("opens straight on the Notes page in the address", () => {
+    window.history.replaceState(null, "", "/jim/notes/people/sam-okafor");
+    renderChat();
+    expect(screen.getByRole("tab", { name: "Notes" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByTestId("notes")).toHaveAttribute(
+      "data-route",
+      "person:sam-okafor"
+    );
+  });
+
+  it("names the tab just Jim while locked, and forgets the address on sign-out", async () => {
+    window.history.replaceState(null, "", "/jim/notes/people/sam-okafor");
+    const onSignOut = jest.fn();
+    const lock = {
+      locked: true,
+      enabled: true,
+    } as unknown as React.ComponentProps<typeof JimChat>["lock"];
+    const { rerender } = render(
+      <JimChat
+        uid={UID}
+        api="https://jim.example.test"
+        getToken={getToken}
+        onSignOut={onSignOut}
+        lock={lock}
+      />
+    );
+    expect(document.title).toBe("Jim");
+    expect(screen.queryByTestId("notes")).not.toBeInTheDocument();
+    rerender(
+      <JimChat
+        uid={UID}
+        api="https://jim.example.test"
+        getToken={getToken}
+        onSignOut={onSignOut}
+      />
+    );
+    // Unlocked: straight to the address it opened on.
+    expect(screen.getByTestId("notes")).toHaveAttribute(
+      "data-route",
+      "person:sam-okafor"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+    expect(onSignOut).toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/jim");
+  });
+});
+
+describe("desktop", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = desktopMedia();
+  });
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it("has a sidebar, the page, and the chat docked beside it", async () => {
+    window.history.replaceState(null, "", "/jim/notes");
+    renderChat();
+    const nav = screen.getByRole("navigation", { name: "Jim" });
+    const home = within(nav).getByRole("link", { name: "Home" });
+    expect(home).toHaveAttribute("aria-current", "page");
+    expect(home).toHaveAttribute("href", "/jim/notes");
+    expect(within(nav).getByRole("link", { name: "People" })).toHaveAttribute(
+      "href",
+      "/jim/notes/people"
+    );
+    expect(screen.getByTestId("notes")).toHaveAttribute("data-active", "true");
+    // One chat, docked: no Chat | Notes switch, no ⋯ menu.
+    const dock = screen.getByRole("complementary", { name: "Chat with Jim" });
+    expect(within(dock).getByLabelText("Message")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Notes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Menu" })).toBeNull();
+    // The menu's settings live in the sidebar.
+    expect(screen.getByRole("button", { name: "New chat" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
+
+    await userEvent.click(within(nav).getByRole("link", { name: "People" }));
+    expect(window.location.pathname).toBe("/jim/notes/people");
+    expect(screen.getByTestId("notes")).toHaveAttribute(
+      "data-route",
+      "page:people"
+    );
+
+    // Chat takes the middle on its own route, and the dock steps aside.
+    await userEvent.click(within(nav).getByRole("link", { name: "Chat" }));
+    expect(window.location.pathname).toBe("/jim/chat");
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  });
+
+  it("sends from the dock and stays on the page", async () => {
+    send.mockResolvedValue({ reply: "Noted.", changed: [], commit: null });
+    window.history.replaceState(null, "", "/jim/notes/people");
+    renderChat();
+    const dock = screen.getByRole("complementary", { name: "Chat with Jim" });
+    await userEvent.type(within(dock).getByLabelText("Message"), "hi{Enter}");
+    expect(await within(dock).findByText("Noted.")).toBeInTheDocument();
+    // A quick log from Notes doesn't leave the page either.
+    await userEvent.click(screen.getByRole("button", { name: "Fake log" }));
+    expect(window.location.pathname).toBe("/jim/notes/people");
+  });
+
+  it("focuses the search on ⌘K and goes back with Esc from a profile", async () => {
+    window.history.replaceState(null, "", "/jim/notes/people");
+    renderChat();
+    await userEvent.keyboard("{Meta>}k{/Meta}");
+    expect(screen.getByLabelText("Search notes")).toHaveFocus();
+    screen.getByLabelText("Search notes").blur();
+
+    // Opened straight on a profile: Esc goes up to its list.
+    window.history.replaceState(null, "", "/jim/notes/people/sam-okafor");
+    act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+    expect(screen.getByTestId("notes")).toHaveAttribute(
+      "data-route",
+      "person:sam-okafor"
+    );
+    await userEvent.keyboard("{Escape}");
+    expect(window.location.pathname).toBe("/jim/notes/people");
+  });
+
+  it("sends on Enter in the desktop layout, even on a touch screen (iPad)", async () => {
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches: query.includes("min-width: 1024px") || query.includes("coarse"),
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+    })) as unknown as typeof window.matchMedia;
+    send.mockResolvedValue({ reply: "ok", changed: [], commit: null });
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "hi{Enter}");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0]).toBe("hi");
+  });
+
+  it("moves focus to the new page's heading, or the box for the full chat", async () => {
+    window.history.replaceState(null, "", "/jim/notes");
+    renderChat();
+    await userEvent.click(
+      screen.getByRole("link", { name: "Open chat full width" })
+    );
+    await act(
+      () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    );
+    expect(screen.getByLabelText("Message")).toHaveFocus();
+
+    const nav = screen.getByRole("navigation", { name: "Jim" });
+    await userEvent.click(within(nav).getByRole("link", { name: "Home" }));
+    await userEvent.click(within(nav).getByRole("link", { name: "Chat" }));
+    await act(
+      () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    );
+    expect(screen.getByRole("heading", { name: "Chat" })).toHaveFocus();
+  });
+
+  it("searching from Chat shows the results in Notes, never in the address", async () => {
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Search notes"), "plants");
+    expect(window.location.pathname).toBe("/jim/notes");
+    expect(window.location.href).not.toContain("plants");
   });
 });
 

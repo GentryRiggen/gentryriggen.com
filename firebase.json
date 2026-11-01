@@ -15,6 +15,12 @@
       }
     ],
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/jim/**",
+        "destination": "/jim.html"
+      }
+    ],
     "headers": [
       {
         "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|css|woff|woff2|ttf|eot)",
@@ -278,6 +284,23 @@
       },
       {
         "source": "/jim",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "frame-ancestors 'none'; connect-src 'self' https://jim-997603129413.us-central1.run.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; worker-src 'self'; manifest-src 'self'"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      },
+      {
+        "source": "/jim/**",
         "headers": [
           {
             "key": "Cache-Control",

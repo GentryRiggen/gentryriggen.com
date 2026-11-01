@@ -198,6 +198,14 @@ describe("fetch", () => {
       makeRequest(`${ORIGIN}/ship-builder`, { mode: "navigate" }),
     ],
     ["an icon", makeRequest(`${ORIGIN}/jim-icons/glow-pal-192.png`)],
+    [
+      "a file under /jim/",
+      makeRequest(`${ORIGIN}/jim/version.json`, { mode: "navigate" }),
+    ],
+    [
+      "a lookalike deep page",
+      makeRequest(`${ORIGIN}/jimmy/notes`, { mode: "navigate" }),
+    ],
   ])("leaves %s alone", (_label, request) => {
     expect(loadWorker().dispatchFetch(request)).toBeUndefined();
   });
@@ -211,6 +219,31 @@ describe("fetch", () => {
     expect(response?.body).toBe("page");
     expect(worker.cacheKeys()).toEqual([PAGE]);
   });
+
+  it.each([
+    "/jim/chat",
+    "/jim/notes",
+    "/jim/notes/people/sam-okafor",
+    "/jim/notes/note/home/garden",
+  ])(
+    "serves the app address %s like /jim, offline too, kept as /jim",
+    async (path) => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("page"));
+      const online = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}${path}`, { mode: "navigate" })
+      );
+      expect(online?.body).toBe("page");
+      // Never a person's or note's address in the cache: the one page.
+      expect(worker.cacheKeys()).toEqual([PAGE]);
+
+      worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}${path}`, { mode: "navigate" })
+      );
+      expect(offline?.body).toBe("page");
+    }
+  );
 
   it("falls back to the cached page offline, and when slow", async () => {
     const worker = loadWorker();
@@ -303,6 +336,22 @@ describe("CACHE_URLS", () => {
       `${ORIGIN}/_next/static/chunks/auth.js`,
       PAGE,
     ]);
+  });
+
+  it("keeps a page loaded at a deep address as /jim, fetched as /jim", async () => {
+    const worker = loadWorker();
+    worker.fetchMock.mockResolvedValue(makeResponse("x"));
+    await worker.dispatch("message", {
+      source: { type: "window" },
+      data: {
+        type: "CACHE_URLS",
+        urls: [`${ORIGIN}/jim/notes/people/sam-okafor`],
+      },
+    });
+    expect(worker.cacheKeys()).toEqual([PAGE]);
+    expect(worker.fetchMock).toHaveBeenCalledWith(PAGE, {
+      credentials: "same-origin",
+    });
   });
 });
 
@@ -420,6 +469,17 @@ describe("notificationclick", () => {
     const notification = click();
     await worker.dispatch("notificationclick", { notification });
     expect(notification.close).toHaveBeenCalled();
+    expect(focus).toHaveBeenCalled();
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("focuses Jim open at a deep address", async () => {
+    const worker = loadWorker();
+    const focus = jest.fn(async () => {});
+    worker.matchAll.mockResolvedValue([
+      { url: `${ORIGIN}/jim/notes/people/sam-okafor`, focus },
+    ]);
+    await worker.dispatch("notificationclick", { notification: click() });
     expect(focus).toHaveBeenCalled();
     expect(worker.openWindow).not.toHaveBeenCalled();
   });

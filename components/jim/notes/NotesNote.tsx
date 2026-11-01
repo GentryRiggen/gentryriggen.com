@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
-import { Empty } from "@/components/jim/notes/NotesUi";
+import { useEffect, useState, type ReactNode } from "react";
+import { BackLink, Empty } from "@/components/jim/notes/NotesUi";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import JimMarkdown from "@/lib/jim/markdown";
 import { fmtShort } from "@/lib/jim/todos";
@@ -16,6 +15,12 @@ interface NotesNoteProps {
   onBack: () => void;
   /** Where the back button goes ("Results", or "Work" from a meeting). */
   backLabel?: string;
+  /** The back link's address; without one it is a plain button. */
+  backHref?: string;
+  /** Beside the back link (the desktop's Updated · Refresh). */
+  backAside?: ReactNode;
+  /** The note's title, once it has loaded (for the browser tab). */
+  onTitle?: (title: string) => void;
 }
 
 type State =
@@ -45,6 +50,9 @@ export default function NotesNote({
   getToken,
   onBack,
   backLabel = "Results",
+  backHref,
+  backAside,
+  onTitle,
 }: NotesNoteProps) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -72,17 +80,20 @@ export default function NotesNote({
 
   const note = state.kind === "note" ? state.note : null;
   const updated = note ? updatedLabel(note.updated) : null;
+  const title = note ? note.title || note.path : null;
+
+  useEffect(() => {
+    if (title) onTitle?.(title);
+  }, [title, onTitle]);
 
   return (
     <article className="space-y-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
-      >
-        <ChevronLeft aria-hidden="true" className="size-5" />
-        {backLabel}
-      </button>
+      <BackLink
+        label={backLabel}
+        onBack={onBack}
+        href={backHref}
+        aside={backAside}
+      />
       {state.kind === "loading" && (
         <div aria-busy="true" className="space-y-3">
           <p className="sr-only" role="status">

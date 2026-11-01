@@ -1,6 +1,13 @@
-import { Fragment } from "react";
-import { ChevronLeft, Mail, Phone, Search } from "lucide-react";
-import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import { Fragment, type ReactNode } from "react";
+import { Mail, Phone, Search } from "lucide-react";
+import {
+  BackLink,
+  Chip,
+  Empty,
+  OpenLink,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
 import { fmtShort } from "@/lib/jim/todos";
 import type { DirectoryPerson, Person, WorkDirectory } from "@/lib/jim/view";
 
@@ -99,6 +106,8 @@ interface DirectorySearchProps {
   query: string;
   onQuery: (query: string) => void;
   onOpen: (id: number) => void;
+  /** A card's address, so results are real links. */
+  hrefFor?: (id: number) => string;
 }
 
 /** The directory's search field and its results. */
@@ -107,6 +116,7 @@ export function DirectorySearch({
   query,
   onQuery,
   onOpen,
+  hrefFor,
 }: DirectorySearchProps) {
   const results = searchDirectory(directory, query);
   const shown = results.slice(0, MAX_RESULTS);
@@ -139,9 +149,9 @@ export function DirectorySearch({
           <Rows>
             {shown.map((p) => (
               <li key={p.id}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(p.id)}
+                <OpenLink
+                  href={hrefFor?.(p.id)}
+                  onOpen={() => onOpen(p.id)}
                   className={ROW}
                 >
                   <span className="min-w-0 flex-1">
@@ -157,7 +167,7 @@ export function DirectorySearch({
                   <span aria-hidden="true" className="text-ayu-subtle">
                     ›
                   </span>
-                </button>
+                </OpenLink>
               </li>
             ))}
           </Rows>
@@ -181,6 +191,13 @@ interface DirectoryCardProps {
   onOpen: (id: number) => void;
   onProfile: (path: string) => void;
   onBack: () => void;
+  /** Addresses for another card and the profile, so they're real links. */
+  hrefFor?: (id: number) => string;
+  profileHref?: (path: string) => string | null;
+  /** The back link's address; without one it is a plain button. */
+  backHref?: string;
+  /** Beside the back link (the desktop's Updated · Refresh). */
+  backAside?: ReactNode;
 }
 
 /** One directory person: manager chain, facts, DISC, strengths, reports. */
@@ -191,18 +208,15 @@ export function DirectoryCard({
   onOpen,
   onProfile,
   onBack,
+  hrefFor,
+  profileHref,
+  backHref,
+  backAside,
 }: DirectoryCardProps) {
   const everyone = byId(directory);
   const p = everyone.get(id);
   const back = (
-    <button
-      type="button"
-      onClick={onBack}
-      className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
-    >
-      <ChevronLeft aria-hidden="true" className="size-5" />
-      Work
-    </button>
+    <BackLink label="Work" onBack={onBack} href={backHref} aside={backAside} />
   );
   if (!p) {
     return (
@@ -245,13 +259,14 @@ export function DirectoryCard({
                   </li>
                 )}
                 <li className="min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => onOpen(m.id)}
+                  <OpenLink
+                    href={hrefFor?.(m.id)}
+                    onOpen={() => onOpen(m.id)}
                     className="min-h-11 max-w-full truncate rounded-md px-1.5 text-ayu-accent hover:bg-white/[0.06]"
+                    linkClassName="inline-block align-middle leading-[2.75rem]"
                   >
                     {m.name}
-                  </button>
+                  </OpenLink>
                 </li>
               </Fragment>
             ))}
@@ -281,13 +296,14 @@ export function DirectoryCard({
         )}
       </header>
       {profile && (
-        <button
-          type="button"
-          onClick={() => onProfile(profile.path)}
+        <OpenLink
+          href={profileHref?.(profile.path)}
+          onOpen={() => onProfile(profile.path)}
           className="min-h-11 rounded-full px-4 font-medium text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset hover:bg-ayu-accent/10"
+          linkClassName="inline-flex w-fit items-center"
         >
           Open profile
-        </button>
+        </OpenLink>
       )}
       {(p.email || p.cell) && (
         <Rows>
@@ -384,9 +400,9 @@ export function DirectoryCard({
           <Rows>
             {reports.map((r) => (
               <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(r.id)}
+                <OpenLink
+                  href={hrefFor?.(r.id)}
+                  onOpen={() => onOpen(r.id)}
                   className={ROW}
                 >
                   <span className="min-w-0 flex-1">
@@ -402,7 +418,7 @@ export function DirectoryCard({
                   <span aria-hidden="true" className="text-ayu-subtle">
                     ›
                   </span>
-                </button>
+                </OpenLink>
               </li>
             ))}
           </Rows>

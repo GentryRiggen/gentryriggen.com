@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -26,17 +27,59 @@ import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
-import { Empty } from "@/components/jim/notes/NotesUi";
+import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import NotesWork from "@/components/jim/notes/NotesWork";
 import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
+import useBasePage from "@/components/jim/useBasePage";
+import useJimRouter, {
+  type JimNavigate,
+  type JimNavType,
+} from "@/components/jim/useJimRouter";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import { useMoney } from "@/lib/jim/money";
 import { localDay, timeLabel } from "@/lib/jim/notesData";
 import { loadView } from "@/lib/jim/offlineStore";
+import {
+  formatJimPath,
+  HOME_ROUTE,
+  isDetail,
+  PAGE_LABELS,
+  personPath,
+  routeForNote,
+  routeTitle,
+  sameRoute,
+  type JimRoute,
+  type NotesPage,
+  type NotesRoute,
+} from "@/lib/jim/routes";
 import { fmtShort } from "@/lib/jim/todos";
 import { fetchView, getCachedView, type ViewData } from "@/lib/jim/view";
+
+/**
+ * Where Notes is and how it moves: the route, the history entry showing,
+ * and the search (kept here, never in the address). JimChat passes it; a
+ * Notes shell on its own runs its own router.
+ */
+export interface NotesRouting {
+  /** What Notes shows (while Chat shows, the last Notes route). */
+  route: NotesRoute;
+  /** The list a profile, card or note opened over. */
+  basePage: NotesPage;
+  /** The history entry showing, for its scroll position. */
+  entryKey: string;
+  navType: JimNavType;
+  /** The back link's label and address, when the entry names them. */
+  backLabel: string | null;
+  backFrom: string | null;
+  navigate: JimNavigate;
+  goBack: (fallback: JimRoute) => void;
+  search: string;
+  onSearch: (value: string) => void;
+  /** The desktop layout: the sidebar has the pages and the search. */
+  wide: boolean;
+}
 
 interface NotesShellProps {
   /** The signed-in user, whose last payload is kept on this device. */
@@ -50,24 +93,19 @@ interface NotesShellProps {
   onLog: (text: string) => void;
   /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
   onDraft: (text: string) => void;
+  routing?: NotesRouting;
 }
 
-type Page = "home" | "work" | "money" | "health" | "people";
+/** The pills along the top on a phone: Health holds Training and Golf. */
+type Pill = "home" | "work" | "money" | "health" | "people";
 
-const PAGES: { id: Page; label: string; icon: LucideIcon }[] = [
+const PILLS: { id: Pill; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: House },
   { id: "work", label: "Work", icon: Briefcase },
   { id: "money", label: "Money", icon: Wallet },
   { id: "health", label: "Health", icon: HeartPulse },
   { id: "people", label: "People", icon: Users },
 ];
-
-/** What Work shows over its list: a meeting note, a directory card, or
- * the people note opened from that card. */
-type WorkView =
-  | { kind: "meeting"; path: string }
-  | { kind: "person"; id: number }
-  | { kind: "profile"; path: string; id: number };
 
 const NO_DIRECTORY = { updated: "", people: [] };
 
@@ -79,6 +117,22 @@ const HEALTH_PAGES: { id: HealthPage; label: string }[] = [
   { id: "training", label: "Training" },
   { id: "golf", label: "Golf" },
 ];
+
+function isHealthPage(page: NotesPage): page is HealthPage {
+  return page === "health" || page === "training" || page === "golf";
+}
+
+function pillOf(page: NotesPage): Pill {
+  return isHealthPage(page) ? "health" : page;
+}
+
+/** Pages that use the room a desktop gives them. */
+const WIDE_PAGES: ReadonlySet<NotesPage> = new Set([
+  "work",
+  "money",
+  "health",
+  "training",
+]);
 
 interface HealthSwitchProps {
   value: HealthPage;
@@ -153,18 +207,108 @@ function Skeleton() {
   );
 }
 
+interface NotFoundProps {
+  onHome: () => void;
+}
+
+/** An address under /jim that names nothing. */
+function NotFound({ onHome }: NotFoundProps) {
+  return (
+    <div className="jim-rise space-y-3 py-10 text-center">
+      <p className="text-xl font-semibold text-ayu-text">
+        Nothing lives at this address
+      </p>
+      <p className="text-ayu-subtle">
+        It may have moved, or the link was cut short.
+      </p>
+      <a
+        href={formatJimPath(HOME_ROUTE)}
+        onClick={onPlainClick(onHome)}
+        className="jim-glow inline-flex min-h-11 items-center rounded-full px-5 font-medium text-ayu-bg hover:brightness-110"
+      >
+        Go to Notes home
+      </a>
+    </div>
+  );
+}
+
+/** A note's (or person's) address from its repo path. */
+function hrefForNote(path: string): string | null {
+  const route = routeForNote(path);
+  return route ? formatJimPath(route) : null;
+}
+
+/** A directory card's address. */
+function hrefForCard(id: number): string {
+  return formatJimPath({ kind: "directory", id });
+}
+
+/** A person's address from their note's path ("people/x.md"). */
+function hrefForPerson(path: string): string {
+  const route = routeForNote(path);
+  return formatJimPath(route ?? { kind: "page", page: "people" });
+}
+
 /**
  * The Notes tab: its page bar, the data, and the read-only pages.
  * Memoized: it sits (hidden) beside a chat that redraws every streamed frame.
  */
-export default memo(function NotesShell({
+export default memo(function NotesShell(props: NotesShellProps) {
+  return props.routing ? (
+    <NotesShellView {...props} routing={props.routing} />
+  ) : (
+    <StandaloneNotesShell {...props} />
+  );
+});
+
+/** Notes on its own (no chat around it): its own router and search. */
+function StandaloneNotesShell(props: NotesShellProps) {
+  const { location, navigate, goBack } = useJimRouter();
+  const route: NotesRoute =
+    location.route.kind === "chat" ? HOME_ROUTE : location.route;
+  const basePage = useBasePage(route);
+  const [search, setSearch] = useState("");
+  const routing = useMemo<NotesRouting>(
+    () => ({
+      route,
+      basePage,
+      entryKey: location.key,
+      navType: location.nav,
+      backLabel: location.back,
+      backFrom: location.from,
+      navigate,
+      goBack,
+      search,
+      onSearch: setSearch,
+      wide: false,
+    }),
+    [route, basePage, location, navigate, goBack, search]
+  );
+  return <NotesShellView {...props} routing={routing} />;
+}
+
+function NotesShellView({
   uid,
   api,
   getToken,
   active,
   onLog,
   onDraft,
-}: NotesShellProps) {
+  routing,
+}: NotesShellProps & { routing: NotesRouting }) {
+  const {
+    route,
+    basePage,
+    entryKey,
+    navType,
+    backLabel,
+    backFrom,
+    navigate,
+    goBack,
+    search,
+    onSearch,
+    wide,
+  } = routing;
   const [data, setData] = useState<ViewData | null>(
     () => getCachedView()?.data ?? null
   );
@@ -175,21 +319,29 @@ export default memo(function NotesShell({
   const [fromDevice, setFromDevice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
-  const [page, setPage] = useState<Page>("home");
-  const [healthPage, setHealthPage] = useState<HealthPage>("health");
-  const [person, setPerson] = useState<string | null>(null);
-  const [workView, setWorkView] = useState<WorkView | null>(null);
   const [query, setQuery] = useState("");
-  /** The search across all notes; while it has text it replaces the page. */
-  const [search, setSearch] = useState("");
-  /** A note opened from the search results. */
-  const [found, setFound] = useState<string | null>(null);
+  /** The open note's title, for the browser tab. */
+  const [noteTitle, setNoteTitle] = useState<{
+    path: string;
+    title: string;
+  } | null>(null);
+  /** The Health pill returns to the Health page last shown. */
+  const [lastHealth, setLastHealth] = useState<HealthPage>(
+    isHealthPage(basePage) ? basePage : "health"
+  );
+  if (isHealthPage(basePage) && basePage !== lastHealth) {
+    setLastHealth(basePage);
+  }
   const searching = search.trim() !== "";
+  const detail = isDetail(route) ? route : null;
+  const notFound = route.kind === "notFound";
+  /** The list showing, or the one a detail opened over. */
+  const listPage: NotesPage = route.kind === "page" ? route.page : basePage;
   /** Money: fetched only while its page shows, held in memory only. */
   const money = useMoney(
     getToken,
     api,
-    active && page === "money" && !searching
+    active && route.kind === "page" && route.page === "money" && !searching
   );
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -199,10 +351,17 @@ export default memo(function NotesShell({
   const hasData = useRef(data !== null);
   /** A change landed while a load was out: load once more after it. */
   const again = useRef(false);
-  /** Where the People list (or the results) was scrolled to before a
-   * profile or note opened. */
-  const listTop = useRef(0);
-  const restoreTop = useRef<number | null>(null);
+  /** Each history entry's scroll position, for Back and Forward. */
+  const entryTops = useRef(new Map<string, number>());
+  /** Each list page's scroll position, for its pill tapped from a profile. */
+  const pageTops = useRef(new Map<NotesPage, number>());
+  /** What showed at the last scroll reset. */
+  const shown = useRef({ route, searching });
+  /** The latest entry and page, for the scroll handler. */
+  const latest = useRef({ entryKey, route, searching });
+  useLayoutEffect(() => {
+    latest.current = { entryKey, route, searching };
+  });
 
   /**
    * Loads the notes; a call while a load is out joins it. Resolves to the
@@ -213,19 +372,19 @@ export default memo(function NotesShell({
     setLoading(true);
     setError(null);
     const run = (async () => {
-      let latest: ViewData | null = null;
+      let latestData: ViewData | null = null;
       try {
         do {
           again.current = false;
           try {
-            latest = await fetchView(getToken, undefined, api);
+            latestData = await fetchView(getToken, undefined, api);
             hasData.current = true;
-            setData(latest);
+            setData(latestData);
             setLoadedAt(getCachedView()?.at ?? Date.now());
             setFromDevice(false);
             setError(null);
           } catch (err) {
-            latest = null;
+            latestData = null;
             const kind = err instanceof JimError ? err.kind : "server";
             setError(kind);
             // Nothing showing yet (no signal on opening): the last payload
@@ -241,7 +400,7 @@ export default memo(function NotesShell({
             }
           }
         } while (again.current);
-        return latest;
+        return latestData;
       } finally {
         inflight.current = null;
         setLoading(false);
@@ -279,16 +438,36 @@ export default memo(function NotesShell({
     void load();
   }, [active, load]);
 
-  // A new page starts at the top; back from a profile returns to the spot.
+  // A new page starts at the top. Back and Forward return to where that
+  // entry was; a list's pill tapped from a profile returns to the list's
+  // spot. The same page again (back from Chat) stays where it was.
   useLayoutEffect(() => {
+    const before = shown.current;
+    shown.current = { route, searching };
+    if (sameRoute(before.route, route) && before.searching === searching) {
+      return;
+    }
+    let top = 0;
+    if (navType === "pop") top = entryTops.current.get(entryKey) ?? 0;
+    else if (route.kind === "page" && isDetail(before.route) && !searching) {
+      top = pageTops.current.get(route.page) ?? 0;
+    }
     const el = scrollerRef.current;
-    const top = restoreTop.current ?? 0;
-    restoreTop.current = null;
     // Instant: the site-wide smooth scrolling would show the old spot first.
     if (el && typeof el.scrollTo === "function") {
       el.scrollTo({ top, behavior: "instant" });
     }
-  }, [page, healthPage, person, workView, searching, found]);
+  }, [route, searching, entryKey, navType]);
+
+  function onScroll() {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const now = latest.current;
+    entryTops.current.set(now.entryKey, el.scrollTop);
+    if (now.route.kind === "page" && !now.searching) {
+      pageTops.current.set(now.route.page, el.scrollTop);
+    }
+  }
 
   // Keep the selected pill in view when the row is scrolled sideways.
   useEffect(() => {
@@ -296,180 +475,138 @@ export default memo(function NotesShell({
     if (tab && typeof tab.scrollIntoView === "function") {
       tab.scrollIntoView({ inline: "nearest", block: "nearest" });
     }
-  }, [page]);
+  }, [listPage]);
 
-  function goTo(next: Page) {
-    if (searching) {
-      setSearch("");
-      setFound(null);
-    } else if (next === page && person === null && workView === null) return;
-    if (
-      (person !== null && next === "people") ||
-      (workView !== null && next === "work")
-    )
-      restoreTop.current = listTop.current;
-    setPerson(null);
-    setWorkView(null);
-    setPage(next);
+  // The browser tab names the page (a person by name: only on this device).
+  const person =
+    route.kind === "person" && data
+      ? data.people.find((p) => p.path === personPath(route.slug))
+      : undefined;
+  const card =
+    route.kind === "directory"
+      ? data?.work?.directory?.people.find((p) => p.id === route.id)
+      : undefined;
+  const titleName =
+    route.kind === "person"
+      ? person?.name
+      : route.kind === "directory"
+        ? card?.name
+        : route.kind === "note" && noteTitle?.path === route.path
+          ? noteTitle.title
+          : null;
+  useEffect(() => {
+    if (!active) return;
+    document.title =
+      searching && !detail ? "Search · Jim" : routeTitle(route, titleName);
+  }, [active, route, titleName, searching, detail]);
+
+  const onNoteTitle = useCallback(
+    (title: string) => {
+      if (route.kind === "note") setNoteTitle({ path: route.path, title });
+    },
+    [route]
+  );
+
+  /** A page from the pills or the sidebar: leaves any search for it. */
+  function goTo(next: NotesPage) {
+    if (searching) onSearch("");
+    navigate({ kind: "page", page: next });
   }
 
-  function openPerson(path: string) {
-    listTop.current = scrollerRef.current?.scrollTop ?? 0;
-    setPerson(path);
+  /** Opens a note or person by repo path, with Back labelled `back`. */
+  function openPath(path: string, back?: string) {
+    const next = routeForNote(path);
+    if (next) navigate(next, back ? { back } : undefined);
   }
 
-  function closePerson() {
-    restoreTop.current = listTop.current;
-    setPerson(null);
-  }
-
-  /** Opens something over the Work list, keeping the list's spot once. */
-  function openWork(next: WorkView) {
-    if (workView === null)
-      listTop.current = scrollerRef.current?.scrollTop ?? 0;
-    setWorkView(next);
-  }
-
-  function closeWork() {
-    restoreTop.current = listTop.current;
-    setWorkView(null);
-  }
-
-  function onSearch(value: string) {
-    setSearch(value);
-    if (!value.trim()) setFound(null);
-  }
+  /** A search hit: a person in the payload opens as their profile. */
+  const routeForHit = useCallback(
+    (path: string): NotesRoute | null => {
+      const next = routeForNote(path);
+      if (
+        next?.kind === "person" &&
+        !data?.people.some((p) => p.path === personPath(next.slug))
+      ) {
+        return { kind: "note", path: path.replace(/\.md$/, "") };
+      }
+      return next;
+    },
+    [data]
+  );
+  const hrefForHit = useCallback(
+    (path: string) => {
+      const next = routeForHit(path);
+      return next ? formatJimPath(next) : null;
+    },
+    [routeForHit]
+  );
 
   function openFound(path: string) {
-    listTop.current = scrollerRef.current?.scrollTop ?? 0;
-    setFound(path);
+    const next = routeForHit(path);
+    if (next) navigate(next, { back: "Results" });
   }
 
-  function closeFound() {
-    restoreTop.current = listTop.current;
-    setFound(null);
-  }
+  const listRoute: NotesRoute = { kind: "page", page: basePage };
+  const back = () => goBack(listRoute);
+  // "Results" means nothing once the search is gone (a reload).
+  const backText =
+    backLabel && !(backLabel === "Results" && !searching)
+      ? backLabel
+      : PAGE_LABELS[basePage];
+  const backHref = backFrom ?? formatJimPath(listRoute);
 
-  let body: ReactNode;
-  if (searching) {
-    // A person in the payload opens as their profile; anything else is
-    // fetched as a note. The results stay mounted, so back is instant.
-    const foundPerson =
-      found?.startsWith("people/") && data
-        ? data.people.find((p) => p.path === found)
-        : undefined;
-    body = (
-      <>
-        <div hidden={found !== null}>
-          <NotesSearch
-            query={search}
-            api={api}
-            getToken={getToken}
-            onOpen={openFound}
-          />
-        </div>
-        {found !== null &&
-          (foundPerson && data ? (
-            <NotesPerson
-              person={foundPerson}
-              today={data.today}
-              onBack={closeFound}
-              backLabel="Results"
-            />
-          ) : (
-            <NotesNote
-              key={found}
-              path={found}
-              api={api}
-              getToken={getToken}
-              onBack={closeFound}
-            />
-          ))}
-      </>
+  const loadState: ReactNode =
+    error && !loading ? (
+      <div className="space-y-3 py-8 text-center">
+        <p role="alert" className="text-ayu-text">
+          {LOAD_ERRORS[error]}
+        </p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
+        >
+          Try again
+        </button>
+      </div>
+    ) : (
+      <Skeleton />
     );
-  } else if (page === "money") {
+
+  let pageBody: ReactNode;
+  if (listPage === "money") {
     // Its own data and its own Refresh: it doesn't wait on the notes.
-    body = <NotesMoney money={money} />;
+    pageBody = <NotesMoney money={money} />;
   } else if (!data) {
-    body =
-      error && !loading ? (
-        <div className="space-y-3 py-8 text-center">
-          <p role="alert" className="text-ayu-text">
-            {LOAD_ERRORS[error]}
-          </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
-          >
-            Try again
-          </button>
-        </div>
-      ) : (
-        <Skeleton />
-      );
-  } else if (page === "home") {
-    body = (
+    pageBody = loadState;
+  } else if (listPage === "home") {
+    pageBody = (
       <NotesHome data={data} saves={saves} onLog={onLog} onDraft={onDraft} />
     );
-  } else if (page === "work") {
-    const profile =
-      workView?.kind === "profile"
-        ? data.people.find((p) => p.path === workView.path)
-        : undefined;
-    // The list stays mounted under what opened, so back is instant and
-    // its searches keep their text.
-    body = (
-      <>
-        <div hidden={workView !== null}>
-          <NotesWork
-            data={data}
-            onOpenMeeting={(path) => openWork({ kind: "meeting", path })}
-            onOpenPerson={(id) => openWork({ kind: "person", id })}
-          />
-        </div>
-        {workView?.kind === "meeting" && (
-          <NotesNote
-            key={workView.path}
-            path={workView.path}
-            api={api}
-            getToken={getToken}
-            onBack={closeWork}
-            backLabel="Work"
-          />
-        )}
-        {workView?.kind === "person" && (
-          <DirectoryCard
-            directory={data.work?.directory ?? NO_DIRECTORY}
-            id={workView.id}
-            people={data.people}
-            onOpen={(id) => openWork({ kind: "person", id })}
-            onProfile={(path) =>
-              openWork({ kind: "profile", path, id: workView.id })
-            }
-            onBack={closeWork}
-          />
-        )}
-        {workView?.kind === "profile" &&
-          (profile ? (
-            <NotesPerson
-              person={profile}
-              today={data.today}
-              onBack={() => openWork({ kind: "person", id: workView.id })}
-              backLabel="Directory"
-            />
-          ) : (
-            <Empty>That profile isn&apos;t here anymore.</Empty>
-          ))}
-      </>
+  } else if (listPage === "work") {
+    pageBody = (
+      <NotesWork
+        data={data}
+        onOpenMeeting={(path) => openPath(path, "Work")}
+        onOpenPerson={(id) =>
+          navigate({ kind: "directory", id }, { back: "Work" })
+        }
+        meetingHref={hrefForNote}
+        personHref={hrefForCard}
+      />
     );
-  } else if (page === "health") {
-    body = (
+  } else if (isHealthPage(listPage)) {
+    pageBody = (
       <>
-        <HealthSwitch value={healthPage} onChange={setHealthPage} />
-        {healthPage === "health" ? (
+        {!wide && (
+          <HealthSwitch
+            value={listPage}
+            onChange={(next) => navigate({ kind: "page", page: next })}
+          />
+        )}
+        {listPage === "health" ? (
           <NotesHealth data={data} />
-        ) : healthPage === "training" ? (
+        ) : listPage === "training" ? (
           <NotesTraining data={data} />
         ) : (
           <NotesGolf data={data} />
@@ -477,15 +614,13 @@ export default memo(function NotesShell({
       </>
     );
   } else {
-    const open = person ? data.people.find((p) => p.path === person) : null;
-    body = open ? (
-      <NotesPerson person={open} today={data.today} onBack={closePerson} />
-    ) : (
+    pageBody = (
       <NotesPeople
         data={data}
         query={query}
         onQuery={setQuery}
-        onOpen={openPerson}
+        onOpen={(path) => openPath(path)}
+        hrefFor={hrefForPerson}
       />
     );
   }
@@ -495,110 +630,250 @@ export default memo(function NotesShell({
     fromDevice && loadedAt
       ? `${error === "server" || error === "rejected" ? "Couldn't refresh" : "Offline"} · as of ${asOfLabel(loadedAt)}`
       : null;
+  const showStatus =
+    data !== null &&
+    !searching &&
+    !notFound &&
+    !(route.kind === "page" && route.page === "money");
+  const statusRow: ReactNode = showStatus ? (
+    <>
+      <p className="flex min-w-0 items-center gap-2" aria-live="polite">
+        <span
+          aria-hidden="true"
+          className={`size-1.5 shrink-0 rounded-full ${
+            error || offlineLine || data.stale
+              ? "bg-ayu-orange"
+              : "bg-ayu-green shadow-[0_0_8px_rgb(213_255_128/0.6)]"
+          }`}
+        />
+        {error === "denied"
+          ? LOAD_ERRORS.denied
+          : offlineLine
+            ? offlineLine
+            : error
+              ? `Couldn't refresh. Showing what loaded${updated ? ` at ${updated}` : ""}.`
+              : data.stale
+                ? "Jim couldn't sync, so these may be behind."
+                : updated
+                  ? `Updated ${updated}`
+                  : null}
+      </p>
+      <button
+        type="button"
+        onClick={() => void load()}
+        disabled={loading}
+        className="-mr-2 flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06] disabled:text-ayu-subtle"
+      >
+        <RefreshCw
+          aria-hidden="true"
+          className={`size-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`}
+        />
+        Refresh
+      </button>
+    </>
+  ) : null;
+  /** On a desktop, a profile, card or note shows Updated · Refresh beside
+   * its back link; the pages show it in their header row. */
+  const detailAside: ReactNode =
+    wide && statusRow ? (
+      <div className="flex min-w-0 items-center gap-3 text-sm text-ayu-subtle">
+        {statusRow}
+      </div>
+    ) : undefined;
+  let detailBody: ReactNode = null;
+  if (route.kind === "note") {
+    detailBody = (
+      <NotesNote
+        key={route.path}
+        path={`${route.path}.md`}
+        api={api}
+        getToken={getToken}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+        onTitle={onNoteTitle}
+      />
+    );
+  } else if (route.kind === "person") {
+    detailBody = !data ? (
+      loadState
+    ) : person ? (
+      <NotesPerson
+        person={person}
+        today={data.today}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    ) : (
+      <article className="space-y-5">
+        <BackLink
+          label={backText}
+          onBack={back}
+          href={backHref}
+          aside={detailAside}
+        />
+        <Empty>That profile isn&apos;t here anymore.</Empty>
+      </article>
+    );
+  } else if (route.kind === "directory") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <DirectoryCard
+        directory={data.work?.directory ?? NO_DIRECTORY}
+        id={route.id}
+        people={data.people}
+        // One card to the next replaces it: Back (and "Work") still
+        // return to the list, not the card before.
+        onOpen={(id) => navigate({ kind: "directory", id }, { replace: true })}
+        onProfile={(path) => openPath(path, "Directory")}
+        hrefFor={hrefForCard}
+        profileHref={hrefForNote}
+        onBack={back}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    );
+  }
+
+  const showSearchField =
+    !wide && !detail && !notFound && (searching || listPage !== "people");
+  const wideTitle =
+    !wide || detail || notFound
+      ? null
+      : searching
+        ? "Search"
+        : PAGE_LABELS[listPage];
+  const pill = pillOf(listPage);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="jim-glass relative z-10 shrink-0 border-b border-white/[0.06]">
-        {/* Pills size to their text and the row scrolls sideways on its own
-            when they don't fit; the page never does. */}
-        <div
-          role="tablist"
-          aria-label="Notes pages"
-          className="mx-auto flex w-full max-w-[45rem] scroll-px-4 gap-1 overflow-x-auto overscroll-x-contain py-1.5 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {PAGES.map((p) => {
-            const selected = p.id === page;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                id={`jim-notes-tab-${p.id}`}
-                aria-selected={selected}
-                aria-controls="jim-notes-page"
-                ref={selected ? selectedTabRef : undefined}
-                onClick={() => goTo(p.id)}
-                className="group flex min-h-11 shrink-0 items-center"
-              >
-                <span
-                  className={`flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap ring-1 transition-colors duration-200 ring-inset ${
-                    selected
-                      ? "bg-ayu-accent/12 text-ayu-accent ring-ayu-accent/30"
-                      : "text-ayu-subtle ring-transparent group-hover:bg-white/[0.06] group-hover:text-ayu-text"
-                  }`}
+      {!wide && (
+        <div className="jim-glass relative z-10 shrink-0 border-b border-white/[0.06]">
+          {/* Pills size to their text and the row scrolls sideways on its own
+              when they don't fit; the page never does. */}
+          <div
+            role="tablist"
+            aria-label="Notes pages"
+            className="mx-auto flex w-full max-w-[45rem] scroll-px-4 gap-1 overflow-x-auto overscroll-x-contain py-1.5 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {PILLS.map((p) => {
+              const selected = p.id === pill;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="tab"
+                  id={`jim-notes-tab-${p.id}`}
+                  aria-selected={selected}
+                  aria-controls="jim-notes-page"
+                  ref={selected ? selectedTabRef : undefined}
+                  onClick={() => goTo(p.id === "health" ? lastHealth : p.id)}
+                  className="group flex min-h-11 shrink-0 items-center"
                 >
-                  <p.icon
-                    aria-hidden="true"
-                    className="size-4"
-                    strokeWidth={selected ? 2.25 : 2}
-                  />
-                  {p.label}
-                </span>
-              </button>
-            );
-          })}
+                  <span
+                    className={`flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap ring-1 transition-colors duration-200 ring-inset ${
+                      selected
+                        ? "bg-ayu-accent/12 text-ayu-accent ring-ayu-accent/30"
+                        : "text-ayu-subtle ring-transparent group-hover:bg-white/[0.06] group-hover:text-ayu-text"
+                    }`}
+                  >
+                    <p.icon
+                      aria-hidden="true"
+                      className="size-4"
+                      strokeWidth={selected ? 2.25 : 2}
+                    />
+                    {p.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         ref={scrollerRef}
+        onScroll={onScroll}
         data-notes-scroller
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         <div
           id="jim-notes-page"
-          role="tabpanel"
-          aria-labelledby={`jim-notes-tab-${page}`}
-          className="mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          role={wide ? undefined : "tabpanel"}
+          aria-labelledby={wide ? undefined : `jim-notes-tab-${pill}`}
+          className={
+            wide
+              ? `@container mx-auto w-full px-8 pt-7 pb-12 ${
+                  WIDE_PAGES.has(listPage) && !detail
+                    ? "max-w-[72rem]"
+                    : "max-w-[55rem]"
+                }`
+              : "mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          }
         >
-          {/* People has its own search; an open Work item hides it. */}
-          {found === null &&
-            (searching ||
-              (page !== "people" && !(page === "work" && workView))) && (
-              <div className="mb-4">
-                <SearchField value={search} onChange={onSearch} />
-              </div>
-            )}
-          {data && !searching && page !== "money" && (
-            <div className="mb-6 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
-              <p className="flex min-w-0 items-center gap-2" aria-live="polite">
-                <span
-                  aria-hidden="true"
-                  className={`size-1.5 shrink-0 rounded-full ${
-                    error || offlineLine || data.stale
-                      ? "bg-ayu-orange"
-                      : "bg-ayu-green shadow-[0_0_8px_rgb(213_255_128/0.6)]"
+          {wide && !detail && (wideTitle || statusRow) && (
+            // One header row: the page's name, and how fresh it is.
+            <div className="mb-6 flex min-h-11 flex-wrap items-center justify-between gap-x-6 gap-y-1">
+              {wideTitle && (
+                <h1 className="text-[2rem] leading-tight font-semibold tracking-tight text-ayu-text">
+                  {wideTitle}
+                </h1>
+              )}
+              {statusRow && (
+                <div
+                  className={`flex min-w-0 items-center gap-3 text-sm text-ayu-subtle ${
+                    wideTitle ? "" : "flex-1 justify-between"
                   }`}
-                />
-                {error === "denied"
-                  ? LOAD_ERRORS.denied
-                  : offlineLine
-                    ? offlineLine
-                    : error
-                      ? `Couldn't refresh. Showing what loaded${updated ? ` at ${updated}` : ""}.`
-                      : data.stale
-                        ? "Jim couldn't sync, so these may be behind."
-                        : updated
-                          ? `Updated ${updated}`
-                          : null}
-              </p>
-              <button
-                type="button"
-                onClick={() => void load()}
-                disabled={loading}
-                className="-mr-2 flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06] disabled:text-ayu-subtle"
-              >
-                <RefreshCw
-                  aria-hidden="true"
-                  className={`size-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`}
-                />
-                Refresh
-              </button>
+                >
+                  {statusRow}
+                </div>
+              )}
             </div>
           )}
-          {body}
+          {/* People has its own search; an open page hides it. */}
+          {showSearchField && (
+            <div className="mb-4">
+              <SearchField value={search} onChange={onSearch} />
+            </div>
+          )}
+          {!wide && statusRow && (
+            <div className="mb-6 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
+              {statusRow}
+            </div>
+          )}
+          {/* The list stays mounted under what opened from it, so Back is
+              instant and its searches keep their text. */}
+          {/* A search replaces the page; its results stay under what
+              opened from them. */}
+          {!searching && (
+            <div hidden={detail !== null || notFound}>{pageBody}</div>
+          )}
+          {searching && (
+            <div hidden={detail !== null || notFound}>
+              <NotesSearch
+                query={search}
+                api={api}
+                getToken={getToken}
+                onOpen={openFound}
+                hrefFor={hrefForHit}
+              />
+            </div>
+          )}
+          {detailBody}
+          {notFound && (
+            <NotFound
+              onHome={() => {
+                if (searching) onSearch("");
+                navigate(HOME_ROUTE);
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
   );
-});
+}

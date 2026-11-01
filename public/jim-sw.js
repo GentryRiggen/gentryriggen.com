@@ -6,9 +6,12 @@
  * - Only same-origin GET requests are ever handled; everything else (the
  *   Jim server, Firebase, any POST) goes straight to the network untouched.
  *   Nothing under /api/ is ever cached.
- * - Navigations to /jim: network-first, falling back to the cached page when
- *   offline or slow (4s). When a deploy changes the files the page
- *   references, cached /_next/static/ files it no longer uses are pruned.
+ * - Navigations to /jim and every app address under it (/jim/notes/people/x;
+ *   Hosting serves the one page there): network-first, falling back to the
+ *   cached page when offline or slow (4s). Every one is stored as /jim. When
+ *   a deploy changes the files the page references, cached /_next/static/
+ *   files it no longer uses are pruned. A file under /jim/ (version.json) is
+ *   never an app address.
  * - /_next/static/* (content-hashed, immutable): cache-first.
  * - Install precaches /jim and the /_next/static/ files its HTML names; the
  *   page also posts { type: "CACHE_URLS", urls } with what it has loaded
@@ -43,6 +46,18 @@ function isPagePath(pathname) {
     pathname === `${PAGE_PATH}/` ||
     pathname === `${PAGE_PATH}.html`
   );
+}
+
+/**
+ * True for an address the Jim page answers: the page, or any path under
+ * /jim/ whose last part has no dot (/jim/notes/people/x, not
+ * /jim/version.json).
+ */
+function isAppPath(pathname) {
+  if (isPagePath(pathname)) return true;
+  if (!pathname.startsWith(`${PAGE_PATH}/`)) return false;
+  const last = pathname.slice(pathname.lastIndexOf("/") + 1);
+  return !last.includes(".");
 }
 
 function isStaticAsset(pathname) {
@@ -207,7 +222,7 @@ self.addEventListener("fetch", (event) => {
   if (!url || isApi(url.pathname)) return;
 
   if (request.mode === "navigate") {
-    if (isPagePath(url.pathname)) {
+    if (isAppPath(url.pathname)) {
       // Started here, and waitUntil called before any await (WebKit
       // rejects a late one), so a slow answer can still update the cache.
       const network = fetch(request).then(async (response) => {
@@ -268,9 +283,13 @@ self.addEventListener("message", (event) => {
   for (const value of data.urls.slice(0, MAX_PRECACHE_URLS)) {
     const url = toSameOriginUrl(value);
     if (!url) continue;
-    if (!isPagePath(url.pathname) && !isStaticAsset(url.pathname)) continue;
+    if (!isAppPath(url.pathname) && !isStaticAsset(url.pathname)) continue;
     url.hash = "";
-    if (isPagePath(url.pathname)) url.search = "";
+    // The page at any app address is the one page: kept as /jim.
+    if (isAppPath(url.pathname)) {
+      url.pathname = PAGE_PATH;
+      url.search = "";
+    }
     if (seen.has(url.href)) continue;
     seen.add(url.href);
     urls.push(url);
@@ -282,7 +301,7 @@ self.addEventListener("message", (event) => {
 /** Where a tap goes: the payload's /jim URL, or /jim. */
 function targetUrl(value) {
   const url = toSameOriginUrl(value);
-  return url && isPagePath(url.pathname) ? url.href : pageKey();
+  return url && isAppPath(url.pathname) ? url.href : pageKey();
 }
 
 /** The notification a push shows. Never throws. */
@@ -331,7 +350,7 @@ self.addEventListener("notificationclick", (event) => {
       });
       for (const client of windows) {
         const at = toSameOriginUrl(client.url);
-        if (at && isPagePath(at.pathname) && "focus" in client) {
+        if (at && isAppPath(at.pathname) && "focus" in client) {
           await client.focus();
           // /jim?say=… on an open page: no reload (it would drop a draft and
           // abort a turn). The page is told, and applies it if its box is empty.

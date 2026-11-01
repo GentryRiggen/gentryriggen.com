@@ -217,7 +217,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
   return (
     <div
       ref={rootRef}
-      className="fixed inset-x-0 top-[var(--jim-vt,0px)] z-30 flex h-[var(--jim-vh,100dvh)] touch-none flex-col justify-end overscroll-contain"
+      className="fixed inset-x-0 top-[var(--jim-vt,0px)] z-30 flex h-[var(--jim-vh,100dvh)] touch-none flex-col justify-end overscroll-contain lg:items-center lg:justify-center lg:p-8"
       onKeyDown={onKeyDown}
     >
       <div
@@ -231,7 +231,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-t border-white/[0.08] bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl in-data-[keyboard=open]:pb-4"
+        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-t border-white/[0.08] bg-ayu-panel lg:w-full lg:max-w-lg lg:rounded-[1.75rem] lg:border pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl in-data-[keyboard=open]:pb-4"
       >
         <form onSubmit={submit} className="mx-auto w-full max-w-[45rem]">
           <div className="flex items-center justify-between gap-3">
