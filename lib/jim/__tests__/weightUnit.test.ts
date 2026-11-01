@@ -1,4 +1,5 @@
 import {
+  convertWeightsInText,
   fmtWeight,
   fmtWeightValue,
   lbToKg,
@@ -58,5 +59,23 @@ describe("the saved unit", () => {
     expect(() => saveWeightUnit("kg")).not.toThrow();
     get.mockRestore();
     set.mockRestore();
+  });
+});
+
+describe("convertWeightsInText", () => {
+  it("converts weights written with a unit, and only those", () => {
+    expect(convertWeightsInText("3 @ 255 lb, 95# thrusters, 2 lbs", "kg")).toBe(
+      "3 @ 115.5 kg, 43 kg thrusters, 1 kg"
+    );
+    expect(convertWeightsInText("21-15-9, 222 reps, 30 cal", "kg")).toBe(
+      "21-15-9, 222 reps, 30 cal"
+    );
+    expect(convertWeightsInText("255 lbsomething", "kg")).toBe(
+      "255 lbsomething"
+    );
+  });
+
+  it("leaves text alone in lb", () => {
+    expect(convertWeightsInText("3 @ 255 lb", "lb")).toBe("3 @ 255 lb");
   });
 });

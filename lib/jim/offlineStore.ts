@@ -36,6 +36,32 @@ function request<T>(req: IDBRequest<T>): Promise<T> {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/**
+ * iOS WebKit can leave an IndexedDB open or request without any event until
+ * the app goes to the background and back. Nothing may wait on it forever:
+ * Notes would sit on its skeleton. A stuck call fails after this.
+ */
+export const IDB_TIMEOUT_MS = 2000;
+
+function timed<T>(promise: Promise<T>, onTimeout?: () => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      onTimeout?.();
+      reject(new Error("IndexedDB timed out"));
+    }, IDB_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 function openDb(): Promise<IDBDatabase> {
   dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -59,8 +85,12 @@ async function run<T>(
   mode: IDBTransactionMode,
   op: (store: IDBObjectStore) => IDBRequest<T>
 ): Promise<T> {
-  const db = await openDb();
-  return request(op(db.transaction(STORE, mode).objectStore(STORE)));
+  const opening = openDb();
+  // A stuck open is dropped, so the next call opens afresh.
+  const db = await timed(opening, () => {
+    if (dbPromise === opening) dbPromise = null;
+  });
+  return timed(request(op(db.transaction(STORE, mode).objectStore(STORE))));
 }
 
 const indexedDbStore: KeyValueStore = {
