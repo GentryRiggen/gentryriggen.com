@@ -1,7 +1,8 @@
 import type { RunState } from "../../engine/types";
 import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
-import { isDry } from "./water";
+import { BEE_KEEPER_ID } from "./bees";
+import { isDry, waterLevel } from "./water";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
 export interface GrowSceneInfo {
@@ -19,6 +20,22 @@ export interface GrowSceneInfo {
   /** Yard: the season, and whether the tank has run dry. */
   season: Season;
   dry: boolean;
+  /** Yard, in the order the picture draws them (all quantized). */
+  beds: number;
+  /** How lush the garden is, 0 to 1 in tenths. */
+  bloom: number;
+  /** The water tank, 0 to 1 in tenths. */
+  waterFraction: number;
+  sprinklers: number;
+  bees: number;
+  gardeners: number;
+  isDry: boolean;
+  greenhouse: boolean;
+  orchard: boolean;
+  stand: boolean;
+  barrow: boolean;
+  tea: boolean;
+  keeper: boolean;
   /** Seed phase: whole percent of the pot grown. */
   growth: number;
 }
@@ -28,6 +45,50 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const HELPERS = ["sprinkler", "scarecrow", "windbreak", "trellis"];
 const SCALES = ["mulch", "compost", "rain-makers", "sunny-sill"];
 const ENDERS = ["cold-frame", "grain-barn", "seed-vault", ""];
+
+const tenths = (n: number): number =>
+  Math.round(Math.min(1, Math.max(0, n)) * 10) / 10;
+
+/** The backyard's extra numbers; zeros and falses outside the yard. */
+function yardInfo(
+  run: RunState,
+  isYard: boolean
+): Pick<
+  GrowSceneInfo,
+  | "beds"
+  | "bloom"
+  | "waterFraction"
+  | "sprinklers"
+  | "bees"
+  | "gardeners"
+  | "isDry"
+  | "greenhouse"
+  | "orchard"
+  | "stand"
+  | "barrow"
+  | "tea"
+  | "keeper"
+> {
+  const has = (id: string) => isYard && owned(run, id) > 0;
+  const n = (id: string) => (isYard ? owned(run, id) : 0);
+  const crew =
+    n("sprinkler") + n("basket") + n("bee-hive") + n("gardener") + n("mulch");
+  return {
+    beds: isYard ? Math.min(8, 1 + n("sprinkler")) : 0,
+    bloom: isYard ? tenths(0.1 + crew / 30) : 0,
+    waterFraction: isYard ? tenths(waterLevel(run)) : 0,
+    sprinklers: n("sprinkler"),
+    bees: n("bee-hive"),
+    gardeners: n("gardener"),
+    isDry: isYard && isDry(run),
+    greenhouse: has("greenhouse"),
+    orchard: has("orchard"),
+    stand: has("honey-stand"),
+    barrow: has("wheelbarrow"),
+    tea: has("compost-tea"),
+    keeper: has(BEE_KEEPER_ID),
+  };
+}
 
 export function sceneInfo(run: RunState): GrowSceneInfo {
   const i = Math.min(Math.max(run.phase, 0), PHASE_IDS.length - 1);
@@ -41,6 +102,7 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
       i === 0 ? owned(run, "rain-barrel") + owned(run, "garden-hose") : 0,
     season: i === 0 ? seasonOf(run) : "spring",
     dry: i === 0 && isDry(run),
+    ...yardInfo(run, i === 0),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(
       Math.min(FULL_GROWTH, Math.max(0, run.resources.growth ?? 0))

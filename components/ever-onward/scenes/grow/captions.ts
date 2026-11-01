@@ -1,12 +1,18 @@
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 
+const plural = (n: number, word: string): string =>
+  `${n} ${word}${n === 1 ? "" : "s"}`;
+
 /** The one line that says what the picture is showing. */
 export function captionFor(info: GrowSceneInfo): string {
   switch (info.phase) {
-    case "yard":
-      return info.helpers > 0
-        ? `A seed on the windowsill · ${info.helpers} sprinklers`
-        : "A seed on the windowsill";
+    case "yard": {
+      const season = info.season[0].toUpperCase() + info.season.slice(1);
+      const parts = [`${season} in the yard`, plural(info.beds, "bed")];
+      if (info.bees > 0) parts.push(plural(info.bees, "hive"));
+      if (info.isDry) parts.push("thirsty soil");
+      return parts.join(" · ");
+    }
     case "farm":
       return info.helpers > 0
         ? `Rows of green · ${info.helpers} scarecrows`
