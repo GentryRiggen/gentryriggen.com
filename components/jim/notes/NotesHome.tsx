@@ -429,32 +429,38 @@ export default function NotesHome({
     day: "numeric",
     timeZone: "UTC",
   });
+  // One column on a phone; where the page is wide (a desktop), the day on
+  // the left and the calendar and todos beside it.
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-xs font-semibold tracking-[0.14em] text-ayu-accent uppercase">
-          {greeting()}
-        </p>
-        <p className="mt-1 text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text">
-          {date}
-        </p>
+    <div className="space-y-8 @2xl:grid @2xl:grid-cols-2 @2xl:items-start @2xl:gap-8 @2xl:space-y-0">
+      <div className="space-y-8">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.14em] text-ayu-accent uppercase">
+            {greeting()}
+          </p>
+          <p className="mt-1 text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text">
+            {date}
+          </p>
+        </div>
+        {data.daily && <DailyWord word={data.daily} />}
+        <div className="space-y-3">
+          <TodayCard data={data} />
+          <QuickLog today={data.today} onLog={onLog} />
+        </div>
+        {data.actions && (
+          <NeedsYou
+            actions={data.actions}
+            actionsAsOf={data.actionsAsOf}
+            today={data.today}
+            onAsk={onLog}
+            onDraft={onDraft}
+          />
+        )}
       </div>
-      {data.daily && <DailyWord word={data.daily} />}
-      <div className="space-y-3">
-        <TodayCard data={data} />
-        <QuickLog today={data.today} onLog={onLog} />
+      <div className="space-y-8">
+        <Calendar data={data} />
+        <Todos data={data} marks={saves.marks} onToggle={saves.toggle} />
       </div>
-      {data.actions && (
-        <NeedsYou
-          actions={data.actions}
-          actionsAsOf={data.actionsAsOf}
-          today={data.today}
-          onAsk={onLog}
-          onDraft={onDraft}
-        />
-      )}
-      <Calendar data={data} />
-      <Todos data={data} marks={saves.marks} onToggle={saves.toggle} />
       <ToastBar toast={saves.toast} onUndo={saves.undo} />
     </div>
   );

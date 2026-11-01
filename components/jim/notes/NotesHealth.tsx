@@ -86,7 +86,7 @@ export default function NotesHealth({ data }: NotesHealthProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 min-[360px]:[&>:last-child:nth-child(odd)]:col-span-2">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 min-[360px]:[&>:last-child:nth-child(odd)]:col-span-2 @2xl:grid-cols-3 @2xl:[&>:last-child:nth-child(odd)]:col-span-1">
         {last ? (
           <Stat
             label="Last injection"
@@ -123,7 +123,7 @@ export default function NotesHealth({ data }: NotesHealthProps) {
         {cards.length === 0 ? (
           <Empty>No lab results yet.</Empty>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 @4xl:grid-cols-3">
             {cards.map((c) => (
               <LabTile key={c.marker} card={c} />
             ))}

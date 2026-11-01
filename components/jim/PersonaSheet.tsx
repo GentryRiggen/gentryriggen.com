@@ -220,7 +220,7 @@ export default function PersonaSheet({
   const { list, loading, loadError, pending, rowErrors } = personas;
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col justify-end">
+    <div className="fixed inset-0 z-40 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
         aria-hidden="true"
         onClick={close}
@@ -231,7 +231,7 @@ export default function PersonaSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="jim-card jim-rise relative mx-auto flex max-h-[calc(var(--jim-vh,100dvh)-env(safe-area-inset-top)-1.5rem)] w-full max-w-[45rem] flex-col rounded-t-3xl! rounded-b-none! shadow-2xl!"
+        className="jim-card jim-rise relative mx-auto flex max-h-[calc(var(--jim-vh,100dvh)-env(safe-area-inset-top)-1.5rem)] w-full max-w-[45rem] flex-col rounded-t-3xl! rounded-b-none! shadow-2xl! lg:max-h-[min(85vh,46rem)] lg:max-w-xl lg:rounded-3xl!"
       >
         <div className="flex shrink-0 items-center justify-between gap-2 pt-2 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(1.25rem,env(safe-area-inset-left))]">
           <h2
