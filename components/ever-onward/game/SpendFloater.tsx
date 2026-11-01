@@ -15,7 +15,7 @@ export default function SpendFloater({ spend }: SpendFloaterProps) {
       key={spend.id}
       aria-hidden="true"
       data-testid="lm-spend"
-      className="lm-spend pointer-events-none absolute right-3 top-full z-10 text-sm font-bold tabular-nums text-red-500 dark:text-red-400"
+      className="lm-spend pointer-events-none absolute right-3 top-full z-10 bg-slate-950/90 px-1 font-mono text-sm font-bold tabular-nums text-red-300 [text-shadow:1px_1px_0_#450a0a]"
     >
       {spend.text}
     </span>

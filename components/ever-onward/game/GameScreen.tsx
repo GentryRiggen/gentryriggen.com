@@ -22,7 +22,6 @@ import { introClipId } from "@/lib/ever-onward/narration/lines";
 import NarrationLayer from "../narration/NarrationLayer";
 import NarrationSettings from "../narration/NarrationSettings";
 import { SCENES } from "../scenes";
-import { cardClass, focusRingClass, secondaryButtonClass } from "../styles";
 import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
 import { type Effect } from "./EffectFloater";
@@ -36,6 +35,16 @@ import StickyHud from "./StickyHud";
 import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
+import CrtOverlay from "./retro/CrtOverlay";
+import RetroHeading from "./retro/RetroHeading";
+import {
+  bodyClass,
+  pixelFont,
+  retroFocusClass,
+  retroLabelClass,
+  retroPanelClass,
+  retroSecondaryButtonClass,
+} from "./retro/retroStyles";
 import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
@@ -138,32 +147,54 @@ export default function GameScreen({
   ).flatMap((id) => def.story.find((m) => m.id === id)?.text ?? []);
 
   return (
-    <div className="min-h-dvh touch-manipulation bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 lg:flex lg:h-dvh">
+    // `dark` keeps the game dark in both site themes, so the shared pieces
+    // (sound switches, update pill) use their dark colours too.
+    <div
+      className={`${pixelFont.variable} dark relative isolate min-h-dvh touch-manipulation bg-[#02030a] text-amber-50 lg:flex lg:h-dvh`}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_50%_30%,rgba(251,191,36,0.1),transparent_62%)]"
+      >
+        <CrtOverlay />
+      </div>
       <div
         inert={overlay !== null}
-        className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0"
+        className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
         {Scene && <Scene run={run} />}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          <CrtOverlay isSubtle />
+        </div>
       </div>
       <main
         inert={overlay !== null}
-        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto"
+        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto"
       >
         <header className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-widest text-slate-600 dark:text-slate-400">
-              {def.title} · Part {run.phase + 1} of {def.phases.length}
+            <p className={`${retroLabelClass} leading-normal`}>
+              {def.title}
+              <span aria-hidden="true"> · </span>
+              <span className="block text-slate-300">
+                Part {run.phase + 1} of {def.phases.length}
+              </span>
             </p>
-            <h1 className="text-2xl font-bold">{phase.title}</h1>
+            <RetroHeading as="h1" className="mt-2 text-base sm:text-lg">
+              {phase.title}
+            </RetroHeading>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 gap-2 [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
             <SoundControls />
             <button
               type="button"
               aria-expanded={isMenuOpen}
               aria-controls="lm-menu"
               onClick={() => setIsMenuOpen((open) => !open)}
-              className={`${secondaryButtonClass} shrink-0`}
+              className={`${retroSecondaryButtonClass} shrink-0`}
             >
               Menu
             </button>
@@ -174,24 +205,24 @@ export default function GameScreen({
           <nav
             id="lm-menu"
             aria-label="Game menu"
-            className={`${cardClass} space-y-3 p-4`}
+            className={`${retroPanelClass} space-y-3 p-4`}
           >
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={onLeave}
-                className={secondaryButtonClass}
+                className={retroSecondaryButtonClass}
               >
                 Back to all universes
               </button>
               <Link
                 href="/ever-onward/versions"
-                className={secondaryButtonClass}
+                className={retroSecondaryButtonClass}
               >
                 What&apos;s new
               </Link>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
+            <p className="font-mono text-xs text-slate-300">
               Your game saves on this device and pauses when you leave.
             </p>
             <NarrationSettings />
@@ -219,9 +250,11 @@ export default function GameScreen({
             onRestart={onRestart}
           />
         ) : (
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Tap the button at the bottom right to{" "}
-            {phase.manualLabel.toLowerCase()}.
+          <p className={`${bodyClass} text-slate-300`}>
+            <span aria-hidden="true" className="mr-2 text-amber-300">
+              ▶
+            </span>
+            Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
           </p>
         )}
         <ActionPanel def={def} run={run} onAct={onAction} />
@@ -253,8 +286,11 @@ export default function GameScreen({
             />
           </div>
         )}
-        <p className="text-center text-xs text-slate-500 dark:text-slate-500">
-          <Link href="/" className={`rounded underline ${focusRingClass}`}>
+        <p className="text-center font-mono text-xs text-slate-300">
+          <Link
+            href="/"
+            className={`rounded px-1 py-1 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`}
+          >
             gentryriggen.com
           </Link>
         </p>

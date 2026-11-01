@@ -8,13 +8,15 @@ import {
   prestigeUpgradeCost,
 } from "@/lib/ever-onward/engine/prestige";
 import type { UniverseDef, UniverseSave } from "@/lib/ever-onward/engine/types";
+import RetroHeading from "./retro/RetroHeading";
 import {
-  cardClass,
-  dangerButtonClass,
-  focusRingClass,
-  primaryButtonClass,
-  secondaryButtonClass,
-} from "../styles";
+  pixelClass,
+  retroDangerButtonClass,
+  retroFocusClass,
+  retroPanelClass,
+  retroPrimaryButtonClass,
+  retroSecondaryButtonClass,
+} from "./retro/retroStyles";
 
 interface EmberPanelProps {
   def: UniverseDef;
@@ -38,35 +40,40 @@ export default function EmberPanel({
     <section
       aria-label="Embers"
       data-testid="lm-embers"
-      className={`${cardClass} space-y-3 p-4`}
+      className={`${retroPanelClass} space-y-4 p-4`}
     >
       {run.complete && (
         <div className="space-y-1">
-          <h2 className="text-xl font-bold">The light is still on.</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <RetroHeading
+            as="h2"
+            className="text-sm leading-relaxed sm:text-base"
+          >
+            The light is still on.
+          </RetroHeading>
+          <p className="font-mono text-sm text-slate-200">
             You finished {def.title} in {formatDuration(run.time)}. This run
             earns {reward} embers.
             {universe.best !== null &&
               ` Your best time is ${formatDuration(universe.best)}.`}
           </p>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="font-mono text-sm text-slate-200">
             Universe 2 is coming soon.
           </p>
         </div>
       )}
       <div className="flex items-baseline justify-between">
-        <h3 className="font-semibold">Embers</h3>
+        <h3 className={`${pixelClass} text-xs text-orange-200`}>Embers</h3>
         <span
           data-testid="lm-ember-count"
-          className="text-lg font-bold tabular-nums text-orange-600 dark:text-orange-300"
+          className={`${pixelClass} text-lg tabular-nums text-orange-300 [text-shadow:2px_2px_0_#7c2d12]`}
         >
           {universe.embers}
         </span>
       </div>
-      <p className="text-sm text-slate-600 dark:text-slate-400">
+      <p className="font-mono text-sm text-slate-200">
         Embers buy permanent upgrades. They shape your next run.
       </p>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {def.prestige.upgrades.map((u) => {
           const level = universe.prestigeUpgrades[u.id] ?? 0;
           const cost = prestigeUpgradeCost(def, universe, u.id);
@@ -77,20 +84,31 @@ export default function EmberPanel({
                 type="button"
                 disabled={!affordable}
                 onClick={() => onBuy(u.id)}
-                className={`w-full touch-manipulation rounded-xl border p-3 text-left disabled:cursor-not-allowed ${focusRingClass} ${
+                className={`block w-full touch-manipulation border-4 p-3 text-left transition-transform disabled:cursor-not-allowed ${retroFocusClass} ${
                   affordable
-                    ? "border-orange-400 bg-orange-50 hover:bg-orange-100 dark:border-orange-500 dark:bg-orange-950/40 dark:hover:bg-orange-950/70"
-                    : "border-slate-200 bg-slate-50 text-slate-600 opacity-80 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
+                    ? "border-orange-300 bg-orange-950/50 text-orange-50 shadow-[4px_4px_0_#7c2d12] hover:bg-orange-900/60 active:translate-y-0.5 active:shadow-none"
+                    : "border-slate-700 bg-slate-950/85 text-slate-400 shadow-[4px_4px_0_#0f172a]"
                 }`}
               >
-                <span className="flex items-baseline justify-between gap-3">
-                  <span className="font-semibold">{u.name}</span>
-                  <span className="shrink-0 text-sm tabular-nums">
+                <span className="flex items-start justify-between gap-3">
+                  <span
+                    className={`${pixelClass} min-w-0 text-[10px] leading-relaxed ${affordable ? "text-orange-200" : "text-slate-300"}`}
+                  >
+                    <span aria-hidden="true" className="mr-2">
+                      ▶
+                    </span>
+                    {u.name}
+                  </span>
+                  <span
+                    className={`${pixelClass} shrink-0 text-[10px] tabular-nums`}
+                  >
                     {cost === null ? "Max" : `${cost} embers`}
                   </span>
                 </span>
-                <span className="mt-0.5 block text-sm">{u.description}</span>
-                <span className="mt-1 block text-xs">
+                <span className="mt-2 block font-mono text-sm">
+                  {u.description}
+                </span>
+                <span className="mt-2 block font-mono text-xs text-slate-300">
                   Level {level} of {u.maxLevel}
                 </span>
               </button>
@@ -102,7 +120,7 @@ export default function EmberPanel({
         <button
           type="button"
           onClick={onRestart}
-          className={`${primaryButtonClass} w-full`}
+          className={`${retroPrimaryButtonClass} w-full`}
         >
           Play again
         </button>
@@ -111,7 +129,7 @@ export default function EmberPanel({
         <button
           type="button"
           onClick={() => setIsConfirming(true)}
-          className={`${secondaryButtonClass} w-full`}
+          className={`${retroSecondaryButtonClass} w-full`}
         >
           Restart for {reward} embers
         </button>
@@ -120,27 +138,27 @@ export default function EmberPanel({
         <div
           role="alertdialog"
           aria-label="Confirm restart"
-          className="space-y-2 rounded-xl border border-red-300 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/40"
+          className="space-y-3 border-4 border-red-400 bg-red-950/60 p-3"
         >
-          <p className="text-sm">
+          <p className="font-mono text-sm text-red-50">
             Start over from the beginning and keep {reward} embers? Your current
             run will be gone.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => {
                 setIsConfirming(false);
                 onRestart();
               }}
-              className={dangerButtonClass}
+              className={retroDangerButtonClass}
             >
               Yes, restart
             </button>
             <button
               type="button"
               onClick={() => setIsConfirming(false)}
-              className={secondaryButtonClass}
+              className={retroSecondaryButtonClass}
             >
               Keep playing
             </button>

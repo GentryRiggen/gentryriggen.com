@@ -1,6 +1,17 @@
+"use client";
+
 import type { PhaseDef } from "@/lib/ever-onward/engine/types";
 import ListenButton from "../narration/ListenButton";
-import { primaryButtonClass, secondaryButtonClass } from "../styles";
+import CrtOverlay from "./retro/CrtOverlay";
+import RetroHeading from "./retro/RetroHeading";
+import {
+  pixelClass,
+  retroLabelClass,
+  retroPanelClass,
+  retroPrimaryButtonClass,
+  retroSecondaryButtonClass,
+} from "./retro/retroStyles";
+import { useTypewriter } from "./retro/useTypewriter";
 
 interface PhaseOverlayProps {
   phase: PhaseDef;
@@ -19,29 +30,52 @@ export default function PhaseOverlay({
   total,
   onContinue,
 }: PhaseOverlayProps) {
+  const intro = phase.intro ?? "";
+  const typedIntro = useTypewriter(intro);
+  const isTyping = typedIntro.length < intro.length;
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="lm-phase-title"
       data-testid="lm-phase-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-6 text-slate-50"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#02030a]/95 p-4 text-amber-50 sm:p-6"
     >
-      <div className="lm-fade-up max-w-md space-y-4 text-center">
-        <p className="text-sm uppercase tracking-widest text-amber-300">
+      <div className="pointer-events-none fixed inset-0">
+        <CrtOverlay />
+      </div>
+      <div
+        className={`${retroPanelClass} lm-fade-up relative my-auto w-full max-w-md space-y-5 p-5 text-center sm:p-8`}
+      >
+        <p className={`${retroLabelClass} leading-normal`}>
           Part {number} of {total}
         </p>
-        <h2 id="lm-phase-title" className="text-4xl font-bold">
+        <RetroHeading
+          as="h2"
+          id="lm-phase-title"
+          className="text-xl leading-normal break-words sm:text-2xl"
+        >
           {phase.title}
-        </h2>
-        {phase.intro && <p className="text-lg text-slate-300">{phase.intro}</p>}
-        {phase.intro && clipId && (
+        </RetroHeading>
+        {intro && (
+          <>
+            <p className="sr-only">{intro}</p>
+            <p
+              aria-hidden="true"
+              className="min-h-24 text-left font-mono text-base text-slate-200"
+            >
+              {typedIntro}
+              {isTyping && <span className="text-amber-300">▌</span>}
+            </p>
+          </>
+        )}
+        {intro && clipId && (
           <div>
             <ListenButton
               clipId={clipId}
               label="Listen"
               accessibleLabel="Listen to this introduction"
-              className={`${secondaryButtonClass} gap-2 !border-slate-600 !bg-slate-900 !text-slate-100`}
+              className={`${retroSecondaryButtonClass} gap-2`}
             />
           </div>
         )}
@@ -49,9 +83,12 @@ export default function PhaseOverlay({
           type="button"
           autoFocus
           onClick={onContinue}
-          className={`${primaryButtonClass} min-w-40 !ring-offset-slate-950`}
+          className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-slate-950`}
         >
-          Continue
+          <span aria-hidden="true" className="motion-safe:animate-pulse">
+            ▶
+          </span>
+          <span className={pixelClass}>Continue</span>
         </button>
       </div>
     </div>

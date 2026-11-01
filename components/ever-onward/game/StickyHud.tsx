@@ -7,6 +7,7 @@ import AnimatedValue from "./AnimatedValue";
 import EffectFloater, { type Effect } from "./EffectFloater";
 import RateReadout from "./RateReadout";
 import NextUpgradeBar from "./NextUpgradeBar";
+import { pixelClass } from "./retro/retroStyles";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface StickyHudProps {
@@ -58,14 +59,14 @@ export default function StickyHud({
       data-testid="lm-hud"
       aria-hidden={isHidden}
       inert={isHidden}
-      className={`fixed inset-x-0 top-0 z-30 border-b border-slate-200 bg-white/95 pt-[env(safe-area-inset-top)] shadow-md backdrop-blur transition-transform duration-300 motion-reduce:transition-none lg:left-[55%] dark:border-slate-800 dark:bg-slate-900/95 ${
+      className={`fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950/95 pt-[env(safe-area-inset-top)] shadow-[0_4px_0_#78350f] transition-transform duration-300 motion-reduce:transition-none lg:left-[55%] ${
         isHidden ? "-translate-y-full" : "translate-y-0"
       }`}
     >
       <div className="relative mx-auto max-w-xl px-4 py-2">
         <div className="flex items-center justify-between gap-3">
           <p className="flex min-w-0 items-baseline gap-2">
-            <span aria-hidden="true" className="text-xl">
+            <span aria-hidden="true" className="text-base">
               {ICONS[resourceId] ?? ""}
             </span>
             <span className="sr-only">{resourceLabel}</span>
@@ -73,13 +74,13 @@ export default function StickyHud({
               value={value}
               format={formatPrimary}
               testId="lm-hud-value"
-              className="text-3xl font-bold leading-none text-slate-900 dark:text-slate-50"
+              className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:2px_2px_0_#78350f]`}
             />
             <RateReadout
               rate={rate}
               trend={trend}
               testId="lm-hud-rate"
-              className="shrink-0 text-sm font-semibold"
+              className="shrink-0 font-mono text-sm font-bold"
             />
           </p>
         </div>

@@ -15,7 +15,8 @@ import type {
   UniverseDef,
   UpgradeDef,
 } from "@/lib/ever-onward/engine/types";
-import { focusRingClass } from "../styles";
+import RetroHeading from "./retro/RetroHeading";
+import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface UpgradeListProps {
   def: UniverseDef;
@@ -64,16 +65,14 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
     def.resources.find((r) => r.id === id)?.label ?? id;
 
   return (
-    <section aria-label="Upgrades" className="space-y-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-        Upgrades
-      </h2>
+    <section aria-label="Upgrades" className="space-y-3">
+      <RetroHeading hasBullet>Upgrades</RetroHeading>
       {open.length === 0 && (
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="font-mono text-sm text-slate-300">
           Nothing to buy right now.
         </p>
       )}
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {open.map((u) => {
           const affordable = canAfford(run, u);
           const level = levelText(run, u);
@@ -95,32 +94,47 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
                   button.classList.add("lm-buy");
                   onBuy(u.id);
                 }}
-                className={`w-full touch-manipulation rounded-xl border p-3 text-left transition-colors aria-disabled:cursor-not-allowed ${focusRingClass} ${
+                className={`block w-full touch-manipulation border-4 p-3 text-left transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${
                   affordable
-                    ? "lm-glow border-amber-400 bg-amber-50 text-slate-900 hover:bg-amber-100 dark:border-amber-500 dark:bg-amber-950/40 dark:text-amber-50 dark:hover:bg-amber-950/70"
-                    : "border-slate-200 bg-white text-slate-600 opacity-80 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                    ? "border-amber-300 bg-amber-950/50 text-amber-50 shadow-[4px_4px_0_#78350f,0_0_14px_rgba(251,191,36,0.4)] hover:bg-amber-900/60 active:translate-y-0.5 active:shadow-none"
+                    : "border-slate-700 bg-slate-950/85 text-slate-400 shadow-[4px_4px_0_#0f172a]"
                 }`}
               >
-                <span className="flex items-baseline justify-between gap-3">
-                  <span className="font-semibold">{u.name}</span>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums">
+                <span className="flex items-start justify-between gap-3">
+                  <span
+                    className={`${pixelClass} min-w-0 text-[10px] leading-relaxed ${
+                      affordable ? "text-amber-300" : "text-slate-300"
+                    }`}
+                  >
+                    <span aria-hidden="true" className="mr-2">
+                      ▶
+                    </span>
+                    {u.name}
+                  </span>
+                  <span
+                    className={`${pixelClass} shrink-0 text-right text-[10px] tabular-nums ${
+                      affordable ? "text-amber-100" : "text-slate-400"
+                    }`}
+                  >
                     {formatNumber(upgradeCost(run, u))}{" "}
-                    <span className="font-normal">
+                    <span className="font-mono text-xs normal-case">
                       {currencyLabel(u.currency).toLowerCase()}
                     </span>
                   </span>
                 </span>
-                <span className="mt-0.5 block text-sm">{u.description}</span>
+                <span className="mt-2 block font-mono text-sm">
+                  {u.description}
+                </span>
                 {u.effectPreview && (
                   <span
                     data-testid="lm-effect-preview"
-                    className="mt-1 block text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-300"
+                    className="mt-2 block font-mono text-sm font-bold tabular-nums text-emerald-300"
                   >
                     {u.effectPreview(run)}
                   </span>
                 )}
                 {level && (
-                  <span className="mt-1 block text-xs text-slate-600 dark:text-slate-400">
+                  <span className="mt-2 block font-mono text-xs text-slate-300">
                     {level}
                   </span>
                 )}
@@ -130,14 +144,14 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
         })}
       </ul>
       {hasUnrevealedUpgrades(def, run) && (
-        <p className="text-xs text-slate-600 dark:text-slate-400">
+        <p className="font-mono text-xs text-slate-300">
           More upgrades unlock as you grow…
         </p>
       )}
       {done.length > 0 && (
-        <details className="text-sm text-slate-600 dark:text-slate-400">
+        <details className="font-mono text-sm text-slate-300">
           <summary
-            className={`cursor-pointer rounded ${focusRingClass}`}
+            className={`cursor-pointer px-1 py-1 ${retroFocusClass}`}
           >{`Done (${done.length})`}</summary>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">
             {done.map((u) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import { getClip } from "@/lib/ever-onward/narration/manifest";
-import { focusRingClass } from "../styles";
+import { retroFocusClass } from "../game/retro/retroStyles";
 import { playNarration, stopNarration, useNarrationPlaying } from "./player";
 import { useNarrationSettings } from "./settings";
 
@@ -31,7 +31,7 @@ export default function ListenButton({
       aria-pressed={isPlaying}
       aria-label={isPlaying ? "Stop listening" : accessibleLabel}
       onClick={() => (isPlaying ? stopNarration() : playNarration(clipId))}
-      className={`inline-flex touch-manipulation items-center justify-center ${focusRingClass} ${className}`}
+      className={`inline-flex touch-manipulation items-center justify-center ${retroFocusClass} ${className}`}
     >
       <span aria-hidden="true">{isPlaying ? "■" : "▶"}</span>
       {label && <span>{isPlaying ? "Stop" : label}</span>}

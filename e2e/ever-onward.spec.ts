@@ -132,7 +132,7 @@ test.describe("Ever Onward", () => {
       await expect(value).toBeVisible();
       await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
 
-      // The tap button floats at the bottom right and keeps earning.
+      // The tap button floats at the bottom centre and keeps earning.
       const tap = page.getByRole("button", { name: "Flash the light" });
       await expect(tap).toBeInViewport();
       await tap.click();

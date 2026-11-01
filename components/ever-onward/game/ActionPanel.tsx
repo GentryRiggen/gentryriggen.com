@@ -11,7 +11,7 @@ import type {
   RunState,
   UniverseDef,
 } from "@/lib/ever-onward/engine/types";
-import { focusRingClass } from "../styles";
+import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface ActionPanelProps {
   def: UniverseDef;
@@ -39,9 +39,9 @@ function useHistory(value: number): number[] {
 }
 
 const TONES = {
-  good: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-200",
-  bad: "bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-200",
-  neutral: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200",
+  good: "border-emerald-400 bg-emerald-950 text-emerald-200",
+  bad: "border-red-400 bg-red-950 text-red-200",
+  neutral: "border-slate-500 bg-slate-900 text-slate-200",
 } as const;
 
 function Sparkline({ values }: { values: readonly number[] }) {
@@ -60,7 +60,7 @@ function Sparkline({ values }: { values: readonly number[] }) {
   return (
     <svg
       viewBox="0 0 64 24"
-      className="h-6 w-16 shrink-0 text-amber-600 dark:text-amber-400"
+      className="h-6 w-16 shrink-0 text-amber-300"
       aria-hidden="true"
       data-testid="lm-sparkline"
     >
@@ -68,9 +68,10 @@ function Sparkline({ values }: { values: readonly number[] }) {
         points={points}
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
+        strokeWidth="2"
+        strokeLinejoin="miter"
+        strokeLinecap="square"
+        shapeRendering="crispEdges"
       />
     </svg>
   );
@@ -97,26 +98,30 @@ function ActionCard({
       onClick={() => {
         if (isDoable) onAct();
       }}
-      className={`flex w-full touch-manipulation items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors aria-disabled:cursor-not-allowed ${focusRingClass} ${
+      className={`flex w-full touch-manipulation items-center justify-between gap-3 border-4 p-3 text-left transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${
         isDoable
-          ? "border-sky-400 bg-sky-50 text-slate-900 hover:bg-sky-100 dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-50 dark:hover:bg-sky-950/70"
-          : "border-slate-200 bg-white text-slate-600 opacity-80 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+          ? "border-cyan-300 bg-cyan-950/50 text-cyan-50 shadow-[4px_4px_0_#164e63] hover:bg-cyan-900/60 active:translate-y-0.5 active:shadow-none"
+          : "border-slate-700 bg-slate-950/85 text-slate-400 shadow-[4px_4px_0_#0f172a]"
       }`}
     >
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold">{view.label}</span>
+          <span
+            className={`${pixelClass} text-[10px] ${isDoable ? "text-cyan-200" : ""}`}
+          >
+            {view.label}
+          </span>
           {view.hint && (
             <span
               data-testid="lm-action-hint"
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${TONES[view.hint.tone]}`}
+              className={`${pixelClass} border-2 px-1.5 py-1 text-[8px] ${TONES[view.hint.tone]}`}
             >
               {view.hint.text}
             </span>
           )}
         </span>
         {view.detail && (
-          <span className="mt-0.5 block text-sm tabular-nums">
+          <span className="mt-1.5 block font-mono text-sm tabular-nums">
             {view.detail}
           </span>
         )}
@@ -124,7 +129,7 @@ function ActionCard({
       <span className="flex shrink-0 flex-col items-end gap-1">
         {view.trendResource && <Sparkline values={history} />}
         {view.cost && (
-          <span className="text-sm font-semibold tabular-nums">
+          <span className={`${pixelClass} text-xs tabular-nums text-amber-100`}>
             {formatNumber(Math.ceil(view.cost.amount))}
           </span>
         )}
@@ -138,7 +143,7 @@ export default function ActionPanel({ def, run, onAct }: ActionPanelProps) {
   const actions = visibleActions(def, run);
   if (actions.length === 0 || run.complete) return null;
   return (
-    <section aria-label="Actions" className="space-y-2">
+    <section aria-label="Actions" className="space-y-3">
       {actions.map((action) => {
         const view = action.describe(run);
         return (
