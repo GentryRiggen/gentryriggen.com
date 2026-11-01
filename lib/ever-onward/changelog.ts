@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.10.0",
+    date: "2026-11-01",
+    title: "Probe Races",
+    highlights: [
+      "The Sky has Probe Races once you buy Star charts. Pick a route on the star map, launch, and watch your probe fly it",
+      "Short hop, long loop or comet chase. Every card shows its time and haul up front, and the comet chase pays more when the comet is close",
+      "Your probe waits at the dock until you launch again, and ignoring it costs nothing",
+      "Racing fins make every run faster, and Mission control sends a scout probe out on its own, on top of your own runs",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "2026-11-01",
     title: "The Tide Clock",

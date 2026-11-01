@@ -219,6 +219,16 @@
     "hash": "9bdc93dd9813",
     "durationGuess": 9
   },
+  "light/sky-races": {
+    "file": "/ever-onward/voice/light/sky-races.mp3",
+    "hash": "f513be6dee6f",
+    "durationGuess": 18
+  },
+  "light/sky-scout": {
+    "file": "/ever-onward/voice/light/sky-scout.mp3",
+    "hash": "466c9ebca3d2",
+    "durationGuess": 18
+  },
   "light/sky-sail": {
     "file": "/ever-onward/voice/light/sky-sail.mp3",
     "hash": "3372906e3923",
