@@ -3,6 +3,7 @@ import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
 import { FAIR_ACTION_IDS, isFairOn, isFairOpen, withoutFair } from "./fair";
+import { SPREAD_ACTION_IDS, biomeGap } from "./biomes";
 import { PLANT_ACTION_IDS, demandGap } from "./market";
 import { PHASE_IDS } from "./resources";
 import { sceneInfo } from "./scene";
@@ -41,6 +42,11 @@ export function growPlates(run: RunState): string[] {
     if (demandGap(run) >= TUNING.market.playerMargin) plates.push("market");
     if (isFairOn(run)) plates.push("fair");
   }
+  if (run.phase === 2) {
+    if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
+      plates.push("water");
+    if (biomeGap(run) >= TUNING.world.playerMargin) plates.push("spread");
+  }
   return plates;
 }
 
@@ -49,6 +55,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   harvest: [YARD_HARVEST],
   bees: BEE_ACTION_IDS,
   market: PLANT_ACTION_IDS,
+  spread: SPREAD_ACTION_IDS,
   fair: FAIR_ACTION_IDS,
 };
 
@@ -57,7 +64,7 @@ export const GROW_CONSUMABLES: readonly ConsumableDef[] = [
   {
     id: "water",
     label: "Water",
-    level: (run) => (run.phase <= 1 ? waterLevel(run) : null),
+    level: (run) => (run.phase <= 2 ? waterLevel(run) : null),
     lowZone: { lo: 0.02, hi: 0.35 },
   },
 ];
@@ -97,6 +104,12 @@ function sceneKey(run: RunState): string {
     tierOf(s.storage),
     tierOf(s.machines),
     s.crop,
+    s.cover,
+    s.forest,
+    s.jungle,
+    s.meadow,
+    s.wetland,
+    s.biome,
     s.season,
     s.dry,
     s.ended,

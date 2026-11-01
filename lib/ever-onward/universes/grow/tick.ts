@@ -7,6 +7,7 @@ import {
   PHASE_IDS,
 } from "./resources";
 import { tickBees } from "./bees";
+import { greenMult, tickBiomes } from "./biomes";
 import { tickFair } from "./fair";
 import { marketMult, tickMarket } from "./market";
 import { seasonBoost } from "./seasons";
@@ -33,12 +34,14 @@ export function manualPerTap(run: RunState): number {
   const season = run.phase === 0 ? seasonBoost(run, "plant") : 1;
   // On the farm a tap picks whatever is planted, at what the towns pay.
   const market = run.phase === 1 ? marketMult(run) : 1;
+  const biomes = run.phase === 2 ? greenMult(run) : 1;
   return (
     TUNING.phases[run.phase].tap *
     scaleMult(run) *
     tapMult(run) *
     season *
-    market
+    market *
+    biomes
   );
 }
 
@@ -50,6 +53,16 @@ const farmHelpers = (run: RunState): number => {
     owned(run, "tractor") * f.tractorRate +
     owned(run, "glasshouse") * f.glasshouseRate +
     owned(run, "seed-drone") * f.droneRate
+  );
+};
+
+/** Green per second from the world's helpers, before any bonus. */
+const worldHelpers = (run: RunState): number => {
+  const w = TUNING.world;
+  return (
+    owned(run, "windbreak") * w.windbreakRate +
+    owned(run, "planting-rover") * w.roverRate +
+    owned(run, "sky-seeder") * w.seederRate
   );
 };
 
@@ -81,6 +94,14 @@ export function incomePerSecond(run: RunState): number {
       farmHelpers(run) *
       scaleMult(run) *
       marketMult(run) *
+      speed(run) *
+      waterFactor(run)
+    );
+  if (run.phase === 2)
+    return (
+      worldHelpers(run) *
+      scaleMult(run) *
+      greenMult(run) *
       speed(run) *
       waterFactor(run)
     );
@@ -135,6 +156,10 @@ export function tickGrow(run: RunState, dt: number): void {
   else if (run.phase === 1) {
     tickWater(run, dt);
     tickMarket(run, dt);
+    earn(run, incomePerSecond(run) * dt);
+  } else if (run.phase === 2) {
+    tickWater(run, dt);
+    tickBiomes(run, dt);
     earn(run, incomePerSecond(run) * dt);
   } else earn(run, incomePerSecond(run) * dt);
   // After the phase ends, a pollination in flight still finishes paying out.

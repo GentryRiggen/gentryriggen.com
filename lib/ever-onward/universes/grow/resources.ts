@@ -111,6 +111,17 @@ export const RESOURCES: readonly ResourceDef[] = [
     "frRng",
     "frPaused",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // The green world: the biome that is spreading (an index), how much of
+  // the planet each one covers (0 to 1), a settle timer and times switched.
+  ...[
+    "bmActive",
+    "bmForest",
+    "bmJungle",
+    "bmMeadow",
+    "bmWetland",
+    "bmSettle",
+    "bmSwitches",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];
