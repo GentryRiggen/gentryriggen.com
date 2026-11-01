@@ -149,6 +149,53 @@ export interface StoryMessage {
   when?(run: RunState): boolean;
 }
 
+/**
+ * A greyed "someday" card: it hints at an upgrade that has not popped in yet,
+ * so the shop is never a blank page and the player has something to look
+ * forward to. It goes away the moment the upgrade pops in.
+ */
+export interface TeaserDef {
+  /** The upgrade it hints at (must be one of the universe's upgrades). */
+  upgradeId: string;
+  /** Shown from the moment this is true (omitted: from the phase start). */
+  showWhen?(run: RunState): boolean;
+  /** What has to happen first, in plain words. Must only read. */
+  hint(run: RunState): string;
+}
+
+/**
+ * A gentle one-off arrival: it shows up when a milestone is reached (never a
+ * timer), waits as long as it takes until the player greets it, gives a small
+ * gift, and is kept in a logbook. Nothing about it can be missed or lost.
+ * Its line is the story message with the same id, which fires on arrival
+ * (`flags["here-<id>"]` is true then).
+ */
+export interface VisitorDef {
+  id: string;
+  /** Phase id where it can arrive. */
+  phase: string;
+  /** Short title for its card and the logbook ("A mail boat"). */
+  name: string;
+  /** Arrives the first time this is true. Must only read. */
+  arrivesWhen(run: RunState): boolean;
+  /** What the gift is, in plain words, read from the run. Must only read. */
+  giftText(run: RunState): string;
+  /** Gives the gift to a draft. */
+  give(run: RunState): void;
+}
+
+/** A bar counting down toward something (stars left until the next gift). */
+export interface CountdownView {
+  label: string;
+  /** What is left, and what there was at the start. */
+  value: number;
+  max: number;
+  /** Values (on the same scale) where something happens, drawn as ticks. */
+  marks?: readonly number[];
+  /** A line under the bar ("A new gift at 700"). */
+  detail?: string;
+}
+
 export interface PrestigeUpgradeDef {
   id: string;
   name: string;
@@ -186,6 +233,12 @@ export interface UniverseDef {
    */
   maxVisible?: number;
   story: readonly StoryMessage[];
+  /** Greyed "someday" cards for upgrades that have not popped in yet. */
+  teasers?: readonly TeaserDef[];
+  /** Milestone-gated arrivals that wait to be greeted (see `VisitorDef`). */
+  visitors?: readonly VisitorDef[];
+  /** A countdown bar for the current phase, or null. Must only read. */
+  countdown?(run: RunState): CountdownView | null;
   prestige: PrestigeDef;
   /** Continuous production; dt is seconds, already clamped. */
   tick(run: RunState, dt: number): void;

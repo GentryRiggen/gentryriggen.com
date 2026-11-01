@@ -16,7 +16,13 @@
 import { genericBots, type BotSet } from "./bots";
 import { emberReward, prestigeUpgradeCost } from "./prestige";
 import { simulate, type SimResult } from "./sim";
-import type { NoveltyEvent, PhaseSpan, Trace, TraceSample } from "./trace";
+import {
+  SOFT_BEAT_GAP,
+  type NoveltyEvent,
+  type PhaseSpan,
+  type Trace,
+  type TraceSample,
+} from "./trace";
 import type { UniverseDef, UniverseSave } from "./types";
 
 const MIN = 60;
@@ -230,10 +236,25 @@ const fmt = (n: number, digits = 0): string =>
 const pct = (n: number): string => `${fmt(n * 100)}%`;
 const subMean = (...subs: number[]): number => mean(subs);
 
-/** Distinct moments (a phase start brings many events at one time). */
+/**
+ * Distinct moments (a phase start brings many events at one time). A soft
+ * event (a teaser, a later step of the same scene change) counts only when it
+ * stands at least `SOFT_BEAT_GAP` seconds clear of the beat before it, so a
+ * pile of them can't pad the cadence; a hard event always counts.
+ */
 function beats(events: readonly NoveltyEvent[]): number[] {
-  const times = [...new Set(events.map((e) => e.t))].sort((a, b) => a - b);
-  return times.filter((t, i) => i === 0 || t - times[i - 1] > SAME_BEAT);
+  const hard = new Set(events.filter((e) => !e.isSoft).map((e) => e.t));
+  const soft = new Set(events.filter((e) => e.isSoft).map((e) => e.t));
+  const times = [...new Set([...hard, ...soft])].sort((a, b) => a - b);
+  const counted: number[] = [];
+  for (const t of times) {
+    const last = counted[counted.length - 1];
+    if (last !== undefined && t - last <= SAME_BEAT) continue;
+    const isOnlySoft = !hard.has(t);
+    if (isOnlySoft && last !== undefined && t - last < SOFT_BEAT_GAP) continue;
+    counted.push(t);
+  }
+  return counted;
 }
 
 const gapsOf = (times: readonly number[]): number[] =>
@@ -308,20 +329,30 @@ const M3: MetricSpec = {
   id: "M3",
   name: "Visible goal queue",
   weight: 3,
-  band: "2-4 meaningful goals visible >= 80% of the time",
-  gate: "at least 1 goal >= 95% of the time",
+  band: "2-4 meaningful goals (greyed teasers included) visible >= 80% of the time",
+  gate: "something meaningful to want (a goal, a teaser or an affordable buy) >= 95% of the time",
 };
 const evalM3: PhaseEval = ({ samples }) => {
-  const counts = samples.map((s) => meaningfulCount(s.goals));
-  const n = counts.length;
-  const inBand = share(counts.filter((c) => c >= 2 && c <= 4).length, n);
-  const hasGoal = share(counts.filter((c) => c >= 1).length, n);
+  // A teaser is a goal the player can see and look forward to.
+  const goalCounts = samples.map(
+    (s) => meaningfulCount(s.goals) + s.teasers.length
+  );
+  const n = goalCounts.length;
+  const inBand = share(goalCounts.filter((c) => c >= 2 && c <= 4).length, n);
+  // Something to want: a goal, or a meaningful buy that is on screen now (a
+  // player with the coins in hand has plenty to want).
+  const wants = samples.map(
+    (s, i) => goalCounts[i] + meaningfulCount(s.affordable)
+  );
+  const hasGoal = share(wants.filter((c) => c >= 1).length, n);
   const gate = hasGoal >= 0.95;
   return {
     sub: bandScore(inBand, atLeast(0.8)),
     gate,
-    gateDetail: gate ? null : `a goal only ${pct(hasGoal)} of the time`,
-    headline: `2-4 goals ${pct(inBand)}, >=1 goal ${pct(hasGoal)}`,
+    gateDetail: gate
+      ? null
+      : `something to want only ${pct(hasGoal)} of the time`,
+    headline: `2-4 goals ${pct(inBand)}, something to want ${pct(hasGoal)}`,
     stats: { inBand, hasGoal },
   };
 };
@@ -676,9 +707,9 @@ const M12: MetricSpec = {
   name: "Dead time",
   weight: 4,
   band: "longest stretch without a meaningful event <= 150 s, p95 gap <= 100 s",
-  gate: "longest <= 180 s",
+  gate: "longest <= 180 s, and the shop (teasers included) is never empty more than 3% of the time",
 };
-const evalM12: PhaseEval = ({ span, novelty, purchases }) => {
+const evalM12: PhaseEval = ({ span, novelty, purchases, samples }) => {
   const times = [
     span.start,
     ...beats(novelty),
@@ -688,16 +719,26 @@ const evalM12: PhaseEval = ({ span, novelty, purchases }) => {
   const gaps = gapsOf(times);
   const longest = Math.max(0, ...gaps);
   const p95 = percentile(gaps, 0.95);
-  const gate = longest <= 180;
+  // The tapper buys the moment it can, so an empty shop is a real hole: the
+  // player looks at nothing, not even a greyed card to look forward to.
+  const empty = share(
+    samples.filter((s) => s.visible.length === 0 && s.teasers.length === 0)
+      .length,
+    samples.length
+  );
+  const gate = longest <= 180 && empty <= 0.03;
   return {
     sub: subMean(
       bandScore(longest, atMost(150, 180)),
-      bandScore(p95, atMost(100))
+      bandScore(p95, atMost(100)),
+      bandScore(empty, atMost(0.03, 0.1))
     ),
     gate,
-    gateDetail: gate ? null : `longest ${fmt(longest)} s > 180 s`,
-    headline: `longest ${fmt(longest)}s, p95 ${fmt(p95)}s`,
-    stats: { longest, p95 },
+    gateDetail: gate
+      ? null
+      : `longest ${fmt(longest)} s (max 180), empty shop ${pct(empty)} (max 3%)`,
+    headline: `longest ${fmt(longest)}s, p95 ${fmt(p95)}s, empty shop ${pct(empty)}`,
+    stats: { longest, p95, empty },
   };
 };
 
