@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { formatDuration } from "@/lib/ever-onward/engine/format";
-import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
+import {
+  hasStartedUniverse,
+  isUniverseUnlocked,
+} from "@/lib/ever-onward/engine/progress";
 import type { SaveData, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
 import { prestigeLabel } from "@/lib/ever-onward/engine/prestige";
@@ -127,6 +130,35 @@ function UniverseCard({
   );
 }
 
+/** A built universe that still waits for another one to be finished. */
+function RequirementCard({ def }: { def: UniverseDef }) {
+  return (
+    <li
+      data-testid={`lm-locked-${def.id}`}
+      aria-label={`${def.title}, locked`}
+      className="flex items-center gap-3 border-4 border-dashed border-slate-700 bg-slate-950/70 p-3 opacity-90 sm:p-4"
+    >
+      <div className="grid size-16 shrink-0 place-items-center border-2 border-slate-800 bg-slate-900/80">
+        <PixelSprite
+          rows={PADLOCK_ROWS}
+          palette={PADLOCK_COLORS}
+          className="h-8"
+        />
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <h2>
+          <RetroLabel
+            label={def.title}
+            className="text-[10px] leading-snug whitespace-normal! text-slate-300 sm:text-xs"
+          />
+        </h2>
+        <p className="font-mono text-xs text-slate-300">{def.goal}</p>
+        <p className="font-mono text-xs text-amber-200">{def.requires?.hint}</p>
+      </div>
+    </li>
+  );
+}
+
 function LockedCard({ locked }: { locked: LockedUniverse }) {
   return (
     <li
@@ -190,9 +222,18 @@ export default function Hub({ save, isRecovered, onPlay }: HubProps) {
           </p>
         )}
         <ul className="flex flex-col gap-4">
-          {PLAYABLE_UNIVERSES.map((def) => (
-            <UniverseCard key={def.id} def={def} save={save} onPlay={onPlay} />
-          ))}
+          {PLAYABLE_UNIVERSES.map((def) =>
+            isUniverseUnlocked(def, save) ? (
+              <UniverseCard
+                key={def.id}
+                def={def}
+                save={save}
+                onPlay={onPlay}
+              />
+            ) : (
+              <RequirementCard key={def.id} def={def} />
+            )
+          )}
           {LOCKED_UNIVERSES.map((locked) => (
             <LockedCard key={locked.id} locked={locked} />
           ))}

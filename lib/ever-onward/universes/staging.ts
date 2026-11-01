@@ -45,16 +45,20 @@ const ANNOUNCED: readonly LockedUniverse[] = [
 ];
 
 export function playableUniverses(
-  showsUnreleased: boolean
+  showsUnreleased: boolean,
+  unreleased: readonly string[] = UNRELEASED_IDS
 ): readonly UniverseDef[] {
   return ALL_UNIVERSES.filter(
-    (u) => showsUnreleased || !UNRELEASED_IDS.includes(u.id)
+    (u) => showsUnreleased || !unreleased.includes(u.id)
   );
 }
 
 export function lockedUniverses(
-  showsUnreleased: boolean
+  showsUnreleased: boolean,
+  unreleased: readonly string[] = UNRELEASED_IDS
 ): readonly LockedUniverse[] {
-  const playable = new Set(playableUniverses(showsUnreleased).map((u) => u.id));
+  const playable = new Set(
+    playableUniverses(showsUnreleased, unreleased).map((u) => u.id)
+  );
   return ANNOUNCED.filter((l) => !playable.has(l.id));
 }

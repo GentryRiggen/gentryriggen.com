@@ -23,6 +23,8 @@ interface EndingOverlayProps {
   Icon?: ComponentType<{ className?: string }>;
   /** Drawn above the lines instead of the flickering light. */
   art?: ReactNode;
+  /** One quiet line under the closing lines (not narrated), or null. */
+  afterword?: string | null;
   onContinue: () => void;
 }
 
@@ -44,6 +46,7 @@ export default function EndingOverlay({
   labelSingular,
   Icon = EmberIcon,
   art,
+  afterword,
   onContinue,
 }: EndingOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -97,6 +100,14 @@ export default function EndingOverlay({
           inert={!isReady}
           className={`lm-fade-up space-y-6 ${DELAYS[DELAYS.length - 1]}`}
         >
+          {afterword && (
+            <p
+              data-testid="lm-ending-afterword"
+              className="font-mono text-sm text-cyan-200"
+            >
+              {afterword}
+            </p>
+          )}
           <div
             data-testid="lm-ending-embers"
             className="flex flex-col items-center gap-2 border-2 border-orange-400/60 bg-orange-950/40 p-3"

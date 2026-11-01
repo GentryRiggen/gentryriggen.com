@@ -23,6 +23,10 @@ export const growUniverse: UniverseDef = {
   id: "grow",
   title: "Make It Grow",
   goal: "Help one small seed grow, and then keep helping.",
+  requires: {
+    universeId: "light",
+    hint: "Opens when you finish Keep the Light On.",
+  },
   resources: RESOURCES,
   phases: PHASES,
   upgrades: UPGRADES,

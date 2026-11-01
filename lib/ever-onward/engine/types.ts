@@ -243,6 +243,12 @@ export interface UniverseDef {
   title: string;
   /** One-line goal shown on the hub card. */
   goal: string;
+  /**
+   * The universe opens once the player has finished another one (any
+   * `completions > 0`, which a restart never takes away). `hint` is shown on
+   * the locked hub card.
+   */
+  requires?: { universeId: string; hint: string };
   resources: readonly ResourceDef[];
   phases: readonly PhaseDef[];
   upgrades: readonly UpgradeDef[];

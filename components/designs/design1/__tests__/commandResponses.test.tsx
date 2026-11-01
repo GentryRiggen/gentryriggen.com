@@ -19,6 +19,12 @@ describe("planes command", () => {
     }
   );
 
+  it("describes the series, not only the lighthouse", () => {
+    const result = getCommandResponse("onward", []);
+    render(<>{result.output}</>);
+    expect(screen.getByText(/series of incremental games/)).toBeInTheDocument();
+  });
+
   it("is listed in help", () => {
     const result = getCommandResponse("help", []);
     expect(result.output).toEqual(expect.stringMatching(/^\s+planes\s/m));

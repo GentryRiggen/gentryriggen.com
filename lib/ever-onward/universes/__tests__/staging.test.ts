@@ -9,6 +9,10 @@ describe("staging", () => {
       "smile",
     ]);
   });
+  it("never lists Grow as coming soon once it is released", () => {
+    expect(playableUniverses(false, []).map((u) => u.id)).toContain("grow");
+    expect(lockedUniverses(false, []).map((l) => l.id)).not.toContain("grow");
+  });
   it("never lists a universe as both playable and locked", () => {
     for (const shows of [true, false]) {
       const playable = new Set(playableUniverses(shows).map((u) => u.id));

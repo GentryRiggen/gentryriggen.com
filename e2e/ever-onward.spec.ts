@@ -63,10 +63,54 @@ test.describe("Ever Onward", () => {
   );
 
   test(
-    "Make It Grow plays in the e2e build",
+    "Make It Grow is locked until the Lighthouse is finished",
     { tag: "@smoke" },
     async ({ page }) => {
       await openHub(page);
+      await expect(page.getByTestId("lm-locked-grow")).toContainText(
+        "Opens when you finish Keep the Light On."
+      );
+      await expect(page.getByTestId("lm-play-grow")).toHaveCount(0);
+    }
+  );
+
+  test(
+    "a finished Lighthouse unlocks Make It Grow",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem(
+          "ever-onward:save",
+          JSON.stringify({
+            version: 1,
+            seenIntro: true,
+            universes: {
+              light: {
+                run: {
+                  phase: 0,
+                  time: 5,
+                  taps: 1,
+                  complete: false,
+                  resources: { coins: 0 },
+                  owned: {},
+                  mods: {},
+                  flags: {},
+                  revealed: ["lens"],
+                  story: ["coast-hello"],
+                  transitions: [],
+                  rng: 1,
+                },
+                best: 1200,
+                completions: 1,
+                embers: 3,
+                prestigeUpgrades: {},
+              },
+            },
+          })
+        );
+      });
+      await openHub(page);
+      await expect(page.getByTestId("lm-locked-grow")).toHaveCount(0);
       await expect(page.getByTestId("lm-play-grow")).toBeVisible();
       await page.getByTestId("lm-play-grow").click();
       await expect(page.getByTestId("lm-phase-overlay")).toContainText(

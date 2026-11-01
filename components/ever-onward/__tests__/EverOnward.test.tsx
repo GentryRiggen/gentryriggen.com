@@ -48,8 +48,10 @@ describe("Ever Onward hub", () => {
       screen.getByRole("heading", { name: "Keep the Light On" })
     ).toBeInTheDocument();
     expect(screen.getByTestId("lm-play-light")).toBeInTheDocument();
-    // Make It Grow is built but unreleased: it plays in dev and e2e builds.
-    expect(screen.getByTestId("lm-play-grow")).toBeInTheDocument();
+    // Make It Grow is built but unreleased: it shows in dev and e2e builds,
+    // locked until the Lighthouse is finished.
+    expect(screen.getByTestId("lm-locked-grow")).toBeInTheDocument();
+    expect(screen.queryByTestId("lm-play-grow")).not.toBeInTheDocument();
     for (const name of [
       "Make It Grow",
       "Build It Higher",

@@ -15,6 +15,7 @@ import {
   endRun,
   newUniverseSave,
 } from "@/lib/ever-onward/engine/prestige";
+import { isUniverseUnlocked } from "@/lib/ever-onward/engine/progress";
 import { loadSave, writeSave } from "@/lib/ever-onward/engine/save";
 import type {
   RunState,
@@ -149,7 +150,7 @@ export function useGame(): GameApi {
     (id: string) => {
       const target = getPlayableUniverse(id);
       const current = saveRef.current;
-      if (!target || !current) return;
+      if (!target || !current || !isUniverseUnlocked(target, current)) return;
       const existing = current.universes[id];
       const ready = existing
         ? sanitize(target, existing)

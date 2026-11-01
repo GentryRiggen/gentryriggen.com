@@ -480,6 +480,7 @@ export default function GameScreen({
           labelSingular={prestigeSingular(def)}
           Icon={ui.PrestigeIcon}
           art={EndingArt ? <EndingArt run={run} /> : undefined}
+          afterword={ui.ending.afterword?.(currentSave) ?? null}
           onContinue={onDismissOverlay}
         />
       )}

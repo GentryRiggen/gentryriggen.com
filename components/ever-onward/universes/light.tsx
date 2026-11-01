@@ -1,4 +1,6 @@
+import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
 import type { RunState } from "@/lib/ever-onward/engine/types";
+import { getPlayableUniverse } from "@/lib/ever-onward/universes";
 import {
   LIGHTHOUSE_DIM,
   LIGHTHOUSE_LIT,
@@ -72,7 +74,16 @@ export const LIGHT_UI: UniverseUi = {
   Opening: function LanternOpening({ run, onChoose }) {
     return <LanternPicker value={lanternOf(run)} onChange={onChoose} />;
   },
-  ending: { storyIds: ["last-remember", "last-end-1", "last-end-2"] },
+  ending: {
+    storyIds: ["last-remember", "last-end-1", "last-end-2"],
+    // Not narrated. Only while Make It Grow is out and still unplayed.
+    afterword: (save) => {
+      const grow = getPlayableUniverse("grow");
+      const saved = save.universes.grow;
+      if (!grow || (saved && hasStartedUniverse(saved))) return null;
+      return "A new universe has opened: Make It Grow.";
+    },
+  },
   tapLooks: LOOKS,
   hubSprite: {
     rows: LIGHTHOUSE_ROWS,

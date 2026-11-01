@@ -9,6 +9,7 @@ import {
   prestigeUpgradeCost,
 } from "@/lib/ever-onward/engine/prestige";
 import type { UniverseDef, UniverseSave } from "@/lib/ever-onward/engine/types";
+import { getPlayableUniverse } from "@/lib/ever-onward/universes";
 import { uiFor } from "../universes";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -25,6 +26,14 @@ interface EmberPanelProps {
   universe: UniverseSave;
   onBuy: (id: string) => void;
   onRestart: () => void;
+}
+
+/** What waits after finishing a universe; Grow is the last one built. */
+function nextUniverseLine(def: UniverseDef): string | null {
+  if (def.id === "grow") return null;
+  return getPlayableUniverse("grow")
+    ? "Make It Grow is open. Find it on the hub."
+    : "Another universe is coming soon.";
 }
 
 /** Embers, permanent upgrades and the restart button (finished or not). */
@@ -60,9 +69,11 @@ export default function EmberPanel({
             {universe.best !== null &&
               ` Your best time is ${formatDuration(universe.best)}.`}
           </p>
-          <p className="font-mono text-sm text-slate-200">
-            Universe 2 is coming soon.
-          </p>
+          {nextUniverseLine(def) && (
+            <p className="font-mono text-sm text-slate-200">
+              {nextUniverseLine(def)}
+            </p>
+          )}
         </div>
       )}
       <div className="flex items-baseline justify-between">
