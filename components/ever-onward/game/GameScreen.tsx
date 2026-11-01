@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { canAfford, upgradeCost } from "@/lib/ever-onward/engine/engine";
+import { formatNumber } from "@/lib/ever-onward/engine/format";
+import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
 import { canRestart } from "@/lib/ever-onward/engine/prestige";
 import type {
   SaveData,
@@ -15,12 +18,19 @@ import { cardClass, focusRingClass, secondaryButtonClass } from "../styles";
 import BackupPanel from "./BackupPanel";
 import EmberPanel from "./EmberPanel";
 import EndingOverlay from "./EndingOverlay";
+import NextUpgradeBar from "./NextUpgradeBar";
 import PhaseOverlay from "./PhaseOverlay";
 import Resources from "./Resources";
+import type { Spend } from "./SpendFloater";
+import StickyHud from "./StickyHud";
 import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
-import UpgradeList from "./UpgradeList";
+import UpgradeList, { upgradeElementId } from "./UpgradeList";
 import type { Overlay } from "./useGame";
+import { useIncomeRate } from "./useIncomeRate";
+import { useNextUpgrade } from "./useNextUpgrade";
+import { useOutOfView } from "./useOutOfView";
+import { useReducedMotion } from "./useAnimatedNumber";
 
 interface GameScreenProps {
   def: UniverseDef;
@@ -59,6 +69,41 @@ export default function GameScreen({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isStorm = run.phase === 0 && (run.resources.storm ?? 0) > 0;
   const showsEmbers = run.complete || universe.embers > 0 || canRestart(run);
+
+  const primaryId = primaryResourceId(def, run);
+  const primaryValue = run.resources[primaryId] ?? 0;
+  const primaryLabel =
+    def.resources.find((r) => r.id === primaryId)?.label ?? primaryId;
+  const rate = useIncomeRate(primaryValue, primaryId);
+  const readoutRef = useRef<HTMLDivElement>(null);
+  // On phones the scene (36% of the screen) covers the top of the page.
+  const isHudShown = useOutOfView(readoutRef, "36%");
+  const isReduced = useReducedMotion();
+  const next = useNextUpgrade(def, run);
+  const [spend, setSpend] = useState<Spend | null>(null);
+
+  useEffect(() => {
+    if (!spend) return;
+    const timer = window.setTimeout(() => setSpend(null), 900);
+    return () => window.clearTimeout(timer);
+  }, [spend]);
+
+  const handleBuy = (id: string) => {
+    const upgrade = def.upgrades.find((u) => u.id === id);
+    if (upgrade && upgrade.currency === primaryId && canAfford(run, upgrade)) {
+      const text = `-${formatNumber(upgradeCost(run, upgrade))}`;
+      setSpend((s) => ({ id: (s?.id ?? 0) + 1, text }));
+    }
+    onBuy(id);
+  };
+
+  const handleSelectNext = () => {
+    if (!next) return;
+    document.getElementById(upgradeElementId(next.upgrade.id))?.scrollIntoView({
+      behavior: isReduced ? "auto" : "smooth",
+      block: "center",
+    });
+  };
 
   const endingLines = ENDING_STORY_IDS.filter((id) =>
     run.story.includes(id)
@@ -151,10 +196,31 @@ export default function GameScreen({
             onTap={onTap}
           />
         )}
-        <Resources def={def} run={run} />
+        <Resources
+          def={def}
+          run={run}
+          primaryId={primaryId}
+          rate={rate}
+          spend={spend}
+          primaryRef={readoutRef}
+        />
         <StoryLog def={def} run={run} />
         {!run.complete && (
-          <UpgradeList key={run.phase} def={def} run={run} onBuy={onBuy} />
+          <div className="space-y-2">
+            {next && (
+              <NextUpgradeBar
+                next={next}
+                onSelect={handleSelectNext}
+                testId="lm-next"
+              />
+            )}
+            <UpgradeList
+              key={run.phase}
+              def={def}
+              run={run}
+              onBuy={handleBuy}
+            />
+          </div>
         )}
         <p className="text-center text-xs text-slate-500 dark:text-slate-500">
           <Link href="/" className={`rounded underline ${focusRingClass}`}>
@@ -162,6 +228,22 @@ export default function GameScreen({
           </Link>
         </p>
       </main>
+
+      {!run.complete && (
+        <StickyHud
+          isShown={isHudShown}
+          isCovered={overlay !== null}
+          resourceId={primaryId}
+          resourceLabel={primaryLabel}
+          value={primaryValue}
+          rate={rate}
+          spend={spend}
+          next={next}
+          tapLabel={phase.manualLabel}
+          onTap={onTap}
+          onSelectNext={handleSelectNext}
+        />
+      )}
 
       {overlay === "phase" && (
         <PhaseOverlay

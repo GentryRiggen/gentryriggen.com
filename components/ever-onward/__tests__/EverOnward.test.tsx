@@ -80,7 +80,9 @@ describe("Ever Onward game", () => {
     expect(screen.getByTestId("lm-res-coins")).toHaveTextContent("0");
 
     await user.click(screen.getByTestId("lm-tap"));
-    expect(screen.getByTestId("lm-res-coins")).not.toHaveTextContent(/^0$/);
+    // The lamp's oil bill can eat a lone coin before the counter shows it,
+    // so look for the tap's floating gain.
+    expect(await screen.findByText(/^\+\d+$/)).toBeInTheDocument();
   });
 
   it("buys an upgrade with coins", async () => {

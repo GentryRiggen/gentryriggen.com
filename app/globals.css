@@ -476,6 +476,63 @@ html:has(.jim-app) body {
   }
 }
 
+@keyframes lmRise {
+  0% {
+    color: rgb(34 197 94);
+    transform: scale(1);
+  }
+  25% {
+    color: rgb(34 197 94);
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes lmFall {
+  0% {
+    color: rgb(248 113 113);
+    transform: scale(1);
+  }
+  25% {
+    color: rgb(248 113 113);
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes lmSpend {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+
+@keyframes lmBuy {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.05);
+  }
+  65% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .lm-pop {
   animation: lmPop 0.45s ease-out both;
 }
@@ -494,6 +551,22 @@ html:has(.jim-app) body {
 
 .lm-press {
   animation: lmPress 0.18s ease-out;
+}
+
+.lm-rise {
+  animation: lmRise 0.6s ease-out;
+}
+
+.lm-fall {
+  animation: lmFall 0.6s ease-out;
+}
+
+.lm-spend {
+  animation: lmSpend 0.9s ease-out both;
+}
+
+.lm-buy {
+  animation: lmBuy 0.4s ease-out;
 }
 
 .lm-pop-svg {
@@ -608,6 +681,10 @@ html:has(.jim-app) body {
   .lm-fade-up,
   .lm-float,
   .lm-press,
+  .lm-rise,
+  .lm-fall,
+  .lm-spend,
+  .lm-buy,
   .lm-pop-svg,
   .lm-sweep,
   .lm-twinkle,
