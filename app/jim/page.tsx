@@ -27,10 +27,18 @@ export const metadata: Metadata = {
   // read the apple- prefixed tag. Replaces the layout's `other`, which asks
   // for a translucent status bar.
   other: { "apple-mobile-web-app-capable": "yes" },
-  // Page icons replace the layout's, so the favicon is repeated here. Versioned file names: iOS and
-  // Safari keep an icon by its URL, so a new icon gets a new name.
+  // Page icons replace the layout's: Jim's tab shows the Glow Pal, not the site's icon. Versioned file
+  // names: iOS and Safari keep an icon by its URL, so a new icon gets a new name.
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/jim-icons/glow-pal.svg", type: "image/svg+xml" },
+      {
+        url: "/jim-icons/glow-pal-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/jim-icons/glow-pal.svg",
     apple: [
       {
         url: "/jim-icons/glow-pal-180.png",
