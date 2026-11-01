@@ -283,3 +283,356 @@ html:has(.jim-app) body {
 .jim-app :is(a, button):focus-visible {
   outline-color: var(--color-ayu-accent);
 }
+
+/* Little Machines (/little-machines): scene motion and UI pops. Dynamic
+   values come from SVG attributes; these classes only add motion. */
+@keyframes lmPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lmGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 16px 3px rgb(251 191 36 / 0.55);
+  }
+}
+
+@keyframes lmFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lmFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -14px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -70px) scale(1);
+  }
+}
+
+@keyframes lmPress {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes lmSweep {
+  0% {
+    transform: rotate(-16deg);
+  }
+  100% {
+    transform: rotate(9deg);
+  }
+}
+
+@keyframes lmTwinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lmDrift {
+  0% {
+    opacity: 0;
+    transform: translateX(150px);
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-210px);
+  }
+}
+
+@keyframes lmBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes lmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lmStreak {
+  0% {
+    opacity: 0;
+    transform: translateX(34px);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(260px);
+  }
+}
+
+@keyframes lmRain {
+  0% {
+    transform: translate(0, -30px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-14px, 150px);
+    opacity: 0;
+  }
+}
+
+@keyframes lmLightning {
+  0%,
+  86%,
+  90%,
+  94%,
+  100% {
+    opacity: 0;
+  }
+  87% {
+    opacity: 0.55;
+  }
+  92% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes lmFlicker {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  30% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.78;
+  }
+  75% {
+    opacity: 1;
+  }
+}
+
+@keyframes lmApproach {
+  0% {
+    opacity: 0;
+    transform: translateX(120px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.lm-pop {
+  animation: lmPop 0.45s ease-out both;
+}
+
+.lm-glow {
+  animation: lmGlow 1.6s ease-in-out infinite;
+}
+
+.lm-fade-up {
+  animation: lmFadeUp 0.9s ease-out both;
+}
+
+.lm-float {
+  animation: lmFloat 0.9s ease-out both;
+}
+
+.lm-press {
+  animation: lmPress 0.18s ease-out;
+}
+
+.lm-pop-svg {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmPop 0.6s ease-out both;
+}
+
+.lm-sweep {
+  animation: lmSweep 5.5s ease-in-out infinite alternate;
+}
+
+.lm-twinkle {
+  animation: lmTwinkle 3s ease-in-out infinite;
+}
+
+.lm-twinkle-b {
+  animation: lmTwinkle 4.3s ease-in-out -1.2s infinite;
+}
+
+.lm-twinkle-c {
+  animation: lmTwinkle 2.4s ease-in-out -0.7s infinite;
+}
+
+.lm-bob {
+  animation: lmBob 3.2s ease-in-out infinite;
+}
+
+.lm-flicker {
+  animation: lmFlicker 2.6s ease-in-out infinite;
+}
+
+.lm-lightning {
+  animation: lmLightning 6s linear infinite;
+}
+
+.lm-rain {
+  animation: lmRain 0.9s linear infinite;
+}
+
+.lm-rain-b {
+  animation: lmRain 1.15s linear -0.4s infinite;
+}
+
+.lm-rain-c {
+  animation: lmRain 0.75s linear -0.2s infinite;
+}
+
+.lm-ship-a {
+  animation: lmDrift 22s linear -2s infinite;
+}
+
+.lm-ship-b {
+  animation: lmDrift 27s linear -9s infinite;
+}
+
+.lm-ship-c {
+  animation: lmDrift 19s linear -14s infinite;
+}
+
+.lm-ship-d {
+  animation: lmDrift 31s linear -20s infinite;
+}
+
+.lm-ship-e {
+  animation: lmDrift 24s linear -5s infinite;
+}
+
+.lm-ship-f {
+  animation: lmDrift 29s linear -17s infinite;
+}
+
+.lm-ship-g {
+  animation: lmDrift 21s linear -11s infinite;
+}
+
+.lm-ship-h {
+  animation: lmDrift 33s linear -26s infinite;
+}
+
+.lm-orbit-a {
+  animation: lmSpin 16s linear infinite;
+}
+
+.lm-orbit-b {
+  animation: lmSpin 26s linear infinite reverse;
+}
+
+.lm-orbit-c {
+  animation: lmSpin 38s linear infinite;
+}
+
+.lm-probe-a {
+  animation: lmStreak 5s ease-in -1s infinite;
+}
+
+.lm-probe-b {
+  animation: lmStreak 6.5s ease-in -3.5s infinite;
+}
+
+.lm-probe-c {
+  animation: lmStreak 4.2s ease-in -2.2s infinite;
+}
+
+.lm-approach {
+  animation: lmApproach 14s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-pop,
+  .lm-glow,
+  .lm-fade-up,
+  .lm-float,
+  .lm-press,
+  .lm-pop-svg,
+  .lm-sweep,
+  .lm-twinkle,
+  .lm-twinkle-b,
+  .lm-twinkle-c,
+  .lm-bob,
+  .lm-flicker,
+  .lm-lightning,
+  .lm-rain,
+  .lm-rain-b,
+  .lm-rain-c,
+  .lm-ship-a,
+  .lm-ship-b,
+  .lm-ship-c,
+  .lm-ship-d,
+  .lm-ship-e,
+  .lm-ship-f,
+  .lm-ship-g,
+  .lm-ship-h,
+  .lm-orbit-a,
+  .lm-orbit-b,
+  .lm-orbit-c,
+  .lm-probe-a,
+  .lm-probe-b,
+  .lm-probe-c,
+  .lm-approach {
+    animation: none;
+  }
+}
