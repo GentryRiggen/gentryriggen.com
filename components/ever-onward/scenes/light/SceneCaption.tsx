@@ -9,7 +9,7 @@ export function captionFor(info: LightSceneInfo): string {
     case "coast":
       return `Ships guided: ${num(info.ships)} · Lights ${info.lighthouses}/8`;
     case "night":
-      return `Cities lit: ${num(info.cities)}/100 · Power ${Math.round(
+      return `Cities lit: ${num(info.cities > 0 ? Math.max(1, info.cities) : 0)}/100 · Power ${Math.round(
         info.powered * 100
       )}%${
         info.gridSteadiness < 0.7
