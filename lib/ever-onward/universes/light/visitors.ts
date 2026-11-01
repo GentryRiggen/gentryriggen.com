@@ -12,6 +12,24 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
 const whole = (n: number): string => formatNumber(Math.max(1, Math.floor(n)));
 
+/** What each phase's income is paid in, by phase index (the last has none). */
+const INCOME_RESOURCE = ["coins", "power", "energy"] as const;
+
+/**
+ * Every visitor's basic gift is a small slice of what the player earns *now*,
+ * in the currency of the phase they are in: a visitor who waited into a later
+ * part still brings something that part can use.
+ */
+function giveIncome(run: RunState): void {
+  const id = INCOME_RESOURCE[run.phase];
+  if (id) run.resources[id] += visitorGift(run);
+}
+
+const incomeText = (run: RunState): string => {
+  const id = INCOME_RESOURCE[run.phase];
+  return id ? `${whole(visitorGift(run))} ${id}` : "a warm thank-you";
+};
+
 /**
  * Gentle one-off arrivals. Each one comes when a milestone is reached (never
  * a timer), waits as long as it takes until the player greets it, gives a
@@ -24,19 +42,20 @@ export const VISITORS: readonly VisitorDef[] = [
     phase: PHASE_COAST,
     name: "A mail boat",
     arrivesWhen: (run) => owned(run, "keeper") >= 6,
-    giftText: (run) => `${whole(visitorGift(run))} coins`,
-    give: (run) => {
-      run.resources.coins += visitorGift(run);
-    },
+    giftText: incomeText,
+    give: giveIncome,
   },
   {
     id: "visitor-whales",
     phase: PHASE_COAST,
     name: "Whale-watchers",
     arrivesWhen: (run) => owned(run, "keeper") >= 8,
-    giftText: () => "a full tank of lamp oil",
+    giftText: (run) =>
+      run.phase === 0 ? "a full tank of lamp oil" : incomeText(run),
     give: (run) => {
-      run.resources.oil = Math.max(run.resources.oil, tankCapacity(run));
+      if (run.phase === 0)
+        run.resources.oil = Math.max(run.resources.oil, tankCapacity(run));
+      else giveIncome(run);
     },
   },
   {
@@ -44,10 +63,13 @@ export const VISITORS: readonly VisitorDef[] = [
     phase: PHASE_NIGHT,
     name: "The town fair",
     arrivesWhen: (run) => owned(run, "gen3") >= 4,
-    giftText: (run) => `${whole(visitorGift(run))} power and a steady grid`,
+    giftText: (run) =>
+      run.phase === 1
+        ? `${incomeText(run)} and a steady grid`
+        : incomeText(run),
     give: (run) => {
-      run.resources.power += visitorGift(run);
-      run.resources.grid = 100;
+      giveIncome(run);
+      if (run.phase === 1) run.resources.grid = 100;
     },
   },
   {
@@ -55,10 +77,8 @@ export const VISITORS: readonly VisitorDef[] = [
     phase: PHASE_SKY,
     name: "A comet",
     arrivesWhen: (run) => owned(run, "collector") >= 4,
-    giftText: (run) => `${whole(visitorGift(run))} energy`,
-    give: (run) => {
-      run.resources.energy += visitorGift(run);
-    },
+    giftText: incomeText,
+    give: giveIncome,
   },
   {
     id: "visitor-signal",
@@ -66,10 +86,12 @@ export const VISITORS: readonly VisitorDef[] = [
     name: "A strange signal",
     arrivesWhen: (run) => res(run, "stars") <= 970 && owned(run, "probe") >= 1,
     giftText: (run) =>
-      `${whole(visitorGift(run))} energy and a true course for the fleet`,
+      run.phase === 2
+        ? `${incomeText(run)} and a true course for the fleet`
+        : incomeText(run),
     give: (run) => {
-      run.resources.energy += visitorGift(run);
-      run.resources.heading = 100;
+      giveIncome(run);
+      if (run.phase === 2) run.resources.heading = 100;
     },
   },
 ];

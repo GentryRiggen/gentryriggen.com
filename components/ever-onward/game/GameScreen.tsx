@@ -281,6 +281,16 @@ export default function GameScreen({
             Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
           </p>
         )}
+        {visitors.map((v) => (
+          <VisitorCard
+            key={v.id}
+            universeId={def.id}
+            visitor={v}
+            text={storyText.get(v.id) ?? ""}
+            giftText={v.giftText(run)}
+            onGreet={handleGreet}
+          />
+        ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
         <Resources
           def={def}
@@ -293,16 +303,6 @@ export default function GameScreen({
           primaryRef={readoutRef}
         />
         {countdown && <CountdownBar view={countdown} />}
-        {visitors.map((v) => (
-          <VisitorCard
-            key={v.id}
-            universeId={def.id}
-            visitor={v}
-            text={storyText.get(v.id) ?? ""}
-            giftText={v.giftText(run)}
-            onGreet={handleGreet}
-          />
-        ))}
         <StoryLog def={def} run={run} />
         {!run.complete && (
           <div className="space-y-2">

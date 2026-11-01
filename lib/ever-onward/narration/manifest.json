@@ -79,6 +79,26 @@
     "hash": "2f5c9660e6fe",
     "durationGuess": 12
   },
+  "light/coast-trio": {
+    "file": "/ever-onward/voice/light/coast-trio.mp3",
+    "hash": "94ce4f034845",
+    "durationGuess": 9
+  },
+  "light/coast-crew": {
+    "file": "/ever-onward/voice/light/coast-crew.mp3",
+    "hash": "14383aaafcf1",
+    "durationGuess": 10
+  },
+  "light/coast-bell": {
+    "file": "/ever-onward/voice/light/coast-bell.mp3",
+    "hash": "7a292e9ba35c",
+    "durationGuess": 10
+  },
+  "light/coast-ferry": {
+    "file": "/ever-onward/voice/light/coast-ferry.mp3",
+    "hash": "58fbf63493fc",
+    "durationGuess": 7
+  },
   "light/coast-almost": {
     "file": "/ever-onward/voice/light/coast-almost.mp3",
     "hash": "e411da0e6b98",
@@ -129,6 +149,16 @@
     "hash": "41fc3784ce03",
     "durationGuess": 7
   },
+  "light/night-steam-row": {
+    "file": "/ever-onward/voice/light/night-steam-row.mp3",
+    "hash": "3ce02b01fbed",
+    "durationGuess": 9
+  },
+  "light/night-smart": {
+    "file": "/ever-onward/voice/light/night-smart.mp3",
+    "hash": "fdbd91e0e532",
+    "durationGuess": 9
+  },
   "light/night-news-3": {
     "file": "/ever-onward/voice/light/night-news-3.mp3",
     "hash": "fabc49a1772f",
@@ -169,6 +199,16 @@
     "hash": "9bdc93dd9813",
     "durationGuess": 9
   },
+  "light/sky-sail": {
+    "file": "/ever-onward/voice/light/sky-sail.mp3",
+    "hash": "3372906e3923",
+    "durationGuess": 9
+  },
+  "light/sky-wide-arms": {
+    "file": "/ever-onward/voice/light/sky-wide-arms.mp3",
+    "hash": "91b138d342d0",
+    "durationGuess": 9
+  },
   "light/sky-first-star": {
     "file": "/ever-onward/voice/light/sky-first-star.mp3",
     "hash": "935b83f558bd",
@@ -199,6 +239,31 @@
     "hash": "3a5ab9b06684",
     "durationGuess": 10
   },
+  "light/visitor-mail": {
+    "file": "/ever-onward/voice/light/visitor-mail.mp3",
+    "hash": "785b7470e91c",
+    "durationGuess": 10
+  },
+  "light/visitor-whales": {
+    "file": "/ever-onward/voice/light/visitor-whales.mp3",
+    "hash": "dfba70f5f827",
+    "durationGuess": 11
+  },
+  "light/visitor-fair": {
+    "file": "/ever-onward/voice/light/visitor-fair.mp3",
+    "hash": "20f3f481b708",
+    "durationGuess": 12
+  },
+  "light/visitor-comet": {
+    "file": "/ever-onward/voice/light/visitor-comet.mp3",
+    "hash": "b4323a7026e9",
+    "durationGuess": 10
+  },
+  "light/visitor-signal": {
+    "file": "/ever-onward/voice/light/visitor-signal.mp3",
+    "hash": "e99542558b75",
+    "durationGuess": 10
+  },
   "light/last-hello": {
     "file": "/ever-onward/voice/light/last-hello.mp3",
     "hash": "ebbfac295e60",
@@ -221,8 +286,8 @@
   },
   "light/last-quiet": {
     "file": "/ever-onward/voice/light/last-quiet.mp3",
-    "hash": "d41ed98ed45d",
-    "durationGuess": 13
+    "hash": "4d0dd0859c36",
+    "durationGuess": 18
   },
   "light/last-one": {
     "file": "/ever-onward/voice/light/last-one.mp3",

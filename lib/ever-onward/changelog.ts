@@ -17,6 +17,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.6.0",
+    date: "2026-11-01",
+    title: "Visitors, a steady glow, and your own lantern",
+    highlights: [
+      "Visitors stop by now: a mail boat, whale-watchers, the town fair, a comet and a strange signal. They wait for you, bring a small gift, and go in the Logbook in the Menu. Nothing can be missed",
+      "Greyed Someday cards show what is coming and what unlocks it",
+      "The Sky has a star countdown bar, with ticks where more relays wake up",
+      "Steady glow: keep the grid or the fleet steady and the cities sparkle and the probes fly in formation, paying 15% more. Letting them wobble just loses the bonus",
+      "Sun collectors now come in six bigger steps, and a mirror field grows on the ground at three and six",
+      "More little stories along the way, so there is always something new to read",
+      "The Last Light: steering the boat true makes letting go go faster, and a low flame dims the night",
+      "At the start of a game you pick a lantern colour. The very last little boat carries it home. It stays on your device",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-11-01",
     title: "More to juggle, and a new ending",

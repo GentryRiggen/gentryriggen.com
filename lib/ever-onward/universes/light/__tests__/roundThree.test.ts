@@ -57,6 +57,19 @@ describe("visitors", () => {
     expect(greetVisitor(def, greeted, "visitor-mail")).toBe(greeted);
   });
 
+  it("pay a late hello in the currency of the part they are greeted in", () => {
+    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const later: RunState = {
+      ...here,
+      phase: 2,
+      resources: { ...here.resources, energy: 0, coins: 5 },
+      owned: { ...here.owned, aim: 2, collector: 3 },
+    };
+    const greeted = greetVisitor(def, later, "visitor-mail");
+    expect(greeted.resources.coins).toBe(5);
+    expect(greeted.resources.energy).toBeGreaterThan(0);
+  });
+
   it("only come in their own phase", () => {
     const run = tick(def, withOwned(newRun(def), { collector: 6 }), 1);
     expect(waitingVisitors(def, run)).toHaveLength(0);

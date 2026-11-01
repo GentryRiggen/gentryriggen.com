@@ -65,6 +65,12 @@ describe("visitors", () => {
     expect(onGreet).toHaveBeenCalledWith("visitor-mail");
   });
 
+  it("keeps a waiting visitor's line on its card, not in the story log too", () => {
+    renderScreen(withFlags({ "here-visitor-mail": true }));
+    const log = screen.getByRole("region", { name: "Story" });
+    expect(within(log).queryByText(/A mail boat toots hello/)).toBeNull();
+  });
+
   it("shows no card once the visitor is greeted, and logs it in the menu", async () => {
     renderScreen(
       withFlags({ "here-visitor-mail": true, "met-visitor-mail": true })

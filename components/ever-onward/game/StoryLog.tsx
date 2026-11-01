@@ -1,3 +1,4 @@
+import { waitingVisitors } from "@/lib/ever-onward/engine/engine";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 
 import { storyClipId } from "@/lib/ever-onward/narration/lines";
@@ -21,7 +22,11 @@ const FADE = [
 
 export default function StoryLog({ def, run }: StoryLogProps) {
   const texts = new Map(def.story.map((m) => [m.id, m.text]));
+  // A waiting visitor shows its line on its own card; it joins the log once
+  // the player has said hello.
+  const onCard = new Set(waitingVisitors(def, run).map((v) => v.id));
   const latest = run.story
+    .filter((id) => !onCard.has(id))
     .slice(-VISIBLE)
     .reverse()
     .flatMap((id) => {
