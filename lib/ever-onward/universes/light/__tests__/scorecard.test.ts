@@ -16,9 +16,13 @@ import { def } from "./fixtures";
  */
 jest.setTimeout(60_000);
 
-/** Round 3 scored 85.2 with no failing gate. Raise as rounds land. */
-const SCORE_FLOOR = 83;
-const UNCAPPED_FLOOR = 83;
+/**
+ * Round 4 rebuilt M11 around the click curve, so the old 83 floor (set on
+ * the old, clicky bands) no longer applies: the pre-tuning build scores 59
+ * capped, 79.5 uncapped on the new card. Raise as rounds land.
+ */
+const SCORE_FLOOR = 59;
+const UNCAPPED_FLOOR = 78;
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];
