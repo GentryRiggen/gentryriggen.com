@@ -27,6 +27,7 @@ import type {
   UniverseDef,
   UniverseSave,
 } from "@/lib/ever-onward/engine/types";
+import PlayOnSilentToggle from "../audio/PlayOnSilentToggle";
 import SoundControls from "../audio/SoundControls";
 import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import { introClipId } from "@/lib/ever-onward/narration/lines";
@@ -334,6 +335,7 @@ export default function GameScreen({
               Your game saves on this device and pauses when you leave.
             </p>
             <Logbook def={def} run={run} />
+            <PlayOnSilentToggle />
             <NarrationSettings />
             <BackupPanel
               save={currentSave}

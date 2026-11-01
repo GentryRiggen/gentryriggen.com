@@ -1,4 +1,4 @@
-import { mixWithOtherAudio } from "@/components/game-audio/audioSession";
+import { applyAudioSession } from "@/components/game-audio/audioSession";
 import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
 import { midiToHz, type MusicSpec } from "../../game-audio/music";
 import {
@@ -119,7 +119,7 @@ function createSynth() {
   function build(): Engine | null {
     const Ctor = audioContextConstructor();
     if (!Ctor) return null;
-    mixWithOtherAudio();
+    applyAudioSession();
     try {
       const ctx = new Ctor();
       const master = ctx.createGain();

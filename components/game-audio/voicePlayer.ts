@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { mixWithOtherAudio } from "./audioSession";
+import { applyAudioSession } from "./audioSession";
 
 /** A recorded line: where its MP3 lives, under public/. */
 export interface VoiceClip {
@@ -65,7 +65,7 @@ function contextConstructor(): AudioContextConstructor | undefined {
  * Clips play through Web Audio, not an <audio> element. On iOS a media
  * element claims the phone's "Now Playing" slot and pauses the player's
  * podcast or music, even for a split second of silence; Web Audio under an
- * ambient audio session (see `mixWithOtherAudio`) mixes with it instead.
+ * ambient audio session (see `applyAudioSession`) mixes with it instead.
  * Browsers without Web Audio (and jsdom) fall back to one shared element.
  */
 export function createVoicePlayer({
@@ -108,7 +108,7 @@ export function createVoicePlayer({
     const Ctor = contextConstructor();
     if (!Ctor) return null;
     try {
-      mixWithOtherAudio();
+      applyAudioSession();
       ctx = new Ctor();
       wireVisibility();
       return ctx;
@@ -161,7 +161,7 @@ export function createVoicePlayer({
   /** The fallback element, only where Web Audio is missing. */
   function element(): HTMLAudioElement {
     if (audio) return audio;
-    mixWithOtherAudio();
+    applyAudioSession();
     audio = new Audio();
     audio.preload = "auto";
     audio.addEventListener("ended", () => finish(playingId));
