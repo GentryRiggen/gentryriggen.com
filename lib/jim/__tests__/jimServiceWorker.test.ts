@@ -330,6 +330,26 @@ describe("push", () => {
   });
 
   it.each([
+    ["jim-quiz", "jim-quiz"],
+    ["Jim-Quiz", "jim-morning"],
+    ["other-tag", "jim-morning"],
+    [7, "jim-morning"],
+  ])(
+    "uses the payload's tag %p only when it's a jim- tag",
+    async (tag, want) => {
+      const worker = loadWorker();
+      await worker.dispatch("push", {
+        data: pushData({ title: "Quiz time", body: "b", url: "/jim", tag }),
+      });
+      const [, options] = worker.showNotification.mock.calls[0] as unknown as [
+        string,
+        { tag: string },
+      ];
+      expect(options.tag).toBe(want);
+    }
+  );
+
+  it.each([
     ["no payload", undefined],
     ["a payload that isn't JSON", pushData("not json{")],
     ["a payload with no title", pushData({ body: "x" })],

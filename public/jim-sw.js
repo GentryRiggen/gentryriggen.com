@@ -297,7 +297,12 @@ function notificationFor(data) {
       body: ok && typeof payload.body === "string" ? payload.body : "",
       icon: ICON,
       badge: ICON,
-      tag: NOTIFICATION_TAG,
+      tag:
+        ok &&
+        typeof payload.tag === "string" &&
+        /^jim-[a-z]{1,20}$/.test(payload.tag)
+          ? payload.tag
+          : NOTIFICATION_TAG,
       data: { url: targetUrl(ok ? payload.url : null) },
     },
   };
