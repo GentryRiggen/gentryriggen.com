@@ -169,6 +169,16 @@
     "hash": "ad17a1d7e695",
     "durationGuess": 13
   },
+  "light/night-weather": {
+    "file": "/ever-onward/voice/light/night-weather.mp3",
+    "hash": "f458b1b24c2e",
+    "durationGuess": 19
+  },
+  "light/night-vane": {
+    "file": "/ever-onward/voice/light/night-vane.mp3",
+    "hash": "25d1bf373830",
+    "durationGuess": 14
+  },
   "light/night-quiet": {
     "file": "/ever-onward/voice/light/night-quiet.mp3",
     "hash": "7c509bc540ce",

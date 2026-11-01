@@ -140,7 +140,8 @@ function ActionCard({
 
 /** Buttons for the decisions a universe asks the player to make by hand. */
 export default function ActionPanel({ def, run, onAct }: ActionPanelProps) {
-  const actions = visibleActions(def, run);
+  // Actions with a panel of their own (the weather desk) are drawn there.
+  const actions = visibleActions(def, run).filter((a) => !a.isInline);
   if (actions.length === 0 || run.complete) return null;
   return (
     <section aria-label="Actions" className="space-y-3">

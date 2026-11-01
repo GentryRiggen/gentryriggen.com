@@ -193,6 +193,18 @@ const nightStory: StoryMessage[] = [
     text: "NEWS: ...",
   },
   {
+    id: "night-weather",
+    phase: PHASE_NIGHT,
+    when: (run) => run.flags["weather-open"] === true,
+    text: "A weather balloon bumps your window with a note: storms roll in from the sea, and three towns would love some sandbags. You pin a map to the wall. The rain does not read maps, but it does seem to be reading you.",
+  },
+  {
+    id: "night-vane",
+    phase: PHASE_NIGHT,
+    when: (run) => owned(run, "weather-vane") >= 1,
+    text: "A weather vane goes up on the roof. It spins once, points at the likeliest town, and sits very still. You get the feeling it has done this before. Many times. Somewhere else.",
+  },
+  {
     id: "night-quiet",
     phase: PHASE_NIGHT,
     when: (run) => res(run, "night") <= 2,

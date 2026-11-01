@@ -29,6 +29,8 @@ export const COSTS: Record<string, number> = {
   "relay-1": 6000,
   "relay-2": 12000,
   "relay-3": 20000,
+  "storm-crews": 2500,
+  "weather-vane": 15000,
   "nav-1": 2000,
   "nav-2": 7000,
   "mirror-1": 994,

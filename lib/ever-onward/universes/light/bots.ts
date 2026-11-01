@@ -2,6 +2,14 @@ import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { barrelOil, tankCapacity } from "./tick";
+import {
+  frontsSoFar,
+  chanceOf,
+  isShielded,
+  shieldActionId,
+  shieldedCount,
+  shieldSlots,
+} from "./weather";
 
 /** The smallest share of the tank a bot bothers to buy in one click. */
 const MIN_BARREL_SHARE = 0.4;
@@ -66,6 +74,28 @@ const looksAfterThings =
     return picks;
   };
 
+/**
+ * Shields the likeliest town(s) while the forecast stands. A bot with real
+ * attention misses now and then: it skips every `skipEvery`th front (counted
+ * by the desk itself, so the sim stays deterministic), and `onlyEvery` makes
+ * a distracted player tend just one front in so many.
+ */
+const tendsWeather =
+  (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
+  (run, available) => {
+    const front = frontsSoFar(run);
+    const { skipEvery, onlyEvery } = options;
+    if (skipEvery && front % skipEvery === skipEvery - 1) return [];
+    if (onlyEvery && front % onlyEvery !== 0) return [];
+    if (shieldedCount(run) >= shieldSlots(run)) return [];
+    const open = [0, 1, 2].filter((town) => !isShielded(run, town));
+    const town = open.sort(
+      (a, b) => chanceOf(run, b) - chanceOf(run, a) || a - b
+    )[0];
+    const id = shieldActionId(town);
+    return available.includes(id) ? [id] : [];
+  };
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -83,10 +113,11 @@ const lastPhaseActions: OilChoice = (run, available) => [
 const withOil = (
   strategy: Strategy,
   actions: OilChoice,
-  care: OilChoice = looksAfterThings(45, true)
+  care: OilChoice = looksAfterThings(45, true),
+  weather: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care),
+  actions: combine(actions, care, weather),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -109,11 +140,26 @@ export function lightBots(): BotSet {
     claims: tender(base.tapper, 74, true),
   };
   return {
-    tapper: withOil(base.tapper, savvyOil, looksAfterThings(74, true)),
-    realistic: withOil(base.realistic, savvyOil, looksAfterThings(42, true)),
+    tapper: withOil(
+      base.tapper,
+      savvyOil,
+      looksAfterThings(74, true),
+      tendsWeather({ skipEvery: 10 })
+    ),
+    realistic: withOil(
+      base.realistic,
+      savvyOil,
+      looksAfterThings(42, true),
+      tendsWeather({ skipEvery: 5 })
+    ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
-      ...withOil(base.dawdler, savvyOil, looksAfterThings(35, false)),
+      ...withOil(
+        base.dawdler,
+        savvyOil,
+        looksAfterThings(35, false),
+        tendsWeather({ onlyEvery: 3 })
+      ),
       greetAfter: 60,
     },
     // In the last phase "tending" is tapping the flame: a player who barely

@@ -10,6 +10,7 @@ import {
   TOTAL_STARS,
 } from "./resources";
 import { TUNING } from "./tuning";
+import { tickWeather } from "./weather";
 
 const { coast: C, night: N, sky: S, last: L } = TUNING;
 
@@ -289,6 +290,7 @@ function updateGrid(run: RunState, dt: number): void {
 
 function tickNight(run: RunState, dt: number): void {
   updateGrid(run, dt);
+  tickWeather(run, dt, () => incomePerSecond(run));
   const supply = supplyMW(run);
   const demand = demandMW(run);
   const delivered = Math.min(supply, demand);

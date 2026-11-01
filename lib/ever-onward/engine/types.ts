@@ -128,6 +128,11 @@ export interface ActionDef {
   id: string;
   /** Phase ids where it can be used; omitted means every phase. */
   phases?: readonly string[];
+  /**
+   * True when a panel of its own draws the button (the weather desk), so the
+   * generic action list leaves it out. It still counts as an action.
+   */
+  isInline?: boolean;
   /** Pops in the first time this is true (omitted: visible at once). */
   visibleWhen?(run: RunState): boolean;
   /** Must only read. */
@@ -268,6 +273,14 @@ export interface UniverseDef {
   plateActions?: Readonly<Record<string, readonly string[]>>;
   /** Scorecard hook: watched numbers with a refill (see `ConsumableDef`). */
   consumables?: readonly ConsumableDef[];
+  /**
+   * Scorecard hook: the run as the simulator's income probes should see it,
+   * with one-off windfalls taken out (a storm's payout is not income; a
+   * claimed bonus is already left out because it needs an action). Must only
+   * read; return a copy (see `cloneRun`) or the run itself when nothing needs
+   * to change.
+   */
+  incomeView?(run: RunState): RunState;
   /**
    * Scorecard hook: true when the scene a player sees differs between the two
    * runs (a new lighthouse, a light let go). Must only read.

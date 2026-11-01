@@ -34,6 +34,14 @@ import {
   powerPerSecond,
   aimEnergy,
 } from "./tick";
+import {
+  STORM_CREWS_ID,
+  WEATHER_OPEN_FLAG,
+  WEATHER_VANE_ID,
+  hasWeatherVane,
+  openWeather,
+  shieldSlots,
+} from "./weather";
 
 const coast = [PHASE_COAST] as const;
 const night = [PHASE_NIGHT] as const;
@@ -449,7 +457,10 @@ const nightUpgrades: UpgradeDef[] = [
     costGrowth: 1.4,
     maxLevel: 5,
     visibleWhen: (run) => owned(run, "gen1") >= 5,
-    onBuy: sync,
+    onBuy: (run, level) => {
+      sync(run);
+      if (level >= TUNING.weather.openAtSteamPlants) openWeather(run);
+    },
     effectPreview: previewOf("gen2", [POWER_PER_SECOND]),
   },
   ...chain({
@@ -529,6 +540,47 @@ const nightUpgrades: UpgradeDef[] = [
     visibleWhen: (run) => owned(run, "gen3") >= 3,
     onBuy: sync,
     effectPreview: previewOf("gen4", [POWER_PER_SECOND]),
+  },
+  {
+    id: STORM_CREWS_ID,
+    name: "Storm crews",
+    description: "More hands for the sandbags: shield two towns at once.",
+    phases: night,
+    currency: "power",
+    baseCost: COSTS[STORM_CREWS_ID],
+    costGrowth: 1,
+    // A bonus helper, not income: bots (and sensible players) buy plants first.
+    priority: -1,
+    visibleWhen: (run) =>
+      run.flags[WEATHER_OPEN_FLAG] === true && owned(run, "gen3") >= 3,
+    onBuy: sync,
+    effectPreview: previewOf(STORM_CREWS_ID, [
+      { label: "Towns to shield", read: shieldSlots },
+    ]),
+  },
+  {
+    id: WEATHER_VANE_ID,
+    name: "Weather vane",
+    description:
+      "Points at the likeliest town and shields it for you, at 60% of the usual bonus. Shield by hand and you still get the full bonus.",
+    phases: night,
+    currency: "power",
+    baseCost: COSTS[WEATHER_VANE_ID],
+    costGrowth: 1,
+    priority: -1,
+    // Late in the night (five river dams): the oldest chore gets a helper once a newer one is about.
+    visibleWhen: (run) =>
+      run.flags[WEATHER_OPEN_FLAG] === true &&
+      owned(run, STORM_CREWS_ID) > 0 &&
+      owned(run, "gen4") >= 2,
+    onBuy: sync,
+    effectPreview: previewOf(WEATHER_VANE_ID, [
+      {
+        label: "Shielding",
+        read: (run) => (hasWeatherVane(run) ? 1 : 0),
+        format: (v) => (v > 0 ? "automatic" : "by hand"),
+      },
+    ]),
   },
 ];
 
@@ -796,6 +848,7 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "letgo-porch",
   "grid-1",
   "grid-2",
+  WEATHER_VANE_ID,
   "nav-1",
   "nav-2",
 ]);

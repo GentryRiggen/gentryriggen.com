@@ -117,6 +117,8 @@ const PLACES: Record<string, Place> = {
   "bulbs-3": rim(0, 4, "Smart lights"),
   "grid-1": slot("grid", () => "Load balancer"),
   "grid-2": slot("grid", () => "Smart grid"),
+  "storm-crews": rim(-0.1, 2, "Storm crews"),
+  "weather-vane": slot("grid", () => "Weather vane"),
   // The Sky
   aim: (n) => at(AIM_DISH.x, AIM_DISH.y - 24, `Aim ${n}`),
   collector: (n) => at(SUN.x, SUN.y - 104, `Collector ${n} / 6`),
