@@ -5,10 +5,13 @@ import {
   checkPin,
   clearHidden,
   clearLock,
+  clearWipePending,
   createLock,
   fromBase64,
   HIDDEN_KEY,
   isValidPin,
+  isWipePending,
+  markWipePending,
   loadLock,
   lockKey,
   markHidden,
@@ -18,6 +21,8 @@ import {
   readHidden,
   sameBytes,
   saveLock,
+  waitEnds,
+  WIPE_KEY,
   type LockRecord,
 } from "@/lib/jim/appLock";
 
@@ -237,8 +242,65 @@ describe("attempt limits", () => {
   it("counts the attempt before the hash is done", async () => {
     await setLock();
     const pending = checkPin(UID, "0000", NOW);
+    for (let i = 0; i < 5; i++) await Promise.resolve();
     expect(loadLock(UID)?.fails).toBe(1);
     await pending;
+  });
+
+  it("counts checks made at the same time one by one", async () => {
+    await setLock();
+    const results = await Promise.all([
+      checkPin(UID, "0000", NOW),
+      checkPin(UID, "0001", NOW),
+      checkPin(UID, "0002", NOW),
+    ]);
+    expect(results.map((r) => r.kind === "wrong" && r.attemptsLeft)).toEqual([
+      9, 8, 7,
+    ]);
+    expect(loadLock(UID)?.fails).toBe(3);
+  });
+
+  it("a clock set backwards doesn't end a wait early", async () => {
+    await setLock();
+    for (let i = 0; i < 5; i++) await checkPin(UID, "0000", NOW);
+    expect(loadLock(UID)).toMatchObject({
+      lastFail: NOW,
+      lockedUntil: NOW + 30_000,
+    });
+    // An hour back: the wait starts over from the new now.
+    const back = NOW - 3_600_000;
+    expect(await checkPin(UID, "1234", back)).toEqual({
+      kind: "wait",
+      until: back + 30_000,
+    });
+    expect(loadLock(UID)).toMatchObject({
+      lastFail: back,
+      lockedUntil: back + 30_000,
+    });
+    // Once it has passed by the new clock, PINs are checked again.
+    expect(await checkPin(UID, "1234", back + 30_000)).toEqual({ kind: "ok" });
+  });
+
+  it("a wait longer than any penalty (clock moved) is cut to the penalty", () => {
+    const base = {
+      v: 1 as const,
+      salt: "",
+      iterations: 1,
+      hash: "",
+      after: 0,
+      fails: 5,
+      lastFail: NOW,
+    };
+    expect(waitEnds({ ...base, lockedUntil: NOW + 30_000 }, NOW + 1)).toBe(
+      NOW + 30_000
+    );
+    expect(waitEnds({ ...base, lockedUntil: NOW + 10 ** 9 }, NOW)).toBe(
+      NOW + 30_000
+    );
+    expect(waitEnds({ ...base, lockedUntil: NOW + 30_000 }, NOW - 5)).toBe(
+      NOW - 5 + 30_000
+    );
+    expect(waitEnds({ ...base, fails: 2, lockedUntil: 0 }, NOW)).toBe(0);
   });
 
   it("says when there is no lock", async () => {
@@ -256,10 +318,34 @@ describe("time away", () => {
     expect(awayTooLong(10_000, 5_000, 900)).toBe(true);
   });
 
+  it("also counts time away on the monotonic clock", () => {
+    // The wall clock says a second; performance.now() says a minute.
+    expect(awayTooLong(0, 1_000, 60, 60_000)).toBe(true);
+    expect(awayTooLong(0, 1_000, 60, 59_000)).toBe(false);
+    expect(awayTooLong(null, 0, 60, 60_000)).toBe(true);
+    // Either one is enough.
+    expect(awayTooLong(0, 60_000, 60, 1_000)).toBe(true);
+  });
+
   it("keeps the hidden time in sessionStorage", () => {
     markHidden(1234);
     expect(readHidden()).toBe(1234);
     clearHidden();
     expect(readHidden()).toBeNull();
+  });
+});
+
+describe("the wipe marker", () => {
+  it("is set, read and cleared, apart from the lock records", async () => {
+    await setLock();
+    expect(isWipePending()).toBe(false);
+    markWipePending();
+    expect(isWipePending()).toBe(true);
+    expect(window.localStorage.getItem(WIPE_KEY)).not.toBeNull();
+    // Wiping the locks leaves the marker for its own step.
+    clearLock();
+    expect(isWipePending()).toBe(true);
+    clearWipePending();
+    expect(isWipePending()).toBe(false);
   });
 });

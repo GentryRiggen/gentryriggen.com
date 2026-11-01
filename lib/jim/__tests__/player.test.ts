@@ -598,3 +598,39 @@ describe("JimPlayer and the lock screen", () => {
     expect(player.getState().status).toBe("playing");
   });
 });
+
+describe("JimPlayer and the app lock", () => {
+  it("locking stops what is on, and nothing starts until unlocked", async () => {
+    const { player, audio, fetches } = setup();
+    player.play("msg:1", "Hello there.");
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(player.getState().status).toBe("playing");
+
+    player.setLocked(true);
+    expect(player.getState().status).toBe("idle");
+    expect(audio.pause).toHaveBeenCalled();
+    // A reply that lands behind the lock stays silent.
+    expect(player.play("msg:2", "A reply while locked.")).toBe(false);
+    expect(fetches).toHaveLength(1);
+    expect(player.getState().status).toBe("idle");
+
+    player.setLocked(false);
+    expect(player.play("msg:3", "After unlocking.")).toBe(true);
+    expect(fetches).toHaveLength(2);
+  });
+
+  it("a lock-screen Play can't resume behind the lock", async () => {
+    const { player, audio, fetches } = setup();
+    player.play("msg:1", "Hello there.");
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    player.pause();
+    const plays = audio.play.mock.calls.length;
+    // Locked without a stop (as if the stop were missed): resume refuses.
+    (player as unknown as { locked: boolean }).locked = true;
+    player.resume();
+    expect(audio.play.mock.calls.length).toBe(plays);
+    expect(player.getState().status).toBe("paused");
+  });
+});

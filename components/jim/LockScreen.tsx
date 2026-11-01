@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ScanFace } from "lucide-react";
 import JimMark from "@/components/jim/JimMark";
 import PinPad from "@/components/jim/PinPad";
@@ -35,11 +35,13 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
   const [shake, setShake] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [forgot, setForgot] = useState(false);
-  const autoTried = useRef(false);
 
   const waitMs = lock.lockedUntil - now;
   const waiting = waitMs > 0;
   const canFace = lock.faceId && lock.faceIdSupported;
+
+  const { settleWait } = lock;
+  useEffect(() => settleWait(), [settleWait]);
 
   // The countdown ticks while there is a wait.
   useEffect(() => {
@@ -73,34 +75,17 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
     }
   }
 
-  /** Face ID; a cancel or failure leaves the PIN, and counts for nothing. */
-  async function faceId(manual: boolean) {
+  /**
+   * Face ID, only from a tap: iOS wants one, and a prompt nobody asked for
+   * is a nuisance. A cancel or failure leaves the PIN, and counts for nothing.
+   */
+  async function faceId() {
     if (busy) return;
     setBusy(true);
     const ok = await lock.unlockWithFaceId();
     setBusy(false);
-    if (!ok && manual) setMessage("Face ID didn't unlock. Use your PIN.");
+    if (!ok) setMessage("Face ID didn't unlock. Use your PIN.");
   }
-
-  const faceRef = useRef(faceId);
-  useLayoutEffect(() => {
-    faceRef.current = faceId;
-  });
-
-  // Face ID asks once by itself, when the screen is showing. iOS often wants
-  // a tap first; then this fails quietly and the button is there. Never again
-  // after a cancel: no prompt loops.
-  useEffect(() => {
-    if (!canFace) return;
-    function attempt() {
-      if (autoTried.current || document.visibilityState !== "visible") return;
-      autoTried.current = true;
-      void faceRef.current(false);
-    }
-    attempt();
-    document.addEventListener("visibilitychange", attempt);
-    return () => document.removeEventListener("visibilitychange", attempt);
-  }, [canFace]);
 
   return (
     <main
@@ -153,7 +138,7 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void faceId(true)}
+                onClick={() => void faceId()}
                 className="jim-glow flex min-h-12 items-center gap-2 rounded-full px-6 font-semibold text-ayu-bg hover:brightness-110 disabled:opacity-50"
               >
                 <ScanFace aria-hidden="true" className="size-5" />

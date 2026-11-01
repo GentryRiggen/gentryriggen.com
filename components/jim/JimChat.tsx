@@ -273,16 +273,14 @@ export default function JimChat({
   const keyboardOpen = useVisibleViewport(rootRef, !locked);
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
-  const reader = useReadAloud(getToken, api);
+  const reader = useReadAloud(getToken, api, locked);
   const { stop: stopReading, setArtist } = reader;
   const personas = usePersonas(getToken, api);
   const barShown = reader.state.status !== "idle";
-  // Locking stops the reading and shuts the lock's settings.
+  // Locking shuts the lock's settings (the reader stops itself).
   useLayoutEffect(() => {
-    if (!locked) return;
-    stopReading();
-    setLockSheetOpen(false);
-  }, [locked, stopReading]);
+    if (locked) setLockSheetOpen(false);
+  }, [locked]);
   // The lock screen names whoever Jim is speaking as.
   useEffect(() => {
     setArtist(personas.activeName ?? "Jim");

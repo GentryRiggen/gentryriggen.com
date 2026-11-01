@@ -19,10 +19,15 @@ import {
   markHidden,
   readHidden,
   saveLock,
+  waitEnds,
   type LockRecord,
   type PinCheck,
 } from "@/lib/jim/appLock";
-import { faceIdAvailable, verifyFaceId } from "@/lib/jim/faceId";
+import {
+  faceIdAvailable,
+  registerFaceId,
+  verifyFaceId,
+} from "@/lib/jim/faceId";
 
 export interface AppLock {
   /** A PIN is set for this user on this device. */
@@ -38,6 +43,8 @@ export interface AppLock {
   /** This device can do Face ID (or another platform authenticator). */
   faceIdSupported: boolean;
   lockNow: () => void;
+  /** Squares a wrong-PIN wait with a clock that moved (the lock screen opens). */
+  settleWait: () => void;
   /** Checks a PIN (with the attempt limits); a right one does not unlock. */
   verify: (pin: string) => Promise<PinCheck>;
   /** Checks a PIN and unlocks when it is right. */
@@ -48,8 +55,10 @@ export interface AppLock {
   turnOn: (pin: string, after: number) => Promise<boolean>;
   changePin: (pin: string) => Promise<boolean>;
   setAfter: (seconds: number) => void;
-  /** Keeps a Face ID credential id, or with null forgets it. */
-  setFaceId: (credential: string | null) => boolean;
+  /** Sets Face ID up (call from a tap); true once it is on. */
+  enableFaceId: () => Promise<boolean>;
+  /** Forgets this lock's Face ID credential. */
+  disableFaceId: () => void;
   turnOff: () => void;
 }
 
@@ -97,6 +106,8 @@ export default function useAppLock(uid: string | null): AppLock {
     // A time left over from before a reload means nothing: a reload locks.
     clearHidden();
     let hiddenAt: number | null = null;
+    /** performance.now() when hidden: immune to the wall clock moving. */
+    let hiddenTick: number | null = null;
 
     function lock() {
       // Drawn before the page is gone, for the app switcher's snapshot.
@@ -105,14 +116,17 @@ export default function useAppLock(uid: string | null): AppLock {
     function onHide() {
       if (hiddenAt !== null) return;
       hiddenAt = Date.now();
+      hiddenTick = performance.now();
       markHidden(hiddenAt);
       if (afterRef.current === 0) lock();
     }
     function onShow() {
       const at = hiddenAt ?? readHidden();
+      const away = hiddenTick === null ? null : performance.now() - hiddenTick;
       hiddenAt = null;
+      hiddenTick = null;
       clearHidden();
-      if (awayTooLong(at, Date.now(), afterRef.current)) lock();
+      if (awayTooLong(at, Date.now(), afterRef.current, away)) lock();
     }
     function onVisibility() {
       if (document.visibilityState === "hidden") onHide();
@@ -133,6 +147,19 @@ export default function useAppLock(uid: string | null): AppLock {
   }, [uid, enabled]);
 
   const lockNow = useCallback(() => setUnlockedFor(null), []);
+
+  const settleWait = useCallback(() => {
+    const current = uid ? loadLock(uid) : null;
+    if (!uid || !current) return;
+    // A wait read against a clock set backwards starts over (never ends
+    // early, never lasts a year), and is kept so, to count it once.
+    const now = Date.now();
+    const ends = waitEnds(current, now);
+    if (ends > now && ends !== current.lockedUntil) {
+      saveLock(uid, { ...current, lockedUntil: ends, lastFail: now });
+      refresh();
+    }
+  }, [uid, refresh]);
 
   const verify = useCallback(
     async (pin: string): Promise<PinCheck> => {
@@ -159,7 +186,9 @@ export default function useAppLock(uid: string | null): AppLock {
     if (!(await verifyFaceId(credential))) return false;
     // The owner is back: the wrong-PIN count starts over.
     const latest = loadLock(uid);
-    if (latest) saveLock(uid, { ...latest, fails: 0, lockedUntil: 0 });
+    if (latest) {
+      saveLock(uid, { ...latest, fails: 0, lockedUntil: 0, lastFail: 0 });
+    }
     setUnlockedFor(uid);
     refresh();
     return true;
@@ -203,21 +232,24 @@ export default function useAppLock(uid: string | null): AppLock {
     [uid, refresh]
   );
 
-  const setFaceId = useCallback(
-    (credential: string | null): boolean => {
-      const current = uid ? loadLock(uid) : null;
-      if (!uid || !current) return false;
-      const { credential: _old, ...rest } = current;
-      void _old;
-      const saved = saveLock(
-        uid,
-        credential ? { ...rest, credential } : (rest as LockRecord)
-      );
-      refresh();
-      return saved;
-    },
-    [uid, refresh]
-  );
+  const enableFaceId = useCallback(async (): Promise<boolean> => {
+    if (!uid || !loadLock(uid)) return false;
+    const credential = await registerFaceId(uid, loadLock(uid)?.credential);
+    const current = loadLock(uid);
+    if (!credential || !current) return false;
+    const saved = saveLock(uid, { ...current, credential });
+    refresh();
+    return saved;
+  }, [uid, refresh]);
+
+  const disableFaceId = useCallback(() => {
+    const current = uid ? loadLock(uid) : null;
+    if (!uid || !current) return;
+    const { credential: _old, ...rest } = current;
+    void _old;
+    saveLock(uid, rest);
+    refresh();
+  }, [uid, refresh]);
 
   const turnOff = useCallback(() => {
     if (!uid) return;
@@ -230,6 +262,7 @@ export default function useAppLock(uid: string | null): AppLock {
     locked,
     after,
     lockedUntil: record?.lockedUntil ?? 0,
+    settleWait,
     faceId: Boolean(record?.credential),
     faceIdSupported,
     lockNow,
@@ -239,7 +272,8 @@ export default function useAppLock(uid: string | null): AppLock {
     turnOn,
     changePin,
     setAfter,
-    setFaceId,
+    enableFaceId,
+    disableFaceId,
     turnOff,
   };
 }

@@ -18,7 +18,12 @@ import {
 } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { isJimConnected, JIM_API, wakeJim } from "@/lib/jim/api";
-import { clearLock } from "@/lib/jim/appLock";
+import {
+  clearLock,
+  clearWipePending,
+  isWipePending,
+  markWipePending,
+} from "@/lib/jim/appLock";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
 import { clearAll, saveView } from "@/lib/jim/offlineStore";
@@ -34,12 +39,42 @@ type State =
   | { kind: "unconfigured" }
   | { kind: "signedOut" }
   | { kind: "denied"; email: string }
+  /** A sign-out not yet finished: never the app until it is. */
+  | { kind: "wiping"; failed: boolean }
   | { kind: "owner"; uid: string; api: string; getToken: GetToken };
+
+/** The sign-in this page runs on: real Firebase, or the e2e stand-in. */
+interface Session {
+  getToken: GetToken;
+  api: string;
+  endSession: () => Promise<void>;
+}
 
 const e2eToken: GetToken = async () => "e2e-token";
 
 /** How long sign-out waits for a token to tell the server, at most. */
 const SIGN_OUT_TOKEN_MS = 2_000;
+
+/**
+ * The device's Jim data, except the lock and the wipe marker. The Notes
+ * saver goes first, so a view still on its way can't refill the store.
+ */
+function clearDeviceData(): void {
+  setViewSaver(null);
+  clearViewCache();
+  clearHistory();
+  void clearAll();
+}
+
+/** Signed out for sure: the data goes, then the lock and the marker. */
+function finishWipe(): void {
+  clearDeviceData();
+  clearLock();
+  clearWipePending();
+}
+
+const SIGN_OUT_FAILED =
+  "Couldn't finish signing out. Jim stays locked on this device until it does.";
 
 /** watchAuth for the e2e hook: the owner is already signed in. */
 async function watchAsOwner(
@@ -64,6 +99,9 @@ export default function JimGate() {
   const { lockNow } = lock;
   /** The sign-in the server was last woken for. */
   const wokeFor = useRef<string | null>(null);
+  const session = useRef<Session | null>(null);
+  /** A password sign-in is under way: its user is fresh, not a leftover. */
+  const signingIn = useRef(false);
 
   useEffect(() => {
     // Off gentryriggen.com the server would refuse every request: go there
@@ -81,6 +119,9 @@ export default function JimGate() {
     const api = hook?.api ?? JIM_API;
     const watch = fake ? watchAsOwner : watchAuth;
     const getToken = fake ? e2eToken : getIdToken;
+    // The e2e stand-in has no Firebase session to end.
+    const endSession = fake ? async () => {} : signOutUser;
+    session.current = { getToken, api, endSession };
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
@@ -90,16 +131,28 @@ export default function JimGate() {
         // Notes data (health, people) and the kept chat must not outlive the
         // sign-in, even one that expired while the page was closed.
         wokeFor.current = null;
-        clearViewCache();
-        clearHistory();
-        clearLock();
+        finishWipe();
         lockNow();
-        void clearAll();
         // Keep the "Not authorized" message when our own sign-out echoes back.
         setState((prev) =>
           prev.kind === "denied" ? prev : { kind: "signedOut" }
         );
+      } else if (isWipePending() && !signingIn.current) {
+        // A sign-out that never finished (the app was killed, no network):
+        // finish it before anything of the app shows.
+        wokeFor.current = null;
+        setState({ kind: "wiping", failed: false });
+        endSession().then(
+          () => {
+            finishWipe();
+            lockNow();
+            setState({ kind: "signedOut" });
+          },
+          () => setState({ kind: "wiping", failed: true })
+        );
       } else if (isAdminUser(user)) {
+        // A password just typed ends any wipe left over: that lock is gone.
+        if (isWipePending()) finishWipe();
         setExcluded(safeLocalStorage());
         // Each good Notes payload is kept on the device for offline opens.
         const uid = user.uid;
@@ -136,31 +189,42 @@ export default function JimGate() {
     setState((prev) => (prev.kind === "denied" ? { kind: "signedOut" } : prev));
     // One generic message for every failure: never say which part was wrong
     // and never surface the raw Firebase error.
+    signingIn.current = true;
     signInWithEmail(email, password)
-      .then(() => setPassword(""))
+      .then(() => {
+        setPassword("");
+        if (isWipePending()) finishWipe();
+      })
       .catch(() => {
         setPassword("");
         setError("Incorrect email or password.");
       })
-      .finally(() => setSubmitting(false));
+      .finally(() => {
+        signingIn.current = false;
+        setSubmitting(false);
+      });
   }
 
+  /**
+   * Signs out and wipes this device's Jim data, in an order that survives
+   * being cut short: the wipe marker first, then the data, then Firebase's
+   * sign-out, and only once that is done the lock and the marker. Killed or
+   * offline midway, the next load finishes it and stays locked meanwhile.
+   */
   function signOut() {
-    clearViewCache();
-    // Every chat and Notes payload kept on this device, in case the phone
-    // was lent, and the app lock with them.
-    clearHistory();
-    clearLock();
+    markWipePending();
+    clearDeviceData();
     lockNow();
-    void clearAll();
-    if (state.kind !== "owner") {
-      signOutUser().catch(() => {});
+    wokeFor.current = null;
+    const current = session.current;
+    if (!current) {
+      setState({ kind: "signedOut" });
       return;
     }
     // This device's morning briefing goes too. The token is taken before
     // signing out (after, there is none); the wait is capped, so a dead
     // network never holds sign-out up for long.
-    const { getToken, api } = state;
+    const { getToken, api, endSession } = current;
     const token = Promise.race([
       Promise.resolve()
         .then(() => getToken())
@@ -169,11 +233,33 @@ export default function JimGate() {
         setTimeout(() => resolve(null), SIGN_OUT_TOKEN_MS)
       ),
     ]);
-    void disablePush(() => token, undefined, api);
-    void token.then(() => signOutUser().catch(() => {}));
+    if (state.kind === "owner") void disablePush(() => token, undefined, api);
+    void token
+      .then(() => endSession())
+      .then(
+        () => {
+          finishWipe();
+          lockNow();
+        },
+        () => setState({ kind: "wiping", failed: true })
+      );
     // Out now on this screen; Firebase catches up once the token is in.
-    wokeFor.current = null;
     setState({ kind: "signedOut" });
+  }
+
+  /** Tries the unfinished sign-out again. */
+  function retrySignOut() {
+    const current = session.current;
+    if (!current) return;
+    setState({ kind: "wiping", failed: false });
+    current.endSession().then(
+      () => {
+        finishWipe();
+        lockNow();
+        setState({ kind: "signedOut" });
+      },
+      () => setState({ kind: "wiping", failed: true })
+    );
   }
 
   /** Signs out and wipes the device, saying why on the sign-in screen. */
@@ -220,6 +306,34 @@ export default function JimGate() {
           </div>
         </main>
       </div>
+    );
+  }
+
+  if (state.kind === "wiping") {
+    return (
+      <main className="jim-app flex min-h-dvh items-center justify-center bg-ayu-bg px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-center text-ayu-text">
+        <div className="jim-rise flex w-full max-w-sm flex-col items-center gap-4 py-8">
+          <JimMark size="lg" />
+          {state.failed ? (
+            <>
+              <p role="alert" className="text-ayu-red">
+                {SIGN_OUT_FAILED}
+              </p>
+              <button
+                type="button"
+                onClick={retrySignOut}
+                className="min-h-12 w-full rounded-xl jim-glow px-4 font-semibold text-ayu-bg hover:brightness-110"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            <p role="status" className="text-ayu-subtle">
+              Signing out…
+            </p>
+          )}
+        </div>
+      </main>
     );
   }
 

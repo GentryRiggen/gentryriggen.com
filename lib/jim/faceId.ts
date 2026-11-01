@@ -55,15 +55,39 @@ export async function faceIdAvailable(): Promise<boolean> {
 }
 
 /**
- * Makes a platform credential (Face ID asks). Returns its id, base64url, or
- * null when it was cancelled or failed.
+ * The WebAuthn user id for a Firebase uid: the same every time (so setting
+ * Face ID up again replaces this device's credential instead of adding one),
+ * and a hash, so the uid itself isn't handed to the authenticator.
  */
-export async function registerFaceId(): Promise<string | null> {
+export async function webAuthnUserId(
+  uid: string
+): Promise<Uint8Array<ArrayBuffer>> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`jim-app-lock:${uid}`)
+  );
+  return new Uint8Array(digest);
+}
+
+/**
+ * Makes a platform credential (Face ID asks) for `uid`, refusing one this
+ * device already has (`existing`). Returns its id, base64url, or null when it
+ * was cancelled or failed.
+ */
+export async function registerFaceId(
+  uid: string,
+  existing?: string
+): Promise<string | null> {
   try {
+    const exclude = existing ? fromBase64Url(existing) : null;
     const credential = await navigator.credentials.create({
       publicKey: {
         rp: { id: window.location.hostname, name: "Jim" },
-        user: { id: randomBytes(16), name: "Jim", displayName: "Jim" },
+        user: {
+          id: await webAuthnUserId(uid),
+          name: "Jim",
+          displayName: "Jim",
+        },
         challenge: randomBytes(32),
         pubKeyCredParams: [
           { type: "public-key", alg: -7 },
@@ -74,6 +98,9 @@ export async function registerFaceId(): Promise<string | null> {
           userVerification: "required",
           residentKey: "discouraged",
         },
+        excludeCredentials: exclude
+          ? [{ type: "public-key", id: exclude, transports: ["internal"] }]
+          : [],
         attestation: "none",
         timeout: WAIT_MS,
       },
@@ -97,7 +124,9 @@ export async function verifyFaceId(credentialId: string): Promise<boolean> {
       publicKey: {
         challenge: randomBytes(32),
         rpId: window.location.hostname,
-        allowCredentials: [{ type: "public-key", id }],
+        allowCredentials: [
+          { type: "public-key", id, transports: ["internal"] },
+        ],
         userVerification: "required",
         timeout: WAIT_MS,
       },

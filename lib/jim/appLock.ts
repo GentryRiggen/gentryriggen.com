@@ -22,6 +22,8 @@ export interface LockRecord {
   fails: number;
   /** Epoch ms before which no PIN is checked; 0 when there is no wait. */
   lockedUntil: number;
+  /** Epoch ms of the last wrong PIN, to catch a clock set backwards. */
+  lastFail: number;
   /** Face ID: the platform credential's id, base64url. */
   credential?: string;
 }
@@ -138,6 +140,7 @@ export function loadLock(uid: string): LockRecord | null {
     after: knownAfter(value.after),
     fails: count(value.fails),
     lockedUntil: count(value.lockedUntil),
+    lastFail: count(value.lastFail),
     ...(valid && typeof value.credential === "string" && value.credential
       ? { credential: value.credential }
       : {}),
@@ -231,6 +234,7 @@ export async function createLock(
     after: knownAfter(after),
     fails: 0,
     lockedUntil: 0,
+    lastFail: 0,
   };
 }
 
@@ -264,32 +268,67 @@ export type PinCheck =
   | { kind: "missing" };
 
 /**
+ * When the wrong-PIN wait really ends (epoch ms; at or before `now` for no
+ * wait). A clock set backwards since the last wrong PIN, or a wait longer
+ * than any penalty, means the clock can't be trusted: the wait starts over
+ * from now instead of ending early (or lasting a year).
+ */
+export function waitEnds(record: LockRecord, now: number): number {
+  const penalty = penaltyMs(record.fails);
+  if (penalty === 0 || record.lockedUntil === 0) return 0;
+  if (now < record.lastFail || record.lockedUntil - now > penalty) {
+    return now + penalty;
+  }
+  return record.lockedUntil;
+}
+
+/** The check that is running: checks take turns, so each one counts. */
+let checking: Promise<unknown> = Promise.resolve();
+
+/**
  * Checks a PIN against this user's lock, with the attempt limits. The wrong
  * attempt is counted (and its wait written) before the hash is worked out, so
  * closing the app mid-check can't skip the count; a right PIN clears it.
+ * Checks run one at a time, so two at once can't both count as one.
  */
-export async function checkPin(
+export function checkPin(
   uid: string,
   pin: string,
-  now: number = Date.now()
+  now?: number
+): Promise<PinCheck> {
+  const run = checking.then(() => checkPinNow(uid, pin, now ?? Date.now()));
+  checking = run.catch(() => {});
+  return run;
+}
+
+async function checkPinNow(
+  uid: string,
+  pin: string,
+  now: number
 ): Promise<PinCheck> {
   const record = loadLock(uid);
   if (!record) return { kind: "missing" };
   if (record.fails >= MAX_FAILS) return { kind: "wipe" };
-  if (record.lockedUntil > now)
-    return { kind: "wait", until: record.lockedUntil };
+  const ends = waitEnds(record, now);
+  if (ends > now) {
+    if (ends !== record.lockedUntil) {
+      saveLock(uid, { ...record, lockedUntil: ends, lastFail: now });
+    }
+    return { kind: "wait", until: ends };
+  }
   const fails = record.fails + 1;
   const wait = penaltyMs(fails);
   const counted: LockRecord = {
     ...record,
     fails,
     lockedUntil: wait > 0 ? now + wait : 0,
+    lastFail: now,
   };
   saveLock(uid, counted);
   if (await pinMatches(record, pin)) {
     // Re-read: settings may have changed while hashing.
     const latest = loadLock(uid) ?? counted;
-    saveLock(uid, { ...latest, fails: 0, lockedUntil: 0 });
+    saveLock(uid, { ...latest, fails: 0, lockedUntil: 0, lastFail: 0 });
     return { kind: "ok" };
   }
   if (fails >= MAX_FAILS) return { kind: "wipe" };
@@ -298,6 +337,39 @@ export async function checkPin(
     attemptsLeft: MAX_FAILS - fails,
     waitUntil: counted.lockedUntil,
   };
+}
+
+/**
+ * Set before a sign-out starts and cleared once Firebase has signed out and
+ * the device is wiped. While it is set this device never opens as the
+ * owner: a sign-out cut short (the app killed, no network) is finished on
+ * the next load, and the lock stays until then.
+ */
+export const WIPE_KEY = "jim:wipe-pending";
+
+export function markWipePending(): void {
+  try {
+    local()?.setItem(WIPE_KEY, "1");
+  } catch {
+    // Blocked storage holds no lock either.
+  }
+}
+
+export function isWipePending(): boolean {
+  try {
+    const store = local();
+    return store !== null && store.getItem(WIPE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function clearWipePending(): void {
+  try {
+    local()?.removeItem(WIPE_KEY);
+  } catch {
+    // Nothing to clear.
+  }
 }
 
 /** Notes when the page was hidden (the earliest, if hidden twice). */
@@ -332,14 +404,18 @@ export function clearHidden(): void {
 }
 
 /**
- * Away long enough to lock: `after` seconds or more. A clock that went
- * backwards while away locks too.
+ * Away long enough to lock: `after` seconds or more by the wall clock or by
+ * the monotonic clock (`monotonicAway`, ms, while the page lived), or a wall
+ * clock that went backwards while away.
  */
 export function awayTooLong(
   hiddenAt: number | null,
   now: number,
-  after: number
+  after: number,
+  monotonicAway: number | null = null
 ): boolean {
+  const limit = after * 1000;
+  if (monotonicAway !== null && monotonicAway >= limit) return true;
   if (hiddenAt === null) return false;
-  return now < hiddenAt || now - hiddenAt >= after * 1000;
+  return now < hiddenAt || now - hiddenAt >= limit;
 }

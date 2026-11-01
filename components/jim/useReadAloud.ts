@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { JimMenuItem } from "@/components/jim/JimHeader";
 import {
   browserPlayerDeps,
@@ -69,7 +75,9 @@ function speechFallback() {
  */
 export default function useReadAloud(
   getToken: GetToken,
-  api: string
+  api: string,
+  /** The app is locked: nothing is read, and what was on stops. */
+  locked = false
 ): ReadAloud {
   // The chat only renders in the browser (after sign-in), so all of this
   // can be made now. The token getter and server are fixed for a sign-in.
@@ -86,6 +94,10 @@ export default function useReadAloud(
       )
   );
   const [supported] = useState(() => player.supported);
+  // Before paint, so nothing starts in the gap after locking.
+  useLayoutEffect(() => {
+    player.setLocked(locked);
+  }, [player, locked]);
   const [auto, setAuto] = useState(loadAutoRead);
   const state = useSyncExternalStore(
     player.subscribe,

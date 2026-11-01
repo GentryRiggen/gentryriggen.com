@@ -6,7 +6,6 @@ import { TOO_MANY_NOTICE, countdown } from "@/components/jim/LockScreen";
 import PinPad from "@/components/jim/PinPad";
 import type { AppLock } from "@/components/jim/useAppLock";
 import { LOCK_AFTER_CHOICES, PIN_MIN, pinSupported } from "@/lib/jim/appLock";
-import { registerFaceId } from "@/lib/jim/faceId";
 
 interface AppLockSheetProps {
   lock: AppLock;
@@ -141,7 +140,7 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
           onClose();
         } else if (then === "faceOn") go({ kind: "face" });
         else {
-          lock.setFaceId(null);
+          lock.disableFaceId();
           go({ kind: "menu" }, "Face ID is off.");
         }
         break;
@@ -215,9 +214,9 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
 
   async function enableFaceId() {
     setBusy(true);
-    const credential = await registerFaceId();
+    const on = await lock.enableFaceId();
     setBusy(false);
-    if (credential && lock.setFaceId(credential)) {
+    if (on) {
       go({ kind: "menu" }, "Face ID is on.");
     } else {
       setMessage("Face ID wasn't set up. Try again, or use your PIN.");
@@ -357,6 +356,10 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
               <p className="text-sm text-ayu-subtle">
                 Your PIN still works, and is still needed to change these
                 settings.
+              </p>
+              <p className="rounded-xl border border-ayu-accent/25 bg-ayu-accent/10 px-3 py-2 text-left text-sm text-ayu-accent">
+                iOS lets the phone&apos;s passcode stand in for Face ID; anyone
+                who knows your phone passcode can then open Jim.
               </p>
               <button
                 type="button"

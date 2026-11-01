@@ -1,10 +1,20 @@
+import { webcrypto } from "node:crypto";
+import { TextEncoder } from "node:util";
 import {
   faceIdAvailable,
   fromBase64Url,
   registerFaceId,
   toBase64Url,
   verifyFaceId,
+  webAuthnUserId,
 } from "@/lib/jim/faceId";
+
+// jsdom has neither; the browser's are the same API.
+Object.defineProperty(globalThis.crypto, "subtle", {
+  value: webcrypto.subtle,
+  configurable: true,
+});
+Object.assign(globalThis, { TextEncoder });
 
 const ID = new Uint8Array([251, 255, 1, 2, 3, 62, 63]);
 const create = jest.fn();
@@ -51,8 +61,9 @@ it("is available only with a user-verifying platform authenticator", async () =>
 
 it("makes a platform credential that requires the user", async () => {
   create.mockResolvedValue({ type: "public-key", rawId: ID.buffer });
-  expect(await registerFaceId()).toBe(toBase64Url(ID));
+  expect(await registerFaceId("uid-1")).toBe(toBase64Url(ID));
   const { publicKey } = create.mock.calls[0][0] as CredentialCreationOptions;
+  expect(publicKey?.excludeCredentials).toEqual([]);
   expect(publicKey?.rp.id).toBe(window.location.hostname);
   expect(publicKey?.authenticatorSelection).toEqual({
     authenticatorAttachment: "platform",
@@ -60,14 +71,27 @@ it("makes a platform credential that requires the user", async () => {
     residentKey: "discouraged",
   });
   expect((publicKey?.challenge as Uint8Array).length).toBe(32);
-  expect((publicKey?.user.id as Uint8Array).length).toBe(16);
+  // The same user id every time for this uid, and not the uid itself.
+  const userId = publicKey?.user.id as Uint8Array;
+  expect(userId).toEqual(await webAuthnUserId("uid-1"));
+  expect(userId).not.toEqual(await webAuthnUserId("uid-2"));
+  expect(userId).toHaveLength(32);
+});
+
+it("won't make a second credential where one exists", async () => {
+  create.mockResolvedValue({ type: "public-key", rawId: ID.buffer });
+  await registerFaceId("uid-1", toBase64Url(ID));
+  const { publicKey } = create.mock.calls[0][0] as CredentialCreationOptions;
+  expect(publicKey?.excludeCredentials).toEqual([
+    { type: "public-key", id: ID, transports: ["internal"] },
+  ]);
 });
 
 it("returns null when setup is cancelled", async () => {
   create.mockRejectedValue(new DOMException("no", "NotAllowedError"));
-  expect(await registerFaceId()).toBeNull();
+  expect(await registerFaceId("uid-1")).toBeNull();
   create.mockResolvedValue(null);
-  expect(await registerFaceId()).toBeNull();
+  expect(await registerFaceId("uid-1")).toBeNull();
 });
 
 it("unlocks only for an assertion of the stored credential", async () => {
@@ -75,7 +99,9 @@ it("unlocks only for an assertion of the stored credential", async () => {
   expect(await verifyFaceId(toBase64Url(ID))).toBe(true);
   const { publicKey } = get.mock.calls[0][0] as CredentialRequestOptions;
   expect(publicKey?.userVerification).toBe("required");
-  expect(publicKey?.allowCredentials?.[0].id).toEqual(ID);
+  expect(publicKey?.allowCredentials).toEqual([
+    { type: "public-key", id: ID, transports: ["internal"] },
+  ]);
   // A fresh challenge each time.
   await verifyFaceId(toBase64Url(ID));
   const second = (get.mock.calls[1][0] as CredentialRequestOptions).publicKey;

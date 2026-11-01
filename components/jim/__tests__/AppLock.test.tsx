@@ -7,6 +7,7 @@ import * as client from "@/lib/firebase/client";
 import {
   createLock,
   HIDDEN_KEY,
+  isWipePending,
   loadLock,
   lockKey,
   saveLock,
@@ -219,6 +220,23 @@ describe("locked", () => {
     expect(screen.getByRole("button", { name: "1" })).toBeDisabled();
   });
 
+  it("a wait from a clock set backwards starts over, not a year long", async () => {
+    // The last wrong PIN "happened" a year from now: the clock went back.
+    const year = 365 * 24 * 3_600_000;
+    await presetLock({
+      fails: 5,
+      lastFail: Date.now() + year,
+      lockedUntil: Date.now() + year + 30_000,
+    });
+    await renderJim();
+    expect(
+      await screen.findByText(/Try again in 0:(31|30|29)\./)
+    ).toBeInTheDocument();
+    expect(loadLock(ADMIN_UID)?.lockedUntil).toBeLessThanOrEqual(
+      Date.now() + 30_000
+    );
+  });
+
   it("signs out and wipes the device after the tenth wrong PIN", async () => {
     await presetLock({ fails: 9 });
     await renderJim();
@@ -229,7 +247,7 @@ describe("locked", () => {
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
     expect(window.localStorage.getItem(historyKey(ADMIN_UID))).toBeNull();
-    expect(client.signOutUser).toHaveBeenCalled();
+    expect(isWipePending()).toBe(false);
   });
 
   it("Forgot PIN explains, then signs out and wipes", async () => {
@@ -294,6 +312,24 @@ describe("when it locks again", () => {
     setVisible("visible");
     expect(isLocked()).toBe(true);
     expect(document.body.textContent).not.toContain(SECRET);
+  });
+
+  it("counts time away on the monotonic clock when the wall clock stalls", async () => {
+    await unlocked(60);
+    const tick = jest.spyOn(performance, "now").mockReturnValue(1_000);
+    setVisible("hidden");
+    tick.mockReturnValue(61_000);
+    setVisible("visible");
+    expect(isLocked()).toBe(true);
+    tick.mockRestore();
+  });
+
+  it("locks when the wall clock went backwards while away", async () => {
+    await unlocked(900);
+    setVisible("hidden");
+    jest.setSystemTime(new Date("2026-10-31T11:00:00Z"));
+    setVisible("visible");
+    expect(isLocked()).toBe(true);
   });
 
   it("handles pagehide and a back-forward cache return the same way", async () => {
@@ -404,10 +440,18 @@ describe("Face ID", () => {
     });
   });
 
-  it("asks once by itself and unlocks", async () => {
+  it("asks only when tapped, then unlocks", async () => {
     get.mockResolvedValue({ type: "public-key", rawId: ID.buffer });
     await presetLock({ credential: toBase64Url(ID), fails: 3 });
-    render(<JimGate />);
+    await renderJim();
+    const button = await screen.findByRole("button", {
+      name: "Unlock with Face ID",
+    });
+    setVisible("hidden");
+    setVisible("visible");
+    // No prompt nobody asked for.
+    expect(get).not.toHaveBeenCalled();
+    await userEvent.click(button);
     expect(await screen.findByText(SECRET)).toBeInTheDocument();
     expect(get).toHaveBeenCalledTimes(1);
     // The owner is back: the wrong-PIN count starts over.
@@ -421,17 +465,14 @@ describe("Face ID", () => {
     const button = await screen.findByRole("button", {
       name: "Unlock with Face ID",
     });
-    await waitFor(() => expect(get).toHaveBeenCalledTimes(1));
-    // Quiet after the automatic try.
-    expect(screen.queryByText(/Face ID didn't unlock/)).toBeNull();
-    setVisible("hidden");
-    setVisible("visible");
-    expect(get).toHaveBeenCalledTimes(1);
     await userEvent.click(button);
     expect(
       await screen.findByText("Face ID didn't unlock. Use your PIN.")
     ).toBeVisible();
-    expect(get).toHaveBeenCalledTimes(2);
+    // Never asked again by itself.
+    setVisible("hidden");
+    setVisible("visible");
+    expect(get).toHaveBeenCalledTimes(1);
     expect(loadLock(ADMIN_UID)?.fails).toBe(0);
     expect(isLocked()).toBe(true);
     await enterPin("1234");
@@ -448,9 +489,14 @@ describe("Face ID", () => {
     await enterPin("1357", "Next");
     await enterPin("1357", "Next");
     await userEvent.click(screen.getByRole("button", { name: "Turn on" }));
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Use Face ID" })
-    );
+    const use = await screen.findByRole("button", { name: "Use Face ID" });
+    // Said plainly before choosing.
+    expect(
+      screen.getByText(
+        /iOS lets the phone's passcode stand in for Face ID; anyone who knows your phone passcode can then open Jim\./
+      )
+    ).toBeVisible();
+    await userEvent.click(use);
     expect(await screen.findByText("Face ID is on.")).toBeVisible();
     expect(loadLock(ADMIN_UID)?.credential).toBe(toBase64Url(ID));
     expect(create).toHaveBeenCalledTimes(1);
@@ -483,19 +529,22 @@ describe("JimChat while locked", () => {
       faceId: false,
       faceIdSupported: false,
       lockNow: jest.fn(),
+      settleWait: jest.fn(),
       verify: jest.fn(),
       unlockWithPin: jest.fn(),
       unlockWithFaceId: jest.fn(),
       turnOn: jest.fn(),
       changePin: jest.fn(),
       setAfter: jest.fn(),
-      setFaceId: jest.fn(),
+      enableFaceId: jest.fn(),
+      disableFaceId: jest.fn(),
       turnOff: jest.fn(),
     };
   }
 
   it("renders nothing, stops reading aloud, and keeps the draft", async () => {
     const stop = jest.spyOn(JimPlayer.prototype, "stop");
+    const setLocked = jest.spyOn(JimPlayer.prototype, "setLocked");
     const props = {
       uid: ADMIN_UID,
       api: API,
@@ -512,9 +561,13 @@ describe("JimChat while locked", () => {
     expect(container).toBeEmptyDOMElement();
     expect(document.body.textContent).not.toContain(SECRET);
     expect(stop).toHaveBeenCalled();
+    // The player refuses to start anything until unlocked.
+    expect(setLocked).toHaveBeenLastCalledWith(true);
     rerender(<JimChat {...props} lock={fakeLock(false)} />);
+    expect(setLocked).toHaveBeenLastCalledWith(false);
     expect(screen.getByLabelText("Message")).toHaveValue("half a thought");
     expect(screen.getByText(SECRET)).toBeInTheDocument();
     stop.mockRestore();
+    setLocked.mockRestore();
   });
 });
