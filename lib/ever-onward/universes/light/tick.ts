@@ -15,9 +15,18 @@ const { coast: C, night: N, sky: S, last: L } = TUNING;
 
 export const level = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
-const boon = (run: RunState): number => run.mods.boon ?? 1;
-const speed = (run: RunState): number => (run.mods.speed ?? 1) * boon(run);
-const tapMult = (run: RunState): number => (run.mods.tapMult ?? 1) * boon(run);
+const speed = (run: RunState): number => run.mods.speed ?? 1;
+const tapMult = (run: RunState): number => run.mods.tapMult ?? 1;
+
+/**
+ * Steps of a one-off chain bought so far: `wick-1`, `wick-2`, ... count while
+ * each one is owned in order.
+ */
+export function tier(run: RunState, base: string): number {
+  let n = 0;
+  while ((run.owned[`${base}-${n + 1}`] ?? 0) > 0) n += 1;
+  return n;
+}
 
 // ---------------------------------------------------------------- The Coast
 
@@ -28,64 +37,114 @@ export const shipsPerFlash = (run: RunState): number =>
   (1 + level(run, "lens")) * tapMult(run);
 
 export const fare = (run: RunState): number =>
-  C.fareGrowth ** level(run, "fees");
+  C.fareGrowth ** tier(run, "fees");
 
 export const isStorming = (run: RunState): boolean => res(run, "storm") > 0;
+
+/** A dry lamp is dim: it guides fewer ships, but still guides some. */
+export const lampFactor = (run: RunState): number =>
+  res(run, "oil") > 0 ? 1 : C.dimLamp;
 
 /** Coins one tap earns on the coast. */
 export function coastTapCoins(run: RunState): number {
   const bonus = isStorming(run) ? C.stormTapBonus : 1;
-  return shipsPerFlash(run) * bonus * fare(run);
+  return shipsPerFlash(run) * bonus * fare(run) * lampFactor(run);
 }
 
-/** Lamp oil burned per second: a steady glow plus a bit per ship guided. */
-const burnPerSecond = (run: RunState, shipsPerSecond: number): number =>
-  (lighthouseCount(run) * C.burnBase + C.burnPerShip * shipsPerSecond) *
-  C.wickSaving ** level(run, "wick");
+/** Coins one tap would earn on a calm night with a full lamp. */
+export const calmTapCoins = (run: RunState): number =>
+  shipsPerFlash(run) * fare(run);
 
-/** Keeper tiers: id and how many flashes per second each one makes. */
-export const KEEPER_TIERS = [
-  { id: "keeper", flashes: 0.5 },
-  { id: "crew", flashes: 6 },
-  { id: "station", flashes: 70 },
-  { id: "fleet", flashes: 800 },
-] as const;
+/** How much each keeper's work is multiplied by their training. */
+export const trainingMult = (run: RunState): number =>
+  C.trainingSteps
+    .slice(0, tier(run, "train"))
+    .reduce((product, step) => product * step, 1);
 
-export const keeperCount = (run: RunState): number =>
-  KEEPER_TIERS.reduce((sum, t) => sum + level(run, t.id), 0);
+export const keeperCount = (run: RunState): number => level(run, "keeper");
 
-const autoFlashRate = (run: RunState): number =>
-  KEEPER_TIERS.reduce((sum, t) => sum + level(run, t.id) * t.flashes, 0) *
+/** Flashes per second the keepers make, lamp and weather aside. */
+export const autoFlashRate = (run: RunState): number =>
+  keeperCount(run) *
+  C.keeperFlashes *
   lighthouseCount(run) *
-  (1 + C.lensAutoBonus * level(run, "lens"));
+  trainingMult(run) *
+  (1 + C.lensAutoBonus * level(run, "lens")) *
+  tapMult(run) *
+  speed(run);
 
-const tankCapacity = (run: RunState): number =>
-  (C.tankBase + C.tankPerLevel * level(run, "tank")) * lighthouseCount(run);
+/** Coins per second the keepers earn on a calm night with a full lamp. */
+export const autoCoinsPerSecond = (run: RunState): number =>
+  autoFlashRate(run) * fare(run);
+
+const oilSaving = (run: RunState): number => C.wickSaving ** tier(run, "wick");
+
+/** Lamp oil burned per second: a steady glow plus a bit per ship guided. */
+export const burnPerSecond = (run: RunState, shipsPerSecond: number): number =>
+  (lighthouseCount(run) * C.burnBase + C.burnPerShip * shipsPerSecond) *
+  oilSaving(run);
+
+/** Oil burned per second by an idle lamp, for previews. */
+export const idleBurn = (run: RunState): number =>
+  burnPerSecond(run, autoFlashRate(run));
+
+export const tankCapacity = (run: RunState): number =>
+  (C.tankBase + C.tankPerTier * tier(run, "tank")) * lighthouseCount(run);
+
+/** Oil one barrel brings, never more than the tank has room for. */
+export const barrelOil = (run: RunState): number =>
+  Math.max(
+    0,
+    Math.min(
+      Math.max(C.barrelMin, tankCapacity(run) * C.barrelShare),
+      tankCapacity(run) - res(run, "oil")
+    )
+  );
+
+/** The price is cheap or dear against what oil usually costs. */
+export const isOilCheap = (run: RunState): boolean =>
+  res(run, "oilPrice") <= C.cheapPrice;
+export const isOilDear = (run: RunState): boolean =>
+  res(run, "oilPrice") >= C.dearPrice;
+
+/** Buys one barrel at today's price (the action and the merchant use this). */
+export function buyBarrel(run: RunState): void {
+  const oil = barrelOil(run);
+  const price = run.resources.oilPrice;
+  const affordable = Math.min(oil, run.resources.coins / price);
+  if (affordable <= 0) return;
+  run.resources.oil += affordable;
+  run.resources.coins -= affordable * price;
+}
 
 function driftOilPrice(run: RunState, dt: number): void {
   const calm = run.mods.calm ?? 0;
-  const wobble = (nextRandom(run) - 0.5) * 0.3 * Math.sqrt(dt) * (1 - calm);
-  const pull = (C.oilMean - run.resources.oilPrice) * 0.03 * dt;
+  const before = run.resources.oilPrice;
+  const wobble =
+    (nextRandom(run) - 0.5) * C.oilWobble * Math.sqrt(dt) * (1 - calm);
+  const pull = (C.oilMean - before) * C.oilPull * dt;
   run.resources.oilPrice = Math.min(
     C.oilMax,
-    Math.max(C.oilMin, run.resources.oilPrice + pull + wobble)
+    Math.max(C.oilMin, before + pull + wobble)
   );
+  const slope = (run.resources.oilPrice - before) / dt;
+  run.resources.oilTrend +=
+    (slope - run.resources.oilTrend) * Math.min(1, dt / C.trendSeconds);
 }
 
-/** The keepers buy oil: a top-up when low, a full tank when it is cheap. */
-function restockOil(run: RunState): void {
+/**
+ * The oil merchant contract: tops the tank up whenever oil is cheap, and a
+ * little at any price when it is nearly dry. Never more than coins allow.
+ */
+function merchantBuys(run: RunState): void {
+  if (level(run, "contract") === 0) return;
   const capacity = tankCapacity(run);
-  const price = run.resources.oilPrice;
-  const cheap = price <= 1.5 + 0.15 * level(run, "tank");
-  let want = 0;
-  if (cheap) want = capacity - run.resources.oil;
-  else if (run.resources.oil < capacity * 0.2)
-    want = capacity * 0.5 - run.resources.oil;
-  if (want <= 0) return;
-  const bought = Math.min(want, run.resources.coins / price);
-  if (bought <= 0) return;
-  run.resources.oil += bought;
-  run.resources.coins -= bought * price;
+  const oil = run.resources.oil;
+  if (run.resources.oilPrice <= C.contractPrice && oil < capacity * 0.7) {
+    buyBarrel(run);
+  } else if (oil < capacity * 0.05) {
+    buyBarrel(run);
+  }
 }
 
 function updateStorm(run: RunState, dt: number): void {
@@ -101,15 +160,14 @@ function updateStorm(run: RunState, dt: number): void {
     C.stormGapMin + nextRandom(run) * C.stormGapSpread;
 }
 
+export const stormPassive = (run: RunState): number =>
+  Math.min(1, C.stormPassive + C.stormShutterBonus * tier(run, "shutters"));
+
 function tickCoast(run: RunState, dt: number): void {
   driftOilPrice(run, dt);
   updateStorm(run, dt);
-  const lamp = run.resources.oil > 0 ? 1 : C.dimLamp;
-  const stormFactor = isStorming(run)
-    ? Math.min(1, C.stormPassive + C.stormShutterBonus * level(run, "shutters"))
-    : 1;
-  const shipsPerSecond =
-    autoFlashRate(run) * tapMult(run) * lamp * stormFactor * speed(run);
+  const stormFactor = isStorming(run) ? stormPassive(run) : 1;
+  const shipsPerSecond = autoFlashRate(run) * lampFactor(run) * stormFactor;
   const ships = shipsPerSecond * dt;
   run.resources.ships += ships;
   run.resources.coins += ships * fare(run);
@@ -117,7 +175,14 @@ function tickCoast(run: RunState, dt: number): void {
     0,
     run.resources.oil - burnPerSecond(run, shipsPerSecond) * dt
   );
-  restockOil(run);
+  merchantBuys(run);
+}
+
+/** What the coast costs to run, per second, in coins (oil at today's price). */
+export function coastUpkeep(run: RunState): number {
+  if (res(run, "oil") <= 0) return 0;
+  const shipsPerSecond = autoFlashRate(run) * lampFactor(run);
+  return burnPerSecond(run, shipsPerSecond) * res(run, "oilPrice");
 }
 
 // ------------------------------------------------------------ No More Night
@@ -128,11 +193,11 @@ export function supplyMW(run: RunState): number {
     (sum, mw, i) => sum + mw * level(run, `gen${i + 1}`),
     0
   );
-  return raw * (1 + N.lineBonus * level(run, "lines"));
+  return raw * (1 + N.lineBonus * tier(run, "lines"));
 }
 
 export const demandMW = (run: RunState): number =>
-  TOTAL_CITIES * N.perCityMW * N.bulbSaving ** level(run, "bulbs");
+  TOTAL_CITIES * N.perCityMW * N.bulbSaving ** tier(run, "bulbs");
 
 /** Cities powered right now (fractional), 0..TOTAL_CITIES. */
 export function citiesLit(run: RunState): number {
@@ -142,6 +207,9 @@ export function citiesLit(run: RunState): number {
 
 export const crankPower = (run: RunState): number =>
   (N.crankBase + N.crankPerLevel * level(run, "crank")) * tapMult(run);
+
+export const powerPerSecond = (run: RunState): number =>
+  Math.min(supplyMW(run), demandMW(run)) * N.payPerMW * speed(run);
 
 function tickNight(run: RunState, dt: number): void {
   const supply = supplyMW(run);
@@ -158,13 +226,28 @@ function tickNight(run: RunState, dt: number): void {
 
 // ------------------------------------------------------------------ The Sky
 
+export const collectorEnergyPerSecond = (run: RunState): number =>
+  level(run, "collector") *
+  S.collectorEnergy *
+  S.mirrorBonus ** tier(run, "mirror") *
+  speed(run);
+
+export const travelSeconds = (run: RunState): number =>
+  S.travelBase * S.engineSaving ** tier(run, "engines");
+
+export const copySpeed = (run: RunState): number =>
+  S.copyBonus ** tier(run, "copy");
+
+export const appetite = (run: RunState): number =>
+  S.appetiteBonus ** tier(run, "appetite");
+
 export const aimEnergy = (run: RunState): number =>
   (S.aimBase + S.aimPerLevel * level(run, "aim")) * tapMult(run);
 
 const probeGrowthRate = (run: RunState): number => {
-  const travel = S.travelBase * S.engineSaving ** level(run, "engines");
+  const travel = S.travelBase * S.engineSaving ** tier(run, "engines");
   return (
-    (S.probeGrowth * S.copyBonus ** level(run, "copy")) /
+    (S.probeGrowth * S.copyBonus ** tier(run, "copy")) /
     (1 + travel / S.travelHalf)
   );
 };
@@ -175,13 +258,13 @@ function tickSky(run: RunState, dt: number): void {
   const open = remaining / TOTAL_STARS;
   if (r.probes > 0 && remaining > 0) {
     r.probes += r.probes * probeGrowthRate(run) * open * speed(run) * dt;
-    const takePer = S.takePerProbe * S.appetiteBonus ** level(run, "appetite");
+    const takePer = S.takePerProbe * S.appetiteBonus ** tier(run, "appetite");
     const taken = Math.min(remaining, r.probes * takePer * speed(run) * dt);
     r.starsTaken += taken;
     r.stars = Math.max(0, TOTAL_STARS - r.starsTaken);
   }
   const collected =
-    r.collectors * S.collectorEnergy * S.mirrorBonus ** level(run, "mirror");
+    r.collectors * S.collectorEnergy * S.mirrorBonus ** tier(run, "mirror");
   r.energy += (collected + r.starsTaken * S.energyPerStar) * speed(run) * dt;
 }
 

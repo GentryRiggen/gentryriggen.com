@@ -5,6 +5,7 @@ import {
   canAfford,
   upgradeCost,
   upgradeLevel,
+  hasUnrevealedUpgrades,
   isMaxed,
   visibleUpgrades,
 } from "@/lib/ever-onward/engine/engine";
@@ -69,7 +70,7 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
       </h2>
       {open.length === 0 && (
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Nothing new yet. Keep going.
+          Nothing to buy right now.
         </p>
       )}
       <ul className="space-y-2">
@@ -110,6 +111,14 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
                   </span>
                 </span>
                 <span className="mt-0.5 block text-sm">{u.description}</span>
+                {u.effectPreview && (
+                  <span
+                    data-testid="lm-effect-preview"
+                    className="mt-1 block text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-300"
+                  >
+                    {u.effectPreview(run)}
+                  </span>
+                )}
                 {level && (
                   <span className="mt-1 block text-xs text-slate-600 dark:text-slate-400">
                     {level}
@@ -120,6 +129,11 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
           );
         })}
       </ul>
+      {hasUnrevealedUpgrades(def, run) && (
+        <p className="text-xs text-slate-600 dark:text-slate-400">
+          More upgrades unlock as you grow…
+        </p>
+      )}
       {done.length > 0 && (
         <details className="text-sm text-slate-600 dark:text-slate-400">
           <summary

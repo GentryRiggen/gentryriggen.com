@@ -1,10 +1,13 @@
 import {
   affordableUpgrades,
   buy,
+  canPerformAction,
   manualAction,
   newRun,
+  performAction,
   tick,
   upgradeCost,
+  visibleActions,
 } from "./engine";
 import type { RunState, UniverseDef, UpgradeDef } from "./types";
 
@@ -22,6 +25,16 @@ export interface Strategy {
    * cheapest.
    */
   choose?(run: RunState, affordable: UpgradeDef[]): UpgradeDef | undefined;
+  /**
+   * Seconds between trips to the shop (default 0: look every step). A trip
+   * buys everything affordable, so this models a player who is busy tapping.
+   */
+  shopEvery?: number;
+  /**
+   * Action ids to perform this step (buying oil). Asked until it returns
+   * nothing or the action can't be done.
+   */
+  actions?(run: RunState, available: readonly string[]): string[];
 }
 
 export interface SimOptions {
@@ -51,6 +64,10 @@ export interface SimResult {
   endTime: number;
   finalRun: RunState;
   purchases: (TimedEvent & { level: number })[];
+  /** Actions performed (hand-made decisions). */
+  actionsDone: TimedEvent[];
+  /** With `shopEvery`: upgrades affordable at each trip, before buying. */
+  affordableAtShop: number[];
   /** Upgrades popping in. */
   unlocks: TimedEvent[];
   /** Phase entries (phase id). */
@@ -110,6 +127,10 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   let run = options.startRun ?? newRun(def, options.prestige, options.seed);
   const startTime = run.time;
   const purchases: SimResult["purchases"] = [];
+  const actionsDone: TimedEvent[] = [];
+  const affordableAtShop: number[] = [];
+  const shopEvery = strategy.shopEvery ?? 0;
+  let nextShop = startTime;
   const unlocks: TimedEvent[] = [];
   const phases: TimedEvent[] = [];
   const eventTimes: number[] = [];
@@ -151,6 +172,23 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     }
   };
 
+  const act = () => {
+    if (!strategy.actions) return;
+    for (let guard = 0; guard < 20; guard += 1) {
+      const available = visibleActions(def, run)
+        .map((a) => a.id)
+        .filter((id) => canPerformAction(def, run, id));
+      const picks = strategy
+        .actions(run, available)
+        .filter((id) => available.includes(id));
+      if (picks.length === 0) return;
+      for (const id of picks) {
+        run = performAction(def, run, id);
+        actionsDone.push({ t: run.time, id });
+      }
+    }
+  };
+
   record();
   while (
     !run.complete &&
@@ -163,7 +201,14 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     }
     run = tick(def, run, step);
     record();
-    if (buys) buyAll();
+    act();
+    if (buys && run.time >= nextShop) {
+      if (shopEvery > 0) {
+        affordableAtShop.push(affordableUpgrades(def, run).length);
+        nextShop = run.time + shopEvery;
+      }
+      buyAll();
+    }
   }
 
   const endTime = run.time;
@@ -175,6 +220,8 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     endTime,
     finalRun: run,
     purchases,
+    actionsDone,
+    affordableAtShop,
     unlocks,
     phases,
     longestGap: longest,

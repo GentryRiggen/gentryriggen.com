@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { canAfford, upgradeCost } from "@/lib/ever-onward/engine/engine";
+import {
+  canAfford,
+  previewUpgrade,
+  upgradeCost,
+} from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
+import { upkeepRate } from "@/lib/ever-onward/engine/rate";
 import { canRestart } from "@/lib/ever-onward/engine/prestige";
 import type {
   SaveData,
@@ -15,7 +20,9 @@ import SoundControls from "../audio/SoundControls";
 import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import { SCENES } from "../scenes";
 import { cardClass, focusRingClass, secondaryButtonClass } from "../styles";
+import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
+import { type Effect } from "./EffectFloater";
 import EmberPanel from "./EmberPanel";
 import EndingOverlay from "./EndingOverlay";
 import NextUpgradeBar from "./NextUpgradeBar";
@@ -27,7 +34,7 @@ import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
 import type { Overlay } from "./useGame";
-import { useIncomeRate } from "./useIncomeRate";
+import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
 import { useOutOfView } from "./useOutOfView";
 import { useReducedMotion } from "./useAnimatedNumber";
@@ -38,6 +45,7 @@ interface GameScreenProps {
   overlay: Overlay;
   onTap: () => number;
   onBuy: (id: string) => void;
+  onAction: (id: string) => void;
   onBuyEmber: (id: string) => void;
   onRestart: () => void;
   onLeave: () => void;
@@ -55,6 +63,7 @@ export default function GameScreen({
   overlay,
   onTap,
   onBuy,
+  onAction,
   onBuyEmber,
   onRestart,
   onLeave,
@@ -74,13 +83,18 @@ export default function GameScreen({
   const primaryValue = run.resources[primaryId] ?? 0;
   const primaryLabel =
     def.resources.find((r) => r.id === primaryId)?.label ?? primaryId;
-  const rate = useIncomeRate(primaryValue, primaryId);
+  const { rate, trend } = useNetRate(
+    primaryValue,
+    primaryId,
+    upkeepRate(def, run, primaryId)
+  );
   const readoutRef = useRef<HTMLDivElement>(null);
   // On phones the scene (36% of the screen) covers the top of the page.
   const isHudShown = useOutOfView(readoutRef, "36%");
   const isReduced = useReducedMotion();
   const next = useNextUpgrade(def, run);
   const [spend, setSpend] = useState<Spend | null>(null);
+  const [effect, setEffect] = useState<Effect | null>(null);
 
   useEffect(() => {
     if (!spend) return;
@@ -88,11 +102,22 @@ export default function GameScreen({
     return () => window.clearTimeout(timer);
   }, [spend]);
 
+  useEffect(() => {
+    if (!effect) return;
+    const timer = window.setTimeout(() => setEffect(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [effect]);
+
   const handleBuy = (id: string) => {
     const upgrade = def.upgrades.find((u) => u.id === id);
     if (upgrade && upgrade.currency === primaryId && canAfford(run, upgrade)) {
       const text = `-${formatNumber(upgradeCost(run, upgrade))}`;
       setSpend((s) => ({ id: (s?.id ?? 0) + 1, text }));
+    }
+    if (upgrade && canAfford(run, upgrade)) {
+      const preview = previewUpgrade(def, run, id);
+      if (preview)
+        setEffect((e) => ({ id: (e?.id ?? 0) + 1, text: `${preview} ⬆` }));
     }
     onBuy(id);
   };
@@ -195,12 +220,15 @@ export default function GameScreen({
             {phase.manualLabel.toLowerCase()}.
           </p>
         )}
+        <ActionPanel def={def} run={run} onAct={onAction} />
         <Resources
           def={def}
           run={run}
           primaryId={primaryId}
           rate={rate}
+          trend={trend}
           spend={spend}
+          effect={effect}
           primaryRef={readoutRef}
         />
         <StoryLog def={def} run={run} />
@@ -246,7 +274,9 @@ export default function GameScreen({
           resourceLabel={primaryLabel}
           value={primaryValue}
           rate={rate}
+          trend={trend}
           spend={spend}
+          effect={effect}
           next={next}
           onSelectNext={handleSelectNext}
         />

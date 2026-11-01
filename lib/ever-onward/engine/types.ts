@@ -77,6 +77,42 @@ export interface UpgradeDef {
   /** Sim hint: higher is bought first among the affordable. */
   priority?: number;
   onBuy?(run: RunState, newLevel: number): void;
+  /**
+   * A short before-to-after line for the card ("Coins/sec 12 -> 17"), read
+   * from the run as it is now. Must only read.
+   */
+  effectPreview?(run: RunState): string | null;
+}
+
+/** What an action button shows right now. */
+export interface ActionView {
+  label: string;
+  /** A second line (what it does, the state it is in). */
+  detail?: string;
+  /** Paid from this resource when performed; omitted means free. */
+  cost?: { resource: string; amount: number };
+  /** True when it can't be done at all right now (a full tank). */
+  isBlocked?: boolean;
+  /** A short nudge next to the button ("cheap!"). */
+  hint?: { text: string; tone: "good" | "bad" | "neutral" };
+  /** A resource whose recent history is drawn as a tiny sparkline. */
+  trendResource?: string;
+}
+
+/**
+ * A button besides the tap: a decision the player makes by hand (buy oil).
+ * Free or costed, it may be shown only once `isVisible` says so.
+ */
+export interface ActionDef {
+  id: string;
+  /** Phase ids where it can be used; omitted means every phase. */
+  phases?: readonly string[];
+  /** Pops in the first time this is true (omitted: visible at once). */
+  visibleWhen?(run: RunState): boolean;
+  /** Must only read. */
+  describe(run: RunState): ActionView;
+  /** Applies the effect to a draft; the engine has already taken the cost. */
+  perform(run: RunState): void;
 }
 
 export interface StoryMessage {
@@ -117,10 +153,22 @@ export interface UniverseDef {
   resources: readonly ResourceDef[];
   phases: readonly PhaseDef[];
   upgrades: readonly UpgradeDef[];
+  /** Hand-made decisions besides the tap and the shop. */
+  actions?: readonly ActionDef[];
+  /**
+   * At most this many upgrades the player hasn't bought yet are on offer in a
+   * phase; the next one reveals when one is bought. Omitted means no limit.
+   */
+  maxVisible?: number;
   story: readonly StoryMessage[];
   prestige: PrestigeDef;
   /** Continuous production; dt is seconds, already clamped. */
   tick(run: RunState, dt: number): void;
+  /**
+   * Continuous costs, per second, of resources the player earns (lamp oil
+   * paid in coins). Used for the net rate; never applied by the engine.
+   */
+  upkeep?(run: RunState): Record<string, number>;
   /** The free tap. Must earn the phase's manualResource whatever the state. */
   manualAction(run: RunState): void;
   /** Read in the last phase: true ends the run. */

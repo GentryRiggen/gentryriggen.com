@@ -1,4 +1,11 @@
-import type { PhaseDef, RunState, UniverseDef, UpgradeDef } from "./types";
+import type {
+  ActionDef,
+  ActionView,
+  PhaseDef,
+  RunState,
+  UniverseDef,
+  UpgradeDef,
+} from "./types";
 
 /** A frame longer than this (a throttled tab) never jumps the game. */
 export const MAX_TICK_SECONDS = 1;
@@ -61,12 +68,30 @@ function settle(def: UniverseDef, run: RunState): void {
   }
 }
 
+/** Revealed here, not maxed and never bought: the cards "on offer". */
+function pendingCount(def: UniverseDef, run: RunState): number {
+  return def.upgrades.filter(
+    (u) =>
+      isVisible(def, run, u) &&
+      !isMaxed(run, u) &&
+      upgradeLevel(run, u.id) === 0
+  ).length;
+}
+
+/**
+ * Pops in what is newly visible, in definition order, while fewer than
+ * `maxVisible` unbought upgrades are on offer. Buying one frees a slot.
+ */
 function revealUpgrades(def: UniverseDef, run: RunState): void {
+  const limit = def.maxVisible ?? Infinity;
+  let pending = limit === Infinity ? 0 : pendingCount(def, run);
   for (const upgrade of def.upgrades) {
+    if (pending >= limit) return;
     if (!isInPhase(def, run, upgrade) || run.revealed.includes(upgrade.id))
       continue;
-    if (!upgrade.visibleWhen || upgrade.visibleWhen(run))
-      run.revealed.push(upgrade.id);
+    if (upgrade.visibleWhen && !upgrade.visibleWhen(run)) continue;
+    run.revealed.push(upgrade.id);
+    pending += 1;
   }
 }
 
@@ -191,6 +216,16 @@ export function canBuy(
   );
 }
 
+/** True while this phase still holds upgrades that have not popped in. */
+export function hasUnrevealedUpgrades(
+  def: UniverseDef,
+  run: RunState
+): boolean {
+  return def.upgrades.some(
+    (u) => isInPhase(def, run, u) && !run.revealed.includes(u.id)
+  );
+}
+
 /** Visible upgrades, in definition order (maxed ones included). */
 export function visibleUpgrades(def: UniverseDef, run: RunState): UpgradeDef[] {
   return def.upgrades.filter((u) => isVisible(def, run, u));
@@ -217,6 +252,56 @@ export function buy(
   const level = upgradeLevel(run, upgrade.id) + 1;
   next.owned[upgrade.id] = level;
   upgrade.onBuy?.(next, level);
+  settle(def, next);
+  return next;
+}
+
+/** The upgrade's before-to-after line, or null when it has none. */
+export function previewUpgrade(
+  def: UniverseDef,
+  run: RunState,
+  upgradeId: string
+): string | null {
+  const upgrade = find(def.upgrades, upgradeId, "upgrade");
+  return upgrade.effectPreview?.(run) ?? null;
+}
+
+export function visibleActions(def: UniverseDef, run: RunState): ActionDef[] {
+  const phaseId = currentPhase(def, run).id;
+  return (def.actions ?? []).filter(
+    (a) =>
+      (!a.phases || a.phases.includes(phaseId)) &&
+      (!a.visibleWhen || a.visibleWhen(run))
+  );
+}
+
+export function canPerformAction(
+  def: UniverseDef,
+  run: RunState,
+  actionId: string
+): boolean {
+  if (run.complete) return false;
+  const action = find(def.actions ?? [], actionId, "action");
+  if (!visibleActions(def, run).includes(action)) return false;
+  const view: ActionView = action.describe(run);
+  if (view.isBlocked) return false;
+  return (
+    !view.cost || (run.resources[view.cost.resource] ?? 0) >= view.cost.amount
+  );
+}
+
+/** Pays for and performs an action. Returns the same run if it can't be done. */
+export function performAction(
+  def: UniverseDef,
+  run: RunState,
+  actionId: string
+): RunState {
+  if (!canPerformAction(def, run, actionId)) return run;
+  const action = find(def.actions ?? [], actionId, "action");
+  const { cost } = action.describe(run);
+  const next = cloneRun(run);
+  if (cost) next.resources[cost.resource] -= cost.amount;
+  action.perform(next);
   settle(def, next);
   return next;
 }

@@ -49,6 +49,7 @@ export default function EverOnward() {
           overlay={game.overlay}
           onTap={game.tap}
           onBuy={game.buyUpgrade}
+          onAction={game.doAction}
           onBuyEmber={game.buyEmberUpgrade}
           onRestart={game.restart}
           onLeave={game.leave}

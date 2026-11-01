@@ -38,6 +38,7 @@ function renderScreen(run: RunState, onTap = jest.fn(() => 1)) {
       overlay={null}
       onTap={onTap}
       onBuy={jest.fn()}
+      onAction={jest.fn()}
       onBuyEmber={jest.fn()}
       onRestart={jest.fn()}
       onLeave={jest.fn()}

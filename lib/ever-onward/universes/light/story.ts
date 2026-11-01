@@ -31,7 +31,7 @@ const coast: StoryMessage[] = [
   {
     id: "coast-oil",
     phase: PHASE_COAST,
-    when: (run) => res(run, "ships") >= 40,
+    when: (run) => res(run, "ships") >= 12,
     text: "Lamps drink oil, and oil has a price that goes up and down like a nervous cat. Buy it when it is cheap and you will sleep better. Or, well, rest better.",
   },
   {
@@ -49,13 +49,13 @@ const coast: StoryMessage[] = [
   {
     id: "coast-lens",
     phase: PHASE_COAST,
-    when: (run) => owned(run, "lens") >= 6,
+    when: (run) => owned(run, "lens") >= 5,
     text: "The new lens throws the beam farther. Ships you have never met are turning toward you. It is a bit like being famous, only quieter.",
   },
   {
     id: "coast-fees",
     phase: PHASE_COAST,
-    when: (run) => owned(run, "fees") >= 3,
+    when: (run) => owned(run, "fees-2") >= 1,
     text: "Harbor fees are up. A sailor grumbles that it costs more to be saved these days. You blink twice, politely.",
   },
   {
@@ -105,7 +105,7 @@ const nightStory: StoryMessage[] = [
   {
     id: "night-lines",
     phase: PHASE_NIGHT,
-    when: (run) => owned(run, "lines") >= 2,
+    when: (run) => owned(run, "lines-2") >= 1,
     text: "Power lines go up, hill to hill. Birds love them. Cities only pay for the light that actually reaches them, so you keep your eye on supply.",
   },
   {
@@ -129,7 +129,7 @@ const nightStory: StoryMessage[] = [
   {
     id: "night-bulbs",
     phase: PHASE_NIGHT,
-    when: (run) => owned(run, "bulbs") >= 2,
+    when: (run) => owned(run, "bulbs-2") >= 1,
     text: "Efficient bulbs. The same light for less power. You wish everything was this easy to improve. Most things are not, you suspect.",
   },
   {

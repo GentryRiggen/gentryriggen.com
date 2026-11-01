@@ -25,7 +25,8 @@ export const RESOURCES: readonly ResourceDef[] = [
   // The Coast
   { id: "coins", label: "Coins", phases: [PHASE_COAST] },
   { id: "ships", label: "Ships guided", phases: [PHASE_COAST] },
-  { id: "oil", label: "Lamp oil", phases: [PHASE_COAST] },
+  { id: "oil", label: "Lamp oil", initial: 40, phases: [PHASE_COAST] },
+  { id: "oilTrend", label: "Oil price trend", phases: HIDDEN },
   { id: "oilPrice", label: "Oil price", initial: 2, phases: [PHASE_COAST] },
   {
     id: "lighthouses",
