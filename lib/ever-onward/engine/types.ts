@@ -59,6 +59,16 @@ export interface PhaseDef {
   onEnter?(run: RunState): void;
 }
 
+export type UpgradeKind = "mechanic" | "scale" | "filler";
+
+/** A watched number the player must look after (lamp oil). */
+export interface ConsumableDef {
+  id: string;
+  label: string;
+  /** 0 (empty) to 1 (full), or null where it does not apply. Must only read. */
+  level(run: RunState): number | null;
+}
+
 export interface UpgradeDef {
   id: string;
   name: string;
@@ -76,6 +86,12 @@ export interface UpgradeDef {
   visibleWhen?(run: RunState): boolean;
   /** Sim hint: higher is bought first among the affordable. */
   priority?: number;
+  /**
+   * Scorecard tag: "mechanic" is a new system or action, "scale" a bigger
+   * step on something that exists, "filler" a small repeatable. Omitted is
+   * "scale". Read only by the simulator and the scorecard.
+   */
+  kind?: UpgradeKind;
   onBuy?(run: RunState, newLevel: number): void;
   /**
    * A short before-to-after line for the card ("Coins/sec 12 -> 17"), read
@@ -169,6 +185,18 @@ export interface UniverseDef {
    * paid in coins). Used for the net rate; never applied by the engine.
    */
   upkeep?(run: RunState): Record<string, number>;
+  /**
+   * Scorecard hook: ids of the systems that offer or want the player's
+   * attention right now ("tap", "oilMarket", "storm"). Must only read.
+   */
+  plates?(run: RunState): string[];
+  /** Scorecard hook: watched numbers with a refill (see `ConsumableDef`). */
+  consumables?: readonly ConsumableDef[];
+  /**
+   * Scorecard hook: true when the scene a player sees differs between the two
+   * runs (a new lighthouse, a light let go). Must only read.
+   */
+  sceneDiff?(before: RunState, after: RunState): boolean;
   /** The free tap. Must earn the phase's manualResource whatever the state. */
   manualAction(run: RunState): void;
   /** Read in the last phase: true ends the run. */

@@ -1,5 +1,6 @@
 import type { UniverseDef } from "../../engine/types";
 import { ACTIONS } from "./actions";
+import { LIGHT_CONSUMABLES, lightPlates, lightSceneDiff } from "./hooks";
 import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
@@ -32,6 +33,9 @@ export const lightUniverse: UniverseDef = {
     if (run.phase === 3) return { energy: decayPerSecond(run) };
     return {};
   },
+  plates: lightPlates,
+  consumables: LIGHT_CONSUMABLES,
+  sceneDiff: lightSceneDiff,
   tick: tickLight,
   manualAction: manualLight,
   isComplete: isLightComplete,

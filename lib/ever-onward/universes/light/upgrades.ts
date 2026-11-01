@@ -662,10 +662,25 @@ const lastUpgrades: UpgradeDef[] = [
   },
 ];
 
+/** Scorecard tags: the upgrades that bring a new system or action. */
+const MECHANICS: ReadonlySet<string> = new Set([
+  "keeper",
+  "lighthouse",
+  "contract",
+  "gen1",
+  "collector",
+  "probe",
+  "letgo-porch",
+  "remember",
+]);
+
 export const UPGRADES: readonly UpgradeDef[] = [
   ...coastUpgrades,
   ...nightUpgrades,
   ...skyUpgrades,
   ...letGoUpgrades,
   ...lastUpgrades,
-];
+].map((upgrade) => ({
+  ...upgrade,
+  kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",
+}));
