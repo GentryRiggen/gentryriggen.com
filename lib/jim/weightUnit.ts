@@ -43,3 +43,17 @@ export function fmtWeightValue(lb: number, unit: WeightUnit): string {
 export function fmtWeight(lb: number, unit: WeightUnit): string {
   return `${fmtWeightValue(lb, unit)} ${unit}`;
 }
+
+const TEXT_WEIGHT = /\b(\d+(?:\.\d+)?)\s?(?:lbs?|#)(?![A-Za-z])/gi;
+
+/**
+ * Weights written into free text ("3 @ 255 lb", "95# thrusters") shown in
+ * `unit`. Numbers without a unit are left alone: they may be reps or calories.
+ */
+export function convertWeightsInText(text: string, unit: WeightUnit): string {
+  if (unit === "lb") return text;
+  return text.replace(
+    TEXT_WEIGHT,
+    (_m, n: string) => `${fmtWeightValue(Number(n), "kg")} kg`
+  );
+}

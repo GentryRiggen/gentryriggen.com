@@ -12,6 +12,7 @@ import type { ViewData } from "@/lib/jim/view";
 import {
   fmtWeight,
   fmtWeightValue,
+  convertWeightsInText,
   loadWeightUnit,
   saveWeightUnit,
   type WeightUnit,
@@ -103,7 +104,7 @@ export default function NotesTraining({ data }: NotesTrainingProps) {
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="font-semibold text-ayu-text">
-                      {w.score}
+                      {convertWeightsInText(w.score, unit)}
                     </span>
                     {w.rx && (
                       <Chip tone={/^rx/i.test(w.rx) ? "green" : "plain"}>
@@ -114,12 +115,12 @@ export default function NotesTraining({ data }: NotesTrainingProps) {
                 </div>
                 {w.workout && (
                   <p className="mt-1 text-ayu-text [overflow-wrap:anywhere]">
-                    {w.workout}
+                    {convertWeightsInText(w.workout, unit)}
                   </p>
                 )}
                 {w.note && (
                   <p className="mt-1 text-sm text-ayu-subtle [overflow-wrap:anywhere]">
-                    {w.note}
+                    {convertWeightsInText(w.note, unit)}
                   </p>
                 )}
               </li>

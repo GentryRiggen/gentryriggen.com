@@ -194,10 +194,18 @@ export default memo(function NotesShell({
   const saves = useTodoSaves({ data, api, getToken, onChanged: reload });
 
   // Load on the first open, and again on a later open once the data is old.
+  // Fresh data a load elsewhere fetched (the sign-in prefetch) after this
+  // mounted is taken as is: otherwise the page would wait on a load that
+  // never runs, skeletons forever.
   useEffect(() => {
     if (!active) return;
     const cached = getCachedView();
-    if (cached && Date.now() - cached.at < FRESH_MS) return;
+    if (cached && Date.now() - cached.at < FRESH_MS) {
+      hasData.current = true;
+      setData((current) => current ?? cached.data);
+      setLoadedAt((current) => current ?? cached.at);
+      return;
+    }
     void load();
   }, [active, load]);
 
