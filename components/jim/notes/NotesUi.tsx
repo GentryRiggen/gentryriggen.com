@@ -19,8 +19,12 @@ export function Section({ title, aside, children }: SectionProps) {
       <div className="flex items-baseline justify-between gap-3">
         <h2
           id={id}
-          className="text-sm font-semibold tracking-wide text-ayu-accent uppercase"
+          className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-ayu-subtle uppercase"
         >
+          <span
+            aria-hidden="true"
+            className="h-3 w-1 rounded-full bg-gradient-to-b from-ayu-accent to-ayu-orange"
+          />
           {title}
         </h2>
         {aside && (
@@ -43,9 +47,15 @@ interface StatProps {
 /** A tile with one big number. */
 export function Stat({ label, value, detail }: StatProps) {
   return (
-    <div className="min-w-0 rounded-xl bg-ayu-panel px-4 py-3">
+    <div className="jim-card relative min-w-0 overflow-hidden px-4 py-3.5">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-10 -right-10 size-24 rounded-full bg-ayu-accent/10 blur-2xl"
+      />
       <p className="text-sm text-ayu-subtle">{label}</p>
-      <p className="mt-0.5 text-2xl font-semibold text-ayu-text">{value}</p>
+      <p className="jim-figure mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </p>
       {detail && (
         <p className="mt-0.5 text-sm text-ayu-subtle [overflow-wrap:anywhere]">
           {detail}
@@ -57,13 +67,17 @@ export function Stat({ label, value, detail }: StatProps) {
 
 /** A calm line where a list would be. */
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="text-ayu-subtle">{children}</p>;
+  return (
+    <p className="jim-card border-dashed! px-4 py-3.5 text-ayu-subtle shadow-none!">
+      {children}
+    </p>
+  );
 }
 
 /** The list every page uses: rows on a panel, split by hairlines. */
 export function Rows({ children }: { children: ReactNode }) {
   return (
-    <ul className="divide-y divide-ayu-line overflow-hidden rounded-xl bg-ayu-panel">
+    <ul className="jim-card divide-y divide-white/[0.05] overflow-hidden">
       {children}
     </ul>
   );
@@ -75,18 +89,18 @@ interface ChipProps {
 }
 
 const CHIP_TONES: Record<NonNullable<ChipProps["tone"]>, string> = {
-  plain: "bg-ayu-line text-ayu-text",
-  red: "bg-ayu-red/15 text-ayu-red",
-  green: "bg-ayu-green/10 text-ayu-green",
-  blue: "bg-ayu-blue/10 text-ayu-blue",
-  purple: "bg-ayu-purple/10 text-ayu-purple",
-  cyan: "bg-ayu-cyan/10 text-ayu-cyan",
+  plain: "bg-white/[0.06] text-ayu-text ring-white/10",
+  red: "bg-ayu-red/12 text-ayu-red ring-ayu-red/25",
+  green: "bg-ayu-green/10 text-ayu-green ring-ayu-green/20",
+  blue: "bg-ayu-blue/10 text-ayu-blue ring-ayu-blue/20",
+  purple: "bg-ayu-purple/10 text-ayu-purple ring-ayu-purple/20",
+  cyan: "bg-ayu-cyan/10 text-ayu-cyan ring-ayu-cyan/20",
 };
 
 export function Chip({ children, tone = "plain" }: ChipProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CHIP_TONES[tone]}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${CHIP_TONES[tone]}`}
     >
       {children}
     </span>

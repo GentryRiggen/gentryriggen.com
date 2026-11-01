@@ -40,7 +40,7 @@ function LabTile({ card }: { card: LabCard }) {
     .map((p) => `${p.v} on ${fmtShort(p.date)}`)
     .join(", ");
   return (
-    <article className="min-w-0 rounded-xl bg-ayu-panel px-4 py-3">
+    <article className="jim-card min-w-0 px-4 py-3.5">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="min-w-0 font-medium text-ayu-text [overflow-wrap:anywhere]">
           {card.marker}
@@ -86,7 +86,7 @@ export default function NotesHealth({ data }: NotesHealthProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 min-[360px]:[&>:last-child:nth-child(odd)]:col-span-2">
         {last ? (
           <Stat
             label="Last injection"
@@ -110,7 +110,7 @@ export default function NotesHealth({ data }: NotesHealthProps) {
         ) : null}
       </div>
       {hold && (
-        <p className="rounded-xl bg-ayu-panel px-4 py-3 text-sm text-ayu-subtle">
+        <p className="jim-card px-4 py-3 text-sm text-ayu-subtle">
           Set aside until the next draw:{" "}
           <span className="text-ayu-text">{hold.markers.join(", ")}</span>
         </p>

@@ -65,7 +65,7 @@ export default function NotesPeople({
           autoCorrect="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="min-h-11 w-full rounded-full border border-ayu-muted bg-ayu-panel py-2 pr-4 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none"
+          className="min-h-11 w-full rounded-2xl border border-white/[0.08] bg-ayu-panel/70 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] backdrop-blur pr-4 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
         />
       </div>
       {groups.length === 0 && (
@@ -75,9 +75,11 @@ export default function NotesPeople({
       )}
       {groups.map(({ group, people }) => (
         <div key={group} className="space-y-1.5">
-          <h3 className="text-sm font-semibold tracking-wide text-ayu-accent uppercase">
+          <h3 className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-ayu-subtle uppercase">
             {group}{" "}
-            <span className="font-normal text-ayu-subtle">{people.length}</span>
+            <span className="rounded-full bg-white/[0.06] px-1.5 py-px text-[0.6875rem] tracking-normal text-ayu-subtle tabular-nums">
+              {people.length}
+            </span>
           </h3>
           <Rows>
             {people.map((p) => (
@@ -85,11 +87,11 @@ export default function NotesPeople({
                 <button
                   type="button"
                   onClick={() => onOpen(p.path)}
-                  className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-ayu-raised"
+                  className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-white/[0.04]"
                 >
                   <span
                     aria-hidden="true"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ayu-line text-sm font-semibold text-ayu-accent"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ayu-accent/25 to-ayu-purple/20 text-sm font-semibold text-ayu-accent ring-1 ring-ayu-accent/25 ring-inset"
                   >
                     {initials(p.name)}
                   </span>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Ellipsis } from "lucide-react";
+import JimMark from "@/components/jim/JimMark";
 
 export type JimTab = "chat" | "notes";
 
@@ -17,6 +18,8 @@ interface JimHeaderProps {
   onTab?: (tab: JimTab) => void;
   /** Extra menu entries, shown above Sign out (always last). */
   menuItems?: JimMenuItem[];
+  /** Jim is working on a reply: the mark breathes. */
+  busy?: boolean;
 }
 
 const TABS: { id: JimTab; label: string }[] = [
@@ -34,6 +37,7 @@ export default function JimHeader({
   tab,
   onTab,
   menuItems = [],
+  busy = false,
 }: JimHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -87,19 +91,29 @@ export default function JimHeader({
   }
 
   return (
-    <header className="shrink-0 border-b border-ayu-line bg-ayu-bg pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+    <header className="jim-glass relative z-10 shrink-0 border-b border-white/[0.06] pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <div className="mx-auto flex h-12 w-full max-w-[45rem] items-center gap-2 px-4">
-        <div className="flex-1">
-          <h1 className="text-lg font-semibold text-ayu-accent">Jim</h1>
+        <div className="flex flex-1 items-center gap-2.5">
+          <JimMark busy={busy} />
+          <h1 className="text-[1.0625rem] font-semibold tracking-tight text-ayu-text">
+            Jim
+          </h1>
         </div>
 
         {tab && onTab && (
-          // A 36px pill track behind 44px-tall tabs whose own pill is 32px.
+          // A 36px track behind 44px-tall tabs; the lit thumb slides under
+          // the selected one (both tabs are the same width).
           <div
             role="tablist"
             aria-label="Jim"
-            className="relative flex h-11 items-center before:absolute before:inset-x-0 before:top-1/2 before:h-9 before:-translate-y-1/2 before:rounded-full before:bg-ayu-panel"
+            className="relative flex h-11 items-center before:absolute before:inset-x-0 before:top-1/2 before:h-9 before:-translate-y-1/2 before:rounded-full before:border before:border-white/[0.06] before:bg-ayu-line/70"
           >
+            <span
+              aria-hidden="true"
+              className={`absolute top-1/2 left-0.5 h-8 w-[4.5rem] -translate-y-1/2 rounded-full bg-ayu-raised shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_4px_12px_-4px_rgb(0_0_0/0.6)] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+                tab === "notes" ? "translate-x-[4.75rem]" : ""
+              }`}
+            />
             {TABS.map(({ id, label }) => {
               const selected = tab === id;
               return (
@@ -114,9 +128,9 @@ export default function JimHeader({
                   className="group relative flex h-11 items-center px-0.5"
                 >
                   <span
-                    className={`flex h-8 items-center rounded-full px-4 text-sm font-medium ${
+                    className={`flex h-8 w-[4.5rem] items-center justify-center rounded-full text-sm font-medium transition-colors duration-200 ${
                       selected
-                        ? "bg-ayu-line text-ayu-accent"
+                        ? "text-ayu-accent"
                         : "text-ayu-subtle group-hover:text-ayu-text"
                     }`}
                   >
@@ -137,7 +151,7 @@ export default function JimHeader({
             aria-expanded={menuOpen}
             aria-controls={menuOpen ? "jim-menu" : undefined}
             onClick={() => setMenuOpen((open) => !open)}
-            className="-mr-2.5 flex size-11 items-center justify-center rounded-full text-ayu-subtle hover:bg-ayu-panel hover:text-ayu-text"
+            className="-mr-2.5 flex size-11 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text aria-expanded:bg-white/[0.06] aria-expanded:text-ayu-text"
           >
             <Ellipsis aria-hidden="true" className="size-5" />
           </button>
@@ -148,7 +162,7 @@ export default function JimHeader({
               role="menu"
               aria-label="Menu"
               onKeyDown={onMenuKeyDown}
-              className="absolute top-full right-0 z-20 mt-1 min-w-52 overflow-hidden rounded-xl border border-ayu-raised bg-ayu-panel shadow-xl shadow-black/50"
+              className="jim-rise absolute top-full right-0 z-20 mt-1.5 min-w-56 origin-top-right overflow-hidden rounded-2xl border border-white/[0.08] bg-ayu-panel/90 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
             >
               {items.map((item) => (
                 <button
@@ -162,7 +176,7 @@ export default function JimHeader({
                     buttonRef.current?.focus();
                     item.onSelect();
                   }}
-                  className="flex min-h-11 w-full items-center px-4 text-left text-base whitespace-nowrap text-ayu-text hover:bg-ayu-raised focus:bg-ayu-raised focus:outline-none"
+                  className="flex min-h-12 w-full items-center rounded-xl px-3.5 text-left text-base whitespace-nowrap text-ayu-text hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none active:scale-100!"
                 >
                   {item.label}
                 </button>
