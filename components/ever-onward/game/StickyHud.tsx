@@ -74,7 +74,7 @@ export default function StickyHud({
               value={value}
               format={formatPrimary}
               testId="lm-hud-value"
-              className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:2px_2px_0_#78350f]`}
+              className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
             />
             <RateReadout
               rate={rate}

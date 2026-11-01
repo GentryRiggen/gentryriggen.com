@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.1",
+    date: "2026-11-01",
+    title: "Sharper numbers",
+    highlights: [
+      "The coin counter at the top stays crisp while it climbs instead of looking fuzzy",
+      "On the home screen, the game no longer slides under the clock and battery, so the top of the screen is never blurred",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-11-01",
     title: "Arcade mode",
