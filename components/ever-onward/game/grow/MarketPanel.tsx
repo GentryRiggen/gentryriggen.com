@@ -82,6 +82,8 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
     refs.current[next]?.focus();
   };
 
+  // Deliberate: arrows only move focus. Planting has a cost (the new crop
+  // sprouts for a moment), so it takes Enter, Space or a click to choose.
   const onKeyDown = (e: KeyboardEvent, i: number) => {
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();

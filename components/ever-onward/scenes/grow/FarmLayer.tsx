@@ -77,7 +77,6 @@ function Field({
 }) {
   const { x, y } = fieldAt(i);
   const h = i < 4 ? 34 : 40;
-  const rows = i < 4 ? 2 : 2;
   return (
     <g>
       <rect
@@ -88,7 +87,7 @@ function Field({
         fill={info.dry ? SOIL_DRY : SOIL_WET}
       />
       <rect x={x} y={y} width={FIELD_W} height="3" fill="#7a5230" />
-      {Array.from({ length: rows }, (_, r) =>
+      {Array.from({ length: 2 }, (_, r) =>
         Array.from({ length: PLANTS }, (_, k) => (
           <Plant
             key={`${r}-${k}`}

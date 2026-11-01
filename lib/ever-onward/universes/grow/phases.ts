@@ -28,7 +28,7 @@ export const PHASES: readonly PhaseDef[] = [
     id: PHASE_YARD,
     title: "The Backyard",
     intro:
-      "This is one small seed, and you are its gardener. It sits in a plain pot on a plain windowsill, waiting for a drop of water and a bit of luck. Water it, keep the soil damp and watch what happens. Every big garden starts exactly like this.",
+      "This is one small seed, and you are its gardener. It sits in a plain pot on a plain windowsill, waiting for sun, rain and a bit of luck. Plant seeds, keep the soil damp and watch what happens. Every big garden starts exactly like this.",
     goal: "Plant seeds and build a cold frame.",
     manualResource: "seeds",
     manualLabel: "Plant a seed",

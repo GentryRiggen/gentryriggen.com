@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState, type KeyboardEvent } from "react";
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import {
@@ -26,7 +27,12 @@ const clock = (seconds: number): string => {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 };
 
-const percent = (n: number): string => `${Math.round(n * 100)}%`;
+/** The three ribbon chances in whole percents that always total 100. */
+function oddsOf(chances: readonly number[]): [number, number, number] {
+  const a = Math.round(chances[0] * 100);
+  const b = Math.round(chances[1] * 100);
+  return [a, b, 100 - a - b];
+}
 
 const sizeWord = (size: number): string =>
   size < 0.4 ? "small" : size < 0.7 ? "medium" : "big";
@@ -68,6 +74,8 @@ function PumpkinPicture({ size, shine }: { size: number; shine: number }) {
  * waits as long as it takes.
  */
 export default function CountyFair({ def, run, onAct }: PanelProps) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [focus, setFocus] = useState<number | null>(null);
   if (!isFairOpen(run) || run.complete) return null;
 
   const stage = fairStage(run);
@@ -78,6 +86,28 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
   const pumpkins = pumpkinsOnOffer(run);
   const resultLine = fairResultLine(run);
   const fairs = fairsSoFar(run);
+  const rovingIndex =
+    focus ?? (judging ? Number(run.resources.frPicked ?? 0) : 0);
+  const move = (to: number) => {
+    const next = (to + PUMPKIN_COUNT) % PUMPKIN_COUNT;
+    setFocus(next);
+    refs.current[next]?.focus();
+  };
+  const onKeyDown = (e: KeyboardEvent, i: number) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      move(i + 1);
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      move(i - 1);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      move(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      move(PUMPKIN_COUNT - 1);
+    }
+  };
   const earned = run.resources.frEarned ?? 0;
   const shown = run.resources.frShown ?? 0;
 
@@ -123,47 +153,63 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
         {headline}
       </p>
 
-      {(on || judging) && (
-        <>
-          <p className="bee-reveal-2 font-mono text-xs text-slate-300">
-            Every pumpkin wins a ribbon, and every ribbon pays. Better pumpkins
-            have better chances of the bigger ones.
-          </p>
-          <ul
-            key={shown}
-            className="bee-reveal-3 grid grid-cols-1 gap-2 sm:grid-cols-3"
-          >
-            {Array.from({ length: PUMPKIN_COUNT }, (_, i) => {
-              const id = enterActionId(i);
-              const doable = canPerformAction(def, run, id);
-              const chances = placeChances(run, i);
-              const picked = judging && run.resources.frPicked === i;
-              return (
-                <li key={id}>
-                  <button
-                    type="button"
-                    data-testid={`lm-fair-enter-${i}`}
-                    disabled={!doable}
-                    onClick={() => {
-                      if (doable) onAct(id);
-                    }}
-                    className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] transition-transform disabled:cursor-not-allowed sm:flex-col sm:text-center sm:text-[10px] ${retroFocusClass} ${
-                      on
-                        ? "border-orange-200 bg-orange-400 text-orange-950 shadow-[4px_4px_0_#7c2d12] hover:bg-orange-300 active:translate-y-0.5 active:shadow-none"
-                        : picked
-                          ? "border-orange-200 bg-orange-900 text-orange-100"
-                          : "border-slate-600 bg-slate-800 text-slate-400 shadow-[4px_4px_0_#0f172a]"
-                    }`}
-                  >
-                    <PumpkinPicture
-                      size={pumpkins[i].size}
-                      shine={pumpkins[i].shine}
-                    />
-                    <span className="min-w-0 flex-1 space-y-1">
-                      <span className="block">
-                        Pumpkin {i + 1}
-                        {on && best === i ? " (best chances)" : ""}
-                      </span>
+      <p className="bee-reveal-2 font-mono text-xs text-slate-300">
+        Every pumpkin wins a ribbon, and every ribbon pays. Better pumpkins have
+        better chances of the bigger ones.
+      </p>
+      <div
+        role="radiogroup"
+        aria-label="Pumpkins to enter"
+        className="bee-reveal-3 grid grid-cols-1 gap-2 sm:grid-cols-3"
+      >
+        {Array.from({ length: PUMPKIN_COUNT }, (_, i) => {
+          const id = enterActionId(i);
+          const doable = on && canPerformAction(def, run, id);
+          const picked = judging && run.resources.frPicked === i;
+          const [blue, red, garden] = oddsOf(placeChances(run, i));
+          return (
+            <button
+              key={id}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={picked}
+              aria-disabled={!doable}
+              aria-label={`Pumpkin ${i + 1}`}
+              aria-describedby={`lm-fair-${i}-info`}
+              tabIndex={i === rovingIndex ? 0 : -1}
+              data-testid={`lm-fair-enter-${i}`}
+              onFocus={() => setFocus(i)}
+              onKeyDown={(e) => onKeyDown(e, i)}
+              onClick={() => {
+                if (doable) onAct(id);
+              }}
+              className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] transition-transform aria-disabled:cursor-not-allowed sm:flex-col sm:text-center sm:text-[10px] ${retroFocusClass} ${
+                on
+                  ? "border-orange-200 bg-orange-400 text-orange-950 shadow-[4px_4px_0_#7c2d12] hover:bg-orange-300 active:translate-y-0.5 active:shadow-none"
+                  : picked
+                    ? "border-orange-200 bg-orange-900 text-orange-100"
+                    : "border-slate-600 bg-slate-800 text-slate-400 shadow-[4px_4px_0_#0f172a]"
+              }`}
+            >
+              {on || judging ? (
+                <PumpkinPicture
+                  size={pumpkins[i].size}
+                  shine={pumpkins[i].shine}
+                />
+              ) : (
+                <span aria-hidden="true" className="h-14 w-14 shrink-0" />
+              )}
+              <span className="min-w-0 flex-1 space-y-1">
+                <span className="block">
+                  Pumpkin {i + 1}
+                  {on && best === i ? " (best chances)" : ""}
+                </span>
+                <span id={`lm-fair-${i}-info`} className="block space-y-1">
+                  {on || judging ? (
+                    <>
                       <span className="block font-mono text-[11px] font-bold normal-case">
                         {sizeWord(pumpkins[i].size)},{" "}
                         {shineWord(pumpkins[i].shine)}
@@ -172,8 +218,7 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
                         data-testid={`lm-fair-odds-${i}`}
                         className="block font-mono text-[11px] font-bold normal-case"
                       >
-                        Blue {percent(chances[0])}, red {percent(chances[1])},
-                        garden {percent(chances[2])}
+                        Blue {blue}%, red {red}%, garden {garden}%
                       </span>
                       <span className="block font-mono text-[11px] normal-case">
                         About +
@@ -184,23 +229,31 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
                         )}{" "}
                         harvest
                       </span>
+                    </>
+                  ) : (
+                    <span className="block font-mono text-[11px] normal-case">
+                      Not ready yet
                     </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+                  )}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      {resultLine && (
-        <p
-          data-testid="lm-fair-result"
-          className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-        >
-          {resultLine}
-        </p>
-      )}
+      <p
+        role="status"
+        aria-live="polite"
+        data-testid="lm-fair-result"
+        className={
+          resultLine
+            ? "border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
+            : "sr-only"
+        }
+      >
+        {resultLine ?? ""}
+      </p>
 
       {hasFairHand(run) && (
         <p className="font-mono text-xs text-orange-100">
