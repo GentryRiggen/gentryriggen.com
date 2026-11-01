@@ -2,6 +2,8 @@ import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
 import MemoryGarden from "../../game/MemoryGarden";
 import ProbeRaces from "../../game/ProbeRaces";
 import TideClock from "../../game/TideClock";
+import ProjectsPanel from "../../game/ProjectsPanel";
+import StreetlightsPanel from "../../game/StreetlightsPanel";
 import WeatherDesk from "../../game/WeatherDesk";
 import { uiFor } from "..";
 
@@ -15,7 +17,9 @@ describe("the universe UI registry", () => {
     expect(uiFor("light").panels).toEqual([
       TideClock,
       ProbeRaces,
+      StreetlightsPanel,
       WeatherDesk,
+      ProjectsPanel,
       MemoryGarden,
     ]);
   });

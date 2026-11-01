@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buy,
   greetVisitor,
+  isProjectId,
   manualAction,
   manualGain,
   performAction,
   reconcileRun,
+  startProject,
   tick,
 } from "@/lib/ever-onward/engine/engine";
 import {
@@ -316,7 +318,10 @@ export function useGame(): GameApi {
         ? saveRef.current?.universes[activeId]
         : undefined;
       if (!activeId || !def || !current || isPaused) return;
-      const nextRun = performAction(def, current.run, id);
+      // A project's start comes through here too (its panel calls onAct).
+      const nextRun = isProjectId(def, id)
+        ? startProject(def, current.run, id)
+        : performAction(def, current.run, id);
       if (nextRun === current.run) return;
       everOnwardSynth.tap(current.run.phase);
       replaceUniverse(activeId, { ...current, run: nextRun });

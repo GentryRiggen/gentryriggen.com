@@ -2,6 +2,7 @@ import type { UniverseDef } from "../../engine/types";
 import { ACTIONS } from "./actions";
 import {
   LIGHT_CONSUMABLES,
+  LIGHT_DECISION_ACTIONS,
   lightIncomeView,
   PLATE_ACTIONS,
   lightPlates,
@@ -10,6 +11,7 @@ import {
 import { lightAlert } from "./alerts";
 import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
+import { NIGHT_PROJECTS } from "./projects";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
@@ -27,6 +29,7 @@ export const lightUniverse: UniverseDef = {
   phases: PHASES,
   upgrades: UPGRADES,
   actions: ACTIONS,
+  projects: NIGHT_PROJECTS,
   maxVisible: 3,
   story: STORY,
   teasers: TEASERS,
@@ -40,6 +43,7 @@ export const lightUniverse: UniverseDef = {
   },
   plates: lightPlates,
   plateActions: PLATE_ACTIONS,
+  decisionActions: LIGHT_DECISION_ACTIONS,
   consumables: LIGHT_CONSUMABLES,
   incomeView: lightIncomeView,
   sceneDiff: lightSceneDiff,

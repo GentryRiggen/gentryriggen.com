@@ -1,5 +1,6 @@
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { sceneInfo } from "./scene";
+import { LAMP_ACTION_IDS } from "./lamps";
 import {
   gridSteadiness,
   headingOf,
@@ -12,6 +13,7 @@ import {
   flameFraction,
   isOilCheap,
   isRushOn,
+  isLampsOpen,
   isStorming,
   level,
   tankCapacity,
@@ -23,9 +25,16 @@ import {
   runsHome,
   withoutProbeRaces,
 } from "./probes";
-import { TIDE_ACTION_IDS, haulsSoFar, isTideOpen, withoutTide } from "./tide";
+import {
+  SET_NETS_ACTION,
+  TIDE_ACTION_IDS,
+  haulsSoFar,
+  isTideOpen,
+  withoutTide,
+} from "./tide";
 import {
   GARDEN_ACTION_IDS,
+  WATER_ACTION,
   isGardenOpen,
   picksSoFar,
   withoutGarden,
@@ -60,6 +69,7 @@ export function lightPlates(run: RunState): string[] {
     if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
       plates.push("grid");
     if (isRushOn(run)) plates.push("rush");
+    if (isLampsOpen(run)) plates.push("lamps");
     // Offered once the first front has come and gone (so it is not a crowd of
     // beats at the moment the desk opens).
     if (isWeatherOpen(run) && (run.resources.wxFronts ?? 0) >= 1)
@@ -91,6 +101,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   oilMarket: ["buy-oil"],
   grid: ["balance-grid"],
   rush: ["ride-rush"],
+  lamps: LAMP_ACTION_IDS,
   tide: TIDE_ACTION_IDS,
   race: LAUNCH_ACTION_IDS,
   weather: SHIELD_ACTION_IDS,
@@ -99,6 +110,21 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   boat: ["steer-boat", "flash-lamp"],
   garden: GARDEN_ACTION_IDS,
 };
+
+/**
+ * Real choices, for the decision-gap metric: buying oil at a price, when to
+ * set the nets, which route to fly, where the storm crews go, when to water.
+ * Claims (the rush, a flare), fixes (balance, correct, steer) and collects
+ * (haul in, pick) are not choices.
+ */
+export const LIGHT_DECISION_ACTIONS: readonly string[] = [
+  "buy-oil",
+  SET_NETS_ACTION,
+  ...LAUNCH_ACTION_IDS,
+  ...SHIELD_ACTION_IDS,
+  WATER_ACTION,
+  ...LAMP_ACTION_IDS,
+];
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
   {

@@ -242,6 +242,43 @@ export interface CountdownView {
   detail?: string;
 }
 
+/** One price a project asks: every entry is paid when it starts. */
+export interface ProjectCost {
+  resource: string;
+  amount: number;
+}
+
+/**
+ * A project (as in Paperclips): a one-off choice paid mostly in a slowly
+ * earned second resource (the night's know-how). A few are on offer at a
+ * time; each has a visible effect and a trade-off, so which one first is a
+ * real choice. New ones reveal on milestones, never on timers, and nothing
+ * on offer ever goes away. Done projects are `flags["project-<id>"]`, so an
+ * old save simply has none.
+ */
+export interface ProjectDef {
+  id: string;
+  /** The phase id it belongs to. */
+  phase: string;
+  name: string;
+  /** What it is and what it trades, in plain words. */
+  description: string;
+  costs: readonly ProjectCost[];
+  /** Offered from the first time this is true (omitted: at once). Must only read. */
+  revealWhen?(run: RunState): boolean;
+  /** Applies the effect to a draft. */
+  onDone?(run: RunState): void;
+  /** The visible effect, before to after ("Power/sec 120 -> 144"). Must only read. */
+  effectPreview?(run: RunState): string | null;
+  /** The catch, in a few words ("Towns want 6% more power"). */
+  tradeOff?: string;
+  /**
+   * Sim hint for an effect income can't show (a better forecast, a bigger
+   * battery): added to the forward income gain when bots rank projects.
+   */
+  botValue?: number;
+}
+
 export interface PrestigeUpgradeDef {
   id: string;
   name: string;
@@ -283,6 +320,10 @@ export interface UniverseDef {
   upgrades: readonly UpgradeDef[];
   /** Hand-made decisions besides the tap and the shop. */
   actions?: readonly ActionDef[];
+  /** One-off choices paid in a slow second resource (see `ProjectDef`). */
+  projects?: readonly ProjectDef[];
+  /** At most this many projects are on offer at once (default 3). */
+  maxProjects?: number;
   /**
    * At most this many upgrades the player hasn't bought yet are on offer in a
    * phase; the next one reveals when one is bought. Omitted means no limit.
@@ -317,6 +358,14 @@ export interface UniverseDef {
    * plate not listed counts whenever `plates` offers it.
    */
   plateActions?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Scorecard hook: action ids that are real choices (where to send a crew,
+   * which route to fly, which crop to plant, a knob's setting), as opposed to
+   * claims, fixes and collects (ride the rush, balance the grid, haul in).
+   * The decision-gap metric counts these, meaningful purchases and projects;
+   * story lines never count.
+   */
+  decisionActions?: readonly string[];
   /** Scorecard hook: watched numbers with a refill (see `ConsumableDef`). */
   consumables?: readonly ConsumableDef[];
   /**

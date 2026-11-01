@@ -5,7 +5,7 @@ export const TUNING = {
    * and the bigger collector steps made the night and the sky quicker, so
    * they are priced up to keep the run about two hours.
    */
-  costScale: { coast: 3.35, night: 2, sky: 1.9, last: 1.15 } as Record<
+  costScale: { coast: 3.35, night: 2.9, sky: 1.9, last: 1.15 } as Record<
     string,
     number
   >,
@@ -105,6 +105,11 @@ export const TUNING = {
     payPerMW: 0.2,
     crankBase: 1,
     crankPerLevel: 0.5,
+    /**
+     * A turn of the crank also brings this share of a second's city power,
+     * so a tap never falls to nothing as the grid grows (still a nudge).
+     */
+    crankShare: 0.003,
     gensMW: [8, 30, 300, 3000] as const,
     lineBonus: 0.15,
     /** Each substation carries this much more of every plant's power. */
@@ -134,22 +139,98 @@ export const TUNING = {
     /** Seconds of income the rush pays when claimed. */
     rushBonusSeconds: 25,
   },
+  /** Know-how and the night's projects (see projects.ts). */
+  projects: {
+    /** Know-how a second for every power plant built. */
+    knowhowPerPlant: 0.04,
+    /** Night school: know-how comes this much faster. */
+    schoolBoost: 1.5,
+    /** Know-how for balancing an uneasy grid by hand (line patrols: less). */
+    perBalance: 3,
+    patrolBalance: 1,
+    /** Know-how for riding an evening rush. */
+    perRush: 2,
+    /** Smart meters: cities pay more, towns want more. */
+    meterPay: 1.2,
+    meterDemand: 1.05,
+    /** Lamplighters: towns want less, the steady glow pays less. */
+    lampDemand: 0.94,
+    lampGlowBonus: 0.08,
+    /** Line patrols: the grid strains slower. */
+    patrolStrain: 0.7,
+    /** Rush-hour pricing: a bigger rush, a little less often. */
+    rushPay: 1.5,
+    rushGap: 1.25,
+    /** Fish ladders: every dam makes more. */
+    ladderBoost: 1.4,
+    /** The power co-op: steam plants make more, the grid strains more. */
+    coopBoost: 1.25,
+    coopStrain: 1.15,
+    /** Wind maps: every wind and sun farm makes more. */
+    windBoost: 1.25,
+  },
+  /**
+   * The streetlights (No More Night's knob): how bright the cities shine.
+   * Brighter pays more per megawatt, but the grid works harder, every city
+   * wants a little more and the busy crews learn less. Softer pays less but
+   * eases the grid, lights more towns with the same power, and gives the
+   * crews quiet time to learn (know-how). "Bright" is how the night always
+   * played.
+   */
+  lamps: {
+    steps: [
+      { pay: 0.9, demand: 0.88, strain: 0.7, knowhow: 2.5 },
+      { pay: 0.95, demand: 0.94, strain: 0.85, knowhow: 1.6 },
+      { pay: 1, demand: 1, strain: 1, knowhow: 1 },
+      { pay: 1.06, demand: 1.06, strain: 1.3, knowhow: 0.25 },
+    ] as readonly {
+      pay: number;
+      demand: number;
+      strain: number;
+      knowhow: number;
+    }[],
+    defaultStep: 2,
+  },
   /** The Weather Desk, a side machine of No More Night (see weather.ts). */
   weather: {
     /** It opens with this many steam plants (about a third of the way in). */
-    openAtSteamPlants: 3,
+    openAtSteamPlants: 2,
     /** Seconds after it opens until the first front forms. */
     firstFormSeconds: 40,
-    /** Seconds a front takes to form, and how long its forecast stands. */
-    formMin: 130,
-    formSpread: 50,
-    forecastSeconds: 55,
+    /** Seconds a front takes to form. */
+    formMin: 35,
+    formSpread: 25,
+    /** The forecast comes in steps, the storm's path firming up each time. */
+    forecastSteps: 3,
+    stepSeconds: 20,
+    /**
+     * How sure each step is: the share of the chances that points at where
+     * the storm will really land (the first step is the honest draw).
+     * Barometers make every step surer.
+     */
+    firm: [0, 0.45, 0.8] as readonly number[],
+    firmBarometers: [0.3, 0.7, 0.95] as readonly number[],
     /** Each town is at least this likely; the rest is shared out at random. */
     minChance: 5,
     /** Chances are drawn as random ** skew, so one town is usually likely. */
     skew: 2,
-    /** Seconds of income a held storm pays. */
+    /** Seconds of income a storm pays when it lands on a ready crew. */
     bonusSeconds: 45,
+    /** A crew that has only just arrived earns this share of the bonus. */
+    unreadyShare: 0.5,
+    /** Seconds a crew takes to get ready, and to fix a dark town. */
+    readySeconds: 40,
+    fixSeconds: 12,
+    /** Spare parts: crews get ready and fix in this share of the time. */
+    sparePartsFactor: 0.5,
+    /** A town hit with no crew goes dark this long, and pays this much less. */
+    outageSeconds: 120,
+    outageShare: 0.1,
+    /** However many towns are dark, the dip is never more than this. */
+    outageMaxShare: 0.2,
+    /** Know-how for a storm met by a crew, and for an outage fixed. */
+    heldKnowhow: 4,
+    fixKnowhow: 3,
     /** The bonus flows in over this many seconds, like a surge of power. */
     surgeSeconds: 12,
     /** The weather vane pays this share of that. */

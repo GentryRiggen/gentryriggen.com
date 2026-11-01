@@ -4,6 +4,10 @@ import {
   formatCurve,
   type PhaseClicks,
 } from "../lib/ever-onward/engine/clicks";
+import {
+  formatDecisionCurve,
+  formatLongGaps,
+} from "../lib/ever-onward/engine/decisions";
 import { scoreUniverse, type Scorecard } from "../lib/ever-onward/engine/score";
 import {
   SCORED_UNIVERSES,
@@ -77,6 +81,12 @@ function print(card: Scorecard): void {
         .join(", ")}`
     );
   }
+  console.log(
+    "\nDecision gaps, taps when it helps (seconds since the last decision at each minute of the phase; the first 2 min are not scored)"
+  );
+  for (const line of formatDecisionCurve(card.decisions))
+    console.log(`  ${line}`);
+  for (const line of formatLongGaps(card.decisions)) console.log(`  ${line}`);
   const hours = (s: number | null) =>
     s === null ? "no finish" : `${(s / 3600).toFixed(2)} h`;
   const { runs } = card;

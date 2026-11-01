@@ -209,6 +209,16 @@
     "hash": "818316f92da8",
     "durationGuess": 10
   },
+  "light/night-lamps": {
+    "file": "/ever-onward/voice/light/night-lamps.mp3",
+    "hash": "090f3f50fe36",
+    "durationGuess": 17
+  },
+  "light/night-ideas": {
+    "file": "/ever-onward/voice/light/night-ideas.mp3",
+    "hash": "1b57c323444b",
+    "durationGuess": 12
+  },
   "light/night-lines": {
     "file": "/ever-onward/voice/light/night-lines.mp3",
     "hash": "fab40aed01cd",

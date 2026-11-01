@@ -96,7 +96,8 @@ export type NoveltyKind =
   | "story"
   | "plate"
   | "teaser"
-  | "visitor";
+  | "visitor"
+  | "project";
 
 export interface NoveltyEvent {
   t: number;

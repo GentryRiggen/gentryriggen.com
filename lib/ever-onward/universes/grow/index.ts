@@ -3,6 +3,7 @@ import { GROW_ACTIONS } from "./actions";
 import { growAlert } from "./alerts";
 import {
   GROW_CONSUMABLES,
+  GROW_DECISION_ACTIONS,
   GROW_PLATE_ACTIONS,
   growIncomeView,
   growPlates,
@@ -40,6 +41,7 @@ export const growUniverse: UniverseDef = {
   prestige: PRESTIGE,
   plates: growPlates,
   plateActions: GROW_PLATE_ACTIONS,
+  decisionActions: GROW_DECISION_ACTIONS,
   consumables: GROW_CONSUMABLES,
   incomeView: growIncomeView,
   sceneDiff: growSceneDiff,

@@ -1,16 +1,24 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import {
   TOWNS,
   chanceOf,
+  crewActionId,
+  crewCount,
+  crewThatMoves,
+  crewsPlaced,
+  forecastStep,
+  hasCrew,
   hasWeatherVane,
-  isShielded,
+  isOut,
   lastStorm,
-  shieldActionId,
-  shieldSlots,
+  outageSecondsLeft,
+  readiness,
+  readySeconds,
   stageLength,
   stageSecondsLeft,
   stormResultLine,
@@ -27,6 +35,21 @@ interface WeatherDeskProps {
 
 const SEGMENTS = 20;
 const CHANCE_SEGMENTS = 10;
+const READY_SEGMENTS = 5;
+/** The storm's track above the map: nine spots, left to right. */
+const TRACK_SPOTS = 9;
+const TRACK_COLUMNS = [
+  "col-start-1",
+  "col-start-2",
+  "col-start-3",
+  "col-start-4",
+  "col-start-5",
+  "col-start-6",
+  "col-start-7",
+  "col-start-8",
+  "col-start-9",
+] as const;
+const FORECAST_STEPS = 3;
 
 const clock = (seconds: number): string => {
   const whole = Math.max(0, Math.ceil(seconds));
@@ -77,121 +100,165 @@ function TownArt({ town }: { town: number }) {
   );
 }
 
-function ChanceBar({ chance, tone }: { chance: number; tone: string }) {
-  const filled = Math.round((chance / 100) * CHANCE_SEGMENTS);
+function Segments({
+  share,
+  count,
+  tone,
+}: {
+  share: number;
+  count: number;
+  tone: string;
+}) {
+  const filled = Math.round(Math.min(1, Math.max(0, share)) * count);
   return (
-    <div
+    <span
       aria-hidden="true"
       className="flex h-3 w-full gap-0.5 border-2 border-slate-600 bg-slate-950 p-px"
     >
-      {Array.from({ length: CHANCE_SEGMENTS }, (_, i) => (
+      {Array.from({ length: count }, (_, i) => (
         <span
           key={i}
           className={`h-full flex-1 ${i < filled ? tone : "bg-slate-800"}`}
         />
       ))}
-    </div>
+    </span>
+  );
+}
+
+/** A little pixel crew member in a hard hat. */
+function CrewArt({ isReady }: { isReady: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 8 10"
+      className="h-6 w-5 shrink-0"
+      aria-hidden="true"
+      shapeRendering="crispEdges"
+    >
+      <rect x="1" y="0" width="6" height="2" fill="#facc15" />
+      <rect x="2" y="2" width="4" height="2" fill="#fcd34d" />
+      <rect
+        x="1"
+        y="4"
+        width="6"
+        height="3"
+        fill={isReady ? "#f97316" : "#94a3b8"}
+      />
+      <rect x="1" y="7" width="2" height="3" fill="#1e3a8a" />
+      <rect x="5" y="7" width="2" height="3" fill="#1e3a8a" />
+    </svg>
   );
 }
 
 interface TownCardProps {
   run: RunState;
   town: number;
-  stage: ReturnType<typeof weatherStage>;
-  onShield: () => void;
+  /** The crew that moves if one is sent here (null: a free crew goes). */
+  mover: number | null;
+  onSend: () => void;
   isDoable: boolean;
 }
 
-function TownCard({ run, town, stage, onShield, isDoable }: TownCardProps) {
+function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
   const name = TOWNS[town];
+  const isForecast = weatherStage(run) === "forecast";
   const chance = chanceOf(run, town);
-  const isOn = isShielded(run, town);
-  const storm = lastStorm(run);
-  const isForecast = stage === "forecast";
-  const wasHit = !isForecast && storm.kind !== "none" && storm.town === town;
+  const isHere = hasCrew(run, town);
+  const ready = readiness(run, town);
+  const isDark = isOut(run, town);
   const isLikely = isForecast && chance >= 40;
-  const frame = isOn
-    ? "border-emerald-300 bg-emerald-950/70 shadow-[3px_3px_0_#064e3b]"
-    : isForecast
-      ? "border-sky-400 bg-slate-900/80 shadow-[3px_3px_0_#0c4a6e] hover:bg-slate-800/80 active:translate-y-0.5 active:shadow-none"
-      : "border-slate-700 bg-slate-950/70 shadow-[3px_3px_0_#0f172a]";
-  const body = (
-    <>
+  const frame = isDark
+    ? "border-slate-500 bg-slate-950 shadow-[3px_3px_0_#0f172a]"
+    : isHere
+      ? "border-emerald-300 bg-emerald-950/70 shadow-[3px_3px_0_#064e3b]"
+      : "border-sky-400 bg-slate-900/80 shadow-[3px_3px_0_#0c4a6e] hover:bg-slate-800/80 active:translate-y-0.5 active:shadow-none";
+  const action = isHere
+    ? "Call back"
+    : mover !== null
+      ? `Move crew here`
+      : "Send a crew";
+  const details = [
+    isForecast ? `${chance}% chance of the storm` : null,
+    isDark ? "its lights are out" : null,
+    isHere ? `crew ${Math.round(ready * 100)}% ready` : null,
+    mover !== null ? `moves the crew from ${TOWNS[mover]}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    <button
+      type="button"
+      data-testid={`lm-town-${town}`}
+      data-dark={isDark}
+      aria-pressed={isHere}
+      aria-label={`Crew at ${name}`}
+      aria-describedby={`lm-town-${town}-about`}
+      aria-disabled={!isDoable}
+      onClick={() => {
+        if (isDoable) onSend();
+      }}
+      className={`flex min-h-44 min-w-0 touch-manipulation flex-col items-center justify-between gap-1.5 border-4 p-2 text-center transition-transform ${retroFocusClass} ${frame}`}
+    >
+      <span id={`lm-town-${town}-about`} className="sr-only">
+        {details}
+      </span>
       <span
         className={`${pixelClass} text-[8px] leading-tight text-sky-100 sm:text-[9px]`}
       >
         {name}
       </span>
-      <TownArt town={town} />
+      <span className={isDark ? "opacity-40 grayscale" : ""}>
+        <TownArt town={town} />
+      </span>
       {isForecast ? (
         <>
           <span
-            className={`${pixelClass} text-xl tabular-nums sm:text-2xl ${
+            className={`${pixelClass} text-lg tabular-nums sm:text-xl ${
               isLikely ? "text-amber-300" : "text-sky-200"
             }`}
           >
             {chance}%
           </span>
-          <ChanceBar
-            chance={chance}
+          <Segments
+            share={chance / 100}
+            count={CHANCE_SEGMENTS}
             tone={isLikely ? "bg-amber-300" : "bg-sky-400"}
           />
-          <span
-            className={`${pixelClass} mt-1 block w-full border-2 px-1 py-2 text-[8px] leading-tight ${
-              isOn
-                ? "border-emerald-300 bg-emerald-400 text-emerald-950"
-                : "border-sky-300 bg-sky-950 text-sky-100"
-            }`}
-          >
-            {isOn ? "Shielded" : "Shield"}
-          </span>
         </>
       ) : (
-        <>
-          <span
-            className={`${pixelClass} text-[9px] ${
-              wasHit ? "text-amber-200" : "text-slate-400"
-            }`}
-          >
-            {wasHit ? (storm.kind === "flicker" ? "Flicker" : "Held!") : "Calm"}
-          </span>
-          {wasHit && (
-            <span
-              aria-hidden="true"
-              className={`text-lg ${storm.kind === "flicker" ? "wx-flicker" : ""}`}
-            >
-              {storm.kind === "flicker" ? "💡" : "🛡"}
-            </span>
-          )}
-        </>
+        <span className={`${pixelClass} text-[9px] text-slate-400`}>
+          {isDark ? "Dark" : "Calm"}
+        </span>
       )}
-    </>
-  );
-  const layout = `${isForecast ? "min-h-40" : "min-h-28"} flex min-w-0 flex-col items-center justify-between gap-1.5 border-4 p-2 text-center`;
-  if (!isForecast) {
-    return (
-      <div
-        data-testid={`lm-town-${town}`}
-        className={`${layout} ${frame} ${
-          wasHit ? "ring-2 ring-amber-300/70" : ""
+      {isDark && (
+        <span className="font-mono text-[11px] font-bold text-slate-200 tabular-nums">
+          Lights out {clock(outageSecondsLeft(run, town))}
+        </span>
+      )}
+      <span className="flex min-h-6 w-full items-center gap-1">
+        {isHere ? (
+          <>
+            <CrewArt isReady={ready >= 1} />
+            <Segments
+              share={ready}
+              count={READY_SEGMENTS}
+              tone="bg-orange-400"
+            />
+          </>
+        ) : (
+          <span className="w-full font-mono text-[10px] text-slate-400">
+            no crew
+          </span>
+        )}
+      </span>
+      <span
+        className={`${pixelClass} block w-full border-2 px-1 py-2 text-[8px] leading-tight ${
+          isHere
+            ? "border-emerald-300 bg-emerald-400 text-emerald-950"
+            : "border-sky-300 bg-sky-950 text-sky-100"
         }`}
       >
-        {body}
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      data-testid={`lm-town-${town}`}
-      aria-pressed={isOn}
-      aria-label={`${isOn ? "Lift the sandbags at" : "Sandbag"} ${name}, ${chance}% chance of the storm`}
-      onClick={() => {
-        if (isDoable) onShield();
-      }}
-      className={`${layout} touch-manipulation transition-transform ${retroFocusClass} ${frame}`}
-    >
-      {body}
+        {action}
+      </span>
     </button>
   );
 }
@@ -228,24 +295,69 @@ function FrontBar({
 }
 
 /**
- * The Weather Desk: a storm front forms by itself, the forecast shows how
- * likely it is to hit each town, and the player may shield some. Nothing here
- * can be lost or missed; an ignored storm only flickers some lights.
+ * Where the storm is heading: the chance-weighted middle of the three towns,
+ * on a track of nine spots above the map. It slides as the forecast firms.
  */
-export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
+function StormTrack({ run }: { run: RunState }) {
+  const weight = TOWNS.reduce((sum, _, t) => sum + chanceOf(run, t), 0);
+  const middle =
+    weight > 0
+      ? TOWNS.reduce((sum, _, t) => sum + t * chanceOf(run, t), 0) / weight
+      : 1;
+  const spot = Math.min(
+    TRACK_SPOTS - 1,
+    Math.max(0, Math.round((middle / (TOWNS.length - 1)) * (TRACK_SPOTS - 1)))
+  );
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="lm-storm-track"
+      data-spot={spot}
+      className="grid h-7 grid-cols-9 items-center border-b-2 border-dashed border-sky-700/70"
+    >
+      <span
+        className={`${TRACK_COLUMNS[spot]} row-start-1 text-center text-xl transition-all duration-700`}
+      >
+        ⛈
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The Weather Desk: a storm forms, its forecast firms up over three steps,
+ * and the player sends repair crews where they think it will land. A crew
+ * takes a while to get ready, so an early guess and a late sure move are
+ * both choices. A town hit with no crew goes dark for a while (a crew fixes
+ * it fast); nothing is ever lost or missed.
+ */
+function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
   const stage = weatherStage(run);
+  // Which crew a tap would move only changes when a crew or a chance does.
+  const moverKey = [
+    crewCount(run),
+    ...TOWNS.map((_, t) => `${hasCrew(run, t) ? 1 : 0}:${chanceOf(run, t)}`),
+  ].join("|");
+  const movers = useMemo(
+    () => TOWNS.map((_, t) => crewThatMoves(run, t)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what it reads
+    [moverKey]
+  );
   if (stage === "closed" || run.complete) return null;
 
   const isForecast = stage === "forecast";
   const left = stageSecondsLeft(run);
   const share = 1 - left / stageLength(run);
-  const slots = shieldSlots(run);
+  const crews = crewCount(run);
+  const placed = crewsPlaced(run);
   const resultLine = stormResultLine(run);
   const storm = lastStorm(run);
   const held = run.resources.wxHeld ?? 0;
   const flickered = run.resources.wxFlickered ?? 0;
+  const fixes = run.resources.wxFixes ?? 0;
   const earned = run.resources.wxEarned ?? 0;
   const vaneTown = TOWNS[vanePick(run)];
+  const step = forecastStep(run);
 
   return (
     <section
@@ -278,29 +390,32 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
           Weather desk
         </h2>
         <p
+          data-testid="lm-weather-step"
           className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
             isForecast
               ? "border-amber-300 bg-amber-950 text-amber-200"
               : "border-slate-600 bg-slate-900 text-slate-300"
           }`}
         >
-          {isForecast ? "Storm coming" : "All calm"}
+          {isForecast
+            ? `Forecast ${step} of ${FORECAST_STEPS}`
+            : "Storm forming"}
         </p>
       </header>
 
-      {isForecast ? (
-        <p className="font-mono text-sm text-sky-50">
-          Storm coming! Tap {slots === 1 ? "a town" : "up to 2 towns"} to put
-          sandbags there. If the storm lands on one, you get bonus power. If
-          not, the lights just flicker.
-        </p>
-      ) : (
-        <p className="font-mono text-sm text-sky-50">
-          {storm.kind === "none"
-            ? "The sea is quiet. A storm front will form on its own, so there is nothing to do yet."
-            : "The sea is quiet again. The next front forms on its own."}
-        </p>
-      )}
+      <p className="font-mono text-sm text-sky-50">
+        {isForecast
+          ? step < FORECAST_STEPS
+            ? "The storm's path gets surer each step. Move a crew now on a guess, or wait for a surer forecast: a crew needs time to get ready."
+            : "Last forecast: this is about where it lands."
+          : `A storm is forming out at sea. You can send ${
+              crews === 1 ? "your crew" : "your crews"
+            } ahead. A crew takes about ${Math.round(
+              readySeconds(run)
+            )} seconds to get ready.`}
+      </p>
+
+      {isForecast && <StormTrack run={run} />}
 
       <div className="grid grid-cols-3 gap-2">
         {TOWNS.map((_, town) => (
@@ -308,9 +423,9 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
             key={town}
             run={run}
             town={town}
-            stage={stage}
-            isDoable={canPerformAction(def, run, shieldActionId(town))}
-            onShield={() => onAct(shieldActionId(town))}
+            mover={movers[town]}
+            isDoable={canPerformAction(def, run, crewActionId(town))}
+            onSend={() => onAct(crewActionId(town))}
           />
         ))}
       </div>
@@ -318,7 +433,7 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
       <div className="space-y-1.5">
         <p className="flex items-baseline justify-between gap-3">
           <span className={`${pixelClass} text-[8px] text-sky-200`}>
-            {isForecast ? "Landfall" : "Next front forming…"}
+            {isForecast ? "Landfall" : "Next storm forming…"}
           </span>
           <span
             className={`${pixelClass} text-[10px] tabular-nums text-amber-100`}
@@ -328,39 +443,49 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
         </p>
         <FrontBar
           share={share}
-          label={isForecast ? "Time until landfall" : "Next front forming"}
+          label={isForecast ? "Time until landfall" : "Next storm forming"}
           tone={isForecast ? "bg-amber-300" : "bg-sky-500/70"}
         />
       </div>
 
-      {isForecast && (
-        <p className="font-mono text-xs text-slate-300">
-          You can shield {slots} {slots === 1 ? "town" : "towns"} at a time.
-          {hasWeatherVane(run) &&
-            ` The weather vane also watches ${vaneTown} for you, for 60% of the bonus.`}
-        </p>
-      )}
+      <p className="font-mono text-xs text-slate-300">
+        Crews out: {placed} of {crews}. They stay where you put them, so move
+        one only when the forecast says so. A town with no crew goes dark for a
+        while when a storm hits: it costs a little power until a crew, or time,
+        puts it right.
+        {hasWeatherVane(run) &&
+          ` The weather vane also watches ${vaneTown} for you, for 60% of the bonus.`}
+      </p>
 
-      {resultLine && !isForecast && (
-        <p
-          data-testid="lm-weather-result"
-          className={`border-2 p-2 font-mono text-sm font-bold ${
-            storm.kind === "flicker"
-              ? "border-slate-600 bg-slate-900/80 text-slate-200"
-              : "border-emerald-400 bg-emerald-950/70 text-emerald-200"
-          }`}
-        >
-          {resultLine}
-        </p>
-      )}
+      {/* Changes only when a storm lands, so it is read once. */}
+      <p
+        role="status"
+        aria-live="polite"
+        data-testid="lm-weather-result"
+        className={
+          resultLine
+            ? `border-2 p-2 font-mono text-sm font-bold ${
+                storm.kind === "flicker"
+                  ? "border-slate-600 bg-slate-900/80 text-slate-200"
+                  : "border-emerald-400 bg-emerald-950/70 text-emerald-200"
+              }`
+            : "sr-only"
+        }
+      >
+        {resultLine ?? ""}
+      </p>
 
       {held + flickered > 0 && (
         <p className="font-mono text-xs text-slate-300">
-          Storms so far: {held + flickered}. Sandbags held {held}{" "}
-          {held === 1 ? "time" : "times"}
-          {earned > 0 && ` (+${formatNumber(Math.floor(earned))} power)`}.
+          Storms so far: {held + flickered}. Crews met {held}
+          {earned > 0 && ` (+${formatNumber(Math.floor(earned))} power)`}
+          {fixes > 0 &&
+            `, and fixed ${fixes} dark ${fixes === 1 ? "town" : "towns"}`}
+          .
         </p>
       )}
     </section>
   );
 }
+
+export default memo(WeatherDesk);

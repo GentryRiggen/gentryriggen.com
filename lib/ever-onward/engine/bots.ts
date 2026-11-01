@@ -116,11 +116,13 @@ export function genericBots(def?: UniverseDef): BotSet {
   const tapper: Strategy = {
     shopEvery: SHOP_EVERY,
     tapRate: (run) => phaseShapedTaps(run, EAGER_LATE_TAPS),
+    projects: "best",
   };
   return {
     tapper,
     realistic: {
       shopEvery: SHOP_EVERY,
+      projects: "best",
       tapRate: def
         ? tapsWhenItHelps(def)
         : (run) => phaseShapedTaps(run, NUDGE_TAPS),
@@ -130,7 +132,11 @@ export function genericBots(def?: UniverseDef): BotSet {
       tapRate: (run) =>
         phaseClock(run) < IDLE_WARM_UP_MINUTES * MIN ? BASE_TAPS : 0,
     },
-    dawdler: { tapsPerSecond: DAWDLE_TAPS, shopEvery: DAWDLE_SHOP_EVERY },
+    dawdler: {
+      tapsPerSecond: DAWDLE_TAPS,
+      shopEvery: DAWDLE_SHOP_EVERY,
+      projects: "best",
+    },
     naiveOil: tapper,
     cheapskateOil: tapper,
   };

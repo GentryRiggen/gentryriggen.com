@@ -16,6 +16,7 @@
 import { genericBots, type BotSet } from "./bots";
 import { emberReward, prestigeUpgradeCost } from "./prestige";
 import { clickCurve, type PhaseClicks } from "./clicks";
+import { decisionGaps, type PhaseDecisions } from "./decisions";
 import { simulate, type SimResult } from "./sim";
 import {
   SOFT_BEAT_GAP,
@@ -171,6 +172,8 @@ export interface Scorecard {
   runs: RunInfo;
   /** The click curve per phase: the eager player and, when traced, the one who taps when it helps. */
   clicks: { eager: PhaseClicks[]; helps: PhaseClicks[] | null };
+  /** Decision gaps per phase, for the player M16 reads. */
+  decisions: PhaseDecisions[];
   /** Wall-clock milliseconds the simulations and scoring took. */
   runtimeMs: number;
 }
@@ -271,7 +274,9 @@ const meaningfulCount = (views: readonly { meaningful: boolean }[]): number =>
 const M1: MetricSpec = {
   id: "M1",
   name: "Reveal cadence",
-  weight: 10,
+  // 10 to 6 in Round 5: it counts story lines, so a phase with nothing to
+  // decide can still score well here. M16 reads the choices instead.
+  weight: 6,
   band: "median gap 60-150 s, p10 >= 8 s, p90 <= 240 s, 8-25 reveals",
   gate: "max gap <= 180 s",
 };
@@ -396,7 +401,7 @@ const evalM4: PhaseEval = ({ purchases }) => {
 const M5: MetricSpec = {
   id: "M5",
   name: "Purchase rate",
-  weight: 5,
+  weight: 3,
   band: "median 0.6-2.5 buys/min (rolling 5 min), p95 <= 5",
   gate: "p95 <= 8 buys/min",
 };
@@ -510,7 +515,7 @@ const evalM7: PhaseEval = ({ span, duration, samples }) => {
 const M8: MetricSpec = {
   id: "M8",
   name: "Novelty per phase",
-  weight: 5,
+  weight: 3,
   band: ">= 1 new mechanic, resource, scene layer and plate, >= 6 novelty beats",
   gate: ">= 1 new mechanic in each phase",
 };
@@ -781,6 +786,44 @@ const evalM15: PhaseEval = ({ span, inputs }) => {
   };
 };
 
+// ------------------------------------------------------------------- M16
+
+const M16: MetricSpec = {
+  id: "M16",
+  name: "Decision gaps",
+  weight: 8,
+  band: "after the first 2 min of a phase, for the player who taps when it helps: longest stretch with no decision (a meaningful buy, a project, a real choice; never a story line, a claim or a fix) <= 90 s, p90 gap <= 60 s, <= 15% of the time in gaps over 60 s, 0.67-2 decisions a minute",
+  gate: "longest decision-less stretch <= 150 s, and <= 40% of the phase spent in gaps over 60 s",
+};
+const DECISION_GATE = 150;
+const DEAD_SHARE_GATE = 0.4;
+
+function evalM16Phase(p: PhaseDecisions): PhaseResult {
+  const gate = p.longest <= DECISION_GATE && p.deadShare <= DEAD_SHARE_GATE;
+  return {
+    phase: p.phase,
+    sub: subMean(
+      bandScore(p.longest, atMost(90, DECISION_GATE)),
+      bandScore(p.p90, atMost(60)),
+      bandScore(p.deadShare, atMost(0.15, DEAD_SHARE_GATE)),
+      bandScore(p.perMinute, between(0.67, 2))
+    ),
+    gate,
+    gateDetail: gate
+      ? null
+      : `longest ${fmt(p.longest)} s with nothing to decide at min ${fmt(p.longestFrom / MIN, 1)} (max ${DECISION_GATE}), ${pct(p.deadShare)} of the phase in gaps over 60 s (max 40%)`,
+    headline: `longest ${fmt(p.longest)}s at min ${fmt(p.longestFrom / MIN, 1)}, p90 ${fmt(p.p90)}s, ${pct(p.deadShare)} in gaps > 60 s (${p.long.length}), ${fmt(p.perMinute, 2)}/min`,
+    stats: {
+      longest: p.longest,
+      longestFrom: p.longestFrom,
+      p90: p.p90,
+      perMinute: p.perMinute,
+      longGaps: p.long.length,
+      deadShare: p.deadShare,
+    },
+  };
+}
+
 // ---------------------------------------------------------- run-level M11, 13, 14
 
 const M11: MetricSpec = {
@@ -1032,6 +1075,37 @@ export function scoreTrace(def: UniverseDef, inputs: ScoreInputs): Scorecard {
   }
   const clicks = evalM11(def, inputs, durations);
   metrics.push(report(M11, clicks.rows, clicks.score, true));
+  // The player who taps when it helps, phase by phase (the eager player's
+  // trace when there is no realistic one). Its phases line up with the
+  // primary's by index.
+  const decisions = decisionGaps(
+    def,
+    inputs.realistic?.trace ? inputs.realistic : inputs.primary
+  );
+  const decisionRows = spans.map((span) => {
+    const row = decisions.find((d) => d.index === span.index);
+    return row
+      ? evalM16Phase(row)
+      : {
+          phase: span.id,
+          sub: 0,
+          gate: false,
+          gateDetail: "phase not reached",
+          headline: "phase not reached",
+          stats: {},
+        };
+  });
+  metrics.push(
+    report(
+      M16,
+      decisionRows,
+      combinePhases(
+        decisionRows.map((r) => r.sub),
+        durations
+      ),
+      false
+    )
+  );
   const runLevel: [MetricSpec, PhaseResult][] = [
     [M13, evalM13(inputs)],
     [M14, evalM14(inputs)],
@@ -1087,6 +1161,7 @@ export function scoreTrace(def: UniverseDef, inputs: ScoreInputs): Scorecard {
       eager: clickCurve(inputs.primary),
       helps: inputs.realistic?.trace ? clickCurve(inputs.realistic) : null,
     },
+    decisions,
     runtimeMs: Date.now() - started,
   };
 }

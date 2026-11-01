@@ -1,3 +1,4 @@
+import { isProjectDone } from "../../engine/engine";
 import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
 import {
@@ -13,9 +14,24 @@ import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
-import { tickWeather } from "./weather";
+import { outageFactor, tickWeather } from "./weather";
 
-const { coast: C, night: N, sky: S, last: L } = TUNING;
+const {
+  coast: C,
+  night: N,
+  sky: S,
+  last: L,
+  projects: P,
+  lamps: LAMPS,
+} = TUNING;
+
+/** True once the night project `id` is done (see projects.ts). */
+export const hasProject = (run: RunState, id: string): boolean =>
+  isProjectDone(run, id);
+
+/** A project's multiplier when it is done, 1 otherwise. */
+const ifProject = (run: RunState, id: string, mult: number): number =>
+  hasProject(run, id) ? mult : 1;
 
 export const level = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -208,10 +224,21 @@ export function coastUpkeep(run: RunState): number {
 
 // ------------------------------------------------------------ No More Night
 
+/** Each plant's megawatts, after the projects that boost it. */
+export const plantMW = (run: RunState, index: number): number =>
+  N.gensMW[index] *
+  (index === 1 ? ifProject(run, "co-op", P.coopBoost) : 1) *
+  (index === 2 ? ifProject(run, "fish-ladders", P.ladderBoost) : 1) *
+  (index === 3 ? ifProject(run, "wind-maps", P.windBoost) : 1);
+
+/** Power plants built, of every kind. */
+export const plantCount = (run: RunState): number =>
+  N.gensMW.reduce((sum, _, i) => sum + level(run, `gen${i + 1}`), 0);
+
 /** Megawatts of everything built, with the lines' bonus. */
 export function supplyMW(run: RunState): number {
   const raw = N.gensMW.reduce(
-    (sum, mw, i) => sum + mw * level(run, `gen${i + 1}`),
+    (sum, _, i) => sum + plantMW(run, i) * level(run, `gen${i + 1}`),
     0
   );
   return (
@@ -221,8 +248,67 @@ export function supplyMW(run: RunState): number {
   );
 }
 
+// ------------------------------------------------------- The streetlights
+
+/** The streetlights knob opens with the grid. */
+export const isLampsOpen = (run: RunState): boolean => isGridInPlay(run);
+
+/** The brightness step, 0 (soft glow) to the last (dazzling). */
+export const lampStep = (run: RunState): number => {
+  const raw = run.resources.lamps;
+  const step =
+    typeof raw === "number" && Number.isFinite(raw)
+      ? Math.round(raw)
+      : LAMPS.defaultStep;
+  return Math.min(LAMPS.steps.length - 1, Math.max(0, step));
+};
+
+/** What the brightness does right now (always "bright" in other phases). */
+export const lampEffect = (run: RunState) =>
+  LAMPS.steps[run.phase === 1 ? lampStep(run) : LAMPS.defaultStep];
+
+/** Sets the brightness (the streetlights' radio buttons). */
+export function setLamps(run: RunState, step: number): void {
+  const next = Math.min(LAMPS.steps.length - 1, Math.max(0, Math.round(step)));
+  if (next === lampStep(run)) return;
+  run.resources.lamps = next;
+  run.resources.lampChanges = res(run, "lampChanges") + 1;
+}
+
+/** Demand at a given brightness (for the knob's "lights up the rest" hint). */
+export const demandAtStep = (run: RunState, step: number): number =>
+  (demandMW(run) / lampEffect(run).demand) * LAMPS.steps[step].demand;
+
 export const demandMW = (run: RunState): number =>
-  TOTAL_CITIES * N.perCityMW * N.bulbSaving ** tier(run, "bulbs");
+  TOTAL_CITIES *
+  N.perCityMW *
+  N.bulbSaving ** tier(run, "bulbs") *
+  ifProject(run, "smart-meters", P.meterDemand) *
+  ifProject(run, "lamplighters", P.lampDemand) *
+  lampEffect(run).demand;
+
+/** What every megawatt that reaches a city pays (smart meters: more). */
+export const cityPay = (run: RunState): number =>
+  N.payPerMW *
+  ifProject(run, "smart-meters", P.meterPay) *
+  lampEffect(run).pay *
+  outageFactor(run);
+
+/** Know-how a second: every plant's crew learns a little. */
+export const knowhowPerSecond = (run: RunState): number =>
+  P.knowhowPerPlant *
+  plantCount(run) *
+  ifProject(run, "night-school", P.schoolBoost) *
+  lampEffect(run).knowhow *
+  speed(run);
+
+/** Know-how a second at a given brightness. */
+export const knowhowAtStep = (run: RunState, step: number): number =>
+  (knowhowPerSecond(run) / lampEffect(run).knowhow) * LAMPS.steps[step].knowhow;
+
+/** Know-how for balancing an uneasy grid by hand. */
+export const balanceKnowhow = (run: RunState): number =>
+  hasProject(run, "line-patrols") ? P.patrolBalance : P.perBalance;
 
 /** Cities powered right now (fractional), 0..TOTAL_CITIES. */
 export function citiesLit(run: RunState): number {
@@ -245,7 +331,11 @@ export const isGridGlowing = (run: RunState): boolean =>
 /** What cities pay while the grid is this steady: floor..1, +bonus in glow. */
 export const gridFactor = (run: RunState): number =>
   (N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100)) *
-  (isGridGlowing(run) ? 1 + N.glowBonus : 1);
+  (isGridGlowing(run) ? 1 + glowBonus(run) : 1);
+
+/** The steady glow's bonus (lamplighters: smaller). */
+export const glowBonus = (run: RunState): number =>
+  hasProject(run, "lamplighters") ? P.lampGlowBonus : N.glowBonus;
 
 export const isGridAuto = (run: RunState): boolean => tier(run, "grid") >= 2;
 export const isRushOn = (run: RunState): boolean => res(run, "rush") > 0;
@@ -260,22 +350,28 @@ export const gridLoad = (run: RunState): number =>
 export function strainPerSecond(run: RunState): number {
   return (
     (N.strainBase + N.strainPerLoad * gridLoad(run)) *
-    N.balancerSaving ** Math.min(1, tier(run, "grid"))
+    N.balancerSaving ** Math.min(1, tier(run, "grid")) *
+    ifProject(run, "line-patrols", P.patrolStrain) *
+    ifProject(run, "co-op", P.coopStrain) *
+    lampEffect(run).strain
   );
 }
 
 export const crankPower = (run: RunState): number =>
-  (N.crankBase + N.crankPerLevel * level(run, "crank")) * tapMult(run);
+  (N.crankBase + N.crankPerLevel * level(run, "crank")) * tapMult(run) +
+  N.crankShare * powerPerSecond(run);
 
 export const powerPerSecond = (run: RunState): number =>
   Math.min(supplyMW(run), demandMW(run)) *
-  N.payPerMW *
+  cityPay(run) *
   speed(run) *
   gridFactor(run);
 
 /** Power the evening rush pays when claimed: a slice of income plus taps. */
 export const rushBonus = (run: RunState): number =>
-  N.rushBonusSeconds * (powerPerSecond(run) + crankPower(run) * 3);
+  N.rushBonusSeconds *
+  (powerPerSecond(run) + crankPower(run) * 3) *
+  ifProject(run, "rush-pricing", P.rushPay);
 
 /**
  * Strain builds. The evening rush opens once its timer runs out and then
@@ -304,7 +400,8 @@ function tickNight(run: RunState, dt: number): void {
   run.resources.night = Math.max(0, 100 * (1 - lit / TOTAL_CITIES));
   // Cities only pay for the power that reaches them.
   run.resources.power +=
-    delivered * N.payPerMW * speed(run) * gridFactor(run) * dt;
+    delivered * cityPay(run) * speed(run) * gridFactor(run) * dt;
+  run.resources.knowhow = res(run, "knowhow") + knowhowPerSecond(run) * dt;
 }
 
 // ------------------------------------------------------------------ The Sky
@@ -405,7 +502,8 @@ function updateSkyEvents(run: RunState, dt: number): void {
 
 /** The wait before the next evening rush (or flare) once one is claimed. */
 export const nextRushIn = (run: RunState): number =>
-  N.rushGapMin + nextRandom(run) * N.rushGapSpread;
+  (N.rushGapMin + nextRandom(run) * N.rushGapSpread) *
+  ifProject(run, "rush-pricing", P.rushGap);
 export const nextFlareIn = (run: RunState): number =>
   S.flareGapMin + nextRandom(run) * S.flareGapSpread;
 

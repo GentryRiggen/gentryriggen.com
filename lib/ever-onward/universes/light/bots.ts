@@ -1,7 +1,19 @@
 import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
-import { barrelOil, tankCapacity } from "./tick";
+import {
+  barrelOil,
+  demandAtStep,
+  isGridAuto,
+  isLampsOpen,
+  knowhowAtStep,
+  lampStep,
+  supplyMW,
+  tankCapacity,
+  tier,
+} from "./tick";
+import { lampActionId } from "./lamps";
+import { shownProjects } from "../../engine/engine";
 import { lightUniverse } from ".";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
@@ -13,13 +25,22 @@ import {
 } from "./garden";
 import { HAUL_ACTION, SET_NETS_ACTION, highTidesSoFar } from "./tide";
 import {
-  frontsSoFar,
   chanceOf,
-  isShielded,
-  shieldActionId,
-  shieldedCount,
-  shieldSlots,
+  crewActionId,
+  crewCount,
+  crewThatMoves,
+  crewsPlaced,
+  frontsSoFar,
+  hasCrew,
+  isOut,
+  isWeatherOpen,
+  readyAtLandfall,
+  readyShare,
+  stageLength,
+  stageSecondsLeft,
+  weatherStage,
 } from "./weather";
+import { TUNING } from "./tuning";
 
 /** The smallest share of the tank a bot bothers to buy in one click. */
 const MIN_BARREL_SHARE = 0.4;
@@ -88,26 +109,60 @@ const looksAfterThings =
   };
 
 /**
- * Shields the likeliest town(s) while the forecast stands. A bot with real
- * attention misses now and then: it skips every `skipEvery`th front (counted
- * by the desk itself, so the sim stays deterministic), and `onlyEvery` makes
- * a distracted player tend just one front in so many.
+ * Sends the repair crews by the forecast. At every step it weighs each town
+ * by its chance times how ready a crew there would be at landfall (a crew
+ * that moves starts over), and moves the crew worth least to the town worth
+ * most when that gains enough. Between storms it sends a crew to fix a dark
+ * town. A bot with real attention misses now and then: it skips every
+ * `skipEvery`th front (counted by the desk, so the sim stays deterministic),
+ * and `onlyEvery` makes a distracted player tend just one front in so many.
  */
 const tendsWeather =
   (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
   (run, available) => {
+    if (!isWeatherOpen(run)) return [];
     const front = frontsSoFar(run);
     const { skipEvery, onlyEvery } = options;
     if (skipEvery && front % skipEvery === skipEvery - 1) return [];
     if (onlyEvery && front % onlyEvery !== 0) return [];
-    if (shieldedCount(run) >= shieldSlots(run)) return [];
-    const open = [0, 1, 2].filter((town) => !isShielded(run, town));
-    const town = open.sort(
-      (a, b) => chanceOf(run, b) - chanceOf(run, a) || a - b
-    )[0];
-    const id = shieldActionId(town);
-    return available.includes(id) ? [id] : [];
+    const towns = [0, 1, 2];
+    const send = (town: number): string[] => {
+      const id = crewActionId(town);
+      return available.includes(id) ? [id] : [];
+    };
+    // It looks only when the forecast changes: the first moments of each
+    // forecast step, and just after a landfall (to fix a dark town).
+    if (!isFreshForecast(run)) return [];
+    if (weatherStage(run) !== "forecast") {
+      const dark = towns.find((t) => isOut(run, t) && !hasCrew(run, t));
+      return dark === undefined ? [] : send(dark);
+    }
+    const value = (town: number, isMoving: boolean): number =>
+      chanceOf(run, town) * readyShare(readyAtLandfall(run, town, isMoving));
+    const free = towns.filter((t) => !hasCrew(run, t));
+    const best = free.sort((a, b) => value(b, true) - value(a, true))[0];
+    if (best === undefined) return [];
+    if (crewsPlaced(run) < crewCount(run)) return send(best);
+    const mover = crewThatMoves(run, best);
+    if (mover === null) return send(best);
+    const gain = value(best, true) - value(mover, false);
+    return gain >= WEATHER_MOVE_GAIN ? send(best) : [];
   };
+
+/** Seconds after a forecast changes (or a storm lands) that a bot looks. */
+const FRESH_SECONDS = 2;
+
+/** The forecast (or the calm after a landfall) has just changed. */
+function isFreshForecast(run: RunState): boolean {
+  const elapsed = stageLength(run) - stageSecondsLeft(run);
+  const sinceChange =
+    weatherStage(run) === "forecast" ? elapsed % STEP_SECONDS : elapsed;
+  return sinceChange < FRESH_SECONDS;
+}
+const STEP_SECONDS = TUNING.weather.stepSeconds;
+
+/** Points of (chance x readiness) a move must gain to be worth it. */
+const WEATHER_MOVE_GAIN = 4;
 
 /**
  * Hauls full nets in and sets them again. A bot with real attention misses
@@ -187,6 +242,70 @@ const tendsGarden =
     return [...picks, ...waters];
   };
 
+/**
+ * Sets the streetlights by the situation: soft enough to light the last
+ * towns the moment the plants can (the phase ends); soft while a project on
+ * offer waits only on know-how (quiet crews learn faster); otherwise as
+ * bright as the grid allows (dazzling with a load balancer or a smart grid).
+ * `patience` is how many seconds of soft-glow learning a project may be away
+ * and still be worth softening for.
+ */
+const setsLamps =
+  (options: { patience?: number } = {}): OilChoice =>
+  (run, available) => {
+    if (!isLampsOpen(run)) return [];
+    const supply = supplyMW(run);
+    const finishing = [3, 2, 1, 0].find(
+      (step) => supply >= demandAtStep(run, step)
+    );
+    const want =
+      finishing ??
+      (wantsKnowhow(run, options.patience ?? 120) ? 0 : brightest(run));
+    if (want === lampStep(run)) return [];
+    const id = lampActionId(want);
+    return available.includes(id) ? [id] : [];
+  };
+
+/** As bright as the grid can take without a lot of balancing. */
+const brightest = (run: RunState): number =>
+  isGridAuto(run) || tier(run, "grid") >= 1 ? 3 : 2;
+
+/** Projects that lift income enough to dim the lights for. */
+const WORTH_DIMMING_FOR: ReadonlySet<string> = new Set([
+  "night-school",
+  "smart-meters",
+  "fish-ladders",
+  "co-op",
+  "wind-maps",
+]);
+
+/**
+ * A big project on offer has its power but waits on know-how, and soft-glow
+ * learning would get there within `patience` seconds.
+ */
+function wantsKnowhow(run: RunState, patience: number): boolean {
+  const softRate = knowhowAtStep(run, 0);
+  return shownProjects(lightUniverse, run).some((p) => {
+    if (!WORTH_DIMMING_FOR.has(p.id)) return false;
+    const powerOk = p.costs.every(
+      (c) =>
+        c.resource === "knowhow" ||
+        (run.resources[c.resource] ?? 0) >= c.amount * 0.5
+    );
+    const missing =
+      (p.costs.find((c) => c.resource === "knowhow")?.amount ?? 0) -
+      (run.resources.knowhow ?? 0);
+    // Once dimmed for it, stay dimmed until it is done (no flip-flopping
+    // while the power dips for a purchase).
+    const isDimmed = lampStep(run) === 0;
+    return (
+      (powerOk || isDimmed) &&
+      missing > 0 &&
+      missing / Math.max(softRate, 1e-6) <= patience
+    );
+  });
+}
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -208,10 +327,11 @@ const withOil = (
   weather: OilChoice = () => [],
   tide: OilChoice = () => [],
   race: OilChoice = () => [],
-  garden: OilChoice = () => []
+  garden: OilChoice = () => [],
+  lamps: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather, tide, race, garden),
+  actions: combine(actions, care, weather, tide, race, garden, lamps),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -241,7 +361,8 @@ export function lightBots(): BotSet {
       tendsWeather({ skipEvery: 10 }),
       tendsTide({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
-      tendsGarden({ skipEvery: 6 })
+      tendsGarden({ skipEvery: 6 }),
+      setsLamps({ patience: 60 })
     ),
     realistic: withOil(
       base.realistic,
@@ -250,7 +371,8 @@ export function lightBots(): BotSet {
       tendsWeather({ skipEvery: 5 }),
       tendsTide({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
-      tendsGarden({ skipEvery: 3 })
+      tendsGarden({ skipEvery: 3 }),
+      setsLamps({ patience: 60 })
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
@@ -261,7 +383,8 @@ export function lightBots(): BotSet {
         tendsWeather({ onlyEvery: 3 }),
         tendsTide({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
-        tendsGarden({ onlyEvery: 3 })
+        tendsGarden({ onlyEvery: 3 }),
+        setsLamps({ patience: 60 })
       ),
       greetAfter: 60,
     },
