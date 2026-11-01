@@ -353,5 +353,60 @@
     "file": "/ever-onward/voice/light/last-end-2.mp3",
     "hash": "50232eb0b3b7",
     "durationGuess": 11
+  },
+  "grow/intro-yard": {
+    "file": "/ever-onward/voice/grow/intro-yard.mp3",
+    "hash": "a51b2c3c8950",
+    "durationGuess": 25
+  },
+  "grow/intro-farm": {
+    "file": "/ever-onward/voice/grow/intro-farm.mp3",
+    "hash": "0b3685a8c263",
+    "durationGuess": 23
+  },
+  "grow/intro-world": {
+    "file": "/ever-onward/voice/grow/intro-world.mp3",
+    "hash": "0716e4a00d3d",
+    "durationGuess": 26
+  },
+  "grow/intro-seed": {
+    "file": "/ever-onward/voice/grow/intro-seed.mp3",
+    "hash": "263c31aa896e",
+    "durationGuess": 24
+  },
+  "grow/yard-hello": {
+    "file": "/ever-onward/voice/grow/yard-hello.mp3",
+    "hash": "7f1c454e84ee",
+    "durationGuess": 12
+  },
+  "grow/farm-hello": {
+    "file": "/ever-onward/voice/grow/farm-hello.mp3",
+    "hash": "5165f7e4df26",
+    "durationGuess": 12
+  },
+  "grow/world-hello": {
+    "file": "/ever-onward/voice/grow/world-hello.mp3",
+    "hash": "d13f89769928",
+    "durationGuess": 13
+  },
+  "grow/seed-hello": {
+    "file": "/ever-onward/voice/grow/seed-hello.mp3",
+    "hash": "9a45267910cd",
+    "durationGuess": 10
+  },
+  "grow/seed-return": {
+    "file": "/ever-onward/voice/grow/seed-return.mp3",
+    "hash": "f00446fd6d32",
+    "durationGuess": 14
+  },
+  "grow/seed-end-1": {
+    "file": "/ever-onward/voice/grow/seed-end-1.mp3",
+    "hash": "8d75794ec6e6",
+    "durationGuess": 11
+  },
+  "grow/seed-end-2": {
+    "file": "/ever-onward/voice/grow/seed-end-2.mp3",
+    "hash": "6593b4f06a2e",
+    "durationGuess": 10
   }
 }
