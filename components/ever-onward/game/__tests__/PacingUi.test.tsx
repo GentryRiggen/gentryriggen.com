@@ -13,7 +13,11 @@ class QuietObserver {
   unobserve() {}
 }
 
-function renderScreen(run: RunState, onAction = jest.fn()) {
+function renderScreen(
+  run: RunState,
+  onAction = jest.fn(),
+  onGreet = jest.fn()
+) {
   window.IntersectionObserver =
     QuietObserver as unknown as typeof IntersectionObserver;
   render(
@@ -30,6 +34,8 @@ function renderScreen(run: RunState, onAction = jest.fn()) {
       onTap={jest.fn(() => 1)}
       onBuy={jest.fn()}
       onAction={onAction}
+      onGreet={onGreet}
+      onChooseLantern={jest.fn()}
       onBuyEmber={jest.fn()}
       onRestart={jest.fn()}
       onLeave={jest.fn()}

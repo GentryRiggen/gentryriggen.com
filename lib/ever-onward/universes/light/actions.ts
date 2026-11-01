@@ -5,6 +5,7 @@ import {
   boatHeadingOf,
   isBoatOut,
   isReadyToFlash,
+  steerBonus,
   barrelOil,
   flareBonus,
   headingFactor,
@@ -15,6 +16,8 @@ import {
   gridFactor,
   gridSteadiness,
   isGridAuto,
+  isGridGlowing,
+  isFleetGlowing,
   isGridInPlay,
   isOilCheap,
   isOilDear,
@@ -90,10 +93,12 @@ const BALANCE_GRID: ActionDef = {
       steadiness < 50 ? "dimming" : steadiness < 80 ? "uneasy" : "steady";
     return {
       label:
-        steadiness >= GRID_STEADY ? "The grid is steady" : "Balance the grid",
+        steadiness >= GRID_STEADY
+          ? "The grid is steady and glowing"
+          : "Balance the grid",
       detail: `Steadiness ${Math.floor(steadiness)}% · cities pay ${pays}%${
-        isRushOn(run) ? " · rush hour is waiting" : ""
-      }`,
+        isGridGlowing(run) ? " (steady glow +15%)" : ""
+      }${isRushOn(run) ? " · rush hour is waiting" : ""}`,
       isBlocked: steadiness >= GRID_STEADY,
       hint: { text, tone },
       trendResource: "grid",
@@ -139,11 +144,11 @@ const CORRECT_COURSE: ActionDef = {
     return {
       label:
         heading >= ON_COURSE
-          ? "The fleet is on course"
+          ? "The fleet is on course, in formation"
           : "Send a course correction",
       detail: `Heading ${Math.floor(heading)}% · the fleet works at ${pace}% pace${
-        isFlareOn(run) ? " · a flare is out" : ""
-      }`,
+        isFleetGlowing(run) ? " (steady glow +15%)" : ""
+      }${isFlareOn(run) ? " · a flare is out" : ""}`,
       isBlocked: heading >= ON_COURSE,
       hint: { text, tone },
       trendResource: "heading",
@@ -191,7 +196,7 @@ const STEER_BOAT: ActionDef = {
     return {
       label:
         heading >= BOAT_TRUE ? "The boat is on its way" : "Tap the old beam",
-      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}%`,
+      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}% · letting go ${steerBonus(run).toFixed(1)}x faster`,
       isBlocked: heading >= BOAT_TRUE,
       hint: { text, tone },
       trendResource: "boatHeading",

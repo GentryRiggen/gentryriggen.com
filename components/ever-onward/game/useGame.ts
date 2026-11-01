@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buy,
+  greetVisitor,
   manualAction,
   manualGain,
   performAction,
@@ -70,6 +71,10 @@ export interface GameApi {
   buyUpgrade(id: string): void;
   /** Does a universe action (buying oil) by hand. */
   doAction(id: string): void;
+  /** Says hello to a waiting visitor: the gift is given, the logbook fills. */
+  greet(id: string): void;
+  /** Picks the lantern colour (1 to 3) the first ship will carry. */
+  chooseLantern(lantern: number): void;
   buyEmberUpgrade(id: string): void;
   dismissOverlay(): void;
   /** Ends the run (finished, or restarted for embers) and starts a new one. */
@@ -316,6 +321,39 @@ export function useGame(): GameApi {
     [activeId, def, isPaused, replaceUniverse]
   );
 
+  const greet = useCallback(
+    (id: string) => {
+      const current = activeId
+        ? saveRef.current?.universes[activeId]
+        : undefined;
+      if (!activeId || !def || !current || isPaused) return;
+      const nextRun = greetVisitor(def, current.run, id);
+      if (nextRun === current.run) return;
+      everOnwardSynth.buy(current.run.phase, true);
+      replaceUniverse(activeId, { ...current, run: nextRun }, true);
+    },
+    [activeId, def, isPaused, replaceUniverse]
+  );
+
+  const chooseLantern = useCallback(
+    (lantern: number) => {
+      const current = activeId
+        ? saveRef.current?.universes[activeId]
+        : undefined;
+      if (!activeId || !current) return;
+      const run = current.run;
+      replaceUniverse(
+        activeId,
+        {
+          ...current,
+          run: { ...run, resources: { ...run.resources, lantern } },
+        },
+        true
+      );
+    },
+    [activeId, replaceUniverse]
+  );
+
   const buyEmberUpgrade = useCallback(
     (id: string) => {
       const current = activeId
@@ -367,6 +405,8 @@ export function useGame(): GameApi {
     tap,
     buyUpgrade,
     doAction,
+    greet,
+    chooseLantern,
     buyEmberUpgrade,
     dismissOverlay,
     restart,

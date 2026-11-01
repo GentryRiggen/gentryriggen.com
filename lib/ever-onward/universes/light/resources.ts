@@ -81,9 +81,9 @@ export const RESOURCES: readonly ResourceDef[] = [
   // The first ship's boat (shown through its action, not as a number).
   { id: "boatHeading", label: "Boat heading", initial: 100, phases: HIDDEN },
   { id: "boatProgress", label: "Boat progress", phases: HIDDEN },
-  // When the very first ship was guided (seconds of the run, 0 = not yet).
-  { id: "firstShipAt", label: "First ship at", phases: HIDDEN },
-  { id: "firstShipStorm", label: "First ship in a storm", phases: HIDDEN },
+  // The lantern colour the player picked at the start (1 to 3, 0 = not picked,
+  // which shows as the first). Stays on this device in the save; never sent.
+  { id: "lantern", label: "Lantern colour", phases: HIDDEN },
   {
     id: "lights",
     label: "Lights still lit",

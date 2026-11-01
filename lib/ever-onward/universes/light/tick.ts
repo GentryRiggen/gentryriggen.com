@@ -164,14 +164,6 @@ function merchantBuys(run: RunState): void {
   }
 }
 
-/** Notes when (and in what weather) the very first ship was guided. */
-function logFirstShip(run: RunState): void {
-  if (run.flags.firstShip || res(run, "ships") < 1) return;
-  run.flags.firstShip = true;
-  run.resources.firstShipAt = Math.max(0.001, run.time);
-  run.resources.firstShipStorm = isStorming(run) ? 1 : 0;
-}
-
 function updateStorm(run: RunState, dt: number): void {
   if (run.resources.storm > 0) {
     run.resources.storm = Math.max(0, run.resources.storm - dt);
@@ -201,7 +193,6 @@ function tickCoast(run: RunState, dt: number): void {
     run.resources.oil - burnPerSecond(run, shipsPerSecond) * dt
   );
   merchantBuys(run);
-  logFirstShip(run);
 }
 
 /** What the coast costs to run, per second, in coins (oil at today's price). */
@@ -239,9 +230,18 @@ export function citiesLit(run: RunState): number {
 export const gridSteadiness = (run: RunState): number =>
   run.resources.grid ?? 100;
 
-/** What cities pay while the grid is this steady: floor..1, never zero. */
+/**
+ * Steady glow: the grid is looked after (at least `glowAt` steady), so the
+ * cities sparkle and pay a little more. It is a bonus for tending, so a
+ * grid left alone loses the bonus, never more than that.
+ */
+export const isGridGlowing = (run: RunState): boolean =>
+  isGridInPlay(run) && gridSteadiness(run) >= N.glowAt;
+
+/** What cities pay while the grid is this steady: floor..1, +bonus in glow. */
 export const gridFactor = (run: RunState): number =>
-  N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100);
+  (N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100)) *
+  (isGridGlowing(run) ? 1 + N.glowBonus : 1);
 
 export const isGridAuto = (run: RunState): boolean => tier(run, "grid") >= 2;
 export const isRushOn = (run: RunState): boolean => res(run, "rush") > 0;
@@ -351,13 +351,21 @@ const probeGrowthRate = (run: RunState): number => {
   );
 };
 
-/** Stars the fleet takes per second at its heading. */
+/**
+ * Steady glow: the fleet is flying true (at least `glowAt`), so it flies in
+ * formation and takes stars a little faster.
+ */
+export const isFleetGlowing = (run: RunState): boolean =>
+  isCourseInPlay(run) && headingOf(run) >= S.glowAt;
+
+/** Stars the fleet takes per second at its heading (glow included). */
 export const starsPerSecond = (run: RunState): number =>
   res(run, "probes") *
   S.takePerProbe *
   appetite(run) *
   speed(run) *
-  headingFactor(run);
+  headingFactor(run) *
+  (isFleetGlowing(run) ? 1 + S.glowBonus : 1);
 
 /** Energy per second from probes: every star taken pays a bounty. */
 export const starBounty = (run: RunState): number =>
@@ -481,11 +489,24 @@ export const steadyFlame = (run: RunState, tapsPerSecond = 3): number =>
     (lastTapFlame(run) * tapsPerSecond) / Math.max(fadeRate(run), 1e-6)
   );
 
+/**
+ * Steering earns resolve: while the boat is out and still sailing, keeping
+ * its heading true makes letting go faster (1x when it has lost the beam,
+ * up to 1 + `steerBonus` when it is true). Never slower than usual.
+ */
+export function steerBonus(run: RunState): number {
+  if (!isBoatOut(run) || boatArrived(run)) return 1;
+  const truth =
+    (boatHeadingOf(run) - L.steerFrom) / (L.steerTrue - L.steerFrom);
+  return 1 + L.steerBonus * Math.min(1, Math.max(0, truth));
+}
+
 /** Resolve per second: a cold flame is slow (never stopped), letting go helps. */
 export function resolvePerSecond(run: RunState): number {
   const warmth = L.flameFloor + (1 - L.flameFloor) * flameFraction(run);
   return (
     L.resolvePerSecond *
+    steerBonus(run) *
     (1 + L.reliefPerLetGo * lightsLetGo(run)) *
     warmth *
     speed(run)
@@ -560,7 +581,6 @@ export function manualLight(run: RunState): void {
     const flashes = shipsPerFlash(run);
     r.ships += flashes;
     r.coins += coastTapCoins(run);
-    logFirstShip(run);
   } else if (phase === 1) {
     r.power += crankPower(run);
   } else if (phase === 2) {
@@ -580,3 +600,33 @@ export const PHASES_BY_INDEX = [
   PHASE_SKY,
   PHASE_LAST,
 ] as const;
+
+// ----------------------------------------------------------------- Visitors
+
+/** Seconds of a phase's income a visitor's gift is worth (a flare is 25). */
+export const VISITOR_GIFT_SECONDS = 15;
+
+/**
+ * What the phase earns per second, taps at a steady 3 a second included, in
+ * the phase's own currency: the yardstick for a gift (a visitor's gift is a
+ * small slice, not a jackpot).
+ */
+export function incomePerSecond(run: RunState): number {
+  if (run.phase === 0)
+    return (
+      autoCoinsPerSecond(run) * lampFactor(run) +
+      C.tankTapsPerSecond * coastTapCoins(run)
+    );
+  if (run.phase === 1) return powerPerSecond(run) + crankPower(run) * 3;
+  if (run.phase === 2)
+    return (
+      collectorEnergyPerSecond(run) +
+      probeEnergyPerSecond(run) +
+      aimEnergy(run) * 3
+    );
+  return 0;
+}
+
+/** The gift every income visitor brings: a small slice of the phase's income. */
+export const visitorGift = (run: RunState): number =>
+  VISITOR_GIFT_SECONDS * incomePerSecond(run);

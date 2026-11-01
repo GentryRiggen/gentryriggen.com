@@ -77,6 +77,30 @@ const coast: StoryMessage[] = [
     text: "Only two dark stretches of coast left. You find that you cannot look at a dark stretch of coast without wanting to put a light on it.",
   },
   {
+    id: "coast-trio",
+    phase: PHASE_COAST,
+    when: (run) => owned(run, "keeper") >= 3,
+    text: "Three keepers on the night shift. They take turns making cocoa, and arguing about the best way to coil a rope.",
+  },
+  {
+    id: "coast-crew",
+    phase: PHASE_COAST,
+    when: (run) => owned(run, "keeper") >= 10,
+    text: "Ten keepers. The lamp room is a little crowded and very well dusted. Somebody has hung a tiny paper star in the window.",
+  },
+  {
+    id: "coast-bell",
+    phase: PHASE_COAST,
+    when: (run) => owned(run, "fees-3") >= 1,
+    text: "The toll booth has a brass bell now. Ships ring it on the way in. Ding, thank you. Ding, you are welcome.",
+  },
+  {
+    id: "coast-ferry",
+    phase: PHASE_COAST,
+    when: (run) => owned(run, "dock-2") >= 1,
+    text: "The ferry never stops now. It carries bicycles, baskets of bread, and one very serious goat.",
+  },
+  {
     id: "coast-almost",
     phase: PHASE_COAST,
     when: (run) => owned(run, "lighthouse") >= 6,
@@ -139,6 +163,18 @@ const nightStory: StoryMessage[] = [
     text: "The river dam spins. The fish have opinions, but the fish are not on the board.",
   },
   {
+    id: "night-steam-row",
+    phase: PHASE_NIGHT,
+    when: (run) => owned(run, "gen2") >= 5,
+    text: "Five steam plants in a row, all puffing at once. From far away it looks like a very polite thundercloud.",
+  },
+  {
+    id: "night-smart",
+    phase: PHASE_NIGHT,
+    when: (run) => owned(run, "grid-2") >= 1,
+    text: "The grid learns to balance itself. It does a small, happy wobble anyway, just to let you know it is trying.",
+  },
+  {
     id: "night-news-3",
     phase: PHASE_NIGHT,
     when: (run) => res(run, "night") <= 45,
@@ -193,6 +229,18 @@ const sky: StoryMessage[] = [
     phase: PHASE_SKY,
     when: (run) => res(run, "probes") >= 3,
     text: "Space is wide and probes are patient. The first copies arrive years later, but your clock has never minded waiting.",
+  },
+  {
+    id: "sky-sail",
+    phase: PHASE_SKY,
+    when: (run) => owned(run, "engines-2") >= 1,
+    text: "A sail of sunlight, and the probes ride it like dandelion seeds on a warm breeze. Nobody has to push.",
+  },
+  {
+    id: "sky-wide-arms",
+    phase: PHASE_SKY,
+    when: (run) => owned(run, "appetite-2") >= 1,
+    text: "Probes with wider arms. They gather stars the way a child gathers shells: carefully, and with a lot of pride.",
   },
   {
     id: "sky-first-star",
@@ -260,7 +308,7 @@ const last: StoryMessage[] = [
     id: "last-quiet",
     phase: PHASE_LAST,
     when: (run) => res(run, "lights") <= 3,
-    text: "It is quiet now. Far out on the dark water there is a small boat with one lantern, looking for the shore. Tap the old beam to point the way.",
+    text: "It is quiet now. Far out on the dark water there is a small boat carrying a lantern, the colour you chose, looking for the shore. Tap the old beam to keep it true, and every goodbye comes a little easier.",
   },
   {
     id: "last-one",
@@ -288,9 +336,47 @@ const last: StoryMessage[] = [
   },
 ];
 
+/** A visitor's line fires the moment it arrives (see `VisitorDef`). */
+const arrives = (id: string) => (run: RunState) =>
+  run.flags[`here-${id}`] === true;
+
+const visitorStory: StoryMessage[] = [
+  {
+    id: "visitor-mail",
+    phase: PHASE_COAST,
+    when: arrives("visitor-mail"),
+    text: "A mail boat toots hello. The sailor tosses you a bundle: two letters, a biscuit, and a few coins for the nice light.",
+  },
+  {
+    id: "visitor-whales",
+    phase: PHASE_COAST,
+    when: arrives("visitor-whales"),
+    text: "A boat of whale-watchers drifts by. They came for whales, but they like your light better. They leave you a barrel of oil to say thanks.",
+  },
+  {
+    id: "visitor-fair",
+    phase: PHASE_NIGHT,
+    when: arrives("visitor-fair"),
+    text: "The town fair is in full swing: swings, lanterns, a brass band and one very loud drum. They plug the carousel into your grid, just for fun.",
+  },
+  {
+    id: "visitor-comet",
+    phase: PHASE_SKY,
+    when: arrives("visitor-comet"),
+    text: "A comet sweeps past, trailing a long, quiet tail. It is only passing through, but it leaves a ribbon of sunlight behind.",
+  },
+  {
+    id: "visitor-signal",
+    phase: PHASE_SKY,
+    when: arrives("visitor-signal"),
+    text: "A strange signal drifts in from far away: three soft beeps, then a hum. Your probes beep back, politely, and set a straighter course.",
+  },
+];
+
 export const STORY: readonly StoryMessage[] = [
   ...coast,
   ...nightStory,
   ...sky,
+  ...visitorStory,
   ...last,
 ];

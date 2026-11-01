@@ -102,17 +102,20 @@ export function lightBots(): BotSet {
     run.phase >= 3 ? lastPhaseActions(run, available) : [];
   const tendPair = {
     naive: tender(base.tapper, 15, true),
-    careful: tender(base.tapper, 55, true),
+    careful: tender(base.tapper, 74, true),
   };
   const claimPair = {
-    ignores: tender(base.tapper, 55, false),
-    claims: tender(base.tapper, 55, true),
+    ignores: tender(base.tapper, 74, false),
+    claims: tender(base.tapper, 74, true),
   };
   return {
-    tapper: withOil(base.tapper, savvyOil),
+    tapper: withOil(base.tapper, savvyOil, looksAfterThings(74, true)),
     realistic: withOil(base.realistic, savvyOil, looksAfterThings(42, true)),
-    idle: { ...base.idle, actions: idleActions },
-    dawdler: withOil(base.dawdler, savvyOil, looksAfterThings(35, false)),
+    idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
+    dawdler: {
+      ...withOil(base.dawdler, savvyOil, looksAfterThings(35, false)),
+      greetAfter: 60,
+    },
     // In the last phase "tending" is tapping the flame: a player who barely
     // taps against one who does.
     skill: {

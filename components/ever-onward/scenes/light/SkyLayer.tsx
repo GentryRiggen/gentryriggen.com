@@ -11,6 +11,22 @@ const RINGS = [
 ] as const;
 const PROBE_CLASSES = ["lm-probe-a", "lm-probe-b", "lm-probe-c"] as const;
 const MAX_COLLECTORS = 18;
+/** The mirror field on the ground: a few mirrors at 3 collectors, a field at 6. */
+const SMALL_FIELD = 6;
+const FIELD_MIRRORS = [
+  { x: 40, y: 270 },
+  { x: 62, y: 276 },
+  { x: 84, y: 270 },
+  { x: 106, y: 276 },
+  { x: 128, y: 270 },
+  { x: 150, y: 276 },
+  { x: 250, y: 270 },
+  { x: 272, y: 276 },
+  { x: 294, y: 270 },
+  { x: 316, y: 276 },
+  { x: 338, y: 270 },
+  { x: 360, y: 276 },
+] as const;
 const MAX_PROBES = 12;
 
 export default function SkyLayer({ info }: { info: LightSceneInfo }) {
@@ -27,6 +43,13 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
       : 0;
   const stars = Math.ceil(info.starsFraction * STAR_COUNT);
   const glow = 0.35 + Math.min(0.5, collectors * 0.03);
+  // The mirror field grows in two steps: a few mirrors, then a great field.
+  const fieldMirrors =
+    info.collectors >= 6
+      ? FIELD_MIRRORS.length
+      : info.collectors >= 3
+        ? SMALL_FIELD
+        : 0;
 
   return (
     <g>
@@ -91,6 +114,50 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
           </g>
         );
       })}
+      {fieldMirrors > 0 && (
+        <g className="lm-pop-svg">
+          <path
+            d="M-1200 300 L-1200 282 Q60 262 200 276 Q340 262 1600 282 L1600 300 Z"
+            fill="#0b1124"
+          />
+          {FIELD_MIRRORS.slice(0, fieldMirrors).map((m) => (
+            <g key={`${m.x}-${m.y}`}>
+              <line
+                x1={m.x}
+                y1={m.y}
+                x2={SUN.x}
+                y2={SUN.y + 30}
+                stroke="#ffe08a"
+                strokeOpacity="0.1"
+              />
+              <rect
+                x={m.x - 7}
+                y={m.y - 3}
+                width="14"
+                height="5"
+                rx="1"
+                fill="#7fb7ff"
+                stroke="#ffe08a"
+                strokeWidth="0.8"
+                transform={`rotate(${(SUN.x - m.x) / 14} ${m.x} ${m.y})`}
+              />
+            </g>
+          ))}
+        </g>
+      )}
+      {/* steady glow: the fleet flies in formation, on one bright ring */}
+      {info.glow > 0 && probes > 1 && (
+        <circle
+          cx={SUN.x}
+          cy={SUN.y}
+          r="14"
+          fill="none"
+          stroke="#aee0ff"
+          strokeOpacity="0.5"
+          strokeDasharray="2 3"
+          className="lm-pop-svg"
+        />
+      )}
       {Array.from({ length: probes }, (_, i) => (
         <g
           key={i}
@@ -101,10 +168,10 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
               x1="-14"
               x2="0"
               stroke="#aee0ff"
-              strokeOpacity="0.7"
-              strokeWidth="1"
+              strokeOpacity={info.glow > 0 ? 1 : 0.7}
+              strokeWidth={info.glow > 0 ? 1.6 : 1}
             />
-            <circle r="1.8" fill="#ffffff" />
+            <circle r={info.glow > 0 ? 2.6 : 1.8} fill="#ffffff" />
           </g>
         </g>
       ))}

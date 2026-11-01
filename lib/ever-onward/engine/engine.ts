@@ -3,8 +3,10 @@ import type {
   ActionView,
   PhaseDef,
   RunState,
+  TeaserDef,
   UniverseDef,
   UpgradeDef,
+  VisitorDef,
 } from "./types";
 
 /** A frame longer than this (a throttled tab) never jumps the game. */
@@ -54,6 +56,7 @@ function settle(def: UniverseDef, run: RunState): void {
   // A phase can finish the moment it starts, so loop (bounded by phase count).
   for (let guard = 0; guard <= def.phases.length; guard += 1) {
     revealUpgrades(def, run);
+    arriveVisitors(def, run);
     fireStory(def, run);
     if (isLastPhase(def, run)) {
       if (!run.complete && def.isComplete(run)) run.complete = true;
@@ -93,6 +96,68 @@ function revealUpgrades(def: UniverseDef, run: RunState): void {
     run.revealed.push(upgrade.id);
     pending += 1;
   }
+}
+
+/** Flag a visitor sets when it arrives, and when it has been greeted. */
+export const visitorHereFlag = (id: string): string => `here-${id}`;
+export const visitorMetFlag = (id: string): string => `met-${id}`;
+
+/** A visitor arrives the first time its milestone is reached, then waits. */
+function arriveVisitors(def: UniverseDef, run: RunState): void {
+  if (!def.visitors) return;
+  const phaseId = currentPhase(def, run).id;
+  for (const visitor of def.visitors) {
+    if (visitor.phase !== phaseId) continue;
+    if (run.flags[visitorHereFlag(visitor.id)]) continue;
+    if (visitor.arrivesWhen(run)) run.flags[visitorHereFlag(visitor.id)] = true;
+  }
+}
+
+/** Visitors that have arrived and not been greeted yet, in arrival order. */
+export function waitingVisitors(def: UniverseDef, run: RunState): VisitorDef[] {
+  return (def.visitors ?? []).filter(
+    (v) =>
+      run.flags[visitorHereFlag(v.id)] === true &&
+      run.flags[visitorMetFlag(v.id)] !== true
+  );
+}
+
+/** Visitors the player has greeted (the logbook), in the order defined. */
+export function metVisitors(def: UniverseDef, run: RunState): VisitorDef[] {
+  return (def.visitors ?? []).filter(
+    (v) => run.flags[visitorMetFlag(v.id)] === true
+  );
+}
+
+/** Greets a waiting visitor: the gift is given and it joins the logbook. */
+export function greetVisitor(
+  def: UniverseDef,
+  run: RunState,
+  visitorId: string
+): RunState {
+  const visitor = waitingVisitors(def, run).find((v) => v.id === visitorId);
+  if (!visitor || run.complete) return run;
+  const next = cloneRun(run);
+  visitor.give(next);
+  next.flags[visitorMetFlag(visitor.id)] = true;
+  settle(def, next);
+  return next;
+}
+
+/** Teasers on show now: their upgrade is in this phase and not yet revealed. */
+export function visibleTeasers(def: UniverseDef, run: RunState): TeaserDef[] {
+  const phaseId = currentPhase(def, run).id;
+  return (def.teasers ?? []).filter((t) => {
+    const upgrade = def.upgrades.find((u) => u.id === t.upgradeId);
+    if (!upgrade) return false;
+    if (t.phase !== undefined) {
+      if (t.phase !== phaseId) return false;
+    } else if (upgrade.phases && !upgrade.phases.includes(phaseId)) {
+      return false;
+    }
+    if (run.revealed.includes(t.upgradeId)) return false;
+    return t.showWhen ? t.showWhen(run) : true;
+  });
 }
 
 function fireStory(def: UniverseDef, run: RunState): void {

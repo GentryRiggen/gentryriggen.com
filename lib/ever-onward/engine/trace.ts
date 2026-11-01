@@ -24,6 +24,11 @@ export const isMeaningful = ({
 }: Effect): boolean =>
   effectRatio >= MEANINGFUL_EFFECT || kind === "mechanic" || sceneChanged;
 
+/** Seconds a soft beat must stand clear of the beat before it. */
+export const SOFT_BEAT_GAP = 30;
+/** A teaser counts only if it was on show this long before it unlocked. */
+export const TEASER_MIN_SECONDS = 30;
+
 export interface OptionView extends Effect {
   id: string;
   cost: number;
@@ -51,6 +56,8 @@ export interface TraceSample {
   affordable: OptionView[];
   /** Visible, not maxed and not affordable yet: the next goals. */
   goals: OptionView[];
+  /** Upgrade ids hinted at by greyed "someday" cards on show right now. */
+  teasers: string[];
   cheapestVisibleCost: number | null;
   /** Seconds until the cheapest unaffordable meaningful goal is affordable. */
   waitEstimate: number | null;
@@ -79,7 +86,15 @@ export interface PurchaseRecord extends Effect {
 }
 
 export type NoveltyKind =
-  "upgrade" | "resource" | "action" | "scene" | "phase" | "story" | "plate";
+  | "upgrade"
+  | "resource"
+  | "action"
+  | "scene"
+  | "phase"
+  | "story"
+  | "plate"
+  | "teaser"
+  | "visitor";
 
 export interface NoveltyEvent {
   t: number;
@@ -87,6 +102,12 @@ export interface NoveltyEvent {
   id: string;
   /** For "upgrade": its tag. */
   upgradeKind?: UpgradeKind;
+  /**
+   * A soft beat (a teaser seen for a while, a later step that changes the
+   * scene) only counts when it is at least `SOFT_BEAT_GAP` seconds from the
+   * beat before it, so piling them up can't pad the reveal cadence.
+   */
+  isSoft?: boolean;
 }
 
 export interface PhaseSpan {

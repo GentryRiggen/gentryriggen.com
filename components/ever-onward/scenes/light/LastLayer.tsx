@@ -14,16 +14,21 @@ const BOAT_LANE_Y = 262;
 /** How far a boat that has lost the beam drifts down the water. */
 const DRIFT_Y = 26;
 
-/** "0:03, a calm night": the minute and weather of the very first ship. */
-function firstShipNote(seconds: number, isStorm: boolean): string {
-  const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-  return `The first ship: ${clock}, ${isStorm ? "a stormy night" : "a calm night"}.`;
-}
+/** The three lanterns a player can pick: the glow and the flame at its heart. */
+const LANTERNS = [
+  { glow: "#ffd76a", flame: "#ffe9a8" },
+  { glow: "#5ef2c4", flame: "#c8fff0" },
+  { glow: "#ff8fb4", flame: "#ffd3e2" },
+] as const;
+
+const lanternColours = (lantern: number) =>
+  LANTERNS[Math.min(LANTERNS.length, Math.max(1, lantern)) - 1];
 
 function Boat({ info }: { info: LightSceneInfo }) {
   const x = BOAT_START_X - info.boatProgress * (BOAT_START_X - BOAT_END_X);
   const y = BOAT_LANE_Y + (1 - info.boatHeading) * DRIFT_Y;
   const isTrue = info.boatHeading >= 0.8;
+  const colours = lanternColours(info.lantern);
   return (
     <g>
       {/* the old beam reaching for the boat: bright when it is true */}
@@ -35,10 +40,15 @@ function Boat({ info }: { info: LightSceneInfo }) {
       <g transform={`translate(${x} ${y})`}>
         <g className={info.finished > 0 ? "lm-turn" : ""}>
           <g className="lm-bob">
-            <circle cy="-20" r="9" fill="url(#lm-lamp)" opacity="0.8" />
+            <circle
+              cy="-20"
+              r="11"
+              fill={`url(#lm-lantern-${info.lantern})`}
+              opacity="0.9"
+            />
             <polygon points="-1,-18 -1,-3 9,-3" fill="#c9c3ae" />
             <path d="M-12 -2 L12 -2 L8 4 L-8 4 Z" fill="#202945" />
-            <circle cy="-20" r="1.8" fill="#ffd76a" />
+            <circle cy="-20" r="2.2" fill={colours.flame} />
             <rect x="-14" y="-12" width="2" height="6" fill="#202945" />
           </g>
         </g>
@@ -51,32 +61,49 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
   /** The lantern is one of the lights; the rest are the dots. */
   const litDots = Math.max(0, info.lightsRemaining - 1);
   const glow = 36 + 56 * info.flame;
+  // A low flame dims the night: the far lights and the water fade a little.
+  // It is feedback for the player, never a loss.
+  const dim = Math.min(1, Math.max(0, (0.45 - info.flame) / 0.45));
 
   return (
     <g>
+      <defs>
+        {LANTERNS.map((c, i) => (
+          <radialGradient key={c.glow} id={`lm-lantern-${i + 1}`}>
+            <stop offset="0" stopColor={c.glow} stopOpacity="0.95" />
+            <stop offset="1" stopColor={c.glow} stopOpacity="0" />
+          </radialGradient>
+        ))}
+      </defs>
       <rect x="-1200" y="-1200" width="2800" height="2800" fill="#010206" />
-      <rect x="-1200" y="224" width="2800" height="1200" fill="#03081a" />
-      <rect x="-1200" y="224" width="2800" height="1" fill="#16224a" />
-      {LIGHTS.map((l, i) => {
-        const isLit = i < litDots;
-        return (
-          <g key={i}>
-            <circle
-              cx={l.x}
-              cy={l.y}
-              r="16"
-              fill="url(#lm-lamp)"
-              className={`transition-opacity duration-[1500ms] ${isLit ? "opacity-70" : "opacity-0"}`}
-            />
-            <circle
-              cx={l.x}
-              cy={l.y}
-              r="2.4"
-              className={`transition-colors duration-[1500ms] ${isLit ? "fill-amber-200" : "fill-slate-800"}`}
-            />
-          </g>
-        );
-      })}
+      <g
+        className="transition-opacity duration-1000"
+        opacity={1 - 0.7 * dim}
+        data-testid="lm-last-sky"
+      >
+        <rect x="-1200" y="224" width="2800" height="1200" fill="#03081a" />
+        <rect x="-1200" y="224" width="2800" height="1" fill="#16224a" />
+        {LIGHTS.map((l, i) => {
+          const isLit = i < litDots;
+          return (
+            <g key={i}>
+              <circle
+                cx={l.x}
+                cy={l.y}
+                r="16"
+                fill="url(#lm-lamp)"
+                className={`transition-opacity duration-[1500ms] ${isLit ? "opacity-70" : "opacity-0"}`}
+              />
+              <circle
+                cx={l.x}
+                cy={l.y}
+                r="2.4"
+                className={`transition-colors duration-[1500ms] ${isLit ? "fill-amber-200" : "fill-slate-800"}`}
+              />
+            </g>
+          );
+        })}
+      </g>
       {info.boatVisible > 0 && (
         <g className="lm-fade-up">
           {[240, 256, 272, 288].map((wy, i) => (
@@ -90,16 +117,6 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
             />
           ))}
           <Boat info={info} />
-          {info.firstShipSeconds > 0 && (
-            <text
-              x="200"
-              y="292"
-              textAnchor="middle"
-              className="fill-amber-200/60 font-mono text-[8px]"
-            >
-              {firstShipNote(info.firstShipSeconds, info.firstShipStorm > 0)}
-            </text>
-          )}
         </g>
       )}
       {/* the one lantern left */}

@@ -13,6 +13,8 @@ import {
   boatHeadingOf,
   flameFraction,
   isBoatOut,
+  isFleetGlowing,
+  isGridGlowing,
   isStorming,
   keeperCount,
   level,
@@ -60,12 +62,21 @@ export interface LightSceneInfo {
   boatProgress: number;
   /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
   boatHeading: number;
+  /** 1 while the steady glow is on: sparkling cities, a fleet in formation. */
+  glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
   finished: number;
-  /** Seconds into the run the very first ship was guided; 0 if not yet. */
-  firstShipSeconds: number;
-  /** 1 if that first ship came in a storm. */
-  firstShipStorm: number;
+  /** The lantern colour picked at the start, 1 to 3 (the first if none). */
+  lantern: number;
+}
+
+/** Lantern colours to pick from, in the order they are offered. */
+export const LANTERN_COUNT = 3;
+
+/** The picked lantern, 1 to LANTERN_COUNT; an unpicked (or odd) one is 1. */
+export function lanternOf(run: RunState): number {
+  const picked = Math.round(run.resources.lantern ?? 0);
+  return picked >= 1 && picked <= LANTERN_COUNT ? picked : 1;
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
@@ -117,8 +128,8 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     boatVisible: isBoatOut(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
     boatHeading: step(boatHeadingOf(run) / 100, 20),
+    glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
-    firstShipSeconds: Math.floor(finite(r.firstShipAt ?? 0)),
-    firstShipStorm: r.firstShipStorm ? 1 : 0,
+    lantern: lanternOf(run),
   };
 }

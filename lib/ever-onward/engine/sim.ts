@@ -3,6 +3,7 @@ import {
   buy,
   canPerformAction,
   cloneRun,
+  greetVisitor,
   isMaxed,
   manualAction,
   manualGain,
@@ -12,11 +13,14 @@ import {
   tick,
   upgradeCost,
   visibleActions,
+  visibleTeasers,
   visibleUpgrades,
+  waitingVisitors,
 } from "./engine";
 import { upkeepRate } from "./rate";
 import {
   isMeaningful,
+  TEASER_MIN_SECONDS,
   type NoveltyEvent,
   type OptionView,
   type PhaseSpan,
@@ -50,6 +54,11 @@ export interface Strategy {
    * nothing or the action can't be done.
    */
   actions?(run: RunState, available: readonly string[]): string[];
+  /**
+   * Seconds a visitor waits before this player greets it (default 4). A
+   * player who presses no buttons never greets anyone (Infinity).
+   */
+  greetAfter?: number;
 }
 
 export interface SimOptions {
@@ -143,6 +152,23 @@ function incomeOf(def: UniverseDef, run: RunState, tps: number): Income {
   };
 }
 
+/** Seconds of play looked ahead when judging what a purchase really does. */
+const FORWARD_SECONDS = 60;
+const FORWARD_STEP = 5;
+
+/**
+ * Income of the main resource after `FORWARD_SECONDS` of play with no buying
+ * and no taps: a purchase that compounds (probes copying themselves) pays off
+ * over the minute, not at the instant it is bought. Steps are coarse (the
+ * universe's own tick, called directly), which is fine for an estimate.
+ */
+function forwardIncome(def: UniverseDef, run: RunState, tps: number): number {
+  const draft = cloneRun(run);
+  for (let t = 0; t < FORWARD_SECONDS; t += FORWARD_STEP)
+    def.tick(draft, FORWARD_STEP);
+  return incomeOf(def, draft, tps).net;
+}
+
 const ratioOf = (before: number, after: number): number =>
   Math.min(
     MAX_EFFECT_RATIO,
@@ -158,7 +184,8 @@ function probeUpgrade(
   run: RunState,
   upgrade: UpgradeDef,
   tps: number,
-  incomeBefore: number
+  incomeBefore: number,
+  forwardBefore: number
 ): OptionView {
   const cost = upgradeCost(run, upgrade);
   const clone = cloneRun(run);
@@ -171,7 +198,10 @@ function probeUpgrade(
   const phaseChanged = didBuy && bought.phase !== run.phase;
   const effectRatio =
     didBuy && !phaseChanged
-      ? ratioOf(incomeBefore, incomeOf(def, bought, tps).net)
+      ? Math.max(
+          ratioOf(incomeBefore, incomeOf(def, bought, tps).net),
+          ratioOf(forwardBefore, forwardIncome(def, bought, tps))
+        )
       : 0;
   const sceneChanged =
     phaseChanged || (didBuy && (def.sceneDiff?.(run, bought) ?? false));
@@ -253,6 +283,8 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   const knownResources = new Set<string>();
   const knownPlates = new Set<string>();
   const affordableSince = new Map<string, number>();
+  const teaserSeen = new Map<string, number>();
+  const visitorSeen = new Map<string, number>();
   const lastActionAt = new Map<string, number>();
   let nextSample = startTime;
   let lastPurchaseAt = startTime;
@@ -270,6 +302,23 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       if (knownActions.has(action.id)) continue;
       knownActions.add(action.id);
       novelty.push({ t: run.time, kind: "action", id: action.id });
+    }
+    // A teaser counts once, on first sight, and only if it stood on show long
+    // enough before its upgrade popped in to be something to look forward to.
+    const showing = new Set(visibleTeasers(def, run).map((t) => t.upgradeId));
+    for (const id of showing)
+      if (!teaserSeen.has(id)) teaserSeen.set(id, run.time);
+    for (const [id, seen] of [...teaserSeen]) {
+      if (showing.has(id)) continue;
+      teaserSeen.delete(id);
+      if (run.revealed.includes(id) && run.time - seen >= TEASER_MIN_SECONDS)
+        novelty.push({ t: seen, kind: "teaser", id, isSoft: true });
+    }
+    for (const visitor of def.visitors ?? []) {
+      if (visitorSeen.has(visitor.id)) continue;
+      if (!run.flags[`here-${visitor.id}`]) continue;
+      visitorSeen.set(visitor.id, run.time);
+      novelty.push({ t: run.time, kind: "visitor", id: visitor.id });
     }
     const phaseId = def.phases[run.phase].id;
     for (const resource of def.resources) {
@@ -290,8 +339,9 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     const affordableNow = new Set(
       affordableUpgrades(def, run).map((u) => u.id)
     );
+    const forward = forwardIncome(def, run, tps);
     const views = visible.map((u) => ({
-      view: probeUpgrade(def, run, u, tps, income.net),
+      view: probeUpgrade(def, run, u, tps, income.net, forward),
       isAffordable: affordableNow.has(u.id),
     }));
     const goals = views.filter((v) => !v.isAffordable).map((v) => v.view);
@@ -332,6 +382,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       visible: visible.map((u) => u.id),
       affordable: views.filter((v) => v.isAffordable).map((v) => v.view),
       goals,
+      teasers: visibleTeasers(def, run).map((t) => t.upgradeId),
       cheapestVisibleCost: views.length
         ? Math.min(...views.map((v) => v.view.cost))
         : null,
@@ -379,7 +430,14 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     const incomeAfter = phaseChanged
       ? incomeBefore
       : incomeOf(def, run, tps).net;
-    const effectRatio = phaseChanged ? 0 : ratioOf(incomeBefore, incomeAfter);
+    // What the purchase does at once, or a minute on against a clone that did
+    // not buy it: probes that copy themselves read about 0% at the instant.
+    const effectRatio = phaseChanged
+      ? 0
+      : Math.max(
+          ratioOf(incomeBefore, incomeAfter),
+          ratioOf(forwardIncome(def, before, tps), forwardIncome(def, run, tps))
+        );
     const sceneChanged =
       phaseChanged || (def.sceneDiff?.(before, run) ?? false);
     const kind = pick.kind ?? "scale";
@@ -400,6 +458,9 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       sinceLastPurchase: run.time - lastPurchaseAt,
       waitedFor: run.time - (affordableSince.get(pick.id) ?? run.time),
     });
+    // The first purchase of a scene-changing upgrade is a beat; later steps
+    // of the same thing (the sixth keeper) are not, or they would pad the
+    // cadence.
     if (level === 1 && sceneChanged)
       novelty.push({ t: run.time, kind: "scene", id: pick.id });
     lastPurchaseAt = run.time;
@@ -428,7 +489,19 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     }
   };
 
+  const greetAfter = strategy.greetAfter ?? 4;
+  const greet = () => {
+    for (const visitor of waitingVisitors(def, run)) {
+      const seen = visitorSeen.get(visitor.id) ?? run.time;
+      if (!visitorSeen.has(visitor.id)) visitorSeen.set(visitor.id, seen);
+      if (run.time - seen < greetAfter) continue;
+      run = greetVisitor(def, run, visitor.id);
+      actionsDone.push({ t: run.time, id: `greet-${visitor.id}` });
+    }
+  };
+
   const act = () => {
+    greet();
     if (!strategy.actions) return;
     for (let guard = 0; guard < 20; guard += 1) {
       const available = visibleActions(def, run)

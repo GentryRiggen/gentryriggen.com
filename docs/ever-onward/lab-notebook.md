@@ -526,3 +526,209 @@ Chore rate: coast 0.75 a minute, night 0.7, sky 0.5, last 0.05.
 Keep. Scorecard floors raised to 57 and 79 (new score minus 2). Next round:
 close the 8 gates (reveal beats in the three long gaps, teaser goals for the
 dawdler), then a playtest with Gentry on the new last phase.
+
+## Round 2: reviewer retro (Opus)
+
+**Player feel**
+
+- **Coast:** the first 10 minutes are lovely. 10:31 to 20:41 is the flattest stretch in the game: one scene beat in 10 minutes, and purchases are mostly keepers at 3–9% each ("keeper, keeper").
+- **Night:** good. The news ticker carries it, and the 13% claim gap shows the rush matters.
+- **Sky:** a strong opening. From 75:41 on, probe, copy, engines and nav each read as about 0%, because they pay off later. From 90:35 to 97:24 the tapper's shop is empty (18.6% of sky samples have nothing visible). This is the real cause of the sky problems.
+- **Last:** the arc lands ("Nobody says thank you" on the coast, then "A child at the bow waves"). Problems:
+  - The let-goes tick like a metronome, one about every 110 s.
+  - The flame sits at 92–97% from minute 10 on.
+  - The last 3:20 is "steer while waiting for resolve", so a timer gates the climax.
+  - The first-ship log always reads "0:00, calm night" (tick.ts:171).
+
+**Real or measurement artifact**
+
+- **M3 is mostly an artifact.** All 201 of the dawdler's "no goal" samples had an affordable meaningful buy on screen.
+  - **Fix:** in score.ts:314-319, gate on goals + affordable ≥ 1, and keep the 2–4 band on goals.
+  - **Add a gate:** fail if nothing at all is visible for more than 3% of the time. The tapper's empty sky shop is real.
+- **M1 is mostly real.** Story beats already count (sim.ts:264), and coast 10:31–20:41 and sky 70:51–74:51 are genuinely quiet.
+  - Count the first purchase of a scene-changing upgrade as a beat.
+  - Count a teaser once, on first sight, and only if it is visible for at least 30 s before it unlocks.
+  - Keep the 180 s gate.
+- **M4 sky is half artifact.** Probe, copy, engines and nav compound, while sim.ts:172 and :382 read income at the instant of purchase.
+  - **Fix:** effectRatio = max(instant ratio, 60 s forward ratio against a no-buy clone).
+  - **The real half:** collectors at 5% each across 10 levels (upgrades.ts:565).
+
+**Round 3, in priority order**
+
+1. **"Visitors" mini-events and "someday" teasers.**
+   - Visitors are gentle one-off arrivals, unlocked by milestones and never by timers. Each waits until tapped, gives a small gift, and goes in a logbook where nothing can be missed:
+     - coast: a mail boat (about 12 min) and whale-watchers (about 18 min);
+     - night: a town fair;
+     - sky: a comet, then a strange signal.
+   - Teasers: relay-2 and relay-3 (upgrades.ts:650, :655) shown greyed from the start with a hint ("when 700 stars are left"), plus a star-countdown bar.
+   - Expected: M1 gaps under 180 s, the M3 tapper sky gap closed, M12 sky from 0.50 to about 0.85.
+2. **Tending pays a bonus instead of a tax.**
+   - Keep the 0.6 floors.
+   - A "steady glow" of +15% while the grid or heading stays above 90%, shown as cities sparkling or probes in formation.
+   - Expected: tend gap from 3.5% / 2.7% to about 8–10%, idle/tapper about 1.9x.
+   - Sky felt effect: collectors become 6 bigger steps, with a "mirror field" scene at 3 and 6. Expected median ≥ 10%.
+3. **The boat drives the climax.**
+   - Once the boat appears, a true heading earns resolve (1.5x when true, never below 1x), so the last two goodbyes come about 40% faster for a player who steers.
+   - When the flame is low, the sky dims visibly. This is feedback, not a loss.
+   - At the start the kid picks one of 3 lantern colours, with no text input and stored locally only. The final boat carries that lantern, which replaces the meaningless timestamp.
+
+**Kid-safety**
+
+- **Passes:** rush and flare wait until claimed, oil is honest, there are no streaks, away-timers or monetisation, the boat can never be lost, and Balance only shows below 75%.
+- **Watch:**
+  - The "NEWS: ..." and "sleeping badly" lines are slightly eerie, which is fine for 8 and up.
+  - Letting lights go may read as sad, but the ending resolves it warmly.
+  - Keep the colour pick out of trackGame (gameplay analytics).
+  - Visitors must never become a collection you can miss: no rarity tiers, no "only today".
+
+## Round 3 (2026-11-01): visitors, a steady glow, a lantern of your own
+
+Hypothesis from the round 2 retro: the engagement problems are mostly a lack of
+things to look forward to and a tending dial that only taxes. Give the player
+arrivals and visible "someday" goals, pay for tending instead of taxing its
+neglect, and let the ending's boat be something the player had a hand in. Fix the
+ruler first, then the design.
+
+### 0. Instruments
+
+- **M3 gate** now reads "something to want": goals (teasers included) plus the
+  meaningful buys already affordable, at least 95% of the time. The 2-4 band
+  still counts goals only. All four M3 gate failures went away; as the retro
+  said, they were an artifact (every "no goal" sample had a buy on screen).
+- **Empty-shop gate** (in M12, read from the tapper): the shop with no upgrade
+  and no teaser at all may not exceed 3% of samples. It caught a real hole: 19%
+  of the sky samples, and later a 2-minute tail after the last relay.
+- **M1 beats.** A teaser counts once, on first sight, and only if it stood on
+  show 30 s or more before its upgrade popped in; a visitor counts on arrival.
+  Teasers are "soft": they count only when 30 s clear of the beat before them.
+  I tried also counting later steps of a scene-changing repeatable (the 6th
+  keeper) as soft beats, saw it filled the coast gap by itself, and **reverted**
+  it: the existing rule already counts the first purchase of a scene-changing
+  upgrade (sim.ts), so the retro's instruction was already met, and counting
+  every keeper was padding.
+- **M4 forward effect:** effectRatio = max(instant, ratio against a no-buy clone
+  after 60 s). Honest result: it moved little. Probe, copy, engines and nav still
+  read about 0% because the fleet needs minutes, not one, to compound. The sky
+  median effect only went from 7% to 12% after the collectors change below.
+- Instruments only, old game: **59.0 capped / 81.9 uncapped**, 5 gates (M1 x3,
+  M4 sky, M12 sky).
+
+### 1. Visitors, "someday" cards, star countdown
+
+- **Visitors** (`UniverseDef.visitors`, light/visitors.ts): a mail boat (6
+  keepers, about 12 min), whale-watchers (8 keepers), the town fair (4 river
+  dams), a comet (4 collectors), a strange signal (stars under 970 with a probe
+  out). Milestone-gated, never timed; each waits on a retro card above the story
+  until the player taps Say hello, gives a gift worth 15 s of the phase's
+  income (whales: a full oil tank, fair: a steady grid, signal: a true course),
+  and goes in the **Logbook** at the top of the Menu. No rarity, no expiry. A
+  visitor ignored into a later part still pays its gift in that part's currency.
+  The visitor's line is a real story message, so it is narrated.
+- **Someday cards** (`UniverseDef.teasers`): greyed dashed cards with a hint
+  ("When 700 stars are left"), going away when the upgrade pops in. One at the
+  end of the sky points at the next part ("Something quiet, after the last
+  star"), which closes the two empty minutes after the last relay.
+- **Star countdown bar** in the sky: stars left, 20 segments, ticks at 700 and
+  350 where relays wake.
+- More story beats (8 lines) to close the remaining reveal gaps, all short and
+  kid-safe. Bot greetings: tapper after 4 s, dawdler after 60 s, idle never.
+- Score after: 83.9 uncapped; gates left: M4 sky only.
+
+### 2. Steady glow, six collector steps, mirror field
+
+- **Steady glow:** while the grid (night) or the fleet's heading (sky) is at
+  least 75%, cities pay +15% / the fleet takes stars +15% faster; the cities
+  sparkle and the probes fly in formation (brighter, with a ring). Below 75% you
+  lose the bonus and nothing more; the old 0.6 floors are untouched. The 75% line
+  is the one the "steady" button text already used: tending the moment the
+  button shows keeps the glow. (The retro said 90%; that needs a click about
+  every 20 s, a chore, so I used 75.)
+- **Collectors:** 6 levels worth 10/6 each (same total as the old 10), cost
+  growth 1.6. The scene grows a **mirror field** on the ground, 6 mirrors at 3
+  collectors and 12 at 6.
+- Price check: the glow and bigger steps made night and sky quicker, so costs
+  are scaled per phase (`TUNING.costScale`), keeping the run near two hours.
+- **Sky income plateau:** after the collectors change, 29% of sky windows were
+  flat (gate 20%). Fix: the mirrors are cheaper and ordered so the bot buys
+  them between the probe items (bots prefer what pays now), and the opening
+  aim and collector keep their price. Plateau 14%.
+- Bots: the tapper and the careful tender now tend at 74% to keep the glow
+  (they used to wait for 45% and 55%); the tender pair gap is therefore
+  against a naive tender at 15%.
+
+### 3. The boat, the dimming night, a lantern of your own
+
+- **Steering earns resolve:** while the boat is out and sailing, letting go is
+  1.5x as fast at a true heading (80%), fading to 1x at 40% and never below.
+  The Tap the old beam card shows "letting go 1.5x faster" when true.
+- **A low flame dims the night:** below 45% the far lights and the water fade
+  (down to 30%). Feedback, not a loss.
+- **Lantern pick:** the opening screen of a run has a three-way pick (Gold, Sea,
+  Rose; labelled, so colour is never the only cue). Stored in the save on this
+  device only (`resources.lantern`, no text, never in `trackGame`). The final
+  boat carries that lantern's glow. The first-ship timestamp is gone.
+- `last-quiet` changed (boat carries "the colour you chose"); 14 clips
+  regenerated, 0 removed.
+
+### Before and after
+
+| Metric              | Round 2 final | Instruments only | Round 3 final | Notes                                                       |
+| ------------------- | ------------- | ---------------- | ------------- | ----------------------------------------------------------- |
+| Total (capped)      | 59.0          | 59.0             | **85.2**      | no gate fails, so the cap is gone                           |
+| Total (uncapped)    | 81.9          | 81.9             | **85.2**      |                                                             |
+| Failing gates       | 8             | 5                | **0**         | M1 x3, M4 sky, M12 sky before the content                   |
+| M1 Reveal cadence   | 8.5           | 8.5              | 9.3           | max gap 320/250/240 s to 170/146/166 s                      |
+| M2 Decision density | 5.7           | 5.7              | 5.7           | untouched: 68-79% of time with nothing affordable           |
+| M3 Goal queue       | 1.7           | 1.7              | 2.1           | gate now "something to want"; band 2-4 goals at 70%         |
+| M4 Felt effect      | 7.1           | 7.2              | 8.4           | sky median effect 7% to 12%                                 |
+| M5 Purchase rate    | 6.0           | 6.0              | 6.0           |                                                             |
+| M6 Wait ratio       | 9.2           | 9.2              | 9.0           |                                                             |
+| M7 Plates           | 5.8           | 5.8              | 6.2           | still peak 3, never 4                                       |
+| M8 Novelty          | 7.0           | 7.0              | 7.0           |                                                             |
+| M9 Tension          | 5.7           | 5.7              | 5.3           | night tend gap 3.5% to **10.4%**, sky 2.7% to 5.6%          |
+| M10 Smoothness      | 3.7           | 3.7              | 3.4           | the diligent tapper keeps the dial high, so "low" time is 0 |
+| M11 Active vs idle  | 6.3           | 6.3              | 6.3           | idle/tapper 1.76x to **1.91x**                              |
+| M12 Dead time       | 2.7           | 2.5              | 3.7           | longest 180 s to 110-160 s; empty shop 0%                   |
+| M13 Prestige        | 5.0           | 5.0              | 5.0           | 0.66 and 0.78                                               |
+| M14 Length          | 3.6           | 3.6              | 3.8           | 1.95 h to 1.98 h                                            |
+| M15 Chore rate      | 4.0           | 4.0              | 4.0           | night rises to 1.1 clicks a minute, busiest minute 3        |
+
+Finish: tapper 1.98 h, realistic 2.44 h, idle 3.79 h (gate is 4 h), run 2 1.31 h,
+run 3 1.02 h. Phases 36, 30, 31, 22 minutes. Scorecard floors raised to 83
+(capped) and 83 (uncapped).
+
+### What moved and what did not
+
+- **Moved:** every gate. The reveal cadence is real content now (visitors,
+  someday cards and eight story lines) rather than a different way of counting.
+  Tending pays: the night tend gap is 10% inside the 5-25% band, idle/tapper is
+  1.91x. The shop is never empty.
+- **Did not move:** M2 and M7, the two biggest losses (4.3 and 3.8 points). The
+  player almost never has a real choice on screen (68-79% of the time nothing
+  meaningful is affordable) and the plates peak at 3. Round 3 did not touch
+  them. Also the probe chain still reads as about 0%: the sky's income plateau
+  was fixed by ordering the mirrors, which is a bot-behaviour fix, not a change
+  to what the player feels in minutes 10 to 20.
+- **Honest risks:** (1) the tapper bot tends at 74% now, so M9 "low time" for
+  night and sky is 0%; a human may tend less. (2) The 30 s soft-beat rule and the
+  teaser counting are my reading of the retro and are generous: 7 teasers
+  were seen, 2 of them are beats of their own. (3) Cost scales (night x1.16, sky x1.35) were set to
+  keep the length, not from a playtest.
+
+### Open questions for the reviewer
+
+1. M2 and M7 are the big levers. Is the answer fewer, bigger purchases with
+   real either-or choices (and a fourth plate), or are they simply the wrong
+   metrics for a game this gentle?
+2. Does the 75% glow line read as "worth looking after" to a child, or is the
+   bonus too quiet to notice? The scene shows it, but nothing says "glow" outside
+   the action card.
+3. Visitors are 5 arrivals in 2 hours. More, or are they better rare?
+4. The sky's middle (probes copying) is still a quiet stretch of the score.
+   Should a probe milestone, a visitor or a scene beat live there?
+5. Bold: let the lantern colour tint the lighthouse beam too, or name the boat.
+
+### Decision
+
+Keep. Next: a playtest with Gentry (the visitor card, the lantern pick, the
+ending), then M2 and M7.

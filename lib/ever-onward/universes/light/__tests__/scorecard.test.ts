@@ -16,9 +16,9 @@ import { def } from "./fixtures";
  */
 jest.setTimeout(60_000);
 
-/** Round 2 scored 59.0 (81.9 before the gate cap). Raise as rounds land. */
-const SCORE_FLOOR = 57;
-const UNCAPPED_FLOOR = 79;
+/** Round 3 scored 85.2 with no failing gate. Raise as rounds land. */
+const SCORE_FLOOR = 83;
+const UNCAPPED_FLOOR = 83;
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];
