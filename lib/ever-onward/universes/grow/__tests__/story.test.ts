@@ -36,3 +36,38 @@ describe("Grow yard story", () => {
     expect(missing.filter((id) => id !== "yard-thirsty")).toEqual([]);
   });
 });
+
+describe("Grow farm story", () => {
+  const farm = def.story.filter((m) => m.phase === "farm");
+
+  it("has farm text, cheerful NEWS and unique ids", () => {
+    expect(farm.length).toBeGreaterThanOrEqual(10);
+    expect(
+      farm.filter((m) => m.text.startsWith("NEWS:")).length
+    ).toBeGreaterThan(0);
+    for (const m of farm) expect(m.text.length).toBeLessThanOrEqual(320);
+  });
+
+  it("gives every farm visitor its line", () => {
+    const visitors = (def.visitors ?? []).filter((v) => v.phase === "farm");
+    expect(visitors.length).toBeGreaterThanOrEqual(1);
+    for (const v of visitors)
+      expect(def.story.some((m) => m.id === v.id)).toBe(true);
+  });
+
+  it("reaches every farm line in a realistic run", () => {
+    const { finalRun } = simulate(def, {
+      maxSeconds: 3 * 3600,
+      step: 1,
+      strategy: growBots().realistic,
+      stopWhen: (run) => run.phase >= 2,
+    });
+    const missing = farm
+      .map((m) => m.id)
+      .filter((id) => !finalRun.story.includes(id));
+    // Thirsty needs a dry field; the last time beat is for a slow farm.
+    expect(
+      missing.filter((id) => id !== "farm-thirsty" && id !== "farm-time-8")
+    ).toEqual([]);
+  });
+});

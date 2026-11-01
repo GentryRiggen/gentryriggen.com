@@ -2,7 +2,13 @@ import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import type { LastBuy } from "../../universes/types";
 import {
   BARROW,
+  AGENT,
+  COMPOST,
+  DITCH,
+  FARM_BARN,
+  FARM_GLASS,
   FRAME,
+  SILO,
   GREENHOUSE,
   KEEPER,
   SILL_BOX,
@@ -11,9 +17,13 @@ import {
   TREES,
   barrelAt,
   basketAt,
+  droneAt,
+  fieldAt,
   bedAt,
   gardenerAt,
   hiveAt,
+  tractorAt,
+  wellAt,
   type Point,
 } from "./anchors";
 
@@ -21,6 +31,7 @@ export interface Callout extends Point {
   text: string;
 }
 
+type Grow = GrowSceneInfo;
 type Place = (n: number, info: GrowSceneInfo) => Callout;
 
 const at = (p: Point, text: string, dy = 0): Callout => ({
@@ -31,7 +42,7 @@ const at = (p: Point, text: string, dy = 0): Callout => ({
 
 const nth = (n: number, cap: number): number => Math.min(n, cap) - 1;
 
-const PLACES: Record<string, Place> = {
+const YARD_PLACES: Record<string, Place> = {
   sprinkler: (n) => at(bedAt(nth(n + 1, 8)), `Sprinkler ${n}`, 6),
   basket: (n) => at(basketAt(nth(n, 8)), `Basket ${n}`),
   mulch: (n) => at(SILL_BOX, `Mulch ${n}: richer soil`, 4),
@@ -48,6 +59,26 @@ const PLACES: Record<string, Place> = {
   "cold-frame": () => at(FRAME, "Cold frame"),
 };
 
+const FARM_PLACES: Record<string, Place> = {
+  scarecrow: (n) => at(fieldAt(nth(n, 8)), `Scarecrow ${n}`, 20),
+  compost: () => at(COMPOST, "Compost heap", -8),
+  well: (n) => at(wellAt(nth(n, 6)), `Well ${n}`, -12),
+  tractor: (n) => at(tractorAt(nth(n, 4)), `Tractor ${n}`),
+  "market-agent": () => at(AGENT, "Market agent"),
+  irrigation: () => at(DITCH, "Irrigation ditches", -6),
+  silo: () => at(SILO, "Silo", 56),
+  glasshouse: () => at(FARM_GLASS, "Glasshouse", 20),
+  "seed-drone": (n) => at(droneAt(nth(n, 4)), `Seed drone ${n}`, -8),
+  "grain-barn": () => at(FARM_BARN, "Grain barn", 20),
+};
+
+const PLACES: Record<Grow["phase"], Record<string, Place>> = {
+  yard: YARD_PLACES,
+  farm: FARM_PLACES,
+  world: {},
+  seed: {},
+};
+
 /** Upgrades whose landing is a caption change, not a spot in the picture. */
 export const CAPTION_ONLY: ReadonlySet<string> = new Set<string>();
 
@@ -56,10 +87,12 @@ export function calloutFor(
   buy: Pick<LastBuy, "upgradeId" | "n">,
   info: GrowSceneInfo
 ): Callout | null {
-  if (info.phase !== "yard") return null;
-  const place = PLACES[buy.upgradeId];
+  const place = PLACES[info.phase][buy.upgradeId];
   return place ? place(buy.n, info) : null;
 }
 
 /** Upgrade ids with a callout (a test keeps this in step with the shop). */
-export const CALLOUT_IDS: readonly string[] = Object.keys(PLACES);
+export const CALLOUT_IDS: readonly string[] = Object.keys(YARD_PLACES);
+
+/** The farm's upgrade ids with a callout. */
+export const FARM_CALLOUT_IDS: readonly string[] = Object.keys(FARM_PLACES);

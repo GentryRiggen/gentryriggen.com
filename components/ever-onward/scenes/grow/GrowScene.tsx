@@ -10,6 +10,7 @@ import {
 import { pixelClass } from "../../game/retro/retroStyles";
 import type { LastBuy, SceneProps } from "../../universes/types";
 import SceneCallout from "./SceneCallout";
+import FarmLayer from "./FarmLayer";
 import YardLayer from "./YardLayer";
 import { SCENE_LABELS, captionFor } from "./captions";
 
@@ -22,30 +23,6 @@ function useStableInfo(run: RunState): GrowSceneInfo {
     return info;
   }
   return stable;
-}
-
-/** Field: rows of green under the sky. */
-function FarmArt({ info }: { info: GrowSceneInfo }) {
-  const rows = 3 + Math.min(info.helpers, 6);
-  return (
-    <g>
-      <rect x="0" y="0" width="400" height="300" fill="#9fd8ff" />
-      <rect x="0" y="130" width="400" height="170" fill="#6b8e3a" />
-      {Array.from({ length: rows }, (_, i) => (
-        <rect
-          key={i}
-          x="20"
-          y={150 + i * 16}
-          width="360"
-          height="8"
-          fill={i % 2 ? "#4f9a3a" : "#3f8a30"}
-        />
-      ))}
-      {info.ended && (
-        <rect x="290" y="70" width="70" height="60" fill="#b03a2e" />
-      )}
-    </g>
-  );
 }
 
 /** Globe: a blue ball with patches of green that spread. */
@@ -96,7 +73,7 @@ function SeedArt({ info }: { info: GrowSceneInfo }) {
 
 const ART = {
   yard: YardLayer,
-  farm: FarmArt,
+  farm: FarmLayer,
   world: WorldArt,
   seed: SeedArt,
 } as const;
@@ -117,6 +94,7 @@ const GrowSceneView = memo(function GrowSceneView({
         aria-label={SCENE_LABELS[info.phase]}
         data-testid="lm-scene"
         data-phase={info.phase}
+        overflow="visible"
         className="block h-full w-full"
       >
         <Art info={info} />

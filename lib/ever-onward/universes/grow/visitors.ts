@@ -5,7 +5,7 @@ import type {
   VisitorDef,
 } from "../../engine/types";
 import { formatNumber } from "../../engine/format";
-import { FULL_GROWTH, PHASE_SEED, PHASE_YARD } from "./resources";
+import { FULL_GROWTH, PHASE_FARM, PHASE_SEED, PHASE_YARD } from "./resources";
 import { incomePerSecond } from "./tick";
 
 export const RETURN_VISITOR_ID = "seed-return";
@@ -22,6 +22,19 @@ const giftSeeds = (run: RunState): void => {
 
 const giftSeedsText = (run: RunState): string =>
   run.phase === 0 ? `${formatNumber(gift(run))} seeds` : "a warm thank-you";
+
+/** The farm's version: twelve seconds of the farm's work, never under 60. */
+const farmGift = (run: RunState): number =>
+  Math.max(60, Math.floor(incomePerSecond(run) * 12));
+
+const giftHarvest = (run: RunState): void => {
+  if (run.phase === 1) run.resources.harvest += farmGift(run);
+};
+
+const giftHarvestText = (run: RunState): string =>
+  run.phase === 1
+    ? `${formatNumber(farmGift(run))} harvest`
+    : "a warm thank-you";
 
 /** The arrivals of the skeleton: the pot is grown, and someone comes back. */
 export const VISITORS: readonly VisitorDef[] = [
@@ -40,6 +53,22 @@ export const VISITORS: readonly VisitorDef[] = [
     arrivesWhen: (run) => owned(run, "orchard") >= 1,
     giftText: giftSeedsText,
     give: giftSeeds,
+  },
+  {
+    id: "visitor-starlings",
+    phase: PHASE_FARM,
+    name: "A swirl of starlings",
+    arrivesWhen: (run) => owned(run, "scarecrow") >= 4,
+    giftText: giftHarvestText,
+    give: giftHarvest,
+  },
+  {
+    id: "visitor-mayor",
+    phase: PHASE_FARM,
+    name: "The mayor of the three towns",
+    arrivesWhen: (run) => owned(run, "silo") >= 1,
+    giftText: giftHarvestText,
+    give: giftHarvest,
   },
   {
     id: RETURN_VISITOR_ID,

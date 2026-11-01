@@ -34,3 +34,23 @@ export const KEEPER: Point = { x: 232, y: 124 };
 export const SILL_BOX: Point = { x: 250, y: 268 };
 export const SPROUT: Point = { x: 298, y: 268 };
 export const SUN: Point = { x: 350, y: 44 };
+
+/** The farm (same 400 by 300 box): two rows of up to four fields. */
+export const FIELD_W = 82;
+export const fieldAt = (i: number): Point => ({
+  x: 22 + (i % 4) * 90,
+  y: i < 4 ? 150 : 196,
+});
+export const FARM_BARN: Point = { x: 312, y: 88 };
+export const SILO: Point = { x: 286, y: 78 };
+export const FARM_GLASS: Point = { x: 296, y: 244 };
+export const COMPOST: Point = { x: 214, y: 256 };
+export const AGENT: Point = { x: 254, y: 252 };
+export const DITCH: Point = { x: 200, y: 186 };
+export const tractorAt = (i: number): Point => ({ x: 20 + i * 36, y: 248 });
+export const wellAt = (i: number): Point => ({ x: 20 + i * 22, y: 278 });
+export const droneAt = (i: number): Point => ({
+  x: 150 + i * 34,
+  y: 56 + (i % 2) * 14,
+});
+export const TOWN: Point = { x: 24, y: 94 };

@@ -158,6 +158,7 @@ export function tickMarket(run: RunState, dt: number): void {
 
 const PLANT: readonly ActionDef[] = CROPS.map((crop) => ({
   id: plantActionId(crop),
+  isInline: true,
   phases: [PHASE_FARM],
   describe: (run) => {
     const price = cropPrice(run, crop);

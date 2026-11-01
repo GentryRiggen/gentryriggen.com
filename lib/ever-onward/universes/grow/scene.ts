@@ -1,5 +1,5 @@
 import type { RunState } from "../../engine/types";
-import { plantedCrop, type Crop } from "./market";
+import { bestCrop, cropPrice, plantedCrop, type Crop } from "./market";
 import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
 import { BEE_KEEPER_ID } from "./bees";
@@ -40,6 +40,15 @@ export interface GrowSceneInfo {
   barrow: boolean;
   tea: boolean;
   keeper: boolean;
+  /** Farm: fields in the picture, tractors, glasshouses, wells, and how well the planted crop matches what the towns want (0 to 1 in tenths). */
+  fields: number;
+  tractors: number;
+  greenhouses: number;
+  wells: number;
+  silos: number;
+  /** The market agent is hired. */
+  agent: boolean;
+  townFed: number;
   /** Seed phase: whole percent of the pot grown. */
   growth: number;
 }
@@ -94,6 +103,34 @@ function yardInfo(
   };
 }
 
+/** The farm's extra numbers; zeros outside the farm. */
+function farmInfo(
+  run: RunState,
+  isFarm: boolean
+): Pick<
+  GrowSceneInfo,
+  | "fields"
+  | "tractors"
+  | "greenhouses"
+  | "wells"
+  | "silos"
+  | "agent"
+  | "townFed"
+> {
+  const n = (id: string) => (isFarm ? owned(run, id) : 0);
+  return {
+    fields: isFarm ? Math.min(8, 1 + n("scarecrow")) : 0,
+    tractors: n("tractor"),
+    greenhouses: n("glasshouse"),
+    wells: n("well"),
+    silos: n("silo"),
+    agent: n("market-agent") > 0,
+    townFed: isFarm
+      ? tenths(cropPrice(run, plantedCrop(run)) / cropPrice(run, bestCrop(run)))
+      : 0,
+  };
+}
+
 export function sceneInfo(run: RunState): GrowSceneInfo {
   const i = Math.min(Math.max(run.phase, 0), PHASE_IDS.length - 1);
   return {
@@ -118,6 +155,8 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
     season: i === 0 ? seasonOf(run) : "spring",
     dry: i <= 1 && isDry(run),
     ...yardInfo(run, i === 0),
+    ...farmInfo(run, i === 1),
+    isDry: i <= 1 && isDry(run),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(
       Math.min(FULL_GROWTH, Math.max(0, run.resources.growth ?? 0))

@@ -174,7 +174,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
   const sprout = 14 + info.scaling * 4;
   return (
     <g>
-      <rect x="0" y="0" width="400" height="140" fill={look.sky} />
+      <rect x="-1200" y="-1200" width="2800" height="1340" fill={look.sky} />
       {info.season === "summer" && (
         <circle cx={SUN.x} cy={SUN.y} r="18" fill="#ffe66d" />
       )}
@@ -197,12 +197,12 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         fill="#ffffff"
         fillOpacity="0.8"
       />
-      <rect x="0" y="136" width="400" height="130" fill={look.ground} />
+      <rect x="-1200" y="136" width="2800" height="130" fill={look.ground} />
       {info.isDry && (
         <rect
-          x="0"
+          x="-1200"
           y="136"
-          width="400"
+          width="2800"
           height="130"
           fill="#d9b25a"
           fillOpacity="0.4"
@@ -222,18 +222,18 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
           ))}
         </g>
       )}
-      <rect x="0" y="108" width="400" height="30" fill="#b98a55" />
-      {Array.from({ length: 40 }, (_, k) => (
+      <rect x="-1200" y="108" width="2800" height="30" fill="#b98a55" />
+      {Array.from({ length: 280 }, (_, k) => (
         <rect
           key={k}
-          x={k * 10 + 1}
+          x={k * 10 - 1199}
           y="108"
           width="8"
           height="30"
           fill="#c99a62"
         />
       ))}
-      <rect x="0" y="112" width="400" height="3" fill="#8b5e34" />
+      <rect x="-1200" y="112" width="2800" height="3" fill="#8b5e34" />
       {info.orchard &&
         TREES.map((t) => (
           <g key={t.x}>
@@ -459,8 +459,8 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
           />
         </g>
       )}
-      <rect x="0" y="262" width="400" height="38" fill="#7a5230" />
-      <rect x="0" y="262" width="400" height="5" fill="#a9763f" />
+      <rect x="-1200" y="262" width="2800" height="1200" fill="#7a5230" />
+      <rect x="-1200" y="262" width="2800" height="5" fill="#a9763f" />
       <rect
         x={SILL_BOX.x}
         y={SILL_BOX.y}
@@ -496,9 +496,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         height="5"
         fill="#58bf4f"
       />
-      <rect x="0" y="0" width="400" height="9" fill="#a9763f" />
-      <rect x="0" y="0" width="9" height="266" fill="#a9763f" />
-      <rect x="391" y="0" width="9" height="266" fill="#a9763f" />
+      <rect x="-1200" y="0" width="2800" height="9" fill="#a9763f" />
     </g>
   );
 }

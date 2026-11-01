@@ -10,6 +10,10 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const after = (run: RunState, minutes: number): boolean =>
   phaseTime(run) >= minutes * 60;
 
+/** A visitor's line fires the moment it arrives. */
+const arrives = (id: string) => (run: RunState) =>
+  run.flags[`here-${id}`] === true;
+
 export const farm: StoryMessage[] = [
   {
     id: "farm-hello",
@@ -159,5 +163,35 @@ export const farm: StoryMessage[] = [
     phase: PHASE_FARM,
     when: (run) => after(run, 30),
     text: "Somewhere past the last row, a bigger barn is quietly being drawn on a very large piece of paper.",
+  },
+  {
+    id: "visitor-starlings",
+    phase: PHASE_FARM,
+    when: arrives("visitor-starlings"),
+    text: "A swirl of starlings pours across the sky, folds itself into a tidy arrow and points at the best field. Then it drops a little harvest by the gate and flies off, very pleased with itself.",
+  },
+  {
+    id: "visitor-mayor",
+    phase: PHASE_FARM,
+    when: arrives("visitor-mayor"),
+    text: "The mayor of the three towns arrives in a hat with a feather in it, to say thank you on everyone's behalf. She leaves a basket of harvest and a very long list of kind words.",
+  },
+  {
+    id: "farm-robot",
+    phase: PHASE_FARM,
+    when: (run) => owned(run, "tractor") >= 2,
+    text: "The little gardener robot has rolled over from the old yard. It is not sure what a tractor is, but it has decided they are friends. It polishes the headlamp and hums. Ever onward.",
+  },
+  {
+    id: "farm-news-1",
+    phase: PHASE_FARM,
+    when: (run) => owned(run, "scarecrow") >= 3,
+    text: "NEWS: The three towns agree that this year's crops are the best-looking in the county. A scarecrow was asked for a comment and, as usual, stood by what he had said.",
+  },
+  {
+    id: "farm-news-2",
+    phase: PHASE_FARM,
+    when: (run) => owned(run, "glasshouse") >= 2,
+    text: "NEWS: Local glasshouse reports that its tomatoes have started telling jokes. Experts say they are not very good ones, but the tomatoes are laughing, so that is all right.",
   },
 ];
