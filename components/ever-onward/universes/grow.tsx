@@ -4,9 +4,15 @@ import {
   ROBOT_ROWS,
 } from "@/lib/ever-onward/start/sprites";
 import { ENDING_STORY_IDS } from "@/lib/ever-onward/universes/grow/story";
-import { SCORES, TITLE_SCORE, UNEASE } from "../audio/scores";
+import {
+  GROW_SCORES,
+  GROW_TITLE_SCORE,
+  GROW_UNEASE,
+} from "../audio/growScores";
+import type { CueName } from "../audio/everOnwardSynth";
 import EmberIcon from "../game/EmberIcon";
 import GrowScene from "../scenes/grow/GrowScene";
+import type { RunState } from "@/lib/ever-onward/engine/types";
 import type { TapLook, UniverseUi } from "./types";
 
 /** Water, harvest, green and care: blues and greens. */
@@ -33,6 +39,18 @@ const LOOKS: readonly TapLook[] = [
   },
 ];
 
+/** Sounds for what the side machines did between two renders. */
+function cuesBetween(before: RunState, now: RunState): CueName[] {
+  const cues: CueName[] = [];
+  const rose = (id: string) =>
+    (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
+  if (rose("beDances")) cues.push("buzz");
+  if (rose("frFairs")) cues.push("ribbon");
+  if (rose("mgFlights")) cues.push("flutter");
+  if (rose("potStage")) cues.push("bloom");
+  return cues;
+}
+
 /** Placeholders until the art and the music are made (Tasks 14 and 15). */
 export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
@@ -50,8 +68,9 @@ export const GROW_UI: UniverseUi = {
     stillGoing: "The garden is still growing.",
   },
   audio: {
-    scores: SCORES,
-    unease: UNEASE,
-    titleScore: TITLE_SCORE,
+    scores: GROW_SCORES,
+    unease: GROW_UNEASE,
+    titleScore: GROW_TITLE_SCORE,
+    cuesBetween,
   },
 };
