@@ -5,6 +5,12 @@ import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import AnimatedValue from "./AnimatedValue";
 import EffectFloater, { type Effect } from "./EffectFloater";
 import RateReadout from "./RateReadout";
+import {
+  pixelClass,
+  retroInsetClass,
+  retroLabelClass,
+  retroPanelClass,
+} from "./retro/retroStyles";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface ResourcesProps {
@@ -52,13 +58,13 @@ export default function Resources({
       {primary && (
         <div
           ref={primaryRef}
-          className="relative col-span-2 flex items-end justify-between gap-3 rounded-xl border border-amber-300 bg-white px-4 py-3 sm:col-span-3 dark:border-amber-700 dark:bg-slate-900"
+          className={`${retroPanelClass} relative col-span-2 flex flex-wrap items-end justify-between gap-x-3 gap-y-2 px-4 py-3 sm:col-span-3`}
         >
           <div className="min-w-0">
-            <dt className="truncate text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-              {primary.label}
-            </dt>
-            <dd className="text-4xl font-bold leading-tight text-slate-900 dark:text-slate-50">
+            <dt className={`${retroLabelClass} truncate`}>{primary.label}</dt>
+            <dd
+              className={`${pixelClass} mt-2 text-2xl leading-tight text-amber-100 [text-shadow:2px_2px_0_#78350f] sm:text-3xl`}
+            >
               <AnimatedValue
                 value={run.resources[primary.id] ?? 0}
                 format={(v) => formatResource(primary.id, v)}
@@ -66,7 +72,7 @@ export default function Resources({
               />
             </dd>
           </div>
-          <dd className="shrink-0 pb-1 text-base font-semibold">
+          <dd className="shrink-0 pb-1 font-mono text-base font-bold">
             <RateReadout rate={rate} trend={trend} testId="lm-rate" />
           </dd>
           <dd className="contents">
@@ -78,12 +84,10 @@ export default function Resources({
       {others.map((r) => (
         <div
           key={r.id}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900"
+          className={`${retroInsetClass} flex flex-col gap-2 px-3 py-2`}
         >
-          <dt className="truncate text-xs text-slate-600 dark:text-slate-400">
-            {r.label}
-          </dt>
-          <dd className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+          <dt className={`${retroLabelClass} truncate`}>{r.label}</dt>
+          <dd className={`${pixelClass} text-xs text-amber-100`}>
             <AnimatedValue
               value={run.resources[r.id] ?? 0}
               format={(v) => formatResource(r.id, v)}

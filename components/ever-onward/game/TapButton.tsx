@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
-import { focusRingClass } from "../styles";
+import PixelIcon, { type PixelIconName } from "./retro/PixelIcon";
+import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface Floater {
   id: number;
@@ -22,31 +23,31 @@ interface TapButtonProps {
 }
 
 interface PhaseLook {
-  icon: string;
+  icon: PixelIconName;
   classes: string;
 }
 
 /** Lantern for the coast, then generator, collector and flame. */
 const LOOKS: PhaseLook[] = [
   {
-    icon: "\u{1F3EE}",
+    icon: "lantern",
     classes:
-      "bg-amber-400 text-amber-950 shadow-amber-500/50 hover:bg-amber-300 dark:bg-amber-500 dark:shadow-amber-400/40",
+      "border-amber-200 bg-amber-950 text-amber-200 shadow-[4px_4px_0_#78350f,0_0_26px_rgba(251,191,36,0.55)] hover:bg-amber-900",
   },
   {
-    icon: "⚡",
+    icon: "bolt",
     classes:
-      "bg-lime-400 text-lime-950 shadow-lime-500/50 hover:bg-lime-300 dark:bg-lime-500 dark:shadow-lime-400/40",
+      "border-lime-200 bg-lime-950 text-lime-200 shadow-[4px_4px_0_#365314,0_0_26px_rgba(163,230,53,0.5)] hover:bg-lime-900",
   },
   {
-    icon: "☀",
+    icon: "sun",
     classes:
-      "bg-orange-400 text-orange-950 shadow-orange-500/50 hover:bg-orange-300 dark:bg-orange-500 dark:shadow-orange-400/40",
+      "border-orange-200 bg-orange-950 text-orange-200 shadow-[4px_4px_0_#9a3412,0_0_26px_rgba(251,146,60,0.55)] hover:bg-orange-900",
   },
   {
-    icon: "\u{1F525}",
+    icon: "flame",
     classes:
-      "bg-rose-400 text-rose-950 shadow-rose-500/50 hover:bg-rose-300 dark:bg-rose-500 dark:shadow-rose-400/40",
+      "border-rose-200 bg-rose-950 text-rose-200 shadow-[4px_4px_0_#9f1239,0_0_26px_rgba(251,113,133,0.55)] hover:bg-rose-900",
   },
 ];
 
@@ -95,49 +96,53 @@ export default function TapButton({
   const look = LOOKS[Math.min(phase, LOOKS.length - 1)];
   const shortLabel = label.split(" ")[0];
   const tone = isStorm
-    ? "bg-sky-400 text-sky-950 shadow-sky-400/60 ring-4 ring-sky-300/70 hover:bg-sky-300 lm-glow"
+    ? "border-sky-200 bg-sky-950 text-sky-200 shadow-[4px_4px_0_#0c4a6e,0_0_30px_rgba(56,189,248,0.7)] ring-4 ring-sky-300/70 hover:bg-sky-900"
     : look.classes;
 
   return (
-    <div
-      data-testid="lm-tap-fab"
-      aria-hidden={isCovered}
-      inert={isCovered}
-      className={`pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] z-30 lg:right-[calc(1.5rem+env(safe-area-inset-right))] ${
-        isCovered ? "invisible" : ""
-      }`}
-    >
+    <>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-0"
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 h-36 bg-linear-to-t from-[#02030a] via-[#02030a]/85 to-transparent lg:left-[55%] ${
+          isCovered ? "invisible" : ""
+        }`}
+      />
+      <div
+        data-testid="lm-tap-fab"
+        aria-hidden={isCovered}
+        inert={isCovered}
+        className={`pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 lg:left-[77.5%] ${
+          isCovered ? "invisible" : ""
+        }`}
       >
-        {floaters.map((f, i) => (
-          <span
-            key={f.id}
-            className={`lm-float absolute -top-1 text-xl font-bold tabular-nums text-amber-500 drop-shadow dark:text-amber-300 ${
-              i % 2 === 0 ? "left-[40%]" : "left-[60%]"
-            }`}
-          >
-            {f.text}
-          </span>
-        ))}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-0"
+        >
+          {floaters.map((f, i) => (
+            <span
+              key={f.id}
+              className={`lm-float ${pixelClass} absolute -top-1 text-sm tabular-nums text-amber-300 [text-shadow:2px_2px_0_#78350f] ${
+                i % 2 === 0 ? "left-[40%]" : "left-[60%]"
+              }`}
+            >
+              {f.text}
+            </span>
+          ))}
+        </div>
+        <button
+          ref={buttonRef}
+          type="button"
+          data-testid="lm-tap"
+          aria-label={label}
+          onClick={handleClick}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`${pixelClass} pointer-events-auto flex size-20 touch-manipulation select-none flex-col items-center justify-center gap-1.5 border-4 text-[8px] leading-none transition-transform [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] active:translate-y-0.5 sm:size-24 sm:text-[9px] ${tone} ${retroFocusClass}`}
+        >
+          <PixelIcon name={look.icon} className="size-8 sm:size-10" />
+          <span aria-hidden="true">{isStorm ? "x3!" : shortLabel}</span>
+        </button>
       </div>
-      <button
-        ref={buttonRef}
-        type="button"
-        data-testid="lm-tap"
-        aria-label={label}
-        onClick={handleClick}
-        onContextMenu={(e) => e.preventDefault()}
-        className={`pointer-events-auto flex size-20 touch-manipulation select-none flex-col items-center justify-center rounded-full text-sm font-bold leading-tight shadow-xl transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] active:brightness-95 sm:size-24 ${tone} ${focusRingClass}`}
-      >
-        <span aria-hidden="true" className="text-3xl leading-none">
-          {look.icon}
-        </span>
-        <span aria-hidden="true" className="mt-0.5">
-          {isStorm ? "x3!" : shortLabel}
-        </span>
-      </button>
-    </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { pixelClass } from "../game/retro/retroStyles";
 import { setNarrationSettings, useNarrationSettings } from "./settings";
 
 /** Narration on/off and auto-play, remembered on this device. */
@@ -9,10 +10,12 @@ export default function NarrationSettings() {
   const id = useId();
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold">Narration</legend>
+      <legend className={`${pixelClass} mb-1 text-[10px] text-cyan-200`}>
+        Narration
+      </legend>
       <label
         htmlFor={`${id}-on`}
-        className="flex min-h-11 items-center gap-3 text-sm"
+        className="flex min-h-11 items-center gap-3 font-mono text-sm text-slate-200"
       >
         <input
           id={`${id}-on`}
@@ -27,7 +30,7 @@ export default function NarrationSettings() {
       </label>
       <label
         htmlFor={`${id}-auto`}
-        className="flex min-h-11 items-center gap-3 text-sm"
+        className="flex min-h-11 items-center gap-3 font-mono text-sm text-slate-200"
       >
         <input
           id={`${id}-auto`}

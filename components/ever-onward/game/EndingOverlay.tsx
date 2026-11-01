@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { primaryButtonClass } from "../styles";
+import CrtOverlay from "./retro/CrtOverlay";
+import { retroPrimaryButtonClass } from "./retro/retroStyles";
 
 interface EndingOverlayProps {
   /** The closing lines, in order. */
@@ -47,17 +48,20 @@ export default function EndingOverlay({
       aria-modal="true"
       aria-label="The ending"
       data-testid="lm-ending"
-      className="fixed inset-0 z-50 flex outline-none items-center justify-center overflow-y-auto bg-black p-6 text-slate-50"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black p-6 text-slate-50 outline-none"
     >
+      <div className="pointer-events-none fixed inset-0">
+        <CrtOverlay />
+      </div>
       <div className="relative max-w-md space-y-6 py-8 text-center">
         <div
           aria-hidden="true"
-          className="lm-flicker mx-auto h-3 w-3 rounded-full bg-amber-300 shadow-[0_0_40px_14px_rgb(251_191_36/0.45)]"
+          className="lm-flicker mx-auto size-3 bg-amber-300 shadow-[0_0_40px_14px_rgb(251_191_36/0.45)]"
         />
         {lines.map((line, i) => (
           <p
             key={line}
-            className={`lm-fade-up text-lg text-slate-200 ${DELAYS[Math.min(i, DELAYS.length - 2)]}`}
+            className={`lm-fade-up font-mono text-lg text-slate-100 ${DELAYS[Math.min(i, DELAYS.length - 2)]}`}
           >
             {line}
           </p>
@@ -70,8 +74,9 @@ export default function EndingOverlay({
             ref={buttonRef}
             type="button"
             onClick={onContinue}
-            className={`${primaryButtonClass} min-w-40 !ring-offset-black`}
+            className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-black`}
           >
+            <span aria-hidden="true">▶</span>
             Continue
           </button>
         </div>

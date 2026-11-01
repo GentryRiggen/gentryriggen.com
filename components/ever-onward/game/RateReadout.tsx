@@ -23,10 +23,10 @@ export default function RateReadout({
 }: RateReadoutProps) {
   const tone =
     rate < 0 || trend === "down"
-      ? "text-red-700 dark:text-red-400"
+      ? "text-red-300"
       : trend === "up"
-        ? "text-emerald-700 dark:text-emerald-400"
-        : "text-slate-700 dark:text-slate-300";
+        ? "text-emerald-300"
+        : "text-slate-300";
   return (
     <span
       data-testid={testId}

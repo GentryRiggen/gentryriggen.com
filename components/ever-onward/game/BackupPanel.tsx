@@ -7,10 +7,11 @@ import {
 } from "@/lib/ever-onward/engine/backupCode";
 import type { SaveData } from "@/lib/ever-onward/engine/types";
 import {
-  dangerButtonClass,
-  focusRingClass,
-  secondaryButtonClass,
-} from "../styles";
+  pixelClass,
+  retroDangerButtonClass,
+  retroFieldClass,
+  retroSecondaryButtonClass,
+} from "./retro/retroStyles";
 
 interface BackupPanelProps {
   save: SaveData;
@@ -90,23 +91,29 @@ export default function BackupPanel({
 
   return (
     <section aria-labelledby="lm-backup-title" className="space-y-3">
-      <h2 id="lm-backup-title" className="text-sm font-bold">
+      <h2
+        id="lm-backup-title"
+        className={`${pixelClass} text-[10px] text-cyan-200`}
+      >
         Backup code
       </h2>
-      <p className="text-xs text-slate-600 dark:text-slate-400">
+      <p className="font-mono text-xs text-slate-300">
         Copy a code and keep it somewhere safe. Paste it later, or on another
         device, to get your game back.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           disabled={isDisabled}
           onClick={handleCopy}
-          className={secondaryButtonClass}
+          className={retroSecondaryButtonClass}
         >
           Copy my code
         </button>
-        <span role="status" className="text-sm font-semibold">
+        <span
+          role="status"
+          className="font-mono text-sm font-bold text-emerald-300"
+        >
           {copyState === "copied" && "Copied!"}
           {copyState === "failed" && "Couldn't copy. Copy it from the box."}
         </span>
@@ -118,14 +125,14 @@ export default function BackupPanel({
           value={shownCode}
           rows={3}
           onFocus={(event) => event.currentTarget.select()}
-          className={`w-full rounded-lg border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${focusRingClass}`}
+          className={retroFieldClass}
         />
       )}
 
       <div className="space-y-2">
         <label
           htmlFor="lm-backup-input"
-          className="block text-sm font-semibold"
+          className={`${pixelClass} block text-[10px] text-cyan-200`}
         >
           Load a code
         </label>
@@ -145,13 +152,13 @@ export default function BackupPanel({
             setError(null);
             setPending(null);
           }}
-          className={`w-full rounded-lg border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${focusRingClass}`}
+          className={retroFieldClass}
         />
         {error && (
           <p
             id="lm-backup-error"
             role="alert"
-            className="text-sm font-semibold text-red-700 dark:text-red-300"
+            className="font-mono text-sm font-bold text-red-300"
           >
             {error}
           </p>
@@ -162,22 +169,22 @@ export default function BackupPanel({
             aria-label="Confirm loading the code"
             className="space-y-2"
           >
-            <p className="text-sm font-semibold">
+            <p className="font-mono text-sm font-bold text-amber-100">
               This replaces the game on this device. Continue?
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 disabled={isDisabled}
                 onClick={handleConfirm}
-                className={dangerButtonClass}
+                className={retroDangerButtonClass}
               >
                 Yes, replace my game
               </button>
               <button
                 type="button"
                 onClick={() => setPending(null)}
-                className={secondaryButtonClass}
+                className={retroSecondaryButtonClass}
               >
                 Cancel
               </button>
@@ -188,7 +195,7 @@ export default function BackupPanel({
             type="button"
             disabled={isDisabled || pasted.trim() === ""}
             onClick={handleLoad}
-            className={secondaryButtonClass}
+            className={retroSecondaryButtonClass}
           >
             Load
           </button>

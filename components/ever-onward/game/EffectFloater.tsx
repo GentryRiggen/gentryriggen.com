@@ -23,7 +23,7 @@ export default function EffectFloater({
       role={isAnnounced ? "status" : undefined}
       aria-hidden={isAnnounced ? undefined : true}
       data-testid={testId}
-      className="lm-effect pointer-events-none absolute left-3 top-full z-10 max-w-[75%] text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400"
+      className="lm-effect pointer-events-none absolute left-3 top-full z-10 max-w-[75%] bg-slate-950/90 px-1 font-mono text-sm font-bold tabular-nums text-emerald-300 [text-shadow:1px_1px_0_#022c22]"
     >
       {effect.text}
     </span>

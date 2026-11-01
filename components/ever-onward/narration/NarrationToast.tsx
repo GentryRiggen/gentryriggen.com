@@ -1,6 +1,10 @@
 "use client";
 
-import { focusRingClass } from "../styles";
+import {
+  pixelClass,
+  retroFocusClass,
+  retroPanelClass,
+} from "../game/retro/retroStyles";
 import type { NarrationApi } from "./useNarration";
 
 type NarrationToastProps = Pick<
@@ -8,7 +12,7 @@ type NarrationToastProps = Pick<
   "toast" | "playToast" | "dismissToast"
 >;
 
-const buttonClass = `inline-flex min-h-11 touch-manipulation items-center justify-center rounded-lg px-3 text-sm font-semibold ${focusRingClass}`;
+const buttonClass = `${pixelClass} inline-flex min-h-11 touch-manipulation items-center justify-center border-2 px-3 text-[10px] active:translate-y-0.5 ${retroFocusClass}`;
 
 /** "New message" nudge near the bottom of the screen; the story keeps the text. */
 export default function NarrationToast({
@@ -21,11 +25,13 @@ export default function NarrationToast({
     <div
       role="status"
       data-testid="lm-narration-toast"
-      className="fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(92vw,26rem)] items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 pl-4 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      className={`${retroPanelClass} fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(92vw,26rem)] items-center gap-2 p-2 pl-4 text-slate-100`}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold">📻 New message</p>
-        <p className="truncate text-xs text-slate-600 dark:text-slate-400">
+        <p className={`${pixelClass} text-[10px] text-amber-300`}>
+          📻 New message
+        </p>
+        <p className="mt-1 truncate font-mono text-xs text-slate-300">
           {toast.preview}
         </p>
       </div>
@@ -33,7 +39,7 @@ export default function NarrationToast({
         type="button"
         onClick={playToast}
         aria-label="Play new message"
-        className={`${buttonClass} bg-amber-400 text-amber-950 hover:bg-amber-300 dark:bg-amber-500 dark:hover:bg-amber-400`}
+        className={`${buttonClass} border-amber-300 bg-amber-950/60 text-amber-300 hover:bg-amber-900/70`}
       >
         ▶ Play
       </button>
@@ -41,7 +47,7 @@ export default function NarrationToast({
         type="button"
         onClick={dismissToast}
         aria-label="Dismiss new message"
-        className={`${buttonClass} text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800`}
+        className={`${buttonClass} border-slate-600 text-slate-200 hover:bg-slate-800`}
       >
         ✕
       </button>
