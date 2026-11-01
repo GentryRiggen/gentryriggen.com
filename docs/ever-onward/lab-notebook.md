@@ -1159,3 +1159,213 @@ the eager bot, and each realistic phase within 30% of 30/35/35/20 min.
 Next: a playtest with Gentry (does the longer farm drag in the middle; does
 the world's tail feel like an ending rather than a wait), then round 2 on
 plates.
+
+## Round 5 (2026-11-01): things to manage
+
+Branch `feat/eo-things-to-manage`, on top of Make It Grow 1.14.0 (fa6eaa5b).
+Prototyped on Keep the Light On's night ("No More Night").
+
+### Playtest note (ground truth)
+
+Gentry, on his iPhone, in the power grid phase of the first world:
+
+> There's still a lot of dead periods in the game. I'm on the power grid
+> phase of the first world and I'm just waiting... Tapping crank doesn't do
+> enough to matter. The mini game is just a single click option and collect.
+> I need more things to manage.
+
+He approved four ideas and the order: honest dead-time measurement first,
+then projects, a knob for the grid, and a deeper Weather Desk.
+
+### Hypotheses
+
+1. The card scored the night well because M1 and M12 count story lines as
+   events. A metric that counts only decisions will show the night as the
+   wait it is.
+2. A slow second resource (know-how) with a few projects on offer, each with
+   a catch, fills the waits between plants with real choices.
+3. One live knob whose best setting moves during the night gives the player
+   a reason to look back at the grid without adding clicks.
+4. A storm whose path firms up over three steps, with crews that need time
+   to get ready, turns "one pick, then collect" into an early-or-late choice
+   every storm.
+
+### 1. Measurement: M16 Decision gaps (commit 72f8f407)
+
+- `engine/decisions.ts` reads the player who taps when it helps. A decision
+  is a meaningful buy, a project started, or an action the universe tags in
+  `UniverseDef.decisionActions`: oil, nets, routes, crews, watering, the
+  streetlights in Light; bees, crops, biomes, pumpkins, flock and pot in
+  Grow. Claims (rush, flare), fixes (balance, correct, steer) and collects
+  (haul, pick, harvest) never count, and neither do story lines.
+- The first 2 minutes of a phase are not scored. Band: longest gap <= 90 s,
+  p90 <= 60 s, <= 15% of the phase in gaps over 60 s, 0.67-2 decisions a
+  minute. Gate: longest <= 150 s and <= 40% of the phase in gaps over 60 s.
+- Weight 8, from M1 (10 to 6; it counts story lines), M5 (5 to 3) and M8
+  (5 to 3), which had been saturated for rounds.
+- The score script prints, per phase, the seconds since the last decision
+  at each minute and every gap over a minute with where it falls.
+
+Today's build on the new card: Light **59.0 capped (83.5 uncapped)**. M16
+fails in the night, the sky and the ending; the coast passes.
+
+| Phase (when it helps) | Longest gap      | p90   | Time in gaps > 60 s | Decisions/min |
+| --------------------- | ---------------- | ----- | ------------------- | ------------- |
+| coast                 | 130 s (min 32.7) | 50 s  | 20%                 | 2.25          |
+| night                 | 140 s (min 28.0) | 90 s  | **60% (fail)**      | 1.02          |
+| sky                   | 130 s (min 11.5) | 100 s | **69% (fail)**      | 1.07          |
+| last                  | 159 s (min 2.1)  | 100 s | **81% (fail)**      | 1.06          |
+
+The night had 15 gaps over a minute: 80 s at min 7.5, 70 s at 9.5, 70 s at
+11.7, 90 s at 13.0, 80 s at 14.5, 110 s at 17.2, 67 s at 19.0, 90 s at 20.8,
+80 s at 23.3, 80 s at 25.5, 140 s at 28.0, 77 s at 30.7, 99 s at 32.2, 61 s
+at 33.8, 80 s at 34.8. The night bar also sat at 98-99% for its first 20
+minutes, so nothing on screen moved either.
+
+Make It Grow on the new card: **83.9 to 82.6**, no failing gate. The yard
+(33% in gaps over a minute, longest 100 s) and the world's tail (longest
+143 s at min 35.3, 31%) are its next targets. Grow was not tuned this round,
+and its card is byte-identical after the Light changes.
+
+### 2. Projects, a generic engine feature (77eb25f8, f9d2d423)
+
+- `ProjectDef` on `UniverseDef` (`projects`, `maxProjects`, default 3):
+  costs in any resources, `revealWhen` (milestones only), `onDone`,
+  `effectPreview`, `tradeOff`, `botValue`. Done and seen are flags, so old
+  saves read as nothing done. The engine has `shownProjects`,
+  `startProject` and the rest; the sim's bots take `projects: "best"`
+  (forward income gain plus the hint), and every start is a decision.
+- The night earns **know-how**: 0.04 a second per power plant (night school
+  1.5x), +3 for balancing an uneasy grid, +2 for riding a rush, +4 for a
+  storm met by a crew, +3 for an outage fixed.
+- Ten night projects, revealed in this order: night school, smart meters
+  (+20% pay, towns want 5% more), line patrols, better barometers, rush-hour
+  pricing (+50% rush, a quarter less often), town lamplighters (towns want
+  6% less, glow +8% not +15%), the power co-op (steam +25%, strain +15%,
+  shown once every steam plant is built, the wait for the first dam), spare
+  parts depot, fish ladders (dams +40%), wind maps (farms +25%).
+- A retro Projects panel (violet), registered in Light's UI registry. Each
+  card shows its effect before to after, "The catch:" and its cost (with
+  what you have so far); unaffordable cards are `aria-disabled`; a
+  `role="status"` line says "<name>: done!" once, on the start.
+- A turn of the crank also brings 0.3% of a second's city power, so the tap
+  floor (M11) holds as projects lift income. Taps stay a nudge.
+
+### 3. The streetlights, a knob (c59ae962)
+
+Tried first and dropped: a split that saves city power in a battery for the
+evening rush. Held at any of its four steps the night changed by under a
+minute, and saving never cost anything, so it was not a decision.
+
+What shipped: four steps, soft glow / gentle / bright / dazzling.
+
+| Step      | Pay  | Towns want | Grid strain | Know-how |
+| --------- | ---- | ---------- | ----------- | -------- |
+| Soft glow | 90%  | 88%        | 70%         | 2.5x     |
+| Gentle    | 95%  | 94%        | 85%         | 1.6x     |
+| Bright    | 100% | 100%       | 100%        | 1x       |
+| Dazzling  | 106% | 106%       | 130%        | 0.25x    |
+
+It opens with the grid; old saves read as Bright. The best step moves: soft
+while a big project waits only on know-how, dazzling while building. A
+radio group (`useRoving`), each step showing its power, know-how and towns
+lit right now; the status line speaks only when a step is picked. The bots
+set it by situation (with hysteresis so it does not flip while power dips).
+
+Night length with the step held all night versus the bot's policy (minutes):
+
+| Bot           | Policy | Soft | Gentle | Bright | Dazzling |
+| ------------- | ------ | ---- | ------ | ------ | -------- |
+| when it helps | 34.7   | 35.7 | 35.2   | 34.9   | 35.0     |
+| eager         | 32.5   | 34.5 | 34.4   | 33.2   | 33.0     |
+| dawdler       | 53.0   | 56.0 | 55.0   | 53.0   | 53.0     |
+
+Changing it beats every held step (the dawdler ties), and the worst held
+step is 3-6% slower, never a trap. The margin is thin; see "still thin".
+
+### 4. A deeper Weather Desk (4bc8f088, aed1d9f7)
+
+- A storm forms (35-60 s), then the forecast comes in three 20 s steps.
+  Where it lands is drawn once, honestly, against the first forecast; each
+  step shows the path firming up (0%, 45%, 80% sure; barometers 30/70/95%).
+  A storm cloud slides along a track above the towns.
+- Repair crews (1, 2 with storm crews) go anywhere, any time; a crew takes
+  40 s to get ready. A ready crew earns 45 s of income and 4 know-how; one
+  that just arrived earns half. With every crew out, the one at the least
+  likely town moves. Crews come home after every storm, so each storm is a
+  new choice.
+- A town hit with no crew goes dark for 2 minutes (10% less pay while
+  dark). A crew fixes it in 12 s and learns from it (+3 know-how); left
+  alone it comes back on its own. Nothing is taken, nothing expires, the
+  vane still pays 60% on top of hand play, payouts in flight finish, and the
+  desk keeps its own random stream. Old saves mid-forecast play on.
+- Bots send crews by chance times readiness at landfall and fix dark towns
+  between storms.
+
+### Tuning (aed1d9f7)
+
+Storms every 1.5-2 minutes, the desk opens at two steam plants, the night's
+costScale 2 to 2.9 with the opening buys (crank, gen1, gen2) cut to match.
+
+### Before and after
+
+Decision gaps in the night (taps when it helps), seconds since the last
+decision at each minute (first 2 minutes not scored):
+
+```
+before night  60  0 10 30 10 10 10 30 10 30 20 20  0 60 30 10 33 50  0 60 10 70 40 40 20 30 10  0 60120 17  0 50 11 10 70 50  0
+after  night  60  0  5 10  0 60  0 30 20  2 42 10 10  9 40  9 27 30 10 56 20 10 33 10  0  0  0 28 29 43  1  1
+```
+
+| Night (when it helps)    | Before          | After                                   |
+| ------------------------ | --------------- | --------------------------------------- |
+| Longest gap              | 140 s at min 28 | 92 s at min 19.1                        |
+| p90 gap                  | 90 s            | 58 s                                    |
+| Time in gaps over 60 s   | 60% (15 gaps)   | 24% (6 gaps)                            |
+| Decisions a minute       | 1.02            | 2.34 (30 buys, 10 projects, 35 choices) |
+| M16 night gate           | fail            | pass                                    |
+| Non-tap clicks/min (M15) | 1.1             | 1.6 (band 0.3-2.5)                      |
+| Late taps/min (helps)    | 12              | 20 (band <= 20)                         |
+| Night length, realistic  | 37 min          | 32 min                                  |
+
+The remaining night gaps over a minute: 70 s at min 5.0 (before the desk
+opens), 63 s at 14.3, 80 s at 17.5, 92 s at 19.1 (the wait for the first
+dam), 70 s at 23.8, 63 s at 29.3.
+
+| Card                            | 1.14.0 old card      | 1.14.0 new card      | Round 5              |
+| ------------------------------- | -------------------- | -------------------- | -------------------- |
+| Light total                     | 86.8                 | 59.0 (83.5 uncapped) | 59.0 (83.1 uncapped) |
+| Light failing gates             | none                 | M16 night, sky, last | M16 sky, last        |
+| Grow total                      | 83.9                 | 82.6                 | 82.6 (unchanged)     |
+| Light finish (eager/helps/idle) | 1.99 / 2.18 / 3.12 h | same                 | 1.96 / 2.09 / 3.37 h |
+
+Per metric (Light, new card, before to after): M1 4.3 to 3.8, M3 1.9 to
+2.0, M4 9.0 to 8.8, M7 8.1 to 7.9, M11 9.3 to 9.1, M14 3.9 to 3.7, M16 3.7
+to 4.4; the rest unchanged. The small losses are the eager night getting
+shorter (30 min) and its beats bunching; the uncapped total is flat because
+the sky and the ending carry most of M16's loss.
+
+Narration: two new story lines need clips, `light/night-lamps` (the
+streetlights open) and `light/night-ideas` (know-how and projects). No
+existing narrated text changed. Project and step texts are on screen only.
+
+### What still feels thin
+
+1. **The knob's edge is small.** Changing the streetlights beats holding
+   any step by 1-6%. It is a real choice but a quiet one; a player may
+   leave it on dazzling and lose little.
+2. **The first dam.** The longest night gap (92 s, min 19) is still the
+   wait for the first dam after the last steam plant.
+3. **The sky and the ending are now the deadest phases on the card** (84%
+   and 75% of the time in gaps over a minute). They need the same treatment:
+   projects with their own slow resource, a knob, a deeper probe race.
+4. **Grow's yard and world tail** (33% and 31%) are its next targets.
+5. The night's progress bar still sits near 100% for the first 20 minutes.
+
+### Decision
+
+Keep. Light's floor is now the uncapped score minus 1 (82.1) with the
+sky and ending M16 gates listed as known; Grow's floor 81.6. Next: Gentry
+plays the night on his phone (does the desk feel like managing now; does
+the streetlights panel read), then Round 6 takes projects and a knob to the
+sky.

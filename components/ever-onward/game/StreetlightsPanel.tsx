@@ -121,8 +121,12 @@ export default function StreetlightsPanel({ def, run, onAct }: PanelProps) {
                 id={`lm-lamps-${i}-note`}
                 className="block font-mono text-[11px] leading-snug font-bold normal-case tabular-nums"
               >
-                {short(at.power)} power/sec · {short(at.knowhow)} know-how/sec ·{" "}
-                {Math.floor(at.cities)} towns lit
+                <span className="block">{short(at.power)} power/sec</span>
+                <span className="block">{short(at.knowhow)} know-how/sec</span>
+                <span className="block">
+                  {Math.floor(at.cities)}{" "}
+                  {Math.floor(at.cities) === 1 ? "town" : "towns"} lit
+                </span>
               </span>
             </button>
           );
