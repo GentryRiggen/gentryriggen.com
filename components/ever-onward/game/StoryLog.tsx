@@ -1,5 +1,8 @@
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 
+import { storyClipId } from "@/lib/ever-onward/narration/lines";
+import ListenButton from "../narration/ListenButton";
+
 interface StoryLogProps {
   def: UniverseDef;
   run: RunState;
@@ -44,6 +47,11 @@ export default function StoryLog({ def, run }: StoryLogProps) {
               </span>
             )}
             {isNews ? m.text.slice(NEWS_PREFIX.length).trim() : m.text}
+            <ListenButton
+              clipId={storyClipId(def.id, m.id)}
+              accessibleLabel="Listen to this message"
+              className="ml-2 size-8 rounded-full border border-slate-300 align-middle text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            />
           </p>
         );
       })}

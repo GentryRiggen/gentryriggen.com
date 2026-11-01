@@ -1,8 +1,11 @@
 import type { PhaseDef } from "@/lib/ever-onward/engine/types";
-import { primaryButtonClass } from "../styles";
+import ListenButton from "../narration/ListenButton";
+import { primaryButtonClass, secondaryButtonClass } from "../styles";
 
 interface PhaseOverlayProps {
   phase: PhaseDef;
+  /** Narration clip for the intro, if one is recorded. */
+  clipId?: string;
   /** 1-based number of the phase and how many there are. */
   number: number;
   total: number;
@@ -11,6 +14,7 @@ interface PhaseOverlayProps {
 
 export default function PhaseOverlay({
   phase,
+  clipId,
   number,
   total,
   onContinue,
@@ -31,6 +35,16 @@ export default function PhaseOverlay({
           {phase.title}
         </h2>
         {phase.intro && <p className="text-lg text-slate-300">{phase.intro}</p>}
+        {phase.intro && clipId && (
+          <div>
+            <ListenButton
+              clipId={clipId}
+              label="Listen"
+              accessibleLabel="Listen to this introduction"
+              className={`${secondaryButtonClass} gap-2 !border-slate-600 !bg-slate-900 !text-slate-100`}
+            />
+          </div>
+        )}
         <button
           type="button"
           autoFocus

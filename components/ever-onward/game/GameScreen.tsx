@@ -18,6 +18,9 @@ import type {
 } from "@/lib/ever-onward/engine/types";
 import SoundControls from "../audio/SoundControls";
 import useEverOnwardAudio from "../audio/useEverOnwardAudio";
+import { introClipId } from "@/lib/ever-onward/narration/lines";
+import NarrationLayer from "../narration/NarrationLayer";
+import NarrationSettings from "../narration/NarrationSettings";
 import { SCENES } from "../scenes";
 import { cardClass, focusRingClass, secondaryButtonClass } from "../styles";
 import ActionPanel from "./ActionPanel";
@@ -191,6 +194,7 @@ export default function GameScreen({
             <p className="text-xs text-slate-600 dark:text-slate-400">
               Your game saves on this device and pauses when you leave.
             </p>
+            <NarrationSettings />
             <BackupPanel
               save={currentSave}
               isDisabled={overlay !== null}
@@ -282,9 +286,11 @@ export default function GameScreen({
         />
       )}
 
+      <NarrationLayer def={def} run={run} isSuppressed={overlay !== null} />
       {overlay === "phase" && (
         <PhaseOverlay
           phase={phase}
+          clipId={introClipId(def.id, phase.id)}
           number={run.phase + 1}
           total={def.phases.length}
           onContinue={onDismissOverlay}
