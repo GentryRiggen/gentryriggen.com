@@ -5,6 +5,8 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+import { shipChannels } from "../channelSettings";
+import { shipVoicePlayer } from "../shipVoice";
 import { soundSetting } from "../soundSetting";
 import { trialSynth } from "../synth";
 import TrialSound from "../TrialSound";
@@ -98,6 +100,55 @@ describe("TrialSound unlock", () => {
     unmount();
     await user.click(document.body);
     expect(trialSynth.enable).not.toHaveBeenCalled();
+  });
+});
+
+describe("TrialSound voice", () => {
+  let unlock: jest.SpyInstance;
+  let stop: jest.SpyInstance;
+
+  beforeEach(() => {
+    act(() => shipChannels.voice.resetMemory());
+    unlock = jest
+      .spyOn(shipVoicePlayer, "unlockOnGesture")
+      .mockImplementation(() => {});
+    stop = jest.spyOn(shipVoicePlayer, "stop").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    unlock.mockRestore();
+    stop.mockRestore();
+  });
+
+  it("wires the voice unlock while sound and Voice are on", () => {
+    localStorage.setItem("ship-builder:ui:sound", "on");
+    render(<TrialSound />);
+    expect(unlock).toHaveBeenCalled();
+  });
+
+  it("leaves the voice locked while Voice is off, and wires it when turned on", () => {
+    localStorage.setItem("ship-builder:ui:sound", "on");
+    localStorage.setItem("ship-builder:ui:voice", "off");
+    render(<TrialSound />);
+    expect(unlock).not.toHaveBeenCalled();
+    act(() => shipChannels.voice.set(true));
+    expect(unlock).toHaveBeenCalled();
+  });
+
+  it("stops the line and the queue when Voice is turned off", () => {
+    localStorage.setItem("ship-builder:ui:sound", "on");
+    render(<TrialSound />);
+    stop.mockClear();
+    act(() => shipChannels.voice.set(false));
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops the line when sound is turned off", () => {
+    localStorage.setItem("ship-builder:ui:sound", "on");
+    render(<TrialSound />);
+    stop.mockClear();
+    act(() => soundSetting.set(false));
+    expect(stop).toHaveBeenCalledTimes(1);
   });
 });
 

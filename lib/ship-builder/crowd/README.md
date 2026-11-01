@@ -148,4 +148,9 @@ decks: 11 of 24 figures (1098 of 2300) are saved, every one walking (and
 hopping) to a boat, and 13 are left aboard. The storm evacuates the same
 way from its first wash aboard.
 
+Each `BoatLaunch` also carries `spot` (the boarding spot in the resting world
+frame, null when the boat has none) and `half` (which half carries it once she
+breaks, null while whole), so a player walking the ship can find a boat to
+board (see `walk/escape.ts`).
+
 Tests: `__tests__/plan.test.ts`, `__tests__/evacuation.test.ts`.

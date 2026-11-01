@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.39.0",
+    date: "2026-11-01",
+    title: "Escape the sinking ship",
+    highlights: [
+      "When your ship is sinking, walk up to a lifeboat and tap Board. Ride it down the side and row away to safety",
+      "Life rafts too: tap Jump in and leap into the orange raft",
+      "Miss the boats and you'll end up in the water! Swim with the stick, kick with the jump button, and climb into a lifeboat before you get too cold",
+      "Get too cold and a fishing boat scoops you up",
+      "A voice cheers you on. Turn it off with the new Voice switch next to Music and Effects",
+    ],
+  },
+  {
     version: "2.38.2",
     date: "2026-11-01",
     title: "Update right away",

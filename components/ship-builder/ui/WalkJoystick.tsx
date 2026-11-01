@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 
 /** How far the thumb can travel from the centre, in pixels. */
@@ -41,6 +41,17 @@ export default function WalkJoystick() {
   const thumbRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Hidden mid-drag (Board or Climb in takes the stick away): let go, so the
+  // walker or swimmer is not left moving with no stick to stop them.
+  useEffect(() => {
+    const pointer = pointerIdRef;
+    return () => {
+      if (pointer.current === null) return;
+      walkInput.forward = 0;
+      walkInput.strafe = 0;
+    };
+  }, []);
 
   function moveThumb(x: number, y: number) {
     if (thumbRef.current) {

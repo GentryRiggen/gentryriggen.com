@@ -33,11 +33,30 @@ Where the rest lives: the `walk` store slice and `state/walkLive.ts`,
 trial: the ship's group carries the walker, and `WalkEyes` follows the deck
 fully as the trial pose blends in (`swayShare`). A walk outlives the trial:
 when she breaks, `WalkRunner` steps the walker on `halfWalkGrid` (their half
-only) and the `WalkEyes` in that half's group drives the camera; when she
-sinks, the store takes her on down to the sea floor, and the result waits
-until they stop walking.
+only) and the `WalkEyes` in that half's group drives the camera. Nobody
+rides her down: once the water reaches the walker, `EscapeRunner` puts them
+in the water (see below), and the result waits until they stop walking.
+
+`escape.ts` is the pure model of getting off a sinking ship: the phases
+(aboard, jumping, in a boat, swimming, frozen), which boat a walker can board
+(`boardableBoat`, by its spot, window and half), which boat picks a swimmer up
+(`pickupBoat`), and `stepSwimmer` (swim, kick, warmth, the hull as an
+obstacle). It works in the resting world frame, with `walkerRestPoint` mapping
+a deck walker into it.
+
+The scene runs it in `EscapeRunner` (after `WalkRunner` each frame, through
+the pure `advanceEscape` in `scene/escapeStep.ts`), which publishes the phase,
+the boat to board and the boat to climb into on `state/escapeLive.ts`; the
+HUD's buttons call `requestBoard` / `requestClimbIn`
+(`state/escapeActions.ts`). Off the deck, `WalkRunner` only lets a seated or
+frozen player look about, `WalkEyes` stands down and `EscapeEyes` places the
+camera (`scene/escapeCamera.ts`). While swimming the trial is held at 1x. The
+store's `recordEscape` keeps how the walk's escape ended (`lastEscape`).
 
 Tests: the model's unit tests are in `__tests__/`, and
 `e2e/ship-builder-walk.spec.ts` drives it in a real browser through the
 `window.__shipBuilderWalk` and `walkSpawn` test hooks (see
-`scene/testClock.ts`).
+`scene/testClock.ts`). `e2e/ship-builder-escape.spec.ts` boards, swims,
+freezes and climbs in through `window.__shipBuilderLaunches` and
+`__shipBuilderSwimToBoat` (see `hooks/useTestHook.ts`) and
+`escapeWarmthSeconds`.

@@ -3,8 +3,9 @@ import { test, expect, type Page } from "@playwright/test";
 /**
  * Walking on the sinking ship: press Hit with an iceberg while walking and keep
  * walking as the trial plays, or press Walk while a trial is already running.
- * `trialSpeed` plays the trial faster so the whole sinking takes moments. The
- * walker stays aboard to the sea floor, in one piece or on one half, and the
+ * `trialSpeed` plays the trial faster so the whole sinking takes moments. A
+ * walker who stands still is not taken down with her: once the water reaches
+ * them (in one piece or on one half) they go into the water and swim, and the
  * result waits until they stop walking.
  */
 
@@ -45,6 +46,12 @@ const status = (page: Page) =>
     };
   });
 
+/** The walker's escape phase: aboard, in a boat, swimming ... */
+const escapePhase = (page: Page) =>
+  page.evaluate(
+    () => window.__shipBuilderEscape?.().phase.kind ?? "no escape hook"
+  );
+
 /** Taps Walk and starts from the middle of the ship. */
 async function startWalking(page: Page) {
   await page.getByRole("button", { name: "Walk", exact: true }).click();
@@ -55,12 +62,11 @@ async function startWalking(page: Page) {
 }
 
 test.describe("Ship Builder walk while sinking", () => {
-  /** Walks, hits, and rides her down until the trial is over. */
-  async function rideToTheEnd(page: Page) {
+  /** Walks, hits, and stands still until the trial is over. */
+  async function standStillToTheEnd(page: Page) {
     await startWalking(page);
     await page.getByRole("button", { name: "Hit with an iceberg" }).click();
-    // Every iceberg trial is a descent from the start, so the walker rides
-    // her all the way down.
+    // Every iceberg trial is a descent from the start.
     await expect
       .poll(() => status(page))
       .toEqual({ walk: "walking", trial: "running", descending: true });
@@ -68,11 +74,18 @@ test.describe("Ship Builder walk while sinking", () => {
       page.getByRole("button", { name: "Hit with an iceberg" })
     ).toHaveCount(0);
 
-    // She sinks and goes on down to the sea floor on her own, walker aboard.
+    // The water reaches the walker and they go in: no riding her down.
+    await expect
+      .poll(() => escapePhase(page), { timeout: 90_000 })
+      .toBe("swimming");
+
+    // She sinks and goes on down to the sea floor on her own.
     await expect
       .poll(() => status(page), { timeout: 90_000 })
       .toEqual({ walk: "walking", trial: "result", descending: true });
-    await expect(page.getByText(/^She sank\. Explore the wreck/)).toBeVisible();
+    expect(["swimming", "frozen"]).toContain(await escapePhase(page));
+    // In the water the swim has their attention: no "She sank" note.
+    await expect(page.getByTestId("walk-outcome")).toHaveCount(0);
     await expect(
       page.getByRole("region", { name: "Sea trial result" })
     ).toHaveCount(0);
@@ -85,19 +98,20 @@ test.describe("Ship Builder walk while sinking", () => {
       page.getByRole("region", { name: "Sea trial result" })
     ).toBeVisible();
     expect((await status(page)).walk).toBe("idle");
+    expect(await escapePhase(page)).toBe("aboard");
   }
 
-  test("ride her down in one piece to the sea floor", async ({ page }) => {
+  test("go into the water as she sinks in one piece", async ({ page }) => {
     await openTitanic(page, "never");
-    await rideToTheEnd(page);
+    await standStillToTheEnd(page);
   });
 
   test(
-    "ride your half down when she breaks in two",
+    "go into the water from your half when she breaks in two",
     { tag: "@smoke" },
     async ({ page }) => {
       await openTitanic(page, "always");
-      await rideToTheEnd(page);
+      await standStillToTheEnd(page);
     }
   );
 

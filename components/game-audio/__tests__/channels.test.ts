@@ -40,6 +40,15 @@ describe("channel settings", () => {
     expect(second.music.get()).toBe(true);
   });
 
+  it("only adds a voice switch when asked, defaulting to on", () => {
+    expect(createChannelSettings("test-e")).not.toHaveProperty("voice");
+    const { voice } = createChannelSettings("test-f", { voice: true });
+    act(() => voice.resetMemory());
+    expect(voice.get()).toBe(true);
+    act(() => voice.set(false));
+    expect(localStorage.getItem("test-f:ui:voice")).toBe("off");
+  });
+
   it("goes back to on and clears the stored key", () => {
     const { music } = createChannelSettings("test-d");
     act(() => music.set(false));
