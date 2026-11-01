@@ -1013,6 +1013,125 @@ html:has(.jim-app) body {
   }
 }
 
+@keyframes eo-rain {
+  0% {
+    transform: translate(0, -8vh);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-16px, 108vh);
+    opacity: 0.8;
+  }
+}
+
+@keyframes eo-cloud {
+  0% {
+    transform: translateX(-30vw);
+  }
+  100% {
+    transform: translateX(120vw);
+  }
+}
+
+@keyframes eo-fog {
+  0%,
+  100% {
+    transform: translateX(-5%);
+  }
+  50% {
+    transform: translateX(5%);
+  }
+}
+
+@keyframes eo-shimmer {
+  0%,
+  100% {
+    transform: translateX(-3px) skewX(-2deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(3px) skewX(2deg);
+    opacity: 1;
+  }
+}
+
+/* A soft, rare flash: gentle, never a strobe. */
+@keyframes eo-flash {
+  0%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+  92% {
+    opacity: 0.22;
+  }
+  95% {
+    opacity: 0.05;
+  }
+  97% {
+    opacity: 0.14;
+  }
+}
+
+@keyframes eo-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.eo-rain {
+  animation: eo-rain 0.9s linear infinite;
+}
+
+.eo-cloud-a,
+.eo-cloud-b,
+.eo-cloud-c,
+.eo-cloud-d {
+  animation: eo-cloud 70s linear infinite;
+}
+.eo-cloud-a {
+  animation-delay: -12s;
+}
+.eo-cloud-b {
+  animation-duration: 90s;
+  animation-delay: -55s;
+}
+.eo-cloud-c {
+  animation-duration: 110s;
+  animation-delay: -30s;
+}
+.eo-cloud-d {
+  animation-duration: 80s;
+  animation-delay: -70s;
+}
+
+.eo-fog {
+  animation: eo-fog 16s ease-in-out infinite;
+}
+.eo-fog-b {
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+.eo-shimmer {
+  animation: eo-shimmer 2.2s ease-in-out infinite;
+}
+
+.eo-flash {
+  opacity: 0;
+  animation: eo-flash 11s linear infinite;
+}
+
+.eo-fade-in {
+  animation: eo-fade-in 1800ms ease-out both;
+}
+
 @keyframes eo-flicker {
   0%,
   100% {
@@ -1216,8 +1335,34 @@ html:has(.jim-app) body {
   .eo-drift,
   .eo-flicker,
   .eo-prompt,
-  .eo-rise {
+  .eo-rise,
+  .eo-rain,
+  .eo-cloud-a,
+  .eo-cloud-b,
+  .eo-cloud-c,
+  .eo-cloud-d,
+  .eo-fog,
+  .eo-shimmer,
+  .eo-flash,
+  .eo-fade-in {
     animation: none;
+  }
+
+  .eo-rain {
+    opacity: 0;
+  }
+
+  .eo-cloud-a {
+    transform: translateX(10vw);
+  }
+  .eo-cloud-b {
+    transform: translateX(55vw);
+  }
+  .eo-cloud-c {
+    transform: translateX(30vw);
+  }
+  .eo-cloud-d {
+    transform: translateX(78vw);
   }
 
   .eo-fall {

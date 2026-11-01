@@ -1,4 +1,5 @@
 import type { Season } from "@/lib/ever-onward/season";
+import type { SkyPhase } from "@/lib/ever-onward/sky";
 import {
   EYE_COLOR,
   LANTERN_CENTER,
@@ -18,13 +19,26 @@ const LANTERN = {
 
 interface RobotSceneProps {
   season: Season;
+  /** The lantern burns brightest at night and fades in daylight. */
+  phase?: SkyPhase;
 }
 
 /**
  * The robot, its lantern, the sweeping beam and a tiny floating island, in
  * one SVG. The season picks the lantern color and what the robot wears.
  */
-export default function RobotScene({ season }: RobotSceneProps) {
+const LIGHT_STRENGTH: Record<SkyPhase, string> = {
+  night: "opacity-100",
+  dawn: "opacity-75",
+  dusk: "opacity-85",
+  day: "opacity-40",
+};
+
+export default function RobotScene({
+  season,
+  phase = "night",
+}: RobotSceneProps) {
+  const light = `transition-opacity duration-[2000ms] ${LIGHT_STRENGTH[phase]}`;
   const palette = { ...ROBOT_COLORS, L: season.lantern };
   const body = spriteRects(ROBOT_ROWS, palette);
   return (
@@ -49,10 +63,12 @@ export default function RobotScene({ season }: RobotSceneProps) {
       </defs>
 
       <g transform={`translate(${LANTERN.x} ${LANTERN.y})`}>
-        <g className="eo-sweep">
-          {/* The invisible mirror keeps the group's centre on the lantern. */}
-          <rect x="-220" y="-40" width="220" height="80" fill="none" />
-          <polygon points="0,0 220,-40 220,40" fill="url(#eo-beam-fill)" />
+        <g className={light}>
+          <g className="eo-sweep">
+            {/* The invisible mirror keeps the group's centre on the lantern. */}
+            <rect x="-220" y="-40" width="220" height="80" fill="none" />
+            <polygon points="0,0 220,-40 220,40" fill="url(#eo-beam-fill)" />
+          </g>
         </g>
       </g>
 
@@ -109,13 +125,15 @@ export default function RobotScene({ season }: RobotSceneProps) {
             ))
           )}
         </g>
-        <circle
-          className="eo-glow"
-          cx={LANTERN.x}
-          cy={LANTERN.y}
-          r="24"
-          fill="url(#eo-glow-fill)"
-        />
+        <g className={light}>
+          <circle
+            className="eo-glow"
+            cx={LANTERN.x}
+            cy={LANTERN.y}
+            r="24"
+            fill="url(#eo-glow-fill)"
+          />
+        </g>
       </g>
     </svg>
   );

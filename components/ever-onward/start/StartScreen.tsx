@@ -19,6 +19,7 @@ import {
   PADLOCK_ROWS,
 } from "@/lib/ever-onward/start/sprites";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
+import { useSkySettings } from "./useSkySettings";
 import PixelSprite from "./PixelSprite";
 import RetroText from "./RetroText";
 import RobotScene from "./RobotScene";
@@ -54,6 +55,7 @@ export default function StartScreen({
   season: seasonOverride,
 }: StartScreenProps) {
   const [season] = useState<Season>(() => seasonOverride ?? pickSeason());
+  const sky = useSkySettings();
   const hasStarted = useRef(false);
 
   const start = useCallback(() => {
@@ -86,9 +88,18 @@ export default function StartScreen({
     <div
       data-testid="eo-start"
       onClick={start}
-      className="relative isolate flex min-h-dvh cursor-pointer flex-col overflow-hidden bg-linear-to-b from-[#02030a] via-[#0b1233] to-[#1b1236] text-amber-50 select-none"
+      className="relative isolate flex min-h-dvh cursor-pointer flex-col overflow-hidden bg-[#02030a] text-amber-50 select-none"
     >
-      <Sky particles={season.particles} />
+      <Sky
+        particles={season.particles}
+        phase={sky.phase}
+        weather={sky.weather}
+      />
+      {/* Keeps the footer readable on bright skies. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-linear-to-t from-slate-950/70 to-transparent"
+      />
       {/* Phosphor glow */}
       <div
         aria-hidden="true"
@@ -102,13 +113,13 @@ export default function StartScreen({
             <RetroText text="EVER" popFrom={0} className={titleClass} />
             <RetroText text="ONWARD" popFrom={4} className={titleClass} />
           </h1>
-          <p className="eo-rise eo-d10 font-mono text-xs tracking-[0.25em] text-cyan-200/80 uppercase sm:text-sm">
+          <p className="eo-rise eo-d10 font-mono text-xs tracking-[0.25em] text-cyan-100 uppercase [text-shadow:1px_1px_0_#0b1233] sm:text-sm">
             Little machines. One simple goal.
           </p>
         </header>
 
         <div className="w-full py-2">
-          <RobotScene season={season} />
+          <RobotScene season={season} phase={sky.phase} />
         </div>
 
         <div className="eo-rise eo-d12 flex w-full flex-col items-center gap-6">
@@ -167,7 +178,7 @@ export default function StartScreen({
           </ul>
         </div>
 
-        <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-mono text-xs text-slate-400">
+        <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-mono text-xs text-slate-200">
           <Link
             href="/ever-onward/versions"
             onClick={(event) => event.stopPropagation()}
@@ -175,6 +186,18 @@ export default function StartScreen({
           >
             v{EVER_ONWARD_VERSION} · what&apos;s new
           </Link>
+          <button
+            type="button"
+            data-testid="eo-weather-toggle"
+            aria-pressed={sky.isMatching}
+            onClick={(event) => {
+              event.stopPropagation();
+              sky.toggleMatching();
+            }}
+            className={footerLinkClass}
+          >
+            ☁️ Match my weather: {sky.isMatching ? "on" : "off"}
+          </button>
           <Link
             href="/"
             onClick={(event) => event.stopPropagation()}
