@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-11-01",
+    title: "A brand-new start screen",
+    highlights: [
+      "A brand-new start screen: a retro glowing title, a little robot with a lantern, and a big blinking START (or CONTINUE if you have played before)",
+      "The look changes with the seasons. Right now the robot wears a tiny pumpkin hat. Come back in winter, spring and summer to see what it wears next",
+      "Add Ever Onward to your home screen and it gets its own robot icon, and opens like a real app",
+      "When a new version is ready, a button pops up so you can update. It never interrupts you while you play, and your game is saved first",
+    ],
+  },
+  {
     version: "1.0.4",
     date: "2026-11-01",
     title: "Watch it grow",

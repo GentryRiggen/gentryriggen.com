@@ -1,8 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 
+/** Opens the page and taps through the start screen to the hub. */
+async function openHub(page: Page) {
+  await page.goto("/ever-onward");
+  await page.getByTestId("eo-start-button").click();
+}
+
 /** Starts a fresh game and gets past the opening moment. */
 async function startGame(page: Page) {
-  await page.goto("/ever-onward");
+  await openHub(page);
   await page.getByTestId("lm-play-light").click();
   await page
     .getByTestId("lm-phase-overlay")
@@ -12,10 +18,26 @@ async function startGame(page: Page) {
 
 test.describe("Ever Onward", () => {
   test(
+    "the start screen shows first and Enter opens the hub",
+    {
+      tag: "@smoke",
+    },
+    async ({ page }) => {
+      await page.goto("/ever-onward");
+      await expect(page.getByTestId("eo-start")).toBeVisible();
+      await expect(page.getByTestId("eo-robot")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+      await expect(page.getByTestId("lm-play-light")).toHaveCount(0);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("lm-play-light")).toBeVisible();
+    }
+  );
+
+  test(
     "hub loads and tapping the light earns coins",
     { tag: "@smoke" },
     async ({ page }) => {
-      await page.goto("/ever-onward");
+      await openHub(page);
       await expect(
         page.getByRole("heading", { name: "Ever Onward" })
       ).toBeVisible();
@@ -60,6 +82,8 @@ test.describe("Ever Onward", () => {
     await expect(lens).toContainText("Level 1");
 
     await page.reload();
+    await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
+    await page.getByTestId("eo-start-button").click();
     await page.getByTestId("lm-play-light").click();
     await expect(page.getByTestId("lm-phase-overlay")).toHaveCount(0);
     await expect(
@@ -107,6 +131,6 @@ test.describe("Ever Onward", () => {
 
   test("the versions page lists the release", async ({ page }) => {
     await page.goto("/ever-onward/versions");
-    await expect(page.getByRole("heading", { name: /v1\.0\.1/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /v1\.1\.0/ })).toBeVisible();
   });
 });

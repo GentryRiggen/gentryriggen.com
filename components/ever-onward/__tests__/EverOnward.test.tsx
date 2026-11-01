@@ -28,13 +28,19 @@ function startedRun(): RunState {
   return { ...newRun(lightUniverse), taps: 1, time: 5 };
 }
 
+/** Renders the game and taps through the start screen to the hub. */
+async function renderHub() {
+  render(<EverOnward />);
+  await userEvent.click(await screen.findByTestId("eo-start-button"));
+}
+
 beforeEach(() => {
   window.localStorage.clear();
 });
 
 describe("Ever Onward hub", () => {
   it("shows the playable universe and the locked ones", async () => {
-    render(<EverOnward />);
+    await renderHub();
     expect(
       await screen.findByRole("heading", { name: "Ever Onward" })
     ).toBeInTheDocument();
@@ -58,7 +64,7 @@ describe("Ever Onward hub", () => {
 
   it("offers Continue and shows progress for a saved game", async () => {
     saveWith(startedRun(), { completions: 2 });
-    render(<EverOnward />);
+    await renderHub();
     expect(
       await screen.findByRole("button", { name: /Continue/ })
     ).toBeInTheDocument();
@@ -71,7 +77,7 @@ describe("Ever Onward hub", () => {
 describe("Ever Onward game", () => {
   it("shows the opening moment, then taps earn coins", async () => {
     const user = userEvent.setup();
-    render(<EverOnward />);
+    await renderHub();
     await user.click(await screen.findByRole("button", { name: /Play/ }));
     expect(screen.getByTestId("lm-phase-overlay")).toHaveTextContent(
       "The Coast"
@@ -90,7 +96,7 @@ describe("Ever Onward game", () => {
     run.resources.coins = 1_000_000;
     saveWith(run);
     const user = userEvent.setup();
-    render(<EverOnward />);
+    await renderHub();
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
 
     const list = screen.getByRole("region", { name: "Upgrades" });
@@ -111,7 +117,7 @@ describe("Ever Onward game", () => {
     run.owned.lighthouse = COAST_LIGHTHOUSES - 1;
     saveWith(run);
     const user = userEvent.setup();
-    render(<EverOnward />);
+    await renderHub();
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
 
     const overlay = await waitFor(() => screen.getByTestId("lm-phase-overlay"));
@@ -128,7 +134,7 @@ describe("Ever Onward game", () => {
   it("starts fresh instead of crashing on an out-of-range phase", async () => {
     saveWith({ ...startedRun(), phase: 9 });
     const user = userEvent.setup();
-    render(<EverOnward />);
+    await renderHub();
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
     expect(await screen.findByTestId("lm-phase-overlay")).toHaveTextContent(
       "The Coast"
@@ -141,7 +147,7 @@ describe("Ever Onward game", () => {
     delete run.resources.keepers;
     saveWith(run);
     const user = userEvent.setup();
-    render(<EverOnward />);
+    await renderHub();
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
     expect(screen.getByTestId("lm-res-oil")).toHaveTextContent("0");
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
@@ -153,7 +159,7 @@ describe("Ever Onward game", () => {
     run.resources.coins = 1_000_000;
     saveWith(run);
     const user = userEvent.setup();
-    render(<EverOnward />);
+    await renderHub();
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
     await waitFor(() => screen.getByTestId("lm-phase-overlay"));
     const before = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");

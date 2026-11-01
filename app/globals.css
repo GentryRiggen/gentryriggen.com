@@ -861,3 +861,328 @@ html:has(.jim-app) body {
     transform: none;
   }
 }
+
+/* Ever Onward start screen. Every animation is switched off for
+   prefers-reduced-motion, which leaves the final, fully drawn picture. */
+@keyframes eo-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateY(-6px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.18) translateY(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes eo-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes eo-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes eo-sweep {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+    opacity: 0.55;
+  }
+  50% {
+    transform: rotate(10deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes eo-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes eo-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes eo-fall {
+  0% {
+    transform: translate(0, -6vh);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(4px, 55vh);
+  }
+  100% {
+    transform: translate(-3px, 112vh);
+    opacity: 0.9;
+  }
+}
+
+@keyframes eo-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.2;
+  }
+  25% {
+    transform: translate(5px, -4px);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-3px, -8px);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(4px, -3px);
+    opacity: 1;
+  }
+}
+
+@keyframes eo-flicker {
+  0%,
+  100% {
+    opacity: 0.04;
+  }
+  8% {
+    opacity: 0.09;
+  }
+  9% {
+    opacity: 0.03;
+  }
+  52% {
+    opacity: 0.06;
+  }
+  53% {
+    opacity: 0.11;
+  }
+  54% {
+    opacity: 0.04;
+  }
+}
+
+@keyframes eo-blink-prompt {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0.15;
+  }
+}
+
+@keyframes eo-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.eo-pop,
+.eo-bob,
+.eo-blink,
+.eo-sweep,
+.eo-glow,
+.eo-fall,
+.eo-drift {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.eo-pop {
+  animation: eo-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.eo-bob {
+  animation: eo-bob 2.4s ease-in-out infinite;
+}
+
+.eo-blink {
+  animation: eo-blink 4.5s ease-in-out infinite;
+}
+
+.eo-sweep {
+  animation: eo-sweep 7s ease-in-out infinite;
+}
+
+.eo-glow {
+  animation: eo-glow 2.4s ease-in-out infinite;
+}
+
+.eo-twinkle {
+  animation: eo-twinkle 3s ease-in-out infinite;
+}
+
+.eo-fall {
+  animation: eo-fall 9s linear infinite;
+}
+
+.eo-drift {
+  animation: eo-drift 6s ease-in-out infinite;
+}
+
+.eo-flicker {
+  animation: eo-flicker 5s steps(1, end) infinite;
+}
+
+.eo-prompt {
+  animation: eo-blink-prompt 1.1s steps(1, end) infinite;
+}
+
+.eo-rise {
+  animation: eo-rise 600ms ease-out both;
+}
+
+/* Staggers: a step per letter or star, so no inline styles are needed. */
+.eo-d0 {
+  animation-delay: 0ms;
+}
+.eo-d1 {
+  animation-delay: 90ms;
+}
+.eo-d2 {
+  animation-delay: 180ms;
+}
+.eo-d3 {
+  animation-delay: 270ms;
+}
+.eo-d4 {
+  animation-delay: 360ms;
+}
+.eo-d5 {
+  animation-delay: 450ms;
+}
+.eo-d6 {
+  animation-delay: 540ms;
+}
+.eo-d7 {
+  animation-delay: 630ms;
+}
+.eo-d8 {
+  animation-delay: 720ms;
+}
+.eo-d9 {
+  animation-delay: 810ms;
+}
+.eo-d10 {
+  animation-delay: 900ms;
+}
+.eo-d11 {
+  animation-delay: 990ms;
+}
+.eo-d12 {
+  animation-delay: 1080ms;
+}
+.eo-d13 {
+  animation-delay: 1170ms;
+}
+.eo-d14 {
+  animation-delay: 1260ms;
+}
+.eo-d15 {
+  animation-delay: 1350ms;
+}
+
+/* Falling and floating bits spread their timing the same way, negative so
+   the sky is already busy when it appears. */
+.eo-fall.eo-d0,
+.eo-drift.eo-d0,
+.eo-twinkle.eo-d0 {
+  animation-delay: -0.4s;
+}
+.eo-fall.eo-d1,
+.eo-drift.eo-d1,
+.eo-twinkle.eo-d1 {
+  animation-delay: -1.7s;
+}
+.eo-fall.eo-d2,
+.eo-drift.eo-d2,
+.eo-twinkle.eo-d2 {
+  animation-delay: -3.1s;
+}
+.eo-fall.eo-d3,
+.eo-drift.eo-d3,
+.eo-twinkle.eo-d3 {
+  animation-delay: -4.6s;
+}
+.eo-fall.eo-d4,
+.eo-drift.eo-d4,
+.eo-twinkle.eo-d4 {
+  animation-delay: -5.9s;
+}
+.eo-fall.eo-d5,
+.eo-drift.eo-d5,
+.eo-twinkle.eo-d5 {
+  animation-delay: -7.2s;
+}
+.eo-fall.eo-d6,
+.eo-drift.eo-d6,
+.eo-twinkle.eo-d6 {
+  animation-delay: -8.4s;
+}
+.eo-fall.eo-d7,
+.eo-drift.eo-d7,
+.eo-twinkle.eo-d7 {
+  animation-delay: -2.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eo-pop,
+  .eo-bob,
+  .eo-blink,
+  .eo-sweep,
+  .eo-glow,
+  .eo-twinkle,
+  .eo-fall,
+  .eo-drift,
+  .eo-flicker,
+  .eo-prompt,
+  .eo-rise {
+    animation: none;
+  }
+
+  .eo-fall {
+    opacity: 0;
+  }
+
+  .eo-sweep {
+    opacity: 0.7;
+  }
+}
