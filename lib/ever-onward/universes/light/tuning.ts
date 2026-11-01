@@ -1,5 +1,14 @@
 /** Every balance number for Keep the Light On, in one place. */
 export const TUNING = {
+  /**
+   * Every upgrade's cost in a phase is multiplied by this: the steady glow
+   * and the bigger collector steps made the night and the sky quicker, so
+   * they are priced up to keep the run about two hours.
+   */
+  costScale: { coast: 1, night: 1.12, sky: 1.3, last: 1 } as Record<
+    string,
+    number
+  >,
   coast: {
     fareGrowth: 1.3,
     lensAutoBonus: 0.1,
@@ -47,6 +56,12 @@ export const TUNING = {
     bulbSaving: 0.88,
     /** The grid: cities dim (never to zero) when it is left strained. */
     gridFloor: 0.6,
+    /**
+     * Steady glow: while the grid is at least this steady the cities sparkle
+     * and pay this much more. A bonus for looking after it, not a tax.
+     */
+    glowAt: 75,
+    glowBonus: 0.15,
     /** Steadiness lost per second (percent): a base plus more as the grid works harder. */
     strainBase: 0.35,
     strainPerLoad: 0.7,
@@ -66,7 +81,8 @@ export const TUNING = {
   sky: {
     aimBase: 1,
     aimPerLevel: 1,
-    collectorEnergy: 1,
+    /** Six bigger steps: each collector is worth what 1.67 used to be. */
+    collectorEnergy: 10 / 6,
     mirrorBonus: 1.4,
     probeGrowth: 0.0028,
     copyBonus: 1.9,
@@ -84,6 +100,9 @@ export const TUNING = {
     engineFleetBump: 1.3,
     /** Probes wander off course; cheaper to fix by hand than to ignore. */
     headingFloor: 0.6,
+    /** Steady glow: a fleet in formation takes stars this much faster. */
+    glowAt: 75,
+    glowBonus: 0.15,
     driftBase: 0.28,
     driftPerDecade: 0.24,
     chartsSaving: 0.5,

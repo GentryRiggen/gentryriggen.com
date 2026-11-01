@@ -561,8 +561,8 @@ const skyUpgrades: UpgradeDef[] = [
     phases: sky,
     currency: "energy",
     baseCost: COSTS.collector,
-    costGrowth: 1.25,
-    maxLevel: 10,
+    costGrowth: 1.45,
+    maxLevel: 6,
     priority: 1,
     onBuy: (run) => {
       run.resources.collectors = owned(run, "collector");
@@ -579,7 +579,7 @@ const skyUpgrades: UpgradeDef[] = [
       {
         name: "Bigger mirror",
         description: "Every collector catches 40% more.",
-        showWhen: (run) => owned(run, "collector") >= 4,
+        showWhen: (run) => owned(run, "collector") >= 3,
       },
       {
         name: "Mirror of mirrors",
@@ -602,7 +602,7 @@ const skyUpgrades: UpgradeDef[] = [
     currency: "energy",
     baseCost: COSTS.probe,
     costGrowth: 1,
-    visibleWhen: (run) => owned(run, "collector") >= 8,
+    visibleWhen: (run) => owned(run, "collector") >= 5,
     priority: 3,
     onBuy: (run) => {
       run.resources.probes = Math.max(1, run.resources.probes);
@@ -800,6 +800,14 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "nav-2",
 ]);
 
+/** The first steps of a phase keep their price, so it opens as quickly as ever. */
+const OPENING_UPGRADES: ReadonlySet<string> = new Set(["aim", "collector"]);
+
+const costScaleOf = (upgrade: UpgradeDef): number =>
+  OPENING_UPGRADES.has(upgrade.id)
+    ? 1
+    : (TUNING.costScale[upgrade.phases?.[0] ?? ""] ?? 1);
+
 export const UPGRADES: readonly UpgradeDef[] = [
   ...coastUpgrades,
   ...nightUpgrades,
@@ -807,5 +815,6 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...letGoUpgrades,
 ].map((upgrade) => ({
   ...upgrade,
+  baseCost: upgrade.baseCost * costScaleOf(upgrade),
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",
 }));

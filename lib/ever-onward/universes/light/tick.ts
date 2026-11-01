@@ -239,9 +239,18 @@ export function citiesLit(run: RunState): number {
 export const gridSteadiness = (run: RunState): number =>
   run.resources.grid ?? 100;
 
-/** What cities pay while the grid is this steady: floor..1, never zero. */
+/**
+ * Steady glow: the grid is looked after (at least `glowAt` steady), so the
+ * cities sparkle and pay a little more. It is a bonus for tending, so a
+ * grid left alone loses the bonus, never more than that.
+ */
+export const isGridGlowing = (run: RunState): boolean =>
+  isGridInPlay(run) && gridSteadiness(run) >= N.glowAt;
+
+/** What cities pay while the grid is this steady: floor..1, +bonus in glow. */
 export const gridFactor = (run: RunState): number =>
-  N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100);
+  (N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100)) *
+  (isGridGlowing(run) ? 1 + N.glowBonus : 1);
 
 export const isGridAuto = (run: RunState): boolean => tier(run, "grid") >= 2;
 export const isRushOn = (run: RunState): boolean => res(run, "rush") > 0;
@@ -351,13 +360,21 @@ const probeGrowthRate = (run: RunState): number => {
   );
 };
 
-/** Stars the fleet takes per second at its heading. */
+/**
+ * Steady glow: the fleet is flying true (at least `glowAt`), so it flies in
+ * formation and takes stars a little faster.
+ */
+export const isFleetGlowing = (run: RunState): boolean =>
+  isCourseInPlay(run) && headingOf(run) >= S.glowAt;
+
+/** Stars the fleet takes per second at its heading (glow included). */
 export const starsPerSecond = (run: RunState): number =>
   res(run, "probes") *
   S.takePerProbe *
   appetite(run) *
   speed(run) *
-  headingFactor(run);
+  headingFactor(run) *
+  (isFleetGlowing(run) ? 1 + S.glowBonus : 1);
 
 /** Energy per second from probes: every star taken pays a bounty. */
 export const starBounty = (run: RunState): number =>

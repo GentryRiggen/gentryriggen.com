@@ -13,6 +13,8 @@ import {
   boatHeadingOf,
   flameFraction,
   isBoatOut,
+  isFleetGlowing,
+  isGridGlowing,
   isStorming,
   keeperCount,
   level,
@@ -60,6 +62,8 @@ export interface LightSceneInfo {
   boatProgress: number;
   /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
   boatHeading: number;
+  /** 1 while the steady glow is on: sparkling cities, a fleet in formation. */
+  glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
   finished: number;
   /** Seconds into the run the very first ship was guided; 0 if not yet. */
@@ -117,6 +121,7 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     boatVisible: isBoatOut(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
     boatHeading: step(boatHeadingOf(run) / 100, 20),
+    glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
     firstShipSeconds: Math.floor(finite(r.firstShipAt ?? 0)),
     firstShipStorm: r.firstShipStorm ? 1 : 0,

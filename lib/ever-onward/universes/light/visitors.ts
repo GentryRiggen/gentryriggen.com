@@ -54,7 +54,7 @@ export const VISITORS: readonly VisitorDef[] = [
     id: "visitor-comet",
     phase: PHASE_SKY,
     name: "A comet",
-    arrivesWhen: (run) => owned(run, "collector") >= 6,
+    arrivesWhen: (run) => owned(run, "collector") >= 4,
     giftText: (run) => `${whole(visitorGift(run))} energy`,
     give: (run) => {
       run.resources.energy += visitorGift(run);
@@ -103,7 +103,7 @@ export const TEASERS: readonly TeaserDef[] = [
   },
   {
     upgradeId: "relay-1",
-    showWhen: (run) => owned(run, "collector") >= 9,
+    showWhen: (run) => owned(run, "collector") >= 6,
     hint: () => "After the biggest mirror is built",
   },
   {

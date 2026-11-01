@@ -90,6 +90,19 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
         strokeOpacity="0.45"
         strokeWidth="2"
       />
+      {/* steady glow: the grid is looked after, so the whole rim shines */}
+      {info.glow > 0 && (
+        <circle
+          cx={PLANET.cx}
+          cy={PLANET.cy}
+          r={PLANET.r + 2}
+          fill="none"
+          stroke="#ffd98a"
+          strokeOpacity="0.55"
+          strokeWidth="3"
+          className="lm-pop-svg"
+        />
+      )}
       {STATIONS.slice(0, stations).map((s, i) => (
         <g key={i} transform={`translate(${s.x} ${s.y})`}>
           <g className="lm-pop-svg">
@@ -101,13 +114,15 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
       <g opacity={brightness}>
         {CITIES.slice(0, cityCount).map((c, i) => (
           <g key={i}>
-            {c.halo && <circle cx={c.x} cy={c.y} r="6" fill="url(#lm-lamp)" />}
+            {(c.halo || info.glow > 0) && (
+              <circle cx={c.x} cy={c.y} r="6" fill="url(#lm-lamp)" />
+            )}
             <circle
               cx={c.x}
               cy={c.y}
-              r="2"
+              r={info.glow > 0 ? 2.6 : 2}
               fill="#ffd98a"
-              className={c.twinkle}
+              className={info.glow > 0 ? "lm-twinkle" : c.twinkle}
             />
           </g>
         ))}
