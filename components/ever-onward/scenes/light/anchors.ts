@@ -53,7 +53,7 @@ export const QUAY = { market: 340, ferry: 364, terminal: 384, y: 172 } as const;
 // -------------------------------------------------------------------- Sky
 
 export const SUN = { x: 200, y: 150 } as const;
-export const AIM_DISH = { x: 200, y: 262 } as const;
+export const AIM_DISH = { x: 200, y: 246 } as const;
 export const LAKE = { x: 305, y: 288 } as const;
 export const RELAY_RADIUS = 118;
 
