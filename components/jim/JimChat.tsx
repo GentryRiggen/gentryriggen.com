@@ -31,7 +31,11 @@ import {
   type ChatMessage,
 } from "@/lib/jim/history";
 import JimMarkdown from "@/lib/jim/markdown";
-import { clearSayFromLocation, sayFromLocation } from "@/lib/jim/say";
+import {
+  allowedSay,
+  clearSayFromLocation,
+  sayFromLocation,
+} from "@/lib/jim/say";
 
 interface JimChatProps {
   /** The signed-in user, whose chat is kept on this device. */
@@ -272,6 +276,24 @@ export default function JimChat({
 
   useEffect(() => clearSayFromLocation(), []);
 
+  // A notification tapped while this page is open: the service worker sends
+  // its text here. Only allowed text, and only into an empty box.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const worker = navigator.serviceWorker;
+    function onMessage(event: MessageEvent) {
+      const data: unknown = event.data;
+      if (typeof data !== "object" || data === null) return;
+      const { type, say } = data as { type?: unknown; say?: unknown };
+      const text = type === "JIM_SAY" ? allowedSay(say) : null;
+      if (text) setDraft((current) => (current ? current : text));
+    }
+    worker.addEventListener("message", onMessage);
+    // Messages queue until started; addEventListener alone doesn't start them.
+    (worker as { startMessages?: () => void }).startMessages?.();
+    return () => worker.removeEventListener("message", onMessage);
+  }, []);
+
   // A long turn (Jim can take minutes) gets a calmer note after a while.
   useEffect(() => {
     if (!sending) return;
@@ -376,6 +398,8 @@ export default function JimChat({
     const text = (given ?? draft).trim();
     // Offline it would only bounce back: the box keeps it meanwhile.
     if (!text || sending || !online) return;
+    // Every send starts from a tap or key press: unlock speech inside it.
+    reader.unlock();
     const id = nextId.current++;
     const run = chatRun.current;
     setError(null);
@@ -529,7 +553,6 @@ export default function JimChat({
     event.preventDefault();
     // Inside the tap, so iOS keeps the keyboard up for the next message.
     boxRef.current?.focus({ preventScroll: true });
-    reader.unlock();
     void send();
   }
 
@@ -542,7 +565,6 @@ export default function JimChat({
       return;
     }
     event.preventDefault();
-    reader.unlock();
     void send();
   }
 

@@ -162,7 +162,7 @@ describe("NotesTraining", () => {
       await userEvent.click(screen.getByRole("radio", { name: "kg" }));
       const moves = screen.getByRole("region", { name: "Movements" });
       const squat = within(moves).getByText("Back squat").closest("li");
-      expect(squat).toHaveTextContent("Est. 1RM 119.5 kg");
+      expect(squat).toHaveTextContent("Est. 1RM 119 kg");
       expect(squat).toHaveTextContent("Best 115.5 kg ×1");
       expect(squat).toHaveTextContent("1RM 115.5");
       expect(squat).toHaveTextContent("5RM 102");

@@ -9,7 +9,11 @@ jest.mock("@/lib/jim/api", () => {
 });
 jest.mock("../notes/NotesShell", () => ({
   __esModule: true,
-  default: () => null,
+  default: ({ onLog }: { onLog: (text: string) => void }) => (
+    <button type="button" onClick={() => onLog("Log my workout: Ran.")}>
+      Fake log
+    </button>
+  ),
 }));
 
 const send = jest.mocked(api.streamToJim);
@@ -35,7 +39,14 @@ const synth = {
   cancel: jest.fn(() => {
     spoken.length = 0;
   }),
-  getVoices: jest.fn(() => []),
+  getVoices: jest.fn((): unknown[] => [
+    { name: "Test (Premium)", lang: "en-US", default: true },
+  ]),
+  resume: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  speaking: false,
+  pending: false,
 };
 
 function renderChat() {
@@ -171,6 +182,39 @@ describe("Read replies aloud setting", () => {
       volume: 0,
     });
     expect(spoken.map((u) => u.text)).toContain("Auto reply.");
+  });
+
+  it("skips the auto-read when the page is hidden, and does not queue it", async () => {
+    renderChat();
+    await toggleSetting();
+    send.mockResolvedValue({
+      reply: "Hidden reply.",
+      changed: [],
+      commit: null,
+    });
+    await userEvent.type(screen.getByLabelText("Message"), "hi");
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(send).toHaveBeenCalled());
+    await act(async () => {});
+    expect(spoken.map((u) => u.text)).not.toContain("Hidden reply.");
+    Reflect.deleteProperty(document, "visibilityState");
+    await act(async () => {});
+    expect(spoken.map((u) => u.text)).not.toContain("Hidden reply.");
+  });
+
+  it("unlocks speech for a send that doesn't come from the box (quick log)", async () => {
+    renderChat();
+    await toggleSetting();
+    synth.speak.mockClear();
+    send.mockResolvedValue({ reply: "Logged.", changed: [], commit: null });
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake log" }));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(synth.speak.mock.calls[0][0]).toMatchObject({ volume: 0 });
   });
 
   it("does not read replies when Off", async () => {

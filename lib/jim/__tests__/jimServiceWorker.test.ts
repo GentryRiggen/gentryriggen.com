@@ -404,28 +404,61 @@ describe("notificationclick", () => {
     expect(worker.openWindow).toHaveBeenCalledWith(url);
   });
 
-  it("sends an open /jim to a URL with a query", async () => {
+  it("tells an open /jim the say text instead of reloading it", async () => {
     const worker = loadWorker();
     const url = `${PAGE}?say=quiz%20me`;
     const focus = jest.fn(async () => {});
     const navigate = jest.fn(async () => {});
-    worker.matchAll.mockResolvedValue([{ url: PAGE, focus, navigate }]);
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus, navigate, postMessage },
+    ]);
     await worker.dispatch("notificationclick", {
       notification: { close: jest.fn(), data: { url } },
     });
     expect(focus).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(url);
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_SAY",
+      say: "quiz me",
+    });
+    expect(navigate).not.toHaveBeenCalled();
     expect(worker.openWindow).not.toHaveBeenCalled();
   });
 
-  it("does not navigate an open /jim for a plain tap", async () => {
+  it("does the same for a client the worker doesn't control yet", async () => {
     const worker = loadWorker();
-    const navigate = jest.fn(async () => {});
+    const postMessage = jest.fn();
+    // matchAll is asked for uncontrolled clients too; one has no navigate.
     worker.matchAll.mockResolvedValue([
-      { url: PAGE, focus: jest.fn(async () => {}), navigate },
+      {
+        url: `${PAGE}?say=keep%20going`,
+        focus: jest.fn(async () => {}),
+        postMessage,
+      },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: {
+        close: jest.fn(),
+        data: { url: `${PAGE}?say=keep%20going` },
+      },
+    });
+    expect(worker.matchAll).toHaveBeenCalledWith(
+      expect.objectContaining({ includeUncontrolled: true })
+    );
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_SAY",
+      say: "keep going",
+    });
+  });
+
+  it("sends nothing to an open /jim for a plain tap", async () => {
+    const worker = loadWorker();
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus: jest.fn(async () => {}), postMessage },
     ]);
     await worker.dispatch("notificationclick", { notification: click() });
-    expect(navigate).not.toHaveBeenCalled();
+    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("opens /jim when it isn't open", async () => {

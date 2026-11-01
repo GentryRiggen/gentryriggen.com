@@ -124,34 +124,106 @@ export function saveAutoRead(on: boolean): void {
   }
 }
 
+/** iOS drops a speak() that comes right after cancel(): wait this long. */
+const AFTER_CANCEL_MS = 100;
+/** Voices that never load: go with the default after this long. */
+const VOICES_WAIT_MS = 1000;
+/** Nothing started this long after speak(): the engine swallowed it. */
+const START_WATCHDOG_MS = 2000;
+
+let currentRun = 0;
+let cachedVoice: SpeechSynthesisVoice | null = null;
+
+/** Calls `ready` with the best voice, waiting briefly for voices to load. */
+function withVoice(
+  synth: SpeechSynthesis,
+  ready: (voice: SpeechSynthesisVoice | null) => void
+): void {
+  if (cachedVoice) {
+    ready(cachedVoice);
+    return;
+  }
+  const choose = () => {
+    const voices = synth.getVoices();
+    if (voices.length > 0) cachedVoice = pickVoice(voices);
+    return cachedVoice;
+  };
+  if (synth.getVoices().length > 0) {
+    ready(choose());
+    return;
+  }
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    synth.removeEventListener("voiceschanged", finish);
+    ready(choose());
+  };
+  const timer = setTimeout(finish, VOICES_WAIT_MS);
+  synth.addEventListener("voiceschanged", finish);
+}
+
 /**
  * Speaks `markdown` as a queue of chunks; `onEnd` fires once when the last
- * one finishes or the speech is cut off. Replaces whatever is speaking.
- * Returns false when there is nothing to say.
+ * one finishes, any chunk fails, or the engine never starts. Replaces
+ * whatever is speaking. Returns false when there is nothing to say.
  */
 export function speak(markdown: string, onEnd: () => void): boolean {
   const chunks = chunkForSpeech(speakableText(markdown));
   if (chunks.length === 0) return false;
   const synth = window.speechSynthesis;
+  const run = ++currentRun;
+  const isCurrent = () => run === currentRun;
+  const wasBusy = synth.speaking || synth.pending;
   synth.cancel();
-  const voice = pickVoice(synth.getVoices());
-  chunks.forEach((chunk, i) => {
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
-    } else {
-      utterance.lang = "en-US";
-    }
-    utterance.rate = 1;
-    if (i === chunks.length - 1) utterance.onend = onEnd;
-    utterance.onerror = onEnd;
-    synth.speak(utterance);
-  });
+
+  let ended = false;
+  let started = false;
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
+  const finish = () => {
+    if (ended) return;
+    ended = true;
+    clearTimeout(watchdog);
+    onEnd();
+  };
+  // A failed chunk ends the whole run, but never cancels a newer one.
+  const fail = () => {
+    if (isCurrent()) synth.cancel();
+    finish();
+  };
+
+  const begin = () => {
+    if (!isCurrent()) return;
+    withVoice(synth, (voice) => {
+      if (!isCurrent()) return;
+      // iOS can leave the engine paused after the app was in the background.
+      synth.resume();
+      chunks.forEach((chunk, i) => {
+        const utterance = new SpeechSynthesisUtterance(chunk);
+        utterance.lang = voice?.lang ?? "en-US";
+        if (voice) utterance.voice = voice;
+        utterance.rate = 1;
+        utterance.onstart = () => {
+          started = true;
+        };
+        if (i === chunks.length - 1) utterance.onend = finish;
+        utterance.onerror = fail;
+        synth.speak(utterance);
+      });
+      watchdog = setTimeout(() => {
+        if (!started && !synth.speaking && !synth.pending) fail();
+      }, START_WATCHDOG_MS);
+    });
+  };
+
+  if (wasBusy) setTimeout(begin, AFTER_CANCEL_MS);
+  else begin();
   return true;
 }
 
 export function stopSpeaking(): void {
+  currentRun += 1;
   if (speechSupported()) window.speechSynthesis.cancel();
 }
 

@@ -5,7 +5,9 @@ import {
   monthName,
   stripMd,
 } from "@/lib/jim/todos";
-import { fmtWeight, type WeightUnit } from "@/lib/jim/weightUnit";
+import { fmtNum, fmtWeight, type WeightUnit } from "@/lib/jim/weightUnit";
+
+export { fmtNum };
 import type {
   Birth,
   CalendarEvent,
@@ -183,12 +185,6 @@ export function e1rm(l: Lift): number | null {
     : null;
 }
 
-export function fmtNum(v: number): string {
-  return (
-    Math.abs(v) >= 100 ? Math.round(v) : Number(v.toFixed(1))
-  ).toLocaleString("en-US");
-}
-
 /** "3×5 @ 225 lb", "12", "10 @ 24"". */
 export function setText(l: Lift, unit: WeightUnit = "lb"): string {
   const amount =
@@ -207,7 +203,7 @@ export interface Movement {
   bodyweight: boolean;
   maxReps: number | null;
   heaviest: Lift | null;
-  /** Rounded est. 1RM in lb, from strength sets of 10 reps or fewer. */
+  /** Est. 1RM in lb (unrounded), from strength sets of 10 reps or fewer. */
   est1rm: number | null;
   /** Heaviest weight lifted for at least each rep count. */
   repMax: { reps: number; weight: number; date: string }[];
@@ -226,7 +222,8 @@ export function movementBests(lifts: Lift[]): Movement[] {
         a.date.localeCompare(b.date) || (a.weight ?? 0) - (b.weight ?? 0)
     );
     const strength = rows.filter(
-      (l) => l.kind === "strength" && l.weight != null && l.reps
+      (l) =>
+        l.kind === "strength" && l.weight != null && l.reps && l.unit !== "in"
     );
     const repCounts = [...new Set(strength.map((l) => l.reps as number))].sort(
       (a, b) => a - b
@@ -256,7 +253,7 @@ export function movementBests(lifts: Lift[]): Movement[] {
       bodyweight,
       maxReps: bodyweight ? Math.max(...rows.map((l) => l.reps || 0)) : null,
       heaviest,
-      est1rm: ests.length ? Math.round(Math.max(...ests)) : null,
+      est1rm: ests.length ? Math.max(...ests) : null,
       repMax,
     });
   }

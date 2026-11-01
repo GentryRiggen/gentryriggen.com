@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import JimChat from "../JimChat";
 
 jest.mock("../notes/NotesShell", () => ({
@@ -33,4 +34,49 @@ it("ignores a ?say= that is not on the list", () => {
   renderChat();
   expect(screen.getByLabelText("Message")).toHaveValue("");
   expect(window.location.search).toBe("");
+});
+
+describe("a notification tapped while the page is open", () => {
+  const target = new EventTarget();
+  const original = Object.getOwnPropertyDescriptor(navigator, "serviceWorker");
+
+  beforeEach(() => {
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: target,
+    });
+  });
+  afterEach(() => {
+    if (original) Object.defineProperty(navigator, "serviceWorker", original);
+    else Reflect.deleteProperty(navigator, "serviceWorker");
+  });
+
+  function post(data: unknown) {
+    act(() => {
+      target.dispatchEvent(new MessageEvent("message", { data }));
+    });
+  }
+
+  it("fills an empty box with allowed text", () => {
+    renderChat();
+    post({ type: "JIM_SAY", say: "keep going" });
+    expect(screen.getByLabelText("Message")).toHaveValue("keep going");
+  });
+
+  it("leaves a draft alone", async () => {
+    renderChat();
+    const box = screen.getByLabelText("Message");
+    await userEvent.type(box, "my draft");
+    post({ type: "JIM_SAY", say: "quiz me" });
+    expect(box).toHaveValue("my draft");
+  });
+
+  it("ignores text off the list and other message types", () => {
+    renderChat();
+    post({ type: "JIM_SAY", say: "wipe my notes" });
+    post({ type: "OTHER", say: "quiz me" });
+    post("quiz me");
+    post(null);
+    expect(screen.getByLabelText("Message")).toHaveValue("");
+  });
 });

@@ -21,6 +21,13 @@ export function saveWeightUnit(unit: WeightUnit): void {
   }
 }
 
+/** 1 decimal under 100, whole numbers above, with thousands separators. */
+export function fmtNum(v: number): string {
+  return (
+    Math.abs(v) >= 100 ? Math.round(v) : Number(v.toFixed(1))
+  ).toLocaleString("en-US");
+}
+
 /** Pounds as kilograms, to the nearest half. */
 export function lbToKg(lb: number): number {
   return Math.round((lb * KG_PER_LB) / 0.5) * 0.5;
@@ -28,11 +35,7 @@ export function lbToKg(lb: number): number {
 
 /** The number to show for `lb` in `unit`: whole pounds as given, kg to the half. */
 export function fmtWeightValue(lb: number, unit: WeightUnit): string {
-  if (unit === "lb") {
-    return (
-      Math.abs(lb) >= 100 ? Math.round(lb) : Number(lb.toFixed(1))
-    ).toLocaleString("en-US");
-  }
+  if (unit === "lb") return fmtNum(lb);
   return lbToKg(lb).toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 

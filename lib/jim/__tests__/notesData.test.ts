@@ -72,7 +72,7 @@ describe("movementBests", () => {
     const moves = movementBests(VIEW_FIXTURE.training.lifts);
     const squat = moves.find((m) => m.name === "Back squat");
     // 225 × 5 → 225 × (1 + 5/30) = 262.5; 255 × 1 → 255.
-    expect(squat?.est1rm).toBe(263);
+    expect(squat?.est1rm).toBe(262.5);
     expect(squat?.heaviest).toMatchObject({ weight: 255, reps: 1 });
     expect(squat?.repMax.map((r) => [r.reps, r.weight])).toEqual([
       [1, 255],
@@ -88,6 +88,24 @@ describe("movementBests", () => {
     expect(pullup?.est1rm).toBeNull();
     const box = moves.find((m) => m.name === "Box jump");
     expect(box?.est1rm).toBeNull();
+  });
+
+  it("leaves heights out of rep maxes and 1RMs, even on a strength set", () => {
+    const moves = movementBests([
+      {
+        date: "2026-10-22",
+        movement: "Box jump",
+        weight: 30,
+        unit: "in",
+        reps: 5,
+        repUnit: "",
+        sets: 1,
+        kind: "strength",
+        note: "",
+      },
+    ]);
+    expect(moves[0].repMax).toEqual([]);
+    expect(moves[0].est1rm).toBeNull();
   });
 
   it("sorts by most recently done", () => {

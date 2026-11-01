@@ -65,7 +65,10 @@ export default function useReadAloud(): ReadAloud {
 
   const readNew = useCallback(
     (id: number, text: string) => {
-      if (supported && auto) start(id, text);
+      // Speech started while hidden is dropped, not queued for later.
+      if (supported && auto && document.visibilityState !== "hidden") {
+        start(id, text);
+      }
     },
     [supported, auto, start]
   );
