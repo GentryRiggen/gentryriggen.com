@@ -33,7 +33,18 @@ import {
   travelSeconds,
   powerPerSecond,
   aimEnergy,
+  calmIncomePerSecond,
 } from "./tick";
+import {
+  BIGGER_NETS_ID,
+  TIDE_MILL_ID,
+  TIDE_OPEN_FLAG,
+  bestCatchCoins,
+  hasTideMill,
+  haulsSoFar,
+  millCoins,
+  openTide,
+} from "./tide";
 import {
   STORM_CREWS_ID,
   WEATHER_OPEN_FLAG,
@@ -272,8 +283,10 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Fish market on the quay",
-        description: "Ships stay for the market, and pay 20% more.",
+        description:
+          "Ships stay for the market, and pay 20% more. The tide clock opens: set your nets and haul in a catch.",
         showWhen: (run) => owned(run, "keeper") >= 5,
+        onBuy: openTide,
       },
       {
         name: "Ferry landing",
@@ -287,6 +300,52 @@ const coastUpgrades: UpgradeDef[] = [
       },
     ],
   }),
+  {
+    id: BIGGER_NETS_ID,
+    name: "Bigger nets",
+    description: "Wider nets hold half as many fish again at every haul.",
+    phases: coast,
+    currency: "coins",
+    baseCost: COSTS[BIGGER_NETS_ID],
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy keepers and lighthouses first.
+    priority: -1,
+    visibleWhen: (run) =>
+      run.flags[TIDE_OPEN_FLAG] === true && haulsSoFar(run) >= 1,
+    onBuy: sync,
+    effectPreview: previewOf(BIGGER_NETS_ID, [
+      {
+        label: "Best catch",
+        read: (run) => bestCatchCoins(run, calmIncomePerSecond(run)),
+        suffix: " coins",
+      },
+    ]),
+  },
+  {
+    id: TIDE_MILL_ID,
+    name: "Tide mill",
+    description:
+      "A little wheel turns with the water and works its own nets at every high tide. Your nets still pay in full on top.",
+    phases: coast,
+    currency: "coins",
+    baseCost: COSTS[TIDE_MILL_ID],
+    costGrowth: 1,
+    priority: -1,
+    // Late in the coast (three lighthouses): the clock gets a helper once the lights are spreading.
+    visibleWhen: (run) =>
+      run.flags[TIDE_OPEN_FLAG] === true &&
+      owned(run, BIGGER_NETS_ID) > 0 &&
+      lighthouseCount(run) >= 3,
+    onBuy: sync,
+    effectPreview: previewOf(TIDE_MILL_ID, [
+      {
+        label: "Mill catch each tide",
+        read: (run) =>
+          hasTideMill(run) ? millCoins(calmIncomePerSecond(run)) : 0,
+        suffix: " coins",
+      },
+    ]),
+  },
   ...chain({
     base: "tank",
     phases: coast,
@@ -849,6 +908,7 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "grid-1",
   "grid-2",
   WEATHER_VANE_ID,
+  TIDE_MILL_ID,
   "nav-1",
   "nav-2",
 ]);

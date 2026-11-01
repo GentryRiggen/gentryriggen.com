@@ -2,6 +2,7 @@ import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { barrelOil, tankCapacity } from "./tick";
+import { HAUL_ACTION, SET_NETS_ACTION, highTidesSoFar } from "./tide";
 import {
   frontsSoFar,
   chanceOf,
@@ -96,6 +97,24 @@ const tendsWeather =
     return available.includes(id) ? [id] : [];
   };
 
+/**
+ * Hauls full nets in and sets them again. A bot with real attention misses
+ * now and then: it leaves the nets in the water for one cycle in every
+ * `skipEvery`th (counted by the clock itself, so the sim stays
+ * deterministic), and `onlyEvery` makes a distracted player set them in just
+ * one cycle in so many. Full nets wait, so a miss costs only the catch.
+ */
+const tendsTide =
+  (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
+  (run, available) => {
+    if (available.includes(HAUL_ACTION)) return [HAUL_ACTION];
+    const cycle = highTidesSoFar(run);
+    const { skipEvery, onlyEvery } = options;
+    if (skipEvery && cycle % skipEvery === skipEvery - 1) return [];
+    if (onlyEvery && cycle % onlyEvery !== 0) return [];
+    return available.includes(SET_NETS_ACTION) ? [SET_NETS_ACTION] : [];
+  };
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -114,10 +133,11 @@ const withOil = (
   strategy: Strategy,
   actions: OilChoice,
   care: OilChoice = looksAfterThings(45, true),
-  weather: OilChoice = () => []
+  weather: OilChoice = () => [],
+  tide: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather),
+  actions: combine(actions, care, weather, tide),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -144,13 +164,15 @@ export function lightBots(): BotSet {
       base.tapper,
       savvyOil,
       looksAfterThings(74, true),
-      tendsWeather({ skipEvery: 10 })
+      tendsWeather({ skipEvery: 10 }),
+      tendsTide({ skipEvery: 8 })
     ),
     realistic: withOil(
       base.realistic,
       savvyOil,
       looksAfterThings(42, true),
-      tendsWeather({ skipEvery: 5 })
+      tendsWeather({ skipEvery: 5 }),
+      tendsTide({ skipEvery: 4 })
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
@@ -158,7 +180,8 @@ export function lightBots(): BotSet {
         base.dawdler,
         savvyOil,
         looksAfterThings(35, false),
-        tendsWeather({ onlyEvery: 3 })
+        tendsWeather({ onlyEvery: 3 }),
+        tendsTide({ onlyEvery: 3 })
       ),
       greetAfter: 60,
     },

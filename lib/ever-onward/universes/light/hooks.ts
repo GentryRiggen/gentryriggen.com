@@ -17,6 +17,7 @@ import {
   tankCapacity,
 } from "./tick";
 import { cloneRun } from "../../engine/engine";
+import { TIDE_ACTION_IDS, haulsSoFar, isTideOpen, withoutTide } from "./tide";
 import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
 /**
@@ -39,6 +40,9 @@ export function lightPlates(run: RunState): string[] {
     if (hasOilButton && (isOilCheap(run) || isTankLow))
       plates.push("oilMarket");
     if (isStorming(run)) plates.push("storm");
+    // Offered once the second catch is in (so it is not a crowd of beats at
+    // the moment the clock opens).
+    if (isTideOpen(run) && haulsSoFar(run) >= 2) plates.push("tide");
   } else if (run.phase === 1) {
     plates.push("crank");
     if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
@@ -69,6 +73,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   oilMarket: ["buy-oil"],
   grid: ["balance-grid"],
   rush: ["ride-rush"],
+  tide: TIDE_ACTION_IDS,
   weather: SHIELD_ACTION_IDS,
   course: ["correct-course"],
   flare: ["catch-flare"],
@@ -142,6 +147,9 @@ function sceneKey(run: RunState): string {
     s.bulbsTier,
     s.gridTier,
     s.stormCrews,
+    s.tideOpen,
+    s.biggerNets,
+    s.tideMill,
     s.weatherVane,
     s.aimLevel,
     s.mirrorTier,
@@ -161,5 +169,9 @@ export const lightSceneDiff = (before: RunState, after: RunState): boolean =>
   sceneKey(before) !== sceneKey(after);
 
 /** Income probes see the run with no storm landing and no surge pending. */
-export const lightIncomeView = (run: RunState): RunState =>
-  isWeatherOpen(run) ? withoutStorms(cloneRun(run)) : run;
+export const lightIncomeView = (run: RunState): RunState => {
+  const draft = isWeatherOpen(run) || isTideOpen(run) ? cloneRun(run) : run;
+  if (isWeatherOpen(draft)) withoutStorms(draft);
+  if (isTideOpen(draft)) withoutTide(draft);
+  return draft;
+};

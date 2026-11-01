@@ -10,6 +10,7 @@ import {
   TOTAL_STARS,
 } from "./resources";
 import { TUNING } from "./tuning";
+import { tickTide } from "./tide";
 import { tickWeather } from "./weather";
 
 const { coast: C, night: N, sky: S, last: L } = TUNING;
@@ -569,6 +570,8 @@ export function syncDisplay(run: RunState): void {
 
 export function tickLight(run: RunState, dt: number): void {
   const phase = run.phase;
+  // Every phase: a catch still flowing in when the coast ends finishes.
+  tickTide(run, dt, () => calmIncomePerSecond(run));
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);
@@ -628,6 +631,14 @@ export function incomePerSecond(run: RunState): number {
     );
   return 0;
 }
+
+/**
+ * The coast's income on a calm night with a full lamp, taps at a steady 3 a
+ * second included: the yardstick for the tide clock's catch, so a storm or a
+ * dry lamp when the nets come in never makes it bigger or smaller.
+ */
+export const calmIncomePerSecond = (run: RunState): number =>
+  autoCoinsPerSecond(run) + C.tankTapsPerSecond * calmTapCoins(run);
 
 /** The gift every income visitor brings: a small slice of the phase's income. */
 export const visitorGift = (run: RunState): number =>
