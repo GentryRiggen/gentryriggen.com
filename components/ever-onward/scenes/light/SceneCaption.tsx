@@ -1,4 +1,6 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
+import { COAST_LIGHTHOUSES } from "@/lib/ever-onward/universes/light/resources";
 import { pixelClass } from "../../game/retro/retroStyles";
 
 const num = (n: number): string => Math.floor(n).toLocaleString("en-US");
@@ -7,9 +9,9 @@ const num = (n: number): string => Math.floor(n).toLocaleString("en-US");
 export function captionFor(info: LightSceneInfo): string {
   switch (info.phase) {
     case "coast":
-      return `Ships guided: ${num(info.ships)} · Lights ${info.lighthouses}/8`;
+      return `Ships guided: ${num(info.ships)} · Lights ${info.lighthouses}/${COAST_LIGHTHOUSES}`;
     case "night":
-      return `Cities lit: ${num(info.cities > 0 ? Math.max(1, info.cities) : 0)}/100 · Power ${Math.round(
+      return `Towns lit: ${info.townsLit}/${TOWN_COUNT} · Power ${Math.round(
         info.powered * 100
       )}%${
         info.gridSteadiness < 0.7

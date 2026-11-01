@@ -1,4 +1,5 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import { MAX_DRAWN_PROBES } from "@/lib/ever-onward/universes/light/scene";
 import { AIM_DISH, LAKE, RELAY_RADIUS, SUN } from "./anchors";
 import { makeStars } from "./random";
 
@@ -29,7 +30,7 @@ const FIELD_MIRRORS = [
   { x: 338, y: 270 },
   { x: 360, y: 276 },
 ] as const;
-const MAX_PROBES = 12;
+const MAX_PROBES = MAX_DRAWN_PROBES;
 /** Stars the star charts mark out for the fleet. */
 const CHART_TARGETS = [
   { x: 60, y: 62 },
@@ -123,10 +124,7 @@ function Probe({ info, index }: ProbeProps) {
 
 export default function SkyLayer({ info }: { info: LightSceneInfo }) {
   const collectors = Math.min(MAX_COLLECTORS, Math.max(0, info.collectors));
-  const probes =
-    info.probes > 0
-      ? Math.min(MAX_PROBES, 1 + Math.floor(Math.log2(info.probes + 1)))
-      : 0;
+  const probes = info.probes;
   const stars = Math.ceil(info.starsFraction * STAR_COUNT);
   const glow = 0.35 + Math.min(0.5, collectors * 0.05);
   // The mirror field grows in two steps: a few mirrors, then a great field.

@@ -29,6 +29,11 @@ import {
   tier,
 } from "./tick";
 
+/** Towns the Night scene can draw; `townsLit` counts toward this. */
+export const TOWN_COUNT = 60;
+/** Probes the Sky scene can draw. */
+export const MAX_DRAWN_PROBES = 12;
+
 export interface LightSceneInfo {
   /** Phase id: "coast", "night", "sky" or "last". */
   phase: string;
@@ -48,12 +53,15 @@ export interface LightSceneInfo {
   cities: number;
   /** Cities lit / TOTAL_CITIES, 0..1. */
   citiesProgress: number;
+  /** Towns drawn lit, 0..TOWN_COUNT (at least 1 once any city is lit). */
+  townsLit: number;
   /** Night remaining, 0..1 (1 = full night). */
   night: number;
   /** supply / demand, 0..1. */
   powered: number;
   generators: number;
   collectors: number;
+  /** Probes drawn, 0..MAX_DRAWN_PROBES (not the real count, which grows fast). */
   probes: number;
   starsRemaining: number;
   /** Stars left / TOTAL_STARS, 0..1. */
@@ -157,15 +165,26 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     storm: isStorming(run) && run.phase === 0 ? 1 : 0,
     cities,
     citiesProgress: clamp01(cities / TOTAL_CITIES),
-    night: clamp01(finite(r.night ?? 100) / 100),
-    powered: demand > 0 ? clamp01(supply / demand) : 0,
+    townsLit:
+      cities > 0
+        ? Math.max(1, Math.round(clamp01(cities / TOTAL_CITIES) * TOWN_COUNT))
+        : 0,
+    // Quantized: the picture only needs these in steps, not every tick.
+    night: step(finite(r.night ?? 100) / 100, 50),
+    powered: demand > 0 ? step(supply / demand, 20) : 0,
     generators:
       level(run, "gen1") +
       level(run, "gen2") +
       level(run, "gen3") +
       level(run, "gen4"),
     collectors: finite(r.collectors ?? 0),
-    probes: finite(Math.floor(r.probes ?? 0)),
+    probes:
+      finite(r.probes ?? 0) >= 1
+        ? Math.min(
+            MAX_DRAWN_PROBES,
+            1 + Math.floor(Math.log2(Math.floor(r.probes) + 1))
+          )
+        : 0,
     starsRemaining: Math.ceil(stars),
     // In steps of one drawn star (the sky draws 70) so it is not redrawn
     // every tick while the probes feed.

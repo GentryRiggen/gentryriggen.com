@@ -2,6 +2,7 @@ import { sceneInfo } from "@/lib/ever-onward/universes/light";
 import { LET_GO } from "@/lib/ever-onward/universes/light/upgrades";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { newRun } from "@/lib/ever-onward/engine/engine";
+import { COAST_LIGHTHOUSES } from "@/lib/ever-onward/universes/light/resources";
 import { calloutFor, CALLOUT_IDS } from "../callouts";
 
 describe("scene callouts", () => {
@@ -43,5 +44,14 @@ describe("scene callouts", () => {
         light.id
       );
     });
+  });
+
+  it("names the same lighthouse count the caption caps at", () => {
+    const last = lightUniverse.upgrades.find((u) => u.id === "lighthouse");
+    const callout = calloutFor(
+      { upgradeId: "lighthouse", n: last?.maxLevel ?? 0 },
+      info
+    );
+    expect(callout?.text).toContain(String(COAST_LIGHTHOUSES));
   });
 });

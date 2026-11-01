@@ -801,7 +801,7 @@ html:has(.jim-app) body {
 .lm-ring {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  animation: lmRing 1.1s ease-out 2 both;
+  animation: lmRing 0.8s ease-out 2 both;
 }
 
 .lm-pulse {
@@ -838,6 +838,12 @@ html:has(.jim-app) body {
 
 .lm-spin {
   animation: lmSpin 3s linear infinite;
+}
+
+/* A layer fading out stops animating: nobody is looking at it. */
+.lm-paused,
+.lm-paused * {
+  animation-play-state: paused !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

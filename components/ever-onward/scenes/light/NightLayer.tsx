@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
 import { PLANET, planetPoint, slotAngle, type NightSlot } from "./anchors";
 import { makeStars, seeded } from "./random";
 
-const CITY_COUNT = 60;
+const CITY_COUNT = TOWN_COUNT;
 const TWINKLES = ["lm-twinkle", "lm-twinkle-b", "lm-twinkle-c", ""] as const;
 const STARS = makeStars(23, 46);
 /** The wires run along the planet between these angles (radians). */
@@ -32,6 +33,27 @@ const CITIES = (() => {
     };
   });
 })();
+
+/** The animation class shared by every town in a group ("" is still). */
+const TOWN_GROUPS = [
+  "",
+  "lm-brown",
+  "lm-brown-b",
+  "lm-twinkle",
+  "lm-twinkle-b",
+];
+
+/**
+ * A weak grid makes every third (then every other) town stutter; a steady
+ * grid's glow makes the rest sparkle. Two of each, so they do not blink as one.
+ */
+function townGroup(i: number, strain: number, isGlowing: boolean): string {
+  const odd = i % 2 === 1;
+  if (strain > 0 && i % (strain === 2 ? 2 : 3) === 0)
+    return odd ? "lm-brown" : "lm-brown-b";
+  if (isGlowing) return odd ? "lm-twinkle" : "lm-twinkle-b";
+  return "";
+}
 
 const fmt = (n: number): string => n.toFixed(1);
 
@@ -78,7 +100,16 @@ const PULSE_SPEEDS = ["lm-pulse", "lm-pulse-b", "lm-pulse-c"] as const;
 const PULSE_PHASES = [0, 8, 16] as const;
 
 /** A wire with light pulses running along it; more generators, more and faster. */
-function Wire({ d, generators }: { d: string; generators: number }) {
+function Wire({
+  d,
+  generators,
+  maxAnimated = 3,
+}: {
+  d: string;
+  generators: number;
+  /** Pulse layers that move; the rest are drawn as still dashes. */
+  maxAnimated?: number;
+}) {
   const speed = PULSE_SPEEDS[generators < 4 ? 0 : generators < 12 ? 1 : 2];
   const layers = generators >= 10 ? 3 : generators >= 4 ? 2 : 1;
   return (
@@ -90,7 +121,7 @@ function Wire({ d, generators }: { d: string; generators: number }) {
         strokeOpacity="0.4"
         strokeWidth="1.6"
       />
-      {PULSE_PHASES.slice(0, layers).map((phase) => (
+      {PULSE_PHASES.slice(0, layers).map((phase, layer) => (
         <path
           key={phase}
           d={d}
@@ -99,7 +130,7 @@ function Wire({ d, generators }: { d: string; generators: number }) {
           stroke="#fff3b0"
           strokeWidth="2.6"
           strokeDasharray={`0 ${phase} 3 ${22 - phase}`}
-          className={speed}
+          className={layer < maxAnimated ? speed : undefined}
         />
       ))}
     </g>
@@ -200,7 +231,6 @@ function RiverDam() {
           stroke="#7fe0ff"
           strokeWidth="3"
           strokeDasharray="5 7.5 5 7.5"
-          className="lm-pulse-b"
         />
       ))}
     </g>
@@ -324,11 +354,7 @@ function Machine({ slot, count, colour, children }: MachineProps) {
 
 export default function NightLayer({ info }: { info: LightSceneInfo }) {
   const dawn = 1 - info.night;
-  const lit = Math.min(
-    CITY_COUNT,
-    Math.round(info.citiesProgress * CITY_COUNT)
-  );
-  const cityCount = info.cities > 0 ? Math.max(1, lit) : 0;
+  const cityCount = info.townsLit;
   const brightness = 0.7 + 0.3 * info.powered;
   // A weak grid makes the towns stutter: every third, then every other one.
   const strain =
@@ -445,12 +471,19 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
             />
           ))}
           {TRUNKS.slice(0, trunks).map((d, i) => (
-            <Wire key={i} d={d} generators={generators} />
+            <Wire
+              key={i}
+              d={d}
+              generators={generators}
+              maxAnimated={i === 0 ? 3 : 2}
+            />
           ))}
-          {info.linesTier >= 3 && <Wire d={RING} generators={generators} />}
+          {info.linesTier >= 3 && (
+            <Wire d={RING} generators={generators} maxAnimated={1} />
+          )}
           {info.linesTier >= 4 &&
             SPOKE_PATHS.map((d, i) => (
-              <Wire key={i} d={d} generators={generators} />
+              <Wire key={i} d={d} generators={generators} maxAnimated={0} />
             ))}
         </g>
       )}
@@ -474,59 +507,62 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
             </g>
           );
         })}
-      {/* street lamps: LED, dimmable, smart */}
+      {/* street lamps: LED, dimmable, smart (the smart ones blink in three shared groups) */}
       {info.bulbsTier > 0 &&
-        lampAngles(info.bulbsTier).map((angle, i) => {
-          const p = planetPoint(angle, 0);
-          return (
-            <g
-              key={`${info.bulbsTier}-${i}`}
-              transform={`translate(${fmt(p.x)} ${fmt(p.y)})`}
-            >
-              <line y2="-5" stroke="#7a89ad" strokeWidth="1" />
-              <circle
-                cy="-6"
-                r="2"
-                fill={info.bulbsTier === 1 ? "#d7f6ff" : "#ffe3a0"}
-                className={info.bulbsTier >= 3 ? TWINKLES[i % 3] : ""}
-                opacity={info.bulbsTier === 2 ? 0.75 : 1}
-              />
-            </g>
-          );
-        })}
-      {/* the towns */}
+        [0, 1, 2].map((group) => (
+          <g
+            key={`${info.bulbsTier}-${group}`}
+            className={info.bulbsTier >= 3 ? TWINKLES[group] : undefined}
+          >
+            {lampAngles(info.bulbsTier)
+              .filter((_, i) => i % 3 === group)
+              .map((angle) => {
+                const p = planetPoint(angle, 0);
+                return (
+                  <g
+                    key={angle}
+                    transform={`translate(${fmt(p.x)} ${fmt(p.y)})`}
+                  >
+                    <line y2="-5" stroke="#7a89ad" strokeWidth="1" />
+                    <circle
+                      cy="-6"
+                      r="2"
+                      fill={info.bulbsTier === 1 ? "#d7f6ff" : "#ffe3a0"}
+                      opacity={info.bulbsTier === 2 ? 0.75 : 1}
+                    />
+                  </g>
+                );
+              })}
+          </g>
+        ))}
+      {/* the towns: the ones that flicker or sparkle share a few animated groups */}
       <g opacity={brightness}>
-        {CITIES.slice(0, cityCount).map((c, i) => {
-          const flicker =
-            strain > 0 && i % (strain === 2 ? 2 : 3) === 0
-              ? i % 2
-                ? "lm-brown"
-                : "lm-brown-b"
-              : info.glow > 0
-                ? "lm-twinkle"
-                : "";
-          return (
-            <g key={i} transform={`translate(${fmt(c.x)} ${fmt(c.y)})`}>
-              <g className={flicker}>
-                <use
-                  href="#lm-town"
-                  transform={info.glow > 0 ? "scale(1.25)" : undefined}
-                />
-              </g>
-              {info.subsTier >= 2 && c.isHub && (
-                <rect
-                  x="5"
-                  y="3"
-                  width="4"
-                  height="4"
-                  fill="#2a3350"
-                  stroke="#ffd98a"
-                  strokeWidth="0.8"
-                />
-              )}
-            </g>
-          );
-        })}
+        {TOWN_GROUPS.map((group) => (
+          <g key={group} className={group || undefined}>
+            {CITIES.slice(0, cityCount).map((c, i) => {
+              if (townGroup(i, strain, info.glow > 0) !== group) return null;
+              return (
+                <g key={i} transform={`translate(${fmt(c.x)} ${fmt(c.y)})`}>
+                  <use
+                    href="#lm-town"
+                    transform={info.glow > 0 ? "scale(1.25)" : undefined}
+                  />
+                  {info.subsTier >= 2 && c.isHub && (
+                    <rect
+                      x="5"
+                      y="3"
+                      width="4"
+                      height="4"
+                      fill="#2a3350"
+                      stroke="#ffd98a"
+                      strokeWidth="0.8"
+                    />
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        ))}
       </g>
       {/* the machines on the horizon */}
       <Machine slot="crank" count={0} colour="#ffd98a">
@@ -552,7 +588,7 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           <WindFarm />
         </Machine>
       )}
-      {(info.cities > 0 || generators > 0) && (
+      {(info.townsLit > 0 || generators > 0) && (
         <Machine slot="grid" count={0} colour="#6ef0a0">
           <ControlPost info={info} />
         </Machine>

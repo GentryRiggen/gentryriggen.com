@@ -10,6 +10,7 @@ import CoastLayer from "./CoastLayer";
 import LastLayer from "./LastLayer";
 import NightLayer from "./NightLayer";
 import type { LastBuy } from "./callouts";
+import { isSameLayerInfo } from "./layerInfo";
 import SceneCallout from "./SceneCallout";
 import SceneCaption from "./SceneCaption";
 import SkyLayer from "./SkyLayer";
@@ -19,17 +20,6 @@ interface LightSceneProps {
   /** The newest purchase, shown as a label in the picture for a moment. */
   lastBuy?: LastBuy | null;
 }
-
-/** Numbers only the caption reads: the heavy layers ignore their changes. */
-const CAPTION_ONLY: ReadonlySet<string> = new Set(["ships", "starsRemaining"]);
-
-const isSameLayerInfo = (
-  a: { info: LightSceneInfo },
-  b: { info: LightSceneInfo }
-): boolean =>
-  (Object.keys(a.info) as (keyof LightSceneInfo)[]).every(
-    (k) => CAPTION_ONLY.has(k) || a.info[k] === b.info[k]
-  );
 
 const LAYERS = [
   memo(CoastLayer, isSameLayerInfo),
@@ -201,7 +191,7 @@ const LightSceneView = memo(function LightSceneView({
           return (
             <g
               key={index}
-              className={`origin-[200px_150px] transition-[opacity,scale] duration-[2000ms] ease-in-out motion-reduce:transition-none ${state}`}
+              className={`origin-[200px_150px] transition-[opacity,scale] duration-[2000ms] ease-in-out motion-reduce:transition-none ${state} ${isShown ? "" : "lm-paused"}`}
             >
               <Layer info={info} />
             </g>
