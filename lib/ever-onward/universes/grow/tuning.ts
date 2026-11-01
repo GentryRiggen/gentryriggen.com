@@ -16,6 +16,61 @@ export const TUNING = {
     { tap: 60, helper: 40, scalePer: 0.5 },
     { tap: 1, helper: 0.35, scalePer: 0.5 },
   ] as readonly PhaseTuning[],
+  /** The backyard's water: a tank, rain that comes and goes, and a thirst. */
+  water: {
+    /** Units the tank holds with no storage built. */
+    baseCapacity: 12,
+    /** Units each rain barrel adds. */
+    barrelCapacity: 18,
+    /** Units each garden hose (a long hose to the butt) adds. */
+    hoseCapacity: 40,
+    /** Units of rain per second when the outlook is fully rainy. */
+    rainMax: 0.9,
+    /** Units per second the garden drinks. */
+    thirst: 0.3,
+    /** The outlook it drifts back toward, and how fast (per second). */
+    outlookMean: 0.5,
+    outlookPull: 0.01,
+    /** Size of the random wobble per root-second. */
+    outlookWobble: 0.1,
+    outlookStart: 0.6,
+    /** The rain forecast reads as dry below this. */
+    dryOutlook: 0.35,
+  },
+  /** Seasons follow the phase clock; none of them ever takes anything away. */
+  seasons: {
+    seconds: 90,
+    /** Boost for [plant (taps), grow (sprinklers, bees), harvest]. */
+    spring: [1.5, 1.15, 1],
+    summer: [1.1, 1.5, 1.1],
+    autumn: [1, 1.1, 2],
+    winter: [1, 1, 1],
+  },
+  /** The backyard's harvest: ripe produce waits in the garden until picked. */
+  yard: {
+    /** Produce per second each helper grows (before bonuses). */
+    sprinklerRate: 0.9,
+    hiveRate: 3,
+    /** The share of ripening produce each helper picks, at the base rate. */
+    basketShare: 0.07,
+    gardenerShare: 0.13,
+    /** The most the pickers can keep up with, before wheelbarrows. */
+    pickCap: 0.65,
+    /** Each level of compost tea adds this share to ripening. */
+    teaPer: 0.5,
+    /** The greenhouse multiplies ripening by this. */
+    greenhouse: 1.5,
+    /** The orchard multiplies ripening by this. */
+    orchard: 1.25,
+    /** The honey stand multiplies what a hand harvest pays by this. */
+    honey: 1.25,
+    /** Each wheelbarrow raises the pickers' cap by this much. */
+    barrowPer: 0.06,
+    /** The hand-harvest button shows once this much is ripe. */
+    ripeShown: 5,
+    /** The harvest plate lights up at this many seconds of basket work. */
+    ripeFor: 25,
+  },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */
     growthPerCare: 0.5,

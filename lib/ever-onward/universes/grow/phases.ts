@@ -7,6 +7,7 @@ import {
   PHASE_YARD,
 } from "./resources";
 import { TUNING } from "./tuning";
+import { seedWater } from "./water";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -27,10 +28,13 @@ export const PHASES: readonly PhaseDef[] = [
     intro:
       "This is one small seed, and you are its gardener. It sits in a plain pot on a plain windowsill, waiting for a drop of water and a bit of luck. Water it, keep the soil damp and watch what happens. Every big garden starts exactly like this.",
     goal: "Water the seed and build a cold frame.",
-    manualResource: "water",
+    manualResource: "seeds",
     manualLabel: "Water the seed",
     isDone: (run) => owned(run, "cold-frame") >= 1,
-    onEnter: headStart(0),
+    onEnter: (run) => {
+      seedWater(run);
+      headStart(0)(run);
+    },
   },
   {
     id: PHASE_FARM,

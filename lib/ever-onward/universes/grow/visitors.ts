@@ -26,8 +26,8 @@ export const VISITORS: readonly VisitorDef[] = [
 export const TEASERS: readonly TeaserDef[] = [
   {
     upgradeId: "cold-frame",
-    showWhen: (run) => owned(run, "sprinkler") >= 1,
-    hint: () => "When 3 sprinklers drip",
+    showWhen: (run) => owned(run, "gardener") >= 1,
+    hint: () => "When the orchard is planted",
   },
   {
     upgradeId: "grain-barn",

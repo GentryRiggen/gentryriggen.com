@@ -1,4 +1,5 @@
 import type { UniverseDef } from "../../engine/types";
+import { GROW_ACTIONS } from "./actions";
 import { growAlert } from "./alerts";
 import {
   GROW_CONSUMABLES,
@@ -25,6 +26,7 @@ export const growUniverse: UniverseDef = {
   resources: RESOURCES,
   phases: PHASES,
   upgrades: UPGRADES,
+  actions: GROW_ACTIONS,
   maxVisible: 3,
   story: STORY,
   teasers: TEASERS,

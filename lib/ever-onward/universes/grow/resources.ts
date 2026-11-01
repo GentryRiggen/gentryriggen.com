@@ -1,4 +1,5 @@
 import type { ResourceDef } from "../../engine/types";
+import { TUNING } from "./tuning";
 
 export const PHASE_YARD = "yard";
 export const PHASE_FARM = "farm";
@@ -20,7 +21,7 @@ export const PHASE_IDS: readonly GrowPhaseId[] = [
 ];
 
 /** What each phase's tap earns, by phase index. */
-export const MANUAL_RESOURCES = ["water", "harvest", "green", "care"] as const;
+export const MANUAL_RESOURCES = ["seeds", "harvest", "green", "care"] as const;
 
 /** How much of the one pot is grown, 0 to 100. */
 export const FULL_GROWTH = 100;
@@ -28,11 +29,27 @@ export const FULL_GROWTH = 100;
 const HIDDEN: readonly string[] = [];
 
 export const RESOURCES: readonly ResourceDef[] = [
-  { id: "water", label: "Water", phases: [PHASE_YARD] },
+  { id: "seeds", label: "Seeds", phases: [PHASE_YARD] },
+  { id: "produce", label: "Ripe produce", phases: [PHASE_YARD] },
   { id: "harvest", label: "Harvest", phases: [PHASE_FARM] },
   { id: "green", label: "Green", phases: [PHASE_WORLD] },
   { id: "care", label: "Care", phases: [PHASE_SEED] },
   { id: "growth", label: "Growth (%)", phases: [PHASE_SEED] },
+  // The backyard's hidden water: tank level, rain outlook (0 dry, 1 rainy)
+  // and the rain's own random stream.
+  {
+    id: "tank",
+    label: "Water tank",
+    initial: TUNING.water.baseCapacity,
+    phases: HIDDEN,
+  },
+  {
+    id: "rainOutlook",
+    label: "Rain outlook",
+    initial: TUNING.water.outlookStart,
+    phases: HIDDEN,
+  },
+  { id: "wtRng", label: "Water stream", phases: HIDDEN },
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];
