@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.16.0",
+    date: "2026-11-01",
+    title: "Easier to play, easier to read",
+    highlights: [
+      "Upgrades now sit near the top, with the ones you can buy first. Each card says Tap to buy or how much more you need",
+      "The Menu opens as a drawer with a Sound section: music, effects, narration and play on silent",
+      "Bigger text everywhere, bigger buttons to tap, and easier-to-read words on the daytime sky",
+      "Every mini-game panel shares one look, so it all feels like one game",
+      "Fixed the iPad layout jumping when you tap the next goal, phone buttons running off the screen, and games opening part-way down the page",
+      "The out-of-oil warning takes you straight to Buy oil, and the hub puts the world you played last first",
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-11-01",
     title: "More to manage on the power grid",
