@@ -379,6 +379,141 @@
     "hash": "7f1c454e84ee",
     "durationGuess": 12
   },
+  "grow/yard-sprinkler": {
+    "file": "/ever-onward/voice/grow/yard-sprinkler.mp3",
+    "hash": "2d64959dd280",
+    "durationGuess": 14
+  },
+  "grow/yard-basket": {
+    "file": "/ever-onward/voice/grow/yard-basket.mp3",
+    "hash": "e96070c50f74",
+    "durationGuess": 14
+  },
+  "grow/yard-summer": {
+    "file": "/ever-onward/voice/grow/yard-summer.mp3",
+    "hash": "e094f0ae1857",
+    "durationGuess": 9
+  },
+  "grow/yard-autumn": {
+    "file": "/ever-onward/voice/grow/yard-autumn.mp3",
+    "hash": "c51344c07166",
+    "durationGuess": 10
+  },
+  "grow/yard-winter": {
+    "file": "/ever-onward/voice/grow/yard-winter.mp3",
+    "hash": "d7bd585f1702",
+    "durationGuess": 11
+  },
+  "grow/yard-thirsty": {
+    "file": "/ever-onward/voice/grow/yard-thirsty.mp3",
+    "hash": "b934757407dd",
+    "durationGuess": 10
+  },
+  "grow/yard-barrel": {
+    "file": "/ever-onward/voice/grow/yard-barrel.mp3",
+    "hash": "f6e5b39981ce",
+    "durationGuess": 8
+  },
+  "grow/yard-bees": {
+    "file": "/ever-onward/voice/grow/yard-bees.mp3",
+    "hash": "d91797482988",
+    "durationGuess": 9
+  },
+  "grow/yard-gardener": {
+    "file": "/ever-onward/voice/grow/yard-gardener.mp3",
+    "hash": "b97ee8b7bd61",
+    "durationGuess": 10
+  },
+  "grow/yard-hives": {
+    "file": "/ever-onward/voice/grow/yard-hives.mp3",
+    "hash": "1d456d50ee1d",
+    "durationGuess": 11
+  },
+  "grow/yard-tea": {
+    "file": "/ever-onward/voice/grow/yard-tea.mp3",
+    "hash": "fb774beb3b43",
+    "durationGuess": 10
+  },
+  "grow/yard-barrow": {
+    "file": "/ever-onward/voice/grow/yard-barrow.mp3",
+    "hash": "2d35b408c398",
+    "durationGuess": 8
+  },
+  "grow/yard-crew": {
+    "file": "/ever-onward/voice/grow/yard-crew.mp3",
+    "hash": "d8867c7d4dca",
+    "durationGuess": 11
+  },
+  "grow/yard-greenhouse": {
+    "file": "/ever-onward/voice/grow/yard-greenhouse.mp3",
+    "hash": "059e95961fef",
+    "durationGuess": 10
+  },
+  "grow/yard-frame": {
+    "file": "/ever-onward/voice/grow/yard-frame.mp3",
+    "hash": "1e74960a85ce",
+    "durationGuess": 13
+  },
+  "grow/yard-orchard": {
+    "file": "/ever-onward/voice/grow/yard-orchard.mp3",
+    "hash": "82883339ce55",
+    "durationGuess": 12
+  },
+  "grow/yard-honey": {
+    "file": "/ever-onward/voice/grow/yard-honey.mp3",
+    "hash": "8b2c892e482c",
+    "durationGuess": 13
+  },
+  "grow/yard-year-1": {
+    "file": "/ever-onward/voice/grow/yard-year-1.mp3",
+    "hash": "a202e4b7a914",
+    "durationGuess": 10
+  },
+  "grow/yard-year-2": {
+    "file": "/ever-onward/voice/grow/yard-year-2.mp3",
+    "hash": "f0f6e9ea60aa",
+    "durationGuess": 10
+  },
+  "grow/yard-year-3": {
+    "file": "/ever-onward/voice/grow/yard-year-3.mp3",
+    "hash": "72779cb49133",
+    "durationGuess": 8
+  },
+  "grow/yard-year-4": {
+    "file": "/ever-onward/voice/grow/yard-year-4.mp3",
+    "hash": "f7c118190dc8",
+    "durationGuess": 8
+  },
+  "grow/yard-year-5": {
+    "file": "/ever-onward/voice/grow/yard-year-5.mp3",
+    "hash": "5eb4eb6105f9",
+    "durationGuess": 10
+  },
+  "grow/yard-mid": {
+    "file": "/ever-onward/voice/grow/yard-mid.mp3",
+    "hash": "10fe34a9515c",
+    "durationGuess": 12
+  },
+  "grow/yard-late-1": {
+    "file": "/ever-onward/voice/grow/yard-late-1.mp3",
+    "hash": "46616cc7b3d6",
+    "durationGuess": 12
+  },
+  "grow/yard-late-1b": {
+    "file": "/ever-onward/voice/grow/yard-late-1b.mp3",
+    "hash": "889ed62e34a2",
+    "durationGuess": 12
+  },
+  "grow/yard-late-2": {
+    "file": "/ever-onward/voice/grow/yard-late-2.mp3",
+    "hash": "72fce6e01359",
+    "durationGuess": 11
+  },
+  "grow/yard-late-3": {
+    "file": "/ever-onward/voice/grow/yard-late-3.mp3",
+    "hash": "8a8fbefeb1ad",
+    "durationGuess": 14
+  },
   "grow/farm-hello": {
     "file": "/ever-onward/voice/grow/farm-hello.mp3",
     "hash": "5165f7e4df26",
