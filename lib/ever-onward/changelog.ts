@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.11.0",
+    date: "2026-11-01",
+    title: "The Memory Garden",
+    highlights: [
+      "The Last Light has a Memory Garden. Every light you let go plants a seed named after it: Porch lights, Harbor lamps, Moon mirror and more",
+      "The seeds sprout, bud and bloom on their own. Water the garden to help them grow faster",
+      "Pick the blooms for a little warm light: resolve, and a lift for the lantern's flame. Flowers wait for you and never wilt",
+      "A rain barrel waters the thirsty ones now and then, on top of your own watering",
+      "The Logbook keeps a Keepsakes list of every memory flower you have picked",
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-11-01",
     title: "Probe Races",
