@@ -143,3 +143,11 @@ it("on an iPhone in Safari, hints at the Home Screen", () => {
   renderSheet("off");
   expect(screen.getByText(/Add Jim to your Home Screen first/)).toBeVisible();
 });
+
+it("doesn't save a time outside the evening window", async () => {
+  renderSheet();
+  const input = await screen.findByLabelText("Evening wrap at");
+  fireEvent.change(input, { target: { value: "23:00" } });
+  fireEvent.change(input, { target: { value: "20:10" } });
+  expect(put).not.toHaveBeenCalled();
+});

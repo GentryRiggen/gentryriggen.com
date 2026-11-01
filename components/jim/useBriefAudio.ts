@@ -52,9 +52,11 @@ export default function useBriefAudio(
   /** Started without a tap: a pause that follows is the browser's refusal. */
   const [unattended, setUnattended] = useState(false);
 
-  const playBrief = useCallback(
-    async (options: { fresh?: boolean } = {}) => {
+  const start = useCallback(
+    async (options: { fresh?: boolean }, tapped: boolean) => {
       const now = readerRef.current;
+      // A tap is the user's own; an unattended start is judged by the chip.
+      if (tapped) setUnattended(false);
       // Already on (or on its way): a second ask doesn't restart it.
       if (
         busy.current ||
@@ -98,14 +100,28 @@ export default function useBriefAudio(
     [getToken, api]
   );
 
+  const playBrief = useCallback(
+    (options: { fresh?: boolean } = {}) => start(options, true),
+    [start]
+  );
+
   useEffect(
     () =>
       onOpenIntent((intent) => {
         if (intent.listen !== "brief") return;
+        const now = readerRef.current;
+        // Never cut in over other audio without a tap: the chip waits.
+        if (
+          !isBrief(now.state.key) &&
+          (now.state.status === "playing" || now.state.status === "loading")
+        ) {
+          setRefused(true);
+          return;
+        }
         setUnattended(true);
-        void playBrief();
+        void start({}, false);
       }),
-    [playBrief]
+    [start]
   );
 
   // The player waits on a tap when the browser refused to start the audio.

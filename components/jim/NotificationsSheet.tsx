@@ -30,6 +30,14 @@ const HOME_SCREEN_HINT =
 const LOAD_ERROR = "Couldn't load your notification settings.";
 const SAVE_ERROR = "Couldn't save that setting. Try again in a moment.";
 
+/** HH:MM, 17:00 to 21:45, on a quarter hour: all the server takes. */
+function validEvening(value: string): boolean {
+  const m = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!m) return false;
+  const minutes = Number(m[1]) * 60 + Number(m[2]);
+  return minutes >= 17 * 60 && minutes <= 21 * 60 + 45 && minutes % 15 === 0;
+}
+
 function failure(err: unknown): string {
   if (err instanceof JimError) return SAVE_ERROR;
   return err instanceof Error && err.message ? err.message : SAVE_ERROR;
@@ -111,14 +119,14 @@ export default function NotificationsSheet({
 
   useEffect(() => {
     if (!open) return;
-    closeRef.current?.focus();
-    const root = document.documentElement;
-    const overflow = root.style.overflow;
-    root.style.overflow = "hidden";
     const opener =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    closeRef.current?.focus();
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
     function onKey(event: KeyboardEvent) {
       // A notice on top (turning notifications on) answers Escape first.
       if (document.querySelector("[role=alertdialog]")) return;
@@ -294,7 +302,10 @@ export default function NotificationsSheet({
                       value={settings.eveningTime}
                       onChange={(e) => {
                         const value = e.target.value;
-                        if (value && value !== settings.eveningTime) {
+                        if (
+                          validEvening(value) &&
+                          value !== settings.eveningTime
+                        ) {
                           save({ eveningTime: value });
                         }
                       }}

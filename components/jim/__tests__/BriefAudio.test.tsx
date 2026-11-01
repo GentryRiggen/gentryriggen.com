@@ -142,6 +142,18 @@ describe("useBriefAudio", () => {
     expect(reader.play).not.toHaveBeenCalled();
   });
 
+  it("never cuts in over other audio: the chip waits for a tap", async () => {
+    const reader = fakeReader({ key: "msg:3", status: "playing" });
+    const { result } = renderHook(() => useBriefAudio(getToken, API, reader));
+    listen();
+    await Promise.resolve();
+    expect(fetchScript).not.toHaveBeenCalled();
+    expect(reader.play).not.toHaveBeenCalled();
+    expect(result.current.chip).toBe(true);
+    await act(async () => result.current.playFromChip());
+    await waitFor(() => expect(reader.play).toHaveBeenCalled());
+  });
+
   it("two asks while the script is on its way fetch it once", async () => {
     const reader = fakeReader();
     renderHook(() => useBriefAudio(getToken, API, reader));
