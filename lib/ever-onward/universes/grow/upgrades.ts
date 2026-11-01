@@ -8,6 +8,7 @@ import {
   keeperShown,
   openBees,
 } from "./bees";
+import { MARKET_AGENT_ID } from "./market";
 import { PHASE_FARM, PHASE_SEED, PHASE_WORLD, PHASE_YARD } from "./resources";
 import { incomePerSecond, manualPerTap, pickPerSecond } from "./tick";
 import { waterCapacity } from "./water";
@@ -254,10 +255,9 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "He minds the rows while you rest, and he never gets bored.",
     phases: [PHASE_FARM],
     currency: "harvest",
-    baseCost: 100,
-    costGrowth: 1.18,
-    maxLevel: 40,
-    kind: "mechanic",
+    baseCost: 400,
+    costGrowth: 1.32,
+    maxLevel: 8,
     effectPreview: (run) => helperPreview(run, "scarecrow"),
   },
   {
@@ -266,10 +266,121 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "Yesterday's peelings feed tomorrow's crops.",
     phases: [PHASE_FARM],
     currency: "harvest",
-    baseCost: 700,
-    costGrowth: 2.2,
+    baseCost: 1800,
+    costGrowth: 2.4,
     maxLevel: 6,
+    visibleWhen: (run) => owned(run, "scarecrow") >= 2,
     effectPreview: (run) => scalePreview(run, "compost"),
+  },
+  {
+    id: "well",
+    name: "A deep well",
+    description:
+      "Cool water from far below the field, rain or no rain. The crops never have to go thirsty.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 1200,
+    costGrowth: 1.9,
+    maxLevel: 6,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "scarecrow") >= 2,
+    effectPreview: (run) =>
+      `Holds ${num(waterCapacity(run))} -> ${num(
+        waterCapacity({
+          ...run,
+          owned: { ...run.owned, well: owned(run, "well") + 1 },
+        })
+      )}, and it seeps`,
+  },
+  {
+    id: "tractor",
+    name: "A green tractor",
+    description:
+      "Putt, putt, putt. It does a whole row in the time a person does a plant.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 3000,
+    costGrowth: 1.3,
+    maxLevel: 8,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "scarecrow") >= 3,
+    effectPreview: (run) => helperPreview(run, "tractor"),
+  },
+  {
+    id: MARKET_AGENT_ID,
+    name: "A market agent",
+    description:
+      "A friendly person with a clipboard who asks the towns what they want, and plants it now and then. You will always choose better, because you are looking.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 90000,
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy the farm first.
+    priority: -1,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "tractor") >= 3,
+    effectPreview: () => "Re-plants for demand every minute and a half",
+  },
+  {
+    id: "irrigation",
+    name: "Irrigation channels",
+    description:
+      "Little ditches carry every drop of rain to the rows, and hold a lot in reserve.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 30000,
+    costGrowth: 2.2,
+    maxLevel: 4,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "well") >= 2,
+    effectPreview: (run) =>
+      `Holds ${num(waterCapacity(run))} -> ${num(
+        waterCapacity({
+          ...run,
+          owned: { ...run.owned, irrigation: owned(run, "irrigation") + 1 },
+        })
+      )}, and catches more rain`,
+  },
+  {
+    id: "silo",
+    name: "A tall grain silo",
+    description:
+      "Somewhere dry to keep everything, so nothing is wasted and every load goes further.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 120000,
+    costGrowth: 2.4,
+    maxLevel: 4,
+    visibleWhen: (run) => owned(run, "tractor") >= 6,
+    effectPreview: (run) => scalePreview(run, "silo"),
+  },
+  {
+    id: "glasshouse",
+    name: "A big glasshouse",
+    description:
+      "Rows and rows of glass, warm all year. Tomatoes in winter, and everyone on the road stops to look.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 70000,
+    costGrowth: 1.3,
+    maxLevel: 8,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "tractor") >= 4,
+    effectPreview: (run) => helperPreview(run, "glasshouse"),
+  },
+  {
+    id: "seed-drone",
+    name: "A seed drone",
+    description:
+      "It hums over the county and drops seeds exactly where the soil wants them.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 600000,
+    costGrowth: 1.3,
+    maxLevel: 8,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "glasshouse") >= 3,
+    effectPreview: (run) => helperPreview(run, "seed-drone"),
   },
   {
     id: "grain-barn",
@@ -278,10 +389,10 @@ export const UPGRADES: readonly UpgradeDef[] = [
       "Room for the whole harvest, and for starting something larger.",
     phases: [PHASE_FARM],
     currency: "harvest",
-    baseCost: 9000,
+    baseCost: 6000000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "scarecrow") >= 3,
+    visibleWhen: (run) => owned(run, "seed-drone") >= 2,
   },
   // The Whole World
   {

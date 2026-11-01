@@ -12,7 +12,7 @@ export const TUNING = {
   /** By phase index. */
   phases: [
     { tap: 1, helper: 0.6, scalePer: 0.5 },
-    { tap: 8, helper: 5, scalePer: 0.5 },
+    { tap: 10, helper: 5, scalePer: 0.5 },
     { tap: 60, helper: 40, scalePer: 0.5 },
     { tap: 1, helper: 0.35, scalePer: 0.5 },
   ] as readonly PhaseTuning[],
@@ -91,6 +91,52 @@ export const TUNING = {
     /** Dance wobble: degrees and length, around the true patch. */
     angleJitter: 14,
     lengthJitter: 0.06,
+  },
+  /** The farm: helpers by tier, its own water and the towns' market. */
+  farm: {
+    /** What each helper earns per second, before bonuses. */
+    scarecrowRate: 5,
+    tractorRate: 30,
+    glasshouseRate: 190,
+    droneRate: 900,
+    /** Leftover seeds become this much harvest when the farm opens. */
+    seedsToHarvest: 0.004,
+    /** The farm's thirsty fields: a bigger tank, more thirst, and wells. */
+    water: {
+      baseCapacity: 40,
+      wellCapacity: 60,
+      irrigationCapacity: 150,
+      /** Units per second each well seeps in, rain or not. */
+      wellSeep: 0.12,
+      /** Each irrigation channel adds this share to what the rain gives. */
+      irrigationRain: 0.2,
+      rainMax: 0.9,
+      thirst: 0.3,
+      /** Thirst added by each scarecrow, tractor, glasshouse and drone. */
+      thirstPerHelper: 0.03,
+    },
+  },
+  /** The market: three towns ask for crops, and the asks drift. */
+  market: {
+    /** How far a wave of demand swings from the usual price. */
+    swing: 0.4,
+    /** Seconds for the demand to go all the way round. */
+    periodSeconds: 330,
+    /** Wobble on each crop: step size, pull back to zero, and its limit. */
+    wobbleStep: 0.05,
+    wobblePull: 0.02,
+    wobbleMax: 0.08,
+    /** The wave's speed wanders by this, between 0.7 and 1.3 of usual. */
+    speedStep: 0.04,
+    speedPull: 0.02,
+    /** A newly planted crop pays this share of the price while it sprouts. */
+    sproutSeconds: 20,
+    sproutFloor: 0.5,
+    /** The market agent looks this often, and only moves for this gain. */
+    agentSeconds: 90,
+    agentMargin: 1.25,
+    /** A player moves once the best crop pays this much more. */
+    playerMargin: 1.15,
   },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */

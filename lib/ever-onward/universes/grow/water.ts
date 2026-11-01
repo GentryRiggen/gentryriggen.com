@@ -13,10 +13,29 @@ const SEED_MIX = 0x57a7e5;
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
 /** Water storage upgrades; later parts add wells, irrigation and more. */
-export const STORAGE_IDS: readonly string[] = ["rain-barrel", "garden-hose"];
+export const STORAGE_IDS: readonly string[] = [
+  "rain-barrel",
+  "garden-hose",
+  "well",
+  "irrigation",
+];
+
+const F = TUNING.farm.water;
+const farmHelperCount = (run: RunState): number =>
+  owned(run, "scarecrow") +
+  owned(run, "tractor") +
+  owned(run, "glasshouse") +
+  owned(run, "seed-drone");
+const onFarm = (run: RunState): boolean => run.phase === 1;
 
 /** Units the tank holds right now. */
 export function waterCapacity(run: RunState): number {
+  if (onFarm(run))
+    return (
+      F.baseCapacity +
+      F.wellCapacity * owned(run, "well") +
+      F.irrigationCapacity * owned(run, "irrigation")
+    );
   return (
     W.baseCapacity +
     W.barrelCapacity * owned(run, "rain-barrel") +
@@ -43,6 +62,11 @@ export const isDry = (run: RunState): boolean => (run.resources.tank ?? 0) <= 0;
 export const waterFactor = (run: RunState): number =>
   isDry(run) ? DRY_FLOOR : 1;
 
+/** The farm opens with a full tank (the yard's barrels stay behind). */
+export function fillFarmTank(run: RunState): void {
+  run.resources.tank = waterCapacity({ ...run, phase: 1 });
+}
+
 /** Gives the rain its own stream (call when the yard begins). */
 export function seedWater(run: RunState): void {
   run.resources.wtRng = (run.rng ^ SEED_MIX) | 0;
@@ -60,7 +84,11 @@ export function tickWater(run: RunState, dt: number): void {
   const outlook = Math.min(1, Math.max(0, before + pull + wobble));
   run.resources.wtRng = stream.rng;
   run.resources.rainOutlook = outlook;
-  const net = W.rainMax * outlook - W.thirst;
+  const net = onFarm(run)
+    ? F.rainMax * outlook * (1 + F.irrigationRain * owned(run, "irrigation")) +
+      F.wellSeep * owned(run, "well") -
+      (F.thirst + F.thirstPerHelper * farmHelperCount(run))
+    : W.rainMax * outlook - W.thirst;
   run.resources.tank = Math.min(
     waterCapacity(run),
     Math.max(0, (run.resources.tank ?? 0) + net * dt)

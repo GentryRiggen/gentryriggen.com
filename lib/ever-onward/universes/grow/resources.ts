@@ -70,6 +70,21 @@ export const RESOURCES: readonly ResourceDef[] = [
     "bePaused",
     "beRng",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // The farm's market: the crop in the ground, how long it still sprouts,
+  // the wave of demand (angle, speed), a wobble per crop, the agent's clock,
+  // times replanted, and the market's own random stream.
+  ...[
+    "mkCrop",
+    "mkSprout",
+    "mkAngle",
+    "mkSpeed",
+    "mkWobble0",
+    "mkWobble1",
+    "mkWobble2",
+    "mkAgentTime",
+    "mkPlants",
+    "mkRng",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];

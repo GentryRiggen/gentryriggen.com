@@ -7,6 +7,7 @@ import {
   PHASE_IDS,
 } from "./resources";
 import { tickBees } from "./bees";
+import { marketMult, tickMarket } from "./market";
 import { seasonBoost } from "./seasons";
 import { TUNING } from "./tuning";
 import { tickWater, waterFactor } from "./water";
@@ -21,13 +22,35 @@ const speed = (run: RunState): number => run.mods.speed ?? 1;
 const tapMult = (run: RunState): number => run.mods.tapMult ?? 1;
 
 const scaleMult = (run: RunState): number =>
-  1 + TUNING.phases[run.phase].scalePer * owned(run, SCALE_IDS[run.phase]);
+  1 +
+  TUNING.phases[run.phase].scalePer *
+    (owned(run, SCALE_IDS[run.phase]) +
+      (run.phase === 1 ? owned(run, "silo") : 0));
 
 /** What one tap earns right now (in spring, planting pays more). */
 export function manualPerTap(run: RunState): number {
   const season = run.phase === 0 ? seasonBoost(run, "plant") : 1;
-  return TUNING.phases[run.phase].tap * scaleMult(run) * tapMult(run) * season;
+  // On the farm a tap picks whatever is planted, at what the towns pay.
+  const market = run.phase === 1 ? marketMult(run) : 1;
+  return (
+    TUNING.phases[run.phase].tap *
+    scaleMult(run) *
+    tapMult(run) *
+    season *
+    market
+  );
 }
+
+/** Harvest per second from the farm's helpers, before any bonus. */
+const farmHelpers = (run: RunState): number => {
+  const f = TUNING.farm;
+  return (
+    owned(run, "scarecrow") * f.scarecrowRate +
+    owned(run, "tractor") * f.tractorRate +
+    owned(run, "glasshouse") * f.glasshouseRate +
+    owned(run, "seed-drone") * f.droneRate
+  );
+};
 
 /**
  * The phase's manual resource per second from helpers alone. In the yard it
@@ -51,6 +74,14 @@ export function incomePerSecond(run: RunState): number {
       speed(run) *
       waterFactor(run) *
       seasonBoost(run, "grow")
+    );
+  if (run.phase === 1)
+    return (
+      farmHelpers(run) *
+      scaleMult(run) *
+      marketMult(run) *
+      speed(run) *
+      waterFactor(run)
     );
   return (
     owned(run, HELPER_IDS[run.phase]) *
@@ -100,7 +131,11 @@ function tickYard(run: RunState, dt: number): void {
 
 export function tickGrow(run: RunState, dt: number): void {
   if (run.phase === 0) tickYard(run, dt);
-  else earn(run, incomePerSecond(run) * dt);
+  else if (run.phase === 1) {
+    tickWater(run, dt);
+    tickMarket(run, dt);
+    earn(run, incomePerSecond(run) * dt);
+  } else earn(run, incomePerSecond(run) * dt);
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
 }

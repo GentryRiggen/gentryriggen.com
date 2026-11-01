@@ -2,6 +2,8 @@ import { upgradeCost } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
+import { PLANT_ACTION_IDS, demandGap } from "./market";
+import { PHASE_IDS } from "./resources";
 import { sceneInfo } from "./scene";
 import { pickPerSecond } from "./tick";
 import { TUNING } from "./tuning";
@@ -11,10 +13,12 @@ import { STORAGE_IDS, waterLevel } from "./water";
 /** The water plate lights when the tank is under this share. */
 const WATER_LOW = 0.35;
 
-/** True when a storage upgrade is on offer and the seeds are in hand. */
+/** True when a storage upgrade is on offer and the money is in hand. */
 function canBuildStorage(run: RunState): boolean {
+  const phase = PHASE_IDS[run.phase];
   return UPGRADES.some((u) => {
     if (!STORAGE_IDS.includes(u.id)) return false;
+    if (!u.phases?.includes(phase)) return false;
     if ((run.owned[u.id] ?? 0) >= (u.maxLevel ?? 1)) return false;
     if (!run.revealed.includes(u.id)) return false;
     return (run.resources[u.currency] ?? 0) >= upgradeCost(run, u);
@@ -30,6 +34,11 @@ export function growPlates(run: RunState): string[] {
     if (ripeProduce(run) >= TUNING.yard.ripeFor) plates.push("harvest");
     if (isDancing(run)) plates.push("bees");
   }
+  if (run.phase === 1) {
+    if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
+      plates.push("water");
+    if (demandGap(run) >= TUNING.market.playerMargin) plates.push("market");
+  }
   return plates;
 }
 
@@ -37,6 +46,7 @@ export function growPlates(run: RunState): string[] {
 export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   harvest: [YARD_HARVEST],
   bees: BEE_ACTION_IDS,
+  market: PLANT_ACTION_IDS,
 };
 
 /** The tank is the backyard's one watched number. */
@@ -44,7 +54,7 @@ export const GROW_CONSUMABLES: readonly ConsumableDef[] = [
   {
     id: "water",
     label: "Water",
-    level: (run) => (run.phase === 0 ? waterLevel(run) : null),
+    level: (run) => (run.phase <= 1 ? waterLevel(run) : null),
     lowZone: { lo: 0.02, hi: 0.35 },
   },
 ];
@@ -79,6 +89,8 @@ function sceneKey(run: RunState): string {
     tierOf(s.hives),
     tierOf(s.pickers),
     tierOf(s.storage),
+    tierOf(s.machines),
+    s.crop,
     s.season,
     s.dry,
     s.ended,

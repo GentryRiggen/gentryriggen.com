@@ -6,8 +6,9 @@ import {
   PHASE_WORLD,
   PHASE_YARD,
 } from "./resources";
+import { seedMarket } from "./market";
 import { TUNING } from "./tuning";
-import { seedWater } from "./water";
+import { fillFarmTank, seedWater } from "./water";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -45,7 +46,15 @@ export const PHASES: readonly PhaseDef[] = [
     manualResource: "harvest",
     manualLabel: "Pick the harvest",
     isDone: (run) => owned(run, "grain-barn") >= 1,
-    onEnter: headStart(1),
+    onEnter: (run) => {
+      // Leftover seeds are worth a little at the farm gate.
+      run.resources.harvest += Math.floor(
+        (run.resources.seeds ?? 0) * TUNING.farm.seedsToHarvest
+      );
+      fillFarmTank(run);
+      seedMarket(run);
+      headStart(1)(run);
+    },
   },
   {
     id: PHASE_WORLD,

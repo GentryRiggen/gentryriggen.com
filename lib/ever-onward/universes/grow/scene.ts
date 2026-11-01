@@ -1,4 +1,5 @@
 import type { RunState } from "../../engine/types";
+import { plantedCrop, type Crop } from "./market";
 import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
 import { isDry } from "./water";
@@ -16,7 +17,10 @@ export interface GrowSceneInfo {
   hives: number;
   pickers: number;
   storage: number;
-  /** Yard: the season, and whether the tank has run dry. */
+  /** Farm: tractors, glasshouses and seed drones, and the crop planted. */
+  machines: number;
+  crop: Crop;
+  /** Yard and farm: the season (spring on the farm), and whether the tank has run dry. */
   season: Season;
   dry: boolean;
   /** Seed phase: whole percent of the pot grown. */
@@ -37,10 +41,21 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
     scaling: owned(run, SCALES[i]),
     hives: i === 0 ? owned(run, "bee-hive") : 0,
     pickers: i === 0 ? owned(run, "basket") + owned(run, "gardener") : 0,
+    machines:
+      i === 1
+        ? owned(run, "tractor") +
+          owned(run, "glasshouse") +
+          owned(run, "seed-drone")
+        : 0,
+    crop: i === 1 ? plantedCrop(run) : "tomato",
     storage:
-      i === 0 ? owned(run, "rain-barrel") + owned(run, "garden-hose") : 0,
+      i === 0
+        ? owned(run, "rain-barrel") + owned(run, "garden-hose")
+        : i === 1
+          ? owned(run, "well") + owned(run, "irrigation")
+          : 0,
     season: i === 0 ? seasonOf(run) : "spring",
-    dry: i === 0 && isDry(run),
+    dry: i <= 1 && isDry(run),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(
       Math.min(FULL_GROWTH, Math.max(0, run.resources.growth ?? 0))

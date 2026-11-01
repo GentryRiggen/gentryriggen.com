@@ -4,6 +4,13 @@ import type { Strategy } from "../../engine/sim";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { YARD_HARVEST, isWorthPicking } from "./actions";
 import { danceHint, dancesSoFar, followActionId } from "./bees";
+import {
+  bestCrop,
+  cropPrice,
+  plantActionId,
+  plantedCrop,
+  type Crop,
+} from "./market";
 import { seasonOf, secondsToAutumn } from "./seasons";
 import { TUNING } from "./tuning";
 import { STORAGE_IDS, isDry, rainOutlook } from "./water";
@@ -62,6 +69,34 @@ export const followsDance =
     return available.includes(id) ? [id] : [];
   };
 
+/**
+ * Looks at the market now and then and plants the crop the towns want most,
+ * once it beats what is planted by `margin` (so it never chases a crumb).
+ */
+export const cropPolicy =
+  (window = 10, margin = TUNING.market.playerMargin): Actions =>
+  (run, available) => {
+    if (run.phase !== 1 || !isWindowStart(run, window)) return [];
+    const best = bestCrop(run);
+    if (best === plantedCrop(run)) return [];
+    if (cropPrice(run, best) < cropPrice(run, plantedCrop(run)) * margin)
+      return [];
+    const id = plantActionId(best);
+    return available.includes(id) ? [id] : [];
+  };
+
+/** Plants this crop on the first look and never changes its mind. */
+export const alwaysPlants =
+  (crop: Crop): Actions =>
+  (run, available) => {
+    const id = plantActionId(crop);
+    return run.phase === 1 &&
+      plantedCrop(run) !== crop &&
+      available.includes(id)
+      ? [id]
+      : [];
+  };
+
 /** Both choices at once, so a bot can pick and follow in the same step. */
 const alongside =
   (a: Actions, b: Actions): Actions =>
@@ -109,14 +144,17 @@ export function growBots(): BotSet {
   const base = genericBots(growUniverse);
   const tapper = yardPlayer(
     base.tapper,
-    alongside(picksAnytime(), followsDance()),
+    alongside(picksAnytime(), alongside(followsDance(), cropPolicy())),
     whenRainTurnsDry
   );
   return {
     tapper,
     realistic: yardPlayer(
       base.realistic,
-      alongside(picksInAutumn(45), followsDance({ skipEvery: 6 })),
+      alongside(
+        picksInAutumn(45),
+        alongside(followsDance({ skipEvery: 6 }), cropPolicy(20))
+      ),
       whenRainTurnsDry
     ),
     idle: {
@@ -126,10 +164,17 @@ export function growBots(): BotSet {
     },
     dawdler: yardPlayer(
       base.dawdler,
-      alongside(picksAnytime(60), followsDance({ skipEvery: 2 })),
+      alongside(
+        picksAnytime(60),
+        alongside(followsDance({ skipEvery: 2 }), cropPolicy(60))
+      ),
       afterRunningDry
     ),
     skill: {
+      1: {
+        naive: yardPlayer(base.tapper, cropPolicy(), afterRunningDry),
+        careful: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
+      },
       0: {
         naive: yardPlayer(
           base.tapper,

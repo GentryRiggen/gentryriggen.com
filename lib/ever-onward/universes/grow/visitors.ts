@@ -31,8 +31,8 @@ export const TEASERS: readonly TeaserDef[] = [
   },
   {
     upgradeId: "grain-barn",
-    showWhen: (run) => owned(run, "scarecrow") >= 1,
-    hint: () => "When 3 scarecrows stand guard",
+    showWhen: (run) => owned(run, "glasshouse") >= 1,
+    hint: () => "When the first seed drone hums",
   },
   {
     upgradeId: "seed-vault",

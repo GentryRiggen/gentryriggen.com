@@ -9,6 +9,7 @@ import {
   isDancing,
   patchPays,
 } from "./bees";
+import { MARKET_ACTIONS } from "./market";
 import { PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
 import { incomePerSecond } from "./tick";
@@ -89,7 +90,11 @@ const FOLLOW_PATCH: readonly ActionDef[] = PATCHES.map((patch, index) => ({
   perform: (run) => followDance(run, index, incomePerSecond(run)),
 }));
 
-export const GROW_ACTIONS: readonly ActionDef[] = [HARVEST, ...FOLLOW_PATCH];
+export const GROW_ACTIONS: readonly ActionDef[] = [
+  HARVEST,
+  ...FOLLOW_PATCH,
+  ...MARKET_ACTIONS,
+];
 
 /** Used by the plate and by bots: enough ripe to bother with. */
 export const isWorthPicking = (run: RunState): boolean =>
