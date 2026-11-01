@@ -25,6 +25,28 @@ describe("planes command", () => {
   });
 });
 
+describe("machines command", () => {
+  it.each(["machines", "little-machines", "MACHINES"])(
+    "responds to %s with a blurb, a link, and a navigation target",
+    (input) => {
+      const result = getCommandResponse(input, []);
+      render(<>{result.output}</>);
+
+      expect(screen.getByText(/Much too far/)).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /\/little-machines/ })
+      ).toHaveAttribute("href", "/little-machines");
+      expect(result.navigateTo).toBe("/little-machines");
+      expect(result.shouldClear).toBe(false);
+    }
+  );
+
+  it("is listed in help", () => {
+    const result = getCommandResponse("help", []);
+    expect(result.output).toEqual(expect.stringMatching(/^\s+machines\s/m));
+  });
+});
+
 describe("ships command", () => {
   it.each(["ships", "ship-builder", "SHIPS"])(
     "responds to %s with a blurb, a link, and a navigation target",

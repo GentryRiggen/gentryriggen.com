@@ -173,6 +173,7 @@ const HELP_TEXT = `Available commands:
   confetti         Celebrate!
   ships            Play my ship-building game
   planes           Play my plane-flying game
+  machines         Play my little incremental game
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -353,6 +354,23 @@ function planesOutput(): ReactNode {
   );
 }
 
+function machinesOutput(): ReactNode {
+  return (
+    <div className="space-y-1">
+      <p>Little machines. One simple goal each. Much too far. 💡</p>
+      <p>
+        Lighting the lamp...{" "}
+        <a
+          href="/little-machines"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /little-machines
+        </a>
+      </p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Command matching & response
 // ---------------------------------------------------------------------------
@@ -400,6 +418,19 @@ export function getCommandResponse(
       output: planesOutput(),
       shouldClear: false,
       navigateTo: "/plane-builder",
+    };
+  }
+
+  // --- machines ---
+  if (
+    lower === "machines" ||
+    lower === "little-machines" ||
+    lower === "little machines"
+  ) {
+    return {
+      output: machinesOutput(),
+      shouldClear: false,
+      navigateTo: "/little-machines",
     };
   }
 
