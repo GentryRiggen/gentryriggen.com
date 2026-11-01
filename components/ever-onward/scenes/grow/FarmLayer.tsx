@@ -4,6 +4,7 @@ import {
   AGENT,
   COMPOST,
   DITCH,
+  FAIR_TENT,
   FARM_BARN,
   FARM_GLASS,
   FIELD_W,
@@ -294,6 +295,42 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
           fill="#5b2a1c"
         />
       </g>
+      {info.tractors > 0 && (
+        <g>
+          <rect
+            x={FAIR_TENT.x}
+            y={FAIR_TENT.y + 8}
+            width="50"
+            height="20"
+            fill="#f8f9fa"
+          />
+          <path
+            d={`M${FAIR_TENT.x - 4} ${FAIR_TENT.y + 8}l29 -16l29 16z`}
+            fill="#e03131"
+          />
+          <rect
+            x={FAIR_TENT.x + 20}
+            y={FAIR_TENT.y + 14}
+            width="10"
+            height="14"
+            fill="#7a3b1c"
+          />
+          <rect
+            x={FAIR_TENT.x + 4}
+            y={FAIR_TENT.y + 12}
+            width="6"
+            height="8"
+            fill="#3b82f6"
+          />
+          <rect
+            x={FAIR_TENT.x + 40}
+            y={FAIR_TENT.y + 12}
+            width="6"
+            height="8"
+            fill="#e03131"
+          />
+        </g>
+      )}
       {Array.from({ length: info.fields }, (_, i) => (
         <Field key={i} i={i} info={info} scarecrow={i < info.helpers} />
       ))}

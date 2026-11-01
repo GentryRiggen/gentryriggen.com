@@ -5,6 +5,7 @@ import {
   AGENT,
   COMPOST,
   DITCH,
+  FAIR_TENT,
   FARM_BARN,
   FARM_GLASS,
   FRAME,
@@ -69,6 +70,7 @@ const FARM_PLACES: Record<string, Place> = {
   silo: () => at(SILO, "Silo", 56),
   glasshouse: () => at(FARM_GLASS, "Glasshouse", 20),
   "seed-drone": (n) => at(droneAt(nth(n, 4)), `Seed drone ${n}`, -8),
+  "fair-hand": () => at(FAIR_TENT, "Fair helper", 20),
   "grain-barn": () => at(FARM_BARN, "Grain barn", 20),
 };
 

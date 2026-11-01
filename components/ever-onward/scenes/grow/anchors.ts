@@ -53,4 +53,5 @@ export const droneAt = (i: number): Point => ({
   x: 150 + i * 34,
   y: 56 + (i % 2) * 14,
 });
+export const FAIR_TENT: Point = { x: 212, y: 98 };
 export const TOWN: Point = { x: 24, y: 94 };

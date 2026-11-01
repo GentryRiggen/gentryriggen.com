@@ -101,7 +101,7 @@ export const farm: StoryMessage[] = [
   {
     id: "farm-time-4",
     phase: PHASE_FARM,
-    when: (run) => after(run, 14),
+    when: (run) => after(run, 12.5),
     text: "The towns are getting along beautifully. The corn town sent a parcel of cake to the pumpkin town, just because.",
   },
   {
@@ -113,13 +113,13 @@ export const farm: StoryMessage[] = [
   {
     id: "farm-time-9",
     phase: PHASE_FARM,
-    when: (run) => after(run, 16),
+    when: (run) => after(run, 14),
     text: "A cloud sits over the far field and thinks about rain. Whatever it decides, the crops are ready.",
   },
   {
     id: "farm-time-5",
     phase: PHASE_FARM,
-    when: (run) => after(run, 18),
+    when: (run) => after(run, 15.5),
     text: "The farm is the biggest thing for miles. A passing goose has been counting the rows and has lost count twice.",
   },
   {
@@ -131,37 +131,37 @@ export const farm: StoryMessage[] = [
   {
     id: "farm-time-10",
     phase: PHASE_FARM,
-    when: (run) => after(run, 20),
+    when: (run) => after(run, 17),
     text: "The towns have started a friendly argument about whose crop is the best. Nobody is cross. The scarecrow says they are all very good crops.",
   },
   {
     id: "farm-time-6",
     phase: PHASE_FARM,
-    when: (run) => after(run, 22),
+    when: (run) => after(run, 18.5),
     text: "The county newspaper sends a photographer. The scarecrow stands very still and does his best side.",
   },
   {
     id: "farm-time-11",
     phase: PHASE_FARM,
-    when: (run) => after(run, 24),
+    when: (run) => after(run, 20),
     text: "Evening falls over the rows. The tractor is parked, the drone is blinking sleepily, and the whole farm hums.",
   },
   {
     id: "farm-time-7",
     phase: PHASE_FARM,
-    when: (run) => after(run, 26),
+    when: (run) => after(run, 21.5),
     text: "There is more green here than anyone expected. The farm has become the town's favourite place to have a picnic.",
   },
   {
     id: "farm-time-12",
     phase: PHASE_FARM,
-    when: (run) => after(run, 28),
+    when: (run) => after(run, 23),
     text: "A child in the next county draws the farm from memory. It has a very large sun and a very small scarecrow, and it is quite right.",
   },
   {
     id: "farm-time-8",
     phase: PHASE_FARM,
-    when: (run) => after(run, 30),
+    when: (run) => after(run, 24),
     text: "Somewhere past the last row, a bigger barn is quietly being drawn on a very large piece of paper.",
   },
   {

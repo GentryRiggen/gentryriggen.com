@@ -65,9 +65,7 @@ describe("Grow farm story", () => {
     const missing = farm
       .map((m) => m.id)
       .filter((id) => !finalRun.story.includes(id));
-    // Thirsty needs a dry field; the last time beat is for a slow farm.
-    expect(
-      missing.filter((id) => id !== "farm-thirsty" && id !== "farm-time-8")
-    ).toEqual([]);
+    // Thirsty needs a dry field.
+    expect(missing.filter((id) => id !== "farm-thirsty")).toEqual([]);
   });
 });
