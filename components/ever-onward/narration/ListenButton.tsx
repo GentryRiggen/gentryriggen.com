@@ -33,7 +33,7 @@ export default function ListenButton({
       onClick={() => (isPlaying ? stopNarration() : playNarration(clipId))}
       className={`inline-flex touch-manipulation items-center justify-center ${retroFocusClass} ${className}`}
     >
-      <span aria-hidden="true">{isPlaying ? "■" : "▶"}</span>
+      <span aria-hidden="true">{isPlaying ? "■" : "▶︎"}</span>
       {label && <span>{isPlaying ? "Stop" : label}</span>}
     </button>
   );

@@ -30,7 +30,7 @@ export default function NextUpgradeBar({
       <span className="flex items-baseline justify-between gap-3">
         <span className={`${pixelClass} truncate text-[8px] text-cyan-200`}>
           <span aria-hidden="true" className="mr-1.5 text-amber-300">
-            ▶
+            ▶︎
           </span>
           {next.upgrade.name}
         </span>

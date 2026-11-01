@@ -76,7 +76,7 @@ export default function EndingOverlay({
             onClick={onContinue}
             className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-black`}
           >
-            <span aria-hidden="true">▶</span>
+            <span aria-hidden="true">▶︎</span>
             Continue
           </button>
         </div>

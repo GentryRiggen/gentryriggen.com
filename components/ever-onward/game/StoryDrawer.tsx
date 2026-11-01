@@ -159,7 +159,7 @@ export default function StoryDrawer({
                 >
                   {i === 0 && (
                     <span aria-hidden="true" className="mr-2 text-amber-300">
-                      ▶
+                      ▶︎
                     </span>
                   )}
                   {isNews && (

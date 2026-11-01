@@ -119,7 +119,7 @@ function UniverseCard({
           {hasStarted ? "Continue" : "Play"} {def.title}
         </span>
         <span aria-hidden="true" className="eo-prompt flex items-center gap-3">
-          <RetroText text="▶" className={`text-sm ${retroHeadingClass}`} />
+          <RetroText text="▶︎" className={`text-sm ${retroHeadingClass}`} />
           <RetroText
             text={hasStarted ? "CONTINUE" : "PLAY"}
             className={`text-sm group-hover:text-amber-200 ${retroHeadingClass}`}

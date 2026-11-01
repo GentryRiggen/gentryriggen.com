@@ -315,7 +315,7 @@ export default function GameScreen({
         ) : (
           <p className={`${bodyClass} text-slate-300`}>
             <span aria-hidden="true" className="mr-2 text-amber-300">
-              ▶
+              ▶︎
             </span>
             Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
           </p>

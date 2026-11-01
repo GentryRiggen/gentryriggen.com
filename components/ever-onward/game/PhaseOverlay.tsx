@@ -71,7 +71,7 @@ export default function PhaseOverlay({
             className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-slate-950`}
           >
             <span aria-hidden="true" className="motion-safe:animate-pulse">
-              ▶
+              ▶︎
             </span>
             <span className={pixelClass}>Continue</span>
           </button>
