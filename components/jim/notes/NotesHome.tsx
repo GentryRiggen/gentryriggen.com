@@ -3,6 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import DailyWord from "@/components/jim/notes/DailyWord";
+import NeedsYou from "@/components/jim/notes/NeedsYou";
 import QuickLog from "@/components/jim/notes/QuickLog";
 import {
   todoKey,
@@ -302,7 +304,10 @@ interface TodosProps {
 }
 
 function Todos({ data, marks, onToggle }: TodosProps) {
-  const g = groupTodos(data.todos, data.today);
+  const [area, setArea] = useState<"all" | "work" | "personal">("all");
+  const todos =
+    area === "all" ? data.todos : data.todos.filter((t) => t.area === area);
+  const g = groupTodos(todos, data.today);
   const open = g.overdue.length + g.today.length + g.week.length;
   const list = { today: data.today, marks, onToggle };
   return (
@@ -310,6 +315,23 @@ function Todos({ data, marks, onToggle }: TodosProps) {
       title="Todos"
       aside={g.overdue.length ? `${g.overdue.length} overdue` : undefined}
     >
+      <div role="group" aria-label="Filter todos" className="flex gap-2">
+        {(["all", "work", "personal"] as const).map((a) => (
+          <button
+            key={a}
+            type="button"
+            aria-pressed={area === a}
+            onClick={() => setArea(a)}
+            className={`min-h-11 rounded-full px-4 text-sm font-medium ring-1 ring-inset ${
+              area === a
+                ? "bg-ayu-accent/15 text-ayu-accent ring-ayu-accent/30"
+                : "text-ayu-subtle ring-white/10 hover:bg-white/[0.06]"
+            }`}
+          >
+            {a === "all" ? "All" : AREA_LABEL[a]}
+          </button>
+        ))}
+      </div>
       {open + g.later.length === 0 && <Empty>No open todos.</Empty>}
       {open === 0 && g.later.length > 0 && (
         <Empty>Nothing due this week.</Empty>
@@ -410,10 +432,19 @@ export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
           {date}
         </p>
       </div>
+      {data.daily && <DailyWord word={data.daily} />}
       <div className="space-y-3">
         <TodayCard data={data} />
         <QuickLog today={data.today} onLog={onLog} />
       </div>
+      {data.actions && (
+        <NeedsYou
+          actions={data.actions}
+          actionsAsOf={data.actionsAsOf}
+          today={data.today}
+          onAsk={onLog}
+        />
+      )}
       <Calendar data={data} />
       <Todos data={data} marks={saves.marks} onToggle={saves.toggle} />
       <ToastBar toast={saves.toast} onUndo={saves.undo} />
