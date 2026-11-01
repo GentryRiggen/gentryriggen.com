@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.1",
+    date: "2026-11-01",
+    title: "Sharper numbers",
+    highlights: [
+      "The coin counter at the top stays crisp while it climbs instead of looking fuzzy",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-11-01",
     title: "Arcade mode",
