@@ -329,4 +329,16 @@ describe("SeaTrialResult escape line", () => {
       ESCAPE_RESULT_LINES.frozen
     );
   });
+
+  it.each([
+    ["deck", "davit"],
+    ["swim", "raft"],
+  ] as const)("has a line for the %s ending", (ending, boat) => {
+    finishTrial();
+    act(() => useShipBuilderStore.setState({ lastEscape: { ending, boat } }));
+    render(<SeaTrialResult />);
+    expect(screen.getByTestId("escape-line")).toHaveTextContent(
+      ESCAPE_RESULT_LINES[ending]
+    );
+  });
 });

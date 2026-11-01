@@ -21,7 +21,7 @@ const LONG = { timeout: 90_000 };
 
 async function openTitanic(page: Page) {
   await page.addInitScript(() => {
-    window.__SHIP_BUILDER_TEST__ = { trialSpeed: 4 };
+    window.__SHIP_BUILDER_TEST__ = { trialSpeed: 12 };
   });
   await page.goto("/ship-builder");
   await expect(
@@ -54,13 +54,15 @@ async function walkIntoTheWater(page: Page) {
   await expect(page.getByRole("dialog", { name: "Splash!" })).toBeVisible(LONG);
 }
 
-/** Taps See how she did and reads the result card's escape line. */
-async function escapeLineAfterSeeing(page: Page) {
-  await page.getByRole("button", { name: "See how she did" }).click();
-  await expect(
-    page.getByRole("region", { name: "Sea trial result" })
-  ).toBeVisible(LONG);
-  return page.getByTestId("escape-line");
+/**
+ * How the escape ended, from the store. The result card's line for each
+ * ending is unit-tested in SeaTrialResult's tests, so the trial is not
+ * played out to the card here.
+ */
+async function lastEscapeEnding(page: Page) {
+  return page.evaluate(
+    () => window.__shipBuilderStore!.getState().lastEscape?.ending ?? null
+  );
 }
 
 test.describe("Ship Builder escape", () => {
@@ -103,9 +105,7 @@ test.describe("Ship Builder escape", () => {
     await expect(
       page.getByRole("dialog", { name: "You're safe!" })
     ).toBeVisible(LONG);
-    await expect(await escapeLineAfterSeeing(page)).toHaveText(
-      "You escaped in a lifeboat"
-    );
+    expect(await lastEscapeEnding(page)).toBe("deck");
   });
 
   test("swim until a fishing boat fishes you out", async ({ page }) => {
@@ -129,9 +129,7 @@ test.describe("Ship Builder escape", () => {
       page.getByRole("dialog", { name: "Brrr! Human ice cube!" })
     ).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("meter", { name: "Warmth" })).toHaveCount(0);
-    await expect(await escapeLineAfterSeeing(page)).toContainText(
-      "fished you out"
-    );
+    expect(await lastEscapeEnding(page)).toBe("frozen");
   });
 
   test("swim to a boat and climb in", async ({ page }) => {
@@ -151,8 +149,6 @@ test.describe("Ship Builder escape", () => {
     await expect(
       page.getByRole("dialog", { name: "Saved from the sea!" })
     ).toBeVisible();
-    await expect(await escapeLineAfterSeeing(page)).toHaveText(
-      "You swam to a lifeboat and climbed in"
-    );
+    expect(await lastEscapeEnding(page)).toBe("swim");
   });
 });
