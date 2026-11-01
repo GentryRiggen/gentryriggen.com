@@ -8,6 +8,10 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 /** Seconds of yard time (the yard is the first phase, so the run clock). */
 const year = (run: RunState, n: number): boolean => run.time >= n * 360;
 
+/** A visitor's line fires the moment it arrives. */
+const arrives = (id: string) => (run: RunState) =>
+  run.flags[`here-${id}`] === true;
+
 export const yard: StoryMessage[] = [
   {
     id: "yard-hello",
@@ -168,13 +172,37 @@ export const yard: StoryMessage[] = [
   {
     id: "yard-late-2",
     phase: PHASE_YARD,
-    when: (run) => run.time >= 1620,
+    when: (run) => run.time >= 1560,
     text: "The hedge has grown a door. Behind it, the bees have built a second city. They send a polite buzz of thanks every morning at six.",
   },
   {
     id: "yard-late-3",
     phase: PHASE_YARD,
-    when: (run) => run.time >= 1890,
+    when: (run) => run.time >= 1740,
     text: "From the top of the shed you can see the whole yard, green from fence to fence, and past the fence, a field waiting for its turn. The robot hums. Ever onward.",
+  },
+  {
+    id: "visitor-ladybirds",
+    phase: PHASE_YARD,
+    when: arrives("visitor-ladybirds"),
+    text: "A parade of ladybirds files across the fence, all in step, and settles on the tomatoes. They leave a small pile of seeds behind, which is very polite of them.",
+  },
+  {
+    id: "visitor-neighbor",
+    phase: PHASE_YARD,
+    when: arrives("visitor-neighbor"),
+    text: "The neighbor arrives with a ladder, a bucket and a plan to help with the apples. She leaves you a handful of seeds from her own garden and a very long story about her cat.",
+  },
+  {
+    id: "yard-news-1",
+    phase: PHASE_YARD,
+    when: (run) => owned(run, "bee-hive") >= 2,
+    text: "NEWS: Local bees report that the new flowers are the best in the street. A neighbor says her tomatoes have started to wave. Experts say it is probably the wind.",
+  },
+  {
+    id: "yard-news-2",
+    phase: PHASE_YARD,
+    when: (run) => run.time >= 1500,
+    text: "NEWS: A hedge is now taller than the house it belongs to. The council has asked it to stop. The hedge says it will think about it, and then grows another inch.",
   },
 ];

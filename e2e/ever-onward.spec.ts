@@ -77,7 +77,7 @@ test.describe("Ever Onward", () => {
         .getByRole("button", { name: "Continue" })
         .click();
       await page.getByTestId("lm-tap").click();
-      await expect(page.getByText(/^\+\d+$/).first()).toBeVisible();
+      await expect(page.getByText(/^\+\d+(\.\d+)?$/).first()).toBeVisible();
       await expect(page.getByTestId("lm-scene")).toBeVisible();
     }
   );

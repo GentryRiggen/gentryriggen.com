@@ -8,7 +8,9 @@ import {
   type GrowSceneInfo,
 } from "@/lib/ever-onward/universes/grow/scene";
 import { pixelClass } from "../../game/retro/retroStyles";
-import type { SceneProps } from "../../universes/types";
+import type { LastBuy, SceneProps } from "../../universes/types";
+import SceneCallout from "./SceneCallout";
+import YardLayer from "./YardLayer";
 import { SCENE_LABELS, captionFor } from "./captions";
 
 /** Keeps the last info object while the numbers match, so the SVG skips renders. */
@@ -20,53 +22,6 @@ function useStableInfo(run: RunState): GrowSceneInfo {
     return info;
   }
   return stable;
-}
-
-/** Window box: sill, box, soil and a seedling in a pot. */
-function YardArt({ info }: { info: GrowSceneInfo }) {
-  return (
-    <g>
-      <rect x="0" y="0" width="400" height="300" fill="#bde6ff" />
-      <rect x="60" y="30" width="280" height="170" fill="#e6f6ff" />
-      <rect x="0" y="200" width="400" height="100" fill="#8b5e34" />
-      <rect x="110" y="170" width="180" height="36" fill="#a0522d" />
-      <rect x="110" y="170" width="180" height="10" fill="#5a3a1a" />
-      <rect
-        x="196"
-        y={150 - info.scaling * 4}
-        width="8"
-        height="26"
-        fill="#3f9d3a"
-      />
-      <ellipse
-        cx="190"
-        cy={150 - info.scaling * 4}
-        rx="12"
-        ry="6"
-        fill="#58bf4f"
-      />
-      <ellipse
-        cx="210"
-        cy={146 - info.scaling * 4}
-        rx="12"
-        ry="6"
-        fill="#58bf4f"
-      />
-      {Array.from({ length: Math.min(info.helpers, 8) }, (_, i) => (
-        <circle key={i} cx={120 + i * 22} cy="130" r="4" fill="#4aa8ff" />
-      ))}
-      {info.ended && (
-        <rect
-          x="100"
-          y="120"
-          width="200"
-          height="50"
-          fill="#9ad7ff"
-          opacity="0.4"
-        />
-      )}
-    </g>
-  );
 }
 
 /** Field: rows of green under the sky. */
@@ -140,7 +95,7 @@ function SeedArt({ info }: { info: GrowSceneInfo }) {
 }
 
 const ART = {
-  yard: YardArt,
+  yard: YardLayer,
   farm: FarmArt,
   world: WorldArt,
   seed: SeedArt,
@@ -148,8 +103,10 @@ const ART = {
 
 const GrowSceneView = memo(function GrowSceneView({
   info,
+  lastBuy,
 }: {
   info: GrowSceneInfo;
+  lastBuy: LastBuy | null;
 }) {
   const Art = ART[info.phase];
   return (
@@ -163,6 +120,7 @@ const GrowSceneView = memo(function GrowSceneView({
         className="block h-full w-full"
       >
         <Art info={info} />
+        {lastBuy && <SceneCallout key={lastBuy.id} buy={lastBuy} info={info} />}
       </svg>
       <p
         aria-hidden="true"
@@ -176,6 +134,6 @@ const GrowSceneView = memo(function GrowSceneView({
 });
 
 /** The Make It Grow picture: one simple drawing per phase. */
-export default function GrowScene({ run }: SceneProps) {
-  return <GrowSceneView info={useStableInfo(run)} />;
+export default function GrowScene({ run, lastBuy = null }: SceneProps) {
+  return <GrowSceneView info={useStableInfo(run)} lastBuy={lastBuy} />;
 }

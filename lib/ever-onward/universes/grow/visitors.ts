@@ -4,14 +4,43 @@ import type {
   TeaserDef,
   VisitorDef,
 } from "../../engine/types";
-import { FULL_GROWTH, PHASE_SEED } from "./resources";
+import { formatNumber } from "../../engine/format";
+import { FULL_GROWTH, PHASE_SEED, PHASE_YARD } from "./resources";
+import { incomePerSecond } from "./tick";
 
 export const RETURN_VISITOR_ID = "seed-return";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
-/** The one arrival of the skeleton: the pot is grown, and someone comes back. */
+/** A small thank-you: twelve seconds of the garden's work, never under 25. */
+const gift = (run: RunState): number =>
+  Math.max(25, Math.floor(incomePerSecond(run) * 12));
+
+const giftSeeds = (run: RunState): void => {
+  if (run.phase === 0) run.resources.seeds += gift(run);
+};
+
+const giftSeedsText = (run: RunState): string =>
+  run.phase === 0 ? `${formatNumber(gift(run))} seeds` : "a warm thank-you";
+
+/** The arrivals of the skeleton: the pot is grown, and someone comes back. */
 export const VISITORS: readonly VisitorDef[] = [
+  {
+    id: "visitor-ladybirds",
+    phase: PHASE_YARD,
+    name: "A parade of ladybirds",
+    arrivesWhen: (run) => owned(run, "bee-hive") >= 4,
+    giftText: giftSeedsText,
+    give: giftSeeds,
+  },
+  {
+    id: "visitor-neighbor",
+    phase: PHASE_YARD,
+    name: "The neighbor with the ladder",
+    arrivesWhen: (run) => owned(run, "orchard") >= 1,
+    giftText: giftSeedsText,
+    give: giftSeeds,
+  },
   {
     id: RETURN_VISITOR_ID,
     phase: PHASE_SEED,
