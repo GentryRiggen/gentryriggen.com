@@ -526,3 +526,57 @@ Chore rate: coast 0.75 a minute, night 0.7, sky 0.5, last 0.05.
 Keep. Scorecard floors raised to 57 and 79 (new score minus 2). Next round:
 close the 8 gates (reveal beats in the three long gaps, teaser goals for the
 dawdler), then a playtest with Gentry on the new last phase.
+
+## Round 2: reviewer retro (Opus)
+
+**Player feel**
+
+- **Coast:** the first 10 minutes are lovely. 10:31 to 20:41 is the flattest stretch in the game: one scene beat in 10 minutes, and purchases are mostly keepers at 3–9% each ("keeper, keeper").
+- **Night:** good. The news ticker carries it, and the 13% claim gap shows the rush matters.
+- **Sky:** a strong opening. From 75:41 on, probe, copy, engines and nav each read as about 0%, because they pay off later. From 90:35 to 97:24 the tapper's shop is empty (18.6% of sky samples have nothing visible). This is the real cause of the sky problems.
+- **Last:** the arc lands ("Nobody says thank you" on the coast, then "A child at the bow waves"). Problems:
+  - The let-goes tick like a metronome, one about every 110 s.
+  - The flame sits at 92–97% from minute 10 on.
+  - The last 3:20 is "steer while waiting for resolve", so a timer gates the climax.
+  - The first-ship log always reads "0:00, calm night" (tick.ts:171).
+
+**Real or measurement artifact**
+
+- **M3 is mostly an artifact.** All 201 of the dawdler's "no goal" samples had an affordable meaningful buy on screen.
+  - **Fix:** in score.ts:314-319, gate on goals + affordable ≥ 1, and keep the 2–4 band on goals.
+  - **Add a gate:** fail if nothing at all is visible for more than 3% of the time. The tapper's empty sky shop is real.
+- **M1 is mostly real.** Story beats already count (sim.ts:264), and coast 10:31–20:41 and sky 70:51–74:51 are genuinely quiet.
+  - Count the first purchase of a scene-changing upgrade as a beat.
+  - Count a teaser once, on first sight, and only if it is visible for at least 30 s before it unlocks.
+  - Keep the 180 s gate.
+- **M4 sky is half artifact.** Probe, copy, engines and nav compound, while sim.ts:172 and :382 read income at the instant of purchase.
+  - **Fix:** effectRatio = max(instant ratio, 60 s forward ratio against a no-buy clone).
+  - **The real half:** collectors at 5% each across 10 levels (upgrades.ts:565).
+
+**Round 3, in priority order**
+
+1. **"Visitors" mini-events and "someday" teasers.**
+   - Visitors are gentle one-off arrivals, unlocked by milestones and never by timers. Each waits until tapped, gives a small gift, and goes in a logbook where nothing can be missed:
+     - coast: a mail boat (about 12 min) and whale-watchers (about 18 min);
+     - night: a town fair;
+     - sky: a comet, then a strange signal.
+   - Teasers: relay-2 and relay-3 (upgrades.ts:650, :655) shown greyed from the start with a hint ("when 700 stars are left"), plus a star-countdown bar.
+   - Expected: M1 gaps under 180 s, the M3 tapper sky gap closed, M12 sky from 0.50 to about 0.85.
+2. **Tending pays a bonus instead of a tax.**
+   - Keep the 0.6 floors.
+   - A "steady glow" of +15% while the grid or heading stays above 90%, shown as cities sparkling or probes in formation.
+   - Expected: tend gap from 3.5% / 2.7% to about 8–10%, idle/tapper about 1.9x.
+   - Sky felt effect: collectors become 6 bigger steps, with a "mirror field" scene at 3 and 6. Expected median ≥ 10%.
+3. **The boat drives the climax.**
+   - Once the boat appears, a true heading earns resolve (1.5x when true, never below 1x), so the last two goodbyes come about 40% faster for a player who steers.
+   - When the flame is low, the sky dims visibly. This is feedback, not a loss.
+   - At the start the kid picks one of 3 lantern colours, with no text input and stored locally only. The final boat carries that lantern, which replaces the meaningless timestamp.
+
+**Kid-safety**
+
+- **Passes:** rush and flare wait until claimed, oil is honest, there are no streaks, away-timers or monetisation, the boat can never be lost, and Balance only shows below 75%.
+- **Watch:**
+  - The "NEWS: ..." and "sleeping badly" lines are slightly eerie, which is fine for 8 and up.
+  - Letting lights go may read as sad, but the ending resolves it warmly.
+  - Keep the colour pick out of trackGame (gameplay analytics).
+  - Visitors must never become a collection you can miss: no rarity tiers, no "only today".
