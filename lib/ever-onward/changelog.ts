@@ -25,6 +25,7 @@ export const CHANGELOG: readonly Release[] = [
       "A Streetlights setting: bright streets pay more power, soft ones light more towns and give your crews time to learn. The best setting changes as the night goes on",
       "The Weather Desk is a real job now. Place your repair crews, move them as the forecast firms up, and fix towns that go dark",
       "Fewer quiet stretches: there is almost always something worth deciding",
+      "Later power upgrades in the night now cost a bit more, so a game saved mid-night will find them dearer than before",
     ],
   },
   {
