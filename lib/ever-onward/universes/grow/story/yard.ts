@@ -34,7 +34,7 @@ export const yard: StoryMessage[] = [
     id: "yard-summer",
     phase: PHASE_YARD,
     when: (run) => seasonOf(run) === "summer",
-    text: "Summer! Everything grows twice as fast when the sun stays out late. The bees have started to notice the flowers.",
+    text: "Summer! The sprinklers and bees work extra hard when the sun stays out late. The bees have started to notice the flowers.",
   },
   {
     id: "yard-autumn",
@@ -58,7 +58,7 @@ export const yard: StoryMessage[] = [
     id: "yard-barrel",
     phase: PHASE_YARD,
     when: (run) => owned(run, "rain-barrel") >= 1,
-    text: "The rain barrel fills up with a happy plink, plink, plink. Now a dry week is just a week.",
+    text: "The rain barrel fills up with a happy plink, plink, plink. Now a dry week is much easier to wait out.",
   },
   {
     id: "yard-bees",
@@ -70,7 +70,7 @@ export const yard: StoryMessage[] = [
     id: "yard-gardener",
     phase: PHASE_YARD,
     when: (run) => owned(run, "gardener") >= 1,
-    text: "A small gardener bot trundles down the row with a tidy little rake. It picks everything ripe and hums while it does. Ever onward.",
+    text: "A small gardener bot trundles down the row with a tidy little rake. It picks a good share of the ripe produce and hums while it does. Ever onward.",
   },
   {
     id: "yard-hives",
@@ -155,7 +155,7 @@ export const yard: StoryMessage[] = [
     id: "yard-mid",
     phase: PHASE_YARD,
     when: (run) => run.time >= 960,
-    text: "Somebody has hung a little wind chime from the apple branch. Nobody admits to it. It rings whenever the garden does something particularly well, which is often.",
+    text: "Somebody has hung a little wind chime from the shed roof. Nobody admits to it. It rings whenever the garden does something particularly well, which is often.",
   },
   {
     id: "yard-late-1",

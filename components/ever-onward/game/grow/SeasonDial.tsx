@@ -37,9 +37,9 @@ function boostLine(season: Season, run: PanelProps["run"]): string {
   if (season === "winter")
     return "A resting season. Nothing is lost, and spring is next.";
   const best = Math.max(plant, grow, harvest);
-  if (best === harvest) return "Picking by hand pays double.";
-  if (best === grow) return "Sprinklers and bees work half again as hard.";
-  return "Every tap plants half as many seeds again.";
+  if (best === harvest) return "Picking by hand pays extra.";
+  if (best === grow) return "Sprinklers and bees work extra hard.";
+  return "Every tap plants extra seeds.";
 }
 
 /** The year as a dial: where the garden is in it, and what that helps. */

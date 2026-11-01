@@ -87,7 +87,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: "rain-barrel",
     name: "A rain barrel",
     description:
-      "It catches the rain and keeps it for a dry spell, so the garden never gets thirsty.",
+      "It catches the rain and keeps it for a dry spell, so the garden gets thirsty less often.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 90,
@@ -160,7 +160,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: "gardener",
     name: "A gardener bot",
     description:
-      "A tidy little robot that picks the ripe produce, row after row.",
+      "A tidy little robot that picks some of the ripe produce, row after row.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 4500,

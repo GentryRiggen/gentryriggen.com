@@ -35,7 +35,10 @@ describe("BeeDance", () => {
       "data-stage",
       "foraging"
     );
-    expect(screen.getByTestId("lm-bees-follow-0")).toBeDisabled();
+    expect(screen.getByTestId("lm-bees-follow-0")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
   });
 
   it("follows a patch on click and calls onAct with bees-follow-<n>", async () => {
@@ -65,5 +68,25 @@ describe("BeeDance", () => {
       "The bee waggles straight up, a short way off."
     );
     expect(describeDance(130, 0.8)).toMatch(/down and to the right, far/);
+  });
+
+  it("keeps keyboard focus on a patch button across a follow", async () => {
+    const run = dancingRun();
+    const id = `lm-bees-follow-${danceHint(run)}`;
+    const { rerender } = render(
+      <BeeDance def={def} run={run} onAct={jest.fn()} />
+    );
+    screen.getByTestId(id).focus();
+    expect(screen.getByTestId(id)).toHaveFocus();
+    const followed = performAction(def, run, followActionId(danceHint(run)));
+    rerender(<BeeDance def={def} run={followed} onAct={jest.fn()} />);
+    expect(screen.getByTestId(id)).toHaveFocus();
+  });
+
+  it("announces the result as a status", () => {
+    const run = dancingRun();
+    const followed = performAction(def, run, followActionId(danceHint(run)));
+    render(<BeeDance def={def} run={followed} onAct={jest.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/bees were right/);
   });
 });

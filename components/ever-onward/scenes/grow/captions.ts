@@ -15,11 +15,11 @@ export function captionFor(info: GrowSceneInfo): string {
     }
     case "farm":
       return info.helpers > 0
-        ? `Rows of green · ${info.helpers} scarecrows`
+        ? `Rows of green · ${plural(info.helpers, "scarecrow")}`
         : "A small field, waiting";
     case "world":
       return info.helpers > 0
-        ? `The world, greening · ${info.helpers} windbreaks`
+        ? `The world, greening · ${plural(info.helpers, "windbreak")}`
         : "The world, with bare spots";
     default:
       return `One small pot · ${info.growth}% grown`;
@@ -28,7 +28,7 @@ export function captionFor(info: GrowSceneInfo): string {
 
 /** The label a screen reader gets for each phase's picture. */
 export const SCENE_LABELS: Readonly<Record<GrowSceneInfo["phase"], string>> = {
-  yard: "A seed in a pot on a windowsill, with a window box beside it",
+  yard: "A backyard seen through a window, with garden beds, a fence and a window box on the sill",
   farm: "A field of green rows under a wide sky",
   world: "A round globe with green patches spreading across it",
   seed: "One small pot with a shoot growing out of it",

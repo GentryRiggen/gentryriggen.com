@@ -253,10 +253,7 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
         </div>
       </div>
 
-      <ul
-        key={`${dancesSoFar(run)}-${dancing}`}
-        className="bee-reveal-3 grid grid-cols-2 gap-2"
-      >
+      <ul className="bee-reveal-1 grid grid-cols-2 gap-2">
         {PATCHES.map((patch, i) => {
           const id = followActionId(i);
           const isDoable = canPerformAction(def, run, id);
@@ -266,11 +263,11 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
               <button
                 type="button"
                 data-testid={`lm-bees-follow-${i}`}
-                disabled={!isDoable}
+                aria-disabled={!isDoable}
                 onClick={() => {
                   if (isDoable) onAct(id);
                 }}
-                className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] sm:gap-3 sm:px-3 sm:text-[10px] transition-transform disabled:cursor-not-allowed ${retroFocusClass} ${
+                className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] sm:gap-3 sm:px-3 sm:text-[10px] transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${
                   dancing
                     ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[4px_4px_0_#78350f] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none"
                     : "border-slate-600 bg-slate-800 text-slate-400 shadow-[4px_4px_0_#0f172a]"
@@ -300,6 +297,8 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
       {resultLine && (
         <p
           data-testid="lm-bees-result"
+          role="status"
+          aria-live="polite"
           className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
         >
           {resultLine}
