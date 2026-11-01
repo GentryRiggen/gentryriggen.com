@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import {
   CROPS,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/ever-onward/universes/grow/market";
 import type { PanelProps } from "../../universes/types";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
+import useRoving from "./useRoving";
 
 /** Where each crop's order sits, as a share of the widest bar. */
 const barWidth = (demand: number): number =>
@@ -67,39 +67,18 @@ function resultLine(run: PanelProps["run"]): string {
  * and nothing is ever lost; the orders drift on their own, so check back.
  */
 export default function MarketPanel({ def, run, onAct }: PanelProps) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [focus, setFocus] = useState<number | null>(null);
+  const { radioProps } = useRoving(
+    CROPS.length,
+    CROPS.indexOf(plantedCrop(run))
+  );
   if (run.phase !== 1 || run.complete) return null;
 
   const planted = plantedCrop(run);
   const best = bestCrop(run);
-  const rovingIndex = focus ?? CROPS.indexOf(planted);
   const result = resultLine(run);
-
-  const move = (to: number) => {
-    const next = (to + CROPS.length) % CROPS.length;
-    setFocus(next);
-    refs.current[next]?.focus();
-  };
 
   // Deliberate: arrows only move focus. Planting has a cost (the new crop
   // sprouts for a moment), so it takes Enter, Space or a click to choose.
-  const onKeyDown = (e: KeyboardEvent, i: number) => {
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-      e.preventDefault();
-      move(i + 1);
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-      e.preventDefault();
-      move(i - 1);
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      move(0);
-    } else if (e.key === "End") {
-      e.preventDefault();
-      move(CROPS.length - 1);
-    }
-  };
-
   return (
     <section
       aria-label="The market"
@@ -131,18 +110,13 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
           return (
             <button
               key={crop}
-              ref={(el) => {
-                refs.current[i] = el;
-              }}
               type="button"
               role="radio"
               aria-checked={checked}
               aria-label={CROP_LABELS[crop]}
               aria-describedby={`lm-market-${crop}-order`}
-              tabIndex={i === rovingIndex ? 0 : -1}
               data-testid={`lm-market-${crop}`}
-              onFocus={() => setFocus(i)}
-              onKeyDown={(e) => onKeyDown(e, i)}
+              {...radioProps(i)}
               onClick={() => {
                 if (!checked && doable) onAct(plantActionId(crop));
               }}

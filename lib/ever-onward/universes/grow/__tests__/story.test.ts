@@ -82,3 +82,28 @@ describe("Grow farm story", () => {
     }
   });
 });
+
+describe("Grow world story", () => {
+  const worldLines = def.story.filter((m) => m.phase === "world");
+
+  it("reaches every world line in a realistic run", () => {
+    const { finalRun } = simulate(def, {
+      maxSeconds: 4 * 3600,
+      step: 1,
+      strategy: growBots().realistic,
+      stopWhen: (run) => run.phase >= 3,
+    });
+    const missing = worldLines
+      .map((m) => m.id)
+      .filter((id) => !finalRun.story.includes(id));
+    // Biome-specific lines depend on what the player chose to spread.
+    const skippable = [
+      "world-thirsty",
+      "world-forest",
+      "world-jungle",
+      "world-meadow",
+      "world-wetland",
+    ];
+    expect(missing.filter((id) => !skippable.includes(id))).toEqual([]);
+  });
+});

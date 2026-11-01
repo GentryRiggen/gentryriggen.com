@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import {
@@ -21,6 +20,7 @@ import {
 import { incomePerSecond } from "@/lib/ever-onward/universes/grow/tick";
 import type { PanelProps } from "../../universes/types";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
+import useRoving from "./useRoving";
 
 const clock = (seconds: number): string => {
   const whole = Math.max(0, Math.ceil(seconds));
@@ -74,11 +74,13 @@ function PumpkinPicture({ size, shine }: { size: number; shine: number }) {
  * waits as long as it takes.
  */
 export default function CountyFair({ def, run, onAct }: PanelProps) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [focus, setFocus] = useState<number | null>(null);
+  const stage = fairStage(run);
+  const { radioProps } = useRoving(
+    PUMPKIN_COUNT,
+    stage === "judging" ? Number(run.resources.frPicked ?? 0) : 0
+  );
   if (!isFairOpen(run) || run.complete) return null;
 
-  const stage = fairStage(run);
   const on = stage === "open";
   const judging = stage === "judging";
   const income = incomePerSecond(run);
@@ -86,28 +88,6 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
   const pumpkins = pumpkinsOnOffer(run);
   const resultLine = fairResultLine(run);
   const fairs = fairsSoFar(run);
-  const rovingIndex =
-    focus ?? (judging ? Number(run.resources.frPicked ?? 0) : 0);
-  const move = (to: number) => {
-    const next = (to + PUMPKIN_COUNT) % PUMPKIN_COUNT;
-    setFocus(next);
-    refs.current[next]?.focus();
-  };
-  const onKeyDown = (e: KeyboardEvent, i: number) => {
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-      e.preventDefault();
-      move(i + 1);
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-      e.preventDefault();
-      move(i - 1);
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      move(0);
-    } else if (e.key === "End") {
-      e.preventDefault();
-      move(PUMPKIN_COUNT - 1);
-    }
-  };
   const earned = run.resources.frEarned ?? 0;
   const shown = run.resources.frShown ?? 0;
 
@@ -170,19 +150,14 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
           return (
             <button
               key={id}
-              ref={(el) => {
-                refs.current[i] = el;
-              }}
               type="button"
               role="radio"
               aria-checked={picked}
               aria-disabled={!doable}
               aria-label={`Pumpkin ${i + 1}`}
               aria-describedby={`lm-fair-${i}-info`}
-              tabIndex={i === rovingIndex ? 0 : -1}
               data-testid={`lm-fair-enter-${i}`}
-              onFocus={() => setFocus(i)}
-              onKeyDown={(e) => onKeyDown(e, i)}
+              {...radioProps(i)}
               onClick={() => {
                 if (doable) onAct(id);
               }}

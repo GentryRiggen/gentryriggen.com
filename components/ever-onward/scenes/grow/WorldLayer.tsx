@@ -133,6 +133,28 @@ function biomeFor(pick: number, info: GrowSceneInfo): BiomeKey {
   return info.biome;
 }
 
+/**
+ * Each green cell's biome, fixed at the moment it greens, so old patches keep
+ * their look when the player points the birds somewhere new.
+ */
+function useCellBiomes(
+  info: GrowSceneInfo,
+  greened: number
+): readonly (BiomeKey | undefined)[] {
+  const [fixed, setFixed] = useState<readonly (BiomeKey | undefined)[]>([]);
+  const fresh = CELLS.some(
+    (c, i) => c.rank * CELLS.length < greened && fixed[i] === undefined
+  );
+  if (!fresh) return fixed;
+  const next = CELLS.map((c, i) =>
+    c.rank * CELLS.length < greened
+      ? (fixed[i] ?? biomeFor(c.pick, info))
+      : undefined
+  );
+  setFixed(next);
+  return next;
+}
+
 /** True once the phase card is gone, so the pull-back is seen, not hidden. */
 function useCardGone(): boolean {
   const check = () =>
@@ -153,9 +175,18 @@ function useCardGone(): boolean {
   return gone;
 }
 
+/**
+ * Only the first two clouds and the migrating V drift forever: WebKit on an
+ * old iPad repaints the whole SVG for every animated group.
+ */
+const DRIFTING_CLOUDS = 2;
+
 function Cloud({ x, y, i }: { x: number; y: number; i: number }) {
+  const drifts = i < DRIFTING_CLOUDS;
   return (
-    <g className={`gw-drift ${i % 2 ? "[animation-delay:-5s]" : ""}`}>
+    <g
+      className={`${drifts ? "gw-drift" : ""} ${i % 2 ? "[animation-delay:-5s]" : ""}`}
+    >
       <rect x={x} y={y} width="26" height="7" fill="#fff" fillOpacity="0.9" />
       <rect
         x={x + 6}
@@ -171,7 +202,7 @@ function Cloud({ x, y, i }: { x: number; y: number; i: number }) {
 
 function Flock({ x, y }: { x: number; y: number }) {
   return (
-    <g className="gw-drift [animation-delay:-8s]">
+    <g>
       {[0, 1, 2].map((k) => (
         <g key={k}>
           <rect
@@ -258,6 +289,7 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
   const roads = Math.round(info.roadsLeft * ROADS.length);
   const towns = Math.round(info.townsLeft * TOWNS.length);
   const bare = info.dry ? LAND_DRY : LAND;
+  const biomes = useCellBiomes(info, greened);
   const globeClass = `gw-globe ${gone ? "gw-pullback" : "gw-zoomed"}`;
   return (
     <g>
@@ -300,7 +332,7 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
           {CELLS.map((c, i) => {
             const green = c.rank * CELLS.length < greened;
             if (!green && !c.land) return null;
-            const biome = biomeFor(c.pick, info);
+            const biome = biomes[i] ?? biomeFor(c.pick, info);
             return (
               <g key={i}>
                 <rect

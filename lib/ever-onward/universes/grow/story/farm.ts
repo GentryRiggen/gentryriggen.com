@@ -1,4 +1,5 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
+import { visitorHereFlag } from "../../../engine/engine";
 import { plantingsSoFar } from "../market";
 import { PHASE_FARM } from "../resources";
 import { phaseTime } from "../seasons";
@@ -12,7 +13,7 @@ const after = (run: RunState, minutes: number): boolean =>
 
 /** A visitor's line fires the moment it arrives. */
 const arrives = (id: string) => (run: RunState) =>
-  run.flags[`here-${id}`] === true;
+  run.flags[visitorHereFlag(id)] === true;
 
 export const farm: StoryMessage[] = [
   {

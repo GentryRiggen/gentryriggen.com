@@ -73,7 +73,7 @@ export const world: StoryMessage[] = [
     id: "world-time-2",
     phase: PHASE_WORLD,
     when: (run) => after(run, 5),
-    text: "NEWS: A new forest has opened a short walk from the old market. Locals say it is lovely, and also, gently, in the market.",
+    text: "NEWS: A new forest has opened a short walk from the old market. Locals say it is lovely, and it has grown right into the market.",
   },
   {
     id: "world-meadow",
@@ -222,25 +222,26 @@ export const world: StoryMessage[] = [
   {
     id: "world-time-14",
     phase: PHASE_WORLD,
-    when: (run) => after(run, 30),
+    when: (run) => covered(run, 0.85),
     text: "A weather vane turns slowly on a roof that is mostly leaves now. It points toward the horizon, as if everyone had gone that way and it were keeping an eye out.",
   },
   {
     id: "world-time-15",
     phase: PHASE_WORLD,
-    when: (run) => after(run, 33),
+    when: (run) => covered(run, 0.92),
     text: "Somewhere under all that green is a small pot on a small windowsill, and the robot has just remembered it. It sets down its watering can and looks for the way.",
   },
   {
     id: "world-time-16",
     phase: PHASE_WORLD,
-    when: (run) => after(run, 36),
+    // The vault card is on offer: sky seeders and a mostly green world.
+    when: (run) => owned(run, "sky-seeder") >= 2 && covered(run, 0.8),
     text: "The seed vault plans are ready. One seed from everything, kept safe for later, in case anyone wants to start again.",
   },
   {
     id: "world-time-17",
     phase: PHASE_WORLD,
-    when: (run) => after(run, 39),
+    when: (run) => covered(run, 0.96),
     text: "A very small, very green sprout pushes up through the cobbles outside the old town hall. The robot tips its watering can toward it, just a drop.",
   },
   {

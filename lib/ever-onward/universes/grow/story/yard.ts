@@ -17,7 +17,7 @@ export const yard: StoryMessage[] = [
   {
     id: "yard-hello",
     phase: PHASE_YARD,
-    text: "A seed, a pot, a bit of sun. You press a seed into the soil and it goes dark and soft. Somewhere under it, something is thinking about growing.",
+    text: "A seed, a pot, a bit of sun. You press a seed into the soil, and the soil closes over it like a blanket. Somewhere under it, something is thinking about growing.",
   },
   {
     id: "yard-sprinkler",

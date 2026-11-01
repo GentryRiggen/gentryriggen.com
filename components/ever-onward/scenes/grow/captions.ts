@@ -42,6 +42,6 @@ export const SCENE_LABELS: Readonly<Record<GrowSceneInfo["phase"], string>> = {
   yard: "A backyard garden with raised beds, a fence, a greenhouse and bees",
   farm: "A farm with rows of crops in fields, a barn, and a town on the horizon",
   world:
-    "A round globe seen from far away, with green spreading across it as the old roads and towns turn to meadow and woods",
+    "A round globe seen from far away, with green spreading across it, with meadows and woods",
   seed: "One small pot with a shoot growing out of it",
 };

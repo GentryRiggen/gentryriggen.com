@@ -508,7 +508,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: FLOCK_LEADER_ID,
     name: "A flock leader",
     description:
-      "A wise old goose who leads a waiting flock to the greenest place she knows when you are busy. Your own choice still grows more.",
+      "A wise old goose who leads a waiting flock to the place that needs it most when you are busy. Your own choice still grows more.",
     phases: [PHASE_WORLD],
     currency: "green",
     baseCost: 900000,
