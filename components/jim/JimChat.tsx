@@ -15,8 +15,10 @@ import { ArrowUp, Check, Square, Volume2 } from "lucide-react";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
+import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
+import usePersonas from "@/components/jim/usePersonas";
 import useReadAloud from "@/components/jim/useReadAloud";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
@@ -259,7 +261,12 @@ export default function JimChat({
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
   const reader = useReadAloud(getToken, api);
-  const { stop: stopReading } = reader;
+  const { stop: stopReading, setArtist } = reader;
+  const personas = usePersonas(getToken, api);
+  // The lock screen names whoever Jim is speaking as.
+  useEffect(() => {
+    setArtist(personas.activeName ?? "Jim");
+  }, [personas.activeName, setArtist]);
   // The latest auto-read, for the turn that outlives the render it began in.
   const readNewRef = useRef(reader.readNew);
   useLayoutEffect(() => {
@@ -587,6 +594,7 @@ export default function JimChat({
         onTab={showTab}
         menuItems={[
           { label: "New chat", onSelect: newChat },
+          personas.menuItem,
           ...(reader.menuItem ? [reader.menuItem] : []),
           ...(briefing.item ? [briefing.item] : []),
         ]}
@@ -798,6 +806,20 @@ export default function JimChat({
           </div>
         )}
       </div>
+      <PersonaSheet
+        personas={personas}
+        playingKey={reader.state.key}
+        onHear={
+          reader.supported
+            ? (persona) =>
+                reader.toggleSample(
+                  sampleKey(persona.id),
+                  persona.examples[0] ?? "",
+                  persona.voice ?? undefined
+                )
+            : null
+        }
+      />
       {briefing.notice}
     </div>
   );
