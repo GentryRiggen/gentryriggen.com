@@ -25,7 +25,7 @@ const MIN_BARREL_SHARE = 0.4;
 /** ... or this much when the lamp is nearly dry. */
 const MIN_DRY_BARREL_SHARE = 0.25;
 
-/** How long a look at the garden lasts, for the bots' deterministic skips. */
+/** Seconds in one stretch of attention for the garden (the bots' deterministic skips count these). */
 const GARDEN_WINDOW_SECONDS = 30;
 
 type OilChoice = (run: RunState, available: readonly string[]) => string[];

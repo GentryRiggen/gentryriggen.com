@@ -64,7 +64,7 @@ import {
   PICK_ACTION,
   WATER_ACTION,
   bloomCount,
-  bloomResolve,
+  pickWorthShown,
   canWaterNow,
   growingCount,
   isGardenOpen,
@@ -380,7 +380,7 @@ const PICK_BLOOMS: ActionDef = {
       detail:
         ready > 0
           ? `${ready} ${ready === 1 ? "flower is" : "flowers are"} ready: about +${formatNumber(
-              Math.round(ready * bloomResolve(resolvePerSecond(run)))
+              pickWorthShown(ready, resolvePerSecond(run))
             )} resolve.`
           : "Nothing in bloom yet. They wait for you when they are.",
       isBlocked: ready <= 0,

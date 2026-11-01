@@ -42,7 +42,10 @@ describe("MemoryGarden", () => {
     expect(screen.getAllByTestId("lm-garden-plot")).toHaveLength(2);
     expect(screen.getByLabelText(/^Porch lights: /)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Shop signs: /)).toBeInTheDocument();
-    expect(screen.queryByTestId("lm-garden-pick")).not.toBeInTheDocument();
+    const pick = screen.getByTestId("lm-garden-pick");
+    expect(pick).toHaveAttribute("aria-disabled", "true");
+    expect(pick).toHaveTextContent("Pick the blooms");
+    expect(pick).toHaveTextContent("No blooms yet");
   });
 
   it("waters on a tap, and keeps the button focusable while the can rests", async () => {
@@ -60,6 +63,8 @@ describe("MemoryGarden", () => {
     const resting = screen.getByTestId("lm-garden-water");
     expect(resting).toHaveAttribute("aria-disabled", "true");
     expect(resting).not.toBeDisabled();
+    expect(resting).toHaveTextContent("Water the garden");
+    expect(resting).toHaveTextContent("filling");
     onAct.mockClear();
     await userEvent.click(resting);
     expect(onAct).not.toHaveBeenCalled();

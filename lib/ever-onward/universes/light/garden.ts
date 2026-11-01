@@ -199,6 +199,21 @@ export const bloomResolve = (resolvePerSecond: number): number =>
     ? G.pickSeconds * Math.max(0, resolvePerSecond)
     : 0;
 
+/**
+ * What the pick button says a handful of blooms is worth: in steps of 5, so
+ * the number does not twitch as letting go's pace moves a little.
+ */
+export const pickWorthShown = (
+  blooms: number,
+  resolvePerSecond: number
+): number =>
+  blooms <= 0
+    ? 0
+    : Math.max(
+        5,
+        Math.round((blooms * bloomResolve(resolvePerSecond)) / 5) * 5
+      );
+
 /** Resolve still flowing in from the last blooms picked. */
 export const pendingResolve = (run: RunState): number => res(run, "gdPending");
 

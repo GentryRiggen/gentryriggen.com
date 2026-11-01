@@ -8,7 +8,7 @@ import {
   PICK_ACTION,
   WATER_ACTION,
   bloomCount,
-  bloomResolve,
+  pickWorthShown,
   gardenResultLine,
   growingCount,
   hasRainBarrel,
@@ -203,7 +203,8 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
   const picked = picksSoFar(run);
   const earned = run.resources.gdEarned ?? 0;
   const resultLine = gardenResultLine(run);
-  const pickWorth = Math.round(blooms * bloomResolve(resolvePerSecond(run)));
+  const pickWorth = pickWorthShown(blooms, resolvePerSecond(run));
+  const actionCount = (run.resources.gdWaterings ?? 0) + picked;
 
   const headline =
     blooms > 0
@@ -217,11 +218,11 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
     blooms > 0
       ? "Flowers wait for you. They never wilt."
       : "Water helps them grow, but they grow without it too.";
-  const waterLabel =
+  const waterNote =
     growing === 0
       ? "Nothing is thirsty"
       : isCanReady
-        ? "Water the garden"
+        ? "Thirsty plants grow faster"
         : "The can is filling…";
 
   return (
@@ -311,32 +312,40 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
               : "cursor-default border-slate-600 bg-slate-800 text-slate-300 shadow-[4px_4px_0_#0f172a]"
           }`}
         >
-          <span>{waterLabel}</span>
+          <span>Water the garden</span>
+          <span className="font-mono text-[11px] font-bold normal-case">
+            {waterNote}
+          </span>
         </button>
         <CanBar
           share={growing === 0 ? 1 : 1 - wait / TUNING.garden.waterCooldown}
         />
-        {blooms > 0 && (
-          <button
-            type="button"
-            data-testid="lm-garden-pick"
-            aria-disabled={!canPick}
-            onClick={() => {
-              if (canPick) onAct(PICK_ACTION);
-            }}
-            className={`${pixelClass} flex min-h-14 w-full touch-manipulation flex-col items-center justify-center gap-1 border-4 border-amber-200 bg-amber-400 px-3 py-2 text-xs text-amber-950 shadow-[4px_4px_0_#78350f,0_0_18px_rgba(251,191,36,0.7)] transition-transform hover:bg-amber-300 active:translate-y-0.5 active:shadow-none ${retroFocusClass}`}
-          >
-            <span>Pick the blooms</span>
-            <span className="font-mono text-[11px] font-bold normal-case">
-              about +{formatNumber(pickWorth)} resolve
-            </span>
-          </button>
-        )}
+        <button
+          type="button"
+          data-testid="lm-garden-pick"
+          aria-disabled={!canPick}
+          onClick={() => {
+            if (canPick) onAct(PICK_ACTION);
+          }}
+          className={`${pixelClass} flex min-h-14 w-full touch-manipulation flex-col items-center justify-center gap-1 border-4 px-3 py-2 text-xs transition-transform ${retroFocusClass} ${
+            canPick
+              ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[4px_4px_0_#78350f,0_0_18px_rgba(251,191,36,0.7)] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none"
+              : "cursor-default border-slate-600 bg-slate-800 text-slate-300 shadow-[4px_4px_0_#0f172a]"
+          }`}
+        >
+          <span>Pick the blooms</span>
+          <span className="font-mono text-[11px] font-bold normal-case">
+            {canPick
+              ? `about +${formatNumber(pickWorth)} resolve`
+              : "No blooms yet"}
+          </span>
+        </button>
       </div>
 
       <div role="status" aria-live="polite">
         {resultLine && (
           <p
+            key={actionCount}
             data-testid="lm-garden-result"
             className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
           >

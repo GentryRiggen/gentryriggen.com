@@ -353,7 +353,7 @@ const last: StoryMessage[] = [
     id: "last-barrel",
     phase: PHASE_LAST,
     when: (run) => owned(run, "rain-barrel") >= 1,
-    text: "A rain barrel stands by the flower beds. When you forget the garden, the barrel remembers. You can still do the watering yourself, if you like. Most gardeners do.",
+    text: "A rain barrel stands by the flower beds. When you are busy elsewhere, the barrel remembers. You can still do the watering yourself, if you like. Most gardeners do.",
   },
   {
     id: "last-halfway",
