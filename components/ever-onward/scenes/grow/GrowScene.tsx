@@ -15,6 +15,7 @@ import WorldLayer from "./WorldLayer";
 import SeedLayer from "./SeedLayer";
 import YardLayer from "./YardLayer";
 import { captionFor, sceneLabelFor } from "./captions";
+import CaptionLine from "../CaptionLine";
 
 /** Keeps the last info object while the numbers match, so the SVG skips renders. */
 function useStableInfo(run: RunState): GrowSceneInfo {
@@ -61,9 +62,9 @@ const GrowSceneView = memo(function GrowSceneView({
       <p
         aria-hidden="true"
         data-testid="lm-scene-caption"
-        className={`${pixelClass} pointer-events-none absolute bottom-0 left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[9px] leading-none text-lime-100 sm:text-[10px] lg:text-xs`}
+        className={`${pixelClass} pointer-events-none absolute bottom-0 left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[10px] leading-none text-lime-100 lg:text-xs`}
       >
-        {captionFor(info)}
+        <CaptionLine text={captionFor(info)} />
       </p>
     </div>
   );
