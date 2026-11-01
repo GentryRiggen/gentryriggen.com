@@ -17,7 +17,8 @@
  *   cached, so opaque or cross-origin responses never enter the cache.
  * - push: { title, body, url } becomes a notification (a generic one when
  *   the payload can't be read: iOS wants one for every push). A tap focuses
- *   an open /jim or opens it.
+ *   an open /jim or opens it; a URL with a query (/jim?say=quiz%20me) is kept,
+ *   and an open page is sent a JIM_SAY message instead.
  */
 
 const CACHE_PREFIX = "jim-shell-";
@@ -296,7 +297,12 @@ function notificationFor(data) {
       body: ok && typeof payload.body === "string" ? payload.body : "",
       icon: ICON,
       badge: ICON,
-      tag: NOTIFICATION_TAG,
+      tag:
+        ok &&
+        typeof payload.tag === "string" &&
+        /^jim-[a-z]{1,20}$/.test(payload.tag)
+          ? payload.tag
+          : NOTIFICATION_TAG,
       data: { url: targetUrl(ok ? payload.url : null) },
     },
   };
@@ -320,6 +326,10 @@ self.addEventListener("notificationclick", (event) => {
         const at = toSameOriginUrl(client.url);
         if (at && isPagePath(at.pathname) && "focus" in client) {
           await client.focus();
+          // /jim?say=… on an open page: no reload (it would drop a draft and
+          // abort a turn). The page is told, and applies it if its box is empty.
+          const say = new URL(url).searchParams.get("say");
+          if (say !== null) client.postMessage({ type: "JIM_SAY", say });
           return;
         }
       }

@@ -330,6 +330,26 @@ describe("push", () => {
   });
 
   it.each([
+    ["jim-quiz", "jim-quiz"],
+    ["Jim-Quiz", "jim-morning"],
+    ["other-tag", "jim-morning"],
+    [7, "jim-morning"],
+  ])(
+    "uses the payload's tag %p only when it's a jim- tag",
+    async (tag, want) => {
+      const worker = loadWorker();
+      await worker.dispatch("push", {
+        data: pushData({ title: "Quiz time", body: "b", url: "/jim", tag }),
+      });
+      const [, options] = worker.showNotification.mock.calls[0] as unknown as [
+        string,
+        { tag: string },
+      ];
+      expect(options.tag).toBe(want);
+    }
+  );
+
+  it.each([
     ["no payload", undefined],
     ["a payload that isn't JSON", pushData("not json{")],
     ["a payload with no title", pushData({ body: "x" })],
@@ -373,6 +393,72 @@ describe("notificationclick", () => {
     expect(notification.close).toHaveBeenCalled();
     expect(focus).toHaveBeenCalled();
     expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("keeps a /jim?say= query when opening", async () => {
+    const worker = loadWorker();
+    const url = `${PAGE}?say=quiz%20me`;
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(url);
+  });
+
+  it("tells an open /jim the say text instead of reloading it", async () => {
+    const worker = loadWorker();
+    const url = `${PAGE}?say=quiz%20me`;
+    const focus = jest.fn(async () => {});
+    const navigate = jest.fn(async () => {});
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus, navigate, postMessage },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(focus).toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_SAY",
+      say: "quiz me",
+    });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("does the same for a client the worker doesn't control yet", async () => {
+    const worker = loadWorker();
+    const postMessage = jest.fn();
+    // matchAll is asked for uncontrolled clients too; one has no navigate.
+    worker.matchAll.mockResolvedValue([
+      {
+        url: `${PAGE}?say=keep%20going`,
+        focus: jest.fn(async () => {}),
+        postMessage,
+      },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: {
+        close: jest.fn(),
+        data: { url: `${PAGE}?say=keep%20going` },
+      },
+    });
+    expect(worker.matchAll).toHaveBeenCalledWith(
+      expect.objectContaining({ includeUncontrolled: true })
+    );
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_SAY",
+      say: "keep going",
+    });
+  });
+
+  it("sends nothing to an open /jim for a plain tap", async () => {
+    const worker = loadWorker();
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus: jest.fn(async () => {}), postMessage },
+    ]);
+    await worker.dispatch("notificationclick", { notification: click() });
+    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("opens /jim when it isn't open", async () => {

@@ -11,11 +11,12 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, Check } from "lucide-react";
+import { ArrowUp, Check, Square, Volume2 } from "lucide-react";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
+import useReadAloud from "@/components/jim/useReadAloud";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
   JimError,
@@ -30,6 +31,11 @@ import {
   type ChatMessage,
 } from "@/lib/jim/history";
 import JimMarkdown from "@/lib/jim/markdown";
+import {
+  allowedSay,
+  clearSayFromLocation,
+  sayFromLocation,
+} from "@/lib/jim/say";
 
 interface JimChatProps {
   /** The signed-in user, whose chat is kept on this device. */
@@ -79,10 +85,38 @@ function stepLabel(step: string | null): string {
   return `${(step ?? "").replace(/[.…\s]+$/, "")}…`;
 }
 
+interface ListenButtonProps {
+  speaking: boolean;
+  onClick: () => void;
+}
+
+/** Reads a reply aloud, or stops it. 44px to tap, calm to look at. */
+function ListenButton({ speaking, onClick }: ListenButtonProps) {
+  const label = speaking ? "Stop" : "Listen";
+  const Icon = speaking ? Square : Volume2;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={`-my-2 -ml-2 flex size-11 shrink-0 items-center justify-center rounded-full transition-colors! duration-150! ${
+        speaking ? "text-ayu-accent" : "text-ayu-subtle hover:text-ayu-text"
+      }`}
+    >
+      <Icon aria-hidden="true" className="size-4" />
+    </button>
+  );
+}
+
 interface MessageListProps {
   messages: Message[];
   /** The message the error banner speaks for, if any. */
   heldId: number | null;
+  /** The reply being read aloud, if any. */
+  speakingId: number | null;
+  /** Reading aloud is available; null hides the Listen buttons. */
+  onListen: ((id: number, text: string) => void) | null;
 }
 
 /**
@@ -92,6 +126,8 @@ interface MessageListProps {
 const MessageList = memo(function MessageList({
   messages,
   heldId,
+  speakingId,
+  onListen,
 }: MessageListProps) {
   return (
     <>
@@ -116,17 +152,28 @@ const MessageList = memo(function MessageList({
                 links={m.uncertain ? "plain" : "label-url"}
               />
             </div>
-            {m.changed && m.changed.length > 0 && (
-              <p className="mt-1.5 flex items-start gap-1.5 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
-                <span
-                  aria-hidden="true"
-                  className="mt-px flex size-3.5 shrink-0 items-center justify-center rounded-full bg-ayu-green/15 text-ayu-green"
-                >
-                  <Check className="size-2.5" strokeWidth={3.5} />
-                </span>
-                <span>Saved: {m.changed.join(", ")}</span>
-              </p>
-            )}
+            {(onListen && !m.uncertain) ||
+            (m.changed && m.changed.length > 0) ? (
+              <div className="mt-1 flex items-center gap-1 px-1">
+                {onListen && !m.uncertain && (
+                  <ListenButton
+                    speaking={speakingId === m.id}
+                    onClick={() => onListen(m.id, m.text)}
+                  />
+                )}
+                {m.changed && m.changed.length > 0 && (
+                  <p className="flex min-w-0 items-start gap-1.5 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
+                    <span
+                      aria-hidden="true"
+                      className="mt-px flex size-3.5 shrink-0 items-center justify-center rounded-full bg-ayu-green/15 text-ayu-green"
+                    >
+                      <Check className="size-2.5" strokeWidth={3.5} />
+                    </span>
+                    <span>Saved: {m.changed.join(", ")}</span>
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
         )
       )}
@@ -175,7 +222,9 @@ export default function JimChat({
     () => kept?.messages ?? []
   );
   const [live, setLive] = useState<Live>(NO_LIVE);
-  const [draft, setDraft] = useState("");
+  // A notification can open /jim?say=quiz%20me: the text waits in the box,
+  // unsent, for Gentry to send.
+  const [draft, setDraft] = useState(() => sayFromLocation() ?? "");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   /** A message Jim may have acted on, kept out of the box until asked for. */
@@ -208,6 +257,13 @@ export default function JimChat({
   const keyboardOpen = useVisibleViewport(rootRef);
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
+  const reader = useReadAloud();
+  const { stop: stopReading } = reader;
+  // The latest auto-read, for the turn that outlives the render it began in.
+  const readNewRef = useRef(reader.readNew);
+  useLayoutEffect(() => {
+    readNewRef.current = reader.readNew;
+  });
 
   const scrollToEnd = useCallback((smooth: boolean) => {
     const el = scrollerRef.current;
@@ -216,6 +272,29 @@ export default function JimChat({
       top: el.scrollHeight,
       behavior: smooth && !prefersReducedMotion() ? "smooth" : "instant",
     });
+  }, []);
+
+  useEffect(() => clearSayFromLocation(), []);
+
+  // A notification tapped while this page is open: the service worker sends
+  // its text here. Only allowed text, and only into an empty box.
+  useEffect(() => {
+    const worker =
+      "serviceWorker" in navigator ? navigator.serviceWorker : undefined;
+    // A partial or missing container (some browsers, test stubs) must never
+    // take the chat down with it.
+    if (typeof worker?.addEventListener !== "function") return;
+    function onMessage(event: MessageEvent) {
+      const data: unknown = event.data;
+      if (typeof data !== "object" || data === null) return;
+      const { type, say } = data as { type?: unknown; say?: unknown };
+      const text = type === "JIM_SAY" ? allowedSay(say) : null;
+      if (text) setDraft((current) => (current ? current : text));
+    }
+    worker.addEventListener("message", onMessage);
+    // Messages queue until started; addEventListener alone doesn't start them.
+    (worker as { startMessages?: () => void }).startMessages?.();
+    return () => worker.removeEventListener("message", onMessage);
   }, []);
 
   // A long turn (Jim can take minutes) gets a calmer note after a while.
@@ -322,6 +401,8 @@ export default function JimChat({
     const text = (given ?? draft).trim();
     // Offline it would only bounce back: the box keeps it meanwhile.
     if (!text || sending || !online) return;
+    // Every send starts from a tap or key press: unlock speech inside it.
+    reader.unlock();
     const id = nextId.current++;
     const run = chatRun.current;
     setError(null);
@@ -353,15 +434,12 @@ export default function JimChat({
         controller.signal
       );
       if (run !== chatRun.current) return;
+      const replyId = nextId.current++;
       setMessages((prev) => [
         ...prev.map(settle),
-        {
-          id: nextId.current++,
-          from: "jim",
-          text: reply.reply,
-          changed: reply.changed,
-        },
+        { id: replyId, from: "jim", text: reply.reply, changed: reply.changed },
       ]);
+      readNewRef.current(replyId, reply.reply);
     } catch (err) {
       if (run !== chatRun.current) return;
       const kind = err instanceof JimError ? err.kind : "server";
@@ -409,6 +487,7 @@ export default function JimChat({
     turn.current?.abort();
     stopDrawing();
     liveText.current = "";
+    stopReading();
     clearHistory(uid);
     setMessages([]);
     setSession(crypto.randomUUID());
@@ -437,6 +516,7 @@ export default function JimChat({
   /** Drops the turn that is out and keeps nothing more on this device. */
   function signOut() {
     signedOut.current = true;
+    stopReading();
     chatRun.current += 1;
     turn.current?.abort();
     onSignOut();
@@ -506,6 +586,7 @@ export default function JimChat({
         onTab={showTab}
         menuItems={[
           { label: "New chat", onSelect: newChat },
+          ...(reader.menuItem ? [reader.menuItem] : []),
           ...(briefing.item ? [briefing.item] : []),
         ]}
       />
@@ -554,7 +635,12 @@ export default function JimChat({
                   </div>
                 </div>
               )}
-              <MessageList messages={messages} heldId={held?.id ?? null} />
+              <MessageList
+                messages={messages}
+                heldId={held?.id ?? null}
+                speakingId={reader.speakingId}
+                onListen={reader.supported ? reader.toggle : null}
+              />
               {sending && (
                 <div className="jim-rise mr-auto max-w-[92%] min-w-0">
                   {live.text ? (

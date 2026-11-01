@@ -148,6 +148,36 @@ describe("NotesTraining", () => {
     expect(pullup).toHaveTextContent("Most 12 reps");
   });
 
+  describe("lb | kg toggle", () => {
+    beforeEach(() => window.localStorage.clear());
+
+    it("defaults to lb", () => {
+      render(<NotesTraining data={VIEW_FIXTURE} />);
+      expect(screen.getByRole("radio", { name: "lb" })).toBeChecked();
+      expect(screen.getByRole("radio", { name: "kg" })).not.toBeChecked();
+    });
+
+    it("converts every weight, leaves heights alone, and remembers kg", async () => {
+      const { unmount } = render(<NotesTraining data={VIEW_FIXTURE} />);
+      await userEvent.click(screen.getByRole("radio", { name: "kg" }));
+      const moves = screen.getByRole("region", { name: "Movements" });
+      const squat = within(moves).getByText("Back squat").closest("li");
+      expect(squat).toHaveTextContent("Est. 1RM 119 kg");
+      expect(squat).toHaveTextContent("Best 115.5 kg ×1");
+      expect(squat).toHaveTextContent("1RM 115.5");
+      expect(squat).toHaveTextContent("5RM 102");
+      expect(squat).toHaveTextContent("1 @ 115.5 kg");
+      expect(squat).not.toHaveTextContent(" lb");
+      const jump = within(moves).getByText("Box jump").closest("li");
+      expect(jump).toHaveTextContent('@ 24"');
+      expect(window.localStorage.getItem("jim:weight-unit")).toBe("kg");
+      unmount();
+
+      render(<NotesTraining data={VIEW_FIXTURE} />);
+      expect(screen.getByRole("radio", { name: "kg" })).toBeChecked();
+    });
+  });
+
   it("shows only the last 14 workouts", () => {
     const workouts = Array.from({ length: 20 }, (_, i) => ({
       date: `2026-09-${String(i + 1).padStart(2, "0")}`,
