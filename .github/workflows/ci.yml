@@ -314,20 +314,20 @@ jobs:
             args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=3/3
             workers: 1
             browsers: chromium
-          # TODO: drop the grep-invert once the walk-while-sinking "ride" tests are frame-rate independent (it times out on CI's software GL)
+          # TODO: drop the grep-invert once the walk-while-sinking "go into the water" tests (which wait for the whole sinking) are frame-rate independent (they time out on CI's software GL)
           - name: WebGL sea trial (1/3)
             files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-escape.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece" --shard=1/3
+            args: --project=chromium --grep-invert "go into the water as she sinks in one piece|go into the water from your half" --shard=1/3
             workers: 1
             browsers: chromium
           - name: WebGL sea trial (2/3)
             files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-escape.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece" --shard=2/3
+            args: --project=chromium --grep-invert "go into the water as she sinks in one piece|go into the water from your half" --shard=2/3
             workers: 1
             browsers: chromium
           - name: WebGL sea trial (3/3)
             files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-escape.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            args: --project=chromium --grep-invert "ride your half down|ride her down in one piece" --shard=3/3
+            args: --project=chromium --grep-invert "go into the water as she sinks in one piece|go into the water from your half" --shard=3/3
             workers: 1
             browsers: chromium
           # Plane Builder needs WebGL for its core loop (the specs launch

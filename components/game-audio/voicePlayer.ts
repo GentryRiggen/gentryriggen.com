@@ -28,9 +28,11 @@ export interface VoicePlayer {
   /** The id being spoken now, or null. */
   useNowPlaying: () => string | null;
   /**
-   * Lets the first tap or key press unlock audio on iOS, so lines that arrive
-   * later can play. It only resumes a Web Audio context, which never touches
-   * the phone's Now Playing or pauses other apps. Safe to call often.
+   * Lets taps and key presses (pointerdown, touchend, click, keydown) unlock
+   * audio on iOS, so lines that arrive later can play; the listeners stay
+   * until the context is running. It only resumes a Web Audio context, which
+   * never touches the phone's Now Playing or pauses other apps. Safe to call
+   * often.
    */
   unlockOnGesture: () => void;
   /** Forgets all state (tests). */
@@ -38,6 +40,12 @@ export interface VoicePlayer {
 }
 
 const DEFAULT_MAX_QUEUE = 2;
+
+/**
+ * Gestures that may unlock audio. iOS Safari only counts touchend and click
+ * as user activation for audio, so those join pointerdown and keydown.
+ */
+const UNLOCK_EVENTS = ["pointerdown", "touchend", "click", "keydown"] as const;
 
 type AudioContextConstructor = typeof AudioContext;
 
@@ -72,6 +80,8 @@ export function createVoicePlayer({
   let playingId: string | null = null;
   let queue: string[] = [];
   let isUnlockWired = false;
+  /** Takes the unlock listeners away, while they are wired. */
+  let removeUnlock: (() => void) | null = null;
   let isVisibilityWired = false;
   const listeners = new Set<() => void>();
 
@@ -253,13 +263,36 @@ export function createVoicePlayer({
     if (typeof window === "undefined" || isUnlockWired) return;
     if (!contextConstructor()) return;
     isUnlockWired = true;
-    const unlock = () => {
-      document.removeEventListener("pointerdown", unlock, true);
-      document.removeEventListener("keydown", unlock, true);
-      resume(context());
+    const remove = () => {
+      for (const type of UNLOCK_EVENTS) {
+        document.removeEventListener(type, unlock, true);
+      }
+      if (removeUnlock === remove) removeUnlock = null;
     };
-    document.addEventListener("pointerdown", unlock, true);
-    document.addEventListener("keydown", unlock, true);
+    // Every gesture tries again until the context is running: iOS ignores a
+    // resume() from pointerdown, and lines play from frame callbacks, never
+    // from inside a gesture.
+    const unlock = () => {
+      const c = context();
+      if (!c || c.state === "running") {
+        remove();
+        return;
+      }
+      try {
+        const result = c.resume?.();
+        result
+          ?.then(() => {
+            if (c.state === "running") remove();
+          })
+          .catch(() => undefined);
+      } catch {
+        // Not allowed from this event; the next one tries again.
+      }
+    };
+    for (const type of UNLOCK_EVENTS) {
+      document.addEventListener(type, unlock, true);
+    }
+    removeUnlock = remove;
   }
 
   function subscribe(listener: () => void): () => void {
@@ -276,6 +309,7 @@ export function createVoicePlayer({
   }
 
   function reset(): void {
+    removeUnlock?.();
     stopSource();
     ctx = null;
     buffers.clear();

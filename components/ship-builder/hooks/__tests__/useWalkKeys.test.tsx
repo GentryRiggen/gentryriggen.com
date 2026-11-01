@@ -4,6 +4,11 @@ import {
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
 import { resetWalkInput, walkInput } from "@/lib/ship-builder/state/walkInput";
+import { takeEscapeRequest } from "@/lib/ship-builder/state/escapeActions";
+import {
+  publishEscape,
+  resetEscape,
+} from "@/lib/ship-builder/state/escapeLive";
 import useKeyboardShortcuts from "../useKeyboardShortcuts";
 import useWalkKeys from "../useWalkKeys";
 
@@ -19,7 +24,17 @@ function startWalking() {
   act(() => store().startWalk());
 }
 
+const boatInReach = () =>
+  act(() =>
+    publishEscape({
+      phase: { kind: "aboard" },
+      boardable: { boatId: "b", kind: "davit" },
+      pickup: null,
+    })
+  );
+
 beforeEach(() => {
+  act(() => resetEscape());
   resetWalkInput();
   act(() => useShipBuilderStore.setState(createInitialState()));
 });
@@ -75,6 +90,39 @@ describe("useWalkKeys", () => {
     fireEvent.keyUp(window, { key: "e" });
     expect(walkInput.turn).toBe(0);
     expect(walkInput.strafe).toBe(0);
+  });
+
+  it("boards with a fresh E press when a boat is in reach", () => {
+    render(<Harness />);
+    startWalking();
+    boatInReach();
+    fireEvent.keyDown(window, { key: "e" });
+    expect(takeEscapeRequest()).toBe("board");
+    expect(walkInput.turn).toBe(0);
+  });
+
+  it("never boards from an auto-repeated E", () => {
+    render(<Harness />);
+    startWalking();
+    boatInReach();
+    fireEvent.keyDown(window, { key: "e", repeat: true });
+    expect(takeEscapeRequest()).toBeNull();
+  });
+
+  it("keeps turning, not boarding, while E is held past a boat", () => {
+    render(<Harness />);
+    startWalking();
+    fireEvent.keyDown(window, { key: "e" });
+    expect(walkInput.turn).toBe(1);
+    boatInReach();
+    fireEvent.keyDown(window, { key: "e", repeat: true });
+    fireEvent.keyDown(window, { key: "e" });
+    expect(takeEscapeRequest()).toBeNull();
+    expect(walkInput.turn).toBe(1);
+    // Let go and press again: now it boards.
+    fireEvent.keyUp(window, { key: "e" });
+    fireEvent.keyDown(window, { key: "e" });
+    expect(takeEscapeRequest()).toBe("board");
   });
 
   it("does nothing unless walking", () => {

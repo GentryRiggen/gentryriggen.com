@@ -43,6 +43,8 @@ function isTyping(target: EventTarget | null): boolean {
 export default function useWalkKeys(): void {
   useEffect(() => {
     const held = new Set<Direction>();
+    /** E is down as a turn (it found nothing to board when pressed). */
+    let isEHeldToTurn = false;
 
     function axis(positive: Direction, negative: Direction): number {
       return Number(held.has(positive)) - Number(held.has(negative));
@@ -66,8 +68,9 @@ export default function useWalkKeys(): void {
         walkInput.jump = true;
         return;
       }
-      if (event.key.toLowerCase() === "e") {
-        // E boards, jumps or climbs in when it can; otherwise it turns.
+      if (event.key.toLowerCase() === "e" && !event.repeat && !isEHeldToTurn) {
+        // A fresh E press boards, jumps or climbs in when it can; otherwise
+        // it turns. Holding E to turn never boards a boat it passes.
         const action = escapeActionFor(getEscape());
         if (action) {
           event.preventDefault();
@@ -79,17 +82,20 @@ export default function useWalkKeys(): void {
       if (!direction) return;
       // Arrows would otherwise scroll the page.
       event.preventDefault();
+      if (event.key.toLowerCase() === "e") isEHeldToTurn = true;
       held.add(direction);
       applyInput();
     }
 
     function onKeyUp(event: KeyboardEvent) {
+      if (event.key.toLowerCase() === "e") isEHeldToTurn = false;
       const direction = KEY_DIRECTIONS[event.key.toLowerCase()];
       if (!direction || !held.delete(direction)) return;
       applyInput();
     }
 
     function onBlur() {
+      isEHeldToTurn = false;
       held.clear();
       applyInput();
     }

@@ -89,7 +89,8 @@ test.describe("Ship Builder escape", () => {
     await startWalking(page);
 
     const board = page.getByTestId("escape-action");
-    await expect(board).toHaveText("Board");
+    // The escape runner needs a frame or two: slow on a loaded software GL.
+    await expect(board).toHaveText("Board", { timeout: 30_000 });
     await board.click();
     await expect
       .poll(() => page.evaluate(() => window.__shipBuilderEscape!().phase.kind))
@@ -110,7 +111,12 @@ test.describe("Ship Builder escape", () => {
   test("swim until a fishing boat fishes you out", async ({ page }) => {
     await openTitanic(page);
     await walkIntoTheWater(page);
-    await page.getByRole("button", { name: "Swim!" }).click();
+    // The card also closes itself after 4 s; on a loaded software renderer
+    // that can beat the click, which is fine.
+    await page
+      .getByRole("button", { name: "Swim!" })
+      .click({ timeout: 3_000 })
+      .catch(() => undefined);
     await expect(page.getByRole("dialog", { name: "Splash!" })).toHaveCount(0);
     await expect(page.getByRole("meter", { name: "Warmth" })).toBeVisible();
 
@@ -137,7 +143,7 @@ test.describe("Ship Builder escape", () => {
       .poll(() => page.evaluate(() => window.__shipBuilderSwimToBoat!()), LONG)
       .toBe(true);
     const climbIn = page.getByTestId("escape-action");
-    await expect(climbIn).toHaveText("Climb in");
+    await expect(climbIn).toHaveText("Climb in", { timeout: 30_000 });
     // A boat in reach closes the splash card so Climb in is never hidden.
     await expect(page.getByRole("dialog", { name: "Splash!" })).toHaveCount(0);
     await climbIn.click();
