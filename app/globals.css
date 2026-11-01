@@ -1647,3 +1647,67 @@ html:has(.jim-app) body {
     opacity: 0;
   }
 }
+
+/* Ever Onward: the Tide Clock (a turning mill wheel, the gauge's waves). */
+@keyframes lm-wheel {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes td-sway {
+  to {
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes td-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes td-glint {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.lm-wheel {
+  animation: lm-wheel 9s linear infinite;
+}
+
+.td-sway {
+  animation: td-sway 2.4s linear infinite;
+}
+
+.td-sway-b {
+  animation-duration: 3.6s;
+  animation-direction: reverse;
+}
+
+.td-bob {
+  animation: td-bob 2.4s ease-in-out infinite;
+}
+
+.td-glint {
+  animation: td-glint 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-wheel,
+  .td-sway,
+  .td-sway-b,
+  .td-bob,
+  .td-glint {
+    animation: none;
+  }
+}
