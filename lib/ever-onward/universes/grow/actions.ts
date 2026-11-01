@@ -24,7 +24,8 @@ import { sendActions } from "./migration";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_FARM, PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
-import { incomePerSecond } from "./tick";
+import { incomePerSecond, tendingValue } from "./tick";
+import { tendActions } from "./windowbox";
 import { TUNING } from "./tuning";
 
 export const YARD_HARVEST = "yard-harvest";
@@ -141,6 +142,7 @@ export const GROW_ACTIONS: readonly ActionDef[] = [
   ...SPREAD_ACTIONS,
   ...ENTER_PUMPKIN,
   ...sendActions(incomePerSecond),
+  ...tendActions(tendingValue),
 ];
 
 /** Used by the plate and by bots: enough ripe to bother with. */

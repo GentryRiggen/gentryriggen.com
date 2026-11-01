@@ -24,6 +24,7 @@ import {
 import { seasonOf, secondsToAutumn } from "./seasons";
 import { TUNING } from "./tuning";
 import { STORAGE_IDS, isDry, rainOutlook } from "./water";
+import { currentWant, isWanting, tendActionId, tendsSoFar } from "./windowbox";
 import { growUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
@@ -125,6 +126,25 @@ export const sendsFlock =
     )
       return [];
     const id = sendActionId(mostWelcoming(run));
+    return available.includes(id) ? [id] : [];
+  };
+
+/**
+ * Answers what the pot wants. Like the other side-machine bots, one want in
+ * every `skipEvery`th goes to the music box instead (or after SKIP_DELAY).
+ */
+export const tendsPot =
+  (options: { skipEvery?: number } = {}): Actions =>
+  (run, available) => {
+    if (run.phase !== 3 || !isWanting(run)) return [];
+    const { skipEvery } = options;
+    if (
+      skipEvery &&
+      tendsSoFar(run) % skipEvery === skipEvery - 1 &&
+      (run.resources.wbTime ?? 0) < SKIP_DELAY
+    )
+      return [];
+    const id = tendActionId(currentWant(run));
     return available.includes(id) ? [id] : [];
   };
 
@@ -240,7 +260,10 @@ export function growBots(): BotSet {
         followsDance(),
         alongside(
           cropPolicy(),
-          alongside(entersFair(), alongside(biomePolicy(), sendsFlock()))
+          alongside(
+            entersFair(),
+            alongside(biomePolicy(), alongside(sendsFlock(), tendsPot()))
+          )
         )
       )
     ),
@@ -258,7 +281,13 @@ export function growBots(): BotSet {
             cropPolicy(20),
             alongside(
               entersFair({ skipEvery: 6 }),
-              alongside(biomePolicy(30), sendsFlock({ skipEvery: 6 }))
+              alongside(
+                biomePolicy(30),
+                alongside(
+                  sendsFlock({ skipEvery: 6 }),
+                  tendsPot({ skipEvery: 6 })
+                )
+              )
             )
           )
         )
@@ -280,7 +309,13 @@ export function growBots(): BotSet {
             cropPolicy(60),
             alongside(
               entersFair({ skipEvery: 2 }),
-              alongside(biomePolicy(90), sendsFlock({ skipEvery: 2 }))
+              alongside(
+                biomePolicy(90),
+                alongside(
+                  sendsFlock({ skipEvery: 2 }),
+                  tendsPot({ skipEvery: 2 })
+                )
+              )
             )
           )
         )

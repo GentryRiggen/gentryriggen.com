@@ -50,5 +50,25 @@ export const PRESTIGE: PrestigeDef = {
         run.mods.headStart = level;
       },
     },
+    {
+      id: "acorn-barrel",
+      name: "A bigger first barrel",
+      description: "The garden starts with rain barrels already set out.",
+      cost: 2,
+      maxLevel: 3,
+      apply: (run, level) => {
+        run.owned["rain-barrel"] = level;
+      },
+    },
+    {
+      id: "acorn-friend",
+      name: "A friend with a watering can",
+      description: "The backyard starts with sprinklers already at work.",
+      cost: 3,
+      maxLevel: 3,
+      apply: (run, level) => {
+        run.owned.sprinkler = 2 * level;
+      },
+    },
   ],
 };

@@ -12,4 +12,9 @@ export const STORY: readonly StoryMessage[] = [
 ];
 
 /** The closing lines, in order. */
-export const ENDING_STORY_IDS = ["seed-return", "seed-end-1", "seed-end-2"];
+export const ENDING_STORY_IDS = [
+  "seed-return",
+  "seed-child",
+  "seed-end-1",
+  "seed-end-2",
+];

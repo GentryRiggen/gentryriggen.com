@@ -26,8 +26,23 @@ import {
 import { TUNING } from "./tuning";
 import { MARKET_AGENT_ID } from "./market";
 import { PHASE_FARM, PHASE_SEED, PHASE_WORLD, PHASE_YARD } from "./resources";
-import { incomePerSecond, manualPerTap, pickPerSecond } from "./tick";
+import {
+  incomePerSecond,
+  manualPerTap,
+  pickPerSecond,
+  tendingValue,
+} from "./tick";
 import { waterCapacity } from "./water";
+import {
+  LANTERN_ID,
+  MUSIC_BOX_ID,
+  WATERING_CAN_ID,
+  boxPays,
+  canMult,
+  musicBoxShown,
+  potGrowth,
+  tendsSoFar,
+} from "./windowbox";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const num = (n: number): string => formatNumber(n);
@@ -555,9 +570,9 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "Something to climb. The pot grows a little every second.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 6,
-    costGrowth: 1.2,
-    maxLevel: 30,
+    baseCost: 12,
+    costGrowth: 1.5,
+    maxLevel: 8,
     kind: "mechanic",
     effectPreview: (run) => helperPreview(run, "trellis"),
   },
@@ -567,9 +582,92 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "Warm light on the leaves makes every bit of care count.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 30,
-    costGrowth: 2,
+    baseCost: 150,
+    costGrowth: 2.6,
     maxLevel: 6,
+    visibleWhen: (run) => owned(run, "trellis") >= 2,
     effectPreview: (run) => scalePreview(run, "sunny-sill"),
+  },
+  {
+    id: "wind-chime",
+    name: "A little wind chime",
+    description:
+      "It tinkles in the draft from the window, and the pot sways along.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 200,
+    costGrowth: 1.5,
+    maxLevel: 8,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "trellis") >= 4,
+    effectPreview: (run) => helperPreview(run, "wind-chime"),
+  },
+  {
+    id: "dew-collector",
+    name: "A dew collector",
+    description:
+      "A tiny dish that catches the morning dew and drips it on the soil, one drop at a time.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 3500,
+    costGrowth: 1.5,
+    maxLevel: 9,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "wind-chime") >= 2,
+    effectPreview: (run) => helperPreview(run, "dew-collector"),
+  },
+  {
+    id: WATERING_CAN_ID,
+    name: "A bigger watering can",
+    description:
+      "A little tin can with a long spout. Every answer you give the pot is worth a bit more.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 24,
+    costGrowth: 2.2,
+    maxLevel: 5,
+    kind: "mechanic",
+    visibleWhen: (run) => tendsSoFar(run) >= 1,
+    effectPreview: (run) =>
+      `Answers ${num(Math.round(canMult(run) * 100))}% -> ${num(
+        Math.round(
+          canMult({
+            ...run,
+            owned: {
+              ...run.owned,
+              [WATERING_CAN_ID]: owned(run, WATERING_CAN_ID) + 1,
+            },
+          }) * 100
+        )
+      )}%`,
+  },
+  {
+    id: MUSIC_BOX_ID,
+    name: "A little music box",
+    description:
+      "It plays the pot a soft tune when you are busy. Your own answer still grows it more.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 120,
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy the pot's growth first.
+    priority: -1,
+    kind: "mechanic",
+    visibleWhen: musicBoxShown,
+    effectPreview: (run) =>
+      `Answers a waiting pot after a pause: about ${num(Math.floor(boxPays(run, tendingValue(run))))} care (${tendsSoFar(run)} answers so far)`,
+  },
+  {
+    id: LANTERN_ID,
+    name: "A lantern in the window",
+    description:
+      "A small warm light for the evenings, in case anybody is passing. The pot grows more from every bit of care.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 30000,
+    costGrowth: 1,
+    kind: "mechanic",
+    visibleWhen: (run) => potGrowth(run) >= 0.5,
+    effectPreview: () => "Every bit of care grows the pot a quarter more",
   },
 ];

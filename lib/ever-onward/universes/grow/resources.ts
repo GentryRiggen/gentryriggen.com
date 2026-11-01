@@ -29,12 +29,15 @@ export const MANUAL_RESOURCES = ["seeds", "harvest", "green", "care"] as const;
  * gifts).
  */
 export function carryOver(from: number, amount: number): number {
+  if (from >= 2)
+    // The last seed starts small and calm: a flock still in the air at the
+    // world's end is a few taps' worth of care, however big the world's income.
+    return Math.min(
+      TUNING.migration.carryCap,
+      Math.floor(amount * TUNING.migration.greenToCare)
+    );
   const rate =
-    from === 0
-      ? TUNING.farm.seedsToHarvest
-      : from === 1
-        ? TUNING.world.harvestToGreen
-        : TUNING.migration.greenToCare;
+    from === 0 ? TUNING.farm.seedsToHarvest : TUNING.world.harvestToGreen;
   return Math.floor(amount * rate);
 }
 
@@ -165,6 +168,25 @@ export const RESOURCES: readonly ResourceDef[] = [
     "mgBy",
     "mgRng",
     "mgPaused",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // The old window box: stage (0 resting, 1 wanting), clocks, what the pot
+  // wants, how many wants it has shown, answers given, the last answer (what
+  // was chosen, what was wanted, what it paid, who gave it), care earned from
+  // answers, the pot's stage (0 soil to 3 bloom, the bloom sound reads it),
+  // and the pot's own random stream.
+  ...[
+    "wbStage",
+    "wbTime",
+    "wbWant",
+    "wbShown",
+    "wbTends",
+    "wbLastChoice",
+    "wbLastWant",
+    "wbLastPays",
+    "wbBy",
+    "wbRng",
+    "wbPaused",
+    "potStage",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },

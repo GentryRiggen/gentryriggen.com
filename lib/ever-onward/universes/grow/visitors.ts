@@ -6,6 +6,7 @@ import type {
 } from "../../engine/types";
 import { formatNumber } from "../../engine/format";
 import { FULL_GROWTH, PHASE_FARM, PHASE_SEED, PHASE_YARD } from "./resources";
+import { isSeedBloomed } from "./windowbox";
 import { incomePerSecond } from "./tick";
 
 export const RETURN_VISITOR_ID = "seed-return";
@@ -73,8 +74,8 @@ export const VISITORS: readonly VisitorDef[] = [
   {
     id: RETURN_VISITOR_ID,
     phase: PHASE_SEED,
-    name: "Someone who came back",
-    arrivesWhen: (run) => run.resources.growth >= FULL_GROWTH,
+    name: "Someone who came back, with a little one",
+    arrivesWhen: isSeedBloomed,
     giftText: () => "a warm thank-you",
     give: () => {},
   },
@@ -107,6 +108,6 @@ export function growCountdown(run: RunState): CountdownView | null {
     label: "Left to grow",
     value: left,
     max: FULL_GROWTH,
-    detail: "Keep tending the one small pot",
+    detail: "Keep tending the old window box",
   };
 }

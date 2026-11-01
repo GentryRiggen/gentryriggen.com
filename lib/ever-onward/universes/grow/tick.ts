@@ -1,11 +1,6 @@
 import type { RunState } from "../../engine/types";
 import { visitorHereFlag } from "../../engine/engine";
-import {
-  FULL_GROWTH,
-  MANUAL_RESOURCES,
-  PHASE_SEED,
-  PHASE_IDS,
-} from "./resources";
+import { MANUAL_RESOURCES } from "./resources";
 import { tickBees } from "./bees";
 import { greenMult, tickBiomes } from "./biomes";
 import { tickFair } from "./fair";
@@ -15,6 +10,7 @@ import { seasonBoost } from "./seasons";
 import { TUNING } from "./tuning";
 import { tickWater, waterFactor } from "./water";
 import { RETURN_VISITOR_ID } from "./visitors";
+import { addCare, isWindowBoxOpen, tickWindowBox } from "./windowbox";
 
 /** The helper and the scaling upgrade of each phase, by phase index. */
 export const HELPER_IDS = ["sprinkler", "scarecrow", "windbreak", "trellis"];
@@ -106,6 +102,16 @@ export function incomePerSecond(run: RunState): number {
       speed(run) *
       waterFactor(run)
     );
+  if (run.phase === 3) {
+    const b = TUNING.windowbox;
+    return (
+      (owned(run, "trellis") * TUNING.phases[3].helper +
+        owned(run, "wind-chime") * b.chimeRate +
+        owned(run, "dew-collector") * b.dewRate) *
+      scaleMult(run) *
+      speed(run)
+    );
+  }
   return (
     owned(run, HELPER_IDS[run.phase]) *
     TUNING.phases[run.phase].helper *
@@ -134,14 +140,16 @@ export const pickPerSecond = (run: RunState): number =>
 
 /** Earned care also grows the one pot, which is all the seed phase asks for. */
 function earn(run: RunState, amount: number): void {
-  const id = MANUAL_RESOURCES[run.phase];
-  run.resources[id] += amount;
-  if (PHASE_IDS[run.phase] === PHASE_SEED)
-    run.resources.growth = Math.min(
-      FULL_GROWTH,
-      run.resources.growth + amount * TUNING.seed.growthPerCare
-    );
+  if (run.phase === 3) {
+    addCare(run, amount);
+    return;
+  }
+  run.resources[MANUAL_RESOURCES[run.phase]] += amount;
 }
+
+/** What a second of tending is worth: the helpers plus one tap. */
+export const tendingValue = (run: RunState): number =>
+  incomePerSecond(run) + manualPerTap(run);
 
 /** The yard: water, ripening, and the helpers that pick (never spoils). */
 function tickYard(run: RunState, dt: number): void {
@@ -167,6 +175,7 @@ export function tickGrow(run: RunState, dt: number): void {
   tickBees(run, dt, () => incomePerSecond(run));
   tickFair(run, dt, () => incomePerSecond(run));
   tickMigration(run, dt, () => incomePerSecond(run));
+  if (isWindowBoxOpen(run)) tickWindowBox(run, dt, () => tendingValue(run));
 }
 
 export function manualGrow(run: RunState): void {

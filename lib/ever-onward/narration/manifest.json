@@ -371,8 +371,8 @@
   },
   "grow/intro-seed": {
     "file": "/ever-onward/voice/grow/intro-seed.mp3",
-    "hash": "263c31aa896e",
-    "durationGuess": 24
+    "hash": "5591dd1c0d2a",
+    "durationGuess": 33
   },
   "grow/yard-hello": {
     "file": "/ever-onward/voice/grow/yard-hello.mp3",
@@ -876,13 +876,68 @@
   },
   "grow/seed-hello": {
     "file": "/ever-onward/voice/grow/seed-hello.mp3",
-    "hash": "9a45267910cd",
+    "hash": "8d5f0b0209f4",
+    "durationGuess": 13
+  },
+  "grow/seed-first": {
+    "file": "/ever-onward/voice/grow/seed-first.mp3",
+    "hash": "23c18c344d87",
+    "durationGuess": 15
+  },
+  "grow/seed-sprout": {
+    "file": "/ever-onward/voice/grow/seed-sprout.mp3",
+    "hash": "b2634edbb93d",
     "durationGuess": 10
+  },
+  "grow/seed-song": {
+    "file": "/ever-onward/voice/grow/seed-song.mp3",
+    "hash": "c8e976e001a6",
+    "durationGuess": 13
+  },
+  "grow/seed-window": {
+    "file": "/ever-onward/voice/grow/seed-window.mp3",
+    "hash": "91b819756038",
+    "durationGuess": 13
+  },
+  "grow/seed-sun": {
+    "file": "/ever-onward/voice/grow/seed-sun.mp3",
+    "hash": "8978f95e33b2",
+    "durationGuess": 15
+  },
+  "grow/seed-leaf": {
+    "file": "/ever-onward/voice/grow/seed-leaf.mp3",
+    "hash": "af8512a40721",
+    "durationGuess": 13
+  },
+  "grow/seed-curtain": {
+    "file": "/ever-onward/voice/grow/seed-curtain.mp3",
+    "hash": "e22227cdf600",
+    "durationGuess": 12
+  },
+  "grow/seed-rain": {
+    "file": "/ever-onward/voice/grow/seed-rain.mp3",
+    "hash": "e9466c5c6ab6",
+    "durationGuess": 12
+  },
+  "grow/seed-bud": {
+    "file": "/ever-onward/voice/grow/seed-bud.mp3",
+    "hash": "e83b6053fd93",
+    "durationGuess": 15
+  },
+  "grow/seed-waiting": {
+    "file": "/ever-onward/voice/grow/seed-waiting.mp3",
+    "hash": "059a4938ae97",
+    "durationGuess": 12
   },
   "grow/seed-return": {
     "file": "/ever-onward/voice/grow/seed-return.mp3",
-    "hash": "f00446fd6d32",
-    "durationGuess": 14
+    "hash": "212940f944bd",
+    "durationGuess": 22
+  },
+  "grow/seed-child": {
+    "file": "/ever-onward/voice/grow/seed-child.mp3",
+    "hash": "4dc725c7054f",
+    "durationGuess": 17
   },
   "grow/seed-end-1": {
     "file": "/ever-onward/voice/grow/seed-end-1.mp3",

@@ -16,6 +16,7 @@ import BiomePanel from "../game/grow/BiomePanel";
 import CountyFair from "../game/grow/CountyFair";
 import MarketPanel from "../game/grow/MarketPanel";
 import SeedMigration from "../game/grow/SeedMigration";
+import WindowBox from "../game/grow/WindowBox";
 import SeasonDial from "../game/grow/SeasonDial";
 import GrowScene from "../scenes/grow/GrowScene";
 import type { RunState } from "@/lib/ever-onward/engine/types";
@@ -67,6 +68,7 @@ export const GROW_UI: UniverseUi = {
     CountyFair,
     BiomePanel,
     SeedMigration,
+    WindowBox,
   ],
   ending: { storyIds: ENDING_STORY_IDS },
   tapLooks: LOOKS,

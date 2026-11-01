@@ -23,6 +23,12 @@ import { pickPerSecond } from "./tick";
 import { TUNING } from "./tuning";
 import { UPGRADES } from "./upgrades";
 import { STORAGE_IDS, waterLevel } from "./water";
+import {
+  WINDOWBOX_ACTION_IDS,
+  isWanting,
+  potStage,
+  withoutWindowBox,
+} from "./windowbox";
 
 /** The water plate lights when the tank is under this share. */
 const WATER_LOW = 0.35;
@@ -60,6 +66,7 @@ export function growPlates(run: RunState): string[] {
     if (biomeGap(run) >= TUNING.world.playerMargin) plates.push("spread");
     if (isFlockReady(run)) plates.push("flock");
   }
+  if (run.phase === 3 && isWanting(run)) plates.push("pot");
   return plates;
 }
 
@@ -71,6 +78,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   spread: SPREAD_ACTION_IDS,
   fair: FAIR_ACTION_IDS,
   flock: MIGRATION_ACTION_IDS,
+  pot: WINDOWBOX_ACTION_IDS,
 };
 
 /** The tank is the backyard's one watched number. */
@@ -94,6 +102,9 @@ export function growIncomeView(run: RunState): RunState {
   if (run.phase === 2 && isMigrationOpen(run))
     // A landing flowing in is not income.
     return withoutMigration({ ...run, resources: { ...run.resources } });
+  if (run.phase === 3)
+    // An answer from the music box is not income.
+    return withoutWindowBox({ ...run, resources: { ...run.resources } });
   if (run.phase !== 0) return run;
   const floor = pickPerSecond(run) * 2;
   const view =
@@ -131,6 +142,7 @@ function sceneKey(run: RunState): string {
     s.dry,
     s.ended,
     s.growth,
+    potStage(run),
     s.beds,
     s.bloom,
     s.greenhouse,
