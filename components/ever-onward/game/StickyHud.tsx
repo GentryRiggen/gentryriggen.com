@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { NextUpgrade } from "@/lib/ever-onward/engine/pull";
 import type { RateTrend } from "@/lib/ever-onward/engine/rate";
@@ -7,11 +8,12 @@ import AnimatedValue from "./AnimatedValue";
 import EffectFloater, { type Effect } from "./EffectFloater";
 import RateReadout from "./RateReadout";
 import NextUpgradeBar from "./NextUpgradeBar";
-import { pixelClass } from "./retro/retroStyles";
+import { pixelClass, retroLabelClass } from "./retro/retroStyles";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface StickyHudProps {
-  isShown: boolean;
+  /** Lets the screen measure the bar so the layout can sit below it. */
+  hudRef?: Ref<HTMLDivElement>;
   /** True while a full-screen moment covers the game. */
   isCovered: boolean;
   resourceId: string;
@@ -38,11 +40,11 @@ export const formatPrimary = (value: number): string =>
   formatNumber(Math.floor(value));
 
 /**
- * A compact bar pinned to the top of the screen while the main readouts are
- * scrolled away: the currency counting up, its income and the progress toward the next upgrade.
+ * The compact bar pinned to the top of the screen, always: the currency
+ * counting up, its income and the progress toward the next upgrade.
  */
 export default function StickyHud({
-  isShown,
+  hudRef,
   isCovered,
   resourceId,
   resourceLabel,
@@ -55,16 +57,13 @@ export default function StickyHud({
   alert = null,
   onSelectNext,
 }: StickyHudProps) {
-  const isHidden = !isShown || isCovered;
-
   return (
     <div
+      ref={hudRef}
       data-testid="lm-hud"
-      aria-hidden={isHidden}
-      inert={isHidden}
-      className={`fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950/95 pt-[env(safe-area-inset-top)] shadow-[0_4px_0_#78350f] transition-transform duration-300 motion-reduce:transition-none lg:left-[55%] ${
-        isHidden ? "-translate-y-full" : "translate-y-0"
-      }`}
+      aria-hidden={isCovered}
+      inert={isCovered}
+      className="fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950 pt-[env(safe-area-inset-top)] shadow-[0_4px_0_#78350f] lg:left-[55%]"
     >
       <div className="relative mx-auto max-w-xl px-4 py-2">
         <div className="flex items-center justify-between gap-3">
@@ -72,7 +71,9 @@ export default function StickyHud({
             <span aria-hidden="true" className="text-base">
               {ICONS[resourceId] ?? ""}
             </span>
-            <span className="sr-only">{resourceLabel}</span>
+            <span className={`${retroLabelClass} truncate leading-none`}>
+              {resourceLabel}
+            </span>
             <AnimatedValue
               value={value}
               format={formatPrimary}
@@ -87,21 +88,26 @@ export default function StickyHud({
             />
           </p>
         </div>
-        {alert && (
-          <p
-            data-testid="lm-hud-alert"
-            className={`${pixelClass} mt-1 animate-pulse text-[8px] leading-relaxed text-red-300 motion-reduce:animate-none`}
-          >
-            ⚠ {alert}
-          </p>
-        )}
-        {next && (
-          <NextUpgradeBar
-            next={next}
-            onSelect={onSelectNext}
-            testId="lm-hud-next"
-          />
-        )}
+        {/* A fixed one-line slot, so the bar never changes height when the
+            warning comes and goes. The full text is also in the page. */}
+        <p
+          data-testid="lm-hud-alert"
+          className={`${pixelClass} mt-1 h-3 truncate text-[8px] leading-3 text-red-300 ${
+            alert ? "animate-pulse motion-reduce:animate-none" : "invisible"
+          }`}
+        >
+          {alert ? `⚠ ${alert}` : ""}
+        </p>
+        {/* Reserves the bar's height when there is no goal yet. */}
+        <div className="min-h-11">
+          {next && (
+            <NextUpgradeBar
+              next={next}
+              onSelect={onSelectNext}
+              testId="lm-hud-next"
+            />
+          )}
+        </div>
         <SpendFloater spend={spend} />
         <EffectFloater
           effect={effect}

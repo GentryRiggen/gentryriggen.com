@@ -1,23 +1,23 @@
 {
   "light/intro-coast": {
     "file": "/ever-onward/voice/light/intro-coast.mp3",
-    "hash": "052a2a5701a5",
-    "durationGuess": 7
+    "hash": "2f584d862f3e",
+    "durationGuess": 27
   },
   "light/intro-night": {
     "file": "/ever-onward/voice/light/intro-night.mp3",
-    "hash": "1fa10d9d9dd1",
-    "durationGuess": 9
+    "hash": "69e040d5ff18",
+    "durationGuess": 24
   },
   "light/intro-sky": {
     "file": "/ever-onward/voice/light/intro-sky.mp3",
-    "hash": "80e613df6779",
-    "durationGuess": 10
+    "hash": "77aaca37aa7a",
+    "durationGuess": 27
   },
   "light/intro-last": {
     "file": "/ever-onward/voice/light/intro-last.mp3",
-    "hash": "8eb640609741",
-    "durationGuess": 9
+    "hash": "d18faf0e5241",
+    "durationGuess": 24
   },
   "light/coast-hello": {
     "file": "/ever-onward/voice/light/coast-hello.mp3",

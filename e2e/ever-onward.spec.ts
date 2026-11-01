@@ -54,7 +54,7 @@ test.describe("Ever Onward", () => {
         .getByRole("button", { name: "Continue" })
         .click();
 
-      await expect(page.getByTestId("lm-res-coins")).toHaveText("0");
+      await expect(page.getByTestId("lm-hud-value")).toHaveText("0");
       await page.getByTestId("lm-tap").click();
       // The lamp's oil bill can eat a lone coin; the floating gain stays.
       await expect(page.getByText(/^\+\d+$/).first()).toBeVisible();
@@ -102,7 +102,7 @@ test.describe("Ever Onward", () => {
     const actions = page.getByRole("region", { name: "Actions" });
     await expect(actions).toContainText("Buy oil");
     await expect(actions).toContainText("a barrel");
-    await expect(page.getByTestId("lm-rate")).toContainText("/s");
+    await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
   });
 
   test("browser Back from the game returns to the hub", async ({ page }) => {
@@ -115,12 +115,12 @@ test.describe("Ever Onward", () => {
   test.describe("on a phone", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test("the coin counter and a tap button stay in view while scrolled down", async ({
+    test("the coin counter bar and a tap button stay in view at the top and scrolled down", async ({
       page,
     }) => {
       await startGame(page);
       const hud = page.getByTestId("lm-hud");
-      await expect(hud).not.toBeInViewport();
+      await expect(hud).toBeInViewport();
 
       for (let i = 0; i < 15; i += 1) await page.getByTestId("lm-tap").click();
       await page.evaluate(() =>
@@ -139,7 +139,7 @@ test.describe("Ever Onward", () => {
       await expect(page.getByTestId("lm-hud-next")).toBeVisible();
 
       await page.evaluate(() => window.scrollTo(0, 0));
-      await expect(hud).not.toBeInViewport();
+      await expect(hud).toBeInViewport();
       await expect(tap).toBeInViewport();
     });
 

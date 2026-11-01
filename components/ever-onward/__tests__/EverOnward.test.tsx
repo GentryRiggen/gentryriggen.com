@@ -117,7 +117,7 @@ describe("Ever Onward game", () => {
       "The Coast"
     );
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(screen.getByTestId("lm-res-coins")).toHaveTextContent("0");
+    expect(screen.getByTestId("lm-hud-value")).toHaveTextContent("0");
 
     await user.click(screen.getByRole("button", { name: "Flash the light" }));
     // The lamp's oil bill can eat a lone coin before the counter shows it,

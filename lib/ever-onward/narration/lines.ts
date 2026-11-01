@@ -17,6 +17,15 @@ export const storyClipId = (universeId: string, storyId: string): string =>
 export const introClipId = (universeId: string, phaseId: string): string =>
   `${universeId}/intro-${phaseId}`;
 
+/** What the voice reads for a phase intro: the briefing, then the goal. */
+export const introSpokenText = (phase: {
+  intro?: string;
+  goal?: string;
+}): string =>
+  [phase.intro, phase.goal && `Your goal: ${phase.goal}`]
+    .filter(Boolean)
+    .join(" ");
+
 /** What a newsreader would say: no "NEWS:" tag. Empty when nothing is said. */
 export function spokenText(text: string): string {
   const body = text.startsWith(NEWS_PREFIX)
@@ -32,7 +41,7 @@ export function narrationLines(): NarrationLine[] {
   const lines: NarrationLine[] = [];
   for (const def of PLAYABLE_UNIVERSES) {
     for (const phase of def.phases) {
-      const text = phase.intro ? spokenText(phase.intro) : "";
+      const text = phase.intro ? spokenText(introSpokenText(phase)) : "";
       if (text) lines.push({ id: introClipId(def.id, phase.id), text });
     }
     for (const message of def.story) {

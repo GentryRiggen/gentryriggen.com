@@ -49,8 +49,13 @@ export interface ResourceDef {
 export interface PhaseDef {
   id: string;
   title: string;
-  /** A line or two for the transition moment into this phase. */
+  /**
+   * The opening briefing for this phase: a few short sentences on where the
+   * player is, what they do and why it matters. Narrated, with `goal`.
+   */
   intro?: string;
+  /** One plain-words goal line, shown and read after the intro. */
+  goal?: string;
   /** The resource the free manual action earns here. */
   manualResource: string;
   manualLabel: string;
