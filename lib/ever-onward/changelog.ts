@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.7.0",
+    date: "2026-11-01",
+    title: "See every upgrade land",
+    highlights: [
+      "Every upgrade now shows up in the picture, and a little label pops up right where it landed",
+      "A caption in the corner tells you what you are looking at: ships guided, cities lit, collectors, lights still burning",
+      "No More Night: real power plants, a puffing steam plant, a dam, and power racing along the wires to glowing cities. When the grid runs short, the far cities flicker",
+      "The Coast gets far lighthouses, docks, an oil depot that fills up, rescue boats and coins on every ship",
+      "The Sky gets bigger mirrors, relay rings, star charts, probe copies and a light sail",
+      "The Last Light shows each light going dark as you let it go",
+      "The game now notices updates while it stays open, so the Update ready button appears on its own",
+    ],
+  },
+  {
     version: "1.6.1",
     date: "2026-11-01",
     title: "Play along with your podcast",
