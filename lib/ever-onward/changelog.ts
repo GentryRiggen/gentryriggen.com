@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.0",
+    date: "2026-11-01",
+    title: "Story intros, and your coins always in sight",
+    highlights: [
+      "Every part now opens with an intro: where you are, what you are doing and why it matters, with your goal. Tap Listen to hear it read aloud",
+      "The story moved out of the way. The newest line sits near the top, and the Story button opens the whole story, including every intro, any time",
+      "Your coins, income and next goal now stay pinned at the top of the screen all the time, and they never move around",
+    ],
+  },
+  {
     version: "1.11.1",
     date: "2026-11-01",
     title: "Clearer Someday cards, and an out-of-oil warning",
