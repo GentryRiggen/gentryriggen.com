@@ -11,7 +11,10 @@ interface Header {
 
 const hosting = JSON.parse(
   readFileSync(join(process.cwd(), "firebase.json"), "utf8")
-).hosting as { headers: { source: string; headers: Header[] }[] };
+).hosting as {
+  headers: { source: string; headers: Header[] }[];
+  rewrites?: { source: string; destination: string }[];
+};
 
 function headersFor(source: string): Header[] {
   const rule = hosting.headers.find((h) => h.source === source);
@@ -19,7 +22,7 @@ function headersFor(source: string): Header[] {
   return rule.headers;
 }
 
-it.each(["/jim", "/jim.html"])(
+it.each(["/jim", "/jim.html", "/jim/**"])(
   "%s cannot be framed and only talks to itself and Google auth",
   (source) => {
     const headers = headersFor(source);
@@ -32,14 +35,29 @@ it.each(["/jim", "/jim.html"])(
   }
 );
 
+it("serves the Jim page at every /jim/… address, like the e2e server", () => {
+  const rule = { source: "/jim/**", destination: "/jim.html" };
+  expect(hosting.rewrites).toContainEqual(rule);
+  const local = JSON.parse(
+    readFileSync(join(process.cwd(), "e2e/serve.json"), "utf8")
+  ) as { rewrites: unknown[] };
+  expect(local.rewrites).toContainEqual(rule);
+  // Deep links get the page's headers too (they're matched on the address).
+  expect(headersFor("/jim/**")).toContainEqual({
+    key: "Cache-Control",
+    value: "no-cache",
+  });
+});
+
 it("keeps /jim out of the sitemap and the pageview analytics", () => {
   expect(sitemap().some((entry) => entry.url.includes("/jim"))).toBe(false);
   expect(siteForPath("/jim")).toBeNull();
+  expect(siteForPath("/jim/notes/people/sam-okafor")).toBeNull();
 });
 
 // The page can only reach the server if the CSP lists it on both paths
 // Firebase Hosting serves the page from.
-it.each(["/jim", "/jim.html"])(
+it.each(["/jim", "/jim.html", "/jim/**"])(
   "%s lets the page call the server in JIM_API",
   (source) => {
     expect(JIM_API).toMatch(/^https:\/\//);
@@ -54,7 +72,7 @@ it.each(["/jim", "/jim.html"])(
   }
 );
 
-it.each(["/jim", "/jim.html"])(
+it.each(["/jim", "/jim.html", "/jim/**"])(
   "%s allows only its own worker and manifest",
   (source) => {
     const directives = headersFor(source)
