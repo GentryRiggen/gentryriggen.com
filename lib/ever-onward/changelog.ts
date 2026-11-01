@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.5.0",
+    date: "2026-11-01",
+    title: "More to juggle",
+    highlights: [
+      "No More Night: as cities light up, the grid gets wobbly. Tap Balance the grid to keep the lights steady, or ride the evening rush for a bonus",
+      "The Sky: your probes drift off course. Send a course correction to keep them on track, and catch solar flares for a boost",
+      "Oil prices swing more, so buying low really pays off",
+      "New upgrades fill the quiet stretches, and taking a star now pays energy right away",
+    ],
+  },
+  {
     version: "1.4.1",
     date: "2026-11-01",
     title: "Sharper numbers",
