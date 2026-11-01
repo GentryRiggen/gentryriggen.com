@@ -10,6 +10,13 @@ import {
   strainPerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
+import {
+  BAROMETERS_ID,
+  SPARE_PARTS_ID,
+  fixSeconds,
+  frontsSoFar,
+  readySeconds,
+} from "./weather";
 
 /**
  * No More Night's projects, paid mostly in know-how (which every power
@@ -88,6 +95,39 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
       { label: "A rush pays", read: rushBonus },
     ]),
     botValue: 0.1,
+  },
+  {
+    id: BAROMETERS_ID,
+    phase: PHASE_NIGHT,
+    name: "Better barometers",
+    description:
+      "Brass barometers in every town. Each forecast is surer, sooner, so your crews know where to go.",
+    tradeOff: "Know-how that could go into a power idea instead.",
+    costs: cost(100),
+    revealWhen: (run) => frontsSoFar(run) >= 1,
+    effectPreview: () =>
+      `First forecast ${pct(TUNING.weather.firm[0])} → ${pct(
+        TUNING.weather.firmBarometers[0]
+      )} sure · last ${pct(TUNING.weather.firm[2])} → ${pct(
+        TUNING.weather.firmBarometers[2]
+      )}`,
+    botValue: 0.12,
+  },
+  {
+    id: SPARE_PARTS_ID,
+    phase: PHASE_NIGHT,
+    name: "Spare parts depot",
+    description:
+      "A shed of ladders, fuses and sandbags. Crews get ready and fix dark towns twice as fast.",
+    tradeOff: "Costs power you could put into a plant.",
+    costs: cost(140, 4000),
+    revealWhen: (run) =>
+      (run.resources.wxFlickered ?? 0) >= 1 || frontsSoFar(run) >= 3,
+    effectPreview: projectPreviewOf(SPARE_PARTS_ID, [
+      { label: "Crew ready in", read: readySeconds, suffix: " s" },
+      { label: "Fix in", read: fixSeconds, suffix: " s" },
+    ]),
+    botValue: 0.12,
   },
   {
     id: "lamplighters",

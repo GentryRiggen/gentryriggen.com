@@ -25,12 +25,18 @@ import {
 } from "./garden";
 import { HAUL_ACTION, SET_NETS_ACTION, highTidesSoFar } from "./tide";
 import {
-  frontsSoFar,
   chanceOf,
-  isShielded,
-  shieldActionId,
-  shieldedCount,
-  shieldSlots,
+  crewActionId,
+  crewCount,
+  crewThatMoves,
+  crewsPlaced,
+  frontsSoFar,
+  hasCrew,
+  isOut,
+  isWeatherOpen,
+  readyAtLandfall,
+  readyShare,
+  weatherStage,
 } from "./weather";
 
 /** The smallest share of the tank a bot bothers to buy in one click. */
@@ -100,26 +106,46 @@ const looksAfterThings =
   };
 
 /**
- * Shields the likeliest town(s) while the forecast stands. A bot with real
- * attention misses now and then: it skips every `skipEvery`th front (counted
- * by the desk itself, so the sim stays deterministic), and `onlyEvery` makes
- * a distracted player tend just one front in so many.
+ * Sends the repair crews by the forecast. At every step it weighs each town
+ * by its chance times how ready a crew there would be at landfall (a crew
+ * that moves starts over), and moves the crew worth least to the town worth
+ * most when that gains enough. Between storms it sends a crew to fix a dark
+ * town. A bot with real attention misses now and then: it skips every
+ * `skipEvery`th front (counted by the desk, so the sim stays deterministic),
+ * and `onlyEvery` makes a distracted player tend just one front in so many.
  */
 const tendsWeather =
   (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
   (run, available) => {
+    if (!isWeatherOpen(run)) return [];
     const front = frontsSoFar(run);
     const { skipEvery, onlyEvery } = options;
     if (skipEvery && front % skipEvery === skipEvery - 1) return [];
     if (onlyEvery && front % onlyEvery !== 0) return [];
-    if (shieldedCount(run) >= shieldSlots(run)) return [];
-    const open = [0, 1, 2].filter((town) => !isShielded(run, town));
-    const town = open.sort(
-      (a, b) => chanceOf(run, b) - chanceOf(run, a) || a - b
-    )[0];
-    const id = shieldActionId(town);
-    return available.includes(id) ? [id] : [];
+    const towns = [0, 1, 2];
+    const send = (town: number): string[] => {
+      const id = crewActionId(town);
+      return available.includes(id) ? [id] : [];
+    };
+    if (weatherStage(run) !== "forecast") {
+      // Between storms: fix a dark town (a crew there fixes it fast).
+      const dark = towns.find((t) => isOut(run, t) && !hasCrew(run, t));
+      return dark === undefined ? [] : send(dark);
+    }
+    const value = (town: number, isMoving: boolean): number =>
+      chanceOf(run, town) * readyShare(readyAtLandfall(run, town, isMoving));
+    const free = towns.filter((t) => !hasCrew(run, t));
+    const best = free.sort((a, b) => value(b, true) - value(a, true))[0];
+    if (best === undefined) return [];
+    if (crewsPlaced(run) < crewCount(run)) return send(best);
+    const mover = crewThatMoves(run, best);
+    if (mover === null) return send(best);
+    const gain = value(best, true) - value(mover, false);
+    return gain >= WEATHER_MOVE_GAIN ? send(best) : [];
   };
+
+/** Points of (chance x readiness) a move must gain to be worth it. */
+const WEATHER_MOVE_GAIN = 8;
 
 /**
  * Hauls full nets in and sets them again. A bot with real attention misses
@@ -227,13 +253,23 @@ const setsLamps =
 const brightest = (run: RunState): number =>
   isGridAuto(run) || tier(run, "grid") >= 1 ? 3 : 2;
 
+/** Projects that lift income enough to dim the lights for. */
+const WORTH_DIMMING_FOR: ReadonlySet<string> = new Set([
+  "night-school",
+  "smart-meters",
+  "fish-ladders",
+  "co-op",
+  "wind-maps",
+]);
+
 /**
- * A project on offer has its power but waits on know-how, and soft-glow
+ * A big project on offer has its power but waits on know-how, and soft-glow
  * learning would get there within `patience` seconds.
  */
 function wantsKnowhow(run: RunState, patience: number): boolean {
   const softRate = knowhowAtStep(run, 0);
   return shownProjects(lightUniverse, run).some((p) => {
+    if (!WORTH_DIMMING_FOR.has(p.id)) return false;
     const powerOk = p.costs.every(
       (c) =>
         c.resource === "knowhow" ||
@@ -304,7 +340,7 @@ export function lightBots(): BotSet {
       tendsTide({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
-      setsLamps({ patience: 40 })
+      setsLamps({ patience: 60 })
     ),
     realistic: withOil(
       base.realistic,
@@ -314,7 +350,7 @@ export function lightBots(): BotSet {
       tendsTide({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
-      setsLamps({ patience: 40 })
+      setsLamps({ patience: 60 })
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {

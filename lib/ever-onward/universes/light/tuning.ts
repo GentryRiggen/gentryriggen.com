@@ -179,10 +179,10 @@ export const TUNING = {
    */
   lamps: {
     steps: [
-      { pay: 0.85, demand: 0.88, strain: 0.7, knowhow: 2 },
-      { pay: 0.93, demand: 0.94, strain: 0.85, knowhow: 1.4 },
+      { pay: 0.9, demand: 0.88, strain: 0.7, knowhow: 2.5 },
+      { pay: 0.95, demand: 0.94, strain: 0.85, knowhow: 1.6 },
       { pay: 1, demand: 1, strain: 1, knowhow: 1 },
-      { pay: 1.1, demand: 1.06, strain: 1.3, knowhow: 0.5 },
+      { pay: 1.06, demand: 1.06, strain: 1.3, knowhow: 0.25 },
     ] as readonly {
       pay: number;
       demand: number;
@@ -197,16 +197,38 @@ export const TUNING = {
     openAtSteamPlants: 3,
     /** Seconds after it opens until the first front forms. */
     firstFormSeconds: 40,
-    /** Seconds a front takes to form, and how long its forecast stands. */
-    formMin: 130,
-    formSpread: 50,
-    forecastSeconds: 55,
+    /** Seconds a front takes to form. */
+    formMin: 70,
+    formSpread: 40,
+    /** The forecast comes in steps, the storm's path firming up each time. */
+    forecastSteps: 3,
+    stepSeconds: 20,
+    /**
+     * How sure each step is: the share of the chances that points at where
+     * the storm will really land (the first step is the honest draw).
+     * Barometers make every step surer.
+     */
+    firm: [0, 0.45, 0.8] as readonly number[],
+    firmBarometers: [0.3, 0.7, 0.95] as readonly number[],
     /** Each town is at least this likely; the rest is shared out at random. */
     minChance: 5,
     /** Chances are drawn as random ** skew, so one town is usually likely. */
     skew: 2,
-    /** Seconds of income a held storm pays. */
+    /** Seconds of income a storm pays when it lands on a ready crew. */
     bonusSeconds: 45,
+    /** A crew that has only just arrived earns this share of the bonus. */
+    unreadyShare: 0.5,
+    /** Seconds a crew takes to get ready, and to fix a dark town. */
+    readySeconds: 40,
+    fixSeconds: 12,
+    /** Spare parts: crews get ready and fix in this share of the time. */
+    sparePartsFactor: 0.5,
+    /** A town hit with no crew goes dark this long, and pays this much less. */
+    outageSeconds: 120,
+    outageShare: 0.1,
+    /** Know-how for a storm met by a crew, and for an outage fixed. */
+    heldKnowhow: 4,
+    fixKnowhow: 3,
     /** The bonus flows in over this many seconds, like a surge of power. */
     surgeSeconds: 12,
     /** The weather vane pays this share of that. */

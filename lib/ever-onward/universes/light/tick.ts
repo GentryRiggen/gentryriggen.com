@@ -14,7 +14,7 @@ import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
-import { tickWeather } from "./weather";
+import { outageFactor, tickWeather } from "./weather";
 
 const {
   coast: C,
@@ -289,7 +289,10 @@ export const demandMW = (run: RunState): number =>
 
 /** What every megawatt that reaches a city pays (smart meters: more). */
 export const cityPay = (run: RunState): number =>
-  N.payPerMW * ifProject(run, "smart-meters", P.meterPay) * lampEffect(run).pay;
+  N.payPerMW *
+  ifProject(run, "smart-meters", P.meterPay) *
+  lampEffect(run).pay *
+  outageFactor(run);
 
 /** Know-how a second: every plant's crew learns a little. */
 export const knowhowPerSecond = (run: RunState): number =>

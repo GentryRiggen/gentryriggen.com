@@ -36,11 +36,12 @@ import { LAMP_ACTIONS } from "./lamps";
 import {
   TOWNS,
   chanceOf,
+  crewActionId,
+  crewCount,
+  hasCrew,
   hasWeatherVane,
-  isShielded,
-  shieldActionId,
-  shieldSlots,
-  toggleShield,
+  isWeatherOpen,
+  toggleCrew,
   weatherStage,
 } from "./weather";
 import {
@@ -277,24 +278,30 @@ const FLASH_LAMP: ActionDef = {
   },
 };
 
-/** One shield toggle per town; the weather desk draws them itself. */
-const SHIELD_TOWN: readonly ActionDef[] = TOWNS.map((name, town) => ({
-  id: shieldActionId(town),
+/** One crew button per town; the weather desk draws them itself. */
+const SEND_CREW: readonly ActionDef[] = TOWNS.map((name, town) => ({
+  id: crewActionId(town),
   phases: [PHASE_NIGHT],
   isInline: true,
-  visibleWhen: (run) => weatherStage(run) === "forecast",
+  visibleWhen: isWeatherOpen,
   describe: (run) => {
-    const isOn = isShielded(run, town);
-    const slots = shieldSlots(run);
+    const isHere = hasCrew(run, town);
+    const crews = crewCount(run);
+    const chance =
+      weatherStage(run) === "forecast"
+        ? `${chanceOf(run, town)}% chance the storm lands here · `
+        : "";
     return {
-      label: isOn ? `Lift the sandbags at ${name}` : `Sandbag ${name}`,
-      detail: `${chanceOf(run, town)}% chance the storm lands here · ${slots} ${
-        slots === 1 ? "town" : "towns"
-      } at a time${hasWeatherVane(run) ? " · the weather vane covers you" : ""}`,
-      hint: isOn ? { text: "shielded", tone: "good" as const } : undefined,
+      label: isHere
+        ? `Call the crew back from ${name}`
+        : `Send a crew to ${name}`,
+      detail: `${chance}${crews} ${crews === 1 ? "crew" : "crews"}${
+        hasWeatherVane(run) ? " · the weather vane covers you" : ""
+      }`,
+      hint: isHere ? { text: "crew here", tone: "good" as const } : undefined,
     };
   },
-  perform: (run) => toggleShield(run, town),
+  perform: (run) => toggleCrew(run, town),
 }));
 
 /** The tide clock's two buttons; its panel draws them itself. */
@@ -403,7 +410,7 @@ export const ACTIONS: readonly ActionDef[] = [
   CATCH_FLARE,
   STEER_BOAT,
   FLASH_LAMP,
-  ...SHIELD_TOWN,
+  ...SEND_CREW,
   SET_NETS,
   HAUL_IN,
   ...LAUNCH_ROUTE,

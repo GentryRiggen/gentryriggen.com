@@ -221,8 +221,12 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
       resources: {
         ...run.resources,
         ...Object.fromEntries(
-          [0, 1, 2].map((t) => [`wxChance${t}`, t === likeliest ? 100 : 0])
+          [0, 1, 2].flatMap((t) => [
+            [`wxChance${t}`, t === likeliest ? 100 : 0],
+            [`wxBase${t}`, t === likeliest ? 100 : 0],
+          ])
         ),
+        wxTarget: likeliest,
       },
     };
     const land = (r: RunState) => {
@@ -232,7 +236,11 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
       return next;
     };
     const byVane = land(sure);
-    const byHand = land(performAction(def, sure, shieldActionId(likeliest)));
+    const sent = performAction(def, sure, shieldActionId(likeliest));
+    const byHand = land({
+      ...sent,
+      resources: { ...sent.resources, [`wxReady${likeliest}`]: 1 },
+    });
     expect(lastStorm(byHand).payout).toBeGreaterThan(lastStorm(byVane).payout);
   });
 
