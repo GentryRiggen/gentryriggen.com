@@ -142,6 +142,7 @@ function loadWorker() {
     showNotification,
     matchAll,
     openWindow,
+    skipWaiting: self.skipWaiting,
     dispatchFetch,
     dispatch,
     cacheKeys: () => [...(stores.get("jim-shell-v1")?.keys() ?? [])].sort(),
@@ -302,6 +303,34 @@ describe("CACHE_URLS", () => {
       `${ORIGIN}/_next/static/chunks/auth.js`,
       PAGE,
     ]);
+  });
+});
+
+describe("waiting and SKIP_WAITING", () => {
+  it("does not skip waiting on install", async () => {
+    const worker = loadWorker();
+    worker.fetchMock.mockResolvedValue(makeResponse("x"));
+    await worker.dispatch("install");
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
+  });
+
+  it("skips waiting when a page asks", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("message", {
+      source: { type: "window" },
+      data: { type: "SKIP_WAITING" },
+    });
+    expect(worker.skipWaiting).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores SKIP_WAITING from anything but a window", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("message", {
+      source: { type: "worker" },
+      data: { type: "SKIP_WAITING" },
+    });
+    await worker.dispatch("message", { data: { type: "SKIP_WAITING" } });
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
   });
 });
 

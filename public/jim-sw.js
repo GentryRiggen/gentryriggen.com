@@ -15,6 +15,8 @@
  *   (chunks loaded before the worker took control).
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
+ * - A new worker waits (no automatic skipWaiting) until a page posts
+ *   { type: "SKIP_WAITING" }; the page then reloads on controllerchange.
  * - push: { title, body, url } becomes a notification (a generic one when
  *   the payload can't be read: iOS wants one for every push). A tap focuses
  *   an open /jim or opens it; a URL with a query (/jim?say=quiz%20me) is kept,
@@ -107,7 +109,8 @@ async function precachePage() {
 }
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
+  // No skipWaiting here: a new worker waits until the page asks (SKIP_WAITING,
+  // from the "Update ready" pill) so the page and its worker change together.
   // Best effort: an install while offline still installs.
   event.waitUntil(precachePage().catch(() => {}));
 });
@@ -254,6 +257,10 @@ self.addEventListener("message", (event) => {
   const { data, source } = event;
   // Only accept messages from our own pages (window clients are same-origin).
   if (!source || source.type !== "window") return;
+  if (data && data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
   if (!data || data.type !== "CACHE_URLS" || !Array.isArray(data.urls)) return;
 
   const seen = new Set();

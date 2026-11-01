@@ -6,6 +6,7 @@ import JimHeader from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
 import LockScreen from "@/components/jim/LockScreen";
 import useAppLock from "@/components/jim/useAppLock";
+import useJimStaleChunkRecovery from "@/components/jim/useJimStaleChunkRecovery";
 import { ADMIN_UID, isAdminUser } from "@/lib/analytics/admin";
 import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
@@ -98,6 +99,7 @@ export default function JimGate() {
   const [submitting, setSubmitting] = useState(false);
   /** Said on the sign-in screen after a wipe (too many wrong PINs). */
   const [notice, setNotice] = useState<string | null>(null);
+  useJimStaleChunkRecovery();
   const lock = useAppLock(state.kind === "owner" ? state.uid : null);
   const { lockNow } = lock;
   /** The sign-in the server was last woken for. */

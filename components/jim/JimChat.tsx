@@ -15,6 +15,8 @@ import { ArrowUp, Check, Square, Volume2 } from "lucide-react";
 import AppLockSheet from "@/components/jim/AppLockSheet";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
+import JimUpdatePill from "@/components/jim/JimUpdatePill";
+import useJimUpdate from "@/components/jim/useJimUpdate";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
 import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
 import NotesShell from "@/components/jim/notes/NotesShell";
@@ -634,6 +636,7 @@ export default function JimChat({
   }
 
   const canSend = draft.trim().length > 0 && !sending && online;
+  const jimUpdate = useJimUpdate();
 
   if (locked) return null;
 
@@ -668,6 +671,9 @@ export default function JimChat({
         />
 
         <div className="relative min-h-0 flex-1">
+          {jimUpdate.isUpdateReady && (
+            <JimUpdatePill onUpdate={jimUpdate.update} disabled={sending} />
+          )}
           <div
             id="jim-chat"
             role="tabpanel"
