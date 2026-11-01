@@ -5,6 +5,7 @@ import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import DailyWord from "@/components/jim/notes/DailyWord";
 import NeedsYou from "@/components/jim/notes/NeedsYou";
+import RemindersCard from "@/components/jim/notes/RemindersCard";
 import QuickLog from "@/components/jim/notes/QuickLog";
 import {
   todoKey,
@@ -39,6 +40,13 @@ interface NotesHomeProps {
   onLog: (text: string) => void;
   /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
   onDraft: (text: string) => void;
+  /** Reminders card: its server, and where a tap goes. Without them it is hidden. */
+  reminders?: {
+    api: string;
+    getToken: (force?: boolean) => Promise<string | null>;
+    onOpen: (id: string | null) => void;
+    hrefFor?: (id: string | null) => string;
+  };
 }
 
 const AREA_LABEL: Record<string, string> = {
@@ -422,6 +430,7 @@ export default function NotesHome({
   saves,
   onLog,
   onDraft,
+  reminders,
 }: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
@@ -447,6 +456,7 @@ export default function NotesHome({
           <TodayCard data={data} />
           <QuickLog today={data.today} onLog={onLog} />
         </div>
+        {reminders && <RemindersCard {...reminders} />}
         {data.actions && (
           <NeedsYou
             actions={data.actions}
