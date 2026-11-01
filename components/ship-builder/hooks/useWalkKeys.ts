@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { resetWalkInput, walkInput } from "@/lib/ship-builder/state/walkInput";
+import { escapeActionFor } from "@/components/ship-builder/ui/EscapeActionButton";
+import { getEscape } from "@/lib/ship-builder/state/escapeLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 
 type Direction =
@@ -63,6 +65,15 @@ export default function useWalkKeys(): void {
         event.preventDefault();
         walkInput.jump = true;
         return;
+      }
+      if (event.key.toLowerCase() === "e") {
+        // E boards, jumps or climbs in when it can; otherwise it turns.
+        const action = escapeActionFor(getEscape());
+        if (action) {
+          event.preventDefault();
+          action.run();
+          return;
+        }
       }
       const direction = KEY_DIRECTIONS[event.key.toLowerCase()];
       if (!direction) return;

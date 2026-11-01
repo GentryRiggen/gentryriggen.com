@@ -3,10 +3,14 @@
 import { ArrowUp, LogOut, Snowflake } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
+import { useEscape } from "@/lib/ship-builder/state/escapeLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useWalkKeys from "../hooks/useWalkKeys";
+import EscapeActionButton from "./EscapeActionButton";
+import EscapePopup from "./EscapePopup";
+import WarmthMeter from "./WarmthMeter";
 import { focusWalkButton } from "./WalkButton";
 import WalkJoystick from "./WalkJoystick";
 import WalkLookLayer from "./WalkLookLayer";
@@ -36,10 +40,12 @@ function StopWalkingButton() {
 
 /** Asks for a jump on press; the walker only leaves the ground if it can. */
 function JumpButton() {
+  const isSwimming = useEscape().phase.kind === "swimming";
+  const label = isSwimming ? "Kick" : "Jump";
   return (
     <button
       type="button"
-      aria-label="Jump"
+      aria-label={label}
       onPointerDown={(event) => {
         event.preventDefault();
         walkInput.jump = true;
@@ -50,7 +56,11 @@ function JumpButton() {
       }}
       className={`pointer-events-auto inline-flex h-16 w-16 touch-none select-none items-center justify-center rounded-full border text-sm font-semibold shadow-lg hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:hover:bg-slate-800 dark:focus-visible:outline-sky-400 ${panelClass}`}
     >
-      <ArrowUp aria-hidden="true" className="h-6 w-6" />
+      {isSwimming ? (
+        <span aria-hidden="true">Kick</span>
+      ) : (
+        <ArrowUp aria-hidden="true" className="h-6 w-6" />
+      )}
     </button>
   );
 }
@@ -98,7 +108,9 @@ function OutcomeNote() {
   const outcome = useShipBuilderStore((s) =>
     s.trial.status === "result" ? (s.trial.state.outcome ?? "steady") : null
   );
-  if (!outcome) return null;
+  // An escape card or the swim has the player's attention.
+  const isEscaping = useEscape().phase.kind !== "aboard";
+  if (!outcome || isEscaping) return null;
   return (
     <p
       role="status"
@@ -132,6 +144,9 @@ function WalkingControls() {
   // The trial's status pill sits top centre; on narrow screens the buttons
   // drop below it instead of hiding behind it.
   const isTrialShown = useShipBuilderStore((s) => s.trial.status !== "idle");
+  // Seated, leaping or frozen, there is nothing to steer.
+  const phaseKind = useEscape().phase.kind;
+  const hasControls = phaseKind === "aboard" || phaseKind === "swimming";
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
@@ -145,13 +160,18 @@ function WalkingControls() {
           <SinkShipButton />
           <StopWalkingButton />
         </div>
-        <div className="flex items-end justify-between">
-          <WalkJoystick />
-          <JumpButton />
-        </div>
+        {hasControls && (
+          <div className="flex items-end justify-between">
+            <WalkJoystick />
+            <JumpButton />
+          </div>
+        )}
       </div>
       <WalkHint />
       <OutcomeNote />
+      <WarmthMeter />
+      <EscapeActionButton />
+      <EscapePopup />
     </div>
   );
 }
