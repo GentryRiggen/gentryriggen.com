@@ -131,6 +131,12 @@ export interface UpgradeDef {
    * from the run as it is now. Must only read.
    */
   effectPreview?(run: RunState): string | null;
+  /**
+   * A short, kind reason shown instead of "X -> X" when the preview would
+   * change nothing right now ("A wheelbarrow lets them carry more."). Must
+   * only read. Omitted: a generic line is used.
+   */
+  noEffectReason?(run: RunState): string | null;
 }
 
 /** What an action button shows right now. */

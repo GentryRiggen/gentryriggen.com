@@ -1,4 +1,10 @@
-import { canAfford, isMaxed, upgradeCost, visibleUpgrades } from "./engine";
+import {
+  canAfford,
+  isMaxed,
+  upgradeCost,
+  upgradeNoEffectReason,
+  visibleUpgrades,
+} from "./engine";
 import type { RunState, UniverseDef, UpgradeDef } from "./types";
 
 /** The resource the player is mostly earning and spending in this phase. */
@@ -36,14 +42,18 @@ function describe(run: RunState, upgrade: UpgradeDef): NextUpgrade {
  * The upgrade to dangle in front of the player: the cheapest visible one they
  * can't afford yet (in the phase's main currency when there is one). A
  * `stickyId` that has just become affordable stays the pick, so it can glow
- * until it is bought. Falls back to the cheapest affordable one.
+ * until it is bought. Upgrades whose preview would change nothing are never
+ * picked. Falls back to the cheapest affordable one.
  */
 export function pickNextUpgrade(
   def: UniverseDef,
   run: RunState,
   stickyId?: string
 ): NextUpgrade | null {
-  const open = visibleUpgrades(def, run).filter((u) => !isMaxed(run, u));
+  // Never steer the player to a buy that would change nothing right now.
+  const open = visibleUpgrades(def, run).filter(
+    (u) => !isMaxed(run, u) && upgradeNoEffectReason(run, u) === null
+  );
   if (open.length === 0) return null;
   const primary = primaryResourceId(def, run);
   const inPrimary = open.filter((u) => u.currency === primary);

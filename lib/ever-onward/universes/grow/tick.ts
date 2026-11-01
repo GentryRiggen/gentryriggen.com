@@ -123,7 +123,8 @@ export function incomePerSecond(run: RunState): number {
 /**
  * The share of ripening produce the baskets and gardeners pick on their own,
  * at the base rate. The rest waits in the garden for a hand to pick it, and
- * waits as long as it takes. Wheelbarrows let the pickers keep up with more.
+ * waits as long as it takes. Wheelbarrows let the pickers keep up with more;
+ * past that limit each extra helper still adds a twentieth of its share.
  */
 export function pickShare(run: RunState): number {
   const y = TUNING.yard;
@@ -131,7 +132,9 @@ export function pickShare(run: RunState): number {
     owned(run, "basket") * y.basketShare +
     owned(run, "gardener") * y.gardenerShare;
   const cap = y.pickCap + y.barrowPer * owned(run, "wheelbarrow");
-  return Math.min(cap, crew);
+  // Past the cap a helper still carries a little (a fraction of its share),
+  // so no basket or gardener is ever a wasted buy. Wheelbarrows lift the cap.
+  return crew <= cap ? crew : cap + (crew - cap) * y.overflowKeep;
 }
 
 /** Produce per second picked into seeds with nobody lifting a finger. */
