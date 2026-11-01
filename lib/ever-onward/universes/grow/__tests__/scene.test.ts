@@ -28,9 +28,9 @@ describe("Grow sceneInfo", () => {
 
   it("shows dry soil when the barrel is empty", () => {
     const run = runAtPhaseStart(0);
-    expect(sceneInfo(run).isDry).toBe(false);
+    expect(sceneInfo(run).dry).toBe(false);
     const dry = withWater(run, 0);
-    expect(sceneInfo(dry).isDry).toBe(true);
+    expect(sceneInfo(dry).dry).toBe(true);
     expect(sceneInfo(dry).waterFraction).toBe(0);
   });
 
@@ -88,7 +88,7 @@ describe("Grow sceneInfo", () => {
 
   it("shows thirsty fields", () => {
     const dry = withWater(runAtPhaseStart(1), 0);
-    expect(sceneInfo(dry).isDry).toBe(true);
+    expect(sceneInfo(dry).dry).toBe(true);
   });
 
   describe("world", () => {

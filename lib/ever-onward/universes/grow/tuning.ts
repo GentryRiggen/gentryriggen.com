@@ -135,8 +135,8 @@ export const TUNING = {
     handShare: 0.5,
     /** A payout flows into the harvest over this many seconds. */
     surgeSeconds: 4,
-    /** Fairs finished before the fair helper turns up. */
-    handAfterFairs: 1,
+    /** Fairs finished (or the first glasshouse) before the fair helper turns up. */
+    handAfterFairs: 5,
     /** How much of a pumpkin's quality is its size (the rest is shine). */
     sizeWeight: 0.6,
   },
@@ -209,6 +209,28 @@ export const TUNING = {
     vaultCover: 0.8,
     /** A player switches when another biome is this much better. */
     playerMargin: 1.1,
+  },
+  /** Seed migration: a flock of birds to send somewhere about every two minutes. */
+  migration: {
+    /** Seconds before the first flock, then between flocks. */
+    firstWaitSeconds: 45,
+    waitSeconds: 110,
+    /** The day's weather in a region is a number between these. */
+    weatherLow: 0.6,
+    weatherHigh: 1.4,
+    /** A fully green region welcomes this much less (a share). */
+    greenCut: 0.5,
+    /** Each landing greens a region by this much (0 to 1). */
+    greenStep: 0.25,
+    /** The flock leader sends a waiting flock after this long, at this share. */
+    leaderDelay: 30,
+    leaderShare: 0.5,
+    /** Flights landed before the flock leader turns up. */
+    leaderAfterFlights: 2,
+    /** A landing flows into the green over this many seconds. */
+    surgeSeconds: 4,
+    /** A landing still flowing when the world ends becomes this much care. */
+    greenToCare: 0.00005,
   },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */

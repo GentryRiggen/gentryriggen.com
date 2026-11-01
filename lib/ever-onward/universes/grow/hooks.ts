@@ -2,9 +2,21 @@ import { upgradeCost } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
-import { FAIR_ACTION_IDS, isFairOn, isFairOpen, withoutFair } from "./fair";
+import {
+  FAIR_HAND_ID,
+  FAIR_ACTION_IDS,
+  isFairOn,
+  isFairOpen,
+  withoutFair,
+} from "./fair";
 import { SPREAD_ACTION_IDS, biomeGap } from "./biomes";
-import { PLANT_ACTION_IDS, demandGap } from "./market";
+import {
+  MIGRATION_ACTION_IDS,
+  isFlockReady,
+  isMigrationOpen,
+  withoutMigration,
+} from "./migration";
+import { MARKET_AGENT_ID, PLANT_ACTION_IDS, demandGap } from "./market";
 import { PHASE_IDS } from "./resources";
 import { sceneInfo } from "./scene";
 import { pickPerSecond } from "./tick";
@@ -46,6 +58,7 @@ export function growPlates(run: RunState): string[] {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
     if (biomeGap(run) >= TUNING.world.playerMargin) plates.push("spread");
+    if (isFlockReady(run)) plates.push("flock");
   }
   return plates;
 }
@@ -57,6 +70,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   market: PLANT_ACTION_IDS,
   spread: SPREAD_ACTION_IDS,
   fair: FAIR_ACTION_IDS,
+  flock: MIGRATION_ACTION_IDS,
 };
 
 /** The tank is the backyard's one watched number. */
@@ -77,6 +91,9 @@ export function growIncomeView(run: RunState): RunState {
   if (run.phase === 1 && isFairOpen(run))
     // A fair payout flowing in is not income.
     return withoutFair({ ...run, resources: { ...run.resources } });
+  if (run.phase === 2 && isMigrationOpen(run))
+    // A landing flowing in is not income.
+    return withoutMigration({ ...run, resources: { ...run.resources } });
   if (run.phase !== 0) return run;
   const floor = pickPerSecond(run) * 2;
   const view =
@@ -122,6 +139,11 @@ function sceneKey(run: RunState): string {
     s.barrow,
     s.tea,
     s.keeper,
+    // The farm's one-offs: silos, the market agent, the fair tent and helper.
+    run.owned.silo ?? 0,
+    run.owned[MARKET_AGENT_ID] ?? 0,
+    isFairOpen(run),
+    run.owned[FAIR_HAND_ID] ?? 0,
   ].join("|");
 }
 

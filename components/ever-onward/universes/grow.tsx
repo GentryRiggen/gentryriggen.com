@@ -12,8 +12,10 @@ import {
 import type { CueName } from "../audio/everOnwardSynth";
 import EmberIcon from "../game/EmberIcon";
 import BeeDance from "../game/grow/BeeDance";
+import BiomePanel from "../game/grow/BiomePanel";
 import CountyFair from "../game/grow/CountyFair";
 import MarketPanel from "../game/grow/MarketPanel";
+import SeedMigration from "../game/grow/SeedMigration";
 import SeasonDial from "../game/grow/SeasonDial";
 import GrowScene from "../scenes/grow/GrowScene";
 import type { RunState } from "@/lib/ever-onward/engine/types";
@@ -58,7 +60,14 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** Placeholders until the art and the music are made (Tasks 14 and 15). */
 export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
-  panels: [SeasonDial, MarketPanel, BeeDance, CountyFair],
+  panels: [
+    SeasonDial,
+    MarketPanel,
+    BeeDance,
+    CountyFair,
+    BiomePanel,
+    SeedMigration,
+  ],
   ending: { storyIds: ENDING_STORY_IDS },
   tapLooks: LOOKS,
   hubSprite: {

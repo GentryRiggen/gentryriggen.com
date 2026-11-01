@@ -16,6 +16,13 @@ import {
   openBees,
 } from "./bees";
 import { worldCover } from "./biomes";
+import {
+  FLOCK_LEADER_ID,
+  flightsSoFar,
+  leaderPaysOn,
+  leaderShown,
+  openMigration,
+} from "./migration";
 import { TUNING } from "./tuning";
 import { MARKET_AGENT_ID } from "./market";
 import { PHASE_FARM, PHASE_SEED, PHASE_WORLD, PHASE_YARD } from "./resources";
@@ -479,7 +486,25 @@ export const UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 10,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "windbreak") >= 3,
+    onBuy: openMigration,
     effectPreview: (run) => helperPreview(run, "planting-rover"),
+  },
+  {
+    id: FLOCK_LEADER_ID,
+    name: "A flock leader",
+    description:
+      "A wise old goose who leads a waiting flock to the greenest place she knows when you are busy. Your own choice still grows more.",
+    phases: [PHASE_WORLD],
+    currency: "green",
+    baseCost: 900000,
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy the world first.
+    priority: -1,
+    kind: "mechanic",
+    // Halfway along: once a couple of flights have landed.
+    visibleWhen: leaderShown,
+    effectPreview: (run) =>
+      `Sends a waiting flock to the most welcoming place: about ${num(Math.floor(leaderPaysOn(run, incomePerSecond(run))))} green (${flightsSoFar(run)} flights so far)`,
   },
   {
     id: "cloud-seeder",

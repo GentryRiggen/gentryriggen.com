@@ -1,7 +1,7 @@
 import { performAction, tick } from "../../../engine/engine";
 import { simulate } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
-import { growBots } from "../bots";
+import { entersFair, growBots } from "../bots";
 import {
   FAIR_ACTION_IDS,
   FAIR_HAND_ID,
@@ -156,22 +156,40 @@ describe("the county fair", () => {
     let r = toFair(tick(def, fairy(), 0.1));
     expect(handShown(r)).toBe(false);
     r = judged(r, 0);
+    // not right after the first fair: around the middle of the machine's life
+    expect(handShown(r)).toBe(false);
+    for (let i = 1; i < F.handAfterFairs; i += 1) r = judged(toFair(r), 0);
     expect(handShown(r)).toBe(true);
+    expect(
+      handShown({
+        ...toFair(tick(def, fairy(), 0.1)),
+        owned: { glasshouse: 1 },
+      })
+    ).toBe(true);
     expect(
       def.upgrades.find((u) => u.id === FAIR_HAND_ID)?.visibleWhen?.(r)
     ).toBe(true);
   });
 
-  it("counts one fair per judging, and pays in flight after the farm ends", () => {
-    const on = toFair(tick(def, fairy(), 0.1));
+  it("counts one fair per judging, and pays what the farm paid after the farm ends", () => {
+    const big = { scarecrow: 60, tractor: 40 };
+    const on = toFair(tick(def, fairy(big), 0.1));
+    const farmIncome = incomePerSecond(on);
     const sent = enter(on, 0);
     expect(fairsSoFar(sent)).toBe(0);
     // the farm ends while the judges are still walking the row
-    const ended: RunState = { ...sent, phase: 2 };
+    const ended: RunState = { ...sent, phase: 2, owned: {} };
+    expect(incomePerSecond(ended)).toBeLessThan(farmIncome / 100);
     const after = run(ended, F.judgeSeconds + F.surgeSeconds + 2);
     expect(fairsSoFar(after)).toBe(1);
     expect(after.resources.frPending).toBe(0);
-    expect(after.resources.green).toBeGreaterThan(ended.resources.green ?? 0);
+    // the payout is the ribbon's seconds of the FARM's income, at the exchange
+    const pays = ribbonSeconds(after.resources.frPlace) * farmIncome;
+    expect(after.resources.frLastPays).toBeCloseTo(pays, 5);
+    expect(after.resources.frLastPays).toBeGreaterThan(5 * farmIncome - 1);
+    expect((after.resources.green ?? 0) - (ended.resources.green ?? 0)).toBe(
+      Math.floor(pays * TUNING.world.harvestToGreen)
+    );
   });
 
   it("uses its own random stream", () => {
@@ -220,6 +238,19 @@ describe("the county fair", () => {
         stopWhen: (r) => r.phase >= 2,
       }).finalRun;
     expect(play(bots.tapper).resources.frFairs).toBeGreaterThan(0);
-    expect(play(bots.idle).resources.frFairs ?? 0).toBe(0);
+    // idle never enters by hand: only the fair helper does, so it joins fewer
+    expect(play(bots.idle).resources.frFairs ?? 0).toBeLessThan(
+      play(bots.tapper).resources.frFairs
+    );
+  });
+
+  it("lets a bot that skips a fair still enter it after a delay", () => {
+    const on = toFair(tick(def, fairy(), 0.1));
+    const ids = FAIR_ACTION_IDS;
+    const skipper = entersFair({ skipEvery: 1 });
+    const early = { ...on, resources: { ...on.resources, frTime: 5 } };
+    const late = { ...on, resources: { ...on.resources, frTime: 60 } };
+    expect(skipper(early, ids)).toEqual([]);
+    expect(skipper(late, ids)).toHaveLength(1);
   });
 });

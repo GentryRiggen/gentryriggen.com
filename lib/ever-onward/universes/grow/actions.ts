@@ -20,6 +20,7 @@ import {
   PUMPKIN_COUNT,
 } from "./fair";
 import { SPREAD_ACTIONS } from "./biomes";
+import { sendActions } from "./migration";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_FARM, PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
@@ -129,7 +130,7 @@ const ENTER_PUMPKIN: readonly ActionDef[] = Array.from(
             : undefined,
       };
     },
-    perform: (run: RunState) => enterPumpkin(run, index),
+    perform: (run: RunState) => enterPumpkin(run, index, incomePerSecond(run)),
   })
 );
 
@@ -139,6 +140,7 @@ export const GROW_ACTIONS: readonly ActionDef[] = [
   ...MARKET_ACTIONS,
   ...SPREAD_ACTIONS,
   ...ENTER_PUMPKIN,
+  ...sendActions(incomePerSecond),
 ];
 
 /** Used by the plate and by bots: enough ripe to bother with. */

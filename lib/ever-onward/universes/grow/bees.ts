@@ -1,7 +1,7 @@
 import { formatNumber } from "../../engine/format";
 import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
-import { MANUAL_RESOURCES } from "./resources";
+import { MANUAL_RESOURCES, carryOver } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -178,7 +178,7 @@ function flowSurge(run: RunState, dt: number): void {
   if (pending <= 0) return;
   if (run.phase !== 0) {
     const id = MANUAL_RESOURCES[run.phase];
-    r[id] = res(run, id) + pending * TUNING.farm.seedsToHarvest;
+    r[id] = res(run, id) + carryOver(0, pending);
     r.bePending = 0;
     return;
   }

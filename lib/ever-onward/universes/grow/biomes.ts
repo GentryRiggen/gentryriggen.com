@@ -28,7 +28,7 @@ export const BIOME_LABELS: Readonly<Record<Biome, string>> = {
   wetland: "Wetland",
 };
 
-const PERK_WORDS: Readonly<Record<Biome, string>> = {
+export const PERK_WORDS: Readonly<Record<Biome, string>> = {
   forest: "steady green, and easy on the water",
   jungle: "the most green, and the thirstiest",
   meadow: "feeds the pollinators, so migrating birds carry more seeds",
@@ -174,6 +174,7 @@ const pct = (n: number): string => `${formatNumber(Math.round(n * 100))}%`;
 export const SPREAD_ACTIONS: readonly ActionDef[] = BIOMES.map((biome) => ({
   id: spreadActionId(biome),
   phases: [PHASE_WORLD],
+  isInline: true,
   describe: (run) => {
     const here = activeBiome(run) === biome;
     return {

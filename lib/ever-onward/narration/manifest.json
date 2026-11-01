@@ -356,8 +356,8 @@
   },
   "grow/intro-yard": {
     "file": "/ever-onward/voice/grow/intro-yard.mp3",
-    "hash": "5139852e64e9",
-    "durationGuess": 25
+    "hash": "5db5094c0639",
+    "durationGuess": 24
   },
   "grow/intro-farm": {
     "file": "/ever-onward/voice/grow/intro-farm.mp3",
@@ -376,8 +376,8 @@
   },
   "grow/yard-hello": {
     "file": "/ever-onward/voice/grow/yard-hello.mp3",
-    "hash": "7f1c454e84ee",
-    "durationGuess": 12
+    "hash": "d6b2cef23d39",
+    "durationGuess": 13
   },
   "grow/yard-sprinkler": {
     "file": "/ever-onward/voice/grow/yard-sprinkler.mp3",

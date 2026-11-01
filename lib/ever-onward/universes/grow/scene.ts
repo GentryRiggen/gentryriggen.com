@@ -57,7 +57,6 @@ export interface GrowSceneInfo {
   sprinklers: number;
   bees: number;
   gardeners: number;
-  isDry: boolean;
   greenhouse: boolean;
   orchard: boolean;
   stand: boolean;
@@ -98,7 +97,6 @@ function yardInfo(
   | "sprinklers"
   | "bees"
   | "gardeners"
-  | "isDry"
   | "greenhouse"
   | "orchard"
   | "stand"
@@ -117,7 +115,6 @@ function yardInfo(
     sprinklers: n("sprinkler"),
     bees: n("bee-hive"),
     gardeners: n("gardener"),
-    isDry: isYard && isDry(run),
     greenhouse: has("greenhouse"),
     orchard: has("orchard"),
     stand: has("honey-stand"),
@@ -224,7 +221,6 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
     dry: i <= 2 && isDry(run),
     ...yardInfo(run, i === 0),
     ...farmInfo(run, i === 1),
-    isDry: i <= 1 && isDry(run),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(
       Math.min(FULL_GROWTH, Math.max(0, run.resources.growth ?? 0))

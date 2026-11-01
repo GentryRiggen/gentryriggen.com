@@ -1,7 +1,7 @@
 import { formatNumber } from "../../engine/format";
 import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
-import { MANUAL_RESOURCES } from "./resources";
+import { MANUAL_RESOURCES, carryOver } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -152,7 +152,8 @@ export const handPaysOn = (run: RunState, income: number): number =>
 
 /** The fair helper turns up once the first fair has been judged. */
 export const handShown = (run: RunState): boolean =>
-  run.flags[FAIR_OPEN_FLAG] === true && fairsSoFar(run) >= F.handAfterFairs;
+  run.flags[FAIR_OPEN_FLAG] === true &&
+  (fairsSoFar(run) >= F.handAfterFairs || owned(run, "glasshouse") > 0);
 
 export interface EntryResult {
   pick: number;
@@ -200,7 +201,7 @@ function flowSurge(run: RunState, dt: number): void {
   if (pending <= 0) return;
   if (run.phase !== 1) {
     const id = MANUAL_RESOURCES[run.phase];
-    r[id] = res(run, id) + pending * TUNING.farm.seedsToHarvest;
+    r[id] = res(run, id) + carryOver(1, pending);
     r.frPending = 0;
     return;
   }
@@ -210,19 +211,29 @@ function flowSurge(run: RunState, dt: number): void {
 }
 
 /** Sends a pumpkin to the judges. A hand entry pays in full. */
-function enter(run: RunState, pick: number, byHand: boolean): void {
+function enter(
+  run: RunState,
+  pick: number,
+  byHand: boolean,
+  income: number
+): void {
   if (!isFairOn(run) || pick < 0 || pick >= PUMPKIN_COUNT) return;
   const r = run.resources;
   r.frPicked = pick;
   r.frBy = byHand ? 1 : 0;
+  // The farm's pace now: the judges still pay by it after the farm ends.
+  r.frIncome = income;
   r.frStage = 2;
   r.frJudge = F.judgeSeconds;
   r.frTime = 0;
 }
 
 /** Enters a pumpkin by hand (the panel's buttons call this). */
-export const enterPumpkin = (run: RunState, pick: number): void =>
-  enter(run, pick, false);
+export const enterPumpkin = (
+  run: RunState,
+  pick: number,
+  income: number
+): void => enter(run, pick, false, income);
 
 /** Three new pumpkins come to the fair, from the fair's own stream. */
 function setOut(run: RunState): void {
@@ -240,14 +251,15 @@ function setOut(run: RunState): void {
 }
 
 /** The judges decide: one draw from the odds the player was shown. */
-function judge(run: RunState, income: number): void {
+function judge(run: RunState): void {
   const r = run.resources;
   const pick = res(run, "frPicked");
   const stream = { rng: res(run, "frRng") | 0 };
   const ribbon = ribbonFor(placeChances(run, pick), nextRandom(stream));
   r.frRng = stream.rng;
   const byHand = res(run, "frBy") === 1;
-  const pays = ribbonPays(ribbon, income) * (byHand ? F.handShare : 1);
+  const pays =
+    ribbonPays(ribbon, res(run, "frIncome")) * (byHand ? F.handShare : 1);
   r.frPlace = ribbon;
   r.frLastPays = pays;
   r.frEarned = res(run, "frEarned") + pays;
@@ -289,7 +301,7 @@ export function tickFair(
   if (fairStage(run) === "judging") {
     r.frJudge = res(run, "frJudge") - dt;
     if (r.frJudge <= 0) {
-      judge(run, income());
+      judge(run);
       if (run.phase !== 1) flowSurge(run, 0);
     }
     return;
@@ -301,7 +313,7 @@ export function tickFair(
     return;
   }
   if (hasFairHand(run) && r.frTime >= F.handDelay)
-    enter(run, likeliestPumpkin(run), true);
+    enter(run, likeliestPumpkin(run), true, income());
 }
 
 /**

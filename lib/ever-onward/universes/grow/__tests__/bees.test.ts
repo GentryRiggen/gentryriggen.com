@@ -147,17 +147,20 @@ describe("the bee dances", () => {
     const followed = follow(dancing, danceHint(dancing));
     const pending = followed.resources.bePending;
     expect(pending).toBeGreaterThan(0);
-    const ended: RunState = { ...followed, phase: 1 };
+    // a big pollination, so the settled harvest is a whole number worth reading
+    const big: RunState = {
+      ...followed,
+      resources: { ...followed.resources, bePending: 5000, beSurgeRate: 1250 },
+    };
+    const ended: RunState = { ...big, phase: 1 };
     const after = run(ended, B.surgeSeconds + 2);
     expect(after.resources.bePending).toBe(0);
     // seeds mean nothing on the farm: the rest is settled as harvest
     expect(after.resources.seeds).toBe(followed.resources.seeds);
-    expect(after.resources.harvest).toBeGreaterThan(
-      followed.resources.harvest ?? 0
-    );
-    expect(after.resources.harvest).toBeLessThanOrEqual(
-      (followed.resources.harvest ?? 0) + pending * 0.004 + 1e-6
-    );
+    // whole units: floor(5000 * 0.004)
+    expect(
+      (after.resources.harvest ?? 0) - (followed.resources.harvest ?? 0)
+    ).toBe(20);
   });
 
   it("uses its own random stream", () => {

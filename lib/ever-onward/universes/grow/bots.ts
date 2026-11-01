@@ -13,6 +13,7 @@ import {
   type Biome,
 } from "./biomes";
 import { enterActionId, fairsSoFar, likeliestPumpkin } from "./fair";
+import { flightsSoFar, mostWelcoming, sendActionId } from "./migration";
 import {
   bestCrop,
   cropPrice,
@@ -26,6 +27,12 @@ import { STORAGE_IDS, isDry, rainOutlook } from "./water";
 import { growUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
+
+/**
+ * A bot that lets one in a few side-machine choices go to the helper still
+ * takes it after this long, so a skipped choice never stalls the bot.
+ */
+const SKIP_DELAY = 45;
 
 /** Seconds in one stretch of attention for the garden. */
 const GARDEN_WINDOW = 30;
@@ -73,7 +80,12 @@ export const followsDance =
     if (run.phase !== 0) return [];
     const { skipEvery } = options;
     const dance = dancesSoFar(run);
-    if (skipEvery && dance % skipEvery === skipEvery - 1) return [];
+    if (
+      skipEvery &&
+      dance % skipEvery === skipEvery - 1 &&
+      (run.resources.beTime ?? 0) < SKIP_DELAY
+    )
+      return [];
     const id = followActionId(danceHint(run));
     return available.includes(id) ? [id] : [];
   };
@@ -87,8 +99,32 @@ export const entersFair =
   (run, available) => {
     if (run.phase !== 1) return [];
     const { skipEvery } = options;
-    if (skipEvery && fairsSoFar(run) % skipEvery === skipEvery - 1) return [];
+    if (
+      skipEvery &&
+      fairsSoFar(run) % skipEvery === skipEvery - 1 &&
+      (run.resources.frTime ?? 0) < SKIP_DELAY
+    )
+      return [];
     const id = enterActionId(likeliestPumpkin(run));
+    return available.includes(id) ? [id] : [];
+  };
+
+/**
+ * Sends the flock to the most welcoming region. Like the fair bot, one flight
+ * in every `skipEvery`th goes to the flock leader instead.
+ */
+export const sendsFlock =
+  (options: { skipEvery?: number } = {}): Actions =>
+  (run, available) => {
+    if (run.phase !== 2) return [];
+    const { skipEvery } = options;
+    if (
+      skipEvery &&
+      flightsSoFar(run) % skipEvery === skipEvery - 1 &&
+      (run.resources.mgTime ?? 0) < SKIP_DELAY
+    )
+      return [];
+    const id = sendActionId(mostWelcoming(run));
     return available.includes(id) ? [id] : [];
   };
 
@@ -202,7 +238,10 @@ export function growBots(): BotSet {
       picksAnytime(),
       alongside(
         followsDance(),
-        alongside(cropPolicy(), alongside(entersFair(), biomePolicy()))
+        alongside(
+          cropPolicy(),
+          alongside(entersFair(), alongside(biomePolicy(), sendsFlock()))
+        )
       )
     ),
     whenRainTurnsDry
@@ -217,7 +256,10 @@ export function growBots(): BotSet {
           followsDance({ skipEvery: 6 }),
           alongside(
             cropPolicy(20),
-            alongside(entersFair({ skipEvery: 6 }), biomePolicy(30))
+            alongside(
+              entersFair({ skipEvery: 6 }),
+              alongside(biomePolicy(30), sendsFlock({ skipEvery: 6 }))
+            )
           )
         )
       ),
@@ -236,7 +278,10 @@ export function growBots(): BotSet {
           followsDance({ skipEvery: 2 }),
           alongside(
             cropPolicy(60),
-            alongside(entersFair({ skipEvery: 2 }), biomePolicy(90))
+            alongside(
+              entersFair({ skipEvery: 2 }),
+              alongside(biomePolicy(90), sendsFlock({ skipEvery: 2 }))
+            )
           )
         )
       ),
@@ -244,8 +289,16 @@ export function growBots(): BotSet {
     ),
     skill: {
       2: {
-        naive: yardPlayer(base.tapper, biomePolicy(), afterRunningDry),
-        careful: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
+        naive: yardPlayer(
+          base.tapper,
+          alongside(biomePolicy(), sendsFlock()),
+          afterRunningDry
+        ),
+        careful: yardPlayer(
+          base.tapper,
+          alongside(biomePolicy(), sendsFlock()),
+          whenRainTurnsDry
+        ),
       },
       1: {
         naive: yardPlayer(
@@ -273,6 +326,14 @@ export function growBots(): BotSet {
       },
     },
     claim: {
+      2: {
+        ignores: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
+        claims: yardPlayer(
+          base.tapper,
+          alongside(biomePolicy(), sendsFlock()),
+          whenRainTurnsDry
+        ),
+      },
       1: {
         ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
         claims: yardPlayer(
