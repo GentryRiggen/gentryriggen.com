@@ -77,7 +77,9 @@ describe("ProbeRaces", () => {
   it("shows the comet bar and its range up front", () => {
     render(<ProbeRaces def={def} run={openRun()} onAct={jest.fn()} />);
     expect(screen.getByTestId("lm-probe-comet-bar")).toBeInTheDocument();
-    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow");
+    expect(screen.getByRole("meter", { hidden: true })).toHaveAttribute(
+      "aria-valuenow"
+    );
     expect(
       screen.getByText(/Up to \+[\d.,]+K? when the comet is close/)
     ).toBeInTheDocument();
@@ -91,7 +93,7 @@ describe("ProbeRaces", () => {
       "Probe is out: 0:32 left"
     );
     const launch = screen.getByTestId("lm-probe-launch");
-    expect(launch).toBeDisabled();
+    expect(launch).toHaveAttribute("aria-disabled", "true");
     expect(launch).toHaveTextContent("Probe is out: 0:32 left");
     expect(screen.getByTestId("lm-probe-progress")).toHaveAttribute(
       "aria-valuenow",
@@ -112,7 +114,10 @@ describe("ProbeRaces", () => {
       /The probe is home from the short hop: \+\d/
     );
     expect(screen.getByText(/Runs home: 1/)).toBeInTheDocument();
-    expect(screen.getByTestId("lm-probe-launch")).toBeEnabled();
+    expect(screen.getByTestId("lm-probe-launch")).toHaveAttribute(
+      "aria-disabled",
+      "false"
+    );
   });
 
   it("tells about the scout once mission control is built", () => {
@@ -121,5 +126,18 @@ describe("ProbeRaces", () => {
     expect(screen.getByTestId("lm-probe-scout-line")).toHaveTextContent(
       /Fly a route and its scout will follow it/
     );
+  });
+
+  it("moves the pick with the arrow keys and keeps one tab stop", async () => {
+    render(<ProbeRaces def={def} run={openRun()} onAct={jest.fn()} />);
+    const short = screen.getByTestId("lm-probe-card-short");
+    short.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    const long = screen.getByTestId("lm-probe-card-long");
+    expect(long).toBeChecked();
+    expect(long).toHaveFocus();
+    expect(long).toHaveAttribute("tabindex", "0");
+    expect(short).toHaveAttribute("tabindex", "-1");
+    expect(long).toHaveAccessibleName("Long loop, 90 seconds");
   });
 });

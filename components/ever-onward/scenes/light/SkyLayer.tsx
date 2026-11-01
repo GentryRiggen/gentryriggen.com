@@ -168,17 +168,19 @@ function RaceDock({ info }: { info: LightSceneInfo }) {
             <rect x="-6" y="-2" width="12" height="9" fill="#475569" />
             <path d="M-7 -2 Q0 -14 7 -2 Z" fill="#7dd3fc" stroke="#e0f2fe" />
           </g>
-          <g transform={`translate(${RACE.x} ${RACE.loopY})`}>
-            <g className="pr-loop-slow">
-              <circle
-                cx={r + 9}
-                r="2.4"
-                fill="#7dd3fc"
-                stroke="#e0f2fe"
-                strokeWidth="0.8"
-              />
+          {info.raceScout === 1 && (
+            <g transform={`translate(${RACE.x} ${RACE.loopY})`}>
+              <g className="pr-loop-slow">
+                <circle
+                  cx={r + 9}
+                  r="2.4"
+                  fill="#7dd3fc"
+                  stroke="#e0f2fe"
+                  strokeWidth="0.8"
+                />
+              </g>
             </g>
-          </g>
+          )}
         </>
       )}
     </g>

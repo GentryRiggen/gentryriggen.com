@@ -105,6 +105,7 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "prLastKind", label: "Last haul, route", phases: HIDDEN },
   { id: "prEarned", label: "Energy from probe runs", phases: HIDDEN },
   { id: "prAutoLeft", label: "Scout time left", phases: HIDDEN },
+  { id: "prAutoRoute", label: "Scout route", phases: HIDDEN },
   { id: "prAutoLen", label: "Scout run length", phases: HIDDEN },
   { id: "prAutoPay", label: "Scout haul", phases: HIDDEN },
   { id: "prAutoRuns", label: "Scout runs home", phases: HIDDEN },

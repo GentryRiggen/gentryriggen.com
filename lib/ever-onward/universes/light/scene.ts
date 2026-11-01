@@ -10,6 +10,7 @@ import {
   hasMissionControl,
   hasRacingFins,
   isProbeOut,
+  isScoutOut,
   isProbesOpen,
 } from "./probes";
 import { LET_GO } from "./upgrades";
@@ -138,6 +139,8 @@ export interface LightSceneInfo {
   raceFins: number;
   /** 1 once mission control stands by the dock (its scout flies on its own). */
   raceControl: number;
+  /** 1 while the scout probe is away from the dock. */
+  raceScout: number;
   /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
   gridSteadiness: number;
   /** 1 while the evening rush is on. */
@@ -261,6 +264,7 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     raceOut: isProbeOut(run) ? 1 : 0,
     raceFins: hasRacingFins(run) ? 1 : 0,
     raceControl: hasMissionControl(run) ? 1 : 0,
+    raceScout: isScoutOut(run) ? 1 : 0,
     gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
     rush: isRushOn(run) ? 1 : 0,
     flare: isFlareOn(run) ? 1 : 0,

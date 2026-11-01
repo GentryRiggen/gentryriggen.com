@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
@@ -20,6 +20,7 @@ import {
   resultLine,
   routeHaul,
   routeOut,
+  scoutRoute,
   routeSeconds,
   runsHome,
   scoutProgress,
@@ -118,6 +119,7 @@ interface StarMapProps {
   progress: number;
   isScoutOut: boolean;
   scoutShare: number;
+  scoutRoute: number;
   comet: number;
   hasFins: boolean;
   hasControl: boolean;
@@ -130,13 +132,14 @@ function StarMap({
   progress,
   isScoutOut: scoutIsOut,
   scoutShare,
+  scoutRoute: scoutFlies,
   comet,
   hasFins,
   hasControl,
 }: StarMapProps) {
   const stops = ROUTE_STOPS[route];
   const probe = isOut ? along(stops, progress) : { ...DOCK, angle: -45 };
-  const scout = along(stops, scoutShare);
+  const scout = along(ROUTE_STOPS[scoutFlies] ?? stops, scoutShare);
   const cometX = COMET_FROM + (COMET_TO - COMET_FROM) * comet;
   return (
     <svg
@@ -331,6 +334,7 @@ interface RouteCardProps {
   income: number;
   isPicked: boolean;
   isFlying: boolean;
+  isTabStop: boolean;
   onPick: (index: number) => void;
 }
 
@@ -340,6 +344,7 @@ function RouteCard({
   income,
   isPicked,
   isFlying,
+  isTabStop,
   onPick,
 }: RouteCardProps) {
   const route = ROUTES[index];
@@ -352,6 +357,8 @@ function RouteCard({
       type="button"
       role="radio"
       aria-checked={isPicked}
+      aria-label={`${route.name}, ${seconds} seconds`}
+      tabIndex={isTabStop ? 0 : -1}
       data-testid={`lm-probe-card-${route.id}`}
       onClick={() => onPick(index)}
       className={`block w-full touch-manipulation border-4 p-2 text-left transition-colors ${retroFocusClass} ${
@@ -360,47 +367,48 @@ function RouteCard({
           : "border-slate-600 bg-slate-900/80 hover:border-indigo-300"
       }`}
     >
-      <span className="flex items-center gap-3">
-        <span
-          aria-hidden="true"
-          className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${
-            isPicked ? "border-amber-300" : "border-slate-500"
-          }`}
-        >
-          {isPicked && <span className="h-2.5 w-2.5 bg-amber-300" />}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className={`${pixelClass} block text-[10px] text-indigo-100`}>
-            {route.name}
-          </span>
-          <span className="mt-1 block font-mono text-xs text-slate-300">
-            {route.blurb}
-          </span>
-        </span>
-        <span className="shrink-0 text-right">
+      <span aria-hidden="true" className="block">
+        <span className="flex items-center gap-3">
           <span
-            data-testid={`lm-probe-time-${route.id}`}
-            className={`${pixelClass} block text-sm text-sky-200`}
+            className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${
+              isPicked ? "border-amber-300" : "border-slate-500"
+            }`}
           >
-            {seconds} s
+            {isPicked && <span className="h-2.5 w-2.5 bg-amber-300" />}
           </span>
-          <span
-            data-testid={`lm-probe-haul-${route.id}`}
-            className="mt-1 block font-mono text-sm font-bold text-amber-300"
-          >
-            {energy(haul)}
-            {isComet && "…"}
+          <span className="min-w-0 flex-1">
+            <span className={`${pixelClass} block text-[10px] text-indigo-100`}>
+              {route.name}
+            </span>
+            <span className="mt-1 block font-mono text-xs text-slate-300">
+              {route.blurb}
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span
+              data-testid={`lm-probe-time-${route.id}`}
+              className={`${pixelClass} block text-sm text-sky-200`}
+            >
+              {seconds} s
+            </span>
+            <span
+              data-testid={`lm-probe-haul-${route.id}`}
+              className="mt-1 block font-mono text-sm font-bold text-amber-300"
+            >
+              {energy(haul)}
+              {isComet && "…"}
+            </span>
           </span>
         </span>
+        {isComet && (
+          <span className="mt-2 block">
+            <CometBar place={cometPlace(run)} closeness={closeness} />
+            <span className="mt-1 block font-mono text-xs text-slate-300">
+              Up to {energy(bestHaul(index, income))} when the comet is close.
+            </span>
+          </span>
+        )}
       </span>
-      {isComet && (
-        <span className="mt-2 block">
-          <CometBar place={cometPlace(run)} closeness={closeness} />
-          <span className="mt-1 block font-mono text-xs text-slate-300">
-            Up to {energy(bestHaul(index, income))} when the comet is close.
-          </span>
-        </span>
-      )}
       {isFlying && isPicked && (
         <span className="sr-only">This route is being flown.</span>
       )}
@@ -411,6 +419,29 @@ function RouteCard({
 function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
   const lastFlown = lastRoute(run);
   const [picked, setPicked] = useState(lastFlown >= 0 ? lastFlown : 0);
+  const [seenLast, setSeenLast] = useState(lastFlown);
+  // A launch made somewhere else (a plate, a keyboard) moves the pick along.
+  if (seenLast !== lastFlown) {
+    setSeenLast(lastFlown);
+    if (lastFlown >= 0) setPicked(lastFlown);
+  }
+  const handleKeys = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step =
+      event.key === "ArrowDown" || event.key === "ArrowRight"
+        ? 1
+        : event.key === "ArrowUp" || event.key === "ArrowLeft"
+          ? -1
+          : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = (picked + step + ROUTES.length) % ROUTES.length;
+    setPicked(next);
+    document
+      .querySelector<HTMLElement>(
+        `[data-testid="lm-probe-card-${ROUTES[next].id}"]`
+      )
+      ?.focus();
+  };
   const isOut = isProbeOut(run);
   const income = calmSkyIncomePerSecond(run);
   const mapRoute = isOut ? routeOut(run) : picked;
@@ -461,6 +492,7 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
         progress={progress}
         isScoutOut={isScoutOut(run)}
         scoutShare={scoutProgress(run)}
+        scoutRoute={scoutRoute(run)}
         comet={cometPlace(run)}
         hasFins={hasRacingFins(run)}
         hasControl={hasMissionControl(run)}
@@ -472,7 +504,17 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
           : "Pick a route, then launch. The probe flies it by itself and brings energy home."}
       </p>
 
-      <div role="radiogroup" aria-label="Route" className="space-y-2">
+      <div
+        role="radiogroup"
+        aria-label="Route"
+        aria-describedby="lm-probe-route-help"
+        onKeyDown={handleKeys}
+        className="space-y-2"
+      >
+        <p id="lm-probe-route-help" className="sr-only">
+          Each route shows how long it takes and about how much energy it brings
+          home. The comet chase pays more when the comet is close.
+        </p>
         {ROUTES.map((_, index) => (
           <RouteCard
             key={ROUTES[index].id}
@@ -481,6 +523,7 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
             income={income}
             isPicked={picked === index}
             isFlying={isOut && routeOut(run) === index}
+            isTabStop={picked === index}
             onPick={setPicked}
           />
         ))}
@@ -490,11 +533,11 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
         <button
           type="button"
           data-testid="lm-probe-launch"
-          disabled={!isDoable}
+          aria-disabled={!isDoable}
           onClick={() => {
             if (isDoable) onAct(action);
           }}
-          className={`${pixelClass} flex min-h-14 w-full touch-manipulation flex-col items-center justify-center gap-1 border-4 px-3 py-2 text-xs transition-transform disabled:cursor-not-allowed ${retroFocusClass} ${launchLook}`}
+          className={`${pixelClass} flex min-h-14 w-full touch-manipulation flex-col items-center justify-center gap-1 border-4 px-3 py-2 text-xs transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${launchLook}`}
         >
           <span>
             {isOut

@@ -21,6 +21,7 @@ import {
   progressOf,
   resultLine,
   routeSeconds,
+  scoutRoute,
   runsHome,
   haulSeconds,
 } from "../probes";
@@ -201,6 +202,17 @@ describe("probe races", () => {
     expect(resultLine(kind)).not.toMatch(/better|should|wrong|miss/i);
   });
 
+  it("pays the comet haul in coarse steps, so the card holds still", () => {
+    const seen = new Set<number>();
+    let run = open();
+    for (let t = 0; t < 160; t += 1) {
+      seen.add(haulSeconds(COMET, cometCloseness(run)));
+      run = tick(def, run, 1);
+    }
+    expect(seen.size).toBeLessThanOrEqual(16);
+    for (const v of seen) expect(v % 2).toBe(0);
+  });
+
   it("moves the comet in one slow, smooth pass", () => {
     let run = open();
     const seen: number[] = [];
@@ -273,6 +285,10 @@ describe("probe races", () => {
     const flown = idle(handFirst, 300);
     expect(flown.resources.prAutoRuns).toBeGreaterThanOrEqual(5);
     expect(flown.resources.prAutoEarned).toBeGreaterThan(0);
+
+    // it flies the route it launched with, even after the hand route changes
+    const switched = launch(toHome(handFirst), LONG);
+    expect(scoutRoute(idle(switched, 1))).toBe(SHORT);
 
     // the scout's haul is a smaller share of the same route
     const scoutSecs =

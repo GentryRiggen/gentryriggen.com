@@ -56,6 +56,8 @@ const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 
+const COMET_STEP = 2;
+
 const baseSeconds = (route: number): number =>
   [P.short.seconds, P.long.seconds, P.comet.seconds][route] ?? P.short.seconds;
 
@@ -86,9 +88,10 @@ export const cometCloseness = (run: RunState): number =>
 export function haulSeconds(route: number, closeness: number): number {
   if (route === 0) return P.short.haulSeconds;
   if (route === 1) return P.long.haulSeconds;
-  return (
-    P.comet.haulMin + (P.comet.haulMax - P.comet.haulMin) * clamp01(closeness)
-  );
+  // In coarse steps (2 s of income), so the number on the card holds still.
+  const raw =
+    P.comet.haulMin + (P.comet.haulMax - P.comet.haulMin) * clamp01(closeness);
+  return Math.round(raw / COMET_STEP) * COMET_STEP;
 }
 
 /** The haul a launch right now would bring home, in energy. */
@@ -117,6 +120,9 @@ export const progressOf = (run: RunState): number =>
   isProbeOut(run)
     ? clamp01(1 - res(run, "prLeft") / Math.max(1, res(run, "prLen")))
     : 0;
+
+/** The route the scout is flying (it keeps the one it launched with). */
+export const scoutRoute = (run: RunState): number => res(run, "prAutoRoute");
 
 export const isScoutOut = (run: RunState): boolean =>
   isProbesOpen(run) && res(run, "prAutoLeft") > 0;
@@ -165,7 +171,8 @@ export function launchProbe(
   route: number,
   income: number
 ): void {
-  if (!isProbesOpen(run) || isProbeOut(run) || !ROUTES[route]) return;
+  if (!Number.isFinite(income) || !isProbesOpen(run)) return;
+  if (isProbeOut(run) || !ROUTES[route]) return;
   const r = run.resources;
   const closeness = cometCloseness(run);
   const seconds = routeSeconds(run, route);
@@ -218,9 +225,10 @@ function arriveScout(run: RunState): void {
 /** Mission control sends the scout on your last route, at a smaller share. */
 function launchScout(run: RunState, income: number): void {
   const route = lastRoute(run);
-  if (route < 0) return;
+  if (route < 0 || !Number.isFinite(income)) return;
   const r = run.resources;
   const seconds = routeSeconds(run, route);
+  r.prAutoRoute = route;
   r.prAutoLen = seconds;
   r.prAutoLeft = seconds;
   r.prAutoPay = haulSeconds(route, cometCloseness(run)) * income * P.scoutShare;
