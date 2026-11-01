@@ -79,6 +79,37 @@ describe("the story ticker", () => {
     }
   });
 
+  it("leaves focus alone when the game re-renders while it is open", async () => {
+    const run = runWithStory(["coast-hello"]);
+    const { rerender } = renderTicker(run);
+    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.tab();
+    const focused = document.activeElement as HTMLElement;
+    expect(focused).not.toBe(
+      screen.getByRole("button", { name: "Close story" })
+    );
+    expect(dialog).toContainElement(focused);
+    rerender(
+      <StoryTicker
+        def={lightUniverse}
+        run={{ ...run, time: run.time + 0.1 }}
+        endingIds={["last-end-1"]}
+      />
+    );
+    expect(focused).toHaveFocus();
+  });
+
+  it("closes when a full-screen moment covers the game", async () => {
+    const run = runWithStory(["coast-hello"]);
+    const { rerender } = renderTicker(run);
+    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    rerender(
+      <StoryTicker def={lightUniverse} run={run} endingIds={[]} isCovered />
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("keeps Tab inside the dialog", async () => {
     renderTicker(runWithStory(["coast-hello"]));
     await userEvent.click(screen.getByRole("button", { name: /Story/ }));

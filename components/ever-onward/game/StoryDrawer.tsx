@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { introClipId, storyClipId } from "@/lib/ever-onward/narration/lines";
 import ListenButton from "../narration/ListenButton";
@@ -9,6 +10,7 @@ import { NEWS_PREFIX, type StoryEntry } from "./storyEntries";
 import RetroHeading from "./retro/RetroHeading";
 import {
   pixelClass,
+  pixelFont,
   retroFocusClass,
   retroPanelClass,
 } from "./retro/retroStyles";
@@ -39,14 +41,22 @@ export default function StoryDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [openIntro, setOpenIntro] = useState<string | null>(null);
-  const endings = new Set(endingIds);
+  const endings = useMemo(() => new Set(endingIds), [endingIds]);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
+  // Focus Close once, when the drawer opens (not on every re-render).
   useEffect(() => {
     closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -68,12 +78,16 @@ export default function StoryDrawer({
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  }, []);
 
   const reached = def.phases.slice(0, run.phase + 1);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-stretch lg:justify-end">
+  // Portalled out of <main> and the ticker, so it is not inert or nested in
+  // a landmark while it is the thing in front.
+  return createPortal(
+    <div
+      className={`${pixelFont.variable} dark fixed inset-0 z-50 flex items-end lg:items-stretch lg:justify-end`}
+    >
       <div
         aria-hidden="true"
         data-testid="lm-story-backdrop"
@@ -169,6 +183,7 @@ export default function StoryDrawer({
           </ol>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

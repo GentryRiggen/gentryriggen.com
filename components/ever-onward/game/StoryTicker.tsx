@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import StoryDrawer from "./StoryDrawer";
 import { NEWS_PREFIX, storyEntries } from "./storyEntries";
@@ -15,6 +15,8 @@ interface StoryTickerProps {
   run: RunState;
   /** Ending lines keep their own place at the end of the drawer. */
   endingIds: string[];
+  /** A full-screen moment (a new part's intro) is open: the drawer closes. */
+  isCovered?: boolean;
 }
 
 /**
@@ -22,14 +24,28 @@ interface StoryTickerProps {
  * opens the whole story. Lines the player has not opened the drawer for yet
  * count as unread (kept in component state only).
  */
-export default function StoryTicker({ def, run, endingIds }: StoryTickerProps) {
-  const entries = storyEntries(def, run);
+export default function StoryTicker({
+  def,
+  run,
+  endingIds,
+  isCovered = false,
+}: StoryTickerProps) {
+  const entries = useMemo(() => storyEntries(def, run), [def, run]);
   // Lines already there when the screen opens are not news.
-  const [seen, setSeen] = useState(
-    () => new Set(storyEntries(def, run).map((e) => e.id))
-  );
+  const [seen, setSeen] = useState(() => new Set(entries.map((e) => e.id)));
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const storyLength = useRef(run.story.length);
+
+  // A restarted run starts a new story: forget what was read, so its first
+  // line is news again.
+  useEffect(() => {
+    if (run.story.length < storyLength.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSeen(new Set());
+    }
+    storyLength.current = run.story.length;
+  }, [run.story.length]);
 
   const unread = entries.filter((e) => !seen.has(e.id)).length;
   const newest = entries[0];
@@ -44,11 +60,17 @@ export default function StoryTicker({ def, run, endingIds }: StoryTickerProps) {
     setSeen(new Set(entries.map((e) => e.id)));
     setIsOpen(true);
   };
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsOpen(false);
     // The panel unmounts first; put focus back on the button that opened it.
     window.setTimeout(() => buttonRef.current?.focus(), 0);
-  };
+  }, []);
+
+  // A new part's intro covers everything: close the drawer behind it.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isCovered) setIsOpen(false);
+  }, [isCovered]);
 
   return (
     <section
@@ -91,7 +113,7 @@ export default function StoryTicker({ def, run, endingIds }: StoryTickerProps) {
         className={`${pixelClass} inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center border-2 border-amber-300 bg-amber-950/60 px-3 text-[10px] text-amber-300 hover:bg-amber-900/70 active:translate-y-0.5 ${retroFocusClass}`}
       >
         Story ({entries.length})
-        {unread > 0 && <span className="sr-only"> , {unread} new</span>}
+        {unread > 0 && <span className="sr-only">, {unread} new</span>}
       </button>
       {isOpen && (
         <StoryDrawer

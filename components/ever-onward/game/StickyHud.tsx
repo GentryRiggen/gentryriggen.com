@@ -88,21 +88,26 @@ export default function StickyHud({
             />
           </p>
         </div>
-        {alert && (
-          <p
-            data-testid="lm-hud-alert"
-            className={`${pixelClass} mt-1 animate-pulse text-[8px] leading-relaxed text-red-300 motion-reduce:animate-none`}
-          >
-            ⚠ {alert}
-          </p>
-        )}
-        {next && (
-          <NextUpgradeBar
-            next={next}
-            onSelect={onSelectNext}
-            testId="lm-hud-next"
-          />
-        )}
+        {/* A fixed one-line slot, so the bar never changes height when the
+            warning comes and goes. The full text is also in the page. */}
+        <p
+          data-testid="lm-hud-alert"
+          className={`${pixelClass} mt-1 h-3 truncate text-[8px] leading-3 text-red-300 ${
+            alert ? "animate-pulse motion-reduce:animate-none" : "invisible"
+          }`}
+        >
+          {alert ? `⚠ ${alert}` : ""}
+        </p>
+        {/* Reserves the bar's height when there is no goal yet. */}
+        <div className="min-h-11">
+          {next && (
+            <NextUpgradeBar
+              next={next}
+              onSelect={onSelectNext}
+              testId="lm-hud-next"
+            />
+          )}
+        </div>
         <SpendFloater spend={spend} />
         <EffectFloater
           effect={effect}
