@@ -140,6 +140,12 @@ const nightStory: StoryMessage[] = [
     text: "Your first generator hums. A street in the old quarter lights up, and an old man in a window waves at nobody in particular.",
   },
   {
+    id: "night-ideas",
+    phase: PHASE_NIGHT,
+    when: (run) => res(run, "knowhow") >= 10,
+    text: "The plant crews have started swapping tips over the fence. Know-how, they call it. Spend it on new ideas, and pick with care: every idea has a catch.",
+  },
+  {
     id: "night-lines",
     phase: PHASE_NIGHT,
     when: (run) => owned(run, "lines-2") >= 1,

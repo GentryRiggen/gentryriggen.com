@@ -25,6 +25,7 @@ import {
   nextFlareIn,
   nextRushIn,
   rushBonus,
+  balanceKnowhow,
   tankCapacity,
   calmIncomePerSecond,
   calmSkyIncomePerSecond,
@@ -150,6 +151,7 @@ const BALANCE_GRID: ActionDef = {
   },
   perform: (run) => {
     run.resources.grid = 100;
+    run.resources.knowhow = (run.resources.knowhow ?? 0) + balanceKnowhow(run);
   },
 };
 
@@ -167,6 +169,9 @@ const RIDE_RUSH: ActionDef = {
   }),
   perform: (run) => {
     run.resources.power += rushBonus(run);
+    run.resources.knowhow =
+      (run.resources.knowhow ?? 0) + TUNING.projects.perRush;
+    run.resources.rushRides = (run.resources.rushRides ?? 0) + 1;
     run.resources.rush = 0;
     run.resources.rushCooldown = nextRushIn(run);
   },

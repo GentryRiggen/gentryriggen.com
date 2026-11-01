@@ -11,6 +11,7 @@ import {
 import { lightAlert } from "./alerts";
 import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
+import { NIGHT_PROJECTS } from "./projects";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
@@ -28,6 +29,7 @@ export const lightUniverse: UniverseDef = {
   phases: PHASES,
   upgrades: UPGRADES,
   actions: ACTIONS,
+  projects: NIGHT_PROJECTS,
   maxVisible: 3,
   story: STORY,
   teasers: TEASERS,

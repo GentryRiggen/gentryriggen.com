@@ -1,4 +1,4 @@
-import { cloneRun } from "../../engine/engine";
+import { cloneRun, projectDoneFlag } from "../../engine/engine";
 import { formatNumber } from "../../engine/format";
 import type { RunState } from "../../engine/types";
 import { syncDisplay } from "./tick";
@@ -29,6 +29,14 @@ function afterBuying(run: RunState, id: string): RunState {
   return after;
 }
 
+/** The run as it would be with project `id` done. */
+function afterProject(run: RunState, id: string): RunState {
+  const after = cloneRun(run);
+  after.flags[projectDoneFlag(id)] = true;
+  syncDisplay(after);
+  return after;
+}
+
 /**
  * Builds an `effectPreview` that reads each stat before and after buying one
  * more level of `id`: "Coins/sec 12 -> 17".
@@ -37,17 +45,30 @@ export function previewOf(
   id: string,
   stats: readonly Stat[]
 ): (run: RunState) => string {
-  return (run) => {
-    const after = afterBuying(run, id);
-    return stats
-      .flatMap((stat) => {
-        const format = stat.format ?? short;
-        const suffix = stat.suffix ?? "";
-        const before = format(stat.read(run));
-        const next = format(stat.read(after));
-        if (stat.isHiddenWhenSame && before === next) return [];
-        return [`${stat.label} ${before}${suffix} → ${next}${suffix}`];
-      })
-      .join(" · ");
-  };
+  return (run) => linesOf(run, afterBuying(run, id), stats);
+}
+
+/** The same, for a project: each stat before and after it is done. */
+export function projectPreviewOf(
+  id: string,
+  stats: readonly Stat[]
+): (run: RunState) => string {
+  return (run) => linesOf(run, afterProject(run, id), stats);
+}
+
+function linesOf(
+  run: RunState,
+  after: RunState,
+  stats: readonly Stat[]
+): string {
+  return stats
+    .flatMap((stat) => {
+      const format = stat.format ?? short;
+      const suffix = stat.suffix ?? "";
+      const before = format(stat.read(run));
+      const next = format(stat.read(after));
+      if (stat.isHiddenWhenSame && before === next) return [];
+      return [`${stat.label} ${before}${suffix} → ${next}${suffix}`];
+    })
+    .join(" · ");
 }

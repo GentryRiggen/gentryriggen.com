@@ -17,6 +17,7 @@ import EmberIcon from "../game/EmberIcon";
 import LanternPicker from "../game/LanternPicker";
 import MemoryGarden from "../game/MemoryGarden";
 import ProbeRaces from "../game/ProbeRaces";
+import ProjectsPanel from "../game/ProjectsPanel";
 import TideClock from "../game/TideClock";
 import WeatherDesk from "../game/WeatherDesk";
 import LightScene from "../scenes/light/LightScene";
@@ -70,7 +71,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
-  panels: [TideClock, ProbeRaces, WeatherDesk, MemoryGarden],
+  panels: [TideClock, ProbeRaces, WeatherDesk, ProjectsPanel, MemoryGarden],
   Opening: function LanternOpening({ run, onChoose }) {
     return <LanternPicker value={lanternOf(run)} onChange={onChoose} />;
   },

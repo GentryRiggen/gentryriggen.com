@@ -105,6 +105,11 @@ export const TUNING = {
     payPerMW: 0.2,
     crankBase: 1,
     crankPerLevel: 0.5,
+    /**
+     * A turn of the crank also brings this share of a second's city power,
+     * so a tap never falls to nothing as the grid grows (still a nudge).
+     */
+    crankShare: 0.003,
     gensMW: [8, 30, 300, 3000] as const,
     lineBonus: 0.15,
     /** Each substation carries this much more of every plant's power. */
@@ -133,6 +138,36 @@ export const TUNING = {
     rushFirst: 90,
     /** Seconds of income the rush pays when claimed. */
     rushBonusSeconds: 25,
+  },
+  /** Know-how and the night's projects (see projects.ts). */
+  projects: {
+    /** Know-how a second for every power plant built. */
+    knowhowPerPlant: 0.04,
+    /** Night school: know-how comes this much faster. */
+    schoolBoost: 1.5,
+    /** Know-how for balancing an uneasy grid by hand (line patrols: less). */
+    perBalance: 3,
+    patrolBalance: 1,
+    /** Know-how for riding an evening rush. */
+    perRush: 2,
+    /** Smart meters: cities pay more, towns want more. */
+    meterPay: 1.2,
+    meterDemand: 1.05,
+    /** Lamplighters: towns want less, the steady glow pays less. */
+    lampDemand: 0.94,
+    lampGlowBonus: 0.08,
+    /** Line patrols: the grid strains slower. */
+    patrolStrain: 0.7,
+    /** Rush-hour pricing: a bigger rush, a little less often. */
+    rushPay: 1.5,
+    rushGap: 1.25,
+    /** Fish ladders: every dam makes more. */
+    ladderBoost: 1.4,
+    /** The power co-op: steam plants make more, the grid strains more. */
+    coopBoost: 1.25,
+    coopStrain: 1.15,
+    /** Wind maps: every wind and sun farm makes more. */
+    windBoost: 1.25,
   },
   /** The Weather Desk, a side machine of No More Night (see weather.ts). */
   weather: {
