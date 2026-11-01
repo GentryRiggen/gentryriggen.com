@@ -126,7 +126,7 @@ export function haulResultLine(run: RunState): string | null {
   const coins = `+${formatNumber(Math.floor(payout))} coins`;
   if (earliness >= 0.85) return `Nets full! You set them early: ${coins}!`;
   if (earliness >= 0.4) return `A good catch: ${coins}.`;
-  return `A smaller catch (set a bit late): ${coins}. Set them sooner next time!`;
+  return `A catch of ${coins}! (Nets set early, well before high tide, catch even more.)`;
 }
 
 /** Puts the nets out. Nets already out (or full) are left alone. */

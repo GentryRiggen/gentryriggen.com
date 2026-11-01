@@ -156,7 +156,7 @@ describe("the tide clock", () => {
     expect(earlyPay).toBeGreaterThan(latePay);
     expect(latePay).toBeGreaterThanOrEqual(30);
     expect(late.resources.tdEarly).toBeLessThan(0.1);
-    expect(haulResultLine(haul(late))).toMatch(/smaller catch/);
+    expect(haulResultLine(haul(late))).toMatch(/catch even more/);
     // nets set while the tide is going out catch the whole next rise
     const falling = setNets(idle(open(), CYCLE / 2 + 10));
     expect(falling.resources.tdEarly).toBe(1);

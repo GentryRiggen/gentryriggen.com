@@ -25,6 +25,7 @@ export const CHANGELOG: readonly Release[] = [
       "Set the nets before high tide, then haul in a catch of coins. Setting them early catches more. Full nets wait for you forever, and ignoring the tide costs nothing",
       "Bigger nets catch more, and a tide mill brings in a little extra every high tide on top of your own catch",
       "Watch the tide pole and buoys in the picture rise and fall, with a splash when you haul in",
+      "Coast upgrades cost a little more now, to make room for the tide's extra coins",
     ],
   },
   {
