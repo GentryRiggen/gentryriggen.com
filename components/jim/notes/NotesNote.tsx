@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BackLink, Empty } from "@/components/jim/notes/NotesUi";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import JimMarkdown from "@/lib/jim/markdown";
@@ -17,6 +17,8 @@ interface NotesNoteProps {
   backLabel?: string;
   /** The back link's address; without one it is a plain button. */
   backHref?: string;
+  /** Beside the back link (the desktop's Updated · Refresh). */
+  backAside?: ReactNode;
   /** The note's title, once it has loaded (for the browser tab). */
   onTitle?: (title: string) => void;
 }
@@ -49,6 +51,7 @@ export default function NotesNote({
   onBack,
   backLabel = "Results",
   backHref,
+  backAside,
   onTitle,
 }: NotesNoteProps) {
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -85,7 +88,12 @@ export default function NotesNote({
 
   return (
     <article className="space-y-5">
-      <BackLink label={backLabel} onBack={onBack} href={backHref} />
+      <BackLink
+        label={backLabel}
+        onBack={onBack}
+        href={backHref}
+        aside={backAside}
+      />
       {state.kind === "loading" && (
         <div aria-busy="true" className="space-y-3">
           <p className="sr-only" role="status">

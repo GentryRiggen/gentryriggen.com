@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Search } from "lucide-react";
-import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import {
+  Chip,
+  Empty,
+  OpenLink,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
 import WinsChart from "@/components/jim/notes/WinsChart";
 import { DirectorySearch } from "@/components/jim/notes/WorkDirectory";
 import { daysBetween, fmtDay, fmtShort, stripMd } from "@/lib/jim/todos";
@@ -14,6 +20,9 @@ interface NotesWorkProps {
   onOpenMeeting: (path: string) => void;
   /** A directory result was tapped: open their card. */
   onOpenPerson: (id: number) => void;
+  /** Addresses, so meetings and directory rows are real links. */
+  meetingHref?: (path: string) => string | null;
+  personHref?: (id: number) => string;
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -105,6 +114,8 @@ export default function NotesWork({
   data,
   onOpenMeeting,
   onOpenPerson,
+  meetingHref,
+  personHref,
 }: NotesWorkProps) {
   const [meetingQuery, setMeetingQuery] = useState("");
   const [dirQuery, setDirQuery] = useState("");
@@ -171,9 +182,9 @@ export default function NotesWork({
             <Rows>
               {meetings.map((m) => (
                 <li key={m.path}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenMeeting(m.path)}
+                  <OpenLink
+                    href={meetingHref?.(m.path)}
+                    onOpen={() => onOpenMeeting(m.path)}
                     className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/[0.04]"
                   >
                     <span className="min-w-0 flex-1 space-y-1">
@@ -203,7 +214,7 @@ export default function NotesWork({
                     <span aria-hidden="true" className="text-ayu-subtle">
                       ›
                     </span>
-                  </button>
+                  </OpenLink>
                 </li>
               ))}
             </Rows>
@@ -231,6 +242,7 @@ export default function NotesWork({
             query={dirQuery}
             onQuery={setDirQuery}
             onOpen={onOpenPerson}
+            hrefFor={personHref}
           />
         ) : (
           <Empty>No directory yet.</Empty>

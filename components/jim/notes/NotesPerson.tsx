@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { BackLink, Chip, Empty } from "@/components/jim/notes/NotesUi";
 import JimMarkdown from "@/lib/jim/markdown";
 import { personFacts } from "@/lib/jim/notesData";
@@ -12,6 +13,8 @@ interface NotesPersonProps {
   backLabel?: string;
   /** The back link's address; without one it is a plain button. */
   backHref?: string;
+  /** Beside the back link (the desktop's Updated · Refresh). */
+  backAside?: ReactNode;
 }
 
 /** One person's profile: key facts, strengths, then their whole note. */
@@ -21,6 +24,7 @@ export default function NotesPerson({
   onBack,
   backLabel = "People",
   backHref,
+  backAside,
 }: NotesPersonProps) {
   const facts = personFacts(person, today);
   const strengths = Array.isArray(person.strengths) ? person.strengths : [];
@@ -33,7 +37,12 @@ export default function NotesPerson({
 
   return (
     <article className="space-y-5">
-      <BackLink label={backLabel} onBack={onBack} href={backHref} />
+      <BackLink
+        label={backLabel}
+        onBack={onBack}
+        href={backHref}
+        aside={backAside}
+      />
       <header className="space-y-1">
         <h2 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text [overflow-wrap:anywhere]">
           {person.name}

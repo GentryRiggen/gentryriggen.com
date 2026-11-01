@@ -272,9 +272,7 @@ it("opens a meeting and a directory card from Work, and back", async () => {
   await screen.findByText("Water the plants");
   await userEvent.click(screen.getByRole("tab", { name: "Work" }));
   await userEvent.type(screen.getByLabelText("Search meetings"), "garden");
-  await userEvent.click(
-    screen.getByRole("button", { name: /Garden planning/ })
-  );
+  await userEvent.click(screen.getByRole("link", { name: /Garden planning/ }));
   expect(fetchNote.mock.calls[0][0]).toBe(
     "meetings/2026-10-30-garden-planning.md"
   );
@@ -288,17 +286,15 @@ it("opens a meeting and a directory card from Work, and back", async () => {
 
   await userEvent.type(screen.getByLabelText("Search the directory"), "ava");
   const dir = screen.getByRole("region", { name: "Directory" });
-  await userEvent.click(
-    within(dir).getByRole("button", { name: /Ava Torres/ })
-  );
+  await userEvent.click(within(dir).getByRole("link", { name: /Ava Torres/ }));
   expect(screen.getByRole("heading", { name: "Ava Torres" })).toBeVisible();
-  await userEvent.click(screen.getByRole("button", { name: "Quinn Hale" }));
+  await userEvent.click(screen.getByRole("link", { name: "Quinn Hale" }));
   expect(screen.getByRole("heading", { name: "Quinn Hale" })).toBeVisible();
   const reports = screen.getByRole("region", { name: "Direct reports" });
   await userEvent.click(
-    within(reports).getByRole("button", { name: /Ava Torres/ })
+    within(reports).getByRole("link", { name: /Ava Torres/ })
   );
-  await userEvent.click(screen.getByRole("button", { name: "Open profile" }));
+  await userEvent.click(screen.getByRole("link", { name: "Open profile" }));
   expect(window.location.pathname).toBe("/jim/notes/people/ava-torres");
   await userEvent.click(screen.getByRole("link", { name: "Directory" }));
   expect(

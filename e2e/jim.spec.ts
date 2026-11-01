@@ -763,14 +763,14 @@ for (const width of [undefined, 320]) {
         await dir.getByLabel("Search the directory").fill("ava");
         await dir.getByLabel("Search the directory").scrollIntoViewIfNeeded();
         await shot("notes-work-directory");
-        await dir.getByRole("button", { name: /Ava Torres/ }).click();
+        await dir.getByRole("link", { name: /Ava Torres/ }).click();
         await expect(
           page.getByRole("heading", { name: "Ava Torres" })
         ).toBeVisible();
         await shot("notes-directory-card");
         await page
           .getByRole("navigation", { name: "Reports to" })
-          .getByRole("button", { name: "Quinn Hale" })
+          .getByRole("link", { name: "Quinn Hale" })
           .click();
         await expect(page.getByText("Direct and careful")).toBeVisible();
         await shot("notes-directory-manager");
@@ -1697,3 +1697,104 @@ test.describe("Jim desktop", () => {
     }
   );
 });
+
+/** An iPad turning, or Split View: the layout changes, nothing is lost. */
+test(
+  "crossing the desktop breakpoint keeps the chat, Notes and what's typed",
+  { tag: "@smoke" },
+  async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "resizes a desktop window");
+    await page.setViewportSize({ width: 820, height: 720 });
+    await signedIn(page);
+    await send(page, "what's on my list?", /^Here's what/);
+    await openNotes(page);
+    // Marks on the live elements: a remount would lose them.
+    await page.evaluate(() => {
+      const mark = (el: Element | null) => {
+        if (el) (el as Element & { __kept?: boolean }).__kept = true;
+      };
+      mark(document.querySelector(".jim-app"));
+      mark(document.querySelector("[data-notes-scroller]"));
+      mark(document.querySelector("#jim-message"));
+    });
+    const kept = () =>
+      page.evaluate(() =>
+        [".jim-app", "[data-notes-scroller]", "#jim-message"].map(
+          (sel) =>
+            (
+              document.querySelector(sel) as
+                (Element & { __kept?: boolean }) | null
+            )?.__kept === true
+        )
+      );
+    await page.getByRole("button", { name: "Add todo" }).click();
+    const sheet = page.getByRole("dialog", { name: "Add todo" });
+    await sheet.getByLabel("Todo").fill("Call the vet about the dog");
+    const scroller = page.locator("[data-notes-scroller]");
+    const vh = () =>
+      page
+        .locator(".jim-app")
+        .evaluate((el) =>
+          (el as HTMLElement).style.getPropertyValue("--jim-vh")
+        );
+
+    for (const size of [
+      { width: 1280, height: 700 },
+      { width: 820, height: 680 },
+      { width: 1280, height: 720 },
+    ]) {
+      await page.setViewportSize(size);
+      await expect(page.locator(".jim-app")).toHaveAttribute(
+        "data-layout",
+        size.width >= 1024 ? "wide" : "phone"
+      );
+      // The viewport hook still writes to the one root.
+      await expect.poll(vh).toBe(`${size.height}px`);
+      expect(await kept()).toEqual([true, true, true]);
+      await expect(sheet.getByLabel("Todo")).toHaveValue(
+        "Call the vet about the dog"
+      );
+    }
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+
+    // Notes keeps its place (Home is long in both layouts)...
+    await page.setViewportSize({ width: 820, height: 400 });
+    await scroller.evaluate((el) =>
+      el.scrollTo({ top: 120, behavior: "instant" })
+    );
+    await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBe(120);
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)))
+    );
+    // The same scroller, not reset to the top (the browser keeps its
+    // place as the page reflows; the pixel offset differs per layout).
+    for (const [width, layout] of [
+      [1280, "wide"],
+      [820, "phone"],
+    ] as const) {
+      await page.setViewportSize({ width, height: 400 });
+      await expect(page.locator(".jim-app")).toHaveAttribute(
+        "data-layout",
+        layout
+      );
+      expect(await scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    }
+
+    // ...and its page and search.
+    await page
+      .getByRole("tablist", { name: "Notes pages" })
+      .getByRole("tab", { name: "People" })
+      .click();
+    await page.getByLabel("Search people").fill("a");
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await expect(page.getByLabel("Search people")).toHaveValue("a");
+    await page.setViewportSize({ width: 820, height: 600 });
+    await expect(page.getByLabel("Search people")).toHaveValue("a");
+    // And the conversation is the same one.
+    await page.getByRole("tab", { name: "Chat" }).click();
+    await expect(
+      page.getByRole("log").getByText("what's on my list?")
+    ).toBeVisible();
+  }
+);

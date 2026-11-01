@@ -232,6 +232,17 @@ function NotFound({ onHome }: NotFoundProps) {
   );
 }
 
+/** A note's (or person's) address from its repo path. */
+function hrefForNote(path: string): string | null {
+  const route = routeForNote(path);
+  return route ? formatJimPath(route) : null;
+}
+
+/** A directory card's address. */
+function hrefForCard(id: number): string {
+  return formatJimPath({ kind: "directory", id });
+}
+
 /** A person's address from their note's path ("people/x.md"). */
 function hrefForPerson(path: string): string {
   const route = routeForNote(path);
@@ -580,6 +591,8 @@ function NotesShellView({
         onOpenPerson={(id) =>
           navigate({ kind: "directory", id }, { back: "Work" })
         }
+        meetingHref={hrefForNote}
+        personHref={hrefForCard}
       />
     );
   } else if (isHealthPage(listPage)) {
@@ -612,76 +625,16 @@ function NotesShellView({
     );
   }
 
-  let detailBody: ReactNode = null;
-  if (route.kind === "note") {
-    detailBody = (
-      <NotesNote
-        key={route.path}
-        path={`${route.path}.md`}
-        api={api}
-        getToken={getToken}
-        onBack={back}
-        backLabel={backText}
-        backHref={backHref}
-        onTitle={onNoteTitle}
-      />
-    );
-  } else if (route.kind === "person") {
-    detailBody = !data ? (
-      loadState
-    ) : person ? (
-      <NotesPerson
-        person={person}
-        today={data.today}
-        onBack={back}
-        backLabel={backText}
-        backHref={backHref}
-      />
-    ) : (
-      <article className="space-y-5">
-        <BackLink label={backText} onBack={back} href={backHref} />
-        <Empty>That profile isn&apos;t here anymore.</Empty>
-      </article>
-    );
-  } else if (route.kind === "directory") {
-    detailBody = !data ? (
-      loadState
-    ) : (
-      <DirectoryCard
-        directory={data.work?.directory ?? NO_DIRECTORY}
-        id={route.id}
-        people={data.people}
-        // One card to the next replaces it: Back (and "Work") still
-        // return to the list, not the card before.
-        onOpen={(id) => navigate({ kind: "directory", id }, { replace: true })}
-        onProfile={(path) => openPath(path, "Directory")}
-        onBack={back}
-        backHref={backHref}
-      />
-    );
-  }
-
   const updated = loadedAt ? timeLabel(new Date(loadedAt).toISOString()) : null;
   const offlineLine =
     fromDevice && loadedAt
       ? `${error === "server" || error === "rejected" ? "Couldn't refresh" : "Offline"} · as of ${asOfLabel(loadedAt)}`
       : null;
-  const showSearchField =
-    !wide && !detail && !notFound && (searching || listPage !== "people");
   const showStatus =
     data !== null &&
     !searching &&
     !notFound &&
     !(route.kind === "page" && route.page === "money");
-  const wideTitle =
-    !wide || detail || notFound
-      ? null
-      : searching
-        ? "Search"
-        : listPage === "home"
-          ? null
-          : PAGE_LABELS[listPage];
-  const pill = pillOf(listPage);
   const statusRow: ReactNode = showStatus ? (
     <>
       <p className="flex min-w-0 items-center gap-2" aria-live="polite">
@@ -719,6 +672,82 @@ function NotesShellView({
       </button>
     </>
   ) : null;
+  /** On a desktop, a profile, card or note shows Updated · Refresh beside
+   * its back link; the pages show it in their header row. */
+  const detailAside: ReactNode =
+    wide && statusRow ? (
+      <div className="flex min-w-0 items-center gap-3 text-sm text-ayu-subtle">
+        {statusRow}
+      </div>
+    ) : undefined;
+  let detailBody: ReactNode = null;
+  if (route.kind === "note") {
+    detailBody = (
+      <NotesNote
+        key={route.path}
+        path={`${route.path}.md`}
+        api={api}
+        getToken={getToken}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+        onTitle={onNoteTitle}
+      />
+    );
+  } else if (route.kind === "person") {
+    detailBody = !data ? (
+      loadState
+    ) : person ? (
+      <NotesPerson
+        person={person}
+        today={data.today}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    ) : (
+      <article className="space-y-5">
+        <BackLink
+          label={backText}
+          onBack={back}
+          href={backHref}
+          aside={detailAside}
+        />
+        <Empty>That profile isn&apos;t here anymore.</Empty>
+      </article>
+    );
+  } else if (route.kind === "directory") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <DirectoryCard
+        directory={data.work?.directory ?? NO_DIRECTORY}
+        id={route.id}
+        people={data.people}
+        // One card to the next replaces it: Back (and "Work") still
+        // return to the list, not the card before.
+        onOpen={(id) => navigate({ kind: "directory", id }, { replace: true })}
+        onProfile={(path) => openPath(path, "Directory")}
+        hrefFor={hrefForCard}
+        profileHref={hrefForNote}
+        onBack={back}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    );
+  }
+
+  const showSearchField =
+    !wide && !detail && !notFound && (searching || listPage !== "people");
+  const wideTitle =
+    !wide || detail || notFound
+      ? null
+      : searching
+        ? "Search"
+        : PAGE_LABELS[listPage];
+  const pill = pillOf(listPage);
 
   return (
     <div className="flex h-full flex-col">
@@ -786,7 +815,7 @@ function NotesShellView({
               : "mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
           }
         >
-          {wide && (wideTitle || statusRow) && (
+          {wide && !detail && (wideTitle || statusRow) && (
             // One header row: the page's name, and how fresh it is.
             <div className="mb-6 flex min-h-11 flex-wrap items-center justify-between gap-x-6 gap-y-1">
               {wideTitle && (
