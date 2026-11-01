@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.8.0",
+    date: "2026-11-01",
+    title: "The Weather Desk",
+    highlights: [
+      "No More Night has a Weather Desk. Every few minutes a storm forms on its own, and the forecast shows the chance it hits Rivertown, Hilltop or Harbor",
+      "Shield a town with sandbags. If the storm lands there, you get a burst of bonus power. If it misses, the lights just flicker. You never lose anything, and you can ignore it",
+      "Storm crews let you shield two towns, and sandbags appear along the coast",
+      "A weather vane can watch the sky for you later on",
+      "Thunder rumbles at landfall, and the Logbook keeps a storm tally",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-11-01",
     title: "See every upgrade land",
