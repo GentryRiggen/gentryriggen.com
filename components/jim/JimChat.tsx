@@ -11,7 +11,6 @@ import {
   useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
-  type ReactNode,
 } from "react";
 import {
   ArrowUp,
@@ -29,7 +28,10 @@ import JimMark from "@/components/jim/JimMark";
 import JimSidebar, { type SidebarAction } from "@/components/jim/JimSidebar";
 import { onPlainClick } from "@/components/jim/notes/NotesUi";
 import useBasePage from "@/components/jim/useBasePage";
-import useJimRouter, { type JimLocation } from "@/components/jim/useJimRouter";
+import useJimRouter, {
+  replaceWithJimHome,
+  type JimLocation,
+} from "@/components/jim/useJimRouter";
 import useWideLayout from "@/components/jim/useWideLayout";
 import JimUpdatePill from "@/components/jim/JimUpdatePill";
 import useJimUpdate from "@/components/jim/useJimUpdate";
@@ -658,10 +660,10 @@ export default function JimChat({
     }
   }
 
-  /** Leaves no person's or note's address behind on a shared screen. */
+  /** Leaves no person's or note's address showing on a shared screen. */
   function forgetAddress() {
     try {
-      window.history.replaceState(window.history.state, "", "/jim");
+      replaceWithJimHome();
     } catch {
       // Best effort.
     }
@@ -749,10 +751,13 @@ export default function JimChat({
     void send();
   }
 
+  const returnIsNewLine = phone && !wide;
+
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // Phones: Return is a new line and the Send button sends.
-    // Desktop: Enter sends, Shift+Enter is a new line.
-    if (event.key !== "Enter" || event.shiftKey || phone) return;
+    // The phone layout on a touch screen: Return is a new line and the Send
+    // button sends. Otherwise (the desktop layout, an iPad with a keyboard,
+    // a mouse): Enter sends, Shift+Enter is a new line.
+    if (event.key !== "Enter" || event.shiftKey || returnIsNewLine) return;
     // Mid-composition (IME); Safari reports its commit Enter as keyCode 229.
     if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
       return;
@@ -835,6 +840,36 @@ export default function JimChat({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [wide, locked, goBack]);
+
+  // A page reached by a link or Back: say its name, and on a desktop move
+  // focus to its heading (never out of a field being typed in).
+  const [announced, setAnnounced] = useState("");
+  const chatHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusComposerNext = useRef(false);
+  useEffect(() => {
+    if (locked || location.nav === "initial") return;
+    const frame = requestAnimationFrame(() => {
+      setAnnounced(document.title.replace(/ · Jim$/, ""));
+      if (focusComposerNext.current) {
+        focusComposerNext.current = false;
+        boxRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      if (!wideRef.current || isTyping(document.activeElement)) return;
+      const heading =
+        location.route.kind === "chat"
+          ? chatHeadingRef.current
+          : [
+              ...document.querySelectorAll<HTMLElement>(
+                "#jim-notes-page h1, #jim-notes-page h2"
+              ),
+            ].find((el) => el.getClientRects().length > 0);
+      if (!heading) return;
+      if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location, locked]);
 
   if (locked) return null;
 
@@ -1009,7 +1044,7 @@ export default function JimChat({
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Message Jim"
-              enterKeyHint={phone ? "enter" : "send"}
+              enterKeyHint={returnIsNewLine ? "enter" : "send"}
               autoComplete="off"
               className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
             />
@@ -1053,31 +1088,37 @@ export default function JimChat({
     <JimUpdatePill onUpdate={jimUpdate.update} disabled={sending} />
   );
 
-  let layout: ReactNode;
-  if (wide) {
-    const active: "chat" | NotesPage | null =
-      route.kind === "chat"
-        ? "chat"
-        : route.kind === "notFound"
-          ? null
-          : basePage;
-    const actions: SidebarAction[] = [
-      { label: "New chat", icon: SquarePen, onSelect: newChat },
-      ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
-      ...(briefing.item ? [{ ...briefing.item, icon: Sunrise }] : []),
-      ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
-    ];
-    layout = (
-      <div
-        ref={rootRef}
-        // Behind a sheet nothing can be clicked, focused or read.
-        inert={personas.open || lockSheetOpen}
-        data-keyboard={keyboardOpen ? "open" : "closed"}
-        data-layout="wide"
-        className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text"
-      >
+  const docked = wide && route.kind !== "chat";
+  const sidebarActive: "chat" | NotesPage | null =
+    route.kind === "chat"
+      ? "chat"
+      : route.kind === "notFound"
+        ? null
+        : basePage;
+  const sidebarActions: SidebarAction[] = [
+    { label: "New chat", icon: SquarePen, onSelect: newChat },
+    ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
+    ...(briefing.item ? [{ ...briefing.item, icon: Sunrise }] : []),
+    ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
+  ];
+
+  // One tree for both widths: crossing the breakpoint (an iPad rotating,
+  // Split View) only moves things, so the chat, Notes and every field in
+  // them stay mounted, and the root the viewport hook writes to is the same.
+  const layout = (
+    <div
+      ref={rootRef}
+      // Behind a sheet nothing can be tapped, focused or read.
+      inert={personas.open || lockSheetOpen}
+      data-keyboard={keyboardOpen ? "open" : "closed"}
+      data-layout={wide ? "wide" : "phone"}
+      className={`jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text ${
+        wide ? "" : "flex-col"
+      }`}
+    >
+      {wide ? (
         <JimSidebar
-          active={active}
+          active={sidebarActive}
           onNavigate={goToRoute}
           busy={sending}
           search={notesSearch}
@@ -1088,75 +1129,11 @@ export default function JimChat({
             name: personas.activeName ?? null,
             onOpen: personas.menuItem.onSelect,
           }}
-          actions={actions}
+          actions={sidebarActions}
           onSignOut={signOut}
         />
-        <main className="relative min-w-0 flex-1">
-          {updatePill}
-          {route.kind === "chat" && (
-            <section
-              aria-label="Chat with Jim"
-              className="absolute inset-0 flex flex-col"
-            >
-              <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.06] px-8">
-                <h1 className="text-lg font-semibold tracking-tight text-ayu-text">
-                  Chat
-                </h1>
-                {personas.activeName && (
-                  <span className="text-sm text-ayu-subtle">
-                    as {personas.activeName}
-                  </span>
-                )}
-              </div>
-              {chatBody}
-            </section>
-          )}
-          {notesOpened && (
-            <div
-              id="jim-notes"
-              className={`absolute inset-0 ${route.kind === "chat" ? "invisible" : ""}`}
-            >
-              {notes}
-            </div>
-          )}
-        </main>
-        {route.kind !== "chat" && (
-          <aside
-            aria-label="Chat with Jim"
-            className="flex w-[24rem] shrink-0 flex-col border-l border-white/[0.06] bg-ayu-bg/60 xl:w-[26rem]"
-          >
-            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] pr-3 pl-5">
-              <JimMark busy={sending} />
-              <h2 className="min-w-0 flex-1 truncate font-semibold tracking-tight text-ayu-text">
-                Chat with Jim
-              </h2>
-              <a
-                href={formatJimPath(CHAT_ROUTE)}
-                onClick={onPlainClick(() => navigate(CHAT_ROUTE))}
-                aria-label="Open chat full width"
-                title="Open chat full width"
-                className="flex size-10 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
-              >
-                <Maximize2 aria-hidden="true" className="size-4" />
-              </a>
-            </div>
-            <div className="relative flex min-h-0 flex-1 flex-col">
-              {chatBody}
-            </div>
-          </aside>
-        )}
-        {briefing.notice}
-      </div>
-    );
-  } else {
-    layout = (
-      <div
-        ref={rootRef}
-        // Behind the persona sheet nothing can be tapped, focused or read.
-        inert={personas.open || lockSheetOpen}
-        data-keyboard={keyboardOpen ? "open" : "closed"}
-        className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
-      >
+      ) : null}
+      {wide ? null : (
         <JimHeader
           busy={sending}
           onSignOut={signOut}
@@ -1170,33 +1147,80 @@ export default function JimChat({
             ...(lockItem ? [lockItem] : []),
           ]}
         />
+      )}
 
-        <div className="relative min-h-0 flex-1">
-          {updatePill}
-          <div
-            id="jim-chat"
-            role="tabpanel"
-            aria-labelledby="jim-tab-chat"
-            className={`absolute inset-0 flex flex-col ${tab === "chat" ? "" : "invisible"}`}
-          >
-            {chatBody}
-          </div>
-
-          {notesOpened && (
-            <div
-              id="jim-notes"
-              role="tabpanel"
-              aria-labelledby="jim-tab-notes"
-              className={`absolute inset-0 ${tab === "notes" ? "" : "invisible"}`}
-            >
-              {notes}
+      <div className="relative min-h-0 min-w-0 flex-1">
+        {updatePill}
+        <div
+          id="jim-chat"
+          role={wide ? (docked ? "complementary" : "region") : "tabpanel"}
+          aria-label={wide ? "Chat with Jim" : undefined}
+          aria-labelledby={wide ? undefined : "jim-tab-chat"}
+          className={
+            docked
+              ? "absolute inset-y-0 right-0 z-10 flex w-[24rem] flex-col border-l border-white/[0.06] bg-ayu-bg/60 xl:w-[26rem]"
+              : `absolute inset-0 flex flex-col ${tab === "chat" || wide ? "" : "invisible"}`
+          }
+        >
+          {wide && !docked ? (
+            <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.06] px-8">
+              <h1
+                ref={chatHeadingRef}
+                tabIndex={-1}
+                className="text-lg font-semibold tracking-tight text-ayu-text"
+              >
+                Chat
+              </h1>
+              {personas.activeName && (
+                <span className="text-sm text-ayu-subtle">
+                  as {personas.activeName}
+                </span>
+              )}
             </div>
-          )}
+          ) : null}
+          {docked ? (
+            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] pr-3 pl-5">
+              <JimMark busy={sending} />
+              <h2 className="min-w-0 flex-1 truncate font-semibold tracking-tight text-ayu-text">
+                Chat with Jim
+              </h2>
+              <a
+                href={formatJimPath(CHAT_ROUTE)}
+                onClick={onPlainClick(() => {
+                  focusComposerNext.current = true;
+                  navigate(CHAT_ROUTE);
+                })}
+                aria-label="Open chat full width"
+                title="Open chat full width"
+                className="flex size-10 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+              >
+                <Maximize2 aria-hidden="true" className="size-4" />
+              </a>
+            </div>
+          ) : null}
+          {chatBody}
         </div>
-        {briefing.notice}
+
+        {notesOpened && (
+          <div
+            id="jim-notes"
+            role={wide ? undefined : "tabpanel"}
+            aria-labelledby={wide ? undefined : "jim-tab-notes"}
+            className={`absolute inset-y-0 left-0 ${
+              docked ? "right-[24rem] xl:right-[26rem]" : "right-0"
+            } ${tab === "notes" ? "" : "invisible"}`}
+          >
+            {notes}
+          </div>
+        )}
       </div>
-    );
-  }
+      {/* Says where a link went, for a screen reader. */}
+      <p aria-live="polite" className="sr-only">
+        {announced}
+      </p>
+      {briefing.notice}
+    </div>
+  );
 
   return (
     <>

@@ -285,6 +285,12 @@ html:has(.jim-app) body {
   outline-color: var(--color-ayu-accent);
 }
 
+/* A page's heading takes focus when a link opens it (for a screen reader
+   and the next Tab); it isn't a control, so no ring. */
+.jim-app :is(h1, h2)[tabindex="-1"]:focus {
+  outline: none;
+}
+
 /* Ever Onward (/ever-onward): scene motion and UI pops. Dynamic
    values come from SVG attributes; these classes only add motion. */
 @keyframes lmPop {

@@ -453,6 +453,40 @@ describe("desktop", () => {
     expect(window.location.pathname).toBe("/jim/notes/people");
   });
 
+  it("sends on Enter in the desktop layout, even on a touch screen (iPad)", async () => {
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches: query.includes("min-width: 1024px") || query.includes("coarse"),
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+    })) as unknown as typeof window.matchMedia;
+    send.mockResolvedValue({ reply: "ok", changed: [], commit: null });
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "hi{Enter}");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0]).toBe("hi");
+  });
+
+  it("moves focus to the new page's heading, or the box for the full chat", async () => {
+    window.history.replaceState(null, "", "/jim/notes");
+    renderChat();
+    await userEvent.click(
+      screen.getByRole("link", { name: "Open chat full width" })
+    );
+    await act(
+      () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    );
+    expect(screen.getByLabelText("Message")).toHaveFocus();
+
+    const nav = screen.getByRole("navigation", { name: "Jim" });
+    await userEvent.click(within(nav).getByRole("link", { name: "Home" }));
+    await userEvent.click(within(nav).getByRole("link", { name: "Chat" }));
+    await act(
+      () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    );
+    expect(screen.getByRole("heading", { name: "Chat" })).toHaveFocus();
+  });
+
   it("searching from Chat shows the results in Notes, never in the address", async () => {
     renderChat();
     await userEvent.type(screen.getByLabelText("Search notes"), "plants");
