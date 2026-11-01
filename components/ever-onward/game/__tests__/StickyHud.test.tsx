@@ -1,4 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
+import { newSave } from "@/lib/ever-onward/engine/save";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
@@ -41,6 +42,8 @@ function renderScreen(run: RunState, onTap = jest.fn(() => 1)) {
       onRestart={jest.fn()}
       onLeave={jest.fn()}
       onDismissOverlay={jest.fn()}
+      currentSave={newSave()}
+      onReplaceSave={jest.fn()}
     />
   );
   return onTap;
