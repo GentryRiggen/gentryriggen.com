@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.0.3",
+    date: "2026-11-01",
+    title: "Sound and music",
+    highlights: [
+      "Ever Onward has sound! Every tap goes ting, and tapping fast makes the notes climb higher and higher",
+      "Buying an upgrade, finding a new one and starting a new part all have their own sounds",
+      "Calm music plays while you build, and it changes in each part of the story",
+      "Music and sound effects each have their own switch next to the Menu button",
+    ],
+  },
+  {
     version: "1.0.2",
     date: "2026-11-01",
     title: "Backup codes",
