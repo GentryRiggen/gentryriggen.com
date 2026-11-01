@@ -39,9 +39,11 @@ async function fetchBuildId(versionUrl: string): Promise<string | null> {
 }
 
 /**
- * Tells the page when a newer build has been deployed. It checks on load
- * and whenever the tab comes back into view (at most once a minute), and
- * never reloads anything itself.
+ * Tells the page when a newer build has been deployed. It checks on load,
+ * whenever the tab comes back into view, and every `intervalMs` while the
+ * page stays open and visible (a game left running on an iPad through a
+ * deploy must still see it). At most once per `intervalMs`; never reloads
+ * anything itself.
  */
 export function useUpdateCheck({
   versionUrl,
@@ -73,11 +75,18 @@ export function useUpdateCheck({
     // `pageshow` and may skip `visibilitychange`.
     const handlePageShow = () => void check();
 
+    // A page left open never fires visibility or pageshow events, so poll
+    // too, but only while it is on screen.
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") void check();
+    }, intervalMs);
+
     void check();
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("pageshow", handlePageShow);
     return () => {
       isCancelled = true;
+      window.clearInterval(poll);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pageshow", handlePageShow);
     };

@@ -65,6 +65,27 @@ describe("useUpdateCheck", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps checking while the page stays open and visible", async () => {
+    jest.useFakeTimers({ now: 5_000_000 });
+    const fetchMock = mockVersionFile("same");
+    const { result } = renderHook(() =>
+      useUpdateCheck({
+        versionUrl: URL,
+        current: "same",
+        enabled: true,
+        intervalMs: 1_000,
+      })
+    );
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    mockVersionFile("new");
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+    await act(async () => {});
+    expect(result.current.isUpdateReady).toBe(true);
+  });
+
   it("does nothing when disabled", async () => {
     const fetchMock = mockVersionFile("new");
     renderHook(() =>
