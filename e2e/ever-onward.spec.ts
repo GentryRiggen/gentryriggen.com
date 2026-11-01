@@ -20,6 +20,50 @@ async function startGame(page: Page) {
   await passCutscene(page);
 }
 
+/** Seeds a save (before the page loads) with a Light run patched as asked. */
+async function seedLight(
+  page: Page,
+  run: Record<string, unknown>,
+  universe: Record<string, unknown> = {}
+) {
+  await page.addInitScript(
+    ({ runPatch, universePatch }) => {
+      window.localStorage.setItem(
+        "ever-onward:save",
+        JSON.stringify({
+          version: 1,
+          seenIntro: true,
+          universes: {
+            light: {
+              run: {
+                phase: 0,
+                time: 5,
+                taps: 40,
+                complete: false,
+                resources: { coins: 0 },
+                owned: {},
+                mods: {},
+                flags: {},
+                revealed: ["lens"],
+                story: ["coast-hello"],
+                transitions: [],
+                rng: 1,
+                ...runPatch,
+              },
+              best: 1200,
+              completions: 1,
+              embers: 0,
+              prestigeUpgrades: {},
+              ...universePatch,
+            },
+          },
+        })
+      );
+    },
+    { runPatch: run, universePatch: universe }
+  );
+}
+
 test.describe("Ever Onward", () => {
   test(
     "the start screen shows first and Enter opens the hub",
@@ -217,6 +261,100 @@ test.describe("Ever Onward", () => {
       await expect(tap).toHaveCSS("touch-action", "manipulation");
       await expect(tap).toHaveAccessibleName("Flash the light");
     });
+  });
+
+  test.describe("on an iPad in landscape", () => {
+    test.use({ viewport: { width: 1180, height: 820 } });
+
+    test(
+      "tapping the next goal scrolls the column, never the page",
+      { tag: "@smoke" },
+      async ({ page }) => {
+        await seedLight(page, { resources: { coins: 5, oil: 40 } });
+        await openHub(page);
+        await page.getByTestId("lm-play-light").click();
+        await expect(page.getByTestId("lm-hud-next")).toBeVisible();
+        const sizes = await page.evaluate(() => ({
+          doc: document.documentElement.scrollHeight,
+          inner: window.innerHeight,
+        }));
+        expect(sizes.doc).toBe(sizes.inner);
+        await page.getByTestId("lm-hud-next").click();
+        await page.waitForTimeout(800);
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
+        const hud = await page.getByTestId("lm-hud").boundingBox();
+        const card = await page
+          .getByRole("region", { name: "Upgrades" })
+          .getByRole("button")
+          .first()
+          .boundingBox();
+        expect(card && hud && card.y >= hud.height - 1).toBe(true);
+      }
+    );
+  });
+
+  test.describe("on a small phone", () => {
+    test.use({ viewport: { width: 375, height: 667 } });
+
+    test("the header never scrolls the page sideways", async ({ page }) => {
+      await seedLight(
+        page,
+        { owned: { lens: 1 }, revealed: ["lens"], resources: { coins: 0 } },
+        { embers: 3 }
+      );
+      await openHub(page);
+      await page.getByTestId("lm-play-light").click();
+      await expect(page.getByTestId("lm-ember-button")).toBeVisible();
+      await expect(page.getByTestId("lm-upgrades-button")).toBeVisible();
+      const widths = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        inner: window.innerWidth,
+      }));
+      expect(widths.scroll).toBe(widths.inner);
+    });
+  });
+
+  test.describe("on a phone, opening a universe", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test("starts at the top of the page", async ({ page }) => {
+      await seedLight(page, {});
+      await openHub(page);
+      await page.evaluate(() =>
+        window.scrollTo(0, document.documentElement.scrollHeight)
+      );
+      await page.getByTestId("lm-play-light").click();
+      await expect(page.getByTestId("lm-tap")).toBeVisible();
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+      await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+    });
+
+    test("an out-of-oil warning sits near the top and the chip leads to oil", async ({
+      page,
+    }) => {
+      await seedLight(page, { resources: { coins: 30, oil: 0, ships: 14 } });
+      await openHub(page);
+      await page.getByTestId("lm-play-light").click();
+      const alert = page.getByTestId("lm-alert");
+      await expect(alert).toBeVisible();
+      const box = await alert.boundingBox();
+      expect(box && box.y).toBeLessThanOrEqual(650);
+      await page.getByTestId("lm-hud-alert").click();
+      await page.waitForTimeout(800);
+      await expect(
+        page.getByRole("region", { name: "Actions" })
+      ).toBeInViewport({ ratio: 0.9 });
+    });
+  });
+
+  test("the menu is a dialog that closes with Escape", async ({ page }) => {
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+    await expect(page.getByTestId("lm-tap-fab")).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Menu" })).toBeFocused();
   });
 
   test("the versions page lists the release", async ({ page }) => {

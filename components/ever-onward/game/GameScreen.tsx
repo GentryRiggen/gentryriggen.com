@@ -181,13 +181,13 @@ export default function GameScreen({
 
   // Opening a universe, or finishing one, starts at the top of the page.
   useLayoutEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: "instant" });
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [def.id]);
   const previousOverlay = useRef(overlay);
   useEffect(() => {
     if (previousOverlay.current === "ending" && overlay === null) {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: "instant" });
       if (mainRef.current) mainRef.current.scrollTop = 0;
     }
     previousOverlay.current = overlay;

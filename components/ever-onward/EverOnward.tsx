@@ -28,7 +28,7 @@ export default function EverOnward() {
   // Back at the hub, start at the top rather than where the game was scrolled.
   const isInGame = !!def;
   useEffect(() => {
-    if (!isInGame) window.scrollTo(0, 0);
+    if (!isInGame) window.scrollTo({ top: 0, behavior: "instant" });
   }, [isInGame]);
   // The title theme plays on the start screen and the hub, not in a universe.
   useTitleMusic(
