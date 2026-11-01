@@ -27,7 +27,9 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Ever Onward",
-    statusBarStyle: "black-translucent",
+    // Opaque: with "black-translucent" the page runs under the status bar
+    // and iOS blurs the top of it, which smeared the pinned coin bar.
+    statusBarStyle: "black",
   },
   // Next renders `capable` as mobile-web-app-capable; older iOS versions only
   // read the apple- prefixed tag.

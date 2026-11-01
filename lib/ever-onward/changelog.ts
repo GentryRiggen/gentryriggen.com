@@ -22,6 +22,7 @@ export const CHANGELOG: readonly Release[] = [
     title: "Sharper numbers",
     highlights: [
       "The coin counter at the top stays crisp while it climbs instead of looking fuzzy",
+      "On the home screen, the game no longer slides under the clock and battery, so the top of the screen is never blurred",
     ],
   },
   {
