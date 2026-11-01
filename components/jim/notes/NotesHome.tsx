@@ -64,7 +64,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
     .join(" · ");
   return (
     <li className="flex gap-3 px-4 py-2.5">
-      <span className="w-16 shrink-0 pt-0.5 text-sm text-ayu-blue tabular-nums">
+      <span className="w-16 shrink-0 pt-0.5 text-sm font-medium text-ayu-blue tabular-nums">
         {time}
       </span>
       <span className="min-w-0 flex-1">
@@ -161,7 +161,7 @@ function TodayCard({ data }: { data: ViewData }) {
   if (!rows.length) return null;
   return (
     <Section title="Today">
-      <ul className="divide-y divide-ayu-line overflow-hidden rounded-xl bg-ayu-panel">
+      <ul className="jim-card divide-y divide-white/[0.05] overflow-hidden">
         {rows.map((r) => (
           <li
             key={r.label}
@@ -216,8 +216,8 @@ function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
           aria-hidden="true"
           className={`flex size-[22px] items-center justify-center rounded-md border-2 ${
             checked
-              ? "border-ayu-accent bg-ayu-accent text-ayu-bg"
-              : "border-ayu-muted group-hover:border-ayu-accent"
+              ? "jim-glow border-transparent text-ayu-bg"
+              : "border-ayu-muted group-hover:border-ayu-accent group-hover:bg-ayu-accent/10"
           }`}
         >
           {pending ? (
@@ -353,10 +353,8 @@ function ToastBar({ toast, onUndo }: ToastBarProps) {
         {toast && (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex max-w-full items-center gap-2 rounded-full py-1 pr-1 pl-5 shadow-lg ${
-              toast.kind === "error"
-                ? "bg-ayu-raised text-ayu-red"
-                : "bg-ayu-raised text-ayu-text"
+            className={`jim-rise pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-white/[0.08] bg-ayu-raised/90 py-1 pr-1 pl-5 shadow-2xl shadow-black/60 backdrop-blur-xl ${
+              toast.kind === "error" ? "text-ayu-red" : "text-ayu-text"
             } ${toast.kind === "error" ? "pr-5" : ""}`}
           >
             {toast.kind === "done" ? (
@@ -368,7 +366,7 @@ function ToastBar({ toast, onUndo }: ToastBarProps) {
                 <button
                   type="button"
                   onClick={() => onUndo(toast)}
-                  className="min-h-11 rounded-full px-3 font-medium text-ayu-accent hover:bg-ayu-panel"
+                  className="min-h-11 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06]"
                 >
                   Undo
                 </button>
@@ -385,6 +383,15 @@ function ToastBar({ toast, onUndo }: ToastBarProps) {
   );
 }
 
+/** "Good morning" and friends, by the device's clock. */
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return "Late night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 /** Home: the calendar this week, then what's due, with boxes to tick. */
 export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
@@ -395,7 +402,14 @@ export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
   });
   return (
     <div className="space-y-8">
-      <p className="text-lg font-semibold text-ayu-text">{date}</p>
+      <div>
+        <p className="text-xs font-semibold tracking-[0.14em] text-ayu-accent uppercase">
+          {greeting()}
+        </p>
+        <p className="mt-1 text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text">
+          {date}
+        </p>
+      </div>
       <div className="space-y-3">
         <TodayCard data={data} />
         <QuickLog today={data.today} onLog={onLog} />

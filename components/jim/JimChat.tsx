@@ -11,8 +11,9 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Check } from "lucide-react";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
+import JimMark from "@/components/jim/JimMark";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
@@ -60,6 +61,13 @@ const ERRORS: Record<JimErrorKind, string> = {
   rejected: "Jim couldn't take that message. Try a shorter one.",
 };
 
+/** Starters on an empty chat: a tap puts one in the box to finish or send. */
+const STARTERS = [
+  "What's on today?",
+  "What's due this week?",
+  "Remember that ",
+];
+
 /** After this long, the thinking indicator says it is still working. */
 const SLOW_MS = 20_000;
 
@@ -89,8 +97,8 @@ const MessageList = memo(function MessageList({
     <>
       {messages.map((m) =>
         m.from === "me" ? (
-          <div key={m.id} className="ml-auto max-w-[85%] min-w-0">
-            <div className="rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
+          <div key={m.id} className="jim-rise ml-auto max-w-[85%] min-w-0">
+            <div className="jim-glow rounded-[1.25rem] rounded-br-md px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
               {m.text}
             </div>
             {/* The banner says it for the message just sent. */}
@@ -101,16 +109,22 @@ const MessageList = memo(function MessageList({
             )}
           </div>
         ) : (
-          <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
-            <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
+          <div key={m.id} className="jim-rise mr-auto max-w-[92%] min-w-0">
+            <div className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3">
               <JimMarkdown
                 text={m.text}
                 links={m.uncertain ? "plain" : "label-url"}
               />
             </div>
             {m.changed && m.changed.length > 0 && (
-              <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
-                Saved: {m.changed.join(", ")}
+              <p className="mt-1.5 flex items-start gap-1.5 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
+                <span
+                  aria-hidden="true"
+                  className="mt-px flex size-3.5 shrink-0 items-center justify-center rounded-full bg-ayu-green/15 text-ayu-green"
+                >
+                  <Check className="size-2.5" strokeWidth={3.5} />
+                </span>
+                <span>Saved: {m.changed.join(", ")}</span>
               </p>
             )}
           </div>
@@ -486,6 +500,7 @@ export default function JimChat({
       className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
     >
       <JimHeader
+        busy={sending}
         onSignOut={signOut}
         tab={tab}
         onTab={showTab}
@@ -513,17 +528,39 @@ export default function JimChat({
               className="mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
             >
               {messages.length === 0 && !sending && (
-                <p className="py-10 text-center text-ayu-subtle">
-                  Ask Jim something, or tell him something to remember.
-                </p>
+                <div className="jim-rise flex flex-col items-center px-2 pt-[min(12vh,5rem)] pb-6 text-center">
+                  <JimMark size="lg" />
+                  <h2 className="mt-5 text-2xl font-semibold tracking-tight text-ayu-text">
+                    What&apos;s on your mind?
+                  </h2>
+                  <p className="mt-2 max-w-xs text-ayu-subtle">
+                    Ask Jim something, or tell him something to remember.
+                  </p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-2">
+                    {STARTERS.map((starter) => (
+                      <button
+                        key={starter}
+                        type="button"
+                        onClick={() => {
+                          setDraft(starter);
+                          boxRef.current?.focus({ preventScroll: true });
+                        }}
+                        className="min-h-11 rounded-full border border-white/[0.08] bg-ayu-panel/70 px-4 text-sm text-ayu-text backdrop-blur hover:border-ayu-accent/40 hover:text-ayu-accent"
+                      >
+                        {starter.trim()}
+                        {starter.endsWith(" ") ? "…" : ""}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               <MessageList messages={messages} heldId={held?.id ?? null} />
               {sending && (
-                <div className="mr-auto max-w-[92%] min-w-0">
+                <div className="jim-rise mr-auto max-w-[92%] min-w-0">
                   {live.text ? (
                     <div
                       aria-busy="true"
-                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5"
+                      className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3"
                     >
                       <JimMarkdown
                         text={live.text}
@@ -533,15 +570,29 @@ export default function JimChat({
                   ) : (
                     <p
                       role="status"
-                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
+                      className="jim-card flex items-center gap-3 rounded-[1.25rem] rounded-bl-md px-4 py-3 text-ayu-subtle"
                     >
+                      <span aria-hidden="true" className="flex gap-1">
+                        {[0, 150, 300].map((delay) => (
+                          <span
+                            key={delay}
+                            className={`jim-dot size-1.5 rounded-full bg-ayu-accent ${
+                              delay === 150
+                                ? "[animation-delay:150ms]"
+                                : delay === 300
+                                  ? "[animation-delay:300ms]"
+                                  : ""
+                            }`}
+                          />
+                        ))}
+                      </span>
                       {slow ? "Still working…" : "Jim is thinking…"}
                     </p>
                   )}
                   {(live.saving || live.step) && (
                     <p
                       role="status"
-                      className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
+                      className="mt-1.5 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
                     >
                       {live.saving ? "Saving…" : stepLabel(live.step)}
                     </p>
@@ -555,9 +606,11 @@ export default function JimChat({
               between the box and the keys. */}
           <form
             onSubmit={onSubmit}
-            className={`shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+            className={`shrink-0 pt-1 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+              // Over the keyboard the pill sits 4px off the keys (its own
+              // border and padding make up the rest of the 8px).
               keyboardOpen
-                ? "pb-2"
+                ? "pb-1"
                 : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
             }`}
           >
@@ -565,18 +618,22 @@ export default function JimChat({
               {!online && (
                 <p
                   role="status"
-                  className="mb-2 rounded-lg bg-ayu-panel px-3 py-2 text-sm text-ayu-subtle"
+                  className="jim-rise mb-2 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-ayu-panel/80 px-3 py-2 text-sm text-ayu-subtle backdrop-blur"
                 >
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full bg-ayu-muted"
+                  />
                   You&apos;re offline
                 </p>
               )}
               {error && (
                 <p
                   role="alert"
-                  className={`mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-3 py-2 text-sm ${
+                  className={`jim-rise mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-sm backdrop-blur ${
                     error === "waking" || error === "uncertain"
-                      ? "bg-ayu-accent/15 text-ayu-accent"
-                      : "bg-ayu-red/15 text-ayu-red"
+                      ? "border-ayu-accent/25 bg-ayu-accent/10 text-ayu-accent"
+                      : "border-ayu-red/25 bg-ayu-red/10 text-ayu-red"
                   }`}
                 >
                   <span>{ERRORS[error]}</span>
@@ -591,7 +648,7 @@ export default function JimChat({
                   )}
                 </p>
               )}
-              <div className="flex items-end gap-2">
+              <div className="jim-glass flex items-end gap-2 rounded-[1.6rem] border border-white/[0.08] p-1 shadow-[0_12px_40px_-16px_rgb(0_0_0/0.8)] transition-colors duration-200 focus-within:border-ayu-accent/50 focus-within:shadow-[0_0_0_4px_rgb(255_204_102/0.08),0_12px_40px_-16px_rgb(0_0_0/0.8)]">
                 <label htmlFor="jim-message" className="sr-only">
                   Message
                 </label>
@@ -605,7 +662,7 @@ export default function JimChat({
                   placeholder="Message Jim"
                   enterKeyHint={phone ? "enter" : "send"}
                   autoComplete="off"
-                  className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-ayu-muted bg-ayu-panel px-4 py-2.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none"
+                  className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
                 />
                 <button
                   type="submit"
@@ -613,7 +670,11 @@ export default function JimChat({
                   disabled={!canSend}
                   // Keep the keyboard up: a tap on Send must not blur the box.
                   onPointerDown={(e) => e.preventDefault()}
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ayu-accent transition-colors! duration-150! text-ayu-bg hover:bg-ayu-orange disabled:bg-ayu-raised disabled:text-ayu-subtle"
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-full duration-200! ${
+                    canSend
+                      ? "jim-glow text-ayu-bg hover:brightness-110"
+                      : "bg-white/[0.06] text-ayu-subtle"
+                  }`}
                 >
                   <ArrowUp
                     aria-hidden="true"
@@ -631,7 +692,7 @@ export default function JimChat({
             id="jim-notes"
             role="tabpanel"
             aria-labelledby="jim-tab-notes"
-            className={`absolute inset-0 bg-ayu-bg ${tab === "notes" ? "" : "invisible"}`}
+            className={`absolute inset-0 ${tab === "notes" ? "" : "invisible"}`}
           >
             <NotesShell
               uid={uid}

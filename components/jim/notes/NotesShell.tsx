@@ -9,7 +9,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { RefreshCw } from "lucide-react";
+import {
+  Dumbbell,
+  Flag,
+  HeartPulse,
+  House,
+  RefreshCw,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import NotesGolf from "@/components/jim/notes/NotesGolf";
 import NotesHealth from "@/components/jim/notes/NotesHealth";
 import NotesHome from "@/components/jim/notes/NotesHome";
@@ -39,12 +47,12 @@ interface NotesShellProps {
 
 type Page = "home" | "health" | "training" | "golf" | "people";
 
-const PAGES: { id: Page; label: string }[] = [
-  { id: "home", label: "Home" },
-  { id: "health", label: "Health" },
-  { id: "training", label: "Training" },
-  { id: "golf", label: "Golf" },
-  { id: "people", label: "People" },
+const PAGES: { id: Page; label: string; icon: LucideIcon }[] = [
+  { id: "home", label: "Home", icon: House },
+  { id: "health", label: "Health", icon: HeartPulse },
+  { id: "training", label: "Training", icon: Dumbbell },
+  { id: "golf", label: "Golf", icon: Flag },
+  { id: "people", label: "People", icon: Users },
 ];
 
 /** A cached payload younger than this is shown without refetching. */
@@ -73,9 +81,12 @@ function Skeleton() {
       <p className="sr-only" role="status">
         Loading notes…
       </p>
-      <div className="h-6 w-48 animate-pulse rounded bg-ayu-panel" />
+      <div className="h-6 w-48 animate-pulse rounded-lg bg-white/[0.05]" />
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-20 animate-pulse rounded-xl bg-ayu-panel" />
+        <div
+          key={i}
+          className="h-20 animate-pulse rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.04]"
+        />
       ))}
     </div>
   );
@@ -292,7 +303,7 @@ export default memo(function NotesShell({
           <button
             type="button"
             onClick={() => void load()}
-            className="min-h-11 rounded-full bg-ayu-accent px-5 font-medium text-ayu-bg hover:bg-ayu-orange"
+            className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
           >
             Try again
           </button>
@@ -330,7 +341,7 @@ export default memo(function NotesShell({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-ayu-line">
+      <div className="jim-glass relative z-10 shrink-0 border-b border-white/[0.06]">
         {/* Pills size to their text and the row scrolls sideways on its own
             when they don't fit; the page never does. */}
         <div
@@ -350,13 +361,22 @@ export default memo(function NotesShell({
                 aria-controls="jim-notes-page"
                 ref={selected ? selectedTabRef : undefined}
                 onClick={() => goTo(p.id)}
-                className={`min-h-11 shrink-0 rounded-full px-3.5 text-sm font-medium whitespace-nowrap ${
-                  selected
-                    ? "bg-ayu-accent text-ayu-bg"
-                    : "text-ayu-subtle hover:bg-ayu-panel hover:text-ayu-text"
-                }`}
+                className="group flex min-h-11 shrink-0 items-center"
               >
-                {p.label}
+                <span
+                  className={`flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap ring-1 transition-colors duration-200 ring-inset ${
+                    selected
+                      ? "bg-ayu-accent/12 text-ayu-accent ring-ayu-accent/30"
+                      : "text-ayu-subtle ring-transparent group-hover:bg-white/[0.06] group-hover:text-ayu-text"
+                  }`}
+                >
+                  <p.icon
+                    aria-hidden="true"
+                    className="size-4"
+                    strokeWidth={selected ? 2.25 : 2}
+                  />
+                  {p.label}
+                </span>
               </button>
             );
           })}
@@ -381,8 +401,16 @@ export default memo(function NotesShell({
             </div>
           )}
           {data && !searching && (
-            <div className="mb-5 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
-              <p className="min-w-0" aria-live="polite">
+            <div className="mb-6 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
+              <p className="flex min-w-0 items-center gap-2" aria-live="polite">
+                <span
+                  aria-hidden="true"
+                  className={`size-1.5 shrink-0 rounded-full ${
+                    error || offlineLine || data.stale
+                      ? "bg-ayu-orange"
+                      : "bg-ayu-green shadow-[0_0_8px_rgb(213_255_128/0.6)]"
+                  }`}
+                />
                 {error === "denied"
                   ? LOAD_ERRORS.denied
                   : offlineLine
@@ -399,7 +427,7 @@ export default memo(function NotesShell({
                 type="button"
                 onClick={() => void load()}
                 disabled={loading}
-                className="-mr-2 flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium text-ayu-accent hover:bg-ayu-panel disabled:text-ayu-subtle"
+                className="-mr-2 flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06] disabled:text-ayu-subtle"
               >
                 <RefreshCw
                   aria-hidden="true"

@@ -34,13 +34,13 @@ export default function NotesPerson({
       <button
         type="button"
         onClick={onBack}
-        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-ayu-panel"
+        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
       >
         <ChevronLeft aria-hidden="true" className="size-5" />
         {backLabel}
       </button>
       <header className="space-y-1">
-        <h2 className="text-2xl font-semibold text-ayu-text [overflow-wrap:anywhere]">
+        <h2 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text [overflow-wrap:anywhere]">
           {person.name}
         </h2>
         {person.about && (
@@ -50,7 +50,7 @@ export default function NotesPerson({
         )}
       </header>
       {facts.length > 0 && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-xl bg-ayu-panel px-4 py-3">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 jim-card px-4 py-3.5">
           {facts.map(([label, value]) =>
             label ? (
               <div key={label} className="contents">
@@ -77,7 +77,7 @@ export default function NotesPerson({
           </div>
         </div>
       )}
-      <div className="border-t border-ayu-line pt-5 text-ayu-text">
+      <div className="border-t border-white/[0.06] pt-5 text-ayu-text">
         {body ? (
           <JimMarkdown text={body} links="label" />
         ) : (

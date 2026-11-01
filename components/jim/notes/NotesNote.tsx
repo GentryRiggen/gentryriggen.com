@@ -75,7 +75,7 @@ export default function NotesNote({
       <button
         type="button"
         onClick={onBack}
-        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-ayu-panel"
+        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
       >
         <ChevronLeft aria-hidden="true" className="size-5" />
         Results
@@ -85,8 +85,8 @@ export default function NotesNote({
           <p className="sr-only" role="status">
             Loading note…
           </p>
-          <div className="h-7 w-48 animate-pulse rounded bg-ayu-panel" />
-          <div className="h-32 animate-pulse rounded-xl bg-ayu-panel" />
+          <div className="h-7 w-48 animate-pulse rounded-lg bg-white/[0.05]" />
+          <div className="h-32 animate-pulse rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.04]" />
         </div>
       )}
       {state.kind === "missing" && (
@@ -104,7 +104,7 @@ export default function NotesNote({
                 setState({ kind: "loading" });
                 setAttempt((n) => n + 1);
               }}
-              className="min-h-11 rounded-full bg-ayu-accent px-5 font-medium text-ayu-bg hover:bg-ayu-orange"
+              className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
             >
               Try again
             </button>

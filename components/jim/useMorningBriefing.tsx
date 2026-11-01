@@ -65,14 +65,14 @@ function Notice({ message, onClose }: NoticeProps) {
       <div
         aria-hidden="true"
         onClick={onClose}
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
       />
       <div
         role="alertdialog"
         aria-modal="true"
         aria-label="Morning briefing"
         aria-describedby={textId}
-        className="relative w-full max-w-sm space-y-4 rounded-2xl bg-ayu-panel p-5 shadow-2xl"
+        className="jim-card jim-rise relative w-full max-w-sm space-y-4 rounded-3xl! p-5 shadow-2xl!"
       >
         <p id={textId} className="text-base text-ayu-text">
           {message}
@@ -82,7 +82,7 @@ function Notice({ message, onClose }: NoticeProps) {
             ref={okRef}
             type="button"
             onClick={onClose}
-            className="min-h-11 min-w-20 rounded-full bg-ayu-accent px-5 font-medium text-ayu-bg hover:bg-ayu-orange"
+            className="jim-glow min-h-11 min-w-20 rounded-full px-5 font-semibold text-ayu-bg hover:brightness-110"
           >
             OK
           </button>

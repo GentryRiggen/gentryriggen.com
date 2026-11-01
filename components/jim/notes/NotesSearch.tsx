@@ -47,7 +47,7 @@ export function SearchField({ value, onChange }: SearchFieldProps) {
         autoCorrect="off"
         spellCheck={false}
         enterKeyHint="search"
-        className="min-h-11 w-full rounded-full border border-ayu-muted bg-ayu-panel py-2 pr-11 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+        className="min-h-11 w-full rounded-2xl border border-white/[0.08] bg-ayu-panel/70 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] backdrop-blur pr-11 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
       />
       {value && (
         <button
@@ -142,7 +142,7 @@ export default function NotesSearch({
                 setOutcome(null);
                 setAttempt((n) => n + 1);
               }}
-              className="min-h-11 rounded-full bg-ayu-accent px-5 font-medium text-ayu-bg hover:bg-ayu-orange"
+              className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
             >
               Try again
             </button>
