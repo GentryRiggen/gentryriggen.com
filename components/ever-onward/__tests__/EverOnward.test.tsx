@@ -120,7 +120,8 @@ describe("Ever Onward game", () => {
     expect(screen.getByTestId("lm-phase-overlay")).toHaveTextContent(
       "The Coast"
     );
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Skip" }));
+    await user.click(screen.getByRole("button", { name: "Start" }));
     expect(screen.getByTestId("lm-hud-value")).toHaveTextContent("0");
 
     await user.click(screen.getByRole("button", { name: "Flash the light" }));
@@ -161,12 +162,22 @@ describe("Ever Onward game", () => {
     const overlay = await waitFor(() => screen.getByTestId("lm-phase-overlay"));
     expect(overlay).toHaveTextContent("No More Night");
     await act(async () => {
-      await user.click(screen.getByRole("button", { name: "Continue" }));
+      await user.click(screen.getByRole("button", { name: "Skip" }));
+      await user.click(screen.getByRole("button", { name: "Start" }));
     });
     expect(screen.queryByTestId("lm-phase-overlay")).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "No More Night" })
     ).toBeInTheDocument();
+  });
+
+  it("does not replay the cutscene when a game is loaded mid-phase", async () => {
+    saveWith(startedRun());
+    const user = userEvent.setup();
+    await renderHub();
+    await user.click(await screen.findByRole("button", { name: /Continue/ }));
+    expect(await screen.findByTestId("lm-hud-value")).toBeInTheDocument();
+    expect(screen.queryByTestId("lm-phase-overlay")).not.toBeInTheDocument();
   });
 
   it("starts fresh instead of crashing on an out-of-range phase", async () => {

@@ -656,6 +656,33 @@ html:has(.jim-app) body {
   animation: lmFadeUp 0.9s ease-out both;
 }
 
+@keyframes lmCutPanA {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes lmCutPanB {
+  0% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The slow pan or zoom behind a cutscene frame. */
+.lm-cut-pan-a {
+  animation: lmCutPanA 14s ease-out both;
+}
+
+.lm-cut-pan-b {
+  animation: lmCutPanB 14s ease-out both;
+}
+
 .lm-float {
   animation: lmFloat 0.9s ease-out both;
 }
@@ -866,6 +893,8 @@ html:has(.jim-app) body {
   .lm-pop,
   .lm-glow,
   .lm-fade-up,
+  .lm-cut-pan-a,
+  .lm-cut-pan-b,
   .lm-float,
   .lm-press,
   .lm-rise,

@@ -6,14 +6,18 @@ async function openHub(page: Page) {
   await page.getByTestId("eo-start-button").click();
 }
 
+/** Gets past a phase cutscene: skip to the goal, then start. */
+async function passCutscene(page: Page) {
+  const overlay = page.getByTestId("lm-phase-overlay");
+  await overlay.getByRole("button", { name: "Skip" }).click();
+  await overlay.getByRole("button", { name: "Start" }).click();
+}
+
 /** Starts a fresh game and gets past the opening moment. */
 async function startGame(page: Page) {
   await openHub(page);
   await page.getByTestId("lm-play-light").click();
-  await page
-    .getByTestId("lm-phase-overlay")
-    .getByRole("button", { name: "Continue" })
-    .click();
+  await passCutscene(page);
 }
 
 test.describe("Ever Onward", () => {
@@ -49,10 +53,7 @@ test.describe("Ever Onward", () => {
       await expect(page.getByTestId("lm-phase-overlay")).toContainText(
         "The Coast"
       );
-      await page
-        .getByTestId("lm-phase-overlay")
-        .getByRole("button", { name: "Continue" })
-        .click();
+      await passCutscene(page);
 
       await expect(page.getByTestId("lm-hud-value")).toHaveText("0");
       await page.getByTestId("lm-tap").click();
@@ -116,10 +117,7 @@ test.describe("Ever Onward", () => {
       await expect(page.getByTestId("lm-phase-overlay")).toContainText(
         "The Backyard"
       );
-      await page
-        .getByTestId("lm-phase-overlay")
-        .getByRole("button", { name: "Continue" })
-        .click();
+      await passCutscene(page);
       await page.getByTestId("lm-tap").click();
       await expect(page.getByText(/^\+\d+(\.\d+)?$/).first()).toBeVisible();
       await expect(page.getByTestId("lm-scene")).toBeVisible();

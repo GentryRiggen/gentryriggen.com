@@ -4,7 +4,6 @@ import { newRun } from "@/lib/ever-onward/engine/engine";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { playNarration } from "../../narration/player";
-import PhaseOverlay from "../PhaseOverlay";
 import StoryTicker from "../StoryTicker";
 
 jest.mock("../../narration/player", () => ({
@@ -129,9 +128,10 @@ describe("the story ticker", () => {
     expect(screen.getByTestId("lm-phase-goal")).toHaveTextContent(
       lightUniverse.phases[0].goal ?? ""
     );
-    expect(
+    await userEvent.click(
       screen.getByRole("button", { name: "Listen to this introduction" })
-    ).toBeInTheDocument();
+    );
+    expect(playNarration).toHaveBeenCalledWith("light/intro-coast");
   });
 });
 
@@ -145,43 +145,4 @@ describe("the phase intro", () => {
       expect(sentences.length).toBeLessThanOrEqual(5);
     }
   );
-
-  it("shows the title, sentences, goal and a Continue button", async () => {
-    const onContinue = jest.fn();
-    render(
-      <PhaseOverlay
-        phase={lightUniverse.phases[0]}
-        clipId="light/intro-coast"
-        number={1}
-        total={4}
-        onContinue={onContinue}
-      />
-    );
-    expect(
-      screen.getByRole("dialog", { name: "The Coast" })
-    ).toBeInTheDocument();
-    expect(screen.getByText("Part 1 of 4")).toBeInTheDocument();
-    expect(screen.getByTestId("lm-phase-goal")).toHaveTextContent(
-      "Guide ships home and light the whole coast."
-    );
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
-    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(onContinue).toHaveBeenCalled();
-  });
-
-  it("plays the narration clip", async () => {
-    render(
-      <PhaseOverlay
-        phase={lightUniverse.phases[1]}
-        clipId="light/intro-night"
-        number={2}
-        total={4}
-        onContinue={jest.fn()}
-      />
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Listen to this introduction" })
-    );
-    expect(playNarration).toHaveBeenCalledWith("light/intro-night");
-  });
 });

@@ -6,6 +6,7 @@ import {
   PHASE_NIGHT,
   PHASE_SKY,
 } from "./resources";
+import { CUTSCENES } from "./cutscenes";
 import { TUNING } from "./tuning";
 import { syncDisplay } from "./tick";
 
@@ -14,6 +15,7 @@ const headStart = (run: RunState): number => run.mods.headStart ?? 0;
 export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_COAST,
+    cutscene: CUTSCENES[PHASE_COAST],
     title: "The Coast",
     intro:
       "This is your lighthouse, and you are its keeper. Out on the dark water, little ships are looking for home, and your light is the only thing that shows them the way. Flash the lamp, guide them into the harbor, and build more lighthouses along the coast. Every ship you save matters.",
@@ -28,6 +30,7 @@ export const PHASES: readonly PhaseDef[] = [
   },
   {
     id: PHASE_NIGHT,
+    cutscene: CUTSCENES[PHASE_NIGHT],
     title: "No More Night",
     intro:
       "The coast is glowing, and the town noticed. Now they want streetlights, then the next town's, then the one after that. Crank the generator and wire up the grid. Nobody asks what the dark was for, and you are far too busy to wonder.",
@@ -47,6 +50,7 @@ export const PHASES: readonly PhaseDef[] = [
   },
   {
     id: PHASE_SKY,
+    cutscene: CUTSCENES[PHASE_SKY],
     title: "The Sky",
     intro:
       "The ground is bright, but look up. The sun pours light into the sky all day and nobody catches any of it, and the stars just sit there, burning for no one. You have a better idea. Aim your collectors and put every bit of that light to work.",
@@ -64,6 +68,7 @@ export const PHASES: readonly PhaseDef[] = [
   },
   {
     id: PHASE_LAST,
+    cutscene: CUTSCENES[PHASE_LAST],
     title: "The Last Light",
     intro:
       "The sky is empty and very quiet. Light does not last forever, and every flame you tend is a choice. One small flame is left, and one small boat is still out on the dark water. It is up to you which lights stay.",

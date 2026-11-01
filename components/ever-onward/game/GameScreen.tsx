@@ -30,7 +30,6 @@ import type {
 } from "@/lib/ever-onward/engine/types";
 import SoundControls from "../audio/SoundControls";
 import useEverOnwardAudio from "../audio/useEverOnwardAudio";
-import { introClipId } from "@/lib/ever-onward/narration/lines";
 import NarrationLayer from "../narration/NarrationLayer";
 import NarrationSettings from "../narration/NarrationSettings";
 import { uiFor } from "../universes";
@@ -44,7 +43,7 @@ import EmberPanel from "./EmberPanel";
 import EmberTip from "./EmberTip";
 import EndingOverlay from "./EndingOverlay";
 import Logbook from "./Logbook";
-import PhaseOverlay from "./PhaseOverlay";
+import PhaseCutscene from "./PhaseCutscene";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
 import StickyHud from "./StickyHud";
@@ -458,11 +457,10 @@ export default function GameScreen({
 
       <NarrationLayer def={def} run={run} isSuppressed={overlay !== null} />
       {overlay === "phase" && (
-        <PhaseOverlay
-          phase={phase}
-          clipId={introClipId(def.id, phase.id)}
-          number={run.phase + 1}
-          total={def.phases.length}
+        <PhaseCutscene
+          def={def}
+          phaseIndex={run.phase}
+          Scene={Scene}
           onContinue={onDismissOverlay}
           opening={
             // The very start of a run may ask the player to choose.
