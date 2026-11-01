@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.2.1",
+    date: "2026-11-01",
+    title: "The story, read aloud",
+    highlights: [
+      "Every story message can now be read aloud. When a new one arrives, tap Play to hear it",
+      "Tap the play button next to any message to hear it again, and Listen at the start of each part",
+      "Turn the voice on or off in the Menu, and choose whether new messages play by themselves",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-11-01",
     title: "Every upgrade counts",
