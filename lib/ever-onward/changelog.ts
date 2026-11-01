@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.2",
+    date: "2026-11-01",
+    title: "Embers you can find",
+    highlights: [
+      "An Embers button with a little flame now sits next to Menu once you can start a world over. It shows how many embers are waiting for you",
+      "The first time, a friendly card explains embers: start over any time, keep your embers, and spend them on permanent upgrades so every run goes faster",
+      "The hub shows the embers and best time for each world, and the ending tells you how many embers your run earned",
+      "The little arrows next to upgrade names no longer look like a picture that did not load on iPhones",
+    ],
+  },
+  {
     version: "1.12.1",
     date: "2026-11-01",
     title: "More room for upgrades",
