@@ -5,7 +5,7 @@ export const TUNING = {
    * and the bigger collector steps made the night and the sky quicker, so
    * they are priced up to keep the run about two hours.
    */
-  costScale: { coast: 1.05, night: 1.18, sky: 1.35, last: 1.15 } as Record<
+  costScale: { coast: 1.14, night: 1.18, sky: 1.35, last: 1.15 } as Record<
     string,
     number
   >,
@@ -43,6 +43,20 @@ export const TUNING = {
     wickSaving: 0.75,
     /** Each dock building makes every ship pay this much more. */
     dockBonus: 1.2,
+  },
+  /** The Tide Clock, a side machine of the coast (see tide.ts). */
+  tide: {
+    /** One full wave, low to high to low, in seconds of play. */
+    cycleSeconds: 175,
+    /** Seconds of coast income a catch is worth: late nets, then early nets. */
+    catchMinSeconds: 30,
+    catchMaxSeconds: 45,
+    /** Bigger nets multiply the catch by this. */
+    biggerNetsFactor: 1.5,
+    /** Seconds of income the tide mill adds on its own at each high tide. */
+    millSeconds: 14,
+    /** The catch flows in over this many seconds, like a rush of fish. */
+    surgeSeconds: 6,
   },
   night: {
     perCityMW: 150,

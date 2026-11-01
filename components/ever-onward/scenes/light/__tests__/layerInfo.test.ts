@@ -29,6 +29,31 @@ describe("layer info", () => {
     }
   );
 
+  it("redraws the coast only in twelve steps as the tide moves", () => {
+    const base = runAtPhaseStart(0);
+    let run = tick(
+      def,
+      { ...base, owned: { ...base.owned, "dock-1": 1 } },
+      0.1
+    );
+    expect(sceneInfo(run).tideOpen).toBe(1);
+    const levels = new Set<number>();
+    let changed = 0;
+    let levelSteps = 0;
+    for (let i = 0; i < 1750; i += 1) {
+      const before = { info: sceneInfo(run) };
+      run = tick(def, run, 0.1);
+      const after = sceneInfo(run);
+      levels.add(after.tideLevel);
+      if (after.tideLevel !== before.info.tideLevel) levelSteps += 1;
+      if (!isSameLayerInfo(before, { info: after })) changed += 1;
+    }
+    // one full wave: 12 steps up and 12 down, nothing like one redraw a tick
+    expect(levels.size).toBeLessThanOrEqual(13);
+    expect(levelSteps).toBeLessThanOrEqual(26);
+    expect(changed).toBeLessThan(1750 * 0.05);
+  });
+
   it("ignores the numbers only the caption reads", () => {
     const info = sceneInfo(runAtPhaseStart(1));
     expect(

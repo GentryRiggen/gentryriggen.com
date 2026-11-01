@@ -1,4 +1,11 @@
 import type { RunState } from "../../engine/types";
+import {
+  hasBiggerNets,
+  hasTideMill,
+  isTideOpen,
+  netStateIndex,
+  tideLevel,
+} from "./tide";
 import { LET_GO } from "./upgrades";
 import {
   COAST_LIGHTHOUSES,
@@ -107,6 +114,16 @@ export interface LightSceneInfo {
   stormCrews: number;
   /** 1 once the weather vane stands on the control post. */
   weatherVane: number;
+  /** 1 once the tide clock is open: the sea breathes beside the lighthouse. */
+  tideOpen: number;
+  /** The water, 0..1 (12 steps, so the picture is not redrawn every tick). */
+  tideLevel: number;
+  /** The nets: 0 none out, 1 set and waiting for high tide, 2 full. */
+  nets: number;
+  /** 1 once the bigger nets are bought (a second, wider net). */
+  biggerNets: number;
+  /** 1 once the tide mill turns by the water. */
+  tideMill: number;
   /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
   gridSteadiness: number;
   /** 1 while the evening rush is on. */
@@ -221,6 +238,11 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     gridTier: tier(run, "grid"),
     stormCrews: level(run, "storm-crews") > 0 ? 1 : 0,
     weatherVane: level(run, "weather-vane") > 0 ? 1 : 0,
+    tideOpen: isTideOpen(run) ? 1 : 0,
+    tideLevel: isTideOpen(run) ? step(tideLevel(run), 12) : 0,
+    nets: isTideOpen(run) ? netStateIndex(run) : 0,
+    biggerNets: hasBiggerNets(run) ? 1 : 0,
+    tideMill: hasTideMill(run) ? 1 : 0,
     gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
     rush: isRushOn(run) ? 1 : 0,
     flare: isFlareOn(run) ? 1 : 0,

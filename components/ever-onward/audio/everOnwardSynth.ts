@@ -21,6 +21,7 @@ import {
   playPhaseSwell,
   playReveal,
   playTapVoice,
+  playSplash,
   playThunder,
 } from "./voices";
 
@@ -44,7 +45,8 @@ export function isAudioSupported(): boolean {
   return audioContextConstructor() !== undefined;
 }
 
-export type CueName = "affordable" | "reveal" | "phase" | "ending" | "thunder";
+export type CueName =
+  "affordable" | "reveal" | "phase" | "ending" | "thunder" | "splash";
 
 const MASTER_LEVEL = 0.8;
 /** User-facing loudness of the music bed: low, so it stays in the back. */
@@ -390,6 +392,8 @@ function createSynth() {
         playReveal(engine);
       } else if (name === "thunder") {
         playThunder(engine);
+      } else if (name === "splash") {
+        playSplash(engine);
       } else if (name === "phase") {
         playPhaseSwell(engine, phase ?? 0);
         music?.player.duck(0.4, 2.5);

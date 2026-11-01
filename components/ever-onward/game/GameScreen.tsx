@@ -39,6 +39,7 @@ import type { Spend } from "./SpendFloater";
 import StickyHud from "./StickyHud";
 import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
+import TideClock from "./TideClock";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
 import VisitorCard from "./VisitorCard";
 import WeatherDesk from "./WeatherDesk";
@@ -311,6 +312,7 @@ export default function GameScreen({
           />
         ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
+        <TideClock def={def} run={run} onAct={onAction} />
         <WeatherDesk def={def} run={run} onAct={onAction} />
         <Resources
           def={def}

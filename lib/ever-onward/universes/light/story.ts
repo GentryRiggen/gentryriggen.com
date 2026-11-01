@@ -77,6 +77,12 @@ const coast: StoryMessage[] = [
     text: "Only two dark stretches of coast left. You find that you cannot look at a dark stretch of coast without wanting to put a light on it.",
   },
   {
+    id: "coast-tide",
+    phase: PHASE_COAST,
+    when: (run) => run.flags["tide-open"] === true,
+    text: "The fish market has hung a tide clock by the quay. The sea breathes in, and the sea breathes out. A fisherman lends you a net and says: put it out while the water is coming in, and the sea will fill it by itself.",
+  },
+  {
     id: "coast-trio",
     phase: PHASE_COAST,
     when: (run) => owned(run, "keeper") >= 3,
@@ -99,6 +105,12 @@ const coast: StoryMessage[] = [
     phase: PHASE_COAST,
     when: (run) => owned(run, "dock-2") >= 1,
     text: "The ferry never stops now. It carries bicycles, baskets of bread, and one very serious goat.",
+  },
+  {
+    id: "coast-mill",
+    phase: PHASE_COAST,
+    when: (run) => owned(run, "tide-mill") >= 1,
+    text: "A little mill turns with the tide, tending a net of its own. It hums while it works. Your own nets are still yours, and the sea has plenty of fish for both of you.",
   },
   {
     id: "coast-almost",

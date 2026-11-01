@@ -42,6 +42,16 @@ export default function Logbook({ def, run }: LogbookProps) {
           ))}
         </ul>
       )}
+      {(run.resources.tdHauls ?? 0) > 0 && (
+        <p className="font-mono text-xs text-sky-200">
+          Tide clock: {run.resources.tdHauls} hauls so far (+
+          {formatNumber(Math.floor(run.resources.tdEarned ?? 0))} coins from the
+          nets
+          {(run.resources.tdMilled ?? 0) > 0 &&
+            `, +${formatNumber(Math.floor(run.resources.tdMilled ?? 0))} from the tide mill`}
+          ).
+        </p>
+      )}
       {(run.resources.wxFronts ?? 0) > 0 && (
         <p className="font-mono text-xs text-sky-200">
           Weather desk: {run.resources.wxFronts} storms so far, sandbags held{" "}

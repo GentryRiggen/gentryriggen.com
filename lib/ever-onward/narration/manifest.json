@@ -79,6 +79,11 @@
     "hash": "2f5c9660e6fe",
     "durationGuess": 12
   },
+  "light/coast-tide": {
+    "file": "/ever-onward/voice/light/coast-tide.mp3",
+    "hash": "e1513977f6f3",
+    "durationGuess": 20
+  },
   "light/coast-trio": {
     "file": "/ever-onward/voice/light/coast-trio.mp3",
     "hash": "94ce4f034845",
@@ -98,6 +103,11 @@
     "file": "/ever-onward/voice/light/coast-ferry.mp3",
     "hash": "58fbf63493fc",
     "durationGuess": 7
+  },
+  "light/coast-mill": {
+    "file": "/ever-onward/voice/light/coast-mill.mp3",
+    "hash": "b68a299f5118",
+    "durationGuess": 15
   },
   "light/coast-almost": {
     "file": "/ever-onward/voice/light/coast-almost.mp3",

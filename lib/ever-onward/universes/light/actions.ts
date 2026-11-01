@@ -26,6 +26,7 @@ import {
   nextRushIn,
   rushBonus,
   tankCapacity,
+  calmIncomePerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
 import {
@@ -38,6 +39,16 @@ import {
   toggleShield,
   weatherStage,
 } from "./weather";
+import {
+  HAUL_ACTION,
+  SET_NETS_ACTION,
+  catchCoins,
+  earlinessIfSetNow,
+  haulIn,
+  isTideOpen,
+  netState,
+  setNets,
+} from "./tide";
 import { formatNumber } from "../../engine/format";
 
 const TREND_THRESHOLD = 0.015;
@@ -257,6 +268,44 @@ const SHIELD_TOWN: readonly ActionDef[] = TOWNS.map((name, town) => ({
   perform: (run) => toggleShield(run, town),
 }));
 
+/** The tide clock's two buttons; its panel draws them itself. */
+const SET_NETS: ActionDef = {
+  id: SET_NETS_ACTION,
+  phases: [PHASE_COAST],
+  isInline: true,
+  visibleWhen: isTideOpen,
+  describe: (run) => {
+    const state = netState(run);
+    return {
+      label: state === "empty" ? "Set the nets" : "The nets are out",
+      detail:
+        state === "empty"
+          ? earlinessIfSetNow(run) >= 0.85
+            ? "A full rising tide: the biggest catch."
+            : "Set them before high tide. The earlier, the bigger the catch."
+          : "They fill at high tide, and wait for you.",
+      isBlocked: state !== "empty",
+    };
+  },
+  perform: setNets,
+};
+
+const HAUL_IN: ActionDef = {
+  id: HAUL_ACTION,
+  phases: [PHASE_COAST],
+  isInline: true,
+  visibleWhen: isTideOpen,
+  describe: (run) => ({
+    label: "Haul in!",
+    detail:
+      netState(run) === "full"
+        ? `The nets are full: about ${formatNumber(Math.floor(catchCoins(run, calmIncomePerSecond(run))))} coins.`
+        : "Nothing to haul in yet.",
+    isBlocked: netState(run) !== "full",
+  }),
+  perform: (run) => haulIn(run, calmIncomePerSecond(run)),
+};
+
 export const ACTIONS: readonly ActionDef[] = [
   BUY_OIL,
   BALANCE_GRID,
@@ -266,4 +315,6 @@ export const ACTIONS: readonly ActionDef[] = [
   STEER_BOAT,
   FLASH_LAMP,
   ...SHIELD_TOWN,
+  SET_NETS,
+  HAUL_IN,
 ];

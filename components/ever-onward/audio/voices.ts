@@ -289,3 +289,30 @@ export function playThunder(engine: VoiceEngine) {
     chop: 0.12,
   });
 }
+
+/** A soft splash of water and two little droplet plinks: the nets come in. */
+export function playSplash(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.5,
+    filter: "bandpass",
+    freq: 1400,
+    freqEnd: 600,
+    q: 0.9,
+    gain: 0.09,
+    attack: 0.04,
+  });
+  [0.12, 0.24].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.16,
+      freq: 700 + i * 260,
+      freqEnd: 1100 + i * 300,
+      gain: 0.07,
+      attack: 0.004,
+    })
+  );
+}
