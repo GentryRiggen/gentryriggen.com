@@ -1371,9 +1371,13 @@ test("turns the morning briefing on, and sign-out turns it off and wipes the dev
   const calls = await signedIn(page);
   await expect.poll(() => keptView(page)).not.toBeNull();
   await page.getByRole("button", { name: "Menu" }).click();
-  await page.getByRole("menuitem", { name: "Morning briefing: Off" }).click();
+  await page.getByRole("menuitem", { name: "Notifications" }).click();
+  const master = page.getByRole("switch", {
+    name: "Notifications on this device",
+  });
+  await master.click();
   await expect(page.getByRole("alertdialog")).toContainText(
-    "Morning briefing is on. A test notification is on its way."
+    "Notifications are on. A test notification is on its way."
   );
   expect(calls.push).toEqual([
     "GET /api/push/key",
@@ -1381,10 +1385,9 @@ test("turns the morning briefing on, and sign-out turns it off and wipes the dev
     "POST /api/push/test",
   ]);
   await page.getByRole("button", { name: "OK" }).click();
+  await expect(master).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Menu" }).click();
-  await expect(
-    page.getByRole("menuitem", { name: "Morning briefing: On" })
-  ).toBeVisible();
 
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect.poll(() => calls.push.length).toBe(4);

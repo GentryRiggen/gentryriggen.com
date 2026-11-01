@@ -19,7 +19,7 @@ import {
   Maximize2,
   SquarePen,
   Square,
-  Sunrise,
+  Bell,
   Volume2,
 } from "lucide-react";
 import AppLockSheet from "@/components/jim/AppLockSheet";
@@ -36,6 +36,7 @@ import useWideLayout from "@/components/jim/useWideLayout";
 import JimUpdatePill from "@/components/jim/JimUpdatePill";
 import useJimUpdate from "@/components/jim/useJimUpdate";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
+import NotificationsSheet from "@/components/jim/NotificationsSheet";
 import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
 import NotesShell, {
   type NotesRouting,
@@ -327,6 +328,7 @@ export default function JimChat({
   /** The search across all notes: in the page only, never the address. */
   const [notesSearch, setNotesSearch] = useState("");
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
+  const [notifySheetOpen, setNotifySheetOpen] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -357,7 +359,10 @@ export default function JimChat({
   const barShown = reader.state.status !== "idle";
   // Locking shuts the lock's settings (the reader stops itself).
   useLayoutEffect(() => {
-    if (locked) setLockSheetOpen(false);
+    if (locked) {
+      setLockSheetOpen(false);
+      setNotifySheetOpen(false);
+    }
   }, [locked]);
   // The lock screen names whoever Jim is speaking as.
   useEffect(() => {
@@ -745,6 +750,7 @@ export default function JimChat({
     [navigate]
   );
 
+  const closeNotifySheet = useCallback(() => setNotifySheetOpen(false), []);
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
   /**
@@ -898,6 +904,14 @@ export default function JimChat({
   }, [location, locked]);
 
   if (locked) return null;
+
+  const notifyItem =
+    briefing.status === "hidden"
+      ? null
+      : {
+          label: "Notifications",
+          onSelect: () => setNotifySheetOpen(true),
+        };
 
   const lockItem =
     lock && onWipe
@@ -1124,7 +1138,7 @@ export default function JimChat({
   const sidebarActions: SidebarAction[] = [
     { label: "New chat", icon: SquarePen, onSelect: newChat },
     ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
-    ...(briefing.item ? [{ ...briefing.item, icon: Sunrise }] : []),
+    ...(notifyItem ? [{ ...notifyItem, icon: Bell }] : []),
     ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
   ];
 
@@ -1135,7 +1149,7 @@ export default function JimChat({
     <div
       ref={rootRef}
       // Behind a sheet nothing can be tapped, focused or read.
-      inert={personas.open || lockSheetOpen}
+      inert={personas.open || lockSheetOpen || notifySheetOpen}
       data-keyboard={keyboardOpen ? "open" : "closed"}
       data-layout={wide ? "wide" : "phone"}
       className={`jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text ${
@@ -1169,7 +1183,7 @@ export default function JimChat({
             { label: "New chat", onSelect: newChat },
             personas.menuItem,
             ...(reader.menuItem ? [reader.menuItem] : []),
-            ...(briefing.item ? [briefing.item] : []),
+            ...(notifyItem ? [notifyItem] : []),
             ...(lockItem ? [lockItem] : []),
           ]}
         />
@@ -1244,13 +1258,21 @@ export default function JimChat({
       <p aria-live="polite" className="sr-only">
         {announced}
       </p>
-      {briefing.notice}
     </div>
   );
 
   return (
     <>
       {layout}
+      <NotificationsSheet
+        open={notifySheetOpen}
+        onClose={closeNotifySheet}
+        status={briefing.status}
+        onToggleMaster={briefing.toggle}
+        getToken={getToken}
+        api={api}
+      />
+      {briefing.notice}
       <PersonaSheet
         personas={personas}
         playingKey={reader.state.key}
