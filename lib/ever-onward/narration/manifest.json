@@ -514,10 +514,150 @@
     "hash": "8a8fbefeb1ad",
     "durationGuess": 14
   },
+  "grow/visitor-ladybirds": {
+    "file": "/ever-onward/voice/grow/visitor-ladybirds.mp3",
+    "hash": "3bd17e2c152b",
+    "durationGuess": 13
+  },
+  "grow/visitor-neighbor": {
+    "file": "/ever-onward/voice/grow/visitor-neighbor.mp3",
+    "hash": "7a85fb08eef0",
+    "durationGuess": 15
+  },
+  "grow/yard-news-1": {
+    "file": "/ever-onward/voice/grow/yard-news-1.mp3",
+    "hash": "046bb379fb9f",
+    "durationGuess": 13
+  },
+  "grow/yard-news-2": {
+    "file": "/ever-onward/voice/grow/yard-news-2.mp3",
+    "hash": "bf0e68b0df78",
+    "durationGuess": 13
+  },
   "grow/farm-hello": {
     "file": "/ever-onward/voice/grow/farm-hello.mp3",
     "hash": "5165f7e4df26",
     "durationGuess": 12
+  },
+  "grow/farm-scarecrow": {
+    "file": "/ever-onward/voice/grow/farm-scarecrow.mp3",
+    "hash": "736f00a5ae8e",
+    "durationGuess": 10
+  },
+  "grow/farm-market": {
+    "file": "/ever-onward/voice/grow/farm-market.mp3",
+    "hash": "1dcb254183db",
+    "durationGuess": 18
+  },
+  "grow/farm-well": {
+    "file": "/ever-onward/voice/grow/farm-well.mp3",
+    "hash": "b6e462be3ac5",
+    "durationGuess": 10
+  },
+  "grow/farm-thirsty": {
+    "file": "/ever-onward/voice/grow/farm-thirsty.mp3",
+    "hash": "ca8dff7cbef4",
+    "durationGuess": 11
+  },
+  "grow/farm-switch": {
+    "file": "/ever-onward/voice/grow/farm-switch.mp3",
+    "hash": "05146f805be1",
+    "durationGuess": 15
+  },
+  "grow/farm-compost": {
+    "file": "/ever-onward/voice/grow/farm-compost.mp3",
+    "hash": "3b54929efe98",
+    "durationGuess": 9
+  },
+  "grow/farm-tractor": {
+    "file": "/ever-onward/voice/grow/farm-tractor.mp3",
+    "hash": "6d7d806099e4",
+    "durationGuess": 10
+  },
+  "grow/farm-time-1": {
+    "file": "/ever-onward/voice/grow/farm-time-1.mp3",
+    "hash": "a9cbf611f161",
+    "durationGuess": 10
+  },
+  "grow/farm-agent": {
+    "file": "/ever-onward/voice/grow/farm-agent.mp3",
+    "hash": "3e969df4b480",
+    "durationGuess": 16
+  },
+  "grow/farm-time-2": {
+    "file": "/ever-onward/voice/grow/farm-time-2.mp3",
+    "hash": "09867c517d78",
+    "durationGuess": 12
+  },
+  "grow/farm-irrigation": {
+    "file": "/ever-onward/voice/grow/farm-irrigation.mp3",
+    "hash": "08f5b7aab596",
+    "durationGuess": 9
+  },
+  "grow/farm-time-3": {
+    "file": "/ever-onward/voice/grow/farm-time-3.mp3",
+    "hash": "0974e69ef876",
+    "durationGuess": 10
+  },
+  "grow/farm-glasshouse": {
+    "file": "/ever-onward/voice/grow/farm-glasshouse.mp3",
+    "hash": "38bd1efbd63c",
+    "durationGuess": 9
+  },
+  "grow/farm-time-4": {
+    "file": "/ever-onward/voice/grow/farm-time-4.mp3",
+    "hash": "cc839af8f8e0",
+    "durationGuess": 9
+  },
+  "grow/farm-silo": {
+    "file": "/ever-onward/voice/grow/farm-silo.mp3",
+    "hash": "dd4437e8dec1",
+    "durationGuess": 13
+  },
+  "grow/farm-time-9": {
+    "file": "/ever-onward/voice/grow/farm-time-9.mp3",
+    "hash": "755c74d50ef2",
+    "durationGuess": 8
+  },
+  "grow/farm-time-5": {
+    "file": "/ever-onward/voice/grow/farm-time-5.mp3",
+    "hash": "2cf957ec51ab",
+    "durationGuess": 9
+  },
+  "grow/farm-drone": {
+    "file": "/ever-onward/voice/grow/farm-drone.mp3",
+    "hash": "ecc36e11c36d",
+    "durationGuess": 10
+  },
+  "grow/farm-time-10": {
+    "file": "/ever-onward/voice/grow/farm-time-10.mp3",
+    "hash": "927ad94b00a1",
+    "durationGuess": 11
+  },
+  "grow/farm-time-6": {
+    "file": "/ever-onward/voice/grow/farm-time-6.mp3",
+    "hash": "281be1f170e4",
+    "durationGuess": 7
+  },
+  "grow/farm-time-11": {
+    "file": "/ever-onward/voice/grow/farm-time-11.mp3",
+    "hash": "d1d229cd0613",
+    "durationGuess": 8
+  },
+  "grow/farm-time-7": {
+    "file": "/ever-onward/voice/grow/farm-time-7.mp3",
+    "hash": "b6f6cd56ef49",
+    "durationGuess": 9
+  },
+  "grow/farm-time-12": {
+    "file": "/ever-onward/voice/grow/farm-time-12.mp3",
+    "hash": "e5d51d2eaf58",
+    "durationGuess": 12
+  },
+  "grow/farm-time-8": {
+    "file": "/ever-onward/voice/grow/farm-time-8.mp3",
+    "hash": "31b1cea9f248",
+    "durationGuess": 8
   },
   "grow/world-hello": {
     "file": "/ever-onward/voice/grow/world-hello.mp3",
