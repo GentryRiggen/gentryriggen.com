@@ -1,6 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import JimChat from "../JimChat";
+import { onOpenIntent } from "@/lib/jim/openUrl";
 
 jest.mock("../notes/NotesShell", () => ({
   __esModule: true,
@@ -79,4 +80,41 @@ describe("a notification tapped while the page is open", () => {
     post(null);
     expect(screen.getByLabelText("Message")).toHaveValue("");
   });
+
+  it("routes the open page to a tapped reminder", () => {
+    window.history.replaceState(null, "", "/jim");
+    renderChat();
+    post({ type: "JIM_OPEN", url: "/jim/reminders/abcdef012345" });
+    expect(window.location.pathname).toBe("/jim/reminders/abcdef012345");
+  });
+
+  it("hands listen and reflect to the chat, and ignores foreign urls", () => {
+    window.history.replaceState(null, "", "/jim");
+    renderChat();
+    const seen = jest.fn();
+    const off = onOpenIntent(seen);
+    post({ type: "JIM_OPEN", url: "https://evil.example/jim?listen=brief" });
+    expect(seen).not.toHaveBeenCalled();
+    post({ type: "JIM_OPEN", url: "/jim?listen=brief" });
+    expect(seen).toHaveBeenCalledWith({ listen: "brief", reflect: false });
+    post({ type: "JIM_OPEN", url: "/jim/chat?reflect=1" });
+    expect(seen).toHaveBeenLastCalledWith({ listen: null, reflect: true });
+    off();
+  });
+
+  it("still fills the box from a say in JIM_OPEN", () => {
+    renderChat();
+    post({ type: "JIM_OPEN", url: "/jim?say=quiz%20me" });
+    expect(screen.getByLabelText("Message")).toHaveValue("quiz me");
+  });
+});
+
+it("hands ?listen=brief on first load to the chat and clears it", () => {
+  window.history.replaceState(null, "", "/jim?listen=brief");
+  renderChat();
+  expect(window.location.search).toBe("");
+  const seen = jest.fn();
+  const off = onOpenIntent(seen);
+  expect(seen).toHaveBeenCalledWith({ listen: "brief", reflect: false });
+  off();
 });

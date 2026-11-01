@@ -69,10 +69,11 @@ import {
   type NotesRoute,
 } from "@/lib/jim/routes";
 import {
-  allowedSay,
-  clearSayFromLocation,
-  sayFromLocation,
-} from "@/lib/jim/say";
+  clearParamsFromLocation,
+  emitOpenIntent,
+  parseOpen,
+} from "@/lib/jim/openUrl";
+import { allowedSay, sayFromLocation } from "@/lib/jim/say";
 
 interface JimChatProps {
   /** The signed-in user, whose chat is kept on this device. */
@@ -306,6 +307,10 @@ export default function JimChat({
   const [mac] = useState(isMac);
   const { location, navigate, goBack } = useJimRouter();
   const route = location.route;
+  const navigateRef = useRef(navigate);
+  useLayoutEffect(() => {
+    navigateRef.current = navigate;
+  });
   const tab: JimTab = route.kind === "chat" ? "chat" : "notes";
   const wide = useWideLayout();
   /** The last Notes entry: what Notes shows (hidden) while Chat does. */
@@ -373,7 +378,13 @@ export default function JimChat({
     });
   }, []);
 
-  useEffect(() => clearSayFromLocation(), []);
+  // A notification or link opened the app with ?say=, ?listen=brief or
+  // ?reflect=1: hand the chat intents on, then clear them from the address.
+  useEffect(() => {
+    const open = parseOpen(window.location.href);
+    if (open) emitOpenIntent({ listen: open.listen, reflect: open.reflect });
+    clearParamsFromLocation(["say", "listen", "reflect"]);
+  }, []);
   // A draft kept across an update reload is restored once, then dropped.
   useEffect(() => clearDraft(uid), [uid]);
 
@@ -388,7 +399,22 @@ export default function JimChat({
     function onMessage(event: MessageEvent) {
       const data: unknown = event.data;
       if (typeof data !== "object" || data === null) return;
-      const { type, say } = data as { type?: unknown; say?: unknown };
+      const { type, say, url } = data as {
+        type?: unknown;
+        say?: unknown;
+        url?: unknown;
+      };
+      if (type === "JIM_OPEN" && typeof url === "string") {
+        const open = parseOpen(url);
+        if (!open) return;
+        navigateRef.current(open.route);
+        emitOpenIntent({ listen: open.listen, reflect: open.reflect });
+        if (open.say) {
+          const text = open.say;
+          setDraft((current) => (current ? current : text));
+        }
+        return;
+      }
       const text = type === "JIM_SAY" ? allowedSay(say) : null;
       if (text) setDraft((current) => (current ? current : text));
     }

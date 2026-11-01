@@ -409,8 +409,12 @@ describe("push", () => {
 
   it.each([
     ["jim-quiz", "jim-quiz"],
+    ["jim-reminder-abcdef012345", "jim-reminder-abcdef012345"],
+    ["jim-meeting-0123456789abcdef", "jim-meeting-0123456789abcdef"],
+    ["jim-x-12345678901234567", "jim-morning"],
     ["Jim-Quiz", "jim-morning"],
     ["other-tag", "jim-morning"],
+    ["jim-Reminder-abc", "jim-morning"],
     [7, "jim-morning"],
   ])(
     "uses the payload's tag %p only when it's a jim- tag",
@@ -540,14 +544,40 @@ describe("notificationclick", () => {
     });
   });
 
-  it("sends nothing to an open /jim for a plain tap", async () => {
+  it("sends an open /jim only JIM_OPEN for a plain tap", async () => {
     const worker = loadWorker();
     const postMessage = jest.fn();
     worker.matchAll.mockResolvedValue([
       { url: PAGE, focus: jest.fn(async () => {}), postMessage },
     ]);
     await worker.dispatch("notificationclick", { notification: click() });
-    expect(postMessage).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith({ type: "JIM_OPEN", url: PAGE });
+  });
+
+  it("tells an open page where a reminder tap goes, without a new window", async () => {
+    const worker = loadWorker();
+    const url = `${ORIGIN}/jim/reminders/abcdef012345`;
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus: jest.fn(async () => {}), postMessage },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(postMessage).toHaveBeenCalledWith({ type: "JIM_OPEN", url });
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("turns a cross-origin url into /jim", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("notificationclick", {
+      notification: {
+        close: jest.fn(),
+        data: { url: "https://evil.test/jim" },
+      },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(PAGE);
   });
 
   it("opens /jim when it isn't open", async () => {

@@ -10,6 +10,9 @@
  *   /jim/notes/people/<slug>        a person's profile
  *   /jim/notes/directory/<id>       a JBREC directory card
  *   /jim/notes/note/<repo path>     a note, without its .md
+ *   /jim/reminders                  the reminders list
+ *   /jim/reminders/<12 hex>         one reminder
+ *   /jim/meeting/<16 hex>           a meeting card
  */
 
 export const JIM_BASE = "/jim";
@@ -24,6 +27,9 @@ export type JimRoute =
   | { kind: "directory"; id: number }
   /** `path` is the repo path without ".md" (`home/garden`). */
   | { kind: "note"; path: string }
+  | { kind: "reminders" }
+  | { kind: "reminder"; id: string }
+  | { kind: "meeting"; id: string }
   | { kind: "notFound" };
 
 /** Every route but Chat: what the Notes side shows. */
@@ -60,6 +66,8 @@ const MAX_NOTE_PATH = 200;
 const MAX_NOTE_DEPTH = 8;
 /** Directory ids are small whole numbers. */
 const DIRECTORY_ID = /^[0-9]{1,6}$/;
+const REMINDER_ID = /^[a-f0-9]{12}$/;
+const MEETING_ID = /^[a-f0-9]{16}$/;
 
 function isNotesPage(value: string): value is NotesPage {
   return (NOTES_PAGES as readonly string[]).includes(value) && value !== "home";
@@ -122,6 +130,17 @@ export function parseJimPath(pathname: string, notePath?: unknown): JimRoute {
   if (section === "chat") {
     return rest.length === 0 ? CHAT_ROUTE : { kind: "notFound" };
   }
+  if (section === "reminders") {
+    if (rest.length === 0) return { kind: "reminders" };
+    return rest.length === 1 && REMINDER_ID.test(rest[0])
+      ? { kind: "reminder", id: rest[0] }
+      : { kind: "notFound" };
+  }
+  if (section === "meeting") {
+    return rest.length === 1 && MEETING_ID.test(rest[0])
+      ? { kind: "meeting", id: rest[0] }
+      : { kind: "notFound" };
+  }
   if (section !== "notes") return { kind: "notFound" };
   const [first, ...more] = rest;
   if (first === undefined) return HOME_ROUTE;
@@ -169,6 +188,12 @@ export function formatJimPath(route: JimRoute): string {
       return isRoutableNotePath(route.path)
         ? `${JIM_BASE}/notes/note/${route.path}`
         : `${JIM_BASE}/notes/note`;
+    case "reminders":
+      return `${JIM_BASE}/reminders`;
+    case "reminder":
+      return `${JIM_BASE}/reminders/${route.id}`;
+    case "meeting":
+      return `${JIM_BASE}/meeting/${route.id}`;
     case "notFound":
       return `${JIM_BASE}/notes`;
   }
@@ -185,6 +210,9 @@ export function sameRoute(a: JimRoute, b: JimRoute): boolean {
       return a.id === (b as typeof a).id;
     case "note":
       return a.path === (b as typeof a).path;
+    case "reminder":
+    case "meeting":
+      return a.id === (b as typeof a).id;
     default:
       return true;
   }
@@ -201,6 +229,7 @@ export function homePageOf(route: JimRoute): NotesPage {
     case "person":
       return "people";
     case "directory":
+    case "meeting":
       return "work";
     case "note":
       return route.path.startsWith("meetings/") ? "work" : "home";
@@ -214,7 +243,9 @@ export function isDetail(route: JimRoute): boolean {
   return (
     route.kind === "person" ||
     route.kind === "directory" ||
-    route.kind === "note"
+    route.kind === "note" ||
+    route.kind === "reminder" ||
+    route.kind === "meeting"
   );
 }
 
@@ -235,6 +266,11 @@ export function routeTitle(route: JimRoute, name?: string | null): string {
         return name || "Directory";
       case "note":
         return name || "Note";
+      case "reminders":
+      case "reminder":
+        return "Reminders";
+      case "meeting":
+        return name || "Meeting";
       case "notFound":
         return "Not found";
     }

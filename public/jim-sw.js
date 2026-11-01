@@ -326,7 +326,7 @@ function notificationFor(data) {
       tag:
         ok &&
         typeof payload.tag === "string" &&
-        /^jim-[a-z]{1,20}$/.test(payload.tag)
+        /^jim-[a-z]{1,20}(-[a-z0-9]{1,16})?$/.test(payload.tag)
           ? payload.tag
           : NOTIFICATION_TAG,
       data: { url: targetUrl(ok ? payload.url : null) },
@@ -352,10 +352,14 @@ self.addEventListener("notificationclick", (event) => {
         const at = toSameOriginUrl(client.url);
         if (at && isAppPath(at.pathname) && "focus" in client) {
           await client.focus();
-          // /jim?say=… on an open page: no reload (it would drop a draft and
-          // abort a turn). The page is told, and applies it if its box is empty.
-          const say = new URL(url).searchParams.get("say");
-          if (say !== null) client.postMessage({ type: "JIM_SAY", say });
+          // An open page: no reload (it would drop a draft and abort a turn).
+          // It is told where the tap goes (JIM_OPEN) and routes itself; JIM_SAY
+          // stays for pages opened before JIM_OPEN existed.
+          if (typeof client.postMessage === "function") {
+            client.postMessage({ type: "JIM_OPEN", url });
+            const say = new URL(url).searchParams.get("say");
+            if (say !== null) client.postMessage({ type: "JIM_SAY", say });
+          }
           return;
         }
       }
