@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { createFakeAudio } from "../../../game-audio/testing/fakeAudio";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
-import { createEverOnwardSynth } from "../everOnwardSynth";
+import { createEverOnwardSynth, everOnwardSynth } from "../everOnwardSynth";
 import { everOnwardChannels } from "../soundSettings";
 import useEverOnwardAudio from "../useEverOnwardAudio";
 
@@ -76,6 +76,93 @@ describe("Ever Onward synth with a fake AudioContext", () => {
     synth.cue("affordable", 2000);
     expect(audio.sources.length).toBeGreaterThan(afterFirst);
     synth.dispose();
+  });
+});
+
+describe("Ever Onward sound after leaving the tab", () => {
+  const audio = createFakeAudio();
+  beforeEach(() => {
+    audio.reset();
+    audio.install();
+    localStorage.clear();
+    act(() => {
+      everOnwardChannels.music.resetMemory();
+      everOnwardChannels.effects.resetMemory();
+    });
+  });
+  afterEach(() => audio.uninstall());
+
+  const setVisibility = (state: "hidden" | "visible") => {
+    Object.defineProperty(document, "visibilityState", {
+      value: state,
+      configurable: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  };
+
+  it("hidden then visible resumes the context and restarts the music", async () => {
+    const { unmount } = render(<Probe />);
+    act(() => {
+      window.dispatchEvent(new Event("pointerdown"));
+    });
+    const ctx = audio.contexts[0] as unknown as {
+      resume: jest.Mock;
+      currentTime: number;
+    };
+    await act(async () => {});
+    act(() => setVisibility("hidden"));
+    expect(audio.contexts[0]).toBeDefined();
+    const before = audio.sources.length;
+    ctx.currentTime = 500;
+    await act(async () => {
+      setVisibility("visible");
+    });
+    expect(ctx.resume).toHaveBeenCalled();
+    expect(audio.sources.length).toBeGreaterThan(before);
+    unmount();
+    everOnwardSynth.dispose();
+  });
+
+  it("an interrupted context is resumed by the next gesture, every time", async () => {
+    const { unmount } = render(<Probe />);
+    act(() => {
+      window.dispatchEvent(new Event("pointerdown"));
+    });
+    const ctx = audio.contexts[0] as unknown as {
+      state: string;
+      resume: jest.Mock;
+    };
+    ctx.state = "interrupted";
+    ctx.resume.mockClear();
+    await act(async () => {
+      window.dispatchEvent(new Event("touchend"));
+    });
+    expect(ctx.resume).toHaveBeenCalledTimes(1);
+    expect(ctx.state).toBe("running");
+    ctx.state = "suspended";
+    await act(async () => {
+      window.dispatchEvent(new Event("keydown"));
+    });
+    expect(ctx.resume).toHaveBeenCalledTimes(2);
+    unmount();
+    everOnwardSynth.dispose();
+  });
+
+  it("does not bring music back when the music toggle is off", async () => {
+    act(() => everOnwardChannels.music.set(false));
+    const { unmount } = render(<Probe />);
+    act(() => {
+      window.dispatchEvent(new Event("pointerdown"));
+    });
+    act(() => setVisibility("hidden"));
+    const before = audio.sources.length;
+    await act(async () => {
+      setVisibility("visible");
+    });
+    expect(audio.sources.length).toBe(before);
+    unmount();
+    everOnwardSynth.dispose();
+    act(() => everOnwardChannels.music.resetMemory());
   });
 });
 

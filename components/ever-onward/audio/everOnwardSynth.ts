@@ -180,6 +180,13 @@ function createSynth() {
     scheduleUnease();
   }
 
+  /** Rebases the music clock (flushing stale notes) and re-checks the beds. */
+  function restartMusic() {
+    music?.player.pause();
+    music?.player.resume();
+    reconcile();
+  }
+
   function stopStorm() {
     if (!storm || !engine) return;
     const bed = storm;
@@ -292,12 +299,29 @@ function createSynth() {
       void engine?.ctx.suspend?.();
     },
 
+    /**
+     * Brings sound back after the tab returns or a gesture lands. iOS can
+     * leave the context "suspended" or "interrupted" even while the tab is
+     * visible (calls, lock, the app switcher), so this checks the context's
+     * state rather than trusting `pause`. Safe to call on every gesture.
+     */
     resume() {
-      if (!isPaused) return;
+      if (!isEnabled || !engine) return;
+      const { ctx } = engine;
+      const wasPaused = isPaused;
       isPaused = false;
-      if (isEnabled) void engine?.ctx.resume?.();
-      music?.player.resume();
-      reconcile();
+      if (ctx.state === "running") {
+        if (wasPaused) restartMusic();
+        return;
+      }
+      // Resume must be asked inside a gesture on iOS; the music restarts once
+      // the clock runs again so no bar is scheduled in the stale past.
+      const restart = () => {
+        if (engine?.ctx === ctx && !isPaused) restartMusic();
+      };
+      const resumed = ctx.resume?.();
+      if (resumed) resumed.then(restart, () => undefined);
+      else restart();
     },
 
     setMusicEnabled(on: boolean) {

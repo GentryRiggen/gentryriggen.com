@@ -9,8 +9,10 @@ import StartScreen from "./start/StartScreen";
 import UpdatePill from "./UpdatePill";
 import { useStaleChunkRecovery } from "./useStaleChunkRecovery";
 import { useUpdateCheck } from "./useUpdateCheck";
+import useBlockPinchZoom from "./useBlockPinchZoom";
 
 export default function EverOnward() {
+  useBlockPinchZoom();
   const game = useGame();
   const { isUpdateReady } = useUpdateCheck();
   const [isOnStartScreen, setIsOnStartScreen] = useState(true);

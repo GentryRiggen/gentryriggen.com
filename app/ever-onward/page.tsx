@@ -46,6 +46,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#020617",
+  // A tapping game: fast double taps must never zoom the page.
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function EverOnwardPage() {

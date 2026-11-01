@@ -40,17 +40,20 @@ export default function useEverOnwardAudio(
     [isEffectsOn]
   );
 
+  // Stays for the life of the screen: iOS can suspend or interrupt the
+  // context at any time and only lets resume() through inside a gesture.
   useEffect(() => {
-    if (!isAudioSupported() || everOnwardSynth.isEnabled()) return;
-    const remove = () => {
+    if (!isAudioSupported()) return;
+    const unlock = () => {
+      if (everOnwardSynth.isEnabled()) everOnwardSynth.resume();
+      else everOnwardSynth.enable();
+    };
+    for (const type of UNLOCK_EVENTS)
+      window.addEventListener(type, unlock, { passive: true });
+    return () => {
       for (const type of UNLOCK_EVENTS)
         window.removeEventListener(type, unlock);
     };
-    const unlock = () => {
-      if (everOnwardSynth.enable()) remove();
-    };
-    for (const type of UNLOCK_EVENTS) window.addEventListener(type, unlock);
-    return remove;
   }, []);
 
   useEffect(() => {
@@ -58,9 +61,13 @@ export default function useEverOnwardAudio(
       if (document.visibilityState === "hidden") everOnwardSynth.pause();
       else everOnwardSynth.resume();
     };
+    const handlePageShow = () => everOnwardSynth.resume();
     document.addEventListener("visibilitychange", handleVisibility);
-    return () =>
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, []);
 
   const phaseNumber = run.phase;

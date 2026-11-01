@@ -85,7 +85,7 @@ describe("Ever Onward game", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByTestId("lm-res-coins")).toHaveTextContent("0");
 
-    await user.click(screen.getByTestId("lm-tap"));
+    await user.click(screen.getByRole("button", { name: "Flash the light" }));
     // The lamp's oil bill can eat a lone coin before the counter shows it,
     // so look for the tap's floating gain.
     expect(await screen.findByText(/^\+\d+$/)).toBeInTheDocument();
@@ -163,6 +163,7 @@ describe("Ever Onward game", () => {
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
     await waitFor(() => screen.getByTestId("lm-phase-overlay"));
     const before = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");
+    expect(screen.getByTestId("lm-tap-fab")).toHaveAttribute("inert");
     await user.click(screen.getByTestId("lm-tap"));
     const after = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");
     expect(after.universes.light.run.taps).toBe(

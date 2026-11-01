@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.1",
+    date: "2026-11-01",
+    title: "Thumb button",
+    highlights: [
+      "The tap button now floats in the bottom corner, right under your thumb, wherever you scroll",
+      "Fast tapping no longer zooms the page in by accident",
+      "Music and sounds come back when you return to the game after switching apps",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-11-01",
     title: "A brand-new start screen",
