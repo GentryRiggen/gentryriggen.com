@@ -13,7 +13,7 @@ interface RemindersCardProps {
   hrefFor?: (id: string | null) => string;
 }
 
-/** Home: the next few reminders. Hidden when there are none or on any error. */
+/** Home: the next few reminders. Fired ones stay until Done. Hidden when there are none or on any error. */
 export default function RemindersCard({
   api,
   getToken,
@@ -26,7 +26,7 @@ export default function RemindersCard({
     let live = true;
     listReminders(getToken, undefined, api)
       .then((rows) => {
-        if (live) setItems(rows.filter((r) => r.sent === null));
+        if (live) setItems(rows);
       })
       .catch(() => {
         if (live) setItems([]);

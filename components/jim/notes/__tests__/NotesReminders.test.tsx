@@ -26,7 +26,13 @@ function rem(
   };
 }
 
+const REAL_TZ = process.env.TZ;
 beforeEach(() => jest.resetAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  if (REAL_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = REAL_TZ;
+});
 
 describe("NotesReminders", () => {
   const props = {
@@ -69,6 +75,17 @@ describe("NotesReminders", () => {
     );
   });
 
+  it("sends the device's offset, not Denver's or Z", async () => {
+    jest.spyOn(Date.prototype, "getTimezoneOffset").mockReturnValue(-330);
+    m.listReminders.mockResolvedValue([]);
+    m.addReminder.mockResolvedValue(rem("cccccccccccc", "Stretch", "x"));
+    render(<NotesReminders {...props} />);
+    await userEvent.type(screen.getByLabelText("What"), "Stretch");
+    await userEvent.click(screen.getByRole("button", { name: "Add reminder" }));
+    await waitFor(() => expect(m.addReminder).toHaveBeenCalled());
+    expect(m.addReminder.mock.calls[0][0]).toMatch(/:00\+05:30$/);
+  });
+
   it("adds a reminder to the list", async () => {
     m.listReminders.mockResolvedValue([]);
     m.addReminder.mockResolvedValue(
@@ -79,7 +96,9 @@ describe("NotesReminders", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add reminder" }));
     expect(await screen.findByText("Today 5 PM")).toBeInTheDocument();
     expect(m.addReminder).toHaveBeenCalledWith(
-      expect.stringMatching(/^\d{4}-\d\d-\d\dT\d\d:(00|15|30|45)$/),
+      expect.stringMatching(
+        /^\d{4}-\d\d-\d\dT\d\d:(00|15|30|45):00[+-]\d\d:\d\d$/
+      ),
       "Stretch",
       getToken,
       undefined,
@@ -136,6 +155,7 @@ describe("NotesReminder", () => {
   });
 
   it("edits the time", async () => {
+    process.env.TZ = "America/Denver";
     m.getReminder.mockResolvedValue(
       rem("aaaaaaaaaaaa", "Water", "Today 3:30 PM")
     );
@@ -150,7 +170,7 @@ describe("NotesReminder", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(m.patchReminder).toHaveBeenCalledWith(
       "aaaaaaaaaaaa",
-      { at: "2026-11-01T15:30" },
+      { at: "2026-11-01T15:30:00-07:00" },
       getToken,
       undefined,
       "https://x"
@@ -172,7 +192,7 @@ describe("NotesReminder", () => {
 describe("RemindersCard", () => {
   const props = { api: "https://x", getToken, onOpen: jest.fn() };
 
-  it("shows the next three that are not sent", async () => {
+  it("shows the first three, fired ones included", async () => {
     m.listReminders.mockResolvedValue([
       rem("aaaaaaaaaaaa", "One", "Today 1 PM", "x"),
       rem("bbbbbbbbbbbb", "Two", "Today 2 PM"),
@@ -182,8 +202,9 @@ describe("RemindersCard", () => {
     ]);
     render(<RemindersCard {...props} />);
     expect(await screen.findByText("Two")).toBeInTheDocument();
-    expect(screen.queryByText("One")).toBeNull();
-    expect(screen.getByText("Four")).toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.getByText("Three")).toBeInTheDocument();
+    expect(screen.queryByText("Four")).toBeNull();
     expect(screen.queryByText("Five")).toBeNull();
     expect(
       screen.getByRole("button", { name: "All reminders" })

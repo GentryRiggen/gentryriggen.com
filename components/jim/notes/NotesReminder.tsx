@@ -2,7 +2,11 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { BackLink, Empty } from "@/components/jim/notes/NotesUi";
-import { reminderError } from "@/components/jim/notes/reminderUi";
+import {
+  reminderError,
+  toLocalInput,
+  withOffset,
+} from "@/components/jim/notes/reminderUi";
 import {
   doneReminder,
   getReminder,
@@ -196,7 +200,7 @@ export default function NotesReminder({
           type="button"
           disabled={busy}
           onClick={() => {
-            setAt(reminder.at.slice(0, 16));
+            setAt(toLocalInput(new Date(reminder.at)));
             setEditing((v) => !v);
           }}
           className={BTN}
@@ -208,7 +212,7 @@ export default function NotesReminder({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (at) void change({ at });
+            if (at) void change({ at: withOffset(at) });
           }}
           className="jim-card flex flex-wrap items-end gap-3 p-4"
         >

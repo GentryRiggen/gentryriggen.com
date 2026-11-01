@@ -23,5 +23,18 @@ export function reminderError(err: unknown, fallback: string): string {
       ? "Jim can't reach your reminders right now. Try again in a minute."
       : fallback;
   }
+  if (err instanceof Error && err.message === "not found") {
+    return "This reminder is done or gone.";
+  }
   return err instanceof Error && err.message ? err.message : fallback;
+}
+
+/** An ISO time with the device's offset (never Z) from a datetime-local value. */
+export function withOffset(local: string): string {
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return local;
+  const off = -d.getTimezoneOffset();
+  const sign = off < 0 ? "-" : "+";
+  const abs = Math.abs(off);
+  return `${local.slice(0, 16)}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
 }

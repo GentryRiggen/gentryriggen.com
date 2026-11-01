@@ -9,7 +9,11 @@ import {
   Rows,
   Section,
 } from "@/components/jim/notes/NotesUi";
-import { defaultAt, reminderError } from "@/components/jim/notes/reminderUi";
+import {
+  defaultAt,
+  reminderError,
+  withOffset,
+} from "@/components/jim/notes/reminderUi";
 import { addReminder, listReminders, type Reminder } from "@/lib/jim/reminders";
 
 const MAX_TEXT = 200;
@@ -98,7 +102,13 @@ export default function NotesReminders({
     setSaving(true);
     setFormError(null);
     try {
-      const made = await addReminder(at, clean, getToken, undefined, api);
+      const made = await addReminder(
+        withOffset(at),
+        clean,
+        getToken,
+        undefined,
+        api
+      );
       setItems((prev) =>
         [...(prev ?? []), made].sort((a, b) => a.at.localeCompare(b.at))
       );
