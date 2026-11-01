@@ -38,14 +38,16 @@ function isTextField(el: EventTarget | null): boolean {
  * layout viewport shrinks with the keyboard too.
  */
 export default function useVisibleViewport(
-  el: RefObject<HTMLElement | null>
+  el: RefObject<HTMLElement | null>,
+  /** False while the element isn't drawn (the app is locked). */
+  active = true
 ): boolean {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   useEffect(() => {
     const vv = window.visualViewport;
     const node = el.current;
-    if (!vv || !node) return;
+    if (!active || !vv || !node) return;
     /** The full (keyboard-down) height for each viewport width. */
     const tallest = new Map<number, number>();
     let typing = isTextField(document.activeElement);
@@ -93,7 +95,7 @@ export default function useVisibleViewport(
       node.style.removeProperty("--jim-vh");
       node.style.removeProperty("--jim-vt");
     };
-  }, [el]);
+  }, [el, active]);
 
   return keyboardOpen;
 }

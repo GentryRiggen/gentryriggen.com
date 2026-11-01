@@ -168,6 +168,8 @@ export class JimPlayer {
   private voice: string | undefined;
   private allowFallback = true;
   private artist = "Jim";
+  /** The app is locked: nothing may start (or resume) until it isn't. */
+  private locked = false;
   /** Fetches per part, started early so the next part is ready. */
   private fetches: Promise<PartResult>[] = [];
   /** Parts whose fetch has settled (no "loading" flash between parts). */
@@ -210,6 +212,7 @@ export class JimPlayer {
    */
   play(key: string, markdown: string, options: PlayOptions = {}): boolean {
     this.stop();
+    if (this.locked) return false;
     const text = speakableText(markdown);
     const chunks = chunkForVoice(text);
     if (chunks.length === 0 || !this.supported) return false;
@@ -243,6 +246,15 @@ export class JimPlayer {
     return true;
   }
 
+  /**
+   * The app lock: locked stops what is on, and play() and resume() refuse
+   * until it is unlocked (a reply landing behind the lock stays silent).
+   */
+  setLocked(locked: boolean): void {
+    this.locked = locked;
+    if (locked) this.stop();
+  }
+
   /** Stops and forgets what was on; the bar goes away. */
   stop(): void {
     this.run += 1;
@@ -268,6 +280,7 @@ export class JimPlayer {
 
   /** Call from a tap (or a lock-screen control): iOS needs one to resume. */
   resume(): void {
+    if (this.locked) return;
     if (this.state.status !== "paused" || this.state.engine !== "audio") {
       return;
     }

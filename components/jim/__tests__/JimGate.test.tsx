@@ -7,6 +7,8 @@ import * as config from "@/lib/firebase/config";
 import * as api from "@/lib/jim/api";
 import * as host from "@/lib/jim/host";
 import { historyKey, loadHistory, saveHistory } from "@/lib/jim/history";
+import { isWipePending, lockKey, markWipePending } from "@/lib/jim/appLock";
+import * as view from "@/lib/jim/view";
 import * as offline from "@/lib/jim/offlineStore";
 import * as push from "@/lib/jim/push";
 import { fetchView, getCachedView } from "@/lib/jim/view";
@@ -28,10 +30,14 @@ jest.mock("@/lib/jim/api", () => {
   };
 });
 // The early prefetch is watched, not run; the cache itself is real.
-jest.mock("@/lib/jim/view", () => ({
-  ...jest.requireActual("@/lib/jim/view"),
-  fetchView: jest.fn(),
-}));
+jest.mock("@/lib/jim/view", () => {
+  const actual = jest.requireActual("@/lib/jim/view");
+  return {
+    ...actual,
+    fetchView: jest.fn(),
+    setViewSaver: jest.fn(actual.setViewSaver),
+  };
+});
 const realView =
   jest.requireActual<typeof import("@/lib/jim/view")>("@/lib/jim/view");
 jest.mock("@/lib/jim/host", () => ({
@@ -368,6 +374,113 @@ describe("device storage and the morning briefing", () => {
     expect(offline.saveView).toHaveBeenCalledWith(
       ADMIN_UID,
       expect.objectContaining({ today: VIEW_FIXTURE.today })
+    );
+  });
+});
+
+describe("a sign-out that is cut short", () => {
+  /** A lock as the device keeps it (its contents don't matter here). */
+  const LOCK = JSON.stringify({ v: 1, salt: "", hash: "", iterations: 1 });
+
+  function deferred() {
+    let resolve: () => void = () => {};
+    let reject: (err: unknown) => void = () => {};
+    const promise = new Promise<void>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+
+  beforeEach(() => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    window.localStorage.setItem(lockKey(ADMIN_UID), LOCK);
+    mockClient.getIdToken.mockResolvedValue("tok");
+  });
+
+  it("keeps the lock until Firebase has signed out, the marker set first", async () => {
+    const out = deferred();
+    mockClient.signOutUser.mockReturnValue(out.promise);
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Chat sign out" })
+    );
+    await waitFor(() => expect(mockClient.signOutUser).toHaveBeenCalled());
+    // Still signing out: the marker is down and the lock is still there.
+    expect(isWipePending()).toBe(true);
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBe(LOCK);
+    await act(async () => out.resolve());
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
+    expect(isWipePending()).toBe(false);
+  });
+
+  it("a failed sign-out stays locked and says so, and Try again finishes it", async () => {
+    mockClient.signOutUser.mockRejectedValueOnce(new Error("offline"));
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Chat sign out" })
+    );
+    expect(
+      await screen.findByText(/Couldn't finish signing out/)
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("chat")).toBeNull();
+    expect(screen.queryByLabelText("Email")).toBeNull();
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBe(LOCK);
+    expect(isWipePending()).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByLabelText("Email")).toBeInTheDocument();
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
+    expect(isWipePending()).toBe(false);
+  });
+
+  it("is finished on the next load, and the owner never opens meanwhile", async () => {
+    markWipePending();
+    const out = deferred();
+    mockClient.signOutUser.mockReturnValue(out.promise);
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Signing out…");
+    expect(screen.queryByTestId("chat")).toBeNull();
+    expect(mockClient.signOutUser).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBe(LOCK);
+    await act(async () => out.resolve());
+    expect(await screen.findByLabelText("Email")).toBeInTheDocument();
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
+    expect(isWipePending()).toBe(false);
+  });
+
+  it("a fresh password sign-in ends a leftover wipe and opens", async () => {
+    await renderGate();
+    act(() => emit(null));
+    markWipePending();
+    window.localStorage.setItem(lockKey(ADMIN_UID), LOCK);
+    mockClient.signInWithEmail.mockImplementation(async () => {
+      emit({ uid: ADMIN_UID, email: "me@x.com" });
+    });
+    await userEvent.type(await screen.findByLabelText("Email"), "a@b.com");
+    await userEvent.type(screen.getByLabelText("Password"), "pw");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByTestId("chat")).toBeInTheDocument();
+    expect(isWipePending()).toBe(false);
+    expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
+    expect(mockClient.signOutUser).not.toHaveBeenCalled();
+  });
+
+  it("drops the Notes saver before clearing the device store", async () => {
+    const saver = jest.mocked(view.setViewSaver);
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    saver.mockClear();
+    jest.mocked(offline.clearAll).mockClear();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Chat sign out" })
+    );
+    expect(saver).toHaveBeenCalledWith(null);
+    expect(saver.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(offline.clearAll).mock.invocationCallOrder[0]
     );
   });
 });

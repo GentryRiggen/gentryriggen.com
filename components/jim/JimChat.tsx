@@ -12,6 +12,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { ArrowUp, Check, Square, Volume2 } from "lucide-react";
+import AppLockSheet from "@/components/jim/AppLockSheet";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
@@ -19,6 +20,7 @@ import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import usePersonas from "@/components/jim/usePersonas";
+import type { AppLock } from "@/components/jim/useAppLock";
 import useReadAloud from "@/components/jim/useReadAloud";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
@@ -47,6 +49,13 @@ interface JimChatProps {
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onSignOut: () => void;
+  /**
+   * The app lock. While locked nothing of the chat is drawn (no text in the
+   * page or the accessibility tree); its state lives on underneath.
+   */
+  lock?: AppLock;
+  /** Signs out and wipes this device's Jim data, then says `notice`. */
+  onWipe?: (notice: string) => void;
 }
 
 type Message = ChatMessage;
@@ -215,7 +224,10 @@ export default function JimChat({
   api,
   getToken,
   onSignOut,
+  lock,
+  onWipe,
 }: JimChatProps) {
+  const locked = lock?.locked === true;
   // Back from this device: a reload keeps the conversation and its session.
   const [kept] = useState(() => loadHistory(uid));
   const [session, setSession] = useState(
@@ -237,6 +249,7 @@ export default function JimChat({
   const [tab, setTab] = useState<JimTab>("chat");
   /** Notes is built (and fetches) only once it has been opened. */
   const [notesOpened, setNotesOpened] = useState(false);
+  const [lockSheetOpen, setLockSheetOpen] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -257,13 +270,17 @@ export default function JimChat({
   const stuck = useRef(true);
   const lastTop = useRef(0);
 
-  const keyboardOpen = useVisibleViewport(rootRef);
+  const keyboardOpen = useVisibleViewport(rootRef, !locked);
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
-  const reader = useReadAloud(getToken, api);
+  const reader = useReadAloud(getToken, api, locked);
   const { stop: stopReading, setArtist } = reader;
   const personas = usePersonas(getToken, api);
   const barShown = reader.state.status !== "idle";
+  // Locking shuts the lock's settings (the reader stops itself).
+  useLayoutEffect(() => {
+    if (locked) setLockSheetOpen(false);
+  }, [locked]);
   // The lock screen names whoever Jim is speaking as.
   useEffect(() => {
     setArtist(personas.activeName ?? "Jim");
@@ -356,7 +373,14 @@ export default function JimChat({
     });
     observer.observe(scroller);
     return () => observer.disconnect();
-  }, [scrollToEnd]);
+  }, [scrollToEnd, locked]);
+
+  // Unlocked: the list is drawn afresh, at its end.
+  useLayoutEffect(() => {
+    if (locked) return;
+    stuck.current = true;
+    scrollToEnd(false);
+  }, [locked, scrollToEnd]);
 
   // Grow the box with its text, up to its max height (10rem, or 30% of the
   // visible screen when that is less), then it scrolls.
@@ -365,7 +389,7 @@ export default function JimChat({
     if (!box) return;
     box.style.height = "auto";
     box.style.height = `${box.scrollHeight}px`;
-  }, [draft]);
+  }, [draft, locked]);
 
   function onScroll() {
     const el = scrollerRef.current;
@@ -536,6 +560,16 @@ export default function JimChat({
     onSignOut();
   }
 
+  /** Too many wrong PINs or a forgotten one: out, and the device wiped. */
+  function wipe(notice: string) {
+    setLockSheetOpen(false);
+    signedOut.current = true;
+    stopReading();
+    chatRun.current += 1;
+    turn.current?.abort();
+    onWipe?.(notice);
+  }
+
   // The latest send and turn state, for the stable quick-log callback.
   const sendRef = useRef(send);
   const holdRef = useRef(sending || !online);
@@ -557,6 +591,8 @@ export default function JimChat({
       setDraft((current) => (current ? `${text}\n${current}` : text));
     } else void sendRef.current(text);
   }, []);
+
+  const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
   function restoreHeld() {
     if (held === null) return;
@@ -587,12 +623,14 @@ export default function JimChat({
 
   const canSend = draft.trim().length > 0 && !sending && online;
 
+  if (locked) return null;
+
   return (
     <>
       <div
         ref={rootRef}
         // Behind the persona sheet nothing can be tapped, focused or read.
-        inert={personas.open}
+        inert={personas.open || lockSheetOpen}
         data-keyboard={keyboardOpen ? "open" : "closed"}
         className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
       >
@@ -606,6 +644,14 @@ export default function JimChat({
             personas.menuItem,
             ...(reader.menuItem ? [reader.menuItem] : []),
             ...(briefing.item ? [briefing.item] : []),
+            ...(lock && onWipe
+              ? [
+                  {
+                    label: `App lock: ${lock.enabled ? "On" : "Off"}`,
+                    onSelect: () => setLockSheetOpen(true),
+                  },
+                ]
+              : []),
           ]}
         />
 
@@ -846,6 +892,14 @@ export default function JimChat({
             : null
         }
       />
+      {lock && onWipe && (
+        <AppLockSheet
+          lock={lock}
+          open={lockSheetOpen}
+          onClose={closeLockSheet}
+          onWipe={wipe}
+        />
+      )}
     </>
   );
 }
