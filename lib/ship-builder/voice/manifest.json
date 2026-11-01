@@ -1,1 +1,82 @@
-{}
+{
+  "escape/boarded-1": {
+    "file": "/ship-builder/voice/escape/boarded-1.mp3",
+    "hash": "54b229c86df2",
+    "durationGuess": 4
+  },
+  "escape/boarded-2": {
+    "file": "/ship-builder/voice/escape/boarded-2.mp3",
+    "hash": "efb90fa782de",
+    "durationGuess": 3
+  },
+  "escape/jumped-1": {
+    "file": "/ship-builder/voice/escape/jumped-1.mp3",
+    "hash": "a3fc9ec2b3d0",
+    "durationGuess": 2
+  },
+  "escape/jumped-2": {
+    "file": "/ship-builder/voice/escape/jumped-2.mp3",
+    "hash": "3c4bcf9d7f79",
+    "durationGuess": 2
+  },
+  "escape/saved-deck-1": {
+    "file": "/ship-builder/voice/escape/saved-deck-1.mp3",
+    "hash": "5b7731fe8504",
+    "durationGuess": 3
+  },
+  "escape/saved-deck-2": {
+    "file": "/ship-builder/voice/escape/saved-deck-2.mp3",
+    "hash": "62fe5853bd95",
+    "durationGuess": 3
+  },
+  "escape/saved-deck-3": {
+    "file": "/ship-builder/voice/escape/saved-deck-3.mp3",
+    "hash": "26e5d8fc4a27",
+    "durationGuess": 3
+  },
+  "escape/splash-1": {
+    "file": "/ship-builder/voice/escape/splash-1.mp3",
+    "hash": "dd9665015d4d",
+    "durationGuess": 5
+  },
+  "escape/splash-2": {
+    "file": "/ship-builder/voice/escape/splash-2.mp3",
+    "hash": "0e4344706b0a",
+    "durationGuess": 3
+  },
+  "escape/splash-3": {
+    "file": "/ship-builder/voice/escape/splash-3.mp3",
+    "hash": "13b27ef5b08d",
+    "durationGuess": 6
+  },
+  "escape/cold-1": {
+    "file": "/ship-builder/voice/escape/cold-1.mp3",
+    "hash": "fb481b1607ef",
+    "durationGuess": 3
+  },
+  "escape/cold-2": {
+    "file": "/ship-builder/voice/escape/cold-2.mp3",
+    "hash": "b05435058e34",
+    "durationGuess": 2
+  },
+  "escape/saved-swim-1": {
+    "file": "/ship-builder/voice/escape/saved-swim-1.mp3",
+    "hash": "b813c91af6d2",
+    "durationGuess": 4
+  },
+  "escape/saved-swim-2": {
+    "file": "/ship-builder/voice/escape/saved-swim-2.mp3",
+    "hash": "23f4794a3dab",
+    "durationGuess": 3
+  },
+  "escape/frozen-1": {
+    "file": "/ship-builder/voice/escape/frozen-1.mp3",
+    "hash": "30a475fca4a3",
+    "durationGuess": 6
+  },
+  "escape/frozen-2": {
+    "file": "/ship-builder/voice/escape/frozen-2.mp3",
+    "hash": "fd0a0cda19cf",
+    "durationGuess": 6
+  }
+}
