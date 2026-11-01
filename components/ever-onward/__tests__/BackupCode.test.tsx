@@ -24,6 +24,7 @@ function saveWith(completions: number): SaveData {
 }
 
 async function openMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByTestId("eo-start-button"));
   await user.click(await screen.findByRole("button", { name: /Continue/ }));
   await user.click(screen.getByRole("button", { name: "Menu" }));
 }
