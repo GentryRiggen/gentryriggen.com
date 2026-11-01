@@ -1,17 +1,16 @@
 import type { UniverseDef } from "../../engine/types";
 import { ACTIONS } from "./actions";
-import { LIGHT_CONSUMABLES, lightPlates, lightSceneDiff } from "./hooks";
+import {
+  LIGHT_CONSUMABLES,
+  PLATE_ACTIONS,
+  lightPlates,
+  lightSceneDiff,
+} from "./hooks";
 import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
-import {
-  coastUpkeep,
-  decayPerSecond,
-  isLightComplete,
-  manualLight,
-  tickLight,
-} from "./tick";
+import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
 
 export { sceneInfo } from "./scene";
@@ -30,10 +29,10 @@ export const lightUniverse: UniverseDef = {
   prestige: PRESTIGE,
   upkeep: (run): Record<string, number> => {
     if (run.phase === 0) return { coins: coastUpkeep(run) };
-    if (run.phase === 3) return { energy: decayPerSecond(run) };
     return {};
   },
   plates: lightPlates,
+  plateActions: PLATE_ACTIONS,
   consumables: LIGHT_CONSUMABLES,
   sceneDiff: lightSceneDiff,
   tick: tickLight,

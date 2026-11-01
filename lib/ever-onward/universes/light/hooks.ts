@@ -7,7 +7,9 @@ import {
   isCourseInPlay,
   isFlareOn,
   isGridAuto,
+  isBoatOut,
   isGridInPlay,
+  flameFraction,
   isOilCheap,
   isRushOn,
   isStorming,
@@ -51,11 +53,29 @@ export function lightPlates(run: RunState): string[] {
       (id) => id.startsWith("letgo-") && level(run, id) === 0
     );
     if (hasLetGoOnOffer) plates.push("letGo");
+    if (isBoatOut(run)) plates.push("boat");
   }
   return plates;
 }
 
+/** Plates that need the player's hands count only while they are tended. */
+export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
+  oilMarket: ["buy-oil"],
+  grid: ["balance-grid"],
+  rush: ["ride-rush"],
+  course: ["correct-course"],
+  flare: ["catch-flare"],
+  boat: ["steer-boat", "flash-lamp"],
+};
+
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
+  {
+    id: "flame",
+    label: "The flame",
+    level: (run) => (run.phase === 3 ? flameFraction(run) : null),
+    // Low is when the lantern is dim and the light lets go slowly.
+    lowZone: { lo: 0.02, hi: 0.3 },
+  },
   {
     id: "oil",
     label: "Lamp oil",
@@ -71,8 +91,8 @@ export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
       isGridInPlay(run) && !isGridAuto(run)
         ? Math.min(1, Math.max(0, gridSteadiness(run) / 100))
         : null,
-    // Cities visibly pay less under 60%: that is where a player acts.
-    lowZone: { lo: 0.05, hi: 0.6 },
+    // Cities visibly pay less under 50%: that is where a player acts.
+    lowZone: { lo: 0.05, hi: 0.5 },
   },
   {
     id: "heading",
@@ -81,7 +101,7 @@ export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
       isCourseInPlay(run) && !isCourseAuto(run)
         ? Math.min(1, Math.max(0, headingOf(run) / 100))
         : null,
-    lowZone: { lo: 0.05, hi: 0.6 },
+    lowZone: { lo: 0.05, hi: 0.5 },
   },
 ];
 
@@ -96,7 +116,8 @@ function sceneKey(run: RunState): string {
     s.collectors,
     s.probes,
     s.lightsRemaining,
-    s.remembered,
+    s.boatVisible,
+    s.finished,
     Math.floor(s.cities),
     Math.round(s.powered * 20),
   ].join("|");

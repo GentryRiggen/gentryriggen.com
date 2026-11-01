@@ -206,7 +206,7 @@
   },
   "light/last-choice": {
     "file": "/ever-onward/voice/light/last-choice.mp3",
-    "hash": "ecea634d4bbb",
+    "hash": "efb8bd392a41",
     "durationGuess": 13
   },
   "light/last-first-go": {
@@ -221,8 +221,8 @@
   },
   "light/last-quiet": {
     "file": "/ever-onward/voice/light/last-quiet.mp3",
-    "hash": "41e3dd590b2b",
-    "durationGuess": 12
+    "hash": "d41ed98ed45d",
+    "durationGuess": 13
   },
   "light/last-one": {
     "file": "/ever-onward/voice/light/last-one.mp3",
@@ -231,7 +231,7 @@
   },
   "light/last-remember": {
     "file": "/ever-onward/voice/light/last-remember.mp3",
-    "hash": "658a89db45b8",
+    "hash": "7d29b86a45fa",
     "durationGuess": 16
   },
   "light/last-end-1": {
@@ -241,7 +241,7 @@
   },
   "light/last-end-2": {
     "file": "/ever-onward/voice/light/last-end-2.mp3",
-    "hash": "1bc3badf38f8",
-    "durationGuess": 12
+    "hash": "50232eb0b3b7",
+    "durationGuess": 11
   }
 }

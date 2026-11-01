@@ -358,3 +358,171 @@ Keep. Next (Round 2 candidates): a watched number and a second plate for the
 last phase; reveal beats for the coast and night mid-stretches; make the goal
 queue survive a shopper (teaser goals); a short check-in clip of the night and
 sky with Gentry.
+
+## Round 1 — reviewer retro (Opus)
+
+Coast: first ~20 min work. Minutes ~20–30 the oil button becomes button-mashing: the tapper clicks it 152 times in 10 min (~15 effective clicks/s, bursts of 3–6), because each barrel is capped at 60% of the bank (tick.ts:122) so a near-broke player gets a smaller barrel every click. Night/Sky tending is sleepy not naggy: balances 4× in a 29-min night, corrects 2× in sky; drift 85→45% takes ~2 min so the plate is a background number; rush/flare are the only "look up!" moments. Q1: no cooldown; enable Balance only below ~75% and show the drop (cities flicker). Q2: bonus windows not acceptable as built. Q3: generous low zone, Goodhart-prone. Q5: next chain step replacing a bought one shouldn't count as a reveal. Q6: fix the barrel first.
+Last Light is a 19-minute timer: energy enters at 42k (phases.ts:71 keeps max of carried and start), rises to 86k vs ≤22/s decay; shield/glass/remember bought on sight; let-goes paced only by resolve 1/s; Tend adds 15 to a 42k bank; +200 refund is 0.5% (TUNING.last.letGoRefund unused; hard-coded upgrades.ts:739); story says "There is no wrong order" but order is fixed (upgrades.ts:737). Sky has most dead time (gap 170s, p95 wait 185s); automation bought late (nav-2 min 26/34, grid-2 min 23/29).
+Loop blockers: M9 skill gap compares cumulative exit times (score.ts:511-513) — diluted by coast; per-phase gaps are night 28%, sky 13%; careful/naive pair also differs on bonus claims, so it measures the bonus not tending (tending alone ~5% of night, claiming rush ~18%). M7 counts "dial < 85%" as a plate (hooks.ts:40,45) even when ignoring is right — count attention events (distinct non-tap actions/min per plate). No chore-rate metric — add "non-tap clicks per active minute" with a gate. M10 last reports "fading by design" while energy rises — read the flame, fail on growth. Idle bot tends at 60% (bots.ts:84) — idle must never press buttons.
+Round 2 priorities: (1) Rebuild The Last Light as "The first ship comes home": energy starts at 600 (set, not max), flame is the watched number, taps matter; 2–3 let-goes on offer at once in any order, each with a different gift (porch: slower fade; festival: burst; moon: taps worth more) so order is a real choice; log the first ship's moment in the coast (minute, storm/calm); at 3 lights left the sea and a small boat with one lantern appear in the dark, heading drifts gently, you tap the old beam to steer; final action is the game's first action — flash, the boat turns, counter reads "Ships guided: 1"; echo the coast-hello line ("Click. The lamp is lit."). (2) Bonus windows that wait for you + one-click oil: rush/flare persist until claimed (no new one until then), worth ~25s income not 40; drop the 3× rush strain (tick.ts:257); a barrel fills the tank (or as much as you can afford) in one click — remove the coin cap. (3) Instruments first: per-phase M9 with separate claim/tend bot pairs; attention-event plates; chore-rate gate; idle bot that never presses buttons; M10 reads the flame.
+Kid-safety: rush vanishing after 45s while ignoring costs ~18% and strain triples = punishes not tapping (violates research rule). Shrinking barrel rewards mashing. "There is no wrong order" is false — make it true or reword. No streaks/timers-while-away/monetisation found.
+
+## Round 2: honest instruments, windows that wait, the first ship comes home (2026-11-01)
+
+Branch `feat/ever-onward-funloop`, tuner role. Order followed: (3) instruments,
+re-score; (2) windows and one-click oil; (1) rebuild The Last Light.
+
+**Hypothesis.** The round 1 score was partly measuring the wrong things (a
+"plate" was a dial under a line, the skill gap was diluted by earlier phases,
+the idle bot tended, nothing counted clicks) and partly rewarding mechanics that
+were unkind to kids (bonus windows that vanish, a barrel that shrinks as you
+click). Fix the ruler first, then fix the design it exposes, then give the last
+phase a real choice, a watched number and an ending that is an action.
+
+### A. Instruments (all before touching the game)
+
+- **Attention-event plates (M7).** `UniverseDef.plateActions` maps a plate to
+  the actions that tend it. A mapped plate (oil market, grid, rush, course,
+  flare, boat) counts only while the player has done one of its actions in the
+  last 90 s; an unmapped plate (tap, storm, let-go on offer) counts while it is
+  offered. A dial under 85% that you rightly ignore is no longer a plate.
+- **Per-phase M9 skill gap, tend and claim separated.** Every pair now starts
+  from the same state, the phase's entry (tapper run to the phase boundary), and
+  stops when the phase ends, so the gap is that phase's alone (was cumulative
+  exit time, diluted by the coast). The tend pair (tends under 15% vs under 55%,
+  both claim) is scored; the claim pair (same tending, ignores vs takes bonus
+  windows) is reported as "claim gap", not scored.
+- **New M15 Chore rate** (weight 4, taken from M2 and M4, 2 each): non-tap clicks
+  per active minute per phase, band 0.3-4, gate at most 8 a minute and a busiest
+  minute of at most 20.
+- **Idle bot presses no button** outside the last phase (where the ending is the
+  story). Its tap warm-up went from 5 to 8 minutes per phase (the doc's literal
+  idle was already generous) so it does not overshoot 4 h without the
+  buy-oil crutch.
+- **M10 last reads the flame** (the watched number), not income: slope in share
+  of full per minute (band -0.04 to 0.05), gate on slope above 0.08 or the flame
+  sitting full more than 20% of the time.
+- The skill bots, the oil bots and the engine now know a click is only worth
+  making if it buys a real share of the tank (40%, or 25% when the lamp is
+  dry); no bot mashes for one more drop.
+
+**Re-score, instruments only (the old game, before any change):** 59.0 capped,
+**75.0 uncapped** (round 1: 76.6). New failures that were hidden before: M15
+coast **6.3 clicks a minute, busiest minute 57** (the barrel mash the reviewer
+saw), M10 last (income plateau 87% when the flame is not read), M11 (idle without
+the oil button needs 5.7 h).
+
+### B. Windows that wait, and one-click oil
+
+- **Oil: found the real cause of the shrinking barrel.** The engine takes an
+  action's cost and then runs `perform`, which recomputed the barrel from the
+  coins that were _left_, so you paid for N and got far less. `perform` now
+  receives `paid` and buys exactly that. A barrel fills the tank or is as much
+  as the coins pay for; the 60% coin cap is gone.
+- **Rush and flare persist until claimed**, no new one starts until then
+  (the timer starts when you claim), worth 25 s of income (was 40), and the 3x
+  rush strain is gone. The cooldown is rolled in the action, so ignoring costs
+  nothing but the bonus.
+- Balance the grid and Send a correction unlock below 75% (was 95%).
+  Their M9 low zone is 5-50% (was 5-60%).
+- Floors softened for kids and the idle gate: lamp dim 0.7 (was 0.5), grid
+  floor and fleet pace floor 0.6 (were 0.4 and 0.35); strain and drift run
+  about 1.6x faster so the dial is still watched. Coast costs x1.1 (the oil fix
+  made it 3 minutes quicker and the coast reveal pacing test caught it).
+
+### C. The Last Light, rebuilt as "The first ship comes home"
+
+- **Energy is gone from the last phase.** The **flame** (0-1000, shown as a
+  percent) starts at 600, set not carried. Each light fades it, so the flame
+  falls to a low steady glow while you tap it and climbs as lights go out
+  (taps add 16, a share fades each second: lights + 3 "of the dark").
+- **Tapping matters, gently.** Resolve (the currency lights cost) flows at
+  0.75-1x by flame warmth, plus 0.06 a tap. A player who barely taps takes about
+  30% longer (tend gap), never stops.
+- **Order is a real choice.** Eleven lights, three on offer at once, in any
+  order, each with a different gift: a slower fade (porch, bridges, campfires,
+  sun collectors), a burst of flame (signs, towers, festival, the last stars),
+  or taps worth more (stadium, harbor, moon). Every light let go also makes the
+  next 16% easier. "Any order is a good order" is now true (the story said it
+  was and the old shop forced one order).
+- **The first ship, logged.** The coast notes the second and the weather of the
+  very first ship (`firstShipAt`, `firstShipStorm`); the sea shows it under the
+  boat ("The first ship: 0:03, a calm night").
+- **At three lights left** the sea and a small boat with one lantern appear. It
+  drifts (0.6% a second), pace is 30-100% by how true it is, and **Tap the old
+  beam** steers it (+45). The boat is never lost.
+- **The ending is the game's first action.** With one light left and the boat at
+  the edge of the dark, **Flash the lamp, once** appears: a gold flash, the boat
+  turns for home, **Ships guided: 1**, then the ending (4.5 s later so the moment
+  plays). The ending echoes the coast hello: "Click. The lamp is lit."
+- Scene: flame size follows the flame, a low beam reaches for the boat (bright
+  when true), a reduced-motion safe flash and turn. Story: `last-choice`,
+  `last-quiet`, `last-remember` and `last-end-2` changed; narration regenerated.
+- Costs: the let-go costs are x1.2 the old ones and each light eases the next;
+  the phase is 20 minutes (was 19).
+
+### Before and after
+
+| Metric                | Round 1 as scored | Instruments only | Round 2 final | Notes                                                             |
+| --------------------- | ----------------- | ---------------- | ------------- | ----------------------------------------------------------------- |
+| Total (capped)        | 59.0              | 59.0             | 59.0          | still 8 gates                                                     |
+| Total (uncapped)      | 76.6              | 75.0             | **81.9**      |                                                                   |
+| Failing gates         | 9                 | 12               | 8             | M1 x3, M3 x4, M4 sky                                              |
+| M1 Reveal cadence     | 8.5               | 8.5              | 8.5           | coast 320 s, night 250 s, sky 240 s gaps                          |
+| M2 Decision density   | 7.1/12            | 5.9/10           | 5.7/10        | weight 12 to 10                                                   |
+| M3 Goal queue         | 1.3               | 1.3              | 1.7           | coast and last now at 94% and 88%                                 |
+| M4 Felt effect        | 8.5/12            | 7.1/10           | 7.1/10        | sky median effect 7%                                              |
+| M5 Purchase rate      | 6.0               | 6.0              | 6.0           |                                                                   |
+| M6 Wait ratio         | 8.8               | 8.8              | 9.2           | sky p95 151 s, gate clear                                         |
+| M7 Plates (attention) | 4.9               | 5.2              | 5.8           | peaks of 3 in every phase                                         |
+| M8 Novelty            | 7.0               | 7.0              | 7.0           |                                                                   |
+| M9 Tension            | 4.3               | 4.3              | **5.7**       | per phase now; last is a real number                              |
+| M10 Smoothness        | 3.5               | 2.8              | 3.7           | last reads the flame                                              |
+| M11 Active vs idle    | 5.6               | 4.4              | 6.3           | idle 3.43 h, ratio 1.76x                                          |
+| M12 Dead time         | 2.6               | 2.6              | 2.7           | sky longest 180 s                                                 |
+| M13 Prestige          | 5.0               | 5.0              | 5.0           | 0.66 and 0.78                                                     |
+| M14 Length            | 3.5               | 3.5              | 3.6           | 1.95 h                                                            |
+| **M15 Chore rate**    | n/a               | **2.5/4**        | **4.0/4**     | coast 6.3 to **0.75** clicks a minute, busiest minute **57 to 2** |
+
+Per phase: coast 84% to 86%, night 83% to 84%, sky 72% to 78%, last 68% to 80%.
+Phase lengths 35, 29, 34, 20 minutes. Finish: tapper 1.95 h, realistic 2.30 h,
+idle 3.43 h, run 2 1.29 h, run 3 1.00 h.
+
+M9 gaps now (per phase, same starting state): coast 4.4% (oil), night **3.5%**
+tend, **13.4%** claim, sky **2.7%** tend, **5.8%** claim, last **29.6%** (tapping).
+Chore rate: coast 0.75 a minute, night 0.7, sky 0.5, last 0.05.
+
+### What moved and what did not
+
+- **Moved**: the oil mash is gone (cause was the engine, not the bot); the last
+  phase is the best-scoring after coast and night instead of the worst by a long
+  way; M9 is honest and per phase; idle is a real, button-free player at 1.76x.
+- **Did not move**: tending a dial still barely matters. The honest tend gaps
+  are 3.5% (night) and 2.7% (sky) against a 5-25% band, and the claim gap (13%
+  night) is worth more than tending. Raising the cost of ignoring (lower floors)
+  buys a 7% gap but pushes idle to 3.85 h, and the kid-safety rule said no.
+  Reveal gaps (M1) and the dawdler goal queue (M3) are untouched from round 1.
+- Tuning surprise: making the barrel honest and removing the cap made oil
+  trivially cheap in clicks; the coast came out 3 minutes quicker and a pacing
+  test had to be answered with x1.1 costs.
+
+### Open questions for the reviewer
+
+1. Is a tend gap of about 3% acceptable if the dial is mostly about the
+   feeling (a flickering city, a drifting probe) rather than income? If not,
+   what makes tending matter without a tax on ignoring it?
+2. The flame is the watched number but it only costs time (30% slower for a
+   non-tapper). Is that enough, or should a low flame darken the scene?
+3. Is the first ship's log moment too small? It is nearly always "0:03, a calm
+   night". An opening that makes the first ship rarer (a storm, a minute in)
+   would make the echo mean more.
+4. M3 and M1 need a design answer (teaser goals, more story beats in the
+   300 s coast gap) rather than numbers: the cap stays at 59 until all 8 gates
+   clear.
+5. Bold: let the player name the first boat, or pick which lantern it carries.
+
+### Decision
+
+Keep. Scorecard floors raised to 57 and 79 (new score minus 2). Next round:
+close the 8 gates (reveal beats in the three long gaps, teaser goals for the
+dawdler), then a playtest with Gentry on the new last phase.

@@ -31,6 +31,8 @@ interface ResourcesProps {
 function formatResource(id: string, value: number): string {
   if (id === "night") return `${value.toFixed(1)}%`;
   if (id === "oilPrice") return value.toFixed(2);
+  // The flame holds 0-1000; the player reads it as a percent.
+  if (id === "flame") return `${Math.round(value / 10)}%`;
   return formatNumber(Math.floor(value));
 }
 

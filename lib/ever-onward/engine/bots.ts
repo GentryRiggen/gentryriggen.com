@@ -28,6 +28,12 @@ export interface BotSet {
    * phase.
    */
   skill?: Record<number, { naive: Strategy; careful: Strategy }>;
+  /**
+   * Per phase index with a bonus window (a rush, a flare): a bot that lets
+   * the windows pass and one that takes them, tending the same. Reported next
+   * to the tend gap in M9, so tending and claiming are not mixed up.
+   */
+  claim?: Record<number, { ignores: Strategy; claims: Strategy }>;
   /** Buys oil (or its universe's consumable) only when it runs low. */
   naiveOil: Strategy;
   /** Buys oil only when it is cheap (or when the tank is nearly dry). */
@@ -59,7 +65,7 @@ export function genericBots(): BotSet {
       tapRate: (run) => {
         if (run.phase >= IDLE_HANDS_ON_PHASE) return BASE_TAPS;
         const phaseStart = run.transitions.at(-1)?.at ?? 0;
-        const warmUp = run.phase === 0 ? 10 * MIN : 5 * MIN;
+        const warmUp = run.phase === 0 ? 10 * MIN : 8 * MIN;
         return run.time - phaseStart < warmUp ? BASE_TAPS : 0;
       },
     },

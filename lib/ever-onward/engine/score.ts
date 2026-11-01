@@ -168,6 +168,15 @@ export interface Scorecard {
 
 // ------------------------------------------------------------------- inputs
 
+export interface PhaseSkill {
+  naive: SimResult;
+  careful: SimResult;
+  /** Run time at the phase's entry, where both bots started. */
+  start: number;
+  /** Same tending, bonus windows ignored versus claimed. */
+  claim?: { ignores: SimResult; claims: SimResult };
+}
+
 /** Everything `scoreTrace` reads. `scoreUniverse` builds it by simulating. */
 export interface ScoreInputs {
   /** The tapper bot, traced. */
@@ -183,10 +192,12 @@ export interface ScoreInputs {
   /** The idle bot (untraced). */
   idle: SimResult;
   /**
-   * Per phase index with a watched number: the naive and careful bots,
-   * stopped when that phase ends.
+   * Per phase index with a watched number: the naive and careful tenders
+   * (and, where the phase has a bonus window, a bot that ignores it and one
+   * that claims it), all started from the same state at the phase's entry and
+   * stopped when it ends, so each gap is that phase's alone.
    */
-  skill?: Record<number, { naive: SimResult; careful: SimResult }>;
+  skill?: Record<number, PhaseSkill>;
   /** Prestige runs of the tapper bot; run 2 is traced. */
   run2: SimResult;
   run3: SimResult;
@@ -200,6 +211,8 @@ interface PhaseContext {
   purchases: Trace["purchases"];
   novelty: NoveltyEvent[];
   inputs: ScoreInputs;
+  /** Seconds between trace samples. */
+  sampleEvery: number;
 }
 
 type PhaseEval = (ctx: PhaseContext) => Omit<PhaseResult, "phase">;
@@ -264,7 +277,7 @@ const evalM1: PhaseEval = ({ novelty }) => {
 const M2: MetricSpec = {
   id: "M2",
   name: "Decision density",
-  weight: 12,
+  weight: 10,
   band: "1-2 options 45-75%, 3 <= 15%, 4+ <= 8%, 0 options 15-40%",
   gate: "4+ options <= 15% of the time",
 };
@@ -316,7 +329,7 @@ const evalM3: PhaseEval = ({ samples }) => {
 const M4: MetricSpec = {
   id: "M4",
   name: "Felt effect",
-  weight: 12,
+  weight: 10,
   band: "median meaningful effect >= 15% of income, filler <= 15% of buys",
   gate: "filler <= 25% of buys, median meaningful effect >= 8%",
 };
@@ -502,16 +515,18 @@ const M9: MetricSpec = {
   id: "M9",
   name: "Tension",
   weight: 6,
-  band: "watched number low 10-35% of the time, empty <= 3%, the careful player beats the naive one by 5-25% (per phase with a watched number)",
+  band: "watched number low 10-35% of the time, empty <= 3%, the careful tender beats the naive one by 5-25% (per phase, both started from the same state; the claim gap is reported, not scored)",
   gate: "consumable empty <= 8% of the time",
 };
 const LOW_ZONE = { lo: 0.05, hi: 0.3 };
 
-/** Seconds the bot took to leave `phaseIndex` (or all it had, if it didn't). */
-function phaseExitTime(result: SimResult | undefined, index: number): number {
-  if (!result) return NaN;
-  return result.finalRun.transitions[index]?.at ?? result.endTime;
+/** Seconds the bot spent in the phase it was started at the entry of. */
+function phaseSeconds(result: SimResult | undefined, start: number): number {
+  return result ? result.endTime - start : NaN;
 }
+
+/** How much longer the slower bot took than the quicker one (0.1 = 10%). */
+const gapOf = (slow: number, quick: number): number => slow / quick - 1;
 
 const evalM9: PhaseEval = ({ def, span, samples, inputs }) => {
   const levelsOf = (id: string): number[] =>
@@ -527,7 +542,7 @@ const evalM9: PhaseEval = ({ def, span, samples, inputs }) => {
       gate: true,
       gateDetail: null,
       headline: "no watched number in this phase",
-      stats: { low: 0, empty: 0, skill: 0 },
+      stats: { low: 0, empty: 0, skill: 0, claimGap: 0 },
     };
   const low = share(
     levels.filter((l) => l >= zone.lo && l <= zone.hi).length,
@@ -535,9 +550,18 @@ const evalM9: PhaseEval = ({ def, span, samples, inputs }) => {
   );
   const empty = share(levels.filter((l) => l <= 1e-6).length, levels.length);
   const pair = inputs.skill?.[span.index];
-  const naive = phaseExitTime(pair?.naive, span.index);
-  const cheap = phaseExitTime(pair?.careful, span.index);
-  const skill = naive / cheap - 1;
+  const skill = pair
+    ? gapOf(
+        phaseSeconds(pair.naive, pair.start),
+        phaseSeconds(pair.careful, pair.start)
+      )
+    : NaN;
+  const claimGap = pair?.claim
+    ? gapOf(
+        phaseSeconds(pair.claim.ignores, pair.start),
+        phaseSeconds(pair.claim.claims, pair.start)
+      )
+    : NaN;
   const gate = empty <= 0.08;
   return {
     sub: subMean(
@@ -547,8 +571,10 @@ const evalM9: PhaseEval = ({ def, span, samples, inputs }) => {
     ),
     gate,
     gateDetail: gate ? null : `empty ${pct(empty)} > 8%`,
-    headline: `low ${pct(low)}, empty ${pct(empty)}, skill gap ${fmt(skill * 100, 1)}%`,
-    stats: { low, empty, skill },
+    headline: `low ${pct(low)}, empty ${pct(empty)}, tend gap ${fmt(skill * 100, 1)}%${
+      Number.isNaN(claimGap) ? "" : `, claim gap ${fmt(claimGap * 100, 1)}%`
+    }`,
+    stats: { low, empty, skill, claimGap },
   };
 };
 
@@ -556,11 +582,15 @@ const M10: MetricSpec = {
   id: "M10",
   name: "Income smoothness",
   weight: 4,
-  band: "0.04-0.20 decades/min, slope CV <= 0.7, plateau share <= 10% (last phase: gentle fade, -0.12 to 0.02)",
+  band: "0.04-0.20 decades/min, slope CV <= 0.7, plateau share <= 10% (last phase reads the flame: slope -0.04 to 0.05 of full a minute, full <= 10% of the time)",
   gate: "plateau share <= 20%",
 };
 const SLOPE_SPAN = 3;
-const evalM10: PhaseEval = ({ def, span, samples }) => {
+const evalM10: PhaseEval = ({ def, span, samples, sampleEvery }) => {
+  const levelsOf = (id: string): number[] =>
+    samples
+      .map((s) => s.consumables[id])
+      .filter((l): l is number => l !== null && l !== undefined);
   // 60 s windows; the first is skipped (income resets at a phase change).
   const windows: number[] = [];
   for (let k = 1; span.start + (k + 1) * MIN <= span.end + 1e-9; k += 1) {
@@ -596,16 +626,34 @@ const evalM10: PhaseEval = ({ def, span, samples }) => {
     .filter((w, i) => w / Math.max(windows[i], 1e-9) < 1.05).length;
   const plateau = share(flat, Math.max(1, windows.length - 2));
   if (span.index === def.phases.length - 1) {
-    // The last phase is about letting go: supply fades by design, so growth,
-    // CV and plateau don't apply. It must still fade gently (never a cliff,
-    // never a surge): slope between -0.12 and +0.02 decades/min.
-    return {
-      sub: bandScore(slope, between(-0.12, 0.02)),
-      gate: true,
-      gateDetail: null,
-      headline: `fading by design: slope ${fmt(slope, 3)}/min (band -0.12 to 0.02)`,
-      stats: { slope, cv, plateau },
-    };
+    // The last phase is about a flame, not income: read the watched number
+    // itself. It must hover (a slope near zero, either way), never run away
+    // upward, and not sit full.
+    const flame = def.consumables?.find((c) => levelsOf(c.id).length > 0);
+    const levels = flame ? levelsOf(flame.id) : [];
+    if (levels.length >= SLOPE_SPAN + 2) {
+      const lx = (levels.length - 1) / 2;
+      const ly = mean(levels);
+      const trend =
+        levels.reduce((sum, y, x) => sum + (x - lx) * (y - ly), 0) /
+        levels.reduce((sum, _, x) => sum + (x - lx) ** 2, 0);
+      // samples are `sampleEvery` apart; express the slope per minute
+      const perMinute = (trend * MIN) / sampleEvery;
+      const full = share(levels.filter((l) => l >= 0.97).length, levels.length);
+      const gate = full <= 0.2 && perMinute <= 0.08;
+      return {
+        sub: subMean(
+          bandScore(perMinute, between(-0.04, 0.05)),
+          bandScore(full, atMost(0.1, 0.2))
+        ),
+        gate,
+        gateDetail: gate
+          ? null
+          : `flame full ${pct(full)} (max 20%), slope ${fmt(perMinute, 3)}/min (max 0.08)`,
+        headline: `flame slope ${fmt(perMinute, 3)}/min (band -0.04 to 0.05), full ${pct(full)}`,
+        stats: { slope: perMinute, cv: 0, plateau: full },
+      };
+    }
   }
   const gate = plateau <= 0.2;
   return {
@@ -650,6 +698,42 @@ const evalM12: PhaseEval = ({ span, novelty, purchases }) => {
     gateDetail: gate ? null : `longest ${fmt(longest)} s > 180 s`,
     headline: `longest ${fmt(longest)}s, p95 ${fmt(p95)}s`,
     stats: { longest, p95 },
+  };
+};
+
+// ------------------------------------------------------------------- M15
+
+const M15: MetricSpec = {
+  id: "M15",
+  name: "Chore rate",
+  weight: 4,
+  band: "0.3-4 non-tap clicks per active minute (buying oil, steering, claiming)",
+  gate: "<= 8 non-tap clicks per active minute, and a phase's busiest minute <= 20",
+};
+const evalM15: PhaseEval = ({ span, inputs }) => {
+  const clicks = inputs.primary.actionsDone.filter(
+    (a) => a.t >= span.start && a.t < span.end
+  );
+  const minutes = Math.max(1, span.end - span.start) / MIN;
+  const rate = clicks.length / minutes;
+  const perMinute = new Map<number, number>();
+  for (const a of clicks) {
+    const m = Math.floor((a.t - span.start) / MIN);
+    perMinute.set(m, (perMinute.get(m) ?? 0) + 1);
+  }
+  const busiest = Math.max(0, ...perMinute.values());
+  const gate = rate <= 8 && busiest <= 20;
+  return {
+    sub: subMean(
+      bandScore(rate, between(0.3, 4, undefined, 8)),
+      bandScore(busiest, atMost(10, 20))
+    ),
+    gate,
+    gateDetail: gate
+      ? null
+      : `${fmt(rate, 1)} clicks/min (max 8), busiest minute ${busiest} (max 20)`,
+    headline: `${fmt(rate, 2)} non-tap clicks/min, busiest minute ${busiest}`,
+    stats: { rate, busiest, clicks: clicks.length },
   };
 };
 
@@ -785,6 +869,7 @@ const PHASE_METRICS: readonly [MetricSpec, PhaseEval][] = [
   [M9, evalM9],
   [M10, evalM10],
   [M12, evalM12],
+  [M15, evalM15],
 ];
 
 /** Metrics read from the dawdler's trace instead of the tapper's. */
@@ -843,6 +928,7 @@ export function scoreTrace(def: UniverseDef, inputs: ScoreInputs): Scorecard {
           e.t >= span.start && (i === all.length - 1 ? true : e.t < span.end)
       ),
       inputs,
+      sampleEvery: source.sampleEvery,
     }));
   const contexts = contextsOf(trace);
   const dawdlerSource = inputs.dawdler?.trace
@@ -983,12 +1069,32 @@ export function scoreUniverse(
         ? { naive: bots.naiveOil, careful: bots.cheapskateOil }
         : undefined);
     if (!pair) return;
-    const stopWhen = {
+    // Every pair starts from the same state at the phase's entry, so each gap
+    // belongs to that phase alone (not the sum of what came before).
+    const entry =
+      index === 0
+        ? undefined
+        : simulate(def, {
+            ...base,
+            strategy: bots.tapper,
+            stopWhen: (run) => run.phase >= index,
+          }).finalRun;
+    const from = {
+      ...base,
+      startRun: entry,
       stopWhen: (run: { phase: number }) => run.phase > index,
     };
+    const claimPair = bots.claim?.[index];
     skill[index] = {
-      naive: simulate(def, { ...base, strategy: pair.naive, ...stopWhen }),
-      careful: simulate(def, { ...base, strategy: pair.careful, ...stopWhen }),
+      naive: simulate(def, { ...from, strategy: pair.naive }),
+      careful: simulate(def, { ...from, strategy: pair.careful }),
+      start: entry?.time ?? 0,
+      claim: claimPair
+        ? {
+            ignores: simulate(def, { ...from, strategy: claimPair.ignores }),
+            claims: simulate(def, { ...from, strategy: claimPair.claims }),
+          }
+        : undefined,
     };
   });
 

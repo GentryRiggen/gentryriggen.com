@@ -1,6 +1,10 @@
 import type { ActionDef } from "../../engine/types";
-import { PHASE_COAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
+import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 import {
+  boatArrived,
+  boatHeadingOf,
+  isBoatOut,
+  isReadyToFlash,
   barrelOil,
   flareBonus,
   headingFactor,
@@ -15,9 +19,12 @@ import {
   isOilCheap,
   isOilDear,
   isRushOn,
+  nextFlareIn,
+  nextRushIn,
   rushBonus,
   tankCapacity,
 } from "./tick";
+import { TUNING } from "./tuning";
 import { formatNumber } from "../../engine/format";
 
 const TREND_THRESHOLD = 0.015;
@@ -32,6 +39,7 @@ const BUY_OIL: ActionDef = {
   visibleWhen: (run) => run.resources.ships >= 12,
   describe: (run) => {
     const oil = barrelOil(run);
+    const room = tankCapacity(run) - run.resources.oil;
     const price = run.resources.oilPrice;
     const tone = isOilCheap(run) ? "good" : isOilDear(run) ? "bad" : "neutral";
     const text = isOilCheap(run)
@@ -40,7 +48,14 @@ const BUY_OIL: ActionDef = {
         ? "pricey"
         : "fair";
     return {
-      label: oil < 1 ? "The tank is full" : `Buy oil (${Math.floor(oil)})`,
+      label:
+        room < 1
+          ? "The tank is full"
+          : oil < 1
+            ? "Not enough coins for oil"
+            : oil >= room - 0.5
+              ? `Buy oil, fill the tank (${Math.floor(oil)})`
+              : `Buy oil (${Math.floor(oil)})`,
       detail: `${price.toFixed(2)} a barrel ${trendArrow(
         run.resources.oilTrend
       )} · tank ${Math.floor(run.resources.oil)} of ${Math.floor(
@@ -52,13 +67,15 @@ const BUY_OIL: ActionDef = {
       trendResource: "oilPrice",
     };
   },
-  perform: (run) => {
-    run.resources.oil += barrelOil(run);
+  // The engine took `paid` coins for what the tank could take or the coins
+  // could buy; the oil is exactly what that paid for.
+  perform: (run, paid) => {
+    run.resources.oil += paid / Math.max(run.resources.oilPrice, 0.01);
   },
 };
 
 /** Steadiness at or above this has nothing to fix. */
-const GRID_STEADY = 95;
+const GRID_STEADY = 75;
 
 /** The grid strains as cities light; a free fix, whenever you like. */
 const BALANCE_GRID: ActionDef = {
@@ -75,7 +92,7 @@ const BALANCE_GRID: ActionDef = {
       label:
         steadiness >= GRID_STEADY ? "The grid is steady" : "Balance the grid",
       detail: `Steadiness ${Math.floor(steadiness)}% · cities pay ${pays}%${
-        isRushOn(run) ? " · rush hour, it strains fast" : ""
+        isRushOn(run) ? " · rush hour is waiting" : ""
       }`,
       isBlocked: steadiness >= GRID_STEADY,
       hint: { text, tone },
@@ -94,7 +111,7 @@ const RIDE_RUSH: ActionDef = {
   visibleWhen: (run) => isRushOn(run),
   describe: (run) => ({
     label: "Ride the evening rush",
-    detail: `Everyone is switching on at once: +${formatNumber(
+    detail: `Everyone is switching on at once, and it will wait for you: +${formatNumber(
       Math.floor(rushBonus(run))
     )} power`,
     hint: { text: "bonus", tone: "good" },
@@ -102,11 +119,12 @@ const RIDE_RUSH: ActionDef = {
   perform: (run) => {
     run.resources.power += rushBonus(run);
     run.resources.rush = 0;
+    run.resources.rushCooldown = nextRushIn(run);
   },
 };
 
 /** Heading at or above this has nothing to correct. */
-const ON_COURSE = 95;
+const ON_COURSE = 75;
 
 /** Probes wander as the fleet grows; a free correction points them home. */
 const CORRECT_COURSE: ActionDef = {
@@ -143,7 +161,7 @@ const CATCH_FLARE: ActionDef = {
   visibleWhen: (run) => isFlareOn(run),
   describe: (run) => ({
     label: "Catch the solar flare",
-    detail: `A burst of sunlight for the taking: +${formatNumber(
+    detail: `A burst of sunlight, waiting for you to take it: +${formatNumber(
       Math.floor(flareBonus(run))
     )} energy`,
     hint: { text: "bonus", tone: "good" },
@@ -151,6 +169,56 @@ const CATCH_FLARE: ActionDef = {
   perform: (run) => {
     run.resources.energy += flareBonus(run);
     run.resources.flare = 0;
+    run.resources.flareCooldown = nextFlareIn(run);
+  },
+};
+
+/** Heading at or above this has nothing to steer. */
+const BOAT_TRUE = 80;
+
+/** The first ship's boat drifts in the dark; tap the old beam to steer it. */
+const STEER_BOAT: ActionDef = {
+  id: "steer-boat",
+  phases: [PHASE_LAST],
+  visibleWhen: (run) => isBoatOut(run) && !boatArrived(run),
+  describe: (run) => {
+    const heading = boatHeadingOf(run);
+    const home = Math.floor(run.resources.boatProgress ?? 0);
+    const tone =
+      heading < 40 ? "bad" : heading < BOAT_TRUE ? "neutral" : "good";
+    const text =
+      heading < 40 ? "lost" : heading < BOAT_TRUE ? "drifting" : "true";
+    return {
+      label:
+        heading >= BOAT_TRUE ? "The boat is on its way" : "Tap the old beam",
+      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}%`,
+      isBlocked: heading >= BOAT_TRUE,
+      hint: { text, tone },
+      trendResource: "boatHeading",
+    };
+  },
+  perform: (run) => {
+    run.resources.boatHeading = Math.min(
+      100,
+      boatHeadingOf(run) + TUNING.last.boatSteer
+    );
+  },
+};
+
+/** The game's first action, at the very end: one flash, the boat turns home. */
+const FLASH_LAMP: ActionDef = {
+  id: "flash-lamp",
+  phases: [PHASE_LAST],
+  visibleWhen: isReadyToFlash,
+  describe: () => ({
+    label: "Flash the lamp, once",
+    detail:
+      "The boat is waiting at the edge of the dark, with one lantern lit.",
+    hint: { text: "the first ship", tone: "good" },
+  }),
+  perform: (run) => {
+    run.resources.ships = 1;
+    run.flags.finished = true;
   },
 };
 
@@ -160,4 +228,6 @@ export const ACTIONS: readonly ActionDef[] = [
   RIDE_RUSH,
   CORRECT_COURSE,
   CATCH_FLARE,
+  STEER_BOAT,
+  FLASH_LAMP,
 ];

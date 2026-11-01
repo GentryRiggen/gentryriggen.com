@@ -106,6 +106,9 @@ export interface SimResult {
 
 const FILLER_MIN_LEVELS = 10;
 
+/** A plate counts as attended for this long after one of its actions. */
+export const ATTENTION_SECONDS = 90;
+
 const MAX_EFFECT_RATIO = 100;
 /** A tiny income can't make every purchase look like a 1000% jump. */
 const INCOME_FLOOR = 0.01;
@@ -250,6 +253,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   const knownResources = new Set<string>();
   const knownPlates = new Set<string>();
   const affordableSince = new Map<string, number>();
+  const lastActionAt = new Map<string, number>();
   let nextSample = startTime;
   let lastPurchaseAt = startTime;
 
@@ -295,12 +299,24 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       .filter((g) => g.meaningful)
       .map((g) => (g.cost - (run.resources[g.currency] ?? 0)) / income.net);
     const phaseId = def.phases[run.phase].id;
-    const plates = def.plates?.(run) ?? [];
-    for (const plate of plates) {
+    const offered = def.plates?.(run) ?? [];
+    for (const plate of offered) {
       if (knownPlates.has(plate)) continue;
       knownPlates.add(plate);
       novelty.push({ t: run.time, kind: "plate", id: plate });
     }
+    const plateActions = def.plateActions ?? {};
+    const isAttended = (plate: string): boolean =>
+      (plateActions[plate] ?? []).some(
+        (id) =>
+          run.time - (lastActionAt.get(id) ?? -Infinity) <= ATTENTION_SECONDS
+      );
+    // Attention events: a tended plate counts while the player tends it, an
+    // untended one only when it is on offer and needs no action.
+    const plates = [
+      ...offered.filter((plate) => !(plate in plateActions)),
+      ...Object.keys(plateActions).filter(isAttended),
+    ];
     samples.push({
       t: run.time,
       phase: run.phase,
@@ -425,6 +441,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       for (const id of picks) {
         run = performAction(def, run, id);
         actionsDone.push({ t: run.time, id });
+        lastActionAt.set(id, run.time);
       }
     }
   };

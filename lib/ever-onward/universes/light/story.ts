@@ -242,7 +242,7 @@ const last: StoryMessage[] = [
     id: "last-choice",
     phase: PHASE_LAST,
     when: (run) => run.time > 6,
-    text: "You cannot keep every light. You can only keep one, and letting the others go is the only way to keep it warm. Choose slowly. There is no wrong order.",
+    text: "You cannot keep every light. You can only keep one, and each light you let go leaves the others a little warmer. Take your time. Any order is a good order.",
   },
   {
     id: "last-first-go",
@@ -260,7 +260,7 @@ const last: StoryMessage[] = [
     id: "last-quiet",
     phase: PHASE_LAST,
     when: (run) => res(run, "lights") <= 3,
-    text: "It is quiet now. You can hear the lamp's old hum, the one from the very first night, before the keepers and the lines and the sky.",
+    text: "It is quiet now. Far out on the dark water there is a small boat with one lantern, looking for the shore. Tap the old beam to point the way.",
   },
   {
     id: "last-one",
@@ -271,20 +271,20 @@ const last: StoryMessage[] = [
   {
     id: "last-remember",
     phase: PHASE_LAST,
-    when: (run) => owned(run, "remember") >= 1,
-    text: "The very first ship was a small boat with one lantern. A child stood at the bow and waved at the light. You never found out where they were going. You only know they got there.",
+    when: (run) => run.flags.finished === true,
+    text: "Click. The lamp is lit. One flash, and the little boat turns for home. A child at the bow waves at the light. You never found out where they were going. You only know they got there.",
   },
   {
     id: "last-end-1",
     phase: PHASE_LAST,
-    when: (run) => owned(run, "remember") >= 1,
+    when: (run) => run.flags.finished === true,
     text: "That was what the light was for. Not the coast, not the cities, not the stars. One small boat, getting home.",
   },
   {
     id: "last-end-2",
     phase: PHASE_LAST,
     when: (run) => run.flags.finished === true,
-    text: "The light stays on. Somewhere, very far away, a very small boat is still on its way home. Thank you for keeping the light on. Ever onward.",
+    text: "The light stays on. Somewhere, a very small boat is home, and a child is fast asleep. Thank you for keeping the light on. Ever onward.",
   },
 ];
 

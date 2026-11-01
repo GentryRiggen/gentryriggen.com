@@ -132,8 +132,12 @@ export interface ActionDef {
   visibleWhen?(run: RunState): boolean;
   /** Must only read. */
   describe(run: RunState): ActionView;
-  /** Applies the effect to a draft; the engine has already taken the cost. */
-  perform(run: RunState): void;
+  /**
+   * Applies the effect to a draft; the engine has already taken the cost, and
+   * says how much it took (`paid`), so an action priced by what it gives
+   * (a tank filled with whatever the coins can buy) needs no second guess.
+   */
+  perform(run: RunState, paid: number): void;
 }
 
 export interface StoryMessage {
@@ -195,6 +199,13 @@ export interface UniverseDef {
    * attention right now ("tap", "oilMarket", "storm"). Must only read.
    */
   plates?(run: RunState): string[];
+  /**
+   * Scorecard hook: plate id to the action ids that tend it. A plate listed
+   * here only counts as spinning while the player has done one of its actions
+   * in the last 90 seconds (attention events, not a dial under a line); a
+   * plate not listed counts whenever `plates` offers it.
+   */
+  plateActions?: Readonly<Record<string, readonly string[]>>;
   /** Scorecard hook: watched numbers with a refill (see `ConsumableDef`). */
   consumables?: readonly ConsumableDef[];
   /**

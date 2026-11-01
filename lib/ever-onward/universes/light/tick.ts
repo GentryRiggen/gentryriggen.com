@@ -108,20 +108,15 @@ export const tankCapacity = (run: RunState): number => {
 };
 
 /**
- * Oil one barrel brings: half a tank, never more than the tank has room for
- * or most of the bank can pay for (a poor lighthouse still gets a small barrel).
+ * Oil one click brings: enough to fill the tank, or as much as the coins can
+ * pay for. One click, one full tank: no shrinking barrels to tap through.
  */
 export const barrelOil = (run: RunState): number =>
   Math.max(
     0,
     Math.min(
-      Math.max(C.barrelMin, tankCapacity(run) * C.barrelShare),
       tankCapacity(run) - res(run, "oil"),
-      Math.max(
-        C.barrelMin,
-        (res(run, "coins") * C.barrelCoinShare) /
-          Math.max(res(run, "oilPrice"), 0.01)
-      )
+      res(run, "coins") / Math.max(res(run, "oilPrice"), 0.01)
     )
   );
 
@@ -134,11 +129,9 @@ export const isOilDear = (run: RunState): boolean =>
 /** Buys one barrel at today's price (the action and the merchant use this). */
 export function buyBarrel(run: RunState): void {
   const oil = barrelOil(run);
-  const price = run.resources.oilPrice;
-  const affordable = Math.min(oil, run.resources.coins / price);
-  if (affordable <= 0) return;
-  run.resources.oil += affordable;
-  run.resources.coins -= affordable * price;
+  if (oil <= 0) return;
+  run.resources.oil += oil;
+  run.resources.coins -= oil * run.resources.oilPrice;
 }
 
 function driftOilPrice(run: RunState, dt: number): void {
@@ -171,6 +164,14 @@ function merchantBuys(run: RunState): void {
   }
 }
 
+/** Notes when (and in what weather) the very first ship was guided. */
+function logFirstShip(run: RunState): void {
+  if (run.flags.firstShip || res(run, "ships") < 1) return;
+  run.flags.firstShip = true;
+  run.resources.firstShipAt = Math.max(0.001, run.time);
+  run.resources.firstShipStorm = isStorming(run) ? 1 : 0;
+}
+
 function updateStorm(run: RunState, dt: number): void {
   if (run.resources.storm > 0) {
     run.resources.storm = Math.max(0, run.resources.storm - dt);
@@ -200,6 +201,7 @@ function tickCoast(run: RunState, dt: number): void {
     run.resources.oil - burnPerSecond(run, shipsPerSecond) * dt
   );
   merchantBuys(run);
+  logFirstShip(run);
 }
 
 /** What the coast costs to run, per second, in coins (oil at today's price). */
@@ -254,7 +256,6 @@ export const gridLoad = (run: RunState): number =>
 export function strainPerSecond(run: RunState): number {
   return (
     (N.strainBase + N.strainPerLoad * gridLoad(run)) *
-    (isRushOn(run) ? N.rushStrainMult : 1) *
     N.balancerSaving ** Math.min(1, tier(run, "grid"))
   );
 }
@@ -272,20 +273,18 @@ export const powerPerSecond = (run: RunState): number =>
 export const rushBonus = (run: RunState): number =>
   N.rushBonusSeconds * (powerPerSecond(run) + crankPower(run) * 3);
 
-/** Strain builds, the rush comes and goes, a smart grid fixes itself. */
+/**
+ * Strain builds. The evening rush opens once its timer runs out and then
+ * waits, as long as it takes, until it is claimed (see `ride-rush`).
+ */
 function updateGrid(run: RunState, dt: number): void {
   const r = run.resources;
   if (!isGridInPlay(run)) return;
   r.grid = Math.max(0, gridSteadiness(run) - strainPerSecond(run) * dt);
   if (isGridAuto(run) && r.grid < N.autoBalanceBelow) r.grid = N.autoBalanceTo;
-  if (r.rush > 0) {
-    r.rush = Math.max(0, r.rush - dt);
-    return;
-  }
+  if (r.rush > 0) return;
   r.rushCooldown -= dt;
-  if (r.rushCooldown > 0) return;
-  r.rush = N.rushLength;
-  r.rushCooldown = N.rushGapMin + nextRandom(run) * N.rushGapSpread;
+  if (r.rushCooldown <= 0) r.rush = 1;
 }
 
 function tickNight(run: RunState, dt: number): void {
@@ -374,7 +373,10 @@ export const flareBonus = (run: RunState): number =>
     probeEnergyPerSecond(run) +
     aimEnergy(run) * 3);
 
-/** Drift builds, flares come and go, charts and a navigator fix the course. */
+/**
+ * Drift builds, charts and a navigator fix the course. A solar flare opens
+ * once its timer runs out and waits until it is caught (see `catch-flare`).
+ */
 function updateSkyEvents(run: RunState, dt: number): void {
   const r = run.resources;
   if (isCourseInPlay(run)) {
@@ -383,16 +385,16 @@ function updateSkyEvents(run: RunState, dt: number): void {
       r.heading = S.autoCorrectTo;
   }
   // Flares come as soon as there is a collector to catch one.
-  if (res(run, "collectors") < 1) return;
-  if (r.flare > 0) {
-    r.flare = Math.max(0, r.flare - dt);
-    return;
-  }
+  if (res(run, "collectors") < 1 || r.flare > 0) return;
   r.flareCooldown -= dt;
-  if (r.flareCooldown > 0) return;
-  r.flare = S.flareLength;
-  r.flareCooldown = S.flareGapMin + nextRandom(run) * S.flareGapSpread;
+  if (r.flareCooldown <= 0) r.flare = 1;
 }
+
+/** The wait before the next evening rush (or flare) once one is claimed. */
+export const nextRushIn = (run: RunState): number =>
+  N.rushGapMin + nextRandom(run) * N.rushGapSpread;
+export const nextFlareIn = (run: RunState): number =>
+  S.flareGapMin + nextRandom(run) * S.flareGapSpread;
 
 function tickSky(run: RunState, dt: number): void {
   updateSkyEvents(run, dt);
@@ -422,25 +424,105 @@ function tickSky(run: RunState, dt: number): void {
 export const lightsLetGo = (run: RunState): number =>
   Object.keys(run.owned).filter((id) => id.startsWith("letgo-")).length;
 
-export function decayPerSecond(run: RunState): number {
-  const lights = res(run, "lights");
+/** What each light you let go leaves behind. */
+export type LetGoGift = "fade" | "burst" | "taps";
+
+/** In the order the lights are offered: three on offer always differ a little. */
+export const LET_GO_GIFTS: Readonly<Record<string, LetGoGift>> = {
+  "letgo-porch": "fade",
+  "letgo-signs": "burst",
+  "letgo-stadium": "taps",
+  "letgo-bridges": "fade",
+  "letgo-harbor": "taps",
+  "letgo-towers": "burst",
+  "letgo-festival": "burst",
+  "letgo-fire": "fade",
+  "letgo-moon": "taps",
+  "letgo-sun": "fade",
+  "letgo-night": "burst",
+};
+
+const giftsOwned = (run: RunState, gift: LetGoGift): number =>
+  Object.entries(LET_GO_GIFTS).filter(
+    ([id, g]) => g === gift && level(run, id) > 0
+  ).length;
+
+/** The flame, 0..flameFull; a save from before the flame starts it lit. */
+export const flameOf = (run: RunState): number =>
+  Math.min(L.flameFull, Math.max(0, run.resources.flame ?? L.startFlame));
+
+export const flameFraction = (run: RunState): number =>
+  flameOf(run) / L.flameFull;
+
+/** Share of the flame lost each second. */
+export function fadeRate(run: RunState): number {
   return (
-    lights *
+    (res(run, "lights") + L.darkness) *
     L.decayPerLight *
-    L.shieldSaving ** level(run, "shield") *
+    L.fadeSaving ** giftsOwned(run, "fade") *
     (1 - L.brightDecay * (run.mods.bright ?? 0))
   );
 }
 
-export const lastTapEnergy = (run: RunState): number =>
-  L.tapEnergy * (1 + L.glassBonus * level(run, "glass")) * tapMult(run);
+/** A tap is worth more for every moon-like light let go. */
+export const tapGiftMult = (run: RunState): number =>
+  1 + L.tapGift * giftsOwned(run, "taps");
+
+export const lastTapFlame = (run: RunState): number =>
+  L.tapFlame * tapGiftMult(run) * tapMult(run);
+
+export const lastTapResolve = (run: RunState): number =>
+  L.resolvePerTap * tapGiftMult(run);
+
+/** Flame the lantern holds at when tapped `tapsPerSecond` times a second. */
+export const steadyFlame = (run: RunState, tapsPerSecond = 3): number =>
+  Math.min(
+    L.flameFull,
+    (lastTapFlame(run) * tapsPerSecond) / Math.max(fadeRate(run), 1e-6)
+  );
+
+/** Resolve per second: a cold flame is slow (never stopped), letting go helps. */
+export function resolvePerSecond(run: RunState): number {
+  const warmth = L.flameFloor + (1 - L.flameFloor) * flameFraction(run);
+  return (
+    L.resolvePerSecond *
+    (1 + L.reliefPerLetGo * lightsLetGo(run)) *
+    warmth *
+    speed(run)
+  );
+}
+
+export const isBoatOut = (run: RunState): boolean =>
+  run.phase === 3 && res(run, "lights") <= L.boatAtLights;
+
+export const boatHeadingOf = (run: RunState): number =>
+  Math.min(100, Math.max(0, run.resources.boatHeading ?? 100));
+
+export const boatArrived = (run: RunState): boolean =>
+  res(run, "boatProgress") >= 100;
+
+/** How fast the boat sails: floor..1 of full pace, by how true its heading is. */
+export const boatPace = (run: RunState): number =>
+  L.boatFloor + (1 - L.boatFloor) * (boatHeadingOf(run) / 100);
+
+/** The last light is up and the first ship waits for one flash. */
+export const isReadyToFlash = (run: RunState): boolean =>
+  run.phase === 3 &&
+  res(run, "lights") <= 1 &&
+  boatArrived(run) &&
+  run.flags.finished !== true;
 
 function tickLast(run: RunState, dt: number): void {
-  run.resources.energy = Math.max(
-    0,
-    run.resources.energy - decayPerSecond(run) * dt
+  const r = run.resources;
+  const flame = flameOf(run);
+  r.flame = Math.min(L.flameFull, flame * Math.exp(-fadeRate(run) * dt));
+  r.resolve += resolvePerSecond(run) * dt;
+  if (!isBoatOut(run) || boatArrived(run)) return;
+  r.boatHeading = Math.max(0, boatHeadingOf(run) - L.boatDrift * dt);
+  r.boatProgress = Math.min(
+    100,
+    res(run, "boatProgress") + (100 / L.boatSeconds) * boatPace(run) * dt
   );
-  run.resources.resolve += L.resolvePerSecond * speed(run) * dt;
 }
 
 // ------------------------------------------------------------------- Shared
@@ -478,14 +560,14 @@ export function manualLight(run: RunState): void {
     const flashes = shipsPerFlash(run);
     r.ships += flashes;
     r.coins += coastTapCoins(run);
+    logFirstShip(run);
   } else if (phase === 1) {
     r.power += crankPower(run);
   } else if (phase === 2) {
     r.energy += aimEnergy(run);
   } else {
-    r.energy += lastTapEnergy(run);
-    r.resolve += L.resolvePerTap;
-    if (r.lights <= 1 && level(run, "remember") > 0) run.flags.finished = true;
+    r.flame = Math.min(L.flameFull, flameOf(run) + lastTapFlame(run));
+    r.resolve += lastTapResolve(run);
   }
 }
 

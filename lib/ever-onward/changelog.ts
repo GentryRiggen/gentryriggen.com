@@ -19,12 +19,16 @@ export const CHANGELOG: readonly Release[] = [
   {
     version: "1.5.0",
     date: "2026-11-01",
-    title: "More to juggle",
+    title: "More to juggle, and a new ending",
     highlights: [
-      "No More Night: as cities light up, the grid gets wobbly. Tap Balance the grid to keep the lights steady, or ride the evening rush for a bonus",
-      "The Sky: your probes drift off course. Send a course correction to keep them on track, and catch solar flares for a boost",
+      "No More Night: as cities light up, the grid gets wobbly. Tap Balance the grid to keep the lights steady",
+      "The Sky: your probes drift off course. Send a course correction to keep them on track",
+      "The evening rush and solar flares now wait for you. They stay until you take them, and nothing is lost if you wait",
+      "One tap on Buy oil now fills your whole lamp-oil tank, or as much as your coins can buy",
       "Oil prices swing more, so buying low really pays off",
       "New upgrades fill the quiet stretches, and taking a star now pays energy right away",
+      "The Last Light is new: the first ship that ever sailed past comes home. Let the lights go in any order, and each one leaves a gift",
+      "When three lights are left, a small boat with one lantern appears on the dark sea. Tap the old beam to steer it, then flash the lamp once to bring it home",
     ],
   },
   {

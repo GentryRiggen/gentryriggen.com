@@ -10,7 +10,12 @@ import {
   collectorEnergyPerSecond,
   copySpeed,
   crankPower,
-  decayPerSecond,
+  flameFraction,
+  flameOf,
+  lastTapResolve,
+  steadyFlame,
+  LET_GO_GIFTS,
+  type LetGoGift,
   demandMW,
   driftPerSecond,
   isCourseAuto,
@@ -19,7 +24,6 @@ import {
   strainPerSecond,
   fare,
   idleBurn,
-  lastTapEnergy,
   lighthouseCount,
   shipsPerFlash,
   stormPassive,
@@ -725,78 +729,61 @@ const skyUpgrades: UpgradeDef[] = [
   }),
 ];
 
-const letGoUpgrades: UpgradeDef[] = LET_GO.map((light, i) => ({
-  id: light.id,
-  name: light.name,
-  description: `${light.text} Gives back some energy and lowers the cost of keeping the rest.`,
-  phases: last,
-  currency: "resolve",
-  baseCost: COSTS[light.id],
-  costGrowth: 1,
-  priority: 0,
-  visibleWhen: (run: RunState) => i < 1 || lightsOnOffer(run, i),
-  onBuy: (run: RunState) => {
-    run.resources.energy += 200;
-    sync(run);
-  },
-  effectPreview: previewOf(light.id, [
-    { label: "Lights lit", read: (r) => r.resources.lights, format: short },
-    { label: "Fade/sec", read: decayPerSecond },
-  ]),
-}));
+/** What each gift reads like on its card. */
+const GIFT_TEXT = {
+  fade: "The rest of the lights fade slower.",
+  burst: "The flame leaps up, brighter for a while.",
+  taps: "Every tap of the flame is worth more.",
+} as const;
 
-/** Each light waits until the one before it has been let go. */
-function lightsOnOffer(run: RunState, index: number): boolean {
-  return owned(run, LET_GO[index - 1].id) > 0;
-}
+const GIFT_STATS: Record<LetGoGift, readonly Stat[]> = {
+  fade: [
+    {
+      label: "Flame holds at",
+      read: (run) => (steadyFlame(run) / TUNING.last.flameFull) * 100,
+      suffix: "%",
+    },
+  ],
+  burst: [
+    {
+      label: "Flame",
+      read: (run) => flameFraction(run) * 100,
+      suffix: "%",
+    },
+  ],
+  taps: [
+    {
+      label: "Resolve per tap",
+      read: lastTapResolve,
+    },
+  ],
+};
 
-const lastUpgrades: UpgradeDef[] = [
-  {
-    id: "shield",
-    name: "Cup your hands around the flame",
-    description: "The remaining lights fade 12% slower.",
+const letGoUpgrades: UpgradeDef[] = LET_GO.map((light) => {
+  const gift = LET_GO_GIFTS[light.id];
+  return {
+    id: light.id,
+    name: light.name,
+    description: `${light.text} ${GIFT_TEXT[gift]} Every light let go makes the next easier.`,
     phases: last,
-    currency: "energy",
-    baseCost: COSTS.shield,
-    costGrowth: 1.6,
-    maxLevel: 2,
-    visibleWhen: (run) => owned(run, "letgo-bridges") > 0,
-    priority: 1,
-    onBuy: sync,
-    effectPreview: previewOf("shield", [
-      { label: "Fade/sec", read: decayPerSecond },
-    ]),
-  },
-  {
-    id: "glass",
-    name: "Polish the old glass",
-    description: "Each tap of the flame gives 25% more.",
-    phases: last,
-    currency: "energy",
-    baseCost: COSTS.glass,
-    costGrowth: 1.6,
-    maxLevel: 2,
-    visibleWhen: (run) => owned(run, "letgo-towers") > 0,
-    onBuy: sync,
-    effectPreview: previewOf("glass", [
-      { label: "Energy per tap", read: lastTapEnergy },
-    ]),
-  },
-  {
-    id: "remember",
-    name: "Remember the very first ship",
-    description:
-      "One small boat, one lantern, one child waving from the bow. Hold on to that.",
-    phases: last,
-    currency: "energy",
-    baseCost: COSTS.remember,
+    currency: "resolve",
+    baseCost: COSTS[light.id],
     costGrowth: 1,
-    visibleWhen: (run) => run.resources.lights <= 1,
-    priority: 5,
-    onBuy: sync,
-    effectPreview: () => "The last light holds",
-  },
-];
+    priority: 0,
+    onBuy: (run: RunState) => {
+      if (gift === "burst")
+        run.resources.flame = Math.min(
+          TUNING.last.flameFull,
+          flameOf(run) + TUNING.last.burstFlame
+        );
+      sync(run);
+    },
+    effectPreview: previewOf(light.id, [
+      { label: "Lights lit", read: (r) => r.resources.lights, format: short },
+      ...GIFT_STATS[gift],
+    ]),
+  };
+});
 
 /** Scorecard tags: the upgrades that bring a new system or action. */
 const MECHANICS: ReadonlySet<string> = new Set([
@@ -807,7 +794,6 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "collector",
   "probe",
   "letgo-porch",
-  "remember",
   "grid-1",
   "grid-2",
   "nav-1",
@@ -819,7 +805,6 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...nightUpgrades,
   ...skyUpgrades,
   ...letGoUpgrades,
-  ...lastUpgrades,
 ].map((upgrade) => ({
   ...upgrade,
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",

@@ -462,6 +462,33 @@ html:has(.jim-app) body {
   }
 }
 
+@keyframes lmFlash {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lmTurn {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(4px, -2px) rotate(14deg);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translate(64px, -6px) rotate(-4deg) scale(0.6);
+  }
+}
+
 @keyframes lmApproach {
   0% {
     opacity: 0;
@@ -683,6 +710,14 @@ html:has(.jim-app) body {
   animation: lmApproach 14s ease-out both;
 }
 
+.lm-flash {
+  animation: lmFlash 2.4s ease-out both;
+}
+
+.lm-turn {
+  animation: lmTurn 4s ease-in-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lm-pop,
   .lm-glow,
@@ -719,7 +754,9 @@ html:has(.jim-app) body {
   .lm-probe-a,
   .lm-probe-b,
   .lm-probe-c,
-  .lm-approach {
+  .lm-approach,
+  .lm-flash,
+  .lm-turn {
     animation: none;
   }
 }

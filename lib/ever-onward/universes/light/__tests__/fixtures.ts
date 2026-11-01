@@ -22,8 +22,10 @@ export function oilActions(run: RunState, available: readonly string[]) {
       id === "balance-grid" ? run.resources.grid : run.resources.heading;
     if (available.includes(id) && level < 45) picks.push(id);
   }
-  for (const id of ["ride-rush", "catch-flare"])
+  for (const id of ["ride-rush", "catch-flare", "flash-lamp"])
     if (available.includes(id)) picks.push(id);
+  if (available.includes("steer-boat") && run.resources.boatHeading < 50)
+    picks.push("steer-boat");
   if (!available.includes("buy-oil")) return picks;
   const capacity = tankCapacity(run);
   const { oil, oilPrice } = run.resources;
@@ -53,7 +55,14 @@ export const ACTIVE: Strategy = {
 };
 
 /** Resources a player spends; draining them is the worst a player can do. */
-const SPENDABLE = ["coins", "oil", "power", "energy", "resolve"] as const;
+const SPENDABLE = [
+  "coins",
+  "oil",
+  "power",
+  "energy",
+  "resolve",
+  "flame",
+] as const;
 
 export function drain(run: RunState): RunState {
   const resources = { ...run.resources };
