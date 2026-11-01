@@ -19,6 +19,86 @@
     "hash": "d18faf0e5241",
     "durationGuess": 24
   },
+  "light/cut-coast-1": {
+    "file": "/ever-onward/voice/light/cut-coast-1.mp3",
+    "hash": "bf18ef260093",
+    "durationGuess": 7
+  },
+  "light/cut-coast-2": {
+    "file": "/ever-onward/voice/light/cut-coast-2.mp3",
+    "hash": "d330b5fb134f",
+    "durationGuess": 8
+  },
+  "light/cut-coast-3": {
+    "file": "/ever-onward/voice/light/cut-coast-3.mp3",
+    "hash": "0952a5c535d0",
+    "durationGuess": 17
+  },
+  "light/cut-coast-4": {
+    "file": "/ever-onward/voice/light/cut-coast-4.mp3",
+    "hash": "74f40a0cb6af",
+    "durationGuess": 9
+  },
+  "light/cut-night-1": {
+    "file": "/ever-onward/voice/light/cut-night-1.mp3",
+    "hash": "0d75b408b521",
+    "durationGuess": 6
+  },
+  "light/cut-night-2": {
+    "file": "/ever-onward/voice/light/cut-night-2.mp3",
+    "hash": "633f86bc3c9b",
+    "durationGuess": 8
+  },
+  "light/cut-night-3": {
+    "file": "/ever-onward/voice/light/cut-night-3.mp3",
+    "hash": "39e8fdc8773f",
+    "durationGuess": 17
+  },
+  "light/cut-night-4": {
+    "file": "/ever-onward/voice/light/cut-night-4.mp3",
+    "hash": "8e5d38d48917",
+    "durationGuess": 10
+  },
+  "light/cut-sky-1": {
+    "file": "/ever-onward/voice/light/cut-sky-1.mp3",
+    "hash": "0e35d67b5e10",
+    "durationGuess": 8
+  },
+  "light/cut-sky-2": {
+    "file": "/ever-onward/voice/light/cut-sky-2.mp3",
+    "hash": "8cc114410b05",
+    "durationGuess": 8
+  },
+  "light/cut-sky-3": {
+    "file": "/ever-onward/voice/light/cut-sky-3.mp3",
+    "hash": "92aad89407e1",
+    "durationGuess": 17
+  },
+  "light/cut-sky-4": {
+    "file": "/ever-onward/voice/light/cut-sky-4.mp3",
+    "hash": "e1f7101be998",
+    "durationGuess": 10
+  },
+  "light/cut-last-1": {
+    "file": "/ever-onward/voice/light/cut-last-1.mp3",
+    "hash": "eb2314e73818",
+    "durationGuess": 9
+  },
+  "light/cut-last-2": {
+    "file": "/ever-onward/voice/light/cut-last-2.mp3",
+    "hash": "19c2a763b9b1",
+    "durationGuess": 10
+  },
+  "light/cut-last-3": {
+    "file": "/ever-onward/voice/light/cut-last-3.mp3",
+    "hash": "4cf8d011cbfe",
+    "durationGuess": 25
+  },
+  "light/cut-last-4": {
+    "file": "/ever-onward/voice/light/cut-last-4.mp3",
+    "hash": "4b1655589a49",
+    "durationGuess": 9
+  },
   "light/coast-hello": {
     "file": "/ever-onward/voice/light/coast-hello.mp3",
     "hash": "637b84c9d9e0",
@@ -373,6 +453,86 @@
     "file": "/ever-onward/voice/grow/intro-seed.mp3",
     "hash": "5591dd1c0d2a",
     "durationGuess": 33
+  },
+  "grow/cut-yard-1": {
+    "file": "/ever-onward/voice/grow/cut-yard-1.mp3",
+    "hash": "b68147b4f363",
+    "durationGuess": 8
+  },
+  "grow/cut-yard-2": {
+    "file": "/ever-onward/voice/grow/cut-yard-2.mp3",
+    "hash": "387d2c9b43c1",
+    "durationGuess": 9
+  },
+  "grow/cut-yard-3": {
+    "file": "/ever-onward/voice/grow/cut-yard-3.mp3",
+    "hash": "ca00c1f4885c",
+    "durationGuess": 18
+  },
+  "grow/cut-yard-4": {
+    "file": "/ever-onward/voice/grow/cut-yard-4.mp3",
+    "hash": "768dd18f9016",
+    "durationGuess": 9
+  },
+  "grow/cut-farm-1": {
+    "file": "/ever-onward/voice/grow/cut-farm-1.mp3",
+    "hash": "7505ea616015",
+    "durationGuess": 7
+  },
+  "grow/cut-farm-2": {
+    "file": "/ever-onward/voice/grow/cut-farm-2.mp3",
+    "hash": "d26df7315f70",
+    "durationGuess": 9
+  },
+  "grow/cut-farm-3": {
+    "file": "/ever-onward/voice/grow/cut-farm-3.mp3",
+    "hash": "28740a21be15",
+    "durationGuess": 18
+  },
+  "grow/cut-farm-4": {
+    "file": "/ever-onward/voice/grow/cut-farm-4.mp3",
+    "hash": "73b4aaa2b208",
+    "durationGuess": 9
+  },
+  "grow/cut-world-1": {
+    "file": "/ever-onward/voice/grow/cut-world-1.mp3",
+    "hash": "e18af49dc28a",
+    "durationGuess": 6
+  },
+  "grow/cut-world-2": {
+    "file": "/ever-onward/voice/grow/cut-world-2.mp3",
+    "hash": "7065b1d3352c",
+    "durationGuess": 10
+  },
+  "grow/cut-world-3": {
+    "file": "/ever-onward/voice/grow/cut-world-3.mp3",
+    "hash": "f11978d15fd0",
+    "durationGuess": 20
+  },
+  "grow/cut-world-4": {
+    "file": "/ever-onward/voice/grow/cut-world-4.mp3",
+    "hash": "177c751aeafc",
+    "durationGuess": 10
+  },
+  "grow/cut-seed-1": {
+    "file": "/ever-onward/voice/grow/cut-seed-1.mp3",
+    "hash": "6e1ad430eda9",
+    "durationGuess": 8
+  },
+  "grow/cut-seed-2": {
+    "file": "/ever-onward/voice/grow/cut-seed-2.mp3",
+    "hash": "11c71d7d5ab3",
+    "durationGuess": 10
+  },
+  "grow/cut-seed-3": {
+    "file": "/ever-onward/voice/grow/cut-seed-3.mp3",
+    "hash": "9af33a335edf",
+    "durationGuess": 18
+  },
+  "grow/cut-seed-4": {
+    "file": "/ever-onward/voice/grow/cut-seed-4.mp3",
+    "hash": "8a4e06c276b3",
+    "durationGuess": 10
   },
   "grow/yard-hello": {
     "file": "/ever-onward/voice/grow/yard-hello.mp3",
