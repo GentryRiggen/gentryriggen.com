@@ -17,6 +17,7 @@ import {
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
 import { upkeepRate } from "@/lib/ever-onward/engine/rate";
+import { hasAnyUpgrade } from "@/lib/ever-onward/engine/ownedUpgrades";
 import {
   canRestart,
   emberReward,
@@ -51,6 +52,8 @@ import StickyHud from "./StickyHud";
 import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
+import UpgradesDialog from "./UpgradesDialog";
+import UpgradesIcon from "./UpgradesIcon";
 import VisitorCard from "./VisitorCard";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
@@ -124,8 +127,15 @@ export default function GameScreen({
     overlay === null;
   const [isEmberDialogOpen, setIsEmberDialogOpen] = useState(false);
   const emberButtonRef = useRef<HTMLButtonElement>(null);
-  // A new part's intro covers everything: close the dialog behind it.
+  const [isUpgradesOpen, setIsUpgradesOpen] = useState(false);
+  const upgradesButtonRef = useRef<HTMLButtonElement>(null);
+  // A new part's intro covers everything: close the dialogs behind it.
   if (isEmberDialogOpen && overlay !== null) setIsEmberDialogOpen(false);
+  if (isUpgradesOpen && overlay !== null) setIsUpgradesOpen(false);
+  // Anything modal (cutscene, ending, either dialog) makes the game behind it
+  // inert: no clicks, no focus, hidden from screen readers.
+  const isCovered = overlay !== null || isEmberDialogOpen || isUpgradesOpen;
+  const showsUpgradesButton = hasAnyUpgrade(def, universe);
 
   const primaryId = primaryResourceId(def, run);
   const primaryValue = run.resources[primaryId] ?? 0;
@@ -204,6 +214,11 @@ export default function GameScreen({
     window.setTimeout(() => emberButtonRef.current?.focus(), 0);
   }, []);
 
+  const handleCloseUpgrades = useCallback(() => {
+    setIsUpgradesOpen(false);
+    window.setTimeout(() => upgradesButtonRef.current?.focus(), 0);
+  }, []);
+
   const handleSelectNext = () => {
     if (!next) return;
     document.getElementById(upgradeElementId(next.upgrade.id))?.scrollIntoView({
@@ -245,7 +260,7 @@ export default function GameScreen({
         <CrtOverlay />
       </div>
       <div
-        inert={overlay !== null}
+        inert={isCovered}
         className="sticky top-[var(--eo-hud-h)] z-20 h-[24dvh] min-h-36 w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
         <div data-testid="lm-scene-frame" className="h-full">
@@ -259,7 +274,7 @@ export default function GameScreen({
         </div>
       </div>
       <main
-        inert={overlay !== null}
+        inert={isCovered}
         className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h)+1rem)]"
       >
         <header className="flex items-start justify-between gap-3">
@@ -277,6 +292,20 @@ export default function GameScreen({
           </div>
           <div className="flex shrink-0 gap-2 [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
             <SoundControls />
+            {showsUpgradesButton && (
+              <button
+                ref={upgradesButtonRef}
+                type="button"
+                data-testid="lm-upgrades-button"
+                aria-haspopup="dialog"
+                aria-expanded={isUpgradesOpen}
+                aria-label="Your upgrades"
+                onClick={() => setIsUpgradesOpen(true)}
+                className={`${retroSecondaryButtonClass} shrink-0 px-2.5!`}
+              >
+                <UpgradesIcon className="h-4" />
+              </button>
+            )}
             {showsEmbersButton && (
               <button
                 ref={emberButtonRef}
@@ -349,7 +378,7 @@ export default function GameScreen({
           def={def}
           run={run}
           endingIds={ui.ending.storyIds}
-          isCovered={overlay !== null}
+          isCovered={isCovered}
         />
 
         {showsEmberTip && (
@@ -425,7 +454,7 @@ export default function GameScreen({
           label={phase.manualLabel}
           look={ui.tapLooks[Math.min(run.phase, ui.tapLooks.length - 1)]}
           isStorm={isStorm}
-          isCovered={overlay !== null}
+          isCovered={isCovered}
           onTap={onTap}
         />
       )}
@@ -433,7 +462,7 @@ export default function GameScreen({
       {!run.complete && (
         <StickyHud
           hudRef={hudRef}
-          isCovered={overlay !== null}
+          isCovered={isCovered}
           resourceId={primaryId}
           resourceLabel={primaryLabel}
           value={primaryValue}
@@ -454,6 +483,14 @@ export default function GameScreen({
           onBuy={onBuyEmber}
           onRestart={onRestart}
           onClose={handleCloseEmbers}
+        />
+      )}
+
+      {isUpgradesOpen && (
+        <UpgradesDialog
+          def={def}
+          universe={universe}
+          onClose={handleCloseUpgrades}
         />
       )}
 

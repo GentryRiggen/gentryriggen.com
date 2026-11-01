@@ -166,6 +166,20 @@ export const EMBER_ROWS = [
 
 export const EMBER_COLORS: Palette = { O: "#fb923c", Y: "#fde047" };
 
+/** A chunky up arrow on a step: the "Your upgrades" icon. */
+export const UPGRADES_ROWS = [
+  "...G...",
+  "..GGG..",
+  ".GGGGG.",
+  "GGGGGGG",
+  "..GGG..",
+  "..GGG..",
+  "YYYYYYY",
+  "YYYYYYY",
+] as const;
+
+export const UPGRADES_COLORS: Palette = { G: "#86efac", Y: "#fde047" };
+
 /** A seedling in a pot (11 x 12): the Make It Grow hub card, lit and dim. */
 export const SEEDLING_ROWS: readonly string[] = [
   "..GG...GG..",

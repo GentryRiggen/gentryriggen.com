@@ -113,6 +113,14 @@ export default function EmberPanel({
                       ▶︎
                     </span>
                     {u.name}
+                    {level > 0 && (
+                      <span
+                        data-testid="lm-active-tag"
+                        className="ml-2 inline-block border-2 border-emerald-300 bg-emerald-950 px-1.5 py-0.5 align-middle text-[8px] text-emerald-200"
+                      >
+                        Active
+                      </span>
+                    )}
                   </span>
                   <span
                     className={`${pixelClass} shrink-0 text-[10px] tabular-nums`}
