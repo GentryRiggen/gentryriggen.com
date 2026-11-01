@@ -185,7 +185,18 @@ export default function GameScreen({
         inert={overlay !== null}
         className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
-        {Scene && <Scene run={run} />}
+        {/* On phones the sticky HUD slides over the top of the scene, so the
+            picture shrinks into the space below it (the SVG keeps its aspect
+            ratio). On wide screens the HUD sits beside the scene instead. */}
+        <div
+          data-testid="lm-scene-frame"
+          data-hud={isHudShown ? "shown" : "hidden"}
+          className={`h-full transition-[padding] duration-300 motion-reduce:transition-none lg:pt-0 ${
+            isHudShown ? "pt-[calc(5.75rem+env(safe-area-inset-top))]" : ""
+          }`}
+        >
+          {Scene && <Scene run={run} />}
+        </div>
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"

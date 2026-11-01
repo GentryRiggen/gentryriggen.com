@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.6.1",
+    date: "2026-11-01",
+    title: "Play along with your podcast",
+    highlights: [
+      "The game's music and sounds now play alongside your podcast or music instead of stopping it. Like most games, they follow the silent switch",
+      "With music and sound both off, the game never touches your audio at all",
+      "When the power bar slides down from the top, the picture shrinks to fit underneath it, so nothing is hidden",
+    ],
+  },
+  {
     version: "1.6.0",
     date: "2026-11-01",
     title: "Visitors, a steady glow, and your own lantern",

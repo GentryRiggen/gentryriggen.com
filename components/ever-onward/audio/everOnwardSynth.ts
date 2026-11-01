@@ -1,3 +1,4 @@
+import { mixWithOtherAudio } from "@/components/game-audio/audioSession";
 import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
 import { midiToHz } from "../../game-audio/music";
 import {
@@ -93,6 +94,7 @@ function createSynth() {
   function build(): Engine | null {
     const Ctor = audioContextConstructor();
     if (!Ctor) return null;
+    mixWithOtherAudio();
     try {
       const ctx = new Ctor();
       const master = ctx.createGain();
@@ -271,6 +273,9 @@ function createSynth() {
     /** Creates (first call) and resumes the context. Call from a gesture. */
     enable(): boolean {
       if (isEnabled) return true;
+      // With music and sound both off, never open an audio session at all,
+      // so the game stays silent and can't touch the player's podcast.
+      if (!isMusicOn && !isEffectsOn) return false;
       engine ??= build();
       if (!engine) return false;
       void engine.ctx.resume?.();
