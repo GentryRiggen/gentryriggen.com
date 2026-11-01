@@ -98,7 +98,7 @@ describe("Little Machines game", () => {
     const list = screen.getByRole("region", { name: "Upgrades" });
     const buyable = within(list)
       .getAllByRole("button")
-      .find((b) => !(b as HTMLButtonElement).disabled);
+      .find((b) => b.getAttribute("aria-disabled") !== "true");
     expect(buyable).toBeDefined();
     await user.click(buyable as HTMLElement);
 
@@ -134,6 +134,35 @@ describe("Little Machines game", () => {
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
     expect(await screen.findByTestId("lm-phase-overlay")).toHaveTextContent(
       "The Coast"
+    );
+  });
+
+  it("fills in resources a saved run is missing instead of showing NaN", async () => {
+    const run = startedRun();
+    delete run.resources.oil;
+    delete run.resources.keepers;
+    saveWith(run);
+    const user = userEvent.setup();
+    render(<LittleMachines />);
+    await user.click(await screen.findByRole("button", { name: /Continue/ }));
+    expect(screen.getByTestId("lm-res-oil")).toHaveTextContent("0");
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+  });
+
+  it("ignores taps and buys while a phase moment is open", async () => {
+    const run = startedRun();
+    run.owned.lighthouse = COAST_LIGHTHOUSES - 1;
+    run.resources.coins = 1_000_000;
+    saveWith(run);
+    const user = userEvent.setup();
+    render(<LittleMachines />);
+    await user.click(await screen.findByRole("button", { name: /Continue/ }));
+    await waitFor(() => screen.getByTestId("lm-phase-overlay"));
+    const before = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");
+    await user.click(screen.getByTestId("lm-tap"));
+    const after = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");
+    expect(after.universes.light.run.taps).toBe(
+      before.universes.light.run.taps
     );
   });
 });

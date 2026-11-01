@@ -28,9 +28,12 @@ export default function StoryLog({ def, run }: StoryLogProps) {
   return (
     <section
       aria-label="Story"
-      aria-live="polite"
       className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
     >
+      {/* Announces only the newest line, not the whole list each time. */}
+      <p aria-live="polite" className="sr-only">
+        {latest[0].text.replace(NEWS_PREFIX, "News:")}
+      </p>
       {latest.map((m, i) => {
         const isNews = m.text.startsWith(NEWS_PREFIX);
         return (

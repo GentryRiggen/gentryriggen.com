@@ -56,6 +56,7 @@ function UniverseCard({
       )}
       <button
         type="button"
+        data-testid={`lm-play-${def.id}`}
         onClick={() => onPlay(def.id)}
         className={`${primaryButtonClass} self-start`}
       >

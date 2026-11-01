@@ -77,9 +77,11 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
             <li key={u.id} className={seen.fresh.has(u.id) ? "lm-pop" : ""}>
               <button
                 type="button"
-                disabled={!affordable}
-                onClick={() => onBuy(u.id)}
-                className={`w-full touch-manipulation rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed ${focusRingClass} ${
+                aria-disabled={!affordable}
+                onClick={() => {
+                  if (affordable) onBuy(u.id);
+                }}
+                className={`w-full touch-manipulation rounded-xl border p-3 text-left transition-colors aria-disabled:cursor-not-allowed ${focusRingClass} ${
                   affordable
                     ? "lm-glow border-amber-400 bg-amber-50 text-slate-900 hover:bg-amber-100 dark:border-amber-500 dark:bg-amber-950/40 dark:text-amber-50 dark:hover:bg-amber-950/70"
                     : "border-slate-200 bg-white text-slate-600 opacity-80 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"

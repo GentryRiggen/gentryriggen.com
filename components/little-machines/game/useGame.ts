@@ -15,6 +15,7 @@ import {
 } from "@/lib/little-machines/engine/prestige";
 import { loadSave, writeSave } from "@/lib/little-machines/engine/save";
 import type {
+  RunState,
   SaveData,
   UniverseDef,
   UniverseSave,
@@ -24,6 +25,9 @@ import { getPlayableUniverse } from "@/lib/little-machines/universes";
 /** The sim and the readouts update this often; CSS handles smooth motion. */
 const STEP_SECONDS = 0.1;
 const AUTOSAVE_MS = 10_000;
+
+/** Marks the history entry pushed when a game opens. */
+const GAME_HISTORY_KEY = "littleMachinesGame";
 
 /** What the player has to click through before play resumes. */
 export type Overlay = "phase" | "ending" | null;
@@ -35,6 +39,10 @@ function sanitize(def: UniverseDef, universe: UniverseSave): UniverseSave {
     run: reconcileRun(def, universe.run, universe.prestigeUpgrades),
   };
 }
+
+/** A run that just finished or entered a new phase is saved at once. */
+const isMilestone = (before: RunState, after: RunState): boolean =>
+  after.complete !== before.complete || after.phase !== before.phase;
 
 /** Marks a run whose intro moment has not been seen (a brand new run). */
 const isFresh = (universe: UniverseSave): boolean =>
@@ -76,8 +84,13 @@ export function useGame(): GameApi {
     setSave(next);
   }, []);
 
+  /** The save last written; an unchanged one isn't written again. */
+  const writtenRef = useRef<SaveData | null>(null);
+
   const persist = useCallback(() => {
-    if (saveRef.current) writeSave(saveRef.current);
+    const current = saveRef.current;
+    if (!current || current === writtenRef.current) return;
+    if (writeSave(current)) writtenRef.current = current;
   }, []);
 
   const replaceUniverse = useCallback(
@@ -95,6 +108,7 @@ export function useGame(): GameApi {
   useEffect(() => {
     const { save: loaded, recovered: wasRecovered } = loadSave();
     saveRef.current = loaded;
+    writtenRef.current = loaded;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSave(loaded);
     setRecovered(wasRecovered);
@@ -113,14 +127,32 @@ export function useGame(): GameApi {
       setSeenTransitions(isFresh(ready) ? -1 : ready.run.transitions.length);
       setEndingDone(ready.run.complete);
       setActiveId(id);
+      // One history entry per game, so Back returns to the hub.
+      window.history.pushState({ [GAME_HISTORY_KEY]: id }, "");
     },
     [replaceUniverse]
   );
 
   const leave = useCallback(() => {
+    // Popping the game's history entry runs the popstate handler below.
+    if (window.history.state?.[GAME_HISTORY_KEY]) {
+      window.history.back();
+      return;
+    }
     persist();
     setActiveId(null);
   }, [persist]);
+
+  // Browser Back (or Forward off the game's entry) returns to the hub.
+  useEffect(() => {
+    if (!activeId) return;
+    const handlePopState = () => {
+      persist();
+      setActiveId(null);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [activeId, persist]);
 
   const run = universe?.run ?? null;
   const overlay: Overlay = !run
@@ -159,6 +191,7 @@ export function useGame(): GameApi {
           [activeId]: { ...current, run: nextRun },
         },
       });
+      if (isMilestone(current.run, nextRun)) persist();
     };
 
     const start = () => {
@@ -173,10 +206,7 @@ export function useGame(): GameApi {
     };
     const handleVisibility = () => {
       if (document.visibilityState === "visible") start();
-      else {
-        stop();
-        persist();
-      }
+      else stop();
     };
 
     start();
@@ -190,35 +220,44 @@ export function useGame(): GameApi {
   // Autosave, and a last write when the page goes away.
   useEffect(() => {
     const interval = window.setInterval(persist, AUTOSAVE_MS);
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") persist();
+    };
     window.addEventListener("pagehide", persist);
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("pagehide", persist);
+      document.removeEventListener("visibilitychange", handleVisibility);
       persist();
     };
   }, [persist]);
 
   const tap = useCallback((): number => {
     const current = activeId ? saveRef.current?.universes[activeId] : undefined;
-    if (!activeId || !def || !current) return 0;
+    if (!activeId || !def || !current || isPaused) return 0;
     const gain = manualGain(def, current.run);
     const nextRun = manualAction(def, current.run);
     if (nextRun !== current.run)
-      replaceUniverse(activeId, { ...current, run: nextRun });
+      replaceUniverse(
+        activeId,
+        { ...current, run: nextRun },
+        isMilestone(current.run, nextRun)
+      );
     return gain;
-  }, [activeId, def, replaceUniverse]);
+  }, [activeId, def, isPaused, replaceUniverse]);
 
   const buyUpgrade = useCallback(
     (id: string) => {
       const current = activeId
         ? saveRef.current?.universes[activeId]
         : undefined;
-      if (!activeId || !def || !current) return;
+      if (!activeId || !def || !current || isPaused) return;
       const nextRun = buy(def, current.run, id);
       if (nextRun !== current.run)
         replaceUniverse(activeId, { ...current, run: nextRun }, true);
     },
-    [activeId, def, replaceUniverse]
+    [activeId, def, isPaused, replaceUniverse]
   );
 
   const buyEmberUpgrade = useCallback(
@@ -226,11 +265,11 @@ export function useGame(): GameApi {
       const current = activeId
         ? saveRef.current?.universes[activeId]
         : undefined;
-      if (!activeId || !def || !current) return;
+      if (!activeId || !def || !current || isPaused) return;
       const next = buyPrestigeUpgrade(def, current, id);
       if (next !== current) replaceUniverse(activeId, next, true);
     },
-    [activeId, def, replaceUniverse]
+    [activeId, def, isPaused, replaceUniverse]
   );
 
   const restart = useCallback(() => {

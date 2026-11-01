@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type { RunState } from "@/lib/little-machines/engine/types";
-import { sceneInfo } from "@/lib/little-machines/universes/light";
+import {
+  sceneInfo,
+  type LightSceneInfo,
+} from "@/lib/little-machines/universes/light";
 import CoastLayer from "./CoastLayer";
 import LastLayer from "./LastLayer";
 import NightLayer from "./NightLayer";
@@ -12,7 +15,12 @@ interface LightSceneProps {
   run: RunState;
 }
 
-const LAYERS = [CoastLayer, NightLayer, SkyLayer, LastLayer] as const;
+const LAYERS = [
+  memo(CoastLayer),
+  memo(NightLayer),
+  memo(SkyLayer),
+  memo(LastLayer),
+] as const;
 const CAPTIONS = [
   "A lighthouse sweeping its beam over a dark sea",
   "The planet at night, its cities lighting up",
@@ -29,12 +37,38 @@ interface Visual {
   leaving: number | null;
 }
 
+const isSameInfo = (a: LightSceneInfo, b: LightSceneInfo): boolean =>
+  (Object.keys(a) as (keyof LightSceneInfo)[]).every((k) => a[k] === b[k]);
+
+/**
+ * The run changes ten times a second but the picture only needs the few
+ * numbers in `sceneInfo`; hand back the previous object while they match so
+ * the memoized layers (a hundred SVG nodes) skip rendering.
+ */
+function useStableInfo(run: RunState): LightSceneInfo {
+  const info = sceneInfo(run);
+  const [stable, setStable] = useState(info);
+  if (!isSameInfo(stable, info)) {
+    setStable(info);
+    return info;
+  }
+  return stable;
+}
+
+/** The scene draws only from its info, so it is memoized on it. */
+export default function LightScene({ run }: LightSceneProps) {
+  return <LightSceneView info={useStableInfo(run)} />;
+}
+
 /**
  * The Keep the Light On scene. Each phase is a layer; on a phase change the
  * old layer shrinks away (the camera pulls back) while the new one settles in.
  */
-export default function LightScene({ run }: LightSceneProps) {
-  const info = sceneInfo(run);
+const LightSceneView = memo(function LightSceneView({
+  info,
+}: {
+  info: LightSceneInfo;
+}) {
   const target = Math.min(LAYERS.length - 1, Math.max(0, info.phaseIndex));
   const [visual, setVisual] = useState<Visual>({
     shown: target,
@@ -156,4 +190,4 @@ export default function LightScene({ run }: LightSceneProps) {
       })}
     </svg>
   );
-}
+});

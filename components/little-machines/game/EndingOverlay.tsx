@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { primaryButtonClass } from "../styles";
 
 interface EndingOverlayProps {
@@ -14,17 +17,37 @@ const DELAYS = [
   "[animation-delay:11s]",
 ];
 
+/** The Continue button fades in last; it can't take focus before it shows. */
+const BUTTON_READY_MS = 11_500;
+
 export default function EndingOverlay({
   lines,
   onContinue,
 }: EndingOverlayProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Keyboard users start inside the dialog, not behind it.
+  useEffect(() => {
+    dialogRef.current?.focus();
+    const timer = window.setTimeout(() => setIsReady(true), BUTTON_READY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isReady) buttonRef.current?.focus();
+  }, [isReady]);
+
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label="The ending"
       data-testid="lm-ending"
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black p-6 text-slate-50"
+      className="fixed inset-0 z-50 flex outline-none items-center justify-center overflow-y-auto bg-black p-6 text-slate-50"
     >
       <div className="relative max-w-md space-y-6 py-8 text-center">
         <div
@@ -39,8 +62,12 @@ export default function EndingOverlay({
             {line}
           </p>
         ))}
-        <div className={`lm-fade-up ${DELAYS[DELAYS.length - 1]}`}>
+        <div
+          inert={!isReady}
+          className={`lm-fade-up ${DELAYS[DELAYS.length - 1]}`}
+        >
           <button
+            ref={buttonRef}
             type="button"
             onClick={onContinue}
             className={`${primaryButtonClass} min-w-40 !ring-offset-black`}

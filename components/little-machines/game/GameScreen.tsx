@@ -57,10 +57,16 @@ export default function GameScreen({
 
   return (
     <div className="min-h-dvh bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 lg:flex lg:h-dvh">
-      <div className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0">
+      <div
+        inert={overlay !== null}
+        className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0"
+      >
         {Scene && <Scene run={run} />}
       </div>
-      <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto">
+      <main
+        inert={overlay !== null}
+        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto"
+      >
         <header className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-widest text-slate-600 dark:text-slate-400">
