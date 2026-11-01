@@ -32,7 +32,7 @@ const FOCUSABLE =
 
 /**
  * The whole story in a bottom sheet (phones) or side panel (wide screens),
- * with the intros of the parts reached so far on top for re-reading.
+ * with the intros of the parts reached so far below for re-reading.
  */
 export default function StoryDrawer({
   def,
@@ -128,7 +128,46 @@ export default function StoryDrawer({
           </button>
         </div>
         <div className="space-y-5 overflow-y-auto overscroll-contain p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <ol className="space-y-3">
+            {entries.map((entry, i) => {
+              const isNews = entry.text.startsWith(NEWS_PREFIX);
+              return (
+                <li
+                  key={entry.id}
+                  className={`font-mono ${
+                    i === 0
+                      ? "text-base text-amber-50"
+                      : "text-sm text-slate-300"
+                  } ${endings.has(entry.id) ? "text-amber-100" : ""}`}
+                >
+                  {i === 0 && (
+                    <span aria-hidden="true" className="mr-2 text-amber-300">
+                      ▶︎
+                    </span>
+                  )}
+                  {isNews && (
+                    <span
+                      className={`${pixelClass} mr-2 inline-block border-2 border-red-300 bg-red-700 px-1.5 py-1 text-[10px] leading-none text-white`}
+                    >
+                      NEWS
+                    </span>
+                  )}
+                  {isNews
+                    ? entry.text.slice(NEWS_PREFIX.length).trim()
+                    : entry.text}
+                  <ListenButton
+                    clipId={storyClipId(def.id, entry.id)}
+                    accessibleLabel="Listen to this message"
+                    className="ml-2 size-11 border-2 border-slate-500 align-middle text-xs text-amber-300 hover:bg-slate-800"
+                  />
+                </li>
+              );
+            })}
+          </ol>
           <section aria-label="Intros" className="space-y-2">
+            <h3 className={`${pixelClass} text-[10px] text-cyan-200`}>
+              Part intros
+            </h3>
             {reached.map((phase, i) => {
               const isOpen = openIntro === phase.id;
               return (
@@ -166,42 +205,6 @@ export default function StoryDrawer({
               );
             })}
           </section>
-          <ol className="space-y-3">
-            {entries.map((entry, i) => {
-              const isNews = entry.text.startsWith(NEWS_PREFIX);
-              return (
-                <li
-                  key={entry.id}
-                  className={`font-mono ${
-                    i === 0
-                      ? "text-base text-amber-50"
-                      : "text-sm text-slate-300"
-                  } ${endings.has(entry.id) ? "text-amber-100" : ""}`}
-                >
-                  {i === 0 && (
-                    <span aria-hidden="true" className="mr-2 text-amber-300">
-                      ▶︎
-                    </span>
-                  )}
-                  {isNews && (
-                    <span
-                      className={`${pixelClass} mr-2 inline-block border-2 border-red-300 bg-red-700 px-1.5 py-1 text-[8px] leading-none text-white`}
-                    >
-                      NEWS
-                    </span>
-                  )}
-                  {isNews
-                    ? entry.text.slice(NEWS_PREFIX.length).trim()
-                    : entry.text}
-                  <ListenButton
-                    clipId={storyClipId(def.id, entry.id)}
-                    accessibleLabel="Listen to this message"
-                    className="ml-2 size-8 border-2 border-slate-500 align-middle text-xs text-amber-300 hover:bg-slate-800"
-                  />
-                </li>
-              );
-            })}
-          </ol>
         </div>
       </div>
       {watching !== null && (
