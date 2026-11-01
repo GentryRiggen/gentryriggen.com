@@ -8,6 +8,8 @@ import type {
   UniverseDef,
   UniverseSave,
 } from "@/lib/ever-onward/engine/types";
+import SoundControls from "../audio/SoundControls";
+import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import { SCENES } from "../scenes";
 import { cardClass, focusRingClass, secondaryButtonClass } from "../styles";
 import BackupPanel from "./BackupPanel";
@@ -51,6 +53,7 @@ export default function GameScreen({
   onDismissOverlay,
 }: GameScreenProps) {
   const { run } = universe;
+  useEverOnwardAudio(def, run);
   const phase = def.phases[run.phase];
   const Scene = SCENES[def.id];
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -80,15 +83,18 @@ export default function GameScreen({
             </p>
             <h1 className="text-2xl font-bold">{phase.title}</h1>
           </div>
-          <button
-            type="button"
-            aria-expanded={isMenuOpen}
-            aria-controls="lm-menu"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            className={`${secondaryButtonClass} shrink-0`}
-          >
-            Menu
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <SoundControls />
+            <button
+              type="button"
+              aria-expanded={isMenuOpen}
+              aria-controls="lm-menu"
+              onClick={() => setIsMenuOpen((open) => !open)}
+              className={`${secondaryButtonClass} shrink-0`}
+            >
+              Menu
+            </button>
+          </div>
         </header>
 
         {isMenuOpen && (
