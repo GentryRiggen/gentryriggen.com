@@ -155,7 +155,13 @@ describe("NotesReminder", () => {
   });
 
   it("edits the time", async () => {
-    process.env.TZ = "America/Denver";
+    // Expected values come from the machine's own zone, so this holds in any TZ.
+    const d = new Date(rem("x", "x", "x").at);
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    const local = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+    const off = -d.getTimezoneOffset();
+    const abs = Math.abs(off);
+    const offStr = `${off < 0 ? "-" : "+"}${p2(Math.floor(abs / 60))}:${p2(abs % 60)}`;
     m.getReminder.mockResolvedValue(
       rem("aaaaaaaaaaaa", "Water", "Today 3:30 PM")
     );
@@ -166,11 +172,11 @@ describe("NotesReminder", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Edit time" })
     );
-    expect(screen.getByLabelText("New time")).toHaveValue("2026-11-01T15:30");
+    expect(screen.getByLabelText("New time")).toHaveValue(local);
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(m.patchReminder).toHaveBeenCalledWith(
       "aaaaaaaaaaaa",
-      { at: "2026-11-01T15:30:00-07:00" },
+      { at: `${local}:00${offStr}` },
       getToken,
       undefined,
       "https://x"
