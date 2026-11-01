@@ -386,3 +386,70 @@ describe("SILENT_CLIP", () => {
     expect(SILENT_CLIP.startsWith("data:audio/wav;base64,UklGR")).toBe(true);
   });
 });
+
+describe("JimPlayer and the lock screen", () => {
+  function withSession(options: { stopThrows?: boolean } = {}) {
+    const handlers = new Map<string, (() => void) | null>();
+    const session = {
+      metadata: null as unknown,
+      playbackState: "none",
+      setActionHandler: jest.fn(
+        (action: string, handler: (() => void) | null) => {
+          if (options.stopThrows && action === "stop") {
+            throw new TypeError("unsupported");
+          }
+          handlers.set(action, handler);
+        }
+      ),
+    };
+    const base = setup();
+    const player = new JimPlayer({
+      ...base.deps,
+      mediaSession: () => session,
+      createMetadata: (init) => ({ ...init }),
+    });
+    return { ...base, player, session, handlers };
+  }
+
+  it("shows Jim and the persona, and its controls drive the player", async () => {
+    const { player, session, handlers, fetches, audio } = withSession();
+    player.setArtist("Vega");
+    player.play("msg:1", "Hello there.");
+    expect(session.metadata).toEqual({ title: "Jim", artist: "Vega" });
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(session.playbackState).toBe("playing");
+    handlers.get("pause")?.();
+    expect(player.getState().status).toBe("paused");
+    expect(session.playbackState).toBe("paused");
+    handlers.get("play")?.();
+    expect(player.getState().status).toBe("playing");
+    expect(audio.play).toHaveBeenCalledTimes(2);
+    handlers.get("stop")?.();
+    expect(player.getState().status).toBe("idle");
+    expect(session.metadata).toBeNull();
+    expect(handlers.get("play")).toBeNull();
+  });
+
+  it("defaults the artist to Jim", () => {
+    const { player, session } = withSession();
+    player.play("msg:1", "Hello.");
+    expect(session.metadata).toEqual({ title: "Jim", artist: "Jim" });
+  });
+
+  it("keeps play and pause where stop isn't supported", () => {
+    const { player, handlers } = withSession({ stopThrows: true });
+    player.play("msg:1", "Hello.");
+    expect(handlers.get("play")).toEqual(expect.any(Function));
+    expect(handlers.get("pause")).toEqual(expect.any(Function));
+  });
+
+  it("works with no Media Session at all", async () => {
+    const { deps, fetches } = setup();
+    const player = new JimPlayer({ ...deps, mediaSession: () => null });
+    player.play("msg:1", "Hello.");
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(player.getState().status).toBe("playing");
+  });
+});

@@ -14,6 +14,7 @@ import {
 import { ArrowUp, Check, Square, Volume2 } from "lucide-react";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
+import NowPlayingBar from "@/components/jim/NowPlayingBar";
 import NotesShell from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import useReadAloud from "@/components/jim/useReadAloud";
@@ -734,6 +735,13 @@ export default function JimChat({
                   )}
                 </p>
               )}
+              <NowPlayingBar
+                state={reader.state}
+                onTogglePause={reader.togglePause}
+                onSpeed={reader.setSpeed}
+                onStop={reader.stop}
+                onDismiss={reader.dismiss}
+              />
               <div className="jim-glass flex items-end gap-2 rounded-[1.6rem] border border-white/[0.08] p-1 shadow-[0_12px_40px_-16px_rgb(0_0_0/0.8)] transition-colors duration-200 focus-within:border-ayu-accent/50 focus-within:shadow-[0_0_0_4px_rgb(255_204_102/0.08),0_12px_40px_-16px_rgb(0_0_0/0.8)]">
                 <label htmlFor="jim-message" className="sr-only">
                   Message

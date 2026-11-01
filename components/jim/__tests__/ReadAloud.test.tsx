@@ -354,6 +354,51 @@ describe("Read replies aloud setting", () => {
   });
 });
 
+describe("now-playing bar", () => {
+  it("shows while a reply plays, changes the speed for good, and Stop hides it", async () => {
+    renderChat();
+    await chat("A reply worth hearing out loud, Captain.");
+    expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    const bar = await screen.findByRole("region", { name: "Now playing" });
+    expect(bar).toHaveTextContent("A reply worth hearing out loud, Captain");
+    expect(bar).toHaveTextContent("1×");
+    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "Faster" }));
+    expect(bar).toHaveTextContent("1.25×");
+    expect(audio().playbackRate).toBe(1.25);
+    expect(window.localStorage.getItem("jim:speed")).toBe("1.25");
+
+    await userEvent.click(screen.getByRole("button", { name: "Pause" }));
+    expect(audio().pause).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Stop reading" }));
+    expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
+  });
+
+  it("goes away when the reply ends", async () => {
+    renderChat();
+    await chat("Short one.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    act(() => audio().finish());
+    expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
+  });
+
+  it("reads at the remembered speed", async () => {
+    window.localStorage.setItem("jim:speed", "1.75");
+    renderChat();
+    await chat("Fast one.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    expect(audio().playbackRate).toBe(1.75);
+    expect(screen.getByText("1.75×")).toBeInTheDocument();
+  });
+});
+
 describe("stopping", () => {
   it("stops on New chat", async () => {
     renderChat();

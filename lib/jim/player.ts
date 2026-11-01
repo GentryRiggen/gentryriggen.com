@@ -166,8 +166,10 @@ export class JimPlayer {
   getState = (): PlayerState => this.state;
 
   private set(patch: Partial<PlayerState>): void {
+    const before = this.state.status;
     this.state = { ...this.state, ...patch };
-    this.syncMediaSession();
+    // Progress ticks leave the lock screen alone.
+    if (this.state.status !== before) this.syncMediaSession();
     for (const listener of this.listeners) listener();
   }
 
@@ -265,7 +267,9 @@ export class JimPlayer {
 
   /** Who is speaking, for the lock screen (the active persona). */
   setArtist(name: string): void {
-    this.artist = name || "Jim";
+    const artist = name || "Jim";
+    if (artist === this.artist) return;
+    this.artist = artist;
     this.syncMediaSession();
   }
 
@@ -502,12 +506,12 @@ export class JimPlayer {
         session.metadata = metadata;
       }
       session.playbackState = status === "paused" ? "paused" : "playing";
-      session.setActionHandler("play", () => this.resume());
-      session.setActionHandler("pause", () => this.pause());
-      session.setActionHandler("stop", () => this.stop());
     } catch {
       // A partial Media Session is fine to ignore: the bar still works.
     }
+    handle(session, "play", () => this.resume());
+    handle(session, "pause", () => this.pause());
+    handle(session, "stop", () => this.stop());
   }
 
   private clearMediaSession(): void {
@@ -516,12 +520,25 @@ export class JimPlayer {
     try {
       session.metadata = null;
       session.playbackState = "none";
-      for (const action of ["play", "pause", "stop"] as const) {
-        session.setActionHandler(action, null);
-      }
     } catch {
       // Ignored, as above.
     }
+    for (const action of ["play", "pause", "stop"] as const) {
+      handle(session, action, null);
+    }
+  }
+}
+
+/** One action at a time: a browser without "stop" still gets play/pause. */
+function handle(
+  session: MediaSessionLike,
+  action: "play" | "pause" | "stop",
+  handler: (() => void) | null
+): void {
+  try {
+    session.setActionHandler(action, handler);
+  } catch {
+    // This action isn't supported here.
   }
 }
 
@@ -545,5 +562,11 @@ export function browserPlayerDeps(
     speech,
     loadSpeed,
     saveSpeed,
+    mediaSession: () =>
+      typeof navigator !== "undefined" && "mediaSession" in navigator
+        ? (navigator.mediaSession as unknown as MediaSessionLike)
+        : null,
+    createMetadata: (init) =>
+      typeof MediaMetadata === "undefined" ? null : new MediaMetadata(init),
   };
 }
