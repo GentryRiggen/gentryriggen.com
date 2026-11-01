@@ -140,6 +140,12 @@ const nightStory: StoryMessage[] = [
     text: "Your first generator hums. A street in the old quarter lights up, and an old man in a window waves at nobody in particular.",
   },
   {
+    id: "night-lamps",
+    phase: PHASE_NIGHT,
+    when: (run) => res(run, "supply") >= 16,
+    text: "The mayor asks how bright the streetlights should be. Bright streets pay well. Soft ones light more towns with the same power, and your crews get a quiet hour to learn. You can change your mind any time.",
+  },
+  {
     id: "night-ideas",
     phase: PHASE_NIGHT,
     when: (run) => res(run, "knowhow") >= 10,

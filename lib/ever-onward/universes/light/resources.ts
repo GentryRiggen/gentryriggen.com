@@ -57,6 +57,8 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   { id: "knowhow", label: "Know-how", phases: [PHASE_NIGHT] },
   { id: "rushRides", label: "Evening rushes ridden", phases: HIDDEN },
+  { id: "lamps", label: "Streetlight brightness", initial: 2, phases: HIDDEN },
+  { id: "lampChanges", label: "Streetlight changes", phases: HIDDEN },
   { id: "rush", label: "Evening rush", phases: HIDDEN },
   { id: "rushCooldown", label: "Next rush", initial: 90, phases: HIDDEN },
   // The Tide Clock (The Coast): the wave clock and tallies, read by tide.ts

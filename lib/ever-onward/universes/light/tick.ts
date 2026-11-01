@@ -16,7 +16,14 @@ import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
 import { tickWeather } from "./weather";
 
-const { coast: C, night: N, sky: S, last: L, projects: P } = TUNING;
+const {
+  coast: C,
+  night: N,
+  sky: S,
+  last: L,
+  projects: P,
+  lamps: LAMPS,
+} = TUNING;
 
 /** True once the night project `id` is done (see projects.ts). */
 export const hasProject = (run: RunState, id: string): boolean =>
@@ -241,23 +248,60 @@ export function supplyMW(run: RunState): number {
   );
 }
 
+// ------------------------------------------------------- The streetlights
+
+/** The streetlights knob opens with the grid. */
+export const isLampsOpen = (run: RunState): boolean => isGridInPlay(run);
+
+/** The brightness step, 0 (soft glow) to the last (dazzling). */
+export const lampStep = (run: RunState): number => {
+  const raw = run.resources.lamps;
+  const step =
+    typeof raw === "number" && Number.isFinite(raw)
+      ? Math.round(raw)
+      : LAMPS.defaultStep;
+  return Math.min(LAMPS.steps.length - 1, Math.max(0, step));
+};
+
+/** What the brightness does right now (always "bright" in other phases). */
+export const lampEffect = (run: RunState) =>
+  LAMPS.steps[run.phase === 1 ? lampStep(run) : LAMPS.defaultStep];
+
+/** Sets the brightness (the streetlights' radio buttons). */
+export function setLamps(run: RunState, step: number): void {
+  const next = Math.min(LAMPS.steps.length - 1, Math.max(0, Math.round(step)));
+  if (next === lampStep(run)) return;
+  run.resources.lamps = next;
+  run.resources.lampChanges = res(run, "lampChanges") + 1;
+}
+
+/** Demand at a given brightness (for the knob's "lights up the rest" hint). */
+export const demandAtStep = (run: RunState, step: number): number =>
+  (demandMW(run) / lampEffect(run).demand) * LAMPS.steps[step].demand;
+
 export const demandMW = (run: RunState): number =>
   TOTAL_CITIES *
   N.perCityMW *
   N.bulbSaving ** tier(run, "bulbs") *
   ifProject(run, "smart-meters", P.meterDemand) *
-  ifProject(run, "lamplighters", P.lampDemand);
+  ifProject(run, "lamplighters", P.lampDemand) *
+  lampEffect(run).demand;
 
 /** What every megawatt that reaches a city pays (smart meters: more). */
 export const cityPay = (run: RunState): number =>
-  N.payPerMW * ifProject(run, "smart-meters", P.meterPay);
+  N.payPerMW * ifProject(run, "smart-meters", P.meterPay) * lampEffect(run).pay;
 
 /** Know-how a second: every plant's crew learns a little. */
 export const knowhowPerSecond = (run: RunState): number =>
   P.knowhowPerPlant *
   plantCount(run) *
   ifProject(run, "night-school", P.schoolBoost) *
+  lampEffect(run).knowhow *
   speed(run);
+
+/** Know-how a second at a given brightness. */
+export const knowhowAtStep = (run: RunState, step: number): number =>
+  (knowhowPerSecond(run) / lampEffect(run).knowhow) * LAMPS.steps[step].knowhow;
 
 /** Know-how for balancing an uneasy grid by hand. */
 export const balanceKnowhow = (run: RunState): number =>
@@ -305,7 +349,8 @@ export function strainPerSecond(run: RunState): number {
     (N.strainBase + N.strainPerLoad * gridLoad(run)) *
     N.balancerSaving ** Math.min(1, tier(run, "grid")) *
     ifProject(run, "line-patrols", P.patrolStrain) *
-    ifProject(run, "co-op", P.coopStrain)
+    ifProject(run, "co-op", P.coopStrain) *
+    lampEffect(run).strain
   );
 }
 

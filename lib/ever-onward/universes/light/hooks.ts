@@ -1,5 +1,6 @@
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { sceneInfo } from "./scene";
+import { LAMP_ACTION_IDS } from "./lamps";
 import {
   gridSteadiness,
   headingOf,
@@ -12,6 +13,7 @@ import {
   flameFraction,
   isOilCheap,
   isRushOn,
+  isLampsOpen,
   isStorming,
   level,
   tankCapacity,
@@ -67,6 +69,7 @@ export function lightPlates(run: RunState): string[] {
     if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
       plates.push("grid");
     if (isRushOn(run)) plates.push("rush");
+    if (isLampsOpen(run)) plates.push("lamps");
     // Offered once the first front has come and gone (so it is not a crowd of
     // beats at the moment the desk opens).
     if (isWeatherOpen(run) && (run.resources.wxFronts ?? 0) >= 1)
@@ -98,6 +101,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   oilMarket: ["buy-oil"],
   grid: ["balance-grid"],
   rush: ["ride-rush"],
+  lamps: LAMP_ACTION_IDS,
   tide: TIDE_ACTION_IDS,
   race: LAUNCH_ACTION_IDS,
   weather: SHIELD_ACTION_IDS,
@@ -119,6 +123,7 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   ...LAUNCH_ACTION_IDS,
   ...SHIELD_ACTION_IDS,
   WATER_ACTION,
+  ...LAMP_ACTION_IDS,
 ];
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [

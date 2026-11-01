@@ -32,6 +32,7 @@ import {
   resolvePerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
+import { LAMP_ACTIONS } from "./lamps";
 import {
   TOWNS,
   chanceOf,
@@ -408,4 +409,5 @@ export const ACTIONS: readonly ActionDef[] = [
   ...LAUNCH_ROUTE,
   WATER_GARDEN,
   PICK_BLOOMS,
+  ...LAMP_ACTIONS,
 ];

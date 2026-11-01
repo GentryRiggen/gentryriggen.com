@@ -1,7 +1,19 @@
 import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
-import { barrelOil, tankCapacity } from "./tick";
+import {
+  barrelOil,
+  demandAtStep,
+  isGridAuto,
+  isLampsOpen,
+  knowhowAtStep,
+  lampStep,
+  supplyMW,
+  tankCapacity,
+  tier,
+} from "./tick";
+import { lampActionId } from "./lamps";
+import { shownProjects } from "../../engine/engine";
 import { lightUniverse } from ".";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
@@ -187,6 +199,55 @@ const tendsGarden =
     return [...picks, ...waters];
   };
 
+/**
+ * Sets the streetlights by the situation: soft enough to light the last
+ * towns the moment the plants can (the phase ends); soft while a project on
+ * offer waits only on know-how (quiet crews learn faster); otherwise as
+ * bright as the grid allows (dazzling with a load balancer or a smart grid).
+ * `patience` is how many seconds of soft-glow learning a project may be away
+ * and still be worth softening for.
+ */
+const setsLamps =
+  (options: { patience?: number } = {}): OilChoice =>
+  (run, available) => {
+    if (!isLampsOpen(run)) return [];
+    const supply = supplyMW(run);
+    const finishing = [3, 2, 1, 0].find(
+      (step) => supply >= demandAtStep(run, step)
+    );
+    const want =
+      finishing ??
+      (wantsKnowhow(run, options.patience ?? 120) ? 0 : brightest(run));
+    if (want === lampStep(run)) return [];
+    const id = lampActionId(want);
+    return available.includes(id) ? [id] : [];
+  };
+
+/** As bright as the grid can take without a lot of balancing. */
+const brightest = (run: RunState): number =>
+  isGridAuto(run) || tier(run, "grid") >= 1 ? 3 : 2;
+
+/**
+ * A project on offer has its power but waits on know-how, and soft-glow
+ * learning would get there within `patience` seconds.
+ */
+function wantsKnowhow(run: RunState, patience: number): boolean {
+  const softRate = knowhowAtStep(run, 0);
+  return shownProjects(lightUniverse, run).some((p) => {
+    const powerOk = p.costs.every(
+      (c) =>
+        c.resource === "knowhow" ||
+        (run.resources[c.resource] ?? 0) >= c.amount * 0.5
+    );
+    const missing =
+      (p.costs.find((c) => c.resource === "knowhow")?.amount ?? 0) -
+      (run.resources.knowhow ?? 0);
+    return (
+      powerOk && missing > 0 && missing / Math.max(softRate, 1e-6) <= patience
+    );
+  });
+}
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -208,10 +269,11 @@ const withOil = (
   weather: OilChoice = () => [],
   tide: OilChoice = () => [],
   race: OilChoice = () => [],
-  garden: OilChoice = () => []
+  garden: OilChoice = () => [],
+  lamps: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather, tide, race, garden),
+  actions: combine(actions, care, weather, tide, race, garden, lamps),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -241,7 +303,8 @@ export function lightBots(): BotSet {
       tendsWeather({ skipEvery: 10 }),
       tendsTide({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
-      tendsGarden({ skipEvery: 6 })
+      tendsGarden({ skipEvery: 6 }),
+      setsLamps({ patience: 40 })
     ),
     realistic: withOil(
       base.realistic,
@@ -250,7 +313,8 @@ export function lightBots(): BotSet {
       tendsWeather({ skipEvery: 5 }),
       tendsTide({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
-      tendsGarden({ skipEvery: 3 })
+      tendsGarden({ skipEvery: 3 }),
+      setsLamps({ patience: 40 })
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
@@ -261,7 +325,8 @@ export function lightBots(): BotSet {
         tendsWeather({ onlyEvery: 3 }),
         tendsTide({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
-        tendsGarden({ onlyEvery: 3 })
+        tendsGarden({ onlyEvery: 3 }),
+        setsLamps({ patience: 60 })
       ),
       greetAfter: 60,
     },

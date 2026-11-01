@@ -38,7 +38,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     description:
       "Teach the plant crews the grid's secrets. Everyone learns faster.",
     tradeOff: "Costs power you could put into a generator.",
-    costs: cost(10, 150),
+    costs: cost(15, 150),
     revealWhen: (run) => owned(run, "gen1") >= 1,
     effectPreview: projectPreviewOf("night-school", [
       { label: "Know-how/sec", read: knowhowPerSecond },
@@ -51,7 +51,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     name: "Smart meters",
     description: "Every home gets a meter, and every city pays 20% more.",
     tradeOff: "Towns want 5% more power, so the night lasts a little longer.",
-    costs: cost(30),
+    costs: cost(50),
     revealWhen: (run) => owned(run, "gen2") >= 1,
     effectPreview: projectPreviewOf("smart-meters", [
       POWER_PER_SECOND,
@@ -64,7 +64,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     name: "Line patrols",
     description: "Crews walk the lines at dusk. The grid strains 30% slower.",
     tradeOff: `Balancing by hand teaches less: +${P.patrolBalance} know-how, not +${P.perBalance}.`,
-    costs: cost(40, 1500),
+    costs: cost(70, 1500),
     revealWhen: (run) => owned(run, "gen2") >= 2,
     effectPreview: projectPreviewOf("line-patrols", [
       {
@@ -82,7 +82,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     description:
       "Power costs a bit more at rush hour. Every rush pays 50% more.",
     tradeOff: "The rush comes a quarter less often.",
-    costs: cost(55),
+    costs: cost(90),
     revealWhen: (run) => (run.resources.rushRides ?? 0) >= 3,
     effectPreview: projectPreviewOf("rush-pricing", [
       { label: "A rush pays", read: rushBonus },
@@ -96,7 +96,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     description:
       "Neighbours switch off what nobody needs. Towns want 6% less power, so more of them light up.",
     tradeOff: `The steady glow pays +${pct(P.lampGlowBonus)}, not +${pct(TUNING.night.glowBonus)}.`,
-    costs: cost(70),
+    costs: cost(120),
     revealWhen: (run) => owned(run, "gen2") >= 5,
     effectPreview: projectPreviewOf("lamplighters", [
       { label: "Demand", read: demandMW, suffix: " MW" },
@@ -115,7 +115,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     description:
       "Little steps let the fish swim past the dams. The river runs easy, and every dam makes 40% more.",
     tradeOff: "Costs power you could put into the next dam.",
-    costs: cost(90, 8000),
+    costs: cost(150, 8000),
     revealWhen: (run) => owned(run, "gen3") >= 1,
     effectPreview: projectPreviewOf("fish-ladders", [POWER_PER_SECOND]),
   },
@@ -125,7 +125,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     name: "Power co-op",
     description: "The steam plants share their coal. Each one makes 25% more.",
     tradeOff: "The grid strains 15% faster.",
-    costs: cost(110),
+    costs: cost(190),
     revealWhen: (run) => owned(run, "gen3") >= 2,
     effectPreview: projectPreviewOf("co-op", [
       POWER_PER_SECOND,
@@ -143,7 +143,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     description:
       "Chart where the wind blows hardest. Every wind and sun farm makes 25% more.",
     tradeOff: "Costs power now, and only helps once a farm is built.",
-    costs: cost(150, 30000),
+    costs: cost(250, 30000),
     revealWhen: (run) => owned(run, "gen3") >= 4,
     effectPreview: (run) =>
       owned(run, "gen4") > 0

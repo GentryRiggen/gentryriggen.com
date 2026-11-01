@@ -18,6 +18,7 @@ import LanternPicker from "../game/LanternPicker";
 import MemoryGarden from "../game/MemoryGarden";
 import ProbeRaces from "../game/ProbeRaces";
 import ProjectsPanel from "../game/ProjectsPanel";
+import StreetlightsPanel from "../game/StreetlightsPanel";
 import TideClock from "../game/TideClock";
 import WeatherDesk from "../game/WeatherDesk";
 import LightScene from "../scenes/light/LightScene";
@@ -71,7 +72,14 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
-  panels: [TideClock, ProbeRaces, WeatherDesk, ProjectsPanel, MemoryGarden],
+  panels: [
+    TideClock,
+    ProbeRaces,
+    StreetlightsPanel,
+    WeatherDesk,
+    ProjectsPanel,
+    MemoryGarden,
+  ],
   Opening: function LanternOpening({ run, onChoose }) {
     return <LanternPicker value={lanternOf(run)} onChange={onChoose} />;
   },

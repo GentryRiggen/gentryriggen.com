@@ -169,6 +169,28 @@ export const TUNING = {
     /** Wind maps: every wind and sun farm makes more. */
     windBoost: 1.25,
   },
+  /**
+   * The streetlights (No More Night's knob): how bright the cities shine.
+   * Brighter pays more per megawatt, but the grid works harder, every city
+   * wants a little more and the busy crews learn less. Softer pays less but
+   * eases the grid, lights more towns with the same power, and gives the
+   * crews quiet time to learn (know-how). "Bright" is how the night always
+   * played.
+   */
+  lamps: {
+    steps: [
+      { pay: 0.85, demand: 0.88, strain: 0.7, knowhow: 2 },
+      { pay: 0.93, demand: 0.94, strain: 0.85, knowhow: 1.4 },
+      { pay: 1, demand: 1, strain: 1, knowhow: 1 },
+      { pay: 1.1, demand: 1.06, strain: 1.3, knowhow: 0.5 },
+    ] as readonly {
+      pay: number;
+      demand: number;
+      strain: number;
+      knowhow: number;
+    }[],
+    defaultStep: 2,
+  },
   /** The Weather Desk, a side machine of No More Night (see weather.ts). */
   weather: {
     /** It opens with this many steam plants (about a third of the way in). */
