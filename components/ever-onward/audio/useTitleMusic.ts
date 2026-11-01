@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { MusicSpec } from "../../game-audio/music";
 import { everOnwardSynth, isAudioSupported } from "./everOnwardSynth";
 import { everOnwardChannels } from "./soundSettings";
 
@@ -17,15 +18,18 @@ const UNLOCK_EVENTS = ["pointerdown", "touchend", "click", "keydown"] as const;
  * off. Handing over to a universe is the game screen's job: it sets its
  * phase, then this hook is switched off and the theme crossfades away.
  */
-export default function useTitleMusic(isActive: boolean): void {
+export default function useTitleMusic(
+  isActive: boolean,
+  spec?: MusicSpec
+): void {
   const isMusicOn = everOnwardChannels.music.useValue();
 
   useEffect(() => everOnwardSynth.setMusicEnabled(isMusicOn), [isMusicOn]);
 
   useEffect(() => {
-    everOnwardSynth.setTitle(isActive);
+    everOnwardSynth.setTitle(isActive, spec);
     return () => everOnwardSynth.setTitle(false);
-  }, [isActive]);
+  }, [isActive, spec]);
 
   useEffect(() => {
     if (!isActive || !isAudioSupported()) return;

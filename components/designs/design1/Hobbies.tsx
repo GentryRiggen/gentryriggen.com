@@ -38,8 +38,8 @@ export default function Hobbies() {
         ).
       </p>
       <p className="leading-relaxed">
-        💡 And a little incremental game where a lighthouse robot keeps the
-        light on:{" "}
+        💡 And a little series of incremental games about robots who take one
+        job too far:{" "}
         <a
           href="/ever-onward"
           className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
