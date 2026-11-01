@@ -383,7 +383,9 @@ function Tide({ info }: { info: LightSceneInfo }) {
 
 export default function CoastLayer({ info }: { info: LightSceneInfo }) {
   const isStorm = info.storm > 0;
-  const beamOpacity = 0.25 + 0.6 * info.beam;
+  // A dry lamp burns dim: the beam all but goes out until oil is bought.
+  const isDry = info.lampDry === 1;
+  const beamOpacity = (0.25 + 0.6 * info.beam) * (isDry ? 0.25 : 1);
   const halfWidth = 8 + 34 * info.beam;
   const length = 220 + 110 * info.beam;
   const windows = keeperWindows(info.keepers);
@@ -546,7 +548,11 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
             />
           </g>
         </g>
-        <circle r={22 + 10 * info.beam} fill="url(#lm-lamp)" />
+        <circle
+          r={(22 + 10 * info.beam) * (isDry ? 0.45 : 1)}
+          fill="url(#lm-lamp)"
+          className={isDry ? "lm-flicker" : undefined}
+        />
         <LensRings lenses={info.lensLevel} />
       </g>
       {/* storm: rain and lightning (the darker sky is drawn behind the ships) */}

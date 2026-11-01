@@ -160,6 +160,26 @@ export function visibleTeasers(def: UniverseDef, run: RunState): TeaserDef[] {
   });
 }
 
+/** Shown on a teaser whose goal is met while the shop is full. */
+export const TEASER_READY_HINT =
+  "Ready! It pops in when you buy one of the upgrades above.";
+
+/**
+ * The line under a teaser. Once its own goal is met it is only waiting for a
+ * free slot in the shop (`maxVisible`), so say that instead of a goal the
+ * player has already reached.
+ */
+export function teaserHint(
+  def: UniverseDef,
+  run: RunState,
+  teaser: TeaserDef
+): string {
+  const upgrade = def.upgrades.find((u) => u.id === teaser.upgradeId);
+  const isReady =
+    !!upgrade && (!upgrade.visibleWhen || upgrade.visibleWhen(run));
+  return isReady ? TEASER_READY_HINT : teaser.hint(run);
+}
+
 function fireStory(def: UniverseDef, run: RunState): void {
   const phaseId = currentPhase(def, run).id;
   for (const message of def.story) {

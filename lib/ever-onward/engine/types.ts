@@ -251,6 +251,8 @@ export interface UniverseDef {
   visitors?: readonly VisitorDef[];
   /** A countdown bar for the current phase, or null. Must only read. */
   countdown?(run: RunState): CountdownView | null;
+  /** A short warning to show right now (e.g. the lamp ran dry), or null. Must only read. */
+  alert?(run: RunState): string | null;
   prestige: PrestigeDef;
   /** Continuous production; dt is seconds, already clamped. */
   tick(run: RunState, dt: number): void;

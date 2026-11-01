@@ -22,6 +22,8 @@ interface StickyHudProps {
   spend: Spend | null;
   effect: Effect | null;
   next: NextUpgrade | null;
+  /** A warning to keep in sight (e.g. out of oil), or null. */
+  alert?: string | null;
   onSelectNext: () => void;
 }
 
@@ -50,6 +52,7 @@ export default function StickyHud({
   spend,
   effect,
   next,
+  alert = null,
   onSelectNext,
 }: StickyHudProps) {
   const isHidden = !isShown || isCovered;
@@ -84,6 +87,14 @@ export default function StickyHud({
             />
           </p>
         </div>
+        {alert && (
+          <p
+            data-testid="lm-hud-alert"
+            className={`${pixelClass} mt-1 animate-pulse text-[8px] leading-relaxed text-red-300 motion-reduce:animate-none`}
+          >
+            ⚠ {alert}
+          </p>
+        )}
         {next && (
           <NextUpgradeBar
             next={next}

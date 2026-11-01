@@ -2,6 +2,8 @@ import {
   greetVisitor,
   metVisitors,
   newRun,
+  TEASER_READY_HINT,
+  teaserHint,
   tick,
   visibleTeasers,
   waitingVisitors,
@@ -97,6 +99,16 @@ describe("someday cards", () => {
     expect(visibleTeasers(def, popped).map((t) => t.upgradeId)).not.toContain(
       "lighthouse"
     );
+  });
+
+  it("say the goal is met when only a full shop holds the upgrade back", () => {
+    const teaser = (def.teasers ?? []).find(
+      (t) => t.upgradeId === "lighthouse"
+    )!;
+    const early = withOwned(newRun(def), { lens: 4 });
+    expect(teaserHint(def, early, teaser)).toBe(teaser.hint(early));
+    const ready = withOwned(newRun(def), { lens: 4, keeper: 3 });
+    expect(teaserHint(def, ready, teaser)).toBe(TEASER_READY_HINT);
   });
 
   it("only hint at upgrades that exist", () => {

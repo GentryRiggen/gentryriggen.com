@@ -7,6 +7,7 @@ import {
   upgradeLevel,
   hasUnrevealedUpgrades,
   isMaxed,
+  teaserHint,
   visibleTeasers,
   visibleUpgrades,
 } from "@/lib/ever-onward/engine/engine";
@@ -49,7 +50,7 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
     id: t.upgradeId,
     name:
       t.name ?? def.upgrades.find((u) => u.id === t.upgradeId)?.name ?? "???",
-    hint: t.hint(run),
+    hint: teaserHint(def, run, t),
   }));
 
   // Upgrades that show up after the list mounted pop in once.
