@@ -4,6 +4,7 @@ import {
   endRun,
   newUniverseSave,
 } from "../../../engine/prestige";
+import { newSave, parseSave } from "../../../engine/save";
 import { simulate } from "../../../engine/sim";
 import { lightUniverse } from "../../light";
 import { parseScoreArgs } from "../../scored";
@@ -59,16 +60,18 @@ describe("Make It Grow skeleton", () => {
   });
 
   it("never touches the Light save", () => {
-    const light = newUniverseSave(lightUniverse);
-    const grow = newUniverseSave(def);
-    const save = { light, grow };
-    const before = JSON.stringify(save.light);
-    const ended = endRun(def, {
-      ...grow,
-      run: { ...grow.run, phase: 2 },
-    });
+    const save = newSave();
+    save.universes.light = newUniverseSave(lightUniverse);
+    save.universes.grow = newUniverseSave(def);
+    const before = JSON.stringify(save.universes.light);
+    // end a Grow run the way the game does, then store it in the same save
+    const grow = save.universes.grow;
+    const ended = endRun(def, { ...grow, run: { ...grow.run, phase: 2 } });
     expect(ended.embers).toBeGreaterThan(0);
-    expect(JSON.stringify(save.light)).toBe(before);
+    save.universes.grow = ended;
+    const reloaded = parseSave(JSON.parse(JSON.stringify(save)));
+    expect(JSON.stringify(reloaded?.universes.light)).toBe(before);
+    expect(reloaded?.universes.grow.embers).toBe(ended.embers);
   });
 
   it("is listed by the scorecard script", () =>

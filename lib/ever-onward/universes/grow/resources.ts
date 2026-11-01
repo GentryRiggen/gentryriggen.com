@@ -50,6 +50,7 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: HIDDEN,
   },
   { id: "wtRng", label: "Water stream", phases: HIDDEN },
+  { id: "wtDry", label: "Tank ran dry", phases: HIDDEN },
   // The bee dances: stage (0 foraging, 1 dancing), the clock, the dance
   // (angle and length), how many danced and followed, a pollination flowing
   // in, the last follow, and the bees' own random stream.

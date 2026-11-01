@@ -95,6 +95,14 @@ function sceneKey(run: RunState): string {
     s.dry,
     s.ended,
     s.growth,
+    s.beds,
+    s.bloom,
+    s.greenhouse,
+    s.orchard,
+    s.stand,
+    s.barrow,
+    s.tea,
+    s.keeper,
   ].join("|");
 }
 

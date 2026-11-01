@@ -150,8 +150,13 @@ describe("the bee dances", () => {
     const ended: RunState = { ...followed, phase: 1 };
     const after = run(ended, B.surgeSeconds + 2);
     expect(after.resources.bePending).toBe(0);
-    expect(after.resources.seeds).toBeGreaterThan(
-      followed.resources.seeds + pending * 0.99
+    // seeds mean nothing on the farm: the rest is settled as harvest
+    expect(after.resources.seeds).toBe(followed.resources.seeds);
+    expect(after.resources.harvest).toBeGreaterThan(
+      followed.resources.harvest ?? 0
+    );
+    expect(after.resources.harvest).toBeLessThanOrEqual(
+      (followed.resources.harvest ?? 0) + pending * 0.004 + 1e-6
     );
   });
 

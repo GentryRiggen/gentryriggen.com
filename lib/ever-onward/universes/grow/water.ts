@@ -7,6 +7,9 @@ const W = TUNING.water;
 /** A thirsty garden still earns this share of its helpers' income. */
 export const DRY_FLOOR = 0.5;
 
+/** A dry tank counts as wet again once it holds more than this. */
+export const DRY_REFILL = 1;
+
 /** Mixed into the run's seed so the rain has a stream of its own. */
 const SEED_MIX = 0x57a7e5;
 
@@ -56,7 +59,12 @@ export const rainOutlook = (run: RunState): number =>
   run.resources.rainOutlook ?? W.outlookStart;
 
 /** True when the tank has run out. */
-export const isDry = (run: RunState): boolean => (run.resources.tank ?? 0) <= 0;
+export const isDry = (run: RunState): boolean => {
+  const tank = run.resources.tank ?? 0;
+  // Once dry, the garden stays dry until the tank refills past a little, so a
+  // tank hovering near empty does not blink between dry and wet.
+  return tank <= 0 || (run.resources.wtDry === 1 && tank <= DRY_REFILL);
+};
 
 /** 1 while there is water, the floor when the tank is empty. */
 export const waterFactor = (run: RunState): number =>
@@ -93,4 +101,6 @@ export function tickWater(run: RunState, dt: number): void {
     waterCapacity(run),
     Math.max(0, (run.resources.tank ?? 0) + net * dt)
   );
+  if (run.resources.tank <= 0) run.resources.wtDry = 1;
+  else if (run.resources.tank > DRY_REFILL) run.resources.wtDry = 0;
 }
