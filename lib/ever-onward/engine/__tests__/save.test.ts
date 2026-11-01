@@ -60,7 +60,6 @@ describe("save", () => {
     ["not json", "{nope"],
     ["wrong shape", JSON.stringify({ version: 1, universes: 5 })],
     ["no version", JSON.stringify({ universes: {}, seenIntro: false })],
-    ["future version", JSON.stringify({ ...newSave(), version: 999 })],
     [
       "bad run",
       JSON.stringify({

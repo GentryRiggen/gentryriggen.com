@@ -9,6 +9,12 @@ export interface LoadResult {
   save: SaveData;
   /** A save was there but unreadable; it was backed up and replaced. */
   recovered: boolean;
+  /**
+   * The save was written by a newer version of the game (a rollback, or a
+   * stale install). It is backed up and left untouched in storage; callers
+   * should not overwrite it.
+   */
+  isFromNewerVersion?: boolean;
 }
 
 export const newSave = (): SaveData => ({
@@ -179,6 +185,10 @@ export function loadSave(): LoadResult {
     json = JSON.parse(raw);
   } catch {
     json = undefined;
+  }
+  if (isRecord(json) && isNum(json.version) && json.version > SAVE_VERSION) {
+    backUp(raw);
+    return { save: newSave(), recovered: false, isFromNewerVersion: true };
   }
   const parsed = json === undefined ? null : parseSaveReport(json);
   if (parsed && parsed.dropped.length === 0)
