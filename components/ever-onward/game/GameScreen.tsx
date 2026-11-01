@@ -40,6 +40,7 @@ import ProbeRaces from "./ProbeRaces";
 import StickyHud from "./StickyHud";
 import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
+import MemoryGarden from "./MemoryGarden";
 import TideClock from "./TideClock";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
 import VisitorCard from "./VisitorCard";
@@ -316,6 +317,7 @@ export default function GameScreen({
         <TideClock def={def} run={run} onAct={onAction} />
         <ProbeRaces def={def} run={run} onAct={onAction} />
         <WeatherDesk def={def} run={run} onAct={onAction} />
+        <MemoryGarden def={def} run={run} onAct={onAction} />
         <Resources
           def={def}
           run={run}

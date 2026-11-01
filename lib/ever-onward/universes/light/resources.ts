@@ -1,4 +1,5 @@
 import type { ResourceDef } from "../../engine/types";
+import { PLOT_COUNT } from "./garden";
 
 export const PHASE_COAST = "coast";
 export const PHASE_NIGHT = "night";
@@ -135,6 +136,31 @@ export const RESOURCES: readonly ResourceDef[] = [
   // The Last Light
   { id: "resolve", label: "Resolve", phases: [PHASE_LAST] },
   { id: "flame", label: "Flame", initial: 600, phases: [PHASE_LAST] },
+  // The Memory Garden (The Last Light): growth, watering and tallies, read by garden.ts
+  ...Array.from({ length: PLOT_COUNT }, (_, plot): ResourceDef[] => [
+    { id: `gdP${plot}`, label: `Plant ${plot + 1} growth`, phases: HIDDEN },
+    { id: `gdWet${plot}`, label: `Plant ${plot + 1} watered`, phases: HIDDEN },
+    {
+      id: `gdPicked${plot}`,
+      label: `Plant ${plot + 1} picked`,
+      phases: HIDDEN,
+    },
+  ]).flat(),
+  { id: "gdCool", label: "Watering can rests", phases: HIDDEN },
+  { id: "gdRain", label: "Next rain barrel shower", phases: HIDDEN },
+  { id: "gdPicks", label: "Blooms picked", phases: HIDDEN },
+  { id: "gdWaterings", label: "Times watered", phases: HIDDEN },
+  {
+    id: "gdLastKind",
+    label: "Garden last done (1 water, 2 pick)",
+    phases: HIDDEN,
+  },
+  { id: "gdLastBlooms", label: "Last pick, blooms", phases: HIDDEN },
+  { id: "gdLastPayout", label: "Last pick, resolve", phases: HIDDEN },
+  { id: "gdPending", label: "Pick glow still flowing in", phases: HIDDEN },
+  { id: "gdSurgeRate", label: "Pick glow flow rate", phases: HIDDEN },
+  { id: "gdEarned", label: "Resolve from the garden", phases: HIDDEN },
+  { id: "gdPaused", label: "Garden paused (simulator)", phases: HIDDEN },
   // The first ship's boat (shown through its action, not as a number).
   { id: "boatHeading", label: "Boat heading", initial: 100, phases: HIDDEN },
   { id: "boatProgress", label: "Boat progress", phases: HIDDEN },

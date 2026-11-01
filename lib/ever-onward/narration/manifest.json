@@ -309,6 +309,21 @@
     "hash": "0b4250c0222a",
     "durationGuess": 10
   },
+  "light/last-garden": {
+    "file": "/ever-onward/voice/light/last-garden.mp3",
+    "hash": "015d13651e62",
+    "durationGuess": 19
+  },
+  "light/last-bloom": {
+    "file": "/ever-onward/voice/light/last-bloom.mp3",
+    "hash": "3eb532d90e01",
+    "durationGuess": 18
+  },
+  "light/last-barrel": {
+    "file": "/ever-onward/voice/light/last-barrel.mp3",
+    "hash": "0f0572fbcb77",
+    "durationGuess": 13
+  },
   "light/last-halfway": {
     "file": "/ever-onward/voice/light/last-halfway.mp3",
     "hash": "a38cd21f4a2c",

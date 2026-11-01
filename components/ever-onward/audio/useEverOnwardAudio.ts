@@ -92,6 +92,7 @@ export default function useEverOnwardAudio(
     hauls: run.resources.tdHauls ?? 0,
     launches: run.resources.prLaunches ?? 0,
     homeRuns: run.resources.prRuns ?? 0,
+    picks: run.resources.gdPicks ?? 0,
     affordable: new Set<string>(),
   });
   const affordableNow = new Set(
@@ -115,6 +116,9 @@ export default function useEverOnwardAudio(
         everOnwardSynth.cue("launch");
       if ((run.resources.prRuns ?? 0) > before.homeRuns)
         everOnwardSynth.cue("arrive");
+      // A memory flower picked in the garden.
+      if ((run.resources.gdPicks ?? 0) > before.picks)
+        everOnwardSynth.cue("chime");
       if (run.revealed.length > before.revealed) everOnwardSynth.cue("reveal");
       for (const id of affordableNow) {
         if (!before.affordable.has(id)) {
@@ -131,6 +135,7 @@ export default function useEverOnwardAudio(
       hauls: run.resources.tdHauls ?? 0,
       launches: run.resources.prLaunches ?? 0,
       homeRuns: run.resources.prRuns ?? 0,
+      picks: run.resources.gdPicks ?? 0,
       affordable: affordableNow,
     };
   });

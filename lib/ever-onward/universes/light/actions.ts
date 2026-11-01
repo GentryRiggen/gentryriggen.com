@@ -28,6 +28,7 @@ import {
   tankCapacity,
   calmIncomePerSecond,
   calmSkyIncomePerSecond,
+  resolvePerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
 import {
@@ -59,6 +60,18 @@ import {
   routeHaul,
   routeSeconds,
 } from "./probes";
+import {
+  PICK_ACTION,
+  WATER_ACTION,
+  bloomCount,
+  pickWorthShown,
+  canWaterNow,
+  growingCount,
+  isGardenOpen,
+  pickBlooms,
+  waterCooldownLeft,
+  waterGarden,
+} from "./garden";
 import { formatNumber } from "../../engine/format";
 
 const TREND_THRESHOLD = 0.015;
@@ -333,6 +346,48 @@ const LAUNCH_ROUTE: readonly ActionDef[] = ROUTES.map((route, index) => ({
   }),
   perform: (run) => launchProbe(run, index, calmSkyIncomePerSecond(run)),
 }));
+/** The memory garden's two buttons; its panel draws them itself. */
+const WATER_GARDEN: ActionDef = {
+  id: WATER_ACTION,
+  phases: [PHASE_LAST],
+  isInline: true,
+  visibleWhen: isGardenOpen,
+  describe: (run) => {
+    const wait = Math.ceil(waterCooldownLeft(run));
+    return {
+      label: "Water the garden",
+      detail:
+        growingCount(run) === 0
+          ? "Everything is in bloom. Nothing is thirsty."
+          : wait > 0
+            ? "The can is filling up again."
+            : "Every thirsty plant drinks and grows faster for a little while.",
+      isBlocked: !canWaterNow(run),
+    };
+  },
+  perform: waterGarden,
+};
+
+const PICK_BLOOMS: ActionDef = {
+  id: PICK_ACTION,
+  phases: [PHASE_LAST],
+  isInline: true,
+  visibleWhen: isGardenOpen,
+  describe: (run) => {
+    const ready = bloomCount(run);
+    return {
+      label: "Pick the blooms",
+      detail:
+        ready > 0
+          ? `${ready} ${ready === 1 ? "flower is" : "flowers are"} ready: about +${formatNumber(
+              pickWorthShown(ready, resolvePerSecond(run))
+            )} resolve.`
+          : "Nothing in bloom yet. They wait for you when they are.",
+      isBlocked: ready <= 0,
+    };
+  },
+  perform: (run) => pickBlooms(run, resolvePerSecond(run)),
+};
 
 export const ACTIONS: readonly ActionDef[] = [
   BUY_OIL,
@@ -346,4 +401,6 @@ export const ACTIONS: readonly ActionDef[] = [
   SET_NETS,
   HAUL_IN,
   ...LAUNCH_ROUTE,
+  WATER_GARDEN,
+  PICK_BLOOMS,
 ];

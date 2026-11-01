@@ -1,6 +1,8 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 
-import { LAST_LIGHTS as LIGHTS } from "./anchors";
+import { plotDigit } from "@/lib/ever-onward/universes/light/garden";
+
+import { GARDEN, LAST_LIGHTS as LIGHTS } from "./anchors";
 
 /** The lamp, and where the boat starts and stops on the dark water. */
 const LAMP = { x: 200, y: 166 };
@@ -49,6 +51,59 @@ function Boat({ info }: { info: LightSceneInfo }) {
           </g>
         </g>
       </g>
+    </g>
+  );
+}
+
+const FLOWER_COLOURS = [
+  "#fbbf24",
+  "#fb7185",
+  "#38bdf8",
+  "#a78bfa",
+  "#2dd4bf",
+  "#fb923c",
+  "#f472b6",
+  "#f87171",
+  "#c4b5fd",
+  "#facc15",
+  "#93c5fd",
+] as const;
+
+/** One tiny memory flower by the lantern: sprout, bud or bloom (1 to 3). */
+function Flower({ slot, digit }: { slot: number; digit: number }) {
+  const x = GARDEN.x + slot * GARDEN.gap;
+  const y = GARDEN.y + (slot % 2) * 3;
+  const colour = FLOWER_COLOURS[slot];
+  const stem = digit === 3 ? 12 : digit === 2 ? 9 : 5;
+  return (
+    <g transform={`translate(${x} ${y})`} data-testid="lm-scene-flower">
+      <g className="gd-sway">
+        {digit === 3 && (
+          <circle cy={-stem} r="9" fill={colour} className="gd-glow" />
+        )}
+        <rect x="-0.5" y={-stem} width="1" height={stem} fill="#22c55e" />
+        <rect x="-3" y="-4" width="3" height="1.5" fill="#4ade80" />
+        {digit === 2 && (
+          <rect x="-1.5" y={-stem - 3} width="3" height="4" fill={colour} />
+        )}
+        {digit === 3 && (
+          <g transform={`translate(0 ${-stem})`}>
+            <circle r="3.4" fill={colour} />
+            <circle r="1.4" fill="#fff7ed" />
+          </g>
+        )}
+      </g>
+    </g>
+  );
+}
+
+function RainBarrel() {
+  return (
+    <g transform={`translate(${GARDEN.barrelX} ${GARDEN.y + 2})`}>
+      <rect x="-6" y="-12" width="12" height="13" fill="#6b4423" />
+      <rect x="-6" y="-9" width="12" height="1.5" fill="#3b2412" />
+      <rect x="-6" y="-4" width="12" height="1.5" fill="#3b2412" />
+      <rect x="-5" y="-13" width="10" height="2" fill="#38bdf8" opacity="0.8" />
     </g>
   );
 }
@@ -123,6 +178,18 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
       <g transform="translate(200 240) scale(0.62)">
         <use href="#lm-mini" />
       </g>
+      {/* memory flowers: one for each light let go, growing by the lantern */}
+      {info.gardenCode > 0 && (
+        <g data-testid="lm-scene-garden" opacity="0.95">
+          {LIGHTS.map((_, slot) => {
+            const digit = plotDigit(info.gardenCode, slot);
+            return digit > 0 ? (
+              <Flower key={slot} slot={slot} digit={digit} />
+            ) : null;
+          })}
+          {info.rainBarrel > 0 && <RainBarrel />}
+        </g>
+      )}
       <g transform={`translate(${LAMP.x} ${LAMP.y})`}>
         <g className="lm-flicker">
           <circle

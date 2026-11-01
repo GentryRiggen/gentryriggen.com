@@ -290,6 +290,14 @@ export function playThunder(engine: VoiceEngine) {
   });
 }
 
+/** A soft, warm two-note chime: a memory flower is picked. */
+export function playChime(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [72, 79, 84].forEach((note, i) => {
+    warmBell(engine, at + i * 0.11, midiToHz(note), 0.7);
+  });
+}
+
 /** A soft splash of water and two little droplet plinks: the nets come in. */
 export function playSplash(engine: VoiceEngine) {
   const at = engine.ctx.currentTime;

@@ -1,6 +1,10 @@
 import { metVisitors } from "@/lib/ever-onward/engine/engine";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
+import {
+  keepsakeNames,
+  picksSoFar,
+} from "@/lib/ever-onward/universes/light/garden";
 import { pixelClass, retroInsetClass } from "./retro/retroStyles";
 
 interface LogbookProps {
@@ -59,6 +63,14 @@ export default function Logbook({ def, run }: LogbookProps) {
           {(run.resources.tdMilled ?? 0) > 0 &&
             `, +${formatNumber(Math.floor(run.resources.tdMilled ?? 0))} from the tide mill`}
           ).
+        </p>
+      )}
+      {picksSoFar(run) > 0 && (
+        <p
+          data-testid="lm-keepsakes"
+          className="font-mono text-xs text-emerald-200"
+        >
+          Keepsakes: {keepsakeNames(run).join(", ")}.
         </p>
       )}
       {(run.resources.wxFronts ?? 0) > 0 && (

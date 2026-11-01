@@ -74,6 +74,31 @@ export const TUNING = {
     /** A haul flows in over this many seconds, like a rush of light. */
     surgeSeconds: 4,
   },
+  /** The Memory Garden, a side machine of The Last Light (see garden.ts). */
+  garden: {
+    /** Seconds a seed takes to bloom with no water at all. */
+    growSeconds: 170,
+    /** A seed counts as sprouted (and the story says so) from this share. */
+    sproutAt: 0.1,
+    /** A plant is a bud from this share of its growth on. */
+    budAt: 0.34,
+    /** A picked plant starts again from here, and grows at this pace. */
+    regrowTo: 0.34,
+    regrowPace: 0.5,
+    /** A watering keeps a plant watered this long; the can then rests. */
+    wetSeconds: 40,
+    waterCooldown: 15,
+    /** Watered seconds count this much extra (2.2x in all). */
+    wetBoost: 1.2,
+    /** The rain barrel waters thirsty plants this often, for this long. */
+    rainEvery: 45,
+    rainWetSeconds: 14,
+    /** A bloom is worth this many seconds of letting go, and a little flame. */
+    pickSeconds: 3,
+    pickFlame: 20,
+    /** The picked resolve flows in over this many seconds, like a glow. */
+    surgeSeconds: 4,
+  },
   night: {
     perCityMW: 150,
     payPerMW: 0.2,

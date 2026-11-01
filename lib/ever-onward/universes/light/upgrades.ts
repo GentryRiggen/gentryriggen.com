@@ -35,6 +35,7 @@ import {
   aimEnergy,
   calmIncomePerSecond,
 } from "./tick";
+import { RAIN_BARREL_ID, picksSoFar, restingPace, startRain } from "./garden";
 import {
   MISSION_CONTROL_ID,
   PROBES_OPEN_FLAG,
@@ -951,6 +952,32 @@ const letGoUpgrades: UpgradeDef[] = LET_GO.map((light) => {
   };
 });
 
+/** The garden's helper: it opens once the first flower has been picked. */
+const rainBarrel: UpgradeDef = {
+  id: RAIN_BARREL_ID,
+  name: "Rain barrel",
+  description:
+    "A barrel by the flower beds that waters the thirsty ones now and then. Watering by hand still helps, on top.",
+  phases: last,
+  currency: "resolve",
+  baseCost: COSTS[RAIN_BARREL_ID],
+  costGrowth: 1,
+  // A bonus helper, not what moves the ending: bots let go of lights first.
+  priority: -1,
+  visibleWhen: (run) => picksSoFar(run) >= 1,
+  onBuy: (run: RunState) => {
+    startRain(run);
+    sync(run);
+  },
+  effectPreview: previewOf(RAIN_BARREL_ID, [
+    {
+      label: "Growth with no watering",
+      read: (run) => restingPace(run) * 100,
+      suffix: "%",
+    },
+  ]),
+};
+
 /** Scorecard tags: the upgrades that bring a new system or action. */
 const MECHANICS: ReadonlySet<string> = new Set([
   "keeper",
@@ -965,6 +992,7 @@ const MECHANICS: ReadonlySet<string> = new Set([
   WEATHER_VANE_ID,
   TIDE_MILL_ID,
   MISSION_CONTROL_ID,
+  RAIN_BARREL_ID,
   "nav-1",
   "nav-2",
 ]);
@@ -982,6 +1010,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...nightUpgrades,
   ...skyUpgrades,
   ...letGoUpgrades,
+  rainBarrel,
 ].map((upgrade) => ({
   ...upgrade,
   baseCost: upgrade.baseCost * costScaleOf(upgrade),

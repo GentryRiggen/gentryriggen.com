@@ -1,4 +1,5 @@
 import type { RunState, StoryMessage } from "../../engine/types";
+import { hasSprouted, picksSoFar } from "./garden";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -335,6 +336,24 @@ const last: StoryMessage[] = [
     phase: PHASE_LAST,
     when: (run) => res(run, "lights") <= 10,
     text: "One light goes out. It does not hurt. It sighs, like someone settling into a chair at the end of a long day.",
+  },
+  {
+    id: "last-garden",
+    phase: PHASE_LAST,
+    when: hasSprouted,
+    text: "Where the first light went out, a seed is sitting in the dark soil, and it has just sprouted. It is the memory of that light, and it wants a little water and a little time. Every light you let go will leave one.",
+  },
+  {
+    id: "last-bloom",
+    phase: PHASE_LAST,
+    when: (run) => picksSoFar(run) >= 1,
+    text: "You pick the first memory flower. It does not fade in your hand. It glows a little, like the light it came from, and the lantern leans over to look. Some things you let go of turn into something you can keep.",
+  },
+  {
+    id: "last-barrel",
+    phase: PHASE_LAST,
+    when: (run) => owned(run, "rain-barrel") >= 1,
+    text: "A rain barrel stands by the flower beds. When you are busy elsewhere, the barrel remembers. You can still do the watering yourself, if you like. Most gardeners do.",
   },
   {
     id: "last-halfway",

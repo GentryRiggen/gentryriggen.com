@@ -3,6 +3,13 @@ import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { barrelOil, tankCapacity } from "./tick";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
+import {
+  PICK_ACTION,
+  WATER_ACTION,
+  bloomCount,
+  growingCount,
+  thirstyCount,
+} from "./garden";
 import { HAUL_ACTION, SET_NETS_ACTION, highTidesSoFar } from "./tide";
 import {
   frontsSoFar,
@@ -17,6 +24,9 @@ import {
 const MIN_BARREL_SHARE = 0.4;
 /** ... or this much when the lamp is nearly dry. */
 const MIN_DRY_BARREL_SHARE = 0.25;
+
+/** Seconds in one stretch of attention for the garden (the bots' deterministic skips count these). */
+const GARDEN_WINDOW_SECONDS = 30;
 
 type OilChoice = (run: RunState, available: readonly string[]) => string[];
 
@@ -147,6 +157,35 @@ const racesProbes =
     return available.includes(id) ? [id] : [];
   };
 
+/**
+ * Waters the garden and picks the blooms. A bot with real attention looks in
+ * on it in windows of 20 seconds and misses one window in every `skipEvery`
+ * (counted by the clock, so the sim stays deterministic); a distracted one
+ * (`onlyEvery`) looks in just one window in so many. Blooms wait and growth
+ * only slows without water, so a miss costs nothing but time.
+ */
+const tendsGarden =
+  (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
+  (run, available) => {
+    const window = Math.floor(run.time / GARDEN_WINDOW_SECONDS);
+    const { skipEvery, onlyEvery } = options;
+    if (skipEvery && window % skipEvery === skipEvery - 1) return [];
+    if (onlyEvery && window % onlyEvery !== 0) return [];
+    // Picks when a few blooms are ready, waters when every plant looks dry:
+    // nobody taps the can while the soil is still wet.
+    const picks =
+      bloomCount(run) >= 2 && available.includes(PICK_ACTION)
+        ? [PICK_ACTION]
+        : [];
+    const waters =
+      growingCount(run) > 0 &&
+      thirstyCount(run) === growingCount(run) &&
+      available.includes(WATER_ACTION)
+        ? [WATER_ACTION]
+        : [];
+    return [...picks, ...waters];
+  };
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -167,10 +206,11 @@ const withOil = (
   care: OilChoice = looksAfterThings(45, true),
   weather: OilChoice = () => [],
   tide: OilChoice = () => [],
-  race: OilChoice = () => []
+  race: OilChoice = () => [],
+  garden: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather, tide, race),
+  actions: combine(actions, care, weather, tide, race, garden),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -199,7 +239,8 @@ export function lightBots(): BotSet {
       looksAfterThings(74, true),
       tendsWeather({ skipEvery: 10 }),
       tendsTide({ skipEvery: 8 }),
-      racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 })
+      racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
+      tendsGarden({ skipEvery: 6 })
     ),
     realistic: withOil(
       base.realistic,
@@ -207,7 +248,8 @@ export function lightBots(): BotSet {
       looksAfterThings(42, true),
       tendsWeather({ skipEvery: 5 }),
       tendsTide({ skipEvery: 4 }),
-      racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 })
+      racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
+      tendsGarden({ skipEvery: 3 })
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
@@ -217,7 +259,8 @@ export function lightBots(): BotSet {
         looksAfterThings(35, false),
         tendsWeather({ onlyEvery: 3 }),
         tendsTide({ onlyEvery: 3 }),
-        racesProbes({ comet: 2, plain: 1, onlyEvery: 3 })
+        racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
+        tendsGarden({ onlyEvery: 3 })
       ),
       greetAfter: 60,
     },

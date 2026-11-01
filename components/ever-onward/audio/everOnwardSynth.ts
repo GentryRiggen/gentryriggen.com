@@ -21,6 +21,7 @@ import {
   playPhaseSwell,
   playReveal,
   playTapVoice,
+  playChime,
   playSplash,
   playLaunch,
   playArrive,
@@ -55,7 +56,8 @@ export type CueName =
   | "thunder"
   | "splash"
   | "launch"
-  | "arrive";
+  | "arrive"
+  | "chime";
 
 const MASTER_LEVEL = 0.8;
 /** User-facing loudness of the music bed: low, so it stays in the back. */
@@ -407,6 +409,8 @@ function createSynth() {
         playLaunch(engine);
       } else if (name === "arrive") {
         playArrive(engine);
+      } else if (name === "chime") {
+        playChime(engine);
       } else if (name === "phase") {
         playPhaseSwell(engine, phase ?? 0);
         music?.player.duck(0.4, 2.5);
