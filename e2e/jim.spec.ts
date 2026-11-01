@@ -71,7 +71,51 @@ interface MockCalls {
   messages: string[];
   /** Each /api/push call ("POST /api/push/subscribe"), in order. */
   push: string[];
+  /** Each reminder PATCH body, in order. */
+  reminderPatches: unknown[];
+  /** How many times the morning brief script was asked for. */
+  brief: number;
 }
+
+const REMINDER_ID = "0123456789ab";
+const MEETING_ID = "0123456789abcdef";
+const REFLECTION_QUESTION = "What went well today?";
+const PUSH_SETTINGS = {
+  kinds: [
+    { id: "morning", label: "Morning brief", on: true },
+    { id: "reminders", label: "Reminders", on: true },
+    { id: "evening", label: "Evening wrap", on: true },
+  ],
+  eveningTime: "21:00",
+  lessonTime: "12:00",
+};
+/** An invented reminder, as the server sends one. */
+const REMINDER = {
+  id: REMINDER_ID,
+  at: "2026-10-31T15:30:00-06:00",
+  text: "Call the plumber about the kitchen tap",
+  created: "2026-10-31T09:00:00-06:00",
+  sent: null,
+  rev: 0,
+  when: "Today 3:30 PM",
+};
+/** An invented meeting card for the view payload. */
+const MEETING_CARD = {
+  id: MEETING_ID,
+  subject: "Team standup",
+  start: "2026-10-31T16:00:00Z",
+  end: "2026-10-31T16:30:00Z",
+  where: "Room 4",
+  attendees: [
+    {
+      name: "Ava Torres",
+      role: "Analyst",
+      path: "people/ava-torres.md",
+      last: "2026-10-20: agreed to send the draft",
+      todos: ["Send the draft"],
+    },
+  ],
+};
 
 /** Invented search hits and the one note behind them. */
 const SEARCH_RESULTS = [
@@ -124,13 +168,15 @@ async function mockServer(
     search: [],
     messages: [],
     push: [],
+    reminderPatches: [],
+    brief: 0,
   };
   /** Todos checked off on the "server": the next view leaves them out. */
   const done = new Set<number>();
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
-    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS",
   };
   await page.route(`${API}/**`, async (route) => {
     if (route.request().method() === "OPTIONS") {
@@ -161,6 +207,8 @@ async function mockServer(
         headers: { ...cors, "Content-Type": "application/json" },
         body: JSON.stringify({
           ...VIEW_FIXTURE,
+          reflection: { question: REFLECTION_QUESTION },
+          meetingCards: { [MEETING_ID]: MEETING_CARD },
           todos: VIEW_FIXTURE.todos.filter((t) => !done.has(t.order)),
           // A checked-off line carries its done stamp, as the server writes it.
           doneTodos: VIEW_FIXTURE.todos
@@ -195,6 +243,36 @@ async function mockServer(
         else done.delete(body.order);
         await reply(200, { ok: true, commit: "c0ffee1234", sha: "c0ffee1" });
       }
+      return;
+    }
+    if (url.pathname === "/api/push/settings") {
+      await reply(200, PUSH_SETTINGS);
+      return;
+    }
+    if (url.pathname === "/api/reminders") {
+      await reply(200, { reminders: [REMINDER] });
+      return;
+    }
+    if (url.pathname === `/api/reminders/${REMINDER_ID}`) {
+      if (route.request().method() === "PATCH") {
+        calls.reminderPatches.push(route.request().postDataJSON());
+        await reply(200, { ...REMINDER, when: "Today 3:40 PM", rev: 1 });
+      } else {
+        await reply(200, REMINDER);
+      }
+      return;
+    }
+    if (url.pathname === "/api/brief/script") {
+      calls.brief += 1;
+      await reply(200, {
+        day: "2026-10-31",
+        text: "Good morning. You have one meeting today and two things due.",
+      });
+      return;
+    }
+    if (url.pathname === "/api/speech") {
+      // No voice here: the player falls back or waits for a tap.
+      await reply(503, { error: "no voice in tests" });
       return;
     }
     if (url.pathname.startsWith("/api/push/")) {
@@ -1281,7 +1359,7 @@ test(
 );
 
 test(
-  "Morning briefing in the menu, and its Home Screen hint on an iPhone",
+  "Notifications in the menu, and its Home Screen hint on an iPhone",
   { tag: "@smoke" },
   async ({ page }, testInfo) => {
     test.skip(
@@ -1292,9 +1370,7 @@ test(
     for (const width of [393, 320]) {
       await page.setViewportSize({ width, height: width === 320 ? 568 : 852 });
       await page.getByRole("button", { name: "Menu" }).click();
-      const item = page.getByRole("menuitem", {
-        name: "Morning briefing: Off",
-      });
+      const item = page.getByRole("menuitem", { name: "Notifications" });
       await expect(item).toBeInViewport({ ratio: 1 });
       await bigTargets(page);
       await noSidewaysScroll(page);
@@ -1303,6 +1379,11 @@ test(
         animations: "disabled",
       });
       await item.click();
+      const sheet = page.getByRole("dialog", { name: "Notifications" });
+      await expect(sheet).toContainText("Add Jim to your Home Screen first");
+      await bigTargets(page);
+      await noSidewaysScroll(page);
+      await page.getByRole("switch").click();
       const hint = page.getByRole("alertdialog");
       await expect(hint).toContainText(
         "Add Jim to your Home Screen first (Share → Add to Home Screen), then turn this on there."
@@ -1315,6 +1396,8 @@ test(
       });
       await page.getByRole("button", { name: "OK" }).click();
       await expect(hint).toHaveCount(0);
+      await page.getByRole("button", { name: "Close" }).click();
+      await expect(sheet).toHaveCount(0);
     }
     expect(calls.push).toEqual([]);
   }
@@ -1801,3 +1884,139 @@ test(
     ).toBeVisible();
   }
 );
+
+test.describe("Jim pings", () => {
+  test("a reminder opens from its address and snoozes", async ({ page }) => {
+    const calls = await signedIn(page);
+    await page.goto(`/jim/reminders/${REMINDER_ID}`);
+    await expect(
+      page.getByRole("heading", { name: REMINDER.text })
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Snooze 10 min" }).click();
+    await expect.poll(() => calls.reminderPatches).toEqual([{ snooze: "10m" }]);
+    await expect(page.getByText("Today 3:40 PM")).toBeVisible();
+  });
+
+  test("?listen=brief fetches the brief and plays it or leaves a chip", async ({
+    page,
+  }) => {
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    const calls = await mockServer(page);
+    await page.goto("/jim?listen=brief");
+    await expect(page.getByLabel("Message")).toBeVisible();
+    await expect.poll(() => calls.brief).toBe(1);
+    await expect(
+      page
+        .getByRole("region", { name: "Now playing" })
+        .or(page.getByRole("button", { name: "Play your morning" }))
+    ).toBeVisible();
+    // The way in leaves no trace in the address.
+    expect(new URL(page.url()).search).toBe("");
+  });
+
+  test("?reflect=1 shows tonight's question and sends the answer with it", async ({
+    page,
+  }) => {
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    const calls = await mockServer(page);
+    await page.goto("/jim/chat?reflect=1");
+    await expect(page.getByText(REFLECTION_QUESTION)).toBeVisible();
+    const box = page.getByPlaceholder("Your answer…");
+    await box.fill("Finished the draft");
+    await page.getByRole("button", { name: "Send" }).click();
+    await expect.poll(() => calls.messages.length).toBe(1);
+    expect(calls.messages[0].startsWith("Evening reflection.")).toBe(true);
+    expect(calls.messages[0]).toContain(`Q: ${REFLECTION_QUESTION}`);
+    expect(calls.messages[0]).toContain("A: Finished the draft");
+    await expect(page.getByPlaceholder("Message Jim")).toBeVisible();
+  });
+
+  for (const width of [393, 320]) {
+    test(`reminders, a meeting card and Notifications fit a ${width}px phone`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height: 800 });
+      // A stand-in push service with this device already subscribed.
+      await page.addInitScript(() => {
+        const sub = {
+          endpoint: "https://push.example.test/device",
+          unsubscribe: async () => true,
+        };
+        const registration = {
+          pushManager: { getSubscription: async () => sub },
+        };
+        Object.defineProperty(navigator, "serviceWorker", {
+          configurable: true,
+          value: {
+            getRegistration: async () => registration,
+            ready: Promise.resolve(registration),
+            register: async () => registration,
+          },
+        });
+        Object.defineProperty(window, "PushManager", {
+          configurable: true,
+          value: function PushManager() {},
+        });
+        Object.defineProperty(window, "Notification", {
+          configurable: true,
+          value: { requestPermission: async () => "granted" },
+        });
+      });
+      await signedIn(page);
+      const shot = (name: string) =>
+        page.screenshot({
+          path: `${SHOTS}/${name}-${testInfo.project.name}-${width}.png`,
+          animations: "disabled",
+        });
+
+      await page.goto("/jim/reminders");
+      await expect(
+        page.getByRole("link", { name: REMINDER.text })
+      ).toBeVisible();
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await shot("reminders");
+
+      await page.goto(`/jim/reminders/${REMINDER_ID}`);
+      await expect(
+        page.getByRole("heading", { name: REMINDER.text })
+      ).toBeVisible();
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+
+      await page.goto(`/jim/meeting/${MEETING_ID}`);
+      await expect(
+        page.getByRole("heading", { name: "Team standup" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "Ava Torres" })
+      ).toBeVisible();
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await shot("meeting-card");
+
+      await page.goto("/jim");
+      await expect(page.getByLabel("Message")).toBeVisible();
+      await page.getByRole("button", { name: "Menu" }).click();
+      await page.getByRole("menuitem", { name: "Notifications" }).click();
+      if (testInfo.project.name === "iphone") {
+        // In a Safari tab push can't be on: the sheet shows the hint.
+        await expect(
+          page.getByText("Add Jim to your Home Screen")
+        ).toBeVisible();
+      } else {
+        await expect(
+          page.getByRole("switch", { name: "Evening wrap" })
+        ).toBeVisible();
+        await expect(page.getByText("Quiet 10 PM–6:30 AM")).toBeVisible();
+      }
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await shot("notifications");
+    });
+  }
+});
