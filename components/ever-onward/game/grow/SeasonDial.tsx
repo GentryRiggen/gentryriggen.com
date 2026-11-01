@@ -8,7 +8,7 @@ import {
   type Season,
 } from "@/lib/ever-onward/universes/grow/seasons";
 import type { PanelProps } from "../../universes/types";
-import { pixelClass } from "../retro/retroStyles";
+import PanelFrame from "../retro/PanelFrame";
 
 const NAMES: Record<Season, string> = {
   spring: "Spring",
@@ -48,20 +48,15 @@ export default function SeasonDial({ run }: PanelProps) {
   const season = seasonOf(run);
   const next = SEASONS[(SEASONS.indexOf(season) + 1) % SEASONS.length];
   return (
-    <section
-      aria-label="The season"
-      data-testid="lm-season"
-      data-season={season}
-      className="space-y-2 border-4 border-lime-300/70 bg-slate-950/85 p-3 shadow-[4px_4px_0_#365314]"
+    <PanelFrame
+      label="The season"
+      title={NAMES[season]}
+      tone="lime"
+      status={`${NAMES[next]} in ${clock(seasonSecondsLeft(run))}`}
+      statusActive={false}
+      testId="lm-season"
+      data={{ "data-season": season }}
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-lime-200`}>
-          {NAMES[season]}
-        </h2>
-        <p className={`${pixelClass} text-[8px] text-lime-100/80`}>
-          {NAMES[next]} in {clock(seasonSecondsLeft(run))}
-        </p>
-      </header>
       <ul className="flex gap-1" aria-hidden="true">
         {SEASONS.map((s) => (
           <li
@@ -70,9 +65,9 @@ export default function SeasonDial({ run }: PanelProps) {
           />
         ))}
       </ul>
-      <p className="text-xs text-lime-50 sm:text-sm">
+      <p className="font-mono text-sm text-slate-200">
         {boostLine(season, run)}
       </p>
-    </section>
+    </PanelFrame>
   );
 }

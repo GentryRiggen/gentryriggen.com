@@ -114,7 +114,7 @@ function ActionCard({
           {view.hint && (
             <span
               data-testid="lm-action-hint"
-              className={`${pixelClass} border-2 px-1.5 py-1 text-[8px] ${TONES[view.hint.tone]}`}
+              className={`${pixelClass} border-2 px-1.5 py-1 text-[10px] ${TONES[view.hint.tone]}`}
             >
               {view.hint.text}
             </span>

@@ -29,6 +29,7 @@ import {
   secondsLeft,
 } from "@/lib/ever-onward/universes/light/probes";
 import { calmSkyIncomePerSecond } from "@/lib/ever-onward/universes/light/tick";
+import PanelFrame from "./retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface ProbeRacesProps {
@@ -317,7 +318,7 @@ function CometBar({ place, closeness }: { place: number; closeness: number }) {
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <span className="flex justify-between font-mono text-[11px] font-bold text-slate-300">
+      <span className="flex justify-between font-mono text-xs font-bold text-slate-300">
         <span>Far away</span>
         <span className={isNear ? "text-amber-300" : undefined}>
           {isNear ? "Close: go now!" : "Close"}
@@ -459,33 +460,43 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
     : "border-amber-200 bg-amber-400 text-amber-950 shadow-[4px_4px_0_#78350f,0_0_18px_rgba(251,191,36,0.6)] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none";
 
   return (
-    <section
-      aria-label="Probe races"
-      data-testid="lm-probe-panel"
-      data-probe={isOut ? "out" : "docked"}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-indigo-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#312e81]"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-indigo-200`}>
-          <span aria-hidden="true" className="mr-2 text-amber-300">
-            ★
-          </span>
-          Probe races
-        </h2>
-        <p
-          data-testid="lm-probe-status"
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            isOut
-              ? "border-amber-300 bg-amber-950 text-amber-100"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {isOut
-            ? `Probe is out: ${clock(secondsLeft(run))} left`
-            : "Probe is at the dock"}
-        </p>
-      </header>
+    <PanelFrame
+      label="Probe races"
+      title="Probe races"
+      icon="★"
+      tone="violet"
+      status={isOut ? null : "Probe is at the dock"}
+      statusActive={false}
+      statusTestId="lm-probe-status"
+      testId="lm-probe-panel"
+      data={{ "data-probe": isOut ? "out" : "docked" }}
+      className="relative isolate overflow-hidden"
+      result={line}
+      resultTestId="lm-probe-result"
+      footer={
+        <>
+          {hasMissionControl(run) && (
+            <p
+              data-testid="lm-probe-scout-line"
+              className="font-mono text-xs text-sky-100"
+            >
+              {lastFlown < 0
+                ? "Mission control is ready. Fly a route and its scout will follow it."
+                : isScoutOut(run)
+                  ? `The scout probe is out on the ${ROUTES[lastFlown].name.toLowerCase()}: ${clock(scoutSecondsLeft(run))} left. It brings a smaller haul, on top of yours.`
+                  : "The scout probe is at the dock."}
+            </p>
+          )}
 
+          {homeCount > 0 && (
+            <p className="font-mono text-xs text-slate-300">
+              Runs home: {homeCount} ({energy(earned)} energy
+              {scoutHome > 0 && `, ${energy(scoutEarned)} from the scout`}).
+            </p>
+          )}
+        </>
+      }
+    >
       <StarMap
         route={mapRoute}
         isOut={isOut}
@@ -545,7 +556,7 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
               : `Launch: ${route.name}`}
           </span>
           {!isOut && (
-            <span className="font-mono text-[11px] font-bold normal-case">
+            <span className="font-mono text-xs font-bold normal-case">
               {Math.round(routeSeconds(run, picked))} s, about{" "}
               {energy(routeHaul(run, picked, income))} energy
             </span>
@@ -577,37 +588,7 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
           </svg>
         )}
       </div>
-
-      {line && (
-        <p
-          role="status"
-          data-testid="lm-probe-result"
-          className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-        >
-          {line}
-        </p>
-      )}
-
-      {hasMissionControl(run) && (
-        <p
-          data-testid="lm-probe-scout-line"
-          className="font-mono text-xs text-sky-100"
-        >
-          {lastFlown < 0
-            ? "Mission control is ready. Fly a route and its scout will follow it."
-            : isScoutOut(run)
-              ? `The scout probe is out on the ${ROUTES[lastFlown].name.toLowerCase()}: ${clock(scoutSecondsLeft(run))} left. It brings a smaller haul, on top of yours.`
-              : "The scout probe is at the dock."}
-        </p>
-      )}
-
-      {homeCount > 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Runs home: {homeCount} ({energy(earned)} energy
-          {scoutHome > 0 && `, ${energy(scoutEarned)} from the scout`}).
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }
 

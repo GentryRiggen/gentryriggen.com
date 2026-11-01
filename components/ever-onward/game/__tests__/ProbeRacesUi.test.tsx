@@ -91,9 +91,8 @@ describe("ProbeRaces", () => {
     const flying = idle(performAction(def, openRun(), launchActionId(0)), 15);
     expect(isProbeOut(flying)).toBe(true);
     render(<ProbeRaces def={def} run={flying} onAct={jest.fn()} />);
-    expect(screen.getByTestId("lm-probe-status")).toHaveTextContent(
-      "Probe is out: 1:00 left"
-    );
+    // the big bar says it, so the header chip steps aside
+    expect(screen.queryByTestId("lm-probe-status")).not.toBeInTheDocument();
     const launch = screen.getByTestId("lm-probe-launch");
     expect(launch).toHaveAttribute("aria-disabled", "true");
     expect(launch).toHaveTextContent("Probe is out: 1:00 left");
