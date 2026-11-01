@@ -207,11 +207,12 @@ function beginForming(run: RunState, seconds: number): void {
 function landfall(run: RunState, income: number): void {
   const r = run.resources;
   const town = drawLandfall(run);
-  const isHandShielded = shieldedCount(run) > 0;
-  const isVaneShield = !isHandShielded && hasWeatherVane(run);
-  const isShieldedTown = isHandShielded
-    ? isShielded(run, town)
-    : isVaneShield && town === vanePick(run);
+  // The vane covers its pick on top of the player's own sandbags, so
+  // shielding by hand can never pay less than leaving the desk alone.
+  const isHandHit = isShielded(run, town);
+  const isVaneShield =
+    !isHandHit && hasWeatherVane(run) && town === vanePick(run);
+  const isShieldedTown = isHandHit || isVaneShield;
   r.wxFronts = frontsSoFar(run) + 1;
   r.wxLastTown = town;
   for (const t of TOWN_INDEXES) r[`wxShield${t}`] = 0;
@@ -261,7 +262,12 @@ export function tickWeather(
   dt: number,
   income: () => number
 ): void {
-  if (run.phase !== 1) return;
+  if (run.phase !== 1) {
+    // A surge still flowing when the night ends finishes paying out, so the
+    // tally the player saw is what they got.
+    flowSurge(run, dt);
+    return;
+  }
   const r = run.resources;
   if (!isWeatherOpen(run)) {
     if (owned(run, "gen2") < W.openAtSteamPlants) return;

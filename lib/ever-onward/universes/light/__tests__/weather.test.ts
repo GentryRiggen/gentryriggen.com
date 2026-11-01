@@ -249,6 +249,11 @@ describe("the weather desk", () => {
       stormWillHit(toForecast(tick(def, nightRun(), 1)), 0)
     );
     expect(lastStorm(noVane).kind).toBe("flicker");
+
+    // shielding a different town by hand never loses the vane's cover
+    const other = (likeliest + 1) % 3;
+    const mixed = toLandfall(shield(sure, other));
+    expect(lastStorm(mixed).kind).toBe("vane");
   });
 
   it("sizes the bonus at about 45 seconds of income", () => {

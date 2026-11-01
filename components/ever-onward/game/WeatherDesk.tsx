@@ -337,7 +337,7 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
         <p className="font-mono text-xs text-slate-300">
           You can shield {slots} {slots === 1 ? "town" : "towns"} at a time.
           {hasWeatherVane(run) &&
-            ` Pick none and the weather vane shields ${vaneTown} for you, for 60% of the bonus.`}
+            ` The weather vane also watches ${vaneTown} for you, for 60% of the bonus.`}
         </p>
       )}
 
