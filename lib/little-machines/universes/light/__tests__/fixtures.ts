@@ -11,6 +11,11 @@ const SPENDABLE = ["coins", "oil", "power", "energy", "resolve"] as const;
 export function drain(run: RunState): RunState {
   const resources = { ...run.resources };
   for (const id of SPENDABLE) resources[id] = 0;
+  // The worst of the coast: a storm about to hit and the dearest oil. (Probes,
+  // stars and lights stay: zeroing those would make the state impossible.)
+  resources.storm = 0;
+  resources.stormCooldown = 0;
+  resources.oilPrice = 5;
   return { ...run, resources };
 }
 

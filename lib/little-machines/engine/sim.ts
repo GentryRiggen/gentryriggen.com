@@ -11,6 +11,8 @@ import type { RunState, UniverseDef, UpgradeDef } from "./types";
 export interface Strategy {
   /** Taps per simulated second (default 3). */
   tapsPerSecond?: number;
+  /** Taps per second as a function of the run (overrides `tapsPerSecond`). */
+  tapRate?(run: RunState): number;
   /** Stop tapping after this many seconds (default: never). */
   tapUntil?: number;
   /** Buy upgrades at all (false: only tap; default true). */
@@ -55,7 +57,15 @@ export interface SimResult {
   phases: TimedEvent[];
   /** Longest stretch with no purchase and no unlock (incl. start and end). */
   longestGap: { seconds: number; from: number; to: number };
+  /**
+   * Like `longestGap`, but only unlocks, phase changes, the first purchase of
+   * each upgrade and upgrades capped at 10 levels or fewer count: buying
+   * another level of a cheap repeatable is filler, not something new.
+   */
+  longestMilestoneGap: { seconds: number; from: number; to: number };
 }
+
+const FILLER_MIN_LEVELS = 10;
 
 /** A step of 0 or less would never advance the clock. */
 const MIN_STEP = 0.01;
@@ -69,6 +79,21 @@ const cheapestFirst = (
       (b.priority ?? 0) - (a.priority ?? 0) ||
       upgradeCost(run, a) - upgradeCost(run, b)
   )[0];
+
+function longestGap(
+  times: readonly number[],
+  start: number,
+  end: number
+): SimResult["longestGap"] {
+  let longest = { seconds: 0, from: start, to: start };
+  let previous = start;
+  for (const t of [...times, end]) {
+    if (t - previous > longest.seconds)
+      longest = { seconds: t - previous, from: previous, to: t };
+    previous = t;
+  }
+  return longest;
+}
 
 /**
  * Plays a universe headless in simulated time: taps at a human rate and buys
@@ -88,6 +113,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   const unlocks: TimedEvent[] = [];
   const phases: TimedEvent[] = [];
   const eventTimes: number[] = [];
+  const milestoneTimes: number[] = [];
   const knownRevealed = new Set(run.revealed);
   let knownTransitions = run.transitions.length;
   let tapDebt = 0;
@@ -98,10 +124,12 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       knownRevealed.add(id);
       unlocks.push({ t: run.time, id });
       eventTimes.push(run.time);
+      milestoneTimes.push(run.time);
     }
     for (; knownTransitions < run.transitions.length; knownTransitions += 1) {
       const { to, at } = run.transitions[knownTransitions];
       phases.push({ t: at, id: to });
+      milestoneTimes.push(at);
     }
   };
 
@@ -116,6 +144,9 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
         level: run.owned[pick.id] ?? 0,
       });
       eventTimes.push(run.time);
+      const level = run.owned[pick.id] ?? 0;
+      if (level === 1 || (pick.maxLevel ?? 1) <= FILLER_MIN_LEVELS)
+        milestoneTimes.push(run.time);
       record();
     }
   };
@@ -127,7 +158,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     !options.stopWhen?.(run)
   ) {
     if (run.time < tapUntil) {
-      tapDebt += tapsPerSecond * step;
+      tapDebt += (strategy.tapRate?.(run) ?? tapsPerSecond) * step;
       for (; tapDebt >= 1; tapDebt -= 1) run = manualAction(def, run);
     }
     run = tick(def, run, step);
@@ -136,13 +167,8 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   }
 
   const endTime = run.time;
-  let longest = { seconds: 0, from: startTime, to: startTime };
-  let previous = startTime;
-  for (const t of [...eventTimes, endTime]) {
-    if (t - previous > longest.seconds)
-      longest = { seconds: t - previous, from: previous, to: t };
-    previous = t;
-  }
+  const longest = longestGap(eventTimes, startTime, endTime);
+  const longestMilestone = longestGap(milestoneTimes, startTime, endTime);
   return {
     finished: run.complete,
     finishTime: run.complete ? endTime : null,
@@ -152,5 +178,6 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     unlocks,
     phases,
     longestGap: longest,
+    longestMilestoneGap: longestMilestone,
   };
 }

@@ -21,7 +21,7 @@ export const TUNING = {
   },
   night: {
     perCityMW: 100,
-    payPerMW: 0.1,
+    payPerMW: 0.2,
     crankBase: 1,
     crankPerLevel: 2,
     gensMW: [1, 12, 150, 2000] as const,
@@ -52,5 +52,15 @@ export const TUNING = {
     resolvePerTap: 0.2,
     letGoRefund: 200,
     brightDecay: 0.12,
+  },
+  boons: {
+    /** Seconds into a phase when the first one pops in, and the spacing. */
+    firstAt: 240,
+    every: 140,
+    /** Each one adds this much to everything its phase does. */
+    bonus: 0.02,
+    coast: { baseCost: 3e6, costGrowth: 1.35 },
+    night: { baseCost: 3000, costGrowth: 1.15 },
+    sky: { baseCost: 2500, costGrowth: 1.1 },
   },
 } as const;

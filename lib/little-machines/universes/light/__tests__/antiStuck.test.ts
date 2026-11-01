@@ -1,4 +1,4 @@
-import { manualGain } from "../../../engine/engine";
+import { affordableUpgrades, manualGain } from "../../../engine/engine";
 import { simulate } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { def, drain, runAtPhaseStart, runAtTime } from "./fixtures";
@@ -55,6 +55,33 @@ describe("never stuck: adversarial states", () => {
     });
     expect(result.finished).toBe(true);
   });
+});
+
+describe("never stuck: tapping alone", () => {
+  // No passive production (nothing built in the phase) and no purchases: a
+  // player who only taps must still afford something to buy.
+  for (let phase = 0; phase < def.phases.length; phase += 1) {
+    const phaseId = def.phases[phase].id;
+    it(`${phaseId}: taps at 3/s alone afford an upgrade within 5 minutes`, () => {
+      const wiped = drain(runAtPhaseStart(phase));
+      const owned = { ...wiped.owned };
+      for (const upgrade of def.upgrades) {
+        if (upgrade.phases?.includes(phaseId)) delete owned[upgrade.id];
+      }
+      const result = simulate(def, {
+        startRun: { ...wiped, owned },
+        strategy: { buys: false, tapsPerSecond: 3 },
+        maxSeconds: 5 * MIN,
+        step: 0.5,
+        stopWhen: (run) =>
+          run.phase !== phase || affordableUpgrades(def, run).length > 0,
+      });
+      const { finalRun } = result;
+      expect(
+        finalRun.phase !== phase || affordableUpgrades(def, finalRun).length > 0
+      ).toBe(true);
+    });
+  }
 });
 
 describe("never stuck: drained states from a real run", () => {

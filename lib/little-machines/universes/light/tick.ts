@@ -15,8 +15,9 @@ const { coast: C, night: N, sky: S, last: L } = TUNING;
 
 export const level = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
-const speed = (run: RunState): number => run.mods.speed ?? 1;
-const tapMult = (run: RunState): number => run.mods.tapMult ?? 1;
+const boon = (run: RunState): number => run.mods.boon ?? 1;
+const speed = (run: RunState): number => (run.mods.speed ?? 1) * boon(run);
+const tapMult = (run: RunState): number => (run.mods.tapMult ?? 1) * boon(run);
 
 // ---------------------------------------------------------------- The Coast
 

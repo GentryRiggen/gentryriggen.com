@@ -1,5 +1,6 @@
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
+import { BOON_UPGRADES } from "./boons";
 import { syncDisplay } from "./tick";
 
 const coast = [PHASE_COAST] as const;
@@ -443,4 +444,5 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...skyUpgrades,
   ...letGoUpgrades,
   ...lastUpgrades,
+  ...BOON_UPGRADES,
 ];

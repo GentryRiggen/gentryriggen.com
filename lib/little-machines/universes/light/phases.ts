@@ -34,6 +34,7 @@ export const PHASES: readonly PhaseDef[] = [
     manualLabel: "Crank the generator",
     isDone: (run) => run.resources.night <= 0.001,
     onEnter: (run) => {
+      run.mods.boon = 1;
       // Old coins no longer matter; the grid runs on power.
       run.resources.power += 20 * headStart(run);
       run.resources.night = 100;
@@ -49,6 +50,7 @@ export const PHASES: readonly PhaseDef[] = [
     manualLabel: "Aim a collector",
     isDone: (run) => run.resources.stars <= 0.5,
     onEnter: (run) => {
+      run.mods.boon = 1;
       run.resources.energy += 20 * headStart(run);
       syncDisplay(run);
     },
