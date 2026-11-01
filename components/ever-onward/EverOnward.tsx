@@ -1,41 +1,71 @@
 "use client";
 
+import { useState } from "react";
+import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
 import GameScreen from "./game/GameScreen";
 import { useGame } from "./game/useGame";
 import Hub from "./Hub";
+import StartScreen from "./start/StartScreen";
+import UpdatePill from "./UpdatePill";
+import { useStaleChunkRecovery } from "./useStaleChunkRecovery";
+import { useUpdateCheck } from "./useUpdateCheck";
 
 export default function EverOnward() {
   const game = useGame();
+  const { isUpdateReady } = useUpdateCheck();
+  const [isOnStartScreen, setIsOnStartScreen] = useState(true);
   const { save, def, universe } = game;
+  useStaleChunkRecovery(game.saveNow);
 
   if (!save) {
     return (
       <div
         role="status"
-        className="grid min-h-dvh place-items-center bg-slate-100 text-slate-600 dark:bg-slate-950 dark:text-slate-400"
+        className="grid min-h-dvh place-items-center bg-slate-950 text-slate-400"
       >
         Loading…
       </div>
     );
   }
 
-  if (def && universe) {
-    return (
-      <GameScreen
-        def={def}
-        universe={universe}
-        overlay={game.overlay}
-        onTap={game.tap}
-        onBuy={game.buyUpgrade}
-        onBuyEmber={game.buyEmberUpgrade}
-        onRestart={game.restart}
-        onLeave={game.leave}
-        onReplaceSave={game.replaceSave}
-        currentSave={save}
-        onDismissOverlay={game.dismissOverlay}
-      />
-    );
-  }
+  const startedIds = Object.entries(save.universes)
+    .filter(([, saved]) => hasStartedUniverse(saved))
+    .map(([id]) => id);
 
-  return <Hub save={save} isRecovered={game.recovered} onPlay={game.open} />;
+  // Only when the player taps: never reload in the middle of play.
+  const handleUpdate = () => {
+    game.saveNow();
+    window.location.reload();
+  };
+
+  return (
+    <>
+      {def && universe ? (
+        <GameScreen
+          def={def}
+          universe={universe}
+          overlay={game.overlay}
+          onTap={game.tap}
+          onBuy={game.buyUpgrade}
+          onBuyEmber={game.buyEmberUpgrade}
+          onRestart={game.restart}
+          onLeave={game.leave}
+          onReplaceSave={game.replaceSave}
+          currentSave={save}
+          onDismissOverlay={game.dismissOverlay}
+        />
+      ) : isOnStartScreen ? (
+        <StartScreen
+          hasSave={startedIds.length > 0}
+          startedIds={startedIds}
+          onStart={() => setIsOnStartScreen(false)}
+        />
+      ) : (
+        <Hub save={save} isRecovered={game.recovered} onPlay={game.open} />
+      )}
+      {(isUpdateReady || game.hasNewerSave) && (
+        <UpdatePill onUpdate={handleUpdate} />
+      )}
+    </>
+  );
 }

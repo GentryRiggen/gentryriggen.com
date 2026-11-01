@@ -21,9 +21,26 @@ export const metadata: Metadata = {
     title: "Ever Onward",
     description,
   },
-  // Page icons replace the layout's, so the favicon is repeated here.
+  // Home-screen app: only this route links the manifest, so the rest of the
+  // site stays an ordinary website.
+  manifest: "/ever-onward.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Ever Onward",
+    statusBarStyle: "black-translucent",
+  },
+  // Next renders `capable` as mobile-web-app-capable; older iOS versions only
+  // read the apple- prefixed tag.
+  other: { "apple-mobile-web-app-capable": "yes" },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/ever-onward-icons/icon.svg", type: "image/svg+xml" }],
+    apple: [
+      {
+        url: "/ever-onward-icons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   },
 };
 

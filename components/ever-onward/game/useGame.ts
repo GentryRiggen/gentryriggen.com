@@ -53,6 +53,8 @@ export interface GameApi {
   /** Null until the save has been read on the client. */
   save: SaveData | null;
   recovered: boolean;
+  /** The stored save is from a newer version; this build won't overwrite it. */
+  hasNewerSave: boolean;
   activeId: string | null;
   def: UniverseDef | null;
   universe: UniverseSave | null;
@@ -68,12 +70,16 @@ export interface GameApi {
   restart(): void;
   /** Swaps in a whole save (from a backup code), writes it and shows the hub. */
   replaceSave(next: SaveData): void;
+  /** Writes the save now (before a reload, for example). */
+  saveNow(): void;
 }
 
 export function useGame(): GameApi {
   const saveRef = useRef<SaveData | null>(null);
   const [save, setSave] = useState<SaveData | null>(null);
   const [recovered, setRecovered] = useState(false);
+  const [hasNewerSave, setHasNewerSave] = useState(false);
+  const isNewerSaveRef = useRef(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   /** Transitions the player has already seen; -1 shows the opening intro. */
   const [seenTransitions, setSeenTransitions] = useState(0);
@@ -92,6 +98,7 @@ export function useGame(): GameApi {
 
   const persist = useCallback(() => {
     const current = saveRef.current;
+    if (isNewerSaveRef.current) return;
     if (!current || current === writtenRef.current) return;
     if (writeSave(current)) writtenRef.current = current;
   }, []);
@@ -109,12 +116,18 @@ export function useGame(): GameApi {
   // Read the save once, on the client (static export: no localStorage on the
   // server, so it can't be an initial state without a hydration mismatch).
   useEffect(() => {
-    const { save: loaded, recovered: wasRecovered } = loadSave();
+    const {
+      save: loaded,
+      recovered: wasRecovered,
+      isFromNewerVersion,
+    } = loadSave();
+    isNewerSaveRef.current = !!isFromNewerVersion;
     saveRef.current = loaded;
     writtenRef.current = loaded;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSave(loaded);
     setRecovered(wasRecovered);
+    setHasNewerSave(!!isFromNewerVersion);
   }, []);
 
   const open = useCallback(
@@ -308,6 +321,7 @@ export function useGame(): GameApi {
   return {
     save,
     recovered,
+    hasNewerSave,
     activeId,
     def,
     universe,
@@ -320,5 +334,6 @@ export function useGame(): GameApi {
     dismissOverlay,
     restart,
     replaceSave,
+    saveNow: persist,
   };
 }
