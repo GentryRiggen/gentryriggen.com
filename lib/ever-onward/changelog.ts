@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-11-01",
+    title: "Every upgrade counts",
+    highlights: [
+      "Fewer upgrades, and each one matters. New ones appear as your lighthouse grows, a few at a time",
+      "Every upgrade tells you what it will do before you buy it, like Coins per second 25 to 30",
+      "You buy the lamp oil yourself now. The price goes up and down, so buy when it is cheap! Later you can hire an oil merchant to do it for you",
+      "Coins per second now shows what you really earn after paying for oil, and it glows green when it is climbing",
+    ],
+  },
+  {
     version: "1.1.1",
     date: "2026-11-01",
     title: "Thumb button",
