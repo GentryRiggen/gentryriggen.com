@@ -45,6 +45,7 @@ import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import usePersonas from "@/components/jim/usePersonas";
 import type { AppLock } from "@/components/jim/useAppLock";
 import useReadAloud from "@/components/jim/useReadAloud";
+import useReflection from "@/components/jim/useReflection";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
   JimError,
@@ -354,6 +355,7 @@ export default function JimChat({
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
   const reader = useReadAloud(getToken, api, locked);
+  const reflection = useReflection(getToken, api);
   const { stop: stopReading, setArtist } = reader;
   const personas = usePersonas(getToken, api);
   const barShown = reader.state.status !== "idle";
@@ -439,7 +441,7 @@ export default function JimChat({
   // New messages slide into view, unless Gentry scrolled up to read.
   useEffect(() => {
     if (stuck.current) scrollToEnd(true);
-  }, [messages, sending, scrollToEnd]);
+  }, [messages, sending, reflection.question, scrollToEnd]);
 
   // The now-playing bar adds room under the list: keep the end in view.
   useEffect(() => {
@@ -544,9 +546,13 @@ export default function JimChat({
 
   /** Sends the box, or `given` (a quick log) leaving the box alone. */
   async function send(given?: string) {
-    const text = (given ?? draft).trim();
+    const typed = (given ?? draft).trim();
     // Offline it would only bounce back: the box keeps it meanwhile.
-    if (!text || sending || !online) return;
+    if (!typed || sending || !online) return;
+    // Reflecting: the answer travels with its question, once.
+    const asked = given === undefined ? reflection.question : null;
+    const text = asked ? reflection.wrap(typed) : typed;
+    if (asked) reflection.end();
     // Every send starts from a tap or key press: unlock speech inside it.
     reader.unlock();
     const id = nextId.current++;
@@ -617,7 +623,8 @@ export default function JimChat({
       } else {
         // It never ran: take it back and return it to the box.
         setMessages((prev) => prev.filter((m) => m.id !== id));
-        putBack(text);
+        putBack(asked ? typed : text);
+        if (asked) reflection.resume(asked);
       }
     } finally {
       if (turn.current === controller) turn.current = null;
@@ -646,6 +653,7 @@ export default function JimChat({
     setError(null);
     setHeld(null);
     setSlow(false);
+    reflection.end();
     stuck.current = true;
   }
 
@@ -970,6 +978,13 @@ export default function JimChat({
             speakingId={reader.speakingId}
             onListen={reader.supported ? reader.toggle : null}
           />
+          {reflection.question && !sending && (
+            <div className="jim-rise mr-auto max-w-[92%] min-w-0">
+              <div className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3">
+                <JimMarkdown text={reflection.question} links="plain" />
+              </div>
+            </div>
+          )}
           {sending && (
             <div className="jim-rise mr-auto max-w-[92%] min-w-0">
               {live.text ? (
@@ -1083,7 +1098,7 @@ export default function JimChat({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Message Jim"
+              placeholder={reflection.question ? "Your answer…" : "Message Jim"}
               enterKeyHint={returnIsNewLine ? "enter" : "send"}
               autoComplete="off"
               className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
