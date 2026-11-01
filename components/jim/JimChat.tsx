@@ -279,8 +279,11 @@ export default function JimChat({
   // A notification tapped while this page is open: the service worker sends
   // its text here. Only allowed text, and only into an empty box.
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-    const worker = navigator.serviceWorker;
+    const worker =
+      "serviceWorker" in navigator ? navigator.serviceWorker : undefined;
+    // A partial or missing container (some browsers, test stubs) must never
+    // take the chat down with it.
+    if (typeof worker?.addEventListener !== "function") return;
     function onMessage(event: MessageEvent) {
       const data: unknown = event.data;
       if (typeof data !== "object" || data === null) return;
