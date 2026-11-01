@@ -173,7 +173,7 @@ const HELP_TEXT = `Available commands:
   confetti         Celebrate!
   ships            Play my ship-building game
   planes           Play my plane-flying game
-  machines         Play my little incremental game
+  onward           Play Ever Onward, my incremental game
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -354,17 +354,17 @@ function planesOutput(): ReactNode {
   );
 }
 
-function machinesOutput(): ReactNode {
+function everOnwardOutput(): ReactNode {
   return (
     <div className="space-y-1">
-      <p>Little machines. One simple goal each. Much too far. 💡</p>
+      <p>Ever Onward. Little machines. One simple goal each. 💡</p>
       <p>
         Lighting the lamp...{" "}
         <a
-          href="/little-machines"
+          href="/ever-onward"
           className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
         >
-          /little-machines
+          /ever-onward
         </a>
       </p>
     </div>
@@ -421,16 +421,19 @@ export function getCommandResponse(
     };
   }
 
-  // --- machines ---
+  // --- ever onward (machines and little-machines are old aliases) ---
   if (
+    lower === "onward" ||
+    lower === "ever-onward" ||
+    lower === "ever onward" ||
     lower === "machines" ||
     lower === "little-machines" ||
     lower === "little machines"
   ) {
     return {
-      output: machinesOutput(),
+      output: everOnwardOutput(),
       shouldClear: false,
-      navigateTo: "/little-machines",
+      navigateTo: "/ever-onward",
     };
   }
 
