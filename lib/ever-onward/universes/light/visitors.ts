@@ -64,7 +64,7 @@ export const VISITORS: readonly VisitorDef[] = [
     id: "visitor-signal",
     phase: PHASE_SKY,
     name: "A strange signal",
-    arrivesWhen: (run) => res(run, "stars") <= 880 && owned(run, "probe") >= 1,
+    arrivesWhen: (run) => res(run, "stars") <= 970 && owned(run, "probe") >= 1,
     giftText: (run) =>
       `${whole(visitorGift(run))} energy and a true course for the fleet`,
     give: (run) => {

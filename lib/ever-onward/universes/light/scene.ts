@@ -66,10 +66,17 @@ export interface LightSceneInfo {
   glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
   finished: number;
-  /** Seconds into the run the very first ship was guided; 0 if not yet. */
-  firstShipSeconds: number;
-  /** 1 if that first ship came in a storm. */
-  firstShipStorm: number;
+  /** The lantern colour picked at the start, 1 to 3 (the first if none). */
+  lantern: number;
+}
+
+/** Lantern colours to pick from, in the order they are offered. */
+export const LANTERN_COUNT = 3;
+
+/** The picked lantern, 1 to LANTERN_COUNT; an unpicked (or odd) one is 1. */
+export function lanternOf(run: RunState): number {
+  const picked = Math.round(run.resources.lantern ?? 0);
+  return picked >= 1 && picked <= LANTERN_COUNT ? picked : 1;
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
@@ -123,7 +130,6 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     boatHeading: step(boatHeadingOf(run) / 100, 20),
     glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
-    firstShipSeconds: Math.floor(finite(r.firstShipAt ?? 0)),
-    firstShipStorm: r.firstShipStorm ? 1 : 0,
+    lantern: lanternOf(run),
   };
 }

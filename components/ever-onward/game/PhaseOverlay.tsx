@@ -2,6 +2,7 @@
 
 import type { PhaseDef } from "@/lib/ever-onward/engine/types";
 import ListenButton from "../narration/ListenButton";
+import LanternPicker from "./LanternPicker";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -21,6 +22,8 @@ interface PhaseOverlayProps {
   number: number;
   total: number;
   onContinue: () => void;
+  /** The opening of a new run asks which lantern the last ship will carry. */
+  lantern?: { value: number; onChange: (lantern: number) => void };
 }
 
 export default function PhaseOverlay({
@@ -29,6 +32,7 @@ export default function PhaseOverlay({
   number,
   total,
   onContinue,
+  lantern,
 }: PhaseOverlayProps) {
   const intro = phase.intro ?? "";
   const typedIntro = useTypewriter(intro);
@@ -78,6 +82,9 @@ export default function PhaseOverlay({
               className={`${retroSecondaryButtonClass} gap-2`}
             />
           </div>
+        )}
+        {lantern && (
+          <LanternPicker value={lantern.value} onChange={lantern.onChange} />
         )}
         <button
           type="button"

@@ -203,19 +203,6 @@ describe("The first ship comes home", () => {
   });
 });
 
-describe("the first ship is logged in the coast", () => {
-  it("notes the moment and the weather of the very first ship", () => {
-    let run = newRun(def);
-    run = manualAction(def, tick(def, run, 3));
-    expect(run.flags.firstShip).toBe(true);
-    expect(run.resources.firstShipAt).toBeGreaterThan(0);
-    expect(run.resources.firstShipStorm).toBe(0);
-    expect(sceneInfo(run).firstShipSeconds).toBe(
-      Math.floor(run.resources.firstShipAt)
-    );
-  });
-});
-
 describe("the idle bot never presses a button outside the last phase", () => {
   it("does nothing but tap and shop until the ending", () => {
     const result = simulate(def, {

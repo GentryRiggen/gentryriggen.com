@@ -5,6 +5,7 @@ import {
   boatHeadingOf,
   isBoatOut,
   isReadyToFlash,
+  steerBonus,
   barrelOil,
   flareBonus,
   headingFactor,
@@ -195,7 +196,7 @@ const STEER_BOAT: ActionDef = {
     return {
       label:
         heading >= BOAT_TRUE ? "The boat is on its way" : "Tap the old beam",
-      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}%`,
+      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}% · letting go ${steerBonus(run).toFixed(1)}x faster`,
       isBlocked: heading >= BOAT_TRUE,
       hint: { text, tone },
       trendResource: "boatHeading",

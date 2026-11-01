@@ -5,7 +5,7 @@ export const TUNING = {
    * and the bigger collector steps made the night and the sky quicker, so
    * they are priced up to keep the run about two hours.
    */
-  costScale: { coast: 1, night: 1.12, sky: 1.3, last: 1 } as Record<
+  costScale: { coast: 1.05, night: 1.16, sky: 1.35, last: 1.15 } as Record<
     string,
     number
   >,
@@ -148,5 +148,13 @@ export const TUNING = {
     boatFloor: 0.3,
     /** Seconds the crossing takes with the beam true. */
     boatSeconds: 120,
+    /**
+     * Steering earns resolve: while the boat is out, a true heading makes
+     * letting go this much faster (never below 1x). The bonus is full from
+     * `steerTrue` and fades to nothing at `steerFrom`.
+     */
+    steerBonus: 0.5,
+    steerFrom: 40,
+    steerTrue: 80,
   },
 } as const;

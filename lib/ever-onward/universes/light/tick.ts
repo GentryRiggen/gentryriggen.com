@@ -164,14 +164,6 @@ function merchantBuys(run: RunState): void {
   }
 }
 
-/** Notes when (and in what weather) the very first ship was guided. */
-function logFirstShip(run: RunState): void {
-  if (run.flags.firstShip || res(run, "ships") < 1) return;
-  run.flags.firstShip = true;
-  run.resources.firstShipAt = Math.max(0.001, run.time);
-  run.resources.firstShipStorm = isStorming(run) ? 1 : 0;
-}
-
 function updateStorm(run: RunState, dt: number): void {
   if (run.resources.storm > 0) {
     run.resources.storm = Math.max(0, run.resources.storm - dt);
@@ -201,7 +193,6 @@ function tickCoast(run: RunState, dt: number): void {
     run.resources.oil - burnPerSecond(run, shipsPerSecond) * dt
   );
   merchantBuys(run);
-  logFirstShip(run);
 }
 
 /** What the coast costs to run, per second, in coins (oil at today's price). */
@@ -498,11 +489,24 @@ export const steadyFlame = (run: RunState, tapsPerSecond = 3): number =>
     (lastTapFlame(run) * tapsPerSecond) / Math.max(fadeRate(run), 1e-6)
   );
 
+/**
+ * Steering earns resolve: while the boat is out and still sailing, keeping
+ * its heading true makes letting go faster (1x when it has lost the beam,
+ * up to 1 + `steerBonus` when it is true). Never slower than usual.
+ */
+export function steerBonus(run: RunState): number {
+  if (!isBoatOut(run) || boatArrived(run)) return 1;
+  const truth =
+    (boatHeadingOf(run) - L.steerFrom) / (L.steerTrue - L.steerFrom);
+  return 1 + L.steerBonus * Math.min(1, Math.max(0, truth));
+}
+
 /** Resolve per second: a cold flame is slow (never stopped), letting go helps. */
 export function resolvePerSecond(run: RunState): number {
   const warmth = L.flameFloor + (1 - L.flameFloor) * flameFraction(run);
   return (
     L.resolvePerSecond *
+    steerBonus(run) *
     (1 + L.reliefPerLetGo * lightsLetGo(run)) *
     warmth *
     speed(run)
@@ -577,7 +581,6 @@ export function manualLight(run: RunState): void {
     const flashes = shipsPerFlash(run);
     r.ships += flashes;
     r.coins += coastTapCoins(run);
-    logFirstShip(run);
   } else if (phase === 1) {
     r.power += crankPower(run);
   } else if (phase === 2) {

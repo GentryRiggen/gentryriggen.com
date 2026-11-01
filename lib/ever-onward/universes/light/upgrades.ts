@@ -561,7 +561,7 @@ const skyUpgrades: UpgradeDef[] = [
     phases: sky,
     currency: "energy",
     baseCost: COSTS.collector,
-    costGrowth: 1.45,
+    costGrowth: 1.6,
     maxLevel: 6,
     priority: 1,
     onBuy: (run) => {
@@ -584,7 +584,7 @@ const skyUpgrades: UpgradeDef[] = [
       {
         name: "Mirror of mirrors",
         description: "A ring of them. Every collector catches 40% more.",
-        showWhen: (run) => owned(run, "appetite-1") >= 1,
+        showWhen: (run) => owned(run, "copy-1") >= 1,
       },
       {
         name: "A mirror the size of a lake",
@@ -816,5 +816,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
 ].map((upgrade) => ({
   ...upgrade,
   baseCost: upgrade.baseCost * costScaleOf(upgrade),
+  // A bot that is not sure what to buy prefers what pays now: the mirrors.
+  priority: upgrade.id.startsWith("mirror-") ? 2 : upgrade.priority,
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",
 }));

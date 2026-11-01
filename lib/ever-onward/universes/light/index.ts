@@ -14,7 +14,7 @@ import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
 import { TEASERS, VISITORS, lightCountdown } from "./visitors";
 
-export { sceneInfo } from "./scene";
+export { LANTERN_COUNT, lanternOf, sceneInfo } from "./scene";
 export type { LightSceneInfo } from "./scene";
 
 export const lightUniverse: UniverseDef = {

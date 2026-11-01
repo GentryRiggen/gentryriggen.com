@@ -40,6 +40,7 @@ function renderScreen(run: RunState, onTap = jest.fn(() => 1)) {
       onBuy={jest.fn()}
       onAction={jest.fn()}
       onGreet={jest.fn()}
+      onChooseLantern={jest.fn()}
       onBuyEmber={jest.fn()}
       onRestart={jest.fn()}
       onLeave={jest.fn()}

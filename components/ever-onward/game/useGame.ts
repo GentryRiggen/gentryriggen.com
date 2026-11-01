@@ -73,6 +73,8 @@ export interface GameApi {
   doAction(id: string): void;
   /** Says hello to a waiting visitor: the gift is given, the logbook fills. */
   greet(id: string): void;
+  /** Picks the lantern colour (1 to 3) the first ship will carry. */
+  chooseLantern(lantern: number): void;
   buyEmberUpgrade(id: string): void;
   dismissOverlay(): void;
   /** Ends the run (finished, or restarted for embers) and starts a new one. */
@@ -333,6 +335,25 @@ export function useGame(): GameApi {
     [activeId, def, isPaused, replaceUniverse]
   );
 
+  const chooseLantern = useCallback(
+    (lantern: number) => {
+      const current = activeId
+        ? saveRef.current?.universes[activeId]
+        : undefined;
+      if (!activeId || !current) return;
+      const run = current.run;
+      replaceUniverse(
+        activeId,
+        {
+          ...current,
+          run: { ...run, resources: { ...run.resources, lantern } },
+        },
+        true
+      );
+    },
+    [activeId, replaceUniverse]
+  );
+
   const buyEmberUpgrade = useCallback(
     (id: string) => {
       const current = activeId
@@ -385,6 +406,7 @@ export function useGame(): GameApi {
     buyUpgrade,
     doAction,
     greet,
+    chooseLantern,
     buyEmberUpgrade,
     dismissOverlay,
     restart,

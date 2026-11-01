@@ -22,6 +22,7 @@ import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import { introClipId } from "@/lib/ever-onward/narration/lines";
 import NarrationLayer from "../narration/NarrationLayer";
 import NarrationSettings from "../narration/NarrationSettings";
+import { lanternOf } from "@/lib/ever-onward/universes/light";
 import { SCENES } from "../scenes";
 import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
@@ -63,6 +64,7 @@ interface GameScreenProps {
   onBuy: (id: string) => void;
   onAction: (id: string) => void;
   onGreet: (id: string) => void;
+  onChooseLantern: (lantern: number) => void;
   onBuyEmber: (id: string) => void;
   onRestart: () => void;
   onLeave: () => void;
@@ -82,6 +84,7 @@ export default function GameScreen({
   onBuy,
   onAction,
   onGreet,
+  onChooseLantern,
   onBuyEmber,
   onRestart,
   onLeave,
@@ -362,6 +365,12 @@ export default function GameScreen({
           number={run.phase + 1}
           total={def.phases.length}
           onContinue={onDismissOverlay}
+          lantern={
+            // The very start of a run picks a lantern for the last ship.
+            run.phase === 0 && run.time === 0 && def.id === "light"
+              ? { value: lanternOf(run), onChange: onChooseLantern }
+              : undefined
+          }
         />
       )}
       {overlay === "ending" && (

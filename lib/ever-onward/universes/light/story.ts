@@ -308,7 +308,7 @@ const last: StoryMessage[] = [
     id: "last-quiet",
     phase: PHASE_LAST,
     when: (run) => res(run, "lights") <= 3,
-    text: "It is quiet now. Far out on the dark water there is a small boat with one lantern, looking for the shore. Tap the old beam to point the way.",
+    text: "It is quiet now. Far out on the dark water there is a small boat carrying a lantern, the colour you chose, looking for the shore. Tap the old beam to keep it true, and every goodbye comes a little easier.",
   },
   {
     id: "last-one",
