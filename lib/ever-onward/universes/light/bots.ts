@@ -2,6 +2,7 @@ import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { barrelOil, tankCapacity } from "./tick";
+import { lightUniverse } from ".";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
   PICK_ACTION,
@@ -219,7 +220,7 @@ const tender = (base: Strategy, below: number, claims: boolean): Strategy =>
 
 /** The scorecard's player personalities for Keep the Light On. */
 export function lightBots(): BotSet {
-  const base = genericBots();
+  const base = genericBots(lightUniverse);
   // The idle bot never presses a button outside the last phase (where the
   // ending is the story): it taps early and watches.
   const idleActions: OilChoice = (run, available) =>

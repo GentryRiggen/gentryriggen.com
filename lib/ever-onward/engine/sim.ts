@@ -153,6 +153,18 @@ function incomeOf(def: UniverseDef, run: RunState, tps: number): Income {
   };
 }
 
+/**
+ * What one tap earns and what the machines earn per second on their own, in
+ * the phase's main resource: the two halves of the manual share. Bots that
+ * tap only when it helps read this.
+ */
+export function tapAndAuto(
+  def: UniverseDef,
+  run: RunState
+): { tap: number; auto: number } {
+  return { tap: manualGain(def, run), auto: incomeOf(def, run, 0).auto };
+}
+
 /** Seconds of play looked ahead when judging what a purchase really does. */
 const FORWARD_SECONDS = 60;
 const FORWARD_STEP = 5;
@@ -371,6 +383,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     samples.push({
       t: run.time,
       phase: run.phase,
+      sinceEntry: run.time - (run.transitions.at(-1)?.at ?? 0),
       resources: Object.fromEntries(
         def.resources
           .filter((r) => !r.phases || r.phases.includes(phaseId))
