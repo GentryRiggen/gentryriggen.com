@@ -1,6 +1,13 @@
 import { formatNumber } from "../../engine/format";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import {
+  FAIR_HAND_ID,
+  fairsSoFar,
+  handPaysOn,
+  handShown,
+  openFair,
+} from "./fair";
+import {
   BEE_KEEPER_ID,
   BEES_OPEN_FLAG,
   dancesSoFar,
@@ -304,7 +311,25 @@ export const UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 8,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "scarecrow") >= 3,
+    onBuy: openFair,
     effectPreview: (run) => helperPreview(run, "tractor"),
+  },
+  {
+    id: FAIR_HAND_ID,
+    name: "A fair helper",
+    description:
+      "A cheerful neighbour in a straw hat who carries a pumpkin to the county fair when you are busy. Your own pick still pays more.",
+    phases: [PHASE_FARM],
+    currency: "harvest",
+    baseCost: 45000,
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy the farm first.
+    priority: -1,
+    kind: "mechanic",
+    // Halfway along: once the first fair has been judged.
+    visibleWhen: handShown,
+    effectPreview: (run) =>
+      `Enters the likeliest pumpkin after a wait: about ${num(Math.floor(handPaysOn(run, incomePerSecond(run))))} harvest (${fairsSoFar(run)} fairs so far)`,
   },
   {
     id: MARKET_AGENT_ID,

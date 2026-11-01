@@ -79,4 +79,34 @@ describe("water", () => {
     });
     expect(r.finished).toBe(true);
   });
+
+  it("does not blink between dry and wet when the tank hovers near empty", () => {
+    let run = withWater(gardened(), 0);
+    // the garden runs dry first, so the dry mark is set
+    run = tick(
+      def,
+      { ...run, resources: { ...run.resources, rainOutlook: 0 } },
+      0.1
+    );
+    expect(isDry(run)).toBe(true);
+    let toggles = 0;
+    let last = isDry(run);
+    for (let i = 0; i < 200; i += 1) {
+      // rain that just about matches thirst: net water is near zero
+      run = {
+        ...run,
+        resources: {
+          ...run.resources,
+          rainOutlook: 1 / 3 + (i % 2 === 0 ? 0.05 : -0.05),
+        },
+      };
+      run = tick(def, run, 0.1);
+      const now = isDry(run);
+      if (now !== last) toggles += 1;
+      last = now;
+    }
+    expect(run.resources.tank).toBeLessThan(1);
+    expect(toggles).toBeLessThanOrEqual(1);
+    expect(isDry(withWater(run, 5))).toBe(false);
+  });
 });

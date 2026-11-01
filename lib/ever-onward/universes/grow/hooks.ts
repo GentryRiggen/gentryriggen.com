@@ -2,6 +2,7 @@ import { upgradeCost } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
+import { FAIR_ACTION_IDS, isFairOn, isFairOpen, withoutFair } from "./fair";
 import { PLANT_ACTION_IDS, demandGap } from "./market";
 import { PHASE_IDS } from "./resources";
 import { sceneInfo } from "./scene";
@@ -38,6 +39,7 @@ export function growPlates(run: RunState): string[] {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
     if (demandGap(run) >= TUNING.market.playerMargin) plates.push("market");
+    if (isFairOn(run)) plates.push("fair");
   }
   return plates;
 }
@@ -47,6 +49,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   harvest: [YARD_HARVEST],
   bees: BEE_ACTION_IDS,
   market: PLANT_ACTION_IDS,
+  fair: FAIR_ACTION_IDS,
 };
 
 /** The tank is the backyard's one watched number. */
@@ -64,6 +67,9 @@ export const GROW_CONSUMABLES: readonly ConsumableDef[] = [
  * and an emptied basket should not read as no helpers at all.
  */
 export function growIncomeView(run: RunState): RunState {
+  if (run.phase === 1 && isFairOpen(run))
+    // A fair payout flowing in is not income.
+    return withoutFair({ ...run, resources: { ...run.resources } });
   if (run.phase !== 0) return run;
   const floor = pickPerSecond(run) * 2;
   const view =
@@ -95,6 +101,14 @@ function sceneKey(run: RunState): string {
     s.dry,
     s.ended,
     s.growth,
+    s.beds,
+    s.bloom,
+    s.greenhouse,
+    s.orchard,
+    s.stand,
+    s.barrow,
+    s.tea,
+    s.keeper,
   ].join("|");
 }
 

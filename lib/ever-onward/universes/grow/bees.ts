@@ -1,6 +1,7 @@
 import { formatNumber } from "../../engine/format";
 import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
+import { MANUAL_RESOURCES } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -166,11 +167,21 @@ function addSurge(run: RunState, seeds: number): void {
   r.beSurgeRate = r.bePending / B.surgeSeconds;
 }
 
-/** Moves the pollination that is still flowing to the seeds. */
+/**
+ * Moves the pollination that is still flowing to the seeds. Once the yard has
+ * ended, whatever is left is settled at the farm-gate rate into the new
+ * phase's own currency (seeds mean nothing there).
+ */
 function flowSurge(run: RunState, dt: number): void {
   const r = run.resources;
   const pending = res(run, "bePending");
   if (pending <= 0) return;
+  if (run.phase !== 0) {
+    const id = MANUAL_RESOURCES[run.phase];
+    r[id] = res(run, id) + pending * TUNING.farm.seedsToHarvest;
+    r.bePending = 0;
+    return;
+  }
   const flow = Math.min(pending, res(run, "beSurgeRate") * dt);
   r.bePending = pending - flow;
   r.seeds = res(run, "seeds") + flow;

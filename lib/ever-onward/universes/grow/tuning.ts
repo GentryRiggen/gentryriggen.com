@@ -116,6 +116,30 @@ export const TUNING = {
       thirstPerHelper: 0.03,
     },
   },
+  /** The county fair: a pumpkin to enter about every two minutes. */
+  fair: {
+    /** Seconds before the first fair, then between fairs. */
+    firstWaitSeconds: 45,
+    waitSeconds: 110,
+    /** The judges take this long to walk the row. */
+    judgeSeconds: 5,
+    /** Seconds of farm income a ribbon pays: blue, red, garden. */
+    placeSeconds: [24, 11, 5],
+    /** The chance of a blue ribbon: a floor, plus this much times quality. */
+    blueBase: 0.05,
+    blueSlope: 0.75,
+    /** Of the rest, this share is a red ribbon. */
+    redShare: 0.6,
+    /** The fair helper enters a waiting fair after this long, at this share. */
+    handDelay: 30,
+    handShare: 0.5,
+    /** A payout flows into the harvest over this many seconds. */
+    surgeSeconds: 4,
+    /** Fairs finished before the fair helper turns up. */
+    handAfterFairs: 1,
+    /** How much of a pumpkin's quality is its size (the rest is shine). */
+    sizeWeight: 0.6,
+  },
   /** The market: three towns ask for crops, and the asks drift. */
   market: {
     /** How far a wave of demand swings from the usual price. */

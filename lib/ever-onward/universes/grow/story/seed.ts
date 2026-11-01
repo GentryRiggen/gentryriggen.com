@@ -1,9 +1,10 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
+import { visitorHereFlag } from "../../../engine/engine";
 import { PHASE_SEED } from "../resources";
 import { RETURN_VISITOR_ID } from "../visitors";
 
 const returned = (run: RunState): boolean =>
-  run.flags[`here-${RETURN_VISITOR_ID}`] === true;
+  run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true;
 
 export const seed: StoryMessage[] = [
   {

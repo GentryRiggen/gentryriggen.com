@@ -4,6 +4,7 @@ import type { Strategy } from "../../engine/sim";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { YARD_HARVEST, isWorthPicking } from "./actions";
 import { danceHint, dancesSoFar, followActionId } from "./bees";
+import { enterActionId, fairsSoFar, likeliestPumpkin } from "./fair";
 import {
   bestCrop,
   cropPrice,
@@ -66,6 +67,20 @@ export const followsDance =
     const dance = dancesSoFar(run);
     if (skipEvery && dance % skipEvery === skipEvery - 1) return [];
     const id = followActionId(danceHint(run));
+    return available.includes(id) ? [id] : [];
+  };
+
+/**
+ * Enters the pumpkin with the best expected payout. Like the bee bot, one
+ * fair in every `skipEvery`th goes to the fair helper instead.
+ */
+export const entersFair =
+  (options: { skipEvery?: number } = {}): Actions =>
+  (run, available) => {
+    if (run.phase !== 1) return [];
+    const { skipEvery } = options;
+    if (skipEvery && fairsSoFar(run) % skipEvery === skipEvery - 1) return [];
+    const id = enterActionId(likeliestPumpkin(run));
     return available.includes(id) ? [id] : [];
   };
 
@@ -144,7 +159,10 @@ export function growBots(): BotSet {
   const base = genericBots(growUniverse);
   const tapper = yardPlayer(
     base.tapper,
-    alongside(picksAnytime(), alongside(followsDance(), cropPolicy())),
+    alongside(
+      picksAnytime(),
+      alongside(followsDance(), alongside(cropPolicy(), entersFair()))
+    ),
     whenRainTurnsDry
   );
   return {
@@ -153,7 +171,10 @@ export function growBots(): BotSet {
       base.realistic,
       alongside(
         picksInAutumn(45),
-        alongside(followsDance({ skipEvery: 6 }), cropPolicy(20))
+        alongside(
+          followsDance({ skipEvery: 6 }),
+          alongside(cropPolicy(20), entersFair({ skipEvery: 6 }))
+        )
       ),
       whenRainTurnsDry
     ),
@@ -166,14 +187,25 @@ export function growBots(): BotSet {
       base.dawdler,
       alongside(
         picksAnytime(60),
-        alongside(followsDance({ skipEvery: 2 }), cropPolicy(60))
+        alongside(
+          followsDance({ skipEvery: 2 }),
+          alongside(cropPolicy(60), entersFair({ skipEvery: 2 }))
+        )
       ),
       afterRunningDry
     ),
     skill: {
       1: {
-        naive: yardPlayer(base.tapper, cropPolicy(), afterRunningDry),
-        careful: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
+        naive: yardPlayer(
+          base.tapper,
+          alongside(cropPolicy(), entersFair()),
+          afterRunningDry
+        ),
+        careful: yardPlayer(
+          base.tapper,
+          alongside(cropPolicy(), entersFair()),
+          whenRainTurnsDry
+        ),
       },
       0: {
         naive: yardPlayer(
@@ -189,6 +221,14 @@ export function growBots(): BotSet {
       },
     },
     claim: {
+      1: {
+        ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
+        claims: yardPlayer(
+          base.tapper,
+          alongside(cropPolicy(), entersFair()),
+          whenRainTurnsDry
+        ),
+      },
       0: {
         ignores: yardPlayer(base.tapper, picksInAutumn(), whenRainTurnsDry),
         claims: yardPlayer(

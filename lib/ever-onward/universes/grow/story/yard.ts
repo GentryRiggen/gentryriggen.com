@@ -1,4 +1,5 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
+import { visitorHereFlag } from "../../../engine/engine";
 import { PHASE_YARD } from "../resources";
 import { seasonOf } from "../seasons";
 import { isDry } from "../water";
@@ -10,7 +11,7 @@ const year = (run: RunState, n: number): boolean => run.time >= n * 360;
 
 /** A visitor's line fires the moment it arrives. */
 const arrives = (id: string) => (run: RunState) =>
-  run.flags[`here-${id}`] === true;
+  run.flags[visitorHereFlag(id)] === true;
 
 export const yard: StoryMessage[] = [
   {
