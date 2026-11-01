@@ -20,7 +20,7 @@ interface StoryDrawerProps {
   run: RunState;
   /** Newest first. */
   entries: StoryEntry[];
-  endingIds: string[];
+  endingIds: readonly string[];
   onClose: () => void;
 }
 

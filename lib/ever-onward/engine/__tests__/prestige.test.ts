@@ -5,6 +5,7 @@ import {
   emberReward,
   endRun,
   newUniverseSave,
+  prestigeLabel,
   prestigeUpgradeCost,
 } from "../prestige";
 import type { RunState } from "../types";
@@ -18,6 +19,13 @@ function finished(): RunState {
 }
 
 describe("prestige", () => {
+  it("names the currency, Embers unless the universe says otherwise", () => {
+    expect(prestigeLabel(def)).toBe("Embers");
+    expect(
+      prestigeLabel({ ...def, prestige: { ...def.prestige, label: "Acorns" } })
+    ).toBe("Acorns");
+  });
+
   it("awards completion plus every phase cleared", () => {
     const run = finished();
     expect(run.complete).toBe(true);

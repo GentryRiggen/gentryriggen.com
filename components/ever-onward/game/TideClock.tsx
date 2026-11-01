@@ -191,7 +191,7 @@ const NET_CAPTION: Record<NetState, string> = {
  * coins. Full nets wait as long as it takes and nothing is ever lost.
  */
 export default function TideClock({ def, run, onAct }: TideClockProps) {
-  if (def.id !== "light" || !isTideOpen(run) || run.complete) return null;
+  if (!isTideOpen(run) || run.complete) return null;
 
   const state = netState(run);
   const level = tideLevel(run);

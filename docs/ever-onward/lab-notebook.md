@@ -19,8 +19,9 @@ Reference: `docs/superpowers/specs/2026-11-01-ever-onward-engagement-research.md
 ## How to run
 
 ```bash
-npm run score:ever-onward           # readable table (about 3 s)
-npx tsx scripts/ever-onward-score.ts --json   # the full structured report
+npm run score:ever-onward           # readable table (about 3 s), Light
+npm run score:ever-onward -- grow   # another universe by id
+npm run score:ever-onward -- grow --json   # the full structured report
 npx jest lib/ever-onward/universes/light/__tests__/scorecard.test.ts
 ```
 

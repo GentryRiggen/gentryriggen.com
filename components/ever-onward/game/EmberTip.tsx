@@ -1,4 +1,6 @@
-import EmberIcon from "./EmberIcon";
+import { prestigeLabel } from "@/lib/ever-onward/engine/prestige";
+import type { UniverseDef } from "@/lib/ever-onward/engine/types";
+import { uiFor } from "../universes";
 import {
   bodyClass,
   pixelClass,
@@ -8,15 +10,19 @@ import {
 } from "./retro/retroStyles";
 
 interface EmberTipProps {
+  def: UniverseDef;
   onShow: () => void;
   onDismiss: () => void;
 }
 
 /** A one-time, friendly note the first time a run can be restarted. */
-export default function EmberTip({ onShow, onDismiss }: EmberTipProps) {
+export default function EmberTip({ def, onShow, onDismiss }: EmberTipProps) {
+  const { PrestigeIcon } = uiFor(def.id);
+  const label = prestigeLabel(def);
+  const plural = label.toLowerCase();
   return (
     <section
-      aria-label="New: embers"
+      aria-label={`New: ${plural}`}
       data-testid="lm-ember-tip"
       className={`${retroPanelClass} lm-fade-up space-y-3 p-4`}
     >
@@ -28,11 +34,11 @@ export default function EmberTip({ onShow, onDismiss }: EmberTipProps) {
         >
           NEW
         </span>
-        <EmberIcon className="h-4" />
-        Embers
+        <PrestigeIcon className="h-4" />
+        {label}
       </p>
       <p className={bodyClass}>
-        You can start this world over any time and keep embers. Embers buy
+        You can start this world over any time and keep {plural}. {label} buy
         permanent upgrades, so every new run goes faster.
       </p>
       <div className="flex flex-wrap gap-3">

@@ -1,10 +1,7 @@
 import { metVisitors } from "@/lib/ever-onward/engine/engine";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
-import {
-  keepsakeNames,
-  picksSoFar,
-} from "@/lib/ever-onward/universes/light/garden";
+import { uiFor } from "../universes";
 import { pixelClass, retroInsetClass } from "./retro/retroStyles";
 
 interface LogbookProps {
@@ -15,6 +12,7 @@ interface LogbookProps {
 /** Everyone who has stopped by this run, and what they said. */
 export default function Logbook({ def, run }: LogbookProps) {
   if (!def.visitors || def.visitors.length === 0) return null;
+  const { copy, Keepsakes } = uiFor(def.id);
   const met = metVisitors(def, run);
   const lines = new Map(def.story.map((m) => [m.id, m.text]));
   return (
@@ -28,10 +26,7 @@ export default function Logbook({ def, run }: LogbookProps) {
         </span>
       </h2>
       {met.length === 0 ? (
-        <p className="font-mono text-xs text-slate-300">
-          Visitors stop by as your lights grow. They wait for you, so none can
-          be missed.
-        </p>
+        <p className="font-mono text-xs text-slate-300">{copy.logbookEmpty}</p>
       ) : (
         <ul className="space-y-2">
           {met.map((v) => (
@@ -65,14 +60,6 @@ export default function Logbook({ def, run }: LogbookProps) {
           ).
         </p>
       )}
-      {picksSoFar(run) > 0 && (
-        <p
-          data-testid="lm-keepsakes"
-          className="font-mono text-xs text-emerald-200"
-        >
-          Keepsakes: {keepsakeNames(run).join(", ")}.
-        </p>
-      )}
       {(run.resources.wxFronts ?? 0) > 0 && (
         <p className="font-mono text-xs text-sky-200">
           Weather desk: {run.resources.wxFronts} storms so far, sandbags held{" "}
@@ -80,6 +67,7 @@ export default function Logbook({ def, run }: LogbookProps) {
           {formatNumber(Math.floor(run.resources.wxEarned ?? 0))} power).
         </p>
       )}
+      {Keepsakes && <Keepsakes run={run} />}
     </section>
   );
 }

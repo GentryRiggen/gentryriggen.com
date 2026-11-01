@@ -5,6 +5,7 @@ import type { PrestigeDef } from "../../engine/types";
  * reads (`mods`), or a few starting levels, so a fresh run stays honest.
  */
 export const PRESTIGE: PrestigeDef = {
+  label: "Embers",
   completionEmbers: 10,
   phaseEmbers: 2,
   upgrades: [

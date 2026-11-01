@@ -234,7 +234,7 @@ function FrontBar({
  */
 export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
   const stage = weatherStage(run);
-  if (def.id !== "light" || stage === "closed" || run.complete) return null;
+  if (stage === "closed" || run.complete) return null;
 
   const isForecast = stage === "forecast";
   const left = stageSecondsLeft(run);

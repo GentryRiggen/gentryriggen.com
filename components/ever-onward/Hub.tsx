@@ -5,18 +5,14 @@ import { formatDuration } from "@/lib/ever-onward/engine/format";
 import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
 import type { SaveData, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
-import {
-  LIGHTHOUSE_DIM,
-  LIGHTHOUSE_LIT,
-  LIGHTHOUSE_ROWS,
-  PADLOCK_COLORS,
-  PADLOCK_ROWS,
-} from "@/lib/ever-onward/start/sprites";
+import { prestigeLabel } from "@/lib/ever-onward/engine/prestige";
+import { PADLOCK_COLORS, PADLOCK_ROWS } from "@/lib/ever-onward/start/sprites";
 import {
   LOCKED_UNIVERSES,
   PLAYABLE_UNIVERSES,
   type LockedUniverse,
 } from "@/lib/ever-onward/universes";
+import { uiFor } from "./universes";
 import MusicToggle from "./audio/MusicToggle";
 import PixelSprite from "./start/PixelSprite";
 import RetroLabel from "./start/RetroLabel";
@@ -61,6 +57,7 @@ function UniverseCard({
   const universe = save.universes[def.id];
   const run = universe?.run;
   const hasStarted = !!universe && hasStartedUniverse(universe);
+  const { hubSprite } = uiFor(def.id);
   const stats: { label: string; value: string }[] = [];
   if (universe && hasStarted) {
     stats.push({
@@ -75,15 +72,15 @@ function UniverseCard({
     if (universe.best !== null)
       stats.push({ label: "Best time", value: formatDuration(universe.best) });
     if (universe.embers > 0)
-      stats.push({ label: "Embers", value: String(universe.embers) });
+      stats.push({ label: prestigeLabel(def), value: String(universe.embers) });
   }
   return (
     <li className={`${retroPanelClass} eo-rise flex flex-col gap-3 p-3 sm:p-4`}>
       <div className="flex items-center gap-3">
         <div className="grid size-16 shrink-0 place-items-center border-2 border-slate-700 bg-slate-900/80">
           <PixelSprite
-            rows={LIGHTHOUSE_ROWS}
-            palette={hasStarted ? LIGHTHOUSE_LIT : LIGHTHOUSE_DIM}
+            rows={hubSprite.rows}
+            palette={hasStarted ? hubSprite.lit : hubSprite.dim}
             className={`h-12 ${hasStarted ? "drop-shadow-[0_0_8px_rgba(253,224,71,0.8)]" : ""}`}
           />
         </div>

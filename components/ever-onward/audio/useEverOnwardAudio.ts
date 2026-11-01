@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { affordableUpgrades } from "@/lib/ever-onward/engine/engine";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
+import { uiFor } from "../universes";
+import { isStormy } from "../universes/light";
 import { everOnwardSynth, isAudioSupported } from "./everOnwardSynth";
 import { everOnwardChannels } from "./soundSettings";
 
@@ -12,10 +14,7 @@ import { everOnwardChannels } from "./soundSettings";
  */
 const UNLOCK_EVENTS = ["pointerdown", "touchend", "click", "keydown"] as const;
 
-/** Whether the run is in the storm that blows on the coast. */
-export function isStormy(run: RunState): boolean {
-  return run.phase === 0 && (run.resources.storm ?? 0) > 0;
-}
+export { isStormy };
 
 /**
  * Drives the game's sound from its state: the score follows the phase, the
@@ -72,11 +71,12 @@ export default function useEverOnwardAudio(
 
   const phaseNumber = run.phase;
   const isComplete = run.complete;
-  const isStorm = isStormy(run);
+  const { audio } = uiFor(def.id);
+  const isStorm = audio.isStormy?.(run) ?? false;
 
   useEffect(() => {
-    everOnwardSynth.setPhase(isComplete ? null : phaseNumber);
-  }, [phaseNumber, isComplete]);
+    everOnwardSynth.setPhase(isComplete ? null : phaseNumber, audio);
+  }, [phaseNumber, isComplete, audio]);
 
   useEffect(() => {
     everOnwardSynth.setStorm(isStorm && !isComplete);
@@ -85,14 +85,8 @@ export default function useEverOnwardAudio(
   // Cues compare against what the last render saw, so loading a saved run
   // (already in phase 3, or already complete) is silent.
   const previous = useRef({
-    phase: run.phase,
-    complete: run.complete,
+    run,
     revealed: run.revealed.length,
-    fronts: run.resources.wxFronts ?? 0,
-    hauls: run.resources.tdHauls ?? 0,
-    launches: run.resources.prLaunches ?? 0,
-    homeRuns: run.resources.prRuns ?? 0,
-    picks: run.resources.gdPicks ?? 0,
     affordable: new Set<string>(),
   });
   const affordableNow = new Set(
@@ -101,24 +95,12 @@ export default function useEverOnwardAudio(
 
   useEffect(() => {
     const before = previous.current;
-    const didPhaseChange = run.phase !== before.phase;
-    if (run.complete && !before.complete) everOnwardSynth.cue("ending");
+    const didPhaseChange = run.phase !== before.run.phase;
+    if (run.complete && !before.run.complete) everOnwardSynth.cue("ending");
     else if (didPhaseChange) everOnwardSynth.cue("phase");
     else {
-      // A storm front landing on the weather desk.
-      if ((run.resources.wxFronts ?? 0) > before.fronts)
-        everOnwardSynth.cue("thunder");
-      // Nets hauled in on the tide clock.
-      if ((run.resources.tdHauls ?? 0) > before.hauls)
-        everOnwardSynth.cue("splash");
-      // The racing probe leaving the dock, and coming home.
-      if ((run.resources.prLaunches ?? 0) > before.launches)
-        everOnwardSynth.cue("launch");
-      if ((run.resources.prRuns ?? 0) > before.homeRuns)
-        everOnwardSynth.cue("arrive");
-      // A memory flower picked in the garden.
-      if ((run.resources.gdPicks ?? 0) > before.picks)
-        everOnwardSynth.cue("chime");
+      for (const cue of audio.cuesBetween?.(before.run, run) ?? [])
+        everOnwardSynth.cue(cue);
       if (run.revealed.length > before.revealed) everOnwardSynth.cue("reveal");
       for (const id of affordableNow) {
         if (!before.affordable.has(id)) {
@@ -128,14 +110,8 @@ export default function useEverOnwardAudio(
       }
     }
     previous.current = {
-      phase: run.phase,
-      complete: run.complete,
+      run,
       revealed: run.revealed.length,
-      fronts: run.resources.wxFronts ?? 0,
-      hauls: run.resources.tdHauls ?? 0,
-      launches: run.resources.prLaunches ?? 0,
-      homeRuns: run.resources.prRuns ?? 0,
-      picks: run.resources.gdPicks ?? 0,
       affordable: affordableNow,
     };
   });

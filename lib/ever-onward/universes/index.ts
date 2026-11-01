@@ -1,34 +1,20 @@
 import type { UniverseDef } from "../engine/types";
-import { lightUniverse } from "./light";
+import {
+  SHOWS_UNRELEASED,
+  lockedUniverses,
+  playableUniverses,
+  type LockedUniverse,
+} from "./staging";
 
-/** A universe that is announced but not built yet. */
-export interface LockedUniverse {
-  id: string;
-  title: string;
-  goal: string;
-}
+export type { LockedUniverse };
 
-/** Playable universes, in hub order. Add a universe by importing it here. */
-export const PLAYABLE_UNIVERSES: readonly UniverseDef[] = [lightUniverse];
+/** Playable universes, in hub order. Add a universe in `staging.ts`. */
+export const PLAYABLE_UNIVERSES: readonly UniverseDef[] =
+  playableUniverses(SHOWS_UNRELEASED);
 
 /** Shown after the playable ones as "coming soon". */
-export const LOCKED_UNIVERSES: readonly LockedUniverse[] = [
-  {
-    id: "grow",
-    title: "Make It Grow",
-    goal: "Help one small seed grow, and then keep helping.",
-  },
-  {
-    id: "higher",
-    title: "Build It Higher",
-    goal: "Stack one more block, then one more, then one more.",
-  },
-  {
-    id: "smile",
-    title: "Make Everyone Smile",
-    goal: "Cheer up one friend, and see how far the cheer can go.",
-  },
-];
+export const LOCKED_UNIVERSES: readonly LockedUniverse[] =
+  lockedUniverses(SHOWS_UNRELEASED);
 
 export function getPlayableUniverse(id: string): UniverseDef | undefined {
   return PLAYABLE_UNIVERSES.find((u) => u.id === id);

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { lightUniverse, sceneInfo } from "@/lib/ever-onward/universes/light";
 import LastLayer from "../../scenes/light/LastLayer";
+import LanternPicker from "../LanternPicker";
 import PhaseOverlay from "../PhaseOverlay";
 
 describe("the lantern pick at the start of a run", () => {
@@ -14,7 +15,7 @@ describe("the lantern pick at the start of a run", () => {
         number={1}
         total={4}
         onContinue={jest.fn()}
-        lantern={{ value: 1, onChange }}
+        opening={<LanternPicker value={1} onChange={onChange} />}
       />
     );
     const group = screen.getByRole("radiogroup", { name: "Lantern colour" });

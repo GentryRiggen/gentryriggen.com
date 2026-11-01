@@ -1,7 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { PhaseDef } from "@/lib/ever-onward/engine/types";
-import LanternPicker from "./LanternPicker";
 import PhaseBriefing from "./PhaseBriefing";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
@@ -20,8 +20,8 @@ interface PhaseOverlayProps {
   number: number;
   total: number;
   onContinue: () => void;
-  /** The opening of a new run asks which lantern the last ship will carry. */
-  lantern?: { value: number; onChange: (lantern: number) => void };
+  /** The opening of a new run may ask a question (see `UniverseUi.Opening`). */
+  opening?: ReactNode;
 }
 
 /** The intro card shown when a run starts and whenever a new part begins. */
@@ -31,7 +31,7 @@ export default function PhaseOverlay({
   number,
   total,
   onContinue,
-  lantern,
+  opening,
 }: PhaseOverlayProps) {
   return (
     <div
@@ -60,9 +60,7 @@ export default function PhaseOverlay({
           </RetroHeading>
         </div>
         <PhaseBriefing phase={phase} clipId={clipId} isStaggered />
-        {lantern && (
-          <LanternPicker value={lantern.value} onChange={lantern.onChange} />
-        )}
+        {opening}
         <div className="text-center">
           <button
             type="button"

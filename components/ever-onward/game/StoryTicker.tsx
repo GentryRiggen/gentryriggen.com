@@ -14,7 +14,7 @@ interface StoryTickerProps {
   def: UniverseDef;
   run: RunState;
   /** Ending lines keep their own place at the end of the drawer. */
-  endingIds: string[];
+  endingIds: readonly string[];
   /** A full-screen moment (a new part's intro) is open: the drawer closes. */
   isCovered?: boolean;
 }

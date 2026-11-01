@@ -17,7 +17,11 @@ import {
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
 import { upkeepRate } from "@/lib/ever-onward/engine/rate";
-import { canRestart, emberReward } from "@/lib/ever-onward/engine/prestige";
+import {
+  canRestart,
+  emberReward,
+  prestigeLabel,
+} from "@/lib/ever-onward/engine/prestige";
 import type {
   SaveData,
   UniverseDef,
@@ -28,15 +32,13 @@ import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import { introClipId } from "@/lib/ever-onward/narration/lines";
 import NarrationLayer from "../narration/NarrationLayer";
 import NarrationSettings from "../narration/NarrationSettings";
-import { lanternOf } from "@/lib/ever-onward/universes/light";
-import { SCENES } from "../scenes";
-import type { LastBuy } from "../scenes/light/callouts";
+import { uiFor } from "../universes";
+import type { LastBuy } from "../universes/types";
 import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
 import CountdownBar from "./CountdownBar";
 import { type Effect } from "./EffectFloater";
 import EmberDialog from "./EmberDialog";
-import EmberIcon from "./EmberIcon";
 import EmberPanel from "./EmberPanel";
 import EmberTip from "./EmberTip";
 import EndingOverlay from "./EndingOverlay";
@@ -44,15 +46,11 @@ import Logbook from "./Logbook";
 import PhaseOverlay from "./PhaseOverlay";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
-import ProbeRaces from "./ProbeRaces";
 import StickyHud from "./StickyHud";
 import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
-import MemoryGarden from "./MemoryGarden";
-import TideClock from "./TideClock";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
 import VisitorCard from "./VisitorCard";
-import WeatherDesk from "./WeatherDesk";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -87,9 +85,6 @@ interface GameScreenProps {
   onDismissOverlay: () => void;
 }
 
-/** Story ids that close the run, in the order they read. */
-const ENDING_STORY_IDS = ["last-remember", "last-end-1", "last-end-2"];
-
 export default function GameScreen({
   def,
   universe,
@@ -110,9 +105,12 @@ export default function GameScreen({
   const { run } = universe;
   useEverOnwardAudio(def, run);
   const phase = def.phases[run.phase];
-  const Scene = SCENES[def.id];
+  const ui = uiFor(def.id);
+  const { Scene, Opening } = ui;
+  const EndingArt = ui.ending.Art;
+  const label = prestigeLabel(def);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isStorm = run.phase === 0 && (run.resources.storm ?? 0) > 0;
+  const isStorm = ui.audio.isStormy?.(run) ?? false;
   // Once a restart is possible (or embers are banked) the header offers the
   // embers dialog. A finished run shows the panel in the page instead.
   const showsEmbersButton =
@@ -228,9 +226,9 @@ export default function GameScreen({
   const visitors = waitingVisitors(def, run);
   const storyText = new Map(def.story.map((m) => [m.id, m.text]));
 
-  const endingLines = ENDING_STORY_IDS.filter((id) =>
-    run.story.includes(id)
-  ).flatMap((id) => def.story.find((m) => m.id === id)?.text ?? []);
+  const endingLines = ui.ending.storyIds
+    .filter((id) => run.story.includes(id))
+    .flatMap((id) => def.story.find((m) => m.id === id)?.text ?? []);
 
   return (
     // `dark` keeps the game dark in both site themes, so the shared pieces
@@ -250,7 +248,7 @@ export default function GameScreen({
         className="sticky top-[var(--eo-hud-h)] z-20 h-[24dvh] min-h-36 w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
         <div data-testid="lm-scene-frame" className="h-full">
-          {Scene && <Scene run={run} lastBuy={lastBuy} />}
+          <Scene run={run} lastBuy={lastBuy} />
         </div>
         <div
           aria-hidden="true"
@@ -287,13 +285,13 @@ export default function GameScreen({
                 aria-expanded={isEmberDialogOpen}
                 aria-label={
                   waitingEmbers > 0
-                    ? `Embers: ${waitingEmbers} waiting, ${universe.embers} saved`
-                    : `Embers: ${universe.embers} saved`
+                    ? `${label}: ${waitingEmbers} waiting, ${universe.embers} saved`
+                    : `${label}: ${universe.embers} saved`
                 }
                 onClick={handleOpenEmbers}
                 className={`${retroSecondaryButtonClass} shrink-0 gap-1.5 px-2.5! text-orange-200!`}
               >
-                <EmberIcon className="h-4" />
+                <ui.PrestigeIcon className="h-4" />
                 <span aria-hidden="true">
                   {waitingEmbers > 0 ? `+${waitingEmbers}` : universe.embers}
                 </span>
@@ -348,12 +346,16 @@ export default function GameScreen({
         <StoryTicker
           def={def}
           run={run}
-          endingIds={ENDING_STORY_IDS}
+          endingIds={ui.ending.storyIds}
           isCovered={overlay !== null}
         />
 
         {showsEmberTip && (
-          <EmberTip onShow={handleOpenEmbers} onDismiss={onDismissEmberTip} />
+          <EmberTip
+            def={def}
+            onShow={handleOpenEmbers}
+            onDismiss={onDismissEmberTip}
+          />
         )}
 
         {run.complete ? (
@@ -382,10 +384,9 @@ export default function GameScreen({
           />
         ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
-        <TideClock def={def} run={run} onAct={onAction} />
-        <ProbeRaces def={def} run={run} onAct={onAction} />
-        <WeatherDesk def={def} run={run} onAct={onAction} />
-        <MemoryGarden def={def} run={run} onAct={onAction} />
+        {ui.panels.map((Panel, i) => (
+          <Panel key={i} def={def} run={run} onAct={onAction} />
+        ))}
         {alert && (
           <p
             role="alert"
@@ -420,7 +421,7 @@ export default function GameScreen({
       {!run.complete && (
         <TapButton
           label={phase.manualLabel}
-          phase={run.phase}
+          look={ui.tapLooks[Math.min(run.phase, ui.tapLooks.length - 1)]}
           isStorm={isStorm}
           isCovered={overlay !== null}
           onTap={onTap}
@@ -462,11 +463,11 @@ export default function GameScreen({
           number={run.phase + 1}
           total={def.phases.length}
           onContinue={onDismissOverlay}
-          lantern={
-            // The very start of a run picks a lantern for the last ship.
-            run.phase === 0 && run.time === 0 && def.id === "light"
-              ? { value: lanternOf(run), onChange: onChooseLantern }
-              : undefined
+          opening={
+            // The very start of a run may ask the player to choose.
+            Opening && run.phase === 0 && run.time === 0 ? (
+              <Opening run={run} onChoose={onChooseLantern} />
+            ) : undefined
           }
         />
       )}
@@ -474,6 +475,9 @@ export default function GameScreen({
         <EndingOverlay
           lines={endingLines}
           embers={emberReward(def, run)}
+          label={label}
+          Icon={ui.PrestigeIcon}
+          art={EndingArt ? <EndingArt run={run} /> : undefined}
           onContinue={onDismissOverlay}
         />
       )}

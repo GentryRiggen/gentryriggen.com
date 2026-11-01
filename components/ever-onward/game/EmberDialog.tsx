@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { prestigeLabel } from "@/lib/ever-onward/engine/prestige";
 import type { UniverseDef, UniverseSave } from "@/lib/ever-onward/engine/types";
 import EmberPanel from "./EmberPanel";
 import RetroHeading from "./retro/RetroHeading";
@@ -94,13 +95,13 @@ export default function EmberDialog({
       >
         <div className="flex items-center justify-between gap-3 border-b-4 border-amber-500/60 p-3">
           <RetroHeading as="h2" id="lm-ember-title" className="text-sm">
-            Embers
+            {prestigeLabel(def)}
           </RetroHeading>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Close embers"
+            aria-label={`Close ${prestigeLabel(def).toLowerCase()}`}
             className={`${pixelClass} inline-flex min-h-11 min-w-11 touch-manipulation items-center justify-center border-2 border-slate-500 bg-slate-900 px-3 text-[10px] text-slate-100 hover:bg-slate-800 ${retroFocusClass}`}
           >
             ✕ Close

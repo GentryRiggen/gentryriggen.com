@@ -19,6 +19,11 @@ export function newUniverseSave(
   };
 }
 
+/** The prestige currency's plural display name. */
+export function prestigeLabel(def: UniverseDef): string {
+  return def.prestige.label ?? "Embers";
+}
+
 /** Embers a run is worth if it ended now (a finished run counts every phase). */
 export function emberReward(def: UniverseDef, run: RunState): number {
   const cleared = run.complete ? def.phases.length : run.phase;
