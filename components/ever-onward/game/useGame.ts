@@ -20,6 +20,7 @@ import type {
   UniverseDef,
   UniverseSave,
 } from "@/lib/ever-onward/engine/types";
+import { everOnwardSynth } from "../audio/everOnwardSynth";
 import { getPlayableUniverse } from "@/lib/ever-onward/universes";
 
 /** The sim and the readouts update this often; CSS handles smooth motion. */
@@ -240,6 +241,7 @@ export function useGame(): GameApi {
     if (!activeId || !def || !current || isPaused) return 0;
     const gain = manualGain(def, current.run);
     const nextRun = manualAction(def, current.run);
+    if (nextRun !== current.run) everOnwardSynth.tap(current.run.phase);
     if (nextRun !== current.run)
       replaceUniverse(
         activeId,
@@ -256,6 +258,10 @@ export function useGame(): GameApi {
         : undefined;
       if (!activeId || !def || !current || isPaused) return;
       const nextRun = buy(def, current.run, id);
+      if (nextRun !== current.run) {
+        const upgrade = def.upgrades.find((u) => u.id === id);
+        everOnwardSynth.buy(current.run.phase, (upgrade?.maxLevel ?? 1) <= 1);
+      }
       if (nextRun !== current.run)
         replaceUniverse(activeId, { ...current, run: nextRun }, true);
     },
