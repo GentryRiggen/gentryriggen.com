@@ -31,6 +31,7 @@ import {
   type ChatMessage,
 } from "@/lib/jim/history";
 import JimMarkdown from "@/lib/jim/markdown";
+import { clearSayFromLocation, sayFromLocation } from "@/lib/jim/say";
 
 interface JimChatProps {
   /** The signed-in user, whose chat is kept on this device. */
@@ -217,7 +218,9 @@ export default function JimChat({
     () => kept?.messages ?? []
   );
   const [live, setLive] = useState<Live>(NO_LIVE);
-  const [draft, setDraft] = useState("");
+  // A notification can open /jim?say=quiz%20me: the text waits in the box,
+  // unsent, for Gentry to send.
+  const [draft, setDraft] = useState(() => sayFromLocation() ?? "");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   /** A message Jim may have acted on, kept out of the box until asked for. */
@@ -266,6 +269,8 @@ export default function JimChat({
       behavior: smooth && !prefersReducedMotion() ? "smooth" : "instant",
     });
   }, []);
+
+  useEffect(() => clearSayFromLocation(), []);
 
   // A long turn (Jim can take minutes) gets a calmer note after a while.
   useEffect(() => {

@@ -17,7 +17,8 @@
  *   cached, so opaque or cross-origin responses never enter the cache.
  * - push: { title, body, url } becomes a notification (a generic one when
  *   the payload can't be read: iOS wants one for every push). A tap focuses
- *   an open /jim or opens it.
+ *   an open /jim or opens it; a URL with a query (/jim?say=quiz%20me) is kept,
+ *   and an open page is navigated to it.
  */
 
 const CACHE_PREFIX = "jim-shell-";
@@ -320,6 +321,15 @@ self.addEventListener("notificationclick", (event) => {
         const at = toSameOriginUrl(client.url);
         if (at && isPagePath(at.pathname) && "focus" in client) {
           await client.focus();
+          // A tap that carries a query (/jim?say=…) must reach the page,
+          // which reads it on load: an open page is sent there.
+          if (new URL(url).search && "navigate" in client) {
+            try {
+              await client.navigate(url);
+            } catch {
+              // The page stays as it was, focused.
+            }
+          }
           return;
         }
       }

@@ -375,6 +375,39 @@ describe("notificationclick", () => {
     expect(worker.openWindow).not.toHaveBeenCalled();
   });
 
+  it("keeps a /jim?say= query when opening", async () => {
+    const worker = loadWorker();
+    const url = `${PAGE}?say=quiz%20me`;
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(url);
+  });
+
+  it("sends an open /jim to a URL with a query", async () => {
+    const worker = loadWorker();
+    const url = `${PAGE}?say=quiz%20me`;
+    const focus = jest.fn(async () => {});
+    const navigate = jest.fn(async () => {});
+    worker.matchAll.mockResolvedValue([{ url: PAGE, focus, navigate }]);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(focus).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(url);
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("does not navigate an open /jim for a plain tap", async () => {
+    const worker = loadWorker();
+    const navigate = jest.fn(async () => {});
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus: jest.fn(async () => {}), navigate },
+    ]);
+    await worker.dispatch("notificationclick", { notification: click() });
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("opens /jim when it isn't open", async () => {
     const worker = loadWorker();
     worker.matchAll.mockResolvedValue([
