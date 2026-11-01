@@ -1966,3 +1966,40 @@ html:has(.jim-app) body {
     display: none;
   }
 }
+
+/* Ever Onward: Make It Grow, the last seed's window. */
+@keyframes gs-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gs-glow {
+  animation: gs-glow 6s ease-in-out infinite;
+}
+
+@keyframes gs-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gs-arrive {
+  animation: gs-arrive 2.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-glow,
+  .gs-arrive {
+    animation: none;
+  }
+}

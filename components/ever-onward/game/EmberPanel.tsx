@@ -60,9 +60,11 @@ export default function EmberPanel({
             {universe.best !== null &&
               ` Your best time is ${formatDuration(universe.best)}.`}
           </p>
-          <p className="font-mono text-sm text-slate-200">
-            Universe 2 is coming soon.
-          </p>
+          {def.id === "light" && (
+            <p className="font-mono text-sm text-slate-200">
+              Universe 2 is coming soon.
+            </p>
+          )}
         </div>
       )}
       <div className="flex items-baseline justify-between">

@@ -12,6 +12,7 @@ import type { LastBuy, SceneProps } from "../../universes/types";
 import SceneCallout from "./SceneCallout";
 import FarmLayer from "./FarmLayer";
 import WorldLayer from "./WorldLayer";
+import SeedLayer from "./SeedLayer";
 import YardLayer from "./YardLayer";
 import { SCENE_LABELS, captionFor } from "./captions";
 
@@ -26,27 +27,11 @@ function useStableInfo(run: RunState): GrowSceneInfo {
   return stable;
 }
 
-/** One pot, and a shoot as tall as the growth. */
-function SeedArt({ info }: { info: GrowSceneInfo }) {
-  const height = 20 + info.growth * 1.4;
-  return (
-    <g>
-      <rect x="0" y="0" width="400" height="300" fill="#fff1d6" />
-      <rect x="0" y="230" width="400" height="70" fill="#b5835a" />
-      <rect x="160" y="190" width="80" height="60" fill="#c1623a" />
-      <rect x="152" y="184" width="96" height="14" fill="#d9774a" />
-      <rect x="196" y={184 - height} width="8" height={height} fill="#3f9d3a" />
-      <ellipse cx="184" cy={190 - height} rx="16" ry="8" fill="#58bf4f" />
-      <ellipse cx="216" cy={184 - height} rx="16" ry="8" fill="#58bf4f" />
-    </g>
-  );
-}
-
 const ART = {
   yard: YardLayer,
   farm: FarmLayer,
   world: WorldLayer,
-  seed: SeedArt,
+  seed: SeedLayer,
 } as const;
 
 const GrowSceneView = memo(function GrowSceneView({
@@ -60,7 +45,7 @@ const GrowSceneView = memo(function GrowSceneView({
   return (
     <div className="relative h-full w-full">
       <svg
-        viewBox="0 0 400 300"
+        viewBox={info.phase === "seed" ? "0 6 400 228" : "0 0 400 300"}
         role="img"
         aria-label={SCENE_LABELS[info.phase]}
         data-testid="lm-scene"

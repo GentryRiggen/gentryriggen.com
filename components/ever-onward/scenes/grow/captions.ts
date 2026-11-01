@@ -33,7 +33,9 @@ export function captionFor(info: GrowSceneInfo): string {
       ].join(" · ");
     }
     default:
-      return `One small pot · ${info.growth}% grown`;
+      return info.visitorHere
+        ? "Someone came back to see the pot"
+        : `One small pot · ${info.growth}% grown${info.windowLit ? " · the light is on" : ""}`;
   }
 }
 
@@ -43,5 +45,5 @@ export const SCENE_LABELS: Readonly<Record<GrowSceneInfo["phase"], string>> = {
   farm: "A farm with rows of crops in fields, a barn, and a town on the horizon",
   world:
     "A round globe seen from far away, with green spreading across it, with meadows and woods",
-  seed: "One small pot with a shoot growing out of it",
+  seed: "One quiet window at night with a small pot on the sill, a light left on, and a green world outside",
 };

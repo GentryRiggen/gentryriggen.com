@@ -73,12 +73,13 @@ export default function EndingOverlay({
       aria-modal="true"
       aria-label="The ending"
       data-testid="lm-ending"
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black p-6 text-slate-50 outline-none"
+      className="fixed inset-0 z-50 flex overflow-y-auto overflow-x-hidden bg-black p-6 text-slate-50 outline-none"
     >
       <div className="pointer-events-none fixed inset-0">
         <CrtOverlay />
       </div>
-      <div className="relative max-w-md space-y-6 py-8 text-center">
+      {/* m-auto centres short endings and still lets a tall one scroll from its top. */}
+      <div className="relative m-auto w-full max-w-md space-y-6 py-8 text-center">
         {art ?? (
           <div
             aria-hidden="true"

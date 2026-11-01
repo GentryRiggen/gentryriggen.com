@@ -33,6 +33,13 @@ import {
   hiveAt,
   tractorAt,
   wellAt,
+  SEED_CAN,
+  SEED_CHIME,
+  SEED_DEW,
+  SEED_LANTERN,
+  SEED_MUSIC,
+  SEED_SILL,
+  SEED_TRELLIS,
   type Point,
 } from "./anchors";
 
@@ -93,11 +100,21 @@ const WORLD_PLACES: Record<string, Place> = {
   "seed-vault": () => at(GLOBE_VAULT, "Seed vault"),
 };
 
+const SEED_PLACES: Record<string, Place> = {
+  trellis: () => at(SEED_TRELLIS, "A small trellis", -4),
+  "sunny-sill": () => at(SEED_SILL, "A sunny sill", 6),
+  "wind-chime": () => at(SEED_CHIME, "A wind chime", 30),
+  "dew-collector": () => at(SEED_DEW, "Dew collector", -8),
+  "watering-can": () => at(SEED_CAN, "A little can", -8),
+  "music-box": () => at(SEED_MUSIC, "A music box", -8),
+  "window-lantern": () => at(SEED_LANTERN, "The window lantern", -20),
+};
+
 const PLACES: Record<Grow["phase"], Record<string, Place>> = {
   yard: YARD_PLACES,
   farm: FARM_PLACES,
   world: WORLD_PLACES,
-  seed: {},
+  seed: SEED_PLACES,
 };
 
 /** Upgrades whose landing is a caption change, not a spot in the picture. */
@@ -120,3 +137,6 @@ export const FARM_CALLOUT_IDS: readonly string[] = Object.keys(FARM_PLACES);
 
 /** The world's upgrade ids with a callout. */
 export const WORLD_CALLOUT_IDS: readonly string[] = Object.keys(WORLD_PLACES);
+
+/** The seed's upgrade ids with a callout. */
+export const SEED_CALLOUT_IDS: readonly string[] = Object.keys(SEED_PLACES);

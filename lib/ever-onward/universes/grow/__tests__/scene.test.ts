@@ -1,6 +1,7 @@
-import { manualAction, tick } from "../../../engine/engine";
+import { manualAction, tick, visitorHereFlag } from "../../../engine/engine";
 import { sceneInfo } from "..";
 import { plantCrop } from "../market";
+import { RETURN_VISITOR_ID } from "../visitors";
 import { def, runAtPhaseStart, withWater } from "./fixtures";
 
 describe("Grow sceneInfo", () => {
@@ -160,6 +161,59 @@ describe("Grow sceneInfo", () => {
       };
       const info = sceneInfo(run);
       expect([info.rivers, info.clouds, info.flocks]).toEqual([2, 3, 3]);
+    });
+  });
+
+  describe("the last seed", () => {
+    const seedRun = (growth: number, owned: Record<string, number> = {}) => {
+      const run = runAtPhaseStart(3);
+      run.resources.growth = growth;
+      run.owned = { ...run.owned, ...owned };
+      return run;
+    };
+
+    it("starts as soil in the dusk, with the window dark and nobody there", () => {
+      const info = sceneInfo(seedRun(0));
+      expect(info.phase).toBe("seed");
+      expect(info.potStage).toBe("soil");
+      expect(info.isNight).toBe(false);
+      expect(info.windowLit).toBe(false);
+      expect(info.visitorHere).toBe(false);
+    });
+
+    it("follows the pot's stages and the night", () => {
+      expect(sceneInfo(seedRun(10)).potStage).toBe("sprout");
+      expect(sceneInfo(seedRun(70)).potStage).toBe("bud");
+      expect(sceneInfo(seedRun(70)).isNight).toBe(true);
+      expect(sceneInfo(seedRun(100)).potStage).toBe("bloom");
+    });
+
+    it("leaves the light on with the lantern, or once the pot is nearly grown", () => {
+      expect(sceneInfo(seedRun(10, { "window-lantern": 1 })).windowLit).toBe(
+        true
+      );
+      expect(sceneInfo(seedRun(90)).windowLit).toBe(true);
+      expect(sceneInfo(seedRun(50)).windowLit).toBe(false);
+    });
+
+    it("shows the visitors when someone comes back, and lists what sits on the sill", () => {
+      const run = seedRun(100, { trellis: 2, "wind-chime": 1, "music-box": 1 });
+      run.flags[visitorHereFlag(RETURN_VISITOR_ID)] = true;
+      const info = sceneInfo(run);
+      expect(info.visitorHere).toBe(true);
+      expect([info.trellis, info.chime, info.musicBox, info.can]).toEqual([
+        true,
+        true,
+        true,
+        false,
+      ]);
+    });
+
+    it("is quantized: a 0.1 s tick leaves it equal", () => {
+      const run = seedRun(20);
+      expect(sceneInfo(tick(def, run, 0.1)).potStage).toBe(
+        sceneInfo(run).potStage
+      );
     });
   });
 });

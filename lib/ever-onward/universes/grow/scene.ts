@@ -11,6 +11,16 @@ import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
 import { BEE_KEEPER_ID } from "./bees";
 import { isDry, waterLevel } from "./water";
+import { visitorHereFlag } from "../../engine/engine";
+import { RETURN_VISITOR_ID } from "./visitors";
+import {
+  LANTERN_ID,
+  MUSIC_BOX_ID,
+  WATERING_CAN_ID,
+  potGrowth,
+  potStage,
+  type PotStage,
+} from "./windowbox";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
 export interface GrowSceneInfo {
@@ -76,6 +86,21 @@ export interface GrowSceneInfo {
   townFed: number;
   /** Seed phase: whole percent of the pot grown. */
   growth: number;
+  /** Seed phase: soil, sprout, bud or bloom. */
+  potStage: PotStage;
+  /** Seed phase: the sky has gone from dusk to night (a quarter grown). */
+  isNight: boolean;
+  /** Seed phase: the light is left on in the window. */
+  windowLit: boolean;
+  /** Seed phase: someone came back and is at the window. */
+  visitorHere: boolean;
+  /** Seed phase: what sits on the sill and window. */
+  trellis: boolean;
+  chime: boolean;
+  dew: boolean;
+  can: boolean;
+  musicBox: boolean;
+  sunnySill: boolean;
 }
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
@@ -86,6 +111,41 @@ const ENDERS = ["cold-frame", "grain-barn", "seed-vault", ""];
 
 const tenths = (n: number): number =>
   Math.round(Math.min(1, Math.max(0, n)) * 10) / 10;
+
+/** The old window box's extra numbers; bare outside the seed phase. */
+function seedInfo(
+  run: RunState,
+  isSeed: boolean
+): Pick<
+  GrowSceneInfo,
+  | "potStage"
+  | "isNight"
+  | "windowLit"
+  | "visitorHere"
+  | "trellis"
+  | "chime"
+  | "dew"
+  | "can"
+  | "musicBox"
+  | "sunnySill"
+> {
+  const has = (id: string) => isSeed && owned(run, id) > 0;
+  const grown = isSeed ? potGrowth(run) : 0;
+  return {
+    potStage: isSeed ? potStage(run) : "soil",
+    isNight: isSeed && grown >= 0.25,
+    // The robot leaves a light on near the end, and the lantern keeps one.
+    windowLit: has(LANTERN_ID) || (isSeed && grown >= 0.85),
+    visitorHere:
+      isSeed && run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true,
+    trellis: has("trellis"),
+    chime: has("wind-chime"),
+    dew: has("dew-collector"),
+    can: has(WATERING_CAN_ID),
+    musicBox: has(MUSIC_BOX_ID),
+    sunnySill: has("sunny-sill"),
+  };
+}
 
 /** The backyard's extra numbers; zeros and falses outside the yard. */
 function yardInfo(
@@ -225,6 +285,7 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
     dry: i <= 2 && isDry(run),
     ...yardInfo(run, i === 0),
     ...farmInfo(run, i === 1),
+    ...seedInfo(run, i === 3),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(
       Math.min(FULL_GROWTH, Math.max(0, run.resources.growth ?? 0))

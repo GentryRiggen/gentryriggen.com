@@ -72,3 +72,14 @@ export const cloudAt = (i: number): Point => ({
   y: 70 + ((i * 43) % 120),
 });
 export const GLOBE_FLOCK: Point = { x: 300, y: 96 };
+
+/** The old window box (same 400 by 300 box): the pot sits on the sill. */
+export const SILL_Y = 186;
+export const POT: Point = { x: 200, y: 158 };
+export const SEED_LANTERN: Point = { x: 134, y: 176 };
+export const SEED_CAN: Point = { x: 162, y: 180 };
+export const SEED_DEW: Point = { x: 246, y: 181 };
+export const SEED_MUSIC: Point = { x: 276, y: 178 };
+export const SEED_CHIME: Point = { x: 276, y: 50 };
+export const SEED_TRELLIS: Point = { x: 200, y: 110 };
+export const SEED_SILL: Point = { x: 200, y: 190 };

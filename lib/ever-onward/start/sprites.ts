@@ -165,3 +165,54 @@ export const EMBER_ROWS = [
 ] as const;
 
 export const EMBER_COLORS: Palette = { O: "#fb923c", Y: "#fde047" };
+
+/** A seedling in a pot (11 x 12): the Make It Grow hub card, lit and dim. */
+export const SEEDLING_ROWS: readonly string[] = [
+  "..GG...GG..",
+  ".GGGG.GGGG.",
+  ".GGGGGGGGG.",
+  "..GGG.GGG..",
+  ".....S.....",
+  ".....S.....",
+  ".....S.....",
+  "..PPPPPPP..",
+  "..PPPPPPP..",
+  "...PPPPP...",
+  "...PPPPP...",
+  "...PPPPP...",
+];
+
+export const SEEDLING_LIT: Palette = {
+  G: "#4ade80",
+  S: "#16a34a",
+  P: "#c2410c",
+};
+
+export const SEEDLING_DIM: Palette = {
+  G: "#365a43",
+  S: "#27422f",
+  P: "#4a2a1c",
+};
+
+/** An acorn (9 x 11): what a finished Make It Grow run earns. */
+export const ACORN_ROWS: readonly string[] = [
+  "....T....",
+  "..CCCCC..",
+  ".CCCCCCC.",
+  ".CDCDCDC.",
+  ".CCCCCCC.",
+  "..NNNNN..",
+  ".NNLNNNN.",
+  ".NNLNNNN.",
+  "..NNNNN..",
+  "...NNN...",
+  "....N....",
+];
+
+export const ACORN_COLORS: Palette = {
+  T: "#78350f",
+  C: "#92400e",
+  D: "#78350f",
+  N: "#d97706",
+  L: "#fcd34d",
+};

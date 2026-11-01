@@ -1,7 +1,7 @@
 import {
-  LIGHTHOUSE_DIM,
-  ROBOT_COLORS,
-  ROBOT_ROWS,
+  SEEDLING_DIM,
+  SEEDLING_LIT,
+  SEEDLING_ROWS,
 } from "@/lib/ever-onward/start/sprites";
 import { ENDING_STORY_IDS } from "@/lib/ever-onward/universes/grow/story";
 import {
@@ -10,7 +10,8 @@ import {
   GROW_UNEASE,
 } from "../audio/growScores";
 import type { CueName } from "../audio/everOnwardSynth";
-import EmberIcon from "../game/EmberIcon";
+import AcornIcon from "../game/grow/AcornIcon";
+import GrowEndingArt from "../game/grow/GrowEndingArt";
 import BeeDance from "../game/grow/BeeDance";
 import BiomePanel from "../game/grow/BiomePanel";
 import CountyFair from "../game/grow/CountyFair";
@@ -58,7 +59,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   return cues;
 }
 
-/** Placeholders until the art and the music are made (Tasks 14 and 15). */
+/** The Make It Grow screens: scene, panels, ending, sounds. */
 export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
   panels: [
@@ -70,14 +71,14 @@ export const GROW_UI: UniverseUi = {
     SeedMigration,
     WindowBox,
   ],
-  ending: { storyIds: ENDING_STORY_IDS },
+  ending: { storyIds: ENDING_STORY_IDS, Art: GrowEndingArt },
   tapLooks: LOOKS,
   hubSprite: {
-    rows: ROBOT_ROWS,
-    lit: ROBOT_COLORS,
-    dim: LIGHTHOUSE_DIM,
+    rows: SEEDLING_ROWS,
+    lit: SEEDLING_LIT,
+    dim: SEEDLING_DIM,
   },
-  PrestigeIcon: EmberIcon,
+  PrestigeIcon: AcornIcon,
   copy: {
     logbookEmpty: "Visitors stop by as your garden grows. They wait for you.",
     stillGoing: "The garden is still growing.",
