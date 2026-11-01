@@ -850,10 +850,31 @@ html:has(.jim-app) body {
   animation: jimBreathe 1.8s ease-out infinite;
 }
 
+/* A wrong PIN: the dots shake no. */
+@keyframes jimShake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+@utility jim-shake {
+  animation: jimShake 360ms ease-in-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jim-rise,
   .jim-dot,
-  .jim-breathe {
+  .jim-breathe,
+  .jim-shake {
     animation: none;
   }
 

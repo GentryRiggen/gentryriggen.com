@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import JimChat from "@/components/jim/JimChat";
 import JimHeader from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
+import LockScreen from "@/components/jim/LockScreen";
+import useAppLock from "@/components/jim/useAppLock";
 import { ADMIN_UID, isAdminUser } from "@/lib/analytics/admin";
 import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
@@ -16,6 +18,7 @@ import {
 } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { isJimConnected, JIM_API, wakeJim } from "@/lib/jim/api";
+import { clearLock } from "@/lib/jim/appLock";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
 import { clearAll, saveView } from "@/lib/jim/offlineStore";
@@ -55,6 +58,10 @@ export default function JimGate() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  /** Said on the sign-in screen after a wipe (too many wrong PINs). */
+  const [notice, setNotice] = useState<string | null>(null);
+  const lock = useAppLock(state.kind === "owner" ? state.uid : null);
+  const { lockNow } = lock;
   /** The sign-in the server was last woken for. */
   const wokeFor = useRef<string | null>(null);
 
@@ -85,6 +92,8 @@ export default function JimGate() {
         wokeFor.current = null;
         clearViewCache();
         clearHistory();
+        clearLock();
+        lockNow();
         void clearAll();
         // Keep the "Not authorized" message when our own sign-out echoes back.
         setState((prev) =>
@@ -116,12 +125,13 @@ export default function JimGate() {
       cancelled = true;
       unsubscribe?.();
     };
-  }, []);
+  }, [lockNow]);
 
   function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
     setError(null);
+    setNotice(null);
     setSubmitting(true);
     setState((prev) => (prev.kind === "denied" ? { kind: "signedOut" } : prev));
     // One generic message for every failure: never say which part was wrong
@@ -138,8 +148,10 @@ export default function JimGate() {
   function signOut() {
     clearViewCache();
     // Every chat and Notes payload kept on this device, in case the phone
-    // was lent.
+    // was lent, and the app lock with them.
     clearHistory();
+    clearLock();
+    lockNow();
     void clearAll();
     if (state.kind !== "owner") {
       signOutUser().catch(() => {});
@@ -164,18 +176,35 @@ export default function JimGate() {
     setState({ kind: "signedOut" });
   }
 
+  /** Signs out and wipes the device, saying why on the sign-in screen. */
+  function wipe(reason: string) {
+    signOut();
+    setNotice(reason);
+  }
+
   if (state.kind === "owner") {
+    // Nothing of the app is drawn while it is locked: JimChat keeps its
+    // state but renders nothing, and the lock screen stands alone.
+    const lockScreen = lock.locked ? (
+      <LockScreen lock={lock} onWipe={wipe} />
+    ) : null;
     if (isJimConnected(state.api)) {
       return (
-        <JimChat
-          key={state.uid}
-          uid={state.uid}
-          api={state.api}
-          getToken={state.getToken}
-          onSignOut={signOut}
-        />
+        <>
+          <JimChat
+            key={state.uid}
+            uid={state.uid}
+            api={state.api}
+            getToken={state.getToken}
+            onSignOut={signOut}
+            lock={lock}
+            onWipe={wipe}
+          />
+          {lockScreen}
+        </>
       );
     }
+    if (lockScreen) return lockScreen;
     return (
       <div className="jim-app flex min-h-dvh flex-col bg-ayu-bg text-ayu-text">
         <JimHeader onSignOut={signOut} />
@@ -276,6 +305,11 @@ export default function JimGate() {
         {error && (
           <p role="alert" className="text-sm text-ayu-red">
             {error}
+          </p>
+        )}
+        {notice && state.kind === "signedOut" && (
+          <p role="status" className="text-sm text-ayu-subtle">
+            {notice}
           </p>
         )}
       </div>
