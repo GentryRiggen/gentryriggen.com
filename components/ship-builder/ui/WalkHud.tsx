@@ -143,7 +143,9 @@ function SinkShipButton() {
 /**
  * The escape card and the warmth meter, stacked top centre under the trial
  * pill (and clear of Stop walking) so the joystick, Kick and the action
- * button at the bottom stay usable while a card is up.
+ * button at the bottom stay usable while a card is up. It sits outside the
+ * controls' layer, above the below-deck inset and the trial pill, so neither
+ * ever covers the card on a phone.
  */
 function EscapeStack() {
   return (
@@ -184,8 +186,6 @@ function WalkingControls() {
       </div>
       <WalkHint />
       <OutcomeNote />
-      <EscapeActionButton />
-      <EscapeStack />
     </div>
   );
 }
@@ -194,5 +194,13 @@ function WalkingControls() {
 export default function WalkHud() {
   const isWalking = useShipBuilderStore((s) => s.walk.status === "walking");
   if (!isWalking) return null;
-  return <WalkingControls />;
+  // The card stack and the action button get their own layers above the
+  // controls (and the inset and pill beside them); Climb in tops the card.
+  return (
+    <>
+      <WalkingControls />
+      <EscapeStack />
+      <EscapeActionButton />
+    </>
+  );
 }

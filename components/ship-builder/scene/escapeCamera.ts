@@ -11,8 +11,21 @@ export const SWIM_EYE_HEIGHT = 0.12;
 export const SWIM_BOB = 0.04;
 /** …this many times a second. */
 export const SWIM_BOB_HZ = 0.5;
-/** Seated in a boat, the eyes are this far above its pose. */
-export const BOAT_EYE_HEIGHT = 0.35;
+/**
+ * Seated in a boat, the eyes are this far above its pose: high enough that
+ * the boat's own hull stays at the bottom of the view.
+ */
+export const BOAT_EYE_HEIGHT = 0.5;
+/**
+ * Seated, the view tips down this far (radians), so the boat's near side
+ * shows along the bottom and the ship fills the middle.
+ */
+export const SEATED_PITCH = 0.06;
+/**
+ * Seated, the eyes sit this far back from the boat's centre (away from where
+ * they look), so the boat's near gunwale comes into the bottom of the view.
+ */
+export const SEAT_BACK = 0.4;
 /** A jump's peak is this far above the higher of its two ends. */
 export const JUMP_PEAK = 0.6;
 
@@ -30,7 +43,7 @@ export interface EscapeCameraContext {
 export interface EscapeCameraPose {
   /** World position of the eye. */
   eye: [number, number, number];
-  /** Where it looks, level with it. */
+  /** Where it looks: level with it, or tipped down when seated. */
   target: [number, number, number];
 }
 
@@ -41,7 +54,8 @@ function looking(
   x: number,
   y: number,
   z: number,
-  yaw: number
+  yaw: number,
+  pitch = 0
 ): EscapeCameraPose {
   const ex = finiteOr(x, 0);
   const ey = finiteOr(y, SWIM_EYE_HEIGHT);
@@ -51,7 +65,7 @@ function looking(
     eye: [ex, ey, ez],
     target: [
       ex + Math.cos(heading) * LOOK_DISTANCE,
-      ey,
+      ey - Math.tan(pitch) * LOOK_DISTANCE,
       ez + Math.sin(heading) * LOOK_DISTANCE,
     ],
   };
@@ -77,7 +91,8 @@ function seatOf(
 /**
  * The player's view once they have left the deck, in the world frame: low in
  * the water and bobbing while swimming (or frozen, where they stopped),
- * seated in the boat as it lowers, rows out and bobs, or leaping along an arc
+ * seated in the boat as it lowers, rows out and bobs (looking a little
+ * down, so the boat shows below the ship), or leaping along an arc
  * from the deck into a raft. Null while aboard (the walk's own eyes drive the
  * camera) or for a boat the plan does not know. Finite for any input.
  */
@@ -101,7 +116,16 @@ export function escapeCamera(
       return looking(phase.x, SWIM_EYE_HEIGHT + bobOf(ctx), phase.z, ctx.yaw);
     case "in-boat": {
       const seat = seatOf(ctx, phase.boatId);
-      return seat && looking(seat.x, seat.y, seat.z, ctx.yaw);
+      if (!seat) return null;
+      // The walk's yaw starts facing back at the ship (see escapeStep).
+      const heading = finiteOr(ctx.yaw, 0);
+      return looking(
+        seat.x - Math.cos(heading) * SEAT_BACK,
+        seat.y,
+        seat.z - Math.sin(heading) * SEAT_BACK,
+        heading,
+        SEATED_PITCH
+      );
     }
     case "jumping": {
       const seat = seatOf(ctx, phase.boatId);

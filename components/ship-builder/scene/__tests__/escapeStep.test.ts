@@ -144,7 +144,7 @@ describe("advanceEscape", () => {
     });
   });
 
-  it("boards a davit boat straight away, facing out of it", () => {
+  it("boards a davit boat straight away, facing back at the ship", () => {
     const next = advanceEscape(aboard, frame({ request: "board" }));
     expect(next.phase).toEqual({
       kind: "in-boat",
@@ -152,7 +152,8 @@ describe("advanceEscape", () => {
       since: 10,
       fromWater: false,
     });
-    expect(next.yaw).toBeCloseTo(Math.PI / 2);
+    // The davit boat lowers to +z (outward 1): the ship is at -z.
+    expect(next.yaw).toBeCloseTo(-Math.PI / 2);
   });
 
   it("jumps into a raft, then sits in it once the jump is over", () => {
@@ -182,7 +183,8 @@ describe("advanceEscape", () => {
       since: 10 + JUMP_S,
       fromWater: false,
     });
-    expect(landed.yaw).toBeCloseTo(-Math.PI / 2);
+    // The raft is out to -z (outward -1): the ship is at +z.
+    expect(landed.yaw).toBeCloseTo(Math.PI / 2);
   });
 
   it("ignores a board request with no boat in reach", () => {
@@ -257,6 +259,8 @@ describe("advanceEscape", () => {
       since: LOWER_S + 1,
       fromWater: true,
     });
+    // Seated facing back at the ship.
+    expect(climbed.yaw).toBeCloseTo(-Math.PI / 2);
   });
 
   it("keeps a swimmer out of the hull until she has gone under", () => {

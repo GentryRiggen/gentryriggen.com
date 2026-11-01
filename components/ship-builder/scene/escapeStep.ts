@@ -62,9 +62,9 @@ export interface EscapeAdvance {
   yaw: number | null;
 }
 
-/** Facing straight out of a boat, away from the ship. */
-function outwardYaw(launch: BoatLaunch): number {
-  return launch.outward > 0 ? Math.PI / 2 : -Math.PI / 2;
+/** Seated facing back across the boat at the ship, to watch her go down. */
+function shipwardYaw(launch: BoatLaunch): number {
+  return launch.outward > 0 ? -Math.PI / 2 : Math.PI / 2;
 }
 
 /** A hull that stands in no one's way. */
@@ -172,7 +172,7 @@ export function advanceEscape(
           },
           0
         ),
-        yaw: launch ? outwardYaw(launch) : null,
+        yaw: launch ? shipwardYaw(launch) : null,
       };
     }
     case "swimming":
@@ -220,7 +220,7 @@ function aboardFrame(
         : { kind: "jumping", boatId: boardable.boatId, since: t, from: world };
     return {
       ...inert(next, 0),
-      yaw: next.kind === "in-boat" ? outwardYaw(boardable) : null,
+      yaw: next.kind === "in-boat" ? shipwardYaw(boardable) : null,
     };
   }
   if (world.y <= 0) {
@@ -247,7 +247,7 @@ function swimmingFrame(
         },
         0
       ),
-      yaw: outwardYaw(reachable),
+      yaw: shipwardYaw(reachable),
     };
   }
 

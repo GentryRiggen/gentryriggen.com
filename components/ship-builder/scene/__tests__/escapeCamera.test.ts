@@ -3,6 +3,8 @@ import { startSwimming } from "@/lib/ship-builder/walk/escape";
 import {
   BOAT_EYE_HEIGHT,
   escapeCamera,
+  SEATED_PITCH,
+  SEAT_BACK,
   SWIM_BOB,
   SWIM_EYE_HEIGHT,
   type EscapeCameraContext,
@@ -69,17 +71,23 @@ describe("escapeCamera", () => {
     expect(still.eye[1]).toBeCloseTo(SWIM_EYE_HEIGHT);
   });
 
-  it("seats the eyes in the boat, looking along the walk's yaw", () => {
+  it("seats the eyes in the boat, looking along the walk's yaw, tipped down", () => {
     const pose = escapeCamera(
       { kind: "in-boat", boatId: "boat", since: 3, fromWater: true },
-      ctx({ yaw: Math.PI / 2 })
+      ctx({ yaw: -Math.PI / 2 })
     )!;
-    expect(BOAT_EYE_HEIGHT).toBe(0.35);
+    expect(BOAT_EYE_HEIGHT).toBe(0.5);
+    expect(SEATED_PITCH).toBeGreaterThan(0);
+    expect(SEATED_PITCH).toBeLessThan(0.3);
+    // Sat at the back of the boat (+z, away from the ship at -z).
     expect(pose.eye[0]).toBeCloseTo(5);
     expect(pose.eye[1]).toBeCloseTo(0.2 + BOAT_EYE_HEIGHT);
-    expect(pose.eye[2]).toBeCloseTo(7);
+    expect(pose.eye[2]).toBeCloseTo(7 + SEAT_BACK);
     expect(pose.target[0]).toBeCloseTo(5);
-    expect(pose.target[2]).toBeCloseTo(7 + LOOK_DISTANCE);
+    expect(pose.target[1]).toBeCloseTo(
+      0.2 + BOAT_EYE_HEIGHT - Math.tan(SEATED_PITCH) * LOOK_DISTANCE
+    );
+    expect(pose.target[2]).toBeCloseTo(7 + SEAT_BACK - LOOK_DISTANCE);
   });
 
   it("has no view of a boat the plan does not know", () => {

@@ -244,6 +244,10 @@ describe("WalkHud escape popup placement", () => {
     const climb = screen.getByRole("button", { name: "Climb in" });
     const z = (el: Element) => Number(/\bz-(\d+)\b/.exec(el.className)?.[1]);
     expect(z(climb)).toBeGreaterThan(z(stack));
+    // Both sit above the below-deck inset (z-10) and the trial pill (z-20),
+    // not inside the controls' z-10 layer.
+    expect(z(stack)).toBeGreaterThan(20);
+    expect(stack.parentElement).toBe(climb.parentElement);
     // Out of reach again, the splash card stays closed.
     act(() =>
       publishEscape({ phase: swimming, boardable: null, pickup: null })
