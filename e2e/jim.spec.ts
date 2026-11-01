@@ -1366,9 +1366,17 @@ test(
       testInfo.project.name !== "iphone",
       "the hint is for iOS in a browser tab"
     );
+    // Size the page before it loads. Emulated iPhone WebKit keeps its layout
+    // viewport at the device's 659px when a loaded page is made taller, so
+    // nothing fixed below 659px can be tapped (shrinking is fine).
+    const sizes = [
+      { width: 393, height: 852 },
+      { width: 320, height: 568 },
+    ];
+    await page.setViewportSize(sizes[0]);
     const calls = await signedIn(page);
-    for (const width of [393, 320]) {
-      await page.setViewportSize({ width, height: width === 320 ? 568 : 852 });
+    for (const size of sizes) {
+      await page.setViewportSize(size);
       await page.getByRole("button", { name: "Menu" }).click();
       const item = page.getByRole("menuitem", { name: "Notifications" });
       await expect(item).toBeInViewport({ ratio: 1 });
