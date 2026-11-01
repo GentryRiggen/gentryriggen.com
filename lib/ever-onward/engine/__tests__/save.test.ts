@@ -9,6 +9,7 @@ import {
   parseSave,
   writeSave,
 } from "../save";
+import { lightUniverse } from "../../universes/light";
 import { fixture as def } from "./fixtures";
 
 beforeEach(() => window.localStorage.clear());
@@ -163,5 +164,13 @@ describe("the embers explainer flag", () => {
       universes: { light: { ...universe, hasSeenEmberTip: true } },
     });
     expect(seen?.universes.light.hasSeenEmberTip).toBe(true);
+  });
+
+  it("keeps a universe entry no playable universe knows about", () => {
+    const raw = {
+      ...newSave(),
+      universes: { grow: newUniverseSave(lightUniverse) },
+    };
+    expect(parseSave(raw)?.universes.grow).toBeDefined();
   });
 });

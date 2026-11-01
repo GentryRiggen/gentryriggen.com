@@ -1,4 +1,4 @@
-import { PLAYABLE_UNIVERSES } from "../universes";
+import { playableUniverses } from "../universes/staging";
 
 export interface NarrationLine {
   /** `<universe>/<line>`; also the clip's path under public/ever-onward/voice. */
@@ -36,10 +36,10 @@ export function spokenText(text: string): string {
   return /[A-Za-z]/.test(trimmed) ? trimmed : "";
 }
 
-/** Every line that has a recorded clip, across all playable universes. */
+/** Every line that has a recorded clip, across every built universe, released or not. */
 export function narrationLines(): NarrationLine[] {
   const lines: NarrationLine[] = [];
-  for (const def of PLAYABLE_UNIVERSES) {
+  for (const def of playableUniverses(true)) {
     for (const phase of def.phases) {
       const text = phase.intro ? spokenText(introSpokenText(phase)) : "";
       if (text) lines.push({ id: introClipId(def.id, phase.id), text });

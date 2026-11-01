@@ -1,12 +1,14 @@
-// Run: npx tsx scripts/ever-onward-score.ts [--json]
-// Plays Keep the Light On with every bot and prints the Engagement Scorecard.
+// Run: npx tsx scripts/ever-onward-score.ts [universe] [--json]
+// Plays a universe (default: light) with every bot and prints the Engagement Scorecard.
 import {
   formatCurve,
   type PhaseClicks,
 } from "../lib/ever-onward/engine/clicks";
 import { scoreUniverse, type Scorecard } from "../lib/ever-onward/engine/score";
-import { lightBots } from "../lib/ever-onward/universes/light/bots";
-import { lightUniverse } from "../lib/ever-onward/universes/light";
+import {
+  SCORED_UNIVERSES,
+  parseScoreArgs,
+} from "../lib/ever-onward/universes/scored";
 
 const pad = (text: string, width: number): string =>
   text.length >= width ? text : text + " ".repeat(width - text.length);
@@ -83,6 +85,8 @@ function print(card: Scorecard): void {
   );
 }
 
-const card = scoreUniverse(lightUniverse, { bots: lightBots() });
-if (process.argv.includes("--json")) console.log(JSON.stringify(card, null, 2));
+const { universeId, isJson } = parseScoreArgs(process.argv.slice(2));
+const { def, bots } = SCORED_UNIVERSES[universeId];
+const card = scoreUniverse(def, { bots: bots() });
+if (isJson) console.log(JSON.stringify(card, null, 2));
 else print(card);
