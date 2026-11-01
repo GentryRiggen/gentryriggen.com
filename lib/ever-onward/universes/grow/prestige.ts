@@ -13,11 +13,11 @@ export const PRESTIGE: PrestigeDef = {
     {
       id: "acorn-roots",
       name: "Deep roots",
-      description: "Every helper works 25% faster, in every phase.",
+      description: "Every helper works 30% faster, in every phase.",
       cost: 3,
       maxLevel: 5,
       apply: (run, level) => {
-        run.mods.speed = 1 + 0.25 * level;
+        run.mods.speed = 1 + 0.3 * level;
       },
     },
     {

@@ -95,10 +95,10 @@ export const TUNING = {
   /** The farm: helpers by tier, its own water and the towns' market. */
   farm: {
     /** What each helper earns per second, before bonuses. */
-    scarecrowRate: 5,
-    tractorRate: 30,
-    glasshouseRate: 190,
-    droneRate: 900,
+    scarecrowRate: 3.2,
+    tractorRate: 19,
+    glasshouseRate: 120,
+    droneRate: 580,
     /** Leftover seeds become this much harvest when the farm opens. */
     seedsToHarvest: 0.004,
     /** The farm's thirsty fields: a bigger tank, more thirst, and wells. */
@@ -107,13 +107,13 @@ export const TUNING = {
       wellCapacity: 60,
       irrigationCapacity: 150,
       /** Units per second each well seeps in, rain or not. */
-      wellSeep: 0.12,
+      wellSeep: 0.18,
       /** Each irrigation channel adds this share to what the rain gives. */
       irrigationRain: 0.2,
       rainMax: 0.9,
       thirst: 0.3,
       /** Thirst added by each scarecrow, tractor, glasshouse and drone. */
-      thirstPerHelper: 0.03,
+      thirstPerHelper: 0.045,
     },
   },
   /** The county fair: a pumpkin to enter about every two minutes. */
@@ -167,9 +167,9 @@ export const TUNING = {
     /** Leftover farm harvest becomes this much green when the world opens. */
     harvestToGreen: 0.0002,
     /** Green per second from each helper, before bonuses. */
-    windbreakRate: 40,
-    roverRate: 300,
-    seederRate: 2400,
+    windbreakRate: 30,
+    roverRate: 225,
+    seederRate: 1800,
     /** The planet's weather: its own tank, rivers, clouds and thirst. */
     water: {
       baseCapacity: 80,
@@ -242,9 +242,9 @@ export const TUNING = {
     /** A window lantern makes each unit of care grow the pot this much more. */
     lanternBoost: 0.25,
     /** Growth (of 100) each unit of care adds to the pot. */
-    growthPerCare: 0.00028,
+    growthPerCare: 0.00009,
     /** The pot is a sprout from this share grown, and a bud from this one. */
-    sproutAt: 0.03,
+    sproutAt: 0.015,
     budAt: 0.6,
     /** Seconds before the first want, and between one answer and the next. */
     firstWantSeconds: 15,

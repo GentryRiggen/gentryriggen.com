@@ -155,7 +155,7 @@ export const yard: StoryMessage[] = [
   {
     id: "yard-mid",
     phase: PHASE_YARD,
-    when: (run) => run.time >= 960,
+    when: (run) => run.time >= 930,
     text: "Somebody has hung a little wind chime from the shed roof. Nobody admits to it. It rings whenever the garden does something particularly well, which is often.",
   },
   {
@@ -179,7 +179,7 @@ export const yard: StoryMessage[] = [
   {
     id: "yard-late-3",
     phase: PHASE_YARD,
-    when: (run) => run.time >= 1740,
+    when: (run) => run.time >= 1680,
     text: "From the top of the shed you can see the whole yard, green from fence to fence, and past the fence, a field waiting for its turn. The robot hums. Ever onward.",
   },
   {

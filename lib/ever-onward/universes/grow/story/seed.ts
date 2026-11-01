@@ -24,7 +24,7 @@ export const seed: StoryMessage[] = [
   {
     id: "seed-sprout",
     phase: PHASE_SEED,
-    when: grown(0.03),
+    when: grown(0.015),
     text: "A thin green thread pushes up through the soil. The robot holds very still, the way you do when a bird lands near you.",
   },
   {
@@ -42,19 +42,19 @@ export const seed: StoryMessage[] = [
   {
     id: "seed-sun",
     phase: PHASE_SEED,
-    when: grown(0.14),
+    when: grown(0.08),
     text: "The sun slides along the sill, and the robot slides the pot along with it, an inch at a time. It is a very small job, and it is the best job in the world.",
   },
   {
     id: "seed-leaf",
     phase: PHASE_SEED,
-    when: grown(0.22),
+    when: grown(0.18),
     text: "Two small leaves, bright as new paint. The robot counts them twice, just to be sure, and then a third time because it is nice to count something that is growing.",
   },
   {
     id: "seed-curtain",
     phase: PHASE_SEED,
-    when: grown(0.4),
+    when: grown(0.33),
     text: "The robot straightens the curtain, just a little, so the window looks like somebody lives there. Out in the street, the green is very still and very kind.",
   },
   {
@@ -72,7 +72,7 @@ export const seed: StoryMessage[] = [
   {
     id: "seed-waiting",
     phase: PHASE_SEED,
-    when: grown(0.85),
+    when: grown(0.8),
     text: "The robot leaves a small light on in the window, in case anybody is passing. Somebody might be. Gardens are good at hoping, and so are robots.",
   },
   {
