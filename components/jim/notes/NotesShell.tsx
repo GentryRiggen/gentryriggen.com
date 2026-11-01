@@ -25,6 +25,7 @@ import NotesHome from "@/components/jim/notes/NotesHome";
 import NotesMoney from "@/components/jim/notes/NotesMoney";
 import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
+import NotesMeeting from "@/components/jim/notes/NotesMeeting";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
@@ -779,6 +780,21 @@ function NotesShellView({
         }}
         listHref={formatJimPath({ kind: "reminders" })}
         onList={() => navigate({ kind: "reminders" }, { replace: true })}
+      />
+    );
+  } else if (route.kind === "meeting") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <NotesMeeting
+        card={data.meetingCards?.[route.id]}
+        onBack={() => goBack(HOME_ROUTE)}
+        backLabel={backLabel ?? "Home"}
+        backHref={backFrom ?? formatJimPath(HOME_ROUTE)}
+        backAside={detailAside}
+        onOpenPath={(path) => openPath(path, "Meeting")}
+        onHome={() => navigate(HOME_ROUTE)}
+        homeHref={formatJimPath(HOME_ROUTE)}
       />
     );
   } else if (route.kind === "directory") {
