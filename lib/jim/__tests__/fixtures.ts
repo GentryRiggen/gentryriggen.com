@@ -541,12 +541,12 @@ export const VIEW_FIXTURE: ViewData = {
  * groups, categories and payees are made up.
  */
 export const MONEY_FIXTURE: MoneySummary = {
-  rule: "On track means net at least zero. Months marked * are still partial.",
-  range: "Full months Aug–Sep",
+  rule: "Invented rule for tests.",
+  range: "Invented range Aug to Sep",
   tiles: [
-    { label: "months on track", value: "1 of 2", tone: "" },
-    { label: "average net per month", value: "+$120", tone: "good" },
-    { label: "savings used", value: "$0.4k", tone: "bad" },
+    { label: "Good months", value: "1 of 2", tone: "" },
+    { label: "Typical net", value: "+$120", tone: "good" },
+    { label: "Spare jar used", value: "$0.4k", tone: "bad" },
   ],
   groups: ["Garden", "Books", "Other"],
   months: [
@@ -596,7 +596,7 @@ export const MONEY_FIXTURE: MoneySummary = {
         },
       ],
       note: "",
-      flag: "savings $0.4k",
+      flag: "used $0.4k",
     },
     {
       m: "2026-10",
@@ -637,7 +637,7 @@ export const MONEY_FIXTURE: MoneySummary = {
     log: [
       {
         date: "2026-10-05",
-        kind: "decided",
+        kind: "note",
         text: "Pause new tools until Nov",
       },
     ],

@@ -54,7 +54,7 @@ describe("fetchMoney", () => {
     expect(init.headers.Authorization).toBe("Bearer t1");
   });
 
-  it("is null when there's no ledger (404)", async () => {
+  it("is null when there's no money data (404)", async () => {
     const fetchFn = jest.fn().mockResolvedValue(json(404, { error: "x" }));
     await expect(fetchMoney(async () => "t", fetchFn, API)).resolves.toBe(null);
   });
@@ -184,7 +184,7 @@ describe("useMoney", () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
-  it("is ready with no data when there's no ledger", async () => {
+  it("is ready with no data when there's no money data", async () => {
     const fetchFn = jest.fn().mockResolvedValue(json(404, {}));
     const { result } = renderHook(() =>
       useMoney(async () => "t", API, true, fetchFn)

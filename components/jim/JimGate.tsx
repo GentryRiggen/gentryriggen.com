@@ -26,6 +26,7 @@ import {
 } from "@/lib/jim/appLock";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
+import { clearMoney } from "@/lib/jim/money";
 import { clearAll, saveView } from "@/lib/jim/offlineStore";
 import { disablePush } from "@/lib/jim/push";
 import { registerJimServiceWorker } from "@/lib/jim/serviceWorker";
@@ -62,6 +63,8 @@ const SIGN_OUT_TOKEN_MS = 2_000;
 function clearDeviceData(): void {
   setViewSaver(null);
   clearViewCache();
+  // The money summary is only ever in memory: drop it now.
+  clearMoney();
   clearHistory();
   void clearAll();
 }

@@ -9,6 +9,7 @@ import * as host from "@/lib/jim/host";
 import { historyKey, loadHistory, saveHistory } from "@/lib/jim/history";
 import { isWipePending, lockKey, markWipePending } from "@/lib/jim/appLock";
 import * as view from "@/lib/jim/view";
+import * as money from "@/lib/jim/money";
 import * as offline from "@/lib/jim/offlineStore";
 import * as push from "@/lib/jim/push";
 import { fetchView, getCachedView } from "@/lib/jim/view";
@@ -51,6 +52,9 @@ jest.mock("@/lib/analytics/admin", () => {
 });
 jest.mock("@/lib/jim/push", () => ({
   disablePush: jest.fn(async () => {}),
+}));
+jest.mock("@/lib/jim/money", () => ({
+  clearMoney: jest.fn(),
 }));
 jest.mock("@/lib/jim/offlineStore", () => ({
   clearAll: jest.fn(async () => {}),
@@ -330,6 +334,8 @@ describe("device storage and the morning briefing", () => {
       await screen.findByRole("button", { name: "Chat sign out" })
     );
     expect(offline.clearAll).toHaveBeenCalled();
+    // The money summary held in memory goes too.
+    expect(money.clearMoney).toHaveBeenCalled();
     expect(push.disablePush).toHaveBeenCalledTimes(1);
     const [getToken, , api] = jest.mocked(push.disablePush).mock.calls[0];
     expect(api).toBe("https://jim.example.test");
@@ -364,6 +370,7 @@ describe("device storage and the morning briefing", () => {
     await renderGate();
     act(() => emit(null));
     expect(offline.clearAll).toHaveBeenCalled();
+    expect(money.clearMoney).toHaveBeenCalled();
   });
 
   it("keeps each good Notes payload under the owner's uid", async () => {

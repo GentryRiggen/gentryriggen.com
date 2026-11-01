@@ -21,6 +21,7 @@ import {
 import NotesGolf from "@/components/jim/notes/NotesGolf";
 import NotesHealth from "@/components/jim/notes/NotesHealth";
 import NotesHome from "@/components/jim/notes/NotesHome";
+import NotesMoney from "@/components/jim/notes/NotesMoney";
 import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
@@ -31,6 +32,7 @@ import NotesWork from "@/components/jim/notes/NotesWork";
 import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
+import { useMoney } from "@/lib/jim/money";
 import { localDay, timeLabel } from "@/lib/jim/notesData";
 import { loadView } from "@/lib/jim/offlineStore";
 import { fmtShort } from "@/lib/jim/todos";
@@ -180,6 +182,12 @@ export default memo(function NotesShell({
   /** A note opened from the search results. */
   const [found, setFound] = useState<string | null>(null);
   const searching = search.trim() !== "";
+  /** Money: fetched only while its page shows, held in memory only. */
+  const money = useMoney(
+    getToken,
+    api,
+    active && page === "money" && !searching
+  );
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLButtonElement>(null);
@@ -376,6 +384,9 @@ export default memo(function NotesShell({
           ))}
       </>
     );
+  } else if (page === "money") {
+    // Its own data and its own Refresh: it doesn't wait on the notes.
+    body = <NotesMoney money={money} />;
   } else if (!data) {
     body =
       error && !loading ? (
@@ -447,8 +458,6 @@ export default memo(function NotesShell({
           ))}
       </>
     );
-  } else if (page === "money") {
-    body = <Empty>Money is on its way.</Empty>;
   } else if (page === "health") {
     body = (
       <>
@@ -545,7 +554,7 @@ export default memo(function NotesShell({
                 <SearchField value={search} onChange={onSearch} />
               </div>
             )}
-          {data && !searching && (
+          {data && !searching && page !== "money" && (
             <div className="mb-6 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
               <p className="flex min-w-0 items-center gap-2" aria-live="polite">
                 <span

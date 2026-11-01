@@ -42,10 +42,18 @@ interface StatProps {
   label: string;
   value: ReactNode;
   detail?: ReactNode;
+  /** Colors the number: green for good, red for bad. */
+  tone?: "good" | "bad" | "";
 }
 
+const STAT_TONES = {
+  good: "text-ayu-green",
+  bad: "text-ayu-red",
+  "": "jim-figure",
+};
+
 /** A tile with one big number. */
-export function Stat({ label, value, detail }: StatProps) {
+export function Stat({ label, value, detail, tone = "" }: StatProps) {
   return (
     <div className="jim-card relative min-w-0 overflow-hidden px-4 py-3.5">
       <span
@@ -53,7 +61,9 @@ export function Stat({ label, value, detail }: StatProps) {
         className="pointer-events-none absolute -top-10 -right-10 size-24 rounded-full bg-ayu-accent/10 blur-2xl"
       />
       <p className="text-sm text-ayu-subtle">{label}</p>
-      <p className="jim-figure mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+      <p
+        className={`${STAT_TONES[tone]} mt-1 text-3xl font-semibold tracking-tight tabular-nums`}
+      >
         {value}
       </p>
       {detail && (

@@ -1,7 +1,7 @@
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
-import { VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
+import { MONEY_FIXTURE, VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
 
 /**
  * /jim is a private chat that is used mostly on an iPhone. Runs on Chromium
@@ -39,6 +39,7 @@ interface MockCalls {
   view: number;
   chat: number;
   health: number;
+  money: number;
   /** Each /api/todo body, in order. */
   todo: {
     order: number;
@@ -101,6 +102,7 @@ async function mockServer(
     view: 0,
     chat: 0,
     health: 0,
+    money: 0,
     todo: [],
     search: [],
     messages: [],
@@ -197,6 +199,11 @@ async function mockServer(
       const { path } = route.request().postDataJSON() as { path: string };
       if (path === GARDEN_NOTE.path) await reply(200, GARDEN_NOTE);
       else await reply(404, { error: "not found" });
+      return;
+    }
+    if (url.pathname === "/api/money") {
+      calls.money += 1;
+      await reply(200, MONEY_FIXTURE);
       return;
     }
     calls.chat += 1;
@@ -756,6 +763,35 @@ for (const width of [undefined, 320]) {
           .getByRole("region", { name: "Direct reports" })
           .scrollIntoViewIfNeeded();
         await shot("notes-directory-reports");
+
+        await pills.getByRole("tab", { name: "Money" }).click();
+        await expect(page.getByText("Good months")).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Refresh" })
+        ).toBeInViewport();
+        await shot("notes-money");
+        await page
+          .getByRole("region", { name: "Net per month" })
+          .scrollIntoViewIfNeeded();
+        await shot("notes-money-net");
+        await page
+          .getByRole("group", { name: "Months" })
+          .getByRole("button", { name: "Aug" })
+          .click();
+        const aug = page.getByRole("region", { name: "Aug detail" });
+        await expect(aug.getByText("Green Acres")).toBeVisible();
+        await page
+          .getByRole("group", { name: "Months" })
+          .scrollIntoViewIfNeeded();
+        await shot("notes-money-month");
+        await page
+          .getByRole("region", { name: "Check-in" })
+          .scrollIntoViewIfNeeded();
+        await shot("notes-money-checkin");
+        await page
+          .getByRole("region", { name: "Watch" })
+          .scrollIntoViewIfNeeded();
+        await shot("notes-money-cash");
       }
     );
   });
@@ -1344,4 +1380,88 @@ test("turns the morning briefing on, and sign-out turns it off and wipes the dev
     )
     .toBe(false);
   await expect.poll(() => keptView(page)).toBeNull();
+});
+
+/** Every string kept on this device: web storage and every IndexedDB
+ * database, each store read in full. */
+async function everythingKept(page: Page): Promise<string> {
+  return page.evaluate(async () => {
+    const out: string[] = [
+      JSON.stringify({ ...localStorage }),
+      JSON.stringify({ ...sessionStorage }),
+    ];
+    const dbs =
+      typeof indexedDB.databases === "function"
+        ? await indexedDB.databases()
+        : [{ name: "jim" }];
+    for (const { name } of dbs) {
+      if (!name) continue;
+      out.push(
+        await new Promise<string>((resolve) => {
+          const open = indexedDB.open(name);
+          open.onerror = () => resolve("");
+          open.onsuccess = () => {
+            const db = open.result;
+            const stores = [...db.objectStoreNames];
+            if (!stores.length) {
+              db.close();
+              resolve("");
+              return;
+            }
+            const tx = db.transaction(stores, "readonly");
+            const parts: unknown[] = [];
+            for (const store of stores) {
+              const all = tx.objectStore(store).getAll();
+              all.onsuccess = () => parts.push(all.result);
+            }
+            tx.oncomplete = () => {
+              db.close();
+              resolve(JSON.stringify(parts));
+            };
+            tx.onerror = () => {
+              db.close();
+              resolve("");
+            };
+          };
+        })
+      );
+    }
+    return out.join("\n");
+  });
+}
+
+test("money never rests on the device, open or after sign-out", async ({
+  page,
+}) => {
+  const calls = await signedIn(page);
+  await openNotes(page);
+  expect(calls.money).toBe(0);
+  await page
+    .getByRole("tablist", { name: "Notes pages" })
+    .getByRole("tab", { name: "Money" })
+    .click();
+  await expect(page.getByText("Hill Hardware")).toBeVisible();
+  expect(calls.money).toBe(1);
+  // Strings only the invented money summary carries.
+  const values = [
+    "Hill Hardware",
+    "Green Acres",
+    "Page Turners",
+    "Spare jar used",
+    "Seed order",
+    "Greenhouse repair",
+    "Pause new tools",
+    "Invented rule for tests",
+  ];
+  // The Notes payload is kept by now (it's what the offline store holds).
+  await expect.poll(() => keptView(page)).not.toBeNull();
+  const open = await everythingKept(page);
+  for (const v of values) expect(open).not.toContain(v);
+
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByText("Hill Hardware")).toHaveCount(0);
+  const after = await everythingKept(page);
+  for (const v of values) expect(after).not.toContain(v);
 });

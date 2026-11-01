@@ -4,8 +4,8 @@ import { JIM_API, JimError, type JimErrorKind } from "@/lib/jim/api";
 import { callJim } from "@/lib/jim/view";
 
 /**
- * The Money page's data: `POST /api/money` on Jim's server, a summary built
- * at request time (aggregates and ready-to-show strings, never the ledger).
+ * The Money page's data: `POST /api/money` on Jim's server. The server sends
+ * a summary: figures and ready-to-show strings.
  *
  * Money never rests on the device: this module touches no storage API. The
  * summary lives in React state while the page is open and is dropped on
@@ -116,7 +116,7 @@ export interface MoneySummary {
   stale?: boolean;
 }
 
-/** The summary reads the whole ledger: a cold start plus a sync fits. */
+/** Long enough for a cold start plus building the summary. */
 export const MONEY_TIMEOUT_MS = 30_000;
 
 type GetToken = (force?: boolean) => Promise<string | null>;
@@ -285,7 +285,7 @@ export function normalizeMoney(raw: unknown): MoneySummary | null {
 }
 
 /**
- * The money summary, or null when there's no ledger (404). Throws JimError:
+ * The money summary, or null when there's no money data (404). Throws JimError:
  * waking (a 503, offline, the time limit), denied, or server.
  */
 export async function fetchMoney(
@@ -330,7 +330,7 @@ export function clearMoney(): void {
 export interface MoneyState {
   /** idle: nothing asked yet (or signed out); ready: data is final. */
   status: "idle" | "loading" | "ready" | "error";
-  /** The summary, or null (not loaded, or no ledger when ready). */
+  /** The summary, or null (not loaded, or no money data when ready). */
   data: MoneySummary | null;
   error: JimErrorKind | null;
   /** Loads again (the Refresh button, Try again). */

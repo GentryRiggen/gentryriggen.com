@@ -2,7 +2,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import * as view from "@/lib/jim/view";
-import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import { MONEY_FIXTURE, VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import { clearMoney } from "@/lib/jim/money";
 import * as offline from "@/lib/jim/offlineStore";
 import NotesShell from "../NotesShell";
 
@@ -214,16 +215,36 @@ it("switches Health between Health, Training and Golf", async () => {
   expect(screen.getByText("Back squat")).toBeInTheDocument();
 });
 
-it("shows a calm placeholder on Money for now", async () => {
+it("fetches Money only once its page opens, with its own Refresh", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
-  renderShell();
-  await screen.findByText("Water the plants");
-  await userEvent.click(screen.getByRole("tab", { name: "Money" }));
-  expect(screen.getByRole("tab", { name: "Money" })).toHaveAttribute(
-    "aria-selected",
-    "true"
-  );
-  expect(screen.queryByText("Water the plants")).toBeNull();
+  const realFetch = global.fetch;
+  const moneyFetch = jest.fn(async () => ({
+    status: 200,
+    ok: true,
+    json: async () => MONEY_FIXTURE,
+  }));
+  global.fetch = moneyFetch as unknown as typeof fetch;
+  try {
+    renderShell();
+    await screen.findByText("Water the plants");
+    expect(moneyFetch).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("tab", { name: "Money" }));
+    expect(screen.getByRole("tab", { name: "Money" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.queryByText("Water the plants")).toBeNull();
+    expect(await screen.findByText("Good months")).toBeInTheDocument();
+    expect(moneyFetch).toHaveBeenCalledTimes(1);
+    expect(String((moneyFetch.mock.calls[0] as unknown[])[0])).toMatch(
+      /\/api\/money$/
+    );
+    // One Refresh: Money's own, not the notes' too.
+    expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(1);
+  } finally {
+    global.fetch = realFetch;
+    act(() => clearMoney());
+  }
 });
 
 it("opens a meeting and a directory card from Work, and back", async () => {
