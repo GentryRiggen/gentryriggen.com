@@ -27,7 +27,7 @@ const CACHE_PREFIX = "jim-shell-";
 const CACHE = `${CACHE_PREFIX}v1`;
 const PAGE_PATH = "/jim";
 const STATIC_PREFIX = "/_next/static/";
-const ICON = "/jim-icons/icon-192.png";
+const ICON = "/jim-icons/glow-pal-192.png";
 const NOTIFICATION_TAG = "jim-morning";
 /** Upper bound on URLs accepted from one CACHE_URLS message. */
 const MAX_PRECACHE_URLS = 300;

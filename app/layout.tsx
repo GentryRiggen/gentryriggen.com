@@ -79,7 +79,6 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="shortcut icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
         <script
           dangerouslySetInnerHTML={{
             __html: THEME_SCRIPT,
