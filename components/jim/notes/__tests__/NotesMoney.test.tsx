@@ -259,6 +259,7 @@ it("leaves no money on the device: web storage and the offline store", async () 
         getToken={getToken}
         active
         onLog={() => {}}
+        onDraft={() => {}}
       />
     );
     await screen.findByText("Water the plants");

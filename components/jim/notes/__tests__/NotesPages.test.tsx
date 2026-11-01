@@ -15,6 +15,7 @@ const EMPTY = normalizeView({ today: "2026-10-31" }) as ViewData;
 const HOME = {
   saves: { marks: {}, toast: null, toggle: () => {}, undo: () => {} },
   onLog: () => {},
+  onDraft: () => {},
 };
 
 describe("NotesHome", () => {
@@ -286,15 +287,68 @@ describe("NotesPeople", () => {
   });
 
   it("hides coming up while searching", () => {
-    render(
+    const data = {
+      ...VIEW_FIXTURE,
+      dates: [
+        {
+          kind: "birthday" as const,
+          name: "Jordan Lee",
+          on: "2026-11-05",
+          days: 5,
+          path: "people/jordan-lee.md",
+          turns: null,
+        },
+      ],
+    };
+    const { rerender } = render(
       <NotesPeople
-        data={VIEW_FIXTURE}
+        data={data}
+        query=""
+        onQuery={jest.fn()}
+        onOpen={jest.fn()}
+      />
+    );
+    expect(
+      screen.getByRole("region", { name: "Coming up" })
+    ).toBeInTheDocument();
+    rerender(
+      <NotesPeople
+        data={data}
         query="college"
         onQuery={jest.fn()}
         onOpen={jest.fn()}
       />
     );
     expect(screen.queryByRole("region", { name: "Coming up" })).toBeNull();
+  });
+
+  it("still draws a date whose kind it doesn't know", () => {
+    const data = {
+      ...VIEW_FIXTURE,
+      dates: [
+        {
+          kind: "party" as unknown as "birthday",
+          name: "Block party",
+          on: "2026-11-05",
+          days: 5,
+          path: "home/block-party.md",
+          turns: null,
+        },
+      ],
+    };
+    render(
+      <NotesPeople
+        data={data}
+        query=""
+        onQuery={jest.fn()}
+        onOpen={jest.fn()}
+      />
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Coming up" })).getByText(
+        "Block party"
+      )
+    ).toBeInTheDocument();
   });
 
   it("filters by the search words", () => {

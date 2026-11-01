@@ -6,9 +6,13 @@ import NotesHome from "../NotesHome";
 
 const saves = { marks: {}, toast: null, toggle: () => {}, undo: () => {} };
 
-function show(data: ViewData, onLog = jest.fn()) {
-  render(<NotesHome data={data} saves={saves} onLog={onLog} />);
-  return onLog;
+function show(data: ViewData) {
+  const onLog = jest.fn();
+  const onDraft = jest.fn();
+  render(
+    <NotesHome data={data} saves={saves} onLog={onLog} onDraft={onDraft} />
+  );
+  return { onLog, onDraft };
 }
 
 const ACTION = {
@@ -32,11 +36,31 @@ it("omits the daily word when daily is null", () => {
   expect(screen.queryByText("On patience")).toBeNull();
 });
 
-it("sends exactly the ask text through onLog", async () => {
-  const onLog = show({ ...VIEW_FIXTURE, actions: [ACTION] });
+it("sends a row from his own notes straight to Jim", async () => {
+  const { onLog, onDraft } = show({
+    ...VIEW_FIXTURE,
+    actions: [{ ...ACTION, kind: "Todo" }],
+  });
   await userEvent.click(screen.getByRole("button", { name: /Ask Jim/ }));
   expect(onLog).toHaveBeenCalledWith("Help me with: Confirm the carpool");
+  expect(onDraft).not.toHaveBeenCalled();
 });
+
+it.each(["Email", "Asana", "Calendar", "Something new"])(
+  "only drafts a %s row, never sends it",
+  async (kind) => {
+    const { onLog, onDraft } = show({
+      ...VIEW_FIXTURE,
+      actions: [{ ...ACTION, kind }],
+    });
+    expect(screen.queryByRole("button", { name: /Ask Jim/ })).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: /Draft for Jim/ })
+    );
+    expect(onDraft).toHaveBeenCalledWith("Help me with: Confirm the carpool");
+    expect(onLog).not.toHaveBeenCalled();
+  }
+);
 
 it("has no anchor when link is empty, and a safe one when set", () => {
   show({

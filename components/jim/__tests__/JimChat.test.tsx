@@ -13,13 +13,18 @@ jest.mock("../notes/NotesShell", () => ({
   default: ({
     active,
     onLog,
+    onDraft,
   }: {
     active: boolean;
     onLog: (text: string) => void;
+    onDraft: (text: string) => void;
   }) => (
     <div data-testid="notes" data-active={String(active)}>
       <button type="button" onClick={() => onLog("Log my workout today: Ran.")}>
         Fake log
+      </button>
+      <button type="button" onClick={() => onDraft("Help me with: A reply")}>
+        Fake draft
       </button>
     </div>
   ),
@@ -512,6 +517,33 @@ describe("quick log from Notes", () => {
     expect(screen.getByLabelText("Message")).toHaveValue(
       "Log my workout today: Ran."
     );
+  });
+});
+
+describe("draft from Notes", () => {
+  it("fills the box, switches to Chat and sends nothing", async () => {
+    renderChat();
+    await userEvent.type(screen.getByLabelText("Message"), "half typed");
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake draft" }));
+    expect(screen.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByLabelText("Message")).toHaveValue(
+      "Help me with: A reply\nhalf typed"
+    );
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("fills an empty box with just the phrase", async () => {
+    renderChat();
+    await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fake draft" }));
+    expect(screen.getByLabelText("Message")).toHaveValue(
+      "Help me with: A reply"
+    );
+    expect(send).not.toHaveBeenCalled();
   });
 });
 

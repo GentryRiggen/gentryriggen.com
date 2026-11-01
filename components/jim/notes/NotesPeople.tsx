@@ -91,7 +91,7 @@ export default function NotesPeople({
         <Section title="Coming up" aside={upcoming.length}>
           <Rows>
             {upcoming.map((d) => {
-              const Icon = KIND_ICON[d.kind];
+              const Icon = KIND_ICON[d.kind] ?? CalendarClock;
               const opens = known.has(d.path);
               const body = (
                 <>

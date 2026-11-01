@@ -594,6 +594,18 @@ export default function JimChat({
 
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
+  /**
+   * A Needs-you row whose words came from outside (email, calendar, Asana):
+   * never sent for him. It lands in the box, unsent, ahead of any draft, so
+   * he reads it and taps Send himself. No focus: the box is still hidden in
+   * this tap, and a late focus would fight iOS.
+   */
+  const draftFromNotes = useCallback((text: string) => {
+    stuck.current = true;
+    setTab("chat");
+    setDraft((current) => (current ? `${text}\n${current}` : text));
+  }, []);
+
   function restoreHeld() {
     if (held === null) return;
     putBack(held.text);
@@ -865,6 +877,7 @@ export default function JimChat({
                 getToken={getToken}
                 active={tab === "notes"}
                 onLog={logFromNotes}
+                onDraft={draftFromNotes}
               />
             </div>
           )}

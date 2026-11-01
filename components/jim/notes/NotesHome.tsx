@@ -37,6 +37,8 @@ interface NotesHomeProps {
   saves: TodoSaves;
   /** Sends a quick-log sentence as a chat message and switches to Chat. */
   onLog: (text: string) => void;
+  /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
+  onDraft: (text: string) => void;
 }
 
 const AREA_LABEL: Record<string, string> = {
@@ -415,7 +417,12 @@ function greeting(): string {
 }
 
 /** Home: the calendar this week, then what's due, with boxes to tick. */
-export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
+export default function NotesHome({
+  data,
+  saves,
+  onLog,
+  onDraft,
+}: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -443,6 +450,7 @@ export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
           actionsAsOf={data.actionsAsOf}
           today={data.today}
           onAsk={onLog}
+          onDraft={onDraft}
         />
       )}
       <Calendar data={data} />

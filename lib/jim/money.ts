@@ -387,7 +387,10 @@ export function useMoney(
         setStatus("ready");
       } catch (err) {
         if (startedIn !== generation) return;
-        setError(err instanceof JimError ? err.kind : "server");
+        const kind = err instanceof JimError ? err.kind : "server";
+        // No longer allowed: the old figures go too, not just stay stale.
+        if (kind === "denied") setData(null);
+        setError(kind);
         setStatus("error");
       } finally {
         if (startedIn === generation) inflight.current = null;

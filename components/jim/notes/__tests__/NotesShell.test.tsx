@@ -64,6 +64,7 @@ function renderShell(active = true) {
       getToken={getToken}
       active={active}
       onLog={jest.fn()}
+      onDraft={jest.fn()}
     />
   );
 }

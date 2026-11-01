@@ -23,7 +23,9 @@ interface HomeProps {
 /** Home with its saves, as the shell holds them. */
 function NotesHome({ data, api, getToken, onChanged, onLog }: HomeProps) {
   const saves = useTodoSaves({ data, api, getToken, onChanged });
-  return <NotesHomePage data={data} saves={saves} onLog={onLog} />;
+  return (
+    <NotesHomePage data={data} saves={saves} onLog={onLog} onDraft={() => {}} />
+  );
 }
 const API = "https://jim.example.test";
 const getToken = jest.fn().mockResolvedValue("t");

@@ -262,12 +262,27 @@ describe("normalizeView", () => {
     const view = normalizeView({
       today: "2026-10-31",
       daily: "word",
-      dates: [date, { ...date, days: "3" }, { ...date, kind: "party" }],
+      dates: [
+        date,
+        { ...date, days: "3" },
+        { ...date, kind: "party" },
+        { ...date, days: Number.NaN },
+        { ...date, days: Number.POSITIVE_INFINITY },
+      ],
       work: [],
     });
     expect(view?.daily).toBeNull();
     expect(view?.dates).toEqual([date]);
     expect(view?.work).toBeUndefined();
+  });
+
+  it("turns a non-finite age into null", () => {
+    const date = VIEW_FIXTURE.dates![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      dates: [{ ...date, turns: Number.NaN }],
+    });
+    expect(view?.dates?.[0].turns).toBeNull();
   });
 
   it("drops bad work entries one by one and keeps the rest", () => {

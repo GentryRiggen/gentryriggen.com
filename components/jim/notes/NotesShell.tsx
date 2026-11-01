@@ -48,6 +48,8 @@ interface NotesShellProps {
   active: boolean;
   /** Sends a quick-log sentence as a chat message and switches to Chat. */
   onLog: (text: string) => void;
+  /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
+  onDraft: (text: string) => void;
 }
 
 type Page = "home" | "work" | "money" | "health" | "people";
@@ -161,6 +163,7 @@ export default memo(function NotesShell({
   getToken,
   active,
   onLog,
+  onDraft,
 }: NotesShellProps) {
   const [data, setData] = useState<ViewData | null>(
     () => getCachedView()?.data ?? null
@@ -406,7 +409,9 @@ export default memo(function NotesShell({
         <Skeleton />
       );
   } else if (page === "home") {
-    body = <NotesHome data={data} saves={saves} onLog={onLog} />;
+    body = (
+      <NotesHome data={data} saves={saves} onLog={onLog} onDraft={onDraft} />
+    );
   } else if (page === "work") {
     const profile =
       workView?.kind === "profile"

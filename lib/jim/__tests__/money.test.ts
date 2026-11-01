@@ -209,6 +209,35 @@ describe("useMoney", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("drops the old summary when a refresh is denied", async () => {
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValueOnce(json(200, MONEY_FIXTURE))
+      .mockResolvedValueOnce(json(403, {}));
+    const { result } = renderHook(() =>
+      useMoney(async () => "t", API, true, fetchFn)
+    );
+    await waitFor(() => expect(result.current.data).toEqual(MONEY_FIXTURE));
+    await act(async () => result.current.reload());
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe("denied");
+    expect(result.current.data).toBeNull();
+  });
+
+  it("keeps the old summary when a refresh fails for another reason", async () => {
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValueOnce(json(200, MONEY_FIXTURE))
+      .mockResolvedValueOnce(json(500, {}));
+    const { result } = renderHook(() =>
+      useMoney(async () => "t", API, true, fetchFn)
+    );
+    await waitFor(() => expect(result.current.data).toEqual(MONEY_FIXTURE));
+    await act(async () => result.current.reload());
+    expect(result.current.status).toBe("error");
+    expect(result.current.data).toEqual(MONEY_FIXTURE);
+  });
+
   it("drops the summary on sign-out", async () => {
     const fetchFn = jest.fn().mockResolvedValue(json(200, MONEY_FIXTURE));
     const { result } = renderHook(() =>
