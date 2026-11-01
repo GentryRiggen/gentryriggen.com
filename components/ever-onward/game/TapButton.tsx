@@ -108,7 +108,7 @@ export default function TapButton({
           aria-label={label}
           onClick={handleClick}
           onContextMenu={(e) => e.preventDefault()}
-          className={`${pixelClass} pointer-events-auto flex size-20 touch-manipulation select-none flex-col items-center justify-center gap-1.5 border-4 text-[10px] leading-none transition-transform [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] active:translate-y-0.5 sm:size-24 sm:text-[11px] ${tone} ${retroFocusClass}`}
+          className={`${pixelClass} pointer-events-auto flex size-20 touch-manipulation select-none flex-col items-center justify-center gap-1.5 border-4 text-[10px] leading-none transition-transform [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] active:translate-y-0.5 sm:size-24 sm:text-xs ${tone} ${retroFocusClass}`}
         >
           <PixelIcon name={look.icon} className="size-8 sm:size-10" />
           <span aria-hidden="true">{isStorm ? "x3!" : shortLabel}</span>

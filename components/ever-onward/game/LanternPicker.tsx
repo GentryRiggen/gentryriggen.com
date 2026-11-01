@@ -63,7 +63,7 @@ export default function LanternPicker({ value, onChange }: LanternPickerProps) {
                 className={`block size-8 rounded-full ${lantern.swatch}`}
               />
               <span
-                className={`${pixelClass} text-[8px] ${
+                className={`${pixelClass} text-[10px] ${
                   isPicked ? "text-amber-300" : "text-slate-200"
                 }`}
               >
