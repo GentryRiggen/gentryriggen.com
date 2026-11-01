@@ -29,7 +29,7 @@ export default function SceneCallout({ buy, info }: SceneCalloutProps) {
   if (!callout || !isShown) return null;
   const width = callout.text.length * FONT_SIZE + 10;
   const textX = Math.min(396 - width / 2, Math.max(4 + width / 2, callout.x));
-  const textY = Math.max(40, callout.y - 16);
+  const textY = Math.max(56, callout.y - 16);
 
   return (
     <g

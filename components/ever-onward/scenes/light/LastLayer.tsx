@@ -1,10 +1,6 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 
-const LIGHT_COUNT = 11;
-const LIGHTS = Array.from({ length: LIGHT_COUNT }, (_, i) => ({
-  x: 30 + i * 34,
-  y: 120 + 45 * Math.sin(i * 2.1),
-}));
+import { LAST_LIGHTS as LIGHTS } from "./anchors";
 
 /** The lamp, and where the boat starts and stops on the dark water. */
 const LAMP = { x: 200, y: 166 };
@@ -59,7 +55,6 @@ function Boat({ info }: { info: LightSceneInfo }) {
 
 export default function LastLayer({ info }: { info: LightSceneInfo }) {
   /** The lantern is one of the lights; the rest are the dots. */
-  const litDots = Math.max(0, info.lightsRemaining - 1);
   const glow = 36 + 56 * info.flame;
   // A low flame dims the night: the far lights and the water fade a little.
   // It is feedback for the player, never a loss.
@@ -84,21 +79,22 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
         <rect x="-1200" y="224" width="2800" height="1200" fill="#03081a" />
         <rect x="-1200" y="224" width="2800" height="1" fill="#16224a" />
         {LIGHTS.map((l, i) => {
-          const isLit = i < litDots;
+          const isLit = (info.letGoMask & (1 << i)) === 0;
           return (
             <g key={i}>
               <circle
                 cx={l.x}
                 cy={l.y}
-                r="16"
+                r="20"
                 fill="url(#lm-lamp)"
-                className={`transition-opacity duration-[1500ms] ${isLit ? "opacity-70" : "opacity-0"}`}
+                className={`transition-opacity duration-[1500ms] ${isLit ? "opacity-80" : "opacity-0"}`}
               />
               <circle
                 cx={l.x}
                 cy={l.y}
-                r="2.4"
-                className={`transition-colors duration-[1500ms] ${isLit ? "fill-amber-200" : "fill-slate-800"}`}
+                r="4"
+                strokeWidth="1"
+                className={`transition-colors duration-[1500ms] ${isLit ? "fill-amber-200 stroke-amber-50" : "fill-slate-900 stroke-slate-600"}`}
               />
             </g>
           );
