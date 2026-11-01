@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.1",
+    date: "2026-11-01",
+    title: "More room for upgrades",
+    highlights: [
+      "On phones the picture is smaller, so there is much more room to scroll through upgrades",
+      "The coin bar sits a little lower, clear of the blur under the clock on iPhones",
+      "The next-goal bar only shows once, in the coin bar, and the out-of-oil warning is a small chip beside your coins",
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-11-01",
     title: "Story intros, and your coins always in sight",
