@@ -317,6 +317,14 @@ export interface UniverseDef {
    * plate not listed counts whenever `plates` offers it.
    */
   plateActions?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Scorecard hook: action ids that are real choices (where to send a crew,
+   * which route to fly, which crop to plant, a knob's setting), as opposed to
+   * claims, fixes and collects (ride the rush, balance the grid, haul in).
+   * The decision-gap metric counts these, meaningful purchases and projects;
+   * story lines never count.
+   */
+  decisionActions?: readonly string[];
   /** Scorecard hook: watched numbers with a refill (see `ConsumableDef`). */
   consumables?: readonly ConsumableDef[];
   /**

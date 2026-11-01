@@ -366,6 +366,16 @@ is 2-3 hours (spec), phases of roughly 40, 45, 45, 20 minutes.
 Weights sum to exactly 100 (M1 10, M2 12, M3 3, M4 12, M5 6, M6 10, M7 10,
 M8 7, M9 6, M10 4, M11 7, M12 4, M13 5, M14 4).
 
+**Round 5 addition, M16 Decision gaps** (weights now M1 6, M5 3, M8 3, M16
+8; the rest as `score.ts` lists them). M1 and M12 count story lines as
+events, so a phase with nothing to decide could still score well. M16 reads
+the player who taps when it helps and counts only decisions: a meaningful
+purchase, a project started, or an action the universe tags as a real choice
+(`UniverseDef.decisionActions`; claims, fixes and collects are not). After a
+phase's first 2 minutes: longest gap <= 90 s, p90 <= 60 s, <= 15% of the
+time in gaps over 60 s, 0.67-2 decisions a minute. Gate: longest <= 150 s
+and <= 40% of the phase in gaps over 60 s. Code: `engine/decisions.ts`.
+
 ### How to combine
 
 1. Compute each metric's raw value per phase; the metric's phase value is its

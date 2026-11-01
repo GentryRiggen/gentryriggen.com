@@ -23,9 +23,16 @@ import {
   runsHome,
   withoutProbeRaces,
 } from "./probes";
-import { TIDE_ACTION_IDS, haulsSoFar, isTideOpen, withoutTide } from "./tide";
+import {
+  SET_NETS_ACTION,
+  TIDE_ACTION_IDS,
+  haulsSoFar,
+  isTideOpen,
+  withoutTide,
+} from "./tide";
 import {
   GARDEN_ACTION_IDS,
+  WATER_ACTION,
   isGardenOpen,
   picksSoFar,
   withoutGarden,
@@ -99,6 +106,20 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   boat: ["steer-boat", "flash-lamp"],
   garden: GARDEN_ACTION_IDS,
 };
+
+/**
+ * Real choices, for the decision-gap metric: buying oil at a price, when to
+ * set the nets, which route to fly, where the storm crews go, when to water.
+ * Claims (the rush, a flare), fixes (balance, correct, steer) and collects
+ * (haul in, pick) are not choices.
+ */
+export const LIGHT_DECISION_ACTIONS: readonly string[] = [
+  "buy-oil",
+  SET_NETS_ACTION,
+  ...LAUNCH_ACTION_IDS,
+  ...SHIELD_ACTION_IDS,
+  WATER_ACTION,
+];
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
   {

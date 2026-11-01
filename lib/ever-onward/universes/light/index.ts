@@ -2,6 +2,7 @@ import type { UniverseDef } from "../../engine/types";
 import { ACTIONS } from "./actions";
 import {
   LIGHT_CONSUMABLES,
+  LIGHT_DECISION_ACTIONS,
   lightIncomeView,
   PLATE_ACTIONS,
   lightPlates,
@@ -40,6 +41,7 @@ export const lightUniverse: UniverseDef = {
   },
   plates: lightPlates,
   plateActions: PLATE_ACTIONS,
+  decisionActions: LIGHT_DECISION_ACTIONS,
   consumables: LIGHT_CONSUMABLES,
   incomeView: lightIncomeView,
   sceneDiff: lightSceneDiff,

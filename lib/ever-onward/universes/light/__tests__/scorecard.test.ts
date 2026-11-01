@@ -24,8 +24,19 @@ jest.setTimeout(180_000);
  * reachable lens beats). The
  * floor is that minus 1. Raise as rounds land.
  */
-const SCORE_FLOOR = 85.8;
-const UNCAPPED_FLOOR = 85.8;
+const SCORE_FLOOR_ROUND_4 = 85.8;
+/**
+ * Round 5 added M16 (decision gaps): the night, the sky and the ending each
+ * spend 60-80% of their time in stretches over a minute with nothing to
+ * decide, so the honest card caps the total at 59 (83.5 uncapped) while those
+ * gates fail. The floor reads the uncapped score; the failing gates are
+ * listed so a new one can't slip in. Round 5 fixes the night.
+ */
+const SCORE_FLOOR = 59;
+const UNCAPPED_FLOOR = 82.5;
+/** Phases whose M16 gate is a known, open target (see the lab notebook). */
+const KNOWN_DEAD_PHASES = ["night", "sky", "last"];
+void SCORE_FLOOR_ROUND_4;
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];
@@ -95,9 +106,17 @@ describe("Keep the Light On engagement scorecard", () => {
     expect(good.uncapped).toBeGreaterThanOrEqual(UNCAPPED_FLOOR);
   });
 
-  it("reports all 15 metrics with weights summing to 100", () => {
+  it("fails no gate but the known decision gaps", () => {
+    const unexpected = good.failingGates.filter(
+      (g) =>
+        !KNOWN_DEAD_PHASES.some((p) => g.startsWith(`M16 Decision gaps (${p})`))
+    );
+    expect(unexpected).toEqual([]);
+  });
+
+  it("reports all 16 metrics with weights summing to 100", () => {
     expect(good.metrics.map((m) => m.id)).toEqual(
-      Array.from({ length: 15 }, (_, i) => `M${i + 1}`)
+      Array.from({ length: 16 }, (_, i) => `M${i + 1}`)
     );
     expect(good.metrics.reduce((sum, m) => sum + m.weight, 0)).toBe(100);
     expect(good.phases).toHaveLength(def.phases.length);
@@ -114,6 +133,7 @@ describe("Keep the Light On engagement scorecard", () => {
     for (const id of ["M2", "M4", "M5"]) expect(gate(bad, id)).toBe(false);
     expect(gate(good, "M2")).toBe(true);
     expect(bad.total).toBeLessThanOrEqual(59);
+    expect(bad.uncapped).toBeLessThan(good.uncapped);
   });
 
   it("fails the click curve for a build that needs no hands from minute 1", () => {

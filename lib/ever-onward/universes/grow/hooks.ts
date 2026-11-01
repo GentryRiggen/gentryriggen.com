@@ -81,6 +81,20 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   pot: WINDOWBOX_ACTION_IDS,
 };
 
+/**
+ * Real choices, for the decision-gap metric: which patch to follow, what to
+ * plant, what to spread, which pumpkin to enter, where to send the flock,
+ * how to tend the pot. Picking the harvest is a collect, not a choice.
+ */
+export const GROW_DECISION_ACTIONS: readonly string[] = [
+  ...BEE_ACTION_IDS,
+  ...PLANT_ACTION_IDS,
+  ...SPREAD_ACTION_IDS,
+  ...FAIR_ACTION_IDS,
+  ...MIGRATION_ACTION_IDS,
+  ...WINDOWBOX_ACTION_IDS,
+];
+
 /** The tank is the backyard's one watched number. */
 export const GROW_CONSUMABLES: readonly ConsumableDef[] = [
   {

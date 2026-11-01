@@ -95,6 +95,8 @@ export interface SimResult {
   purchases: (TimedEvent & { level: number })[];
   /** Actions performed (hand-made decisions). */
   actionsDone: TimedEvent[];
+  /** Projects started (see `ProjectDef`). */
+  projectsDone: TimedEvent[];
   /** With `shopEvery`: upgrades affordable at each trip, before buying. */
   affordableAtShop: number[];
   /** Upgrades popping in. */
@@ -275,6 +277,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   const startTime = run.time;
   const purchases: SimResult["purchases"] = [];
   const actionsDone: TimedEvent[] = [];
+  const projectsDone: TimedEvent[] = [];
   const affordableAtShop: number[] = [];
   const shopEvery = strategy.shopEvery ?? 0;
   let nextShop = startTime;
@@ -618,6 +621,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     finalRun: run,
     purchases,
     actionsDone,
+    projectsDone,
     affordableAtShop,
     unlocks,
     phases,

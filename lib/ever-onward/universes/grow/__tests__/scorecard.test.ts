@@ -16,8 +16,14 @@ jest.setTimeout(180_000);
  * far too short) to 83.9 with no failing gate. The floor is that minus 1.
  * Raise it as rounds land.
  */
-const SCORE_FLOOR = 82.9;
-const UNCAPPED_FLOOR = 82.9;
+const SCORE_FLOOR = 81.6;
+const UNCAPPED_FLOOR = 81.6;
+/*
+ * Round 5 (Light's "things to manage") added M16, decision gaps. Grow passes
+ * its gate, but the yard and the world's tail spend about a third of their
+ * time in stretches over a minute with nothing to decide, so the honest card
+ * reads 82.6 (was 83.9). The floor is that minus 1. Not tuned in Round 5.
+ */
 
 const HOUR = 3600;
 
