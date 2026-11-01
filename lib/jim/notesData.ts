@@ -5,6 +5,7 @@ import {
   monthName,
   stripMd,
 } from "@/lib/jim/todos";
+import { fmtWeight, type WeightUnit } from "@/lib/jim/weightUnit";
 import type {
   Birth,
   CalendarEvent,
@@ -189,13 +190,13 @@ export function fmtNum(v: number): string {
 }
 
 /** "3×5 @ 225 lb", "12", "10 @ 24"". */
-export function setText(l: Lift): string {
+export function setText(l: Lift, unit: WeightUnit = "lb"): string {
   const amount =
     l.weight == null
       ? ""
       : l.unit === "in"
         ? ` @ ${fmtNum(l.weight)}"`
-        : ` @ ${fmtNum(l.weight)} lb`;
+        : ` @ ${fmtWeight(l.weight, unit)}`;
   return `${l.sets > 1 ? `${l.sets}×` : ""}${l.reps ?? "?"}${l.repUnit ? ` ${l.repUnit}` : ""}${amount}`;
 }
 
