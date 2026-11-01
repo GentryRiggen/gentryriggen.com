@@ -1,3 +1,4 @@
+import { mixWithOtherAudio } from "@/components/game-audio/audioSession";
 import { useSyncExternalStore } from "react";
 import { getClip } from "@/lib/ever-onward/narration/manifest";
 
@@ -47,6 +48,7 @@ function safePlay(element: HTMLAudioElement, id: string): void {
 
 function element(): HTMLAudioElement {
   if (audio) return audio;
+  mixWithOtherAudio();
   audio = new Audio();
   audio.preload = "auto";
   audio.addEventListener("ended", () => finish(audio));

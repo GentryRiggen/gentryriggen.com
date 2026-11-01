@@ -52,6 +52,16 @@ describe("Ever Onward synth with a fake AudioContext", () => {
     synth.dispose();
   });
 
+  it("never opens an audio session while music and sound are both off", () => {
+    const synth = createEverOnwardSynth();
+    synth.setMusicEnabled(false);
+    synth.setEffectsEnabled(false);
+    expect(synth.enable()).toBe(false);
+    synth.setEffectsEnabled(true);
+    expect(synth.enable()).toBe(true);
+    synth.dispose();
+  });
+
   it("is silent with effects off and while paused", () => {
     const synth = createEverOnwardSynth();
     synth.enable();
