@@ -357,7 +357,7 @@ test.describe("Jim", () => {
     ).toHaveAttribute("content", "yes");
     await expect(
       page.locator('link[rel="apple-touch-icon"][sizes="180x180"]')
-    ).toHaveAttribute("href", "/jim-icons/apple-touch-icon.png");
+    ).toHaveAttribute("href", "/jim-icons/glow-pal-180.png");
     const manifest = await page.request.get("/jim.webmanifest");
     expect(await manifest.json()).toMatchObject({ start_url: "/jim" });
     // Not the homepage's canonical or share card.
