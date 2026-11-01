@@ -20,6 +20,7 @@ import {
 } from "@/lib/ever-onward/universes/grow/migration";
 import { incomePerSecond } from "@/lib/ever-onward/universes/grow/tick";
 import type { PanelProps } from "../../universes/types";
+import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 import useRoving from "./useRoving";
 
@@ -148,30 +149,38 @@ export default function SeedMigration({ run, onAct }: PanelProps) {
         : `The next flock gathers in about ${clock(secondsToFlock(run))}.`;
 
   return (
-    <section
-      aria-label="Seed migration"
-      data-testid="lm-migration"
-      data-stage={stage}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-sky-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#075985]"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-sky-200`}>
-          <span aria-hidden="true" className="mr-2 text-sky-300">
-            ~
-          </span>
-          Seed migration
-        </h2>
-        <p
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            ready
-              ? "border-sky-300 bg-sky-950 text-sky-100"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {ready ? "A flock is ready!" : flying ? "In flight" : "Gathering"}
-        </p>
-      </header>
+    <PanelFrame
+      label="Seed migration"
+      title="Seed migration"
+      icon="~"
+      tone="sky"
+      status={ready ? "A flock is ready!" : flying ? "In flight" : "Gathering"}
+      statusActive={ready}
+      testId="lm-migration"
+      data={{ "data-stage": stage }}
+      className="relative isolate overflow-hidden"
+      result={resultLine}
+      resultTestId="lm-migration-result"
+      footer={
+        <>
+          {hasFlockLeader(run) && (
+            <p className="font-mono text-xs text-sky-100">
+              The flock leader sends a flock that waits a while to the most
+              welcoming place: about +
+              {formatNumber(Math.floor(leaderPaysOn(run, income)))} green, on
+              top of what you send by hand.
+            </p>
+          )}
 
+          {flights > 0 && (
+            <p className="font-mono text-xs text-slate-300">
+              Flocks landed so far: {flights} (+
+              {formatNumber(Math.floor(earned))} green).
+            </p>
+          )}
+        </>
+      }
+    >
       <div className="flex items-center gap-3">
         <FlockMap run={run} stage={stage} />
         <div className="min-w-0 flex-1 space-y-2">
@@ -214,7 +223,7 @@ export default function SeedMigration({ run, onAct }: PanelProps) {
               onClick={() => {
                 if (ready) onAct(sendActionId(i));
               }}
-              className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] sm:text-[10px] ${retroFocusClass} ${
+              className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[10px] ${retroFocusClass} ${
                 checked
                   ? "border-sky-200 bg-sky-900 text-sky-100"
                   : ready
@@ -236,13 +245,13 @@ export default function SeedMigration({ run, onAct }: PanelProps) {
                 <span
                   id={`lm-migration-${i}-note`}
                   data-testid={`lm-migration-welcome-${i}`}
-                  className="block font-mono text-[11px] font-bold normal-case"
+                  className="block font-mono text-xs font-bold normal-case"
                 >
                   About +{formatNumber(Math.floor(pays))} green (
                   {Math.round((welcome / bestWelcome) * 100)}% welcome), a{" "}
                   {region.hop} second flight
                 </span>
-                <span className="block font-mono text-[11px] normal-case">
+                <span className="block font-mono text-xs normal-case">
                   {region.blurb}
                 </span>
               </span>
@@ -250,35 +259,6 @@ export default function SeedMigration({ run, onAct }: PanelProps) {
           );
         })}
       </div>
-
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-migration-result"
-        className={
-          resultLine
-            ? "border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-            : "sr-only"
-        }
-      >
-        {resultLine ?? ""}
-      </p>
-
-      {hasFlockLeader(run) && (
-        <p className="font-mono text-xs text-sky-100">
-          The flock leader sends a flock that waits a while to the most
-          welcoming place: about +
-          {formatNumber(Math.floor(leaderPaysOn(run, income)))} green, on top of
-          what you send by hand.
-        </p>
-      )}
-
-      {flights > 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Flocks landed so far: {flights} (+{formatNumber(Math.floor(earned))}{" "}
-          green).
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }

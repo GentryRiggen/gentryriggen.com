@@ -13,6 +13,7 @@ import {
   type Crop,
 } from "@/lib/ever-onward/universes/grow/market";
 import type { PanelProps } from "../../universes/types";
+import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 import useRoving from "./useRoving";
 
@@ -80,21 +81,18 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
   // Deliberate: arrows only move focus. Planting has a cost (the new crop
   // sprouts for a moment), so it takes Enter, Space or a click to choose.
   return (
-    <section
-      aria-label="The market"
-      data-testid="lm-market"
-      data-planted={planted}
-      className="space-y-3 border-4 border-orange-300/70 bg-slate-950/85 p-3 shadow-[4px_4px_0_#7c2d12]"
+    <PanelFrame
+      label="The market"
+      title="Market orders"
+      tone="orange"
+      status={`Most wanted: ${CROP_LABELS[best]}`}
+      statusActive={false}
+      testId="lm-market"
+      data={{ "data-planted": planted }}
+      result={result}
+      resultTestId="lm-market-result"
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-orange-200`}>
-          Market orders
-        </h2>
-        <p className={`${pixelClass} text-[8px] text-orange-100/80`}>
-          Most wanted: {CROP_LABELS[best]}
-        </p>
-      </header>
-      <p className="text-xs text-lime-50 sm:text-sm">
+      <p className="font-mono text-sm text-slate-200">
         The towns are asking for different crops. Plant what is wanted most and
         every harvest pays more.
       </p>
@@ -120,7 +118,7 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
               onClick={() => {
                 if (!checked && doable) onAct(plantActionId(crop));
               }}
-              className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[9px] sm:text-[10px] ${retroFocusClass} ${
+              className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[10px] ${retroFocusClass} ${
                 checked
                   ? "border-orange-200 bg-orange-400 text-orange-950 shadow-[4px_4px_0_#7c2d12]"
                   : "border-slate-500 bg-slate-800 text-slate-100 shadow-[4px_4px_0_#0f172a] hover:bg-slate-700 active:translate-y-0.5 active:shadow-none"
@@ -140,7 +138,7 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
               </span>
               <span
                 id={`lm-market-${crop}-order`}
-                className="block font-mono text-[11px] font-bold normal-case"
+                className="block font-mono text-xs font-bold normal-case"
               >
                 {TOWNS[crop]} pays {Math.round(demand * 100)}%
                 {crop === best ? ", most wanted" : ""}
@@ -150,18 +148,6 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
           );
         })}
       </div>
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-market-result"
-        className={
-          result
-            ? "border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-            : "sr-only"
-        }
-      >
-        {result}
-      </p>
-    </section>
+    </PanelFrame>
   );
 }

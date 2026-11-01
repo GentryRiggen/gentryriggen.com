@@ -47,13 +47,13 @@ import {
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const num = (n: number): string => formatNumber(n);
 
-/** "Per tap 2 -> 3" for a scale step, read from the run as it stands. */
+/** "Per tap 2 → 3" for a scale step, read from the run as it stands. */
 function scalePreview(run: RunState, id: string): string {
   const after: RunState = {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
-  return `Per tap ${num(manualPerTap(run))} -> ${num(manualPerTap(after))}`;
+  return `Per tap ${num(manualPerTap(run))} → ${num(manualPerTap(after))}`;
 }
 
 function ratePreview(
@@ -66,7 +66,7 @@ function ratePreview(
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
-  return `${label} ${num(rate(run))} -> ${num(rate(after))}`;
+  return `${label} ${num(rate(run))} → ${num(rate(after))}`;
 }
 
 const helperPreview = (run: RunState, id: string): string =>
@@ -131,7 +131,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "sprinkler") >= 3,
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} -> ${num(
+      `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
           ...run,
           owned: { ...run.owned, "rain-barrel": owned(run, "rain-barrel") + 1 },
@@ -184,7 +184,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 3,
     visibleWhen: (run) => owned(run, "rain-barrel") >= 1,
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} -> ${num(
+      `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
           ...run,
           owned: { ...run.owned, "garden-hose": owned(run, "garden-hose") + 1 },
@@ -321,7 +321,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "scarecrow") >= 2,
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} -> ${num(
+      `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
           ...run,
           owned: { ...run.owned, well: owned(run, "well") + 1 },
@@ -388,7 +388,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "well") >= 2,
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} -> ${num(
+      `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
           ...run,
           owned: { ...run.owned, irrigation: owned(run, "irrigation") + 1 },
@@ -487,7 +487,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "windbreak") >= 2,
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} -> ${num(
+      `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
           ...run,
           owned: { ...run.owned, "river-bend": owned(run, "river-bend") + 1 },
@@ -539,7 +539,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "river-bend") >= 2,
     effectPreview: (run) =>
-      `Rain ${num(Math.round((1 + TUNING.world.water.cloudRain * owned(run, "cloud-seeder")) * 100))}% -> ${num(Math.round((1 + TUNING.world.water.cloudRain * (owned(run, "cloud-seeder") + 1)) * 100))}%`,
+      `Rain ${num(Math.round((1 + TUNING.world.water.cloudRain * owned(run, "cloud-seeder")) * 100))}% → ${num(Math.round((1 + TUNING.world.water.cloudRain * (owned(run, "cloud-seeder") + 1)) * 100))}%`,
   },
   {
     id: "sky-seeder",
@@ -634,7 +634,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => tendsSoFar(run) >= 1,
     effectPreview: (run) =>
-      `Answers ${num(Math.round(canMult(run) * 100))}% -> ${num(
+      `Answers ${num(Math.round(canMult(run) * 100))}% → ${num(
         Math.round(
           canMult({
             ...run,

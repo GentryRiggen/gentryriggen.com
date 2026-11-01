@@ -19,6 +19,7 @@ import {
 } from "@/lib/ever-onward/universes/grow/fair";
 import { incomePerSecond } from "@/lib/ever-onward/universes/grow/tick";
 import type { PanelProps } from "../../universes/types";
+import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 import useRoving from "./useRoving";
 
@@ -100,30 +101,37 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
         : `The next fair is in about ${clock(secondsToFair(run))}.`;
 
   return (
-    <section
-      aria-label="County fair"
-      data-testid="lm-fair"
-      data-stage={stage}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-orange-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#7c2d12]"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-orange-200`}>
-          <span aria-hidden="true" className="mr-2 text-orange-300">
-            ★
-          </span>
-          County fair
-        </h2>
-        <p
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            on
-              ? "border-orange-300 bg-orange-950 text-orange-100"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {on ? "Pumpkins ready!" : judging ? "Judging" : "Getting ready"}
-        </p>
-      </header>
+    <PanelFrame
+      label="County fair"
+      title="County fair"
+      icon="★"
+      tone="orange"
+      status={on ? "Pumpkins ready!" : judging ? "Judging" : "Getting ready"}
+      statusActive={on}
+      testId="lm-fair"
+      data={{ "data-stage": stage }}
+      className="relative isolate overflow-hidden"
+      result={resultLine}
+      resultTestId="lm-fair-result"
+      footer={
+        <>
+          {hasFairHand(run) && (
+            <p className="font-mono text-xs text-orange-100">
+              The fair helper enters the likeliest pumpkin if a fair waits a
+              while: about +{formatNumber(Math.floor(handPaysOn(run, income)))}{" "}
+              harvest, on top of what you win by hand.
+            </p>
+          )}
 
+          {fairs > 0 && (
+            <p className="font-mono text-xs text-slate-300">
+              Fairs judged so far: {fairs} (+{formatNumber(Math.floor(earned))}{" "}
+              harvest).
+            </p>
+          )}
+        </>
+      }
+    >
       <p
         data-testid="lm-fair-headline"
         className={`${pixelClass} text-xs leading-relaxed sm:text-sm ${
@@ -161,7 +169,7 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
               onClick={() => {
                 if (doable) onAct(id);
               }}
-              className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] transition-transform aria-disabled:cursor-not-allowed sm:flex-col sm:text-center sm:text-[10px] ${retroFocusClass} ${
+              className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[10px] transition-transform aria-disabled:cursor-not-allowed sm:flex-col sm:text-center ${retroFocusClass} ${
                 on
                   ? "border-orange-200 bg-orange-400 text-orange-950 shadow-[4px_4px_0_#7c2d12] hover:bg-orange-300 active:translate-y-0.5 active:shadow-none"
                   : picked
@@ -185,17 +193,17 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
                 <span id={`lm-fair-${i}-info`} className="block space-y-1">
                   {on || judging ? (
                     <>
-                      <span className="block font-mono text-[11px] font-bold normal-case">
+                      <span className="block font-mono text-xs font-bold normal-case">
                         {sizeWord(pumpkins[i].size)},{" "}
                         {shineWord(pumpkins[i].shine)}
                       </span>
                       <span
                         data-testid={`lm-fair-odds-${i}`}
-                        className="block font-mono text-[11px] font-bold normal-case"
+                        className="block font-mono text-xs font-bold normal-case"
                       >
                         Blue {blue}%, red {red}%, garden {garden}%
                       </span>
-                      <span className="block font-mono text-[11px] normal-case">
+                      <span className="block font-mono text-xs normal-case">
                         About +
                         {formatNumber(
                           Math.floor(
@@ -206,7 +214,7 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
                       </span>
                     </>
                   ) : (
-                    <span className="block font-mono text-[11px] normal-case">
+                    <span className="block font-mono text-xs normal-case">
                       Not ready yet
                     </span>
                   )}
@@ -216,34 +224,6 @@ export default function CountyFair({ def, run, onAct }: PanelProps) {
           );
         })}
       </div>
-
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-fair-result"
-        className={
-          resultLine
-            ? "border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-            : "sr-only"
-        }
-      >
-        {resultLine ?? ""}
-      </p>
-
-      {hasFairHand(run) && (
-        <p className="font-mono text-xs text-orange-100">
-          The fair helper enters the likeliest pumpkin if a fair waits a while:
-          about +{formatNumber(Math.floor(handPaysOn(run, income)))} harvest, on
-          top of what you win by hand.
-        </p>
-      )}
-
-      {fairs > 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Fairs judged so far: {fairs} (+{formatNumber(Math.floor(earned))}{" "}
-          harvest).
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }

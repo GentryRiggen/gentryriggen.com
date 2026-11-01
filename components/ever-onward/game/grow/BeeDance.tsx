@@ -21,6 +21,7 @@ import {
 } from "@/lib/ever-onward/universes/grow/bees";
 import { incomePerSecond } from "@/lib/ever-onward/universes/grow/tick";
 import type { PanelProps } from "../../universes/types";
+import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 
 const clock = (seconds: number): string => {
@@ -203,30 +204,37 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
     : "Nothing to do right now. Enjoy the garden.";
 
   return (
-    <section
-      aria-label="Bee dances"
-      data-testid="lm-bees"
-      data-stage={dancing ? "dancing" : "foraging"}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-amber-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#78350f]"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-amber-200`}>
-          <span aria-hidden="true" className="mr-2 text-amber-300">
-            ✿
-          </span>
-          Bee dances
-        </h2>
-        <p
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            dancing
-              ? "border-amber-300 bg-amber-950 text-amber-100"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {dancing ? "A bee is dancing!" : "Bees out foraging"}
-        </p>
-      </header>
+    <PanelFrame
+      label="Bee dances"
+      title="Bee dances"
+      icon="✿"
+      tone="amber"
+      status={dancing ? "A bee is dancing!" : "Bees out foraging"}
+      statusActive={dancing}
+      testId="lm-bees"
+      data={{ "data-stage": dancing ? "dancing" : "foraging" }}
+      className="relative isolate overflow-hidden"
+      result={resultLine}
+      resultTestId="lm-bees-result"
+      footer={
+        <>
+          {keeper && (
+            <p className="font-mono text-xs text-amber-100">
+              The bee keeper reads any dance that waits a while: about +
+              {formatNumber(Math.floor(keeperPays(run, income)))} seeds, on top
+              of what you gather by hand.
+            </p>
+          )}
 
+          {follows > 0 && (
+            <p className="font-mono text-xs text-slate-300">
+              Dances followed so far: {follows} (+
+              {formatNumber(Math.floor(earned))} seeds).
+            </p>
+          )}
+        </>
+      }
+    >
       <div className="flex items-center gap-3">
         <Compass run={run} dancing={dancing} />
         <div className="min-w-0 flex-1 space-y-2">
@@ -267,7 +275,7 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
                 onClick={() => {
                   if (isDoable) onAct(id);
                 }}
-                className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[9px] sm:gap-3 sm:px-3 sm:text-[10px] transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${
+                className={`${pixelClass} flex min-h-14 w-full touch-manipulation items-center gap-2 border-4 px-2 py-2 text-left text-[10px] sm:gap-3 sm:px-3 transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${
                   dancing
                     ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[4px_4px_0_#78350f] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none"
                     : "border-slate-600 bg-slate-800 text-slate-400 shadow-[4px_4px_0_#0f172a]"
@@ -281,7 +289,7 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block">{patch.name}</span>
-                  <span className="block font-mono text-[11px] font-bold normal-case">
+                  <span className="block font-mono text-xs font-bold normal-case">
                     {patch.blurb}
                   </span>
                 </span>
@@ -293,32 +301,6 @@ export default function BeeDance({ def, run, onAct }: PanelProps) {
           );
         })}
       </ul>
-
-      {resultLine && (
-        <p
-          data-testid="lm-bees-result"
-          role="status"
-          aria-live="polite"
-          className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-        >
-          {resultLine}
-        </p>
-      )}
-
-      {keeper && (
-        <p className="font-mono text-xs text-amber-100">
-          The bee keeper reads any dance that waits a while: about +
-          {formatNumber(Math.floor(keeperPays(run, income)))} seeds, on top of
-          what you gather by hand.
-        </p>
-      )}
-
-      {follows > 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Dances followed so far: {follows} (+{formatNumber(Math.floor(earned))}{" "}
-          seeds).
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }

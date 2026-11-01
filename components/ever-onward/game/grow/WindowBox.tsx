@@ -13,6 +13,7 @@ import {
   type PotStage,
 } from "@/lib/ever-onward/universes/grow/windowbox";
 import type { PanelProps } from "../../universes/types";
+import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 
 const STAGE_WORDS: Record<PotStage, string> = {
@@ -93,28 +94,20 @@ export default function WindowBox({ def, run, onAct }: PanelProps) {
     : `The pot is resting. It will ask again in about ${Math.max(1, Math.ceil(secondsToWant(run)))} seconds.`;
 
   return (
-    <section
-      aria-label="The old window box"
-      data-testid="lm-windowbox"
-      data-stage={stage}
-      data-wanting={wanting ? "true" : "false"}
-      className="space-y-3 border-4 border-amber-300/70 bg-slate-950/85 p-3 shadow-[4px_4px_0_#78350f]"
+    <PanelFrame
+      label="The old window box"
+      title="The old window box"
+      tone="amber"
+      status={STAGE_WORDS[stage]}
+      statusActive={wanting}
+      testId="lm-windowbox"
+      data={{
+        "data-stage": stage,
+        "data-wanting": wanting ? "true" : "false",
+      }}
+      result={windowBoxLine(run)}
+      resultTestId="lm-windowbox-result"
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-amber-200`}>
-          The old window box
-        </h2>
-        <p
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            wanting
-              ? "border-amber-300 bg-amber-950 text-amber-100"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {STAGE_WORDS[stage]}
-        </p>
-      </header>
-
       <div className="flex items-center gap-3">
         <Pot stage={stage} />
         <div className="min-w-0 flex-1 space-y-2">
@@ -152,7 +145,7 @@ export default function WindowBox({ def, run, onAct }: PanelProps) {
               onClick={() => {
                 if (doable) onAct(tendActionId(i));
               }}
-              className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[9px] sm:text-[10px] ${retroFocusClass} ${
+              className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[10px] ${retroFocusClass} ${
                 doable
                   ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[4px_4px_0_#78350f] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none"
                   : "border-slate-600 bg-slate-800 text-slate-400 shadow-[4px_4px_0_#0f172a]"
@@ -161,7 +154,7 @@ export default function WindowBox({ def, run, onAct }: PanelProps) {
               <span className="block">{w.label}</span>
               <span
                 id={`lm-windowbox-${w.id}-note`}
-                className="block font-mono text-[11px] font-bold normal-case"
+                className="block font-mono text-xs font-bold normal-case"
               >
                 {doable
                   ? right
@@ -173,15 +166,6 @@ export default function WindowBox({ def, run, onAct }: PanelProps) {
           );
         })}
       </div>
-
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-windowbox-result"
-        className="border-2 border-amber-400 bg-amber-950/70 p-2 font-mono text-sm font-bold text-amber-200"
-      >
-        {windowBoxLine(run)}
-      </p>
-    </section>
+    </PanelFrame>
   );
 }

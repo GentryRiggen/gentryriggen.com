@@ -51,7 +51,7 @@ export default function VisitorCard({
         <ListenButton
           clipId={storyClipId(universeId, visitor.id)}
           accessibleLabel="Listen to this visitor"
-          className="ml-2 size-8 border-2 border-slate-500 align-middle text-xs text-amber-300 hover:bg-slate-800"
+          className="ml-2 size-11 border-2 border-slate-500 align-middle text-xs text-amber-300 hover:bg-slate-800"
         />
       </p>
       <p className="font-mono text-sm font-bold text-emerald-300">

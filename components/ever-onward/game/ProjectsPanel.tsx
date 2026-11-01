@@ -10,6 +10,7 @@ import {
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { ProjectDef, RunState } from "@/lib/ever-onward/engine/types";
 import type { PanelProps } from "../universes/types";
+import PanelFrame from "./retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 const labelOf = (def: PanelProps["def"], id: string): string =>
@@ -89,7 +90,7 @@ function ProjectCard({
             : "border-slate-600 bg-slate-900 text-slate-400"
         }`}
       >
-        <span className={`${pixelClass} text-[9px]`}>
+        <span className={`${pixelClass} text-[10px]`}>
           {isAffordable ? "Start" : "Saving up"}
         </span>
         <span className="font-mono text-xs font-bold tabular-nums">
@@ -124,28 +125,30 @@ function ProjectsPanel({ def, run, onAct }: PanelProps) {
   const currencyLabel = currency ? labelOf(def, currency) : "";
 
   return (
-    <section
-      aria-label="Projects"
-      data-testid="lm-projects"
-      className="space-y-3 border-4 border-violet-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#4c1d95]"
+    <PanelFrame
+      label="Projects"
+      title="Projects"
+      icon="✎"
+      tone="violet"
+      status={
+        currency
+          ? `${currencyLabel} ${formatNumber(Math.floor(run.resources[currency] ?? 0))}`
+          : null
+      }
+      statusTestId="lm-projects-currency"
+      testId="lm-projects"
+      result={last ? `${last.name}: done!` : ""}
+      resultTestId="lm-projects-result"
+      footer={
+        <>
+          {done.length > 0 && (
+            <p className="font-mono text-xs text-slate-400">
+              Done: {done.map((p) => p.name).join(", ")}.
+            </p>
+          )}
+        </>
+      }
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-violet-200`}>
-          <span aria-hidden="true" className="mr-2 text-amber-300">
-            ✎
-          </span>
-          Projects
-        </h2>
-        {currency && (
-          <p
-            data-testid="lm-projects-currency"
-            className={`${pixelClass} border-2 border-violet-300 bg-violet-950 px-2 py-1 text-[8px] text-violet-100 tabular-nums`}
-          >
-            {currencyLabel}{" "}
-            {formatNumber(Math.floor(run.resources[currency] ?? 0))}
-          </p>
-        )}
-      </header>
       {shown.length > 0 ? (
         <>
           <p className="font-mono text-sm text-slate-200">
@@ -178,24 +181,7 @@ function ProjectsPanel({ def, run, onAct }: PanelProps) {
           free spot.
         </p>
       )}
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-projects-result"
-        className={
-          last
-            ? "border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-            : "sr-only"
-        }
-      >
-        {last ? `${last.name}: done!` : ""}
-      </p>
-      {done.length > 0 && (
-        <p className="font-mono text-xs text-slate-400">
-          Done: {done.map((p) => p.name).join(", ")}.
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }
 
