@@ -1,5 +1,6 @@
 import { metVisitors } from "@/lib/ever-onward/engine/engine";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
+import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { pixelClass, retroInsetClass } from "./retro/retroStyles";
 
 interface LogbookProps {
@@ -40,6 +41,13 @@ export default function Logbook({ def, run }: LogbookProps) {
             </li>
           ))}
         </ul>
+      )}
+      {(run.resources.wxFronts ?? 0) > 0 && (
+        <p className="font-mono text-xs text-sky-200">
+          Weather desk: {run.resources.wxFronts} storms so far, sandbags held{" "}
+          {run.resources.wxHeld ?? 0} times (+
+          {formatNumber(Math.floor(run.resources.wxEarned ?? 0))} power).
+        </p>
       )}
     </section>
   );

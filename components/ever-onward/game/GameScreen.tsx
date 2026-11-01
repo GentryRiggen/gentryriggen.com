@@ -41,6 +41,7 @@ import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
 import VisitorCard from "./VisitorCard";
+import WeatherDesk from "./WeatherDesk";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -310,6 +311,7 @@ export default function GameScreen({
           />
         ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
+        <WeatherDesk def={def} run={run} onAct={onAction} />
         <Resources
           def={def}
           run={run}

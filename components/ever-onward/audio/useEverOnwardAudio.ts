@@ -88,6 +88,7 @@ export default function useEverOnwardAudio(
     phase: run.phase,
     complete: run.complete,
     revealed: run.revealed.length,
+    fronts: run.resources.wxFronts ?? 0,
     affordable: new Set<string>(),
   });
   const affordableNow = new Set(
@@ -100,6 +101,9 @@ export default function useEverOnwardAudio(
     if (run.complete && !before.complete) everOnwardSynth.cue("ending");
     else if (didPhaseChange) everOnwardSynth.cue("phase");
     else {
+      // A storm front landing on the weather desk.
+      if ((run.resources.wxFronts ?? 0) > before.fronts)
+        everOnwardSynth.cue("thunder");
       if (run.revealed.length > before.revealed) everOnwardSynth.cue("reveal");
       for (const id of affordableNow) {
         if (!before.affordable.has(id)) {
@@ -112,6 +116,7 @@ export default function useEverOnwardAudio(
       phase: run.phase,
       complete: run.complete,
       revealed: run.revealed.length,
+      fronts: run.resources.wxFronts ?? 0,
       affordable: affordableNow,
     };
   });

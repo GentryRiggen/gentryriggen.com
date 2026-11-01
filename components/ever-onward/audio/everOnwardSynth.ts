@@ -44,7 +44,7 @@ export function isAudioSupported(): boolean {
   return audioContextConstructor() !== undefined;
 }
 
-export type CueName = "affordable" | "reveal" | "phase" | "ending";
+export type CueName = "affordable" | "reveal" | "phase" | "ending" | "thunder";
 
 const MASTER_LEVEL = 0.8;
 /** User-facing loudness of the music bed: low, so it stays in the back. */
@@ -388,6 +388,8 @@ function createSynth() {
       } else if (name === "reveal") {
         if (!limiters.reveal.allow(name, now)) return;
         playReveal(engine);
+      } else if (name === "thunder") {
+        playThunder(engine);
       } else if (name === "phase") {
         playPhaseSwell(engine, phase ?? 0);
         music?.player.duck(0.4, 2.5);
