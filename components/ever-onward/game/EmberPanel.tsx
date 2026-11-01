@@ -76,69 +76,28 @@ export default function EmberPanel({
           )}
         </div>
       )}
-      <div className="flex items-baseline justify-between">
-        <h3 className={`${pixelClass} text-xs text-orange-200`}>{label}</h3>
-        <span
-          data-testid="lm-ember-count"
-          className={`${pixelClass} text-lg tabular-nums text-orange-300 [text-shadow:2px_2px_0_#7c2d12]`}
-        >
-          {universe.embers}
-        </span>
+      <div className="space-y-1">
+        <p className={`${pixelClass} text-xs text-orange-200`}>
+          You have{" "}
+          <span
+            data-testid="lm-ember-count"
+            className="text-lg tabular-nums text-orange-300 [text-shadow:2px_2px_0_#7c2d12]"
+          >
+            {universe.embers}
+          </span>{" "}
+          {plural}
+        </p>
+        {(run.complete || canRestart(run)) && (
+          <p
+            className={`${pixelClass} text-[10px] leading-relaxed text-emerald-300`}
+          >
+            +{reward} more when you {run.complete ? "play again" : "restart"}
+          </p>
+        )}
       </div>
       <p className="font-mono text-sm text-slate-200">
         {label} buy permanent upgrades. They shape your next run.
       </p>
-      <ul className="space-y-3">
-        {def.prestige.upgrades.map((u) => {
-          const level = universe.prestigeUpgrades[u.id] ?? 0;
-          const cost = prestigeUpgradeCost(def, universe, u.id);
-          const affordable = cost !== null && universe.embers >= cost;
-          return (
-            <li key={u.id}>
-              <button
-                type="button"
-                disabled={!affordable}
-                onClick={() => onBuy(u.id)}
-                className={`block w-full touch-manipulation border-4 p-3 text-left transition-transform disabled:cursor-not-allowed ${retroFocusClass} ${
-                  affordable
-                    ? "border-orange-300 bg-orange-950/50 text-orange-50 shadow-[4px_4px_0_#7c2d12] hover:bg-orange-900/60 active:translate-y-0.5 active:shadow-none"
-                    : "border-slate-700 bg-slate-950/85 text-slate-400 shadow-[4px_4px_0_#0f172a]"
-                }`}
-              >
-                <span className="flex items-start justify-between gap-3">
-                  <span
-                    className={`${pixelClass} min-w-0 text-[10px] leading-relaxed ${affordable ? "text-orange-200" : "text-slate-300"}`}
-                  >
-                    <span aria-hidden="true" className="mr-2">
-                      ▶︎
-                    </span>
-                    {u.name}
-                    {level > 0 && (
-                      <span
-                        data-testid="lm-active-tag"
-                        className="ml-2 inline-block border-2 border-emerald-300 bg-emerald-950 px-1.5 py-0.5 align-middle text-[8px] text-emerald-200"
-                      >
-                        Active
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className={`${pixelClass} shrink-0 text-[10px] tabular-nums`}
-                  >
-                    {cost === null ? "Max" : `${cost} ${plural}`}
-                  </span>
-                </span>
-                <span className="mt-2 block font-mono text-sm">
-                  {u.description}
-                </span>
-                <span className="mt-2 block font-mono text-xs text-slate-300">
-                  Level {level} of {u.maxLevel}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
       {run.complete && (
         <button
           type="button"
@@ -188,6 +147,57 @@ export default function EmberPanel({
           </div>
         </div>
       )}
+      <ul className="space-y-3">
+        {def.prestige.upgrades.map((u) => {
+          const level = universe.prestigeUpgrades[u.id] ?? 0;
+          const cost = prestigeUpgradeCost(def, universe, u.id);
+          const affordable = cost !== null && universe.embers >= cost;
+          return (
+            <li key={u.id}>
+              <button
+                type="button"
+                disabled={!affordable}
+                onClick={() => onBuy(u.id)}
+                className={`block w-full touch-manipulation border-4 p-3 text-left transition-transform disabled:cursor-not-allowed ${retroFocusClass} ${
+                  affordable
+                    ? "border-orange-300 bg-orange-950/50 text-orange-50 shadow-[4px_4px_0_#7c2d12] hover:bg-orange-900/60 active:translate-y-0.5 active:shadow-none"
+                    : "border-slate-700 bg-slate-950/85 text-slate-400 shadow-[4px_4px_0_#0f172a]"
+                }`}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span
+                    className={`${pixelClass} min-w-0 text-[10px] leading-relaxed ${affordable ? "text-orange-200" : "text-slate-300"}`}
+                  >
+                    <span aria-hidden="true" className="mr-2">
+                      ▶︎
+                    </span>
+                    {u.name}
+                    {level > 0 && (
+                      <span
+                        data-testid="lm-active-tag"
+                        className="ml-2 inline-block border-2 border-emerald-300 bg-emerald-950 px-1.5 py-0.5 align-middle text-[10px] text-emerald-200"
+                      >
+                        Active
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`${pixelClass} shrink-0 text-[10px] tabular-nums`}
+                  >
+                    {cost === null ? "Max" : `${cost} ${plural}`}
+                  </span>
+                </span>
+                <span className="mt-2 block font-mono text-sm">
+                  {u.description}
+                </span>
+                <span className="mt-2 block font-mono text-xs text-slate-300">
+                  Level {level} of {u.maxLevel}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

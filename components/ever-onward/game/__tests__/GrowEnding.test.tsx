@@ -106,7 +106,8 @@ describe("the Last Seed ending", () => {
     saveFinished();
     await openGrow();
     const panel = await screen.findByTestId("lm-embers");
-    expect(within(panel).getByText("Acorns")).toBeInTheDocument();
+    expect(panel).toHaveTextContent(/You have \d+ acorns/);
+    expect(panel).toHaveTextContent(/more when you play again/);
     expect(panel).not.toHaveTextContent(/embers/i);
     expect(panel).toHaveTextContent("This run earns");
     expect(panel).toHaveTextContent(/acorns/);

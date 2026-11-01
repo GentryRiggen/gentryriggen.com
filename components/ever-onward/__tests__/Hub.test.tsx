@@ -58,3 +58,33 @@ describe("hubTitleScore", () => {
     expect(hubTitleScore(save)).toBe(TITLE_SCORE);
   });
 });
+
+describe("Hub last played", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("puts the last played universe first with a chip", () => {
+    window.localStorage.setItem("ever-onward:last", "grow");
+    render(
+      <Hub
+        save={saveWithCompletions(1)}
+        isRecovered={false}
+        onPlay={jest.fn()}
+      />
+    );
+    const cards = screen.getAllByRole("listitem");
+    expect(cards[0]).toContainElement(screen.getByTestId("lm-play-grow"));
+    expect(cards[0]).toHaveTextContent("LAST PLAYED");
+  });
+
+  it("remembers the universe you play", async () => {
+    render(
+      <Hub
+        save={saveWithCompletions(1)}
+        isRecovered={false}
+        onPlay={jest.fn()}
+      />
+    );
+    await userEvent.click(screen.getByTestId("lm-play-grow"));
+    expect(window.localStorage.getItem("ever-onward:last")).toBe("grow");
+  });
+});

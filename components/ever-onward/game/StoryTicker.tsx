@@ -90,14 +90,14 @@ export default function StoryTicker({
         {unread > 0 && (
           <span
             data-testid="lm-story-new"
-            className={`${pixelClass} mr-2 inline-block border-2 border-amber-300 bg-amber-500 px-1.5 py-1 align-middle text-[8px] leading-none text-slate-950 motion-safe:animate-pulse`}
+            className={`${pixelClass} mr-2 inline-block border-2 border-amber-300 bg-amber-500 px-1.5 py-1 align-middle text-[10px] leading-none text-slate-950 motion-safe:animate-pulse`}
           >
             NEW
           </span>
         )}
         {isNews && (
           <span
-            className={`${pixelClass} mr-2 inline-block border-2 border-red-300 bg-red-700 px-1.5 py-1 align-middle text-[8px] leading-none text-white`}
+            className={`${pixelClass} mr-2 inline-block border-2 border-red-300 bg-red-700 px-1.5 py-1 align-middle text-[10px] leading-none text-white`}
           >
             NEWS
           </span>

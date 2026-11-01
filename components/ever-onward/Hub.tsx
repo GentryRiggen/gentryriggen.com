@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useSyncExternalStore } from "react";
 import { formatDuration } from "@/lib/ever-onward/engine/format";
 import {
   hasStartedUniverse,
@@ -40,7 +41,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt>
         <RetroLabel
           label={label}
-          className="text-[8px] text-cyan-200 leading-none"
+          className="text-[10px] text-cyan-200 leading-none"
         />
       </dt>
       <dd className="font-mono text-sm text-amber-100">{value}</dd>
@@ -52,10 +53,12 @@ function UniverseCard({
   def,
   save,
   onPlay,
+  isLast,
 }: {
   def: UniverseDef;
   save: SaveData;
   onPlay: (id: string) => void;
+  isLast: boolean;
 }) {
   const universe = save.universes[def.id];
   const run = universe?.run;
@@ -87,7 +90,13 @@ function UniverseCard({
             className={`h-12 ${hasStarted ? "drop-shadow-[0_0_8px_rgba(253,224,71,0.8)]" : ""}`}
           />
         </div>
-        <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          {isLast && (
+            <RetroText
+              text="LAST PLAYED"
+              className="border-2 border-emerald-300 bg-emerald-950 px-2 py-1 text-[10px] text-emerald-200"
+            />
+          )}
           <h2>
             <RetroLabel
               label={def.title}
@@ -118,8 +127,10 @@ function UniverseCard({
         <span className="sr-only">
           {hasStarted ? "Continue" : "Play"} {def.title}
         </span>
-        <span aria-hidden="true" className="eo-prompt flex items-center gap-3">
-          <RetroText text="▶︎" className={`text-sm ${retroHeadingClass}`} />
+        <span aria-hidden="true" className="flex items-center gap-3">
+          <span className="eo-prompt">
+            <RetroText text="▶︎" className={`text-sm ${retroHeadingClass}`} />
+          </span>
           <RetroText
             text={hasStarted ? "CONTINUE" : "PLAY"}
             className={`text-sm group-hover:text-amber-200 ${retroHeadingClass}`}
@@ -182,14 +193,49 @@ function LockedCard({ locked }: { locked: LockedUniverse }) {
         <p className="font-mono text-xs text-slate-300">{locked.goal}</p>
         <p>
           <span className="sr-only">Coming soon</span>
-          <RetroText text="COMING SOON" className="text-[8px] text-slate-400" />
+          <RetroText
+            text="COMING SOON"
+            className="text-[10px] text-slate-300"
+          />
         </p>
       </div>
     </li>
   );
 }
 
+const LAST_KEY = "ever-onward:last";
+
+function subscribeNever(): () => void {
+  return () => {};
+}
+
+function readLast(): string | null {
+  try {
+    return window.localStorage.getItem(LAST_KEY);
+  } catch {
+    // Storage can be blocked; the hub works without the chip.
+    return null;
+  }
+}
+
 export default function Hub({ save, isRecovered, onPlay }: HubProps) {
+  const storedLast = useSyncExternalStore(subscribeNever, readLast, () => null);
+  const [justPlayed, setJustPlayed] = useState<string | null>(null);
+  const lastId = justPlayed ?? storedLast;
+  const play = (id: string) => {
+    setJustPlayed(id);
+    try {
+      window.localStorage.setItem(LAST_KEY, id);
+    } catch {
+      // Ignore: only the "Last played" chip is lost.
+    }
+    onPlay(id);
+  };
+  const isLastShown = (def: UniverseDef) =>
+    def.id === lastId && isUniverseUnlocked(def, save);
+  const ordered = [...PLAYABLE_UNIVERSES].sort(
+    (a, b) => Number(isLastShown(b)) - Number(isLastShown(a))
+  );
   return (
     <RetroPage>
       <main className="eo-fade-in relative z-10 mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 px-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
@@ -205,12 +251,12 @@ export default function Hub({ save, isRecovered, onPlay }: HubProps) {
               className={`text-[min(11vw,3.25rem)] ${retroHeadingClass}`}
             />
           </h1>
-          <p className="font-mono text-xs tracking-[0.2em] text-cyan-100 uppercase [text-shadow:1px_1px_0_#0b1233]">
+          <p className="bg-[#02030a]/60 px-2 py-1 font-mono text-xs tracking-[0.2em] text-cyan-100 uppercase [text-shadow:1px_1px_0_#0b1233]">
             Little machines. One simple goal.
           </p>
           <RetroText
             text="SELECT A UNIVERSE"
-            className="text-[10px] text-slate-300"
+            className="bg-[#02030a]/75 px-3 py-1 text-[10px] text-slate-200"
           />
         </header>
         {isRecovered && (
@@ -222,13 +268,16 @@ export default function Hub({ save, isRecovered, onPlay }: HubProps) {
           </p>
         )}
         <ul className="flex flex-col gap-4">
-          {PLAYABLE_UNIVERSES.map((def) =>
+          {ordered.map((def) =>
             isUniverseUnlocked(def, save) ? (
               <UniverseCard
                 key={def.id}
                 def={def}
                 save={save}
-                onPlay={onPlay}
+                onPlay={play}
+                isLast={
+                  isLastShown(def) && ordered.some((d) => d.id === def.id)
+                }
               />
             ) : (
               <RequirementCard key={def.id} def={def} />
@@ -238,10 +287,10 @@ export default function Hub({ save, isRecovered, onPlay }: HubProps) {
             <LockedCard key={locked.id} locked={locked} />
           ))}
         </ul>
-        <p className="text-center font-mono text-xs text-slate-300">
+        <p className="self-center bg-[#02030a]/75 px-3 py-1 text-center font-mono text-xs text-slate-200">
           More universes on the way. Your game saves on this device.
         </p>
-        <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 font-mono text-xs text-slate-200">
+        <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1 self-center bg-[#02030a]/75 px-3 py-1 font-mono text-xs text-slate-200">
           <Link href="/ever-onward/versions" className={retroLinkClass}>
             v{EVER_ONWARD_VERSION} · what&apos;s new
           </Link>

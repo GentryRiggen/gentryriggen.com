@@ -47,7 +47,7 @@ export default function NarrationToast({
         type="button"
         onClick={dismissToast}
         aria-label="Dismiss new message"
-        className={`${buttonClass} border-slate-600 text-slate-200 hover:bg-slate-800`}
+        className={`${buttonClass} min-w-11 border-slate-600 text-slate-200 hover:bg-slate-800`}
       >
         ✕
       </button>
