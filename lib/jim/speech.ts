@@ -53,6 +53,18 @@ export function speakableText(markdown: string): string {
     .trim();
 }
 
+/**
+ * Where to cut a too-long run of text at or before `max`: the last space,
+ * or else `max` itself, moved back one so an emoji (a surrogate pair) is
+ * never split in half.
+ */
+function cutPoint(text: string, max: number): number {
+  const space = text.lastIndexOf(" ", max);
+  if (space > 0) return space;
+  const code = text.charCodeAt(max - 1);
+  return code >= 0xd800 && code <= 0xdbff ? max - 1 : max;
+}
+
 /** Splits at sentence ends (then spaces, if a sentence is huge) into short chunks. */
 export function chunkForSpeech(
   text: string,
@@ -68,8 +80,7 @@ export function chunkForSpeech(
     const sentences = paragraph.match(/[^.!?]+(?:[.!?]+["')\]]*|$)\s*/g) ?? [];
     for (let sentence of sentences) {
       while (sentence.length > max) {
-        const cut = sentence.lastIndexOf(" ", max);
-        const at = cut > 0 ? cut : max;
+        const at = cutPoint(sentence, max);
         if (current.length + at > max) push();
         current += sentence.slice(0, at);
         push();
@@ -82,6 +93,103 @@ export function chunkForSpeech(
     push();
   }
   return chunks;
+}
+
+/** Jim's own voice (/api/speak): the first part is short so audio starts fast. */
+export const VOICE_FIRST_CHUNK_CHARS = 250;
+export const VOICE_CHUNK_CHARS = 600;
+
+/** Whole sentences (a huge one split at spaces), paragraph breaks kept. */
+function sentencesOf(text: string, max: number): string[] {
+  const out: string[] = [];
+  for (const paragraph of text.split(/\n+/)) {
+    const sentences = paragraph.match(/[^.!?]*(?:[.!?]+["')\]]*|$)\s*/g) ?? [];
+    const pieces: string[] = [];
+    for (let sentence of sentences) {
+      sentence = sentence.trim();
+      while (sentence.length > max) {
+        const at = cutPoint(sentence, max);
+        pieces.push(sentence.slice(0, at).trim());
+        sentence = sentence.slice(at).trim();
+      }
+      if (sentence) pieces.push(sentence);
+    }
+    // The last sentence of a paragraph carries the break with it.
+    if (pieces.length > 0) pieces[pieces.length - 1] += "\n";
+    out.push(...pieces);
+  }
+  return out;
+}
+
+/**
+ * Splits plain text into parts for /api/speak: whole sentences packed up to
+ * `rest` characters each, the first part only up to `first`, so the first
+ * audio comes back quickly. A sentence longer than a part is cut at spaces.
+ */
+export function chunkForVoice(
+  text: string,
+  first: number = VOICE_FIRST_CHUNK_CHARS,
+  rest: number = VOICE_CHUNK_CHARS
+): string[] {
+  const chunks: string[] = [];
+  let current = "";
+  const limit = () => (chunks.length === 0 ? first : rest);
+  const push = () => {
+    if (current.trim()) chunks.push(current.trim());
+    current = "";
+  };
+  for (const sentence of sentencesOf(text, Math.min(first, rest))) {
+    const joiner = current && !current.endsWith("\n") ? " " : "";
+    if (current && (current + joiner + sentence).trimEnd().length > limit()) {
+      push();
+      current = sentence;
+    } else current += joiner + sentence;
+  }
+  push();
+  return chunks;
+}
+
+// ---------- speed ----------
+
+const SPEED_KEY = "jim:speed";
+export const MIN_SPEED = 0.5;
+export const MAX_SPEED = 3;
+export const SPEED_STEP = 0.25;
+export const DEFAULT_SPEED = 1;
+
+/** Snaps to a 0.25 step inside 0.5–3; anything that isn't a number is 1. */
+export function clampSpeed(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_SPEED;
+  const snapped = Math.round(value / SPEED_STEP) * SPEED_STEP;
+  return Math.min(MAX_SPEED, Math.max(MIN_SPEED, snapped));
+}
+
+/** One step faster (+1) or slower (-1), within the range. */
+export function stepSpeed(speed: number, direction: 1 | -1): number {
+  return clampSpeed(clampSpeed(speed) + direction * SPEED_STEP);
+}
+
+/** 1.25 → "1.25×", 1 → "1×". */
+export function formatSpeed(speed: number): string {
+  return `${clampSpeed(speed)}×`;
+}
+
+/** The reading speed on this device (every reply, every voice). */
+export function loadSpeed(): number {
+  try {
+    const raw = window.localStorage.getItem(SPEED_KEY);
+    return raw === null ? DEFAULT_SPEED : clampSpeed(Number(raw));
+  } catch {
+    return DEFAULT_SPEED;
+  }
+}
+
+export function saveSpeed(speed: number): void {
+  try {
+    window.localStorage.setItem(SPEED_KEY, String(clampSpeed(speed)));
+  } catch {
+    // Not remembered; the speed still applies for this visit.
+  }
 }
 
 /** Premium, then Enhanced, then the en-US default, then any English voice. */
@@ -169,7 +277,11 @@ function withVoice(
  * one finishes, any chunk fails, or the engine never starts. Replaces
  * whatever is speaking. Returns false when there is nothing to say.
  */
-export function speak(markdown: string, onEnd: () => void): boolean {
+export function speak(
+  markdown: string,
+  onEnd: () => void,
+  rate: number = DEFAULT_SPEED
+): boolean {
   const chunks = chunkForSpeech(speakableText(markdown));
   if (chunks.length === 0) return false;
   const synth = window.speechSynthesis;
@@ -203,7 +315,7 @@ export function speak(markdown: string, onEnd: () => void): boolean {
         const utterance = new SpeechSynthesisUtterance(chunk);
         utterance.lang = voice?.lang ?? "en-US";
         if (voice) utterance.voice = voice;
-        utterance.rate = 1;
+        utterance.rate = clampSpeed(rate);
         utterance.onstart = () => {
           started = true;
         };

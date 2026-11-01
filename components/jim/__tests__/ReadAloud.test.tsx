@@ -49,6 +49,90 @@ const synth = {
   pending: false,
 };
 
+/** The shared audio element the player makes. */
+class FakeAudio extends EventTarget {
+  static last: FakeAudio | null = null;
+  src = "";
+  paused = true;
+  ended = false;
+  preload = "";
+  playbackRate = 1;
+  defaultPlaybackRate = 1;
+  currentTime = 0;
+  duration = Number.NaN;
+  play = jest.fn(() => {
+    this.paused = false;
+    return Promise.resolve();
+  });
+  pause = jest.fn(() => {
+    this.paused = true;
+  });
+  constructor() {
+    super();
+    FakeAudio.last = this;
+  }
+  finish() {
+    this.ended = true;
+    this.paused = true;
+    this.dispatchEvent(new Event("ended"));
+  }
+}
+
+function audio(): FakeAudio {
+  if (!FakeAudio.last) throw new Error("no audio element yet");
+  return FakeAudio.last;
+}
+
+/** /api/speak: MP3 bytes (ok) or a failure. */
+const fetchMock = jest.fn();
+
+function speakOk() {
+  fetchMock.mockImplementation(async () => ({
+    status: 200,
+    ok: true,
+    blob: async () => ({ size: 3, type: "audio/mpeg" }),
+  }));
+}
+
+function speakFails() {
+  fetchMock.mockImplementation(async () => ({
+    status: 502,
+    ok: false,
+    blob: async () => ({ size: 0 }),
+  }));
+}
+
+function spokenTexts(): string[] {
+  return fetchMock.mock.calls
+    .filter(([url]) => String(url).endsWith("/api/speak"))
+    .map(([, init]) => JSON.parse((init as RequestInit).body as string).text);
+}
+
+function installAudio() {
+  FakeAudio.last = null;
+  Object.defineProperty(window, "Audio", {
+    configurable: true,
+    value: FakeAudio,
+  });
+  Object.defineProperty(globalThis, "Audio", {
+    configurable: true,
+    value: FakeAudio,
+  });
+  Object.defineProperty(globalThis, "fetch", {
+    configurable: true,
+    writable: true,
+    value: fetchMock,
+  });
+  let n = 0;
+  URL.createObjectURL = jest.fn(() => `blob:test/${n++}`);
+  URL.revokeObjectURL = jest.fn();
+}
+
+function removeAudio() {
+  Reflect.deleteProperty(window, "Audio");
+  Reflect.deleteProperty(globalThis, "Audio");
+}
+
 function renderChat() {
   return render(
     <JimChat
@@ -90,39 +174,66 @@ async function chat(reply: string) {
   await act(async () => {});
 }
 
+const realAudio = Object.getOwnPropertyDescriptor(window, "Audio");
+
 beforeEach(() => {
   send.mockReset();
+  fetchMock.mockReset();
+  speakOk();
   window.localStorage.clear();
   spoken.length = 0;
   synth.speak.mockClear();
   synth.cancel.mockClear();
   installSpeech();
+  installAudio();
 });
 
-afterEach(removeSpeech);
+afterEach(() => {
+  removeSpeech();
+  removeAudio();
+  if (realAudio) Object.defineProperty(window, "Audio", realAudio);
+  Reflect.deleteProperty(globalThis, "fetch");
+});
 
 describe("Listen button", () => {
-  it("reads a reply as plain text, and Stop cuts it off", async () => {
+  it("reads a reply in Jim's voice as plain text, and Stop cuts it off", async () => {
     renderChat();
     await chat("Here is **bold** news.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    expect(spoken.map((u) => u.text)).toEqual(["Here is bold news."]);
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+    expect(spokenTexts()).toEqual(["Here is bold news."]);
+    expect(audio().src).toMatch(/^blob:/);
+    expect(synth.speak).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Stop" }));
-    expect(synth.cancel).toHaveBeenCalled();
+    expect(audio().pause).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });
 
-  it("goes back to Listen when the speech ends", async () => {
+  it("goes back to Listen when the reply ends", async () => {
     renderChat();
     await chat("One reply.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
     expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+    act(() => audio().finish());
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
+  });
+
+  it("falls back to the browser's voice when Jim's can't be fetched", async () => {
+    speakFails();
+    renderChat();
+    await chat("Here is **bold** news.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() =>
+      expect(spoken.map((u) => u.text)).toEqual(["Here is bold news."])
+    );
     act(() => spoken[spoken.length - 1].onend?.());
     expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });
 
-  it("is absent when the browser cannot speak", async () => {
+  it("is absent when the browser can neither play audio nor speak", async () => {
     removeSpeech();
+    removeAudio();
     renderChat();
     await chat("Silent reply.");
     expect(
@@ -130,6 +241,13 @@ describe("Listen button", () => {
     ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Menu" }));
     expect(screen.queryByText(/Read replies aloud/)).not.toBeInTheDocument();
+  });
+
+  it("is there with audio alone (no speechSynthesis)", async () => {
+    removeSpeech();
+    renderChat();
+    await chat("Audio only.");
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });
 
   it("is absent on a reply that may not have been saved", async () => {
@@ -171,17 +289,26 @@ describe("Read replies aloud setting", () => {
     ).toBeInTheDocument();
   });
 
-  it("unlocks speech in the Send tap, then reads the new reply", async () => {
+  it("unlocks audio and speech in the Send tap, then reads the new reply", async () => {
     renderChat();
     await toggleSetting();
     synth.speak.mockClear();
-    await chat("Auto reply.");
-    // The silent unlock came first, inside the tap.
+    audio().play.mockClear();
+    let srcAtSend = "";
+    send.mockImplementation(async () => {
+      srcAtSend = audio().src;
+      return { reply: "Auto reply.", changed: [], commit: null };
+    });
+    await userEvent.type(screen.getByLabelText("Message"), "hi");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    // The silent unlocks came first, inside the tap.
+    expect(srcAtSend).toMatch(/^data:audio\/wav;base64,/);
     expect(synth.speak.mock.calls[0][0]).toMatchObject({
       text: " ",
       volume: 0,
     });
-    expect(spoken.map((u) => u.text)).toContain("Auto reply.");
+    await waitFor(() => expect(spokenTexts()).toContain("Auto reply."));
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
   });
 
   it("skips the auto-read when the page is hidden, and does not queue it", async () => {
@@ -200,33 +327,187 @@ describe("Read replies aloud setting", () => {
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(send).toHaveBeenCalled());
     await act(async () => {});
-    expect(spoken.map((u) => u.text)).not.toContain("Hidden reply.");
+    expect(spokenTexts()).not.toContain("Hidden reply.");
     Reflect.deleteProperty(document, "visibilityState");
     await act(async () => {});
-    expect(spoken.map((u) => u.text)).not.toContain("Hidden reply.");
+    expect(spokenTexts()).not.toContain("Hidden reply.");
   });
 
-  it("unlocks speech for a send that doesn't come from the box (quick log)", async () => {
+  it("unlocks for a send that doesn't come from the box (quick log)", async () => {
     renderChat();
     await toggleSetting();
     synth.speak.mockClear();
+    audio().play.mockClear();
     send.mockResolvedValue({ reply: "Logged.", changed: [], commit: null });
     await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
     await userEvent.click(screen.getByRole("button", { name: "Fake log" }));
     expect(send).toHaveBeenCalledTimes(1);
     expect(synth.speak.mock.calls[0][0]).toMatchObject({ volume: 0 });
+    expect(audio().play).toHaveBeenCalled();
   });
 
   it("does not read replies when Off", async () => {
     renderChat();
     await chat("Quiet reply.");
     expect(synth.speak).not.toHaveBeenCalled();
+    expect(spokenTexts()).toEqual([]);
+  });
+});
+
+describe("now-playing bar", () => {
+  it("shows while a reply plays, changes the speed for good, and Stop hides it", async () => {
+    renderChat();
+    await chat("A reply worth hearing out loud, Captain.");
+    expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    const bar = await screen.findByRole("region", { name: "Now playing" });
+    expect(bar).toHaveTextContent("A reply worth hearing out loud, Captain");
+    expect(bar).toHaveTextContent("1×");
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+
+    await userEvent.click(screen.getByRole("button", { name: "Faster" }));
+    expect(bar).toHaveTextContent("1.25×");
+    expect(audio().playbackRate).toBe(1.25);
+    expect(window.localStorage.getItem("jim:speed")).toBe("1.25");
+
+    await userEvent.click(screen.getByRole("button", { name: "Pause" }));
+    expect(audio().pause).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Stop reading" }));
+    expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });
 
-  it("stops speaking on New chat and when the page is hidden", async () => {
+  it("goes away when the reply ends", async () => {
+    renderChat();
+    await chat("Short one.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+    act(() => audio().finish());
+    expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
+  });
+
+  it("reads at the remembered speed", async () => {
+    window.localStorage.setItem("jim:speed", "1.75");
+    renderChat();
+    await chat("Fast one.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+    expect(audio().playbackRate).toBe(1.75);
+    expect(screen.getByText("1.75×")).toBeInTheDocument();
+  });
+});
+
+describe("review fixes", () => {
+  it("shows the daily cap in the bar and doesn't fall back to the robotic voice", async () => {
+    fetchMock.mockImplementation(async () => ({
+      status: 429,
+      ok: false,
+      json: async () => ({
+        error: "Read-aloud has hit today's limit. It resets tomorrow.",
+      }),
+    }));
+    renderChat();
+    await chat("Capped reply.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Read-aloud has hit today's limit. It resets tomorrow."
+    );
+    expect(synth.speak).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
+  });
+
+  it("unlocks a locked (iOS) element inside the Listen tap itself", async () => {
+    // Like iOS: play() works only inside a tap until it has once.
+    let inTap = false;
+    const enter = () => {
+      inTap = true;
+    };
+    const leave = () => {
+      inTap = false;
+    };
+    document.addEventListener("click", enter, true);
+    window.addEventListener("click", leave);
+    try {
+      renderChat();
+      await chat("Locked reply.");
+      // The element is made on first use: make it, then lock it like iOS.
+      await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+      await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+      const audioEl = audio();
+      let unlocked = false;
+      audioEl.play = jest.fn(() => {
+        if (!unlocked && !inTap) {
+          return Promise.reject(
+            Object.assign(new Error("no"), { name: "NotAllowedError" })
+          );
+        }
+        unlocked = true;
+        audioEl.paused = false;
+        return Promise.resolve();
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+      await waitFor(() => expect(audioEl.src).toMatch(/^blob:/));
+      expect(unlocked).toBe(true);
+      expect(
+        await screen.findByRole("button", { name: "Pause" })
+      ).toBeInTheDocument();
+    } finally {
+      document.removeEventListener("click", enter, true);
+      window.removeEventListener("click", leave);
+    }
+  });
+
+  it("floats the bar over the list instead of pushing it up", async () => {
+    renderChat();
+    await chat("Floating bar.");
+    const log = screen.getByRole("log", { name: "Conversation" });
+    const before = log.className;
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    const bar = await screen.findByRole("region", { name: "Now playing" });
+    expect(bar.parentElement).toHaveClass("absolute", "bottom-full");
+    // Only room is added under the last message; nothing above it moves.
+    expect(log.className).not.toBe(before);
+    expect(log.className).toMatch(/pb-\[/);
+  });
+});
+
+describe("stopping", () => {
+  it("stops on New chat", async () => {
     renderChat();
     await chat("Long reply.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "New chat" }));
+    expect(audio().pause).toHaveBeenCalled();
+  });
+
+  it("keeps Jim's voice playing when the page is hidden (lock screen)", async () => {
+    renderChat();
+    await chat("Long reply.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
+    audio().pause.mockClear();
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    Reflect.deleteProperty(document, "visibilityState");
+    expect(audio().pause).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+  });
+
+  it("stops the browser's voice when the page is hidden", async () => {
+    speakFails();
+    renderChat();
+    await chat("Long reply.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    await waitFor(() => expect(spoken.length).toBeGreaterThan(0));
     synth.cancel.mockClear();
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -237,11 +518,6 @@ describe("Read replies aloud setting", () => {
     });
     Reflect.deleteProperty(document, "visibilityState");
     expect(synth.cancel).toHaveBeenCalled();
-
-    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    synth.cancel.mockClear();
-    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "New chat" }));
-    expect(synth.cancel).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });
 });
