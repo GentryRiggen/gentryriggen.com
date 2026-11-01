@@ -787,12 +787,19 @@ const M11: MetricSpec = {
   id: "M11",
   name: "Click curve",
   weight: 10,
-  band: "per phase: taps >= 60% of income at min 0.5-3 (not the ending, which opens on the flame), <= 12% from min 6 on for the eager player (3 taps/s easing to 1/s), the tap-when-it-helps player <= 20 taps/min from min 6 on, a tap always earns; idle/eager finish 1.1-1.6x",
-  gate: "manual share from min 6 on <= 20% in every phase, idle finishes within 4 h and is never quicker than the eager player",
+  band: "per phase: taps >= 60% of income at min 0.5-3 (not the ending, which opens on the flame), <= 12% from min 6 on for the eager player (3 taps/s easing to 1/s), the tap-when-it-helps player <= 20 taps/min from min 6 on, 3 taps/s always >= 0.5% of income; idle/eager finish 1.1-1.6x",
+  gate: "taps >= 30% of income at min 0.5-3 (not the ending), manual share from min 6 on <= 20%, 3 taps/s always >= 0.25% of income, in every phase; idle finishes within 4 h and is at least 1.05x the eager player",
 };
 
 /** Above this from minute 6 of a phase on, the game is "just clicking". */
 const LATE_SHARE_GATE = 0.2;
+/** Below this at minutes 0.5-3, the phase does not open hands-on. */
+const EARLY_SHARE_GATE = 0.3;
+/** Never stuck: 3 taps a second always earn at least this share. */
+const TAP_FLOOR = 0.005;
+const TAP_FLOOR_GATE = 0.0025;
+/** An idle player must be slower than an active one by at least this. */
+const IDLE_RATIO_GATE = 1.05;
 
 function evalM11Phase(
   def: UniverseDef,
@@ -801,31 +808,37 @@ function evalM11Phase(
 ): PhaseResult {
   const isEnding = eager.index === def.phases.length - 1;
   const lateTaps = helps?.lateTapsPerMinute ?? NaN;
+  // A phase too short to read (NaN) scores 0 and fails, never passes by
+  // default; only "late" may be missing (a phase under 6 minutes has no late).
   const subs = [
-    ...(isEnding ? [] : [bandScore(eager.early, atLeast(0.6, 0.3))]),
+    ...(isEnding
+      ? []
+      : [bandScore(eager.early, atLeast(0.6, EARLY_SHARE_GATE))]),
     Number.isNaN(eager.late)
       ? 1
       : bandScore(eager.late, atMost(0.12, LATE_SHARE_GATE)),
     Number.isNaN(lateTaps) ? 1 : bandScore(lateTaps, atMost(20, 60)),
-    eager.lowest > 0 ? 1 : 0,
+    bandScore(eager.lowestAtThree, atLeast(TAP_FLOOR, TAP_FLOOR_GATE)),
   ];
-  const gate =
-    (Number.isNaN(eager.late) || eager.late <= LATE_SHARE_GATE) &&
-    eager.lowest > 0;
+  const isEarlyOk = isEnding || eager.early >= EARLY_SHARE_GATE;
+  const isLateOk = Number.isNaN(eager.late) || eager.late <= LATE_SHARE_GATE;
+  const isFloorOk = eager.lowestAtThree >= TAP_FLOOR_GATE;
+  const gate = isEarlyOk && isLateOk && isFloorOk;
   return {
     phase: eager.phase,
     sub: mean(subs),
     gate,
     gateDetail: gate
       ? null
-      : `manual share from min 6 ${pct(eager.late)} (max 20%), lowest ${pct(eager.lowest)}`,
-    headline: `taps early ${isEnding ? "n/a" : pct(eager.early)}, from min 6 ${pct(eager.late)} (eager) / ${pct(helps?.late ?? NaN)} (when it helps), ${fmt(lateTaps)} taps/min when it helps`,
+      : `taps early ${pct(eager.early)} (min 30%), from min 6 ${pct(eager.late)} (max 20%), 3 taps/s at least ${fmt(eager.lowestAtThree * 100, 2)}% (min 0.25%)`,
+    headline: `taps early ${isEnding ? "n/a" : pct(eager.early)}, from min 6 ${pct(eager.late)} (eager) / ${pct(helps?.late ?? NaN)} (when it helps), ${fmt(lateTaps)} taps/min when it helps, 3 taps/s >= ${fmt(eager.lowestAtThree * 100, 2)}%`,
     stats: {
       early: eager.early,
       late: eager.late,
       lateHelps: helps?.late ?? NaN,
       lateTaps,
       lowest: eager.lowest,
+      lowestAtThree: eager.lowestAtThree,
     },
   };
 }
@@ -844,11 +857,11 @@ function evalM11(
   const idleFinish = inputs.idle.finishTime ?? Infinity;
   const ratio = idleFinish / tapperFinish;
   // With helpers carrying every phase, idle and active converge: a check-in
-  // should still pay (ratio above 1), but not by the old 1.25-2.5x.
-  const gate = idleFinish <= 4 * HOUR && ratio >= 1;
+  // should still pay (at least 1.05x), but not by the old 1.25-2.5x.
+  const gate = idleFinish <= 4 * HOUR && ratio >= IDLE_RATIO_GATE;
   const runRow: PhaseResult = {
     phase: "run",
-    sub: bandScore(ratio, between(1.1, 1.6, 1)),
+    sub: bandScore(ratio, between(1.1, 1.6, IDLE_RATIO_GATE)),
     gate,
     gateDetail: gate
       ? null

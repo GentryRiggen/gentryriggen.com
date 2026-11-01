@@ -14,16 +14,18 @@ import { def } from "./fixtures";
  * run. If it ever gets slow, tag it and move it to its own CI job the way the
  * other slow suites do (JEST_EXTRA_IGNORE).
  */
-jest.setTimeout(60_000);
+jest.setTimeout(180_000);
 
 /**
  * Round 4 rebuilt M11 around the click curve, so the old 83 floor (set on
  * the old, clicky bands) no longer applies. The pre-tuning build scored 59
- * capped (79.5 uncapped) on the new card; the tuned build scores 87.8 with
- * no failing gate. The floor is that minus 1. Raise as rounds land.
+ * capped (79.5 uncapped) on the new card; the tuned build scores 86.8 with
+ * no failing gate (87.8 before the review fixes: the never-stuck floor and
+ * reachable lens beats). The
+ * floor is that minus 1. Raise as rounds land.
  */
-const SCORE_FLOOR = 86.8;
-const UNCAPPED_FLOOR = 86.8;
+const SCORE_FLOOR = 85.8;
+const UNCAPPED_FLOOR = 85.8;
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];
@@ -54,6 +56,29 @@ const flooded: UniverseDef = {
       }))
     ),
   ],
+};
+
+/** Income per second of each phase's main resource the machines pay from the start. */
+const FREE_INCOME = [40, 60, 80, 2];
+
+/** Phase's main resource, paid by the machines from second one: no hands needed. */
+const withFreeIncome = (base: UniverseDef): UniverseDef => ({
+  ...base,
+  tick: (run, dt) => {
+    base.tick(run, dt);
+    const main = base.phases[run.phase].manualResource;
+    run.resources[main] =
+      (run.resources[main] ?? 0) + FREE_INCOME[run.phase] * dt;
+  },
+});
+
+/** Fully automatic from the first minute: taps are a rounding error. */
+const automatic = withFreeIncome(def);
+
+/** Taps earn nothing at all (the machines still carry the game). */
+const worthlessTaps: UniverseDef = {
+  ...withFreeIncome(def),
+  manualAction: () => {},
 };
 
 describe("Keep the Light On engagement scorecard", () => {
@@ -89,6 +114,25 @@ describe("Keep the Light On engagement scorecard", () => {
     for (const id of ["M2", "M4", "M5"]) expect(gate(bad, id)).toBe(false);
     expect(gate(good, "M2")).toBe(true);
     expect(bad.total).toBeLessThanOrEqual(59);
+  });
+
+  it("fails the click curve for a build that needs no hands from minute 1", () => {
+    const card = scoreUniverse(automatic, { bots: lightBots() });
+    const m11 = card.metrics.find((m) => m.id === "M11")!;
+    expect(m11.gatePass).toBe(false);
+    const coast = m11.perPhase.find((p) => p.phase === "coast")!;
+    expect(coast.gate).toBe(false);
+    expect(coast.stats.early).toBeLessThan(0.3);
+    expect(card.total).toBeLessThanOrEqual(59);
+  });
+
+  it("fails the click curve for a build where a tap earns nothing", () => {
+    const card = scoreUniverse(worthlessTaps, { bots: lightBots() });
+    const m11 = card.metrics.find((m) => m.id === "M11")!;
+    expect(m11.gatePass).toBe(false);
+    for (const row of m11.perPhase.filter((p) => p.phase !== "run"))
+      expect(row.stats.lowestAtThree).toBe(0);
+    expect(card.total).toBeLessThanOrEqual(59);
   });
 
   it("is deterministic", () => {

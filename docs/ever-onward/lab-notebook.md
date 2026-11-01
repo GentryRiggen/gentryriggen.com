@@ -939,3 +939,36 @@ Narration: no story text or phase intro changed, so no clip ids changed.
 Keep. Floor raised to 86.8 (87.8 minus 1). Next: a playtest with Gentry on
 the phone, watching for whether each phase's opening still feels like play
 and whether the helpers' arrival is visible enough to notice the hand-off.
+
+### Review fixes (after PR #468)
+
+- **Unreachable beats.** The lens cap dropped from 5 to 3, but `coast-lens`
+  wanted lens 5 and the lighthouse teaser wanted lens 4. They now need lens 3
+  and 2 (the story text is unchanged, so no clip changes). `roundFour.test.ts`
+  scans every `owned(run, "x") >= n` in the universe for an upgrade that
+  exists and an `n` within its cap.
+- **Old saves above today's caps** (lens 5 to 3, crank 5 to 2, aim 5 to 3).
+  On load, `reconcileRun` clamps owned levels to `maxLevel`. In the
+  upgrade's own phase it refunds what the extra levels cost, at today's
+  prices in that phase's currency; outside it, the levels are only clamped.
+  A second load gives nothing more, and nothing goes NaN.
+- **M11 honesty.**
+  - The never-stuck floor is real again: 3 taps a second must earn at least
+    0.5% of income at the phase's lowest point (gate 0.25%). It is read at a
+    fixed pace, so a lazy bot can't fail it and an eager one can't pass it
+    by tapping harder.
+  - A phase under a minute is read whole, never as a vacuous pass. A missing
+    early share scores 0.
+  - The early-hands-on check is now also a gate (taps >= 30% at minutes
+    0.5-3, the ending excepted).
+  - The idle/eager gate is back at 1.05x (the build is at 1.57x).
+- **Regression fixtures.** A build fully automatic from minute 1 and a build
+  where a tap earns nothing both fail the M11 gate (total capped at 59).
+- **Score.** 86.8, with no failing gate. The coast and night bottom out at
+  0.43% and 0.33% at 3 taps a second, inside the gate but under the band;
+  that is left honest rather than tuned away. Floor 85.8.
+- **Tests added.**
+  - The four side-machine helpers appear under their new gating and still
+    pay less than tending by hand. The rain barrel test uses real picks.
+  - A tap on a full flame still earns resolve, so the tap button shows its
+    "+" floater.

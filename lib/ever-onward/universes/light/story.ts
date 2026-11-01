@@ -50,7 +50,7 @@ const coast: StoryMessage[] = [
   {
     id: "coast-lens",
     phase: PHASE_COAST,
-    when: (run) => owned(run, "lens") >= 5,
+    when: (run) => owned(run, "lens") >= 3,
     text: "The new lens throws the beam farther. Ships you have never met are turning toward you. It is a bit like being famous, only quieter.",
   },
   {

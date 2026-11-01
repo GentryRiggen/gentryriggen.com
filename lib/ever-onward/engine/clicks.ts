@@ -33,6 +33,12 @@ export interface PhaseClicks {
   late: number;
   /** Lowest manual share after the first minute (a tap must always earn). */
   lowest: number;
+  /**
+   * The same low point, as the share 3 taps a second would earn there: the
+   * never-stuck floor, read at a fixed pace so a lazy bot can't fail it and
+   * an eager one can't pass it by tapping harder. NaN when nothing was seen.
+   */
+  lowestAtThree: number;
   lateTapsPerMinute: number;
   lateActionsPerMinute: number;
 }
@@ -40,6 +46,22 @@ export interface PhaseClicks {
 export const manualShareOf = (s: TraceSample): number => {
   const total = s.manualRate + s.autoRate;
   return total > 0 ? s.manualRate / total : NaN;
+};
+
+/** The pace the never-stuck floor is read at. */
+const FLOOR_TAPS = 3;
+
+/** Share of income 3 taps a second would earn at this sample (NaN: not tapping). */
+export const shareAtThreeOf = (s: TraceSample): number => {
+  if (!(s.tapsPerSecond > 0)) return NaN;
+  const hard = (s.manualRate / s.tapsPerSecond) * FLOOR_TAPS;
+  return hard + s.autoRate > 0 ? hard / (hard + s.autoRate) : NaN;
+};
+
+/** The smallest real value, or NaN when there is none (never Infinity). */
+const lowestOf = (values: readonly number[]): number => {
+  const real = values.filter((v) => !Number.isNaN(v));
+  return real.length ? Math.min(...real) : NaN;
 };
 
 const meanOf = (values: readonly number[]): number => {
@@ -73,6 +95,8 @@ export function clickCurve(result: SimResult): PhaseClicks[] {
       });
     }
     const late = between(LATE_FROM_MINUTE * MIN, Infinity);
+    const afterFirst = between(MIN, Infinity);
+    const floorSamples = afterFirst.length ? afterFirst : samples;
     const lateMinutes = Math.max(0, length / MIN - LATE_FROM_MINUTE);
     return {
       phase: span.id,
@@ -84,11 +108,10 @@ export function clickCurve(result: SimResult): PhaseClicks[] {
         )
       ),
       late: meanOf(late.map(manualShareOf)),
-      lowest: Math.min(
-        ...between(MIN, Infinity)
-          .map(manualShareOf)
-          .filter((v) => !Number.isNaN(v))
-      ),
+      // After the first minute; a phase shorter than that is read whole, so
+      // the floor is never passed for want of samples.
+      lowest: lowestOf(floorSamples.map(manualShareOf)),
+      lowestAtThree: lowestOf(floorSamples.map(shareAtThreeOf)),
       lateTapsPerMinute: late.length ? tapsPerMinute(late) : NaN,
       lateActionsPerMinute:
         lateMinutes > 0

@@ -437,6 +437,34 @@ export function reconcileRun(
   };
   if (!(next.mods.costMult === undefined || next.mods.costMult > 0))
     delete next.mods.costMult;
+  clampToMaxLevels(def, next);
   settle(def, next);
   return next;
+}
+
+/**
+ * A save from before an upgrade's cap was lowered may own more levels than
+ * now exist. Clamp them, and when the run is still in that upgrade's phase
+ * give back what the extra levels cost (at today's prices, in its currency),
+ * so nobody loses what they paid for. Out of its phase the currency no
+ * longer matters, so the levels are only clamped.
+ */
+function clampToMaxLevels(def: UniverseDef, run: RunState): void {
+  for (const upgrade of def.upgrades) {
+    const max = upgrade.maxLevel ?? 1;
+    const owned = run.owned[upgrade.id] ?? 0;
+    if (!Number.isFinite(max) || owned <= max) continue;
+    if (isInPhase(def, run, upgrade)) {
+      let refund = 0;
+      for (let level = max; level < Math.floor(owned); level += 1)
+        refund += upgradeCost(
+          { ...run, owned: { [upgrade.id]: level } },
+          upgrade
+        );
+      const before = run.resources[upgrade.currency] ?? 0;
+      if (Number.isFinite(refund) && refund > 0)
+        run.resources[upgrade.currency] = before + refund;
+    }
+    run.owned[upgrade.id] = max;
+  }
 }

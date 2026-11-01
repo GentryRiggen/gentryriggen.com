@@ -91,7 +91,7 @@ describe("visitors", () => {
 
 describe("someday cards", () => {
   it("show a hint, and go away when the upgrade pops in", () => {
-    const early = withOwned(newRun(def), { lens: 4 });
+    const early = withOwned(newRun(def), { lens: 2 });
     expect(visibleTeasers(def, early).map((t) => t.upgradeId)).toContain(
       "lighthouse"
     );
@@ -105,9 +105,9 @@ describe("someday cards", () => {
     const teaser = (def.teasers ?? []).find(
       (t) => t.upgradeId === "lighthouse"
     )!;
-    const early = withOwned(newRun(def), { lens: 4 });
+    const early = withOwned(newRun(def), { lens: 2 });
     expect(teaserHint(def, early, teaser)).toBe(teaser.hint(early));
-    const ready = withOwned(newRun(def), { lens: 4, keeper: 3 });
+    const ready = withOwned(newRun(def), { lens: 2, keeper: 3 });
     expect(teaserHint(def, ready, teaser)).toBe(TEASER_READY_HINT);
   });
 
