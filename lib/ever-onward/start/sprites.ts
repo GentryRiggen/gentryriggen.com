@@ -136,3 +136,17 @@ export const PADLOCK_ROWS: readonly string[] = [
 ];
 
 export const PADLOCK_COLORS: Palette = { S: "#475569", k: "#0f172a" };
+
+/** A speaker (9 x 7); the waves are a separate sprite so "off" can drop them. */
+export const SPEAKER_ROWS: readonly string[] = [
+  "...S.....",
+  "..SS..W..",
+  "SSSS...W.",
+  "SSSS..W.W",
+  "SSSS...W.",
+  "..SS..W..",
+  "...S.....",
+];
+
+export const SPEAKER_ON: Palette = { S: "#fcd34d", W: "#fde68a" };
+export const SPEAKER_OFF: Palette = { S: "#64748b" };

@@ -72,7 +72,7 @@ describe("Ever Onward backup code", () => {
     await user.click(
       screen.getByRole("button", { name: "Yes, replace my game" })
     );
-    expect(await screen.findByText("Finished 7 times")).toBeInTheDocument();
+    expect(await screen.findByText("7 times")).toBeInTheDocument();
     const stored = JSON.parse(
       window.localStorage.getItem("ever-onward:save") ?? "{}"
     );

@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { CHANGELOG } from "@/lib/ever-onward/changelog";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
-import { focusRingClass } from "./styles";
+import RetroLabel from "./start/RetroLabel";
+import RetroPage from "./start/RetroPage";
+import {
+  retroHeadingClass,
+  retroLinkClass,
+  retroPanelClass,
+} from "./start/retroStyles";
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
@@ -16,51 +22,59 @@ function formatDate(isoDate: string): string {
 
 export default function VersionHistory() {
   return (
-    <div className="min-h-dvh bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="border-b border-slate-200 bg-white pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 pl-4 pr-20 dark:border-slate-800 dark:bg-slate-900">
-        <Link
-          href="/ever-onward"
-          className={`rounded text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white ${focusRingClass}`}
-        >
-          ← Back to Ever Onward
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">What&apos;s new</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          You&apos;re on v{EVER_ONWARD_VERSION}
-        </p>
-      </header>
-      <main className="mx-auto max-w-2xl space-y-4 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+    <RetroPage>
+      <main className="eo-fade-in relative z-10 mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-5 px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <header className="flex flex-col gap-4">
+          <Link
+            href="/ever-onward"
+            className={`self-start font-mono text-sm text-slate-200 ${retroLinkClass}`}
+          >
+            ← Back to Ever Onward
+          </Link>
+          <h1>
+            <RetroLabel
+              label="What's new"
+              className={`text-xl ${retroHeadingClass}`}
+            />
+          </h1>
+          <p className="font-mono text-sm text-cyan-100">
+            You&apos;re on v{EVER_ONWARD_VERSION}
+          </p>
+        </header>
         {CHANGELOG.map((release) => (
           <article
             key={release.version}
             aria-labelledby={`release-${release.version}`}
-            className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+            className={`${retroPanelClass} p-4`}
           >
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h2
                 id={`release-${release.version}`}
-                className="text-lg font-semibold"
+                className="font-mono text-base font-bold text-amber-50"
               >
-                <span className="font-mono text-amber-700 dark:text-amber-400">
-                  v{release.version}
-                </span>{" "}
-                · {release.title}
+                <span className="text-amber-300">v{release.version}</span> ·{" "}
+                {release.title}
               </h2>
               <time
                 dateTime={release.date}
-                className="text-sm text-slate-500 dark:text-slate-400"
+                className="font-mono text-xs text-slate-300"
               >
                 {formatDate(release.date)}
               </time>
             </div>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-300">
+            <ul className="mt-3 space-y-2 font-mono text-sm text-slate-100">
               {release.highlights.map((highlight) => (
-                <li key={highlight}>{highlight}</li>
+                <li key={highlight} className="flex gap-2">
+                  <span aria-hidden="true" className="text-amber-300">
+                    ▶
+                  </span>
+                  <span>{highlight}</span>
+                </li>
               ))}
             </ul>
           </article>
         ))}
       </main>
-    </div>
+    </RetroPage>
   );
 }

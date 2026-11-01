@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
+import useTitleMusic from "./audio/useTitleMusic";
 import GameScreen from "./game/GameScreen";
 import { useGame } from "./game/useGame";
 import Hub from "./Hub";
@@ -18,6 +19,8 @@ export default function EverOnward() {
   const [isOnStartScreen, setIsOnStartScreen] = useState(true);
   const { save, def, universe } = game;
   useStaleChunkRecovery(game.saveNow);
+  // The title theme plays on the start screen and the hub, not in a universe.
+  useTitleMusic(!!save && !def);
 
   if (!save) {
     return (

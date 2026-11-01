@@ -6,11 +6,7 @@ import {
   LOCKED_UNIVERSES,
   PLAYABLE_UNIVERSES,
 } from "@/lib/ever-onward/universes";
-import {
-  currentSeason,
-  seasonById,
-  type Season,
-} from "@/lib/ever-onward/season";
+import type { Season } from "@/lib/ever-onward/season";
 import {
   LIGHTHOUSE_DIM,
   LIGHTHOUSE_LIT,
@@ -19,6 +15,8 @@ import {
   PADLOCK_ROWS,
 } from "@/lib/ever-onward/start/sprites";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
+import MusicToggle from "../audio/MusicToggle";
+import { pickSeason } from "./RetroPage";
 import { useSkySettings } from "./useSkySettings";
 import PixelSprite from "./PixelSprite";
 import RetroText from "./RetroText";
@@ -41,12 +39,6 @@ const footerLinkClass =
 /** Chunky title letters: a 1-pixel-style drop shadow and a soft glow. */
 const titleClass =
   "text-[min(12.5vw,4.5rem)] text-amber-300 [text-shadow:3px_3px_0_#78350f] drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]";
-
-/** `?season=winter` previews a look; otherwise the date decides. */
-function pickSeason(): Season {
-  const requested = new URLSearchParams(window.location.search).get("season");
-  return seasonById(requested) ?? currentSeason();
-}
 
 export default function StartScreen({
   hasSave,
@@ -207,6 +199,8 @@ export default function StartScreen({
           </Link>
         </footer>
       </main>
+
+      <MusicToggle className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-3 z-30" />
 
       {/* CRT: scanlines, a soft vignette and a faint flicker. */}
       <div

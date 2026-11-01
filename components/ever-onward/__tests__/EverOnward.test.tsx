@@ -56,7 +56,7 @@ describe("Ever Onward hub", () => {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }
     expect(screen.getAllByText("Coming soon")).toHaveLength(3);
-    expect(screen.getByRole("link", { name: /What's new/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /what's new/i })).toHaveAttribute(
       "href",
       "/ever-onward/versions"
     );
@@ -69,8 +69,42 @@ describe("Ever Onward hub", () => {
       await screen.findByRole("button", { name: /Continue/ })
     ).toBeInTheDocument();
     const facts = screen.getByTestId("lm-facts-light");
-    expect(within(facts).getByText("Reached: The Coast")).toBeInTheDocument();
-    expect(within(facts).getByText("Finished 2 times")).toBeInTheDocument();
+    expect(within(facts).getByText("The Coast")).toBeInTheDocument();
+    expect(within(facts).getByText("2 times")).toBeInTheDocument();
+    expect(within(facts).getByText("Reached")).toBeInTheDocument();
+    expect(within(facts).getByText("Finished")).toBeInTheDocument();
+  });
+
+  it("shows a fresh universe as PLAY with no stats, and locked ones dim", async () => {
+    await renderHub();
+    const play = await screen.findByTestId("lm-play-light");
+    expect(play).toHaveTextContent("Play Keep the Light On");
+    expect(screen.queryByTestId("lm-facts-light")).not.toBeInTheDocument();
+    const locked = screen.getByLabelText("Make It Grow, coming soon");
+    expect(locked.tagName).toBe("LI");
+    expect(within(locked).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("shows best time and embers once earned", async () => {
+    writeSave({
+      ...newSave(),
+      seenIntro: true,
+      universes: {
+        light: {
+          run: startedRun(),
+          best: 125000,
+          completions: 1,
+          embers: 7,
+          prestigeUpgrades: {},
+        },
+      },
+    });
+    await renderHub();
+    const facts = await screen.findByTestId("lm-facts-light");
+    expect(within(facts).getByText("Best time")).toBeInTheDocument();
+    expect(within(facts).getByText("Embers")).toBeInTheDocument();
+    expect(within(facts).getByText("7")).toBeInTheDocument();
+    expect(within(facts).getByText("1 time")).toBeInTheDocument();
   });
 });
 
