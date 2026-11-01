@@ -68,3 +68,12 @@ describe("simulate", () => {
     expect(result.finished).toBe(false);
   });
 });
+
+describe("simulate step", () => {
+  it("clamps a step of zero or less to a positive minimum", () => {
+    for (const step of [0, -3]) {
+      const result = simulate(def, { maxSeconds: 1, step });
+      expect(result.endTime).toBeGreaterThanOrEqual(1);
+    }
+  });
+});

@@ -5,7 +5,7 @@ import {
   buy,
   manualAction,
   manualGain,
-  newRun,
+  reconcileRun,
   tick,
 } from "@/lib/little-machines/engine/engine";
 import {
@@ -30,8 +30,10 @@ export type Overlay = "phase" | "ending" | null;
 
 /** A universe save the current build can play (phase in range). */
 function sanitize(def: UniverseDef, universe: UniverseSave): UniverseSave {
-  if (universe.run.phase < def.phases.length) return universe;
-  return { ...universe, run: newRun(def, universe.prestigeUpgrades) };
+  return {
+    ...universe,
+    run: reconcileRun(def, universe.run, universe.prestigeUpgrades),
+  };
 }
 
 /** Marks a run whose intro moment has not been seen (a brand new run). */

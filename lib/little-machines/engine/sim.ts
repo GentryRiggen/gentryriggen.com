@@ -57,6 +57,9 @@ export interface SimResult {
   longestGap: { seconds: number; from: number; to: number };
 }
 
+/** A step of 0 or less would never advance the clock. */
+const MIN_STEP = 0.01;
+
 const cheapestFirst = (
   run: RunState,
   affordable: UpgradeDef[]
@@ -77,7 +80,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   const tapUntil = strategy.tapUntil ?? Infinity;
   const buys = strategy.buys ?? true;
   const choose = strategy.choose ?? cheapestFirst;
-  const step = Math.min(1, options.step ?? 0.5);
+  const step = Math.min(1, Math.max(MIN_STEP, options.step ?? 0.5));
 
   let run = options.startRun ?? newRun(def, options.prestige, options.seed);
   const startTime = run.time;

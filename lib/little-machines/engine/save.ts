@@ -33,6 +33,12 @@ function isTransition(v: unknown): boolean {
   return isRecord(v) && isString(v.from) && isString(v.to) && isCount(v.at);
 }
 
+/**
+ * JSON turns NaN and Infinity into null, so a damaged number reads back as
+ * null; accept it here and let `reconcileRun` replace it with a default.
+ */
+const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v);
+
 function isRun(v: unknown): v is RunState {
   if (!isRecord(v)) return false;
   return (
@@ -41,9 +47,9 @@ function isRun(v: unknown): v is RunState {
     isCount(v.time) &&
     isCount(v.taps) &&
     isBool(v.complete) &&
-    isRecordOf(v.resources, isNum) &&
+    isRecordOf(v.resources, isNumOrNull) &&
     isRecordOf(v.owned, isCount) &&
-    isRecordOf(v.mods, isNum) &&
+    isRecordOf(v.mods, isNumOrNull) &&
     isRecordOf(v.flags, isBool) &&
     Array.isArray(v.revealed) &&
     v.revealed.every(isString) &&
@@ -76,8 +82,22 @@ const migrations: Record<
   (raw: Record<string, unknown>) => Record<string, unknown>
 > = {};
 
+export interface ParseReport {
+  save: SaveData;
+  /** Universe ids whose entry was unreadable and so left out. */
+  dropped: string[];
+}
+
 /** A checked save, or null if `raw` isn't one this build can read. */
 export function parseSave(raw: unknown): SaveData | null {
+  return parseSaveReport(raw)?.save ?? null;
+}
+
+/**
+ * Like `parseSave`, but one unreadable universe entry is left out (and
+ * listed) instead of discarding the whole save.
+ */
+export function parseSaveReport(raw: unknown): ParseReport | null {
   if (!isRecord(raw) || !Number.isInteger(raw.version)) return null;
   let save = raw;
   for (let v = save.version as number; v < SAVE_VERSION; v += 1) {
@@ -88,15 +108,32 @@ export function parseSave(raw: unknown): SaveData | null {
   if (save.version !== SAVE_VERSION) return null;
   if (!isRecord(save.universes) || !isBool(save.seenIntro)) return null;
   const universes: Record<string, UniverseSave> = {};
+  const dropped: string[] = [];
   for (const [id, value] of Object.entries(save.universes)) {
     const universe = parseUniverse(value);
-    if (!universe) return null;
-    universes[id] = universe;
+    if (universe) universes[id] = universe;
+    else dropped.push(id);
   }
-  return { version: SAVE_VERSION, universes, seenIntro: save.seenIntro };
+  return {
+    save: { version: SAVE_VERSION, universes, seenIntro: save.seenIntro },
+    dropped,
+  };
 }
 
 const BACKUP_PREFIX = `${SAVE_KEY}:backup:`;
+/** Older backups are deleted so recoveries can't fill the storage. */
+export const MAX_BACKUPS = 3;
+
+function pruneBackups(storage: Storage): void {
+  const backups: { key: string; at: number }[] = [];
+  for (let i = 0; i < storage.length; i += 1) {
+    const key = storage.key(i);
+    if (!key?.startsWith(BACKUP_PREFIX)) continue;
+    backups.push({ key, at: Number(key.slice(BACKUP_PREFIX.length)) || 0 });
+  }
+  backups.sort((a, b) => b.at - a.at);
+  for (const { key } of backups.slice(MAX_BACKUPS)) storage.removeItem(key);
+}
 
 /** Best effort; skipped when a backup already holds this exact text. */
 function backUp(raw: string): void {
@@ -108,6 +145,7 @@ function backUp(raw: string): void {
         return;
     }
     storage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw);
+    pruneBackups(storage);
   } catch {
     // A full disk or blocked storage shouldn't stop play.
   }
@@ -127,8 +165,13 @@ export function loadSave(): LoadResult {
   } catch {
     json = undefined;
   }
-  const parsed = json === undefined ? null : parseSave(json);
-  if (parsed) return { save: parsed, recovered: false };
+  const parsed = json === undefined ? null : parseSaveReport(json);
+  if (parsed && parsed.dropped.length === 0)
+    return { save: parsed.save, recovered: false };
+  if (parsed) {
+    backUp(raw);
+    return { save: parsed.save, recovered: true };
+  }
   backUp(raw);
   return { save: newSave(), recovered: true };
 }

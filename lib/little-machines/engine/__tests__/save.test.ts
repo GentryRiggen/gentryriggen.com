@@ -1,6 +1,7 @@
 import { newUniverseSave } from "../prestige";
 import {
   SAVE_KEY,
+  MAX_BACKUPS,
   SAVE_VERSION,
   loadSave,
   newSave,
@@ -67,10 +68,52 @@ describe("save", () => {
     expect(backupKeys()).toHaveLength(1);
   });
 
-  it("rejects NaN and negative numbers", () => {
+  it("rejects negative numbers, leaving out only that universe", () => {
     const save = newSave();
     save.universes.fixture = { ...newUniverseSave(def), embers: -1 };
-    expect(parseSave(JSON.parse(JSON.stringify(save)))).toBeNull();
+    save.universes.other = newUniverseSave(def);
+    save.seenIntro = true;
+    const parsed = parseSave(JSON.parse(JSON.stringify(save)));
+    expect(parsed?.seenIntro).toBe(true);
+    expect(Object.keys(parsed!.universes)).toEqual(["other"]);
+  });
+
+  it("keeps a run whose numbers were damaged (NaN stores as null)", () => {
+    const save = newSave();
+    const universe = newUniverseSave(def);
+    universe.run.resources.coins = NaN;
+    universe.run.mods.mult = Infinity;
+    save.universes.fixture = universe;
+    const parsed = parseSave(JSON.parse(JSON.stringify(save)));
+    expect(parsed?.universes.fixture).toBeDefined();
+  });
+
+  it("backs up and flags a save with one bad universe, keeping the rest", () => {
+    const save = newSave();
+    save.universes.good = { ...newUniverseSave(def), embers: 4 };
+    save.universes.bad = { ...newUniverseSave(def), embers: -1 };
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    const result = loadSave();
+    expect(result.recovered).toBe(true);
+    expect(result.save.universes.good.embers).toBe(4);
+    expect(result.save.universes.bad).toBeUndefined();
+    expect(backupKeys()).toHaveLength(1);
+  });
+
+  it("keeps only the newest few backups", () => {
+    for (let i = 0; i < 6; i += 1) {
+      jest.spyOn(Date, "now").mockReturnValue(1000 + i);
+      window.localStorage.setItem(SAVE_KEY, `garbage ${i}`);
+      loadSave();
+    }
+    jest.restoreAllMocks();
+    const keys = backupKeys().sort();
+    expect(keys).toHaveLength(MAX_BACKUPS);
+    expect(keys.map((k) => window.localStorage.getItem(k))).toEqual([
+      "garbage 3",
+      "garbage 4",
+      "garbage 5",
+    ]);
   });
 
   it("survives blocked storage", () => {

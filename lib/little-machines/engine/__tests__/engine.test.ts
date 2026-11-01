@@ -5,6 +5,7 @@ import {
   manualAction,
   manualGain,
   newRun,
+  reconcileRun,
   tick,
   upgradeCost,
   visibleUpgrades,
@@ -93,6 +94,11 @@ describe("buy and costs", () => {
   it("applies the run's costMult mod", () => {
     const run = { ...newRun(def), mods: { costMult: 0.5 } };
     expect(upgradeCost(run, upgrade("gen"))).toBe(7.5);
+  });
+
+  it.each([0, -1, NaN, Infinity])("treats costMult %s as 1", (costMult) => {
+    const run = { ...newRun(def), mods: { costMult } };
+    expect(upgradeCost(run, upgrade("gen"))).toBe(15);
   });
 
   it("throws on an unknown upgrade id", () => {
@@ -191,5 +197,79 @@ describe("rng", () => {
     expect(seq).toEqual(Array.from({ length: 50 }, () => nextRandom(b)));
     expect(seq.every((x) => x >= 0 && x < 1)).toBe(true);
     expect(new Set(seq).size).toBeGreaterThan(40);
+  });
+});
+
+describe("non-finite resources", () => {
+  it("resets a resource a hook left as NaN or Infinity to 0", () => {
+    const broken = {
+      ...def,
+      tick: () => undefined,
+      manualAction: (run: RunState) => {
+        run.resources.coins = NaN;
+        run.resources.total = Infinity;
+      },
+    };
+    const run = manualAction(broken, newRun(broken));
+    expect(run.resources.coins).toBe(0);
+    expect(run.resources.total).toBe(0);
+    const ticked = tick(
+      {
+        ...broken,
+        tick: (r: RunState) => {
+          r.resources.glow = -Infinity;
+        },
+      },
+      run,
+      1
+    );
+    expect(ticked.resources.glow).toBe(0);
+  });
+});
+
+describe("reconcileRun", () => {
+  it("fills resources a newer release added with their defaults", () => {
+    const old = newRun(def);
+    delete old.resources.glow;
+    const run = reconcileRun(def, old);
+    expect(run.resources.glow).toBe(0);
+    expect(run.resources.coins).toBe(old.resources.coins);
+  });
+
+  it("uses a resource's initial value", () => {
+    const withInitial = {
+      ...def,
+      resources: [...def.resources, { id: "new", label: "New", initial: 7 }],
+    };
+    expect(reconcileRun(withInitial, newRun(def)).resources.new).toBe(7);
+  });
+
+  it("replaces non-finite numbers and drops odd mods", () => {
+    const old = newRun(def);
+    const damaged = JSON.parse(
+      JSON.stringify({
+        ...old,
+        time: NaN,
+        resources: { ...old.resources, coins: NaN },
+        owned: { lens: -2, gen: 3 },
+        mods: { mult: NaN, costMult: -4, other: 2 },
+      })
+    );
+    const run = reconcileRun(def, damaged);
+    expect(run.time).toBe(0);
+    expect(run.resources.coins).toBe(0);
+    expect(run.owned).toEqual({ gen: 3 });
+    expect(run.mods).toEqual({ other: 2 });
+  });
+
+  it.each([5, -1, 1.5, NaN])("starts a fresh run for phase %s", (phase) => {
+    const run = reconcileRun(def, { ...newRun(def), phase, taps: 99 });
+    expect(run.phase).toBe(0);
+    expect(run.taps).toBe(0);
+  });
+
+  it("leaves a healthy run as it was", () => {
+    const run = buy(def, withCoins(newRun(def), 100), "gen");
+    expect(reconcileRun(def, run)).toEqual(run);
   });
 });

@@ -34,8 +34,16 @@ export const currentPhase = (def: UniverseDef, run: RunState): PhaseDef =>
 export const isLastPhase = (def: UniverseDef, run: RunState): boolean =>
   run.phase >= def.phases.length - 1;
 
+/** A hook that leaves NaN or Infinity behind must not poison the run. */
+function zeroNonFinite(run: RunState): void {
+  for (const [id, value] of Object.entries(run.resources)) {
+    if (!Number.isFinite(value)) run.resources[id] = 0;
+  }
+}
+
 /** Reveal what is newly visible, fire due story, advance phases, finish. */
 function settle(def: UniverseDef, run: RunState): void {
+  zeroNonFinite(run);
   // A phase can finish the moment it starts, so loop (bounded by phase count).
   for (let guard = 0; guard <= def.phases.length; guard += 1) {
     revealUpgrades(def, run);
@@ -152,9 +160,9 @@ export function isMaxed(run: RunState, upgrade: UpgradeDef): boolean {
 /** Cost of the next level, after the run's `costMult` mod (default 1). */
 export function upgradeCost(run: RunState, upgrade: UpgradeDef): number {
   const level = upgradeLevel(run, upgrade.id);
-  return (
-    upgrade.baseCost * upgrade.costGrowth ** level * (run.mods.costMult ?? 1)
-  );
+  const mult = run.mods.costMult;
+  const safeMult = mult !== undefined && Number.isFinite(mult) && mult > 0;
+  return upgrade.baseCost * upgrade.costGrowth ** level * (safeMult ? mult : 1);
 }
 
 export function isVisible(
@@ -209,6 +217,56 @@ export function buy(
   const level = upgradeLevel(run, upgrade.id) + 1;
   next.owned[upgrade.id] = level;
   upgrade.onBuy?.(next, level);
+  settle(def, next);
+  return next;
+}
+
+const finiteOr = (v: unknown, fallback: number): number =>
+  typeof v === "number" && Number.isFinite(v) ? v : fallback;
+
+function finiteEntries(
+  record: Record<string, number>,
+  minimum?: number
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, value] of Object.entries(record)) {
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    if (minimum !== undefined && value < minimum) continue;
+    out[id] = value;
+  }
+  return out;
+}
+
+/**
+ * Makes a loaded run playable by this build: resources a newer release added
+ * get their defaults, damaged numbers are replaced, and a phase out of range
+ * (or a run that can't be repaired) becomes a fresh run.
+ */
+export function reconcileRun(
+  def: UniverseDef,
+  run: RunState,
+  prestigeLevels: Readonly<Record<string, number>> = {}
+): RunState {
+  const isPhaseValid =
+    Number.isInteger(run.phase) &&
+    run.phase >= 0 &&
+    run.phase < def.phases.length;
+  if (!isPhaseValid) return newRun(def, prestigeLevels);
+  const saved = finiteEntries(run.resources);
+  const resources = Object.fromEntries(
+    def.resources.map((r) => [r.id, saved[r.id] ?? r.initial ?? 0])
+  );
+  const next: RunState = {
+    ...cloneRun(run),
+    time: finiteOr(run.time, 0),
+    taps: finiteOr(run.taps, 0),
+    rng: Number.isInteger(run.rng) ? run.rng : DEFAULT_SEED,
+    resources: { ...saved, ...resources },
+    owned: finiteEntries(run.owned, 0),
+    mods: finiteEntries(run.mods),
+  };
+  if (!(next.mods.costMult === undefined || next.mods.costMult > 0))
+    delete next.mods.costMult;
   settle(def, next);
   return next;
 }
