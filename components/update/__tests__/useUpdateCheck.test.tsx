@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useUpdateCheck } from "../useUpdateCheck";
 
+const URL = "/ever-onward/version.json";
+
 function mockVersionFile(build: string) {
   const fetchMock = jest.fn().mockResolvedValue({
     ok: true,
@@ -27,7 +29,7 @@ describe("useUpdateCheck", () => {
   it("reports an update when the deployed build differs", async () => {
     const fetchMock = mockVersionFile("new");
     const { result } = renderHook(() =>
-      useUpdateCheck({ current: "old", enabled: true })
+      useUpdateCheck({ versionUrl: URL, current: "old", enabled: true })
     );
     await waitFor(() => expect(result.current.isUpdateReady).toBe(true));
     expect(fetchMock).toHaveBeenCalledWith("/ever-onward/version.json", {
@@ -38,7 +40,7 @@ describe("useUpdateCheck", () => {
   it("stays quiet when the build is the same", async () => {
     const fetchMock = mockVersionFile("same");
     const { result } = renderHook(() =>
-      useUpdateCheck({ current: "same", enabled: true })
+      useUpdateCheck({ versionUrl: URL, current: "same", enabled: true })
     );
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(result.current.isUpdateReady).toBe(false);
@@ -48,7 +50,12 @@ describe("useUpdateCheck", () => {
     jest.useFakeTimers({ now: 5_000_000 });
     const fetchMock = mockVersionFile("same");
     renderHook(() =>
-      useUpdateCheck({ current: "same", enabled: true, intervalMs: 1_000 })
+      useUpdateCheck({
+        versionUrl: URL,
+        current: "same",
+        enabled: true,
+        intervalMs: 1_000,
+      })
     );
     await act(async () => {});
     jest.setSystemTime(5_000_000 + 2_000);
@@ -60,7 +67,9 @@ describe("useUpdateCheck", () => {
 
   it("does nothing when disabled", async () => {
     const fetchMock = mockVersionFile("new");
-    renderHook(() => useUpdateCheck({ current: "old", enabled: false }));
+    renderHook(() =>
+      useUpdateCheck({ versionUrl: URL, current: "old", enabled: false })
+    );
     await act(async () => {});
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -69,7 +78,7 @@ describe("useUpdateCheck", () => {
     const fetchMock = jest.fn().mockRejectedValue(new Error("offline"));
     global.fetch = fetchMock as unknown as typeof fetch;
     const { result } = renderHook(() =>
-      useUpdateCheck({ current: "old", enabled: true })
+      useUpdateCheck({ versionUrl: URL, current: "old", enabled: true })
     );
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(result.current.isUpdateReady).toBe(false);
@@ -79,7 +88,12 @@ describe("useUpdateCheck", () => {
     jest.useFakeTimers({ now: 1_000_000 });
     const fetchMock = mockVersionFile("same");
     renderHook(() =>
-      useUpdateCheck({ current: "same", enabled: true, intervalMs: 60_000 })
+      useUpdateCheck({
+        versionUrl: URL,
+        current: "same",
+        enabled: true,
+        intervalMs: 60_000,
+      })
     );
     await act(async () => {});
     expect(fetchMock).toHaveBeenCalledTimes(1);

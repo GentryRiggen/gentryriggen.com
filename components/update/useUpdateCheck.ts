@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const VERSION_URL = "/ever-onward/version.json";
 /** The version file is fetched at most this often. */
 export const UPDATE_CHECK_INTERVAL_MS = 60_000;
 
@@ -17,15 +16,17 @@ const IS_ENABLED_BY_DEFAULT =
   BUILD_ID !== "dev";
 
 interface UpdateCheckOptions {
+  /** The deployed `{ version, build }` file, e.g. "/ever-onward/version.json". */
+  versionUrl: string;
   /** The build id this page is running. */
   current?: string;
   enabled?: boolean;
   intervalMs?: number;
 }
 
-async function fetchBuildId(): Promise<string | null> {
+async function fetchBuildId(versionUrl: string): Promise<string | null> {
   try {
-    const response = await fetch(VERSION_URL, { cache: "no-store" });
+    const response = await fetch(versionUrl, { cache: "no-store" });
     if (!response.ok) return null;
     const data: unknown = await response.json();
     if (typeof data !== "object" || data === null || !("build" in data))
@@ -43,10 +44,11 @@ async function fetchBuildId(): Promise<string | null> {
  * never reloads anything itself.
  */
 export function useUpdateCheck({
+  versionUrl,
   current = BUILD_ID,
   enabled = IS_ENABLED_BY_DEFAULT,
   intervalMs = UPDATE_CHECK_INTERVAL_MS,
-}: UpdateCheckOptions = {}): { isUpdateReady: boolean } {
+}: UpdateCheckOptions): { isUpdateReady: boolean } {
   const [isUpdateReady, setIsUpdateReady] = useState(false);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function useUpdateCheck({
       const now = Date.now();
       if (lastCheck && now - lastCheck < intervalMs) return;
       lastCheck = now;
-      const latest = await fetchBuildId();
+      const latest = await fetchBuildId(versionUrl);
       if (!isCancelled && latest !== null && latest !== current)
         setIsUpdateReady(true);
     };
@@ -79,7 +81,7 @@ export function useUpdateCheck({
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pageshow", handlePageShow);
     };
-  }, [current, enabled, intervalMs]);
+  }, [versionUrl, current, enabled, intervalMs]);
 
   return { isUpdateReady };
 }

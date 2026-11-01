@@ -7,15 +7,20 @@ import GameScreen from "./game/GameScreen";
 import { useGame } from "./game/useGame";
 import Hub from "./Hub";
 import StartScreen from "./start/StartScreen";
-import UpdatePill from "./UpdatePill";
-import { useStaleChunkRecovery } from "./useStaleChunkRecovery";
-import { useUpdateCheck } from "./useUpdateCheck";
+import UpdatePill from "@/components/update/UpdatePill";
+import { useStaleChunkRecovery } from "@/components/update/useStaleChunkRecovery";
+import { useUpdateCheck } from "@/components/update/useUpdateCheck";
 import useBlockPinchZoom from "./useBlockPinchZoom";
+
+const UPDATE_PILL_BUTTON =
+  "pointer-events-auto min-h-11 rounded-full border-2 border-amber-300 bg-slate-950 px-5 py-2 text-sm font-semibold text-amber-200 shadow-[0_0_18px_rgba(251,191,36,0.45)] hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
 
 export default function EverOnward() {
   useBlockPinchZoom();
   const game = useGame();
-  const { isUpdateReady } = useUpdateCheck();
+  const { isUpdateReady } = useUpdateCheck({
+    versionUrl: "/ever-onward/version.json",
+  });
   const [isOnStartScreen, setIsOnStartScreen] = useState(true);
   const { save, def, universe } = game;
   useStaleChunkRecovery(game.saveNow);
@@ -70,7 +75,12 @@ export default function EverOnward() {
         <Hub save={save} isRecovered={game.recovered} onPlay={game.open} />
       )}
       {(isUpdateReady || game.hasNewerSave) && (
-        <UpdatePill onUpdate={handleUpdate} />
+        <UpdatePill
+          onUpdate={handleUpdate}
+          testId="eo-update"
+          label="Update ready ✨ — tap to update"
+          buttonClassName={UPDATE_PILL_BUTTON}
+        />
       )}
     </>
   );
