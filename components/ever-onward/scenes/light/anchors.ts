@@ -48,6 +48,9 @@ export const FAR_LIGHT_GAP = 21;
 export const COTTAGE = { x: 146, y: 232 } as const;
 export const DEPOT = { x: 20, y: 252 } as const;
 export const GUARD_STATION = { x: 44, y: 255 } as const;
+/** Where the tide clock's nets and mill stand, by the rock (kept above the caption bar on a phone, which crops the picture's bottom). */
+export const TIDE = { poleX: 198, netsX: 212, millX: 176, y: 246 } as const;
+
 export const QUAY = { market: 340, ferry: 364, terminal: 384, y: 172 } as const;
 
 // -------------------------------------------------------------------- Sky

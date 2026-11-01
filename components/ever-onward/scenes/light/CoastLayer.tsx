@@ -6,6 +6,7 @@ import {
   FAR_LIGHT_X,
   LAMP,
   QUAY,
+  TIDE,
 } from "./anchors";
 import { makeStars } from "./random";
 
@@ -287,6 +288,99 @@ function LensRings({ lenses }: { lenses: number }) {
   );
 }
 
+/** The tide clock by the rock: a tide pole the water climbs, nets and a mill. */
+function Tide({ info }: { info: LightSceneInfo }) {
+  const isFull = info.nets >= 2;
+  const rise = 5 + info.tideLevel * 19;
+  return (
+    <g data-testid="lm-tide" data-level={info.tideLevel} data-nets={info.nets}>
+      <g transform={`translate(${TIDE.poleX} ${TIDE.y})`}>
+        <rect x="-1.5" y="-30" width="3" height="32" fill="#8a5a2b" />
+        {[-24, -16, -8].map((y) => (
+          <rect key={y} x="-4" y={y} width="8" height="1.2" fill="#e9e4d6" />
+        ))}
+        <rect
+          x="-13"
+          y={-rise}
+          width="26"
+          height={rise + 4}
+          fill="#5ec8ff"
+          fillOpacity="0.4"
+        />
+        <line
+          x1="-13"
+          x2="13"
+          y1={-rise}
+          y2={-rise}
+          stroke="#e0f7ff"
+          strokeWidth="1.2"
+        />
+      </g>
+      {info.tideMill > 0 && (
+        <g transform={`translate(${TIDE.millX} ${TIDE.y})`}>
+          <g className="lm-pop-svg">
+            <rect x="-9" y="-12" width="18" height="12" fill="#3a2e3b" />
+            <polygon points="-11,-12 11,-12 0,-20" fill="#b7413b" />
+            <rect x="-6" y="-8" width="5" height="8" fill="#ffd76a" />
+            <g transform="translate(8 -6)">
+              <g className="lm-wheel">
+                <circle r="7" fill="none" stroke="#c9a66b" strokeWidth="1.4" />
+                <path
+                  d="M-7 0 H7 M0 -7 V7 M-5 -5 L5 5 M-5 5 L5 -5"
+                  stroke="#c9a66b"
+                  strokeWidth="1"
+                />
+              </g>
+            </g>
+          </g>
+        </g>
+      )}
+      {info.nets > 0 && (
+        <g transform={`translate(${TIDE.netsX} ${TIDE.y})`}>
+          <g className="lm-pop-svg">
+            {Array.from({ length: info.biggerNets > 0 ? 2 : 1 }, (_, n) => (
+              <g key={n} transform={`translate(${n * 34} ${n * -3})`}>
+                <path
+                  d="M0 -2 Q14 12 28 -2"
+                  fill={isFull ? "#bff1ff" : "none"}
+                  fillOpacity="0.3"
+                  stroke="#dfe8ff"
+                  strokeWidth="1"
+                  strokeDasharray="2 1.4"
+                />
+                {[0, 28].map((bx) => (
+                  <g key={bx} transform={`translate(${bx} -2)`}>
+                    <g className="lm-bob">
+                      <circle
+                        r="2.8"
+                        fill="#ff7a2e"
+                        stroke="#fff3b0"
+                        strokeWidth="0.8"
+                      />
+                    </g>
+                  </g>
+                ))}
+                {isFull &&
+                  [6, 13, 20].map((fx, i) => (
+                    <g
+                      key={fx}
+                      transform={`translate(${fx} ${3 + (i % 2) * 2})`}
+                    >
+                      <g className="lm-twinkle">
+                        <ellipse rx="3" ry="1.5" fill="#fde68a" />
+                        <polygon points="3,0 5.5,-1.6 5.5,1.6" fill="#fde68a" />
+                      </g>
+                    </g>
+                  ))}
+              </g>
+            ))}
+          </g>
+        </g>
+      )}
+    </g>
+  );
+}
+
 export default function CoastLayer({ info }: { info: LightSceneInfo }) {
   const isStorm = info.storm > 0;
   const beamOpacity = 0.25 + 0.6 * info.beam;
@@ -406,6 +500,7 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
       <rect x="97" y="130" width="26" height="5" fill="#2b2f3d" />
       <rect x="103" y="114" width="14" height="16" fill="#ffd76a" />
       <polygon points="100,114 120,114 110,102" fill="#2b2f3d" />
+      {info.tideOpen > 0 && <Tide info={info} />}
       {info.wickTier >= 1 && (
         <ellipse
           cx="110"
