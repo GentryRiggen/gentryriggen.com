@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import EmberIcon from "./EmberIcon";
 import CrtOverlay from "./retro/CrtOverlay";
 import { retroPrimaryButtonClass } from "./retro/retroStyles";
 
 interface EndingOverlayProps {
   /** The closing lines, in order. */
   lines: readonly string[];
+  /** Embers this run earns when it ends (shown as a pointer to what is next). */
+  embers: number;
   onContinue: () => void;
 }
 
@@ -23,6 +26,7 @@ const BUTTON_READY_MS = 11_500;
 
 export default function EndingOverlay({
   lines,
+  embers,
   onContinue,
 }: EndingOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -68,15 +72,26 @@ export default function EndingOverlay({
         ))}
         <div
           inert={!isReady}
-          className={`lm-fade-up ${DELAYS[DELAYS.length - 1]}`}
+          className={`lm-fade-up space-y-6 ${DELAYS[DELAYS.length - 1]}`}
         >
+          <div
+            data-testid="lm-ending-embers"
+            className="flex flex-col items-center gap-2 border-2 border-orange-400/60 bg-orange-950/40 p-3"
+          >
+            <EmberIcon className="h-5" />
+            <p className="font-mono text-sm text-orange-100">
+              This run earned {embers} {embers === 1 ? "ember" : "embers"}.
+              Spend them on permanent upgrades, then play again. Every new run
+              goes faster.
+            </p>
+          </div>
           <button
             ref={buttonRef}
             type="button"
             onClick={onContinue}
             className={`${retroPrimaryButtonClass} min-w-40 !ring-offset-black`}
           >
-            <span aria-hidden="true">▶</span>
+            <span aria-hidden="true">▶︎</span>
             Continue
           </button>
         </div>

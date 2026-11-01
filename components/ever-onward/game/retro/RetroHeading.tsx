@@ -5,7 +5,7 @@ interface RetroHeadingProps {
   as?: "h1" | "h2" | "h3";
   id?: string;
   className?: string;
-  /** Adds the pixel ▶ bullet in front. */
+  /** Adds the pixel ▶︎ bullet in front. */
   hasBullet?: boolean;
   children: ReactNode;
 }
@@ -22,7 +22,7 @@ export default function RetroHeading({
     <Tag id={id} className={`${pixelClass} ${retroHeadingClass} ${className}`}>
       {hasBullet && (
         <span aria-hidden="true" className="mr-2">
-          ▶
+          ▶︎
         </span>
       )}
       {children}

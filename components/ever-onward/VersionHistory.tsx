@@ -66,7 +66,7 @@ export default function VersionHistory() {
               {release.highlights.map((highlight) => (
                 <li key={highlight} className="flex gap-2">
                   <span aria-hidden="true" className="text-amber-300">
-                    ▶
+                    ▶︎
                   </span>
                   <span>{highlight}</span>
                 </li>

@@ -150,3 +150,18 @@ export const SPEAKER_ROWS: readonly string[] = [
 
 export const SPEAKER_ON: Palette = { S: "#fcd34d", W: "#fde68a" };
 export const SPEAKER_OFF: Palette = { S: "#64748b" };
+
+/** A small flame: the ember icon. */
+export const EMBER_ROWS = [
+  "...O...",
+  "..OO...",
+  "..OOO.O",
+  ".OOYOOO",
+  "OOOYYOO",
+  "OOYYYOO",
+  "OOYYYOO",
+  ".OOYOO.",
+  "..OOO..",
+] as const;
+
+export const EMBER_COLORS: Palette = { O: "#fb923c", Y: "#fde047" };

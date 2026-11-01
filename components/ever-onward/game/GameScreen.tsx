@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   canAfford,
   previewUpgrade,
@@ -11,7 +17,7 @@ import {
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
 import { upkeepRate } from "@/lib/ever-onward/engine/rate";
-import { canRestart } from "@/lib/ever-onward/engine/prestige";
+import { canRestart, emberReward } from "@/lib/ever-onward/engine/prestige";
 import type {
   SaveData,
   UniverseDef,
@@ -29,7 +35,10 @@ import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
 import CountdownBar from "./CountdownBar";
 import { type Effect } from "./EffectFloater";
+import EmberDialog from "./EmberDialog";
+import EmberIcon from "./EmberIcon";
 import EmberPanel from "./EmberPanel";
+import EmberTip from "./EmberTip";
 import EndingOverlay from "./EndingOverlay";
 import Logbook from "./Logbook";
 import PhaseOverlay from "./PhaseOverlay";
@@ -70,6 +79,7 @@ interface GameScreenProps {
   onGreet: (id: string) => void;
   onChooseLantern: (lantern: number) => void;
   onBuyEmber: (id: string) => void;
+  onDismissEmberTip: () => void;
   onRestart: () => void;
   onLeave: () => void;
   currentSave: SaveData;
@@ -90,6 +100,7 @@ export default function GameScreen({
   onGreet,
   onChooseLantern,
   onBuyEmber,
+  onDismissEmberTip,
   onRestart,
   onLeave,
   currentSave,
@@ -102,7 +113,20 @@ export default function GameScreen({
   const Scene = SCENES[def.id];
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isStorm = run.phase === 0 && (run.resources.storm ?? 0) > 0;
-  const showsEmbers = run.complete || universe.embers > 0 || canRestart(run);
+  // Once a restart is possible (or embers are banked) the header offers the
+  // embers dialog. A finished run shows the panel in the page instead.
+  const showsEmbersButton =
+    !run.complete && (canRestart(run) || universe.embers > 0);
+  const waitingEmbers = canRestart(run) ? emberReward(def, run) : 0;
+  const showsEmberTip =
+    !run.complete &&
+    canRestart(run) &&
+    !universe.hasSeenEmberTip &&
+    overlay === null;
+  const [isEmberDialogOpen, setIsEmberDialogOpen] = useState(false);
+  const emberButtonRef = useRef<HTMLButtonElement>(null);
+  // A new part's intro covers everything: close the dialog behind it.
+  if (isEmberDialogOpen && overlay !== null) setIsEmberDialogOpen(false);
 
   const primaryId = primaryResourceId(def, run);
   const primaryValue = run.resources[primaryId] ?? 0;
@@ -170,6 +194,16 @@ export default function GameScreen({
     }
     onBuy(id);
   };
+
+  const handleOpenEmbers = () => {
+    onDismissEmberTip();
+    setIsEmberDialogOpen(true);
+  };
+  const handleCloseEmbers = useCallback(() => {
+    setIsEmberDialogOpen(false);
+    // The dialog unmounts first; put focus back on the button that opened it.
+    window.setTimeout(() => emberButtonRef.current?.focus(), 0);
+  }, []);
 
   const handleSelectNext = () => {
     if (!next) return;
@@ -244,6 +278,27 @@ export default function GameScreen({
           </div>
           <div className="flex shrink-0 gap-2 [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
             <SoundControls />
+            {showsEmbersButton && (
+              <button
+                ref={emberButtonRef}
+                type="button"
+                data-testid="lm-ember-button"
+                aria-haspopup="dialog"
+                aria-expanded={isEmberDialogOpen}
+                aria-label={
+                  waitingEmbers > 0
+                    ? `Embers: ${waitingEmbers} waiting, ${universe.embers} saved`
+                    : `Embers: ${universe.embers} saved`
+                }
+                onClick={handleOpenEmbers}
+                className={`${retroSecondaryButtonClass} shrink-0 gap-1.5 px-2.5! text-orange-200!`}
+              >
+                <EmberIcon className="h-4" />
+                <span aria-hidden="true">
+                  {waitingEmbers > 0 ? `+${waitingEmbers}` : universe.embers}
+                </span>
+              </button>
+            )}
             <button
               type="button"
               aria-expanded={isMenuOpen}
@@ -287,14 +342,6 @@ export default function GameScreen({
               isDisabled={overlay !== null}
               onReplaceSave={onReplaceSave}
             />
-            {!run.complete && showsEmbers && (
-              <EmberPanel
-                def={def}
-                universe={universe}
-                onBuy={onBuyEmber}
-                onRestart={onRestart}
-              />
-            )}
           </nav>
         )}
 
@@ -304,6 +351,10 @@ export default function GameScreen({
           endingIds={ENDING_STORY_IDS}
           isCovered={overlay !== null}
         />
+
+        {showsEmberTip && (
+          <EmberTip onShow={handleOpenEmbers} onDismiss={onDismissEmberTip} />
+        )}
 
         {run.complete ? (
           <EmberPanel
@@ -315,7 +366,7 @@ export default function GameScreen({
         ) : (
           <p className={`${bodyClass} text-slate-300`}>
             <span aria-hidden="true" className="mr-2 text-amber-300">
-              ▶
+              ▶︎
             </span>
             Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
           </p>
@@ -393,6 +444,16 @@ export default function GameScreen({
         />
       )}
 
+      {isEmberDialogOpen && (
+        <EmberDialog
+          def={def}
+          universe={universe}
+          onBuy={onBuyEmber}
+          onRestart={onRestart}
+          onClose={handleCloseEmbers}
+        />
+      )}
+
       <NarrationLayer def={def} run={run} isSuppressed={overlay !== null} />
       {overlay === "phase" && (
         <PhaseOverlay
@@ -410,7 +471,11 @@ export default function GameScreen({
         />
       )}
       {overlay === "ending" && (
-        <EndingOverlay lines={endingLines} onContinue={onDismissOverlay} />
+        <EndingOverlay
+          lines={endingLines}
+          embers={emberReward(def, run)}
+          onContinue={onDismissOverlay}
+        />
       )}
     </div>
   );

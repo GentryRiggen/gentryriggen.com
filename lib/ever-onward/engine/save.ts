@@ -71,7 +71,7 @@ function isRun(v: unknown): v is RunState {
 
 function parseUniverse(v: unknown): UniverseSave | null {
   if (!isRecord(v) || !isRun(v.run)) return null;
-  const { best, completions, embers, prestigeUpgrades } = v;
+  const { best, completions, embers, prestigeUpgrades, hasSeenEmberTip } = v;
   if (best !== null && !(isNum(best) && best > 0)) return null;
   if (!isCount(completions) || !isCount(embers)) return null;
   if (!isRecordOf(prestigeUpgrades, isCount)) return null;
@@ -81,6 +81,7 @@ function parseUniverse(v: unknown): UniverseSave | null {
     completions,
     embers,
     prestigeUpgrades: prestigeUpgrades as Record<string, number>,
+    ...(hasSeenEmberTip === true ? { hasSeenEmberTip: true } : {}),
   };
 }
 

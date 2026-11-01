@@ -41,7 +41,7 @@ export default function NarrationToast({
         aria-label="Play new message"
         className={`${buttonClass} border-amber-300 bg-amber-950/60 text-amber-300 hover:bg-amber-900/70`}
       >
-        ▶ Play
+        ▶︎ Play
       </button>
       <button
         type="button"

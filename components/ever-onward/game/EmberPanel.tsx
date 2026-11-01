@@ -95,7 +95,7 @@ export default function EmberPanel({
                     className={`${pixelClass} min-w-0 text-[10px] leading-relaxed ${affordable ? "text-orange-200" : "text-slate-300"}`}
                   >
                     <span aria-hidden="true" className="mr-2">
-                      ▶
+                      ▶︎
                     </span>
                     {u.name}
                   </span>

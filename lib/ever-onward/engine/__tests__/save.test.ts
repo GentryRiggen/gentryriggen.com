@@ -151,3 +151,17 @@ describe("save", () => {
     set.mockRestore();
   });
 });
+
+describe("the embers explainer flag", () => {
+  it("is kept when set and left out of old saves", () => {
+    const base = newSave();
+    const universe = newUniverseSave(def);
+    const old = parseSave({ ...base, universes: { light: universe } });
+    expect(old?.universes.light.hasSeenEmberTip).toBeUndefined();
+    const seen = parseSave({
+      ...base,
+      universes: { light: { ...universe, hasSeenEmberTip: true } },
+    });
+    expect(seen?.universes.light.hasSeenEmberTip).toBe(true);
+  });
+});

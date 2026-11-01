@@ -115,7 +115,7 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
                     }`}
                   >
                     <span aria-hidden="true" className="mr-2">
-                      ▶
+                      ▶︎
                     </span>
                     {u.name}
                   </span>

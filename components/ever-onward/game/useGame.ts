@@ -76,6 +76,8 @@ export interface GameApi {
   /** Picks the lantern colour (1 to 3) the first ship will carry. */
   chooseLantern(lantern: number): void;
   buyEmberUpgrade(id: string): void;
+  /** Remembers that the "restart for embers" card has been answered. */
+  dismissEmberTip(): void;
   dismissOverlay(): void;
   /** Ends the run (finished, or restarted for embers) and starts a new one. */
   restart(): void;
@@ -366,6 +368,12 @@ export function useGame(): GameApi {
     [activeId, def, isPaused, replaceUniverse]
   );
 
+  const dismissEmberTip = useCallback(() => {
+    const current = activeId ? saveRef.current?.universes[activeId] : undefined;
+    if (!activeId || !current || current.hasSeenEmberTip) return;
+    replaceUniverse(activeId, { ...current, hasSeenEmberTip: true }, true);
+  }, [activeId, replaceUniverse]);
+
   const restart = useCallback(() => {
     const current = activeId ? saveRef.current?.universes[activeId] : undefined;
     if (!activeId || !def || !current) return;
@@ -408,6 +416,7 @@ export function useGame(): GameApi {
     greet,
     chooseLantern,
     buyEmberUpgrade,
+    dismissEmberTip,
     dismissOverlay,
     restart,
     replaceSave,
