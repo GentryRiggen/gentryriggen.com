@@ -81,7 +81,7 @@ export const GROW_UI: UniverseUi = {
   PrestigeIcon: AcornIcon,
   copy: {
     logbookEmpty: "Visitors stop by as your garden grows. They wait for you.",
-    stillGoing: "The garden is still growing.",
+    stillGoing: "Someone came back. Plant again?",
   },
   audio: {
     scores: GROW_SCORES,

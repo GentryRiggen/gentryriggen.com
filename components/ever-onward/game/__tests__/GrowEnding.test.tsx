@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { newRun, visitorHereFlag } from "@/lib/ever-onward/engine/engine";
 import { SAVE_KEY, newSave, writeSave } from "@/lib/ever-onward/engine/save";
 import type { RunState } from "@/lib/ever-onward/engine/types";
+import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { growUniverse } from "@/lib/ever-onward/universes/grow";
 import { PHASE_IDS } from "@/lib/ever-onward/universes/grow/resources";
 import { ENDING_STORY_IDS } from "@/lib/ever-onward/universes/grow/story";
@@ -40,6 +41,14 @@ function saveFinished() {
     ...newSave(),
     seenIntro: true,
     universes: {
+      // Grow opens once the Lighthouse has been finished.
+      light: {
+        run: newRun(lightUniverse),
+        best: 600,
+        completions: 1,
+        embers: 0,
+        prestigeUpgrades: {},
+      },
       grow: {
         run: finishedRun(),
         best: 5400,
