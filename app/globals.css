@@ -1712,6 +1712,68 @@ html:has(.jim-app) body {
   }
 }
 
+/* Ever Onward: Make It Grow bee dances (the waggle and a staggered reveal). */
+@keyframes bee-waggle {
+  0%,
+  100% {
+    transform: translateX(-2.5px);
+  }
+  50% {
+    transform: translateX(2.5px);
+  }
+}
+
+@keyframes bee-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bee-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bee-waggle {
+  animation: bee-waggle 0.18s ease-in-out infinite;
+}
+
+.bee-reveal-1,
+.bee-reveal-2,
+.bee-reveal-3 {
+  animation: bee-reveal 0.5s ease-out backwards;
+}
+
+.bee-reveal-2 {
+  animation-delay: 0.6s;
+}
+
+.bee-reveal-3 {
+  animation-delay: 1.2s;
+}
+
+.bee-orbit {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: bee-orbit 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bee-waggle,
+  .bee-reveal-1,
+  .bee-reveal-2,
+  .bee-reveal-3,
+  .bee-orbit {
+    animation: none;
+  }
+}
+
 /* Ever Onward: Probe Races (a twinkling star map, a flickering exhaust). */
 @keyframes pr-twinkle {
   0%,

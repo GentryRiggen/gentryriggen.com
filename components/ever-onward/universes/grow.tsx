@@ -11,6 +11,7 @@ import {
 } from "../audio/growScores";
 import type { CueName } from "../audio/everOnwardSynth";
 import EmberIcon from "../game/EmberIcon";
+import BeeDance from "../game/grow/BeeDance";
 import GrowScene from "../scenes/grow/GrowScene";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import type { TapLook, UniverseUi } from "./types";
@@ -54,7 +55,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** Placeholders until the art and the music are made (Tasks 14 and 15). */
 export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
-  panels: [],
+  panels: [BeeDance],
   ending: { storyIds: ENDING_STORY_IDS },
   tapLooks: LOOKS,
   hubSprite: {
