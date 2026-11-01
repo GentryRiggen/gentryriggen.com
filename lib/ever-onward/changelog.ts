@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.13.0",
+    date: "2026-11-01",
+    title: "Less tapping, more helpers",
+    highlights: [
+      "Each part starts hands-on, then your helpers take over within a few minutes. After that, tapping is a little nudge for when you are stuck, not the whole game",
+      "Keepers, generators and collectors are cheaper and arrive sooner, and the tap upgrades are smaller",
+      "The tide mill, weather vane, mission control and rain barrel all arrive much sooner",
+      "Probe trips are longer and pay more, and watered plants stay wet longer, so there are fewer buttons to press for the same fun",
+      "The lantern's flame fades more slowly, and a tap tops it up instead of holding it full",
+    ],
+  },
+  {
     version: "1.12.3",
     date: "2026-11-01",
     title: "Your podcast keeps playing",
