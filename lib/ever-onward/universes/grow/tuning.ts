@@ -234,9 +234,31 @@ export const TUNING = {
     /** The most care a flock in flight at the world's end can hand the seed. */
     carryCap: 5,
   },
-  seed: {
+  /** The old window box: the last pot, and what it asks for. */
+  windowbox: {
+    /** Care per second from a wind chime and from a dew collector. */
+    chimeRate: 3,
+    dewRate: 20,
+    /** A window lantern makes each unit of care grow the pot this much more. */
+    lanternBoost: 0.25,
     /** Growth (of 100) each unit of care adds to the pot. */
-    growthPerCare: 0.5,
+    growthPerCare: 0.00028,
+    /** The pot is a sprout from this share grown, and a bud from this one. */
+    sproutAt: 0.03,
+    budAt: 0.6,
+    /** Seconds before the first want, and between one answer and the next. */
+    firstWantSeconds: 15,
+    restSeconds: 25,
+    /** The right answer pays this many seconds of tending, any other this. */
+    matchSeconds: 12,
+    otherSeconds: 4,
+    /** Each watering can adds this share to every answer. */
+    canPer: 0.2,
+    /** The music box answers after this long, for this share of a right one. */
+    boxDelay: 30,
+    boxShare: 0.5,
+    /** Answers by hand before the music box is offered. */
+    boxAfterTends: 4,
   },
   /** Start-of-phase gift for each level of the packet, in seconds of helper income. */
   headStartSeconds: 20,

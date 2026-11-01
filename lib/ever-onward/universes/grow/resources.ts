@@ -169,6 +169,25 @@ export const RESOURCES: readonly ResourceDef[] = [
     "mgRng",
     "mgPaused",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // The old window box: stage (0 resting, 1 wanting), clocks, what the pot
+  // wants, how many wants it has shown, answers given, the last answer (what
+  // was chosen, what was wanted, what it paid, who gave it), care earned from
+  // answers, the pot's stage (0 soil to 3 bloom, the bloom sound reads it),
+  // and the pot's own random stream.
+  ...[
+    "wbStage",
+    "wbTime",
+    "wbWant",
+    "wbShown",
+    "wbTends",
+    "wbLastChoice",
+    "wbLastWant",
+    "wbLastPays",
+    "wbBy",
+    "wbRng",
+    "wbPaused",
+    "potStage",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];

@@ -10,6 +10,7 @@ import { seedBiomes } from "./biomes";
 import { seedMarket } from "./market";
 import { TUNING } from "./tuning";
 import { fillFarmTank, fillWorldTank, seedWater } from "./water";
+import { openWindowBox } from "./windowbox";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -78,15 +79,15 @@ export const PHASES: readonly PhaseDef[] = [
   },
   {
     id: PHASE_SEED,
-    title: "One Small Seed",
+    title: "The Old Window Box",
     intro:
-      "The world is green and very busy, and in the middle of it all there is one small pot on one small windowsill. It holds a single seed that nobody has looked at in a while. It wants nothing big. It only wants you.",
-    goal: "Tend the one small pot until it is grown.",
+      "The whole world is green now, and so quiet you can hear the leaves. The robot has grown everything there is to grow, except for one thing: the old window box, empty on its sill. The kid who planted the first seed grew up and moved away. So the robot tends one small pot and plants one small seed, just in case they come back.",
+    goal: "Tend the old window box until the seed blooms.",
     manualResource: "care",
     manualLabel: "Tend the pot",
     isDone: () => false,
     onEnter: (run) => {
-      run.resources.growth = 0;
+      openWindowBox(run);
       headStart(3)(run);
     },
   },
