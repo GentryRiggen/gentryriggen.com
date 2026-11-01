@@ -1,5 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#2563eb"/>
-  <path d="M136 152h240a40 40 0 0 1 40 40v120a40 40 0 0 1-40 40H236l-72 56v-56h-28a40 40 0 0 1-40-40V192a40 40 0 0 1 40-40z" fill="#ffffff"/>
-  <path d="M276 196v76a36 36 0 0 1-72 0" fill="none" stroke="#2563eb" stroke-width="28" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <!-- Jim's app icon, "Glow Pal": a warm, glowing chat-bubble pal on midnight, with a tiny ringed planet.
+       Full bleed: iOS and Android round the corners themselves. Everything that matters sits inside the
+       maskable safe zone (a circle of radius 40 around the centre). -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3347"/>
+      <stop offset="1" stop-color="#171b25"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffcc66" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffcc66" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe9a3"/>
+      <stop offset="0.55" stop-color="#ffcc66"/>
+      <stop offset="1" stop-color="#ffad5c"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0.3" cy="0.22" r="0.55">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#sky)"/>
+  <circle cx="50" cy="54" r="40" fill="url(#glow)"/>
+  <circle cx="20" cy="22" r="1.6" fill="#ffffff" opacity="0.7"/>
+  <circle cx="84" cy="80" r="1.4" fill="#ffffff" opacity="0.5"/>
+  <circle cx="17" cy="70" r="1.2" fill="#ffffff" opacity="0.5"/>
+  <circle cx="34" cy="14" r="1" fill="#ffffff" opacity="0.4"/>
+  <g transform="translate(12 16) scale(0.76)">
+    <path fill="url(#pal)" d="M28 26h44a12 12 0 0 1 12 12v18a12 12 0 0 1-12 12H46l-12 10v-10h-6a12 12 0 0 1-12-12V38a12 12 0 0 1 12-12Z"/>
+    <path fill="url(#shine)" d="M28 26h44a12 12 0 0 1 12 12v18a12 12 0 0 1-12 12H46l-12 10v-10h-6a12 12 0 0 1-12-12V38a12 12 0 0 1 12-12Z"/>
+    <path d="M36 45q5-6 10 0" fill="none" stroke="#1f2430" stroke-width="4" stroke-linecap="round"/>
+    <path d="M54 45q5-6 10 0" fill="none" stroke="#1f2430" stroke-width="4" stroke-linecap="round"/>
+    <path d="M42 54c4 4 12 4 16 0" fill="none" stroke="#1f2430" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="34" cy="53" r="4" fill="#ff8f6b" opacity="0.6"/>
+    <circle cx="66" cy="53" r="4" fill="#ff8f6b" opacity="0.6"/>
+  </g>
+  <circle cx="77" cy="25" r="5.6" fill="#73d0ff"/>
+  <ellipse cx="77" cy="25" rx="9.4" ry="2.8" fill="none" stroke="#dfbfff" stroke-width="1.7" transform="rotate(-20 77 25)"/>
 </svg>
