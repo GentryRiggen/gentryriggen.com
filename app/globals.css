@@ -505,6 +505,80 @@ html:has(.jim-app) body {
 
 /* Colour only: scaling text that changes ten times a second rasterises it
    blurry on iOS. */
+@keyframes lmCallout {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+  22% {
+    transform: scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes lmRing {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+/* Dashes travelling along a wire (pathLength 100, dash 3 gap 22). */
+@keyframes lmPulse {
+  to {
+    stroke-dashoffset: -25;
+  }
+}
+
+/* A town on a weak grid: its lights stutter. */
+@keyframes lmBrown {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  18% {
+    opacity: 0.25;
+  }
+  34% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.35;
+  }
+  70% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes lmPuff {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(1.5);
+  }
+}
+
 @keyframes lmRise {
   0%,
   25% {
@@ -695,15 +769,15 @@ html:has(.jim-app) body {
 }
 
 .lm-probe-a {
-  animation: lmStreak 5s ease-in -1s infinite;
+  animation: lmStreak calc(5s * var(--lm-speed, 1)) ease-in -1s infinite;
 }
 
 .lm-probe-b {
-  animation: lmStreak 6.5s ease-in -3.5s infinite;
+  animation: lmStreak calc(6.5s * var(--lm-speed, 1)) ease-in -3.5s infinite;
 }
 
 .lm-probe-c {
-  animation: lmStreak 4.2s ease-in -2.2s infinite;
+  animation: lmStreak calc(4.2s * var(--lm-speed, 1)) ease-in -2.2s infinite;
 }
 
 .lm-approach {
@@ -718,7 +792,65 @@ html:has(.jim-app) body {
   animation: lmTurn 4s ease-in-out both;
 }
 
+.lm-callout {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmCallout 1.7s ease-out both;
+}
+
+.lm-ring {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: lmRing 1.1s ease-out 2 both;
+}
+
+.lm-pulse {
+  animation: lmPulse 1.8s linear infinite;
+}
+
+.lm-pulse-b {
+  animation: lmPulse 1.1s linear infinite;
+}
+
+.lm-pulse-c {
+  animation: lmPulse 0.65s linear infinite;
+}
+
+.lm-brown {
+  animation: lmBrown 1.7s linear infinite;
+}
+
+.lm-brown-b {
+  animation: lmBrown 2.3s linear -0.8s infinite;
+}
+
+.lm-puff {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmPuff 2.4s ease-out infinite;
+}
+
+.lm-puff-b {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmPuff 2.4s ease-out -1.2s infinite;
+}
+
+.lm-spin {
+  animation: lmSpin 3s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .lm-callout,
+  .lm-ring,
+  .lm-pulse,
+  .lm-pulse-b,
+  .lm-pulse-c,
+  .lm-brown,
+  .lm-brown-b,
+  .lm-puff,
+  .lm-puff-b,
+  .lm-spin,
   .lm-pop,
   .lm-glow,
   .lm-fade-up,
