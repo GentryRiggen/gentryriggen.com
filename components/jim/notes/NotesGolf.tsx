@@ -84,7 +84,7 @@ export default function NotesGolf({ data }: NotesGolfProps) {
                     )}
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block text-lg font-semibold text-ayu-text tabular-nums">
+                    <span className="jim-figure block text-xl font-semibold tracking-tight tabular-nums">
                       {r.score ?? "–"}
                     </span>
                     {r.toPar != null && (

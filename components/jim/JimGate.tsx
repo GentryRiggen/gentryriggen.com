@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import JimChat from "@/components/jim/JimChat";
 import JimHeader from "@/components/jim/JimHeader";
+import JimMark from "@/components/jim/JimMark";
 import { ADMIN_UID, isAdminUser } from "@/lib/analytics/admin";
 import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
@@ -179,8 +180,11 @@ export default function JimGate() {
       <div className="jim-app flex min-h-dvh flex-col bg-ayu-bg text-ayu-text">
         <JimHeader onSignOut={signOut} />
         <main className="flex flex-1 items-center justify-center px-6 pb-[env(safe-area-inset-bottom)] text-center">
-          <div className="max-w-sm space-y-2">
-            <p className="text-lg font-medium">Jim isn&apos;t connected yet</p>
+          <div className="jim-rise flex max-w-sm flex-col items-center space-y-2">
+            <JimMark size="lg" />
+            <p className="pt-3 text-lg font-medium">
+              Jim isn&apos;t connected yet
+            </p>
             <p className="text-ayu-subtle">
               The chat opens here once his server is live.
             </p>
@@ -198,8 +202,18 @@ export default function JimGate() {
 
   return (
     <main className="jim-app flex min-h-dvh items-center justify-center bg-ayu-bg px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-ayu-text">
-      <div className="w-full max-w-sm space-y-5 py-8 text-center">
-        <h1 className="text-3xl font-semibold text-ayu-accent">Jim</h1>
+      <div className="jim-rise w-full max-w-sm space-y-6 py-8 text-center">
+        <div className="flex flex-col items-center gap-4">
+          <JimMark size="lg" />
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-ayu-text">
+              Jim
+            </h1>
+            <p className="mt-1 text-sm text-ayu-subtle">
+              Your memory, on call.
+            </p>
+          </div>
+        </div>
         {state.kind === "unconfigured" && (
           <p className="text-ayu-subtle">
             Firebase is not configured for this build.
@@ -211,7 +225,10 @@ export default function JimGate() {
           </p>
         )}
         {(state.kind === "signedOut" || state.kind === "denied") && (
-          <form onSubmit={signIn} className="space-y-4 text-left">
+          <form
+            onSubmit={signIn}
+            className="jim-card space-y-4 rounded-3xl! p-5 text-left"
+          >
             <div className="space-y-1.5">
               <label htmlFor="jim-email" className="block text-sm font-medium">
                 Email
@@ -227,7 +244,7 @@ export default function JimGate() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="min-h-11 w-full rounded-lg border border-ayu-muted bg-ayu-panel px-3 py-2 text-base text-ayu-text focus:border-ayu-accent focus:outline-none"
+                className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-ayu-line/60 px-3.5 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] text-base text-ayu-text focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
               />
             </div>
             <div className="space-y-1.5">
@@ -244,13 +261,13 @@ export default function JimGate() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="min-h-11 w-full rounded-lg border border-ayu-muted bg-ayu-panel px-3 py-2 text-base text-ayu-text focus:border-ayu-accent focus:outline-none"
+                className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-ayu-line/60 px-3.5 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] text-base text-ayu-text focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
               />
             </div>
             <button
               type="submit"
               disabled={submitting}
-              className="min-h-11 w-full rounded-lg bg-ayu-accent px-4 py-2 text-base font-medium text-ayu-bg hover:bg-ayu-orange disabled:opacity-50"
+              className="min-h-12 w-full rounded-xl jim-glow px-4 py-2 text-base font-semibold text-ayu-bg hover:brightness-110 disabled:opacity-50"
             >
               Sign in
             </button>

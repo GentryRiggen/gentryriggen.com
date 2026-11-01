@@ -276,7 +276,8 @@ html:has(.jim-app) body {
 }
 
 .jim-app :is(a, button) {
-  transition-property: color, background-color, border-color, opacity;
+  transition-property:
+    color, background-color, border-color, opacity, transform, box-shadow;
   transition-duration: 150ms;
 }
 
@@ -634,5 +635,152 @@ html:has(.jim-app) body {
   .lm-probe-c,
   .lm-approach {
     animation: none;
+  }
+}
+
+/* A press you can feel. */
+.jim-app button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* The ambient light behind every /jim screen: a warm glow from the top and
+   a cool one from the lower corner, over the Mirage background. Fixed, so
+   it stays put while the lists scroll over it; `isolation` keeps it above
+   the app's own background and below everything in it. */
+.jim-app {
+  isolation: isolate;
+}
+
+.jim-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      60rem 28rem at 50% -8rem,
+      rgb(255 204 102 / 0.1),
+      transparent 70%
+    ),
+    radial-gradient(
+      36rem 30rem at 110% 105%,
+      rgb(223 191 255 / 0.08),
+      transparent 70%
+    ),
+    radial-gradient(
+      30rem 24rem at -10% 55%,
+      rgb(115 208 255 / 0.05),
+      transparent 70%
+    );
+}
+
+/* A raised surface: a faint top-lit gradient, a hairline edge that catches
+   the light, and a soft drop shadow. Cards, rows and bubbles all use it. */
+@utility jim-card {
+  border-radius: 1rem;
+  background-color: var(--color-ayu-panel);
+  background-image: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.04),
+    rgb(255 255 255 / 0) 60%
+  );
+  border: 1px solid rgb(255 255 255 / 0.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 12px 32px -20px rgb(0 0 0 / 0.8);
+}
+
+/* Frosted glass for the bars that float over content. */
+@utility jim-glass {
+  background-color: rgb(31 36 48 / 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* The accent as a light source: primary buttons, the user's bubbles, the
+   mark. Dark text on it (ayu-bg) stays above 10:1. */
+@utility jim-glow {
+  background-image: linear-gradient(
+    135deg,
+    #ffd88a 0%,
+    #ffcc66 45%,
+    #ffad66 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    0 8px 24px -10px rgb(255 173 102 / 0.55);
+}
+
+/* Big numbers: bright at the top, settling into the text color. */
+@utility jim-figure {
+  background-image: linear-gradient(180deg, #ffffff 0%, #cccac2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* New things arrive: a short rise and fade. */
+@keyframes jimRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility jim-rise {
+  animation: jimRise 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Jim's three thinking dots. */
+@keyframes jimDot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@utility jim-dot {
+  animation: jimDot 1.2s ease-in-out infinite;
+}
+
+/* The mark breathes while Jim works. */
+@keyframes jimBreathe {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 0 0 0 rgb(255 204 102 / 0.45);
+  }
+  60% {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 0 0 8px rgb(255 204 102 / 0);
+  }
+}
+
+@utility jim-breathe {
+  animation: jimBreathe 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jim-rise,
+  .jim-dot,
+  .jim-breathe {
+    animation: none;
+  }
+
+  .jim-app button:not(:disabled):active {
+    transform: none;
   }
 }

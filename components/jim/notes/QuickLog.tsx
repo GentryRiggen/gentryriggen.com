@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { X } from "lucide-react";
+import { Dumbbell, ListPlus, Syringe, X, type LucideIcon } from "lucide-react";
 
 /**
  * Three one-tap logs on Notes Home. Each opens a small sheet, turns what was
@@ -32,6 +32,22 @@ const TITLES: Record<Kind, string> = {
   workout: "Log workout",
   todo: "Add todo",
 };
+
+const ICONS: Record<Kind, LucideIcon> = {
+  injection: Syringe,
+  workout: Dumbbell,
+  todo: ListPlus,
+};
+
+function QuickIcon({ kind }: { kind: Kind }) {
+  const Icon = ICONS[kind];
+  return (
+    <Icon
+      aria-hidden="true"
+      className="size-4 text-ayu-accent/80 group-hover:text-ayu-accent"
+    />
+  );
+}
 
 /** Trimmed, without the full stop the sentence adds itself. */
 function clean(text: string): string {
@@ -60,7 +76,7 @@ export function todoSentence(f: {
 }
 
 const FIELD =
-  "min-h-11 w-full min-w-0 rounded-xl border border-ayu-muted bg-ayu-bg px-3 py-2 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none";
+  "min-h-11 w-full min-w-0 rounded-xl border border-white/[0.08] bg-ayu-bg/80 px-3 py-2 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none";
 
 function Field({
   label,
@@ -201,14 +217,14 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
         data-testid="quicklog-backdrop"
         aria-hidden="true"
         onClick={onClose}
-        className="absolute inset-0 touch-none bg-black/50"
+        className="absolute inset-0 touch-none bg-black/50 backdrop-blur-[2px]"
       />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-2xl bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl in-data-[keyboard=open]:pb-4"
+        className="relative max-h-full touch-auto overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-t border-white/[0.08] bg-ayu-panel pt-2 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl in-data-[keyboard=open]:pb-4"
       >
         <form onSubmit={submit} className="mx-auto w-full max-w-[45rem]">
           <div className="flex items-center justify-between gap-3">
@@ -309,13 +325,13 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                   </Field>
                   <fieldset className="min-w-0 space-y-1">
                     <legend className="text-sm text-ayu-subtle">For</legend>
-                    <div className="flex rounded-xl border border-ayu-muted">
+                    <div className="flex rounded-xl border border-white/[0.08] bg-ayu-bg/60 p-0.5">
                       {(["work", "personal"] as const).map((a) => (
                         <label
                           key={a}
                           className={`relative flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-[10px] text-sm font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ayu-accent ${
                             area === a
-                              ? "bg-ayu-accent text-ayu-bg"
+                              ? "jim-glow text-ayu-bg"
                               : "text-ayu-subtle"
                           }`}
                         >
@@ -338,7 +354,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
             <button
               type="submit"
               disabled={!ready}
-              className="min-h-11 w-full rounded-full bg-ayu-accent font-medium text-ayu-bg transition-colors! duration-150! hover:bg-ayu-orange disabled:bg-ayu-raised disabled:text-ayu-subtle"
+              className="jim-glow min-h-11 w-full rounded-full font-semibold text-ayu-bg duration-150! hover:brightness-110 disabled:bg-ayu-raised disabled:bg-none disabled:text-ayu-subtle disabled:shadow-none"
             >
               Send to Jim
             </button>
@@ -380,8 +396,9 @@ export default function QuickLog({ today, onLog }: QuickLogProps) {
               openerRef.current = e.currentTarget;
               setOpen(k);
             }}
-            className="min-h-11 rounded-full border border-ayu-muted px-4 text-sm font-medium text-ayu-text hover:border-ayu-accent hover:text-ayu-accent"
+            className="group flex min-h-11 items-center gap-2 rounded-full border border-white/[0.08] bg-ayu-panel/70 pr-4 pl-3 text-sm font-medium text-ayu-text shadow-[inset_0_1px_0_rgb(255_255_255/0.04)] backdrop-blur hover:border-ayu-accent/40 hover:text-ayu-accent"
           >
+            <QuickIcon kind={k} />
             {TITLES[k]}
           </button>
         ))}
