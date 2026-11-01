@@ -257,7 +257,7 @@ export default function JimChat({
   const keyboardOpen = useVisibleViewport(rootRef);
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
-  const reader = useReadAloud();
+  const reader = useReadAloud(getToken, api);
   const { stop: stopReading } = reader;
   // The latest auto-read, for the turn that outlives the render it began in.
   const readNewRef = useRef(reader.readNew);

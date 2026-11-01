@@ -49,7 +49,13 @@ it("sits between New chat and Sign out, showing this device's state", async () =
   await screen.findByRole("menuitem", { name: "Morning briefing: On" });
   expect(
     screen.getAllByRole("menuitem").map((item) => item.textContent)
-  ).toEqual(["New chat", "Morning briefing: On", "Sign out"]);
+  ).toEqual([
+    "New chat",
+    // jsdom has an Audio element, so reading aloud is offered.
+    "Read replies aloud: Off",
+    "Morning briefing: On",
+    "Sign out",
+  ]);
 });
 
 it("turns on from the tap, then says a test is coming", async () => {
@@ -129,5 +135,5 @@ it("isn't offered where push can't work", async () => {
   await openMenu();
   expect(
     screen.getAllByRole("menuitem").map((item) => item.textContent)
-  ).toEqual(["New chat", "Sign out"]);
+  ).toEqual(["New chat", "Read replies aloud: Off", "Sign out"]);
 });

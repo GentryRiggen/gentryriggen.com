@@ -373,6 +373,7 @@ type GetToken = (force?: boolean) => Promise<string | null>;
  * one more try on a 401, and a time limit. Resolves to the response for any
  * other status. Throws JimError: waking (offline, no connection, the time
  * limit), denied (no user, a second 401, or a 403) or server (no URL).
+ * `signal` lets the caller drop the call (it then throws waking).
  */
 export async function callJim(
   path: string,
@@ -380,18 +381,23 @@ export async function callJim(
   getToken: GetToken,
   fetchFn: typeof fetch | undefined,
   api: string,
-  timeoutMs: number
+  timeoutMs: number,
+  signal?: AbortSignal
 ): Promise<Response> {
   if (!isJimConnected(api)) throw new JimError("server");
+  if (signal?.aborted) throw new JimError("waking");
   const doFetch = fetchFn ?? fetch;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let dropped: () => void = () => {};
   const timedOut = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => {
+    dropped = () => {
       controller.abort();
       reject(new JimError("waking"));
-    }, timeoutMs);
+    };
+    timer = setTimeout(dropped, timeoutMs);
   });
+  signal?.addEventListener("abort", dropped, { once: true });
 
   async function send(force: boolean): Promise<Response> {
     let token: string | null;
@@ -434,6 +440,7 @@ export async function callJim(
     throw err;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", dropped);
   }
 }
 
