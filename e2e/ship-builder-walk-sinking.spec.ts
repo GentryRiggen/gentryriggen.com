@@ -84,7 +84,8 @@ test.describe("Ship Builder walk while sinking", () => {
       .poll(() => status(page), { timeout: 90_000 })
       .toEqual({ walk: "walking", trial: "result", descending: true });
     expect(["swimming", "frozen"]).toContain(await escapePhase(page));
-    await expect(page.getByText(/^She sank\. Explore the wreck/)).toBeVisible();
+    // In the water the swim has their attention: no "She sank" note.
+    await expect(page.getByTestId("walk-outcome")).toHaveCount(0);
     await expect(
       page.getByRole("region", { name: "Sea trial result" })
     ).toHaveCount(0);

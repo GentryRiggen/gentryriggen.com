@@ -56,4 +56,7 @@ store's `recordEscape` keeps how the walk's escape ended (`lastEscape`).
 Tests: the model's unit tests are in `__tests__/`, and
 `e2e/ship-builder-walk.spec.ts` drives it in a real browser through the
 `window.__shipBuilderWalk` and `walkSpawn` test hooks (see
-`scene/testClock.ts`).
+`scene/testClock.ts`). `e2e/ship-builder-escape.spec.ts` boards, swims,
+freezes and climbs in through `window.__shipBuilderLaunches` and
+`__shipBuilderSwimToBoat` (see `hooks/useTestHook.ts`) and
+`escapeWarmthSeconds`.
