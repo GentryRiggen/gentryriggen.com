@@ -27,14 +27,14 @@ export interface PlayerState {
   engine: "audio" | "speech" | null;
   /** Why playback stopped early, shown in the bar. */
   error: string | null;
+  /** What was playing when it failed (a persona row shows its own error). */
+  errorKey: string | null;
 }
 
 /** The fallback reader: the browser's own speech (lib/jim/speech). */
 export interface SpeechFallback {
   speak: (markdown: string, onEnd: () => void, rate: number) => boolean;
   stop: () => void;
-  pause: () => void;
-  resume: () => void;
   unlock: () => void;
 }
 
@@ -66,6 +66,8 @@ export interface PlayerDeps {
   mediaSession?: () => MediaSessionLike | null;
   /** Builds the lock-screen metadata; null where MediaMetadata is missing. */
   createMetadata?: (init: { title: string; artist: string }) => unknown;
+  /** The page is hidden: the fallback speech must not start then. */
+  isHidden?: () => boolean;
 }
 
 export interface PlayOptions {
@@ -73,7 +75,26 @@ export interface PlayOptions {
   voice?: string;
   /** Who is speaking, for the lock screen. */
   artist?: string;
+  /**
+   * False: never fall back to the browser's voice (a persona sample is
+   * about the voice); a failure shows an error instead. Default true.
+   */
+  fallback?: boolean;
 }
+
+/**
+ * The server refused on purpose (the daily read-aloud cap): its message is
+ * shown as is, and the browser's voice doesn't stand in for it.
+ */
+export class SpeechRefused extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SpeechRefused";
+  }
+}
+
+/** A part's fetch: the audio, a refusal to show, or a plain failure. */
+type PartResult = { blob: Blob } | { refused: string } | null;
 
 /** The bar's title: this many characters of what is read. */
 export const TITLE_CHARS = 40;
@@ -81,6 +102,7 @@ export const TITLE_CHARS = 40;
 export const PLAYER_ERRORS = {
   unavailable: "Couldn't play this reply.",
   rest: "Couldn't load the rest of this reply.",
+  sample: "Couldn't play this voice. Try again.",
 };
 
 /**
@@ -129,6 +151,7 @@ const IDLE: Omit<PlayerState, "speed"> = {
   partProgress: 0,
   engine: null,
   error: null,
+  errorKey: null,
 };
 
 export class JimPlayer {
@@ -143,9 +166,10 @@ export class JimPlayer {
   private chunks: string[] = [];
   private markdown = "";
   private voice: string | undefined;
+  private allowFallback = true;
   private artist = "Jim";
   /** Fetches per part, started early so the next part is ready. */
-  private fetches: Promise<Blob | null>[] = [];
+  private fetches: Promise<PartResult>[] = [];
   /** Parts whose fetch has settled (no "loading" flash between parts). */
   private settled: boolean[] = [];
   /** The blob URL on the element now. */
@@ -194,6 +218,7 @@ export class JimPlayer {
     this.chunks = chunks;
     this.markdown = markdown;
     this.voice = options.voice;
+    this.allowFallback = options.fallback !== false;
     if (options.artist) this.artist = options.artist;
     this.fetches = [];
     this.settled = [];
@@ -205,8 +230,16 @@ export class JimPlayer {
       parts: chunks.length,
       engine: "audio",
     });
-    if (this.element() === null) this.fallBack(run);
-    else void this.playPart(run, 0);
+    const audio = this.element();
+    if (audio === null) {
+      this.fallBack(run);
+      return true;
+    }
+    // play() is called from a tap (Listen, Hear it): iOS only lets the
+    // element start inside one, and the audio is still seconds away.
+    // Silence now unlocks it for the reply's own play() later.
+    this.prime(audio);
+    void this.playPart(run, 0);
     return true;
   }
 
@@ -224,19 +257,18 @@ export class JimPlayer {
     if (this.state.status !== "idle") this.set({ ...IDLE });
   }
 
+  /** Jim's voice only: pausing the browser's speech is unreliable on iOS. */
   pause(): void {
-    if (this.state.status !== "playing") return;
-    if (this.state.engine === "speech") this.deps.speech?.pause();
-    else this.audio?.pause();
+    if (this.state.status !== "playing" || this.state.engine !== "audio") {
+      return;
+    }
+    this.audio?.pause();
     this.set({ status: "paused" });
   }
 
   /** Call from a tap (or a lock-screen control): iOS needs one to resume. */
   resume(): void {
-    if (this.state.status !== "paused") return;
-    if (this.state.engine === "speech") {
-      this.deps.speech?.resume();
-      this.set({ status: "playing" });
+    if (this.state.status !== "paused" || this.state.engine !== "audio") {
       return;
     }
     if (!this.audio || !this.url) return;
@@ -288,6 +320,11 @@ export class JimPlayer {
     ) {
       return;
     }
+    this.prime(audio);
+  }
+
+  /** A moment of silence on the element, from inside a tap (unlocks iOS). */
+  private prime(audio: HTMLAudioElement): void {
     try {
       audio.src = SILENT_CLIP;
       const started = audio.play() as Promise<void> | undefined;
@@ -321,24 +358,28 @@ export class JimPlayer {
       this.audio?.addEventListener("timeupdate", this.onTime);
       this.audio?.addEventListener("pause", this.onPaused);
       this.audio?.addEventListener("error", this.onError);
+      // iOS puts the rate back to 1 when a source loads: put it back.
+      this.audio?.addEventListener("loadedmetadata", this.keepRate);
+      this.audio?.addEventListener("playing", this.keepRate);
     }
     return this.audio;
   }
 
-  /** The fetch for part `i`, started once; null when it failed. */
-  private fetchPart(i: number): Promise<Blob | null> {
+  /** The fetch for part `i`, started once; never rejects. */
+  private fetchPart(i: number): Promise<PartResult> {
     const existing = this.fetches[i];
     if (existing) return existing;
     const signal = this.controller?.signal ?? new AbortController().signal;
-    const fetched = this.deps
+    const fetched: Promise<PartResult> = this.deps
       .fetchAudio(this.chunks[i], this.voice, signal)
       .then(
-        (blob) => blob,
-        () => null
+        (blob): PartResult => ({ blob }),
+        (err: unknown): PartResult =>
+          err instanceof SpeechRefused ? { refused: err.message } : null
       )
-      .then((blob) => {
+      .then((result) => {
         if (this.fetches[i] === fetched) this.settled[i] = true;
-        return blob;
+        return result;
       });
     this.fetches[i] = fetched;
     return fetched;
@@ -351,13 +392,18 @@ export class JimPlayer {
     if (!this.settled[i] && this.state.status === "playing") {
       this.set({ status: "loading" });
     }
-    const blob = await waiting;
+    const result = await waiting;
     if (run !== this.run) return;
-    if (!blob) {
+    if (result && "refused" in result) {
+      this.fail(result.refused);
+      return;
+    }
+    if (!result) {
       if (i === 0) this.fallBack(run);
       else this.fail(PLAYER_ERRORS.rest);
       return;
     }
+    const { blob } = result;
     // While this part plays, the next one is on its way.
     if (i + 1 < this.chunks.length) void this.fetchPart(i + 1);
     this.dropUrl();
@@ -405,9 +451,18 @@ export class JimPlayer {
   private fallBack(run: number): void {
     if (run !== this.run) return;
     this.dropUrl();
+    if (!this.allowFallback) {
+      this.fail(PLAYER_ERRORS.sample);
+      return;
+    }
     const speech = this.deps.speech;
     if (!speech) {
       this.fail(PLAYER_ERRORS.unavailable);
+      return;
+    }
+    // Speech started while hidden is dropped (iOS would cut it off anyway).
+    if (this.deps.isHidden?.()) {
+      this.stop();
       return;
     }
     this.controller?.abort();
@@ -423,6 +478,7 @@ export class JimPlayer {
   }
 
   private fail(message: string): void {
+    const errorKey = this.state.key;
     this.run += 1;
     this.controller?.abort();
     this.controller = null;
@@ -430,7 +486,7 @@ export class JimPlayer {
     this.dropUrl();
     this.fetches = [];
     this.settled = [];
-    this.set({ ...IDLE, status: "error", error: message });
+    this.set({ ...IDLE, status: "error", error: message, errorKey });
   }
 
   private finish(): void {
@@ -461,6 +517,14 @@ export class JimPlayer {
     const next = this.state.part + 1;
     if (next < this.chunks.length) void this.playPart(this.run, next);
     else this.finish();
+  };
+
+  private keepRate = (): void => {
+    const audio = this.audio;
+    if (!audio || !this.isCurrent()) return;
+    const { speed } = this.state;
+    if (audio.defaultPlaybackRate !== speed) audio.defaultPlaybackRate = speed;
+    if (audio.playbackRate !== speed) audio.playbackRate = speed;
   };
 
   private onTime = (): void => {
@@ -509,8 +573,10 @@ export class JimPlayer {
     } catch {
       // A partial Media Session is fine to ignore: the bar still works.
     }
-    handle(session, "play", () => this.resume());
-    handle(session, "pause", () => this.pause());
+    // The browser's speech can only be stopped (its pause is unreliable).
+    const audio = this.state.engine === "audio";
+    handle(session, "play", audio ? () => this.resume() : null);
+    handle(session, "pause", audio ? () => this.pause() : null);
     handle(session, "stop", () => this.stop());
   }
 
@@ -568,5 +634,7 @@ export function browserPlayerDeps(
         : null,
     createMetadata: (init) =>
       typeof MediaMetadata === "undefined" ? null : new MediaMetadata(init),
+    isHidden: () =>
+      typeof document !== "undefined" && document.visibilityState === "hidden",
   };
 }

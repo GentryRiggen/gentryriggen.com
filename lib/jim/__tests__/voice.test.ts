@@ -1,5 +1,6 @@
 import { JimError } from "../api";
-import { fetchSpeech } from "../voice";
+import { SpeechRefused } from "../player";
+import { fetchSpeech, SPEAK_LIMIT_MESSAGE, SPEAK_TIMEOUT_MS } from "../voice";
 
 const API = "https://jim.example.test";
 
@@ -140,5 +141,91 @@ describe("fetchSpeech", () => {
     await Promise.resolve();
     controller.abort();
     await expect(kindOf(pending)).resolves.toBe("waking");
+  });
+
+  it("turns a 429 into a refusal carrying the server's message", async () => {
+    const limit = "Read-aloud has hit today's limit. It resets tomorrow.";
+    const fetchFn = jest.fn().mockResolvedValue({
+      status: 429,
+      ok: false,
+      json: async () => ({ error: limit }),
+    });
+    const err = await fetchSpeech(
+      "Hi.",
+      undefined,
+      jest.fn().mockResolvedValue("t"),
+      API,
+      undefined,
+      fetchFn
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SpeechRefused);
+    expect((err as Error).message).toBe(limit);
+  });
+
+  it("says the cap in its own words when a 429 has no message", async () => {
+    const fetchFn = jest.fn().mockResolvedValue({
+      status: 429,
+      ok: false,
+      json: async () => {
+        throw new Error("not json");
+      },
+    });
+    await expect(
+      fetchSpeech(
+        "Hi.",
+        undefined,
+        jest.fn().mockResolvedValue("t"),
+        API,
+        undefined,
+        fetchFn
+      )
+    ).rejects.toThrow(SPEAK_LIMIT_MESSAGE);
+  });
+
+  describe("a body that stalls", () => {
+    const stalled = () =>
+      jest.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        blob: () => new Promise<Blob>(() => {}),
+      });
+
+    afterEach(() => jest.useRealTimers());
+
+    it("gives up at the time limit", async () => {
+      jest.useFakeTimers();
+      const pending = fetchSpeech(
+        "Hi.",
+        undefined,
+        jest.fn().mockResolvedValue("t"),
+        API,
+        undefined,
+        stalled()
+      );
+      const kind = kindOf(pending);
+      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS + 1);
+      await expect(kind).resolves.toBe("waking");
+    });
+
+    it("gives up when stopped, and aborts the request it rides on", async () => {
+      const controller = new AbortController();
+      const fetchFn = stalled();
+      const pending = fetchSpeech(
+        "Hi.",
+        undefined,
+        jest.fn().mockResolvedValue("t"),
+        API,
+        controller.signal,
+        fetchFn
+      );
+      const kind = kindOf(pending);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const requestSignal = fetchFn.mock.calls[0][1].signal as AbortSignal;
+      expect(requestSignal.aborted).toBe(false);
+      controller.abort();
+      await expect(kind).resolves.toBe("waking");
+      // The body download itself is cut off, not just ignored.
+      expect(requestSignal.aborted).toBe(true);
+    });
   });
 });

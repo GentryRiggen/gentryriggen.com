@@ -85,28 +85,34 @@ export default function NowPlayingBar({
       aria-label="Now playing"
       className="jim-glass jim-rise mb-2 flex items-center rounded-2xl border border-white/[0.08] px-0.5 shadow-[0_8px_30px_-16px_rgb(0_0_0/0.8)]"
     >
-      <BarButton
-        label={loading ? "Loading" : playing ? "Pause" : "Play"}
-        onClick={onTogglePause}
-        disabled={loading}
-      >
-        {loading ? (
-          <LoaderCircle
-            aria-hidden="true"
-            className="size-[1.125rem] animate-spin text-ayu-accent motion-reduce:animate-none"
-          />
-        ) : playing ? (
-          <Pause
-            aria-hidden="true"
-            className="size-[1.125rem] fill-current text-ayu-accent"
-          />
-        ) : (
-          <Play
-            aria-hidden="true"
-            className="size-[1.125rem] fill-current text-ayu-accent"
-          />
-        )}
-      </BarButton>
+      {/* The browser's own voice can only be stopped: its pause is
+          unreliable on iOS. */}
+      {state.engine === "speech" ? (
+        <span aria-hidden="true" className="w-2 shrink-0" />
+      ) : (
+        <BarButton
+          label={loading ? "Loading" : playing ? "Pause" : "Play"}
+          onClick={onTogglePause}
+          disabled={loading}
+        >
+          {loading ? (
+            <LoaderCircle
+              aria-hidden="true"
+              className="size-[1.125rem] animate-spin text-ayu-accent motion-reduce:animate-none"
+            />
+          ) : playing ? (
+            <Pause
+              aria-hidden="true"
+              className="size-[1.125rem] fill-current text-ayu-accent"
+            />
+          ) : (
+            <Play
+              aria-hidden="true"
+              className="size-[1.125rem] fill-current text-ayu-accent"
+            />
+          )}
+        </BarButton>
+      )}
 
       <div className="min-w-0 flex-1 px-1">
         <p className="truncate text-sm text-ayu-text">{state.title}</p>

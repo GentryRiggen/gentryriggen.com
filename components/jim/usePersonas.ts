@@ -18,6 +18,12 @@ type GetToken = (force?: boolean) => Promise<string | null>;
 /** The list is kept for the visit; older than this, opening fetches again. */
 export const PERSONAS_FRESH_MS = 5 * 60_000;
 
+/** Why a switch failed, and whether trying again could help. */
+export interface RowError {
+  message: string;
+  retry: boolean;
+}
+
 export interface Personas {
   open: boolean;
   list: PersonaList | null;
@@ -26,7 +32,7 @@ export interface Personas {
   /** The persona being switched to, if any. */
   pending: string | null;
   /** Why a switch failed, by persona. */
-  rowErrors: Record<string, string>;
+  rowErrors: Record<string, RowError>;
   /** The active persona's name, if known (for the menu, the lock screen). */
   activeName: string | null;
   /** Said once a switch lands, for screen readers. */
@@ -34,6 +40,8 @@ export interface Personas {
   choose: (id: string) => void;
   reload: () => void;
   close: () => void;
+  /** What had focus when the sheet opened (the ⋯ button), to go back to. */
+  opener: () => HTMLElement | null;
   menuItem: JimMenuItem;
 }
 
@@ -50,7 +58,7 @@ export default function usePersonas(getToken: GetToken, api: string): Personas {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, RowError>>({});
   const [activeName, setActiveName] = useState(loadPersonaName);
   const [announcement, setAnnouncement] = useState("");
   const fetchedAt = useRef(0);
@@ -59,6 +67,7 @@ export default function usePersonas(getToken: GetToken, api: string): Personas {
   const mounted = useRef(true);
   /** The list as last set, for a switch that lands later. */
   const listRef = useRef<PersonaList | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -101,6 +110,11 @@ export default function usePersonas(getToken: GetToken, api: string): Personas {
   }, [getToken, api, remember]);
 
   const show = useCallback(() => {
+    // Read now, in the tap: once the sheet is up the page behind is inert.
+    openerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setOpen(true);
     setAnnouncement("");
     setRowErrors({});
@@ -127,7 +141,10 @@ export default function usePersonas(getToken: GetToken, api: string): Personas {
         if (!mounted.current) return;
         setPending(null);
         if (!result.ok) {
-          setRowErrors((errors) => ({ ...errors, [id]: result.message }));
+          setRowErrors((errors) => ({
+            ...errors,
+            [id]: { message: result.message, retry: result.retry },
+          }));
           return;
         }
         const current = listRef.current;
@@ -144,6 +161,7 @@ export default function usePersonas(getToken: GetToken, api: string): Personas {
   );
 
   const close = useCallback(() => setOpen(false), []);
+  const opener = useCallback(() => openerRef.current, []);
 
   return {
     open,
@@ -157,6 +175,7 @@ export default function usePersonas(getToken: GetToken, api: string): Personas {
     choose,
     reload: load,
     close,
+    opener,
     menuItem: {
       label: activeName ? `Persona: ${activeName}` : "Persona",
       onSelect: show,

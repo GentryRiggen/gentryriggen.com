@@ -175,6 +175,56 @@ describe("chunkForVoice", () => {
   it("returns nothing for empty text", () => {
     expect(chunkForVoice("  \n ")).toEqual([]);
   });
+
+  it("never splits an emoji when it has to cut without a space", () => {
+    const text = "😀".repeat(400);
+    const chunks = chunkForVoice(text);
+    expect(chunks.join("").replace(/\s+/g, "")).toBe(text);
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const c of chunks) {
+      expect(c).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+      expect(c).not.toMatch(/(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/);
+    }
+  });
+
+  it("keeps every part within its limit on adversarial input", () => {
+    // A deterministic jumble: emoji, long unbroken words, stray stops,
+    // breaks, spaces in runs.
+    const bits = [
+      "😀",
+      "🇺🇸",
+      "x".repeat(700),
+      "word",
+      ".",
+      "!?",
+      "\n",
+      "   ",
+      "é",
+      "…",
+      "a.b.c",
+      "Mr. Smith",
+    ];
+    let seed = 7;
+    const next = () => {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31;
+      return seed;
+    };
+    for (let round = 0; round < 50; round++) {
+      let text = "";
+      for (let i = 0; i < 200; i++) text += bits[next() % bits.length] + " ";
+      const chunks = chunkForVoice(text);
+      expect(chunks[0].length).toBeLessThanOrEqual(250);
+      for (const c of chunks) {
+        expect(c.length).toBeLessThanOrEqual(600);
+        expect(c.trim()).toBe(c);
+        expect(c).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+      }
+      // Nothing but whitespace is lost or added.
+      expect(chunks.join("").replace(/\s+/g, "")).toBe(
+        text.replace(/\s+/g, "")
+      );
+    }
+  });
 });
 
 describe("speed", () => {

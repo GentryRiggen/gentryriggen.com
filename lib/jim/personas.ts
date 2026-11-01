@@ -27,7 +27,7 @@ export interface PersonaList {
 }
 
 export type SwitchResult =
-  { ok: true; active: string } | { ok: false; message: string };
+  { ok: true; active: string } | { ok: false; message: string; retry: boolean };
 
 /** A switch commits and pushes: up to ~20 s on a cold server, with room. */
 export const SWITCH_TIMEOUT_MS = 45_000;
@@ -125,20 +125,24 @@ export async function switchPersona(
     );
   } catch (err) {
     const denied = err instanceof JimError && err.kind === "denied";
-    return {
-      ok: false,
-      message: denied ? PERSONA_MESSAGES.denied : PERSONA_MESSAGES.unreachable,
-    };
+    return denied
+      ? { ok: false, message: PERSONA_MESSAGES.denied, retry: false }
+      : { ok: false, message: PERSONA_MESSAGES.unreachable, retry: true };
   }
-  if (res.status === 404)
-    return { ok: false, message: PERSONA_MESSAGES.unknown };
+  // Gone from the server: trying again can't help.
+  if (res.status === 404) {
+    return { ok: false, message: PERSONA_MESSAGES.unknown, retry: false };
+  }
   if (res.status === 503) {
     return {
       ok: false,
       message: (await errorText(res)) ?? PERSONA_MESSAGES.busy,
+      retry: true,
     };
   }
-  if (!res.ok) return { ok: false, message: PERSONA_MESSAGES.failed };
+  if (!res.ok) {
+    return { ok: false, message: PERSONA_MESSAGES.failed, retry: true };
+  }
   const body: unknown = await res.json().catch(() => null);
   const active =
     isRecord(body) && typeof body.active === "string" && body.active

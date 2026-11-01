@@ -13,6 +13,7 @@ const PLAYING: PlayerState = {
   speed: 1.25,
   engine: "audio",
   error: null,
+  errorKey: null,
 };
 
 function renderBar(state: Partial<PlayerState> = {}) {
@@ -72,6 +73,15 @@ describe("NowPlayingBar", () => {
   it("disables play while loading", () => {
     renderBar({ status: "loading" });
     expect(screen.getByRole("button", { name: "Loading" })).toBeDisabled();
+  });
+
+  it("offers only stop for the browser's voice (its pause is unreliable)", () => {
+    renderBar({ engine: "speech", parts: 1, part: 0 });
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Stop reading" })
+    ).toBeInTheDocument();
   });
 
   it("shows no part count for the browser's voice", () => {

@@ -1,7 +1,8 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import JimChat from "../JimChat";
-import { PERSONAS_FRESH_MS } from "../usePersonas";
+import PersonaSheet from "../PersonaSheet";
+import { PERSONAS_FRESH_MS, type Personas } from "../usePersonas";
 
 jest.mock("../notes/NotesShell", () => ({
   __esModule: true,
@@ -292,5 +293,129 @@ describe("persona switcher", () => {
       screen.getByRole("menuitem", { name: "Persona: Vega" })
     ).toBeInTheDocument();
     expect(callsTo("/api/personas")).toHaveLength(0);
+  });
+
+  it("offers no Try again when the persona is gone (404)", async () => {
+    routes.set("/api/persona", () => ({ status: 404, body: { error: "x" } }));
+    renderChat();
+    const sheet = await openSheet();
+    await within(sheet).findByRole("heading", { name: "Rook" });
+    await userEvent.click(screen.getByRole("button", { name: "Use Rook" }));
+    const alert = await within(row("Rook")).findByRole("alert");
+    expect(alert).toHaveTextContent("Jim doesn't have that persona anymore.");
+    expect(within(alert).queryByRole("button")).toBeNull();
+  });
+
+  it("shows the daily cap on the row when Hear it is refused", async () => {
+    routes.set("/api/speak", () => ({
+      status: 429,
+      body: { error: "Read-aloud has hit today's limit. It resets tomorrow." },
+    }));
+    renderChat();
+    const sheet = await openSheet();
+    await within(sheet).findByRole("heading", { name: "Rook" });
+    await userEvent.click(screen.getByRole("button", { name: "Hear Rook" }));
+    expect(await within(row("Rook")).findByRole("alert")).toHaveTextContent(
+      "Read-aloud has hit today's limit. It resets tomorrow."
+    );
+    expect(
+      screen.getByRole("button", { name: "Hear Rook" })
+    ).toBeInTheDocument();
+  });
+
+  it("never plays a sample in the browser's voice", async () => {
+    const speak = jest.fn();
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: {
+        speak,
+        cancel: jest.fn(),
+        getVoices: () => [],
+        resume: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        speaking: false,
+        pending: false,
+      },
+    });
+    Object.defineProperty(globalThis, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: class {
+        constructor(public text: string) {}
+      },
+    });
+    try {
+      routes.set("/api/speak", () => ({ status: 502 }));
+      renderChat();
+      const sheet = await openSheet();
+      await within(sheet).findByRole("heading", { name: "Rook" });
+      await userEvent.click(screen.getByRole("button", { name: "Hear Rook" }));
+      expect(await within(row("Rook")).findByRole("alert")).toHaveTextContent(
+        "Couldn't play this voice."
+      );
+      expect(speak).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(window, "speechSynthesis");
+      Reflect.deleteProperty(globalThis, "SpeechSynthesisUtterance");
+    }
+  });
+
+  it("makes the chat behind inert and still, and lets it go on close", async () => {
+    renderChat();
+    const menu = screen.getByRole("button", { name: "Menu" });
+    const sheet = await openSheet();
+    await within(sheet).findByRole("heading", { name: "Rook" });
+    expect(menu.closest("[inert]")).not.toBeNull();
+    expect(sheet.closest("[inert]")).toBeNull();
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    await userEvent.keyboard("{Escape}");
+    expect(menu.closest("[inert]")).toBeNull();
+    expect(document.documentElement.style.overflow).toBe("");
+  });
+
+  it("never hands focus back to the message box (it would pop the keyboard)", async () => {
+    renderChat();
+    const box = screen.getByLabelText("Message");
+    const sheet = await openSheet();
+    await within(sheet).findByRole("heading", { name: "Rook" });
+    await userEvent.keyboard("{Escape}");
+    expect(box).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus();
+  });
+
+  it("leaves focus alone when it was opened from a text field", () => {
+    let field: HTMLElement | null = null;
+    const personas = (open: boolean): Personas => ({
+      open,
+      list: null,
+      loading: false,
+      loadError: null,
+      pending: null,
+      rowErrors: {},
+      activeName: null,
+      announcement: "",
+      choose: jest.fn(),
+      reload: jest.fn(),
+      close: jest.fn(),
+      opener: () => field,
+      menuItem: { label: "Persona", onSelect: jest.fn() },
+    });
+    const ui = (open: boolean) => (
+      <>
+        <textarea aria-label="Box" />
+        <PersonaSheet
+          personas={personas(open)}
+          playingKey={null}
+          onHear={null}
+          sampleError={null}
+        />
+      </>
+    );
+    const { rerender } = render(ui(false));
+    field = screen.getByLabelText("Box");
+    rerender(ui(true));
+    expect(field).not.toHaveFocus();
+    rerender(ui(false));
+    expect(field).not.toHaveFocus();
   });
 });

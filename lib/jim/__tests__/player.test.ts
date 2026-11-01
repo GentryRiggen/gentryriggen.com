@@ -2,13 +2,33 @@ import {
   JimPlayer,
   PLAYER_ERRORS,
   SILENT_CLIP,
+  SpeechRefused,
   titleFor,
   type PlayerDeps,
   type SpeechFallback,
 } from "../player";
 
-/** Enough of an audio element for the player: src, play/pause, events. */
+/** True while a test is "inside a tap" (a user gesture). */
+let inTap = false;
+function tap(action: () => void) {
+  inTap = true;
+  try {
+    action();
+  } finally {
+    inTap = false;
+  }
+}
+
+/**
+ * Enough of an audio element for the player: src, play/pause, events. With
+ * `locked`, it acts like iOS: play() is refused until one play() has come
+ * inside a tap.
+ */
 class FakeAudio extends EventTarget {
+  locked = false;
+  unlocked = false;
+  /** The sources play() was called with, the silent unlock clip left out. */
+  realPlays: string[] = [];
   src = "";
   paused = true;
   ended = false;
@@ -20,6 +40,15 @@ class FakeAudio extends EventTarget {
   /** What play() does: resolve (default) or reject (autoplay refused). */
   playResult: () => Promise<void> = () => Promise.resolve();
   play = jest.fn(() => {
+    if (this.src !== SILENT_CLIP) this.realPlays.push(this.src);
+    if (this.locked && !this.unlocked) {
+      if (!inTap) {
+        return Promise.reject(
+          Object.assign(new Error("no"), { name: "NotAllowedError" })
+        );
+      }
+      this.unlocked = true;
+    }
     this.paused = false;
     this.ended = false;
     return this.playResult();
@@ -53,8 +82,6 @@ function setup(options: { speech?: boolean; speed?: number } = {}) {
   const speech: jest.Mocked<SpeechFallback> = {
     speak: jest.fn<boolean, [string, () => void, number]>(() => true),
     stop: jest.fn(),
-    pause: jest.fn(),
-    resume: jest.fn(),
     unlock: jest.fn(),
   };
   const deps: PlayerDeps = {
@@ -126,7 +153,7 @@ describe("JimPlayer", () => {
     fetches[0].resolve(blob("p0"));
     await flush();
     expect(audio.src).toBe(urls[0]);
-    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(audio.realPlays).toEqual([urls[0]]);
     expect(player.getState()).toMatchObject({ status: "playing", part: 0 });
     // The next part is already on its way.
     expect(fetches).toHaveLength(2);
@@ -178,7 +205,7 @@ describe("JimPlayer", () => {
     player.play("msg:1", "Here is **bold** news.");
     fetches[0].reject(new Error("502"));
     await flush();
-    expect(audio.play).not.toHaveBeenCalled();
+    expect(audio.realPlays).toEqual([]);
     expect(speech.speak).toHaveBeenCalledWith(
       "Here is **bold** news.",
       expect.any(Function),
@@ -235,7 +262,7 @@ describe("JimPlayer", () => {
     fetches[0].resolve(blob("old"));
     await flush();
     expect(audio.src).toContain("new");
-    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(audio.realPlays).toHaveLength(1);
     expect(player.getState()).toMatchObject({
       key: "msg:2",
       status: "playing",
@@ -248,7 +275,7 @@ describe("JimPlayer", () => {
     player.stop();
     fetches[0].resolve(blob("p0"));
     await flush();
-    expect(audio.play).not.toHaveBeenCalled();
+    expect(audio.realPlays).toEqual([]);
 
     player.play("msg:2", "Second.");
     player.stop();
@@ -270,11 +297,11 @@ describe("JimPlayer", () => {
     expect(player.getState().status).toBe("paused");
     audio.playResult = () => Promise.resolve();
     player.togglePause();
-    expect(audio.play).toHaveBeenCalledTimes(2);
+    expect(audio.realPlays).toHaveLength(2);
     expect(player.getState().status).toBe("playing");
   });
 
-  it("pauses and resumes Jim's voice and the speech fallback", async () => {
+  it("pauses and resumes Jim's voice; the browser's voice can only stop", async () => {
     const { player, audio, fetches, speech } = setup();
     player.play("msg:1", "Hello there.");
     fetches[0].resolve(blob("p0"));
@@ -290,10 +317,12 @@ describe("JimPlayer", () => {
     player.play("msg:2", "Fallback.");
     fetches[1].reject(new Error("x"));
     await flush();
+    expect(player.getState().engine).toBe("speech");
     player.togglePause();
-    expect(speech.pause).toHaveBeenCalled();
-    player.togglePause();
-    expect(speech.resume).toHaveBeenCalled();
+    expect(player.getState().status).toBe("playing");
+    expect(speech.stop).not.toHaveBeenCalled();
+    player.stop();
+    expect(speech.stop).toHaveBeenCalled();
   });
 
   it("follows a pause from the system (a call, headphones out)", async () => {
@@ -373,6 +402,122 @@ describe("JimPlayer", () => {
   });
 });
 
+describe("JimPlayer review fixes", () => {
+  it("a Listen tap unlocks a locked (iOS) element before the audio arrives", async () => {
+    const { player, audio, fetches } = setup();
+    audio.locked = true;
+    tap(() => player.play("msg:1", "Hello there."));
+    // Silence went out inside the tap.
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(audio.realPlays).toEqual([]);
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(player.getState().status).toBe("playing");
+    expect(audio.realPlays).toHaveLength(1);
+  });
+
+  it("without a tap, a locked element waits paused for one", async () => {
+    const { player, audio, fetches } = setup();
+    audio.locked = true;
+    player.play("msg:1", "Hello there.");
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(player.getState().status).toBe("paused");
+    tap(() => player.togglePause());
+    await flush();
+    expect(player.getState().status).toBe("playing");
+  });
+
+  it("shows the daily-cap message and never falls back to the browser's voice", async () => {
+    const { player, fetches, speech } = setup();
+    player.play("msg:1", "Hello there.");
+    fetches[0].reject(
+      new SpeechRefused("Read-aloud has hit today's limit. It resets tomorrow.")
+    );
+    await flush();
+    expect(speech.speak).not.toHaveBeenCalled();
+    expect(player.getState()).toMatchObject({
+      status: "error",
+      error: "Read-aloud has hit today's limit. It resets tomorrow.",
+      errorKey: "msg:1",
+    });
+  });
+
+  it("shows the cap when it lands on a later part too", async () => {
+    const { player, audio, fetches } = setup();
+    player.play("msg:1", LONG);
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    fetches[1].reject(new SpeechRefused("Limit."));
+    await flush();
+    audio.finish();
+    await flush();
+    expect(player.getState()).toMatchObject({
+      status: "error",
+      error: "Limit.",
+    });
+  });
+
+  it("a sample (no fallback) shows an error instead of the browser's voice", async () => {
+    const { player, fetches, speech } = setup();
+    player.play("persona:rook", "Noted.", { voice: "Charon", fallback: false });
+    fetches[0].reject(new Error("502"));
+    await flush();
+    expect(speech.speak).not.toHaveBeenCalled();
+    expect(player.getState()).toMatchObject({
+      status: "error",
+      error: PLAYER_ERRORS.sample,
+      errorKey: "persona:rook",
+    });
+  });
+
+  it("doesn't start the browser's voice when the page went hidden meanwhile", async () => {
+    const { deps, fetches, speech } = setup();
+    let hidden = false;
+    const player = new JimPlayer({ ...deps, isHidden: () => hidden });
+    player.play("msg:1", "Hello there.");
+    hidden = true;
+    fetches[0].reject(new Error("502"));
+    await flush();
+    expect(speech.speak).not.toHaveBeenCalled();
+    expect(player.getState().status).toBe("idle");
+  });
+
+  it("puts the speed back when the element resets it on load (iOS)", async () => {
+    const { player, audio, fetches } = setup({ speed: 1.5 });
+    player.play("msg:1", "Hello there.");
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    for (const event of ["loadedmetadata", "playing"]) {
+      audio.playbackRate = 1;
+      audio.defaultPlaybackRate = 1;
+      audio.dispatchEvent(new Event(event));
+      expect(audio.playbackRate).toBe(1.5);
+      expect(audio.defaultPlaybackRate).toBe(1.5);
+    }
+  });
+
+  it("gives the lock screen only stop for the browser's voice", async () => {
+    const handlers = new Map<string, (() => void) | null>();
+    const { deps, fetches } = setup();
+    const player = new JimPlayer({
+      ...deps,
+      mediaSession: () => ({
+        metadata: null,
+        setActionHandler: (action, handler) => handlers.set(action, handler),
+      }),
+      createMetadata: (init) => init,
+    });
+    player.play("msg:1", "Hello there.");
+    fetches[0].reject(new Error("502"));
+    await flush();
+    expect(player.getState().engine).toBe("speech");
+    expect(handlers.get("pause")).toBeNull();
+    expect(handlers.get("play")).toBeNull();
+    expect(handlers.get("stop")).toEqual(expect.any(Function));
+  });
+});
+
 describe("titleFor", () => {
   it("keeps a short line and cuts a long one at 40 characters", () => {
     expect(titleFor("Short\nreply.")).toBe("Short reply.");
@@ -424,7 +569,7 @@ describe("JimPlayer and the lock screen", () => {
     expect(session.playbackState).toBe("paused");
     handlers.get("play")?.();
     expect(player.getState().status).toBe("playing");
-    expect(audio.play).toHaveBeenCalledTimes(2);
+    expect(audio.realPlays).toHaveLength(2);
     handlers.get("stop")?.();
     expect(player.getState().status).toBe("idle");
     expect(session.metadata).toBeNull();

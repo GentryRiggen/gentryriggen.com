@@ -398,6 +398,9 @@ export async function callJim(
     timer = setTimeout(dropped, timeoutMs);
   });
   signal?.addEventListener("abort", dropped, { once: true });
+  // Also after this resolves: the body may still be streaming in, and the
+  // caller's abort must stop that too.
+  signal?.addEventListener("abort", () => controller.abort(), { once: true });
 
   async function send(force: boolean): Promise<Response> {
     let token: string | null;

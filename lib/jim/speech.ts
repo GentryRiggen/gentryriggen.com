@@ -53,6 +53,18 @@ export function speakableText(markdown: string): string {
     .trim();
 }
 
+/**
+ * Where to cut a too-long run of text at or before `max`: the last space,
+ * or else `max` itself, moved back one so an emoji (a surrogate pair) is
+ * never split in half.
+ */
+function cutPoint(text: string, max: number): number {
+  const space = text.lastIndexOf(" ", max);
+  if (space > 0) return space;
+  const code = text.charCodeAt(max - 1);
+  return code >= 0xd800 && code <= 0xdbff ? max - 1 : max;
+}
+
 /** Splits at sentence ends (then spaces, if a sentence is huge) into short chunks. */
 export function chunkForSpeech(
   text: string,
@@ -68,8 +80,7 @@ export function chunkForSpeech(
     const sentences = paragraph.match(/[^.!?]+(?:[.!?]+["')\]]*|$)\s*/g) ?? [];
     for (let sentence of sentences) {
       while (sentence.length > max) {
-        const cut = sentence.lastIndexOf(" ", max);
-        const at = cut > 0 ? cut : max;
+        const at = cutPoint(sentence, max);
         if (current.length + at > max) push();
         current += sentence.slice(0, at);
         push();
@@ -92,13 +103,12 @@ export const VOICE_CHUNK_CHARS = 600;
 function sentencesOf(text: string, max: number): string[] {
   const out: string[] = [];
   for (const paragraph of text.split(/\n+/)) {
-    const sentences = paragraph.match(/[^.!?]+(?:[.!?]+["')\]]*|$)\s*/g) ?? [];
+    const sentences = paragraph.match(/[^.!?]*(?:[.!?]+["')\]]*|$)\s*/g) ?? [];
     const pieces: string[] = [];
     for (let sentence of sentences) {
       sentence = sentence.trim();
       while (sentence.length > max) {
-        const cut = sentence.lastIndexOf(" ", max);
-        const at = cut > 0 ? cut : max;
+        const at = cutPoint(sentence, max);
         pieces.push(sentence.slice(0, at).trim());
         sentence = sentence.slice(at).trim();
       }
@@ -327,15 +337,6 @@ export function speak(
 export function stopSpeaking(): void {
   currentRun += 1;
   if (speechSupported()) window.speechSynthesis.cancel();
-}
-
-/** Pauses or resumes the speech that is on (the fallback reader). */
-export function pauseSpeaking(): void {
-  if (speechSupported()) window.speechSynthesis.pause();
-}
-
-export function resumeSpeaking(): void {
-  if (speechSupported()) window.speechSynthesis.resume();
 }
 
 /**

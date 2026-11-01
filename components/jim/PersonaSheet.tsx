@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef } from "react";
 import { Check, LoaderCircle, Volume2, X } from "lucide-react";
 import type { Persona } from "@/lib/jim/personas";
-import type { Personas } from "@/components/jim/usePersonas";
+import type { Personas, RowError } from "@/components/jim/usePersonas";
 
 interface PersonaSheetProps {
   personas: Personas;
@@ -11,6 +11,16 @@ interface PersonaSheetProps {
   playingKey: string | null;
   /** Plays a persona's first example in its voice; null hides "Hear it". */
   onHear: ((persona: Persona) => void) | null;
+  /** A sample that failed (the daily cap, no voice), shown on its row. */
+  sampleError: { key: string; message: string } | null;
+}
+
+function isTextField(el: HTMLElement): boolean {
+  return (
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLInputElement ||
+    el.isContentEditable
+  );
 }
 
 export function sampleKey(id: string): string {
@@ -26,8 +36,10 @@ interface RowProps {
   pending: boolean;
   /** Another row is switching: this one waits. */
   locked: boolean;
-  error: string | undefined;
+  error: RowError | undefined;
   playing: boolean;
+  /** Why this persona's sample didn't play. */
+  hearError: string | null;
   onChoose: () => void;
   onHear: (() => void) | null;
 }
@@ -39,6 +51,7 @@ function PersonaRow({
   locked,
   error,
   playing,
+  hearError,
   onChoose,
   onHear,
 }: RowProps) {
@@ -68,9 +81,10 @@ function PersonaRow({
       )}
       {persona.examples.length > 0 && (
         <ul aria-label="Examples" className="mt-2 space-y-1">
-          {persona.examples.map((example) => (
+          {persona.examples.map((example, i) => (
             <li
-              key={example}
+              // Two examples may read the same.
+              key={i}
               className="text-sm text-ayu-muted italic [overflow-wrap:anywhere]"
             >
               &ldquo;{example}&rdquo;
@@ -114,17 +128,26 @@ function PersonaRow({
       {error && (
         <p
           role="alert"
-          className="mt-2 flex flex-wrap items-center gap-x-3 text-sm text-ayu-red"
+          className={`mt-2 flex flex-wrap items-center gap-x-3 text-sm text-ayu-red ${
+            error.retry ? "" : "py-1"
+          }`}
         >
-          <span>{error}</span>
-          <button
-            type="button"
-            onClick={onChoose}
-            disabled={locked}
-            className="-my-1 min-h-11 font-medium underline underline-offset-2"
-          >
-            Try again
-          </button>
+          <span>{error.message}</span>
+          {error.retry && (
+            <button
+              type="button"
+              onClick={onChoose}
+              disabled={locked}
+              className="-my-1 min-h-11 font-medium underline underline-offset-2"
+            >
+              Try again
+            </button>
+          )}
+        </p>
+      )}
+      {hearError && (
+        <p role="alert" className="mt-2 text-sm text-ayu-red">
+          {hearError}
         </p>
       )}
     </li>
@@ -141,19 +164,20 @@ export default function PersonaSheet({
   personas,
   playingKey,
   onHear,
+  sampleError,
 }: PersonaSheetProps) {
-  const { open, close } = personas;
+  const { open, close, opener } = personas;
   const titleId = useId();
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const returnTo =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
     closeRef.current?.focus();
+    // The page behind doesn't scroll under the sheet.
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
     // On the document, not the sheet: a switch that lands removes the
     // focused button, and Escape and Tab must still work then.
     function onKey(event: globalThis.KeyboardEvent) {
@@ -183,9 +207,13 @@ export default function PersonaSheet({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      returnTo?.focus();
+      root.style.overflow = overflow;
+      // Back to the ⋯ button. Never to a text field: on a phone that pops
+      // the keyboard up.
+      const back = opener();
+      if (back && back.isConnected && !isTextField(back)) back.focus();
     };
-  }, [open, close]);
+  }, [open, close, opener]);
 
   if (!open) return null;
 
@@ -275,6 +303,11 @@ export default function PersonaSheet({
                     locked={pending !== null && pending !== persona.id}
                     error={rowErrors[persona.id]}
                     playing={playingKey === sampleKey(persona.id)}
+                    hearError={
+                      sampleError?.key === sampleKey(persona.id)
+                        ? sampleError.message
+                        : null
+                    }
                     onChoose={() => personas.choose(persona.id)}
                     onHear={canHear ? () => onHear(persona) : null}
                   />

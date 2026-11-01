@@ -200,7 +200,7 @@ describe("Listen button", () => {
     renderChat();
     await chat("Here is **bold** news.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
     expect(spokenTexts()).toEqual(["Here is bold news."]);
     expect(audio().src).toMatch(/^blob:/);
     expect(synth.speak).not.toHaveBeenCalled();
@@ -214,7 +214,7 @@ describe("Listen button", () => {
     await chat("One reply.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
     expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
     act(() => audio().finish());
     expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });
@@ -363,7 +363,7 @@ describe("now-playing bar", () => {
     const bar = await screen.findByRole("region", { name: "Now playing" });
     expect(bar).toHaveTextContent("A reply worth hearing out loud, Captain");
     expect(bar).toHaveTextContent("1×");
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
 
     await userEvent.click(screen.getByRole("button", { name: "Faster" }));
     expect(bar).toHaveTextContent("1.25×");
@@ -383,7 +383,7 @@ describe("now-playing bar", () => {
     renderChat();
     await chat("Short one.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
     act(() => audio().finish());
     expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
   });
@@ -393,9 +393,83 @@ describe("now-playing bar", () => {
     renderChat();
     await chat("Fast one.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
     expect(audio().playbackRate).toBe(1.75);
     expect(screen.getByText("1.75×")).toBeInTheDocument();
+  });
+});
+
+describe("review fixes", () => {
+  it("shows the daily cap in the bar and doesn't fall back to the robotic voice", async () => {
+    fetchMock.mockImplementation(async () => ({
+      status: 429,
+      ok: false,
+      json: async () => ({
+        error: "Read-aloud has hit today's limit. It resets tomorrow.",
+      }),
+    }));
+    renderChat();
+    await chat("Capped reply.");
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Read-aloud has hit today's limit. It resets tomorrow."
+    );
+    expect(synth.speak).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
+  });
+
+  it("unlocks a locked (iOS) element inside the Listen tap itself", async () => {
+    // Like iOS: play() works only inside a tap until it has once.
+    let inTap = false;
+    const enter = () => {
+      inTap = true;
+    };
+    const leave = () => {
+      inTap = false;
+    };
+    document.addEventListener("click", enter, true);
+    window.addEventListener("click", leave);
+    try {
+      renderChat();
+      await chat("Locked reply.");
+      // The element is made on first use: make it, then lock it like iOS.
+      await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+      await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+      const audioEl = audio();
+      let unlocked = false;
+      audioEl.play = jest.fn(() => {
+        if (!unlocked && !inTap) {
+          return Promise.reject(
+            Object.assign(new Error("no"), { name: "NotAllowedError" })
+          );
+        }
+        unlocked = true;
+        audioEl.paused = false;
+        return Promise.resolve();
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+      await waitFor(() => expect(audioEl.src).toMatch(/^blob:/));
+      expect(unlocked).toBe(true);
+      expect(
+        await screen.findByRole("button", { name: "Pause" })
+      ).toBeInTheDocument();
+    } finally {
+      document.removeEventListener("click", enter, true);
+      window.removeEventListener("click", leave);
+    }
+  });
+
+  it("floats the bar over the list instead of pushing it up", async () => {
+    renderChat();
+    await chat("Floating bar.");
+    const log = screen.getByRole("log", { name: "Conversation" });
+    const before = log.className;
+    await userEvent.click(screen.getByRole("button", { name: "Listen" }));
+    const bar = await screen.findByRole("region", { name: "Now playing" });
+    expect(bar.parentElement).toHaveClass("absolute", "bottom-full");
+    // Only room is added under the last message; nothing above it moves.
+    expect(log.className).not.toBe(before);
+    expect(log.className).toMatch(/pb-\[/);
   });
 });
 
@@ -404,7 +478,7 @@ describe("stopping", () => {
     renderChat();
     await chat("Long reply.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
     await userEvent.click(screen.getByRole("button", { name: "Menu" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "New chat" }));
     expect(audio().pause).toHaveBeenCalled();
@@ -414,7 +488,7 @@ describe("stopping", () => {
     renderChat();
     await chat("Long reply.");
     await userEvent.click(screen.getByRole("button", { name: "Listen" }));
-    await waitFor(() => expect(audio().play).toHaveBeenCalled());
+    await waitFor(() => expect(audio().src).toMatch(/^blob:/));
     audio().pause.mockClear();
     Object.defineProperty(document, "visibilityState", {
       configurable: true,

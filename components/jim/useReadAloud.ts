@@ -10,8 +10,6 @@ import {
 import {
   loadAutoRead,
   loadSpeed,
-  pauseSpeaking,
-  resumeSpeaking,
   saveAutoRead,
   saveSpeed,
   speak,
@@ -57,8 +55,6 @@ function speechFallback() {
     ? {
         speak,
         stop: stopSpeaking,
-        pause: pauseSpeaking,
-        resume: resumeSpeaking,
         unlock: unlockSpeech,
       }
     : null;
@@ -111,7 +107,8 @@ export default function useReadAloud(
   const toggleSample = useCallback(
     (key: string, text: string, voice?: string) => {
       if (player.getState().key === key) player.stop();
-      else player.play(key, text, { voice });
+      // A sample is about the voice: never the browser's stand-in.
+      else player.play(key, text, { voice, fallback: false });
     },
     [player]
   );

@@ -112,20 +112,21 @@ describe("switchPersona", () => {
       .fn()
       .mockResolvedValue(json(503, { error: "Jim is mid-sync. Try again." }));
     await expect(switchPersona("rook", token(), API, fetchFn)).resolves.toEqual(
-      { ok: false, message: "Jim is mid-sync. Try again." }
+      { ok: false, message: "Jim is mid-sync. Try again.", retry: true }
     );
   });
 
   it.each([
-    [404, PERSONA_MESSAGES.unknown],
-    [503, PERSONA_MESSAGES.busy],
-    [500, PERSONA_MESSAGES.failed],
-    [403, PERSONA_MESSAGES.denied],
-  ])("a %i says so", async (status, message) => {
+    [404, PERSONA_MESSAGES.unknown, false],
+    [503, PERSONA_MESSAGES.busy, true],
+    [500, PERSONA_MESSAGES.failed, true],
+    [403, PERSONA_MESSAGES.denied, false],
+  ])("a %i says so (retry: %s)", async (status, message, retry) => {
     const fetchFn = jest.fn().mockResolvedValue(json(status, null));
     await expect(switchPersona("x", token(), API, fetchFn)).resolves.toEqual({
       ok: false,
       message,
+      retry,
     });
   });
 
@@ -134,6 +135,7 @@ describe("switchPersona", () => {
     await expect(switchPersona("x", token(), API, fetchFn)).resolves.toEqual({
       ok: false,
       message: PERSONA_MESSAGES.unreachable,
+      retry: true,
     });
   });
 });
