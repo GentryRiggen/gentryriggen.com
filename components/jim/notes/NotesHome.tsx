@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle, Sunrise } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import DailyWord from "@/components/jim/notes/DailyWord";
 import JimNoticed from "@/components/jim/notes/JimNoticed";
@@ -41,6 +41,8 @@ interface NotesHomeProps {
   onLog: (text: string) => void;
   /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
   onDraft: (text: string) => void;
+  /** Plays the morning brief (a tap). Without it the button is hidden. */
+  onHearBrief?: () => void;
   /** Reminders card: its server, and where a tap goes. Without them it is hidden. */
   reminders?: {
     api: string;
@@ -431,6 +433,7 @@ export default function NotesHome({
   saves,
   onLog,
   onDraft,
+  onHearBrief,
   reminders,
 }: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
@@ -452,6 +455,16 @@ export default function NotesHome({
             {date}
           </p>
         </div>
+        {onHearBrief && (
+          <button
+            type="button"
+            onClick={onHearBrief}
+            className="jim-card flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-ayu-text hover:border-ayu-accent/40 hover:text-ayu-accent"
+          >
+            <Sunrise aria-hidden="true" className="size-4" />
+            Hear your morning
+          </button>
+        )}
         {data.daily && <DailyWord word={data.daily} />}
         {data.noticed && <JimNoticed items={data.noticed} onAsk={onLog} />}
         <div className="space-y-3">

@@ -20,6 +20,7 @@ import {
   SquarePen,
   Square,
   Bell,
+  Sunrise,
   Volume2,
 } from "lucide-react";
 import AppLockSheet from "@/components/jim/AppLockSheet";
@@ -44,6 +45,7 @@ import NotesShell, {
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import usePersonas from "@/components/jim/usePersonas";
 import type { AppLock } from "@/components/jim/useAppLock";
+import useBriefAudio from "@/components/jim/useBriefAudio";
 import useReadAloud from "@/components/jim/useReadAloud";
 import useReflection from "@/components/jim/useReflection";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
@@ -356,6 +358,8 @@ export default function JimChat({
   const briefing = useMorningBriefing(getToken, api);
   const reader = useReadAloud(getToken, api, locked);
   const reflection = useReflection(getToken, api);
+  const brief = useBriefAudio(getToken, api, reader);
+  const { playBrief } = brief;
   const { stop: stopReading, setArtist } = reader;
   const personas = usePersonas(getToken, api);
   const barShown = reader.state.status !== "idle";
@@ -758,6 +762,11 @@ export default function JimChat({
     [navigate]
   );
 
+  const hearBrief = useCallback(() => {
+    // Chat shows the now-playing bar (and the chip, if iOS refuses).
+    if (!wideRef.current) navigate(CHAT_ROUTE);
+    void playBrief();
+  }, [navigate, playBrief]);
   const closeNotifySheet = useCallback(() => setNotifySheetOpen(false), []);
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
@@ -1054,6 +1063,25 @@ export default function JimChat({
               onDismiss={reader.dismiss}
             />
           </div>
+          {brief.chip && (
+            <button
+              type="button"
+              onClick={brief.playFromChip}
+              onPointerDown={(e) => e.preventDefault()}
+              className="jim-rise mb-2 flex min-h-11 items-center gap-2 rounded-full border border-ayu-accent/30 bg-ayu-accent/10 px-4 text-sm font-medium text-ayu-accent backdrop-blur"
+            >
+              <Sunrise aria-hidden="true" className="size-4" />
+              Play your morning
+            </button>
+          )}
+          {brief.error && (
+            <p
+              role="alert"
+              className="jim-rise mb-2 rounded-xl border border-ayu-red/25 bg-ayu-red/10 px-3 py-2 text-sm text-ayu-red"
+            >
+              {brief.error}
+            </p>
+          )}
           {!online && (
             <p
               role="status"
@@ -1135,6 +1163,7 @@ export default function JimChat({
       active={tab === "notes"}
       onLog={logFromNotes}
       onDraft={draftFromNotes}
+      onHearBrief={hearBrief}
       routing={routing}
     />
   );

@@ -96,6 +96,8 @@ interface NotesShellProps {
   onLog: (text: string) => void;
   /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
   onDraft: (text: string) => void;
+  /** "Hear your morning" on Home: plays the brief. Without it the button is hidden. */
+  onHearBrief?: () => void;
   routing?: NotesRouting;
 }
 
@@ -297,6 +299,7 @@ function NotesShellView({
   active,
   onLog,
   onDraft,
+  onHearBrief,
   routing,
 }: NotesShellProps & { routing: NotesRouting }) {
   const {
@@ -598,6 +601,7 @@ function NotesShellView({
         saves={saves}
         onLog={onLog}
         onDraft={onDraft}
+        onHearBrief={onHearBrief}
         reminders={{
           api,
           getToken,
