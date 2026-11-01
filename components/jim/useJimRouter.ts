@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   formatJimPath,
+  JIM_BASE,
   isRoutableNotePath,
   parseJimPath,
   sameRoute,
@@ -83,11 +84,43 @@ export function readJimLocation(nav: JimNavType): JimLocation {
   };
 }
 
+/** The fields Next's App Router keeps on each history entry. */
+const NEXT_FIELDS = ["__NA", "__PRIVATE_NEXTJS_INTERNALS_TREE"];
+
+/**
+ * The state for a new or replaced entry: whatever else the current entry
+ * carries (a library's fields), plus ours. Next's own fields are left out on
+ * purpose: its patched pushState/replaceState copies them back onto the
+ * entry, but only syncs its idea of the URL (usePathname, the URL it writes
+ * back on its next render) when they're absent. Passed in, they would make
+ * Next skip that and later restore the old address.
+ */
+export function entryState(meta: JimEntryMeta): Record<string, unknown> {
+  const current: unknown = window.history.state;
+  const kept: Record<string, unknown> = {};
+  if (typeof current === "object" && current !== null) {
+    for (const [field, value] of Object.entries(current)) {
+      if (!NEXT_FIELDS.includes(field)) kept[field] = value;
+    }
+  }
+  return { ...kept, jim: meta };
+}
+
 function write(meta: JimEntryMeta, href: string, replace: boolean) {
-  // A fresh object: Next adds its own fields to it.
-  const state = { jim: meta };
+  const state = entryState(meta);
   if (replace) window.history.replaceState(state, "", href);
   else window.history.pushState(state, "", href);
+}
+
+/**
+ * Puts `/jim` in the address in place of the current entry (sign-out: no
+ * person's or note's address left showing on a shared screen). Next sees
+ * it too, so it doesn't write the old address back. Older entries keep
+ * their addresses: a page can't rewrite history behind it, and they need
+ * a sign-in to show anything.
+ */
+export function replaceWithJimHome(): void {
+  write({ key: newKey(), depth: readMeta()?.depth ?? 0 }, JIM_BASE, true);
 }
 
 /** True for a plain left click: anything else is the browser's (new tab…). */

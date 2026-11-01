@@ -1,5 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
-import useJimRouter, { isPlainClick } from "../useJimRouter";
+import useJimRouter, {
+  isPlainClick,
+  replaceWithJimHome,
+} from "../useJimRouter";
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/jim/notes/people");
@@ -100,4 +103,67 @@ it("leaves ⌘-, Ctrl-, Shift- and middle clicks to the browser", () => {
   expect(isPlainClick({ ...plain, shiftKey: true })).toBe(false);
   expect(isPlainClick({ ...plain, button: 1 })).toBe(false);
   expect(isPlainClick({ ...plain, defaultPrevented: true })).toBe(false);
+});
+
+describe("with Next's history patch", () => {
+  const push = window.history.pushState;
+  const replace = window.history.replaceState;
+  /** Calls Next saw without its fields, so it synced its own URL too. */
+  let synced: string[] = [];
+
+  beforeEach(() => {
+    synced = [];
+    // As Next's App Router patches them: data that already has __NA is
+    // passed straight through (Next doesn't sync); anything else gets
+    // Next's fields copied in, and Next adopts the URL.
+    function patch(original: History["pushState"]) {
+      return function (
+        this: History,
+        data: Record<string, unknown> | null,
+        unused: string,
+        url?: string | URL | null
+      ) {
+        if (data?.__NA) return original.call(this, data, unused, url);
+        const next = { ...(data ?? {}) };
+        const current = window.history.state as Record<string, unknown> | null;
+        if (current?.__NA) next.__NA = current.__NA;
+        if (url) synced.push(String(url));
+        return original.call(this, next, unused, url);
+      };
+    }
+    window.history.replaceState(
+      { __NA: true, lib: "kept" },
+      "",
+      "/jim/notes/people"
+    );
+    window.history.pushState = patch(push) as History["pushState"];
+    window.history.replaceState = patch(replace) as History["replaceState"];
+  });
+
+  afterEach(() => {
+    window.history.pushState = push;
+    window.history.replaceState = replace;
+  });
+
+  it("keeps Next's fields and others' on every entry, and lets Next sync", async () => {
+    const { result } = renderHook(() => useJimRouter());
+    // The opening entry, marked in place: other fields kept.
+    expect(window.history.state).toMatchObject({ __NA: true, lib: "kept" });
+    act(() => result.current.navigate({ kind: "person", slug: "sam-okafor" }));
+    expect(window.history.state).toMatchObject({ __NA: true });
+    expect(synced).toContain("/jim/notes/people/sam-okafor");
+    const popped = popTo();
+    act(() => window.history.back());
+    await act(async () => popped);
+    // The Back entry still belongs to Next (no reload on popstate).
+    expect(window.history.state).toMatchObject({ __NA: true, lib: "kept" });
+  });
+
+  it("sign-out puts /jim in the address, and Next takes it too", () => {
+    renderHook(() => useJimRouter());
+    act(() => replaceWithJimHome());
+    expect(window.location.pathname).toBe("/jim");
+    expect(synced).toContain("/jim");
+    expect(window.history.state).toMatchObject({ __NA: true });
+  });
 });

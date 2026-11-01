@@ -29,8 +29,13 @@ export function clearSayFromLocation(): void {
   const url = new URL(window.location.href);
   if (!url.searchParams.has(SAY_PARAM)) return;
   url.searchParams.delete(SAY_PARAM);
+  // Without Next's own fields (it copies them back), so Next's router takes
+  // the new address too and doesn't write `say` back later.
+  const kept = { ...(window.history.state as Record<string, unknown> | null) };
+  delete kept.__NA;
+  delete kept.__PRIVATE_NEXTJS_INTERNALS_TREE;
   window.history.replaceState(
-    window.history.state,
+    kept,
     "",
     `${url.pathname}${url.search}${url.hash}`
   );
