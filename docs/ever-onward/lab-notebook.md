@@ -732,3 +732,243 @@ run 3 1.02 h. Phases 36, 30, 31, 22 minutes. Scorecard floors raised to 83
 
 Keep. Next: a playtest with Gentry (the visitor card, the lantern pick, the
 ending), then M2 and M7.
+
+## Round 4 (2026-11-01): less clicking, a Paperclips-shaped click curve
+
+Branch `feat/eo-less-clicking`, on top of 1.11.1 (the side machines: Tide
+Clock, Weather Desk, Probe Races, Memory Garden).
+
+### Playtest note (ground truth)
+
+Gentry, v1.11 on his iPhone:
+
+> One thing we have to fix: this game is just clicking. In Paperclips in the
+> beginning you have to click, like the beginning of each phase you have to
+> click, but pretty soon the automations or the helpers get you going, and
+> clicking would only be if you kind of got stuck. Way too much clicking.
+> There's just way too much.
+
+The score agreed once read honestly. Old M11 reported a manual share of 97%
+early, 48% at minutes 10-20 and 23% late, and its bands _rewarded_ that
+(20-50% at minutes 10-20). The tapper bot tapped 3 times a second for two
+hours, which hid how much every phase leaned on it.
+
+### Hypothesis
+
+The clicking is structural, not a number: tap upgrades (lens 6x, crank 11x,
+aim 6x) outpaced the helpers, the first helpers paid back slowly (a first
+generator took 5 minutes to pay for itself), and each side machine's helper
+came at the end of its life. Make tap upgrades small, make helpers cheap and
+early, move side-machine helpers to mid-life, and make the chores longer
+decisions. Expect each phase to open hands-on (taps most of the income for
+2-4 minutes) and the helpers to carry it from minute 5-6.
+
+### Measurement changes (commit 1)
+
+- **Human-shaped bots** (`engine/bots.ts`). The primary "tapper" is now an
+  _eager_ player: 3 taps a second for the first 3 minutes of a phase, easing
+  to 1 a second by minute 6. The realistic bot _taps when it helps_: hard for
+  the first 2 minutes of a phase and whenever 3 taps a second would be at
+  least 40% of income, a nudge every 5 seconds otherwise. Its taps per minute
+  late in a phase are the game's doing, not the bot's, so they are scored.
+  The idle bot taps the first 4 minutes of every phase (the hands-on opening)
+  and never again (it used to tap 10 minutes, then 8, then all of the last).
+- **Trace**: `TraceSample.sinceEntry` (seconds into the phase);
+  `tapAndAuto(def, run)` in `sim.ts` (one tap's gain against the machines'
+  income, side-machine payouts excluded, as before).
+- **`engine/clicks.ts`**: `clickCurve(run)` turns a traced run into per-phase
+  minute buckets (manual share, taps a minute, other clicks a minute) and the
+  early (min 0.5-3) and late (min 6 on) means. The score script prints both
+  bots' curves.
+- Fixed a silent bot bug: the last phase's naive tender set `tapsPerSecond`,
+  which the base's `tapRate` overrides, so "naive" was the eager bot.
+
+### Score recalibration (commit 2)
+
+- **M11 is now the Click curve** (weight 7 to 10; M5 6 to 5 and M8 7 to 5,
+  both saturated at 1.0 for four rounds). Per phase: taps >= 60% of income at
+  minutes 0.5-3 (fails at 30%; not the ending, which opens on the flame, not
+  a tap's income); the eager player <= 12% from minute 6 on, **gate 20%**; the
+  tap-when-it-helps player <= 20 taps a minute from minute 6 (fails at 60); a
+  tap always earns (never-stuck). The run row keeps idle/eager finish, now
+  banded 1.1-1.6x with a gate of idle within 4 h and never quicker than the
+  eager player: with helpers carrying each phase, idle and active converge,
+  so the old 1.25-2.5x band rewarded a game that needed hands.
+- **M15 Chore rate** band 0.3-4 to 0.3-2.5 non-tap clicks per active minute
+  (gate 8 to 5), busiest minute 10 to 6 (gate 20 to 12): one decision every
+  half minute at most.
+- As expected the total dropped: the 1.11 build scores **59.0 capped, 79.5
+  uncapped** on the new card, with eight failing gates (M11 coast, night,
+  sky and run; M1 coast and sky; M10 night and sky). The scorecard floor
+  went to 59 / 78 for that commit.
+
+### Tuning (commit 3)
+
+- **Tap upgrades stop outpacing helpers.** The lens (5 to 3 levels) now helps
+  the keepers' flashes as much as yours (`lensAutoBonus` 0.1 to 1). The crank
+  is 2 levels of +0.5 (was 5 of +2); the aim 3 levels of +0.25 (was 5 of +1).
+- **Helpers cheap and early.** Keeper 480 to 88 base (about 295 coins in the
+  shop); first generator 3 to 8 MW and 559 to 105 base, the grid shows at
+  16 MW; steam plants 1,430 to 360 base, after 3 generators (was 5), up to 7;
+  dam 9,000 to 4,500, wind farm 85,000 to 45,000; collectors 432 to 122 base,
+  growth 1.6 to 1.45, 10 steps (was 6); first probe 1,430 to 571 after 4
+  collectors; copy-1 1,460 to 460.
+- **Side-machine helpers at mid-life.** Tide mill after two hauls (was three
+  lighthouses), 30,000 to 8,000. Weather vane after two fronts, no longer
+  behind storm crews and two wind farms, 15,000 to 4,000. Racing fins after
+  one run (no relay needed); mission control 6,000 to 3,000. Rain barrel
+  after three picks, ranked with the lights and listed ahead of them (three
+  lights are always on offer, so it never got a slot before). Smart grid at
+  four steam plants (was a dam), 40,000 to 9,000. Hand-tending still pays
+  more than any helper alone (the existing tests hold).
+- **Chores as occasional decisions.** Probe trips about twice as long and
+  twice the haul (short 75 s, long 180 s, comet 110 s; the comet's card moves
+  in 4 s steps); watered plants stay wet 100 s (was 40), the can rests 40 s;
+  grid strain 0.35+0.7 to 0.2+0.4 %/s; fleet drift 0.28+0.24 to 0.16+0.14.
+- **The flame is a top-up, not a mash.** A tap brings 15% of what is
+  missing (was a flat 16 of 1,000) and the flame fades at 0.003 a light (was
+  0.01), so a tap every few seconds keeps it warm and an eager tapper can't
+  hold it full. The "taps" gifts add resolve per tap, not warmth.
+- **Length and dead air.** Each phase's prices went up (`costScale` coast
+  1.14 to 3.35, night 1.18 to 2, sky 1.35 to 1.9) with the opening purchases'
+  base costs cut to match, so the openings keep their prices. The first
+  lighthouse is cheaper with steeper growth (3,700 at x2.15, was 7,380 at
+  x1.9). The oil tank and storm shutters show at a second lighthouse and the
+  fish market after the crew drills, so the cheap, big steps are not hidden
+  behind them (three shop slots). The race plate counts from the first probe
+  home (trips are now over a minute).
+- The lens card shows coins a second once there are keepers.
+
+### Before and after
+
+New card (the measure for this round):
+
+| Metric              | 1.11 build                        | Round 4            | Note                                          |
+| ------------------- | --------------------------------- | ------------------ | --------------------------------------------- |
+| M1 Reveal cadence   | 7.5 FAIL                          | 7.4                | longest gap 300 s to 170 s                    |
+| M2 Decision density | 5.9                               | 6.5                |                                               |
+| M3 Goal queue       | 1.7                               | 2.2                |                                               |
+| M4 Felt effect      | 9.3                               | 9.0                |                                               |
+| M5 Purchase rate    | 4.9 / 5                           | 5.0 / 5            |                                               |
+| M6 Wait ratio       | 9.0                               | 9.0                |                                               |
+| M7 Plates           | 7.9                               | 8.1                |                                               |
+| M8 Novelty          | 5.0 / 5                           | 5.0 / 5            |                                               |
+| M9 Tension          | 5.2                               | 5.3                | last-phase tend gap 8.3% (honest now)         |
+| M10 Smoothness      | 2.3 FAIL                          | 3.6                | night and sky plateaus 28% / 26% to 11% / 17% |
+| M11 Click curve     | 4.2 FAIL                          | 10.0               | see the curves                                |
+| M12 Dead time       | 3.7                               | 3.9                |                                               |
+| M13 Prestige        | 4.8                               | 5.0                | run2/run1 0.65, run3/run2 0.77                |
+| M14 Length          | 4.0                               | 3.9                | eager 2.42 h to 1.99 h                        |
+| M15 Chores          | 4.0                               | 4.0                | 1.1-1.6 non-tap clicks a minute               |
+| **Total**           | **59.0** (79.5 uncapped, 8 gates) | **87.8** (no gate) |                                               |
+
+Old card (old M11 bands and the always-tapping bots): the 1.11 build scored
+**83.8**; the Round 4 build scores **84.9 uncapped**, capped at 59 by one
+200 s night reveal gap that only the 3-taps-a-second bot sees. Its M11 falls
+from 6.2 to 5.6 because it penalises a 12% manual share at minutes 10-20.
+
+Manual share of income (percent) by minute of each phase, before and after.
+Eager player (3 taps/s, easing to 1/s by minute 6):
+
+```
+before coast  100100 96 89 86 70 71 66 60 54 54 54 64 47 47 50 50 61 44 44 44 44 58 29 26 24 22 37 21 20 31 19 10 10  9 13  6 ...
+after  coast  100100 78 55 36 25 30 19 14 14 12  8 15  5  5  5  5 12  2  2  2  2  4  2  1  1  1  1  1  1  0  0  0  0  0
+before night  100100 99 96 94 89 84 80 79 76 75 54 39 36 33 27 27 22 23 22 19 12  8  5  4  3  2  2  2  2  2  2  2  2  1  1
+after  night  100 71 71 57 46 28 14 11  8  6  5  4  4  3  3  3  3  3  1  1  1  1  0  0  1  0  1  0  0  0  0  0
+before sky    100100 97 84 76 65 60 64 56 55 48 44 39 39 35 34 34 33 27 27 27 26 26 26 23 23 20 17 16 14 11 10 10  8  7  5  4  3  3
+after  sky     94 68 49 41 32 19 15 15 15 13 12 12 10  8  6  6  6  6  5  5  5  4  4  3  3  3  3  2  2  2  1  1  1
+before last    18 18 17 14 11  7  5  6  6  6  5  5  6  6  5  5  5  5  4  4  3  3  3  4
+after  last    16 16 14 13  9  6  5  5  5  5  5  5  5  5  5  4  4  4  4  3  3  4
+```
+
+Taps when it helps:
+
+```
+before coast  100100 96 90 83 82 88 80 73 74 73 71 77 54 50 48 43 57 26  2  2  2 23  1 ...
+after  coast  100100 78 57 41  4 29  9  3  3  3  2 23  1  1  1  1 20  0  0  0  0  1 ...
+before night  100100 99 98 96 95 92 86 73 65 61 58 55 47 53 45 45  4  1  1 ...
+after  night  100 71 71 60 59 47  3  3  2  1  1  1  1  1 ...
+before sky    100100 97 86 87 80 77 75 68 65 61 61 55 52 52 52 50 47 14  4 ...
+after  sky     94 68 49 44 27  4  3  3  3  3  3  3  3  2 ...
+before last    18 18  1  1  1 ...
+after  last    16 16  1  1  1 ...
+```
+
+Late in a phase (minute 6 on):
+
+| Phase | Manual share, eager | Manual share, when it helps | Taps a minute, when it helps |
+| ----- | ------------------- | --------------------------- | ---------------------------- |
+| coast | 30% to 6%           | 27% to 4%                   | 82 to 21                     |
+| night | 25% to 3%           | 25% to 1%                   | 79 to 12                     |
+| sky   | 27% to 6%           | 29% to 1%                   | 91 to 12                     |
+| last  | 5% to 4%            | 1% to 1%                    | 12 to 12                     |
+
+The player who taps when it helps used to hammer for about 17 minutes of
+each of the first three phases; now for 4-6 minutes, then only in a storm.
+
+Phase lengths (eager / when it helps): coast 48 / 38 to 34 / 35 min, night
+36 / 34 to 32 / 37, sky 38 / 32 to 33 / 35, last 23 / 27 to 21 / 24.
+Finish: eager 2.42 to 1.99 h, when it helps 2.19 to 2.18 h, idle 6.90 to
+3.12 h (gate 4 h), run 2 1.29 h, run 3 1.00 h.
+
+Side-machine helpers (eager bot, minute of the phase): tide mill 42 of 48
+to 22 of 34 (clock open from 16); weather vane never bought to 18.5 of 32
+(desk open from about 8); mission control 33 of 38 to 24 of 33 (races open
+from 16); rain barrel 21 of 23 to 9 of 21.
+
+Narration: no story text or phase intro changed, so no clip ids changed.
+
+### What still feels clicky
+
+1. **Oil.** 36-39 barrel clicks in a 34-minute coast (about one a minute).
+   It is a real decision (price) but the most frequent button left; the oil
+   contract (merchant) still comes late. Next: a bigger tank earlier, or the
+   contract at the second lighthouse.
+2. **Storms** make taps worth 3x for 25 s, so the tap-when-it-helps player
+   still hammers in storms (the coast's 23% / 20% spikes, 21 taps a minute
+   late, just over the band). That is the "burst of active value" the
+   research asked for; keep it unless Gentry says otherwise.
+3. **Garden picks** (17-18 in a 21-minute ending) and the grid (14 balances
+   for the eager bot in the night) are the next chores to stretch.
+4. The eager bot's 60 taps a minute late are an assumption; the curve says
+   those taps are worth 3-6%, which is the point, but a real child may still
+   tap from habit. Watch for it in the playtest.
+
+### Decision
+
+Keep. Floor raised to 86.8 (87.8 minus 1). Next: a playtest with Gentry on
+the phone, watching for whether each phase's opening still feels like play
+and whether the helpers' arrival is visible enough to notice the hand-off.
+
+### Review fixes (after PR #468)
+
+- **Unreachable beats.** The lens cap dropped from 5 to 3, but `coast-lens`
+  wanted lens 5 and the lighthouse teaser wanted lens 4. They now need lens 3
+  and 2 (the story text is unchanged, so no clip changes). `roundFour.test.ts`
+  scans every `owned(run, "x") >= n` in the universe for an upgrade that
+  exists and an `n` within its cap.
+- **Old saves above today's caps** (lens 5 to 3, crank 5 to 2, aim 5 to 3).
+  On load, `reconcileRun` clamps owned levels to `maxLevel`. In the
+  upgrade's own phase it refunds what the extra levels cost, at today's
+  prices in that phase's currency; outside it, the levels are only clamped.
+  A second load gives nothing more, and nothing goes NaN.
+- **M11 honesty.**
+  - The never-stuck floor is real again: 3 taps a second must earn at least
+    0.5% of income at the phase's lowest point (gate 0.25%). It is read at a
+    fixed pace, so a lazy bot can't fail it and an eager one can't pass it
+    by tapping harder.
+  - A phase under a minute is read whole, never as a vacuous pass. A missing
+    early share scores 0.
+  - The early-hands-on check is now also a gate (taps >= 30% at minutes
+    0.5-3, the ending excepted).
+  - The idle/eager gate is back at 1.05x (the build is at 1.57x).
+- **Regression fixtures.** A build fully automatic from minute 1 and a build
+  where a tap earns nothing both fail the M11 gate (total capped at 59).
+- **Score.** 86.8, with no failing gate. The coast and night bottom out at
+  0.43% and 0.33% at 3 taps a second, inside the gate but under the band;
+  that is left honest rather than tuned away. Floor 85.8.
+- **Tests added.**
+  - The four side-machine helpers appear under their new gating and still
+    pay less than tending by hand. The rain barrel test uses real picks.
+  - A tap on a full flame still earns resolve, so the tap button shows its
+    "+" floater.

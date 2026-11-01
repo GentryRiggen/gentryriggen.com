@@ -100,7 +100,7 @@ export const VISITORS: readonly VisitorDef[] = [
 export const TEASERS: readonly TeaserDef[] = [
   {
     upgradeId: "lighthouse",
-    showWhen: (run) => owned(run, "lens") >= 4,
+    showWhen: (run) => owned(run, "lens") >= 2,
     hint: () => "When you have 3 keepers",
   },
   {

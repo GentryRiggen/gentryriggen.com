@@ -62,7 +62,7 @@ describe("layer info", () => {
       0.1
     );
     expect(sceneInfo(run).raceOpen).toBe(1);
-    run = performAction(def, run, launchActionId(1));
+    run = performAction(def, run, launchActionId(0));
     let changed = 0;
     for (let i = 0; i < 1000; i += 1) {
       const before = { info: sceneInfo(run) };
@@ -71,7 +71,8 @@ describe("layer info", () => {
       if (before.info.raceOut !== after.raceOut) changed += 1;
       expect(after.raceOpen).toBe(1);
     }
-    // out for 90 s, then home: the picture changed once on the way back
+    // out for 75 s (the short hop), then home: the picture changed once on
+    // the way back
     expect(changed).toBe(1);
     expect(sceneInfo(run).raceOut).toBe(0);
   });

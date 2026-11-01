@@ -51,9 +51,11 @@ describe("ProbeRaces", () => {
   it("shows three routes with honest times, and a launch button", async () => {
     const onAct = jest.fn();
     render(<ProbeRaces def={def} run={openRun()} onAct={onAct} />);
-    expect(screen.getByTestId("lm-probe-time-short")).toHaveTextContent("40 s");
-    expect(screen.getByTestId("lm-probe-time-long")).toHaveTextContent("90 s");
-    expect(screen.getByTestId("lm-probe-time-comet")).toHaveTextContent("60 s");
+    expect(screen.getByTestId("lm-probe-time-short")).toHaveTextContent("75 s");
+    expect(screen.getByTestId("lm-probe-time-long")).toHaveTextContent("180 s");
+    expect(screen.getByTestId("lm-probe-time-comet")).toHaveTextContent(
+      "110 s"
+    );
     expect(screen.getByTestId("lm-probe-status")).toHaveTextContent(
       "Probe is at the dock"
     );
@@ -86,15 +88,15 @@ describe("ProbeRaces", () => {
   });
 
   it("counts down while the probe is out, with a progress bar, and cannot launch again", () => {
-    const flying = idle(performAction(def, openRun(), launchActionId(0)), 8);
+    const flying = idle(performAction(def, openRun(), launchActionId(0)), 15);
     expect(isProbeOut(flying)).toBe(true);
     render(<ProbeRaces def={def} run={flying} onAct={jest.fn()} />);
     expect(screen.getByTestId("lm-probe-status")).toHaveTextContent(
-      "Probe is out: 0:32 left"
+      "Probe is out: 1:00 left"
     );
     const launch = screen.getByTestId("lm-probe-launch");
     expect(launch).toHaveAttribute("aria-disabled", "true");
-    expect(launch).toHaveTextContent("Probe is out: 0:32 left");
+    expect(launch).toHaveTextContent("Probe is out: 1:00 left");
     expect(screen.getByTestId("lm-probe-progress")).toHaveAttribute(
       "aria-valuenow",
       "20"
@@ -106,7 +108,7 @@ describe("ProbeRaces", () => {
   });
 
   it("announces the result and the tally when the probe is home", () => {
-    const home = idle(performAction(def, openRun(), launchActionId(0)), 48);
+    const home = idle(performAction(def, openRun(), launchActionId(0)), 83);
     render(<ProbeRaces def={def} run={home} onAct={jest.fn()} />);
     const result = screen.getByTestId("lm-probe-result");
     expect(result).toHaveAttribute("role", "status");
@@ -138,6 +140,6 @@ describe("ProbeRaces", () => {
     expect(long).toHaveFocus();
     expect(long).toHaveAttribute("tabindex", "0");
     expect(short).toHaveAttribute("tabindex", "-1");
-    expect(long).toHaveAccessibleName("Long loop, 90 seconds");
+    expect(long).toHaveAccessibleName("Long loop, 180 seconds");
   });
 });

@@ -91,7 +91,7 @@ describe("visitors", () => {
 
 describe("someday cards", () => {
   it("show a hint, and go away when the upgrade pops in", () => {
-    const early = withOwned(newRun(def), { lens: 4 });
+    const early = withOwned(newRun(def), { lens: 2 });
     expect(visibleTeasers(def, early).map((t) => t.upgradeId)).toContain(
       "lighthouse"
     );
@@ -105,9 +105,9 @@ describe("someday cards", () => {
     const teaser = (def.teasers ?? []).find(
       (t) => t.upgradeId === "lighthouse"
     )!;
-    const early = withOwned(newRun(def), { lens: 4 });
+    const early = withOwned(newRun(def), { lens: 2 });
     expect(teaserHint(def, early, teaser)).toBe(teaser.hint(early));
-    const ready = withOwned(newRun(def), { lens: 4, keeper: 3 });
+    const ready = withOwned(newRun(def), { lens: 2, keeper: 3 });
     expect(teaserHint(def, ready, teaser)).toBe(TEASER_READY_HINT);
   });
 
@@ -178,10 +178,12 @@ describe("the steady glow", () => {
   });
 });
 
-describe("collectors come in six bigger steps", () => {
-  it("max out at 6 and are worth as much in total as ten small ones were", () => {
+describe("collectors come in bigger steps", () => {
+  it("go up to 10, and six are worth as much as ten small ones were", () => {
+    // Round 4: ten steps (not six), so the sky's helpers keep growing while
+    // the aim stays small.
     const collector = def.upgrades.find((u) => u.id === "collector")!;
-    expect(collector.maxLevel).toBe(6);
+    expect(collector.maxLevel).toBe(10);
     const run = { ...newRun(def), phase: 2, owned: { collector: 6 } };
     expect(collectorEnergyPerSecond(run)).toBeCloseTo(10, 5);
   });

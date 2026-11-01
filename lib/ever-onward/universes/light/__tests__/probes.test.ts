@@ -126,9 +126,13 @@ describe("probe races", () => {
 
   it("shows honest route numbers: the time and the haul it will bring", () => {
     const run = open();
-    expect(routeSeconds(run, SHORT)).toBe(40);
-    expect(routeSeconds(run, LONG)).toBe(90);
-    expect(routeSeconds(run, COMET)).toBe(60);
+    // trips last a minute or more: a launch is a choice every couple of
+    // minutes, not a button to keep pressing
+    expect(routeSeconds(run, SHORT)).toBe(P.short.seconds);
+    expect(routeSeconds(run, LONG)).toBe(P.long.seconds);
+    expect(routeSeconds(run, COMET)).toBe(P.comet.seconds);
+    for (let route = 0; route < ROUTES.length; route += 1)
+      expect(routeSeconds(run, route)).toBeGreaterThanOrEqual(60);
 
     const perMinute = (route: number, closeness: number): number =>
       (haulSeconds(route, closeness) / routeSeconds(run, route)) * 60;
@@ -162,8 +166,9 @@ describe("probe races", () => {
     expect(canPerformAction(def, flying, launchActionId(SHORT))).toBe(false);
     expect(progressOf(flying)).toBe(0);
 
-    const halfway = idle(flying, 20);
-    expect(progressOf(halfway)).toBeCloseTo(0.5, 5);
+    const half = Math.round(P.short.seconds / 2);
+    const halfway = idle(flying, half);
+    expect(progressOf(halfway)).toBeCloseTo(half / P.short.seconds, 5);
     expect(runsHome(halfway)).toBe(0);
 
     const home = toHome(flying);
@@ -205,12 +210,12 @@ describe("probe races", () => {
   it("pays the comet haul in coarse steps, so the card holds still", () => {
     const seen = new Set<number>();
     let run = open();
-    for (let t = 0; t < 160; t += 1) {
+    for (let t = 0; t < P.cometCycleSeconds; t += 1) {
       seen.add(haulSeconds(COMET, cometCloseness(run)));
       run = tick(def, run, 1);
     }
     expect(seen.size).toBeLessThanOrEqual(16);
-    for (const v of seen) expect(v % 2).toBe(0);
+    for (const v of seen) expect(v % 4).toBe(0);
   });
 
   it("moves the comet in one slow, smooth pass", () => {
@@ -268,8 +273,9 @@ describe("probe races", () => {
     const b = launch(finned, LONG).resources.prPay;
     expect(b).toBeCloseTo(a, 6);
     // a finned probe is home first
-    expect(isProbeOut(idle(launch(finned, LONG), 70))).toBe(false);
-    expect(isProbeOut(idle(launch(plain, LONG), 70))).toBe(true);
+    const finnedTrip = P.long.seconds * P.finsTimeFactor + 1;
+    expect(isProbeOut(idle(launch(finned, LONG), finnedTrip))).toBe(false);
+    expect(isProbeOut(idle(launch(plain, LONG), finnedTrip))).toBe(true);
   });
 
   it("lets mission control add to hand play, never replace it", () => {
@@ -282,7 +288,7 @@ describe("probe races", () => {
 
     // after one hand launch, the scout flies that route again and again
     const handFirst = launch(control, SHORT);
-    const flown = idle(handFirst, 300);
+    const flown = idle(handFirst, P.short.seconds * 6);
     expect(flown.resources.prAutoRuns).toBeGreaterThanOrEqual(5);
     expect(flown.resources.prAutoEarned).toBeGreaterThan(0);
 
@@ -334,7 +340,7 @@ describe("probe races", () => {
 
   it("finishes a haul that is still flowing in, and a probe still away, when the sky ends", () => {
     const flying = launch(open(), SHORT);
-    const justHome = idle(flying, 41);
+    const justHome = idle(flying, P.short.seconds + 1);
     expect(runsHome(justHome)).toBe(1);
     expect(justHome.resources.prPending).toBeGreaterThan(0);
     const before = justHome.resources.energy;
@@ -346,7 +352,7 @@ describe("probe races", () => {
 
     // a probe still out when the sky ends comes home and pays too
     const away: RunState = { ...launch(open(), LONG), phase: 3 };
-    const awayAfter = idle(away, 120);
+    const awayAfter = idle(away, P.long.seconds + 30);
     expect(runsHome(awayAfter)).toBe(1);
     expect(awayAfter.resources.prPending).toBe(0);
     expect(awayAfter.resources.energy).toBeGreaterThan(away.resources.energy);
@@ -390,13 +396,12 @@ describe("probe races", () => {
     expect(withRaces.rng).toBe(without.rng);
   });
 
-  it("offers the race plate after the second probe is home, not before", () => {
+  it("offers the race plate once the first probe is home, not before", () => {
     const run = open();
     expect(lightPlates(run)).not.toContain("race");
+    expect(lightPlates(launch(run, SHORT))).not.toContain("race");
     const one = toHome(launch(run, SHORT));
-    expect(lightPlates(one)).not.toContain("race");
-    const two = toHome(launch(one, SHORT));
-    expect(lightPlates(two)).toContain("race");
+    expect(lightPlates(one)).toContain("race");
   });
 
   it("keeps the scene's racing fields to a few steady numbers", () => {

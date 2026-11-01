@@ -41,6 +41,8 @@ export interface OptionView extends Effect {
 export interface TraceSample {
   t: number;
   phase: number;
+  /** Seconds since the current phase began (the click curve is per phase). */
+  sinceEntry: number;
   /** Resources shown in the current phase. */
   resources: Record<string, number>;
   /** Gross income per second of the phase's main resource with zero taps. */

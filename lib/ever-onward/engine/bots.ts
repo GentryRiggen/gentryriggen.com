@@ -1,17 +1,26 @@
-import type { Strategy } from "./sim";
+import { tapAndAuto, type Strategy } from "./sim";
+import type { RunState, UniverseDef } from "./types";
 
 /** The player personalities the scorecard plays a universe with. */
 export interface BotSet {
-  /** 3 taps a second all the time, shops every 10 s. The primary trace. */
+  /**
+   * The primary trace: an eager, hands-on player. Taps hard (3 a second) for
+   * the first 3 minutes of every phase, then eases to 1 a second by minute 6
+   * and keeps poking at that pace. Nobody taps 3 times a second for two
+   * hours; the old tapper did, which hid how much the game leaned on it.
+   */
   tapper: Strategy;
-  /** 3 taps a second for the first 10 minutes of each phase, then 0.3. */
+  /**
+   * Taps when it helps: hard (3 a second) for the first 2 minutes of a phase
+   * and whenever a tap is still a big part of income (3 taps a second worth
+   * at least `HELPS_SHARE` of everything), otherwise a nudge every 5 seconds.
+   * Its taps per minute late in a phase are the game's doing, not the bot's,
+   * so M11 reads them.
+   */
   realistic: Strategy;
   /**
-   * Taps to get each machine going (the first 10 minutes of the run, the first
-   * 5 of the next two phases, all of the last), then only watches. The doc's
-   * literal version (tap 2 minutes, then never) is stuck forever in the first
-   * phase of this universe, which says "the first minutes need hands", not
-   * what idle play feels like later.
+   * Taps to get each phase going (its first 4 minutes, the hands-on opening),
+   * then only watches. Presses no other button outside the ending.
    */
   idle: Strategy;
   /**
@@ -45,29 +54,81 @@ const SHOP_EVERY = 10;
 const BASE_TAPS = 3;
 const DAWDLE_SHOP_EVERY = 60;
 const DAWDLE_TAPS = 1;
-/** From this phase on the idle bot taps throughout (the ending is hands-on). */
-const IDLE_HANDS_ON_PHASE = 3;
 
-/** Bots with no hand-made actions: fine for a universe without a consumable. */
-export function genericBots(): BotSet {
-  const tapper: Strategy = { tapsPerSecond: BASE_TAPS, shopEvery: SHOP_EVERY };
+/** The eager player's pace once the helpers are going. */
+export const EAGER_LATE_TAPS = 1;
+/** A nudge every 5 seconds: what tapping looks like once it hardly helps. */
+export const NUDGE_TAPS = 0.2;
+/** Minutes of hard tapping at the start of every phase. */
+export const HANDS_ON_MINUTES = 3;
+/** By this minute of a phase the eager player has eased to its late pace. */
+export const EASED_BY_MINUTE = 6;
+/** The idle player taps for this many minutes at the start of a phase. */
+export const IDLE_WARM_UP_MINUTES = 4;
+/** "Taps when it helps" taps hard while 3 taps a second are this share of income. */
+export const HELPS_SHARE = 0.4;
+/** ... and always for this long at the start of a phase. */
+const HELPS_OPENING_MINUTES = 2;
+/** Seconds between its looks at whether tapping still helps. */
+const HELPS_LOOK_EVERY = 5;
+
+/** Seconds since the current phase began. */
+export const phaseClock = (run: RunState): number =>
+  run.time - (run.transitions.at(-1)?.at ?? 0);
+
+/** 3 taps a second for `HANDS_ON_MINUTES`, easing to `late` by `EASED_BY_MINUTE`. */
+export function phaseShapedTaps(run: RunState, late: number): number {
+  const minute = phaseClock(run) / MIN;
+  if (minute <= HANDS_ON_MINUTES) return BASE_TAPS;
+  if (minute >= EASED_BY_MINUTE) return late;
+  const eased =
+    (minute - HANDS_ON_MINUTES) / (EASED_BY_MINUTE - HANDS_ON_MINUTES);
+  return BASE_TAPS + (late - BASE_TAPS) * eased;
+}
+
+/**
+ * Taps when it helps (see `BotSet.realistic`). It looks again every few
+ * seconds of run time; a run that goes back in time (a new simulation with
+ * the same strategy) looks at once.
+ */
+export function tapsWhenItHelps(def: UniverseDef): (run: RunState) => number {
+  let lookedAt = -Infinity;
+  let rate = BASE_TAPS;
+  return (run) => {
+    if (phaseClock(run) < HELPS_OPENING_MINUTES * MIN) return BASE_TAPS;
+    const since = run.time - lookedAt;
+    if (since >= 0 && since < HELPS_LOOK_EVERY) return rate;
+    lookedAt = run.time;
+    const { tap, auto } = tapAndAuto(def, run);
+    const hard = BASE_TAPS * tap;
+    const helps = hard + auto > 0 && hard / (hard + auto) >= HELPS_SHARE;
+    rate = helps ? BASE_TAPS : NUDGE_TAPS;
+    return rate;
+  };
+}
+
+/**
+ * Bots with no hand-made actions: fine for a universe without a consumable.
+ * Pass the universe so the realistic player can tell when a tap helps;
+ * without it, it eases to a nudge on the clock instead.
+ */
+export function genericBots(def?: UniverseDef): BotSet {
+  const tapper: Strategy = {
+    shopEvery: SHOP_EVERY,
+    tapRate: (run) => phaseShapedTaps(run, EAGER_LATE_TAPS),
+  };
   return {
     tapper,
     realistic: {
       shopEvery: SHOP_EVERY,
-      tapRate: (run) => {
-        const phaseStart = run.transitions.at(-1)?.at ?? 0;
-        return run.time - phaseStart < 10 * MIN ? BASE_TAPS : 0.3;
-      },
+      tapRate: def
+        ? tapsWhenItHelps(def)
+        : (run) => phaseShapedTaps(run, NUDGE_TAPS),
     },
     idle: {
       shopEvery: SHOP_EVERY,
-      tapRate: (run) => {
-        if (run.phase >= IDLE_HANDS_ON_PHASE) return BASE_TAPS;
-        const phaseStart = run.transitions.at(-1)?.at ?? 0;
-        const warmUp = run.phase === 0 ? 10 * MIN : 8 * MIN;
-        return run.time - phaseStart < warmUp ? BASE_TAPS : 0;
-      },
+      tapRate: (run) =>
+        phaseClock(run) < IDLE_WARM_UP_MINUTES * MIN ? BASE_TAPS : 0,
     },
     dawdler: { tapsPerSecond: DAWDLE_TAPS, shopEvery: DAWDLE_SHOP_EVERY },
     naiveOil: tapper,

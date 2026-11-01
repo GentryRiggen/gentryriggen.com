@@ -1,5 +1,5 @@
 /**
- * The Engagement Scorecard: turns a simulator trace into 14 metrics (M1-M14),
+ * The Engagement Scorecard: turns a simulator trace into 15 metrics (M1-M15),
  * a 0-100 total, and the worst metric and phase. The definitions, bands, gates
  * and weights come from
  * docs/superpowers/specs/2026-11-01-ever-onward-engagement-research.md
@@ -15,6 +15,7 @@
  */
 import { genericBots, type BotSet } from "./bots";
 import { emberReward, prestigeUpgradeCost } from "./prestige";
+import { clickCurve, type PhaseClicks } from "./clicks";
 import { simulate, type SimResult } from "./sim";
 import {
   SOFT_BEAT_GAP,
@@ -168,6 +169,8 @@ export interface Scorecard {
   worstMetric: { id: string; name: string; pointsLost: number };
   worstPhase: { id: string; score: number };
   runs: RunInfo;
+  /** The click curve per phase: the eager player and, when traced, the one who taps when it helps. */
+  clicks: { eager: PhaseClicks[]; helps: PhaseClicks[] | null };
   /** Wall-clock milliseconds the simulations and scoring took. */
   runtimeMs: number;
 }
@@ -193,7 +196,7 @@ export interface ScoreInputs {
    * affordable); every other metric reads the tapper.
    */
   dawdler?: SimResult;
-  /** The realistic bot (untraced): reported, not scored. */
+  /** The realistic bot ("taps when it helps"), traced: M11 reads its taps. */
   realistic?: SimResult;
   /** The idle bot (untraced). */
   idle: SimResult;
@@ -393,7 +396,7 @@ const evalM4: PhaseEval = ({ purchases }) => {
 const M5: MetricSpec = {
   id: "M5",
   name: "Purchase rate",
-  weight: 6,
+  weight: 5,
   band: "median 0.6-2.5 buys/min (rolling 5 min), p95 <= 5",
   gate: "p95 <= 8 buys/min",
 };
@@ -507,7 +510,7 @@ const evalM7: PhaseEval = ({ span, duration, samples }) => {
 const M8: MetricSpec = {
   id: "M8",
   name: "Novelty per phase",
-  weight: 7,
+  weight: 5,
   band: ">= 1 new mechanic, resource, scene layer and plate, >= 6 novelty beats",
   gate: ">= 1 new mechanic in each phase",
 };
@@ -748,9 +751,12 @@ const M15: MetricSpec = {
   id: "M15",
   name: "Chore rate",
   weight: 4,
-  band: "0.3-4 non-tap clicks per active minute (buying oil, steering, claiming)",
-  gate: "<= 8 non-tap clicks per active minute, and a phase's busiest minute <= 20",
+  band: "0.3-2.5 non-tap clicks per active minute (buying oil, steering, claiming, side machines), busiest minute <= 6",
+  gate: "<= 5 non-tap clicks per active minute, and a phase's busiest minute <= 12",
 };
+/** Chores are occasional decisions: about one every half minute at most. */
+const CHORE_BAND = between(0.3, 2.5, undefined, 5);
+const BUSIEST_BAND = atMost(6, 12);
 const evalM15: PhaseEval = ({ span, inputs }) => {
   const clicks = inputs.primary.actionsDone.filter(
     (a) => a.t >= span.start && a.t < span.end
@@ -763,16 +769,13 @@ const evalM15: PhaseEval = ({ span, inputs }) => {
     perMinute.set(m, (perMinute.get(m) ?? 0) + 1);
   }
   const busiest = Math.max(0, ...perMinute.values());
-  const gate = rate <= 8 && busiest <= 20;
+  const gate = rate <= 5 && busiest <= 12;
   return {
-    sub: subMean(
-      bandScore(rate, between(0.3, 4, undefined, 8)),
-      bandScore(busiest, atMost(10, 20))
-    ),
+    sub: subMean(bandScore(rate, CHORE_BAND), bandScore(busiest, BUSIEST_BAND)),
     gate,
     gateDetail: gate
       ? null
-      : `${fmt(rate, 1)} clicks/min (max 8), busiest minute ${busiest} (max 20)`,
+      : `${fmt(rate, 1)} clicks/min (max 5), busiest minute ${busiest} (max 12)`,
     headline: `${fmt(rate, 2)} non-tap clicks/min, busiest minute ${busiest}`,
     stats: { rate, busiest, clicks: clicks.length },
   };
@@ -782,61 +785,97 @@ const evalM15: PhaseEval = ({ span, inputs }) => {
 
 const M11: MetricSpec = {
   id: "M11",
-  name: "Active vs idle",
-  weight: 7,
-  band: "manual share >= 70% at min 1-3, 20-50% at min 10-20, 10-35% late (never 0, <= 60% after min 20); idle/tapper finish 1.25-2.5x",
-  gate: "idle finishes within 4 h and ratio >= 1.15",
+  name: "Click curve",
+  weight: 10,
+  band: "per phase: taps >= 60% of income at min 0.5-3 (not the ending, which opens on the flame), <= 12% from min 6 on for the eager player (3 taps/s easing to 1/s), the tap-when-it-helps player <= 20 taps/min from min 6 on, 3 taps/s always >= 0.5% of income; idle/eager finish 1.1-1.6x",
+  gate: "taps >= 30% of income at min 0.5-3 (not the ending), manual share from min 6 on <= 20%, 3 taps/s always >= 0.25% of income, in every phase; idle finishes within 4 h and is at least 1.05x the eager player",
 };
-const manualShare = (s: TraceSample): number => {
-  const total = s.manualRate + s.autoRate;
-  return total > 0 ? s.manualRate / total : NaN;
-};
-const shareOver = (samples: readonly TraceSample[], from: number, to: number) =>
-  mean(
-    samples
-      .filter((s) => s.t >= from && s.t < to)
-      .map(manualShare)
-      .filter((v) => !Number.isNaN(v))
-  );
 
-function evalM11(def: UniverseDef, inputs: ScoreInputs): PhaseResult {
-  void def;
-  const { samples } = inputs.primary.trace!;
-  const end = inputs.primary.endTime;
-  const early = shareOver(samples, 1 * MIN, 3 * MIN);
-  const mid = shareOver(samples, 10 * MIN, 20 * MIN);
-  const late = shareOver(samples, (end * 2) / 3, end + 1);
-  const after20 = samples
-    .filter((s) => s.t >= 20 * MIN)
-    .map(manualShare)
-    .filter((v) => !Number.isNaN(v));
-  const maxAfter20 = after20.length ? Math.max(...after20) : 0;
-  const minShare = Math.min(
-    ...samples
-      .filter((s) => s.t >= MIN)
-      .map(manualShare)
-      .filter((v) => !Number.isNaN(v))
-  );
+/** Above this from minute 6 of a phase on, the game is "just clicking". */
+const LATE_SHARE_GATE = 0.2;
+/** Below this at minutes 0.5-3, the phase does not open hands-on. */
+const EARLY_SHARE_GATE = 0.3;
+/** Never stuck: 3 taps a second always earn at least this share. */
+const TAP_FLOOR = 0.005;
+const TAP_FLOOR_GATE = 0.0025;
+/** An idle player must be slower than an active one by at least this. */
+const IDLE_RATIO_GATE = 1.05;
+
+function evalM11Phase(
+  def: UniverseDef,
+  eager: PhaseClicks,
+  helps: PhaseClicks | undefined
+): PhaseResult {
+  const isEnding = eager.index === def.phases.length - 1;
+  const lateTaps = helps?.lateTapsPerMinute ?? NaN;
+  // A phase too short to read (NaN) scores 0 and fails, never passes by
+  // default; only "late" may be missing (a phase under 6 minutes has no late).
+  const subs = [
+    ...(isEnding
+      ? []
+      : [bandScore(eager.early, atLeast(0.6, EARLY_SHARE_GATE))]),
+    Number.isNaN(eager.late)
+      ? 1
+      : bandScore(eager.late, atMost(0.12, LATE_SHARE_GATE)),
+    Number.isNaN(lateTaps) ? 1 : bandScore(lateTaps, atMost(20, 60)),
+    bandScore(eager.lowestAtThree, atLeast(TAP_FLOOR, TAP_FLOOR_GATE)),
+  ];
+  const isEarlyOk = isEnding || eager.early >= EARLY_SHARE_GATE;
+  const isLateOk = Number.isNaN(eager.late) || eager.late <= LATE_SHARE_GATE;
+  const isFloorOk = eager.lowestAtThree >= TAP_FLOOR_GATE;
+  const gate = isEarlyOk && isLateOk && isFloorOk;
+  return {
+    phase: eager.phase,
+    sub: mean(subs),
+    gate,
+    gateDetail: gate
+      ? null
+      : `taps early ${pct(eager.early)} (min 30%), from min 6 ${pct(eager.late)} (max 20%), 3 taps/s at least ${fmt(eager.lowestAtThree * 100, 2)}% (min 0.25%)`,
+    headline: `taps early ${isEnding ? "n/a" : pct(eager.early)}, from min 6 ${pct(eager.late)} (eager) / ${pct(helps?.late ?? NaN)} (when it helps), ${fmt(lateTaps)} taps/min when it helps, 3 taps/s >= ${fmt(eager.lowestAtThree * 100, 2)}%`,
+    stats: {
+      early: eager.early,
+      late: eager.late,
+      lateHelps: helps?.late ?? NaN,
+      lateTaps,
+      lowest: eager.lowest,
+      lowestAtThree: eager.lowestAtThree,
+    },
+  };
+}
+
+function evalM11(
+  def: UniverseDef,
+  inputs: ScoreInputs,
+  durations: readonly number[]
+): { rows: PhaseResult[]; score: number } {
+  const eager = clickCurve(inputs.primary);
+  const helps = inputs.realistic?.trace
+    ? clickCurve(inputs.realistic)
+    : undefined;
+  const rows = eager.map((p, i) => evalM11Phase(def, p, helps?.[i]));
   const tapperFinish = inputs.primary.finishTime ?? Infinity;
   const idleFinish = inputs.idle.finishTime ?? Infinity;
   const ratio = idleFinish / tapperFinish;
-  const gate = idleFinish <= 4 * HOUR && ratio >= 1.15;
-  const shares = mean([
-    bandScore(early, atLeast(0.7)),
-    bandScore(mid, between(0.2, 0.5)),
-    bandScore(late, between(0.1, 0.35)),
-    bandScore(maxAfter20, atMost(0.6, 1)),
-    bandScore(minShare, atLeast(0.005)),
-  ]);
-  return {
+  // With helpers carrying every phase, idle and active converge: a check-in
+  // should still pay (at least 1.05x), but not by the old 1.25-2.5x.
+  const gate = idleFinish <= 4 * HOUR && ratio >= IDLE_RATIO_GATE;
+  const runRow: PhaseResult = {
     phase: "run",
-    sub: 0.5 * shares + 0.5 * bandScore(ratio, between(1.25, 2.5, 1.15)),
+    sub: bandScore(ratio, between(1.1, 1.6, IDLE_RATIO_GATE)),
     gate,
     gateDetail: gate
       ? null
       : `idle finish ${fmt(idleFinish / HOUR, 2)} h, ratio ${fmt(ratio, 2)}`,
-    headline: `manual early ${pct(early)} mid ${pct(mid)} late ${pct(late)}, idle/tapper ${fmt(ratio, 2)}x`,
-    stats: { early, mid, late, maxAfter20, minShare, ratio },
+    headline: `idle ${fmt(idleFinish / HOUR, 2)} h, idle/eager ${fmt(ratio, 2)}x`,
+    stats: { ratio, idleHours: idleFinish / HOUR },
+  };
+  const phaseScore = combinePhases(
+    rows.map((r) => r.sub),
+    durations.slice(0, rows.length)
+  );
+  return {
+    rows: [...rows, runRow],
+    score: 0.75 * phaseScore + 0.25 * runRow.sub,
   };
 }
 
@@ -991,8 +1030,9 @@ export function scoreTrace(def: UniverseDef, inputs: ScoreInputs): Scorecard {
     );
     metrics.push(report(spec, perPhase, score, false));
   }
+  const clicks = evalM11(def, inputs, durations);
+  metrics.push(report(M11, clicks.rows, clicks.score, true));
   const runLevel: [MetricSpec, PhaseResult][] = [
-    [M11, evalM11(def, inputs)],
     [M13, evalM13(inputs)],
     [M14, evalM14(inputs)],
   ];
@@ -1043,6 +1083,10 @@ export function scoreTrace(def: UniverseDef, inputs: ScoreInputs): Scorecard {
       run3Finish: inputs.run3.finishTime,
       phaseSeconds: spans.map((s) => s.end - s.start),
     },
+    clicks: {
+      eager: clickCurve(inputs.primary),
+      helps: inputs.realistic?.trace ? clickCurve(inputs.realistic) : null,
+    },
     runtimeMs: Date.now() - started,
   };
 }
@@ -1084,7 +1128,7 @@ export function scoreUniverse(
   options: ScoreOptions = {}
 ): Scorecard {
   const started = Date.now();
-  const bots = options.bots ?? genericBots();
+  const bots = options.bots ?? genericBots(def);
   const step = options.step ?? 1;
   const base = { maxSeconds: MAX_SECONDS, step };
 
@@ -1159,7 +1203,11 @@ export function scoreUniverse(
   });
   const card = scoreTrace(def, {
     primary,
-    realistic: simulate(def, { ...base, strategy: bots.realistic }),
+    realistic: simulate(def, {
+      ...base,
+      strategy: bots.realistic,
+      trace: { sampleEvery: 5 },
+    }),
     idle: simulate(def, { ...base, strategy: bots.idle }),
     dawdler,
     skill,
