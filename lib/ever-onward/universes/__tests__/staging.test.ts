@@ -2,12 +2,20 @@ import { lockedUniverses, playableUniverses } from "../staging";
 
 describe("staging", () => {
   it("shows only released universes in production", () => {
-    expect(playableUniverses(false).map((u) => u.id)).toEqual(["light"]);
-    expect(lockedUniverses(false).map((u) => u.id)).toEqual([
+    expect(playableUniverses(false).map((u) => u.id)).toEqual([
+      "light",
       "grow",
+    ]);
+    expect(lockedUniverses(false).map((u) => u.id)).toEqual([
       "higher",
       "smile",
     ]);
+  });
+  it("hides an unreleased universe in production", () => {
+    expect(playableUniverses(false, ["grow"]).map((u) => u.id)).toEqual([
+      "light",
+    ]);
+    expect(lockedUniverses(false, ["grow"]).map((u) => u.id)).toContain("grow");
   });
   it("never lists Grow as coming soon once it is released", () => {
     expect(playableUniverses(false, []).map((u) => u.id)).toContain("grow");

@@ -466,8 +466,8 @@
   },
   "grow/cut-yard-3": {
     "file": "/ever-onward/voice/grow/cut-yard-3.mp3",
-    "hash": "ca00c1f4885c",
-    "durationGuess": 18
+    "hash": "73f52c9d5570",
+    "durationGuess": 17
   },
   "grow/cut-yard-4": {
     "file": "/ever-onward/voice/grow/cut-yard-4.mp3",
@@ -1096,7 +1096,7 @@
   },
   "grow/seed-child": {
     "file": "/ever-onward/voice/grow/seed-child.mp3",
-    "hash": "4dc725c7054f",
+    "hash": "c4bc49ab96e8",
     "durationGuess": 17
   },
   "grow/seed-end-1": {

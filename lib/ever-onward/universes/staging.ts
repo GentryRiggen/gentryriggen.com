@@ -17,7 +17,7 @@ export const SHOWS_UNRELEASED =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_E2E === "1";
 
 /** Ids of universes that are built but not released yet. */
-export const UNRELEASED_IDS: readonly string[] = ["grow"];
+export const UNRELEASED_IDS: readonly string[] = [];
 
 /** Every universe that is built, in hub order. */
 export const ALL_UNIVERSES: readonly UniverseDef[] = [
