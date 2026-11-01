@@ -664,6 +664,191 @@
     "hash": "d13f89769928",
     "durationGuess": 13
   },
+  "grow/world-windbreak": {
+    "file": "/ever-onward/voice/grow/world-windbreak.mp3",
+    "hash": "6df6ed30063a",
+    "durationGuess": 12
+  },
+  "grow/world-choice": {
+    "file": "/ever-onward/voice/grow/world-choice.mp3",
+    "hash": "dc6b8ad1e2aa",
+    "durationGuess": 12
+  },
+  "grow/world-time-1": {
+    "file": "/ever-onward/voice/grow/world-time-1.mp3",
+    "hash": "7d069e68c70b",
+    "durationGuess": 12
+  },
+  "grow/world-jungle": {
+    "file": "/ever-onward/voice/grow/world-jungle.mp3",
+    "hash": "8ec8f0bf59e3",
+    "durationGuess": 9
+  },
+  "grow/world-rain-makers": {
+    "file": "/ever-onward/voice/grow/world-rain-makers.mp3",
+    "hash": "19ccca6490b7",
+    "durationGuess": 7
+  },
+  "grow/world-forest": {
+    "file": "/ever-onward/voice/grow/world-forest.mp3",
+    "hash": "01f40766714b",
+    "durationGuess": 9
+  },
+  "grow/world-river": {
+    "file": "/ever-onward/voice/grow/world-river.mp3",
+    "hash": "cd308df78202",
+    "durationGuess": 9
+  },
+  "grow/world-time-2": {
+    "file": "/ever-onward/voice/grow/world-time-2.mp3",
+    "hash": "b8f5066b5209",
+    "durationGuess": 10
+  },
+  "grow/world-meadow": {
+    "file": "/ever-onward/voice/grow/world-meadow.mp3",
+    "hash": "37733bdeb932",
+    "durationGuess": 10
+  },
+  "grow/world-rover": {
+    "file": "/ever-onward/voice/grow/world-rover.mp3",
+    "hash": "cbd8cd18004a",
+    "durationGuess": 8
+  },
+  "grow/world-wetland": {
+    "file": "/ever-onward/voice/grow/world-wetland.mp3",
+    "hash": "910e40952616",
+    "durationGuess": 9
+  },
+  "grow/world-time-3": {
+    "file": "/ever-onward/voice/grow/world-time-3.mp3",
+    "hash": "558d9e0dd1d2",
+    "durationGuess": 12
+  },
+  "grow/world-thirsty": {
+    "file": "/ever-onward/voice/grow/world-thirsty.mp3",
+    "hash": "531596473308",
+    "durationGuess": 11
+  },
+  "grow/world-switch": {
+    "file": "/ever-onward/voice/grow/world-switch.mp3",
+    "hash": "ab9a351ddf08",
+    "durationGuess": 11
+  },
+  "grow/world-cover-1": {
+    "file": "/ever-onward/voice/grow/world-cover-1.mp3",
+    "hash": "09f0b2d80513",
+    "durationGuess": 9
+  },
+  "grow/world-time-4": {
+    "file": "/ever-onward/voice/grow/world-time-4.mp3",
+    "hash": "92801debce7a",
+    "durationGuess": 11
+  },
+  "grow/world-cloud": {
+    "file": "/ever-onward/voice/grow/world-cloud.mp3",
+    "hash": "22e91b7615fe",
+    "durationGuess": 9
+  },
+  "grow/world-time-5": {
+    "file": "/ever-onward/voice/grow/world-time-5.mp3",
+    "hash": "d647cd57e6f7",
+    "durationGuess": 12
+  },
+  "grow/world-cover-2": {
+    "file": "/ever-onward/voice/grow/world-cover-2.mp3",
+    "hash": "9269ea38ed64",
+    "durationGuess": 10
+  },
+  "grow/world-seeder": {
+    "file": "/ever-onward/voice/grow/world-seeder.mp3",
+    "hash": "c8afd777737a",
+    "durationGuess": 12
+  },
+  "grow/world-time-6": {
+    "file": "/ever-onward/voice/grow/world-time-6.mp3",
+    "hash": "cbaeaaf66185",
+    "durationGuess": 10
+  },
+  "grow/world-time-7": {
+    "file": "/ever-onward/voice/grow/world-time-7.mp3",
+    "hash": "a1c620495199",
+    "durationGuess": 13
+  },
+  "grow/world-cover-3": {
+    "file": "/ever-onward/voice/grow/world-cover-3.mp3",
+    "hash": "7f64c2c27b57",
+    "durationGuess": 13
+  },
+  "grow/world-time-8": {
+    "file": "/ever-onward/voice/grow/world-time-8.mp3",
+    "hash": "5671b9edc2ae",
+    "durationGuess": 13
+  },
+  "grow/world-time-9": {
+    "file": "/ever-onward/voice/grow/world-time-9.mp3",
+    "hash": "80f8d956b826",
+    "durationGuess": 12
+  },
+  "grow/world-cover-4": {
+    "file": "/ever-onward/voice/grow/world-cover-4.mp3",
+    "hash": "70f66ddcd0fb",
+    "durationGuess": 12
+  },
+  "grow/world-time-10": {
+    "file": "/ever-onward/voice/grow/world-time-10.mp3",
+    "hash": "eb10b19d80e4",
+    "durationGuess": 13
+  },
+  "grow/world-time-11": {
+    "file": "/ever-onward/voice/grow/world-time-11.mp3",
+    "hash": "0c82de34a3b6",
+    "durationGuess": 15
+  },
+  "grow/world-cover-5": {
+    "file": "/ever-onward/voice/grow/world-cover-5.mp3",
+    "hash": "68657dc00bfb",
+    "durationGuess": 11
+  },
+  "grow/world-time-12": {
+    "file": "/ever-onward/voice/grow/world-time-12.mp3",
+    "hash": "692b34aa3e8d",
+    "durationGuess": 13
+  },
+  "grow/world-time-13": {
+    "file": "/ever-onward/voice/grow/world-time-13.mp3",
+    "hash": "8b152fef689f",
+    "durationGuess": 12
+  },
+  "grow/world-cover-6": {
+    "file": "/ever-onward/voice/grow/world-cover-6.mp3",
+    "hash": "70b9dd292d6e",
+    "durationGuess": 16
+  },
+  "grow/world-time-14": {
+    "file": "/ever-onward/voice/grow/world-time-14.mp3",
+    "hash": "8974f2bcec04",
+    "durationGuess": 14
+  },
+  "grow/world-time-15": {
+    "file": "/ever-onward/voice/grow/world-time-15.mp3",
+    "hash": "fb6746a227bf",
+    "durationGuess": 13
+  },
+  "grow/world-time-16": {
+    "file": "/ever-onward/voice/grow/world-time-16.mp3",
+    "hash": "1290b14dfd1c",
+    "durationGuess": 9
+  },
+  "grow/world-time-17": {
+    "file": "/ever-onward/voice/grow/world-time-17.mp3",
+    "hash": "5b4935f015a4",
+    "durationGuess": 12
+  },
+  "grow/world-vault": {
+    "file": "/ever-onward/voice/grow/world-vault.mp3",
+    "hash": "62569edfc109",
+    "durationGuess": 11
+  },
   "grow/seed-hello": {
     "file": "/ever-onward/voice/grow/seed-hello.mp3",
     "hash": "9a45267910cd",
