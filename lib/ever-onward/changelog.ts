@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.0",
+    date: "2026-11-01",
+    title: "Arcade mode",
+    highlights: [
+      "The whole game now has the glowing retro arcade look of the start screen",
+      "The tap button sits in the middle at the bottom, right where your thumb is",
+      "New parts of the story type themselves out like an old computer",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-11-01",
     title: "Retro all the way",
