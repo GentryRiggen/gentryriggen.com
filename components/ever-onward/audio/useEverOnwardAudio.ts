@@ -90,6 +90,8 @@ export default function useEverOnwardAudio(
     revealed: run.revealed.length,
     fronts: run.resources.wxFronts ?? 0,
     hauls: run.resources.tdHauls ?? 0,
+    launches: run.resources.prLaunches ?? 0,
+    homeRuns: run.resources.prRuns ?? 0,
     affordable: new Set<string>(),
   });
   const affordableNow = new Set(
@@ -108,6 +110,11 @@ export default function useEverOnwardAudio(
       // Nets hauled in on the tide clock.
       if ((run.resources.tdHauls ?? 0) > before.hauls)
         everOnwardSynth.cue("splash");
+      // The racing probe leaving the dock, and coming home.
+      if ((run.resources.prLaunches ?? 0) > before.launches)
+        everOnwardSynth.cue("launch");
+      if ((run.resources.prRuns ?? 0) > before.homeRuns)
+        everOnwardSynth.cue("arrive");
       if (run.revealed.length > before.revealed) everOnwardSynth.cue("reveal");
       for (const id of affordableNow) {
         if (!before.affordable.has(id)) {
@@ -122,6 +129,8 @@ export default function useEverOnwardAudio(
       revealed: run.revealed.length,
       fronts: run.resources.wxFronts ?? 0,
       hauls: run.resources.tdHauls ?? 0,
+      launches: run.resources.prLaunches ?? 0,
+      homeRuns: run.resources.prRuns ?? 0,
       affordable: affordableNow,
     };
   });

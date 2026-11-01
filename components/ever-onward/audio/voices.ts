@@ -316,3 +316,43 @@ export function playSplash(engine: VoiceEngine) {
     })
   );
 }
+
+/** A rising whoosh: the racing probe leaves the dock. */
+export function playLaunch(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.7,
+    filter: "bandpass",
+    freq: 300,
+    freqEnd: 2600,
+    q: 1.2,
+    gain: 0.08,
+    attack: 0.1,
+  });
+  tone(engine, {
+    type: "triangle",
+    start: at,
+    duration: 0.5,
+    freq: 220,
+    freqEnd: 660,
+    gain: 0.05,
+    attack: 0.02,
+  });
+}
+
+/** Two bright chimes: the racing probe is home with its haul. */
+export function playArrive(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [0, 0.14].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.5,
+      freq: 784 + i * 392,
+      gain: 0.07,
+      attack: 0.005,
+    })
+  );
+}

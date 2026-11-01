@@ -1711,3 +1711,70 @@ html:has(.jim-app) body {
     animation: none;
   }
 }
+
+/* Ever Onward: Probe Races (a twinkling star map, a flickering exhaust). */
+@keyframes pr-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes pr-ping {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes pr-exhaust {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pr-loop {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pr-twinkle {
+  animation: pr-twinkle 2.2s ease-in-out infinite;
+}
+
+.pr-ping {
+  animation: pr-ping 2.8s ease-in-out infinite;
+}
+
+.pr-exhaust {
+  animation: pr-exhaust 0.35s ease-in-out infinite;
+}
+
+.pr-loop {
+  animation: pr-loop 5s linear infinite;
+}
+
+.pr-loop-slow {
+  animation: pr-loop 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-twinkle,
+  .pr-ping,
+  .pr-exhaust,
+  .pr-loop,
+  .pr-loop-slow {
+    animation: none;
+  }
+}
