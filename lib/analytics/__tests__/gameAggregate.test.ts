@@ -91,6 +91,9 @@ describe("summarizeShip", () => {
     ship("template_used", { template: "titanic" }),
     ship("part_placed", { category: "decks" }),
     ship("walk_started", { start: "bow" }),
+    ship("escape_ending", { ending: "deck", boat: "davit" }),
+    ship("escape_ending", { ending: "deck", boat: "raft" }),
+    ship("escape_ending", { ending: "frozen", boat: "none" }),
     ship("drive_started", { density: "few" }),
     ship("ship_shared", {}),
   ]);
@@ -101,6 +104,13 @@ describe("summarizeShip", () => {
       key: "iceberg: sank",
       views: 2,
     });
+  });
+
+  it("tallies how walkers escaped", () => {
+    expect(summary.escapes).toEqual([
+      { key: "deck", views: 2 },
+      { key: "frozen", views: 1 },
+    ]);
   });
 
   it("builds a star distribution per challenge", () => {

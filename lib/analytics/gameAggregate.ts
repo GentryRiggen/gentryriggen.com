@@ -49,6 +49,8 @@ export interface ShipSummary {
   templates: Count[];
   /** Sampled (about 1 in 20), so only the proportions mean anything. */
   partCategories: Count[];
+  /** How walkers escaped: "deck", "swim" or "frozen". */
+  escapes: Count[];
   walks: number;
   drives: number;
   shares: number;
@@ -156,6 +158,9 @@ export function summarizeShip(events: GameEvent[]): ShipSummary {
     ),
     partCategories: tally(
       ofName(events, "part_placed").map((e) => str(e, "category"))
+    ),
+    escapes: tally(
+      ofName(events, "escape_ending").map((e) => str(e, "ending"))
     ),
     walks: ofName(events, "walk_started").length,
     drives: ofName(events, "drive_started").length,

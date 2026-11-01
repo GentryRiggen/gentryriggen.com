@@ -18,7 +18,7 @@ import {
   type EscapeBoatKind,
   type EscapePhase,
 } from "@/lib/ship-builder/walk/escape";
-import { advanceEscape } from "./escapeStep";
+import { advanceEscape, escapeLedger } from "./escapeStep";
 import { walkerBody } from "./playbackBody";
 import { testEscapeWarmthSeconds } from "./testClock";
 import { activeEvacuation } from "./trialTimeline";
@@ -83,11 +83,16 @@ function Escaping() {
       },
       pickup: next.pickup && { boatId: next.pickup.boatId },
     });
-    const ending = endingOf(next.phase);
-    if (ending && !endingOf(before.phase)) {
-      useShipBuilderStore
-        .getState()
-        .recordEscape(ending, boatKindOf(next.phase, plan));
+    const change = escapeLedger(before.phase, next.phase);
+    if (change === "clear") {
+      useShipBuilderStore.getState().clearEscape();
+    } else if (change === "record") {
+      const ending = endingOf(next.phase);
+      if (ending) {
+        useShipBuilderStore
+          .getState()
+          .recordEscape(ending, boatKindOf(next.phase, plan));
+      }
     }
   });
 

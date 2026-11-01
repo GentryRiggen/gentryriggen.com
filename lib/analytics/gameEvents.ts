@@ -206,6 +206,14 @@ export const GAME_EVENTS = {
     sample: 1,
     props: { start: { kind: "enum", values: ["bow", "middle", "stern"] } },
   },
+  escape_ending: {
+    site: "ship-builder",
+    sample: 1,
+    props: {
+      ending: { kind: "enum", values: ["deck", "swim", "frozen"] },
+      boat: { kind: "enum", values: ["davit", "raft", "none"] },
+    },
+  },
   drive_started: {
     site: "ship-builder",
     sample: 1,

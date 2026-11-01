@@ -10,6 +10,7 @@ import type { EscapeRequest } from "@/lib/ship-builder/state/escapeActions";
 import type { WalkHalf, WalkInput, WalkState } from "@/lib/ship-builder/walk";
 import {
   boardableBoat,
+  endingOf,
   COLD_WARNING,
   pickupBoat,
   rewindEscape,
@@ -96,6 +97,21 @@ function inert(phase: EscapePhase, leftover: number): EscapeAdvance {
     stepped: false,
     yaw: null,
   };
+}
+
+/**
+ * What the record should do after a frame: note a new ending, or forget one
+ * the clock was scrubbed back past (so the next ending counts afresh).
+ */
+export function escapeLedger(
+  before: EscapePhase,
+  next: EscapePhase
+): "record" | "clear" | null {
+  const was = endingOf(before);
+  const now = endingOf(next);
+  if (now && !was) return "record";
+  if (was && !now) return "clear";
+  return null;
 }
 
 /**

@@ -348,6 +348,8 @@ export interface ShipBuilderState extends ShipBuilderData {
   sinkWhileWalking: () => void;
   /** Records how the walker escaped; only the first call in a walk counts. */
   recordEscape: (ending: EscapeEnding, boat: EscapeBoatKind) => void;
+  /** Forgets the recorded ending (the clock was scrubbed back past it). */
+  clearEscape: () => void;
   setDriveView: (view: DriveView) => void;
   /** A hard hit: ends the drive and plays the sea trial struck where she hit. */
   driveHit: (impact: SailImpact) => void;
@@ -923,6 +925,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       // same ship: run it again with the same look.
       runId += 1;
       set({
+        lastEscape: null,
         trial: {
           status: "running",
           input: trial.input,
@@ -1058,6 +1061,11 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     recordEscape(ending, boat) {
       if (get().walk.status !== "walking" || get().lastEscape) return;
       set({ lastEscape: { ending, boat } });
+      trackGame("escape_ending", { ending, boat });
+    },
+
+    clearEscape() {
+      if (get().lastEscape) set({ lastEscape: null });
     },
 
     setDriveView(view) {
@@ -1138,6 +1146,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       runId += 1;
       trialSpeedSetting.set(1);
       set({
+        lastEscape: null,
         trial: {
           status: "running",
           input: trial.input,

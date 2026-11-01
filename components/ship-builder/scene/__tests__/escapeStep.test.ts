@@ -14,7 +14,12 @@ import {
   startSwimming,
   type EscapePhase,
 } from "@/lib/ship-builder/walk/escape";
-import { advanceEscape, hullBoxOf, type EscapeFrame } from "../escapeStep";
+import {
+  advanceEscape,
+  escapeLedger,
+  hullBoxOf,
+  type EscapeFrame,
+} from "../escapeStep";
 import { walkerBody } from "../playbackBody";
 import { trialPlayback, type TrialPlayback } from "../trialPlayback";
 
@@ -316,5 +321,28 @@ describe("walkerBody", () => {
   it("goes by where they stand when no half is known", () => {
     expect(walkerBody(playback(), null, 3).sink).toBe(9);
     expect(walkerBody(playback(), null, 15).sink).toBe(0);
+  });
+});
+
+describe("escapeLedger", () => {
+  const inBoat: EscapePhase = {
+    kind: "in-boat",
+    boatId: "b",
+    since: 5,
+    fromWater: false,
+  };
+  const aboard: EscapePhase = { kind: "aboard" };
+
+  it("records a new ending", () => {
+    expect(escapeLedger(aboard, inBoat)).toBe("record");
+  });
+
+  it("clears when the clock is scrubbed back past the ending", () => {
+    expect(escapeLedger(inBoat, aboard)).toBe("clear");
+  });
+
+  it("does nothing while the ending just holds", () => {
+    expect(escapeLedger(inBoat, inBoat)).toBeNull();
+    expect(escapeLedger(aboard, aboard)).toBeNull();
   });
 });

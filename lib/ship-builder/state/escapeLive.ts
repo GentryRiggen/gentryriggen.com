@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { EscapePhase } from "../walk/escape";
+import { clearEscapeRequest } from "./escapeActions";
 
 /**
  * The published copy of the player's escape (see `walk/escape.ts`): the phase,
@@ -75,6 +76,8 @@ export function publishEscape(next: EscapeSnapshot): void {
 
 /** Back aboard with nothing to board (a walk starts or ends). */
 export function resetEscape(): void {
+  // A stale tap must never carry into the next walk.
+  clearEscapeRequest();
   latest = ABOARD;
   published = ABOARD;
   for (const listener of listeners) listener();

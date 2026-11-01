@@ -521,6 +521,10 @@ service cloud.firestore {
         || (name == 'walk_started'
           && p.keys().hasOnly(['start']) && p.keys().hasAll(['start'])
           && p.start in ['bow', 'middle', 'stern'])
+        || (name == 'escape_ending'
+          && p.keys().hasOnly(['ending', 'boat']) && p.keys().hasAll(['ending', 'boat'])
+          && p.ending in ['deck', 'swim', 'frozen']
+          && p.boat in ['davit', 'raft', 'none'])
         || (name == 'drive_started'
           && p.keys().hasOnly(['density']) && p.keys().hasAll(['density'])
           && p.density in ['few', 'some', 'many'])

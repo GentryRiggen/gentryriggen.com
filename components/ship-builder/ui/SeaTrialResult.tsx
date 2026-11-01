@@ -24,6 +24,7 @@ import { trialTimelineFor } from "../scene/trialTimeline";
 import ChallengeResult from "./ChallengeResult";
 import ResultDetails from "./ResultDetails";
 import { focusSeaTrialButton } from "./SeaTrialButton";
+import { ESCAPE_RESULT_LINES } from "@/lib/ship-builder/escapeCopy";
 import { lifeboatLines } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 import SoundToggle from "./SoundToggle";
@@ -96,6 +97,7 @@ interface ResultCardProps {
 
 function ResultCard({ trial }: ResultCardProps) {
   const endTrial = useShipBuilderStore((s) => s.endTrial);
+  const lastEscape = useShipBuilderStore((s) => s.lastEscape);
   const replay = useShipBuilderStore((s) => s.replay);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsButton = useRef<HTMLButtonElement>(null);
@@ -189,6 +191,14 @@ function ResultCard({ trial }: ResultCardProps) {
           </button>
         </div>
         {lifeboats && <LifeboatLine lines={lifeboats} />}
+        {lastEscape && (
+          <p
+            data-testid="escape-line"
+            className="text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            {ESCAPE_RESULT_LINES[lastEscape.ending]}
+          </p>
+        )}
         {timeline && (
           <div className="flex items-center gap-2">
             <TrialScrubber

@@ -17,6 +17,11 @@ export function requestClimbIn(): void {
   pending = "climb-in";
 }
 
+/** Drops any request waiting (a walk starts or ends). */
+export function clearEscapeRequest(): void {
+  pending = null;
+}
+
 /** The request waiting for the runner, cleared as it is read. */
 export function takeEscapeRequest(): EscapeRequest | null {
   const request = pending;
