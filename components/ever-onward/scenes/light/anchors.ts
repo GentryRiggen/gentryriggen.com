@@ -64,6 +64,12 @@ export const RACE = { x: 56, y: 238, loopY: 196, loopRadius: 26 } as const;
 
 // ------------------------------------------------------------------- Last
 
+/**
+ * The memory flowers by the lantern: eleven slots in a gentle arc, and the
+ * rain barrel at the left end (kept above the caption bar on a phone).
+ */
+export const GARDEN = { x: 96, gap: 20, y: 268, barrelX: 70 } as const;
+
 export const LIGHT_COUNT = 11;
 export const LAST_LIGHTS: readonly Point[] = Array.from(
   { length: LIGHT_COUNT },

@@ -1778,3 +1778,60 @@ html:has(.jim-app) body {
     animation: none;
   }
 }
+
+/* Ever Onward: the Memory Garden (swaying flowers, a soft glow, drops). */
+@keyframes gd-sway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes gd-glow {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.36;
+  }
+}
+
+@keyframes gd-drip {
+  0% {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+}
+
+.gd-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gd-sway 4.2s ease-in-out infinite;
+}
+
+.gd-glow {
+  animation: gd-glow 3.4s ease-in-out infinite;
+}
+
+.gd-drip {
+  animation: gd-drip 1.8s ease-in infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-sway,
+  .gd-glow,
+  .gd-drip {
+    animation: none;
+  }
+}

@@ -12,6 +12,7 @@ import {
   QUAY,
   RACE,
   TIDE,
+  GARDEN,
   RELAY_RADIUS,
   SUN,
   planetPoint,
@@ -144,6 +145,7 @@ const PLACES: Record<string, Place> = {
   "appetite-1": fixed(SUN.x + 70, SUN.y + 30, "Hungry probes"),
   "appetite-2": fixed(SUN.x + 70, SUN.y + 30, "Wider arms"),
 };
+PLACES["rain-barrel"] = fixed(GARDEN.barrelX, GARDEN.y - 20, "Rain barrel");
 for (const id of Object.keys(LET_GO_TEXT)) PLACES[id] = letGo(id);
 
 /** The callout for a purchase, or null for an id the scene has no spot for. */
