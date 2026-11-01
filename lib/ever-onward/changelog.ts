@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.0.4",
+    date: "2026-11-01",
+    title: "Watch it grow",
+    highlights: [
+      "Your coins now stay at the top of the screen even when you scroll down to the upgrades, with a little button so you can keep tapping",
+      "Numbers roll up smoothly and flash green when they jump",
+      "See how much you earn every second",
+      "A bar fills up toward your next upgrade and glows when you can buy it. Tap it to jump straight there",
+    ],
+  },
+  {
     version: "1.0.3",
     date: "2026-11-01",
     title: "Sound and music",

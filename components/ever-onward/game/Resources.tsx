@@ -1,9 +1,19 @@
+import type { Ref } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
+import AnimatedValue from "./AnimatedValue";
+import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface ResourcesProps {
   def: UniverseDef;
   run: RunState;
+  /** The phase's main currency, shown big and first. */
+  primaryId: string;
+  /** Its smoothed income per second. */
+  rate: number;
+  spend: Spend | null;
+  /** Watched to know when the main readout has scrolled away. */
+  primaryRef: Ref<HTMLDivElement>;
 }
 
 function formatResource(id: string, value: number): string {
@@ -12,17 +22,54 @@ function formatResource(id: string, value: number): string {
   return formatNumber(Math.floor(value));
 }
 
-export default function Resources({ def, run }: ResourcesProps) {
+export default function Resources({
+  def,
+  run,
+  primaryId,
+  rate,
+  spend,
+  primaryRef,
+}: ResourcesProps) {
   const phaseId = def.phases[run.phase].id;
   const shown = def.resources.filter(
     (r) => r.phases === undefined || r.phases.includes(phaseId)
   );
+  const primary = shown.find((r) => r.id === primaryId);
+  const others = shown.filter((r) => r.id !== primaryId);
   return (
     <dl
       aria-label="Resources"
       className="grid grid-cols-2 gap-2 sm:grid-cols-3"
     >
-      {shown.map((r) => (
+      {primary && (
+        <div
+          ref={primaryRef}
+          className="relative col-span-2 flex items-end justify-between gap-3 rounded-xl border border-amber-300 bg-white px-4 py-3 sm:col-span-3 dark:border-amber-700 dark:bg-slate-900"
+        >
+          <div className="min-w-0">
+            <dt className="truncate text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+              {primary.label}
+            </dt>
+            <dd className="text-4xl font-bold leading-tight text-slate-900 dark:text-slate-50">
+              <AnimatedValue
+                value={run.resources[primary.id] ?? 0}
+                format={(v) => formatResource(primary.id, v)}
+                testId={`lm-res-${primary.id}`}
+              />
+            </dd>
+          </div>
+          <dd
+            data-testid="lm-rate"
+            className="shrink-0 pb-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
+          >
+            +{formatNumber(rate)}/s
+          </dd>
+          <dd className="contents">
+            <SpendFloater spend={spend} />
+          </dd>
+        </div>
+      )}
+      {others.map((r) => (
         <div
           key={r.id}
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900"
@@ -30,11 +77,12 @@ export default function Resources({ def, run }: ResourcesProps) {
           <dt className="truncate text-xs text-slate-600 dark:text-slate-400">
             {r.label}
           </dt>
-          <dd
-            data-testid={`lm-res-${r.id}`}
-            className="text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50"
-          >
-            {formatResource(r.id, run.resources[r.id] ?? 0)}
+          <dd className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            <AnimatedValue
+              value={run.resources[r.id] ?? 0}
+              format={(v) => formatResource(r.id, v)}
+              testId={`lm-res-${r.id}`}
+            />
           </dd>
         </div>
       ))}

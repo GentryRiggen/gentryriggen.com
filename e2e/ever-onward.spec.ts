@@ -32,17 +32,19 @@ test.describe("Ever Onward", () => {
         .getByRole("button", { name: "Continue" })
         .click();
 
-      const coins = page.getByTestId("lm-res-coins");
-      await expect(coins).toHaveText("0");
+      await expect(page.getByTestId("lm-res-coins")).toHaveText("0");
       await page.getByTestId("lm-tap").click();
-      await expect(coins).not.toHaveText("0");
+      // The lamp's oil bill can eat a lone coin; the floating gain stays.
+      await expect(page.getByText(/^\+\d+$/).first()).toBeVisible();
       await expect(page.getByTestId("lm-scene")).toBeVisible();
     }
   );
 
   test("buying the first upgrade survives a reload", async ({ page }) => {
     await startGame(page);
-    const lens = page.getByRole("button", { name: /Better lens/ });
+    const lens = page
+      .getByRole("region", { name: "Upgrades" })
+      .getByRole("button", { name: /Better lens/ });
     await expect
       .poll(
         async () => {
@@ -61,7 +63,9 @@ test.describe("Ever Onward", () => {
     await page.getByTestId("lm-play-light").click();
     await expect(page.getByTestId("lm-phase-overlay")).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: /Better lens/ })
+      page
+        .getByRole("region", { name: "Upgrades" })
+        .getByRole("button", { name: /Better lens/ })
     ).toContainText("Level 1");
   });
 
@@ -70,6 +74,35 @@ test.describe("Ever Onward", () => {
     await page.goBack();
     await expect(page.getByTestId("lm-play-light")).toBeVisible();
     await expect(page.getByTestId("lm-tap")).toHaveCount(0);
+  });
+
+  test.describe("on a phone", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test("the coin counter and a tap button stay in view while scrolled down", async ({
+      page,
+    }) => {
+      await startGame(page);
+      const hud = page.getByTestId("lm-hud");
+      await expect(hud).not.toBeInViewport();
+
+      for (let i = 0; i < 15; i += 1) await page.getByTestId("lm-tap").click();
+      await page.evaluate(() =>
+        window.scrollTo(0, document.documentElement.scrollHeight)
+      );
+
+      await expect(hud).toBeInViewport();
+      const value = page.getByTestId("lm-hud-value");
+      await expect(value).toBeVisible();
+      await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
+
+      // The mini button keeps earning without scrolling back up.
+      await page.getByTestId("lm-hud-tap").click();
+      await expect(page.getByTestId("lm-hud-next")).toBeVisible();
+
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(hud).not.toBeInViewport();
+    });
   });
 
   test("the versions page lists the release", async ({ page }) => {

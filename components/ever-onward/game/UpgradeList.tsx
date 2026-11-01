@@ -22,6 +22,9 @@ interface UpgradeListProps {
   onBuy: (id: string) => void;
 }
 
+/** DOM id of an upgrade's card, so the next-goal bar can scroll to it. */
+export const upgradeElementId = (id: string): string => `lm-upgrade-${id}`;
+
 interface Seen {
   known: ReadonlySet<string>;
   fresh: ReadonlySet<string>;
@@ -74,12 +77,22 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
           const affordable = canAfford(run, u);
           const level = levelText(run, u);
           return (
-            <li key={u.id} className={seen.fresh.has(u.id) ? "lm-pop" : ""}>
+            <li
+              key={u.id}
+              id={upgradeElementId(u.id)}
+              className={seen.fresh.has(u.id) ? "lm-pop" : ""}
+            >
               <button
                 type="button"
                 aria-disabled={!affordable}
-                onClick={() => {
-                  if (affordable) onBuy(u.id);
+                onClick={(event) => {
+                  if (!affordable) return;
+                  // Restart the bounce without remounting (keeps focus).
+                  const button = event.currentTarget;
+                  button.classList.remove("lm-buy");
+                  void button.offsetWidth;
+                  button.classList.add("lm-buy");
+                  onBuy(u.id);
                 }}
                 className={`w-full touch-manipulation rounded-xl border p-3 text-left transition-colors aria-disabled:cursor-not-allowed ${focusRingClass} ${
                   affordable
