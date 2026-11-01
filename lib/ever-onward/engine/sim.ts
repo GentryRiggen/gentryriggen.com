@@ -9,6 +9,10 @@ import {
   manualGain,
   newRun,
   performAction,
+  projectSeenFlag,
+  shownProjects,
+  canAffordProject,
+  startProject,
   previewUpgrade,
   tick,
   upgradeCost,
@@ -28,7 +32,7 @@ import {
   type Trace,
   type TraceSample,
 } from "./trace";
-import type { RunState, UniverseDef, UpgradeDef } from "./types";
+import type { ProjectDef, RunState, UniverseDef, UpgradeDef } from "./types";
 
 export interface Strategy {
   /** Taps per simulated second (default 3). */
@@ -54,6 +58,12 @@ export interface Strategy {
    * nothing or the action can't be done.
    */
   actions?(run: RunState, available: readonly string[]): string[];
+  /**
+   * Projects (see `ProjectDef`), looked at on each shop trip: "best" starts
+   * the affordable one worth the most (forward income gain plus its
+   * `botValue`), a function picks ids itself, omitted never starts one.
+   */
+  projects?: "best" | ((run: RunState, shown: ProjectDef[]) => string[]);
   /**
    * Seconds a visitor waits before this player greets it (default 4). A
    * player who presses no buttons never greets anyone (Infinity).
@@ -233,6 +243,45 @@ function probeUpgrade(
   };
 }
 
+/**
+ * What starting a project is worth to a bot: the income it adds a minute on
+ * (as a ratio), plus the project's own hint for effects income can't show.
+ */
+export function projectValue(
+  def: UniverseDef,
+  run: RunState,
+  project: ProjectDef,
+  tps = 0
+): number {
+  const clone = cloneRun(run);
+  for (const cost of project.costs)
+    clone.resources[cost.resource] = Math.max(
+      clone.resources[cost.resource] ?? 0,
+      cost.amount
+    );
+  const started = startProject(def, clone, project.id);
+  const gain =
+    started === clone
+      ? 0
+      : ratioOf(
+          forwardIncome(def, clone, tps),
+          forwardIncome(def, started, tps)
+        );
+  return gain + (project.botValue ?? 0);
+}
+
+/** The affordable project worth the most, or undefined. */
+export function bestProject(
+  def: UniverseDef,
+  run: RunState,
+  shown: readonly ProjectDef[]
+): ProjectDef | undefined {
+  return shown
+    .filter((p) => canAffordProject(run, p))
+    .map((p) => ({ p, value: projectValue(def, run, p) }))
+    .sort((a, b) => b.value - a.value)[0]?.p;
+}
+
 /** A step of 0 or less would never advance the clock. */
 const MIN_STEP = 0.01;
 
@@ -298,6 +347,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
   const knownActions = new Set<string>();
   const knownResources = new Set<string>();
   const knownPlates = new Set<string>();
+  const knownProjects = new Set<string>();
   const affordableSince = new Map<string, number>();
   const teaserSeen = new Map<string, number>();
   const visitorSeen = new Map<string, number>();
@@ -329,6 +379,12 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
       teaserSeen.delete(id);
       if (run.revealed.includes(id) && run.time - seen >= TEASER_MIN_SECONDS)
         novelty.push({ t: seen, kind: "teaser", id, isSoft: true });
+    }
+    for (const project of def.projects ?? []) {
+      if (knownProjects.has(project.id)) continue;
+      if (!run.flags[projectSeenFlag(project.id)]) continue;
+      knownProjects.add(project.id);
+      novelty.push({ t: run.time, kind: "project", id: project.id });
     }
     for (const visitor of def.visitors ?? []) {
       if (visitorSeen.has(visitor.id)) continue;
@@ -484,6 +540,30 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     affordableSince.delete(pick.id);
   };
 
+  const startProjects = () => {
+    if (!strategy.projects) return;
+    for (let guard = 0; guard < 20; guard += 1) {
+      if (run.complete) return;
+      const shown = shownProjects(def, run);
+      if (shown.length === 0) return;
+      const picks =
+        strategy.projects === "best"
+          ? [bestProject(def, run, shown)?.id].filter(
+              (id): id is string => id !== undefined
+            )
+          : strategy.projects(run, shown);
+      const before = run;
+      for (const id of picks) {
+        const next = startProject(def, run, id);
+        if (next === run) continue;
+        run = next;
+        projectsDone.push({ t: run.time, id });
+        record();
+      }
+      if (run === before) return;
+    }
+  };
+
   const buyAll = () => {
     for (let guard = 0; guard < 1000; guard += 1) {
       // A finished run refuses every buy, so an upgrade still "affordable" at
@@ -568,6 +648,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
         affordableAtShop.push(affordableUpgrades(def, run).length);
         nextShop = run.time + shopEvery;
       }
+      startProjects();
       buyAll();
     }
   }

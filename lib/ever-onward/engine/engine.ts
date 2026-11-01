@@ -2,6 +2,7 @@ import type {
   ActionDef,
   ActionView,
   PhaseDef,
+  ProjectDef,
   RunState,
   TeaserDef,
   UniverseDef,
@@ -56,6 +57,7 @@ function settle(def: UniverseDef, run: RunState): void {
   // A phase can finish the moment it starts, so loop (bounded by phase count).
   for (let guard = 0; guard <= def.phases.length; guard += 1) {
     revealUpgrades(def, run);
+    revealProjects(def, run);
     arriveVisitors(def, run);
     fireStory(def, run);
     if (isLastPhase(def, run)) {
@@ -96,6 +98,97 @@ function revealUpgrades(def: UniverseDef, run: RunState): void {
     run.revealed.push(upgrade.id);
     pending += 1;
   }
+}
+
+// ----------------------------------------------------------------- projects
+
+export const DEFAULT_MAX_PROJECTS = 3;
+/** Flag set once a project has been offered, and once it is done. */
+export const projectSeenFlag = (id: string): string => `project-seen-${id}`;
+export const projectDoneFlag = (id: string): string => `project-${id}`;
+
+export const isProjectDone = (run: RunState, id: string): boolean =>
+  run.flags[projectDoneFlag(id)] === true;
+
+const isProjectInPhase = (
+  def: UniverseDef,
+  run: RunState,
+  project: ProjectDef
+): boolean => project.phase === currentPhase(def, run).id;
+
+/** A project is offered the first time its milestone is reached; it stays. */
+function revealProjects(def: UniverseDef, run: RunState): void {
+  for (const project of def.projects ?? []) {
+    if (run.flags[projectSeenFlag(project.id)]) continue;
+    if (!isProjectInPhase(def, run, project)) continue;
+    if (project.revealWhen && !project.revealWhen(run)) continue;
+    run.flags[projectSeenFlag(project.id)] = true;
+  }
+}
+
+/**
+ * Projects on offer now: revealed in this phase and not done, the first
+ * `maxProjects` in definition order (the next one moves up when one is done).
+ */
+export function shownProjects(def: UniverseDef, run: RunState): ProjectDef[] {
+  return (def.projects ?? [])
+    .filter(
+      (p) =>
+        isProjectInPhase(def, run, p) &&
+        run.flags[projectSeenFlag(p.id)] === true &&
+        !isProjectDone(run, p.id)
+    )
+    .slice(0, def.maxProjects ?? DEFAULT_MAX_PROJECTS);
+}
+
+/** Revealed in this phase but waiting for a free slot. */
+export function waitingProjectCount(def: UniverseDef, run: RunState): number {
+  return (def.projects ?? []).filter(
+    (p) =>
+      isProjectInPhase(def, run, p) &&
+      run.flags[projectSeenFlag(p.id)] === true &&
+      !isProjectDone(run, p.id)
+  ).length;
+}
+
+/** Projects done in this phase, in definition order. */
+export function doneProjects(def: UniverseDef, run: RunState): ProjectDef[] {
+  return (def.projects ?? []).filter(
+    (p) => isProjectInPhase(def, run, p) && isProjectDone(run, p.id)
+  );
+}
+
+export const isProjectId = (def: UniverseDef, id: string): boolean =>
+  (def.projects ?? []).some((p) => p.id === id);
+
+export const canAffordProject = (run: RunState, project: ProjectDef): boolean =>
+  project.costs.every((c) => (run.resources[c.resource] ?? 0) >= c.amount);
+
+export function canStartProject(
+  def: UniverseDef,
+  run: RunState,
+  projectId: string
+): boolean {
+  if (run.complete) return false;
+  const project = shownProjects(def, run).find((p) => p.id === projectId);
+  return !!project && canAffordProject(run, project);
+}
+
+/** Pays for and finishes a project. Returns the same run if it can't. */
+export function startProject(
+  def: UniverseDef,
+  run: RunState,
+  projectId: string
+): RunState {
+  if (!canStartProject(def, run, projectId)) return run;
+  const project = find(def.projects ?? [], projectId, "project");
+  const next = cloneRun(run);
+  for (const cost of project.costs)
+    next.resources[cost.resource] -= cost.amount;
+  next.flags[projectDoneFlag(project.id)] = true;
+  project.onDone?.(next);
+  settle(def, next);
+  return next;
 }
 
 /** Flag a visitor sets when it arrives, and when it has been greeted. */
