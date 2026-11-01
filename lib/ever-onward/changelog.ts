@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.15.0",
+    date: "2026-11-01",
+    title: "More to manage on the power grid",
+    highlights: [
+      "No More Night has Projects now. Your crews learn as they work and earn know-how. Spend it on ideas, and each one helps but has a catch, so choose well",
+      "A Streetlights setting: bright streets pay more power, soft ones light more towns and give your crews time to learn. The best setting changes as the night goes on",
+      "The Weather Desk is a real job now. Place your repair crews, move them as the forecast firms up, and fix towns that go dark",
+      "Fewer quiet stretches: there is almost always something worth deciding",
+    ],
+  },
+  {
     version: "1.14.1",
     date: "2026-11-01",
     title: "Upgrades that always help",
