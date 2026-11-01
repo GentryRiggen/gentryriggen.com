@@ -18,7 +18,8 @@ import {
   type EscapeBoatKind,
   type EscapePhase,
 } from "@/lib/ship-builder/walk/escape";
-import { advanceEscape, escapeLedger } from "./escapeStep";
+import { playShipVoice } from "../audio/shipVoice";
+import { advanceEscape, escapeLedger, escapeVoiceMoment } from "./escapeStep";
 import { walkerBody } from "./playbackBody";
 import { testEscapeWarmthSeconds } from "./testClock";
 import { activeEvacuation } from "./trialTimeline";
@@ -83,6 +84,8 @@ function Escaping() {
       },
       pickup: next.pickup && { boatId: next.pickup.boatId },
     });
+    const moment = escapeVoiceMoment(before.phase, next.phase);
+    if (moment) playShipVoice(moment);
     const change = escapeLedger(before.phase, next.phase);
     if (change === "clear") {
       useShipBuilderStore.getState().clearEscape();

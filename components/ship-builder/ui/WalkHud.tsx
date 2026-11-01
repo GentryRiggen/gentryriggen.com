@@ -6,6 +6,7 @@ import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import { useEscape } from "@/lib/ship-builder/state/escapeLive";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
+import { playShipVoice } from "../audio/shipVoice";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useWalkKeys from "../hooks/useWalkKeys";
 import EscapeActionButton from "./EscapeActionButton";
@@ -147,7 +148,7 @@ function SinkShipButton() {
 function EscapeStack() {
   return (
     <div className="pointer-events-none absolute inset-x-3 top-32 z-30 flex flex-col items-center gap-2 sm:inset-x-40 sm:top-[4.5rem] lg:inset-x-3 lg:top-20">
-      <EscapePopup />
+      <EscapePopup onShow={playShipVoice} />
       <WarmthMeter />
     </div>
   );

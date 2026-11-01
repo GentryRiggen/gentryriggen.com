@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { shipChannels } from "./channelSettings";
+import { unlockShipVoiceOnGesture } from "./shipVoice";
 import { soundSetting } from "./soundSetting";
 import { isAudioSupported, trialSynth } from "./synth";
 
@@ -35,6 +36,11 @@ export default function useSoundUnlock(isOn: boolean) {
   useEffect(() => {
     trialSynth.setEffectsEnabled(isEffectsOn);
   }, [isEffectsOn]);
+
+  // The spoken lines have their own audio context; a tap unlocks it too.
+  useEffect(() => {
+    if (isOn) unlockShipVoiceOnGesture();
+  }, [isOn]);
 
   useEffect(() => {
     if (!isOn || !isAudioSupported() || trialSynth.isEnabled()) return;

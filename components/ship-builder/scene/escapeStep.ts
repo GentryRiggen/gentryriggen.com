@@ -22,6 +22,7 @@ import {
   type HullBox,
   type Swimmer,
 } from "@/lib/ship-builder/walk/escape";
+import type { VoiceMoment } from "@/lib/ship-builder/voice/lines";
 import { MAX_FRAME_DELTA } from "./animationMath";
 
 /** Everything one frame of the escape reads. */
@@ -111,6 +112,30 @@ export function escapeLedger(
   const now = endingOf(next);
   if (now && !was) return "record";
   if (was && !now) return "clear";
+  return null;
+}
+
+/**
+ * The spoken line a phase change earns, for the moments without a card:
+ * boarding a lifeboat, jumping for a raft and the cold warning. The cards
+ * (saved, splash, frozen) speak as they appear (`EscapePopup`'s `onShow`).
+ */
+export function escapeVoiceMoment(
+  before: EscapePhase,
+  next: EscapePhase
+): Extract<VoiceMoment, "boarded" | "jumped" | "cold"> | null {
+  if (before.kind === "aboard" && next.kind === "in-boat" && !next.fromWater) {
+    return "boarded";
+  }
+  if (before.kind === "aboard" && next.kind === "jumping") return "jumped";
+  if (
+    before.kind === "swimming" &&
+    next.kind === "swimming" &&
+    !before.warned &&
+    next.warned
+  ) {
+    return "cold";
+  }
   return null;
 }
 

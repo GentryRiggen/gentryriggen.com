@@ -17,6 +17,7 @@ import {
 import {
   advanceEscape,
   escapeLedger,
+  escapeVoiceMoment,
   hullBoxOf,
   type EscapeFrame,
 } from "../escapeStep";
@@ -344,5 +345,52 @@ describe("escapeLedger", () => {
   it("does nothing while the ending just holds", () => {
     expect(escapeLedger(inBoat, inBoat)).toBeNull();
     expect(escapeLedger(aboard, aboard)).toBeNull();
+  });
+});
+
+describe("escapeVoiceMoment", () => {
+  const aboard: EscapePhase = { kind: "aboard" };
+  const swimmer = { x: 0, z: 0, yaw: 0, warmth: 0.2, kick: 0 };
+  const swimming: EscapePhase = {
+    kind: "swimming",
+    since: 1,
+    swimmer,
+    warned: false,
+  };
+  const inBoat = (fromWater: boolean): EscapePhase => ({
+    kind: "in-boat",
+    boatId: "b",
+    since: 5,
+    fromWater,
+  });
+
+  it("speaks on boarding a lifeboat from the deck", () => {
+    expect(escapeVoiceMoment(aboard, inBoat(false))).toBe("boarded");
+  });
+
+  it("speaks on jumping for a raft, not on landing in it", () => {
+    const jumping: EscapePhase = {
+      kind: "jumping",
+      boatId: "r",
+      since: 2,
+      from: { x: 0, y: 3, z: 0 },
+    };
+    expect(escapeVoiceMoment(aboard, jumping)).toBe("jumped");
+    expect(escapeVoiceMoment(jumping, inBoat(false))).toBeNull();
+  });
+
+  it("speaks once when the swimmer gets cold", () => {
+    const warned = { ...swimming, warned: true };
+    expect(escapeVoiceMoment(swimming, warned)).toBe("cold");
+    expect(escapeVoiceMoment(warned, warned)).toBeNull();
+  });
+
+  it("leaves the card moments to the popups", () => {
+    expect(escapeVoiceMoment(aboard, swimming)).toBeNull();
+    expect(escapeVoiceMoment(swimming, inBoat(true))).toBeNull();
+    expect(
+      escapeVoiceMoment(swimming, { kind: "frozen", since: 9, x: 0, z: 0 })
+    ).toBeNull();
+    expect(escapeVoiceMoment(inBoat(false), aboard)).toBeNull();
   });
 });
