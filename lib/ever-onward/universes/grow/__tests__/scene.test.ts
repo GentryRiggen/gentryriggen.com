@@ -140,6 +140,16 @@ describe("Grow sceneInfo", () => {
       ]).toEqual([0, 0, 0, 0, 0, 0]);
     });
 
+    it("shows migrants once a flock has landed", () => {
+      const run = runAtPhaseStart(2);
+      expect(sceneInfo(run).migrated).toBe(false);
+      const landed = {
+        ...run,
+        resources: { ...run.resources, mgFlights: 1 },
+      };
+      expect(sceneInfo(landed).migrated).toBe(true);
+    });
+
     it("counts rivers, clouds and flocks from what was built", () => {
       const run = runAtPhaseStart(2);
       run.owned = {

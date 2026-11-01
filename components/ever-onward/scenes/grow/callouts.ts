@@ -9,6 +9,7 @@ import {
   FARM_BARN,
   FARM_GLASS,
   FRAME,
+  GLOBE_FLOCK,
   GLOBE_RAIN,
   GLOBE_ROVER,
   GLOBE_SEEDER,
@@ -88,6 +89,7 @@ const WORLD_PLACES: Record<string, Place> = {
   "planting-rover": (n) => at(GLOBE_ROVER, `Planting rover ${n}`),
   "cloud-seeder": (n) => at(cloudAt(nth(n, 4) + 1), `Cloud seeder ${n}`, -8),
   "sky-seeder": (n) => at(GLOBE_SEEDER, `Sky seeder ${n}`),
+  "flock-leader": () => at(GLOBE_FLOCK, "Flock leader"),
   "seed-vault": () => at(GLOBE_VAULT, "Seed vault"),
 };
 

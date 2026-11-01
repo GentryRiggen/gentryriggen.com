@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
-import { GLOBE, cloudAt, riverAt } from "./anchors";
+import { GLOBE, GLOBE_FLOCK, cloudAt, riverAt } from "./anchors";
 
 const BIOME_FILL = {
   forest: "#3a8f3f",
@@ -201,6 +201,28 @@ function Flock({ x, y }: { x: number; y: number }) {
   );
 }
 
+/** A V of migrating birds, once a flock has landed somewhere. */
+function MigrantV({ x, y }: { x: number; y: number }) {
+  const spots = [0, 1, 2, 3, 4].map((k) => [Math.abs(k - 2) * 7, k * 5 - 8]);
+  return (
+    <g className="gw-drift [animation-delay:-3s]" data-testid="lm-migrants">
+      {spots.map(([dx, dy], k) => (
+        <g key={k}>
+          <rect x={x - dx} y={y + dy} width="4" height="2" fill="#fff8d6" />
+          <rect
+            x={x - dx + 4}
+            y={y + dy + 2}
+            width="3"
+            height="2"
+            fill="#fff8d6"
+          />
+          <rect x={x - dx + 7} y={y + dy} width="4" height="2" fill="#fff8d6" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
 /** A close-up farm that the camera leaves behind. */
 function FarmBehind({ away }: { away: boolean }) {
   return (
@@ -348,6 +370,7 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
         {Array.from({ length: info.clouds }, (_, i) => (
           <Cloud key={i} i={i} {...cloudAt(i)} />
         ))}
+        {info.migrated && <MigrantV x={GLOBE_FLOCK.x} y={GLOBE_FLOCK.y} />}
         {Array.from({ length: info.flocks }, (_, i) => (
           <Flock key={i} x={150 + ((i * 53) % 120)} y={52 + ((i * 37) % 60)} />
         ))}

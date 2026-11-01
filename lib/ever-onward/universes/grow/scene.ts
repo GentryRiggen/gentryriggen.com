@@ -42,6 +42,8 @@ export interface GrowSceneInfo {
   rivers: number;
   clouds: number;
   flocks: number;
+  /** World: a migrating flock has landed at least once (a V of birds in the sky). */
+  migrated: boolean;
   /** World: how much of the old roads and towns the picture still draws (0 to 1 in tenths). Drawn only, never shown as a number or a label. */
   roadsLeft: number;
   townsLeft: number;
@@ -168,6 +170,7 @@ function worldInfo(
   | "rivers"
   | "clouds"
   | "flocks"
+  | "migrated"
   | "roadsLeft"
   | "townsLeft"
 > {
@@ -179,6 +182,7 @@ function worldInfo(
     rivers: Math.min(6, n("river-bend")),
     clouds: isWorld ? 2 + Math.min(4, n("cloud-seeder")) : 0,
     flocks: Math.min(5, n("sky-seeder")),
+    migrated: isWorld && (run.resources.mgFlights ?? 0) > 0,
     // Roads go quiet first, towns a little later; both are only drawn.
     roadsLeft: isWorld ? tenths(1 - (cover - 0.05) / 0.7) : 0,
     townsLeft: isWorld ? tenths(1 - (cover - 0.15) / 0.7) : 0,
