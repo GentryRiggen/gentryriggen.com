@@ -16,6 +16,8 @@ import {
   level,
   tankCapacity,
 } from "./tick";
+import { cloneRun } from "../../engine/engine";
+import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
 /**
  * Scorecard hooks: what the simulator reads to count plates, watch the oil
@@ -42,6 +44,7 @@ export function lightPlates(run: RunState): string[] {
     if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
       plates.push("grid");
     if (isRushOn(run)) plates.push("rush");
+    if (isWeatherOpen(run)) plates.push("weather");
   } else if (run.phase === 2) {
     plates.push("aim");
     if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
@@ -63,6 +66,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   oilMarket: ["buy-oil"],
   grid: ["balance-grid"],
   rush: ["ride-rush"],
+  weather: SHIELD_ACTION_IDS,
   course: ["correct-course"],
   flare: ["catch-flare"],
   boat: ["steer-boat", "flash-lamp"],
@@ -150,3 +154,7 @@ function sceneKey(run: RunState): string {
 
 export const lightSceneDiff = (before: RunState, after: RunState): boolean =>
   sceneKey(before) !== sceneKey(after);
+
+/** Income probes see the run with no storm landing and no surge pending. */
+export const lightIncomeView = (run: RunState): RunState =>
+  isWeatherOpen(run) ? withoutStorms(cloneRun(run)) : run;

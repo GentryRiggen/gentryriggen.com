@@ -78,6 +78,27 @@ export const TUNING = {
     /** Seconds of income the rush pays when claimed. */
     rushBonusSeconds: 25,
   },
+  /** The Weather Desk, a side machine of No More Night (see weather.ts). */
+  weather: {
+    /** It opens with this many steam plants (about a third of the way in). */
+    openAtSteamPlants: 3,
+    /** Seconds after it opens until the first front forms. */
+    firstFormSeconds: 40,
+    /** Seconds a front takes to form, and how long its forecast stands. */
+    formMin: 130,
+    formSpread: 50,
+    forecastSeconds: 55,
+    /** Each town is at least this likely; the rest is shared out at random. */
+    minChance: 5,
+    /** Chances are drawn as random ** skew, so one town is usually likely. */
+    skew: 2,
+    /** Seconds of income a held storm pays. */
+    bonusSeconds: 45,
+    /** The bonus flows in over this many seconds, like a surge of power. */
+    surgeSeconds: 12,
+    /** The weather vane pays this share of that. */
+    vaneShare: 0.6,
+  },
   sky: {
     aimBase: 1,
     aimPerLevel: 1,

@@ -140,8 +140,9 @@ interface Income {
  */
 function incomeOf(def: UniverseDef, run: RunState, tps: number): Income {
   const main = def.phases[run.phase].manualResource;
+  const probe = def.incomeView?.(run) ?? run;
   const diff =
-    (tick(def, run, 1).resources[main] ?? 0) - (run.resources[main] ?? 0);
+    (tick(def, probe, 1).resources[main] ?? 0) - (probe.resources[main] ?? 0);
   const manual = manualGain(def, run) * tps;
   const upkeep = diff < 0 ? 0 : upkeepRate(def, run, main);
   return {
@@ -163,7 +164,7 @@ const FORWARD_STEP = 5;
  * universe's own tick, called directly), which is fine for an estimate.
  */
 function forwardIncome(def: UniverseDef, run: RunState, tps: number): number {
-  const draft = cloneRun(run);
+  const draft = cloneRun(def.incomeView?.(run) ?? run);
   for (let t = 0; t < FORWARD_SECONDS; t += FORWARD_STEP)
     def.tick(draft, FORWARD_STEP);
   return incomeOf(def, draft, tps).net;

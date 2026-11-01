@@ -28,6 +28,16 @@ import {
   tankCapacity,
 } from "./tick";
 import { TUNING } from "./tuning";
+import {
+  TOWNS,
+  chanceOf,
+  hasWeatherVane,
+  isShielded,
+  shieldActionId,
+  shieldSlots,
+  toggleShield,
+  weatherStage,
+} from "./weather";
 import { formatNumber } from "../../engine/format";
 
 const TREND_THRESHOLD = 0.015;
@@ -227,6 +237,26 @@ const FLASH_LAMP: ActionDef = {
   },
 };
 
+/** One shield toggle per town; the weather desk draws them itself. */
+const SHIELD_TOWN: readonly ActionDef[] = TOWNS.map((name, town) => ({
+  id: shieldActionId(town),
+  phases: [PHASE_NIGHT],
+  isInline: true,
+  visibleWhen: (run) => weatherStage(run) === "forecast",
+  describe: (run) => {
+    const isOn = isShielded(run, town);
+    const slots = shieldSlots(run);
+    return {
+      label: isOn ? `Lift the sandbags at ${name}` : `Sandbag ${name}`,
+      detail: `${chanceOf(run, town)}% chance the storm lands here · ${slots} ${
+        slots === 1 ? "town" : "towns"
+      } at a time${hasWeatherVane(run) ? " · the weather vane covers you" : ""}`,
+      hint: isOn ? { text: "shielded", tone: "good" as const } : undefined,
+    };
+  },
+  perform: (run) => toggleShield(run, town),
+}));
+
 export const ACTIONS: readonly ActionDef[] = [
   BUY_OIL,
   BALANCE_GRID,
@@ -235,4 +265,5 @@ export const ACTIONS: readonly ActionDef[] = [
   CATCH_FLARE,
   STEER_BOAT,
   FLASH_LAMP,
+  ...SHIELD_TOWN,
 ];
