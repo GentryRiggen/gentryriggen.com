@@ -65,6 +65,8 @@ export interface GameApi {
   dismissOverlay(): void;
   /** Ends the run (finished, or restarted for embers) and starts a new one. */
   restart(): void;
+  /** Swaps in a whole save (from a backup code), writes it and shows the hub. */
+  replaceSave(next: SaveData): void;
 }
 
 export function useGame(): GameApi {
@@ -282,6 +284,16 @@ export function useGame(): GameApi {
     setEndingDone(false);
   }, [activeId, def, replaceUniverse]);
 
+  const replaceSave = useCallback(
+    (next: SaveData) => {
+      commit(next);
+      persist();
+      setRecovered(false);
+      leave();
+    },
+    [commit, persist, leave]
+  );
+
   const dismissOverlay = useCallback(() => {
     if (overlay === "ending") setEndingDone(true);
     else if (run) setSeenTransitions(run.transitions.length);
@@ -301,5 +313,6 @@ export function useGame(): GameApi {
     buyEmberUpgrade,
     dismissOverlay,
     restart,
+    replaceSave,
   };
 }

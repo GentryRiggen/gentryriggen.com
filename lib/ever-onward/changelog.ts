@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.0.2",
+    date: "2026-11-01",
+    title: "Backup codes",
+    highlights: [
+      "New in the Menu: Backup code. Copy your code to keep your game safe, or paste it on another device to carry your progress over",
+    ],
+  },
+  {
     version: "1.0.1",
     date: "2026-10-31",
     title: "Ever Onward",

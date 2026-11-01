@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { canRestart } from "@/lib/ever-onward/engine/prestige";
-import type { UniverseDef, UniverseSave } from "@/lib/ever-onward/engine/types";
+import type {
+  SaveData,
+  UniverseDef,
+  UniverseSave,
+} from "@/lib/ever-onward/engine/types";
 import { SCENES } from "../scenes";
 import { cardClass, focusRingClass, secondaryButtonClass } from "../styles";
+import BackupPanel from "./BackupPanel";
 import EmberPanel from "./EmberPanel";
 import EndingOverlay from "./EndingOverlay";
 import PhaseOverlay from "./PhaseOverlay";
@@ -24,6 +29,8 @@ interface GameScreenProps {
   onBuyEmber: (id: string) => void;
   onRestart: () => void;
   onLeave: () => void;
+  currentSave: SaveData;
+  onReplaceSave: (save: SaveData) => void;
   onDismissOverlay: () => void;
 }
 
@@ -39,6 +46,8 @@ export default function GameScreen({
   onBuyEmber,
   onRestart,
   onLeave,
+  currentSave,
+  onReplaceSave,
   onDismissOverlay,
 }: GameScreenProps) {
   const { run } = universe;
@@ -106,6 +115,11 @@ export default function GameScreen({
             <p className="text-xs text-slate-600 dark:text-slate-400">
               Your game saves on this device and pauses when you leave.
             </p>
+            <BackupPanel
+              save={currentSave}
+              isDisabled={overlay !== null}
+              onReplaceSave={onReplaceSave}
+            />
             {!run.complete && showsEmbers && (
               <EmberPanel
                 def={def}

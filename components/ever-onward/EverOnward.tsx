@@ -30,6 +30,8 @@ export default function EverOnward() {
         onBuyEmber={game.buyEmberUpgrade}
         onRestart={game.restart}
         onLeave={game.leave}
+        onReplaceSave={game.replaceSave}
+        currentSave={save}
         onDismissOverlay={game.dismissOverlay}
       />
     );
