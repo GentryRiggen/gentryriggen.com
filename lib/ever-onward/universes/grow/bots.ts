@@ -4,6 +4,14 @@ import type { Strategy } from "../../engine/sim";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { YARD_HARVEST, isWorthPicking } from "./actions";
 import { danceHint, dancesSoFar, followActionId } from "./bees";
+import {
+  BIOMES,
+  activeBiome,
+  bestBiome,
+  biomeValue,
+  spreadActionId,
+  type Biome,
+} from "./biomes";
 import { enterActionId, fairsSoFar, likeliestPumpkin } from "./fair";
 import {
   bestCrop,
@@ -112,6 +120,37 @@ export const alwaysPlants =
       : [];
   };
 
+/**
+ * Looks at the world now and then and spreads the biome worth the most,
+ * once it beats the spreading one by `margin` (so it never chases a crumb).
+ */
+export const biomePolicy =
+  (window = 15, margin = TUNING.world.playerMargin): Actions =>
+  (run, available) => {
+    if (run.phase !== 2 || !isWindowStart(run, window)) return [];
+    const best = bestBiome(run);
+    if (best === activeBiome(run)) return [];
+    if (biomeValue(run, best) < biomeValue(run, activeBiome(run)) * margin)
+      return [];
+    const id = spreadActionId(best);
+    return available.includes(id) ? [id] : [];
+  };
+
+/** Spreads this biome on the first look and never changes its mind. */
+export const alwaysSpreads =
+  (biome: Biome): Actions =>
+  (run, available) => {
+    const id = spreadActionId(biome);
+    return run.phase === 2 &&
+      activeBiome(run) !== biome &&
+      available.includes(id)
+      ? [id]
+      : [];
+  };
+
+/** Every biome, for tests that want the list. */
+export const ALL_BIOMES: readonly Biome[] = BIOMES;
+
 /** Both choices at once, so a bot can pick and follow in the same step. */
 const alongside =
   (a: Actions, b: Actions): Actions =>
@@ -161,7 +200,10 @@ export function growBots(): BotSet {
     base.tapper,
     alongside(
       picksAnytime(),
-      alongside(followsDance(), alongside(cropPolicy(), entersFair()))
+      alongside(
+        followsDance(),
+        alongside(cropPolicy(), alongside(entersFair(), biomePolicy()))
+      )
     ),
     whenRainTurnsDry
   );
@@ -173,7 +215,10 @@ export function growBots(): BotSet {
         picksInAutumn(45),
         alongside(
           followsDance({ skipEvery: 6 }),
-          alongside(cropPolicy(20), entersFair({ skipEvery: 6 }))
+          alongside(
+            cropPolicy(20),
+            alongside(entersFair({ skipEvery: 6 }), biomePolicy(30))
+          )
         )
       ),
       whenRainTurnsDry
@@ -189,12 +234,19 @@ export function growBots(): BotSet {
         picksAnytime(60),
         alongside(
           followsDance({ skipEvery: 2 }),
-          alongside(cropPolicy(60), entersFair({ skipEvery: 2 }))
+          alongside(
+            cropPolicy(60),
+            alongside(entersFair({ skipEvery: 2 }), biomePolicy(90))
+          )
         )
       ),
       afterRunningDry
     ),
     skill: {
+      2: {
+        naive: yardPlayer(base.tapper, biomePolicy(), afterRunningDry),
+        careful: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
+      },
       1: {
         naive: yardPlayer(
           base.tapper,

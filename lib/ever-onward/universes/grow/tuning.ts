@@ -162,6 +162,54 @@ export const TUNING = {
     /** A player moves once the best crop pays this much more. */
     playerMargin: 1.15,
   },
+  /** The green world: biomes spread over the map, with rivers and clouds. */
+  world: {
+    /** Leftover farm harvest becomes this much green when the world opens. */
+    harvestToGreen: 0.0002,
+    /** Green per second from each helper, before bonuses. */
+    windbreakRate: 40,
+    roverRate: 300,
+    seederRate: 2400,
+    /** The planet's weather: its own tank, rivers, clouds and thirst. */
+    water: {
+      baseCapacity: 80,
+      riverCapacity: 120,
+      /** Units per second each river bend seeps in, rain or not. */
+      riverSeep: 0.3,
+      /** Each cloud seeder adds this share to what the rain gives. */
+      cloudRain: 0.25,
+      rainMax: 1.2,
+      thirst: 0.4,
+      thirstPerHelper: 0.02,
+      /** Extra thirst of a fully grown jungle (scaled by its perk curve). */
+      jungleThirst: 3,
+      /** Wetland: extra tank and a gentle seep, at a fully grown wetland. */
+      wetlandCapacity: 160,
+      wetlandSeep: 0.4,
+    },
+    /** Share of the planet a biome gains per second while it spreads. */
+    spreadBase: 1 / 3200,
+    spreadPerRover: 0.00004,
+    spreadPerSeeder: 0.00008,
+    /** A newly chosen biome spreads at this share of the speed while it settles. */
+    settleSeconds: 15,
+    settleFloor: 0.5,
+    /**
+     * What a fully grown biome adds to green income: a fraction on top of
+     * 1. Every biome's gain flattens as it covers more, so a second biome
+     * soon beats a bigger first one.
+     */
+    greenPer: { forest: 0.8, jungle: 1.8, meadow: 0.35, wetland: 0.2 },
+    /** Meadow: extra migration seeds at a fully grown meadow (a fraction). */
+    meadowSeeds: 1.5,
+    /** How much a bot values a unit of migration seeds, and of stored water. */
+    seedsWeight: 0.55,
+    waterWeight: 1,
+    /** The planet counts as green enough for a vault at this cover. */
+    vaultCover: 0.8,
+    /** A player switches when another biome is this much better. */
+    playerMargin: 1.1,
+  },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */
     growthPerCare: 0.5,

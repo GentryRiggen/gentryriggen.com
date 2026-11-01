@@ -1,4 +1,11 @@
 import type { RunState } from "../../engine/types";
+import {
+  BIOMES,
+  activeBiome,
+  biomeShare,
+  worldCover,
+  type Biome,
+} from "./biomes";
 import { plantedCrop, type Crop } from "./market";
 import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
@@ -21,6 +28,14 @@ export interface GrowSceneInfo {
   /** Farm: tractors, glasshouses and seed drones, and the crop planted. */
   machines: number;
   crop: Crop;
+  /** World: how much of the planet is green, and each biome's share (tenths). */
+  cover: number;
+  forest: number;
+  jungle: number;
+  meadow: number;
+  wetland: number;
+  /** World: the biome that is spreading. */
+  biome: Biome;
   /** Yard and farm: the season (spring on the farm), and whether the tank has run dry. */
   season: Season;
   dry: boolean;
@@ -94,6 +109,25 @@ function yardInfo(
   };
 }
 
+/** The world's extra numbers, in tenths; bare outside the world. */
+function worldInfo(
+  run: RunState,
+  isWorld: boolean
+): Pick<
+  GrowSceneInfo,
+  "cover" | "forest" | "jungle" | "meadow" | "wetland" | "biome"
+> {
+  const share = (b: Biome) => (isWorld ? tenths(biomeShare(run, b)) : 0);
+  return {
+    cover: isWorld ? tenths(worldCover(run)) : 0,
+    forest: share(BIOMES[0]),
+    jungle: share(BIOMES[1]),
+    meadow: share(BIOMES[2]),
+    wetland: share(BIOMES[3]),
+    biome: isWorld ? activeBiome(run) : "forest",
+  };
+}
+
 export function sceneInfo(run: RunState): GrowSceneInfo {
   const i = Math.min(Math.max(run.phase, 0), PHASE_IDS.length - 1);
   return {
@@ -107,16 +141,21 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
         ? owned(run, "tractor") +
           owned(run, "glasshouse") +
           owned(run, "seed-drone")
-        : 0,
+        : i === 2
+          ? owned(run, "planting-rover") + owned(run, "sky-seeder")
+          : 0,
     crop: i === 1 ? plantedCrop(run) : "tomato",
+    ...worldInfo(run, i === 2),
     storage:
       i === 0
         ? owned(run, "rain-barrel") + owned(run, "garden-hose")
         : i === 1
           ? owned(run, "well") + owned(run, "irrigation")
-          : 0,
+          : i === 2
+            ? owned(run, "river-bend") + owned(run, "cloud-seeder")
+            : 0,
     season: i === 0 ? seasonOf(run) : "spring",
-    dry: i <= 1 && isDry(run),
+    dry: i <= 2 && isDry(run),
     ...yardInfo(run, i === 0),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(

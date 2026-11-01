@@ -6,9 +6,10 @@ import {
   PHASE_WORLD,
   PHASE_YARD,
 } from "./resources";
+import { seedBiomes } from "./biomes";
 import { seedMarket } from "./market";
 import { TUNING } from "./tuning";
-import { fillFarmTank, seedWater } from "./water";
+import { fillFarmTank, fillWorldTank, seedWater } from "./water";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -65,7 +66,15 @@ export const PHASES: readonly PhaseDef[] = [
     manualResource: "green",
     manualLabel: "Plant something green",
     isDone: (run) => owned(run, "seed-vault") >= 1,
-    onEnter: headStart(2),
+    onEnter: (run) => {
+      // The farm's leftover harvest turns into the first green.
+      run.resources.green += Math.floor(
+        (run.resources.harvest ?? 0) * TUNING.world.harvestToGreen
+      );
+      seedBiomes(run);
+      fillWorldTank(run);
+      headStart(2)(run);
+    },
   },
   {
     id: PHASE_SEED,

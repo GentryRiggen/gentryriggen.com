@@ -66,7 +66,7 @@ export const TEASERS: readonly TeaserDef[] = [
   {
     upgradeId: "seed-vault",
     showWhen: (run) => owned(run, "windbreak") >= 1,
-    hint: () => "When 3 windbreaks stand",
+    hint: () => "When the world is mostly green",
   },
 ];
 

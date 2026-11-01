@@ -15,6 +15,8 @@ import {
   keeperShown,
   openBees,
 } from "./bees";
+import { worldCover } from "./biomes";
+import { TUNING } from "./tuning";
 import { MARKET_AGENT_ID } from "./market";
 import { PHASE_FARM, PHASE_SEED, PHASE_WORLD, PHASE_YARD } from "./resources";
 import { incomePerSecond, manualPerTap, pickPerSecond } from "./tick";
@@ -426,22 +428,87 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "They hold the soil and shelter the fields behind them.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 800,
-    costGrowth: 1.18,
-    maxLevel: 40,
+    baseCost: 1500,
+    costGrowth: 1.35,
+    maxLevel: 10,
     kind: "mechanic",
     effectPreview: (run) => helperPreview(run, "windbreak"),
   },
   {
     id: "rain-makers",
     name: "Gentle rain makers",
-    description: "Clouds learn to rain where it is needed most.",
+    description:
+      "Clouds learn to rain where a planting needs it most, so every green thing takes better.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 6000,
-    costGrowth: 2.2,
+    baseCost: 25000,
+    costGrowth: 2.3,
     maxLevel: 6,
+    visibleWhen: (run) => owned(run, "windbreak") >= 2,
     effectPreview: (run) => scalePreview(run, "rain-makers"),
+  },
+  {
+    id: "river-bend",
+    name: "A river bend",
+    description:
+      "A river curls through the dry middle of the map and keeps the land drinking, rain or no rain.",
+    phases: [PHASE_WORLD],
+    currency: "green",
+    baseCost: 15000,
+    costGrowth: 1.9,
+    maxLevel: 6,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "windbreak") >= 2,
+    effectPreview: (run) =>
+      `Holds ${num(waterCapacity(run))} -> ${num(
+        waterCapacity({
+          ...run,
+          owned: { ...run.owned, "river-bend": owned(run, "river-bend") + 1 },
+        })
+      )}, and it seeps`,
+  },
+  {
+    id: "planting-rover",
+    name: "A planting rover",
+    description:
+      "A six-wheeled rover that plants a tree, shuffles forward and plants another, all day and all night.",
+    phases: [PHASE_WORLD],
+    currency: "green",
+    baseCost: 60000,
+    costGrowth: 1.4,
+    maxLevel: 10,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "windbreak") >= 3,
+    effectPreview: (run) => helperPreview(run, "planting-rover"),
+  },
+  {
+    id: "cloud-seeder",
+    name: "A cloud seeder",
+    description:
+      "A friendly little plane that coaxes clouds into raining over the thirsty places.",
+    phases: [PHASE_WORLD],
+    currency: "green",
+    baseCost: 300000,
+    costGrowth: 2.2,
+    maxLevel: 4,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "river-bend") >= 2,
+    effectPreview: (run) =>
+      `Rain ${num(Math.round((1 + TUNING.world.water.cloudRain * owned(run, "cloud-seeder")) * 100))}% -> ${num(Math.round((1 + TUNING.world.water.cloudRain * (owned(run, "cloud-seeder") + 1)) * 100))}%`,
+  },
+  {
+    id: "sky-seeder",
+    name: "A sky seeder",
+    description:
+      "It drifts over the oceans and the deserts, scattering seed like slow snow. The biomes spread faster, too.",
+    phases: [PHASE_WORLD],
+    currency: "green",
+    baseCost: 1200000,
+    costGrowth: 1.4,
+    maxLevel: 10,
+    kind: "mechanic",
+    visibleWhen: (run) => owned(run, "planting-rover") >= 3,
+    effectPreview: (run) => helperPreview(run, "sky-seeder"),
   },
   {
     id: "seed-vault",
@@ -449,10 +516,12 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "One seed, saved from everything, kept safe for later.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 70000,
+    baseCost: 120000000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "windbreak") >= 3,
+    visibleWhen: (run) =>
+      owned(run, "sky-seeder") >= 2 &&
+      worldCover(run) >= TUNING.world.vaultCover,
   },
   // One Small Seed
   {

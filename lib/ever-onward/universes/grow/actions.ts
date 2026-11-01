@@ -19,6 +19,7 @@ import {
   placeChances,
   PUMPKIN_COUNT,
 } from "./fair";
+import { SPREAD_ACTIONS } from "./biomes";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_FARM, PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
@@ -136,6 +137,7 @@ export const GROW_ACTIONS: readonly ActionDef[] = [
   HARVEST,
   ...FOLLOW_PATCH,
   ...MARKET_ACTIONS,
+  ...SPREAD_ACTIONS,
   ...ENTER_PUMPKIN,
 ];
 
