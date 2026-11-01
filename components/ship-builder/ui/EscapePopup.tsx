@@ -30,7 +30,7 @@ interface EscapePopupProps {
  * WalkHud places it up top so the joystick and buttons below stay usable.
  */
 export default function EscapePopup({ onShow }: EscapePopupProps) {
-  const { phase } = useEscape();
+  const { phase, pickup } = useEscape();
   const stopWalk = useShipBuilderStore((s) => s.stopWalk);
   const [t, setT] = useState(() => trialPlayback.time);
   const [closedKey, setClosedKey] = useState<string | null>(null);
@@ -56,6 +56,10 @@ export default function EscapePopup({ onShow }: EscapePopupProps) {
     const timer = setInterval(read, CLOCK_POLL_MS);
     return () => clearInterval(timer);
   }, [waitsForBoat, moment]);
+
+  // A boat in reach needs Climb in, not the splash card on top of it: the
+  // card closes for good (adjusted during render, not in an effect).
+  if (moment === "splash" && pickup && key !== closedKey) setClosedKey(key);
 
   const isOpen = moment !== null && key !== closedKey;
 

@@ -219,4 +219,35 @@ describe("WalkHud escape popup placement", () => {
     expect(stack).toContainElement(screen.getByTestId("warmth-meter"));
     expect(screen.getByRole("button", { name: "Kick" })).toBeInTheDocument();
   });
+
+  it("drops the splash card for Climb in and keeps the button on top", () => {
+    startWalking();
+    render(<WalkHud />);
+    const swimming = {
+      kind: "swimming" as const,
+      since: 1,
+      swimmer: { x: 0, z: 0, yaw: 0, warmth: 1, kick: 0 },
+      warned: false,
+    };
+    act(() =>
+      publishEscape({ phase: swimming, boardable: null, pickup: null })
+    );
+    const stack = screen.getByTestId("escape-popup").parentElement!;
+    act(() =>
+      publishEscape({
+        phase: swimming,
+        boardable: null,
+        pickup: { boatId: "b" },
+      })
+    );
+    expect(screen.queryByTestId("escape-popup")).toBeNull();
+    const climb = screen.getByRole("button", { name: "Climb in" });
+    const z = (el: Element) => Number(/\bz-(\d+)\b/.exec(el.className)?.[1]);
+    expect(z(climb)).toBeGreaterThan(z(stack));
+    // Out of reach again, the splash card stays closed.
+    act(() =>
+      publishEscape({ phase: swimming, boardable: null, pickup: null })
+    );
+    expect(screen.queryByTestId("escape-popup")).toBeNull();
+  });
 });

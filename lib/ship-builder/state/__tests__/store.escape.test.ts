@@ -54,13 +54,24 @@ describe("escape_ending analytics", () => {
 });
 
 describe("clearEscape", () => {
-  it("lets the next ending record afresh and fire again", () => {
+  it("lets the next ending record afresh but sends it once per walk", () => {
     walk();
     act(() => store().recordEscape("deck", "davit"));
     act(() => store().clearEscape());
     expect(store().lastEscape).toBeNull();
     act(() => store().recordEscape("frozen", "none"));
     expect(store().lastEscape).toEqual({ ending: "frozen", boat: "none" });
+    expect(escapeCalls()).toEqual([
+      ["escape_ending", { ending: "deck", boat: "davit" }],
+    ]);
+  });
+
+  it("sends again on the next walk", () => {
+    walk();
+    act(() => store().recordEscape("deck", "davit"));
+    act(() => store().stopWalk());
+    walk();
+    act(() => store().recordEscape("swim", "raft"));
     expect(escapeCalls()).toHaveLength(2);
   });
 });

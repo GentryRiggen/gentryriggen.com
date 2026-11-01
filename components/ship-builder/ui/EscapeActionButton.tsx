@@ -29,7 +29,7 @@ export default function EscapeActionButton() {
       type="button"
       data-testid="escape-action"
       onClick={action.run}
-      className="pointer-events-auto absolute inset-x-0 bottom-28 mx-auto inline-flex min-h-12 w-fit touch-manipulation items-center justify-center rounded-full bg-amber-500 px-8 text-base font-bold text-slate-900 shadow-lg hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:bg-amber-400 dark:hover:bg-amber-300 dark:focus-visible:outline-amber-200"
+      className="pointer-events-auto absolute inset-x-0 bottom-28 z-40 mx-auto inline-flex min-h-12 w-fit touch-manipulation items-center justify-center rounded-full bg-amber-500 px-8 text-base font-bold text-slate-900 shadow-lg hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:bg-amber-400 dark:hover:bg-amber-300 dark:focus-visible:outline-amber-200"
     >
       {action.label}
     </button>

@@ -13,6 +13,7 @@ import {
   type TrialSummary,
 } from "@/lib/ship-builder/sim/explain";
 import { lifeboatCount } from "@/lib/ship-builder/crowd/lifeboatCount";
+import { ESCAPE_RESULT_LINES } from "@/lib/ship-builder/escapeCopy";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import { isTimelineTrial, trialKindOf } from "@/lib/ship-builder/sim/trialKind";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
@@ -24,7 +25,6 @@ import { trialTimelineFor } from "../scene/trialTimeline";
 import ChallengeResult from "./ChallengeResult";
 import ResultDetails from "./ResultDetails";
 import { focusSeaTrialButton } from "./SeaTrialButton";
-import { ESCAPE_RESULT_LINES } from "@/lib/ship-builder/escapeCopy";
 import { lifeboatLines } from "./seaTrialText";
 import { buttonClass, panelClass, primaryButtonClass } from "./styles";
 import SoundToggle from "./SoundToggle";

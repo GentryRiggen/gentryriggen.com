@@ -427,6 +427,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   // Lives outside the state so createInitialState() resets can't reuse ids.
   let noticeId = 0;
   let runId = 0;
+  /** The walk (its runId) whose escape_ending was already sent. */
+  let escapeSentForWalk: number | null = null;
 
   /** True while a trial or a drive is on: the ship must not change. */
   function isTrialActive(): boolean {
@@ -1059,8 +1061,12 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     recordEscape(ending, boat) {
-      if (get().walk.status !== "walking" || get().lastEscape) return;
+      const { walk, lastEscape } = get();
+      if (walk.status !== "walking" || lastEscape) return;
       set({ lastEscape: { ending, boat } });
+      // The card re-records after a rewind, but a walk counts once.
+      if (escapeSentForWalk === walk.runId) return;
+      escapeSentForWalk = walk.runId;
       trackGame("escape_ending", { ending, boat });
     },
 

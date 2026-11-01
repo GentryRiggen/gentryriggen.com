@@ -92,6 +92,7 @@ describe("summarizeShip", () => {
     ship("part_placed", { category: "decks" }),
     ship("walk_started", { start: "bow" }),
     ship("escape_ending", { ending: "deck", boat: "davit" }),
+    ship("escape_ending", { ending: "deck", boat: "davit" }),
     ship("escape_ending", { ending: "deck", boat: "raft" }),
     ship("escape_ending", { ending: "frozen", boat: "none" }),
     ship("drive_started", { density: "few" }),
@@ -108,8 +109,9 @@ describe("summarizeShip", () => {
 
   it("tallies how walkers escaped", () => {
     expect(summary.escapes).toEqual([
-      { key: "deck", views: 2 },
-      { key: "frozen", views: 1 },
+      { key: "deck · davit", views: 2 },
+      { key: "deck · raft", views: 1 },
+      { key: "frozen · none", views: 1 },
     ]);
   });
 
