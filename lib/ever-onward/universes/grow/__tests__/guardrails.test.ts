@@ -50,4 +50,39 @@ describe("Make It Grow guardrails", () => {
     const early = runAtPhaseStart(2);
     expect(def.isComplete(early)).toBe(false);
   });
+
+  describe("the move-out", () => {
+    const MOVE = /\b(moved?|moving|relocat\w*|removal|vacated|left)\b/i;
+
+    it("is told only in story lines, never in a resource, action, upgrade or caption", async () => {
+      const { captionFor } =
+        await import("@/components/ever-onward/scenes/grow/captions");
+      const { sceneInfo } = await import("..");
+      const late = runAtPhaseStart(2);
+      const full = {
+        ...late,
+        resources: { ...late.resources, bmForest: 0.9, bmJungle: 0.1 },
+      };
+      const words = [
+        ...def.resources.map((r) => r.label),
+        ...def.upgrades.map((u) => u.name),
+        captionFor(sceneInfo(full)),
+        captionFor(sceneInfo(late)),
+      ];
+      expect(words.filter((w) => MOVE.test(w))).toEqual([]);
+      expect(
+        words.filter((w) => /people|population|residents|towns? left/i.test(w))
+      ).toEqual([]);
+    });
+
+    it("never puts a number on it in a story line", () => {
+      const lines = def.story.filter((m) => m.phase === "world");
+      expect(lines.length).toBeGreaterThan(10);
+      expect(
+        lines.filter((m) =>
+          /\b\d+\s*(people|residents|families|towns|villages)\b/i.test(m.text)
+        )
+      ).toEqual([]);
+    });
+  });
 });

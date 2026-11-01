@@ -1897,3 +1897,72 @@ html:has(.jim-app) body {
     animation: none;
   }
 }
+
+/* Ever Onward: Make It Grow, the green world's pull-back from the farms to the globe. */
+.gw-globe {
+  transform-origin: 200px 150px;
+}
+
+.gw-zoomed {
+  transform: scale(7);
+}
+
+.gw-pullback {
+  animation: gw-pullback 4.2s cubic-bezier(0.25, 0.1, 0.2, 1) both;
+}
+
+.gw-farm {
+  transform-origin: 200px 220px;
+}
+
+.gw-farm-away {
+  animation: gw-farm-away 2.6s ease-in both;
+}
+
+@keyframes gw-pullback {
+  from {
+    transform: scale(7);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes gw-farm-away {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes gw-drift {
+  0%,
+  100% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
+.gw-drift {
+  animation: gw-drift 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-zoomed {
+    transform: none;
+  }
+  .gw-pullback,
+  .gw-farm-away,
+  .gw-drift {
+    animation: none;
+  }
+  .gw-farm {
+    display: none;
+  }
+}

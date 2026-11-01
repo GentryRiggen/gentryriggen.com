@@ -36,6 +36,15 @@ export interface GrowSceneInfo {
   wetland: number;
   /** World: the biome that is spreading. */
   biome: Biome;
+  /** World: how much of the globe is green, in twentieths (the pull-back picture). */
+  greenFraction: number;
+  /** World: river bends, clouds drifting, and flocks of seed birds in the picture. */
+  rivers: number;
+  clouds: number;
+  flocks: number;
+  /** World: how much of the old roads and towns the picture still draws (0 to 1 in tenths). Drawn only, never shown as a number or a label. */
+  roadsLeft: number;
+  townsLeft: number;
   /** Yard and farm: the season (spring on the farm), and whether the tank has run dry. */
   season: Season;
   dry: boolean;
@@ -152,10 +161,30 @@ function worldInfo(
   isWorld: boolean
 ): Pick<
   GrowSceneInfo,
-  "cover" | "forest" | "jungle" | "meadow" | "wetland" | "biome"
+  | "cover"
+  | "forest"
+  | "jungle"
+  | "meadow"
+  | "wetland"
+  | "biome"
+  | "greenFraction"
+  | "rivers"
+  | "clouds"
+  | "flocks"
+  | "roadsLeft"
+  | "townsLeft"
 > {
   const share = (b: Biome) => (isWorld ? tenths(biomeShare(run, b)) : 0);
+  const cover = isWorld ? worldCover(run) : 0;
+  const n = (id: string) => (isWorld ? owned(run, id) : 0);
   return {
+    greenFraction: Math.round(cover * 20) / 20,
+    rivers: Math.min(6, n("river-bend")),
+    clouds: isWorld ? 2 + Math.min(4, n("cloud-seeder")) : 0,
+    flocks: Math.min(5, n("sky-seeder")),
+    // Roads go quiet first, towns a little later; both are only drawn.
+    roadsLeft: isWorld ? tenths(1 - (cover - 0.05) / 0.7) : 0,
+    townsLeft: isWorld ? tenths(1 - (cover - 0.15) / 0.7) : 0,
     cover: isWorld ? tenths(worldCover(run)) : 0,
     forest: share(BIOMES[0]),
     jungle: share(BIOMES[1]),

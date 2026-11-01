@@ -11,6 +11,7 @@ import { pixelClass } from "../../game/retro/retroStyles";
 import type { LastBuy, SceneProps } from "../../universes/types";
 import SceneCallout from "./SceneCallout";
 import FarmLayer from "./FarmLayer";
+import WorldLayer from "./WorldLayer";
 import YardLayer from "./YardLayer";
 import { SCENE_LABELS, captionFor } from "./captions";
 
@@ -23,36 +24,6 @@ function useStableInfo(run: RunState): GrowSceneInfo {
     return info;
   }
   return stable;
-}
-
-/** Globe: a blue ball with patches of green that spread. */
-function WorldArt({ info }: { info: GrowSceneInfo }) {
-  const patches = 2 + Math.min(info.helpers, 8);
-  return (
-    <g>
-      <rect x="0" y="0" width="400" height="300" fill="#07102a" />
-      <circle cx="200" cy="150" r="110" fill="#2c6cc4" />
-      {Array.from({ length: patches }, (_, i) => (
-        <circle
-          key={i}
-          cx={150 + ((i * 47) % 100)}
-          cy={110 + ((i * 31) % 80)}
-          r={12 + (i % 3) * 4}
-          fill="#4caf50"
-        />
-      ))}
-      {info.ended && (
-        <circle
-          cx="200"
-          cy="150"
-          r="118"
-          fill="none"
-          stroke="#a5d6a7"
-          strokeWidth="3"
-        />
-      )}
-    </g>
-  );
 }
 
 /** One pot, and a shoot as tall as the growth. */
@@ -74,7 +45,7 @@ function SeedArt({ info }: { info: GrowSceneInfo }) {
 const ART = {
   yard: YardLayer,
   farm: FarmLayer,
-  world: WorldArt,
+  world: WorldLayer,
   seed: SeedArt,
 } as const;
 

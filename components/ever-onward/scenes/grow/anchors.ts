@@ -55,3 +55,19 @@ export const droneAt = (i: number): Point => ({
 });
 export const FAIR_TENT: Point = { x: 212, y: 98 };
 export const TOWN: Point = { x: 24, y: 94 };
+
+/** The globe (same 400 by 300 box). */
+export const GLOBE: Point & { r: number } = { x: 200, y: 150, r: 110 };
+export const GLOBE_WINDBREAK: Point = { x: 150, y: 104 };
+export const GLOBE_RAIN: Point = { x: 246, y: 74 };
+export const GLOBE_ROVER: Point = { x: 188, y: 176 };
+export const GLOBE_SEEDER: Point = { x: 276, y: 60 };
+export const GLOBE_VAULT: Point = { x: 200, y: 262 };
+export const riverAt = (i: number): Point => ({
+  x: 120 + ((i * 37) % 130),
+  y: 118 + ((i * 29) % 90),
+});
+export const cloudAt = (i: number): Point => ({
+  x: 96 + ((i * 61) % 190),
+  y: 70 + ((i * 43) % 120),
+});

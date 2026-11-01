@@ -68,4 +68,17 @@ describe("Grow farm story", () => {
     // Thirsty needs a dry field.
     expect(missing.filter((id) => id !== "farm-thirsty")).toEqual([]);
   });
+
+  it("keeps the green world's NEWS lines in the NEWS: format and gentle", () => {
+    const news = def.story.filter(
+      (m) => m.phase === "world" && /^NEWS\b/.test(m.text)
+    );
+    expect(news.length).toBeGreaterThanOrEqual(6);
+    for (const m of news) {
+      expect([m.id, m.text.startsWith("NEWS: ")]).toEqual([m.id, true]);
+      expect(m.text).not.toMatch(
+        /\b(die|dead|death|kill|hurt|scared|blood|fear|danger|gone forever|empty|abandon\w*|evacuat\w*|disappear\w*)\b/i
+      );
+    }
+  });
 });

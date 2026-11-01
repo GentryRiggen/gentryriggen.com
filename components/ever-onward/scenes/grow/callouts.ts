@@ -9,6 +9,11 @@ import {
   FARM_BARN,
   FARM_GLASS,
   FRAME,
+  GLOBE_RAIN,
+  GLOBE_ROVER,
+  GLOBE_SEEDER,
+  GLOBE_VAULT,
+  GLOBE_WINDBREAK,
   SILO,
   GREENHOUSE,
   KEEPER,
@@ -18,10 +23,12 @@ import {
   TREES,
   barrelAt,
   basketAt,
+  cloudAt,
   droneAt,
   fieldAt,
   bedAt,
   gardenerAt,
+  riverAt,
   hiveAt,
   tractorAt,
   wellAt,
@@ -74,10 +81,20 @@ const FARM_PLACES: Record<string, Place> = {
   "grain-barn": () => at(FARM_BARN, "Grain barn", 20),
 };
 
+const WORLD_PLACES: Record<string, Place> = {
+  windbreak: (n) => at(GLOBE_WINDBREAK, `Windbreak ${n}`),
+  "rain-makers": () => at(GLOBE_RAIN, "Rain makers"),
+  "river-bend": (n) => at(riverAt(nth(n, 6)), `River bend ${n}`, 6),
+  "planting-rover": (n) => at(GLOBE_ROVER, `Planting rover ${n}`),
+  "cloud-seeder": (n) => at(cloudAt(nth(n, 4) + 1), `Cloud seeder ${n}`, -8),
+  "sky-seeder": (n) => at(GLOBE_SEEDER, `Sky seeder ${n}`),
+  "seed-vault": () => at(GLOBE_VAULT, "Seed vault"),
+};
+
 const PLACES: Record<Grow["phase"], Record<string, Place>> = {
   yard: YARD_PLACES,
   farm: FARM_PLACES,
-  world: {},
+  world: WORLD_PLACES,
   seed: {},
 };
 
@@ -98,3 +115,6 @@ export const CALLOUT_IDS: readonly string[] = Object.keys(YARD_PLACES);
 
 /** The farm's upgrade ids with a callout. */
 export const FARM_CALLOUT_IDS: readonly string[] = Object.keys(FARM_PLACES);
+
+/** The world's upgrade ids with a callout. */
+export const WORLD_CALLOUT_IDS: readonly string[] = Object.keys(WORLD_PLACES);
