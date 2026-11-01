@@ -25,7 +25,10 @@ interface EscapePopupProps {
   onShow?: (moment: EscapeMoment) => void;
 }
 
-/** The escape's cards: saved, splash and frozen, one at a time, once each. */
+/**
+ * The escape's cards: saved, splash and frozen, one at a time, once each.
+ * WalkHud places it up top so the joystick and buttons below stay usable.
+ */
 export default function EscapePopup({ onShow }: EscapePopupProps) {
   const { phase } = useEscape();
   const stopWalk = useShipBuilderStore((s) => s.stopWalk);
@@ -82,7 +85,7 @@ export default function EscapePopup({ onShow }: EscapePopupProps) {
       aria-label={title}
       data-testid="escape-popup"
       tabIndex={-1}
-      className={`pointer-events-auto absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex flex-col gap-2 rounded-2xl border p-3 shadow-xl outline-none sm:max-w-md ${panelClass}`}
+      className={`pointer-events-auto flex w-full max-w-sm flex-col gap-2 rounded-2xl border p-3 shadow-xl outline-none ${panelClass}`}
     >
       <p className="text-base font-bold">{title}</p>
       <p className="text-sm text-slate-700 dark:text-slate-300">{body}</p>

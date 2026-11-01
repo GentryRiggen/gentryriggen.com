@@ -9,11 +9,11 @@ import { useEscape } from "@/lib/ship-builder/state/escapeLive";
 /** What the action does here, or null when there is nothing to do. */
 export function escapeActionFor(
   snapshot: ReturnType<typeof useEscape>
-): { label: "Board" | "Jump" | "Climb in"; run: () => void } | null {
+): { label: "Board" | "Jump in" | "Climb in"; run: () => void } | null {
   if (snapshot.pickup) return { label: "Climb in", run: requestClimbIn };
   if (snapshot.boardable) {
     return {
-      label: snapshot.boardable.kind === "raft" ? "Jump" : "Board",
+      label: snapshot.boardable.kind === "raft" ? "Jump in" : "Board",
       run: requestBoard,
     };
   }

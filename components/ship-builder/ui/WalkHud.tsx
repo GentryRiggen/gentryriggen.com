@@ -139,6 +139,20 @@ function SinkShipButton() {
   );
 }
 
+/**
+ * The escape card and the warmth meter, stacked top centre under the trial
+ * pill (and clear of Stop walking) so the joystick, Kick and the action
+ * button at the bottom stay usable while a card is up.
+ */
+function EscapeStack() {
+  return (
+    <div className="pointer-events-none absolute inset-x-3 top-32 z-30 flex flex-col items-center gap-2 sm:inset-x-40 sm:top-[4.5rem] lg:inset-x-3 lg:top-20">
+      <EscapePopup />
+      <WarmthMeter />
+    </div>
+  );
+}
+
 function WalkingControls() {
   useWalkKeys();
   // The trial's status pill sits top centre; on narrow screens the buttons
@@ -169,9 +183,8 @@ function WalkingControls() {
       </div>
       <WalkHint />
       <OutcomeNote />
-      <WarmthMeter />
       <EscapeActionButton />
-      <EscapePopup />
+      <EscapeStack />
     </div>
   );
 }

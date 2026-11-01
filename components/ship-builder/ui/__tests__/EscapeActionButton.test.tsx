@@ -33,7 +33,7 @@ describe("EscapeActionButton", () => {
     expect(takeEscapeRequest()).toBe("board");
   });
 
-  it("reads Jump for a raft", () => {
+  it("reads Jump in for a raft", () => {
     render(<EscapeActionButton />);
     act(() =>
       publishEscape({
@@ -42,7 +42,7 @@ describe("EscapeActionButton", () => {
         pickup: null,
       })
     );
-    expect(screen.getByRole("button", { name: "Jump" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Jump in" })).toBeTruthy();
   });
 
   it("reads Climb in for a pickup and asks to climb in", async () => {

@@ -35,7 +35,7 @@ export default function WarmthMeter() {
       aria-valuemax={100}
       aria-valuenow={percent}
       data-testid="warmth-meter"
-      className="pointer-events-none absolute inset-x-0 top-28 mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1.5 text-sm font-medium text-white dark:bg-slate-100/90 dark:text-slate-900"
+      className="pointer-events-none flex w-fit items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1.5 text-sm font-medium text-white dark:bg-slate-100/90 dark:text-slate-900"
     >
       <Thermometer aria-hidden="true" className="h-4 w-4 shrink-0" />
       <span aria-hidden="true">Warmth</span>
