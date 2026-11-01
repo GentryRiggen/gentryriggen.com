@@ -111,8 +111,11 @@ export function lightBots(): BotSet {
   return {
     tapper: withOil(base.tapper, savvyOil),
     realistic: withOil(base.realistic, savvyOil, looksAfterThings(42, true)),
-    idle: { ...base.idle, actions: idleActions },
-    dawdler: withOil(base.dawdler, savvyOil, looksAfterThings(35, false)),
+    idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
+    dawdler: {
+      ...withOil(base.dawdler, savvyOil, looksAfterThings(35, false)),
+      greetAfter: 60,
+    },
     // In the last phase "tending" is tapping the flame: a player who barely
     // taps against one who does.
     skill: {

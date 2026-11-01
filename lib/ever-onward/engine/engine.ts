@@ -150,7 +150,11 @@ export function visibleTeasers(def: UniverseDef, run: RunState): TeaserDef[] {
   return (def.teasers ?? []).filter((t) => {
     const upgrade = def.upgrades.find((u) => u.id === t.upgradeId);
     if (!upgrade) return false;
-    if (upgrade.phases && !upgrade.phases.includes(phaseId)) return false;
+    if (t.phase !== undefined) {
+      if (t.phase !== phaseId) return false;
+    } else if (upgrade.phases && !upgrade.phases.includes(phaseId)) {
+      return false;
+    }
     if (run.revealed.includes(t.upgradeId)) return false;
     return t.showWhen ? t.showWhen(run) : true;
   });

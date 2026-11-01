@@ -157,6 +157,13 @@ export interface StoryMessage {
 export interface TeaserDef {
   /** The upgrade it hints at (must be one of the universe's upgrades). */
   upgradeId: string;
+  /**
+   * The phase it is shown in, when that is not the upgrade's own (a hint at
+   * what the next part holds). Omitted: the upgrade's own phase.
+   */
+  phase?: string;
+  /** What the card is called, when the upgrade's name would give it away. */
+  name?: string;
   /** Shown from the moment this is true (omitted: from the phase start). */
   showWhen?(run: RunState): boolean;
   /** What has to happen first, in plain words. Must only read. */

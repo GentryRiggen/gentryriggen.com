@@ -6,6 +6,7 @@ import {
   canAfford,
   previewUpgrade,
   upgradeCost,
+  waitingVisitors,
 } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
@@ -24,9 +25,11 @@ import NarrationSettings from "../narration/NarrationSettings";
 import { SCENES } from "../scenes";
 import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
+import CountdownBar from "./CountdownBar";
 import { type Effect } from "./EffectFloater";
 import EmberPanel from "./EmberPanel";
 import EndingOverlay from "./EndingOverlay";
+import Logbook from "./Logbook";
 import NextUpgradeBar from "./NextUpgradeBar";
 import PhaseOverlay from "./PhaseOverlay";
 import Resources from "./Resources";
@@ -35,6 +38,7 @@ import StickyHud from "./StickyHud";
 import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
+import VisitorCard from "./VisitorCard";
 import CrtOverlay from "./retro/CrtOverlay";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -58,6 +62,7 @@ interface GameScreenProps {
   onTap: () => number;
   onBuy: (id: string) => void;
   onAction: (id: string) => void;
+  onGreet: (id: string) => void;
   onBuyEmber: (id: string) => void;
   onRestart: () => void;
   onLeave: () => void;
@@ -76,6 +81,7 @@ export default function GameScreen({
   onTap,
   onBuy,
   onAction,
+  onGreet,
   onBuyEmber,
   onRestart,
   onLeave,
@@ -141,6 +147,20 @@ export default function GameScreen({
       block: "center",
     });
   };
+
+  const handleGreet = (id: string) => {
+    const visitor = waitingVisitors(def, run).find((v) => v.id === id);
+    if (visitor)
+      setEffect((e) => ({
+        id: (e?.id ?? 0) + 1,
+        text: `${visitor.name}: ${visitor.giftText(run)} ⬆`,
+      }));
+    onGreet(id);
+  };
+
+  const countdown = def.countdown?.(run) ?? null;
+  const visitors = waitingVisitors(def, run);
+  const storyText = new Map(def.story.map((m) => [m.id, m.text]));
 
   const endingLines = ENDING_STORY_IDS.filter((id) =>
     run.story.includes(id)
@@ -225,6 +245,7 @@ export default function GameScreen({
             <p className="font-mono text-xs text-slate-300">
               Your game saves on this device and pauses when you leave.
             </p>
+            <Logbook def={def} run={run} />
             <NarrationSettings />
             <BackupPanel
               save={currentSave}
@@ -268,6 +289,17 @@ export default function GameScreen({
           effect={effect}
           primaryRef={readoutRef}
         />
+        {countdown && <CountdownBar view={countdown} />}
+        {visitors.map((v) => (
+          <VisitorCard
+            key={v.id}
+            universeId={def.id}
+            visitor={v}
+            text={storyText.get(v.id) ?? ""}
+            giftText={v.giftText(run)}
+            onGreet={handleGreet}
+          />
+        ))}
         <StoryLog def={def} run={run} />
         {!run.complete && (
           <div className="space-y-2">

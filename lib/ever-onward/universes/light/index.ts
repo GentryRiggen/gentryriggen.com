@@ -12,6 +12,7 @@ import { RESOURCES } from "./resources";
 import { STORY } from "./story";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
+import { TEASERS, VISITORS, lightCountdown } from "./visitors";
 
 export { sceneInfo } from "./scene";
 export type { LightSceneInfo } from "./scene";
@@ -26,6 +27,9 @@ export const lightUniverse: UniverseDef = {
   actions: ACTIONS,
   maxVisible: 3,
   story: STORY,
+  teasers: TEASERS,
+  visitors: VISITORS,
+  countdown: lightCountdown,
   prestige: PRESTIGE,
   upkeep: (run): Record<string, number> => {
     if (run.phase === 0) return { coins: coastUpkeep(run) };

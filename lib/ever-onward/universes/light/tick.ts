@@ -580,3 +580,33 @@ export const PHASES_BY_INDEX = [
   PHASE_SKY,
   PHASE_LAST,
 ] as const;
+
+// ----------------------------------------------------------------- Visitors
+
+/** Seconds of a phase's income a visitor's gift is worth (a flare is 25). */
+export const VISITOR_GIFT_SECONDS = 15;
+
+/**
+ * What the phase earns per second, taps at a steady 3 a second included, in
+ * the phase's own currency: the yardstick for a gift (a visitor's gift is a
+ * small slice, not a jackpot).
+ */
+export function incomePerSecond(run: RunState): number {
+  if (run.phase === 0)
+    return (
+      autoCoinsPerSecond(run) * lampFactor(run) +
+      C.tankTapsPerSecond * coastTapCoins(run)
+    );
+  if (run.phase === 1) return powerPerSecond(run) + crankPower(run) * 3;
+  if (run.phase === 2)
+    return (
+      collectorEnergyPerSecond(run) +
+      probeEnergyPerSecond(run) +
+      aimEnergy(run) * 3
+    );
+  return 0;
+}
+
+/** The gift every income visitor brings: a small slice of the phase's income. */
+export const visitorGift = (run: RunState): number =>
+  VISITOR_GIFT_SECONDS * incomePerSecond(run);

@@ -242,7 +242,7 @@ const subMean = (...subs: number[]): number => mean(subs);
  * stands at least `SOFT_BEAT_GAP` seconds clear of the beat before it, so a
  * pile of them can't pad the cadence; a hard event always counts.
  */
-function beats(events: readonly NoveltyEvent[]): number[] {
+export function beats(events: readonly NoveltyEvent[]): number[] {
   const hard = new Set(events.filter((e) => !e.isSoft).map((e) => e.t));
   const soft = new Set(events.filter((e) => e.isSoft).map((e) => e.t));
   const times = [...new Set([...hard, ...soft])].sort((a, b) => a - b);

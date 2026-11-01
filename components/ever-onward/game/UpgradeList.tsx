@@ -7,6 +7,7 @@ import {
   upgradeLevel,
   hasUnrevealedUpgrades,
   isMaxed,
+  visibleTeasers,
   visibleUpgrades,
 } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
@@ -44,6 +45,12 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
   const visible = visibleUpgrades(def, run);
   const open = visible.filter((u) => !isMaxed(run, u));
   const done = visible.filter((u) => isMaxed(run, u));
+  const teasers = visibleTeasers(def, run).map((t) => ({
+    id: t.upgradeId,
+    name:
+      t.name ?? def.upgrades.find((u) => u.id === t.upgradeId)?.name ?? "???",
+    hint: t.hint(run),
+  }));
 
   // Upgrades that show up after the list mounted pop in once.
   const [seen, setSeen] = useState<Seen>(() => ({
@@ -143,6 +150,29 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
           );
         })}
       </ul>
+      {teasers.length > 0 && (
+        <ul aria-label="Coming someday" className="space-y-3">
+          {teasers.map((t) => (
+            <li
+              key={t.id}
+              data-testid="lm-teaser"
+              className="border-4 border-dashed border-slate-700 bg-slate-950/60 p-3"
+            >
+              <p
+                className={`${pixelClass} text-[8px] leading-none text-cyan-200`}
+              >
+                Someday
+              </p>
+              <p
+                className={`${pixelClass} mt-2 text-[10px] leading-relaxed text-slate-400`}
+              >
+                {t.name}
+              </p>
+              <p className="mt-2 font-mono text-sm text-slate-400">{t.hint}</p>
+            </li>
+          ))}
+        </ul>
+      )}
       {hasUnrevealedUpgrades(def, run) && (
         <p className="font-mono text-xs text-slate-300">
           More upgrades unlock as you grow…

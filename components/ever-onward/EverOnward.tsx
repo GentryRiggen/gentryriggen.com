@@ -58,6 +58,7 @@ export default function EverOnward() {
           onTap={game.tap}
           onBuy={game.buyUpgrade}
           onAction={game.doAction}
+          onGreet={game.greet}
           onBuyEmber={game.buyEmberUpgrade}
           onRestart={game.restart}
           onLeave={game.leave}
