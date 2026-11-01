@@ -59,7 +59,6 @@ import {
 import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
-import { useOutOfView } from "./useOutOfView";
 import { useReducedMotion } from "./useAnimatedNumber";
 
 interface GameScreenProps {
@@ -115,14 +114,33 @@ export default function GameScreen({
     primaryId,
     upkeepRate(def, run, primaryId)
   );
-  const readoutRef = useRef<HTMLDivElement>(null);
-  // On phones the scene (36% of the screen) covers the top of the page.
-  const isHudShown = useOutOfView(readoutRef, "36%");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const hudRef = useRef<HTMLDivElement>(null);
   const isReduced = useReducedMotion();
   const next = useNextUpgrade(def, run);
   const [spend, setSpend] = useState<Spend | null>(null);
   const [effect, setEffect] = useState<Effect | null>(null);
   const [lastBuy, setLastBuy] = useState<LastBuy | null>(null);
+
+  // The HUD's height (its alert line makes it taller) goes into a CSS
+  // variable on the root, so the scene band and the page column sit exactly
+  // below it.
+  useEffect(() => {
+    const root = rootRef.current;
+    const hud = hudRef.current;
+    if (!root) return;
+    const setHeight = (px: number) =>
+      root.style.setProperty("--eo-hud-h", `${px}px`);
+    if (!hud) {
+      setHeight(0);
+      return;
+    }
+    setHeight(hud.offsetHeight);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setHeight(hud.offsetHeight));
+    observer.observe(hud);
+    return () => observer.disconnect();
+  }, [run.complete]);
 
   useEffect(() => {
     if (!spend) return;
@@ -186,7 +204,8 @@ export default function GameScreen({
     // `dark` keeps the game dark in both site themes, so the shared pieces
     // (sound switches, update pill) use their dark colours too.
     <div
-      className={`${pixelFont.variable} dark relative isolate min-h-dvh touch-manipulation bg-[#02030a] text-amber-50 lg:flex lg:h-dvh`}
+      ref={rootRef}
+      className={`${pixelFont.variable} dark relative isolate min-h-dvh touch-manipulation bg-[#02030a] pt-[var(--eo-hud-h,6rem)] text-amber-50 lg:flex lg:h-dvh lg:pt-0`}
     >
       <div
         aria-hidden="true"
@@ -196,22 +215,9 @@ export default function GameScreen({
       </div>
       <div
         inert={overlay !== null}
-        className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
+        className="sticky top-[var(--eo-hud-h,6rem)] z-20 h-[36dvh] w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
-        {/* On phones the sticky HUD slides over the top of the scene, so the
-            picture shrinks into the space below it (the SVG keeps its aspect
-            ratio). On wide screens the HUD sits beside the scene instead. */}
-        <div
-          data-testid="lm-scene-frame"
-          data-hud={isHudShown ? "shown" : "hidden"}
-          className={`h-full transition-[padding] duration-300 motion-reduce:transition-none lg:pt-0 ${
-            !isHudShown
-              ? ""
-              : alert
-                ? "pt-[calc(7.75rem+env(safe-area-inset-top))]"
-                : "pt-[calc(5.75rem+env(safe-area-inset-top))]"
-          }`}
-        >
+        <div data-testid="lm-scene-frame" className="h-full">
           {Scene && <Scene run={run} lastBuy={lastBuy} />}
         </div>
         <div
@@ -223,7 +229,7 @@ export default function GameScreen({
       </div>
       <main
         inert={overlay !== null}
-        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto"
+        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h,6rem)+1rem)]"
       >
         <header className="flex items-start justify-between gap-3">
           <div>
@@ -335,16 +341,7 @@ export default function GameScreen({
             ⚠ {alert}
           </p>
         )}
-        <Resources
-          def={def}
-          run={run}
-          primaryId={primaryId}
-          rate={rate}
-          trend={trend}
-          spend={spend}
-          effect={effect}
-          primaryRef={readoutRef}
-        />
+        <Resources def={def} run={run} primaryId={primaryId} />
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
           <div className="space-y-2">
@@ -385,7 +382,7 @@ export default function GameScreen({
 
       {!run.complete && (
         <StickyHud
-          isShown={isHudShown}
+          hudRef={hudRef}
           isCovered={overlay !== null}
           resourceId={primaryId}
           resourceLabel={primaryLabel}
