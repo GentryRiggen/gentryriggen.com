@@ -13,6 +13,7 @@ import {
   type Biome,
 } from "./biomes";
 import { enterActionId, fairsSoFar, likeliestPumpkin } from "./fair";
+import { flightsSoFar, mostWelcoming, sendActionId } from "./migration";
 import {
   bestCrop,
   cropPrice,
@@ -89,6 +90,20 @@ export const entersFair =
     const { skipEvery } = options;
     if (skipEvery && fairsSoFar(run) % skipEvery === skipEvery - 1) return [];
     const id = enterActionId(likeliestPumpkin(run));
+    return available.includes(id) ? [id] : [];
+  };
+
+/**
+ * Sends the flock to the most welcoming region. Like the fair bot, one flight
+ * in every `skipEvery`th goes to the flock leader instead.
+ */
+export const sendsFlock =
+  (options: { skipEvery?: number } = {}): Actions =>
+  (run, available) => {
+    if (run.phase !== 2) return [];
+    const { skipEvery } = options;
+    if (skipEvery && flightsSoFar(run) % skipEvery === skipEvery - 1) return [];
+    const id = sendActionId(mostWelcoming(run));
     return available.includes(id) ? [id] : [];
   };
 
@@ -202,7 +217,10 @@ export function growBots(): BotSet {
       picksAnytime(),
       alongside(
         followsDance(),
-        alongside(cropPolicy(), alongside(entersFair(), biomePolicy()))
+        alongside(
+          cropPolicy(),
+          alongside(entersFair(), alongside(biomePolicy(), sendsFlock()))
+        )
       )
     ),
     whenRainTurnsDry
@@ -217,7 +235,10 @@ export function growBots(): BotSet {
           followsDance({ skipEvery: 6 }),
           alongside(
             cropPolicy(20),
-            alongside(entersFair({ skipEvery: 6 }), biomePolicy(30))
+            alongside(
+              entersFair({ skipEvery: 6 }),
+              alongside(biomePolicy(30), sendsFlock({ skipEvery: 6 }))
+            )
           )
         )
       ),
@@ -236,7 +257,10 @@ export function growBots(): BotSet {
           followsDance({ skipEvery: 2 }),
           alongside(
             cropPolicy(60),
-            alongside(entersFair({ skipEvery: 2 }), biomePolicy(90))
+            alongside(
+              entersFair({ skipEvery: 2 }),
+              alongside(biomePolicy(90), sendsFlock({ skipEvery: 2 }))
+            )
           )
         )
       ),
@@ -244,8 +268,16 @@ export function growBots(): BotSet {
     ),
     skill: {
       2: {
-        naive: yardPlayer(base.tapper, biomePolicy(), afterRunningDry),
-        careful: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
+        naive: yardPlayer(
+          base.tapper,
+          alongside(biomePolicy(), sendsFlock()),
+          afterRunningDry
+        ),
+        careful: yardPlayer(
+          base.tapper,
+          alongside(biomePolicy(), sendsFlock()),
+          whenRainTurnsDry
+        ),
       },
       1: {
         naive: yardPlayer(
@@ -273,6 +305,14 @@ export function growBots(): BotSet {
       },
     },
     claim: {
+      2: {
+        ignores: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
+        claims: yardPlayer(
+          base.tapper,
+          alongside(biomePolicy(), sendsFlock()),
+          whenRainTurnsDry
+        ),
+      },
       1: {
         ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
         claims: yardPlayer(

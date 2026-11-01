@@ -4,6 +4,12 @@ import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
 import { FAIR_ACTION_IDS, isFairOn, isFairOpen, withoutFair } from "./fair";
 import { SPREAD_ACTION_IDS, biomeGap } from "./biomes";
+import {
+  MIGRATION_ACTION_IDS,
+  isFlockReady,
+  isMigrationOpen,
+  withoutMigration,
+} from "./migration";
 import { PLANT_ACTION_IDS, demandGap } from "./market";
 import { PHASE_IDS } from "./resources";
 import { sceneInfo } from "./scene";
@@ -46,6 +52,7 @@ export function growPlates(run: RunState): string[] {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
     if (biomeGap(run) >= TUNING.world.playerMargin) plates.push("spread");
+    if (isFlockReady(run)) plates.push("flock");
   }
   return plates;
 }
@@ -57,6 +64,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   market: PLANT_ACTION_IDS,
   spread: SPREAD_ACTION_IDS,
   fair: FAIR_ACTION_IDS,
+  flock: MIGRATION_ACTION_IDS,
 };
 
 /** The tank is the backyard's one watched number. */
@@ -77,6 +85,9 @@ export function growIncomeView(run: RunState): RunState {
   if (run.phase === 1 && isFairOpen(run))
     // A fair payout flowing in is not income.
     return withoutFair({ ...run, resources: { ...run.resources } });
+  if (run.phase === 2 && isMigrationOpen(run))
+    // A landing flowing in is not income.
+    return withoutMigration({ ...run, resources: { ...run.resources } });
   if (run.phase !== 0) return run;
   const floor = pickPerSecond(run) * 2;
   const view =

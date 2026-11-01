@@ -122,6 +122,34 @@ export const RESOURCES: readonly ResourceDef[] = [
     "bmSettle",
     "bmSwitches",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // Seed migration: stage (0 gathering, 1 ready, 2 flying), clocks, the
+  // destination, the day's weather and how green each region is, flights
+  // landed, green flowing in, the last flight, and the flocks' own stream.
+  ...[
+    "mgStage",
+    "mgTime",
+    "mgFly",
+    "mgDest",
+    "mgRoll0",
+    "mgRoll1",
+    "mgRoll2",
+    "mgRoll3",
+    "mgRoll4",
+    "mgGreen0",
+    "mgGreen1",
+    "mgGreen2",
+    "mgGreen3",
+    "mgGreen4",
+    "mgShown",
+    "mgFlights",
+    "mgPending",
+    "mgSurgeRate",
+    "mgEarned",
+    "mgLastPays",
+    "mgBy",
+    "mgRng",
+    "mgPaused",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];
