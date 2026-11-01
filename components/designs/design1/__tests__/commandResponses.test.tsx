@@ -25,25 +25,33 @@ describe("planes command", () => {
   });
 });
 
-describe("machines command", () => {
-  it.each(["machines", "little-machines", "MACHINES"])(
+describe("ever onward command", () => {
+  it.each([
+    "onward",
+    "ever-onward",
+    "ever onward",
+    "ONWARD",
+    "machines",
+    "little-machines",
+    "little machines",
+  ])(
     "responds to %s with a blurb, a link, and a navigation target",
     (input) => {
       const result = getCommandResponse(input, []);
       render(<>{result.output}</>);
 
-      expect(screen.getByText(/Much too far/)).toBeInTheDocument();
+      expect(screen.getByText(/Ever Onward/)).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /\/little-machines/ })
-      ).toHaveAttribute("href", "/little-machines");
-      expect(result.navigateTo).toBe("/little-machines");
+        screen.getByRole("link", { name: /\/ever-onward/ })
+      ).toHaveAttribute("href", "/ever-onward");
+      expect(result.navigateTo).toBe("/ever-onward");
       expect(result.shouldClear).toBe(false);
     }
   );
 
   it("is listed in help", () => {
     const result = getCommandResponse("help", []);
-    expect(result.output).toEqual(expect.stringMatching(/^\s+machines\s/m));
+    expect(result.output).toEqual(expect.stringMatching(/^\s+onward\s/m));
   });
 });
 

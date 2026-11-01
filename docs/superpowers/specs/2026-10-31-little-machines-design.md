@@ -12,6 +12,10 @@ how much faster things go, and the shock of a phase change where the game
 becomes a different game. Players are mostly kids (same audience as Ship
 Builder / Plane Builder); adult themes are fine if told subtly.
 
+Tone arc: the first hour feels fun, positive and motivating (look how cool
+this can get); the relentlessness and darkness creep in slowly later. "Ever
+onward." is the machine's catchphrase in every universe.
+
 ## Goals
 
 - The upgrade rush: something is always growing, the next upgrade is always

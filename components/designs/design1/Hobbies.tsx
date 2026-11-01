@@ -39,16 +39,16 @@ export default function Hobbies() {
       </p>
       <p className="leading-relaxed">
         💡 And a little incremental game where a lighthouse robot keeps the
-        light on, much too far:{" "}
+        light on:{" "}
         <a
-          href="/little-machines"
+          href="/ever-onward"
           className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
         >
-          /little-machines
+          /ever-onward
         </a>{" "}
         (or type{" "}
         <span className="text-green-600 dark:text-green-300">
-          &apos;machines&apos;
+          &apos;onward&apos;
         </span>
         ).
       </p>

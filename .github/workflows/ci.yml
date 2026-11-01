@@ -291,7 +291,7 @@ jobs:
           # and the iPhone runs jim.spec.ts (see playwright.config.ts).
           # Firefox is left out.
           - name: Builder + home + admin (Chromium, WebKit, iPad)
-            files: e2e/home.spec.ts e2e/ship-builder.spec.ts e2e/admin.spec.ts e2e/app-check.spec.ts e2e/jim.spec.ts e2e/little-machines.spec.ts
+            files: e2e/home.spec.ts e2e/ship-builder.spec.ts e2e/admin.spec.ts e2e/app-check.spec.ts e2e/jim.spec.ts e2e/ever-onward.spec.ts
             args: --project=chromium --project=webkit --project=ipad --project=iphone --grep-invert "holding a placed block|paints a tapped block|renders the 3D scene"
             workers: 2
             browsers: chromium webkit

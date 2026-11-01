@@ -285,7 +285,7 @@ html:has(.jim-app) body {
   outline-color: var(--color-ayu-accent);
 }
 
-/* Little Machines (/little-machines): scene motion and UI pops. Dynamic
+/* Ever Onward (/ever-onward): scene motion and UI pops. Dynamic
    values come from SVG attributes; these classes only add motion. */
 @keyframes lmPop {
   0% {

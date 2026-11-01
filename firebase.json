@@ -2,6 +2,18 @@
   "hosting": {
     "cleanUrls": true,
     "public": "out",
+    "redirects": [
+      {
+        "source": "/little-machines",
+        "destination": "/ever-onward",
+        "type": 301
+      },
+      {
+        "source": "/little-machines/**",
+        "destination": "/ever-onward",
+        "type": 301
+      }
+    ],
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
       {

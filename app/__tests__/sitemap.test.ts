@@ -6,7 +6,7 @@ describe("sitemap", () => {
       "https://gentryriggen.com",
       "https://gentryriggen.com/ship-builder",
       "https://gentryriggen.com/plane-builder",
-      "https://gentryriggen.com/little-machines",
+      "https://gentryriggen.com/ever-onward",
     ]);
   });
 });
