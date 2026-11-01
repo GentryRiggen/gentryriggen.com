@@ -86,7 +86,7 @@ export default function StoryDrawer({
         aria-modal="true"
         aria-labelledby="lm-story-title"
         data-testid="lm-story-drawer"
-        className={`${retroPanelClass} lm-fade-up relative flex max-h-[85dvh] w-full flex-col bg-slate-950 text-amber-50 lg:max-h-none lg:max-w-xl lg:border-y-0 lg:border-r-0`}
+        className={`${retroPanelClass} lm-fade-up relative flex max-h-[85dvh] w-full flex-col !bg-slate-950 text-amber-50 lg:max-h-none lg:max-w-xl lg:border-y-0 lg:border-r-0`}
       >
         <div className="flex items-center justify-between gap-3 border-b-4 border-amber-500/60 p-3">
           <RetroHeading as="h2" id="lm-story-title" className="text-sm">
