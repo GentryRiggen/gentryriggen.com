@@ -1359,7 +1359,7 @@ html:has(.jim-app) body {
   }
   56%,
   100% {
-    opacity: 0.15;
+    opacity: 0.35;
   }
 }
 
