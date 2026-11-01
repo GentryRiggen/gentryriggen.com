@@ -4,20 +4,23 @@ import { newRun } from "@/lib/ever-onward/engine/engine";
 import { lightUniverse, sceneInfo } from "@/lib/ever-onward/universes/light";
 import LastLayer from "../../scenes/light/LastLayer";
 import LanternPicker from "../LanternPicker";
-import PhaseOverlay from "../PhaseOverlay";
+import PhaseCutscene from "../PhaseCutscene";
+import LightScene from "../../scenes/light/LightScene";
 
 describe("the lantern pick at the start of a run", () => {
   it("offers three named colours, one picked, and reports a change", async () => {
     const onChange = jest.fn();
     render(
-      <PhaseOverlay
-        phase={lightUniverse.phases[0]}
-        number={1}
-        total={4}
+      <PhaseCutscene
+        def={lightUniverse}
+        phaseIndex={0}
+        Scene={LightScene}
         onContinue={jest.fn()}
         opening={<LanternPicker value={1} onChange={onChange} />}
       />
     );
+    // The pick sits on the goal frame, the last of the cutscene.
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
     const group = screen.getByRole("radiogroup", { name: "Lantern colour" });
     expect(group).toBeInTheDocument();
     const radios = screen.getAllByRole("radio");
@@ -27,15 +30,16 @@ describe("the lantern pick at the start of a run", () => {
     expect(onChange).toHaveBeenCalledWith(3);
   });
 
-  it("is not shown for the later parts", () => {
+  it("is not shown for the later parts", async () => {
     render(
-      <PhaseOverlay
-        phase={lightUniverse.phases[1]}
-        number={2}
-        total={4}
+      <PhaseCutscene
+        def={lightUniverse}
+        phaseIndex={1}
+        Scene={LightScene}
         onContinue={jest.fn()}
       />
     );
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
   });
 });

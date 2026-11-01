@@ -357,7 +357,10 @@ function planesOutput(): ReactNode {
 function everOnwardOutput(): ReactNode {
   return (
     <div className="space-y-1">
-      <p>Ever Onward. Little machines. One simple goal each. 💡</p>
+      <p>
+        Ever Onward. A little series of incremental games about robots who take
+        one job too far. 💡
+      </p>
       <p>
         Lighting the lamp...{" "}
         <a

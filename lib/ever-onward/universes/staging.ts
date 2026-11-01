@@ -1,4 +1,5 @@
 import type { UniverseDef } from "../engine/types";
+import { growUniverse } from "./grow";
 import { lightUniverse } from "./light";
 
 /** A universe that is announced but not built yet. */
@@ -19,7 +20,10 @@ export const SHOWS_UNRELEASED =
 export const UNRELEASED_IDS: readonly string[] = [];
 
 /** Every universe that is built, in hub order. */
-export const ALL_UNIVERSES: readonly UniverseDef[] = [lightUniverse];
+export const ALL_UNIVERSES: readonly UniverseDef[] = [
+  lightUniverse,
+  growUniverse,
+];
 
 /** Every announced universe, in hub order. */
 const ANNOUNCED: readonly LockedUniverse[] = [
@@ -41,16 +45,20 @@ const ANNOUNCED: readonly LockedUniverse[] = [
 ];
 
 export function playableUniverses(
-  showsUnreleased: boolean
+  showsUnreleased: boolean,
+  unreleased: readonly string[] = UNRELEASED_IDS
 ): readonly UniverseDef[] {
   return ALL_UNIVERSES.filter(
-    (u) => showsUnreleased || !UNRELEASED_IDS.includes(u.id)
+    (u) => showsUnreleased || !unreleased.includes(u.id)
   );
 }
 
 export function lockedUniverses(
-  showsUnreleased: boolean
+  showsUnreleased: boolean,
+  unreleased: readonly string[] = UNRELEASED_IDS
 ): readonly LockedUniverse[] {
-  const playable = new Set(playableUniverses(showsUnreleased).map((u) => u.id));
+  const playable = new Set(
+    playableUniverses(showsUnreleased, unreleased).map((u) => u.id)
+  );
   return ANNOUNCED.filter((l) => !playable.has(l.id));
 }

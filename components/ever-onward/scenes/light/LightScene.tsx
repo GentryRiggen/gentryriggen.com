@@ -19,6 +19,7 @@ interface LightSceneProps {
   run: RunState;
   /** The newest purchase, shown as a label in the picture for a moment. */
   lastBuy?: LastBuy | null;
+  testId?: string;
 }
 
 const LAYERS = [
@@ -62,8 +63,18 @@ function useStableInfo(run: RunState): LightSceneInfo {
 }
 
 /** The scene draws only from its info, so it is memoized on it. */
-export default function LightScene({ run, lastBuy = null }: LightSceneProps) {
-  return <LightSceneView info={useStableInfo(run)} lastBuy={lastBuy} />;
+export default function LightScene({
+  run,
+  lastBuy = null,
+  testId = "lm-scene",
+}: LightSceneProps) {
+  return (
+    <LightSceneView
+      info={useStableInfo(run)}
+      lastBuy={lastBuy}
+      testId={testId}
+    />
+  );
 }
 
 /**
@@ -73,9 +84,11 @@ export default function LightScene({ run, lastBuy = null }: LightSceneProps) {
 const LightSceneView = memo(function LightSceneView({
   info,
   lastBuy,
+  testId,
 }: {
   info: LightSceneInfo;
   lastBuy: LastBuy | null;
+  testId: string;
 }) {
   const target = Math.min(LAYERS.length - 1, Math.max(0, info.phaseIndex));
   const [visual, setVisual] = useState<Visual>({
@@ -115,7 +128,7 @@ const LightSceneView = memo(function LightSceneView({
         viewBox="0 0 400 300"
         role="img"
         aria-label={CAPTIONS[target]}
-        data-testid="lm-scene"
+        data-testid={testId}
         data-phase={info.phase}
         overflow="visible"
         className="block h-full w-full"

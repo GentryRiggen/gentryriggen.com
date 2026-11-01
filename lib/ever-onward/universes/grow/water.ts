@@ -1,0 +1,143 @@
+import { nextRandom } from "../../engine/rng";
+import type { RunState } from "../../engine/types";
+import { TUNING } from "./tuning";
+
+const W = TUNING.water;
+
+/** A thirsty garden still earns this share of its helpers' income. */
+export const DRY_FLOOR = 0.5;
+
+/** A dry tank counts as wet again once it holds more than this. */
+export const DRY_REFILL = 1;
+
+/** Mixed into the run's seed so the rain has a stream of its own. */
+const SEED_MIX = 0x57a7e5;
+
+const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
+
+/** Water storage upgrades; later parts add wells, irrigation and more. */
+export const STORAGE_IDS: readonly string[] = [
+  "rain-barrel",
+  "garden-hose",
+  "well",
+  "irrigation",
+  "river-bend",
+  "cloud-seeder",
+];
+
+const F = TUNING.farm.water;
+const farmHelperCount = (run: RunState): number =>
+  owned(run, "scarecrow") +
+  owned(run, "tractor") +
+  owned(run, "glasshouse") +
+  owned(run, "seed-drone");
+const onFarm = (run: RunState): boolean => run.phase === 1;
+const onWorld = (run: RunState): boolean => run.phase === 2;
+
+const G = TUNING.world.water;
+const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
+/** A biome's gain at a share (the same curve biomes.ts uses). */
+const gain = (share: number): number => {
+  const s = Math.min(1, Math.max(0, share));
+  return s * (2 - s);
+};
+const wetland = (run: RunState): number => gain(res(run, "bmWetland"));
+const jungle = (run: RunState): number => gain(res(run, "bmJungle"));
+const worldHelperCount = (run: RunState): number =>
+  owned(run, "windbreak") +
+  owned(run, "planting-rover") +
+  owned(run, "sky-seeder");
+
+/** Units the tank holds right now. */
+export function waterCapacity(run: RunState): number {
+  if (onWorld(run))
+    return (
+      G.baseCapacity +
+      G.riverCapacity * owned(run, "river-bend") +
+      G.wetlandCapacity * wetland(run)
+    );
+  if (onFarm(run))
+    return (
+      F.baseCapacity +
+      F.wellCapacity * owned(run, "well") +
+      F.irrigationCapacity * owned(run, "irrigation")
+    );
+  return (
+    W.baseCapacity +
+    W.barrelCapacity * owned(run, "rain-barrel") +
+    W.hoseCapacity * owned(run, "garden-hose")
+  );
+}
+
+/** How full the tank is, 0 to 1. */
+export function waterLevel(run: RunState): number {
+  return Math.min(
+    1,
+    Math.max(0, (run.resources.tank ?? 0) / waterCapacity(run))
+  );
+}
+
+/** 0 is a dry spell, 1 is rainy. Drifts like the oil price. */
+export const rainOutlook = (run: RunState): number =>
+  run.resources.rainOutlook ?? W.outlookStart;
+
+/** True when the tank has run out. */
+export const isDry = (run: RunState): boolean => {
+  const tank = run.resources.tank ?? 0;
+  // Once dry, the garden stays dry until the tank refills past a little, so a
+  // tank hovering near empty does not blink between dry and wet.
+  return tank <= 0 || (run.resources.wtDry === 1 && tank <= DRY_REFILL);
+};
+
+/** 1 while there is water, the floor when the tank is empty. */
+export const waterFactor = (run: RunState): number =>
+  isDry(run) ? DRY_FLOOR : 1;
+
+/** The farm opens with a full tank (the yard's barrels stay behind). */
+export function fillFarmTank(run: RunState): void {
+  run.resources.tank = waterCapacity({ ...run, phase: 1 });
+}
+
+/** The world opens with a full tank (the farm's wells stay behind). */
+export function fillWorldTank(run: RunState): void {
+  run.resources.tank = waterCapacity({ ...run, phase: 2 });
+}
+
+/** Gives the rain its own stream (call when the yard begins). */
+export function seedWater(run: RunState): void {
+  run.resources.wtRng = (run.rng ^ SEED_MIX) | 0;
+}
+
+/**
+ * Rain drifts toward its mean on a stream of its own (`run.rng` is never
+ * touched), fills the tank, and the garden drinks from it.
+ */
+export function tickWater(run: RunState, dt: number): void {
+  const stream = { rng: run.resources.wtRng | 0 };
+  const before = rainOutlook(run);
+  const wobble = (nextRandom(stream) - 0.5) * W.outlookWobble * Math.sqrt(dt);
+  const pull = (W.outlookMean - before) * W.outlookPull * dt;
+  const outlook = Math.min(1, Math.max(0, before + pull + wobble));
+  run.resources.wtRng = stream.rng;
+  run.resources.rainOutlook = outlook;
+  const net = onWorld(run)
+    ? G.rainMax * outlook * (1 + G.cloudRain * owned(run, "cloud-seeder")) +
+      G.riverSeep * owned(run, "river-bend") +
+      G.wetlandSeep * wetland(run) -
+      (G.thirst +
+        G.thirstPerHelper * worldHelperCount(run) +
+        G.jungleThirst * jungle(run))
+    : onFarm(run)
+      ? F.rainMax *
+          outlook *
+          (1 + F.irrigationRain * owned(run, "irrigation")) +
+        F.wellSeep * owned(run, "well") -
+        (F.thirst + F.thirstPerHelper * farmHelperCount(run))
+      : W.rainMax * outlook - W.thirst;
+  run.resources.tank = Math.min(
+    waterCapacity(run),
+    Math.max(0, (run.resources.tank ?? 0) + net * dt)
+  );
+  if (run.resources.tank <= 0) run.resources.wtDry = 1;
+  else if (run.resources.tank > DRY_REFILL) run.resources.wtDry = 0;
+}

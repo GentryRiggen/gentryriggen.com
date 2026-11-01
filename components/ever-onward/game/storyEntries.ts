@@ -14,7 +14,12 @@ export const NEWS_PREFIX = "NEWS:";
  */
 export function storyEntries(def: UniverseDef, run: RunState): StoryEntry[] {
   const texts = new Map(def.story.map((m) => [m.id, m.text]));
-  const onCard = new Set(waitingVisitors(def, run).map((v) => v.id));
+  // A waiting visitor's line sits on its card, not in the list. A finished run
+  // shows no cards, so a visitor who ends the run (Grow's someone-came-back)
+  // keeps its line in the story.
+  const onCard = new Set(
+    run.complete ? [] : waitingVisitors(def, run).map((v) => v.id)
+  );
   return run.story
     .filter((id) => !onCard.has(id))
     .reverse()

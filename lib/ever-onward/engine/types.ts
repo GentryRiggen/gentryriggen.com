@@ -46,6 +46,24 @@ export interface ResourceDef {
   phases?: readonly string[];
 }
 
+/** A made-up state for a cutscene's picture: the phase's scene dressed to show off. */
+export interface CutsceneShowcase {
+  /** Seconds into the phase (the season, the tide). */
+  time?: number;
+  owned?: Record<string, number>;
+  resources?: Record<string, number>;
+}
+
+/** One frame of a phase cutscene. */
+export interface CutsceneFrame {
+  /** What the narrator says (and the screen shows) for this frame. */
+  text: string;
+  /** Frame 3 only: short, kind, accurate tips for doing well. */
+  tips?: readonly string[];
+  /** The picture from this frame on; later frames keep it unless they set their own. */
+  showcase?: CutsceneShowcase;
+}
+
 export interface PhaseDef {
   id: string;
   title: string;
@@ -56,6 +74,11 @@ export interface PhaseDef {
   intro?: string;
   /** One plain-words goal line, shown and read after the intro. */
   goal?: string;
+  /**
+   * The cutscene that plays when the phase begins: four frames (where you
+   * are, what you do and why, how to do well, your goal).
+   */
+  cutscene?: readonly CutsceneFrame[];
   /** The resource the free manual action earns here. */
   manualResource: string;
   manualLabel: string;
@@ -229,6 +252,8 @@ export interface PrestigeUpgradeDef {
 export interface PrestigeDef {
   /** Plural display name of the prestige currency; "Embers" when unset. */
   label?: string;
+  /** Singular of `label` ("Acorn"); the plural minus a trailing "s" when unset. */
+  labelSingular?: string;
   /** Embers for finishing the universe. */
   completionEmbers: number;
   /** Embers for each phase cleared (kept when restarting from phase 2+). */
@@ -241,6 +266,12 @@ export interface UniverseDef {
   title: string;
   /** One-line goal shown on the hub card. */
   goal: string;
+  /**
+   * The universe opens once the player has finished another one (any
+   * `completions > 0`, which a restart never takes away). `hint` is shown on
+   * the locked hub card.
+   */
+  requires?: { universeId: string; hint: string };
   resources: readonly ResourceDef[];
   phases: readonly PhaseDef[];
   upgrades: readonly UpgradeDef[];

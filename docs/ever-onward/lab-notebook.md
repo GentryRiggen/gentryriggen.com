@@ -973,3 +973,189 @@ and whether the helpers' arrival is visible enough to notice the hand-off.
     pay less than tending by hand. The rain barrel test uses real picks.
   - A tap on a full flame still earns resolve, so the tap button shows its
     "+" floater.
+
+## Make It Grow, round 1 (2026-11-01): long enough, no failing gate
+
+Universe 2 ("grow"), branch `feat/make-it-grow`, on top of Tasks 1-15 and 17
+(817f2847). The first tuning pass over the whole universe. Light's scorecard
+is byte-identical before and after (minus the `Runtime:` line).
+
+### Round 0: baseline
+
+`npm run score:ever-onward -- grow`: **59.0** (capped from **76.0**), one
+failing gate: M2 farm, 4+ options 17% > 15%. M14 1.61 h (band 2-3 h).
+
+Phase lengths in minutes (yard / farm / world / seed):
+
+| Bot            | Yard | Farm | World | Seed | Finish |
+| -------------- | ---- | ---- | ----- | ---- | ------ |
+| eager          | 31   | 24   | 31    | 12   | 1.61 h |
+| when it helps  | 31   | 25   | 33    | 13   | 1.69 h |
+| idle           | 53   | 32   | 40    | 19   | 2.39 h |
+| target (helps) | 30   | 35   | 35    | 20   | 2-3 h  |
+
+What the trace showed, phase by phase:
+
+- **Farm.** Too quick (24 min) and crowded: the dawdler, shopping once a
+  minute, kept 4+ things affordable 17% of the time. Wells and irrigation
+  sat in the shop because its tank never actually ran dry (thirst grew only
+  0.03 a helper, so it hovered just above empty: low 73% of the time).
+- **World.** The shop emptied at minute 25 (the tenth sky seeder), then the
+  player waited 5 minutes at the income ceiling for the 120M vault. The
+  planet was fully green by then, so nothing grew.
+- **Seed.** 12 minutes, and the pot was the only plate.
+- **Prestige.** Run 2 / run 1 0.72 (band 0.50-0.70).
+
+### Changes and hypotheses
+
+One lever per phase, each scored on its own before the next.
+
+1. **Farm helpers earn about 0.64x** (scarecrow 5 to 3.2, tractor 30 to 19,
+   glasshouse 190 to 120, drone 900 to 580 harvest a second). Hypothesis:
+   the farm stretches toward 35 min with the same shape, the dawdler holds
+   fewer things at once (M2), and taps carry the opening longer (early
+   taps were 55%). Result: farm 24 to 37 min (eager), M2 4+ 17% to 14%, M11
+   farm early taps 55% to 68%. Keep.
+2. **A thirstier farm with stronger wells** (thirst per helper 0.03 to 0.045,
+   well seep 0.12 to 0.18). Hypothesis: the tank matters, so the dawdler
+   builds its wells instead of leaving them in the shop. Result: M2 farm 4+
+   14% to 9%, low 28% (in band, was 73% at baseline). The tend gap stayed
+   negative (below). Keep.
+3. **World: more sky seeders, a cheaper vault, slower helpers** (sky seeder
+   10 to 13 levels; vault 120M to 46M, so it comes in the same rhythm as
+   the seeders instead of after a 5-minute wait; windbreak 40 to 30, rover
+   300 to 225, seeder 2,400 to 1,800 green a second). Tried first: 13
+   seeders with the vault at 150M. That made the tail worse (320 s of
+   nothing, M12 gate) and was reverted. Result: world 31 to 38 min, M12
+   world longest gap 170 s to 120 s, no wait at the ceiling. Keep.
+4. **A hands-on world opening.** The first windbreak costs 3,000 green (was
+   1,500). Early taps were 43% (51% after change 3). Result: 62%, and M11
+   is 10/10. Keep.
+5. **A slower pot with a deeper shop** (growth per care 0.00028 to 0.00009,
+   dew collector 9 to 13 levels). Tried first: the slower pot alone. The
+   shop emptied (13% of the time, M12 gate). With the extra dew levels the
+   shop stays stocked. Result: seed 12 to 18 min (eager), 20 (helps). Keep.
+6. **Deep roots +30% a level** (was +25%; the acorn's description says 30%).
+   More acorns for finishing (12 or 14) changed nothing, because the
+   cheapest-first spend bought the same set. Result: run 2 / run 1 0.72 to
+   0.70, run 3 / run 2 0.76. Keep.
+7. **Story timing (no text changed).** The longer phases stretched the gaps
+   between beats, so I retimed some lines:
+   - Farm lines `farm-time-4/9/5/10/6/7/12/8` now fire at 13, 15.5, 18,
+     20.5, 23, 26, 29 and 31 min (they were at 12.5-24).
+   - `farm-time-11` mentions a blinking drone, so it now waits for the
+     second drone instead of 20 min.
+   - Yard: `yard-mid` moves from 960 s to 930 s and `yard-late-3` from
+     1740 s to 1680 s. Both yard gaps were 179 s, at the 180 s gate, and
+     are now 149 s and 120 s.
+   - Seed growth beats: sprout 0.03 to 0.015 (and `sproutAt` to match,
+     so the scene's sprout appears with the line), sun 0.14 to 0.08, leaf
+     0.22 to 0.18, curtain 0.4 to 0.33, waiting 0.85 to 0.8. The beats come
+     every 1.5-2.5 minutes instead of bunching at the end.
+
+   The story reach tests still pass.
+
+8. **Tried and reverted: a careful bot that only buys storage when the tank
+   is below half.** It is arguably more honest, but it ran the yard dry
+   (empty 7%, a 26% M10 plateau gate) and the farm tend gap stayed
+   negative. `bots.ts` is unchanged.
+
+### Before and after
+
+| Metric              | Round 0                 | Round 1  | Note                                        |
+| ------------------- | ----------------------- | -------- | ------------------------------------------- |
+| M1 Reveal cadence   | 5.8                     | 6.3      | max gaps 179/90/113/150 to 149/160/120/150  |
+| M2 Decision density | 7.0 FAIL (farm)         | 8.8      | farm 4+ 17% to 9%                           |
+| M3 Goal queue       | 1.0                     | 1.3      | seed still 16% (few cards)                  |
+| M4 Felt effect      | 7.5                     | 7.3      |                                             |
+| M5 Purchase rate    | 4.8                     | 5.0      |                                             |
+| M6 Wait ratio       | 10.0                    | 10.0     |                                             |
+| M7 Plates           | 6.0                     | 5.9      | worst metric now                            |
+| M8 Novelty          | 4.8                     | 4.7      |                                             |
+| M9 Tension          | 4.0                     | 4.1      | farm low 73% to 28%; tend gap -5.5 to -6.7% |
+| M10 Smoothness      | 3.2                     | 3.4      |                                             |
+| M11 Click curve     | 9.1                     | 10.0     | farm 55% to 68%, world 43% to 62% early     |
+| M12 Dead time       | 3.2                     | 4.0      | every phase's longest gap now <= 120 s      |
+| M13 Prestige        | 4.8                     | 5.0      | run2/run1 0.72 to 0.70                      |
+| M14 Length          | 0.9                     | 4.0      | 1.61 h to 2.05 h (eager)                    |
+| M15 Chores          | 4.0                     | 4.0      |                                             |
+| **Total**           | **59.0** (76.0, 1 gate) | **83.9** | no failing gate                             |
+
+Phase lengths after (minutes):
+
+| Bot           | Yard | Farm | World | Seed | Finish |
+| ------------- | ---- | ---- | ----- | ---- | ------ |
+| eager         | 31   | 37   | 38    | 18   | 2.05 h |
+| when it helps | 31   | 39   | 38    | 20   | 2.13 h |
+| idle          | 53   | 50   | 50    | 31   | 3.07 h |
+
+Idle / eager 1.50x (gate: within 4 h and never quicker than eager). Run 2
+1.42 h, run 3 1.08 h.
+
+Manual share of income (percent) by minute of each phase. Eager player:
+
+```
+before yard   98 73 45 35 21 16 12  8  4  3  3  2  3  2  1  1  1 ...
+after  yard   98 73 45 35 21 16 12  8  4  3  3  2  3  2  1  1  1 ...
+before farm   80 55 49 33 14  6  4  3  3  2  2  1  1  1  1  1  0 ...
+after  farm   86 69 62 54 27 15  8 10  6  5  5  5  5  3  3  2  2  2  2  1 ...
+before world  71 43 36 30 23 16  9  5  4  4  3  3  3  2  2  2  2  2  1 ...
+after  world  87 63 53 44 36 25 20 20 18 17 17 15  9  6  6  4  4  4  4  3 ...
+before seed   76 58 45 23 10  6  3  1  1  1  1  1
+after  seed   76 58 45 23 10  6  3  1  1  1  1  1  0  0  0  0  0  0
+```
+
+Taps when it helps:
+
+```
+before yard   99 78 61 39  3  3  3  2  1 ...
+after  yard   99 78 61 39  3  3  3  2  1 ...
+before farm   80 58 49 26  2  1  1  1 ...
+after  farm   86 69 62 57 21  3  2  2  1 ...
+before world  71 43  4  3  3 13  3  3  2  1 ...
+after  world  87 63 53 49 46 43 20  4  4  4  3 ...
+before seed   76 58 41  3  1  1  1  0 ...
+after  seed   76 58 41  3  1  1  1  0 ...
+```
+
+Every phase opens hands-on, and the helpers carry it from minute 5-6 for the
+player who taps when it helps. One exception: the eager player's world stays
+at 15-20% manual until minute 11. The mean from minute 6 is 5%, well inside
+the 12% band.
+
+### Retro (self-review, no reviewer this round)
+
+- **What dragged:**
+  - M7 Plates (5.9/10) is now the worst metric. The yard and farm open with
+    too many plates (3+ in the first quarter: tap, water, the harvest or
+    the market) and end with too few. The seed has only the tap and the
+    pot. Fixing it means a mechanic (a late plate per phase), not a
+    number.
+  - M1 counts 34-41 beats per phase, against a band of 8-25. The time lines
+    that hold the max gap under 180 s also crowd the median down to 30-40 s.
+- **What blocked the loop:**
+  - The farm tend gap (careful vs naive water) is -7% and noisy. The naive
+    bot buys storage exactly when it runs dry, which on the farm is just in
+    time. Being dry costs half the income for a few seconds, so buying
+    early never pays. Either dry spells have to last (storage that fills
+    slowly), or the metric needs a fixed fair seed so the ribbons' luck
+    doesn't swamp a few percent.
+  - The phase-length check reads the realistic bot directly in
+    `grow/__tests__/scorecard.test.ts`. The scorecard's phase table is
+    the eager bot.
+- **Bold ideas for round 2:**
+  - A late plate in every phase, for example an autumn market rush on the
+    farm or a storm front on the world map, so the fourth quarter carries
+    four plates.
+  - A second thing for the seed to want (the window: open or closed) as its
+    own plate.
+
+### Decision
+
+Keep. Floor set in `grow/__tests__/scorecard.test.ts` at **82.9** (83.9
+minus 1), uncapped 82.9. The test also checks: no failing gate, the
+realistic bot finishes in 2-3 h, the idle bot within 4 h and never before
+the eager bot, and each realistic phase within 30% of 30/35/35/20 min.
+Next: a playtest with Gentry (does the longer farm drag in the middle; does
+the world's tail feel like an ending rather than a wait), then round 2 on
+plates.

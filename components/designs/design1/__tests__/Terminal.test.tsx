@@ -27,7 +27,7 @@ const PLANES_LINE = (_: string, el: Element | null) =>
 const MACHINES_LINE = (_: string, el: Element | null) =>
   el?.tagName === "P" &&
   el.textContent ===
-    "💡 And a little incremental game where a lighthouse robot keeps the light on: /ever-onward (or type 'onward').";
+    "💡 And a little series of incremental games about robots who take one job too far: /ever-onward (or type 'onward').";
 
 const queryPrompt = () => screen.queryByLabelText("Terminal command input");
 

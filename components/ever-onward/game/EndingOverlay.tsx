@@ -18,9 +18,13 @@ interface EndingOverlayProps {
   embers: number;
   /** Plural name of what the run earns; "Embers" by default. */
   label?: string;
+  /** Singular of `label`; the plural minus a trailing "s" when unset. */
+  labelSingular?: string;
   Icon?: ComponentType<{ className?: string }>;
   /** Drawn above the lines instead of the flickering light. */
   art?: ReactNode;
+  /** One quiet line under the closing lines (not narrated), or null. */
+  afterword?: string | null;
   onContinue: () => void;
 }
 
@@ -39,15 +43,19 @@ export default function EndingOverlay({
   lines,
   embers,
   label = "Embers",
+  labelSingular,
   Icon = EmberIcon,
   art,
+  afterword,
   onContinue,
 }: EndingOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isReady, setIsReady] = useState(false);
   const plural = label.toLowerCase();
-  const singular = plural.replace(/s$/, "");
+  const singular = labelSingular
+    ? labelSingular.toLowerCase()
+    : plural.replace(/s$/, "");
 
   // Keyboard users start inside the dialog, not behind it.
   useEffect(() => {
@@ -68,12 +76,13 @@ export default function EndingOverlay({
       aria-modal="true"
       aria-label="The ending"
       data-testid="lm-ending"
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black p-6 text-slate-50 outline-none"
+      className="fixed inset-0 z-50 flex overflow-y-auto overflow-x-hidden bg-black p-6 text-slate-50 outline-none"
     >
       <div className="pointer-events-none fixed inset-0">
         <CrtOverlay />
       </div>
-      <div className="relative max-w-md space-y-6 py-8 text-center">
+      {/* m-auto centres short endings and still lets a tall one scroll from its top. */}
+      <div className="relative m-auto w-full max-w-md space-y-6 py-8 text-center">
         {art ?? (
           <div
             aria-hidden="true"
@@ -92,6 +101,14 @@ export default function EndingOverlay({
           inert={!isReady}
           className={`lm-fade-up space-y-6 ${DELAYS[DELAYS.length - 1]}`}
         >
+          {afterword && (
+            <p
+              data-testid="lm-ending-afterword"
+              className="font-mono text-sm text-cyan-200"
+            >
+              {afterword}
+            </p>
+          )}
           <div
             data-testid="lm-ending-embers"
             className="flex flex-col items-center gap-2 border-2 border-orange-400/60 bg-orange-950/40 p-3"

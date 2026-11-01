@@ -3,7 +3,13 @@ import { render } from "@testing-library/react";
 import { createFakeAudio } from "../../../game-audio/testing/fakeAudio";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
-import { createEverOnwardSynth, everOnwardSynth } from "../everOnwardSynth";
+import { GROW_UI } from "../../universes/grow";
+import {
+  createEverOnwardSynth,
+  everOnwardSynth,
+  MUSIC_LEVEL,
+} from "../everOnwardSynth";
+import { TAP_LEVEL } from "../voices";
 import { everOnwardChannels } from "../soundSettings";
 import useEverOnwardAudio from "../useEverOnwardAudio";
 
@@ -40,6 +46,11 @@ describe("Ever Onward synth with a fake AudioContext", () => {
     audio.install();
   });
   afterEach(() => audio.uninstall());
+
+  it("keeps taps clearly under the music bed", () => {
+    expect(TAP_LEVEL).toBeLessThanOrEqual(0.4);
+    expect(TAP_LEVEL).toBeLessThan(MUSIC_LEVEL);
+  });
 
   it("plays a tap only after enable, and caps polyphony", () => {
     const synth = createEverOnwardSynth();
@@ -87,6 +98,38 @@ describe("Ever Onward synth with a fake AudioContext", () => {
     expect(audio.sources.length).toBeGreaterThan(afterFirst);
     synth.dispose();
   });
+});
+
+describe("Grow audio on the synth", () => {
+  const audio = createFakeAudio();
+  beforeEach(() => {
+    audio.reset();
+    audio.install();
+  });
+  afterEach(() => audio.uninstall());
+
+  it("switches to Grow's score when a Grow phase is set", () => {
+    const synth = createEverOnwardSynth();
+    synth.enable();
+    synth.setPhase(0, GROW_UI.audio);
+    const afterYard = audio.sources.length;
+    expect(afterYard).toBeGreaterThan(0);
+    synth.setPhase(2, GROW_UI.audio);
+    expect(audio.sources.length).toBeGreaterThan(afterYard);
+    synth.dispose();
+  });
+
+  it.each(["buzz", "ribbon", "flutter", "bloom"] as const)(
+    "plays the %s cue",
+    (name) => {
+      const synth = createEverOnwardSynth();
+      synth.enable();
+      const before = audio.sources.length;
+      synth.cue(name);
+      expect(audio.sources.length).toBeGreaterThan(before);
+      synth.dispose();
+    }
+  );
 });
 
 describe("Ever Onward sound after leaving the tab", () => {

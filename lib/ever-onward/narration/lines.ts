@@ -1,3 +1,4 @@
+import type { PhaseDef } from "../engine/types";
 import { playableUniverses } from "../universes/staging";
 
 export interface NarrationLine {
@@ -16,6 +17,31 @@ export const storyClipId = (universeId: string, storyId: string): string =>
 /** Id of a phase intro's clip. */
 export const introClipId = (universeId: string, phaseId: string): string =>
   `${universeId}/intro-${phaseId}`;
+
+/** Id of a cutscene frame's clip (`frame` counts from 1). */
+export const cutClipId = (
+  universeId: string,
+  phaseId: string,
+  frame: number
+): string => `${universeId}/cut-${phaseId}-${frame}`;
+
+/**
+ * What the voice reads for a cutscene frame (0-based): its line, then its
+ * tips, and on the last frame the goal.
+ */
+export function cutSpokenText(phase: PhaseDef, frameIndex: number): string {
+  const frames = phase.cutscene ?? [];
+  const frame = frames[frameIndex];
+  if (!frame) return "";
+  const isLast = frameIndex === frames.length - 1;
+  return [
+    frame.text,
+    ...(frame.tips ?? []),
+    isLast && phase.goal ? `Your goal: ${phase.goal}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /** What the voice reads for a phase intro: the briefing, then the goal. */
 export const introSpokenText = (phase: {
@@ -43,6 +69,12 @@ export function narrationLines(): NarrationLine[] {
     for (const phase of def.phases) {
       const text = phase.intro ? spokenText(introSpokenText(phase)) : "";
       if (text) lines.push({ id: introClipId(def.id, phase.id), text });
+    }
+    for (const phase of def.phases) {
+      (phase.cutscene ?? []).forEach((_, i) => {
+        const text = spokenText(cutSpokenText(phase, i));
+        if (text) lines.push({ id: cutClipId(def.id, phase.id, i + 1), text });
+      });
     }
     for (const message of def.story) {
       const text = spokenText(message.text);

@@ -12,7 +12,9 @@ interface LogbookProps {
 /** Everyone who has stopped by this run, and what they said. */
 export default function Logbook({ def, run }: LogbookProps) {
   if (!def.visitors || def.visitors.length === 0) return null;
-  const { copy, Keepsakes } = uiFor(def.id);
+  const { copy, logbook } = uiFor(def.id);
+  const AfterTide = logbook?.afterTide;
+  const End = logbook?.end;
   const met = metVisitors(def, run);
   const lines = new Map(def.story.map((m) => [m.id, m.text]));
   return (
@@ -60,6 +62,7 @@ export default function Logbook({ def, run }: LogbookProps) {
           ).
         </p>
       )}
+      {AfterTide && <AfterTide run={run} />}
       {(run.resources.wxFronts ?? 0) > 0 && (
         <p className="font-mono text-xs text-sky-200">
           Weather desk: {run.resources.wxFronts} storms so far, sandbags held{" "}
@@ -67,7 +70,7 @@ export default function Logbook({ def, run }: LogbookProps) {
           {formatNumber(Math.floor(run.resources.wxEarned ?? 0))} power).
         </p>
       )}
-      {Keepsakes && <Keepsakes run={run} />}
+      {End && <End run={run} />}
     </section>
   );
 }

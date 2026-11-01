@@ -483,6 +483,9 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
 
   const buyAll = () => {
     for (let guard = 0; guard < 1000; guard += 1) {
+      // A finished run refuses every buy, so an upgrade still "affordable" at
+      // the moment the run completes must not loop (or log a phantom buy).
+      if (run.complete) return;
       const pick = choose(run, affordableUpgrades(def, run));
       if (!pick) return;
       const before = run;

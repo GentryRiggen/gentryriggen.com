@@ -24,6 +24,11 @@ export function prestigeLabel(def: UniverseDef): string {
   return def.prestige.label ?? "Embers";
 }
 
+/** The prestige currency's singular name ("Ember"). */
+export function prestigeSingular(def: UniverseDef): string {
+  return def.prestige.labelSingular ?? prestigeLabel(def).replace(/s$/, "");
+}
+
 /** Embers a run is worth if it ended now (a finished run counts every phase). */
 export function emberReward(def: UniverseDef, run: RunState): number {
   const cleared = run.complete ? def.phases.length : run.phase;

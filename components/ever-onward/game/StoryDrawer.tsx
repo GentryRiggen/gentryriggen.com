@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { introClipId, storyClipId } from "@/lib/ever-onward/narration/lines";
 import ListenButton from "../narration/ListenButton";
+import { uiFor } from "../universes";
 import PhaseBriefing from "./PhaseBriefing";
+import PhaseCutscene from "./PhaseCutscene";
 import { NEWS_PREFIX, type StoryEntry } from "./storyEntries";
 import RetroHeading from "./retro/RetroHeading";
 import {
@@ -13,6 +15,7 @@ import {
   pixelFont,
   retroFocusClass,
   retroPanelClass,
+  retroSecondaryButtonClass,
 } from "./retro/retroStyles";
 
 interface StoryDrawerProps {
@@ -41,6 +44,12 @@ export default function StoryDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [openIntro, setOpenIntro] = useState<string | null>(null);
+  // The phase whose cutscene is playing again, if any.
+  const [watching, setWatching] = useState<number | null>(null);
+  const watchingRef = useRef(false);
+  useEffect(() => {
+    watchingRef.current = watching !== null;
+  }, [watching]);
   const endings = useMemo(() => new Set(endingIds), [endingIds]);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -54,6 +63,8 @@ export default function StoryDrawer({
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
+      // The cutscene on top handles its own keys.
+      if (watchingRef.current) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         onCloseRef.current();
@@ -139,6 +150,16 @@ export default function StoryDrawer({
                         phase={phase}
                         clipId={introClipId(def.id, phase.id)}
                       />
+                      {phase.cutscene && (
+                        <button
+                          type="button"
+                          onClick={() => setWatching(i)}
+                          className={`${retroSecondaryButtonClass} mt-3`}
+                        >
+                          Watch again
+                          <span className="sr-only"> · Part {i + 1}</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -183,6 +204,17 @@ export default function StoryDrawer({
           </ol>
         </div>
       </div>
+      {watching !== null && (
+        <div className={`${pixelFont.variable} dark`}>
+          <PhaseCutscene
+            def={def}
+            phaseIndex={watching}
+            Scene={uiFor(def.id).Scene}
+            finishLabel="Done"
+            onContinue={() => setWatching(null)}
+          />
+        </div>
+      )}
     </div>,
     document.body
   );

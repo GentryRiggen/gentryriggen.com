@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.14.0",
+    date: "2026-11-01",
+    title: "Make It Grow",
+    highlights: [
+      "A brand-new universe: Make It Grow. A little garden robot is told to make one seed grow, and it never stops. It opens once you finish Keep the Light On",
+      "Four parts: the Backyard (seasons, bees and rain barrels), the Farm (a market, wells and the county fair), the Whole World (forests, jungles, meadows, wetlands and migrating birds), and the Old Window Box",
+      "Earn Acorns at the end and spend them on permanent upgrades for your next garden",
+      "Every part of both universes now opens with a short cutscene: where you are, why it matters, and three tips for doing well. Watch any of them again from the Story drawer",
+      "A new Your upgrades button shows everything you own this run and every permanent upgrade, with what each one is doing for you",
+      "The tap sound is quieter, so it sits under the music",
+    ],
+  },
+  {
     version: "1.13.1",
     date: "2026-11-01",
     title: "Play sound on silent",

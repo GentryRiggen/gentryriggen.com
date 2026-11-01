@@ -656,6 +656,33 @@ html:has(.jim-app) body {
   animation: lmFadeUp 0.9s ease-out both;
 }
 
+@keyframes lmCutPanA {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes lmCutPanB {
+  0% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The slow pan or zoom behind a cutscene frame. */
+.lm-cut-pan-a {
+  animation: lmCutPanA 14s ease-out both;
+}
+
+.lm-cut-pan-b {
+  animation: lmCutPanB 14s ease-out both;
+}
+
 .lm-float {
   animation: lmFloat 0.9s ease-out both;
 }
@@ -866,6 +893,8 @@ html:has(.jim-app) body {
   .lm-pop,
   .lm-glow,
   .lm-fade-up,
+  .lm-cut-pan-a,
+  .lm-cut-pan-b,
   .lm-float,
   .lm-press,
   .lm-rise,
@@ -1712,6 +1741,68 @@ html:has(.jim-app) body {
   }
 }
 
+/* Ever Onward: Make It Grow bee dances (the waggle and a staggered reveal). */
+@keyframes bee-waggle {
+  0%,
+  100% {
+    transform: translateX(-2.5px);
+  }
+  50% {
+    transform: translateX(2.5px);
+  }
+}
+
+@keyframes bee-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bee-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bee-waggle {
+  animation: bee-waggle 0.18s ease-in-out infinite;
+}
+
+.bee-reveal-1,
+.bee-reveal-2,
+.bee-reveal-3 {
+  animation: bee-reveal 0.5s ease-out backwards;
+}
+
+.bee-reveal-2 {
+  animation-delay: 0.6s;
+}
+
+.bee-reveal-3 {
+  animation-delay: 1.2s;
+}
+
+.bee-orbit {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: bee-orbit 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bee-waggle,
+  .bee-reveal-1,
+  .bee-reveal-2,
+  .bee-reveal-3,
+  .bee-orbit {
+    animation: none;
+  }
+}
+
 /* Ever Onward: Probe Races (a twinkling star map, a flickering exhaust). */
 @keyframes pr-twinkle {
   0%,
@@ -1832,6 +1923,112 @@ html:has(.jim-app) body {
   .gd-sway,
   .gd-glow,
   .gd-drip {
+    animation: none;
+  }
+}
+
+/* Ever Onward: Make It Grow, the green world's pull-back from the farms to the globe. */
+.gw-globe {
+  transform-origin: 200px 150px;
+}
+
+.gw-zoomed {
+  transform: scale(7);
+}
+
+.gw-pullback {
+  animation: gw-pullback 4.2s cubic-bezier(0.25, 0.1, 0.2, 1) both;
+}
+
+.gw-farm {
+  transform-origin: 200px 220px;
+}
+
+.gw-farm-away {
+  animation: gw-farm-away 2.6s ease-in both;
+}
+
+@keyframes gw-pullback {
+  from {
+    transform: scale(7);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes gw-farm-away {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes gw-drift {
+  0%,
+  100% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
+.gw-drift {
+  animation: gw-drift 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-zoomed {
+    transform: none;
+  }
+  .gw-pullback,
+  .gw-farm-away,
+  .gw-drift {
+    animation: none;
+  }
+  .gw-farm {
+    display: none;
+  }
+}
+
+/* Ever Onward: Make It Grow, the last seed's window. */
+@keyframes gs-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gs-glow {
+  animation: gs-glow 6s ease-in-out infinite;
+}
+
+@keyframes gs-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gs-arrive {
+  animation: gs-arrive 2.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-glow,
+  .gs-arrive {
     animation: none;
   }
 }

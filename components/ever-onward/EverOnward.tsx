@@ -6,6 +6,7 @@ import useTitleMusic from "./audio/useTitleMusic";
 import GameScreen from "./game/GameScreen";
 import { useGame } from "./game/useGame";
 import Hub from "./Hub";
+import { hubTitleScore } from "./universes";
 import StartScreen from "./start/StartScreen";
 import UpdatePill from "@/components/update/UpdatePill";
 import { useStaleChunkRecovery } from "@/components/update/useStaleChunkRecovery";
@@ -25,7 +26,10 @@ export default function EverOnward() {
   const { save, def, universe } = game;
   useStaleChunkRecovery(game.saveNow);
   // The title theme plays on the start screen and the hub, not in a universe.
-  useTitleMusic(!!save && !def);
+  useTitleMusic(
+    !!save && !def,
+    save && !isOnStartScreen ? hubTitleScore(save) : undefined
+  );
 
   if (!save) {
     return (
@@ -72,6 +76,7 @@ export default function EverOnward() {
         <StartScreen
           hasSave={startedIds.length > 0}
           startedIds={startedIds}
+          save={save}
           onStart={() => setIsOnStartScreen(false)}
         />
       ) : (

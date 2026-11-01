@@ -22,6 +22,8 @@ export interface LastBuy {
 export interface SceneProps {
   run: RunState;
   lastBuy?: LastBuy | null;
+  /** Test id of the picture; the cutscene uses its own copy. */
+  testId?: string;
 }
 
 export interface PanelProps {
@@ -68,8 +70,14 @@ export interface UniverseUi {
   tapLooks: readonly TapLook[];
   hubSprite: { rows: readonly string[]; lit: Palette; dim: Palette };
   PrestigeIcon: ComponentType<{ className?: string }>;
-  /** An extra logbook block. */
-  Keepsakes?: ComponentType<{ run: RunState }>;
+  /**
+   * Extra logbook blocks: `afterTide` sits between the tide line and the
+   * weather line (where Light's keepsakes always were), `end` comes last.
+   */
+  logbook?: {
+    afterTide?: ComponentType<{ run: RunState }>;
+    end?: ComponentType<{ run: RunState }>;
+  };
   copy: { logbookEmpty: string; stillGoing: string };
   audio: UniverseAudio;
 }
