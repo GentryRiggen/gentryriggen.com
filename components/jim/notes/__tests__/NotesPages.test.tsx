@@ -241,6 +241,62 @@ describe("NotesPeople", () => {
     expect(onOpen).toHaveBeenCalledWith("people/sam-okafor.md");
   });
 
+  it("lists coming-up dates in order, opening a person's profile", async () => {
+    const onOpen = jest.fn();
+    const data = {
+      ...VIEW_FIXTURE,
+      dates: [
+        {
+          kind: "birthday" as const,
+          name: "Jordan Lee",
+          on: "2026-11-05",
+          days: 5,
+          path: "people/jordan-lee.md",
+          turns: 40,
+        },
+        {
+          kind: "renewal" as const,
+          name: "Library card",
+          on: "2026-11-01",
+          days: 1,
+          path: "home/library.md",
+          turns: null,
+        },
+      ],
+    };
+    render(
+      <NotesPeople data={data} query="" onQuery={jest.fn()} onOpen={onOpen} />
+    );
+    const region = screen.getByRole("region", { name: "Coming up" });
+    expect(
+      within(region)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent)
+    ).toEqual([
+      "Jordan LeeNov 5 · in 5 days · turns 40›",
+      "Library cardNov 1 · tomorrow",
+    ]);
+    await userEvent.click(
+      within(region).getByRole("button", { name: /Jordan Lee/ })
+    );
+    expect(onOpen).toHaveBeenCalledWith("people/jordan-lee.md");
+    expect(
+      within(region).queryByRole("button", { name: /Library/ })
+    ).toBeNull();
+  });
+
+  it("hides coming up while searching", () => {
+    render(
+      <NotesPeople
+        data={VIEW_FIXTURE}
+        query="college"
+        onQuery={jest.fn()}
+        onOpen={jest.fn()}
+      />
+    );
+    expect(screen.queryByRole("region", { name: "Coming up" })).toBeNull();
+  });
+
   it("filters by the search words", () => {
     render(
       <NotesPeople
