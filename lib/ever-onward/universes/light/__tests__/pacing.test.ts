@@ -76,6 +76,11 @@ describe("effect previews", () => {
     expect(previewUpgrade(def, run, "lens")).toBe(
       "Ships per flash 1 → 2 · Coins per flash 1 → 2"
     );
+    // with keepers, it shows that their flashes guide more ships too
+    const keepers = { ...run, owned: { ...run.owned, keeper: 2 } };
+    expect(previewUpgrade(def, keepers, "lens")).toBe(
+      "Ships per flash 1 → 2 · Coins per flash 1 → 2 · Coins/sec 2 → 4"
+    );
   });
 
   it("shows the new total for a keeper", () => {

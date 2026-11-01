@@ -69,9 +69,9 @@ export function lightPlates(run: RunState): string[] {
     if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
       plates.push("course");
     if (isFlareOn(run)) plates.push("flare");
-    // Offered once the second probe is home (so it is not a crowd of beats at
-    // the moment the map opens).
-    if (isProbesOpen(run) && runsHome(run) >= 2) plates.push("race");
+    // Offered once the first probe is home (so it is not a crowd of beats at
+    // the moment the map opens; a trip is over a minute long).
+    if (isProbesOpen(run) && runsHome(run) >= 1) plates.push("race");
   } else {
     plates.push("tend");
     const hasLetGoOnOffer = run.revealed.some(

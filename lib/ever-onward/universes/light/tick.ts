@@ -481,18 +481,25 @@ export function fadeRate(run: RunState): number {
 export const tapGiftMult = (run: RunState): number =>
   1 + L.tapGift * giftsOwned(run, "taps");
 
+/**
+ * Share of the way to full one tap brings. The "taps" gifts make a tap let go
+ * more (resolve), not warm more, or a keen tapper would hold the flame full.
+ */
+export const tapWarmth = (run: RunState): number =>
+  Math.min(1, L.tapWarmth * tapMult(run));
+
+/** Flame one tap adds: a share of what is missing, so a cold flame leaps. */
 export const lastTapFlame = (run: RunState): number =>
-  L.tapFlame * tapGiftMult(run) * tapMult(run);
+  (L.flameFull - flameOf(run)) * tapWarmth(run);
 
 export const lastTapResolve = (run: RunState): number =>
   L.resolvePerTap * tapGiftMult(run);
 
 /** Flame the lantern holds at when tapped `tapsPerSecond` times a second. */
-export const steadyFlame = (run: RunState, tapsPerSecond = 3): number =>
-  Math.min(
-    L.flameFull,
-    (lastTapFlame(run) * tapsPerSecond) / Math.max(fadeRate(run), 1e-6)
-  );
+export const steadyFlame = (run: RunState, tapsPerSecond = 3): number => {
+  const warming = tapWarmth(run) * tapsPerSecond;
+  return (L.flameFull * warming) / Math.max(warming + fadeRate(run), 1e-6);
+};
 
 /**
  * Steering earns resolve: while the boat is out and still sailing, keeping

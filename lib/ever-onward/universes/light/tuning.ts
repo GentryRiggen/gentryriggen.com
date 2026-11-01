@@ -5,13 +5,14 @@ export const TUNING = {
    * and the bigger collector steps made the night and the sky quicker, so
    * they are priced up to keep the run about two hours.
    */
-  costScale: { coast: 1.14, night: 1.18, sky: 1.35, last: 1.15 } as Record<
+  costScale: { coast: 3.35, night: 2, sky: 1.9, last: 1.15 } as Record<
     string,
     number
   >,
   coast: {
     fareGrowth: 1.3,
-    lensAutoBonus: 0.1,
+    /** A better lens helps every flash, the keepers' as much as yours. */
+    lensAutoBonus: 1,
     keeperFlashes: 1,
     /** Each training step multiplies every keeper's flashes. */
     trainingSteps: [2, 2, 2.5] as readonly number[],
@@ -61,12 +62,12 @@ export const TUNING = {
   /** Probe Races, a side machine of the sky (see probes.ts). */
   probes: {
     /** Seconds of sky income each route brings home, and how long it takes. */
-    short: { seconds: 40, haulSeconds: 28 },
-    long: { seconds: 90, haulSeconds: 60 },
+    short: { seconds: 75, haulSeconds: 52 },
+    long: { seconds: 180, haulSeconds: 120 },
     /** The comet route pays between these, by how close the comet is at launch. */
-    comet: { seconds: 60, haulMin: 22, haulMax: 50 },
+    comet: { seconds: 110, haulMin: 40, haulMax: 92 },
     /** The comet drifts out and back in one slow pass of this many seconds. */
-    cometCycleSeconds: 80,
+    cometCycleSeconds: 150,
     /** Racing fins: every run takes this share of its time. */
     finsTimeFactor: 0.75,
     /** Mission control's scout brings home this share of a hand-flown haul. */
@@ -86,8 +87,8 @@ export const TUNING = {
     regrowTo: 0.34,
     regrowPace: 0.5,
     /** A watering keeps a plant watered this long; the can then rests. */
-    wetSeconds: 40,
-    waterCooldown: 15,
+    wetSeconds: 100,
+    waterCooldown: 40,
     /** Watered seconds count this much extra (2.2x in all). */
     wetBoost: 1.2,
     /** The rain barrel waters thirsty plants this often, for this long. */
@@ -103,8 +104,8 @@ export const TUNING = {
     perCityMW: 150,
     payPerMW: 0.2,
     crankBase: 1,
-    crankPerLevel: 2,
-    gensMW: [3, 30, 300, 3000] as const,
+    crankPerLevel: 0.5,
+    gensMW: [8, 30, 300, 3000] as const,
     lineBonus: 0.15,
     /** Each substation carries this much more of every plant's power. */
     substationBonus: 1.2,
@@ -118,14 +119,14 @@ export const TUNING = {
     glowAt: 75,
     glowBonus: 0.15,
     /** Steadiness lost per second (percent): a base plus more as the grid works harder. */
-    strainBase: 0.35,
-    strainPerLoad: 0.7,
+    strainBase: 0.2,
+    strainPerLoad: 0.4,
     /** Load balancer halves the strain; smart grid fixes itself below this. */
     balancerSaving: 0.5,
     autoBalanceBelow: 55,
     autoBalanceTo: 90,
     /** The grid is worth a button once this much power is made (MW). */
-    gridVisibleSupplyMW: 6,
+    gridVisibleSupplyMW: 16,
     /** Evening rush: a claimable bonus that waits until it is claimed. */
     rushGapMin: 100,
     rushGapSpread: 100,
@@ -156,7 +157,7 @@ export const TUNING = {
   },
   sky: {
     aimBase: 1,
-    aimPerLevel: 1,
+    aimPerLevel: 0.25,
     /** Six bigger steps: each collector is worth what 1.67 used to be. */
     collectorEnergy: 10 / 6,
     mirrorBonus: 1.4,
@@ -179,8 +180,8 @@ export const TUNING = {
     /** Steady glow: a fleet in formation takes stars this much faster. */
     glowAt: 75,
     glowBonus: 0.15,
-    driftBase: 0.28,
-    driftPerDecade: 0.24,
+    driftBase: 0.16,
+    driftPerDecade: 0.14,
     chartsSaving: 0.5,
     autoCorrectBelow: 55,
     autoCorrectTo: 90,
@@ -199,10 +200,14 @@ export const TUNING = {
      * `darkness` more lights' worth (the dark itself): it never reaches zero
      * by itself, and the lights going out lets it climb, not run away.
      */
-    decayPerLight: 0.01,
+    decayPerLight: 0.003,
     darkness: 3,
-    /** Flame one tap adds. */
-    tapFlame: 16,
+    /**
+     * Share of the way to a full flame one tap brings: a few taps warm a cold
+     * lantern, and tapping a warm one does little, so tending is a top-up now
+     * and then, not a mash.
+     */
+    tapWarmth: 0.15,
     /** Resolve per second (the pace of letting go), and per tap. */
     resolvePerSecond: 1,
     resolvePerTap: 0.06,

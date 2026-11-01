@@ -58,6 +58,7 @@ import {
   STORM_CREWS_ID,
   WEATHER_OPEN_FLAG,
   WEATHER_VANE_ID,
+  frontsSoFar,
   hasWeatherVane,
   openWeather,
   shieldSlots,
@@ -199,17 +200,19 @@ const coastUpgrades: UpgradeDef[] = [
   {
     id: "lens",
     name: "Better lens",
-    description: "Each flash guides one more ship.",
+    description: "Each flash guides one more ship, the keepers' too.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.lens,
     costGrowth: 2.1,
-    maxLevel: 5,
+    maxLevel: 3,
     priority: 1,
     onBuy: sync,
     effectPreview: previewOf("lens", [
       { label: "Ships per flash", read: shipsPerFlash },
       { label: "Coins per flash", read: calmTapCoins },
+      // The keepers' flashes too, once there are keepers.
+      { ...COINS_PER_SECOND, isHiddenWhenSame: true },
     ]),
   },
   {
@@ -233,7 +236,7 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     baseCost: COSTS.lighthouse,
-    costGrowth: 1.9,
+    costGrowth: 2.15,
     maxLevel: 7,
     visibleWhen: (run) => owned(run, "keeper") >= 3,
     priority: 2,
@@ -294,7 +297,8 @@ const coastUpgrades: UpgradeDef[] = [
         name: "Fish market on the quay",
         description:
           "Ships stay for the market, and pay 20% more. The tide clock opens: set your nets and haul in a catch.",
-        showWhen: (run) => owned(run, "keeper") >= 5,
+        // After the first crew drills, so that cheap, big step shows first.
+        showWhen: (run) => owned(run, "train-1") >= 1,
         onBuy: openTide,
       },
       {
@@ -340,11 +344,12 @@ const coastUpgrades: UpgradeDef[] = [
     baseCost: COSTS[TIDE_MILL_ID],
     costGrowth: 1,
     priority: -1,
-    // Late in the coast (three lighthouses): the clock gets a helper once the lights are spreading.
+    // Halfway through the clock's life (after two hauls and the bigger nets),
+    // so the helper takes over while the clock still matters.
     visibleWhen: (run) =>
       run.flags[TIDE_OPEN_FLAG] === true &&
       owned(run, BIGGER_NETS_ID) > 0 &&
-      lighthouseCount(run) >= 3,
+      haulsSoFar(run) >= 2,
     onBuy: sync,
     effectPreview: previewOf(TIDE_MILL_ID, [
       {
@@ -364,7 +369,8 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Bigger oil tank",
         description: "Hold more oil, so a cheap day goes further.",
-        showWhen: (run) => run.resources.ships >= 120,
+        // Once a second lamp burns: before that, the shop has better things.
+        showWhen: (run) => lighthouseCount(run) >= 2,
       },
       {
         name: "Oil cistern",
@@ -382,7 +388,7 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Lamp crew drills",
         description: "Keepers work in pairs. Twice as many flashes.",
-        showWhen: (run) => owned(run, "keeper") >= 5,
+        showWhen: (run) => owned(run, "keeper") >= 4,
       },
       {
         name: "Coast guard station",
@@ -411,7 +417,7 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Storm shutters",
         description: "Storms slow the ships less.",
-        showWhen: (run) => run.resources.ships >= 250,
+        showWhen: (run) => lighthouseCount(run) >= 2,
       },
       {
         name: "Storm-proof glass",
@@ -449,7 +455,7 @@ const nightUpgrades: UpgradeDef[] = [
     currency: "power",
     baseCost: COSTS.crank,
     costGrowth: 1.5,
-    maxLevel: 5,
+    maxLevel: 2,
     onBuy: sync,
     effectPreview: previewOf("crank", [
       { label: "Power per turn", read: crankPower },
@@ -458,7 +464,7 @@ const nightUpgrades: UpgradeDef[] = [
   {
     id: "gen1",
     name: "Little generator",
-    description: "Makes 3 MW all day, if you feed it.",
+    description: "Makes 8 MW all day, if you feed it.",
     phases: night,
     currency: "power",
     baseCost: COSTS.gen1,
@@ -523,8 +529,8 @@ const nightUpgrades: UpgradeDef[] = [
     currency: "power",
     baseCost: COSTS.gen2,
     costGrowth: 1.4,
-    maxLevel: 5,
-    visibleWhen: (run) => owned(run, "gen1") >= 5,
+    maxLevel: 7,
+    visibleWhen: (run) => owned(run, "gen1") >= 3,
     onBuy: (run, level) => {
       sync(run);
       if (level >= TUNING.weather.openAtSteamPlants) openWeather(run);
@@ -579,7 +585,7 @@ const nightUpgrades: UpgradeDef[] = [
       {
         name: "Smart grid",
         description: "The grid balances itself. No more hand-fixing.",
-        showWhen: (run) => owned(run, "gen3") >= 1,
+        showWhen: (run) => owned(run, "gen2") >= 4,
       },
     ],
   }),
@@ -636,11 +642,10 @@ const nightUpgrades: UpgradeDef[] = [
     baseCost: COSTS[WEATHER_VANE_ID],
     costGrowth: 1,
     priority: -1,
-    // Late in the night (five river dams): the oldest chore gets a helper once a newer one is about.
+    // Halfway through the desk's life (after two fronts), so most players
+    // see the helper while the desk still matters.
     visibleWhen: (run) =>
-      run.flags[WEATHER_OPEN_FLAG] === true &&
-      owned(run, STORM_CREWS_ID) > 0 &&
-      owned(run, "gen4") >= 2,
+      run.flags[WEATHER_OPEN_FLAG] === true && frontsSoFar(run) >= 2,
     onBuy: sync,
     effectPreview: previewOf(WEATHER_VANE_ID, [
       {
@@ -668,7 +673,7 @@ const skyUpgrades: UpgradeDef[] = [
     currency: "energy",
     baseCost: COSTS.aim,
     costGrowth: 1.5,
-    maxLevel: 5,
+    maxLevel: 3,
     onBuy: sync,
     effectPreview: previewOf("aim", [
       { label: "Energy per aim", read: aimEnergy },
@@ -681,8 +686,8 @@ const skyUpgrades: UpgradeDef[] = [
     phases: sky,
     currency: "energy",
     baseCost: COSTS.collector,
-    costGrowth: 1.6,
-    maxLevel: 6,
+    costGrowth: 1.45,
+    maxLevel: 10,
     priority: 1,
     onBuy: (run) => {
       run.resources.collectors = owned(run, "collector");
@@ -722,7 +727,7 @@ const skyUpgrades: UpgradeDef[] = [
     currency: "energy",
     baseCost: COSTS.probe,
     costGrowth: 1,
-    visibleWhen: (run) => owned(run, "collector") >= 5,
+    visibleWhen: (run) => owned(run, "collector") >= 4,
     priority: 3,
     onBuy: (run) => {
       run.resources.probes = Math.max(1, run.resources.probes);
@@ -804,7 +809,7 @@ const skyUpgrades: UpgradeDef[] = [
         name: "A navigator mind",
         description:
           "The fleet corrects its own course. No more hand-steering.",
-        showWhen: (run) => owned(run, "engines-2") >= 1,
+        showWhen: (run) => owned(run, "engines-1") >= 1,
       },
     ],
   }),
@@ -820,9 +825,7 @@ const skyUpgrades: UpgradeDef[] = [
     // A bonus helper, not income: bots buy collectors and mirrors first.
     priority: -1,
     visibleWhen: (run) =>
-      run.flags[PROBES_OPEN_FLAG] === true &&
-      runsHome(run) >= 1 &&
-      owned(run, "relay-1") >= 1,
+      run.flags[PROBES_OPEN_FLAG] === true && runsHome(run) >= 1,
     onBuy: sync,
     effectPreview: previewOf(RACING_FINS_ID, [
       {
@@ -962,9 +965,10 @@ const rainBarrel: UpgradeDef = {
   currency: "resolve",
   baseCost: COSTS[RAIN_BARREL_ID],
   costGrowth: 1,
-  // A bonus helper, not what moves the ending: bots let go of lights first.
-  priority: -1,
-  visibleWhen: (run) => picksSoFar(run) >= 1,
+  // Halfway through the garden's life (after a few picks), and ranked with
+  // the lights, so a player who wants it can have it while it still helps.
+  priority: 0,
+  visibleWhen: (run) => picksSoFar(run) >= 3,
   onBuy: (run: RunState) => {
     startRain(run);
     sync(run);
@@ -1009,8 +1013,10 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...coastUpgrades,
   ...nightUpgrades,
   ...skyUpgrades,
-  ...letGoUpgrades,
+  // Before the lights: the shop always has three on offer, so the barrel
+  // takes the next free slot once it has been earned, not the last one.
   rainBarrel,
+  ...letGoUpgrades,
 ].map((upgrade) => ({
   ...upgrade,
   baseCost: upgrade.baseCost * costScaleOf(upgrade),

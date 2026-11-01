@@ -271,7 +271,7 @@ export function lightBots(): BotSet {
       1: tendPair,
       2: tendPair,
       3: {
-        naive: { ...base.tapper, tapsPerSecond: 0.5, actions: idleActions },
+        naive: { ...base.tapper, tapRate: () => 0.5, actions: idleActions },
         careful: { ...base.tapper, actions: idleActions },
       },
     },

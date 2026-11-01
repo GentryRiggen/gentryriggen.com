@@ -17,6 +17,8 @@ export interface Stat {
   read(run: RunState): number;
   format?(value: number): string;
   suffix?: string;
+  /** Leave the line out while it would not change ("Coins/sec 0 → 0"). */
+  isHiddenWhenSame?: boolean;
 }
 
 /** The run as it would be with one more level of `id`. */
@@ -38,12 +40,13 @@ export function previewOf(
   return (run) => {
     const after = afterBuying(run, id);
     return stats
-      .map((stat) => {
+      .flatMap((stat) => {
         const format = stat.format ?? short;
         const suffix = stat.suffix ?? "";
-        return `${stat.label} ${format(stat.read(run))}${suffix} → ${format(
-          stat.read(after)
-        )}${suffix}`;
+        const before = format(stat.read(run));
+        const next = format(stat.read(after));
+        if (stat.isHiddenWhenSame && before === next) return [];
+        return [`${stat.label} ${before}${suffix} → ${next}${suffix}`];
       })
       .join(" · ");
   };

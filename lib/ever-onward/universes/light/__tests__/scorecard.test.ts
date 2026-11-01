@@ -18,11 +18,12 @@ jest.setTimeout(60_000);
 
 /**
  * Round 4 rebuilt M11 around the click curve, so the old 83 floor (set on
- * the old, clicky bands) no longer applies: the pre-tuning build scores 59
- * capped, 79.5 uncapped on the new card. Raise as rounds land.
+ * the old, clicky bands) no longer applies. The pre-tuning build scored 59
+ * capped (79.5 uncapped) on the new card; the tuned build scores 87.8 with
+ * no failing gate. The floor is that minus 1. Raise as rounds land.
  */
-const SCORE_FLOOR = 59;
-const UNCAPPED_FLOOR = 78;
+const SCORE_FLOOR = 86.8;
+const UNCAPPED_FLOOR = 86.8;
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];

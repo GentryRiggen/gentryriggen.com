@@ -171,11 +171,14 @@ describe("the memory garden", () => {
     expect(both).toBeGreaterThan(rain);
   });
 
-  it("offers the rain barrel only after the first pick", () => {
+  it("offers the rain barrel after a few picks, halfway through the garden", () => {
     const shown = (run: RunState) =>
       def.upgrades.find((u) => u.id === RAIN_BARREL_ID)?.visibleWhen?.(run);
     expect(shown(planted())).toBe(false);
-    expect(shown(performAction(def, bloomed(), PICK_ACTION))).toBe(true);
+    const once = performAction(def, bloomed(), PICK_ACTION);
+    expect(shown(once)).toBe(false);
+    const thrice = { ...once, resources: { ...once.resources, gdPicks: 3 } };
+    expect(shown(thrice)).toBe(true);
   });
 
   it("still completes the ending normally with blooms waiting", () => {
