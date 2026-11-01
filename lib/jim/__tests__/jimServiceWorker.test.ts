@@ -197,7 +197,7 @@ describe("fetch", () => {
       "the ship builder",
       makeRequest(`${ORIGIN}/ship-builder`, { mode: "navigate" }),
     ],
-    ["an icon", makeRequest(`${ORIGIN}/jim-icons/icon-192.png`)],
+    ["an icon", makeRequest(`${ORIGIN}/jim-icons/glow-pal-192.png`)],
   ])("leaves %s alone", (_label, request) => {
     expect(loadWorker().dispatchFetch(request)).toBeUndefined();
   });
@@ -351,8 +351,8 @@ describe("push", () => {
     });
     expect(worker.showNotification).toHaveBeenCalledWith("Good morning", {
       body: "2 due",
-      icon: "/jim-icons/icon-192.png",
-      badge: "/jim-icons/icon-192.png",
+      icon: "/jim-icons/glow-pal-192.png",
+      badge: "/jim-icons/glow-pal-192.png",
       tag: "jim-morning",
       data: { url: PAGE },
     });
