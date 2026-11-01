@@ -112,6 +112,11 @@ export default function PanelFrame({
   children,
 }: PanelFrameProps) {
   const look = TONES[tone];
+  // The live region stays mounted. An invisible mark that flips with the key
+  // changes the text, so the same line is announced again.
+  const keyNumber =
+    typeof resultKey === "number" ? resultKey : (resultKey ?? "").length;
+  const nudge = result && keyNumber % 2 === 1 ? "\u200B" : "";
   return (
     <section
       aria-label={label}
@@ -144,7 +149,6 @@ export default function PanelFrame({
       </header>
       {children}
       <p
-        key={resultKey}
         role="status"
         aria-live="polite"
         data-testid={resultTestId}
@@ -154,7 +158,7 @@ export default function PanelFrame({
             : "sr-only"
         }
       >
-        {result ?? ""}
+        {(result ?? "") + nudge}
       </p>
       {footer}
     </section>

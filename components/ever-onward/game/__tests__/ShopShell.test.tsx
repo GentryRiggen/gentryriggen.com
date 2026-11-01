@@ -128,9 +128,13 @@ describe("the shop list", () => {
     render(<UpgradeList def={lightUniverse} run={run} onBuy={jest.fn()} />);
     const list = screen.getByRole("region", { name: "Upgrades" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
-    await userEvent.click(
-      screen.getByRole("button", { name: /Show \d+ more upgrades?/ })
-    );
+    const more = screen.getByRole("button", {
+      name: /Show \d+ more upgrades?/,
+    });
+    await userEvent.click(more);
+    expect(more).toBeInTheDocument();
+    expect(more).toHaveFocus();
+    expect(more).toHaveAttribute("aria-expanded", "true");
     expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(3);
   });
 
@@ -151,5 +155,23 @@ describe("the shop list", () => {
     );
     expect(onShowBought).toHaveBeenCalled();
     expect(document.querySelector("details")).toBeNull();
+  });
+});
+
+describe("the shop order", () => {
+  it("keeps every card in place when affordability changes", () => {
+    const ids = lightUniverse.upgrades.map((u) => u.id);
+    const poor = runWith({ resources: { coins: 0 }, revealed: ids });
+    const rich = runWith({ resources: { coins: 1e12 }, revealed: ids });
+    const names = () =>
+      within(screen.getByRole("region", { name: "Upgrades" }))
+        .getAllByRole("listitem")
+        .map((li) => li.id);
+    const { rerender } = render(
+      <UpgradeList def={lightUniverse} run={poor} onBuy={jest.fn()} />
+    );
+    const before = names();
+    rerender(<UpgradeList def={lightUniverse} run={rich} onBuy={jest.fn()} />);
+    expect(names()).toEqual(before);
   });
 });

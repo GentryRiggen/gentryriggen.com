@@ -33,6 +33,7 @@ import SoundControls from "../audio/SoundControls";
 import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import NarrationLayer from "../narration/NarrationLayer";
 import { uiFor } from "../universes";
+import scrollToTop from "../scrollToTop";
 import type { LastBuy } from "../universes/types";
 import ActionPanel from "./ActionPanel";
 import CountdownBar from "./CountdownBar";
@@ -181,13 +182,13 @@ export default function GameScreen({
 
   // Opening a universe, or finishing one, starts at the top of the page.
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
+    scrollToTop();
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [def.id]);
   const previousOverlay = useRef(overlay);
   useEffect(() => {
     if (previousOverlay.current === "ending" && overlay === null) {
-      window.scrollTo({ top: 0, behavior: "instant" });
+      scrollToTop();
       if (mainRef.current) mainRef.current.scrollTop = 0;
     }
     previousOverlay.current = overlay;
@@ -360,22 +361,7 @@ export default function GameScreen({
         inert={isCovered}
         className="mx-auto w-full max-w-xl lg:max-w-2xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h)+1rem)]"
       >
-        <header className="flex flex-col-reverse gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className={`${retroLabelClass} leading-normal`}>
-              {def.title}
-              <span aria-hidden="true">
-                {" "}
-                · Part {run.phase + 1}/{def.phases.length}
-              </span>
-              <span className="sr-only">
-                , Part {run.phase + 1} of {def.phases.length}
-              </span>
-            </p>
-            <RetroHeading as="h1" className="mt-2 text-base sm:text-lg">
-              {phase.title}
-            </RetroHeading>
-          </div>
+        <header className="flex flex-col gap-3 sm:flex-row-reverse sm:items-start sm:justify-between">
           <div className="flex w-full shrink-0 justify-end gap-2 sm:w-auto [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
             <SoundControls />
             {showsUpgradesButton && (
@@ -423,6 +409,21 @@ export default function GameScreen({
             >
               Menu
             </button>
+          </div>
+          <div>
+            <p className={`${retroLabelClass} leading-normal`}>
+              {def.title}
+              <span aria-hidden="true">
+                {" "}
+                · Part {run.phase + 1}/{def.phases.length}
+              </span>
+              <span className="sr-only">
+                , Part {run.phase + 1} of {def.phases.length}
+              </span>
+            </p>
+            <RetroHeading as="h1" className="mt-2 text-base sm:text-lg">
+              {phase.title}
+            </RetroHeading>
           </div>
         </header>
 

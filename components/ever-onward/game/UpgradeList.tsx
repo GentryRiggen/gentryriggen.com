@@ -64,17 +64,31 @@ export default function UpgradeList({
 }: UpgradeListProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const visible = visibleUpgrades(def, run);
-  // Affordable first, then cheapest first (a stable sort keeps the rest).
-  const open = visible
-    .filter((u) => !isMaxed(run, u))
-    .map((u, i) => ({ u, i, affordable: canAfford(run, u) }))
-    .sort(
-      (a, b) =>
-        Number(b.affordable) - Number(a.affordable) ||
-        upgradeCost(run, a.u) - upgradeCost(run, b.u) ||
-        a.i - b.i
-    )
-    .map((x) => x.u);
+  // The order is frozen between purchases and reveals, so a card never jumps
+  // under a finger when affordability flips. Affordable first, then cheapest.
+  const openNow = visible.filter((u) => !isMaxed(run, u));
+  const signature = `${openNow.map((u) => u.id).join(",")}|${Object.values(
+    run.owned
+  ).reduce((sum, n) => sum + n, 0)}`;
+  const sortOpen = () =>
+    openNow
+      .map((u, i) => ({ u, i, affordable: canAfford(run, u) }))
+      .sort(
+        (a, b) =>
+          Number(b.affordable) - Number(a.affordable) ||
+          upgradeCost(run, a.u) - upgradeCost(run, b.u) ||
+          a.i - b.i
+      )
+      .map((x) => x.u.id);
+  const [order, setOrder] = useState(() => ({
+    signature,
+    ids: sortOpen(),
+  }));
+  if (order.signature !== signature) setOrder({ signature, ids: sortOpen() });
+  const byId = new Map(openNow.map((u) => [u.id, u]));
+  const open = order.ids.flatMap((id) => byId.get(id) ?? []);
+  // A reveal not yet in the frozen order (same render as the change) goes last.
+  for (const u of openNow) if (!order.ids.includes(u.id)) open.push(u);
   const shownOpen = isExpanded
     ? open
     : open.filter((u, i) => i < SHOWN_CAP || u.id === pinnedId);
@@ -216,13 +230,16 @@ export default function UpgradeList({
           );
         })}
       </ul>
-      {hiddenCount > 0 && (
+      {(hiddenCount > 0 || isExpanded) && open.length > SHOWN_CAP && (
         <button
           type="button"
-          onClick={() => setIsExpanded(true)}
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded((v) => !v)}
           className={`${retroSecondaryButtonClass} w-full`}
         >
-          Show {hiddenCount} more {hiddenCount === 1 ? "upgrade" : "upgrades"}
+          {isExpanded
+            ? "Show fewer upgrades"
+            : `Show ${hiddenCount} more ${hiddenCount === 1 ? "upgrade" : "upgrades"}`}
         </button>
       )}
       {teasers.length > 0 && (
