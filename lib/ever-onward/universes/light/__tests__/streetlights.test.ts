@@ -9,6 +9,7 @@ import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lightBots } from "../bots";
 import { LAMP_STEPS, lampActionId } from "../lamps";
+import { TUNING } from "../tuning";
 import {
   demandMW,
   isLampsOpen,
@@ -104,5 +105,29 @@ describe("the streetlights", () => {
     it("has no trap: even the worst step held all night is fine", () => {
       expect(Math.max(...fixed)).toBeLessThanOrEqual(policy * 1.25);
     });
+  });
+});
+
+describe("the streetlights' words", () => {
+  it("say exactly what the tuning does", () => {
+    const steps = TUNING.lamps.steps;
+    expect(LAMP_STEPS).toHaveLength(steps.length);
+    LAMP_STEPS.forEach((step, i) => {
+      const t = steps[i];
+      expect(step.note.toLowerCase()).toContain(
+        `pays ${Math.round(t.pay * 100)}%`
+      );
+      if (i === TUNING.lamps.defaultStep) return;
+      const diff = (n: number) => `${Math.round(Math.abs(1 - n) * 100)}%`;
+      expect(step.note).toContain(
+        `towns want ${diff(t.demand)} ${t.demand < 1 ? "less" : "more"}`
+      );
+      expect(step.note).toContain(
+        `the grid strains ${diff(t.strain)} ${t.strain < 1 ? "less" : "more"}`
+      );
+    });
+    expect(LAMP_STEPS[0].note).toContain("2.5x as fast");
+    expect(LAMP_STEPS[3].note).toContain("25% as fast");
+    expect(LAMP_STEPS[3].note).toContain("Pays 106%");
   });
 });

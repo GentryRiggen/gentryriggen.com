@@ -13,23 +13,31 @@ jest.setTimeout(180_000);
 
 /**
  * Round 1 took Grow from 59.0 (capped from 76.0, failing M2 on the farm and
- * far too short) to 83.9 with no failing gate. The floor is that minus 1.
- * Raise it as rounds land.
+ * far too short) to 83.9 with no failing gate. Raise the floor as rounds
+ * land.
+ *
+ * Round 5 added M16 (decision gaps). The world's tail fails its gate (41% of
+ * the phase in gaps over a minute, max 40%), so the total sits at the gate
+ * cap (59); that is all the capped floor checks. The uncapped score is the
+ * real floor: 82.7 (1.14.1) minus 1.
  */
-const SCORE_FLOOR = 59;
-const UNCAPPED_FLOOR = 81.6;
+const GATE_CAP = 59;
+const UNCAPPED_FLOOR = 81.7;
+/** An M16 phase allowed to fail its gate, but not to get any worse. */
+interface DeadPhaseCeiling {
+  /** Share of the phase in gaps over 60 s today, plus 5 points. */
+  deadShare: number;
+  /** Longest decision-less stretch today, plus 30 s. */
+  longest: number;
+}
 /**
- * Phases whose M16 gate is a known, open target. With 1.14.1's picker change
- * the world's tail sits just over the line (41% of the phase in gaps over a
- * minute, max 40%); it gets projects in the things-to-manage rollout.
+ * Known M16 targets: may fail the gate, but no worse than 5 points and 30 s
+ * past where they stand (world: 41%, 143 s). It gets projects in the
+ * things-to-manage rollout.
  */
-const KNOWN_DEAD_PHASES = ["world"];
-/*
- * Round 5 (Light's "things to manage") added M16, decision gaps. Grow passes
- * its gate, but the yard and the world's tail spend about a third of their
- * time in stretches over a minute with nothing to decide, so the honest card
- * reads 82.6 (was 83.9). The floor is that minus 1. Not tuned in Round 5.
- */
+const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {
+  world: { deadShare: 0.46, longest: 173 },
+};
 
 const HOUR = 3600;
 
@@ -58,19 +66,25 @@ describe("Make It Grow engagement scorecard", () => {
     );
   });
 
-  it("has no failing gate except known decision-gap targets", () => {
+  it("has no failing gate except known decision-gap targets, which get no worse", () => {
     expect(
       card.failingGates.filter(
         (g) =>
-          !KNOWN_DEAD_PHASES.some((p) =>
+          !Object.keys(KNOWN_DEAD_PHASES).some((p) =>
             g.startsWith(`M16 Decision gaps (${p})`)
           )
       )
     ).toEqual([]);
+    const m16 = card.metrics.find((m) => m.id === "M16")!;
+    for (const [phase, ceiling] of Object.entries(KNOWN_DEAD_PHASES)) {
+      const row = m16.perPhase.find((r) => r.phase === phase)!;
+      expect(row.stats.deadShare).toBeLessThanOrEqual(ceiling.deadShare);
+      expect(row.stats.longest).toBeLessThanOrEqual(ceiling.longest);
+    }
   });
 
   it("scores at least the floor", () => {
-    expect(card.total).toBeGreaterThanOrEqual(SCORE_FLOOR);
+    expect(card.total).toBeGreaterThanOrEqual(GATE_CAP);
     expect(card.uncapped).toBeGreaterThanOrEqual(UNCAPPED_FLOOR);
   });
 

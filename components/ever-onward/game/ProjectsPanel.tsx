@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   canAffordProject,
   doneProjects,
@@ -90,7 +90,7 @@ function ProjectCard({
         }`}
       >
         <span className={`${pixelClass} text-[9px]`}>
-          {isAffordable ? "Start" : "Not yet"}
+          {isAffordable ? "Start" : "Saving up"}
         </span>
         <span className="font-mono text-xs font-bold tabular-nums">
           {costLine(def, run, project)}
@@ -105,8 +105,16 @@ function ProjectCard({
  * (the night's know-how). Each has a catch, so which one first is the
  * choice. Nothing on offer goes away; new ones arrive with milestones.
  */
-export default function ProjectsPanel({ def, run, onAct }: PanelProps) {
+/** Seconds the "done!" line stays before it clears. */
+const DONE_LINE_MS = 4000;
+
+function ProjectsPanel({ def, run, onAct }: PanelProps) {
   const [lastId, setLastId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lastId) return;
+    const timer = window.setTimeout(() => setLastId(null), DONE_LINE_MS);
+    return () => window.clearTimeout(timer);
+  }, [lastId]);
   const shown = shownProjects(def, run);
   const done = doneProjects(def, run);
   if (run.complete || (shown.length === 0 && done.length === 0)) return null;
@@ -190,3 +198,5 @@ export default function ProjectsPanel({ def, run, onAct }: PanelProps) {
     </section>
   );
 }
+
+export default memo(ProjectsPanel);

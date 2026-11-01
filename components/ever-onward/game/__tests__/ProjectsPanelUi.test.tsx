@@ -55,7 +55,7 @@ describe("ProjectsPanel", () => {
     render(<ProjectsPanel def={def} run={nightRun(0)} onAct={onAct} />);
     const start = screen.getByTestId("lm-project-smart-meters-start");
     expect(start).toHaveAttribute("aria-disabled", "true");
-    expect(start).toHaveTextContent("Not yet");
+    expect(start).toHaveTextContent("Saving up");
     await userEvent.click(start);
     expect(onAct).not.toHaveBeenCalled();
   });

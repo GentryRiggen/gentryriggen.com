@@ -226,6 +226,8 @@ export const TUNING = {
     /** A town hit with no crew goes dark this long, and pays this much less. */
     outageSeconds: 120,
     outageShare: 0.1,
+    /** However many towns are dark, the dip is never more than this. */
+    outageMaxShare: 0.2,
     /** Know-how for a storm met by a crew, and for an outage fixed. */
     heldKnowhow: 4,
     fixKnowhow: 3,

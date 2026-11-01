@@ -13,6 +13,7 @@ import {
   chanceOf,
   drawChances,
   forecastStep,
+  hasCrew,
   isOut,
   isWeatherOpen,
   outageLeft,
@@ -217,6 +218,18 @@ describe("the weather desk", () => {
     expect(fixed.resources.knowhow).toBeGreaterThan(
       idle(missed, 15).resources.knowhow
     );
+  });
+
+  it("keeps crews where they are after a storm, and caps the dip at a fifth", () => {
+    const forecast = stormWillHit(toForecast(tick(def, nightRun(), 1)), 0);
+    const landed = toLandfall(readyCrew(forecast, 0));
+    expect(hasCrew(landed, 0)).toBe(true);
+    expect(readiness(landed, 0)).toBe(1);
+    const allDark = {
+      ...landed,
+      resources: { ...landed.resources, wxOut0: 60, wxOut1: 60, wxOut2: 60 },
+    };
+    expect(outageFactor(allDark)).toBeCloseTo(0.8);
   });
 
   it("never takes anything from a player who ignores it", () => {

@@ -68,7 +68,8 @@ describe("WeatherDesk", () => {
     expect(screen.getByTestId("lm-storm-track")).toBeInTheDocument();
     const town = screen.getByTestId("lm-town-0");
     expect(town).toHaveAttribute("aria-pressed", "true");
-    expect(town).toHaveAccessibleName(/crew \d+% ready/);
+    expect(town).toHaveAccessibleName("Crew at Rivertown");
+    expect(town).toHaveAccessibleDescription(/crew \d+% ready/);
     expect(town).toHaveTextContent("Call back");
   });
 
@@ -82,6 +83,6 @@ describe("WeatherDesk", () => {
     const town = screen.getByTestId("lm-town-1");
     expect(town).toHaveAttribute("data-dark", "true");
     expect(town).toHaveTextContent(/Lights out/);
-    expect(town).toHaveAccessibleName(/its lights are out/);
+    expect(town).toHaveAccessibleDescription(/its lights are out/);
   });
 });

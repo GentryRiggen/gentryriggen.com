@@ -21,24 +21,32 @@ jest.setTimeout(180_000);
  * the old, clicky bands) no longer applies. The pre-tuning build scored 59
  * capped (79.5 uncapped) on the new card; the tuned build scores 86.8 with
  * no failing gate (87.8 before the review fixes: the never-stuck floor and
- * reachable lens beats). The
- * floor is that minus 1. Raise as rounds land.
+ * reachable lens beats). Raise the floor as rounds land.
+ *
+ * Round 5 added M16 (decision gaps). The sky and the ending still spend most
+ * of their time in stretches over a minute with nothing to decide, so their
+ * M16 gates fail and the total sits at the gate cap (59). The cap is all the
+ * capped floor below checks; the uncapped score is the real regression
+ * floor: Round 5's 82.8 minus 1.
  */
-const SCORE_FLOOR_ROUND_4 = 85.8;
+const GATE_CAP = 59;
+const UNCAPPED_FLOOR = 81.8;
+/** An M16 phase allowed to fail its gate, but not to get any worse. */
+interface DeadPhaseCeiling {
+  /** Share of the phase in gaps over 60 s today, plus 5 points. */
+  deadShare: number;
+  /** Longest decision-less stretch today, plus 30 s. */
+  longest: number;
+}
 /**
- * Round 5 added M16 (decision gaps): the night, the sky and the ending each
- * spend 60-80% of their time in stretches over a minute with nothing to
- * decide, so the honest card caps the total at 59 (83.5 uncapped) while those
- * gates fail. The floor reads the uncapped score; the failing gates are
- * listed so a new one can't slip in. Round 5 fixed the night (projects, the
- * streetlights, the deeper weather desk): 83.1 uncapped, with only the sky
- * and the ending still failing M16. Floor: that minus 1.
+ * Known M16 targets (see the lab notebook): they may fail the gate, but each
+ * must stay within 5 points and 30 s of where Round 5 left it (sky 84%,
+ * 120 s; ending 75%, 149 s).
  */
-const SCORE_FLOOR = 59;
-const UNCAPPED_FLOOR = 82.1;
-/** Phases whose M16 gate is a known, open target (see the lab notebook). */
-const KNOWN_DEAD_PHASES = ["sky", "last"];
-void SCORE_FLOOR_ROUND_4;
+const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {
+  sky: { deadShare: 0.89, longest: 150 },
+  last: { deadShare: 0.8, longest: 179 },
+};
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];
@@ -104,16 +112,24 @@ describe("Keep the Light On engagement scorecard", () => {
   });
 
   it("does not regress below the floor", () => {
-    expect(good.total).toBeGreaterThanOrEqual(SCORE_FLOOR);
+    expect(good.total).toBeGreaterThanOrEqual(GATE_CAP);
     expect(good.uncapped).toBeGreaterThanOrEqual(UNCAPPED_FLOOR);
   });
 
-  it("fails no gate but the known decision gaps", () => {
+  it("fails no gate but the known decision gaps, and those get no worse", () => {
+    const m16 = good.metrics.find((m) => m.id === "M16")!;
     const unexpected = good.failingGates.filter(
       (g) =>
-        !KNOWN_DEAD_PHASES.some((p) => g.startsWith(`M16 Decision gaps (${p})`))
+        !Object.keys(KNOWN_DEAD_PHASES).some((p) =>
+          g.startsWith(`M16 Decision gaps (${p})`)
+        )
     );
     expect(unexpected).toEqual([]);
+    for (const [phase, ceiling] of Object.entries(KNOWN_DEAD_PHASES)) {
+      const row = m16.perPhase.find((r) => r.phase === phase)!;
+      expect(row.stats.deadShare).toBeLessThanOrEqual(ceiling.deadShare);
+      expect(row.stats.longest).toBeLessThanOrEqual(ceiling.longest);
+    }
   });
 
   it("reports all 16 metrics with weights summing to 100", () => {

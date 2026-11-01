@@ -36,8 +36,11 @@ import {
   isWeatherOpen,
   readyAtLandfall,
   readyShare,
+  stageLength,
+  stageSecondsLeft,
   weatherStage,
 } from "./weather";
+import { TUNING } from "./tuning";
 
 /** The smallest share of the tank a bot bothers to buy in one click. */
 const MIN_BARREL_SHARE = 0.4;
@@ -127,8 +130,10 @@ const tendsWeather =
       const id = crewActionId(town);
       return available.includes(id) ? [id] : [];
     };
+    // It looks only when the forecast changes: the first moments of each
+    // forecast step, and just after a landfall (to fix a dark town).
+    if (!isFreshForecast(run)) return [];
     if (weatherStage(run) !== "forecast") {
-      // Between storms: fix a dark town (a crew there fixes it fast).
       const dark = towns.find((t) => isOut(run, t) && !hasCrew(run, t));
       return dark === undefined ? [] : send(dark);
     }
@@ -143,6 +148,18 @@ const tendsWeather =
     const gain = value(best, true) - value(mover, false);
     return gain >= WEATHER_MOVE_GAIN ? send(best) : [];
   };
+
+/** Seconds after a forecast changes (or a storm lands) that a bot looks. */
+const FRESH_SECONDS = 2;
+
+/** The forecast (or the calm after a landfall) has just changed. */
+function isFreshForecast(run: RunState): boolean {
+  const elapsed = stageLength(run) - stageSecondsLeft(run);
+  const sinceChange =
+    weatherStage(run) === "forecast" ? elapsed % STEP_SECONDS : elapsed;
+  return sinceChange < FRESH_SECONDS;
+}
+const STEP_SECONDS = TUNING.weather.stepSeconds;
 
 /** Points of (chance x readiness) a move must gain to be worth it. */
 const WEATHER_MOVE_GAIN = 4;

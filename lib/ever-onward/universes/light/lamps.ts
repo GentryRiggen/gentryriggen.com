@@ -1,6 +1,7 @@
 import type { ActionDef } from "../../engine/types";
 import { PHASE_NIGHT } from "./resources";
 import { isLampsOpen, lampStep, setLamps } from "./tick";
+import { TUNING } from "./tuning";
 
 /**
  * The streetlights: No More Night's one knob, how bright the cities shine.
@@ -12,21 +13,34 @@ import { isLampsOpen, lampStep, setLamps } from "./tick";
  * dazzling while building, soft again to light the last towns).
  */
 
-export const LAMP_STEPS = [
-  {
-    label: "Soft glow",
-    note: "Pays 80% · crews learn 60% faster · towns want 12% less · the grid strains 30% less",
-  },
-  {
-    label: "Gentle",
-    note: "Pays 90% · crews learn 30% faster · towns want 6% less · the grid strains 15% less",
-  },
-  { label: "Bright", note: "The usual: pays 100%" },
-  {
-    label: "Dazzling",
-    note: "Pays 115% · crews learn 40% slower · towns want 6% more · the grid strains 30% more",
-  },
-] as const;
+const LABELS = ["Soft glow", "Gentle", "Bright", "Dazzling"] as const;
+
+const pct = (n: number): string => `${Math.round(n * 100)}%`;
+/** "30% less" / "35% more" against Bright (1). */
+const change = (n: number, less: string, more: string): string =>
+  n < 1 ? `${pct(1 - n)} ${less}` : `${pct(n - 1)} ${more}`;
+/** "2.5x as fast" / "a quarter as fast": how fast crews learn. */
+const learn = (n: number): string =>
+  n >= 1
+    ? `crews learn ${Number(n.toFixed(2))}x as fast`
+    : `crews learn ${pct(n)} as fast`;
+
+/** One plain line per step, read from the tuning so it can't drift. */
+export function lampNote(step: number): string {
+  const s = TUNING.lamps.steps[step];
+  if (step === TUNING.lamps.defaultStep) return `The usual: pays ${pct(s.pay)}`;
+  return [
+    `Pays ${pct(s.pay)}`,
+    learn(s.knowhow),
+    `towns want ${change(s.demand, "less", "more")}`,
+    `the grid strains ${change(s.strain, "less", "more")}`,
+  ].join(" · ");
+}
+
+export const LAMP_STEPS = LABELS.map((label, i) => ({
+  label,
+  note: lampNote(i),
+}));
 
 export const lampActionId = (step: number): string => `streetlights-${step}`;
 export const LAMP_ACTION_IDS: readonly string[] = LAMP_STEPS.map((_, i) =>

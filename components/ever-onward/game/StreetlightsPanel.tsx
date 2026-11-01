@@ -1,20 +1,21 @@
 "use client";
 
-import { canPerformAction, cloneRun } from "@/lib/ever-onward/engine/engine";
-import type { RunState } from "@/lib/ever-onward/engine/types";
+import { memo, useMemo } from "react";
+import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import {
   LAMP_STEPS,
   lampActionId,
 } from "@/lib/ever-onward/universes/light/lamps";
 import { short } from "@/lib/ever-onward/universes/light/preview";
 import {
-  citiesLit,
+  demandAtStep,
   isLampsOpen,
   knowhowPerSecond,
   lampStep,
   powerPerSecond,
-  setLamps,
+  supplyMW,
 } from "@/lib/ever-onward/universes/light/tick";
+import { TUNING } from "@/lib/ever-onward/universes/light/tuning";
 import type { PanelProps } from "../universes/types";
 import useRoving from "./grow/useRoving";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
@@ -33,15 +34,27 @@ interface StepNumbers {
   cities: number;
 }
 
-/** What the night would read at a step, from a copy of the run. */
-function numbersAt(run: RunState, step: number): StepNumbers {
-  const draft = cloneRun(run);
-  setLamps(draft, step);
-  return {
-    power: powerPerSecond(draft),
-    knowhow: knowhowPerSecond(draft),
-    cities: citiesLit(draft),
-  };
+const STEPS = TUNING.lamps.steps;
+/** Steps' figures are recomputed only when a reading moves by this much. */
+const round = (n: number): number => Number(n.toPrecision(3));
+
+/**
+ * What the night would read at every step. Brightness only scales pay and
+ * know-how and moves the towns' demand, so the four rows come from today's
+ * numbers without copying the run.
+ */
+function numbersByStep(
+  active: number,
+  power: number,
+  knowhow: number,
+  supply: number,
+  demands: readonly number[]
+): StepNumbers[] {
+  return STEPS.map((step, i) => ({
+    power: (power / STEPS[active].pay) * step.pay,
+    knowhow: (knowhow / STEPS[active].knowhow) * step.knowhow,
+    cities: Math.min(100, (supply / Math.max(demands[i], 1e-9)) * 100),
+  }));
 }
 
 /**
@@ -49,12 +62,30 @@ function numbersAt(run: RunState, step: number): StepNumbers {
  * gives the crews time to learn and lights more towns with the same plants.
  * A real radio group (arrow keys, one tab stop); nothing is ever lost.
  */
-export default function StreetlightsPanel({ def, run, onAct }: PanelProps) {
+function StreetlightsPanel({ def, run, onAct }: PanelProps) {
   const active = lampStep(run);
   const { radioProps } = useRoving(LAMP_STEPS.length, active);
-  if (!isLampsOpen(run) || run.complete) return null;
+  const isOpen = isLampsOpen(run) && !run.complete;
+  const power = isOpen ? round(powerPerSecond(run)) : 0;
+  const knowhow = isOpen ? round(knowhowPerSecond(run)) : 0;
+  const supply = isOpen ? round(supplyMW(run)) : 0;
+  const demandKey = isOpen
+    ? STEPS.map((_, i) => round(demandAtStep(run, i))).join("|")
+    : "";
+  const rows = useMemo(
+    () =>
+      numbersByStep(
+        active,
+        power,
+        knowhow,
+        supply,
+        demandKey.split("|").map(Number)
+      ),
+    [active, power, knowhow, supply, demandKey]
+  );
+  if (!isOpen) return null;
 
-  const now = numbersAt(run, active);
+  const now = rows[active];
   const hasChosen = (run.resources.lampChanges ?? 0) > 0;
 
   return (
@@ -87,7 +118,7 @@ export default function StreetlightsPanel({ def, run, onAct }: PanelProps) {
         {LAMP_STEPS.map((step, i) => {
           const checked = i === active;
           const doable = canPerformAction(def, run, lampActionId(i));
-          const at = numbersAt(run, i);
+          const at = rows[i];
           return (
             <button
               key={step.label}
@@ -158,3 +189,5 @@ export default function StreetlightsPanel({ def, run, onAct }: PanelProps) {
     </section>
   );
 }
+
+export default memo(StreetlightsPanel);

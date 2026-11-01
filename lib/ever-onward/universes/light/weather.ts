@@ -14,9 +14,10 @@ import { TUNING } from "./tuning";
  * on a ready crew pays a bonus. One that lands on a town with no crew puts
  * its lights out for a while: a small dip, never a loss. A crew sent there
  * fixes it fast (and learns from it); left alone it comes back on its own.
- * After each storm the crews come home to rest, so every storm is a new
- * choice. Nothing expires, nothing is taken, and ignoring the desk costs
- * only the bonus and a little dimming.
+ * Crews stay where they are between storms; move them only when a forecast
+ * says so. A dark town costs a little power (a tenth of the pay, a fifth at
+ * most) until a crew or time puts it right. Nothing expires, nothing is
+ * taken for good, and nobody is told off.
  *
  * All state lives in `run.resources` (hidden numbers) and one flag, so a save
  * without them simply reads as "not opened yet". Time is the engine's `dt`.
@@ -132,7 +133,9 @@ export const townsOut = (run: RunState): number =>
  * never in another phase.
  */
 export const outageFactor = (run: RunState): number =>
-  run.phase === 1 ? 1 - W.outageShare * townsOut(run) : 1;
+  run.phase === 1
+    ? 1 - Math.min(W.outageMaxShare, W.outageShare * townsOut(run))
+    : 1;
 
 /** Seconds a crew takes to get ready, and to fix an outage. */
 export const readySeconds = (run: RunState): number =>
@@ -213,7 +216,7 @@ export function stormResultLine(run: RunState): string | null {
     return `The storm hit ${name}, and your crew was ready: ${power}!`;
   if (kind === "vane")
     return `The storm hit ${name}. The weather vane's sandbags held: ${power}.`;
-  return `The storm hit ${name} and its lights went out for a while. A crew fixes it fast, or it comes back on its own.`;
+  return `The storm hit ${name} and its lights went out for a while. It costs a little power until a crew fixes it, or it comes back on its own.`;
 }
 
 /** Whole numbers that add up to exactly 100, each at least `floor`. */
@@ -359,12 +362,6 @@ function landfall(run: RunState, income: number): void {
   const share = Math.max(handShare, vaneShare);
   r.wxFronts = frontsSoFar(run) + 1;
   r.wxLastTown = town;
-  // The crews come home to rest after every storm; send them out again for
-  // the next one.
-  for (const t of TOWN_INDEXES) {
-    r[`wxShield${t}`] = 0;
-    r[`wxReady${t}`] = 0;
-  }
   if (share <= 0) {
     r.wxLastKind = KINDS.indexOf("flicker");
     r.wxLastPayout = 0;
@@ -500,5 +497,7 @@ export function tickWeather(
 export function withoutStorms(run: RunState): RunState {
   run.resources.wxPending = 0;
   run.resources.wxTimer = Number.MAX_SAFE_INTEGER;
+  // A dark town is a passing dip, not the grid's income.
+  for (const town of TOWN_INDEXES) run.resources[`wxOut${town}`] = 0;
   return run;
 }

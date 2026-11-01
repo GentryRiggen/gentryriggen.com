@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
@@ -151,11 +152,13 @@ function CrewArt({ isReady }: { isReady: boolean }) {
 interface TownCardProps {
   run: RunState;
   town: number;
+  /** The crew that moves if one is sent here (null: a free crew goes). */
+  mover: number | null;
   onSend: () => void;
   isDoable: boolean;
 }
 
-function TownCard({ run, town, onSend, isDoable }: TownCardProps) {
+function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
   const name = TOWNS[town];
   const isForecast = weatherStage(run) === "forecast";
   const chance = chanceOf(run, town);
@@ -163,7 +166,6 @@ function TownCard({ run, town, onSend, isDoable }: TownCardProps) {
   const ready = readiness(run, town);
   const isDark = isOut(run, town);
   const isLikely = isForecast && chance >= 40;
-  const mover = crewThatMoves(run, town);
   const frame = isDark
     ? "border-slate-500 bg-slate-950 shadow-[3px_3px_0_#0f172a]"
     : isHere
@@ -174,8 +176,7 @@ function TownCard({ run, town, onSend, isDoable }: TownCardProps) {
     : mover !== null
       ? `Move crew here`
       : "Send a crew";
-  const spoken = [
-    isHere ? `Call the crew back from ${name}` : `Send a crew to ${name}`,
+  const details = [
     isForecast ? `${chance}% chance of the storm` : null,
     isDark ? "its lights are out" : null,
     isHere ? `crew ${Math.round(ready * 100)}% ready` : null,
@@ -189,13 +190,17 @@ function TownCard({ run, town, onSend, isDoable }: TownCardProps) {
       data-testid={`lm-town-${town}`}
       data-dark={isDark}
       aria-pressed={isHere}
-      aria-label={spoken}
+      aria-label={`Crew at ${name}`}
+      aria-describedby={`lm-town-${town}-about`}
       aria-disabled={!isDoable}
       onClick={() => {
         if (isDoable) onSend();
       }}
       className={`flex min-h-44 min-w-0 touch-manipulation flex-col items-center justify-between gap-1.5 border-4 p-2 text-center transition-transform ${retroFocusClass} ${frame}`}
     >
+      <span id={`lm-town-${town}-about`} className="sr-only">
+        {details}
+      </span>
       <span
         className={`${pixelClass} text-[8px] leading-tight text-sky-100 sm:text-[9px]`}
       >
@@ -326,8 +331,18 @@ function StormTrack({ run }: { run: RunState }) {
  * both choices. A town hit with no crew goes dark for a while (a crew fixes
  * it fast); nothing is ever lost or missed.
  */
-export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
+function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
   const stage = weatherStage(run);
+  // Which crew a tap would move only changes when a crew or a chance does.
+  const moverKey = [
+    crewCount(run),
+    ...TOWNS.map((_, t) => `${hasCrew(run, t) ? 1 : 0}:${chanceOf(run, t)}`),
+  ].join("|");
+  const movers = useMemo(
+    () => TOWNS.map((_, t) => crewThatMoves(run, t)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what it reads
+    [moverKey]
+  );
   if (stage === "closed" || run.complete) return null;
 
   const isForecast = stage === "forecast";
@@ -408,6 +423,7 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
             key={town}
             run={run}
             town={town}
+            mover={movers[town]}
             isDoable={canPerformAction(def, run, crewActionId(town))}
             onSend={() => onAct(crewActionId(town))}
           />
@@ -433,8 +449,10 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
       </div>
 
       <p className="font-mono text-xs text-slate-300">
-        Crews out: {placed} of {crews}. A town with no crew goes dark for a
-        while when the storm hits; a crew fixes it fast.
+        Crews out: {placed} of {crews}. They stay where you put them, so move
+        one only when the forecast says so. A town with no crew goes dark for a
+        while when a storm hits: it costs a little power until a crew, or time,
+        puts it right.
         {hasWeatherVane(run) &&
           ` The weather vane also watches ${vaneTown} for you, for 60% of the bonus.`}
       </p>
@@ -469,3 +487,5 @@ export default function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
     </section>
   );
 }
+
+export default memo(WeatherDesk);
