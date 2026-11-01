@@ -181,6 +181,15 @@ function axis(value: number): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(-1, value)) : 0;
 }
 
+/**
+ * A seated (or frozen) player looking about: the walk's yaw turned by
+ * `turn` (-1 to 1) for `dt` seconds, at the walk's turn rate.
+ */
+export function lookAround(yaw: number, turn: number, dt: number): number {
+  const amount = axis(turn);
+  return amount === 0 ? yaw : wrapYaw(yaw + amount * TURN_RATE * dt);
+}
+
 /** One step in the water: turn, swim (or kick), stay out of the hull, lose warmth. */
 export function stepSwimmer(
   s: Swimmer,

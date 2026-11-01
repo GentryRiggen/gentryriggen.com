@@ -5,7 +5,6 @@ import { useFrame } from "@react-three/fiber";
 import { Color, Matrix4, type InstancedMesh } from "three";
 import {
   type BoatLaunch,
-  type BodyPose,
   type FloatStart,
   floatingSince,
   floatPositionAt,
@@ -36,31 +35,16 @@ import {
   type ShipCrowd,
 } from "./crowdView";
 import { noRaycast } from "./noRaycast";
-import { halfOfX, partHalves } from "./partHalves";
+import { partHalves } from "./partHalves";
+import { brokenAtX, playbackBody } from "./playbackBody";
 import { activeEvacuation } from "./trialTimeline";
-import { trialPlayback, type TrialPlayback } from "./trialPlayback";
+import { trialPlayback } from "./trialPlayback";
 
 /** Height and rate of a floater's bob on the swell. */
 const FLOAT_BOB = 0.04;
 const FLOAT_BOB_RATE = 1.9;
 /** How high a jump into a raft rises above the straight line, mid-leap. */
 const JUMP_ARC = 0.35;
-
-/** Where she is broken in the playback (cells from the bow), or null. */
-function brokenAtX(playback: TrialPlayback): number | null {
-  const { halves, breakup } = playback;
-  if (!halves) return null;
-  return breakup?.atX ?? halves.bow.pivotX;
-}
-
-/** The body carrying someone `cellsFromBow` along, from the playback now. */
-function playbackBody(playback: TrialPlayback, cellsFromBow: number): BodyPose {
-  const atX = brokenAtX(playback);
-  if (atX !== null && playback.halves) {
-    return playback.halves[halfOfX(cellsFromBow, atX)];
-  }
-  return playback;
-}
 
 interface CrowdRunnerProps {
   ship: Ship;

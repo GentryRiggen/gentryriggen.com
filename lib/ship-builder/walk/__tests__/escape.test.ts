@@ -11,6 +11,7 @@ import {
   isOnWater,
   KICK_S,
   KICK_SPEED,
+  lookAround,
   pickupBoat,
   rewindEscape,
   startSwimming,
@@ -20,7 +21,7 @@ import {
   walkerRestPoint,
   WARMTH_S,
 } from "../escape";
-import { WALKER_RADIUS } from "../types";
+import { TURN_RATE, WALKER_RADIUS } from "../types";
 
 function launch(over: Partial<BoatLaunch> = {}): BoatLaunch {
   return {
@@ -233,5 +234,16 @@ describe("endingOf and rewindEscape", () => {
       expect(rewindEscape(p, 5)).toBe(p);
     }
     expect(rewindEscape(phases.aboard, 0)).toBe(phases.aboard);
+  });
+});
+
+describe("lookAround", () => {
+  it("turns at the walk's rate and wraps", () => {
+    expect(lookAround(0, 1, 0.5)).toBeCloseTo(TURN_RATE * 0.5);
+    expect(lookAround(Math.PI - 0.01, 1, 0.1)).toBeLessThan(0);
+  });
+
+  it("ignores a turn that is not a number", () => {
+    expect(lookAround(1, Number.NaN, 0.5)).toBe(1);
   });
 });

@@ -69,6 +69,8 @@ import { publishSmooth } from "./smoothLive";
 import { resetSailInput } from "./sailInput";
 import { spawnOf, type WalkStart } from "../walk";
 import { publishWalk } from "./walkLive";
+import { resetEscape } from "./escapeLive";
+import type { EscapeBoatKind, EscapeEnding } from "../walk/escape";
 import { resetWalkInput } from "./walkInput";
 import type { HullArea, PaintColor } from "../model/paint";
 import {
@@ -223,6 +225,12 @@ interface ShipBuilderData {
   sailResult: SailResult | null;
   walk: WalkSlice;
   /**
+   * How the player last got off a sinking ship on a walk (a boat from the
+   * deck, picked up swimming, or frozen), or null. Set once per walk and
+   * cleared when a walk or a trial starts.
+   */
+  lastEscape: { ending: EscapeEnding; boat: EscapeBoatKind } | null;
+  /**
    * How iceberg trials may break the ship. Kept apart from `trial` so it
    * survives leaving a trial; remembered for the session only.
    */
@@ -338,6 +346,8 @@ export interface ShipBuilderState extends ShipBuilderData {
    * and keeps walking; the walk ends when the trial's result arrives.
    */
   sinkWhileWalking: () => void;
+  /** Records how the walker escaped; only the first call in a walk counts. */
+  recordEscape: (ending: EscapeEnding, boat: EscapeBoatKind) => void;
   setDriveView: (view: DriveView) => void;
   /** A hard hit: ends the drive and plays the sea trial struck where she hit. */
   driveHit: (impact: SailImpact) => void;
@@ -370,6 +380,7 @@ export function createInitialState(): ShipBuilderData {
     drive: { status: "idle" },
     sailResult: null,
     walk: { status: "idle" },
+    lastEscape: null,
     breakMode: "real",
   };
 }
@@ -483,7 +494,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     runId += 1;
     // Fast-forward is for the run it was picked in; every new run starts at 1x.
     trialSpeedSetting.set(1);
+    // A new sinking: any walker starts it aboard.
+    resetEscape();
     set({
+      lastEscape: null,
       trial: {
         status: "running",
         input,
@@ -1024,7 +1038,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       runId += 1;
       resetWalkInput();
       publishWalk(spawn);
+      resetEscape();
       set({
+        lastEscape: null,
         walk: { status: "walking", runId },
         tool: { kind: "none" },
         ...CLEARED,
@@ -1035,7 +1051,13 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (get().walk.status === "idle") return;
       resetWalkInput();
       publishWalk(null);
+      resetEscape();
       set({ walk: { status: "idle" } });
+    },
+
+    recordEscape(ending, boat) {
+      if (get().walk.status !== "walking" || get().lastEscape) return;
+      set({ lastEscape: { ending, boat } });
     },
 
     setDriveView(view) {
@@ -1100,6 +1122,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     endTrial() {
+      // With no trial there is no sinking: a walker in the water or a boat
+      // is back on deck.
+      resetEscape();
       set({ trial: { status: "idle" } });
     },
 

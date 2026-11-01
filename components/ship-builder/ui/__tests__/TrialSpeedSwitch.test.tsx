@@ -6,11 +6,17 @@ import {
   parseTrialSpeed,
   trialSpeedSetting,
 } from "../../hooks/useTrialSpeed";
+import {
+  publishEscape,
+  resetEscape,
+} from "@/lib/ship-builder/state/escapeLive";
+import { startSwimming } from "@/lib/ship-builder/walk/escape";
 import TrialSpeedSwitch from "../TrialSpeedSwitch";
 
 beforeEach(() => {
   localStorage.clear();
   act(() => trialSpeedSetting.resetMemory());
+  act(() => resetEscape());
 });
 
 describe("TrialSpeedSwitch", () => {
@@ -93,5 +99,22 @@ describe("TrialSpeedSwitch", () => {
     expect(screen.getByRole("button", { name: "5x" })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: "after" })).toHaveFocus();
+  });
+
+  it("holds 1x and hides while the walker swims, then comes back", () => {
+    act(() => trialSpeedSetting.set(10));
+    render(<TrialSpeedSwitch />);
+    act(() =>
+      publishEscape({
+        phase: startSwimming({ x: 0, z: 0 }, 0, 1),
+        boardable: null,
+        pickup: null,
+      })
+    );
+    expect(screen.queryByRole("group", { name: "Speed" })).toBeNull();
+    expect(getTrialSpeed()).toBe(1);
+    act(() => resetEscape());
+    expect(screen.getByRole("group", { name: "Speed" })).toBeInTheDocument();
+    expect(getTrialSpeed()).toBe(10);
   });
 });
