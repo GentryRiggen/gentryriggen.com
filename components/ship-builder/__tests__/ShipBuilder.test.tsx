@@ -20,7 +20,23 @@ jest.mock("../hooks/useWebGLSupport", () => () => true);
 jest.mock("../hooks/useShipPersistence", () => () => undefined);
 jest.mock("../hooks/useTestHook", () => () => undefined);
 
+const mockUpdate = {
+  isUpdateReady: false,
+  update: jest.fn(),
+  versionUrl: "",
+};
+jest.mock("@/components/update/useAppUpdate", () => ({
+  useAppUpdate: ({ versionUrl }: { versionUrl: string }) => {
+    mockUpdate.versionUrl = versionUrl;
+    return {
+      isUpdateReady: mockUpdate.isUpdateReady,
+      update: mockUpdate.update,
+    };
+  },
+}));
+
 beforeEach(() => {
+  mockUpdate.isUpdateReady = false;
   act(() => useShipBuilderStore.setState(createInitialState()));
 });
 
@@ -152,5 +168,24 @@ describe("ShipBuilder focus mode", () => {
     expect(screen.queryByRole("button", { name: "Parts" })).toBeNull();
     act(() => useShipBuilderStore.getState().endTrial());
     expect(screen.getByRole("button", { name: "Parts" })).toBe(parts);
+  });
+});
+
+describe("ShipBuilder updates", () => {
+  it("offers the update pill when a newer version is ready", async () => {
+    const user = userEvent.setup();
+    const update = jest.fn();
+    mockUpdate.isUpdateReady = true;
+    mockUpdate.update = update;
+    render(<ShipBuilder />);
+    expect(mockUpdate.versionUrl).toBe("/ship-builder/version.json");
+    await user.click(screen.getByTestId("update-pill"));
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no pill when the game is current", () => {
+    mockUpdate.isUpdateReady = false;
+    render(<ShipBuilder />);
+    expect(screen.queryByTestId("update-pill")).toBeNull();
   });
 });

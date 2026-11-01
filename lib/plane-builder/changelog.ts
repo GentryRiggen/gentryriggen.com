@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.15.1",
+    date: "2026-11-01",
+    title: "Update right away",
+    highlights: [
+      "When a new version is ready, a button lets you update right away. Your progress is saved first",
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-10-30",
     title: "Leaderboard seasons",
