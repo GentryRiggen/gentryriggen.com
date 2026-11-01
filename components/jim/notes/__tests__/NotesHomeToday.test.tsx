@@ -6,6 +6,7 @@ import NotesHome from "../NotesHome";
 const HOME = {
   saves: { marks: {}, toast: null, toggle: () => {}, undo: () => {} },
   onLog: () => {},
+  onDraft: () => {},
 };
 
 function renderAt(iso: string, data: ViewData = VIEW_FIXTURE) {

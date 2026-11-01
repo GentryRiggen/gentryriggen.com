@@ -14,6 +14,8 @@ interface NotesNoteProps {
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onBack: () => void;
+  /** Where the back button goes ("Results", or "Work" from a meeting). */
+  backLabel?: string;
 }
 
 type State =
@@ -42,6 +44,7 @@ export default function NotesNote({
   api,
   getToken,
   onBack,
+  backLabel = "Results",
 }: NotesNoteProps) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -78,7 +81,7 @@ export default function NotesNote({
         className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]"
       >
         <ChevronLeft aria-hidden="true" className="size-5" />
-        Results
+        {backLabel}
       </button>
       {state.kind === "loading" && (
         <div aria-busy="true" className="space-y-3">

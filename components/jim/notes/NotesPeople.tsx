@@ -1,8 +1,8 @@
-import { Search } from "lucide-react";
-import { Empty, Rows } from "@/components/jim/notes/NotesUi";
+import { Cake, CalendarClock, Heart, Search } from "lucide-react";
+import { Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import { PERSON_GROUPS, personGroup } from "@/lib/jim/notesData";
-import { stripMd } from "@/lib/jim/todos";
-import type { Person, ViewData } from "@/lib/jim/view";
+import { fmtShort, stripMd } from "@/lib/jim/todos";
+import type { Person, UpcomingDate, ViewData } from "@/lib/jim/view";
 
 interface NotesPeopleProps {
   data: ViewData;
@@ -19,6 +19,21 @@ function initials(name: string): string {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+const KIND_ICON = {
+  birthday: Cake,
+  anniversary: Heart,
+  renewal: CalendarClock,
+} as const;
+
+/** "Nov 5 · in 5 days · turns 40"; today and tomorrow in words. */
+function dateLabel(d: UpcomingDate): string {
+  const when =
+    d.days === 0 ? "today" : d.days === 1 ? "tomorrow" : `in ${d.days} days`;
+  return [fmtShort(d.on), when, d.turns !== null ? `turns ${d.turns}` : ""]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function matches(p: Person, words: string[]): boolean {
@@ -38,6 +53,10 @@ export default function NotesPeople({
   const people = data.people
     .filter((p) => typeof p?.name === "string" && typeof p.path === "string")
     .filter((p) => matches(p, words));
+  const known = new Set(data.people.map((p) => p.path));
+  const upcoming = (data.dates ?? []).filter(
+    (d) => typeof d?.name === "string" && typeof d.on === "string"
+  );
   const groups = PERSON_GROUPS.map((g) => ({
     group: g,
     people: people
@@ -68,6 +87,54 @@ export default function NotesPeople({
           className="min-h-11 w-full rounded-2xl border border-white/[0.08] bg-ayu-panel/70 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] backdrop-blur pr-4 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
         />
       </div>
+      {!words.length && upcoming.length > 0 && (
+        <Section title="Coming up" aside={upcoming.length}>
+          <Rows>
+            {upcoming.map((d) => {
+              const Icon = KIND_ICON[d.kind] ?? CalendarClock;
+              const opens = known.has(d.path);
+              const body = (
+                <>
+                  <Icon
+                    aria-hidden="true"
+                    className="size-5 shrink-0 text-ayu-accent"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-ayu-text">
+                      {d.name}
+                    </span>
+                    <span className="block text-sm text-ayu-subtle">
+                      {dateLabel(d)}
+                    </span>
+                  </span>
+                  {opens && (
+                    <span aria-hidden="true" className="text-ayu-subtle">
+                      ›
+                    </span>
+                  )}
+                </>
+              );
+              return (
+                <li key={`${d.kind}-${d.path}-${d.on}-${d.name}`}>
+                  {opens ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpen(d.path)}
+                      className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-white/[0.04]"
+                    >
+                      {body}
+                    </button>
+                  ) : (
+                    <div className="flex min-h-14 w-full items-center gap-3 px-4 py-2">
+                      {body}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </Rows>
+        </Section>
+      )}
       {groups.length === 0 && (
         <Empty>
           {data.people.length ? "No one matches." : "No people yet."}

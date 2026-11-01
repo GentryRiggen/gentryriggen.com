@@ -1,8 +1,9 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import * as view from "@/lib/jim/view";
-import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import { MONEY_FIXTURE, VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import { clearMoney } from "@/lib/jim/money";
 import * as offline from "@/lib/jim/offlineStore";
 import NotesShell from "../NotesShell";
 
@@ -63,6 +64,7 @@ function renderShell(active = true) {
       getToken={getToken}
       active={active}
       onLog={jest.fn()}
+      onDraft={jest.fn()}
     />
   );
 }
@@ -169,12 +171,146 @@ it("says quietly when the notes may be behind", async () => {
   ).toBeInTheDocument();
 });
 
+it("has five page pills in order", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const pills = within(
+    screen.getByRole("tablist", { name: "Notes pages" })
+  ).getAllByRole("tab");
+  expect(pills.map((t) => t.textContent)).toEqual([
+    "Home",
+    "Work",
+    "Money",
+    "Health",
+    "People",
+  ]);
+  expect(screen.queryByRole("tablist", { name: "Health pages" })).toBeNull();
+});
+
+it("switches Health between Health, Training and Golf", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  const tabs = within(sub).getAllByRole("tab");
+  expect(tabs.map((t) => t.textContent)).toEqual([
+    "Health",
+    "Training",
+    "Golf",
+  ]);
+  expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByText("Hemoglobin")).toBeInTheDocument();
+  await userEvent.click(within(sub).getByRole("tab", { name: "Training" }));
+  expect(screen.getByText("Back squat")).toBeInTheDocument();
+  expect(screen.queryByText("Hemoglobin")).toBeNull();
+  // The Health pill stays selected, and the choice is kept on return.
+  const pills = screen.getByRole("tablist", { name: "Notes pages" });
+  expect(within(pills).getByRole("tab", { name: "Health" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+  await userEvent.click(within(pills).getByRole("tab", { name: "Home" }));
+  await userEvent.click(within(pills).getByRole("tab", { name: "Health" }));
+  expect(screen.getByText("Back squat")).toBeInTheDocument();
+});
+
+it("fetches Money only once its page opens, with its own Refresh", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  const realFetch = global.fetch;
+  const moneyFetch = jest.fn(async () => ({
+    status: 200,
+    ok: true,
+    json: async () => MONEY_FIXTURE,
+  }));
+  global.fetch = moneyFetch as unknown as typeof fetch;
+  try {
+    renderShell();
+    await screen.findByText("Water the plants");
+    expect(moneyFetch).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("tab", { name: "Money" }));
+    expect(screen.getByRole("tab", { name: "Money" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.queryByText("Water the plants")).toBeNull();
+    expect(await screen.findByText("Good months")).toBeInTheDocument();
+    expect(moneyFetch).toHaveBeenCalledTimes(1);
+    expect(String((moneyFetch.mock.calls[0] as unknown[])[0])).toMatch(
+      /\/api\/money$/
+    );
+    // One Refresh: Money's own, not the notes' too.
+    expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(1);
+  } finally {
+    global.fetch = realFetch;
+    act(() => clearMoney());
+  }
+});
+
+it("opens a meeting and a directory card from Work, and back", async () => {
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    people: [
+      ...VIEW_FIXTURE.people,
+      {
+        ...VIEW_FIXTURE.people[1],
+        path: "people/ava-torres.md",
+        name: "Ava Torres",
+      },
+    ],
+  });
+  fetchNote.mockResolvedValue({
+    path: "meetings/2026-10-30-garden-planning.md",
+    title: "Garden planning",
+    updated: "2026-10-30",
+    body: "- Picked the spring beds",
+  });
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Work" }));
+  await userEvent.type(screen.getByLabelText("Search meetings"), "garden");
+  await userEvent.click(
+    screen.getByRole("button", { name: /Garden planning/ })
+  );
+  expect(fetchNote.mock.calls[0][0]).toBe(
+    "meetings/2026-10-30-garden-planning.md"
+  );
+  expect(await screen.findByText("Picked the spring beds")).toBeVisible();
+  // The all-notes search steps aside while something is open.
+  expect(screen.queryByLabelText("Search notes")).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "Work" }));
+  // The list kept its search.
+  expect(screen.getByLabelText("Search meetings")).toHaveValue("garden");
+
+  await userEvent.type(screen.getByLabelText("Search the directory"), "ava");
+  const dir = screen.getByRole("region", { name: "Directory" });
+  await userEvent.click(
+    within(dir).getByRole("button", { name: /Ava Torres/ })
+  );
+  expect(screen.getByRole("heading", { name: "Ava Torres" })).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Quinn Hale" }));
+  expect(screen.getByRole("heading", { name: "Quinn Hale" })).toBeVisible();
+  const reports = screen.getByRole("region", { name: "Direct reports" });
+  await userEvent.click(
+    within(reports).getByRole("button", { name: /Ava Torres/ })
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Open profile" }));
+  await userEvent.click(screen.getByRole("button", { name: "Directory" }));
+  expect(screen.getByRole("heading", { name: "Ava Torres" })).toBeVisible();
+  // Back from a card returns to the list, not the card before it.
+  await userEvent.click(screen.getByRole("button", { name: "Work" }));
+  expect(screen.getByLabelText("Search the directory")).toHaveValue("ava");
+});
+
 it("moves between pages and into a profile and back", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
-  await userEvent.click(screen.getByRole("tab", { name: "Golf" }));
-  expect(screen.getByRole("tab", { name: "Golf" })).toHaveAttribute(
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  await userEvent.click(within(sub).getByRole("tab", { name: "Golf" }));
+  expect(within(sub).getByRole("tab", { name: "Golf" })).toHaveAttribute(
     "aria-selected",
     "true"
   );

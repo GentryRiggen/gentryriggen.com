@@ -220,6 +220,109 @@ describe("normalizeView", () => {
       true
     );
   });
+
+  it("leaves the newer fields out when an older server sends none", () => {
+    const view = normalizeView({ today: "2026-10-31" });
+    expect(view?.actions).toBeUndefined();
+    expect(view?.actionsAsOf).toBeUndefined();
+    expect(view?.daily).toBeUndefined();
+    expect(view?.dates).toBeUndefined();
+    expect(view?.work).toBeUndefined();
+  });
+
+  it("keeps every newer field of a good payload as sent", () => {
+    const view = normalizeView(VIEW_FIXTURE);
+    expect(view?.actions).toEqual(VIEW_FIXTURE.actions);
+    expect(view?.actionsAsOf).toBe(VIEW_FIXTURE.actionsAsOf);
+    expect(view?.daily).toEqual(VIEW_FIXTURE.daily);
+    expect(view?.dates).toEqual(VIEW_FIXTURE.dates);
+    expect(view?.work).toEqual(VIEW_FIXTURE.work);
+  });
+
+  it("keeps a good action and drops a malformed one", () => {
+    const good = VIEW_FIXTURE.actions![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      actions: [good, { ...good, tone: 5 }, { ...good, title: null }, "x"],
+    });
+    expect(view?.actions).toEqual([good]);
+  });
+
+  it("never links an action anywhere but https", () => {
+    const good = VIEW_FIXTURE.actions![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      actions: [{ ...good, link: "javascript:alert(1)" }],
+    });
+    expect(view?.actions?.[0].link).toBe("");
+  });
+
+  it("drops a daily word, dates and work that aren't the right shape", () => {
+    const date = VIEW_FIXTURE.dates![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      daily: "word",
+      dates: [
+        date,
+        { ...date, days: "3" },
+        { ...date, kind: "party" },
+        { ...date, days: Number.NaN },
+        { ...date, days: Number.POSITIVE_INFINITY },
+      ],
+      work: [],
+    });
+    expect(view?.daily).toBeNull();
+    expect(view?.dates).toEqual([date]);
+    expect(view?.work).toBeUndefined();
+  });
+
+  it("turns a non-finite age into null", () => {
+    const date = VIEW_FIXTURE.dates![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      dates: [{ ...date, turns: Number.NaN }],
+    });
+    expect(view?.dates?.[0].turns).toBeNull();
+  });
+
+  it("drops bad work entries one by one and keeps the rest", () => {
+    const work = VIEW_FIXTURE.work!;
+    const [member] = work.team;
+    const [meeting] = work.meetings;
+    const [person] = work.directory.people;
+    const view = normalizeView({
+      today: "2026-10-31",
+      work: {
+        team: [member, { ...member, wins: "two" }],
+        winsByWeek: [
+          work.winsByWeek[0],
+          { week: "2026-10-26", counts: { You: "1" } },
+        ],
+        winsKeys: ["You", 7],
+        meetings: [meeting, { ...meeting, people: "Ava" }],
+        directory: {
+          updated: work.directory.updated,
+          people: [person, { ...person, reportIds: ["1"] }, null],
+        },
+      },
+    });
+    expect(view?.work?.team).toEqual([member]);
+    expect(view?.work?.winsByWeek).toEqual([work.winsByWeek[0]]);
+    expect(view?.work?.winsKeys).toEqual(["You"]);
+    expect(view?.work?.meetings).toEqual([meeting]);
+    expect(view?.work?.directory.people).toEqual([person]);
+  });
+
+  it("fills in a work payload with lists missing", () => {
+    const view = normalizeView({ today: "2026-10-31", work: {} });
+    expect(view?.work).toEqual({
+      team: [],
+      winsByWeek: [],
+      winsKeys: [],
+      meetings: [],
+      directory: { updated: "", people: [] },
+    });
+  });
 });
 
 describe("keeping payloads on the device", () => {
