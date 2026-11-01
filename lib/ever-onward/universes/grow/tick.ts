@@ -6,6 +6,7 @@ import {
   PHASE_SEED,
   PHASE_IDS,
 } from "./resources";
+import { tickBees } from "./bees";
 import { seasonBoost } from "./seasons";
 import { TUNING } from "./tuning";
 import { tickWater, waterFactor } from "./water";
@@ -100,6 +101,8 @@ function tickYard(run: RunState, dt: number): void {
 export function tickGrow(run: RunState, dt: number): void {
   if (run.phase === 0) tickYard(run, dt);
   else earn(run, incomePerSecond(run) * dt);
+  // After the phase ends, a pollination in flight still finishes paying out.
+  tickBees(run, dt, () => incomePerSecond(run));
 }
 
 export function manualGrow(run: RunState): void {

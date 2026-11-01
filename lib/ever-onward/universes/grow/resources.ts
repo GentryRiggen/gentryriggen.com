@@ -50,6 +50,26 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: HIDDEN,
   },
   { id: "wtRng", label: "Water stream", phases: HIDDEN },
+  // The bee dances: stage (0 foraging, 1 dancing), the clock, the dance
+  // (angle and length), how many danced and followed, a pollination flowing
+  // in, the last follow, and the bees' own random stream.
+  ...[
+    "beStage",
+    "beTime",
+    "beAngle",
+    "beLen",
+    "beDances",
+    "beFollows",
+    "bePending",
+    "beSurgeRate",
+    "beEarned",
+    "bePicked",
+    "beHinted",
+    "beLastPays",
+    "beBy",
+    "bePaused",
+    "beRng",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];

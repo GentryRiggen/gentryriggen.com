@@ -1,6 +1,7 @@
 import { upgradeCost } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
+import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
 import { sceneInfo } from "./scene";
 import { pickPerSecond } from "./tick";
 import { TUNING } from "./tuning";
@@ -27,6 +28,7 @@ export function growPlates(run: RunState): string[] {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
     if (ripeProduce(run) >= TUNING.yard.ripeFor) plates.push("harvest");
+    if (isDancing(run)) plates.push("bees");
   }
   return plates;
 }
@@ -34,6 +36,7 @@ export function growPlates(run: RunState): string[] {
 /** The harvest plate counts as tended while the player picks by hand. */
 export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   harvest: [YARD_HARVEST],
+  bees: BEE_ACTION_IDS,
 };
 
 /** The tank is the backyard's one watched number. */
@@ -53,8 +56,13 @@ export const GROW_CONSUMABLES: readonly ConsumableDef[] = [
 export function growIncomeView(run: RunState): RunState {
   if (run.phase !== 0) return run;
   const floor = pickPerSecond(run) * 2;
-  if (floor <= ripeProduce(run)) return run;
-  return { ...run, resources: { ...run.resources, produce: floor } };
+  const view =
+    floor <= ripeProduce(run)
+      ? run
+      : { ...run, resources: { ...run.resources, produce: floor } };
+  if (!isBeesOpen(view)) return view;
+  // A pollination flowing in is not income.
+  return withoutBees({ ...view, resources: { ...view.resources } });
 }
 
 /** Each of the first few shows up on its own, then one more for every two. */

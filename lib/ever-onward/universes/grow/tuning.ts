@@ -71,6 +71,27 @@ export const TUNING = {
     /** The harvest plate lights up at this many seconds of basket work. */
     ripeFor: 25,
   },
+  /** The bee dances: a decision about every two minutes, never a timer. */
+  bees: {
+    /** Seconds of foraging before the first dance, then between dances. */
+    firstForageSeconds: 40,
+    forageSeconds: 100,
+    /** Seconds of ripening a followed best patch is worth. */
+    bestSeconds: 12,
+    /** A patch the dance does not point at pays this share of the best. */
+    otherShare: 0.4,
+    /** The bee keeper follows a waiting dance after this long. */
+    keeperDelay: 30,
+    /** What the keeper's follow pays, as a share of the best patch. */
+    keeperShare: 0.45,
+    /** A payout flows into the seeds over this many seconds. */
+    surgeSeconds: 4,
+    /** Dances before the bee keeper turns up. */
+    keeperAfterDances: 2,
+    /** Dance wobble: degrees and length, around the true patch. */
+    angleJitter: 14,
+    lengthJitter: 0.06,
+  },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */
     growthPerCare: 0.5,

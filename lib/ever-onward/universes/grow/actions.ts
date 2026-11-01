@@ -1,7 +1,17 @@
 import { formatNumber } from "../../engine/format";
 import type { ActionDef, RunState } from "../../engine/types";
+import {
+  PATCHES,
+  danceHint,
+  followActionId,
+  followDance,
+  isBeesOpen,
+  isDancing,
+  patchPays,
+} from "./bees";
 import { PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
+import { incomePerSecond } from "./tick";
 import { TUNING } from "./tuning";
 
 export const YARD_HARVEST = "yard-harvest";
@@ -57,7 +67,29 @@ const HARVEST: ActionDef = {
   },
 };
 
-export const GROW_ACTIONS: readonly ActionDef[] = [HARVEST];
+/** One follow button per flower patch; the bee panel draws them itself. */
+const FOLLOW_PATCH: readonly ActionDef[] = PATCHES.map((patch, index) => ({
+  id: followActionId(index),
+  phases: [PHASE_YARD],
+  isInline: true,
+  visibleWhen: isBeesOpen,
+  describe: (run) => ({
+    label: `Follow the bees to ${patch.name}`,
+    detail: isDancing(run)
+      ? `About +${formatNumber(Math.floor(patchPays(run, index, incomePerSecond(run))))} seeds${
+          danceHint(run) === index ? ", the best the dance can offer" : ""
+        }.`
+      : "The bees are out among the flowers.",
+    isBlocked: !isDancing(run),
+    hint:
+      isDancing(run) && danceHint(run) === index
+        ? { text: "the dance points here", tone: "good" as const }
+        : undefined,
+  }),
+  perform: (run) => followDance(run, index, incomePerSecond(run)),
+}));
+
+export const GROW_ACTIONS: readonly ActionDef[] = [HARVEST, ...FOLLOW_PATCH];
 
 /** Used by the plate and by bots: enough ripe to bother with. */
 export const isWorthPicking = (run: RunState): boolean =>

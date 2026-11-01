@@ -3,6 +3,7 @@ import { upgradeCost } from "../../engine/engine";
 import type { Strategy } from "../../engine/sim";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { YARD_HARVEST, isWorthPicking } from "./actions";
+import { danceHint, dancesSoFar, followActionId } from "./bees";
 import { seasonOf, secondsToAutumn } from "./seasons";
 import { TUNING } from "./tuning";
 import { STORAGE_IDS, isDry, rainOutlook } from "./water";
@@ -45,6 +46,27 @@ export const picksInAutumn =
       : [];
   };
 
+/**
+ * Follows the dance to the patch it points at. A bot with real attention
+ * misses now and then: it lets one dance in every `skipEvery`th go to the
+ * keeper (counted by the bees themselves, so the sim stays deterministic).
+ */
+export const followsDance =
+  (options: { skipEvery?: number } = {}): Actions =>
+  (run, available) => {
+    if (run.phase !== 0) return [];
+    const { skipEvery } = options;
+    const dance = dancesSoFar(run);
+    if (skipEvery && dance % skipEvery === skipEvery - 1) return [];
+    const id = followActionId(danceHint(run));
+    return available.includes(id) ? [id] : [];
+  };
+
+/** Both choices at once, so a bot can pick and follow in the same step. */
+const alongside =
+  (a: Actions, b: Actions): Actions =>
+  (run, available) => [...a(run, available), ...b(run, available)];
+
 /** Never picks by hand: the baskets do it. */
 const picksNothing: Actions = () => [];
 
@@ -85,23 +107,57 @@ export function yardPlayer(
 /** The scorecard's player personalities for Make It Grow. */
 export function growBots(): BotSet {
   const base = genericBots(growUniverse);
-  const tapper = yardPlayer(base.tapper, picksAnytime(), whenRainTurnsDry);
+  const tapper = yardPlayer(
+    base.tapper,
+    alongside(picksAnytime(), followsDance()),
+    whenRainTurnsDry
+  );
   return {
     tapper,
-    realistic: yardPlayer(base.realistic, picksInAutumn(45), whenRainTurnsDry),
+    realistic: yardPlayer(
+      base.realistic,
+      alongside(picksInAutumn(45), followsDance({ skipEvery: 6 })),
+      whenRainTurnsDry
+    ),
     idle: {
       ...withStorageRule(base.idle, afterRunningDry),
       actions: picksNothing,
       greetAfter: Infinity,
     },
-    dawdler: yardPlayer(base.dawdler, picksAnytime(60), afterRunningDry),
+    dawdler: yardPlayer(
+      base.dawdler,
+      alongside(picksAnytime(60), followsDance({ skipEvery: 2 })),
+      afterRunningDry
+    ),
     skill: {
       0: {
-        naive: yardPlayer(base.tapper, picksAnytime(), afterRunningDry),
-        careful: yardPlayer(base.tapper, picksInAutumn(), whenRainTurnsDry),
+        naive: yardPlayer(
+          base.tapper,
+          alongside(picksAnytime(), followsDance()),
+          afterRunningDry
+        ),
+        careful: yardPlayer(
+          base.tapper,
+          alongside(picksInAutumn(), followsDance()),
+          whenRainTurnsDry
+        ),
       },
     },
-    naiveOil: yardPlayer(base.tapper, picksAnytime(), afterRunningDry),
+    claim: {
+      0: {
+        ignores: yardPlayer(base.tapper, picksInAutumn(), whenRainTurnsDry),
+        claims: yardPlayer(
+          base.tapper,
+          alongside(picksInAutumn(), followsDance()),
+          whenRainTurnsDry
+        ),
+      },
+    },
+    naiveOil: yardPlayer(
+      base.tapper,
+      alongside(picksAnytime(), followsDance()),
+      afterRunningDry
+    ),
     cheapskateOil: tapper,
   };
 }

@@ -1,5 +1,13 @@
 import { formatNumber } from "../../engine/format";
 import type { RunState, UpgradeDef } from "../../engine/types";
+import {
+  BEE_KEEPER_ID,
+  BEES_OPEN_FLAG,
+  dancesSoFar,
+  keeperPays,
+  keeperShown,
+  openBees,
+} from "./bees";
 import { PHASE_FARM, PHASE_SEED, PHASE_WORLD, PHASE_YARD } from "./resources";
 import { incomePerSecond, manualPerTap, pickPerSecond } from "./tick";
 import { waterCapacity } from "./water";
@@ -106,8 +114,27 @@ export const UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 8,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "sprinkler") >= 5,
+    onBuy: openBees,
     effectPreview: (run) =>
       ratePreview(run, "bee-hive", "Ripens/sec", incomePerSecond),
+  },
+  {
+    id: BEE_KEEPER_ID,
+    name: "A bee keeper",
+    description:
+      "A friendly person in a veil who reads the dance when you are busy. Your own follow still pays more.",
+    phases: [PHASE_YARD],
+    currency: "seeds",
+    baseCost: 1800,
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy the garden first.
+    priority: -1,
+    kind: "mechanic",
+    // Halfway through the dances' life: after the bees have danced twice.
+    visibleWhen: (run) =>
+      run.flags[BEES_OPEN_FLAG] === true && keeperShown(run),
+    effectPreview: (run) =>
+      `Follows after a wait: about ${num(Math.floor(keeperPays(run, incomePerSecond(run))))} seeds (${dancesSoFar(run)} dances so far)`,
   },
   {
     id: "garden-hose",
