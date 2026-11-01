@@ -46,9 +46,11 @@ interface Live {
   step: string | null;
   text: string;
   saving: boolean;
+  /** The server's whole reply has arrived, links checked: they may be tappable. */
+  final: boolean;
 }
 
-const NO_LIVE: Live = { step: null, text: "", saving: false };
+const NO_LIVE: Live = { step: null, text: "", saving: false, final: false };
 
 const ERRORS: Record<JimErrorKind, string> = {
   waking: "Jim is waking up, one moment",
@@ -101,7 +103,10 @@ const MessageList = memo(function MessageList({
         ) : (
           <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
             <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
-              <JimMarkdown text={m.text} />
+              <JimMarkdown
+                text={m.text}
+                links={m.uncertain ? "plain" : "label-url"}
+              />
             </div>
             {m.changed && m.changed.length > 0 && (
               <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
@@ -290,7 +295,7 @@ export default function JimChat({
         // The whole reply: shown as is, whatever the deltas made of it.
         stopDrawing();
         liveText.current = event.text;
-        setLive((prev) => ({ ...prev, text: event.text }));
+        setLive((prev) => ({ ...prev, text: event.text, final: true }));
         break;
       case "saving":
         setLive((prev) => ({ ...prev, saving: true }));
@@ -520,7 +525,10 @@ export default function JimChat({
                       aria-busy="true"
                       className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5"
                     >
-                      <JimMarkdown text={live.text} />
+                      <JimMarkdown
+                        text={live.text}
+                        links={live.final ? "label-url" : "plain"}
+                      />
                     </div>
                   ) : (
                     <p

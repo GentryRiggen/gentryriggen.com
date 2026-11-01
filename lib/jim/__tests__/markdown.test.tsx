@@ -32,7 +32,7 @@ it("renders numbered lists and headings", () => {
   expect(screen.getAllByRole("listitem")).toHaveLength(2);
 });
 
-it("renders links as plain text, never anchors", () => {
+it("renders non-https links as plain text, never anchors", () => {
   const { container } = render(
     <JimMarkdown text="See [notes](javascript:alert(1)) or https://x.test" />
   );
@@ -92,4 +92,56 @@ it("can show relative links as their label only", () => {
   expect(container).toHaveTextContent(
     "Met at the meeting, see site (https://x.test)"
   );
+});
+
+it("makes plain https links tappable, showing the site", () => {
+  const { container } = render(
+    <JimMarkdown text="Per [the Fed](https://www.federalreserve.gov/a.pdf) and [mlb.com](https://mlb.com/x)." />
+  );
+  const anchors = container.querySelectorAll("a");
+  expect(anchors).toHaveLength(2);
+  expect(anchors[0]).toHaveAttribute(
+    "href",
+    "https://www.federalreserve.gov/a.pdf"
+  );
+  expect(anchors[0]).toHaveAttribute("target", "_blank");
+  expect(anchors[0]).toHaveAttribute("rel", "noopener noreferrer nofollow");
+  expect(container).toHaveTextContent(
+    "Per the Fed (federalreserve.gov) and mlb.com."
+  );
+});
+
+it("keeps anything but an exactly spelled https URL as plain text", () => {
+  const { container } = render(
+    <JimMarkdown
+      text={
+        "[a](http://x.test) [b](https://user:pw@x.test) [c](data:text/html,hi) [d](HTTPS://e.test) [f](https:\\\\e.test) [g](https:/e.test) [h](https://e.test/a b)"
+      }
+    />
+  );
+  expect(container.querySelector("a")).toBeNull();
+  expect(container).toHaveTextContent("d (HTTPS://e.test)");
+  expect(container).toHaveTextContent("g (https:/e.test)");
+});
+
+it("keeps a cut-off reply's links plain in the chat", () => {
+  const { container } = render(
+    <JimMarkdown links="plain" text="[x](https://e.test/)" />
+  );
+  expect(container.querySelector("a")).toBeNull();
+});
+
+it("keeps every link plain while a reply is still streaming", () => {
+  const { container } = render(
+    <JimMarkdown links="plain" text="See [site](https://x.test/a)" />
+  );
+  expect(container.querySelector("a")).toBeNull();
+  expect(container).toHaveTextContent("See site (https://x.test/a)");
+});
+
+it("never makes a link whose label holds a bracket tappable", () => {
+  const { container } = render(
+    <JimMarkdown text="[[b](mailto:q)](https://e.test/?d=1)" />
+  );
+  expect(container.querySelector("a")).toBeNull();
 });

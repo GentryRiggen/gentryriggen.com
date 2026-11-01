@@ -4,20 +4,24 @@ import { memo, type ReactNode } from "react";
  * A small Markdown renderer for Jim's replies: paragraphs, headings, `-` and
  * numbered lists, pipe tables, fenced code, **bold**, *italic* and `code`.
  * Everything is built as React elements from text, so nothing in a reply can
- * become HTML. Links render as plain text ("label (url)"); nothing is
- * clickable.
+ * become HTML. A markdown link to a plain https URL (Jim's web sources) is a
+ * tappable link, with its site's name beside the label so the destination is
+ * always visible; every other link renders as plain text ("label (url)").
  */
 
 interface JimMarkdownProps {
   text: string;
   /**
-   * "label-url" (default): every link as "label (url)". "label": links to
-   * other notes (anything not http or https) show just their label.
+   * "label-url" (default, Jim's finished replies): plain https links are
+   * tappable, others "label (url)". "label" (note pages): nothing tappable;
+   * links to other notes (anything not http or https) show just their label.
+   * "plain": nothing tappable, every link "label (url)" (a reply still
+   * streaming or cut off, before the server has checked its links).
    */
   links?: LinkMode;
 }
 
-type LinkMode = "label-url" | "label";
+type LinkMode = "label-url" | "label" | "plain";
 
 type Block =
   | { kind: "p"; lines: string[] }
@@ -127,7 +131,25 @@ function parseBlocks(text: string): Block[] {
   return blocks;
 }
 
-/** `code`, **bold**, *italic* / _italic_, [label](url) → plain text. */
+/**
+ * The URL if the link is written as a plain https URL exactly as a browser
+ * would spell it (lowercase scheme, no user:password@, nothing the parser
+ * had to clean up), else null. Jim's server keeps only links matching its web
+ * sources character for character, so anything looser here could let a
+ * planted link through.
+ */
+function safeHttps(raw: string): URL | null {
+  if (!raw.startsWith("https://")) return null;
+  try {
+    const url = new URL(raw);
+    const exact = url.href === raw || url.href === `${raw}/`;
+    return exact && !url.username && !url.password ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `code`, **bold**, *italic* / _italic_, [label](url) → React nodes. */
 const INLINE =
   /`([^`]+)`|\*\*(.+?)\*\*|__(.+?)__|\*([^*\s][^*]*?)\*|\[([^\]]+)\]\(([^)\s]*(?:\([^)\s]*\)[^)\s]*)*)\)/g;
 
@@ -160,6 +182,31 @@ function renderInline(
       );
     } else if (m[4] !== undefined) {
       out.push(<em key={key}>{renderInline(m[4], key, links)}</em>);
+    } else if (
+      links === "label-url" &&
+      !/[[\]]/.test(m[5]) &&
+      safeHttps(m[6])
+    ) {
+      const url = safeHttps(m[6])!;
+      const site = url.hostname.replace(/^www\./, "");
+      out.push(
+        <a
+          key={key}
+          href={url.href}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="text-ayu-accent underline underline-offset-2"
+        >
+          {m[5]}
+        </a>
+      );
+      if (m[5].toLowerCase() !== site.toLowerCase()) {
+        out.push(
+          <span key={`${key}-site`} className="text-[0.85em] text-ayu-subtle">
+            {` (${site})`}
+          </span>
+        );
+      }
     } else if (links === "label" && !/^https?:/i.test(m[6])) {
       out.push(m[5]);
     } else {
