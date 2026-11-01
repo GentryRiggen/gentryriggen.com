@@ -60,7 +60,9 @@ export function managerChain(
   }
   // A manager the directory doesn't list shows by name only.
   const unknown =
-    at && at.managerId === null && chain.length < MAX_HOPS
+    at &&
+    (at.managerId === null || !people.has(at.managerId)) &&
+    chain.length < MAX_HOPS
       ? at.managerName
       : "";
   return { chain, unknown };
@@ -76,7 +78,9 @@ export function mailHref(email: string): string | null {
 
 /** A tel: link from the dial characters only. */
 export function telHref(cell: string): string | null {
-  const dial = cell.replace(/[^\d+]/g, "");
+  const trimmed = cell.trim();
+  const dial =
+    (trimmed.startsWith("+") ? "+" : "") + trimmed.replace(/\D/g, "");
   return (dial.match(/\d/g)?.length ?? 0) >= 3 ? `tel:${dial}` : null;
 }
 

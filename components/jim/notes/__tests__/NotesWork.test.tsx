@@ -10,7 +10,7 @@ import type {
 } from "@/lib/jim/view";
 import NotesWork from "../NotesWork";
 import WinsChart from "../WinsChart";
-import { DirectoryCard } from "../WorkDirectory";
+import { DirectoryCard, telHref } from "../WorkDirectory";
 
 const WORK = VIEW_FIXTURE.work!;
 
@@ -185,6 +185,24 @@ describe("DirectoryCard", () => {
     render(<Card directory={directory} start={0} />);
     expect(screen.getByText("Sky Moss")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Sky Moss" })).toBeNull();
+  });
+
+  it("shows the manager's name when their id isn't in the directory", () => {
+    const directory = {
+      updated: "",
+      people: [
+        person(0, "Rory Vale", { managerId: 99, managerName: "Sky Moss" }),
+      ],
+    };
+    render(<Card directory={directory} start={0} />);
+    expect(screen.getByText("Sky Moss")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Sky Moss" })).toBeNull();
+  });
+
+  it("keeps a plus only at the start of a tel link", () => {
+    expect(telHref("+1 555 0100")).toBe("tel:+15550100");
+    expect(telHref("555+5550")).toBe("tel:5555550");
+    expect(telHref("5+5")).toBeNull();
   });
 
   it("stops walking a manager cycle", () => {
