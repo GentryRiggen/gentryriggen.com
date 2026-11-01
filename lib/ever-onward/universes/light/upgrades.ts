@@ -36,6 +36,14 @@ import {
   calmIncomePerSecond,
 } from "./tick";
 import {
+  MISSION_CONTROL_ID,
+  PROBES_OPEN_FLAG,
+  RACING_FINS_ID,
+  openProbes,
+  routeSeconds,
+  runsHome,
+} from "./probes";
+import {
   BIGGER_NETS_ID,
   TIDE_MILL_ID,
   TIDE_OPEN_FLAG,
@@ -786,8 +794,10 @@ const skyUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Star charts",
-        description: "The fleet drifts off course half as fast.",
+        description:
+          "The fleet drifts off course half as fast. The charts show a map: send a racing probe on a route and it brings back energy.",
         showWhen: (run) => owned(run, "copy-1") >= 1,
+        onBuy: openProbes,
       },
       {
         name: "A navigator mind",
@@ -797,6 +807,51 @@ const skyUpgrades: UpgradeDef[] = [
       },
     ],
   }),
+  {
+    id: RACING_FINS_ID,
+    name: "Racing fins",
+    description:
+      "Fins on the racing probe. Every route is a quarter quicker, and the haul stays the same.",
+    phases: sky,
+    currency: "energy",
+    baseCost: COSTS[RACING_FINS_ID],
+    costGrowth: 1,
+    // A bonus helper, not income: bots buy collectors and mirrors first.
+    priority: -1,
+    visibleWhen: (run) =>
+      run.flags[PROBES_OPEN_FLAG] === true &&
+      runsHome(run) >= 1 &&
+      owned(run, "relay-1") >= 1,
+    onBuy: sync,
+    effectPreview: previewOf(RACING_FINS_ID, [
+      {
+        label: "Short hop",
+        read: (run) => routeSeconds(run, 0),
+        suffix: " s",
+      },
+      {
+        label: "Long loop",
+        read: (run) => routeSeconds(run, 1),
+        suffix: " s",
+      },
+    ]),
+  },
+  {
+    id: MISSION_CONTROL_ID,
+    name: "Mission control",
+    description:
+      "A second, scout probe flies your last route again and again by itself, for a smaller haul. Yours still pay in full on top.",
+    phases: sky,
+    currency: "energy",
+    baseCost: COSTS[MISSION_CONTROL_ID],
+    costGrowth: 1,
+    priority: -1,
+    // Later, once the racing probe has its fins.
+    visibleWhen: (run) =>
+      run.flags[PROBES_OPEN_FLAG] === true && owned(run, RACING_FINS_ID) > 0,
+    onBuy: sync,
+    effectPreview: () => "Scout probe: none → flies your last route",
+  },
   ...chain({
     base: "engines",
     phases: sky,
@@ -909,6 +964,7 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "grid-2",
   WEATHER_VANE_ID,
   TIDE_MILL_ID,
+  MISSION_CONTROL_ID,
   "nav-1",
   "nav-2",
 ]);

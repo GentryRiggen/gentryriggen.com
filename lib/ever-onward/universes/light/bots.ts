@@ -2,6 +2,7 @@ import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { barrelOil, tankCapacity } from "./tick";
+import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import { HAUL_ACTION, SET_NETS_ACTION, highTidesSoFar } from "./tide";
 import {
   frontsSoFar,
@@ -115,6 +116,37 @@ const tendsTide =
     return available.includes(SET_NETS_ACTION) ? [SET_NETS_ACTION] : [];
   };
 
+/** Seconds in one stretch of attention for the probe races. */
+const RACE_WINDOW = 30;
+
+/**
+ * Launches the racing probe whenever it sits at the dock, on the route that
+ * fits the player: `comet` is how close the comet must be before the bot
+ * chases it (it reads the bar), `plain` the route it flies otherwise (0 short
+ * hop, 1 long loop). A bot with real attention misses now and then: it lets
+ * the probe sit at the dock for one 30 s stretch in every `skipEvery`th
+ * (counted by the clock, so the sim stays deterministic), and `onlyEvery`
+ * makes a distracted player launch in just one stretch in so many. A probe at
+ * the dock waits, so a miss costs only time.
+ */
+const racesProbes =
+  (options: {
+    comet: number;
+    plain: number;
+    skipEvery?: number;
+    onlyEvery?: number;
+  }): OilChoice =>
+  (run, available) => {
+    if (isProbeOut(run)) return [];
+    const stretch = Math.floor(run.time / RACE_WINDOW);
+    const { skipEvery, onlyEvery } = options;
+    if (skipEvery && stretch % skipEvery === skipEvery - 1) return [];
+    if (onlyEvery && stretch % onlyEvery !== 0) return [];
+    const route = cometCloseness(run) >= options.comet ? 2 : options.plain;
+    const id = launchActionId(route);
+    return available.includes(id) ? [id] : [];
+  };
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -134,10 +166,11 @@ const withOil = (
   actions: OilChoice,
   care: OilChoice = looksAfterThings(45, true),
   weather: OilChoice = () => [],
-  tide: OilChoice = () => []
+  tide: OilChoice = () => [],
+  race: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather, tide),
+  actions: combine(actions, care, weather, tide, race),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -165,14 +198,16 @@ export function lightBots(): BotSet {
       savvyOil,
       looksAfterThings(74, true),
       tendsWeather({ skipEvery: 10 }),
-      tendsTide({ skipEvery: 8 })
+      tendsTide({ skipEvery: 8 }),
+      racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 })
     ),
     realistic: withOil(
       base.realistic,
       savvyOil,
       looksAfterThings(42, true),
       tendsWeather({ skipEvery: 5 }),
-      tendsTide({ skipEvery: 4 })
+      tendsTide({ skipEvery: 4 }),
+      racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 })
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
@@ -181,7 +216,8 @@ export function lightBots(): BotSet {
         savvyOil,
         looksAfterThings(35, false),
         tendsWeather({ onlyEvery: 3 }),
-        tendsTide({ onlyEvery: 3 })
+        tendsTide({ onlyEvery: 3 }),
+        racesProbes({ comet: 2, plain: 1, onlyEvery: 3 })
       ),
       greetAfter: 60,
     },

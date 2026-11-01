@@ -255,6 +255,20 @@ const sky: StoryMessage[] = [
     text: "Space is wide and probes are patient. The first copies arrive years later, but your clock has never minded waiting.",
   },
   {
+    id: "sky-races",
+    phase: PHASE_SKY,
+    // Some time after the charts arrive, so the map and its story do not land together.
+    when: (run) =>
+      run.flags["probes-open"] === true && (run.resources.prTime ?? 0) >= 30,
+    text: "The star charts show three routes, and a little racing probe waits at the dock with its engine humming. It is no use to the fleet, really. It just wants to go fast, and come home, and tell you all about it.",
+  },
+  {
+    id: "sky-scout",
+    phase: PHASE_SKY,
+    when: (run) => owned(run, "mission-control") >= 1,
+    text: "Mission control is a small room with a very big window. A scout probe slips out and flies your last route, so the dock is never quiet. Your racing probe is still yours, and the stars have plenty of room for both.",
+  },
+  {
     id: "sky-sail",
     phase: PHASE_SKY,
     when: (run) => owned(run, "engines-2") >= 1,

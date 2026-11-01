@@ -3,7 +3,7 @@ import { def } from "./fixtures";
 describe("Keep the Light On story", () => {
   it("has a healthy amount of text", () => {
     expect(def.story.length).toBeGreaterThanOrEqual(30);
-    expect(def.story.length).toBeLessThanOrEqual(64);
+    expect(def.story.length).toBeLessThanOrEqual(66);
   });
 
   it("has non-empty messages with unique ids", () => {

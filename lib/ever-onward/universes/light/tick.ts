@@ -10,6 +10,7 @@ import {
   TOTAL_STARS,
 } from "./resources";
 import { TUNING } from "./tuning";
+import { tickProbes } from "./probes";
 import { tickTide } from "./tide";
 import { tickWeather } from "./weather";
 
@@ -572,6 +573,8 @@ export function tickLight(run: RunState, dt: number): void {
   const phase = run.phase;
   // Every phase: a catch still flowing in when the coast ends finishes.
   tickTide(run, dt, () => calmIncomePerSecond(run));
+  // Every phase: a probe away and a haul flowing in when the sky ends finish.
+  tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);
@@ -639,6 +642,16 @@ export function incomePerSecond(run: RunState): number {
  */
 export const calmIncomePerSecond = (run: RunState): number =>
   autoCoinsPerSecond(run) + C.tankTapsPerSecond * calmTapCoins(run);
+
+/**
+ * The sky's income on a calm day, taps at a steady 3 a second included: the
+ * yardstick for a probe's haul, so a flare or a drifting fleet when it
+ * launches never makes it bigger or smaller by much.
+ */
+export const calmSkyIncomePerSecond = (run: RunState): number =>
+  collectorEnergyPerSecond(run) +
+  probeEnergyPerSecond(run) +
+  aimEnergy(run) * 3;
 
 /** The gift every income visitor brings: a small slice of the phase's income. */
 export const visitorGift = (run: RunState): number =>

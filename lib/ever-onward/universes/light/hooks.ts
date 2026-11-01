@@ -17,6 +17,12 @@ import {
   tankCapacity,
 } from "./tick";
 import { cloneRun } from "../../engine/engine";
+import {
+  LAUNCH_ACTION_IDS,
+  isProbesOpen,
+  runsHome,
+  withoutProbeRaces,
+} from "./probes";
 import { TIDE_ACTION_IDS, haulsSoFar, isTideOpen, withoutTide } from "./tide";
 import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
@@ -57,6 +63,9 @@ export function lightPlates(run: RunState): string[] {
     if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
       plates.push("course");
     if (isFlareOn(run)) plates.push("flare");
+    // Offered once the second probe is home (so it is not a crowd of beats at
+    // the moment the map opens).
+    if (isProbesOpen(run) && runsHome(run) >= 2) plates.push("race");
   } else {
     plates.push("tend");
     const hasLetGoOnOffer = run.revealed.some(
@@ -74,6 +83,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   grid: ["balance-grid"],
   rush: ["ride-rush"],
   tide: TIDE_ACTION_IDS,
+  race: LAUNCH_ACTION_IDS,
   weather: SHIELD_ACTION_IDS,
   course: ["correct-course"],
   flare: ["catch-flare"],
@@ -150,6 +160,9 @@ function sceneKey(run: RunState): string {
     s.tideOpen,
     s.biggerNets,
     s.tideMill,
+    s.raceOpen,
+    s.raceFins,
+    s.raceControl,
     s.weatherVane,
     s.aimLevel,
     s.mirrorTier,
@@ -170,8 +183,12 @@ export const lightSceneDiff = (before: RunState, after: RunState): boolean =>
 
 /** Income probes see the run with no storm landing and no surge pending. */
 export const lightIncomeView = (run: RunState): RunState => {
-  const draft = isWeatherOpen(run) || isTideOpen(run) ? cloneRun(run) : run;
+  const draft =
+    isWeatherOpen(run) || isTideOpen(run) || isProbesOpen(run)
+      ? cloneRun(run)
+      : run;
   if (isWeatherOpen(draft)) withoutStorms(draft);
   if (isTideOpen(draft)) withoutTide(draft);
+  if (isProbesOpen(draft)) withoutProbeRaces(draft);
   return draft;
 };
