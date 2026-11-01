@@ -24,6 +24,7 @@ export const CHANGELOG: readonly Release[] = [
       "The game's music and sounds now play alongside your podcast or music instead of stopping it. Like most games, they follow the silent switch",
       "With music and sound both off, the game never touches your audio at all",
       "When the power bar slides down from the top, the picture shrinks to fit underneath it, so nothing is hidden",
+      "On iPad the power bar no longer covers the top of the page; it only slides in once the coins scroll away",
     ],
   },
   {
