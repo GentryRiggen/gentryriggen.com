@@ -307,6 +307,12 @@ export interface UniverseSave {
   embers: number;
   /** Prestige upgrade id to level. */
   prestigeUpgrades: Record<string, number>;
+  /**
+   * The "you can restart for embers" card has been shown and answered. Per
+   * universe, so a restart does not bring it back. Missing in older saves
+   * (read as false).
+   */
+  hasSeenEmberTip?: boolean;
 }
 
 export interface SaveData {

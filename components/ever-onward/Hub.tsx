@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatDuration } from "@/lib/ever-onward/engine/format";
+import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
 import type { SaveData, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
 import {
@@ -59,8 +60,7 @@ function UniverseCard({
 }) {
   const universe = save.universes[def.id];
   const run = universe?.run;
-  const hasStarted =
-    !!universe && (universe.completions > 0 || run.time > 0 || run.taps > 0);
+  const hasStarted = !!universe && hasStartedUniverse(universe);
   const stats: { label: string; value: string }[] = [];
   if (universe && hasStarted) {
     stats.push({
