@@ -17,7 +17,7 @@ import {
   regionWelcome,
   sendActionId,
 } from "../migration";
-import { incomePerSecond } from "../tick";
+import { incomePerSecond, manualPerTap } from "../tick";
 import { TUNING } from "../tuning";
 import { def, runAtPhaseStart } from "./fixtures";
 
@@ -173,9 +173,9 @@ describe("seed migration", () => {
     expect(after.resources.mgPending).toBe(0);
     const pays = regionWelcome(on, 4) * Math.max(1, worldIncome);
     expect(after.resources.mgLastPays).toBeCloseTo(pays, 5);
-    expect((after.resources.care ?? 0) - (ended.resources.care ?? 0)).toBe(
-      Math.floor(pays * M.greenToCare)
-    );
+    const gift = (after.resources.care ?? 0) - (ended.resources.care ?? 0);
+    expect(gift).toBe(Math.min(M.carryCap, Math.floor(pays * M.greenToCare)));
+    expect(gift).toBeLessThanOrEqual(5 * manualPerTap(ended));
     expect(after.resources.care).toBeGreaterThan(0);
   });
 

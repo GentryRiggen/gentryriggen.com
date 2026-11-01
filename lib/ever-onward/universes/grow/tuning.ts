@@ -231,6 +231,8 @@ export const TUNING = {
     surgeSeconds: 4,
     /** A landing still flowing when the world ends becomes this much care. */
     greenToCare: 0.00005,
+    /** The most care a flock in flight at the world's end can hand the seed. */
+    carryCap: 5,
   },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */
