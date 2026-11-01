@@ -37,6 +37,9 @@ export const PHASES: readonly PhaseDef[] = [
       // Old coins no longer matter; the grid runs on power.
       run.resources.power += 20 * headStart(run);
       run.resources.night = 100;
+      run.resources.grid = 100;
+      run.resources.rush = 0;
+      run.resources.rushCooldown = TUNING.night.rushFirst;
       syncDisplay(run);
     },
   },
@@ -50,6 +53,9 @@ export const PHASES: readonly PhaseDef[] = [
     isDone: (run) => run.resources.stars <= 0.5,
     onEnter: (run) => {
       run.resources.energy += 20 * headStart(run);
+      run.resources.heading = 100;
+      run.resources.flare = 0;
+      run.resources.flareCooldown = TUNING.sky.flareFirst;
       syncDisplay(run);
     },
   },
@@ -58,15 +64,17 @@ export const PHASES: readonly PhaseDef[] = [
     title: "The Last Light",
     intro:
       "The sky is empty and quiet. Light does not last forever, and now it is up to you which lights stay.",
-    manualResource: "energy",
+    manualResource: "resolve",
     manualLabel: "Tend the flame",
     isDone: () => false,
     onEnter: (run) => {
-      run.resources.energy = Math.max(
-        run.resources.energy,
-        TUNING.last.startEnergy
-      );
+      // The flame starts here whatever came before, so the ending is the same
+      // small thing for every player.
+      run.resources.flame = TUNING.last.startFlame;
       run.resources.resolve = 0;
+      run.resources.ships = 0;
+      run.resources.boatHeading = 100;
+      run.resources.boatProgress = 0;
       syncDisplay(run);
     },
   },

@@ -32,6 +32,9 @@ const AUTOSAVE_MS = 10_000;
 const GAME_HISTORY_KEY = "everOnwardGame";
 
 /** What the player has to click through before play resumes. */
+/** How long the last moment plays before the ending screen (ms). */
+const ENDING_BEAT_MS = 4500;
+
 export type Overlay = "phase" | "ending" | null;
 
 /** A universe save the current build can play (phase in range). */
@@ -87,6 +90,8 @@ export function useGame(): GameApi {
   /** Transitions the player has already seen; -1 shows the opening intro. */
   const [seenTransitions, setSeenTransitions] = useState(0);
   const [endingDone, setEndingDone] = useState(false);
+  /** The ending screen waits a few seconds so the last moment can play out. */
+  const [endingBeatDone, setEndingBeatDone] = useState(false);
 
   const def = activeId ? (getPlayableUniverse(activeId) ?? null) : null;
   const universe = save && activeId ? (save.universes[activeId] ?? null) : null;
@@ -145,6 +150,7 @@ export function useGame(): GameApi {
       replaceUniverse(id, ready, true);
       setSeenTransitions(isFresh(ready) ? -1 : ready.run.transitions.length);
       setEndingDone(ready.run.complete);
+      setEndingBeatDone(ready.run.complete);
       setActiveId(id);
       // One history entry per game, so Back returns to the hub.
       window.history.pushState({ [GAME_HISTORY_KEY]: id }, "");
@@ -177,13 +183,25 @@ export function useGame(): GameApi {
   const overlay: Overlay = !run
     ? null
     : run.complete
-      ? endingDone
+      ? endingDone || !endingBeatDone
         ? null
         : "ending"
       : run.transitions.length > seenTransitions
         ? "phase"
         : null;
   const isPaused = overlay !== null;
+  const isComplete = run?.complete ?? false;
+
+  // The run is over, but the scene still has its last moment to play (the
+  // flash, the boat turning for home) before the ending screen covers it.
+  useEffect(() => {
+    if (!isComplete || endingDone || endingBeatDone) return;
+    const timer = window.setTimeout(
+      () => setEndingBeatDone(true),
+      ENDING_BEAT_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [isComplete, endingDone, endingBeatDone]);
 
   // The game loop: real time while the page is visible, nothing while hidden.
   useEffect(() => {
@@ -318,6 +336,7 @@ export function useGame(): GameApi {
     replaceUniverse(activeId, next, true);
     setSeenTransitions(-1);
     setEndingDone(false);
+    setEndingBeatDone(false);
   }, [activeId, def, replaceUniverse]);
 
   const replaceSave = useCallback(

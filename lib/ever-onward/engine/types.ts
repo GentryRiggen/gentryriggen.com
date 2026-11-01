@@ -59,6 +59,21 @@ export interface PhaseDef {
   onEnter?(run: RunState): void;
 }
 
+export type UpgradeKind = "mechanic" | "scale" | "filler";
+
+/** A watched number the player must look after (lamp oil). */
+export interface ConsumableDef {
+  id: string;
+  label: string;
+  /** 0 (empty) to 1 (full), or null where it does not apply. Must only read. */
+  level(run: RunState): number | null;
+  /**
+   * The levels that count as "low" for the tension metric (default 5% to
+   * 30%): the zone where the player feels it and fixes it.
+   */
+  lowZone?: { lo: number; hi: number };
+}
+
 export interface UpgradeDef {
   id: string;
   name: string;
@@ -76,6 +91,12 @@ export interface UpgradeDef {
   visibleWhen?(run: RunState): boolean;
   /** Sim hint: higher is bought first among the affordable. */
   priority?: number;
+  /**
+   * Scorecard tag: "mechanic" is a new system or action, "scale" a bigger
+   * step on something that exists, "filler" a small repeatable. Omitted is
+   * "scale". Read only by the simulator and the scorecard.
+   */
+  kind?: UpgradeKind;
   onBuy?(run: RunState, newLevel: number): void;
   /**
    * A short before-to-after line for the card ("Coins/sec 12 -> 17"), read
@@ -111,8 +132,12 @@ export interface ActionDef {
   visibleWhen?(run: RunState): boolean;
   /** Must only read. */
   describe(run: RunState): ActionView;
-  /** Applies the effect to a draft; the engine has already taken the cost. */
-  perform(run: RunState): void;
+  /**
+   * Applies the effect to a draft; the engine has already taken the cost, and
+   * says how much it took (`paid`), so an action priced by what it gives
+   * (a tank filled with whatever the coins can buy) needs no second guess.
+   */
+  perform(run: RunState, paid: number): void;
 }
 
 export interface StoryMessage {
@@ -169,6 +194,25 @@ export interface UniverseDef {
    * paid in coins). Used for the net rate; never applied by the engine.
    */
   upkeep?(run: RunState): Record<string, number>;
+  /**
+   * Scorecard hook: ids of the systems that offer or want the player's
+   * attention right now ("tap", "oilMarket", "storm"). Must only read.
+   */
+  plates?(run: RunState): string[];
+  /**
+   * Scorecard hook: plate id to the action ids that tend it. A plate listed
+   * here only counts as spinning while the player has done one of its actions
+   * in the last 90 seconds (attention events, not a dial under a line); a
+   * plate not listed counts whenever `plates` offers it.
+   */
+  plateActions?: Readonly<Record<string, readonly string[]>>;
+  /** Scorecard hook: watched numbers with a refill (see `ConsumableDef`). */
+  consumables?: readonly ConsumableDef[];
+  /**
+   * Scorecard hook: true when the scene a player sees differs between the two
+   * runs (a new lighthouse, a light let go). Must only read.
+   */
+  sceneDiff?(before: RunState, after: RunState): boolean;
   /** The free tap. Must earn the phase's manualResource whatever the state. */
   manualAction(run: RunState): void;
   /** Read in the last phase: true ends the run. */

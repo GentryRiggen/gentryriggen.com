@@ -301,7 +301,7 @@ export function performAction(
   const { cost } = action.describe(run);
   const next = cloneRun(run);
   if (cost) next.resources[cost.resource] -= cost.amount;
-  action.perform(next);
+  action.perform(next, cost?.amount ?? 0);
   settle(def, next);
   return next;
 }

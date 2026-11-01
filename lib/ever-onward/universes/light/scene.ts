@@ -10,6 +10,9 @@ import {
   TOTAL_STARS,
 } from "./resources";
 import {
+  boatHeadingOf,
+  flameFraction,
+  isBoatOut,
   isStorming,
   keeperCount,
   level,
@@ -49,11 +52,26 @@ export interface LightSceneInfo {
   lightsRemaining: number;
   /** Lights left / TOTAL_LIGHTS, 0..1. */
   lightsFraction: number;
-  /** 1 once the very first ship is remembered and the last light stands. */
-  remembered: number;
+  /** The flame, 0..1 (steps of 5%, so the picture is not redrawn every tick). */
+  flame: number;
+  /** 1 once the first ship's boat is out in the dark. */
+  boatVisible: number;
+  /** How far across the dark the boat is, 0..1 (steps of 1%). */
+  boatProgress: number;
+  /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
+  boatHeading: number;
+  /** 1 once the last flash is made and the boat has turned for home. */
+  finished: number;
+  /** Seconds into the run the very first ship was guided; 0 if not yet. */
+  firstShipSeconds: number;
+  /** 1 if that first ship came in a storm. */
+  firstShipStorm: number;
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
+/** Rounds to the nearest 1/steps so a smooth number changes in steps. */
+const step = (n: number, steps: number): number =>
+  Math.round(clamp01(n) * steps) / steps;
 const finite = (n: number): number => (Number.isFinite(n) ? n : 0);
 
 /** A small plain object for the scene renderer; every number is finite. */
@@ -95,6 +113,12 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     starsFraction: clamp01(stars / TOTAL_STARS),
     lightsRemaining: lights,
     lightsFraction: clamp01(lights / TOTAL_LIGHTS),
-    remembered: level(run, "remember") > 0 ? 1 : 0,
+    flame: step(flameFraction(run), 20),
+    boatVisible: isBoatOut(run) ? 1 : 0,
+    boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
+    boatHeading: step(boatHeadingOf(run) / 100, 20),
+    finished: run.flags.finished ? 1 : 0,
+    firstShipSeconds: Math.floor(finite(r.firstShipAt ?? 0)),
+    firstShipStorm: r.firstShipStorm ? 1 : 0,
   };
 }

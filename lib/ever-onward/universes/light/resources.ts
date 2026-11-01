@@ -24,7 +24,7 @@ const HIDDEN: readonly string[] = [];
 export const RESOURCES: readonly ResourceDef[] = [
   // The Coast
   { id: "coins", label: "Coins", phases: [PHASE_COAST] },
-  { id: "ships", label: "Ships guided", phases: [PHASE_COAST] },
+  { id: "ships", label: "Ships guided", phases: [PHASE_COAST, PHASE_LAST] },
   { id: "oil", label: "Lamp oil", initial: 40, phases: [PHASE_COAST] },
   { id: "oilTrend", label: "Oil price trend", phases: HIDDEN },
   { id: "oilPrice", label: "Oil price", initial: 2, phases: [PHASE_COAST] },
@@ -48,10 +48,26 @@ export const RESOURCES: readonly ResourceDef[] = [
     initial: 100,
     phases: [PHASE_NIGHT],
   },
+  {
+    id: "grid",
+    label: "Grid steadiness (%)",
+    initial: 100,
+    phases: [PHASE_NIGHT],
+  },
+  { id: "rush", label: "Evening rush", phases: HIDDEN },
+  { id: "rushCooldown", label: "Next rush", initial: 90, phases: HIDDEN },
   // The Sky
-  { id: "energy", label: "Energy", phases: [PHASE_SKY, PHASE_LAST] },
+  { id: "energy", label: "Energy", phases: [PHASE_SKY] },
   { id: "collectors", label: "Sun collectors", phases: [PHASE_SKY] },
   { id: "probes", label: "Probes", phases: [PHASE_SKY] },
+  {
+    id: "heading",
+    label: "Probe heading (%)",
+    initial: 100,
+    phases: [PHASE_SKY],
+  },
+  { id: "flare", label: "Solar flare", phases: HIDDEN },
+  { id: "flareCooldown", label: "Next flare", initial: 100, phases: HIDDEN },
   { id: "starsTaken", label: "Stars taken", phases: HIDDEN },
   {
     id: "stars",
@@ -61,6 +77,13 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   // The Last Light
   { id: "resolve", label: "Resolve", phases: [PHASE_LAST] },
+  { id: "flame", label: "Flame", initial: 600, phases: [PHASE_LAST] },
+  // The first ship's boat (shown through its action, not as a number).
+  { id: "boatHeading", label: "Boat heading", initial: 100, phases: HIDDEN },
+  { id: "boatProgress", label: "Boat progress", phases: HIDDEN },
+  // When the very first ship was guided (seconds of the run, 0 = not yet).
+  { id: "firstShipAt", label: "First ship at", phases: HIDDEN },
+  { id: "firstShipStorm", label: "First ship in a storm", phases: HIDDEN },
   {
     id: "lights",
     label: "Lights still lit",
