@@ -113,6 +113,85 @@ describe("useJimUpdate: version file", () => {
   });
 });
 
+describe("useJimUpdate: taps and retries", () => {
+  it("keeps the draft just before reloading", async () => {
+    mockVersionFile("new");
+    const onBeforeUpdate = jest.fn();
+    const { result } = renderHook(() =>
+      useJimUpdate({ current: "old", enabled: true, onBeforeUpdate })
+    );
+    await waitFor(() => expect(result.current.isUpdateReady).toBe(true));
+    await act(async () => result.current.update());
+    expect(onBeforeUpdate).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(reload).toHaveBeenCalled());
+  });
+
+  it("retries a failed version check after ~10s, not a minute", async () => {
+    jest.useFakeTimers({ now: 5_000_000 });
+    const fetchMock = jest.fn().mockRejectedValue(new Error("offline"));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    renderHook(() =>
+      useJimUpdate({ current: "x", enabled: true, intervalMs: 60_000 })
+    );
+    await act(async () => {});
+    jest.setSystemTime(5_000_000 + 11_000);
+    await act(async () => {
+      showTab();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for a worker that is still installing, then activates it", async () => {
+    const { registration, listeners, postMessage } = fakeWorkers(false);
+    const stateListeners: Array<() => void> = [];
+    const installing = {
+      state: "installing",
+      addEventListener: (_t: string, fn: () => void) => stateListeners.push(fn),
+      removeEventListener: () => {},
+    };
+    Object.assign(registration, { installing });
+    mockVersionFile("new");
+    const { result } = renderHook(() =>
+      useJimUpdate({ current: "old", enabled: true })
+    );
+    await waitFor(() => expect(result.current.isUpdateReady).toBe(true));
+    await act(async () => result.current.update());
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+    await act(async () => {
+      installing.state = "installed";
+      Object.assign(registration, { waiting: { postMessage } });
+      stateListeners.forEach((fn) => fn());
+    });
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" })
+    );
+    act(() => listeners.get("controllerchange")?.());
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads after 4s if controllerchange never comes, and ignores repeat taps", async () => {
+    const { postMessage, container } = fakeWorkers(true);
+    const add = jest.spyOn(container, "addEventListener");
+    mockVersionFile("same");
+    const { result } = renderHook(() =>
+      useJimUpdate({ current: "same", enabled: true })
+    );
+    await waitFor(() => expect(result.current.isUpdateReady).toBe(true));
+    jest.useFakeTimers();
+    await act(async () => {
+      result.current.update();
+      result.current.update();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(4_100);
+    });
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("useJimUpdate: service worker", () => {
   it("shows the pill for a waiting worker and updates the worker on return", async () => {
     const { registration } = fakeWorkers(true);

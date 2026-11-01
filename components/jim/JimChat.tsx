@@ -37,6 +37,7 @@ import {
   saveHistory,
   type ChatMessage,
 } from "@/lib/jim/history";
+import { clearDraft, loadDraft, saveDraft } from "@/lib/jim/draft";
 import JimMarkdown from "@/lib/jim/markdown";
 import {
   allowedSay,
@@ -241,7 +242,7 @@ export default function JimChat({
   const [live, setLive] = useState<Live>(NO_LIVE);
   // A notification can open /jim?say=quiz%20me: the text waits in the box,
   // unsent, for Gentry to send.
-  const [draft, setDraft] = useState(() => sayFromLocation() ?? "");
+  const [draft, setDraft] = useState(() => sayFromLocation() ?? loadDraft(uid));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   /** A message Jim may have acted on, kept out of the box until asked for. */
@@ -303,6 +304,8 @@ export default function JimChat({
   }, []);
 
   useEffect(() => clearSayFromLocation(), []);
+  // A draft kept across an update reload is restored once, then dropped.
+  useEffect(() => clearDraft(uid), [uid]);
 
   // A notification tapped while this page is open: the service worker sends
   // its text here. Only allowed text, and only into an empty box.
@@ -449,7 +452,10 @@ export default function JimChat({
     setHeld(null);
     setSlow(false);
     setSending(true);
-    if (given === undefined) setDraft("");
+    if (given === undefined) {
+      setDraft("");
+      clearDraft(uid);
+    }
     stopDrawing();
     liveText.current = "";
     setLive(NO_LIVE);
@@ -523,6 +529,7 @@ export default function JimChat({
 
   /** Clears the conversation here and on this device; Jim starts afresh. */
   function newChat() {
+    clearDraft(uid);
     chatRun.current += 1;
     turn.current?.abort();
     stopDrawing();
@@ -555,6 +562,7 @@ export default function JimChat({
 
   /** Drops the turn that is out and keeps nothing more on this device. */
   function signOut() {
+    clearDraft(uid);
     signedOut.current = true;
     stopReading();
     chatRun.current += 1;
@@ -636,7 +644,10 @@ export default function JimChat({
   }
 
   const canSend = draft.trim().length > 0 && !sending && online;
-  const jimUpdate = useJimUpdate();
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const keepDraft = useCallback(() => saveDraft(uid, draftRef.current), [uid]);
+  const jimUpdate = useJimUpdate({ onBeforeUpdate: keepDraft });
 
   if (locked) return null;
 

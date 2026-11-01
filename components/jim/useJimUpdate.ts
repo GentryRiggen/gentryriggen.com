@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { reloadPage } from "@/lib/jim/reload";
 import {
+  RETRY_AFTER_FAILURE_MS,
   activateWaitingWorker,
   watchForWaitingWorker,
 } from "@/lib/jim/serviceWorkerUpdate";
@@ -26,6 +27,8 @@ interface JimUpdateOptions {
   current?: string;
   enabled?: boolean;
   intervalMs?: number;
+  /** Runs just before a tap reloads the page (to keep a draft). */
+  onBeforeUpdate?: () => void;
 }
 
 async function fetchBuildId(): Promise<string | null> {
@@ -52,6 +55,7 @@ export default function useJimUpdate({
   current = BUILD_ID,
   enabled = IS_ENABLED_BY_DEFAULT,
   intervalMs = JIM_UPDATE_CHECK_INTERVAL_MS,
+  onBeforeUpdate,
 }: JimUpdateOptions = {}): { isUpdateReady: boolean; update: () => void } {
   const [isUpdateReady, setIsUpdateReady] = useState(false);
 
@@ -63,13 +67,20 @@ export default function useJimUpdate({
     );
     if (!current) return stopWorker;
     let lastCheck = 0;
+    let isChecking = false;
     let isCancelled = false;
 
     const check = async () => {
       const now = Date.now();
-      if (lastCheck && now - lastCheck < intervalMs) return;
-      lastCheck = now;
+      if (isChecking || (lastCheck && now - lastCheck < intervalMs)) return;
+      isChecking = true;
       const latest = await fetchBuildId();
+      isChecking = false;
+      // A failed check may try again soon, not after a whole interval.
+      lastCheck =
+        latest === null
+          ? Date.now() - Math.max(0, intervalMs - RETRY_AFTER_FAILURE_MS)
+          : Date.now();
       if (!isCancelled && latest !== null && latest !== current)
         setIsUpdateReady(true);
     };
@@ -92,13 +103,14 @@ export default function useJimUpdate({
   }, [current, enabled, intervalMs]);
 
   const update = useCallback(() => {
+    onBeforeUpdate?.();
     const reload = reloadPage;
     // A waiting worker takes over first (its controllerchange reloads);
     // with none, a plain reload fetches the new page.
     void activateWaitingWorker(reload).then((hasWaiting) => {
       if (!hasWaiting) reload();
     });
-  }, []);
+  }, [onBeforeUpdate]);
 
   return { isUpdateReady, update };
 }

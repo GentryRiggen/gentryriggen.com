@@ -15,6 +15,17 @@ interface WorkerContainer {
   removeEventListener: (type: string, listener: () => void) => void;
 }
 
+/** A failed check may try again after this long, not a whole interval. */
+export const RETRY_AFTER_FAILURE_MS = 10_000;
+/** How long a tap waits for a worker that is still installing. */
+export const INSTALL_WAIT_MS = 10_000;
+/** After SKIP_WAITING, how long before giving up on controllerchange. */
+export const CONTROLLER_CHANGE_WAIT_MS = 4_000;
+
+/** Workers already told to take over: never offered as an update again. */
+const activatedWorkers = new WeakSet<object>();
+let isActivating = false;
+
 function workerContainer(): WorkerContainer | null {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return null;
@@ -45,18 +56,26 @@ export function watchForWaitingWorker(
   if (!container) return () => {};
   let isCancelled = false;
   let lastCheck = 0;
+  let isChecking = false;
   let tracked: ServiceWorkerRegistration | undefined;
   const cleanups: Array<() => void> = [];
 
   const flagIfWaiting = (registration: ServiceWorkerRegistration) => {
-    if (registration.waiting && container.controller) onWaiting();
+    const { waiting } = registration;
+    if (waiting && container.controller && !activatedWorkers.has(waiting))
+      onWaiting();
   };
 
   const trackInstalling = (registration: ServiceWorkerRegistration) => {
     const worker = registration.installing;
     if (!worker || typeof worker.addEventListener !== "function") return;
     const onState = () => {
-      if (worker.state === "installed" && container.controller) onWaiting();
+      if (
+        worker.state === "installed" &&
+        container.controller &&
+        !activatedWorkers.has(worker)
+      )
+        onWaiting();
     };
     worker.addEventListener("statechange", onState);
     cleanups.push(() => worker.removeEventListener("statechange", onState));
@@ -78,8 +97,8 @@ export function watchForWaitingWorker(
 
   const check = async () => {
     const now = Date.now();
-    if (lastCheck && now - lastCheck < intervalMs) return;
-    lastCheck = now;
+    if (isChecking || (lastCheck && now - lastCheck < intervalMs)) return;
+    isChecking = true;
     try {
       const registration = await container.getRegistration(JIM_SW_SCOPE);
       if (isCancelled || !registration) return;
@@ -88,8 +107,12 @@ export function watchForWaitingWorker(
         await registration.update();
         if (!isCancelled) flagIfWaiting(registration);
       }
+      lastCheck = Date.now();
     } catch {
-      // Offline or a refused update: try again on the next return.
+      // Offline or a refused update: try again soon, not a whole interval.
+      lastCheck = Date.now() - Math.max(0, intervalMs - RETRY_AFTER_FAILURE_MS);
+    } finally {
+      isChecking = false;
     }
   };
 
@@ -109,33 +132,74 @@ export function watchForWaitingWorker(
   };
 }
 
+/** Resolves true once `worker` is installed, false on failure or timeout. */
+function untilInstalled(worker: ServiceWorker): Promise<boolean> {
+  if (worker.state === "installed") return Promise.resolve(true);
+  if (typeof worker.addEventListener !== "function")
+    return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const done = (value: boolean) => {
+      clearTimeout(timer);
+      worker.removeEventListener("statechange", onState);
+      resolve(value);
+    };
+    const onState = () => {
+      if (worker.state === "installed") done(true);
+      else if (worker.state === "redundant") done(false);
+    };
+    const timer = setTimeout(() => done(false), INSTALL_WAIT_MS);
+    worker.addEventListener("statechange", onState);
+  });
+}
+
 /**
- * Tells the waiting worker to take over, and reloads once when it does.
- * Returns false when there is no waiting worker (the caller should just
- * reload). The reload happens at most once per call, and only because the
- * person tapped: a first install's controllerchange never reloads.
+ * Tells the waiting worker to take over, and reloads once when it does (or
+ * after a few seconds if the browser never says). A worker still installing
+ * is waited for first. Returns false when there is no new worker (the
+ * caller should just reload). Repeated taps while one is under way do
+ * nothing more. The reload happens only because the person tapped: a first
+ * install's controllerchange never reloads.
  */
 export async function activateWaitingWorker(
   reload: () => void
 ): Promise<boolean> {
   const container = workerContainer();
   if (!container) return false;
-  let registration: ServiceWorkerRegistration | undefined;
+  if (isActivating) return true;
+  let waiting: ServiceWorker | null | undefined;
   try {
-    registration = await container.getRegistration(JIM_SW_SCOPE);
+    const registration = await container.getRegistration(JIM_SW_SCOPE);
+    if (!registration) return false;
+    if (
+      !registration.waiting &&
+      !registration.installing &&
+      typeof registration.update === "function"
+    ) {
+      // The new worker may not have been found yet: look now.
+      await registration.update();
+    }
+    if (!registration.waiting && registration.installing) {
+      await untilInstalled(registration.installing);
+    }
+    waiting = registration.waiting;
   } catch {
     return false;
   }
-  const waiting = registration?.waiting;
   if (!waiting) return false;
+  if (isActivating) return true;
+  isActivating = true;
+  activatedWorkers.add(waiting);
   let hasReloaded = false;
-  const onChange = () => {
+  const finish = () => {
     if (hasReloaded) return;
     hasReloaded = true;
-    container.removeEventListener("controllerchange", onChange);
+    clearTimeout(fallback);
+    container.removeEventListener("controllerchange", finish);
+    isActivating = false;
     reload();
   };
-  container.addEventListener("controllerchange", onChange);
+  const fallback = setTimeout(finish, CONTROLLER_CHANGE_WAIT_MS);
+  container.addEventListener("controllerchange", finish);
   waiting.postMessage({ type: "SKIP_WAITING" });
   return true;
 }

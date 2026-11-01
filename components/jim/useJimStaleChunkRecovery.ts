@@ -15,6 +15,8 @@ import {
 export default function useJimStaleChunkRecovery(): void {
   useEffect(() => {
     const recover = () => {
+      // Offline, a reload only trades the page for the browser's error.
+      if (navigator.onLine === false) return;
       if (!claimReload(window.sessionStorage, Date.now())) return;
       reloadPage();
     };

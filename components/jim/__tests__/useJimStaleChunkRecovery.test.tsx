@@ -30,4 +30,14 @@ describe("useJimStaleChunkRecovery", () => {
     rejectWith(new Error("Cannot read properties of undefined"));
     expect(reload).not.toHaveBeenCalled();
   });
+
+  it("does not reload while offline", () => {
+    const online = jest
+      .spyOn(navigator, "onLine", "get")
+      .mockReturnValue(false);
+    renderHook(() => useJimStaleChunkRecovery());
+    rejectWith(new Error("Loading chunk 12 failed."));
+    expect(reload).not.toHaveBeenCalled();
+    online.mockRestore();
+  });
 });
