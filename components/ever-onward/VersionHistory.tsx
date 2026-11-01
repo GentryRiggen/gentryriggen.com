@@ -27,7 +27,7 @@ export default function VersionHistory() {
         <header className="flex flex-col gap-4">
           <Link
             href="/ever-onward"
-            className={`self-start font-mono text-sm text-slate-200 ${retroLinkClass}`}
+            className={`inline-flex min-h-11 items-center self-start bg-[#02030a]/75 px-3 py-1 font-mono text-sm text-slate-200 ${retroLinkClass}`}
           >
             ← Back to Ever Onward
           </Link>
@@ -37,7 +37,7 @@ export default function VersionHistory() {
               className={`text-xl ${retroHeadingClass}`}
             />
           </h1>
-          <p className="font-mono text-sm text-cyan-100">
+          <p className="self-start bg-[#02030a]/75 px-3 py-1 font-mono text-sm text-cyan-100">
             You&apos;re on v{EVER_ONWARD_VERSION}
           </p>
         </header>

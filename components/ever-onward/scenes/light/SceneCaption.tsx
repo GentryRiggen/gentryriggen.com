@@ -1,6 +1,7 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
 import { COAST_LIGHTHOUSES } from "@/lib/ever-onward/universes/light/resources";
+import CaptionLine from "../CaptionLine";
 import { pixelClass } from "../../game/retro/retroStyles";
 
 const num = (n: number): string => Math.floor(n).toLocaleString("en-US");
@@ -33,9 +34,9 @@ export default function SceneCaption({ info }: { info: LightSceneInfo }) {
     <p
       aria-hidden="true"
       data-testid="lm-scene-caption"
-      className={`${pixelClass} pointer-events-none absolute bottom-0 left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[9px] leading-none text-amber-100 sm:text-[10px] lg:text-xs`}
+      className={`${pixelClass} pointer-events-none absolute bottom-0 left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[10px] leading-none text-amber-100 lg:text-xs`}
     >
-      {captionFor(info)}
+      <CaptionLine text={captionFor(info)} />
     </p>
   );
 }

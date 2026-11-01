@@ -13,6 +13,7 @@ import {
   worldCover,
 } from "@/lib/ever-onward/universes/grow/biomes";
 import type { PanelProps } from "../../universes/types";
+import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 import useRoving from "./useRoving";
 
@@ -46,20 +47,17 @@ export default function BiomePanel({ def, run, onAct }: PanelProps) {
   const best = bestBiome(run);
 
   return (
-    <section
-      aria-label="What to spread"
-      data-testid="lm-biomes"
-      data-active={activeBiome(run)}
-      className="space-y-3 border-4 border-emerald-300/70 bg-slate-950/85 p-3 shadow-[4px_4px_0_#065f46]"
+    <PanelFrame
+      label="What to spread"
+      title="What to spread"
+      tone="emerald"
+      status={`The world is ${pct(worldCover(run))} green`}
+      statusActive={false}
+      testId="lm-biomes"
+      data={{ "data-active": activeBiome(run) }}
+      result={resultLine(run)}
+      resultTestId="lm-biomes-result"
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-emerald-200`}>
-          What to spread
-        </h2>
-        <p className={`${pixelClass} text-[8px] text-emerald-100/80`}>
-          The world is {pct(worldCover(run))} green
-        </p>
-      </header>
       <div
         role="radiogroup"
         aria-label="Which kind of green to spread"
@@ -82,7 +80,7 @@ export default function BiomePanel({ def, run, onAct }: PanelProps) {
               onClick={() => {
                 if (!checked && doable) onAct(spreadActionId(biome));
               }}
-              className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[9px] sm:text-[10px] ${retroFocusClass} ${
+              className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[10px] ${retroFocusClass} ${
                 checked
                   ? "border-emerald-200 bg-emerald-400 text-emerald-950 shadow-[4px_4px_0_#065f46]"
                   : "border-slate-500 bg-slate-800 text-slate-100 shadow-[4px_4px_0_#0f172a] hover:bg-slate-700 active:translate-y-0.5 active:shadow-none"
@@ -97,7 +95,7 @@ export default function BiomePanel({ def, run, onAct }: PanelProps) {
               </span>
               <span
                 id={`lm-biomes-${biome}-note`}
-                className="block font-mono text-[11px] font-bold normal-case"
+                className="block font-mono text-xs font-bold normal-case"
               >
                 {pct(biomeShare(run, biome))} of the world: {PERK_WORDS[biome]}
                 {biome === best && !checked ? ". Worth spreading" : ""}
@@ -107,14 +105,6 @@ export default function BiomePanel({ def, run, onAct }: PanelProps) {
           );
         })}
       </div>
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-biomes-result"
-        className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-      >
-        {resultLine(run)}
-      </p>
-    </section>
+    </PanelFrame>
   );
 }

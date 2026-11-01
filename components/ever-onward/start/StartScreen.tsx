@@ -34,7 +34,7 @@ interface StartScreenProps {
 }
 
 const footerLinkClass =
-  "rounded px-1 py-1 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300";
+  "inline-flex min-h-11 items-center rounded px-1 py-2 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300";
 
 /** Chunky title letters: a 1-pixel-style drop shadow and a soft glow. */
 const titleClass =
@@ -108,7 +108,7 @@ export default function StartScreen({
             <RetroText text="EVER" popFrom={0} className={titleClass} />
             <RetroText text="ONWARD" popFrom={4} className={titleClass} />
           </h1>
-          <p className="eo-rise eo-d10 font-mono text-xs tracking-[0.25em] text-cyan-100 uppercase [text-shadow:1px_1px_0_#0b1233] sm:text-sm">
+          <p className="eo-rise eo-d10 bg-[#02030a]/60 px-2 py-1 font-mono text-xs tracking-[0.25em] text-cyan-100 uppercase [text-shadow:1px_1px_0_#0b1233] sm:text-sm">
             Little machines. One simple goal.
           </p>
         </header>
@@ -128,11 +128,13 @@ export default function StartScreen({
             className="group flex min-h-14 items-center justify-center rounded-lg px-8 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1233]"
           >
             <span className="sr-only">{label}</span>
-            <span className="eo-prompt flex items-center gap-4">
-              <RetroText
-                text=">"
-                className="text-2xl text-amber-300 [text-shadow:2px_2px_0_#78350f]"
-              />
+            <span className="flex items-center gap-4">
+              <span className="eo-prompt">
+                <RetroText
+                  text=">"
+                  className="text-2xl text-amber-300 [text-shadow:2px_2px_0_#78350f]"
+                />
+              </span>
               <RetroText
                 text={label.toUpperCase()}
                 className="text-2xl text-amber-300 [text-shadow:2px_2px_0_#78350f] group-hover:text-amber-200"
@@ -183,7 +185,7 @@ export default function StartScreen({
           </ul>
         </div>
 
-        <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-mono text-xs text-slate-200">
+        <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-[#02030a]/75 px-3 py-1 font-mono text-xs text-slate-200">
           <Link
             href="/ever-onward/versions"
             onClick={(event) => event.stopPropagation()}

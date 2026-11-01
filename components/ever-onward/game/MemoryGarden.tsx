@@ -24,6 +24,7 @@ import {
 } from "@/lib/ever-onward/universes/light/garden";
 import { resolvePerSecond } from "@/lib/ever-onward/universes/light/tick";
 import { TUNING } from "@/lib/ever-onward/universes/light/tuning";
+import PanelFrame from "./retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface MemoryGardenProps {
@@ -226,26 +227,19 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
         : "The can is filling…";
 
   return (
-    <section
-      aria-label="Memory garden"
-      data-testid="lm-garden-panel"
-      data-blooms={blooms}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-emerald-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#064e3b]"
+    <PanelFrame
+      label="Memory garden"
+      title="Memory garden"
+      icon="✿"
+      tone="emerald"
+      status={`${planted} ${planted === 1 ? "flower" : "flowers"}`}
+      testId="lm-garden-panel"
+      data={{ "data-blooms": blooms }}
+      className="relative isolate overflow-hidden"
+      result={resultLine}
+      resultTestId="lm-garden-result"
+      resultKey={actionCount}
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-emerald-200`}>
-          <span aria-hidden="true" className="mr-2 text-emerald-300">
-            ✿
-          </span>
-          Memory garden
-        </h2>
-        <p
-          className={`${pixelClass} border-2 border-emerald-300/70 bg-emerald-950 px-2 py-1 text-[8px] text-emerald-100`}
-        >
-          {planted} {planted === 1 ? "flower" : "flowers"}
-        </p>
-      </header>
-
       <p
         data-testid="lm-garden-headline"
         className={`${pixelClass} text-xs sm:text-sm ${
@@ -313,7 +307,7 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
           }`}
         >
           <span>Water the garden</span>
-          <span className="font-mono text-[11px] font-bold normal-case">
+          <span className="font-mono text-xs font-bold normal-case">
             {waterNote}
           </span>
         </button>
@@ -334,24 +328,12 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
           }`}
         >
           <span>Pick the blooms</span>
-          <span className="font-mono text-[11px] font-bold normal-case">
+          <span className="font-mono text-xs font-bold normal-case">
             {canPick
               ? `about +${formatNumber(pickWorth)} resolve`
               : "No blooms yet"}
           </span>
         </button>
-      </div>
-
-      <div role="status" aria-live="polite">
-        {resultLine && (
-          <p
-            key={actionCount}
-            data-testid="lm-garden-result"
-            className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-          >
-            {resultLine}
-          </p>
-        )}
       </div>
 
       <p className="font-mono text-xs text-slate-300">{hint}</p>
@@ -369,6 +351,6 @@ export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
           resolve).
         </p>
       )}
-    </section>
+    </PanelFrame>
   );
 }

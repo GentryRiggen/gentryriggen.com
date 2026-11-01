@@ -3,7 +3,7 @@
 export const retroFocusClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1233]";
 
-export const retroLinkClass = `rounded px-1 py-1 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`;
+export const retroLinkClass = `inline-flex min-h-11 items-center rounded px-1 py-2 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`;
 
 /** Pixel title text: drop shadow and glow. */
 export const retroHeadingClass =

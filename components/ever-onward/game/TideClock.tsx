@@ -21,6 +21,7 @@ import {
   tideLevel,
   type NetState,
 } from "@/lib/ever-onward/universes/light/tide";
+import PanelFrame from "./retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface TideClockProps {
@@ -224,30 +225,38 @@ export default function TideClock({ def, run, onAct }: TideClockProps) {
       : "border-slate-600 bg-slate-800 text-slate-300 shadow-[4px_4px_0_#0f172a]";
 
   return (
-    <section
-      aria-label="Tide clock"
-      data-testid="lm-tide-panel"
-      data-nets={state}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-sky-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#0c4a6e]"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-sky-200`}>
-          <span aria-hidden="true" className="mr-2 text-sky-300">
-            ≈
-          </span>
-          Tide clock
-        </h2>
-        <p
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            isRising(run)
-              ? "border-sky-300 bg-sky-950 text-sky-100"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {isRising(run) ? "Tide coming in" : "Tide going out"}
-        </p>
-      </header>
+    <PanelFrame
+      label="Tide clock"
+      title="Tide clock"
+      icon="≈"
+      tone="sky"
+      status={isRising(run) ? "Tide coming in" : "Tide going out"}
+      testId="lm-tide-panel"
+      data={{ "data-nets": state }}
+      className="relative isolate overflow-hidden"
+      result={resultLine}
+      resultTestId="lm-tide-result"
+      footer={
+        <>
+          {hasTideMill(run) && (
+            <p className="font-mono text-xs text-sky-100">
+              The tide mill works its own nets at every high tide: about +
+              {formatNumber(Math.floor(millCoins(income)))} coins, on top of
+              yours.
+            </p>
+          )}
 
+          {hauls > 0 && (
+            <p className="font-mono text-xs text-slate-300">
+              Hauls so far: {hauls} (+{formatNumber(Math.floor(earned))} coins
+              {milled > 0 &&
+                `, +${formatNumber(Math.floor(milled))} from the mill`}
+              ).{hasBiggerNets(run) ? " Your nets are extra big." : ""}
+            </p>
+          )}
+        </>
+      }
+    >
       <div className="flex items-center gap-3">
         <TideGauge level={level} />
         <div className="min-w-0 flex-1 space-y-2">
@@ -286,35 +295,11 @@ export default function TideClock({ def, run, onAct }: TideClockProps) {
               : "Waiting for high tide…"}
         </span>
         {isFull && (
-          <span className="font-mono text-[11px] font-bold normal-case">
+          <span className="font-mono text-xs font-bold normal-case">
             about +{formatNumber(Math.floor(catchCoins(run, income)))} coins
           </span>
         )}
       </button>
-
-      {resultLine && (
-        <p
-          data-testid="lm-tide-result"
-          className="border-2 border-emerald-400 bg-emerald-950/70 p-2 font-mono text-sm font-bold text-emerald-200"
-        >
-          {resultLine}
-        </p>
-      )}
-
-      {hasTideMill(run) && (
-        <p className="font-mono text-xs text-sky-100">
-          The tide mill works its own nets at every high tide: about +
-          {formatNumber(Math.floor(millCoins(income)))} coins, on top of yours.
-        </p>
-      )}
-
-      {hauls > 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Hauls so far: {hauls} (+{formatNumber(Math.floor(earned))} coins
-          {milled > 0 && `, +${formatNumber(Math.floor(milled))} from the mill`}
-          ).{hasBiggerNets(run) ? " Your nets are extra big." : ""}
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }

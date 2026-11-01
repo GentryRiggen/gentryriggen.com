@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
 import useTitleMusic from "./audio/useTitleMusic";
 import GameScreen from "./game/GameScreen";
@@ -12,6 +12,7 @@ import UpdatePill from "@/components/update/UpdatePill";
 import { useStaleChunkRecovery } from "@/components/update/useStaleChunkRecovery";
 import { useUpdateCheck } from "@/components/update/useUpdateCheck";
 import useBlockPinchZoom from "./useBlockPinchZoom";
+import scrollToTop from "./scrollToTop";
 
 const UPDATE_PILL_BUTTON =
   "pointer-events-auto min-h-11 rounded-full border-2 border-amber-300 bg-slate-950 px-5 py-2 text-sm font-semibold text-amber-200 shadow-[0_0_18px_rgba(251,191,36,0.45)] hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
@@ -25,6 +26,11 @@ export default function EverOnward() {
   const [isOnStartScreen, setIsOnStartScreen] = useState(true);
   const { save, def, universe } = game;
   useStaleChunkRecovery(game.saveNow);
+  // Back at the hub, start at the top rather than where the game was scrolled.
+  const isInGame = !!def;
+  useEffect(() => {
+    if (!isInGame) scrollToTop();
+  }, [isInGame]);
   // The title theme plays on the start screen and the hub, not in a universe.
   useTitleMusic(
     !!save && !def,

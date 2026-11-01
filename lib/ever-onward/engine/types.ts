@@ -238,6 +238,8 @@ export interface CountdownView {
   max: number;
   /** Values (on the same scale) where something happens, drawn as ticks. */
   marks?: readonly number[];
+  /** The resource this bar counts, so the resource tiles can skip it. */
+  resourceId?: string;
   /** A line under the bar ("A new gift at 700"). */
   detail?: string;
 }

@@ -20,13 +20,24 @@ import type {
   UpgradeDef,
 } from "@/lib/ever-onward/engine/types";
 import RetroHeading from "./retro/RetroHeading";
-import { pixelClass, retroFocusClass } from "./retro/retroStyles";
+import {
+  pixelClass,
+  retroFocusClass,
+  retroSecondaryButtonClass,
+} from "./retro/retroStyles";
 
 interface UpgradeListProps {
   def: UniverseDef;
   run: RunState;
   onBuy: (id: string) => void;
+  /** Opens the list of everything bought so far. */
+  onShowBought?: () => void;
+  /** The HUD's next goal: always shown, even past the cap. */
+  pinnedId?: string;
 }
+
+/** How many cards show before "Show more upgrades". */
+const SHOWN_CAP = 3;
 
 /** DOM id of an upgrade's card, so the next-goal bar can scroll to it. */
 export const upgradeElementId = (id: string): string => `lm-upgrade-${id}`;
@@ -44,9 +55,44 @@ function levelText(run: RunState, upgrade: UpgradeDef): string | null {
 }
 
 /** Visible upgrades. Mount it with `key={phase}` so a new phase starts calm. */
-export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
+export default function UpgradeList({
+  def,
+  run,
+  onBuy,
+  onShowBought,
+  pinnedId,
+}: UpgradeListProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const visible = visibleUpgrades(def, run);
-  const open = visible.filter((u) => !isMaxed(run, u));
+  // The order is frozen between purchases and reveals, so a card never jumps
+  // under a finger when affordability flips. Affordable first, then cheapest.
+  const openNow = visible.filter((u) => !isMaxed(run, u));
+  const signature = `${openNow.map((u) => u.id).join(",")}|${Object.values(
+    run.owned
+  ).reduce((sum, n) => sum + n, 0)}`;
+  const sortOpen = () =>
+    openNow
+      .map((u, i) => ({ u, i, affordable: canAfford(run, u) }))
+      .sort(
+        (a, b) =>
+          Number(b.affordable) - Number(a.affordable) ||
+          upgradeCost(run, a.u) - upgradeCost(run, b.u) ||
+          a.i - b.i
+      )
+      .map((x) => x.u.id);
+  const [order, setOrder] = useState(() => ({
+    signature,
+    ids: sortOpen(),
+  }));
+  if (order.signature !== signature) setOrder({ signature, ids: sortOpen() });
+  const byId = new Map(openNow.map((u) => [u.id, u]));
+  const open = order.ids.flatMap((id) => byId.get(id) ?? []);
+  // A reveal not yet in the frozen order (same render as the change) goes last.
+  for (const u of openNow) if (!order.ids.includes(u.id)) open.push(u);
+  const shownOpen = isExpanded
+    ? open
+    : open.filter((u, i) => i < SHOWN_CAP || u.id === pinnedId);
+  const hiddenCount = open.length - shownOpen.length;
   const done = visible.filter((u) => isMaxed(run, u));
   const teasers = visibleTeasers(def, run).map((t) => ({
     id: t.upgradeId,
@@ -82,8 +128,8 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
           Nothing to buy right now.
         </p>
       )}
-      <ul className="space-y-3">
-        {open.map((u) => {
+      <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+        {shownOpen.map((u) => {
           const affordable = canAfford(run, u);
           const level = levelText(run, u);
           const noEffect = upgradeNoEffectReason(run, u);
@@ -162,11 +208,40 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
                     {level}
                   </span>
                 )}
+                {affordable ? (
+                  <span
+                    className={`${pixelClass} mt-2 inline-block border-2 border-amber-300 bg-amber-400 px-2 py-1 text-[10px] text-amber-950`}
+                  >
+                    Tap to buy
+                  </span>
+                ) : (
+                  <span className="mt-2 block font-mono text-xs text-slate-300">
+                    Need{" "}
+                    {formatNumber(
+                      Math.ceil(
+                        upgradeCost(run, u) - (run.resources[u.currency] ?? 0)
+                      )
+                    )}{" "}
+                    more {currencyLabel(u.currency).toLowerCase()}
+                  </span>
+                )}
               </button>
             </li>
           );
         })}
       </ul>
+      {(hiddenCount > 0 || isExpanded) && open.length > SHOWN_CAP && (
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded((v) => !v)}
+          className={`${retroSecondaryButtonClass} w-full`}
+        >
+          {isExpanded
+            ? "Show fewer upgrades"
+            : `Show ${hiddenCount} more ${hiddenCount === 1 ? "upgrade" : "upgrades"}`}
+        </button>
+      )}
       {teasers.length > 0 && (
         <ul aria-label="Coming someday" className="space-y-3">
           {teasers.map((t) => (
@@ -176,7 +251,7 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
               className="border-4 border-dashed border-slate-700 bg-slate-950/60 p-3"
             >
               <p
-                className={`${pixelClass} text-[8px] leading-none text-cyan-200`}
+                className={`${pixelClass} text-[10px] leading-none text-cyan-200`}
               >
                 Someday
               </p>
@@ -195,17 +270,14 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
           More upgrades unlock as you grow…
         </p>
       )}
-      {done.length > 0 && (
-        <details className="font-mono text-sm text-slate-300">
-          <summary
-            className={`cursor-pointer px-1 py-1 ${retroFocusClass}`}
-          >{`Done (${done.length})`}</summary>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5">
-            {done.map((u) => (
-              <li key={u.id}>{u.name}</li>
-            ))}
-          </ul>
-        </details>
+      {done.length > 0 && onShowBought && (
+        <button
+          type="button"
+          onClick={onShowBought}
+          className={`${retroSecondaryButtonClass} w-full`}
+        >
+          Bought this part: {done.length} · See all
+        </button>
       )}
     </section>
   );

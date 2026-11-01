@@ -106,6 +106,7 @@ export function growCountdown(run: RunState): CountdownView | null {
   const left = Math.ceil(FULL_GROWTH - run.resources.growth);
   return {
     label: "Left to grow",
+    resourceId: "growth",
     value: left,
     max: FULL_GROWTH,
     detail: "Keep tending the old window box",

@@ -22,18 +22,22 @@ export default function PlayOnSilentToggle() {
           aria-labelledby={`${id}-label`}
           aria-describedby={`${id}-hint`}
           onClick={() => setPlayOnSilent(!isOn)}
-          className={`relative inline-flex h-7 w-12 shrink-0 touch-manipulation items-center border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 ${
-            isOn
-              ? "border-amber-300 bg-amber-500"
-              : "border-slate-500 bg-slate-800"
-          }`}
+          className="inline-flex min-h-11 min-w-12 shrink-0 touch-manipulation items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
         >
           <span
             aria-hidden="true"
-            className={`inline-block size-4 bg-slate-100 transition-transform ${
-              isOn ? "translate-x-6" : "translate-x-1"
+            className={`relative inline-flex h-7 w-12 items-center border-2 transition-colors ${
+              isOn
+                ? "border-amber-300 bg-amber-500"
+                : "border-slate-500 bg-slate-800"
             }`}
-          />
+          >
+            <span
+              className={`inline-block size-4 bg-slate-100 transition-transform ${
+                isOn ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </span>
         </button>
       </div>
       <p id={`${id}-hint`} className="font-mono text-xs text-slate-300">

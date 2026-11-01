@@ -30,7 +30,7 @@ export default function EmberTip({ def, onShow, onDismiss }: EmberTipProps) {
         className={`${pixelClass} flex items-center gap-2 text-[10px] text-orange-200`}
       >
         <span
-          className={`${pixelClass} border-2 border-amber-300 bg-amber-500 px-1.5 py-1 text-[8px] leading-none text-slate-950`}
+          className={`${pixelClass} border-2 border-amber-300 bg-amber-500 px-1.5 py-1 text-[10px] leading-none text-slate-950`}
         >
           NEW
         </span>

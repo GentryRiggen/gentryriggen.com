@@ -25,6 +25,7 @@ import {
   vanePick,
   weatherStage,
 } from "@/lib/ever-onward/universes/light/weather";
+import PanelFrame from "./retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface WeatherDeskProps {
@@ -201,9 +202,7 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
       <span id={`lm-town-${town}-about`} className="sr-only">
         {details}
       </span>
-      <span
-        className={`${pixelClass} text-[8px] leading-tight text-sky-100 sm:text-[9px]`}
-      >
+      <span className={`${pixelClass} text-[10px] leading-tight text-sky-100`}>
         {name}
       </span>
       <span className={isDark ? "opacity-40 grayscale" : ""}>
@@ -225,12 +224,12 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
           />
         </>
       ) : (
-        <span className={`${pixelClass} text-[9px] text-slate-400`}>
+        <span className={`${pixelClass} text-[10px] text-slate-400`}>
           {isDark ? "Dark" : "Calm"}
         </span>
       )}
       {isDark && (
-        <span className="font-mono text-[11px] font-bold text-slate-200 tabular-nums">
+        <span className="font-mono text-xs font-bold text-slate-200 tabular-nums">
           Lights out {clock(outageSecondsLeft(run, town))}
         </span>
       )}
@@ -251,7 +250,7 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
         )}
       </span>
       <span
-        className={`${pixelClass} block w-full border-2 px-1 py-2 text-[8px] leading-tight ${
+        className={`${pixelClass} block w-full border-2 px-1 py-2 text-[10px] leading-tight ${
           isHere
             ? "border-emerald-300 bg-emerald-400 text-emerald-950"
             : "border-sky-300 bg-sky-950 text-sky-100"
@@ -360,49 +359,55 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
   const step = forecastStep(run);
 
   return (
-    <section
-      aria-label="Weather desk"
-      data-testid="lm-weather"
-      data-stage={stage}
-      className="relative isolate space-y-3 overflow-hidden border-4 border-sky-400/80 bg-slate-950/85 p-3 shadow-[4px_4px_0_#0c4a6e]"
+    <PanelFrame
+      label="Weather desk"
+      title="Weather desk"
+      icon="⛈"
+      tone="sky"
+      status={
+        isForecast ? `Forecast ${step} of ${FORECAST_STEPS}` : "Storm forming"
+      }
+      statusActive={isForecast}
+      statusTestId="lm-weather-step"
+      testId="lm-weather"
+      data={{ "data-stage": stage }}
+      className="relative isolate overflow-hidden"
+      backdrop={
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-sky-950 via-slate-950 to-slate-950" />
+            <span className="wx-cloud absolute top-1 left-0 h-3 w-16 bg-slate-600/40" />
+            <span className="wx-cloud absolute top-5 left-0 h-2 w-10 bg-slate-500/30 [animation-delay:-28s]" />
+            {isForecast && (
+              <>
+                <div className="wx-rain absolute inset-0" />
+                <div className="wx-rain-b absolute inset-0" />
+                <div className="wx-flash absolute inset-0 bg-sky-100" />
+              </>
+            )}
+          </div>
+        </>
+      }
+      result={resultLine ?? ""}
+      resultTestId="lm-weather-result"
+      resultTone={storm.kind === "flicker" ? "slate" : "emerald"}
+      footer={
+        <>
+          {held + flickered > 0 && (
+            <p className="font-mono text-xs text-slate-300">
+              Storms so far: {held + flickered}. Crews met {held}
+              {earned > 0 && ` (+${formatNumber(Math.floor(earned))} power)`}
+              {fixes > 0 &&
+                `, and fixed ${fixes} dark ${fixes === 1 ? "town" : "towns"}`}
+              .
+            </p>
+          )}
+        </>
+      }
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-sky-950 via-slate-950 to-slate-950" />
-        <span className="wx-cloud absolute top-1 left-0 h-3 w-16 bg-slate-600/40" />
-        <span className="wx-cloud absolute top-5 left-0 h-2 w-10 bg-slate-500/30 [animation-delay:-28s]" />
-        {isForecast && (
-          <>
-            <div className="wx-rain absolute inset-0" />
-            <div className="wx-rain-b absolute inset-0" />
-            <div className="wx-flash absolute inset-0 bg-sky-100" />
-          </>
-        )}
-      </div>
-
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`${pixelClass} text-[10px] text-sky-200`}>
-          <span aria-hidden="true" className="mr-2 text-amber-300">
-            ⛈
-          </span>
-          Weather desk
-        </h2>
-        <p
-          data-testid="lm-weather-step"
-          className={`${pixelClass} border-2 px-2 py-1 text-[8px] ${
-            isForecast
-              ? "border-amber-300 bg-amber-950 text-amber-200"
-              : "border-slate-600 bg-slate-900 text-slate-300"
-          }`}
-        >
-          {isForecast
-            ? `Forecast ${step} of ${FORECAST_STEPS}`
-            : "Storm forming"}
-        </p>
-      </header>
-
       <p className="font-mono text-sm text-sky-50">
         {isForecast
           ? step < FORECAST_STEPS
@@ -432,7 +437,7 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
 
       <div className="space-y-1.5">
         <p className="flex items-baseline justify-between gap-3">
-          <span className={`${pixelClass} text-[8px] text-sky-200`}>
+          <span className={`${pixelClass} text-[10px] text-sky-200`}>
             {isForecast ? "Landfall" : "Next storm forming…"}
           </span>
           <span
@@ -456,35 +461,7 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
         {hasWeatherVane(run) &&
           ` The weather vane also watches ${vaneTown} for you, for 60% of the bonus.`}
       </p>
-
-      {/* Changes only when a storm lands, so it is read once. */}
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="lm-weather-result"
-        className={
-          resultLine
-            ? `border-2 p-2 font-mono text-sm font-bold ${
-                storm.kind === "flicker"
-                  ? "border-slate-600 bg-slate-900/80 text-slate-200"
-                  : "border-emerald-400 bg-emerald-950/70 text-emerald-200"
-              }`
-            : "sr-only"
-        }
-      >
-        {resultLine ?? ""}
-      </p>
-
-      {held + flickered > 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Storms so far: {held + flickered}. Crews met {held}
-          {earned > 0 && ` (+${formatNumber(Math.floor(earned))} power)`}
-          {fixes > 0 &&
-            `, and fixed ${fixes} dark ${fixes === 1 ? "town" : "towns"}`}
-          .
-        </p>
-      )}
-    </section>
+    </PanelFrame>
   );
 }
 

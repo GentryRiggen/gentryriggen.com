@@ -29,22 +29,20 @@ import type {
   UniverseDef,
   UniverseSave,
 } from "@/lib/ever-onward/engine/types";
-import PlayOnSilentToggle from "../audio/PlayOnSilentToggle";
 import SoundControls from "../audio/SoundControls";
 import useEverOnwardAudio from "../audio/useEverOnwardAudio";
 import NarrationLayer from "../narration/NarrationLayer";
-import NarrationSettings from "../narration/NarrationSettings";
 import { uiFor } from "../universes";
+import scrollToTop from "../scrollToTop";
 import type { LastBuy } from "../universes/types";
 import ActionPanel from "./ActionPanel";
-import BackupPanel from "./BackupPanel";
 import CountdownBar from "./CountdownBar";
 import { type Effect } from "./EffectFloater";
 import EmberDialog from "./EmberDialog";
 import EmberPanel from "./EmberPanel";
 import EmberTip from "./EmberTip";
 import EndingOverlay from "./EndingOverlay";
-import Logbook from "./Logbook";
+import MenuDialog from "./MenuDialog";
 import PhaseCutscene from "./PhaseCutscene";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
@@ -62,7 +60,6 @@ import {
   pixelFont,
   retroFocusClass,
   retroLabelClass,
-  retroPanelClass,
   retroSecondaryButtonClass,
   pixelClass,
 } from "./retro/retroStyles";
@@ -70,6 +67,9 @@ import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
 import { useReducedMotion } from "./useAnimatedNumber";
+
+/** Space left between the HUD and an element scrolled to. */
+const HUD_GAP = 12;
 
 interface GameScreenProps {
   def: UniverseDef;
@@ -114,6 +114,7 @@ export default function GameScreen({
   const EndingArt = ui.ending.Art;
   const label = prestigeLabel(def);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const isStorm = ui.audio.isStormy?.(run) ?? false;
   // Once a restart is possible (or embers are banked) the header offers the
   // embers dialog. A finished run shows the panel in the page instead.
@@ -129,12 +130,16 @@ export default function GameScreen({
   const emberButtonRef = useRef<HTMLButtonElement>(null);
   const [isUpgradesOpen, setIsUpgradesOpen] = useState(false);
   const upgradesButtonRef = useRef<HTMLButtonElement>(null);
+  // What opened Your upgrades (the header button or "See all"), for focus.
+  const upgradesOpenerRef = useRef<HTMLElement | null>(null);
   // A new part's intro covers everything: close the dialogs behind it.
   if (isEmberDialogOpen && overlay !== null) setIsEmberDialogOpen(false);
   if (isUpgradesOpen && overlay !== null) setIsUpgradesOpen(false);
+  if (isMenuOpen && overlay !== null) setIsMenuOpen(false);
   // Anything modal (cutscene, ending, either dialog) makes the game behind it
   // inert: no clicks, no focus, hidden from screen readers.
-  const isCovered = overlay !== null || isEmberDialogOpen || isUpgradesOpen;
+  const isCovered =
+    overlay !== null || isEmberDialogOpen || isUpgradesOpen || isMenuOpen;
   const showsUpgradesButton = hasAnyUpgrade(def, universe);
 
   const primaryId = primaryResourceId(def, run);
@@ -148,6 +153,8 @@ export default function GameScreen({
   );
   const rootRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const isReduced = useReducedMotion();
   const next = useNextUpgrade(def, run);
   const [spend, setSpend] = useState<Spend | null>(null);
@@ -172,6 +179,33 @@ export default function GameScreen({
     observer.observe(hud);
     return () => observer.disconnect();
   }, [run.complete]);
+
+  // Opening a universe, or finishing one, starts at the top of the page.
+  useLayoutEffect(() => {
+    scrollToTop();
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [def.id]);
+  const previousOverlay = useRef(overlay);
+  useEffect(() => {
+    if (previousOverlay.current === "ending" && overlay === null) {
+      scrollToTop();
+      if (mainRef.current) mainRef.current.scrollTop = 0;
+    }
+    previousOverlay.current = overlay;
+  }, [overlay]);
+
+  // Behind the game, overscroll and the iPad's spare pixels stay dark.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const before = [html.style.backgroundColor, body.style.backgroundColor];
+    html.style.backgroundColor = "#02030a";
+    body.style.backgroundColor = "#02030a";
+    return () => {
+      html.style.backgroundColor = before[0];
+      body.style.backgroundColor = before[1];
+    };
+  }, []);
 
   useEffect(() => {
     if (!spend) return;
@@ -214,17 +248,65 @@ export default function GameScreen({
     window.setTimeout(() => emberButtonRef.current?.focus(), 0);
   }, []);
 
+  const handleOpenUpgrades = () => {
+    const active = document.activeElement;
+    upgradesOpenerRef.current =
+      active instanceof HTMLElement && active !== document.body
+        ? active
+        : upgradesButtonRef.current;
+    setIsUpgradesOpen(true);
+  };
   const handleCloseUpgrades = useCallback(() => {
     setIsUpgradesOpen(false);
-    window.setTimeout(() => upgradesButtonRef.current?.focus(), 0);
+    window.setTimeout(() => {
+      const opener = upgradesOpenerRef.current;
+      (opener?.isConnected ? opener : upgradesButtonRef.current)?.focus();
+    }, 0);
   }, []);
+
+  const handleCloseMenu = useCallback(() => {
+    setIsMenuOpen(false);
+    window.setTimeout(() => menuButtonRef.current?.focus(), 0);
+  }, []);
+
+  // Scrolls the one real scroller (main on wide screens, the page otherwise)
+  // so the element sits just under the HUD. scrollIntoView would also move
+  // the window on wide screens and tear the fixed layout.
+  const scrollToElement = (element: HTMLElement | null) => {
+    if (!element) return;
+    const behavior = isReduced ? "auto" : "smooth";
+    const hudHeight = hudRef.current?.offsetHeight ?? 0;
+    const top = element.getBoundingClientRect().top;
+    const main = mainRef.current;
+    if (main && window.matchMedia("(min-width: 1024px)").matches) {
+      main.scrollTo({
+        top: main.scrollTop + top - hudHeight - HUD_GAP,
+        behavior,
+      });
+      return;
+    }
+    const sceneHeight = sceneRef.current?.offsetHeight ?? 0;
+    window.scrollTo({
+      top: top + window.scrollY - hudHeight - sceneHeight - HUD_GAP,
+      behavior,
+    });
+  };
 
   const handleSelectNext = () => {
     if (!next) return;
-    document.getElementById(upgradeElementId(next.upgrade.id))?.scrollIntoView({
-      behavior: isReduced ? "auto" : "smooth",
-      block: "start",
-    });
+    scrollToElement(document.getElementById(upgradeElementId(next.upgrade.id)));
+  };
+
+  const handleSelectAlert = () => {
+    scrollToElement(
+      rootRef.current?.querySelector<HTMLElement>(
+        'section[aria-label="Actions"]'
+      ) ??
+        rootRef.current?.querySelector<HTMLElement>(
+          '[data-testid="lm-alert"]'
+        ) ??
+        null
+    );
   };
 
   const handleGreet = (id: string) => {
@@ -251,7 +333,7 @@ export default function GameScreen({
     // (sound switches, update pill) use their dark colours too.
     <div
       ref={rootRef}
-      className={`${pixelFont.variable} dark [--eo-hud-h:6rem] relative isolate min-h-dvh touch-manipulation bg-[#02030a] pt-[var(--eo-hud-h)] text-amber-50 lg:flex lg:h-dvh lg:pt-0`}
+      className={`${pixelFont.variable} dark [--eo-hud-h:6rem] relative isolate min-h-dvh touch-manipulation bg-[#02030a] pt-[var(--eo-hud-h)] text-amber-50 lg:flex lg:h-dvh lg:overflow-hidden lg:pt-0`}
     >
       <div
         aria-hidden="true"
@@ -260,8 +342,9 @@ export default function GameScreen({
         <CrtOverlay />
       </div>
       <div
+        ref={sceneRef}
         inert={isCovered}
-        className="sticky top-[var(--eo-hud-h)] z-20 h-[24dvh] min-h-36 w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
+        className="sticky top-[var(--eo-hud-h)] z-20 h-[24dvh] min-h-36 w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[45%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
         <div data-testid="lm-scene-frame" className="h-full">
           <Scene run={run} lastBuy={lastBuy} />
@@ -274,23 +357,12 @@ export default function GameScreen({
         </div>
       </div>
       <main
+        ref={mainRef}
         inert={isCovered}
-        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h)+1rem)]"
+        className="mx-auto w-full max-w-xl lg:max-w-2xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h)+1rem)]"
       >
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <p className={`${retroLabelClass} leading-normal`}>
-              {def.title}
-              <span aria-hidden="true"> · </span>
-              <span className="block text-slate-300">
-                Part {run.phase + 1} of {def.phases.length}
-              </span>
-            </p>
-            <RetroHeading as="h1" className="mt-2 text-base sm:text-lg">
-              {phase.title}
-            </RetroHeading>
-          </div>
-          <div className="flex shrink-0 gap-2 [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
+        <header className="flex flex-col gap-3 sm:flex-row-reverse sm:items-start sm:justify-between">
+          <div className="flex w-full shrink-0 justify-end gap-2 sm:w-auto [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
             <SoundControls />
             {showsUpgradesButton && (
               <button
@@ -300,8 +372,8 @@ export default function GameScreen({
                 aria-haspopup="dialog"
                 aria-expanded={isUpgradesOpen}
                 aria-label="Your upgrades"
-                onClick={() => setIsUpgradesOpen(true)}
-                className={`${retroSecondaryButtonClass} shrink-0 px-2.5!`}
+                onClick={handleOpenUpgrades}
+                className={`${retroSecondaryButtonClass} min-w-11 shrink-0 px-2.5!`}
               >
                 <UpgradesIcon className="h-4" />
               </button>
@@ -319,7 +391,7 @@ export default function GameScreen({
                     : `${label}: ${universe.embers} saved`
                 }
                 onClick={handleOpenEmbers}
-                className={`${retroSecondaryButtonClass} shrink-0 gap-1.5 px-2.5! text-orange-200!`}
+                className={`${retroSecondaryButtonClass} min-w-11 shrink-0 gap-1.5 px-2.5! text-orange-200!`}
               >
                 <ui.PrestigeIcon className="h-4" />
                 <span aria-hidden="true">
@@ -328,51 +400,32 @@ export default function GameScreen({
               </button>
             )}
             <button
+              ref={menuButtonRef}
               type="button"
+              aria-haspopup="dialog"
               aria-expanded={isMenuOpen}
-              aria-controls="lm-menu"
-              onClick={() => setIsMenuOpen((open) => !open)}
+              onClick={() => setIsMenuOpen(true)}
               className={`${retroSecondaryButtonClass} shrink-0`}
             >
               Menu
             </button>
           </div>
-        </header>
-
-        {isMenuOpen && (
-          <nav
-            id="lm-menu"
-            aria-label="Game menu"
-            className={`${retroPanelClass} space-y-3 p-4`}
-          >
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onLeave}
-                className={retroSecondaryButtonClass}
-              >
-                Back to all universes
-              </button>
-              <Link
-                href="/ever-onward/versions"
-                className={retroSecondaryButtonClass}
-              >
-                What&apos;s new
-              </Link>
-            </div>
-            <p className="font-mono text-xs text-slate-300">
-              Your game saves on this device and pauses when you leave.
+          <div>
+            <p className={`${retroLabelClass} leading-normal`}>
+              {def.title}
+              <span aria-hidden="true">
+                {" "}
+                · Part {run.phase + 1}/{def.phases.length}
+              </span>
+              <span className="sr-only">
+                , Part {run.phase + 1} of {def.phases.length}
+              </span>
             </p>
-            <Logbook def={def} run={run} />
-            <PlayOnSilentToggle />
-            <NarrationSettings />
-            <BackupPanel
-              save={currentSave}
-              isDisabled={overlay !== null}
-              onReplaceSave={onReplaceSave}
-            />
-          </nav>
-        )}
+            <RetroHeading as="h1" className="mt-2 text-base sm:text-lg">
+              {phase.title}
+            </RetroHeading>
+          </div>
+        </header>
 
         <StoryTicker
           def={def}
@@ -389,19 +442,29 @@ export default function GameScreen({
           />
         )}
 
-        {run.complete ? (
+        {run.complete && (
           <EmberPanel
             def={def}
             universe={universe}
             onBuy={onBuyEmber}
             onRestart={onRestart}
           />
-        ) : (
+        )}
+        {!run.complete && run.phase === 0 && run.taps < 25 && (
           <p className={`${bodyClass} text-slate-300`}>
             <span aria-hidden="true" className="mr-2 text-amber-300">
               ▶︎
             </span>
             Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
+          </p>
+        )}
+        {alert && (
+          <p
+            role="alert"
+            data-testid="lm-alert"
+            className={`${pixelClass} animate-pulse border-4 border-red-500 bg-red-950/90 p-3 text-[10px] leading-relaxed text-red-100 motion-reduce:animate-none`}
+          >
+            ⚠ {alert}
           </p>
         )}
         {visitors.map((v) => (
@@ -415,19 +478,6 @@ export default function GameScreen({
           />
         ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
-        {ui.panels.map((Panel, i) => (
-          <Panel key={i} def={def} run={run} onAct={onAction} />
-        ))}
-        {alert && (
-          <p
-            role="alert"
-            data-testid="lm-alert"
-            className={`${pixelClass} animate-pulse border-4 border-red-500 bg-red-950/90 p-3 text-[10px] leading-relaxed text-red-100 motion-reduce:animate-none`}
-          >
-            ⚠ {alert}
-          </p>
-        )}
-        <Resources def={def} run={run} primaryId={primaryId} />
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
           <div className="space-y-2">
@@ -436,13 +486,24 @@ export default function GameScreen({
               def={def}
               run={run}
               onBuy={handleBuy}
+              onShowBought={handleOpenUpgrades}
+              pinnedId={next?.upgrade.id}
             />
           </div>
         )}
+        {ui.panels.map((Panel, i) => (
+          <Panel key={i} def={def} run={run} onAct={onAction} />
+        ))}
+        <Resources
+          def={def}
+          run={run}
+          primaryId={primaryId}
+          hiddenIds={countdown?.resourceId ? [countdown.resourceId] : []}
+        />
         <p className="text-center font-mono text-xs text-slate-300">
           <Link
             href="/"
-            className={`rounded px-1 py-1 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`}
+            className={`inline-flex min-h-11 items-center rounded px-1 py-1 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`}
           >
             gentryriggen.com
           </Link>
@@ -473,6 +534,7 @@ export default function GameScreen({
           next={next}
           alert={alert}
           onSelectNext={handleSelectNext}
+          onSelectAlert={handleSelectAlert}
         />
       )}
 
@@ -483,6 +545,18 @@ export default function GameScreen({
           onBuy={onBuyEmber}
           onRestart={onRestart}
           onClose={handleCloseEmbers}
+        />
+      )}
+
+      {isMenuOpen && (
+        <MenuDialog
+          def={def}
+          run={run}
+          currentSave={currentSave}
+          isBackupDisabled={overlay !== null}
+          onLeave={onLeave}
+          onReplaceSave={onReplaceSave}
+          onClose={handleCloseMenu}
         />
       )}
 
