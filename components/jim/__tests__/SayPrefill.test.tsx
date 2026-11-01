@@ -111,10 +111,11 @@ describe("a notification tapped while the page is open", () => {
 
 it("hands ?listen=brief on first load to the chat and clears it", () => {
   window.history.replaceState(null, "", "/jim?listen=brief");
-  renderChat();
-  expect(window.location.search).toBe("");
+  // The chat's own hooks listen too; a test listener sees the same intent.
   const seen = jest.fn();
   const off = onOpenIntent(seen);
+  renderChat();
+  expect(window.location.search).toBe("");
   expect(seen).toHaveBeenCalledWith({ listen: "brief", reflect: false });
   off();
 });
