@@ -6,6 +6,13 @@ import {
   netStateIndex,
   tideLevel,
 } from "./tide";
+import {
+  hasMissionControl,
+  hasRacingFins,
+  isProbeOut,
+  isScoutOut,
+  isProbesOpen,
+} from "./probes";
 import { LET_GO } from "./upgrades";
 import {
   COAST_LIGHTHOUSES,
@@ -124,6 +131,16 @@ export interface LightSceneInfo {
   biggerNets: number;
   /** 1 once the tide mill turns by the water. */
   tideMill: number;
+  /** 1 once the probe races are open: a dock stands beside the mirror field. */
+  raceOpen: number;
+  /** 1 while the racing probe is away from the dock. */
+  raceOut: number;
+  /** 1 once the racing fins are bought. */
+  raceFins: number;
+  /** 1 once mission control stands by the dock (its scout flies on its own). */
+  raceControl: number;
+  /** 1 while the scout probe is away from the dock. */
+  raceScout: number;
   /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
   gridSteadiness: number;
   /** 1 while the evening rush is on. */
@@ -243,6 +260,11 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     nets: isTideOpen(run) ? netStateIndex(run) : 0,
     biggerNets: hasBiggerNets(run) ? 1 : 0,
     tideMill: hasTideMill(run) ? 1 : 0,
+    raceOpen: isProbesOpen(run) ? 1 : 0,
+    raceOut: isProbeOut(run) ? 1 : 0,
+    raceFins: hasRacingFins(run) ? 1 : 0,
+    raceControl: hasMissionControl(run) ? 1 : 0,
+    raceScout: isScoutOut(run) ? 1 : 0,
     gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
     rush: isRushOn(run) ? 1 : 0,
     flare: isFlareOn(run) ? 1 : 0,

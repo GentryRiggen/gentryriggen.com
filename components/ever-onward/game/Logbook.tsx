@@ -42,6 +42,15 @@ export default function Logbook({ def, run }: LogbookProps) {
           ))}
         </ul>
       )}
+      {(run.resources.prRuns ?? 0) > 0 && (
+        <p className="font-mono text-xs text-sky-200">
+          Probe races: {run.resources.prRuns} runs home so far (+
+          {formatNumber(Math.floor(run.resources.prEarned ?? 0))} energy
+          {(run.resources.prAutoEarned ?? 0) > 0 &&
+            `, +${formatNumber(Math.floor(run.resources.prAutoEarned ?? 0))} from the scout`}
+          ).
+        </p>
+      )}
       {(run.resources.tdHauls ?? 0) > 0 && (
         <p className="font-mono text-xs text-sky-200">
           Tide clock: {run.resources.tdHauls} hauls so far (+

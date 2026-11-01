@@ -58,6 +58,22 @@ export const TUNING = {
     /** The catch flows in over this many seconds, like a rush of fish. */
     surgeSeconds: 6,
   },
+  /** Probe Races, a side machine of the sky (see probes.ts). */
+  probes: {
+    /** Seconds of sky income each route brings home, and how long it takes. */
+    short: { seconds: 40, haulSeconds: 28 },
+    long: { seconds: 90, haulSeconds: 60 },
+    /** The comet route pays between these, by how close the comet is at launch. */
+    comet: { seconds: 60, haulMin: 22, haulMax: 50 },
+    /** The comet drifts out and back in one slow pass of this many seconds. */
+    cometCycleSeconds: 80,
+    /** Racing fins: every run takes this share of its time. */
+    finsTimeFactor: 0.75,
+    /** Mission control's scout brings home this share of a hand-flown haul. */
+    scoutShare: 0.35,
+    /** A haul flows in over this many seconds, like a rush of light. */
+    surgeSeconds: 4,
+  },
   night: {
     perCityMW: 150,
     payPerMW: 0.2,

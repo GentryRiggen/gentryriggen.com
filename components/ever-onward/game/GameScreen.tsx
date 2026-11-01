@@ -36,6 +36,7 @@ import NextUpgradeBar from "./NextUpgradeBar";
 import PhaseOverlay from "./PhaseOverlay";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
+import ProbeRaces from "./ProbeRaces";
 import StickyHud from "./StickyHud";
 import StoryLog from "./StoryLog";
 import TapButton from "./TapButton";
@@ -313,6 +314,7 @@ export default function GameScreen({
         ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
         <TideClock def={def} run={run} onAct={onAction} />
+        <ProbeRaces def={def} run={run} onAct={onAction} />
         <WeatherDesk def={def} run={run} onAct={onAction} />
         <Resources
           def={def}

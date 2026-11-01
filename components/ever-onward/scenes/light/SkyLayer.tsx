@@ -1,6 +1,6 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import { MAX_DRAWN_PROBES } from "@/lib/ever-onward/universes/light/scene";
-import { AIM_DISH, LAKE, RELAY_RADIUS, SUN } from "./anchors";
+import { AIM_DISH, LAKE, RACE, RELAY_RADIUS, SUN } from "./anchors";
 import { makeStars } from "./random";
 
 const STAR_COUNT = 70;
@@ -118,6 +118,105 @@ function Probe({ info, index }: ProbeProps) {
             />
           ))}
       </g>
+    </g>
+  );
+}
+
+/** The racing probe's dock, its loop of three waypoint stars, and mission control. */
+function RaceDock({ info }: { info: LightSceneInfo }) {
+  const r = RACE.loopRadius;
+  return (
+    <g className="lm-pop-svg">
+      <circle
+        cx={RACE.x}
+        cy={RACE.loopY}
+        r={r}
+        fill="none"
+        stroke="#fcd34d"
+        strokeOpacity="0.35"
+        strokeDasharray="3 4"
+      />
+      {[-90, 30, 150].map((deg) => (
+        <polygon
+          key={deg}
+          points="0,-3.5 1.2,-1.2 3.5,0 1.2,1.2 0,3.5 -1.2,1.2 -3.5,0 -1.2,-1.2"
+          fill="#fde68a"
+          transform={`translate(${RACE.x + r * Math.cos(rad(deg))} ${RACE.loopY + r * Math.sin(rad(deg))})`}
+        />
+      ))}
+      {/* the dock: a platform, a mast and a flag */}
+      <g transform={`translate(${RACE.x} ${RACE.y})`}>
+        <rect x="-14" y="2" width="28" height="5" fill="#475569" />
+        <rect x="-14" y="2" width="28" height="2" fill="#94a3b8" />
+        <rect x="9" y="-12" width="2" height="14" fill="#94a3b8" />
+        <rect x="11" y="-12" width="7" height="4" fill="#f87171" />
+        {info.raceOut === 0 && <RaceProbe info={info} dockAngle />}
+      </g>
+      {info.raceOut === 1 && (
+        <g transform={`translate(${RACE.x} ${RACE.loopY})`}>
+          <g className="pr-loop">
+            <g transform={`translate(${r} 0) rotate(90)`}>
+              <RaceProbe info={info} showsExhaust />
+            </g>
+          </g>
+        </g>
+      )}
+      {/* mission control: a little dish, and its scout flying the loop wider and slower */}
+      {info.raceControl === 1 && (
+        <>
+          <g transform={`translate(${RACE.x - 28} ${RACE.y})`}>
+            <rect x="-6" y="-2" width="12" height="9" fill="#475569" />
+            <path d="M-7 -2 Q0 -14 7 -2 Z" fill="#7dd3fc" stroke="#e0f2fe" />
+          </g>
+          {info.raceScout === 1 && (
+            <g transform={`translate(${RACE.x} ${RACE.loopY})`}>
+              <g className="pr-loop-slow">
+                <circle
+                  cx={r + 9}
+                  r="2.4"
+                  fill="#7dd3fc"
+                  stroke="#e0f2fe"
+                  strokeWidth="0.8"
+                />
+              </g>
+            </g>
+          )}
+        </>
+      )}
+    </g>
+  );
+}
+
+interface RaceProbeProps {
+  info: LightSceneInfo;
+  dockAngle?: boolean;
+  showsExhaust?: boolean;
+}
+
+/** The racing probe: a white arrow (with red fins once bought). */
+function RaceProbe({ info, dockAngle, showsExhaust }: RaceProbeProps) {
+  return (
+    <g transform={dockAngle ? "translate(0 -5) rotate(-90)" : undefined}>
+      {showsExhaust && (
+        <polygon
+          points="-4,0 -15,-2.6 -15,2.6"
+          fill="#fb923c"
+          fillOpacity="0.85"
+          className="pr-exhaust"
+        />
+      )}
+      {info.raceFins === 1 && (
+        <>
+          <polygon points="-4,0 -8,-5 -1,-2" fill="#f87171" />
+          <polygon points="-4,0 -8,5 -1,2" fill="#f87171" />
+        </>
+      )}
+      <polygon
+        points="6,0 -3,-3.6 -1.5,0 -3,3.6"
+        fill="#ffffff"
+        stroke="#facc15"
+        strokeWidth="1"
+      />
     </g>
   );
 }
@@ -392,6 +491,7 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
       {Array.from({ length: probes }, (_, i) => (
         <Probe key={i} info={info} index={i} />
       ))}
+      {info.raceOpen === 1 && <RaceDock info={info} />}
     </g>
   );
 }

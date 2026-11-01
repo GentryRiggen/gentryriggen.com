@@ -59,6 +59,8 @@ export const SUN = { x: 200, y: 150 } as const;
 export const AIM_DISH = { x: 200, y: 246 } as const;
 export const LAKE = { x: 305, y: 288 } as const;
 export const RELAY_RADIUS = 118;
+/** The probe dock and the racing loop above it (kept above the caption bar on a phone, which crops the picture's bottom). */
+export const RACE = { x: 56, y: 238, loopY: 196, loopRadius: 26 } as const;
 
 // ------------------------------------------------------------------- Last
 

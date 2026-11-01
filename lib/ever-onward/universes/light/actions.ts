@@ -27,6 +27,7 @@ import {
   rushBonus,
   tankCapacity,
   calmIncomePerSecond,
+  calmSkyIncomePerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
 import {
@@ -49,6 +50,15 @@ import {
   netState,
   setNets,
 } from "./tide";
+import {
+  ROUTES,
+  isProbeOut,
+  isProbesOpen,
+  launchActionId,
+  launchProbe,
+  routeHaul,
+  routeSeconds,
+} from "./probes";
 import { formatNumber } from "../../engine/format";
 
 const TREND_THRESHOLD = 0.015;
@@ -306,6 +316,24 @@ const HAUL_IN: ActionDef = {
   perform: (run) => haulIn(run, calmIncomePerSecond(run)),
 };
 
+/** One launch button per route; the race panel draws them itself. */
+const LAUNCH_ROUTE: readonly ActionDef[] = ROUTES.map((route, index) => ({
+  id: launchActionId(index),
+  phases: [PHASE_SKY],
+  isInline: true,
+  visibleWhen: isProbesOpen,
+  describe: (run) => ({
+    label: `Launch: ${route.name}`,
+    detail: isProbeOut(run)
+      ? "The probe is out. It will be back soon."
+      : `${Math.round(routeSeconds(run, index))} s, about ${formatNumber(
+          Math.floor(routeHaul(run, index, calmSkyIncomePerSecond(run)))
+        )} energy.`,
+    isBlocked: isProbeOut(run),
+  }),
+  perform: (run) => launchProbe(run, index, calmSkyIncomePerSecond(run)),
+}));
+
 export const ACTIONS: readonly ActionDef[] = [
   BUY_OIL,
   BALANCE_GRID,
@@ -317,4 +345,5 @@ export const ACTIONS: readonly ActionDef[] = [
   ...SHIELD_TOWN,
   SET_NETS,
   HAUL_IN,
+  ...LAUNCH_ROUTE,
 ];
