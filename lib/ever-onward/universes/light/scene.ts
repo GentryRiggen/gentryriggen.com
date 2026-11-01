@@ -103,6 +103,10 @@ export interface LightSceneInfo {
   subsTier: number;
   bulbsTier: number;
   gridTier: number;
+  /** 1 once storm crews are hired (sandbag line by the towns). */
+  stormCrews: number;
+  /** 1 once the weather vane stands on the control post. */
+  weatherVane: number;
   /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
   gridSteadiness: number;
   /** 1 while the evening rush is on. */
@@ -215,6 +219,8 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     subsTier: tier(run, "subs"),
     bulbsTier: tier(run, "bulbs"),
     gridTier: tier(run, "grid"),
+    stormCrews: level(run, "storm-crews") > 0 ? 1 : 0,
+    weatherVane: level(run, "weather-vane") > 0 ? 1 : 0,
     gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
     rush: isRushOn(run) ? 1 : 0,
     flare: isFlareOn(run) ? 1 : 0,

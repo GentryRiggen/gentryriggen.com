@@ -242,6 +242,17 @@ function flowSurge(run: RunState, dt: number): void {
 }
 
 /**
+ * Opens the desk (the milestone's purchase calls this, so its story line
+ * lands with the purchase itself; the tick is the fallback for old saves).
+ */
+export function openWeather(run: RunState): void {
+  if (run.flags[WEATHER_OPEN_FLAG] === true) return;
+  run.flags[WEATHER_OPEN_FLAG] = true;
+  run.resources.wxSeed = run.rng ^ SEED_MIX;
+  beginForming(run, W.firstFormSeconds);
+}
+
+/**
  * Runs the desk for `dt` seconds. `income` is the phase's income per second
  * (read lazily: only a landfall needs it).
  */
@@ -254,9 +265,7 @@ export function tickWeather(
   const r = run.resources;
   if (!isWeatherOpen(run)) {
     if (owned(run, "gen2") < W.openAtSteamPlants) return;
-    run.flags[WEATHER_OPEN_FLAG] = true;
-    r.wxSeed = run.rng ^ SEED_MIX;
-    beginForming(run, W.firstFormSeconds);
+    openWeather(run);
     return;
   }
   flowSurge(run, dt);

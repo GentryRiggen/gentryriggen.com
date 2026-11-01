@@ -5,7 +5,7 @@ export const TUNING = {
    * and the bigger collector steps made the night and the sky quicker, so
    * they are priced up to keep the run about two hours.
    */
-  costScale: { coast: 1.05, night: 1.16, sky: 1.35, last: 1.15 } as Record<
+  costScale: { coast: 1.05, night: 1.18, sky: 1.35, last: 1.15 } as Record<
     string,
     number
   >,

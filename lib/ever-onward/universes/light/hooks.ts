@@ -44,7 +44,10 @@ export function lightPlates(run: RunState): string[] {
     if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
       plates.push("grid");
     if (isRushOn(run)) plates.push("rush");
-    if (isWeatherOpen(run)) plates.push("weather");
+    // Offered once the first front has come and gone (so it is not a crowd of
+    // beats at the moment the desk opens).
+    if (isWeatherOpen(run) && (run.resources.wxFronts ?? 0) >= 1)
+      plates.push("weather");
   } else if (run.phase === 2) {
     plates.push("aim");
     if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
@@ -138,6 +141,8 @@ function sceneKey(run: RunState): string {
     s.subsTier,
     s.bulbsTier,
     s.gridTier,
+    s.stormCrews,
+    s.weatherVane,
     s.aimLevel,
     s.mirrorTier,
     s.copyTier,

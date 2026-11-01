@@ -298,6 +298,12 @@ function ControlPost({ info }: { info: LightSceneInfo }) {
           <rect x="7" y="-13" width="5" height="4" fill="#ffd98a" />
         </g>
       )}
+      {info.weatherVane > 0 && (
+        <g className="lm-pop-svg">
+          <line x1="0" y1="-30" x2="0" y2="-24" stroke="#dfe8ff" />
+          <polygon points="-5,-29 5,-31 5,-27" fill="#ffd98a" />
+        </g>
+      )}
       {info.gridTier >= 2 && (
         <g className="lm-pop-svg">
           <circle
@@ -564,6 +570,26 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           </g>
         ))}
       </g>
+      {/* storm crews: a row of sandbags along the rim by the towns */}
+      {info.stormCrews > 0 && (
+        <g className="lm-pop-svg" data-testid="lm-sandbags">
+          {[-3, -2, -1, 0, 1, 2].map((i) => {
+            const p = planetPoint(-0.1 + i * 0.022, 1);
+            return (
+              <rect
+                key={i}
+                x={p.x - 3}
+                y={p.y - 3}
+                width="6"
+                height="3"
+                fill="#c9a66b"
+                stroke="#7a5a2a"
+                strokeWidth="0.5"
+              />
+            );
+          })}
+        </g>
+      )}
       {/* the machines on the horizon */}
       <Machine slot="crank" count={0} colour="#ffd98a">
         <Crank level={info.crankLevel} />

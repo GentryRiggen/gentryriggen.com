@@ -39,6 +39,7 @@ import {
   WEATHER_OPEN_FLAG,
   WEATHER_VANE_ID,
   hasWeatherVane,
+  openWeather,
   shieldSlots,
 } from "./weather";
 
@@ -456,7 +457,10 @@ const nightUpgrades: UpgradeDef[] = [
     costGrowth: 1.4,
     maxLevel: 5,
     visibleWhen: (run) => owned(run, "gen1") >= 5,
-    onBuy: sync,
+    onBuy: (run, level) => {
+      sync(run);
+      if (level >= TUNING.weather.openAtSteamPlants) openWeather(run);
+    },
     effectPreview: previewOf("gen2", [POWER_PER_SECOND]),
   },
   ...chain({
@@ -566,7 +570,9 @@ const nightUpgrades: UpgradeDef[] = [
     priority: -1,
     // Late in the night (five river dams): the oldest chore gets a helper once a newer one is about.
     visibleWhen: (run) =>
-      run.flags[WEATHER_OPEN_FLAG] === true && owned(run, "gen3") >= 5,
+      run.flags[WEATHER_OPEN_FLAG] === true &&
+      owned(run, STORM_CREWS_ID) > 0 &&
+      owned(run, "gen4") >= 2,
     onBuy: sync,
     effectPreview: previewOf(WEATHER_VANE_ID, [
       {
