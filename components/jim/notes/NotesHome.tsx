@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Check, LoaderCircle } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import DailyWord from "@/components/jim/notes/DailyWord";
+import JimNoticed from "@/components/jim/notes/JimNoticed";
 import NeedsYou from "@/components/jim/notes/NeedsYou";
 import RemindersCard from "@/components/jim/notes/RemindersCard";
 import QuickLog from "@/components/jim/notes/QuickLog";
@@ -452,6 +453,7 @@ export default function NotesHome({
           </p>
         </div>
         {data.daily && <DailyWord word={data.daily} />}
+        {data.noticed && <JimNoticed items={data.noticed} onAsk={onLog} />}
         <div className="space-y-3">
           <TodayCard data={data} />
           <QuickLog today={data.today} onLog={onLog} />
