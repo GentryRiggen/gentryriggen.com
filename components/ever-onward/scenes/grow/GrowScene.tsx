@@ -14,7 +14,7 @@ import FarmLayer from "./FarmLayer";
 import WorldLayer from "./WorldLayer";
 import SeedLayer from "./SeedLayer";
 import YardLayer from "./YardLayer";
-import { SCENE_LABELS, captionFor } from "./captions";
+import { captionFor, sceneLabelFor } from "./captions";
 
 /** Keeps the last info object while the numbers match, so the SVG skips renders. */
 function useStableInfo(run: RunState): GrowSceneInfo {
@@ -37,9 +37,11 @@ const ART = {
 const GrowSceneView = memo(function GrowSceneView({
   info,
   lastBuy,
+  testId,
 }: {
   info: GrowSceneInfo;
   lastBuy: LastBuy | null;
+  testId: string;
 }) {
   const Art = ART[info.phase];
   return (
@@ -47,8 +49,8 @@ const GrowSceneView = memo(function GrowSceneView({
       <svg
         viewBox={info.phase === "seed" ? "0 6 400 228" : "0 0 400 300"}
         role="img"
-        aria-label={SCENE_LABELS[info.phase]}
-        data-testid="lm-scene"
+        aria-label={sceneLabelFor(info)}
+        data-testid={testId}
         data-phase={info.phase}
         overflow="visible"
         className="block h-full w-full"
@@ -68,6 +70,16 @@ const GrowSceneView = memo(function GrowSceneView({
 });
 
 /** The Make It Grow picture: one simple drawing per phase. */
-export default function GrowScene({ run, lastBuy = null }: SceneProps) {
-  return <GrowSceneView info={useStableInfo(run)} lastBuy={lastBuy} />;
+export default function GrowScene({
+  run,
+  lastBuy = null,
+  testId = "lm-scene",
+}: SceneProps) {
+  return (
+    <GrowSceneView
+      info={useStableInfo(run)}
+      lastBuy={lastBuy}
+      testId={testId}
+    />
+  );
 }

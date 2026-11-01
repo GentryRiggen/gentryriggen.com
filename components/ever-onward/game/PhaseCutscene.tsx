@@ -76,7 +76,9 @@ export default function PhaseCutscene({
   const primaryRef = useRef<HTMLButtonElement>(null);
   const onContinueRef = useRef(onContinue);
   const indexRef = useRef(index);
+  const finishLabelRef = useRef(finishLabel);
   useEffect(() => {
+    finishLabelRef.current = finishLabel;
     onContinueRef.current = onContinue;
     indexRef.current = index;
   });
@@ -116,7 +118,18 @@ export default function PhaseCutscene({
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const now = indexRef.current;
-      if (event.key === "ArrowRight" && now < last) {
+      const target = event.target as HTMLElement | null;
+      if (
+        (event.key === "ArrowRight" || event.key === "ArrowLeft") &&
+        target?.closest?.('[role="radiogroup"],input,select,textarea')
+      ) {
+        // Arrows belong to the lantern picker and form fields.
+        return;
+      }
+      if (event.key === "Escape" && finishLabelRef.current === "Done") {
+        event.preventDefault();
+        onContinueRef.current();
+      } else if (event.key === "ArrowRight" && now < last) {
         event.preventDefault();
         goRef.current(now + 1);
       } else if (event.key === "ArrowLeft" && now > 0) {
@@ -124,7 +137,6 @@ export default function PhaseCutscene({
         goRef.current(now - 1);
       } else if (event.key === "Enter") {
         // A focused button already activates itself on Enter.
-        const target = event.target as HTMLElement | null;
         if (target?.closest("button")) return;
         event.preventDefault();
         if (now < last) goRef.current(now + 1);
@@ -193,7 +205,7 @@ export default function PhaseCutscene({
             data-moving={isReduced ? "no" : "yes"}
             className={`h-full w-full ${isReduced ? "" : pan}`}
           >
-            <Scene run={run} />
+            <Scene run={run} testId="lm-cutscene-scene" />
           </div>
         </div>
 

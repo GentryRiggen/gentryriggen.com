@@ -157,6 +157,7 @@ export default function StoryDrawer({
                           className={`${retroSecondaryButtonClass} mt-3`}
                         >
                           Watch again
+                          <span className="sr-only"> · Part {i + 1}</span>
                         </button>
                       )}
                     </div>

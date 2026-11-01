@@ -7,13 +7,11 @@ import {
   PLAYABLE_UNIVERSES,
 } from "@/lib/ever-onward/universes";
 import type { Season } from "@/lib/ever-onward/season";
-import {
-  LIGHTHOUSE_DIM,
-  LIGHTHOUSE_LIT,
-  LIGHTHOUSE_ROWS,
-  PADLOCK_COLORS,
-  PADLOCK_ROWS,
-} from "@/lib/ever-onward/start/sprites";
+import { isUniverseUnlocked } from "@/lib/ever-onward/engine/progress";
+import { newSave } from "@/lib/ever-onward/engine/save";
+import type { SaveData } from "@/lib/ever-onward/engine/types";
+import { PADLOCK_COLORS, PADLOCK_ROWS } from "@/lib/ever-onward/start/sprites";
+import { uiFor } from "../universes";
 import { EVER_ONWARD_VERSION } from "@/lib/ever-onward/version";
 import MusicToggle from "../audio/MusicToggle";
 import { pickSeason } from "./RetroPage";
@@ -29,6 +27,8 @@ interface StartScreenProps {
   /** Ids of universes with progress; their icons light up. */
   startedIds: readonly string[];
   onStart: () => void;
+  /** The save, to show which universes are still locked. */
+  save?: SaveData;
   /** Overrides the date-based look (previews and tests). */
   season?: Season;
 }
@@ -44,8 +44,11 @@ export default function StartScreen({
   hasSave,
   startedIds,
   onStart,
+  save,
   season: seasonOverride,
 }: StartScreenProps) {
+  const [fallbackSave] = useState<SaveData>(() => newSave());
+  const currentSave = save ?? fallbackSave;
   const [season] = useState<Season>(() => seasonOverride ?? pickSeason());
   const sky = useSkySettings();
   const hasStarted = useRef(false);
@@ -143,16 +146,26 @@ export default function StartScreen({
           >
             {PLAYABLE_UNIVERSES.map((def) => {
               const isLit = startedIds.includes(def.id);
+              const isOpen = isUniverseUnlocked(def, currentSave);
+              const { hubSprite } = uiFor(def.id);
               return (
                 <li key={def.id} className="flex flex-col items-center">
-                  <PixelSprite
-                    rows={LIGHTHOUSE_ROWS}
-                    palette={isLit ? LIGHTHOUSE_LIT : LIGHTHOUSE_DIM}
-                    className={`h-11 ${isLit ? "drop-shadow-[0_0_8px_rgba(253,224,71,0.8)]" : ""}`}
-                  />
+                  {isOpen ? (
+                    <PixelSprite
+                      rows={hubSprite.rows}
+                      palette={isLit ? hubSprite.lit : hubSprite.dim}
+                      className={`h-11 ${isLit ? "drop-shadow-[0_0_8px_rgba(253,224,71,0.8)]" : ""}`}
+                    />
+                  ) : (
+                    <PixelSprite
+                      rows={PADLOCK_ROWS}
+                      palette={PADLOCK_COLORS}
+                      className="h-6"
+                    />
+                  )}
                   <span className="sr-only">
                     {def.title}
-                    {isLit ? ", lit" : ""}
+                    {isOpen ? (isLit ? ", lit" : "") : ", locked"}
                   </span>
                 </li>
               );

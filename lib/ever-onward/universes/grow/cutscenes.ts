@@ -21,7 +21,7 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
       text: "Here are three ways to do well.",
       tips: [
         "Plant in spring and pick in autumn: each season gives a boost.",
-        "Keep the water tank topped up. Rain barrels help when it is dry.",
+        "Rain fills the tank. Rain barrels hold more for dry spells.",
         "When the bees dance, follow them to the best patch.",
       ],
     },

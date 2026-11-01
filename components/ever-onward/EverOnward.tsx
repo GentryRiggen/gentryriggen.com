@@ -76,6 +76,7 @@ export default function EverOnward() {
         <StartScreen
           hasSave={startedIds.length > 0}
           startedIds={startedIds}
+          save={save}
           onStart={() => setIsOnStartScreen(false)}
         />
       ) : (

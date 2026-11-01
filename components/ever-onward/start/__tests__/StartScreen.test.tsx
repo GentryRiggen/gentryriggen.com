@@ -5,6 +5,7 @@ import {
   WEATHER_CACHE_KEY,
   WEATHER_TOGGLE_KEY,
 } from "@/lib/ever-onward/weather";
+import { newSave } from "@/lib/ever-onward/engine/save";
 import StartScreen from "../StartScreen";
 
 const autumn = SEASONS[0];
@@ -24,6 +25,33 @@ describe("StartScreen", () => {
       screen.getByRole("button", { name: "Continue" })
     ).toBeInTheDocument();
     expect(screen.getByText(/Keep the Light On, lit/)).toBeInTheDocument();
+  });
+
+  it("shows Make It Grow locked until Keep the Light On is finished", () => {
+    const save = newSave();
+    const { rerender } = render(
+      <StartScreen
+        hasSave
+        startedIds={["light"]}
+        save={save}
+        onStart={jest.fn()}
+      />
+    );
+    expect(screen.getByText(/Make It Grow, locked/)).toBeInTheDocument();
+    expect(screen.getByText(/Keep the Light On, lit/)).toBeInTheDocument();
+
+    const done = newSave();
+    done.universes.light = { ...done.universes.light, completions: 1 };
+    rerender(
+      <StartScreen
+        hasSave
+        startedIds={["light"]}
+        save={done}
+        onStart={jest.fn()}
+      />
+    );
+    expect(screen.queryByText(/locked/)).toBeNull();
+    expect(screen.getByText("Make It Grow")).toBeInTheDocument();
   });
 
   it("starts once on click, Enter or Space", async () => {

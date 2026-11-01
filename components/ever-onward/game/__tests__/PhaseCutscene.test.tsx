@@ -186,7 +186,9 @@ describe("the phase cutscene", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /^Intro · Part 2/ })
     );
-    await userEvent.click(screen.getByRole("button", { name: "Watch again" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Watch again · Part 2" })
+    );
     expect(
       screen.getByRole("dialog", { name: "No More Night" })
     ).toBeInTheDocument();
@@ -194,5 +196,76 @@ describe("the phase cutscene", () => {
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByTestId("lm-phase-overlay")).toBeNull();
     expect(screen.getByTestId("lm-story-drawer")).toBeInTheDocument();
+  });
+
+  it("keeps arrow keys for a radiogroup or a field inside the cutscene", async () => {
+    render(
+      <PhaseCutscene
+        def={lightUniverse}
+        phaseIndex={0}
+        Scene={LightScene}
+        onContinue={jest.fn()}
+        opening={
+          <div role="radiogroup" aria-label="Pick">
+            <button type="button" role="radio" aria-checked="true">
+              One
+            </button>
+          </div>
+        }
+      />
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+    const before = frameNumber();
+    await userEvent.click(screen.getByRole("radio", { name: "One" }));
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(frameNumber()).toBe(before);
+    screen.getByRole("button", { name: "Back" }).focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(frameNumber()).toBe(before - 1);
+  });
+
+  it("closes on Escape only when it is a replay (Done)", async () => {
+    const start = renderCutscene();
+    await userEvent.keyboard("{Escape}");
+    expect(start).not.toHaveBeenCalled();
+    document.body.innerHTML = "";
+    const replay = renderCutscene({ finishLabel: "Done" });
+    await userEvent.keyboard("{Escape}");
+    expect(replay).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the cutscene picture its own test id", () => {
+    render(
+      <div>
+        <LightScene run={newRun(lightUniverse)} />
+        <PhaseCutscene
+          def={lightUniverse}
+          phaseIndex={0}
+          Scene={LightScene}
+          onContinue={jest.fn()}
+        />
+      </div>
+    );
+    expect(screen.getAllByTestId("lm-scene")).toHaveLength(1);
+    expect(screen.getByTestId("lm-cutscene-scene")).toBeInTheDocument();
+  });
+
+  it("names each Watch again button after its part", async () => {
+    const run = { ...newRun(lightUniverse), phase: 1 };
+    render(
+      <StoryDrawer
+        def={lightUniverse}
+        run={run}
+        entries={[]}
+        endingIds={[]}
+        onClose={jest.fn()}
+      />
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Intro · Part 1/ })
+    );
+    expect(
+      screen.getByRole("button", { name: "Watch again · Part 1" })
+    ).toBeInTheDocument();
   });
 });

@@ -223,16 +223,25 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         </g>
       )}
       <rect x="-1200" y="108" width="2800" height="30" fill="#b98a55" />
-      {Array.from({ length: 280 }, (_, k) => (
-        <rect
-          key={k}
-          x={k * 10 - 1199}
+      <defs>
+        <pattern
+          id="gs-fence-slats"
+          x="-1199"
           y="108"
-          width="8"
+          width="10"
           height="30"
-          fill="#c99a62"
-        />
-      ))}
+          patternUnits="userSpaceOnUse"
+        >
+          <rect width="8" height="30" fill="#c99a62" />
+        </pattern>
+      </defs>
+      <rect
+        x="-1199"
+        y="108"
+        width="2800"
+        height="30"
+        fill="url(#gs-fence-slats)"
+      />
       <rect x="-1200" y="112" width="2800" height="3" fill="#8b5e34" />
       {info.orchard &&
         TREES.map((t) => (

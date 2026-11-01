@@ -39,11 +39,30 @@ export function captionFor(info: GrowSceneInfo): string {
   }
 }
 
-/** The label a screen reader gets for each phase's picture. */
-export const SCENE_LABELS: Readonly<Record<GrowSceneInfo["phase"], string>> = {
-  yard: "A backyard garden with raised beds, a fence, a greenhouse and bees",
-  farm: "A farm with rows of crops in fields, a barn, and a town on the horizon",
-  world:
-    "A round globe seen from far away, with green spreading across it, with meadows and woods",
-  seed: "One quiet window at night with a small pot on the sill, a light left on, and a green world outside",
-};
+/** The label a screen reader gets for the picture, from what it draws. */
+export function sceneLabelFor(info: GrowSceneInfo): string {
+  switch (info.phase) {
+    case "yard": {
+      const extras = [
+        ...(info.orchard ? ["an orchard"] : []),
+        ...(info.greenhouse ? ["a greenhouse"] : []),
+        ...(info.bees > 0 ? ["bees"] : []),
+      ];
+      return [
+        "A backyard garden with raised beds and a fence",
+        ...(extras.length > 0 ? [` and ${extras.join(", ")}`] : []),
+      ].join("");
+    }
+    case "farm":
+      return "A farm with rows of crops in fields, a barn, and a town on the horizon";
+    case "world":
+      return "A round globe seen from far away, with green spreading across it, with meadows and woods";
+    default:
+      return [
+        info.isNight ? "A window at night" : "A window at dusk",
+        " with a small pot on the sill",
+        info.windowLit ? ", a light left on" : "",
+        info.visitorHere ? ", and someone who came back to see it" : "",
+      ].join("");
+  }
+}

@@ -96,7 +96,7 @@ describe("the Last Seed ending", () => {
     const positions = lines.map((line) => shown.indexOf(line));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
-    expect(lines[1]).toContain("I planted that, a long time ago");
+    expect(lines[1]).toContain("I planted the first one, right there");
     expect(screen.getByTestId("lm-ending-embers")).toHaveTextContent(
       "18 acorns"
     );

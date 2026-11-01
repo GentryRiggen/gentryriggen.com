@@ -22,6 +22,8 @@ export interface LastBuy {
 export interface SceneProps {
   run: RunState;
   lastBuy?: LastBuy | null;
+  /** Test id of the picture; the cutscene uses its own copy. */
+  testId?: string;
 }
 
 export interface PanelProps {

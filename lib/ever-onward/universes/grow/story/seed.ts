@@ -85,7 +85,7 @@ export const seed: StoryMessage[] = [
     id: "seed-child",
     phase: PHASE_SEED,
     when: returned,
-    text: '"Look," says the grown-up, lifting the little one up to the sill. "I planted that, a long time ago." The child touches one petal very gently, and laughs. The robot stays out of the way, and stays glad.',
+    text: '"Look," says the grown-up, lifting the little one up to the sill. "I planted the first one, right there." The child touches one petal very gently, and laughs. The robot stays out of the way, and stays glad.',
   },
   {
     id: "seed-end-1",

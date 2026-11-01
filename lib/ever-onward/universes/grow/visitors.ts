@@ -91,12 +91,12 @@ export const TEASERS: readonly TeaserDef[] = [
   {
     upgradeId: "grain-barn",
     showWhen: (run) => owned(run, "glasshouse") >= 1,
-    hint: () => "When the first seed drone hums",
+    hint: () => "When two seed drones hum",
   },
   {
     upgradeId: "seed-vault",
     showWhen: (run) => owned(run, "windbreak") >= 1,
-    hint: () => "When the world is mostly green",
+    hint: () => "When two sky seeders fly and the world is 80% green",
   },
 ];
 
