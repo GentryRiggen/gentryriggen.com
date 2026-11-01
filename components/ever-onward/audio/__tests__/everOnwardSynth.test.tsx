@@ -4,7 +4,12 @@ import { createFakeAudio } from "../../../game-audio/testing/fakeAudio";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { GROW_UI } from "../../universes/grow";
-import { createEverOnwardSynth, everOnwardSynth } from "../everOnwardSynth";
+import {
+  createEverOnwardSynth,
+  everOnwardSynth,
+  MUSIC_LEVEL,
+} from "../everOnwardSynth";
+import { TAP_LEVEL } from "../voices";
 import { everOnwardChannels } from "../soundSettings";
 import useEverOnwardAudio from "../useEverOnwardAudio";
 
@@ -41,6 +46,11 @@ describe("Ever Onward synth with a fake AudioContext", () => {
     audio.install();
   });
   afterEach(() => audio.uninstall());
+
+  it("keeps taps clearly under the music bed", () => {
+    expect(TAP_LEVEL).toBeLessThanOrEqual(0.4);
+    expect(TAP_LEVEL).toBeLessThan(MUSIC_LEVEL);
+  });
 
   it("plays a tap only after enable, and caps polyphony", () => {
     const synth = createEverOnwardSynth();

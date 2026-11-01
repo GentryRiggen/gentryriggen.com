@@ -31,6 +31,7 @@ import {
   playPhaseSwell,
   playReveal,
   playTapVoice,
+  TAP_LEVEL,
   playChime,
   playSplash,
   playLaunch,
@@ -79,7 +80,7 @@ export type CueName =
 
 const MASTER_LEVEL = 0.8;
 /** User-facing loudness of the music bed: low, so it stays in the back. */
-const MUSIC_LEVEL = 0.55;
+export const MUSIC_LEVEL = 0.55;
 const MAX_TAP_VOICES = 6;
 const AFFORDABLE_GAP_MS = 1500;
 const REVEAL_GAP_MS = 250;
@@ -405,7 +406,7 @@ function createSynth() {
       tapEnds = tapEnds.filter((end) => end > audioNow);
       if (tapEnds.length >= MAX_TAP_VOICES) return;
       tapEnds.push(audioNow + 0.3);
-      playTapVoice(engine, tapPhase, comboSemitones(combo.step), 1);
+      playTapVoice(engine, tapPhase, comboSemitones(combo.step), TAP_LEVEL);
     },
 
     buy(phaseNow: number, isOneOff: boolean) {

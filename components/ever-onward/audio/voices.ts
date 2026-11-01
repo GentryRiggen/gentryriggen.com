@@ -6,6 +6,13 @@ import { midiToHz } from "../../game-audio/music";
  * ends. `at` is the audio-clock start time.
  */
 
+/**
+ * Loudness of a tap relative to its voice's own level. Taps are the most
+ * frequent sound, so they sit well under the music bed (about 40% of the old
+ * level).
+ */
+export const TAP_LEVEL = 0.4;
+
 /** Base note of the tap per phase (MIDI); the combo climbs from here. */
 const TAP_BASE_MIDI = [69, 64, 72, 60] as const;
 
