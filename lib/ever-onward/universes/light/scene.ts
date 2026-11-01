@@ -1,4 +1,5 @@
 import type { RunState } from "../../engine/types";
+import { LET_GO } from "./upgrades";
 import {
   COAST_LIGHTHOUSES,
   PHASE_COAST,
@@ -12,15 +13,26 @@ import {
 import {
   boatHeadingOf,
   flameFraction,
+  gridSteadiness,
+  headingOf,
   isBoatOut,
   isFleetGlowing,
+  isFlareOn,
   isGridGlowing,
+  isRushOn,
   isStorming,
   keeperCount,
   level,
   lighthouseCount,
   shipsPerFlash,
+  tankCapacity,
+  tier,
 } from "./tick";
+
+/** Towns the Night scene can draw; `townsLit` counts toward this. */
+export const TOWN_COUNT = 60;
+/** Probes the Sky scene can draw. */
+export const MAX_DRAWN_PROBES = 12;
 
 export interface LightSceneInfo {
   /** Phase id: "coast", "night", "sky" or "last". */
@@ -41,12 +53,15 @@ export interface LightSceneInfo {
   cities: number;
   /** Cities lit / TOTAL_CITIES, 0..1. */
   citiesProgress: number;
+  /** Towns drawn lit, 0..TOWN_COUNT (at least 1 once any city is lit). */
+  townsLit: number;
   /** Night remaining, 0..1 (1 = full night). */
   night: number;
   /** supply / demand, 0..1. */
   powered: number;
   generators: number;
   collectors: number;
+  /** Probes drawn, 0..MAX_DRAWN_PROBES (not the real count, which grows fast). */
   probes: number;
   starsRemaining: number;
   /** Stars left / TOTAL_STARS, 0..1. */
@@ -66,6 +81,45 @@ export interface LightSceneInfo {
   glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
   finished: number;
+  /** Lamp oil in the tank / its size, 0..1 (steps of 10%). */
+  oilFraction: number;
+  /** Chains bought so far on the coast (each 0 to its length). */
+  wickTier: number;
+  feesTier: number;
+  dockTier: number;
+  tankTier: number;
+  trainTier: number;
+  shuttersTier: number;
+  /** 1 once the oil merchant contract is signed. */
+  contract: number;
+  /** Hand-crank level, 0..5. */
+  crankLevel: number;
+  /** Generators of each kind: little, steam, dam, wind and sun. */
+  gen1: number;
+  gen2: number;
+  gen3: number;
+  gen4: number;
+  linesTier: number;
+  subsTier: number;
+  bulbsTier: number;
+  gridTier: number;
+  /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
+  gridSteadiness: number;
+  /** 1 while the evening rush is on. */
+  rush: number;
+  /** 1 while a solar flare can be caught. */
+  flare: number;
+  /** How true the probe fleet flies, 0..1 (steps of 10%). */
+  fleetHeading: number;
+  aimLevel: number;
+  mirrorTier: number;
+  copyTier: number;
+  relayTier: number;
+  navTier: number;
+  enginesTier: number;
+  appetiteTier: number;
+  /** Bit i is set once the i-th light of LET_GO has been let go. */
+  letGoMask: number;
   /** The lantern colour picked at the start, 1 to 3 (the first if none). */
   lantern: number;
 }
@@ -111,17 +165,30 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     storm: isStorming(run) && run.phase === 0 ? 1 : 0,
     cities,
     citiesProgress: clamp01(cities / TOTAL_CITIES),
-    night: clamp01(finite(r.night ?? 100) / 100),
-    powered: demand > 0 ? clamp01(supply / demand) : 0,
+    townsLit:
+      cities > 0
+        ? Math.max(1, Math.round(clamp01(cities / TOTAL_CITIES) * TOWN_COUNT))
+        : 0,
+    // Quantized: the picture only needs these in steps, not every tick.
+    night: step(finite(r.night ?? 100) / 100, 50),
+    powered: demand > 0 ? step(supply / demand, 20) : 0,
     generators:
       level(run, "gen1") +
       level(run, "gen2") +
       level(run, "gen3") +
       level(run, "gen4"),
     collectors: finite(r.collectors ?? 0),
-    probes: finite(Math.floor(r.probes ?? 0)),
+    probes:
+      finite(r.probes ?? 0) >= 1
+        ? Math.min(
+            MAX_DRAWN_PROBES,
+            1 + Math.floor(Math.log2(Math.floor(r.probes) + 1))
+          )
+        : 0,
     starsRemaining: Math.ceil(stars),
-    starsFraction: clamp01(stars / TOTAL_STARS),
+    // In steps of one drawn star (the sky draws 70) so it is not redrawn
+    // every tick while the probes feed.
+    starsFraction: Math.ceil(clamp01(stars / TOTAL_STARS) * 70) / 70,
     lightsRemaining: lights,
     lightsFraction: clamp01(lights / TOTAL_LIGHTS),
     flame: step(flameFraction(run), 20),
@@ -131,5 +198,37 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
     lantern: lanternOf(run),
+    oilFraction: step(finite(r.oil ?? 0) / Math.max(1, tankCapacity(run)), 10),
+    wickTier: tier(run, "wick"),
+    feesTier: tier(run, "fees"),
+    dockTier: tier(run, "dock"),
+    tankTier: tier(run, "tank"),
+    trainTier: tier(run, "train"),
+    shuttersTier: tier(run, "shutters"),
+    contract: level(run, "contract") > 0 ? 1 : 0,
+    crankLevel: level(run, "crank"),
+    gen1: level(run, "gen1"),
+    gen2: level(run, "gen2"),
+    gen3: level(run, "gen3"),
+    gen4: level(run, "gen4"),
+    linesTier: tier(run, "lines"),
+    subsTier: tier(run, "subs"),
+    bulbsTier: tier(run, "bulbs"),
+    gridTier: tier(run, "grid"),
+    gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
+    rush: isRushOn(run) ? 1 : 0,
+    flare: isFlareOn(run) ? 1 : 0,
+    fleetHeading: step(finite(headingOf(run)) / 100, 10),
+    aimLevel: level(run, "aim"),
+    mirrorTier: tier(run, "mirror"),
+    copyTier: tier(run, "copy"),
+    relayTier: tier(run, "relay"),
+    navTier: tier(run, "nav"),
+    enginesTier: tier(run, "engines"),
+    appetiteTier: tier(run, "appetite"),
+    letGoMask: LET_GO.reduce(
+      (mask, light, i) => (level(run, light.id) > 0 ? mask | (1 << i) : mask),
+      0
+    ),
   };
 }

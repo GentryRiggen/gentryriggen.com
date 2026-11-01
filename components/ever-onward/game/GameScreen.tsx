@@ -24,6 +24,7 @@ import NarrationLayer from "../narration/NarrationLayer";
 import NarrationSettings from "../narration/NarrationSettings";
 import { lanternOf } from "@/lib/ever-onward/universes/light";
 import { SCENES } from "../scenes";
+import type { LastBuy } from "../scenes/light/callouts";
 import ActionPanel from "./ActionPanel";
 import BackupPanel from "./BackupPanel";
 import CountdownBar from "./CountdownBar";
@@ -116,6 +117,7 @@ export default function GameScreen({
   const next = useNextUpgrade(def, run);
   const [spend, setSpend] = useState<Spend | null>(null);
   const [effect, setEffect] = useState<Effect | null>(null);
+  const [lastBuy, setLastBuy] = useState<LastBuy | null>(null);
 
   useEffect(() => {
     if (!spend) return;
@@ -136,6 +138,11 @@ export default function GameScreen({
       setSpend((s) => ({ id: (s?.id ?? 0) + 1, text }));
     }
     if (upgrade && canAfford(run, upgrade)) {
+      setLastBuy((b) => ({
+        id: (b?.id ?? 0) + 1,
+        upgradeId: id,
+        n: (run.owned[id] ?? 0) + 1,
+      }));
       const preview = previewUpgrade(def, run, id);
       if (preview)
         setEffect((e) => ({ id: (e?.id ?? 0) + 1, text: `${preview} ⬆` }));
@@ -195,7 +202,7 @@ export default function GameScreen({
             isHudShown ? "pt-[calc(5.75rem+env(safe-area-inset-top))]" : ""
           }`}
         >
-          {Scene && <Scene run={run} />}
+          {Scene && <Scene run={run} lastBuy={lastBuy} />}
         </div>
         <div
           aria-hidden="true"
