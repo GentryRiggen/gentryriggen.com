@@ -28,6 +28,12 @@ import { growUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
 
+/**
+ * A bot that lets one in a few side-machine choices go to the helper still
+ * takes it after this long, so a skipped choice never stalls the bot.
+ */
+const SKIP_DELAY = 45;
+
 /** Seconds in one stretch of attention for the garden. */
 const GARDEN_WINDOW = 30;
 
@@ -74,7 +80,12 @@ export const followsDance =
     if (run.phase !== 0) return [];
     const { skipEvery } = options;
     const dance = dancesSoFar(run);
-    if (skipEvery && dance % skipEvery === skipEvery - 1) return [];
+    if (
+      skipEvery &&
+      dance % skipEvery === skipEvery - 1 &&
+      (run.resources.beTime ?? 0) < SKIP_DELAY
+    )
+      return [];
     const id = followActionId(danceHint(run));
     return available.includes(id) ? [id] : [];
   };
@@ -88,7 +99,12 @@ export const entersFair =
   (run, available) => {
     if (run.phase !== 1) return [];
     const { skipEvery } = options;
-    if (skipEvery && fairsSoFar(run) % skipEvery === skipEvery - 1) return [];
+    if (
+      skipEvery &&
+      fairsSoFar(run) % skipEvery === skipEvery - 1 &&
+      (run.resources.frTime ?? 0) < SKIP_DELAY
+    )
+      return [];
     const id = enterActionId(likeliestPumpkin(run));
     return available.includes(id) ? [id] : [];
   };
@@ -102,7 +118,12 @@ export const sendsFlock =
   (run, available) => {
     if (run.phase !== 2) return [];
     const { skipEvery } = options;
-    if (skipEvery && flightsSoFar(run) % skipEvery === skipEvery - 1) return [];
+    if (
+      skipEvery &&
+      flightsSoFar(run) % skipEvery === skipEvery - 1 &&
+      (run.resources.mgTime ?? 0) < SKIP_DELAY
+    )
+      return [];
     const id = sendActionId(mostWelcoming(run));
     return available.includes(id) ? [id] : [];
   };

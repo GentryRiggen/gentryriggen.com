@@ -2,7 +2,7 @@ import { formatNumber } from "../../engine/format";
 import { nextRandom } from "../../engine/rng";
 import type { ActionDef, RunState } from "../../engine/types";
 import { migrationSeedsMult } from "./biomes";
-import { MANUAL_RESOURCES, PHASE_WORLD } from "./resources";
+import { MANUAL_RESOURCES, PHASE_WORLD, carryOver } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -213,7 +213,7 @@ function flowSurge(run: RunState, dt: number): void {
   if (pending <= 0) return;
   if (run.phase !== 2) {
     const id = MANUAL_RESOURCES[run.phase];
-    r[id] = res(run, id) + pending * M.greenToCare;
+    r[id] = res(run, id) + carryOver(2, pending);
     r.mgPending = 0;
     return;
   }

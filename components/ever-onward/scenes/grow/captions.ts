@@ -10,7 +10,7 @@ export function captionFor(info: GrowSceneInfo): string {
       const season = info.season[0].toUpperCase() + info.season.slice(1);
       const parts = [`${season} in the yard`, plural(info.beds, "bed")];
       if (info.bees > 0) parts.push(plural(info.bees, "hive"));
-      if (info.isDry) parts.push("thirsty soil");
+      if (info.dry) parts.push("thirsty soil");
       return parts.join(" · ");
     }
     case "farm":

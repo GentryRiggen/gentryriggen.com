@@ -23,6 +23,21 @@ export const PHASE_IDS: readonly GrowPhaseId[] = [
 /** What each phase's tap earns, by phase index. */
 export const MANUAL_RESOURCES = ["seeds", "harvest", "green", "care"] as const;
 
+/**
+ * What a payout still in flight when phase `from` ends is worth in the next
+ * phase's own currency (whole units, rounded down like the phases' onEnter
+ * gifts).
+ */
+export function carryOver(from: number, amount: number): number {
+  const rate =
+    from === 0
+      ? TUNING.farm.seedsToHarvest
+      : from === 1
+        ? TUNING.world.harvestToGreen
+        : TUNING.migration.greenToCare;
+  return Math.floor(amount * rate);
+}
+
 /** How much of the one pot is grown, 0 to 100. */
 export const FULL_GROWTH = 100;
 
@@ -108,6 +123,7 @@ export const RESOURCES: readonly ResourceDef[] = [
     "frPlace",
     "frLastPays",
     "frBy",
+    "frIncome",
     "frRng",
     "frPaused",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),

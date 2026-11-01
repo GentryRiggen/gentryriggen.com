@@ -130,7 +130,7 @@ const ENTER_PUMPKIN: readonly ActionDef[] = Array.from(
             : undefined,
       };
     },
-    perform: (run: RunState) => enterPumpkin(run, index),
+    perform: (run: RunState) => enterPumpkin(run, index, incomePerSecond(run)),
   })
 );
 

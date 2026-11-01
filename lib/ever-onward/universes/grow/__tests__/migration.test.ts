@@ -162,14 +162,21 @@ describe("seed migration", () => {
     expect(leaderOnly.resources.mgEarned).toBeGreaterThan(0);
   });
 
-  it("lands a flock in flight after the world ends", () => {
-    const on = toFlock(tick(def, flocky(), 0.1));
+  it("lands a flock in flight after the world ends, paid by the world's income", () => {
+    const big = { windbreak: 10, "planting-rover": 10 };
+    const on = toFlock(tick(def, flocky(big), 0.1));
+    const worldIncome = incomePerSecond(on);
     const sent = send(on, 4);
-    const ended: RunState = { ...sent, phase: 3 };
+    const ended: RunState = { ...sent, phase: 3, owned: {} };
     const after = run(ended, REGIONS[4].hop + M.surgeSeconds + 2);
     expect(flightsSoFar(after)).toBe(1);
     expect(after.resources.mgPending).toBe(0);
-    expect(after.resources.care).toBeGreaterThan(ended.resources.care ?? 0);
+    const pays = regionWelcome(on, 4) * Math.max(1, worldIncome);
+    expect(after.resources.mgLastPays).toBeCloseTo(pays, 5);
+    expect((after.resources.care ?? 0) - (ended.resources.care ?? 0)).toBe(
+      Math.floor(pays * M.greenToCare)
+    );
+    expect(after.resources.care).toBeGreaterThan(0);
   });
 
   it("uses its own random stream", () => {

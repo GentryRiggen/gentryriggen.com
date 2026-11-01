@@ -2,7 +2,13 @@ import { upgradeCost } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
-import { FAIR_ACTION_IDS, isFairOn, isFairOpen, withoutFair } from "./fair";
+import {
+  FAIR_HAND_ID,
+  FAIR_ACTION_IDS,
+  isFairOn,
+  isFairOpen,
+  withoutFair,
+} from "./fair";
 import { SPREAD_ACTION_IDS, biomeGap } from "./biomes";
 import {
   MIGRATION_ACTION_IDS,
@@ -10,7 +16,7 @@ import {
   isMigrationOpen,
   withoutMigration,
 } from "./migration";
-import { PLANT_ACTION_IDS, demandGap } from "./market";
+import { MARKET_AGENT_ID, PLANT_ACTION_IDS, demandGap } from "./market";
 import { PHASE_IDS } from "./resources";
 import { sceneInfo } from "./scene";
 import { pickPerSecond } from "./tick";
@@ -133,6 +139,11 @@ function sceneKey(run: RunState): string {
     s.barrow,
     s.tea,
     s.keeper,
+    // The farm's one-offs: silos, the market agent, the fair tent and helper.
+    run.owned.silo ?? 0,
+    run.owned[MARKET_AGENT_ID] ?? 0,
+    isFairOpen(run),
+    run.owned[FAIR_HAND_ID] ?? 0,
   ].join("|");
 }
 

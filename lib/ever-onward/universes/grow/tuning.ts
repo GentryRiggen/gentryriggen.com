@@ -135,8 +135,8 @@ export const TUNING = {
     handShare: 0.5,
     /** A payout flows into the harvest over this many seconds. */
     surgeSeconds: 4,
-    /** Fairs finished before the fair helper turns up. */
-    handAfterFairs: 1,
+    /** Fairs finished (or the first glasshouse) before the fair helper turns up. */
+    handAfterFairs: 5,
     /** How much of a pumpkin's quality is its size (the rest is shine). */
     sizeWeight: 0.6,
   },
@@ -230,7 +230,7 @@ export const TUNING = {
     /** A landing flows into the green over this many seconds. */
     surgeSeconds: 4,
     /** A landing still flowing when the world ends becomes this much care. */
-    greenToCare: 0.0000001,
+    greenToCare: 0.00005,
   },
   seed: {
     /** Growth (of 100) each unit of care adds to the pot. */

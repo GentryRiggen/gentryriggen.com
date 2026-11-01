@@ -77,10 +77,10 @@ function Bed({
         y={y}
         width={BED_W}
         height={BED_H}
-        fill={info.isDry ? SOIL_DRY : SOIL_WET}
+        fill={info.dry ? SOIL_DRY : SOIL_WET}
       />
       <rect x={x} y={y} width={BED_W} height="3" fill="#8b5e34" />
-      {info.isDry && (
+      {info.dry && (
         <path
           d={`M${x + 10} ${y + 6}l6 4M${x + 34} ${y + 8}l7 3M${x + 50} ${y + 5}l-4 6`}
           stroke="#8a6a38"
@@ -108,7 +108,7 @@ function Bed({
           )}
         </g>
       ))}
-      {info.sprinklers > 0 && !info.isDry && info.waterFraction > 0 && (
+      {info.sprinklers > 0 && !info.dry && info.waterFraction > 0 && (
         <g fill="#7cc4ff" fillOpacity="0.9">
           <rect x={x + 28} y={y - 18} width="2" height="3" />
           <rect x={x + 20} y={y - 14} width="2" height="3" />
@@ -198,7 +198,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         fillOpacity="0.8"
       />
       <rect x="0" y="136" width="400" height="130" fill={look.ground} />
-      {info.isDry && (
+      {info.dry && (
         <rect
           x="0"
           y="136"
@@ -473,7 +473,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         y={SILL_BOX.y}
         width="90"
         height="7"
-        fill={info.isDry ? SOIL_DRY : SOIL_WET}
+        fill={info.dry ? SOIL_DRY : SOIL_WET}
       />
       <rect
         x={SPROUT.x}
