@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.9.0",
+    date: "2026-11-01",
+    title: "The Tide Clock",
+    highlights: [
+      "The Coast has a Tide Clock once you open the fish market. The sea rises and falls on its own, about every three minutes",
+      "Set the nets before high tide, then haul in a catch of coins. Setting them early catches more. Full nets wait for you forever, and ignoring the tide costs nothing",
+      "Bigger nets catch more, and a tide mill brings in a little extra every high tide on top of your own catch",
+      "Watch the tide pole and buoys in the picture rise and fall, with a splash when you haul in",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-11-01",
     title: "The Weather Desk",
