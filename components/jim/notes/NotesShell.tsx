@@ -27,6 +27,8 @@ import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import { Empty } from "@/components/jim/notes/NotesUi";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
+import NotesWork from "@/components/jim/notes/NotesWork";
+import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import { localDay, timeLabel } from "@/lib/jim/notesData";
@@ -55,6 +57,15 @@ const PAGES: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: "health", label: "Health", icon: HeartPulse },
   { id: "people", label: "People", icon: Users },
 ];
+
+/** What Work shows over its list: a meeting note, a directory card, or
+ * the people note opened from that card. */
+type WorkView =
+  | { kind: "meeting"; path: string }
+  | { kind: "person"; id: number }
+  | { kind: "profile"; path: string; id: number };
+
+const NO_DIRECTORY = { updated: "", people: [] };
 
 /** Health's own pages, picked by the switch at its top. */
 type HealthPage = "health" | "training" | "golf";
@@ -162,6 +173,7 @@ export default memo(function NotesShell({
   const [page, setPage] = useState<Page>("home");
   const [healthPage, setHealthPage] = useState<HealthPage>("health");
   const [person, setPerson] = useState<string | null>(null);
+  const [workView, setWorkView] = useState<WorkView | null>(null);
   const [query, setQuery] = useState("");
   /** The search across all notes; while it has text it replaces the page. */
   const [search, setSearch] = useState("");
@@ -265,7 +277,7 @@ export default memo(function NotesShell({
     if (el && typeof el.scrollTo === "function") {
       el.scrollTo({ top, behavior: "instant" });
     }
-  }, [page, healthPage, person, searching, found]);
+  }, [page, healthPage, person, workView, searching, found]);
 
   // Keep the selected pill in view when the row is scrolled sideways.
   useEffect(() => {
@@ -279,10 +291,14 @@ export default memo(function NotesShell({
     if (searching) {
       setSearch("");
       setFound(null);
-    } else if (next === page && person === null) return;
-    if (person !== null && next === "people")
+    } else if (next === page && person === null && workView === null) return;
+    if (
+      (person !== null && next === "people") ||
+      (workView !== null && next === "work")
+    )
       restoreTop.current = listTop.current;
     setPerson(null);
+    setWorkView(null);
     setPage(next);
   }
 
@@ -294,6 +310,18 @@ export default memo(function NotesShell({
   function closePerson() {
     restoreTop.current = listTop.current;
     setPerson(null);
+  }
+
+  /** Opens something over the Work list, keeping the list's spot once. */
+  function openWork(next: WorkView) {
+    if (workView === null)
+      listTop.current = scrollerRef.current?.scrollTop ?? 0;
+    setWorkView(next);
+  }
+
+  function closeWork() {
+    restoreTop.current = listTop.current;
+    setWorkView(null);
   }
 
   function onSearch(value: string) {
@@ -369,7 +397,56 @@ export default memo(function NotesShell({
   } else if (page === "home") {
     body = <NotesHome data={data} saves={saves} onLog={onLog} />;
   } else if (page === "work") {
-    body = <Empty>Work is on its way.</Empty>;
+    const profile =
+      workView?.kind === "profile"
+        ? data.people.find((p) => p.path === workView.path)
+        : undefined;
+    // The list stays mounted under what opened, so back is instant and
+    // its searches keep their text.
+    body = (
+      <>
+        <div hidden={workView !== null}>
+          <NotesWork
+            data={data}
+            onOpenMeeting={(path) => openWork({ kind: "meeting", path })}
+            onOpenPerson={(id) => openWork({ kind: "person", id })}
+          />
+        </div>
+        {workView?.kind === "meeting" && (
+          <NotesNote
+            key={workView.path}
+            path={workView.path}
+            api={api}
+            getToken={getToken}
+            onBack={closeWork}
+            backLabel="Work"
+          />
+        )}
+        {workView?.kind === "person" && (
+          <DirectoryCard
+            directory={data.work?.directory ?? NO_DIRECTORY}
+            id={workView.id}
+            people={data.people}
+            onOpen={(id) => openWork({ kind: "person", id })}
+            onProfile={(path) =>
+              openWork({ kind: "profile", path, id: workView.id })
+            }
+            onBack={closeWork}
+          />
+        )}
+        {workView?.kind === "profile" &&
+          (profile ? (
+            <NotesPerson
+              person={profile}
+              today={data.today}
+              onBack={() => openWork({ kind: "person", id: workView.id })}
+              backLabel="Directory"
+            />
+          ) : (
+            <Empty>That profile isn&apos;t here anymore.</Empty>
+          ))}
+      </>
+    );
   } else if (page === "money") {
     body = <Empty>Money is on its way.</Empty>;
   } else if (page === "health") {
@@ -460,12 +537,14 @@ export default memo(function NotesShell({
           aria-labelledby={`jim-notes-tab-${page}`}
           className="mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         >
-          {/* People has its own search. */}
-          {found === null && (searching || page !== "people") && (
-            <div className="mb-4">
-              <SearchField value={search} onChange={onSearch} />
-            </div>
-          )}
+          {/* People has its own search; an open Work item hides it. */}
+          {found === null &&
+            (searching ||
+              (page !== "people" && !(page === "work" && workView))) && (
+              <div className="mb-4">
+                <SearchField value={search} onChange={onSearch} />
+              </div>
+            )}
           {data && !searching && (
             <div className="mb-6 flex items-center justify-between gap-3 text-sm text-ayu-subtle">
               <p className="flex min-w-0 items-center gap-2" aria-live="polite">

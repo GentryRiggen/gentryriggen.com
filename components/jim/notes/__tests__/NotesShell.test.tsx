@@ -214,21 +214,71 @@ it("switches Health between Health, Training and Golf", async () => {
   expect(screen.getByText("Back squat")).toBeInTheDocument();
 });
 
-it("shows calm placeholders on Work and Money for now", async () => {
+it("shows a calm placeholder on Money for now", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
-  await userEvent.click(screen.getByRole("tab", { name: "Work" }));
-  expect(screen.getByRole("tab", { name: "Work" })).toHaveAttribute(
-    "aria-selected",
-    "true"
-  );
-  expect(screen.queryByText("Water the plants")).toBeNull();
   await userEvent.click(screen.getByRole("tab", { name: "Money" }));
   expect(screen.getByRole("tab", { name: "Money" })).toHaveAttribute(
     "aria-selected",
     "true"
   );
+  expect(screen.queryByText("Water the plants")).toBeNull();
+});
+
+it("opens a meeting and a directory card from Work, and back", async () => {
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    people: [
+      ...VIEW_FIXTURE.people,
+      {
+        ...VIEW_FIXTURE.people[1],
+        path: "people/ava-torres.md",
+        name: "Ava Torres",
+      },
+    ],
+  });
+  fetchNote.mockResolvedValue({
+    path: "meetings/2026-10-30-garden-planning.md",
+    title: "Garden planning",
+    updated: "2026-10-30",
+    body: "- Picked the spring beds",
+  });
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Work" }));
+  await userEvent.type(screen.getByLabelText("Search meetings"), "garden");
+  await userEvent.click(
+    screen.getByRole("button", { name: /Garden planning/ })
+  );
+  expect(fetchNote.mock.calls[0][0]).toBe(
+    "meetings/2026-10-30-garden-planning.md"
+  );
+  expect(await screen.findByText("Picked the spring beds")).toBeVisible();
+  // The all-notes search steps aside while something is open.
+  expect(screen.queryByLabelText("Search notes")).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "Work" }));
+  // The list kept its search.
+  expect(screen.getByLabelText("Search meetings")).toHaveValue("garden");
+
+  await userEvent.type(screen.getByLabelText("Search the directory"), "ava");
+  const dir = screen.getByRole("region", { name: "Directory" });
+  await userEvent.click(
+    within(dir).getByRole("button", { name: /Ava Torres/ })
+  );
+  expect(screen.getByRole("heading", { name: "Ava Torres" })).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Quinn Hale" }));
+  expect(screen.getByRole("heading", { name: "Quinn Hale" })).toBeVisible();
+  const reports = screen.getByRole("region", { name: "Direct reports" });
+  await userEvent.click(
+    within(reports).getByRole("button", { name: /Ava Torres/ })
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Open profile" }));
+  await userEvent.click(screen.getByRole("button", { name: "Directory" }));
+  expect(screen.getByRole("heading", { name: "Ava Torres" })).toBeVisible();
+  // Back from a card returns to the list, not the card before it.
+  await userEvent.click(screen.getByRole("button", { name: "Work" }));
+  expect(screen.getByLabelText("Search the directory")).toHaveValue("ava");
 });
 
 it("moves between pages and into a profile and back", async () => {

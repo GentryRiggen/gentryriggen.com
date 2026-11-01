@@ -726,6 +726,36 @@ for (const width of [undefined, 320]) {
         await page.getByRole("button", { name: /Wren Rivera/ }).click();
         await expect(page.getByText("Jun 16, 1990")).toBeVisible();
         await shot("notes-person");
+
+        await pills.getByRole("tab", { name: "Work" }).click();
+        await expect(page.getByRole("region", { name: "Team" })).toBeVisible();
+        for (const id of ["#jim-meetings-search", "#jim-directory-search"]) {
+          expect(await fontSize(page, id)).toBeGreaterThanOrEqual(16);
+        }
+        await shot("notes-work");
+        await page
+          .getByRole("region", { name: "Wins per week" })
+          .scrollIntoViewIfNeeded();
+        await shot("notes-work-wins");
+        const dir = page.getByRole("region", { name: "Directory" });
+        await dir.getByLabel("Search the directory").fill("ava");
+        await dir.getByLabel("Search the directory").scrollIntoViewIfNeeded();
+        await shot("notes-work-directory");
+        await dir.getByRole("button", { name: /Ava Torres/ }).click();
+        await expect(
+          page.getByRole("heading", { name: "Ava Torres" })
+        ).toBeVisible();
+        await shot("notes-directory-card");
+        await page
+          .getByRole("navigation", { name: "Reports to" })
+          .getByRole("button", { name: "Quinn Hale" })
+          .click();
+        await expect(page.getByText("Direct and careful")).toBeVisible();
+        await shot("notes-directory-manager");
+        await page
+          .getByRole("region", { name: "Direct reports" })
+          .scrollIntoViewIfNeeded();
+        await shot("notes-directory-reports");
       }
     );
   });
