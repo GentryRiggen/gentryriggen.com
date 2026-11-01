@@ -19,8 +19,9 @@ export const CHANGELOG: readonly Release[] = [
   {
     version: "1.11.1",
     date: "2026-11-01",
-    title: "Clearer Someday cards",
+    title: "Clearer Someday cards, and an out-of-oil warning",
     highlights: [
+      "When the lamp runs out of oil, a red warning shows at the top and on the page, and the lamp in the picture goes dim, so you know to buy oil",
       "When a Someday card's goal is already met, it now says it is ready and pops in when you buy one of the upgrades above, instead of showing a goal you already reached",
     ],
   },

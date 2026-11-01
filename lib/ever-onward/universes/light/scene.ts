@@ -65,6 +65,8 @@ export interface LightSceneInfo {
   keepers: number;
   /** 1 while a storm is blowing, else 0. */
   storm: number;
+  /** 1 while the coast lamp has no oil (it burns dim). */
+  lampDry: number;
   cities: number;
   /** Cities lit / TOTAL_CITIES, 0..1. */
   citiesProgress: number;
@@ -206,6 +208,7 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     beam: clamp01(lens / (lens + 12)),
     keepers: finite(keeperCount(run)),
     storm: isStorming(run) && run.phase === 0 ? 1 : 0,
+    lampDry: run.phase === 0 && finite(r.oil ?? 0) <= 0 ? 1 : 0,
     cities,
     citiesProgress: clamp01(cities / TOTAL_CITIES),
     townsLit:

@@ -54,6 +54,7 @@ import {
   retroLabelClass,
   retroPanelClass,
   retroSecondaryButtonClass,
+  pixelClass,
 } from "./retro/retroStyles";
 import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
@@ -173,6 +174,7 @@ export default function GameScreen({
   };
 
   const countdown = def.countdown?.(run) ?? null;
+  const alert = def.alert?.(run) ?? null;
   const visitors = waitingVisitors(def, run);
   const storyText = new Map(def.story.map((m) => [m.id, m.text]));
 
@@ -203,7 +205,11 @@ export default function GameScreen({
           data-testid="lm-scene-frame"
           data-hud={isHudShown ? "shown" : "hidden"}
           className={`h-full transition-[padding] duration-300 motion-reduce:transition-none lg:pt-0 ${
-            isHudShown ? "pt-[calc(5.75rem+env(safe-area-inset-top))]" : ""
+            !isHudShown
+              ? ""
+              : alert
+                ? "pt-[calc(7.75rem+env(safe-area-inset-top))]"
+                : "pt-[calc(5.75rem+env(safe-area-inset-top))]"
           }`}
         >
           {Scene && <Scene run={run} lastBuy={lastBuy} />}
@@ -318,6 +324,15 @@ export default function GameScreen({
         <ProbeRaces def={def} run={run} onAct={onAction} />
         <WeatherDesk def={def} run={run} onAct={onAction} />
         <MemoryGarden def={def} run={run} onAct={onAction} />
+        {alert && (
+          <p
+            role="alert"
+            data-testid="lm-alert"
+            className={`${pixelClass} animate-pulse border-4 border-red-500 bg-red-950/90 p-3 text-[10px] leading-relaxed text-red-100 motion-reduce:animate-none`}
+          >
+            ⚠ {alert}
+          </p>
+        )}
         <Resources
           def={def}
           run={run}
@@ -379,6 +394,7 @@ export default function GameScreen({
           spend={spend}
           effect={effect}
           next={next}
+          alert={alert}
           onSelectNext={handleSelectNext}
         />
       )}
