@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.3",
+    date: "2026-11-01",
+    title: "Your podcast keeps playing",
+    highlights: [
+      "The game no longer pauses your podcast or music. Narration now plays the same way as the music, so it mixes in instead of taking over, and it never shows up on your lock screen",
+    ],
+  },
+  {
     version: "1.12.2",
     date: "2026-11-01",
     title: "Embers you can find",
