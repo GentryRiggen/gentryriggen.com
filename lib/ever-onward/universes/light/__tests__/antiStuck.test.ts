@@ -1,7 +1,7 @@
 import { affordableUpgrades, manualGain } from "../../../engine/engine";
 import { simulate } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
-import { def, drain, runAtPhaseStart, runAtTime } from "./fixtures";
+import { ACTIVE, def, drain, runAtPhaseStart, runAtTime } from "./fixtures";
 
 const MIN = 60;
 
@@ -35,6 +35,7 @@ describe("never stuck: adversarial states", () => {
             startRun: run,
             maxSeconds: 5 * MIN,
             step: 1,
+            strategy: ACTIVE,
           });
           const progressed =
             result.purchases.length > 0 ||
@@ -52,6 +53,7 @@ describe("never stuck: adversarial states", () => {
       startRun: worst,
       maxSeconds: 2 * 3600,
       step: 1,
+      strategy: ACTIVE,
     });
     expect(result.finished).toBe(true);
   });
@@ -86,7 +88,11 @@ describe("never stuck: tapping alone", () => {
 
 describe("never stuck: drained states from a real run", () => {
   const FRACTIONS = [0.05, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 0.97];
-  const total = simulate(def, { maxSeconds: 5 * 3600, step: 1 }).finishTime!;
+  const total = simulate(def, {
+    maxSeconds: 5 * 3600,
+    step: 1,
+    strategy: ACTIVE,
+  }).finishTime!;
 
   it.each(FRACTIONS)("at %s of the run, drained, it still finishes", (f) => {
     const sample = runAtTime(total * f);
@@ -97,6 +103,7 @@ describe("never stuck: drained states from a real run", () => {
       startRun: drained,
       maxSeconds: remaining * 1.5 + 15 * MIN,
       step: 1,
+      strategy: ACTIVE,
     });
     expect(result.finished).toBe(true);
     expect(result.longestGap.seconds).toBeLessThanOrEqual(5 * MIN);

@@ -71,11 +71,11 @@ test.describe("Ever Onward", () => {
       .poll(
         async () => {
           // A burst per attempt: the lamp's oil bill eats slow tapping.
-          for (let i = 0; i < 10; i += 1)
+          for (let i = 0; i < 30; i += 1)
             await page.getByTestId("lm-tap").click();
           return lens.getAttribute("aria-disabled");
         },
-        { timeout: 30_000 }
+        { timeout: 60_000 }
       )
       .toBe("false");
     await lens.click();
@@ -91,6 +91,18 @@ test.describe("Ever Onward", () => {
         .getByRole("region", { name: "Upgrades" })
         .getByRole("button", { name: /Better lens/ })
     ).toContainText("Level 1");
+  });
+
+  test("oil is bought by hand once a few ships have been guided", async ({
+    page,
+  }) => {
+    await startGame(page);
+    await expect(page.getByRole("region", { name: "Actions" })).toHaveCount(0);
+    for (let i = 0; i < 14; i += 1) await page.getByTestId("lm-tap").click();
+    const actions = page.getByRole("region", { name: "Actions" });
+    await expect(actions).toContainText("Buy oil");
+    await expect(actions).toContainText("a barrel");
+    await expect(page.getByTestId("lm-rate")).toContainText("/s");
   });
 
   test("browser Back from the game returns to the hub", async ({ page }) => {

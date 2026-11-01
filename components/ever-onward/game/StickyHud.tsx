@@ -2,7 +2,10 @@
 
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { NextUpgrade } from "@/lib/ever-onward/engine/pull";
+import type { RateTrend } from "@/lib/ever-onward/engine/rate";
 import AnimatedValue from "./AnimatedValue";
+import EffectFloater, { type Effect } from "./EffectFloater";
+import RateReadout from "./RateReadout";
 import NextUpgradeBar from "./NextUpgradeBar";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
@@ -14,7 +17,9 @@ interface StickyHudProps {
   resourceLabel: string;
   value: number;
   rate: number;
+  trend: RateTrend;
   spend: Spend | null;
+  effect: Effect | null;
   next: NextUpgrade | null;
   onSelectNext: () => void;
 }
@@ -40,7 +45,9 @@ export default function StickyHud({
   resourceLabel,
   value,
   rate,
+  trend,
   spend,
+  effect,
   next,
   onSelectNext,
 }: StickyHudProps) {
@@ -68,12 +75,12 @@ export default function StickyHud({
               testId="lm-hud-value"
               className="text-3xl font-bold leading-none text-slate-900 dark:text-slate-50"
             />
-            <span
-              data-testid="lm-hud-rate"
-              className="shrink-0 text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
-            >
-              +{formatNumber(rate)}/s
-            </span>
+            <RateReadout
+              rate={rate}
+              trend={trend}
+              testId="lm-hud-rate"
+              className="shrink-0 text-sm font-semibold"
+            />
           </p>
         </div>
         {next && (
@@ -84,6 +91,11 @@ export default function StickyHud({
           />
         )}
         <SpendFloater spend={spend} />
+        <EffectFloater
+          effect={effect}
+          testId="lm-hud-effect"
+          isAnnounced={false}
+        />
       </div>
     </div>
   );

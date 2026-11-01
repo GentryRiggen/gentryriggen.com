@@ -5,6 +5,7 @@ import {
   buy,
   manualAction,
   manualGain,
+  performAction,
   reconcileRun,
   tick,
 } from "@/lib/ever-onward/engine/engine";
@@ -64,6 +65,8 @@ export interface GameApi {
   /** Taps once; returns what the tap earned. */
   tap(): number;
   buyUpgrade(id: string): void;
+  /** Does a universe action (buying oil) by hand. */
+  doAction(id: string): void;
   buyEmberUpgrade(id: string): void;
   dismissOverlay(): void;
   /** Ends the run (finished, or restarted for embers) and starts a new one. */
@@ -281,6 +284,20 @@ export function useGame(): GameApi {
     [activeId, def, isPaused, replaceUniverse]
   );
 
+  const doAction = useCallback(
+    (id: string) => {
+      const current = activeId
+        ? saveRef.current?.universes[activeId]
+        : undefined;
+      if (!activeId || !def || !current || isPaused) return;
+      const nextRun = performAction(def, current.run, id);
+      if (nextRun === current.run) return;
+      everOnwardSynth.tap(current.run.phase);
+      replaceUniverse(activeId, { ...current, run: nextRun });
+    },
+    [activeId, def, isPaused, replaceUniverse]
+  );
+
   const buyEmberUpgrade = useCallback(
     (id: string) => {
       const current = activeId
@@ -330,6 +347,7 @@ export function useGame(): GameApi {
     leave,
     tap,
     buyUpgrade,
+    doAction,
     buyEmberUpgrade,
     dismissOverlay,
     restart,

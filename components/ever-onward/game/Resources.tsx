@@ -1,7 +1,10 @@
 import type { Ref } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
+import type { RateTrend } from "@/lib/ever-onward/engine/rate";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import AnimatedValue from "./AnimatedValue";
+import EffectFloater, { type Effect } from "./EffectFloater";
+import RateReadout from "./RateReadout";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface ResourcesProps {
@@ -9,9 +12,12 @@ interface ResourcesProps {
   run: RunState;
   /** The phase's main currency, shown big and first. */
   primaryId: string;
-  /** Its smoothed income per second. */
+  /** Its smoothed net change per second (gains minus running costs). */
   rate: number;
+  trend: RateTrend;
   spend: Spend | null;
+  /** What the upgrade just bought changed. */
+  effect: Effect | null;
   /** Watched to know when the main readout has scrolled away. */
   primaryRef: Ref<HTMLDivElement>;
 }
@@ -27,7 +33,9 @@ export default function Resources({
   run,
   primaryId,
   rate,
+  trend,
   spend,
+  effect,
   primaryRef,
 }: ResourcesProps) {
   const phaseId = def.phases[run.phase].id;
@@ -58,14 +66,12 @@ export default function Resources({
               />
             </dd>
           </div>
-          <dd
-            data-testid="lm-rate"
-            className="shrink-0 pb-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
-          >
-            +{formatNumber(rate)}/s
+          <dd className="shrink-0 pb-1 text-base font-semibold">
+            <RateReadout rate={rate} trend={trend} testId="lm-rate" />
           </dd>
           <dd className="contents">
             <SpendFloater spend={spend} />
+            <EffectFloater effect={effect} />
           </dd>
         </div>
       )}

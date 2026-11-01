@@ -1,9 +1,45 @@
 import { newRun } from "../../../engine/engine";
-import { simulate } from "../../../engine/sim";
+import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { lightUniverse } from "..";
+import { tankCapacity } from "../tick";
 
 export const def = lightUniverse;
+
+const MIN = 60;
+
+/**
+ * A player who buys oil when the price is under the usual (2.0) and the tank
+ * has room, or whenever it runs low.
+ */
+export function oilActions(run: RunState, available: readonly string[]) {
+  if (!available.includes("buy-oil")) return [];
+  const capacity = tankCapacity(run);
+  const { oil, oilPrice } = run.resources;
+  const isLow = oil < capacity * 0.15;
+  const isBargain = oilPrice < 2 && oil < capacity * 0.6;
+  return isLow || isBargain ? ["buy-oil"] : [];
+}
+
+/**
+ * Taps a lot for the first 10 minutes of each phase, then mostly watches;
+ * shops every 10 seconds; buys oil when it is cheap.
+ */
+export const REALISTIC: Strategy = {
+  tapRate: (run) => {
+    const phaseStart = run.transitions.at(-1)?.at ?? 0;
+    return run.time - phaseStart < 10 * MIN ? 3 : 0.3;
+  },
+  shopEvery: 10,
+  actions: oilActions,
+};
+
+/** Taps all the time. */
+export const ACTIVE: Strategy = {
+  tapsPerSecond: 3,
+  shopEvery: 10,
+  actions: oilActions,
+};
 
 /** Resources a player spends; draining them is the worst a player can do. */
 const SPENDABLE = ["coins", "oil", "power", "energy", "resolve"] as const;
@@ -28,6 +64,7 @@ export function runAtPhaseStart(
   const result = simulate(def, {
     maxSeconds: 5 * 3600,
     step: 1,
+    strategy: REALISTIC,
     prestige: options.prestige,
     stopWhen: (run) => run.phase >= phase,
   });
@@ -39,6 +76,7 @@ export function runAtTime(time: number): RunState {
   return simulate(def, {
     maxSeconds: time,
     step: 1,
+    strategy: ACTIVE,
     stopWhen: (run) => run.time >= time,
   }).finalRun;
 }
