@@ -63,18 +63,24 @@ describe("sticky HUD", () => {
     expect(screen.getByTestId("lm-hud")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("slides in with the currency and a tap button once the readout leaves", () => {
+  it("slides in with the currency once the readout leaves", () => {
     const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
     run.resources.coins = 1234;
-    const onTap = renderScreen(run);
+    renderScreen(run);
     setIntersecting(false);
 
     const hud = screen.getByTestId("lm-hud");
     expect(hud).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByTestId("lm-hud-value")).toHaveTextContent("1.23K");
     expect(screen.getByTestId("lm-hud-rate")).toHaveTextContent("/s");
+  });
 
-    screen.getByTestId("lm-hud-tap").click();
+  it("keeps the one tap button reachable at all times", () => {
+    const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
+    const onTap = renderScreen(run);
+    setIntersecting(false);
+    expect(screen.queryByTestId("lm-hud-tap")).toBeNull();
+    screen.getByRole("button", { name: "Flash the light" }).click();
     expect(onTap).toHaveBeenCalledTimes(1);
   });
 

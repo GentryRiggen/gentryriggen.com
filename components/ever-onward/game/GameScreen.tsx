@@ -110,7 +110,7 @@ export default function GameScreen({
   ).flatMap((id) => def.story.find((m) => m.id === id)?.text ?? []);
 
   return (
-    <div className="min-h-dvh bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 lg:flex lg:h-dvh">
+    <div className="min-h-dvh touch-manipulation bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 lg:flex lg:h-dvh">
       <div
         inert={overlay !== null}
         className="sticky top-0 z-20 h-[36dvh] w-full overflow-hidden bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0"
@@ -119,7 +119,7 @@ export default function GameScreen({
       </div>
       <main
         inert={overlay !== null}
-        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto"
+        className="mx-auto w-full max-w-xl space-y-4 px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto"
       >
         <header className="flex items-start justify-between gap-3">
           <div>
@@ -190,11 +190,10 @@ export default function GameScreen({
             onRestart={onRestart}
           />
         ) : (
-          <TapButton
-            label={phase.manualLabel}
-            isStorm={isStorm}
-            onTap={onTap}
-          />
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Tap the button at the bottom right to{" "}
+            {phase.manualLabel.toLowerCase()}.
+          </p>
         )}
         <Resources
           def={def}
@@ -230,6 +229,16 @@ export default function GameScreen({
       </main>
 
       {!run.complete && (
+        <TapButton
+          label={phase.manualLabel}
+          phase={run.phase}
+          isStorm={isStorm}
+          isCovered={overlay !== null}
+          onTap={onTap}
+        />
+      )}
+
+      {!run.complete && (
         <StickyHud
           isShown={isHudShown}
           isCovered={overlay !== null}
@@ -239,8 +248,6 @@ export default function GameScreen({
           rate={rate}
           spend={spend}
           next={next}
-          tapLabel={phase.manualLabel}
-          onTap={onTap}
           onSelectNext={handleSelectNext}
         />
       )}

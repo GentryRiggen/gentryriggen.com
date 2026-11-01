@@ -1,9 +1,7 @@
 "use client";
 
-import { useRef } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { NextUpgrade } from "@/lib/ever-onward/engine/pull";
-import { focusRingClass } from "../styles";
 import AnimatedValue from "./AnimatedValue";
 import NextUpgradeBar from "./NextUpgradeBar";
 import SpendFloater, { type Spend } from "./SpendFloater";
@@ -18,8 +16,6 @@ interface StickyHudProps {
   rate: number;
   spend: Spend | null;
   next: NextUpgrade | null;
-  tapLabel: string;
-  onTap: () => void;
   onSelectNext: () => void;
 }
 
@@ -35,8 +31,7 @@ export const formatPrimary = (value: number): string =>
 
 /**
  * A compact bar pinned to the top of the screen while the main readouts are
- * scrolled away: the currency counting up, its income, a mini tap button and
- * the progress toward the next upgrade.
+ * scrolled away: the currency counting up, its income and the progress toward the next upgrade.
  */
 export default function StickyHud({
   isShown,
@@ -47,21 +42,9 @@ export default function StickyHud({
   rate,
   spend,
   next,
-  tapLabel,
-  onTap,
   onSelectNext,
 }: StickyHudProps) {
-  const tapRef = useRef<HTMLButtonElement>(null);
   const isHidden = !isShown || isCovered;
-
-  const handleTap = () => {
-    onTap();
-    const button = tapRef.current;
-    if (!button) return;
-    button.classList.remove("lm-press");
-    void button.offsetWidth;
-    button.classList.add("lm-press");
-  };
 
   return (
     <div
@@ -92,15 +75,6 @@ export default function StickyHud({
               +{formatNumber(rate)}/s
             </span>
           </p>
-          <button
-            ref={tapRef}
-            type="button"
-            data-testid="lm-hud-tap"
-            onClick={handleTap}
-            className={`min-h-11 shrink-0 touch-manipulation select-none rounded-xl bg-amber-400 px-4 text-sm font-bold text-amber-950 active:brightness-95 dark:bg-amber-500 ${focusRingClass}`}
-          >
-            {tapLabel}
-          </button>
         </div>
         {next && (
           <NextUpgradeBar

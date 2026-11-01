@@ -120,12 +120,28 @@ test.describe("Ever Onward", () => {
       await expect(value).toBeVisible();
       await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
 
-      // The mini button keeps earning without scrolling back up.
-      await page.getByTestId("lm-hud-tap").click();
+      // The tap button floats at the bottom right and keeps earning.
+      const tap = page.getByRole("button", { name: "Flash the light" });
+      await expect(tap).toBeInViewport();
+      await tap.click();
       await expect(page.getByTestId("lm-hud-next")).toBeVisible();
 
       await page.evaluate(() => window.scrollTo(0, 0));
       await expect(hud).not.toBeInViewport();
+      await expect(tap).toBeInViewport();
+    });
+
+    test("the page cannot be zoomed and the tap button is zoom-proof", async ({
+      page,
+    }) => {
+      await startGame(page);
+      await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+        "content",
+        /maximum-scale=1/
+      );
+      const tap = page.getByTestId("lm-tap");
+      await expect(tap).toHaveCSS("touch-action", "manipulation");
+      await expect(tap).toHaveAccessibleName("Flash the light");
     });
   });
 
