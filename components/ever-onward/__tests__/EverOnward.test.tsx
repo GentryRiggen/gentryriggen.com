@@ -47,7 +47,9 @@ describe("Ever Onward hub", () => {
     expect(
       screen.getByRole("heading", { name: "Keep the Light On" })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Play/ })).toBeInTheDocument();
+    expect(screen.getByTestId("lm-play-light")).toBeInTheDocument();
+    // Make It Grow is built but unreleased: it plays in dev and e2e builds.
+    expect(screen.getByTestId("lm-play-grow")).toBeInTheDocument();
     for (const name of [
       "Make It Grow",
       "Build It Higher",
@@ -55,7 +57,7 @@ describe("Ever Onward hub", () => {
     ]) {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }
-    expect(screen.getAllByText("Coming soon")).toHaveLength(3);
+    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
     expect(screen.getByRole("link", { name: /what's new/i })).toHaveAttribute(
       "href",
       "/ever-onward/versions"
@@ -80,7 +82,7 @@ describe("Ever Onward hub", () => {
     const play = await screen.findByTestId("lm-play-light");
     expect(play).toHaveTextContent("Play Keep the Light On");
     expect(screen.queryByTestId("lm-facts-light")).not.toBeInTheDocument();
-    const locked = screen.getByLabelText("Make It Grow, coming soon");
+    const locked = screen.getByLabelText("Build It Higher, coming soon");
     expect(locked.tagName).toBe("LI");
     expect(within(locked).queryByRole("button")).not.toBeInTheDocument();
   });
@@ -112,7 +114,7 @@ describe("Ever Onward game", () => {
   it("shows the opening moment, then taps earn coins", async () => {
     const user = userEvent.setup();
     await renderHub();
-    await user.click(await screen.findByRole("button", { name: /Play/ }));
+    await user.click(await screen.findByTestId("lm-play-light"));
     expect(screen.getByTestId("lm-phase-overlay")).toHaveTextContent(
       "The Coast"
     );

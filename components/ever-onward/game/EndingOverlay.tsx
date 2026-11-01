@@ -18,6 +18,8 @@ interface EndingOverlayProps {
   embers: number;
   /** Plural name of what the run earns; "Embers" by default. */
   label?: string;
+  /** Singular of `label`; the plural minus a trailing "s" when unset. */
+  labelSingular?: string;
   Icon?: ComponentType<{ className?: string }>;
   /** Drawn above the lines instead of the flickering light. */
   art?: ReactNode;
@@ -39,6 +41,7 @@ export default function EndingOverlay({
   lines,
   embers,
   label = "Embers",
+  labelSingular,
   Icon = EmberIcon,
   art,
   onContinue,
@@ -47,7 +50,9 @@ export default function EndingOverlay({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isReady, setIsReady] = useState(false);
   const plural = label.toLowerCase();
-  const singular = plural.replace(/s$/, "");
+  const singular = labelSingular
+    ? labelSingular.toLowerCase()
+    : plural.replace(/s$/, "");
 
   // Keyboard users start inside the dialog, not behind it.
   useEffect(() => {

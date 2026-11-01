@@ -1,4 +1,5 @@
 import type { UniverseDef } from "../engine/types";
+import { growUniverse } from "./grow";
 import { lightUniverse } from "./light";
 
 /** A universe that is announced but not built yet. */
@@ -16,10 +17,13 @@ export const SHOWS_UNRELEASED =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_E2E === "1";
 
 /** Ids of universes that are built but not released yet. */
-export const UNRELEASED_IDS: readonly string[] = [];
+export const UNRELEASED_IDS: readonly string[] = ["grow"];
 
 /** Every universe that is built, in hub order. */
-export const ALL_UNIVERSES: readonly UniverseDef[] = [lightUniverse];
+export const ALL_UNIVERSES: readonly UniverseDef[] = [
+  lightUniverse,
+  growUniverse,
+];
 
 /** Every announced universe, in hub order. */
 const ANNOUNCED: readonly LockedUniverse[] = [

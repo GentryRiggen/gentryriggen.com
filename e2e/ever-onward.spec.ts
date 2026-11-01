@@ -62,6 +62,26 @@ test.describe("Ever Onward", () => {
     }
   );
 
+  test(
+    "Make It Grow plays in the e2e build",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await openHub(page);
+      await expect(page.getByTestId("lm-play-grow")).toBeVisible();
+      await page.getByTestId("lm-play-grow").click();
+      await expect(page.getByTestId("lm-phase-overlay")).toContainText(
+        "The Backyard"
+      );
+      await page
+        .getByTestId("lm-phase-overlay")
+        .getByRole("button", { name: "Continue" })
+        .click();
+      await page.getByTestId("lm-tap").click();
+      await expect(page.getByText(/^\+\d+$/).first()).toBeVisible();
+      await expect(page.getByTestId("lm-scene")).toBeVisible();
+    }
+  );
+
   test("buying the first upgrade survives a reload", async ({ page }) => {
     await startGame(page);
     const lens = page

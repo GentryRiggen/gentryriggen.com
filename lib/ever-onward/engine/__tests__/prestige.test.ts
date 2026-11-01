@@ -6,6 +6,7 @@ import {
   endRun,
   newUniverseSave,
   prestigeLabel,
+  prestigeSingular,
   prestigeUpgradeCost,
 } from "../prestige";
 import type { RunState } from "../types";
@@ -24,6 +25,18 @@ describe("prestige", () => {
     expect(
       prestigeLabel({ ...def, prestige: { ...def.prestige, label: "Acorns" } })
     ).toBe("Acorns");
+  });
+
+  it("names one of the currency: the setting, else the plural minus its s", () => {
+    expect(prestigeSingular(def)).toBe("Ember");
+    const berries = { ...def.prestige, label: "Berries" };
+    expect(prestigeSingular({ ...def, prestige: berries })).toBe("Berrie");
+    expect(
+      prestigeSingular({
+        ...def,
+        prestige: { ...berries, labelSingular: "Berry" },
+      })
+    ).toBe("Berry");
   });
 
   it("awards completion plus every phase cleared", () => {

@@ -80,16 +80,18 @@ export const LIGHT_UI: UniverseUi = {
     dim: LIGHTHOUSE_DIM,
   },
   PrestigeIcon: EmberIcon,
-  Keepsakes: function LightKeepsakes({ run }) {
-    if (picksSoFar(run) <= 0) return null;
-    return (
-      <p
-        data-testid="lm-keepsakes"
-        className="font-mono text-xs text-emerald-200"
-      >
-        Keepsakes: {keepsakeNames(run).join(", ")}.
-      </p>
-    );
+  logbook: {
+    afterTide: function LightKeepsakes({ run }) {
+      if (picksSoFar(run) <= 0) return null;
+      return (
+        <p
+          data-testid="lm-keepsakes"
+          className="font-mono text-xs text-emerald-200"
+        >
+          Keepsakes: {keepsakeNames(run).join(", ")}.
+        </p>
+      );
+    },
   },
   copy: {
     logbookEmpty:

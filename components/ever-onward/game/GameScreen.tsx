@@ -21,6 +21,7 @@ import {
   canRestart,
   emberReward,
   prestigeLabel,
+  prestigeSingular,
 } from "@/lib/ever-onward/engine/prestige";
 import type {
   SaveData,
@@ -476,6 +477,7 @@ export default function GameScreen({
           lines={endingLines}
           embers={emberReward(def, run)}
           label={label}
+          labelSingular={prestigeSingular(def)}
           Icon={ui.PrestigeIcon}
           art={EndingArt ? <EndingArt run={run} /> : undefined}
           onContinue={onDismissOverlay}

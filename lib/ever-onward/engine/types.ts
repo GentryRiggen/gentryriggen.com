@@ -229,6 +229,8 @@ export interface PrestigeUpgradeDef {
 export interface PrestigeDef {
   /** Plural display name of the prestige currency; "Embers" when unset. */
   label?: string;
+  /** Singular of `label` ("Acorn"); the plural minus a trailing "s" when unset. */
+  labelSingular?: string;
   /** Embers for finishing the universe. */
   completionEmbers: number;
   /** Embers for each phase cleared (kept when restarting from phase 2+). */
