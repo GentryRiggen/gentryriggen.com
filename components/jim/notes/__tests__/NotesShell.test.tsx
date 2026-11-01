@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import * as view from "@/lib/jim/view";
@@ -169,12 +169,76 @@ it("says quietly when the notes may be behind", async () => {
   ).toBeInTheDocument();
 });
 
+it("has five page pills in order", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const pills = within(
+    screen.getByRole("tablist", { name: "Notes pages" })
+  ).getAllByRole("tab");
+  expect(pills.map((t) => t.textContent)).toEqual([
+    "Home",
+    "Work",
+    "Money",
+    "Health",
+    "People",
+  ]);
+  expect(screen.queryByRole("tablist", { name: "Health pages" })).toBeNull();
+});
+
+it("switches Health between Health, Training and Golf", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  const tabs = within(sub).getAllByRole("tab");
+  expect(tabs.map((t) => t.textContent)).toEqual([
+    "Health",
+    "Training",
+    "Golf",
+  ]);
+  expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByText("Hemoglobin")).toBeInTheDocument();
+  await userEvent.click(within(sub).getByRole("tab", { name: "Training" }));
+  expect(screen.getByText("Back squat")).toBeInTheDocument();
+  expect(screen.queryByText("Hemoglobin")).toBeNull();
+  // The Health pill stays selected, and the choice is kept on return.
+  const pills = screen.getByRole("tablist", { name: "Notes pages" });
+  expect(within(pills).getByRole("tab", { name: "Health" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+  await userEvent.click(within(pills).getByRole("tab", { name: "Home" }));
+  await userEvent.click(within(pills).getByRole("tab", { name: "Health" }));
+  expect(screen.getByText("Back squat")).toBeInTheDocument();
+});
+
+it("shows calm placeholders on Work and Money for now", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Work" }));
+  expect(screen.getByRole("tab", { name: "Work" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+  expect(screen.queryByText("Water the plants")).toBeNull();
+  await userEvent.click(screen.getByRole("tab", { name: "Money" }));
+  expect(screen.getByRole("tab", { name: "Money" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+});
+
 it("moves between pages and into a profile and back", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
-  await userEvent.click(screen.getByRole("tab", { name: "Golf" }));
-  expect(screen.getByRole("tab", { name: "Golf" })).toHaveAttribute(
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  await userEvent.click(within(sub).getByRole("tab", { name: "Golf" }));
+  expect(within(sub).getByRole("tab", { name: "Golf" })).toHaveAttribute(
     "aria-selected",
     "true"
   );

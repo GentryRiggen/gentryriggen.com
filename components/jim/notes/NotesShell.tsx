@@ -10,12 +10,12 @@ import {
   type ReactNode,
 } from "react";
 import {
-  Dumbbell,
-  Flag,
+  Briefcase,
   HeartPulse,
   House,
   RefreshCw,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import NotesGolf from "@/components/jim/notes/NotesGolf";
@@ -25,6 +25,7 @@ import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
+import { Empty } from "@/components/jim/notes/NotesUi";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
@@ -45,15 +46,60 @@ interface NotesShellProps {
   onLog: (text: string) => void;
 }
 
-type Page = "home" | "health" | "training" | "golf" | "people";
+type Page = "home" | "work" | "money" | "health" | "people";
 
 const PAGES: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: House },
+  { id: "work", label: "Work", icon: Briefcase },
+  { id: "money", label: "Money", icon: Wallet },
   { id: "health", label: "Health", icon: HeartPulse },
-  { id: "training", label: "Training", icon: Dumbbell },
-  { id: "golf", label: "Golf", icon: Flag },
   { id: "people", label: "People", icon: Users },
 ];
+
+/** Health's own pages, picked by the switch at its top. */
+type HealthPage = "health" | "training" | "golf";
+
+const HEALTH_PAGES: { id: HealthPage; label: string }[] = [
+  { id: "health", label: "Health" },
+  { id: "training", label: "Training" },
+  { id: "golf", label: "Golf" },
+];
+
+interface HealthSwitchProps {
+  value: HealthPage;
+  onChange: (next: HealthPage) => void;
+}
+
+/** Health | Training | Golf: a segmented control above the page. */
+function HealthSwitch({ value, onChange }: HealthSwitchProps) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Health pages"
+      className="jim-card mb-5 grid grid-cols-3 gap-1 p-1"
+    >
+      {HEALTH_PAGES.map((p) => {
+        const selected = p.id === value;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(p.id)}
+            className={`min-h-11 min-w-0 truncate rounded-xl px-2 text-sm font-medium transition-colors duration-200 ${
+              selected
+                ? "bg-ayu-accent/12 text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset"
+                : "text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+            }`}
+          >
+            {p.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /** A cached payload younger than this is shown without refetching. */
 const FRESH_MS = 60_000;
@@ -93,7 +139,7 @@ function Skeleton() {
 }
 
 /**
- * The Notes tab: its page bar, the data, and the five read-only pages.
+ * The Notes tab: its page bar, the data, and the read-only pages.
  * Memoized: it sits (hidden) beside a chat that redraws every streamed frame.
  */
 export default memo(function NotesShell({
@@ -114,6 +160,7 @@ export default memo(function NotesShell({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   const [page, setPage] = useState<Page>("home");
+  const [healthPage, setHealthPage] = useState<HealthPage>("health");
   const [person, setPerson] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   /** The search across all notes; while it has text it replaces the page. */
@@ -218,7 +265,7 @@ export default memo(function NotesShell({
     if (el && typeof el.scrollTo === "function") {
       el.scrollTo({ top, behavior: "instant" });
     }
-  }, [page, person, searching, found]);
+  }, [page, healthPage, person, searching, found]);
 
   // Keep the selected pill in view when the row is scrolled sideways.
   useEffect(() => {
@@ -321,12 +368,23 @@ export default memo(function NotesShell({
       );
   } else if (page === "home") {
     body = <NotesHome data={data} saves={saves} onLog={onLog} />;
+  } else if (page === "work") {
+    body = <Empty>Work is on its way.</Empty>;
+  } else if (page === "money") {
+    body = <Empty>Money is on its way.</Empty>;
   } else if (page === "health") {
-    body = <NotesHealth data={data} />;
-  } else if (page === "training") {
-    body = <NotesTraining data={data} />;
-  } else if (page === "golf") {
-    body = <NotesGolf data={data} />;
+    body = (
+      <>
+        <HealthSwitch value={healthPage} onChange={setHealthPage} />
+        {healthPage === "health" ? (
+          <NotesHealth data={data} />
+        ) : healthPage === "training" ? (
+          <NotesTraining data={data} />
+        ) : (
+          <NotesGolf data={data} />
+        )}
+      </>
+    );
   } else {
     const open = person ? data.people.find((p) => p.path === person) : null;
     body = open ? (

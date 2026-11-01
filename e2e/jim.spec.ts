@@ -667,8 +667,9 @@ for (const width of [undefined, 320]) {
         await expect(page.getByRole("navigation")).toHaveCount(0);
         await shot("notes-home");
         // Each page pill, once selected, sits well inside the screen.
-        for (const name of ["People", "Golf", "Training", "Health", "Home"]) {
-          const tab = page.getByRole("tab", { name });
+        const pills = page.getByRole("tablist", { name: "Notes pages" });
+        for (const name of ["People", "Health", "Money", "Work", "Home"]) {
+          const tab = pills.getByRole("tab", { name });
           await tab.click();
           await expect(tab).toHaveAttribute("aria-selected", "true");
           const width = page.viewportSize()?.width ?? 0;
@@ -684,7 +685,7 @@ for (const width of [undefined, 320]) {
         await expect(page.getByText("Book the dentist")).toBeVisible();
         await shot("notes-home-later");
 
-        await page.getByRole("tab", { name: "Health" }).click();
+        await pills.getByRole("tab", { name: "Health" }).click();
         await expect(page.getByText("Hemoglobin")).toBeVisible();
         // A new page opens at its top, not where the last one was scrolled.
         await expect(
@@ -692,7 +693,8 @@ for (const width of [undefined, 320]) {
         ).toBeInViewport();
         await shot("notes-health");
 
-        await page.getByRole("tab", { name: "Training" }).click();
+        const healthPages = page.getByRole("tablist", { name: "Health pages" });
+        await healthPages.getByRole("tab", { name: "Training" }).click();
         await expect(page.getByText("Back squat")).toBeVisible();
         // A new page opens at its top, not where the last one was scrolled.
         await expect(
@@ -700,11 +702,11 @@ for (const width of [undefined, 320]) {
         ).toBeInViewport();
         await shot("notes-training");
 
-        await page.getByRole("tab", { name: "Golf" }).click();
+        await healthPages.getByRole("tab", { name: "Golf" }).click();
         await expect(page.getByText("Cedar Ridge").first()).toBeVisible();
         await shot("notes-golf");
 
-        await page.getByRole("tab", { name: "People" }).click();
+        await pills.getByRole("tab", { name: "People" }).click();
         const search = page.getByLabel("Search people");
         await expect(search).toBeVisible();
         expect(

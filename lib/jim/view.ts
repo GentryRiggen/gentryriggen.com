@@ -146,6 +146,120 @@ export interface Person {
   updated: string;
 }
 
+/** One row of Home's "needs you" list; every string is ready to show. */
+export interface ViewAction {
+  /** What it is, e.g. "Todo", "Email", "1:1". */
+  kind: string;
+  title: string;
+  /** When, worded: "1d late", "Tue, Nov 3 · in 3d". */
+  when: string;
+  /** "over" (late), "soon" (today or tomorrow) or "". */
+  tone: "over" | "soon" | "";
+  area: "work" | "personal" | "";
+  /** The phrase to send to Jim in Chat. */
+  ask: string;
+  /** An https link to open it, or "". */
+  link: string;
+}
+
+/** The daily word, sent only when it is dated today. */
+export interface DailyWord {
+  kind: string;
+  title: string;
+  text: string;
+  source: string;
+  apply: string;
+}
+
+/** A birthday, anniversary or renewal in the next 60 days. */
+export interface UpcomingDate {
+  kind: "birthday" | "anniversary" | "renewal";
+  name: string;
+  /** YYYY-MM-DD. */
+  on: string;
+  /** Days from today (0 is today). */
+  days: number;
+  /** The note it comes from. */
+  path: string;
+  /** The age a birthday turns, when the year is known. */
+  turns: number | null;
+}
+
+export interface TeamWin {
+  date: string;
+  text: string;
+}
+
+export interface TeamMember {
+  name: string;
+  path: string;
+  about: string;
+  /** YYYY-MM-DD, or "". */
+  nextOneOnOne: string;
+  wins: number;
+  /** The latest three, newest first. */
+  recentWins: TeamWin[];
+}
+
+export interface WinsWeek {
+  /** The Monday it starts, YYYY-MM-DD. */
+  week: string;
+  /** Wins per key in `winsKeys`. */
+  counts: Record<string, number>;
+}
+
+export interface WorkMeeting {
+  path: string;
+  title: string;
+  date: string;
+  people: string[];
+  projects: string[];
+  /** The first summary bullets. */
+  summary: string[];
+}
+
+export interface DirectoryStrength {
+  name: string;
+  gloss: string;
+}
+
+export interface DirectoryPerson {
+  /** Row index, the key for managerId and reportIds. */
+  id: number;
+  name: string;
+  title: string;
+  team: string;
+  location: string;
+  email: string;
+  cell: string;
+  birthday: string;
+  anniversary: string;
+  disc: string;
+  discGloss: string;
+  strengths: DirectoryStrength[];
+  managerId: number | null;
+  managerName: string;
+  reportIds: number[];
+  /** Their people note, or "" when there is none. */
+  path: string;
+}
+
+export interface WorkDirectory {
+  updated: string;
+  people: DirectoryPerson[];
+}
+
+export interface WorkData {
+  team: TeamMember[];
+  /** Twelve weeks, oldest first. */
+  winsByWeek: WinsWeek[];
+  /** "You" then up to two team members' first names. */
+  winsKeys: string[];
+  /** Newest first. */
+  meetings: WorkMeeting[];
+  directory: WorkDirectory;
+}
+
 export interface ViewData {
   /** Gentry's local date on the server, YYYY-MM-DD. */
   today: string;
@@ -156,6 +270,13 @@ export interface ViewData {
   training: TrainingData;
   golf: GolfRound[];
   people: Person[];
+  /** The newer fields: absent from an older server. */
+  actions?: ViewAction[];
+  /** When the inbox and task snapshots were taken (ISO), or "". */
+  actionsAsOf?: string;
+  daily?: DailyWord | null;
+  dates?: UpcomingDate[];
+  work?: WorkData;
   sha?: string;
   /** The server couldn't sync, so this may be behind. */
   stale?: boolean;
@@ -170,6 +291,199 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function list<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isStrings(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isString);
+}
+
+/** The entries of `value` that pass `ok`; [] when it isn't a list. */
+function keep<T>(value: unknown, ok: (item: unknown) => T | null): T[] {
+  if (!Array.isArray(value)) return [];
+  const out: T[] = [];
+  for (const item of value) {
+    const kept = ok(item);
+    if (kept !== null) out.push(kept);
+  }
+  return out;
+}
+
+/** True when every named key of `r` is a string. */
+function strings(r: Record<string, unknown>, keys: string[]): boolean {
+  return keys.every((k) => isString(r[k]));
+}
+
+const TONES = ["over", "soon", ""];
+const AREAS = ["work", "personal", ""];
+const DATE_KINDS = ["birthday", "anniversary", "renewal"];
+
+function toAction(v: unknown): ViewAction | null {
+  if (!isRecord(v) || !strings(v, ["kind", "title", "when", "ask", "link"])) {
+    return null;
+  }
+  if (!TONES.includes(v.tone as string) || !AREAS.includes(v.area as string)) {
+    return null;
+  }
+  const link = v.link as string;
+  return {
+    kind: v.kind as string,
+    title: v.title as string,
+    when: v.when as string,
+    tone: v.tone as ViewAction["tone"],
+    area: v.area as ViewAction["area"],
+    ask: v.ask as string,
+    // Rendered as a link: never anything but https.
+    link: link.startsWith("https://") ? link : "",
+  };
+}
+
+function toDaily(v: unknown): DailyWord | null {
+  if (!isRecord(v)) return null;
+  const text = (k: string) => (isString(v[k]) ? v[k] : "");
+  const word = {
+    kind: text("kind"),
+    title: text("title"),
+    text: text("text"),
+    source: text("source"),
+    apply: text("apply"),
+  };
+  return word.title || word.text ? word : null;
+}
+
+function toDate(v: unknown): UpcomingDate | null {
+  if (
+    !isRecord(v) ||
+    !DATE_KINDS.includes(v.kind as string) ||
+    !strings(v, ["name", "on", "path"]) ||
+    !isNumber(v.days)
+  ) {
+    return null;
+  }
+  return {
+    kind: v.kind as UpcomingDate["kind"],
+    name: v.name as string,
+    on: v.on as string,
+    days: v.days,
+    path: v.path as string,
+    turns: isNumber(v.turns) ? v.turns : null,
+  };
+}
+
+function toWin(v: unknown): TeamWin | null {
+  return isRecord(v) && strings(v, ["date", "text"])
+    ? { date: v.date as string, text: v.text as string }
+    : null;
+}
+
+function toMember(v: unknown): TeamMember | null {
+  if (
+    !isRecord(v) ||
+    !strings(v, ["name", "path", "about", "nextOneOnOne"]) ||
+    !isNumber(v.wins)
+  ) {
+    return null;
+  }
+  return {
+    name: v.name as string,
+    path: v.path as string,
+    about: v.about as string,
+    nextOneOnOne: v.nextOneOnOne as string,
+    wins: v.wins,
+    recentWins: keep(v.recentWins, toWin),
+  };
+}
+
+function toWeek(v: unknown): WinsWeek | null {
+  if (!isRecord(v) || !isString(v.week) || !isRecord(v.counts)) return null;
+  if (!Object.values(v.counts).every(isNumber)) return null;
+  return { week: v.week, counts: v.counts as Record<string, number> };
+}
+
+function toMeeting(v: unknown): WorkMeeting | null {
+  if (
+    !isRecord(v) ||
+    !strings(v, ["path", "title", "date"]) ||
+    !isStrings(v.people) ||
+    !isStrings(v.projects) ||
+    !isStrings(v.summary)
+  ) {
+    return null;
+  }
+  return {
+    path: v.path as string,
+    title: v.title as string,
+    date: v.date as string,
+    people: v.people,
+    projects: v.projects,
+    summary: v.summary,
+  };
+}
+
+const PERSON_TEXT = [
+  "name",
+  "title",
+  "team",
+  "location",
+  "email",
+  "cell",
+  "birthday",
+  "anniversary",
+  "disc",
+  "discGloss",
+  "managerName",
+  "path",
+] as const;
+
+function toStrength(v: unknown): DirectoryStrength | null {
+  return isRecord(v) && strings(v, ["name", "gloss"])
+    ? { name: v.name as string, gloss: v.gloss as string }
+    : null;
+}
+
+function toDirectoryPerson(v: unknown): DirectoryPerson | null {
+  if (
+    !isRecord(v) ||
+    !isNumber(v.id) ||
+    !strings(v, [...PERSON_TEXT]) ||
+    !(v.managerId === null || isNumber(v.managerId)) ||
+    !Array.isArray(v.reportIds) ||
+    !v.reportIds.every(isNumber)
+  ) {
+    return null;
+  }
+  const text = Object.fromEntries(
+    PERSON_TEXT.map((k) => [k, v[k] as string])
+  ) as Record<(typeof PERSON_TEXT)[number], string>;
+  return {
+    id: v.id,
+    ...text,
+    strengths: keep(v.strengths, toStrength),
+    managerId: v.managerId as number | null,
+    reportIds: v.reportIds as number[],
+  };
+}
+
+function toWork(v: unknown): WorkData | undefined {
+  if (!isRecord(v)) return undefined;
+  const dir = isRecord(v.directory) ? v.directory : {};
+  return {
+    team: keep(v.team, toMember),
+    winsByWeek: keep(v.winsByWeek, toWeek),
+    winsKeys: keep(v.winsKeys, (k) => (isString(k) ? k : null)),
+    meetings: keep(v.meetings, toMeeting),
+    directory: {
+      updated: isString(dir.updated) ? dir.updated : "",
+      people: keep(dir.people, toDirectoryPerson),
+    },
+  };
 }
 
 /**
@@ -213,6 +527,18 @@ export function normalizeView(raw: unknown): ViewData | null {
     },
     golf: list<GolfRound>(raw.golf),
     people: list<Person>(raw.people),
+    // The newer fields stay absent when an older server leaves them out;
+    // inside them, a malformed entry is dropped and the rest kept.
+    actions: "actions" in raw ? keep(raw.actions, toAction) : undefined,
+    actionsAsOf:
+      "actionsAsOf" in raw
+        ? isString(raw.actionsAsOf)
+          ? raw.actionsAsOf
+          : ""
+        : undefined,
+    daily: "daily" in raw ? toDaily(raw.daily) : undefined,
+    dates: "dates" in raw ? keep(raw.dates, toDate) : undefined,
+    work: toWork(raw.work),
     sha: typeof raw.sha === "string" ? raw.sha : undefined,
     stale: raw.stale === true,
   };

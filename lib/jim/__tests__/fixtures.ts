@@ -1,3 +1,4 @@
+import type { MoneySummary } from "@/lib/jim/money";
 import type { ViewData } from "@/lib/jim/view";
 
 /**
@@ -9,6 +10,158 @@ import type { ViewData } from "@/lib/jim/view";
 export const VIEW_FIXTURE: ViewData = {
   today: "2026-10-31",
   sha: "abc1234",
+  actionsAsOf: "2026-10-31T13:40:00Z",
+  actions: [
+    {
+      kind: "Todo",
+      title: "Return the library books",
+      when: "1d late",
+      tone: "over",
+      area: "personal",
+      ask: "Help me with: Return the library books",
+      link: "",
+    },
+    {
+      kind: "Email",
+      title: "Confirm the carpool schedule",
+      when: "From the school office · tomorrow",
+      tone: "soon",
+      area: "personal",
+      ask: "About this email: Confirm the carpool schedule",
+      link: "https://mail.example.test/thread/1",
+    },
+    {
+      kind: "1:1",
+      title: "1:1 with Ava Torres",
+      when: "Tue, Nov 3 · in 3d",
+      tone: "",
+      area: "work",
+      ask: "prep me for Ava",
+      link: "",
+    },
+  ],
+  daily: {
+    kind: "Quote",
+    title: "On patience",
+    text: "Water the roots and the fruit takes care of itself.",
+    source: "An invented proverb",
+    apply: "Pick one slow task today and give it ten calm minutes.",
+  },
+  dates: [
+    {
+      kind: "birthday",
+      name: "Jordan Lee",
+      on: "2026-11-03",
+      days: 3,
+      path: "people/jordan-lee.md",
+      turns: null,
+    },
+    {
+      kind: "anniversary",
+      name: "Wedding anniversary",
+      on: "2026-11-20",
+      days: 20,
+      path: "people/wren-rivera.md",
+      turns: null,
+    },
+    {
+      kind: "renewal",
+      name: "Library card",
+      on: "2026-12-01",
+      days: 31,
+      path: "home/library.md",
+      turns: null,
+    },
+  ],
+  work: {
+    team: [
+      {
+        name: "Ava Torres",
+        path: "people/ava-torres.md",
+        about: "Leads the garden map project",
+        nextOneOnOne: "2026-11-03",
+        wins: 2,
+        recentWins: [
+          { date: "2026-10-29", text: "Ava: shipped the seed catalog" },
+          { date: "2026-10-15", text: "Ava: fixed the watering timer" },
+        ],
+      },
+      {
+        name: "Ben Ruiz",
+        path: "people/ben-ruiz.md",
+        about: "Runs the weekly harvest report",
+        nextOneOnOne: "",
+        wins: 0,
+        recentWins: [],
+      },
+    ],
+    winsKeys: ["You", "Ava", "Ben"],
+    winsByWeek: [
+      { week: "2026-10-19", counts: { You: 1, Ava: 0, Ben: 0 } },
+      { week: "2026-10-26", counts: { You: 2, Ava: 1, Ben: 0 } },
+    ],
+    meetings: [
+      {
+        path: "meetings/2026-10-30-garden-planning.md",
+        title: "Garden planning",
+        date: "2026-10-30",
+        people: ["Ava Torres", "Ben Ruiz"],
+        projects: ["garden-map"],
+        summary: ["Picked the spring beds", "Ordered more mulch"],
+      },
+      {
+        path: "meetings/2026-10-22-harvest-review.md",
+        title: "Harvest review",
+        date: "2026-10-22",
+        people: ["Ben Ruiz"],
+        projects: [],
+        summary: [],
+      },
+    ],
+    directory: {
+      updated: "2026-10-28",
+      people: [
+        {
+          id: 0,
+          name: "Morgan Hale",
+          title: "Head Gardener",
+          team: "Grounds",
+          location: "North Field",
+          email: "morgan@example.test",
+          cell: "555-0100",
+          birthday: "April 2",
+          anniversary: "2019-06-01",
+          disc: "D/C",
+          discGloss: "Direct and careful: wants results done right.",
+          strengths: [
+            { name: "Achiever", gloss: "Finishes things, every day." },
+          ],
+          managerId: null,
+          managerName: "",
+          reportIds: [1],
+          path: "",
+        },
+        {
+          id: 1,
+          name: "Ava Torres",
+          title: "Garden Planner",
+          team: "Grounds",
+          location: "Greenhouse",
+          email: "ava@example.test",
+          cell: "",
+          birthday: "",
+          anniversary: "2023-03-15",
+          disc: "",
+          discGloss: "",
+          strengths: [],
+          managerId: 0,
+          managerName: "Morgan Hale",
+          reportIds: [],
+          path: "people/ava-torres.md",
+        },
+      ],
+    },
+  },
   calendar: {
     fetchedAt: "2026-10-31T14:05:00Z",
     events: [
@@ -371,4 +524,113 @@ export const VIEW_FIXTURE: ViewData = {
       body: "",
     },
   ],
+};
+
+/**
+ * An invented POST /api/money summary. The server words every label; these
+ * groups, categories and payees are made up.
+ */
+export const MONEY_FIXTURE: MoneySummary = {
+  rule: "On track means net at least zero. Months marked * are still partial.",
+  range: "Full months Aug–Sep",
+  tiles: [
+    { label: "months on track", value: "1 of 2", tone: "" },
+    { label: "average net per month", value: "+$120", tone: "good" },
+    { label: "savings used", value: "$0.4k", tone: "bad" },
+  ],
+  groups: ["Garden", "Books", "Other"],
+  months: [
+    {
+      m: "2026-08",
+      label: "Aug",
+      partial: false,
+      net: 340,
+      cameIn: 2400,
+      spent: 2060,
+      byGroup: { Garden: 900, Books: 160, Other: 1000 },
+      over: [],
+      under: [{ cat: "Seeds", amount: 40, typical: 120, diff: -80 }],
+      top: [
+        {
+          date: "2026-08-12",
+          payee: "Green Acres",
+          category: "Seeds",
+          amount: 40,
+        },
+      ],
+      note: "A quiet month.",
+      flag: "",
+    },
+    {
+      m: "2026-09",
+      label: "Sep",
+      partial: false,
+      net: -100,
+      cameIn: 2400,
+      spent: 2500,
+      byGroup: { Garden: 1200, Books: 300, Other: 1000 },
+      over: [{ cat: "Tools", amount: 320, typical: 100, diff: 220 }],
+      under: [],
+      top: [
+        {
+          date: "2026-09-03",
+          payee: "Hill Hardware",
+          category: "Tools",
+          amount: 320,
+        },
+        {
+          date: "2026-09-20",
+          payee: "Page Turners",
+          category: "Books",
+          amount: 85.5,
+        },
+      ],
+      note: "",
+      flag: "savings $0.4k",
+    },
+    {
+      m: "2026-10",
+      label: "Oct",
+      partial: true,
+      net: 60,
+      cameIn: 1200,
+      spent: 1140,
+      byGroup: { Garden: 500, Books: 40, Other: 600 },
+      over: [],
+      under: [],
+      top: [],
+      note: "",
+      flag: "",
+    },
+  ],
+  typicalSpend: 2200,
+  typicalIn: 2400,
+  cash: [
+    { date: "2026-08-31", amount: 5200 },
+    { date: "2026-09-30", amount: 4700 },
+  ],
+  watch: "- Keep an eye on tool spending",
+  checkin: {
+    month: "2026-10",
+    plan: [
+      { cat: "Tools", target: 100, actual: 0, why: "Bought enough in Sep" },
+    ],
+    coming: [
+      { when: "2026-11-15", label: "Nov 15", what: "Seed order", amount: 90 },
+      {
+        when: "2026-12",
+        label: "Dec 2026",
+        what: "Greenhouse repair",
+        amount: null,
+      },
+    ],
+    log: [
+      {
+        date: "2026-10-05",
+        kind: "decided",
+        text: "Pause new tools until Nov",
+      },
+    ],
+    next: "2026-11-05",
+  },
 };
