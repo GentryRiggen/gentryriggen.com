@@ -14,6 +14,20 @@ export interface BotSet {
    * what idle play feels like later.
    */
   idle: Strategy;
+  /**
+   * A human who doesn't buy instantly: taps lightly (1 a second) and visits
+   * the shop once a minute. Read by M2 and M3 (decision density, goal queue),
+   * which an every-10-seconds shopper makes look emptier than it feels.
+   */
+  dawdler: Strategy;
+  /**
+   * Per phase index with a watched number: a bot that looks after it only
+   * when forced (`naive`) and one that looks after it well (`careful`). The
+   * gap between their phase exits is the skill gap M9 reads. A phase without
+   * an entry falls back to `naiveOil` / `cheapskateOil` for the first watched
+   * phase.
+   */
+  skill?: Record<number, { naive: Strategy; careful: Strategy }>;
   /** Buys oil (or its universe's consumable) only when it runs low. */
   naiveOil: Strategy;
   /** Buys oil only when it is cheap (or when the tank is nearly dry). */
@@ -23,6 +37,8 @@ export interface BotSet {
 const MIN = 60;
 const SHOP_EVERY = 10;
 const BASE_TAPS = 3;
+const DAWDLE_SHOP_EVERY = 60;
+const DAWDLE_TAPS = 1;
 /** From this phase on the idle bot taps throughout (the ending is hands-on). */
 const IDLE_HANDS_ON_PHASE = 3;
 
@@ -47,6 +63,7 @@ export function genericBots(): BotSet {
         return run.time - phaseStart < warmUp ? BASE_TAPS : 0;
       },
     },
+    dawdler: { tapsPerSecond: DAWDLE_TAPS, shopEvery: DAWDLE_SHOP_EVERY },
     naiveOil: tapper,
     cheapskateOil: tapper,
   };

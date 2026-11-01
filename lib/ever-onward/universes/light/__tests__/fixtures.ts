@@ -10,15 +10,26 @@ const MIN = 60;
 
 /**
  * A player who buys oil when the price is under the usual (2.0) and the tank
- * has room, or whenever it runs low.
+ * has room, or whenever it runs low, fixes the grid and the fleet's heading
+ * when they dip, and takes the bonuses on offer.
  */
 export function oilActions(run: RunState, available: readonly string[]) {
-  if (!available.includes("buy-oil")) return [];
+  const picks: string[] = [];
+  // Looks after what needs hands: the grid and the fleet when they dip, and
+  // takes the bonuses on offer.
+  for (const id of ["balance-grid", "correct-course"]) {
+    const level =
+      id === "balance-grid" ? run.resources.grid : run.resources.heading;
+    if (available.includes(id) && level < 45) picks.push(id);
+  }
+  for (const id of ["ride-rush", "catch-flare"])
+    if (available.includes(id)) picks.push(id);
+  if (!available.includes("buy-oil")) return picks;
   const capacity = tankCapacity(run);
   const { oil, oilPrice } = run.resources;
   const isLow = oil < capacity * 0.15;
   const isBargain = oilPrice < 2 && oil < capacity * 0.6;
-  return isLow || isBargain ? ["buy-oil"] : [];
+  return isLow || isBargain ? [...picks, "buy-oil"] : picks;
 }
 
 /**

@@ -67,6 +67,11 @@ export interface ConsumableDef {
   label: string;
   /** 0 (empty) to 1 (full), or null where it does not apply. Must only read. */
   level(run: RunState): number | null;
+  /**
+   * The levels that count as "low" for the tension metric (default 5% to
+   * 30%): the zone where the player feels it and fixes it.
+   */
+  lowZone?: { lo: number; hi: number };
 }
 
 export interface UpgradeDef {

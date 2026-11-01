@@ -6,7 +6,7 @@ import { def } from "./fixtures";
 /**
  * The Engagement Scorecard (docs/superpowers/specs/2026-11-01-ever-onward-
  * engagement-research.md) played over the whole universe. It guards against
- * regressions: the floor below is the Round 0 score minus 2, and the fun loop
+ * regressions: the floor below is the latest round's score minus 2, and the fun loop
  * raises it as the lab notebook (docs/ever-onward/lab-notebook.md) records
  * better rounds. Run it alone with `npm run score:ever-onward` for the table.
  *
@@ -16,9 +16,9 @@ import { def } from "./fixtures";
  */
 jest.setTimeout(60_000);
 
-/** Round 0 scored 59.0 (66.4 before the gate cap). Raise as rounds land. */
+/** Round 1 scored 59.0 (76.6 before the gate cap). Raise as rounds land. */
 const SCORE_FLOOR = 57;
-const UNCAPPED_FLOOR = 64;
+const UNCAPPED_FLOOR = 74;
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
 const BOON_BASE_COST = [20, 80, 100, 100];

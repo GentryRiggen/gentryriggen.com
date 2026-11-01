@@ -37,6 +37,9 @@ export const PHASES: readonly PhaseDef[] = [
       // Old coins no longer matter; the grid runs on power.
       run.resources.power += 20 * headStart(run);
       run.resources.night = 100;
+      run.resources.grid = 100;
+      run.resources.rush = 0;
+      run.resources.rushCooldown = TUNING.night.rushFirst;
       syncDisplay(run);
     },
   },
@@ -50,6 +53,9 @@ export const PHASES: readonly PhaseDef[] = [
     isDone: (run) => run.resources.stars <= 0.5,
     onEnter: (run) => {
       run.resources.energy += 20 * headStart(run);
+      run.resources.heading = 100;
+      run.resources.flare = 0;
+      run.resources.flareCooldown = TUNING.sky.flareFirst;
       syncDisplay(run);
     },
   },

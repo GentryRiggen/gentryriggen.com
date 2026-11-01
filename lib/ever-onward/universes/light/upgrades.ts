@@ -1,6 +1,7 @@
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 import { COSTS } from "./costs";
+import { TUNING } from "./tuning";
 import { previewOf, short, type Stat } from "./preview";
 import {
   appetite,
@@ -11,6 +12,11 @@ import {
   crankPower,
   decayPerSecond,
   demandMW,
+  driftPerSecond,
+  isCourseAuto,
+  starBounty,
+  isGridAuto,
+  strainPerSecond,
   fare,
   idleBurn,
   lastTapEnergy,
@@ -93,6 +99,13 @@ export const LET_GO: readonly { id: string; name: string; text: string }[] = [
 
 const sync = (run: RunState): void => syncDisplay(run);
 
+/** A wave of probes lands: the fleet grows at once, so the gain is felt. */
+const fleetBump =
+  (factor: number) =>
+  (run: RunState): void => {
+    run.resources.probes *= factor;
+  };
+
 const percent = (n: number): string => `${Math.round(n * 100)}%`;
 
 const COINS_PER_SECOND: Stat = {
@@ -106,6 +119,8 @@ interface Step {
   description: string;
   /** A milestone that must also be reached (besides the step before). */
   showWhen?: (run: RunState) => boolean;
+  /** Runs after the engine's own buy handling (a wave of probes lands). */
+  onBuy?: (run: RunState) => void;
 }
 
 interface ChainOptions {
@@ -137,7 +152,10 @@ function chain({
       visibleWhen: (run: RunState) =>
         (i === 0 || owned(run, `${base}-${i}`) > 0) &&
         (step.showWhen?.(run) ?? true),
-      onBuy: sync,
+      onBuy: (run: RunState) => {
+        step.onBuy?.(run);
+        sync(run);
+      },
       effectPreview: previewOf(id, stats),
     };
   });
@@ -230,7 +248,30 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Toll booth",
         description: "A booth at the harbor mouth, and a bell. 30% more.",
-        showWhen: (run) => lighthouseCount(run) >= 4,
+        showWhen: (run) => lighthouseCount(run) >= 3,
+      },
+    ],
+  }),
+  ...chain({
+    base: "dock",
+    phases: coast,
+    currency: "coins",
+    stats: [{ label: "Coins per ship", read: fare }],
+    steps: [
+      {
+        name: "Fish market on the quay",
+        description: "Ships stay for the market, and pay 20% more.",
+        showWhen: (run) => owned(run, "keeper") >= 5,
+      },
+      {
+        name: "Ferry landing",
+        description: "A ferry that never stops. Ships pay 20% more again.",
+        showWhen: (run) => lighthouseCount(run) >= 3,
+      },
+      {
+        name: "Cruise terminal",
+        description: "Big white ships, big white fares. 20% more.",
+        showWhen: (run) => lighthouseCount(run) >= 5,
       },
     ],
   }),
@@ -308,7 +349,7 @@ const coastUpgrades: UpgradeDef[] = [
     currency: "coins",
     baseCost: COSTS.contract,
     costGrowth: 1,
-    visibleWhen: (run) => lighthouseCount(run) >= 3,
+    visibleWhen: (run) => lighthouseCount(run) >= 5,
     priority: 2,
     onBuy: sync,
     effectPreview: () => "Oil bought for you at 1.60 or less",
@@ -376,6 +417,24 @@ const nightUpgrades: UpgradeDef[] = [
       },
     ],
   }),
+  ...chain({
+    base: "subs",
+    phases: night,
+    currency: "power",
+    stats: [{ label: "Supply", read: supplyMW, suffix: " MW" }],
+    steps: [
+      {
+        name: "Substations",
+        description: "Every plant's power reaches 20% further.",
+        showWhen: (run) => owned(run, "gen3") >= 2,
+      },
+      {
+        name: "A substation in every town",
+        description: "Power loses nothing on the way. 20% more again.",
+        showWhen: (run) => owned(run, "gen4") >= 2,
+      },
+    ],
+  }),
   {
     id: "gen2",
     name: "Steam plant",
@@ -409,6 +468,35 @@ const nightUpgrades: UpgradeDef[] = [
         name: "Smart streetlights",
         description: "They only shine when someone walks by. 12% less.",
         showWhen: (run) => owned(run, "gen4") >= 2,
+      },
+    ],
+  }),
+  ...chain({
+    base: "grid",
+    phases: night,
+    currency: "power",
+    stats: [
+      {
+        label: "Strain",
+        read: (run) => strainPerSecond(run) * 60,
+        suffix: "% a minute",
+      },
+      {
+        label: "Balancing",
+        read: (run) => (isGridAuto(run) ? 1 : 0),
+        format: (v) => (v > 0 ? "automatic" : "by hand"),
+      },
+    ],
+    steps: [
+      {
+        name: "Load balancer",
+        description: "The grid strains half as fast.",
+        showWhen: (run) => owned(run, "gen2") >= 2,
+      },
+      {
+        name: "Smart grid",
+        description: "The grid balances itself. No more hand-fixing.",
+        showWhen: (run) => owned(run, "gen3") >= 1,
       },
     ],
   }),
@@ -526,18 +614,71 @@ const skyUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Faster copying",
-        description: "Probes make copies of themselves 50% faster.",
+        description:
+          "Probes make copies of themselves almost twice as fast, and a wave of new ones lands.",
         showWhen: (run) => owned(run, "probe") >= 1,
+        onBuy: fleetBump(TUNING.sky.copyFleetBump),
       },
       {
         name: "Self-repairing copies",
-        description: "Fewer dead probes. 50% faster again.",
+        description:
+          "Fewer dead probes. Almost twice as fast again, and another wave lands.",
         showWhen: (run) => owned(run, "mirror-2") >= 1,
+        onBuy: fleetBump(TUNING.sky.copyFleetBump),
+      },
+    ],
+  }),
+  ...chain({
+    base: "relay",
+    phases: sky,
+    currency: "energy",
+    stats: [{ label: "Energy per star", read: starBounty }],
+    steps: [
+      {
+        name: "Relay stations",
+        description:
+          "Light from every star taken is gathered. Each pays 60% more.",
+        showWhen: (run) => owned(run, "mirror-3") >= 1,
       },
       {
-        name: "Copies that copy copies",
-        description: "Probes build probes while still flying. 50% faster.",
-        showWhen: (run) => owned(run, "appetite-2") >= 1,
+        name: "A ring of relays",
+        description: "Nothing is wasted on the way home. 60% more again.",
+        showWhen: (run) => run.resources.stars < 700,
+      },
+      {
+        name: "The whole sky listening",
+        description: "Every star taken sings back. 60% more again.",
+        showWhen: (run) => run.resources.stars < 350,
+      },
+    ],
+  }),
+  ...chain({
+    base: "nav",
+    phases: sky,
+    currency: "energy",
+    stats: [
+      {
+        label: "Drift",
+        read: (run) => driftPerSecond(run) * 60,
+        suffix: "% a minute",
+      },
+      {
+        label: "Course",
+        read: (run) => (isCourseAuto(run) ? 1 : 0),
+        format: (v) => (v > 0 ? "automatic" : "by hand"),
+      },
+    ],
+    steps: [
+      {
+        name: "Star charts",
+        description: "The fleet drifts off course half as fast.",
+        showWhen: (run) => owned(run, "copy-1") >= 1,
+      },
+      {
+        name: "A navigator mind",
+        description:
+          "The fleet corrects its own course. No more hand-steering.",
+        showWhen: (run) => owned(run, "engines-2") >= 1,
       },
     ],
   }),
@@ -549,18 +690,17 @@ const skyUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Quicker engines",
-        description: "Probes cross the dark 28% faster.",
+        description:
+          "Probes cross the dark 40% faster, and the ones in flight arrive early.",
         showWhen: (run) => owned(run, "copy-1") >= 1,
+        onBuy: fleetBump(TUNING.sky.engineFleetBump),
       },
       {
         name: "A sail of sunlight",
-        description: "Probes ride the light. 28% faster again.",
+        description:
+          "Probes ride the light. 40% faster again, and more arrive early.",
         showWhen: (run) => owned(run, "copy-2") >= 1,
-      },
-      {
-        name: "Shortcuts through the dark",
-        description: "Someone found one. 28% faster again.",
-        showWhen: (run) => owned(run, "mirror-3") >= 1,
+        onBuy: fleetBump(TUNING.sky.engineFleetBump),
       },
     ],
   }),
@@ -572,18 +712,14 @@ const skyUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Hungrier probes",
-        description: "Each probe takes stars 70% faster.",
+        description: "Each probe takes stars more than twice as fast.",
         showWhen: (run) => owned(run, "engines-1") >= 1,
       },
       {
         name: "Wider arms",
-        description: "Probes grab more at a time. 70% faster again.",
+        description:
+          "Probes grab more at a time. More than twice as fast again.",
         showWhen: (run) => owned(run, "engines-2") >= 1,
-      },
-      {
-        name: "Gather whole clusters",
-        description: "Probes take stars in handfuls. 70% faster.",
-        showWhen: (run) => owned(run, "copy-3") >= 1,
       },
     ],
   }),
@@ -672,6 +808,10 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "probe",
   "letgo-porch",
   "remember",
+  "grid-1",
+  "grid-2",
+  "nav-1",
+  "nav-2",
 ]);
 
 export const UPGRADES: readonly UpgradeDef[] = [

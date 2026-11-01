@@ -172,13 +172,21 @@ export interface Scorecard {
 export interface ScoreInputs {
   /** The tapper bot, traced. */
   primary: SimResult;
+  /**
+   * The dawdler bot, traced: shops once a minute and taps lightly. M2 and M3
+   * read its samples (a human doesn't buy the instant something is
+   * affordable); every other metric reads the tapper.
+   */
+  dawdler?: SimResult;
   /** The realistic bot (untraced): reported, not scored. */
   realistic?: SimResult;
   /** The idle bot (untraced). */
   idle: SimResult;
-  /** Naive and cheapskate oil bots, stopped when the consumable phase ends. */
-  naive?: SimResult;
-  cheapskate?: SimResult;
+  /**
+   * Per phase index with a watched number: the naive and careful bots,
+   * stopped when that phase ends.
+   */
+  skill?: Record<number, { naive: SimResult; careful: SimResult }>;
   /** Prestige runs of the tapper bot; run 2 is traced. */
   run2: SimResult;
   run3: SimResult;
@@ -494,7 +502,7 @@ const M9: MetricSpec = {
   id: "M9",
   name: "Tension",
   weight: 6,
-  band: "consumable low 10-35% of the time, empty <= 3%, cheapskate beats naive by 5-25%",
+  band: "watched number low 10-35% of the time, empty <= 3%, the careful player beats the naive one by 5-25% (per phase with a watched number)",
   gate: "consumable empty <= 8% of the time",
 };
 const LOW_ZONE = { lo: 0.05, hi: 0.3 };
@@ -506,12 +514,13 @@ function phaseExitTime(result: SimResult | undefined, index: number): number {
 }
 
 const evalM9: PhaseEval = ({ def, span, samples, inputs }) => {
-  const consumable = def.consumables?.[0];
-  const levels = consumable
-    ? samples
-        .map((s) => s.consumables[consumable.id])
-        .filter((l): l is number => l !== null && l !== undefined)
-    : [];
+  const levelsOf = (id: string): number[] =>
+    samples
+      .map((s) => s.consumables[id])
+      .filter((l): l is number => l !== null && l !== undefined);
+  const consumable = def.consumables?.find((c) => levelsOf(c.id).length > 0);
+  const levels = consumable ? levelsOf(consumable.id) : [];
+  const zone = consumable?.lowZone ?? LOW_ZONE;
   if (levels.length === 0)
     return {
       sub: 0,
@@ -521,12 +530,13 @@ const evalM9: PhaseEval = ({ def, span, samples, inputs }) => {
       stats: { low: 0, empty: 0, skill: 0 },
     };
   const low = share(
-    levels.filter((l) => l >= LOW_ZONE.lo && l <= LOW_ZONE.hi).length,
+    levels.filter((l) => l >= zone.lo && l <= zone.hi).length,
     levels.length
   );
   const empty = share(levels.filter((l) => l <= 1e-6).length, levels.length);
-  const naive = phaseExitTime(inputs.naive, span.index);
-  const cheap = phaseExitTime(inputs.cheapskate, span.index);
+  const pair = inputs.skill?.[span.index];
+  const naive = phaseExitTime(pair?.naive, span.index);
+  const cheap = phaseExitTime(pair?.careful, span.index);
   const skill = naive / cheap - 1;
   const gate = empty <= 0.08;
   return {
@@ -546,11 +556,11 @@ const M10: MetricSpec = {
   id: "M10",
   name: "Income smoothness",
   weight: 4,
-  band: "0.04-0.20 decades/min, slope CV <= 0.7, plateau share <= 10%",
+  band: "0.04-0.20 decades/min, slope CV <= 0.7, plateau share <= 10% (last phase: gentle fade, -0.12 to 0.02)",
   gate: "plateau share <= 20%",
 };
 const SLOPE_SPAN = 3;
-const evalM10: PhaseEval = ({ span, samples }) => {
+const evalM10: PhaseEval = ({ def, span, samples }) => {
   // 60 s windows; the first is skipped (income resets at a phase change).
   const windows: number[] = [];
   for (let k = 1; span.start + (k + 1) * MIN <= span.end + 1e-9; k += 1) {
@@ -585,6 +595,18 @@ const evalM10: PhaseEval = ({ span, samples }) => {
     .slice(2)
     .filter((w, i) => w / Math.max(windows[i], 1e-9) < 1.05).length;
   const plateau = share(flat, Math.max(1, windows.length - 2));
+  if (span.index === def.phases.length - 1) {
+    // The last phase is about letting go: supply fades by design, so growth,
+    // CV and plateau don't apply. It must still fade gently (never a cliff,
+    // never a surge): slope between -0.12 and +0.02 decades/min.
+    return {
+      sub: bandScore(slope, between(-0.12, 0.02)),
+      gate: true,
+      gateDetail: null,
+      headline: `fading by design: slope ${fmt(slope, 3)}/min (band -0.12 to 0.02)`,
+      stats: { slope, cv, plateau },
+    };
+  }
   const gate = plateau <= 0.2;
   return {
     sub: subMean(
@@ -765,6 +787,9 @@ const PHASE_METRICS: readonly [MetricSpec, PhaseEval][] = [
   [M12, evalM12],
 ];
 
+/** Metrics read from the dawdler's trace instead of the tapper's. */
+const DAWDLER_METRICS: ReadonlySet<string> = new Set(["M2", "M3"]);
+
 /** Phase minutes as weights, the worst phase counting double. */
 export function combinePhases(
   subs: readonly number[],
@@ -806,21 +831,30 @@ export function scoreTrace(def: UniverseDef, inputs: ScoreInputs): Scorecard {
   const durations = spans.map((s) => Math.max(1, s.end - s.start) / MIN);
 
   const metrics: MetricReport[] = [];
-  const contexts: PhaseContext[] = spans.map((span, i) => ({
-    def,
-    span,
-    duration: Math.max(1, span.end - span.start),
-    samples: trace.samples.filter((s) => s.phase === span.index),
-    purchases: trace.purchases.filter((p) => p.phase === span.index),
-    novelty: trace.novelty.filter(
-      (e) =>
-        e.t >= span.start && (i === spans.length - 1 ? true : e.t < span.end)
-    ),
-    inputs,
-  }));
+  const contextsOf = (source: Trace): PhaseContext[] =>
+    source.phases.map((span, i, all) => ({
+      def,
+      span,
+      duration: Math.max(1, span.end - span.start),
+      samples: source.samples.filter((s) => s.phase === span.index),
+      purchases: source.purchases.filter((p) => p.phase === span.index),
+      novelty: source.novelty.filter(
+        (e) =>
+          e.t >= span.start && (i === all.length - 1 ? true : e.t < span.end)
+      ),
+      inputs,
+    }));
+  const contexts = contextsOf(trace);
+  const dawdlerSource = inputs.dawdler?.trace
+    ? contextsOf(inputs.dawdler.trace)
+    : contexts;
+  // A dawdler that never reaches the last phase can't be scored per phase.
+  const dawdlerContexts =
+    dawdlerSource.length === contexts.length ? dawdlerSource : contexts;
 
   for (const [spec, evaluate] of PHASE_METRICS) {
-    const perPhase = contexts.map((ctx) => ({
+    const source = DAWDLER_METRICS.has(spec.id) ? dawdlerContexts : contexts;
+    const perPhase = source.map((ctx) => ({
       phase: ctx.span.id,
       ...evaluate(ctx),
     }));
@@ -932,20 +966,31 @@ export function scoreUniverse(
     strategy: bots.tapper,
     trace: { sampleEvery: 5 },
   });
-  const consumablePhase = primary.trace!.samples.find((s) =>
-    Object.values(s.consumables).some((l) => l !== null)
-  )?.phase;
-  const untilPhaseEnds = (index: number) => ({
-    stopWhen: (run: { phase: number }) => run.phase > index,
+  const consumablePhases = [
+    ...new Set(
+      primary
+        .trace!.samples.filter((s) =>
+          Object.values(s.consumables).some((l) => l !== null)
+        )
+        .map((s) => s.phase)
+    ),
+  ];
+  const skill: NonNullable<ScoreInputs["skill"]> = {};
+  consumablePhases.forEach((index, i) => {
+    const pair =
+      bots.skill?.[index] ??
+      (i === 0
+        ? { naive: bots.naiveOil, careful: bots.cheapskateOil }
+        : undefined);
+    if (!pair) return;
+    const stopWhen = {
+      stopWhen: (run: { phase: number }) => run.phase > index,
+    };
+    skill[index] = {
+      naive: simulate(def, { ...base, strategy: pair.naive, ...stopWhen }),
+      careful: simulate(def, { ...base, strategy: pair.careful, ...stopWhen }),
+    };
   });
-  const oilBot = (strategy: BotSet["tapper"]) =>
-    consumablePhase === undefined
-      ? undefined
-      : simulate(def, {
-          ...base,
-          strategy,
-          ...untilPhaseEnds(consumablePhase),
-        });
 
   const embers = emberReward(def, primary.finalRun);
   const run2 = simulate(def, {
@@ -960,12 +1005,17 @@ export function scoreUniverse(
     prestige: typicalPrestige(def, embers + emberReward(def, run2.finalRun)),
   });
 
+  const dawdler = simulate(def, {
+    ...base,
+    strategy: bots.dawdler,
+    trace: { sampleEvery: 5 },
+  });
   const card = scoreTrace(def, {
     primary,
     realistic: simulate(def, { ...base, strategy: bots.realistic }),
     idle: simulate(def, { ...base, strategy: bots.idle }),
-    naive: oilBot(bots.naiveOil),
-    cheapskate: oilBot(bots.cheapskateOil),
+    dawdler,
+    skill,
     run2,
     run3,
   });

@@ -196,3 +196,165 @@ band), idle still finishes (1.64x slower than a tapper).
    steps.
 4. **Tooling first if the reviewer needs it**: a dawdler bot for M2/M3, and a
    per-phase plate timeline in the trace output.
+
+## Round 1: second watched numbers, a dawdler, oil that matters (2026-11-01)
+
+Branch `feat/ever-onward-funloop`, tuner role. Hypothesis: the worst holes were
+structural, not numeric. Night and sky had one live system each (peak 1 plate,
+tension 0), the oil choice was worth 0.5%, and sky's filler chains hid the
+probes' payoff. So: add a watched, hand-fixable number to night and sky, make
+oil a real decision, show probe progress as income, and close dead stretches.
+Instruments first.
+
+### A. Instruments
+
+- **Dawdler bot** (`dawdler` in `BotSet`, `engine/bots.ts`): taps 1/s, shops
+  once a minute, savvy oil, looks after the grid and heading under 35%, never
+  claims bonuses. It is traced, and **M2 and M3 now read its trace** (the other
+  metrics still read the tapper). Effect: M2 0-options share fell from 91-95% to
+  73-77% (M2 6.0 to 7.1 pts) but M3 got _worse_ (the dawdler buys everything
+  between trips, so the queue of goals is thinner: night/sky/last fail the "a
+  goal 95% of the time" gate). That is a real finding about the design (goals
+  run out when you buy as soon as you can), not noise.
+- **M10 last phase re-banded**: the last phase fades by design, so growth, CV
+  and plateau do not apply. It now scores the slope against a gentle fade
+  (-0.12 to +0.02 decades/min) and has no plateau gate. Round 0 failed it 80%
+  plateau; it now passes (1.00).
+- **M9 generalised**: any consumable can carry its own `lowZone`; each phase
+  with a watched number gets a `naive` vs `careful` bot pair (`BotSet.skill`,
+  keyed by phase index) and the skill gap is the naive player's phase exit over
+  the careful one's. Before this, only oil (phase 0) could score.
+- Test fixtures (`__tests__/fixtures.ts`) now fix the grid and heading and take
+  bonuses, as a real player would.
+
+Round 0 with only these instruments (before any game change): **59.0 capped /
+67.4 uncapped** (66.4 at Round 0; the 1.0 is the M10 re-band net of M3).
+
+### B. Night: grid strain and the evening rush
+
+- A watched number, **Grid steadiness (%)**. It falls as the grid works harder
+  (log of supply/demand, so every plant counts) and cities pay between 40% and
+  100% of the power they would (`gridFactor`: never zero; the phase still ends
+  on supply, so it cannot stall). Free action **Balance the grid** restores it
+  (blocked when already steady). Sparkline, a "dimming/uneasy/steady" chip and
+  "cities pay N%" come from the existing generic `ActionView`.
+- **Evening rush**: every 100-200 s a 45 s window opens (and the grid strains 3x
+  as fast). Free action **Ride the evening rush** pays about 40 s of income plus
+  taps. Never required, nothing lost if ignored.
+- Automation, bought later: **Load balancer** (`grid-1`, strain halves) then
+  **Smart grid** (`grid-2`, fixes itself below 55%, retires the button).
+- Plates added: `grid` (steadiness under 85%) and `rush`.
+
+### C. Sky: probe heading, solar flares, folded chains
+
+- A second watched number, **Probe heading (%)**. Drift grows with the fleet (log
+  of probes); the fleet's pace is 35-100% of full (never zero). Free action
+  **Send a course correction**. Chain `nav`: **Star charts** (drift halves),
+  **A navigator mind** (fixes itself, retires the button).
+- **Solar flare**: every 110-220 s a 40 s window; free action **Catch the solar
+  flare** pays about 40 s of income. Starts once there is one collector.
+- **Probe progress is income**: each star taken now pays `starBounty` energy
+  (15), replacing the slow stock term. Copying and engines steps land a wave of
+  probes at once (x1.5 and x1.3) so buying them is felt. New `relay` chain (3
+  steps, each star pays 60% more) gives late sky something worth buying while the
+  fleet is exponential.
+- **Fewer, bigger steps**: `copy`, `engines`, `appetite` went from 3 steps each to
+  2 each with larger multipliers (copy 1.9x, engines 0.6x trip, appetite 2.2x);
+  the saved-game ids `copy-3`, `engines-3`, `appetite-3` are gone (a mid-run save
+  that owned them keeps counting the tier, a small one-off bump).
+- Plates added: `course`, `flare`.
+
+### D. Coast oil as a decision
+
+- Burn per ship now grows with the operation (0.1 + 0.1 per extra lighthouse),
+  the price swings wider and longer (wobble 1.0, pull 0.006, 0.3-6.0), the
+  merchant contract moved to 5+ lighthouses (so the first ~35 min are by hand).
+- **The tank scales with burn** (it holds 60 s of full-tilt burn, +60 s per tank
+  upgrade). Before this, late coast needed a Buy-oil click every ~12 s; now it is
+  about every 90 s. A barrel is capped at 60% of the bank (a poor lighthouse
+  still gets a small one).
+- Result: careful beats naive by 2.9% in the coast (8% while tuning; the dock
+  chain and extra income later diluted it), tank in the low zone 14% of the time
+  (band 10-35%).
+
+### E. Dead stretches
+
+- New coast chain `dock` (3 steps, +20% fares each), new night chain `subs`
+  (2 steps, +20% supply), and cheaper mid-stretch steps (`fees-3`, `shutters-2`,
+  `train-3`, `gen4`) so something is on offer where Round 0 had 250 s of nothing.
+- Coast M12 longest 250 to 160 s, night 210 to 150 s. M1 still shows reveal gaps
+  (coast 380 s) that need more reveals, not more purchases.
+
+### Before and after
+
+| Metric                | Round 0 | Round 1  | Notes                                                       |
+| --------------------- | ------- | -------- | ----------------------------------------------------------- |
+| Total (capped)        | 59.0    | 59.0     | still capped by 9 gates                                     |
+| Total (uncapped)      | 66.4    | **76.6** | +10.2                                                       |
+| Failing gates         | 14      | 9        |                                                             |
+| M1 Reveal cadence     | 8.9     | 8.5      | gates: coast 380 s, night 260 s, sky 237 s                  |
+| M2 Decision density   | 6.0     | 7.1      | dawdler instrument                                          |
+| M3 Goal queue         | 0.8     | 1.3      | night/sky/last gates fail (dawdler buys everything)         |
+| M4 Felt effect        | 5.7     | 8.5      | sky 0.50, last 0.50 fail: nav/probe mechanics move 0 income |
+| M5 Purchase rate      | 6.0     | 6.0      |                                                             |
+| M6 Wait ratio         | 8.8     | 8.8      | sky p95 245 to 185 s (gate 180)                             |
+| M7 Plates             | 2.9     | **4.9**  | gates pass; every phase peaks at 3 (last at 2)              |
+| M8 Novelty            | 7.0     | 7.0      |                                                             |
+| M9 Tension            | 1.3     | **4.3**  | coast .97, night 1.00, sky 1.00, last 0                     |
+| M10 Income smoothness | 2.5     | 3.5      | re-banded last phase; sky plateau 33 to 13%                 |
+| M11 Active vs idle    | 5.6     | 5.6      | idle/tapper 1.75x (was 1.64x), idle 3.39 h                  |
+| M12 Dead time         | 2.0     | 2.6      | coast .68, night 1.00, sky .45, last .82                    |
+| M13 Prestige          | 5.0     | 5.0      | run2/run1 0.69, run3/run2 0.76                              |
+| M14 Length            | 3.8     | 3.5      | 1.94 h (Round 0 1.98 h): just under the 2.0 h band          |
+
+Per phase (per-phase metrics): coast 79% to 84%, night 71% to 83%, sky 48% to
+72%, last 63% to 68%. Phase lengths: coast 35, night 29, sky 34, last 19 min.
+Finish: tapper 1.94 h, realistic 2.27 h, idle 3.39 h, run 2 1.34 h, run 3 1.03 h.
+
+Failing gates left (9): M1 coast/night/sky (max reveal gap), M3 night/sky/last
+(dawdler's goal queue), M4 sky/last (median effect 6% and 5% against 8%), M6 sky
+(p95 wait 185 s).
+
+### What moved and what did not
+
+- **Moved a lot**: plates (M7 gates cleared, night and sky no longer one-system),
+  tension (M9 1.3 to 4.3: night and sky now have a watched number with a real skill
+  gap, 12.5% each), felt effect, income smoothness in sky, dead time in coast and
+  night. Gates: 6 cleared (M7 night and sky, M10 sky and last, M12 coast and night),
+  1 new (M3 night, from the dawdler), net 14 to 9. M12 sky stays soft (0.45).
+- **Did not move**: the last phase is still the weakest (68%): 2 plates, no
+  watched number, a 0.5 felt-effect sub-score (letting go gives +2 energy/s, 5%),
+  and an empty goal queue (only one let-go on offer at a time). Reveal cadence
+  (M1) still has 250-380 s holes between _reveals_ even where purchases fill
+  the time. Length is 1.94 h, a hair under 2 h.
+- **Cost of the instruments**: M3 is worse with the dawdler. The goal queue is
+  the thing the doc cares about; a human who buys as soon as they can leaves
+  nothing to look forward to. Either raise `maxVisible` (tried 4: no gain, M2 got
+  worse) or show locked "someday" goals (a greyed-out next-phase teaser).
+- Sensitivity found: the idle bot is very sensitive to costs (x1.1 on every
+  coast and night cost pushed idle from 3.4 h to 4.1 h, over the 4 h gate), so
+  length was added with probe growth (0.006 to 0.0028) and not with costs.
+
+### Open questions for the reviewer
+
+1. Is the grid too chore-like? A tapper fixes it every ~2-3 minutes, the idle bot
+   survives on the 40% floor. Should "Balance the grid" have a cooldown instead of
+   being free any time (so it is a rhythm, not a spam button)?
+2. Is bonus-window (rush, flare) tension acceptable for kids (a vanishing offer,
+   though nothing is lost)? If not, make them persist until claimed.
+3. M9's `lowZone` of 5-60% for the grid and heading is generous (a number going
+   under 60% means cities visibly pay 76%). Is that honest tension or Goodhart?
+4. Last phase: what is the watched number? (Candidate: the flame's brightness
+   against which light you let go; or a second hand-fixable "draught".)
+5. M1 gaps are about reveals. Should story beats count (they do) and should the
+   unlock of an upgrade count when it replaces one just bought?
+6. The coast skill gap is only 2.9% in the final build (8% in the tuning pass):
+   late coast income swamps oil. Make oil burn scale with income, or move the
+   contract later still?
+
+### Decision
+
+Keep. Next (Round 2 candidates): a watched number and a second plate for the
+last phase; reveal beats for the coast and night mid-stretches; make the goal
+queue survive a shopper (teaser goals); a short check-in clip of the night and
+sky with Gentry.

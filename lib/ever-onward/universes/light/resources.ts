@@ -48,10 +48,26 @@ export const RESOURCES: readonly ResourceDef[] = [
     initial: 100,
     phases: [PHASE_NIGHT],
   },
+  {
+    id: "grid",
+    label: "Grid steadiness (%)",
+    initial: 100,
+    phases: [PHASE_NIGHT],
+  },
+  { id: "rush", label: "Evening rush", phases: HIDDEN },
+  { id: "rushCooldown", label: "Next rush", initial: 90, phases: HIDDEN },
   // The Sky
   { id: "energy", label: "Energy", phases: [PHASE_SKY, PHASE_LAST] },
   { id: "collectors", label: "Sun collectors", phases: [PHASE_SKY] },
   { id: "probes", label: "Probes", phases: [PHASE_SKY] },
+  {
+    id: "heading",
+    label: "Probe heading (%)",
+    initial: 100,
+    phases: [PHASE_SKY],
+  },
+  { id: "flare", label: "Solar flare", phases: HIDDEN },
+  { id: "flareCooldown", label: "Next flare", initial: 100, phases: HIDDEN },
   { id: "starsTaken", label: "Stars taken", phases: HIDDEN },
   {
     id: "stars",

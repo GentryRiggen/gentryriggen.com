@@ -1,6 +1,19 @@
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { sceneInfo } from "./scene";
-import { isOilCheap, isStorming, level, tankCapacity } from "./tick";
+import {
+  gridSteadiness,
+  headingOf,
+  isCourseAuto,
+  isCourseInPlay,
+  isFlareOn,
+  isGridAuto,
+  isGridInPlay,
+  isOilCheap,
+  isRushOn,
+  isStorming,
+  level,
+  tankCapacity,
+} from "./tick";
 
 /**
  * Scorecard hooks: what the simulator reads to count plates, watch the oil
@@ -24,8 +37,14 @@ export function lightPlates(run: RunState): string[] {
     if (isStorming(run)) plates.push("storm");
   } else if (run.phase === 1) {
     plates.push("crank");
+    if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
+      plates.push("grid");
+    if (isRushOn(run)) plates.push("rush");
   } else if (run.phase === 2) {
     plates.push("aim");
+    if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
+      plates.push("course");
+    if (isFlareOn(run)) plates.push("flare");
   } else {
     plates.push("tend");
     const hasLetGoOnOffer = run.revealed.some(
@@ -44,6 +63,25 @@ export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
       run.phase === 0
         ? Math.min(1, Math.max(0, run.resources.oil / tankCapacity(run)))
         : null,
+  },
+  {
+    id: "grid",
+    label: "Grid steadiness",
+    level: (run) =>
+      isGridInPlay(run) && !isGridAuto(run)
+        ? Math.min(1, Math.max(0, gridSteadiness(run) / 100))
+        : null,
+    // Cities visibly pay less under 60%: that is where a player acts.
+    lowZone: { lo: 0.05, hi: 0.6 },
+  },
+  {
+    id: "heading",
+    label: "Probe heading",
+    level: (run) =>
+      isCourseInPlay(run) && !isCourseAuto(run)
+        ? Math.min(1, Math.max(0, headingOf(run) / 100))
+        : null,
+    lowZone: { lo: 0.05, hi: 0.6 },
   },
 ];
 

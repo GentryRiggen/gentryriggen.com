@@ -37,7 +37,7 @@ export const shipsPerFlash = (run: RunState): number =>
   (1 + level(run, "lens")) * tapMult(run);
 
 export const fare = (run: RunState): number =>
-  C.fareGrowth ** tier(run, "fees");
+  C.fareGrowth ** tier(run, "fees") * C.dockBonus ** tier(run, "dock");
 
 export const isStorming = (run: RunState): boolean => res(run, "storm") > 0;
 
@@ -81,23 +81,47 @@ const oilSaving = (run: RunState): number => C.wickSaving ** tier(run, "wick");
 
 /** Lamp oil burned per second: a steady glow plus a bit per ship guided. */
 export const burnPerSecond = (run: RunState, shipsPerSecond: number): number =>
-  (lighthouseCount(run) * C.burnBase + C.burnPerShip * shipsPerSecond) *
+  (lighthouseCount(run) * C.burnBase + burnPerShip(run) * shipsPerSecond) *
   oilSaving(run);
+
+/** A bigger operation burns more oil per ship: little at first, a lot later. */
+const burnPerShip = (run: RunState): number =>
+  C.burnPerShip + C.burnPerShipPerLighthouse * (lighthouseCount(run) - 1);
 
 /** Oil burned per second by an idle lamp, for previews. */
 export const idleBurn = (run: RunState): number =>
   burnPerSecond(run, autoFlashRate(run));
 
-export const tankCapacity = (run: RunState): number =>
-  (C.tankBase + C.tankPerTier * tier(run, "tank")) * lighthouseCount(run);
+/**
+ * The tank holds this many seconds of oil at full tilt (keepers plus a few
+ * taps a second), so it keeps up as the coast grows: every tank upgrade holds
+ * longer, never a flood of barrel clicks.
+ */
+export const tankCapacity = (run: RunState): number => {
+  const fullTiltShips =
+    autoFlashRate(run) + C.tankTapsPerSecond * shipsPerFlash(run);
+  const seconds = C.tankSeconds + C.tankSecondsPerTier * tier(run, "tank");
+  return Math.max(
+    C.tankBase * lighthouseCount(run),
+    burnPerSecond(run, fullTiltShips) * seconds
+  );
+};
 
-/** Oil one barrel brings, never more than the tank has room for. */
+/**
+ * Oil one barrel brings: half a tank, never more than the tank has room for
+ * or most of the bank can pay for (a poor lighthouse still gets a small barrel).
+ */
 export const barrelOil = (run: RunState): number =>
   Math.max(
     0,
     Math.min(
       Math.max(C.barrelMin, tankCapacity(run) * C.barrelShare),
-      tankCapacity(run) - res(run, "oil")
+      tankCapacity(run) - res(run, "oil"),
+      Math.max(
+        C.barrelMin,
+        (res(run, "coins") * C.barrelCoinShare) /
+          Math.max(res(run, "oilPrice"), 0.01)
+      )
     )
   );
 
@@ -193,7 +217,11 @@ export function supplyMW(run: RunState): number {
     (sum, mw, i) => sum + mw * level(run, `gen${i + 1}`),
     0
   );
-  return raw * (1 + N.lineBonus * tier(run, "lines"));
+  return (
+    raw *
+    (1 + N.lineBonus * tier(run, "lines")) *
+    N.substationBonus ** tier(run, "subs")
+  );
 }
 
 export const demandMW = (run: RunState): number =>
@@ -205,13 +233,63 @@ export function citiesLit(run: RunState): number {
   return (delivered / demandMW(run)) * TOTAL_CITIES;
 }
 
+/** Steadiness 0..100; a save from before the grid existed counts as steady. */
+export const gridSteadiness = (run: RunState): number =>
+  run.resources.grid ?? 100;
+
+/** What cities pay while the grid is this steady: floor..1, never zero. */
+export const gridFactor = (run: RunState): number =>
+  N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100);
+
+export const isGridAuto = (run: RunState): boolean => tier(run, "grid") >= 2;
+export const isRushOn = (run: RunState): boolean => res(run, "rush") > 0;
+export const isGridInPlay = (run: RunState): boolean =>
+  run.phase === 1 && supplyMW(run) >= N.gridVisibleSupplyMW;
+
+/** How hard the grid is worked, 0..1 (on a log scale: every plant counts). */
+export const gridLoad = (run: RunState): number =>
+  Math.min(1, Math.log10(1 + supplyMW(run)) / Math.log10(1 + demandMW(run)));
+
+/** Steadiness lost per second right now (percent), rush included. */
+export function strainPerSecond(run: RunState): number {
+  return (
+    (N.strainBase + N.strainPerLoad * gridLoad(run)) *
+    (isRushOn(run) ? N.rushStrainMult : 1) *
+    N.balancerSaving ** Math.min(1, tier(run, "grid"))
+  );
+}
+
 export const crankPower = (run: RunState): number =>
   (N.crankBase + N.crankPerLevel * level(run, "crank")) * tapMult(run);
 
 export const powerPerSecond = (run: RunState): number =>
-  Math.min(supplyMW(run), demandMW(run)) * N.payPerMW * speed(run);
+  Math.min(supplyMW(run), demandMW(run)) *
+  N.payPerMW *
+  speed(run) *
+  gridFactor(run);
+
+/** Power the evening rush pays when claimed: a slice of income plus taps. */
+export const rushBonus = (run: RunState): number =>
+  N.rushBonusSeconds * (powerPerSecond(run) + crankPower(run) * 3);
+
+/** Strain builds, the rush comes and goes, a smart grid fixes itself. */
+function updateGrid(run: RunState, dt: number): void {
+  const r = run.resources;
+  if (!isGridInPlay(run)) return;
+  r.grid = Math.max(0, gridSteadiness(run) - strainPerSecond(run) * dt);
+  if (isGridAuto(run) && r.grid < N.autoBalanceBelow) r.grid = N.autoBalanceTo;
+  if (r.rush > 0) {
+    r.rush = Math.max(0, r.rush - dt);
+    return;
+  }
+  r.rushCooldown -= dt;
+  if (r.rushCooldown > 0) return;
+  r.rush = N.rushLength;
+  r.rushCooldown = N.rushGapMin + nextRandom(run) * N.rushGapSpread;
+}
 
 function tickNight(run: RunState, dt: number): void {
+  updateGrid(run, dt);
   const supply = supplyMW(run);
   const demand = demandMW(run);
   const delivered = Math.min(supply, demand);
@@ -221,7 +299,8 @@ function tickNight(run: RunState, dt: number): void {
   run.resources.cities = lit;
   run.resources.night = Math.max(0, 100 * (1 - lit / TOTAL_CITIES));
   // Cities only pay for the power that reaches them.
-  run.resources.power += delivered * N.payPerMW * speed(run) * dt;
+  run.resources.power +=
+    delivered * N.payPerMW * speed(run) * gridFactor(run) * dt;
 }
 
 // ------------------------------------------------------------------ The Sky
@@ -244,6 +323,27 @@ export const appetite = (run: RunState): number =>
 export const aimEnergy = (run: RunState): number =>
   (S.aimBase + S.aimPerLevel * level(run, "aim")) * tapMult(run);
 
+/** Heading 0..100; a save from before course drift counts as on course. */
+export const headingOf = (run: RunState): number =>
+  run.resources.heading ?? 100;
+
+/** How well the fleet flies: floor..1, never zero. */
+export const headingFactor = (run: RunState): number =>
+  S.headingFloor + (1 - S.headingFloor) * (headingOf(run) / 100);
+
+export const isCourseAuto = (run: RunState): boolean => tier(run, "nav") >= 2;
+export const isFlareOn = (run: RunState): boolean => res(run, "flare") > 0;
+export const isCourseInPlay = (run: RunState): boolean =>
+  run.phase === 2 && res(run, "probes") >= 1;
+
+/** Heading lost per second (percent): more probes, more ways to wander. */
+export function driftPerSecond(run: RunState): number {
+  return (
+    (S.driftBase + S.driftPerDecade * Math.log10(1 + res(run, "probes"))) *
+    S.chartsSaving ** Math.min(1, tier(run, "nav"))
+  );
+}
+
 const probeGrowthRate = (run: RunState): number => {
   const travel = S.travelBase * S.engineSaving ** tier(run, "engines");
   return (
@@ -252,20 +352,69 @@ const probeGrowthRate = (run: RunState): number => {
   );
 };
 
+/** Stars the fleet takes per second at its heading. */
+export const starsPerSecond = (run: RunState): number =>
+  res(run, "probes") *
+  S.takePerProbe *
+  appetite(run) *
+  speed(run) *
+  headingFactor(run);
+
+/** Energy per second from probes: every star taken pays a bounty. */
+export const starBounty = (run: RunState): number =>
+  S.starBounty * S.relayBonus ** tier(run, "relay");
+
+export const probeEnergyPerSecond = (run: RunState): number =>
+  starsPerSecond(run) * starBounty(run);
+
+/** Energy a solar flare pays when caught: a slice of income plus aiming. */
+export const flareBonus = (run: RunState): number =>
+  S.flareBonusSeconds *
+  (collectorEnergyPerSecond(run) +
+    probeEnergyPerSecond(run) +
+    aimEnergy(run) * 3);
+
+/** Drift builds, flares come and go, charts and a navigator fix the course. */
+function updateSkyEvents(run: RunState, dt: number): void {
+  const r = run.resources;
+  if (isCourseInPlay(run)) {
+    r.heading = Math.max(0, headingOf(run) - driftPerSecond(run) * dt);
+    if (isCourseAuto(run) && r.heading < S.autoCorrectBelow)
+      r.heading = S.autoCorrectTo;
+  }
+  // Flares come as soon as there is a collector to catch one.
+  if (res(run, "collectors") < 1) return;
+  if (r.flare > 0) {
+    r.flare = Math.max(0, r.flare - dt);
+    return;
+  }
+  r.flareCooldown -= dt;
+  if (r.flareCooldown > 0) return;
+  r.flare = S.flareLength;
+  r.flareCooldown = S.flareGapMin + nextRandom(run) * S.flareGapSpread;
+}
+
 function tickSky(run: RunState, dt: number): void {
+  updateSkyEvents(run, dt);
   const r = run.resources;
   const remaining = r.stars;
   const open = remaining / TOTAL_STARS;
+  let taken = 0;
   if (r.probes > 0 && remaining > 0) {
-    r.probes += r.probes * probeGrowthRate(run) * open * speed(run) * dt;
-    const takePer = S.takePerProbe * S.appetiteBonus ** tier(run, "appetite");
-    const taken = Math.min(remaining, r.probes * takePer * speed(run) * dt);
+    r.probes +=
+      r.probes *
+      probeGrowthRate(run) *
+      open *
+      speed(run) *
+      headingFactor(run) *
+      dt;
+    taken = Math.min(remaining, starsPerSecond(run) * dt);
     r.starsTaken += taken;
     r.stars = Math.max(0, TOTAL_STARS - r.starsTaken);
   }
   const collected =
     r.collectors * S.collectorEnergy * S.mirrorBonus ** tier(run, "mirror");
-  r.energy += (collected + r.starsTaken * S.energyPerStar) * speed(run) * dt;
+  r.energy += collected * speed(run) * dt + taken * starBounty(run);
 }
 
 // ----------------------------------------------------------- The Last Light
