@@ -191,7 +191,7 @@ function GrowthTicks({ progress }: { progress: number }) {
  * Nothing wilts, and skipping the water costs nothing but time.
  */
 export default function MemoryGarden({ def, run, onAct }: MemoryGardenProps) {
-  if (def.id !== "light" || !isGardenOpen(run) || run.complete) return null;
+  if (!isGardenOpen(run) || run.complete) return null;
 
   const blooms = bloomCount(run);
   const growing = growingCount(run);

@@ -5,9 +5,11 @@ import { formatDuration } from "@/lib/ever-onward/engine/format";
 import {
   canRestart,
   emberReward,
+  prestigeLabel,
   prestigeUpgradeCost,
 } from "@/lib/ever-onward/engine/prestige";
 import type { UniverseDef, UniverseSave } from "@/lib/ever-onward/engine/types";
+import { uiFor } from "../universes";
 import RetroHeading from "./retro/RetroHeading";
 import {
   pixelClass,
@@ -35,10 +37,12 @@ export default function EmberPanel({
   const { run } = universe;
   const [isConfirming, setIsConfirming] = useState(false);
   const reward = emberReward(def, run);
+  const label = prestigeLabel(def);
+  const plural = label.toLowerCase();
 
   return (
     <section
-      aria-label="Embers"
+      aria-label={label}
       data-testid="lm-embers"
       className={`${retroPanelClass} space-y-4 p-4`}
     >
@@ -48,11 +52,11 @@ export default function EmberPanel({
             as="h2"
             className="text-sm leading-relaxed sm:text-base"
           >
-            The light is still on.
+            {uiFor(def.id).copy.stillGoing}
           </RetroHeading>
           <p className="font-mono text-sm text-slate-200">
             You finished {def.title} in {formatDuration(run.time)}. This run
-            earns {reward} embers.
+            earns {reward} {plural}.
             {universe.best !== null &&
               ` Your best time is ${formatDuration(universe.best)}.`}
           </p>
@@ -62,7 +66,7 @@ export default function EmberPanel({
         </div>
       )}
       <div className="flex items-baseline justify-between">
-        <h3 className={`${pixelClass} text-xs text-orange-200`}>Embers</h3>
+        <h3 className={`${pixelClass} text-xs text-orange-200`}>{label}</h3>
         <span
           data-testid="lm-ember-count"
           className={`${pixelClass} text-lg tabular-nums text-orange-300 [text-shadow:2px_2px_0_#7c2d12]`}
@@ -71,7 +75,7 @@ export default function EmberPanel({
         </span>
       </div>
       <p className="font-mono text-sm text-slate-200">
-        Embers buy permanent upgrades. They shape your next run.
+        {label} buy permanent upgrades. They shape your next run.
       </p>
       <ul className="space-y-3">
         {def.prestige.upgrades.map((u) => {
@@ -102,7 +106,7 @@ export default function EmberPanel({
                   <span
                     className={`${pixelClass} shrink-0 text-[10px] tabular-nums`}
                   >
-                    {cost === null ? "Max" : `${cost} embers`}
+                    {cost === null ? "Max" : `${cost} ${plural}`}
                   </span>
                 </span>
                 <span className="mt-2 block font-mono text-sm">
@@ -131,7 +135,7 @@ export default function EmberPanel({
           onClick={() => setIsConfirming(true)}
           className={`${retroSecondaryButtonClass} w-full`}
         >
-          Restart for {reward} embers
+          Restart for {reward} {plural}
         </button>
       )}
       {!run.complete && isConfirming && (
@@ -141,8 +145,8 @@ export default function EmberPanel({
           className="space-y-3 border-4 border-red-400 bg-red-950/60 p-3"
         >
           <p className="font-mono text-sm text-red-50">
-            Start over from the beginning and keep {reward} embers? Your current
-            run will be gone.
+            Start over from the beginning and keep {reward} {plural}? Your
+            current run will be gone.
           </p>
           <div className="flex flex-wrap gap-3">
             <button

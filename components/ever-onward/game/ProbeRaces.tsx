@@ -617,6 +617,6 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
  * the dock until the next launch. Nothing is ever lost by leaving it there.
  */
 export default function ProbeRaces({ def, run, onAct }: ProbeRacesProps) {
-  if (def.id !== "light" || !isProbesOpen(run) || run.complete) return null;
+  if (!isProbesOpen(run) || run.complete) return null;
   return <ProbeRacesPanel def={def} run={run} onAct={onAct} />;
 }

@@ -9,7 +9,7 @@ import {
 import CoastLayer from "./CoastLayer";
 import LastLayer from "./LastLayer";
 import NightLayer from "./NightLayer";
-import type { LastBuy } from "./callouts";
+import type { LastBuy } from "../../universes/types";
 import { isSameLayerInfo } from "./layerInfo";
 import SceneCallout from "./SceneCallout";
 import SceneCaption from "./SceneCaption";

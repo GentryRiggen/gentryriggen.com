@@ -1,4 +1,5 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import type { LastBuy } from "../../universes/types";
 import {
   COTTAGE,
   DEPOT,
@@ -20,15 +21,6 @@ import {
   type NightSlot,
   type Point,
 } from "./anchors";
-
-/** The most recent purchase, handed from the game screen to the scene. */
-export interface LastBuy {
-  /** Counts up with every purchase so a repeat buy replays the callout. */
-  id: number;
-  upgradeId: string;
-  /** How many of it are owned now. */
-  n: number;
-}
 
 export interface Callout extends Point {
   text: string;

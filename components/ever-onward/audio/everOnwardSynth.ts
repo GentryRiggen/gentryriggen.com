@@ -1,6 +1,6 @@
 import { mixWithOtherAudio } from "@/components/game-audio/audioSession";
 import { softnessGain, watchReducedMotion } from "../../game-audio/channels";
-import { midiToHz } from "../../game-audio/music";
+import { midiToHz, type MusicSpec } from "../../game-audio/music";
 import {
   createMusicPlayer,
   type MusicPlayer,
@@ -13,7 +13,17 @@ import {
 } from "../../game-audio/primitives";
 import { comboSemitones, nextCombo, type ComboState } from "./combo";
 import { createRateLimiter } from "./rateLimiter";
-import { TITLE_SCORE, scoreForPhase, uneaseForPhase } from "./scores";
+import { SCORES, TITLE_SCORE, UNEASE } from "./scores";
+import type { UniverseAudio } from "../universes/types";
+
+/** The scores and unease swells a universe brings, by phase index. */
+type PhaseAudio = Pick<UniverseAudio, "scores" | "unease">;
+
+const LIGHT_AUDIO: PhaseAudio = { scores: SCORES, unease: UNEASE };
+
+function pick<T>(list: readonly T[], phase: number): T {
+  return list[Math.min(list.length - 1, Math.max(0, Math.floor(phase)))];
+}
 import {
   playAffordable,
   playBuyChord,
@@ -90,6 +100,8 @@ function createSynth() {
   let phase: number | null = null;
   let isStorm = false;
   let isTitle = false;
+  let phaseAudio: PhaseAudio = LIGHT_AUDIO;
+  let titleSpec: MusicSpec = TITLE_SCORE;
   let combo: ComboState | null = null;
   let tapEnds: number[] = [];
   let music: { player: MusicPlayer; specId: string } | null = null;
@@ -150,13 +162,13 @@ function createSynth() {
   function scheduleUnease() {
     clearUnease();
     if (isTitle || phase === null || !engine || !music) return;
-    const spec = uneaseForPhase(phase);
+    const spec = pick(phaseAudio.unease, phase);
     if (!spec) return;
     const gapMs = spec.meanGapS * 1000 * (0.6 + Math.random() * 0.8);
     uneaseTimer = setTimeout(() => {
       uneaseTimer = null;
       if (engine && music && !isPaused && phase !== null) {
-        const score = scoreForPhase(phase);
+        const score = pick(phaseAudio.scores, phase);
         const base = score.rootMidi + 12 + (Math.random() < 0.5 ? 0 : 7);
         for (const midi of [base, base + spec.interval]) {
           tone(
@@ -186,7 +198,7 @@ function createSynth() {
       clearUnease();
       return;
     }
-    const spec = isTitle ? TITLE_SCORE : scoreForPhase(phase ?? 0);
+    const spec = isTitle ? titleSpec : pick(phaseAudio.scores, phase ?? 0);
     if (music?.specId === spec.id) return;
     // A new phase crossfades: the old bed fades out as a fresh one fades in.
     dropMusic();
@@ -355,8 +367,9 @@ function createSynth() {
     },
 
     /** The phase whose score plays, or null for silence. */
-    setPhase(next: number | null) {
+    setPhase(next: number | null, audio: PhaseAudio = LIGHT_AUDIO) {
       phase = next;
+      phaseAudio = audio;
       reconcile();
     },
 
@@ -365,8 +378,9 @@ function createSynth() {
      * game screen can set its phase first and the theme hands over when the
      * title is switched off.
      */
-    setTitle(on: boolean) {
+    setTitle(on: boolean, spec: MusicSpec = TITLE_SCORE) {
       isTitle = on;
+      titleSpec = spec;
       reconcile();
     },
 

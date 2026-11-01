@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import { pixelClass } from "../../game/retro/retroStyles";
-import { calloutFor, type LastBuy } from "./callouts";
+import { calloutFor } from "./callouts";
+import type { LastBuy } from "../../universes/types";
 
 const FONT_SIZE = 9;
 /** How long the label stays before it is taken out of the picture. */
