@@ -26,6 +26,7 @@ export const CHANGELOG: readonly Release[] = [
       "The tide mill, weather vane, mission control and rain barrel all arrive much sooner",
       "Probe trips are longer and pay more, and watered plants stay wet longer, so there are fewer buttons to press for the same fun",
       "The lantern's flame fades more slowly, and a tap tops it up instead of holding it full",
+      "Some tap upgrades have fewer levels now. If your save had more, the extra levels are refunded when you open the game",
     ],
   },
   {
