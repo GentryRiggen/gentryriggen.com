@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.11.1",
+    date: "2026-11-01",
+    title: "Clearer Someday cards",
+    highlights: [
+      "When a Someday card's goal is already met, it now says it is ready and pops in when you buy one of the upgrades above, instead of showing a goal you already reached",
+    ],
+  },
+  {
     version: "1.11.0",
     date: "2026-11-01",
     title: "The Memory Garden",
