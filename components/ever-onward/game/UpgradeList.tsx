@@ -88,7 +88,7 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
             <li
               key={u.id}
               id={upgradeElementId(u.id)}
-              className={`scroll-mt-[calc(var(--eo-hud-h)+36dvh+0.75rem)] lg:scroll-mt-[calc(var(--eo-hud-h)+0.75rem)] ${seen.fresh.has(u.id) ? "lm-pop" : ""}`}
+              className={`scroll-mt-[calc(var(--eo-hud-h)+max(24dvh,9rem)+0.75rem)] lg:scroll-mt-[calc(var(--eo-hud-h)+0.75rem)] ${seen.fresh.has(u.id) ? "lm-pop" : ""}`}
             >
               <button
                 type="button"

@@ -32,7 +32,6 @@ import { type Effect } from "./EffectFloater";
 import EmberPanel from "./EmberPanel";
 import EndingOverlay from "./EndingOverlay";
 import Logbook from "./Logbook";
-import NextUpgradeBar from "./NextUpgradeBar";
 import PhaseOverlay from "./PhaseOverlay";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
@@ -214,7 +213,7 @@ export default function GameScreen({
       </div>
       <div
         inert={overlay !== null}
-        className="sticky top-[var(--eo-hud-h)] z-20 h-[36dvh] w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
+        className="sticky top-[var(--eo-hud-h)] z-20 h-[24dvh] min-h-36 w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[55%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
       >
         <div data-testid="lm-scene-frame" className="h-full">
           {Scene && <Scene run={run} lastBuy={lastBuy} />}
@@ -349,13 +348,6 @@ export default function GameScreen({
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
           <div className="space-y-2">
-            {next && (
-              <NextUpgradeBar
-                next={next}
-                onSelect={handleSelectNext}
-                testId="lm-next"
-              />
-            )}
             <UpgradeList
               key={run.phase}
               def={def}
