@@ -364,3 +364,103 @@ export function playArrive(engine: VoiceEngine) {
     })
   );
 }
+
+/** Bees follow a dance: a quick wobbling hum and two tiny blips. */
+export function playBuzz(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  tone(engine, {
+    type: "triangle",
+    start: at,
+    duration: 0.4,
+    freq: 190,
+    freqEnd: 250,
+    gain: 0.06,
+    attack: 0.05,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at + 0.04,
+    duration: 0.36,
+    freq: 380,
+    freqEnd: 330,
+    gain: 0.035,
+    attack: 0.05,
+  });
+  [0.2, 0.3].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.1,
+      freq: 880 + i * 220,
+      gain: 0.05,
+      attack: 0.004,
+    })
+  );
+}
+
+/** A fair placing: a small fanfare of three rising plucks. */
+export function playRibbon(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [67, 72, 76].forEach((note, i) => {
+    tone(engine, {
+      type: "triangle",
+      start: at + i * 0.09,
+      duration: 0.25,
+      freq: midiToHz(note),
+      gain: 0.1,
+      attack: 0.004,
+    });
+    tone(engine, {
+      type: "sine",
+      start: at + i * 0.09,
+      duration: 0.4,
+      freq: midiToHz(note + 12),
+      gain: 0.04,
+      attack: 0.004,
+    });
+  });
+}
+
+/** A flock lands: a soft airy rush and a few light flutters. */
+export function playFlutter(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.45,
+    filter: "bandpass",
+    freq: 2600,
+    freqEnd: 1500,
+    q: 0.7,
+    gain: 0.05,
+    attack: 0.03,
+  });
+  [0.05, 0.14, 0.22, 0.34].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.07,
+      freq: 1500 + (i % 2) * 300,
+      freqEnd: 1900 + (i % 2) * 300,
+      gain: 0.035,
+      attack: 0.005,
+    })
+  );
+}
+
+/** The pot grows: a rising, round bloom of two warm bells. */
+export function playBloom(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [64, 71, 76].forEach((note, i) => {
+    warmBell(engine, at + i * 0.13, midiToHz(note), 0.8);
+  });
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.7,
+    freq: 160,
+    freqEnd: 320,
+    gain: 0.05,
+    attack: 0.1,
+  });
+}

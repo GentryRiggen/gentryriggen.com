@@ -36,6 +36,10 @@ import {
   playLaunch,
   playArrive,
   playThunder,
+  playBuzz,
+  playRibbon,
+  playFlutter,
+  playBloom,
 } from "./voices";
 
 /**
@@ -67,7 +71,11 @@ export type CueName =
   | "splash"
   | "launch"
   | "arrive"
-  | "chime";
+  | "chime"
+  | "buzz"
+  | "ribbon"
+  | "flutter"
+  | "bloom";
 
 const MASTER_LEVEL = 0.8;
 /** User-facing loudness of the music bed: low, so it stays in the back. */
@@ -425,6 +433,14 @@ function createSynth() {
         playArrive(engine);
       } else if (name === "chime") {
         playChime(engine);
+      } else if (name === "buzz") {
+        playBuzz(engine);
+      } else if (name === "ribbon") {
+        playRibbon(engine);
+      } else if (name === "flutter") {
+        playFlutter(engine);
+      } else if (name === "bloom") {
+        playBloom(engine);
       } else if (name === "phase") {
         playPhaseSwell(engine, phase ?? 0);
         music?.player.duck(0.4, 2.5);
