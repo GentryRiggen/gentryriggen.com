@@ -72,6 +72,9 @@ function ratePreview(
 const helperPreview = (run: RunState, id: string): string =>
   ratePreview(run, id, "Per second", incomePerSecond);
 
+const PICKERS_AT_LIMIT =
+  "Your pickers are at their limit. A wheelbarrow lets them carry more.";
+
 export const UPGRADES: readonly UpgradeDef[] = [
   // The Backyard
   {
@@ -101,6 +104,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     visibleWhen: (run) => owned(run, "sprinkler") >= 2,
     effectPreview: (run) =>
       ratePreview(run, "basket", "Picks/sec", pickPerSecond),
+    noEffectReason: () => PICKERS_AT_LIMIT,
   },
   {
     id: "mulch",
@@ -200,6 +204,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     visibleWhen: (run) => owned(run, "basket") >= 4,
     effectPreview: (run) =>
       ratePreview(run, "gardener", "Picks/sec", pickPerSecond),
+    noEffectReason: () => PICKERS_AT_LIMIT,
   },
   {
     id: "compost-tea",

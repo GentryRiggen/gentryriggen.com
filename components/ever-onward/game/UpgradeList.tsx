@@ -5,6 +5,8 @@ import {
   canAfford,
   upgradeCost,
   upgradeLevel,
+  upgradeNoEffectReason,
+  previewChangesNothing,
   hasUnrevealedUpgrades,
   isMaxed,
   teaserHint,
@@ -84,6 +86,7 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
         {open.map((u) => {
           const affordable = canAfford(run, u);
           const level = levelText(run, u);
+          const noEffect = upgradeNoEffectReason(run, u);
           return (
             <li
               key={u.id}
@@ -133,14 +136,27 @@ export default function UpgradeList({ def, run, onBuy }: UpgradeListProps) {
                 <span className="mt-2 block font-mono text-sm">
                   {u.description}
                 </span>
-                {u.effectPreview && (
-                  <span
-                    data-testid="lm-effect-preview"
-                    className="mt-2 block font-mono text-sm font-bold tabular-nums text-emerald-300"
-                  >
-                    {u.effectPreview(run)}
-                  </span>
-                )}
+                {u.effectPreview &&
+                  (noEffect ? (
+                    <span
+                      data-testid="lm-no-effect"
+                      className="mt-2 block font-mono text-sm text-slate-300"
+                    >
+                      {noEffect}
+                      {!previewChangesNothing(u.effectPreview(run)) && (
+                        <span className="block tabular-nums">
+                          {u.effectPreview(run)}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span
+                      data-testid="lm-effect-preview"
+                      className="mt-2 block font-mono text-sm font-bold tabular-nums text-emerald-300"
+                    >
+                      {u.effectPreview(run)}
+                    </span>
+                  ))}
                 {level && (
                   <span className="mt-2 block font-mono text-xs text-slate-300">
                     {level}

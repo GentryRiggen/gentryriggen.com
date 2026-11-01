@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.14.1",
+    date: "2026-11-01",
+    title: "Upgrades that always help",
+    highlights: [
+      "Fixed upgrades that did nothing: every Gardener Bot and Basket now always helps, and the next-goal bar never points at an upgrade that can't help yet.",
+    ],
+  },
+  {
     version: "1.14.0",
     date: "2026-11-01",
     title: "Make It Grow",

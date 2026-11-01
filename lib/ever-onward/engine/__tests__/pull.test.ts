@@ -1,4 +1,10 @@
-import { newRun } from "../engine";
+import {
+  GENERIC_NO_EFFECT_REASON,
+  newRun,
+  previewBiggestChange,
+  previewChangesNothing,
+  upgradeNoEffectReason,
+} from "../engine";
 import { pickNextUpgrade, primaryResourceId, progressPercent } from "../pull";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 
@@ -55,5 +61,64 @@ describe("pickNextUpgrade", () => {
     const run = newRun(lightUniverse);
     run.revealed = [];
     expect(pickNextUpgrade(lightUniverse, run)).toBeNull();
+  });
+});
+
+describe("upgrades that would change nothing", () => {
+  it("reads a same-before-and-after preview as nothing", () => {
+    expect(previewChangesNothing("Picks/sec 388 -> 388")).toBe(true);
+    expect(previewChangesNothing("A 1 → 1 · B 2 → 2")).toBe(true);
+    expect(previewChangesNothing("A 1 → 1 · B 2 → 3")).toBe(false);
+    expect(previewChangesNothing(null)).toBe(false);
+  });
+
+  it("is never the next goal, and gives a reason instead", () => {
+    const run = runWithCoins(0);
+    const first = pickNextUpgrade(lightUniverse, run)?.upgrade;
+    if (!first) throw new Error("expected an upgrade");
+    const dead = {
+      ...lightUniverse,
+      upgrades: lightUniverse.upgrades.map((u) =>
+        u.id === first.id ? { ...u, effectPreview: () => "Coins 5 -> 5" } : u
+      ),
+    };
+    const deadUpgrade = dead.upgrades.find((u) => u.id === first.id);
+    if (!deadUpgrade) throw new Error("missing");
+    expect(pickNextUpgrade(dead, run)?.upgrade.id).not.toBe(first.id);
+    expect(upgradeNoEffectReason(run, deadUpgrade)).toBe(
+      GENERIC_NO_EFFECT_REASON
+    );
+    expect(
+      upgradeNoEffectReason(run, {
+        ...deadUpgrade,
+        noEffectReason: () => "Soon.",
+      })
+    ).toBe("Soon.");
+  });
+});
+
+describe("upgrades that barely help", () => {
+  it("measures the biggest change in a preview", () => {
+    expect(previewBiggestChange("Picks/sec 388 -> 390")).toBeCloseTo(0.005, 3);
+    expect(previewBiggestChange("A 1.50K → 1.53K · B 2 → 3")).toBe(0.5);
+    expect(previewBiggestChange("Coins 0 -> 4")).toBe(Infinity);
+    expect(previewBiggestChange("no arrow here")).toBeNull();
+  });
+
+  it("is skipped and explained only when it declares a reason", () => {
+    const run = runWithCoins(0);
+    const first = pickNextUpgrade(lightUniverse, run)?.upgrade;
+    if (!first) throw new Error("expected an upgrade");
+    const tiny = { ...first, effectPreview: () => "Picks/sec 388 -> 390" };
+    expect(upgradeNoEffectReason(run, tiny)).toBeNull();
+    const kind = { ...tiny, noEffectReason: () => "At their limit." };
+    expect(upgradeNoEffectReason(run, kind)).toBe("At their limit.");
+    const withKind = {
+      ...lightUniverse,
+      upgrades: lightUniverse.upgrades.map((u) =>
+        u.id === first.id ? kind : u
+      ),
+    };
+    expect(pickNextUpgrade(withKind, run)?.upgrade.id).not.toBe(first.id);
   });
 });

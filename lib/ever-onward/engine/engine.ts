@@ -351,6 +351,83 @@ export function previewUpgrade(
   return upgrade.effectPreview?.(run) ?? null;
 }
 
+const PREVIEW_ARROW = /\s*(?:→|->)\s*/;
+
+/** Shown when an upgrade would change nothing and has no reason of its own. */
+export const GENERIC_NO_EFFECT_REASON = "This won't change anything yet.";
+
+/**
+ * True when every before-to-after pair in a preview line is the same
+ * ("Picks/sec 388 -> 388"). A line with no arrow is never "nothing".
+ */
+export function previewChangesNothing(preview: string | null): boolean {
+  if (!preview) return false;
+  let pairs = 0;
+  for (const segment of preview.split(" · ")) {
+    const [before, ...rest] = segment.split(PREVIEW_ARROW);
+    if (rest.length === 0) continue;
+    pairs += 1;
+    // The label is shared, so compare whole sides after the arrow split.
+    if (before.trim().split(/\s+/).slice(-1)[0] !== rest.join(" ").trim())
+      return false;
+  }
+  return pairs > 0;
+}
+
+/** A change smaller than this share of the stat reads as "barely helps". */
+export const BARELY_HELPS_BELOW = 0.02;
+
+const UNIT = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 } as const;
+
+/** "1.50K" -> 1500, "388" -> 388; null when there is no number. */
+function readShown(text: string): number | null {
+  const m = text.match(/-?\d[\d,]*\.?\d*(?:e\d+)?\s*(K|M|B|T)?(?![a-z])/);
+  if (!m) return null;
+  const n = Number(m[0].replace(/[,KMBT\s]/g, ""));
+  return Number.isNaN(n)
+    ? null
+    : n * (m[1] ? UNIT[m[1] as keyof typeof UNIT] : 1);
+}
+
+/**
+ * The biggest relative change among a preview's before-to-after pairs (0.005
+ * is half a percent), or null when it has no readable pair.
+ */
+export function previewBiggestChange(preview: string | null): number | null {
+  if (!preview) return null;
+  let biggest: number | null = null;
+  for (const segment of preview.split(" · ")) {
+    const [before, ...rest] = segment.split(PREVIEW_ARROW);
+    if (rest.length === 0) continue;
+    const b = readShown(before.trim().split(/\s+/).slice(-1)[0]);
+    const a = readShown(rest.join(" "));
+    if (b === null || a === null) return null;
+    const change = b === 0 ? (a === 0 ? 0 : Infinity) : Math.abs(a - b) / b;
+    biggest = Math.max(biggest ?? 0, change);
+  }
+  return biggest;
+}
+
+/**
+ * Why buying this would do (almost) nothing right now, or null when it
+ * helps. A preview that changes nothing gets the upgrade's own reason or a
+ * generic one; one that moves a stat by under 2% counts only when the
+ * upgrade declares a reason. Buying is never blocked; this only steers the
+ * HUD and the card.
+ */
+export function upgradeNoEffectReason(
+  run: RunState,
+  upgrade: UpgradeDef
+): string | null {
+  const preview = upgrade.effectPreview?.(run) ?? null;
+  if (previewChangesNothing(preview))
+    return upgrade.noEffectReason?.(run) ?? GENERIC_NO_EFFECT_REASON;
+  const change = previewBiggestChange(preview);
+  if (change !== null && change < BARELY_HELPS_BELOW)
+    return upgrade.noEffectReason?.(run) ?? null;
+  return null;
+}
+
 export function visibleActions(def: UniverseDef, run: RunState): ActionDef[] {
   const phaseId = currentPhase(def, run).id;
   return (def.actions ?? []).filter(

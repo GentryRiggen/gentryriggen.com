@@ -56,6 +56,8 @@ export const TUNING = {
     gardenerShare: 0.13,
     /** The most the pickers can keep up with, before wheelbarrows. */
     pickCap: 0.65,
+    /** Past the cap, the share of a helper's pick that still counts. */
+    overflowKeep: 0.05,
     /** Each level of compost tea adds this share to ripening. */
     teaPer: 0.5,
     /** The greenhouse multiplies ripening by this. */
