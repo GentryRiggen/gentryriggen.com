@@ -12,6 +12,7 @@ import {
   browserPlayerDeps,
   JimPlayer,
   type PlayerState,
+  type PlayOptions,
 } from "@/lib/jim/player";
 import {
   loadAutoRead,
@@ -42,6 +43,10 @@ export interface ReadAloud {
   readNew: (id: number, text: string) => void;
   /** Plays `text` in another voice (a persona sample), or stops it. */
   toggleSample: (key: string, text: string, voice?: string) => void;
+  /** Plays `text` under `key`, replacing what is on. False: nothing could start. */
+  play: (key: string, text: string, options?: PlayOptions) => boolean;
+  /** Unlocks audio inside a tap, ahead of a play that waits on the network. */
+  prime: () => void;
   /** Call inside a tap (Send): lets a later automatic read start on iOS. */
   unlock: () => void;
   togglePause: () => void;
@@ -125,6 +130,14 @@ export default function useReadAloud(
     [player]
   );
 
+  const play = useCallback(
+    (key: string, text: string, options?: PlayOptions) =>
+      player.play(key, text, options),
+    [player]
+  );
+
+  const prime = useCallback(() => player.unlock(), [player]);
+
   const readNew = useCallback(
     (id: number, text: string) => {
       // A read started while hidden is dropped, not queued for later.
@@ -188,6 +201,8 @@ export default function useReadAloud(
     toggle,
     readNew,
     toggleSample,
+    play,
+    prime,
     unlock,
     togglePause,
     setSpeed,

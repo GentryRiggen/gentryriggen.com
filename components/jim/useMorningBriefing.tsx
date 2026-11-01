@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { JimMenuItem } from "@/components/jim/JimHeader";
 import {
   currentSubscription,
   disablePush,
@@ -21,7 +20,8 @@ import {
 type GetToken = (force?: boolean) => Promise<string | null>;
 
 /** hidden: no push in this browser (and not an iPhone that could have it). */
-type Status = "hidden" | "off" | "on";
+export type BriefingStatus = "hidden" | "off" | "on";
+type Status = BriefingStatus;
 
 export const BRIEFING_MESSAGES = {
   homeScreen:
@@ -30,8 +30,8 @@ export const BRIEFING_MESSAGES = {
     "Notifications are off for Jim. Turn them on in Settings → Notifications → Jim, then try again.",
   denied:
     "Notifications are blocked for this site. Allow them in your browser's site settings, then try again.",
-  failed: "Couldn't turn on the morning briefing. Try again in a moment.",
-  on: "Morning briefing is on. A test notification is on its way.",
+  failed: "Couldn't turn on notifications. Try again in a moment.",
+  on: "Notifications are on. A test notification is on its way.",
 };
 
 function initialStatus(): Status {
@@ -70,7 +70,7 @@ function Notice({ message, onClose }: NoticeProps) {
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-label="Morning briefing"
+        aria-label="Notifications"
         aria-describedby={textId}
         className="jim-card jim-rise relative w-full max-w-sm space-y-4 rounded-3xl! p-5 shadow-2xl!"
       >
@@ -93,14 +93,15 @@ function Notice({ message, onClose }: NoticeProps) {
 }
 
 /**
- * The "Morning briefing: On/Off" menu entry and the notice it may raise.
- * The entry reflects this device's push subscription; turning it on asks
- * for permission straight from the tap (iOS only allows it there).
+ * The master notifications switch for this device and the notice it may
+ * raise. `status` reflects this device's push subscription; `toggle` turns
+ * it on (asking for permission straight from the tap: iOS only allows it
+ * there) or off. The Notifications sheet shows the switch.
  */
 export default function useMorningBriefing(
   getToken: GetToken,
   api: string
-): { item: JimMenuItem | null; notice: ReactNode } {
+): { status: BriefingStatus; toggle: () => void; notice: ReactNode } {
   const [status, setStatus] = useState<Status>(initialStatus);
   const [message, setMessage] = useState<string | null>(null);
   const busy = useRef(false);
@@ -165,13 +166,8 @@ export default function useMorningBriefing(
   }, [api, getToken, show, status]);
 
   return {
-    item:
-      status === "hidden"
-        ? null
-        : {
-            label: `Morning briefing: ${status === "on" ? "On" : "Off"}`,
-            onSelect: toggle,
-          },
+    status,
+    toggle,
     notice: message ? <Notice message={message} onClose={close} /> : null,
   };
 }

@@ -11,6 +11,11 @@ jest.mock("@/lib/jim/offlineStore", () => ({
   loadView: jest.fn(async () => null),
 }));
 
+// The Home reminders card has its own tests; here it just has none.
+jest.mock("@/lib/jim/reminders", () => ({
+  listReminders: jest.fn(async () => []),
+}));
+
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
   return {

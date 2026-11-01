@@ -19,6 +19,7 @@ import {
   Maximize2,
   SquarePen,
   Square,
+  Bell,
   Sunrise,
   Volume2,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import useWideLayout from "@/components/jim/useWideLayout";
 import JimUpdatePill from "@/components/jim/JimUpdatePill";
 import useJimUpdate from "@/components/jim/useJimUpdate";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
+import NotificationsSheet from "@/components/jim/NotificationsSheet";
 import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
 import NotesShell, {
   type NotesRouting,
@@ -43,7 +45,9 @@ import NotesShell, {
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
 import usePersonas from "@/components/jim/usePersonas";
 import type { AppLock } from "@/components/jim/useAppLock";
+import useBriefAudio from "@/components/jim/useBriefAudio";
 import useReadAloud from "@/components/jim/useReadAloud";
+import useReflection from "@/components/jim/useReflection";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
   JimError,
@@ -69,10 +73,11 @@ import {
   type NotesRoute,
 } from "@/lib/jim/routes";
 import {
-  allowedSay,
-  clearSayFromLocation,
-  sayFromLocation,
-} from "@/lib/jim/say";
+  clearParamsFromLocation,
+  emitOpenIntent,
+  parseOpen,
+} from "@/lib/jim/openUrl";
+import { allowedSay, sayFromLocation } from "@/lib/jim/say";
 
 interface JimChatProps {
   /** The signed-in user, whose chat is kept on this device. */
@@ -306,6 +311,10 @@ export default function JimChat({
   const [mac] = useState(isMac);
   const { location, navigate, goBack } = useJimRouter();
   const route = location.route;
+  const navigateRef = useRef(navigate);
+  useLayoutEffect(() => {
+    navigateRef.current = navigate;
+  });
   const tab: JimTab = route.kind === "chat" ? "chat" : "notes";
   const wide = useWideLayout();
   /** The last Notes entry: what Notes shows (hidden) while Chat does. */
@@ -322,6 +331,7 @@ export default function JimChat({
   /** The search across all notes: in the page only, never the address. */
   const [notesSearch, setNotesSearch] = useState("");
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
+  const [notifySheetOpen, setNotifySheetOpen] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -347,12 +357,18 @@ export default function JimChat({
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
   const reader = useReadAloud(getToken, api, locked);
+  const reflection = useReflection(getToken, api);
+  const brief = useBriefAudio(getToken, api, reader);
+  const { playBrief } = brief;
   const { stop: stopReading, setArtist } = reader;
   const personas = usePersonas(getToken, api);
   const barShown = reader.state.status !== "idle";
   // Locking shuts the lock's settings (the reader stops itself).
   useLayoutEffect(() => {
-    if (locked) setLockSheetOpen(false);
+    if (locked) {
+      setLockSheetOpen(false);
+      setNotifySheetOpen(false);
+    }
   }, [locked]);
   // The lock screen names whoever Jim is speaking as.
   useEffect(() => {
@@ -373,7 +389,13 @@ export default function JimChat({
     });
   }, []);
 
-  useEffect(() => clearSayFromLocation(), []);
+  // A notification or link opened the app with ?say=, ?listen=brief or
+  // ?reflect=1: hand the chat intents on, then clear them from the address.
+  useEffect(() => {
+    const open = parseOpen(window.location.href);
+    if (open) emitOpenIntent({ listen: open.listen, reflect: open.reflect });
+    clearParamsFromLocation(["say", "listen", "reflect"]);
+  }, []);
   // A draft kept across an update reload is restored once, then dropped.
   useEffect(() => clearDraft(uid), [uid]);
 
@@ -388,7 +410,22 @@ export default function JimChat({
     function onMessage(event: MessageEvent) {
       const data: unknown = event.data;
       if (typeof data !== "object" || data === null) return;
-      const { type, say } = data as { type?: unknown; say?: unknown };
+      const { type, say, url } = data as {
+        type?: unknown;
+        say?: unknown;
+        url?: unknown;
+      };
+      if (type === "JIM_OPEN" && typeof url === "string") {
+        const open = parseOpen(url);
+        if (!open) return;
+        navigateRef.current(open.route);
+        emitOpenIntent({ listen: open.listen, reflect: open.reflect });
+        if (open.say) {
+          const text = open.say;
+          setDraft((current) => (current ? current : text));
+        }
+        return;
+      }
       const text = type === "JIM_SAY" ? allowedSay(say) : null;
       if (text) setDraft((current) => (current ? current : text));
     }
@@ -408,7 +445,7 @@ export default function JimChat({
   // New messages slide into view, unless Gentry scrolled up to read.
   useEffect(() => {
     if (stuck.current) scrollToEnd(true);
-  }, [messages, sending, scrollToEnd]);
+  }, [messages, sending, reflection.question, scrollToEnd]);
 
   // The now-playing bar adds room under the list: keep the end in view.
   useEffect(() => {
@@ -513,9 +550,13 @@ export default function JimChat({
 
   /** Sends the box, or `given` (a quick log) leaving the box alone. */
   async function send(given?: string) {
-    const text = (given ?? draft).trim();
+    const typed = (given ?? draft).trim();
     // Offline it would only bounce back: the box keeps it meanwhile.
-    if (!text || sending || !online) return;
+    if (!typed || sending || !online) return;
+    // Reflecting: the answer travels with its question, once.
+    const asked = given === undefined ? reflection.question : null;
+    const text = asked ? reflection.wrap(typed) : typed;
+    if (asked) reflection.end();
     // Every send starts from a tap or key press: unlock speech inside it.
     reader.unlock();
     const id = nextId.current++;
@@ -586,7 +627,8 @@ export default function JimChat({
       } else {
         // It never ran: take it back and return it to the box.
         setMessages((prev) => prev.filter((m) => m.id !== id));
-        putBack(text);
+        putBack(asked ? typed : text);
+        if (asked) reflection.resume(asked);
       }
     } finally {
       if (turn.current === controller) turn.current = null;
@@ -615,6 +657,7 @@ export default function JimChat({
     setError(null);
     setHeld(null);
     setSlow(false);
+    reflection.end();
     stuck.current = true;
   }
 
@@ -719,6 +762,12 @@ export default function JimChat({
     [navigate]
   );
 
+  const hearBrief = useCallback(() => {
+    // Chat shows the now-playing bar (and the chip, if iOS refuses).
+    if (!wideRef.current) navigate(CHAT_ROUTE);
+    void playBrief();
+  }, [navigate, playBrief]);
+  const closeNotifySheet = useCallback(() => setNotifySheetOpen(false), []);
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
   /**
@@ -873,6 +922,14 @@ export default function JimChat({
 
   if (locked) return null;
 
+  const notifyItem =
+    briefing.status === "hidden"
+      ? null
+      : {
+          label: "Notifications",
+          onSelect: () => setNotifySheetOpen(true),
+        };
+
   const lockItem =
     lock && onWipe
       ? {
@@ -930,6 +987,13 @@ export default function JimChat({
             speakingId={reader.speakingId}
             onListen={reader.supported ? reader.toggle : null}
           />
+          {reflection.question && !sending && (
+            <div className="jim-rise mr-auto max-w-[92%] min-w-0">
+              <div className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3">
+                <JimMarkdown text={reflection.question} links="plain" />
+              </div>
+            </div>
+          )}
           {sending && (
             <div className="jim-rise mr-auto max-w-[92%] min-w-0">
               {live.text ? (
@@ -999,6 +1063,25 @@ export default function JimChat({
               onDismiss={reader.dismiss}
             />
           </div>
+          {brief.chip && (
+            <button
+              type="button"
+              onClick={brief.playFromChip}
+              onPointerDown={(e) => e.preventDefault()}
+              className="jim-rise mb-2 flex min-h-11 items-center gap-2 rounded-full border border-ayu-accent/30 bg-ayu-accent/10 px-4 text-sm font-medium text-ayu-accent backdrop-blur"
+            >
+              <Sunrise aria-hidden="true" className="size-4" />
+              Play your morning
+            </button>
+          )}
+          {brief.error && (
+            <p
+              role="alert"
+              className="jim-rise mb-2 rounded-xl border border-ayu-red/25 bg-ayu-red/10 px-3 py-2 text-sm text-ayu-red"
+            >
+              {brief.error}
+            </p>
+          )}
           {!online && (
             <p
               role="status"
@@ -1043,7 +1126,7 @@ export default function JimChat({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Message Jim"
+              placeholder={reflection.question ? "Your answer…" : "Message Jim"}
               enterKeyHint={returnIsNewLine ? "enter" : "send"}
               autoComplete="off"
               className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
@@ -1080,6 +1163,7 @@ export default function JimChat({
       active={tab === "notes"}
       onLog={logFromNotes}
       onDraft={draftFromNotes}
+      onHearBrief={hearBrief}
       routing={routing}
     />
   );
@@ -1098,7 +1182,7 @@ export default function JimChat({
   const sidebarActions: SidebarAction[] = [
     { label: "New chat", icon: SquarePen, onSelect: newChat },
     ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
-    ...(briefing.item ? [{ ...briefing.item, icon: Sunrise }] : []),
+    ...(notifyItem ? [{ ...notifyItem, icon: Bell }] : []),
     ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
   ];
 
@@ -1109,7 +1193,7 @@ export default function JimChat({
     <div
       ref={rootRef}
       // Behind a sheet nothing can be tapped, focused or read.
-      inert={personas.open || lockSheetOpen}
+      inert={personas.open || lockSheetOpen || notifySheetOpen}
       data-keyboard={keyboardOpen ? "open" : "closed"}
       data-layout={wide ? "wide" : "phone"}
       className={`jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text ${
@@ -1143,7 +1227,7 @@ export default function JimChat({
             { label: "New chat", onSelect: newChat },
             personas.menuItem,
             ...(reader.menuItem ? [reader.menuItem] : []),
-            ...(briefing.item ? [briefing.item] : []),
+            ...(notifyItem ? [notifyItem] : []),
             ...(lockItem ? [lockItem] : []),
           ]}
         />
@@ -1218,13 +1302,21 @@ export default function JimChat({
       <p aria-live="polite" className="sr-only">
         {announced}
       </p>
-      {briefing.notice}
     </div>
   );
 
   return (
     <>
       {layout}
+      <NotificationsSheet
+        open={notifySheetOpen}
+        onClose={closeNotifySheet}
+        status={briefing.status}
+        onToggleMaster={briefing.toggle}
+        getToken={getToken}
+        api={api}
+      />
+      {briefing.notice}
       <PersonaSheet
         personas={personas}
         playingKey={reader.state.key}

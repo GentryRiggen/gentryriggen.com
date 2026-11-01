@@ -6,6 +6,7 @@ import {
   parseJimPath,
   routeForNote,
   routeTitle,
+  sameRoute,
   type JimRoute,
 } from "@/lib/jim/routes";
 
@@ -147,4 +148,52 @@ it("puts a page opened from its address under the list it belongs to", () => {
   expect(homePageOf({ kind: "note", path: "meetings/x" })).toBe("work");
   expect(homePageOf({ kind: "note", path: "home/garden" })).toBe("home");
   expect(homePageOf({ kind: "page", page: "golf" })).toBe("golf");
+});
+
+describe("reminder and meeting routes", () => {
+  it("parses a reminder list, a reminder and a meeting", () => {
+    expect(parseJimPath("/jim/reminders")).toEqual({ kind: "reminders" });
+    expect(parseJimPath("/jim/reminders/abcdef012345")).toEqual({
+      kind: "reminder",
+      id: "abcdef012345",
+    });
+    expect(parseJimPath("/jim/meeting/0123456789abcdef")).toEqual({
+      kind: "meeting",
+      id: "0123456789abcdef",
+    });
+  });
+
+  it.each([
+    "/jim/reminders/ABC",
+    "/jim/reminders/abcdef01234",
+    "/jim/reminders/abcdef0123456",
+    "/jim/reminders/abcdef012345/more",
+    "/jim/meeting",
+    "/jim/meeting/abcdef012345",
+    "/jim/meeting/0123456789ABCDEF",
+    "/jim/meeting/0123456789abcdef/x",
+  ])("%s is not found", (path) => {
+    expect(parseJimPath(path)).toEqual({ kind: "notFound" });
+  });
+
+  it("round-trips through formatJimPath", () => {
+    const routes: JimRoute[] = [
+      { kind: "reminders" },
+      { kind: "reminder", id: "abcdef012345" },
+      { kind: "meeting", id: "0123456789abcdef" },
+    ];
+    for (const route of routes) {
+      expect(parseJimPath(formatJimPath(route))).toEqual(route);
+    }
+  });
+
+  it("tells reminders and meetings apart in sameRoute", () => {
+    expect(
+      sameRoute(
+        { kind: "reminder", id: "abcdef012345" },
+        { kind: "reminder", id: "abcdef012346" }
+      )
+    ).toBe(false);
+    expect(sameRoute({ kind: "reminders" }, { kind: "reminders" })).toBe(true);
+  });
 });

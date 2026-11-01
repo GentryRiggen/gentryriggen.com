@@ -364,3 +364,91 @@ describe("keeping payloads on the device", () => {
     expect(saver).not.toHaveBeenCalled();
   });
 });
+
+describe("normalizeView, round 1 fields", () => {
+  const base = { today: "2026-10-31" };
+
+  it("leaves the new fields absent from an older server", () => {
+    const view = normalizeView(base);
+    expect(view?.noticed).toBeUndefined();
+    expect(view?.meetingCards).toBeUndefined();
+    expect(view?.reflection).toBeUndefined();
+    expect(view?.winsToday).toBeUndefined();
+  });
+
+  it("keeps good noticed rows and drops one missing its title", () => {
+    const view = normalizeView({
+      ...base,
+      noticed: [
+        {
+          kind: "todo",
+          title: "Water plants",
+          when: "Today",
+          tone: "soon",
+          ask: "a",
+        },
+        { kind: "todo", when: "Today", tone: "soon", ask: "a" },
+        { kind: "todo", title: "x", when: "", tone: "loud", ask: "a" },
+      ],
+    });
+    expect(view?.noticed).toEqual([
+      {
+        kind: "todo",
+        title: "Water plants",
+        when: "Today",
+        tone: "soon",
+        ask: "a",
+      },
+    ]);
+  });
+
+  it("keeps meeting cards, dropping malformed ones and attendees", () => {
+    const view = normalizeView({
+      ...base,
+      meetingCards: {
+        "0123456789abcdef": {
+          id: "0123456789abcdef",
+          subject: "Planning",
+          start: "2026-10-31T16:00:00Z",
+          end: "2026-10-31T17:00:00Z",
+          where: "Room 4",
+          attendees: [
+            {
+              name: "Sam Okafor",
+              role: "Lead",
+              path: "people/sam-okafor.md",
+              last: "",
+              todos: ["Send notes", 3],
+            },
+            { role: "no name" },
+          ],
+        },
+        bad: { id: "bad" },
+      },
+    });
+    expect(Object.keys(view?.meetingCards ?? {})).toEqual(["0123456789abcdef"]);
+    const card = view?.meetingCards?.["0123456789abcdef"];
+    expect(card?.attendees).toHaveLength(1);
+    expect(card?.attendees[0].todos).toEqual(["Send notes"]);
+  });
+
+  it("keeps reflection and winsToday only when well formed", () => {
+    expect(
+      normalizeView({
+        ...base,
+        reflection: { question: "What went well?" },
+        winsToday: 2,
+      })
+    ).toMatchObject({
+      reflection: { question: "What went well?" },
+      winsToday: 2,
+    });
+    const bad = normalizeView({
+      ...base,
+      reflection: { question: 4 },
+      winsToday: "2",
+    });
+    expect(bad?.reflection).toBeUndefined();
+    expect(bad?.winsToday).toBeUndefined();
+  });
+});

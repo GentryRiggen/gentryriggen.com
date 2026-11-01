@@ -25,7 +25,10 @@ import NotesHome from "@/components/jim/notes/NotesHome";
 import NotesMoney from "@/components/jim/notes/NotesMoney";
 import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
+import NotesMeeting from "@/components/jim/notes/NotesMeeting";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
+import NotesReminder from "@/components/jim/notes/NotesReminder";
+import NotesReminders from "@/components/jim/notes/NotesReminders";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
@@ -93,6 +96,8 @@ interface NotesShellProps {
   onLog: (text: string) => void;
   /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
   onDraft: (text: string) => void;
+  /** "Hear your morning" on Home: plays the brief. Without it the button is hidden. */
+  onHearBrief?: () => void;
   routing?: NotesRouting;
 }
 
@@ -294,6 +299,7 @@ function NotesShellView({
   active,
   onLog,
   onDraft,
+  onHearBrief,
   routing,
 }: NotesShellProps & { routing: NotesRouting }) {
   const {
@@ -333,7 +339,14 @@ function NotesShellView({
     setLastHealth(basePage);
   }
   const searching = search.trim() !== "";
-  const detail = isDetail(route) ? route : null;
+  const detail = isDetail(route) || route.kind === "reminders" ? route : null;
+  /** "Done" after finishing a reminder, shown on the list for a moment. */
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const notFound = route.kind === "notFound";
   /** The list showing, or the one a detail opened over. */
   const listPage: NotesPage = route.kind === "page" ? route.page : basePage;
@@ -487,13 +500,15 @@ function NotesShellView({
       ? data?.work?.directory?.people.find((p) => p.id === route.id)
       : undefined;
   const titleName =
-    route.kind === "person"
-      ? person?.name
-      : route.kind === "directory"
-        ? card?.name
-        : route.kind === "note" && noteTitle?.path === route.path
-          ? noteTitle.title
-          : null;
+    route.kind === "meeting"
+      ? data?.meetingCards?.[route.id]?.subject
+      : route.kind === "person"
+        ? person?.name
+        : route.kind === "directory"
+          ? card?.name
+          : route.kind === "note" && noteTitle?.path === route.path
+            ? noteTitle.title
+            : null;
   useEffect(() => {
     if (!active) return;
     document.title =
@@ -581,7 +596,25 @@ function NotesShellView({
     pageBody = loadState;
   } else if (listPage === "home") {
     pageBody = (
-      <NotesHome data={data} saves={saves} onLog={onLog} onDraft={onDraft} />
+      <NotesHome
+        data={data}
+        saves={saves}
+        onLog={onLog}
+        onDraft={onDraft}
+        onHearBrief={onHearBrief}
+        reminders={{
+          api,
+          getToken,
+          onOpen: (id) =>
+            navigate(id ? { kind: "reminder", id } : { kind: "reminders" }, {
+              back: "Home",
+            }),
+          hrefFor: (id) =>
+            formatJimPath(
+              id ? { kind: "reminder", id } : { kind: "reminders" }
+            ),
+        }}
+      />
     );
   } else if (listPage === "work") {
     pageBody = (
@@ -717,6 +750,56 @@ function NotesShellView({
         />
         <Empty>That profile isn&apos;t here anymore.</Empty>
       </article>
+    );
+  } else if (route.kind === "reminders") {
+    detailBody = (
+      <NotesReminders
+        api={api}
+        getToken={getToken}
+        onBack={() => goBack(HOME_ROUTE)}
+        backLabel={backLabel ?? "Home"}
+        backHref={backFrom ?? formatJimPath(HOME_ROUTE)}
+        backAside={detailAside}
+        onOpen={(id) =>
+          navigate({ kind: "reminder", id }, { back: "Reminders" })
+        }
+        hrefFor={(id) => formatJimPath({ kind: "reminder", id })}
+        notice={notice}
+      />
+    );
+  } else if (route.kind === "reminder") {
+    detailBody = (
+      <NotesReminder
+        key={route.id}
+        id={route.id}
+        api={api}
+        getToken={getToken}
+        onBack={() => goBack({ kind: "reminders" })}
+        backLabel={backLabel ?? "Reminders"}
+        backHref={backFrom ?? formatJimPath({ kind: "reminders" })}
+        backAside={detailAside}
+        onDone={() => {
+          setNotice("Done");
+          navigate({ kind: "reminders" }, { replace: true });
+        }}
+        listHref={formatJimPath({ kind: "reminders" })}
+        onList={() => navigate({ kind: "reminders" }, { replace: true })}
+      />
+    );
+  } else if (route.kind === "meeting") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <NotesMeeting
+        card={data.meetingCards?.[route.id]}
+        onBack={() => goBack(HOME_ROUTE)}
+        backLabel={backLabel ?? "Home"}
+        backHref={backFrom ?? formatJimPath(HOME_ROUTE)}
+        backAside={detailAside}
+        onOpenPath={(path) => openPath(path, "Meeting")}
+        onHome={() => navigate(HOME_ROUTE)}
+        homeHref={formatJimPath(HOME_ROUTE)}
+      />
     );
   } else if (route.kind === "directory") {
     detailBody = !data ? (

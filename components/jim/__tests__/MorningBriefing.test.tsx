@@ -12,6 +12,14 @@ jest.mock("@/lib/jim/push", () => ({
   enablePush: jest.fn(),
   disablePush: jest.fn(),
 }));
+jest.mock("@/lib/jim/pushSettings", () => ({
+  getPushSettings: jest.fn().mockResolvedValue({
+    kinds: [{ id: "morning", label: "Morning brief", on: true }],
+    eveningTime: "21:00",
+    lessonTime: "12:00",
+  }),
+  putPushSettings: jest.fn(),
+}));
 jest.mock("../notes/NotesShell", () => ({
   __esModule: true,
   default: () => null,
@@ -31,6 +39,19 @@ async function openMenu() {
   await userEvent.click(screen.getByRole("button", { name: "Menu" }));
 }
 
+/** Menu → Notifications → the sheet, whose first switch is this device's. */
+async function openSheet() {
+  await openMenu();
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Notifications" })
+  );
+  return screen.findByRole("dialog", { name: "Notifications" });
+}
+
+function master() {
+  return screen.getByRole("switch", { name: "Notifications on this device" });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   window.localStorage.clear();
@@ -42,11 +63,10 @@ beforeEach(() => {
   mocked.disablePush.mockResolvedValue();
 });
 
-it("sits between New chat and Sign out, showing this device's state", async () => {
-  mocked.currentSubscription.mockResolvedValue({} as PushSubscription);
+it("sits between New chat and Sign out", async () => {
   renderChat();
   await openMenu();
-  await screen.findByRole("menuitem", { name: "Morning briefing: On" });
+  await screen.findByRole("menuitem", { name: "Notifications" });
   expect(
     screen.getAllByRole("menuitem").map((item) => item.textContent)
   ).toEqual([
@@ -54,50 +74,52 @@ it("sits between New chat and Sign out, showing this device's state", async () =
     "Persona",
     // jsdom has an Audio element, so reading aloud is offered.
     "Read replies aloud: Off",
-    "Morning briefing: On",
+    "Notifications",
     "Sign out",
   ]);
 });
 
+it("shows this device's state in the sheet", async () => {
+  mocked.currentSubscription.mockResolvedValue({} as PushSubscription);
+  renderChat();
+  await openSheet();
+  await waitFor(() => expect(master()).toHaveAttribute("aria-checked", "true"));
+  expect(
+    await screen.findByRole("switch", { name: "Morning brief" })
+  ).toBeInTheDocument();
+});
+
 it("turns on from the tap, then says a test is coming", async () => {
   renderChat();
-  await openMenu();
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: "Morning briefing: Off" })
-  );
+  await openSheet();
+  await userEvent.click(master());
   expect(mocked.enablePush).toHaveBeenCalledWith(getToken, undefined, API);
   const notice = await screen.findByRole("alertdialog");
   expect(notice).toHaveTextContent(BRIEFING_MESSAGES.on);
   await userEvent.click(screen.getByRole("button", { name: "OK" }));
   expect(screen.queryByRole("alertdialog")).toBeNull();
-  await openMenu();
-  expect(
-    screen.getByRole("menuitem", { name: "Morning briefing: On" })
-  ).toBeInTheDocument();
+  expect(master()).toHaveAttribute("aria-checked", "true");
 });
 
 it("turns off", async () => {
   mocked.currentSubscription.mockResolvedValue({} as PushSubscription);
   renderChat();
-  await openMenu();
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: "Morning briefing: On" })
-  );
+  await openSheet();
+  await waitFor(() => expect(master()).toHaveAttribute("aria-checked", "true"));
+  await userEvent.click(master());
   expect(mocked.disablePush).toHaveBeenCalledWith(getToken, undefined, API);
-  await openMenu();
-  expect(
-    await screen.findByRole("menuitem", { name: "Morning briefing: Off" })
-  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(master()).toHaveAttribute("aria-checked", "false")
+  );
 });
 
 it("on an iPhone in Safari, says to add Jim to the Home Screen first", async () => {
   mocked.pushSupported.mockReturnValue(false);
   mocked.needsHomeScreen.mockReturnValue(true);
   renderChat();
-  await openMenu();
-  await userEvent.click(
-    screen.getByRole("menuitem", { name: "Morning briefing: Off" })
-  );
+  const sheet = await openSheet();
+  expect(sheet).toHaveTextContent("Add Jim to your Home Screen first");
+  await userEvent.click(master());
   expect(await screen.findByRole("alertdialog")).toHaveTextContent(
     "Add Jim to your Home Screen first (Share → Add to Home Screen), then turn this on there."
   );
@@ -110,10 +132,8 @@ it("says how to allow notifications again when they're blocked", async () => {
   mocked.enablePush.mockResolvedValue({ ok: false, reason: "denied" });
   mocked.isIos.mockReturnValue(true);
   renderChat();
-  await openMenu();
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: "Morning briefing: Off" })
-  );
+  await openSheet();
+  await userEvent.click(master());
   expect(await screen.findByRole("alertdialog")).toHaveTextContent(
     "Settings → Notifications → Jim"
   );
@@ -122,10 +142,8 @@ it("says how to allow notifications again when they're blocked", async () => {
 it("says nothing when the prompt is just closed", async () => {
   mocked.enablePush.mockResolvedValue({ ok: false, reason: "dismissed" });
   renderChat();
-  await openMenu();
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: "Morning briefing: Off" })
-  );
+  await openSheet();
+  await userEvent.click(master());
   await waitFor(() => expect(mocked.enablePush).toHaveBeenCalled());
   expect(screen.queryByRole("alertdialog")).toBeNull();
 });
