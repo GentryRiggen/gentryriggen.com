@@ -61,6 +61,7 @@ export const COSTS: Record<string, number> = {
   shield: 1800,
   glass: 1400,
   remember: 100,
+  "rain-barrel": 110,
   "letgo-porch": 125,
   "letgo-signs": 135,
   "letgo-stadium": 150,

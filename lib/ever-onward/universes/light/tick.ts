@@ -11,6 +11,7 @@ import {
 } from "./resources";
 import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
+import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
 import { tickWeather } from "./weather";
 
@@ -575,6 +576,7 @@ export function tickLight(run: RunState, dt: number): void {
   tickTide(run, dt, () => calmIncomePerSecond(run));
   // Every phase: a probe away and a haul flowing in when the sky ends finish.
   tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
+  tickGarden(run, dt);
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);

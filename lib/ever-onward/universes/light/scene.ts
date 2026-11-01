@@ -13,6 +13,7 @@ import {
   isScoutOut,
   isProbesOpen,
 } from "./probes";
+import { gardenCode, hasRainBarrel } from "./garden";
 import { LET_GO } from "./upgrades";
 import {
   COAST_LIGHTHOUSES,
@@ -87,6 +88,10 @@ export interface LightSceneInfo {
   flame: number;
   /** 1 once the first ship's boat is out in the dark. */
   boatVisible: number;
+  /** The memory garden: one base-4 digit a plot (see `gardenCode`). */
+  gardenCode: number;
+  /** 1 once the rain barrel stands by the flowers. */
+  rainBarrel: number;
   /** How far across the dark the boat is, 0..1 (steps of 1%). */
   boatProgress: number;
   /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
@@ -231,6 +236,8 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     lightsFraction: clamp01(lights / TOTAL_LIGHTS),
     flame: step(flameFraction(run), 20),
     boatVisible: isBoatOut(run) ? 1 : 0,
+    gardenCode: gardenCode(run),
+    rainBarrel: hasRainBarrel(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
     boatHeading: step(boatHeadingOf(run) / 100, 20),
     glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,

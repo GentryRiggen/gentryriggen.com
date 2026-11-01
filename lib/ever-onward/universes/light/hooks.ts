@@ -24,6 +24,12 @@ import {
   withoutProbeRaces,
 } from "./probes";
 import { TIDE_ACTION_IDS, haulsSoFar, isTideOpen, withoutTide } from "./tide";
+import {
+  GARDEN_ACTION_IDS,
+  isGardenOpen,
+  picksSoFar,
+  withoutGarden,
+} from "./garden";
 import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
 /**
@@ -73,6 +79,9 @@ export function lightPlates(run: RunState): string[] {
     );
     if (hasLetGoOnOffer) plates.push("letGo");
     if (isBoatOut(run)) plates.push("boat");
+    // Offered once the second bloom is picked (so it is not a crowd of beats
+    // at the moment the first seed is planted).
+    if (isGardenOpen(run) && picksSoFar(run) >= 2) plates.push("garden");
   }
   return plates;
 }
@@ -88,6 +97,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   course: ["correct-course"],
   flare: ["catch-flare"],
   boat: ["steer-boat", "flash-lamp"],
+  garden: GARDEN_ACTION_IDS,
 };
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
@@ -172,6 +182,8 @@ function sceneKey(run: RunState): string {
     s.enginesTier,
     s.appetiteTier,
     s.boatVisible,
+    s.gardenCode,
+    s.rainBarrel,
     s.finished,
     Math.floor(s.cities),
     Math.round(s.powered * 20),
@@ -184,11 +196,15 @@ export const lightSceneDiff = (before: RunState, after: RunState): boolean =>
 /** Income probes see the run with no storm landing and no surge pending. */
 export const lightIncomeView = (run: RunState): RunState => {
   const draft =
-    isWeatherOpen(run) || isTideOpen(run) || isProbesOpen(run)
+    isWeatherOpen(run) ||
+    isTideOpen(run) ||
+    isProbesOpen(run) ||
+    isGardenOpen(run)
       ? cloneRun(run)
       : run;
   if (isWeatherOpen(draft)) withoutStorms(draft);
   if (isTideOpen(draft)) withoutTide(draft);
   if (isProbesOpen(draft)) withoutProbeRaces(draft);
+  if (isGardenOpen(draft)) withoutGarden(draft);
   return draft;
 };
