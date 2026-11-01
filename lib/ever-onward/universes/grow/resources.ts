@@ -86,6 +86,31 @@ export const RESOURCES: readonly ResourceDef[] = [
     "mkPlants",
     "mkRng",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // The county fair: stage (0 waiting, 1 open, 2 judging), clocks, the three
+  // pumpkins on offer (size and shine), fairs finished, a payout flowing in,
+  // the last entry, and the fair's own random stream.
+  ...[
+    "frStage",
+    "frTime",
+    "frJudge",
+    "frSize0",
+    "frSize1",
+    "frSize2",
+    "frShine0",
+    "frShine1",
+    "frShine2",
+    "frShown",
+    "frFairs",
+    "frPending",
+    "frSurgeRate",
+    "frEarned",
+    "frPicked",
+    "frPlace",
+    "frLastPays",
+    "frBy",
+    "frRng",
+    "frPaused",
+  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.
   { id: "bloom", label: "Bloom", phases: HIDDEN },
 ];

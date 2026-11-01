@@ -9,8 +9,18 @@ import {
   isDancing,
   patchPays,
 } from "./bees";
+import {
+  enterActionId,
+  enterPumpkin,
+  expectedSeconds,
+  isFairOn,
+  isFairOpen,
+  likeliestPumpkin,
+  placeChances,
+  PUMPKIN_COUNT,
+} from "./fair";
 import { MARKET_ACTIONS } from "./market";
-import { PHASE_YARD } from "./resources";
+import { PHASE_FARM, PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
 import { incomePerSecond } from "./tick";
 import { TUNING } from "./tuning";
@@ -90,10 +100,43 @@ const FOLLOW_PATCH: readonly ActionDef[] = PATCHES.map((patch, index) => ({
   perform: (run) => followDance(run, index, incomePerSecond(run)),
 }));
 
+/** One entry button per pumpkin; the fair panel draws them itself. */
+const ENTER_PUMPKIN: readonly ActionDef[] = Array.from(
+  { length: PUMPKIN_COUNT },
+  (_, index) => ({
+    id: enterActionId(index),
+    phases: [PHASE_FARM],
+    isInline: true,
+    visibleWhen: isFairOpen,
+    describe: (run: RunState) => {
+      const on = isFairOn(run);
+      const chances = on ? placeChances(run, index) : [];
+      const pct = (n: number) => `${Math.round(n * 100)}%`;
+      return {
+        label: `Enter pumpkin ${index + 1}`,
+        detail: on
+          ? `Blue ${pct(chances[0])}, red ${pct(chances[1])}, garden ${pct(chances[2])}. About +${formatNumber(
+              Math.floor(
+                expectedSeconds(run, index) * Math.max(1, incomePerSecond(run))
+              )
+            )} harvest.`
+          : "The fair is on its way.",
+        isBlocked: !on,
+        hint:
+          on && likeliestPumpkin(run) === index
+            ? { text: "best chances", tone: "good" as const }
+            : undefined,
+      };
+    },
+    perform: (run: RunState) => enterPumpkin(run, index),
+  })
+);
+
 export const GROW_ACTIONS: readonly ActionDef[] = [
   HARVEST,
   ...FOLLOW_PATCH,
   ...MARKET_ACTIONS,
+  ...ENTER_PUMPKIN,
 ];
 
 /** Used by the plate and by bots: enough ripe to bother with. */

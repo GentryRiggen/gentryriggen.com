@@ -7,6 +7,7 @@ import {
   PHASE_IDS,
 } from "./resources";
 import { tickBees } from "./bees";
+import { tickFair } from "./fair";
 import { marketMult, tickMarket } from "./market";
 import { seasonBoost } from "./seasons";
 import { TUNING } from "./tuning";
@@ -138,6 +139,7 @@ export function tickGrow(run: RunState, dt: number): void {
   } else earn(run, incomePerSecond(run) * dt);
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
+  tickFair(run, dt, () => incomePerSecond(run));
 }
 
 export function manualGrow(run: RunState): void {
