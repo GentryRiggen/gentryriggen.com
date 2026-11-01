@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.13.1",
+    date: "2026-11-01",
+    title: "Play sound on silent",
+    highlights: [
+      "New setting in the Menu: Play sound on silent. Leave it off to hear the game alongside your podcast (your phone's silent switch mutes the game). Turn it on to hear the game even on silent (it will pause other audio)",
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-11-01",
     title: "Less tapping, more helpers",

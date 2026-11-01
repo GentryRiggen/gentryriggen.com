@@ -10,6 +10,8 @@
  * - /ship-builder/models/* (part models, not content-hashed): network-first,
  *   falling back to the cached copy when offline or slow (3s); stored without
  *   the query.
+ * - /ship-builder/voice/* (spoken lines): handled exactly like the models, so
+ *   a line heard once online still plays offline.
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
  * - /ship-builder/version.json is never handled, cached or precached.
@@ -25,6 +27,9 @@ const STATIC_PREFIX = "/_next/static/";
 const MODEL_PREFIX = `${PAGE_PATH}/models/`;
 /** Upper bound on URLs accepted from one CACHE_URLS message. */
 const MAX_PRECACHE_URLS = 300;
+
+/** Spoken lines (public/ship-builder/voice/), handled like the models. */
+const VOICE_PREFIX = `${PAGE_PATH}/voice/`;
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -53,9 +58,12 @@ function isGamePath(pathname) {
   );
 }
 
-/** True for a part model the game loads (public/ship-builder/models/). */
+/**
+ * True for a part model or a spoken line the game loads
+ * (public/ship-builder/models/, public/ship-builder/voice/).
+ */
 function isModelAsset(pathname) {
-  return pathname.startsWith(MODEL_PREFIX);
+  return pathname.startsWith(MODEL_PREFIX) || pathname.startsWith(VOICE_PREFIX);
 }
 
 /** True for the game page or one of its sub-pages (e.g. /ship-builder/versions). */

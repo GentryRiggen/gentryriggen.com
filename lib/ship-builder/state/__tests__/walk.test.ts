@@ -2,6 +2,8 @@ import { act } from "react";
 import { gridLength } from "../../model/grid";
 import { createTrial, runTrial } from "../../sim/seaTrial";
 import { gridPart, testShip } from "../../testing";
+import { startSwimming } from "../../walk/escape";
+import { getEscape, publishEscape } from "../escapeLive";
 import { walkInput } from "../walkInput";
 import { getWalkState, publishWalk, subscribeWalk } from "../walkLive";
 import { createInitialState, useShipBuilderStore } from "../store";
@@ -209,6 +211,62 @@ describe("sinking while walking", () => {
     act(() => store().sinkWhileWalking());
     act(() => store().endTrial());
     expect(store().trial.status).toBe("idle");
+    expect(store().walk.status).toBe("walking");
+  });
+});
+
+describe("the escape", () => {
+  const swimming = () => ({
+    phase: startSwimming({ x: 1, z: 2 }, 0, 3),
+    boardable: null,
+    pickup: null,
+  });
+
+  it("records how the player got off, once per walk", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().recordEscape("swim", "raft"));
+    act(() => store().recordEscape("frozen", "none"));
+    expect(store().lastEscape).toEqual({ ending: "swim", boat: "raft" });
+  });
+
+  it("records nothing unless walking", () => {
+    load();
+    act(() => store().recordEscape("deck", "davit"));
+    expect(store().lastEscape).toBeNull();
+  });
+
+  it("forgets the last escape when a walk or a trial starts", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().recordEscape("deck", "davit"));
+    act(() => store().stopWalk());
+    expect(store().lastEscape).toEqual({ ending: "deck", boat: "davit" });
+    act(() => store().startWalk());
+    expect(store().lastEscape).toBeNull();
+
+    act(() => store().recordEscape("deck", "davit"));
+    act(() => store().sinkWhileWalking());
+    expect(store().lastEscape).toBeNull();
+  });
+
+  it("puts the player back aboard when a walk starts or ends", () => {
+    load();
+    publishEscape(swimming());
+    act(() => store().startWalk());
+    expect(getEscape().phase.kind).toBe("aboard");
+    publishEscape(swimming());
+    act(() => store().stopWalk());
+    expect(getEscape().phase.kind).toBe("aboard");
+  });
+
+  it("puts the player back aboard when the trial is left mid-walk", () => {
+    load();
+    act(() => store().startWalk());
+    act(() => store().sinkWhileWalking());
+    publishEscape(swimming());
+    act(() => store().endTrial());
+    expect(getEscape().phase.kind).toBe("aboard");
     expect(store().walk.status).toBe("walking");
   });
 });

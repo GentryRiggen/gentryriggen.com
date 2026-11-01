@@ -27,6 +27,7 @@
     "validate": "npm run lint && npm run format:check && npm run type-check && npm test && npm run build",
     "prepare": "lefthook install",
     "narration:ever-onward": "node scripts/ever-onward-narration.mjs",
+    "voice:ship-builder": "node scripts/ship-builder-voice.mjs",
     "assets:ship": "node scripts/assets/ship.mjs",
     "score:ever-onward": "npx tsx scripts/ever-onward-score.ts"
   },

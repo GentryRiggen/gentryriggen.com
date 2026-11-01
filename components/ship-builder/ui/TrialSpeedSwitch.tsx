@@ -26,9 +26,13 @@ const OPTIONS = TRIAL_SPEEDS.map((speed) => ({
   Icon: ICONS[speed],
 }));
 
-/** Picks how fast the trial plays: 1x up to 20x. Never changes the outcome. */
+/**
+ * Picks how fast the trial plays: 1x up to 20x. Never changes the outcome.
+ * Hidden while the walker swims (the trial is held at 1x then).
+ */
 export default function TrialSpeedSwitch() {
-  const { speed, setSpeed } = useTrialSpeed();
+  const { speed, setSpeed, isHeld } = useTrialSpeed();
+  if (isHeld) return null;
   return (
     <ChoiceRow
       variant="pill"

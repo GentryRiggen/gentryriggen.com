@@ -3,18 +3,34 @@ import {
   type StoredSetting,
 } from "@/components/ship-builder/hooks/createStoredSetting";
 
-/** The two things a player can switch off once sound is unlocked. */
+/** The things a player can switch off once sound is unlocked. */
 export interface ChannelSettings {
   music: StoredSetting<boolean>;
   effects: StoredSetting<boolean>;
+  /** Spoken lines; only games that talk have this switch. */
+  voice?: StoredSetting<boolean>;
 }
 
+/** Channel settings for a game that also speaks. */
+export type VoicedChannelSettings = ChannelSettings & {
+  voice: StoredSetting<boolean>;
+};
+
 /**
- * Music and sound-effects settings for one game, remembered per device. Both
- * default to on, but nothing is heard until the game's own sound setting has
- * unlocked the audio (that one stays off until the player turns it on).
+ * Music and sound-effects settings for one game, remembered per device, plus
+ * a voice switch when `voice` is asked for. All default to on, but nothing is
+ * heard until the game's own sound setting has unlocked the audio (that one
+ * stays off until the player turns it on).
  */
-export function createChannelSettings(game: string): ChannelSettings {
+export function createChannelSettings(
+  game: string,
+  options: { voice: true }
+): VoicedChannelSettings;
+export function createChannelSettings(game: string): ChannelSettings;
+export function createChannelSettings(
+  game: string,
+  options: { voice?: boolean } = {}
+): ChannelSettings {
   function make(name: string) {
     return createStoredSetting<boolean>({
       key: `${game}:ui:${name}`,
@@ -23,7 +39,12 @@ export function createChannelSettings(game: string): ChannelSettings {
       fallback: true,
     });
   }
-  return { music: make("music"), effects: make("effects") };
+  const settings: ChannelSettings = {
+    music: make("music"),
+    effects: make("effects"),
+  };
+  if (options.voice) settings.voice = make("voice");
+  return settings;
 }
 
 export interface ChannelState {

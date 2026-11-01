@@ -30,6 +30,8 @@ import ReflectionEnvironment from "./ReflectionEnvironment";
 import RenderInfoProbe from "./RenderInfoProbe";
 import RustDriver from "./RustDriver";
 import SeaFloor from "./SeaFloor";
+import EscapeEyes from "./EscapeEyes";
+import EscapeRunner from "./EscapeRunner";
 import SeaTrialEffects from "./SeaTrialEffects";
 import Crowd from "./Crowd";
 import FallingFunnels from "./FallingFunnels";
@@ -159,6 +161,8 @@ export default function Scene() {
         <SeaTrialRunner />
         <SailRunner />
         <WalkRunner />
+        <EscapeRunner />
+        <EscapeEyes />
         <SailWorld />
         <SeaTrialEffects />
         <FallingFunnels />

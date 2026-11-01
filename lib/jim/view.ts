@@ -27,6 +27,8 @@ export interface ViewTodo {
   done_on: string;
   /** Line number in the todo list (file order). */
   order: number;
+  /** Repeats ("every 1 week"). Absent from an older server. */
+  recurring?: boolean;
 }
 
 export interface CalendarEvent {
@@ -36,6 +38,8 @@ export interface CalendarEvent {
   end: string;
   allDay: boolean;
   where?: string;
+  /** Stable id (the meeting page's address). Absent from an older server. */
+  id?: string;
   /** A company-wide event, shown quieter. */
   company?: boolean;
   showAs?: string;
@@ -260,6 +264,33 @@ export interface WorkData {
   directory: WorkDirectory;
 }
 
+export interface Noticed {
+  kind: string;
+  title: string;
+  when: string;
+  tone: "over" | "soon" | "";
+  ask: string;
+}
+
+export interface MeetingAttendee {
+  name: string;
+  role: string;
+  /** Repo path of their person note, or "". */
+  path: string;
+  /** When they last came up, or "". */
+  last: string;
+  todos: string[];
+}
+
+export interface MeetingCard {
+  id: string;
+  subject: string;
+  start: string;
+  end: string;
+  where: string;
+  attendees: MeetingAttendee[];
+}
+
 export interface ViewData {
   /** Gentry's local date on the server, YYYY-MM-DD. */
   today: string;
@@ -277,6 +308,14 @@ export interface ViewData {
   daily?: DailyWord | null;
   dates?: UpcomingDate[];
   work?: WorkData;
+  /** Things the server noticed; each one is a prompt for Chat. */
+  noticed?: Noticed[];
+  /** Meeting cards by event id (today and tomorrow). */
+  meetingCards?: Record<string, MeetingCard>;
+  /** Tonight's reflection question. */
+  reflection?: { question: string };
+  /** Wins logged today. */
+  winsToday?: number;
   sha?: string;
   /** The server couldn't sync, so this may be behind. */
   stale?: boolean;
@@ -490,6 +529,61 @@ function toWork(v: unknown): WorkData | undefined {
  * The payload with every list present, or null when it isn't a view at all.
  * Rendering then never trips on a key the server left out.
  */
+function toNoticed(v: unknown): Noticed | null {
+  if (!isRecord(v) || !strings(v, ["kind", "title", "when", "ask"]))
+    return null;
+  if (!TONES.includes(v.tone as string)) return null;
+  if (v.title === "") return null;
+  return {
+    kind: v.kind as string,
+    title: v.title as string,
+    when: v.when as string,
+    tone: v.tone as Noticed["tone"],
+    ask: v.ask as string,
+  };
+}
+
+function toAttendee(v: unknown): MeetingAttendee | null {
+  if (!isRecord(v) || !isString(v.name) || v.name === "") return null;
+  return {
+    name: v.name,
+    role: isString(v.role) ? v.role : "",
+    path: isString(v.path) ? v.path : "",
+    last: isString(v.last) ? v.last : "",
+    todos: Array.isArray(v.todos) ? v.todos.filter(isString) : [],
+  };
+}
+
+function toMeetingCard(v: unknown): MeetingCard | null {
+  if (!isRecord(v) || !strings(v, ["id", "subject", "start", "end"])) {
+    return null;
+  }
+  return {
+    id: v.id as string,
+    subject: v.subject as string,
+    start: v.start as string,
+    end: v.end as string,
+    where: isString(v.where) ? v.where : "",
+    attendees: keep(v.attendees, toAttendee),
+  };
+}
+
+function toMeetingCards(v: unknown): Record<string, MeetingCard> | undefined {
+  if (!isRecord(v)) return undefined;
+  const out: Record<string, MeetingCard> = {};
+  for (const [key, value] of Object.entries(v)) {
+    const card = toMeetingCard(value);
+    if (card) out[key] = card;
+  }
+  return out;
+}
+
+function toReflection(v: unknown): { question: string } | undefined {
+  return isRecord(v) && isString(v.question) && v.question !== ""
+    ? { question: v.question }
+    : undefined;
+}
+
 export function normalizeView(raw: unknown): ViewData | null {
   if (!isRecord(raw) || typeof raw.today !== "string") return null;
   const health = isRecord(raw.health) ? raw.health : {};
@@ -539,6 +633,10 @@ export function normalizeView(raw: unknown): ViewData | null {
     daily: "daily" in raw ? toDaily(raw.daily) : undefined,
     dates: "dates" in raw ? keep(raw.dates, toDate) : undefined,
     work: toWork(raw.work),
+    noticed: "noticed" in raw ? keep(raw.noticed, toNoticed) : undefined,
+    meetingCards: toMeetingCards(raw.meetingCards),
+    reflection: toReflection(raw.reflection),
+    winsToday: isNumber(raw.winsToday) ? raw.winsToday : undefined,
     sha: typeof raw.sha === "string" ? raw.sha : undefined,
     stale: raw.stale === true,
   };
@@ -703,7 +801,10 @@ type GetToken = (force?: boolean) => Promise<string | null>;
  */
 export async function callJim(
   path: string,
-  init: { method: "GET" | "POST" | "DELETE"; body?: unknown },
+  init: {
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    body?: unknown;
+  },
   getToken: GetToken,
   fetchFn: typeof fetch | undefined,
   api: string,

@@ -284,6 +284,20 @@ describe("ship-builder service worker", () => {
       expect(offline?.body).toBe("model v2");
     });
 
+    it("serves spoken lines network-first with a cached fallback", async () => {
+      const worker = loadWorker();
+      const url = `${ORIGIN}/ship-builder/voice/escape/splash-1.mp3`;
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("clip"));
+      await worker.dispatchFetch(makeRequest(`${url}?v=1`, { mode: "cors" }));
+      expect(worker.cacheKeys()).toEqual([url]);
+
+      worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = await worker.dispatchFetch(
+        makeRequest(url, { mode: "cors" })
+      );
+      expect(offline?.body).toBe("clip");
+    });
+
     it("rethrows a model fetch when offline with nothing cached", async () => {
       const worker = loadWorker();
       worker.fetchMock.mockRejectedValue(new TypeError("offline"));
@@ -355,6 +369,7 @@ describe("ship-builder service worker", () => {
       "javascript:alert(1)",
       42,
       `${ORIGIN}/ship-builder/models/funnel/funnel.glb?v=2#x`,
+      `${ORIGIN}/ship-builder/voice/escape/cold-1.mp3?v=1`,
     ];
 
     it("caches only same-origin app, static and model URLs from window clients", async () => {
@@ -372,11 +387,13 @@ describe("ship-builder service worker", () => {
         `${ORIGIN}/_next/static/chunks/a.js`,
         `${ORIGIN}/ship-builder`,
         `${ORIGIN}/ship-builder/models/funnel/funnel.glb`,
+        `${ORIGIN}/ship-builder/voice/escape/cold-1.mp3`,
       ]);
       expect(worker.cacheKeys().sort()).toEqual([
         `${ORIGIN}/_next/static/chunks/a.js`,
         `${ORIGIN}/ship-builder`,
         `${ORIGIN}/ship-builder/models/funnel/funnel.glb`,
+        `${ORIGIN}/ship-builder/voice/escape/cold-1.mp3`,
       ]);
     });
 
