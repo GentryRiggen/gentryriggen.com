@@ -359,20 +359,20 @@ function ToastBar({ toast, onUndo }: ToastBarProps) {
           >
             {toast.kind === "done" ? (
               <>
-                <span className="min-h-11 content-center">Done</span>
+                <span className="min-h-12 content-center">Done</span>
                 <span aria-hidden="true" className="text-ayu-subtle">
                   ·
                 </span>
                 <button
                   type="button"
                   onClick={() => onUndo(toast)}
-                  className="min-h-11 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06]"
+                  className="min-h-12 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06]"
                 >
                   Undo
                 </button>
               </>
             ) : (
-              <span className="min-h-11 content-center [overflow-wrap:anywhere]">
+              <span className="min-h-12 content-center [overflow-wrap:anywhere]">
                 {toast.message}
               </span>
             )}

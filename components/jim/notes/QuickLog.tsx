@@ -78,6 +78,13 @@ export function todoSentence(f: {
 const FIELD =
   "min-h-11 w-full min-w-0 rounded-xl border border-white/[0.08] bg-ayu-bg/80 px-3 py-2 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none";
 
+/**
+ * iOS Safari gives a native date input a fixed intrinsic width that ignores
+ * `w-full`, so in a two-column row it spills into its neighbour. Dropping the
+ * native appearance lets it shrink to its column; the value stays left-aligned.
+ */
+const DATE_FIELD = `${FIELD} block max-w-full appearance-none [&::-webkit-date-and-time-value]:text-left`;
+
 function Field({
   label,
   children,
@@ -87,7 +94,7 @@ function Field({
 }) {
   const id = useId();
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <label htmlFor={id} className="block text-sm text-ayu-subtle">
         {label}
       </label>
@@ -277,7 +284,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                       value={date}
                       max={today}
                       onChange={(e) => setDate(e.target.value)}
-                      className={FIELD}
+                      className={DATE_FIELD}
                     />
                   )}
                 </Field>
@@ -319,7 +326,7 @@ function Sheet({ kind, today, onSend, onClose }: SheetProps) {
                         value={due}
                         min={today}
                         onChange={(e) => setDue(e.target.value)}
-                        className={FIELD}
+                        className={DATE_FIELD}
                       />
                     )}
                   </Field>
