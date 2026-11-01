@@ -12,7 +12,7 @@ import {
 } from "../../game-audio/primitives";
 import { comboSemitones, nextCombo, type ComboState } from "./combo";
 import { createRateLimiter } from "./rateLimiter";
-import { scoreForPhase, uneaseForPhase } from "./scores";
+import { TITLE_SCORE, scoreForPhase, uneaseForPhase } from "./scores";
 import {
   playAffordable,
   playBuyChord,
@@ -75,6 +75,7 @@ function createSynth() {
   let isEffectsOn = true;
   let phase: number | null = null;
   let isStorm = false;
+  let isTitle = false;
   let combo: ComboState | null = null;
   let tapEnds: number[] = [];
   let music: { player: MusicPlayer; specId: string } | null = null;
@@ -133,7 +134,7 @@ function createSynth() {
   /** Schedules the next rare dissonant swell for the current phase. */
   function scheduleUnease() {
     clearUnease();
-    if (phase === null || !engine || !music) return;
+    if (isTitle || phase === null || !engine || !music) return;
     const spec = uneaseForPhase(phase);
     if (!spec) return;
     const gapMs = spec.meanGapS * 1000 * (0.6 + Math.random() * 0.8);
@@ -162,14 +163,15 @@ function createSynth() {
 
   /** Brings the music in line with the switches, the phase and the tab. */
   function reconcileMusic() {
+    const hasScore = isTitle || phase !== null;
     const shouldPlay =
-      isEnabled && isMusicOn && !isPaused && phase !== null && !!engine;
-    if (!shouldPlay || !engine || phase === null) {
+      isEnabled && isMusicOn && !isPaused && hasScore && !!engine;
+    if (!shouldPlay || !engine) {
       dropMusic();
       clearUnease();
       return;
     }
-    const spec = scoreForPhase(phase);
+    const spec = isTitle ? TITLE_SCORE : scoreForPhase(phase ?? 0);
     if (music?.specId === spec.id) return;
     // A new phase crossfades: the old bed fades out as a fresh one fades in.
     dropMusic();
@@ -340,6 +342,16 @@ function createSynth() {
       reconcile();
     },
 
+    /**
+     * The title and hub theme. It outranks the phase score while on, so the
+     * game screen can set its phase first and the theme hands over when the
+     * title is switched off.
+     */
+    setTitle(on: boolean) {
+      isTitle = on;
+      reconcile();
+    },
+
     setStorm(on: boolean) {
       isStorm = on;
       reconcileStorm();
@@ -391,6 +403,7 @@ function createSynth() {
       isEnabled = false;
       isPaused = false;
       phase = null;
+      isTitle = false;
       combo = null;
       tapEnds = [];
       holders = 0;

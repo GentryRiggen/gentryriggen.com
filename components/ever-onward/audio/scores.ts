@@ -74,6 +74,26 @@ export const LAST_SCORE: MusicSpec = {
   seed: 5,
 };
 
+/**
+ * The title and hub theme: warm, a touch brighter than the coast, with a
+ * soft strum and a small chiptune-ish triangle lead. Not a phase score.
+ */
+export const TITLE_SCORE: MusicSpec = {
+  id: "eo-title",
+  tempo: 76,
+  beatsPerBar: 4,
+  rootMidi: 53,
+  scale: [0, 2, 4, 7, 9],
+  progression: [0, 3, 1, 4, 0, 2, 3, 4],
+  leadDensity: 0.38,
+  leadRange: [4, 10],
+  padWave: "sine",
+  leadWave: "triangle",
+  isStrummed: true,
+  level: 0.75,
+  seed: 3,
+};
+
 export const SCORES: readonly MusicSpec[] = [
   COAST_SCORE,
   NIGHT_SCORE,
@@ -109,5 +129,5 @@ export function uneaseForPhase(phase: number): UneaseSpec | null {
 }
 
 export function areScoresValid(): boolean {
-  return SCORES.every(isValidSpec);
+  return SCORES.every(isValidSpec) && isValidSpec(TITLE_SCORE);
 }

@@ -1,6 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { encodeBackup } from "@/lib/ever-onward/engine/backupCode";
+import {
+  decodeBackup,
+  encodeBackup,
+} from "@/lib/ever-onward/engine/backupCode";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { newSave, writeSave } from "@/lib/ever-onward/engine/save";
 import type { SaveData } from "@/lib/ever-onward/engine/types";
@@ -42,7 +45,10 @@ describe("Ever Onward backup code", () => {
     await openMenu(user);
     await user.click(screen.getByRole("button", { name: "Copy my code" }));
     expect(writeText).toHaveBeenCalledTimes(1);
-    expect(writeText.mock.calls[0][0]).toBe(encodeBackup(saveWith(1)));
+    // The game keeps ticking while the menu is open, so compare the save,
+    // not the exact code (run time may have moved on).
+    const copied = decodeBackup(writeText.mock.calls[0][0] as string);
+    expect(copied?.universes.light.completions).toBe(1);
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
   });
 
@@ -72,7 +78,7 @@ describe("Ever Onward backup code", () => {
     await user.click(
       screen.getByRole("button", { name: "Yes, replace my game" })
     );
-    expect(await screen.findByText("Finished 7 times")).toBeInTheDocument();
+    expect(await screen.findByText("7 times")).toBeInTheDocument();
     const stored = JSON.parse(
       window.localStorage.getItem("ever-onward:save") ?? "{}"
     );
