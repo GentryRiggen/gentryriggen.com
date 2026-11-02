@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Check, LoaderCircle, Sunrise } from "lucide-react";
-import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import { LoaderCircle, Sunrise } from "lucide-react";
+import {
+  Chip,
+  Empty,
+  onPlainClick,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
 import DailyWord from "@/components/jim/notes/DailyWord";
 import ShortLabel from "@/components/jim/notes/ShortLabel";
 import JimNoticed from "@/components/jim/notes/JimNoticed";
 import NeedsYou from "@/components/jim/notes/NeedsYou";
 import RemindersCard from "@/components/jim/notes/RemindersCard";
 import QuickLog from "@/components/jim/notes/QuickLog";
+import { TodoCheckbox, ToastBar } from "@/components/jim/notes/TodoBits";
 import {
   todoKey,
-  type DoneToast,
   type Mark,
-  type Toast,
   type TodoSaves,
 } from "@/components/jim/notes/useTodoSaves";
 import {
@@ -42,6 +47,9 @@ interface NotesHomeProps {
   onLog: (text: string) => void;
   /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
   onDraft: (text: string) => void;
+  /** Opens the Todos page ("All todos →"). Without it the link is hidden. */
+  onOpenTodos?: () => void;
+  todosHref?: string;
   /** Plays the morning brief (a tap). Without it the button is hidden. */
   onHearBrief?: () => void;
   /** What the brief is waiting on: the button spins and says it. */
@@ -220,36 +228,12 @@ function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
           : "text-ayu-subtle";
   return (
     <li className="flex items-center gap-1 py-1.5 pr-4 pl-1">
-      {/* 44px to tap, a 22px box to see. A tap while it saves does nothing. */}
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={checked}
-        aria-busy={pending || undefined}
-        aria-label={title}
-        onClick={() => {
-          if (!pending) onToggle(todo, !checked);
-        }}
-        className="group flex size-11 shrink-0 items-center justify-center rounded-full transition-colors! duration-150!"
-      >
-        <span
-          aria-hidden="true"
-          className={`flex size-[22px] items-center justify-center rounded-md border-2 ${
-            checked
-              ? "jim-glow border-transparent text-ayu-bg"
-              : "border-ayu-muted group-hover:border-ayu-accent group-hover:bg-ayu-accent/10"
-          }`}
-        >
-          {pending ? (
-            <LoaderCircle
-              className={`size-3.5 animate-spin motion-reduce:animate-none ${checked ? "" : "text-ayu-accent"}`}
-              strokeWidth={3}
-            />
-          ) : (
-            checked && <Check className="size-4" strokeWidth={3} />
-          )}
-        </span>
-      </button>
+      <TodoCheckbox
+        label={title}
+        checked={checked}
+        pending={pending}
+        onToggle={(done) => onToggle(todo, done)}
+      />
       <div className="min-w-0 flex-1 py-1">
         <ShortLabel
           dataTitle
@@ -317,9 +301,11 @@ interface TodosProps {
   data: ViewData;
   marks: Record<string, Mark>;
   onToggle: (todo: ViewTodo, done: boolean) => void;
+  onOpenTodos?: () => void;
+  todosHref?: string;
 }
 
-function Todos({ data, marks, onToggle }: TodosProps) {
+function Todos({ data, marks, onToggle, onOpenTodos, todosHref }: TodosProps) {
   const [area, setArea] = useState<"all" | "work" | "personal">("all");
   const todos =
     area === "all" ? data.todos : data.todos.filter((t) => t.area === area);
@@ -374,53 +360,17 @@ function Todos({ data, marks, onToggle }: TodosProps) {
           <TodoList todos={g.later} {...list} />
         </details>
       )}
+      {onOpenTodos && (
+        <a
+          href={todosHref}
+          onClick={onPlainClick(onOpenTodos)}
+          className="-ml-3 inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-medium text-ayu-accent hover:bg-white/[0.06]"
+        >
+          All todos
+          <span aria-hidden="true">→</span>
+        </a>
+      )}
     </Section>
-  );
-}
-
-interface ToastBarProps {
-  toast: Toast | null;
-  onUndo: (toast: DoneToast) => void;
-}
-
-/**
- * Floats above the home bar (and above the now-playing bar JimChat docks
- * over a phone's Notes); always in the page, so it is announced.
- */
-function ToastBar({ toast, onUndo }: ToastBarProps) {
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex group-data-[dock=bar]/notes:bottom-[4.75rem] group-data-[dock=both]/notes:bottom-[8.25rem] group-data-[dock=chip]/notes:bottom-[3.5rem] justify-center pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
-      <div role="status" aria-live="polite" className="contents">
-        {toast && (
-          <div
-            key={toast.id}
-            className={`jim-rise pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-white/[0.08] bg-ayu-raised/90 py-1 pr-1 pl-5 shadow-2xl shadow-black/60 backdrop-blur-xl ${
-              toast.kind === "error" ? "text-ayu-red" : "text-ayu-text"
-            } ${toast.kind === "error" ? "pr-5" : ""}`}
-          >
-            {toast.kind === "done" ? (
-              <>
-                <span className="min-h-12 content-center">Done</span>
-                <span aria-hidden="true" className="text-ayu-subtle">
-                  ·
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onUndo(toast)}
-                  className="min-h-12 rounded-full px-3 font-medium text-ayu-accent hover:bg-white/[0.06]"
-                >
-                  Undo
-                </button>
-              </>
-            ) : (
-              <span className="min-h-12 content-center [overflow-wrap:anywhere]">
-                {toast.message}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -439,6 +389,8 @@ export default function NotesHome({
   saves,
   onLog,
   onDraft,
+  onOpenTodos,
+  todosHref,
   onHearBrief,
   briefStage = null,
   briefError = null,
@@ -511,7 +463,13 @@ export default function NotesHome({
       </div>
       <div className="space-y-8">
         <Calendar data={data} />
-        <Todos data={data} marks={saves.marks} onToggle={saves.toggle} />
+        <Todos
+          data={data}
+          marks={saves.marks}
+          onToggle={saves.toggle}
+          onOpenTodos={onOpenTodos}
+          todosHref={todosHref}
+        />
       </div>
       <ToastBar toast={saves.toast} onUndo={saves.undo} />
     </div>
