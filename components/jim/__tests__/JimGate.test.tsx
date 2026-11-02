@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as admin from "@/lib/analytics/admin";
 import { ADMIN_UID } from "@/lib/analytics/admin";
-import * as client from "@/lib/firebase/client";
+import * as client from "@/lib/jim/auth";
 import * as config from "@/lib/firebase/config";
 import * as api from "@/lib/jim/api";
 import * as host from "@/lib/jim/host";
@@ -16,7 +16,7 @@ import { fetchView, getCachedView } from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import JimGate from "../JimGate";
 
-jest.mock("@/lib/firebase/client");
+jest.mock("@/lib/jim/auth");
 jest.mock("@/lib/firebase/config");
 // The real URL by default; a test sets it to "" for the not-connected state.
 let mockApi: string | undefined;
@@ -103,7 +103,7 @@ beforeEach(() => {
   mockApi = undefined;
   mockConfig.isFirebaseConfigured.mockReturnValue(true);
   mockClient.signOutUser.mockResolvedValue();
-  mockClient.signInWithEmail.mockResolvedValue();
+  mockClient.signInWithEmail.mockResolvedValue({ kind: "done" });
   mockClient.watchAuth.mockImplementation(async (cb) => {
     emit = cb;
     return () => {};
@@ -466,6 +466,7 @@ describe("a sign-out that is cut short", () => {
     window.localStorage.setItem(lockKey(ADMIN_UID), LOCK);
     mockClient.signInWithEmail.mockImplementation(async () => {
       emit({ uid: ADMIN_UID, email: "me@x.com" });
+      return { kind: "done" };
     });
     await userEvent.type(await screen.findByLabelText("Email"), "a@b.com");
     await userEvent.type(screen.getByLabelText("Password"), "pw");
@@ -489,5 +490,128 @@ describe("a sign-out that is cut short", () => {
     expect(saver.mock.invocationCallOrder[0]).toBeLessThan(
       jest.mocked(offline.clearAll).mock.invocationCallOrder[0]
     );
+  });
+});
+
+describe("authenticator code at sign-in", () => {
+  async function passwordStep() {
+    await renderGate();
+    act(() => emit(null));
+    await userEvent.type(await screen.findByLabelText("Email"), "a@b.com");
+    await userEvent.type(screen.getByLabelText("Password"), "pw");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  }
+
+  it("asks for the code with the one-time-code keyboard, then opens", async () => {
+    const finish = jest.fn(async () => {
+      emit({ uid: ADMIN_UID, email: "me@x.com" });
+    });
+    mockClient.signInWithEmail.mockResolvedValue({ kind: "code", finish });
+    await passwordStep();
+    const code = await screen.findByLabelText("Code from your authenticator");
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    expect(code).toHaveAttribute("inputmode", "numeric");
+    expect(code).toHaveAttribute("maxlength", "6");
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    await userEvent.type(code, "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(finish).toHaveBeenCalledWith("123456");
+    expect(await screen.findByTestId("chat")).toBeInTheDocument();
+  });
+
+  it("says when the code is wrong, and the next code still works", async () => {
+    const finish = jest
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(new Error("bad"), {
+          code: "auth/invalid-verification-code",
+        })
+      )
+      .mockImplementationOnce(async () => {
+        emit({ uid: ADMIN_UID, email: "me@x.com" });
+      });
+    mockClient.signInWithEmail.mockResolvedValue({ kind: "code", finish });
+    await passwordStep();
+    const code = await screen.findByLabelText("Code from your authenticator");
+    await userEvent.type(code, "000000");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(
+      await screen.findByText("That code didn't work. Try the newest one.")
+    ).toBeInTheDocument();
+    expect(code).toHaveValue("");
+    await userEvent.type(code, "654321");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByTestId("chat")).toBeInTheDocument();
+  });
+
+  it("goes back to the password when the code step fails otherwise", async () => {
+    const finish = jest
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error("late"), { code: "auth/code-expired" })
+      );
+    mockClient.signInWithEmail.mockResolvedValue({ kind: "code", finish });
+    await passwordStep();
+    await userEvent.type(
+      await screen.findByLabelText("Code from your authenticator"),
+      "123456"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByLabelText("Password")).toBeInTheDocument();
+    expect(
+      screen.getByText("That didn't work. Sign in again.")
+    ).toBeInTheDocument();
+  });
+
+  it("says clearly when this build has no Jim sign-in", async () => {
+    mockClient.signInWithEmail.mockRejectedValue(
+      Object.assign(new Error("missing"), { code: client.TENANT_MISSING })
+    );
+    await passwordStep();
+    expect(
+      await screen.findByText("Sign-in isn't set up for Jim in this build.")
+    ).toBeInTheDocument();
+  });
+});
+
+describe("a sign-in the server refuses", () => {
+  it("ends the session when the early Notes fetch is denied", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    jest.mocked(fetchView).mockRejectedValue(new api.JimError("denied"));
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    expect(await screen.findByLabelText("Email")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat")).not.toBeInTheDocument();
+    await waitFor(() => expect(mockClient.signOutUser).toHaveBeenCalled());
+    expect(jest.mocked(offline.clearAll)).toHaveBeenCalled();
+    expect(
+      screen.getByText("Your sign-in ended. Sign in again.")
+    ).toBeInTheDocument();
+  });
+
+  it("ends the session when any Jim request is denied", async () => {
+    window.__JIM_TEST__ = { api: "https://jim.example.test" };
+    await renderGate();
+    act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+    await screen.findByTestId("chat");
+    await act(async () => {
+      api.deniedError();
+      await Promise.resolve();
+    });
+    expect(await screen.findByLabelText("Email")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockClient.signOutUser).toHaveBeenCalledTimes(1)
+    );
+  });
+
+  it("does nothing on a denial once signed out", async () => {
+    await renderGate();
+    act(() => emit(null));
+    await screen.findByLabelText("Email");
+    await act(async () => {
+      api.deniedError();
+      await Promise.resolve();
+    });
+    expect(mockClient.signOutUser).not.toHaveBeenCalled();
   });
 });

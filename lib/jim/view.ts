@@ -1,10 +1,11 @@
-import { getIdToken } from "@/lib/firebase/client";
+import { getIdToken } from "@/lib/jim/auth";
 import {
+  deniedError,
   isJimConnected,
   isOffline,
   JIM_API,
   JimError,
-  tokenErrorKind,
+  tokenError,
 } from "@/lib/jim/api";
 import type { RetroKind } from "@/lib/jim/routes";
 
@@ -852,9 +853,9 @@ async function requestView(
     try {
       token = await getToken(force);
     } catch (err) {
-      throw new JimError(tokenErrorKind(err));
+      throw tokenError(err);
     }
-    if (!token) throw new JimError("denied");
+    if (!token) throw deniedError();
     if (isOffline()) throw new JimError("waking");
     try {
       return await fetchFn(`${api}/api/view`, {
@@ -869,7 +870,7 @@ async function requestView(
 
   let res = await get(false);
   if (res.status === 401) res = await get(true);
-  if (res.status === 401 || res.status === 403) throw new JimError("denied");
+  if (res.status === 401 || res.status === 403) throw deniedError();
   if (res.status === 503) throw new JimError("waking");
   if (!res.ok) throw new JimError("server");
 
@@ -933,9 +934,9 @@ export async function callJim(
     try {
       token = await getToken(force);
     } catch (err) {
-      throw new JimError(tokenErrorKind(err));
+      throw tokenError(err);
     }
-    if (!token) throw new JimError("denied");
+    if (!token) throw deniedError();
     if (isOffline()) throw new JimError("waking");
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
@@ -957,7 +958,7 @@ export async function callJim(
     let res = await send(false);
     if (res.status === 401) res = await send(true);
     if (res.status === 401 || res.status === 403) {
-      throw new JimError("denied");
+      throw deniedError();
     }
     return res;
   }

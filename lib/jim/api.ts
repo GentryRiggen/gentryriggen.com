@@ -1,4 +1,4 @@
-import { getIdToken } from "@/lib/firebase/client";
+import { getIdToken } from "@/lib/jim/auth";
 
 /**
  * The Cloud Run server that answers /jim. Empty until it is deployed: while
@@ -62,6 +62,33 @@ export class JimError extends Error {
     this.name = "JimError";
     this.kind = kind;
   }
+}
+
+/** Told when any Jim request finds the sign-in refused (see onSignInRefused). */
+let refusedListener: (() => void) | null = null;
+
+/**
+ * Registers the page's handler for a refused sign-in: a JimError("denied")
+ * from any Jim request ends the session. Returns a function that removes it.
+ */
+export function onSignInRefused(listener: () => void): () => void {
+  refusedListener = listener;
+  return () => {
+    if (refusedListener === listener) refusedListener = null;
+  };
+}
+
+/** A JimError("denied"), once the page has been told (after this turn). */
+export function deniedError(): JimError {
+  const listener = refusedListener;
+  if (listener) queueMicrotask(listener);
+  return new JimError("denied");
+}
+
+/** The JimError for a failure to get a token. */
+export function tokenError(err: unknown): JimError {
+  const kind = tokenErrorKind(err);
+  return kind === "denied" ? deniedError() : new JimError(kind);
 }
 
 export function isJimConnected(api: string = JIM_API): boolean {
@@ -198,9 +225,9 @@ async function request(
     try {
       token = await getToken(force);
     } catch (err) {
-      throw new JimError(tokenErrorKind(err));
+      throw tokenError(err);
     }
-    if (!token) throw new JimError("denied");
+    if (!token) throw deniedError();
     if (isOffline()) throw new JimError("waking");
     // From here the server may get the message and act on it.
     progress.sent = true;
@@ -227,7 +254,7 @@ async function request(
     res = await post(true);
   }
 
-  if (res.status === 401 || res.status === 403) throw new JimError("denied");
+  if (res.status === 401 || res.status === 403) throw deniedError();
   if (res.status === 503) throw new JimError("waking");
   if (res.status === 400 || res.status === 413) {
     throw new JimError("rejected");

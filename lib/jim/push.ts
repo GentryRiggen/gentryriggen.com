@@ -1,4 +1,4 @@
-import { getIdToken } from "@/lib/firebase/client";
+import { getIdToken } from "@/lib/jim/auth";
 import { JIM_API } from "@/lib/jim/api";
 import { JIM_SW_SCOPE } from "@/lib/jim/serviceWorker";
 import { callJim, CALL_TIMEOUT_MS } from "@/lib/jim/view";

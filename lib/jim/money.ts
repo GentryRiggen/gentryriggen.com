@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getIdToken } from "@/lib/firebase/client";
+import { getIdToken } from "@/lib/jim/auth";
 import { JIM_API, JimError, type JimErrorKind } from "@/lib/jim/api";
 import { callJim } from "@/lib/jim/view";
 

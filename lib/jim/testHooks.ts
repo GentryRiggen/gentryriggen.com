@@ -1,6 +1,7 @@
 /**
  * Test hooks for /jim. On in development and in the e2e build
- * (`NEXT_PUBLIC_E2E=1`), off in the build that ships, so they compile away.
+ * (`NEXT_PUBLIC_E2E=1`), off in the build that ships, so they compile away
+ * (next.config.ts always inlines NEXT_PUBLIC_E2E, "0" when unset).
  * They only change what the page shows; the server checks every request.
  */
 export const TEST_HOOKS_ENABLED =

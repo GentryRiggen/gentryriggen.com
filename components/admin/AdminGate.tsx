@@ -7,6 +7,7 @@ import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
 import { signInWithEmail, signOutUser, watchAuth } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
+import { CODE_RESTART, isWrongCode, WRONG_CODE } from "@/lib/firebase/mfa";
 
 type State =
   | { kind: "loading" }
@@ -23,6 +24,11 @@ export default function AdminGate() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  /** Set while the authenticator code is asked for. */
+  const [finishCode, setFinishCode] = useState<
+    ((code: string) => Promise<void>) | null
+  >(null);
+  const [code, setCode] = useState("");
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -64,11 +70,36 @@ export default function AdminGate() {
     // One generic message for every failure: never say which part was wrong
     // and never surface the raw Firebase error.
     signInWithEmail(email, password)
+      .then((result) => {
+        setPassword("");
+        if (result.kind === "code") setFinishCode(() => result.finish);
+      })
       .catch(() => {
         setPassword("");
         setError("Incorrect email or password.");
       })
       .finally(() => setSubmitting(false));
+  }
+
+  function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting || !finishCode) return;
+    setError(null);
+    setSubmitting(true);
+    finishCode(code)
+      .then(() => setFinishCode(null))
+      .catch((err: unknown) => {
+        if (isWrongCode(err)) {
+          setError(WRONG_CODE);
+        } else {
+          setFinishCode(null);
+          setError(CODE_RESTART);
+        }
+      })
+      .finally(() => {
+        setCode("");
+        setSubmitting(false);
+      });
   }
 
   if (state.kind === "admin") {
@@ -109,7 +140,36 @@ export default function AdminGate() {
             Not authorized: {state.email} is not an admin account.
           </p>
         )}
-        {(state.kind === "signedOut" || state.kind === "denied") && (
+        {state.kind === "signedOut" && finishCode && (
+          <form onSubmit={verifyCode} className="space-y-3 text-left">
+            <div className="space-y-1">
+              <label htmlFor="admin-code" className="block text-sm font-medium">
+                Code from your authenticator
+              </label>
+              <input
+                id="admin-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+            >
+              Verify
+            </button>
+          </form>
+        )}
+        {((state.kind === "signedOut" && !finishCode) ||
+          state.kind === "denied") && (
           <form onSubmit={signIn} className="space-y-3 text-left">
             <div className="space-y-1">
               <label

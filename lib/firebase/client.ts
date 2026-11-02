@@ -5,8 +5,14 @@ import type { SeasonGame, SeasonInfo } from "@/lib/leaderboard/season";
 import type { AdminBoardRow } from "./adminBoard";
 import { browserEnv, isRealBrowser } from "./appCheck";
 import { firebaseConfig } from "./config";
+import { signInWithCode, type SignInResult } from "./mfa";
 
-/** Only used by /admin; public pages talk to Firestore over REST instead. */
+export type { SignInResult } from "./mfa";
+
+/**
+ * Only used by /admin; public pages talk to Firestore over REST instead, and
+ * Jim has its own sign-in (lib/jim/auth).
+ */
 
 export interface AuthUser {
   uid: string;
@@ -64,12 +70,13 @@ export async function watchAuth(
   );
 }
 
+/** Signs in; the result asks for an authenticator code when one is set up. */
 export async function signInWithEmail(
   email: string,
   password: string
-): Promise<void> {
+): Promise<SignInResult> {
   const { mod, auth } = await authModule();
-  await mod.signInWithEmailAndPassword(auth, email, password);
+  return signInWithCode(mod, auth, email, password);
 }
 
 export async function signOutUser(): Promise<void> {
@@ -78,8 +85,8 @@ export async function signOutUser(): Promise<void> {
 }
 
 /**
- * The signed-in user's Firebase ID token (for /jim's server), or null when
- * nobody is signed in. `force` skips the cached token, e.g. after a 401.
+ * The signed-in user's Firebase ID token, or null when nobody is signed in.
+ * `force` skips the cached token.
  */
 export async function getIdToken(force = false): Promise<string | null> {
   const { auth } = await authModule();

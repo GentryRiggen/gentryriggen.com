@@ -3,7 +3,7 @@ import { TextEncoder } from "node:util";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ADMIN_UID } from "@/lib/analytics/admin";
-import * as client from "@/lib/firebase/client";
+import * as client from "@/lib/jim/auth";
 import {
   createLock,
   HIDDEN_KEY,
@@ -27,7 +27,7 @@ Object.defineProperty(globalThis.crypto, "subtle", {
 });
 Object.assign(globalThis, { TextEncoder });
 
-jest.mock("@/lib/firebase/client");
+jest.mock("@/lib/jim/auth");
 jest.mock("@/lib/jim/api", () => {
   const actual = jest.requireActual("@/lib/jim/api");
   return { ...actual, streamToJim: jest.fn(), wakeJim: jest.fn() };
