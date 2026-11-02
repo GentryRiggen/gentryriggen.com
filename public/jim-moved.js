@@ -211,8 +211,28 @@
     return NEW_ORIGIN + path + (location.search || "");
   }
 
+  /**
+   * True when running as an installed Home Screen app, where an automatic
+   * jump to another origin would leave the old icon opening a browser page.
+   * `win` holds `matchMedia` and `navigator`.
+   */
+  function isInstalled(win) {
+    try {
+      if (win.navigator && win.navigator.standalone === true) return true;
+      return !!(
+        win.matchMedia && win.matchMedia("(display-mode: standalone)").matches
+      );
+    } catch {
+      return false;
+    }
+  }
+
   if (typeof module !== "undefined") {
-    globalThis.__jimMoved = { wipeJim: wipeJim, target: target };
+    globalThis.__jimMoved = {
+      wipeJim: wipeJim,
+      target: target,
+      isInstalled: isInstalled,
+    };
     return;
   }
 
@@ -243,12 +263,26 @@
     }),
   };
   var next = target(location);
-  wipeJim(env).then(
-    function () {
+  // Browser tabs jump straight to the new address. The installed app stays
+  // put and says so, since its icon cannot follow Jim to a new origin.
+  function proceed() {
+    if (!isInstalled(window)) {
       location.replace(next);
-    },
-    function () {
-      location.replace(next);
+      return;
     }
-  );
+    function show() {
+      var tab = document.getElementById("moved-tab");
+      var app = document.getElementById("moved-app");
+      var open = document.getElementById("moved-open");
+      if (open) open.setAttribute("href", next);
+      if (tab) tab.hidden = true;
+      if (app) app.hidden = false;
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", show);
+    } else {
+      show();
+    }
+  }
+  wipeJim(env).then(proceed, proceed);
 })();

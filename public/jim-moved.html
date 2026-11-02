@@ -24,11 +24,35 @@
       a {
         color: #ffcc66;
       }
+      [hidden] {
+        display: none;
+      }
+      .button {
+        display: inline-block;
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.5rem;
+        background: #ffcc66;
+        color: #1f2430;
+        font-weight: 600;
+        text-decoration: none;
+      }
     </style>
     <script src="/jim-moved.js"></script>
   </head>
   <body>
-    <main>
+    <main id="moved-app" hidden>
+      <p>Jim moved to jim.gentryriggen.com.</p>
+      <p>
+        <a
+          id="moved-open"
+          class="button"
+          href="https://jim.gentryriggen.com/jim"
+          >Open Jim</a
+        >
+      </p>
+      <p>You can delete this icon from your Home Screen.</p>
+    </main>
+    <main id="moved-tab">
       <p>
         Jim moved to jim.gentryriggen.com. Open it in Safari and add it to your
         Home Screen again.

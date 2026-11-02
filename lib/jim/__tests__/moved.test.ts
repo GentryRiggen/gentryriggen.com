@@ -286,6 +286,72 @@ describe("the page script", () => {
   });
 });
 
+describe("the page script as an installed app", () => {
+  function run(win: Record<string, unknown>) {
+    const { env } = makeEnv();
+    const replace = jest.fn();
+    const open = { setAttribute: jest.fn(), hidden: false };
+    const tab = { hidden: false };
+    const app = { hidden: true };
+    const elements: Record<string, unknown> = {
+      "moved-open": open,
+      "moved-tab": tab,
+      "moved-app": app,
+    };
+    const context: Record<string, unknown> = {
+      setTimeout,
+      clearTimeout,
+      Promise,
+      JSON,
+      location: { pathname: "/jim", search: "", replace },
+      localStorage: env.localStorage,
+      sessionStorage: env.sessionStorage,
+      indexedDB: env.indexedDB,
+      caches: env.caches,
+      document: {
+        readyState: "complete",
+        getElementById: (id: string) => elements[id] ?? null,
+      },
+      navigator: {
+        serviceWorker: env.serviceWorker,
+        ...(win.navigator as object),
+      },
+      matchMedia: win.matchMedia,
+    };
+    context.window = context;
+    vm.runInNewContext(MOVED_SOURCE, context);
+    return { replace, open, tab, app };
+  }
+
+  it("shows the notice instead of redirecting (navigator.standalone)", async () => {
+    const r = run({ navigator: { standalone: true } });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(r.replace).not.toHaveBeenCalled();
+    expect(r.app.hidden).toBe(false);
+    expect(r.tab.hidden).toBe(true);
+    expect(r.open.setAttribute).toHaveBeenCalledWith(
+      "href",
+      "https://jim.gentryriggen.com/jim"
+    );
+  });
+
+  it("shows the notice for display-mode standalone, after the wipe", async () => {
+    const r = run({
+      matchMedia: (q: string) => ({ matches: q.includes("standalone") }),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(r.replace).not.toHaveBeenCalled();
+    expect(r.app.hidden).toBe(false);
+  });
+
+  it("a browser tab still redirects", async () => {
+    const r = run({ matchMedia: () => ({ matches: false }) });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(r.replace).toHaveBeenCalledTimes(1);
+    expect(r.app.hidden).toBe(true);
+  });
+});
+
 type Listener = (event: Record<string, unknown>) => void;
 
 function loadKillSwitch() {

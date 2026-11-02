@@ -21,7 +21,10 @@ const source = readFileSync(
   join(process.cwd(), ".github/workflows/ci.yml"),
   "utf8"
 );
-const workflow = parse(source) as { jobs: Record<string, Job> };
+const workflow = parse(source) as {
+  jobs: Record<string, Job>;
+  concurrency?: { "cancel-in-progress"?: unknown };
+};
 const deploy = workflow.jobs.deploy;
 const build = workflow.jobs.build;
 
@@ -32,6 +35,14 @@ function stepIndex(job: Job, match: (step: Step) => boolean): number {
   if (i < 0) throw new Error("step not found");
   return i;
 }
+
+describe("CI concurrency", () => {
+  it("cancels in-progress runs only for pull requests, never a push", () => {
+    const cancel = String(workflow.concurrency?.["cancel-in-progress"]);
+    expect(cancel).toContain("github.event_name == 'pull_request'");
+    expect(cancel).not.toBe("true");
+  });
+});
 
 describe("CI deploy job (keyless)", () => {
   it("can mint an OIDC token and nothing more", () => {
