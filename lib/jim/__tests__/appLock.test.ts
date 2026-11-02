@@ -308,6 +308,46 @@ describe("attempt limits", () => {
   });
 });
 
+describe("the PIN's length", () => {
+  const NOW = 1_800_000_000_000;
+
+  it("is kept with the hash when a PIN is set", async () => {
+    expect((await createLock("1234", 0, FAST)).length).toBe(4);
+    expect((await createLock("86420", 0, FAST)).length).toBe(5);
+    await setLock("2468013");
+    expect(loadLock(UID)?.length).toBe(7);
+  });
+
+  it("is read back only when it is a PIN's length", () => {
+    const base = { v: 1, salt: "", iterations: 1, hash: "", after: 0 };
+    for (const [length, kept] of [
+      [4, 4],
+      [8, 8],
+      [3, undefined],
+      [9, undefined],
+      [4.5, undefined],
+      ["4", undefined],
+    ] as const) {
+      window.localStorage.setItem(
+        lockKey(UID),
+        JSON.stringify({ ...base, length })
+      );
+      expect(loadLock(UID)?.length).toBe(kept);
+    }
+  });
+
+  it("is added to an older lock by a right PIN, never by a wrong one", async () => {
+    const { length: _drop, ...older } = await createLock("123456", 0, FAST);
+    void _drop;
+    saveLock(UID, older);
+    expect(loadLock(UID)?.length).toBeUndefined();
+    await checkPin(UID, "000000", NOW);
+    expect(loadLock(UID)?.length).toBeUndefined();
+    expect(await checkPin(UID, "123456", NOW)).toEqual({ kind: "ok" });
+    expect(loadLock(UID)?.length).toBe(6);
+  });
+});
+
 describe("time away", () => {
   it("locks once away for `after` seconds or more", () => {
     expect(awayTooLong(null, 10_000, 0)).toBe(false);

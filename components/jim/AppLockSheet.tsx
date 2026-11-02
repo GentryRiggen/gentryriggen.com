@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { TOO_MANY_NOTICE, countdown } from "@/components/jim/LockScreen";
-import PinPad from "@/components/jim/PinPad";
+import PinPad, { KEEP_ENTER } from "@/components/jim/PinPad";
 import type { AppLock } from "@/components/jim/useAppLock";
 import { LOCK_AFTER_CHOICES, PIN_MIN, pinSupported } from "@/lib/jim/appLock";
 
@@ -70,14 +70,19 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
   const [message, setMessage] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
   const [after, setAfterChoice] = useState(lock.after);
+  // Taken while rendering, before the PIN box (a child) takes focus.
+  const [opener] = useState(() =>
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+  );
   const supported = pinSupported();
 
   useEffect(() => {
-    const opener =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    closeRef.current?.focus();
+    // The PIN box may have focus already (a desktop); otherwise Close.
+    if (!sheetRef.current?.contains(document.activeElement)) {
+      closeRef.current?.focus();
+    }
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = "hidden";
@@ -111,7 +116,7 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
       root.style.overflow = overflow;
       if (opener?.isConnected) opener.focus();
     };
-  }, [onClose]);
+  }, [onClose, opener]);
 
   function go(next: Step, note: string | null = null) {
     setPin("");
@@ -126,8 +131,10 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
   }
 
   async function verifyCurrent(then: Guarded) {
+    const entered = pin;
+    setPin("");
     setBusy(true);
-    const result = await lock.verify(pin);
+    const result = await lock.verify(entered);
     setBusy(false);
     switch (result.kind) {
       case "ok":
@@ -204,8 +211,10 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
         if (pin !== step.first) {
           setStep({ kind: "new", change: step.change });
           wrong("The PINs didn't match. Choose it again.");
-        } else if (step.change) void finish(pin, true);
-        else go({ kind: "after", pin });
+        } else if (step.change) {
+          setPin("");
+          void finish(pin, true);
+        } else go({ kind: "after", pin });
         break;
       default:
         break;
@@ -266,6 +275,7 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
           <button
             ref={closeRef}
             type="button"
+            {...KEEP_ENTER}
             aria-label="Close"
             onClick={onClose}
             className="flex size-11 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"

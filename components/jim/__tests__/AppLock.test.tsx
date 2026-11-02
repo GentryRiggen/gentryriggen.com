@@ -67,11 +67,17 @@ function setVisible(next: DocumentVisibilityState) {
   });
 }
 
+/**
+ * A lock as set before the PIN's length was kept (OK or Enter unlocks);
+ * pass `length` in `extra` for one that unlocks on the last digit.
+ */
 async function presetLock(
   extra: Partial<LockRecord> = {},
   pin = "1234"
 ): Promise<LockRecord> {
-  const record = { ...(await createLock(pin, 0, FAST)), ...extra };
+  const { length: _length, ...older } = await createLock(pin, 0, FAST);
+  void _length;
+  const record = { ...older, ...extra };
   saveLock(ADMIN_UID, record);
   return record;
 }
@@ -197,15 +203,23 @@ describe("locked", () => {
     const ok = screen.getByRole("button", { name: "OK" });
     await userEvent.click(screen.getByRole("button", { name: "1" }));
     await userEvent.click(screen.getByRole("button", { name: "2" }));
-    expect(screen.getByRole("img", { name: "2 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "2 digits entered"
+    );
     expect(ok).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(screen.getByRole("img", { name: "1 digit entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "1 digit entered"
+    );
     await userEvent.keyboard("23456789");
     // Eight at most.
-    expect(screen.getByRole("img", { name: "8 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "8 digits entered"
+    );
     await userEvent.keyboard("{Backspace>4/}");
-    expect(screen.getByRole("img", { name: "4 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "4 digits entered"
+    );
     expect(ok).toBeEnabled();
     await userEvent.keyboard("{Enter}");
     expect(await screen.findByText(SECRET)).toBeInTheDocument();
@@ -275,6 +289,278 @@ describe("locked", () => {
     await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
     expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
     expect(window.sessionStorage.getItem(HIDDEN_KEY)).toBeNull();
+  });
+});
+
+describe("the keyboard and the iPhone number pad", () => {
+  function pinBox(): HTMLInputElement {
+    return screen.getByLabelText("PIN") as HTMLInputElement;
+  }
+
+  function finePointer(fine: boolean) {
+    jest.mocked(window.matchMedia).mockImplementation(
+      (query: string) =>
+        ({
+          matches: fine && query === "(pointer: fine)",
+          media: query,
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          onchange: null,
+          dispatchEvent: jest.fn(),
+        }) as MediaQueryList
+    );
+  }
+
+  afterEach(() => finePointer(false));
+
+  /** Holds every PIN hash until the returned function is called. */
+  function holdHashing(): () => void {
+    const subtle = globalThis.crypto.subtle;
+    const derive = subtle.deriveBits.bind(subtle);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const spy = jest
+      .spyOn(subtle, "deriveBits")
+      .mockImplementation(async (...args) => {
+        await held;
+        return derive(...args);
+      });
+    return () => {
+      release();
+      spy.mockRestore();
+    };
+  }
+
+  it("is a numeric password box with no autofill, behind the dots", async () => {
+    await presetLock();
+    await renderJim();
+    const box = pinBox();
+    // Not a password field: browsers' password managers would offer to
+    // save it as a login.
+    expect(box).toHaveAttribute("type", "text");
+    expect(box).toHaveAttribute("autocapitalize", "off");
+    expect(box).toHaveAttribute("data-form-type", "other");
+    expect(box.closest("form")).toBeNull();
+    expect(box).toHaveAccessibleDescription("0 digits entered");
+    // The dots are said once, by the box.
+    expect(screen.queryByRole("img", { name: /digits? entered/ })).toBeNull();
+    expect(box).toHaveAttribute("inputmode", "numeric");
+    expect(box).toHaveAttribute("pattern", "[0-9]*");
+    expect(box).toHaveAttribute("autocomplete", "off");
+    expect(box).toHaveAttribute("autocorrect", "off");
+    expect(box).toHaveAttribute("spellcheck", "false");
+    expect(box).toHaveAttribute("enterkeyhint", "go");
+    expect(box).toHaveAttribute("maxlength", "8");
+    expect(box).toHaveAttribute("data-1p-ignore");
+    expect(box).toHaveAttribute("data-lpignore", "true");
+    expect(box).not.toHaveAttribute("name");
+    expect(box).not.toHaveAttribute("id");
+    expect(box.className).toMatch(/text-base/);
+  });
+
+  it("focuses itself only with a fine pointer (no keyboard over the pad on a phone)", async () => {
+    await presetLock();
+    await renderJim();
+    expect(pinBox()).not.toHaveFocus();
+  });
+
+  it("focuses itself on a desktop", async () => {
+    finePointer(true);
+    await presetLock();
+    await renderJim();
+    await waitFor(() => expect(pinBox()).toHaveFocus());
+  });
+
+  it("takes digits only, typed or pasted, once each", async () => {
+    await presetLock();
+    await renderJim();
+    await userEvent.click(pinBox());
+    await userEvent.keyboard("1a2-");
+    expect(pinBox().value).toBe("12");
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "2 digits entered"
+    );
+    await userEvent.paste("3 4-5x");
+    expect(pinBox().value).toBe("12345");
+    await userEvent.keyboard("{Backspace}");
+    expect(pinBox().value).toBe("1234");
+    // The keypad adds to the same PIN.
+    await userEvent.click(screen.getByRole("button", { name: "9" }));
+    expect(pinBox().value).toBe("12349");
+    await userEvent.click(pinBox());
+    await userEvent.paste("99999");
+    expect(pinBox().value).toBe("12349999");
+  });
+
+  it("empties the box as soon as a check starts", async () => {
+    await presetLock();
+    await renderJim();
+    const release = holdHashing();
+    try {
+      await userEvent.type(pinBox(), "1234{Enter}");
+      // Still checking: the PIN is no longer in the page.
+      expect(isLocked()).toBe(true);
+      expect(pinBox().value).toBe("");
+    } finally {
+      release();
+    }
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+  });
+
+  it("gives focus back to the menu when the sheet closes on a desktop", async () => {
+    finePointer(true);
+    await renderJim();
+    const menu = screen.getByRole("button", { name: "Menu" });
+    await userEvent.click(menu);
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "App lock: Off" })
+    );
+    const sheet = screen.getByRole("dialog", { name: "App lock" });
+    await waitFor(() =>
+      expect(within(sheet).getByLabelText("PIN")).toHaveFocus()
+    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(menu).toHaveFocus();
+  });
+
+  it("empties the box while a new PIN is saved", async () => {
+    await presetLock({ after: 0 });
+    await renderJim();
+    await enterPin("1234");
+    await screen.findByText(SECRET);
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "App lock: On" })
+    );
+    const sheet = screen.getByRole("dialog", { name: "App lock" });
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Change PIN" })
+    );
+    await enterPin("1234");
+    await within(sheet).findByText(/Choose a new PIN/);
+    await enterPin("86420", "Next");
+    const release = holdHashing();
+    try {
+      await userEvent.type(within(sheet).getByLabelText("PIN"), "86420{Enter}");
+      expect(within(sheet).getByLabelText("PIN")).toHaveValue("");
+    } finally {
+      release();
+    }
+    expect(await within(sheet).findByText("PIN changed.")).toBeVisible();
+  });
+
+  it("Enter in the box unlocks", async () => {
+    await presetLock();
+    await renderJim();
+    await userEvent.type(pinBox(), "1234{Enter}");
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+  });
+
+  it("Enter on a key of the pad submits instead of pressing it", async () => {
+    await presetLock();
+    await renderJim();
+    await userEvent.keyboard("1234");
+    screen.getByRole("button", { name: "7" }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+  });
+
+  it("Enter on Forgot PIN? opens it and checks nothing", async () => {
+    await presetLock();
+    await renderJim();
+    await userEvent.keyboard("0000");
+    screen.getByRole("button", { name: "Forgot PIN?" }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByText(/Signing out wipes this device/)).toBeVisible();
+    expect(loadLock(ADMIN_UID)?.fails).toBe(0);
+  });
+
+  it("without a known length, waits for OK or Enter", async () => {
+    await presetLock();
+    await renderJim();
+    await userEvent.keyboard("0000");
+    await act(async () => {});
+    expect(screen.queryByText(/Wrong PIN/)).toBeNull();
+    expect(loadLock(ADMIN_UID)?.fails).toBe(0);
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByText("Wrong PIN. 9 attempts left.")
+    ).toBeInTheDocument();
+  });
+
+  it("with a known length, checks once as the last digit goes in", async () => {
+    await presetLock({ length: 4 });
+    await renderJim();
+    await userEvent.click(screen.getByRole("button", { name: "0" }));
+    await userEvent.click(screen.getByRole("button", { name: "0" }));
+    await userEvent.click(screen.getByRole("button", { name: "0" }));
+    expect(loadLock(ADMIN_UID)?.fails).toBe(0);
+    await userEvent.click(screen.getByRole("button", { name: "0" }));
+    expect(
+      await screen.findByText("Wrong PIN. 9 attempts left.")
+    ).toBeInTheDocument();
+    expect(loadLock(ADMIN_UID)?.fails).toBe(1);
+    expect(pinBox().value).toBe("");
+    // Typed on the number pad: no return key needed.
+    await userEvent.type(pinBox(), "1234");
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+    expect(loadLock(ADMIN_UID)?.fails).toBe(0);
+  });
+
+  it("never checks a shorter part of a longer PIN", async () => {
+    await presetLock({ length: 6 }, "123456");
+    await renderJim();
+    await userEvent.type(pinBox(), "1234");
+    await act(async () => {});
+    expect(isLocked()).toBe(true);
+    expect(loadLock(ADMIN_UID)?.fails).toBe(0);
+    await userEvent.type(pinBox(), "56");
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+  });
+
+  it("learns the length from a right PIN on an older lock", async () => {
+    await presetLock();
+    await renderJim();
+    await enterPin("1234");
+    await screen.findByText(SECRET);
+    expect(loadLock(ADMIN_UID)?.length).toBe(4);
+  });
+
+  it("keeps the length when a PIN is set or changed; setting one never jumps ahead", async () => {
+    await renderJim();
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "App lock: Off" })
+    );
+    const sheet = screen.getByRole("dialog", { name: "App lock" });
+    await userEvent.type(within(sheet).getByLabelText("PIN"), "2580");
+    await act(async () => {});
+    expect(within(sheet).getByText(/Choose a PIN/)).toBeVisible();
+    await userEvent.keyboard("{Enter}");
+    expect(within(sheet).getByText("Enter it again")).toBeVisible();
+    await userEvent.type(within(sheet).getByLabelText("PIN"), "2580{Enter}");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Turn on" })
+    );
+    await waitFor(() => expect(loadLock(ADMIN_UID)?.length).toBe(4));
+
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "App lock: On" })
+    );
+    const again = screen.getByRole("dialog", { name: "App lock" });
+    await userEvent.click(
+      within(again).getByRole("button", { name: "Change PIN" })
+    );
+    await enterPin("2580");
+    await within(again).findByText(/Choose a new PIN/);
+    await enterPin("975310", "Next");
+    await enterPin("975310", "Next");
+    expect(await within(again).findByText("PIN changed.")).toBeVisible();
+    expect(loadLock(ADMIN_UID)?.length).toBe(6);
   });
 });
 
@@ -458,6 +744,16 @@ describe("Face ID", () => {
     expect(loadLock(ADMIN_UID)?.fails).toBe(0);
   });
 
+  it("Enter on the Face ID button submits a typed PIN, not Face ID", async () => {
+    await presetLock({ credential: toBase64Url(ID) });
+    await renderJim();
+    await userEvent.keyboard("1234");
+    screen.getByRole("button", { name: "Unlock with Face ID" }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it("a cancel falls back to the PIN, never loops, and isn't a wrong PIN", async () => {
     get.mockRejectedValue(new DOMException("cancel", "NotAllowedError"));
     await presetLock({ credential: toBase64Url(ID) });
@@ -527,6 +823,7 @@ describe("JimChat while locked", () => {
       after: 0,
       lockedUntil: 0,
       faceId: false,
+      pinLength: null,
       faceIdSupported: false,
       lockNow: jest.fn(),
       settleWait: jest.fn(),
