@@ -2977,3 +2977,339 @@ html:has(.jim-app) body {
     display: none;
   }
 }
+
+/* Make It Grow: the pictures of each fork and the seed bank. A new `gt-`
+   prefix; every loop stops for reduced motion and leaves the drawn picture. */
+.gt-flutter,
+.gt-flutter-b,
+.gt-mist,
+.gt-mist-b,
+.gt-crew,
+.gt-crew-b,
+.gt-sack,
+.gt-circle,
+.gt-canopy,
+.gt-canopy-b,
+.gt-reed,
+.gt-reed-b,
+.gt-heron,
+.gt-ripple-w,
+.gt-beam,
+.gt-halo,
+.gt-moth,
+.gt-moth-b {
+  transform-box: fill-box;
+}
+
+.gt-canopy,
+.gt-canopy-b,
+.gt-reed,
+.gt-reed-b,
+.gt-crew,
+.gt-crew-b {
+  transform-origin: 50% 100%;
+}
+
+@keyframes gt-flutter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(18px, -8px);
+  }
+  50% {
+    transform: translate(34px, 4px);
+  }
+  75% {
+    transform: translate(14px, 10px);
+  }
+}
+
+.gt-flutter {
+  animation: gt-flutter 9s ease-in-out infinite;
+}
+
+.gt-flutter-b {
+  animation: gt-flutter 11s ease-in-out -4s infinite reverse;
+}
+
+@keyframes gt-mist {
+  0% {
+    transform: translateX(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(34px);
+    opacity: 0;
+  }
+}
+
+.gt-mist {
+  animation: gt-mist 3.2s ease-out infinite;
+}
+
+.gt-mist-b {
+  animation: gt-mist 4.4s ease-out -1.8s infinite;
+}
+
+@keyframes gt-crew {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+.gt-crew {
+  animation: gt-crew 3.4s ease-in-out infinite;
+}
+
+.gt-crew-b {
+  animation: gt-crew 4.2s ease-in-out -1.5s infinite;
+}
+
+@keyframes gt-sack {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.gt-sack {
+  animation: gt-sack 3s ease-in-out infinite;
+}
+
+@keyframes gt-circle {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(70px, 8px);
+  }
+  50% {
+    transform: translate(140px, 0);
+  }
+  75% {
+    transform: translate(70px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.gt-circle {
+  animation: gt-circle 14s ease-in-out infinite;
+}
+
+@keyframes gt-canopy {
+  0%,
+  100% {
+    transform: skewX(-3deg);
+  }
+  50% {
+    transform: skewX(3deg);
+  }
+}
+
+.gt-canopy {
+  animation: gt-canopy 5s ease-in-out infinite;
+}
+
+.gt-canopy-b {
+  animation: gt-canopy 6.5s ease-in-out -2.5s infinite;
+}
+
+.gt-reed {
+  animation: gt-canopy 3.6s ease-in-out infinite;
+}
+
+.gt-reed-b {
+  animation: gt-canopy 4.4s ease-in-out -1.7s infinite;
+}
+
+@keyframes gt-heron {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+.gt-heron {
+  animation: gt-heron 6s ease-in-out infinite;
+}
+
+@keyframes gt-ripple-w {
+  0% {
+    transform: scaleX(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scaleX(1.5);
+    opacity: 0;
+  }
+}
+
+.gt-ripple-w {
+  animation: gt-ripple-w 4s ease-out infinite;
+}
+
+@keyframes gt-beam {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gt-beam {
+  animation: gt-beam 6s ease-in-out infinite;
+}
+
+@keyframes gt-halo {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.gt-halo {
+  animation: gt-halo 4s ease-in-out infinite;
+}
+
+@keyframes gt-moth {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(18px, 10px);
+  }
+  50% {
+    transform: translate(28px, -2px);
+  }
+  75% {
+    transform: translate(10px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.gt-moth {
+  animation: gt-moth 5s ease-in-out infinite;
+}
+
+.gt-moth-b {
+  animation: gt-moth 6.4s ease-in-out -2.2s infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-flutter,
+  .gt-flutter-b,
+  .gt-mist,
+  .gt-mist-b,
+  .gt-crew,
+  .gt-crew-b,
+  .gt-sack,
+  .gt-circle,
+  .gt-canopy,
+  .gt-canopy-b,
+  .gt-reed,
+  .gt-reed-b,
+  .gt-heron,
+  .gt-ripple-w,
+  .gt-beam,
+  .gt-halo,
+  .gt-moth,
+  .gt-moth-b {
+    animation: none;
+  }
+}
+
+.gt-drip,
+.gt-sparkle,
+.gt-bunting,
+.gt-deer {
+  transform-box: fill-box;
+}
+
+@keyframes gt-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+.gt-drip {
+  animation: gt-drip 1.8s ease-in infinite;
+}
+
+@keyframes gt-sparkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gt-sparkle {
+  animation: gt-sparkle 2.4s ease-in-out infinite;
+}
+
+@keyframes gt-bunting {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+.gt-bunting {
+  animation: gt-bunting 1.6s ease-in-out infinite;
+}
+
+@keyframes gt-deer {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(26px);
+  }
+}
+
+.gt-deer {
+  animation: gt-deer 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-drip,
+  .gt-sparkle,
+  .gt-bunting,
+  .gt-deer {
+    animation: none;
+  }
+}

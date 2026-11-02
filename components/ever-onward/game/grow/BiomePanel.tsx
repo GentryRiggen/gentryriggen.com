@@ -8,6 +8,7 @@ import {
   activeBiome,
   bestBiome,
   biomeShare,
+  isBiomeLocked,
   spreadActionId,
   switchesSoFar,
   worldCover,
@@ -98,6 +99,7 @@ export default function BiomePanel({ def, run, onAct }: PanelProps) {
                 className="block font-mono text-xs font-bold normal-case"
               >
                 {pct(biomeShare(run, biome))} of the world: {PERK_WORDS[biome]}
+                {isBiomeLocked(run, biome) ? ". Closed by your choice" : ""}
                 {biome === best && !checked ? ". Worth spreading" : ""}
                 {checked ? ". Spreading now" : ""}
               </span>

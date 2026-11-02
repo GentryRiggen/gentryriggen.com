@@ -1,3 +1,4 @@
+import { SeedForkArt } from "./TradeoffArt";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import type { PotStage } from "@/lib/ever-onward/universes/grow/windowbox";
 import { POT, SEED_CAN, SEED_DEW, SEED_LANTERN, SEED_MUSIC } from "./anchors";
@@ -585,6 +586,7 @@ export default function SeedLayer({ info }: { info: GrowSceneInfo }) {
         </g>
       )}
       {info.visitorHere && <Visitors />}
+      <SeedForkArt info={info} />
     </g>
   );
 }

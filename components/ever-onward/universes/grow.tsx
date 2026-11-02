@@ -15,6 +15,9 @@ import GrowEndingArt from "../game/grow/GrowEndingArt";
 import BeeDance from "../game/grow/BeeDance";
 import BiomePanel from "../game/grow/BiomePanel";
 import CountyFair from "../game/grow/CountyFair";
+import ForkPanel from "../game/grow/ForkPanel";
+import KnowHowPanel from "../game/grow/KnowHowPanel";
+import SeedBankPanel from "../game/grow/SeedBankPanel";
 import MarketPanel from "../game/grow/MarketPanel";
 import SeedMigration from "../game/grow/SeedMigration";
 import WindowBox from "../game/grow/WindowBox";
@@ -64,7 +67,10 @@ export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
   panels: [
     SeasonDial,
+    ForkPanel,
     MarketPanel,
+    SeedBankPanel,
+    KnowHowPanel,
     BeeDance,
     CountyFair,
     BiomePanel,
