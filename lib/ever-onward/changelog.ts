@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.22.1",
+    date: "2026-11-02",
+    title: "Start over any time",
+    highlights: [
+      "The Menu has a Start over button. It asks first, then starts the universe again from the very beginning. Your embers, permanent upgrades and finished runs stay",
+    ],
+  },
+  {
     version: "1.22.0",
     date: "2026-11-02",
     title: "A brighter Coast",

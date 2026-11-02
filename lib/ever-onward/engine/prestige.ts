@@ -64,6 +64,20 @@ export function endRun(
   };
 }
 
+/**
+ * Start the universe over from its first part, from the menu, at any time.
+ * A run that could restart for embers banks them as usual; an earlier one
+ * just starts fresh. Embers, permanent upgrades and finished runs stay.
+ */
+export function startOver(
+  def: UniverseDef,
+  save: UniverseSave,
+  seed: number = DEFAULT_SEED
+): UniverseSave {
+  if (canRestart(save.run)) return endRun(def, save, seed);
+  return { ...save, run: newRun(def, save.prestigeUpgrades, seed) };
+}
+
 function findPrestige(
   def: UniverseDef,
   id: string
