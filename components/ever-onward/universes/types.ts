@@ -61,6 +61,8 @@ export interface UniverseUi {
   Scene: ComponentType<SceneProps>;
   /** Rendered in order after the action panel. */
   panels: readonly ComponentType<PanelProps>[];
+  /** Rendered in order above the upgrade list, for the knob you keep adjusting. */
+  topPanels?: readonly ComponentType<PanelProps>[];
   Opening?: ComponentType<{
     run: RunState;
     onChoose: (value: number) => void;

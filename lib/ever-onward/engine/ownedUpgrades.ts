@@ -98,6 +98,9 @@ export function currentEffectText(
   isOneOff: boolean
 ): string | null {
   if (!preview) return null;
+  // A plain "what buying it would do" line ("×2 coins per ship") has no
+  // before-and-after; for a one-off already bought it would only read "×1".
+  if (isOneOff && !ARROW.test(preview)) return null;
   return preview
     .split(" · ")
     .map((segment) => {

@@ -199,15 +199,21 @@ test.describe("Ever Onward", () => {
     ).toContainText("Level 1");
   });
 
-  test("oil is bought by hand once a few ships have been guided", async ({
+  test("the lamp opens with the first keeper and sells oil", async ({
     page,
   }) => {
-    await startGame(page);
-    await expect(page.getByRole("region", { name: "Actions" })).toHaveCount(0);
-    for (let i = 0; i < 14; i += 1) await page.getByTestId("lm-tap").click();
-    const actions = page.getByRole("region", { name: "Actions" });
-    await expect(actions).toContainText("Buy oil");
-    await expect(actions).toContainText("a barrel");
+    await seedLight(page, {
+      resources: { coins: 200, oil: 10, ships: 30 },
+      owned: { keeper: 1 },
+    });
+    await openHub(page);
+    await page.getByTestId("lm-play-light").click();
+    const lamp = page.getByTestId("lm-lamp");
+    await expect(lamp).toBeVisible();
+    await expect(page.getByTestId("lm-buy-oil")).toContainText(/Buy oil/i);
+    await expect(page.getByTestId("lm-lamp-best")).toBeVisible();
+    await page.getByTestId("lm-lamp-0").click();
+    await expect(lamp).toContainText("Dim");
     await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
   });
 
@@ -332,7 +338,10 @@ test.describe("Ever Onward", () => {
     test("an out-of-oil warning sits near the top and the chip leads to oil", async ({
       page,
     }) => {
-      await seedLight(page, { resources: { coins: 30, oil: 0, ships: 14 } });
+      await seedLight(page, {
+        resources: { coins: 30, oil: 0, ships: 14 },
+        owned: { keeper: 1 },
+      });
       await openHub(page);
       await page.getByTestId("lm-play-light").click();
       const alert = page.getByTestId("lm-alert");
@@ -341,9 +350,7 @@ test.describe("Ever Onward", () => {
       expect(box && box.y).toBeLessThanOrEqual(650);
       await page.getByTestId("lm-hud-alert").click();
       await page.waitForTimeout(800);
-      await expect(
-        page.getByRole("region", { name: "Actions" })
-      ).toBeInViewport({ ratio: 0.9 });
+      await expect(page.getByTestId("lm-buy-oil")).toBeInViewport();
     });
   });
 

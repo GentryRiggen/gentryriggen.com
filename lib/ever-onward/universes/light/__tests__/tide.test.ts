@@ -13,6 +13,7 @@ import { def } from "./fixtures";
 import {
   HAUL_ACTION,
   SET_NETS_ACTION,
+  TIDE_OPEN_FLAG,
   catchSeconds,
   haulResultLine,
   haulsSoFar,
@@ -27,18 +28,26 @@ import { TUNING } from "../tuning";
 
 const CYCLE = TUNING.tide.cycleSeconds;
 
-/** A coast run that has just bought the fish market (the tide is not open yet). */
+/**
+ * A coast run whose clock is about to open. Nothing in the Coast opens it any
+ * more (the fish market only builds a market now), so the tests open it the
+ * way an old save already has it: with its flag set.
+ */
 const coastRun = (owned: Record<string, number> = {}): RunState => {
   const base = newRun(def);
   return {
     ...base,
     owned: { keeper: 5, "dock-1": 1, ...owned },
+    flags: { ...base.flags, [TIDE_OPEN_FLAG]: true },
     resources: { ...base.resources, coins: 1000 },
   };
 };
 
-const open = (owned: Record<string, number> = {}): RunState =>
-  tick(def, coastRun(owned), 0.1);
+/** The clock just opened: low tide, the count not yet started. */
+const open = (owned: Record<string, number> = {}): RunState => {
+  const ticked = tick(def, coastRun(owned), 0.1);
+  return { ...ticked, resources: { ...ticked.resources, tdTime: 0 } };
+};
 
 const idle = (run: RunState, seconds: number): RunState => {
   let next = run;
@@ -59,7 +68,7 @@ function toFull(run: RunState, limit = 400): RunState {
 }
 
 describe("the tide clock", () => {
-  it("opens on the fish market purchase with a story line, never on a timer", () => {
+  it("opens with a story line once its flag is set, never on a timer", () => {
     const base = newRun(def);
     const waited = idle({ ...base, owned: { keeper: 5 } }, 600);
     expect(isTideOpen(waited)).toBe(false);
@@ -82,10 +91,10 @@ describe("the tide clock", () => {
     const loaded = reconcileRun(def, old);
     expect(isTideOpen(loaded)).toBe(false);
     expect(() => idle(loaded, 5)).not.toThrow();
-    // an old save that already owns the market gets the clock on its next tick
+    // owning the market no longer opens it: the Coast has no tide clock
     expect(
       isTideOpen(tick(def, { ...loaded, owned: { "dock-1": 1 } }, 1))
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("rises and falls in one slow wave, about every three minutes", () => {
@@ -272,7 +281,7 @@ describe("the tide clock", () => {
     // storms (which draw from the run's stream) come out identical
     const withClock = idle(tick(def, coastRun(), 1), 300);
     const without = idle(
-      tick(def, { ...coastRun(), owned: { keeper: 5 } }, 1),
+      tick(def, { ...coastRun(), flags: {}, owned: { keeper: 5 } }, 1),
       300
     );
     expect(isTideOpen(withClock)).toBe(true);
@@ -289,16 +298,11 @@ describe("the tide clock", () => {
         stopWhen: (run) => run.phase >= 1,
       }).actionsDone.filter((a) => a.id === HAUL_ACTION).length;
 
-    it("is tended by the tapper and realistic bots, sometimes by the dawdler, never by the idle bot", () => {
-      const tapper = hauls("tapper");
-      const realistic = hauls("realistic");
-      const dawdler = hauls("dawdler");
-      expect(tapper).toBeGreaterThanOrEqual(5);
-      expect(realistic).toBeGreaterThanOrEqual(2);
-
-      expect(dawdler).toBeGreaterThan(0);
-      expect(dawdler).toBeLessThan(tapper);
-      expect(hauls("idle")).toBe(0);
+    it("is gone from the Coast: no fish market opens it, so no bot ever tends it", () => {
+      // The Coast's one knob is the lamp now. The clock's code and its tests
+      // stay for old saves that already have it open.
+      for (const who of ["tapper", "realistic", "dawdler", "idle"] as const)
+        expect(hauls(who)).toBe(0);
     });
   });
 });

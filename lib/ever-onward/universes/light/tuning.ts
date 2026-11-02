@@ -6,7 +6,7 @@ export const TUNING = {
    * again (and added forks, the fund and overdrive), so the whole run is
    * priced up to stay about two hours.
    */
-  costScale: { coast: 88, night: 28, sky: 9.5, last: 4.6 } as Record<
+  costScale: { coast: 1, night: 28, sky: 9.5, last: 4.6 } as Record<
     string,
     number
   >,
@@ -70,8 +70,8 @@ export const TUNING = {
     },
     /** What each side costs. */
     costs: {
-      fresnel: 5000,
-      crews: 5000,
+      fresnel: 5000000,
+      crews: 5000000,
       coal: 9000,
       wind: 30000,
       swarm: 4000,
@@ -85,11 +85,6 @@ export const TUNING = {
    * used to have, so a player who barely taps still gets going.
    */
   openingScale: {
-    lens: 3.35,
-    keeper: 3.35,
-    "wick-1": 3.35,
-    "fees-1": 3.35,
-    "train-1": 3.35,
     crank: 2.9,
     gen1: 2.9,
     gen2: 2.9,
@@ -100,24 +95,47 @@ export const TUNING = {
     "copy-1": 3,
   } as Record<string, number>,
   coast: {
-    fareGrowth: 1.6,
+    fareGrowth: 1.5,
+    /** Keepers (the main repeatable buy) stop here. */
+    keeperMax: 40,
+    /** Having this many keepers doubles every keeper's work, once each. */
+    keeperMilestones: [5, 10, 25, 40] as readonly number[],
+    keeperMilestoneMult: 2,
+    /** Every lighthouse after the first multiplies the ships by this. */
+    lighthouseMult: 2,
+    /** Each lighthouse costs this many times the one before. */
+    lighthouseGrowth: 7.5,
+    /**
+     * The lamp's brightness, the coast's one knob. `pay` multiplies the ships
+     * every flash guides (yours and the keepers'), `burn` the oil the lamp
+     * burns. Brighter pays more but burns even more, so the right step
+     * follows the oil price.
+     */
+    beam: {
+      defaultStep: 1,
+      steps: [
+        { label: "Dim", pay: 0.5, burn: 0.3 },
+        { label: "Normal", pay: 1, burn: 1 },
+        { label: "Bright", pay: 1.8, burn: 2.5 },
+        { label: "Blazing", pay: 2.5, burn: 5 },
+      ] as readonly { label: string; pay: number; burn: number }[],
+    },
     /** Ships one flash guides at each lens level, the keepers' flashes too. */
-    lensShips: [1, 3, 6, 12] as readonly number[],
+    lensShips: [1, 2, 4, 8] as readonly number[],
     /** A tap also brings this share of a second of the keepers' coins. */
-    tapShare: 0.004,
-    keeperFlashes: 1,
+    tapShare: 0.04,
+    keeperFlashes: 0.3,
     /** Each training step multiplies every keeper's flashes. */
-    trainingSteps: [2, 2, 2.5] as readonly number[],
-    burnPerShip: 0.1,
-    burnPerShipPerLighthouse: 0.1,
+    trainingSteps: [2, 2, 2] as readonly number[],
+    /** Oil burned per coin of fare a keeper's ship pays, at the Normal step. */
+    burnPerShip: 0.25,
     stormTapBonus: 3,
     /** Ships still come in a storm at this share; shutters and glass raise it (glass: ships shelter and more come). */
-    stormPassive: [0.5, 0.85, 1.3] as readonly number[],
+    stormPassive: [0.2, 1, 1.5] as readonly number[],
     stormLength: 25,
     stormGapMin: 150,
     stormGapSpread: 150,
-    dimLamp: 0.7,
-    burnBase: 0.3,
+    dimLamp: 0.25,
     oilMean: 2,
     oilMin: 0.3,
     oilMax: 6,

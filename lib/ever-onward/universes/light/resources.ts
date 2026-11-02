@@ -36,6 +36,14 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: [PHASE_COAST],
   },
   { id: "keepers", label: "Keepers", phases: [PHASE_COAST] },
+  // The lamp's brightness knob (Dim, Normal, Bright, Blazing), read by tick.ts
+  {
+    id: "lampBeam",
+    label: "Lamp brightness",
+    initial: 1,
+    phases: HIDDEN,
+  },
+  { id: "lampBeamChanges", label: "Lamp brightness changes", phases: HIDDEN },
   { id: "storm", label: "Storm", phases: HIDDEN },
   { id: "stormCooldown", label: "Next storm", initial: 120, phases: HIDDEN },
   // No More Night

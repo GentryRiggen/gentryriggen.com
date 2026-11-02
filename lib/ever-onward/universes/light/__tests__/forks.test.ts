@@ -43,7 +43,7 @@ const K = TUNING.fork;
 function runAt(fork: ForkDef): RunState {
   const base = newRun(def);
   const owned: Record<string, number> = {
-    coast: { keeper: 3, lens: 1 },
+    coast: { keeper: 3, lens: 1, lighthouse: 3 },
     night: { gen1: 5, gen2: 3 },
     sky: { collector: 6, probe: 1, "copy-1": 1 },
     last: {
@@ -60,7 +60,7 @@ function runAt(fork: ForkDef): RunState {
     owned,
     resources: {
       ...base.resources,
-      [fork.currency]: 1e6,
+      [fork.currency]: 1e8,
       ships: 500,
       night: 80,
       probes: 20,

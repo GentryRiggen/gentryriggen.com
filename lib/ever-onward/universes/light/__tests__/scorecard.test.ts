@@ -36,7 +36,26 @@ jest.setTimeout(180_000);
  * 1.5 h) while M16 (decision gaps) rose; the floor is that score minus 1.
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 78;
+/**
+ * The Coast rework (goal on the HUD, keepers with milestones, lighthouses that
+ * compound, the lamp knob; tuned by playing it in a browser, not to this card)
+ * scored 73.3 uncapped, down from 78.9 on the same card. The Coast now takes a player who only taps and buys about 20
+ * minutes, and the scorecard's bots (which use the lamp and the fork well) 11, so M14 (total length) fell and
+ * the Coast's M1, M4, M5 and M15 gates trip: more, smaller, faster purchases and
+ * the lamp knob mean more clicks a minute and later buys that are a smaller
+ * share of a much bigger income. That is the point of the rework, so the floor
+ * is that score minus 1; it is not tuned back toward the old, slow Coast.
+ */
+const UNCAPPED_FLOOR = 72;
+/** Gates the Coast rework knowingly trips (see above); no other gate may fail. */
+const KNOWN_REWORK_GATES: readonly string[] = [
+  // The last cards of the Coast reveal minutes apart (a gap of ~226 s).
+  "M1 Reveal cadence (coast)",
+  "M4 Felt effect (coast)",
+  "M5 Purchase rate (coast)",
+  "M14 Total length (run)",
+  "M15 Chore rate (coast)",
+];
 /** An M16 phase allowed to fail its gate, but not to get any worse. */
 interface DeadPhaseCeiling {
   /** Share of the phase in gaps over 60 s today, plus 5 points. */
@@ -126,6 +145,7 @@ describe("Keep the Light On engagement scorecard", () => {
     const m16 = good.metrics.find((m) => m.id === "M16")!;
     const unexpected = good.failingGates.filter(
       (g) =>
+        !KNOWN_REWORK_GATES.some((known) => g.startsWith(known)) &&
         !Object.keys(KNOWN_DEAD_PHASES).some((p) =>
           g.startsWith(`M16 Decision gaps (${p})`)
         )

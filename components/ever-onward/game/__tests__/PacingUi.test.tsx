@@ -48,12 +48,16 @@ function renderScreen(
   return onAction;
 }
 
-const coastRun = (resources: Record<string, number>): RunState => {
+const coastRun = (
+  resources: Record<string, number>,
+  owned: Record<string, number> = {}
+): RunState => {
   const run = newRun(lightUniverse);
   return {
     ...run,
     taps: 1,
     time: 5,
+    owned,
     revealed: ["lens", "keeper"],
     resources: { ...run.resources, ...resources },
   };
@@ -63,9 +67,11 @@ describe("upgrade cards", () => {
   it("show what the upgrade will change", () => {
     renderScreen(coastRun({ ships: 30, coins: 0 }));
     const list = screen.getByRole("region", { name: "Upgrades" });
-    expect(
-      within(list).getAllByTestId("lm-effect-preview")[0]
-    ).toHaveTextContent("Ships per flash 1 → 3");
+    const lines = within(list)
+      .getAllByTestId("lm-effect-preview")
+      .map((el) => el.textContent);
+    expect(lines).toContain("×2 ships per flash");
+    expect(lines.some((t) => t?.startsWith("+1 keeper (+"))).toBe(true);
   });
 
   it("hint that more will unlock, and never mention boons", () => {
@@ -77,38 +83,59 @@ describe("upgrade cards", () => {
   });
 });
 
-describe("the oil button", () => {
-  it("is hidden before the first ships", () => {
-    renderScreen(coastRun({ ships: 0 }));
+describe("the lamp panel (oil and brightness together)", () => {
+  it("is hidden until the first keeper", () => {
+    renderScreen(coastRun({ ships: 30 }));
+    expect(screen.queryByTestId("lm-lamp")).toBeNull();
+    // and the old oil list is gone: the panel absorbed it
     expect(screen.queryByRole("region", { name: "Actions" })).toBeNull();
   });
 
-  it("shows the price, a hint and the tank, and buys on click", async () => {
+  it("shows the tank, the price and a hint, and buys oil on click", async () => {
     const onAction = renderScreen(
-      coastRun({ ships: 30, coins: 500, oil: 5, oilPrice: 1.2 })
+      coastRun({ ships: 30, coins: 500, oil: 5, oilPrice: 1.2 }, { keeper: 2 })
     );
-    const actions = screen.getByRole("region", { name: "Actions" });
-    expect(within(actions).getByTestId("lm-action-hint")).toHaveTextContent(
+    const lamp = screen.getByTestId("lm-lamp");
+    expect(within(lamp).getByTestId("lm-oil-price")).toHaveTextContent(
+      "1.20 each"
+    );
+    expect(within(lamp).getByTestId("lm-oil-price")).toHaveTextContent(
       "cheap!"
     );
-    expect(actions).toHaveTextContent("1.20 a barrel");
-    expect(actions).toHaveTextContent("tank 5 of 40");
-    await userEvent.click(
-      within(actions).getByRole("button", { name: /Buy oil/ })
-    );
+    expect(lamp).toHaveTextContent(/Oil 5 \/ \d+/);
+    await userEvent.click(within(lamp).getByTestId("lm-buy-oil"));
     expect(onAction).toHaveBeenCalledWith("buy-oil");
   });
 
-  it("flags a pricey day, and can't be clicked without coins", async () => {
+  it("flags a pricey day, and can't buy oil without coins", async () => {
     const onAction = renderScreen(
-      coastRun({ ships: 30, coins: 1, oil: 5, oilPrice: 4 })
+      coastRun({ ships: 30, coins: 1, oil: 5, oilPrice: 4 }, { keeper: 2 })
     );
-    const actions = screen.getByRole("region", { name: "Actions" });
-    expect(within(actions).getByTestId("lm-action-hint")).toHaveTextContent(
+    const lamp = screen.getByTestId("lm-lamp");
+    expect(within(lamp).getByTestId("lm-oil-price")).toHaveTextContent(
       "pricey"
     );
-    await userEvent.click(within(actions).getByRole("button"));
+    await userEvent.click(within(lamp).getByTestId("lm-buy-oil"));
     expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("lets you pick a brightness, and shows what each would earn", async () => {
+    const onAction = renderScreen(
+      coastRun({ ships: 30, coins: 500, oil: 20, oilPrice: 1 }, { keeper: 5 })
+    );
+    const lamp = screen.getByTestId("lm-lamp");
+    const radios = within(lamp).getAllByRole("radio");
+    expect(radios.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/Dim.*net.*tank lasts/),
+      expect.stringMatching(/Normal.*net.*tank lasts/),
+      expect.stringMatching(/Bright.*net.*tank lasts/),
+      expect.stringMatching(/Blazing.*net.*tank lasts/),
+    ]);
+    expect(radios[1]).toHaveAttribute("aria-checked", "true");
+    // oil at 1 is cheap: a brighter lamp is the better pick, and is marked
+    expect(within(lamp).getByTestId("lm-lamp-best")).toBeInTheDocument();
+    await userEvent.click(radios[3]);
+    expect(onAction).toHaveBeenCalledWith("lamp-3");
   });
 });
 

@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.22.0",
+    date: "2026-11-02",
+    title: "A brighter Coast",
+    highlights: [
+      "Keep the Light On's first part shows its goal right at the top: light the coast, with a bar for every lighthouse and what the next one costs",
+      "Things grow fast now. Keepers are cheap, every 5, 10, 25 and 40 keepers doubles them, and every new lighthouse doubles your ships",
+      "A new lamp knob: Dim, Normal, Bright or Blazing. Brighter guides more ships but burns more oil, so blaze when oil is cheap and dim it when oil is dear. It shows what each setting would earn",
+      "Upgrade cards are short now: a name, a price and what it does, like ×2 ships. Tap About for the story",
+      "Less on screen: the savings jar and the tide clock left the Coast, the stats grid is gone, and visitors wait below the shop. The flash button no longer covers the cards",
+    ],
+  },
+  {
     version: "1.21.0",
     date: "2026-11-02",
     title: "Make Everyone Smile",

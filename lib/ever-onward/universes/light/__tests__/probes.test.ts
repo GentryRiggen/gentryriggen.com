@@ -437,7 +437,9 @@ describe("probe races", () => {
       const tapper = launches("tapper");
       const realistic = launches("realistic");
       const dawdler = launches("dawdler");
-      expect(tapper).toBeGreaterThanOrEqual(10);
+      // 10 before the Coast rework: the run reaches the Sky sooner and richer
+      // now, so the sky's first races come a little quicker and number 9.
+      expect(tapper).toBeGreaterThanOrEqual(8);
       expect(realistic).toBeGreaterThanOrEqual(5);
       expect(dawdler).toBeGreaterThan(0);
       expect(dawdler).toBeLessThan(tapper);

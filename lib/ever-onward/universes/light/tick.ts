@@ -70,8 +70,38 @@ export const fresnelMult = (run: RunState): number =>
 export const keeperCrewMult = (run: RunState): number =>
   hasFork(run, "crews") ? FK.coast.crewsFlash : 1;
 
+// ------------------------------------------------------- The lamp's brightness
+
+/** The brightness step, 0 (dim) to the last (blazing); old saves read Normal. */
+export const beamStep = (run: RunState): number => {
+  const raw = run.resources.lampBeam;
+  const step =
+    typeof raw === "number" && Number.isFinite(raw)
+      ? Math.round(raw)
+      : C.beam.defaultStep;
+  return Math.min(C.beam.steps.length - 1, Math.max(0, step));
+};
+
+/** What a brightness step does to the ships a flash guides and the oil burned. */
+export const beamAt = (step: number) => C.beam.steps[step];
+
+/** The knob opens with the first keeper. */
+export const isBeamOpen = (run: RunState): boolean =>
+  run.phase === 0 && level(run, "keeper") >= 1;
+
+/** Ships per flash and keeper flashes, times the brightness (Normal is 1). */
+export const beamPay = (run: RunState): number => beamAt(beamStep(run)).pay;
+
+/** Sets the lamp's brightness (the lamp panel's buttons). */
+export function setBeam(run: RunState, step: number): void {
+  const next = Math.min(C.beam.steps.length - 1, Math.max(0, Math.round(step)));
+  if (next === beamStep(run)) return;
+  run.resources.lampBeam = next;
+  run.resources.lampBeamChanges = res(run, "lampBeamChanges") + 1;
+}
+
 export const shipsPerFlash = (run: RunState): number =>
-  lensShips(run) * tapMult(run) * fresnelMult(run);
+  lensShips(run) * tapMult(run) * fresnelMult(run) * beamPay(run);
 
 export const fare = (run: RunState): number =>
   C.fareGrowth ** tier(run, "fees") * C.dockBonus ** tier(run, "dock");
@@ -80,7 +110,7 @@ export const isStorming = (run: RunState): boolean => res(run, "storm") > 0;
 
 /** A dry lamp is dim: it guides fewer ships, but still guides some. */
 export const lampFactor = (run: RunState): number =>
-  res(run, "oil") > 0 ? 1 : C.dimLamp;
+  res(run, "oil") > 0 ? 1 : C.dimLamp / beamPay(run);
 
 /**
  * A flash also stirs the keepers: each tap brings a small share of a second
@@ -110,16 +140,34 @@ export const trainingMult = (run: RunState): number =>
 
 export const keeperCount = (run: RunState): number => level(run, "keeper");
 
+/** Keeper milestones reached (5, 10, 25 and 40 keepers). */
+export const keeperMilestonesReached = (run: RunState): number =>
+  C.keeperMilestones.filter((m) => keeperCount(run) >= m).length;
+
+/** Every keeper's work doubles at each milestone. */
+export const keeperMilestoneMult = (run: RunState): number =>
+  C.keeperMilestoneMult ** keeperMilestonesReached(run);
+
+/** The next milestone's keeper count, or null once all are reached. */
+export const nextKeeperMilestone = (run: RunState): number | null =>
+  C.keeperMilestones.find((m) => keeperCount(run) < m) ?? null;
+
+/** Each lighthouse after the first doubles the ships (they compound). */
+export const lighthouseMult = (run: RunState): number =>
+  C.lighthouseMult ** (lighthouseCount(run) - 1);
+
 /** Flashes per second the keepers make, lamp and weather aside. */
 export const autoFlashRate = (run: RunState): number =>
   keeperCount(run) *
   C.keeperFlashes *
-  lighthouseCount(run) *
+  lighthouseMult(run) *
+  keeperMilestoneMult(run) *
   trainingMult(run) *
   lensShips(run) *
   fresnelMult(run) *
   keeperCrewMult(run) *
   tapMult(run) *
+  beamPay(run) *
   speed(run);
 
 /** Coins per second the keepers earn on a calm night with a full lamp. */
@@ -130,14 +178,26 @@ const oilSaving = (run: RunState): number =>
   C.wickSaving ** tier(run, "wick") *
   (hasFork(run, "crews") ? FK.coast.crewsOil : 1);
 
-/** Lamp oil burned per second: a steady glow plus a bit per ship guided. */
+/**
+ * Lamp oil burned per second. Oil follows the fares: every coin of fare a
+ * keeper's ship pays burns `burnPerShip` oil, so the oil bill is the same
+ * share of the income all game. The brightness multiplies the whole bill
+ * (not per ship), so brighter pays more but costs even more.
+ */
 export const burnPerSecond = (run: RunState, shipsPerSecond: number): number =>
-  (lighthouseCount(run) * C.burnBase + burnPerShip(run) * shipsPerSecond) *
-  oilSaving(run);
+  burnAtStep(run, shipsPerSecond, beamStep(run));
 
-/** A bigger operation burns more oil per ship: little at first, a lot later. */
-const burnPerShip = (run: RunState): number =>
-  C.burnPerShip + C.burnPerShipPerLighthouse * (lighthouseCount(run) - 1);
+/** The same burn with the lamp at `step` (`shipsPerSecond` is at today's step). */
+export const burnAtStep = (
+  run: RunState,
+  shipsPerSecond: number,
+  step: number
+): number =>
+  (shipsPerSecond / beamPay(run)) *
+  C.burnPerShip *
+  fare(run) *
+  oilSaving(run) *
+  beamAt(step).burn;
 
 /** Oil burned per second by an idle lamp, for previews. */
 export const idleBurn = (run: RunState): number =>
@@ -152,9 +212,10 @@ export const tankCapacity = (run: RunState): number => {
   const fullTiltShips =
     autoFlashRate(run) + C.tankTapsPerSecond * shipsPerFlash(run);
   const seconds = C.tankSeconds + C.tankSecondsPerTier * tier(run, "tank");
+  // Sized for the Normal step, so the tank is the same whatever the knob says.
   return Math.max(
-    C.tankBase * lighthouseCount(run),
-    burnPerSecond(run, fullTiltShips) * seconds
+    C.tankBase,
+    burnAtStep(run, fullTiltShips, C.beam.defaultStep) * seconds
   );
 };
 
@@ -787,6 +848,10 @@ export function manualLight(run: RunState): void {
     const flashes = shipsPerFlash(run);
     r.ships += flashes;
     r.coins += coastTapCoins(run);
+    // Once the lamp panel is open, your own flashes burn oil too (a lit lamp
+    // is a lit lamp), so the brightness is never a free lunch.
+    if (isBeamOpen(run) && r.oil > 0)
+      r.oil = Math.max(0, r.oil - burnAtStep(run, flashes, beamStep(run)));
   } else if (phase === 1) {
     r.power += crankPower(run);
   } else if (phase === 2) {

@@ -72,7 +72,9 @@ export const fundKind = (run: RunState): FundKind =>
 export function isFundOpen(run: RunState): boolean {
   switch (run.phase) {
     case 0:
-      return res(run, "ships") >= F.opensAt.coastShips;
+      // The coast has one knob (the lamp) and no savings jar: the money all
+      // goes into keepers and lighthouses.
+      return false;
     case 1:
       return owned(run, "gen1") >= F.opensAt.nightLittleGenerators;
     case 2:
@@ -165,6 +167,13 @@ export function tickFund(
 ): void {
   const balance = fundBalance(run);
   if (balance <= 0) return;
+  if (!isFundOpen(run)) {
+    // A save from before the Coast lost its jar: hand the coins back, whole.
+    const currency = fundKind(run).currency;
+    run.resources[currency] = res(run, currency) + balance;
+    run.resources[FUND_RESOURCE] = 0;
+    return;
+  }
   const grown = fundYieldPerSecond(balance, income()) * dt;
   run.resources[FUND_RESOURCE] = balance + grown;
   run.resources.fundEarned = res(run, "fundEarned") + grown;

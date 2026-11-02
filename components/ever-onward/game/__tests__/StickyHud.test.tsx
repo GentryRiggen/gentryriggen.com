@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { newSave } from "@/lib/ever-onward/engine/save";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import type { RunState } from "@/lib/ever-onward/engine/types";
@@ -51,7 +51,20 @@ describe("sticky HUD", () => {
     const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
     renderScreen(run);
     expect(screen.queryByTestId("lm-res-coins")).toBeNull();
-    expect(screen.getByTestId("lm-res-ships")).toBeInTheDocument();
+    // With a goal on the HUD the stats grid is left out altogether.
+    expect(screen.queryByTestId("lm-res-ships")).toBeNull();
+  });
+
+  it("makes the part's goal the big top line, with a segmented bar", () => {
+    const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
+    run.owned = { lighthouse: 2 };
+    run.resources.lighthouses = 3;
+    renderScreen(run);
+    const goal = within(screen.getByTestId("lm-hud")).getByTestId("lm-goal");
+    expect(goal).toHaveTextContent("LIGHT THE COAST");
+    expect(screen.getByTestId("lm-goal-count")).toHaveTextContent("3 / 8");
+    expect(goal).toHaveTextContent(/Next lighthouse: .* coins/);
+    expect(within(goal).getAllByTestId("lm-goal-lit")).toHaveLength(3);
   });
 
   it("keeps the one tap button reachable at all times", () => {

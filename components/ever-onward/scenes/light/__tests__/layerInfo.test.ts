@@ -34,7 +34,11 @@ describe("layer info", () => {
     const base = runAtPhaseStart(0);
     let run = tick(
       def,
-      { ...base, owned: { ...base.owned, "dock-1": 1 } },
+      {
+        ...base,
+        owned: { ...base.owned, "dock-1": 1 },
+        flags: { ...base.flags, "tide-open": true },
+      },
       0.1
     );
     expect(sceneInfo(run).tideOpen).toBe(1);

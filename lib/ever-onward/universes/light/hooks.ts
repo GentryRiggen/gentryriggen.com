@@ -1,6 +1,7 @@
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { sceneInfo } from "./scene";
 import { LAMP_ACTION_IDS } from "./lamps";
+import { BEAM_ACTION_IDS } from "./beam";
 import {
   gridSteadiness,
   headingOf,
@@ -12,6 +13,7 @@ import {
   isGridInPlay,
   flameFraction,
   isOilCheap,
+  isBeamOpen,
   isRushOn,
   isLampsOpen,
   isStorming,
@@ -62,12 +64,13 @@ export function lightPlates(run: RunState): string[] {
   const plates: string[] = [];
   if (run.phase === 0) {
     plates.push("tap");
-    const hasOilButton = run.resources.ships >= 12;
+    const hasOilButton = isBeamOpen(run);
     const isTankLow =
       run.resources.oil < tankCapacity(run) * OIL_LOW_SHARE ||
       run.resources.oil <= 0;
     if (hasOilButton && (isOilCheap(run) || isTankLow))
       plates.push("oilMarket");
+    if (hasOilButton) plates.push("lamp");
     if (isStorming(run)) plates.push("storm");
     // Offered once the second catch is in (so it is not a crowd of beats at
     // the moment the clock opens).
@@ -115,6 +118,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   grid: ["balance-grid"],
   rush: ["ride-rush"],
   lamps: LAMP_ACTION_IDS,
+  lamp: BEAM_ACTION_IDS,
   tide: TIDE_ACTION_IDS,
   race: LAUNCH_ACTION_IDS,
   weather: SHIELD_ACTION_IDS,
@@ -140,6 +144,7 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   ...SHIELD_ACTION_IDS,
   WATER_ACTION,
   ...LAMP_ACTION_IDS,
+  ...BEAM_ACTION_IDS,
   ...FUND_CHOICE_IDS,
   OVERDRIVE_ACTION,
   ...FORK_ACTION_IDS,

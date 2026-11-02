@@ -132,6 +132,11 @@ export interface UpgradeDef {
    */
   effectPreview?(run: RunState): string | null;
   /**
+   * A short label for a card that changes how you play ("NEW ABILITY"), shown
+   * as a badge. Omitted: no badge.
+   */
+  badge?: string;
+  /**
    * A short, kind reason shown instead of "X -> X" when the preview would
    * change nothing right now ("A wheelbarrow lets them carry more."). Must
    * only read. Omitted: a generic line is used.
@@ -306,6 +311,20 @@ export interface PrestigeDef {
   upgrades: readonly PrestigeUpgradeDef[];
 }
 
+/** The big line at the top of the screen: what this part is working toward. */
+export interface GoalView {
+  /** Short and loud ("LIGHT THE COAST"). */
+  label: string;
+  current: number;
+  target: number;
+  /** What the units are ("lighthouses"). */
+  unit?: string;
+  /** What the next step costs ("Next lighthouse: 4.2K coins"). */
+  next?: string;
+  /** 0 to 1: how far the next step is filled (the coins saved toward it). */
+  progress?: number;
+}
+
 export interface UniverseDef {
   id: string;
   title: string;
@@ -338,6 +357,11 @@ export interface UniverseDef {
   visitors?: readonly VisitorDef[];
   /** A countdown bar for the current phase, or null. Must only read. */
   countdown?(run: RunState): CountdownView | null;
+  /**
+   * The part's goal as a big meter on the HUD, or null when there is none
+   * (the screen then looks as it always did). Must only read.
+   */
+  goalMeter?(run: RunState): GoalView | null;
   /** A short warning to show right now (e.g. the lamp ran dry), or null. Must only read. */
   alert?(run: RunState): string | null;
   prestige: PrestigeDef;

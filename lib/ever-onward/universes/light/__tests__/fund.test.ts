@@ -27,7 +27,7 @@ jest.setTimeout(120_000);
 
 const F = TUNING.fund;
 
-/** A coast run with the jar open and a purse of coins. */
+/** A coast run with a purse of coins: the Coast has no fund any more. */
 function coastRun(coins = 1000): RunState {
   const base = newRun(def);
   return reconcileRun(def, {
@@ -36,10 +36,22 @@ function coastRun(coins = 1000): RunState {
   });
 }
 
+/** A night run with the jar open and a purse of power (the fund's first home). */
+function nightRun(power = 1000): RunState {
+  const base = newRun(def);
+  return reconcileRun(def, {
+    ...base,
+    phase: 1,
+    owned: { gen1: 2 },
+    resources: { ...base.resources, power },
+  });
+}
+
 describe("the fund", () => {
   it("opens at a milestone in every part, and is not there before", () => {
     expect(isFundOpen(newRun(def))).toBe(false);
-    expect(isFundOpen(coastRun())).toBe(true);
+    // The Coast has one knob (the lamp) and no savings jar.
+    expect(isFundOpen(coastRun())).toBe(false);
     const night = reconcileRun(def, {
       ...newRun(def),
       phase: 1,
@@ -59,20 +71,20 @@ describe("the fund", () => {
   });
 
   it("takes a share of the coins in, and they stop being spendable", () => {
-    const run = coastRun(1000);
+    const run = nightRun(1000);
     const after = performAction(def, run, depositActionId(0.25));
     expect(fundBalance(after)).toBeCloseTo(250);
-    expect(after.resources.coins).toBeCloseTo(750);
+    expect(after.resources.power).toBeCloseTo(750);
     const all = performAction(def, run, depositActionId(1));
     expect(fundBalance(all)).toBeCloseTo(1000);
-    expect(all.resources.coins).toBeCloseTo(0);
+    expect(all.resources.power).toBeCloseTo(0);
   });
 
   it("refuses an empty deposit and an empty withdrawal", () => {
-    const broke = coastRun(0);
+    const broke = nightRun(0);
     for (const share of DEPOSIT_SHARES)
       expect(canPerformAction(def, broke, depositActionId(share))).toBe(false);
-    expect(canPerformAction(def, coastRun(), WITHDRAW_ACTION)).toBe(false);
+    expect(canPerformAction(def, nightRun(), WITHDRAW_ACTION)).toBe(false);
   });
 
   it("grows what is in it, a little faster the less there is", () => {
@@ -84,7 +96,7 @@ describe("the fund", () => {
     // Never more than the jar's ceiling, however much goes in.
     const ceiling = F.yieldPerSecond * fundScale(income);
     expect(fundYieldPerSecond(1e9, income)).toBeLessThanOrEqual(ceiling);
-    let run = performAction(def, coastRun(1000), depositActionId(1));
+    let run = performAction(def, nightRun(1000), depositActionId(1));
     const before = fundBalance(run);
     for (let i = 0; i < 30; i += 1) run = tick(def, run, 1);
     expect(fundBalance(run)).toBeGreaterThan(before);
@@ -92,23 +104,27 @@ describe("the fund", () => {
   });
 
   it("takes a steep fee for money just put in, and a small one once it has aged", () => {
-    let run = performAction(def, coastRun(1000), depositActionId(1));
+    let run = performAction(def, nightRun(1000), depositActionId(1));
     expect(fundFee(run)).toBeCloseTo(F.earlyFee);
     const early = performAction(def, run, WITHDRAW_ACTION);
-    expect(early.resources.coins).toBeCloseTo(1000 * (1 - F.earlyFee));
+    expect(early.resources.power).toBeCloseTo(1000 * (1 - F.earlyFee));
     expect(fundBalance(early)).toBe(0);
     for (let i = 0; i < F.matureSeconds; i += 1) run = tick(def, run, 1);
     expect(fundFee(run)).toBeCloseTo(F.lateFee);
     const late = performAction(def, run, WITHDRAW_ACTION);
-    expect(late.resources.coins).toBeCloseTo(fundPayout(run), 5);
-    expect(late.resources.coins).toBeGreaterThan(1000);
+    // The plants earned power meanwhile: only what came out of the jar counts.
+    expect(late.resources.power - run.resources.power).toBeCloseTo(
+      fundPayout(run),
+      5
+    );
+    expect(late.resources.power - run.resources.power).toBeGreaterThan(1000);
   });
 
   it("makes a top-up only partly young", () => {
-    let run = performAction(def, coastRun(1000), depositActionId(0.5));
+    let run = performAction(def, nightRun(1000), depositActionId(0.5));
     for (let i = 0; i < 100; i += 1) run = tick(def, run, 1);
     const old = fundFee(run);
-    run = { ...run, resources: { ...run.resources, coins: 10 } };
+    run = { ...run, resources: { ...run.resources, power: 10 } };
     const topped = performAction(def, run, depositActionId(1));
     expect(fundFee(topped)).toBeGreaterThan(old);
     expect(fundFee(topped)).toBeLessThan(F.earlyFee);
@@ -139,18 +155,26 @@ describe("the fund", () => {
   });
 
   it("closes when the part of the story ends", () => {
-    const run = performAction(def, coastRun(1000), depositActionId(1));
-    const next = {
-      ...run,
-      owned: { ...run.owned, lighthouse: 7 },
-    };
-    const moved = tick(def, next, 1);
-    expect(moved.phase).toBe(1);
+    const base = newRun(def);
+    const sky = reconcileRun(def, {
+      ...base,
+      phase: 2,
+      owned: { collector: 3 },
+      resources: { ...base.resources, energy: 1000 },
+    });
+    const run = performAction(def, sky, depositActionId(1));
+    expect(fundBalance(run)).toBeGreaterThan(0);
+    const moved = tick(
+      def,
+      { ...run, resources: { ...run.resources, stars: 0 } },
+      1
+    );
+    expect(moved.phase).toBe(3);
     expect(fundBalance(moved)).toBe(0);
   });
 
   it("reads an old save with no fund as an empty jar", () => {
-    const run = coastRun(500);
+    const run = nightRun(500);
     const old: RunState = { ...run, resources: { ...run.resources } };
     for (const id of [
       "fund",
@@ -162,10 +186,10 @@ describe("the fund", () => {
       delete old.resources[id];
     const loaded = reconcileRun(def, old);
     expect(fundBalance(loaded)).toBe(0);
-    expect(loaded.resources.coins).toBe(500);
+    expect(loaded.resources.power).toBe(500);
     expect(canPerformAction(def, loaded, depositActionId(0.5))).toBe(true);
     const played = tick(def, loaded, 1);
-    expect(Number.isFinite(played.resources.coins)).toBe(true);
+    expect(Number.isFinite(played.resources.power)).toBe(true);
   });
 
   it("pays a player who parks part of the price more than one who never does", () => {

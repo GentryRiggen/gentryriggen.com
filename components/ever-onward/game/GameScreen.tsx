@@ -299,9 +299,11 @@ export default function GameScreen({
 
   const handleSelectAlert = () => {
     scrollToElement(
-      rootRef.current?.querySelector<HTMLElement>(
-        'section[aria-label="Actions"]'
-      ) ??
+      // The Coast keeps its oil in the lamp panel.
+      rootRef.current?.querySelector<HTMLElement>('[data-testid="lm-lamp"]') ??
+        rootRef.current?.querySelector<HTMLElement>(
+          'section[aria-label="Actions"]'
+        ) ??
         rootRef.current?.querySelector<HTMLElement>(
           '[data-testid="lm-alert"]'
         ) ??
@@ -320,6 +322,7 @@ export default function GameScreen({
   };
 
   const countdown = def.countdown?.(run) ?? null;
+  const goal = def.goalMeter?.(run) ?? null;
   const alert = def.alert?.(run) ?? null;
   const visitors = waitingVisitors(def, run);
   const storyText = new Map(def.story.map((m) => [m.id, m.text]));
@@ -359,7 +362,7 @@ export default function GameScreen({
       <main
         ref={mainRef}
         inert={isCovered}
-        className="mx-auto w-full max-w-xl lg:max-w-2xl space-y-4 px-4 pt-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h)+1rem)]"
+        className="mx-auto w-full max-w-xl lg:max-w-2xl space-y-4 px-4 pt-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:h-dvh lg:overflow-y-auto lg:pt-[calc(var(--eo-hud-h)+1rem)]"
       >
         <header className="flex flex-col gap-3 sm:flex-row-reverse sm:items-start sm:justify-between">
           <div className="flex w-full shrink-0 justify-end gap-2 sm:w-auto [&_button]:rounded-none! [&_button]:border-2! [&_button]:shadow-[2px_2px_0_#78350f] [&_button]:active:translate-y-0.5">
@@ -467,16 +470,20 @@ export default function GameScreen({
             ⚠ {alert}
           </p>
         )}
-        {visitors.map((v) => (
-          <VisitorCard
-            key={v.id}
-            universeId={def.id}
-            visitor={v}
-            text={storyText.get(v.id) ?? ""}
-            giftText={v.giftText(run)}
-            onGreet={handleGreet}
-          />
+        {ui.topPanels?.map((Panel, i) => (
+          <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
+        {!goal &&
+          visitors.map((v) => (
+            <VisitorCard
+              key={v.id}
+              universeId={def.id}
+              visitor={v}
+              text={storyText.get(v.id) ?? ""}
+              giftText={v.giftText(run)}
+              onGreet={handleGreet}
+            />
+          ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
@@ -488,18 +495,35 @@ export default function GameScreen({
               onBuy={handleBuy}
               onShowBought={handleOpenUpgrades}
               pinnedId={next?.upgrade.id}
+              compact={goal !== null}
             />
           </div>
         )}
+        {/* With a goal on the HUD, visitors wait below the shop so it stays
+            on screen. */}
+        {goal &&
+          visitors.map((v) => (
+            <VisitorCard
+              key={v.id}
+              universeId={def.id}
+              visitor={v}
+              text={storyText.get(v.id) ?? ""}
+              giftText={v.giftText(run)}
+              onGreet={handleGreet}
+            />
+          ))}
         {ui.panels.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
-        <Resources
-          def={def}
-          run={run}
-          primaryId={primaryId}
-          hiddenIds={countdown?.resourceId ? [countdown.resourceId] : []}
-        />
+        {/* With a goal on the HUD the number grid is noise. */}
+        {!goal && (
+          <Resources
+            def={def}
+            run={run}
+            primaryId={primaryId}
+            hiddenIds={countdown?.resourceId ? [countdown.resourceId] : []}
+          />
+        )}
         <p className="text-center font-mono text-xs text-slate-300">
           <Link
             href="/"
@@ -532,6 +556,7 @@ export default function GameScreen({
           spend={spend}
           effect={effect}
           next={next}
+          goal={goal}
           alert={alert}
           onSelectNext={handleSelectNext}
           onSelectAlert={handleSelectAlert}

@@ -1,12 +1,17 @@
 import type { RunState, UpgradeDef } from "../../engine/types";
-import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
+import {
+  COAST_LIGHTHOUSES,
+  PHASE_COAST,
+  PHASE_LAST,
+  PHASE_NIGHT,
+  PHASE_SKY,
+} from "./resources";
 import { COSTS } from "./costs";
 import { TUNING } from "./tuning";
-import { previewOf, short, type Stat } from "./preview";
+import { plainOf, previewOf, short, times, type Stat } from "./preview";
 import {
   appetite,
   autoCoinsPerSecond,
-  calmTapCoins,
   collectorEnergyPerSecond,
   copySpeed,
   crankPower,
@@ -24,8 +29,10 @@ import {
   strainPerSecond,
   fare,
   idleBurn,
+  lensShips,
   lighthouseCount,
-  shipsPerFlash,
+  nextKeeperMilestone,
+  trainingMult,
   stormPassive,
   supplyMW,
   syncDisplay,
@@ -33,7 +40,6 @@ import {
   travelSeconds,
   powerPerSecond,
   aimEnergy,
-  calmIncomePerSecond,
 } from "./tick";
 import { RAIN_BARREL_ID, picksSoFar, restingPace, startRain } from "./garden";
 import {
@@ -44,16 +50,6 @@ import {
   routeSeconds,
   runsHome,
 } from "./probes";
-import {
-  BIGGER_NETS_ID,
-  TIDE_MILL_ID,
-  TIDE_OPEN_FLAG,
-  bestCatchCoins,
-  hasTideMill,
-  haulsSoFar,
-  millCoins,
-  openTide,
-} from "./tide";
 import {
   STORM_CREWS_ID,
   WEATHER_OPEN_FLAG,
@@ -139,6 +135,8 @@ const fleetBump =
     run.resources.probes *= factor;
   };
 
+const burnOf = idleBurn;
+
 const percent = (n: number): string => `${Math.round(n * 100)}%`;
 
 const COINS_PER_SECOND: Stat = {
@@ -154,6 +152,8 @@ interface Step {
   showWhen?: (run: RunState) => boolean;
   /** Runs after the engine's own buy handling (a wave of probes lands). */
   onBuy?: (run: RunState) => void;
+  /** A badge on the card ("NEW ABILITY"). */
+  badge?: string;
 }
 
 interface ChainOptions {
@@ -161,6 +161,8 @@ interface ChainOptions {
   phases: readonly string[];
   currency: string;
   stats: readonly Stat[];
+  /** One plain, big line for the card instead of the before-to-after stats. */
+  plain?: (before: RunState, after: RunState) => string;
   steps: readonly Step[];
 }
 
@@ -170,6 +172,7 @@ function chain({
   phases,
   currency,
   stats,
+  plain,
   steps,
 }: ChainOptions): UpgradeDef[] {
   return steps.map((step, i) => {
@@ -189,74 +192,102 @@ function chain({
         step.onBuy?.(run);
         sync(run);
       },
-      effectPreview: previewOf(id, stats),
+      badge: step.badge,
+      effectPreview: plain ? plainOf(id, plain) : previewOf(id, stats),
     };
   });
 }
 
 // ---------------------------------------------------------------- The Coast
 
+/** "x1.6" for how much bigger `after` is than `before`. */
+const gain = (before: number, after: number): string =>
+  times(before > 0 ? after / before : 1);
+
+/** "+12/s" / "+1.4K/s": what one more keeper (or anything) adds a second. */
+const perSecond = (before: number, after: number): string =>
+  `+${short(after - before)}/s`;
+
 const coastUpgrades: UpgradeDef[] = [
   {
     id: "lens",
     name: "Better lens",
-    description:
-      "Each flash guides about twice the ships (three times, at first), the keepers' too.",
+    description: "Each flash guides twice the ships, the keepers' too.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.lens,
-    costGrowth: 2.1,
+    costGrowth: 205,
     maxLevel: 3,
     priority: 1,
     onBuy: sync,
-    effectPreview: previewOf("lens", [
-      { label: "Ships per flash", read: shipsPerFlash },
-      { label: "Coins per flash", read: calmTapCoins },
-      // The keepers' flashes too, once there are keepers.
-      { ...COINS_PER_SECOND, isHiddenWhenSame: true },
-    ]),
+    effectPreview: plainOf("lens", (before, after) =>
+      [
+        `${gain(lensShips(before), lensShips(after))} ships per flash`,
+        autoCoinsPerSecond(before) > 0
+          ? `Keepers too: ${perSecond(autoCoinsPerSecond(before), autoCoinsPerSecond(after))}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    ),
   },
   {
     id: "keeper",
     name: "Hire a keeper",
-    description: "Flashes the light for you at every lighthouse.",
+    description:
+      "Flashes the light for you at every lighthouse. Every few keepers, they all work twice as hard.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.keeper,
-    costGrowth: 1.4,
-    maxLevel: 10,
-    visibleWhen: (run) => run.resources.ships >= 12,
+    costGrowth: 1.18,
+    maxLevel: TUNING.coast.keeperMax,
+    visibleWhen: (run) => run.resources.ships >= 4,
     priority: 1,
     onBuy: sync,
-    effectPreview: previewOf("keeper", [COINS_PER_SECOND]),
+    effectPreview: plainOf("keeper", (before, after) => {
+      const next = nextKeeperMilestone(after);
+      return [
+        `+1 keeper (${perSecond(autoCoinsPerSecond(before), autoCoinsPerSecond(after))})`,
+        next === null
+          ? ""
+          : `${next} keepers: ${times(TUNING.coast.keeperMilestoneMult)}!`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }),
   },
   {
     id: "lighthouse",
     name: "Build another lighthouse",
-    description: "One more light down the coast. Keepers work at every one.",
+    description:
+      "One more light down the coast. Every ship it brings doubles with each lighthouse, and keepers work at all of them.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.lighthouse,
-    costGrowth: 2.7,
-    maxLevel: 7,
+    costGrowth: TUNING.coast.lighthouseGrowth,
+    maxLevel: COAST_LIGHTHOUSES - 1,
     visibleWhen: (run) => owned(run, "keeper") >= 3,
     priority: 2,
     onBuy: sync,
-    effectPreview: previewOf("lighthouse", [
-      { label: "Lighthouses", read: lighthouseCount },
-      COINS_PER_SECOND,
-    ]),
+    effectPreview: plainOf("lighthouse", (before, after) =>
+      [
+        `${times(TUNING.coast.lighthouseMult)} ships, everywhere`,
+        `Lighthouse ${lighthouseCount(after)} of ${COAST_LIGHTHOUSES}`,
+      ].join("\n")
+    ),
   },
   ...chain({
     base: "wick",
     phases: coast,
     currency: "coins",
     stats: [{ label: "Oil use", read: idleBurn, suffix: "/s" }],
+    plain: (before, after) =>
+      `Oil lasts ${gain(burnOf(after), burnOf(before))} longer`,
     steps: [
       {
         name: "Trimmed wick",
         description: "The lamp burns 40% less oil.",
-        showWhen: (run) => run.resources.ships >= 50,
+        showWhen: (run) => owned(run, "keeper") >= 4,
       },
       {
         name: "Brass burner",
@@ -270,21 +301,23 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     stats: [{ label: "Coins per ship", read: fare }],
+    plain: (before, after) =>
+      `${gain(fare(before), fare(after))} coins per ship`,
     steps: [
       {
         name: "Harbor fees",
-        description: "Every ship pays 60% more.",
-        showWhen: (run) => run.resources.ships >= 80,
+        description: "Every ship pays 50% more.",
+        showWhen: (run) => owned(run, "keeper") >= 6,
       },
       {
         name: "Pilot's tax",
-        description: "Ships that want a pilot pay 60% more again.",
-        showWhen: (run) => run.resources.ships >= 600,
+        description: "Ships that want a pilot pay 50% more again.",
+        showWhen: (run) => owned(run, "keeper") >= 14,
       },
       {
         name: "Toll booth",
-        description: "A booth at the harbor mouth, and a bell. 60% more.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        description: "A booth at the harbor mouth, and a bell. 50% more.",
+        showWhen: (run) => lighthouseCount(run) >= 4,
       },
     ],
   }),
@@ -293,14 +326,13 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     stats: [{ label: "Coins per ship", read: fare }],
+    plain: (before, after) =>
+      `${gain(fare(before), fare(after))} coins per ship`,
     steps: [
       {
         name: "Fish market on the quay",
-        description:
-          "Ships stay for the market, and pay 50% more. The tide clock opens: set your nets and haul in a catch.",
-        // After the first crew drills, so that cheap, big step shows first.
-        showWhen: (run) => owned(run, "train-1") >= 1,
-        onBuy: openTide,
+        description: "Ships stay for the market, and pay 50% more.",
+        showWhen: (run) => owned(run, "keeper") >= 8,
       },
       {
         name: "Ferry landing",
@@ -314,64 +346,18 @@ const coastUpgrades: UpgradeDef[] = [
       },
     ],
   }),
-  {
-    id: BIGGER_NETS_ID,
-    name: "Bigger nets",
-    description: "Wider nets hold half as many fish again at every haul.",
-    phases: coast,
-    currency: "coins",
-    baseCost: COSTS[BIGGER_NETS_ID],
-    costGrowth: 1,
-    // A bonus helper, not income: bots buy keepers and lighthouses first.
-    priority: -1,
-    visibleWhen: (run) =>
-      run.flags[TIDE_OPEN_FLAG] === true && haulsSoFar(run) >= 1,
-    onBuy: sync,
-    effectPreview: previewOf(BIGGER_NETS_ID, [
-      {
-        label: "Best catch",
-        read: (run) => bestCatchCoins(run, calmIncomePerSecond(run)),
-        suffix: " coins",
-      },
-    ]),
-  },
-  {
-    id: TIDE_MILL_ID,
-    name: "Tide mill",
-    description:
-      "A little wheel turns with the water and works its own nets at every high tide. Your nets still pay in full on top.",
-    phases: coast,
-    currency: "coins",
-    baseCost: COSTS[TIDE_MILL_ID],
-    costGrowth: 1,
-    priority: -1,
-    // Halfway through the clock's life (after two hauls and the bigger nets),
-    // so the helper takes over while the clock still matters.
-    visibleWhen: (run) =>
-      run.flags[TIDE_OPEN_FLAG] === true &&
-      owned(run, BIGGER_NETS_ID) > 0 &&
-      haulsSoFar(run) >= 2,
-    onBuy: sync,
-    effectPreview: previewOf(TIDE_MILL_ID, [
-      {
-        label: "Mill catch each tide",
-        read: (run) =>
-          hasTideMill(run) ? millCoins(calmIncomePerSecond(run)) : 0,
-        suffix: " coins",
-      },
-    ]),
-  },
   ...chain({
     base: "tank",
     phases: coast,
     currency: "coins",
     stats: [{ label: "Oil tank", read: tankCapacity }],
+    plain: (before, after) =>
+      `Tank holds ${gain(tankCapacity(before), tankCapacity(after))} the oil`,
     steps: [
       {
         name: "Bigger oil tank",
         description: "Hold three times the oil, so a cheap day goes further.",
-        // Once a second lamp burns: before that, the shop has better things.
-        showWhen: (run) => lighthouseCount(run) >= 2,
+        showWhen: (run) => owned(run, "keeper") >= 10,
       },
       {
         name: "Oil cistern",
@@ -385,10 +371,12 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     stats: [COINS_PER_SECOND],
+    plain: (before, after) =>
+      `${gain(trainingMult(before), trainingMult(after))} keepers' work`,
     steps: [
       {
         name: "Lamp crew drills",
-        description: "Keepers work in pairs. Twice as many flashes.",
+        description: "Keepers work in pairs. Half as many flashes again.",
         showWhen: (run) => owned(run, "keeper") >= 4,
       },
       {
@@ -398,7 +386,7 @@ const coastUpgrades: UpgradeDef[] = [
       },
       {
         name: "Rescue fleet",
-        description: "Ships flashing at ships. 2.5 times as many.",
+        description: "Ships flashing at ships. Twice as many again.",
         showWhen: (run) => lighthouseCount(run) >= 5,
       },
     ],
@@ -414,11 +402,17 @@ const coastUpgrades: UpgradeDef[] = [
         format: percent,
       },
     ],
+    plain: (before, after) =>
+      owned(before, "shutters-1") === 0
+        ? "Keepers keep working in storms"
+        : `Storm ships ${gain(stormPassive(before), stormPassive(after))}`,
     steps: [
       {
         name: "Storm shutters",
-        description: "Storms slow the ships much less: most still come.",
-        showWhen: (run) => lighthouseCount(run) >= 2,
+        description:
+          "Shutters on every window: in a storm the keepers carry on at full speed instead of hiding indoors.",
+        badge: "NEW ABILITY",
+        showWhen: (run) => owned(run, "keeper") >= 12,
       },
       {
         name: "Storm-proof glass",
@@ -430,17 +424,18 @@ const coastUpgrades: UpgradeDef[] = [
   }),
   {
     id: "contract",
-    name: "Oil merchant contract",
+    name: "Keepers buy oil when it's cheap",
     description:
-      "A merchant tops up your tank whenever oil is cheap, and sends a little if it runs nearly dry.",
+      "A merchant contract: whenever oil is cheap your keepers top up the tank for you, and they send for a little at any price when it runs nearly dry.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.contract,
     costGrowth: 1,
-    visibleWhen: (run) => lighthouseCount(run) >= 5,
+    badge: "NEW ABILITY",
+    visibleWhen: (run) => owned(run, "keeper") >= 15,
     priority: 2,
     onBuy: sync,
-    effectPreview: () => "Oil bought for you at 1.60 or less",
+    effectPreview: () => "Buys oil for you at 1.60 or less",
   },
 ];
 
@@ -1006,7 +1001,6 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "grid-1",
   "grid-2",
   WEATHER_VANE_ID,
-  TIDE_MILL_ID,
   MISSION_CONTROL_ID,
   RAIN_BARREL_ID,
   "nav-1",

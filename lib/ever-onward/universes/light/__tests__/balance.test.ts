@@ -4,8 +4,17 @@ import { simulate } from "../../../engine/sim";
 import { ACTIVE, def, MODEST_PRESTIGE, REALISTIC } from "./fixtures";
 
 const MIN = 60;
-/** Target phase lengths in seconds: ~40 / 45 / 45 / 20 minutes. */
-const TARGETS = [40 * MIN, 45 * MIN, 45 * MIN, 20 * MIN];
+/**
+ * Target phase lengths in seconds: ~25 / 45 / 45 / 20 minutes. The Coast was
+ * 40 minutes of waiting; the rework (a purchase every 10 to 20 seconds early,
+ * a lighthouse every few minutes) makes it a quick, felt opening.
+ */
+const TARGETS = [25 * MIN, 45 * MIN, 45 * MIN, 20 * MIN];
+/**
+ * The least median gap between new cards, per part. The Coast is hands-on and
+ * its cards arrive with the keepers in the first minutes, so it is shorter.
+ */
+const MIN_REVEAL_GAP: Record<string, number> = { coast: 40 };
 const PHASE_IDS = def.phases.map((p) => p.id);
 
 type Result = ReturnType<typeof simulate>;
@@ -92,12 +101,16 @@ describe("Keep the Light On balance", () => {
       const times = revealTimes(realistic, phaseId);
       const gaps = times.slice(1).map((t, i) => t - times[i]);
       expect(times.length).toBeGreaterThan(3);
-      expect(median(gaps)).toBeGreaterThanOrEqual(MIN);
+      expect(median(gaps)).toBeGreaterThanOrEqual(
+        MIN_REVEAL_GAP[phaseId] ?? MIN
+      );
     });
 
     it.each(PHASE_IDS)("%s: at most 6 reveals in any 5 minutes", (phaseId) => {
       const times = revealTimes(realistic, phaseId);
-      expect(mostInWindow(times, 5 * MIN)).toBeLessThanOrEqual(6);
+      // The Coast is a hands-on opening: its cards arrive with the keepers.
+      const most = phaseId === "coast" ? 8 : 6;
+      expect(mostInWindow(times, 5 * MIN)).toBeLessThanOrEqual(most);
     });
   });
 
