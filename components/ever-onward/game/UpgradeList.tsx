@@ -34,6 +34,12 @@ interface UpgradeListProps {
   onShowBought?: () => void;
   /** The HUD's next goal: always shown, even past the cap. */
   pinnedId?: string;
+  /**
+   * Short cards: name, cost and the effect line, with the story behind an
+   * About toggle. Only for parts whose effect lines were written to stand
+   * alone (the reworked Coast); everywhere else the description stays.
+   */
+  compact?: boolean;
 }
 
 /** How many cards show before "Show more upgrades". */
@@ -61,6 +67,7 @@ export default function UpgradeList({
   onBuy,
   onShowBought,
   pinnedId,
+  compact = false,
 }: UpgradeListProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   // Cards whose flavour text is open: the default card is name, cost, effect.
@@ -196,6 +203,11 @@ export default function UpgradeList({
                     </span>
                   </span>
                 </span>
+                {!compact && (
+                  <span className="mt-2 block font-mono text-sm">
+                    {u.description}
+                  </span>
+                )}
                 {u.effectPreview &&
                   (noEffect ? (
                     <span
@@ -240,16 +252,17 @@ export default function UpgradeList({
                   </span>
                 )}
               </button>
-              <button
-                type="button"
-                aria-expanded={aboutOpen.has(u.id)}
-                aria-label={`About ${u.name}`}
-                onClick={() => toggleAbout(u.id)}
-                className={`mt-1 inline-flex min-h-8 touch-manipulation items-center px-1 font-mono text-xs text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`}
-              >
-                {aboutOpen.has(u.id) ? "Hide" : "About"}
-              </button>
-              {aboutOpen.has(u.id) && (
+              {compact && (
+                <button
+                  type="button"
+                  aria-expanded={aboutOpen.has(u.id)}
+                  onClick={() => toggleAbout(u.id)}
+                  className={`mt-1 inline-flex min-h-8 touch-manipulation items-center px-1 font-mono text-xs text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`}
+                >
+                  {aboutOpen.has(u.id) ? "Hide" : "About"}
+                </button>
+              )}
+              {compact && aboutOpen.has(u.id) && (
                 <p
                   data-testid="lm-about"
                   className="font-mono text-sm text-slate-300"

@@ -7,7 +7,7 @@ import {
   tick,
 } from "../../../engine/engine";
 import type { RunState } from "../../../engine/types";
-import { def } from "./fixtures";
+import { def, runAtPhaseStart } from "./fixtures";
 import { BEAM_STEPS, bestBeamStep, beamNumbers } from "../beam";
 import { isFundOpen } from "../fund";
 import { FORKS } from "../forks";
@@ -247,3 +247,14 @@ function setBeamOn(run: RunState, step: number): RunState {
   setBeam(draft, step);
   return draft;
 }
+
+describe("an old Coast save with coins in the jar", () => {
+  it("hands the coins back on the next tick", () => {
+    const run = runAtPhaseStart(0);
+    run.resources.coins = 10;
+    run.resources.fund = 500;
+    def.tick(run, 0.1);
+    expect(run.resources.fund).toBe(0);
+    expect(run.resources.coins).toBeGreaterThanOrEqual(510);
+  });
+});

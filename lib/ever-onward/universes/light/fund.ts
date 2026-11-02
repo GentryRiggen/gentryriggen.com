@@ -167,6 +167,13 @@ export function tickFund(
 ): void {
   const balance = fundBalance(run);
   if (balance <= 0) return;
+  if (!isFundOpen(run)) {
+    // A save from before the Coast lost its jar: hand the coins back, whole.
+    const currency = fundKind(run).currency;
+    run.resources[currency] = res(run, currency) + balance;
+    run.resources[FUND_RESOURCE] = 0;
+    return;
+  }
   const grown = fundYieldPerSecond(balance, income()) * dt;
   run.resources[FUND_RESOURCE] = balance + grown;
   run.resources.fundEarned = res(run, "fundEarned") + grown;

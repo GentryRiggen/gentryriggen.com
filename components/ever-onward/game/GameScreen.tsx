@@ -471,6 +471,17 @@ export default function GameScreen({
         {ui.topPanels?.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
+        {!goal &&
+          visitors.map((v) => (
+            <VisitorCard
+              key={v.id}
+              universeId={def.id}
+              visitor={v}
+              text={storyText.get(v.id) ?? ""}
+              giftText={v.giftText(run)}
+              onGreet={handleGreet}
+            />
+          ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
@@ -482,20 +493,23 @@ export default function GameScreen({
               onBuy={handleBuy}
               onShowBought={handleOpenUpgrades}
               pinnedId={next?.upgrade.id}
+              compact={goal !== null}
             />
           </div>
         )}
-        {/* Visitors wait below the shop, so they never push it off screen. */}
-        {visitors.map((v) => (
-          <VisitorCard
-            key={v.id}
-            universeId={def.id}
-            visitor={v}
-            text={storyText.get(v.id) ?? ""}
-            giftText={v.giftText(run)}
-            onGreet={handleGreet}
-          />
-        ))}
+        {/* With a goal on the HUD, visitors wait below the shop so it stays
+            on screen. */}
+        {goal &&
+          visitors.map((v) => (
+            <VisitorCard
+              key={v.id}
+              universeId={def.id}
+              visitor={v}
+              text={storyText.get(v.id) ?? ""}
+              giftText={v.giftText(run)}
+              onGreet={handleGreet}
+            />
+          ))}
         {ui.panels.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
