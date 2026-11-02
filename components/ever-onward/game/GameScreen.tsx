@@ -471,16 +471,6 @@ export default function GameScreen({
         {ui.topPanels?.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
-        {visitors.map((v) => (
-          <VisitorCard
-            key={v.id}
-            universeId={def.id}
-            visitor={v}
-            text={storyText.get(v.id) ?? ""}
-            giftText={v.giftText(run)}
-            onGreet={handleGreet}
-          />
-        ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
@@ -495,6 +485,17 @@ export default function GameScreen({
             />
           </div>
         )}
+        {/* Visitors wait below the shop, so they never push it off screen. */}
+        {visitors.map((v) => (
+          <VisitorCard
+            key={v.id}
+            universeId={def.id}
+            visitor={v}
+            text={storyText.get(v.id) ?? ""}
+            giftText={v.giftText(run)}
+            onGreet={handleGreet}
+          />
+        ))}
         {ui.panels.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}

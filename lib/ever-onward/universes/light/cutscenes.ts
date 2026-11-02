@@ -22,7 +22,7 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
       tips: [
         "Hire keepers early: they flash the lamp for you.",
         "Keep oil in the tank, and fill up when the price says cheap.",
-        "Once the nets open, set them before high tide.",
+        "Turn the lamp up when oil is cheap, and down when it is dear.",
       ],
     },
     { text: "Every ship you guide is a good one. Take your time." },

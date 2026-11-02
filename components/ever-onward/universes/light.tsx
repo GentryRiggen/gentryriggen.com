@@ -95,8 +95,9 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
-  topPanels: [CoastForkPanel, LampPanel],
+  topPanels: [LampPanel],
   panels: [
+    CoastForkPanel,
     LaterForkPanel,
     FundPanel,
     TideClock,
