@@ -114,11 +114,15 @@ export default function useReadAloud(
   useLayoutEffect(() => {
     player.setLocked(locked);
   }, [player, locked]);
-  // Playing or loading keeps the app lock's idle timer from running out.
+  // Playing (or loading, for at most a minute) keeps the app lock's idle
+  // timer from running out.
   useEffect(() => {
     const report = () => {
       const { status } = player.getState();
-      setAudioBusy(status === "playing" || status === "loading");
+      setAudioBusy(
+        status === "playing" || status === "loading",
+        status === "loading"
+      );
     };
     report();
     const stop = player.subscribe(report);

@@ -505,6 +505,45 @@ describe("idle while open", () => {
     expect(isLocked()).toBe(true);
   });
 
+  it("counts audio loading for at most a minute", async () => {
+    await openIdle(60);
+    act(() => jest.advanceTimersByTime(100_000));
+    // A read-aloud request that hangs in "loading" from 100 s on.
+    act(() => setAudioBusy(true, true));
+    // Loading counts until 160 s, then five minutes: locks at 460 s.
+    act(() => jest.advanceTimersByTime(359_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+  });
+
+  it("loading that turns into playing keeps it open", async () => {
+    await openIdle(60);
+    act(() => setAudioBusy(true, true));
+    act(() => jest.advanceTimersByTime(50_000));
+    act(() => setAudioBusy(true));
+    act(() => jest.advanceTimersByTime(600_000));
+    expect(isLocked()).toBe(false);
+  });
+
+  it("audio ending while hidden doesn't push the lock past now", async () => {
+    await openIdle(900);
+    act(() => setAudioBusy(true));
+    act(() => jest.advanceTimersByTime(800_000));
+    setVisible("hidden");
+    act(() => jest.advanceTimersByTime(50_000));
+    // Stops at 850 s while hidden; shown at 890 s.
+    act(() => setAudioBusy(false));
+    act(() => jest.advanceTimersByTime(40_000));
+    setVisible("visible");
+    expect(isLocked()).toBe(false);
+    // Counted from 890 s (not 850 + 90 hidden = 940 s): locks at 1790 s.
+    act(() => jest.advanceTimersByTime(899_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+  });
+
   it("paused audio doesn't keep it open", async () => {
     await openIdle(60);
     act(() => setAudioBusy(false));

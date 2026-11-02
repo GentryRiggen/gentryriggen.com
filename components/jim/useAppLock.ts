@@ -28,7 +28,7 @@ import {
   type LockState,
   type PinCheck,
 } from "@/lib/jim/appLock";
-import { isAudioBusy, onAudioBusy } from "@/lib/jim/audioActivity";
+import { audioActiveAt, onAudioBusy } from "@/lib/jim/audioActivity";
 import {
   faceIdAvailable,
   registerFaceId,
@@ -239,7 +239,9 @@ export default function useAppLock(uid: string | null): AppLock {
       if (document.visibilityState === "hidden") return;
       const now = Date.now();
       // Audio playing counts as being there; counting starts when it ends.
-      if (isAudioBusy()) lastActive = now;
+      // Loading counts for at most a minute (a hung request doesn't).
+      const audio = audioActiveAt(now);
+      if (audio !== null) lastActive = Math.max(lastActive, audio);
       const idle = now - lastActive;
       if (idle >= limit) {
         setUnlockedFor(null);
@@ -260,7 +262,10 @@ export default function useAppLock(uid: string | null): AppLock {
         return;
       }
       if (hiddenAt !== null) {
-        lastActive += Math.max(0, Date.now() - hiddenAt);
+        // Never past now: activity while hidden (audio ending) can't push
+        // the idle lock into the future.
+        const now = Date.now();
+        lastActive = Math.min(lastActive + Math.max(0, now - hiddenAt), now);
         hiddenAt = null;
       }
       check();
