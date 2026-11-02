@@ -648,8 +648,6 @@ describe("JimPlayer preparing (text still on its way)", () => {
       engine: null,
     });
     expect(fetches).toHaveLength(0);
-    player.setStage("Still writing…");
-    expect(player.getState().stage).toBe("Still writing…");
   });
 
   it("stop aborts what was being prepared", () => {

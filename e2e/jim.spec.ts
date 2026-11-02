@@ -2023,6 +2023,14 @@ test.describe("Jim pings", () => {
     await page.screenshot({
       path: shotName(page, testInfo, "brief-loading", "ayu"),
     });
+    // A todo's Done/Undo toast lifts above the bar: Cancel stays tappable.
+    await page.getByRole("checkbox", { name: "Water the plants" }).click();
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeVisible();
+    const toastBox = await undo.boundingBox();
+    const barBox = await bar.boundingBox();
+    expect(toastBox && barBox).toBeTruthy();
+    expect(toastBox!.y + toastBox!.height).toBeLessThanOrEqual(barBox!.y);
     // Cancel stops the wait and the button comes back.
     await bar.getByRole("button", { name: "Cancel" }).click();
     await expect(bar).toBeHidden();

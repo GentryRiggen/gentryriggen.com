@@ -272,12 +272,6 @@ export class JimPlayer {
     return this.controller.signal;
   }
 
-  /** What the wait is about now, while it is still loading. */
-  setStage(stage: string | null): void {
-    if (this.state.status !== "loading" || this.state.stage === stage) return;
-    this.set({ stage });
-  }
-
   /** What was being prepared failed: the bar says why (unless it was stopped). */
   failPrepared(message: string): void {
     if (this.state.status !== "loading" || this.state.engine !== null) return;

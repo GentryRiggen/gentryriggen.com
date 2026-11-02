@@ -68,6 +68,8 @@ export interface ReadAloud {
 }
 
 const MESSAGE_KEY = "msg:";
+/** The morning brief's keys (useBriefAudio). */
+const BRIEF_KEY = "brief:";
 
 function speechFallback() {
   return speechSupported()
@@ -159,9 +161,18 @@ export default function useReadAloud(
   const readNew = useCallback(
     (id: number, text: string) => {
       // A read started while hidden is dropped, not queued for later.
-      if (supported && auto && document.visibilityState !== "hidden") {
-        player.play(`${MESSAGE_KEY}${id}`, text);
+      if (!supported || !auto || document.visibilityState === "hidden") return;
+      // The morning brief (asked for on purpose) isn't cut off by a reply;
+      // the reply stays readable from its Listen button.
+      const { key, status } = player.getState();
+      if (
+        key?.startsWith(BRIEF_KEY) &&
+        status !== "idle" &&
+        status !== "error"
+      ) {
+        return;
       }
+      player.play(`${MESSAGE_KEY}${id}`, text);
     },
     [supported, auto, player]
   );

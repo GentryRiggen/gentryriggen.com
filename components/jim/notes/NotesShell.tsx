@@ -904,8 +904,8 @@ function NotesShellView({
                     : "max-w-[55rem]"
                 }`
               : // Room under the page for the now-playing bar JimChat
-                // floats over a phone's Notes (data-dock on its panel).
-                "mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] group-data-[dock=on]/notes:pb-[calc(5.5rem+env(safe-area-inset-bottom))]! sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+                // floats over a phone's Notes (data-dock on its panel: bar, chip or both).
+                "mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] group-data-[dock=bar]/notes:pb-[calc(6rem+env(safe-area-inset-bottom))]! group-data-[dock=both]/notes:pb-[calc(9.5rem+env(safe-area-inset-bottom))]! group-data-[dock=chip]/notes:pb-[calc(5rem+env(safe-area-inset-bottom))]! sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
           }
         >
           {wide && !detail && (wideTitle || statusRow) && (

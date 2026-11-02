@@ -939,6 +939,16 @@ export default function JimChat({
 
   /** The now-playing bar and the brief's chip: in Chat, or over Notes. */
   const dockInChat = wide || tab === "chat";
+  /** What floats over a phone's Notes: the page and its toast make room. */
+  const dock = dockInChat
+    ? "off"
+    : barShown && brief.chip
+      ? "both"
+      : barShown
+        ? "bar"
+        : brief.chip
+          ? "chip"
+          : "off";
   const nowPlaying = (
     <NowPlayingBar
       state={reader.state}
@@ -1293,7 +1303,7 @@ export default function JimChat({
             id="jim-notes"
             role={wide ? undefined : "tabpanel"}
             aria-labelledby={wide ? undefined : "jim-tab-notes"}
-            data-dock={!dockInChat && (barShown || brief.chip) ? "on" : "off"}
+            data-dock={dock}
             className={`group/notes absolute inset-y-0 left-0 ${
               docked ? "right-[24rem] xl:right-[26rem]" : "right-0"
             } ${tab === "notes" ? "" : "invisible"}`}

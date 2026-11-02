@@ -384,10 +384,13 @@ interface ToastBarProps {
   onUndo: (toast: DoneToast) => void;
 }
 
-/** Floats above the home bar; always in the page, so it is announced. */
+/**
+ * Floats above the home bar (and above the now-playing bar JimChat docks
+ * over a phone's Notes); always in the page, so it is announced.
+ */
 function ToastBar({ toast, onUndo }: ToastBarProps) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex group-data-[dock=bar]/notes:bottom-[4.75rem] group-data-[dock=both]/notes:bottom-[8.25rem] group-data-[dock=chip]/notes:bottom-[3.5rem] justify-center pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
       <div role="status" aria-live="polite" className="contents">
         {toast && (
           <div
