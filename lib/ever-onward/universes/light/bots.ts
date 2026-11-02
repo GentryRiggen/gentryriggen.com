@@ -30,6 +30,7 @@ import {
 } from "./fund";
 import { lightUniverse } from ".";
 import { fundIncome } from "./tick";
+import { OVERDRIVE_ACTION, overdriveCost } from "./overdrive";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
   PICK_ACTION,
@@ -364,6 +365,39 @@ export const investsInFund =
     return fits === undefined ? [] : [depositActionId(fits)];
   };
 
+/**
+ * Runs overdrive when the grid (or the fleet) is steady enough to hold it
+ * (`startAt` percent) and the know-how is not wanted by a project that is
+ * ready except for know-how: ideas that last come first.
+ */
+export const runsOverdrive =
+  (startAt: number): OilChoice =>
+  (run, available) => {
+    if (!available.includes(OVERDRIVE_ACTION)) return [];
+    const steady =
+      run.phase === 1
+        ? (run.resources.grid ?? 100)
+        : (run.resources.heading ?? 100);
+    if (steady < startAt) return [];
+    const readyProjects = shownProjects(lightUniverse, run).filter((p) =>
+      p.costs.every(
+        (c) =>
+          c.resource === "knowhow" ||
+          (run.resources[c.resource] ?? 0) >= c.amount * 0.7
+      )
+    );
+    const reserve = readyProjects.length
+      ? Math.min(
+          ...readyProjects.map(
+            (p) => p.costs.find((c) => c.resource === "knowhow")?.amount ?? 0
+          )
+        )
+      : 0;
+    return (run.resources.knowhow ?? 0) >= overdriveCost(run) + reserve
+      ? [OVERDRIVE_ACTION]
+      : [];
+  };
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -387,10 +421,21 @@ const withOil = (
   race: OilChoice = () => [],
   garden: OilChoice = () => [],
   lamps: OilChoice = () => [],
-  fund: OilChoice = () => []
+  fund: OilChoice = () => [],
+  know: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather, tide, race, garden, lamps, fund),
+  actions: combine(
+    actions,
+    care,
+    weather,
+    tide,
+    race,
+    garden,
+    lamps,
+    fund,
+    know
+  ),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
@@ -431,7 +476,8 @@ export function lightBots(
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
       setsLamps({ patience: 60 }),
-      investsInFund(fundShare, fundWait)
+      investsInFund(fundShare, fundWait),
+      runsOverdrive(85)
     ),
     realistic: withOil(
       base.realistic,
@@ -442,7 +488,8 @@ export function lightBots(
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
       setsLamps({ patience: 60 }),
-      investsInFund(fundShare, fundWait)
+      investsInFund(fundShare, fundWait),
+      runsOverdrive(80)
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {

@@ -62,6 +62,7 @@ export const PHASES: readonly PhaseDef[] = [
     isDone: (run) => run.resources.stars <= 0.5,
     onEnter: (run) => {
       closeFund(run);
+      run.resources.odLeft = 0;
       run.resources.energy += 20 * headStart(run);
       run.resources.heading = 100;
       run.resources.flare = 0;
@@ -83,6 +84,7 @@ export const PHASES: readonly PhaseDef[] = [
       // The flame starts here whatever came before, so the ending is the same
       // small thing for every player.
       closeFund(run);
+      run.resources.odLeft = 0;
       run.resources.flame = TUNING.last.startFlame;
       run.resources.resolve = 0;
       run.resources.ships = 0;

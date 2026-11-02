@@ -162,7 +162,7 @@ export const TUNING = {
   /** Know-how and the night's projects (see projects.ts). */
   projects: {
     /** Know-how a second for every power plant built. */
-    knowhowPerPlant: 0.04,
+    knowhowPerPlant: 0.028,
     /** Night school: know-how comes this much faster. */
     schoolBoost: 1.5,
     /** Know-how for balancing an uneasy grid by hand (line patrols: less). */
@@ -188,6 +188,46 @@ export const TUNING = {
     coopStrain: 1.15,
     /** Wind maps: every wind and sun farm makes more. */
     windBoost: 1.25,
+    /** The sky's projects (see projects.ts), paid in know-how too. */
+    sky: {
+      /** Know-how a second: every collector, and the fleet's size on a log scale. */
+      knowhowPerCollector: 0.02,
+      knowhowPerDecade: 0.08,
+      /** Know-how for catching a flare, and for correcting the course. */
+      perFlare: 2,
+      perCourse: 1,
+      /** Star atlas: probes take stars faster. */
+      atlasBoost: 1.6,
+      /** Mirror polish: every collector catches more, the fleet drifts faster. */
+      polishBoost: 1.6,
+      polishDrift: 1.25,
+      /** Relay codes: every star taken pays more. */
+      relayBoost: 1.5,
+      /** Probe school: probes copy faster; flares come less often. */
+      schoolBoost: 1.5,
+      schoolFlareGap: 1.3,
+      /** Flare watchers: flares pay more and come sooner. */
+      flarePay: 1.6,
+      flareGap: 0.8,
+    },
+  },
+  /**
+   * Overdrive, the second thing know-how buys (besides projects): run the
+   * night's plants, or the sky's whole fleet, hot for a minute. Everything
+   * pays `boost` times as much, but the grid (or the fleet's heading) slips
+   * `strain` times as fast. Keep it above `cleanAbove` the whole minute and
+   * `refund` of the know-how comes back. Nothing here is chance.
+   */
+  overdrive: {
+    seconds: 60,
+    boost: 2,
+    strain: 3,
+    cleanAbove: 60,
+    refund: 0.5,
+    nightCost: 30,
+    skyCost: 30,
+    /** It is offered from this many steam plants (night) / probes (sky). */
+    nightAtSteamPlants: 2,
   },
   /**
    * The streetlights (No More Night's knob): how bright the cities shine.

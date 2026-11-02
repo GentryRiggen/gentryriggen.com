@@ -15,6 +15,7 @@ import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
 import { tickFund } from "./fund";
+import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
 import { outageFactor, tickWeather } from "./weather";
 
 const {
@@ -25,6 +26,7 @@ const {
   projects: P,
   lamps: LAMPS,
 } = TUNING;
+const SP = P.sky;
 
 /** True once the night project `id` is done (see projects.ts). */
 export const hasProject = (run: RunState, id: string): boolean =>
@@ -295,13 +297,20 @@ export const cityPay = (run: RunState): number =>
   lampEffect(run).pay *
   outageFactor(run);
 
-/** Know-how a second: every plant's crew learns a little. */
+/**
+ * Know-how a second. Night: every plant's crew learns a little. Sky: every
+ * collector's crew does, and the fleet's size adds a little more.
+ */
 export const knowhowPerSecond = (run: RunState): number =>
-  P.knowhowPerPlant *
-  plantCount(run) *
-  ifProject(run, "night-school", P.schoolBoost) *
-  lampEffect(run).knowhow *
-  speed(run);
+  run.phase === 2
+    ? (SP.knowhowPerCollector * level(run, "collector") +
+        SP.knowhowPerDecade * Math.log10(1 + res(run, "probes"))) *
+      speed(run)
+    : P.knowhowPerPlant *
+      plantCount(run) *
+      ifProject(run, "night-school", P.schoolBoost) *
+      lampEffect(run).knowhow *
+      speed(run);
 
 /** Know-how a second at a given brightness. */
 export const knowhowAtStep = (run: RunState, step: number): number =>
@@ -354,7 +363,8 @@ export function strainPerSecond(run: RunState): number {
     N.balancerSaving ** Math.min(1, tier(run, "grid")) *
     ifProject(run, "line-patrols", P.patrolStrain) *
     ifProject(run, "co-op", P.coopStrain) *
-    lampEffect(run).strain
+    lampEffect(run).strain *
+    overdriveStrain(run)
   );
 }
 
@@ -366,7 +376,8 @@ export const powerPerSecond = (run: RunState): number =>
   Math.min(supplyMW(run), demandMW(run)) *
   cityPay(run) *
   speed(run) *
-  gridFactor(run);
+  gridFactor(run) *
+  overdriveBoost(run);
 
 /** Power the evening rush pays when claimed: a slice of income plus taps. */
 export const rushBonus = (run: RunState): number =>
@@ -401,7 +412,12 @@ function tickNight(run: RunState, dt: number): void {
   run.resources.night = Math.max(0, 100 * (1 - lit / TOTAL_CITIES));
   // Cities only pay for the power that reaches them.
   run.resources.power +=
-    delivered * cityPay(run) * speed(run) * gridFactor(run) * dt;
+    delivered *
+    cityPay(run) *
+    speed(run) *
+    gridFactor(run) *
+    overdriveBoost(run) *
+    dt;
   run.resources.knowhow = res(run, "knowhow") + knowhowPerSecond(run) * dt;
 }
 
@@ -411,6 +427,8 @@ export const collectorEnergyPerSecond = (run: RunState): number =>
   level(run, "collector") *
   S.collectorEnergy *
   S.mirrorBonus ** tier(run, "mirror") *
+  ifProject(run, "mirror-polish", SP.polishBoost) *
+  overdriveBoost(run) *
   speed(run);
 
 export const travelSeconds = (run: RunState): number =>
@@ -420,7 +438,8 @@ export const copySpeed = (run: RunState): number =>
   S.copyBonus ** tier(run, "copy");
 
 export const appetite = (run: RunState): number =>
-  S.appetiteBonus ** tier(run, "appetite");
+  S.appetiteBonus ** tier(run, "appetite") *
+  ifProject(run, "star-atlas", SP.atlasBoost);
 
 export const aimEnergy = (run: RunState): number =>
   (S.aimBase + S.aimPerLevel * level(run, "aim")) * tapMult(run);
@@ -442,14 +461,18 @@ export const isCourseInPlay = (run: RunState): boolean =>
 export function driftPerSecond(run: RunState): number {
   return (
     (S.driftBase + S.driftPerDecade * Math.log10(1 + res(run, "probes"))) *
-    S.chartsSaving ** Math.min(1, tier(run, "nav"))
+    S.chartsSaving ** Math.min(1, tier(run, "nav")) *
+    ifProject(run, "mirror-polish", SP.polishDrift) *
+    overdriveStrain(run)
   );
 }
 
 const probeGrowthRate = (run: RunState): number => {
   const travel = S.travelBase * S.engineSaving ** tier(run, "engines");
   return (
-    (S.probeGrowth * S.copyBonus ** tier(run, "copy")) /
+    (S.probeGrowth *
+      S.copyBonus ** tier(run, "copy") *
+      ifProject(run, "probe-school", SP.schoolBoost)) /
     (1 + travel / S.travelHalf)
   );
 };
@@ -472,7 +495,10 @@ export const starsPerSecond = (run: RunState): number =>
 
 /** Energy per second from probes: every star taken pays a bounty. */
 export const starBounty = (run: RunState): number =>
-  S.starBounty * S.relayBonus ** tier(run, "relay");
+  S.starBounty *
+  S.relayBonus ** tier(run, "relay") *
+  ifProject(run, "relay-codes", SP.relayBoost) *
+  overdriveBoost(run);
 
 export const probeEnergyPerSecond = (run: RunState): number =>
   starsPerSecond(run) * starBounty(run);
@@ -480,6 +506,7 @@ export const probeEnergyPerSecond = (run: RunState): number =>
 /** Energy a solar flare pays when caught: a slice of income plus aiming. */
 export const flareBonus = (run: RunState): number =>
   S.flareBonusSeconds *
+  ifProject(run, "flare-watch", SP.flarePay) *
   (collectorEnergyPerSecond(run) +
     probeEnergyPerSecond(run) +
     aimEnergy(run) * 3);
@@ -506,7 +533,9 @@ export const nextRushIn = (run: RunState): number =>
   (N.rushGapMin + nextRandom(run) * N.rushGapSpread) *
   ifProject(run, "rush-pricing", P.rushGap);
 export const nextFlareIn = (run: RunState): number =>
-  S.flareGapMin + nextRandom(run) * S.flareGapSpread;
+  (S.flareGapMin + nextRandom(run) * S.flareGapSpread) *
+  ifProject(run, "flare-watch", SP.flareGap) *
+  ifProject(run, "probe-school", SP.schoolFlareGap);
 
 function tickSky(run: RunState, dt: number): void {
   updateSkyEvents(run, dt);
@@ -526,9 +555,8 @@ function tickSky(run: RunState, dt: number): void {
     r.starsTaken += taken;
     r.stars = Math.max(0, TOTAL_STARS - r.starsTaken);
   }
-  const collected =
-    r.collectors * S.collectorEnergy * S.mirrorBonus ** tier(run, "mirror");
-  r.energy += collected * speed(run) * dt + taken * starBounty(run);
+  r.energy += collectorEnergyPerSecond(run) * dt + taken * starBounty(run);
+  r.knowhow = res(run, "knowhow") + knowhowPerSecond(run) * dt;
 }
 
 // ----------------------------------------------------------- The Last Light
@@ -684,6 +712,9 @@ export function tickLight(run: RunState, dt: number): void {
   tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
   tickGarden(run, dt);
   tickFund(run, dt, () => fundIncome(run));
+  tickOverdrive(run, dt, () =>
+    run.phase === 1 ? gridSteadiness(run) : headingOf(run)
+  );
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);
