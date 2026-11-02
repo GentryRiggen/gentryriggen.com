@@ -40,6 +40,19 @@ function useOnline(): boolean {
   );
 }
 
+/**
+ * "Saturday, November 1" in the device's locale. The day is a plain date,
+ * read at noon UTC and shown in UTC, so no time zone can shift it.
+ */
+function dayLabel(day: string): string {
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function same(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
@@ -105,9 +118,14 @@ export default function NotesRetro({
   const header = (
     <>
       {back}
-      <h2 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text">
-        {TITLES[kind]}
-      </h2>
+      <div>
+        <h2 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text">
+          {TITLES[kind]}
+        </h2>
+        {shown && (
+          <p className="mt-1 text-sm text-ayu-subtle">{dayLabel(shown.day)}</p>
+        )}
+      </div>
       <div
         role="tablist"
         aria-label="Which retro"

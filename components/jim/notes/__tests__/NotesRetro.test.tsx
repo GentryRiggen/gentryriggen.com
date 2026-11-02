@@ -77,6 +77,20 @@ it("shows the server's three questions with the saved answers", () => {
   expect(screen.getByText("Saved")).toBeInTheDocument();
 });
 
+it("shows the retro's date under the title, whatever the device time zone", () => {
+  const tz = process.env.TZ;
+  try {
+    for (const zone of ["Pacific/Kiritimati", "Pacific/Pago_Pago", "UTC"]) {
+      process.env.TZ = zone;
+      const { unmount } = setup();
+      expect(screen.getByText("Saturday, October 31")).toBeInTheDocument();
+      unmount();
+    }
+  } finally {
+    process.env.TZ = tz;
+  }
+});
+
 it("the morning retro starts empty", () => {
   setup({ kind: "morning" });
   expect(
