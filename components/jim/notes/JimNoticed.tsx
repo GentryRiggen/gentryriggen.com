@@ -35,7 +35,9 @@ export default function JimNoticed({ items, onAsk }: JimNoticedProps) {
               >
                 {n.when}
               </span>
-              <ShortLabel short={n.short} full={n.title} />
+              <div className="mt-1">
+                <ShortLabel short={n.short} full={n.title} />
+              </div>
             </div>
             <button
               type="button"

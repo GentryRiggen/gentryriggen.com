@@ -27,7 +27,7 @@ export default function ShortLabel({
 }: ShortLabelProps) {
   const [open, setOpen] = useState(false);
   const id = useId();
-  if (!short) {
+  if (!short || short === full) {
     return (
       <span
         {...(dataTitle ? { "data-title": true } : {})}

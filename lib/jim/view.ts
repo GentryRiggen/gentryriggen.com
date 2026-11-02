@@ -558,13 +558,14 @@ function toNoticed(v: unknown): Noticed | null {
     return null;
   if (!TONES.includes(v.tone as string)) return null;
   if (v.title === "") return null;
+  const short = shortOf(v.short);
   return {
     kind: v.kind as string,
     title: v.title as string,
     when: v.when as string,
     tone: v.tone as Noticed["tone"],
     ask: v.ask as string,
-    ...(shortOf(v.short) ? { short: shortOf(v.short) } : {}),
+    ...(short ? { short } : {}),
   };
 }
 
