@@ -158,3 +158,27 @@ export async function consumePendingOpen(
     return null;
   }
 }
+
+/**
+ * Deletes the note of a tap its JIM_OPEN message already handled, so a
+ * reload within the note's 120 s doesn't replay it (`claimOpen` lives in
+ * memory only). A newer tap's note is left alone. Never throws.
+ */
+export async function dropPendingOpen(id: string): Promise<void> {
+  try {
+    if (typeof caches === "undefined") return;
+    const cache = await caches.open(OPEN_CACHE);
+    const saved = await cache.match(OPEN_KEY);
+    if (!saved) return;
+    const note: unknown = JSON.parse(await saved.text());
+    if (
+      typeof note === "object" &&
+      note !== null &&
+      (note as { id?: unknown }).id === id
+    ) {
+      await cache.delete(OPEN_KEY);
+    }
+  } catch {
+    // Left in place: it ages out after 120 s.
+  }
+}

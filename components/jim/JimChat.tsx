@@ -78,6 +78,7 @@ import {
   claimOpen,
   clearParamsFromLocation,
   consumePendingOpen,
+  dropPendingOpen,
   emitOpenIntent,
   parseOpen,
 } from "@/lib/jim/openUrl";
@@ -407,6 +408,12 @@ export default function JimChat({
     }
   }, []);
 
+  /**
+   * The mount's note read. Later reads wait for it: only it knows the tap
+   * that opened this page, and the load's own pageshow must not beat it.
+   */
+  const mountRead = useRef<Promise<void>>(Promise.resolve());
+
   // A notification or link opened the app with ?say=, ?listen=brief or an
   // old ?reflect=1: hand the chat intents on, then clear them from the
   // address. A tap's note the worker left is then read (iOS can open the
@@ -424,7 +431,7 @@ export default function JimChat({
       emitOpenIntent({ listen: open.listen });
     }
     let live = true;
-    void consumePendingOpen().then((url) => {
+    mountRead.current = consumePendingOpen().then((url) => {
       if (!live || !url) return;
       if (new URL(url, opened).href === opened) return;
       applyOpen(url);
@@ -439,9 +446,11 @@ export default function JimChat({
   useEffect(() => {
     function check() {
       if (document.visibilityState !== "visible") return;
-      void consumePendingOpen().then((url) => {
-        if (url) applyOpen(url);
-      });
+      void mountRead.current
+        .then(() => consumePendingOpen())
+        .then((url) => {
+          if (url) applyOpen(url);
+        });
     }
     document.addEventListener("visibilitychange", check);
     window.addEventListener("pageshow", check);
@@ -472,7 +481,10 @@ export default function JimChat({
       };
       if (type === "JIM_OPEN" && typeof url === "string") {
         // Its note may have been read first (the page woke before this came).
-        if (claimOpen(id)) applyOpen(url);
+        if (!claimOpen(id)) return;
+        applyOpen(url);
+        // Handled: its note goes too, or a reload would replay it.
+        if (typeof id === "string") void dropPendingOpen(id);
         return;
       }
       const text = type === "JIM_SAY" ? allowedSay(say) : null;

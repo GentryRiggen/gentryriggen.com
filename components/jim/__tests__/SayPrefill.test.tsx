@@ -21,18 +21,35 @@ function renderChat() {
 
 /** The worker's pending-open cache, faked (jsdom has none). */
 const notes = new Map<string, string>();
+/** Set to hold the next note read at `match` until released (a slow read). */
+const gate: { next: Promise<void> | null } = { next: null };
+/** Lets pending promises (the page's note reads) run. */
+async function settle() {
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 0));
+  });
+}
 function leaveNote(id: string, url: string, at: number = Date.now()) {
   notes.set("/jim/__open", JSON.stringify({ id, url, at }));
 }
 
 beforeEach(() => {
   window.localStorage.clear();
+  // A tap with listen=brief starts the brief; jsdom has no media playback.
+  jest
+    .spyOn(HTMLMediaElement.prototype, "play")
+    .mockImplementation(() => Promise.resolve());
+  jest.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
   notes.clear();
+  gate.next = null;
   Object.defineProperty(window, "caches", {
     configurable: true,
     value: {
       open: async () => ({
         match: async (key: string) => {
+          const held = gate.next;
+          gate.next = null;
+          if (held) await held;
           const body = notes.get(key);
           return body === undefined ? undefined : { text: async () => body };
         },
@@ -42,6 +59,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   window.history.replaceState(null, "", "/");
   Reflect.deleteProperty(window, "caches");
 });
@@ -122,6 +140,28 @@ describe("a notification tapped while the page is open", () => {
     post({ type: "JIM_OPEN", url: "/jim?listen=brief" });
     expect(seen).toHaveBeenCalledWith({ listen: "brief" });
     off();
+  });
+
+  it("drops the tap's note once its message is handled, so a reload doesn't replay it", async () => {
+    window.history.replaceState(null, "", "/jim");
+    renderChat();
+    await settle(); // the mount's note read is done
+    leaveNote("tap-reload", "/jim/retro/morning");
+    post({ type: "JIM_OPEN", url: "/jim/retro/morning", id: "tap-reload" });
+    await waitFor(() => expect(notes.size).toBe(0));
+  });
+
+  it("leaves a newer tap's note alone", async () => {
+    window.history.replaceState(null, "", "/jim");
+    renderChat();
+    await settle(); // the mount's note read is done
+    leaveNote("tap-newer", "/jim/retro/morning");
+    post({ type: "JIM_OPEN", url: "/jim/retro/evening", id: "tap-older" });
+    // Let the drop's cache read run.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(notes.size).toBe(1);
   });
 
   it("routes an old reflect tap to the evening retro", () => {
@@ -209,6 +249,32 @@ describe("a tap's note, for a page iOS woke without the message", () => {
     await waitFor(() =>
       expect(window.location.pathname).toBe("/jim/retro/evening")
     );
+  });
+
+  it("doesn't act twice when pageshow reads the note before the mount read does", async () => {
+    window.history.replaceState(null, "", "/jim?listen=brief");
+    leaveNote("tap-race", `${window.location.origin}/jim?listen=brief`);
+    const seen = jest.fn();
+    const off = onOpenIntent(seen);
+    let release = () => {};
+    gate.next = new Promise<void>((r) => {
+      release = r;
+    });
+    renderChat();
+    // The load's pageshow, while the mount read is still out.
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    release();
+    await waitFor(() => expect(notes.size).toBe(0));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(seen).toHaveBeenCalledTimes(1);
+    off();
   });
 
   it("ignores a stale note", async () => {

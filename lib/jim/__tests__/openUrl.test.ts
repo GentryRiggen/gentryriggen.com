@@ -2,6 +2,7 @@ import {
   claimOpen,
   clearParamsFromLocation,
   consumePendingOpen,
+  dropPendingOpen,
   emitOpenIntent,
   onOpenIntent,
   parseOpen,
@@ -182,6 +183,18 @@ describe("the pending-open note a tap leaves", () => {
       "/jim/retro/morning"
     );
     expect(claimOpen("tap-note-first")).toBe(false);
+  });
+
+  it("drops the note of a tap handled by its message, only that tap's", async () => {
+    leave("tap-other", "/jim/retro/morning", 1_000_000);
+    await dropPendingOpen("tap-handled");
+    expect(store.has(KEY)).toBe(true);
+    leave("tap-handled", "/jim/retro/evening", 1_000_000);
+    await dropPendingOpen("tap-handled");
+    expect(store.has(KEY)).toBe(false);
+    await expect(dropPendingOpen("tap-handled")).resolves.toBeUndefined();
+    Reflect.deleteProperty(window, "caches");
+    await expect(dropPendingOpen("tap-handled")).resolves.toBeUndefined();
   });
 
   it("is null with nothing left, or no cache storage", async () => {
