@@ -97,12 +97,33 @@ describe("CI deploy job (keyless)", () => {
     expect(source).not.toMatch(/sa\.json/);
   });
 
-  it("uses one exact firebase-tools version everywhere", () => {
-    const versions = [...source.matchAll(/firebase-tools@(\S+)/g)].map(
-      (m) => m[1]
+  it("runs the lockfile's exact firebase-tools, installed without scripts", () => {
+    const pkg = JSON.parse(
+      readFileSync(join(process.cwd(), "package.json"), "utf8")
+    ) as { devDependencies: Record<string, string> };
+    expect(pkg.devDependencies["firebase-tools"]).toBe("15.34.1");
+    const lock = JSON.parse(
+      readFileSync(join(process.cwd(), "package-lock.json"), "utf8")
+    ) as { packages: Record<string, { version: string }> };
+    expect(lock.packages["node_modules/firebase-tools"].version).toBe(
+      "15.34.1"
     );
-    expect(versions.length).toBeGreaterThanOrEqual(2);
-    for (const v of versions) expect(v).toBe("15.34.1");
+
+    const install = stepIndex(deploy, (s) => !!s.run?.includes("npm ci"));
+    expect(deploy.steps[install].run).toContain("--ignore-scripts");
+    const auth = stepIndex(
+      deploy,
+      (s) => !!s.uses?.startsWith("google-github-actions/auth@")
+    );
+    expect(install).toBeLessThan(auth);
+
+    const calls = deploy.steps.filter((s) => s.run?.includes("firebase-tools"));
+    expect(calls.length).toBe(2);
+    for (const s of calls) {
+      expect(s.run).toMatch(/^npx --no-install firebase-tools deploy /);
+    }
+    expect(source).not.toMatch(/npx --yes/);
+    expect(source).not.toMatch(/firebase-tools@/);
   });
 
   it("deploys both Hosting sites and the rules after building Jim's site", () => {
@@ -133,7 +154,37 @@ describe("CI deploy job (keyless)", () => {
   });
 });
 
+describe("CI permissions", () => {
+  it("gives the OIDC token to the deploy job only", () => {
+    const top = (parse(source) as { permissions?: Record<string, string> })
+      .permissions;
+    expect(top).toEqual({ contents: "read" });
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      if (name === "deploy") continue;
+      expect(job.permissions ?? {}).not.toHaveProperty("id-token");
+    }
+  });
+});
+
 describe("CI build job", () => {
+  it("pins every action the shipped build passes through", () => {
+    const uses = build.steps.flatMap((s) =>
+      s.uses && !s.uses.startsWith("./") ? [s.uses] : []
+    );
+    expect(uses.length).toBeGreaterThan(0);
+    for (const u of uses) expect(u).toMatch(SHA_PIN);
+
+    const setup = parse(
+      readFileSync(
+        join(process.cwd(), ".github/actions/setup/action.yml"),
+        "utf8"
+      )
+    ) as { runs: { steps: Step[] } };
+    for (const s of setup.runs.steps) {
+      if (s.uses) expect(s.uses).toMatch(SHA_PIN);
+    }
+  });
+
   it("checks Jim's site after the build", () => {
     const b = stepIndex(build, (s) => s.run?.trim() === "npm run build");
     const check = stepIndex(
@@ -149,5 +200,32 @@ describe("CI build job", () => {
     expect(gate?.run).toContain("exit 1");
     const b = build.steps.find((s) => s.run?.trim() === "npm run build");
     expect(b?.env?.NEXT_PUBLIC_JIM_TENANT).toBe("${{ vars.JIM_TENANT }}");
+  });
+});
+
+describe("Renovate", () => {
+  const renovate = JSON.parse(
+    readFileSync(join(process.cwd(), "renovate.json"), "utf8")
+  ) as { packageRules: Record<string, unknown>[] };
+  // Later rules win, so each guard must come after every automerge rule.
+  function lastRuleFor(key: string, value: string) {
+    const i = renovate.packageRules.findLastIndex((r) =>
+      (r[key] as string[] | undefined)?.includes(value)
+    );
+    const lastAutomerge = renovate.packageRules.findLastIndex(
+      (r) => r.automerge === true
+    );
+    expect(i).toBeGreaterThan(lastAutomerge);
+    return renovate.packageRules[i];
+  }
+
+  it("never auto-merges action or firebase-tools updates", () => {
+    for (const rule of [
+      lastRuleFor("matchManagers", "github-actions"),
+      lastRuleFor("matchPackageNames", "firebase-tools"),
+    ]) {
+      expect(rule.automerge).toBe(false);
+      expect(rule.minimumReleaseAge).toBe("14 days");
+    }
   });
 });
