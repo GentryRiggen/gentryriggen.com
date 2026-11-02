@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
 } from "react";
 import { KeyRound, LoaderCircle, LogOut, ShieldCheck, X } from "lucide-react";
@@ -71,6 +72,17 @@ const PASSWORD_CODES = new Set([
   "auth/user-mismatch",
   "auth/missing-password",
 ]);
+
+/** Out of sight and out of the way, but still in the form (not display:none). */
+const VISUALLY_HIDDEN: CSSProperties = {
+  position: "absolute",
+  left: "-10000px",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+  opacity: 0,
+  pointerEvents: "none",
+};
 
 const PRIMARY =
   "jim-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 font-semibold text-ayu-bg hover:brightness-110 disabled:opacity-50";
@@ -503,16 +515,17 @@ function Sheet({
 
             {step.kind === "password" && (
               <form onSubmit={start} className="space-y-3" noValidate>
-                {/* Tells a password manager which saved login this is. */}
+                {/* Tells a password manager which saved login this is. Off
+                    screen rather than display:none, which some ignore. */}
                 <input
                   type="email"
                   name="username"
                   autoComplete="username"
                   value={email ?? ""}
                   readOnly
-                  hidden
                   tabIndex={-1}
                   aria-hidden="true"
+                  style={VISUALLY_HIDDEN}
                 />
                 {step.again && (
                   <p className="text-sm text-ayu-text">{NEW_KEY}</p>

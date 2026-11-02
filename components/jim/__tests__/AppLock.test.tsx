@@ -30,6 +30,7 @@ import {
 } from "@/lib/jim/offlineStore";
 import { toBase64Url } from "@/lib/jim/faceId";
 import { historyKey, saveHistory } from "@/lib/jim/history";
+import { setAudioBusy } from "@/lib/jim/audioActivity";
 import { JimPlayer } from "@/lib/jim/player";
 import JimChat from "../JimChat";
 import JimGate from "../JimGate";
@@ -147,6 +148,7 @@ afterEach(() => {
   jest.useRealTimers();
   delete window.__JIM_TEST__;
   setOfflineBackend(null);
+  setAudioBusy(false);
   jest.restoreAllMocks();
 });
 
@@ -486,6 +488,55 @@ describe("idle while open", () => {
     expect(isLocked()).toBe(true);
   });
 
+  it("counts audio playing as being there, from when it stops", async () => {
+    await openIdle(60);
+    act(() => jest.advanceTimersByTime(100_000));
+    act(() => setAudioBusy(true));
+    act(() => jest.advanceTimersByTime(200_000));
+    // 300 s untouched, but the brief is still playing.
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(100_000));
+    expect(isLocked()).toBe(false);
+    // It stops at 400 s: five more minutes, so it locks at 700 s.
+    act(() => setAudioBusy(false));
+    act(() => jest.advanceTimersByTime(299_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+  });
+
+  it("paused audio doesn't keep it open", async () => {
+    await openIdle(60);
+    act(() => setAudioBusy(false));
+    act(() => jest.advanceTimersByTime(300_000));
+    expect(isLocked()).toBe(true);
+  });
+
+  it("locks on waking from sleep when the limit passed meanwhile", async () => {
+    await openIdle(60);
+    act(() => jest.advanceTimersByTime(60_000));
+    // Asleep: the wall clock moves on, timers don't, the tab stays visible.
+    act(() => jest.setSystemTime(Date.now() + 600_000));
+    expect(isLocked()).toBe(false);
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(isLocked()).toBe(true);
+  });
+
+  it("on waking before the limit, waits only the rest of it", async () => {
+    await openIdle(60);
+    act(() => jest.setSystemTime(Date.now() + 200_000));
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(99_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+  });
+
   it("doesn't count time hidden (the time-away rule covers that)", async () => {
     await openIdle(900);
     act(() => jest.advanceTimersByTime(100_000));
@@ -493,7 +544,8 @@ describe("idle while open", () => {
     act(() => jest.advanceTimersByTime(800_000));
     setVisible("visible");
     expect(isLocked()).toBe(false);
-    act(() => jest.advanceTimersByTime(899_000));
+    // 100 s untouched before it was hidden still count: 800 s more.
+    act(() => jest.advanceTimersByTime(799_000));
     expect(isLocked()).toBe(false);
     act(() => jest.advanceTimersByTime(1_000));
     expect(isLocked()).toBe(true);

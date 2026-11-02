@@ -28,6 +28,7 @@ import {
   type LockState,
   type PinCheck,
 } from "@/lib/jim/appLock";
+import { isAudioBusy, onAudioBusy } from "@/lib/jim/audioActivity";
 import {
   faceIdAvailable,
   registerFaceId,
@@ -99,7 +100,9 @@ interface Marker {
  *
  * It fails closed: with no readable record, it is still locked (with only
  * "Forgot PIN") when IndexedDB says the lock is on, or says nothing while
- * Jim data is kept on the device. A fresh sign-in writes "off" first.
+ * Jim data is kept on the device. A fresh sign-in writes "off" first. This
+ * is a screen lock: someone who can edit the browser's storage can read
+ * the kept data without it.
  */
 export default function useAppLock(uid: string | null): AppLock {
   /** Bumped after each write, to read the record again. */
@@ -217,28 +220,71 @@ export default function useAppLock(uid: string | null): AppLock {
     };
   }, [uid, enabled]);
 
-  // Open and untouched: locks after max(after, 5 minutes) of no input while
-  // the page is visible. Time hidden is the time-away rule's to judge.
+  // Open and untouched: locks after max(after, 5 minutes) with no input and
+  // no audio playing while the page is visible. Time hidden is the
+  // time-away rule's to judge, so it is left out; time asleep (a desktop
+  // whose tab never went hidden) is not, and is checked on wake.
   useEffect(() => {
     if (!uid || !enabled || locked) return;
     const limit = idleLimitMs(after);
     let timer: ReturnType<typeof setTimeout> | undefined;
-    function arm() {
+    /** Wall-clock time of the last input (or the end of audio). */
+    let lastActive = Date.now();
+    /** When the page was hidden, so that time is left out. */
+    let hiddenAt: number | null = null;
+
+    function check() {
       clearTimeout(timer);
-      timer =
-        document.visibilityState === "hidden"
-          ? undefined
-          : setTimeout(() => setUnlockedFor(null), limit);
+      timer = undefined;
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      // Audio playing counts as being there; counting starts when it ends.
+      if (isAudioBusy()) lastActive = now;
+      const idle = now - lastActive;
+      if (idle >= limit) {
+        setUnlockedFor(null);
+        return;
+      }
+      // A clock set backwards waits the full limit, never longer.
+      timer = setTimeout(check, Math.min(limit, limit - idle));
+    }
+    function active() {
+      lastActive = Date.now();
+      check();
+    }
+    function onVisibility() {
+      if (document.visibilityState === "hidden") {
+        hiddenAt ??= Date.now();
+        clearTimeout(timer);
+        timer = undefined;
+        return;
+      }
+      if (hiddenAt !== null) {
+        lastActive += Math.max(0, Date.now() - hiddenAt);
+        hiddenAt = null;
+      }
+      check();
     }
     const inputs = ["pointerdown", "keydown", "touchstart", "wheel", "input"];
     const options = { capture: true, passive: true } as const;
-    arm();
-    inputs.forEach((name) => window.addEventListener(name, arm, options));
-    document.addEventListener("visibilitychange", arm);
+    check();
+    inputs.forEach((name) => window.addEventListener(name, active, options));
+    // Waking from sleep: timers were frozen, the wall clock was not.
+    window.addEventListener("focus", check);
+    window.addEventListener("pageshow", check);
+    document.addEventListener("visibilitychange", onVisibility);
+    const stopAudio = onAudioBusy((busy) => {
+      if (!busy) active();
+    });
     return () => {
       clearTimeout(timer);
-      inputs.forEach((name) => window.removeEventListener(name, arm, options));
-      document.removeEventListener("visibilitychange", arm);
+      inputs.forEach((name) =>
+        window.removeEventListener(name, active, options)
+      );
+      window.removeEventListener("focus", check);
+      window.removeEventListener("pageshow", check);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stopAudio();
     };
   }, [uid, enabled, locked, after]);
 

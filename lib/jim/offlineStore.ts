@@ -7,8 +7,9 @@ import { normalizeView, type ViewData } from "@/lib/jim/view";
  * missing storage just means nothing is kept.
  *
  * The same store keeps whether the app lock is on (`lockOn:<uid>`), apart
- * from the lock itself, so a lock record deleted from local storage still
- * locks (see useAppLock).
+ * from the lock itself, so a lock record lost from local storage on its own
+ * still locks (see useAppLock). It is not protection against anyone who can
+ * edit this storage.
  */
 
 export interface SavedView {

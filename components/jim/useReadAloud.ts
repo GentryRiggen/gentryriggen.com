@@ -1,5 +1,6 @@
 "use client";
 
+import { setAudioBusy } from "@/lib/jim/audioActivity";
 import {
   useCallback,
   useEffect,
@@ -113,6 +114,19 @@ export default function useReadAloud(
   useLayoutEffect(() => {
     player.setLocked(locked);
   }, [player, locked]);
+  // Playing or loading keeps the app lock's idle timer from running out.
+  useEffect(() => {
+    const report = () => {
+      const { status } = player.getState();
+      setAudioBusy(status === "playing" || status === "loading");
+    };
+    report();
+    const stop = player.subscribe(report);
+    return () => {
+      stop();
+      setAudioBusy(false);
+    };
+  }, [player]);
   const [auto, setAuto] = useState(loadAutoRead);
   const state = useSyncExternalStore(
     player.subscribe,

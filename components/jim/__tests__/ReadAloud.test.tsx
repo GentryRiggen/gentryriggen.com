@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
+import { isAudioBusy } from "@/lib/jim/audioActivity";
 import JimChat from "../JimChat";
 import useReadAloud from "../useReadAloud";
 
@@ -377,11 +378,16 @@ describe("now-playing bar", () => {
     expect(audio().playbackRate).toBe(1.25);
     expect(window.localStorage.getItem("jim:speed")).toBe("1.25");
 
+    // Playing counts as activity for the app lock; paused does not.
+    expect(isAudioBusy()).toBe(true);
     await userEvent.click(screen.getByRole("button", { name: "Pause" }));
     expect(audio().pause).toHaveBeenCalled();
+    expect(isAudioBusy()).toBe(false);
     await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    expect(isAudioBusy()).toBe(true);
 
     await userEvent.click(screen.getByRole("button", { name: "Stop reading" }));
+    expect(isAudioBusy()).toBe(false);
     expect(screen.queryByRole("region", { name: "Now playing" })).toBeNull();
     expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
   });

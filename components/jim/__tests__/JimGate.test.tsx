@@ -162,6 +162,26 @@ it("a fresh sign-in writes the lock as off before opening", async () => {
   ).not.toBeInTheDocument();
 });
 
+it("a fresh sign-in with no lock record clears a marker left on", async () => {
+  await renderGate();
+  act(() => emit(null));
+  await waitFor(() => expect(offline.clearAll).toHaveBeenCalled());
+  // A wipe whose store clear never finished left the marker on.
+  await offline.saveLockState(ADMIN_UID, true);
+  mockClient.signInWithEmail.mockImplementation(async () => {
+    emit({ uid: ADMIN_UID, email: "me@x.com" });
+    return { kind: "done" };
+  });
+  await userEvent.type(await screen.findByLabelText("Email"), "a@b.com");
+  await userEvent.type(screen.getByLabelText("Password"), "pw");
+  await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByTestId("chat")).toBeInTheDocument();
+  expect(await offline.loadLockState(ADMIN_UID)).toBe("off");
+  expect(
+    screen.queryByRole("heading", { name: "Jim is locked" })
+  ).not.toBeInTheDocument();
+});
+
 it("a reload with kept chat and no lock marker stays locked", async () => {
   saveHistory(ADMIN_UID, {
     session: "s1",

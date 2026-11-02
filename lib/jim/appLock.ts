@@ -3,10 +3,13 @@
  * device. The PIN itself is never stored, only a salted PBKDF2-SHA-256 hash of
  * it, one record per signed-in user under `jim:lock:<uid>`, wiped on sign-out.
  *
- * This keeps a borrowed (unlocked) phone out of Jim. It is not a defense
- * against someone with the device's storage in hand, but deleting the record
- * alone doesn't open it: whether the lock is on is also kept in IndexedDB
- * (`lockOn:<uid>`), and a lock that should be there and isn't fails closed.
+ * This is a screen lock: it keeps a borrowed (unlocked) phone out of Jim's
+ * pages. It is no defense against someone who can read or edit the
+ * browser's storage: they can read the kept chat and Notes directly, or
+ * take the sign-in itself and call the server. Whether the lock is on is
+ * also kept in IndexedDB (`lockOn:<uid>`), only so that a lock record lost
+ * on its own (a partial wipe, a damaged entry) fails closed instead of
+ * opening.
  */
 
 import { historyKey } from "@/lib/jim/history";

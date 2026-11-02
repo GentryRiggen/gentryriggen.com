@@ -23,8 +23,10 @@ import {
   clearLock,
   clearWipePending,
   isWipePending,
+  loadLock,
   markLockOffIfAbsent,
   markWipePending,
+  saveLockState,
 } from "@/lib/jim/appLock";
 import {
   getIdToken,
@@ -226,8 +228,12 @@ export default function JimGate() {
         };
         // A fresh sign-in says "no lock" before anything is kept, so a lock
         // record that later goes missing can be told from one never set.
-        // (The e2e stand-in counts as fresh on every load.)
-        if (signingIn.current || fake) {
+        // The password just typed proves the owner: with no lock record, a
+        // marker left "on" by a wipe that didn't finish is overwritten. (The
+        // e2e stand-in counts as fresh on every load, but only fills a gap.)
+        if (signingIn.current && loadLock(uid) === null) {
+          void saveLockState(uid, false).then(open);
+        } else if (signingIn.current || fake) {
           void markLockOffIfAbsent(uid).then(open);
         } else {
           open();
