@@ -11,6 +11,7 @@ import {
   picksSoFar,
 } from "@/lib/ever-onward/universes/light/garden";
 import { lanternOf } from "@/lib/ever-onward/universes/light";
+import { chosenSide, forkOf } from "@/lib/ever-onward/universes/light/forks";
 import type { CueName } from "../audio/everOnwardSynth";
 import { SCORES, TITLE_SCORE, UNEASE } from "../audio/scores";
 import EmberIcon from "../game/EmberIcon";
@@ -25,11 +26,30 @@ import StreetlightsPanel from "../game/StreetlightsPanel";
 import TideClock from "../game/TideClock";
 import WeatherDesk from "../game/WeatherDesk";
 import LightScene from "../scenes/light/LightScene";
-import type { TapLook, UniverseUi } from "./types";
+import type { PanelProps, TapLook, UniverseUi } from "./types";
 
 /** Whether the run is in the storm that blows on the coast. */
 export function isStormy(run: RunState): boolean {
   return run.phase === 0 && (run.resources.storm ?? 0) > 0;
+}
+
+/**
+ * The Coast's fork is a big, one-time choice, so while it is waiting to be
+ * made it sits at the top with the lamp where it can't be missed; once made
+ * it settles down with the other panels. The other parts' forks stay where
+ * they always were.
+ */
+function isCoastForkPending(run: RunState): boolean {
+  const fork = forkOf(run);
+  return run.phase === 0 && !!fork && chosenSide(run, fork) === null;
+}
+
+function CoastForkPanel(props: PanelProps) {
+  return isCoastForkPending(props.run) ? <ForkPanel {...props} /> : null;
+}
+
+function LaterForkPanel(props: PanelProps) {
+  return isCoastForkPending(props.run) ? null : <ForkPanel {...props} />;
 }
 
 /** Lantern for the coast, then generator, collector and flame. */
@@ -75,9 +95,9 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
-  topPanels: [LampPanel],
+  topPanels: [CoastForkPanel, LampPanel],
   panels: [
-    ForkPanel,
+    LaterForkPanel,
     FundPanel,
     TideClock,
     ProbeRaces,

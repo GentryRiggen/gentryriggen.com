@@ -282,7 +282,7 @@ const coastUpgrades: UpgradeDef[] = [
     currency: "coins",
     stats: [{ label: "Oil use", read: idleBurn, suffix: "/s" }],
     plain: (before, after) =>
-      `Oil lasts ${gain(burnOf(before), burnOf(after))}`,
+      `Oil lasts ${gain(burnOf(after), burnOf(before))} longer`,
     steps: [
       {
         name: "Trimmed wick",

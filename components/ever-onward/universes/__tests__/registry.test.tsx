@@ -1,5 +1,5 @@
 import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
-import ForkPanel from "../../game/ForkPanel";
+import LampPanel from "../../game/LampPanel";
 import FundPanel from "../../game/FundPanel";
 import MemoryGarden from "../../game/MemoryGarden";
 import ProbeRaces from "../../game/ProbeRaces";
@@ -16,8 +16,14 @@ describe("the universe UI registry", () => {
   });
 
   it("keeps Light's side panels in today's order", () => {
-    expect(uiFor("light").panels).toEqual([
-      ForkPanel,
+    // The fork is the same panel in every part, but the Coast's sits at the top
+    // (with the lamp) and the others stay here, in the same place as before.
+    const { panels, topPanels } = uiFor("light");
+    expect(panels[0].name).toBe("LaterForkPanel");
+    expect(topPanels).toHaveLength(2);
+    expect(topPanels?.[0].name).toBe("CoastForkPanel");
+    expect(topPanels?.[1]).toBe(LampPanel);
+    expect(panels.slice(1)).toEqual([
       FundPanel,
       TideClock,
       ProbeRaces,

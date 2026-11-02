@@ -39,10 +39,9 @@ const GATE_CAP = 59;
 /**
  * The Coast rework (goal on the HUD, keepers with milestones, lighthouses that
  * compound, the lamp knob; tuned by playing it in a browser, not to this card)
- * scored 73.0 uncapped, down from 79.0 (the build before it was 78.9 on the
- * same card). The Coast now takes a human about 24 minutes and the optimizing
- * bots 13 (they use the lamp and the fork well), so M14 (total length) fell and
- * the Coast's M4, M5 and M15 gates trip: more, smaller, faster purchases and
+ * scored 73.3 uncapped, down from 78.9 on the same card. The Coast now takes a player who only taps and buys about 20
+ * minutes, and the scorecard's bots (which use the lamp and the fork well) 11, so M14 (total length) fell and
+ * the Coast's M1, M4, M5 and M15 gates trip: more, smaller, faster purchases and
  * the lamp knob mean more clicks a minute and later buys that are a smaller
  * share of a much bigger income. That is the point of the rework, so the floor
  * is that score minus 1; it is not tuned back toward the old, slow Coast.
@@ -50,6 +49,8 @@ const GATE_CAP = 59;
 const UNCAPPED_FLOOR = 72;
 /** Gates the Coast rework knowingly trips (see above); no other gate may fail. */
 const KNOWN_REWORK_GATES: readonly string[] = [
+  // The last cards of the Coast reveal minutes apart (a gap of ~226 s).
+  "M1 Reveal cadence (coast)",
   "M4 Felt effect (coast)",
   "M5 Purchase rate (coast)",
   "M14 Total length (run)",

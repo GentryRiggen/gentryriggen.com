@@ -468,6 +468,9 @@ export default function GameScreen({
             ⚠ {alert}
           </p>
         )}
+        {ui.topPanels?.map((Panel, i) => (
+          <Panel key={i} def={def} run={run} onAct={onAction} />
+        ))}
         {visitors.map((v) => (
           <VisitorCard
             key={v.id}
@@ -479,9 +482,6 @@ export default function GameScreen({
           />
         ))}
         <ActionPanel def={def} run={run} onAct={onAction} />
-        {ui.topPanels?.map((Panel, i) => (
-          <Panel key={i} def={def} run={run} onAct={onAction} />
-        ))}
         {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
           <div className="space-y-2">

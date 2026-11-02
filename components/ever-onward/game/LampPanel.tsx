@@ -182,10 +182,13 @@ function LampPanel({ def, run, onAct }: PanelProps) {
           );
         })}
       </div>
-      <p className="font-mono text-xs text-slate-300">
-        Brighter guides more ships but burns far more oil. Burn bright when oil
-        is cheap, dim when it is dear.
-      </p>
+      {/* The how-to line goes away once the player has used the knob. */}
+      {(run.resources.lampBeamChanges ?? 0) === 0 && (
+        <p className="font-mono text-xs text-slate-300">
+          Brighter guides more ships but burns far more oil. Burn bright when
+          oil is cheap, dim when it is dear.
+        </p>
+      )}
     </PanelFrame>
   );
 }

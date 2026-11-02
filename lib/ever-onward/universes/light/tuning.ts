@@ -104,7 +104,7 @@ export const TUNING = {
     /** Every lighthouse after the first multiplies the ships by this. */
     lighthouseMult: 2,
     /** Each lighthouse costs this many times the one before. */
-    lighthouseGrowth: 11.5,
+    lighthouseGrowth: 7.5,
     /**
      * The lamp's brightness, the coast's one knob. `pay` multiplies the ships
      * every flash guides (yours and the keepers'), `burn` the oil the lamp

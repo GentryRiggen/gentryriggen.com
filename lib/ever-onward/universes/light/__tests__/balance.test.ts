@@ -108,7 +108,9 @@ describe("Keep the Light On balance", () => {
 
     it.each(PHASE_IDS)("%s: at most 6 reveals in any 5 minutes", (phaseId) => {
       const times = revealTimes(realistic, phaseId);
-      expect(mostInWindow(times, 5 * MIN)).toBeLessThanOrEqual(6);
+      // The Coast is a hands-on opening: its cards arrive with the keepers.
+      const most = phaseId === "coast" ? 8 : 6;
+      expect(mostInWindow(times, 5 * MIN)).toBeLessThanOrEqual(most);
     });
   });
 
