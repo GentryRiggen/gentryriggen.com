@@ -40,6 +40,8 @@ export interface AppLock {
   lockedUntil: number;
   /** Face ID is set up for this lock. */
   faceId: boolean;
+  /** How many digits the PIN has, when known (it unlocks on the last). */
+  pinLength: number | null;
   /** This device can do Face ID (or another platform authenticator). */
   faceIdSupported: boolean;
   lockNow: () => void;
@@ -264,6 +266,7 @@ export default function useAppLock(uid: string | null): AppLock {
     lockedUntil: record?.lockedUntil ?? 0,
     settleWait,
     faceId: Boolean(record?.credential),
+    pinLength: record?.length ?? null,
     faceIdSupported,
     lockNow,
     verify,

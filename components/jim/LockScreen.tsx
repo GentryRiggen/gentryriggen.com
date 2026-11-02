@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScanFace } from "lucide-react";
 import JimMark from "@/components/jim/JimMark";
-import PinPad from "@/components/jim/PinPad";
+import PinPad, { KEEP_ENTER } from "@/components/jim/PinPad";
 import type { AppLock } from "@/components/jim/useAppLock";
 import { PIN_MIN } from "@/lib/jim/appLock";
 
@@ -35,6 +35,8 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
   const [shake, setShake] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [forgot, setForgot] = useState(false);
+  /** A check is running: one per PIN entered, however it was submitted. */
+  const checking = useRef(false);
 
   const waitMs = lock.lockedUntil - now;
   const waiting = waitMs > 0;
@@ -50,11 +52,16 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
     return () => clearInterval(timer);
   }, [lock.lockedUntil]);
 
-  async function submit() {
-    if (busy || waiting || pin.length < PIN_MIN) return;
+  async function submit(entered: string = pin) {
+    if (checking.current || busy || waiting || entered.length < PIN_MIN) {
+      return;
+    }
+    checking.current = true;
     setBusy(true);
     setMessage(null);
-    const result = await lock.unlockWithPin(pin);
+    const result = await lock.unlockWithPin(entered).finally(() => {
+      checking.current = false;
+    });
     setPin("");
     setBusy(false);
     setNow(Date.now());
@@ -106,6 +113,7 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
             </p>
             <button
               type="button"
+              {...KEEP_ENTER}
               onClick={() => onWipe(FORGOT_NOTICE)}
               className="min-h-12 w-full rounded-xl border border-ayu-red/30 bg-ayu-red/10 px-4 font-semibold text-ayu-red hover:bg-ayu-red/15"
             >
@@ -113,6 +121,7 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
             </button>
             <button
               type="button"
+              {...KEEP_ENTER}
               onClick={() => setForgot(false)}
               className="min-h-11 px-4 text-ayu-subtle hover:text-ayu-text"
             >
@@ -150,6 +159,9 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
               onChange={(next) => {
                 setPin(next);
                 if (message) setMessage(null);
+                // The iPhone number pad has no return key: with the PIN's
+                // length known, the last digit submits (never a shorter one).
+                if (next.length === lock.pinLength) void submit(next);
               }}
               onSubmit={() => void submit()}
               submitLabel="OK"
@@ -158,6 +170,7 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
             />
             <button
               type="button"
+              {...KEEP_ENTER}
               onClick={() => setForgot(true)}
               className="min-h-11 px-4 text-sm text-ayu-subtle underline-offset-2 hover:text-ayu-text hover:underline"
             >

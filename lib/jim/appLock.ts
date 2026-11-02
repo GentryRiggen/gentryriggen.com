@@ -26,6 +26,12 @@ export interface LockRecord {
   lastFail: number;
   /** Face ID: the platform credential's id, base64url. */
   credential?: string;
+  /**
+   * How many digits the PIN has, so the lock screen can unlock as the last
+   * one goes in (the iPhone number pad has no return key). Missing on locks
+   * set before it was kept; a right PIN adds it.
+   */
+  length?: number;
 }
 
 export const PIN_MIN = 4;
@@ -103,6 +109,14 @@ function count(value: unknown): number {
     : 0;
 }
 
+function pinLength(value: unknown): number | undefined {
+  return Number.isInteger(value) &&
+    (value as number) >= PIN_MIN &&
+    (value as number) <= PIN_MAX
+    ? (value as number)
+    : undefined;
+}
+
 function knownAfter(value: unknown): number {
   return LOCK_AFTER_CHOICES.some((c) => c.seconds === value)
     ? (value as number)
@@ -143,6 +157,9 @@ export function loadLock(uid: string): LockRecord | null {
     lastFail: count(value.lastFail),
     ...(valid && typeof value.credential === "string" && value.credential
       ? { credential: value.credential }
+      : {}),
+    ...(valid && pinLength(value.length) !== undefined
+      ? { length: pinLength(value.length) }
       : {}),
   };
 }
@@ -235,6 +252,7 @@ export async function createLock(
     fails: 0,
     lockedUntil: 0,
     lastFail: 0,
+    length: pin.length,
   };
 }
 
@@ -328,7 +346,14 @@ async function checkPinNow(
   if (await pinMatches(record, pin)) {
     // Re-read: settings may have changed while hashing.
     const latest = loadLock(uid) ?? counted;
-    saveLock(uid, { ...latest, fails: 0, lockedUntil: 0, lastFail: 0 });
+    saveLock(uid, {
+      ...latest,
+      fails: 0,
+      lockedUntil: 0,
+      lastFail: 0,
+      // A lock set before the length was kept learns it now.
+      length: latest.length ?? pin.length,
+    });
     return { kind: "ok" };
   }
   if (fails >= MAX_FAILS) return { kind: "wipe" };

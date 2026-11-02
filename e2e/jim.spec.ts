@@ -1064,11 +1064,13 @@ test("the chat survives a reload and New chat clears it", async ({ page }) => {
   await expect(log.getByText("remember the milk")).toHaveCount(0);
 });
 
-async function tapPin(page: Page, pin: string, submit: string) {
+async function tapPin(page: Page, pin: string, submit?: string) {
   for (const digit of pin) {
     await page.getByRole("button", { name: digit, exact: true }).click();
   }
-  await page.getByRole("button", { name: submit, exact: true }).click();
+  if (submit) {
+    await page.getByRole("button", { name: submit, exact: true }).click();
+  }
 }
 
 test("an app lock PIN locks the chat on reload until it is entered", async ({
@@ -1080,7 +1082,10 @@ test("an app lock PIN locks the chat on reload until it is entered", async ({
   await page.getByRole("menuitem", { name: "App lock: Off" }).click();
   const sheet = page.getByRole("dialog", { name: "App lock" });
   await expect(sheet.getByText("Choose a PIN (4 to 8 digits)")).toBeVisible();
-  await tapPin(page, "2468", "Next");
+  // Typed (the phone's number pad, or a keyboard), then Enter.
+  const box = sheet.getByLabel("PIN", { exact: true });
+  await box.pressSequentially("2468");
+  await box.press("Enter");
   await expect(sheet.getByText("Enter it again")).toBeVisible();
   await tapPin(page, "2468", "Next");
   await expect(sheet.getByRole("radio", { name: /Immediately/ })).toBeChecked();
@@ -1097,10 +1102,11 @@ test("an app lock PIN locks the chat on reload until it is entered", async ({
   await bigTargets(page);
   await noSidewaysScroll(page);
 
-  await tapPin(page, "1111", "OK");
+  // The PIN's length is known, so the last digit unlocks: no OK.
+  await page.getByLabel("PIN", { exact: true }).pressSequentially("1111");
   await expect(page.getByText("Wrong PIN. 9 attempts left.")).toBeVisible();
   await expect(page.getByLabel("Message")).toHaveCount(0);
-  await tapPin(page, "2468", "OK");
+  await tapPin(page, "2468");
   await expect(page.getByLabel("Message")).toBeVisible();
   await expect(
     page.getByRole("log").getByText("remember the milk")

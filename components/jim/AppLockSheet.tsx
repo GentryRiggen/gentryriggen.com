@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { TOO_MANY_NOTICE, countdown } from "@/components/jim/LockScreen";
-import PinPad from "@/components/jim/PinPad";
+import PinPad, { KEEP_ENTER } from "@/components/jim/PinPad";
 import type { AppLock } from "@/components/jim/useAppLock";
 import { LOCK_AFTER_CHOICES, PIN_MIN, pinSupported } from "@/lib/jim/appLock";
 
@@ -77,7 +77,10 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    closeRef.current?.focus();
+    // The PIN box may have focus already (a desktop); otherwise Close.
+    if (!sheetRef.current?.contains(document.activeElement)) {
+      closeRef.current?.focus();
+    }
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = "hidden";
@@ -266,6 +269,7 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
           <button
             ref={closeRef}
             type="button"
+            {...KEEP_ENTER}
             aria-label="Close"
             onClick={onClose}
             className="flex size-11 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
