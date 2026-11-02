@@ -26,10 +26,7 @@ describe("parseJimPath", () => {
     ["/jim/notes/health", { kind: "page", page: "health" }],
     ["/jim/notes/training", { kind: "page", page: "training" }],
     ["/jim/notes/golf", { kind: "page", page: "golf" }],
-    [
-      "/jim/notes/people/andrew-jenkins",
-      { kind: "person", slug: "andrew-jenkins" },
-    ],
+    ["/jim/notes/people/sam-okafor", { kind: "person", slug: "sam-okafor" }],
     ["/jim/notes/directory/42", { kind: "directory", id: 42 }],
     [
       "/jim/notes/note/work/burns-intelligence",
@@ -50,7 +47,7 @@ describe("parseJimPath", () => {
     "/jim/chat/extra",
     "/jim/notes/home",
     "/jim/notes/nope",
-    "/jim/notes/people/Andrew",
+    "/jim/notes/people/Sam",
     "/jim/notes/people/a/b",
     "/jim/notes/people/a.b",
     "/jim/notes/directory/x",
@@ -133,8 +130,8 @@ describe("routeTitle", () => {
   it("names the page for the browser tab", () => {
     expect(routeTitle({ kind: "chat" })).toBe("Chat · Jim");
     expect(routeTitle({ kind: "page", page: "people" })).toBe("People · Jim");
-    expect(routeTitle({ kind: "person", slug: "a" }, "Andrew Jenkins")).toBe(
-      "Andrew Jenkins · Jim"
+    expect(routeTitle({ kind: "person", slug: "a" }, "Sam Okafor")).toBe(
+      "Sam Okafor · Jim"
     );
     expect(routeTitle({ kind: "person", slug: "a" })).toBe("People · Jim");
     expect(routeTitle({ kind: "note", path: "x" }, "Garden")).toBe(

@@ -1,4 +1,4 @@
-import { getIdToken } from "@/lib/firebase/client";
+import { getIdToken } from "@/lib/jim/auth";
 import { JIM_API, JimError } from "@/lib/jim/api";
 import { SpeechRefused } from "@/lib/jim/player";
 import { callJim } from "@/lib/jim/view";

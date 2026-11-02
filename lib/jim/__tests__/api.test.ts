@@ -4,6 +4,7 @@ import {
   JIM_IDLE_MS,
   JIM_TIMEOUT_MS,
   JimError,
+  onSignInRefused,
   streamToJim,
   wakeJim,
   type JimStreamEvent,
@@ -156,6 +157,28 @@ it("is denied on 403 and when there is no signed-in user", async () => {
     "denied"
   );
   expect(never).not.toHaveBeenCalled();
+});
+
+it("tells the page once a request finds the sign-in refused", async () => {
+  const refused = jest.fn();
+  const stop = onSignInRefused(refused);
+  try {
+    const fetchFn = jest.fn().mockResolvedValue(json(403, {}));
+    await kindOf(sendToJim("s", "x", async () => "t", fetchFn, API));
+    await Promise.resolve();
+    expect(refused).toHaveBeenCalledTimes(1);
+    // A passing failure is not a refusal.
+    const busy = jest.fn().mockResolvedValue(json(503, {}));
+    await kindOf(sendToJim("s", "x", async () => "t", busy, API));
+    await Promise.resolve();
+    expect(refused).toHaveBeenCalledTimes(1);
+  } finally {
+    stop();
+  }
+  const fetchFn = jest.fn().mockResolvedValue(json(403, {}));
+  await kindOf(sendToJim("s", "x", async () => "t", fetchFn, API));
+  await Promise.resolve();
+  expect(refused).toHaveBeenCalledTimes(1);
 });
 
 it("is waking when the server says 503 (the turn did not run)", async () => {

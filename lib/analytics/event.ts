@@ -1,4 +1,6 @@
+import { JIM_HOST } from "@/lib/jim/host";
 import { isExcluded } from "./exclude";
+import { LOCAL_HOSTS } from "./localHosts";
 import { normalizePath, siteForPath } from "./site";
 import type { KeyValueStorage } from "./storage";
 import type { PageviewEvent } from "./types";
@@ -21,7 +23,7 @@ export interface PageviewEnv {
   now?: Date;
 }
 
-export const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+export { LOCAL_HOSTS };
 
 function bareHost(host: string): string {
   return host.replace(/^www\./, "");
@@ -41,6 +43,8 @@ function referrerHost(referrer: string, hostname: string): string {
 export function buildPageview(env: PageviewEnv): PageviewEvent | null {
   if (!env.isProduction) return null;
   if (LOCAL_HOSTS.has(env.hostname)) return null;
+  // Jim's own site is private: nothing on it is ever counted.
+  if (env.hostname === JIM_HOST) return null;
   if (isExcluded(env.storage)) return null;
   if (isBot(env.userAgent, env.webdriver)) return null;
   const site = siteForPath(env.pathname);

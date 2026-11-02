@@ -5,6 +5,11 @@ import { normalizeView, type ViewData } from "@/lib/jim/view";
  * signal. IndexedDB `jim`, store `kv`, one entry per signed-in user
  * (`view:<uid>`), wiped on sign-out. Every call is best effort: blocked or
  * missing storage just means nothing is kept.
+ *
+ * The same store keeps whether the app lock is on (`lockOn:<uid>`), apart
+ * from the lock itself, so a lock record lost from local storage on its own
+ * still locks (see useAppLock). It is not protection against anyone who can
+ * edit this storage.
  */
 
 export interface SavedView {
@@ -137,6 +142,74 @@ export async function loadView(uid: string): Promise<SavedView | null> {
   const data = normalizeView(payload);
   if (!data || typeof savedAt !== "number") return null;
   return { payload: data, savedAt };
+}
+
+/** Whether a Notes payload is kept for this user (false when unreadable). */
+export async function hasSavedView(uid: string): Promise<boolean> {
+  try {
+    const raw = await store()?.get(viewKey(uid));
+    return raw !== undefined && raw !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function lockStateKey(uid: string): string {
+  return `lockOn:${uid}`;
+}
+
+/** "on" / "off" as last written; "missing" when nothing is (or can be) read. */
+export type LockState = "on" | "off" | "missing";
+
+/**
+ * Whether this user's app lock is on, as written when it was set or turned
+ * off. Anything but a plain `false` reads as on: a damaged entry fails
+ * closed. A failed read is tried once more (a stuck open is reopened), then
+ * reads as missing.
+ */
+export async function loadLockState(uid: string): Promise<LockState> {
+  const kv = store();
+  if (!kv) return "missing";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const raw = await kv.get(lockStateKey(uid));
+      if (raw === undefined || raw === null) return "missing";
+      return raw === false ? "off" : "on";
+    } catch {
+      // Once more.
+    }
+  }
+  return "missing";
+}
+
+/** Writes whether the lock is on; false only when the store refused it. */
+export async function saveLockState(
+  uid: string,
+  on: boolean
+): Promise<boolean> {
+  const kv = store();
+  // No store at all keeps nothing that could disagree later.
+  if (!kv) return true;
+  try {
+    await kv.set(lockStateKey(uid), on);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Writes "off" for a user with nothing written yet (a fresh sign-in). */
+export async function markLockOffIfAbsent(uid: string): Promise<void> {
+  const kv = store();
+  if (!kv) return;
+  try {
+    const raw = await kv.get(lockStateKey(uid));
+    if (raw === undefined || raw === null) {
+      await kv.set(lockStateKey(uid), false);
+    }
+  } catch {
+    // Unreadable: leave it; a missing entry with data on the device locks.
+  }
 }
 
 /** Wipes everything kept for every user (sign-out on a lent phone). */

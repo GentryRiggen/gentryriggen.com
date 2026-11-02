@@ -21,6 +21,7 @@ const customJestConfig = {
     "/e2e/",
     "/.next/",
     "/out/",
+    "/out-jim/",
     "<rootDir>/.claude/",
     "<rootDir>/firestore-tests/",
     "/__tests__/fixtures\\.ts$",

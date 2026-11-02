@@ -68,8 +68,16 @@ Chromium for everything; WebKit and an iPad profile run only the tests tagged
 ## Deployment
 
 Pushes to `main` run CI (lint, format, types, unit and e2e tests, build) and
-deploy `out/` to Firebase Hosting through GitHub Actions. The workflow needs
-two repository secrets: `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID`.
+deploy both Firebase Hosting sites (the main site from `out/`, Jim's from
+`out-jim/`) plus the Firestore rules and indexes through GitHub Actions.
+
+The deploy is keyless: the job trades GitHub's OIDC token for a short-lived
+token of a deployer service account through Workload Identity Federation, and
+the pool trusts only this repository's `main` branch. No service account key
+or `FIREBASE_SERVICE_ACCOUNT` secret is used. The workflow needs three
+repository variables (not secrets): `GCP_WIF_PROVIDER` (the full provider
+name), `GCP_DEPLOYER_SA` (the deployer's email) and `JIM_TENANT` (Jim's
+sign-in tenant id). CI on `main` fails with a clear error if one is missing.
 Renovate keeps dependencies current.
 
 ## Contributing

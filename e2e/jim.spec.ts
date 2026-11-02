@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 import {
   test,
   expect,
@@ -540,11 +542,11 @@ test.describe("Jim", () => {
     // Not the homepage's canonical or share card.
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://gentryriggen.com/jim"
+      "https://jim.gentryriggen.com/jim"
     );
     await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
       "content",
-      "https://gentryriggen.com/jim"
+      "https://jim.gentryriggen.com/jim"
     );
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
       "content",
@@ -1217,6 +1219,72 @@ test("an app lock PIN locks the chat on reload until it is entered", async ({
   ).toBeVisible();
 });
 
+/** Sets a 4-digit PIN from the menu (it locks Immediately when left). */
+async function setPin(page: Page, pin: string) {
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "App lock: Off" }).click();
+  const sheet = page.getByRole("dialog", { name: "App lock" });
+  const box = sheet.getByLabel("PIN", { exact: true });
+  await box.pressSequentially(pin);
+  await box.press("Enter");
+  await expect(sheet.getByText("Enter it again")).toBeVisible();
+  await tapPin(page, pin, "Next");
+  await sheet.getByRole("button", { name: "Turn on" }).click();
+  await expect(sheet).toHaveCount(0);
+}
+
+test("a lock record deleted from the device still locks, with only Forgot PIN", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await send(page, "remember the milk", "Saved it.");
+  await setPin(page, "2468");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toBeVisible();
+
+  // Someone with the unlocked browser deletes the lock record.
+  const removed = await page.evaluate(() => {
+    const keys = Object.keys(localStorage).filter((k) =>
+      k.startsWith("jim:lock:")
+    );
+    keys.forEach((k) => localStorage.removeItem(k));
+    return keys.length;
+  });
+  expect(removed).toBe(1);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Jim is locked" })
+  ).toBeVisible();
+  await expect(page.getByLabel("PIN", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await expect(page.getByText("remember the milk")).toHaveCount(0);
+  await bigTargets(page);
+  await noSidewaysScroll(page);
+  await page.getByRole("button", { name: "Forgot PIN?" }).click();
+  await page.getByRole("button", { name: "Sign out and wipe" }).click();
+  await expect(page.getByText(/Sign in to set a new PIN/)).toBeVisible();
+});
+
+test("an open page left untouched for five minutes locks", async ({ page }) => {
+  await page.clock.install();
+  await signedIn(page);
+  await setPin(page, "2468");
+  await page.getByLabel("Message").click();
+  await page.clock.fastForward("04:50");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  // Typing counts as being there: the five minutes start over.
+  await page.getByLabel("Message").press("a");
+  await page.clock.fastForward("04:50");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await page.clock.fastForward("00:15");
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toHaveValue("a");
+});
+
 /**
  * A real streaming server on localhost (Playwright's route can only answer
  * all at once): each step of the turn waits for the test to let it go on.
@@ -1812,6 +1880,32 @@ const DESKTOP_SHOTS = `${SHOTS}/desktop`;
 
 test.describe("Jim desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("Escape closes the Notifications sheet", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a desktop layout");
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    await mockServer(page);
+    // On a profile, where Escape otherwise steps back out to the list.
+    await page.goto("/jim/notes/people");
+    await page.getByRole("link", { name: /Sam Okafor/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "Sam Okafor" })
+    ).toBeVisible();
+    const at = new URL(page.url()).pathname;
+    // The desktop's rail has the menu's items as buttons.
+    await page.getByRole("button", { name: "Notifications" }).click();
+    const sheet = page.getByRole("dialog", { name: "Notifications" });
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    // It closed the sheet only: still on the profile.
+    expect(new URL(page.url()).pathname).toBe(at);
+    await expect(
+      page.getByRole("heading", { name: "Sam Okafor" })
+    ).toBeVisible();
+  });
 
   test("Hear your morning shows the loading bar on a desktop's Home", async ({
     page,
@@ -2442,5 +2536,333 @@ test.describe("Jim todos", () => {
       path: `${SHOTS}/desktop/todos-${testInfo.project.name}-1440-full.png`,
       fullPage: true,
     });
+  });
+});
+
+test.describe("Jim's old address", () => {
+  const NEW_ORIGIN = "https://jim.gentryriggen.com";
+  const OWNER_UID = "nmt3n9sdfCX2NfzVlTdyXsWzHqm2";
+
+  /** The CSP firebase.json gives the main site's /jim/** addresses. */
+  function stubCsp(): string {
+    const config = JSON.parse(
+      readFileSync(join(process.cwd(), "firebase.json"), "utf8")
+    ) as {
+      hosting: {
+        target: string;
+        headers: {
+          source: string;
+          headers: { key: string; value: string }[];
+        }[];
+      }[];
+    };
+    const main = config.hosting.find((site) => site.target === "main")!;
+    const header = main.headers
+      .filter((rule) => rule.source === "/jim/**")
+      .flatMap((rule) => rule.headers)
+      .find((h) => h.key === "Content-Security-Policy");
+    return header!.value;
+  }
+
+  test("wipes Jim's data and moves to the new address", async ({
+    page,
+    baseURL,
+  }) => {
+    // A same-origin page with no Jim on it, to seed and inspect storage.
+    await page.route("**/e2e-seed", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<p>seed</p>" })
+    );
+    // Hosting rewrites every old /jim address to the moved page (the e2e
+    // server still serves Jim there), with the stub's own CSP.
+    await page.route("**/jim/notes*", async (route) => {
+      const response = await route.fetch({ url: `${baseURL}/jim-moved.html` });
+      await route.fulfill({
+        response,
+        headers: {
+          ...response.headers(),
+          "content-security-policy": stubCsp(),
+        },
+      });
+    });
+    let arrived = "";
+    await page.route(`${NEW_ORIGIN}/**`, (route) => {
+      arrived = route.request().url();
+      return route.fulfill({
+        contentType: "text/html",
+        body: "<h1>New address</h1>",
+      });
+    });
+
+    await page.goto("/e2e-seed");
+    await page.evaluate(async (uid) => {
+      const done = (req: IDBRequest | IDBTransaction) =>
+        new Promise((resolve, reject) => {
+          if ("oncomplete" in req && !("result" in req)) {
+            req.oncomplete = resolve;
+          } else {
+            (req as IDBRequest).onsuccess = resolve;
+          }
+          req.onerror = reject;
+        });
+      localStorage.setItem("jim:chat:u", "[]");
+      localStorage.setItem("theme", "dark");
+      sessionStorage.setItem("jim:draft:u", "half");
+
+      const jimOpen = indexedDB.open("jim", 1);
+      jimOpen.onupgradeneeded = () => jimOpen.result.createObjectStore("kv");
+      await done(jimOpen);
+      jimOpen.result.close();
+
+      const authOpen = indexedDB.open("firebaseLocalStorageDb", 1);
+      authOpen.onupgradeneeded = () =>
+        authOpen.result.createObjectStore("firebaseLocalStorage", {
+          keyPath: "fbase_key",
+        });
+      await done(authOpen);
+      const tx = authOpen.result.transaction(
+        "firebaseLocalStorage",
+        "readwrite"
+      );
+      const store = tx.objectStore("firebaseLocalStorage");
+      store.put({ fbase_key: "owner", value: { uid } });
+      store.put({ fbase_key: "player", value: { uid: "anon-player-1" } });
+      await done(tx);
+      authOpen.result.close();
+
+      await (
+        await caches.open("jim-shell-v1")
+      ).put("/jim", new Response("old shell"));
+      await (
+        await caches.open("ship-builder-v3")
+      ).put("/ship-builder", new Response("game"));
+    }, OWNER_UID);
+    const canRegister = await page.evaluate(async () => {
+      if (!("serviceWorker" in navigator)) return false;
+      // Jim's real worker, under a scope that ends in /jim like the old
+      // one's but stays off this test's pages so it can't answer them.
+      const reg = await navigator.serviceWorker.register("/jim-sw.js", {
+        scope: "/e2e-old/jim",
+      });
+      const worker = reg.installing ?? reg.waiting ?? reg.active;
+      // Let its install finish, so its cache can't land after the wipe.
+      await new Promise<void>((resolve) => {
+        if (!worker || worker.state === "activated") return resolve();
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "activated" || worker.state === "redundant")
+            resolve();
+        });
+      });
+      return true;
+    });
+
+    await page.goto("/jim/notes?a=1");
+    await expect
+      .poll(() => arrived, { timeout: 10_000 })
+      .toBe(`${NEW_ORIGIN}/jim/notes?a=1`);
+    await expect(
+      page.getByRole("heading", { name: "New address" })
+    ).toBeVisible();
+
+    await page.goto("/e2e-seed");
+    const left = await page.evaluate(async () => {
+      const authOpen = indexedDB.open("firebaseLocalStorageDb");
+      await new Promise((resolve) => (authOpen.onsuccess = resolve));
+      const records = await new Promise<{ fbase_key: string }[]>((resolve) => {
+        const all = authOpen.result
+          .transaction("firebaseLocalStorage")
+          .objectStore("firebaseLocalStorage")
+          .getAll();
+        all.onsuccess = () => resolve(all.result);
+      });
+      authOpen.result.close();
+      const databases = indexedDB.databases
+        ? (await indexedDB.databases()).map((db) => db.name)
+        : null;
+      const registrations = navigator.serviceWorker
+        ? (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope)
+        : [];
+      return {
+        local: Object.keys(localStorage).sort(),
+        session: Object.keys(sessionStorage),
+        auth: records.map((r) => r.fbase_key),
+        databases,
+        caches: (await caches.keys()).sort(),
+        registrations,
+      };
+    });
+    expect(left.local).toEqual(["theme"]);
+    expect(left.session).toEqual([]);
+    expect(left.auth).toEqual(["player"]);
+    if (left.databases) expect(left.databases).not.toContain("jim");
+    expect(left.caches).toEqual(["ship-builder-v3"]);
+    if (canRegister) {
+      expect(left.registrations.some((s) => s.endsWith("/jim"))).toBe(false);
+    }
+  });
+});
+
+test.describe("Sign-in & security", () => {
+  /** Invented values for the stand-in authenticator setup. */
+  const TWO_STEP = {
+    enrolled: false,
+    password: "invented-password",
+    secret: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+    code: "246810",
+  };
+
+  /** Signed in with the stand-in setup; every request off this host and API is listed. */
+  async function openSecurity(page: Page, width: number) {
+    // Size first: emulated iPhone WebKit keeps its layout viewport from load.
+    await page.setViewportSize({ width, height: 800 });
+    const outside: string[] = [];
+    page.on("request", (req) => {
+      const url = new URL(req.url());
+      if (url.hostname !== "localhost" && !req.url().startsWith(API)) {
+        outside.push(url.origin);
+      }
+    });
+    await page.addInitScript(
+      ({ api, twoStep }) => {
+        window.__JIM_TEST__ = { signedIn: true, api, twoStep };
+      },
+      { api: API, twoStep: TWO_STEP }
+    );
+    const calls = await mockServer(page);
+    const revokes: number[] = [];
+    let revokeStatus = 204;
+    await page.route(`${API}/api/auth/revoke`, async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await route.fallback();
+        return;
+      }
+      revokes.push(revokeStatus);
+      await route.fulfill({
+        status: revokeStatus,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+        body:
+          revokeStatus === 204
+            ? ""
+            : JSON.stringify({
+                error: "Couldn't sign out everywhere. Try again in a minute.",
+              }),
+      });
+    });
+    await page.goto("/jim");
+    await expect(page.getByLabel("Message")).toBeVisible();
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menuitem", { name: "Sign-in & security" }).click();
+    const sheet = page.getByRole("dialog", { name: "Sign-in & security" });
+    await expect(sheet).toBeVisible();
+    return {
+      sheet,
+      calls,
+      outside,
+      revokes,
+      setRevokeStatus: (s: number) => {
+        revokeStatus = s;
+      },
+    };
+  }
+
+  for (const width of [393, 320]) {
+    test(`turns two-step on, drawn on the device, at ${width}px`, async ({
+      page,
+    }, testInfo) => {
+      const { sheet, outside } = await openSecurity(page, width);
+      await expect(sheet.getByText("Two-step sign-in is off.")).toBeVisible();
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+
+      const password = sheet.getByLabel("Confirm your password");
+      await expect(password).toBeFocused();
+      await password.fill("not-it");
+      await sheet.getByRole("button", { name: "Continue" }).click();
+      await expect(sheet.getByText("That password didn't work.")).toBeVisible();
+      await password.fill(TWO_STEP.password);
+      await sheet.getByRole("button", { name: "Continue" }).click();
+
+      const link = sheet.getByRole("link", { name: "Add to Passwords" });
+      await expect(link).toHaveAttribute("href", /^otpauth:\/\/totp\//);
+      await expect(
+        sheet.getByText("ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567")
+      ).toBeVisible();
+      const qr = sheet.getByRole("img", { name: /QR code/ });
+      await expect(qr).toBeVisible();
+      expect(await qr.evaluate((el) => el.tagName.toLowerCase())).toBe("svg");
+      expect(await qr.boundingBox()).toMatchObject({ width: 176 });
+
+      const code = sheet.getByLabel("6-digit code");
+      expect(
+        await code.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+      ).toBeGreaterThanOrEqual(16);
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await page.screenshot({
+        path: `${SHOTS}/security-setup-${testInfo.project.name}-${width}.png`,
+        animations: "disabled",
+      });
+
+      await code.fill("111111");
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+      await expect(
+        sheet.getByText("That code didn't work. Try the newest one.")
+      ).toBeVisible();
+      await code.fill(TWO_STEP.code);
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+      await expect(
+        sheet.getByText(
+          "Two-step sign-in is on. Jim asks for a code only when you sign in on a new device."
+        )
+      ).toBeVisible();
+      // The setup key is gone from the page once enrolled.
+      expect(await page.content()).not.toContain(TWO_STEP.secret);
+      expect(await page.content()).not.toContain("ABCD EFGH");
+      await page.screenshot({
+        path: `${SHOTS}/security-done-${testInfo.project.name}-${width}.png`,
+        animations: "disabled",
+      });
+      // Nothing in the sheet came from anywhere else (no QR service).
+      expect(outside).toEqual([]);
+    });
+  }
+
+  test("test_sign_out_everywhere_wipes: the server first, then this device", async ({
+    page,
+  }) => {
+    const { sheet, revokes } = await openSecurity(page, 393);
+    await sheet.getByRole("button", { name: "Sign out everywhere" }).click();
+    await expect(
+      sheet.getByText("This signs out every device, this one too.")
+    ).toBeVisible();
+    await bigTargets(page);
+    expect(revokes).toEqual([]);
+    await sheet
+      .getByRole("button", { name: "Yes, sign out everywhere" })
+      .click();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(
+      page.getByText("You're signed out on every device.")
+    ).toBeVisible();
+    expect(revokes).toEqual([204]);
+    await expect(page.getByLabel("Message")).toHaveCount(0);
+  });
+
+  test("a 503 keeps him signed in and shows the server's words", async ({
+    page,
+  }) => {
+    const { sheet, revokes, setRevokeStatus } = await openSecurity(page, 393);
+    setRevokeStatus(503);
+    await sheet.getByRole("button", { name: "Sign out everywhere" }).click();
+    await sheet
+      .getByRole("button", { name: "Yes, sign out everywhere" })
+      .click();
+    await expect(
+      sheet.getByText("Couldn't sign out everywhere. Try again in a minute.")
+    ).toBeVisible();
+    expect(revokes).toEqual([503]);
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByLabel("Message")).toBeVisible();
   });
 });

@@ -10,7 +10,7 @@
  *                                   the query: ?area=work&project=…)
  *   /jim/notes/<page>               work, money, people, health, training, golf
  *   /jim/notes/people/<slug>        a person's profile
- *   /jim/notes/directory/<id>       a JBREC directory card
+ *   /jim/notes/directory/<id>       a work directory card
  *   /jim/notes/note/<repo path>     a note, without its .md
  *   /jim/reminders                  the reminders list
  *   /jim/reminders/<12 hex>         one reminder

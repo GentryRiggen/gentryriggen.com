@@ -10,21 +10,32 @@ import useJimStaleChunkRecovery from "@/components/jim/useJimStaleChunkRecovery"
 import { ADMIN_UID, isAdminUser } from "@/lib/analytics/admin";
 import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
+import { CODE_RESTART, isWrongCode, WRONG_CODE } from "@/lib/firebase/mfa";
+import {
+  isJimConnected,
+  JIM_API,
+  JimError,
+  onSignInRefused,
+  wakeJim,
+} from "@/lib/jim/api";
+import {
+  clearLock,
+  clearWipePending,
+  isWipePending,
+  loadLock,
+  markLockOffIfAbsent,
+  markWipePending,
+  saveLockState,
+} from "@/lib/jim/appLock";
 import {
   getIdToken,
   type AuthUser,
   signInWithEmail,
   signOutUser,
+  TENANT_MISSING,
   watchAuth,
-} from "@/lib/firebase/client";
-import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { isJimConnected, JIM_API, wakeJim } from "@/lib/jim/api";
-import {
-  clearLock,
-  clearWipePending,
-  isWipePending,
-  markWipePending,
-} from "@/lib/jim/appLock";
+} from "@/lib/jim/auth";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
 import { clearMoney } from "@/lib/jim/money";
@@ -80,6 +91,25 @@ function finishWipe(): void {
 const SIGN_OUT_FAILED =
   "Couldn't finish signing out. Jim stays locked on this device until it does.";
 
+/** Said on the sign-in screen after Jim's server refused the sign-in. */
+const SIGN_IN_ENDED = "Your sign-in ended. Sign in again.";
+
+/** Said when this build doesn't know Jim's sign-in tenant. */
+const NO_TENANT = "Sign-in isn't set up for Jim in this build.";
+
+function errorCode(err: unknown): unknown {
+  return typeof err === "object" && err !== null && "code" in err
+    ? (err as { code: unknown }).code
+    : undefined;
+}
+
+/** Ends an open session once, however many refusals arrive. */
+function endOnce(refusal: { owner: boolean; end: () => void }): void {
+  if (!refusal.owner) return;
+  refusal.owner = false;
+  refusal.end();
+}
+
 /** watchAuth for the e2e hook: the owner is already signed in. */
 async function watchAsOwner(
   onChange: (user: AuthUser | null) => void
@@ -107,9 +137,20 @@ export default function JimGate() {
   const session = useRef<Session | null>(null);
   /** A password sign-in is under way: its user is fresh, not a leftover. */
   const signingIn = useRef(false);
+  /** Set while the authenticator code is asked for. */
+  const [finishCode, setFinishCode] = useState<
+    ((code: string) => Promise<void>) | null
+  >(null);
+  const [code, setCode] = useState("");
+  /** Whether the app is open, and how to end it when the server refuses. */
+  const refusal = useRef({ owner: false, end: () => {} });
+
+  // Any Jim request the server refuses (a revoked or ended sign-in) ends the
+  // session here: the device is wiped and the sign-in form shows.
+  useEffect(() => onSignInRefused(() => endOnce(refusal.current)), []);
 
   useEffect(() => {
-    // Off gentryriggen.com the server would refuse every request: go there
+    // Off Jim's own host the server would refuse every request: go there
     // first, before Firebase loads or the form shows.
     const target = jimRedirectTarget(window.location.hostname);
     if (target) {
@@ -118,8 +159,13 @@ export default function JimGate() {
     }
     void registerJimServiceWorker();
     const hook = jimTestHook();
-    // The e2e hook (compiled out of the shipped build) stands in for Firebase.
-    const fake = hook?.signedIn === true;
+    // The e2e hook stands in for Firebase. The build flags are written out in
+    // full (not via a helper) so the shipped build folds them to false and
+    // drops the stand-in entirely.
+    const fake =
+      (process.env.NODE_ENV !== "production" ||
+        process.env.NEXT_PUBLIC_E2E === "1") &&
+      hook?.signedIn === true;
     if (!fake && !isFirebaseConfigured()) return;
     const api = hook?.api ?? JIM_API;
     const watch = fake ? watchAsOwner : watchAuth;
@@ -130,8 +176,11 @@ export default function JimGate() {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
+    /** Bumped on each sign-in change, so a slow one can't open late. */
+    let authSeq = 0;
     void watch((user) => {
       if (cancelled) return;
+      const seq = ++authSeq;
       if (!user) {
         // Notes data (health, people) and the kept chat must not outlive the
         // sign-in, even one that expired while the page was closed.
@@ -158,16 +207,36 @@ export default function JimGate() {
       } else if (isAdminUser(user)) {
         // A password just typed ends any wipe left over: that lock is gone.
         if (isWipePending()) finishWipe();
-        setExcluded(safeLocalStorage());
-        // Each good Notes payload is kept on the device for offline opens.
         const uid = user.uid;
-        setViewSaver((data) => void saveView(uid, data));
-        setState({ kind: "owner", uid, api, getToken });
-        if (wokeFor.current !== user.uid && isJimConnected(api)) {
-          wokeFor.current = user.uid;
-          // Start the server (and the Notes data) while Gentry types.
-          wakeJim(api);
-          fetchView(getToken, undefined, api).catch(() => {});
+        const open = () => {
+          // A later sign-in change (or unmount) wins.
+          if (cancelled || seq !== authSeq) return;
+          setExcluded(safeLocalStorage());
+          // Each good Notes payload is kept on the device for offline opens.
+          setViewSaver((data) => void saveView(uid, data));
+          setState({ kind: "owner", uid, api, getToken });
+          if (wokeFor.current !== uid && isJimConnected(api)) {
+            wokeFor.current = uid;
+            // Start the server (and the Notes data) while Gentry types.
+            wakeJim(api);
+            fetchView(getToken, undefined, api).catch((err: unknown) => {
+              if (err instanceof JimError && err.kind === "denied") {
+                endOnce(refusal.current);
+              }
+            });
+          }
+        };
+        // A fresh sign-in says "no lock" before anything is kept, so a lock
+        // record that later goes missing can be told from one never set.
+        // The password just typed proves the owner: with no lock record, a
+        // marker left "on" by a wipe that didn't finish is overwritten. (The
+        // e2e stand-in counts as fresh on every load, but only fills a gap.)
+        if (signingIn.current && loadLock(uid) === null) {
+          void saveLockState(uid, false).then(open);
+        } else if (signingIn.current || fake) {
+          void markLockOffIfAbsent(uid).then(open);
+        } else {
+          open();
         }
       } else {
         setState({ kind: "denied", email: user.email ?? "unknown account" });
@@ -196,15 +265,50 @@ export default function JimGate() {
     // and never surface the raw Firebase error.
     signingIn.current = true;
     signInWithEmail(email, password)
-      .then(() => {
+      .then((result) => {
         setPassword("");
+        if (result.kind === "code") {
+          setFinishCode(() => result.finish);
+          return;
+        }
         if (isWipePending()) finishWipe();
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         setPassword("");
-        setError("Incorrect email or password.");
+        setError(
+          errorCode(err) === TENANT_MISSING
+            ? NO_TENANT
+            : "Incorrect email or password."
+        );
       })
       .finally(() => {
+        signingIn.current = false;
+        setSubmitting(false);
+      });
+  }
+
+  /** The second step: the code from the authenticator app. */
+  function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting || !finishCode) return;
+    setError(null);
+    setSubmitting(true);
+    signingIn.current = true;
+    finishCode(code)
+      .then(() => {
+        setFinishCode(null);
+        if (isWipePending()) finishWipe();
+      })
+      .catch((err: unknown) => {
+        if (isWrongCode(err)) {
+          setError(WRONG_CODE);
+        } else {
+          setFinishCode(null);
+          setError(CODE_RESTART);
+        }
+      })
+      .finally(() => {
+        setCode("");
         signingIn.current = false;
         setSubmitting(false);
       });
@@ -273,7 +377,17 @@ export default function JimGate() {
     setNotice(reason);
   }
 
+  useEffect(() => {
+    refusal.current = {
+      owner: state.kind === "owner",
+      end: () => wipe(SIGN_IN_ENDED),
+    };
+  });
+
   if (state.kind === "owner") {
+    // Whether a lock should be here is still being read (a few ms): the
+    // chat isn't even started, so it opens once, as locked or not.
+    if (lock.checking) return <LockScreen lock={lock} onWipe={wipe} />;
     // Nothing of the app is drawn while it is locked: JimChat keeps its
     // state but renders nothing, and the lock screen stands alone.
     const lockScreen = lock.locked ? (
@@ -372,7 +486,39 @@ export default function JimGate() {
             Not authorized: {state.email} can&apos;t use Jim.
           </p>
         )}
-        {(state.kind === "signedOut" || state.kind === "denied") && (
+        {state.kind === "signedOut" && finishCode && (
+          <form
+            onSubmit={verifyCode}
+            className="jim-card space-y-4 rounded-3xl! p-5 text-left"
+          >
+            <div className="space-y-1.5">
+              <label htmlFor="jim-code" className="block text-sm font-medium">
+                Code from your authenticator
+              </label>
+              <input
+                id="jim-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-ayu-line/60 px-3.5 py-2 text-center font-mono text-lg tracking-[0.3em] shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] text-ayu-text focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="min-h-12 w-full rounded-xl jim-glow px-4 py-2 text-base font-semibold text-ayu-bg hover:brightness-110 disabled:opacity-50"
+            >
+              Verify
+            </button>
+          </form>
+        )}
+        {((state.kind === "signedOut" && !finishCode) ||
+          state.kind === "denied") && (
           <form
             onSubmit={signIn}
             className="jim-card space-y-4 rounded-3xl! p-5 text-left"

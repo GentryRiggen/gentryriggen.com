@@ -68,3 +68,6 @@ next-env.d.ts
 /public/asset-studio/
 __pycache__/
 /perf-results.json
+
+# Jim's own Hosting site, built from out/ by scripts/jim-site.mjs
+/out-jim/

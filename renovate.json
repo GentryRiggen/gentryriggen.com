@@ -13,6 +13,18 @@
     {
       "matchUpdateTypes": ["major"],
       "automerge": false
+    },
+    {
+      "description": "Action updates wait two weeks and are merged by hand: CI builds and deploys with them",
+      "matchManagers": ["github-actions"],
+      "automerge": false,
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "description": "The deploy job runs firebase-tools with a Google credential",
+      "matchPackageNames": ["firebase-tools"],
+      "automerge": false,
+      "minimumReleaseAge": "14 days"
     }
   ],
   "prCreation": "not-pending",

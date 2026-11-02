@@ -1,4 +1,4 @@
-import { getIdToken } from "@/lib/firebase/client";
+import { getIdToken } from "@/lib/jim/auth";
 
 /**
  * The Cloud Run server that answers /jim. Empty until it is deployed: while
@@ -62,6 +62,33 @@ export class JimError extends Error {
     this.name = "JimError";
     this.kind = kind;
   }
+}
+
+/** Told when any Jim request finds the sign-in refused (see onSignInRefused). */
+let refusedListener: (() => void) | null = null;
+
+/**
+ * Registers the page's handler for a refused sign-in: a JimError("denied")
+ * from any Jim request ends the session. Returns a function that removes it.
+ */
+export function onSignInRefused(listener: () => void): () => void {
+  refusedListener = listener;
+  return () => {
+    if (refusedListener === listener) refusedListener = null;
+  };
+}
+
+/** A JimError("denied"), once the page has been told (after this turn). */
+export function deniedError(): JimError {
+  const listener = refusedListener;
+  if (listener) queueMicrotask(listener);
+  return new JimError("denied");
+}
+
+/** The JimError for a failure to get a token. */
+export function tokenError(err: unknown): JimError {
+  const kind = tokenErrorKind(err);
+  return kind === "denied" ? deniedError() : new JimError(kind);
 }
 
 export function isJimConnected(api: string = JIM_API): boolean {
@@ -198,9 +225,9 @@ async function request(
     try {
       token = await getToken(force);
     } catch (err) {
-      throw new JimError(tokenErrorKind(err));
+      throw tokenError(err);
     }
-    if (!token) throw new JimError("denied");
+    if (!token) throw deniedError();
     if (isOffline()) throw new JimError("waking");
     // From here the server may get the message and act on it.
     progress.sent = true;
@@ -227,7 +254,7 @@ async function request(
     res = await post(true);
   }
 
-  if (res.status === 401 || res.status === 403) throw new JimError("denied");
+  if (res.status === 401 || res.status === 403) throw deniedError();
   if (res.status === 503) throw new JimError("waking");
   if (res.status === 400 || res.status === 413) {
     throw new JimError("rejected");
@@ -328,5 +355,58 @@ async function readStream(
     throw new JimError("uncertain");
   } finally {
     reader.cancel().catch(() => {});
+  }
+}
+
+/** How long Sign out everywhere waits for the server. */
+export const REVOKE_TIMEOUT_MS = 15_000;
+
+/**
+ * Sign out everywhere: the server ends every session of this account, this
+ * device's too (`POST /api/auth/revoke`, answered 204). On a 401 the token
+ * is refreshed and it is tried once more; a sign-in still refused is denied
+ * (and ends the session). Anything but 204 throws a JimError, so the caller
+ * signs this device out only once the server has done it.
+ */
+export async function revokeSessions(
+  getToken: (force?: boolean) => Promise<string | null> = getIdToken,
+  fetchFn: typeof fetch = fetch,
+  api: string = JIM_API,
+  timeoutMs: number = REVOKE_TIMEOUT_MS
+): Promise<void> {
+  if (!isJimConnected(api)) throw new JimError("server");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  async function post(force: boolean): Promise<Response> {
+    let token: string | null;
+    try {
+      token = await getToken(force);
+    } catch (err) {
+      throw tokenError(err);
+    }
+    if (!token) throw deniedError();
+    if (isOffline()) throw new JimError("waking");
+    try {
+      return await fetchFn(`${api}/api/auth/revoke`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+    } catch {
+      // Offline, or the time ran out: it may or may not have happened.
+      throw new JimError("uncertain");
+    }
+  }
+
+  try {
+    let res = await post(false);
+    if (res.status === 401) res = await post(true);
+    if (res.status === 401 || res.status === 403) throw deniedError();
+    if (res.status === 204) return;
+    if (res.status === 503) throw new JimError("waking");
+    throw new JimError(res.status >= 500 ? "uncertain" : "server");
+  } finally {
+    clearTimeout(timer);
   }
 }

@@ -11,7 +11,7 @@ const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID;
 /** Only real builds check: dev servers and e2e runs never see an update. */
 const IS_ENABLED_BY_DEFAULT =
   process.env.NODE_ENV === "production" &&
-  !process.env.NEXT_PUBLIC_E2E &&
+  process.env.NEXT_PUBLIC_E2E !== "1" &&
   !!BUILD_ID &&
   BUILD_ID !== "dev";
 
