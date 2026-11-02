@@ -186,12 +186,16 @@ describe("crafted text renders in linear time", () => {
     ["mixed", fill("**[a](`_*(")],
   ])("%s", (_name, text) => {
     expect(text.length).toBe(SIZE);
-    // Warm up once (JIT), then time the parse (not jsdom's DOM work).
+    // Warm up once (JIT), then time the parse (not jsdom's DOM work). Best of 3 with a loose bound: a busy CI
+    // runner took 54 ms for a linear parse, while a quadratic one takes seconds at this size.
     markdownNodes({ text: text.slice(0, 200) });
-    const start = performance.now();
-    markdownNodes({ text });
-    const took = performance.now() - start;
+    let took = Infinity;
+    for (let i = 0; i < 3; i++) {
+      const start = performance.now();
+      markdownNodes({ text });
+      took = Math.min(took, performance.now() - start);
+    }
     if (process.env.MD_TIMING) console.log(_name, took.toFixed(1));
-    expect(took).toBeLessThan(50);
+    expect(took).toBeLessThan(250);
   });
 });
