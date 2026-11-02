@@ -76,6 +76,7 @@
     "prettier": "^3.7.4",
     "serve": "^14.2.6",
     "tailwindcss": "^4",
-    "typescript": "^6.0.0"
+    "typescript": "^6.0.0",
+    "yaml": "^2.8.3"
   }
 }
