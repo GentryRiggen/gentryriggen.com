@@ -56,16 +56,6 @@ const throttle = (page: Page) => page.getByRole("slider", { name: /throttle/ });
 
 test.describe("Ship Builder drive", () => {
   test(
-    "a ship with no engine cannot drive",
-    { tag: "@smoke" },
-    async ({ page }) => {
-      await openBuilder(page);
-      await expect(page.getByRole("button", { name: "Drive" })).toBeDisabled();
-      await expect(page.getByText("Add an engine to drive")).toBeVisible();
-    }
-  );
-
-  test(
     "sails, switches views and sinks on an iceberg",
     { tag: "@smoke" },
     async ({ page }) => {

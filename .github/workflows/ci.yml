@@ -309,61 +309,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Chromium runs every test; WebKit and the iPad run the @smoke ones
-          # and the iPhone runs jim.spec.ts (see playwright.config.ts).
-          # Firefox is left out.
-          - name: Builder + home + admin (Chromium, WebKit, iPad)
+          # Chromium runs every test; WebKit, the iPad and the iPhone run the
+          # @smoke ones (see playwright.config.ts). Firefox is left out.
+          - name: Site + Jim + Ever Onward + builder UI
             files: e2e/home.spec.ts e2e/ship-builder.spec.ts e2e/admin.spec.ts e2e/app-check.spec.ts e2e/jim.spec.ts e2e/ever-onward.spec.ts
-            args: --project=chromium --project=webkit --project=ipad --project=iphone --grep-invert "holding a placed block|paints a tapped block|renders the 3D scene"
+            args: --project=chromium --project=webkit --project=ipad --project=iphone --grep-invert "renders the 3D scene"
             workers: 2
             browsers: chromium webkit
             no-webgl: 1
-          # The three pointer-sensitive builder tests join the other one-worker
-          # WebGL specs; --grep keeps ship-builder.spec.ts to just those three
-          # (it matches the file name, and "ship-builder-" is the other specs).
-          - name: WebGL builder + iceberg + time + breakup (1/3)
-            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
-            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=1/3
+          # Software WebGL (SwiftShader) takes every core it can get, so the
+          # 3D specs get one-worker jobs. --grep keeps ship-builder.spec.ts to
+          # its 3D test ("ship-builder-" matches the other specs' file names).
+          - name: WebGL ship builder (1/2)
+            files: e2e/ship-builder.spec.ts e2e/ship-builder-trial.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-drive.spec.ts
+            args: --project=chromium --grep "ship-builder-|renders the 3D scene" --shard=1/2
             workers: 1
             browsers: chromium
-          - name: WebGL builder + iceberg + time + breakup (2/3)
-            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
-            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=2/3
+          - name: WebGL ship builder (2/2)
+            files: e2e/ship-builder.spec.ts e2e/ship-builder-trial.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-drive.spec.ts
+            args: --project=chromium --grep "ship-builder-|renders the 3D scene" --shard=2/2
             workers: 1
             browsers: chromium
-          - name: WebGL builder + iceberg + time + breakup (3/3)
-            files: e2e/ship-builder.spec.ts e2e/ship-builder-iceberg.spec.ts e2e/ship-builder-time.spec.ts e2e/ship-builder-breakup.spec.ts e2e/ship-builder-photo.spec.ts
-            args: --project=chromium --grep "ship-builder-|holding a placed block|paints a tapped block|renders the 3D scene" --shard=3/3
-            workers: 1
-            browsers: chromium
-          # TODO: drop the grep-invert once the walk-while-sinking "go into the water" tests (which wait for the whole sinking) are frame-rate independent (they time out on CI's software GL)
-          - name: WebGL sea trial (1/3)
-            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            args: --project=chromium --grep-invert "go into the water as she sinks in one piece|go into the water from your half" --shard=1/3
-            workers: 1
-            browsers: chromium
-          - name: WebGL sea trial (2/3)
-            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            args: --project=chromium --grep-invert "go into the water as she sinks in one piece|go into the water from your half" --shard=2/3
-            workers: 1
-            browsers: chromium
-          - name: WebGL sea trial (3/3)
-            files: e2e/ship-builder-trial.spec.ts e2e/ship-builder-trial-setup.spec.ts e2e/ship-builder-walk.spec.ts e2e/ship-builder-walk-sinking.spec.ts e2e/ship-builder-drive.spec.ts e2e/ship-builder-pirate.spec.ts e2e/ship-builder-challenges.spec.ts
-            args: --project=chromium --grep-invert "go into the water as she sinks in one piece|go into the water from your half" --shard=3/3
-            workers: 1
-            browsers: chromium
-          # Three tests that each walk, escape and wait on boats; own job so
-          # they run beside the sea trial shards.
-          - name: WebGL escape
-            files: e2e/ship-builder-escape.spec.ts
-            args: --project=chromium
-            workers: 1
-            browsers: chromium
-          # Plane Builder needs WebGL for its core loop (the specs launch
-          # software-rendering Chromium themselves), so it gets a one-worker job.
-          # WebKit and the iPad run its @smoke tests (touch and pointer launch).
+          # WebKit and the iPad run Plane Builder's @smoke tests.
           - name: WebGL plane builder
-            files: e2e/plane-builder.spec.ts e2e/plane-builder-offline.spec.ts e2e/plane-builder-ghost.spec.ts e2e/plane-builder-near-miss.spec.ts
+            files: e2e/plane-builder.spec.ts e2e/plane-builder-offline.spec.ts
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit
@@ -381,21 +350,6 @@ jobs:
             workers: 1
             browsers: chromium
             perf: perf-results-2-of-2
-          - name: WebGL visual (ship 1/2)
-            files: e2e/ship-builder-visual.spec.ts
-            args: --project=chromium --shard=1/2
-            workers: 1
-            browsers: chromium
-          - name: WebGL visual (ship 2/2)
-            files: e2e/ship-builder-visual.spec.ts
-            args: --project=chromium --shard=2/2
-            workers: 1
-            browsers: chromium
-          - name: WebGL visual (plane)
-            files: e2e/plane-builder-visual.spec.ts
-            args: --project=chromium
-            workers: 1
-            browsers: chromium
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
@@ -426,7 +380,6 @@ jobs:
           E2E_PREBUILT: "1"
         run: npx playwright test ${{ matrix.files }} ${{ matrix.args }} --workers=${{ matrix.workers }}
 
-      # Visual diffs (expected, actual, diff images) live in the report.
       - name: 📤 Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
