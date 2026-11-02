@@ -57,6 +57,8 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
       return;
     }
     checking.current = true;
+    // Out of the page while it is checked.
+    setPin("");
     setBusy(true);
     setMessage(null);
     const result = await lock.unlockWithPin(entered).finally(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { ArrowRight, Delete } from "lucide-react";
 import { PIN_MAX, PIN_MIN } from "@/lib/jim/appLock";
 
@@ -47,6 +47,7 @@ export default function PinPad({
   const latest = useRef({ value, onChange, onSubmit, disabled });
   const padRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLInputElement>(null);
+  const countId = useId();
   useEffect(() => {
     latest.current = { value, onChange, onSubmit, disabled };
   });
@@ -122,12 +123,14 @@ export default function PinPad({
   return (
     <div ref={padRef} className="flex flex-col items-center gap-6">
       <div className="relative flex min-h-11 min-w-44 items-center justify-center">
-        {/* No name or id, and the managers told to look away: nothing to
-            autofill or remember. Read-only (not disabled) while busy, so
-            the phone keyboard stays up between tries. */}
+        {/* Plain text, never type=password (a password manager would offer
+            to save it as a login), with no name, id or form, and the
+            managers told to look away; invisible, the dots show it.
+            Read-only (not disabled) while busy, so the phone keyboard stays
+            up between tries. */}
         <input
           ref={boxRef}
-          type="password"
+          type="text"
           inputMode="numeric"
           pattern="[0-9]*"
           autoComplete="off"
@@ -137,6 +140,7 @@ export default function PinPad({
           enterKeyHint="go"
           maxLength={PIN_MAX}
           aria-label="PIN"
+          aria-describedby={countId}
           data-1p-ignore=""
           data-lpignore="true"
           data-form-type="other"
@@ -161,10 +165,12 @@ export default function PinPad({
           }}
           className="peer absolute inset-0 z-10 size-full cursor-pointer rounded-full bg-transparent text-base text-transparent caret-transparent opacity-0 outline-none select-none"
         />
+        <span id={countId} className="sr-only">
+          {`${value.length} ${value.length === 1 ? "digit" : "digits"} entered`}
+        </span>
         <div
           key={shake}
-          role="img"
-          aria-label={`${value.length} ${value.length === 1 ? "digit" : "digits"} entered`}
+          aria-hidden="true"
           className={`flex h-4 items-center gap-3.5 rounded-full outline-offset-[0.6rem] peer-focus-visible:outline-2 peer-focus-visible:outline-ayu-accent ${shake > 0 ? "jim-shake" : ""}`}
         >
           {Array.from({ length: dots }, (_, i) => (

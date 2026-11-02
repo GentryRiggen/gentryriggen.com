@@ -70,13 +70,15 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
   const [message, setMessage] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
   const [after, setAfterChoice] = useState(lock.after);
+  // Taken while rendering, before the PIN box (a child) takes focus.
+  const [opener] = useState(() =>
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+  );
   const supported = pinSupported();
 
   useEffect(() => {
-    const opener =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
     // The PIN box may have focus already (a desktop); otherwise Close.
     if (!sheetRef.current?.contains(document.activeElement)) {
       closeRef.current?.focus();
@@ -114,7 +116,7 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
       root.style.overflow = overflow;
       if (opener?.isConnected) opener.focus();
     };
-  }, [onClose]);
+  }, [onClose, opener]);
 
   function go(next: Step, note: string | null = null) {
     setPin("");
@@ -129,8 +131,10 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
   }
 
   async function verifyCurrent(then: Guarded) {
+    const entered = pin;
+    setPin("");
     setBusy(true);
-    const result = await lock.verify(pin);
+    const result = await lock.verify(entered);
     setBusy(false);
     switch (result.kind) {
       case "ok":
@@ -207,8 +211,10 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
         if (pin !== step.first) {
           setStep({ kind: "new", change: step.change });
           wrong("The PINs didn't match. Choose it again.");
-        } else if (step.change) void finish(pin, true);
-        else go({ kind: "after", pin });
+        } else if (step.change) {
+          setPin("");
+          void finish(pin, true);
+        } else go({ kind: "after", pin });
         break;
       default:
         break;

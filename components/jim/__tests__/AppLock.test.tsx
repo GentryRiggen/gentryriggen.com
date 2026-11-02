@@ -203,15 +203,23 @@ describe("locked", () => {
     const ok = screen.getByRole("button", { name: "OK" });
     await userEvent.click(screen.getByRole("button", { name: "1" }));
     await userEvent.click(screen.getByRole("button", { name: "2" }));
-    expect(screen.getByRole("img", { name: "2 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "2 digits entered"
+    );
     expect(ok).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(screen.getByRole("img", { name: "1 digit entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "1 digit entered"
+    );
     await userEvent.keyboard("23456789");
     // Eight at most.
-    expect(screen.getByRole("img", { name: "8 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "8 digits entered"
+    );
     await userEvent.keyboard("{Backspace>4/}");
-    expect(screen.getByRole("img", { name: "4 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "4 digits entered"
+    );
     expect(ok).toBeEnabled();
     await userEvent.keyboard("{Enter}");
     expect(await screen.findByText(SECRET)).toBeInTheDocument();
@@ -307,11 +315,37 @@ describe("the keyboard and the iPhone number pad", () => {
 
   afterEach(() => finePointer(false));
 
+  /** Holds every PIN hash until the returned function is called. */
+  function holdHashing(): () => void {
+    const subtle = globalThis.crypto.subtle;
+    const derive = subtle.deriveBits.bind(subtle);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const spy = jest
+      .spyOn(subtle, "deriveBits")
+      .mockImplementation(async (...args) => {
+        await held;
+        return derive(...args);
+      });
+    return () => {
+      release();
+      spy.mockRestore();
+    };
+  }
+
   it("is a numeric password box with no autofill, behind the dots", async () => {
     await presetLock();
     await renderJim();
     const box = pinBox();
-    expect(box).toHaveAttribute("type", "password");
+    // Not a password field: browsers' password managers would offer to
+    // save it as a login.
+    expect(box).toHaveAttribute("type", "text");
+    expect(box).toHaveAttribute("autocapitalize", "off");
+    expect(box).toHaveAttribute("data-form-type", "other");
+    expect(box.closest("form")).toBeNull();
+    expect(box).toHaveAccessibleDescription("0 digits entered");
+    // The dots are said once, by the box.
+    expect(screen.queryByRole("img", { name: /digits? entered/ })).toBeNull();
     expect(box).toHaveAttribute("inputmode", "numeric");
     expect(box).toHaveAttribute("pattern", "[0-9]*");
     expect(box).toHaveAttribute("autocomplete", "off");
@@ -345,7 +379,9 @@ describe("the keyboard and the iPhone number pad", () => {
     await userEvent.click(pinBox());
     await userEvent.keyboard("1a2-");
     expect(pinBox().value).toBe("12");
-    expect(screen.getByRole("img", { name: "2 digits entered" })).toBeVisible();
+    expect(screen.getByLabelText("PIN")).toHaveAccessibleDescription(
+      "2 digits entered"
+    );
     await userEvent.paste("3 4-5x");
     expect(pinBox().value).toBe("12345");
     await userEvent.keyboard("{Backspace}");
@@ -356,6 +392,64 @@ describe("the keyboard and the iPhone number pad", () => {
     await userEvent.click(pinBox());
     await userEvent.paste("99999");
     expect(pinBox().value).toBe("12349999");
+  });
+
+  it("empties the box as soon as a check starts", async () => {
+    await presetLock();
+    await renderJim();
+    const release = holdHashing();
+    try {
+      await userEvent.type(pinBox(), "1234{Enter}");
+      // Still checking: the PIN is no longer in the page.
+      expect(isLocked()).toBe(true);
+      expect(pinBox().value).toBe("");
+    } finally {
+      release();
+    }
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+  });
+
+  it("gives focus back to the menu when the sheet closes on a desktop", async () => {
+    finePointer(true);
+    await renderJim();
+    const menu = screen.getByRole("button", { name: "Menu" });
+    await userEvent.click(menu);
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "App lock: Off" })
+    );
+    const sheet = screen.getByRole("dialog", { name: "App lock" });
+    await waitFor(() =>
+      expect(within(sheet).getByLabelText("PIN")).toHaveFocus()
+    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(menu).toHaveFocus();
+  });
+
+  it("empties the box while a new PIN is saved", async () => {
+    await presetLock({ after: 0 });
+    await renderJim();
+    await enterPin("1234");
+    await screen.findByText(SECRET);
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "App lock: On" })
+    );
+    const sheet = screen.getByRole("dialog", { name: "App lock" });
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Change PIN" })
+    );
+    await enterPin("1234");
+    await within(sheet).findByText(/Choose a new PIN/);
+    await enterPin("86420", "Next");
+    const release = holdHashing();
+    try {
+      await userEvent.type(within(sheet).getByLabelText("PIN"), "86420{Enter}");
+      expect(within(sheet).getByLabelText("PIN")).toHaveValue("");
+    } finally {
+      release();
+    }
+    expect(await within(sheet).findByText("PIN changed.")).toBeVisible();
   });
 
   it("Enter in the box unlocks", async () => {
