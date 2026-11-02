@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.20.0",
+    date: "2026-11-02",
+    title: "Build It Higher",
+    highlights: [
+      "A new universe, Build It Higher: a little robot who stacks blocks, then a whole tower. It opens when you finish Make It Grow",
+      "Keep part of what you earn for a strong base, or spend it all on floors now. Your choice, and both ways work",
+      "Every part has a pick-one choice with The catch on each side: tall and thin or wide and sturdy, steel or timber, a long cable or sunny terraces, the stairs or the old lift",
+      "The tower leans as it gets tall. Press Steady to set it straight, or build braces so it mostly looks after itself",
+      "A delivery arrives every so often. Read the three cards and place the one that helps most",
+      "Four new pictures that move: teddies hop, cranes swing, geese fly round the tower, and somebody waits on the grass at the very end. Every upgrade shows up in the picture, and the story is read aloud",
+    ],
+  },
+  {
     version: "1.19.0",
     date: "2026-11-01",
     title: "Choices by the light",
