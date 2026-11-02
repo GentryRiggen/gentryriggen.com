@@ -116,6 +116,7 @@ const ROADS: readonly (readonly [number, number, number, number])[] = [
   [168, 134, 2, 52],
 ];
 
+const STAR_GROUPS = ["lm-twinkle", "lm-twinkle-b", "lm-twinkle-c", ""] as const;
 const STARS = Array.from({ length: 36 }, (_, i) => {
   const next = rand(900 + i);
   return { x: next() * 420 - 10, y: next() * 310 - 5, big: next() < 0.2 };
@@ -176,17 +177,12 @@ function useCardGone(): boolean {
 }
 
 /**
- * Only the first two clouds and the migrating V drift forever: WebKit on an
- * old iPad repaints the whole SVG for every animated group.
+ * Clouds drift in two shared groups (odd and even), not one animation each:
+ * WebKit on an old iPad repaints the whole SVG for every animated group.
  */
-const DRIFTING_CLOUDS = 2;
-
-function Cloud({ x, y, i }: { x: number; y: number; i: number }) {
-  const drifts = i < DRIFTING_CLOUDS;
+function Cloud({ x, y }: { x: number; y: number }) {
   return (
-    <g
-      className={`${drifts ? "gw-drift" : ""} ${i % 2 ? "[animation-delay:-5s]" : ""}`}
-    >
+    <g>
       <rect x={x} y={y} width="26" height="7" fill="#fff" fillOpacity="0.9" />
       <rect
         x={x + 6}
@@ -294,17 +290,43 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
   return (
     <g>
       <rect x="-1200" y="-1200" width="2800" height="2700" fill="#07102a" />
-      {STARS.map((s, i) => (
-        <rect
-          key={i}
-          x={s.x}
-          y={s.y}
-          width={s.big ? 2 : 1}
-          height={s.big ? 2 : 1}
-          fill="#dfe9ff"
-          fillOpacity="0.8"
-        />
+      {STAR_GROUPS.map((group, g) => (
+        <g key={g} className={group || undefined}>
+          {STARS.map((s, i) =>
+            i % STAR_GROUPS.length === g ? (
+              <rect
+                key={i}
+                x={s.x}
+                y={s.y}
+                width={s.big ? 2 : 1}
+                height={s.big ? 2 : 1}
+                fill="#dfe9ff"
+                fillOpacity="0.8"
+              />
+            ) : null
+          )}
+        </g>
       ))}
+      {/* A shooting star, now and then. */}
+      <g className="gg-shoot" aria-hidden="true" fill="#fff8d6">
+        <rect x="350" y="20" width="3" height="2" />
+        <rect x="353" y="18" width="4" height="1" fillOpacity="0.6" />
+        <rect x="357" y="16" width="5" height="1" fillOpacity="0.3" />
+      </g>
+      {/* A dead satellite tumbling past, its red light still blinking. */}
+      <g className="gg-sat" aria-hidden="true">
+        <rect x="0" y="34" width="6" height="4" fill="#868e96" />
+        <rect x="-6" y="35" width="5" height="2" fill="#364fc7" />
+        <rect x="7" y="35" width="5" height="2" fill="#364fc7" />
+        <rect
+          x="2"
+          y="32"
+          width="2"
+          height="2"
+          fill="#ff4d4d"
+          className="lm-flicker"
+        />
+      </g>
       <defs>
         <clipPath id="gw-clip">
           <circle cx={GLOBE.x} cy={GLOBE.y} r={GLOBE.r} />
@@ -371,8 +393,22 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
               <g key={i}>
                 <rect x={x - 5} y={y - 3} width="6" height="5" fill="#d9774a" />
                 <rect x={x + 2} y={y - 5} width="6" height="7" fill="#c9824a" />
-                <rect x={x - 3} y={y - 2} width="2" height="2" fill="#ffe66d" />
-                <rect x={x + 4} y={y - 3} width="2" height="2" fill="#ffe66d" />
+                <g className={i % 2 ? "lm-brown" : "lm-twinkle-b"}>
+                  <rect
+                    x={x - 3}
+                    y={y - 2}
+                    width="2"
+                    height="2"
+                    fill="#ffe66d"
+                  />
+                  <rect
+                    x={x + 4}
+                    y={y - 3}
+                    width="2"
+                    height="2"
+                    fill="#ffe66d"
+                  />
+                </g>
               </g>
             ) : (
               <g key={i}>
@@ -397,15 +433,71 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
               </g>
             );
           })}
+          {info.rivers > 0 && (
+            <g className="gg-flow">
+              {Array.from({ length: info.rivers }, (_, i) => {
+                const { x, y } = riverAt(i);
+                return (
+                  <path
+                    key={i}
+                    d={`M${x} ${y + 1.5}h25.5v16h22`}
+                    fill="none"
+                    stroke="#d0ebff"
+                    strokeWidth="1"
+                    strokeDasharray="3 9"
+                  />
+                );
+              })}
+            </g>
+          )}
           <circle cx={GLOBE.x} cy={GLOBE.y} r={GLOBE.r} fill="url(#gw-shade)" />
         </g>
-        {Array.from({ length: info.clouds }, (_, i) => (
-          <Cloud key={i} i={i} {...cloudAt(i)} />
+        {[0, 1].map((half) => (
+          <g
+            key={half}
+            className={`gw-drift ${half ? "[animation-delay:-5s]" : ""}`}
+          >
+            {Array.from({ length: info.clouds }, (_, i) =>
+              i % 2 === half ? <Cloud key={i} {...cloudAt(i)} /> : null
+            )}
+          </g>
         ))}
         {info.migrated && <MigrantV x={GLOBE_FLOCK.x} y={GLOBE_FLOCK.y} />}
-        {Array.from({ length: info.flocks }, (_, i) => (
-          <Flock key={i} x={150 + ((i * 53) % 120)} y={52 + ((i * 37) % 60)} />
-        ))}
+        {info.flocks > 0 && (
+          <g className="gg-glide">
+            {Array.from({ length: info.flocks }, (_, i) => (
+              <Flock
+                key={i}
+                x={150 + ((i * 53) % 120)}
+                y={52 + ((i * 37) % 60)}
+              />
+            ))}
+          </g>
+        )}
+        {/* The moon goes round, and slips behind the globe. */}
+        <g className="gg-moon" aria-hidden="true">
+          <rect
+            x={GLOBE.x - 5}
+            y={GLOBE.y - 5}
+            width="10"
+            height="10"
+            fill="#e9ecef"
+          />
+          <rect
+            x={GLOBE.x - 3}
+            y={GLOBE.y - 3}
+            width="3"
+            height="3"
+            fill="#ced4da"
+          />
+          <rect
+            x={GLOBE.x + 1}
+            y={GLOBE.y + 1}
+            width="2"
+            height="2"
+            fill="#ced4da"
+          />
+        </g>
       </g>
       <FarmBehind away={gone} />
     </g>

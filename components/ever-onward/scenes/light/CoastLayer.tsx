@@ -381,6 +381,59 @@ function Tide({ info }: { info: LightSceneInfo }) {
   );
 }
 
+/**
+ * Gulls, a jumping fish, and what lives further out: now and then a tentacle
+ * curls up out of the dark water. When the lamp runs dry, eyes watch from the
+ * sea until the light comes back.
+ */
+function SeaLife({ isDry }: { isDry: boolean }) {
+  return (
+    <g aria-hidden="true">
+      <defs>
+        <clipPath id="lm-deep-clip">
+          <rect x="296" y="150" width="70" height="104" />
+        </clipPath>
+      </defs>
+      <g className="gg-fly" fill="#dfe8ff">
+        <rect x="0" y="86" width="3" height="1" />
+        <rect x="3" y="87" width="2" height="1" />
+        <rect x="5" y="86" width="3" height="1" />
+      </g>
+      <g className="gg-fly-b" fill="#dfe8ff">
+        <rect x="0" y="62" width="3" height="1" />
+        <rect x="3" y="63" width="2" height="1" />
+        <rect x="5" y="62" width="3" height="1" />
+      </g>
+      <g className="gg-jump">
+        <rect x="236" y="226" width="7" height="3" fill="#9bc3ff" />
+        <rect x="243" y="225" width="2" height="5" fill="#9bc3ff" />
+      </g>
+      <g clipPath="url(#lm-deep-clip)">
+        <g className="gg-surface" fill="#6a3a80">
+          <rect x="326" y="226" width="8" height="28" />
+          <rect x="328" y="212" width="7" height="16" />
+          <rect x="332" y="202" width="6" height="12" />
+          <rect x="336" y="196" width="6" height="8" />
+          <rect x="341" y="194" width="4" height="5" />
+          <rect x="344" y="197" width="3" height="4" />
+          <g fill="#d9a8e6">
+            <rect x="327" y="232" width="2" height="2" />
+            <rect x="327" y="242" width="2" height="2" />
+            <rect x="329" y="218" width="2" height="2" />
+            <rect x="333" y="206" width="2" height="2" />
+          </g>
+        </g>
+      </g>
+      {isDry && (
+        <g className="gg-peek-often" fill="#ffe14d">
+          <rect x="250" y="246" width="3" height="2" />
+          <rect x="258" y="246" width="3" height="2" />
+        </g>
+      )}
+    </g>
+  );
+}
+
 export default function CoastLayer({ info }: { info: LightSceneInfo }) {
   const isStorm = info.storm > 0;
   // A dry lamp burns dim: the beam all but goes out until oil is bought.
@@ -447,6 +500,7 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
           opacity="0.18"
         />
       ))}
+      <SeaLife isDry={isDry} />
       <rect
         x="-1200"
         y="-1200"

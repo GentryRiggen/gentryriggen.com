@@ -70,10 +70,13 @@ function Field({
   i,
   info,
   scarecrow,
+  crows,
 }: {
   i: number;
   info: GrowSceneInfo;
   scarecrow: boolean;
+  /** Nobody guards this field, so crows circle it. */
+  crows: boolean;
 }) {
   const { x, y } = fieldAt(i);
   const h = i < 4 ? 34 : 40;
@@ -87,17 +90,27 @@ function Field({
         fill={info.dry ? SOIL_DRY : SOIL_WET}
       />
       <rect x={x} y={y} width={FIELD_W} height="3" fill="#7a5230" />
-      {Array.from({ length: 2 }, (_, r) =>
-        Array.from({ length: PLANTS }, (_, k) => (
-          <Plant
-            key={`${r}-${k}`}
-            x={x + 8 + k * 13}
-            y={y + 16 + r * (h / 2 - 3)}
-            crop={info.crop}
-            dry={info.dry}
-          />
-        ))
-      )}
+      <g
+        className={
+          info.dry || info.crop === "pumpkin"
+            ? undefined
+            : i % 2
+              ? "gg-sway-b"
+              : "gg-sway"
+        }
+      >
+        {Array.from({ length: 2 }, (_, r) =>
+          Array.from({ length: PLANTS }, (_, k) => (
+            <Plant
+              key={`${r}-${k}`}
+              x={x + 8 + k * 13}
+              y={y + 16 + r * (h / 2 - 3)}
+              crop={info.crop}
+              dry={info.dry}
+            />
+          ))
+        )}
+      </g>
       {scarecrow && (
         <g>
           <rect
@@ -128,6 +141,37 @@ function Field({
             height="3"
             fill="#7a3b1c"
           />
+          {/* Its eyes slide sideways now and then. Is it watching you? */}
+          <g className="gg-glance">
+            <rect
+              x={x + FIELD_W - 16}
+              y={y - 17}
+              width="2"
+              height="2"
+              fill="#1b1b24"
+            />
+            <rect
+              x={x + FIELD_W - 13}
+              y={y - 17}
+              width="2"
+              height="2"
+              fill="#1b1b24"
+            />
+          </g>
+        </g>
+      )}
+      {crows && (
+        <g aria-hidden="true" fill="#1b1b24">
+          <g className={i % 2 ? "gg-circle-b" : "gg-circle"}>
+            <rect x={x + 30} y={y - 22} width="3" height="1" />
+            <rect x={x + 33} y={y - 21} width="2" height="2" />
+            <rect x={x + 35} y={y - 22} width="3" height="1" />
+          </g>
+          <g className={i % 2 ? "gg-circle" : "gg-circle-b"}>
+            <rect x={x + 46} y={y - 16} width="3" height="1" />
+            <rect x={x + 49} y={y - 15} width="2" height="2" />
+            <rect x={x + 51} y={y - 16} width="3" height="1" />
+          </g>
         </g>
       )}
     </g>
@@ -153,6 +197,16 @@ function Town({ lit }: { lit: number }) {
               fill={colours[h]}
             />
             <path d={`M${x - 3} ${top}l20 -14l20 14z`} fill="#7a3b1c" />
+            <rect x={x + 24} y={top - 14} width="4" height="8" fill="#5b2a1c" />
+            {h * 2 < lit && (
+              <circle
+                cx={x + 26}
+                cy={top - 17}
+                r="2.5"
+                fill="#e9ecef"
+                className={h % 2 ? "lm-puff-b" : "lm-puff"}
+              />
+            )}
             {[0, 1].map((w) => {
               const n = h * 2 + w;
               return (
@@ -176,7 +230,15 @@ function Town({ lit }: { lit: number }) {
 function Tractor({ i }: { i: number }) {
   const { x, y } = tractorAt(i);
   return (
-    <g>
+    <g className={i % 2 ? "gg-drive-b" : "gg-drive"}>
+      <rect x={x + 5} y={y - 2} width="3" height="8" fill="#495057" />
+      <circle
+        cx={x + 6.5}
+        cy={y - 4}
+        r="2.5"
+        fill="#adb5bd"
+        className={i % 2 ? "lm-puff-b" : "lm-puff"}
+      />
       <rect x={x} y={y + 6} width="26" height="10" fill="#2f9e44" />
       <rect x={x + 14} y={y} width="12" height="8" fill="#2f9e44" />
       <rect x={x + 16} y={y + 2} width="7" height="5" fill="#c9f0ff" />
@@ -195,6 +257,14 @@ function Well({ i }: { i: number }) {
       <rect x={x} y={y - 5} width="2" height="5" fill="#6b4423" />
       <rect x={x + 12} y={y - 5} width="2" height="5" fill="#6b4423" />
       <rect x={x + 3} y={y + 2} width="8" height="3" fill="#38a3e8" />
+      <rect
+        x={x + 5}
+        y={y + 2}
+        width="2"
+        height="1"
+        fill="#e0f3ff"
+        className={i % 2 ? "lm-twinkle-b" : "lm-twinkle"}
+      />
     </g>
   );
 }
@@ -202,11 +272,22 @@ function Well({ i }: { i: number }) {
 function Drone({ i }: { i: number }) {
   const { x, y } = droneAt(i);
   return (
-    <g>
+    <g className={i % 2 ? "gg-hover-b" : "gg-hover"}>
       <rect x={x} y={y} width="14" height="5" fill="#495057" />
-      <rect x={x - 5} y={y - 3} width="10" height="2" fill="#adb5bd" />
-      <rect x={x + 9} y={y - 3} width="10" height="2" fill="#adb5bd" />
+      <g className="gg-rotor">
+        <rect x={x - 5} y={y - 3} width="10" height="2" fill="#adb5bd" />
+        <rect x={x + 9} y={y - 3} width="10" height="2" fill="#adb5bd" />
+      </g>
       <rect x={x + 6} y={y + 5} width="2" height="4" fill="#f5c542" />
+      {/* seeds dropping */}
+      <rect
+        x={x + 6}
+        y={y + 12}
+        width="2"
+        height="2"
+        fill="#c9a56a"
+        className="gg-spray"
+      />
     </g>
   );
 }
@@ -222,23 +303,64 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
   return (
     <g>
       <rect x="-1200" y="-1200" width="2800" height="1324" fill={sky} />
+      <g className="gg-rays">
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+          <rect
+            key={a}
+            x="354.5"
+            y="12"
+            width="3"
+            height="7"
+            fill="#fff3b0"
+            transform={`rotate(${a} 356 40)`}
+          />
+        ))}
+      </g>
       <circle cx="356" cy="40" r="16" fill="#ffe66d" />
-      <rect
-        x="60"
-        y="28"
-        width="50"
-        height="10"
-        fill="#ffffff"
-        fillOpacity="0.8"
-      />
-      <rect
-        x="80"
-        y="22"
-        width="32"
-        height="10"
-        fill="#ffffff"
-        fillOpacity="0.8"
-      />
+      <g className="gw-drift">
+        <rect
+          x="60"
+          y="28"
+          width="50"
+          height="10"
+          fill="#ffffff"
+          fillOpacity="0.8"
+        />
+        <rect
+          x="80"
+          y="22"
+          width="32"
+          height="10"
+          fill="#ffffff"
+          fillOpacity="0.8"
+        />
+      </g>
+      <g className="gw-drift [animation-delay:-6s]">
+        <rect
+          x="180"
+          y="40"
+          width="40"
+          height="8"
+          fill="#ffffff"
+          fillOpacity="0.7"
+        />
+        <rect
+          x="192"
+          y="35"
+          width="20"
+          height="6"
+          fill="#ffffff"
+          fillOpacity="0.7"
+        />
+      </g>
+      <g className="gg-fly" fill="#3b3b4a">
+        <rect x="0" y="62" width="3" height="1" />
+        <rect x="3" y="63" width="2" height="1" />
+        <rect x="5" y="62" width="3" height="1" />
+        <rect x="12" y="68" width="3" height="1" />
+        <rect x="15" y="69" width="2" height="1" />
+        <rect x="17" y="68" width="3" height="1" />
+      </g>
       <rect x="-1200" y="108" width="2800" height="20" fill="#8cbf6a" />
       <rect
         x="-1200"
@@ -308,6 +430,21 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
             fill="#e03131"
           />
           <rect
+            x={FAIR_TENT.x + 24}
+            y={FAIR_TENT.y - 18}
+            width="1"
+            height="10"
+            fill="#6b4423"
+          />
+          <rect
+            x={FAIR_TENT.x + 25}
+            y={FAIR_TENT.y - 18}
+            width="8"
+            height="5"
+            fill="#f5c542"
+            className="gg-swing"
+          />
+          <rect
             x={FAIR_TENT.x + 20}
             y={FAIR_TENT.y + 14}
             width="10"
@@ -331,10 +468,28 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
         </g>
       )}
       {Array.from({ length: info.fields }, (_, i) => (
-        <Field key={i} i={i} info={info} scarecrow={i < info.helpers} />
+        <Field
+          key={i}
+          i={i}
+          info={info}
+          scarecrow={i < info.helpers}
+          crows={i >= info.helpers && i < info.helpers + 2}
+        />
       ))}
       {irrigation > 0 && (
-        <rect x="22" y={DITCH.y - 6} width="350" height="4" fill="#38a3e8" />
+        <g>
+          <rect x="22" y={DITCH.y - 6} width="350" height="4" fill="#38a3e8" />
+          <line
+            x1="22"
+            y1={DITCH.y - 4}
+            x2="372"
+            y2={DITCH.y - 4}
+            stroke="#bfe6ff"
+            strokeWidth="1.5"
+            strokeDasharray="4 8"
+            className="gg-flow"
+          />
+        </g>
       )}
       {info.scaling > 0 && (
         <g>
@@ -352,18 +507,26 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
             height="6"
             fill="#5e3d20"
           />
-          <rect
-            x={COMPOST.x + 10}
-            y={COMPOST.y - 6}
-            width="2"
-            height="4"
+          <circle
+            cx={COMPOST.x + 11}
+            cy={COMPOST.y - 4}
+            r="2.5"
+            fill="#ffffff"
+            fillOpacity="0.7"
+            className="lm-puff"
+          />
+          <circle
+            cx={COMPOST.x + 17}
+            cy={COMPOST.y - 3}
+            r="2"
             fill="#ffffff"
             fillOpacity="0.6"
+            className="lm-puff-b"
           />
         </g>
       )}
       {info.agent && (
-        <g>
+        <g className="gg-hop">
           <rect x={AGENT.x} y={AGENT.y} width="8" height="8" fill="#e8c27a" />
           <rect
             x={AGENT.x - 1}
@@ -426,14 +589,29 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
         <Drone key={i} i={i} />
       ))}
       {info.dry && (
-        <rect
-          x="-1200"
-          y="122"
-          width="2800"
-          height="1200"
-          fill="#d9b25a"
-          fillOpacity="0.25"
-        />
+        <g>
+          <rect
+            x="-1200"
+            y="122"
+            width="2800"
+            height="1200"
+            fill="#d9b25a"
+            fillOpacity="0.25"
+          />
+          {/* A dust devil wanders across the dry fields. */}
+          <g
+            className="gg-devil"
+            aria-hidden="true"
+            fill="#c9a56a"
+            fillOpacity="0.8"
+          >
+            <rect x="40" y="150" width="14" height="4" />
+            <rect x="42" y="156" width="10" height="4" />
+            <rect x="44" y="162" width="7" height="4" />
+            <rect x="46" y="168" width="4" height="4" />
+            <rect x="47" y="174" width="2" height="4" />
+          </g>
+        </g>
       )}
     </g>
   );

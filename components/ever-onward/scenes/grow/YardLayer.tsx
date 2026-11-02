@@ -88,32 +88,42 @@ function Bed({
           fill="none"
         />
       )}
-      {[0, 1, 2, 3, 4].map((p) => (
-        <g key={p}>
-          <rect
-            x={x + 6 + p * 12}
-            y={y - height + 2}
-            width="3"
-            height={height}
-            fill={look.leaf}
-          />
-          {info.bloom >= 0.4 && !isWinter && (
+      <g className={isWinter ? undefined : i % 2 ? "gg-sway-b" : "gg-sway"}>
+        {[0, 1, 2, 3, 4].map((p) => (
+          <g key={p}>
             <rect
-              x={x + 4 + p * 12}
-              y={y - height - 2}
-              width="7"
-              height="5"
-              fill={look.bloom}
+              x={x + 6 + p * 12}
+              y={y - height + 2}
+              width="3"
+              height={height}
+              fill={look.leaf}
             />
-          )}
-        </g>
-      ))}
+            {info.bloom >= 0.4 && !isWinter && (
+              <rect
+                x={x + 4 + p * 12}
+                y={y - height - 2}
+                width="7"
+                height="5"
+                fill={look.bloom}
+              />
+            )}
+          </g>
+        ))}
+      </g>
       {info.sprinklers > 0 && !info.dry && info.waterFraction > 0 && (
         <g fill="#7cc4ff" fillOpacity="0.9">
-          <rect x={x + 28} y={y - 18} width="2" height="3" />
-          <rect x={x + 20} y={y - 14} width="2" height="3" />
-          <rect x={x + 36} y={y - 14} width="2" height="3" />
-          <rect x={x + 29} y={y - 9} width="4" height="3" />
+          <rect x={x + 29} y={y - 6} width="2" height="6" fill="#5b7fa3" />
+          <g className="gg-spray">
+            <rect x={x + 28} y={y - 18} width="2" height="3" />
+            <rect x={x + 18} y={y - 13} width="2" height="3" />
+            <rect x={x + 40} y={y - 12} width="2" height="3" />
+          </g>
+          <g className="gg-spray-b">
+            <rect x={x + 22} y={y - 16} width="2" height="3" />
+            <rect x={x + 35} y={y - 16} width="2" height="3" />
+            <rect x={x + 13} y={y - 8} width="2" height="3" />
+            <rect x={x + 45} y={y - 7} width="2" height="3" />
+          </g>
         </g>
       )}
     </g>
@@ -128,8 +138,73 @@ function Hive({ i }: { i: number }) {
       <rect x={x} y={y + 5} width="16" height="2" fill="#8a5a12" />
       <rect x={x - 1} y={y - 2} width="18" height="3" fill="#8a5a12" />
       <rect x={x + 6} y={y + 9} width="4" height="3" fill="#3b2a10" />
-      <rect x={x + 3} y={y - 8} width="2" height="2" fill="#ffe14d" />
-      <rect x={x + 12} y={y - 12} width="2" height="2" fill="#ffe14d" />
+      <g className="gg-buzz">
+        <Bee x={x + 3} y={y - 8} />
+      </g>
+      {/* Bees really do commute: hive to flower and home again. */}
+      <g className={TRIPS[i % TRIPS.length]}>
+        <Bee x={x + 7} y={y + 9} />
+      </g>
+    </g>
+  );
+}
+
+const TRIPS = ["gg-trip-a", "gg-trip-b", "gg-trip-c"] as const;
+
+function Bee({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width="3" height="2" fill="#ffe14d" />
+      <rect x={x + 1} y={y} width="1" height="2" fill="#3b2a10" />
+      <rect
+        x={x}
+        y={y - 1}
+        width="2"
+        height="1"
+        fill="#ffffff"
+        fillOpacity="0.8"
+      />
+    </g>
+  );
+}
+
+/** A butterfly drifting over the beds, wings beating. */
+function Butterfly({
+  x,
+  y,
+  colour,
+  late,
+}: {
+  x: number;
+  y: number;
+  colour: string;
+  late?: boolean;
+}) {
+  return (
+    <g className={late ? "gg-flutter-b" : "gg-flutter"}>
+      <g className="gg-flap">
+        <rect x={x} y={y} width="3" height="3" fill={colour} />
+        <rect x={x + 4} y={y} width="3" height="3" fill={colour} />
+        <rect x={x + 3} y={y} width="1" height="4" fill="#3b2a10" />
+      </g>
+    </g>
+  );
+}
+
+/**
+ * The crow: it waits off the edge, drops onto the nearest bed, pecks, and
+ * flaps away with something. Not every visitor to a garden is a friend.
+ */
+function Crow() {
+  return (
+    <g className="gg-crow" aria-hidden="true">
+      <rect x="66" y="146" width="10" height="6" fill="#1b1b24" />
+      <rect x="74" y="143" width="5" height="5" fill="#1b1b24" />
+      <rect x="79" y="145" width="3" height="1" fill="#e8a317" />
+      <rect x="76" y="144" width="1" height="1" fill="#ff4d4d" />
+      <rect x="62" y="147" width="5" height="3" fill="#2b2b38" />
+      <rect x="69" y="152" width="1" height="3" fill="#e8a317" />
+      <rect x="72" y="152" width="1" height="3" fill="#e8a317" />
     </g>
   );
 }
@@ -156,7 +231,7 @@ function Barrel({ i, info }: { i: number; info: GrowSceneInfo }) {
 function Gardener({ i }: { i: number }) {
   const { x, y } = gardenerAt(i);
   return (
-    <g>
+    <g className={i % 2 ? "gg-hop-b" : "gg-hop"}>
       <rect x={x} y={y + 6} width="12" height="10" fill="#9aa5b1" />
       <rect x={x + 2} y={y} width="8" height="6" fill="#c7d0d9" />
       <rect x={x + 3} y={y + 2} width="2" height="2" fill="#1f6f3a" />
@@ -175,28 +250,70 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
   return (
     <g>
       <rect x="-1200" y="-1200" width="2800" height="1340" fill={look.sky} />
+      {info.season !== "winter" && (
+        <g className="gg-rays">
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <rect
+              key={a}
+              x={SUN.x - 1.5}
+              y={SUN.y - 30}
+              width="3"
+              height="7"
+              fill="#fff3b0"
+              transform={`rotate(${a} ${SUN.x} ${SUN.y})`}
+            />
+          ))}
+        </g>
+      )}
       {info.season === "summer" && (
         <circle cx={SUN.x} cy={SUN.y} r="18" fill="#ffe66d" />
       )}
       {info.season !== "winter" && info.season !== "summer" && (
         <circle cx={SUN.x} cy={SUN.y} r="12" fill="#fff3b0" />
       )}
-      <rect
-        x="40"
-        y="30"
-        width="46"
-        height="10"
-        fill="#ffffff"
-        fillOpacity="0.8"
-      />
-      <rect
-        x="60"
-        y="24"
-        width="30"
-        height="10"
-        fill="#ffffff"
-        fillOpacity="0.8"
-      />
+      <g className="gw-drift">
+        <rect
+          x="40"
+          y="30"
+          width="46"
+          height="10"
+          fill="#ffffff"
+          fillOpacity="0.8"
+        />
+        <rect
+          x="60"
+          y="24"
+          width="30"
+          height="10"
+          fill="#ffffff"
+          fillOpacity="0.8"
+        />
+      </g>
+      <g className="gw-drift [animation-delay:-7s]">
+        <rect
+          x="200"
+          y="56"
+          width="36"
+          height="8"
+          fill="#ffffff"
+          fillOpacity="0.7"
+        />
+        <rect
+          x="212"
+          y="51"
+          width="18"
+          height="6"
+          fill="#ffffff"
+          fillOpacity="0.7"
+        />
+      </g>
+      {info.season !== "winter" && (
+        <g className="gg-fly" fill="#3b3b4a">
+          <rect x="0" y="70" width="3" height="1" />
+          <rect x="3" y="71" width="2" height="1" />
+          <rect x="5" y="70" width="3" height="1" />
+        </g>
+      )}
       <rect x="-1200" y="136" width="2800" height="130" fill={look.ground} />
       {info.dry && (
         <rect
@@ -210,8 +327,18 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
       )}
       {info.season === "winter" && (
         <g fill="#ffffff">
-          {[30, 90, 150, 220, 300, 360].map((x, k) => (
-            <rect key={x} x={x} y={20 + ((k * 37) % 90)} width="3" height="3" />
+          {[0, 1].map((band) => (
+            <g key={band} className={band ? "gg-snow-b" : "gg-snow"}>
+              {[30, 90, 150, 220, 300, 360].map((x, k) => (
+                <rect
+                  key={x}
+                  x={x + band * 28}
+                  y={10 + ((k * 37 + band * 50) % 90)}
+                  width="3"
+                  height="3"
+                />
+              ))}
+            </g>
           ))}
         </g>
       )}
@@ -220,6 +347,15 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
           {[50, 140, 210, 330].map((x, k) => (
             <rect key={x} x={x} y={150 + k * 22} width="4" height="3" />
           ))}
+          <rect x="245" y="70" width="4" height="3" className="gg-leaf" />
+          <rect
+            x="268"
+            y="66"
+            width="4"
+            height="3"
+            fill="#e8a317"
+            className="gg-leaf-b"
+          />
         </g>
       )}
       <rect x="-1200" y="108" width="2800" height="30" fill="#b98a55" />
@@ -245,7 +381,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
       <rect x="-1200" y="112" width="2800" height="3" fill="#8b5e34" />
       {info.orchard &&
         TREES.map((t) => (
-          <g key={t.x}>
+          <g key={t.x} className="gg-sway-b">
             <rect
               x={t.x - 2}
               y={t.y - 22}
@@ -342,6 +478,17 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
       {beds.map((i) => (
         <Bed key={i} i={i} info={info} look={look} />
       ))}
+      {info.bloom >= 0.4 &&
+        (info.season === "spring" || info.season === "summer") && (
+          <g aria-hidden="true">
+            <Butterfly x={60} y={140} colour="#ffffff" />
+            {info.bloom >= 0.7 && (
+              <Butterfly x={120} y={176} colour="#ffb347" late />
+            )}
+          </g>
+        )}
+      {/* Gardeners shoo the crow away; until then it raids the beds. */}
+      {info.gardeners < 2 && info.season !== "winter" && <Crow />}
       {Array.from({ length: Math.min(4, info.storage) }, (_, i) => (
         <Barrel key={i} i={i} info={info} />
       ))}
@@ -378,6 +525,13 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
             width="10"
             height="3"
             fill="#6fb04a"
+          />
+          <circle
+            cx={TEA.x + 6}
+            cy={TEA.y - 3}
+            r="2.5"
+            fill="#e8f0e0"
+            className="lm-puff"
           />
         </g>
       )}
@@ -484,27 +638,60 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         height="7"
         fill={info.dry ? SOIL_DRY : SOIL_WET}
       />
-      <rect
-        x={SPROUT.x}
-        y={SPROUT.y - sprout}
-        width="4"
-        height={sprout}
-        fill="#3f9d3a"
-      />
-      <rect
-        x={SPROUT.x - 10}
-        y={SPROUT.y - sprout}
-        width="10"
-        height="5"
-        fill="#58bf4f"
-      />
-      <rect
-        x={SPROUT.x + 4}
-        y={SPROUT.y - sprout - 3}
-        width="10"
-        height="5"
-        fill="#58bf4f"
-      />
+      <g className="gg-sway">
+        <rect
+          x={SPROUT.x}
+          y={SPROUT.y - sprout}
+          width="4"
+          height={sprout}
+          fill="#3f9d3a"
+        />
+        <rect
+          x={SPROUT.x - 10}
+          y={SPROUT.y - sprout}
+          width="10"
+          height="5"
+          fill="#58bf4f"
+        />
+        <rect
+          x={SPROUT.x + 4}
+          y={SPROUT.y - sprout - 3}
+          width="10"
+          height="5"
+          fill="#58bf4f"
+        />
+      </g>
+      {/* A snail inching along the window box, very slowly, towards the sprout. */}
+      <g className="gg-creep" aria-hidden="true">
+        <rect
+          x={SILL_BOX.x + 84}
+          y={SILL_BOX.y + 9}
+          width="6"
+          height="5"
+          fill="#b07a4a"
+        />
+        <rect
+          x={SILL_BOX.x + 85}
+          y={SILL_BOX.y + 10}
+          width="3"
+          height="3"
+          fill="#7a4a2a"
+        />
+        <rect
+          x={SILL_BOX.x + 80}
+          y={SILL_BOX.y + 13}
+          width="11"
+          height="2"
+          fill="#c9b79a"
+        />
+        <rect
+          x={SILL_BOX.x + 79}
+          y={SILL_BOX.y + 10}
+          width="1"
+          height="3"
+          fill="#c9b79a"
+        />
+      </g>
       <rect x="-1200" y="0" width="2800" height="9" fill="#a9763f" />
     </g>
   );

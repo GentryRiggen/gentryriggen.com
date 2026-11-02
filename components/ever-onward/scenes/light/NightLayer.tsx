@@ -411,6 +411,27 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           />
         ))}
       </g>
+      {/* a shooting star, and a dead satellite tumbling past, its light still blinking */}
+      <g aria-hidden="true">
+        <g className="gg-shoot" fill="#fff8d6">
+          <rect x="330" y="30" width="3" height="2" />
+          <rect x="333" y="28" width="4" height="1" fillOpacity="0.6" />
+          <rect x="337" y="26" width="5" height="1" fillOpacity="0.3" />
+        </g>
+        <g className="gg-sat">
+          <rect x="0" y="60" width="6" height="4" fill="#868e96" />
+          <rect x="-6" y="61" width="5" height="2" fill="#364fc7" />
+          <rect x="7" y="61" width="5" height="2" fill="#364fc7" />
+          <rect
+            x="2"
+            y="58"
+            width="2"
+            height="2"
+            fill="#ff4d4d"
+            className="lm-flicker"
+          />
+        </g>
+      </g>
       <ellipse
         cx="200"
         cy="148"
@@ -570,6 +591,23 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           </g>
         ))}
       </g>
+      {/* where the lights have not reached, something blinks back */}
+      {strain > 0 && (
+        <g className="gg-peek-often" fill="#ff6b6b" aria-hidden="true">
+          <rect
+            x={fmt(planetPoint(0.5, 46).x)}
+            y={fmt(planetPoint(0.5, 46).y)}
+            width="2"
+            height="2"
+          />
+          <rect
+            x={fmt(planetPoint(0.5, 46).x + 5)}
+            y={fmt(planetPoint(0.5, 46).y)}
+            width="2"
+            height="2"
+          />
+        </g>
+      )}
       {/* storm crews: a row of sandbags along the rim by the towns */}
       {info.stormCrews > 0 && (
         <g className="lm-pop-svg" data-testid="lm-sandbags">

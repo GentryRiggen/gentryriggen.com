@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.17.0",
+    date: "2026-11-01",
+    title: "The little worlds come alive",
+    highlights: [
+      "Make It Grow's pictures move now: bees fly from their hives to the flowers and back, beds sway in the wind, sprinklers spray, robot gardeners bob, butterflies flutter, and snow or leaves fall with the season",
+      "On the farm, tractors drive their rows and puff smoke, drones hover and drop seeds, the ditch flows, and the houses you feed send up chimney smoke",
+      "Crows raid the yard until you have gardeners, and circle any field without a scarecrow. Watch the scarecrows' eyes",
+      "The green world has a moon that slips behind the globe, twinkling stars, drifting clouds and flocks, shooting stars and a dead satellite tumbling by",
+      "The last seed's window has fireflies, a blinking robot, a swinging chime, music box notes and a moth at the lantern. Something in the hills opens its eyes, now and then",
+      "Keep the Light On has new things to spot too: gulls, a jumping fish, something with tentacles far out at sea, eyes in the water when the lamp runs dry, and a very big shape drifting past the sun",
+    ],
+  },
+  {
     version: "1.16.0",
     date: "2026-11-01",
     title: "Easier to play, easier to read",
