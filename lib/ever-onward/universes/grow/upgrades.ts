@@ -24,6 +24,7 @@ import {
   openMigration,
 } from "./migration";
 import { TUNING } from "./tuning";
+import { beesWelcome, forkSide } from "./forks";
 import { MARKET_AGENT_ID } from "./market";
 import {
   PHASE_FARM,
@@ -156,7 +157,8 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "sprinkler") >= 5,
+    visibleWhen: (run) =>
+      owned(run, "sprinkler") >= 5 && forkSide(run, "yard") === 0,
     onBuy: openBees,
     effectPreview: (run) =>
       ratePreview(run, "bee-hive", "Ripens/sec", incomePerSecond),
@@ -222,7 +224,9 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 3000,
     costGrowth: 2.5,
     maxLevel: 3,
-    visibleWhen: (run) => owned(run, "bee-hive") >= 3,
+    visibleWhen: (run) =>
+      owned(run, "bee-hive") >= 3 ||
+      (forkSide(run, "yard") === 1 && owned(run, "sprinkler") >= 5),
     effectPreview: (run) =>
       ratePreview(run, "compost-tea", "Ripens/sec", incomePerSecond),
   },
@@ -277,7 +281,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 120000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "orchard") >= 1,
+    visibleWhen: (run) => owned(run, "orchard") >= 1 && beesWelcome(run),
   },
   {
     id: "cold-frame",
@@ -508,7 +512,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       "A six-wheeled rover that plants a tree, shuffles forward and plants another, all day and all night.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 60000,
+    baseCost: 30000,
     costGrowth: 2.4,
     maxLevel: 8,
     kind: "mechanic",
@@ -607,11 +611,11 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       "It tinkles in the draft from the window, and the pot sways along.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 200,
+    baseCost: 120,
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "trellis") >= 3,
+    visibleWhen: (run) => owned(run, "trellis") >= 2,
     effectPreview: (run) => helperPreview(run, "wind-chime"),
   },
   {
@@ -621,7 +625,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       "A tiny dish that catches the morning dew and drips it on the soil, one drop at a time.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 3500,
+    baseCost: 2000,
     costGrowth: 2.4,
     maxLevel: 8,
     kind: "mechanic",
@@ -662,8 +666,6 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     currency: "care",
     baseCost: 120,
     costGrowth: 1,
-    // A bonus helper, not income: bots buy the pot's growth first.
-    priority: -1,
     kind: "mechanic",
     visibleWhen: musicBoxShown,
     effectPreview: (run) =>
@@ -679,20 +681,26 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 30000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => potGrowth(run) >= 0.2,
+    visibleWhen: (run) =>
+      potGrowth(run) >= 0.1 || owned(run, "wind-chime") >= 2,
     effectPreview: () => "Every bit of care grows the pot twice as much",
   },
 ];
 
-/** Every price in a phase, scaled together: the pacing knob (see TUNING). */
-export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => ({
-  ...u,
-  baseCost:
-    u.baseCost *
-    TUNING.costScale[
-      Math.max(
-        0,
-        PHASE_IDS.indexOf((u.phases?.[0] ?? PHASE_YARD) as GrowPhaseId)
-      )
-    ],
-}));
+/**
+ * Every price in a phase, scaled together: the pacing knob (see TUNING).
+ * Repeatable upgrades also climb a little steeper in a phase that needs it,
+ * so the first steps stay cheap and the last ones are earned.
+ */
+export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
+  const phase = Math.max(
+    0,
+    PHASE_IDS.indexOf((u.phases?.[0] ?? PHASE_YARD) as GrowPhaseId)
+  );
+  return {
+    ...u,
+    baseCost: u.baseCost * TUNING.costScale[phase],
+    costGrowth:
+      u.costGrowth > 1 ? u.costGrowth * TUNING.costSteepness[phase] : 1,
+  };
+});

@@ -209,7 +209,7 @@ describe("the Your upgrades dialog", () => {
     expect(
       within(groups[1]).getByText(/sprinkler/i, { selector: "p" })
     ).toBeInTheDocument();
-    expect(within(groups[1]).getByText("Level 3 of 8")).toBeInTheDocument();
+    expect(within(groups[1]).getByText("Level 3 of 6")).toBeInTheDocument();
     const text = screen
       .getAllByTestId("lm-upgrades-run-item")
       .map((i) => i.textContent)

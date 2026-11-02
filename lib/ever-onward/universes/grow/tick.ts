@@ -4,6 +4,20 @@ import { MANUAL_RESOURCES } from "./resources";
 import { tickBees } from "./bees";
 import { greenMult, tickBiomes } from "./biomes";
 import { tickFair } from "./fair";
+import { phaseBoost, tickKnowhow } from "./knowhow";
+import {
+  farmForkMult,
+  orchardMult,
+  seedHelperMult,
+  sprinklerForkMult,
+} from "./forks";
+import {
+  bankGainFor,
+  bankKept,
+  bankStock,
+  savedShare,
+  tickBank,
+} from "./seedbank";
 import { tickMigration } from "./migration";
 import { marketMult, tickMarket } from "./market";
 import { seasonBoost } from "./seasons";
@@ -34,8 +48,57 @@ const scaleMult = (run: RunState): number =>
   (owned(run, SCALE_IDS[run.phase]) +
     (run.phase === 1 ? owned(run, "silo") : 0));
 
+/**
+ * The farm's pay before the seed bank takes its share: the bank's yield
+ * bonus is already in, the kept share is not yet out.
+ */
+function farmGrossTap(run: RunState): number {
+  return (
+    TUNING.phases[1].tap *
+    scaleMult(run) *
+    tapMult(run) *
+    marketMult(run) *
+    farmForkMult(run) *
+    phaseBoost(run) *
+    (1 + bankGain(run))
+  );
+}
+
+/** Harvest per second from the farm's helpers, kept share not yet taken. */
+function farmGrossIncome(run: RunState): number {
+  return (
+    farmHelpers(run) *
+    scaleMult(run) *
+    marketMult(run) *
+    speed(run) *
+    waterFactor(run) *
+    farmForkMult(run) *
+    phaseBoost(run) *
+    (1 + bankGain(run))
+  );
+}
+
+/** The seed bank's yield bonus, read against the farm without the bank. */
+export function bankGain(run: RunState): number {
+  if (run.phase !== 1) return 0;
+  const reference =
+    (farmHelpers(run) *
+      scaleMult(run) *
+      marketMult(run) *
+      speed(run) *
+      waterFactor(run) +
+      TUNING.farm.bank.referenceTaps *
+        TUNING.phases[1].tap *
+        scaleMult(run) *
+        tapMult(run) *
+        marketMult(run)) *
+    farmForkMult(run);
+  return bankGainFor(bankStock(run), reference);
+}
+
 /** What one tap earns right now (in spring, planting pays more). */
 export function manualPerTap(run: RunState): number {
+  if (run.phase === 1) return farmGrossTap(run) * (1 - savedShare(run));
   const season = run.phase === 0 ? seasonBoost(run, "plant") : 1;
   // On the farm a tap picks whatever is planted, at what the towns pay.
   const market = run.phase === 1 ? marketMult(run) : 1;
@@ -46,7 +109,8 @@ export function manualPerTap(run: RunState): number {
     tapMult(run) *
     season *
     market *
-    biomes
+    biomes *
+    (run.phase === 2 ? phaseBoost(run) : 1)
   );
 }
 
@@ -80,13 +144,15 @@ const worldHelpers = (run: RunState): number => {
 const ripenMult = (run: RunState): number =>
   (1 + TUNING.yard.teaPer) ** owned(run, "compost-tea") *
   (owned(run, "greenhouse") > 0 ? TUNING.yard.greenhouse : 1) *
-  (owned(run, "orchard") > 0 ? TUNING.yard.orchard : 1);
+  (owned(run, "orchard") > 0 ? orchardMult(run) : 1);
 
 export function incomePerSecond(run: RunState): number {
   const y = TUNING.yard;
   if (run.phase === 0)
     return (
-      (stacked(owned(run, "sprinkler")) * y.sprinklerRate +
+      (stacked(owned(run, "sprinkler")) *
+        y.sprinklerRate *
+        sprinklerForkMult(run) +
         stacked(owned(run, "bee-hive")) * y.hiveRate) *
       scaleMult(run) *
       ripenMult(run) *
@@ -94,19 +160,13 @@ export function incomePerSecond(run: RunState): number {
       waterFactor(run) *
       seasonBoost(run, "grow")
     );
-  if (run.phase === 1)
-    return (
-      farmHelpers(run) *
-      scaleMult(run) *
-      marketMult(run) *
-      speed(run) *
-      waterFactor(run)
-    );
+  if (run.phase === 1) return farmGrossIncome(run) * (1 - savedShare(run));
   if (run.phase === 2)
     return (
       worldHelpers(run) *
       scaleMult(run) *
       greenMult(run) *
+      phaseBoost(run) *
       speed(run) *
       waterFactor(run)
     );
@@ -116,6 +176,7 @@ export function incomePerSecond(run: RunState): number {
       (stacked(owned(run, "trellis")) * TUNING.phases[3].helper +
         stacked(owned(run, "wind-chime")) * b.chimeRate +
         stacked(owned(run, "dew-collector")) * b.dewRate) *
+      seedHelperMult(run) *
       scaleMult(run) *
       speed(run)
     );
@@ -177,11 +238,13 @@ export function tickGrow(run: RunState, dt: number): void {
     tickWater(run, dt);
     tickMarket(run, dt);
     earn(run, incomePerSecond(run) * dt);
+    tickBank(run, farmGrossIncome(run) * savedShare(run), dt);
   } else if (run.phase === 2) {
     tickWater(run, dt);
     tickBiomes(run, dt);
     earn(run, incomePerSecond(run) * dt);
   } else earn(run, incomePerSecond(run) * dt);
+  tickKnowhow(run, dt);
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
   tickFair(run, dt, () => incomePerSecond(run));
@@ -191,6 +254,7 @@ export function tickGrow(run: RunState, dt: number): void {
 
 export function manualGrow(run: RunState): void {
   earn(run, manualPerTap(run));
+  if (run.phase === 1) bankKept(run, farmGrossTap(run) * savedShare(run));
 }
 
 export const isGrowComplete = (run: RunState): boolean =>

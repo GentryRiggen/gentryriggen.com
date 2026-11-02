@@ -16,28 +16,27 @@ jest.setTimeout(180_000);
  * far too short) to 83.9 with no failing gate. Raise the floor as rounds
  * land.
  *
- * Round 5 added M16 (decision gaps). The world's tail fails its gate (41% of
- * the phase in gaps over a minute, max 40%), so the total sits at the gate
- * cap (59); that is all the capped floor checks. The uncapped score is the
- * real floor: 82.7 (1.14.1) minus 1.
+ * Round 5 added M16 (decision gaps); the world's tail failed its gate, so
+ * the total sat at the gate cap (59) with an uncapped score of 82.7.
+ *
+ * The trade-offs round (seed bank, know-how projects and festivals, a fork
+ * in every part, bolder upgrades) put decisions into the world and the farm:
+ * M16 went from 5.1 to 6.6 of 8, nothing fails its gate any more and the
+ * total is the real score, 82.0. The floor is that minus 1.
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 81.7;
-/** An M16 phase allowed to fail its gate, but not to get any worse. */
+const UNCAPPED_FLOOR = 81;
+/**
+ * M16 phases allowed to fail their gate, but not to get any worse. None
+ * today: every phase passes.
+ */
 interface DeadPhaseCeiling {
   /** Share of the phase in gaps over 60 s today, plus 5 points. */
   deadShare: number;
   /** Longest decision-less stretch today, plus 30 s. */
   longest: number;
 }
-/**
- * Known M16 targets: may fail the gate, but no worse than 5 points and 30 s
- * past where they stand (world: 41%, 143 s). It gets projects in the
- * things-to-manage rollout.
- */
-const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {
-  world: { deadShare: 0.55, longest: 173 },
-};
+const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {};
 
 const HOUR = 3600;
 
@@ -85,6 +84,8 @@ describe("Make It Grow engagement scorecard", () => {
 
   it("scores at least the floor", () => {
     expect(card.total).toBeGreaterThanOrEqual(GATE_CAP);
+    // Nothing is capped any more: the total is the real score.
+    expect(card.total).toBeGreaterThanOrEqual(UNCAPPED_FLOOR);
     expect(card.uncapped).toBeGreaterThanOrEqual(UNCAPPED_FLOOR);
   });
 

@@ -3,6 +3,7 @@ import { nextRandom } from "../../engine/rng";
 import type { ActionDef, RunState } from "../../engine/types";
 import { FULL_GROWTH, PHASE_SEED } from "./resources";
 import { TUNING } from "./tuning";
+import { seedTapMult } from "./forks";
 
 /**
  * The old window box: the last seed, and the one small pot on its sill.
@@ -128,7 +129,7 @@ const restTotal = (run: RunState): number =>
 
 /** The watering can makes every answer pay a little more. */
 export const canMult = (run: RunState): number =>
-  1 + B.canPer * owned(run, WATERING_CAN_ID);
+  (1 + B.canPer * owned(run, WATERING_CAN_ID)) * seedTapMult(run);
 
 /** What an answer pays in care: seconds of tending at the current pace. */
 export const tendPays = (

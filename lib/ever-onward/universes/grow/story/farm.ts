@@ -150,7 +150,7 @@ export const farm: StoryMessage[] = [
   {
     id: "farm-time-7",
     phase: PHASE_FARM,
-    when: (run) => owned(run, "seed-drone") >= 3,
+    when: (run) => after(run, 24.5),
     text: "There is more green here than anyone expected. The farm has become the town's favourite place to have a picnic.",
   },
   {

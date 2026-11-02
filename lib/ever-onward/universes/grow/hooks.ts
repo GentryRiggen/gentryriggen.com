@@ -18,6 +18,20 @@ import {
 } from "./migration";
 import { MARKET_AGENT_ID, PLANT_ACTION_IDS, demandGap } from "./market";
 import { PHASE_IDS } from "./resources";
+import { BANK_ACTION_IDS } from "./seedbank";
+import {
+  FESTIVAL_ACTION_ID,
+  festivalCost,
+  isFestivalOn,
+  isFestivalOpen,
+  knowhowOf,
+} from "./knowhow";
+import {
+  FORK_ACTION_IDS,
+  currentFork,
+  isForkChosen,
+  isForkOpen,
+} from "./forks";
 import { sceneInfo } from "./scene";
 import { pickPerSecond } from "./tick";
 import { TUNING } from "./tuning";
@@ -48,12 +62,21 @@ function canBuildStorage(run: RunState): boolean {
 /** Systems asking for the player's attention: the tap, water and the harvest. */
 export function growPlates(run: RunState): string[] {
   const plates = ["tap"];
+  const fork = currentFork(run);
+  if (isForkOpen(run, fork.id) && !isForkChosen(run, fork.id))
+    plates.push("fork");
   if (run.phase === 0) {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
     if (ripeProduce(run) >= TUNING.yard.ripeFor) plates.push("harvest");
     if (isDancing(run)) plates.push("bees");
   }
+  if (
+    isFestivalOpen(run) &&
+    !isFestivalOn(run) &&
+    knowhowOf(run) >= festivalCost()
+  )
+    plates.push("festival");
   if (run.phase === 1) {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
@@ -79,6 +102,8 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   fair: FAIR_ACTION_IDS,
   flock: MIGRATION_ACTION_IDS,
   pot: WINDOWBOX_ACTION_IDS,
+  fork: FORK_ACTION_IDS,
+  festival: [FESTIVAL_ACTION_ID],
 };
 
 /**
@@ -88,7 +113,10 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
  */
 export const GROW_DECISION_ACTIONS: readonly string[] = [
   ...BEE_ACTION_IDS,
+  ...FORK_ACTION_IDS,
+  FESTIVAL_ACTION_ID,
   ...PLANT_ACTION_IDS,
+  ...BANK_ACTION_IDS,
   ...SPREAD_ACTION_IDS,
   ...FAIR_ACTION_IDS,
   ...MIGRATION_ACTION_IDS,
@@ -165,6 +193,10 @@ function sceneKey(run: RunState): string {
     s.barrow,
     s.tea,
     s.keeper,
+    s.fork,
+    s.bank,
+    s.projects,
+    s.festival,
     // The farm's one-offs: silos, the market agent, the fair tent and helper.
     run.owned.silo ?? 0,
     run.owned[MARKET_AGENT_ID] ?? 0,

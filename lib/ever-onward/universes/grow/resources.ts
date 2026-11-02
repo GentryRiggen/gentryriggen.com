@@ -130,6 +130,27 @@ export const RESOURCES: readonly ResourceDef[] = [
     "frRng",
     "frPaused",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
+  // Know-how for the farm and the world, and the seconds of festival left
+  // and festivals held.
+  { id: "knowhow", label: "Know-how", phases: [PHASE_FARM, PHASE_WORLD] },
+  ...["fsLeft", "fsCount"].map((id): ResourceDef => ({
+    id,
+    label: id,
+    phases: HIDDEN,
+  })),
+  // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).
+  ...["fkYard", "fkFarm", "fkWorld", "fkSeed"].map((id): ResourceDef => ({
+    id,
+    label: id,
+    phases: HIDDEN,
+  })),
+  // The farm's seed bank: the share kept back (a step), the seed in the bank
+  // and how many times the share was changed.
+  ...["sbStep", "sbStock", "sbChanges"].map((id): ResourceDef => ({
+    id,
+    label: id,
+    phases: HIDDEN,
+  })),
   // The green world: the biome that is spreading (an index), how much of
   // the planet each one covers (0 to 1), a settle timer and times switched.
   ...[

@@ -12,12 +12,13 @@ export const TUNING = {
   /** Every level of a helper line multiplies its output by this (see `stacked`). */
   stackGrowth: 1.6,
   /** Every upgrade's price in a phase is multiplied by this (yard, farm, world, seed). */
-  costScale: [4.2, 2.3, 1.4, 3.5] as readonly number[],
+  costSteepness: [1.0, 1.78, 1.35, 1.2] as readonly number[],
+  costScale: [4.4, 1.88, 2.75, 9] as readonly number[],
   /** By phase index. */
   phases: [
     { tap: 1.4, helper: 0.6, scalePer: 0.6 },
-    { tap: 10, helper: 5, scalePer: 0.6 },
-    { tap: 60, helper: 40, scalePer: 0.6 },
+    { tap: 4, helper: 5, scalePer: 0.6 },
+    { tap: 28, helper: 40, scalePer: 0.6 },
     { tap: 1, helper: 0.35, scalePer: 0.6 },
   ] as readonly PhaseTuning[],
   /** The backyard's water: a tank, rain that comes and goes, and a thirst. */
@@ -107,6 +108,21 @@ export const TUNING = {
     droneRate: 580,
     /** Leftover seeds become this much harvest when the farm opens. */
     seedsToHarvest: 0.004,
+    /** The seed bank: keep a share of income as seed, grow richer harvests. */
+    bank: {
+      /** Shares that can be kept back: none, a quarter, half. */
+      shares: [0, 0.25, 0.5] as readonly number[],
+      /** The most the bank can add to every harvest (a fraction). */
+      maxGain: 2.5,
+      /** Seconds of farm income in the bank for half of that. */
+      halfSeconds: 100,
+      /** Share of the bank that spoils each second. */
+      spoilPerSecond: 1 / 240,
+      /** The bank opens with this many scarecrows. */
+      opensAtScarecrows: 2,
+      /** Taps a second counted when the bank is weighed against the farm. */
+      referenceTaps: 2,
+    },
     /** The farm's thirsty fields: a bigger tank, more thirst, and wells. */
     water: {
       baseCapacity: 40,
@@ -248,7 +264,7 @@ export const TUNING = {
     /** A window lantern makes each unit of care grow the pot this much more. */
     lanternBoost: 1,
     /** Growth (of 100) each unit of care adds to the pot. */
-    growthPerCare: 0.00009,
+    growthPerCare: 0.00003,
     /** The pot is a sprout from this share grown, and a bud from this one. */
     sproutAt: 0.015,
     budAt: 0.6,
@@ -265,6 +281,64 @@ export const TUNING = {
     boxShare: 0.5,
     /** Answers by hand before the music box is offered. */
     boxAfterTends: 4,
+  },
+  /** Know-how (farm and world): projects and festivals both want it. */
+  knowhow: {
+    /** Know-how a second from every level of every helper. */
+    perLevel: 0.05,
+    /** The world learns this much faster than the farm. */
+    worldRate: 2.5,
+    /** A festival: its price, how long it lasts and how much it multiplies pay. */
+    festivalCost: 25,
+    festivalSeconds: 45,
+    festivalMult: 2,
+    /** The three projects of each part, in know-how (cheapest first). */
+    costs: [30, 70, 160] as readonly number[],
+    /** Drip lines and rain gauges. */
+    tankMult: 2,
+    thirstMult: 0.5,
+    /** The cold store: the seed bank's seed spoils this much as fast. */
+    coldStoreSpoil: 0.5,
+    /** Hybrid seed (farm) and wildlife corridors (world). */
+    hybridMult: 2,
+    corridorMult: 2,
+    /** The tree nursery: spread speed. */
+    nurserySpread: 2,
+  },
+  /** Forks: one either-or choice per phase (prices are before costScale). */
+  forks: {
+    yard: {
+      cost: 60,
+      /** Bug spray: every sprinkler ripens this much more. */
+      sprayRipen: 2.2,
+      /** Bug spray: the orchard (no bees to set the fruit) boosts this much. */
+      sprayOrchard: 1.3,
+    },
+    farm: {
+      cost: 3000,
+      /** Scarecrow crew: fields pay this much more, drink less, fair pays double. */
+      crewIncome: 1.8,
+      crewThirst: 0.7,
+      crewFair: 3,
+      /** Hired hawk: fields pay this much more, and the county fair stays home. */
+      hawkIncome: 2.1,
+    },
+    world: {
+      cost: 8000,
+      /** Old forest: forest's green pay and spread speed. */
+      forestGreen: 2.2,
+      forestSpread: 1.5,
+      /** Wetland: wetland's green pay and the water it holds and seeps. */
+      wetlandGreen: 9,
+      wetlandWater: 2,
+    },
+    seed: {
+      cost: 15,
+      /** Morning sun: answers to the pot pay this much more. */
+      sunTap: 3,
+      /** Night-light: trellis, chime and dew pay this much more. */
+      nightHelpers: 2.5,
+    },
   },
   /** Start-of-phase gift for each level of the packet, in seconds of helper income. */
   headStartSeconds: 20,

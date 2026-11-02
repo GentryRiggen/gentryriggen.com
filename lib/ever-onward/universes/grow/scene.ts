@@ -11,6 +11,10 @@ import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
 import { BEE_KEEPER_ID } from "./bees";
 import { isDry, waterLevel } from "./water";
+import { FORK_IDS, forkSide } from "./forks";
+import { isFestivalOn, isProjectDone } from "./knowhow";
+import { bankGain } from "./tick";
+import { TUNING } from "./tuning";
 import { visitorHereFlag } from "../../engine/engine";
 import { RETURN_VISITOR_ID } from "./visitors";
 import {
@@ -57,6 +61,14 @@ export interface GrowSceneInfo {
   /** World: how much of the old roads and towns the picture still draws (0 to 1 in tenths). Drawn only, never shown as a number or a label. */
   roadsLeft: number;
   townsLeft: number;
+  /** This part's fork: 0 not chosen, 1 the first side, 2 the second. */
+  fork: number;
+  /** Farm: how full the seed bank is, 0 (empty) to 3. */
+  bank: number;
+  /** Farm and world: which know-how projects are done (bit 0, 1 and 2). */
+  projects: number;
+  /** Farm and world: a festival is on. */
+  festival: boolean;
   /** Yard and farm: the season (spring on the farm), and whether the tank has run dry. */
   season: Season;
   dry: boolean;
@@ -255,6 +267,27 @@ function worldInfo(
   };
 }
 
+const PROJECT_IDS: readonly (readonly string[])[] = [
+  [],
+  ["drip-lines", "cold-store", "hybrid-seed"],
+  ["rain-gauges", "tree-nursery", "wildlife-corridors"],
+  [],
+];
+
+/** The done projects of the part the run is in, as bits (first is bit 0). */
+function projectBits(run: RunState, phase: number): number {
+  return PROJECT_IDS[phase].reduce(
+    (bits, id, bit) => bits | (isProjectDone(run, id) ? 1 << bit : 0),
+    0
+  );
+}
+
+/** The seed bank as sacks in the barn: none, a few, a pile, a stack. */
+function bankTier(run: RunState): number {
+  const share = bankGain(run) / TUNING.farm.bank.maxGain;
+  return share <= 0.02 ? 0 : share < 0.2 ? 1 : share < 0.45 ? 2 : 3;
+}
+
 export function sceneInfo(run: RunState): GrowSceneInfo {
   const i = Math.min(Math.max(run.phase, 0), PHASE_IDS.length - 1);
   return {
@@ -286,6 +319,13 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
     ...yardInfo(run, i === 0),
     ...farmInfo(run, i === 1),
     ...seedInfo(run, i === 3),
+    fork: (() => {
+      const side = forkSide(run, FORK_IDS[i]);
+      return side === null ? 0 : side + 1;
+    })(),
+    bank: i === 1 ? bankTier(run) : 0,
+    projects: projectBits(run, i),
+    festival: (i === 1 || i === 2) && isFestivalOn(run),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,
     growth: Math.floor(
       Math.min(FULL_GROWTH, Math.max(0, run.resources.growth ?? 0))
