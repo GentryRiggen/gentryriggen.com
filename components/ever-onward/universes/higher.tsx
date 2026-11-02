@@ -58,7 +58,8 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** The Build It Higher screens: scene, panels, ending, sounds. */
 export const HIGHER_UI: UniverseUi = {
   Scene: HigherScene,
-  panels: [SwayPanel, ForkPanel, FootingPanel, KnowHowPanel, DeliveryPanel],
+  primaryPanels: [SwayPanel],
+  panels: [ForkPanel, FootingPanel, KnowHowPanel, DeliveryPanel],
   ending: { storyIds: ENDING_STORY_IDS, Art: HigherEndingArt },
   tapLooks: LOOKS,
   hubSprite: {

@@ -1,3 +1,4 @@
+import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { GoalView } from "@/lib/ever-onward/engine/types";
 import { pixelClass } from "./retro/retroStyles";
 
@@ -27,7 +28,17 @@ interface GoalMeterProps {
  */
 export default function GoalMeter({ goal }: GoalMeterProps) {
   const { label, current, target, unit, next, progress = 0 } = goal;
-  const segments = Math.max(1, Math.min(target, 16));
+  const safeTarget = Number.isFinite(target) && target > 0 ? target : 1;
+  const safeCurrent = Math.min(
+    safeTarget,
+    Math.max(0, Number.isFinite(current) ? current : 0)
+  );
+  const partial = Number.isFinite(progress)
+    ? Math.min(1, Math.max(0, progress))
+    : 0;
+  const value = Math.min(safeTarget, safeCurrent + partial);
+  const segments = Math.max(1, Math.min(Math.ceil(safeTarget), 16));
+  const filledSegments = (value / safeTarget) * segments;
   return (
     <div
       data-testid="lm-goal"
@@ -45,7 +56,7 @@ export default function GoalMeter({ goal }: GoalMeterProps) {
           data-testid="lm-goal-count"
           className={`${pixelClass} shrink-0 text-xs leading-none tabular-nums text-amber-100`}
         >
-          {current} / {target}
+          {formatNumber(safeCurrent)} / {formatNumber(safeTarget)}
           {unit && (
             <span className="ml-1 hidden text-[10px] text-cyan-200 min-[430px]:inline">
               {unit}
@@ -53,10 +64,17 @@ export default function GoalMeter({ goal }: GoalMeterProps) {
           )}
         </span>
       </p>
-      <div aria-hidden="true" className="mt-1.5 flex gap-1">
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={safeTarget}
+        aria-valuenow={value}
+        className="mt-1.5 flex gap-1"
+      >
         {Array.from({ length: segments }, (_, i) => {
-          const isDone = i < current;
-          const isNext = i === current;
+          const fill = Math.min(1, Math.max(0, filledSegments - i));
+          const isDone = fill >= 1;
           return (
             <span
               key={i}
@@ -67,9 +85,9 @@ export default function GoalMeter({ goal }: GoalMeterProps) {
                   : "border-slate-600 bg-slate-900"
               }`}
             >
-              {isNext && (
+              {!isDone && fill > 0 && (
                 <span
-                  className={`absolute inset-y-0 left-0 bg-amber-500/70 ${FILL[Math.round(Math.min(1, Math.max(0, progress)) * 10)]}`}
+                  className={`absolute inset-y-0 left-0 bg-amber-500/70 ${FILL[Math.round(fill * 10)]}`}
                 />
               )}
             </span>

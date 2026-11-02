@@ -326,6 +326,12 @@ export default function GameScreen({
 
   const countdown = def.countdown?.(run) ?? null;
   const goal = def.goalMeter?.(run) ?? null;
+  const hasDetails = def.resources.some(
+    (r) =>
+      r.id !== primaryId &&
+      (!r.phases || r.phases.includes(phase.id)) &&
+      (goal || r.id !== countdown?.resourceId)
+  );
   const alert = def.alert?.(run) ?? null;
   const visitors = waitingVisitors(def, run);
   const storyText = new Map(def.story.map((m) => [m.id, m.text]));
@@ -476,19 +482,6 @@ export default function GameScreen({
         {ui.topPanels?.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
-        {!goal &&
-          visitors.map((v) => (
-            <VisitorCard
-              key={v.id}
-              universeId={def.id}
-              visitor={v}
-              text={storyText.get(v.id) ?? ""}
-              giftText={v.giftText(run)}
-              onGreet={handleGreet}
-            />
-          ))}
-        <ActionPanel def={def} run={run} onAct={onAction} />
-        {countdown && <CountdownBar view={countdown} />}
         {!run.complete && (
           <div className="space-y-2">
             <UpgradeList
@@ -498,34 +491,49 @@ export default function GameScreen({
               onBuy={handleBuy}
               onShowBought={handleOpenUpgrades}
               pinnedId={next?.upgrade.id}
-              compact={goal !== null}
+              compact
             />
           </div>
         )}
-        {/* With a goal on the HUD, visitors wait below the shop so it stays
-            on screen. */}
-        {goal &&
-          visitors.map((v) => (
-            <VisitorCard
-              key={v.id}
-              universeId={def.id}
-              visitor={v}
-              text={storyText.get(v.id) ?? ""}
-              giftText={v.giftText(run)}
-              onGreet={handleGreet}
-            />
-          ))}
+        <ActionPanel def={def} run={run} onAct={onAction} />
+        {ui.primaryPanels?.map((Panel, i) => (
+          <Panel key={i} def={def} run={run} onAct={onAction} />
+        ))}
+        {!goal && countdown && <CountdownBar view={countdown} />}
+        {visitors.map((v) => (
+          <VisitorCard
+            key={v.id}
+            universeId={def.id}
+            visitor={v}
+            text={storyText.get(v.id) ?? ""}
+            giftText={v.giftText(run)}
+            onGreet={handleGreet}
+          />
+        ))}
         {ui.panels.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
-        {/* With a goal on the HUD the number grid is noise. */}
-        {!goal && (
-          <Resources
-            def={def}
-            run={run}
-            primaryId={primaryId}
-            hiddenIds={countdown?.resourceId ? [countdown.resourceId] : []}
-          />
+        {hasDetails && (
+          <details
+            key={`${def.id}-${run.phase}`}
+            className="border-2 border-slate-700 bg-slate-950/70 p-3"
+          >
+            <summary
+              className={`min-h-8 cursor-pointer font-mono text-sm text-slate-300 ${retroFocusClass}`}
+            >
+              More details
+            </summary>
+            <div className="mt-3">
+              <Resources
+                def={def}
+                run={run}
+                primaryId={primaryId}
+                hiddenIds={
+                  !goal && countdown?.resourceId ? [countdown.resourceId] : []
+                }
+              />
+            </div>
+          </details>
         )}
         <p className="text-center font-mono text-xs text-slate-300">
           <Link

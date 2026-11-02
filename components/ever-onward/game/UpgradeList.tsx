@@ -36,8 +36,7 @@ interface UpgradeListProps {
   pinnedId?: string;
   /**
    * Short cards: name, cost and the effect line, with the story behind an
-   * About toggle. Only for parts whose effect lines were written to stand
-   * alone (the reworked Coast); everywhere else the description stays.
+   * About toggle. Effect lines stand alone; the full story stays available on every card.
    */
   compact?: boolean;
 }
@@ -183,14 +182,16 @@ export default function UpgradeList({
                       ▶︎
                     </span>
                     {u.name}
-                    {u.badge && (
-                      <span
-                        data-testid="lm-badge"
-                        className="ml-2 inline-block border-2 border-emerald-300 bg-emerald-400 px-1.5 py-0.5 align-middle text-[10px] leading-none text-emerald-950"
-                      >
-                        {u.badge}
-                      </span>
-                    )}
+                    {u.badge &&
+                      (u.badge !== "NEW ABILITY" ||
+                        upgradeLevel(run, u.id) === 0) && (
+                        <span
+                          data-testid="lm-badge"
+                          className="ml-2 inline-block border-2 border-emerald-300 bg-emerald-400 px-1.5 py-0.5 align-middle text-[10px] leading-none text-emerald-950"
+                        >
+                          {u.badge}
+                        </span>
+                      )}
                   </span>
                   <span
                     className={`${pixelClass} shrink-0 text-right text-[10px] tabular-nums ${

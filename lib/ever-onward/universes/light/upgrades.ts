@@ -443,6 +443,20 @@ const coastUpgrades: UpgradeDef[] = [
 
 const POWER_PER_SECOND: Stat = { label: "Power/sec", read: powerPerSecond };
 
+/** The collector's production and its next milestone share their tuning. */
+function collectorPreview(stats: readonly Stat[]): (run: RunState) => string {
+  const { collectorMilestones, collectorMilestoneMult } = TUNING.sky;
+  const preview = previewOf("collector", stats);
+  return (run) => {
+    const next = collectorMilestones.find(
+      (count) => owned(run, "collector") < count
+    );
+    return next === undefined
+      ? preview(run)
+      : `${preview(run)}\nAt ${next}: all collectors produce ${Math.round((collectorMilestoneMult - 1) * 100)}% more`;
+  };
+}
+
 const nightUpgrades: UpgradeDef[] = [
   {
     id: "crank",
@@ -461,7 +475,7 @@ const nightUpgrades: UpgradeDef[] = [
   {
     id: "gen1",
     name: "Little generator",
-    description: "Makes 8 MW all day, if you feed it.",
+    description: "Starts at 8 MW all day, if you feed it.",
     phases: night,
     currency: "power",
     baseCost: COSTS.gen1,
@@ -521,7 +535,7 @@ const nightUpgrades: UpgradeDef[] = [
   {
     id: "gen2",
     name: "Steam plant",
-    description: "Makes 30 MW.",
+    description: "Starts at 30 MW.",
     phases: night,
     currency: "power",
     baseCost: COSTS.gen2,
@@ -590,7 +604,7 @@ const nightUpgrades: UpgradeDef[] = [
   {
     id: "gen3",
     name: "River dam",
-    description: "Makes 300 MW and never needs oil.",
+    description: "Starts at 300 MW and never needs oil.",
     phases: night,
     currency: "power",
     baseCost: COSTS.gen3,
@@ -603,7 +617,7 @@ const nightUpgrades: UpgradeDef[] = [
   {
     id: "gen4",
     name: "Wind and sun farm",
-    description: "Makes 3,000 MW.",
+    description: "Starts at 3,000 MW.",
     phases: night,
     currency: "power",
     baseCost: COSTS.gen4,
@@ -692,7 +706,7 @@ const skyUpgrades: UpgradeDef[] = [
       run.resources.collectors = owned(run, "collector");
       sync(run);
     },
-    effectPreview: previewOf("collector", [ENERGY_PER_SECOND]),
+    effectPreview: collectorPreview([ENERGY_PER_SECOND]),
   },
   ...chain({
     base: "mirror",
@@ -1036,5 +1050,16 @@ export const UPGRADES: readonly UpgradeDef[] = [
   baseCost: upgrade.baseCost * costScaleOf(upgrade),
   // A bot that is not sure what to buy prefers what pays now: the mirrors.
   priority: upgrade.id.startsWith("mirror-") ? 2 : upgrade.priority,
+  badge:
+    upgrade.badge ??
+    ([
+      "grid-2",
+      "nav-2",
+      WEATHER_VANE_ID,
+      MISSION_CONTROL_ID,
+      RAIN_BARREL_ID,
+    ].includes(upgrade.id)
+      ? "NEW ABILITY"
+      : undefined),
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",
 }));

@@ -18,19 +18,21 @@ describe("the universe UI registry", () => {
   it("keeps Light's side panels in today's order", () => {
     // The fork is the same panel in every part, split by phase; both sit
     // under the shop. Only the lamp is above it.
-    const { panels, topPanels } = uiFor("light");
+    const { panels, topPanels, primaryPanels } = uiFor("light");
     // The coast fork sits under the shop so the upgrades stay on screen.
     expect(panels[0].name).toBe("CoastForkPanel");
     expect(panels[1].name).toBe("LaterForkPanel");
     expect(topPanels).toEqual([LampPanel]);
+    expect(primaryPanels).toEqual([
+      StreetlightsPanel,
+      ProbeRaces,
+      MemoryGarden,
+    ]);
     expect(panels.slice(2)).toEqual([
       FundPanel,
       TideClock,
-      ProbeRaces,
-      StreetlightsPanel,
       WeatherDesk,
       ProjectsPanel,
-      MemoryGarden,
     ]);
   });
 

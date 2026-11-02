@@ -532,6 +532,9 @@ function tickNight(run: RunState, dt: number): void {
 export const collectorEnergyPerSecond = (run: RunState): number =>
   level(run, "collector") *
   S.collectorEnergy *
+  S.collectorMilestoneMult **
+    S.collectorMilestones.filter((count) => level(run, "collector") >= count)
+      .length *
   S.mirrorBonus ** tier(run, "mirror") *
   ifProject(run, "mirror-polish", SP.polishBoost) *
   (hasFork(run, "mirrors") ? FK.sky.mirrorsEnergy : 1) *

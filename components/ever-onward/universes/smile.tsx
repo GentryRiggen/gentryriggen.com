@@ -56,14 +56,8 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** The Make Everyone Smile screens: scene, panels, ending, sounds. */
 export const SMILE_UI: UniverseUi = {
   Scene: SmileScene,
-  panels: [
-    SmileForkPanel,
-    BondPanel,
-    FetchPanel,
-    CheerMeter,
-    KnowHowPanel,
-    FriendPanel,
-  ],
+  primaryPanels: [BondPanel, CheerMeter, FriendPanel],
+  panels: [SmileForkPanel, FetchPanel, KnowHowPanel],
   ending: { storyIds: ENDING_STORY_IDS, Art: SmileEndingArt },
   tapLooks: LOOKS,
   hubSprite: { rows: SMILEY_ROWS, lit: SMILEY_LIT, dim: SMILEY_DIM },

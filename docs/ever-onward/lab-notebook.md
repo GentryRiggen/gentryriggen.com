@@ -1875,3 +1875,55 @@ Floor in `scorecard.test.ts`: 83.1 (the score minus 1).
    they mash.
 3. Voice clips were generated with the existing script; any edit to a story
    line needs `npm run narration:ever-onward`.
+
+## Coast treatment across the stories (2026-11-02): goals and purchase feedback
+
+The v1.22 Coast is the reference for this pass. Every chapter now has a HUD
+objective. Purchase chapters count permanent milestones, so spending the
+wallet never erases earned progress; the next segment shows savings only when
+that milestone is available. Light reads cities, stars and released lights.
+The endings read actual seed growth, descent and trust, and explain the final
+step rather than suggesting that a full meter instantly ends the story.
+Missing fields in older saves start at zero progress (Light's missing remaining
+night/stars/lights start at their full initial amount).
+
+Upgrade feedback now leads with the gain and resulting rate, or a multiplier
+for Light's larger steps. Scaling upgrades show taps and automatic production.
+Chapter exits explain what they open; automation is marked as a new ability.
+Flavour text is retained for the compact cards' About disclosure.
+
+Growth audit: Grow, Higher and Smile already compound their helper lines at
+1.55–1.6 times per level, and scaling upgrades compound too. Those systems
+already provide the Coast's growing purchase impact. Light's later generators
+and collectors were additive, so Light got two bounded milestone trials.
+
+Trial 1 gave each generator kind 20% more at three and five plants and
+collectors 25% at three and six. The bots all finished faster (tapper 72.20
+minutes against 75.53, realistic 75.37 against 78.03, idle 137.37 against
+156.03) and the score reached 74.1, but it broke pacing: the balance tapper
+finished in 5,332 s (floor 5,400), one phase took 1,340 s (floor 1,350), Sky
+revealed seven upgrades in five minutes (limit six), and changing the
+streetlights mid-night stopped beating holding one setting.
+
+Trial 2 cut both bonuses to 10%. Pacing passed, but the streetlight policy
+still lost (19.2 minutes against 17.7 for one held setting): more plant power
+lets a single bright setting carry the night, which flattens the lamp knob,
+the night's one real tradeoff. So the generator milestones were removed and
+only the collector milestones kept (10% at three and six collectors). Sky has
+no lamp knob to flatten, and with that change balance, streetlights and every
+other Light suite pass with no floors or pacing assertions changed. The
+collector card previews its next milestone.
+
+Review caught two purchase-feedback regressions: the honey stand improves
+hand harvests, so its preview now measures that action; rate summaries retain
+before/after detail so the shop's existing low-benefit warnings still work.
+The below-2% gardener fixture now starts beyond the picking cap (six baskets);
+four baskets genuinely yielded an 8.3% gain and was an invalid warning case.
+
+Verification for this batch: baseline library 79 suites / 1,464 tests; final
+Ever Onward run (library and components, collector-only milestones) 137 suites
+/ 1,880 tests, all passing. New goal and purchase-feedback coverage verifies all
+sixteen phases, old saves, actual completion quantities, persisted milestones
+after spending, and effect text for every shop item. The new tests were
+observed failing before implementation. Scorecard tolerances, balance floors
+and pacing assertions are unchanged.

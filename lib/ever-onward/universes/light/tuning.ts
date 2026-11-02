@@ -392,6 +392,8 @@ export const TUNING = {
     aimPerLevel: 1.5,
     /** Six bigger steps: each collector is worth what 1.67 used to be. */
     collectorEnergy: 10 / 6,
+    collectorMilestones: [3, 6] as const,
+    collectorMilestoneMult: 1.1,
     mirrorBonus: 1.6,
     probeGrowth: 0.0028,
     /** The first launch sends this many small probes. */

@@ -61,9 +61,9 @@ describe("the goal meter", () => {
     expect(rich?.progress).toBe(1);
   });
 
-  it("is quiet in the other parts, so they look as they did", () => {
+  it("shows a chapter goal in every later part", () => {
     for (const phase of [1, 2, 3])
-      expect(lightGoal({ ...coast(), phase })).toBeNull();
+      expect(lightGoal({ ...coast(), phase })).not.toBeNull();
   });
 
   it("is quiet once the coast is lit", () => {

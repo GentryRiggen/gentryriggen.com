@@ -1,4 +1,4 @@
-import { formatNumber } from "../../engine/format";
+import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { swayCalm } from "./sway";
 import {
@@ -14,15 +14,16 @@ import { incomePerSecond, manualPerTap } from "./tick";
 import { owned } from "./lines";
 import { TUNING } from "./tuning";
 
-const num = (n: number): string => formatNumber(n);
-
 /** "Per tap 2 → 3" for a scale step, read from the run as it stands. */
 function scalePreview(run: RunState, id: string): string {
   const after: RunState = {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
-  return `Per tap ${num(manualPerTap(run))} → ${num(manualPerTap(after))}`;
+  return [
+    rateEffect(manualPerTap(run), manualPerTap(after), "per tap"),
+    rateEffect(incomePerSecond(run), incomePerSecond(after), "per second"),
+  ].join("\n");
 }
 
 function ratePreview(run: RunState, id: string, label = "Per second"): string {
@@ -30,7 +31,11 @@ function ratePreview(run: RunState, id: string, label = "Per second"): string {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
-  return `${label} ${num(incomePerSecond(run))} → ${num(incomePerSecond(after))}`;
+  return rateEffect(
+    incomePerSecond(run),
+    incomePerSecond(after),
+    label.toLowerCase()
+  );
 }
 
 /** "Sways 1x → 0.7x" for a brace or a one-off that calms the tower. */
@@ -473,6 +478,13 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
 /**
  * Every price in a phase, scaled together: the pacing knob (see TUNING).
  */
+const CHAPTER_EFFECTS: Readonly<Record<string, string>> = {
+  treehouse: "Finish the playroom and open The Town",
+  skyscraper: "Finish the town and open The Sky",
+  "space-elevator": "Place the last block and open The Top",
+  "set-down": "Set down the block and welcome the visitor",
+};
+
 export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
   const phase = Math.max(
     0,
@@ -480,6 +492,14 @@ export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
   );
   return {
     ...u,
+    badge: CHAPTER_EFFECTS[u.id]
+      ? u.id === "set-down"
+        ? "LAST STEP"
+        : "NEXT CHAPTER"
+      : u.badge,
+    effectPreview:
+      u.effectPreview ??
+      (CHAPTER_EFFECTS[u.id] ? () => CHAPTER_EFFECTS[u.id] : undefined),
     baseCost: u.baseCost * TUNING.costScale[phase],
     costGrowth:
       u.costGrowth > 1 ? u.costGrowth * TUNING.costSteepness[phase] : 1,
