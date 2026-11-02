@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.19.0",
+    date: "2026-11-01",
+    title: "Choices by the light",
+    highlights: [
+      "A savings jar in every part of Keep the Light On: put coins (or power, energy, resolve) in and they grow while you save up for something bigger. Taking them out early costs more, and the jar closes when the part ends, so spend it before then",
+      "Know-how now buys two things: ideas that last (the sky has its own now) or running it hot for one minute, when everything pays double and you have to keep the grid or the fleet steady",
+      "A fork in the road in every part: pick one of two and the other is closed for this run. Fresnel lens or more keepers, coal or wind, more probes or bigger mirrors, let it go or keep it. You will see the difference in the picture",
+      "Upgrades are bigger and every keeper walks into the picture. Steps that did very little got stronger, and the extra sun collectors that never showed up are gone",
+      "Old saves load as they were: no fork chosen, an empty jar, and any extra collectors give their energy back",
+    ],
+  },
+  {
     version: "1.18.0",
     date: "2026-11-01",
     title: "Choices in the garden",
