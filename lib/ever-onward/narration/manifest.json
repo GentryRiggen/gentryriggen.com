@@ -1828,5 +1828,635 @@
     "file": "/ever-onward/voice/higher/top-rest.mp3",
     "hash": "7a37d2fd70c3",
     "durationGuess": 9
+  },
+  "smile/intro-friend": {
+    "file": "/ever-onward/voice/smile/intro-friend.mp3",
+    "hash": "577153797979",
+    "durationGuess": 25
+  },
+  "smile/intro-town": {
+    "file": "/ever-onward/voice/smile/intro-town.mp3",
+    "hash": "bc0b1fcc8720",
+    "durationGuess": 24
+  },
+  "smile/intro-world": {
+    "file": "/ever-onward/voice/smile/intro-world.mp3",
+    "hash": "410759745d19",
+    "durationGuess": 30
+  },
+  "smile/intro-quiet": {
+    "file": "/ever-onward/voice/smile/intro-quiet.mp3",
+    "hash": "c1dee56a2314",
+    "durationGuess": 32
+  },
+  "smile/cut-friend-1": {
+    "file": "/ever-onward/voice/smile/cut-friend-1.mp3",
+    "hash": "74550fa2099d",
+    "durationGuess": 11
+  },
+  "smile/cut-friend-2": {
+    "file": "/ever-onward/voice/smile/cut-friend-2.mp3",
+    "hash": "9b4ca7550fc6",
+    "durationGuess": 12
+  },
+  "smile/cut-friend-3": {
+    "file": "/ever-onward/voice/smile/cut-friend-3.mp3",
+    "hash": "967d8ae6fbf7",
+    "durationGuess": 24
+  },
+  "smile/cut-friend-4": {
+    "file": "/ever-onward/voice/smile/cut-friend-4.mp3",
+    "hash": "29627f1db4ac",
+    "durationGuess": 10
+  },
+  "smile/cut-town-1": {
+    "file": "/ever-onward/voice/smile/cut-town-1.mp3",
+    "hash": "07508bc10f8b",
+    "durationGuess": 12
+  },
+  "smile/cut-town-2": {
+    "file": "/ever-onward/voice/smile/cut-town-2.mp3",
+    "hash": "f10dfec4a88d",
+    "durationGuess": 10
+  },
+  "smile/cut-town-3": {
+    "file": "/ever-onward/voice/smile/cut-town-3.mp3",
+    "hash": "852f3364c433",
+    "durationGuess": 23
+  },
+  "smile/cut-town-4": {
+    "file": "/ever-onward/voice/smile/cut-town-4.mp3",
+    "hash": "e6656243272d",
+    "durationGuess": 10
+  },
+  "smile/cut-world-1": {
+    "file": "/ever-onward/voice/smile/cut-world-1.mp3",
+    "hash": "4723716797f3",
+    "durationGuess": 11
+  },
+  "smile/cut-world-2": {
+    "file": "/ever-onward/voice/smile/cut-world-2.mp3",
+    "hash": "4306660c9447",
+    "durationGuess": 12
+  },
+  "smile/cut-world-3": {
+    "file": "/ever-onward/voice/smile/cut-world-3.mp3",
+    "hash": "36c7e6e76bf9",
+    "durationGuess": 20
+  },
+  "smile/cut-world-4": {
+    "file": "/ever-onward/voice/smile/cut-world-4.mp3",
+    "hash": "096785fcc789",
+    "durationGuess": 10
+  },
+  "smile/cut-quiet-1": {
+    "file": "/ever-onward/voice/smile/cut-quiet-1.mp3",
+    "hash": "d11186f4484a",
+    "durationGuess": 13
+  },
+  "smile/cut-quiet-2": {
+    "file": "/ever-onward/voice/smile/cut-quiet-2.mp3",
+    "hash": "390240442ba1",
+    "durationGuess": 12
+  },
+  "smile/cut-quiet-3": {
+    "file": "/ever-onward/voice/smile/cut-quiet-3.mp3",
+    "hash": "d81ce9ba23cf",
+    "durationGuess": 20
+  },
+  "smile/cut-quiet-4": {
+    "file": "/ever-onward/voice/smile/cut-quiet-4.mp3",
+    "hash": "6cc4fc9c470f",
+    "durationGuess": 8
+  },
+  "smile/friend-hello": {
+    "file": "/ever-onward/voice/smile/friend-hello.mp3",
+    "hash": "0fc9452d4269",
+    "durationGuess": 20
+  },
+  "smile/friend-joke": {
+    "file": "/ever-onward/voice/smile/friend-joke.mp3",
+    "hash": "b7a8e0440372",
+    "durationGuess": 16
+  },
+  "smile/friend-balloon": {
+    "file": "/ever-onward/voice/smile/friend-balloon.mp3",
+    "hash": "3c56b5832862",
+    "durationGuess": 10
+  },
+  "smile/friend-book": {
+    "file": "/ever-onward/voice/smile/friend-book.mp3",
+    "hash": "6613e5693ec6",
+    "durationGuess": 11
+  },
+  "smile/friend-puppy": {
+    "file": "/ever-onward/voice/smile/friend-puppy.mp3",
+    "hash": "d3e496b35f83",
+    "durationGuess": 13
+  },
+  "smile/friend-bracelet": {
+    "file": "/ever-onward/voice/smile/friend-bracelet.mp3",
+    "hash": "bdbc05da6d71",
+    "durationGuess": 15
+  },
+  "smile/friend-bond": {
+    "file": "/ever-onward/voice/smile/friend-bond.mp3",
+    "hash": "faf84bfe54f6",
+    "durationGuess": 12
+  },
+  "smile/friend-fork": {
+    "file": "/ever-onward/voice/smile/friend-fork.mp3",
+    "hash": "88ae67516664",
+    "durationGuess": 14
+  },
+  "smile/friend-lemonade": {
+    "file": "/ever-onward/voice/smile/friend-lemonade.mp3",
+    "hash": "54fd0511da60",
+    "durationGuess": 14
+  },
+  "smile/friend-sun": {
+    "file": "/ever-onward/voice/smile/friend-sun.mp3",
+    "hash": "fbd01366eed7",
+    "durationGuess": 11
+  },
+  "smile/friend-door": {
+    "file": "/ever-onward/voice/smile/friend-door.mp3",
+    "hash": "e817bbf15cab",
+    "durationGuess": 13
+  },
+  "smile/friend-inch": {
+    "file": "/ever-onward/voice/smile/friend-inch.mp3",
+    "hash": "dd0524b6345c",
+    "durationGuess": 10
+  },
+  "smile/friend-cloud": {
+    "file": "/ever-onward/voice/smile/friend-cloud.mp3",
+    "hash": "2cc006dc5b0f",
+    "durationGuess": 14
+  },
+  "smile/friend-mud": {
+    "file": "/ever-onward/voice/smile/friend-mud.mp3",
+    "hash": "3271e5980f94",
+    "durationGuess": 12
+  },
+  "smile/friend-song": {
+    "file": "/ever-onward/voice/smile/friend-song.mp3",
+    "hash": "8cc432d41a25",
+    "durationGuess": 10
+  },
+  "smile/friend-name": {
+    "file": "/ever-onward/voice/smile/friend-name.mp3",
+    "hash": "e0c95511c475",
+    "durationGuess": 13
+  },
+  "smile/friend-dusk": {
+    "file": "/ever-onward/voice/smile/friend-dusk.mp3",
+    "hash": "c7a3f98c2925",
+    "durationGuess": 10
+  },
+  "smile/friend-promise": {
+    "file": "/ever-onward/voice/smile/friend-promise.mp3",
+    "hash": "5b4b2e863b6c",
+    "durationGuess": 14
+  },
+  "smile/friend-shoe": {
+    "file": "/ever-onward/voice/smile/friend-shoe.mp3",
+    "hash": "e19bdfdc11c4",
+    "durationGuess": 15
+  },
+  "smile/friend-chalk": {
+    "file": "/ever-onward/voice/smile/friend-chalk.mp3",
+    "hash": "afd58a2f08fd",
+    "durationGuess": 19
+  },
+  "smile/friend-kite": {
+    "file": "/ever-onward/voice/smile/friend-kite.mp3",
+    "hash": "3f59c4dab4bc",
+    "durationGuess": 16
+  },
+  "smile/friend-secret": {
+    "file": "/ever-onward/voice/smile/friend-secret.mp3",
+    "hash": "f31939f94ea9",
+    "durationGuess": 12
+  },
+  "smile/friend-rain": {
+    "file": "/ever-onward/voice/smile/friend-rain.mp3",
+    "hash": "e9555b907bf1",
+    "durationGuess": 13
+  },
+  "smile/friend-wave": {
+    "file": "/ever-onward/voice/smile/friend-wave.mp3",
+    "hash": "419380275ab9",
+    "durationGuess": 12
+  },
+  "smile/visitor-bird": {
+    "file": "/ever-onward/voice/smile/visitor-bird.mp3",
+    "hash": "c2b34bfcb751",
+    "durationGuess": 14
+  },
+  "smile/visitor-grandma": {
+    "file": "/ever-onward/voice/smile/visitor-grandma.mp3",
+    "hash": "29cc160dcedc",
+    "durationGuess": 18
+  },
+  "smile/town-hello": {
+    "file": "/ever-onward/voice/smile/town-hello.mp3",
+    "hash": "061fba86390b",
+    "durationGuess": 17
+  },
+  "smile/town-clown": {
+    "file": "/ever-onward/voice/smile/town-clown.mp3",
+    "hash": "d415a90466cd",
+    "durationGuess": 13
+  },
+  "smile/town-bunting": {
+    "file": "/ever-onward/voice/smile/town-bunting.mp3",
+    "hash": "e90a43993a01",
+    "durationGuess": 13
+  },
+  "smile/town-band": {
+    "file": "/ever-onward/voice/smile/town-band.mp3",
+    "hash": "6028cf16ac29",
+    "durationGuess": 15
+  },
+  "smile/town-bench": {
+    "file": "/ever-onward/voice/smile/town-bench.mp3",
+    "hash": "badef5bf6fd5",
+    "durationGuess": 10
+  },
+  "smile/town-warm": {
+    "file": "/ever-onward/voice/smile/town-warm.mp3",
+    "hash": "fbff1dfe6fc4",
+    "durationGuess": 14
+  },
+  "smile/town-parade": {
+    "file": "/ever-onward/voice/smile/town-parade.mp3",
+    "hash": "4f20ad4735ac",
+    "durationGuess": 13
+  },
+  "smile/town-fork": {
+    "file": "/ever-onward/voice/smile/town-fork.mp3",
+    "hash": "39b94361bfd3",
+    "durationGuess": 11
+  },
+  "smile/town-factory": {
+    "file": "/ever-onward/voice/smile/town-factory.mp3",
+    "hash": "48b59a71d776",
+    "durationGuess": 16
+  },
+  "smile/town-tired": {
+    "file": "/ever-onward/voice/smile/town-tired.mp3",
+    "hash": "9ccc06807ae1",
+    "durationGuess": 17
+  },
+  "smile/town-hero": {
+    "file": "/ever-onward/voice/smile/town-hero.mp3",
+    "hash": "6e5671f2de5d",
+    "durationGuess": 12
+  },
+  "smile/town-key": {
+    "file": "/ever-onward/voice/smile/town-key.mp3",
+    "hash": "bb06fbb0feb0",
+    "durationGuess": 20
+  },
+  "smile/town-wave": {
+    "file": "/ever-onward/voice/smile/town-wave.mp3",
+    "hash": "9807ac6c0dbc",
+    "durationGuess": 10
+  },
+  "smile/town-hats": {
+    "file": "/ever-onward/voice/smile/town-hats.mp3",
+    "hash": "628f75cb23a0",
+    "durationGuess": 10
+  },
+  "smile/town-pigeons": {
+    "file": "/ever-onward/voice/smile/town-pigeons.mp3",
+    "hash": "d6b9097b15d5",
+    "durationGuess": 11
+  },
+  "smile/town-queue": {
+    "file": "/ever-onward/voice/smile/town-queue.mp3",
+    "hash": "9d4de2855bb4",
+    "durationGuess": 13
+  },
+  "smile/town-lights": {
+    "file": "/ever-onward/voice/smile/town-lights.mp3",
+    "hash": "0316558daa4e",
+    "durationGuess": 14
+  },
+  "smile/town-statue": {
+    "file": "/ever-onward/voice/smile/town-statue.mp3",
+    "hash": "deb68aa446fe",
+    "durationGuess": 11
+  },
+  "smile/town-paper": {
+    "file": "/ever-onward/voice/smile/town-paper.mp3",
+    "hash": "26fda6726259",
+    "durationGuess": 13
+  },
+  "smile/town-balloons": {
+    "file": "/ever-onward/voice/smile/town-balloons.mp3",
+    "hash": "3fa3f96e6a3f",
+    "durationGuess": 14
+  },
+  "smile/town-bakery": {
+    "file": "/ever-onward/voice/smile/town-bakery.mp3",
+    "hash": "4e04807bad21",
+    "durationGuess": 15
+  },
+  "smile/town-choir": {
+    "file": "/ever-onward/voice/smile/town-choir.mp3",
+    "hash": "e9b2b587f454",
+    "durationGuess": 14
+  },
+  "smile/town-grump": {
+    "file": "/ever-onward/voice/smile/town-grump.mp3",
+    "hash": "6d6682ba0f0c",
+    "durationGuess": 17
+  },
+  "smile/town-school": {
+    "file": "/ever-onward/voice/smile/town-school.mp3",
+    "hash": "0b820c46e320",
+    "durationGuess": 10
+  },
+  "smile/town-sign": {
+    "file": "/ever-onward/voice/smile/town-sign.mp3",
+    "hash": "3f359b7b9c32",
+    "durationGuess": 12
+  },
+  "smile/town-cheer": {
+    "file": "/ever-onward/voice/smile/town-cheer.mp3",
+    "hash": "9c62fcbdb816",
+    "durationGuess": 15
+  },
+  "smile/visitor-mayor": {
+    "file": "/ever-onward/voice/smile/visitor-mayor.mp3",
+    "hash": "083450626b0a",
+    "durationGuess": 20
+  },
+  "smile/visitor-baker": {
+    "file": "/ever-onward/voice/smile/visitor-baker.mp3",
+    "hash": "3c9683eb85cb",
+    "durationGuess": 16
+  },
+  "smile/world-hello": {
+    "file": "/ever-onward/voice/smile/world-hello.mp3",
+    "hash": "8cdd3efd785d",
+    "durationGuess": 17
+  },
+  "smile/world-poster": {
+    "file": "/ever-onward/voice/smile/world-poster.mp3",
+    "hash": "5c76499faee4",
+    "durationGuess": 14
+  },
+  "smile/world-loudspeaker": {
+    "file": "/ever-onward/voice/smile/world-loudspeaker.mp3",
+    "hash": "77cc091097f7",
+    "durationGuess": 15
+  },
+  "smile/world-brush": {
+    "file": "/ever-onward/voice/smile/world-brush.mp3",
+    "hash": "1ff2cfa116b6",
+    "durationGuess": 12
+  },
+  "smile/world-watch": {
+    "file": "/ever-onward/voice/smile/world-watch.mp3",
+    "hash": "388f04c8ef23",
+    "durationGuess": 10
+  },
+  "smile/world-mask": {
+    "file": "/ever-onward/voice/smile/world-mask.mp3",
+    "hash": "f699d733f92a",
+    "durationGuess": 11
+  },
+  "smile/world-fork": {
+    "file": "/ever-onward/voice/smile/world-fork.mp3",
+    "hash": "795b63dee034",
+    "durationGuess": 14
+  },
+  "smile/world-parade": {
+    "file": "/ever-onward/voice/smile/world-parade.mp3",
+    "hash": "978d1c20bf80",
+    "durationGuess": 16
+  },
+  "smile/world-tired": {
+    "file": "/ever-onward/voice/smile/world-tired.mp3",
+    "hash": "bf1da63b933f",
+    "durationGuess": 16
+  },
+  "smile/world-tower": {
+    "file": "/ever-onward/voice/smile/world-tower.mp3",
+    "hash": "41b13bd67312",
+    "durationGuess": 11
+  },
+  "smile/world-sign": {
+    "file": "/ever-onward/voice/smile/world-sign.mp3",
+    "hash": "77849a5911c2",
+    "durationGuess": 15
+  },
+  "smile/world-frown": {
+    "file": "/ever-onward/voice/smile/world-frown.mp3",
+    "hash": "2a16104e2eb9",
+    "durationGuess": 16
+  },
+  "smile/world-satellite": {
+    "file": "/ever-onward/voice/smile/world-satellite.mp3",
+    "hash": "4f19df265b10",
+    "durationGuess": 14
+  },
+  "smile/world-map": {
+    "file": "/ever-onward/voice/smile/world-map.mp3",
+    "hash": "cd07abc92307",
+    "durationGuess": 13
+  },
+  "smile/world-sticker": {
+    "file": "/ever-onward/voice/smile/world-sticker.mp3",
+    "hash": "8312c1a04f91",
+    "durationGuess": 8
+  },
+  "smile/world-school": {
+    "file": "/ever-onward/voice/smile/world-school.mp3",
+    "hash": "978ad3278304",
+    "durationGuess": 13
+  },
+  "smile/world-hum": {
+    "file": "/ever-onward/voice/smile/world-hum.mp3",
+    "hash": "01b6c427294e",
+    "durationGuess": 14
+  },
+  "smile/world-night": {
+    "file": "/ever-onward/voice/smile/world-night.mp3",
+    "hash": "3d2a926f8d15",
+    "durationGuess": 11
+  },
+  "smile/world-eyes": {
+    "file": "/ever-onward/voice/smile/world-eyes.mp3",
+    "hash": "fe84916018cc",
+    "durationGuess": 13
+  },
+  "smile/world-bus": {
+    "file": "/ever-onward/voice/smile/world-bus.mp3",
+    "hash": "f6b7c1f9b654",
+    "durationGuess": 11
+  },
+  "smile/world-hotel": {
+    "file": "/ever-onward/voice/smile/world-hotel.mp3",
+    "hash": "02e32d89a82b",
+    "durationGuess": 12
+  },
+  "smile/world-choir": {
+    "file": "/ever-onward/voice/smile/world-choir.mp3",
+    "hash": "bdddb69e9e65",
+    "durationGuess": 13
+  },
+  "smile/world-lift": {
+    "file": "/ever-onward/voice/smile/world-lift.mp3",
+    "hash": "71a66626fc50",
+    "durationGuess": 16
+  },
+  "smile/world-quota": {
+    "file": "/ever-onward/voice/smile/world-quota.mp3",
+    "hash": "04181ed4ecd3",
+    "durationGuess": 16
+  },
+  "smile/world-gap": {
+    "file": "/ever-onward/voice/smile/world-gap.mp3",
+    "hash": "9e3814d03238",
+    "durationGuess": 18
+  },
+  "smile/world-last": {
+    "file": "/ever-onward/voice/smile/world-last.mp3",
+    "hash": "cc2351100bb4",
+    "durationGuess": 21
+  },
+  "smile/visitor-reporter": {
+    "file": "/ever-onward/voice/smile/visitor-reporter.mp3",
+    "hash": "b46069e9ee85",
+    "durationGuess": 12
+  },
+  "smile/visitor-announcer": {
+    "file": "/ever-onward/voice/smile/visitor-announcer.mp3",
+    "hash": "7c0070e225cd",
+    "durationGuess": 10
+  },
+  "smile/quiet-hello": {
+    "file": "/ever-onward/voice/smile/quiet-hello.mp3",
+    "hash": "c9540b3c4852",
+    "durationGuess": 15
+  },
+  "smile/quiet-first": {
+    "file": "/ever-onward/voice/smile/quiet-first.mp3",
+    "hash": "70f95e9be3a2",
+    "durationGuess": 10
+  },
+  "smile/quiet-tea": {
+    "file": "/ever-onward/voice/smile/quiet-tea.mp3",
+    "hash": "799a0aa406cf",
+    "durationGuess": 9
+  },
+  "smile/quiet-answer": {
+    "file": "/ever-onward/voice/smile/quiet-answer.mp3",
+    "hash": "f3dbcd1facf0",
+    "durationGuess": 10
+  },
+  "smile/quiet-silence": {
+    "file": "/ever-onward/voice/smile/quiet-silence.mp3",
+    "hash": "b2ba22e1dfdb",
+    "durationGuess": 13
+  },
+  "smile/quiet-blanket": {
+    "file": "/ever-onward/voice/smile/quiet-blanket.mp3",
+    "hash": "a7af5b9c25c8",
+    "durationGuess": 12
+  },
+  "smile/quiet-rain": {
+    "file": "/ever-onward/voice/smile/quiet-rain.mp3",
+    "hash": "9a0f992f14d0",
+    "durationGuess": 12
+  },
+  "smile/quiet-bird": {
+    "file": "/ever-onward/voice/smile/quiet-bird.mp3",
+    "hash": "80dfd9f119e1",
+    "durationGuess": 11
+  },
+  "smile/quiet-clock": {
+    "file": "/ever-onward/voice/smile/quiet-clock.mp3",
+    "hash": "47fa869870ff",
+    "durationGuess": 11
+  },
+  "smile/quiet-crumbs": {
+    "file": "/ever-onward/voice/smile/quiet-crumbs.mp3",
+    "hash": "6f7747c93bcc",
+    "durationGuess": 13
+  },
+  "smile/quiet-lamp": {
+    "file": "/ever-onward/voice/smile/quiet-lamp.mp3",
+    "hash": "ee7daca6511a",
+    "durationGuess": 8
+  },
+  "smile/quiet-leaf": {
+    "file": "/ever-onward/voice/smile/quiet-leaf.mp3",
+    "hash": "d30058157dac",
+    "durationGuess": 11
+  },
+  "smile/quiet-cup": {
+    "file": "/ever-onward/voice/smile/quiet-cup.mp3",
+    "hash": "3ee29d5a4a67",
+    "durationGuess": 12
+  },
+  "smile/quiet-dusk": {
+    "file": "/ever-onward/voice/smile/quiet-dusk.mp3",
+    "hash": "d4d7fff7866d",
+    "durationGuess": 13
+  },
+  "smile/quiet-truth": {
+    "file": "/ever-onward/voice/smile/quiet-truth.mp3",
+    "hash": "1fda46bcf17f",
+    "durationGuess": 12
+  },
+  "smile/quiet-kettle": {
+    "file": "/ever-onward/voice/smile/quiet-kettle.mp3",
+    "hash": "73e9d731ddbd",
+    "durationGuess": 12
+  },
+  "smile/quiet-flicker": {
+    "file": "/ever-onward/voice/smile/quiet-flicker.mp3",
+    "hash": "3d8642c2689c",
+    "durationGuess": 12
+  },
+  "smile/quiet-evening": {
+    "file": "/ever-onward/voice/smile/quiet-evening.mp3",
+    "hash": "54350fb4e446",
+    "durationGuess": 16
+  },
+  "smile/quiet-bench": {
+    "file": "/ever-onward/voice/smile/quiet-bench.mp3",
+    "hash": "283ae20af87a",
+    "durationGuess": 11
+  },
+  "smile/quiet-warm": {
+    "file": "/ever-onward/voice/smile/quiet-warm.mp3",
+    "hash": "09dfb4fa2b3f",
+    "durationGuess": 13
+  },
+  "smile/real-smile": {
+    "file": "/ever-onward/voice/smile/real-smile.mp3",
+    "hash": "617c1e99c01f",
+    "durationGuess": 22
+  },
+  "smile/quiet-end-1": {
+    "file": "/ever-onward/voice/smile/quiet-end-1.mp3",
+    "hash": "ae8b28299cba",
+    "durationGuess": 12
+  },
+  "smile/quiet-end-2": {
+    "file": "/ever-onward/voice/smile/quiet-end-2.mp3",
+    "hash": "ec16f3ab5e57",
+    "durationGuess": 16
+  },
+  "smile/quiet-end-3": {
+    "file": "/ever-onward/voice/smile/quiet-end-3.mp3",
+    "hash": "0fe3906fb58d",
+    "durationGuess": 13
   }
 }

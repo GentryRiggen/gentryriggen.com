@@ -30,7 +30,11 @@ interface EmberPanelProps {
 
 /** What waits after finishing a universe; Build It Higher is the last one built. */
 function nextUniverseLine(def: UniverseDef): string | null {
-  if (def.id === "higher") return null;
+  if (def.id === "smile") return null;
+  if (def.id === "higher")
+    return getPlayableUniverse("smile")
+      ? "Make Everyone Smile is open. Find it on the hub."
+      : "Another universe is coming soon.";
   if (def.id === "grow")
     return getPlayableUniverse("higher")
       ? "Build It Higher is open. Find it on the hub."

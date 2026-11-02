@@ -1755,3 +1755,123 @@ Analytics: no new events, and nothing imports `lib/analytics`.
 Keep. Next: Gentry plays the playroom fork and the sky's choice between the
 elevator and the terraces, and says whether the beats at the top land; round 2
 looks at plates and a watched number for the last part.
+
+## Make Everyone Smile, round 1 (2026-11-02): the whole universe, trade-offs from day one
+
+Branch `feat/eo-make-everyone-smile`, universe 4. Built on Make It Grow's shape
+(resources, phases, upgrades, actions, tuning, tick, story, cutscenes, visitors,
+bots, forks, a bank and know-how) with Gentry's standing asks in from the first
+line: spend-or-invest, one currency with two sinks, a fork per part and a
+managed risk, all deterministic, every upgrade landing and visible.
+
+### Hypotheses
+
+1. If every part has one real trade-off (not just a bigger number), the shop
+   stops being a queue, and M16 (decision gaps) passes without a minigame per
+   part.
+2. A risk that is a nudge (a worn-out crowd pays 40% less, then cools on its
+   own) gives M9 a watched number without ever punishing a child.
+3. A last part that swaps output for patience can be a different shape of
+   play and still score: the friend's wants are a three-way clue (nothing is
+   wrong) and trust, not smiles, fills the bar.
+
+### What got built
+
+| Part           | Currency / tap            | The trade-off                                                                          |
+| -------------- | ------------------------- | -------------------------------------------------------------------------------------- |
+| One Sad Friend | Smiles / tell a joke      | Friendship bank (set a share aside, later laughs grow), fetch, fork: jokes or kindness |
+| The Town       | Cheers / cheer the street | Know-how: projects or a parade; cheer meter; fork: clown school or smile factory       |
+| The World      | Grins / spread the cheer  | Same two sinks; cheer meter (masks cool it); fork: loudspeakers or listening boxes     |
+| The Quiet      | Patience, trust           | The friend wants one of three things; fork: a few words or just sit                    |
+
+- Four helper lines per part, 1.55 per level (`stackGrowth`), caps at 8, each
+  one a jump of at least half again. One scaling upgrade per part (taps and
+  helpers). In the town and the world every helper level makes a tap pay a
+  quarter more (a tap reaches every helper), which keeps the click curve
+  honest late in the part. A guard test checks every helper line and scaling
+  step, and a whole run's purchases are each felt or seen.
+- Cheaper-looking lines are the better value later, so each later line
+  carries a `priority` (a sensible player buys the best one first). Late lines
+  climb gently (1.75 to 1.9 a level) so the end of a part still has something
+  to buy every minute.
+- Tone: pure joy on the step; hands up for the town; wry in the world (the
+  posters' eyes follow you, the loudspeaker says have a nice day on a loop, one
+  frowning face appears and a poster covers it); tender in the quiet. Never
+  scary, nobody is hurt. The ending is one small, real smile.
+
+### The trade-offs, with numbers
+
+Friendship bank (friend). Keep none, a quarter or half of every smile as time
+together. The bank's bonus is 2.5 x s / (s + 100 s) of the friend's income,
+and it fades 1/240 of itself a second. Realistic bot, friend part with the
+step held all part (seconds): none 3001, a quarter 2681, half 3211. A quarter
+is 11% faster than none; half is 7% slower than none (a thin laugh for too
+long). Jokes make the bank give 40% less (laughs fade fast).
+
+Know-how (town, world). Every helper level learns 0.05 a second (x2.5 in the
+world). Sink 1: three permanent projects per part (a big top, shady corners,
+confetti cannons; quiet hours, cheer in every language, the Grin Guide).
+Sink 2: a parade or cheer broadcast (25 know-how, 45 s at x2, then a 20 s rest
+so the crowd catches its breath). A first version let a parade last twice as
+long with a big top; the bots then held a parade every 45 s all part (a
+permanent x3) and gaps in decisions stretched to 90 s. A rest between
+parades fixed both (uptime at most 70%, and a decision every minute).
+
+Cheer meter (town, world). A tap adds 0.012 heat, a parade 0.02 a second, and
+heat cools 5% a second (Newton: a steady pace settles instead of rising for
+ever; 3 taps a second settles at 0.72, 4 at 0.96, more than that is worn
+out). Worn out (at 1) pays x0.6 until it cools under 0.4, about 18 s of rest.
+Each bench or mask booth cools 1.6x faster. A parade needs the meter under
+0.6, so nobody can take the parade while mashing. The gap between a bot that
+eases off when warm and one that mashes is 7% on the town and nothing on the
+world, where masks and quiet hours cool the crowd (M9 is the weakest metric).
+
+Forks (realistic bot, seconds in the part, A / B):
+
+| Part   | Side A                                           | Side B                                                  | A / B       |
+| ------ | ------------------------------------------------ | ------------------------------------------------------- | ----------- |
+| Friend | Tell jokes: taps x4, bank gives 40% less         | Be kind: helpers x1.2                                   | 1951 / 1691 |
+| Town   | Clown school: taps x3, meter fills 25% faster    | Smile factory: helpers x1.6, parades x1.5 not x2        | 2080 / 1900 |
+| World  | Loudspeakers: helpers x2, meter cools 30% slower | Listening boxes: helpers x2.4, meter cools 1.5x as fast | 2040 / 2120 |
+| Quiet  | A few words: answers x4                          | Just sit: helpers x1.8                                  | 1286 / 1427 |
+
+Every pair is within 20% (a test checks it for the realistic bot) and every
+side has its own picture (a joke bubble and a honk vs a flower and hearts; a
+striped tent vs a factory shed with grinning crates; a horn with rings vs
+boxes with notes; a bubble of quiet words vs a moon).
+
+### Scores
+
+| Card                          | Result                                         |
+| ----------------------------- | ---------------------------------------------- |
+| Total                         | 84.1, no failing gate                          |
+| M16 decision gaps             | 5.7 / 8, passes in every part                  |
+| M9 tension                    | 2.3 / 6 (the meter, in the town and the world) |
+| Finish (eager / helps / idle) | 2.08 / 2.11 / 3.43 h                           |
+| Parts (realistic bot)         | 33 / 34 / 34 / 26 min                          |
+
+Floor in `scorecard.test.ts`: 83.1 (the score minus 1).
+
+### What I learned
+
+- The tap-to-income ratio is the hard part, not the costs. Early the tap has
+  to fund the first buys, and late it still has to be 0.25% of income (an M11
+  gate). A tap that reaches every helper (+25% per level owned) solved both.
+- Reveal cadence (M1) counts story lines, and in a part with 8 caps the middle
+  of a part has no new scene. About one story line every three minutes, tied
+  to the clock, fills the gaps and stays honest as pacing shifts.
+- Bots buy the cheapest thing first, which starves the better value later. A
+  `priority` on the later lines makes a bot play like a player.
+- The rest between parades was the single biggest fix for decision gaps.
+  Anything that can be held continuously becomes a permanent multiplier.
+- The idle bot is a fine lie detector for the forks: the passive side wins
+  slightly for a player who never taps.
+
+### Still thin
+
+1. The friend part has only the bank, fetch and the fork as hand play. A
+   second spend-now choice (what to draw on the pavement?) could go there.
+2. The cheer meter is a nudge, not a puzzle: nobody gets near worn out unless
+   they mash.
+3. Voice clips were generated with the existing script; any edit to a story
+   line needs `npm run narration:ever-onward`.

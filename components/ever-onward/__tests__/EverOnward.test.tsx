@@ -59,8 +59,10 @@ describe("Ever Onward hub", () => {
     ]) {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }
-    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
-    expect(screen.getByTestId("lm-locked-higher")).toBeInTheDocument();
+    // Every announced universe is built now; Make Everyone Smile is locked
+    // behind Build It Higher.
+    expect(screen.getByTestId("lm-locked-smile")).toBeInTheDocument();
+    expect(screen.queryAllByText("Coming soon")).toHaveLength(0);
     expect(screen.getByRole("link", { name: /what's new/i })).toHaveAttribute(
       "href",
       "/ever-onward/versions"
