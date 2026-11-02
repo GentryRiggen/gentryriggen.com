@@ -14,6 +14,7 @@ import {
   Briefcase,
   HeartPulse,
   House,
+  ListChecks,
   RefreshCw,
   Users,
   Wallet,
@@ -31,6 +32,7 @@ import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
+import NotesTodos from "@/components/jim/notes/NotesTodos";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import NotesWork from "@/components/jim/notes/NotesWork";
 import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
@@ -106,10 +108,11 @@ interface NotesShellProps {
 }
 
 /** The pills along the top on a phone: Health holds Training and Golf. */
-type Pill = "home" | "work" | "money" | "health" | "people";
+type Pill = "home" | "todos" | "work" | "money" | "health" | "people";
 
 const PILLS: { id: Pill; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: House },
+  { id: "todos", label: "Todos", icon: ListChecks },
   { id: "work", label: "Work", icon: Briefcase },
   { id: "money", label: "Money", icon: Wallet },
   { id: "health", label: "Health", icon: HeartPulse },
@@ -137,6 +140,7 @@ function pillOf(page: NotesPage): Pill {
 
 /** Pages that use the room a desktop gives them. */
 const WIDE_PAGES: ReadonlySet<NotesPage> = new Set([
+  "todos",
   "work",
   "money",
   "health",
@@ -610,6 +614,8 @@ function NotesShellView({
         onHearBrief={onHearBrief}
         briefStage={briefStage}
         briefError={briefError}
+        onOpenTodos={() => navigate({ kind: "page", page: "todos" })}
+        todosHref={formatJimPath({ kind: "page", page: "todos" })}
         reminders={{
           api,
           getToken,
@@ -622,6 +628,22 @@ function NotesShellView({
               id ? { kind: "reminder", id } : { kind: "reminders" }
             ),
         }}
+      />
+    );
+  } else if (listPage === "todos") {
+    pageBody = (
+      <NotesTodos
+        data={data}
+        saves={saves}
+        onDraft={onDraft}
+        wide={wide}
+        entryKey={entryKey}
+        navType={navType}
+        onOpenNote={(path) => {
+          const next = routeForHit(path);
+          if (next) navigate(next, { back: "Todos" });
+        }}
+        hrefForNote={hrefForHit}
       />
     );
   } else if (listPage === "work") {
@@ -831,7 +853,10 @@ function NotesShellView({
   }
 
   const showSearchField =
-    !wide && !detail && !notFound && (searching || listPage !== "people");
+    !wide &&
+    !detail &&
+    !notFound &&
+    (searching || (listPage !== "people" && listPage !== "todos"));
   const wideTitle =
     !wide || detail || notFound
       ? null
@@ -953,6 +978,8 @@ function NotesShellView({
                 getToken={getToken}
                 onOpen={openFound}
                 hrefFor={hrefForHit}
+                onOpenPage={goTo}
+                pageHref={(page) => formatJimPath({ kind: "page", page })}
               />
             </div>
           )}

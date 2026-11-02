@@ -6,6 +6,8 @@
  *
  *   /jim, /jim/chat                 Chat
  *   /jim/notes                      Notes home
+ *   /jim/todos                      the Todos page (its filters ride in
+ *                                   the query: ?area=work&project=…)
  *   /jim/notes/<page>               work, money, people, health, training, golf
  *   /jim/notes/people/<slug>        a person's profile
  *   /jim/notes/directory/<id>       a JBREC directory card
@@ -18,7 +20,14 @@
 export const JIM_BASE = "/jim";
 
 export type NotesPage =
-  "home" | "work" | "money" | "people" | "health" | "training" | "golf";
+  | "home"
+  | "todos"
+  | "work"
+  | "money"
+  | "people"
+  | "health"
+  | "training"
+  | "golf";
 
 export type JimRoute =
   | { kind: "chat" }
@@ -38,6 +47,7 @@ export type NotesRoute = Exclude<JimRoute, { kind: "chat" }>;
 /** In the order the navigation lists them. */
 export const NOTES_PAGES: readonly NotesPage[] = [
   "home",
+  "todos",
   "work",
   "money",
   "people",
@@ -48,6 +58,7 @@ export const NOTES_PAGES: readonly NotesPage[] = [
 
 export const PAGE_LABELS: Record<NotesPage, string> = {
   home: "Home",
+  todos: "Todos",
   work: "Work",
   money: "Money",
   people: "People",
@@ -130,6 +141,11 @@ export function parseJimPath(pathname: string, notePath?: unknown): JimRoute {
   if (section === "chat") {
     return rest.length === 0 ? CHAT_ROUTE : { kind: "notFound" };
   }
+  if (section === "todos") {
+    return rest.length === 0
+      ? { kind: "page", page: "todos" }
+      : { kind: "notFound" };
+  }
   if (section === "reminders") {
     if (rest.length === 0) return { kind: "reminders" };
     return rest.length === 1 && REMINDER_ID.test(rest[0])
@@ -177,6 +193,7 @@ export function formatJimPath(route: JimRoute): string {
     case "chat":
       return `${JIM_BASE}/chat`;
     case "page":
+      if (route.page === "todos") return `${JIM_BASE}/todos`;
       return route.page === "home"
         ? `${JIM_BASE}/notes`
         : `${JIM_BASE}/notes/${route.page}`;

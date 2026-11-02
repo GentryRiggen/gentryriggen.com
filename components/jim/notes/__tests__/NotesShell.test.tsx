@@ -178,7 +178,7 @@ it("says quietly when the notes may be behind", async () => {
   ).toBeInTheDocument();
 });
 
-it("has five page pills in order", async () => {
+it("has six page pills in order", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
@@ -187,6 +187,7 @@ it("has five page pills in order", async () => {
   ).getAllByRole("tab");
   expect(pills.map((t) => t.textContent)).toEqual([
     "Home",
+    "Todos",
     "Work",
     "Money",
     "Health",
@@ -552,4 +553,24 @@ describe("search", () => {
     expect(screen.getByLabelText("Search notes")).toHaveValue("");
     expect(screen.getByText("Water the plants")).toBeInTheDocument();
   });
+});
+
+it("opens Todos from its pill, at /jim/todos, filters in the address", async () => {
+  const user = userEvent.setup();
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  await user.click(screen.getByRole("tab", { name: "Todos" }));
+  expect(window.location.pathname).toBe("/jim/todos");
+  expect(
+    screen.getByRole("heading", { level: 1, name: "Todos" })
+  ).toBeInTheDocument();
+  // The page has its own search; the all-notes one steps aside.
+  expect(screen.queryByRole("searchbox", { name: "Search notes" })).toBeNull();
+  await user.click(screen.getByRole("radio", { name: "Work" }));
+  expect(window.location.search).toBe("?area=work");
+  await user.click(screen.getByRole("tab", { name: "Home" }));
+  expect(window.location.pathname).toBe("/jim/notes");
+  await user.click(screen.getByRole("link", { name: /All todos/ }));
+  expect(window.location.pathname).toBe("/jim/todos");
 });

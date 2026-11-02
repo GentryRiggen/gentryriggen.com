@@ -4,6 +4,7 @@ import { useEffect, useState, type Ref } from "react";
 import { Search, X } from "lucide-react";
 import { Empty, onPlainClick, Rows } from "@/components/jim/notes/NotesUi";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
+import { NOTES_PAGES, PAGE_LABELS, type NotesPage } from "@/lib/jim/routes";
 import { stripMd } from "@/lib/jim/todos";
 import { searchNotes, type SearchResult } from "@/lib/jim/view";
 
@@ -97,6 +98,16 @@ interface NotesSearchProps {
    * for one without an address of its own.
    */
   hrefFor?: (path: string) => string | null;
+  /** Opens a page whose name matches ("todo" → Todos). Without it, none show. */
+  onOpenPage?: (page: NotesPage) => void;
+  pageHref?: (page: NotesPage) => string;
+}
+
+/** Pages whose name starts with the query (any case). */
+export function matchingPages(query: string): NotesPage[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < SEARCH_MIN) return [];
+  return NOTES_PAGES.filter((p) => PAGE_LABELS[p].toLowerCase().startsWith(q));
 }
 
 /** Results for the search field: title, path and a snippet per note. */
@@ -106,6 +117,8 @@ export default function NotesSearch({
   getToken,
   onOpen,
   hrefFor,
+  onOpenPage,
+  pageHref,
 }: NotesSearchProps) {
   const q = query.trim();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -148,8 +161,28 @@ export default function NotesSearch({
       ? null
       : `${settled.results?.length ?? 0} note${settled.results?.length === 1 ? "" : "s"}`;
 
+  const pages = onOpenPage ? matchingPages(q) : [];
+
   return (
     <div className="space-y-3">
+      {pages.length > 0 && (
+        <Rows>
+          {pages.map((p) => (
+            <li key={p}>
+              <a
+                href={pageHref?.(p) ?? "#"}
+                onClick={onPlainClick(() => onOpenPage?.(p))}
+                className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-ayu-raised"
+              >
+                <span className="font-medium text-ayu-text">
+                  {PAGE_LABELS[p]}
+                </span>
+                <span className="text-sm text-ayu-subtle">Go to page →</span>
+              </a>
+            </li>
+          ))}
+        </Rows>
+      )}
       <p role="status" className="text-sm text-ayu-subtle">
         {status}
       </p>
