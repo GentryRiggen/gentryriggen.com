@@ -249,6 +249,35 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
           className={s.twinkle}
         />
       ))}
+      {/* something vast drifts between the far stars; you only see what it hides */}
+      <g
+        className="gg-leviathan"
+        aria-hidden="true"
+        fill="#0a0d1c"
+        fillOpacity="0.9"
+      >
+        <ellipse cx="0" cy="62" rx="70" ry="14" />
+        <polygon points="-70,62 -100,46 -96,78" />
+        <rect
+          x="52"
+          y="58"
+          width="3"
+          height="2"
+          fill="#ff4d4d"
+          fillOpacity="0.5"
+        />
+      </g>
+      <g aria-hidden="true">
+        <g className="gg-sat">
+          <rect x="0" y="250" width="7" height="6" fill="#6b5a4a" />
+          <rect x="2" y="248" width="4" height="3" fill="#8a7a66" />
+        </g>
+        <g className="gg-shoot" fill="#bff1ff">
+          <rect x="380" y="40" width="3" height="2" />
+          <rect x="383" y="38" width="5" height="1" fillOpacity="0.6" />
+          <rect x="388" y="36" width="7" height="1" fillOpacity="0.3" />
+        </g>
+      </g>
       {/* star charts: the stars the fleet is heading for */}
       {info.navTier >= 1 &&
         CHART_TARGETS.map((t) => (
@@ -308,6 +337,14 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
           strokeOpacity="0.07"
         />
       ))}
+      {/* a solar prominence looping off the sun's edge */}
+      <path
+        d={`M${SUN.x + 14} ${SUN.y - 21} q10 -22 22 -6`}
+        fill="none"
+        stroke="#ff9f3a"
+        strokeWidth="3"
+        className="gg-prominence"
+      />
       <circle cx={SUN.x} cy={SUN.y} r="26" fill="#ffd35a" />
       <circle cx={SUN.x} cy={SUN.y} r="20" fill="#fff0a8" />
       {/* a ring of small mirrors around the sun */}

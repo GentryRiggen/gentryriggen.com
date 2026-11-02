@@ -2060,3 +2060,920 @@ html:has(.jim-app) body {
     animation: none;
   }
 }
+
+/* Ever Onward: Make It Grow, the scenes' living loops. Every scene keeps
+   something moving; a few rare beats (a crow, eyes in the hills, a dead
+   satellite) are a little sinister on purpose. */
+.gg-sway,
+.gg-sway-b,
+.gg-swing,
+.gg-flap,
+.gg-blink,
+.gg-drive,
+.gg-drive-b,
+.gg-rays {
+  transform-box: fill-box;
+}
+
+.gg-sway,
+.gg-sway-b {
+  transform-origin: 50% 100%;
+}
+
+@keyframes gg-sway {
+  0%,
+  100% {
+    transform: skewX(-6deg);
+  }
+  50% {
+    transform: skewX(6deg);
+  }
+}
+
+.gg-sway {
+  animation: gg-sway 3.6s ease-in-out infinite;
+}
+
+.gg-sway-b {
+  animation: gg-sway 4.4s ease-in-out -1.7s infinite;
+}
+
+@keyframes gg-swing {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+.gg-swing {
+  transform-origin: 50% 0;
+  animation: gg-swing 3.2s ease-in-out infinite;
+}
+
+@keyframes gg-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gg-rays {
+  transform-origin: 50% 50%;
+  animation: gg-rays 24s linear infinite;
+}
+
+/* A bee leaves the hive, works a flower, and comes home. */
+@keyframes gg-trip-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  40%,
+  55% {
+    transform: translate(30px, 44px);
+  }
+  47% {
+    transform: translate(34px, 41px);
+  }
+}
+
+@keyframes gg-trip-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  35%,
+  60% {
+    transform: translate(-14px, 40px);
+  }
+  48% {
+    transform: translate(-10px, 43px);
+  }
+}
+
+@keyframes gg-trip-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  45%,
+  58% {
+    transform: translate(58px, 38px);
+  }
+  52% {
+    transform: translate(54px, 42px);
+  }
+}
+
+.gg-trip-a {
+  animation: gg-trip-a 5.2s ease-in-out infinite;
+}
+
+.gg-trip-b {
+  animation: gg-trip-b 6.4s ease-in-out -2s infinite;
+}
+
+.gg-trip-c {
+  animation: gg-trip-c 7.1s ease-in-out -4s infinite;
+}
+
+@keyframes gg-buzz {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(3px, -2px);
+  }
+  50% {
+    transform: translate(-1px, -4px);
+  }
+  75% {
+    transform: translate(-3px, -1px);
+  }
+}
+
+.gg-buzz {
+  animation: gg-buzz 0.9s linear infinite;
+}
+
+@keyframes gg-spray {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.gg-spray {
+  animation: gg-spray 0.8s linear infinite;
+}
+
+.gg-spray-b {
+  animation: gg-spray 0.8s linear -0.4s infinite;
+}
+
+@keyframes gg-hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(-3px);
+  }
+  80% {
+    transform: translateY(0);
+  }
+  88% {
+    transform: translateY(-2px);
+  }
+}
+
+.gg-hop {
+  animation: gg-hop 2.2s ease-in-out infinite;
+}
+
+.gg-hop-b {
+  animation: gg-hop 2.9s ease-in-out -1.1s infinite;
+}
+
+@keyframes gg-snow {
+  0% {
+    opacity: 0;
+    transform: translate(0, -30px);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(6px, 50px);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-2px, 130px);
+  }
+}
+
+.gg-snow {
+  animation: gg-snow 7s linear infinite;
+}
+
+.gg-snow-b {
+  animation: gg-snow 9s linear -4s infinite;
+}
+
+@keyframes gg-leaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, -10px) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  35% {
+    transform: translate(14px, 30px) rotate(90deg);
+  }
+  65% {
+    transform: translate(-4px, 70px) rotate(200deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, 110px) rotate(320deg);
+  }
+}
+
+.gg-leaf {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-leaf 8s ease-in-out infinite;
+}
+
+.gg-leaf-b {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-leaf 10s ease-in-out -5s infinite;
+}
+
+/* A butterfly wandering over the beds, wings beating. */
+@keyframes gg-flutter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(40px, -14px);
+  }
+  40% {
+    transform: translate(90px, 6px);
+  }
+  60% {
+    transform: translate(140px, -10px);
+  }
+  80% {
+    transform: translate(70px, 12px);
+  }
+}
+
+.gg-flutter {
+  animation: gg-flutter 16s ease-in-out infinite;
+}
+
+.gg-flutter-b {
+  animation: gg-flutter 19s ease-in-out -8s infinite reverse;
+}
+
+@keyframes gg-flap {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.25);
+  }
+}
+
+.gg-flap {
+  transform-origin: 50% 50%;
+  animation: gg-flap 0.35s steps(2) infinite;
+}
+
+/* The crow: away most of the time, then it drops onto the beds and leaves. */
+@keyframes gg-crow {
+  0%,
+  68% {
+    opacity: 0;
+    transform: translate(-60px, -50px);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  80% {
+    transform: translate(0, 0);
+  }
+  82% {
+    transform: translate(4px, -2px);
+  }
+  84% {
+    transform: translate(8px, 0);
+  }
+  92% {
+    opacity: 1;
+    transform: translate(8px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(90px, -80px);
+  }
+}
+
+.gg-crow {
+  animation: gg-crow 34s ease-in-out -10s infinite;
+}
+
+@keyframes gg-creep {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-70px);
+  }
+}
+
+.gg-creep {
+  animation: gg-creep 80s linear infinite alternate;
+}
+
+/* A tractor drives its row, turns at the end, and drives back. */
+@keyframes gg-drive {
+  0%,
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+  45% {
+    transform: translateX(46px) scaleX(1);
+  }
+  50% {
+    transform: translateX(46px) scaleX(-1);
+  }
+  95% {
+    transform: translateX(0) scaleX(-1);
+  }
+}
+
+.gg-drive {
+  transform-origin: 50% 50%;
+  animation: gg-drive 11s linear infinite;
+}
+
+.gg-drive-b {
+  transform-origin: 50% 50%;
+  animation: gg-drive 13s linear -6s infinite;
+}
+
+@keyframes gg-hover {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(4px, -3px);
+  }
+  65% {
+    transform: translate(-3px, -1px);
+  }
+}
+
+.gg-hover {
+  animation: gg-hover 2.8s ease-in-out infinite;
+}
+
+.gg-hover-b {
+  animation: gg-hover 3.4s ease-in-out -1.3s infinite;
+}
+
+@keyframes gg-rotor {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.gg-rotor {
+  animation: gg-rotor 0.18s steps(1) infinite;
+}
+
+@keyframes gg-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.gg-flow {
+  animation: gg-flow 1.6s linear infinite;
+}
+
+/* Birds crossing the sky, bobbing as they flap. */
+@keyframes gg-fly {
+  0% {
+    transform: translate(-80px, 0);
+  }
+  25% {
+    transform: translate(60px, -6px);
+  }
+  50% {
+    transform: translate(200px, 2px);
+  }
+  75% {
+    transform: translate(340px, -8px);
+  }
+  100% {
+    transform: translate(500px, 0);
+  }
+}
+
+.gg-fly {
+  animation: gg-fly 26s linear infinite;
+}
+
+.gg-fly-b {
+  animation: gg-fly 34s linear -15s infinite;
+}
+
+/* Crows circling a field nobody is guarding. */
+@keyframes gg-circle {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(18px, -6px);
+  }
+  50% {
+    transform: translate(0, -12px);
+  }
+  75% {
+    transform: translate(-18px, -6px);
+  }
+}
+
+.gg-circle {
+  animation: gg-circle 5s ease-in-out infinite;
+}
+
+.gg-circle-b {
+  animation: gg-circle 6.5s ease-in-out -2.4s infinite reverse;
+}
+
+/* The scarecrow's eyes slide to one side, now and then. */
+@keyframes gg-glance {
+  0%,
+  78%,
+  100% {
+    transform: translateX(0);
+  }
+  80%,
+  92% {
+    transform: translateX(2px);
+  }
+}
+
+.gg-glance {
+  animation: gg-glance 12s steps(1) infinite;
+}
+
+@keyframes gg-devil {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px) skewX(0deg);
+  }
+  15% {
+    opacity: 0.8;
+  }
+  30% {
+    transform: translateX(60px) skewX(8deg);
+  }
+  60% {
+    transform: translateX(170px) skewX(-8deg);
+  }
+  85% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(300px) skewX(4deg);
+  }
+}
+
+.gg-devil {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gg-devil 14s linear infinite;
+}
+
+/* The moon goes round the globe and slips behind it. */
+@keyframes gg-moon {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(136px, 0);
+  }
+  12.5% {
+    transform: translate(96px, 22px);
+  }
+  25% {
+    transform: translate(0, 30px);
+  }
+  37.5% {
+    transform: translate(-96px, 22px);
+  }
+  50% {
+    transform: translate(-136px, 0);
+  }
+  54% {
+    opacity: 1;
+  }
+  57% {
+    opacity: 0;
+  }
+  62.5% {
+    transform: translate(-96px, -22px);
+  }
+  75% {
+    transform: translate(0, -30px);
+  }
+  87.5% {
+    transform: translate(96px, -22px);
+  }
+  93% {
+    opacity: 0;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+
+.gg-moon {
+  animation: gg-moon 40s linear infinite;
+}
+
+@keyframes gg-sat {
+  0%,
+  55% {
+    opacity: 0;
+    transform: translate(-30px, 0) rotate(0deg);
+  }
+  58% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(460px, 40px) rotate(540deg);
+  }
+}
+
+.gg-sat {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-sat 45s linear -20s infinite;
+}
+
+@keyframes gg-shoot {
+  0%,
+  90% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  91% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0;
+    transform: translate(-120px, 50px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-120px, 50px);
+  }
+}
+
+.gg-shoot {
+  animation: gg-shoot 23s linear -9s infinite;
+}
+
+@keyframes gg-glide {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(10px, -4px);
+  }
+  50% {
+    transform: translate(18px, 1px);
+  }
+  75% {
+    transform: translate(8px, 4px);
+  }
+}
+
+.gg-glide {
+  animation: gg-glide 9s ease-in-out infinite;
+}
+
+/* Eyes in the dark hills: shut almost always. */
+@keyframes gg-peek {
+  0%,
+  80%,
+  100% {
+    opacity: 0;
+  }
+  83%,
+  87%,
+  89%,
+  94% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 0;
+  }
+}
+
+.gg-peek {
+  animation: gg-peek 29s steps(1) -12s infinite;
+}
+
+@keyframes gg-blink {
+  0%,
+  90%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.1);
+  }
+}
+
+.gg-blink {
+  transform-origin: 50% 50%;
+  animation: gg-blink 4.5s linear infinite;
+}
+
+@keyframes gg-note {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, -34px);
+  }
+}
+
+.gg-note {
+  animation: gg-note 3.2s ease-out infinite;
+}
+
+.gg-note-b {
+  animation: gg-note 3.2s ease-out -1.6s infinite;
+}
+
+@keyframes gg-firefly {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(12px, -8px);
+  }
+  60% {
+    opacity: 0.3;
+    transform: translate(22px, 4px);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(6px, 6px);
+  }
+}
+
+.gg-firefly {
+  animation: gg-firefly 6s ease-in-out infinite;
+}
+
+.gg-firefly-b {
+  animation: gg-firefly 7.5s ease-in-out -3s infinite reverse;
+}
+
+.gg-firefly-c {
+  animation: gg-firefly 5.2s ease-in-out -1.5s infinite;
+}
+
+/* A moth batting at the lantern glass. */
+@keyframes gg-moth {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(6px, -5px);
+  }
+  30% {
+    transform: translate(2px, -1px);
+  }
+  55% {
+    transform: translate(-6px, -7px);
+  }
+  70% {
+    transform: translate(-1px, -2px);
+  }
+  85% {
+    transform: translate(4px, -9px);
+  }
+}
+
+.gg-moth {
+  animation: gg-moth 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-sway,
+  .gg-sway-b,
+  .gg-swing,
+  .gg-rays,
+  .gg-trip-a,
+  .gg-trip-b,
+  .gg-trip-c,
+  .gg-buzz,
+  .gg-spray,
+  .gg-spray-b,
+  .gg-hop,
+  .gg-hop-b,
+  .gg-snow,
+  .gg-snow-b,
+  .gg-leaf,
+  .gg-leaf-b,
+  .gg-flutter,
+  .gg-flutter-b,
+  .gg-flap,
+  .gg-crow,
+  .gg-creep,
+  .gg-drive,
+  .gg-drive-b,
+  .gg-hover,
+  .gg-hover-b,
+  .gg-rotor,
+  .gg-flow,
+  .gg-fly,
+  .gg-fly-b,
+  .gg-circle,
+  .gg-circle-b,
+  .gg-glance,
+  .gg-moon,
+  .gg-glide,
+  .gg-blink,
+  .gg-note,
+  .gg-note-b,
+  .gg-firefly,
+  .gg-firefly-b,
+  .gg-firefly-c,
+  .gg-moth {
+    animation: none;
+  }
+  .gg-devil,
+  .gg-sat,
+  .gg-shoot,
+  .gg-peek {
+    display: none;
+  }
+}
+
+/* Light's rarer beats: something in the sea, eyes in the dark, a shape between the stars. */
+@keyframes gg-surface {
+  0%,
+  72%,
+  100% {
+    transform: translateY(48px);
+  }
+  78% {
+    transform: translateY(0) rotate(0deg);
+  }
+  84% {
+    transform: translateY(-2px) rotate(-8deg);
+  }
+  90% {
+    transform: translateY(4px) rotate(4deg);
+  }
+  96% {
+    transform: translateY(48px);
+  }
+}
+
+.gg-surface {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gg-surface 37s ease-in-out -14s infinite;
+}
+
+@keyframes gg-jump {
+  0%,
+  80%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(-40deg);
+  }
+  88% {
+    transform: translate(9px, -14px) rotate(0deg);
+  }
+  94% {
+    opacity: 1;
+    transform: translate(18px, 0) rotate(40deg);
+  }
+  95% {
+    opacity: 0;
+  }
+}
+
+.gg-jump {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-jump 9s ease-in-out infinite;
+}
+
+.gg-peek-often {
+  animation: gg-peek 7s steps(1) -2s infinite;
+}
+
+@keyframes gg-ripple {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.gg-ripple {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-ripple 4s ease-out infinite;
+}
+
+.gg-ripple-b {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-ripple 5.5s ease-out -2.5s infinite;
+}
+
+@keyframes gg-prominence {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.gg-prominence {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gg-prominence 6s ease-in-out infinite;
+}
+
+@keyframes gg-leviathan {
+  0% {
+    transform: translateX(-260px);
+  }
+  100% {
+    transform: translateX(560px);
+  }
+}
+
+.gg-leviathan {
+  animation: gg-leviathan 120s linear -40s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-jump,
+  .gg-ripple,
+  .gg-ripple-b,
+  .gg-prominence {
+    animation: none;
+  }
+  .gg-surface,
+  .gg-peek-often,
+  .gg-leviathan {
+    display: none;
+  }
+}

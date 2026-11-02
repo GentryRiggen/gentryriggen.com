@@ -170,6 +170,40 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
           <Boat info={info} />
         </g>
       )}
+      {/* rings on the dark water, a shooting star, and eyes past the light */}
+      <g aria-hidden="true">
+        <ellipse
+          cx="90"
+          cy="262"
+          rx="10"
+          ry="2.5"
+          fill="none"
+          stroke="#2a3a6a"
+          className="gg-ripple"
+        />
+        <ellipse
+          cx="320"
+          cy="282"
+          rx="12"
+          ry="3"
+          fill="none"
+          stroke="#2a3a6a"
+          className="gg-ripple-b"
+        />
+        <g className="gg-shoot" fill="#fff8d6">
+          <rect x="360" y="30" width="3" height="2" />
+          <rect x="363" y="28" width="4" height="1" fillOpacity="0.6" />
+          <rect x="367" y="26" width="5" height="1" fillOpacity="0.3" />
+        </g>
+        <g className="gg-peek" fill="#ffe14d">
+          <rect x="62" y="206" width="2" height="1" />
+          <rect x="67" y="206" width="2" height="1" />
+        </g>
+        <g className="gg-peek-often" fill="#ffe14d" opacity={dim > 0 ? 1 : 0}>
+          <rect x="330" y="214" width="2" height="1" />
+          <rect x="335" y="214" width="2" height="1" />
+        </g>
+      </g>
       {/* the one lantern left */}
       <path
         d="M150 300 Q165 248 188 240 L216 240 Q240 248 252 300 Z"
@@ -201,6 +235,13 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
         </g>
         <g className="lm-sweep" opacity="0.4">
           <polygon points="0,0 190,-16 190,16" fill="url(#lm-beam)" />
+        </g>
+        <g className="gg-moth" aria-hidden="true">
+          <g className="gg-flap">
+            <rect x="7" y="-12" width="2" height="2" fill="#d8cbb0" />
+            <rect x="10" y="-12" width="2" height="2" fill="#d8cbb0" />
+            <rect x="9" y="-12" width="1" height="3" fill="#6b5a40" />
+          </g>
         </g>
       </g>
       {info.finished > 0 && (

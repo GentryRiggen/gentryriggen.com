@@ -63,6 +63,51 @@ function Outside({ night }: { night: boolean }) {
       <rect x="254" y="122" width="16" height="4" fill={moss} />
       <rect x="196" y="138" width="10" height="8" fill={near} />
       <rect x="194" y="136" width="14" height="4" fill={moss} />
+      {night ? (
+        <g aria-hidden="true">
+          {/* Something in the far hills opens its eyes, now and then. */}
+          <g className="gg-peek" fill="#ffe14d">
+            <rect x="171" y="146" width="2" height="1" />
+            <rect x="176" y="146" width="2" height="1" />
+          </g>
+          <g fill="#d8f56a">
+            <rect x="120" y="150" width="2" height="2" className="gg-firefly" />
+            <rect
+              x="214"
+              y="160"
+              width="2"
+              height="2"
+              className="gg-firefly-b"
+            />
+            <rect
+              x="268"
+              y="146"
+              width="2"
+              height="2"
+              className="gg-firefly-c"
+            />
+          </g>
+        </g>
+      ) : (
+        <g className="gw-drift" aria-hidden="true">
+          <rect
+            x="190"
+            y="60"
+            width="34"
+            height="7"
+            fill="#f7d3c0"
+            fillOpacity="0.7"
+          />
+          <rect
+            x="200"
+            y="55"
+            width="16"
+            height="6"
+            fill="#f7d3c0"
+            fillOpacity="0.7"
+          />
+        </g>
+      )}
     </g>
   );
 }
@@ -76,10 +121,19 @@ export function Robot() {
       <rect x="51" y="150" width="24" height="17" fill="#26335f" />
       <rect x="53" y="152" width="20" height="13" fill="#b6c6e6" />
       <rect x="55" y="155" width="16" height="8" fill="#060a18" />
-      <rect x="58" y="157" width="3" height="3" fill="#67e8f9" />
-      <rect x="65" y="157" width="3" height="3" fill="#67e8f9" />
+      <g className="gg-blink">
+        <rect x="58" y="157" width="3" height="3" fill="#67e8f9" />
+        <rect x="65" y="157" width="3" height="3" fill="#67e8f9" />
+      </g>
       <rect x="62" y="146" width="2" height="5" fill="#26335f" />
-      <rect x="61" y="144" width="4" height="3" fill="#fb7185" />
+      <rect
+        x="61"
+        y="144"
+        width="4"
+        height="3"
+        fill="#fb7185"
+        className="lm-twinkle"
+      />
       <rect x="74" y="168" width="8" height="4" fill="#8a9bc0" />
       <rect x="56" y="182" width="6" height="22" fill="#26335f" />
       <rect x="64" y="182" width="6" height="22" fill="#26335f" />
@@ -99,62 +153,70 @@ export function Plant({ stage, growth }: { stage: PotStage; growth: number }) {
       {stage === "soil" && (
         <rect x={POT.x - 2} y={POT.y - 3} width="4" height="3" fill="#5a3a22" />
       )}
-      {stage !== "soil" && (
-        <rect x={POT.x - 1} y={top} width="3" height={h} fill="#3f9d3a" />
-      )}
-      {stage !== "soil" && (
-        <g fill="#58bf4f">
-          <rect x={POT.x - 12} y={POT.y - h * 0.4} width="11" height="5" />
-          <rect x={POT.x + 2} y={POT.y - h * 0.62} width="12" height="5" />
-          {h > 30 && (
-            <rect x={POT.x - 11} y={POT.y - h * 0.82} width="10" height="4" />
-          )}
-        </g>
-      )}
-      {stage === "bud" && (
-        <g>
-          <rect
-            x={POT.x - 4}
-            y={top - 8}
-            width="9"
-            height="10"
-            fill="#e879a8"
-          />
-          <rect
-            x={POT.x - 3}
-            y={top - 10}
-            width="7"
-            height="3"
-            fill="#f9a8c9"
-          />
-        </g>
-      )}
-      {stage === "bloom" && (
-        <g>
-          <rect
-            x={POT.x - 12}
-            y={top - 12}
-            width="25"
-            height="22"
-            fill="#fb7185"
-          />
-          <rect
-            x={POT.x - 16}
-            y={top - 7}
-            width="33"
-            height="12"
-            fill="#fda4af"
-          />
-          <rect
-            x={POT.x - 8}
-            y={top - 17}
-            width="17"
-            height="8"
-            fill="#fda4af"
-          />
-          <rect x={POT.x - 4} y={top - 7} width="9" height="9" fill="#fde047" />
-        </g>
-      )}
+      <g className={stage === "soil" ? undefined : "gg-sway"}>
+        {stage !== "soil" && (
+          <rect x={POT.x - 1} y={top} width="3" height={h} fill="#3f9d3a" />
+        )}
+        {stage !== "soil" && (
+          <g fill="#58bf4f">
+            <rect x={POT.x - 12} y={POT.y - h * 0.4} width="11" height="5" />
+            <rect x={POT.x + 2} y={POT.y - h * 0.62} width="12" height="5" />
+            {h > 30 && (
+              <rect x={POT.x - 11} y={POT.y - h * 0.82} width="10" height="4" />
+            )}
+          </g>
+        )}
+        {stage === "bud" && (
+          <g>
+            <rect
+              x={POT.x - 4}
+              y={top - 8}
+              width="9"
+              height="10"
+              fill="#e879a8"
+            />
+            <rect
+              x={POT.x - 3}
+              y={top - 10}
+              width="7"
+              height="3"
+              fill="#f9a8c9"
+            />
+          </g>
+        )}
+        {stage === "bloom" && (
+          <g>
+            <rect
+              x={POT.x - 12}
+              y={top - 12}
+              width="25"
+              height="22"
+              fill="#fb7185"
+            />
+            <rect
+              x={POT.x - 16}
+              y={top - 7}
+              width="33"
+              height="12"
+              fill="#fda4af"
+            />
+            <rect
+              x={POT.x - 8}
+              y={top - 17}
+              width="17"
+              height="8"
+              fill="#fda4af"
+            />
+            <rect
+              x={POT.x - 4}
+              y={top - 7}
+              width="9"
+              height="9"
+              fill="#fde047"
+            />
+          </g>
+        )}
+      </g>
     </g>
   );
 }
@@ -274,6 +336,7 @@ function Things({ info }: { info: GrowSceneInfo }) {
             width="3"
             height="3"
             fill="#e0f3ff"
+            className="lm-twinkle-b"
           />
           <rect
             x={SEED_DEW.x + 10}
@@ -306,11 +369,48 @@ function Things({ info }: { info: GrowSceneInfo }) {
             width="4"
             height="2"
             fill="#d9c27a"
+            className="gg-rotor"
           />
+          <g fill="#f8f4e8" aria-hidden="true">
+            <g className="gg-note">
+              <rect
+                x={SEED_MUSIC.x + 6}
+                y={SEED_MUSIC.y - 10}
+                width="3"
+                height="3"
+              />
+              <rect
+                x={SEED_MUSIC.x + 8}
+                y={SEED_MUSIC.y - 16}
+                width="1"
+                height="6"
+              />
+            </g>
+            <g className="gg-note-b">
+              <rect
+                x={SEED_MUSIC.x + 14}
+                y={SEED_MUSIC.y - 9}
+                width="3"
+                height="3"
+              />
+              <rect
+                x={SEED_MUSIC.x + 16}
+                y={SEED_MUSIC.y - 15}
+                width="1"
+                height="6"
+              />
+              <rect
+                x={SEED_MUSIC.x + 16}
+                y={SEED_MUSIC.y - 15}
+                width="3"
+                height="1"
+              />
+            </g>
+          </g>
         </g>
       )}
       {info.chime && (
-        <g fill="#cfd8e6">
+        <g fill="#cfd8e6" className="gg-swing">
           <rect x={SEED_CHIME.x} y="24" width="1" height="20" fill="#9aa6bb" />
           <rect x={SEED_CHIME.x - 8} y="44" width="2" height="16" />
           <rect x={SEED_CHIME.x - 3} y="44" width="2" height="22" />
@@ -456,6 +556,33 @@ export default function SeedLayer({ info }: { info: GrowSceneInfo }) {
           fill="url(#gs-lamp)"
           className="gs-glow pointer-events-none"
         />
+      )}
+      {lit && night && (
+        <g className="gg-moth" aria-hidden="true">
+          <g className="gg-flap">
+            <rect
+              x={SEED_LANTERN.x + 8}
+              y={SEED_LANTERN.y - 8}
+              width="2"
+              height="2"
+              fill="#d8cbb0"
+            />
+            <rect
+              x={SEED_LANTERN.x + 11}
+              y={SEED_LANTERN.y - 8}
+              width="2"
+              height="2"
+              fill="#d8cbb0"
+            />
+            <rect
+              x={SEED_LANTERN.x + 10}
+              y={SEED_LANTERN.y - 8}
+              width="1"
+              height="3"
+              fill="#6b5a40"
+            />
+          </g>
+        </g>
       )}
       {info.visitorHere && <Visitors />}
     </g>
