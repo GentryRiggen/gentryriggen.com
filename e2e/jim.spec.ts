@@ -56,6 +56,8 @@ interface MockOptions {
   viewExpiredOnce?: boolean;
   /** How /api/todo answers (200 by default). */
   todoStatus?: number;
+  /** Short Home labels by todo order. */
+  shorts?: Record<number, string>;
 }
 
 interface MockCalls {
@@ -215,7 +217,13 @@ async function mockServer(
           ...VIEW_FIXTURE,
           reflection: { question: REFLECTION_QUESTION },
           meetingCards: { [MEETING_ID]: MEETING_CARD },
-          todos: VIEW_FIXTURE.todos.filter((t) => !done.has(t.order)),
+          todos: VIEW_FIXTURE.todos
+            .filter((t) => !done.has(t.order))
+            .map((t) =>
+              options.shorts?.[t.order]
+                ? { ...t, short: options.shorts[t.order] }
+                : t
+            ),
           // A checked-off line carries its done stamp, as the server writes it.
           doneTodos: VIEW_FIXTURE.todos
             .filter((t) => done.has(t.order))
@@ -961,6 +969,28 @@ test(
     expect(calls.chat).toBe(0);
   }
 );
+
+test("a short Home todo label opens to the full text on a tap", async ({
+  page,
+}) => {
+  await signedIn(page, { shorts: { 3: "Plants" } });
+  await page.getByRole("tab", { name: "Notes" }).click();
+  const label = page.getByRole("button", { name: "Plants" });
+  await expect(label).toBeVisible();
+  expect((await label.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await expect(label).toHaveAttribute("aria-expanded", "false");
+  await label.click();
+  await expect(label).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.locator("span", { hasText: /^Water the plants/ }).first()
+  ).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  await label.click();
+  await expect(label).toHaveAttribute("aria-expanded", "false");
+});
 
 test("a todo that changed on the Mac reverts and says so", async ({ page }) => {
   await signedIn(page, { todoStatus: 409 });

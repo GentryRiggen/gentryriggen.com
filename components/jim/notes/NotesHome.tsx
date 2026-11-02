@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Check, LoaderCircle, Sunrise } from "lucide-react";
 import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import DailyWord from "@/components/jim/notes/DailyWord";
+import ShortLabel from "@/components/jim/notes/ShortLabel";
 import JimNoticed from "@/components/jim/notes/JimNoticed";
 import NeedsYou from "@/components/jim/notes/NeedsYou";
 import RemindersCard from "@/components/jim/notes/RemindersCard";
@@ -250,14 +251,12 @@ function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
         </span>
       </button>
       <div className="min-w-0 flex-1 py-1">
-        <span
-          data-title
-          className={`block [overflow-wrap:anywhere] ${
-            checked ? "text-ayu-subtle line-through" : "text-ayu-text"
-          }`}
-        >
-          {title}
-        </span>
+        <ShortLabel
+          dataTitle
+          short={todo.short}
+          full={title}
+          className={checked ? "text-ayu-subtle line-through" : "text-ayu-text"}
+        />
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className={`font-medium ${tone}`}>
             {dueLabel(todo.due, today)}
