@@ -762,11 +762,10 @@ export default function JimChat({
     [navigate]
   );
 
+  // Stays where it was tapped: the now-playing bar shows on Notes too.
   const hearBrief = useCallback(() => {
-    // Chat shows the now-playing bar (and the chip, if iOS refuses).
-    if (!wideRef.current) navigate(CHAT_ROUTE);
     void playBrief();
-  }, [navigate, playBrief]);
+  }, [playBrief]);
   const closeNotifySheet = useCallback(() => setNotifySheetOpen(false), []);
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
 
@@ -938,6 +937,39 @@ export default function JimChat({
         }
       : null;
 
+  /** The now-playing bar and the brief's chip: in Chat, or over Notes. */
+  const dockInChat = wide || tab === "chat";
+  /** What floats over a phone's Notes: the page and its toast make room. */
+  const dock = dockInChat
+    ? "off"
+    : barShown && brief.chip
+      ? "both"
+      : barShown
+        ? "bar"
+        : brief.chip
+          ? "chip"
+          : "off";
+  const nowPlaying = (
+    <NowPlayingBar
+      state={reader.state}
+      onTogglePause={reader.togglePause}
+      onSpeed={reader.setSpeed}
+      onStop={reader.stop}
+      onDismiss={reader.dismiss}
+    />
+  );
+  const briefChip = brief.chip && (
+    <button
+      type="button"
+      onClick={brief.playFromChip}
+      onPointerDown={(e) => e.preventDefault()}
+      className="jim-rise mb-2 flex min-h-11 items-center gap-2 rounded-full border border-ayu-accent/30 bg-ayu-accent/10 px-4 text-sm font-medium text-ayu-accent backdrop-blur"
+    >
+      <Sunrise aria-hidden="true" className="size-4" />
+      Tap to play your morning
+    </button>
+  );
+
   const chatBody = (
     <>
       <div
@@ -1053,35 +1085,14 @@ export default function JimChat({
       >
         <div className="relative mx-auto w-full max-w-[45rem] px-3 sm:px-4">
           {/* Floats just above the composer (and so above the keyboard),
-            over the end of the list: showing it moves nothing. */}
-          <div className="absolute inset-x-3 bottom-full sm:inset-x-4">
-            <NowPlayingBar
-              state={reader.state}
-              onTogglePause={reader.togglePause}
-              onSpeed={reader.setSpeed}
-              onStop={reader.stop}
-              onDismiss={reader.dismiss}
-            />
-          </div>
-          {brief.chip && (
-            <button
-              type="button"
-              onClick={brief.playFromChip}
-              onPointerDown={(e) => e.preventDefault()}
-              className="jim-rise mb-2 flex min-h-11 items-center gap-2 rounded-full border border-ayu-accent/30 bg-ayu-accent/10 px-4 text-sm font-medium text-ayu-accent backdrop-blur"
-            >
-              <Sunrise aria-hidden="true" className="size-4" />
-              Play your morning
-            </button>
+            over the end of the list: showing it moves nothing. On a
+            phone's Notes it floats over the page instead (below). */}
+          {dockInChat && (
+            <div className="absolute inset-x-3 bottom-full sm:inset-x-4">
+              {nowPlaying}
+            </div>
           )}
-          {brief.error && (
-            <p
-              role="alert"
-              className="jim-rise mb-2 rounded-xl border border-ayu-red/25 bg-ayu-red/10 px-3 py-2 text-sm text-ayu-red"
-            >
-              {brief.error}
-            </p>
-          )}
+          {dockInChat && briefChip}
           {!online && (
             <p
               role="status"
@@ -1164,6 +1175,8 @@ export default function JimChat({
       onLog={logFromNotes}
       onDraft={draftFromNotes}
       onHearBrief={hearBrief}
+      briefStage={brief.stage}
+      briefError={brief.error}
       routing={routing}
     />
   );
@@ -1290,11 +1303,22 @@ export default function JimChat({
             id="jim-notes"
             role={wide ? undefined : "tabpanel"}
             aria-labelledby={wide ? undefined : "jim-tab-notes"}
-            className={`absolute inset-y-0 left-0 ${
+            data-dock={dock}
+            className={`group/notes absolute inset-y-0 left-0 ${
               docked ? "right-[24rem] xl:right-[26rem]" : "right-0"
             } ${tab === "notes" ? "" : "invisible"}`}
           >
             {notes}
+            {/* A phone's Notes has no composer: the bar floats above the
+              home bar, over the page (which leaves room for it). */}
+            {!dockInChat && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pr-[env(safe-area-inset-right)] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)]">
+                <div className="pointer-events-auto mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+                  {briefChip}
+                  {nowPlaying}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

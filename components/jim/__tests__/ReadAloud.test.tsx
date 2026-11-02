@@ -1,7 +1,14 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import JimChat from "../JimChat";
+import useReadAloud from "../useReadAloud";
 
 jest.mock("@/lib/jim/api", () => {
   const actual = jest.requireActual("@/lib/jim/api");
@@ -519,5 +526,49 @@ describe("stopping", () => {
     Reflect.deleteProperty(document, "visibilityState");
     expect(synth.cancel).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Listen" })).toBeInTheDocument();
+  });
+});
+
+describe("the morning brief", () => {
+  function reader() {
+    window.localStorage.setItem("jim:read-aloud", "on");
+    return renderHook(() =>
+      useReadAloud(jest.fn().mockResolvedValue("t"), "https://jim.example.test")
+    );
+  }
+
+  it("an auto-read reply doesn't cut off the brief while it loads", () => {
+    const { result } = reader();
+    expect(result.current.auto).toBe(true);
+    act(() => {
+      result.current.prepare("brief:", "Your morning", "Writing…");
+    });
+    act(() => result.current.readNew(7, "A new reply."));
+    expect(result.current.state).toMatchObject({
+      key: "brief:",
+      status: "loading",
+    });
+  });
+
+  it("nor while it plays; the reply can still be read by a tap", async () => {
+    const { result } = reader();
+    act(() => {
+      result.current.play("brief:2026-11-02", "Good morning.");
+    });
+    await waitFor(() => expect(result.current.state.status).toBe("playing"));
+    act(() => result.current.readNew(7, "A new reply."));
+    expect(result.current.state.key).toBe("brief:2026-11-02");
+    act(() => result.current.toggle(7, "A new reply."));
+    expect(result.current.state.key).toBe("msg:7");
+  });
+
+  it("reads replies again once the brief is over", () => {
+    const { result } = reader();
+    act(() => {
+      result.current.prepare("brief:", "Your morning", "Writing…");
+    });
+    act(() => result.current.stop());
+    act(() => result.current.readNew(7, "A new reply."));
+    expect(result.current.state.key).toBe("msg:7");
   });
 });

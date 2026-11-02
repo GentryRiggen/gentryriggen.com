@@ -14,6 +14,8 @@ const PLAYING: PlayerState = {
   engine: "audio",
   error: null,
   errorKey: null,
+  stage: null,
+  blocked: false,
 };
 
 function renderBar(state: Partial<PlayerState> = {}) {
@@ -121,5 +123,37 @@ describe("NowPlayingBar", () => {
     box.focus();
     await userEvent.click(screen.getByRole("button", { name: "Faster" }));
     expect(box).toHaveFocus();
+  });
+
+  it("says what it's waiting on, with a moving bar and Cancel", async () => {
+    const handlers = renderBar({
+      key: "brief:",
+      status: "loading",
+      title: "Your morning",
+      stage: "Writing your morning…",
+      engine: null,
+      parts: 0,
+      part: 0,
+      partProgress: 0,
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Writing your morning…"
+    );
+    const progress = screen.getByRole("progressbar");
+    expect(progress).toHaveAttribute("aria-busy", "true");
+    expect(progress).not.toHaveAttribute("aria-valuenow");
+    expect(progress.querySelector(".jim-shimmer")).not.toBeNull();
+    // No speed to set yet: the room goes to the words.
+    expect(screen.queryByRole("button", { name: "Faster" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(handlers.onStop).toHaveBeenCalled();
+  });
+
+  it("asks for a tap when the browser refused to start it", async () => {
+    const handlers = renderBar({ status: "paused", blocked: true });
+    const play = screen.getByRole("button", { name: /Tap to play/ });
+    await userEvent.click(play);
+    expect(handlers.onTogglePause).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
   });
 });

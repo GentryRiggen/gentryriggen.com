@@ -29,6 +29,13 @@ export interface PlayerState {
   error: string | null;
   /** What was playing when it failed (a persona row shows its own error). */
   errorKey: string | null;
+  /**
+   * While loading: what is happening, in words ("Writing your morning…").
+   * Null once it plays, or when there's nothing to say about the wait.
+   */
+  stage: string | null;
+  /** Paused because the browser refused to start it: it waits for a tap. */
+  blocked: boolean;
 }
 
 /** The fallback reader: the browser's own speech (lib/jim/speech). */
@@ -80,6 +87,8 @@ export interface PlayOptions {
    * about the voice); a failure shows an error instead. Default true.
    */
   fallback?: boolean;
+  /** Shown in the bar while the first part loads. */
+  stage?: string;
 }
 
 /**
@@ -152,6 +161,8 @@ const IDLE: Omit<PlayerState, "speed"> = {
   engine: null,
   error: null,
   errorKey: null,
+  stage: null,
+  blocked: false,
 };
 
 export class JimPlayer {
@@ -232,6 +243,7 @@ export class JimPlayer {
       title: titleFor(text),
       parts: chunks.length,
       engine: "audio",
+      stage: options.stage ?? null,
     });
     const audio = this.element();
     if (audio === null) {
@@ -244,6 +256,26 @@ export class JimPlayer {
     this.prime(audio);
     void this.playPart(run, 0);
     return true;
+  }
+
+  /**
+   * The bar shows `key` as loading before its text exists (a script still
+   * being written): `stage` says what is happening. The signal aborts when
+   * it is stopped (the bar's ×) or something else starts; null when
+   * nothing may start (the app lock). play() under any key takes over.
+   */
+  prepare(key: string, title: string, stage: string): AbortSignal | null {
+    this.stop();
+    if (this.locked) return null;
+    this.controller = new AbortController();
+    this.set({ ...IDLE, key, status: "loading", title, stage });
+    return this.controller.signal;
+  }
+
+  /** What was being prepared failed: the bar says why (unless it was stopped). */
+  failPrepared(message: string): void {
+    if (this.state.status !== "loading" || this.state.engine !== null) return;
+    this.fail(message);
   }
 
   /**
@@ -275,7 +307,7 @@ export class JimPlayer {
       return;
     }
     this.audio?.pause();
-    this.set({ status: "paused" });
+    this.set({ status: "paused", blocked: false });
   }
 
   /** Call from a tap (or a lock-screen control): iOS needs one to resume. */
@@ -285,7 +317,7 @@ export class JimPlayer {
       return;
     }
     if (!this.audio || !this.url) return;
-    this.set({ status: "playing" });
+    this.set({ status: "playing", blocked: false });
     this.startElement(this.run);
   }
 
@@ -426,7 +458,7 @@ export class JimPlayer {
     // A new source resets the rate to the default rate: set both.
     audio.defaultPlaybackRate = this.state.speed;
     audio.playbackRate = this.state.speed;
-    this.set({ status: "playing", part: i, partProgress: 0 });
+    this.set({ status: "playing", part: i, partProgress: 0, stage: null });
     this.startElement(run);
   }
 
@@ -453,7 +485,7 @@ export class JimPlayer {
     // A newer source replaced this one: not a failure.
     if (name === "AbortError") return;
     if (name === "NotAllowedError") {
-      this.set({ status: "paused" });
+      this.set({ status: "paused", blocked: true });
       return;
     }
     if (this.state.part === 0) this.fallBack(run);
@@ -479,7 +511,13 @@ export class JimPlayer {
       return;
     }
     this.controller?.abort();
-    this.set({ status: "playing", engine: "speech", part: 0, parts: 1 });
+    this.set({
+      status: "playing",
+      engine: "speech",
+      part: 0,
+      parts: 1,
+      stage: null,
+    });
     const started = speech.speak(
       this.markdown,
       () => {

@@ -1,6 +1,12 @@
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { test, expect, type Page, type TestInfo } from "@playwright/test";
+import {
+  test,
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 import { MONEY_FIXTURE, VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
 
 /**
@@ -270,7 +276,7 @@ async function mockServer(
       });
       return;
     }
-    if (url.pathname === "/api/speech") {
+    if (url.pathname === "/api/speak") {
       // No voice here: the player falls back or waits for a tap.
       await reply(503, { error: "no voice in tests" });
       return;
@@ -345,6 +351,34 @@ async function mockServer(
     });
   });
   return calls;
+}
+
+/**
+ * Holds requests to `path` (after the shared mock) until released, so a
+ * test can see what shows while they wait. Preflights pass straight on.
+ */
+async function holdRoute(page: Page, path: string) {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`${API}${path}`, async (route) => {
+    if (route.request().method() !== "OPTIONS") await gate;
+    await route.fallback();
+  });
+  return { release };
+}
+
+/** Lets the finite animations on `locator` (its rise) finish: a still shot. */
+async function settled(locator: Locator) {
+  await locator.evaluate((el) =>
+    Promise.all(
+      el
+        .getAnimations({ subtree: true })
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished)
+    )
+  );
 }
 
 async function signedIn(
@@ -1709,6 +1743,30 @@ const DESKTOP_SHOTS = `${SHOTS}/desktop`;
 test.describe("Jim desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
+  test("Hear your morning shows the loading bar on a desktop's Home", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a desktop layout");
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    await mockServer(page);
+    const script = await holdRoute(page, "/api/brief/script");
+    await page.goto("/jim/notes");
+    await page.getByRole("button", { name: "Hear your morning" }).click();
+    await expect(
+      page.getByRole("button", { name: "Writing your morning…" })
+    ).toBeDisabled();
+    const bar = page.getByRole("region", { name: "Now playing" });
+    await expect(bar.getByText("Writing your morning…")).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe("/jim/notes");
+    await settled(bar);
+    await page.screenshot({
+      path: `${DESKTOP_SHOTS}/brief-loading-${testInfo.project.name}.png`,
+    });
+    script.release();
+  });
+
   test(
     "sidebar, page and docked chat; the chat sends from the dock",
     { tag: "@smoke" },
@@ -1911,23 +1969,75 @@ test.describe("Jim pings", () => {
     await expect(page.getByText("Today 3:40 PM")).toBeVisible();
   });
 
-  test("?listen=brief fetches the brief and plays it or leaves a chip", async ({
+  test("?listen=brief shows the loading bar before any audio, then plays or asks for a tap", async ({
     page,
   }) => {
     await page.addInitScript((api) => {
       window.__JIM_TEST__ = { signedIn: true, api };
     }, API);
     const calls = await mockServer(page);
+    const script = await holdRoute(page, "/api/brief/script");
+    const voice = await holdRoute(page, "/api/speak");
     await page.goto("/jim?listen=brief");
-    await expect(page.getByLabel("Message")).toBeVisible();
+    const bar = page.getByRole("region", { name: "Now playing" });
+    // The script is still being written: the bar says so, nothing plays.
+    await expect(bar.getByText("Writing your morning…")).toBeVisible();
+    await expect(bar.getByRole("button", { name: "Cancel" })).toBeVisible();
+    script.release();
     await expect.poll(() => calls.brief).toBe(1);
+    await expect(bar.getByText("Warming up the voice…")).toBeVisible();
+    voice.release();
+    // No voice in tests: the browser's voice reads it, or it waits on a tap.
     await expect(
-      page
-        .getByRole("region", { name: "Now playing" })
-        .or(page.getByRole("button", { name: "Play your morning" }))
+      bar
+        .getByRole("button", { name: "Stop reading" })
+        .or(page.getByRole("button", { name: /Tap to play/ }))
+        .first()
     ).toBeVisible();
+    await expect(bar.getByText("Warming up the voice…")).toBeHidden();
     // The way in leaves no trace in the address.
     expect(new URL(page.url()).search).toBe("");
+  });
+
+  test("Hear your morning shows progress on Home and stays there", async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    await mockServer(page);
+    const script = await holdRoute(page, "/api/brief/script");
+    await page.goto("/jim/notes");
+    await page.getByRole("button", { name: "Hear your morning" }).click();
+    const button = page.getByRole("button", { name: "Writing your morning…" });
+    await expect(button).toBeDisabled();
+    await expect(button).toHaveAttribute("aria-busy", "true");
+    const bar = page.getByRole("region", { name: "Now playing" });
+    await expect(bar).toBeVisible();
+    await expect(bar.getByText("Writing your morning…")).toBeVisible();
+    // A phone stays on Home: Notes is still the page showing.
+    expect(new URL(page.url()).pathname).toBe("/jim/notes");
+    await expect(page.locator("#jim-notes")).toBeVisible();
+    await noSidewaysScroll(page);
+    await settled(bar);
+    await page.screenshot({
+      path: shotName(page, testInfo, "brief-loading", "ayu"),
+    });
+    // A todo's Done/Undo toast lifts above the bar: Cancel stays tappable.
+    await page.getByRole("checkbox", { name: "Water the plants" }).click();
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeVisible();
+    const toastBox = await undo.boundingBox();
+    const barBox = await bar.boundingBox();
+    expect(toastBox && barBox).toBeTruthy();
+    expect(toastBox!.y + toastBox!.height).toBeLessThanOrEqual(barBox!.y);
+    // Cancel stops the wait and the button comes back.
+    await bar.getByRole("button", { name: "Cancel" }).click();
+    await expect(bar).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "Hear your morning" })
+    ).toBeEnabled();
+    script.release();
   });
 
   test("?reflect=1 shows tonight's question and sends the answer with it", async ({

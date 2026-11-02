@@ -45,6 +45,14 @@ export interface ReadAloud {
   toggleSample: (key: string, text: string, voice?: string) => void;
   /** Plays `text` under `key`, replacing what is on. False: nothing could start. */
   play: (key: string, text: string, options?: PlayOptions) => boolean;
+  /**
+   * Shows `key` loading before its text exists, with what is happening
+   * (`stage`). The signal aborts on stop (the bar's Cancel) or when
+   * something else starts; null when nothing may start (the app lock).
+   */
+  prepare: (key: string, title: string, stage: string) => AbortSignal | null;
+  /** What was being prepared failed: the bar shows why. */
+  failPrepared: (message: string) => void;
   /** Unlocks audio inside a tap, ahead of a play that waits on the network. */
   prime: () => void;
   /** Call inside a tap (Send): lets a later automatic read start on iOS. */
@@ -60,6 +68,8 @@ export interface ReadAloud {
 }
 
 const MESSAGE_KEY = "msg:";
+/** The morning brief's keys (useBriefAudio). */
+const BRIEF_KEY = "brief:";
 
 function speechFallback() {
   return speechSupported()
@@ -136,14 +146,33 @@ export default function useReadAloud(
     [player]
   );
 
+  const prepare = useCallback(
+    (key: string, title: string, stage: string) =>
+      player.prepare(key, title, stage),
+    [player]
+  );
+  const failPrepared = useCallback(
+    (message: string) => player.failPrepared(message),
+    [player]
+  );
+
   const prime = useCallback(() => player.unlock(), [player]);
 
   const readNew = useCallback(
     (id: number, text: string) => {
       // A read started while hidden is dropped, not queued for later.
-      if (supported && auto && document.visibilityState !== "hidden") {
-        player.play(`${MESSAGE_KEY}${id}`, text);
+      if (!supported || !auto || document.visibilityState === "hidden") return;
+      // The morning brief (asked for on purpose) isn't cut off by a reply;
+      // the reply stays readable from its Listen button.
+      const { key, status } = player.getState();
+      if (
+        key?.startsWith(BRIEF_KEY) &&
+        status !== "idle" &&
+        status !== "error"
+      ) {
+        return;
       }
+      player.play(`${MESSAGE_KEY}${id}`, text);
     },
     [supported, auto, player]
   );
@@ -202,6 +231,8 @@ export default function useReadAloud(
     readNew,
     toggleSample,
     play,
+    prepare,
+    failPrepared,
     prime,
     unlock,
     togglePause,

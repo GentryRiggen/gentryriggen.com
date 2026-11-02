@@ -98,6 +98,10 @@ interface NotesShellProps {
   onDraft: (text: string) => void;
   /** "Hear your morning" on Home: plays the brief. Without it the button is hidden. */
   onHearBrief?: () => void;
+  /** What the brief is waiting on ("Writing your morning…"), if anything. */
+  briefStage?: string | null;
+  /** Why the brief didn't play, shown by the button. */
+  briefError?: string | null;
   routing?: NotesRouting;
 }
 
@@ -300,6 +304,8 @@ function NotesShellView({
   onLog,
   onDraft,
   onHearBrief,
+  briefStage = null,
+  briefError = null,
   routing,
 }: NotesShellProps & { routing: NotesRouting }) {
   const {
@@ -602,6 +608,8 @@ function NotesShellView({
         onLog={onLog}
         onDraft={onDraft}
         onHearBrief={onHearBrief}
+        briefStage={briefStage}
+        briefError={briefError}
         reminders={{
           api,
           getToken,
@@ -895,7 +903,9 @@ function NotesShellView({
                     ? "max-w-[72rem]"
                     : "max-w-[55rem]"
                 }`
-              : "mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+              : // Room under the page for the now-playing bar JimChat
+                // floats over a phone's Notes (data-dock on its panel: bar, chip or both).
+                "mx-auto w-full max-w-[45rem] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] group-data-[dock=bar]/notes:pb-[calc(6rem+env(safe-area-inset-bottom))]! group-data-[dock=both]/notes:pb-[calc(9.5rem+env(safe-area-inset-bottom))]! group-data-[dock=chip]/notes:pb-[calc(5rem+env(safe-area-inset-bottom))]! sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
           }
         >
           {wide && !detail && (wideTitle || statusRow) && (

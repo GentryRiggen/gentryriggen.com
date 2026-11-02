@@ -114,3 +114,52 @@ it("the Work chip hides personal todos", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Work" }));
   expect(screen.queryByText(title, { exact: false })).toBeNull();
 });
+
+describe("Hear your morning", () => {
+  function hear(props: {
+    briefStage?: string | null;
+    briefError?: string | null;
+  }) {
+    const onHearBrief = jest.fn();
+    render(
+      <NotesHome
+        data={VIEW_FIXTURE}
+        saves={saves}
+        onLog={jest.fn()}
+        onDraft={jest.fn()}
+        onHearBrief={onHearBrief}
+        {...props}
+      />
+    );
+    return onHearBrief;
+  }
+
+  it("plays on a tap", async () => {
+    const onHearBrief = hear({});
+    const button = screen.getByRole("button", { name: "Hear your morning" });
+    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute("aria-busy");
+    await userEvent.click(button);
+    expect(onHearBrief).toHaveBeenCalled();
+  });
+
+  it("waits with a spinner and the stage while the brief loads", () => {
+    hear({ briefStage: "Writing your morning…" });
+    const button = screen.getByRole("button", {
+      name: "Writing your morning…",
+    });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button.querySelector(".animate-spin")).not.toBeNull();
+  });
+
+  it("shows why it didn't play, right by the button", () => {
+    hear({ briefError: "Couldn't get your morning brief." });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't get your morning brief."
+    );
+    expect(
+      screen.getByRole("button", { name: "Hear your morning" })
+    ).toBeEnabled();
+  });
+});
