@@ -2,6 +2,7 @@ import type { UniverseDef } from "../engine/types";
 import { growUniverse } from "./grow";
 import { higherUniverse } from "./higher";
 import { lightUniverse } from "./light";
+import { smileUniverse } from "./smile";
 
 /** A universe that is announced but not built yet. */
 export interface LockedUniverse {
@@ -25,6 +26,7 @@ export const ALL_UNIVERSES: readonly UniverseDef[] = [
   lightUniverse,
   growUniverse,
   higherUniverse,
+  smileUniverse,
 ];
 
 /** Every announced universe, in hub order. */

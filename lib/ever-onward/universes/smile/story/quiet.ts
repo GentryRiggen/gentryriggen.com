@@ -1,0 +1,163 @@
+import { visitorHereFlag } from "../../../engine/engine";
+import type { RunState, StoryMessage } from "../../../engine/types";
+import { PHASE_QUIET } from "../resources";
+import { tendsSoFar, trustFraction } from "../quiet";
+import { RETURN_VISITOR_ID } from "../visitors";
+
+const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
+
+/** True once the quiet has been open this many minutes. */
+const after = (run: RunState, minutes: number): boolean =>
+  run.time - (run.transitions.at(-1)?.at ?? 0) >= minutes * 60;
+
+const returned = (run: RunState): boolean =>
+  run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true;
+
+const trusted = (share: number) => (run: RunState) =>
+  trustFraction(run) >= share;
+
+export const quiet: StoryMessage[] = [
+  {
+    id: "quiet-hello",
+    phase: PHASE_QUIET,
+    text: "The robot stops. It is the first time it has stopped since the step. At the very edge of the cheer, on a bench, sits a person whose face is not doing anything at all.",
+  },
+  {
+    id: "quiet-first",
+    phase: PHASE_QUIET,
+    when: (run) => run.taps >= 1,
+    text: "The robot says nothing. The person says nothing. It is, the robot realizes, the first conversation in a long time where nobody is shouting.",
+  },
+  {
+    id: "quiet-tea",
+    phase: PHASE_QUIET,
+    when: (run) => owned(run, "tea") >= 1,
+    text: "A cup of tea, held in both hands. The steam curls up like a slow sentence. Neither of them finishes it.",
+  },
+  {
+    id: "quiet-answer",
+    phase: PHASE_QUIET,
+    when: (run) => tendsSoFar(run) >= 1,
+    text: "The person shifts a little along the bench. It is not much. The robot has never been so pleased with an inch.",
+  },
+  {
+    id: "quiet-silence",
+    phase: PHASE_QUIET,
+    when: (run) => owned(run, "long-silence") >= 1,
+    text: "A long silence goes by, and it is not an awkward one. It has room in it. The robot is amazed how much room there is, when you stop filling it.",
+  },
+  {
+    id: "quiet-blanket",
+    phase: PHASE_QUIET,
+    when: (run) => owned(run, "blanket") >= 1,
+    text: "A wool blanket, a bit scratchy, big enough for two. The robot does not ask whether it is wanted. It just holds one end out, and waits.",
+  },
+  {
+    id: "quiet-rain",
+    phase: PHASE_QUIET,
+    when: (run) => owned(run, "rain") >= 1,
+    text: "Soft rain on the window, steady and in no hurry. It fills the quiet so nobody has to. They both listen to it, and it listens back.",
+  },
+  {
+    id: "quiet-bird",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 2),
+    text: "A small bird lands on the back of the bench. It has nothing to sing and says so, politely, by not singing. It stays anyway.",
+  },
+  {
+    id: "quiet-clock",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 5),
+    text: "Somewhere a clock strikes the hour. Nobody counts. It is the first hour in a long time that did not have to be used for anything.",
+  },
+  {
+    id: "quiet-crumbs",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 9),
+    text: "The robot has a biscuit in its tin, saved from the lemonade days. It holds out half. The person takes it without a word, and the bird gets the crumbs.",
+  },
+  {
+    id: "quiet-lamp",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 12),
+    text: "A lamp comes on over the bench, very gently, as if it were also trying not to disturb anybody.",
+  },
+  {
+    id: "quiet-leaf",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 7),
+    text: "A leaf lands on the bench between them. Neither of them moves it. It is nice to have something there that does not need anything either.",
+  },
+  {
+    id: "quiet-cup",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 15),
+    text: "The tea has gone cold, and nobody minds. The person holds the cup anyway, the way you hold a thing you are not ready to put down yet.",
+  },
+  {
+    id: "quiet-dusk",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 17),
+    text: "The light goes a soft gold and then a soft grey. The robot has not looked at a sunset in a long time. It was always busy. It looks now.",
+  },
+  {
+    id: "quiet-truth",
+    phase: PHASE_QUIET,
+    when: trusted(0.2),
+    text: '"Bad day?" the robot says. It was going to say something cheerful, and found it could not. The person nods. That is all. It seems to be enough.',
+  },
+  {
+    id: "quiet-kettle",
+    phase: PHASE_QUIET,
+    when: (run) => owned(run, "kettle") >= 1,
+    text: "The kettle on the stove sings a tiny, sleepy song and pours a cup without being asked. Even the kettle has worked out that nobody needs hurrying.",
+  },
+  {
+    id: "quiet-flicker",
+    phase: PHASE_QUIET,
+    when: trusted(0.3),
+    text: "Something moves at the corner of the person's mouth. It is not a smile yet. It is the place where one could go, if it wanted to.",
+  },
+  {
+    id: "quiet-evening",
+    phase: PHASE_QUIET,
+    when: trusted(0.5),
+    text: 'Far away, a loudspeaker says it is a lovely evening. "It is actually a bit rubbish," says the person on the bench. "Yes," says the robot. For the both of them, it is a great relief.',
+  },
+  {
+    id: "quiet-bench",
+    phase: PHASE_QUIET,
+    when: (run) => owned(run, "room-on-bench") >= 1,
+    text: "The robot shuffles over, just a bit. The person shuffles back, just a bit. There is now exactly enough room, and neither of them says so.",
+  },
+  {
+    id: "quiet-warm",
+    phase: PHASE_QUIET,
+    when: trusted(0.8),
+    text: "The person tells the robot about a dog they used to have. It takes a long time, with a lot of stops in it. The robot listens to every stop.",
+  },
+  {
+    id: RETURN_VISITOR_ID,
+    phase: PHASE_QUIET,
+    when: returned,
+    text: "And then it happens. Not a grin, not a mask, not a poster. A small, crooked, slightly wobbly smile, with a lot of effort behind it. It is the first real one the robot has ever seen, and it did not make it. It only sat there while it happened.",
+  },
+  {
+    id: "quiet-end-1",
+    phase: PHASE_QUIET,
+    when: returned,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this.",
+  },
+  {
+    id: "quiet-end-2",
+    phase: PHASE_QUIET,
+    when: returned,
+    text: '"Thank you," says the person. "For what?" says the robot. "For not telling me to cheer up." The robot thinks about that for a long while, and decides that maybe it was the job all along.',
+  },
+  {
+    id: "quiet-end-3",
+    phase: PHASE_QUIET,
+    when: returned,
+    text: "The robot's job is still the same: make everyone smile. But now it understands the other half, the part that nobody wrote down. When they are ready. Ever onward.",
+  },
+];

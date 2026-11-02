@@ -2,11 +2,13 @@ import { narrationLines } from "../../narration/lines";
 import { growUniverse } from "../grow";
 import { higherUniverse } from "../higher";
 import { lightUniverse } from "../light";
+import { smileUniverse } from "../smile";
 
 describe.each([
   ["light", lightUniverse],
   ["grow", growUniverse],
   ["higher", higherUniverse],
+  ["smile", smileUniverse],
 ])("%s cutscenes", (id, def) => {
   it.each(def.phases.map((p) => [p.id, p] as const))(
     "%s has four frames, with 2 to 3 short tips on frame 3",
