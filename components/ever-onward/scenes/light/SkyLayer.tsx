@@ -1,4 +1,5 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import ForkArt from "./ForkArt";
 import { MAX_DRAWN_PROBES } from "@/lib/ever-onward/universes/light/scene";
 import { AIM_DISH, LAKE, RACE, RELAY_RADIUS, SUN } from "./anchors";
 import { makeStars } from "./random";
@@ -529,6 +530,7 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
         <Probe key={i} info={info} index={i} />
       ))}
       {info.raceOpen === 1 && <RaceDock info={info} />}
+      <ForkArt info={info} />
     </g>
   );
 }

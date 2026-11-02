@@ -29,6 +29,9 @@ import {
   isFundOpen,
 } from "./fund";
 import { lightUniverse } from ".";
+import { cloneRun } from "../../engine/engine";
+import { chosenSide, forkActionId, forkOf, chooseSide } from "./forks";
+import type { ForkDef, ForkSide } from "./forks";
 import { fundIncome } from "./tick";
 import { OVERDRIVE_ACTION, overdriveCost } from "./overdrive";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
@@ -398,6 +401,42 @@ export const runsOverdrive =
       : [];
   };
 
+/** Seconds the bot looks ahead at what a side will pay, and keeps benefiting. */
+const FORK_LOOK_SECONDS = 240;
+const FORK_VALUE_SECONDS = 600;
+/** The bot looks at a fork once in this many seconds (a stretch of attention). */
+const FORK_LOOK_EVERY = 10;
+
+/** The main resource's pace after `FORK_LOOK_SECONDS`, with this side chosen (or none). */
+function paceAfter(run: RunState, side: ForkSide | null): number {
+  const draft = cloneRun(run);
+  if (side) chooseSide(draft, side.id);
+  for (let t = 0; t < FORK_LOOK_SECONDS; t += 10) lightUniverse.tick(draft, 10);
+  const main = lightUniverse.phases[run.phase].manualResource;
+  const before = draft.resources[main] ?? 0;
+  lightUniverse.tick(draft, 1);
+  return (draft.resources[main] ?? 0) - before;
+}
+
+/** What a side is worth: the pace it adds over a while, less what it costs. */
+const sideValue = (run: RunState, base: number, side: ForkSide): number =>
+  (paceAfter(run, side) - base) * FORK_VALUE_SECONDS - side.price;
+
+/** Picks the fork's better side by what it will pay, and buys it when it can. */
+export const choosesFork: OilChoice = (run, available) => {
+  const fork: ForkDef | undefined = forkOf(run);
+  if (!fork || !fork.isOpen(run) || chosenSide(run, fork) !== null) return [];
+  if (Math.floor(run.time) % FORK_LOOK_EVERY !== 0) return [];
+  const money = run.resources[fork.currency] ?? 0;
+  if (money < Math.min(...fork.sides.map((s) => s.price))) return [];
+  const base = paceAfter(run, null);
+  const best = [...fork.sides].sort(
+    (a, b) => sideValue(run, base, b) - sideValue(run, base, a)
+  )[0];
+  const id = forkActionId(best.id);
+  return money >= best.price && available.includes(id) ? [id] : [];
+};
+
 const combine =
   (...choices: OilChoice[]): OilChoice =>
   (run, available) =>
@@ -422,10 +461,13 @@ const withOil = (
   garden: OilChoice = () => [],
   lamps: OilChoice = () => [],
   fund: OilChoice = () => [],
-  know: OilChoice = () => []
+  know: OilChoice = () => [],
+  fork: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
+  // The fork first: a big, rare choice should not lose its coins to oil.
   actions: combine(
+    fork,
     actions,
     care,
     weather,
@@ -477,7 +519,8 @@ export function lightBots(
       tendsGarden({ skipEvery: 6 }),
       setsLamps({ patience: 60 }),
       investsInFund(fundShare, fundWait),
-      runsOverdrive(85)
+      runsOverdrive(85),
+      choosesFork
     ),
     realistic: withOil(
       base.realistic,
@@ -489,7 +532,8 @@ export function lightBots(
       tendsGarden({ skipEvery: 3 }),
       setsLamps({ patience: 60 }),
       investsInFund(fundShare, fundWait),
-      runsOverdrive(80)
+      runsOverdrive(80),
+      choosesFork
     ),
     idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
     dawdler: {
@@ -502,7 +546,9 @@ export function lightBots(
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
         setsLamps({ patience: 60 }),
-        investsInFund(fundShare, fundWait * 2)
+        investsInFund(fundShare, fundWait * 2),
+        () => [],
+        choosesFork
       ),
       greetAfter: 60,
     },

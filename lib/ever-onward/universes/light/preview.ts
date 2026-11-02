@@ -45,7 +45,7 @@ export function previewOf(
   id: string,
   stats: readonly Stat[]
 ): (run: RunState) => string {
-  return (run) => linesOf(run, afterBuying(run, id), stats);
+  return (run) => previewLines(run, afterBuying(run, id), stats);
 }
 
 /** The same, for a project: each stat before and after it is done. */
@@ -53,10 +53,10 @@ export function projectPreviewOf(
   id: string,
   stats: readonly Stat[]
 ): (run: RunState) => string {
-  return (run) => linesOf(run, afterProject(run, id), stats);
+  return (run) => previewLines(run, afterProject(run, id), stats);
 }
 
-function linesOf(
+export function previewLines(
   run: RunState,
   after: RunState,
   stats: readonly Stat[]

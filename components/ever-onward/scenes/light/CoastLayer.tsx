@@ -1,4 +1,5 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import ForkArt from "./ForkArt";
 import {
   COTTAGE,
   DEPOT,
@@ -609,6 +610,7 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
         />
         <LensRings lenses={info.lensLevel} />
       </g>
+      <ForkArt info={info} />
       {/* storm: rain and lightning (the darker sky is drawn behind the ships) */}
       {isStorm && (
         <g>

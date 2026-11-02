@@ -76,6 +76,7 @@ import {
   waterGarden,
 } from "./garden";
 import { formatNumber } from "../../engine/format";
+import { FORK_ACTIONS } from "./forks";
 import {
   OVERDRIVE_ACTION,
   isOverdriveOn,
@@ -510,6 +511,7 @@ const FUND_OUT: ActionDef = {
 
 export const ACTIONS: readonly ActionDef[] = [
   OVERDRIVE,
+  ...FORK_ACTIONS,
   ...FUND_IN,
   FUND_OUT,
   BUY_OIL,

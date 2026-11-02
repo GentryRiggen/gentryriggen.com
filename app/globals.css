@@ -3313,3 +3313,190 @@ html:has(.jim-app) body {
     animation: none;
   }
 }
+
+/* Ever Onward: the forks in Keep the Light On (Fresnel or keepers, coal or
+   wind, swarm or mirrors, let go or keep). Decorative loops; all of them
+   stand still under reduced motion. */
+@keyframes ltGlint {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ltFarBeam {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: rotate(-6deg);
+  }
+  50% {
+    opacity: 0.7;
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes ltWalk {
+  0%,
+  100% {
+    transform: translateX(-9px);
+  }
+  50% {
+    transform: translateX(9px);
+  }
+}
+
+@keyframes ltSmog {
+  0% {
+    opacity: 0.75;
+    transform: translate(0, 0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -34px) scale(2.2);
+  }
+}
+
+@keyframes ltHaze {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.36;
+  }
+}
+
+@keyframes ltRotor {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ltFloatAway {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -130px);
+  }
+}
+
+@keyframes ltHalo {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.12);
+  }
+}
+
+.lt-glint {
+  animation: ltGlint 2.6s ease-in-out infinite;
+}
+
+.lt-glint-b {
+  animation: ltGlint 3.7s ease-in-out -1.1s infinite;
+}
+
+.lt-far-beam {
+  animation: ltFarBeam 6s ease-in-out infinite;
+}
+
+.lt-walk {
+  animation: ltWalk 7s ease-in-out infinite;
+}
+
+.lt-walk-b {
+  animation: ltWalk 9s ease-in-out -3s infinite;
+}
+
+.lt-walk-c {
+  animation: ltWalk 6s ease-in-out -1.5s infinite;
+}
+
+.lt-smog {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ltSmog 4.2s ease-out infinite;
+}
+
+.lt-smog-b {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ltSmog 4.2s ease-out -1.4s infinite;
+}
+
+.lt-smog-c {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ltSmog 4.2s ease-out -2.8s infinite;
+}
+
+.lt-haze {
+  animation: ltHaze 7s ease-in-out infinite;
+}
+
+.lt-rotor {
+  animation: ltRotor 7s linear infinite;
+}
+
+.lt-rotor-b {
+  animation: ltRotor 9s linear -3s infinite;
+}
+
+.lt-orbit {
+  animation: ltRotor 24s linear infinite;
+}
+
+.lt-orbit-r {
+  animation: ltRotor 32s linear infinite reverse;
+}
+
+.lt-float-away {
+  animation: ltFloatAway 9s ease-in infinite;
+}
+
+.lt-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ltHalo 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-glint,
+  .lt-glint-b,
+  .lt-far-beam,
+  .lt-walk,
+  .lt-walk-b,
+  .lt-walk-c,
+  .lt-smog,
+  .lt-smog-b,
+  .lt-smog-c,
+  .lt-haze,
+  .lt-rotor,
+  .lt-rotor-b,
+  .lt-orbit,
+  .lt-orbit-r,
+  .lt-float-away,
+  .lt-halo {
+    animation: none;
+  }
+
+  .lt-smog,
+  .lt-smog-b,
+  .lt-smog-c {
+    opacity: 0.35;
+  }
+}

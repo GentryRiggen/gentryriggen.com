@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import ForkArt from "./ForkArt";
 import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
 import { PLANET, planetPoint, slotAngle, type NightSlot } from "./anchors";
 import { makeStars, seeded } from "./random";
@@ -657,6 +658,7 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           <ControlPost info={info} />
         </Machine>
       )}
+      <ForkArt info={info} />
     </g>
   );
 }

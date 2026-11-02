@@ -72,6 +72,8 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "lampChanges", label: "Streetlight changes", phases: HIDDEN },
   { id: "rush", label: "Evening rush", phases: HIDDEN },
   { id: "rushCooldown", label: "Next rush", initial: 90, phases: HIDDEN },
+  // The forks: when the wind farms were started, read by forkState.ts
+  { id: "forkWindAt", label: "Wind farms started at", phases: HIDDEN },
   // The fund (every part): the savings jar and its tallies, read by fund.ts
   { id: "fund", label: "In the fund", phases: HIDDEN },
   { id: "fundSince", label: "Fund, age of the money", phases: HIDDEN },

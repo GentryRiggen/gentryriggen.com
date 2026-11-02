@@ -29,6 +29,56 @@ export const TUNING = {
       lastLights: 10,
     },
   },
+  /**
+   * The forks (see forks.ts): in every part, one choice locks the other for
+   * the run. Prices are in the part's currency; the effects are plain
+   * multipliers the tick reads.
+   */
+  fork: {
+    coast: {
+      /** Fresnel lens: every flash (yours and the keepers') guides this many times the ships. */
+      fresnelFlash: 2.5,
+      /** More keepers: they flash this many times as often, and burn more oil. */
+      crewsFlash: 3,
+      crewsOil: 1.3,
+    },
+    night: {
+      /** Coal: every plant makes this much more at once, and the grid strains more. */
+      coalSupply: 1.8,
+      coalStrain: 1.6,
+      /** Wind: slow to build, then this much more, and the grid strains less. */
+      windSupply: 2.6,
+      windStrain: 0.7,
+      windRampSeconds: 150,
+    },
+    sky: {
+      /** More probes: the fleet grows at once, and drifts off course faster. */
+      swarmProbes: 3,
+      swarmDrift: 1.5,
+      /** Bigger mirrors: every collector catches more, and the fleet is steadier. */
+      mirrorsEnergy: 2.6,
+      mirrorsDrift: 0.85,
+    },
+    last: {
+      /** Let it go: resolve comes faster and the flame fades faster. */
+      releaseResolve: 1.8,
+      releaseFade: 1.6,
+      /** Keep it: the flame holds, and every tap is worth more resolve. */
+      keepFade: 0.4,
+      keepTaps: 2,
+    },
+    /** What each side costs. */
+    costs: {
+      fresnel: 5000,
+      crews: 5000,
+      coal: 9000,
+      wind: 30000,
+      swarm: 4000,
+      mirrors: 4000,
+      release: 150,
+      keep: 150,
+    },
+  },
   coast: {
     fareGrowth: 1.3,
     /** A better lens helps every flash, the keepers' as much as yours. */

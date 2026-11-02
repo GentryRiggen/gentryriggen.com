@@ -15,6 +15,7 @@ import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
 import { tickFund } from "./fund";
+import { hasFork, windRamp } from "./forkState";
 import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
 import { outageFactor, tickWeather } from "./weather";
 
@@ -27,6 +28,7 @@ const {
   lamps: LAMPS,
 } = TUNING;
 const SP = P.sky;
+const FK = TUNING.fork;
 
 /** True once the night project `id` is done (see projects.ts). */
 export const hasProject = (run: RunState, id: string): boolean =>
@@ -56,8 +58,16 @@ export function tier(run: RunState, base: string): number {
 export const lighthouseCount = (run: RunState): number =>
   1 + level(run, "lighthouse");
 
+/** The Fresnel lens guides more ships with every flash, yours and the keepers'. */
+export const fresnelMult = (run: RunState): number =>
+  hasFork(run, "fresnel") ? FK.coast.fresnelFlash : 1;
+
+/** More keepers flash far more often (they do not help your own taps). */
+export const keeperCrewMult = (run: RunState): number =>
+  hasFork(run, "crews") ? FK.coast.crewsFlash : 1;
+
 export const shipsPerFlash = (run: RunState): number =>
-  (1 + level(run, "lens")) * tapMult(run);
+  (1 + level(run, "lens")) * tapMult(run) * fresnelMult(run);
 
 export const fare = (run: RunState): number =>
   C.fareGrowth ** tier(run, "fees") * C.dockBonus ** tier(run, "dock");
@@ -93,6 +103,8 @@ export const autoFlashRate = (run: RunState): number =>
   lighthouseCount(run) *
   trainingMult(run) *
   (1 + C.lensAutoBonus * level(run, "lens")) *
+  fresnelMult(run) *
+  keeperCrewMult(run) *
   tapMult(run) *
   speed(run);
 
@@ -100,7 +112,9 @@ export const autoFlashRate = (run: RunState): number =>
 export const autoCoinsPerSecond = (run: RunState): number =>
   autoFlashRate(run) * fare(run);
 
-const oilSaving = (run: RunState): number => C.wickSaving ** tier(run, "wick");
+const oilSaving = (run: RunState): number =>
+  C.wickSaving ** tier(run, "wick") *
+  (hasFork(run, "crews") ? FK.coast.crewsOil : 1);
 
 /** Lamp oil burned per second: a steady glow plus a bit per ship guided. */
 export const burnPerSecond = (run: RunState, shipsPerSecond: number): number =>
@@ -238,6 +252,21 @@ export const plantMW = (run: RunState, index: number): number =>
 export const plantCount = (run: RunState): number =>
   N.gensMW.reduce((sum, _, i) => sum + level(run, `gen${i + 1}`), 0);
 
+/**
+ * Coal pays at once; the wind farms grow in over `windRampSeconds` to a
+ * bigger number. Neither before the fork is chosen.
+ */
+export const forkSupplyMult = (run: RunState): number =>
+  hasFork(run, "coal")
+    ? FK.night.coalSupply
+    : 1 + (FK.night.windSupply - 1) * windRamp(run);
+
+/** Coal strains the grid; the wind eases it as it is built. */
+export const forkStrainMult = (run: RunState): number =>
+  hasFork(run, "coal")
+    ? FK.night.coalStrain
+    : 1 + (FK.night.windStrain - 1) * windRamp(run);
+
 /** Megawatts of everything built, with the lines' bonus. */
 export function supplyMW(run: RunState): number {
   const raw = N.gensMW.reduce(
@@ -247,7 +276,8 @@ export function supplyMW(run: RunState): number {
   return (
     raw *
     (1 + N.lineBonus * tier(run, "lines")) *
-    N.substationBonus ** tier(run, "subs")
+    N.substationBonus ** tier(run, "subs") *
+    forkSupplyMult(run)
   );
 }
 
@@ -364,6 +394,7 @@ export function strainPerSecond(run: RunState): number {
     ifProject(run, "line-patrols", P.patrolStrain) *
     ifProject(run, "co-op", P.coopStrain) *
     lampEffect(run).strain *
+    forkStrainMult(run) *
     overdriveStrain(run)
   );
 }
@@ -428,6 +459,7 @@ export const collectorEnergyPerSecond = (run: RunState): number =>
   S.collectorEnergy *
   S.mirrorBonus ** tier(run, "mirror") *
   ifProject(run, "mirror-polish", SP.polishBoost) *
+  (hasFork(run, "mirrors") ? FK.sky.mirrorsEnergy : 1) *
   overdriveBoost(run) *
   speed(run);
 
@@ -463,6 +495,11 @@ export function driftPerSecond(run: RunState): number {
     (S.driftBase + S.driftPerDecade * Math.log10(1 + res(run, "probes"))) *
     S.chartsSaving ** Math.min(1, tier(run, "nav")) *
     ifProject(run, "mirror-polish", SP.polishDrift) *
+    (hasFork(run, "swarm")
+      ? FK.sky.swarmDrift
+      : hasFork(run, "mirrors")
+        ? FK.sky.mirrorsDrift
+        : 1) *
     overdriveStrain(run)
   );
 }
@@ -600,13 +637,19 @@ export function fadeRate(run: RunState): number {
     (res(run, "lights") + L.darkness) *
     L.decayPerLight *
     L.fadeSaving ** giftsOwned(run, "fade") *
+    (hasFork(run, "release")
+      ? FK.last.releaseFade
+      : hasFork(run, "keep")
+        ? FK.last.keepFade
+        : 1) *
     (1 - L.brightDecay * (run.mods.bright ?? 0))
   );
 }
 
 /** A tap is worth more for every moon-like light let go. */
 export const tapGiftMult = (run: RunState): number =>
-  1 + L.tapGift * giftsOwned(run, "taps");
+  (1 + L.tapGift * giftsOwned(run, "taps")) *
+  (hasFork(run, "keep") ? FK.last.keepTaps : 1);
 
 /**
  * Share of the way to full one tap brings. The "taps" gifts make a tap let go
@@ -647,6 +690,7 @@ export function resolvePerSecond(run: RunState): number {
     L.resolvePerSecond *
     steerBonus(run) *
     (1 + L.reliefPerLetGo * lightsLetGo(run)) *
+    (hasFork(run, "release") ? FK.last.releaseResolve : 1) *
     warmth *
     speed(run)
   );

@@ -1,4 +1,5 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import ForkArt from "./ForkArt";
 
 import { plotDigit } from "@/lib/ever-onward/universes/light/garden";
 
@@ -244,6 +245,7 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
           </g>
         </g>
       </g>
+      <ForkArt info={info} />
       {info.finished > 0 && (
         <rect
           x="-1200"

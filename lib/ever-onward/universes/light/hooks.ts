@@ -45,6 +45,7 @@ import {
   fundBalance,
   isFundOpen,
 } from "./fund";
+import { FORK_ACTION_IDS, chosenSide, forkOf } from "./forks";
 import { OVERDRIVE_ACTION, isOverdriveOn, isOverdriveOpen } from "./overdrive";
 import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
@@ -101,6 +102,9 @@ export function lightPlates(run: RunState): string[] {
     if (isGardenOpen(run) && picksSoFar(run) >= 2) plates.push("garden");
   }
   if (isFundOpen(run) && fundBalance(run) > 0) plates.push("fund");
+  const fork = forkOf(run);
+  if (fork && fork.isOpen(run) && chosenSide(run, fork) === null)
+    plates.push("fork");
   if (isOverdriveOpen(run) && isOverdriveOn(run)) plates.push("overdrive");
   return plates;
 }
@@ -120,6 +124,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   garden: GARDEN_ACTION_IDS,
   fund: FUND_ACTION_IDS,
   overdrive: [OVERDRIVE_ACTION],
+  fork: FORK_ACTION_IDS,
 };
 
 /**
@@ -137,6 +142,7 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   ...LAMP_ACTION_IDS,
   ...FUND_CHOICE_IDS,
   OVERDRIVE_ACTION,
+  ...FORK_ACTION_IDS,
 ];
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
@@ -224,6 +230,11 @@ function sceneKey(run: RunState): string {
     s.gardenCode,
     s.rainBarrel,
     s.finished,
+    s.forkCoast,
+    s.forkNight,
+    s.forkSky,
+    s.forkLast,
+    s.windBuilt,
     Math.floor(s.cities),
     Math.round(s.powered * 20),
   ].join("|");

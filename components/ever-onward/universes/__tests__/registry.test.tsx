@@ -1,4 +1,5 @@
 import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
+import ForkPanel from "../../game/ForkPanel";
 import FundPanel from "../../game/FundPanel";
 import MemoryGarden from "../../game/MemoryGarden";
 import ProbeRaces from "../../game/ProbeRaces";
@@ -16,6 +17,7 @@ describe("the universe UI registry", () => {
 
   it("keeps Light's side panels in today's order", () => {
     expect(uiFor("light").panels).toEqual([
+      ForkPanel,
       FundPanel,
       TideClock,
       ProbeRaces,
