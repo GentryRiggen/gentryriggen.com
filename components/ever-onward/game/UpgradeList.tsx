@@ -63,6 +63,14 @@ export default function UpgradeList({
   pinnedId,
 }: UpgradeListProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  // Cards whose flavour text is open: the default card is name, cost, effect.
+  const [aboutOpen, setAboutOpen] = useState<ReadonlySet<string>>(new Set());
+  const toggleAbout = (id: string) =>
+    setAboutOpen((open) => {
+      const next = new Set(open);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   const visible = visibleUpgrades(def, run);
   // The order is frozen between purchases and reveals, so a card never jumps
   // under a finger when affordability flips. Affordable first, then cheapest.
@@ -141,6 +149,7 @@ export default function UpgradeList({
             >
               <button
                 type="button"
+                data-testid="lm-upgrade-card"
                 aria-disabled={!affordable}
                 onClick={(event) => {
                   if (!affordable) return;
@@ -167,6 +176,14 @@ export default function UpgradeList({
                       ▶︎
                     </span>
                     {u.name}
+                    {u.badge && (
+                      <span
+                        data-testid="lm-badge"
+                        className="ml-2 inline-block border-2 border-emerald-300 bg-emerald-400 px-1.5 py-0.5 align-middle text-[10px] leading-none text-emerald-950"
+                      >
+                        {u.badge}
+                      </span>
+                    )}
                   </span>
                   <span
                     className={`${pixelClass} shrink-0 text-right text-[10px] tabular-nums ${
@@ -178,9 +195,6 @@ export default function UpgradeList({
                       {currencyLabel(u.currency).toLowerCase()}
                     </span>
                   </span>
-                </span>
-                <span className="mt-2 block font-mono text-sm">
-                  {u.description}
                 </span>
                 {u.effectPreview &&
                   (noEffect ? (
@@ -198,7 +212,7 @@ export default function UpgradeList({
                   ) : (
                     <span
                       data-testid="lm-effect-preview"
-                      className="mt-2 block font-mono text-sm font-bold tabular-nums text-emerald-300"
+                      className="mt-2 block whitespace-pre-line font-mono text-base leading-snug font-bold tabular-nums text-emerald-300"
                     >
                       {u.effectPreview(run)}
                     </span>
@@ -226,6 +240,23 @@ export default function UpgradeList({
                   </span>
                 )}
               </button>
+              <button
+                type="button"
+                aria-expanded={aboutOpen.has(u.id)}
+                aria-label={`About ${u.name}`}
+                onClick={() => toggleAbout(u.id)}
+                className={`mt-1 inline-flex min-h-8 touch-manipulation items-center px-1 font-mono text-xs text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-amber-200 ${retroFocusClass}`}
+              >
+                {aboutOpen.has(u.id) ? "Hide" : "About"}
+              </button>
+              {aboutOpen.has(u.id) && (
+                <p
+                  data-testid="lm-about"
+                  className="font-mono text-sm text-slate-300"
+                >
+                  {u.description}
+                </p>
+              )}
             </li>
           );
         })}

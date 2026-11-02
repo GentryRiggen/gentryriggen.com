@@ -201,7 +201,8 @@ describe("Ever Onward game", () => {
     const user = userEvent.setup();
     await renderHub();
     await user.click(await screen.findByRole("button", { name: /Continue/ }));
-    expect(screen.getByTestId("lm-res-oil")).toHaveTextContent("0");
+    // The Coast shows its goal instead of the stats grid; it still reads fine.
+    expect(screen.getByTestId("lm-goal")).toHaveTextContent("LIGHT THE COAST");
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 

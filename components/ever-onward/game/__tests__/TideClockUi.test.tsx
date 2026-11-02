@@ -17,6 +17,8 @@ function openRun(): RunState {
     {
       ...base,
       owned: { keeper: 5, "dock-1": 1 },
+      // Nothing in the Coast opens the clock now; a save that has it keeps it.
+      flags: { ...base.flags, "tide-open": true },
       resources: { ...base.resources, coins: 500 },
     },
     0.1

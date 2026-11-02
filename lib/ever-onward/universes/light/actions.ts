@@ -27,12 +27,14 @@ import {
   rushBonus,
   balanceKnowhow,
   tankCapacity,
+  isBeamOpen,
   calmIncomePerSecond,
   calmSkyIncomePerSecond,
   resolvePerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
 import { LAMP_ACTIONS } from "./lamps";
+import { BEAM_ACTIONS } from "./beam";
 import {
   TOWNS,
   chanceOf,
@@ -109,7 +111,9 @@ const trendArrow = (trend: number): string =>
 const BUY_OIL: ActionDef = {
   id: "buy-oil",
   phases: [PHASE_COAST],
-  visibleWhen: (run) => run.resources.ships >= 12,
+  // The lamp panel draws the button next to the tank and the knob.
+  isInline: true,
+  visibleWhen: (run) => isBeamOpen(run),
   describe: (run) => {
     const oil = barrelOil(run);
     const room = tankCapacity(run) - run.resources.oil;
@@ -528,4 +532,5 @@ export const ACTIONS: readonly ActionDef[] = [
   WATER_GARDEN,
   PICK_BLOOMS,
   ...LAMP_ACTIONS,
+  ...BEAM_ACTIONS,
 ];

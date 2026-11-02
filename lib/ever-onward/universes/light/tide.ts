@@ -21,8 +21,6 @@ const T = TUNING.tide;
 export const TIDE_OPEN_FLAG = "tide-open";
 export const BIGGER_NETS_ID = "nets-1";
 export const TIDE_MILL_ID = "tide-mill";
-/** The purchase that opens the clock: the fish market on the quay. */
-export const TIDE_OPEN_UPGRADE = "dock-1";
 
 export const SET_NETS_ACTION = "tide-set";
 export const HAUL_ACTION = "tide-haul";
@@ -167,8 +165,8 @@ function flowSurge(run: RunState, dt: number): void {
 }
 
 /**
- * Opens the clock (the milestone's purchase calls this, so its story line
- * lands with the purchase; the tick is the fallback for old saves). The sea
+ * Opens the clock (no purchase calls this now: the Coast cut it, and only
+ * tests and saves that already have it open use it). The sea
  * starts at low tide, so the first rise is a whole one.
  */
 export function openTide(run: RunState): void {
@@ -192,10 +190,9 @@ export function tickTide(
     flowSurge(run, dt);
     return;
   }
-  if (!isTideOpen(run)) {
-    if (owned(run, TIDE_OPEN_UPGRADE) > 0) openTide(run);
-    return;
-  }
+  // Nothing in the Coast opens the clock any more; only a save that already
+  // had it open keeps playing it.
+  if (!isTideOpen(run)) return;
   flowSurge(run, dt);
   const r = run.resources;
   if (r.tdPaused === 1) return;

@@ -9,6 +9,8 @@ interface NextUpgradeBarProps {
   /** Scrolls the player to the upgrade's card. */
   onSelect: () => void;
   testId: string;
+  /** A slimmer bar, for when the part's goal is the big line above it. */
+  isSmall?: boolean;
 }
 
 /** A segmented bar filling toward the next upgrade; glows once it can be bought. */
@@ -16,6 +18,7 @@ export default function NextUpgradeBar({
   next,
   onSelect,
   testId,
+  isSmall = false,
 }: NextUpgradeBarProps) {
   const filled = useAnimatedNumber(next.percent);
   const label = next.isReady ? "Ready" : `${next.percent}%`;
@@ -25,7 +28,7 @@ export default function NextUpgradeBar({
       data-testid={testId}
       onClick={onSelect}
       aria-label={`Next goal: ${next.upgrade.name}, ${label}. Go to upgrade`}
-      className={`block min-h-11 w-full touch-manipulation px-1 py-1.5 text-left ${retroFocusClass}`}
+      className={`block w-full touch-manipulation px-1 text-left ${isSmall ? "min-h-8 py-0.5" : "min-h-11 py-1.5"} ${retroFocusClass}`}
     >
       <span className="flex items-baseline justify-between gap-3">
         <span className={`${pixelClass} truncate text-[10px] text-cyan-200`}>
@@ -42,12 +45,12 @@ export default function NextUpgradeBar({
           {label}
         </span>
       </span>
-      <span className="relative mt-1.5 block">
+      <span className={`relative block ${isSmall ? "mt-0.5" : "mt-1.5"}`}>
         <progress
           aria-hidden="true"
           value={filled}
           max={100}
-          className={`block h-3 w-full appearance-none overflow-hidden border-2 [&::-webkit-progress-bar]:bg-slate-900 [&::-moz-progress-bar]:bg-amber-400 [&::-webkit-progress-value]:bg-amber-400 ${
+          className={`block ${isSmall ? "h-2" : "h-3"} w-full appearance-none overflow-hidden border-2 [&::-webkit-progress-bar]:bg-slate-900 [&::-moz-progress-bar]:bg-amber-400 [&::-webkit-progress-value]:bg-amber-400 ${
             next.isReady
               ? "border-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.6)]"
               : "border-slate-600"

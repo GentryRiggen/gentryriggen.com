@@ -10,7 +10,7 @@ describe("lamp alerts", () => {
     expect(lightAlert(run)).toBeNull();
     expect(sceneInfo(run).lampDry).toBe(0);
     run.resources.oil = 0;
-    expect(lightAlert(run)).toMatch(/Out of oil!.*30% less/);
+    expect(lightAlert(run)).toMatch(/Out of oil!.*75% less/);
     expect(sceneInfo(run).lampDry).toBe(1);
   });
 

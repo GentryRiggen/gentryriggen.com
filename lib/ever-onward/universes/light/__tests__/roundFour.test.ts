@@ -15,13 +15,6 @@ import { def } from "./fixtures";
 import { TUNING } from "../tuning";
 import { flameOf } from "../tick";
 import {
-  HAUL_ACTION,
-  SET_NETS_ACTION,
-  TIDE_MILL_ID,
-  TIDE_OPEN_FLAG,
-  netState,
-} from "../tide";
-import {
   WEATHER_OPEN_FLAG,
   WEATHER_VANE_ID,
   chanceOf,
@@ -169,34 +162,6 @@ describe("old saves with levels above today's caps", () => {
 });
 
 describe("side-machine helpers arrive mid-life, and hands still pay more", () => {
-  it("the tide mill shows after two hauls, and tending beats the mill alone", () => {
-    const flags = { [TIDE_OPEN_FLAG]: true };
-    const nets = { "nets-1": 1 };
-    expect(shown(TIDE_MILL_ID, at(0, nets, { tdHauls: 1 }, flags))).toBe(false);
-    expect(shown(TIDE_MILL_ID, at(0, nets, { tdHauls: 2 }, flags))).toBe(true);
-
-    const milled = tick(
-      def,
-      at(
-        0,
-        { keeper: 6, "dock-1": 1, ...nets, [TIDE_MILL_ID]: 1 },
-        { oil: 999 }
-      ),
-      1
-    );
-    const cycle = TUNING.tide.cycleSeconds;
-    let tended = performAction(def, milled, SET_NETS_ACTION);
-    for (let t = 0; t < cycle * 2; t += 1) {
-      tended = tick(def, tended, 1);
-      if (netState(tended) === "full")
-        tended = performAction(def, tended, HAUL_ACTION);
-      if (netState(tended) === "empty")
-        tended = performAction(def, tended, SET_NETS_ACTION);
-    }
-    const alone = wait(milled, cycle * 2);
-    expect(tended.resources.coins).toBeGreaterThan(alone.resources.coins);
-  });
-
   it("the weather vane shows after two fronts (no crews needed), and a hand shield pays more", () => {
     const flags = { [WEATHER_OPEN_FLAG]: true };
     expect(shown(WEATHER_VANE_ID, at(1, {}, { wxFronts: 1 }, flags))).toBe(

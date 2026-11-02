@@ -9,6 +9,7 @@ import {
   calmTapCoins,
   driftPerSecond,
   lastTapResolve,
+  lighthouseCount,
   lightsLetGo,
   powerPerSecond,
   resolvePerSecond,
@@ -72,7 +73,7 @@ export const FORKS: readonly ForkDef[] = [
     title: "Two ways to be seen",
     question: "How should the lighthouse reach further?",
     currency: "coins",
-    isOpen: (run) => owned(run, "keeper") >= 2 && run.resources.ships >= 80,
+    isOpen: (run) => lighthouseCount(run) >= 4,
     stats: [COINS, COINS_PER_FLASH],
     sides: [
       {
@@ -81,7 +82,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "A farther beam",
         wry: "Ships you never knew existed will now be rescued. They have opinions about the harbor fees.",
         gives: `Every flash guides ${times(K.coast.fresnelFlash)} the ships, yours and the keepers'.`,
-        catches: "No room left in the budget for more keepers.",
+        catches: "The keepers flash no faster than before.",
         price: K.costs.fresnel,
       },
       {

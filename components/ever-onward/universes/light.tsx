@@ -14,6 +14,7 @@ import { lanternOf } from "@/lib/ever-onward/universes/light";
 import type { CueName } from "../audio/everOnwardSynth";
 import { SCORES, TITLE_SCORE, UNEASE } from "../audio/scores";
 import EmberIcon from "../game/EmberIcon";
+import LampPanel from "../game/LampPanel";
 import LanternPicker from "../game/LanternPicker";
 import MemoryGarden from "../game/MemoryGarden";
 import ProbeRaces from "../game/ProbeRaces";
@@ -74,6 +75,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
+  topPanels: [LampPanel],
   panels: [
     ForkPanel,
     FundPanel,

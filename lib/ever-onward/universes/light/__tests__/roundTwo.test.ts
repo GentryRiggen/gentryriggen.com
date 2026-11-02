@@ -27,8 +27,11 @@ const withResources = (
   resources: Record<string, number>
 ): RunState => ({ ...run, resources: { ...run.resources, ...resources } });
 
-const coastRun = (resources: Record<string, number> = {}): RunState =>
-  withResources(newRun(def), { ships: 30, coins: 1000, ...resources });
+/** A coast run with a few keepers, so the lamp panel and the oil button are on offer. */
+const coastRun = (resources: Record<string, number> = {}): RunState => ({
+  ...withResources(newRun(def), { ships: 30, coins: 1000, ...resources }),
+  owned: { keeper: 3 },
+});
 
 describe("one click fills the tank", () => {
   it("fills the whole tank when the coins allow", () => {

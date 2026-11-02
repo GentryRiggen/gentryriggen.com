@@ -20,8 +20,11 @@ const withResources = (
 ): RunState => ({ ...run, resources: { ...run.resources, ...resources } });
 
 /** A coast run past the first minutes, with the oil button on offer. */
-const coastRun = (resources: Record<string, number> = {}): RunState =>
-  withResources(newRun(def), { ships: 30, coins: 1000, ...resources });
+/** A coast run with a few keepers, so the lamp panel and the oil button are on offer. */
+const coastRun = (resources: Record<string, number> = {}): RunState => ({
+  ...withResources(newRun(def), { ships: 30, coins: 1000, ...resources }),
+  owned: { keeper: 3 },
+});
 
 describe("upgrades are few and gated", () => {
   it("has no filler upgrades", () => {
@@ -73,21 +76,19 @@ describe("effect previews", () => {
 
   it("shows what one more lens does", () => {
     const run = newRun(def);
-    expect(previewUpgrade(def, run, "lens")).toBe(
-      "Ships per flash 1 → 3 · Coins per flash 1 → 3"
-    );
+    expect(previewUpgrade(def, run, "lens")).toBe("×2 ships per flash");
     // with keepers, it shows that their flashes guide more ships too
     const keepers = { ...run, owned: { ...run.owned, keeper: 2 } };
     expect(previewUpgrade(def, keepers, "lens")).toBe(
-      "Ships per flash 1 → 3 · Coins per flash 1.01 → 3.02 · Coins/sec 2 → 6"
+      "×2 ships per flash\nKeepers too: +0.6/s"
     );
   });
 
   it("shows the new total for a keeper", () => {
     const run = withResources(newRun(def), { coins: 1000, ships: 30 });
     const bought = buy(def, { ...run, revealed: ["keeper"] }, "keeper");
-    expect(previewUpgrade(def, run, "keeper")).toMatch(
-      /^Coins\/sec 0 → 1(\.\d+)?$/
+    expect(previewUpgrade(def, run, "keeper")).toBe(
+      "+1 keeper (+0.3/s)\n5 keepers: ×2!"
     );
     expect(upgradeLevel(bought, "keeper")).toBe(1);
   });
@@ -95,8 +96,8 @@ describe("effect previews", () => {
   it("agrees with what the purchase really does", () => {
     const run = withResources(newRun(def), { coins: 1e6 });
     const before = run.resources.oil;
-    expect(previewUpgrade(def, run, "lighthouse")).toContain(
-      "Lighthouses 1 → 2"
+    expect(previewUpgrade(def, run, "lighthouse")).toBe(
+      "×2 ships, everywhere\nLighthouse 2 of 8"
     );
     const after = buy(
       def,
@@ -143,7 +144,9 @@ describe("oil is a decision", () => {
   });
 
   it("can't overfill the tank, or be bought with no coins", () => {
-    expect(canPerformAction(def, coastRun({ oil: 40 }), "buy-oil")).toBe(false);
+    expect(canPerformAction(def, coastRun({ oil: 1e6 }), "buy-oil")).toBe(
+      false
+    );
     expect(
       canPerformAction(def, coastRun({ oil: 0, coins: 1 }), "buy-oil")
     ).toBe(false);
@@ -169,7 +172,7 @@ describe("oil is a decision", () => {
   it("is bought for you after the merchant contract, when it is cheap", () => {
     const withContract = (price: number): RunState => ({
       ...coastRun({ oil: 5, oilPrice: price, coins: 500 }),
-      owned: { contract: 1 },
+      owned: { keeper: 3, contract: 1 },
     });
     // keep the price put for this one step
     const cheap = tick(def, { ...withContract(1.2), mods: { calm: 0.9 } }, 0.1);

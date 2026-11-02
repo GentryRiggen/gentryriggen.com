@@ -1,5 +1,6 @@
 import type { RunState, StoryMessage } from "../../engine/types";
 import { hasSprouted, picksSoFar } from "./garden";
+import { TIDE_MILL_ID } from "./tide";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -110,7 +111,9 @@ const coast: StoryMessage[] = [
   {
     id: "coast-mill",
     phase: PHASE_COAST,
-    when: (run) => owned(run, "tide-mill") >= 1,
+    // Dormant: the Coast no longer has a tide clock (its mill was cut with it).
+    // The line stays so its recorded voice clip stays valid.
+    when: (run) => owned(run, TIDE_MILL_ID) >= 1,
     text: "A little mill turns with the tide, tending a net of its own. It hums while it works. Your own nets are still yours, and the sea has plenty of fish for both of you.",
   },
   {

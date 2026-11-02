@@ -5,6 +5,8 @@ import {
   barrelOil,
   demandAtStep,
   isGridAuto,
+  isBeamOpen,
+  beamStep,
   isLampsOpen,
   knowhowAtStep,
   lampStep,
@@ -13,6 +15,7 @@ import {
   tier,
 } from "./tick";
 import { lampActionId } from "./lamps";
+import { beamActionId, beamNumbers, bestBeamStep } from "./beam";
 import {
   isMaxed,
   shownProjects,
@@ -285,6 +288,34 @@ const setsLamps =
     return available.includes(id) ? [id] : [];
   };
 
+/** A move to another brightness must beat today's by this much (no flicker). */
+const BEAM_SWITCH_GAIN = 1.08;
+
+/**
+ * Reads the lamp panel and picks the brightness that earns the most after
+ * the oil bill, but only when it is clearly better than the current one.
+ */
+const setsBeam: OilChoice = (run, available) => {
+  if (!isBeamOpen(run)) return [];
+  const want = bestBeamStep(run);
+  const now = beamStep(run);
+  if (want === now) return [];
+  const gain = beamNumbers(run, want).net;
+  const have = beamNumbers(run, now).net;
+  if (gain < have * BEAM_SWITCH_GAIN + 1e-9) return [];
+  const id = beamActionId(want);
+  return available.includes(id) ? [id] : [];
+};
+
+/** The night's streetlights and the coast's lamp: each only acts in its own part. */
+const setsAllLamps = (options: { patience?: number } = {}): OilChoice => {
+  const night = setsLamps(options);
+  return (run, available) => [
+    ...night(run, available),
+    ...setsBeam(run, available),
+  ];
+};
+
 /** As bright as the grid can take without a lot of balancing. */
 const brightest = (run: RunState): number =>
   isGridAuto(run) || tier(run, "grid") >= 1 ? 3 : 2;
@@ -527,7 +558,7 @@ export function lightBots(
       tendsTide({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
-      setsLamps({ patience: 30 }),
+      setsAllLamps({ patience: 30 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(85),
       choosesFork
@@ -540,7 +571,7 @@ export function lightBots(
       tendsTide({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
-      setsLamps({ patience: 30 }),
+      setsAllLamps({ patience: 30 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(80),
       choosesFork
@@ -562,7 +593,7 @@ export function lightBots(
         tendsTide({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
-        setsLamps({ patience: 30 }),
+        setsAllLamps({ patience: 30 }),
         investsInFund(fundShare, fundWait * 2),
         () => [],
         choosesFork

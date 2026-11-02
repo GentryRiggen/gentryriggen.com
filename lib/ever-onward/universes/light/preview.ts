@@ -72,3 +72,19 @@ export function previewLines(
     })
     .join(" · ");
 }
+
+/**
+ * Builds an `effectPreview` that is one plain, felt line ("x2 ships", "+1
+ * keeper (+12/s)"), read from the run before and after one more level of
+ * `id`. Lines may break with a newline.
+ */
+export function plainOf(
+  id: string,
+  line: (before: RunState, after: RunState) => string
+): (run: RunState) => string {
+  return (run) => line(run, afterBuying(run, id));
+}
+
+/** "x2", "x1.6", "x2.5": a multiplier, no more digits than it needs. */
+export const times = (n: number): string =>
+  `\u00d7${Number(n.toFixed(n >= 10 ? 0 : 1))}`;
