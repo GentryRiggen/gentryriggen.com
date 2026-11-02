@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import JimMarkdown from "../markdown";
+import JimMarkdown, { markdownNodes } from "../markdown";
 
 it("renders HTML in the text as literal text", () => {
   const { container } = render(
@@ -144,4 +144,54 @@ it("never makes a link whose label holds a bracket tappable", () => {
     <JimMarkdown text="[[b](mailto:q)](https://e.test/?d=1)" />
   );
   expect(container.querySelector("a")).toBeNull();
+});
+
+it("keeps a link with an over-long label or URL as plain text", () => {
+  const label = "a".repeat(201);
+  const url = `https://example.com/${"p".repeat(1000)}`;
+  const { container } = render(
+    <JimMarkdown text={`[${label}](https://example.com) [b](${url})`} />
+  );
+  expect(container.querySelector("a")).toBeNull();
+  const ok = render(
+    <JimMarkdown text={`[${"a".repeat(200)}](https://example.com/x)`} />
+  );
+  expect(ok.container.querySelector("a")).toHaveAttribute(
+    "href",
+    "https://example.com/x"
+  );
+});
+
+describe("crafted text renders in linear time", () => {
+  const SIZE = 16_000;
+  /** `unit` repeated to SIZE characters. */
+  const fill = (unit: string) =>
+    unit.repeat(Math.ceil(SIZE / unit.length)).slice(0, SIZE);
+
+  it.each([
+    ["half-open links", fill("[a](")],
+    ["open brackets", fill("[")],
+    ["labels with no URL", fill("[a]")],
+    ["open URLs", ("[a](" + fill("(")).slice(0, SIZE)],
+    ["URLs with parens", fill("[a](x(y)")],
+    ["bold openers", fill("**a")],
+    ["underscore openers", fill("__a")],
+    ["italic openers", fill("*a ")],
+    ["backticks", fill("`a")],
+    ["stars", fill("*")],
+    ["underscores", fill("_")],
+    ["closers", fill("](")],
+    ["long labels", fill("[" + "a".repeat(300) + "](x)")],
+    ["a table row", ("|" + fill("[a](|")).slice(0, SIZE)],
+    ["mixed", fill("**[a](`_*(")],
+  ])("%s", (_name, text) => {
+    expect(text.length).toBe(SIZE);
+    // Warm up once (JIT), then time the parse (not jsdom's DOM work).
+    markdownNodes({ text: text.slice(0, 200) });
+    const start = performance.now();
+    markdownNodes({ text });
+    const took = performance.now() - start;
+    if (process.env.MD_TIMING) console.log(_name, took.toFixed(1));
+    expect(took).toBeLessThan(50);
+  });
 });

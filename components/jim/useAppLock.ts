@@ -15,12 +15,17 @@ import {
   clearHidden,
   clearLock,
   createLock,
+  hasJimData,
+  idleLimitMs,
   loadLock,
+  loadLockState,
   markHidden,
   readHidden,
   saveLock,
+  saveLockState,
   waitEnds,
   type LockRecord,
+  type LockState,
   type PinCheck,
 } from "@/lib/jim/appLock";
 import {
@@ -34,6 +39,16 @@ export interface AppLock {
   enabled: boolean;
   /** The app is locked: nothing of it may be drawn. */
   locked: boolean;
+  /**
+   * Still reading whether a lock should be there (locked meanwhile, and the
+   * lock screen draws nothing).
+   */
+  checking: boolean;
+  /**
+   * A lock should be there and its record is gone or unreadable: locked,
+   * with no PIN to enter, only "Forgot PIN" (sign out and wipe).
+   */
+  pinMissing: boolean;
   /** Seconds away before it locks (0: as soon as the app is left). */
   after: number;
   /** No PIN is checked before this (epoch ms; 0 for none). */
@@ -61,7 +76,16 @@ export interface AppLock {
   enableFaceId: () => Promise<boolean>;
   /** Forgets this lock's Face ID credential. */
   disableFaceId: () => void;
-  turnOff: () => void;
+  /** Turns the lock off; false (and still on) when that couldn't be kept. */
+  turnOff: () => Promise<boolean>;
+}
+
+/** What IndexedDB says about one user's lock, once read. */
+interface Marker {
+  uid: string;
+  state: LockState;
+  /** Jim data is kept on this device (only looked for when it matters). */
+  data: boolean;
 }
 
 /**
@@ -70,7 +94,12 @@ export interface AppLock {
  * a reload, a new sign-in), and locks again when the app is left for
  * `after` seconds or more. With `after` 0 it locks the moment the page is
  * hidden, synchronously, so the app switcher's snapshot shows the lock
- * screen and not the chat.
+ * screen and not the chat. Left open and untouched for
+ * `max(after, 5 minutes)` it locks too.
+ *
+ * It fails closed: with no readable record, it is still locked (with only
+ * "Forgot PIN") when IndexedDB says the lock is on, or says nothing while
+ * Jim data is kept on the device. A fresh sign-in writes "off" first.
  */
 export default function useAppLock(uid: string | null): AppLock {
   /** Bumped after each write, to read the record again. */
@@ -84,9 +113,49 @@ export default function useAppLock(uid: string | null): AppLock {
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null);
   const [faceIdSupported, setFaceIdSupported] = useState(false);
 
+  const [marker, setMarker] = useState<Marker | null>(null);
+
   const enabled = record !== null;
-  const locked = enabled && unlockedFor !== uid;
+  const known = uid !== null && marker?.uid === uid ? marker : null;
+  const checking = uid !== null && !enabled && known === null;
+  const pinMissing =
+    uid !== null &&
+    !enabled &&
+    known !== null &&
+    (known.state === "on" || (known.state === "missing" && known.data));
+  const locked = (enabled && unlockedFor !== uid) || checking || pinMissing;
   const after = record?.after ?? 0;
+
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    void (async () => {
+      const state = await loadLockState(uid);
+      const data = state === "missing" ? await hasJimData(uid) : false;
+      // No lock, nothing kept and nothing written: as good as a fresh
+      // sign-in (one whose own write was missed).
+      const fresh = state === "missing" && !data && loadLock(uid) === null;
+      if (fresh) await saveLockState(uid, false);
+      if (alive) setMarker({ uid, state: fresh ? "off" : state, data });
+    })();
+    return () => {
+      alive = false;
+      // Signed out (or someone else): what was read no longer holds.
+      setMarker(null);
+    };
+  }, [uid]);
+
+  // A lock set before the marker was kept (or whose write failed) writes it.
+  useEffect(() => {
+    if (!uid || !enabled || !known || known.state === "on") return;
+    let alive = true;
+    void saveLockState(uid, true).then((ok) => {
+      if (ok && alive) setMarker({ uid, state: "on", data: false });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [uid, enabled, known]);
 
   const afterRef = useRef(after);
   useLayoutEffect(() => {
@@ -148,6 +217,31 @@ export default function useAppLock(uid: string | null): AppLock {
     };
   }, [uid, enabled]);
 
+  // Open and untouched: locks after max(after, 5 minutes) of no input while
+  // the page is visible. Time hidden is the time-away rule's to judge.
+  useEffect(() => {
+    if (!uid || !enabled || locked) return;
+    const limit = idleLimitMs(after);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function arm() {
+      clearTimeout(timer);
+      timer =
+        document.visibilityState === "hidden"
+          ? undefined
+          : setTimeout(() => setUnlockedFor(null), limit);
+    }
+    const inputs = ["pointerdown", "keydown", "touchstart", "wheel", "input"];
+    const options = { capture: true, passive: true } as const;
+    arm();
+    inputs.forEach((name) => window.addEventListener(name, arm, options));
+    document.addEventListener("visibilitychange", arm);
+    return () => {
+      clearTimeout(timer);
+      inputs.forEach((name) => window.removeEventListener(name, arm, options));
+      document.removeEventListener("visibilitychange", arm);
+    };
+  }, [uid, enabled, locked, after]);
+
   const lockNow = useCallback(() => setUnlockedFor(null), []);
 
   const settleWait = useCallback(() => {
@@ -201,6 +295,10 @@ export default function useAppLock(uid: string | null): AppLock {
       if (!uid) return false;
       const next = await createLock(pin, seconds);
       if (!saveLock(uid, next)) return false;
+      // A failed write is tried again on the next load, while the record lasts.
+      if (await saveLockState(uid, true)) {
+        setMarker({ uid, state: "on", data: false });
+      }
       // Setting it up is not a reason to lock right now.
       setUnlockedFor(uid);
       refresh();
@@ -253,15 +351,21 @@ export default function useAppLock(uid: string | null): AppLock {
     refresh();
   }, [uid, refresh]);
 
-  const turnOff = useCallback(() => {
-    if (!uid) return;
+  const turnOff = useCallback(async (): Promise<boolean> => {
+    if (!uid) return false;
+    // Off in IndexedDB first: a record gone while the marker says on locks.
+    if (!(await saveLockState(uid, false))) return false;
+    setMarker({ uid, state: "off", data: false });
     clearLock(uid);
     refresh();
+    return true;
   }, [uid, refresh]);
 
   return {
     enabled,
     locked,
+    checking,
+    pinMissing,
     after,
     lockedUntil: record?.lockedUntil ?? 0,
     settleWait,

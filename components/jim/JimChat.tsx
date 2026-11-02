@@ -940,7 +940,8 @@ export default function JimChat({
     keysRef.current = {
       route,
       basePage,
-      sheetOpen: personas.open || lockSheetOpen || securitySheetOpen,
+      sheetOpen:
+        personas.open || lockSheetOpen || notifySheetOpen || securitySheetOpen,
     };
   });
   useEffect(() => {

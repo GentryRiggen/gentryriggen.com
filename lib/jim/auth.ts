@@ -114,6 +114,12 @@ async function currentUser(): Promise<User | null> {
   return isJimUser(user) ? user : null;
 }
 
+/** The signed-in account's email, or null. */
+export async function accountEmail(): Promise<string | null> {
+  const user = await currentUser();
+  return user?.email ?? null;
+}
+
 /**
  * The signed-in user's Firebase ID token (for Jim's server), or null when
  * nobody is signed in. `force` skips the cached token, e.g. after a 401.

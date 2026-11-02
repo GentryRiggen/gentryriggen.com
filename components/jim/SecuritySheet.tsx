@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -32,7 +33,8 @@ type Status = "loading" | "on" | "off" | "error";
 
 type Step =
   | { kind: "idle" }
-  | { kind: "password" }
+  /** `again`: asked again mid-setup, so a new key replaces the saved one. */
+  | { kind: "password"; again: boolean }
   /** The secret lives only here, and only until this step ends. */
   | {
       kind: "setup";
@@ -55,6 +57,8 @@ const TOO_MANY = "Too many tries. Wait a few minutes, then try again.";
 const START_FAILED = "Couldn't start two-step setup. Try again in a moment.";
 const PASSWORD_AGAIN = "Confirm your password again to finish.";
 const FINISH_FAILED = "That didn't work. Start again.";
+const NEW_KEY =
+  "Continuing makes a new setup key that replaces the one you saved. Delete the earlier Jim entry in Passwords (or your authenticator app).";
 const CONFIRM_REVOKE = "This signs out every device, this one too.";
 /** The server's own words for a failed revoke (its 503 body). */
 const REVOKE_FAILED = "Couldn't sign out everywhere. Try again in a minute.";
@@ -153,6 +157,10 @@ function Sheet({
   const [confirming, setConfirming] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
+  /** The account's email, for password managers on the password step. */
+  const [email, setEmail] = useState<string | null>(null);
+  /** Signing out everywhere: the sheet stays open until that ends. */
+  const revokingRef = useRef(false);
   /** Bumped by every new start or back-out: a late answer is dropped. */
   const attempt = useRef(0);
   const live = useRef(true);
@@ -169,6 +177,24 @@ function Sheet({
       live.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    let current = true;
+    twoStep.accountEmail?.().then(
+      (found) => {
+        if (current) setEmail(found);
+      },
+      () => {}
+    );
+    return () => {
+      current = false;
+    };
+  }, [twoStep]);
+
+  /** Closes, except while Sign out everywhere is in flight. */
+  const close = useCallback(() => {
+    if (!revokingRef.current) onClose();
+  }, [onClose]);
 
   useEffect(() => {
     let current = true;
@@ -193,7 +219,7 @@ function Sheet({
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        close();
         return;
       }
       if (event.key !== "Tab") return;
@@ -220,7 +246,7 @@ function Sheet({
       root.style.overflow = overflow;
       if (opener?.isConnected) opener.focus();
     };
-  }, [onClose, opener]);
+  }, [close, opener]);
 
   // Each step puts focus where the next tap is.
   useEffect(() => {
@@ -247,13 +273,13 @@ function Sheet({
     return () => clearTimeout(timer);
   }, [copied]);
 
-  function askPassword(note: string | null) {
+  function askPassword(note: string | null, again = false) {
     attempt.current += 1;
     setPassword("");
     setCode("");
     setCopied(null);
     setError(note);
-    setStep({ kind: "password" });
+    setStep({ kind: "password", again });
     if (note) setRetries((n) => n + 1);
   }
 
@@ -318,7 +344,7 @@ function Sheet({
           setRetries((n) => n + 1);
         } else if (errorCode(err) === "auth/requires-recent-login") {
           // Too long since the password: ask for it again, right here.
-          askPassword(PASSWORD_AGAIN);
+          askPassword(PASSWORD_AGAIN, true);
         } else {
           backOut();
           setError(FINISH_FAILED);
@@ -348,6 +374,7 @@ function Sheet({
     if (revoking) return;
     setRevokeError(null);
     setRevoking(true);
+    revokingRef.current = true;
     revoke(getToken, undefined, api).then(
       () => {
         // The server ended every session: now this device signs out and
@@ -355,6 +382,7 @@ function Sheet({
         onSignedOutEverywhere();
       },
       (err: unknown) => {
+        revokingRef.current = false;
         if (!live.current) return;
         setRevoking(false);
         // A refused sign-in already ends the session (and wipes).
@@ -378,7 +406,7 @@ function Sheet({
     <div className="fixed inset-0 z-40 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
         aria-hidden="true"
-        onClick={onClose}
+        onClick={close}
         className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
       />
       <div
@@ -399,8 +427,9 @@ function Sheet({
             ref={closeRef}
             type="button"
             aria-label="Close"
-            onClick={onClose}
-            className="flex size-11 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+            disabled={revoking}
+            onClick={close}
+            className="flex size-11 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text disabled:opacity-50"
           >
             <X aria-hidden="true" className="size-5" />
           </button>
@@ -474,6 +503,20 @@ function Sheet({
 
             {step.kind === "password" && (
               <form onSubmit={start} className="space-y-3" noValidate>
+                {/* Tells a password manager which saved login this is. */}
+                <input
+                  type="email"
+                  name="username"
+                  autoComplete="username"
+                  value={email ?? ""}
+                  readOnly
+                  hidden
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+                {step.again && (
+                  <p className="text-sm text-ayu-text">{NEW_KEY}</p>
+                )}
                 <label className="block space-y-1.5">
                   <span className="block text-sm font-medium text-ayu-text">
                     Confirm your password
@@ -601,6 +644,7 @@ function Sheet({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
+                      disabled={busy}
                       onClick={backOut}
                       className={SECONDARY}
                     >

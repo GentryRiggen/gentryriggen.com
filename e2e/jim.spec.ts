@@ -1219,6 +1219,72 @@ test("an app lock PIN locks the chat on reload until it is entered", async ({
   ).toBeVisible();
 });
 
+/** Sets a 4-digit PIN from the menu (it locks Immediately when left). */
+async function setPin(page: Page, pin: string) {
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "App lock: Off" }).click();
+  const sheet = page.getByRole("dialog", { name: "App lock" });
+  const box = sheet.getByLabel("PIN", { exact: true });
+  await box.pressSequentially(pin);
+  await box.press("Enter");
+  await expect(sheet.getByText("Enter it again")).toBeVisible();
+  await tapPin(page, pin, "Next");
+  await sheet.getByRole("button", { name: "Turn on" }).click();
+  await expect(sheet).toHaveCount(0);
+}
+
+test("a lock record deleted from the device still locks, with only Forgot PIN", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await send(page, "remember the milk", "Saved it.");
+  await setPin(page, "2468");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toBeVisible();
+
+  // Someone with the unlocked browser deletes the lock record.
+  const removed = await page.evaluate(() => {
+    const keys = Object.keys(localStorage).filter((k) =>
+      k.startsWith("jim:lock:")
+    );
+    keys.forEach((k) => localStorage.removeItem(k));
+    return keys.length;
+  });
+  expect(removed).toBe(1);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Jim is locked" })
+  ).toBeVisible();
+  await expect(page.getByLabel("PIN", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await expect(page.getByText("remember the milk")).toHaveCount(0);
+  await bigTargets(page);
+  await noSidewaysScroll(page);
+  await page.getByRole("button", { name: "Forgot PIN?" }).click();
+  await page.getByRole("button", { name: "Sign out and wipe" }).click();
+  await expect(page.getByText(/Sign in to set a new PIN/)).toBeVisible();
+});
+
+test("an open page left untouched for five minutes locks", async ({ page }) => {
+  await page.clock.install();
+  await signedIn(page);
+  await setPin(page, "2468");
+  await page.getByLabel("Message").click();
+  await page.clock.fastForward("04:50");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  // Typing counts as being there: the five minutes start over.
+  await page.getByLabel("Message").press("a");
+  await page.clock.fastForward("04:50");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await page.clock.fastForward("00:15");
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toHaveValue("a");
+});
+
 /**
  * A real streaming server on localhost (Playwright's route can only answer
  * all at once): each step of the turn waits for the test to let it go on.
@@ -1814,6 +1880,32 @@ const DESKTOP_SHOTS = `${SHOTS}/desktop`;
 
 test.describe("Jim desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("Escape closes the Notifications sheet", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a desktop layout");
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    await mockServer(page);
+    // On a profile, where Escape otherwise steps back out to the list.
+    await page.goto("/jim/notes/people");
+    await page.getByRole("link", { name: /Sam Okafor/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "Sam Okafor" })
+    ).toBeVisible();
+    const at = new URL(page.url()).pathname;
+    // The desktop's rail has the menu's items as buttons.
+    await page.getByRole("button", { name: "Notifications" }).click();
+    const sheet = page.getByRole("dialog", { name: "Notifications" });
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    // It closed the sheet only: still on the profile.
+    expect(new URL(page.url()).pathname).toBe(at);
+    await expect(
+      page.getByRole("heading", { name: "Sam Okafor" })
+    ).toBeVisible();
+  });
 
   test("Hear your morning shows the loading bar on a desktop's Home", async ({
     page,

@@ -1,10 +1,12 @@
-import { secondFactor, startTotp } from "@/lib/jim/auth";
+import { accountEmail, secondFactor, startTotp } from "@/lib/jim/auth";
 import { jimTestHook, type JimTestTwoStep } from "@/lib/jim/testHooks";
 
 /** What Sign-in & security needs from Jim's sign-in. */
 export interface TwoStep {
   secondFactor: typeof secondFactor;
   startTotp: typeof startTotp;
+  /** The signed-in account's email (for password managers), if known. */
+  accountEmail?: typeof accountEmail;
 }
 
 function codeError(code: string): Error & { code: string } {
@@ -15,6 +17,7 @@ function codeError(code: string): Error & { code: string } {
 function standIn(config: JimTestTwoStep): TwoStep {
   let enrolled = config.enrolled;
   return {
+    accountEmail: async () => "owner@example.com",
     secondFactor: async () => ({ enrolled, thisSession: enrolled }),
     startTotp: async (password) => {
       if (password !== config.password) throw codeError("auth/wrong-password");
@@ -44,5 +47,5 @@ export function jimTwoStep(): TwoStep {
     const hook = jimTestHook();
     if (hook?.signedIn === true && hook.twoStep) return standIn(hook.twoStep);
   }
-  return { secondFactor, startTotp };
+  return { secondFactor, startTotp, accountEmail };
 }

@@ -4,9 +4,20 @@
  * it, one record per signed-in user under `jim:lock:<uid>`, wiped on sign-out.
  *
  * This keeps a borrowed (unlocked) phone out of Jim. It is not a defense
- * against someone with the device's storage in hand: they could delete the
- * record, but they would still need the Firebase sign-in to reach the server.
+ * against someone with the device's storage in hand, but deleting the record
+ * alone doesn't open it: whether the lock is on is also kept in IndexedDB
+ * (`lockOn:<uid>`), and a lock that should be there and isn't fails closed.
  */
+
+import { historyKey } from "@/lib/jim/history";
+import { hasSavedView } from "@/lib/jim/offlineStore";
+
+export {
+  loadLockState,
+  markLockOffIfAbsent,
+  saveLockState,
+  type LockState,
+} from "@/lib/jim/offlineStore";
 
 /** Stored record, version 1. */
 export interface LockRecord {
@@ -52,6 +63,17 @@ export const LOCK_AFTER_CHOICES: readonly { seconds: number; label: string }[] =
   ];
 
 const PREFIX = "jim:lock:";
+/**
+ * However short the lock-after setting, an open page left untouched this
+ * long (seconds) locks too.
+ */
+export const IDLE_MIN_SECONDS = 300;
+
+/** How long an open, visible page may go without input before it locks. */
+export function idleLimitMs(after: number): number {
+  return Math.max(after, IDLE_MIN_SECONDS) * 1000;
+}
+
 /** When the page was last hidden (sessionStorage), for the lock-after check. */
 export const HIDDEN_KEY = "jim:lock-hidden";
 
@@ -443,4 +465,18 @@ export function awayTooLong(
   if (monotonicAway !== null && monotonicAway >= limit) return true;
   if (hiddenAt === null) return false;
   return now < hiddenAt || now - hiddenAt >= limit;
+}
+
+/**
+ * Whether this device keeps any of this user's Jim data: the chat or the
+ * Notes payload. A lock that can't be found locks anyway when there is.
+ */
+export async function hasJimData(uid: string): Promise<boolean> {
+  try {
+    const chat = local()?.getItem(historyKey(uid));
+    if (chat !== undefined && chat !== null) return true;
+  } catch {
+    // Unreadable local storage: the Notes payload decides.
+  }
+  return hasSavedView(uid);
 }

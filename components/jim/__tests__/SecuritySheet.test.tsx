@@ -18,6 +18,7 @@ interface Setup {
   startTotp?: TwoStep["startTotp"];
   finish?: jest.Mock;
   revoke?: jest.Mock;
+  email?: string | null;
 }
 
 function renderSheet(setup: Setup = {}) {
@@ -31,6 +32,9 @@ function renderSheet(setup: Setup = {}) {
       thisSession: setup.enrolled ?? false,
     }),
     startTotp,
+    ...(setup.email !== undefined
+      ? { accountEmail: jest.fn().mockResolvedValue(setup.email) }
+      : {}),
   };
   const revoke = setup.revoke ?? jest.fn().mockResolvedValue(undefined);
   const onClose = jest.fn();
@@ -282,6 +286,89 @@ describe("SecuritySheet", () => {
       screen.queryByText("This signs out every device, this one too.")
     ).toBeNull();
     expect(revoke).not.toHaveBeenCalled();
+  });
+
+  it("Back waits while the code is checked", async () => {
+    const user = userEvent.setup();
+    let settle: () => void = () => {};
+    const finish = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve;
+        })
+    );
+    renderSheet({ finish });
+    await startSetup(user);
+    await user.type(await screen.findByLabelText("6-digit code"), "123456");
+    await user.click(screen.getByRole("button", { name: "Turn on" }));
+    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+    await act(async () => settle());
+    expect(
+      await screen.findByText(/Two-step sign-in is on\. Jim asks/)
+    ).toBeInTheDocument();
+  });
+
+  it("can't be closed while signing out everywhere", async () => {
+    const user = userEvent.setup();
+    let fail: (err: unknown) => void = () => {};
+    const revoke = jest.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          fail = reject;
+        })
+    );
+    const { onClose } = renderSheet({ revoke });
+    await user.click(
+      screen.getByRole("button", { name: "Sign out everywhere" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Yes, sign out everywhere" })
+    );
+    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    const backdrop = document.querySelector('[aria-hidden="true"].absolute');
+    await user.click(backdrop as Element);
+    expect(onClose).not.toHaveBeenCalled();
+    await act(async () => fail(new JimError("waking")));
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("names the account for password managers on the password step", async () => {
+    const user = userEvent.setup();
+    renderSheet({ email: "someone@example.com" });
+    await screen.findByText("Two-step sign-in is off.");
+    await user.click(screen.getByRole("button", { name: "Turn on" }));
+    const username = await waitFor(() => {
+      const found = document.querySelector<HTMLInputElement>(
+        'input[autocomplete="username"]'
+      );
+      expect(found).not.toBeNull();
+      return found as HTMLInputElement;
+    });
+    await waitFor(() => expect(username.value).toBe("someone@example.com"));
+    expect(username).not.toBeVisible();
+    expect(username.form).toBe(
+      screen.getByLabelText("Confirm your password").closest("form")
+    );
+  });
+
+  it("warns that a new key replaces the old one when the password is asked again", async () => {
+    const user = userEvent.setup();
+    const finish = jest
+      .fn()
+      .mockRejectedValue(codeError("auth/requires-recent-login"));
+    renderSheet({ finish });
+    await startSetup(user);
+    // The first time, no warning: there is no earlier key.
+    expect(screen.queryByText(/replaces the one you saved/)).toBeNull();
+    await user.type(await screen.findByLabelText("6-digit code"), "123456");
+    await user.click(screen.getByRole("button", { name: "Turn on" }));
+    expect(
+      await screen.findByText(
+        "Continuing makes a new setup key that replaces the one you saved. Delete the earlier Jim entry in Passwords (or your authenticator app)."
+      )
+    ).toBeInTheDocument();
   });
 
   it("Escape closes", async () => {

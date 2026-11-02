@@ -24,7 +24,20 @@ import {
   waitEnds,
   WIPE_KEY,
   type LockRecord,
+  hasJimData,
+  idleLimitMs,
+  loadLockState,
+  markLockOffIfAbsent,
+  saveLockState,
 } from "@/lib/jim/appLock";
+import { historyKey } from "@/lib/jim/history";
+import {
+  clearAll,
+  lockStateKey,
+  setOfflineBackend,
+  viewKey,
+  type KeyValueStore,
+} from "@/lib/jim/offlineStore";
 
 // jsdom has neither; the browser's are the same API.
 Object.defineProperty(globalThis.crypto, "subtle", {
@@ -387,5 +400,106 @@ describe("the wipe marker", () => {
     expect(isWipePending()).toBe(true);
     clearWipePending();
     expect(isWipePending()).toBe(false);
+  });
+});
+
+/** A Map standing in for IndexedDB. */
+function memoryStore(): KeyValueStore & { map: Map<string, unknown> } {
+  const map = new Map<string, unknown>();
+  return {
+    map,
+    get: async (key) => map.get(key),
+    set: async (key, value) => {
+      map.set(key, value);
+    },
+    clear: async () => map.clear(),
+  };
+}
+
+describe("the lock-on marker (IndexedDB)", () => {
+  afterEach(() => setOfflineBackend(null));
+
+  it("is missing until written, then on or off; sign-out wipes it", async () => {
+    const store = memoryStore();
+    setOfflineBackend(store);
+    expect(await loadLockState(UID)).toBe("missing");
+    expect(await saveLockState(UID, true)).toBe(true);
+    expect(store.map.get(lockStateKey(UID))).toBe(true);
+    expect(lockStateKey(UID)).toBe(`lockOn:${UID}`);
+    expect(await loadLockState(UID)).toBe("on");
+    await saveLockState(UID, false);
+    expect(await loadLockState(UID)).toBe("off");
+    // Another user's marker is their own.
+    expect(await loadLockState("uid-2")).toBe("missing");
+    await clearAll();
+    expect(await loadLockState(UID)).toBe("missing");
+  });
+
+  it("reads a damaged entry as on (fails closed)", async () => {
+    const store = memoryStore();
+    setOfflineBackend(store);
+    store.map.set(lockStateKey(UID), "junk");
+    expect(await loadLockState(UID)).toBe("on");
+    store.map.set(lockStateKey(UID), 0);
+    expect(await loadLockState(UID)).toBe("on");
+  });
+
+  it("tries a failed read once more, then says missing", async () => {
+    let calls = 0;
+    const flaky: KeyValueStore = {
+      get: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("timed out");
+        return true;
+      },
+      set: async () => {},
+      clear: async () => {},
+    };
+    setOfflineBackend(flaky);
+    expect(await loadLockState(UID)).toBe("on");
+    const broken: KeyValueStore = {
+      get: async () => {
+        throw new Error("blocked");
+      },
+      set: async () => {
+        throw new Error("blocked");
+      },
+      clear: async () => {},
+    };
+    setOfflineBackend(broken);
+    expect(await loadLockState(UID)).toBe("missing");
+    expect(await saveLockState(UID, false)).toBe(false);
+    await expect(markLockOffIfAbsent(UID)).resolves.toBeUndefined();
+  });
+
+  it("a fresh sign-in writes off only when nothing is written", async () => {
+    const store = memoryStore();
+    setOfflineBackend(store);
+    await markLockOffIfAbsent(UID);
+    expect(await loadLockState(UID)).toBe("off");
+    await saveLockState(UID, true);
+    await markLockOffIfAbsent(UID);
+    expect(await loadLockState(UID)).toBe("on");
+  });
+
+  it("knows whether the device keeps Jim data: the chat or Notes", async () => {
+    const store = memoryStore();
+    setOfflineBackend(store);
+    expect(await hasJimData(UID)).toBe(false);
+    window.localStorage.setItem(historyKey(UID), "[]");
+    expect(await hasJimData(UID)).toBe(true);
+    window.localStorage.removeItem(historyKey(UID));
+    store.map.set(viewKey(UID), { payload: {}, savedAt: 1 });
+    expect(await hasJimData(UID)).toBe(true);
+    expect(await hasJimData("uid-2")).toBe(false);
+  });
+});
+
+describe("the idle lock", () => {
+  it("waits the lock-after time, but never less than five minutes", () => {
+    expect(idleLimitMs(0)).toBe(300_000);
+    expect(idleLimitMs(60)).toBe(300_000);
+    expect(idleLimitMs(300)).toBe(300_000);
+    expect(idleLimitMs(900)).toBe(900_000);
   });
 });

@@ -1,6 +1,14 @@
 import { webcrypto } from "node:crypto";
 import { TextEncoder } from "node:util";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ADMIN_UID } from "@/lib/analytics/admin";
 import * as client from "@/lib/jim/auth";
@@ -9,16 +17,23 @@ import {
   HIDDEN_KEY,
   isWipePending,
   loadLock,
+  loadLockState,
   lockKey,
   saveLock,
+  saveLockState,
   type LockRecord,
 } from "@/lib/jim/appLock";
+import {
+  setOfflineBackend,
+  viewKey,
+  type KeyValueStore,
+} from "@/lib/jim/offlineStore";
 import { toBase64Url } from "@/lib/jim/faceId";
 import { historyKey, saveHistory } from "@/lib/jim/history";
 import { JimPlayer } from "@/lib/jim/player";
 import JimChat from "../JimChat";
 import JimGate from "../JimGate";
-import type { AppLock } from "../useAppLock";
+import useAppLock, { type AppLock } from "../useAppLock";
 
 // jsdom has neither; the browser's are the same API.
 Object.defineProperty(globalThis.crypto, "subtle", {
@@ -40,14 +55,20 @@ jest.mock("@/lib/jim/push", () => ({
   ...jest.requireActual("@/lib/jim/push"),
   disablePush: jest.fn(async () => {}),
 }));
-jest.mock("@/lib/jim/offlineStore", () => ({
-  clearAll: jest.fn(async () => {}),
-  saveView: jest.fn(async () => {}),
-}));
 jest.mock("../notes/NotesShell", () => ({
   __esModule: true,
   default: () => <div>Notes secret</div>,
 }));
+
+/** IndexedDB's stand-in: the lock-on marker and the kept Notes payload. */
+const idb = new Map<string, unknown>();
+const memoryStore: KeyValueStore = {
+  get: async (key) => idb.get(key),
+  set: async (key, value) => {
+    idb.set(key, value);
+  },
+  clear: async () => idb.clear(),
+};
 
 const API = "https://jim.example.test";
 const SECRET = "The garden key is under the blue pot";
@@ -107,6 +128,8 @@ function isLocked(): boolean {
 beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
+  idb.clear();
+  setOfflineBackend(memoryStore);
   visibility = "visible";
   window.__JIM_TEST__ = { signedIn: true, api: API };
   jest.mocked(client.signOutUser).mockResolvedValue();
@@ -123,6 +146,8 @@ beforeEach(() => {
 afterEach(() => {
   jest.useRealTimers();
   delete window.__JIM_TEST__;
+  setOfflineBackend(null);
+  jest.restoreAllMocks();
 });
 
 describe("without a lock", () => {
@@ -289,6 +314,189 @@ describe("locked", () => {
     await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
     expect(window.localStorage.getItem(lockKey(ADMIN_UID))).toBeNull();
     expect(window.sessionStorage.getItem(HIDDEN_KEY)).toBeNull();
+  });
+});
+
+describe("a lock that should be there and isn't (fails closed)", () => {
+  async function lockedOut() {
+    render(<JimGate />);
+    expect(
+      await screen.findByRole("heading", { name: "Jim is locked" })
+    ).toBeInTheDocument();
+  }
+
+  it("locks with only Forgot PIN when the record is gone but the marker is on", async () => {
+    await presetLock();
+    await saveLockState(ADMIN_UID, true);
+    window.localStorage.removeItem(lockKey(ADMIN_UID));
+    await lockedOut();
+    expect(screen.queryByLabelText("PIN")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "OK" })).toBeNull();
+    expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(SECRET);
+    await userEvent.click(screen.getByRole("button", { name: "Forgot PIN?" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sign out and wipe" })
+    );
+    expect(await screen.findByText(/Sign in to set a new PIN/)).toBeVisible();
+    expect(window.localStorage.getItem(historyKey(ADMIN_UID))).toBeNull();
+    expect(await loadLockState(ADMIN_UID)).toBe("missing");
+  });
+
+  it("an unreadable record with the marker on locks the same way", async () => {
+    await saveLockState(ADMIN_UID, true);
+    const real = Storage.prototype.getItem;
+    jest.spyOn(Storage.prototype, "getItem").mockImplementation(function (
+      this: Storage,
+      key: string
+    ) {
+      if (key === lockKey(ADMIN_UID)) throw new Error("blocked");
+      return real.call(this, key);
+    });
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    expect(result.current.locked).toBe(true);
+    expect(result.current.pinMissing).toBe(true);
+  });
+
+  it("with no marker, locks when Notes are kept on the device", async () => {
+    window.localStorage.removeItem(historyKey(ADMIN_UID));
+    idb.set(viewKey(ADMIN_UID), { payload: {}, savedAt: 1 });
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    // Locked (and nothing drawn) while it is still checking.
+    expect(result.current.locked).toBe(true);
+    expect(result.current.checking).toBe(true);
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    expect(result.current.locked).toBe(true);
+    expect(result.current.pinMissing).toBe(true);
+    expect(result.current.enabled).toBe(false);
+  });
+
+  it("with no marker, locks when the chat is kept on the device", async () => {
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    expect(result.current.locked).toBe(true);
+    expect(result.current.pinMissing).toBe(true);
+  });
+
+  it("stays open when the marker says off", async () => {
+    await saveLockState(ADMIN_UID, false);
+    idb.set(viewKey(ADMIN_UID), { payload: {}, savedAt: 1 });
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    expect(result.current.locked).toBe(false);
+    expect(result.current.pinMissing).toBe(false);
+  });
+
+  it("with nothing stored, opens and writes the marker off", async () => {
+    window.localStorage.removeItem(historyKey(ADMIN_UID));
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    expect(result.current.locked).toBe(false);
+    await waitFor(async () =>
+      expect(await loadLockState(ADMIN_UID)).toBe("off")
+    );
+  });
+
+  it("setting a PIN writes on, turning it off writes off", async () => {
+    await saveLockState(ADMIN_UID, false);
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    await act(async () => {
+      await result.current.turnOn("2468", 60);
+    });
+    expect(await loadLockState(ADMIN_UID)).toBe("on");
+    expect(result.current.locked).toBe(false);
+    await act(async () => {
+      expect(await result.current.turnOff()).toBe(true);
+    });
+    expect(await loadLockState(ADMIN_UID)).toBe("off");
+    expect(loadLock(ADMIN_UID)).toBeNull();
+    expect(result.current.locked).toBe(false);
+  });
+
+  it("a lock set before the marker existed writes it on", async () => {
+    await presetLock();
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(async () =>
+      expect(await loadLockState(ADMIN_UID)).toBe("on")
+    );
+    expect(result.current.locked).toBe(true);
+    expect(result.current.pinMissing).toBe(false);
+  });
+
+  it("keeps the lock on when the marker can't be turned off", async () => {
+    await saveLockState(ADMIN_UID, true);
+    await presetLock();
+    const { result } = renderHook(() => useAppLock(ADMIN_UID));
+    await waitFor(() => expect(result.current.checking).toBe(false));
+    setOfflineBackend({
+      ...memoryStore,
+      set: async () => {
+        throw new Error("blocked");
+      },
+    });
+    await act(async () => {
+      expect(await result.current.turnOff()).toBe(false);
+    });
+    expect(loadLock(ADMIN_UID)).not.toBeNull();
+    expect(result.current.enabled).toBe(true);
+  });
+});
+
+describe("idle while open", () => {
+  /** Unlocked with fake timers, the idle wait started from now. */
+  async function openIdle(after: number) {
+    await presetLock({ after });
+    await renderJim();
+    await enterPin("1234");
+    await screen.findByText(SECRET);
+    jest.useFakeTimers({ now: new Date("2026-10-31T12:00:00Z") });
+    fireEvent.pointerDown(document.body);
+  }
+
+  it("locks after five minutes untouched, even with a shorter setting", async () => {
+    await openIdle(60);
+    act(() => jest.advanceTimersByTime(299_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+    expect(document.body.textContent).not.toContain(SECRET);
+  });
+
+  it.each([
+    ["a tap", () => fireEvent.pointerDown(document.body)],
+    ["a key", () => fireEvent.keyDown(document.body, { key: "a" })],
+    ["a touch", () => fireEvent.touchStart(document.body)],
+  ])("%s starts the wait over", async (_name, input) => {
+    await openIdle(0);
+    act(() => jest.advanceTimersByTime(200_000));
+    input();
+    act(() => jest.advanceTimersByTime(299_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+  });
+
+  it("waits the setting when it is longer than five minutes", async () => {
+    await openIdle(900);
+    act(() => jest.advanceTimersByTime(899_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
+  });
+
+  it("doesn't count time hidden (the time-away rule covers that)", async () => {
+    await openIdle(900);
+    act(() => jest.advanceTimersByTime(100_000));
+    setVisible("hidden");
+    act(() => jest.advanceTimersByTime(800_000));
+    setVisible("visible");
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(899_000));
+    expect(isLocked()).toBe(false);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(isLocked()).toBe(true);
   });
 });
 
@@ -825,6 +1033,8 @@ describe("JimChat while locked", () => {
       faceId: false,
       pinLength: null,
       faceIdSupported: false,
+      checking: false,
+      pinMissing: false,
       lockNow: jest.fn(),
       settleWait: jest.fn(),
       verify: jest.fn(),

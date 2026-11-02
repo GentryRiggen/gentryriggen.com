@@ -96,6 +96,17 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
     if (!ok) setMessage("Face ID didn't unlock. Use your PIN.");
   }
 
+  // Still reading whether a lock should be there: just the background.
+  if (lock.checking) {
+    return (
+      <main
+        aria-busy="true"
+        aria-label="Jim is locked"
+        className="jim-app fixed inset-0 z-50 bg-ayu-bg"
+      />
+    );
+  }
+
   return (
     <main
       aria-label="Jim is locked"
@@ -128,6 +139,25 @@ export default function LockScreen({ lock, onWipe }: LockScreenProps) {
               className="min-h-11 px-4 text-ayu-subtle hover:text-ayu-text"
             >
               Cancel
+            </button>
+          </div>
+        ) : lock.pinMissing ? (
+          // The lock should be here and can't be read: no PIN can match it.
+          <div className="jim-rise flex max-w-sm flex-col items-center gap-4">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Jim is locked
+            </h1>
+            <p className="text-ayu-subtle">
+              This device&apos;s app lock can&apos;t be read, so no PIN opens
+              it. Sign out and back in to use Jim here.
+            </p>
+            <button
+              type="button"
+              {...KEEP_ENTER}
+              onClick={() => setForgot(true)}
+              className="min-h-12 w-full rounded-xl jim-glow px-4 font-semibold text-ayu-bg hover:brightness-110"
+            >
+              Forgot PIN?
             </button>
           </div>
         ) : (

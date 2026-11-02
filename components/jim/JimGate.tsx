@@ -23,6 +23,7 @@ import {
   clearLock,
   clearWipePending,
   isWipePending,
+  markLockOffIfAbsent,
   markWipePending,
 } from "@/lib/jim/appLock";
 import {
@@ -173,8 +174,11 @@ export default function JimGate() {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
+    /** Bumped on each sign-in change, so a slow one can't open late. */
+    let authSeq = 0;
     void watch((user) => {
       if (cancelled) return;
+      const seq = ++authSeq;
       if (!user) {
         // Notes data (health, people) and the kept chat must not outlive the
         // sign-in, even one that expired while the page was closed.
@@ -201,20 +205,32 @@ export default function JimGate() {
       } else if (isAdminUser(user)) {
         // A password just typed ends any wipe left over: that lock is gone.
         if (isWipePending()) finishWipe();
-        setExcluded(safeLocalStorage());
-        // Each good Notes payload is kept on the device for offline opens.
         const uid = user.uid;
-        setViewSaver((data) => void saveView(uid, data));
-        setState({ kind: "owner", uid, api, getToken });
-        if (wokeFor.current !== user.uid && isJimConnected(api)) {
-          wokeFor.current = user.uid;
-          // Start the server (and the Notes data) while Gentry types.
-          wakeJim(api);
-          fetchView(getToken, undefined, api).catch((err: unknown) => {
-            if (err instanceof JimError && err.kind === "denied") {
-              endOnce(refusal.current);
-            }
-          });
+        const open = () => {
+          // A later sign-in change (or unmount) wins.
+          if (cancelled || seq !== authSeq) return;
+          setExcluded(safeLocalStorage());
+          // Each good Notes payload is kept on the device for offline opens.
+          setViewSaver((data) => void saveView(uid, data));
+          setState({ kind: "owner", uid, api, getToken });
+          if (wokeFor.current !== uid && isJimConnected(api)) {
+            wokeFor.current = uid;
+            // Start the server (and the Notes data) while Gentry types.
+            wakeJim(api);
+            fetchView(getToken, undefined, api).catch((err: unknown) => {
+              if (err instanceof JimError && err.kind === "denied") {
+                endOnce(refusal.current);
+              }
+            });
+          }
+        };
+        // A fresh sign-in says "no lock" before anything is kept, so a lock
+        // record that later goes missing can be told from one never set.
+        // (The e2e stand-in counts as fresh on every load.)
+        if (signingIn.current || fake) {
+          void markLockOffIfAbsent(uid).then(open);
+        } else {
+          open();
         }
       } else {
         setState({ kind: "denied", email: user.email ?? "unknown account" });
@@ -363,6 +379,9 @@ export default function JimGate() {
   });
 
   if (state.kind === "owner") {
+    // Whether a lock should be here is still being read (a few ms): the
+    // chat isn't even started, so it opens once, as locked or not.
+    if (lock.checking) return <LockScreen lock={lock} onWipe={wipe} />;
     // Nothing of the app is drawn while it is locked: JimChat keeps its
     // state but renders nothing, and the lock screen stands alone.
     const lockScreen = lock.locked ? (

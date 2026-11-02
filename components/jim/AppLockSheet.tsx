@@ -143,8 +143,16 @@ function Sheet({ lock, onClose, onWipe }: Omit<AppLockSheetProps, "open">) {
           setAfterChoice(lock.after);
           go({ kind: "after" });
         } else if (then === "off") {
-          lock.turnOff();
-          onClose();
+          setBusy(true);
+          const off = await lock.turnOff();
+          setBusy(false);
+          if (off) onClose();
+          else {
+            go(
+              { kind: "menu" },
+              "Couldn't turn the lock off on this device. Try again."
+            );
+          }
         } else if (then === "faceOn") go({ kind: "face" });
         else {
           lock.disableFaceId();

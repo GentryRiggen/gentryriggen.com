@@ -56,10 +56,17 @@ jest.mock("@/lib/jim/push", () => ({
 jest.mock("@/lib/jim/money", () => ({
   clearMoney: jest.fn(),
 }));
-jest.mock("@/lib/jim/offlineStore", () => ({
-  clearAll: jest.fn(async () => {}),
-  saveView: jest.fn(async () => {}),
-}));
+// The real store over a Map (the lock-on marker lives there); the Notes
+// payload and the wipe are watched.
+jest.mock("@/lib/jim/offlineStore", () => {
+  const actual = jest.requireActual("@/lib/jim/offlineStore");
+  return {
+    ...actual,
+    clearAll: jest.fn(() => actual.clearAll()),
+    saveView: jest.fn(async () => {}),
+  };
+});
+const idb = new Map<string, unknown>();
 jest.mock("../JimChat", () => {
   const { useState } = jest.requireActual("react");
   return {
@@ -97,6 +104,14 @@ let emit: (user: client.AuthUser | null) => void;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  idb.clear();
+  offline.setOfflineBackend({
+    get: async (key) => idb.get(key),
+    set: async (key, value) => {
+      idb.set(key, value);
+    },
+    clear: async () => idb.clear(),
+  });
   jest.mocked(fetchView).mockRejectedValue(new api.JimError("waking"));
   window.localStorage.clear();
   delete window.__JIM_TEST__;
@@ -127,6 +142,37 @@ it("shows a sign-in form with the right keyboards and autofill", async () => {
   );
   expect(screen.getByRole("heading", { name: "Jim" })).toBeInTheDocument();
   expect(screen.queryByTestId("chat")).not.toBeInTheDocument();
+});
+
+it("a fresh sign-in writes the lock as off before opening", async () => {
+  await renderGate();
+  act(() => emit(null));
+  // Firebase tells its listeners before the sign-in call resolves.
+  mockClient.signInWithEmail.mockImplementation(async () => {
+    emit({ uid: ADMIN_UID, email: "me@x.com" });
+    return { kind: "done" };
+  });
+  await userEvent.type(await screen.findByLabelText("Email"), "a@b.com");
+  await userEvent.type(screen.getByLabelText("Password"), "pw");
+  await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByTestId("chat")).toBeInTheDocument();
+  expect(await offline.loadLockState(ADMIN_UID)).toBe("off");
+  expect(
+    screen.queryByRole("heading", { name: "Jim is locked" })
+  ).not.toBeInTheDocument();
+});
+
+it("a reload with kept chat and no lock marker stays locked", async () => {
+  saveHistory(ADMIN_UID, {
+    session: "s1",
+    messages: [{ id: 0, from: "jim", text: "kept" }],
+  });
+  await renderGate();
+  act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
+  expect(
+    await screen.findByRole("heading", { name: "Jim is locked" })
+  ).toBeInTheDocument();
+  expect(await offline.loadLockState(ADMIN_UID)).toBe("missing");
 });
 
 it("signs in with the typed email and password", async () => {
@@ -310,9 +356,12 @@ describe("early wake-up and kept chat", () => {
       "owner-a"
     );
     act(() => emit({ uid: "owner-b", email: "b@x.com" }));
-    expect(screen.getByTestId("chat")).toHaveAttribute(
-      "data-mounted-for",
-      "owner-b"
+    // The new user's lock is read first, then a chat of their own.
+    await waitFor(() =>
+      expect(screen.getByTestId("chat")).toHaveAttribute(
+        "data-mounted-for",
+        "owner-b"
+      )
     );
   });
 
@@ -351,7 +400,8 @@ describe("device storage and the morning briefing", () => {
       mockClient.getIdToken.mockReturnValue(new Promise(() => {}));
       await renderGate();
       act(() => emit({ uid: ADMIN_UID, email: "me@x.com" }));
-      act(() => screen.getByRole("button", { name: "Chat sign out" }).click());
+      const out = await screen.findByRole("button", { name: "Chat sign out" });
+      act(() => out.click());
       // The sign-in form shows at once, before Firebase hears of it.
       expect(screen.queryByTestId("chat")).toBeNull();
       expect(screen.getByLabelText("Email")).toBeInTheDocument();
