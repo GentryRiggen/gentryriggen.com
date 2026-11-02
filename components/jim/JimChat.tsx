@@ -20,6 +20,7 @@ import {
   SquarePen,
   Square,
   Bell,
+  ShieldCheck,
   Sunrise,
   Volume2,
 } from "lucide-react";
@@ -40,6 +41,7 @@ import useJimUpdate from "@/components/jim/useJimUpdate";
 import NowPlayingBar from "@/components/jim/NowPlayingBar";
 import NotificationsSheet from "@/components/jim/NotificationsSheet";
 import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
+import SecuritySheet from "@/components/jim/SecuritySheet";
 import NotesShell, {
   type NotesRouting,
 } from "@/components/jim/notes/NotesShell";
@@ -129,6 +131,9 @@ const STARTERS = [
 ];
 
 /** After this long, the thinking indicator says it is still working. */
+/** Said on the sign-in screen after Sign out everywhere. */
+const SIGNED_OUT_EVERYWHERE = "You're signed out on every device.";
+
 const SLOW_MS = 20_000;
 
 /** Closer than this to the bottom counts as reading the latest message. */
@@ -337,6 +342,7 @@ export default function JimChat({
   const [notesSearch, setNotesSearch] = useState("");
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
   const [notifySheetOpen, setNotifySheetOpen] = useState(false);
+  const [securitySheetOpen, setSecuritySheetOpen] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -787,6 +793,20 @@ export default function JimChat({
     onSignOut();
   }
 
+  /**
+   * Every session ended on the server: this device signs out and is wiped
+   * too, saying so on the sign-in screen.
+   */
+  function signedOutEverywhere() {
+    setSecuritySheetOpen(false);
+    if (!onWipe) {
+      signOut();
+      return;
+    }
+    clearDraft(uid);
+    wipe(SIGNED_OUT_EVERYWHERE);
+  }
+
   /** Too many wrong PINs or a forgotten one: out, and the device wiped. */
   function wipe(notice: string) {
     forgetAddress();
@@ -832,6 +852,7 @@ export default function JimChat({
   }, [playBrief]);
   const closeNotifySheet = useCallback(() => setNotifySheetOpen(false), []);
   const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
+  const closeSecuritySheet = useCallback(() => setSecuritySheetOpen(false), []);
 
   /**
    * A Needs-you row whose words came from outside (email, calendar, Asana):
@@ -919,7 +940,7 @@ export default function JimChat({
     keysRef.current = {
       route,
       basePage,
-      sheetOpen: personas.open || lockSheetOpen,
+      sheetOpen: personas.open || lockSheetOpen || securitySheetOpen,
     };
   });
   useEffect(() => {
@@ -992,6 +1013,11 @@ export default function JimChat({
           label: "Notifications",
           onSelect: () => setNotifySheetOpen(true),
         };
+
+  const securityItem = {
+    label: "Sign-in & security",
+    onSelect: () => setSecuritySheetOpen(true),
+  };
 
   const lockItem =
     lock && onWipe
@@ -1254,6 +1280,7 @@ export default function JimChat({
     ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
     ...(notifyItem ? [{ ...notifyItem, icon: Bell }] : []),
     ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
+    { ...securityItem, icon: ShieldCheck },
   ];
 
   // One tree for both widths: crossing the breakpoint (an iPad rotating,
@@ -1263,7 +1290,9 @@ export default function JimChat({
     <div
       ref={rootRef}
       // Behind a sheet nothing can be tapped, focused or read.
-      inert={personas.open || lockSheetOpen || notifySheetOpen}
+      inert={
+        personas.open || lockSheetOpen || notifySheetOpen || securitySheetOpen
+      }
       data-keyboard={keyboardOpen ? "open" : "closed"}
       data-layout={wide ? "wide" : "phone"}
       className={`jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text ${
@@ -1299,6 +1328,7 @@ export default function JimChat({
             ...(reader.menuItem ? [reader.menuItem] : []),
             ...(notifyItem ? [notifyItem] : []),
             ...(lockItem ? [lockItem] : []),
+            securityItem,
           ]}
         />
       )}
@@ -1418,6 +1448,13 @@ export default function JimChat({
             ? { key: reader.state.errorKey, message: reader.state.error }
             : null
         }
+      />
+      <SecuritySheet
+        open={securitySheetOpen}
+        onClose={closeSecuritySheet}
+        onSignedOutEverywhere={signedOutEverywhere}
+        getToken={getToken}
+        api={api}
       />
       {lock && onWipe && (
         <AppLockSheet

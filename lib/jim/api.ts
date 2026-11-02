@@ -357,3 +357,56 @@ async function readStream(
     reader.cancel().catch(() => {});
   }
 }
+
+/** How long Sign out everywhere waits for the server. */
+export const REVOKE_TIMEOUT_MS = 15_000;
+
+/**
+ * Sign out everywhere: the server ends every session of this account, this
+ * device's too (`POST /api/auth/revoke`, answered 204). On a 401 the token
+ * is refreshed and it is tried once more; a sign-in still refused is denied
+ * (and ends the session). Anything but 204 throws a JimError, so the caller
+ * signs this device out only once the server has done it.
+ */
+export async function revokeSessions(
+  getToken: (force?: boolean) => Promise<string | null> = getIdToken,
+  fetchFn: typeof fetch = fetch,
+  api: string = JIM_API,
+  timeoutMs: number = REVOKE_TIMEOUT_MS
+): Promise<void> {
+  if (!isJimConnected(api)) throw new JimError("server");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  async function post(force: boolean): Promise<Response> {
+    let token: string | null;
+    try {
+      token = await getToken(force);
+    } catch (err) {
+      throw tokenError(err);
+    }
+    if (!token) throw deniedError();
+    if (isOffline()) throw new JimError("waking");
+    try {
+      return await fetchFn(`${api}/api/auth/revoke`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+    } catch {
+      // Offline, or the time ran out: it may or may not have happened.
+      throw new JimError("uncertain");
+    }
+  }
+
+  try {
+    let res = await post(false);
+    if (res.status === 401) res = await post(true);
+    if (res.status === 401 || res.status === 403) throw deniedError();
+    if (res.status === 204) return;
+    if (res.status === 503) throw new JimError("waking");
+    throw new JimError(res.status >= 500 ? "uncertain" : "server");
+  } finally {
+    clearTimeout(timer);
+  }
+}

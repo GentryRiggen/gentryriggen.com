@@ -2608,3 +2608,169 @@ test.describe("Jim's old address", () => {
     }
   });
 });
+
+test.describe("Sign-in & security", () => {
+  /** Invented values for the stand-in authenticator setup. */
+  const TWO_STEP = {
+    enrolled: false,
+    password: "invented-password",
+    secret: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+    code: "246810",
+  };
+
+  /** Signed in with the stand-in setup; every request off this host and API is listed. */
+  async function openSecurity(page: Page, width: number) {
+    // Size first: emulated iPhone WebKit keeps its layout viewport from load.
+    await page.setViewportSize({ width, height: 800 });
+    const outside: string[] = [];
+    page.on("request", (req) => {
+      const url = new URL(req.url());
+      if (url.hostname !== "localhost" && !req.url().startsWith(API)) {
+        outside.push(url.origin);
+      }
+    });
+    await page.addInitScript(
+      ({ api, twoStep }) => {
+        window.__JIM_TEST__ = { signedIn: true, api, twoStep };
+      },
+      { api: API, twoStep: TWO_STEP }
+    );
+    const calls = await mockServer(page);
+    const revokes: number[] = [];
+    let revokeStatus = 204;
+    await page.route(`${API}/api/auth/revoke`, async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await route.fallback();
+        return;
+      }
+      revokes.push(revokeStatus);
+      await route.fulfill({
+        status: revokeStatus,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+        body:
+          revokeStatus === 204
+            ? ""
+            : JSON.stringify({
+                error: "Couldn't sign out everywhere. Try again in a minute.",
+              }),
+      });
+    });
+    await page.goto("/jim");
+    await expect(page.getByLabel("Message")).toBeVisible();
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menuitem", { name: "Sign-in & security" }).click();
+    const sheet = page.getByRole("dialog", { name: "Sign-in & security" });
+    await expect(sheet).toBeVisible();
+    return {
+      sheet,
+      calls,
+      outside,
+      revokes,
+      setRevokeStatus: (s: number) => {
+        revokeStatus = s;
+      },
+    };
+  }
+
+  for (const width of [393, 320]) {
+    test(`turns two-step on, drawn on the device, at ${width}px`, async ({
+      page,
+    }, testInfo) => {
+      const { sheet, outside } = await openSecurity(page, width);
+      await expect(sheet.getByText("Two-step sign-in is off.")).toBeVisible();
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+
+      const password = sheet.getByLabel("Confirm your password");
+      await expect(password).toBeFocused();
+      await password.fill("not-it");
+      await sheet.getByRole("button", { name: "Continue" }).click();
+      await expect(sheet.getByText("That password didn't work.")).toBeVisible();
+      await password.fill(TWO_STEP.password);
+      await sheet.getByRole("button", { name: "Continue" }).click();
+
+      const link = sheet.getByRole("link", { name: "Add to Passwords" });
+      await expect(link).toHaveAttribute("href", /^otpauth:\/\/totp\//);
+      await expect(
+        sheet.getByText("ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567")
+      ).toBeVisible();
+      const qr = sheet.getByRole("img", { name: /QR code/ });
+      await expect(qr).toBeVisible();
+      expect(await qr.evaluate((el) => el.tagName.toLowerCase())).toBe("svg");
+      expect(await qr.boundingBox()).toMatchObject({ width: 176 });
+
+      const code = sheet.getByLabel("6-digit code");
+      expect(
+        await code.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+      ).toBeGreaterThanOrEqual(16);
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await page.screenshot({
+        path: `${SHOTS}/security-setup-${testInfo.project.name}-${width}.png`,
+        animations: "disabled",
+      });
+
+      await code.fill("111111");
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+      await expect(
+        sheet.getByText("That code didn't work. Try the newest one.")
+      ).toBeVisible();
+      await code.fill(TWO_STEP.code);
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+      await expect(
+        sheet.getByText(
+          "Two-step sign-in is on. Jim asks for a code only when you sign in on a new device."
+        )
+      ).toBeVisible();
+      // The setup key is gone from the page once enrolled.
+      expect(await page.content()).not.toContain(TWO_STEP.secret);
+      expect(await page.content()).not.toContain("ABCD EFGH");
+      await page.screenshot({
+        path: `${SHOTS}/security-done-${testInfo.project.name}-${width}.png`,
+        animations: "disabled",
+      });
+      // Nothing in the sheet came from anywhere else (no QR service).
+      expect(outside).toEqual([]);
+    });
+  }
+
+  test("test_sign_out_everywhere_wipes: the server first, then this device", async ({
+    page,
+  }) => {
+    const { sheet, revokes } = await openSecurity(page, 393);
+    await sheet.getByRole("button", { name: "Sign out everywhere" }).click();
+    await expect(
+      sheet.getByText("This signs out every device, this one too.")
+    ).toBeVisible();
+    await bigTargets(page);
+    expect(revokes).toEqual([]);
+    await sheet
+      .getByRole("button", { name: "Yes, sign out everywhere" })
+      .click();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(
+      page.getByText("You're signed out on every device.")
+    ).toBeVisible();
+    expect(revokes).toEqual([204]);
+    await expect(page.getByLabel("Message")).toHaveCount(0);
+  });
+
+  test("a 503 keeps him signed in and shows the server's words", async ({
+    page,
+  }) => {
+    const { sheet, revokes, setRevokeStatus } = await openSecurity(page, 393);
+    setRevokeStatus(503);
+    await sheet.getByRole("button", { name: "Sign out everywhere" }).click();
+    await sheet
+      .getByRole("button", { name: "Yes, sign out everywhere" })
+      .click();
+    await expect(
+      sheet.getByText("Couldn't sign out everywhere. Try again in a minute.")
+    ).toBeVisible();
+    expect(revokes).toEqual([503]);
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByLabel("Message")).toBeVisible();
+  });
+});

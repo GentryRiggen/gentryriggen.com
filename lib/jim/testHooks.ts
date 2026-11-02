@@ -12,6 +12,19 @@ export interface JimTestHook {
   signedIn?: boolean;
   /** Use this server URL instead of JIM_API. */
   api?: string;
+  /** With `signedIn`: a stand-in for the authenticator setup. */
+  twoStep?: JimTestTwoStep;
+}
+
+/** The stand-in authenticator setup (all values invented by the test). */
+export interface JimTestTwoStep {
+  enrolled: boolean;
+  /** The password the stand-in accepts. */
+  password: string;
+  /** The setup key it hands out. */
+  secret: string;
+  /** The one code it accepts. */
+  code: string;
 }
 
 declare global {
