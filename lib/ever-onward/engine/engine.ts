@@ -456,7 +456,7 @@ export const GENERIC_NO_EFFECT_REASON = "This won't change anything yet.";
 export function previewChangesNothing(preview: string | null): boolean {
   if (!preview) return false;
   let pairs = 0;
-  for (const segment of preview.split(" · ")) {
+  for (const segment of preview.split(/\s*·\s*|\r?\n/)) {
     const [before, ...rest] = segment.split(PREVIEW_ARROW);
     if (rest.length === 0) continue;
     pairs += 1;
@@ -489,7 +489,7 @@ function readShown(text: string): number | null {
 export function previewBiggestChange(preview: string | null): number | null {
   if (!preview) return null;
   let biggest: number | null = null;
-  for (const segment of preview.split(" · ")) {
+  for (const segment of preview.split(/\s*·\s*|\r?\n/)) {
     const [before, ...rest] = segment.split(PREVIEW_ARROW);
     if (rest.length === 0) continue;
     const b = readShown(before.trim().split(/\s+/).slice(-1)[0]);

@@ -45,7 +45,26 @@ export function previewOf(
   id: string,
   stats: readonly Stat[]
 ): (run: RunState) => string {
-  return (run) => previewLines(run, afterBuying(run, id), stats);
+  return (run) => {
+    const after = afterBuying(run, id);
+    return stats
+      .flatMap((stat) => {
+        const before = stat.read(run);
+        const next = stat.read(after);
+        if (stat.isHiddenWhenSame && before === next) return [];
+        const detail = previewLines(run, after, [stat]);
+        if (before > 0 && next / before >= 1.1)
+          return [
+            `${times(next / before)} ${stat.label.toLowerCase()}\n${detail}`,
+          ];
+        if (before > next && next >= 0)
+          return [
+            `${short((1 - next / before) * 100)}% less ${stat.label.toLowerCase()}\n${detail}`,
+          ];
+        return [detail];
+      })
+      .join("\n");
+  };
 }
 
 /** The same, for a project: each stat before and after it is done. */

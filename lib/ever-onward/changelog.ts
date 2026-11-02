@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.23.0",
+    date: "2026-11-02",
+    title: "Every story gets the Coast treatment",
+    highlights: [
+      "Every part of every story now shows its goal at the top, with a bar that fills as you go and what the next step costs. Spending never takes your progress away",
+      "Upgrade cards everywhere are short now: a name, a price and what you get, like +3 per second or ×2. Tap About for the story",
+      "Each card shows what it changes before you buy, and the first time something starts working by itself it says so",
+      "The shop comes first, with the main things for each part right under it. Visitors and the extra details wait further down",
+      "In the sky, your third and sixth sun collectors make every collector shine a bit brighter",
+    ],
+  },
+  {
     version: "1.22.1",
     date: "2026-11-02",
     title: "Start over any time",

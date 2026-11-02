@@ -1,3 +1,4 @@
+import { smileGoal } from "./goal";
 import type { UniverseDef } from "../../engine/types";
 import { SMILE_ACTIONS } from "./actions";
 import { smileAlert } from "./alerts";
@@ -35,6 +36,7 @@ export const smileUniverse: UniverseDef = {
   actions: SMILE_ACTIONS,
   projects: SMILE_PROJECTS,
   maxVisible: 3,
+  goalMeter: smileGoal,
   story: STORY,
   teasers: TEASERS,
   visitors: VISITORS,

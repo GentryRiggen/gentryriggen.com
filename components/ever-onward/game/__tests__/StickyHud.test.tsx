@@ -52,8 +52,8 @@ describe("sticky HUD", () => {
     const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
     renderScreen(run);
     expect(screen.queryByTestId("lm-res-coins")).toBeNull();
-    // With a goal on the HUD the stats grid is left out altogether.
-    expect(screen.queryByTestId("lm-res-ships")).toBeNull();
+    // Secondary figures remain available behind More details.
+    expect(screen.getByTestId("lm-res-ships")).not.toBeVisible();
   });
 
   it("makes the part's goal the big top line, with a segmented bar", () => {

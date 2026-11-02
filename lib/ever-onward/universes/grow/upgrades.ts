@@ -1,3 +1,5 @@
+import { handHarvestPays } from "./actions";
+import { rateEffect } from "../../engine/purchaseFeedback";
 import { formatNumber } from "../../engine/format";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import {
@@ -61,7 +63,10 @@ function scalePreview(run: RunState, id: string): string {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
-  return `Per tap ${num(manualPerTap(run))} → ${num(manualPerTap(after))}`;
+  return [
+    rateEffect(manualPerTap(run), manualPerTap(after), "per tap"),
+    rateEffect(incomePerSecond(run), incomePerSecond(after), "per second"),
+  ].join("\n");
 }
 
 function ratePreview(
@@ -74,7 +79,7 @@ function ratePreview(
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
-  return `${label} ${num(rate(run))} → ${num(rate(after))}`;
+  return rateEffect(rate(run), rate(after), label.toLowerCase());
 }
 
 const helperPreview = (run: RunState, id: string): string =>
@@ -100,6 +105,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "basket",
+    badge: "NEW ABILITY",
     name: "A picking basket",
     description:
       "It gathers ripe produce into seeds while you do other things. Picking by hand in autumn still pays more.",
@@ -148,6 +154,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "bee-hive",
+    badge: "NEW ABILITY",
     name: "A bee hive",
     description:
       "The bees visit every flower, so things ripen three times as fast as a sprinkler manages.",
@@ -165,6 +172,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: BEE_KEEPER_ID,
+    badge: "NEW ABILITY",
     name: "A bee keeper",
     description:
       "A friendly person in a veil who reads the dance when you are busy. Your own follow still pays more.",
@@ -273,6 +281,16 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "honey-stand",
+    effectPreview: (run) => {
+      if ((run.resources.produce ?? 0) <= 0)
+        return `Hand-picked produce pays ${TUNING.yard.honey}×`;
+      return ratePreview(
+        run,
+        "honey-stand",
+        "seeds per hand harvest",
+        handHarvestPays
+      );
+    },
     name: "A honey stand",
     description:
       "A wobbly table by the gate. Whatever you pick by hand sells for half again as much, with a jar of honey on top.",
@@ -341,6 +359,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "tractor",
+    badge: "NEW ABILITY",
     name: "A green tractor",
     description:
       "Putt, putt, putt. It does a whole row in the time a person does a plant.",
@@ -356,6 +375,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: FAIR_HAND_ID,
+    badge: "NEW ABILITY",
     name: "A fair helper",
     description:
       "A cheerful neighbour in a straw hat who carries a pumpkin to the county fair when you are busy. Your own pick still pays more.",
@@ -373,6 +393,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: MARKET_AGENT_ID,
+    badge: "NEW ABILITY",
     name: "A market agent",
     description:
       "A friendly person with a clipboard who asks the towns what they want, and plants it now and then. You will always choose better, because you are looking.",
@@ -507,6 +528,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "planting-rover",
+    badge: "NEW ABILITY",
     name: "A planting rover",
     description:
       "A six-wheeled rover that plants a tree, shuffles forward and plants another, all day and all night.",
@@ -522,6 +544,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: FLOCK_LEADER_ID,
+    badge: "NEW ABILITY",
     name: "A flock leader",
     description:
       "A wise old goose who leads a waiting flock to the place that needs it most when you are busy. Your own choice still grows more.",
@@ -659,6 +682,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: MUSIC_BOX_ID,
+    badge: "NEW ABILITY",
     name: "A little music box",
     description:
       "It plays the pot a soft tune when you are busy. Your own answer still grows it more.",
@@ -692,6 +716,12 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
  * Repeatable upgrades also climb a little steeper in a phase that needs it,
  * so the first steps stay cheap and the last ones are earned.
  */
+const CHAPTER_EFFECTS: Readonly<Record<string, string>> = {
+  "cold-frame": "Finish the garden and open The Farm",
+  "grain-barn": "Finish the harvest and open The Whole World",
+  "seed-vault": "Save a seed and open The Old Window Box",
+};
+
 export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
   const phase = Math.max(
     0,
@@ -699,6 +729,14 @@ export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
   );
   return {
     ...u,
+    badge: CHAPTER_EFFECTS[u.id]
+      ? u.id === "set-down"
+        ? "LAST STEP"
+        : "NEXT CHAPTER"
+      : u.badge,
+    effectPreview:
+      u.effectPreview ??
+      (CHAPTER_EFFECTS[u.id] ? () => CHAPTER_EFFECTS[u.id] : undefined),
     baseCost: u.baseCost * TUNING.costScale[phase],
     costGrowth:
       u.costGrowth > 1 ? u.costGrowth * TUNING.costSteepness[phase] : 1,

@@ -96,16 +96,14 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
   topPanels: [LampPanel],
+  primaryPanels: [StreetlightsPanel, ProbeRaces, MemoryGarden],
   panels: [
     CoastForkPanel,
     LaterForkPanel,
     FundPanel,
     TideClock,
-    ProbeRaces,
-    StreetlightsPanel,
     WeatherDesk,
     ProjectsPanel,
-    MemoryGarden,
   ],
   Opening: function LanternOpening({ run, onChoose }) {
     return <LanternPicker value={lanternOf(run)} onChange={onChoose} />;

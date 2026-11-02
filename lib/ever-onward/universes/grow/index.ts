@@ -1,3 +1,4 @@
+import { growGoal } from "./goal";
 import type { UniverseDef } from "../../engine/types";
 import { GROW_ACTIONS } from "./actions";
 import { GROW_PROJECTS } from "./knowhow";
@@ -35,6 +36,7 @@ export const growUniverse: UniverseDef = {
   actions: GROW_ACTIONS,
   projects: GROW_PROJECTS,
   maxVisible: 3,
+  goalMeter: growGoal,
   story: STORY,
   teasers: TEASERS,
   visitors: VISITORS,

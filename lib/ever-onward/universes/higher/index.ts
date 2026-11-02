@@ -1,3 +1,4 @@
+import { higherGoal } from "./goal";
 import type { UniverseDef } from "../../engine/types";
 import { HIGHER_ACTIONS } from "./actions";
 import { higherAlert } from "./alerts";
@@ -35,6 +36,7 @@ export const higherUniverse: UniverseDef = {
   actions: HIGHER_ACTIONS,
   projects: HIGHER_PROJECTS,
   maxVisible: 3,
+  goalMeter: higherGoal,
   story: STORY,
   teasers: TEASERS,
   visitors: VISITORS,

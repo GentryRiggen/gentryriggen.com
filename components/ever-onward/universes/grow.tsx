@@ -67,17 +67,14 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** The Make It Grow screens: scene, panels, ending, sounds. */
 export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
+  primaryPanels: [SeasonDial, MarketPanel, BiomePanel, WindowBox],
   panels: [
-    SeasonDial,
     ForkPanel,
-    MarketPanel,
     SeedBankPanel,
     KnowHowPanel,
     BeeDance,
     CountyFair,
-    BiomePanel,
     SeedMigration,
-    WindowBox,
   ],
   ending: {
     storyIds: ENDING_STORY_IDS,

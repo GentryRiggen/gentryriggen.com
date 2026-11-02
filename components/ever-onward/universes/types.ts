@@ -63,6 +63,8 @@ export interface UniverseUi {
   panels: readonly ComponentType<PanelProps>[];
   /** Rendered in order above the upgrade list, for the knob you keep adjusting. */
   topPanels?: readonly ComponentType<PanelProps>[];
+  /** The chapter's main activity, immediately after the shop and quick actions. */
+  primaryPanels?: readonly ComponentType<PanelProps>[];
   Opening?: ComponentType<{
     run: RunState;
     onChoose: (value: number) => void;
