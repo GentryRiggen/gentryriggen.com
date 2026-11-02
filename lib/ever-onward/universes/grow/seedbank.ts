@@ -101,7 +101,7 @@ export const BANK_LABELS: readonly string[] = [
 
 export const BANK_NOTES: readonly string[] = [
   "Every sack goes to market. A plain field, and all the harvest now.",
-  "A quarter goes in the bank as seed. The field grows richer, and it pays back many times over.",
+  "A quarter goes in the bank as seed. The field grows richer, and so does every harvest after.",
   "Half goes in the bank. A rich field, but a thin harvest for now. It spoils a little, too.",
 ];
 

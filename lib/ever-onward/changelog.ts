@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.18.0",
+    date: "2026-11-01",
+    title: "Choices in the garden",
+    highlights: [
+      "You can now keep some of your harvest back as seed. Keep a quarter and the farm grows richer; keep too much and there is little to sell today",
+      "The farm and the world have know-how. Spend it on a lasting project, or on a festival where everything pays double for a while",
+      "Every part now has a choice with two sides: ask the bees or reach for the bug spray, a scarecrow crew or a hired hawk, old forest or wetland, morning sun or a night-light. Pick one, and the garden shows it",
+      "Upgrades are bigger: each one you buy makes something at least half again as strong, and there are fewer, bolder steps",
+      "The farm and the world are busier, with something to decide every minute or two",
+    ],
+  },
+  {
     version: "1.17.0",
     date: "2026-11-01",
     title: "The little worlds come alive",

@@ -96,7 +96,7 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "Scarecrow crew",
-        blurb: `Fields pay ${times(T.farm.crewIncome)}, the crops drink ${Math.round((1 - T.farm.crewThirst) * 100)}% less and the county fair pays double ribbons. The crows learn to ignore them, but only slowly.`,
+        blurb: `Fields pay ${times(T.farm.crewIncome)}, the crops drink ${Math.round((1 - T.farm.crewThirst) * 100)}% less and the county fair pays ${times(T.farm.crewFair)} ribbons. The crows learn to ignore them, but only slowly.`,
         catchLine: `Fields pay ${times(T.farm.hawkIncome)} with a hawk, so you give up some now.`,
       },
       {
@@ -233,7 +233,7 @@ export function farmForkMult(run: RunState): number {
 export const farmThirstMult = (run: RunState): number =>
   forkSide(run, "farm") === 0 ? T.farm.crewThirst : 1;
 
-/** The county fair pays double ribbons with the crew (1 otherwise). */
+/** The county fair multiplies ribbons with the crew (1 otherwise). */
 export const fairForkMult = (run: RunState): number =>
   forkSide(run, "farm") === 0 ? T.farm.crewFair : 1;
 

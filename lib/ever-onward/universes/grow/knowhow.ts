@@ -10,7 +10,7 @@ import { TUNING } from "./tuning";
  * works, so know-how trickles in. There are two hungry things to spend it on:
  *  - projects: a few permanent ideas (drip lines, a roadside stand, a hybrid
  *    seed), each one a big, lasting step;
- *  - a festival: a burst of triple pay for a short while, as often as you can
+ *  - a festival: a burst of double pay for a short while, as often as you can
  *    afford it. Best when the towns want what you grow, or just before a big
  *    purchase.
  * Money spent on one is not there for the other, and nothing here is luck:
