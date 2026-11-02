@@ -39,6 +39,12 @@ import {
   picksSoFar,
   withoutGarden,
 } from "./garden";
+import {
+  FUND_ACTION_IDS,
+  FUND_CHOICE_IDS,
+  fundBalance,
+  isFundOpen,
+} from "./fund";
 import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
 /**
@@ -93,6 +99,7 @@ export function lightPlates(run: RunState): string[] {
     // at the moment the first seed is planted).
     if (isGardenOpen(run) && picksSoFar(run) >= 2) plates.push("garden");
   }
+  if (isFundOpen(run) && fundBalance(run) > 0) plates.push("fund");
   return plates;
 }
 
@@ -109,6 +116,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   flare: ["catch-flare"],
   boat: ["steer-boat", "flash-lamp"],
   garden: GARDEN_ACTION_IDS,
+  fund: FUND_ACTION_IDS,
 };
 
 /**
@@ -124,6 +132,7 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   ...SHIELD_ACTION_IDS,
   WATER_ACTION,
   ...LAMP_ACTION_IDS,
+  ...FUND_CHOICE_IDS,
 ];
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [

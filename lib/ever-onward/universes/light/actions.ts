@@ -76,6 +76,18 @@ import {
   waterGarden,
 } from "./garden";
 import { formatNumber } from "../../engine/format";
+import {
+  DEPOSIT_SHARES,
+  WITHDRAW_ACTION,
+  deposit,
+  depositActionId,
+  fundBalance,
+  fundFee,
+  fundKind,
+  fundPayout,
+  isFundOpen,
+  withdrawAll,
+} from "./fund";
 
 const TREND_THRESHOLD = 0.015;
 
@@ -402,7 +414,49 @@ const PICK_BLOOMS: ActionDef = {
   perform: (run) => pickBlooms(run, resolvePerSecond(run)),
 };
 
+/** The smallest deposit worth a click. */
+const MIN_DEPOSIT = 1;
+
+/** The fund's buttons (a share of what you hold goes in); its panel draws them. */
+const FUND_IN: readonly ActionDef[] = DEPOSIT_SHARES.map((share) => ({
+  id: depositActionId(share),
+  isInline: true,
+  visibleWhen: isFundOpen,
+  describe: (run) => {
+    const { currency, name } = fundKind(run);
+    const amount = (run.resources[currency] ?? 0) * share;
+    return {
+      label:
+        share >= 1
+          ? `Put it all in the ${name}`
+          : `Put ${Math.round(share * 100)}% in the ${name}`,
+      detail: `${formatNumber(Math.floor(amount))} ${currency} goes in.`,
+      cost: { resource: currency, amount },
+      isBlocked: amount < MIN_DEPOSIT,
+    };
+  },
+  perform: (run, paid) => deposit(run, paid),
+}));
+
+const FUND_OUT: ActionDef = {
+  id: WITHDRAW_ACTION,
+  isInline: true,
+  visibleWhen: isFundOpen,
+  describe: (run) => {
+    const { name } = fundKind(run);
+    const balance = fundBalance(run);
+    return {
+      label: `Take it all out of the ${name}`,
+      detail: `${formatNumber(Math.floor(fundPayout(run)))} comes out after the ${Math.round(fundFee(run) * 100)}% fee.`,
+      isBlocked: balance < MIN_DEPOSIT,
+    };
+  },
+  perform: (run) => withdrawAll(run),
+};
+
 export const ACTIONS: readonly ActionDef[] = [
+  ...FUND_IN,
+  FUND_OUT,
   BUY_OIL,
   BALANCE_GRID,
   RIDE_RUSH,

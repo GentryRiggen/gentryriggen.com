@@ -14,6 +14,7 @@ import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
+import { tickFund } from "./fund";
 import { outageFactor, tickWeather } from "./weather";
 
 const {
@@ -682,6 +683,7 @@ export function tickLight(run: RunState, dt: number): void {
   // Every phase: a probe away and a haul flowing in when the sky ends finish.
   tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
   tickGarden(run, dt);
+  tickFund(run, dt, () => fundIncome(run));
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);
@@ -759,6 +761,17 @@ export const calmSkyIncomePerSecond = (run: RunState): number =>
   collectorEnergyPerSecond(run) +
   probeEnergyPerSecond(run) +
   aimEnergy(run) * 3;
+
+/**
+ * What the fund measures its size against: the part's income a second on a
+ * calm day (the last part counts the pace of letting go).
+ */
+export function fundIncome(run: RunState): number {
+  if (run.phase === 0) return calmIncomePerSecond(run);
+  if (run.phase === 1) return incomePerSecond(run);
+  if (run.phase === 2) return calmSkyIncomePerSecond(run);
+  return resolvePerSecond(run);
+}
 
 /** The gift every income visitor brings: a small slice of the phase's income. */
 export const visitorGift = (run: RunState): number =>

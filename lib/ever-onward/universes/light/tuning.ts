@@ -9,6 +9,26 @@ export const TUNING = {
     string,
     number
   >,
+  /**
+   * The fund (see fund.ts): each part's savings jar. It grows by
+   * `yieldPerSecond` of what is in it, less as the jar fills: the yield is
+   * halved at `halfSeconds` of the part's income. Taking it out costs a fee.
+   */
+  fund: {
+    yieldPerSecond: 0.02,
+    halfSeconds: 30,
+    minScale: 60,
+    /** The fee for taking it out: steep at first, small after `matureSeconds`. */
+    earlyFee: 0.3,
+    lateFee: 0.04,
+    matureSeconds: 120,
+    opensAt: {
+      coastShips: 60,
+      nightLittleGenerators: 2,
+      skyCollectors: 3,
+      lastLights: 10,
+    },
+  },
   coast: {
     fareGrowth: 1.3,
     /** A better lens helps every flash, the keepers' as much as yours. */

@@ -61,6 +61,12 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "lampChanges", label: "Streetlight changes", phases: HIDDEN },
   { id: "rush", label: "Evening rush", phases: HIDDEN },
   { id: "rushCooldown", label: "Next rush", initial: 90, phases: HIDDEN },
+  // The fund (every part): the savings jar and its tallies, read by fund.ts
+  { id: "fund", label: "In the fund", phases: HIDDEN },
+  { id: "fundSince", label: "Fund, age of the money", phases: HIDDEN },
+  { id: "fundDeposits", label: "Fund deposits", phases: HIDDEN },
+  { id: "fundFees", label: "Fund fees paid", phases: HIDDEN },
+  { id: "fundEarned", label: "Earned by the fund", phases: HIDDEN },
   // The Tide Clock (The Coast): the wave clock and tallies, read by tide.ts
   { id: "tdTime", label: "Tide clock", phases: HIDDEN },
   { id: "tdNets", label: "Nets (0 empty, 1 set, 2 full)", phases: HIDDEN },
