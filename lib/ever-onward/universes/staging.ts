@@ -1,5 +1,6 @@
 import type { UniverseDef } from "../engine/types";
 import { growUniverse } from "./grow";
+import { higherUniverse } from "./higher";
 import { lightUniverse } from "./light";
 
 /** A universe that is announced but not built yet. */
@@ -23,6 +24,7 @@ export const UNRELEASED_IDS: readonly string[] = [];
 export const ALL_UNIVERSES: readonly UniverseDef[] = [
   lightUniverse,
   growUniverse,
+  higherUniverse,
 ];
 
 /** Every announced universe, in hub order. */

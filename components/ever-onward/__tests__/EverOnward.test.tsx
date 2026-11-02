@@ -59,7 +59,8 @@ describe("Ever Onward hub", () => {
     ]) {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }
-    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
+    expect(screen.getByTestId("lm-locked-higher")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /what's new/i })).toHaveAttribute(
       "href",
       "/ever-onward/versions"
@@ -84,7 +85,7 @@ describe("Ever Onward hub", () => {
     const play = await screen.findByTestId("lm-play-light");
     expect(play).toHaveTextContent("Play Keep the Light On");
     expect(screen.queryByTestId("lm-facts-light")).not.toBeInTheDocument();
-    const locked = screen.getByLabelText("Build It Higher, coming soon");
+    const locked = screen.getByLabelText("Make Everyone Smile, coming soon");
     expect(locked.tagName).toBe("LI");
     expect(within(locked).queryByRole("button")).not.toBeInTheDocument();
   });

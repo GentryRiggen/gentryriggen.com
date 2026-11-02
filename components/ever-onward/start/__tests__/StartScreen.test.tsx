@@ -50,7 +50,7 @@ describe("StartScreen", () => {
         onStart={jest.fn()}
       />
     );
-    expect(screen.queryByText(/locked/)).toBeNull();
+    expect(screen.queryByText(/Make It Grow, locked/)).toBeNull();
     expect(screen.getByText("Make It Grow")).toBeInTheDocument();
   });
 

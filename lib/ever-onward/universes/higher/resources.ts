@@ -1,0 +1,56 @@
+import type { ResourceDef } from "../../engine/types";
+
+export const PHASE_PLAYROOM = "playroom";
+export const PHASE_TOWN = "town";
+export const PHASE_SKY = "sky";
+export const PHASE_TOP = "top";
+
+export type HigherPhaseId =
+  | typeof PHASE_PLAYROOM
+  | typeof PHASE_TOWN
+  | typeof PHASE_SKY
+  | typeof PHASE_TOP;
+
+/** Phase ids, in order (the index is the run's `phase`). */
+export const PHASE_IDS: readonly HigherPhaseId[] = [
+  PHASE_PLAYROOM,
+  PHASE_TOWN,
+  PHASE_SKY,
+  PHASE_TOP,
+];
+
+/** What each phase's tap earns, by phase index. */
+export const MANUAL_RESOURCES = ["blocks", "bricks", "beams", "quiet"] as const;
+
+/** The visitor whose arrival ends the run: someone on the grass with a kid. */
+export const RETURN_VISITOR_ID = "kid-on-the-grass";
+
+/** How far down the robot has come, 0 to 100. */
+export const FULL_DESCENT = 100;
+
+const HIDDEN: readonly string[] = [];
+
+const hidden = (ids: readonly string[]): ResourceDef[] =>
+  ids.map((id) => ({ id, label: id, phases: HIDDEN }));
+
+export const RESOURCES: readonly ResourceDef[] = [
+  { id: "blocks", label: "Blocks", phases: [PHASE_PLAYROOM] },
+  { id: "bricks", label: "Bricks", phases: [PHASE_TOWN] },
+  { id: "beams", label: "Beams", phases: [PHASE_SKY] },
+  { id: "quiet", label: "Quiet", phases: [PHASE_TOP] },
+  { id: "descent", label: "Descent (%)", phases: [PHASE_TOP] },
+  // Know-how for the town and the sky.
+  { id: "knowhow", label: "Know-how", phases: [PHASE_TOWN, PHASE_SKY] },
+  // Sway: how far the tower leans, 0 (upright) to 1 (wobbling).
+  ...hidden(["sway"]),
+  // Overtime: seconds left and times held.
+  ...hidden(["otLeft", "otCount"]),
+  // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).
+  ...hidden(["fkPlay", "fkTown", "fkSky", "fkTop"]),
+  // Foundations: the share kept back (a step), the stock in the footing and
+  // how many times the share was changed.
+  ...hidden(["ftStep", "ftStock", "ftChanges"]),
+  // Deliveries: stage (0 waiting, 1 here), the clock, loads placed, the last
+  // load placed (1 to 3), and how much it paid, in plain units.
+  ...hidden(["dlStage", "dlTime", "dlCount", "dlLast", "dlLastPays"]),
+];
