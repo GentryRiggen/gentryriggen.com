@@ -87,9 +87,9 @@ describe("Ever Onward hub", () => {
     const play = await screen.findByTestId("lm-play-light");
     expect(play).toHaveTextContent("Play Keep the Light On");
     expect(screen.queryByTestId("lm-facts-light")).not.toBeInTheDocument();
-    const locked = screen.getByLabelText("Make Everyone Smile, coming soon");
-    expect(locked.tagName).toBe("LI");
-    expect(within(locked).queryByRole("button")).not.toBeInTheDocument();
+    // Every universe is built now; the later ones are locked, not playable.
+    expect(screen.getByTestId("lm-locked-smile")).toBeInTheDocument();
+    expect(screen.queryByTestId("lm-play-smile")).not.toBeInTheDocument();
   });
 
   it("shows best time and embers once earned", async () => {

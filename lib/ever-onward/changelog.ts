@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.21.0",
+    date: "2026-11-02",
+    title: "Make Everyone Smile",
+    highlights: [
+      "A new universe, Make Everyone Smile: a little robot who cheers up one sad friend, then a town, then the whole world. It opens when you finish Build It Higher",
+      "Spend smiles now, or set some aside as time together so the friendship grows",
+      "Every part has a pick-one choice with The catch on each side: jokes or kindness, clown school or a smile factory, loudspeakers or listening boxes, a few words or just sitting",
+      "Keep the crowd's cheer meter steady. Push too hard and everyone needs a rest",
+      "Throw the ball for the puppy, hold a parade, and watch four new moving pictures. Every upgrade shows up in the picture, and the story is read aloud",
+    ],
+  },
+  {
     version: "1.20.0",
     date: "2026-11-02",
     title: "Build It Higher",
