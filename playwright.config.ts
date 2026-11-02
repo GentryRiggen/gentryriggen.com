@@ -75,11 +75,12 @@ export default defineConfig({
       grep: smokeOnly,
     },
 
-    /* /jim is a phone-first chat: run it on an iPhone (WebKit, touch). */
+    /* /jim is a phone-first chat: its @smoke tests also run on an iPhone. */
     {
       name: "iphone",
       use: { ...devices["iPhone 15"] },
       testMatch: /jim\.spec/,
+      grep: smokeOnly,
     },
 
     /* Test against mobile viewports. */

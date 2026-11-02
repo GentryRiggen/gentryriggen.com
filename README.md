@@ -35,16 +35,15 @@ npm run dev     # http://localhost:3000
 
 ## Scripts
 
-| Command                         | What it does                                      |
-| ------------------------------- | ------------------------------------------------- |
-| `npm run dev`                   | Dev server                                        |
-| `npm run build`                 | Production build (static export to `out/`)        |
-| `npm run lint` / `format:check` | ESLint / Prettier check                           |
-| `npm run type-check`            | `tsc --noEmit`                                    |
-| `npm test`                      | Jest unit tests                                   |
-| `npm run test:e2e`              | Playwright (starts the dev server itself)         |
-| `npm run test:visual`           | Visual snapshots, run in Docker for stable pixels |
-| `npm run validate`              | Lint, format, types, tests and build, as in CI    |
+| Command                         | What it does                                   |
+| ------------------------------- | ---------------------------------------------- |
+| `npm run dev`                   | Dev server                                     |
+| `npm run build`                 | Production build (static export to `out/`)     |
+| `npm run lint` / `format:check` | ESLint / Prettier check                        |
+| `npm run type-check`            | `tsc --noEmit`                                 |
+| `npm test`                      | Jest unit tests                                |
+| `npm run test:e2e`              | Playwright (starts the dev server itself)      |
+| `npm run validate`              | Lint, format, types, tests and build, as in CI |
 
 ## Project structure
 
@@ -54,7 +53,7 @@ components/
   designs/design1/    Terminal UI
   ship-builder/       3D scene, UI, audio, hooks
 lib/ship-builder/     Model, simulation, persistence, templates, changelog
-e2e/                  Playwright tests and visual snapshots
+e2e/                  Playwright tests
 scripts/              Screenshot, icon and offline-check tooling
 docs/superpowers/     Design specs and implementation plans
 ```

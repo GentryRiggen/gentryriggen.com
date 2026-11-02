@@ -1,4 +1,4 @@
-import { THEME_SCRIPT, isJimPath } from "../themeScript";
+import { JIM_THEME_COLOR, THEME_SCRIPT, isJimPath } from "../themeScript";
 
 interface Run {
   themeColor: string | null;
@@ -48,9 +48,10 @@ it("sets the theme color on site pages", () => {
   expect(run("/", "light")).toEqual({ themeColor: "#ffffff", dark: false });
 });
 
-it("leaves /jim's theme color alone", () => {
+it("gives /jim its Ayu Mirage theme color in light and dark", () => {
   for (const path of ["/jim", "/jim/", "/jim.html", "/jim/x"]) {
-    expect(run(path).themeColor).toBe("#ffffff");
+    expect(run(path).themeColor).toBe(JIM_THEME_COLOR);
+    expect(run(path, "light").themeColor).toBe(JIM_THEME_COLOR);
   }
 });
 

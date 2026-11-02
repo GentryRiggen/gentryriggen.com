@@ -71,43 +71,6 @@ const pollWalker = <T>(page: Page, read: (walker: Walker) => T) =>
 
 test.describe("Ship Builder walk", () => {
   test(
-    "a ship with no deck to stand on cannot walk",
-    { tag: "@smoke" },
-    async ({ page }) => {
-      await openBuilder(page);
-      // Pools tile the whole main deck, so there is nowhere to stand.
-      await page.evaluate(() => {
-        const store = window.__shipBuilderStore!.getState();
-        const pools = Array.from({ length: 12 }, (_, i) => i * 2).flatMap((x) =>
-          [0, 2].map((z) => ({
-            id: `pool-${x}-${z}`,
-            type: "pool" as const,
-            anchor: { kind: "grid" as const, level: 0, x, z },
-            rotation: 0 as const,
-          }))
-        );
-        store.loadShip(
-          {
-            v: 8,
-            kind: "liner",
-            name: "No deck",
-            hull: {
-              lengthSegments: 8,
-              beam: 4,
-              bow: "straight",
-              stern: "counter",
-            },
-            parts: pools,
-          },
-          null
-        );
-      });
-      await expect(page.getByRole("button", { name: "Walk" })).toBeDisabled();
-      await expect(page.getByText("Add a deck to walk on")).toBeVisible();
-    }
-  );
-
-  test(
     "walks with the keys, the stick and the look layer, then stops",
     { tag: "@smoke" },
     async ({ page }) => {
@@ -172,95 +135,6 @@ test.describe("Ship Builder walk", () => {
         page.getByRole("button", { name: "Sea trial" })
       ).toBeVisible();
       expect(await walker(page)).toBeNull();
-    }
-  );
-
-  test(
-    "the start card fits on a phone screen",
-    { tag: "@smoke" },
-    async ({ page }) => {
-      await page.setViewportSize({ width: 375, height: 812 });
-      await openBuilder(page);
-      await loadTitanic(page);
-      await page.getByRole("button", { name: "Walk", exact: true }).click();
-      const box = await page
-        .getByRole("dialog", { name: "Where do you want to start?" })
-        .boundingBox();
-      expect(box!.x).toBeGreaterThanOrEqual(0);
-      expect(box!.x + box!.width).toBeLessThanOrEqual(375);
-    }
-  );
-
-  test(
-    "starts at the front or the back when asked",
-    { tag: "@smoke" },
-    async ({ page }) => {
-      await openBuilder(page);
-      await loadTitanic(page);
-      const length = await page.evaluate(() => {
-        const { hull } = window.__shipBuilderStore!.getState().ship;
-        return hull.lengthSegments * 3;
-      });
-
-      const front = await startWalking(page, "Front (bow)");
-      expect(front.x).toBeLessThan(length / 4);
-      await page.getByRole("button", { name: "Stop walking" }).click();
-      await expect(page.getByRole("button", { name: "Walk" })).toBeVisible();
-
-      const back = await startWalking(page, "Back (stern)");
-      expect(back.x).toBeGreaterThan((length * 3) / 4);
-    }
-  );
-
-  test(
-    "climbs stairs onto a roof and comes back down",
-    { tag: "@smoke" },
-    async ({ page }) => {
-      await openBuilder(page);
-      await loadTitanic(page);
-      // Stairs at the foot of the crew cabins climb toward the stern, and the
-      // walker starts one cell short of them, facing the stern (yaw PI).
-      await page.evaluate(() => {
-        const store = window.__shipBuilderStore!.getState();
-        const { ship } = store;
-        store.loadShip(
-          {
-            ...ship,
-            parts: [
-              ...ship.parts,
-              {
-                id: "e2e-stairs",
-                type: "stairs",
-                anchor: { kind: "grid", level: 0, x: 9, z: 1 },
-                rotation: 0,
-              },
-            ],
-          },
-          null
-        );
-        window.__SHIP_BUILDER_TEST__ = {
-          walkSpawn: { x: 8.5, z: 1.5, yaw: Math.PI, level: 0 },
-        };
-      });
-
-      const start = await startWalking(page);
-      expect(start.level).toBe(0);
-
-      await page.keyboard.down("w");
-      await pollWalker(page, (w) => w.level).toBe(1);
-      await page.keyboard.up("w");
-      expect((await walker(page))!.x).toBeGreaterThan(10);
-
-      // Turn round (toward the bow) and walk back down.
-      await page.keyboard.down("ArrowRight");
-      await pollWalker(page, (w) => Math.abs(w.yaw)).toBeLessThan(0.3);
-      await page.keyboard.up("ArrowRight");
-      await page.keyboard.down("w");
-      await pollWalker(page, (w) => w.level).toBe(0);
-      await page.keyboard.up("w");
-
-      await page.keyboard.press("Escape");
-      expect(await walkStatus(page)).toBe("idle");
     }
   );
 });

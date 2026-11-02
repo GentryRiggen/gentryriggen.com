@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import JimGate from "@/components/jim/JimGate";
+import { JIM_THEME_COLOR } from "@/lib/theme/themeScript";
 
 export const metadata: Metadata = {
   title: "Jim",
@@ -57,7 +58,7 @@ export const viewport: Viewport = {
   // chat follows the visual viewport there instead).
   interactiveWidget: "resizes-content",
   // Ayu Mirage in light and dark alike; the page draws it the same way.
-  themeColor: "#1f2430",
+  themeColor: JIM_THEME_COLOR,
   colorScheme: "dark",
 };
 
