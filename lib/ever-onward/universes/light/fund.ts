@@ -90,7 +90,7 @@ export const fundBalance = (run: RunState): number =>
  * part's own income, so the jar stays about as big a deal all game.
  */
 export const fundScale = (income: number): number =>
-  Math.max(F.minScale, F.halfSeconds * income);
+  Math.max(F.minScale, F.halfSeconds * (Number.isFinite(income) ? income : 0));
 
 /** Growth per second of a jar of this size, in the currency. */
 export function fundYieldPerSecond(balance: number, income: number): number {

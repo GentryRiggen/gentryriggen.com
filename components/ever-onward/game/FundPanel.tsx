@@ -58,7 +58,7 @@ function FundPanel({ def, run, onAct }: PanelProps) {
     <PanelFrame
       label={kind.name}
       title={kind.name}
-      icon="$"
+      icon="◎"
       tone={TONES[Math.min(TONES.length - 1, run.phase)]}
       status={`${whole(balance)} in`}
       statusActive={balance > 0}
@@ -77,7 +77,8 @@ function FundPanel({ def, run, onAct }: PanelProps) {
         The catch: every {kind.currency === "coins" ? "coin" : "bit"} in here is
         not buying an upgrade now. Taking it out costs {fee}% today, and only{" "}
         {Math.round(TUNING.fund.lateFee * 100)}% once it has sat for a couple of
-        minutes.
+        minutes. When this part ends the {kind.name.toLowerCase()} closes, so
+        take it out and spend it before then.
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {DEPOSIT_SHARES.map((share) => {
