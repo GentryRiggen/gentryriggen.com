@@ -267,3 +267,21 @@ it("unticking a box ticked this session sends the done line, not the open one", 
   expect(toggleTodo.mock.calls[1][0]).toEqual(AFTER.doneTodos[0]);
   expect(toggleTodo.mock.calls[1][1]).toBe(false);
 });
+
+it("links to the Todos page under its list", async () => {
+  const onOpenTodos = jest.fn();
+  render(
+    <NotesHomePage
+      data={VIEW_FIXTURE}
+      saves={{ marks: {}, toast: null, toggle: jest.fn(), undo: jest.fn() }}
+      onLog={jest.fn()}
+      onDraft={jest.fn()}
+      onOpenTodos={onOpenTodos}
+      todosHref="/jim/todos"
+    />
+  );
+  const link = screen.getByRole("link", { name: /All todos/ });
+  expect(link).toHaveAttribute("href", "/jim/todos");
+  await userEvent.click(link);
+  expect(onOpenTodos).toHaveBeenCalled();
+});

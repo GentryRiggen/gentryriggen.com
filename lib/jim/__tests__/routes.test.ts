@@ -1,5 +1,6 @@
 import {
   formatJimPath,
+  NOTES_PAGES,
   homePageOf,
   isRoutableNotePath,
   isSafeNotePath,
@@ -195,5 +196,18 @@ describe("reminder and meeting routes", () => {
       )
     ).toBe(false);
     expect(sameRoute({ kind: "reminders" }, { kind: "reminders" })).toBe(true);
+  });
+});
+
+describe("the Todos page", () => {
+  it("lives at /jim/todos, between Home and Work", () => {
+    const todos: JimRoute = { kind: "page", page: "todos" };
+    expect(parseJimPath("/jim/todos")).toEqual(todos);
+    expect(parseJimPath("/jim/todos/")).toEqual(todos);
+    expect(formatJimPath(todos)).toBe("/jim/todos");
+    expect(parseJimPath("/jim/todos/extra")).toEqual({ kind: "notFound" });
+    expect(NOTES_PAGES.slice(0, 3)).toEqual(["home", "todos", "work"]);
+    expect(routeTitle(todos)).toBe("Todos · Jim");
+    expect(homePageOf(todos)).toBe("todos");
   });
 });

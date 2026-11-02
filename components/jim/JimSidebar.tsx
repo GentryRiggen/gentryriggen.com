@@ -7,6 +7,7 @@ import {
   Flag,
   HeartPulse,
   House,
+  ListChecks,
   LogOut,
   MessageCircle,
   Sparkles,
@@ -52,6 +53,7 @@ interface JimSidebarProps {
 
 const PAGE_ICONS: Record<NotesPage, LucideIcon> = {
   home: House,
+  todos: ListChecks,
   work: Briefcase,
   money: Wallet,
   people: Users,

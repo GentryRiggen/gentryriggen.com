@@ -58,6 +58,8 @@ interface MockOptions {
   todoStatus?: number;
   /** Short Home labels by todo order. */
   shorts?: Record<number, string>;
+  /** More todos, open and done, added to the fixture's. */
+  moreTodos?: { todos: unknown[]; doneTodos: unknown[] };
 }
 
 interface MockCalls {
@@ -217,13 +219,16 @@ async function mockServer(
           ...VIEW_FIXTURE,
           reflection: { question: REFLECTION_QUESTION },
           meetingCards: { [MEETING_ID]: MEETING_CARD },
-          todos: VIEW_FIXTURE.todos
-            .filter((t) => !done.has(t.order))
-            .map((t) =>
-              options.shorts?.[t.order]
-                ? { ...t, short: options.shorts[t.order] }
-                : t
-            ),
+          todos: [
+            ...VIEW_FIXTURE.todos
+              .filter((t) => !done.has(t.order))
+              .map((t) =>
+                options.shorts?.[t.order]
+                  ? { ...t, short: options.shorts[t.order] }
+                  : t
+              ),
+            ...(options.moreTodos?.todos ?? []),
+          ],
           // A checked-off line carries its done stamp, as the server writes it.
           doneTodos: VIEW_FIXTURE.todos
             .filter((t) => done.has(t.order))
@@ -232,7 +237,11 @@ async function mockServer(
               text: `${t.text} (done 2026-10-31)`,
               done: true,
               done_on: "2026-10-31",
-            })),
+            }))
+            .concat(
+              (options.moreTodos?.doneTodos ??
+                []) as (typeof VIEW_FIXTURE.todos)[number][]
+            ),
         }),
       });
       return;
@@ -2173,4 +2182,196 @@ test.describe("Jim pings", () => {
       await shot("notifications");
     });
   }
+});
+
+/** Invented extra todos so the Todos charts have something to draw. */
+function todoLine(
+  order: number,
+  text: string,
+  due: string,
+  area: string,
+  project: string,
+  doneOn = ""
+) {
+  return {
+    text: doneOn ? `${text} (done ${doneOn})` : text,
+    due,
+    path: "lists/todos.md",
+    area,
+    project,
+    done: doneOn !== "",
+    done_on: doneOn,
+    order,
+  };
+}
+
+const MORE_TODOS = {
+  todos: [
+    todoLine(
+      20,
+      "Book the venue (due 2026-11-03)",
+      "2026-11-03",
+      "work",
+      "onboarding"
+    ),
+    todoLine(
+      21,
+      "Order the welcome kits (due 2026-11-05)",
+      "2026-11-05",
+      "work",
+      "onboarding"
+    ),
+    todoLine(
+      22,
+      "Fix the gate latch (due 2026-11-09)",
+      "2026-11-09",
+      "personal",
+      "garden-map"
+    ),
+    todoLine(23, "Sketch the Q1 targets", "", "work", "quarterly-report"),
+    todoLine(
+      24,
+      "Call the insurer about the roof (due 2026-10-27)",
+      "2026-10-27",
+      "personal",
+      ""
+    ),
+  ],
+  doneTodos: [
+    todoLine(30, "Send the agenda", "", "work", "onboarding", "2026-10-30"),
+    todoLine(31, "Pay the water bill", "", "personal", "", "2026-10-29"),
+    todoLine(
+      32,
+      "Review the draft",
+      "",
+      "work",
+      "quarterly-report",
+      "2026-10-29"
+    ),
+    todoLine(
+      33,
+      "Clean the gutters",
+      "",
+      "personal",
+      "garden-map",
+      "2026-10-26"
+    ),
+    todoLine(34, "Reply to the vendor", "", "work", "", "2026-10-22"),
+  ],
+};
+
+/** The titles in the open list, in order. */
+async function todoTitles(page: Page): Promise<string[]> {
+  return page
+    .getByRole("region", { name: "Open todos" })
+    .getByRole("checkbox")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? ""));
+}
+
+test.describe("Jim todos", () => {
+  test(
+    "opens from the nav, filters Work, a project and overdue, and keeps them on reload",
+    { tag: "@smoke" },
+    async ({ page }, testInfo) => {
+      await signedIn(page, { moreTodos: MORE_TODOS });
+      await page.getByRole("tab", { name: "Notes" }).click();
+      await page.getByRole("tab", { name: "Todos" }).click();
+      await expect(page).toHaveURL(/\/jim\/todos$/);
+      await expect(page).toHaveTitle("Todos · Jim");
+      await expect(page.getByText("12 todos", { exact: true })).toBeVisible();
+      await page.screenshot({
+        path: `${SHOTS}/todos-top-${testInfo.project.name}-${page.viewportSize()?.width}.png`,
+      });
+      await page.getByRole("radio", { name: "Work" }).click();
+      await page
+        .getByRole("group", { name: "Projects" })
+        .getByRole("button", { name: /Quarterly report/ })
+        .click();
+      expect(await todoTitles(page)).toEqual([
+        "Send the quarterly report",
+        "Sketch the Q1 targets",
+      ]);
+      await page
+        .getByRole("group", { name: "When" })
+        .getByRole("button", { name: "Overdue" })
+        .click();
+      expect(await todoTitles(page)).toEqual(["Send the quarterly report"]);
+      expect(new URL(page.url()).search).toBe(
+        "?area=work&project=quarterly-report&when=overdue"
+      );
+      await page.reload();
+      await expect(page.getByText("1 todo", { exact: true })).toBeVisible();
+      expect(await todoTitles(page)).toEqual(["Send the quarterly report"]);
+      await page.getByRole("button", { name: "Clear", exact: true }).click();
+      const search = page.getByRole("searchbox", { name: "Search todos" });
+      await search.fill("DENTIST");
+      expect(await todoTitles(page)).toEqual(["Book the dentist"]);
+      expect(await fontSize(page, "input[type=search]")).toBeGreaterThanOrEqual(
+        16
+      );
+      await search.fill("");
+      // A chart column filters too.
+      await page.getByRole("button", { name: "Late: 3 todos" }).click();
+      expect(await todoTitles(page)).toHaveLength(3);
+      await noSidewaysScroll(page);
+      // The other columns dim once their fade ends.
+      await page.waitForTimeout(400);
+      await page.screenshot({
+        path: `${SHOTS}/todos-${testInfo.project.name}-${page.viewportSize()?.width}.png`,
+        fullPage: true,
+      });
+    }
+  );
+
+  test("fits 320px with no sideways scroll and 44px targets", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await signedIn(page, { moreTodos: MORE_TODOS });
+    await page.getByRole("tab", { name: "Notes" }).click();
+    await page.getByRole("tab", { name: "Todos" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Todos" })
+    ).toBeVisible();
+    await noSidewaysScroll(page);
+    await bigTargets(page);
+    // Scrolled down, Area and Projects stay pinned under the header.
+    const scroller = page.locator("[data-notes-scroller]");
+    await scroller.evaluate((el) => el.scrollTo({ top: 900 }));
+    await expect(page.getByRole("radio", { name: "Work" })).toBeInViewport();
+    await noSidewaysScroll(page);
+    await page.screenshot({ path: `${SHOTS}/todos-320.png` });
+  });
+
+  test("a desktop shows the charts in a row and the filters pinned", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a desktop layout");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript((api) => {
+      window.__JIM_TEST__ = { signedIn: true, api };
+    }, API);
+    await mockServer(page, { moreTodos: MORE_TODOS });
+    await page.goto("/jim/todos?area=work");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Todos" })
+    ).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Work" })).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    const charts = page.getByRole("region", { name: "At a glance" });
+    const boxes = await charts
+      .locator("figure")
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+    expect(new Set(boxes.map(Math.round)).size).toBe(1);
+    await noSidewaysScroll(page);
+    await page.screenshot({
+      path: `${SHOTS}/desktop/todos-${testInfo.project.name}-1440.png`,
+    });
+    await page.screenshot({
+      path: `${SHOTS}/desktop/todos-${testInfo.project.name}-1440-full.png`,
+      fullPage: true,
+    });
+  });
 });
