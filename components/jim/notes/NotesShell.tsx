@@ -30,6 +30,7 @@ import NotesMeeting from "@/components/jim/notes/NotesMeeting";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
+import NotesRetro from "@/components/jim/notes/NotesRetro";
 import NotesSearch, { SearchField } from "@/components/jim/notes/NotesSearch";
 import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
 import NotesTodos from "@/components/jim/notes/NotesTodos";
@@ -59,9 +60,16 @@ import {
   type JimRoute,
   type NotesPage,
   type NotesRoute,
+  type RetroKind,
 } from "@/lib/jim/routes";
 import { fmtShort } from "@/lib/jim/todos";
-import { fetchView, getCachedView, type ViewData } from "@/lib/jim/view";
+import {
+  fetchView,
+  getCachedView,
+  markRetroSaved,
+  withRetroAnswers,
+  type ViewData,
+} from "@/lib/jim/view";
 
 /**
  * Where Notes is and how it moves: the route, the history entry showing,
@@ -350,7 +358,10 @@ function NotesShellView({
     setLastHealth(basePage);
   }
   const searching = search.trim() !== "";
-  const detail = isDetail(route) || route.kind === "reminders" ? route : null;
+  const detail =
+    isDetail(route) || route.kind === "reminders" || route.kind === "retro"
+      ? route
+      : null;
   /** "Done" after finishing a reminder, shown on the list for a moment. */
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
@@ -445,6 +456,17 @@ function NotesShellView({
   }, [load]);
 
   const saves = useTodoSaves({ data, api, getToken, onChanged: reload });
+
+  /** A retro saved: Home's card shows Done without a refetch. */
+  const onRetroSaved = useCallback(
+    (kind: RetroKind, day: string, answers: string[]) => {
+      markRetroSaved(kind, day, answers);
+      setData((current) =>
+        current ? withRetroAnswers(current, kind, day, answers) : current
+      );
+    },
+    []
+  );
 
   // Load on the first open, and again on a later open once the data is old.
   // Fresh data a load elsewhere fetched (the sign-in prefetch) after this
@@ -633,6 +655,11 @@ function NotesShellView({
               id ? { kind: "reminder", id } : { kind: "reminders" }
             ),
         }}
+        retro={{
+          onOpen: (kind) =>
+            navigate({ kind: "retro", retro: kind }, { back: "Home" }),
+          hrefFor: (kind) => formatJimPath({ kind: "retro", retro: kind }),
+        }}
       />
     );
   } else if (listPage === "todos") {
@@ -819,6 +846,26 @@ function NotesShellView({
         }}
         listHref={formatJimPath({ kind: "reminders" })}
         onList={() => navigate({ kind: "reminders" }, { replace: true })}
+      />
+    );
+  } else if (route.kind === "retro") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <NotesRetro
+        kind={route.retro}
+        retro={data.retro}
+        api={api}
+        getToken={getToken}
+        // Morning and evening replace each other: Back still goes home.
+        onSwitch={(kind) =>
+          navigate({ kind: "retro", retro: kind }, { replace: true })
+        }
+        onBack={() => goBack(HOME_ROUTE)}
+        backLabel={backLabel ?? "Home"}
+        backHref={backFrom ?? formatJimPath(HOME_ROUTE)}
+        backAside={detailAside}
+        onSaved={onRetroSaved}
       />
     );
   } else if (route.kind === "meeting") {

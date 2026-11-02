@@ -30,12 +30,50 @@ const HOME_SCREEN_HINT =
 const LOAD_ERROR = "Couldn't load your notification settings.";
 const SAVE_ERROR = "Couldn't save that setting. Try again in a moment.";
 
-/** HH:MM, 17:00 to 21:45, on a quarter hour: all the server takes. */
-function validEvening(value: string): boolean {
-  const m = /^(\d{2}):(\d{2})$/.exec(value);
-  if (!m) return false;
-  const minutes = Number(m[1]) * 60 + Number(m[2]);
-  return minutes >= 17 * 60 && minutes <= 21 * 60 + 45 && minutes % 15 === 0;
+/** HH:MM from `from` to `to` (inclusive), on a quarter hour. */
+function validTime(value: string, from: string, to: string): boolean {
+  const toMinutes = (hhmm: string) => {
+    const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+  };
+  const minutes = toMinutes(value);
+  return (
+    minutes >= toMinutes(from) && minutes <= toMinutes(to) && minutes % 15 === 0
+  );
+}
+
+/** All the server takes for each time. */
+const EVENING_RANGE = { min: "17:00", max: "21:45" } as const;
+const MORNING_RETRO_RANGE = { min: "07:00", max: "10:00" } as const;
+
+interface TimeRowProps {
+  label: string;
+  value: string;
+  range: { min: string; max: string };
+  onSave: (value: string) => void;
+}
+
+/** A labelled quarter-hour time; a value outside its range isn't saved. */
+function TimeRow({ label, value, range, onSave }: TimeRowProps) {
+  return (
+    <label className="flex min-h-11 items-center justify-between gap-3 px-1 text-ayu-text">
+      <span>{label}</span>
+      <input
+        type="time"
+        min={range.min}
+        max={range.max}
+        step={900}
+        value={value}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (validTime(next, range.min, range.max) && next !== value) {
+            onSave(next);
+          }
+        }}
+        className="min-h-11 rounded-xl border border-white/[0.08] bg-transparent px-3 text-base text-ayu-text"
+      />
+    </label>
+  );
 }
 
 function failure(err: unknown): string {
@@ -82,7 +120,8 @@ function SwitchRow({ label, on, onChange, disabled }: SwitchRowProps) {
 
 /**
  * Notifications: a master switch for this device and, when it is on, one
- * switch per kind the server offers plus the evening time. Each change
+ * switch per kind the server offers plus the morning retro and evening
+ * times. Each change
  * shows at once and is put back, with the reason, if it can't be saved.
  */
 export default function NotificationsSheet({
@@ -174,6 +213,7 @@ export default function NotificationsSheet({
       ),
       eveningTime: patch.eveningTime ?? before.eveningTime,
       lessonTime: patch.lessonTime ?? before.lessonTime,
+      morningRetroTime: patch.morningRetroTime ?? before.morningRetroTime,
     });
     putPushSettings(patch, getToken, undefined, api).catch((err: unknown) => {
       setMessage(failure(err));
@@ -196,6 +236,10 @@ export default function NotificationsSheet({
               : now.eveningTime,
           lessonTime:
             patch.lessonTime !== undefined ? before.lessonTime : now.lessonTime,
+          morningRetroTime:
+            patch.morningRetroTime !== undefined
+              ? before.morningRetroTime
+              : now.morningRetroTime,
         };
       });
     });
@@ -292,26 +336,20 @@ export default function NotificationsSheet({
                       />
                     ))}
                   </ul>
-                  <label className="flex min-h-11 items-center justify-between gap-3 px-1 text-ayu-text">
-                    <span>Evening wrap at</span>
-                    <input
-                      type="time"
-                      min="17:00"
-                      max="21:45"
-                      step={900}
-                      value={settings.eveningTime}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          validEvening(value) &&
-                          value !== settings.eveningTime
-                        ) {
-                          save({ eveningTime: value });
-                        }
-                      }}
-                      className="min-h-11 rounded-xl border border-white/[0.08] bg-transparent px-3 text-base text-ayu-text"
+                  {settings.morningRetroTime !== undefined && (
+                    <TimeRow
+                      label="Morning retro at"
+                      value={settings.morningRetroTime}
+                      range={MORNING_RETRO_RANGE}
+                      onSave={(value) => save({ morningRetroTime: value })}
                     />
-                  </label>
+                  )}
+                  <TimeRow
+                    label="Evening wrap at"
+                    value={settings.eveningTime}
+                    range={EVENING_RANGE}
+                    onSave={(value) => save({ eveningTime: value })}
+                  />
                   <p className="px-1 text-sm text-ayu-subtle">
                     Quiet 10 PM–6:30 AM, except reminders.
                   </p>

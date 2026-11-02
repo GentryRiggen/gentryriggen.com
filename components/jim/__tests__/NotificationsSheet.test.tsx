@@ -151,3 +151,32 @@ it("doesn't save a time outside the evening window", async () => {
   fireEvent.change(input, { target: { value: "20:10" } });
   expect(put).not.toHaveBeenCalled();
 });
+
+it("has no morning retro time when the server doesn't send one", async () => {
+  renderSheet();
+  await screen.findByLabelText("Evening wrap at");
+  expect(screen.queryByLabelText("Morning retro at")).not.toBeInTheDocument();
+});
+
+it("saves the morning retro time, 07:00 to 10:00 by quarter hours", async () => {
+  get.mockResolvedValue({ ...SETTINGS, morningRetroTime: "07:30" });
+  renderSheet();
+  const input = await screen.findByLabelText("Morning retro at");
+  expect(input).toHaveValue("07:30");
+  expect(input).toHaveAttribute("min", "07:00");
+  expect(input).toHaveAttribute("max", "10:00");
+  expect(input).toHaveAttribute("step", "900");
+  fireEvent.change(input, { target: { value: "06:45" } });
+  fireEvent.change(input, { target: { value: "10:15" } });
+  fireEvent.change(input, { target: { value: "08:10" } });
+  expect(put).not.toHaveBeenCalled();
+  fireEvent.change(input, { target: { value: "08:15" } });
+  await waitFor(() =>
+    expect(put).toHaveBeenCalledWith(
+      { morningRetroTime: "08:15" },
+      getToken,
+      undefined,
+      API
+    )
+  );
+});

@@ -5,6 +5,7 @@ import {
   isRoutableNotePath,
   isSafeNotePath,
   parseJimPath,
+  retroPath,
   routeForNote,
   routeTitle,
   sameRoute,
@@ -209,5 +210,59 @@ describe("the Todos page", () => {
     expect(NOTES_PAGES.slice(0, 3)).toEqual(["home", "todos", "work"]);
     expect(routeTitle(todos)).toBe("Todos · Jim");
     expect(homePageOf(todos)).toBe("todos");
+  });
+});
+
+describe("retro routes", () => {
+  it.each<["morning" | "evening"]>([["morning"], ["evening"]])(
+    "parses and prints /jim/retro/%s",
+    (retro) => {
+      const route: JimRoute = { kind: "retro", retro };
+      expect(parseJimPath(`/jim/retro/${retro}`)).toEqual(route);
+      expect(formatJimPath(route)).toBe(`/jim/retro/${retro}`);
+      expect(retroPath(retro)).toBe(`/jim/retro/${retro}`);
+    }
+  );
+
+  it.each(["/jim/retro/x", "/jim/retro/morning/x", "/jim/retro/Morning"])(
+    "%s is not found",
+    (path) => {
+      expect(parseJimPath(path)).toEqual({ kind: "notFound" });
+    }
+  );
+
+  it("picks the retro for /jim/retro by the device's hour", () => {
+    const at = (h: number, m: number) => new Date(2026, 10, 1, h, m);
+    expect(parseJimPath("/jim/retro", undefined, at(0, 0))).toEqual({
+      kind: "retro",
+      retro: "morning",
+    });
+    expect(parseJimPath("/jim/retro", undefined, at(14, 59))).toEqual({
+      kind: "retro",
+      retro: "morning",
+    });
+    expect(parseJimPath("/jim/retro/", undefined, at(15, 0))).toEqual({
+      kind: "retro",
+      retro: "evening",
+    });
+    expect(parseJimPath("/jim/retro", undefined, at(23, 59))).toEqual({
+      kind: "retro",
+      retro: "evening",
+    });
+  });
+
+  it("tells morning and evening apart, and titles them", () => {
+    expect(
+      sameRoute(
+        { kind: "retro", retro: "morning" },
+        { kind: "retro", retro: "evening" }
+      )
+    ).toBe(false);
+    expect(routeTitle({ kind: "retro", retro: "morning" })).toBe(
+      "Morning retro · Jim"
+    );
+    expect(routeTitle({ kind: "retro", retro: "evening" })).toBe(
+      "Evening retro · Jim"
+    );
   });
 });

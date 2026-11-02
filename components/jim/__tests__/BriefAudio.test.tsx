@@ -159,7 +159,7 @@ function heldScript() {
 }
 
 function listen() {
-  act(() => emitOpenIntent({ listen: "brief", reflect: false }));
+  act(() => emitOpenIntent({ listen: "brief" }));
 }
 
 function renderBrief() {

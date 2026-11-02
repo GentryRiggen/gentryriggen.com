@@ -8,9 +8,10 @@ export interface JimOpen {
   say: string | null;
   /** `?listen=brief`: play the morning brief. */
   listen: "brief" | null;
-  /** `?reflect=1`: start tonight's reflection. */
-  reflect: boolean;
 }
+
+/** An old `?reflect=1` link (the chat reflection) now opens the evening retro. */
+const EVENING_RETRO: JimRoute = { kind: "retro", retro: "evening" };
 
 /**
  * Reads a URL a notification carried. Same-origin /jim addresses only;
@@ -36,13 +37,14 @@ export function parseOpen(
   ) {
     return null;
   }
-  const route = parseJimPath(parsed.pathname);
   const params = parsed.searchParams;
   return {
-    route,
+    route:
+      params.get("reflect") === "1"
+        ? EVENING_RETRO
+        : parseJimPath(parsed.pathname),
     say: allowedSay(params.get("say")),
     listen: params.get("listen") === "brief" ? "brief" : null,
-    reflect: params.get("reflect") === "1",
   };
 }
 
@@ -69,10 +71,9 @@ export function clearParamsFromLocation(names: string[]): void {
   );
 }
 
-/** What the chat should start once it is showing: the brief or a reflection. */
+/** What the chat should start once it is showing: the brief. */
 export interface OpenIntent {
   listen: "brief" | null;
-  reflect: boolean;
 }
 
 let pending: OpenIntent | null = null;
@@ -83,7 +84,7 @@ const listeners = new Set<(intent: OpenIntent) => void>();
  * loaded) it waits and is delivered to the first one to subscribe.
  */
 export function emitOpenIntent(intent: OpenIntent): void {
-  if (!intent.listen && !intent.reflect) return;
+  if (!intent.listen) return;
   if (listeners.size === 0) {
     pending = intent;
     return;
@@ -104,4 +105,80 @@ export function onOpenIntent(
   return () => {
     listeners.delete(listener);
   };
+}
+
+/** Where the service worker leaves the note of a tap (public/jim-sw.js). */
+const OPEN_CACHE = "jim-open-v1";
+const OPEN_KEY = "/jim/__open";
+/** A note older than this is from a tap long past: dropped. */
+const OPEN_NOTE_MAX_AGE_MS = 120_000;
+
+/** Taps this page has already acted on, by the id the worker gave them. */
+const handledTaps = new Set<string>();
+
+/**
+ * True the first time a tap's id is seen (and remembers it), false after.
+ * A message with no id (a worker from before ids) always goes through.
+ */
+export function claimOpen(id: unknown): boolean {
+  if (typeof id !== "string") return true;
+  if (handledTaps.has(id)) return false;
+  handledTaps.add(id);
+  return true;
+}
+
+/**
+ * The address a notification tap left for this page, when the tap is
+ * recent (< 120 s) and not handled yet (by its JIM_OPEN message). The note
+ * is deleted either way. Null when there is none, or no cache storage.
+ */
+export async function consumePendingOpen(
+  now: number = Date.now()
+): Promise<string | null> {
+  try {
+    if (typeof caches === "undefined") return null;
+    const cache = await caches.open(OPEN_CACHE);
+    const saved = await cache.match(OPEN_KEY);
+    if (!saved) return null;
+    await cache.delete(OPEN_KEY);
+    const note: unknown = JSON.parse(await saved.text());
+    if (typeof note !== "object" || note === null) return null;
+    const { id, url, at } = note as Record<string, unknown>;
+    if (
+      typeof id !== "string" ||
+      typeof url !== "string" ||
+      typeof at !== "number" ||
+      at > now ||
+      now - at >= OPEN_NOTE_MAX_AGE_MS
+    ) {
+      return null;
+    }
+    return claimOpen(id) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes the note of a tap its JIM_OPEN message already handled, so a
+ * reload within the note's 120 s doesn't replay it (`claimOpen` lives in
+ * memory only). A newer tap's note is left alone. Never throws.
+ */
+export async function dropPendingOpen(id: string): Promise<void> {
+  try {
+    if (typeof caches === "undefined") return;
+    const cache = await caches.open(OPEN_CACHE);
+    const saved = await cache.match(OPEN_KEY);
+    if (!saved) return;
+    const note: unknown = JSON.parse(await saved.text());
+    if (
+      typeof note === "object" &&
+      note !== null &&
+      (note as { id?: unknown }).id === id
+    ) {
+      await cache.delete(OPEN_KEY);
+    }
+  } catch {
+    // Left in place: it ages out after 120 s.
+  }
 }

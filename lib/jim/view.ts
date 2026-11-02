@@ -6,6 +6,7 @@ import {
   JimError,
   tokenErrorKind,
 } from "@/lib/jim/api";
+import type { RetroKind } from "@/lib/jim/routes";
 
 /**
  * The Notes tab's data: `GET /api/view` on Jim's server, built from his notes
@@ -295,6 +296,20 @@ export interface MeetingCard {
   attendees: MeetingAttendee[];
 }
 
+/** One retro: the server's three questions and what was saved, if anything. */
+export interface RetroSide {
+  questions: string[];
+  /** Three strings ("" for a skipped one), or null when nothing is saved. */
+  answers: string[] | null;
+}
+
+export interface RetroData {
+  /** The day the questions are for, YYYY-MM-DD. */
+  day: string;
+  morning: RetroSide;
+  evening: RetroSide;
+}
+
 export interface ViewData {
   /** Gentry's local date on the server, YYYY-MM-DD. */
   today: string;
@@ -318,6 +333,8 @@ export interface ViewData {
   meetingCards?: Record<string, MeetingCard>;
   /** Tonight's reflection question. */
   reflection?: { question: string };
+  /** The day's morning and evening retros: absent from an older server. */
+  retro?: RetroData;
   /** Wins logged today. */
   winsToday?: number;
   sha?: string;
@@ -610,6 +627,24 @@ function toReflection(v: unknown): { question: string } | undefined {
     : undefined;
 }
 
+function toRetroSide(v: unknown): RetroSide | null {
+  if (!isRecord(v) || !isStrings(v.questions) || v.questions.length !== 3) {
+    return null;
+  }
+  const answers =
+    isStrings(v.answers) && v.answers.length === 3 ? v.answers : null;
+  return { questions: [...v.questions], answers: answers && [...answers] };
+}
+
+function toRetro(v: unknown): RetroData | undefined {
+  if (!isRecord(v) || !isString(v.day) || !/^\d{4}-\d{2}-\d{2}$/.test(v.day)) {
+    return undefined;
+  }
+  const morning = toRetroSide(v.morning);
+  const evening = toRetroSide(v.evening);
+  return morning && evening ? { day: v.day, morning, evening } : undefined;
+}
+
 export function normalizeView(raw: unknown): ViewData | null {
   if (!isRecord(raw) || typeof raw.today !== "string") return null;
   const health = isRecord(raw.health) ? raw.health : {};
@@ -662,6 +697,7 @@ export function normalizeView(raw: unknown): ViewData | null {
     noticed: "noticed" in raw ? keep(raw.noticed, toNoticed) : undefined,
     meetingCards: toMeetingCards(raw.meetingCards),
     reflection: toReflection(raw.reflection),
+    retro: toRetro(raw.retro),
     winsToday: isNumber(raw.winsToday) ? raw.winsToday : undefined,
     sha: typeof raw.sha === "string" ? raw.sha : undefined,
     stale: raw.stale === true,
@@ -679,6 +715,43 @@ let cache: CachedView | null = null;
 
 export function getCachedView(): CachedView | null {
   return cache;
+}
+
+/**
+ * `data` with one retro's answers saved, when its retro is for `day`;
+ * otherwise `data` itself.
+ */
+export function withRetroAnswers(
+  data: ViewData,
+  kind: RetroKind,
+  day: string,
+  answers: string[]
+): ViewData {
+  if (!data.retro || data.retro.day !== day) return data;
+  return {
+    ...data,
+    retro: {
+      ...data.retro,
+      [kind]: { ...data.retro[kind], answers: [...answers] },
+    },
+  };
+}
+
+/**
+ * A retro was saved: the cached payload (and the device's copy) shows it
+ * without a refetch. Returns the new payload, or null when nothing changed.
+ */
+export function markRetroSaved(
+  kind: RetroKind,
+  day: string,
+  answers: string[]
+): ViewData | null {
+  if (!cache) return null;
+  const next = withRetroAnswers(cache.data, kind, day, answers);
+  if (next === cache.data) return null;
+  cache = { ...cache, data: next };
+  saver?.(next);
+  return next;
 }
 
 /** Bumped on sign-out, so a fetch still out then can't refill the cache. */

@@ -56,6 +56,17 @@ function keyOf(request: FakeRequest | string): string {
   return typeof request === "string" ? request : request.url;
 }
 
+/** Enough of Response for the pending-open note the worker writes. */
+class NoteResponse {
+  constructor(
+    readonly body: string,
+    readonly init?: unknown
+  ) {}
+  async text() {
+    return this.body;
+  }
+}
+
 /** Loads the worker into a sandbox with in-memory caches and mocks. */
 function loadWorker() {
   const listeners = new Map<string, Listener>();
@@ -107,6 +118,7 @@ function loadWorker() {
     URL,
     Set,
     Promise,
+    Response: NoteResponse,
     // The 4s navigation timeout fires on the next tick in tests.
     setTimeout: (fn: () => void) => setTimeout(fn, 0),
   });
@@ -145,7 +157,15 @@ function loadWorker() {
     skipWaiting: self.skipWaiting,
     dispatchFetch,
     dispatch,
-    cacheKeys: () => [...(stores.get("jim-shell-v1")?.keys() ?? [])].sort(),
+    cacheKeys: () => [...(stores.get("jim-shell-v2")?.keys() ?? [])].sort(),
+    /** The pending-open note a tap left, parsed, or null. */
+    note: () => {
+      const saved = stores.get("jim-open-v1")?.get("/jim/__open") as unknown as
+        NoteResponse | undefined;
+      return saved
+        ? (JSON.parse(saved.body) as { id: string; url: string; at: number })
+        : null;
+    },
   };
 }
 
@@ -171,12 +191,14 @@ describe("install and activate", () => {
 
   it("deletes its own old caches only", async () => {
     const worker = loadWorker();
-    worker.stores.set("jim-shell-v0", new Map());
-    worker.stores.set("ship-builder-v1", new Map());
     worker.stores.set("jim-shell-v1", new Map());
+    worker.stores.set("ship-builder-v1", new Map());
+    worker.stores.set("jim-open-v1", new Map());
+    worker.stores.set("jim-shell-v2", new Map());
     await worker.dispatch("activate");
     expect([...worker.stores.keys()].sort()).toEqual([
-      "jim-shell-v1",
+      "jim-open-v1",
+      "jim-shell-v2",
       "ship-builder-v1",
     ]);
   });
@@ -552,7 +574,11 @@ describe("notificationclick", () => {
     ]);
     await worker.dispatch("notificationclick", { notification: click() });
     expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith({ type: "JIM_OPEN", url: PAGE });
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_OPEN",
+      url: PAGE,
+      id: expect.any(String),
+    });
   });
 
   it("tells an open page where a reminder tap goes, without a new window", async () => {
@@ -565,8 +591,105 @@ describe("notificationclick", () => {
     await worker.dispatch("notificationclick", {
       notification: { close: jest.fn(), data: { url } },
     });
-    expect(postMessage).toHaveBeenCalledWith({ type: "JIM_OPEN", url });
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_OPEN",
+      url,
+      id: expect.any(String),
+    });
     expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("leaves a note of the tap before anything else", async () => {
+    const worker = loadWorker();
+    const url = `${ORIGIN}/jim/retro/evening`;
+    let noteAtMatchAll: unknown = undefined;
+    worker.matchAll.mockImplementation(async () => {
+      noteAtMatchAll = worker.note();
+      return [];
+    });
+    const before = Date.now();
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(noteAtMatchAll).toEqual({
+      id: expect.any(String),
+      url,
+      at: expect.any(Number),
+    });
+    const note = worker.note()!;
+    expect(note.at).toBeGreaterThanOrEqual(before);
+    expect(note.at).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("still tells the page when focus() is refused, under the note's id", async () => {
+    const worker = loadWorker();
+    const url = `${ORIGIN}/jim/retro/evening`;
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      {
+        url: PAGE,
+        focus: jest.fn(async () => {
+          throw new TypeError("Not allowed to focus a window");
+        }),
+        postMessage,
+      },
+    ]);
+    await expect(
+      worker.dispatch("notificationclick", {
+        notification: { close: jest.fn(), data: { url } },
+      })
+    ).resolves.toBeUndefined();
+    const note = worker.note()!;
+    expect(note.url).toBe(url);
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_OPEN",
+      url,
+      id: note.id,
+    });
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("gives each tap its own id", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("notificationclick", { notification: click() });
+    const first = worker.note()!.id;
+    await worker.dispatch("notificationclick", { notification: click() });
+    expect(worker.note()!.id).not.toBe(first);
+  });
+
+  it("still opens the page when the note can't be written", async () => {
+    const worker = loadWorker();
+    worker.broken.open = true;
+    const url = `${ORIGIN}/jim/retro/evening`;
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(url);
+  });
+
+  it("opens a retro push's address when Jim isn't open", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("push", {
+      data: {
+        json: () => ({
+          title: "Evening retro",
+          body: "b",
+          url: "/jim/retro/evening",
+          tag: "jim-retro-pm",
+        }),
+      },
+    });
+    const [, options] = worker.showNotification.mock.calls[0] as unknown as [
+      string,
+      { data: { url: string } },
+    ];
+    expect(options.data.url).toBe(`${ORIGIN}/jim/retro/evening`);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: options.data },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(
+      `${ORIGIN}/jim/retro/evening`
+    );
   });
 
   it("turns a cross-origin url into /jim", async () => {

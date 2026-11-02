@@ -48,7 +48,6 @@ import usePersonas from "@/components/jim/usePersonas";
 import type { AppLock } from "@/components/jim/useAppLock";
 import useBriefAudio from "@/components/jim/useBriefAudio";
 import useReadAloud from "@/components/jim/useReadAloud";
-import useReflection from "@/components/jim/useReflection";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
   JimError,
@@ -69,12 +68,17 @@ import {
   formatJimPath,
   HOME_ROUTE,
   isDetail,
+  parseJimPath,
+  sameRoute,
   type JimRoute,
   type NotesPage,
   type NotesRoute,
 } from "@/lib/jim/routes";
 import {
+  claimOpen,
   clearParamsFromLocation,
+  consumePendingOpen,
+  dropPendingOpen,
   emitOpenIntent,
   parseOpen,
 } from "@/lib/jim/openUrl";
@@ -358,7 +362,6 @@ export default function JimChat({
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
   const reader = useReadAloud(getToken, api, locked);
-  const reflection = useReflection(getToken, api);
   const brief = useBriefAudio(getToken, api, reader);
   const { playBrief } = brief;
   const { stop: stopReading, setArtist } = reader;
@@ -390,13 +393,72 @@ export default function JimChat({
     });
   }, []);
 
-  // A notification or link opened the app with ?say=, ?listen=brief or
-  // ?reflect=1: hand the chat intents on, then clear them from the address.
-  useEffect(() => {
-    const open = parseOpen(window.location.href);
-    if (open) emitOpenIntent({ listen: open.listen, reflect: open.reflect });
-    clearParamsFromLocation(["say", "listen", "reflect"]);
+  /**
+   * Acts on where a notification tap goes: its page, the brief, its say text
+   * (only into an empty box). Foreign or junk URLs do nothing.
+   */
+  const applyOpen = useCallback((url: string) => {
+    const open = parseOpen(url);
+    if (!open) return;
+    navigateRef.current(open.route);
+    emitOpenIntent({ listen: open.listen });
+    if (open.say) {
+      const text = open.say;
+      setDraft((current) => (current ? current : text));
+    }
   }, []);
+
+  /**
+   * The mount's note read. Later reads wait for it: only it knows the tap
+   * that opened this page, and the load's own pageshow must not beat it.
+   */
+  const mountRead = useRef<Promise<void>>(Promise.resolve());
+
+  // A notification or link opened the app with ?say=, ?listen=brief or an
+  // old ?reflect=1: hand the chat intents on, then clear them from the
+  // address. A tap's note the worker left is then read (iOS can open the
+  // page without the message); one for this very address is already done.
+  useEffect(() => {
+    const opened = window.location.href;
+    const open = parseOpen(opened);
+    clearParamsFromLocation(["say", "listen", "reflect"]);
+    if (open) {
+      // ?reflect=1 names a page other than the address it came on.
+      const here = parseJimPath(window.location.pathname);
+      if (!sameRoute(open.route, here)) {
+        navigateRef.current(open.route, { replace: true });
+      }
+      emitOpenIntent({ listen: open.listen });
+    }
+    let live = true;
+    mountRead.current = consumePendingOpen().then((url) => {
+      if (!live || !url) return;
+      if (new URL(url, opened).href === opened) return;
+      applyOpen(url);
+    });
+    return () => {
+      live = false;
+    };
+  }, [applyOpen]);
+
+  // Shown again (iOS wakes an installed app it had frozen): a tap made while
+  // it slept left its note, and its message may never have arrived.
+  useEffect(() => {
+    function check() {
+      if (document.visibilityState !== "visible") return;
+      void mountRead.current
+        .then(() => consumePendingOpen())
+        .then((url) => {
+          if (url) applyOpen(url);
+        });
+    }
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, [applyOpen]);
   // A draft kept across an update reload is restored once, then dropped.
   useEffect(() => clearDraft(uid), [uid]);
 
@@ -411,20 +473,18 @@ export default function JimChat({
     function onMessage(event: MessageEvent) {
       const data: unknown = event.data;
       if (typeof data !== "object" || data === null) return;
-      const { type, say, url } = data as {
+      const { type, say, url, id } = data as {
         type?: unknown;
         say?: unknown;
         url?: unknown;
+        id?: unknown;
       };
       if (type === "JIM_OPEN" && typeof url === "string") {
-        const open = parseOpen(url);
-        if (!open) return;
-        navigateRef.current(open.route);
-        emitOpenIntent({ listen: open.listen, reflect: open.reflect });
-        if (open.say) {
-          const text = open.say;
-          setDraft((current) => (current ? current : text));
-        }
+        // Its note may have been read first (the page woke before this came).
+        if (!claimOpen(id)) return;
+        applyOpen(url);
+        // Handled: its note goes too, or a reload would replay it.
+        if (typeof id === "string") void dropPendingOpen(id);
         return;
       }
       const text = type === "JIM_SAY" ? allowedSay(say) : null;
@@ -434,7 +494,7 @@ export default function JimChat({
     // Messages queue until started; addEventListener alone doesn't start them.
     (worker as { startMessages?: () => void }).startMessages?.();
     return () => worker.removeEventListener("message", onMessage);
-  }, []);
+  }, [applyOpen]);
 
   // A long turn (Jim can take minutes) gets a calmer note after a while.
   useEffect(() => {
@@ -446,7 +506,7 @@ export default function JimChat({
   // New messages slide into view, unless Gentry scrolled up to read.
   useEffect(() => {
     if (stuck.current) scrollToEnd(true);
-  }, [messages, sending, reflection.question, scrollToEnd]);
+  }, [messages, sending, scrollToEnd]);
 
   // The now-playing bar adds room under the list: keep the end in view.
   useEffect(() => {
@@ -551,13 +611,9 @@ export default function JimChat({
 
   /** Sends the box, or `given` (a quick log) leaving the box alone. */
   async function send(given?: string) {
-    const typed = (given ?? draft).trim();
+    const text = (given ?? draft).trim();
     // Offline it would only bounce back: the box keeps it meanwhile.
-    if (!typed || sending || !online) return;
-    // Reflecting: the answer travels with its question, once.
-    const asked = given === undefined ? reflection.question : null;
-    const text = asked ? reflection.wrap(typed) : typed;
-    if (asked) reflection.end();
+    if (!text || sending || !online) return;
     // Every send starts from a tap or key press: unlock speech inside it.
     reader.unlock();
     const id = nextId.current++;
@@ -628,8 +684,7 @@ export default function JimChat({
       } else {
         // It never ran: take it back and return it to the box.
         setMessages((prev) => prev.filter((m) => m.id !== id));
-        putBack(asked ? typed : text);
-        if (asked) reflection.resume(asked);
+        putBack(text);
       }
     } finally {
       if (turn.current === controller) turn.current = null;
@@ -658,7 +713,6 @@ export default function JimChat({
     setError(null);
     setHeld(null);
     setSlow(false);
-    reflection.end();
     stuck.current = true;
   }
 
@@ -1029,13 +1083,6 @@ export default function JimChat({
             speakingId={reader.speakingId}
             onListen={reader.supported ? reader.toggle : null}
           />
-          {reflection.question && !sending && (
-            <div className="jim-rise mr-auto max-w-[92%] min-w-0">
-              <div className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3">
-                <JimMarkdown text={reflection.question} links="plain" />
-              </div>
-            </div>
-          )}
           {sending && (
             <div className="jim-rise mr-auto max-w-[92%] min-w-0">
               {live.text ? (
@@ -1147,7 +1194,7 @@ export default function JimChat({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={reflection.question ? "Your answer…" : "Message Jim"}
+              placeholder="Message Jim"
               enterKeyHint={returnIsNewLine ? "enter" : "send"}
               autoComplete="off"
               className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
