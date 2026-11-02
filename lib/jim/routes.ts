@@ -15,9 +15,13 @@
  *   /jim/reminders                  the reminders list
  *   /jim/reminders/<12 hex>         one reminder
  *   /jim/meeting/<16 hex>           a meeting card
+ *   /jim/retro/morning|evening      a retro
+ *   /jim/retro                      the morning retro before 15:00, else evening
  */
 
 export const JIM_BASE = "/jim";
+
+export type RetroKind = "morning" | "evening";
 
 export type NotesPage =
   | "home"
@@ -39,6 +43,7 @@ export type JimRoute =
   | { kind: "reminders" }
   | { kind: "reminder"; id: string }
   | { kind: "meeting"; id: string }
+  | { kind: "retro"; retro: RetroKind }
   | { kind: "notFound" };
 
 /** Every route but Chat: what the Notes side shows. */
@@ -79,6 +84,13 @@ const MAX_NOTE_DEPTH = 8;
 const DIRECTORY_ID = /^[0-9]{1,6}$/;
 const REMINDER_ID = /^[a-f0-9]{12}$/;
 const MEETING_ID = /^[a-f0-9]{16}$/;
+/** From this hour (device time) a bare /jim/retro is the evening one. */
+const EVENING_RETRO_HOUR = 15;
+
+/** A retro's address. */
+export function retroPath(kind: RetroKind): string {
+  return `${JIM_BASE}/retro/${kind}`;
+}
 
 function isNotesPage(value: string): value is NotesPage {
   return (NOTES_PAGES as readonly string[]).includes(value) && value !== "home";
@@ -130,9 +142,14 @@ export function personPath(slug: string): string {
 
 /**
  * The route for an address under /jim. `notePath` is the note a history
- * entry carries when its path couldn't sit in the address.
+ * entry carries when its path couldn't sit in the address; `now` picks the
+ * retro a bare /jim/retro means.
  */
-export function parseJimPath(pathname: string, notePath?: unknown): JimRoute {
+export function parseJimPath(
+  pathname: string,
+  notePath?: unknown,
+  now: Date = new Date()
+): JimRoute {
   let path = pathname.replace(/\/+$/, "");
   if (path === `${JIM_BASE}.html`) path = JIM_BASE;
   if (path === JIM_BASE) return CHAT_ROUTE;
@@ -155,6 +172,17 @@ export function parseJimPath(pathname: string, notePath?: unknown): JimRoute {
   if (section === "meeting") {
     return rest.length === 1 && MEETING_ID.test(rest[0])
       ? { kind: "meeting", id: rest[0] }
+      : { kind: "notFound" };
+  }
+  if (section === "retro") {
+    if (rest.length === 0) {
+      return {
+        kind: "retro",
+        retro: now.getHours() < EVENING_RETRO_HOUR ? "morning" : "evening",
+      };
+    }
+    return rest.length === 1 && (rest[0] === "morning" || rest[0] === "evening")
+      ? { kind: "retro", retro: rest[0] }
       : { kind: "notFound" };
   }
   if (section !== "notes") return { kind: "notFound" };
@@ -211,6 +239,8 @@ export function formatJimPath(route: JimRoute): string {
       return `${JIM_BASE}/reminders/${route.id}`;
     case "meeting":
       return `${JIM_BASE}/meeting/${route.id}`;
+    case "retro":
+      return retroPath(route.retro);
     case "notFound":
       return `${JIM_BASE}/notes`;
   }
@@ -230,6 +260,8 @@ export function sameRoute(a: JimRoute, b: JimRoute): boolean {
     case "reminder":
     case "meeting":
       return a.id === (b as typeof a).id;
+    case "retro":
+      return a.retro === (b as typeof a).retro;
     default:
       return true;
   }
@@ -288,6 +320,8 @@ export function routeTitle(route: JimRoute, name?: string | null): string {
         return "Reminders";
       case "meeting":
         return name || "Meeting";
+      case "retro":
+        return route.retro === "morning" ? "Morning retro" : "Evening retro";
       case "notFound":
         return "Not found";
     }

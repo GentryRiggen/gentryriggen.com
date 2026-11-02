@@ -358,7 +358,9 @@ function NotesShellView({
     const t = setTimeout(() => setNotice(null), 4000);
     return () => clearTimeout(t);
   }, [notice]);
-  const notFound = route.kind === "notFound";
+  // The retro page arrives with the next change; until then its address
+  // shows the not-found view.
+  const notFound = route.kind === "notFound" || route.kind === "retro";
   /** The list showing, or the one a detail opened over. */
   const listPage: NotesPage = route.kind === "page" ? route.page : basePage;
   /** Money: fetched only while its page shows, held in memory only. */

@@ -2079,23 +2079,13 @@ test.describe("Jim pings", () => {
     script.release();
   });
 
-  test("?reflect=1 shows tonight's question and sends the answer with it", async ({
-    page,
-  }) => {
+  test("an old ?reflect=1 link opens the evening retro", async ({ page }) => {
     await page.addInitScript((api) => {
       window.__JIM_TEST__ = { signedIn: true, api };
     }, API);
-    const calls = await mockServer(page);
+    await mockServer(page);
     await page.goto("/jim/chat?reflect=1");
-    await expect(page.getByText(REFLECTION_QUESTION)).toBeVisible();
-    const box = page.getByPlaceholder("Your answer…");
-    await box.fill("Finished the draft");
-    await page.getByRole("button", { name: "Send" }).click();
-    await expect.poll(() => calls.messages.length).toBe(1);
-    expect(calls.messages[0].startsWith("Evening reflection.")).toBe(true);
-    expect(calls.messages[0]).toContain(`Q: ${REFLECTION_QUESTION}`);
-    expect(calls.messages[0]).toContain("A: Finished the draft");
-    await expect(page.getByPlaceholder("Message Jim")).toBeVisible();
+    await expect(page).toHaveURL(/\/jim\/retro\/evening$/);
   });
 
   for (const width of [393, 320]) {
