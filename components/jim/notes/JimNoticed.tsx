@@ -1,5 +1,6 @@
 "use client";
 
+import ShortLabel from "@/components/jim/notes/ShortLabel";
 import { Rows, Section } from "@/components/jim/notes/NotesUi";
 import type { Noticed } from "@/lib/jim/view";
 
@@ -34,9 +35,9 @@ export default function JimNoticed({ items, onAsk }: JimNoticedProps) {
               >
                 {n.when}
               </span>
-              <span className="mt-1 block text-ayu-text [overflow-wrap:anywhere]">
-                {n.title}
-              </span>
+              <div className="mt-1">
+                <ShortLabel short={n.short} full={n.title} />
+              </div>
             </div>
             <button
               type="button"

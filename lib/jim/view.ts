@@ -29,6 +29,8 @@ export interface ViewTodo {
   order: number;
   /** Repeats ("every 1 week"). Absent from an older server. */
   recurring?: boolean;
+  /** A short plain label for Home; the full `text` is one tap away. */
+  short?: string;
 }
 
 export interface CalendarEvent {
@@ -270,6 +272,8 @@ export interface Noticed {
   when: string;
   tone: "over" | "soon" | "";
   ask: string;
+  /** A short plain label for the row; `title` is one tap away. */
+  short?: string;
 }
 
 export interface MeetingAttendee {
@@ -326,6 +330,26 @@ export const VIEW_TIMEOUT_MS = 30_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const SHORT_MAX = 80;
+
+/** A usable short label: a non-empty string of at most 80 chars, trimmed. */
+function shortOf(value: unknown): string | undefined {
+  if (!isString(value)) return undefined;
+  const t = value.trim();
+  return t !== "" && t.length <= SHORT_MAX ? t : undefined;
+}
+
+/** A todo with its `short` kept only when well formed. */
+function toTodo(v: unknown): ViewTodo | null {
+  if (!isRecord(v)) return null;
+  const { short, ...rest } = v;
+  const label = shortOf(short);
+  return {
+    ...(rest as unknown as ViewTodo),
+    ...(label ? { short: label } : {}),
+  };
 }
 
 function list<T>(value: unknown): T[] {
@@ -534,12 +558,14 @@ function toNoticed(v: unknown): Noticed | null {
     return null;
   if (!TONES.includes(v.tone as string)) return null;
   if (v.title === "") return null;
+  const short = shortOf(v.short);
   return {
     kind: v.kind as string,
     title: v.title as string,
     when: v.when as string,
     tone: v.tone as Noticed["tone"],
     ask: v.ask as string,
+    ...(short ? { short } : {}),
   };
 }
 
@@ -594,8 +620,8 @@ export function normalizeView(raw: unknown): ViewData | null {
       : null;
   return {
     today: raw.today,
-    todos: list<ViewTodo>(raw.todos),
-    doneTodos: list<ViewTodo>(raw.doneTodos),
+    todos: keep(raw.todos, toTodo),
+    doneTodos: keep(raw.doneTodos, toTodo),
     calendar,
     health: {
       injections: list<Injection>(health.injections),
