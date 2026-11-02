@@ -29,9 +29,27 @@ async function settle() {
     await new Promise((r) => setTimeout(r, 0));
   });
 }
+/** Resolves when the page next takes the note out of the cache. */
+const taken: { resolve: (() => void) | null } = { resolve: null };
+function noteTaken(): Promise<void> {
+  return new Promise((resolve) => {
+    taken.resolve = resolve;
+  });
+}
+/** Waits for the page's read of the note, then for what it does with it. */
+async function readNote(trigger: () => void) {
+  const read = noteTaken();
+  await act(async () => {
+    trigger();
+    await read;
+    await new Promise((r) => setTimeout(r, 0));
+  });
+}
 function leaveNote(id: string, url: string, at: number = Date.now()) {
   notes.set("/jim/__open", JSON.stringify({ id, url, at }));
 }
+
+const realFetch = Object.getOwnPropertyDescriptor(window, "fetch");
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -40,8 +58,16 @@ beforeEach(() => {
     .spyOn(HTMLMediaElement.prototype, "play")
     .mockImplementation(() => Promise.resolve());
   jest.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  // No server here: requests (the brief's) stay out rather than fail after
+  // the test has ended.
+  Object.defineProperty(window, "fetch", {
+    configurable: true,
+    writable: true,
+    value: jest.fn(() => new Promise(() => {})),
+  });
   notes.clear();
   gate.next = null;
+  taken.resolve = null;
   Object.defineProperty(window, "caches", {
     configurable: true,
     value: {
@@ -53,7 +79,12 @@ beforeEach(() => {
           const body = notes.get(key);
           return body === undefined ? undefined : { text: async () => body };
         },
-        delete: async (key: string) => notes.delete(key),
+        delete: async (key: string) => {
+          const deleted = notes.delete(key);
+          taken.resolve?.();
+          taken.resolve = null;
+          return deleted;
+        },
       }),
     },
   });
@@ -62,6 +93,8 @@ afterEach(() => {
   jest.restoreAllMocks();
   window.history.replaceState(null, "", "/");
   Reflect.deleteProperty(window, "caches");
+  if (realFetch) Object.defineProperty(window, "fetch", realFetch);
+  else Reflect.deleteProperty(window, "fetch");
 });
 
 it("puts an allowed ?say= in the box, unsent, and removes it from the URL", () => {
@@ -220,26 +253,24 @@ describe("a tap's note, for a page iOS woke without the message", () => {
   it("routes when the page is shown again with a fresh note", async () => {
     window.history.replaceState(null, "", "/jim");
     renderChat();
+    await settle(); // the mount's note read is done
     leaveNote("tap-visible", `${window.location.origin}/jim/retro/evening`);
-    act(() => {
+    await readNote(() => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/jim/retro/evening")
-    );
+    expect(window.location.pathname).toBe("/jim/retro/evening");
     expect(notes.size).toBe(0);
   });
 
   it("routes on pageshow too", async () => {
     window.history.replaceState(null, "", "/jim");
     renderChat();
+    await settle(); // the mount's note read is done
     leaveNote("tap-pageshow", "/jim/retro/morning");
-    act(() => {
+    await readNote(() => {
       window.dispatchEvent(new Event("pageshow"));
     });
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/jim/retro/morning")
-    );
+    expect(window.location.pathname).toBe("/jim/retro/morning");
   });
 
   it("reads a note left before the page loaded", async () => {
