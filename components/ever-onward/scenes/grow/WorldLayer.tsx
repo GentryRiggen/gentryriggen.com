@@ -1,3 +1,4 @@
+import { WorldForkArt, WorldProjectArt } from "./TradeoffArt";
 import { useEffect, useState } from "react";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import { GLOBE, GLOBE_FLOCK, cloudAt, riverAt } from "./anchors";
@@ -500,6 +501,8 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
         </g>
       </g>
       <FarmBehind away={gone} />
+      <WorldForkArt info={info} />
+      <WorldProjectArt info={info} />
     </g>
   );
 }

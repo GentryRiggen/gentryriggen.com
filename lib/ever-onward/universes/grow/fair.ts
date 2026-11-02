@@ -3,6 +3,7 @@ import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
 import { MANUAL_RESOURCES, carryOver } from "./resources";
 import { TUNING } from "./tuning";
+import { fairForkMult, isFairScared } from "./forks";
 
 /**
  * The county fair: a side machine on the farm. Every couple of minutes three
@@ -55,7 +56,7 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 export type FairStage = "waiting" | "open" | "judging";
 
 export const isFairOpen = (run: RunState): boolean =>
-  run.phase === 1 && run.flags[FAIR_OPEN_FLAG] === true;
+  run.phase === 1 && run.flags[FAIR_OPEN_FLAG] === true && !isFairScared(run);
 
 export const hasFairHand = (run: RunState): boolean =>
   owned(run, FAIR_HAND_ID) > 0;
@@ -153,6 +154,7 @@ export const handPaysOn = (run: RunState, income: number): number =>
 /** The fair helper turns up once the first fair has been judged. */
 export const handShown = (run: RunState): boolean =>
   run.flags[FAIR_OPEN_FLAG] === true &&
+  !isFairScared(run) &&
   (fairsSoFar(run) >= F.handAfterFairs || owned(run, "glasshouse") > 0);
 
 export interface EntryResult {
@@ -259,7 +261,9 @@ function judge(run: RunState): void {
   r.frRng = stream.rng;
   const byHand = res(run, "frBy") === 1;
   const pays =
-    ribbonPays(ribbon, res(run, "frIncome")) * (byHand ? F.handShare : 1);
+    ribbonPays(ribbon, res(run, "frIncome")) *
+    (byHand ? F.handShare : 1) *
+    fairForkMult(run);
   r.frPlace = ribbon;
   r.frLastPays = pays;
   r.frEarned = res(run, "frEarned") + pays;

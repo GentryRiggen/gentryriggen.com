@@ -1,6 +1,8 @@
 import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
 import { TUNING } from "./tuning";
+import { farmThirstMult, worldFocus } from "./forks";
+import { waterProjectCapacity, waterProjectThirst } from "./knowhow";
 
 const W = TUNING.water;
 
@@ -42,6 +44,9 @@ const gain = (share: number): number => {
   return s * (2 - s);
 };
 const wetland = (run: RunState): number => gain(res(run, "bmWetland"));
+/** Wetland focus: the wetland holds and seeps more water. */
+const wetWater = (run: RunState): number =>
+  worldFocus(run) === "wetland" ? TUNING.forks.world.wetlandWater : 1;
 const jungle = (run: RunState): number => gain(res(run, "bmJungle"));
 const worldHelperCount = (run: RunState): number =>
   owned(run, "windbreak") +
@@ -52,15 +57,17 @@ const worldHelperCount = (run: RunState): number =>
 export function waterCapacity(run: RunState): number {
   if (onWorld(run))
     return (
-      G.baseCapacity +
-      G.riverCapacity * owned(run, "river-bend") +
-      G.wetlandCapacity * wetland(run)
+      (G.baseCapacity +
+        G.riverCapacity * owned(run, "river-bend") +
+        G.wetlandCapacity * wetland(run) * wetWater(run)) *
+      waterProjectCapacity(run)
     );
   if (onFarm(run))
     return (
-      F.baseCapacity +
-      F.wellCapacity * owned(run, "well") +
-      F.irrigationCapacity * owned(run, "irrigation")
+      (F.baseCapacity +
+        F.wellCapacity * owned(run, "well") +
+        F.irrigationCapacity * owned(run, "irrigation")) *
+      waterProjectCapacity(run)
     );
   return (
     W.baseCapacity +
@@ -123,16 +130,19 @@ export function tickWater(run: RunState, dt: number): void {
   const net = onWorld(run)
     ? G.rainMax * outlook * (1 + G.cloudRain * owned(run, "cloud-seeder")) +
       G.riverSeep * owned(run, "river-bend") +
-      G.wetlandSeep * wetland(run) -
+      G.wetlandSeep * wetland(run) * wetWater(run) -
       (G.thirst +
         G.thirstPerHelper * worldHelperCount(run) +
-        G.jungleThirst * jungle(run))
+        G.jungleThirst * jungle(run)) *
+        waterProjectThirst(run)
     : onFarm(run)
       ? F.rainMax *
           outlook *
           (1 + F.irrigationRain * owned(run, "irrigation")) +
         F.wellSeep * owned(run, "well") -
-        (F.thirst + F.thirstPerHelper * farmHelperCount(run))
+        (F.thirst + F.thirstPerHelper * farmHelperCount(run)) *
+          farmThirstMult(run) *
+          waterProjectThirst(run)
       : W.rainMax * outlook - W.thirst;
   run.resources.tank = Math.min(
     waterCapacity(run),

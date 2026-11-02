@@ -1,3 +1,4 @@
+import { FarmForkArt, FarmProjectArt } from "./TradeoffArt";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import type { Crop } from "@/lib/ever-onward/universes/grow/market";
 import {
@@ -613,6 +614,8 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
           </g>
         </g>
       )}
+      <FarmForkArt info={info} />
+      <FarmProjectArt info={info} />
     </g>
   );
 }

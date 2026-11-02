@@ -58,6 +58,8 @@ export const PHASES: readonly PhaseDef[] = [
       );
       fillFarmTank(run);
       seedMarket(run);
+      // A new farm keeps a quarter back as seed; the bank panel changes it.
+      run.resources.sbStep = 1;
       headStart(1)(run);
     },
   },

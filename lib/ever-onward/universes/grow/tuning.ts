@@ -9,12 +9,17 @@ export interface PhaseTuning {
 }
 
 export const TUNING = {
+  /** Every level of a helper line multiplies its output by this (see `stacked`). */
+  stackGrowth: 1.6,
+  /** Every upgrade's price in a phase is multiplied by this (yard, farm, world, seed). */
+  costSteepness: [1.0, 1.78, 1.35, 1.2] as readonly number[],
+  costScale: [4.4, 1.88, 2.75, 9] as readonly number[],
   /** By phase index. */
   phases: [
-    { tap: 1, helper: 0.6, scalePer: 0.5 },
-    { tap: 10, helper: 5, scalePer: 0.5 },
-    { tap: 60, helper: 40, scalePer: 0.5 },
-    { tap: 1, helper: 0.35, scalePer: 0.5 },
+    { tap: 1.4, helper: 0.6, scalePer: 0.6 },
+    { tap: 4, helper: 5, scalePer: 0.6 },
+    { tap: 28, helper: 40, scalePer: 0.6 },
+    { tap: 1, helper: 0.35, scalePer: 0.6 },
   ] as readonly PhaseTuning[],
   /** The backyard's water: a tank, rain that comes and goes, and a thirst. */
   water: {
@@ -43,31 +48,31 @@ export const TUNING = {
     /** Boost for [plant (taps), grow (sprinklers, bees), harvest]. */
     spring: [1.5, 1.15, 1],
     summer: [1.1, 1.5, 1.1],
-    autumn: [1, 1.1, 2],
+    autumn: [1, 1.1, 3],
     winter: [1, 1, 1],
   },
   /** The backyard's harvest: ripe produce waits in the garden until picked. */
   yard: {
     /** Produce per second each helper grows (before bonuses). */
-    sprinklerRate: 0.9,
-    hiveRate: 3,
+    sprinklerRate: 1.1,
+    hiveRate: 3.6,
     /** The share of ripening produce each helper picks, at the base rate. */
     basketShare: 0.07,
-    gardenerShare: 0.13,
+    gardenerShare: 0.14,
     /** The most the pickers can keep up with, before wheelbarrows. */
-    pickCap: 0.65,
+    pickCap: 0.6,
     /** Past the cap, the share of a helper's pick that still counts. */
     overflowKeep: 0.05,
     /** Each level of compost tea adds this share to ripening. */
-    teaPer: 0.5,
+    teaPer: 0.6,
     /** The greenhouse multiplies ripening by this. */
-    greenhouse: 1.5,
+    greenhouse: 2,
     /** The orchard multiplies ripening by this. */
-    orchard: 1.25,
+    orchard: 1.6,
     /** The honey stand multiplies what a hand harvest pays by this. */
-    honey: 1.25,
+    honey: 1.5,
     /** Each wheelbarrow raises the pickers' cap by this much. */
-    barrowPer: 0.06,
+    barrowPer: 0.12,
     /** The hand-harvest button shows once this much is ripe. */
     ripeShown: 5,
     /** The harvest plate lights up at this many seconds of basket work. */
@@ -103,6 +108,21 @@ export const TUNING = {
     droneRate: 580,
     /** Leftover seeds become this much harvest when the farm opens. */
     seedsToHarvest: 0.004,
+    /** The seed bank: keep a share of income as seed, grow richer harvests. */
+    bank: {
+      /** Shares that can be kept back: none, a quarter, half. */
+      shares: [0, 0.25, 0.5] as readonly number[],
+      /** The most the bank can add to every harvest (a fraction). */
+      maxGain: 2.5,
+      /** Seconds of farm income in the bank for half of that. */
+      halfSeconds: 100,
+      /** Share of the bank that spoils each second. */
+      spoilPerSecond: 1 / 240,
+      /** The bank opens with this many scarecrows. */
+      opensAtScarecrows: 2,
+      /** Taps a second counted when the bank is weighed against the farm. */
+      referenceTaps: 2,
+    },
     /** The farm's thirsty fields: a bigger tank, more thirst, and wells. */
     water: {
       baseCapacity: 40,
@@ -208,7 +228,7 @@ export const TUNING = {
     seedsWeight: 0.55,
     waterWeight: 1,
     /** The planet counts as green enough for a vault at this cover. */
-    vaultCover: 0.8,
+    vaultCover: 0.7,
     /** A player switches when another biome is this much better. */
     playerMargin: 1.1,
   },
@@ -242,9 +262,9 @@ export const TUNING = {
     chimeRate: 3,
     dewRate: 20,
     /** A window lantern makes each unit of care grow the pot this much more. */
-    lanternBoost: 0.25,
+    lanternBoost: 1,
     /** Growth (of 100) each unit of care adds to the pot. */
-    growthPerCare: 0.00009,
+    growthPerCare: 0.00003,
     /** The pot is a sprout from this share grown, and a bud from this one. */
     sproutAt: 0.015,
     budAt: 0.6,
@@ -255,12 +275,70 @@ export const TUNING = {
     matchSeconds: 12,
     otherSeconds: 4,
     /** Each watering can adds this share to every answer. */
-    canPer: 0.2,
+    canPer: 0.5,
     /** The music box answers after this long, for this share of a right one. */
     boxDelay: 30,
     boxShare: 0.5,
     /** Answers by hand before the music box is offered. */
     boxAfterTends: 4,
+  },
+  /** Know-how (farm and world): projects and festivals both want it. */
+  knowhow: {
+    /** Know-how a second from every level of every helper. */
+    perLevel: 0.05,
+    /** The world learns this much faster than the farm. */
+    worldRate: 2.5,
+    /** A festival: its price, how long it lasts and how much it multiplies pay. */
+    festivalCost: 25,
+    festivalSeconds: 45,
+    festivalMult: 2,
+    /** The three projects of each part, in know-how (cheapest first). */
+    costs: [30, 70, 160] as readonly number[],
+    /** Drip lines and rain gauges. */
+    tankMult: 2,
+    thirstMult: 0.5,
+    /** The cold store: the seed bank's seed spoils this much as fast. */
+    coldStoreSpoil: 0.5,
+    /** Hybrid seed (farm) and wildlife corridors (world). */
+    hybridMult: 2,
+    corridorMult: 2,
+    /** The tree nursery: spread speed. */
+    nurserySpread: 2,
+  },
+  /** Forks: one either-or choice per phase (prices are before costScale). */
+  forks: {
+    yard: {
+      cost: 60,
+      /** Bug spray: every sprinkler ripens this much more. */
+      sprayRipen: 2.2,
+      /** Bug spray: the orchard (no bees to set the fruit) boosts this much. */
+      sprayOrchard: 1.3,
+    },
+    farm: {
+      cost: 3000,
+      /** Scarecrow crew: fields pay this much more, drink less, fair pays double. */
+      crewIncome: 1.8,
+      crewThirst: 0.7,
+      crewFair: 3,
+      /** Hired hawk: fields pay this much more, and the county fair stays home. */
+      hawkIncome: 2.1,
+    },
+    world: {
+      cost: 8000,
+      /** Old forest: forest's green pay and spread speed. */
+      forestGreen: 2.2,
+      forestSpread: 1.5,
+      /** Wetland: wetland's green pay and the water it holds and seeps. */
+      wetlandGreen: 9,
+      wetlandWater: 2,
+    },
+    seed: {
+      cost: 15,
+      /** Morning sun: answers to the pot pay this much more. */
+      sunTap: 3,
+      /** Night-light: trellis, chime and dew pay this much more. */
+      nightHelpers: 2.5,
+    },
   },
   /** Start-of-phase gift for each level of the packet, in seconds of helper income. */
   headStartSeconds: 20,

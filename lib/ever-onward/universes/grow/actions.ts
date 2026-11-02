@@ -20,6 +20,9 @@ import {
   PUMPKIN_COUNT,
 } from "./fair";
 import { SPREAD_ACTIONS } from "./biomes";
+import { BANK_ACTIONS } from "./seedbank";
+import { FORK_ACTIONS } from "./forks";
+import { FESTIVAL_ACTIONS } from "./knowhow";
 import { sendActions } from "./migration";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_FARM, PHASE_YARD } from "./resources";
@@ -137,8 +140,11 @@ const ENTER_PUMPKIN: readonly ActionDef[] = Array.from(
 
 export const GROW_ACTIONS: readonly ActionDef[] = [
   HARVEST,
+  ...FORK_ACTIONS,
   ...FOLLOW_PATCH,
   ...MARKET_ACTIONS,
+  ...BANK_ACTIONS,
+  ...FESTIVAL_ACTIONS,
   ...SPREAD_ACTIONS,
   ...ENTER_PUMPKIN,
   ...sendActions(incomePerSecond),

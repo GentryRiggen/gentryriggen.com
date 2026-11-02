@@ -22,6 +22,10 @@ import {
   type Crop,
 } from "./market";
 import { seasonOf, secondsToAutumn } from "./seasons";
+import { bankActionId, bankStep } from "./seedbank";
+import { shownProjects } from "../../engine/engine";
+import { FESTIVAL_ACTION_ID, festivalCost, knowhowOf } from "./knowhow";
+import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { TUNING } from "./tuning";
 import { STORAGE_IDS, isDry, rainOutlook } from "./water";
 import { currentWant, isWanting, tendActionId, tendsSoFar } from "./windowbox";
@@ -164,6 +168,38 @@ export const cropPolicy =
     return available.includes(id) ? [id] : [];
   };
 
+/** Sets the seed bank to this step on the first look and never changes it. */
+export const keepsSeed =
+  (step: number): Actions =>
+  (run, available) => {
+    const id = bankActionId(step);
+    return run.phase === 1 && bankStep(run) !== step && available.includes(id)
+      ? [id]
+      : [];
+  };
+
+/** Share of the barn's price in hand at which seed stops being kept. */
+const BARN_NEAR_SHARE = 0.25;
+
+/**
+ * Keeps a quarter of the harvest as seed while the barn is far off, and
+ * sells it all once a good part of the barn's price is in hand (seed in the
+ * bank when the farm ends is left behind). Looks every `window` seconds.
+ */
+export const bankPolicy =
+  (window = 10): Actions =>
+  (run, available) => {
+    if (run.phase !== 1 || !isWindowStart(run, window)) return [];
+    const barn = growUniverse.upgrades.find((u) => u.id === "grain-barn");
+    const isNear =
+      !!barn &&
+      run.revealed.includes(barn.id) &&
+      (run.resources.harvest ?? 0) >= BARN_NEAR_SHARE * upgradeCost(run, barn);
+    const want = isNear ? 0 : 1;
+    const id = bankActionId(want);
+    return bankStep(run) !== want && available.includes(id) ? [id] : [];
+  };
+
 /** Plants this crop on the first look and never changes its mind. */
 export const alwaysPlants =
   (crop: Crop): Actions =>
@@ -207,13 +243,42 @@ export const alwaysSpreads =
 /** Every biome, for tests that want the list. */
 export const ALL_BIOMES: readonly Biome[] = BIOMES;
 
+/**
+ * Buys the given side of the current part's fork the moment it is open and
+ * affordable. A fork costs less than the cheapest thing on offer when it
+ * opens, so a bot that checks every step always gets there first.
+ */
+/** The side an engaged bot picks in each part: bees, crew, forest, night-light. */
+const ENGAGED_SIDES: readonly ForkSide[] = [0, 0, 0, 1];
+
+export const takesFork =
+  (side?: ForkSide): Actions =>
+  (run, available) => {
+    const id = forkActionId(
+      currentFork(run).id,
+      side ?? ENGAGED_SIDES[run.phase] ?? 0
+    );
+    return available.includes(id) ? [id] : [];
+  };
+
+/**
+ * Holds a festival when the know-how is there and no project is close: it
+ * keeps back half of the cheapest project on offer, so ideas are not starved
+ * by festivals (and festivals not by ideas).
+ */
+export const holdsFestival: Actions = (run, available) => {
+  if (!available.includes(FESTIVAL_ACTION_ID)) return [];
+  const shown = shownProjects(growUniverse, run);
+  const reserve = shown.length
+    ? 0.5 * Math.min(...shown.map((p) => p.costs[0].amount))
+    : 0;
+  return knowhowOf(run) >= festivalCost() + reserve ? [FESTIVAL_ACTION_ID] : [];
+};
+
 /** Both choices at once, so a bot can pick and follow in the same step. */
 const alongside =
   (a: Actions, b: Actions): Actions =>
   (run, available) => [...a(run, available), ...b(run, available)];
-
-/** Never picks by hand: the baskets do it. */
-const picksNothing: Actions = () => [];
 
 /** A storage upgrade the bot allows itself to buy right now. */
 type StorageRule = (run: RunState) => boolean;
@@ -246,7 +311,10 @@ export function yardPlayer(
   harvest: Actions,
   storage: StorageRule
 ): Strategy {
-  return { ...withStorageRule(base, storage), actions: harvest };
+  return {
+    ...withStorageRule(base, storage),
+    actions: alongside(takesFork(), alongside(holdsFestival, harvest)),
+  };
 }
 
 /** The scorecard's player personalities for Make It Grow. */
@@ -259,7 +327,7 @@ export function growBots(): BotSet {
       alongside(
         followsDance(),
         alongside(
-          cropPolicy(),
+          alongside(cropPolicy(), bankPolicy()),
           alongside(
             entersFair(),
             alongside(biomePolicy(), alongside(sendsFlock(), tendsPot()))
@@ -278,7 +346,7 @@ export function growBots(): BotSet {
         alongside(
           followsDance({ skipEvery: 6 }),
           alongside(
-            cropPolicy(20),
+            alongside(cropPolicy(20), bankPolicy(20)),
             alongside(
               entersFair({ skipEvery: 6 }),
               alongside(
@@ -296,7 +364,8 @@ export function growBots(): BotSet {
     ),
     idle: {
       ...withStorageRule(base.idle, afterRunningDry),
-      actions: picksNothing,
+      projects: "best",
+      actions: takesFork(1),
       greetAfter: Infinity,
     },
     dawdler: yardPlayer(
@@ -306,7 +375,7 @@ export function growBots(): BotSet {
         alongside(
           followsDance({ skipEvery: 2 }),
           alongside(
-            cropPolicy(60),
+            alongside(cropPolicy(60), bankPolicy(60)),
             alongside(
               entersFair({ skipEvery: 2 }),
               alongside(
@@ -338,12 +407,12 @@ export function growBots(): BotSet {
       1: {
         naive: yardPlayer(
           base.tapper,
-          alongside(cropPolicy(), entersFair()),
+          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
           afterRunningDry
         ),
         careful: yardPlayer(
           base.tapper,
-          alongside(cropPolicy(), entersFair()),
+          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
           whenRainTurnsDry
         ),
       },
@@ -370,10 +439,14 @@ export function growBots(): BotSet {
         ),
       },
       1: {
-        ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
+        ignores: yardPlayer(
+          base.tapper,
+          alongside(cropPolicy(), bankPolicy()),
+          whenRainTurnsDry
+        ),
         claims: yardPlayer(
           base.tapper,
-          alongside(cropPolicy(), entersFair()),
+          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
           whenRainTurnsDry
         ),
       },

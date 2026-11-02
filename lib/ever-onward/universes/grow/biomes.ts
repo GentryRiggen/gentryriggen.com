@@ -2,6 +2,8 @@ import { formatNumber } from "../../engine/format";
 import type { ActionDef, RunState } from "../../engine/types";
 import { PHASE_WORLD } from "./resources";
 import { TUNING } from "./tuning";
+import { worldFocus } from "./forks";
+import { nurserySpread } from "./knowhow";
 import { waterLevel } from "./water";
 
 /**
@@ -49,9 +51,38 @@ const SHARE_IDS: Readonly<Record<Biome, string>> = {
 export const spreadActionId = (biome: Biome): string => `world-spread-${biome}`;
 export const SPREAD_ACTION_IDS: readonly string[] = BIOMES.map(spreadActionId);
 
+/**
+ * A biome the world's fork has closed: old forest closes the wetland,
+ * wetland closes the forest, for the rest of the run.
+ */
+export function isBiomeLocked(run: RunState, biome: Biome): boolean {
+  const focus = worldFocus(run);
+  return (
+    (focus === "forest" && biome === "wetland") ||
+    (focus === "wetland" && biome === "forest")
+  );
+}
+
 /** The biome that is spreading right now (a fresh world spreads forest). */
-export const activeBiome = (run: RunState): Biome =>
-  BIOMES[clamp(Math.round(res(run, "bmActive")), 0, BIOMES.length - 1)];
+export function activeBiome(run: RunState): Biome {
+  const stored =
+    BIOMES[clamp(Math.round(res(run, "bmActive")), 0, BIOMES.length - 1)];
+  // A choice that closed the stored biome moves the spreading to the one chosen.
+  return isBiomeLocked(run, stored) ? (worldFocus(run) as Biome) : stored;
+}
+
+/** What a fully grown biome adds to green income, with the fork's focus. */
+export function greenPerOf(run: RunState, biome: Biome): number {
+  const focus = worldFocus(run);
+  const f = TUNING.forks.world;
+  const boost =
+    focus === "forest" && biome === "forest"
+      ? f.forestGreen
+      : focus === "wetland" && biome === "wetland"
+        ? f.wetlandGreen
+        : 1;
+  return T.greenPer[biome] * boost;
+}
 
 /** How much of the planet this biome covers, 0 to 1. */
 export const biomeShare = (run: RunState, biome: Biome): number =>
@@ -77,13 +108,16 @@ export function biomePerk(run: RunState, biome: Biome): number {
   const gain = curve(biomeShare(run, biome));
   if (biome === "meadow") return T.meadowSeeds * gain;
   if (biome === "wetland") return T.water.wetlandCapacity * gain;
-  return T.greenPer[biome] * gain;
+  return greenPerOf(run, biome) * gain;
 }
 
 /** The green income multiplier from all the biomes together. */
 export const greenMult = (run: RunState): number =>
   1 +
-  BIOMES.reduce((sum, b) => sum + T.greenPer[b] * curve(biomeShare(run, b)), 0);
+  BIOMES.reduce(
+    (sum, b) => sum + greenPerOf(run, b) * curve(biomeShare(run, b)),
+    0
+  );
 
 /** The multiplier on seeds the migrating birds carry (1 with no meadow). */
 export const migrationSeedsMult = (run: RunState): number =>
@@ -95,20 +129,21 @@ export const migrationSeedsMult = (run: RunState): number =>
  * wetland a lot, and every biome less the more of it there already is.
  */
 export function biomeValue(run: RunState, biome: Biome): number {
+  if (isBiomeLocked(run, biome)) return 0;
   const room = 1 - biomeShare(run, biome);
   const level = waterLevel(run);
+  const per = (b: Biome) => greenPerOf(run, b);
   switch (biome) {
     case "forest":
-      return 2 * T.greenPer.forest * room;
+      return 2 * per("forest") * room;
     case "jungle":
-      return 2 * T.greenPer.jungle * room * clamp((level - 0.2) / 0.6, 0.1, 1);
+      return 2 * per("jungle") * room * clamp((level - 0.2) / 0.6, 0.1, 1);
     case "meadow":
-      return 2 * (T.greenPer.meadow + T.meadowSeeds * T.seedsWeight) * room;
+      return 2 * (per("meadow") + T.meadowSeeds * T.seedsWeight) * room;
     case "wetland":
       return (
         2 *
-        (T.greenPer.wetland +
-          T.waterWeight * clamp((0.6 - level) / 0.5, 0, 1)) *
+        (per("wetland") + T.waterWeight * clamp((0.6 - level) / 0.5, 0, 1)) *
         room
       );
   }
@@ -130,7 +165,8 @@ export const biomeGap = (run: RunState): number =>
 /** Chooses the biome to spread (a different one takes a moment to settle). */
 export function spreadBiome(run: RunState, biome: Biome): void {
   const index = BIOMES.indexOf(biome);
-  if (index < 0 || index === Math.round(res(run, "bmActive"))) return;
+  if (index < 0 || isBiomeLocked(run, biome)) return;
+  if (index === Math.round(res(run, "bmActive"))) return;
   run.resources.bmActive = index;
   run.resources.bmSettle = T.settleSeconds;
   run.resources.bmSwitches = res(run, "bmSwitches") + 1;
@@ -143,11 +179,17 @@ export const switchesSoFar = (run: RunState): number => res(run, "bmSwitches");
 export function spreadRate(run: RunState): number {
   const owned = (id: string) => run.owned[id] ?? 0;
   const settle = clamp(res(run, "bmSettle") / T.settleSeconds, 0, 1);
+  const focus =
+    worldFocus(run) === "forest" && activeBiome(run) === "forest"
+      ? TUNING.forks.world.forestSpread
+      : 1;
   return (
     (T.spreadBase +
       T.spreadPerRover * owned("planting-rover") +
       T.spreadPerSeeder * owned("sky-seeder")) *
-    (1 - (1 - T.settleFloor) * settle)
+    (1 - (1 - T.settleFloor) * settle) *
+    focus *
+    nurserySpread(run)
   );
 }
 
@@ -177,12 +219,17 @@ export const SPREAD_ACTIONS: readonly ActionDef[] = BIOMES.map((biome) => ({
   isInline: true,
   describe: (run) => {
     const here = activeBiome(run) === biome;
+    const isLocked = isBiomeLocked(run, biome);
     return {
-      label: here ? `${BIOME_LABELS[biome]} is spreading` : `Spread ${biome}`,
+      label: isLocked
+        ? `${BIOME_LABELS[biome]} is closed`
+        : here
+          ? `${BIOME_LABELS[biome]} is spreading`
+          : `Spread ${biome}`,
       detail: `${BIOME_LABELS[biome]}: ${PERK_WORDS[biome]}. It covers ${pct(biomeShare(run, biome))} of the world.`,
-      isBlocked: here,
+      isBlocked: here || isLocked,
       hint:
-        bestBiome(run) === biome && !here
+        bestBiome(run) === biome && !here && !isLocked
           ? { text: "worth spreading", tone: "good" as const }
           : undefined,
     };

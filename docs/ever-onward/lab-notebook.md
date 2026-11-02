@@ -1369,3 +1369,131 @@ sky and ending M16 gates listed as known; Grow's floor 81.6. Next: Gentry
 plays the night on his phone (does the desk feel like managing now; does
 the streetlights panel read), then Round 6 takes projects and a knob to the
 sky.
+
+## Make It Grow, round 2 (2026-11-01): trade-offs
+
+Branch `feat/eo-grow-tradeoffs`, on top of Make It Grow 1.17.0 (75d6404d).
+
+### Playtest note (ground truth)
+
+Gentry, after playing Make It Grow:
+
+> In Paperclips there were always tradeoffs to be made. Use money for things
+> now or invest, use ops on upgrades or yomi runs. None of this in the new
+> game. Just waiting on upgrades, and the upgrades barely have a perceptible
+> or fun change.
+
+Read as: no choice costs anything (M2, M16 count choices, not tradeoffs), the
+shop is a queue (M4), and a purchase that is "one more of the same" is not felt.
+
+### Hypotheses
+
+1. If every purchase multiplies something (and the scene changes), the shop
+   stops being a queue of identical steps.
+2. A knob whose setting costs something now and pays later, with a best
+   setting in the middle, is an invest-or-spend choice.
+3. One second resource with two hungry sinks (permanent projects, a repeatable
+   festival) makes "what do I spend it on" a question every few minutes.
+4. An exclusive fork per part gives four different runs.
+
+### 1. Every upgrade lands
+
+- Helper lines (sprinklers, bee hives, scarecrows, tractors, glasshouses,
+  drones, windbreaks, rovers, sky seeders, trellis, chime, dew) now stack:
+  level n makes 1.6^n of one helper, so each purchase is at least +60%, not
+  one more of the same. Scaling upgrades (mulch, compost, rain makers, sunny
+  sill, silo) multiply taps and helpers by 1.6 per level. Caps fell from 4-13
+  levels to 3-8.
+- One-off boosts got bigger: greenhouse x2 (was 1.5), orchard x1.6 (was
+  1.25), honey stand x1.5 (was 1.25), compost tea 1.6 per level, wheelbarrow
+  +12% of the pick cap per level (was 6%), watering can +50% per level
+  (was 20%), window lantern x2 (was x1.25).
+- Guard: `economy.test.ts` checks every helper line and scaling upgrade
+  raises its group by at least half again at every level.
+- Pacing is now one dial per part, `TUNING.costScale` and `costSteepness`:
+  cheap first steps, steeper later ones. `[4.4, 1.88, 2.75, 9]` and
+  `[1, 1.78, 1.35, 1.2]`.
+
+### 2. Spend now or invest: the Seed Bank (farm)
+
+Keep none, a quarter or half of every harvest as seed. The bank's yield bonus
+is 2.5 x s / (s + 100 s) where s is seconds of farm income in the bank, and
+the bank spoils 1/240 of itself a second. Net pay while it settles: keep
+nothing 1.0x, a quarter 1.45x, half 1.18x. A new farm starts at a quarter;
+a save from before reads as keep-nothing (the panel appears with two
+scarecrows). Farm minutes for the realistic bot with the step held all farm:
+nothing 47.8, a quarter 33.7, half 38.5. The bot keeps a quarter and sells
+everything once a quarter of the barn's price is in hand (seed left in the
+bank when the farm ends is lost). Edge is large (30%), so the choice is
+obvious early and a real decision late.
+
+### 3. One currency, two hungry sinks: know-how (farm and world)
+
+Every helper level learns 0.05 know-how a second (x2.5 in the world). Two
+places to spend it: projects (permanent: drip lines, a cold store that makes
+bank seed last twice as long, hybrid seed x2 on the farm; rain gauges, a tree
+nursery x2 spreading, wildlife corridors x2 green in the world) and a
+festival (x2 pay for 45 s, 25 know-how, as often as you can afford it).
+Everything is deterministic: no luck, no random payout. The festival is
+strongest when the planted crop is in demand, so timing is the skill. The
+bots hold back half the cheapest project before a festival.
+
+### 4. Forks (one per part, buying one locks the other)
+
+| Part  | Side A                                       | Side B                                            | Realistic bot, seconds in the part (A / B) |
+| ----- | -------------------------------------------- | ------------------------------------------------- | ------------------------------------------ |
+| Yard  | Ask the bees: hives, dances, keeper, orchard | Bug spray: sprinklers x2.2, no bees, orchard 1.3x | 2011 / 1801                                |
+| Farm  | Scarecrow crew: x1.8, thirst -30%, fair x3   | Hired hawk: x2.1, no county fair                  | 2020 / 2140                                |
+| World | Old forest: forest green x2.2, spreads x1.5  | Wetland: green x9, water x2; forest closed        | 1870 / 1960                                |
+| Seed  | Morning sun: answers x3                      | Night-light: helpers x2.5                         | 1560 / 1378                                |
+
+Each side changes the picture (butterflies and a flower border vs a sprayer
+and mist, a row of scarecrows vs a hawk and a shut fair tent, tall trees vs
+ponds and a heron, a sunbeam vs a night-light with moths). A test keeps the
+two sides within 20% of each other. Old saves read "not chosen"; a yard save
+that already has a hive counts as the bees side.
+
+Bots: engaged bots pick bees, crew, forest, night-light (taps stay a nudge);
+the idle bot picks the second side everywhere (nothing to click once chosen).
+
+### Scores
+
+| Card                                      | Before (1.17.0)            | After                     |
+| ----------------------------------------- | -------------------------- | ------------------------- |
+| Grow total                                | 59.0 (capped from 82.7)    | 82.0, nothing failing     |
+| M16 decision gaps                         | 5.1 / 8, world fails (41%) | 6.6 / 8, every phase ok   |
+| M3 visible goal queue                     | 1.3 / 3                    | 1.8 / 3                   |
+| M4 felt effect                            | 7.3 / 10                   | 8.8 / 10                  |
+| M7 plates                                 | 5.9 / 10                   | 7.2 / 10                  |
+| M10 income smoothness                     | 3.4 / 4                    | 3.5 / 4                   |
+| M11 click curve                           | 10 / 10                    | 7.6 / 10                  |
+| M6 wait ratio                             | 10 / 10                    | 8.5 / 10                  |
+| M12 dead time                             | 4.0 / 4                    | 3.4 / 4                   |
+| Decisions a minute (yard/farm/world/seed) | 1.55 / 2.14 / 1.58 / 3.07  | 1.49 / 2.49 / 2.57 / 2.53 |
+| Finish (eager / helps / idle)             | 2.05 / 2.13 / 3.06 h       | 2.06 / 2.02 / 3.36 h      |
+
+### What I learned
+
+- Geometric helpers are a bigger change than they look: every phase shortened
+  by a third, and the early game got slow until I moved cost into the steepness
+  (`costSteepness`) instead of the base price. Cheap first, steep later keeps
+  M6 and M11 honest.
+- The idle bot is a good lie detector. Anything that needs a click makes the
+  idle/eager ratio worse; the fork has to be one the idle bot can take, and
+  the right side for a player who never taps is the passive one.
+- A fork in the seed phase that boosts taps broke the click curve (taps came
+  back to 28% of income). Boost answers or helpers, never the tap.
+- Do not hold shop purchases to save for a fork: a bot that does stalls the
+  whole phase when a test swaps its actions. Price the fork under the cheapest
+  thing on offer instead.
+- Some reveal gaps in the seed phase come from the `maxVisible` three-card
+  limit holding a slot for an unbought bonus helper (the music box).
+
+### Still thin
+
+1. The festival is a click every 1-3 minutes; a player who forgets it loses
+   about a fifth of the farm's pace. Candidates: let it queue, or tie it to the
+   market peak with a cue.
+2. The yard has no know-how, so its middle is still the bees and the harvest.
+3. The seed fork barely moves the phase length (the pot's growth is
+   exponential in care). It is a flavour choice more than an economic one.

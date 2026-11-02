@@ -1,3 +1,4 @@
+import { YardForkArt } from "./TradeoffArt";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import type { Season } from "@/lib/ever-onward/universes/grow/seasons";
 import {
@@ -693,6 +694,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
         />
       </g>
       <rect x="-1200" y="0" width="2800" height="9" fill="#a9763f" />
+      <YardForkArt info={info} />
     </g>
   );
 }

@@ -150,19 +150,19 @@ export const farm: StoryMessage[] = [
   {
     id: "farm-time-7",
     phase: PHASE_FARM,
-    when: (run) => owned(run, "seed-drone") >= 3,
+    when: (run) => after(run, 24.5),
     text: "There is more green here than anyone expected. The farm has become the town's favourite place to have a picnic.",
   },
   {
     id: "farm-time-12",
     phase: PHASE_FARM,
-    when: (run) => owned(run, "seed-drone") >= 4,
+    when: (run) => after(run, 26),
     text: "A child in the next county draws the farm from memory. It has a very large sun and a very small scarecrow, and it is quite right.",
   },
   {
     id: "farm-time-8",
     phase: PHASE_FARM,
-    when: (run) => owned(run, "seed-drone") >= 5,
+    when: (run) => after(run, 28.5),
     text: "Somewhere past the last row, a bigger barn is quietly being drawn on a very large piece of paper.",
   },
   {
