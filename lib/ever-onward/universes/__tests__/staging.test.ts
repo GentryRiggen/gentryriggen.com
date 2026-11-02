@@ -6,13 +6,15 @@ describe("staging", () => {
       "light",
       "grow",
       "higher",
+      "smile",
     ]);
-    expect(lockedUniverses(false).map((u) => u.id)).toEqual(["smile"]);
+    expect(lockedUniverses(false).map((u) => u.id)).toEqual([]);
   });
   it("hides an unreleased universe in production", () => {
     expect(playableUniverses(false, ["grow"]).map((u) => u.id)).toEqual([
       "light",
       "higher",
+      "smile",
     ]);
     expect(lockedUniverses(false, ["grow"]).map((u) => u.id)).toContain("grow");
   });

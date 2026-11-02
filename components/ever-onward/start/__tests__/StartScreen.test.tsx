@@ -50,7 +50,9 @@ describe("StartScreen", () => {
         onStart={jest.fn()}
       />
     );
+    // Make Everyone Smile opens only after Build It Higher.
     expect(screen.queryByText(/Make It Grow, locked/)).toBeNull();
+    expect(screen.getByText(/Make Everyone Smile, locked/)).toBeInTheDocument();
     expect(screen.getByText("Make It Grow")).toBeInTheDocument();
   });
 

@@ -3969,3 +3969,428 @@ html:has(.jim-app) body {
     opacity: 1;
   }
 }
+
+/* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
+@keyframes ms-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes ms-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes ms-hop {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-6px);
+  }
+  90% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes ms-wag {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(18deg);
+  }
+}
+
+@keyframes ms-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes ms-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes ms-confetti {
+  0% {
+    opacity: 0;
+    transform: translate(0, -10px) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, 70px) rotate(240deg);
+  }
+}
+
+@keyframes ms-march {
+  0%,
+  100% {
+    transform: translateX(-8px);
+  }
+  50% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes ms-flutter {
+  0%,
+  100% {
+    transform: skewX(-6deg);
+  }
+  50% {
+    transform: skewX(6deg);
+  }
+}
+
+@keyframes ms-puff {
+  0% {
+    opacity: 0.8;
+    transform: translate(0, 0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(8px, -22px) scale(1.5);
+  }
+}
+
+@keyframes ms-burst {
+  0%,
+  60% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes ms-drift {
+  0%,
+  100% {
+    transform: translateX(-14px);
+  }
+  50% {
+    transform: translateX(14px);
+  }
+}
+
+@keyframes ms-ring {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes ms-eyes {
+  0%,
+  35% {
+    transform: translateX(-2px);
+  }
+  50%,
+  85% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(-2px);
+  }
+}
+
+@keyframes ms-grin {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(1.12);
+  }
+}
+
+@keyframes ms-frown {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+  68%,
+  90% {
+    opacity: 1;
+  }
+}
+
+@keyframes ms-rain {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  30% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes ms-flame {
+  0%,
+  100% {
+    transform: scale(1, 1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(0.85, 1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes ms-leaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-16px, 60px) rotate(180deg);
+  }
+}
+
+@keyframes ms-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes ms-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.ms-bob,
+.ms-bob-b,
+.ms-sway,
+.ms-hop,
+.ms-wag,
+.ms-steam,
+.ms-twinkle,
+.ms-twinkle-b,
+.ms-confetti,
+.ms-confetti-b,
+.ms-march,
+.ms-march-b,
+.ms-flutter,
+.ms-puff,
+.ms-puff-b,
+.ms-burst,
+.ms-burst-b,
+.ms-drift,
+.ms-ring,
+.ms-ring-b,
+.ms-eyes,
+.ms-grin,
+.ms-frown,
+.ms-rain,
+.ms-rain-b,
+.ms-flame,
+.ms-leaf,
+.ms-blink,
+.ms-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ms-bob {
+  animation: ms-bob 3.2s ease-in-out infinite;
+}
+.ms-bob-b {
+  animation: ms-bob 4.1s ease-in-out -1.7s infinite;
+}
+.ms-sway {
+  transform-origin: 50% 100%;
+  animation: ms-sway 4s ease-in-out infinite;
+}
+.ms-hop {
+  animation: ms-hop 3.6s ease-in infinite;
+}
+.ms-wag {
+  transform-origin: 0% 100%;
+  animation: ms-wag 0.5s ease-in-out infinite;
+}
+.ms-steam {
+  animation: ms-steam 2.8s ease-out infinite;
+}
+.ms-twinkle {
+  animation: ms-twinkle 2.4s ease-in-out infinite;
+}
+.ms-twinkle-b {
+  animation: ms-twinkle 3.1s ease-in-out -1.2s infinite;
+}
+.ms-confetti {
+  animation: ms-confetti 4.2s linear infinite;
+}
+.ms-confetti-b {
+  animation: ms-confetti 5.3s linear -2.4s infinite;
+}
+.ms-march {
+  animation: ms-march 5s ease-in-out infinite;
+}
+.ms-march-b {
+  animation: ms-march 6.5s ease-in-out -2.5s infinite;
+}
+.ms-flutter {
+  transform-origin: 50% 0%;
+  animation: ms-flutter 1.6s ease-in-out infinite;
+}
+.ms-puff {
+  animation: ms-puff 3s ease-out infinite;
+}
+.ms-puff-b {
+  animation: ms-puff 3s ease-out -1.5s infinite;
+}
+.ms-burst {
+  animation: ms-burst 3.4s ease-out infinite;
+}
+.ms-burst-b {
+  animation: ms-burst 4.2s ease-out -1.9s infinite;
+}
+.ms-drift {
+  animation: ms-drift 9s ease-in-out infinite;
+}
+.ms-ring {
+  animation: ms-ring 2.6s ease-out infinite;
+}
+.ms-ring-b {
+  animation: ms-ring 2.6s ease-out -1.3s infinite;
+}
+.ms-eyes {
+  animation: ms-eyes 7s ease-in-out infinite;
+}
+.ms-grin {
+  animation: ms-grin 3.4s ease-in-out infinite;
+}
+.ms-frown {
+  animation: ms-frown 11s ease-in-out infinite;
+}
+.ms-rain {
+  animation: ms-rain 1.4s linear infinite;
+}
+.ms-rain-b {
+  animation: ms-rain 1.4s linear -0.7s infinite;
+}
+.ms-flame {
+  transform-origin: 50% 100%;
+  animation: ms-flame 1.1s ease-in-out infinite;
+}
+.ms-leaf {
+  animation: ms-leaf 9s linear infinite;
+}
+.ms-blink {
+  animation: ms-blink 6s ease-in-out infinite;
+}
+.ms-glow {
+  animation: ms-glow 3.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-bob,
+  .ms-bob-b,
+  .ms-sway,
+  .ms-hop,
+  .ms-wag,
+  .ms-steam,
+  .ms-twinkle,
+  .ms-twinkle-b,
+  .ms-confetti,
+  .ms-confetti-b,
+  .ms-march,
+  .ms-march-b,
+  .ms-flutter,
+  .ms-puff,
+  .ms-puff-b,
+  .ms-burst,
+  .ms-burst-b,
+  .ms-drift,
+  .ms-ring,
+  .ms-ring-b,
+  .ms-eyes,
+  .ms-grin,
+  .ms-frown,
+  .ms-rain,
+  .ms-rain-b,
+  .ms-flame,
+  .ms-leaf,
+  .ms-blink,
+  .ms-glow {
+    animation: none;
+  }
+
+  .ms-steam,
+  .ms-confetti,
+  .ms-confetti-b,
+  .ms-puff,
+  .ms-puff-b,
+  .ms-burst,
+  .ms-burst-b,
+  .ms-ring,
+  .ms-ring-b,
+  .ms-rain,
+  .ms-rain-b,
+  .ms-leaf,
+  .ms-frown {
+    opacity: 0;
+  }
+}

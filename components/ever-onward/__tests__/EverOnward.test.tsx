@@ -59,8 +59,10 @@ describe("Ever Onward hub", () => {
     ]) {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }
-    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
-    expect(screen.getByTestId("lm-locked-higher")).toBeInTheDocument();
+    // Every announced universe is built now; Make Everyone Smile is locked
+    // behind Build It Higher.
+    expect(screen.getByTestId("lm-locked-smile")).toBeInTheDocument();
+    expect(screen.queryAllByText("Coming soon")).toHaveLength(0);
     expect(screen.getByRole("link", { name: /what's new/i })).toHaveAttribute(
       "href",
       "/ever-onward/versions"
@@ -85,9 +87,9 @@ describe("Ever Onward hub", () => {
     const play = await screen.findByTestId("lm-play-light");
     expect(play).toHaveTextContent("Play Keep the Light On");
     expect(screen.queryByTestId("lm-facts-light")).not.toBeInTheDocument();
-    const locked = screen.getByLabelText("Make Everyone Smile, coming soon");
-    expect(locked.tagName).toBe("LI");
-    expect(within(locked).queryByRole("button")).not.toBeInTheDocument();
+    // Every universe is built now; the later ones are locked, not playable.
+    expect(screen.getByTestId("lm-locked-smile")).toBeInTheDocument();
+    expect(screen.queryByTestId("lm-play-smile")).not.toBeInTheDocument();
   });
 
   it("shows best time and embers once earned", async () => {

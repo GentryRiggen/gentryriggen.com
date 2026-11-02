@@ -8,12 +8,14 @@ import type { UniverseUi } from "./types";
 import { GROW_UI } from "./grow";
 import { HIGHER_UI } from "./higher";
 import { LIGHT_UI } from "./light";
+import { SMILE_UI } from "./smile";
 
 /** The screen's per-universe pieces, by universe id. */
 export const UNIVERSE_UI: Readonly<Record<string, UniverseUi>> = {
   light: LIGHT_UI,
   grow: GROW_UI,
   higher: HIGHER_UI,
+  smile: SMILE_UI,
 };
 
 export function uiFor(id: string): UniverseUi {
