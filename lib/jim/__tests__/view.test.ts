@@ -4,8 +4,10 @@ import {
   clearViewCache,
   fetchView,
   getCachedView,
+  markRetroSaved,
   normalizeView,
   setViewSaver,
+  withRetroAnswers,
 } from "../view";
 import { VIEW_FIXTURE } from "./fixtures";
 
@@ -450,5 +452,70 @@ describe("normalizeView, round 1 fields", () => {
     });
     expect(bad?.reflection).toBeUndefined();
     expect(bad?.winsToday).toBeUndefined();
+  });
+});
+
+describe("the retro payload", () => {
+  const base = { today: "2026-10-31" };
+  const Q = ["First?", "Second?", "Third?"];
+  const good = {
+    day: "2026-10-31",
+    morning: { questions: Q, answers: null },
+    evening: { questions: Q, answers: ["One", "", "Three"] },
+  };
+
+  it("keeps a well-formed retro", () => {
+    expect(normalizeView({ ...base, retro: good })?.retro).toEqual(good);
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["not an object", "x"],
+    ["no day", { ...good, day: 3 }],
+    ["a bad day", { ...good, day: "Oct 31" }],
+    [
+      "two questions",
+      { ...good, morning: { questions: ["a?", "b?"], answers: null } },
+    ],
+    ["no evening", { day: good.day, morning: good.morning }],
+  ])("drops a retro that is %s", (_name, retro) => {
+    expect(normalizeView({ ...base, retro })?.retro).toBeUndefined();
+  });
+
+  it("reads garbage answers as none saved", () => {
+    const view = normalizeView({
+      ...base,
+      retro: { ...good, evening: { questions: Q, answers: ["x", 2, "y"] } },
+    });
+    expect(view?.retro?.evening.answers).toBeNull();
+  });
+
+  it("marks a save on the cached payload", async () => {
+    clearViewCache();
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValue(json(200, { ...VIEW_FIXTURE, retro: good }));
+    await fetchView(async () => "t", fetchFn, API);
+    const next = markRetroSaved("morning", "2026-10-31", ["a", "b", "c"]);
+    expect(next?.retro?.morning.answers).toEqual(["a", "b", "c"]);
+    expect(getCachedView()?.data.retro?.morning.answers).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    // Another day's save leaves the payload alone.
+    expect(markRetroSaved("evening", "2026-10-30", ["x", "", ""])).toBeNull();
+    expect(getCachedView()?.data.retro?.evening.answers).toEqual([
+      "One",
+      "",
+      "Three",
+    ]);
+  });
+
+  it("withRetroAnswers leaves a payload without a retro alone", () => {
+    const view = normalizeView(base)!;
+    expect(withRetroAnswers(view, "evening", "2026-10-31", ["a", "", ""])).toBe(
+      view
+    );
   });
 });

@@ -14,12 +14,15 @@ export interface PushSettings {
   eveningTime: string;
   /** "HH:MM", 06:30 to 21:45. */
   lessonTime: string;
+  /** "HH:MM", 07:00 to 10:00 by quarter hours; absent from an older server. */
+  morningRetroTime?: string;
 }
 
 export interface PushSettingsPatch {
   kinds?: Record<string, boolean>;
   eveningTime?: string;
   lessonTime?: string;
+  morningRetroTime?: string;
 }
 
 type GetToken = (force?: boolean) => Promise<string | null>;
@@ -44,7 +47,15 @@ function toSettings(v: unknown): PushSettings | null {
       kinds.push({ id: k.id, label: k.label, on: k.on });
     }
   }
-  return { kinds, eveningTime: v.eveningTime, lessonTime: v.lessonTime };
+  const settings: PushSettings = {
+    kinds,
+    eveningTime: v.eveningTime,
+    lessonTime: v.lessonTime,
+  };
+  if (typeof v.morningRetroTime === "string") {
+    settings.morningRetroTime = v.morningRetroTime;
+  }
+  return settings;
 }
 
 async function run(

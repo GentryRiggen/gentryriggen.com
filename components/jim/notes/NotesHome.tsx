@@ -14,6 +14,7 @@ import ShortLabel from "@/components/jim/notes/ShortLabel";
 import JimNoticed from "@/components/jim/notes/JimNoticed";
 import NeedsYou from "@/components/jim/notes/NeedsYou";
 import RemindersCard from "@/components/jim/notes/RemindersCard";
+import RetroCard from "@/components/jim/notes/RetroCard";
 import QuickLog from "@/components/jim/notes/QuickLog";
 import { TodoCheckbox, ToastBar } from "@/components/jim/notes/TodoBits";
 import {
@@ -37,6 +38,7 @@ import {
   isRecurring,
   todoTitle,
 } from "@/lib/jim/todos";
+import type { RetroKind } from "@/lib/jim/routes";
 import type { CalendarEvent, ViewData, ViewTodo } from "@/lib/jim/view";
 
 interface NotesHomeProps {
@@ -62,6 +64,11 @@ interface NotesHomeProps {
     getToken: (force?: boolean) => Promise<string | null>;
     onOpen: (id: string | null) => void;
     hrefFor?: (id: string | null) => string;
+  };
+  /** Retro card: where a tap goes. Without it (or retro data) it is hidden. */
+  retro?: {
+    onOpen: (kind: RetroKind) => void;
+    hrefFor?: (kind: RetroKind) => string;
   };
 }
 
@@ -395,6 +402,7 @@ export default function NotesHome({
   briefStage = null,
   briefError = null,
   reminders,
+  retro,
 }: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
@@ -444,6 +452,7 @@ export default function NotesHome({
             )}
           </div>
         )}
+        {retro && <RetroCard retro={data.retro} {...retro} />}
         {data.daily && <DailyWord word={data.daily} />}
         {data.noticed && <JimNoticed items={data.noticed} onAsk={onLog} />}
         <div className="space-y-3">

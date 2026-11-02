@@ -60,6 +60,8 @@ interface MockOptions {
   shorts?: Record<number, string>;
   /** More todos, open and done, added to the fixture's. */
   moreTodos?: { todos: unknown[]; doneTodos: unknown[] };
+  /** Send the day's retro in the view payload. */
+  retro?: boolean;
 }
 
 interface MockCalls {
@@ -85,6 +87,8 @@ interface MockCalls {
   reminderPatches: unknown[];
   /** How many times the morning brief script was asked for. */
   brief: number;
+  /** Each /api/retro body, in order. */
+  retro: unknown[];
 }
 
 const REMINDER_ID = "0123456789ab";
@@ -98,6 +102,26 @@ const PUSH_SETTINGS = {
   ],
   eveningTime: "21:00",
   lessonTime: "12:00",
+};
+/** Invented retro questions for the fixture's day, as the server sends them. */
+const RETRO = {
+  day: "2026-10-31",
+  morning: {
+    questions: [
+      "What are you looking forward to today?",
+      "What one thing would make today a win?",
+      "How do you want to show up today?",
+    ],
+    answers: null,
+  },
+  evening: {
+    questions: [
+      "What went better today than you expected?",
+      "What went well today?",
+      "What would you change?",
+    ],
+    answers: null,
+  },
 };
 /** An invented reminder, as the server sends one. */
 const REMINDER = {
@@ -180,6 +204,7 @@ async function mockServer(
     push: [],
     reminderPatches: [],
     brief: 0,
+    retro: [],
   };
   /** Todos checked off on the "server": the next view leaves them out. */
   const done = new Set<number>();
@@ -219,6 +244,7 @@ async function mockServer(
           ...VIEW_FIXTURE,
           reflection: { question: REFLECTION_QUESTION },
           meetingCards: { [MEETING_ID]: MEETING_CARD },
+          ...(options.retro ? { retro: RETRO } : {}),
           todos: [
             ...VIEW_FIXTURE.todos
               .filter((t) => !done.has(t.order))
@@ -266,6 +292,11 @@ async function mockServer(
         else done.delete(body.order);
         await reply(200, { ok: true, commit: "c0ffee1234", sha: "c0ffee1" });
       }
+      return;
+    }
+    if (url.pathname === "/api/retro") {
+      calls.retro.push(route.request().postDataJSON());
+      await reply(200, { ok: true, sha: "c0ffee1" });
       return;
     }
     if (url.pathname === "/api/push/settings") {
@@ -2089,6 +2120,54 @@ test.describe("Jim pings", () => {
   });
 
   for (const width of [393, 320]) {
+    test(`the evening retro saves and Home shows it Done at ${width}px`, async ({
+      page,
+    }, testInfo) => {
+      // Evening on the device, the fixture's day.
+      await page.clock.setFixedTime(new Date("2026-10-31T20:00:00-06:00"));
+      await page.setViewportSize({ width, height: 800 });
+      await page.addInitScript((api) => {
+        window.__JIM_TEST__ = { signedIn: true, api };
+      }, API);
+      const calls = await mockServer(page, { retro: true });
+      const shot = (name: string) =>
+        page.screenshot({
+          path: `${SHOTS}/${name}-${testInfo.project.name}-${width}.png`,
+          animations: "disabled",
+        });
+
+      await page.goto("/jim/retro/evening");
+      await expect(
+        page.getByRole("heading", { name: "Evening retro" })
+      ).toBeVisible();
+      const [q1, q2, q3] = RETRO.evening.questions;
+      await page.getByLabel(q1).fill("The long walk at lunch");
+      await page.getByLabel(q3).fill("Start\nearlier");
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await shot("retro");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText(/^Saved \d/)).toBeVisible();
+      expect(calls.retro).toEqual([
+        {
+          kind: "evening",
+          day: "2026-10-31",
+          answers: ["The long walk at lunch", "", "Start\nearlier"],
+        },
+      ]);
+      await expect(page.getByLabel(q2)).toBeEditable();
+      const views = calls.view;
+
+      await page.getByRole("link", { name: "Home", exact: true }).click();
+      const card = page.getByRole("link", { name: /Evening retro/ });
+      await expect(card).toContainText("Done");
+      // Done without fetching the notes again.
+      expect(calls.view).toBe(views);
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await shot("retro-card");
+    });
+
     test(`reminders, a meeting card and Notifications fit a ${width}px phone`, async ({
       page,
     }, testInfo) => {

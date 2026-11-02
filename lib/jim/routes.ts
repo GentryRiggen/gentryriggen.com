@@ -85,7 +85,7 @@ const DIRECTORY_ID = /^[0-9]{1,6}$/;
 const REMINDER_ID = /^[a-f0-9]{12}$/;
 const MEETING_ID = /^[a-f0-9]{16}$/;
 /** From this hour (device time) a bare /jim/retro is the evening one. */
-const EVENING_RETRO_HOUR = 15;
+export const EVENING_RETRO_HOUR = 15;
 
 /** A retro's address. */
 export function retroPath(kind: RetroKind): string {

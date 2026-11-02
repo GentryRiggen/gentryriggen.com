@@ -34,6 +34,20 @@ describe("push settings client", () => {
     expect(init.headers.Authorization).toBe("Bearer t1");
   });
 
+  it("carries the morning retro time when the server sends it", async () => {
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValue(res(200, { ...SETTINGS, morningRetroTime: "07:30" }));
+    const got = await getPushSettings(async () => "t", fetchFn, API);
+    expect(got.morningRetroTime).toBe("07:30");
+    const older = await getPushSettings(
+      async () => "t",
+      jest.fn().mockResolvedValue(res(200, SETTINGS)),
+      API
+    );
+    expect(older).not.toHaveProperty("morningRetroTime");
+  });
+
   it("puts only the patch", async () => {
     const fetchFn = jest.fn().mockResolvedValue(res(200, SETTINGS));
     await putPushSettings(
