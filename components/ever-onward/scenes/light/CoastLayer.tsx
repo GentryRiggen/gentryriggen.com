@@ -197,7 +197,10 @@ function Crew({ keepers, drills }: { keepers: number; drills: number }) {
   return (
     <g>
       {Array.from({ length: keepers }, (_, i) => (
-        <g key={i} transform={`translate(${COTTAGE.x - 4 + i * 9} 249)`}>
+        <g
+          key={i}
+          transform={`translate(${COTTAGE.x - 4 + (i % 5) * 8} ${249 + Math.floor(i / 5) * 9})`}
+        >
           <g className="lm-pop-svg">
             <rect x="-2" y="-8" width="4" height="8" fill="#f4b860" />
             <circle cy="-10.5" r="2.4" fill="#ffd9b0" />
@@ -553,7 +556,7 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
           fill={i < windows ? "#ffd76a" : "#3a3f52"}
         />
       ))}
-      <Crew keepers={windows} drills={info.trainTier} />
+      <Crew keepers={Math.min(10, info.keepers)} drills={info.trainTier} />
       <rect x="97" y="130" width="26" height="5" fill="#2b2f3d" />
       <rect x="103" y="114" width="14" height="16" fill="#ffd76a" />
       <polygon points="100,114 120,114 110,102" fill="#2b2f3d" />

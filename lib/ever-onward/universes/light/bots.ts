@@ -33,7 +33,7 @@ import { cloneRun } from "../../engine/engine";
 import { chosenSide, forkActionId, forkOf, chooseSide } from "./forks";
 import type { ForkDef, ForkSide } from "./forks";
 import { fundIncome } from "./tick";
-import { OVERDRIVE_ACTION, overdriveCost } from "./overdrive";
+import { OVERDRIVE_ACTION, isOverdriveOpen, overdriveCost } from "./overdrive";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
   PICK_ACTION,
@@ -303,6 +303,8 @@ const WORTH_DIMMING_FOR: ReadonlySet<string> = new Set([
  * learning would get there within `patience` seconds.
  */
 function wantsKnowhow(run: RunState, patience: number): boolean {
+  // Overdrive is a second thing know-how buys, all night once the plants run.
+  if (isOverdriveOpen(run)) return true;
   const softRate = knowhowAtStep(run, 0);
   return shownProjects(lightUniverse, run).some((p) => {
     if (!WORTH_DIMMING_FOR.has(p.id)) return false;
@@ -332,6 +334,8 @@ function wantsKnowhow(run: RunState, patience: number): boolean {
  * A `share` of 0 never invests; 1 parks as much as the price itself.
  */
 const EMPTY_JAR_SHARE = 0.05;
+/** A deposit smaller than this share of the price is not worth the click. */
+const MIN_DEPOSIT_SHARE = 0.1;
 
 /**
  * Parks coins in the fund while saving up, but only when the wait for the
@@ -363,7 +367,10 @@ export const investsInFund =
     const room = share * target;
     const biggestFirst = [...DEPOSIT_SHARES].sort((a, b) => b - a);
     const fits = biggestFirst.find(
-      (s) => money * s <= room && available.includes(depositActionId(s))
+      (s) =>
+        money * s <= room &&
+        money * s >= target * MIN_DEPOSIT_SHARE &&
+        available.includes(depositActionId(s))
     );
     return fits === undefined ? [] : [depositActionId(fits)];
   };
@@ -496,10 +503,13 @@ export function lightBots(
   const fundShare = options.fundShare ?? DEFAULT_FUND_SHARE;
   const fundWait = options.fundWait ?? DEFAULT_FUND_WAIT;
   const base = genericBots(lightUniverse);
-  // The idle bot never presses a button outside the last phase (where the
-  // ending is the story): it taps early and watches.
-  const idleActions: OilChoice = (run, available) =>
-    run.phase >= 3 ? lastPhaseActions(run, available) : [];
+  // The idle bot presses no chore button outside the last phase (where the
+  // ending is the story): it taps early and watches. It does take a fork in
+  // the road, which is a shop purchase with a picture, not a chore.
+  const idleActions: OilChoice = (run, available) => [
+    ...choosesFork(run, available),
+    ...(run.phase >= 3 ? lastPhaseActions(run, available) : []),
+  ];
   const tendPair = {
     naive: tender(base.tapper, 15, true),
     careful: tender(base.tapper, 74, true),
@@ -517,7 +527,7 @@ export function lightBots(
       tendsTide({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
-      setsLamps({ patience: 60 }),
+      setsLamps({ patience: 30 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(85),
       choosesFork
@@ -530,12 +540,19 @@ export function lightBots(
       tendsTide({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
-      setsLamps({ patience: 60 }),
+      setsLamps({ patience: 30 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(80),
       choosesFork
     ),
-    idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
+    // Projects are permanent shop buys on a panel, not chores, so the idle
+    // player starts them too (it never tends, claims or runs anything).
+    idle: {
+      ...base.idle,
+      projects: "best",
+      actions: idleActions,
+      greetAfter: Infinity,
+    },
     dawdler: {
       ...withOil(
         base.dawdler,
@@ -545,7 +562,7 @@ export function lightBots(
         tendsTide({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
-        setsLamps({ patience: 60 }),
+        setsLamps({ patience: 30 }),
         investsInFund(fundShare, fundWait * 2),
         () => [],
         choosesFork

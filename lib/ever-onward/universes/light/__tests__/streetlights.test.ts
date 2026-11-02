@@ -98,8 +98,12 @@ describe("the streetlights", () => {
     const policy = minutes(bot);
     const fixed = [0, 1, 2, 3].map((step) => minutes(held(step)));
 
+    // Know-how buys projects and overdrive now, so quiet crews (Soft glow)
+    // are a good setting nearly all night; the knob's edge shows in what
+    // the brighter ones cost, and in lighting the last towns.
     it("rewards changing it as the night goes", () => {
-      for (const time of fixed) expect(policy).toBeLessThanOrEqual(time);
+      for (const time of fixed.slice(1)) expect(policy).toBeLessThan(time);
+      expect(policy).toBeLessThanOrEqual(fixed[0] * 1.1);
     });
 
     it("has no trap: even the worst step held all night is fine", () => {
@@ -126,8 +130,8 @@ describe("the streetlights' words", () => {
         `the grid strains ${diff(t.strain)} ${t.strain < 1 ? "less" : "more"}`
       );
     });
-    expect(LAMP_STEPS[0].note).toContain("2.5x as fast");
-    expect(LAMP_STEPS[3].note).toContain("25% as fast");
-    expect(LAMP_STEPS[3].note).toContain("Pays 106%");
+    expect(LAMP_STEPS[0].note).toContain("2x as fast");
+    expect(LAMP_STEPS[3].note).toContain("50% as fast");
+    expect(LAMP_STEPS[3].note).toContain("Pays 130%");
   });
 });

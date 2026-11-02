@@ -58,6 +58,10 @@ export function tier(run: RunState, base: string): number {
 export const lighthouseCount = (run: RunState): number =>
   1 + level(run, "lighthouse");
 
+/** Ships one flash guides from the lens alone (1 with none). */
+export const lensShips = (run: RunState): number =>
+  C.lensShips[Math.min(C.lensShips.length - 1, level(run, "lens"))];
+
 /** The Fresnel lens guides more ships with every flash, yours and the keepers'. */
 export const fresnelMult = (run: RunState): number =>
   hasFork(run, "fresnel") ? FK.coast.fresnelFlash : 1;
@@ -67,7 +71,7 @@ export const keeperCrewMult = (run: RunState): number =>
   hasFork(run, "crews") ? FK.coast.crewsFlash : 1;
 
 export const shipsPerFlash = (run: RunState): number =>
-  (1 + level(run, "lens")) * tapMult(run) * fresnelMult(run);
+  lensShips(run) * tapMult(run) * fresnelMult(run);
 
 export const fare = (run: RunState): number =>
   C.fareGrowth ** tier(run, "fees") * C.dockBonus ** tier(run, "dock");
@@ -78,15 +82,25 @@ export const isStorming = (run: RunState): boolean => res(run, "storm") > 0;
 export const lampFactor = (run: RunState): number =>
   res(run, "oil") > 0 ? 1 : C.dimLamp;
 
+/**
+ * A flash also stirs the keepers: each tap brings a small share of a second
+ * of their work, so a tap never shrinks to nothing as the keepers grow.
+ */
+const tapShareCoins = (run: RunState): number =>
+  C.tapShare * autoCoinsPerSecond(run);
+
 /** Coins one tap earns on the coast. */
 export function coastTapCoins(run: RunState): number {
   const bonus = isStorming(run) ? C.stormTapBonus : 1;
-  return shipsPerFlash(run) * bonus * fare(run) * lampFactor(run);
+  return (
+    shipsPerFlash(run) * bonus * fare(run) * lampFactor(run) +
+    tapShareCoins(run)
+  );
 }
 
 /** Coins one tap would earn on a calm night with a full lamp. */
 export const calmTapCoins = (run: RunState): number =>
-  shipsPerFlash(run) * fare(run);
+  shipsPerFlash(run) * fare(run) + tapShareCoins(run);
 
 /** How much each keeper's work is multiplied by their training. */
 export const trainingMult = (run: RunState): number =>
@@ -102,7 +116,7 @@ export const autoFlashRate = (run: RunState): number =>
   C.keeperFlashes *
   lighthouseCount(run) *
   trainingMult(run) *
-  (1 + C.lensAutoBonus * level(run, "lens")) *
+  lensShips(run) *
   fresnelMult(run) *
   keeperCrewMult(run) *
   tapMult(run) *
@@ -215,7 +229,7 @@ function updateStorm(run: RunState, dt: number): void {
 }
 
 export const stormPassive = (run: RunState): number =>
-  Math.min(1, C.stormPassive + C.stormShutterBonus * tier(run, "shutters"));
+  C.stormPassive[Math.min(C.stormPassive.length - 1, tier(run, "shutters"))];
 
 function tickCoast(run: RunState, dt: number): void {
   driftOilPrice(run, dt);
@@ -275,7 +289,7 @@ export function supplyMW(run: RunState): number {
   );
   return (
     raw *
-    (1 + N.lineBonus * tier(run, "lines")) *
+    N.lineBonus ** tier(run, "lines") *
     N.substationBonus ** tier(run, "subs") *
     forkSupplyMult(run)
   );

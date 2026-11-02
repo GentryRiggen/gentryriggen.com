@@ -1,11 +1,12 @@
 /** Every balance number for Keep the Light On, in one place. */
 export const TUNING = {
   /**
-   * Every upgrade's cost in a phase is multiplied by this: the steady glow
-   * and the bigger collector steps made the night and the sky quicker, so
-   * they are priced up to keep the run about two hours.
+   * Every upgrade's cost in a phase is multiplied by this (except the first
+   * buys, see `openingScale`). Round 7 made every step at least half as big
+   * again (and added forks, the fund and overdrive), so the whole run is
+   * priced up to stay about two hours.
    */
-  costScale: { coast: 3.35, night: 2.9, sky: 1.9, last: 1.15 } as Record<
+  costScale: { coast: 88, night: 28, sky: 9.5, last: 4.6 } as Record<
     string,
     number
   >,
@@ -79,18 +80,39 @@ export const TUNING = {
       keep: 150,
     },
   },
+  /**
+   * The first buys of the coast and the night keep the scale the whole game
+   * used to have, so a player who barely taps still gets going.
+   */
+  openingScale: {
+    lens: 3.35,
+    keeper: 3.35,
+    "wick-1": 3.35,
+    "fees-1": 3.35,
+    "train-1": 3.35,
+    crank: 2.9,
+    gen1: 2.9,
+    gen2: 2.9,
+    // The sky's first steps: the mirror, the first probe and the first copying
+    // (the gate to the rest of the chain).
+    "mirror-1": 3,
+    probe: 4,
+    "copy-1": 3,
+  } as Record<string, number>,
   coast: {
-    fareGrowth: 1.3,
-    /** A better lens helps every flash, the keepers' as much as yours. */
-    lensAutoBonus: 1,
+    fareGrowth: 1.6,
+    /** Ships one flash guides at each lens level, the keepers' flashes too. */
+    lensShips: [1, 3, 6, 12] as readonly number[],
+    /** A tap also brings this share of a second of the keepers' coins. */
+    tapShare: 0.004,
     keeperFlashes: 1,
     /** Each training step multiplies every keeper's flashes. */
     trainingSteps: [2, 2, 2.5] as readonly number[],
     burnPerShip: 0.1,
     burnPerShipPerLighthouse: 0.1,
     stormTapBonus: 3,
-    stormPassive: 0.5,
-    stormShutterBonus: 0.15,
+    /** Ships still come in a storm at this share; shutters and glass raise it (glass: ships shelter and more come). */
+    stormPassive: [0.5, 0.85, 1.3] as readonly number[],
     stormLength: 25,
     stormGapMin: 150,
     stormGapSpread: 150,
@@ -106,14 +128,14 @@ export const TUNING = {
     tankPerTier: 80,
     /** Seconds of full-tilt burn a tank holds, and what each tank upgrade adds. */
     tankSeconds: 60,
-    tankSecondsPerTier: 60,
+    tankSecondsPerTier: 120,
     tankTapsPerSecond: 3,
     cheapPrice: 1.4,
     dearPrice: 2.8,
     contractPrice: 1.6,
-    wickSaving: 0.75,
+    wickSaving: 0.6,
     /** Each dock building makes every ship pay this much more. */
-    dockBonus: 1.2,
+    dockBonus: 1.5,
   },
   /** The Tide Clock, a side machine of the coast (see tide.ts). */
   tide: {
@@ -139,7 +161,7 @@ export const TUNING = {
     /** The comet drifts out and back in one slow pass of this many seconds. */
     cometCycleSeconds: 150,
     /** Racing fins: every run takes this share of its time. */
-    finsTimeFactor: 0.75,
+    finsTimeFactor: 0.5,
     /** Mission control's scout brings home this share of a hand-flown haul. */
     scoutShare: 0.35,
     /** A haul flows in over this many seconds, like a rush of light. */
@@ -174,17 +196,18 @@ export const TUNING = {
     perCityMW: 150,
     payPerMW: 0.2,
     crankBase: 1,
-    crankPerLevel: 0.5,
+    crankPerLevel: 1.5,
     /**
      * A turn of the crank also brings this share of a second's city power,
      * so a tap never falls to nothing as the grid grows (still a nudge).
      */
     crankShare: 0.003,
     gensMW: [8, 30, 300, 3000] as const,
-    lineBonus: 0.15,
+    /** Each power line carries this many times the power (they stack). */
+    lineBonus: 1.5,
     /** Each substation carries this much more of every plant's power. */
-    substationBonus: 1.2,
-    bulbSaving: 0.88,
+    substationBonus: 1.5,
+    bulbSaving: 0.66,
     /** The grid: cities dim (never to zero) when it is left strained. */
     gridFloor: 0.6,
     /**
@@ -289,10 +312,10 @@ export const TUNING = {
    */
   lamps: {
     steps: [
-      { pay: 0.9, demand: 0.88, strain: 0.7, knowhow: 2.5 },
-      { pay: 0.95, demand: 0.94, strain: 0.85, knowhow: 1.6 },
+      { pay: 0.9, demand: 0.88, strain: 0.7, knowhow: 2 },
+      { pay: 0.95, demand: 0.94, strain: 0.85, knowhow: 1.4 },
       { pay: 1, demand: 1, strain: 1, knowhow: 1 },
-      { pay: 1.06, demand: 1.06, strain: 1.3, knowhow: 0.25 },
+      { pay: 1.3, demand: 1.06, strain: 1.3, knowhow: 0.5 },
     ] as readonly {
       pay: number;
       demand: number;
@@ -348,11 +371,13 @@ export const TUNING = {
   },
   sky: {
     aimBase: 1,
-    aimPerLevel: 0.25,
+    aimPerLevel: 1.5,
     /** Six bigger steps: each collector is worth what 1.67 used to be. */
     collectorEnergy: 10 / 6,
-    mirrorBonus: 1.4,
+    mirrorBonus: 1.6,
     probeGrowth: 0.0028,
+    /** The first launch sends this many small probes. */
+    firstProbes: 8,
     copyBonus: 1.9,
     travelBase: 240,
     travelHalf: 120,
@@ -360,7 +385,7 @@ export const TUNING = {
     takePerProbe: 0.003,
     appetiteBonus: 2.2,
     /** Energy each star taken pays out, so probe progress shows as income. */
-    starBounty: 15,
+    starBounty: 25,
     /** Each relay station makes every star taken pay this much more. */
     relayBonus: 1.6,
     /** A wave of copies / early arrivals lands when these are bought. */
@@ -405,11 +430,11 @@ export const TUNING = {
     /** A cold flame still lets go, at this share of the pace (never zero). */
     flameFloor: 0.75,
     /** Each light let go makes the next easier: this much more resolve. */
-    reliefPerLetGo: 0.16,
+    reliefPerLetGo: 0.25,
     /** Gifts: porch/bridge-like (fade), festival-like (burst), moon-like (taps). */
-    fadeSaving: 0.85,
-    tapGift: 0.25,
-    burstFlame: 300,
+    fadeSaving: 0.6,
+    tapGift: 0.6,
+    burstFlame: 600,
     brightDecay: 0.12,
     /** The first ship's boat appears when this many lights are left. */
     boatAtLights: 3,
