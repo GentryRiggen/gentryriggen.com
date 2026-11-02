@@ -170,12 +170,15 @@ describe("the main site", () => {
     });
   });
 
-  it("drops Jim's old CSP blocks", () => {
+  it("drops Jim's old CSP blocks (only the moved page's strict one)", () => {
     for (const rule of main.headers) {
       if (!rule.source.startsWith("/jim")) continue;
-      expect(rule.headers.map((h) => h.key)).not.toContain(
-        "Content-Security-Policy"
-      );
+      for (const header of rule.headers) {
+        if (header.key !== "Content-Security-Policy") continue;
+        expect(header.value).toBe(
+          "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+        );
+      }
     }
   });
 });

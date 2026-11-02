@@ -8,7 +8,14 @@
  *     [--out out] [--dest out-jim] [--config firebase.json]
  *
  * out-jim/ gets only Jim's page and what it loads (JIM_FILES) plus a
- * script-free 404.html. The CSP in the "jim" hosting target carries a
+ * script-free 404.html. Then out/ (the main site) loses Jim: its page,
+ * payloads, manifest and icons go (MAIN_REMOVE), /jim/version.json stays so
+ * an open old page sees a new build, and out/jim-sw.js becomes the kill
+ * switch (public/jim-sw-kill.js) that retires the old worker. The main site
+ * answers every /jim address with jim-moved.html (firebase.json), which
+ * wipes Jim's data there and moves the visitor to the new address.
+ *
+ * The CSP in the "jim" hosting target carries a
  * placeholder that is replaced by one hash per inline script in jim.html,
  * so the inline scripts that run are exactly the ones this build made.
  *
@@ -41,6 +48,15 @@ const JIM_EXACT = new Set([
   "icon.svg",
 ]);
 const JIM_DIRS = ["jim-icons/", "_next/"];
+
+/** The main site's moved page and the worker that replaces Jim's there. */
+const MOVED_FILES = ["jim-moved.html", "jim-moved.js", "jim-sw-kill.js"];
+const KILL_SWITCH = "jim-sw-kill.js";
+
+/** What the main site no longer serves once Jim has its own site. */
+const MAIN_REMOVE = ["jim.html", "jim.txt", "jim.webmanifest", "jim-icons"];
+/** Kept in out/jim/: the version file an open old page polls. */
+const MAIN_KEEP_IN_JIM_DIR = new Set(["version.json"]);
 
 const NOT_FOUND_HTML = `<!doctype html>
 <html lang="en">
@@ -248,6 +264,12 @@ export function run({
   if (!existsSync(page)) throw new Error(`${page} is missing: build first`);
   const html = readFileSync(page, "utf8");
 
+  for (const file of MOVED_FILES) {
+    if (!existsSync(join(out, file))) {
+      throw new Error(`${join(out, file)} is missing: the main site needs it`);
+    }
+  }
+
   const files = jimFiles(listFiles(out));
 
   if (env.NEXT_PUBLIC_E2E !== "1") {
@@ -294,7 +316,27 @@ export function run({
   }
   writeFileSync(join(dest, "404.html"), NOT_FOUND_HTML);
   writeFileSync(config, `${JSON.stringify(deployed, null, 2)}\n`);
+  retireJimFromMain(out);
   return { files, hashes: inlineScriptHashes(html) };
+}
+
+/**
+ * Takes Jim off the main site's export. Runs after out-jim/ has its copy of
+ * the real worker, so the kill switch never reaches Jim's own site.
+ */
+function retireJimFromMain(out) {
+  cpSync(join(out, KILL_SWITCH), join(out, "jim-sw.js"));
+  for (const name of MAIN_REMOVE) {
+    rmSync(join(out, name), { recursive: true, force: true });
+  }
+  const jimDir = join(out, "jim");
+  if (existsSync(jimDir)) {
+    for (const entry of readdirSync(jimDir)) {
+      if (!MAIN_KEEP_IN_JIM_DIR.has(entry)) {
+        rmSync(join(jimDir, entry), { recursive: true, force: true });
+      }
+    }
+  }
 }
 
 function parseArgs(argv) {

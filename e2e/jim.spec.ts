@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 import {
   test,
   expect,
@@ -2442,5 +2444,167 @@ test.describe("Jim todos", () => {
       path: `${SHOTS}/desktop/todos-${testInfo.project.name}-1440-full.png`,
       fullPage: true,
     });
+  });
+});
+
+test.describe("Jim's old address", () => {
+  const NEW_ORIGIN = "https://jim.gentryriggen.com";
+  const OWNER_UID = "nmt3n9sdfCX2NfzVlTdyXsWzHqm2";
+
+  /** The CSP firebase.json gives the main site's /jim/** addresses. */
+  function stubCsp(): string {
+    const config = JSON.parse(
+      readFileSync(join(process.cwd(), "firebase.json"), "utf8")
+    ) as {
+      hosting: {
+        target: string;
+        headers: {
+          source: string;
+          headers: { key: string; value: string }[];
+        }[];
+      }[];
+    };
+    const main = config.hosting.find((site) => site.target === "main")!;
+    const header = main.headers
+      .filter((rule) => rule.source === "/jim/**")
+      .flatMap((rule) => rule.headers)
+      .find((h) => h.key === "Content-Security-Policy");
+    return header!.value;
+  }
+
+  test("wipes Jim's data and moves to the new address", async ({
+    page,
+    baseURL,
+  }) => {
+    // A same-origin page with no Jim on it, to seed and inspect storage.
+    await page.route("**/e2e-seed", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<p>seed</p>" })
+    );
+    // Hosting rewrites every old /jim address to the moved page (the e2e
+    // server still serves Jim there), with the stub's own CSP.
+    await page.route("**/jim/notes*", async (route) => {
+      const response = await route.fetch({ url: `${baseURL}/jim-moved.html` });
+      await route.fulfill({
+        response,
+        headers: {
+          ...response.headers(),
+          "content-security-policy": stubCsp(),
+        },
+      });
+    });
+    let arrived = "";
+    await page.route(`${NEW_ORIGIN}/**`, (route) => {
+      arrived = route.request().url();
+      return route.fulfill({
+        contentType: "text/html",
+        body: "<h1>New address</h1>",
+      });
+    });
+
+    await page.goto("/e2e-seed");
+    await page.evaluate(async (uid) => {
+      const done = (req: IDBRequest | IDBTransaction) =>
+        new Promise((resolve, reject) => {
+          if ("oncomplete" in req && !("result" in req)) {
+            req.oncomplete = resolve;
+          } else {
+            (req as IDBRequest).onsuccess = resolve;
+          }
+          req.onerror = reject;
+        });
+      localStorage.setItem("jim:chat:u", "[]");
+      localStorage.setItem("theme", "dark");
+      sessionStorage.setItem("jim:draft:u", "half");
+
+      const jimOpen = indexedDB.open("jim", 1);
+      jimOpen.onupgradeneeded = () => jimOpen.result.createObjectStore("kv");
+      await done(jimOpen);
+      jimOpen.result.close();
+
+      const authOpen = indexedDB.open("firebaseLocalStorageDb", 1);
+      authOpen.onupgradeneeded = () =>
+        authOpen.result.createObjectStore("firebaseLocalStorage", {
+          keyPath: "fbase_key",
+        });
+      await done(authOpen);
+      const tx = authOpen.result.transaction(
+        "firebaseLocalStorage",
+        "readwrite"
+      );
+      const store = tx.objectStore("firebaseLocalStorage");
+      store.put({ fbase_key: "owner", value: { uid } });
+      store.put({ fbase_key: "player", value: { uid: "anon-player-1" } });
+      await done(tx);
+      authOpen.result.close();
+
+      await (
+        await caches.open("jim-shell-v1")
+      ).put("/jim", new Response("old shell"));
+      await (
+        await caches.open("ship-builder-v3")
+      ).put("/ship-builder", new Response("game"));
+    }, OWNER_UID);
+    const canRegister = await page.evaluate(async () => {
+      if (!("serviceWorker" in navigator)) return false;
+      // Jim's real worker, under a scope that ends in /jim like the old
+      // one's but stays off this test's pages so it can't answer them.
+      const reg = await navigator.serviceWorker.register("/jim-sw.js", {
+        scope: "/e2e-old/jim",
+      });
+      const worker = reg.installing ?? reg.waiting ?? reg.active;
+      // Let its install finish, so its cache can't land after the wipe.
+      await new Promise<void>((resolve) => {
+        if (!worker || worker.state === "activated") return resolve();
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "activated" || worker.state === "redundant")
+            resolve();
+        });
+      });
+      return true;
+    });
+
+    await page.goto("/jim/notes?a=1");
+    await expect
+      .poll(() => arrived, { timeout: 10_000 })
+      .toBe(`${NEW_ORIGIN}/jim/notes?a=1`);
+    await expect(
+      page.getByRole("heading", { name: "New address" })
+    ).toBeVisible();
+
+    await page.goto("/e2e-seed");
+    const left = await page.evaluate(async () => {
+      const authOpen = indexedDB.open("firebaseLocalStorageDb");
+      await new Promise((resolve) => (authOpen.onsuccess = resolve));
+      const records = await new Promise<{ fbase_key: string }[]>((resolve) => {
+        const all = authOpen.result
+          .transaction("firebaseLocalStorage")
+          .objectStore("firebaseLocalStorage")
+          .getAll();
+        all.onsuccess = () => resolve(all.result);
+      });
+      authOpen.result.close();
+      const databases = indexedDB.databases
+        ? (await indexedDB.databases()).map((db) => db.name)
+        : null;
+      const registrations = navigator.serviceWorker
+        ? (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope)
+        : [];
+      return {
+        local: Object.keys(localStorage).sort(),
+        session: Object.keys(sessionStorage),
+        auth: records.map((r) => r.fbase_key),
+        databases,
+        caches: (await caches.keys()).sort(),
+        registrations,
+      };
+    });
+    expect(left.local).toEqual(["theme"]);
+    expect(left.session).toEqual([]);
+    expect(left.auth).toEqual(["player"]);
+    if (left.databases) expect(left.databases).not.toContain("jim");
+    expect(left.caches).toEqual(["ship-builder-v3"]);
+    if (canRegister) {
+      expect(left.registrations.some((s) => s.endsWith("/jim"))).toBe(false);
+    }
   });
 });

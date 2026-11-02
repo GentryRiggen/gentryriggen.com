@@ -247,6 +247,9 @@ describe("run", () => {
     put("out/_next/static/chunks/page.js", "render()");
     put("out/_next/static/chunks/other.js", "game()");
     put("out/jim-sw.js", "sw()");
+    put("out/jim-sw-kill.js", "kill()");
+    put("out/jim-moved.html", '<script src="/jim-moved.js"></script>');
+    put("out/jim-moved.js", "moved()");
     put("out/admin.html", "<html></html>");
     put("out/index.html", "<html></html>");
     put("firebase.json", JSON.stringify(config()));
@@ -324,8 +327,116 @@ describe("run", () => {
     expect(() => run(opts())).toThrow(/recaptcha/i);
   });
 
+  it("leaves the main site the kill switch and the moved page, not Jim", () => {
+    put("out/jim.txt", "rsc");
+    put("out/jim.webmanifest", "{}");
+    put("out/jim-icons/icon-192.png", "png");
+    put("out/jim/version.json", '{"build":"b"}');
+    put("out/jim/__next._full.txt", "rsc");
+    run(opts());
+    const read = (p: string) => readFileSync(join(dir, p), "utf8");
+    expect(read("out-jim/jim-sw.js")).toBe("sw()");
+    expect(read("out-jim/jim.webmanifest")).toBe("{}");
+    expect(existsSync(join(dir, "out-jim/jim-moved.html"))).toBe(false);
+    expect(existsSync(join(dir, "out-jim/jim-sw-kill.js"))).toBe(false);
+    expect(read("out/jim-sw.js")).toBe("kill()");
+    for (const gone of [
+      "out/jim.html",
+      "out/jim.txt",
+      "out/jim.webmanifest",
+      "out/jim-icons",
+      "out/jim/__next._full.txt",
+    ]) {
+      expect(existsSync(join(dir, gone))).toBe(false);
+    }
+    // An open old page still sees a new build, so its next reload moves it.
+    expect(read("out/jim/version.json")).toBe('{"build":"b"}');
+    expect(existsSync(join(dir, "out/jim-moved.html"))).toBe(true);
+    expect(existsSync(join(dir, "out/admin.html"))).toBe(true);
+  });
+
+  it("--check leaves out/ as it is", () => {
+    run(opts({ check: true }));
+    expect(readFileSync(join(dir, "out/jim-sw.js"), "utf8")).toBe("sw()");
+    expect(existsSync(join(dir, "out/jim.html"))).toBe(true);
+  });
+
+  it.each(["jim-sw-kill.js", "jim-moved.html", "jim-moved.js"])(
+    "fails, writing nothing, when the build has no %s",
+    (file) => {
+      rmSync(join(dir, "out", file));
+      expect(() => run(opts())).toThrow(file);
+      expect(() => run(opts({ check: true }))).toThrow(file);
+      expect(existsSync(join(dir, "out-jim"))).toBe(false);
+      expect(readFileSync(join(dir, "out/jim-sw.js"), "utf8")).toBe("sw()");
+    }
+  );
+
+  it("refuses a second run (out/ no longer has Jim)", () => {
+    run(opts());
+    expect(() => run(opts())).toThrow(/jim\.html is missing/);
+    expect(readFileSync(join(dir, "out-jim/jim-sw.js"), "utf8")).toBe("sw()");
+  });
+
   it("fails when the page has an inline handler a hash can't cover", () => {
     put("out/jim.html", JIM_PAGE.replace("<body>", '<body onload="x()">'));
     expect(() => run(opts())).toThrow(/inline/);
+  });
+});
+
+describe("the main site in firebase.json", () => {
+  // default-src 'none' also leaves the stub no connect-src, img-src or frames.
+  const STUB_CSP =
+    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
+  const main = (
+    JSON.parse(readFileSync(join(process.cwd(), "firebase.json"), "utf8"))
+      .hosting as (Hosting & {
+      rewrites: { source: string; destination: string }[];
+    })[]
+  ).find((site) => site.target === "main")!;
+
+  /** Every header the rules for exactly this source set. */
+  const headersFor = (source: string) =>
+    Object.fromEntries(
+      main.headers
+        .filter((rule) => rule.source === source)
+        .flatMap((rule) => rule.headers.map((h) => [h.key, h.value]))
+    );
+
+  it.each(["/jim", "/jim/**", "/jim.html"])(
+    "answers %s with the moved page under its strict CSP",
+    (source) => {
+      expect(main.rewrites).toContainEqual({
+        source,
+        destination: "/jim-moved.html",
+      });
+      // Hosting matches headers on the address asked for, not the rewrite.
+      expect(headersFor(source)).toEqual({
+        "Content-Security-Policy": STUB_CSP,
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+      });
+    }
+  );
+
+  it("never caches the moved page, its script or the kill switch", () => {
+    // cleanUrls serves /jim-moved.html as /jim-moved too.
+    for (const source of ["/jim-moved", "/jim-moved.html"]) {
+      expect(headersFor(source)).toEqual({
+        "Content-Security-Policy": STUB_CSP,
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+      });
+    }
+    expect(headersFor("/jim-moved.js")).toEqual({
+      "Cache-Control": "no-cache",
+      "X-Content-Type-Options": "nosniff",
+    });
+    expect(headersFor("/jim-sw.js")).toEqual({
+      "Cache-Control": "no-cache",
+      "X-Content-Type-Options": "nosniff",
+    });
   });
 });
