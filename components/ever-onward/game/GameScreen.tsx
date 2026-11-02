@@ -299,9 +299,11 @@ export default function GameScreen({
 
   const handleSelectAlert = () => {
     scrollToElement(
-      rootRef.current?.querySelector<HTMLElement>(
-        'section[aria-label="Actions"]'
-      ) ??
+      // The Coast keeps its oil in the lamp panel.
+      rootRef.current?.querySelector<HTMLElement>('[data-testid="lm-lamp"]') ??
+        rootRef.current?.querySelector<HTMLElement>(
+          'section[aria-label="Actions"]'
+        ) ??
         rootRef.current?.querySelector<HTMLElement>(
           '[data-testid="lm-alert"]'
         ) ??
