@@ -204,7 +204,7 @@ describe("The first ship comes home", () => {
 });
 
 describe("the idle bot never presses a button outside the last phase", () => {
-  it("does nothing but tap and shop until the ending", () => {
+  it("does nothing but tap, shop and take a fork in the road until the ending", () => {
     const result = simulate(def, {
       maxSeconds: 8 * 3600,
       step: 1,
@@ -213,6 +213,7 @@ describe("the idle bot never presses a button outside the last phase", () => {
     const early = result.actionsDone.filter(
       (a) => a.t < (result.finalRun.transitions[2]?.at ?? Infinity)
     );
-    expect(early).toEqual([]);
+    // A fork in the road is one shop-style click; nothing else is pressed.
+    expect(early.filter((a) => !a.id.startsWith("fork-"))).toEqual([]);
   });
 });

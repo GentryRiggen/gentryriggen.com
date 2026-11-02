@@ -17,6 +17,8 @@ import EmberIcon from "../game/EmberIcon";
 import LanternPicker from "../game/LanternPicker";
 import MemoryGarden from "../game/MemoryGarden";
 import ProbeRaces from "../game/ProbeRaces";
+import ForkPanel from "../game/ForkPanel";
+import FundPanel from "../game/FundPanel";
 import ProjectsPanel from "../game/ProjectsPanel";
 import StreetlightsPanel from "../game/StreetlightsPanel";
 import TideClock from "../game/TideClock";
@@ -73,6 +75,8 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
   panels: [
+    ForkPanel,
+    FundPanel,
     TideClock,
     ProbeRaces,
     StreetlightsPanel,

@@ -15,6 +15,7 @@ import {
 } from "./probes";
 import { gardenCode, hasRainBarrel } from "./garden";
 import { LET_GO } from "./upgrades";
+import { hasFork, windRamp } from "./forkState";
 import {
   COAST_LIGHTHOUSES,
   PHASE_COAST,
@@ -88,6 +89,13 @@ export interface LightSceneInfo {
   lightsFraction: number;
   /** The flame, 0..1 (steps of 5%, so the picture is not redrawn every tick). */
   flame: number;
+  /** The fork of each part: 0 not chosen, 1 the first side, 2 the second. */
+  forkCoast: number;
+  forkNight: number;
+  forkSky: number;
+  forkLast: number;
+  /** How far the wind farms are built, 0..1 (4 steps; 0 unless wind was chosen). */
+  windBuilt: number;
   /** 1 once the first ship's boat is out in the dark. */
   boatVisible: number;
   /** The memory garden: one base-4 digit a plot (see `gardenCode`). */
@@ -238,6 +246,11 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     lightsRemaining: lights,
     lightsFraction: clamp01(lights / TOTAL_LIGHTS),
     flame: step(flameFraction(run), 20),
+    forkCoast: hasFork(run, "fresnel") ? 1 : hasFork(run, "crews") ? 2 : 0,
+    forkNight: hasFork(run, "coal") ? 1 : hasFork(run, "wind") ? 2 : 0,
+    forkSky: hasFork(run, "swarm") ? 1 : hasFork(run, "mirrors") ? 2 : 0,
+    forkLast: hasFork(run, "release") ? 1 : hasFork(run, "keep") ? 2 : 0,
+    windBuilt: step(windRamp(run), 4),
     boatVisible: isBoatOut(run) ? 1 : 0,
     gardenCode: gardenCode(run),
     rainBarrel: hasRainBarrel(run) ? 1 : 0,

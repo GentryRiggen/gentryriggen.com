@@ -65,7 +65,7 @@ describe("upgrade cards", () => {
     const list = screen.getByRole("region", { name: "Upgrades" });
     expect(
       within(list).getAllByTestId("lm-effect-preview")[0]
-    ).toHaveTextContent("Ships per flash 1 → 2");
+    ).toHaveTextContent("Ships per flash 1 → 3");
   });
 
   it("hint that more will unlock, and never mention boons", () => {

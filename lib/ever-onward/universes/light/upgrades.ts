@@ -200,7 +200,8 @@ const coastUpgrades: UpgradeDef[] = [
   {
     id: "lens",
     name: "Better lens",
-    description: "Each flash guides one more ship, the keepers' too.",
+    description:
+      "Each flash guides about twice the ships (three times, at first), the keepers' too.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.lens,
@@ -236,7 +237,7 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     baseCost: COSTS.lighthouse,
-    costGrowth: 2.15,
+    costGrowth: 2.7,
     maxLevel: 7,
     visibleWhen: (run) => owned(run, "keeper") >= 3,
     priority: 2,
@@ -254,12 +255,12 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Trimmed wick",
-        description: "The lamp burns 25% less oil.",
+        description: "The lamp burns 40% less oil.",
         showWhen: (run) => run.resources.ships >= 50,
       },
       {
         name: "Brass burner",
-        description: "Another 25% less oil, for good.",
+        description: "Another 40% less oil, for good.",
         showWhen: (run) => lighthouseCount(run) >= 3,
       },
     ],
@@ -272,17 +273,17 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Harbor fees",
-        description: "Every ship pays 30% more.",
+        description: "Every ship pays 60% more.",
         showWhen: (run) => run.resources.ships >= 80,
       },
       {
         name: "Pilot's tax",
-        description: "Ships that want a pilot pay 30% more again.",
+        description: "Ships that want a pilot pay 60% more again.",
         showWhen: (run) => run.resources.ships >= 600,
       },
       {
         name: "Toll booth",
-        description: "A booth at the harbor mouth, and a bell. 30% more.",
+        description: "A booth at the harbor mouth, and a bell. 60% more.",
         showWhen: (run) => lighthouseCount(run) >= 3,
       },
     ],
@@ -296,19 +297,19 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Fish market on the quay",
         description:
-          "Ships stay for the market, and pay 20% more. The tide clock opens: set your nets and haul in a catch.",
+          "Ships stay for the market, and pay 50% more. The tide clock opens: set your nets and haul in a catch.",
         // After the first crew drills, so that cheap, big step shows first.
         showWhen: (run) => owned(run, "train-1") >= 1,
         onBuy: openTide,
       },
       {
         name: "Ferry landing",
-        description: "A ferry that never stops. Ships pay 20% more again.",
+        description: "A ferry that never stops. Ships pay 50% more again.",
         showWhen: (run) => lighthouseCount(run) >= 3,
       },
       {
         name: "Cruise terminal",
-        description: "Big white ships, big white fares. 20% more.",
+        description: "Big white ships, big white fares. 50% more.",
         showWhen: (run) => lighthouseCount(run) >= 5,
       },
     ],
@@ -368,13 +369,13 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Bigger oil tank",
-        description: "Hold more oil, so a cheap day goes further.",
+        description: "Hold three times the oil, so a cheap day goes further.",
         // Once a second lamp burns: before that, the shop has better things.
         showWhen: (run) => lighthouseCount(run) >= 2,
       },
       {
         name: "Oil cistern",
-        description: "A whole cellar of oil.",
+        description: "A whole cellar of oil: two thirds more again.",
         showWhen: (run) => lighthouseCount(run) >= 3,
       },
     ],
@@ -416,12 +417,13 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Storm shutters",
-        description: "Storms slow the ships less.",
+        description: "Storms slow the ships much less: most still come.",
         showWhen: (run) => lighthouseCount(run) >= 2,
       },
       {
         name: "Storm-proof glass",
-        description: "Storms hardly matter now.",
+        description:
+          "Ships run for your harbor in a storm, and more of them come.",
         showWhen: (run) => lighthouseCount(run) >= 4,
       },
     ],
@@ -450,7 +452,7 @@ const nightUpgrades: UpgradeDef[] = [
   {
     id: "crank",
     name: "Stronger crank",
-    description: "Each turn of the crank makes more power.",
+    description: "Each turn of the crank makes much more power.",
     phases: night,
     currency: "power",
     baseCost: COSTS.crank,
@@ -483,22 +485,22 @@ const nightUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Run a power line",
-        description: "Every line carries 15% more power to the cities.",
+        description: "Every line carries 50% more power to the cities.",
         showWhen: (run) => owned(run, "gen1") >= 3,
       },
       {
         name: "Second power line",
-        description: "A thicker cable, a longer pole. 15% more.",
+        description: "A thicker cable, a longer pole. 50% more.",
         showWhen: (run) => owned(run, "gen2") >= 1,
       },
       {
         name: "A ring around the cities",
-        description: "Power can go either way round. 15% more.",
+        description: "Power can go either way round. 50% more.",
         showWhen: (run) => owned(run, "gen3") >= 1,
       },
       {
         name: "A national grid",
-        description: "Every town shares. 15% more.",
+        description: "Every town shares. 50% more.",
         showWhen: (run) => owned(run, "gen4") >= 1,
       },
     ],
@@ -511,12 +513,12 @@ const nightUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Substations",
-        description: "Every plant's power reaches 20% further.",
+        description: "Every plant's power reaches 50% further.",
         showWhen: (run) => owned(run, "gen3") >= 2,
       },
       {
         name: "A substation in every town",
-        description: "Power loses nothing on the way. 20% more again.",
+        description: "Power loses nothing on the way. 50% more again.",
         showWhen: (run) => owned(run, "gen4") >= 2,
       },
     ],
@@ -528,7 +530,7 @@ const nightUpgrades: UpgradeDef[] = [
     phases: night,
     currency: "power",
     baseCost: COSTS.gen2,
-    costGrowth: 1.4,
+    costGrowth: 1.32,
     maxLevel: 7,
     visibleWhen: (run) => owned(run, "gen1") >= 3,
     onBuy: (run, level) => {
@@ -545,17 +547,18 @@ const nightUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Efficient bulbs",
-        description: "Cities need 12% less power to stay bright.",
+        description: "Cities need a third less power to stay bright.",
         showWhen: (run) => owned(run, "gen2") >= 3,
       },
       {
         name: "Dimmer switches",
-        description: "Nobody needs full glare at 3 a.m. 12% less.",
+        description: "Nobody needs full glare at 3 a.m. A third less again.",
         showWhen: (run) => owned(run, "gen3") >= 2,
       },
       {
         name: "Smart streetlights",
-        description: "They only shine when someone walks by. 12% less.",
+        description:
+          "They only shine when someone walks by. A third less again.",
         showWhen: (run) => owned(run, "gen4") >= 2,
       },
     ],
@@ -668,7 +671,7 @@ const skyUpgrades: UpgradeDef[] = [
   {
     id: "aim",
     name: "Steadier aim",
-    description: "Each aim catches more sunlight.",
+    description: "Each aim catches much more sunlight.",
     phases: sky,
     currency: "energy",
     baseCost: COSTS.aim,
@@ -687,7 +690,8 @@ const skyUpgrades: UpgradeDef[] = [
     currency: "energy",
     baseCost: COSTS.collector,
     costGrowth: 1.45,
-    maxLevel: 10,
+    // The picture draws six; more were only a number going up.
+    maxLevel: 6,
     priority: 1,
     onBuy: (run) => {
       run.resources.collectors = owned(run, "collector");
@@ -703,17 +707,17 @@ const skyUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Bigger mirror",
-        description: "Every collector catches 40% more.",
+        description: "Every collector catches 60% more.",
         showWhen: (run) => owned(run, "collector") >= 3,
       },
       {
         name: "Mirror of mirrors",
-        description: "A ring of them. Every collector catches 40% more.",
+        description: "A ring of them. Every collector catches 60% more.",
         showWhen: (run) => owned(run, "copy-1") >= 1,
       },
       {
         name: "A mirror the size of a lake",
-        description: "Every collector catches 40% more.",
+        description: "Every collector catches 60% more.",
         showWhen: (run) => owned(run, "copy-2") >= 1,
       },
     ],
@@ -730,10 +734,14 @@ const skyUpgrades: UpgradeDef[] = [
     visibleWhen: (run) => owned(run, "collector") >= 4,
     priority: 3,
     onBuy: (run) => {
-      run.resources.probes = Math.max(1, run.resources.probes);
+      run.resources.probes = Math.max(
+        TUNING.sky.firstProbes,
+        run.resources.probes
+      );
       sync(run);
     },
-    effectPreview: () => "Probes: 0 → 1, and they copy themselves",
+    effectPreview: () =>
+      `Probes: 0 → ${TUNING.sky.firstProbes}, and they copy themselves`,
   },
   ...chain({
     base: "copy",
@@ -772,12 +780,14 @@ const skyUpgrades: UpgradeDef[] = [
       {
         name: "A ring of relays",
         description: "Nothing is wasted on the way home. 60% more again.",
-        showWhen: (run) => run.resources.stars < 700,
+        showWhen: (run) =>
+          run.resources.stars < 880 && owned(run, "appetite-1") >= 1,
       },
       {
         name: "The whole sky listening",
         description: "Every star taken sings back. 60% more again.",
-        showWhen: (run) => run.resources.stars < 350,
+        showWhen: (run) =>
+          run.resources.stars < 700 && owned(run, "appetite-2") >= 1,
       },
     ],
   }),
@@ -802,7 +812,8 @@ const skyUpgrades: UpgradeDef[] = [
         name: "Star charts",
         description:
           "The fleet drifts off course half as fast. The charts show a map: send a racing probe on a route and it brings back energy.",
-        showWhen: (run) => owned(run, "copy-1") >= 1,
+        // After the second mirror, so the cards do not all arrive at once.
+        showWhen: (run) => owned(run, "mirror-2") >= 1,
         onBuy: openProbes,
       },
       {
@@ -817,7 +828,7 @@ const skyUpgrades: UpgradeDef[] = [
     id: RACING_FINS_ID,
     name: "Racing fins",
     description:
-      "Fins on the racing probe. Every route is a quarter quicker, and the haul stays the same.",
+      "Fins on the racing probe. Every route takes half the time, and the haul stays the same.",
     phases: sky,
     currency: "energy",
     baseCost: COSTS[RACING_FINS_ID],
@@ -866,7 +877,8 @@ const skyUpgrades: UpgradeDef[] = [
         name: "Quicker engines",
         description:
           "Probes cross the dark 40% faster, and the ones in flight arrive early.",
-        showWhen: (run) => owned(run, "copy-1") >= 1,
+        // After the second mirror, so the new cards do not all arrive at once.
+        showWhen: (run) => owned(run, "mirror-2") >= 1,
         onBuy: fleetBump(TUNING.sky.engineFleetBump),
       },
       {
@@ -901,9 +913,9 @@ const skyUpgrades: UpgradeDef[] = [
 
 /** What each gift reads like on its card. */
 const GIFT_TEXT = {
-  fade: "The rest of the lights fade slower.",
-  burst: "The flame leaps up, brighter for a while.",
-  taps: "Every tap of the flame is worth more.",
+  fade: "The flame holds on much longer.",
+  burst: "The flame leaps up, bright for a good while.",
+  taps: "Every tap of the flame is worth a lot more.",
 } as const;
 
 const GIFT_STATS: Record<LetGoGift, readonly Stat[]> = {
@@ -1001,13 +1013,21 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "nav-2",
 ]);
 
-/** The first steps of a phase keep their price, so it opens as quickly as ever. */
-const OPENING_UPGRADES: ReadonlySet<string> = new Set(["aim", "collector"]);
+/**
+ * The first steps of a phase keep their old price, so it opens as quickly as
+ * ever (a player who barely taps must still get going); everything after
+ * them is scaled by the phase's `costScale`.
+ */
+const OPENING_UPGRADES: Readonly<Record<string, number>> = {
+  aim: 1,
+  collector: 1,
+  ...TUNING.openingScale,
+};
 
 const costScaleOf = (upgrade: UpgradeDef): number =>
-  OPENING_UPGRADES.has(upgrade.id)
-    ? 1
-    : (TUNING.costScale[upgrade.phases?.[0] ?? ""] ?? 1);
+  OPENING_UPGRADES[upgrade.id] ??
+  TUNING.costScale[upgrade.phases?.[0] ?? ""] ??
+  1;
 
 export const UPGRADES: readonly UpgradeDef[] = [
   ...coastUpgrades,

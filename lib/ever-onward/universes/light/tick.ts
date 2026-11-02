@@ -14,6 +14,9 @@ import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
 import { tickTide } from "./tide";
+import { tickFund } from "./fund";
+import { hasFork, windRamp } from "./forkState";
+import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
 import { outageFactor, tickWeather } from "./weather";
 
 const {
@@ -24,6 +27,8 @@ const {
   projects: P,
   lamps: LAMPS,
 } = TUNING;
+const SP = P.sky;
+const FK = TUNING.fork;
 
 /** True once the night project `id` is done (see projects.ts). */
 export const hasProject = (run: RunState, id: string): boolean =>
@@ -53,8 +58,20 @@ export function tier(run: RunState, base: string): number {
 export const lighthouseCount = (run: RunState): number =>
   1 + level(run, "lighthouse");
 
+/** Ships one flash guides from the lens alone (1 with none). */
+export const lensShips = (run: RunState): number =>
+  C.lensShips[Math.min(C.lensShips.length - 1, level(run, "lens"))];
+
+/** The Fresnel lens guides more ships with every flash, yours and the keepers'. */
+export const fresnelMult = (run: RunState): number =>
+  hasFork(run, "fresnel") ? FK.coast.fresnelFlash : 1;
+
+/** More keepers flash far more often (they do not help your own taps). */
+export const keeperCrewMult = (run: RunState): number =>
+  hasFork(run, "crews") ? FK.coast.crewsFlash : 1;
+
 export const shipsPerFlash = (run: RunState): number =>
-  (1 + level(run, "lens")) * tapMult(run);
+  lensShips(run) * tapMult(run) * fresnelMult(run);
 
 export const fare = (run: RunState): number =>
   C.fareGrowth ** tier(run, "fees") * C.dockBonus ** tier(run, "dock");
@@ -65,15 +82,25 @@ export const isStorming = (run: RunState): boolean => res(run, "storm") > 0;
 export const lampFactor = (run: RunState): number =>
   res(run, "oil") > 0 ? 1 : C.dimLamp;
 
+/**
+ * A flash also stirs the keepers: each tap brings a small share of a second
+ * of their work, so a tap never shrinks to nothing as the keepers grow.
+ */
+const tapShareCoins = (run: RunState): number =>
+  C.tapShare * autoCoinsPerSecond(run);
+
 /** Coins one tap earns on the coast. */
 export function coastTapCoins(run: RunState): number {
   const bonus = isStorming(run) ? C.stormTapBonus : 1;
-  return shipsPerFlash(run) * bonus * fare(run) * lampFactor(run);
+  return (
+    shipsPerFlash(run) * bonus * fare(run) * lampFactor(run) +
+    tapShareCoins(run)
+  );
 }
 
 /** Coins one tap would earn on a calm night with a full lamp. */
 export const calmTapCoins = (run: RunState): number =>
-  shipsPerFlash(run) * fare(run);
+  shipsPerFlash(run) * fare(run) + tapShareCoins(run);
 
 /** How much each keeper's work is multiplied by their training. */
 export const trainingMult = (run: RunState): number =>
@@ -89,7 +116,9 @@ export const autoFlashRate = (run: RunState): number =>
   C.keeperFlashes *
   lighthouseCount(run) *
   trainingMult(run) *
-  (1 + C.lensAutoBonus * level(run, "lens")) *
+  lensShips(run) *
+  fresnelMult(run) *
+  keeperCrewMult(run) *
   tapMult(run) *
   speed(run);
 
@@ -97,7 +126,9 @@ export const autoFlashRate = (run: RunState): number =>
 export const autoCoinsPerSecond = (run: RunState): number =>
   autoFlashRate(run) * fare(run);
 
-const oilSaving = (run: RunState): number => C.wickSaving ** tier(run, "wick");
+const oilSaving = (run: RunState): number =>
+  C.wickSaving ** tier(run, "wick") *
+  (hasFork(run, "crews") ? FK.coast.crewsOil : 1);
 
 /** Lamp oil burned per second: a steady glow plus a bit per ship guided. */
 export const burnPerSecond = (run: RunState, shipsPerSecond: number): number =>
@@ -198,7 +229,7 @@ function updateStorm(run: RunState, dt: number): void {
 }
 
 export const stormPassive = (run: RunState): number =>
-  Math.min(1, C.stormPassive + C.stormShutterBonus * tier(run, "shutters"));
+  C.stormPassive[Math.min(C.stormPassive.length - 1, tier(run, "shutters"))];
 
 function tickCoast(run: RunState, dt: number): void {
   driftOilPrice(run, dt);
@@ -235,6 +266,21 @@ export const plantMW = (run: RunState, index: number): number =>
 export const plantCount = (run: RunState): number =>
   N.gensMW.reduce((sum, _, i) => sum + level(run, `gen${i + 1}`), 0);
 
+/**
+ * Coal pays at once; the wind farms grow in over `windRampSeconds` to a
+ * bigger number. Neither before the fork is chosen.
+ */
+export const forkSupplyMult = (run: RunState): number =>
+  hasFork(run, "coal")
+    ? FK.night.coalSupply
+    : 1 + (FK.night.windSupply - 1) * windRamp(run);
+
+/** Coal strains the grid; the wind eases it as it is built. */
+export const forkStrainMult = (run: RunState): number =>
+  hasFork(run, "coal")
+    ? FK.night.coalStrain
+    : 1 + (FK.night.windStrain - 1) * windRamp(run);
+
 /** Megawatts of everything built, with the lines' bonus. */
 export function supplyMW(run: RunState): number {
   const raw = N.gensMW.reduce(
@@ -243,8 +289,9 @@ export function supplyMW(run: RunState): number {
   );
   return (
     raw *
-    (1 + N.lineBonus * tier(run, "lines")) *
-    N.substationBonus ** tier(run, "subs")
+    N.lineBonus ** tier(run, "lines") *
+    N.substationBonus ** tier(run, "subs") *
+    forkSupplyMult(run)
   );
 }
 
@@ -294,13 +341,20 @@ export const cityPay = (run: RunState): number =>
   lampEffect(run).pay *
   outageFactor(run);
 
-/** Know-how a second: every plant's crew learns a little. */
+/**
+ * Know-how a second. Night: every plant's crew learns a little. Sky: every
+ * collector's crew does, and the fleet's size adds a little more.
+ */
 export const knowhowPerSecond = (run: RunState): number =>
-  P.knowhowPerPlant *
-  plantCount(run) *
-  ifProject(run, "night-school", P.schoolBoost) *
-  lampEffect(run).knowhow *
-  speed(run);
+  run.phase === 2
+    ? (SP.knowhowPerCollector * level(run, "collector") +
+        SP.knowhowPerDecade * Math.log10(1 + res(run, "probes"))) *
+      speed(run)
+    : P.knowhowPerPlant *
+      plantCount(run) *
+      ifProject(run, "night-school", P.schoolBoost) *
+      lampEffect(run).knowhow *
+      speed(run);
 
 /** Know-how a second at a given brightness. */
 export const knowhowAtStep = (run: RunState, step: number): number =>
@@ -353,7 +407,9 @@ export function strainPerSecond(run: RunState): number {
     N.balancerSaving ** Math.min(1, tier(run, "grid")) *
     ifProject(run, "line-patrols", P.patrolStrain) *
     ifProject(run, "co-op", P.coopStrain) *
-    lampEffect(run).strain
+    lampEffect(run).strain *
+    forkStrainMult(run) *
+    overdriveStrain(run)
   );
 }
 
@@ -365,7 +421,8 @@ export const powerPerSecond = (run: RunState): number =>
   Math.min(supplyMW(run), demandMW(run)) *
   cityPay(run) *
   speed(run) *
-  gridFactor(run);
+  gridFactor(run) *
+  overdriveBoost(run);
 
 /** Power the evening rush pays when claimed: a slice of income plus taps. */
 export const rushBonus = (run: RunState): number =>
@@ -400,7 +457,12 @@ function tickNight(run: RunState, dt: number): void {
   run.resources.night = Math.max(0, 100 * (1 - lit / TOTAL_CITIES));
   // Cities only pay for the power that reaches them.
   run.resources.power +=
-    delivered * cityPay(run) * speed(run) * gridFactor(run) * dt;
+    delivered *
+    cityPay(run) *
+    speed(run) *
+    gridFactor(run) *
+    overdriveBoost(run) *
+    dt;
   run.resources.knowhow = res(run, "knowhow") + knowhowPerSecond(run) * dt;
 }
 
@@ -410,6 +472,9 @@ export const collectorEnergyPerSecond = (run: RunState): number =>
   level(run, "collector") *
   S.collectorEnergy *
   S.mirrorBonus ** tier(run, "mirror") *
+  ifProject(run, "mirror-polish", SP.polishBoost) *
+  (hasFork(run, "mirrors") ? FK.sky.mirrorsEnergy : 1) *
+  overdriveBoost(run) *
   speed(run);
 
 export const travelSeconds = (run: RunState): number =>
@@ -419,7 +484,8 @@ export const copySpeed = (run: RunState): number =>
   S.copyBonus ** tier(run, "copy");
 
 export const appetite = (run: RunState): number =>
-  S.appetiteBonus ** tier(run, "appetite");
+  S.appetiteBonus ** tier(run, "appetite") *
+  ifProject(run, "star-atlas", SP.atlasBoost);
 
 export const aimEnergy = (run: RunState): number =>
   (S.aimBase + S.aimPerLevel * level(run, "aim")) * tapMult(run);
@@ -441,14 +507,23 @@ export const isCourseInPlay = (run: RunState): boolean =>
 export function driftPerSecond(run: RunState): number {
   return (
     (S.driftBase + S.driftPerDecade * Math.log10(1 + res(run, "probes"))) *
-    S.chartsSaving ** Math.min(1, tier(run, "nav"))
+    S.chartsSaving ** Math.min(1, tier(run, "nav")) *
+    ifProject(run, "mirror-polish", SP.polishDrift) *
+    (hasFork(run, "swarm")
+      ? FK.sky.swarmDrift
+      : hasFork(run, "mirrors")
+        ? FK.sky.mirrorsDrift
+        : 1) *
+    overdriveStrain(run)
   );
 }
 
 const probeGrowthRate = (run: RunState): number => {
   const travel = S.travelBase * S.engineSaving ** tier(run, "engines");
   return (
-    (S.probeGrowth * S.copyBonus ** tier(run, "copy")) /
+    (S.probeGrowth *
+      S.copyBonus ** tier(run, "copy") *
+      ifProject(run, "probe-school", SP.schoolBoost)) /
     (1 + travel / S.travelHalf)
   );
 };
@@ -471,7 +546,10 @@ export const starsPerSecond = (run: RunState): number =>
 
 /** Energy per second from probes: every star taken pays a bounty. */
 export const starBounty = (run: RunState): number =>
-  S.starBounty * S.relayBonus ** tier(run, "relay");
+  S.starBounty *
+  S.relayBonus ** tier(run, "relay") *
+  ifProject(run, "relay-codes", SP.relayBoost) *
+  overdriveBoost(run);
 
 export const probeEnergyPerSecond = (run: RunState): number =>
   starsPerSecond(run) * starBounty(run);
@@ -479,6 +557,7 @@ export const probeEnergyPerSecond = (run: RunState): number =>
 /** Energy a solar flare pays when caught: a slice of income plus aiming. */
 export const flareBonus = (run: RunState): number =>
   S.flareBonusSeconds *
+  ifProject(run, "flare-watch", SP.flarePay) *
   (collectorEnergyPerSecond(run) +
     probeEnergyPerSecond(run) +
     aimEnergy(run) * 3);
@@ -505,7 +584,9 @@ export const nextRushIn = (run: RunState): number =>
   (N.rushGapMin + nextRandom(run) * N.rushGapSpread) *
   ifProject(run, "rush-pricing", P.rushGap);
 export const nextFlareIn = (run: RunState): number =>
-  S.flareGapMin + nextRandom(run) * S.flareGapSpread;
+  (S.flareGapMin + nextRandom(run) * S.flareGapSpread) *
+  ifProject(run, "flare-watch", SP.flareGap) *
+  ifProject(run, "probe-school", SP.schoolFlareGap);
 
 function tickSky(run: RunState, dt: number): void {
   updateSkyEvents(run, dt);
@@ -525,9 +606,8 @@ function tickSky(run: RunState, dt: number): void {
     r.starsTaken += taken;
     r.stars = Math.max(0, TOTAL_STARS - r.starsTaken);
   }
-  const collected =
-    r.collectors * S.collectorEnergy * S.mirrorBonus ** tier(run, "mirror");
-  r.energy += collected * speed(run) * dt + taken * starBounty(run);
+  r.energy += collectorEnergyPerSecond(run) * dt + taken * starBounty(run);
+  r.knowhow = res(run, "knowhow") + knowhowPerSecond(run) * dt;
 }
 
 // ----------------------------------------------------------- The Last Light
@@ -571,13 +651,19 @@ export function fadeRate(run: RunState): number {
     (res(run, "lights") + L.darkness) *
     L.decayPerLight *
     L.fadeSaving ** giftsOwned(run, "fade") *
+    (hasFork(run, "release")
+      ? FK.last.releaseFade
+      : hasFork(run, "keep")
+        ? FK.last.keepFade
+        : 1) *
     (1 - L.brightDecay * (run.mods.bright ?? 0))
   );
 }
 
 /** A tap is worth more for every moon-like light let go. */
 export const tapGiftMult = (run: RunState): number =>
-  1 + L.tapGift * giftsOwned(run, "taps");
+  (1 + L.tapGift * giftsOwned(run, "taps")) *
+  (hasFork(run, "keep") ? FK.last.keepTaps : 1);
 
 /**
  * Share of the way to full one tap brings. The "taps" gifts make a tap let go
@@ -618,6 +704,7 @@ export function resolvePerSecond(run: RunState): number {
     L.resolvePerSecond *
     steerBonus(run) *
     (1 + L.reliefPerLetGo * lightsLetGo(run)) *
+    (hasFork(run, "release") ? FK.last.releaseResolve : 1) *
     warmth *
     speed(run)
   );
@@ -682,6 +769,10 @@ export function tickLight(run: RunState, dt: number): void {
   // Every phase: a probe away and a haul flowing in when the sky ends finish.
   tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
   tickGarden(run, dt);
+  tickFund(run, dt, () => fundIncome(run));
+  tickOverdrive(run, dt, () =>
+    run.phase === 1 ? gridSteadiness(run) : headingOf(run)
+  );
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);
@@ -759,6 +850,17 @@ export const calmSkyIncomePerSecond = (run: RunState): number =>
   collectorEnergyPerSecond(run) +
   probeEnergyPerSecond(run) +
   aimEnergy(run) * 3;
+
+/**
+ * What the fund measures its size against: the part's income a second on a
+ * calm day (the last part counts the pace of letting go).
+ */
+export function fundIncome(run: RunState): number {
+  if (run.phase === 0) return calmIncomePerSecond(run);
+  if (run.phase === 1) return incomePerSecond(run);
+  if (run.phase === 2) return calmSkyIncomePerSecond(run);
+  return resolvePerSecond(run);
+}
 
 /** The gift every income visitor brings: a small slice of the phase's income. */
 export const visitorGift = (run: RunState): number =>

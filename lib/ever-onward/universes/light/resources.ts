@@ -55,12 +55,31 @@ export const RESOURCES: readonly ResourceDef[] = [
     initial: 100,
     phases: [PHASE_NIGHT],
   },
-  { id: "knowhow", label: "Know-how", phases: [PHASE_NIGHT] },
+  { id: "knowhow", label: "Know-how", phases: [PHASE_NIGHT, PHASE_SKY] },
+  // Overdrive (night and sky): the run's clock and tallies, read by overdrive.ts
+  { id: "odLeft", label: "Overdrive time left", phases: HIDDEN },
+  { id: "odClean", label: "Overdrive held steady", phases: HIDDEN },
+  { id: "odRuns", label: "Overdrive runs", phases: HIDDEN },
+  { id: "odCleanRuns", label: "Overdrive runs held steady", phases: HIDDEN },
+  {
+    id: "odKind",
+    label: "Overdrive last run (1 steady, 2 slipped)",
+    phases: HIDDEN,
+  },
+  { id: "flaresCaught", label: "Solar flares caught", phases: HIDDEN },
   { id: "rushRides", label: "Evening rushes ridden", phases: HIDDEN },
   { id: "lamps", label: "Streetlight brightness", initial: 2, phases: HIDDEN },
   { id: "lampChanges", label: "Streetlight changes", phases: HIDDEN },
   { id: "rush", label: "Evening rush", phases: HIDDEN },
   { id: "rushCooldown", label: "Next rush", initial: 90, phases: HIDDEN },
+  // The forks: when the wind farms were started, read by forkState.ts
+  { id: "forkWindAt", label: "Wind farms started at", phases: HIDDEN },
+  // The fund (every part): the savings jar and its tallies, read by fund.ts
+  { id: "fund", label: "In the fund", phases: HIDDEN },
+  { id: "fundSince", label: "Fund, age of the money", phases: HIDDEN },
+  { id: "fundDeposits", label: "Fund deposits", phases: HIDDEN },
+  { id: "fundFees", label: "Fund fees paid", phases: HIDDEN },
+  { id: "fundEarned", label: "Earned by the fund", phases: HIDDEN },
   // The Tide Clock (The Coast): the wave clock and tallies, read by tide.ts
   { id: "tdTime", label: "Tide clock", phases: HIDDEN },
   { id: "tdNets", label: "Nets (0 empty, 1 set, 2 full)", phases: HIDDEN },

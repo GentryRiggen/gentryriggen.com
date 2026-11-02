@@ -1497,3 +1497,124 @@ the idle bot picks the second side everywhere (nothing to click once chosen).
 2. The yard has no know-how, so its middle is still the bees and the harvest.
 3. The seed fork barely moves the phase length (the pot's growth is
    exponential in care). It is a flavour choice more than an economic one.
+
+## Round 7 (2026-11-01): trade-offs for Keep the Light On
+
+> Gentry, after playing: "In Paperclips there were always tradeoffs to be made.
+> Use money for things now or invest, use ops on upgrades or yomi runs. None of
+> this in the new game. Just waiting on upgrades, and the upgrades barely have
+> a perceptible or fun change."
+
+**Hypothesis.** The score said the game was fine because nothing in it was ever
+a choice: every buy was right, the only question was when. Four structural
+changes, one commit each, should turn waiting into deciding:
+
+1. **Spend now or invest** (the fund, every part): Harbour Fund, Reservoir,
+   Starlight Vault, Quiet Jar. A jar of the part's own currency that grows on a
+   curve that flattens as it fills (`yieldPerSecond` 2% of the balance, halved
+   at 30 s of the part's income), and comes out any time for a fee that falls
+   from 30% to 4% over two minutes (`fund.ts`). So the jar is for what you will
+   not need soon.
+2. **One currency, two hungry sinks** (know-how): projects come to the sky (five
+   of them, with catches), know-how is earned there by collectors and the fleet,
+   and **overdrive** (night and sky) spends it on a minute of everything paying
+   2x while the grid (or the fleet's heading) slips 3x as fast. Keep it above
+   60% the whole minute and half the know-how comes back, so tending is the
+   skill (`overdrive.ts`). Know-how income was cut about 30% to make it scarce.
+3. **Pick one of two** (a fork in every part): Fresnel lens or more keepers;
+   coal or wind; more probes or bigger mirrors; let it go or keep it. A
+   two-card choice in the retro style (`ForkPanel`), each side with its catch
+   and a wry line, one new piece of scene art per side (`ForkArt.tsx`, `lt-`
+   loops in `globals.css`, stilled under reduced motion). Forks are inline
+   actions with `fork-<side>` flags, so no engine change and old saves simply
+   have none chosen.
+4. **Every upgrade lands** (the audit, below).
+
+**The audit.** Measured every purchase of a full run (effect ratio and scene
+change) and fixed the weak ones: lens is now 1/3/6/12 ships (each step doubles);
+fares 1.6x a step, dock buildings 1.5x, oil saved 40% a step, tank 3x then 1.67x,
+storms 0.5/0.85/1.3 (the glass makes storms pay), crank 1/2.5/4, power lines and
+substations 1.5x, bulbs a third less demand, aim 1/2.5/4/5.5, mirrors 1.6x, racing
+fins halve the trip, the lights' gifts about twice as strong with a bigger
+relief. Each keeper now walks into the picture (up to 10; before, three
+figures at most). The sky draws six collectors, so collectors 7 to 10 were only
+a number: cut to six. `upgradeAudit.test.ts` keeps the numbers honest.
+
+**Rebalance.** Everything got bigger and compounded faster, so costs were
+re-scaled (`costScale` coast 88, night 28, sky 9.5, last 4.6; the first buys keep
+their old prices in `openingScale`) and every step was price-tuned with a
+scratch autotuner (not committed): it simulates the tapper and the realistic
+bot, finds each buy's wait, and nudges its base cost toward a steady 90 s,
+which fixed long reveal gaps. Its output was clamped to 0.4x-3x of the old
+prices after it drove a few insensitive upgrades to nonsense. Other fixes the
+sim asked for: a tap now brings 0.4% of a second of the keepers' coins (taps
+vanished from the coast's late income), the first probe launch sends 8 (the
+sky's income was flat for minutes), relay steps wait on the step before, nav
+and engines wait on the second mirror, lighthouse growth 2.7. The test
+fixtures' bots take a fork like any shop buy.
+
+### Score
+
+| Card                     | Round 5 (before)          | Round 7 (after)           |
+| ------------------------ | ------------------------- | ------------------------- |
+| Light total              | 59.0 (82.8 uncapped)      | 59.0 (78.9 uncapped)      |
+| Failing gates            | M16 sky, M16 last         | M16 last                  |
+| Finish (eager/help/idle) | 1.96 / 2.09 / 3.37 h      | 1.52 / 1.62 / 2.77 h      |
+| Decisions a minute       | 2.25 / 2.28 / 1.04 / 1.02 | 3.07 / 2.81 / 2.11 / 1.50 |
+| Time in gaps over 60 s   | 20% / 25% / 84% / 75%     | 33% / 6% / 38% / 77%      |
+
+(coast / night / sky / last.) Per metric, before to after: M1 3.8 to 3.2, M2 6.4
+to 7.1, M3 1.9 to 2.0, M4 8.8 to 9.6, M7 7.9 to 7.1, M10 3.6 to 4.0, M11 9.1 to
+8.8, M14 3.7 to 0.2, M15 4.0 to 3.6; the rest unchanged. **The whole loss is M14**
+(length): the eager player now finishes in 1.5 h against a 2.0 to 3.0 h band.
+Without it the card would be above Round 5. The floor is 78 (this score minus 1).
+
+The fund: a bot that never invests finishes the tapper's run in 97.3 min; one
+that parks a share of the price while saving up (once per spell, when the wait
+is over 30 s of income) in 92.0 min; one that parks coins at every look, even
+ones that could buy something, never finishes (35M coins of fees). Between the
+first two the sim is flat (a quarter of the wallet gains as much as all of it:
+the curve flattens and the fee is proportional); the interior optimum is shown
+in `fund.test.ts` on the curve itself (best amount to park for 60/90/120 s is
+partway, 8x that loses, and a 5 s wait is not worth parking for).
+
+### What we learned
+
+- Trade-offs need a **cost that is not another price**. The first fund (free
+  withdrawal) was a savings account with no tension; a fee that falls with
+  time made the question "when will I need this?".
+- Bots read only prices and incomes, so two things had to be taught to them by
+  hand: parking money (once per spell, never a trickle of tiny deposits, which
+  tripled the chore rate) and picking a fork by what it pays over the next four
+  minutes less its price. Both run in `bots.ts`.
+- Every phase-wide multiplier shifts every gap at once. Scaling costs up
+  lengthens the run by far less than it widens the gaps (a +30% scale gave +7%
+  length and three failing gates). Length has to come from more buys, not
+  dearer ones; that is the next round.
+- A knob loses its meaning when something else makes one setting right:
+  know-how is worth more now (projects and overdrive), so Soft glow is the best
+  streetlight nearly all night. The knob's test says so; making Dazzling pay
+  1.3x narrowed the gap but did not close it.
+- An unseen upgrade is a dead upgrade: seven collectors were bought for a sixth
+  picture.
+
+### What still feels thin
+
+1. **Length.** 1.5 h eager. More buys per phase (a second tier of projects in
+   the coast, more forks or a fork chain) rather than a bigger `costScale`.
+2. **The ending (M16, 77% in gaps over a minute).** The last phase has the fund
+   and a fork now but its decisions are still the lights and the garden.
+3. **Coast and last have no projects.** The two-sink idea is in the night and
+   the sky only; coast could spend know-how on tide-clock runs, the last on
+   garden seasons.
+4. **Sky early game** still waits on its first mirror and probe; the sky is
+   the most cost-sensitive phase on the card.
+5. Nothing here has been played by a person yet. Fork art needs eyes (phone
+   crop, reduced motion), and the fund's words need a child to read them.
+
+Narration: no new story lines, so no new clips. Analytics: no new events.
+
+### Decision
+
+Keep. Next: Gentry plays the coast fork and the night overdrive; Round 8 adds
+buys (not price) to lengthen the run and gives the ending something to decide.

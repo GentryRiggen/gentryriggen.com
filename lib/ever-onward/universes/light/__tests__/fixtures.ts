@@ -3,6 +3,7 @@ import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { lightUniverse } from "..";
 import { tankCapacity } from "../tick";
+import { choosesFork } from "../bots";
 
 export const def = lightUniverse;
 
@@ -14,7 +15,8 @@ const MIN = 60;
  * when they dip, and takes the bonuses on offer.
  */
 export function oilActions(run: RunState, available: readonly string[]) {
-  const picks: string[] = [];
+  // A fork in the road is one click in the shop, like any other buy.
+  const picks: string[] = choosesFork(run, available);
   // Looks after what needs hands: the grid and the fleet when they dip, and
   // takes the bonuses on offer.
   for (const id of ["balance-grid", "correct-course"]) {

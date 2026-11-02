@@ -39,6 +39,14 @@ import {
   picksSoFar,
   withoutGarden,
 } from "./garden";
+import {
+  FUND_ACTION_IDS,
+  FUND_CHOICE_IDS,
+  fundBalance,
+  isFundOpen,
+} from "./fund";
+import { FORK_ACTION_IDS, chosenSide, forkOf } from "./forks";
+import { OVERDRIVE_ACTION, isOverdriveOn, isOverdriveOpen } from "./overdrive";
 import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
 
 /**
@@ -93,6 +101,11 @@ export function lightPlates(run: RunState): string[] {
     // at the moment the first seed is planted).
     if (isGardenOpen(run) && picksSoFar(run) >= 2) plates.push("garden");
   }
+  if (isFundOpen(run) && fundBalance(run) > 0) plates.push("fund");
+  const fork = forkOf(run);
+  if (fork && fork.isOpen(run) && chosenSide(run, fork) === null)
+    plates.push("fork");
+  if (isOverdriveOpen(run) && isOverdriveOn(run)) plates.push("overdrive");
   return plates;
 }
 
@@ -109,6 +122,9 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   flare: ["catch-flare"],
   boat: ["steer-boat", "flash-lamp"],
   garden: GARDEN_ACTION_IDS,
+  fund: FUND_ACTION_IDS,
+  overdrive: [OVERDRIVE_ACTION],
+  fork: FORK_ACTION_IDS,
 };
 
 /**
@@ -124,6 +140,9 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   ...SHIELD_ACTION_IDS,
   WATER_ACTION,
   ...LAMP_ACTION_IDS,
+  ...FUND_CHOICE_IDS,
+  OVERDRIVE_ACTION,
+  ...FORK_ACTION_IDS,
 ];
 
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
@@ -211,6 +230,11 @@ function sceneKey(run: RunState): string {
     s.gardenCode,
     s.rainBarrel,
     s.finished,
+    s.forkCoast,
+    s.forkNight,
+    s.forkSky,
+    s.forkLast,
+    s.windBuilt,
     Math.floor(s.cities),
     Math.round(s.powered * 20),
   ].join("|");
@@ -222,12 +246,15 @@ export const lightSceneDiff = (before: RunState, after: RunState): boolean =>
 /** Income probes see the run with no storm landing and no surge pending. */
 export const lightIncomeView = (run: RunState): RunState => {
   const draft =
+    isOverdriveOn(run) ||
     isWeatherOpen(run) ||
     isTideOpen(run) ||
     isProbesOpen(run) ||
     isGardenOpen(run)
       ? cloneRun(run)
       : run;
+  // A minute of overdrive is a burst, not the income the scorecard measures.
+  if (isOverdriveOn(draft)) draft.resources.odLeft = 0;
   if (isWeatherOpen(draft)) withoutStorms(draft);
   if (isTideOpen(draft)) withoutTide(draft);
   if (isProbesOpen(draft)) withoutProbeRaces(draft);

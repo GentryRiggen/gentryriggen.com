@@ -1,11 +1,16 @@
 import type { ProjectDef, RunState } from "../../engine/types";
-import { PHASE_NIGHT } from "./resources";
+import { PHASE_NIGHT, PHASE_SKY } from "./resources";
 import { projectPreviewOf, short, type Stat } from "./preview";
 import {
+  appetite,
+  collectorEnergyPerSecond,
   demandMW,
+  driftPerSecond,
+  flareBonus,
   glowBonus,
   knowhowPerSecond,
   powerPerSecond,
+  probeEnergyPerSecond,
   rushBonus,
   strainPerSecond,
 } from "./tick";
@@ -32,9 +37,9 @@ const KNOWHOW = "knowhow";
 const POWER_PER_SECOND: Stat = { label: "Power/sec", read: powerPerSecond };
 const pct = (n: number): string => `${Math.round(n * 100)}%`;
 
-const cost = (knowhow: number, power = 0) => [
+const cost = (knowhow: number, extra = 0, resource = "power") => [
   { resource: KNOWHOW, amount: knowhow },
-  ...(power > 0 ? [{ resource: "power", amount: power }] : []),
+  ...(extra > 0 ? [{ resource, amount: extra }] : []),
 ];
 
 export const NIGHT_PROJECTS: readonly ProjectDef[] = [
@@ -192,4 +197,88 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
         : `Each farm makes ${short(3000 * P.windBoost)} MW, not 3,000`,
     botValue: 0.2,
   },
+];
+
+/**
+ * The Sky's projects: the same know-how, earned by collectors and the fleet,
+ * wanted by overdrive too (see overdrive.ts). Each has a catch.
+ */
+export const SKY_PROJECTS: readonly ProjectDef[] = [
+  {
+    id: "star-atlas",
+    phase: PHASE_SKY,
+    name: "Star atlas",
+    description:
+      "Chart where every star will be next week. Probes take stars 60% faster.",
+    tradeOff: "Costs energy you could put into a collector.",
+    costs: cost(40, 900, "energy"),
+    revealWhen: (run) => owned(run, "probe") >= 1,
+    effectPreview: projectPreviewOf("star-atlas", [
+      { label: "Star taking", read: appetite, suffix: "×" },
+    ]),
+    botValue: 0.25,
+  },
+  {
+    id: "mirror-polish",
+    phase: PHASE_SKY,
+    name: "Mirror polish",
+    description:
+      "A rag, a ladder and a very long Saturday. Every collector catches 60% more.",
+    tradeOff: "The glare confuses the fleet: its heading drifts 25% faster.",
+    costs: cost(70),
+    revealWhen: (run) => owned(run, "collector") >= 5,
+    effectPreview: projectPreviewOf("mirror-polish", [
+      { label: "Energy/sec", read: collectorEnergyPerSecond },
+      {
+        label: "Drift",
+        read: (run) => driftPerSecond(run) * 60,
+        suffix: "% a minute",
+      },
+    ]),
+  },
+  {
+    id: "relay-codes",
+    phase: PHASE_SKY,
+    name: "Relay codes",
+    description:
+      "Teach the relays to say thank you. Every star taken pays 50% more.",
+    tradeOff: "Costs energy you could put into a mirror.",
+    costs: cost(100, 6000, "energy"),
+    revealWhen: (run) => (run.resources.starsTaken ?? 0) >= 40,
+    effectPreview: projectPreviewOf("relay-codes", [
+      { label: "Probe energy/sec", read: probeEnergyPerSecond },
+    ]),
+    botValue: 0.15,
+  },
+  {
+    id: "probe-school",
+    phase: PHASE_SKY,
+    name: "Probe school",
+    description:
+      "Young probes learn to copy themselves from older ones. Copying is 50% faster.",
+    tradeOff: "The older ones hog the dish: flares come 30% less often.",
+    costs: cost(140),
+    revealWhen: (run) => owned(run, "copy-1") >= 1,
+    effectPreview: () => "Copying 1.5× as fast · flares 1.3× as far apart",
+    botValue: 0.3,
+  },
+  {
+    id: "flare-watch",
+    phase: PHASE_SKY,
+    name: "Flare watchers",
+    description:
+      "A night shift that does nothing but watch the sun. Flares come 20% sooner and pay 60% more.",
+    tradeOff: "Costs energy you could put into a collector.",
+    costs: cost(90, 2500, "energy"),
+    revealWhen: (run) => (run.resources.flaresCaught ?? 0) >= 1,
+    effectPreview: projectPreviewOf("flare-watch", [
+      { label: "A flare pays", read: flareBonus },
+    ]),
+    botValue: 0.1,
+  },
+];
+
+export const ALL_PROJECTS: readonly ProjectDef[] = [
+  ...NIGHT_PROJECTS,
+  ...SKY_PROJECTS,
 ];

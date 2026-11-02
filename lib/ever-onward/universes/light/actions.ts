@@ -76,6 +76,29 @@ import {
   waterGarden,
 } from "./garden";
 import { formatNumber } from "../../engine/format";
+import { FORK_ACTIONS } from "./forks";
+import {
+  OVERDRIVE_ACTION,
+  isOverdriveOn,
+  isOverdriveOpen,
+  isOverdriveSteady,
+  lastOverdrive,
+  overdriveCost,
+  overdriveSecondsLeft,
+  startOverdrive,
+} from "./overdrive";
+import {
+  DEPOSIT_SHARES,
+  WITHDRAW_ACTION,
+  deposit,
+  depositActionId,
+  fundBalance,
+  fundFee,
+  fundKind,
+  fundPayout,
+  isFundOpen,
+  withdrawAll,
+} from "./fund";
 
 const TREND_THRESHOLD = 0.015;
 
@@ -207,6 +230,8 @@ const CORRECT_COURSE: ActionDef = {
   },
   perform: (run) => {
     run.resources.heading = 100;
+    run.resources.knowhow =
+      (run.resources.knowhow ?? 0) + TUNING.projects.sky.perCourse;
   },
 };
 
@@ -224,6 +249,9 @@ const CATCH_FLARE: ActionDef = {
   }),
   perform: (run) => {
     run.resources.energy += flareBonus(run);
+    run.resources.knowhow =
+      (run.resources.knowhow ?? 0) + TUNING.projects.sky.perFlare;
+    run.resources.flaresCaught = (run.resources.flaresCaught ?? 0) + 1;
     run.resources.flare = 0;
     run.resources.flareCooldown = nextFlareIn(run);
   },
@@ -402,7 +430,90 @@ const PICK_BLOOMS: ActionDef = {
   perform: (run) => pickBlooms(run, resolvePerSecond(run)),
 };
 
+/**
+ * The second thing know-how buys: a minute of everything paying double, with
+ * the grid (or the fleet) slipping faster. Steady all minute, half comes back.
+ */
+const OVERDRIVE: ActionDef = {
+  id: OVERDRIVE_ACTION,
+  phases: [PHASE_NIGHT, PHASE_SKY],
+  visibleWhen: isOverdriveOpen,
+  describe: (run) => {
+    const O = TUNING.overdrive;
+    const isNight = run.phase === 1;
+    const thing = isNight ? "grid" : "fleet";
+    if (isOverdriveOn(run)) {
+      const isSteady = isOverdriveSteady(run);
+      return {
+        label: isNight
+          ? "The plants are running hot"
+          : "The fleet is at full burn",
+        detail: `${Math.ceil(overdriveSecondsLeft(run))} s left · ${
+          isSteady
+            ? `steady so far: half your know-how comes back`
+            : `the ${thing} slipped: no know-how comes back`
+        }`,
+        isBlocked: true,
+        hint: isSteady
+          ? { text: "steady", tone: "good" }
+          : { text: "slipped", tone: "bad" },
+      };
+    }
+    const last = lastOverdrive(run);
+    return {
+      label: isNight ? "Run the plants hot" : "Full burn",
+      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, but the ${thing} slips ${O.strain}× as fast. Keep it above ${O.cleanAbove}% and half the know-how comes back.`,
+      cost: { resource: "knowhow", amount: overdriveCost(run) },
+    };
+  },
+  perform: (run) => startOverdrive(run),
+};
+
+/** The smallest deposit worth a click. */
+const MIN_DEPOSIT = 1;
+
+/** The fund's buttons (a share of what you hold goes in); its panel draws them. */
+const FUND_IN: readonly ActionDef[] = DEPOSIT_SHARES.map((share) => ({
+  id: depositActionId(share),
+  isInline: true,
+  visibleWhen: isFundOpen,
+  describe: (run) => {
+    const { currency, name } = fundKind(run);
+    const amount = (run.resources[currency] ?? 0) * share;
+    return {
+      label:
+        share >= 1
+          ? `Put it all in the ${name}`
+          : `Put ${Math.round(share * 100)}% in the ${name}`,
+      detail: `${formatNumber(Math.floor(amount))} ${currency} goes in.`,
+      cost: { resource: currency, amount },
+      isBlocked: amount < MIN_DEPOSIT,
+    };
+  },
+  perform: (run, paid) => deposit(run, paid),
+}));
+
+const FUND_OUT: ActionDef = {
+  id: WITHDRAW_ACTION,
+  isInline: true,
+  visibleWhen: isFundOpen,
+  describe: (run) => {
+    const { name } = fundKind(run);
+    const balance = fundBalance(run);
+    return {
+      label: `Take it all out of the ${name}`,
+      detail: `${formatNumber(Math.floor(fundPayout(run)))} comes out after the ${Math.round(fundFee(run) * 100)}% fee.`,
+      isBlocked: balance < MIN_DEPOSIT,
+    };
+  },
+  perform: (run) => withdrawAll(run),
+};
+
 export const ACTIONS: readonly ActionDef[] = [
+  OVERDRIVE,
+  ...FORK_ACTIONS,
+  ...FUND_IN,
+  FUND_OUT,
   BUY_OIL,
   BALANCE_GRID,
   RIDE_RUSH,

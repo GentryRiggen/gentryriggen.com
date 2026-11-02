@@ -13,8 +13,27 @@ import {
   tier,
 } from "./tick";
 import { lampActionId } from "./lamps";
-import { shownProjects } from "../../engine/engine";
+import {
+  isMaxed,
+  shownProjects,
+  upgradeCost,
+  visibleUpgrades,
+} from "../../engine/engine";
+import {
+  DEPOSIT_SHARES,
+  WITHDRAW_ACTION,
+  depositActionId,
+  fundBalance,
+  fundKind,
+  fundPayout,
+  isFundOpen,
+} from "./fund";
 import { lightUniverse } from ".";
+import { cloneRun } from "../../engine/engine";
+import { chosenSide, forkActionId, forkOf, chooseSide } from "./forks";
+import type { ForkDef, ForkSide } from "./forks";
+import { fundIncome } from "./tick";
+import { OVERDRIVE_ACTION, isOverdriveOpen, overdriveCost } from "./overdrive";
 import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
   PICK_ACTION,
@@ -284,6 +303,8 @@ const WORTH_DIMMING_FOR: ReadonlySet<string> = new Set([
  * learning would get there within `patience` seconds.
  */
 function wantsKnowhow(run: RunState, patience: number): boolean {
+  // Overdrive is a second thing know-how buys, all night once the plants run.
+  if (isOverdriveOpen(run)) return true;
   const softRate = knowhowAtStep(run, 0);
   return shownProjects(lightUniverse, run).some((p) => {
     if (!WORTH_DIMMING_FOR.has(p.id)) return false;
@@ -305,6 +326,123 @@ function wantsKnowhow(run: RunState, patience: number): boolean {
     );
   });
 }
+
+/**
+ * Parks coins in the fund while saving up. It looks at the cheapest upgrade
+ * on offer and keeps `share` of that price in the jar (as big a deposit as
+ * fits), then takes it all out the moment the jar plus the wallet can pay.
+ * A `share` of 0 never invests; 1 parks as much as the price itself.
+ */
+const EMPTY_JAR_SHARE = 0.05;
+/** A deposit smaller than this share of the price is not worth the click. */
+const MIN_DEPOSIT_SHARE = 0.1;
+
+/**
+ * Parks coins in the fund while saving up, but only when the wait for the
+ * cheapest upgrade on offer is long (`minWait` seconds of income or more):
+ * money taken out early pays a steep fee, so it is for what is not needed
+ * soon. It parks as much as `share` of the price (as big a deposit as
+ * fits) and takes it all out the moment the jar plus the wallet can pay.
+ * A `share` of 0 never invests.
+ */
+export const investsInFund =
+  (share: number, minWait: number): OilChoice =>
+  (run, available) => {
+    if (share <= 0 || !isFundOpen(run)) return [];
+    const { currency } = fundKind(run);
+    const prices = visibleUpgrades(lightUniverse, run)
+      .filter((u) => !isMaxed(run, u) && u.currency === currency)
+      .map((u) => upgradeCost(run, u));
+    if (prices.length === 0) return [];
+    const target = Math.min(...prices);
+    const money = run.resources[currency] ?? 0;
+    if (money >= target) return [];
+    const parked = fundBalance(run);
+    if (money + fundPayout(run) >= target)
+      return available.includes(WITHDRAW_ACTION) ? [WITHDRAW_ACTION] : [];
+    // One deposit per saving-up spell: nobody feeds the jar every few seconds.
+    if (parked > target * EMPTY_JAR_SHARE) return [];
+    const wait = (target - money) / Math.max(fundIncome(run), 1e-6);
+    if (wait < minWait) return [];
+    const room = share * target;
+    const biggestFirst = [...DEPOSIT_SHARES].sort((a, b) => b - a);
+    const fits = biggestFirst.find(
+      (s) =>
+        money * s <= room &&
+        money * s >= target * MIN_DEPOSIT_SHARE &&
+        available.includes(depositActionId(s))
+    );
+    return fits === undefined ? [] : [depositActionId(fits)];
+  };
+
+/**
+ * Runs overdrive when the grid (or the fleet) is steady enough to hold it
+ * (`startAt` percent) and the know-how is not wanted by a project that is
+ * ready except for know-how: ideas that last come first.
+ */
+export const runsOverdrive =
+  (startAt: number): OilChoice =>
+  (run, available) => {
+    if (!available.includes(OVERDRIVE_ACTION)) return [];
+    const steady =
+      run.phase === 1
+        ? (run.resources.grid ?? 100)
+        : (run.resources.heading ?? 100);
+    if (steady < startAt) return [];
+    const readyProjects = shownProjects(lightUniverse, run).filter((p) =>
+      p.costs.every(
+        (c) =>
+          c.resource === "knowhow" ||
+          (run.resources[c.resource] ?? 0) >= c.amount * 0.7
+      )
+    );
+    const reserve = readyProjects.length
+      ? Math.min(
+          ...readyProjects.map(
+            (p) => p.costs.find((c) => c.resource === "knowhow")?.amount ?? 0
+          )
+        )
+      : 0;
+    return (run.resources.knowhow ?? 0) >= overdriveCost(run) + reserve
+      ? [OVERDRIVE_ACTION]
+      : [];
+  };
+
+/** Seconds the bot looks ahead at what a side will pay, and keeps benefiting. */
+const FORK_LOOK_SECONDS = 240;
+const FORK_VALUE_SECONDS = 600;
+/** The bot looks at a fork once in this many seconds (a stretch of attention). */
+const FORK_LOOK_EVERY = 10;
+
+/** The main resource's pace after `FORK_LOOK_SECONDS`, with this side chosen (or none). */
+function paceAfter(run: RunState, side: ForkSide | null): number {
+  const draft = cloneRun(run);
+  if (side) chooseSide(draft, side.id);
+  for (let t = 0; t < FORK_LOOK_SECONDS; t += 10) lightUniverse.tick(draft, 10);
+  const main = lightUniverse.phases[run.phase].manualResource;
+  const before = draft.resources[main] ?? 0;
+  lightUniverse.tick(draft, 1);
+  return (draft.resources[main] ?? 0) - before;
+}
+
+/** What a side is worth: the pace it adds over a while, less what it costs. */
+const sideValue = (run: RunState, base: number, side: ForkSide): number =>
+  (paceAfter(run, side) - base) * FORK_VALUE_SECONDS - side.price;
+
+/** Picks the fork's better side by what it will pay, and buys it when it can. */
+export const choosesFork: OilChoice = (run, available) => {
+  const fork: ForkDef | undefined = forkOf(run);
+  if (!fork || !fork.isOpen(run) || chosenSide(run, fork) !== null) return [];
+  if (Math.floor(run.time) % FORK_LOOK_EVERY !== 0) return [];
+  const money = run.resources[fork.currency] ?? 0;
+  if (money < Math.min(...fork.sides.map((s) => s.price))) return [];
+  const base = paceAfter(run, null);
+  const best = [...fork.sides].sort(
+    (a, b) => sideValue(run, base, b) - sideValue(run, base, a)
+  )[0];
+  const id = forkActionId(best.id);
+  return money >= best.price && available.includes(id) ? [id] : [];
+};
 
 const combine =
   (...choices: OilChoice[]): OilChoice =>
@@ -328,23 +466,50 @@ const withOil = (
   tide: OilChoice = () => [],
   race: OilChoice = () => [],
   garden: OilChoice = () => [],
-  lamps: OilChoice = () => []
+  lamps: OilChoice = () => [],
+  fund: OilChoice = () => [],
+  know: OilChoice = () => [],
+  fork: OilChoice = () => []
 ): Strategy => ({
   ...strategy,
-  actions: combine(actions, care, weather, tide, race, garden, lamps),
+  // The fork first: a big, rare choice should not lose its coins to oil.
+  actions: combine(
+    fork,
+    actions,
+    care,
+    weather,
+    tide,
+    race,
+    garden,
+    lamps,
+    fund,
+    know
+  ),
 });
 
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
 const tender = (base: Strategy, below: number, claims: boolean): Strategy =>
   withOil(base, savvyOil, looksAfterThings(below, claims));
 
+/** How much of the next price the scorecard's players keep parked while saving. */
+export const DEFAULT_FUND_SHARE = 0.3;
+/** ... and the shortest wait (in seconds of income) worth parking for. */
+export const DEFAULT_FUND_WAIT = 30;
+
 /** The scorecard's player personalities for Keep the Light On. */
-export function lightBots(): BotSet {
+export function lightBots(
+  options: { fundShare?: number; fundWait?: number } = {}
+): BotSet {
+  const fundShare = options.fundShare ?? DEFAULT_FUND_SHARE;
+  const fundWait = options.fundWait ?? DEFAULT_FUND_WAIT;
   const base = genericBots(lightUniverse);
-  // The idle bot never presses a button outside the last phase (where the
-  // ending is the story): it taps early and watches.
-  const idleActions: OilChoice = (run, available) =>
-    run.phase >= 3 ? lastPhaseActions(run, available) : [];
+  // The idle bot presses no chore button outside the last phase (where the
+  // ending is the story): it taps early and watches. It does take a fork in
+  // the road, which is a shop purchase with a picture, not a chore.
+  const idleActions: OilChoice = (run, available) => [
+    ...choosesFork(run, available),
+    ...(run.phase >= 3 ? lastPhaseActions(run, available) : []),
+  ];
   const tendPair = {
     naive: tender(base.tapper, 15, true),
     careful: tender(base.tapper, 74, true),
@@ -362,7 +527,10 @@ export function lightBots(): BotSet {
       tendsTide({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
-      setsLamps({ patience: 60 })
+      setsLamps({ patience: 30 }),
+      investsInFund(fundShare, fundWait),
+      runsOverdrive(85),
+      choosesFork
     ),
     realistic: withOil(
       base.realistic,
@@ -372,9 +540,19 @@ export function lightBots(): BotSet {
       tendsTide({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
-      setsLamps({ patience: 60 })
+      setsLamps({ patience: 30 }),
+      investsInFund(fundShare, fundWait),
+      runsOverdrive(80),
+      choosesFork
     ),
-    idle: { ...base.idle, actions: idleActions, greetAfter: Infinity },
+    // Projects are permanent shop buys on a panel, not chores, so the idle
+    // player starts them too (it never tends, claims or runs anything).
+    idle: {
+      ...base.idle,
+      projects: "best",
+      actions: idleActions,
+      greetAfter: Infinity,
+    },
     dawdler: {
       ...withOil(
         base.dawdler,
@@ -384,7 +562,10 @@ export function lightBots(): BotSet {
         tendsTide({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
-        setsLamps({ patience: 60 })
+        setsLamps({ patience: 30 }),
+        investsInFund(fundShare, fundWait * 2),
+        () => [],
+        choosesFork
       ),
       greetAfter: 60,
     },
