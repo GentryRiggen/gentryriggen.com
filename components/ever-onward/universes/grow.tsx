@@ -3,6 +3,8 @@ import {
   SEEDLING_LIT,
   SEEDLING_ROWS,
 } from "@/lib/ever-onward/start/sprites";
+import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
+import { getPlayableUniverse } from "@/lib/ever-onward/universes";
 import { ENDING_STORY_IDS } from "@/lib/ever-onward/universes/grow/story";
 import {
   GROW_SCORES,
@@ -77,7 +79,17 @@ export const GROW_UI: UniverseUi = {
     SeedMigration,
     WindowBox,
   ],
-  ending: { storyIds: ENDING_STORY_IDS, Art: GrowEndingArt },
+  ending: {
+    storyIds: ENDING_STORY_IDS,
+    Art: GrowEndingArt,
+    // Not narrated. Only while Build It Higher is out and still unplayed.
+    afterword: (save) => {
+      const higher = getPlayableUniverse("higher");
+      const saved = save.universes.higher;
+      if (!higher || (saved && hasStartedUniverse(saved))) return null;
+      return "A new universe has opened: Build It Higher.";
+    },
+  },
   tapLooks: LOOKS,
   hubSprite: {
     rows: SEEDLING_ROWS,

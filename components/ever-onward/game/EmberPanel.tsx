@@ -28,9 +28,13 @@ interface EmberPanelProps {
   onRestart: () => void;
 }
 
-/** What waits after finishing a universe; Grow is the last one built. */
+/** What waits after finishing a universe; Build It Higher is the last one built. */
 function nextUniverseLine(def: UniverseDef): string | null {
-  if (def.id === "grow") return null;
+  if (def.id === "higher") return null;
+  if (def.id === "grow")
+    return getPlayableUniverse("higher")
+      ? "Build It Higher is open. Find it on the hub."
+      : "Another universe is coming soon.";
   return getPlayableUniverse("grow")
     ? "Make It Grow is open. Find it on the hub."
     : "Another universe is coming soon.";

@@ -3,6 +3,8 @@ import type { UniverseDef } from "../engine/types";
 import { lightUniverse } from "./light";
 import { growUniverse } from "./grow";
 import { growBots } from "./grow/bots";
+import { higherUniverse } from "./higher";
+import { higherBots } from "./higher/bots";
 import { lightBots } from "./light/bots";
 
 /** Universes the scorecard script can play, with their bot sets. */
@@ -11,6 +13,7 @@ export const SCORED_UNIVERSES: Readonly<
 > = {
   light: { def: lightUniverse, bots: lightBots },
   grow: { def: growUniverse, bots: growBots },
+  higher: { def: higherUniverse, bots: higherBots },
 };
 
 export function parseScoreArgs(argv: readonly string[]): {

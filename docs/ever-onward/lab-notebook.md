@@ -1618,3 +1618,140 @@ Narration: no new story lines, so no new clips. Analytics: no new events.
 
 Keep. Next: Gentry plays the coast fork and the night overdrive; Round 8 adds
 buys (not price) to lengthen the run and gives the ending something to decide.
+
+## Build It Higher, round 1 (2026-11-02): a tower with trade-offs from day one
+
+Universe 3 ("higher"), branch `feat/eo-build-it-higher`, on top of main at
+7b0c9fb9. Built with Gentry's standing asks in from the start (Paperclips-style
+trade-offs, every upgrade lands, living scenes), so there was no separate
+"trade-offs" round: this is the first and only tuning pass over the whole
+universe. Light's and Grow's scorecards are untouched.
+
+### Playtest note (ground truth carried in)
+
+Gentry, after playing Make It Grow (see "Make It Grow, round 2"):
+
+> In Paperclips there were always tradeoffs to be made. Use money for things
+> now or invest, use ops on upgrades or yomi runs. None of this in the new
+> game. Just waiting on upgrades, and the upgrades barely have a perceptible
+> or fun change.
+
+### Hypotheses
+
+1. If every part has a spend-or-keep knob, one pile with two sinks, an exclusive
+   fork and a risk to keep in check, the shop stops being a queue and M16
+   (decision gaps) passes without special pleading.
+2. A managed risk that costs at most half the pay, and that braces and a good
+   footing make easier, gives a skill gap without ever punishing a kid.
+3. A load that arrives every 80 s and says exactly what each of three cards
+   gives is a decision every minute or so, with no luck.
+
+### The numbers
+
+`npm run score:ever-onward -- higher`:
+
+| Step                                                     | Score         | Failing gates                        |
+| -------------------------------------------------------- | ------------- | ------------------------------------ |
+| First build (pacing from guesses)                        | 72.3 (cap 59) | M1, M3, M6, M10, M11, M12, M16 (top) |
+| Costs flattened: cheap early tiers, dearer late tiers    | 76.3 (cap 59) | M1, M3, M6, M12                      |
+| End-of-part purchase, top-phase teasers, tap on the town | 82.5 (cap 59) | M1, M12                              |
+| Timed story lines in the long stretches                  | **83.9**      | none                                 |
+
+Final card: eager 2.06 h, when it helps 2.07 h, idle 3.40 h (1.65x), run 2 / run 1
+0.71, run 3 / run 2 0.76. Phases (realistic): playroom 28 min, town 38, sky 35,
+top 22 (targets 25 / 35 / 35 / 20, each within 30%). Per metric: M1 4.2/6, M2
+6.1/10, M3 2.2/3, M4 10/10, M5 3/3, M6 8.9/10, M7 5.9/10, M8 2.8/3, M9 3.6/6,
+M10 3.9/4, M11 9.3/10, M12 3.7/4, M13 4.9/5, M14 4/4, M15 4/4, M16 7.3/8. M16 per
+phase: playroom 0.85, town 1.00, sky 0.87, top 0.95, no phase in a gap over 85 s.
+The floor in `scorecard.test.ts` is 82.9 (this score minus 1).
+
+### What each trade-off does in the sim
+
+Realistic bot, minutes per phase (`scripts/higher-forks.ts`, `higher-footing.ts`
+were scratch tools; the tests below keep the numbers honest).
+
+- **Forks** (side 0 / side 1, ratio): tall and thin 28.0 / wide and sturdy 33.0
+  min (1.18); steel 38.2 / timber 34.0 (0.89); elevator 33.5 / terraces 35.5
+  (1.06); stairs 21.8 / lift 22.3 (1.02). All within the 20-25% band, checked by
+  `tradeoffs.test.ts`. To get there the lift had to lose (2.5x to 1.9x) and the
+  stairs had to gain a helper bonus (1.3x), because taps are under 12% of income
+  by minute 6 and a tap-only side could never keep up.
+- **Foundations** (keep none / a quarter / half, first three parts): 111.6 /
+  101.7 / 105.2 min, so a quarter beats spending it all by 9.7% and half is a
+  real option 3.4% behind. Maximum gain 1.5 (+150% pay) with half at 80 s of
+  income. A first try at 2.5 made the spend-it-all setting 30% slower and the
+  choice a no-brainer; 1.5 left a middle that is best but not alone.
+- **Know-how** (town, sky): 25 for an overtime shift (1.7x pay for 45 s) against
+  30 / 70 / 160 for the projects, from the same pile. The bot keeps back half of
+  the cheapest project before it calls overtime.
+- **Sway**: nothing to do with luck. Rises with the helper levels, falls with
+  braces (a brace level takes 0.4% of the lean away each second and slows the
+  rise 30%), a cushion fort or safety nets halve the rise, and the fork can too.
+  Pay falls from 100% at a 50% lean to 55% at 100%. Careful (steady at 70%)
+  against naive (steady at 97%) is a 0.5 to 5% gap on the card, M9 0.60.
+- **Deliveries**: an 80 s clock (55 s on the way down), three cards, the best
+  marked from deterministic worth (12 s of income for stuff now; 5 s plus the
+  lean it fixes for the pole; the footing's gain for the stone). The loads are
+  worth about 15 to 25% of income to a player who places every one.
+
+### What made the difference (in order)
+
+1. **Cost shape, not cost scale.** Every phase-wide scale gave a quick start and
+   a crash at the end (the last 8 minutes of a 50 minute sky, one 800 s gap in
+   the middle of the story). The fix was cheap first tiers and dear late tiers
+   (a steeper `costSteepness` in the sky; hand-set bases for the cranes,
+   trucks, beacon and last upgrades), which lowered the worst wait from 250 s
+   to 170 s and the p95 wait under 180 s.
+2. **The last purchase ends the part, and the top has one too.** Without
+   `set-down` the top phase sat empty for 24% of the time (M3 gate: nothing to
+   want). Making the last act (set the block down) a purchase, with a teaser
+   while the robot is still on the stair, fixed M3 and made the ending a thing
+   the player does.
+3. **Story lines are reveals.** M1 counts them, so the long saving stretches
+   (the last upgrade of each part) needed lines that fire at shares of the
+   price (`story/progress.ts`) and a few that fire with time in the part
+   (`story/timed.ts`). Each is a small, wry beat; the darker ones are all in the
+   sky and top.
+4. **Taps need to stay relevant.** The town's tap (4) was 0.23% of income at the
+   end (gate 0.25%); 10 fixed the gate and cost nothing.
+5. **Idle must not be hammered.** A leaning tower the idle bot never steadies
+   made it 4.4x slower in the playroom. Braces now pull the tower upright by
+   themselves (`relax`), so a well-built tower hardly needs the button and the
+   idle bot finishes in 3.4 h (1.65x).
+
+### What we learned
+
+- When a trade-off is a no-brainer the sim shows it at once: a footing worth
+  +250% had spend-it-all 30% slower. A good knob's best setting wins by about
+  10%, and its neighbours lose by less than 25%.
+- A fork that only rewards taps is a trap once the helpers carry the run; every
+  side has to move the helpers, so the "hands" side gets a smaller helper bonus
+  rather than none.
+- A managed risk with a floor of 55% pay is felt without being a punishment, but
+  the careful against naive gap stays small (a few percent) because braces
+  solve it for both bots. The scorecard's M9 tension band wants 5 to 25%.
+- Overtime and deliveries are 1.5x of income between them, so they have to be
+  tuned against the idle bot or the idle ratio runs away (it was 2.0x until
+  loads were cut from 22 s of income to 12 s).
+
+### What still feels thin
+
+1. **M7 plates (5.9/10).** Tap, a fork, a lean, a delivery, overtime and a
+   project is at most five, and the top has only the tap and a delivery.
+2. **M9 tension (3.6/6).** The lean is the only watched number, and the top has
+   none. A watched number for the last part is the next idea (the lantern's oil,
+   say).
+3. **M2 decision density (6.1/10).** About 60% of the time nothing meaningful is
+   affordable; the shop is always one price away. More small parallel upgrades.
+4. **Nobody has played it.** The fork art, the empty-window beats and the reduced
+   motion look need eyes (a phone crop, the old iPad).
+
+Narration: 142 new clips under `public/ever-onward/voice/higher/` (every story
+line, intro and cutscene frame), made with `npm run narration:ever-onward`.
+Analytics: no new events, and nothing imports `lib/analytics`.
+
+### Decision
+
+Keep. Next: Gentry plays the playroom fork and the sky's choice between the
+elevator and the terraces, and says whether the beats at the top land; round 2
+looks at plates and a watched number for the last part.
