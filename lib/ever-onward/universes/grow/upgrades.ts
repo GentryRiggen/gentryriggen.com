@@ -25,7 +25,14 @@ import {
 } from "./migration";
 import { TUNING } from "./tuning";
 import { MARKET_AGENT_ID } from "./market";
-import { PHASE_FARM, PHASE_SEED, PHASE_WORLD, PHASE_YARD } from "./resources";
+import {
+  PHASE_FARM,
+  PHASE_IDS,
+  PHASE_SEED,
+  PHASE_WORLD,
+  PHASE_YARD,
+  type GrowPhaseId,
+} from "./resources";
 import {
   incomePerSecond,
   manualPerTap,
@@ -75,7 +82,7 @@ const helperPreview = (run: RunState, id: string): string =>
 const PICKERS_AT_LIMIT =
   "Your pickers are at their limit. A wheelbarrow lets them carry more.";
 
-export const UPGRADES: readonly UpgradeDef[] = [
+const RAW_UPGRADES: readonly UpgradeDef[] = [
   // The Backyard
   {
     id: "sprinkler",
@@ -85,8 +92,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 15,
-    costGrowth: 1.4,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     effectPreview: (run) =>
       ratePreview(run, "sprinkler", "Ripens/sec", incomePerSecond),
   },
@@ -98,8 +105,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 60,
-    costGrowth: 1.4,
-    maxLevel: 8,
+    costGrowth: 1.6,
+    maxLevel: 6,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "sprinkler") >= 2,
     effectPreview: (run) =>
@@ -113,8 +120,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 120,
-    costGrowth: 2.2,
-    maxLevel: 6,
+    costGrowth: 2.6,
+    maxLevel: 4,
     visibleWhen: (run) => owned(run, "sprinkler") >= 3,
     effectPreview: (run) => scalePreview(run, "mulch"),
   },
@@ -146,8 +153,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 700,
-    costGrowth: 1.45,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "sprinkler") >= 5,
     onBuy: openBees,
@@ -199,8 +206,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 4500,
-    costGrowth: 1.45,
-    maxLevel: 8,
+    costGrowth: 1.6,
+    maxLevel: 6,
     visibleWhen: (run) => owned(run, "basket") >= 4,
     effectPreview: (run) =>
       ratePreview(run, "gardener", "Picks/sec", pickPerSecond),
@@ -214,7 +221,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     currency: "seeds",
     baseCost: 3000,
     costGrowth: 2.5,
-    maxLevel: 4,
+    maxLevel: 3,
     visibleWhen: (run) => owned(run, "bee-hive") >= 3,
     effectPreview: (run) =>
       ratePreview(run, "compost-tea", "Ripens/sec", incomePerSecond),
@@ -227,7 +234,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     currency: "seeds",
     baseCost: 6000,
     costGrowth: 2.5,
-    maxLevel: 4,
+    maxLevel: 3,
     visibleWhen: (run) => owned(run, "gardener") >= 2,
     effectPreview: (run) =>
       ratePreview(run, "wheelbarrow", "Picks/sec", pickPerSecond),
@@ -236,7 +243,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: "greenhouse",
     name: "A glass greenhouse",
     description:
-      "Warm glass, damp air and tomatoes in the middle of winter. Everything ripens half again as fast.",
+      "Warm glass, damp air and tomatoes in the middle of winter. Everything ripens twice as fast.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 25000,
@@ -250,7 +257,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: "orchard",
     name: "A little orchard",
     description:
-      "Apple, pear and one very optimistic fig. Slow to start, and then everything ripens a quarter faster.",
+      "Apple, pear and one very optimistic fig. Slow to start, and then everything ripens over half again as fast.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 60000,
@@ -264,7 +271,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: "honey-stand",
     name: "A honey stand",
     description:
-      "A wobbly table by the gate. Whatever you pick by hand sells for a quarter more, with a jar of honey on top.",
+      "A wobbly table by the gate. Whatever you pick by hand sells for half again as much, with a jar of honey on top.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 120000,
@@ -292,8 +299,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 400,
-    costGrowth: 1.32,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     effectPreview: (run) => helperPreview(run, "scarecrow"),
   },
   {
@@ -303,8 +310,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 1800,
-    costGrowth: 2.4,
-    maxLevel: 6,
+    costGrowth: 2.6,
+    maxLevel: 4,
     visibleWhen: (run) => owned(run, "scarecrow") >= 2,
     effectPreview: (run) => scalePreview(run, "compost"),
   },
@@ -336,8 +343,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 3000,
-    costGrowth: 1.3,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "scarecrow") >= 3,
     onBuy: openFair,
@@ -403,8 +410,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 120000,
-    costGrowth: 2.4,
-    maxLevel: 4,
+    costGrowth: 2.6,
+    maxLevel: 3,
     visibleWhen: (run) => owned(run, "tractor") >= 6,
     effectPreview: (run) => scalePreview(run, "silo"),
   },
@@ -416,8 +423,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 70000,
-    costGrowth: 1.3,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "tractor") >= 4,
     effectPreview: (run) => helperPreview(run, "glasshouse"),
@@ -430,8 +437,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 600000,
-    costGrowth: 1.3,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "glasshouse") >= 3,
     effectPreview: (run) => helperPreview(run, "seed-drone"),
@@ -456,8 +463,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_WORLD],
     currency: "green",
     baseCost: 3000,
-    costGrowth: 1.35,
-    maxLevel: 10,
+    costGrowth: 2.4,
+    maxLevel: 8,
     kind: "mechanic",
     effectPreview: (run) => helperPreview(run, "windbreak"),
   },
@@ -469,8 +476,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_WORLD],
     currency: "green",
     baseCost: 25000,
-    costGrowth: 2.3,
-    maxLevel: 6,
+    costGrowth: 2.6,
+    maxLevel: 4,
     visibleWhen: (run) => owned(run, "windbreak") >= 2,
     effectPreview: (run) => scalePreview(run, "rain-makers"),
   },
@@ -502,8 +509,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_WORLD],
     currency: "green",
     baseCost: 60000,
-    costGrowth: 1.4,
-    maxLevel: 10,
+    costGrowth: 2.4,
+    maxLevel: 8,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "windbreak") >= 3,
     onBuy: openMigration,
@@ -549,8 +556,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_WORLD],
     currency: "green",
     baseCost: 1200000,
-    costGrowth: 1.4,
-    maxLevel: 13,
+    costGrowth: 2.4,
+    maxLevel: 8,
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "planting-rover") >= 3,
     effectPreview: (run) => helperPreview(run, "sky-seeder"),
@@ -576,8 +583,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_SEED],
     currency: "care",
     baseCost: 12,
-    costGrowth: 1.5,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     kind: "mechanic",
     effectPreview: (run) => helperPreview(run, "trellis"),
   },
@@ -587,9 +594,9 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: "Warm light on the leaves makes every bit of care count.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 150,
-    costGrowth: 2.6,
-    maxLevel: 6,
+    baseCost: 70,
+    costGrowth: 2.8,
+    maxLevel: 4,
     visibleWhen: (run) => owned(run, "trellis") >= 2,
     effectPreview: (run) => scalePreview(run, "sunny-sill"),
   },
@@ -601,10 +608,10 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_SEED],
     currency: "care",
     baseCost: 200,
-    costGrowth: 1.5,
-    maxLevel: 8,
+    costGrowth: 2.4,
+    maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "trellis") >= 4,
+    visibleWhen: (run) => owned(run, "trellis") >= 3,
     effectPreview: (run) => helperPreview(run, "wind-chime"),
   },
   {
@@ -615,17 +622,17 @@ export const UPGRADES: readonly UpgradeDef[] = [
     phases: [PHASE_SEED],
     currency: "care",
     baseCost: 3500,
-    costGrowth: 1.5,
-    maxLevel: 13,
+    costGrowth: 2.4,
+    maxLevel: 8,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "wind-chime") >= 2,
+    visibleWhen: (run) => owned(run, "wind-chime") >= 1,
     effectPreview: (run) => helperPreview(run, "dew-collector"),
   },
   {
     id: WATERING_CAN_ID,
     name: "A bigger watering can",
     description:
-      "A little tin can with a long spout. Every answer you give the pot is worth a bit more.",
+      "A little tin can with a long spout. Every answer you give the pot is worth half as much again.",
     phases: [PHASE_SEED],
     currency: "care",
     baseCost: 24,
@@ -666,13 +673,26 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: LANTERN_ID,
     name: "A lantern in the window",
     description:
-      "A small warm light for the evenings, in case anybody is passing. The pot grows more from every bit of care.",
+      "A small warm light for the evenings, in case anybody is passing. The pot grows twice as much from every bit of care.",
     phases: [PHASE_SEED],
     currency: "care",
     baseCost: 30000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => potGrowth(run) >= 0.5,
-    effectPreview: () => "Every bit of care grows the pot a quarter more",
+    visibleWhen: (run) => potGrowth(run) >= 0.2,
+    effectPreview: () => "Every bit of care grows the pot twice as much",
   },
 ];
+
+/** Every price in a phase, scaled together: the pacing knob (see TUNING). */
+export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => ({
+  ...u,
+  baseCost:
+    u.baseCost *
+    TUNING.costScale[
+      Math.max(
+        0,
+        PHASE_IDS.indexOf((u.phases?.[0] ?? PHASE_YARD) as GrowPhaseId)
+      )
+    ],
+}));

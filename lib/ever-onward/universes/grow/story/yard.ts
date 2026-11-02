@@ -149,7 +149,7 @@ export const yard: StoryMessage[] = [
   {
     id: "yard-year-5",
     phase: PHASE_YARD,
-    when: (run) => year(run, 5),
+    when: (run) => year(run, 4.5),
     text: "Year five. There is more garden than gardener, and you cannot say you mind. The cold frame is looking at you hopefully.",
   },
   {

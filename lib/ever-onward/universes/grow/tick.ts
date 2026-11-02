@@ -20,11 +20,19 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const speed = (run: RunState): number => run.mods.speed ?? 1;
 const tapMult = (run: RunState): number => run.mods.tapMult ?? 1;
 
+/**
+ * What a line of helpers makes at `level`: every level multiplies the line by
+ * `TUNING.stackGrowth`, so each purchase is a visible jump, not one more
+ * identical helper. Level 0 is nothing.
+ */
+export const stacked = (level: number): number =>
+  level <= 0 ? 0 : TUNING.stackGrowth ** level;
+
+/** Scaling upgrades multiply too: each level makes taps and helpers pay more. */
 const scaleMult = (run: RunState): number =>
-  1 +
-  TUNING.phases[run.phase].scalePer *
-    (owned(run, SCALE_IDS[run.phase]) +
-      (run.phase === 1 ? owned(run, "silo") : 0));
+  (1 + TUNING.phases[run.phase].scalePer) **
+  (owned(run, SCALE_IDS[run.phase]) +
+    (run.phase === 1 ? owned(run, "silo") : 0));
 
 /** What one tap earns right now (in spring, planting pays more). */
 export function manualPerTap(run: RunState): number {
@@ -46,10 +54,10 @@ export function manualPerTap(run: RunState): number {
 const farmHelpers = (run: RunState): number => {
   const f = TUNING.farm;
   return (
-    owned(run, "scarecrow") * f.scarecrowRate +
-    owned(run, "tractor") * f.tractorRate +
-    owned(run, "glasshouse") * f.glasshouseRate +
-    owned(run, "seed-drone") * f.droneRate
+    stacked(owned(run, "scarecrow")) * f.scarecrowRate +
+    stacked(owned(run, "tractor")) * f.tractorRate +
+    stacked(owned(run, "glasshouse")) * f.glasshouseRate +
+    stacked(owned(run, "seed-drone")) * f.droneRate
   );
 };
 
@@ -57,9 +65,9 @@ const farmHelpers = (run: RunState): number => {
 const worldHelpers = (run: RunState): number => {
   const w = TUNING.world;
   return (
-    owned(run, "windbreak") * w.windbreakRate +
-    owned(run, "planting-rover") * w.roverRate +
-    owned(run, "sky-seeder") * w.seederRate
+    stacked(owned(run, "windbreak")) * w.windbreakRate +
+    stacked(owned(run, "planting-rover")) * w.roverRate +
+    stacked(owned(run, "sky-seeder")) * w.seederRate
   );
 };
 
@@ -70,7 +78,7 @@ const worldHelpers = (run: RunState): number => {
  */
 /** Compost tea and the greenhouse make the whole garden ripen faster. */
 const ripenMult = (run: RunState): number =>
-  (1 + TUNING.yard.teaPer * owned(run, "compost-tea")) *
+  (1 + TUNING.yard.teaPer) ** owned(run, "compost-tea") *
   (owned(run, "greenhouse") > 0 ? TUNING.yard.greenhouse : 1) *
   (owned(run, "orchard") > 0 ? TUNING.yard.orchard : 1);
 
@@ -78,8 +86,8 @@ export function incomePerSecond(run: RunState): number {
   const y = TUNING.yard;
   if (run.phase === 0)
     return (
-      (owned(run, "sprinkler") * y.sprinklerRate +
-        owned(run, "bee-hive") * y.hiveRate) *
+      (stacked(owned(run, "sprinkler")) * y.sprinklerRate +
+        stacked(owned(run, "bee-hive")) * y.hiveRate) *
       scaleMult(run) *
       ripenMult(run) *
       speed(run) *
@@ -105,15 +113,15 @@ export function incomePerSecond(run: RunState): number {
   if (run.phase === 3) {
     const b = TUNING.windowbox;
     return (
-      (owned(run, "trellis") * TUNING.phases[3].helper +
-        owned(run, "wind-chime") * b.chimeRate +
-        owned(run, "dew-collector") * b.dewRate) *
+      (stacked(owned(run, "trellis")) * TUNING.phases[3].helper +
+        stacked(owned(run, "wind-chime")) * b.chimeRate +
+        stacked(owned(run, "dew-collector")) * b.dewRate) *
       scaleMult(run) *
       speed(run)
     );
   }
   return (
-    owned(run, HELPER_IDS[run.phase]) *
+    stacked(owned(run, HELPER_IDS[run.phase])) *
     TUNING.phases[run.phase].helper *
     scaleMult(run) *
     speed(run)
@@ -129,8 +137,8 @@ export function incomePerSecond(run: RunState): number {
 export function pickShare(run: RunState): number {
   const y = TUNING.yard;
   const crew =
-    owned(run, "basket") * y.basketShare +
-    owned(run, "gardener") * y.gardenerShare;
+    stacked(owned(run, "basket")) * y.basketShare +
+    stacked(owned(run, "gardener")) * y.gardenerShare;
   const cap = y.pickCap + y.barrowPer * owned(run, "wheelbarrow");
   // Past the cap a helper still carries a little (a fraction of its share),
   // so no basket or gardener is ever a wasted buy. Wheelbarrows lift the cap.

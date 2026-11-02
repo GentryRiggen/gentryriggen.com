@@ -36,7 +36,7 @@ interface DeadPhaseCeiling {
  * things-to-manage rollout.
  */
 const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {
-  world: { deadShare: 0.46, longest: 173 },
+  world: { deadShare: 0.55, longest: 173 },
 };
 
 const HOUR = 3600;

@@ -9,12 +9,16 @@ export interface PhaseTuning {
 }
 
 export const TUNING = {
+  /** Every level of a helper line multiplies its output by this (see `stacked`). */
+  stackGrowth: 1.6,
+  /** Every upgrade's price in a phase is multiplied by this (yard, farm, world, seed). */
+  costScale: [4.2, 2.3, 1.4, 3.5] as readonly number[],
   /** By phase index. */
   phases: [
-    { tap: 1, helper: 0.6, scalePer: 0.5 },
-    { tap: 10, helper: 5, scalePer: 0.5 },
-    { tap: 60, helper: 40, scalePer: 0.5 },
-    { tap: 1, helper: 0.35, scalePer: 0.5 },
+    { tap: 1.4, helper: 0.6, scalePer: 0.6 },
+    { tap: 10, helper: 5, scalePer: 0.6 },
+    { tap: 60, helper: 40, scalePer: 0.6 },
+    { tap: 1, helper: 0.35, scalePer: 0.6 },
   ] as readonly PhaseTuning[],
   /** The backyard's water: a tank, rain that comes and goes, and a thirst. */
   water: {
@@ -43,31 +47,31 @@ export const TUNING = {
     /** Boost for [plant (taps), grow (sprinklers, bees), harvest]. */
     spring: [1.5, 1.15, 1],
     summer: [1.1, 1.5, 1.1],
-    autumn: [1, 1.1, 2],
+    autumn: [1, 1.1, 3],
     winter: [1, 1, 1],
   },
   /** The backyard's harvest: ripe produce waits in the garden until picked. */
   yard: {
     /** Produce per second each helper grows (before bonuses). */
-    sprinklerRate: 0.9,
-    hiveRate: 3,
+    sprinklerRate: 1.1,
+    hiveRate: 3.6,
     /** The share of ripening produce each helper picks, at the base rate. */
     basketShare: 0.07,
-    gardenerShare: 0.13,
+    gardenerShare: 0.14,
     /** The most the pickers can keep up with, before wheelbarrows. */
-    pickCap: 0.65,
+    pickCap: 0.6,
     /** Past the cap, the share of a helper's pick that still counts. */
     overflowKeep: 0.05,
     /** Each level of compost tea adds this share to ripening. */
-    teaPer: 0.5,
+    teaPer: 0.6,
     /** The greenhouse multiplies ripening by this. */
-    greenhouse: 1.5,
+    greenhouse: 2,
     /** The orchard multiplies ripening by this. */
-    orchard: 1.25,
+    orchard: 1.6,
     /** The honey stand multiplies what a hand harvest pays by this. */
-    honey: 1.25,
+    honey: 1.5,
     /** Each wheelbarrow raises the pickers' cap by this much. */
-    barrowPer: 0.06,
+    barrowPer: 0.12,
     /** The hand-harvest button shows once this much is ripe. */
     ripeShown: 5,
     /** The harvest plate lights up at this many seconds of basket work. */
@@ -208,7 +212,7 @@ export const TUNING = {
     seedsWeight: 0.55,
     waterWeight: 1,
     /** The planet counts as green enough for a vault at this cover. */
-    vaultCover: 0.8,
+    vaultCover: 0.7,
     /** A player switches when another biome is this much better. */
     playerMargin: 1.1,
   },
@@ -242,7 +246,7 @@ export const TUNING = {
     chimeRate: 3,
     dewRate: 20,
     /** A window lantern makes each unit of care grow the pot this much more. */
-    lanternBoost: 0.25,
+    lanternBoost: 1,
     /** Growth (of 100) each unit of care adds to the pot. */
     growthPerCare: 0.00009,
     /** The pot is a sprout from this share grown, and a bud from this one. */
@@ -255,7 +259,7 @@ export const TUNING = {
     matchSeconds: 12,
     otherSeconds: 4,
     /** Each watering can adds this share to every answer. */
-    canPer: 0.2,
+    canPer: 0.5,
     /** The music box answers after this long, for this share of a right one. */
     boxDelay: 30,
     boxShare: 0.5,
