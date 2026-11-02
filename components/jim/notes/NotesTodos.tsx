@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, type ReactNode } from "react";
+import { useId, useMemo, type KeyboardEvent, type ReactNode } from "react";
 import {
   BarChart3,
   MessageCircle,
@@ -195,10 +195,28 @@ function Segmented<T extends string>({
   options,
   onChange,
 }: SegmentedProps<T>) {
+  /** Arrow keys move the choice (and focus) along, wrapping: one tab stop. */
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const step =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? -1
+          : 0;
+    if (!step) return;
+    event.preventDefault();
+    const at = options.findIndex((o) => o.id === value);
+    const next = (at + step + options.length) % options.length;
+    onChange(options[next].id);
+    const radios =
+      event.currentTarget.querySelectorAll<HTMLElement>("[role=radio]");
+    radios[next]?.focus();
+  }
   return (
     <div
       role="radiogroup"
       aria-label={label}
+      onKeyDown={onKeyDown}
       className="jim-card flex min-w-0 gap-1 rounded-2xl! p-1"
     >
       {options.map((o) => {
@@ -210,6 +228,7 @@ function Segmented<T extends string>({
             role="radio"
             aria-checked={selected}
             aria-label={o.name}
+            tabIndex={selected ? 0 : -1}
             onClick={() => onChange(o.id)}
             className={`min-h-11 min-w-0 flex-auto truncate rounded-xl px-3 text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
               selected
@@ -383,19 +402,27 @@ export default function NotesTodos({
   const nameOf = (project: string) => projectLabel(project, named);
 
   // The charts show the area and project picked; never the when or search.
-  const scope: TodoFilters = {
-    ...DEFAULT_FILTERS,
-    area: f.area,
-    project: f.project,
-  };
-  const scoped = filterTodos(data.todos, scope, today);
-  const scopedDone = filterDone(data.doneTodos, scope, today);
-  const stats = todoStats(scoped, scopedDone, today);
-  const up = comingUp(scoped, today);
-  const perDay = doneByDay(scopedDone, today);
-  const split = areaSplit(
-    filterTodos(data.todos, { ...DEFAULT_FILTERS, project: f.project }, today)
-  );
+  const { stats, up, perDay, split } = useMemo(() => {
+    const scope: TodoFilters = {
+      ...DEFAULT_FILTERS,
+      area: f.area,
+      project: f.project,
+    };
+    const scoped = filterTodos(data.todos, scope, today);
+    const scopedDone = filterDone(data.doneTodos, scope, today);
+    return {
+      stats: todoStats(scoped, scopedDone, today),
+      up: comingUp(scoped, today),
+      perDay: doneByDay(scopedDone, today),
+      split: areaSplit(
+        filterTodos(
+          data.todos,
+          { ...DEFAULT_FILTERS, project: f.project },
+          today
+        )
+      ),
+    };
+  }, [data, today, f.area, f.project]);
 
   const doneMode = f.sort === "done";
   const open = filterTodos(data.todos, f, today);
@@ -449,7 +476,7 @@ export default function NotesTodos({
       ? "done"
       : null
     : f.when === "any"
-      ? null
+      ? "open"
       : f.when === "overdue"
         ? "overdue"
         : f.when === "week"
@@ -535,28 +562,29 @@ export default function NotesTodos({
     </ChipRow>
   );
 
-  const whenChips = (
-    <ChipRow label="When">
-      {!doneMode &&
-        WHEN_OPTIONS.map((w) => (
-          <FilterChip
-            key={w.id}
-            selected={f.when === w.id}
-            tone={w.id === "overdue" ? "red" : "accent"}
-            onClick={() => pickWhen(f.when === w.id ? "any" : w.id)}
-          >
-            {w.label}
+  const whenChips =
+    doneMode && !isDayFilter(f.when) ? null : (
+      <ChipRow label="When">
+        {!doneMode &&
+          WHEN_OPTIONS.map((w) => (
+            <FilterChip
+              key={w.id}
+              selected={f.when === w.id}
+              tone={w.id === "overdue" ? "red" : "accent"}
+              onClick={() => pickWhen(f.when === w.id ? "any" : w.id)}
+            >
+              {w.label}
+            </FilterChip>
+          ))}
+        {isDayFilter(f.when) && (
+          <FilterChip selected onClick={() => set({ when: "any" })}>
+            {doneMode ? "Done " : "Due "}
+            {f.when === today ? "today" : fmtDay(f.when)}
+            <X aria-hidden="true" className="size-3.5" />
           </FilterChip>
-        ))}
-      {isDayFilter(f.when) && (
-        <FilterChip selected onClick={() => set({ when: "any" })}>
-          {doneMode ? "Done " : "Due "}
-          {f.when === today ? "today" : fmtDay(f.when)}
-          <X aria-hidden="true" className="size-3.5" />
-        </FilterChip>
-      )}
-    </ChipRow>
-  );
+        )}
+      </ChipRow>
+    );
 
   const searchBox = (
     <div role="search" className="relative min-w-0 flex-1">

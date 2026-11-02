@@ -27,6 +27,7 @@ import AppLockSheet from "@/components/jim/AppLockSheet";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
 import JimMark from "@/components/jim/JimMark";
 import JimSidebar, { type SidebarAction } from "@/components/jim/JimSidebar";
+import { resetTodoFilters } from "@/components/jim/notes/useTodoFilters";
 import { onPlainClick } from "@/components/jim/notes/NotesUi";
 import useBasePage from "@/components/jim/useBasePage";
 import useJimRouter, {
@@ -692,6 +693,15 @@ export default function JimChat({
   /** A Notes page from the sidebar: leaves any search for it. */
   function goToRoute(next: JimRoute) {
     if (next.kind === "page" && notesSearch) setNotesSearch("");
+    // Todos picked again while it shows: its filters start over.
+    if (
+      next.kind === "page" &&
+      next.page === "todos" &&
+      route.kind === "page" &&
+      route.page === "todos"
+    ) {
+      resetTodoFilters();
+    }
     navigate(next);
   }
 

@@ -36,6 +36,7 @@ import NotesTodos from "@/components/jim/notes/NotesTodos";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import NotesWork from "@/components/jim/notes/NotesWork";
 import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
+import { resetTodoFilters } from "@/components/jim/notes/useTodoFilters";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
 import useBasePage from "@/components/jim/useBasePage";
 import useJimRouter, {
@@ -535,6 +536,10 @@ function NotesShellView({
   /** A page from the pills or the sidebar: leaves any search for it. */
   function goTo(next: NotesPage) {
     if (searching) onSearch("");
+    // Todos picked again while it shows: its filters start over.
+    if (next === "todos" && route.kind === "page" && route.page === "todos") {
+      resetTodoFilters();
+    }
     navigate({ kind: "page", page: next });
   }
 

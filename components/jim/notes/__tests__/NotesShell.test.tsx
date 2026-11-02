@@ -574,3 +574,21 @@ it("opens Todos from its pill, at /jim/todos, filters in the address", async () 
   await user.click(screen.getByRole("link", { name: /All todos/ }));
   expect(window.location.pathname).toBe("/jim/todos");
 });
+
+it("tapping the Todos pill on a filtered Todos page clears its filters", async () => {
+  const user = userEvent.setup();
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/todos?area=work");
+  renderShell();
+  await screen.findByRole("heading", { level: 1, name: "Todos" });
+  expect(screen.getByRole("radio", { name: "Work" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await user.click(screen.getByRole("tab", { name: "Todos" }));
+  expect(screen.getByRole("radio", { name: "All" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  expect(window.location.search).toBe("");
+});

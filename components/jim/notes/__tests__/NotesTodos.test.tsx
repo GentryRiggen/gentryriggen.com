@@ -1,9 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as view from "@/lib/jim/view";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import NotesTodosPage from "../NotesTodos";
 import useTodoSaves from "../useTodoSaves";
+import { resetTodoFilters } from "../useTodoFilters";
 
 jest.mock("@/lib/jim/view", () => {
   const actual = jest.requireActual("@/lib/jim/view");
@@ -327,4 +328,94 @@ it("hides the charts on request, and remembers it in the address", async () => {
   expect(window.location.search).toBe("?view=list");
   await user.click(screen.getByRole("button", { name: "Show charts" }));
   expect(screen.getByRole("group", { name: /^Coming up/ })).toBeInTheDocument();
+});
+
+describe("the address under fast typing", () => {
+  it("filters on every key but writes the search to the address once typing pauses", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const spy = jest.spyOn(window.history, "replaceState");
+    try {
+      render(<Page />);
+      spy.mockClear();
+      await user.type(
+        screen.getByRole("searchbox", { name: "Search todos" }),
+        "catalog copy"
+      );
+      expect(titles()).toEqual(["Review the catalog copy"]);
+      expect(spy).not.toHaveBeenCalled();
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(window.location.search).toBe("?q=catalog+copy");
+    } finally {
+      spy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it("keeps working when the browser refuses to change the address", async () => {
+    const user = userEvent.setup();
+    const spy = jest
+      .spyOn(window.history, "replaceState")
+      .mockImplementation(() => {
+        throw new DOMException("too many calls", "SecurityError");
+      });
+    try {
+      render(<Page />);
+      await user.click(screen.getByRole("radio", { name: "Work" }));
+      expect(titles()).toHaveLength(4);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+it("lights the Open tile when no when filter is on", async () => {
+  const user = userEvent.setup();
+  render(<Page />);
+  expect(screen.getByRole("button", { name: /^Open/ })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await user.click(screen.getByRole("button", { name: "Overdue 1" }));
+  expect(screen.getByRole("button", { name: /^Open/ })).toHaveAttribute(
+    "aria-pressed",
+    "false"
+  );
+});
+
+it("drops the When row in done mode until a day is picked", async () => {
+  const user = userEvent.setup();
+  render(<Page />);
+  await user.click(screen.getByRole("radio", { name: "Recently done" }));
+  expect(screen.queryByRole("group", { name: "When" })).toBeNull();
+});
+
+it("moves through Area with the arrow keys, one tab stop", async () => {
+  const user = userEvent.setup();
+  render(<Page />);
+  const all = screen.getByRole("radio", { name: "All" });
+  expect(all).toHaveAttribute("tabindex", "0");
+  expect(screen.getByRole("radio", { name: "Work" })).toHaveAttribute(
+    "tabindex",
+    "-1"
+  );
+  all.focus();
+  await user.keyboard("{ArrowRight}");
+  const work = screen.getByRole("radio", { name: "Work" });
+  expect(work).toHaveFocus();
+  expect(work).toHaveAttribute("aria-checked", "true");
+  await user.keyboard("{ArrowLeft}{ArrowLeft}");
+  expect(screen.getByRole("radio", { name: "Personal" })).toHaveFocus();
+});
+
+it("resets its filters when Todos is picked again", async () => {
+  const user = userEvent.setup();
+  render(<Page />);
+  await user.click(screen.getByRole("radio", { name: "Work" }));
+  act(() => resetTodoFilters());
+  expect(titles()).toHaveLength(5);
+  expect(window.location.search).toBe("");
 });
