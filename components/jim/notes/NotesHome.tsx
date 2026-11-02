@@ -43,6 +43,10 @@ interface NotesHomeProps {
   onDraft: (text: string) => void;
   /** Plays the morning brief (a tap). Without it the button is hidden. */
   onHearBrief?: () => void;
+  /** What the brief is waiting on: the button spins and says it. */
+  briefStage?: string | null;
+  /** Why the brief didn't play, shown under the button. */
+  briefError?: string | null;
   /** Reminders card: its server, and where a tap goes. Without them it is hidden. */
   reminders?: {
     api: string;
@@ -434,6 +438,8 @@ export default function NotesHome({
   onLog,
   onDraft,
   onHearBrief,
+  briefStage = null,
+  briefError = null,
   reminders,
 }: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
@@ -456,14 +462,33 @@ export default function NotesHome({
           </p>
         </div>
         {onHearBrief && (
-          <button
-            type="button"
-            onClick={onHearBrief}
-            className="jim-card flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-ayu-text hover:border-ayu-accent/40 hover:text-ayu-accent"
-          >
-            <Sunrise aria-hidden="true" className="size-4" />
-            Hear your morning
-          </button>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={onHearBrief}
+              disabled={briefStage !== null}
+              aria-busy={briefStage !== null ? true : undefined}
+              className="jim-card flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-ayu-text hover:border-ayu-accent/40 hover:text-ayu-accent disabled:border-ayu-accent/30 disabled:text-ayu-accent disabled:hover:border-ayu-accent/30"
+            >
+              {briefStage !== null ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <Sunrise aria-hidden="true" className="size-4" />
+              )}
+              {briefStage ?? "Hear your morning"}
+            </button>
+            {briefError && (
+              <p
+                role="alert"
+                className="jim-rise rounded-xl border border-ayu-red/25 bg-ayu-red/10 px-3 py-2 text-sm text-ayu-red"
+              >
+                {briefError}
+              </p>
+            )}
+          </div>
         )}
         {data.daily && <DailyWord word={data.daily} />}
         {data.noticed && <JimNoticed items={data.noticed} onAsk={onLog} />}

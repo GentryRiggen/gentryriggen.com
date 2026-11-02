@@ -45,6 +45,14 @@ export interface ReadAloud {
   toggleSample: (key: string, text: string, voice?: string) => void;
   /** Plays `text` under `key`, replacing what is on. False: nothing could start. */
   play: (key: string, text: string, options?: PlayOptions) => boolean;
+  /**
+   * Shows `key` loading before its text exists, with what is happening
+   * (`stage`). The signal aborts on stop (the bar's Cancel) or when
+   * something else starts; null when nothing may start (the app lock).
+   */
+  prepare: (key: string, title: string, stage: string) => AbortSignal | null;
+  /** What was being prepared failed: the bar shows why. */
+  failPrepared: (message: string) => void;
   /** Unlocks audio inside a tap, ahead of a play that waits on the network. */
   prime: () => void;
   /** Call inside a tap (Send): lets a later automatic read start on iOS. */
@@ -136,6 +144,16 @@ export default function useReadAloud(
     [player]
   );
 
+  const prepare = useCallback(
+    (key: string, title: string, stage: string) =>
+      player.prepare(key, title, stage),
+    [player]
+  );
+  const failPrepared = useCallback(
+    (message: string) => player.failPrepared(message),
+    [player]
+  );
+
   const prime = useCallback(() => player.unlock(), [player]);
 
   const readNew = useCallback(
@@ -202,6 +220,8 @@ export default function useReadAloud(
     readNew,
     toggleSample,
     play,
+    prepare,
+    failPrepared,
     prime,
     unlock,
     togglePause,

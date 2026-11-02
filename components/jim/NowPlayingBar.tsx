@@ -23,11 +23,19 @@ interface BarButtonProps {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  /** Disabled because it is working (a spinner): not dimmed. */
+  busy?: boolean;
   children: ReactNode;
 }
 
 /** 44px to tap, whatever the icon's size. */
-function BarButton({ label, onClick, disabled, children }: BarButtonProps) {
+function BarButton({
+  label,
+  onClick,
+  disabled,
+  busy,
+  children,
+}: BarButtonProps) {
   return (
     <button
       type="button"
@@ -36,7 +44,9 @@ function BarButton({ label, onClick, disabled, children }: BarButtonProps) {
       disabled={disabled}
       onClick={onClick}
       onPointerDown={keepFocus}
-      className="flex size-11 shrink-0 items-center justify-center rounded-full text-ayu-subtle transition-colors! duration-150! hover:text-ayu-text disabled:opacity-40 disabled:hover:text-ayu-subtle"
+      className={`flex size-11 shrink-0 items-center justify-center rounded-full text-ayu-subtle transition-colors! duration-150! hover:text-ayu-text disabled:opacity-40 disabled:hover:text-ayu-subtle ${
+        busy ? "disabled:opacity-100" : ""
+      }`}
     >
       {children}
     </button>
@@ -44,9 +54,12 @@ function BarButton({ label, onClick, disabled, children }: BarButtonProps) {
 }
 
 /**
- * What is being read, just above the composer: play/pause, the start of
- * the reply, how far along, the speed (− 1.25× +) and stop. Shown while
- * anything is loading, playing or paused; an error stays until closed.
+ * What is being read, just above the composer (on a phone's Notes, above
+ * the home bar): play/pause, the start of the reply, how far along, the
+ * speed (− 1.25× +) and stop. Shown while anything is loading, playing or
+ * paused; an error stays until closed. While a long wait has a stage
+ * ("Writing your morning…") it says so over a moving bar, with Cancel.
+ * Audio the browser refused to start waits behind a big Tap to play.
  */
 export default function NowPlayingBar({
   state,
@@ -72,8 +85,42 @@ export default function NowPlayingBar({
     );
   }
 
+  if (status === "paused" && state.blocked) {
+    return (
+      <div
+        role="region"
+        aria-label="Now playing"
+        className="jim-glass jim-rise mb-2 flex items-center gap-1 rounded-2xl border border-ayu-accent/30 p-1 shadow-[0_8px_30px_-16px_rgb(0_0_0/0.8)]"
+      >
+        <button
+          type="button"
+          onClick={onTogglePause}
+          onPointerDown={keepFocus}
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl px-3 text-left hover:bg-white/[0.04]"
+        >
+          <span className="jim-glow flex size-10 shrink-0 items-center justify-center rounded-full text-ayu-bg">
+            <Play aria-hidden="true" className="size-[1.125rem] fill-current" />
+          </span>
+          <span className="min-w-0">
+            <span className="block font-medium text-ayu-accent">
+              Tap to play
+            </span>
+            <span className="block truncate text-xs text-ayu-subtle">
+              {state.title}
+            </span>
+          </span>
+        </button>
+        <BarButton label="Stop reading" onClick={onStop}>
+          <X aria-hidden="true" className="size-4" />
+        </BarButton>
+      </div>
+    );
+  }
+
   const loading = status === "loading";
   const playing = status === "playing";
+  // A wait with words: no speed to set yet, and × cancels it.
+  const stage = loading ? state.stage : null;
   const known = state.engine === "audio" && state.parts > 0;
   const progress = known
     ? Math.min(1, (state.part + state.partProgress) / state.parts)
@@ -94,6 +141,7 @@ export default function NowPlayingBar({
           label={loading ? "Loading" : playing ? "Pause" : "Play"}
           onClick={onTogglePause}
           disabled={loading}
+          busy={loading}
         >
           {loading ? (
             <LoaderCircle
@@ -115,48 +163,75 @@ export default function NowPlayingBar({
       )}
 
       <div className="min-w-0 flex-1 px-1">
-        <p className="truncate text-sm text-ayu-text">{state.title}</p>
+        {stage ? (
+          <p role="status" className="truncate text-sm text-ayu-accent">
+            {stage}
+          </p>
+        ) : (
+          <p className="truncate text-sm text-ayu-text">{state.title}</p>
+        )}
         <div
           role="progressbar"
           aria-label="Progress"
+          aria-busy={stage ? true : undefined}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={known ? Math.round(progress * 100) : undefined}
-          aria-valuetext={
-            known ? `Part ${state.part + 1} of ${state.parts}` : undefined
+          aria-valuenow={
+            known && !stage ? Math.round(progress * 100) : undefined
           }
-          className="mt-1.5 h-0.5 overflow-hidden rounded-full bg-white/[0.08]"
+          aria-valuetext={
+            stage
+              ? stage
+              : known
+                ? `Part ${state.part + 1} of ${state.parts}`
+                : undefined
+          }
+          className={`mt-1.5 overflow-hidden rounded-full bg-white/[0.08] ${
+            stage ? "h-1" : "h-0.5"
+          }`}
         >
-          <div
-            className={`h-full rounded-full bg-ayu-accent transition-[width] duration-300 ease-linear motion-reduce:transition-none ${
-              known ? "" : "w-full animate-pulse opacity-50"
-            }`}
-            style={known ? { width: `${progress * 100}%` } : undefined}
-          />
+          {stage ? (
+            <div className="jim-shimmer h-full rounded-full" />
+          ) : (
+            <div
+              className={`h-full rounded-full bg-ayu-accent transition-[width] duration-300 ease-linear motion-reduce:transition-none ${
+                known ? "" : "w-full animate-pulse opacity-50"
+              }`}
+              style={known ? { width: `${progress * 100}%` } : undefined}
+            />
+          )}
         </div>
       </div>
 
-      <BarButton
-        label="Slower"
-        onClick={() => onSpeed(stepSpeed(speed, -1))}
-        disabled={speed <= MIN_SPEED}
-      >
-        <Minus aria-hidden="true" className="size-4" />
-      </BarButton>
-      <span className="w-9 shrink-0 text-center text-xs font-medium text-ayu-text tabular-nums">
-        <span className="sr-only">Speed </span>
-        {formatSpeed(speed)}
-      </span>
-      <BarButton
-        label="Faster"
-        onClick={() => onSpeed(stepSpeed(speed, 1))}
-        disabled={speed >= MAX_SPEED}
-      >
-        <Plus aria-hidden="true" className="size-4" />
-      </BarButton>
-      <BarButton label="Stop reading" onClick={onStop}>
-        <X aria-hidden="true" className="size-4" />
-      </BarButton>
+      {stage ? (
+        <BarButton label="Cancel" onClick={onStop}>
+          <X aria-hidden="true" className="size-4" />
+        </BarButton>
+      ) : (
+        <>
+          <BarButton
+            label="Slower"
+            onClick={() => onSpeed(stepSpeed(speed, -1))}
+            disabled={speed <= MIN_SPEED}
+          >
+            <Minus aria-hidden="true" className="size-4" />
+          </BarButton>
+          <span className="w-9 shrink-0 text-center text-xs font-medium text-ayu-text tabular-nums">
+            <span className="sr-only">Speed </span>
+            {formatSpeed(speed)}
+          </span>
+          <BarButton
+            label="Faster"
+            onClick={() => onSpeed(stepSpeed(speed, 1))}
+            disabled={speed >= MAX_SPEED}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+          </BarButton>
+          <BarButton label="Stop reading" onClick={onStop}>
+            <X aria-hidden="true" className="size-4" />
+          </BarButton>
+        </>
+      )}
     </div>
   );
 }

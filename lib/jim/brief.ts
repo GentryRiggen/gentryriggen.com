@@ -21,7 +21,9 @@ export async function fetchBriefScript(
   getToken: GetToken = getIdToken,
   { fresh = false }: { fresh?: boolean } = {},
   fetchFn?: typeof fetch,
-  api: string = JIM_API
+  api: string = JIM_API,
+  /** Cancels the wait (the now-playing bar's ×). */
+  signal?: AbortSignal
 ): Promise<BriefScript> {
   const res = await callJim(
     "/api/brief/script",
@@ -29,7 +31,8 @@ export async function fetchBriefScript(
     getToken,
     fetchFn,
     api,
-    BRIEF_TIMEOUT_MS
+    BRIEF_TIMEOUT_MS,
+    signal
   );
   let json: unknown = null;
   try {

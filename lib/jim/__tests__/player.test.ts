@@ -634,3 +634,101 @@ describe("JimPlayer and the app lock", () => {
     expect(player.getState().status).toBe("paused");
   });
 });
+
+describe("JimPlayer preparing (text still on its way)", () => {
+  it("shows a loading bar with a stage before there is anything to play", () => {
+    const { player, fetches } = setup();
+    const signal = player.prepare("brief:", "Your morning", "Writing…");
+    expect(signal).not.toBeNull();
+    expect(player.getState()).toMatchObject({
+      key: "brief:",
+      status: "loading",
+      title: "Your morning",
+      stage: "Writing…",
+      engine: null,
+    });
+    expect(fetches).toHaveLength(0);
+    player.setStage("Still writing…");
+    expect(player.getState().stage).toBe("Still writing…");
+  });
+
+  it("stop aborts what was being prepared", () => {
+    const { player } = setup();
+    const signal = player.prepare("brief:", "Your morning", "Writing…");
+    player.stop();
+    expect(signal?.aborted).toBe(true);
+    expect(player.getState().status).toBe("idle");
+  });
+
+  it("something else starting aborts it too", () => {
+    const { player } = setup();
+    const signal = player.prepare("brief:", "Your morning", "Writing…");
+    player.play("msg:1", "Hello there.");
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("keeps the play's stage while the first part loads, then clears it", async () => {
+    const { player, fetches } = setup();
+    player.prepare("brief:", "Your morning", "Writing…");
+    player.play("brief:2026-11-02", "Good morning. Two meetings.", {
+      stage: "Warming up the voice…",
+    });
+    expect(player.getState()).toMatchObject({
+      key: "brief:2026-11-02",
+      status: "loading",
+      stage: "Warming up the voice…",
+    });
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(player.getState()).toMatchObject({
+      status: "playing",
+      stage: null,
+    });
+  });
+
+  it("a failure while preparing shows in the bar", () => {
+    const { player } = setup();
+    player.prepare("brief:", "Your morning", "Writing…");
+    player.failPrepared("Couldn't get it.");
+    expect(player.getState()).toMatchObject({
+      status: "error",
+      error: "Couldn't get it.",
+      errorKey: "brief:",
+    });
+  });
+
+  it("a failure after a cancel stays quiet", () => {
+    const { player } = setup();
+    player.prepare("brief:", "Your morning", "Writing…");
+    player.stop();
+    player.failPrepared("Couldn't get it.");
+    expect(player.getState().status).toBe("idle");
+  });
+
+  it("refuses to prepare behind the app lock", () => {
+    const { player } = setup();
+    player.setLocked(true);
+    expect(player.prepare("brief:", "Your morning", "Writing…")).toBeNull();
+    expect(player.getState().status).toBe("idle");
+  });
+
+  it("marks a refused start as blocked (waiting for a tap) until resumed", async () => {
+    const { player, audio, fetches } = setup();
+    audio.locked = true;
+    player.play("msg:1", "Hello there.");
+    fetches[0].resolve(blob("p0"));
+    await flush();
+    expect(player.getState()).toMatchObject({
+      status: "paused",
+      blocked: true,
+    });
+    tap(() => player.togglePause());
+    await flush();
+    expect(player.getState()).toMatchObject({
+      status: "playing",
+      blocked: false,
+    });
+    player.pause();
+    expect(player.getState().blocked).toBe(false);
+  });
+});

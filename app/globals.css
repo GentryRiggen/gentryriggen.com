@@ -1089,12 +1089,40 @@ html:has(.jim-app) body {
   animation: jimShake 360ms ease-in-out both;
 }
 
+/* Waiting with no known end: a glow sweeps along a thin track. Reduced
+   motion leaves it still, a soft lit band in the middle. */
+@keyframes jimShimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@utility jim-shimmer {
+  width: 40%;
+  background-image: linear-gradient(
+    90deg,
+    rgb(255 204 102 / 0) 0%,
+    #ffcc66 50%,
+    rgb(255 204 102 / 0) 100%
+  );
+  box-shadow: 0 0 8px rgb(255 204 102 / 0.6);
+  animation: jimShimmer 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jim-rise,
   .jim-dot,
   .jim-breathe,
-  .jim-shake {
+  .jim-shake,
+  .jim-shimmer {
     animation: none;
+  }
+
+  .jim-shimmer {
+    transform: translateX(75%);
   }
 
   .jim-app button:not(:disabled):active {

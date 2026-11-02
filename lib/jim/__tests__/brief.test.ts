@@ -56,4 +56,29 @@ describe("fetchBriefScript", () => {
       )
     ).rejects.toMatchObject({ kind: "server" });
   });
+
+  it("stops when its signal aborts (the bar's cancel)", async () => {
+    const controller = new AbortController();
+    let seen: AbortSignal | undefined;
+    const fetchFn = jest.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          seen = init.signal ?? undefined;
+          init.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted"))
+          );
+        })
+    );
+    const got = fetchBriefScript(
+      async () => "t",
+      {},
+      fetchFn as unknown as typeof fetch,
+      API,
+      controller.signal
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    controller.abort();
+    await expect(got).rejects.toBeTruthy();
+    expect(seen?.aborted).toBe(true);
+  });
 });
