@@ -38,7 +38,7 @@ function Tile({ label, value, alarm = false, selected, onPick }: TileProps) {
       type="button"
       aria-pressed={selected}
       onClick={onPick}
-      className={`jim-card relative min-h-11 min-w-0 overflow-hidden px-4 py-3 text-left transition-colors duration-150 hover:border-ayu-accent/40 ${
+      className={`jim-card relative min-h-11 min-w-0 overflow-hidden px-4 py-2.5 text-left @2xl:py-3 transition-colors duration-150 hover:border-ayu-accent/40 ${
         selected ? "border-ayu-accent/50! ring-1 ring-ayu-accent/30" : ""
       }`}
     >
@@ -50,7 +50,7 @@ function Tile({ label, value, alarm = false, selected, onPick }: TileProps) {
       />
       <span className="block truncate text-sm text-ayu-subtle">{label}</span>
       <span
-        className={`mt-0.5 block text-[1.75rem] leading-tight font-semibold tracking-tight ${
+        className={`block text-2xl leading-tight font-semibold tracking-tight @2xl:mt-0.5 @2xl:text-[1.75rem] ${
           alarm ? "text-ayu-red" : "jim-figure"
         }`}
       >
@@ -127,8 +127,8 @@ interface ColumnChartProps {
   onPick: (key: string) => void;
 }
 
-/** Plot height in px; columns grow from one baseline. */
-const PLOT = 72;
+/** The tallest column's share of its slot: room above for its number. */
+const PLOT = 80;
 
 /** 14ish columns that are also buttons: tap one to filter to it. */
 export function ColumnChart({
@@ -170,7 +170,7 @@ export function ColumnChart({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10"
         />
         {columns.map((c) => {
-          const h = c.n ? Math.max(4, (c.n / top) * PLOT) : 0;
+          const h = (c.n / top) * PLOT;
           const dim = selected !== null && selected !== c.key;
           return (
             <button
@@ -183,7 +183,7 @@ export function ColumnChart({
               onMouseEnter={() => setHover(c.key)}
               onFocus={() => setHover(c.key)}
               onBlur={() => setHover(null)}
-              className="group relative flex h-[88px] min-h-11 min-w-0 flex-1 flex-col items-center justify-end rounded-md hover:bg-white/[0.04] focus-visible:bg-white/[0.06]"
+              className="group relative flex h-[4.5rem] min-h-11 @2xl:h-[5.5rem] min-w-0 flex-1 flex-col items-center justify-end rounded-md hover:bg-white/[0.04] focus-visible:bg-white/[0.06]"
             >
               {c.n > 0 && c.n === peak && (
                 <span
@@ -196,8 +196,8 @@ export function ColumnChart({
               {c.n > 0 ? (
                 <span
                   aria-hidden="true"
-                  style={{ height: h }}
-                  className={`block w-full max-w-6 rounded-t-[4px] transition-opacity duration-150 motion-reduce:transition-none ${FILLS[c.tone]} ${
+                  style={{ height: `${h}%` }}
+                  className={`block min-h-1 w-full max-w-6 rounded-t-[4px] transition-opacity duration-150 motion-reduce:transition-none ${FILLS[c.tone]} ${
                     dim ? "opacity-35" : "group-hover:brightness-110"
                   }`}
                 />
@@ -335,11 +335,11 @@ export function AreaSplit({
   return (
     <figure className="jim-card min-w-0 space-y-3 px-4 pt-3 pb-3.5">
       <figcaption className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-medium text-ayu-text">
+        <span className="text-sm font-medium whitespace-nowrap text-ayu-text">
           Work vs personal
         </span>
-        <span className="text-xs text-ayu-subtle tabular-nums">
-          {todos(total)} open
+        <span className="text-xs whitespace-nowrap text-ayu-subtle tabular-nums">
+          {total} open
         </span>
       </figcaption>
       {total === 0 ? (

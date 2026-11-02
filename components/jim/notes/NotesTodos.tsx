@@ -81,7 +81,7 @@ const AREA_OPTIONS: { id: TodoArea; label: string }[] = [
 ];
 
 const WHEN_OPTIONS: { id: string; label: string }[] = [
-  { id: "any", label: "Any time" },
+  { id: "any", label: "Any" },
   { id: "overdue", label: "Overdue" },
   { id: "today", label: "Today" },
   { id: "week", label: "This week" },
@@ -89,10 +89,11 @@ const WHEN_OPTIONS: { id: string; label: string }[] = [
   { id: "nodate", label: "No date" },
 ];
 
-const SORT_OPTIONS: { id: TodoSort; label: string }[] = [
+/** Short enough for a phone; read out as "Sort" then the choice. */
+const SORT_OPTIONS: { id: TodoSort; label: string; name?: string }[] = [
   { id: "due", label: "Due date" },
   { id: "project", label: "Project" },
-  { id: "done", label: "Recently done" },
+  { id: "done", label: "Done", name: "Recently done" },
 ];
 
 function count(n: number): string {
@@ -182,7 +183,8 @@ function FilterChip({
 interface SegmentedProps<T extends string> {
   label: string;
   value: T;
-  options: { id: T; label: string }[];
+  /** `name` is read out when it says more than the label. */
+  options: { id: T; label: string; name?: string }[];
   onChange: (next: T) => void;
 }
 
@@ -207,8 +209,9 @@ function Segmented<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
+            aria-label={o.name}
             onClick={() => onChange(o.id)}
-            className={`min-h-11 min-w-0 flex-1 truncate rounded-xl px-3 text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
+            className={`min-h-11 min-w-0 flex-auto truncate rounded-xl px-3 text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
               selected
                 ? "bg-ayu-accent/12 text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset"
                 : "text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
@@ -480,7 +483,7 @@ export default function NotesTodos({
     <button
       type="button"
       onClick={() => onDraft("Add a todo: ")}
-      className="jim-glow flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 font-medium text-ayu-bg hover:brightness-110"
+      className="jim-glow flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 font-medium whitespace-nowrap text-ayu-bg hover:brightness-110"
     >
       <Plus aria-hidden="true" className="size-4" strokeWidth={2.5} />
       New todo
@@ -594,9 +597,7 @@ export default function NotesTodos({
     <Segmented
       label="Sort"
       value={f.sort}
-      options={SORT_OPTIONS.map((s) =>
-        s.id === "done" ? { ...s, label: wide ? s.label : "Done" } : s
-      )}
+      options={SORT_OPTIONS}
       onChange={pickSort}
     />
   );
@@ -637,78 +638,92 @@ export default function NotesTodos({
         </div>
       )}
 
-      {f.view !== "list" && (
-        <section aria-label="At a glance" className="space-y-3">
-          <TodoTiles
-            stats={stats}
-            selected={tileOn}
-            onPick={(tile) => {
-              if (tile === "done") set({ sort: "done", when: "any" });
-              else
-                set({
-                  sort: doneMode ? "due" : f.sort,
-                  when: tile === "open" ? "any" : tile,
-                });
-            }}
-          />
-          <div className="grid gap-3 @2xl:grid-cols-3">
-            <ColumnChart
-              title="Coming up"
-              summary={comingSummary(up)}
-              columns={comingColumns(up, today)}
-              selected={
-                doneMode
-                  ? null
-                  : f.when === "overdue"
-                    ? "overdue"
-                    : f.when === "today"
-                      ? today
-                      : isDayFilter(f.when)
-                        ? f.when
-                        : null
-              }
-              onPick={(key) =>
-                pickWhen(
-                  key === "overdue" ? "overdue" : key === today ? "today" : key
-                )
-              }
+      <section aria-label="At a glance" className="space-y-3">
+        <div className="-my-1 flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-ayu-subtle uppercase">
+            <span
+              aria-hidden="true"
+              className="h-3 w-1 rounded-full bg-gradient-to-b from-ayu-accent to-ayu-orange"
             />
-            <ColumnChart
-              title="Done per day"
-              summary={doneSummary(perDay)}
-              columns={doneColumns(perDay, today)}
-              selected={doneMode && isDayFilter(f.when) ? f.when : null}
-              onPick={(day) => set({ sort: "done", when: day })}
+            At a glance
+          </h2>
+          <div className="-mr-3">{chartsToggle}</div>
+        </div>
+        {f.view !== "list" && (
+          <>
+            <TodoTiles
+              stats={stats}
+              selected={tileOn}
+              onPick={(tile) => {
+                if (tile === "done") set({ sort: "done", when: "any" });
+                else
+                  set({
+                    sort: doneMode ? "due" : f.sort,
+                    when: tile === "open" ? "any" : tile,
+                  });
+              }}
             />
-            <AreaSplit
-              {...split}
-              area={f.area}
-              onPick={(area) => pickArea(f.area === area ? "all" : area)}
-            />
-          </div>
-          <div className="flex justify-end">{chartsToggle}</div>
-        </section>
-      )}
+            <div className="grid gap-3 @2xl:grid-cols-3">
+              <ColumnChart
+                title="Coming up"
+                summary={comingSummary(up)}
+                columns={comingColumns(up, today)}
+                selected={
+                  doneMode
+                    ? null
+                    : f.when === "overdue"
+                      ? "overdue"
+                      : f.when === "today"
+                        ? today
+                        : isDayFilter(f.when)
+                          ? f.when
+                          : null
+                }
+                onPick={(key) =>
+                  pickWhen(
+                    key === "overdue"
+                      ? "overdue"
+                      : key === today
+                        ? "today"
+                        : key
+                  )
+                }
+              />
+              <ColumnChart
+                title="Done per day"
+                summary={doneSummary(perDay)}
+                columns={doneColumns(perDay, today)}
+                selected={doneMode && isDayFilter(f.when) ? f.when : null}
+                onPick={(day) => set({ sort: "done", when: day })}
+              />
+              <AreaSplit
+                {...split}
+                area={f.area}
+                onPick={(area) => pickArea(f.area === area ? "all" : area)}
+              />
+            </div>
+          </>
+        )}
+      </section>
 
       {wide ? (
         <div className={`${pinned} space-y-1`}>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="w-72 shrink-0">{areaControl}</div>
-            {searchBox}
-            <div className="w-[22rem] shrink-0">{sortControl}</div>
+          <div className="flex items-center gap-3">
+            <div className="w-60 shrink-0">{areaControl}</div>
+            <span aria-hidden="true" className="text-sm text-ayu-subtle">
+              Sort
+            </span>
+            <div className="shrink-0">{sortControl}</div>
+            <div className="ml-auto">{newTodo}</div>
           </div>
           {projectChips}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">{whenChips}</div>
-            {f.view === "list" && chartsToggle}
-            {newTodo}
+            <div className="flex w-56 shrink-0">{searchBox}</div>
           </div>
         </div>
       ) : (
         <>
-          {f.view === "list" && (
-            <div className="-mt-4 flex justify-end">{chartsToggle}</div>
-          )}
           {/* On a phone only Area and Projects stay pinned: the rest
               would cover the list. */}
           <div className={`${pinned} space-y-1`}>
