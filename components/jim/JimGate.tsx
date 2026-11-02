@@ -147,7 +147,7 @@ export default function JimGate() {
   useEffect(() => onSignInRefused(() => endOnce(refusal.current)), []);
 
   useEffect(() => {
-    // Off gentryriggen.com the server would refuse every request: go there
+    // Off Jim's own host the server would refuse every request: go there
     // first, before Firebase loads or the form shows.
     const target = jimRedirectTarget(window.location.hostname);
     if (target) {
@@ -156,8 +156,13 @@ export default function JimGate() {
     }
     void registerJimServiceWorker();
     const hook = jimTestHook();
-    // The e2e hook (compiled out of the shipped build) stands in for Firebase.
-    const fake = hook?.signedIn === true;
+    // The e2e hook stands in for Firebase. The build flags are written out in
+    // full (not via a helper) so the shipped build folds them to false and
+    // drops the stand-in entirely.
+    const fake =
+      (process.env.NODE_ENV !== "production" ||
+        process.env.NEXT_PUBLIC_E2E === "1") &&
+      hook?.signedIn === true;
     if (!fake && !isFirebaseConfigured()) return;
     const api = hook?.api ?? JIM_API;
     const watch = fake ? watchAsOwner : watchAuth;

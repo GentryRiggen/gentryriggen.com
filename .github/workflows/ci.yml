@@ -217,8 +217,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-production-${{ hashFiles('package-lock.json') }}-
 
+      # Jim signs in through its own tenant, whose id is built into the page
+      # (public, like the rest of the Firebase web config). A build that ships
+      # must have it, or Jim could not sign in; pull requests may build without.
+      - name: 🔑 Jim's sign-in tenant is set
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          JIM_TENANT: ${{ vars.JIM_TENANT }}
+        run: |
+          if [ -z "$JIM_TENANT" ]; then
+            echo "::error::The JIM_TENANT repository variable is empty: set it (Settings > Secrets and variables > Actions > Variables) to Jim's sign-in tenant id, or the deployed Jim can't sign in."
+            exit 1
+          fi
+
       - name: 🏗️ Build
+        env:
+          NEXT_PUBLIC_JIM_TENANT: ${{ vars.JIM_TENANT }}
         run: npm run build
+
+      # Jim's own site: the page's inline scripts get hashed into its CSP, and
+      # a page that loads test hooks, App Check, reCAPTCHA or analytics fails.
+      - name: 🔒 Check Jim's site
+        run: node scripts/jim-site.mjs --check
 
       - name: 💾 Save Next.js build cache
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -453,6 +473,11 @@ jobs:
         with:
           name: build
           path: out
+
+      # Builds out-jim/ (Jim's own site) from out/ and fills the hashes into
+      # firebase.json's CSP; fails rather than ship a page the CSP would break.
+      - name: 🔒 Build Jim's site
+        run: node scripts/jim-site.mjs
 
       - name: 🔥 Validate Firebase config
         run: |

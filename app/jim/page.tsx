@@ -6,11 +6,11 @@ export const metadata: Metadata = {
   description: "Private chat.",
   robots: { index: false, follow: false },
   // Replace the layout's homepage canonical and share cards.
-  alternates: { canonical: "https://gentryriggen.com/jim" },
+  alternates: { canonical: "https://jim.gentryriggen.com/jim" },
   openGraph: {
     title: "Jim",
     description: "Private chat.",
-    url: "https://gentryriggen.com/jim",
+    url: "https://jim.gentryriggen.com/jim",
     type: "website",
   },
   twitter: { card: "summary", title: "Jim", description: "Private chat." },

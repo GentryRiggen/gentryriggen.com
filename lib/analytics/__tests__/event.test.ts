@@ -54,6 +54,15 @@ describe("buildPageview", () => {
     }
   );
 
+  it("never tracks anything on Jim's own host, whatever the path", () => {
+    expect(buildPageview(env({ hostname: "jim.gentryriggen.com" }))).toBeNull();
+    expect(
+      buildPageview(
+        env({ hostname: "jim.gentryriggen.com", pathname: "/ship-builder" })
+      )
+    ).toBeNull();
+  });
+
   it("returns null for untracked paths, bots and excluded browsers", () => {
     expect(buildPageview(env({ pathname: "/admin" }))).toBeNull();
     expect(buildPageview(env({ webdriver: true }))).toBeNull();

@@ -540,11 +540,11 @@ test.describe("Jim", () => {
     // Not the homepage's canonical or share card.
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://gentryriggen.com/jim"
+      "https://jim.gentryriggen.com/jim"
     );
     await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
       "content",
-      "https://gentryriggen.com/jim"
+      "https://jim.gentryriggen.com/jim"
     );
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
       "content",

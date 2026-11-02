@@ -202,18 +202,18 @@ it("signs out from the not-connected screen", async () => {
   await waitFor(() => expect(mockClient.signOutUser).toHaveBeenCalled());
 });
 
-it("sends other domains to gentryriggen.com/jim before loading sign-in", async () => {
+it("sends other domains to jim.gentryriggen.com/jim before loading sign-in", async () => {
   jest.mocked(host.jimRedirectTarget).mockReturnValueOnce(host.JIM_URL);
   render(<JimGate />);
   await waitFor(() =>
-    expect(host.goTo).toHaveBeenCalledWith("https://gentryriggen.com/jim")
+    expect(host.goTo).toHaveBeenCalledWith("https://jim.gentryriggen.com/jim")
   );
   expect(mockClient.watchAuth).not.toHaveBeenCalled();
   expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
   expect(screen.queryByRole("heading")).not.toBeInTheDocument();
 });
 
-it("stays put on gentryriggen.com", async () => {
+it("stays put on Jim's own host", async () => {
   await renderGate();
   expect(host.goTo).not.toHaveBeenCalled();
 });

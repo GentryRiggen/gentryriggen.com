@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
+    "out-jim/**",
     "build/**",
     "next-env.d.ts",
     // Agent worktrees
