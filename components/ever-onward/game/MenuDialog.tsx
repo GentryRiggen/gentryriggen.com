@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type {
   RunState,
   SaveData,
@@ -28,6 +28,8 @@ interface MenuDialogProps {
   isBackupDisabled: boolean;
   onLeave: () => void;
   onReplaceSave: (save: SaveData) => void;
+  /** Starts this universe again from its first part. */
+  onStartOver: () => void;
   onClose: () => void;
 }
 
@@ -36,6 +38,57 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     <div className="space-y-3">
       <h3 className={`${pixelClass} text-xs text-cyan-200`}>{title}</h3>
       {children}
+    </div>
+  );
+}
+
+interface StartOverProps {
+  title: string;
+  onConfirm: () => void;
+}
+
+/** Start the universe over, behind a second, plainly worded tap. */
+function StartOver({ title, onConfirm }: StartOverProps) {
+  const [isAsking, setIsAsking] = useState(false);
+  if (!isAsking)
+    return (
+      <button
+        type="button"
+        data-testid="lm-start-over"
+        onClick={() => setIsAsking(true)}
+        className={`${retroSecondaryButtonClass} w-full`}
+      >
+        Start over
+      </button>
+    );
+  return (
+    <div
+      role="group"
+      aria-label="Start over?"
+      data-testid="lm-start-over-confirm"
+      className="space-y-2 border-2 border-amber-500 bg-amber-950/40 p-3"
+    >
+      <p className="font-mono text-sm text-amber-100">
+        Start {title} again from the very beginning? This run&apos;s progress
+        goes. Your embers, permanent upgrades and finished runs stay.
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          data-testid="lm-start-over-yes"
+          onClick={onConfirm}
+          className={`${retroPrimaryButtonClass} flex-1`}
+        >
+          Yes, start over
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsAsking(false)}
+          className={`${retroSecondaryButtonClass} flex-1`}
+        >
+          Keep playing
+        </button>
+      </div>
     </div>
   );
 }
@@ -75,6 +128,7 @@ export default function MenuDialog({
   isBackupDisabled,
   onLeave,
   onReplaceSave,
+  onStartOver,
   onClose,
 }: MenuDialogProps) {
   const isMusicOn = everOnwardChannels.music.useValue();
@@ -96,6 +150,13 @@ export default function MenuDialog({
           >
             What&apos;s new
           </Link>
+          <StartOver
+            title={def.title}
+            onConfirm={() => {
+              onStartOver();
+              onClose();
+            }}
+          />
         </div>
       </Section>
       <Section title="Sound">

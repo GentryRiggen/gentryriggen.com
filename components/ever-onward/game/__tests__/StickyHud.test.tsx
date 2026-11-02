@@ -25,6 +25,7 @@ function renderScreen(run: RunState, onTap = jest.fn(() => 1)) {
       onBuyEmber={jest.fn()}
       onDismissEmberTip={jest.fn()}
       onRestart={jest.fn()}
+      onStartOver={jest.fn()}
       onLeave={jest.fn()}
       onDismissOverlay={jest.fn()}
       currentSave={newSave()}

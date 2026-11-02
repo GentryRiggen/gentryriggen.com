@@ -83,6 +83,8 @@ interface GameScreenProps {
   onBuyEmber: (id: string) => void;
   onDismissEmberTip: () => void;
   onRestart: () => void;
+  /** Starts the universe again from its first part (the menu's Start over). */
+  onStartOver: () => void;
   onLeave: () => void;
   currentSave: SaveData;
   onReplaceSave: (save: SaveData) => void;
@@ -101,6 +103,7 @@ export default function GameScreen({
   onBuyEmber,
   onDismissEmberTip,
   onRestart,
+  onStartOver,
   onLeave,
   currentSave,
   onReplaceSave,
@@ -581,6 +584,7 @@ export default function GameScreen({
           isBackupDisabled={overlay !== null}
           onLeave={onLeave}
           onReplaceSave={onReplaceSave}
+          onStartOver={onStartOver}
           onClose={handleCloseMenu}
         />
       )}

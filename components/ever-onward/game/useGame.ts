@@ -14,6 +14,7 @@ import {
 } from "@/lib/ever-onward/engine/engine";
 import {
   buyPrestigeUpgrade,
+  startOver,
   endRun,
   newUniverseSave,
 } from "@/lib/ever-onward/engine/prestige";
@@ -84,6 +85,8 @@ export interface GameApi {
   dismissOverlay(): void;
   /** Ends the run (finished, or restarted for embers) and starts a new one. */
   restart(): void;
+  /** Starts the open universe again from its first part (from the menu). */
+  startOver(): void;
   /** Swaps in a whole save (from a backup code), writes it and shows the hub. */
   replaceSave(next: SaveData): void;
   /** Writes the save now (before a reload, for example). */
@@ -391,6 +394,15 @@ export function useGame(): GameApi {
     setEndingBeatDone(false);
   }, [activeId, def, replaceUniverse]);
 
+  const startOverRun = useCallback(() => {
+    const current = activeId ? saveRef.current?.universes[activeId] : undefined;
+    if (!activeId || !def || !current) return;
+    replaceUniverse(activeId, startOver(def, current), true);
+    setSeenTransitions(-1);
+    setEndingDone(false);
+    setEndingBeatDone(false);
+  }, [activeId, def, replaceUniverse]);
+
   const replaceSave = useCallback(
     (next: SaveData) => {
       commit(next);
@@ -425,6 +437,7 @@ export function useGame(): GameApi {
     dismissEmberTip,
     dismissOverlay,
     restart,
+    startOver: startOverRun,
     replaceSave,
     saveNow: persist,
   };

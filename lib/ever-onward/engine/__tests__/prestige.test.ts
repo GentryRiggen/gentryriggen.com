@@ -8,6 +8,7 @@ import {
   prestigeLabel,
   prestigeSingular,
   prestigeUpgradeCost,
+  startOver,
 } from "../prestige";
 import type { RunState } from "../types";
 import { fixture as def } from "./fixtures";
@@ -100,5 +101,23 @@ describe("prestige", () => {
     };
     expect(prestigeUpgradeCost(def, maxed, "spark")).toBeNull();
     expect(buyPrestigeUpgrade(def, maxed, "spark")).toBe(maxed);
+  });
+});
+
+describe("startOver", () => {
+  it("starts a first-part run fresh and keeps the embers", () => {
+    const save = {
+      ...newUniverseSave(def),
+      embers: 3,
+      completions: 1,
+    };
+    save.run.resources.coins = 999;
+    save.run.time = 120;
+    const next = startOver(def, save);
+    expect(next.run.phase).toBe(0);
+    expect(next.run.time).toBe(0);
+    expect(next.run.resources.coins).not.toBe(999);
+    expect(next.embers).toBe(3);
+    expect(next.completions).toBe(1);
   });
 });
