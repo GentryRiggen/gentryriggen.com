@@ -57,19 +57,19 @@ export default function GaugeMeter({
       <p className="flex items-baseline justify-between gap-3">
         <span className="flex items-baseline gap-2">
           <span
-            className={`${pixelClass} ${isBig ? "text-sm" : "text-xs"} leading-none text-cyan-200`}
+            className={`${pixelClass} ${isBig ? "text-xs sm:text-sm" : "text-xs"} leading-none text-cyan-200`}
           >
             {label}
           </span>
           <span
-            className={`${pixelClass} ${isBig ? "w-20 text-xs" : "w-16 text-[10px]"} leading-none ${color}`}
+            className={`${pixelClass} ${isBig ? "w-14 text-[10px] sm:w-20 sm:text-xs" : "w-16 text-[10px]"} leading-none ${color}`}
           >
             {status}
           </span>
         </span>
         <span
           data-testid={`${testId}-count`}
-          className={`${pixelClass} shrink-0 ${isBig ? "text-xl" : "text-xs"} leading-none tabular-nums ${color}`}
+          className={`${pixelClass} shrink-0 whitespace-nowrap ${isBig ? "text-sm sm:text-xl" : "text-xs"} leading-none tabular-nums ${color}`}
         >
           {amount}
         </span>
@@ -80,7 +80,7 @@ export default function GaugeMeter({
           value={safeCurrent / safeMax}
           max={1}
           className={`mt-1.5 block w-full appearance-none overflow-hidden border-2 [&::-webkit-progress-bar]:bg-slate-900 ${
-            isBig ? "h-6" : "h-3"
+            isBig ? "h-5 sm:h-6" : "h-3"
           } ${BAR[tone]}`}
         />
       )}
