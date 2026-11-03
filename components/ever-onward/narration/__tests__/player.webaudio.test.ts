@@ -72,14 +72,16 @@ describe("narration player with Web Audio", () => {
     expect(mediaPlay).not.toHaveBeenCalled();
   });
 
-  it("plays at the chosen speed, and a new speed reaches the line speaking", async () => {
+  it("plays at the chosen speed, and a new speed picks up mid-line", async () => {
     setNarrationSettings({ rate: 1.5 });
     playNarration("light/intro-coast");
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
+    // This fake context cannot make buffers, so it falls back to the rate.
     expect(started[0]?.playbackRate.value).toBe(1.5);
     setNarrationSettings({ rate: 2 });
     applyNarrationRate();
-    expect(started[0]?.playbackRate.value).toBe(2);
+    expect(started).toHaveLength(2);
+    expect(started[1]?.playbackRate.value).toBe(2);
   });
 });

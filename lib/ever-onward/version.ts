@@ -1,2 +1,2 @@
 /** Bumped by hand with each release. */
-export const EVER_ONWARD_VERSION = "1.28.0";
+export const EVER_ONWARD_VERSION = "1.29.0";

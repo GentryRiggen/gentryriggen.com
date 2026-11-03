@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { applyAudioSession } from "./audioSession";
+import { stretchBuffer } from "./timeStretch";
 
 /** A recorded line: where its MP3 lives, under public/. */
 export interface VoiceClip {
@@ -17,8 +18,8 @@ export interface VoicePlayerOptions {
   /** How many automatic lines may wait their turn (oldest dropped). */
   maxQueue?: number;
   /**
-   * Playback speed for each new line (1 is normal). Under Web Audio a faster
-   * line is also higher pitched.
+   * Playback speed (1 is normal). Lines are time-stretched, so a faster
+   * voice keeps its own pitch.
    */
   getRate?: () => number;
 }
@@ -32,6 +33,10 @@ export interface VoicePlayer {
   stop: () => void;
   /** Re-reads the speed (`getRate`) for the line speaking now. */
   applyRate: () => void;
+  /** Holds the line speaking now where it is (nothing ends while held). */
+  pause: () => void;
+  /** Carries on from where `pause` held it. */
+  resume: () => void;
   /** The id being spoken now, or null. */
   useNowPlaying: () => string | null;
   /**
@@ -194,23 +199,87 @@ export function createVoicePlayer({
     emit();
   }
 
+  /** Stretched copies of clips, by file and speed (a few, newest kept). */
+  const stretched = new Map<string, AudioBuffer>();
+
+  /**
+   * The clip at speed `r`, time-stretched so its pitch stays put, or null
+   * where it cannot be (then the speed falls back to playbackRate).
+   */
+  function atSpeed(
+    c: AudioContext,
+    file: string,
+    buffer: AudioBuffer,
+    r: number
+  ): AudioBuffer | null {
+    if (r === 1) return buffer;
+    const key = `${file}@${r}`;
+    const cached = stretched.get(key);
+    if (cached) return cached;
+    try {
+      const out = stretchBuffer(c, buffer, r);
+      stretched.set(key, out);
+      if (stretched.size > 12) {
+        const oldest = stretched.keys().next().value;
+        if (oldest !== undefined) stretched.delete(oldest);
+      }
+      return out;
+    } catch {
+      return null;
+    }
+  }
+
+  /** What is playing under Web Audio, so a new speed can pick up mid-line. */
+  let current: {
+    id: string;
+    file: string;
+    buffer: AudioBuffer;
+    rate: number;
+    /** Context time when this stretch started. */
+    startedAt: number;
+    /** Where in the original clip (seconds) it started. */
+    offset: number;
+  } | null = null;
+
+  function playFrom(
+    c: AudioContext,
+    id: string,
+    file: string,
+    buffer: AudioBuffer,
+    offset: number
+  ): void {
+    stopSource();
+    const r = rate();
+    const fast = atSpeed(c, file, buffer, r);
+    const node = c.createBufferSource();
+    node.buffer = fast ?? buffer;
+    if (!fast && node.playbackRate) node.playbackRate.value = r;
+    node.connect(c.destination);
+    node.onended = () => {
+      if (source !== node) return;
+      source = null;
+      current = null;
+      finish(id);
+    };
+    source = node;
+    current = {
+      id,
+      file,
+      buffer,
+      rate: r,
+      startedAt: c.currentTime ?? 0,
+      offset,
+    };
+    // A stretched clip is 1/r as long, so its offsets are too.
+    node.start(0, fast ? offset / r : offset);
+  }
+
   function startWebAudio(c: AudioContext, id: string, file: string): void {
     resume(c);
     load(c, file).then(
       (buffer) => {
         if (playingId !== id) return;
-        stopSource();
-        const node = c.createBufferSource();
-        node.buffer = buffer;
-        if (node.playbackRate) node.playbackRate.value = rate();
-        node.connect(c.destination);
-        node.onended = () => {
-          if (source !== node) return;
-          source = null;
-          finish(id);
-        };
-        source = node;
-        node.start();
+        playFrom(c, id, file, buffer, 0);
       },
       () => finish(id)
     );
@@ -231,6 +300,7 @@ export function createVoicePlayer({
   }
 
   function start(id: string): void {
+    isHeld = false;
     const clip = getClip(id);
     if (!clip) {
       finish(playingId);
@@ -273,9 +343,50 @@ export function createVoicePlayer({
     emit();
   }
 
+  let isHeld = false;
+
+  function pause(): void {
+    if (isHeld) return;
+    isHeld = true;
+    try {
+      const result = ctx?.suspend?.();
+      result?.catch(() => undefined);
+    } catch {
+      // Nothing to hold.
+    }
+    if (audio && !audio.paused) {
+      try {
+        audio.pause();
+      } catch {
+        // Nothing to hold.
+      }
+    }
+  }
+
+  function resumeHeld(): void {
+    if (!isHeld) return;
+    isHeld = false;
+    resume(ctx);
+    if (audio && playingId !== null && audio.paused) {
+      try {
+        const result = audio.play() as Promise<void> | undefined;
+        result?.catch(() => finish(playingId));
+      } catch {
+        finish(playingId);
+      }
+    }
+  }
+
   function applyRate(): void {
-    if (source?.playbackRate) source.playbackRate.value = rate();
     if (audio) audio.playbackRate = rate();
+    const c = ctx;
+    const now = current;
+    if (!c || !now || !source || now.id !== playingId) return;
+    if (rate() === now.rate) return;
+    // Carry on from the same word at the new speed.
+    const at = now.offset + ((c.currentTime ?? 0) - now.startedAt) * now.rate;
+    if (at >= now.buffer.duration) return;
+    playFrom(c, now.id, now.file, now.buffer, at);
   }
 
   function unlockOnGesture(): void {
@@ -332,11 +443,23 @@ export function createVoicePlayer({
     stopSource();
     ctx = null;
     buffers.clear();
+    stretched.clear();
+    current = null;
     audio = null;
     playingId = null;
     queue = [];
     isUnlockWired = false;
+    isHeld = false;
   }
 
-  return { play, stop, applyRate, useNowPlaying, unlockOnGesture, reset };
+  return {
+    play,
+    stop,
+    applyRate,
+    pause,
+    resume: resumeHeld,
+    useNowPlaying,
+    unlockOnGesture,
+    reset,
+  };
 }
