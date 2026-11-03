@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.30.2",
+    date: "2026-11-03",
+    title: "Upgrade cards that make sense",
+    highlights: [
+      "Upgrade cards only show what the upgrade changes. No more lines like Balancing by hand → by hand on the Load balancer",
+      "Cards say what you get: +3 blocks/sec, not just +3 per second",
+      "Ideas tell you plainly what they do, like Every field pays ×2 or The tower sways half as fast",
+      "Letting a light go dark shows how high the flame will leap, and the Lamp crew drills card no longer says half as many flashes when it really doubles them",
+    ],
+  },
+  {
     version: "1.30.1",
     date: "2026-11-03",
     title: "Sound that comes back",

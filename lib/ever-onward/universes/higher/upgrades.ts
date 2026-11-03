@@ -8,25 +8,37 @@ import {
   PHASE_TOP,
   PHASE_TOWN,
   type HigherPhaseId,
+  MANUAL_RESOURCES,
+  RESOURCES,
 } from "./resources";
 import { descentShare } from "./descent";
 import { incomePerSecond, manualPerTap } from "./tick";
 import { owned } from "./lines";
 import { TUNING } from "./tuning";
 
-/** "Per tap 2 → 3" for a scale step, read from the run as it stands. */
+/** What this chapter's taps and helpers make, lowercase ("blocks"). */
+const noun = (run: RunState): string =>
+  (
+    RESOURCES.find((r) => r.id === MANUAL_RESOURCES[run.phase])?.label ?? ""
+  ).toLowerCase();
+
+/** "Blocks per tap 2 → 3" for a scale step, read from the run as it stands. */
 function scalePreview(run: RunState, id: string): string {
   const after: RunState = {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
   return [
-    rateEffect(manualPerTap(run), manualPerTap(after), "per tap"),
-    rateEffect(incomePerSecond(run), incomePerSecond(after), "per second"),
+    rateEffect(manualPerTap(run), manualPerTap(after), `${noun(run)} per tap`),
+    rateEffect(
+      incomePerSecond(run),
+      incomePerSecond(after),
+      `${noun(run)}/sec`
+    ),
   ].join("\n");
 }
 
-function ratePreview(run: RunState, id: string, label = "Per second"): string {
+function ratePreview(run: RunState, id: string): string {
   const after: RunState = {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
@@ -34,18 +46,24 @@ function ratePreview(run: RunState, id: string, label = "Per second"): string {
   return rateEffect(
     incomePerSecond(run),
     incomePerSecond(after),
-    label.toLowerCase()
+    `${noun(run)}/sec`
   );
 }
 
-/** "Sways 1x → 0.7x" for a brace or a one-off that calms the tower. */
+/**
+ * "The tower sways 30% slower" then "Sway speed ×0.77 → ×0.54", for a brace
+ * or a one-off that calms the tower.
+ */
 function swayPreview(run: RunState, id: string): string {
   const after: RunState = {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
+  const before = swayCalm(run);
+  const next = swayCalm(after);
   const round = (n: number): string => String(Math.round(n * 100) / 100);
-  return `Sway builds ${round(swayCalm(run))}x → ${round(swayCalm(after))}x`;
+  const slower = before > 0 ? Math.round((1 - next / before) * 100) : 0;
+  return `The tower sways ${slower}% slower\nSway speed ×${round(before)} → ×${round(next)}`;
 }
 
 const RAW_UPGRADES: readonly UpgradeDef[] = [

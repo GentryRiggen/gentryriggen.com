@@ -193,7 +193,14 @@ function chain({
         sync(run);
       },
       badge: step.badge,
-      effectPreview: plain ? plainOf(id, plain) : previewOf(id, stats),
+      // The steps share one stat list, so each card shows only the lines it
+      // changes: no "Balancing by hand → by hand" on the first step.
+      effectPreview: plain
+        ? plainOf(id, plain)
+        : previewOf(
+            id,
+            stats.map((stat) => ({ ...stat, isHiddenWhenSame: true }))
+          ),
     };
   });
 }
@@ -376,17 +383,19 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Lamp crew drills",
-        description: "Keepers work in pairs. Half as many flashes again.",
+        description: "Keepers practise in pairs, and flash twice as much.",
         showWhen: (run) => owned(run, "keeper") >= 4,
       },
       {
         name: "Coast guard station",
-        description: "A station with a roster. Twice as many again.",
+        description:
+          "A station with a roster. Keepers flash twice as much again.",
         showWhen: (run) => lighthouseCount(run) >= 3,
       },
       {
         name: "Rescue fleet",
-        description: "Ships flashing at ships. Twice as many again.",
+        description:
+          "Rescue boats help guide the ships in. Keepers do twice as much again.",
         showWhen: (run) => lighthouseCount(run) >= 5,
       },
     ],
@@ -852,11 +861,13 @@ const skyUpgrades: UpgradeDef[] = [
         label: "Short hop",
         read: (run) => routeSeconds(run, 0),
         suffix: " s",
+        isPlain: true,
       },
       {
         label: "Long loop",
         read: (run) => routeSeconds(run, 1),
         suffix: " s",
+        isPlain: true,
       },
     ]),
   },
@@ -880,7 +891,9 @@ const skyUpgrades: UpgradeDef[] = [
     base: "engines",
     phases: sky,
     currency: "energy",
-    stats: [{ label: "Trip", read: travelSeconds, suffix: "s" }],
+    stats: [
+      { label: "Trip", read: travelSeconds, suffix: " s", less: "shorter" },
+    ],
     steps: [
       {
         name: "Quicker engines",
@@ -903,7 +916,7 @@ const skyUpgrades: UpgradeDef[] = [
     base: "appetite",
     phases: sky,
     currency: "energy",
-    stats: [{ label: "Star taking", read: appetite, suffix: "×" }],
+    stats: [{ label: "Star-taking speed", read: appetite, suffix: "×" }],
     steps: [
       {
         name: "Hungrier probes",
@@ -935,13 +948,9 @@ const GIFT_STATS: Record<LetGoGift, readonly Stat[]> = {
       suffix: "%",
     },
   ],
-  burst: [
-    {
-      label: "Flame",
-      read: (run) => flameFraction(run) * 100,
-      suffix: "%",
-    },
-  ],
+  // The leap happens in `onBuy`, which a preview does not run: see
+  // `burstLine` below.
+  burst: [],
   taps: [
     {
       label: "Resolve per tap",
@@ -969,12 +978,33 @@ const letGoUpgrades: UpgradeDef[] = LET_GO.map((light) => {
         );
       sync(run);
     },
-    effectPreview: previewOf(light.id, [
-      { label: "Lights lit", read: (r) => r.resources.lights, format: short },
-      ...GIFT_STATS[gift],
-    ]),
+    effectPreview: (run: RunState) =>
+      [
+        previewOf(light.id, [
+          {
+            label: "Lights lit",
+            read: (r) => r.resources.lights,
+            format: short,
+            isPlain: true,
+          },
+          ...GIFT_STATS[gift],
+        ])(run),
+        gift === "burst" ? burstLine(run) : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
   };
 });
+
+/** "Flame 60% → 85%": the leap a burst gift gives the moment it is bought. */
+function burstLine(run: RunState): string {
+  const now = flameFraction(run) * 100;
+  const leapt =
+    (Math.min(TUNING.last.flameFull, flameOf(run) + TUNING.last.burstFlame) /
+      TUNING.last.flameFull) *
+    100;
+  return `Flame ${short(now)}% → ${short(leapt)}%`;
+}
 
 /** The garden's helper: it opens once the first flower has been picked. */
 const rainBarrel: UpgradeDef = {

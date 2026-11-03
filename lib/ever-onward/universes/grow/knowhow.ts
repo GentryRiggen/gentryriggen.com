@@ -1,5 +1,4 @@
 import { projectDoneFlag } from "../../engine/engine";
-import { formatNumber } from "../../engine/format";
 import type { ActionDef, ProjectDef, RunState } from "../../engine/types";
 import { PHASE_FARM, PHASE_WORLD } from "./resources";
 import { TUNING } from "./tuning";
@@ -114,8 +113,12 @@ export const FESTIVAL_ACTIONS: readonly ActionDef[] = [
 
 // ------------------------------------------------------------------- projects
 
-const times = (before: number, after: number): string =>
-  `${formatNumber(Math.round(before * 100) / 100)} → ${formatNumber(Math.round(after * 100) / 100)}`;
+/** "×2", "×1.5": a project's multiplier, no more digits than it needs. */
+const times = (n: number): string => `×${Number(n.toFixed(2))}`;
+
+/** "half as much" for 0.5, "×0.7 as much" otherwise. */
+const asMuch = (n: number): string =>
+  n === 0.5 ? "half as much" : `${times(n)} as much`;
 
 /** Farm: drip lines hold twice the water and cut the thirst. */
 export const dripLines = (run: RunState): boolean =>
@@ -169,7 +172,7 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "well") >= 1,
     effectPreview: () =>
-      `Thirst ${times(1, K.thirstMult)} · Tank ${times(1, K.tankMult)}x`,
+      `The tank holds ${times(K.tankMult)} the water · crops drink ${asMuch(K.thirstMult)}`,
     botValue: 0.3,
   },
   {
@@ -182,7 +185,7 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "scarecrow") >= 3,
     effectPreview: () =>
-      `Seed lasts ${times(1, 1 / K.coldStoreSpoil)}x as long`,
+      `Banked seed lasts ${times(1 / K.coldStoreSpoil)} as long`,
     botValue: 0.35,
   },
   {
@@ -194,7 +197,7 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which a festival would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "tractor") >= 2,
-    effectPreview: () => `Every field ${times(1, K.hybridMult)}x`,
+    effectPreview: () => `Every field pays ${times(K.hybridMult)}`,
   },
   {
     id: "rain-gauges",
@@ -206,7 +209,7 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "river-bend") >= 1,
     effectPreview: () =>
-      `Thirst ${times(1, K.thirstMult)} · Tank ${times(1, K.tankMult)}x`,
+      `The world holds ${times(K.tankMult)} the water · and drinks ${asMuch(K.thirstMult)}`,
     botValue: 0.3,
   },
   {
@@ -218,7 +221,7 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It only helps what is spreading, so choose that first.",
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "windbreak") >= 3,
-    effectPreview: () => `Spreading ${times(1, K.nurserySpread)}x`,
+    effectPreview: () => `Spreading goes ${times(K.nurserySpread)} as fast`,
     botValue: 0.4,
   },
   {
@@ -230,6 +233,6 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which a green day would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "planting-rover") >= 2,
-    effectPreview: () => `Every place ${times(1, K.corridorMult)}x`,
+    effectPreview: () => `Every place pays ${times(K.corridorMult)}`,
   },
 ];

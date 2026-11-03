@@ -35,6 +35,8 @@ import {
   PHASE_WORLD,
   PHASE_YARD,
   type GrowPhaseId,
+  MANUAL_RESOURCES,
+  RESOURCES,
 } from "./resources";
 import {
   incomePerSecond,
@@ -55,6 +57,12 @@ import {
 } from "./windowbox";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
+
+/** What this chapter's taps and helpers make, lowercase ("blocks"). */
+const noun = (run: RunState): string =>
+  (
+    RESOURCES.find((r) => r.id === MANUAL_RESOURCES[run.phase])?.label ?? ""
+  ).toLowerCase();
 const num = (n: number): string => formatNumber(n);
 
 /** "Per tap 2 → 3" for a scale step, read from the run as it stands. */
@@ -64,8 +72,13 @@ function scalePreview(run: RunState, id: string): string {
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
   return [
-    rateEffect(manualPerTap(run), manualPerTap(after), "per tap"),
-    rateEffect(incomePerSecond(run), incomePerSecond(after), "per second"),
+    rateEffect(manualPerTap(run), manualPerTap(after), `${noun(run)} per tap`),
+    rateEffect(
+      incomePerSecond(run),
+      incomePerSecond(after),
+      // In the yard the helpers ripen produce; a tap plants seeds.
+      `${run.phase === 0 ? "produce" : noun(run)}/sec`
+    ),
   ].join("\n");
 }
 
@@ -83,7 +96,7 @@ function ratePreview(
 }
 
 const helperPreview = (run: RunState, id: string): string =>
-  ratePreview(run, id, "Per second", incomePerSecond);
+  ratePreview(run, id, `${noun(run)}/sec`, incomePerSecond);
 
 const PICKERS_AT_LIMIT =
   "Your pickers are at their limit. A wheelbarrow lets them carry more.";
@@ -101,7 +114,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     effectPreview: (run) =>
-      ratePreview(run, "sprinkler", "Ripens/sec", incomePerSecond),
+      ratePreview(run, "sprinkler", "Produce/sec", incomePerSecond),
   },
   {
     id: "basket",
@@ -117,7 +130,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "sprinkler") >= 2,
     effectPreview: (run) =>
-      ratePreview(run, "basket", "Picks/sec", pickPerSecond),
+      ratePreview(run, "basket", "Seeds picked/sec", pickPerSecond),
     noEffectReason: () => PICKERS_AT_LIMIT,
   },
   {
@@ -168,7 +181,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       owned(run, "sprinkler") >= 5 && forkSide(run, "yard") === 0,
     onBuy: openBees,
     effectPreview: (run) =>
-      ratePreview(run, "bee-hive", "Ripens/sec", incomePerSecond),
+      ratePreview(run, "bee-hive", "Produce/sec", incomePerSecond),
   },
   {
     id: BEE_KEEPER_ID,
@@ -220,7 +233,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 6,
     visibleWhen: (run) => owned(run, "basket") >= 4,
     effectPreview: (run) =>
-      ratePreview(run, "gardener", "Picks/sec", pickPerSecond),
+      ratePreview(run, "gardener", "Seeds picked/sec", pickPerSecond),
     noEffectReason: () => PICKERS_AT_LIMIT,
   },
   {
@@ -236,7 +249,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       owned(run, "bee-hive") >= 3 ||
       (forkSide(run, "yard") === 1 && owned(run, "sprinkler") >= 5),
     effectPreview: (run) =>
-      ratePreview(run, "compost-tea", "Ripens/sec", incomePerSecond),
+      ratePreview(run, "compost-tea", "Produce/sec", incomePerSecond),
   },
   {
     id: "wheelbarrow",
@@ -249,7 +262,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 3,
     visibleWhen: (run) => owned(run, "gardener") >= 2,
     effectPreview: (run) =>
-      ratePreview(run, "wheelbarrow", "Picks/sec", pickPerSecond),
+      ratePreview(run, "wheelbarrow", "Seeds picked/sec", pickPerSecond),
   },
   {
     id: "greenhouse",
@@ -263,7 +276,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "gardener") >= 4,
     effectPreview: (run) =>
-      ratePreview(run, "greenhouse", "Ripens/sec", incomePerSecond),
+      ratePreview(run, "greenhouse", "Produce/sec", incomePerSecond),
   },
   {
     id: "orchard",
@@ -277,7 +290,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => owned(run, "greenhouse") >= 1,
     effectPreview: (run) =>
-      ratePreview(run, "orchard", "Ripens/sec", incomePerSecond),
+      ratePreview(run, "orchard", "Produce/sec", incomePerSecond),
   },
   {
     id: "honey-stand",

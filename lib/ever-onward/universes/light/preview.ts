@@ -19,6 +19,10 @@ export interface Stat {
   suffix?: string;
   /** Leave the line out while it would not change ("Coins/sec 0 → 0"). */
   isHiddenWhenSame?: boolean;
+  /** The word for a drop in the headline: "shorter" reads "40% shorter trip". */
+  less?: string;
+  /** Only the before-to-after line, no "×2" or "40% less" headline (a count). */
+  isPlain?: boolean;
 }
 
 /** The run as it would be with one more level of `id`. */
@@ -47,23 +51,32 @@ export function previewOf(
 ): (run: RunState) => string {
   return (run) => {
     const after = afterBuying(run, id);
-    return stats
+    const lines = stats
       .flatMap((stat) => {
         const before = stat.read(run);
         const next = stat.read(after);
-        if (stat.isHiddenWhenSame && before === next) return [];
         const detail = previewLines(run, after, [stat]);
+        if (!detail) return [];
+        if (stat.isPlain) return [detail];
         if (before > 0 && next / before >= 1.1)
           return [
             `${times(next / before)} ${stat.label.toLowerCase()}\n${detail}`,
           ];
         if (before > next && next >= 0)
           return [
-            `${short((1 - next / before) * 100)}% less ${stat.label.toLowerCase()}\n${detail}`,
+            `${short((1 - next / before) * 100)}% ${stat.less ?? "less"} ${stat.label.toLowerCase()}\n${detail}`,
           ];
         return [detail];
       })
       .join("\n");
+    // Every line hidden: show them anyway ("Supply 0 MW → 0 MW"), so the card
+    // still says what it touches and the engine can tell it changes nothing.
+    if (lines) return lines;
+    return previewLines(
+      run,
+      after,
+      stats.map((stat) => ({ ...stat, isHiddenWhenSame: false }))
+    ).replace(/ · /g, "\n");
   };
 }
 
