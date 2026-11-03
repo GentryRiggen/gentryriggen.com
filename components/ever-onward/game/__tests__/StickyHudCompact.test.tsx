@@ -1,0 +1,71 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import StickyHud from "../StickyHud";
+
+const base = {
+  isCovered: false,
+  resourceId: "coins",
+  resourceLabel: "Coins",
+  value: 2090000,
+  rate: 93800,
+  trend: "flat" as const,
+  spend: null,
+  effect: null,
+  next: null,
+  goal: {
+    label: "LIGHT THE COAST",
+    current: 5,
+    target: 8,
+    unit: "lighthouses",
+    next: "Next lighthouse: 4.18M coins",
+    progress: 0.5,
+  },
+  gauge: {
+    label: "OIL",
+    current: 300,
+    max: 3000,
+    isLow: true,
+    isCritical: true,
+  },
+  onSelectNext: jest.fn(),
+};
+
+describe("StickyHud folded to one row", () => {
+  it("shows the full bar when not folded", () => {
+    render(<StickyHud {...base} />);
+    expect(screen.getByTestId("lm-goal")).toBeInTheDocument();
+    expect(screen.getByTestId("lm-hud-gauge")).toBeInTheDocument();
+    expect(screen.queryByTestId("lm-hud-toggle")).not.toBeInTheDocument();
+  });
+
+  it("keeps the money, a mini goal and a mini gauge in the slim row", () => {
+    const onToggle = jest.fn();
+    render(
+      <StickyHud {...base} isCompact isFolded onToggleCompact={onToggle} />
+    );
+    expect(screen.getByTestId("lm-hud")).toHaveAttribute(
+      "data-compact",
+      "true"
+    );
+    expect(screen.queryByTestId("lm-goal")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("lm-hud-gauge")).not.toBeInTheDocument();
+    expect(screen.getByTestId("lm-hud-mini-goal")).toHaveTextContent("5/8");
+    expect(screen.getByTestId("lm-hud-mini-gauge")).toHaveAttribute(
+      "data-tone",
+      "critical"
+    );
+    const toggle = screen.getByRole("button", {
+      name: "Show the goal and details",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(onToggle).toHaveBeenCalled();
+  });
+
+  it("offers to fold again while peeking", () => {
+    render(<StickyHud {...base} isFolded onToggleCompact={jest.fn()} />);
+    expect(screen.getByTestId("lm-goal")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Fold the bar" })
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+});

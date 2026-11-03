@@ -40,6 +40,11 @@ interface StickyHudProps {
   onSelectNext: () => void;
   /** Takes the player to the thing that fixes the warning. */
   onSelectAlert?: () => void;
+  /** Folded to one slim row (phones, scrolled down). */
+  isCompact?: boolean;
+  /** Scrolled down: the row offers to open or fold the bar. */
+  isFolded?: boolean;
+  onToggleCompact?: () => void;
 }
 
 const ICONS: Record<string, string> = {
@@ -47,6 +52,70 @@ const ICONS: Record<string, string> = {
   power: "⚡",
   energy: "✨",
 };
+
+type MiniTone = "ok" | "low" | "critical";
+
+/** A tiny bar for the slim row (share is 0 to 1). */
+function MiniBar({ share, tone }: { share: number; tone: MiniTone }) {
+  return (
+    <progress
+      aria-hidden="true"
+      value={Math.min(1, Math.max(0, Number.isFinite(share) ? share : 0))}
+      max={1}
+      className={`block h-2.5 w-10 appearance-none overflow-hidden border-2 border-slate-600 [&::-webkit-progress-bar]:bg-slate-900 ${
+        {
+          ok: "[&::-webkit-progress-value]:bg-amber-400 [&::-moz-progress-bar]:bg-amber-400",
+          low: "border-orange-400 [&::-webkit-progress-value]:bg-orange-500 [&::-moz-progress-bar]:bg-orange-500",
+          critical:
+            "animate-pulse border-red-400 [&::-webkit-progress-value]:bg-red-500 [&::-moz-progress-bar]:bg-red-500 motion-reduce:animate-none",
+        }[tone]
+      }`}
+    />
+  );
+}
+
+/** The goal in the slim row: "4/8" and a tiny bar. */
+function MiniGoal({ goal }: { goal: GoalView }) {
+  const target = goal.target > 0 ? goal.target : 1;
+  const share = (goal.current + (goal.progress ?? 0)) / target;
+  return (
+    <span data-testid="lm-hud-mini-goal" className="flex items-center gap-1">
+      <span
+        className={`${pixelClass} text-[10px] leading-none tabular-nums text-amber-100`}
+      >
+        {formatNumber(goal.current)}/{formatNumber(goal.target)}
+      </span>
+      <MiniBar share={share} tone="ok" />
+    </span>
+  );
+}
+
+/** The watched gauge in the slim row: its name and a tiny coloured bar. */
+function MiniGauge({ gauge }: { gauge: GaugeView }) {
+  const tone = gauge.isCritical ? "critical" : gauge.isLow ? "low" : "ok";
+  return (
+    <span
+      data-testid="lm-hud-mini-gauge"
+      data-tone={tone}
+      className="flex items-center gap-1"
+    >
+      <span
+        className={`${pixelClass} text-[10px] leading-none ${
+          tone === "critical"
+            ? "text-red-300"
+            : tone === "low"
+              ? "text-orange-300"
+              : "text-cyan-200"
+        }`}
+      >
+        {gauge.label.split(" ")[0]}
+      </span>
+      {gauge.hasBar !== false && (
+        <MiniBar share={gauge.current / (gauge.max || 1)} tone={tone} />
+      )}
+    </span>
+  );
+}
 
 /** What the HUD shows for a resource's value. */
 export const formatPrimary = (value: number): string =>
@@ -72,11 +141,15 @@ export default function StickyHud({
   alert = null,
   onSelectNext,
   onSelectAlert,
+  isCompact = false,
+  isFolded = false,
+  onToggleCompact,
 }: StickyHudProps) {
   return (
     <div
       ref={hudRef}
       data-testid="lm-hud"
+      data-compact={isCompact}
       role="region"
       aria-label="Status"
       aria-hidden={isCovered}
@@ -89,22 +162,45 @@ export default function StickyHud({
             <span aria-hidden="true" className="text-base">
               {ICONS[resourceId] ?? ""}
             </span>
-            <span className={`${retroLabelClass} truncate leading-none`}>
+            <span
+              className={`${retroLabelClass} truncate leading-none ${isCompact ? "sr-only" : ""}`}
+            >
               {resourceLabel}
             </span>
             <AnimatedValue
               value={value}
               format={formatPrimary}
               testId="lm-hud-value"
-              className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
+              className={`${pixelClass} ${isCompact ? "text-base" : "text-xl"} leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
             />
             <RateReadout
               rate={rate}
               trend={trend}
               testId="lm-hud-rate"
-              className="shrink-0 font-mono text-sm font-bold"
+              className={`shrink-0 font-mono font-bold ${isCompact ? "text-xs" : "text-sm"}`}
             />
           </p>
+          {isFolded && (
+            <button
+              type="button"
+              data-testid="lm-hud-toggle"
+              aria-expanded={!isCompact}
+              aria-label={
+                isCompact ? "Show the goal and details" : "Fold the bar"
+              }
+              onClick={onToggleCompact}
+              className={`-my-2.5 flex min-h-11 shrink-0 touch-manipulation items-center gap-2 px-1 ${retroFocusClass}`}
+            >
+              {isCompact && goal && <MiniGoal goal={goal} />}
+              {isCompact && gauge && <MiniGauge gauge={gauge} />}
+              <span
+                aria-hidden="true"
+                className={`${pixelClass} text-xs leading-none text-amber-300`}
+              >
+                {isCompact ? "▾" : "▴"}
+              </span>
+            </button>
+          )}
           {/* A small chip in the same row, so the bar never changes height
               when the warning comes and goes. The full text is in the page. */}
           {alert && (
@@ -120,23 +216,27 @@ export default function StickyHud({
             </button>
           )}
         </div>
-        {goal && <GoalMeter goal={goal} />}
-        {gauge && (
-          <div className="mt-2">
-            <GaugeMeter gauge={gauge} testId="lm-hud-gauge" />
-          </div>
+        {!isCompact && (
+          <>
+            {goal && <GoalMeter goal={goal} />}
+            {gauge && (
+              <div className="mt-2">
+                <GaugeMeter gauge={gauge} testId="lm-hud-gauge" />
+              </div>
+            )}
+            {/* Reserves the bar's height when there is no next upgrade yet. */}
+            <div className={goal ? "min-h-8" : "min-h-10"}>
+              {next && (
+                <NextUpgradeBar
+                  next={next}
+                  onSelect={onSelectNext}
+                  testId="lm-hud-next"
+                  isSmall={goal !== null}
+                />
+              )}
+            </div>
+          </>
         )}
-        {/* Reserves the bar's height when there is no next upgrade yet. */}
-        <div className={goal ? "min-h-8" : "min-h-10"}>
-          {next && (
-            <NextUpgradeBar
-              next={next}
-              onSelect={onSelectNext}
-              testId="lm-hud-next"
-              isSmall={goal !== null}
-            />
-          )}
-        </div>
         <SpendFloater spend={spend} />
         <EffectFloater
           effect={effect}

@@ -25,7 +25,7 @@ export default function NarrationToast({
     <div
       role="status"
       data-testid="lm-narration-toast"
-      className={`${retroPanelClass} fixed inset-x-0 top-[calc(var(--eo-hud-h)+0.75rem)] z-40 mx-auto flex w-[min(92vw,26rem)] items-center gap-2 p-2 pl-4 lg:inset-x-auto lg:left-[77.5%] lg:mx-0 lg:-translate-x-1/2 text-slate-100`}
+      className={`${retroPanelClass} fixed inset-x-0 top-[calc(var(--eo-hud-now,var(--eo-hud-h))+0.5rem)] z-40 mx-auto flex w-[min(92vw,26rem)] items-center gap-2 p-2 pl-4 lg:inset-x-auto lg:left-[77.5%] lg:mx-0 lg:-translate-x-1/2 text-slate-100`}
     >
       <div className="min-w-0 flex-1">
         <p className={`${pixelClass} text-[10px] text-amber-300`}>

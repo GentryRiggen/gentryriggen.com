@@ -163,15 +163,94 @@ test.describe("Ever Onward", () => {
       await expect(value).toBeVisible();
       await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
 
+      // Scrolled down, the bar folds to one slim row; a tap peeks at it.
+      await expect(hud).toHaveAttribute("data-compact", "true");
+      await expect(page.getByTestId("lm-hud-next")).toHaveCount(0);
+      await page.getByTestId("lm-hud-toggle").click();
+      await expect(page.getByTestId("lm-hud-next")).toBeVisible();
+
       // The tap button floats at the bottom centre and keeps earning.
       const tap = page.getByRole("button", { name: "Flash the light" });
       await expect(tap).toBeInViewport();
       await tap.click();
-      await expect(page.getByTestId("lm-hud-next")).toBeVisible();
 
       await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(hud).toHaveAttribute("data-compact", "false");
+      await expect(page.getByTestId("lm-hud-next")).toBeVisible();
       await expect(hud).toBeInViewport();
       await expect(tap).toBeInViewport();
+    });
+
+    test("the Coast never scrolls sideways, and folding the bar moves nothing", async ({
+      page,
+    }) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem(
+          "ever-onward:save",
+          JSON.stringify({
+            version: 1,
+            seenIntro: true,
+            universes: {
+              light: {
+                run: {
+                  phase: 0,
+                  time: 600,
+                  taps: 400,
+                  complete: false,
+                  resources: {
+                    coins: 700000,
+                    oil: 22700,
+                    oilPrice: 0.4,
+                  },
+                  owned: { lens: 5, keeper: 3, lighthouse: 4 },
+                  mods: {},
+                  flags: {},
+                  revealed: ["lens", "keeper", "lighthouse"],
+                  story: ["coast-hello"],
+                  transitions: [],
+                  rng: 1,
+                },
+                best: null,
+                completions: 0,
+                embers: 0,
+                prestigeUpgrades: {},
+              },
+            },
+          })
+        );
+      });
+      await openHub(page);
+      await page.getByTestId("lm-play-light").click();
+      const overlay = page.getByTestId("lm-phase-overlay");
+      if (await overlay.isVisible().catch(() => false))
+        await passCutscene(page);
+      const buy = page.getByTestId("lm-buy-oil");
+      await expect(buy).toBeVisible();
+
+      const sideways = () =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth
+        );
+      expect(await sideways()).toBeLessThanOrEqual(0);
+
+      // Just above and just past the fold: the button keeps its place in the
+      // page (only the bar and the scene above it shrink).
+      const pageTop = () =>
+        buy.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+      await page.evaluate(() => window.scrollTo(0, 10));
+      await expect(page.getByTestId("lm-hud")).toHaveAttribute(
+        "data-compact",
+        "false"
+      );
+      const before = await pageTop();
+      await page.evaluate(() => window.scrollTo(0, 200));
+      await expect(page.getByTestId("lm-hud")).toHaveAttribute(
+        "data-compact",
+        "true"
+      );
+      expect(await pageTop()).toBeCloseTo(before, 0);
+      await expect(buy).toBeInViewport();
+      expect(await sideways()).toBeLessThanOrEqual(0);
     });
   });
 });
