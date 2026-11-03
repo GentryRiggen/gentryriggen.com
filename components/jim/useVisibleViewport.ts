@@ -4,6 +4,11 @@ import { useEffect, useState, type RefObject } from "react";
 
 /** The keyboard is up when it hides more than this much of the screen. */
 const KEYBOARD_MIN_PX = 120;
+/**
+ * iOS fires its last viewport event before the keyboard has finished closing
+ * (or none at all), so look again once the animation is surely over.
+ */
+const SETTLE_MS = [150, 400, 800];
 /** Above this visual-viewport scale the page is pinch-zoomed. */
 const ZOOMED = 1.01;
 /** Inputs that never bring up the keyboard. */
@@ -33,6 +38,11 @@ function isTextField(el: EventTarget | null): boolean {
  * classes read (falling back to 100dvh and 0). Returns whether the keyboard
  * is up, so the home-bar padding can go while it is.
  *
+ * With the keyboard down the page always sits at the top of the screen: iOS
+ * can leave a stale `offsetTop` (and a scrolled page) behind after the
+ * keyboard closes, which slid the whole app down, leaving an empty band up
+ * top and the message box below the bottom edge.
+ *
  * The keyboard is measured against the tallest viewport seen at this width
  * (one per orientation), never `innerHeight`: in an iOS home-screen app the
  * layout viewport shrinks with the keyboard too.
@@ -51,6 +61,7 @@ export default function useVisibleViewport(
     /** The full (keyboard-down) height for each viewport width. */
     const tallest = new Map<number, number>();
     let typing = isTextField(document.activeElement);
+    const timers = new Set<ReturnType<typeof setTimeout>>();
 
     function update() {
       if (!vv || !node) return;
@@ -62,14 +73,32 @@ export default function useVisibleViewport(
         setKeyboardOpen(false);
         return;
       }
-      node.style.setProperty("--jim-vh", `${vv.height}px`);
-      node.style.setProperty("--jim-vt", `${vv.offsetTop}px`);
       const width = Math.round(vv.width);
       const full = Math.max(tallest.get(width) ?? 0, vv.height);
       tallest.set(width, full);
       const hidden = full - vv.height;
       // A text field with focus and a smaller screen is the keyboard too.
-      setKeyboardOpen(hidden > KEYBOARD_MIN_PX || (typing && hidden > 1));
+      const open = hidden > KEYBOARD_MIN_PX || (typing && hidden > 1);
+      node.style.setProperty("--jim-vh", `${vv.height}px`);
+      // Only the keyboard pans the page; without it, the top is the top.
+      node.style.setProperty("--jim-vt", `${open ? vv.offsetTop : 0}px`);
+      if (!open && window.scrollY !== 0) window.scrollTo(0, 0);
+      setKeyboardOpen(open);
+    }
+
+    /** Update now and again after the keyboard animation has settled. */
+    function settle() {
+      update();
+      for (const ms of SETTLE_MS) {
+        const id = setTimeout(() => {
+          timers.delete(id);
+          update();
+        }, ms);
+        timers.add(id);
+      }
+    }
+    function onVisible() {
+      if (document.visibilityState === "visible") settle();
     }
 
     // Focus can change without the viewport moving.
@@ -79,7 +108,7 @@ export default function useVisibleViewport(
     }
     function onFocusOut(event: FocusEvent) {
       typing = isTextField(event.relatedTarget);
-      update();
+      settle();
     }
 
     update();
@@ -87,11 +116,18 @@ export default function useVisibleViewport(
     vv.addEventListener("scroll", update);
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", settle);
+    window.addEventListener("orientationchange", settle);
     return () => {
+      for (const id of timers) clearTimeout(id);
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", settle);
+      window.removeEventListener("orientationchange", settle);
       node.style.removeProperty("--jim-vh");
       node.style.removeProperty("--jim-vt");
     };
