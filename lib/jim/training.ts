@@ -13,14 +13,14 @@ const FULL_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export const isFullDay = (d: string): boolean => FULL_DAY.test(d);
 
-/** A lift that counts toward PRs and rep maxes. */
+/**
+ * A lift that counts toward PRs: any strength set with a weight and reps,
+ * like the Mac viewer's movements(). A box-height set ("in") counts too; the
+ * e1RM trend still leaves it out (e1rm returns null for it).
+ */
 function isStrength(l: Lift): boolean {
   return (
-    l.kind === "strength" &&
-    l.weight != null &&
-    l.reps != null &&
-    l.reps > 0 &&
-    l.unit !== "in"
+    l.kind === "strength" && l.weight != null && l.reps != null && l.reps > 0
   );
 }
 

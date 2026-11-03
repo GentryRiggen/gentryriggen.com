@@ -21,6 +21,13 @@ export interface OrgNode {
 const MAX_DEPTH = 12;
 
 /**
+ * Levels that step in. Past this, a team lines up under its manager's rule
+ * instead of stepping further, so at 320px the name column keeps its room
+ * (each step is 15px: 12 margin, 2 padding, 1 rule).
+ */
+export const MAX_INDENT_LEVELS = 4;
+
+/**
  * The org as trees, biggest first. A person whose manager isn't in the
  * directory (or who has none) is a root; a cycle is cut where it closes.
  */
@@ -67,11 +74,13 @@ interface OrgTreeProps {
 
 interface BranchProps extends Omit<OrgTreeProps, "directory"> {
   node: OrgNode;
+  /** 0 for a root. */
+  depth: number;
   open: ReadonlySet<number>;
   onToggle: (id: number) => void;
 }
 
-function Branch({ node, open, onToggle, onOpen, hrefFor }: BranchProps) {
+function Branch({ node, depth, open, onToggle, onOpen, hrefFor }: BranchProps) {
   const { person, reports, total } = node;
   const isOpen = open.has(person.id);
   const groupId = `jim-org-${person.id}`;
@@ -121,11 +130,20 @@ function Branch({ node, open, onToggle, onOpen, hrefFor }: BranchProps) {
         </OpenLink>
       </div>
       {reports.length > 0 && isOpen && (
-        <ul id={groupId} className="ml-5 border-l border-white/[0.08] pl-1">
+        <ul
+          id={groupId}
+          data-indented={depth < MAX_INDENT_LEVELS || undefined}
+          className={
+            depth < MAX_INDENT_LEVELS
+              ? "ml-3 border-l border-white/[0.08] pl-0.5"
+              : undefined
+          }
+        >
           {reports.map((r) => (
             <Branch
               key={r.person.id}
               node={r}
+              depth={depth + 1}
               open={open}
               onToggle={onToggle}
               onOpen={onOpen}
@@ -157,6 +175,7 @@ export default function OrgTree({ directory, onOpen, hrefFor }: OrgTreeProps) {
         <Branch
           key={r.person.id}
           node={r}
+          depth={0}
           open={open}
           onToggle={toggle}
           onOpen={onOpen}

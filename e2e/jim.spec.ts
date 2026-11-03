@@ -811,6 +811,23 @@ for (const width of [320]) {
         // Health: Mindset, then a movement and a training day.
         await pills.getByRole("tab", { name: "Health" }).click();
         const health = page.getByRole("tablist", { name: "Health pages" });
+        // Every label fits its tab at 320px with a few px to spare, so a
+        // fallback font can't cut one off (text-sm fit "Training" by 0.8px).
+        const tight = await health.getByRole("tab").evaluateAll((tabs) =>
+          tabs
+            .filter((t) => {
+              const text = document.createRange();
+              text.selectNodeContents(t);
+              const cs = getComputedStyle(t);
+              const room =
+                t.clientWidth -
+                parseFloat(cs.paddingLeft) -
+                parseFloat(cs.paddingRight);
+              return text.getBoundingClientRect().width + 4 > room;
+            })
+            .map((t) => t.textContent)
+        );
+        expect(tight).toEqual([]);
         await health.getByRole("tab", { name: "Mindset" }).click();
         await expect(page.getByText("“Listen before answering”")).toBeVisible();
         await shot("notes-mindset");

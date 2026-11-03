@@ -51,6 +51,19 @@ describe("prLifts", () => {
     expect(prs.has(heavy)).toBe(true);
     expect(prs.has(light)).toBe(false);
   });
+
+  it("marks PRs on a strength set measured in inches, like the Mac", () => {
+    const box = { movement: "Box jump", unit: "in" } as const;
+    const low = lift("2026-09-01", 24, 5, box);
+    const high = lift("2026-09-08", 30, 5, box);
+    const same = lift("2026-09-15", 30, 5, box);
+    const prs = prLifts([low, high, same]);
+    expect([low, high, same].map((l) => prs.has(l))).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
 });
 
 describe("trainingDays", () => {

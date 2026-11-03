@@ -60,6 +60,15 @@ export function topCounts(
   return extra && !top.includes(extra) ? [...top, extra] : top;
 }
 
+/**
+ * A project slug in words ("forecasting-tool" → "forecasting tool"). The Mac
+ * viewer searches the project note's title; the work payload carries only
+ * slugs, so the words stand in for it.
+ */
+export function projectWords(slug: string): string {
+  return slug.replace(/[-_]+/g, " ").trim();
+}
+
 export function meetingMatches(
   m: WorkMeeting,
   words: string[],
@@ -74,8 +83,14 @@ export function meetingMatches(
     return false;
   }
   if (project && !m.projects.includes(project)) return false;
-  const hay = [m.title, m.series ?? "", ...m.people, ...m.projects]
-    .join(" ")
+  const hay = [
+    m.title,
+    m.series ?? "",
+    ...m.people,
+    ...m.projects,
+    ...m.projects.map(projectWords),
+  ]
+    .join("\n")
     .toLowerCase();
   return words.every((w) => hay.includes(w));
 }

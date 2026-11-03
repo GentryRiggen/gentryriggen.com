@@ -193,6 +193,10 @@ interface SubSwitchProps {
  * above the page. */
 function SubSwitch({ pill, pages, value, onChange }: SubSwitchProps) {
   const label = PILLS.find((p) => p.id === pill)?.label ?? "Notes";
+  // Four labels ("Training", "Mindset") don't fit text-sm at 320px: step
+  // down a size on the narrowest phones so none is cut off.
+  const size =
+    pages.length >= 4 ? "px-1 text-xs min-[360px]:text-sm" : "px-1.5 text-sm";
   return (
     <div
       role="tablist"
@@ -214,7 +218,7 @@ function SubSwitch({ pill, pages, value, onChange }: SubSwitchProps) {
             role="tab"
             aria-selected={selected}
             onClick={() => onChange(page)}
-            className={`min-h-11 min-w-0 truncate rounded-xl px-1.5 text-sm font-medium transition-colors duration-200 ${
+            className={`min-h-11 min-w-0 truncate rounded-xl ${size} font-medium transition-colors duration-200 ${
               selected
                 ? "bg-ayu-accent/12 text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset"
                 : "text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"

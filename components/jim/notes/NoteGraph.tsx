@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useMemo,
   useRef,
   useState,
@@ -69,6 +70,108 @@ function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+function fillOf(folderIndex: ReadonlyMap<string, number>, folder: string) {
+  const i = folderIndex.get(folder) ?? -1;
+  return i >= 0 && i < FOLDER_FILLS.length ? FOLDER_FILLS[i] : OTHER_FILL;
+}
+
+interface GraphDrawingProps {
+  graph: GraphData;
+  pos: ReadonlyMap<string, Point>;
+  degree: ReadonlyMap<string, number>;
+  folderIndex: ReadonlyMap<string, number>;
+  labelled: ReadonlySet<string>;
+  foundIds: ReadonlySet<string>;
+  /** A search is on: dim the notes it didn't find. */
+  dimMisses: boolean;
+  /** The zoom, for strokes, hit targets and labels that keep screen size. */
+  k: number;
+  showAll: boolean;
+}
+
+/**
+ * Every link and dot. Memoized: a pan only moves the outer transform, so
+ * this redraws on a zoom, a search or a new graph, never on a drag.
+ */
+const GraphDrawing = memo(function GraphDrawing({
+  graph,
+  pos,
+  degree,
+  folderIndex,
+  labelled,
+  foundIds,
+  dimMisses,
+  k,
+  showAll,
+}: GraphDrawingProps) {
+  return (
+    <>
+      <g className="stroke-white/15">
+        {graph.links.map((l) => {
+          const a = pos.get(l.source);
+          const b = pos.get(l.target);
+          if (!a || !b) return null;
+          return (
+            <line
+              key={`${l.source}|${l.target}`}
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              strokeWidth={1 / k}
+            />
+          );
+        })}
+      </g>
+      {graph.nodes.map((n) => {
+        const p = pos.get(n.id);
+        if (!p) return null;
+        const r = 3 + Math.sqrt(degree.get(n.id) ?? 0) * 1.4;
+        const hit = foundIds.has(n.id);
+        return (
+          <g key={n.id} data-id={n.id} className="cursor-pointer">
+            <title>{n.title}</title>
+            {/* A wider, invisible target for a fingertip. */}
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={Math.max(r, 12 / k)}
+              className="fill-transparent"
+            />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={r}
+              className={`${fillOf(folderIndex, n.folder)} ${
+                dimMisses && !hit ? "opacity-25" : ""
+              }`}
+            />
+            {hit && (
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={r + 3}
+                strokeWidth={1.5 / k}
+                className="fill-none stroke-ayu-text"
+              />
+            )}
+            {(showAll || labelled.has(n.id) || hit) && (
+              <text
+                x={p.x + r + 2}
+                y={p.y + 3 / k}
+                fontSize={10 / k}
+                className="pointer-events-none fill-ayu-text"
+              >
+                {n.title}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </>
+  );
+});
+
 interface Gesture {
   /** Where each pointer is, in screen px. */
   pointers: Map<number, { x: number; y: number }>;
@@ -131,22 +234,21 @@ export default function NoteGraph({ graph, onOpen, hrefFor }: NoteGraphProps) {
     () => new Map(folders.map((f, i) => [f.folder, i])),
     [folders]
   );
-  const fillOf = (folder: string) => {
-    const i = folderIndex.get(folder) ?? -1;
-    return i >= 0 && i < FOLDER_FILLS.length ? FOLDER_FILLS[i] : OTHER_FILL;
-  };
   const dotOf = (folder: string) => {
     const i = folderIndex.get(folder) ?? -1;
     return i >= 0 && i < FOLDER_DOTS.length ? FOLDER_DOTS[i] : OTHER_DOT;
   };
 
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const found = words.length
-    ? graph.nodes.filter((n) =>
-        words.every((w) => `${n.title} ${n.id}`.toLowerCase().includes(w))
-      )
-    : [];
-  const foundIds = new Set(found.map((n) => n.id));
+  // Memoized so the drawing's props stay the same while panning.
+  const { words, found, foundIds } = useMemo(() => {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const found = words.length
+      ? graph.nodes.filter((n) =>
+          words.every((w) => `${n.title} ${n.id}`.toLowerCase().includes(w))
+        )
+      : [];
+    return { words, found, foundIds: new Set(found.map((n) => n.id)) };
+  }, [graph, query]);
 
   /** Screen px → drawing units (the box keeps the svg's aspect). */
   function toDrawing(clientX: number, clientY: number): Point {
@@ -200,12 +302,16 @@ export default function NoteGraph({ graph, onOpen, hrefFor }: NoteGraphProps) {
     setView((v) => ({ ...v, tx: v.tx + dx * u, ty: v.ty + dy * u }));
   }
 
-  function onPointerUp(e: ReactPointerEvent<SVGSVGElement>) {
+  /** A finger lifts. Only a lift (never a cancel) can be a tap. */
+  function endPointer(e: ReactPointerEvent<SVGSVGElement>, canTap: boolean) {
     const g = gesture.current;
     const wasTap =
-      g.pointers.size === 1 && g.travel < TAP_SLOP && g.node !== null;
+      canTap && g.pointers.size === 1 && g.travel < TAP_SLOP && g.node !== null;
     g.pointers.delete(e.pointerId);
     if (g.pointers.size < 2) g.pinch = null;
+    // A cancelled press (the browser took the gesture) opens nothing, and
+    // the rest of that press can't become a tap either.
+    if (!canTap) g.node = null;
     if (wasTap && g.node) onOpen(g.node);
     if (g.pointers.size === 0) g.node = null;
   }
@@ -233,73 +339,22 @@ export default function NoteGraph({ graph, onOpen, hrefFor }: NoteGraphProps) {
           preserveAspectRatio="none"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerUp={(e) => endPointer(e, true)}
+          onPointerCancel={(e) => endPointer(e, false)}
           className="mx-auto block aspect-[4/5] w-full max-w-xl cursor-grab touch-none select-none active:cursor-grabbing"
         >
           <g transform={`translate(${view.tx} ${view.ty}) scale(${view.k})`}>
-            <g className="stroke-white/15">
-              {graph.links.map((l) => {
-                const a = pos.get(l.source);
-                const b = pos.get(l.target);
-                if (!a || !b) return null;
-                return (
-                  <line
-                    key={`${l.source}|${l.target}`}
-                    x1={a.x}
-                    y1={a.y}
-                    x2={b.x}
-                    y2={b.y}
-                    strokeWidth={1 / view.k}
-                  />
-                );
-              })}
-            </g>
-            {graph.nodes.map((n) => {
-              const p = pos.get(n.id);
-              if (!p) return null;
-              const r = 3 + Math.sqrt(degree.get(n.id) ?? 0) * 1.4;
-              const hit = foundIds.has(n.id);
-              return (
-                <g key={n.id} data-id={n.id} className="cursor-pointer">
-                  <title>{n.title}</title>
-                  {/* A wider, invisible target for a fingertip. */}
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={Math.max(r, 12 / view.k)}
-                    className="fill-transparent"
-                  />
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={r}
-                    className={`${fillOf(n.folder)} ${
-                      words.length && !hit ? "opacity-25" : ""
-                    }`}
-                  />
-                  {hit && (
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={r + 3}
-                      strokeWidth={1.5 / view.k}
-                      className="fill-none stroke-ayu-text"
-                    />
-                  )}
-                  {(showAll || labelled.has(n.id) || hit) && (
-                    <text
-                      x={p.x + r + 2}
-                      y={p.y + 3 / view.k}
-                      fontSize={10 / view.k}
-                      className="pointer-events-none fill-ayu-text"
-                    >
-                      {n.title}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
+            <GraphDrawing
+              graph={graph}
+              pos={pos}
+              degree={degree}
+              folderIndex={folderIndex}
+              labelled={labelled}
+              foundIds={foundIds}
+              dimMisses={words.length > 0}
+              k={view.k}
+              showAll={showAll}
+            />
           </g>
         </svg>
         <div className="absolute right-2 bottom-2 flex flex-col gap-1">

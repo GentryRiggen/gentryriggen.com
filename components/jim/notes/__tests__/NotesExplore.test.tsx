@@ -171,6 +171,23 @@ describe("ExploreGraph", () => {
     expect(p.onOpenNote).toHaveBeenCalledWith("home/garden.md");
   });
 
+  it("never opens a note when the press is cancelled", async () => {
+    respond(GRAPH);
+    const p = props();
+    render(<ExploreGraph {...p} />);
+    const svg = await screen.findByRole("img", { name: /Note graph/ });
+    const garden = svg.querySelector('[data-id="home/garden.md"] circle')!;
+    fireEvent.pointerDown(garden, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerCancel(garden, { pointerId: 1, clientX: 10, clientY: 10 });
+    expect(p.onOpenNote).not.toHaveBeenCalled();
+    // Two fingers down, one cancelled, the other lifted: still no tap.
+    fireEvent.pointerDown(garden, { pointerId: 2, clientX: 10, clientY: 10 });
+    fireEvent.pointerDown(svg, { pointerId: 3, clientX: 90, clientY: 90 });
+    fireEvent.pointerCancel(svg, { pointerId: 3, clientX: 90, clientY: 90 });
+    fireEvent.pointerUp(garden, { pointerId: 2, clientX: 10, clientY: 10 });
+    expect(p.onOpenNote).not.toHaveBeenCalled();
+  });
+
   it("pans on a drag without opening, and zooms with the buttons", async () => {
     respond(GRAPH);
     const user = userEvent.setup();

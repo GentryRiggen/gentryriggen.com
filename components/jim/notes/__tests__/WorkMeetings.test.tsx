@@ -3,8 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
 import type { DirectoryPerson, WorkMeeting } from "@/lib/jim/view";
 import NotesWork from "../NotesWork";
-import { buildOrg } from "../OrgTree";
-import WorkMeetings, { topCounts } from "../WorkMeetings";
+import OrgTree, { buildOrg, MAX_INDENT_LEVELS } from "../OrgTree";
+import WorkMeetings, {
+  meetingMatches,
+  projectWords,
+  topCounts,
+} from "../WorkMeetings";
 
 const MEETINGS = VIEW_FIXTURE.work!.meetings;
 
@@ -105,6 +109,14 @@ describe("WorkMeetings", () => {
     expect(screen.getByText("Harvest review")).toBeVisible();
   });
 
+  it("finds a meeting by its project in words", () => {
+    const m = { ...MEETINGS[0], projects: ["forecasting-tool"] };
+    expect(projectWords("forecasting-tool")).toBe("forecasting tool");
+    expect(meetingMatches(m, ["forecasting", "tool"], "", "")).toBe(true);
+    expect(meetingMatches(m, ["forecasting tool"], "", "")).toBe(true);
+    expect(meetingMatches(m, ["budget"], "", "")).toBe(false);
+  });
+
   it("counts chips most-met first and keeps a picked one past the cap", () => {
     const names = Array.from({ length: 12 }, (_, i) => `P${i}`);
     const counts = topCounts([...names, "P3", "P3"], "P9");
@@ -135,6 +147,29 @@ describe("the org chart", () => {
       ["Orphan", 0],
     ]);
     expect(roots[0].reports[0].reports[0].person.name).toBe("Jo Park");
+  });
+
+  it("stops stepping in after a few levels, so a deep name keeps its room", async () => {
+    const user = userEvent.setup();
+    // A chain nine deep: Level 0 manages Level 1, who manages Level 2...
+    const chain = Array.from({ length: 9 }, (_, i) =>
+      person(i, `Level ${i}`, i === 0 ? null : i - 1)
+    );
+    render(
+      <OrgTree directory={{ updated: "", people: chain }} onOpen={() => {}} />
+    );
+    for (let i = 1; i < 8; i++) {
+      await user.click(
+        screen.getByRole("button", { name: `Show Level ${i}'s team` })
+      );
+    }
+    const deepest = screen.getByText("Level 8");
+    expect(deepest).toBeVisible();
+    let steps = 0;
+    for (let el = deepest.parentElement; el; el = el.parentElement) {
+      if (el.tagName === "UL" && el.dataset.indented) steps++;
+    }
+    expect(steps).toBe(MAX_INDENT_LEVELS);
   });
 
   it("switches the directory to the org chart, folds a team and opens a card", async () => {
