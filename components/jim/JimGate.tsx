@@ -38,6 +38,7 @@ import {
 } from "@/lib/jim/auth";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
+import { clearExplore } from "@/lib/jim/explore";
 import { clearMoney } from "@/lib/jim/money";
 import { clearAll, saveView } from "@/lib/jim/offlineStore";
 import { disablePush } from "@/lib/jim/push";
@@ -77,6 +78,8 @@ function clearDeviceData(): void {
   clearViewCache();
   // The money summary is only ever in memory: drop it now.
   clearMoney();
+  // So are the graph, timeline and ballot.
+  clearExplore();
   clearHistory();
   void clearAll();
 }

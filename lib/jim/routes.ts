@@ -8,8 +8,12 @@
  *   /jim/notes                      Notes home
  *   /jim/todos                      the Todos page (its filters ride in
  *                                   the query: ?area=work&project=…)
- *   /jim/notes/<page>               work, money, people, health, training, golf
+ *   /jim/notes/<page>               work, money, people, year, health,
+ *                                   training, golf, mindset, timeline,
+ *                                   graph, ballot
  *   /jim/notes/people/<slug>        a person's profile
+ *   /jim/notes/training/m/<slug>    one movement's page
+ *   /jim/notes/training/day/<date>  one training day (YYYY-MM-DD)
  *   /jim/notes/directory/<id>       a work directory card
  *   /jim/notes/note/<repo path>     a note, without its .md
  *   /jim/reminders                  the reminders list
@@ -29,15 +33,24 @@ export type NotesPage =
   | "work"
   | "money"
   | "people"
+  | "year"
   | "health"
   | "training"
-  | "golf";
+  | "golf"
+  | "mindset"
+  | "timeline"
+  | "graph"
+  | "ballot";
 
 export type JimRoute =
   | { kind: "chat" }
   | { kind: "page"; page: NotesPage }
   | { kind: "person"; slug: string }
   | { kind: "directory"; id: number }
+  /** `slug` is the movement's name as a slug (`back-squat`). */
+  | { kind: "movement"; slug: string }
+  /** `date` is YYYY-MM-DD. */
+  | { kind: "trainingDay"; date: string }
   /** `path` is the repo path without ".md" (`home/garden`). */
   | { kind: "note"; path: string }
   | { kind: "reminders" }
@@ -56,9 +69,14 @@ export const NOTES_PAGES: readonly NotesPage[] = [
   "work",
   "money",
   "people",
+  "year",
   "health",
   "training",
   "golf",
+  "mindset",
+  "timeline",
+  "graph",
+  "ballot",
 ];
 
 export const PAGE_LABELS: Record<NotesPage, string> = {
@@ -67,9 +85,14 @@ export const PAGE_LABELS: Record<NotesPage, string> = {
   work: "Work",
   money: "Money",
   people: "People",
+  year: "Year",
   health: "Health",
   training: "Training",
   golf: "Golf",
+  mindset: "Mindset",
+  timeline: "Timeline",
+  graph: "Graph",
+  ballot: "Ballot",
 };
 
 export const CHAT_ROUTE: JimRoute = { kind: "chat" };
@@ -84,6 +107,16 @@ const MAX_NOTE_DEPTH = 8;
 const DIRECTORY_ID = /^[0-9]{1,6}$/;
 const REMINDER_ID = /^[a-f0-9]{12}$/;
 const MEETING_ID = /^[a-f0-9]{16}$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A movement's name as one address segment: "Back Squat (pause)" → "back-squat-pause". */
+export function movementSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
 /** From this hour (device time) a bare /jim/retro is the evening one. */
 export const EVENING_RETRO_HOUR = 15;
 
@@ -204,6 +237,16 @@ export function parseJimPath(
       ? { kind: "person", slug: more[0] }
       : { kind: "notFound" };
   }
+  if (first === "training" && more.length === 2) {
+    const [kind, arg] = more;
+    if (kind === "m" && SEGMENT.test(arg) && arg.length <= 80) {
+      return { kind: "movement", slug: arg };
+    }
+    if (kind === "day" && DAY.test(arg)) {
+      return { kind: "trainingDay", date: arg };
+    }
+    return { kind: "notFound" };
+  }
   if (first === "directory" && more.length === 1) {
     return DIRECTORY_ID.test(more[0])
       ? { kind: "directory", id: Number(more[0]) }
@@ -229,6 +272,10 @@ export function formatJimPath(route: JimRoute): string {
       return `${JIM_BASE}/notes/people/${route.slug}`;
     case "directory":
       return `${JIM_BASE}/notes/directory/${route.id}`;
+    case "movement":
+      return `${JIM_BASE}/notes/training/m/${route.slug}`;
+    case "trainingDay":
+      return `${JIM_BASE}/notes/training/day/${route.date}`;
     case "note":
       return isRoutableNotePath(route.path)
         ? `${JIM_BASE}/notes/note/${route.path}`
@@ -252,7 +299,10 @@ export function sameRoute(a: JimRoute, b: JimRoute): boolean {
     case "page":
       return a.page === (b as typeof a).page;
     case "person":
+    case "movement":
       return a.slug === (b as typeof a).slug;
+    case "trainingDay":
+      return a.date === (b as typeof a).date;
     case "directory":
       return a.id === (b as typeof a).id;
     case "note":
@@ -280,6 +330,9 @@ export function homePageOf(route: JimRoute): NotesPage {
     case "directory":
     case "meeting":
       return "work";
+    case "movement":
+    case "trainingDay":
+      return "training";
     case "note":
       return route.path.startsWith("meetings/") ? "work" : "home";
     default:
@@ -292,6 +345,8 @@ export function isDetail(route: JimRoute): boolean {
   return (
     route.kind === "person" ||
     route.kind === "directory" ||
+    route.kind === "movement" ||
+    route.kind === "trainingDay" ||
     route.kind === "note" ||
     route.kind === "reminder" ||
     route.kind === "meeting"
@@ -313,6 +368,9 @@ export function routeTitle(route: JimRoute, name?: string | null): string {
         return name || "People";
       case "directory":
         return name || "Directory";
+      case "movement":
+      case "trainingDay":
+        return name || "Training";
       case "note":
         return name || "Note";
       case "reminders":

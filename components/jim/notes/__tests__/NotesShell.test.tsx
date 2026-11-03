@@ -178,7 +178,7 @@ it("says quietly when the notes may be behind", async () => {
   ).toBeInTheDocument();
 });
 
-it("has six page pills in order", async () => {
+it("has seven page pills in order", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
@@ -192,11 +192,12 @@ it("has six page pills in order", async () => {
     "Money",
     "Health",
     "People",
+    "Explore",
   ]);
   expect(screen.queryByRole("tablist", { name: "Health pages" })).toBeNull();
 });
 
-it("switches Health between Health, Training and Golf", async () => {
+it("switches Health between Health, Training, Golf and Mindset", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
@@ -207,6 +208,7 @@ it("switches Health between Health, Training and Golf", async () => {
     "Health",
     "Training",
     "Golf",
+    "Mindset",
   ]);
   expect(tabs[0]).toHaveAttribute("aria-selected", "true");
   expect(screen.getByText("Hemoglobin")).toBeInTheDocument();

@@ -238,7 +238,8 @@ describe("normalizeView", () => {
     expect(view?.actionsAsOf).toBe(VIEW_FIXTURE.actionsAsOf);
     expect(view?.daily).toEqual(VIEW_FIXTURE.daily);
     expect(view?.dates).toEqual(VIEW_FIXTURE.dates);
-    expect(view?.work).toEqual(VIEW_FIXTURE.work);
+    // An older meeting (no steps) gains empty defaults.
+    expect(view?.work).toMatchObject(VIEW_FIXTURE.work!);
   });
 
   it("keeps a good action and drops a malformed one", () => {
