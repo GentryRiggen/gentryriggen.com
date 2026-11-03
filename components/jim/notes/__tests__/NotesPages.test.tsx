@@ -98,39 +98,74 @@ describe("NotesHome", () => {
 });
 
 describe("NotesHealth", () => {
-  it("shows the last injection, the next draw, the hold and lab cards", () => {
+  it("leads with the last shot's side and the next shot, then the plan", () => {
     render(<NotesHealth data={VIEW_FIXTURE} />);
-    expect(screen.getByText("Oct 28")).toBeInTheDocument();
-    expect(screen.getByText("50 mg · 3 days ago")).toBeInTheDocument();
-    expect(screen.getByText("Nov 20")).toBeInTheDocument();
-    expect(screen.getByText("in about 20 days")).toBeInTheDocument();
+    expect(screen.getByText("Right glute")).toBeInTheDocument();
+    expect(screen.getByText("Wed, Oct 28 · 8:10 AM")).toBeInTheDocument();
+    expect(screen.getByText(/50 mg \(0.25 mL\) · 3 days ago/)).toBeVisible();
+    // Wed 10-28 shot; Sat 10-31 is the next scheduled day, which is today.
+    expect(screen.getByText("Due today")).toBeInTheDocument();
+    expect(screen.getByText("Left glute (the other side)")).toBeInTheDocument();
+    const plan = screen.getByRole("region", { name: "Schedule" });
+    expect(within(plan).getByText("Wed, Sat")).toBeInTheDocument();
+    expect(within(plan).getByText("Twice a week")).toBeInTheDocument();
+    expect(
+      within(plan).getByText(/Labs Nov 20 · in about 20 days/)
+    ).toBeVisible();
+    const thisWeek = within(plan).getByRole("list", { name: "This week" });
+    expect(within(thisWeek).getAllByRole("listitem")).toHaveLength(7);
+    expect(
+      within(thisWeek).getByLabelText("Wed, Oct 28: Right glute 50 mg")
+    ).toBeInTheDocument();
+    expect(
+      within(thisWeek).getByLabelText("Sat, Oct 31: injection due")
+    ).toBeInTheDocument();
+  });
+
+  it("shows only the key lab charts and folds the rest away", async () => {
+    render(<NotesHealth data={VIEW_FIXTURE} />);
+    const labs = screen.getByRole("region", { name: "Labs" });
     expect(screen.getByText(/Set aside until the next draw/)).toHaveTextContent(
       "Estradiol"
     );
-    const labs = screen.getByRole("region", { name: "Labs" });
-    const cards = within(labs).getAllByRole("article");
-    expect(
-      cards.map((c) => within(c).getByRole("heading").textContent)
-    ).toEqual(["Hemoglobin", "Ferritin"]);
-    expect(within(cards[0]).getByText("High")).toBeInTheDocument();
-    expect(within(cards[0]).getByRole("img")).toHaveAccessibleName(
+    const heads = () =>
+      within(labs)
+        .getAllByRole("article")
+        .map((c) => within(c).getByRole("heading").textContent);
+    expect(heads()).toEqual(["Hemoglobin", "Ferritin"]);
+    const first = within(labs).getAllByRole("article")[0];
+    expect(within(first).getByText("High")).toBeInTheDocument();
+    expect(within(first).getByRole("img")).toHaveAccessibleName(
       /15.1 on Jun 1, 17.6 on Sep 1/
     );
+    expect(screen.queryByText(/more markers/)).toBeNull();
   });
 
-  it("lists injections newest first", () => {
+  it("lists injections newest first with the side", () => {
     render(<NotesHealth data={VIEW_FIXTURE} />);
     const list = screen.getByRole("region", { name: "Injections" });
-    const dates = within(list)
-      .getAllByRole("listitem")
-      .map((li) => li.querySelector("[data-date]")?.textContent);
-    expect(dates).toEqual(["Oct 28, 2026", "Oct 24, 2026", "Oct 21, 2026"]);
+    const items = within(list).getAllByRole("listitem");
+    expect(
+      items.map((li) => li.querySelector("[data-date]")?.textContent)
+    ).toEqual(["Oct 28, 2026", "Oct 24, 2026", "Oct 21, 2026"]);
+    expect(within(items[0]).getByText("Right")).toBeInTheDocument();
+    expect(within(items[1]).queryByText(/Left|Right/)).toBeNull();
+    expect(within(items[2]).getByText("Left")).toBeInTheDocument();
+  });
+
+  it("draws the weekly dose against the prescription", () => {
+    render(<NotesHealth data={VIEW_FIXTURE} />);
+    const chart = screen.getByRole("img", { name: /Milligrams per week/ });
+    expect(chart).toHaveAccessibleName(/Oct 26 50 so far/);
+    expect(chart).toHaveAccessibleName(/Prescribed 100/);
   });
 
   it("is calm with no health data", () => {
     render(<NotesHealth data={EMPTY} />);
     expect(screen.getByText("No injections logged yet.")).toBeInTheDocument();
     expect(screen.getByText("No lab results yet.")).toBeInTheDocument();
+    expect(screen.getByText("None yet")).toBeInTheDocument();
+    expect(screen.getByText("Not set")).toBeInTheDocument();
   });
 });
 
