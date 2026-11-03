@@ -66,16 +66,44 @@ describe("HUD gauges", () => {
     expect(higherUniverse.gauge?.(run)).toBeNull();
   });
 
-  test("Light shows the jar's savings in later parts, only when there are some", () => {
+  test("Light keeps the flame on the HUD at the end, LOW then COLD", () => {
     const run = newRun(lightUniverse);
     run.phase = 3;
-    run.resources.lights = 0;
+    run.resources.flame = 800;
+    expect(lightUniverse.gauge?.(run)).toMatchObject({
+      label: "FLAME",
+      display: "80%",
+      isLow: false,
+    });
+    run.resources.flame = 250;
+    expect(lightUniverse.gauge?.(run)).toMatchObject({ status: "LOW" });
+    expect(lightUniverse.alert?.(run)).toBeNull();
+    run.resources.flame = 50;
+    expect(lightUniverse.gauge?.(run)).toMatchObject({
+      status: "COLD",
+      isCritical: true,
+    });
+    expect(lightUniverse.alert?.(run)).toMatch(/Tap Tend/);
+  });
+
+  test("Light shows the jar's savings when nothing needs watching", () => {
+    const run = newRun(lightUniverse);
+    run.phase = 2;
+    run.resources.probes = 0;
+    run.owned.collector = 50;
     expect(isFundOpen(run)).toBe(true);
     expect(lightUniverse.gauge?.(run)).toBeNull();
     run.resources[FUND_RESOURCE] = 1234;
     expect(lightUniverse.gauge?.(run)).toMatchObject({
       hasBar: false,
       display: "1.23K saved",
+    });
+    run.resources.probes = 10;
+    run.resources.heading = 40;
+    expect(lightUniverse.gauge?.(run)).toMatchObject({
+      label: "COURSE",
+      display: "40%",
+      status: "LOW",
     });
   });
 });

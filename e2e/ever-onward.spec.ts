@@ -58,7 +58,7 @@ test.describe("Ever Onward", () => {
       await expect(page.getByTestId("lm-hud-value")).toHaveText("0");
       await page.getByTestId("lm-tap").click();
       // The lamp's oil bill can eat a lone coin; the floating gain stays.
-      await expect(page.getByText(/^\+\d+$/).first()).toBeVisible();
+      await expect(page.getByText(/^\+\d+ coins$/).first()).toBeVisible();
       await expect(page.getByTestId("lm-scene")).toBeVisible();
     }
   );
@@ -107,7 +107,7 @@ test.describe("Ever Onward", () => {
       );
       await passCutscene(page);
       await page.getByTestId("lm-tap").click();
-      await expect(page.getByText(/^\+\d+(\.\d+)?$/).first()).toBeVisible();
+      await expect(page.getByText(/^\+\d+(\.\d+)? \w+/).first()).toBeVisible();
       await expect(page.getByTestId("lm-scene")).toBeVisible();
     }
   );

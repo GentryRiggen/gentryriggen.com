@@ -227,8 +227,8 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Catch the solar flare when it shines. It waits for you.",
   ],
   [PHASE_LAST]: [
-    "Warm the flame with a few taps when it looks low. More taps will not help much.",
-    "When the little boat sails, tap the beam to keep it true.",
-    "Water the garden and pick the blooms: they help you let go too.",
+    "Spend resolve in the shop to let lights go dark. Each one you let go moves the goal.",
+    "Watch the FLAME meter up top. A few taps warm it, and a warm flame earns resolve faster.",
+    "When the little boat sails, tap the beam to keep it true. Garden blooms give resolve too.",
   ],
 };

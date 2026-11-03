@@ -24,6 +24,8 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Guide ships home and light the whole coast.",
     manualResource: "coins",
     manualLabel: "Flash the light",
+    tapDoes:
+      "flash the light. Each flash guides ships home, and ships pay coins",
     isDone: (run) => run.resources.lighthouses >= COAST_LIGHTHOUSES,
     onEnter: (run) => {
       run.resources.coins += 40 * headStart(run);
@@ -40,6 +42,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Power the grid until there is no more night.",
     manualResource: "power",
     manualLabel: "Crank the generator",
+    tapDoes: "crank the generator for a little power",
     isDone: (run) => run.resources.night <= 0.001,
     onEnter: (run) => {
       // Old coins no longer matter; the grid runs on power.
@@ -62,6 +65,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Collect the sky's light until the last star is used.",
     manualResource: "energy",
     manualLabel: "Aim a collector",
+    tapDoes: "aim a collector at the sun for a little energy",
     isDone: (run) => run.resources.stars <= 0.5,
     onEnter: (run) => {
       closeFund(run);
@@ -83,6 +87,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Tend the flame and bring the last ship home.",
     manualResource: "resolve",
     manualLabel: "Tend the flame",
+    tapDoes: "warm the flame. A warm flame earns resolve faster",
     isDone: () => false,
     onEnter: (run) => {
       // The flame starts here whatever came before, so the ending is the same

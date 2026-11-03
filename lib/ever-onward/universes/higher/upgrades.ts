@@ -1,3 +1,4 @@
+import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { swayCalm } from "./sway";
@@ -90,7 +91,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 120,
     costGrowth: 2.6,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "bear") >= 2,
+    visibleWhen: ownsAtLeast("bear", 2),
     effectPreview: (run) => scalePreview(run, "big-blocks"),
   },
   {
@@ -104,7 +105,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.9,
     maxLevel: 3,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "bear") >= 3,
+    visibleWhen: ownsAtLeast("bear", 3),
     effectPreview: (run) => swayPreview(run, "rug-corners"),
   },
   {
@@ -118,7 +119,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "bear") >= 4,
+    visibleWhen: ownsAtLeast("bear", 4),
     effectPreview: (run) => ratePreview(run, "ramp"),
   },
   {
@@ -131,7 +132,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 3000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "rug-corners") >= 2,
+    visibleWhen: ownsAtLeast("rug-corners", 2),
     effectPreview: (run) => swayPreview(run, "cushion-fort"),
   },
   {
@@ -145,7 +146,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.2,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "ramp") >= 3,
+    visibleWhen: ownsAtLeast("ramp", 3),
     effectPreview: (run) => ratePreview(run, "toy-crane"),
   },
   {
@@ -158,7 +159,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 25000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "toy-crane") >= 2,
+    visibleWhen: ownsAtLeast("toy-crane", 2),
     effectPreview: (run) => ratePreview(run, "fairy-lights"),
   },
   {
@@ -171,7 +172,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 250000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "fairy-lights") >= 1,
+    visibleWhen: ownsAtLeast("fairy-lights", 1),
   },
   // The Town
   {
@@ -196,7 +197,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1500,
     costGrowth: 2.6,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "mason") >= 2,
+    visibleWhen: ownsAtLeast("mason", 2),
     effectPreview: (run) => scalePreview(run, "scaffolding"),
   },
   {
@@ -210,7 +211,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.9,
     maxLevel: 3,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "mason") >= 2,
+    visibleWhen: ownsAtLeast("mason", 2),
     effectPreview: (run) => swayPreview(run, "cross-braces"),
   },
   {
@@ -224,7 +225,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "mason") >= 3,
+    visibleWhen: ownsAtLeast("mason", 3),
     effectPreview: (run) => ratePreview(run, "crane"),
   },
   {
@@ -237,7 +238,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 40000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "cross-braces") >= 2,
+    visibleWhen: ownsAtLeast("cross-braces", 2),
     effectPreview: (run) => swayPreview(run, "safety-nets"),
   },
   {
@@ -251,7 +252,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.2,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "crane") >= 3,
+    visibleWhen: ownsAtLeast("crane", 3),
     effectPreview: (run) => ratePreview(run, "concrete-truck"),
   },
   {
@@ -264,7 +265,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1000000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "concrete-truck") >= 2,
+    visibleWhen: ownsAtLeast("concrete-truck", 2),
     effectPreview: (run) => ratePreview(run, "neon-sign"),
   },
   {
@@ -277,7 +278,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 3800000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "neon-sign") >= 1,
+    visibleWhen: ownsAtLeast("neon-sign", 1),
   },
   // The Sky
   {
@@ -302,7 +303,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 2400,
     costGrowth: 2.6,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "sky-crew") >= 2,
+    visibleWhen: ownsAtLeast("sky-crew", 2),
     effectPreview: (run) => scalePreview(run, "alloy"),
   },
   {
@@ -316,7 +317,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.9,
     maxLevel: 3,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "sky-crew") >= 2,
+    visibleWhen: ownsAtLeast("sky-crew", 2),
     effectPreview: (run) => swayPreview(run, "damper"),
   },
   {
@@ -330,7 +331,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "sky-crew") >= 3,
+    visibleWhen: ownsAtLeast("sky-crew", 3),
     effectPreview: (run) => ratePreview(run, "cloud-crane"),
   },
   {
@@ -343,7 +344,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 25000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "damper") >= 2,
+    visibleWhen: ownsAtLeast("damper", 2),
     effectPreview: (run) => swayPreview(run, "ballast-ring"),
   },
   {
@@ -357,7 +358,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.2,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "cloud-crane") >= 3,
+    visibleWhen: ownsAtLeast("cloud-crane", 3),
     effectPreview: (run) => ratePreview(run, "cable-spinner"),
   },
   {
@@ -370,7 +371,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 3800000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "cable-spinner") >= 2,
+    visibleWhen: ownsAtLeast("cable-spinner", 2),
     effectPreview: (run) => ratePreview(run, "beacon"),
   },
   {
@@ -383,7 +384,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 26000000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "beacon") >= 1,
+    visibleWhen: ownsAtLeast("beacon", 1),
   },
   // The Top
   {
@@ -408,7 +409,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 40,
     costGrowth: 2.5,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "stair-lamp") >= 2,
+    visibleWhen: ownsAtLeast("stair-lamp", 2),
     effectPreview: (run) => scalePreview(run, "light-load"),
   },
   {
@@ -422,7 +423,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.3,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "stair-lamp") >= 3,
+    visibleWhen: ownsAtLeast("stair-lamp", 3),
     effectPreview: (run) => ratePreview(run, "songbird"),
   },
   {
@@ -436,7 +437,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.2,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "songbird") >= 3,
+    visibleWhen: ownsAtLeast("songbird", 3),
     effectPreview: (run) => ratePreview(run, "hum"),
   },
   {
@@ -449,7 +450,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1500,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "stair-lamp") >= 4,
+    visibleWhen: ownsAtLeast("stair-lamp", 4),
     effectPreview: (run) => ratePreview(run, "rest-bench"),
   },
   {
@@ -462,7 +463,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 30000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "rest-bench") >= 1,
+    visibleWhen: ownsAtLeast("rest-bench", 1),
     effectPreview: (run) => ratePreview(run, "window-seat"),
   },
   {

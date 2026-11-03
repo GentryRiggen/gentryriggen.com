@@ -52,6 +52,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Stack blocks and build a treehouse.",
     manualResource: "blocks",
     manualLabel: "Stack a block",
+    tapDoes: "stack a block and earn blocks",
     isDone: (run) => owned(run, "treehouse") >= 1,
     onEnter: (run) => {
       freshSite(run);
@@ -68,6 +69,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Raise the tower to the top floor.",
     manualResource: "bricks",
     manualLabel: "Lay a brick",
+    tapDoes: "lay a brick and earn bricks",
     isDone: (run) => owned(run, "skyscraper") >= 1,
     onEnter: (run) => {
       // Leftover blocks are worth a little at the building yard.
@@ -90,6 +92,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Climb past the clouds and set the last block.",
     manualResource: "beams",
     manualLabel: "Hoist a beam",
+    tapDoes: "hoist a beam and earn beams",
     isDone: (run) => owned(run, "space-elevator") >= 1,
     onEnter: (run) => {
       run.resources.beams += Math.floor(
@@ -110,6 +113,8 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Carry the last block all the way down.",
     manualResource: "quiet",
     manualLabel: "Take a step down",
+    tapDoes:
+      "take a step down. Every bit of quiet you earn carries the block lower",
     isDone: () => false,
     onEnter: (run) => {
       run.resources.quiet += Math.min(

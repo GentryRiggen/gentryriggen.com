@@ -74,6 +74,14 @@ export interface ResourceDef {
   initial?: number;
   /** Phase ids where it is shown; omitted means always. */
   phases?: readonly string[];
+  /**
+   * What it is for, in a few plain words ("Spend it to let lights go dark").
+   * Shown under the HUD's money and on its tile. Every currency the player
+   * earns or spends must have one (a guard test checks).
+   */
+  purpose?: string;
+  /** How its value reads (a percent, a share); omitted: a whole number. */
+  format?(value: number): string;
 }
 
 /** A made-up state for a cutscene's picture: the phase's scene dressed to show off. */
@@ -178,6 +186,12 @@ export interface PhaseDef {
   /** The resource the free manual action earns here. */
   manualResource: string;
   manualLabel: string;
+  /**
+   * What a tap does, in a few plain words, finishing "Tap <label> to ..."
+   * ("warm the flame. A warm flame lets go faster"). Shown at the start of
+   * the part. Required for every phase (a guard test checks).
+   */
+  tapDoes?: string;
   /** True once the run should move on to the next phase. Ignored in the last. */
   isDone(run: RunState): boolean;
   onEnter?(run: RunState): void;

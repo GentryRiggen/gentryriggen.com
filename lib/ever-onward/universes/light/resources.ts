@@ -24,11 +24,22 @@ const HIDDEN: readonly string[] = [];
  */
 export const RESOURCES: readonly ResourceDef[] = [
   // The Coast
-  { id: "coins", label: "Coins", phases: [PHASE_COAST] },
+  {
+    id: "coins",
+    label: "Coins",
+    phases: [PHASE_COAST],
+    purpose: "Buys keepers, oil and lighthouses.",
+  },
   { id: "ships", label: "Ships guided", phases: [PHASE_COAST, PHASE_LAST] },
   { id: "oil", label: "Lamp oil", initial: 40, phases: [PHASE_COAST] },
   { id: "oilTrend", label: "Oil price trend", phases: HIDDEN },
-  { id: "oilPrice", label: "Oil price", initial: 2, phases: [PHASE_COAST] },
+  {
+    id: "oilPrice",
+    label: "Oil price",
+    initial: 2,
+    phases: [PHASE_COAST],
+    format: (v) => v.toFixed(2),
+  },
   {
     id: "lighthouses",
     label: "Lighthouses",
@@ -47,7 +58,12 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "storm", label: "Storm", phases: HIDDEN },
   { id: "stormCooldown", label: "Next storm", initial: 120, phases: HIDDEN },
   // No More Night
-  { id: "power", label: "Power", phases: [PHASE_NIGHT] },
+  {
+    id: "power",
+    label: "Power",
+    phases: [PHASE_NIGHT],
+    purpose: "Buys plants and lines for cities.",
+  },
   { id: "supply", label: "Supply (MW)", phases: [PHASE_NIGHT] },
   { id: "demand", label: "Demand (MW)", phases: [PHASE_NIGHT] },
   { id: "cities", label: "Cities lit", phases: [PHASE_NIGHT] },
@@ -56,14 +72,21 @@ export const RESOURCES: readonly ResourceDef[] = [
     label: "Night remaining %",
     initial: 100,
     phases: [PHASE_NIGHT],
+    format: (v) => `${v.toFixed(1)}%`,
   },
   {
     id: "grid",
     label: "Grid steadiness (%)",
     initial: 100,
     phases: [PHASE_NIGHT],
+    format: (v) => `${Math.round(v)}%`,
   },
-  { id: "knowhow", label: "Know-how", phases: [PHASE_NIGHT, PHASE_SKY] },
+  {
+    id: "knowhow",
+    label: "Know-how",
+    phases: [PHASE_NIGHT, PHASE_SKY],
+    purpose: "Buys projects and overdrive.",
+  },
   // Overdrive (night and sky): the run's clock and tallies, read by overdrive.ts
   { id: "odLeft", label: "Overdrive time left", phases: HIDDEN },
   { id: "odClean", label: "Overdrive held steady", phases: HIDDEN },
@@ -159,7 +182,12 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "prSurgeRate", label: "Haul flow rate", phases: HIDDEN },
   { id: "prPaused", label: "Probe races paused (simulator)", phases: HIDDEN },
   // The Sky
-  { id: "energy", label: "Energy", phases: [PHASE_SKY] },
+  {
+    id: "energy",
+    label: "Energy",
+    phases: [PHASE_SKY],
+    purpose: "Buys collectors and star probes.",
+  },
   { id: "collectors", label: "Sun collectors", phases: [PHASE_SKY] },
   { id: "probes", label: "Probes", phases: [PHASE_SKY] },
   {
@@ -167,6 +195,7 @@ export const RESOURCES: readonly ResourceDef[] = [
     label: "Probe heading (%)",
     initial: 100,
     phases: [PHASE_SKY],
+    format: (v) => `${Math.round(v)}%`,
   },
   { id: "flare", label: "Solar flare", phases: HIDDEN },
   { id: "flareCooldown", label: "Next flare", initial: 100, phases: HIDDEN },
@@ -178,8 +207,20 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: [PHASE_SKY],
   },
   // The Last Light
-  { id: "resolve", label: "Resolve", phases: [PHASE_LAST] },
-  { id: "flame", label: "Flame", initial: 600, phases: [PHASE_LAST] },
+  {
+    id: "resolve",
+    label: "Resolve",
+    phases: [PHASE_LAST],
+    purpose: "Spend it to let lights go dark.",
+  },
+  {
+    id: "flame",
+    label: "Flame",
+    initial: 600,
+    phases: [PHASE_LAST],
+    // The flame holds 0-1000; the player reads it as a percent.
+    format: (v) => `${Math.round(v / 10)}%`,
+  },
   // The Memory Garden (The Last Light): growth, watering and tallies, read by garden.ts
   ...Array.from({ length: PLOT_COUNT }, (_, plot): ResourceDef[] => [
     { id: `gdP${plot}`, label: `Plant ${plot + 1} growth`, phases: HIDDEN },

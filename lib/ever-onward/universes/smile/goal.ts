@@ -36,6 +36,6 @@ export function smileGoal(run: RunState): GoalView | null {
     trust,
     trust >= 1
       ? "One small, real smile. Stay for a moment."
-      : "Listen, make room, and share a little tea"
+      : "Every bit of patience you earn builds trust"
   );
 }

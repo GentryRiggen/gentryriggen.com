@@ -91,7 +91,7 @@ export const OVERTIME_ACTIONS: readonly ActionDef[] = [
       return {
         label: on
           ? `${OVERTIME_NAMES[run.phase]} is on`
-          : `Call an ${OVERTIME_NAMES[run.phase].toLowerCase()}`,
+          : `Call ${/^[aeiou]/i.test(OVERTIME_NAMES[run.phase]) ? "an" : "a"} ${OVERTIME_NAMES[run.phase].toLowerCase()}`,
         detail: `Everything pays ${K.overtimeMult}x for ${K.overtimeSeconds} seconds. Best just before something big.`,
         cost: { resource: KNOWHOW, amount: K.overtimeCost },
         isBlocked: on,

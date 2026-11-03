@@ -253,7 +253,7 @@ const PHASE_IDS = [PHASE_COAST, PHASE_NIGHT, PHASE_SKY, PHASE_LAST];
 
 /** One button a side; the fork panel draws them itself. */
 export const FORK_ACTIONS: readonly ActionDef[] = FORKS.flatMap((fork) =>
-  fork.sides.map((side, index) => ({
+  fork.sides.map((side) => ({
     id: forkActionId(side.id),
     phases: [PHASE_IDS[fork.phase]],
     isInline: true,
@@ -261,15 +261,14 @@ export const FORK_ACTIONS: readonly ActionDef[] = FORKS.flatMap((fork) =>
       fork.isOpen(run) || chosenSide(run, fork) !== null,
     describe: (run: RunState) => {
       const chosen = chosenSide(run, fork);
-      const rival = fork.sides[1 - index];
       return {
         label: side.name,
         detail:
           chosen === null
             ? side.gives
             : chosen.id === side.id
-              ? "Yours."
-              : `Closed: you chose ${chosen.name.toLowerCase()} instead of ${rival.name.toLowerCase()}.`,
+              ? `Yours: ${side.gives}`
+              : `Closed: you chose ${chosen.name.toLowerCase()} instead.`,
         cost: { resource: fork.currency, amount: side.price },
         isBlocked: chosen !== null,
       };

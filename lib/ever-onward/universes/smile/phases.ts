@@ -43,6 +43,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Cheer up your friend and knock next door.",
     manualResource: "smiles",
     manualLabel: "Tell a joke",
+    tapDoes: "tell a joke and earn smiles",
     isDone: (run) => owned(run, "next-door") >= 1,
     onEnter: (run) => headStart(0)(run),
   },
@@ -56,6 +57,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Fill the town with cheer and earn the key.",
     manualResource: "cheers",
     manualLabel: "Cheer the street",
+    tapDoes: "cheer the street. Tap too fast and the crowd gets tired",
     isDone: (run) => owned(run, "key-to-town") >= 1,
     onEnter: (run) => {
       carry(0, 1)(run);
@@ -72,6 +74,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Spread cheer to every place and launch the satellite.",
     manualResource: "grins",
     manualLabel: "Spread the cheer",
+    tapDoes: "spread the cheer. Tap too fast and the world gets tired",
     isDone: (run) => owned(run, "cheer-satellite") >= 1,
     onEnter: (run) => {
       carry(1, 2)(run);
@@ -88,6 +91,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Sit with your friend until they are ready to smile.",
     manualResource: "patience",
     manualLabel: "Sit with them",
+    tapDoes: "sit with them. Every bit of patience you earn builds trust",
     isDone: () => false,
     onEnter: (run) => {
       openQuiet(run);

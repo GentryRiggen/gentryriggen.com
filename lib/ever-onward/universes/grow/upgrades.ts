@@ -1,3 +1,4 @@
+import { ownsAtLeast } from "../../engine/goal";
 import { handHarvestPays } from "./actions";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import { formatNumber } from "../../engine/format";
@@ -128,7 +129,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.6,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "sprinkler") >= 2,
+    visibleWhen: ownsAtLeast("sprinkler", 2),
     effectPreview: (run) =>
       ratePreview(run, "basket", "Seeds picked/sec", pickPerSecond),
     noEffectReason: () => PICKERS_AT_LIMIT,
@@ -142,7 +143,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 120,
     costGrowth: 2.6,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "sprinkler") >= 3,
+    visibleWhen: ownsAtLeast("sprinkler", 3),
     effectPreview: (run) => scalePreview(run, "mulch"),
   },
   {
@@ -156,7 +157,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.9,
     maxLevel: 4,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "sprinkler") >= 3,
+    visibleWhen: ownsAtLeast("sprinkler", 3),
     effectPreview: (run) =>
       `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
@@ -212,7 +213,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 600,
     costGrowth: 2.3,
     maxLevel: 3,
-    visibleWhen: (run) => owned(run, "rain-barrel") >= 1,
+    visibleWhen: ownsAtLeast("rain-barrel", 1),
     effectPreview: (run) =>
       `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
@@ -231,7 +232,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 4500,
     costGrowth: 1.6,
     maxLevel: 6,
-    visibleWhen: (run) => owned(run, "basket") >= 4,
+    visibleWhen: ownsAtLeast("basket", 4),
     effectPreview: (run) =>
       ratePreview(run, "gardener", "Seeds picked/sec", pickPerSecond),
     noEffectReason: () => PICKERS_AT_LIMIT,
@@ -260,7 +261,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 6000,
     costGrowth: 2.5,
     maxLevel: 3,
-    visibleWhen: (run) => owned(run, "gardener") >= 2,
+    visibleWhen: ownsAtLeast("gardener", 2),
     effectPreview: (run) =>
       ratePreview(run, "wheelbarrow", "Seeds picked/sec", pickPerSecond),
   },
@@ -274,7 +275,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 25000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "gardener") >= 4,
+    visibleWhen: ownsAtLeast("gardener", 4),
     effectPreview: (run) =>
       ratePreview(run, "greenhouse", "Produce/sec", incomePerSecond),
   },
@@ -288,7 +289,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 60000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "greenhouse") >= 1,
+    visibleWhen: ownsAtLeast("greenhouse", 1),
     effectPreview: (run) =>
       ratePreview(run, "orchard", "Produce/sec", incomePerSecond),
   },
@@ -324,7 +325,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 250000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "orchard") >= 1,
+    visibleWhen: ownsAtLeast("orchard", 1),
   },
   // The Farm
   {
@@ -347,7 +348,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1800,
     costGrowth: 2.6,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "scarecrow") >= 2,
+    visibleWhen: ownsAtLeast("scarecrow", 2),
     effectPreview: (run) => scalePreview(run, "compost"),
   },
   {
@@ -361,7 +362,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.9,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "scarecrow") >= 2,
+    visibleWhen: ownsAtLeast("scarecrow", 2),
     effectPreview: (run) =>
       `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
@@ -382,7 +383,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "scarecrow") >= 3,
+    visibleWhen: ownsAtLeast("scarecrow", 3),
     onBuy: openFair,
     effectPreview: (run) => helperPreview(run, "tractor"),
   },
@@ -417,7 +418,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // A bonus helper, not income: bots buy the farm first.
     priority: -1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "tractor") >= 3,
+    visibleWhen: ownsAtLeast("tractor", 3),
     effectPreview: () => "Re-plants for demand every minute and a half",
   },
   {
@@ -431,7 +432,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.2,
     maxLevel: 4,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "well") >= 2,
+    visibleWhen: ownsAtLeast("well", 2),
     effectPreview: (run) =>
       `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
@@ -450,7 +451,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 120000,
     costGrowth: 2.6,
     maxLevel: 3,
-    visibleWhen: (run) => owned(run, "tractor") >= 6,
+    visibleWhen: ownsAtLeast("tractor", 6),
     effectPreview: (run) => scalePreview(run, "silo"),
   },
   {
@@ -464,7 +465,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "tractor") >= 4,
+    visibleWhen: ownsAtLeast("tractor", 4),
     effectPreview: (run) => helperPreview(run, "glasshouse"),
   },
   {
@@ -478,7 +479,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "glasshouse") >= 3,
+    visibleWhen: ownsAtLeast("glasshouse", 3),
     effectPreview: (run) => helperPreview(run, "seed-drone"),
   },
   {
@@ -491,7 +492,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 6000000,
     costGrowth: 1,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "seed-drone") >= 2,
+    visibleWhen: ownsAtLeast("seed-drone", 2),
   },
   // The Whole World
   {
@@ -516,7 +517,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 25000,
     costGrowth: 2.6,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "windbreak") >= 2,
+    visibleWhen: ownsAtLeast("windbreak", 2),
     effectPreview: (run) => scalePreview(run, "rain-makers"),
   },
   {
@@ -530,7 +531,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.9,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "windbreak") >= 2,
+    visibleWhen: ownsAtLeast("windbreak", 2),
     effectPreview: (run) =>
       `Holds ${num(waterCapacity(run))} → ${num(
         waterCapacity({
@@ -551,7 +552,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 8,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "windbreak") >= 3,
+    visibleWhen: ownsAtLeast("windbreak", 3),
     onBuy: openMigration,
     effectPreview: (run) => helperPreview(run, "planting-rover"),
   },
@@ -584,7 +585,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.2,
     maxLevel: 4,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "river-bend") >= 2,
+    visibleWhen: ownsAtLeast("river-bend", 2),
     effectPreview: (run) =>
       `Rain ${num(Math.round((1 + TUNING.world.water.cloudRain * owned(run, "cloud-seeder")) * 100))}% → ${num(Math.round((1 + TUNING.world.water.cloudRain * (owned(run, "cloud-seeder") + 1)) * 100))}%`,
   },
@@ -599,7 +600,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 8,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "planting-rover") >= 3,
+    visibleWhen: ownsAtLeast("planting-rover", 3),
     effectPreview: (run) => helperPreview(run, "sky-seeder"),
   },
   {
@@ -637,7 +638,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     baseCost: 70,
     costGrowth: 2.8,
     maxLevel: 4,
-    visibleWhen: (run) => owned(run, "trellis") >= 2,
+    visibleWhen: ownsAtLeast("trellis", 2),
     effectPreview: (run) => scalePreview(run, "sunny-sill"),
   },
   {
@@ -651,7 +652,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 6,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "trellis") >= 2,
+    visibleWhen: ownsAtLeast("trellis", 2),
     effectPreview: (run) => helperPreview(run, "wind-chime"),
   },
   {
@@ -665,7 +666,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.4,
     maxLevel: 8,
     kind: "mechanic",
-    visibleWhen: (run) => owned(run, "wind-chime") >= 1,
+    visibleWhen: ownsAtLeast("wind-chime", 1),
     effectPreview: (run) => helperPreview(run, "dew-collector"),
   },
   {

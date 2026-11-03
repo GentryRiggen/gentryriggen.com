@@ -1,4 +1,7 @@
-import { formatNumber } from "@/lib/ever-onward/engine/format";
+import {
+  formatResourceValue,
+  shownResources,
+} from "@/lib/ever-onward/engine/changes";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import AnimatedValue from "./AnimatedValue";
 import {
@@ -16,25 +19,13 @@ interface ResourcesProps {
   hiddenIds?: readonly string[];
 }
 
-function formatResource(id: string, value: number): string {
-  if (id === "night") return `${value.toFixed(1)}%`;
-  if (id === "oilPrice") return value.toFixed(2);
-  // The flame holds 0-1000; the player reads it as a percent.
-  if (id === "flame") return `${Math.round(value / 10)}%`;
-  return formatNumber(Math.floor(value));
-}
-
 export default function Resources({
   def,
   run,
   primaryId,
   hiddenIds = [],
 }: ResourcesProps) {
-  const phaseId = def.phases[run.phase].id;
-  const shown = def.resources.filter(
-    (r) => r.phases === undefined || r.phases.includes(phaseId)
-  );
-  const others = shown.filter(
+  const others = shownResources(def, run).filter(
     (r) => r.id !== primaryId && !hiddenIds.includes(r.id)
   );
   return (
@@ -53,10 +44,15 @@ export default function Resources({
           <dd className={`${pixelClass} text-xs text-amber-100`}>
             <AnimatedValue
               value={run.resources[r.id] ?? 0}
-              format={(v) => formatResource(r.id, v)}
+              format={(v) => formatResourceValue(r, v)}
               testId={`lm-res-${r.id}`}
             />
           </dd>
+          {r.purpose && (
+            <dd className="font-mono text-xs leading-snug text-slate-300">
+              {r.purpose}
+            </dd>
+          )}
         </div>
       ))}
     </dl>
