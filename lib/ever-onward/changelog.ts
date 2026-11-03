@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.24.1",
+    date: "2026-11-02",
+    title: "The oil gauge fits on phones",
+    highlights: [
+      "The oil numbers in the lamp panel are a bit smaller on phones, so they no longer run off the edge",
+    ],
+  },
+  {
     version: "1.24.0",
     date: "2026-11-02",
     title: "Big gauges for what runs out",
