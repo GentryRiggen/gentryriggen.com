@@ -43,10 +43,8 @@ export default function useEverOnwardAudio(
   // context at any time and only lets resume() through inside a gesture.
   useEffect(() => {
     if (!isAudioSupported()) return;
-    const unlock = () => {
-      if (everOnwardSynth.isEnabled()) everOnwardSynth.resume();
-      else everOnwardSynth.enable();
-    };
+    // A tap also repairs sound that came back dead from the app switcher.
+    const unlock = () => everOnwardSynth.wake();
     for (const type of UNLOCK_EVENTS)
       window.addEventListener(type, unlock, { passive: true });
     return () => {

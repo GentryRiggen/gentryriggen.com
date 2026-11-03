@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.30.1",
+    date: "2026-11-03",
+    title: "Sound that comes back",
+    highlights: [
+      "Sometimes, after you switched to another app and came back, the game stayed silent even with sound on. Now the game checks that its sound is really playing when you come back",
+      "If the sound got stuck, your next tap anywhere (a sound switch counts) starts it fresh, and the music and storm come back",
+    ],
+  },
+  {
     version: "1.30.0",
     date: "2026-11-02",
     title: "Speed in the Menu",

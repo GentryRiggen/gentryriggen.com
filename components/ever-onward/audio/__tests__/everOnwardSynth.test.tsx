@@ -1,12 +1,16 @@
 import { act } from "react";
 import { render } from "@testing-library/react";
-import { createFakeAudio } from "../../../game-audio/testing/fakeAudio";
+import {
+  createFakeAudio,
+  type FakeContext,
+} from "../../../game-audio/testing/fakeAudio";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { GROW_UI } from "../../universes/grow";
 import {
   createEverOnwardSynth,
   everOnwardSynth,
+  HEALTH_CHECK_MS,
   MUSIC_LEVEL,
 } from "../everOnwardSynth";
 import { TAP_LEVEL } from "../voices";
@@ -233,5 +237,127 @@ describe("Ever Onward channel settings", () => {
     act(() => everOnwardChannels.music.resetMemory());
     expect(everOnwardChannels.music.get()).toBe(false);
     act(() => everOnwardChannels.music.set(true));
+  });
+});
+
+describe("Ever Onward sound that comes back dead", () => {
+  const audio = createFakeAudio();
+  let synth: ReturnType<typeof createEverOnwardSynth>;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    audio.reset();
+    audio.install();
+    synth = createEverOnwardSynth();
+    synth.setPhase(0);
+    expect(synth.enable()).toBe(true);
+  });
+  afterEach(() => {
+    synth.dispose();
+    audio.uninstall();
+    jest.useRealTimers();
+  });
+
+  const first = () => audio.contexts[0] as unknown as FakeContext;
+  const comeBack = () => {
+    synth.pause();
+    synth.resume();
+  };
+
+  it("a clock that stays still after coming back marks it broken", () => {
+    comeBack();
+    expect(first().state).toBe("running");
+    jest.advanceTimersByTime(HEALTH_CHECK_MS);
+    expect(synth.isBroken()).toBe(true);
+  });
+
+  it("a clock that moves on is left alone", () => {
+    comeBack();
+    first().currentTime = 0.5;
+    jest.advanceTimersByTime(HEALTH_CHECK_MS);
+    expect(synth.isBroken()).toBe(false);
+    synth.wake();
+    expect(audio.contexts).toHaveLength(1);
+  });
+
+  it("a resume that never answers marks it broken", () => {
+    synth.pause();
+    first().resume.mockImplementation(() => new Promise<void>(() => {}));
+    synth.resume();
+    expect(first().state).toBe("suspended");
+    jest.advanceTimersByTime(HEALTH_CHECK_MS);
+    expect(synth.isBroken()).toBe(true);
+  });
+
+  it("the next tap builds a new context and brings the music back", () => {
+    comeBack();
+    jest.advanceTimersByTime(HEALTH_CHECK_MS);
+    const sourcesBefore = audio.sources.length;
+    synth.wake();
+    expect(first().close).toHaveBeenCalled();
+    expect(audio.contexts).toHaveLength(2);
+    expect(synth.isBroken()).toBe(false);
+    expect(audio.sources.length).toBeGreaterThan(sourcesBefore);
+    // Effects play on the new context.
+    const before = audio.sources.length;
+    synth.tap(0);
+    expect(audio.sources.length).toBeGreaterThan(before);
+  });
+
+  it("a tap spots a frozen clock straight away, without waiting", () => {
+    synth.resume();
+    jest.setSystemTime(Date.now() + 300);
+    synth.wake();
+    expect(audio.contexts).toHaveLength(2);
+  });
+
+  it("fast taps can't hide a frozen clock", () => {
+    synth.resume();
+    for (let i = 0; i < 10; i += 1) {
+      jest.setSystemTime(Date.now() + 100);
+      if (audio.contexts.length > 1) break;
+      synth.wake();
+    }
+    expect(audio.contexts).toHaveLength(2);
+  });
+
+  it("taps on a healthy context never rebuild it", () => {
+    for (let i = 0; i < 10; i += 1) {
+      first().currentTime += 0.1;
+      jest.advanceTimersByTime(100);
+      synth.wake();
+    }
+    jest.advanceTimersByTime(HEALTH_CHECK_MS);
+    expect(synth.isBroken()).toBe(false);
+    expect(audio.contexts).toHaveLength(1);
+  });
+
+  it("an interruption while showing marks it broken", () => {
+    first().setState("interrupted");
+    expect(synth.isBroken()).toBe(true);
+  });
+
+  it("suspending for a hidden tab is not a fault", () => {
+    synth.pause();
+    jest.advanceTimersByTime(HEALTH_CHECK_MS * 4);
+    expect(synth.isBroken()).toBe(false);
+  });
+
+  it("the hooks repair it on the next gesture", () => {
+    synth.dispose();
+    const { unmount } = render(<Probe />);
+    act(() => {
+      window.dispatchEvent(new Event("pointerdown"));
+    });
+    const ctx = audio.contexts.at(-1) as unknown as FakeContext;
+    const count = audio.contexts.length;
+    act(() => ctx.setState("interrupted"));
+    act(() => {
+      window.dispatchEvent(new Event("click"));
+    });
+    expect(ctx.close).toHaveBeenCalled();
+    expect(audio.contexts).toHaveLength(count + 1);
+    unmount();
+    everOnwardSynth.dispose();
   });
 });

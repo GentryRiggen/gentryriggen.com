@@ -88,6 +88,10 @@ const MUSIC_DISPOSE_MS = 2500;
 const STORM_FADE_S = 1.2;
 const STORM_LEVEL = 0.1;
 const THUNDER_GAP_MS: readonly [number, number] = [7000, 15000];
+/** How long after a resume the clock is checked again. */
+export const HEALTH_CHECK_MS = 500;
+/** A tap this long after the last look at a frozen clock means it's stuck. */
+const STUCK_MS = 250;
 
 interface Engine extends VoiceEngine {
   /** Sound effects connect to `bus`; music has its own gain. */
@@ -118,6 +122,16 @@ function createSynth() {
   let uneaseTimer: ReturnType<typeof setTimeout> | null = null;
   let stopWatchingMotion: (() => void) | null = null;
   let holders = 0;
+  /**
+   * The context can't play and only a new one will do. iOS home-screen apps
+   * can come back with a context that claims "running" while its clock is
+   * frozen, or whose resume() never settles; resuming again does nothing.
+   * A new context may only start inside a gesture, so this waits for a tap.
+   */
+  let isBroken = false;
+  /** The last look at the clock, to spot a frozen one on the next tap. */
+  let clockSeen: { ctx: AudioContext; time: number; at: number } | null = null;
+  let healthTimer: ReturnType<typeof setTimeout> | null = null;
   const limiters = {
     affordable: createRateLimiter(AFFORDABLE_GAP_MS),
     reveal: createRateLimiter(REVEAL_GAP_MS),
@@ -139,6 +153,14 @@ function createSynth() {
       bus.connect(master);
       const musicBus = ctx.createGain();
       musicBus.connect(master);
+      // An interruption while the game is showing (a call, Siri) can leave
+      // the context dead even after iOS says it's back.
+      ctx.addEventListener?.("statechange", () => {
+        if (engine?.ctx !== ctx || isPaused || !isEnabled) return;
+        if (ctx.state === "interrupted" || ctx.state === "closed") {
+          isBroken = true;
+        }
+      });
       stopWatchingMotion = watchReducedMotion(() => {
         master.gain.value = MASTER_LEVEL * softnessGain();
       });
@@ -300,7 +322,94 @@ function createSynth() {
     reconcileStorm();
   }
 
-  return {
+  /**
+   * Remembers the clock, but only when it has moved (or is new): a stuck
+   * clock keeps its first sighting, so fast taps can't hide that it's stuck.
+   */
+  function noteClock(ctx: AudioContext) {
+    if (clockSeen?.ctx === ctx && ctx.currentTime <= clockSeen.time) return;
+    clockSeen = { ctx, time: ctx.currentTime, at: Date.now() };
+  }
+
+  /** "Running", but the clock hasn't moved since the last look. */
+  function isClockFrozen(ctx: AudioContext): boolean {
+    if (ctx.state !== "running" || clockSeen?.ctx !== ctx) return false;
+    if (Date.now() - clockSeen.at < STUCK_MS) return false;
+    return ctx.currentTime <= clockSeen.time;
+  }
+
+  function clearHealthCheck() {
+    if (healthTimer !== null) clearTimeout(healthTimer);
+    healthTimer = null;
+  }
+
+  /**
+   * Looks at the clock again shortly after a resume. A working context has
+   * moved on; a stuck one hasn't, or never reached "running". Either way it
+   * is marked broken and the next tap builds a new one.
+   */
+  function scheduleHealthCheck(ctx: AudioContext) {
+    // One check at a time, so a burst of taps can't keep putting it off.
+    if (healthTimer !== null) return;
+    const time = ctx.currentTime;
+    healthTimer = setTimeout(() => {
+      healthTimer = null;
+      if (engine?.ctx !== ctx || isPaused || !isEnabled) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (ctx.state !== "running" || ctx.currentTime <= time) isBroken = true;
+    }, HEALTH_CHECK_MS);
+  }
+
+  /** Drops the storm bed at once, without a fade (its context is dead). */
+  function dropStormNow() {
+    if (!storm) return;
+    const bed = storm;
+    storm = null;
+    if (bed.thunder !== null) clearTimeout(bed.thunder);
+    for (const source of bed.sources) {
+      try {
+        source.stop();
+      } catch {
+        // Already stopped.
+      }
+      source.disconnect();
+    }
+    bed.gain.disconnect();
+  }
+
+  /**
+   * Throws the context away and builds a new one, then brings back whatever
+   * should be playing. Only works inside a gesture on iOS.
+   */
+  function rebuild() {
+    const old = engine;
+    clearHealthCheck();
+    clearUnease();
+    dropStormNow();
+    dropMusic(0);
+    stopWatchingMotion?.();
+    stopWatchingMotion = null;
+    engine = null;
+    try {
+      void old?.ctx.close?.()?.catch?.(() => undefined);
+    } catch {
+      // Already closed.
+    }
+    isBroken = false;
+    isPaused = false;
+    clockSeen = null;
+    engine = build();
+    if (!engine) {
+      isEnabled = false;
+      return;
+    }
+    void engine.ctx.resume?.()?.catch?.(() => undefined);
+    reconcile();
+    noteClock(engine.ctx);
+    scheduleHealthCheck(engine.ctx);
+  }
+
+  const synth = {
     canPlay,
     isEnabled: () => isEnabled,
 
@@ -331,10 +440,32 @@ function createSynth() {
       };
     },
 
+    /**
+     * The gesture handler: enables sound the first time, rebuilds a broken
+     * or frozen context, and otherwise resumes. Safe to call on every tap.
+     */
+    wake() {
+      if (!isEnabled) {
+        synth.enable();
+        return;
+      }
+      if (!engine) return;
+      if (isBroken || isClockFrozen(engine.ctx)) {
+        rebuild();
+        return;
+      }
+      synth.resume();
+    },
+
+    /** Test hook: whether the next tap will build a new context. */
+    isBroken: () => isBroken,
+
     /** The tab is hidden: silence everything and suspend the context. */
     pause() {
       if (isPaused) return;
       isPaused = true;
+      clearHealthCheck();
+      clockSeen = null;
       music?.player.pause();
       reconcile();
       void engine?.ctx.suspend?.();
@@ -351,6 +482,8 @@ function createSynth() {
       const { ctx } = engine;
       const wasPaused = isPaused;
       isPaused = false;
+      noteClock(ctx);
+      scheduleHealthCheck(ctx);
       if (ctx.state === "running") {
         if (wasPaused) restartMusic();
         return;
@@ -453,6 +586,9 @@ function createSynth() {
     /** Test hook: forget everything. */
     dispose() {
       clearUnease();
+      clearHealthCheck();
+      isBroken = false;
+      clockSeen = null;
       stopStorm();
       dropMusic(0);
       stopWatchingMotion?.();
@@ -470,6 +606,8 @@ function createSynth() {
       limiters.reveal.reset();
     },
   };
+
+  return synth;
 }
 
 export type EverOnwardSynth = ReturnType<typeof createSynth>;

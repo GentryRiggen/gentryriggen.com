@@ -52,6 +52,19 @@ export class FakeContext {
     this.state = "running";
     return Promise.resolve();
   });
+  close = jest.fn(() => {
+    this.state = "closed";
+    return Promise.resolve();
+  });
+  private stateListeners: (() => void)[] = [];
+  addEventListener = jest.fn((type: string, listener: () => void) => {
+    if (type === "statechange") this.stateListeners.push(listener);
+  });
+  /** Tests call this to mimic the browser changing the state on its own. */
+  setState(state: string) {
+    this.state = state;
+    for (const listener of this.stateListeners) listener();
+  }
   createGain: () => FakeNode;
   createBiquadFilter: () => FakeNode;
   createOscillator: () => FakeNode;

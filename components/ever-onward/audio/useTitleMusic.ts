@@ -33,10 +33,8 @@ export default function useTitleMusic(
 
   useEffect(() => {
     if (!isActive || !isAudioSupported()) return;
-    const unlock = () => {
-      if (everOnwardSynth.isEnabled()) everOnwardSynth.resume();
-      else everOnwardSynth.enable();
-    };
+    // A tap also repairs sound that came back dead from the app switcher.
+    const unlock = () => everOnwardSynth.wake();
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") everOnwardSynth.pause();
       else everOnwardSynth.resume();
