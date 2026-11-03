@@ -220,3 +220,85 @@ export function OpenLink({
     </a>
   );
 }
+
+interface SegmentedProps<T extends string> {
+  /** What the switch picks, spoken ("Meeting views"). */
+  label: string;
+  options: readonly { id: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+}
+
+const SEGMENT_COLS = [
+  "grid-cols-1",
+  "grid-cols-2",
+  "grid-cols-3",
+  "grid-cols-4",
+];
+
+/** A segmented switch (two to four choices) above a list or chart. */
+export function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: SegmentedProps<T>) {
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className={`jim-card grid gap-1 p-1 ${
+        SEGMENT_COLS[Math.min(options.length, 4) - 1] ?? "grid-cols-4"
+      }`}
+    >
+      {options.map((o) => {
+        const selected = o.id === value;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(o.id)}
+            className={`min-h-11 min-w-0 truncate rounded-xl px-1.5 text-sm font-medium transition-colors duration-200 ${
+              selected
+                ? "bg-ayu-accent/12 text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset"
+                : "text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface FilterChipProps {
+  label: string;
+  /** How many it matches, shown small. */
+  count?: number;
+  on: boolean;
+  onToggle: () => void;
+}
+
+/** A chip that filters a list; tap again to clear it. */
+export function FilterChip({ label, count, on, onToggle }: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onToggle}
+      className={`inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full px-3 text-sm ring-1 ring-inset transition-colors ${
+        on
+          ? "bg-ayu-accent/12 text-ayu-accent ring-ayu-accent/30"
+          : "bg-white/[0.04] text-ayu-text ring-white/10 hover:bg-white/[0.08]"
+      }`}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      {count !== undefined && (
+        <span className="text-xs text-ayu-subtle tabular-nums">{count}</span>
+      )}
+    </button>
+  );
+}

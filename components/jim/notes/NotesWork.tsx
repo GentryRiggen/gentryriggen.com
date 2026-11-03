@@ -1,18 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
-import {
-  Chip,
-  Empty,
-  OpenLink,
-  Rows,
-  Section,
-} from "@/components/jim/notes/NotesUi";
+import { Empty, Section, Segmented } from "@/components/jim/notes/NotesUi";
+import OrgTree from "@/components/jim/notes/OrgTree";
 import WinsChart from "@/components/jim/notes/WinsChart";
 import { DirectorySearch } from "@/components/jim/notes/WorkDirectory";
+import WorkMeetings from "@/components/jim/notes/WorkMeetings";
 import { daysBetween, fmtDay, fmtShort, stripMd } from "@/lib/jim/todos";
-import type { TeamMember, ViewData, WorkMeeting } from "@/lib/jim/view";
+import type { TeamMember, ViewData } from "@/lib/jim/view";
 
 interface NotesWorkProps {
   data: ViewData;
@@ -103,11 +98,12 @@ function TeamCard({ member, today }: { member: TeamMember; today: string }) {
   );
 }
 
-function meetingMatches(m: WorkMeeting, words: string[]): boolean {
-  const hay =
-    `${m.title} ${m.people.join(" ")} ${m.projects.join(" ")}`.toLowerCase();
-  return words.every((w) => hay.includes(w));
-}
+type DirectoryView = "list" | "org";
+
+const DIRECTORY_VIEWS: readonly { id: DirectoryView; label: string }[] = [
+  { id: "list", label: "List" },
+  { id: "org", label: "Org chart" },
+];
 
 /** Work: the team, wins per week, meetings and the directory. */
 export default function NotesWork({
@@ -117,7 +113,7 @@ export default function NotesWork({
   meetingHref,
   personHref,
 }: NotesWorkProps) {
-  const [meetingQuery, setMeetingQuery] = useState("");
+  const [dirView, setDirView] = useState<DirectoryView>("list");
   const [dirQuery, setDirQuery] = useState("");
   const work = data.work;
   if (!work) {
@@ -126,8 +122,6 @@ export default function NotesWork({
     );
   }
 
-  const words = meetingQuery.toLowerCase().split(/\s+/).filter(Boolean);
-  const meetings = work.meetings.filter((m) => meetingMatches(m, words));
   const hasWins = work.winsByWeek.length > 0 && work.winsKeys.length > 0;
 
   return (
@@ -153,79 +147,11 @@ export default function NotesWork({
       </Section>
 
       <Section title="Meetings" aside={work.meetings.length || undefined}>
-        <div className="space-y-3">
-          {work.meetings.length > 0 && (
-            <div className="relative">
-              <label htmlFor="jim-meetings-search" className="sr-only">
-                Search meetings
-              </label>
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ayu-subtle"
-              />
-              <input
-                id="jim-meetings-search"
-                type="search"
-                value={meetingQuery}
-                onChange={(e) => setMeetingQuery(e.target.value)}
-                placeholder="Title, person or project"
-                maxLength={100}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                enterKeyHint="search"
-                className="min-h-11 w-full rounded-2xl border border-white/[0.08] bg-ayu-panel/70 py-2 pr-4 pl-10 text-base text-ayu-text shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] backdrop-blur placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
-              />
-            </div>
-          )}
-          {meetings.length ? (
-            <Rows>
-              {meetings.map((m) => (
-                <li key={m.path}>
-                  <OpenLink
-                    href={meetingHref?.(m.path)}
-                    onOpen={() => onOpenMeeting(m.path)}
-                    className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/[0.04]"
-                  >
-                    <span className="min-w-0 flex-1 space-y-1">
-                      <span className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 truncate text-ayu-text">
-                          {m.title}
-                        </span>
-                        <span className="shrink-0 text-sm text-ayu-subtle tabular-nums">
-                          {ISO.test(m.date) ? fmtShort(m.date) : ""}
-                        </span>
-                      </span>
-                      {m.people.length > 0 && (
-                        <span className="block truncate text-sm text-ayu-subtle">
-                          {m.people.join(", ")}
-                        </span>
-                      )}
-                      {m.projects.length > 0 && (
-                        <span className="flex flex-wrap gap-1">
-                          {m.projects.map((p) => (
-                            <Chip key={p} tone="blue">
-                              {p}
-                            </Chip>
-                          ))}
-                        </span>
-                      )}
-                    </span>
-                    <span aria-hidden="true" className="text-ayu-subtle">
-                      ›
-                    </span>
-                  </OpenLink>
-                </li>
-              ))}
-            </Rows>
-          ) : (
-            <Empty>
-              {work.meetings.length
-                ? "No meeting matches."
-                : "No meetings yet."}
-            </Empty>
-          )}
-        </div>
+        <WorkMeetings
+          meetings={work.meetings}
+          onOpenMeeting={onOpenMeeting}
+          meetingHref={meetingHref}
+        />
       </Section>
 
       <Section
@@ -237,13 +163,29 @@ export default function NotesWork({
         }
       >
         {work.directory.people.length ? (
-          <DirectorySearch
-            directory={work.directory}
-            query={dirQuery}
-            onQuery={setDirQuery}
-            onOpen={onOpenPerson}
-            hrefFor={personHref}
-          />
+          <div className="space-y-3">
+            <Segmented
+              label="Directory views"
+              options={DIRECTORY_VIEWS}
+              value={dirView}
+              onChange={setDirView}
+            />
+            {dirView === "list" ? (
+              <DirectorySearch
+                directory={work.directory}
+                query={dirQuery}
+                onQuery={setDirQuery}
+                onOpen={onOpenPerson}
+                hrefFor={personHref}
+              />
+            ) : (
+              <OrgTree
+                directory={work.directory}
+                onOpen={onOpenPerson}
+                hrefFor={personHref}
+              />
+            )}
+          </div>
         ) : (
           <Empty>No directory yet.</Empty>
         )}
