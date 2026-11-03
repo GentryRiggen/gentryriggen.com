@@ -46,6 +46,7 @@ import MenuDialog from "./MenuDialog";
 import PhaseCutscene from "./PhaseCutscene";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
+import useCompactHud from "./useCompactHud";
 import StickyHud from "./StickyHud";
 import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
@@ -164,14 +165,25 @@ export default function GameScreen({
   const [effect, setEffect] = useState<Effect | null>(null);
   const [lastBuy, setLastBuy] = useState<LastBuy | null>(null);
 
-  // The HUD's height goes into a CSS variable on the root before the first
-  // paint, so the scene band and the page column sit exactly below it.
+  const { isCompact, isFolded, togglePeek } = useCompactHud(!run.complete);
+  const isCompactRef = useRef(isCompact);
+  useLayoutEffect(() => {
+    isCompactRef.current = isCompact;
+  }, [isCompact]);
+
+  // The HUD's height goes into CSS variables on the root before the first
+  // paint: `--eo-hud-now` (its height right now) pins the scene just below
+  // it, and `--eo-hud-h` (its full, open height) spaces the page. The page's
+  // spacing never changes while the bar is folded, so nothing jumps.
   useLayoutEffect(() => {
     const root = rootRef.current;
     const hud = hudRef.current;
     if (!root) return;
-    const setHeight = (px: number) =>
-      root.style.setProperty("--eo-hud-h", `${px}px`);
+    const setHeight = (px: number) => {
+      root.style.setProperty("--eo-hud-now", `${px}px`);
+      if (!isCompactRef.current)
+        root.style.setProperty("--eo-hud-h", `${px}px`);
+    };
     if (!hud) {
       setHeight(0);
       return;
@@ -346,7 +358,7 @@ export default function GameScreen({
     // (sound switches, update pill) use their dark colours too.
     <div
       ref={rootRef}
-      className={`${pixelFont.variable} dark [--eo-hud-h:6rem] relative isolate min-h-dvh touch-manipulation bg-[#02030a] pt-[var(--eo-hud-h)] text-amber-50 lg:flex lg:h-dvh lg:overflow-hidden lg:pt-0`}
+      className={`${pixelFont.variable} dark [--eo-hud-h:6rem] relative isolate min-h-dvh touch-manipulation overflow-x-clip bg-[#02030a] pt-[var(--eo-hud-h)] text-amber-50 lg:flex lg:h-dvh lg:overflow-hidden lg:pt-0`}
     >
       <div
         aria-hidden="true"
@@ -357,7 +369,14 @@ export default function GameScreen({
       <div
         ref={sceneRef}
         inert={isCovered}
-        className="sticky top-[var(--eo-hud-h)] z-20 h-[24dvh] min-h-36 w-full lg:top-0 overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[45%] lg:shrink-0 lg:border-r-4 lg:border-b-0"
+        data-folded={isFolded}
+        className={`sticky top-[var(--eo-hud-now,var(--eo-hud-h))] z-20 w-full lg:top-0 ${
+          isFolded
+            ? // Half height on screen; the margin keeps its full height in
+              // the page so the content below never moves.
+              "mb-[calc(max(24dvh,9rem)-max(12dvh,5.5rem))] h-[max(12dvh,5.5rem)]"
+            : "h-[max(24dvh,9rem)]"
+        } overflow-hidden border-b-4 border-amber-500/80 bg-slate-950 lg:h-dvh lg:w-[45%] lg:shrink-0 lg:border-r-4 lg:border-b-0`}
       >
         <div data-testid="lm-scene-frame" className="h-full">
           <Scene run={run} lastBuy={lastBuy} />
@@ -576,6 +595,9 @@ export default function GameScreen({
           alert={alert}
           onSelectNext={handleSelectNext}
           onSelectAlert={handleSelectAlert}
+          isCompact={isCompact}
+          isFolded={isFolded}
+          onToggleCompact={togglePeek}
         />
       )}
 

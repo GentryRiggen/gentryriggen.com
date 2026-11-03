@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.25.0",
+    date: "2026-11-02",
+    title: "More room on phones",
+    highlights: [
+      "On a phone, once you scroll down to the buttons the top bar folds into one slim row: your money, the goal and a small oil (or water, cheer or sway) bar that still turns orange and red. The picture gets shorter too, so far more of the game fits on the screen",
+      "Tap the slim row to see everything for a moment. Scroll back to the top and it all opens again",
+      "The page can no longer slide sideways on a phone",
+    ],
+  },
+  {
     version: "1.24.1",
     date: "2026-11-02",
     title: "The oil gauge fits on phones",
