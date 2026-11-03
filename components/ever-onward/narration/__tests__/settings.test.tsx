@@ -17,6 +17,7 @@ describe("narration settings", () => {
     expect(getNarrationSettings()).toEqual({
       isEnabled: true,
       isAutoPlay: false,
+      rate: 1,
     });
   });
 
@@ -28,10 +29,25 @@ describe("narration settings", () => {
     );
     expect(
       JSON.parse(window.localStorage.getItem(NARRATION_STORAGE_KEY) ?? "{}")
-    ).toEqual({ isEnabled: true, isAutoPlay: true });
+    ).toEqual({ isEnabled: true, isAutoPlay: true, rate: 1 });
 
     act(() => reloadNarrationSettings());
     expect(getNarrationSettings().isAutoPlay).toBe(true);
+  });
+
+  it("keeps a saved speed only when it is one of the steps", () => {
+    window.localStorage.setItem(
+      NARRATION_STORAGE_KEY,
+      JSON.stringify({ isEnabled: true, isAutoPlay: false, rate: 1.75 })
+    );
+    act(() => reloadNarrationSettings());
+    expect(getNarrationSettings().rate).toBe(1.75);
+    window.localStorage.setItem(
+      NARRATION_STORAGE_KEY,
+      JSON.stringify({ isEnabled: true, isAutoPlay: false, rate: 9 })
+    );
+    act(() => reloadNarrationSettings());
+    expect(getNarrationSettings().rate).toBe(1);
   });
 
   it("disables auto-play when narration is off", async () => {

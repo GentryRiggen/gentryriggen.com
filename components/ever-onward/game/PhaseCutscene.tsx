@@ -16,11 +16,13 @@ import type {
 import { cutClipId, cutEndClipId } from "@/lib/ever-onward/narration/lines";
 import { getClip } from "@/lib/ever-onward/narration/manifest";
 import {
+  applyNarrationRate,
   playNarration,
   stopNarration,
   useNarrationPlaying,
 } from "../narration/player";
 import {
+  NARRATION_SPEEDS,
   setNarrationSettings,
   useNarrationSettings,
 } from "../narration/settings";
@@ -100,7 +102,7 @@ export default function PhaseCutscene({
   const [elapsed, setElapsed] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const isReduced = useReducedMotion();
-  const { isEnabled: isVoiceOn } = useNarrationSettings();
+  const { isEnabled: isVoiceOn, rate } = useNarrationSettings();
   const nowPlaying = useNarrationPlaying();
   const rootRef = useRef<HTMLDivElement>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
@@ -161,11 +163,12 @@ export default function PhaseCutscene({
   useEffect(() => {
     if (isPaused || isEnd) return;
     const timer = window.setInterval(
-      () => setElapsed((ms) => ms + FILM_TICK_MS),
+      // A faster speed runs the film's clock faster: typing, holds and all.
+      () => setElapsed((ms) => ms + FILM_TICK_MS * rate),
       FILM_TICK_MS
     );
     return () => window.clearInterval(timer);
-  }, [isPaused, isEnd, index]);
+  }, [isPaused, isEnd, index, rate]);
 
   // Move on when the shot has had its time and the voice has finished.
   useEffect(() => {
@@ -174,6 +177,7 @@ export default function PhaseCutscene({
     if (elapsed < least) return;
     if (hasVoice) {
       const voice = voiceRef.current;
+      // The clip's length in film time (which runs at the same speed).
       const guess = (getClip(clipId)?.durationGuess ?? 0) * 1000;
       // Never hang on a voice that went quiet without telling us.
       const cap = Math.max(least, guess) + 6000;
@@ -263,6 +267,18 @@ export default function PhaseCutscene({
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
 
+  /** Steps the speed a quarter up or down; the next line plays at it. */
+  const changeSpeed = (step: 1 | -1) => {
+    const at = NARRATION_SPEEDS.indexOf(rate);
+    const next =
+      NARRATION_SPEEDS[
+        Math.min(NARRATION_SPEEDS.length - 1, Math.max(0, at + step))
+      ];
+    if (next === undefined) return;
+    setNarrationSettings({ rate: next });
+    applyNarrationRate();
+  };
+
   const togglePause = () => {
     if (isPaused) {
       setIsPaused(false);
@@ -307,7 +323,7 @@ export default function PhaseCutscene({
       </div>
 
       {/* The top strip: where you are, and the film's controls. */}
-      <div className="relative flex shrink-0 items-center justify-between gap-2 px-3 pt-3 sm:px-6 sm:pt-4">
+      <div className="relative flex shrink-0 flex-col gap-2 px-3 pt-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-4">
         <div className="min-w-0">
           <p className={`${retroLabelClass} leading-normal`}>
             Part {phaseIndex + 1} of {def.phases.length}
@@ -320,11 +336,47 @@ export default function PhaseCutscene({
             {phase.title}
           </RetroHeading>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-1 sm:justify-end sm:gap-2">
+          <div
+            role="group"
+            aria-label="Speed"
+            data-testid="eo-film-speed"
+            className="flex items-center gap-1"
+          >
+            <button
+              type="button"
+              aria-label="Slower"
+              disabled={rate <= NARRATION_SPEEDS[0]}
+              onClick={() => changeSpeed(-1)}
+              className={`${retroSecondaryButtonClass} !px-2 disabled:opacity-40`}
+            >
+              <span aria-hidden="true" className={pixelClass}>
+                −
+              </span>
+            </button>
+            <span
+              aria-live="polite"
+              className={`${pixelClass} min-w-10 text-center text-[10px] text-amber-200 sm:text-xs`}
+            >
+              {rate}×
+            </span>
+            <button
+              type="button"
+              aria-label="Faster"
+              disabled={rate >= NARRATION_SPEEDS[NARRATION_SPEEDS.length - 1]}
+              onClick={() => changeSpeed(1)}
+              className={`${retroSecondaryButtonClass} !px-2 disabled:opacity-40`}
+            >
+              <span aria-hidden="true" className={pixelClass}>
+                +
+              </span>
+            </button>
+          </div>
           {hasAnyVoice && (
             <button
               type="button"
               aria-pressed={isVoiceOn}
+              aria-label="Voice"
               onClick={() => {
                 if (isVoiceOn) stopNarration();
                 setNarrationSettings({ isEnabled: !isVoiceOn });
@@ -332,7 +384,10 @@ export default function PhaseCutscene({
               className={retroSecondaryButtonClass}
             >
               <span aria-hidden="true">{isVoiceOn ? "♪" : "×"}</span>
-              <span className={`${pixelClass} sr-only sm:not-sr-only`}>
+              <span
+                aria-hidden="true"
+                className={`${pixelClass} hidden sm:inline`}
+              >
                 Voice
               </span>
             </button>

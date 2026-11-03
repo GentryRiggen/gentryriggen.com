@@ -5,11 +5,22 @@ export interface NarrationSettings {
   isEnabled: boolean;
   /** Play new messages without asking (no toast). */
   isAutoPlay: boolean;
+  /** How fast the voice and the intro films play (one of `NARRATION_SPEEDS`). */
+  rate: number;
 }
+
+/** The speeds the films' − / + buttons step through, a quarter at a time. */
+export const NARRATION_SPEEDS: readonly number[] = [
+  0.75, 1, 1.25, 1.5, 1.75, 2,
+];
 
 export const NARRATION_STORAGE_KEY = "everOnward.narration";
 
-const DEFAULTS: NarrationSettings = { isEnabled: true, isAutoPlay: false };
+const DEFAULTS: NarrationSettings = {
+  isEnabled: true,
+  isAutoPlay: false,
+  rate: 1,
+};
 
 function read(): NarrationSettings {
   try {
@@ -17,12 +28,16 @@ function read(): NarrationSettings {
     if (!raw) return DEFAULTS;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return DEFAULTS;
-    const { isEnabled, isAutoPlay } = parsed as Record<string, unknown>;
+    const { isEnabled, isAutoPlay, rate } = parsed as Record<string, unknown>;
     return {
       isEnabled:
         typeof isEnabled === "boolean" ? isEnabled : DEFAULTS.isEnabled,
       isAutoPlay:
         typeof isAutoPlay === "boolean" ? isAutoPlay : DEFAULTS.isAutoPlay,
+      rate:
+        typeof rate === "number" && NARRATION_SPEEDS.includes(rate)
+          ? rate
+          : DEFAULTS.rate,
     };
   } catch {
     return DEFAULTS;

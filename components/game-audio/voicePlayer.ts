@@ -16,6 +16,11 @@ export interface VoicePlayerOptions {
   eventName: string;
   /** How many automatic lines may wait their turn (oldest dropped). */
   maxQueue?: number;
+  /**
+   * Playback speed for each new line (1 is normal). Under Web Audio a faster
+   * line is also higher pitched.
+   */
+  getRate?: () => number;
 }
 
 export interface VoicePlayer {
@@ -25,6 +30,8 @@ export interface VoicePlayer {
    */
   play: (id: string, opts?: { interrupt?: boolean }) => void;
   stop: () => void;
+  /** Re-reads the speed (`getRate`) for the line speaking now. */
+  applyRate: () => void;
   /** The id being spoken now, or null. */
   useNowPlaying: () => string | null;
   /**
@@ -72,7 +79,12 @@ export function createVoicePlayer({
   getClip,
   eventName,
   maxQueue = DEFAULT_MAX_QUEUE,
+  getRate,
 }: VoicePlayerOptions): VoicePlayer {
+  const rate = (): number => {
+    const value = getRate?.() ?? 1;
+    return Number.isFinite(value) ? Math.min(3, Math.max(0.5, value)) : 1;
+  };
   let ctx: AudioContext | null = null;
   let source: AudioBufferSourceNode | null = null;
   const buffers = new Map<string, Promise<AudioBuffer>>();
@@ -190,6 +202,7 @@ export function createVoicePlayer({
         stopSource();
         const node = c.createBufferSource();
         node.buffer = buffer;
+        if (node.playbackRate) node.playbackRate.value = rate();
         node.connect(c.destination);
         node.onended = () => {
           if (source !== node) return;
@@ -206,6 +219,7 @@ export function createVoicePlayer({
   function startElement(id: string, file: string): void {
     const el = element();
     el.src = file;
+    el.playbackRate = rate();
     // Autoplay rules and headless browsers reject; voice is optional.
     const fail = () => finish(id);
     try {
@@ -257,6 +271,11 @@ export function createVoicePlayer({
     if (playingId === null) return;
     playingId = null;
     emit();
+  }
+
+  function applyRate(): void {
+    if (source?.playbackRate) source.playbackRate.value = rate();
+    if (audio) audio.playbackRate = rate();
   }
 
   function unlockOnGesture(): void {
@@ -319,5 +338,5 @@ export function createVoicePlayer({
     isUnlockWired = false;
   }
 
-  return { play, stop, useNowPlaying, unlockOnGesture, reset };
+  return { play, stop, applyRate, useNowPlaying, unlockOnGesture, reset };
 }

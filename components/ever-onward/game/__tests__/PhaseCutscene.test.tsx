@@ -4,8 +4,15 @@ import { growUniverse } from "@/lib/ever-onward/universes/grow";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import GrowScene from "../../scenes/grow/GrowScene";
 import LightScene from "../../scenes/light/LightScene";
-import { playNarration, stopNarration } from "../../narration/player";
-import { setNarrationSettings } from "../../narration/settings";
+import {
+  applyNarrationRate,
+  playNarration,
+  stopNarration,
+} from "../../narration/player";
+import {
+  getNarrationSettings,
+  setNarrationSettings,
+} from "../../narration/settings";
 import PhaseCutscene, { FILM_TICK_MS, shotMs } from "../PhaseCutscene";
 import StoryDrawer from "../StoryDrawer";
 import { newRun } from "@/lib/ever-onward/engine/engine";
@@ -14,6 +21,7 @@ let nowPlaying: string | null = null;
 jest.mock("../../narration/player", () => ({
   playNarration: jest.fn(),
   stopNarration: jest.fn(),
+  applyNarrationRate: jest.fn(),
   useNarrationPlaying: () => nowPlaying,
 }));
 jest.mock("@/lib/ever-onward/narration/manifest", () => ({
@@ -53,7 +61,7 @@ describe("the intro film", () => {
     jest.clearAllMocks();
     nowPlaying = null;
     window.localStorage.clear();
-    setNarrationSettings({ isEnabled: false });
+    setNarrationSettings({ isEnabled: false, rate: 1 });
   });
 
   afterEach(() => {
@@ -182,6 +190,32 @@ describe("the intro film", () => {
       "aria-pressed",
       "false"
     );
+  });
+
+  it("steps the speed a quarter at a time, from 0.75x to 2x", async () => {
+    renderFilm();
+    const speed = screen.getByTestId("eo-film-speed");
+    expect(speed).toHaveTextContent("1×");
+    await userEvent.click(screen.getByRole("button", { name: "Faster" }));
+    expect(speed).toHaveTextContent("1.25×");
+    expect(getNarrationSettings().rate).toBe(1.25);
+    expect(applyNarrationRate).toHaveBeenCalled();
+    for (let i = 0; i < 6; i += 1)
+      await userEvent.click(screen.getByRole("button", { name: "Faster" }));
+    expect(speed).toHaveTextContent("2×");
+    expect(screen.getByRole("button", { name: "Faster" })).toBeDisabled();
+    for (let i = 0; i < 8; i += 1)
+      await userEvent.click(screen.getByRole("button", { name: "Slower" }));
+    expect(speed).toHaveTextContent("0.75×");
+    expect(screen.getByRole("button", { name: "Slower" })).toBeDisabled();
+  });
+
+  it("plays twice as fast at 2x", () => {
+    setNarrationSettings({ rate: 2 });
+    jest.useFakeTimers();
+    renderFilm();
+    play(shotMs(shots[0]) / 2 + FILM_TICK_MS * 2);
+    expect(shot()).toBe("2");
   });
 
   it("uses the arrow keys and Enter", async () => {
