@@ -86,4 +86,47 @@ describe("sticky HUD", () => {
       /Next goal: .*0%/
     );
   });
+
+  describe("the oil gauge", () => {
+    const withKeeper = (oil: number) => {
+      const run = { ...newRun(lightUniverse), taps: 30, time: 5 };
+      run.owned = { keeper: 2 };
+      run.resources.oil = oil;
+      return run;
+    };
+
+    it("stays on the HUD with the oil and the tank size", () => {
+      renderScreen(withKeeper(40));
+      const gauge = within(screen.getByTestId("lm-hud")).getByTestId(
+        "lm-hud-gauge"
+      );
+      expect(gauge).toHaveAttribute("data-tone", "ok");
+      expect(within(gauge).getByTestId("lm-hud-gauge-count")).toHaveTextContent(
+        /^40 \/ \d/
+      );
+    });
+
+    it("turns red and says EMPTY when the tank is dry", () => {
+      renderScreen(withKeeper(0));
+      const gauge = screen.getByTestId("lm-hud-gauge");
+      expect(gauge).toHaveAttribute("data-tone", "critical");
+      expect(gauge).toHaveTextContent("EMPTY");
+    });
+
+    it("is not there before the first keeper", () => {
+      renderScreen({ ...newRun(lightUniverse), taps: 1, time: 5 });
+      expect(screen.queryByTestId("lm-hud-gauge")).toBeNull();
+    });
+
+    it("keeps Buy Oil on its own full-width row, above the warning", () => {
+      renderScreen(withKeeper(0));
+      const buy = screen.getByTestId("lm-buy-oil");
+      expect(buy).toHaveClass("w-full", "h-12");
+      const lamp = screen.getByTestId("lm-lamp");
+      const alert = screen.getByTestId("lm-alert");
+      expect(
+        lamp.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+  });
 });

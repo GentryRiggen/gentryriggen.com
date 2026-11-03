@@ -13,12 +13,13 @@ import {
 import {
   barrelOil,
   beamStep,
-  isBeamOpen,
   isOilCheap,
   isOilDear,
   tankCapacity,
 } from "@/lib/ever-onward/universes/light/tick";
 import type { PanelProps } from "../universes/types";
+import { lightGauge } from "@/lib/ever-onward/universes/light/goal";
+import GaugeMeter from "./GaugeMeter";
 import useRoving from "./grow/useRoving";
 import PanelFrame from "./retro/PanelFrame";
 import {
@@ -50,14 +51,14 @@ const signed = (n: number): string =>
 function LampPanel({ def, run, onAct }: PanelProps) {
   const active = beamStep(run);
   const { radioProps } = useRoving(BEAM_STEPS.length, active);
-  if (run.phase !== 0 || !isBeamOpen(run) || run.complete) return null;
+  const gauge = lightGauge(run);
+  if (run.phase !== 0 || !gauge || run.complete) return null;
 
   const rows = BEAM_STEPS.map((_, i) => beamNumbers(run, i));
   const best = bestBeamStep(run);
   const oil = run.resources.oil;
   const capacity = tankCapacity(run);
   const price = run.resources.oilPrice;
-  const fill = Math.min(1, Math.max(0, oil / capacity));
   const buyable = barrelOil(run);
   const canBuy = canPerformAction(def, run, BUY_OIL);
   const priceTag = isOilCheap(run)
@@ -67,7 +68,6 @@ function LampPanel({ def, run, onAct }: PanelProps) {
       : "fair";
   const trend = run.resources.oilTrend;
   const arrow = trend > 0.015 ? "↑" : trend < -0.015 ? "↓" : "→";
-  const isDry = oil <= 0;
 
   return (
     <PanelFrame
@@ -80,53 +80,39 @@ function LampPanel({ def, run, onAct }: PanelProps) {
       testId="lm-lamp"
       data={{ "data-step": active }}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="min-w-0 flex-1 basis-40">
-          <p className="flex items-baseline justify-between gap-2 font-mono text-sm font-bold tabular-nums text-slate-100">
-            <span>
-              Oil {formatNumber(Math.floor(oil))} /{" "}
-              {formatNumber(Math.floor(capacity))}
-            </span>
-            <span
-              data-testid="lm-oil-price"
-              className={
-                isOilCheap(run)
-                  ? "text-emerald-300"
-                  : isOilDear(run)
-                    ? "text-red-300"
-                    : "text-slate-200"
-              }
-            >
-              {price.toFixed(2)} each {arrow} {priceTag}
-            </span>
-          </p>
-          <progress
-            aria-label="Lamp oil in the tank"
-            value={fill}
-            max={1}
-            className={`mt-1 block h-3 w-full appearance-none overflow-hidden border-2 [&::-webkit-progress-bar]:bg-slate-900 ${
-              isDry
-                ? "border-red-400 [&::-webkit-progress-value]:bg-red-400 [&::-moz-progress-bar]:bg-red-400"
-                : "border-slate-600 [&::-webkit-progress-value]:bg-amber-400 [&::-moz-progress-bar]:bg-amber-400"
-            }`}
-          />
-        </div>
-        <button
-          type="button"
-          data-testid="lm-buy-oil"
-          aria-disabled={!canBuy}
-          onClick={() => {
-            if (canBuy) onAct(BUY_OIL);
-          }}
-          className={`${retroPrimaryButtonClass} shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-40`}
+      <GaugeMeter gauge={gauge} size="panel" testId="lm-oil-gauge" />
+      <p className="flex items-baseline justify-between gap-2 font-mono text-sm font-bold tabular-nums">
+        <span className="text-slate-300">Oil price</span>
+        <span
+          data-testid="lm-oil-price"
+          className={
+            isOilCheap(run)
+              ? "text-emerald-300"
+              : isOilDear(run)
+                ? "text-red-300"
+                : "text-slate-200"
+          }
         >
-          {capacity - oil < 1
-            ? "Tank full"
-            : buyable < 1
-              ? "Need coins"
-              : `Buy oil ${formatNumber(Math.ceil(buyable * price))}`}
-        </button>
-      </div>
+          {price.toFixed(2)} each {arrow} {priceTag}
+        </span>
+      </p>
+      {/* The button has its own full-width row and a fixed height, so it
+          stays put however the label or the price changes. */}
+      <button
+        type="button"
+        data-testid="lm-buy-oil"
+        aria-disabled={!canBuy}
+        onClick={() => {
+          if (canBuy) onAct(BUY_OIL);
+        }}
+        className={`${retroPrimaryButtonClass} h-12 w-full aria-disabled:cursor-not-allowed aria-disabled:opacity-40`}
+      >
+        {capacity - oil < 1
+          ? "Tank full"
+          : buyable < 1
+            ? "Need coins"
+            : `Buy oil ${formatNumber(Math.ceil(buyable * price))}`}
+      </button>
       <div
         role="radiogroup"
         aria-label="How bright the lamp burns"

@@ -326,6 +326,7 @@ export default function GameScreen({
 
   const countdown = def.countdown?.(run) ?? null;
   const goal = def.goalMeter?.(run) ?? null;
+  const gauge = def.gauge?.(run) ?? null;
   const hasDetails = def.resources.some(
     (r) =>
       r.id !== primaryId &&
@@ -470,6 +471,11 @@ export default function GameScreen({
             Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
           </p>
         )}
+        {/* Under the top panels, so a warning that comes and goes never pushes
+            a button (Buy Oil) out from under the player's thumb. */}
+        {ui.topPanels?.map((Panel, i) => (
+          <Panel key={i} def={def} run={run} onAct={onAction} />
+        ))}
         {alert && (
           <p
             role="alert"
@@ -479,9 +485,6 @@ export default function GameScreen({
             ⚠ {alert}
           </p>
         )}
-        {ui.topPanels?.map((Panel, i) => (
-          <Panel key={i} def={def} run={run} onAct={onAction} />
-        ))}
         {!run.complete && (
           <div className="space-y-2">
             <UpgradeList
@@ -568,6 +571,7 @@ export default function GameScreen({
           effect={effect}
           next={next}
           goal={goal}
+          gauge={gauge}
           alert={alert}
           onSelectNext={handleSelectNext}
           onSelectAlert={handleSelectAlert}
