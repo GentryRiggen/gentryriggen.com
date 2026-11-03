@@ -385,7 +385,9 @@ function RouteCard({
               {route.blurb}
             </span>
           </span>
-          <span className="shrink-0 text-right">
+          {/* A fixed width, so a growing haul never squeezes the blurb
+              into a new shape while the player reaches for a card. */}
+          <span className="w-24 shrink-0 text-right tabular-nums">
             <span
               data-testid={`lm-probe-time-${route.id}`}
               className={`${pixelClass} block text-sm text-sky-200`}
@@ -509,7 +511,7 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
         hasControl={hasMissionControl(run)}
       />
 
-      <p className="font-mono text-xs text-slate-300">
+      <p className="min-h-12 font-mono text-xs text-slate-300 sm:min-h-8">
         {isOut
           ? "Your probe is flying the route. Plan the next one while you wait."
           : "Pick a route, then launch. The probe flies it by itself and brings energy home."}
@@ -548,7 +550,7 @@ function ProbeRacesPanel({ def, run, onAct }: ProbeRacesProps) {
           onClick={() => {
             if (isDoable) onAct(action);
           }}
-          className={`${pixelClass} flex min-h-14 w-full touch-manipulation flex-col items-center justify-center gap-1 border-4 px-3 py-2 text-xs transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${launchLook}`}
+          className={`${pixelClass} flex min-h-16 w-full touch-manipulation flex-col items-center justify-center gap-1 border-4 px-3 py-2 text-xs transition-transform aria-disabled:cursor-not-allowed ${retroFocusClass} ${launchLook}`}
         >
           <span>
             {isOut

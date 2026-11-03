@@ -66,11 +66,13 @@ export default function SeaTrialStatus() {
       </span>
       {isTimeline && (
         // Hidden from the live region: a clock ticking ten times a second
-        // would flood a screen reader.
+        // would flood a screen reader. Wide enough for the longest time
+        // ("· 2 hours 40 minutes"), so the pill and its Stop button don't
+        // slide as the words change.
         <span
           aria-hidden="true"
           data-testid="story-clock"
-          className="whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400"
+          className="inline-block min-w-[20ch] whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400"
         >
           ·{" "}
           {formatStoryTime(

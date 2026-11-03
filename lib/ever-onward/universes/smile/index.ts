@@ -2,6 +2,7 @@ import { smileGoal } from "./goal";
 import type { UniverseDef } from "../../engine/types";
 import { SMILE_ACTIONS } from "./actions";
 import { smileAlert } from "./alerts";
+import { smileGauge } from "./gauge";
 import {
   SMILE_CONSUMABLES,
   SMILE_DECISION_ACTIONS,
@@ -42,6 +43,7 @@ export const smileUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: smileCountdown,
   alert: smileAlert,
+  gauge: smileGauge,
   prestige: PRESTIGE,
   plates: smilePlates,
   plateActions: SMILE_PLATE_ACTIONS,

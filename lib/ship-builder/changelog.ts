@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.39.1",
+    date: "2026-11-02",
+    title: "A steadier sea trial bar",
+    highlights: [
+      "During the iceberg and the storm, the Stop button no longer slides around as the story clock changes",
+    ],
+  },
+  {
     version: "2.39.0",
     date: "2026-11-01",
     title: "Escape the sinking ship",

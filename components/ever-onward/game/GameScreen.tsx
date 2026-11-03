@@ -471,20 +471,9 @@ export default function GameScreen({
             Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
           </p>
         )}
-        {/* Under the top panels, so a warning that comes and goes never pushes
-            a button (Buy Oil) out from under the player's thumb. */}
         {ui.topPanels?.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
-        {alert && (
-          <p
-            role="alert"
-            data-testid="lm-alert"
-            className={`${pixelClass} animate-pulse border-4 border-red-500 bg-red-950/90 p-3 text-[10px] leading-relaxed text-red-100 motion-reduce:animate-none`}
-          >
-            ⚠ {alert}
-          </p>
-        )}
         {!run.complete && (
           <div className="space-y-2">
             <UpgradeList
@@ -516,6 +505,18 @@ export default function GameScreen({
         {ui.panels.map((Panel, i) => (
           <Panel key={i} def={def} run={run} onAct={onAction} />
         ))}
+        {/* Below every button, so a warning that comes and goes never pushes
+            one (Buy Oil, Steady) out from under the player's thumb. The HUD
+            keeps a chip in sight and the gauge shows what is running out. */}
+        {alert && (
+          <p
+            role="alert"
+            data-testid="lm-alert"
+            className={`${pixelClass} animate-pulse border-4 border-red-500 bg-red-950/90 p-3 text-[10px] leading-relaxed text-red-100 motion-reduce:animate-none`}
+          >
+            ⚠ {alert}
+          </p>
+        )}
         {hasDetails && (
           <details
             key={`${def.id}-${run.phase}`}

@@ -3,6 +3,7 @@ import type { UniverseDef } from "../../engine/types";
 import { GROW_ACTIONS } from "./actions";
 import { GROW_PROJECTS } from "./knowhow";
 import { growAlert } from "./alerts";
+import { growGauge } from "./gauge";
 import {
   GROW_CONSUMABLES,
   GROW_DECISION_ACTIONS,
@@ -42,6 +43,7 @@ export const growUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: growCountdown,
   alert: growAlert,
+  gauge: growGauge,
   prestige: PRESTIGE,
   plates: growPlates,
   plateActions: GROW_PLATE_ACTIONS,

@@ -46,7 +46,7 @@ export default function DeliveryPanel({ def, run, onAct }: PanelProps) {
       result={here ? "" : `${loadsPlaced(run)} placed so far.`}
       resultTestId="bh-deliveries-result"
     >
-      <p className="font-mono text-sm text-slate-200">
+      <p className="min-h-10 font-mono text-sm text-slate-200">
         {here
           ? "Pick what to do with it. The card marked best helps most right now."
           : "The next one is on its way. Nothing is lost if you wait."}
@@ -75,11 +75,11 @@ export default function DeliveryPanel({ def, run, onAct }: PanelProps) {
                 className="font-mono text-xs text-slate-200"
               >
                 {card.note}
-                {here && (
-                  <span className="mt-1 block font-bold text-emerald-200 tabular-nums">
-                    {loadPaysText(run, option, value)}
-                  </span>
-                )}
+                {/* Always holds two lines, so the Place button below never
+                    jumps when a load arrives or its payout grows. */}
+                <span className="mt-1 block min-h-8 font-bold text-emerald-200 tabular-nums">
+                  {here ? loadPaysText(run, option, value) : ""}
+                </span>
               </p>
               <button
                 type="button"
