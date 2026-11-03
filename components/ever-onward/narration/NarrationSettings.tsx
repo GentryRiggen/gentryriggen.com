@@ -2,9 +2,10 @@
 
 import { useId } from "react";
 import { pixelClass } from "../game/retro/retroStyles";
+import SpeedStepper from "./SpeedStepper";
 import { setNarrationSettings, useNarrationSettings } from "./settings";
 
-/** Narration on/off and auto-play, remembered on this device. */
+/** Narration on/off, auto-play and speed, remembered on this device. */
 export default function NarrationSettings() {
   const { isEnabled, isAutoPlay } = useNarrationSettings();
   const id = useId();
@@ -44,6 +45,10 @@ export default function NarrationSettings() {
         />
         Read new messages automatically
       </label>
+      <div className="flex min-h-11 items-center justify-between gap-3 font-mono text-sm text-slate-200">
+        <span>Speed (voice and films)</span>
+        <SpeedStepper testId="eo-menu-speed" isLarge />
+      </div>
     </fieldset>
   );
 }
