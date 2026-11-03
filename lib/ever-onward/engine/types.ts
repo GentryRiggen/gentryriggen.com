@@ -325,6 +325,18 @@ export interface GoalView {
   progress?: number;
 }
 
+/** A meter the player must keep an eye on (the lamp's oil), kept on the HUD. */
+export interface GaugeView {
+  /** Short and loud ("OIL"). */
+  label: string;
+  current: number;
+  max: number;
+  /** Low enough to warn (the bar turns orange). */
+  isLow: boolean;
+  /** Empty or nearly so (the bar turns red and pulses). */
+  isCritical: boolean;
+}
+
 export interface UniverseDef {
   id: string;
   title: string;
@@ -362,6 +374,8 @@ export interface UniverseDef {
    * (the screen then looks as it always did). Must only read.
    */
   goalMeter?(run: RunState): GoalView | null;
+  /** A big meter kept on the HUD (e.g. the lamp oil), or null. Must only read. */
+  gauge?(run: RunState): GaugeView | null;
   /** A short warning to show right now (e.g. the lamp ran dry), or null. Must only read. */
   alert?(run: RunState): string | null;
   prestige: PrestigeDef;

@@ -3,11 +3,12 @@
 import type { Ref } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { NextUpgrade } from "@/lib/ever-onward/engine/pull";
-import type { GoalView } from "@/lib/ever-onward/engine/types";
+import type { GaugeView, GoalView } from "@/lib/ever-onward/engine/types";
 import type { RateTrend } from "@/lib/ever-onward/engine/rate";
 import AnimatedValue from "./AnimatedValue";
 import EffectFloater, { type Effect } from "./EffectFloater";
 import RateReadout from "./RateReadout";
+import GaugeMeter from "./GaugeMeter";
 import GoalMeter from "./GoalMeter";
 import NextUpgradeBar from "./NextUpgradeBar";
 import {
@@ -32,6 +33,8 @@ interface StickyHudProps {
   next: NextUpgrade | null;
   /** The part's goal, shown as the big top line, or null. */
   goal?: GoalView | null;
+  /** A resource to keep in sight (the lamp oil), or null. */
+  gauge?: GaugeView | null;
   /** A warning to keep in sight (e.g. out of oil), or null. */
   alert?: string | null;
   onSelectNext: () => void;
@@ -65,6 +68,7 @@ export default function StickyHud({
   effect,
   next,
   goal = null,
+  gauge = null,
   alert = null,
   onSelectNext,
   onSelectAlert,
@@ -117,6 +121,11 @@ export default function StickyHud({
           )}
         </div>
         {goal && <GoalMeter goal={goal} />}
+        {gauge && (
+          <div className="mt-2">
+            <GaugeMeter gauge={gauge} testId="lm-hud-gauge" />
+          </div>
+        )}
         {/* Reserves the bar's height when there is no next upgrade yet. */}
         <div className={goal ? "min-h-8" : "min-h-10"}>
           {next && (

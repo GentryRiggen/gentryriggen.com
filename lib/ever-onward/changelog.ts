@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.23.1",
+    date: "2026-11-02",
+    title: "A big oil gauge, and Buy Oil stays put",
+    highlights: [
+      "The lamp's oil now has a big gauge at the top of the screen, so you can always see how much is left. It turns orange when the tank is getting low and red when it is empty",
+      "The Buy Oil button has its own full-width spot and no longer jumps around when the price or the words change",
+      "The out-of-oil warning sits under the lamp now, so it can't push the button down while you tap",
+    ],
+  },
+  {
     version: "1.23.0",
     date: "2026-11-02",
     title: "Every story gets the Coast treatment",

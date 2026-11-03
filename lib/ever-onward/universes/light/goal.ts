@@ -1,14 +1,19 @@
 import { goalAmount } from "../../engine/goal";
 import { upgradeCost } from "../../engine/engine";
 import { formatNumber } from "../../engine/format";
-import type { GoalView, RunState } from "../../engine/types";
+import type { GaugeView, GoalView, RunState } from "../../engine/types";
 import {
   COAST_LIGHTHOUSES,
   TOTAL_CITIES,
   TOTAL_STARS,
   TOTAL_LIGHTS,
 } from "./resources";
-import { lighthouseCount, isReadyToFlash } from "./tick";
+import {
+  isBeamOpen,
+  isReadyToFlash,
+  lighthouseCount,
+  tankCapacity,
+} from "./tick";
 import { UPGRADES } from "./upgrades";
 
 const LIGHTHOUSE = UPGRADES.find((u) => u.id === "lighthouse");
@@ -72,5 +77,19 @@ export function lightGoal(run: RunState): GoalView | null {
     unit: "lighthouses",
     next: `Next lighthouse: ${formatNumber(Math.ceil(cost))} coins`,
     progress: goalAmount(coins, cost) / cost,
+  };
+}
+
+/** The oil in the lamp's tank, kept on the HUD so it is never out of sight. */
+export function lightGauge(run: RunState): GaugeView | null {
+  if (run.complete || !isBeamOpen(run)) return null;
+  const max = Math.max(1, tankCapacity(run));
+  const current = Math.min(max, Math.max(0, run.resources.oil ?? 0));
+  return {
+    label: "OIL",
+    current,
+    max,
+    isLow: current / max <= 0.35,
+    isCritical: current <= 0 || current / max <= 0.12,
   };
 }

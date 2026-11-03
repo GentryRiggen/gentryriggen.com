@@ -103,7 +103,9 @@ describe("the lamp panel (oil and brightness together)", () => {
     expect(within(lamp).getByTestId("lm-oil-price")).toHaveTextContent(
       "cheap!"
     );
-    expect(lamp).toHaveTextContent(/Oil 5 \/ \d+/);
+    expect(within(lamp).getByTestId("lm-oil-gauge-count")).toHaveTextContent(
+      /^5 \/ \d+/
+    );
     await userEvent.click(within(lamp).getByTestId("lm-buy-oil"));
     expect(onAction).toHaveBeenCalledWith("buy-oil");
   });

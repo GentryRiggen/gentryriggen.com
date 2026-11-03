@@ -9,7 +9,7 @@ import {
   lightSceneDiff,
 } from "./hooks";
 import { lightAlert } from "./alerts";
-import { lightGoal } from "./goal";
+import { lightGauge, lightGoal } from "./goal";
 import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { ALL_PROJECTS } from "./projects";
@@ -38,6 +38,7 @@ export const lightUniverse: UniverseDef = {
   countdown: lightCountdown,
   alert: lightAlert,
   goalMeter: lightGoal,
+  gauge: lightGauge,
   prestige: PRESTIGE,
   upkeep: (run): Record<string, number> => {
     if (run.phase === 0) return { coins: coastUpkeep(run) };
