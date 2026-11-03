@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.28.0",
+    date: "2026-11-02",
+    title: "Film speed",
+    highlights: [
+      "The little films have a speed control at the top: tap + or − to go a quarter faster or slower, from 0.75x up to 2x. The words, the pictures and the voice all keep up",
+      "The game remembers your speed, and the narrator reads the story at it too",
+      "On a phone, the film's buttons sit in one tidy row under the part's name",
+    ],
+  },
+  {
     version: "1.27.0",
     date: "2026-11-02",
     title: "Little films",

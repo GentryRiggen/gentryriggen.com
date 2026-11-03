@@ -1,5 +1,6 @@
 import { createVoicePlayer } from "@/components/game-audio/voicePlayer";
 import { getClip } from "@/lib/ever-onward/narration/manifest";
+import { getNarrationSettings } from "./settings";
 
 /**
  * Plays narration through the shared voice player (see
@@ -17,6 +18,7 @@ const player = createVoicePlayer({
   getClip: (id) => getClip(id),
   eventName: NARRATION_EVENT,
   maxQueue: 2,
+  getRate: () => getNarrationSettings().rate,
 });
 
 /** Plays at once, replacing anything speaking and anything waiting. */
@@ -27,6 +29,11 @@ export function playNarration(id: string): void {
 /** Plays after the current line; waits at most two deep. */
 export function queueNarration(id: string): void {
   player.play(id);
+}
+
+/** Plays the line speaking now at the current speed setting. */
+export function applyNarrationRate(): void {
+  player.applyRate();
 }
 
 export function stopNarration(): void {

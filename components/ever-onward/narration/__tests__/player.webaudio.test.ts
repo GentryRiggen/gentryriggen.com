@@ -1,9 +1,11 @@
 import { getClip } from "@/lib/ever-onward/narration/manifest";
 import {
+  applyNarrationRate,
   playNarration,
   resetNarrationPlayer,
   unlockNarrationOnGesture,
 } from "../player";
+import { setNarrationSettings } from "../settings";
 
 type Win = Window & { AudioContext?: unknown };
 
@@ -13,7 +15,7 @@ type Win = Window & { AudioContext?: unknown };
  * through Web Audio wherever it exists.
  */
 describe("narration player with Web Audio", () => {
-  const started: unknown[] = [];
+  const started: { playbackRate: { value: number } }[] = [];
   let mediaPlay: jest.SpyInstance;
 
   beforeEach(() => {
@@ -30,6 +32,7 @@ describe("narration player with Web Audio", () => {
       createBufferSource() {
         const node = {
           buffer: null as unknown,
+          playbackRate: { value: 1 },
           onended: null as null | (() => void),
           connect: () => node,
           start: () => started.push(node),
@@ -49,6 +52,7 @@ describe("narration player with Web Audio", () => {
 
   afterEach(() => {
     delete (window as Win).AudioContext;
+    setNarrationSettings({ rate: 1 });
     mediaPlay.mockRestore();
     resetNarrationPlayer();
   });
@@ -66,5 +70,16 @@ describe("narration player with Web Audio", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(started).toHaveLength(1);
     expect(mediaPlay).not.toHaveBeenCalled();
+  });
+
+  it("plays at the chosen speed, and a new speed reaches the line speaking", async () => {
+    setNarrationSettings({ rate: 1.5 });
+    playNarration("light/intro-coast");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(started[0]?.playbackRate.value).toBe(1.5);
+    setNarrationSettings({ rate: 2 });
+    applyNarrationRate();
+    expect(started[0]?.playbackRate.value).toBe(2);
   });
 });
