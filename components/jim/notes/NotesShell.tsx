@@ -28,6 +28,7 @@ import NotesMoney from "@/components/jim/notes/NotesMoney";
 import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesMeeting from "@/components/jim/notes/NotesMeeting";
+import NotesMindset from "@/components/jim/notes/NotesMindset";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
@@ -37,6 +38,11 @@ import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
 import NotesTodos from "@/components/jim/notes/NotesTodos";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import NotesWork from "@/components/jim/notes/NotesWork";
+import {
+  TrainingDayPage,
+  TrainingMovement,
+  type TrainingLinks,
+} from "@/components/jim/notes/TrainingPages";
 import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
 import { resetTodoFilters } from "@/components/jim/notes/useTodoFilters";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
@@ -47,12 +53,13 @@ import useJimRouter, {
 } from "@/components/jim/useJimRouter";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import { useMoney } from "@/lib/jim/money";
-import { localDay, timeLabel } from "@/lib/jim/notesData";
+import { localDay, movementBests, timeLabel } from "@/lib/jim/notesData";
 import { loadView } from "@/lib/jim/offlineStore";
 import {
   formatJimPath,
   HOME_ROUTE,
   isDetail,
+  movementSlug,
   PAGE_LABELS,
   personPath,
   routeForNote,
@@ -63,7 +70,7 @@ import {
   type NotesRoute,
   type RetroKind,
 } from "@/lib/jim/routes";
-import { fmtShort } from "@/lib/jim/todos";
+import { fmtDay, fmtShort } from "@/lib/jim/todos";
 import {
   fetchView,
   getCachedView,
@@ -555,16 +562,26 @@ function NotesShellView({
     route.kind === "directory"
       ? data?.work?.directory?.people.find((p) => p.id === route.id)
       : undefined;
+  const movementName =
+    route.kind === "movement" && data
+      ? movementBests(data.training.lifts).find(
+          (m) => movementSlug(m.name) === route.slug
+        )?.name
+      : undefined;
   const titleName =
-    route.kind === "meeting"
-      ? data?.meetingCards?.[route.id]?.subject
-      : route.kind === "person"
-        ? person?.name
-        : route.kind === "directory"
-          ? card?.name
-          : route.kind === "note" && noteTitle?.path === route.path
-            ? noteTitle.title
-            : null;
+    route.kind === "movement"
+      ? movementName
+      : route.kind === "trainingDay"
+        ? fmtDay(route.date)
+        : route.kind === "meeting"
+          ? data?.meetingCards?.[route.id]?.subject
+          : route.kind === "person"
+            ? person?.name
+            : route.kind === "directory"
+              ? card?.name
+              : route.kind === "note" && noteTitle?.path === route.path
+                ? noteTitle.title
+                : null;
   useEffect(() => {
     if (!active) return;
     document.title =
@@ -620,6 +637,20 @@ function NotesShellView({
     const next = routeForHit(path);
     if (next) navigate(next, { back: "Results" });
   }
+
+  /** Training's movement and day pages: from a list page they push (Back
+   * returns there); from one day to the next they replace. */
+  const trainingLinks = (from: string, dayReplaces = false): TrainingLinks => ({
+    onOpenMovement: (slug) =>
+      navigate({ kind: "movement", slug }, { back: from }),
+    movementHref: (slug) => formatJimPath({ kind: "movement", slug }),
+    onOpenDay: (date) =>
+      navigate(
+        { kind: "trainingDay", date },
+        dayReplaces ? { replace: true } : { back: from }
+      ),
+    dayHref: (date) => formatJimPath({ kind: "trainingDay", date }),
+  });
 
   const listRoute: NotesRoute = { kind: "page", page: basePage };
   const back = () => goBack(listRoute);
@@ -716,9 +747,11 @@ function NotesShellView({
   } else if (listPage === "health") {
     pageBody = <NotesHealth data={data} />;
   } else if (listPage === "training") {
-    pageBody = <NotesTraining data={data} />;
+    pageBody = <NotesTraining data={data} links={trainingLinks("Training")} />;
   } else if (listPage === "golf") {
     pageBody = <NotesGolf data={data} />;
+  } else if (listPage === "mindset") {
+    pageBody = <NotesMindset data={data} />;
   } else if (listPage === "people") {
     pageBody = (
       <NotesPeople
@@ -908,6 +941,37 @@ function NotesShellView({
         onOpenPath={(path) => openPath(path, "Meeting")}
         onHome={() => navigate(HOME_ROUTE)}
         homeHref={formatJimPath(HOME_ROUTE)}
+      />
+    );
+  } else if (route.kind === "movement") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <TrainingMovement
+        key={route.slug}
+        training={data.training}
+        slug={route.slug}
+        today={data.today}
+        links={trainingLinks(movementName ?? "Movement")}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    );
+  } else if (route.kind === "trainingDay") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <TrainingDayPage
+        key={route.date}
+        training={data.training}
+        date={route.date}
+        links={trainingLinks(fmtShort(route.date), true)}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
       />
     );
   } else if (route.kind === "directory") {

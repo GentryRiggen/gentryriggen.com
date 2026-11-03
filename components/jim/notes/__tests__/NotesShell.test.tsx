@@ -594,3 +594,39 @@ it("tapping the Todos pill on a filtered Todos page clears its filters", async (
   );
   expect(window.location.search).toBe("");
 });
+
+it("opens a movement from Training, then a day, and Back returns", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/notes/training");
+  renderShell();
+  await userEvent.click(
+    await screen.findByRole("link", { name: "Back squat" })
+  );
+  expect(window.location.pathname).toBe("/jim/notes/training/m/back-squat");
+  expect(
+    await screen.findByRole("heading", { name: "Back squat" })
+  ).toBeInTheDocument();
+  expect(document.title).toMatch(/Back squat/);
+  const entries = screen.getByRole("region", { name: "Every entry" });
+  await userEvent.click(
+    within(entries).getByRole("link", { name: "Oct 15 2026" })
+  );
+  expect(window.location.pathname).toBe("/jim/notes/training/day/2026-10-15");
+  expect(
+    await screen.findByRole("heading", { name: "Thu, Oct 15 2026" })
+  ).toBeInTheDocument();
+});
+
+it("shows Mindset under Health", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/notes/mindset");
+  renderShell();
+  expect(
+    await screen.findByText("“Listen before answering”")
+  ).toBeInTheDocument();
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  expect(within(sub).getByRole("tab", { name: "Mindset" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+});
