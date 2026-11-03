@@ -63,6 +63,29 @@ describe("StickyHud folded to one row", () => {
     expect(onToggle).toHaveBeenCalled();
   });
 
+  it("leaves a bar-less gauge (a savings jar) out of the slim row", () => {
+    render(
+      <StickyHud
+        {...base}
+        gauge={{
+          label: "RESERVOIR",
+          current: 5000,
+          max: 5000,
+          isLow: false,
+          isCritical: false,
+          display: "5K saved",
+          status: "",
+          hasBar: false,
+        }}
+        isCompact
+        isFolded
+        onToggleCompact={jest.fn()}
+      />
+    );
+    expect(screen.getByTestId("lm-hud-mini-goal")).toBeInTheDocument();
+    expect(screen.queryByTestId("lm-hud-mini-gauge")).not.toBeInTheDocument();
+  });
+
   it("offers to fold again while peeking", () => {
     render(<StickyHud {...base} isFolded onToggleCompact={jest.fn()} />);
     expect(screen.getByTestId("lm-goal")).toBeInTheDocument();
