@@ -36,6 +36,15 @@ export function applyNarrationRate(): void {
   player.applyRate();
 }
 
+/** Holds the line speaking now, mid-word; `resumeNarration` carries on. */
+export function pauseNarration(): void {
+  player.pause();
+}
+
+export function resumeNarration(): void {
+  player.resume();
+}
+
 export function stopNarration(): void {
   player.stop();
 }

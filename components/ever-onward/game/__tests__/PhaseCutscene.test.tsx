@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { growUniverse } from "@/lib/ever-onward/universes/grow";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
@@ -6,14 +6,16 @@ import GrowScene from "../../scenes/grow/GrowScene";
 import LightScene from "../../scenes/light/LightScene";
 import {
   applyNarrationRate,
+  pauseNarration,
   playNarration,
+  resumeNarration,
   stopNarration,
 } from "../../narration/player";
 import {
   getNarrationSettings,
   setNarrationSettings,
 } from "../../narration/settings";
-import PhaseCutscene, { FILM_TICK_MS, shotMs } from "../PhaseCutscene";
+import PhaseCutscene, { FILM_TICK_MS, HOLD_MS, shotMs } from "../PhaseCutscene";
 import StoryDrawer from "../StoryDrawer";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 
@@ -22,6 +24,8 @@ jest.mock("../../narration/player", () => ({
   playNarration: jest.fn(),
   stopNarration: jest.fn(),
   applyNarrationRate: jest.fn(),
+  pauseNarration: jest.fn(),
+  resumeNarration: jest.fn(),
   useNarrationPlaying: () => nowPlaying,
 }));
 jest.mock("@/lib/ever-onward/narration/manifest", () => ({
@@ -47,6 +51,22 @@ function renderFilm(extra: Partial<Parameters<typeof PhaseCutscene>[0]> = {}) {
     />
   );
   return { onContinue, ...utils };
+}
+
+/** A pointer event with a position (jsdom has no PointerEvent). */
+function press(el: Element, type: "pointerdown" | "pointerup", x: number) {
+  fireEvent(
+    el,
+    new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x })
+  );
+}
+
+/** A quick tap on the film at a share of the screen's width (0 to 1). */
+function tap(share: number) {
+  const stage = screen.getByTestId("eo-film-stage");
+  const x = window.innerWidth * share;
+  press(stage, "pointerdown", x);
+  press(stage, "pointerup", x);
 }
 
 /** Lets the film's clock run. */
@@ -125,16 +145,72 @@ describe("the intro film", () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
-  it("hurries along when the picture is tapped: first the typing, then the shot", async () => {
+  it("taps like a story: right for the next shot, left to go back and replay", () => {
+    jest.useFakeTimers();
     renderFilm();
-    const picture = screen.getByTestId("lm-cutscene-picture");
-    await userEvent.click(picture);
-    expect(screen.getByTestId("eo-film-caption").textContent).toContain(
-      shots[0].text
-    );
-    expect(shot()).toBe("1");
-    await userEvent.click(picture);
+    expect(screen.getByTestId("eo-film-hint")).toBeInTheDocument();
+    tap(0.8);
     expect(shot()).toBe("2");
+    tap(0.8);
+    expect(shot()).toBe("3");
+    play(3000);
+    tap(0.1);
+    expect(shot()).toBe("2");
+    // The shot plays again from its start.
+    expect(screen.getByTestId("eo-film-caption").textContent).toBe("▌");
+    tap(0.1);
+    tap(0.1);
+    expect(shot()).toBe("1");
+    // Tapping all the way through reaches the closing card, which stays put.
+    for (let i = 0; i < shots.length + 3; i += 1) tap(0.9);
+    expect(shot()).toBe("end");
+    tap(0.1);
+    expect(shot()).toBe(String(shots.length));
+  });
+
+  it("taps on the buttons and the closing card are theirs, not the film's", async () => {
+    renderFilm();
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+    const end = screen.getByTestId("lm-cutscene-end");
+    press(end, "pointerdown", 10);
+    press(end, "pointerup", 10);
+    expect(shot()).toBe("end");
+  });
+
+  it("pauses while held, and carries on when let go", () => {
+    jest.useFakeTimers();
+    renderFilm();
+    const stage = screen.getByTestId("eo-film-stage");
+    press(stage, "pointerdown", 900);
+    play(HOLD_MS + FILM_TICK_MS);
+    expect(pauseNarration).toHaveBeenCalled();
+    const before = screen.getByTestId("eo-film-caption").textContent;
+    play(shotMs(shots[0]) * 2);
+    expect(shot()).toBe("1");
+    expect(screen.getByTestId("eo-film-caption").textContent).toBe(before);
+    press(stage, "pointerup", 900);
+    // Letting go of a hold does not skip.
+    expect(shot()).toBe("1");
+    expect(resumeNarration).toHaveBeenCalled();
+    play(shotMs(shots[0]) + FILM_TICK_MS * 2);
+    expect(shot()).toBe("2");
+  });
+
+  it("fills the playing shot's bar as it goes", () => {
+    jest.useFakeTimers();
+    renderFilm();
+    const fill = () =>
+      Number(
+        screen
+          .getByTestId("eo-film-progress")
+          .querySelectorAll("svg")[0]
+          .querySelectorAll("rect")[1]
+          .getAttribute("width")
+      );
+    expect(fill()).toBe(0);
+    play(shotMs(shots[0]) / 2);
+    expect(fill()).toBeGreaterThan(30);
+    expect(fill()).toBeLessThan(70);
   });
 
   it("pauses and plays", async () => {
@@ -181,15 +257,21 @@ describe("the intro film", () => {
     expect(shot()).toBe("2");
   });
 
-  it("turns the voice off from the film", async () => {
+  it("has an obvious Mute button that silences the film", async () => {
     setNarrationSettings({ isEnabled: true });
     renderFilm();
-    await userEvent.click(screen.getByRole("button", { name: /Voice/ }));
+    const mute = screen.getByTestId("eo-film-mute");
+    expect(mute).toHaveTextContent("Mute");
+    expect(mute).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(screen.getByRole("button", { name: "Mute" }));
     expect(stopNarration).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /Voice/ })).toHaveAttribute(
+    expect(screen.getByTestId("eo-film-mute")).toHaveTextContent("Muted");
+    expect(screen.getByRole("button", { name: "Unmute" })).toHaveAttribute(
       "aria-pressed",
-      "false"
+      "true"
     );
+    await userEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    expect(screen.getByTestId("eo-film-mute")).toHaveTextContent("Mute");
   });
 
   it("steps the speed a quarter at a time, from 0.75x to 2x", async () => {

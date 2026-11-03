@@ -1,5 +1,6 @@
 "use client";
 
+import { SAFE_INSETS } from "@/components/ever-onward/safeArea";
 import {
   useEffect,
   useMemo,
@@ -17,7 +18,9 @@ import { cutClipId, cutEndClipId } from "@/lib/ever-onward/narration/lines";
 import { getClip } from "@/lib/ever-onward/narration/manifest";
 import {
   applyNarrationRate,
+  pauseNarration,
   playNarration,
+  resumeNarration,
   stopNarration,
   useNarrationPlaying,
 } from "../narration/player";
@@ -27,6 +30,8 @@ import {
   useNarrationSettings,
 } from "../narration/settings";
 import type { SceneProps } from "../universes/types";
+import PixelSprite from "../start/PixelSprite";
+import { SPEAKER_ON, SPEAKER_ROWS } from "@/lib/ever-onward/start/sprites";
 import FilmRobot from "./film/FilmRobot";
 import FilmStars from "./film/FilmStars";
 import { useReducedMotion } from "./useAnimatedNumber";
@@ -52,6 +57,13 @@ interface PhaseCutsceneProps {
   opening?: ReactNode;
 }
 
+/** The speaker, crossed out in red: the film is muted. */
+const MUTED_SPEAKER = { S: "#fb7185" } as const;
+
+/** Presses that start on these are theirs, not the film's. */
+const STORY_TAP_IGNORE =
+  'button:not([data-story-tap]),a,input,select,textarea,[role="radiogroup"],[data-testid="lm-cutscene-end"]';
+
 const FOCUSABLE =
   'button:not([disabled]):not([tabindex="-1"]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -65,6 +77,10 @@ const READ_MS = 2600;
 const AFTER_VOICE_MS = 900;
 /** A voice that has not started by now is not coming (blocked or slow). */
 const VOICE_GRACE_MS = 2500;
+/** A press this long is a hold (pause), not a tap. */
+export const HOLD_MS = 260;
+/** Taps on this share of the screen's width, from the left, go back. */
+const BACK_ZONE = 0.3;
 
 /** The least time a shot stays on screen. */
 export function shotMs(frame: CutsceneFrame): number {
@@ -100,7 +116,11 @@ export default function PhaseCutscene({
   const endIndex = frames.length;
   const [index, setIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  /** Paused by the Pause button. */
+  const [isStopped, setIsStopped] = useState(false);
+  /** Paused while a finger is held down on the film. */
+  const [isHeld, setIsHeld] = useState(false);
+  const isPaused = isStopped || isHeld;
   const isReduced = useReducedMotion();
   const { isEnabled: isVoiceOn, rate } = useNarrationSettings();
   const nowPlaying = useNarrationPlaying();
@@ -128,9 +148,12 @@ export default function PhaseCutscene({
   });
   const elapsedRef = useRef(elapsed);
 
+  /** Goes to a shot and plays it from its start (also the shot already on). */
   const go = (to: number) => {
     stopNarration();
     voiceRef.current = { started: false, endedAt: null };
+    setIsStopped(false);
+    setIsHeld(false);
     setElapsed(0);
     setIndex(Math.min(endIndex, Math.max(0, to)));
   };
@@ -149,6 +172,12 @@ export default function PhaseCutscene({
     if (!hasVoice || isPaused || voiceRef.current.started) return;
     playNarration(clipId);
   }, [clipId, hasVoice, isPaused]);
+
+  // A paused film holds its voice mid-word, and carries on with it.
+  useEffect(() => {
+    if (isPaused) pauseNarration();
+    else resumeNarration();
+  }, [isPaused]);
 
   // Notice when the voice starts and stops.
   useEffect(() => {
@@ -206,19 +235,6 @@ export default function PhaseCutscene({
     if (isEnd) primaryRef.current?.focus();
   }, [isEnd]);
 
-  /** Tapping the picture finishes the typing, then moves on. */
-  const hurry = () => {
-    const { frame: now, elapsed: ms, index: at } = stateRef.current;
-    if (!now) return;
-    const typedMs = now.text.length * TYPE_MS;
-    if (ms < typedMs) setElapsed(typedMs);
-    else goRef.current(at + 1);
-  };
-  const hurryRef = useRef(hurry);
-  useEffect(() => {
-    hurryRef.current = hurry;
-  });
-
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const { index: now, finishLabel: label, isEnd: atEnd } = stateRef.current;
@@ -243,7 +259,7 @@ export default function PhaseCutscene({
         // A focused button already activates itself on Enter.
         if (target?.closest("button")) return;
         event.preventDefault();
-        if (!atEnd) hurryRef.current();
+        if (!atEnd) goRef.current(now + 1);
         else onContinueRef.current();
       } else if (event.key === "Tab") {
         const nodes = rootRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
@@ -279,16 +295,65 @@ export default function PhaseCutscene({
     applyNarrationRate();
   };
 
-  const togglePause = () => {
-    if (isPaused) {
-      setIsPaused(false);
-    } else {
-      stopNarration();
-      // Do not wait for a voice that was stopped.
-      voiceRef.current = { started: true, endedAt: elapsed };
-      setIsPaused(true);
-    }
+  const togglePause = () => setIsStopped((stopped) => !stopped);
+
+  /**
+   * Story taps, as in the apps kids know: tap the right of the film for the
+   * next shot (tap all the way through to skip), the left to go back and
+   * play the shot before again, and hold anywhere to pause.
+   */
+  const pressRef = useRef<{ timer: number; isHold: boolean } | null>(null);
+  const onPressStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    // Only the main button (touch and pen report 0 too).
+    if (event.button > 0) return;
+    if ((event.target as HTMLElement).closest(STORY_TAP_IGNORE)) return;
+    const press = {
+      isHold: false,
+      timer: window.setTimeout(() => {
+        press.isHold = true;
+        setIsHeld(true);
+      }, HOLD_MS),
+    };
+    pressRef.current = press;
   };
+  const onPressEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    const press = pressRef.current;
+    pressRef.current = null;
+    if (!press) return;
+    window.clearTimeout(press.timer);
+    if (press.isHold) {
+      setIsHeld(false);
+      return;
+    }
+    const width = window.innerWidth || 1;
+    const isBack = event.clientX < width * BACK_ZONE;
+    if (isBack) go(index - 1);
+    else if (!isEnd) go(index + 1);
+  };
+  const onPressCancel = () => {
+    const press = pressRef.current;
+    pressRef.current = null;
+    if (!press) return;
+    window.clearTimeout(press.timer);
+    if (press.isHold) setIsHeld(false);
+  };
+  useEffect(
+    () => () => {
+      if (pressRef.current) window.clearTimeout(pressRef.current.timer);
+    },
+    []
+  );
+
+  /** How far through the shot the film is, 0 to 1, for the progress bar. */
+  const shotLength = frame
+    ? Math.max(
+        shotMs(frame),
+        hasVoice
+          ? (getClip(clipId)?.durationGuess ?? 0) * 1000 + AFTER_VOICE_MS
+          : 0
+      )
+    : 1;
+  const progress = Math.min(1, elapsed / shotLength);
 
   const typed = frame
     ? isReduced
@@ -316,7 +381,7 @@ export default function PhaseCutscene({
       data-testid="lm-phase-overlay"
       data-film-shot={isEnd ? "end" : index + 1}
       tabIndex={-1}
-      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#02030a] text-amber-50 outline-none"
+      className={`fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#02030a] text-amber-50 outline-none ${SAFE_INSETS}`}
     >
       <div className="pointer-events-none fixed inset-0">
         <CrtOverlay />
@@ -324,17 +389,43 @@ export default function PhaseCutscene({
 
       {/* The top strip: where you are, and the film's controls. */}
       <div className="relative flex shrink-0 flex-col gap-2 px-3 pt-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-4">
-        <div className="min-w-0">
-          <p className={`${retroLabelClass} leading-normal`}>
-            Part {phaseIndex + 1} of {def.phases.length}
-          </p>
-          <RetroHeading
-            as="h2"
-            id="lm-phase-title"
-            className="text-sm leading-normal break-words sm:text-lg"
-          >
-            {phase.title}
-          </RetroHeading>
+        <div className="flex min-w-0 items-center justify-between gap-3 sm:flex-1">
+          <div className="min-w-0">
+            <p className={`${retroLabelClass} leading-normal`}>
+              Part {phaseIndex + 1} of {def.phases.length}
+            </p>
+            <RetroHeading
+              as="h2"
+              id="lm-phase-title"
+              className="text-sm leading-normal break-words sm:text-lg"
+            >
+              {phase.title}
+            </RetroHeading>
+          </div>
+          {hasAnyVoice && (
+            <button
+              type="button"
+              data-testid="eo-film-mute"
+              aria-pressed={!isVoiceOn}
+              aria-label={isVoiceOn ? "Mute" : "Unmute"}
+              onClick={() => {
+                if (isVoiceOn) stopNarration();
+                setNarrationSettings({ isEnabled: !isVoiceOn });
+              }}
+              className={`${retroSecondaryButtonClass} shrink-0 gap-2 ${
+                isVoiceOn ? "" : "!border-rose-400 !text-rose-200"
+              }`}
+            >
+              <PixelSprite
+                rows={SPEAKER_ROWS}
+                palette={isVoiceOn ? SPEAKER_ON : MUTED_SPEAKER}
+                className="h-4"
+              />
+              <span aria-hidden="true" className={pixelClass}>
+                {isVoiceOn ? "Mute" : "Muted"}
+              </span>
+            </button>
+          )}
         </div>
         <div className="flex shrink-0 items-center justify-between gap-1 sm:justify-end sm:gap-2">
           <div
@@ -372,26 +463,6 @@ export default function PhaseCutscene({
               </span>
             </button>
           </div>
-          {hasAnyVoice && (
-            <button
-              type="button"
-              aria-pressed={isVoiceOn}
-              aria-label="Voice"
-              onClick={() => {
-                if (isVoiceOn) stopNarration();
-                setNarrationSettings({ isEnabled: !isVoiceOn });
-              }}
-              className={retroSecondaryButtonClass}
-            >
-              <span aria-hidden="true">{isVoiceOn ? "♪" : "×"}</span>
-              <span
-                aria-hidden="true"
-                className={`${pixelClass} hidden sm:inline`}
-              >
-                Voice
-              </span>
-            </button>
-          )}
           {!isEnd && (
             <button
               type="button"
@@ -414,19 +485,23 @@ export default function PhaseCutscene({
         </div>
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 px-3 py-3 sm:gap-4 sm:px-6">
+      <div
+        data-testid="eo-film-stage"
+        onPointerDown={onPressStart}
+        onPointerUp={onPressEnd}
+        onPointerCancel={onPressCancel}
+        onPointerLeave={onPressCancel}
+        onContextMenu={(event) => event.preventDefault()}
+        className="relative mx-auto flex w-full max-w-5xl flex-1 cursor-pointer touch-manipulation flex-col justify-center gap-3 px-3 py-3 select-none [-webkit-touch-callout:none] sm:gap-4 sm:px-6"
+      >
         {/*
           The picture: letterboxed, 4:3 like every scene. The scene's own
           little robot steps aside so the film's robot is the only one.
         */}
-        <button
-          type="button"
-          tabIndex={-1}
+        <div
           aria-hidden="true"
-          disabled={isEnd}
-          onClick={hurry}
           data-testid="lm-cutscene-picture"
-          className={`relative mx-auto block aspect-[4/3] w-full cursor-pointer overflow-hidden border-4 border-slate-800 bg-[#02030a] [&_p]:hidden [&_.eo-scene-robot]:hidden disabled:cursor-default ${
+          className={`relative mx-auto block aspect-[4/3] w-full overflow-hidden border-4 border-slate-800 bg-[#02030a] [&_p]:hidden [&_.eo-scene-robot]:hidden ${
             isEnd
               ? "max-w-[min(100%,calc(30svh*4/3))]"
               : "max-w-[min(100%,calc(58svh*4/3))]"
@@ -479,7 +554,7 @@ export default function PhaseCutscene({
               Paused
             </span>
           )}
-        </button>
+        </div>
 
         {frame && (
           <div
@@ -504,6 +579,14 @@ export default function PhaseCutscene({
                 ▌
               </span>
             </p>
+            {index === 0 && (
+              <p
+                data-testid="eo-film-hint"
+                className={`${pixelClass} mt-1 text-center text-[10px] leading-relaxed text-slate-400`}
+              >
+                Tap right: next · Tap left: back · Hold: pause
+              </p>
+            )}
           </div>
         )}
 
@@ -564,21 +647,37 @@ export default function PhaseCutscene({
           </div>
         )}
 
-        {/* The film's progress. */}
-        <div className="mx-auto flex w-full max-w-2xl gap-1" aria-hidden="true">
+        {/* The film's progress: one bar per shot, the one playing fills up. */}
+        <div
+          data-testid="eo-film-progress"
+          className="mx-auto flex w-full max-w-2xl gap-1"
+          aria-hidden="true"
+        >
           {[...frames, null].map((_, i) => (
-            <span
+            <svg
               key={i}
-              className={`h-1 flex-1 ${
-                i < index
-                  ? "bg-amber-300/80"
-                  : i === index
-                    ? "bg-amber-300"
-                    : "bg-slate-700"
-              }`}
-            />
+              viewBox="0 0 100 1"
+              preserveAspectRatio="none"
+              className="h-1 flex-1"
+            >
+              <rect width="100" height="1" fill="#334155" />
+              <rect
+                width={
+                  i < index
+                    ? 100
+                    : i === index
+                      ? isEnd
+                        ? 100
+                        : progress * 100
+                      : 0
+                }
+                height="1"
+                fill="#fcd34d"
+              />
+            </svg>
           ))}
         </div>
+
         <p className="sr-only" aria-live="polite">
           {isEnd ? "Your goal" : `Scene ${index + 1} of ${frames.length}`}
         </p>

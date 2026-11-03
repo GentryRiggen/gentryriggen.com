@@ -1,5 +1,6 @@
 "use client";
 
+import { SAFE_INSETS } from "@/components/ever-onward/safeArea";
 import {
   useEffect,
   useRef,
@@ -76,13 +77,13 @@ export default function EndingOverlay({
       aria-modal="true"
       aria-label="The ending"
       data-testid="lm-ending"
-      className="fixed inset-0 z-50 flex overflow-y-auto overflow-x-hidden bg-black p-6 text-slate-50 outline-none"
+      className={`fixed inset-0 z-50 flex overflow-y-auto overflow-x-hidden bg-black text-slate-50 outline-none ${SAFE_INSETS}`}
     >
       <div className="pointer-events-none fixed inset-0">
         <CrtOverlay />
       </div>
       {/* m-auto centres short endings and still lets a tall one scroll from its top. */}
-      <div className="relative m-auto w-full max-w-md space-y-6 py-8 text-center">
+      <div className="relative m-auto w-full max-w-md space-y-6 p-6 py-14 text-center">
         {art ?? (
           <div
             aria-hidden="true"

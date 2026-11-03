@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.29.0",
+    date: "2026-11-02",
+    title: "Tap through like a story",
+    highlights: [
+      "The little films work like the stories in your favourite apps: tap the right side for the next picture, tap the left side to go back and hear it again, and hold your finger down to pause",
+      "The bars along the bottom fill up as each picture plays, so you can see how far along you are",
+      "A big Mute button sits at the top. The voice is on to start, and one tap turns it off so you can just read",
+      "At 1.5x and 2x the narrator now sounds like themselves, only quicker, instead of squeaky",
+      "On iPhones and iPads, the buttons at the top of the films, the ending and the side panels no longer hide under the clock and battery",
+    ],
+  },
+  {
     version: "1.28.0",
     date: "2026-11-02",
     title: "Film speed",

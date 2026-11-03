@@ -86,7 +86,7 @@ function UpgradesDialogView({ def, universe, onClose }: UpgradesDialogProps) {
 
   return createPortal(
     <div
-      className={`${pixelFont.variable} dark fixed inset-0 z-50 flex items-end lg:items-stretch lg:justify-end`}
+      className={`${pixelFont.variable} dark fixed inset-0 z-50 flex items-end pt-[env(safe-area-inset-top)] lg:items-stretch lg:justify-end`}
     >
       <div
         aria-hidden="true"
