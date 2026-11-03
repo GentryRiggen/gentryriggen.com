@@ -16,6 +16,7 @@ import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
+import { HIGHER_EVENTS } from "./events";
 import { isHigherComplete, manualHigher, tickHigher } from "./tick";
 import { UPGRADES } from "./upgrades";
 import { TEASERS, VISITORS, higherCountdown } from "./visitors";
@@ -39,6 +40,7 @@ export const higherUniverse: UniverseDef = {
   maxVisible: 3,
   goalMeter: higherGoal,
   story: STORY,
+  events: HIGHER_EVENTS,
   teasers: TEASERS,
   visitors: VISITORS,
   countdown: higherCountdown,

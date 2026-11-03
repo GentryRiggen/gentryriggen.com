@@ -1,6 +1,7 @@
 import type {
   ActionDef,
   ActionView,
+  LogEntry,
   PhaseDef,
   ProjectDef,
   RunState,
@@ -25,6 +26,8 @@ export function cloneRun(run: RunState): RunState {
     revealed: [...run.revealed],
     story: [...run.story],
     transitions: run.transitions.map((t) => ({ ...t })),
+    ...(run.log ? { log: [...run.log] } : {}),
+    ...(run.logSeen ? { logSeen: { ...run.logSeen } } : {}),
   };
 }
 
@@ -60,6 +63,7 @@ function settle(def: UniverseDef, run: RunState): void {
     revealProjects(def, run);
     arriveVisitors(def, run);
     fireStory(def, run);
+    recordEvents(def, run);
     if (isLastPhase(def, run)) {
       if (!run.complete && def.isComplete(run)) run.complete = true;
       return;
@@ -70,6 +74,14 @@ function settle(def: UniverseDef, run: RunState): void {
     run.transitions.push({ from: phase.id, to: next.id, at: run.time });
     run.phase += 1;
     next.onEnter?.(run);
+    if (run.log) {
+      addLog(run, {
+        text: `Part ${run.phase + 1} begins: ${next.title}.`,
+        at: run.time,
+        after: run.story.length,
+        tone: "info",
+      });
+    }
   }
 }
 
@@ -282,6 +294,43 @@ function fireStory(def: UniverseDef, run: RunState): void {
   }
 }
 
+/** The running log keeps this many lines; older ones drop off. */
+export const LOG_LIMIT = 80;
+
+/**
+ * Takes each event source's newest line into the log when its count goes up.
+ * A source the run has not seen before (a save from before the log) starts
+ * from its current count, so old results are not replayed.
+ */
+function recordEvents(def: UniverseDef, run: RunState): void {
+  if (!def.events?.length) return;
+  const seen = (run.logSeen ??= {});
+  for (const source of def.events) {
+    const count = source.count(run);
+    const before = seen[source.id];
+    if (before === undefined || count < before) {
+      seen[source.id] = count;
+      continue;
+    }
+    if (count === before) continue;
+    seen[source.id] = count;
+    const text = source.line(run);
+    if (!text) continue;
+    addLog(run, {
+      text,
+      at: run.time,
+      after: run.story.length,
+      tone: source.tone?.(run) ?? "good",
+    });
+  }
+}
+
+function addLog(run: RunState, entry: LogEntry): void {
+  const log = (run.log ??= []);
+  log.push(entry);
+  if (log.length > LOG_LIMIT) log.splice(0, log.length - LOG_LIMIT);
+}
+
 function isInPhase(
   def: UniverseDef,
   run: RunState,
@@ -311,6 +360,8 @@ export function newRun(
     story: [],
     transitions: [],
     rng: seed | 0,
+    log: [],
+    logSeen: {},
   };
   for (const upgrade of def.prestige.upgrades) {
     const level = prestigeLevels[upgrade.id] ?? 0;
@@ -604,12 +655,31 @@ export function reconcileRun(
     resources: { ...saved, ...resources },
     owned: finiteEntries(run.owned, 0),
     mods: finiteEntries(run.mods),
+    log: validLog(run.log),
+    logSeen: run.logSeen ? finiteEntries(run.logSeen, 0) : undefined,
   };
+  if (!next.logSeen) delete next.logSeen;
   if (!(next.mods.costMult === undefined || next.mods.costMult > 0))
     delete next.mods.costMult;
   clampToMaxLevels(def, next);
   settle(def, next);
   return next;
+}
+
+/** A damaged log is dropped, never the whole save. */
+function validLog(log: unknown): LogEntry[] {
+  if (!Array.isArray(log)) return [];
+  return log
+    .filter(
+      (e): e is LogEntry =>
+        typeof e === "object" &&
+        e !== null &&
+        typeof e.text === "string" &&
+        Number.isFinite(e.at) &&
+        Number.isFinite(e.after) &&
+        (e.tone === "good" || e.tone === "bad" || e.tone === "info")
+    )
+    .slice(-LOG_LIMIT);
 }
 
 /**
