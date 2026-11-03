@@ -181,11 +181,13 @@ export default function StickyHud({
               testId="lm-hud-value"
               className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
             />
+            {/* The rate gives way (clipped) before it can run under the
+                slim row's goal on a narrow phone. */}
             <RateReadout
               rate={rate}
               trend={trend}
               testId="lm-hud-rate"
-              className={`shrink-0 font-mono font-bold text-sm`}
+              className="min-w-0 truncate font-mono font-bold text-sm"
             />
           </p>
           {isFolded && (
@@ -204,7 +206,9 @@ export default function StickyHud({
                   <MiniGoal goal={goal} />
                 </span>
               )}
-              {isCompact && gauge && (
+              {/* A bar-less gauge (a savings jar) is only its name here, so
+                  it stays in the open bar and leaves room for the money. */}
+              {isCompact && gauge && gauge.hasBar !== false && (
                 <span className={FADE_IN}>
                   <MiniGauge gauge={gauge} />
                 </span>

@@ -252,5 +252,89 @@ test.describe("Ever Onward", () => {
       await expect(buy).toBeInViewport();
       expect(await sideways()).toBeLessThanOrEqual(0);
     });
+
+    for (const scene of [
+      {
+        name: "the Coast (oil)",
+        phase: 0,
+        resources: { coins: 700000, oil: 22700, oilPrice: 0.4 },
+        owned: { lens: 5, keeper: 3, lighthouse: 4 },
+      },
+      {
+        name: "the night (Reservoir)",
+        phase: 1,
+        resources: { coins: 0, power: 76900, fund: 5000 },
+        owned: { gen1: 4 },
+      },
+    ]) {
+      test(`the folded bar's money and goal never overlap on ${scene.name}`, async ({
+        page,
+      }) => {
+        await page.addInitScript((s) => {
+          window.localStorage.setItem(
+            "ever-onward:save",
+            JSON.stringify({
+              version: 1,
+              seenIntro: true,
+              universes: {
+                light: {
+                  run: {
+                    phase: s.phase,
+                    time: 1200,
+                    taps: 400,
+                    complete: false,
+                    resources: s.resources,
+                    owned: s.owned,
+                    mods: {},
+                    flags: {},
+                    revealed: Object.keys(s.owned),
+                    story: [],
+                    transitions: [],
+                    rng: 1,
+                  },
+                  best: null,
+                  completions: 0,
+                  embers: 0,
+                  prestigeUpgrades: {},
+                },
+              },
+            })
+          );
+        }, scene);
+        await openHub(page);
+        await page.getByTestId("lm-play-light").click();
+        const overlay = page.getByTestId("lm-phase-overlay");
+        if (await overlay.isVisible().catch(() => false))
+          await passCutscene(page);
+        await page.evaluate(() =>
+          window.scrollTo(0, document.documentElement.scrollHeight)
+        );
+        const hud = page.getByTestId("lm-hud");
+        await expect(hud).toHaveAttribute("data-compact", "true");
+        const toggle = page.getByTestId("lm-hud-toggle");
+        await expect(toggle).toBeVisible();
+        // Let the fold's fade-in finish before measuring.
+        await page.waitForTimeout(400);
+
+        const box = (id: string) =>
+          page
+            .getByTestId(id)
+            .evaluate((el) => el.getBoundingClientRect().toJSON());
+        const value = await box("lm-hud-value");
+        const rate = await box("lm-hud-rate");
+        const right = await toggle.evaluate((el) => {
+          // The left edge of what the toggle actually draws.
+          const kids = [...el.querySelectorAll("*")].map((k) =>
+            k.getBoundingClientRect()
+          );
+          return Math.min(...kids.map((r) => r.left));
+        });
+        expect(value.right).toBeLessThanOrEqual(rate.left + 0.5);
+        expect(rate.right).toBeLessThanOrEqual(right);
+        const viewport = page.viewportSize()!.width;
+        const toggleBox = await box("lm-hud-toggle");
+        expect(toggleBox.right).toBeLessThanOrEqual(viewport);
+      });
+    }
   });
 });

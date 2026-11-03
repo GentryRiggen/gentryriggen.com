@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.29.1",
+    date: "2026-11-02",
+    title: "A tidy top bar on phones",
+    highlights: [
+      "On a phone, when you scroll down and the top bar folds to one row, your money and your goal no longer pile on top of each other",
+      "Your savings jar (like the Reservoir) stays in the full bar. Tap the folded row to see it",
+    ],
+  },
+  {
     version: "1.29.0",
     date: "2026-11-02",
     title: "Tap through like a story",
