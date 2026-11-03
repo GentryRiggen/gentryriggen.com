@@ -38,6 +38,7 @@ import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
 import NotesTodos from "@/components/jim/notes/NotesTodos";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import NotesWork from "@/components/jim/notes/NotesWork";
+import NotesYear from "@/components/jim/notes/NotesYear";
 import {
   TrainingDayPage,
   TrainingMovement,
@@ -750,6 +751,14 @@ function NotesShellView({
     pageBody = <NotesTraining data={data} links={trainingLinks("Training")} />;
   } else if (listPage === "golf") {
     pageBody = <NotesGolf data={data} />;
+  } else if (listPage === "year") {
+    pageBody = (
+      <NotesYear
+        data={data}
+        onOpen={(path) => openPath(path, "Year")}
+        hrefFor={hrefForNote}
+      />
+    );
   } else if (listPage === "mindset") {
     pageBody = <NotesMindset data={data} />;
   } else if (listPage === "people") {

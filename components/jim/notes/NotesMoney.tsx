@@ -12,6 +12,10 @@ import {
   usd,
 } from "@/components/jim/notes/MoneyCharts";
 import {
+  AmazonSection,
+  MoneyGridSection,
+} from "@/components/jim/notes/MoneyExtras";
+import {
   Chip,
   Empty,
   Rows,
@@ -358,6 +362,11 @@ function MoneyBody({ data }: { data: MoneySummary }) {
               />
             ))}
           </div>
+          {data.share && (
+            <p className="text-sm text-ayu-subtle [overflow-wrap:anywhere]">
+              {data.share.line}
+            </p>
+          )}
           {data.rule && (
             <p className="text-sm text-ayu-subtle [overflow-wrap:anywhere]">
               {data.rule}
@@ -447,6 +456,10 @@ function MoneyBody({ data }: { data: MoneySummary }) {
           </Section>
         </>
       )}
+
+      {data.grid && <MoneyGridSection grid={data.grid} />}
+
+      {data.amazon && <AmazonSection amazon={data.amazon} />}
 
       {data.checkin && <CheckinSection checkin={data.checkin} />}
 
