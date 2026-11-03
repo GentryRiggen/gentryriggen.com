@@ -17,6 +17,22 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.31.0",
+    date: "2026-11-03",
+    title: "Always know what things do",
+    highlights: [
+      "The top bar says what your money is for, like Resolve: spend it to let lights go dark. That is the goal",
+      "In The Last Light, the flame has its own meter on the top bar. It turns orange when it is low, and a warning tells you to tap Tend when it goes cold",
+      "At night the grid's steadiness, and in the sky the fleet's course, have meters on the top bar too",
+      "Every tap shows what it earned and what else it changed, like +3 resolve and Flame 42% → 57%, instead of just a number",
+      "Pressing a button (ride the rush, catch the flare, steady the tower) shows what it changed up in the top bar",
+      "The goal line always says the next step: which light to let go and what it costs, how much power the cities still need, or what unlocks the next milestone (A green tractor: unlocks at 3 × friendly scarecrow)",
+      "Each part tells you what its tap does for the first couple of minutes, and the last parts say that everything you earn moves the goal",
+      "The Last Light's tips explain the plan: spend resolve to let lights go, and keep the flame warm",
+      "Fixed choices that read you chose bigger mirrors instead of bigger mirrors, and Call an night shift",
+    ],
+  },
+  {
     version: "1.30.2",
     date: "2026-11-03",
     title: "Upgrade cards that make sense",

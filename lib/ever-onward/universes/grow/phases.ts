@@ -36,6 +36,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Plant seeds and build a cold frame.",
     manualResource: "seeds",
     manualLabel: "Plant a seed",
+    tapDoes: "plant a seed and earn seeds",
     isDone: (run) => owned(run, "cold-frame") >= 1,
     onEnter: (run) => {
       seedWater(run);
@@ -52,6 +53,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Bring in the harvest and raise a barn.",
     manualResource: "harvest",
     manualLabel: "Pick the harvest",
+    tapDoes: "pick the harvest by hand",
     isDone: (run) => owned(run, "grain-barn") >= 1,
     onEnter: (run) => {
       // Leftover seeds are worth a little at the farm gate.
@@ -75,6 +77,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Spread green across the world and build a seed vault.",
     manualResource: "green",
     manualLabel: "Plant something green",
+    tapDoes: "plant something green and earn green",
     isDone: (run) => owned(run, "seed-vault") >= 1,
     onEnter: (run) => {
       // The farm's leftover harvest turns into the first green.
@@ -96,6 +99,7 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Tend the old window box until the seed blooms.",
     manualResource: "care",
     manualLabel: "Tend the pot",
+    tapDoes: "tend the pot. Every bit of care you earn grows it",
     isDone: () => false,
     onEnter: (run) => {
       openWindowBox(run);

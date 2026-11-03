@@ -10,10 +10,15 @@ import {
 } from "react";
 import {
   canAfford,
+  isProjectId,
+  manualAction,
+  performAction,
   previewUpgrade,
+  startProject,
   upgradeCost,
   waitingVisitors,
 } from "@/lib/ever-onward/engine/engine";
+import { describeChanges, formatGain } from "@/lib/ever-onward/engine/changes";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { primaryResourceId } from "@/lib/ever-onward/engine/pull";
 import { upkeepRate } from "@/lib/ever-onward/engine/rate";
@@ -69,6 +74,9 @@ import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
 import { useReducedMotion } from "./useAnimatedNumber";
+
+/** How long a later part's tap hint stays up, in seconds of play. */
+const TAP_HINT_SECONDS = 150;
 
 /** Space left between the HUD and an element scrolled to. */
 const HUD_GAP = 12;
@@ -149,8 +157,8 @@ export default function GameScreen({
 
   const primaryId = primaryResourceId(def, run);
   const primaryValue = run.resources[primaryId] ?? 0;
-  const primaryLabel =
-    def.resources.find((r) => r.id === primaryId)?.label ?? primaryId;
+  const primaryDef = def.resources.find((r) => r.id === primaryId);
+  const primaryLabel = primaryDef?.label ?? primaryId;
   const { rate, trend } = useNetRate(
     primaryValue,
     primaryId,
@@ -258,6 +266,26 @@ export default function GameScreen({
     onBuy(id);
   };
 
+  // A tap names what it earned and what else it moved ("+3 resolve",
+  // "Flame 42% → 57%"), so every tap shows its effect.
+  const handleTap = (): string[] => {
+    const lines = describeChanges(def, run, manualAction(def, run), primaryId);
+    const gain = onTap();
+    if (lines.length > 0) return lines;
+    return gain > 0 ? [`+${formatGain(gain)}`] : [];
+  };
+
+  // A button press says what it changed up in the bar ("+75 power").
+  const handleAction = (id: string) => {
+    const after = isProjectId(def, id)
+      ? startProject(def, run, id)
+      : performAction(def, run, id);
+    const lines = after === run ? [] : describeChanges(def, run, after);
+    if (lines.length > 0)
+      setEffect((e) => ({ id: (e?.id ?? 0) + 1, text: lines.join("\n") }));
+    onAction(id);
+  };
+
   const handleOpenEmbers = () => {
     onDismissEmberTip();
     setIsEmberDialogOpen(true);
@@ -341,6 +369,14 @@ export default function GameScreen({
     onGreet(id);
   };
 
+  // Every part's tap does something new: say what, for its first minutes
+  // (the very first part, until the button is learned).
+  const phaseStart = run.transitions.at(-1)?.at ?? 0;
+  const showsTapHint =
+    !run.complete &&
+    (run.phase === 0
+      ? run.taps < 25
+      : run.time - phaseStart < TAP_HINT_SECONDS);
   const countdown = def.countdown?.(run) ?? null;
   const goal = def.goalMeter?.(run) ?? null;
   const gauge = def.gauge?.(run) ?? null;
@@ -487,16 +523,17 @@ export default function GameScreen({
             onRestart={onRestart}
           />
         )}
-        {!run.complete && run.phase === 0 && run.taps < 25 && (
+        {showsTapHint && (
           <p className={`${bodyClass} text-slate-300`}>
             <span aria-hidden="true" className="mr-2 text-amber-300">
               ▶︎
             </span>
-            Tap the button at the bottom to {phase.manualLabel.toLowerCase()}.
+            Tap the button at the bottom to{" "}
+            {phase.tapDoes ?? phase.manualLabel.toLowerCase()}.
           </p>
         )}
         {ui.topPanels?.map((Panel, i) => (
-          <Panel key={i} def={def} run={run} onAct={onAction} />
+          <Panel key={i} def={def} run={run} onAct={handleAction} />
         ))}
         {!run.complete && (
           <div className="space-y-2">
@@ -511,9 +548,9 @@ export default function GameScreen({
             />
           </div>
         )}
-        <ActionPanel def={def} run={run} onAct={onAction} />
+        <ActionPanel def={def} run={run} onAct={handleAction} />
         {ui.primaryPanels?.map((Panel, i) => (
-          <Panel key={i} def={def} run={run} onAct={onAction} />
+          <Panel key={i} def={def} run={run} onAct={handleAction} />
         ))}
         {!goal && countdown && <CountdownBar view={countdown} />}
         {visitors.map((v) => (
@@ -527,7 +564,7 @@ export default function GameScreen({
           />
         ))}
         {ui.panels.map((Panel, i) => (
-          <Panel key={i} def={def} run={run} onAct={onAction} />
+          <Panel key={i} def={def} run={run} onAct={handleAction} />
         ))}
         {/* Below every button, so a warning that comes and goes never pushes
             one (Buy Oil, Steady) out from under the player's thumb. The HUD
@@ -579,7 +616,7 @@ export default function GameScreen({
           look={ui.tapLooks[Math.min(run.phase, ui.tapLooks.length - 1)]}
           isStorm={isStorm}
           isCovered={isCovered}
-          onTap={onTap}
+          onTap={handleTap}
         />
       )}
 
@@ -589,6 +626,7 @@ export default function GameScreen({
           isCovered={isCovered}
           resourceId={primaryId}
           resourceLabel={primaryLabel}
+          resourcePurpose={primaryDef?.purpose}
           value={primaryValue}
           rate={rate}
           trend={trend}

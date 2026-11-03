@@ -130,7 +130,7 @@ describe("Ever Onward game", () => {
     await user.click(screen.getByRole("button", { name: "Flash the light" }));
     // The lamp's oil bill can eat a lone coin before the counter shows it,
     // so look for the tap's floating gain.
-    expect(await screen.findByText(/^\+\d+$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^\+\d+ coins$/)).toBeInTheDocument();
   });
 
   it("buys an upgrade with coins", async () => {

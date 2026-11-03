@@ -32,6 +32,6 @@ export function higherGoal(run: RunState): GoalView | null {
       ? "The block is down. Someone is on their way."
       : descent >= 0.95
         ? "Set the block down when you are ready"
-        : "Every step brings the ground closer"
+        : "Every bit of quiet you earn takes the block lower"
   );
 }

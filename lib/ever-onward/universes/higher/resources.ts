@@ -34,13 +34,43 @@ const hidden = (ids: readonly string[]): ResourceDef[] =>
   ids.map((id) => ({ id, label: id, phases: HIDDEN }));
 
 export const RESOURCES: readonly ResourceDef[] = [
-  { id: "blocks", label: "Blocks", phases: [PHASE_PLAYROOM] },
-  { id: "bricks", label: "Bricks", phases: [PHASE_TOWN] },
-  { id: "beams", label: "Beams", phases: [PHASE_SKY] },
-  { id: "quiet", label: "Quiet", phases: [PHASE_TOP] },
-  { id: "descent", label: "Descent (%)", phases: [PHASE_TOP] },
+  {
+    id: "blocks",
+    label: "Blocks",
+    phases: [PHASE_PLAYROOM],
+    purpose: "Buys stackers and milestones.",
+  },
+  {
+    id: "bricks",
+    label: "Bricks",
+    phases: [PHASE_TOWN],
+    purpose: "Buys builders and milestones.",
+  },
+  {
+    id: "beams",
+    label: "Beams",
+    phases: [PHASE_SKY],
+    purpose: "Buys sky crews and milestones.",
+  },
+  {
+    id: "quiet",
+    label: "Quiet",
+    phases: [PHASE_TOP],
+    purpose: "Every bit earned lowers the block.",
+  },
+  {
+    id: "descent",
+    label: "Descent (%)",
+    phases: [PHASE_TOP],
+    format: (v) => `${((v / FULL_DESCENT) * 100).toFixed(1)}%`,
+  },
   // Know-how for the town and the sky.
-  { id: "knowhow", label: "Know-how", phases: [PHASE_TOWN, PHASE_SKY] },
+  {
+    id: "knowhow",
+    label: "Know-how",
+    phases: [PHASE_TOWN, PHASE_SKY],
+    purpose: "Buys projects and overtime.",
+  },
   // Sway: how far the tower leans, 0 (upright) to 1 (wobbling).
   ...hidden(["sway"]),
   // Overtime: seconds left and times held.

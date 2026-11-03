@@ -47,12 +47,42 @@ export const FULL_GROWTH = 100;
 const HIDDEN: readonly string[] = [];
 
 export const RESOURCES: readonly ResourceDef[] = [
-  { id: "seeds", label: "Seeds", phases: [PHASE_YARD] },
-  { id: "produce", label: "Ripe produce", phases: [PHASE_YARD] },
-  { id: "harvest", label: "Harvest", phases: [PHASE_FARM] },
-  { id: "green", label: "Green", phases: [PHASE_WORLD] },
-  { id: "care", label: "Care", phases: [PHASE_SEED] },
-  { id: "growth", label: "Growth (%)", phases: [PHASE_SEED] },
+  {
+    id: "seeds",
+    label: "Seeds",
+    phases: [PHASE_YARD],
+    purpose: "Buys garden helpers and milestones.",
+  },
+  {
+    id: "produce",
+    label: "Ripe produce",
+    phases: [PHASE_YARD],
+    purpose: "Pick it to turn it into seeds.",
+  },
+  {
+    id: "harvest",
+    label: "Harvest",
+    phases: [PHASE_FARM],
+    purpose: "Buys farm helpers and milestones.",
+  },
+  {
+    id: "green",
+    label: "Green",
+    phases: [PHASE_WORLD],
+    purpose: "Buys world helpers and milestones.",
+  },
+  {
+    id: "care",
+    label: "Care",
+    phases: [PHASE_SEED],
+    purpose: "Every bit earned grows the pot.",
+  },
+  {
+    id: "growth",
+    label: "Growth (%)",
+    phases: [PHASE_SEED],
+    format: (v) => `${((v / FULL_GROWTH) * 100).toFixed(1)}%`,
+  },
   // The backyard's hidden water: tank level, rain outlook (0 dry, 1 rainy)
   // and the rain's own random stream.
   {
@@ -132,7 +162,12 @@ export const RESOURCES: readonly ResourceDef[] = [
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Know-how for the farm and the world, and the seconds of festival left
   // and festivals held.
-  { id: "knowhow", label: "Know-how", phases: [PHASE_FARM, PHASE_WORLD] },
+  {
+    id: "knowhow",
+    label: "Know-how",
+    phases: [PHASE_FARM, PHASE_WORLD],
+    purpose: "Buys projects and festivals.",
+  },
   ...["fsLeft", "fsCount"].map((id): ResourceDef => ({
     id,
     label: id,

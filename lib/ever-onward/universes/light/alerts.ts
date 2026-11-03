@@ -1,4 +1,6 @@
 import type { RunState } from "../../engine/types";
+import { FLAME_COLD } from "./goal";
+import { flameFraction } from "./tick";
 import { TUNING } from "./tuning";
 
 const C = TUNING.coast;
@@ -9,7 +11,12 @@ const C = TUNING.coast;
  * still guides some ships, so nobody is ever stuck) but it is easy to miss.
  */
 export function lightAlert(run: RunState): string | null {
-  if (run.complete || run.phase !== 0) return null;
+  if (run.complete) return null;
+  if (run.phase === 3)
+    return flameFraction(run) <= FLAME_COLD
+      ? "The flame is cold! Tap Tend to warm it. A warm flame earns resolve faster."
+      : null;
+  if (run.phase !== 0) return null;
   if ((run.resources.oil ?? 0) > 0) return null;
   const less = Math.round((1 - C.dimLamp) * 100);
   return `Out of oil! The lamp is dim, so ships pay ${less}% less. Buy oil to light it up.`;

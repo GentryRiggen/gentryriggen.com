@@ -29,6 +29,6 @@ export function growGoal(run: RunState): GoalView | null {
     growth,
     growth >= 1
       ? "The seed has bloomed. Someone is on their way."
-      : "Tend the pot and answer what it needs"
+      : "Every bit of care you earn grows the pot"
   );
 }

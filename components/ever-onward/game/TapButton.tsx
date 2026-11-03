@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { TapLook } from "../universes/types";
 import PixelIcon from "./retro/PixelIcon";
 import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 interface Floater {
   id: number;
-  text: string;
+  /** What the tap earned first, then anything else it moved. */
+  lines: string[];
 }
 
 interface TapButtonProps {
@@ -19,8 +19,8 @@ interface TapButtonProps {
   isStorm: boolean;
   /** True while a full-screen moment covers the game. */
   isCovered: boolean;
-  /** Taps once and returns what the tap earned. */
-  onTap: () => number;
+  /** Taps once and returns what it changed, in words ("+3 resolve"). */
+  onTap: () => string[];
 }
 
 const MAX_FLOATERS = 6;
@@ -44,7 +44,7 @@ export default function TapButton({
   }, []);
 
   const handleClick = useCallback(() => {
-    const gain = onTap();
+    const lines = onTap();
     const button = buttonRef.current;
     if (button) {
       // Restart the press animation without remounting (keeps focus).
@@ -52,11 +52,9 @@ export default function TapButton({
       void button.offsetWidth;
       button.classList.add("lm-press");
     }
-    if (!(gain > 0)) return;
+    if (lines.length === 0) return;
     const id = nextId.current++;
-    setFloaters((list) =>
-      [...list, { id, text: `+${formatNumber(gain)}` }].slice(-MAX_FLOATERS)
-    );
+    setFloaters((list) => [...list, { id, lines }].slice(-MAX_FLOATERS));
     timers.current.push(
       window.setTimeout(
         () => setFloaters((list) => list.filter((f) => f.id !== id)),
@@ -93,11 +91,18 @@ export default function TapButton({
           {floaters.map((f, i) => (
             <span
               key={f.id}
-              className={`lm-float ${pixelClass} absolute -top-1 text-sm tabular-nums text-amber-300 [text-shadow:2px_2px_0_#78350f] ${
+              className={`lm-float ${pixelClass} absolute bottom-1 flex flex-col items-center gap-1 whitespace-nowrap text-sm tabular-nums text-amber-300 [text-shadow:2px_2px_0_#78350f] ${
                 i % 2 === 0 ? "left-[40%]" : "left-[60%]"
               }`}
             >
-              {f.text}
+              {f.lines.map((line, n) => (
+                <span
+                  key={n}
+                  className={`bg-slate-950/80 px-1 ${n === 0 ? "" : "text-[10px] text-cyan-200"}`}
+                >
+                  {line}
+                </span>
+              ))}
             </span>
           ))}
         </div>

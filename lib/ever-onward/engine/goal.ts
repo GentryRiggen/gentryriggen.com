@@ -14,6 +14,48 @@ export function goalAmount(
   );
 }
 
+/** What an upgrade waits for before it pops in: owning some of another. */
+export interface OwnedNeed {
+  upgradeId: string;
+  count: number;
+}
+
+/** A `visibleWhen` that says what it waits for, so the goal can name it. */
+export type OwnedGate = ((run: RunState) => boolean) & { needs: OwnedNeed };
+
+/** Pops in once `count` of `upgradeId` are owned. */
+export function ownsAtLeast(upgradeId: string, count = 1): OwnedGate {
+  const gate = (run: RunState): boolean => (run.owned[upgradeId] ?? 0) >= count;
+  return Object.assign(gate, { needs: { upgradeId, count } });
+}
+
+const withoutArticle = (name: string): string =>
+  name.replace(/^(a|an|the) /i, "");
+
+/**
+ * The next milestone while it is still hidden: what it is and what brings it
+ * ("A green tractor: at 3 friendly scarecrow (2/3)"), so the goal line always
+ * names a real next step.
+ */
+function hiddenMilestone(
+  run: RunState,
+  upgrades: readonly UpgradeDef[],
+  next: UpgradeDef
+): { text: string; progress: number } {
+  const needs = (next.visibleWhen as Partial<OwnedGate> | undefined)?.needs;
+  const before = needs && upgrades.find((u) => u.id === needs.upgradeId);
+  if (!needs || !before)
+    return {
+      text: `Next: ${next.name}. Keep buying helpers to find it`,
+      progress: 0,
+    };
+  const have = Math.min(needs.count, run.owned[needs.upgradeId] ?? 0);
+  return {
+    text: `${next.name}: unlocks at ${needs.count} × ${withoutArticle(before.name)} (${have}/${needs.count})`,
+    progress: needs.count > 0 ? have / needs.count : 0,
+  };
+}
+
 /** A chapter's permanent milestones, separate from its spendable wallet. */
 export function milestoneGoal(
   run: RunState,
@@ -33,19 +75,26 @@ export function milestoneGoal(
       next: "Ready for the next chapter",
     };
   const visible = !next.visibleWhen || next.visibleWhen(run);
+  if (!visible) {
+    const hidden = hiddenMilestone(run, upgrades, next);
+    return {
+      label,
+      current,
+      target: ids.length,
+      unit: "milestones",
+      next: hidden.text,
+      progress: hidden.progress,
+    };
+  }
   const cost = upgradeCost(run, next);
   return {
     label,
     current,
     target: ids.length,
     unit: "milestones",
-    next: visible
-      ? `${next.name}: ${formatNumber(Math.ceil(cost))} ${next.currency}`
-      : "Grow your helpers to unlock the next milestone",
+    next: `${next.name}: ${formatNumber(Math.ceil(cost))} ${next.currency}`,
     progress:
-      visible && cost > 0
-        ? goalAmount(run.resources[next.currency], cost) / cost
-        : 0,
+      cost > 0 ? goalAmount(run.resources[next.currency], cost) / cost : 0,
   };
 }
 
@@ -56,13 +105,15 @@ export function percentGoal(
   next: string
 ): GoalView {
   const amount = goalAmount(fraction * 100, 100);
-  const current = Math.floor(amount);
+  // Under 10% the count shows tenths, so the first minutes visibly move.
+  const current =
+    amount < 10 ? Math.floor(amount * 10) / 10 : Math.floor(amount);
   return {
     label,
     current,
     target: 100,
     unit: "%",
     next,
-    progress: amount - current,
+    progress: Math.max(0, amount - current),
   };
 }

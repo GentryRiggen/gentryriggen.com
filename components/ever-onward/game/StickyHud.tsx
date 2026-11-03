@@ -25,6 +25,8 @@ interface StickyHudProps {
   isCovered: boolean;
   resourceId: string;
   resourceLabel: string;
+  /** What the money is for, in a few words, or omitted. */
+  resourcePurpose?: string;
   value: number;
   rate: number;
   trend: RateTrend;
@@ -138,6 +140,7 @@ export default function StickyHud({
   isCovered,
   resourceId,
   resourceLabel,
+  resourcePurpose,
   value,
   rate,
   trend,
@@ -250,6 +253,16 @@ export default function StickyHud({
         >
           <div className="min-h-0 overflow-hidden">
             <div data-hud-details="" className="flow-root">
+              {resourcePurpose && (
+                <p
+                  data-testid="lm-hud-purpose"
+                  className="truncate font-mono text-xs leading-snug text-slate-300"
+                >
+                  {resourceLabel}:{" "}
+                  {resourcePurpose.charAt(0).toLowerCase() +
+                    resourcePurpose.slice(1)}
+                </p>
+              )}
               {goal && <GoalMeter goal={goal} />}
               {gauge && (
                 <div className="mt-2">

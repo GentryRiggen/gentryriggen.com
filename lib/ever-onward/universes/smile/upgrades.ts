@@ -1,3 +1,4 @@
+import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { coolPerSecond } from "./meter";
@@ -73,10 +74,7 @@ function coolPreview(run: RunState, id: string): string {
 }
 
 type Gate = (run: RunState) => boolean;
-const has =
-  (id: string, n = 1): Gate =>
-  (run) =>
-    owned(run, id) >= n;
+const has = (id: string, n = 1): Gate => ownsAtLeast(id, n);
 
 interface LineSpec {
   id: string;
