@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.30.0",
+    date: "2026-11-02",
+    title: "Speed in the Menu",
+    highlights: [
+      "The voice speed now lives in the Menu too, under Narration. Tap − or + to set it, so you can go back to normal speed without opening a film",
+      "The Menu and the films share one speed, so changing it in one place changes it everywhere",
+    ],
+  },
+  {
     version: "1.29.1",
     date: "2026-11-02",
     title: "A tidy top bar on phones",

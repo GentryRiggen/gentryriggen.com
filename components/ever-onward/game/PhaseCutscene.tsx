@@ -17,7 +17,6 @@ import type {
 import { cutClipId, cutEndClipId } from "@/lib/ever-onward/narration/lines";
 import { getClip } from "@/lib/ever-onward/narration/manifest";
 import {
-  applyNarrationRate,
   pauseNarration,
   playNarration,
   resumeNarration,
@@ -25,13 +24,13 @@ import {
   useNarrationPlaying,
 } from "../narration/player";
 import {
-  NARRATION_SPEEDS,
   setNarrationSettings,
   useNarrationSettings,
 } from "../narration/settings";
 import type { SceneProps } from "../universes/types";
 import PixelSprite from "../start/PixelSprite";
 import { SPEAKER_ON, SPEAKER_ROWS } from "@/lib/ever-onward/start/sprites";
+import SpeedStepper from "../narration/SpeedStepper";
 import FilmRobot from "./film/FilmRobot";
 import FilmStars from "./film/FilmStars";
 import { useReducedMotion } from "./useAnimatedNumber";
@@ -283,18 +282,6 @@ export default function PhaseCutscene({
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
 
-  /** Steps the speed a quarter up or down; the next line plays at it. */
-  const changeSpeed = (step: 1 | -1) => {
-    const at = NARRATION_SPEEDS.indexOf(rate);
-    const next =
-      NARRATION_SPEEDS[
-        Math.min(NARRATION_SPEEDS.length - 1, Math.max(0, at + step))
-      ];
-    if (next === undefined) return;
-    setNarrationSettings({ rate: next });
-    applyNarrationRate();
-  };
-
   const togglePause = () => setIsStopped((stopped) => !stopped);
 
   /**
@@ -428,41 +415,7 @@ export default function PhaseCutscene({
           )}
         </div>
         <div className="flex shrink-0 items-center justify-between gap-1 sm:justify-end sm:gap-2">
-          <div
-            role="group"
-            aria-label="Speed"
-            data-testid="eo-film-speed"
-            className="flex items-center gap-1"
-          >
-            <button
-              type="button"
-              aria-label="Slower"
-              disabled={rate <= NARRATION_SPEEDS[0]}
-              onClick={() => changeSpeed(-1)}
-              className={`${retroSecondaryButtonClass} !px-2 disabled:opacity-40`}
-            >
-              <span aria-hidden="true" className={pixelClass}>
-                −
-              </span>
-            </button>
-            <span
-              aria-live="polite"
-              className={`${pixelClass} min-w-10 text-center text-[10px] text-amber-200 sm:text-xs`}
-            >
-              {rate}×
-            </span>
-            <button
-              type="button"
-              aria-label="Faster"
-              disabled={rate >= NARRATION_SPEEDS[NARRATION_SPEEDS.length - 1]}
-              onClick={() => changeSpeed(1)}
-              className={`${retroSecondaryButtonClass} !px-2 disabled:opacity-40`}
-            >
-              <span aria-hidden="true" className={pixelClass}>
-                +
-              </span>
-            </button>
-          </div>
+          <SpeedStepper testId="eo-film-speed" />
           {!isEnd && (
             <button
               type="button"

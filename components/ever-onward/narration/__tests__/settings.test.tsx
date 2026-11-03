@@ -4,6 +4,7 @@ import NarrationSettings from "../NarrationSettings";
 import {
   NARRATION_STORAGE_KEY,
   getNarrationSettings,
+  setNarrationSettings,
   reloadNarrationSettings,
 } from "../settings";
 
@@ -48,6 +49,20 @@ describe("narration settings", () => {
     );
     act(() => reloadNarrationSettings());
     expect(getNarrationSettings().rate).toBe(1);
+  });
+
+  it("sets the speed from the Menu, back to normal and up again", async () => {
+    setNarrationSettings({ rate: 2 });
+    const user = userEvent.setup();
+    render(<NarrationSettings />);
+    const speed = screen.getByTestId("eo-menu-speed");
+    expect(speed).toHaveTextContent("2×");
+    for (let i = 0; i < 4; i += 1)
+      await user.click(screen.getByRole("button", { name: "Slower" }));
+    expect(speed).toHaveTextContent("1×");
+    expect(getNarrationSettings().rate).toBe(1);
+    await user.click(screen.getByRole("button", { name: "Faster" }));
+    expect(getNarrationSettings().rate).toBe(1.25);
   });
 
   it("disables auto-play when narration is off", async () => {
