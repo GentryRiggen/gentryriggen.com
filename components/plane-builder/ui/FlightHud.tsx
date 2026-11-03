@@ -22,6 +22,26 @@ import Speedometer from "./Speedometer";
 /** A gap smaller than this reads "even" (it would round to +0.0s). */
 const EVEN_SECONDS = 0.05;
 
+type FuelTone = "ok" | "low" | "critical";
+
+/** Fuel turns orange when low and red (pulsing) when nearly gone. */
+const FUEL_BAR: Record<FuelTone, string> = {
+  ok: "bg-emerald-500 dark:bg-emerald-400",
+  low: "bg-orange-500 dark:bg-orange-400",
+  critical:
+    "animate-pulse bg-red-500 motion-reduce:animate-none dark:bg-red-400",
+};
+const FUEL_RING: Record<FuelTone, string> = {
+  ok: "border-white/80 dark:border-slate-700",
+  low: "border-orange-500 dark:border-orange-400",
+  critical: "border-red-500 dark:border-red-400",
+};
+const FUEL_TEXT: Record<FuelTone, string> = {
+  ok: "",
+  low: "text-orange-600 dark:text-orange-300",
+  critical: "text-red-600 dark:text-red-300",
+};
+
 /**
  * Read-only overlay of the running flight: distance, speed, fuel, shields, and
  * the coin wallet plus what this flight has grabbed so far.
@@ -50,6 +70,8 @@ export default function FlightHud() {
   const bestPercent = percentOf(lp.best, level.finishDistance);
   const fuelPercent =
     stats.fuel > 0 ? Math.round(((snapshot?.fuel ?? 0) / stats.fuel) * 100) : 0;
+  const fuelTone: FuelTone =
+    fuelPercent <= 12 ? "critical" : fuelPercent <= 35 ? "low" : "ok";
   const shields = snapshot?.shields ?? 0;
   const isFinished = snapshot?.finished ?? false;
   const grabbed = (snapshot?.coins ?? 0) + (snapshot?.nearMissCoins ?? 0);
@@ -108,18 +130,34 @@ export default function FlightHud() {
               top={topSpeed(stats)}
             />
             {stats.thrust > 0 ? (
-              <div
-                role="progressbar"
-                aria-label="Fuel"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={fuelPercent}
-                className="h-3 w-32 rounded-full bg-white/70 shadow dark:bg-slate-900/70"
-              >
+              <div data-testid="flight-fuel" data-tone={fuelTone}>
+                <p className="flex w-40 items-baseline justify-between text-sm font-extrabold text-slate-900 drop-shadow dark:text-slate-100">
+                  <span>
+                    <span aria-hidden="true">⛽ </span>Fuel
+                  </span>
+                  <span
+                    data-testid="flight-fuel-amount"
+                    className={`tabular-nums ${FUEL_TEXT[fuelTone]}`}
+                  >
+                    {fuelPercent <= 0 ? "EMPTY" : `${fuelPercent}%`}
+                  </span>
+                </p>
                 <div
-                  className="h-full rounded-full bg-orange-500 dark:bg-orange-400"
-                  style={{ width: `${fuelPercent}%` }}
-                />
+                  role="progressbar"
+                  aria-label="Fuel"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={fuelPercent}
+                  aria-valuetext={
+                    fuelPercent <= 0 ? "Empty" : `${fuelPercent}% left`
+                  }
+                  className={`mt-0.5 h-4 w-40 overflow-hidden rounded-full border-2 bg-white/70 shadow dark:bg-slate-900/70 ${FUEL_RING[fuelTone]}`}
+                >
+                  <div
+                    className={`h-full rounded-full ${FUEL_BAR[fuelTone]}`}
+                    style={{ width: `${fuelPercent}%` }}
+                  />
+                </div>
               </div>
             ) : null}
             {stats.shields > 0 ? (

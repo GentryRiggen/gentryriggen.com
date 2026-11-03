@@ -20,6 +20,7 @@ import { TUNING } from "@/lib/ever-onward/universes/light/tuning";
 import type { PanelProps } from "../universes/types";
 import PanelFrame, { type PanelTone } from "./retro/PanelFrame";
 import {
+  pixelClass,
   retroPrimaryButtonClass,
   retroSecondaryButtonClass,
 } from "./retro/retroStyles";
@@ -67,6 +68,17 @@ function FundPanel({ def, run, onAct }: PanelProps) {
       result={note}
       resultTestId="lm-fund-result"
     >
+      <p
+        data-testid="lm-fund-balance"
+        className="flex items-baseline justify-between gap-3 border-2 border-slate-600 bg-slate-950 px-3 py-2"
+      >
+        <span className={`${pixelClass} text-xs text-cyan-200`}>In it now</span>
+        <span
+          className={`${pixelClass} text-xl leading-none tabular-nums text-amber-100`}
+        >
+          {whole(balance)}
+        </span>
+      </p>
       <p className="font-mono text-sm text-slate-200">{kind.verb}</p>
       <p className="font-mono text-sm font-bold text-emerald-200 tabular-nums">
         {balance > 0

@@ -15,6 +15,7 @@ import {
   tankCapacity,
 } from "./tick";
 import { UPGRADES } from "./upgrades";
+import { fundBalance, fundKind, isFundOpen } from "./fund";
 
 const LIGHTHOUSE = UPGRADES.find((u) => u.id === "lighthouse");
 
@@ -80,9 +81,29 @@ export function lightGoal(run: RunState): GoalView | null {
   };
 }
 
-/** The oil in the lamp's tank, kept on the HUD so it is never out of sight. */
+/**
+ * The oil in the lamp's tank on the Coast, kept on the HUD so it is never out
+ * of sight. Later parts show what is saved in the jar instead, since it closes
+ * when the part ends.
+ */
 export function lightGauge(run: RunState): GaugeView | null {
-  if (run.complete || !isBeamOpen(run)) return null;
+  if (run.complete) return null;
+  if (run.phase > 0) {
+    const saved = isFundOpen(run) ? fundBalance(run) : 0;
+    if (saved <= 0) return null;
+    const kind = fundKind(run);
+    return {
+      label: kind.name.toUpperCase(),
+      current: saved,
+      max: saved,
+      isLow: false,
+      isCritical: false,
+      display: `${formatNumber(Math.floor(saved))} saved`,
+      status: "",
+      hasBar: false,
+    };
+  }
+  if (!isBeamOpen(run)) return null;
   const max = Math.max(1, tankCapacity(run));
   const current = Math.min(max, Math.max(0, run.resources.oil ?? 0));
   return {

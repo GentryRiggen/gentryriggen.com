@@ -197,7 +197,7 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
       onClick={() => {
         if (isDoable) onSend();
       }}
-      className={`flex min-h-44 min-w-0 touch-manipulation flex-col items-center justify-between gap-1.5 border-4 p-2 text-center transition-transform ${retroFocusClass} ${frame}`}
+      className={`flex min-h-56 min-w-0 touch-manipulation flex-col items-center justify-between gap-1.5 border-4 p-2 text-center transition-transform ${retroFocusClass} ${frame}`}
     >
       <span id={`lm-town-${town}-about`} className="sr-only">
         {details}
@@ -208,31 +208,33 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
       <span className={isDark ? "opacity-40 grayscale" : ""}>
         <TownArt town={town} />
       </span>
-      {isForecast ? (
-        <>
-          <span
-            className={`${pixelClass} text-lg tabular-nums sm:text-xl ${
-              isLikely ? "text-amber-300" : "text-sky-200"
-            }`}
-          >
-            {chance}%
+      {/* A fixed-height slot, so the cards (and their buttons) stay the
+          same size whatever the storm is doing. */}
+      <span className="flex h-12 w-full flex-col items-center justify-center gap-1">
+        {isForecast ? (
+          <>
+            <span
+              className={`${pixelClass} text-lg tabular-nums sm:text-xl ${
+                isLikely ? "text-amber-300" : "text-sky-200"
+              }`}
+            >
+              {chance}%
+            </span>
+            <Segments
+              share={chance / 100}
+              count={CHANCE_SEGMENTS}
+              tone={isLikely ? "bg-amber-300" : "bg-sky-400"}
+            />
+          </>
+        ) : (
+          <span className={`${pixelClass} text-[10px] text-slate-400`}>
+            {isDark ? "Dark" : "Calm"}
           </span>
-          <Segments
-            share={chance / 100}
-            count={CHANCE_SEGMENTS}
-            tone={isLikely ? "bg-amber-300" : "bg-sky-400"}
-          />
-        </>
-      ) : (
-        <span className={`${pixelClass} text-[10px] text-slate-400`}>
-          {isDark ? "Dark" : "Calm"}
-        </span>
-      )}
-      {isDark && (
-        <span className="font-mono text-xs font-bold text-slate-200 tabular-nums">
-          Lights out {clock(outageSecondsLeft(run, town))}
-        </span>
-      )}
+        )}
+      </span>
+      <span className="min-h-4 font-mono text-xs font-bold text-slate-200 tabular-nums">
+        {isDark && <>Lights out {clock(outageSecondsLeft(run, town))}</>}
+      </span>
       <span className="flex min-h-6 w-full items-center gap-1">
         {isHere ? (
           <>
@@ -250,7 +252,7 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
         )}
       </span>
       <span
-        className={`${pixelClass} block w-full border-2 px-1 py-2 text-[10px] leading-tight ${
+        className={`${pixelClass} flex min-h-12 w-full items-center justify-center border-2 px-1 py-2 text-[10px] leading-tight ${
           isHere
             ? "border-emerald-300 bg-emerald-400 text-emerald-950"
             : "border-sky-300 bg-sky-950 text-sky-100"
@@ -408,19 +410,12 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
         </>
       }
     >
-      <p className="font-mono text-sm text-sky-50">
-        {isForecast
-          ? step < FORECAST_STEPS
-            ? "The storm's path gets surer each step. Move a crew now on a guess, or wait for a surer forecast: a crew needs time to get ready."
-            : "Last forecast: this is about where it lands."
-          : `A storm is forming out at sea. You can send ${
-              crews === 1 ? "your crew" : "your crews"
-            } ahead. A crew takes about ${Math.round(
-              readySeconds(run)
-            )} seconds to get ready.`}
-      </p>
-
-      {isForecast && <StormTrack run={run} />}
+      {/* Always takes its row, so the towns don't jump when it appears. */}
+      {isForecast ? (
+        <StormTrack run={run} />
+      ) : (
+        <div aria-hidden="true" className="h-7" />
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         {TOWNS.map((_, town) => (
@@ -434,6 +429,18 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
           />
         ))}
       </div>
+
+      <p className="font-mono text-sm text-sky-50">
+        {isForecast
+          ? step < FORECAST_STEPS
+            ? "The storm's path gets surer each step. Move a crew now on a guess, or wait for a surer forecast: a crew needs time to get ready."
+            : "Last forecast: this is about where it lands."
+          : `A storm is forming out at sea. You can send ${
+              crews === 1 ? "your crew" : "your crews"
+            } ahead. A crew takes about ${Math.round(
+              readySeconds(run)
+            )} seconds to get ready.`}
+      </p>
 
       <div className="space-y-1.5">
         <p className="flex items-baseline justify-between gap-3">

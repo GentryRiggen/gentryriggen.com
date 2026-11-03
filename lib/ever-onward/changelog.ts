@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.24.0",
+    date: "2026-11-02",
+    title: "Big gauges for what runs out",
+    highlights: [
+      "The top of the screen now has a big gauge for the thing you have to watch: water in Make It Grow, the cheer meter in Make Everyone Smile and the tower's sway in Build It Higher. It turns orange, then red, before anything slows down",
+      "In the later parts of the lighthouse story, what you have saved in the jar shows at the top too, and as a big number in its panel, so you remember to take it out before the part ends",
+      "Warnings now show further down the page, so they never push a button out from under your finger",
+      "The weather desk, the probe races and the delivery cards keep their buttons in the same spot as the numbers and words change",
+    ],
+  },
+  {
     version: "1.23.1",
     date: "2026-11-02",
     title: "A big oil gauge, and Buy Oil stays put",

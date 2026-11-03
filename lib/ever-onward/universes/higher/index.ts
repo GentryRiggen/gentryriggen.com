@@ -2,6 +2,7 @@ import { higherGoal } from "./goal";
 import type { UniverseDef } from "../../engine/types";
 import { HIGHER_ACTIONS } from "./actions";
 import { higherAlert } from "./alerts";
+import { higherGauge } from "./gauge";
 import {
   HIGHER_CONSUMABLES,
   HIGHER_DECISION_ACTIONS,
@@ -42,6 +43,7 @@ export const higherUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: higherCountdown,
   alert: higherAlert,
+  gauge: higherGauge,
   prestige: PRESTIGE,
   plates: higherPlates,
   plateActions: HIGHER_PLATE_ACTIONS,

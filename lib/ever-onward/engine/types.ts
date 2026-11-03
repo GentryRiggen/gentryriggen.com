@@ -335,6 +335,12 @@ export interface GaugeView {
   isLow: boolean;
   /** Empty or nearly so (the bar turns red and pulses). */
   isCritical: boolean;
+  /** Shown instead of "current / max" (e.g. "72%"). */
+  display?: string;
+  /** Overrides the LOW / EMPTY word (e.g. "TIRED"); "" shows none. */
+  status?: string;
+  /** False for a plain amount with nothing to fill (a savings balance). */
+  hasBar?: boolean;
 }
 
 export interface UniverseDef {
