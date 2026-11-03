@@ -18,27 +18,25 @@ export const storyClipId = (universeId: string, storyId: string): string =>
 export const introClipId = (universeId: string, phaseId: string): string =>
   `${universeId}/intro-${phaseId}`;
 
-/** Id of a cutscene frame's clip (`frame` counts from 1). */
+/** Id of an intro film shot's clip (`frame` counts from 1). */
 export const cutClipId = (
   universeId: string,
   phaseId: string,
   frame: number
 ): string => `${universeId}/cut-${phaseId}-${frame}`;
 
-/**
- * What the voice reads for a cutscene frame (0-based): its line, then its
- * tips, and on the last frame the goal.
- */
+/** Id of the clip for an intro film's closing card (the goal and the tips). */
+export const cutEndClipId = (universeId: string, phaseId: string): string =>
+  `${universeId}/cut-${phaseId}-end`;
+
+/** What the voice reads for an intro film shot (0-based): just its line. */
 export function cutSpokenText(phase: PhaseDef, frameIndex: number): string {
-  const frames = phase.cutscene ?? [];
-  const frame = frames[frameIndex];
-  if (!frame) return "";
-  const isLast = frameIndex === frames.length - 1;
-  return [
-    frame.text,
-    ...(frame.tips ?? []),
-    isLast && phase.goal ? `Your goal: ${phase.goal}` : "",
-  ]
+  return phase.cutscene?.[frameIndex]?.text ?? "";
+}
+
+/** What the voice reads on the closing card: the goal, then the tips. */
+export function cutEndSpokenText(phase: PhaseDef): string {
+  return [phase.goal && `Your goal: ${phase.goal}`, ...(phase.tips ?? [])]
     .filter(Boolean)
     .join(" ");
 }
@@ -75,6 +73,10 @@ export function narrationLines(): NarrationLine[] {
         const text = spokenText(cutSpokenText(phase, i));
         if (text) lines.push({ id: cutClipId(def.id, phase.id, i + 1), text });
       });
+      const end = spokenText(cutEndSpokenText(phase));
+      if (phase.cutscene?.length && end) {
+        lines.push({ id: cutEndClipId(def.id, phase.id), text: end });
+      }
     }
     for (const message of def.story) {
       const text = spokenText(message.text);

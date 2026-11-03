@@ -46,7 +46,8 @@ describe("Build It Higher guardrails", () => {
       ...def.phases.flatMap((p) => [
         p.intro ?? "",
         p.goal ?? "",
-        ...(p.cutscene ?? []).flatMap((f) => [f.text, ...(f.tips ?? [])]),
+        ...(p.cutscene ?? []).map((f) => f.text),
+        ...(p.tips ?? []),
       ]),
       ...(def.visitors ?? []).map((v) => v.name),
     ];

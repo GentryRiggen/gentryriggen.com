@@ -149,7 +149,10 @@ interface RobotProps {
 /** The robot: a boxy friend with a round light on a stalk. */
 export function Robot({ x, y, isLit = true, scale = 1 }: RobotProps) {
   return (
-    <g transform={`translate(${x} ${y}) scale(${scale})`}>
+    <g
+      className="eo-scene-robot"
+      transform={`translate(${x} ${y}) scale(${scale})`}
+    >
       <rect x="9" y="-10" width="2" height="8" fill="#5b6b82" />
       <rect
         x="7"

@@ -1,32 +1,35 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { growUniverse } from "@/lib/ever-onward/universes/grow";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import GrowScene from "../../scenes/grow/GrowScene";
 import LightScene from "../../scenes/light/LightScene";
-import { playNarration } from "../../narration/player";
-import PhaseCutscene from "../PhaseCutscene";
+import { playNarration, stopNarration } from "../../narration/player";
+import { setNarrationSettings } from "../../narration/settings";
+import PhaseCutscene, { FILM_TICK_MS, shotMs } from "../PhaseCutscene";
 import StoryDrawer from "../StoryDrawer";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 
+let nowPlaying: string | null = null;
 jest.mock("../../narration/player", () => ({
   playNarration: jest.fn(),
   stopNarration: jest.fn(),
-  useNarrationPlaying: () => null,
+  useNarrationPlaying: () => nowPlaying,
 }));
 jest.mock("@/lib/ever-onward/narration/manifest", () => ({
   getClip: jest.fn(() => ({ file: "x.mp3", hash: "h", durationGuess: 1 })),
   allClips: () => ({}),
 }));
 
-const frameNumber = () =>
-  Number(screen.getByTestId("lm-cutscene-frame").getAttribute("data-frame"));
+const shot = () =>
+  screen.getByTestId("lm-phase-overlay").getAttribute("data-film-shot");
 
-function renderCutscene(
-  extra: Partial<Parameters<typeof PhaseCutscene>[0]> = {}
-) {
+const coast = lightUniverse.phases[0];
+const shots = coast.cutscene ?? [];
+
+function renderFilm(extra: Partial<Parameters<typeof PhaseCutscene>[0]> = {}) {
   const onContinue = jest.fn();
-  render(
+  const utils = render(
     <PhaseCutscene
       def={lightUniverse}
       phaseIndex={0}
@@ -35,60 +38,167 @@ function renderCutscene(
       {...extra}
     />
   );
-  return onContinue;
+  return { onContinue, ...utils };
 }
 
-describe("the phase cutscene", () => {
-  beforeEach(() => jest.clearAllMocks());
+/** Lets the film's clock run. */
+function play(ms: number) {
+  act(() => {
+    jest.advanceTimersByTime(ms);
+  });
+}
 
-  it("is a labelled dialog that starts on frame 1", () => {
-    renderCutscene();
+describe("the intro film", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    nowPlaying = null;
+    window.localStorage.clear();
+    setNarrationSettings({ isEnabled: false });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("is a labelled dialog that opens on the universe's title card", () => {
+    renderFilm();
     expect(screen.getByRole("dialog", { name: "The Coast" })).toHaveAttribute(
       "aria-modal",
       "true"
     );
-    expect(frameNumber()).toBe(1);
-    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(shot()).toBe("1");
+    expect(screen.getByTestId("eo-film-title")).toHaveTextContent(
+      lightUniverse.title
+    );
     expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
   });
 
-  it("goes forward, back and skips to the goal", async () => {
-    const onContinue = renderCutscene();
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(frameNumber()).toBe(2);
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(frameNumber()).toBe(3);
-    expect(
-      screen.getByTestId("lm-cutscene-tips").children.length
-    ).toBeGreaterThanOrEqual(2);
-    await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(frameNumber()).toBe(2);
-    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
-    expect(frameNumber()).toBe(4);
+  it("plays by itself: types each line, then moves to the next shot", () => {
+    jest.useFakeTimers();
+    renderFilm();
+    const caption = screen.getByTestId("eo-film-caption");
+    expect(caption.textContent).not.toContain(shots[0].text);
+    play(shots[0].text.length * 40);
+    expect(caption.textContent).toContain(shots[0].text);
+    play(shotMs(shots[0]));
+    expect(shot()).toBe("2");
+    // The robot walks on in the second shot.
+    expect(screen.getByTestId("eo-film-robot")).toHaveAttribute(
+      "data-move",
+      shots[1].robot?.move
+    );
+  });
+
+  it("reaches the closing card on its own, with the goal, tips and Start", () => {
+    jest.useFakeTimers();
+    const { onContinue } = renderFilm();
+    for (const s of shots) play(shotMs(s) + FILM_TICK_MS * 2);
+    expect(shot()).toBe("end");
     expect(screen.getByTestId("lm-phase-goal")).toHaveTextContent(
-      lightUniverse.phases[0].goal ?? ""
+      coast.goal ?? ""
+    );
+    expect(screen.getByTestId("lm-cutscene-tips").children).toHaveLength(
+      coast.tips?.length ?? 0
     );
     expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
     expect(onContinue).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Start" })).toHaveFocus();
+  });
+
+  it("skips to the closing card, starts, and can be watched again", async () => {
+    const { onContinue } = renderFilm();
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(shot()).toBe("end");
+    await userEvent.click(screen.getByRole("button", { name: "Watch again" }));
+    expect(shot()).toBe("1");
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
+  it("hurries along when the picture is tapped: first the typing, then the shot", async () => {
+    renderFilm();
+    const picture = screen.getByTestId("lm-cutscene-picture");
+    await userEvent.click(picture);
+    expect(screen.getByTestId("eo-film-caption").textContent).toContain(
+      shots[0].text
+    );
+    expect(shot()).toBe("1");
+    await userEvent.click(picture);
+    expect(shot()).toBe("2");
+  });
+
+  it("pauses and plays", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderFilm();
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    play(shotMs(shots[0]) * 3);
+    expect(shot()).toBe("1");
+    await user.click(screen.getByRole("button", { name: "Play" }));
+    play(shotMs(shots[0]) + FILM_TICK_MS * 2);
+    expect(shot()).toBe("2");
+  });
+
+  it("reads each shot aloud and waits for the voice to finish", () => {
+    setNarrationSettings({ isEnabled: true });
+    jest.useFakeTimers();
+    const { rerender } = renderFilm();
+    expect(playNarration).toHaveBeenCalledWith("light/cut-coast-1");
+    nowPlaying = "light/cut-coast-1";
+    rerender(
+      <PhaseCutscene
+        def={lightUniverse}
+        phaseIndex={0}
+        Scene={LightScene}
+        onContinue={jest.fn()}
+      />
+    );
+    play(shotMs(shots[0]) + 1000);
+    // Still speaking: the film waits.
+    expect(shot()).toBe("1");
+    nowPlaying = null;
+    play(FILM_TICK_MS);
+    play(2000);
+    expect(shot()).toBe("2");
+    expect(playNarration).toHaveBeenLastCalledWith("light/cut-coast-2");
+  });
+
+  it("does not wait forever for a voice that never starts", () => {
+    setNarrationSettings({ isEnabled: true });
+    jest.useFakeTimers();
+    renderFilm();
+    play(shotMs(shots[0]) + 3000);
+    expect(shot()).toBe("2");
+  });
+
+  it("turns the voice off from the film", async () => {
+    setNarrationSettings({ isEnabled: true });
+    renderFilm();
+    await userEvent.click(screen.getByRole("button", { name: /Voice/ }));
+    expect(stopNarration).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Voice/ })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
+
   it("uses the arrow keys and Enter", async () => {
-    const onContinue = renderCutscene();
+    const { onContinue } = renderFilm();
     await userEvent.keyboard("{ArrowRight}");
-    expect(frameNumber()).toBe(2);
+    expect(shot()).toBe("2");
     await userEvent.keyboard("{ArrowLeft}");
-    expect(frameNumber()).toBe(1);
-    await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}");
-    expect(frameNumber()).toBe(4);
+    expect(shot()).toBe("1");
+    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
     await userEvent.keyboard("{ArrowRight}");
-    expect(frameNumber()).toBe(4);
+    expect(shot()).toBe("end");
+    (document.activeElement as HTMLElement).blur();
     await userEvent.keyboard("{Enter}");
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps focus inside, on the main button, and gives it back on close", async () => {
+  it("keeps focus inside and gives it back on close", async () => {
     const opener = document.createElement("button");
     document.body.append(opener);
     opener.focus();
@@ -101,36 +211,26 @@ describe("the phase cutscene", () => {
       />
     );
     const dialog = screen.getByRole("dialog");
-    expect(screen.getByRole("button", { name: "Next" })).toHaveFocus();
-    for (let i = 0; i < 8; i += 1) {
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    for (let i = 0; i < 6; i += 1) {
       await userEvent.tab();
       expect(dialog).toContainElement(document.activeElement as HTMLElement);
     }
     await userEvent.click(screen.getByRole("button", { name: "Skip" }));
-    // Skip left the screen; focus did not fall out of the dialog.
-    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(screen.getByRole("button", { name: "Start" })).toHaveFocus();
     unmount();
     expect(opener).toHaveFocus();
     opener.remove();
   });
 
-  it("offers a Listen button per frame for its own clip", async () => {
-    renderCutscene();
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Listen to this part" })
-    );
-    expect(playNarration).toHaveBeenCalledWith("light/cut-coast-2");
-  });
-
-  it("puts the extra opening question on the goal frame only", async () => {
-    renderCutscene({ opening: <p>Pick a lantern</p> });
+  it("puts the extra opening question on the closing card only", async () => {
+    renderFilm({ opening: <p>Pick a lantern</p> });
     expect(screen.queryByText("Pick a lantern")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.getByText("Pick a lantern")).toBeInTheDocument();
   });
 
-  it("pans and zooms, unless the player asked for less motion", () => {
+  it("moves the camera, unless the player asked for less motion", () => {
     const { unmount } = render(
       <PhaseCutscene
         def={growUniverse}
@@ -139,13 +239,12 @@ describe("the phase cutscene", () => {
         onContinue={jest.fn()}
       />
     );
+    const camera = growUniverse.phases[1].cutscene?.[0].camera ?? "drift";
     expect(screen.getByTestId("lm-cutscene-pan")).toHaveAttribute(
-      "data-moving",
-      "yes"
+      "data-camera",
+      camera
     );
-    expect(screen.getByTestId("lm-cutscene-pan").className).toMatch(
-      /lm-cut-pan/
-    );
+    expect(screen.getByTestId("lm-cutscene-pan").className).toMatch(/eo-cam-/);
     unmount();
     const matchMedia = window.matchMedia;
     window.matchMedia = jest.fn().mockImplementation((query: string) => ({
@@ -163,11 +262,15 @@ describe("the phase cutscene", () => {
       />
     );
     expect(screen.getByTestId("lm-cutscene-pan")).toHaveAttribute(
-      "data-moving",
-      "no"
+      "data-camera",
+      "still"
     );
     expect(screen.getByTestId("lm-cutscene-pan").className).not.toMatch(
-      /lm-cut-pan/
+      /eo-cam-/
+    );
+    // With less motion the whole line shows at once.
+    expect(screen.getByTestId("eo-film-caption").textContent).toContain(
+      growUniverse.phases[1].cutscene?.[0].text
     );
     window.matchMedia = matchMedia;
   });
@@ -198,49 +301,39 @@ describe("the phase cutscene", () => {
     expect(screen.getByTestId("lm-story-drawer")).toBeInTheDocument();
   });
 
-  it("keeps arrow keys for a radiogroup or a field inside the cutscene", async () => {
-    render(
-      <PhaseCutscene
-        def={lightUniverse}
-        phaseIndex={0}
-        Scene={LightScene}
-        onContinue={jest.fn()}
-        opening={
-          <div role="radiogroup" aria-label="Pick">
-            <button type="button" role="radio" aria-checked="true">
-              One
-            </button>
-          </div>
-        }
-      />
-    );
+  it("keeps arrow keys for a radiogroup inside the closing card", async () => {
+    renderFilm({
+      opening: (
+        <div role="radiogroup" aria-label="Pick">
+          <button type="button" role="radio" aria-checked="true">
+            One
+          </button>
+        </div>
+      ),
+    });
     await userEvent.click(screen.getByRole("button", { name: "Skip" }));
-    const before = frameNumber();
     await userEvent.click(screen.getByRole("radio", { name: "One" }));
     await userEvent.keyboard("{ArrowLeft}");
-    expect(frameNumber()).toBe(before);
-    screen.getByRole("button", { name: "Back" }).focus();
-    await userEvent.keyboard("{ArrowLeft}");
-    expect(frameNumber()).toBe(before - 1);
+    expect(shot()).toBe("end");
   });
 
   it("closes on Escape only when it is a replay (Done)", async () => {
-    const start = renderCutscene();
+    const { onContinue: start } = renderFilm();
     await userEvent.keyboard("{Escape}");
     expect(start).not.toHaveBeenCalled();
     document.body.innerHTML = "";
-    const replay = renderCutscene({ finishLabel: "Done" });
+    const { onContinue: replay } = renderFilm({ finishLabel: "Done" });
     await userEvent.keyboard("{Escape}");
     expect(replay).toHaveBeenCalledTimes(1);
   });
 
-  it("gives the cutscene picture its own test id", () => {
+  it("gives the film's picture its own test id", () => {
     render(
       <div>
         <LightScene run={newRun(lightUniverse)} />
         <PhaseCutscene
           def={lightUniverse}
-          phaseIndex={0}
+          phaseIndex={1}
           Scene={LightScene}
           onContinue={jest.fn()}
         />

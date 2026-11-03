@@ -66,12 +66,12 @@ describe("Build It Higher skeleton", () => {
       expect(def.isComplete(runAtPhaseStart(i))).toBe(false);
   });
 
-  it("has an intro and a four-frame cutscene for every phase", () => {
+  it("has an intro, a film and tips for every phase", () => {
     for (const p of def.phases) {
       expect(p.intro).toBeTruthy();
       expect(p.goal).toBeTruthy();
-      expect(p.cutscene).toHaveLength(4);
-      expect(p.cutscene?.[2].tips).toHaveLength(3);
+      expect(p.cutscene?.length).toBeGreaterThanOrEqual(6);
+      expect(p.tips).toHaveLength(3);
     }
   });
 

@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.27.0",
+    date: "2026-11-02",
+    title: "Little films",
+    highlights: [
+      "Every part of every universe now opens with a little film that plays all by itself. Sit back and watch the robot find its next big job, fall in love with it, and get to work",
+      "Each universe starts with its name across the stars, then the robot walking in with its lantern. It walks, hops, gasps, looks up at tall things and lifts its lantern high while the camera glides over the scene",
+      "The words type out under the picture and the narrator reads them. Tap the picture to hurry along, or use Pause, Voice and Skip at the top",
+      "When the film ends you get your goal and three tips, then Start. Watch any film again from the Log",
+    ],
+  },
+  {
     version: "1.26.0",
     date: "2026-11-02",
     title: "A log of everything that happens",
