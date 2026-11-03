@@ -109,6 +109,33 @@ it("checks at once, shows it saving, then offers Undo and refetches", async () =
   expect(onChanged).toHaveBeenCalledTimes(1);
 });
 
+it("says when a repeating todo is next due, and hints it while saving", async () => {
+  const pending = deferred<view.TodoResult>();
+  toggleTodo.mockReturnValue(pending.promise);
+  renderHome();
+  await userEvent.click(box());
+  // From the text alone: it repeats, so a fresh copy is coming.
+  expect(screen.getByText("next one coming")).toBeInTheDocument();
+
+  await act(async () =>
+    pending.resolve({ ok: true, sha: "abc1235", nextDue: "2026-11-07" })
+  );
+  const toast = screen.getByRole("status");
+  expect(
+    within(toast).getByText("Done. Next one due Nov 7.")
+  ).toBeInTheDocument();
+  expect(within(toast).getByRole("button", { name: "Undo" })).toBeVisible();
+});
+
+it("an older server without next shows the plain Done", async () => {
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  renderHome();
+  await userEvent.click(box());
+  const toast = await screen.findByRole("status");
+  expect(await within(toast).findByText("Done")).toBeInTheDocument();
+  expect(within(toast).queryByText(/Next one due/)).toBeNull();
+});
+
 it("Undo unchecks the line as the refetch shows it (with its done stamp)", async () => {
   toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
   const onChanged = renderHome();

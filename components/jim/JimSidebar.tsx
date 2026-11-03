@@ -2,7 +2,10 @@
 
 import type { Ref } from "react";
 import {
+  Brain,
   Briefcase,
+  CalendarDays,
+  Clock3,
   Dumbbell,
   Flag,
   HeartPulse,
@@ -10,8 +13,10 @@ import {
   ListChecks,
   LogOut,
   MessageCircle,
+  Network,
   Sparkles,
   Users,
+  Vote,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -57,9 +62,14 @@ const PAGE_ICONS: Record<NotesPage, LucideIcon> = {
   work: Briefcase,
   money: Wallet,
   people: Users,
+  year: CalendarDays,
   health: HeartPulse,
   training: Dumbbell,
   golf: Flag,
+  mindset: Brain,
+  timeline: Clock3,
+  graph: Network,
+  ballot: Vote,
 };
 
 const ITEM =

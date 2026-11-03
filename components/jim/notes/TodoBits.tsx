@@ -2,6 +2,7 @@
 
 import { Check, LoaderCircle } from "lucide-react";
 import type { DoneToast, Toast } from "@/components/jim/notes/useTodoSaves";
+import { fmtShort } from "@/lib/jim/todos";
 
 interface TodoCheckboxProps {
   /** Read out for the box: the todo's title. */
@@ -58,7 +59,8 @@ interface ToastBarProps {
 }
 
 /**
- * "Done · Undo", or why a save failed. Floats above the home bar (and above
+ * "Done · Undo" ("Done. Next one due Nov 30. · Undo" when a repeating todo
+ * came back with its next date), or why a save failed. Floats above the home bar (and above
  * the now-playing bar JimChat docks over a phone's Notes); always in the
  * page, so it is announced.
  */
@@ -75,7 +77,11 @@ export function ToastBar({ toast, onUndo }: ToastBarProps) {
           >
             {toast.kind === "done" ? (
               <>
-                <span className="min-h-12 content-center">Done</span>
+                <span className="min-h-12 content-center">
+                  {toast.nextDue
+                    ? `Done. Next one due ${fmtShort(toast.nextDue)}.`
+                    : "Done"}
+                </span>
                 <span aria-hidden="true" className="text-ayu-subtle">
                   ·
                 </span>

@@ -32,6 +32,7 @@ import {
   daysBetween,
   fmtDay,
   fmtShort,
+  isRecurring,
   todoTitle,
   withoutDone,
 } from "@/lib/jim/todos";
@@ -270,6 +271,7 @@ function TodoRow({
   const title = todoTitle(full) || full;
   const checked = mark ? mark.done : todo.done;
   const pending = mark?.pending ?? false;
+  const repeats = todo.recurring ?? isRecurring(todo.text);
   const n = todo.due ? daysBetween(today, todo.due) : null;
   const dueTone =
     n !== null && n < 0
@@ -343,6 +345,12 @@ function TodoRow({
               className="flex min-h-11 items-center px-1 text-ayu-subtle"
             >
               <Repeat aria-hidden="true" className="size-3.5" />
+            </span>
+          )}
+          {repeats && checked && pending && (
+            // The server adds the next one; its reply then names the date.
+            <span className="flex min-h-11 items-center text-xs text-ayu-subtle">
+              next one coming
             </span>
           )}
         </span>

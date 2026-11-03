@@ -193,6 +193,30 @@ export interface UpcomingDate {
   turns: number | null;
 }
 
+/** A dated row of the year ahead: an upcoming date plus its gift status. */
+export interface YearDate extends UpcomingDate {
+  /** A birthday's gift status, worded ("Gift chosen."), or "". */
+  gift: string;
+  /** Only the month is known: show "sometime in <Month>". */
+  approx: boolean;
+  /** A birthday whose note hedges it: show "~" and mark it unconfirmed. */
+  unsure: boolean;
+}
+
+/** The daily mindset practice, counted on the server. */
+export interface MindsetData {
+  sessions: number;
+  /** Days in a row with a session, ending today. */
+  streak: number;
+  reflections: number;
+  /** The latest intention, or "". */
+  intention: string;
+  /** Teachings that keep returning, most mentioned first. */
+  threads: { name: string; count: number }[];
+  /** The latest sessions, newest first (at most five). */
+  recent: { date: string; text: string }[];
+}
+
 export interface TeamWin {
   date: string;
   text: string;
@@ -216,6 +240,14 @@ export interface WinsWeek {
   counts: Record<string, number>;
 }
 
+/** A next step from a meeting: who owns it ("" for no one) and what. */
+export interface MeetingStep {
+  who: string;
+  text: string;
+  /** Owned by the person Jim works for. */
+  mine: boolean;
+}
+
 export interface WorkMeeting {
   path: string;
   title: string;
@@ -224,6 +256,15 @@ export interface WorkMeeting {
   projects: string[];
   /** The first summary bullets. */
   summary: string[];
+  /** The newer fields (an older server leaves them out; normalized to
+   * "" and [] here). The meeting series it belongs to, or "". */
+  series?: string;
+  /** Decisions made, at most ten. */
+  decisions?: string[];
+  /** Next steps, at most fifteen. */
+  steps?: MeetingStep[];
+  /** An https link to the transcript, or "". */
+  transcript?: string;
 }
 
 export interface DirectoryStrength {
@@ -338,6 +379,10 @@ export interface ViewData {
   retro?: RetroData;
   /** Wins logged today. */
   winsToday?: number;
+  /** The mindset practice: null when there's none, absent from an older server. */
+  mindset?: MindsetData | null;
+  /** Every dated row in the next 365 days, soonest first. */
+  yearDates?: YearDate[];
   sha?: string;
   /** The server couldn't sync, so this may be behind. */
   stale?: boolean;
@@ -488,6 +533,25 @@ function toWeek(v: unknown): WinsWeek | null {
   return { week: v.week, counts: v.counts as Record<string, number> };
 }
 
+const MAX_DECISIONS = 10;
+const MAX_STEPS = 15;
+
+function toStep(v: unknown): MeetingStep | null {
+  if (!isRecord(v) || !strings(v, ["who", "text"]) || v.text === "") {
+    return null;
+  }
+  return {
+    who: v.who as string,
+    text: v.text as string,
+    mine: v.mine === true,
+  };
+}
+
+/** An https link, else "": it is rendered as a link. */
+function httpsOnly(value: unknown): string {
+  return isString(value) && /^https:\/\/[^\s]+$/.test(value) ? value : "";
+}
+
 function toMeeting(v: unknown): WorkMeeting | null {
   if (
     !isRecord(v) ||
@@ -505,6 +569,63 @@ function toMeeting(v: unknown): WorkMeeting | null {
     people: v.people,
     projects: v.projects,
     summary: v.summary,
+    series: isString(v.series) ? v.series : "",
+    decisions: keep(v.decisions, (d) =>
+      isString(d) && d.trim() !== "" ? d : null
+    ).slice(0, MAX_DECISIONS),
+    steps: keep(v.steps, toStep).slice(0, MAX_STEPS),
+    transcript: httpsOnly(v.transcript),
+  };
+}
+
+const MAX_RECENT = 5;
+
+function toThread(v: unknown): { name: string; count: number } | null {
+  return isRecord(v) &&
+    isString(v.name) &&
+    v.name !== "" &&
+    isNumber(v.count) &&
+    v.count > 0
+    ? { name: v.name, count: v.count }
+    : null;
+}
+
+function toRecent(v: unknown): { date: string; text: string } | null {
+  return isRecord(v) && strings(v, ["date", "text"]) && v.text !== ""
+    ? { date: v.date as string, text: v.text as string }
+    : null;
+}
+
+/** The mindset stats, or null when they're missing or malformed. */
+function toMindset(v: unknown): MindsetData | null {
+  if (
+    !isRecord(v) ||
+    !isNumber(v.sessions) ||
+    !isNumber(v.streak) ||
+    !isNumber(v.reflections)
+  ) {
+    return null;
+  }
+  return {
+    sessions: v.sessions,
+    streak: v.streak,
+    reflections: v.reflections,
+    intention: isString(v.intention) ? v.intention : "",
+    threads: keep(v.threads, toThread).sort((a, b) => b.count - a.count),
+    recent: keep(v.recent, toRecent).slice(0, MAX_RECENT),
+  };
+}
+
+const FULL_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function toYearDate(v: unknown): YearDate | null {
+  const date = toDate(v);
+  if (!date || !FULL_DAY.test(date.on) || !isRecord(v)) return null;
+  return {
+    ...date,
+    gift: isString(v.gift) ? v.gift : "",
+    approx: v.approx === true,
+    unsure: v.unsure === true,
   };
 }
 
@@ -700,6 +821,13 @@ export function normalizeView(raw: unknown): ViewData | null {
     reflection: toReflection(raw.reflection),
     retro: toRetro(raw.retro),
     winsToday: isNumber(raw.winsToday) ? raw.winsToday : undefined,
+    mindset: "mindset" in raw ? toMindset(raw.mindset) : undefined,
+    yearDates:
+      "yearDates" in raw
+        ? keep(raw.yearDates, toYearDate).sort((a, b) =>
+            a.on.localeCompare(b.on)
+          )
+        : undefined,
     sha: typeof raw.sha === "string" ? raw.sha : undefined,
     stale: raw.stale === true,
   };
@@ -983,7 +1111,15 @@ async function readJson(res: Response): Promise<unknown> {
 }
 
 export type TodoResult =
-  | { ok: true; sha: string | null }
+  | {
+      ok: true;
+      sha: string | null;
+      /**
+       * Checking off a repeating todo added its next occurrence, due then
+       * (YYYY-MM-DD). Absent otherwise, and from servers that don't say.
+       */
+      nextDue?: string;
+    }
   | { ok: false; reason: "changed" | "failed" | "denied"; message: string };
 
 export const TODO_MESSAGES = {
@@ -1042,10 +1178,18 @@ export async function toggleTodo(
     return { ok: false, reason: "failed", message: TODO_MESSAGES.failed };
   }
   const body = await readJson(res);
+  const nextDue = isRecord(body) ? readNextDue(body.next) : null;
   return {
     ok: true,
     sha: isRecord(body) && typeof body.sha === "string" ? body.sha : null,
+    ...(nextDue ? { nextDue } : {}),
   };
+}
+
+/** `next: {"due": "YYYY-MM-DD"}` from /api/todo, or null. */
+function readNextDue(next: unknown): string | null {
+  if (!isRecord(next) || typeof next.due !== "string") return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(next.due) ? next.due : null;
 }
 
 export interface SearchResult {

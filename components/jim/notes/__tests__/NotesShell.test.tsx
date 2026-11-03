@@ -178,7 +178,7 @@ it("says quietly when the notes may be behind", async () => {
   ).toBeInTheDocument();
 });
 
-it("has six page pills in order", async () => {
+it("has seven page pills in order", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
@@ -192,11 +192,12 @@ it("has six page pills in order", async () => {
     "Money",
     "Health",
     "People",
+    "Explore",
   ]);
   expect(screen.queryByRole("tablist", { name: "Health pages" })).toBeNull();
 });
 
-it("switches Health between Health, Training and Golf", async () => {
+it("switches Health between Health, Training, Golf and Mindset", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
@@ -207,6 +208,7 @@ it("switches Health between Health, Training and Golf", async () => {
     "Health",
     "Training",
     "Golf",
+    "Mindset",
   ]);
   expect(tabs[0]).toHaveAttribute("aria-selected", "true");
   expect(screen.getByText("Hemoglobin")).toBeInTheDocument();
@@ -591,4 +593,40 @@ it("tapping the Todos pill on a filtered Todos page clears its filters", async (
     "true"
   );
   expect(window.location.search).toBe("");
+});
+
+it("opens a movement from Training, then a day, and Back returns", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/notes/training");
+  renderShell();
+  await userEvent.click(
+    await screen.findByRole("link", { name: "Back squat" })
+  );
+  expect(window.location.pathname).toBe("/jim/notes/training/m/back-squat");
+  expect(
+    await screen.findByRole("heading", { name: "Back squat" })
+  ).toBeInTheDocument();
+  expect(document.title).toMatch(/Back squat/);
+  const entries = screen.getByRole("region", { name: "Every entry" });
+  await userEvent.click(
+    within(entries).getByRole("link", { name: "Oct 15 2026" })
+  );
+  expect(window.location.pathname).toBe("/jim/notes/training/day/2026-10-15");
+  expect(
+    await screen.findByRole("heading", { name: "Thu, Oct 15 2026" })
+  ).toBeInTheDocument();
+});
+
+it("shows Mindset under Health", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/notes/mindset");
+  renderShell();
+  expect(
+    await screen.findByText("“Listen before answering”")
+  ).toBeInTheDocument();
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  expect(within(sub).getByRole("tab", { name: "Mindset" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
 });

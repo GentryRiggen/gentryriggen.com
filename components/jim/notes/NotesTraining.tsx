@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import {
+  Chip,
+  Empty,
+  OpenLink,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
+import type { TrainingLinks } from "@/components/jim/notes/TrainingPages";
+import { movementSlug } from "@/lib/jim/routes";
 import {
   fmtNum,
   fmtWhen,
@@ -20,7 +28,11 @@ import {
 
 interface NotesTrainingProps {
   data: ViewData;
+  /** Opens a movement's or a day's page; without it rows are plain. */
+  links?: TrainingLinks;
 }
+
+const FULL_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 const RECENT_WORKOUTS = 14;
 
@@ -74,7 +86,7 @@ function best(m: Movement, unit: WeightUnit): string | null {
 }
 
 /** Training: recent workouts and each movement's bests. */
-export default function NotesTraining({ data }: NotesTrainingProps) {
+export default function NotesTraining({ data, links }: NotesTrainingProps) {
   const [unit, setUnit] = useState(loadWeightUnit);
   const wods = data.training.workouts
     .filter((w) => typeof w?.date === "string")
@@ -101,7 +113,19 @@ export default function NotesTraining({ data }: NotesTrainingProps) {
                 <li key={`${w.date}-${i}`} className="px-4 py-3">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 text-sm text-ayu-subtle">
-                      {w.date.length === 10 ? fmtDay(w.date) : w.date}
+                      {links && FULL_DAY.test(w.date) ? (
+                        <OpenLink
+                          href={links.dayHref?.(w.date)}
+                          onOpen={() => links.onOpenDay(w.date)}
+                          className="inline-flex min-h-11 items-center text-left text-ayu-accent hover:underline"
+                        >
+                          {fmtDay(w.date)}
+                        </OpenLink>
+                      ) : w.date.length === 10 ? (
+                        fmtDay(w.date)
+                      ) : (
+                        w.date
+                      )}
                       {w.type ? ` · ${w.type}` : ""}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
@@ -144,9 +168,21 @@ export default function NotesTraining({ data }: NotesTrainingProps) {
                 return (
                   <li key={m.name} className="px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="min-w-0 font-medium text-ayu-text [overflow-wrap:anywhere]">
-                        {m.name}
-                      </span>
+                      {links ? (
+                        <OpenLink
+                          href={links.movementHref?.(movementSlug(m.name))}
+                          onOpen={() =>
+                            links.onOpenMovement(movementSlug(m.name))
+                          }
+                          className="inline-flex min-h-11 min-w-0 items-center text-left font-medium text-ayu-accent [overflow-wrap:anywhere] hover:underline"
+                        >
+                          {m.name}
+                        </OpenLink>
+                      ) : (
+                        <span className="min-w-0 font-medium text-ayu-text [overflow-wrap:anywhere]">
+                          {m.name}
+                        </span>
+                      )}
                       {m.est1rm != null && (
                         <span className="shrink-0 text-sm text-ayu-accent">
                           Est. 1RM {fmtWeight(m.est1rm, unit)}

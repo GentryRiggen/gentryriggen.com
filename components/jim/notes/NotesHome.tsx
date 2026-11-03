@@ -257,7 +257,11 @@ function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
               {AREA_LABEL[todo.area]}
             </Chip>
           )}
-          {isRecurring(todo.text) && <Chip>repeats</Chip>}
+          {isRecurring(todo.text) && (
+            // Ticked and saving: the server adds the next one, so say so
+            // before its reply (which then names the date).
+            <Chip>{checked && pending ? "next one coming" : "repeats"}</Chip>
+          )}
         </span>
       </div>
     </li>

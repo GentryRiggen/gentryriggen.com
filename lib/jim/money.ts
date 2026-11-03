@@ -96,6 +96,70 @@ export interface MoneyCheckin {
   next: string;
 }
 
+/** One category's row in the by-month grid. */
+export interface MoneyGridRow {
+  cat: string;
+  /** The spending group it sits under (rows arrive ordered by group). */
+  group: string;
+  fixed: boolean;
+  /** What the category covers, or "". */
+  note: string;
+  /** One per grid month: spent, or null for nothing. */
+  values: (number | null)[];
+  typical: number;
+  /** Per month: "hi" well over typical, "lo" well under, "" about typical. */
+  flags: ("hi" | "lo" | "")[];
+}
+
+export interface MoneyGrid {
+  /** YYYY-MM, oldest first. */
+  months: string[];
+  rows: MoneyGridRow[];
+}
+
+/** A share of income owed to others, worded on the server. */
+export interface MoneyShare {
+  perMonth: number;
+  afterAvg: number;
+  line: string;
+}
+
+export interface AmazonMonth {
+  /** YYYY-MM. */
+  m: string;
+  label: string;
+  partial: boolean;
+  /** Spent, positive. */
+  total: number;
+  /** Spent per category (negative when refunds outweigh buys). */
+  byCat: Record<string, number>;
+}
+
+export interface AmazonRepeat {
+  n: number;
+  item: string;
+  category: string;
+  total: number;
+}
+
+export interface AmazonItem {
+  date: string;
+  item: string;
+  /** Negative for a buy, positive for a refund. */
+  amount: number;
+  category: string;
+}
+
+export interface MoneyAmazon {
+  /** Oldest first. */
+  months: AmazonMonth[];
+  /** Categories, in display order. */
+  cats: string[];
+  repeats: AmazonRepeat[];
+  /** Newest first. */
+  items: AmazonItem[];
+}
+
 export interface MoneySummary {
   /** What "on track" means, worded. */
   rule: string;
@@ -112,6 +176,10 @@ export interface MoneySummary {
   /** The Watch list (Markdown), or "". */
   watch: string;
   checkin: MoneyCheckin | null;
+  /** The newer sections: null when the server leaves them out. */
+  grid: MoneyGrid | null;
+  share: MoneyShare | null;
+  amazon: MoneyAmazon | null;
   /** The server couldn't sync, so this may be behind. */
   stale?: boolean;
 }
@@ -260,6 +328,119 @@ function toCheckin(v: unknown): MoneyCheckin | null {
   };
 }
 
+const YM = /^\d{4}-\d{2}$/;
+const FLAGS = ["hi", "lo", ""];
+
+function toGridRow(v: unknown, width: number): MoneyGridRow | null {
+  if (
+    !isRecord(v) ||
+    !has(v, ["cat"], ["typical"]) ||
+    v.cat === "" ||
+    !Array.isArray(v.values) ||
+    v.values.length !== width ||
+    !v.values.every((x) => x === null || isNumber(x))
+  ) {
+    return null;
+  }
+  const flags = Array.isArray(v.flags) ? v.flags : [];
+  return {
+    cat: v.cat as string,
+    group: isString(v.group) ? v.group : "",
+    fixed: v.fixed === true,
+    note: isString(v.note) ? v.note : "",
+    values: v.values as (number | null)[],
+    typical: v.typical as number,
+    flags: v.values.map((_, i) =>
+      FLAGS.includes(flags[i] as string)
+        ? (flags[i] as MoneyGridRow["flags"][number])
+        : ""
+    ),
+  };
+}
+
+function toGrid(v: unknown): MoneyGrid | null {
+  if (!isRecord(v) || !Array.isArray(v.months)) return null;
+  if (!v.months.length || !v.months.every((m) => isString(m) && YM.test(m))) {
+    return null;
+  }
+  const months = v.months as string[];
+  const rows = keep(v.rows, (r) => toGridRow(r, months.length));
+  return rows.length ? { months, rows } : null;
+}
+
+function toShare(v: unknown): MoneyShare | null {
+  return isRecord(v) &&
+    has(v, ["line"], ["perMonth", "afterAvg"]) &&
+    (v.line as string).trim() !== ""
+    ? {
+        perMonth: v.perMonth as number,
+        afterAvg: v.afterAvg as number,
+        line: v.line as string,
+      }
+    : null;
+}
+
+function toAmazonMonth(v: unknown): AmazonMonth | null {
+  if (
+    !isRecord(v) ||
+    !has(v, ["m", "label"], ["total"]) ||
+    !YM.test(v.m as string)
+  ) {
+    return null;
+  }
+  const byCat: Record<string, number> = {};
+  if (isRecord(v.byCat)) {
+    for (const [cat, amount] of Object.entries(v.byCat)) {
+      if (isNumber(amount)) byCat[cat] = amount;
+    }
+  }
+  return {
+    m: v.m as string,
+    label: v.label as string,
+    partial: v.partial === true,
+    total: v.total as number,
+    byCat,
+  };
+}
+
+function toRepeat(v: unknown): AmazonRepeat | null {
+  return isRecord(v) && has(v, ["item", "category"], ["n", "total"])
+    ? {
+        n: v.n as number,
+        item: v.item as string,
+        category: v.category as string,
+        total: v.total as number,
+      }
+    : null;
+}
+
+function toItem(v: unknown): AmazonItem | null {
+  return isRecord(v) && has(v, ["date", "item", "category"], ["amount"])
+    ? {
+        date: v.date as string,
+        item: v.item as string,
+        amount: v.amount as number,
+        category: v.category as string,
+      }
+    : null;
+}
+
+/** Caps matching the server's, so a runaway payload can't flood the page. */
+const MAX_REPEATS = 15;
+const MAX_ITEMS = 300;
+
+function toAmazon(v: unknown): MoneyAmazon | null {
+  if (!isRecord(v)) return null;
+  const months = keep(v.months, toAmazonMonth);
+  if (!months.length) return null;
+  return {
+    months,
+    cats: keep(v.cats, (c) => (isString(c) && c !== "" ? c : null)),
+    repeats: keep(v.repeats, toRepeat).slice(0, MAX_REPEATS),
+    items: keep(v.items, toItem).slice(0, MAX_ITEMS),
+  };
+}
+
 /**
  * The summary with every list present and malformed rows dropped, or null
  * when it isn't a summary at all (no month list). Never throws.
@@ -279,6 +460,9 @@ export function normalizeMoney(raw: unknown): MoneySummary | null {
     cash: keep(raw.cash, toCash),
     watch: text("watch"),
     checkin: toCheckin(raw.checkin),
+    grid: toGrid(raw.grid),
+    share: toShare(raw.share),
+    amazon: toAmazon(raw.amazon),
   };
   if (raw.stale === true) out.stale = true;
   return out;

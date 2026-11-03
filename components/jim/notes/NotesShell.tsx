@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   Briefcase,
+  Compass,
   HeartPulse,
   House,
   ListChecks,
@@ -27,6 +28,12 @@ import NotesMoney from "@/components/jim/notes/NotesMoney";
 import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesMeeting from "@/components/jim/notes/NotesMeeting";
+import NotesMindset from "@/components/jim/notes/NotesMindset";
+import {
+  ExploreBallot,
+  ExploreGraph,
+  ExploreTimeline,
+} from "@/components/jim/notes/NotesExplore";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
@@ -36,6 +43,12 @@ import { BackLink, Empty, onPlainClick } from "@/components/jim/notes/NotesUi";
 import NotesTodos from "@/components/jim/notes/NotesTodos";
 import NotesTraining from "@/components/jim/notes/NotesTraining";
 import NotesWork from "@/components/jim/notes/NotesWork";
+import NotesYear from "@/components/jim/notes/NotesYear";
+import {
+  TrainingDayPage,
+  TrainingMovement,
+  type TrainingLinks,
+} from "@/components/jim/notes/TrainingPages";
 import { DirectoryCard } from "@/components/jim/notes/WorkDirectory";
 import { resetTodoFilters } from "@/components/jim/notes/useTodoFilters";
 import useTodoSaves from "@/components/jim/notes/useTodoSaves";
@@ -46,12 +59,13 @@ import useJimRouter, {
 } from "@/components/jim/useJimRouter";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import { useMoney } from "@/lib/jim/money";
-import { localDay, timeLabel } from "@/lib/jim/notesData";
+import { localDay, movementBests, timeLabel } from "@/lib/jim/notesData";
 import { loadView } from "@/lib/jim/offlineStore";
 import {
   formatJimPath,
   HOME_ROUTE,
   isDetail,
+  movementSlug,
   PAGE_LABELS,
   personPath,
   routeForNote,
@@ -62,7 +76,7 @@ import {
   type NotesRoute,
   type RetroKind,
 } from "@/lib/jim/routes";
-import { fmtShort } from "@/lib/jim/todos";
+import { fmtDay, fmtShort } from "@/lib/jim/todos";
 import {
   fetchView,
   getCachedView,
@@ -116,8 +130,12 @@ interface NotesShellProps {
   routing?: NotesRouting;
 }
 
-/** The pills along the top on a phone: Health holds Training and Golf. */
-type Pill = "home" | "todos" | "work" | "money" | "health" | "people";
+/**
+ * The pills along the top on a phone. Health holds Training, Golf and
+ * Mindset; People holds the Year; Explore holds Timeline, Graph and Ballot.
+ */
+type Pill =
+  "home" | "todos" | "work" | "money" | "health" | "people" | "explore";
 
 const PILLS: { id: Pill; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: House },
@@ -126,26 +144,31 @@ const PILLS: { id: Pill; label: string; icon: LucideIcon }[] = [
   { id: "money", label: "Money", icon: Wallet },
   { id: "health", label: "Health", icon: HeartPulse },
   { id: "people", label: "People", icon: Users },
+  { id: "explore", label: "Explore", icon: Compass },
 ];
 
 const NO_DIRECTORY = { updated: "", people: [] };
 
-/** Health's own pages, picked by the switch at its top. */
-type HealthPage = "health" | "training" | "golf";
-
-const HEALTH_PAGES: { id: HealthPage; label: string }[] = [
-  { id: "health", label: "Health" },
-  { id: "training", label: "Training" },
-  { id: "golf", label: "Golf" },
-];
-
-function isHealthPage(page: NotesPage): page is HealthPage {
-  return page === "health" || page === "training" || page === "golf";
-}
+/** The pills with pages of their own, picked by a switch at the top. */
+const SUB_PAGES: Partial<Record<Pill, readonly NotesPage[]>> = {
+  health: ["health", "training", "golf", "mindset"],
+  people: ["people", "year"],
+  explore: ["timeline", "graph", "ballot"],
+};
 
 function pillOf(page: NotesPage): Pill {
-  return isHealthPage(page) ? "health" : page;
+  for (const [pill, pages] of Object.entries(SUB_PAGES)) {
+    if (pages.includes(page)) return pill as Pill;
+  }
+  return page as Pill;
 }
+
+/** Each grouped pill's first page, until another one is shown. */
+const FIRST_SUB: Partial<Record<Pill, NotesPage>> = {
+  health: "health",
+  people: "people",
+  explore: "timeline",
+};
 
 /** Pages that use the room a desktop gives them. */
 const WIDE_PAGES: ReadonlySet<NotesPage> = new Set([
@@ -154,37 +177,54 @@ const WIDE_PAGES: ReadonlySet<NotesPage> = new Set([
   "money",
   "health",
   "training",
+  "year",
+  "timeline",
+  "graph",
 ]);
 
-interface HealthSwitchProps {
-  value: HealthPage;
-  onChange: (next: HealthPage) => void;
+interface SubSwitchProps {
+  pill: Pill;
+  pages: readonly NotesPage[];
+  value: NotesPage;
+  onChange: (next: NotesPage) => void;
 }
 
-/** Health | Training | Golf: a segmented control above the page. */
-function HealthSwitch({ value, onChange }: HealthSwitchProps) {
+/** Health | Training | Golf | Mindset (and the like): a segmented control
+ * above the page. */
+function SubSwitch({ pill, pages, value, onChange }: SubSwitchProps) {
+  const label = PILLS.find((p) => p.id === pill)?.label ?? "Notes";
+  // Four labels ("Training", "Mindset") don't fit text-sm at 320px: step
+  // down a size on the narrowest phones so none is cut off.
+  const size =
+    pages.length >= 4 ? "px-1 text-xs min-[360px]:text-sm" : "px-1.5 text-sm";
   return (
     <div
       role="tablist"
-      aria-label="Health pages"
-      className="jim-card mb-5 grid grid-cols-3 gap-1 p-1"
+      aria-label={`${label} pages`}
+      className={`jim-card mb-5 grid gap-1 p-1 ${
+        pages.length === 2
+          ? "grid-cols-2"
+          : pages.length === 3
+            ? "grid-cols-3"
+            : "grid-cols-4"
+      }`}
     >
-      {HEALTH_PAGES.map((p) => {
-        const selected = p.id === value;
+      {pages.map((page) => {
+        const selected = page === value;
         return (
           <button
-            key={p.id}
+            key={page}
             type="button"
             role="tab"
             aria-selected={selected}
-            onClick={() => onChange(p.id)}
-            className={`min-h-11 min-w-0 truncate rounded-xl px-2 text-sm font-medium transition-colors duration-200 ${
+            onClick={() => onChange(page)}
+            className={`min-h-11 min-w-0 truncate rounded-xl ${size} font-medium transition-colors duration-200 ${
               selected
                 ? "bg-ayu-accent/12 text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset"
                 : "text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
             }`}
           >
-            {p.label}
+            {PAGE_LABELS[page]}
           </button>
         );
       })}
@@ -350,12 +390,12 @@ function NotesShellView({
     path: string;
     title: string;
   } | null>(null);
-  /** The Health pill returns to the Health page last shown. */
-  const [lastHealth, setLastHealth] = useState<HealthPage>(
-    isHealthPage(basePage) ? basePage : "health"
+  /** A grouped pill returns to the page of it last shown. */
+  const [lastSub, setLastSub] = useState<Partial<Record<Pill, NotesPage>>>(
+    () => ({ ...FIRST_SUB, [pillOf(basePage)]: basePage })
   );
-  if (isHealthPage(basePage) && basePage !== lastHealth) {
-    setLastHealth(basePage);
+  if (SUB_PAGES[pillOf(basePage)] && lastSub[pillOf(basePage)] !== basePage) {
+    setLastSub({ ...lastSub, [pillOf(basePage)]: basePage });
   }
   const searching = search.trim() !== "";
   const detail =
@@ -532,16 +572,26 @@ function NotesShellView({
     route.kind === "directory"
       ? data?.work?.directory?.people.find((p) => p.id === route.id)
       : undefined;
+  const movementName =
+    route.kind === "movement" && data
+      ? movementBests(data.training.lifts).find(
+          (m) => movementSlug(m.name) === route.slug
+        )?.name
+      : undefined;
   const titleName =
-    route.kind === "meeting"
-      ? data?.meetingCards?.[route.id]?.subject
-      : route.kind === "person"
-        ? person?.name
-        : route.kind === "directory"
-          ? card?.name
-          : route.kind === "note" && noteTitle?.path === route.path
-            ? noteTitle.title
-            : null;
+    route.kind === "movement"
+      ? movementName
+      : route.kind === "trainingDay"
+        ? fmtDay(route.date)
+        : route.kind === "meeting"
+          ? data?.meetingCards?.[route.id]?.subject
+          : route.kind === "person"
+            ? person?.name
+            : route.kind === "directory"
+              ? card?.name
+              : route.kind === "note" && noteTitle?.path === route.path
+                ? noteTitle.title
+                : null;
   useEffect(() => {
     if (!active) return;
     document.title =
@@ -597,6 +647,20 @@ function NotesShellView({
     const next = routeForHit(path);
     if (next) navigate(next, { back: "Results" });
   }
+
+  /** Training's movement and day pages: from a list page they push (Back
+   * returns there); from one day to the next they replace. */
+  const trainingLinks = (from: string, dayReplaces = false): TrainingLinks => ({
+    onOpenMovement: (slug) =>
+      navigate({ kind: "movement", slug }, { back: from }),
+    movementHref: (slug) => formatJimPath({ kind: "movement", slug }),
+    onOpenDay: (date) =>
+      navigate(
+        { kind: "trainingDay", date },
+        dayReplaces ? { replace: true } : { back: from }
+      ),
+    dayHref: (date) => formatJimPath({ kind: "trainingDay", date }),
+  });
 
   const listRoute: NotesRoute = { kind: "page", page: basePage };
   const back = () => goBack(listRoute);
@@ -690,25 +754,43 @@ function NotesShellView({
         personHref={hrefForCard}
       />
     );
-  } else if (isHealthPage(listPage)) {
+  } else if (listPage === "health") {
+    pageBody = <NotesHealth data={data} />;
+  } else if (listPage === "training") {
+    pageBody = <NotesTraining data={data} links={trainingLinks("Training")} />;
+  } else if (listPage === "golf") {
+    pageBody = <NotesGolf data={data} />;
+  } else if (listPage === "year") {
     pageBody = (
-      <>
-        {!wide && (
-          <HealthSwitch
-            value={listPage}
-            onChange={(next) => navigate({ kind: "page", page: next })}
-          />
-        )}
-        {listPage === "health" ? (
-          <NotesHealth data={data} />
-        ) : listPage === "training" ? (
-          <NotesTraining data={data} />
-        ) : (
-          <NotesGolf data={data} />
-        )}
-      </>
+      <NotesYear
+        data={data}
+        onOpen={(path) => openPath(path, "Year")}
+        hrefFor={hrefForNote}
+      />
     );
-  } else {
+  } else if (
+    listPage === "timeline" ||
+    listPage === "graph" ||
+    listPage === "ballot"
+  ) {
+    const explore = {
+      getToken,
+      api,
+      today: data.today,
+      onOpenNote: (path: string) => openPath(path, PAGE_LABELS[listPage]),
+      hrefForNote,
+    };
+    pageBody =
+      listPage === "timeline" ? (
+        <ExploreTimeline {...explore} />
+      ) : listPage === "graph" ? (
+        <ExploreGraph {...explore} />
+      ) : (
+        <ExploreBallot {...explore} />
+      );
+  } else if (listPage === "mindset") {
+    pageBody = <NotesMindset data={data} />;
+  } else if (listPage === "people") {
     pageBody = (
       <NotesPeople
         data={data}
@@ -717,6 +799,22 @@ function NotesShellView({
         onOpen={(path) => openPath(path)}
         hrefFor={hrefForPerson}
       />
+    );
+  } else {
+    pageBody = <Empty>Nothing here yet.</Empty>;
+  }
+  const subPages = SUB_PAGES[pillOf(listPage)];
+  if (subPages && !wide) {
+    pageBody = (
+      <>
+        <SubSwitch
+          pill={pillOf(listPage)}
+          pages={subPages}
+          value={listPage}
+          onChange={(next) => navigate({ kind: "page", page: next })}
+        />
+        {pageBody}
+      </>
     );
   }
 
@@ -883,6 +981,37 @@ function NotesShellView({
         homeHref={formatJimPath(HOME_ROUTE)}
       />
     );
+  } else if (route.kind === "movement") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <TrainingMovement
+        key={route.slug}
+        training={data.training}
+        slug={route.slug}
+        today={data.today}
+        links={trainingLinks(movementName ?? "Movement")}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    );
+  } else if (route.kind === "trainingDay") {
+    detailBody = !data ? (
+      loadState
+    ) : (
+      <TrainingDayPage
+        key={route.date}
+        training={data.training}
+        date={route.date}
+        links={trainingLinks(fmtShort(route.date), true)}
+        onBack={back}
+        backLabel={backText}
+        backHref={backHref}
+        backAside={detailAside}
+      />
+    );
   } else if (route.kind === "directory") {
     detailBody = !data ? (
       loadState
@@ -939,7 +1068,11 @@ function NotesShellView({
                   aria-selected={selected}
                   aria-controls="jim-notes-page"
                   ref={selected ? selectedTabRef : undefined}
-                  onClick={() => goTo(p.id === "health" ? lastHealth : p.id)}
+                  onClick={() =>
+                    goTo(
+                      lastSub[p.id] ?? FIRST_SUB[p.id] ?? (p.id as NotesPage)
+                    )
+                  }
                   className="group flex min-h-11 shrink-0 items-center"
                 >
                   <span
