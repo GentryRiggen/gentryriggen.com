@@ -795,3 +795,75 @@ export const MONEY_FIXTURE: MoneySummary = {
     ],
   },
 };
+
+/** Explore's reads, as the server sends them (invented). */
+export const GRAPH_FIXTURE = {
+  nodes: [
+    { id: "people/sam-okafor.md", title: "Sam Okafor", folder: "people" },
+    { id: "home/garden.md", title: "Garden", folder: "home" },
+    { id: "home/shed.md", title: "Potting shed", folder: "home" },
+    { id: "work/garden-map.md", title: "Garden map", folder: "work" },
+  ],
+  links: [
+    { source: "home/garden.md", target: "people/sam-okafor.md" },
+    { source: "home/garden.md", target: "home/shed.md" },
+    { source: "work/garden-map.md", target: "home/garden.md" },
+  ],
+};
+
+export const TIMELINE_FIXTURE = {
+  events: [
+    {
+      date: "2026-11-05",
+      kind: "due",
+      text: "Return the library books",
+      path: "lists/todos.md",
+      src: "todos",
+    },
+    {
+      date: "2026-10-30",
+      time: "9:30",
+      kind: "log",
+      title: "Planning",
+      text: "Sketched the spring beds with the compost bins",
+      path: "log/2026-10/2026-10-30.md",
+      src: "session log",
+    },
+    {
+      date: "2026-10-12",
+      kind: "done",
+      text: "Fixed the gate latch",
+      path: "lists/todos.md",
+      src: "todos",
+    },
+  ],
+};
+
+export const BALLOT_FIXTURE = {
+  voted: {
+    path: "notes/town-ballot.md",
+    title: "Town ballot",
+    facts: { Precinct: "12", Marked: "Oct 20" },
+    sections: [
+      {
+        heading: "Offices",
+        before: "",
+        after: "",
+        tables: [
+          {
+            heading: "",
+            header: ["Contest", "Vote", "Also on the ballot"],
+            rows: [["Library board", "Priya Lane", "Jordan Lee"]],
+          },
+        ],
+      },
+    ],
+  },
+  guide: {
+    path: "notes/town-guide.md",
+    title: "Town voting guide",
+    intro: "A short guide to the town ballot.",
+    date: "2026-11-03",
+    sections: [],
+  },
+};

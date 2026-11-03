@@ -3,7 +3,13 @@ import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
-import { MONEY_FIXTURE, VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
+import {
+  BALLOT_FIXTURE,
+  GRAPH_FIXTURE,
+  MONEY_FIXTURE,
+  TIMELINE_FIXTURE,
+  VIEW_FIXTURE,
+} from "../lib/jim/__tests__/fixtures";
 
 /**
  * /jim is a private chat that is used mostly on an iPhone. Runs on Chromium
@@ -65,6 +71,8 @@ interface MockCalls {
   chat: number;
   health: number;
   money: number;
+  /** Explore's reads: how many times each was asked for. */
+  explore: { graph: number; timeline: number; ballot: number };
   /** Each /api/todo body, in order. */
   todo: {
     order: number;
@@ -194,6 +202,7 @@ async function mockServer(
     chat: 0,
     health: 0,
     money: 0,
+    explore: { graph: 0, timeline: 0, ballot: 0 },
     todo: [],
     search: [],
     messages: [],
@@ -344,6 +353,20 @@ async function mockServer(
       const { path } = route.request().postDataJSON() as { path: string };
       if (path === GARDEN_NOTE.path) await reply(200, GARDEN_NOTE);
       else await reply(404, { error: "not found" });
+      return;
+    }
+    const explore = /^\/api\/(graph|timeline|ballot)$/.exec(url.pathname);
+    if (explore) {
+      const kind = explore[1] as keyof MockCalls["explore"];
+      calls.explore[kind] += 1;
+      await reply(
+        200,
+        kind === "graph"
+          ? GRAPH_FIXTURE
+          : kind === "timeline"
+            ? TIMELINE_FIXTURE
+            : BALLOT_FIXTURE
+      );
       return;
     }
     if (url.pathname === "/api/money") {
@@ -751,6 +774,127 @@ for (const width of [320]) {
         await page.getByRole("link", { name: "Results" }).click();
         await page.getByRole("button", { name: "Clear search" }).click();
         await expect(page.getByText("Water the plants")).toBeVisible();
+      }
+    );
+
+    test(
+      "the pages ported from the Mac fit the screen",
+      { tag: "@smoke" },
+      async ({ page }, testInfo) => {
+        await signedIn(page);
+        await openNotes(page);
+        const shot = async (name: string) => {
+          await noSidewaysScroll(page);
+          await bigTargets(page);
+          await page.screenshot({
+            path: shotName(page, testInfo, name, "ayu"),
+            animations: "disabled",
+          });
+        };
+        const pills = page.getByRole("tablist", { name: "Notes pages" });
+
+        // Work: meetings three ways, and the org chart.
+        await pills.getByRole("tab", { name: "Work" }).click();
+        await page.getByRole("tab", { name: "Next steps" }).click();
+        await expect(page.getByText("Order the cedar boards")).toBeVisible();
+        await expect(page.getByText("Yours")).toBeVisible();
+        await shot("notes-work-steps");
+        await page.getByRole("tab", { name: "Decisions" }).click();
+        await expect(
+          page.getByText("Spring beds go along the south fence")
+        ).toBeVisible();
+        await page.getByRole("tab", { name: "Org chart" }).click();
+        const org = page.getByRole("list", { name: "Org chart" });
+        await expect(org.getByText("Ava Torres")).toBeVisible();
+        await shot("notes-work-org");
+
+        // Health: Mindset, then a movement and a training day.
+        await pills.getByRole("tab", { name: "Health" }).click();
+        const health = page.getByRole("tablist", { name: "Health pages" });
+        await health.getByRole("tab", { name: "Mindset" }).click();
+        await expect(page.getByText("“Listen before answering”")).toBeVisible();
+        await shot("notes-mindset");
+        await health.getByRole("tab", { name: "Training" }).click();
+        await page.getByRole("link", { name: "Back squat" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Back squat" })
+        ).toBeVisible();
+        expect(new URL(page.url()).pathname).toBe(
+          "/jim/notes/training/m/back-squat"
+        );
+        await expect(
+          page.getByRole("img", { name: /done on 2 days in the past year/ })
+        ).toBeVisible();
+        await shot("notes-movement");
+        await page
+          .getByRole("region", { name: "Every entry" })
+          .getByRole("link", { name: "Oct 15 2026" })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Thu, Oct 15 2026" })
+        ).toBeVisible();
+        await shot("notes-training-day");
+        // A reload keeps the day.
+        await page.reload();
+        await expect(
+          page.getByRole("heading", { name: "Thu, Oct 15 2026" })
+        ).toBeVisible();
+
+        // People: the year ahead.
+        await pills.getByRole("tab", { name: "People" }).click();
+        await page
+          .getByRole("tablist", { name: "People pages" })
+          .getByRole("tab", { name: "Year" })
+          .click();
+        await expect(
+          page.getByText("2 gift ideas, none chosen.")
+        ).toBeVisible();
+        await shot("notes-year");
+
+        // Money: the grid scrolls inside its card only.
+        await pills.getByRole("tab", { name: "Money" }).click();
+        const grid = page.getByRole("region", { name: "By category" });
+        await expect(grid.getByRole("table")).toBeVisible();
+        await expect(
+          page.getByRole("region", { name: "Amazon" }).getByText("Twine roll")
+        ).toBeVisible();
+        await page
+          .getByRole("region", { name: "Amazon" })
+          .getByRole("button", { name: "Kitchen" })
+          .click();
+        await expect(page.getByText("Pruning shears")).toHaveCount(0);
+        await grid.scrollIntoViewIfNeeded();
+        await shot("notes-money-extras");
+
+        // Explore: timeline, graph and ballot.
+        await pills.getByRole("tab", { name: "Explore" }).click();
+        await expect(
+          page.getByText("Sketched the spring beds with the compost bins")
+        ).toBeVisible();
+        expect(
+          await fontSize(page, "#jim-timeline-search")
+        ).toBeGreaterThanOrEqual(16);
+        await shot("notes-timeline");
+        const explore = page.getByRole("tablist", { name: "Explore pages" });
+        await explore.getByRole("tab", { name: "Graph" }).click();
+        await expect(
+          page.getByRole("img", { name: /Note graph: 4 notes and 3 links/ })
+        ).toBeVisible();
+        await page.getByRole("button", { name: "Zoom in" }).click();
+        await shot("notes-graph");
+        await page.getByLabel("Find a note in the graph").fill("shed");
+        await page.getByRole("link", { name: /Potting shed/ }).click();
+        expect(new URL(page.url()).pathname).toBe("/jim/notes/note/home/shed");
+        await page.goBack();
+        await explore.getByRole("tab", { name: "Ballot" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Town ballot" })
+        ).toBeVisible();
+        await page.getByRole("tab", { name: "The guide" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Town voting guide" })
+        ).toBeVisible();
+        await shot("notes-ballot");
       }
     );
   });
@@ -1240,6 +1384,9 @@ test("money never rests on the device, open or after sign-out", async ({
     "Greenhouse repair",
     "Pause new tools",
     "Invented rule for tests",
+    "Pruning shears",
+    "Twine roll",
+    "Seed packets and bulbs",
   ];
   // The Notes payload is kept by now (it's what the offline store holds).
   await expect.poll(() => keptView(page)).not.toBeNull();
@@ -1250,6 +1397,41 @@ test("money never rests on the device, open or after sign-out", async ({
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByText("Hill Hardware")).toHaveCount(0);
+  const after = await everythingKept(page);
+  for (const v of values) expect(after).not.toContain(v);
+});
+
+test("Explore reads only on open and never rests on the device", async ({
+  page,
+}) => {
+  const calls = await signedIn(page);
+  await openNotes(page);
+  expect(calls.explore).toEqual({ graph: 0, timeline: 0, ballot: 0 });
+  const pills = page.getByRole("tablist", { name: "Notes pages" });
+  await pills.getByRole("tab", { name: "Explore" }).click();
+  await expect(page.getByText("Fixed the gate latch")).toBeVisible();
+  const explore = page.getByRole("tablist", { name: "Explore pages" });
+  await explore.getByRole("tab", { name: "Graph" }).click();
+  await expect(page.getByRole("img", { name: /Note graph/ })).toBeVisible();
+  await explore.getByRole("tab", { name: "Ballot" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Town ballot" })
+  ).toBeVisible();
+  expect(calls.explore).toEqual({ graph: 1, timeline: 1, ballot: 1 });
+  // Strings only the invented Explore reads carry.
+  const values = [
+    "Sketched the spring beds with the compost bins",
+    "Potting shed",
+    "Town voting guide",
+    "Library board",
+  ];
+  await expect.poll(() => keptView(page)).not.toBeNull();
+  const open = await everythingKept(page);
+  for (const v of values) expect(open).not.toContain(v);
+
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page.getByLabel("Email")).toBeVisible();
   const after = await everythingKept(page);
   for (const v of values) expect(after).not.toContain(v);
 });

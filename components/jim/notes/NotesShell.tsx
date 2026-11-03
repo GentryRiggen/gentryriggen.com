@@ -29,6 +29,11 @@ import NotesNote from "@/components/jim/notes/NotesNote";
 import NotesPeople from "@/components/jim/notes/NotesPeople";
 import NotesMeeting from "@/components/jim/notes/NotesMeeting";
 import NotesMindset from "@/components/jim/notes/NotesMindset";
+import {
+  ExploreBallot,
+  ExploreGraph,
+  ExploreTimeline,
+} from "@/components/jim/notes/NotesExplore";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
@@ -759,6 +764,26 @@ function NotesShellView({
         hrefFor={hrefForNote}
       />
     );
+  } else if (
+    listPage === "timeline" ||
+    listPage === "graph" ||
+    listPage === "ballot"
+  ) {
+    const explore = {
+      getToken,
+      api,
+      today: data.today,
+      onOpenNote: (path: string) => openPath(path, PAGE_LABELS[listPage]),
+      hrefForNote,
+    };
+    pageBody =
+      listPage === "timeline" ? (
+        <ExploreTimeline {...explore} />
+      ) : listPage === "graph" ? (
+        <ExploreGraph {...explore} />
+      ) : (
+        <ExploreBallot {...explore} />
+      );
   } else if (listPage === "mindset") {
     pageBody = <NotesMindset data={data} />;
   } else if (listPage === "people") {
