@@ -1,4 +1,4 @@
-import { Empty, Rows, Section, Stat } from "@/components/jim/notes/NotesUi";
+import { Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
 import { fmtDay, stripMd } from "@/lib/jim/todos";
 import type { ViewData } from "@/lib/jim/view";
 
@@ -17,11 +17,26 @@ export default function NotesMindset({ data }: { data: ViewData }) {
   const max = Math.max(1, ...m.threads.map((t) => t.count));
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Sessions" value={m.sessions} />
-        <Stat label="Day streak" value={m.streak} />
-        <Stat label="Reflections" value={m.reflections} />
-      </div>
+      {/* One card, three figures: three tiles don't fit 320px. */}
+      <dl className="jim-card grid grid-cols-3 divide-x divide-white/[0.06] py-3.5">
+        {(
+          [
+            ["Sessions", m.sessions],
+            ["Day streak", m.streak],
+            ["Reflections", m.reflections],
+          ] as const
+        ).map(([label, value]) => (
+          <div
+            key={label}
+            className="flex min-w-0 flex-col-reverse items-center px-1 text-center"
+          >
+            <dt className="text-xs text-ayu-subtle">{label}</dt>
+            <dd className="jim-figure text-3xl font-semibold tracking-tight tabular-nums">
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
       {m.intention && (
         <Section title="Intention">

@@ -856,7 +856,7 @@ for (const width of [320]) {
         const grid = page.getByRole("region", { name: "By category" });
         await expect(grid.getByRole("table")).toBeVisible();
         await expect(
-          page.getByRole("region", { name: "Amazon" }).getByText("Twine roll")
+          page.getByRole("region", { name: "Amazon" }).getByText("Bought again")
         ).toBeVisible();
         await page
           .getByRole("region", { name: "Amazon" })

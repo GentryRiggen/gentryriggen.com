@@ -61,6 +61,7 @@ const TAP_SLOP = 8;
 const MAX_FOUND = 8;
 /** The drawing is 4 wide by 5 tall, like its box. */
 const ASPECT = 5 / 4;
+const MIN_WIDTH = 360;
 
 const START: View = { k: 1, tx: 0, ty: 0 };
 
@@ -95,7 +96,9 @@ export default function NoteGraph({ graph, onOpen, hrefFor }: NoteGraphProps) {
     const pos = layoutGraph(ids, graph.links);
     const raw = bounds(pos.values(), 30);
     // Widen the shorter side so the box is 4:5 and nothing is stretched.
-    const width = Math.max(raw.width, raw.height / ASPECT);
+    // A small graph isn't blown up: the drawing is never narrower than
+    // MIN_WIDTH units, so dots and labels keep a sensible size.
+    const width = Math.max(MIN_WIDTH, raw.width, raw.height / ASPECT);
     const height = width * ASPECT;
     const box = {
       x: raw.x - (width - raw.width) / 2,
