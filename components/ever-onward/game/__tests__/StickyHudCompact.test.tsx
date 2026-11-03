@@ -35,6 +35,7 @@ describe("StickyHud folded to one row", () => {
     expect(screen.getByTestId("lm-goal")).toBeInTheDocument();
     expect(screen.getByTestId("lm-hud-gauge")).toBeInTheDocument();
     expect(screen.queryByTestId("lm-hud-toggle")).not.toBeInTheDocument();
+    expect(screen.getByTestId("lm-hud-details")).not.toHaveAttribute("inert");
   });
 
   it("keeps the money, a mini goal and a mini gauge in the slim row", () => {
@@ -46,8 +47,9 @@ describe("StickyHud folded to one row", () => {
       "data-compact",
       "true"
     );
-    expect(screen.queryByTestId("lm-goal")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("lm-hud-gauge")).not.toBeInTheDocument();
+    // The details slide shut: still in the page, but hidden and inert.
+    expect(screen.getByTestId("lm-hud-details")).toHaveAttribute("inert");
+    expect(screen.getByTestId("lm-hud-details")).toHaveClass("invisible");
     expect(screen.getByTestId("lm-hud-mini-goal")).toHaveTextContent("5/8");
     expect(screen.getByTestId("lm-hud-mini-gauge")).toHaveAttribute(
       "data-tone",

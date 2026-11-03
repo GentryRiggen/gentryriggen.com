@@ -165,7 +165,7 @@ test.describe("Ever Onward", () => {
 
       // Scrolled down, the bar folds to one slim row; a tap peeks at it.
       await expect(hud).toHaveAttribute("data-compact", "true");
-      await expect(page.getByTestId("lm-hud-next")).toHaveCount(0);
+      await expect(page.getByTestId("lm-hud-next")).toBeHidden();
       await page.getByTestId("lm-hud-toggle").click();
       await expect(page.getByTestId("lm-hud-next")).toBeVisible();
 

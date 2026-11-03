@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.25.1",
+    date: "2026-11-02",
+    title: "A smooth fold",
+    highlights: [
+      "When the top bar folds on a phone it now slides shut, and the picture glides shorter with it, instead of snapping. Opening it again slides it back down",
+      "The bar now waits to fold until the picture has slid up to meet it, so there's no dark gap between them",
+    ],
+  },
+  {
     version: "1.25.0",
     date: "2026-11-02",
     title: "More room on phones",
