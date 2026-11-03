@@ -17,6 +17,8 @@ import {
   PHASE_TOWN,
   PHASE_WORLD,
   type SmilePhaseId,
+  MANUAL_RESOURCES,
+  RESOURCES,
 } from "./resources";
 import {
   NO_BAD_DAYS,
@@ -28,6 +30,12 @@ import { TUNING } from "./tuning";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
+/** What this chapter's taps and helpers make, lowercase ("blocks"). */
+const noun = (run: RunState): string =>
+  (
+    RESOURCES.find((r) => r.id === MANUAL_RESOURCES[run.phase])?.label ?? ""
+  ).toLowerCase();
+
 const plusOne = (run: RunState, id: string): RunState => ({
   ...run,
   owned: { ...run.owned, [id]: owned(run, id) + 1 },
@@ -36,11 +44,15 @@ const plusOne = (run: RunState, id: string): RunState => ({
 /** "Per tap 2 → 3" for a scale step, read from the run as it stands. */
 const scalePreview = (run: RunState, id: string): string =>
   [
-    rateEffect(manualPerTap(run), manualPerTap(plusOne(run, id)), "per tap"),
+    rateEffect(
+      manualPerTap(run),
+      manualPerTap(plusOne(run, id)),
+      `${noun(run)} per tap`
+    ),
     rateEffect(
       incomePerSecond(run),
       incomePerSecond(plusOne(run, id)),
-      "per second"
+      `${noun(run)}/sec`
     ),
   ].join("\n");
 
@@ -48,13 +60,17 @@ const helperPreview = (run: RunState, id: string): string =>
   rateEffect(
     incomePerSecond(run),
     incomePerSecond(plusOne(run, id)),
-    "per second"
+    `${noun(run)}/sec`
   );
 
-const coolPreview = (run: RunState, id: string): string =>
-  `Cooling speed ${coolPerSecond(run).toFixed(2)} → ${coolPerSecond(
-    plusOne(run, id)
-  ).toFixed(2)}`;
+/** "The cheer meter cools ×1.6 as fast" then "Cools 5% → 8% a second". */
+function coolPreview(run: RunState, id: string): string {
+  const before = coolPerSecond(run);
+  const next = coolPerSecond(plusOne(run, id));
+  const pct = (n: number): string => `${Number((n * 100).toFixed(1))}%`;
+  const faster = before > 0 ? Number((next / before).toFixed(1)) : 1;
+  return `The cheer meter cools ×${faster} as fast\nCools ${pct(before)} → ${pct(next)} a second`;
+}
 
 type Gate = (run: RunState) => boolean;
 const has =

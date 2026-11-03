@@ -1,5 +1,4 @@
 import { projectDoneFlag } from "../../engine/engine";
-import { formatNumber } from "../../engine/format";
 import type { ActionDef, ProjectDef, RunState } from "../../engine/types";
 import { knowForkMult } from "./forks";
 import { HELPER_LINES, owned, res } from "./lines";
@@ -104,8 +103,12 @@ export const OVERTIME_ACTIONS: readonly ActionDef[] = [
 
 // ------------------------------------------------------------------- projects
 
-const times = (before: number, after: number): string =>
-  `${formatNumber(Math.round(before * 100) / 100)} → ${formatNumber(Math.round(after * 100) / 100)}`;
+/** "×2", "×1.5": a project's multiplier, no more digits than it needs. */
+const times = (n: number): string => `×${Number(n.toFixed(2))}`;
+
+/** "half as fast" for 0.5, "×0.7 as fast" otherwise. */
+const asFast = (n: number): string =>
+  n === 0.5 ? "half as fast" : `${times(n)} as fast`;
 
 /** Hard hats and the wind tunnel: the tower sways half as fast. */
 export const knowhowSwayMult = (run: RunState): number =>
@@ -159,7 +162,7 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "Know-how spent here is not there for overtime.",
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "cross-braces") >= 1,
-    effectPreview: () => `Sway builds ${times(1, TUNING.sway.projectMult)}`,
+    effectPreview: () => `The tower sways ${asFast(TUNING.sway.projectMult)}`,
     botValue: 0.3,
   },
   {
@@ -171,8 +174,7 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It only helps if you keep some back for the footing.",
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "mason") >= 3,
-    effectPreview: () =>
-      `Footing lasts ${times(1, 1 / K.readyMixSpoil)}x as long`,
+    effectPreview: () => `Footing lasts ${times(1 / K.readyMixSpoil)} as long`,
     botValue: 0.35,
   },
   {
@@ -184,7 +186,7 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which overtime would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "crane") >= 2,
-    effectPreview: () => `Every crew ${times(1, K.prefabMult)}x`,
+    effectPreview: () => `Every crew pays ${times(K.prefabMult)}`,
   },
   {
     id: "wind-tunnel",
@@ -195,7 +197,7 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "Know-how spent here is not there for a night shift.",
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "damper") >= 1,
-    effectPreview: () => `Sway builds ${times(1, TUNING.sway.projectMult)}`,
+    effectPreview: () => `The tower sways ${asFast(TUNING.sway.projectMult)}`,
     botValue: 0.3,
   },
   {
@@ -207,7 +209,7 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It only helps if you place the loads that arrive.",
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "sky-crew") >= 3,
-    effectPreview: () => `Loads ${times(1, TUNING.deliveries.dockMult)}x`,
+    effectPreview: () => `Every load pays ${times(TUNING.deliveries.dockMult)}`,
     botValue: 0.4,
   },
   {
@@ -220,6 +222,6 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
       "It costs a lot of know-how, which a night shift would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "cloud-crane") >= 2,
-    effectPreview: () => `Every crew ${times(1, K.cableMult)}x`,
+    effectPreview: () => `Every crew pays ${times(K.cableMult)}`,
   },
 ];
