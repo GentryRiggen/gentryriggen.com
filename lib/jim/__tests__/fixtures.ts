@@ -298,9 +298,41 @@ export const VIEW_FIXTURE: ViewData = {
   doneTodos: [],
   health: {
     injections: [
-      { date: "2026-10-21", time: "8:00", mg: 50, ml: "0.25", note: "" },
-      { date: "2026-10-28", time: "8:10", mg: 50, ml: "0.25", note: "left" },
+      {
+        date: "2026-10-21",
+        time: "8:00",
+        mg: 50,
+        ml: "0.25",
+        site: "Left glute",
+        note: "",
+      },
+      {
+        date: "2026-10-28",
+        time: "~8:10 AM",
+        mg: 50,
+        ml: "0.25",
+        site: "Right glute",
+        note: "",
+      },
       { date: "2026-10-24", time: "8:05", mg: 50, ml: "0.25", note: "" },
+    ],
+    schedule: [
+      {
+        from: "2026-10-01",
+        days: [2, 5],
+        label: "Wed, Sat",
+        ml: 0.25,
+        mg: 50,
+        note: "",
+      },
+      {
+        from: "2026-11-10",
+        days: [],
+        label: "Twice a week",
+        ml: 0.3,
+        mg: 60,
+        note: "after the draw",
+      },
     ],
     labs: [
       {

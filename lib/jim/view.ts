@@ -59,6 +59,19 @@ export interface Injection {
   time: string;
   mg: number | null;
   ml: string;
+  /** "Left glute" / "Right glute"; blank before 2026-10-19 or on an older server. */
+  site?: string;
+  note: string;
+}
+
+/** One row of the dosing schedule in health/trt.md, oldest first. */
+export interface DosePlan {
+  from: string;
+  /** Weekday numbers, Monday = 0; empty when the days aren't fixed. */
+  days: number[];
+  label: string;
+  ml: number | null;
+  mg: number;
   note: string;
 }
 
@@ -77,6 +90,8 @@ export interface LabDraw {
 
 export interface HealthData {
   injections: Injection[];
+  /** Absent on an older server. */
+  schedule?: DosePlan[];
   labs: LabRow[];
   draws: LabDraw[];
   prescribedWeekly: number | null;
@@ -412,6 +427,26 @@ function toTodo(v: unknown): ViewTodo | null {
   return {
     ...(rest as unknown as ViewTodo),
     ...(label ? { short: label } : {}),
+  };
+}
+
+/** A dosing-schedule row, kept only when its date, days and dose are well formed. */
+function toDosePlan(v: unknown): DosePlan | null {
+  if (!isRecord(v)) return null;
+  if (typeof v.from !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v.from)) {
+    return null;
+  }
+  if (typeof v.mg !== "number" || !Number.isFinite(v.mg)) return null;
+  const days = Array.isArray(v.days)
+    ? v.days.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6)
+    : [];
+  return {
+    from: v.from,
+    days,
+    label: typeof v.label === "string" ? v.label : "",
+    ml: typeof v.ml === "number" && Number.isFinite(v.ml) ? v.ml : null,
+    mg: v.mg,
+    note: typeof v.note === "string" ? v.note : "",
   };
 }
 
@@ -782,6 +817,7 @@ export function normalizeView(raw: unknown): ViewData | null {
     calendar,
     health: {
       injections: list<Injection>(health.injections),
+      schedule: keep(health.schedule, toDosePlan),
       labs: list<LabRow>(health.labs),
       draws: list<LabDraw>(health.draws),
       prescribedWeekly:
