@@ -47,7 +47,7 @@ import PhaseCutscene from "./PhaseCutscene";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
 import useCompactHud from "./useCompactHud";
-import StickyHud from "./StickyHud";
+import StickyHud, { FOLD_EASE } from "./StickyHud";
 import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
@@ -166,32 +166,36 @@ export default function GameScreen({
   const [lastBuy, setLastBuy] = useState<LastBuy | null>(null);
 
   const { isCompact, isFolded, togglePeek } = useCompactHud(!run.complete);
-  const isCompactRef = useRef(isCompact);
-  useLayoutEffect(() => {
-    isCompactRef.current = isCompact;
-  }, [isCompact]);
-
   // The HUD's height goes into CSS variables on the root before the first
   // paint: `--eo-hud-now` (its height right now) pins the scene just below
   // it, and `--eo-hud-h` (its full, open height) spaces the page. The page's
-  // spacing never changes while the bar is folded, so nothing jumps.
+  // spacing never changes while the bar folds or opens, so nothing jumps:
+  // the details keep their natural height inside a shrinking clip, so the
+  // open height is the bar's height plus whatever the clip hides right now.
   useLayoutEffect(() => {
     const root = rootRef.current;
     const hud = hudRef.current;
     if (!root) return;
-    const setHeight = (px: number) => {
-      root.style.setProperty("--eo-hud-now", `${px}px`);
-      if (!isCompactRef.current)
-        root.style.setProperty("--eo-hud-h", `${px}px`);
-    };
     if (!hud) {
-      setHeight(0);
+      root.style.setProperty("--eo-hud-now", "0px");
+      root.style.setProperty("--eo-hud-h", "0px");
       return;
     }
-    setHeight(hud.offsetHeight);
+    const clip = hud.querySelector<HTMLElement>("[data-hud-clip]");
+    const details = hud.querySelector<HTMLElement>("[data-hud-details]");
+    const height = (el: HTMLElement | null) =>
+      el ? el.getBoundingClientRect().height : 0;
+    const measure = () => {
+      const now = height(hud);
+      const open = now - height(clip) + height(details);
+      root.style.setProperty("--eo-hud-now", `${now}px`);
+      root.style.setProperty("--eo-hud-h", `${open}px`);
+    };
+    measure();
     if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setHeight(hud.offsetHeight));
+    const observer = new ResizeObserver(measure);
     observer.observe(hud);
+    if (details) observer.observe(details);
     return () => observer.disconnect();
   }, [run.complete]);
 
@@ -370,7 +374,7 @@ export default function GameScreen({
         ref={sceneRef}
         inert={isCovered}
         data-folded={isFolded}
-        className={`sticky top-[var(--eo-hud-now,var(--eo-hud-h))] z-20 w-full lg:top-0 ${
+        className={`sticky top-[var(--eo-hud-now,var(--eo-hud-h))] z-20 w-full transition-[height,margin] ${FOLD_EASE} lg:top-0 lg:transition-none ${
           isFolded
             ? // Half height on screen; the margin keeps its full height in
               // the page so the content below never moves.

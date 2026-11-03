@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Scrolled past this, the bar folds to one row. */
-export const FOLD_AT = 64;
+/**
+ * Scrolled past this, the bar folds to one row. It waits until the scene has
+ * slid up to the bar (the tallest bar is about 130px taller open than
+ * folded), so folding never leaves a gap between the slim row and the scene.
+ */
+export const FOLD_AT = 140;
 /** Back above this, it opens again (a gap so it doesn't flicker). */
-export const UNFOLD_AT = 16;
+export const UNFOLD_AT = 112;
 /** A peek stays open until the page moves this far. */
 const PEEK_SCROLL = 48;
 

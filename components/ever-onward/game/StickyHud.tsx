@@ -117,6 +117,14 @@ function MiniGauge({ gauge }: { gauge: GaugeView }) {
   );
 }
 
+/** One easing for the whole fold, so the bar and the scene move together. */
+export const FOLD_EASE =
+  "duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none";
+
+/** Slim-row bits ease in when the bar folds. */
+const FADE_IN =
+  "animate-[lmHudIn_300ms_cubic-bezier(0.2,0,0,1)_both] motion-reduce:animate-none";
+
 /** What the HUD shows for a resource's value. */
 export const formatPrimary = (value: number): string =>
   formatNumber(Math.floor(value));
@@ -163,7 +171,7 @@ export default function StickyHud({
               {ICONS[resourceId] ?? ""}
             </span>
             <span
-              className={`${retroLabelClass} truncate leading-none ${isCompact ? "sr-only" : ""}`}
+              className={`${retroLabelClass} truncate leading-none transition-[max-width,opacity,margin] ${FOLD_EASE} ${isCompact ? "-mr-2 max-w-0 opacity-0" : "max-w-48 opacity-100"}`}
             >
               {resourceLabel}
             </span>
@@ -171,13 +179,13 @@ export default function StickyHud({
               value={value}
               format={formatPrimary}
               testId="lm-hud-value"
-              className={`${pixelClass} ${isCompact ? "text-base" : "text-xl"} leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
+              className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
             />
             <RateReadout
               rate={rate}
               trend={trend}
               testId="lm-hud-rate"
-              className={`shrink-0 font-mono font-bold ${isCompact ? "text-xs" : "text-sm"}`}
+              className={`shrink-0 font-mono font-bold text-sm`}
             />
           </p>
           {isFolded && (
@@ -189,10 +197,18 @@ export default function StickyHud({
                 isCompact ? "Show the goal and details" : "Fold the bar"
               }
               onClick={onToggleCompact}
-              className={`-my-2.5 flex min-h-11 shrink-0 touch-manipulation items-center gap-2 px-1 ${retroFocusClass}`}
+              className={`-my-2.5 flex min-h-11 shrink-0 touch-manipulation items-center gap-2 px-1 ${FADE_IN} ${retroFocusClass}`}
             >
-              {isCompact && goal && <MiniGoal goal={goal} />}
-              {isCompact && gauge && <MiniGauge gauge={gauge} />}
+              {isCompact && goal && (
+                <span className={FADE_IN}>
+                  <MiniGoal goal={goal} />
+                </span>
+              )}
+              {isCompact && gauge && (
+                <span className={FADE_IN}>
+                  <MiniGauge gauge={gauge} />
+                </span>
+              )}
               <span
                 aria-hidden="true"
                 className={`${pixelClass} text-xs leading-none text-amber-300`}
@@ -216,27 +232,40 @@ export default function StickyHud({
             </button>
           )}
         </div>
-        {!isCompact && (
-          <>
-            {goal && <GoalMeter goal={goal} />}
-            {gauge && (
-              <div className="mt-2">
-                <GaugeMeter gauge={gauge} testId="lm-hud-gauge" />
-              </div>
-            )}
-            {/* Reserves the bar's height when there is no next upgrade yet. */}
-            <div className={goal ? "min-h-8" : "min-h-10"}>
-              {next && (
-                <NextUpgradeBar
-                  next={next}
-                  onSelect={onSelectNext}
-                  testId="lm-hud-next"
-                  isSmall={goal !== null}
-                />
+        {/* The details slide shut rather than vanish. They stay in the page
+            (hidden once shut), so their full height can still be measured. */}
+        <div
+          data-testid="lm-hud-details"
+          data-hud-clip=""
+          inert={isCompact}
+          className={`grid transition-[grid-template-rows,opacity,visibility] ${FOLD_EASE} ${
+            isCompact
+              ? "invisible grid-rows-[0fr] opacity-0"
+              : "visible grid-rows-[1fr] opacity-100"
+          }`}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div data-hud-details="" className="flow-root">
+              {goal && <GoalMeter goal={goal} />}
+              {gauge && (
+                <div className="mt-2">
+                  <GaugeMeter gauge={gauge} testId="lm-hud-gauge" />
+                </div>
               )}
+              {/* Reserves the bar's height when there is no next upgrade yet. */}
+              <div className={goal ? "min-h-8" : "min-h-10"}>
+                {next && (
+                  <NextUpgradeBar
+                    next={next}
+                    onSelect={onSelectNext}
+                    testId="lm-hud-next"
+                    isSmall={goal !== null}
+                  />
+                )}
+              </div>
             </div>
-          </>
-        )}
+          </div>
+        </div>
         <SpendFloater spend={spend} />
         <EffectFloater
           effect={effect}
