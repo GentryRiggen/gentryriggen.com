@@ -226,6 +226,22 @@ it("ticks a todo with its full line and offers Undo, as Home does", async () => 
   ).toBeInTheDocument();
 });
 
+it("says when a repeating todo is next due, as Home does", async () => {
+  const user = userEvent.setup();
+  let resolve: (r: view.TodoResult) => void = () => {};
+  toggleTodo.mockReturnValue(
+    new Promise<view.TodoResult>((res) => {
+      resolve = res;
+    })
+  );
+  render(<Page />);
+  await user.click(screen.getByRole("checkbox", { name: "Plan the offsite" }));
+  expect(screen.getByText("next one coming")).toBeInTheDocument();
+  await act(async () => resolve({ ok: true, sha: "s", nextDue: "2026-11-13" }));
+  expect(screen.getByText("Done. Next one due Nov 13.")).toBeInTheDocument();
+  expect(screen.queryByText("next one coming")).toBeNull();
+});
+
 it("lists what was done in a closed section, and unticks it", async () => {
   const user = userEvent.setup();
   toggleTodo.mockResolvedValue({ ok: true, sha: null });

@@ -1111,7 +1111,15 @@ async function readJson(res: Response): Promise<unknown> {
 }
 
 export type TodoResult =
-  | { ok: true; sha: string | null }
+  | {
+      ok: true;
+      sha: string | null;
+      /**
+       * Checking off a repeating todo added its next occurrence, due then
+       * (YYYY-MM-DD). Absent otherwise, and from servers that don't say.
+       */
+      nextDue?: string;
+    }
   | { ok: false; reason: "changed" | "failed" | "denied"; message: string };
 
 export const TODO_MESSAGES = {
@@ -1170,10 +1178,18 @@ export async function toggleTodo(
     return { ok: false, reason: "failed", message: TODO_MESSAGES.failed };
   }
   const body = await readJson(res);
+  const nextDue = isRecord(body) ? readNextDue(body.next) : null;
   return {
     ok: true,
     sha: isRecord(body) && typeof body.sha === "string" ? body.sha : null,
+    ...(nextDue ? { nextDue } : {}),
   };
+}
+
+/** `next: {"due": "YYYY-MM-DD"}` from /api/todo, or null. */
+function readNextDue(next: unknown): string | null {
+  if (!isRecord(next) || typeof next.due !== "string") return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(next.due) ? next.due : null;
 }
 
 export interface SearchResult {

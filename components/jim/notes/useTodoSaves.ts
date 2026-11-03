@@ -25,6 +25,8 @@ export type ToastBody =
       todo: ViewTodo;
       /** The refetch after the save, which has the line as it is now. */
       fresh: Promise<ViewData | null>;
+      /** A repeating todo's next occurrence is due then (YYYY-MM-DD). */
+      nextDue?: string;
     }
   | { kind: "error"; message: string };
 
@@ -131,7 +133,15 @@ export default function useTodoSaves({
           if (done) saved.current.set(key, fresh);
           if (!mounted.current) return;
           setMarks((prev) => ({ ...prev, [key]: { done, pending: false } }));
-          if (done) show({ kind: "done", todo, fresh });
+          if (done) {
+            const { nextDue } = result;
+            show({
+              kind: "done",
+              todo,
+              fresh,
+              ...(nextDue ? { nextDue } : {}),
+            });
+          }
           return;
         }
         if (result.reason !== "denied") void onChanged();
