@@ -16,6 +16,7 @@ import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
+import { SMILE_EVENTS } from "./events";
 import { isSmileComplete, manualSmile, tickSmile } from "./tick";
 import { UPGRADES } from "./upgrades";
 import { TEASERS, VISITORS, smileCountdown } from "./visitors";
@@ -39,6 +40,7 @@ export const smileUniverse: UniverseDef = {
   maxVisible: 3,
   goalMeter: smileGoal,
   story: STORY,
+  events: SMILE_EVENTS,
   teasers: TEASERS,
   visitors: VISITORS,
   countdown: smileCountdown,

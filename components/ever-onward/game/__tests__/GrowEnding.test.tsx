@@ -141,9 +141,9 @@ describe("the Last Seed ending", () => {
     saveFinished();
     await openGrow();
     await userEvent.click(
-      await screen.findByRole("button", { name: /Story \(/ })
+      await screen.findByRole("button", { name: /Log \(/ })
     );
-    const drawer = screen.getByRole("dialog", { name: "Story" });
+    const drawer = screen.getByRole("dialog", { name: "Story & log" });
     for (const id of ENDING_STORY_IDS) {
       expect(drawer).toHaveTextContent(textOf(id).slice(0, 40));
     }

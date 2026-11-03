@@ -30,7 +30,7 @@ describe("the story ticker", () => {
     const ticker = screen.getByTestId("lm-story-ticker");
     expect(ticker).toHaveTextContent("A little boat sees the beam");
     expect(
-      within(ticker).getByRole("button", { name: /Story \(2\)/ })
+      within(ticker).getByRole("button", { name: /Log \(2\)/ })
     ).toBeInTheDocument();
   });
 
@@ -46,15 +46,15 @@ describe("the story ticker", () => {
     );
     expect(screen.getByTestId("lm-story-new")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /1 new/ })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Log \(/ }));
     await userEvent.click(screen.getByRole("button", { name: "Close story" }));
     expect(screen.queryByTestId("lm-story-new")).not.toBeInTheDocument();
   });
 
   it("opens a labelled dialog and focuses the close button", async () => {
     renderTicker(runWithStory(["coast-hello", "coast-first-ship"]));
-    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
-    const dialog = screen.getByRole("dialog", { name: "Story" });
+    await userEvent.click(screen.getByRole("button", { name: /Log \(/ }));
+    const dialog = screen.getByRole("dialog", { name: "Story & log" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(screen.getByRole("button", { name: "Close story" })).toHaveFocus();
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(2);
@@ -62,7 +62,7 @@ describe("the story ticker", () => {
 
   it("closes with Escape, the close button and the backdrop, restoring focus", async () => {
     renderTicker(runWithStory(["coast-hello"]));
-    const opener = () => screen.getByRole("button", { name: /Story \(/ });
+    const opener = () => screen.getByRole("button", { name: /Log \(/ });
     for (const close of [
       () => userEvent.keyboard("{Escape}"),
       () =>
@@ -81,7 +81,7 @@ describe("the story ticker", () => {
   it("leaves focus alone when the game re-renders while it is open", async () => {
     const run = runWithStory(["coast-hello"]);
     const { rerender } = renderTicker(run);
-    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Log \(/ }));
     const dialog = screen.getByRole("dialog");
     await userEvent.tab();
     const focused = document.activeElement as HTMLElement;
@@ -102,7 +102,7 @@ describe("the story ticker", () => {
   it("closes when a full-screen moment covers the game", async () => {
     const run = runWithStory(["coast-hello"]);
     const { rerender } = renderTicker(run);
-    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Log \(/ }));
     rerender(
       <StoryTicker def={lightUniverse} run={run} endingIds={[]} isCovered />
     );
@@ -111,7 +111,7 @@ describe("the story ticker", () => {
 
   it("keeps Tab inside the dialog", async () => {
     renderTicker(runWithStory(["coast-hello"]));
-    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Log \(/ }));
     const dialog = screen.getByRole("dialog");
     for (let i = 0; i < 6; i++) {
       await userEvent.tab();
@@ -121,7 +121,7 @@ describe("the story ticker", () => {
 
   it("lets a player re-read the intros of the parts reached", async () => {
     renderTicker(runWithStory(["coast-hello", "night-hello"], 1));
-    await userEvent.click(screen.getByRole("button", { name: /Story/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Log \(/ }));
     const toggles = screen.getAllByRole("button", { name: /^Intro · Part/ });
     expect(toggles).toHaveLength(2);
     await userEvent.click(toggles[0]);

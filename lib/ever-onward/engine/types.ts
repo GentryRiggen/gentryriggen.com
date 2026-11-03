@@ -36,6 +36,36 @@ export interface RunState {
   transitions: PhaseTransition[];
   /** Deterministic RNG state (see rng.ts). */
   rng: number;
+  /**
+   * The running log of things that happened (a storm landed, the nets came
+   * in), newest last and capped. Missing on saves from before the log.
+   */
+  log?: LogEntry[];
+  /** Per event source, how many of its events the log has taken in. */
+  logSeen?: Record<string, number>;
+}
+
+/** One line in the running log. */
+export interface LogEntry {
+  text: string;
+  /** Run seconds when it happened. */
+  at: number;
+  /** How many story lines had fired by then (orders it among the story). */
+  after: number;
+  tone: LogTone;
+}
+
+export type LogTone = "good" | "bad" | "info";
+
+/**
+ * Something that happens again and again (a storm, a haul). Each time `count`
+ * goes up, the log takes in `line` as it reads right then.
+ */
+export interface EventSource {
+  id: string;
+  count(run: RunState): number;
+  line(run: RunState): string | null;
+  tone?(run: RunState): LogTone;
 }
 
 export interface ResourceDef {
@@ -369,6 +399,8 @@ export interface UniverseDef {
    */
   maxVisible?: number;
   story: readonly StoryMessage[];
+  /** Repeating events that go in the running log (and pop up). */
+  events?: readonly EventSource[];
   /** Greyed "someday" cards for upgrades that have not popped in yet. */
   teasers?: readonly TeaserDef[];
   /** Milestone-gated arrivals that wait to be greeted (see `VisitorDef`). */

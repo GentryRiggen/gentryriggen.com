@@ -16,6 +16,7 @@ import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
+import { GROW_EVENTS } from "./events";
 import { isGrowComplete, manualGrow, tickGrow } from "./tick";
 import { UPGRADES } from "./upgrades";
 import { TEASERS, VISITORS, growCountdown } from "./visitors";
@@ -39,6 +40,7 @@ export const growUniverse: UniverseDef = {
   maxVisible: 3,
   goalMeter: growGoal,
   story: STORY,
+  events: GROW_EVENTS,
   teasers: TEASERS,
   visitors: VISITORS,
   countdown: growCountdown,

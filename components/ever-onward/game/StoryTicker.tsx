@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
+import LogTag from "./LogTag";
 import StoryDrawer from "./StoryDrawer";
 import { NEWS_PREFIX, storyEntries } from "./storyEntries";
 import {
@@ -20,8 +21,8 @@ interface StoryTickerProps {
 }
 
 /**
- * One line of the newest story near the top of the page, with a button that
- * opens the whole story. Lines the player has not opened the drawer for yet
+ * One line of the newest story or log line near the top of the page, with a
+ * button that opens the whole story and log. Lines the player has not opened the drawer for yet
  * count as unread (kept in component state only).
  */
 export default function StoryTicker({
@@ -102,6 +103,7 @@ export default function StoryTicker({
             NEWS
           </span>
         )}
+        {newest?.event && <LogTag tone={newest.event.tone} />}
         {newestText}
       </p>
       <button
@@ -112,7 +114,7 @@ export default function StoryTicker({
         onClick={handleOpen}
         className={`${pixelClass} inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center border-2 border-amber-300 bg-amber-950/60 px-3 text-[10px] text-amber-300 hover:bg-amber-900/70 active:translate-y-0.5 ${retroFocusClass}`}
       >
-        Story ({entries.length})
+        Log ({entries.length})
         {unread > 0 && <span className="sr-only">, {unread} new</span>}
       </button>
       {isOpen && (

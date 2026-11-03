@@ -35,9 +35,21 @@ function fromBase64Url(payload: string): string {
   return atob(padded + "=".repeat((4 - (padded.length % 4)) % 4));
 }
 
+/** The running log stays on this device: it would only make codes longer. */
+function withoutLogs(save: SaveData): SaveData {
+  const universes = Object.fromEntries(
+    Object.entries(save.universes).map(([id, u]) => {
+      const run = { ...u.run };
+      delete run.log;
+      return [id, { ...u, run }];
+    })
+  );
+  return { ...save, universes };
+}
+
 /** A save as one line of text: `EO1-<payload>-<checksum>`. */
 export function encodeBackup(save: SaveData): string {
-  const payload = toBase64Url(JSON.stringify(save));
+  const payload = toBase64Url(JSON.stringify(withoutLogs(save)));
   return `${PREFIX}${payload}-${checksum(payload)}`;
 }
 
@@ -58,7 +70,10 @@ export function decodeBackup(code: string): SaveData | null {
   try {
     const parsed = parseSaveReport(JSON.parse(fromBase64Url(payload)));
     // A code with a damaged universe is refused rather than half-loaded.
-    return parsed && parsed.dropped.length === 0 ? parsed.save : null;
+    if (!parsed || parsed.dropped.length > 0) return null;
+    // The log never travels in a code: a restored run starts a fresh one.
+    for (const u of Object.values(parsed.save.universes)) u.run.log = [];
+    return parsed.save;
   } catch {
     return null;
   }

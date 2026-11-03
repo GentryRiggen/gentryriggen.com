@@ -15,6 +15,7 @@ import { PRESTIGE } from "./prestige";
 import { ALL_PROJECTS } from "./projects";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
+import { LIGHT_EVENTS } from "./events";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
 import { TEASERS, VISITORS, lightCountdown } from "./visitors";
@@ -33,6 +34,7 @@ export const lightUniverse: UniverseDef = {
   projects: ALL_PROJECTS,
   maxVisible: 3,
   story: STORY,
+  events: LIGHT_EVENTS,
   teasers: TEASERS,
   visitors: VISITORS,
   countdown: lightCountdown,

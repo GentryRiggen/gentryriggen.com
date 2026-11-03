@@ -48,6 +48,7 @@ import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
 import useCompactHud from "./useCompactHud";
 import StickyHud, { FOLD_EASE } from "./StickyHud";
+import LogToast from "./LogToast";
 import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
 import UpgradeList, { upgradeElementId } from "./UpgradeList";
@@ -637,6 +638,7 @@ export default function GameScreen({
       )}
 
       <NarrationLayer def={def} run={run} isSuppressed={overlay !== null} />
+      <LogToast run={run} isSuppressed={isCovered} />
       {overlay === "phase" && (
         <PhaseCutscene
           def={def}

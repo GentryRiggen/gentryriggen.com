@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import { introClipId, storyClipId } from "@/lib/ever-onward/narration/lines";
+import { formatDuration } from "@/lib/ever-onward/engine/format";
 import ListenButton from "../narration/ListenButton";
 import { uiFor } from "../universes";
+import LogTag from "./LogTag";
 import PhaseBriefing from "./PhaseBriefing";
 import PhaseCutscene from "./PhaseCutscene";
 import { NEWS_PREFIX, type StoryEntry } from "./storyEntries";
@@ -31,7 +33,7 @@ const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * The whole story in a bottom sheet (phones) or side panel (wide screens),
+ * The whole story and running log in a bottom sheet (phones) or side panel (wide screens),
  * with the intros of the parts reached so far below for re-reading.
  */
 export default function StoryDrawer({
@@ -115,7 +117,7 @@ export default function StoryDrawer({
       >
         <div className="flex items-center justify-between gap-3 border-b-4 border-amber-500/60 p-3">
           <RetroHeading as="h2" id="lm-story-title" className="text-sm">
-            Story
+            Story &amp; log
           </RetroHeading>
           <button
             ref={closeRef}
@@ -152,14 +154,22 @@ export default function StoryDrawer({
                       NEWS
                     </span>
                   )}
+                  {entry.event && <LogTag tone={entry.event.tone} />}
                   {isNews
                     ? entry.text.slice(NEWS_PREFIX.length).trim()
                     : entry.text}
-                  <ListenButton
-                    clipId={storyClipId(def.id, entry.id)}
-                    accessibleLabel="Listen to this message"
-                    className="ml-2 size-11 border-2 border-slate-500 align-middle text-xs text-amber-300 hover:bg-slate-800"
-                  />
+                  {entry.event ? (
+                    <span className="ml-2 text-xs whitespace-nowrap text-slate-500">
+                      <span className="sr-only">at </span>
+                      {formatDuration(entry.event.at)}
+                    </span>
+                  ) : (
+                    <ListenButton
+                      clipId={storyClipId(def.id, entry.id)}
+                      accessibleLabel="Listen to this message"
+                      className="ml-2 size-11 border-2 border-slate-500 align-middle text-xs text-amber-300 hover:bg-slate-800"
+                    />
+                  )}
                 </li>
               );
             })}

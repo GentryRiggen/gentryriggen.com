@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.26.0",
+    date: "2026-11-02",
+    title: "A log of everything that happens",
+    highlights: [
+      "When something happens (a storm lands, the nets come in, a probe gets home, the fair hands out ribbons, a parade starts), a little message pops up above the big button for a few seconds",
+      "You get a heads-up when a storm is coming, with the town the forecast thinks is likeliest",
+      "The Story button is now the Log. It keeps the story and everything that happened, in order, with the time it happened, so you can scroll back through it any time",
+    ],
+  },
+  {
     version: "1.25.1",
     date: "2026-11-02",
     title: "A smooth fold",
