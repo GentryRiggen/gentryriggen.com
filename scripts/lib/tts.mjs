@@ -30,7 +30,8 @@ const hash = (text) =>
  * with the module as `m`), which must be the `{ id, text }[]` lines.
  */
 export function loadLines(modulePath, expression) {
-  const code = `import(${JSON.stringify(modulePath)}).then((m) => console.log(JSON.stringify(${expression})))`;
+  // tsx may hand back the CommonJS shape, with the exports under `default`.
+  const code = `import(${JSON.stringify(modulePath)}).then((mod) => { const m = mod.default ?? mod; console.log(JSON.stringify(${expression})); })`;
   const out = execFileSync("npx", ["--yes", "tsx", "-e", code], {
     cwd: ROOT,
     encoding: "utf8",

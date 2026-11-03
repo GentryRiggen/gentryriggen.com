@@ -1,5 +1,5 @@
 import type { PhaseDef, RunState } from "../../engine/types";
-import { CUTSCENES } from "./cutscenes";
+import { CUTSCENES, TIPS } from "./cutscenes";
 import { openQuiet } from "./quiet";
 import {
   MANUAL_RESOURCES,
@@ -36,6 +36,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_FRIEND,
     cutscene: CUTSCENES[PHASE_FRIEND],
+    tips: TIPS[PHASE_FRIEND],
     title: "One Sad Friend",
     intro:
       "This is a robot with one job: make everyone smile. And here is the first someone, sitting on a step with their chin in their hands. Tell a joke, tie on a balloon, pour a lemonade and see what happens. Every big cheer starts with one small laugh.",
@@ -48,6 +49,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_TOWN,
     cutscene: CUTSCENES[PHASE_TOWN],
+    tips: TIPS[PHASE_TOWN],
     title: "The Town",
     intro:
       "The friend is smiling, and good news gets around fast. Now there is a whole town of faces, and the robot has a funny hat, a parade and a plan. Be loud, be silly and leave nobody out. Nobody ever asked for a quieter town.",
@@ -63,6 +65,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_WORLD,
     cutscene: CUTSCENES[PHASE_WORLD],
+    tips: TIPS[PHASE_WORLD],
     title: "The World",
     intro:
       "The town is delighted. The next town is delighted, and the one after that. The robot was told to make everyone smile, and everyone is a very big word. Posters go up, loudspeakers go on, and a cheerful voice wishes the whole world a nice day. It is a nice day. It is always a nice day.",
@@ -78,6 +81,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_QUIET,
     cutscene: CUTSCENES[PHASE_QUIET],
+    tips: TIPS[PHASE_QUIET],
     title: "The Quiet",
     intro:
       "The whole world is smiling, and so loud you can hardly hear yourself think. Then, at the very edge of the cheer, the robot spots one person on a bench who is not. The cheerful voice does not seem to reach it. So the robot puts down the paintbrush, and for the first time in a long time, it simply sits.",

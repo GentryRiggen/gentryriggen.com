@@ -116,7 +116,7 @@ function Outside({ night }: { night: boolean }) {
 /** A watering robot, in the corner, looking at the pot. */
 export function Robot() {
   return (
-    <g aria-hidden="true">
+    <g aria-hidden="true" className="eo-scene-robot">
       <rect x="52" y="166" width="22" height="16" fill="#8a9bc0" />
       <rect x="54" y="168" width="18" height="12" fill="#b6c6e6" />
       <rect x="51" y="150" width="24" height="17" fill="#26335f" />

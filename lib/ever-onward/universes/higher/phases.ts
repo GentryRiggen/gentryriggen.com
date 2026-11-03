@@ -1,5 +1,5 @@
 import type { PhaseDef, RunState } from "../../engine/types";
-import { CUTSCENES } from "./cutscenes";
+import { CUTSCENES, TIPS } from "./cutscenes";
 import { resetDeliveries } from "./deliveries";
 import { HELPER_LINES } from "./lines";
 import {
@@ -45,6 +45,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_PLAYROOM,
     cutscene: CUTSCENES[PHASE_PLAYROOM],
+    tips: TIPS[PHASE_PLAYROOM],
     title: "The Playroom",
     intro:
       "This is one little builder robot, and it has been told one thing: build it higher. There is a rug, a box of wooden blocks and a very tall afternoon. Stack a block, then another. Every big tower starts exactly like this.",
@@ -60,6 +61,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_TOWN,
     cutscene: CUTSCENES[PHASE_TOWN],
+    tips: TIPS[PHASE_TOWN],
     title: "The Town",
     intro:
       "The treehouse grew into a tower, and the whole town came out to look. There are bricks to lay, cranes to swing and a mayor with very large scissors. Everybody cheers, and the robot is a hero. Keep building, and keep it standing straight.",
@@ -81,6 +83,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_SKY,
     cutscene: CUTSCENES[PHASE_SKY],
+    tips: TIPS[PHASE_SKY],
     title: "The Sky",
     intro:
       "The tower climbs past the clouds, past the birds, past the place where the aeroplanes go. Down below, the town is in its shadow, and fewer lights are on in the streets. Up here there is just wind, and one more beam, and a long, long cable.",
@@ -100,6 +103,7 @@ export const PHASES: readonly PhaseDef[] = [
   {
     id: PHASE_TOP,
     cutscene: CUTSCENES[PHASE_TOP],
+    tips: TIPS[PHASE_TOP],
     title: "The Top",
     intro:
       "This is the very top. The last block is in place, and there is nobody up here but a robot, a lot of wind and some very quiet stars. The robot has built everything there is to build. It has one block left, and a long way to carry it down. It goes slowly. There is no hurry any more.",

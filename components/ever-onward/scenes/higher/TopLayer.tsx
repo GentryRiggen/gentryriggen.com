@@ -24,7 +24,7 @@ function robotAt(share: number): { x: number; y: number } {
 
 function Robot({ x, y, pack }: { x: number; y: number; pack: number }) {
   return (
-    <g>
+    <g className="eo-scene-robot">
       <Px x={x - 4} y={y - 16} w={9} h={8} c="#9fb4c8" />
       <Px x={x - 2} y={y - 14} w={2} h={2} c="#1c2432" />
       <Px x={x + 1} y={y - 14} w={2} h={2} c="#1c2432" />

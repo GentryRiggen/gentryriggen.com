@@ -84,14 +84,77 @@ export interface CutsceneShowcase {
   resources?: Record<string, number>;
 }
 
-/** One frame of a phase cutscene. */
+/** What the little robot does in a shot of an intro film. */
+export type RobotMove =
+  /** Walks in from the left edge to its spot. */
+  | "enter"
+  /** Strolls across, from a little left of its spot to it. */
+  | "walk"
+  /** Stands, breathing and blinking. */
+  | "idle"
+  /** Tips back to gaze up at something big. */
+  | "look-up"
+  /** Hops for joy. */
+  | "hop"
+  /** Waves its free hand. */
+  | "wave"
+  /** A small, sure nod: decided. */
+  | "nod"
+  /** Jolts back, eyes wide: wonder or surprise. */
+  | "gasp"
+  /** Busy hands, working away. */
+  | "work"
+  /** Lifts the lantern high. */
+  | "lift"
+  /** Spins once, delighted. */
+  | "spin"
+  /** Sits and rests, small and still. */
+  | "sit"
+  /** Walks off to the right edge. */
+  | "exit";
+
+/** How the camera moves over the picture during a shot. */
+export type CameraMove =
+  | "still"
+  | "push-in"
+  | "pull-out"
+  | "pan-left"
+  | "pan-right"
+  | "tilt-up"
+  | "tilt-down"
+  | "drift";
+
+/** A little symbol that pops above the robot's head. */
+export type RobotEmote = "!" | "?" | "♥" | "…" | "♪" | "✦";
+
+/**
+ * One shot of a phase's intro film. The film plays by itself: each shot
+ * types its line under the picture, the narrator reads it, the camera moves
+ * and the robot acts, then the next shot follows.
+ */
 export interface CutsceneFrame {
-  /** What the narrator says (and the screen shows) for this frame. */
+  /** What the narrator says (and the screen types) for this shot. */
   text: string;
-  /** Frame 3 only: short, kind, accurate tips for doing well. */
-  tips?: readonly string[];
-  /** The picture from this frame on; later frames keep it unless they set their own. */
+  /** The picture from this shot on; later shots keep it unless they set their own. */
   showcase?: CutsceneShowcase;
+  /**
+   * "title" draws a title card (the universe's name over the stars) instead
+   * of the scene; "dark" is a black frame with only the robot, for quiet beats.
+   */
+  card?: "title" | "dark";
+  /** The robot in this shot; omit to leave it out of the picture. */
+  robot?: {
+    move: RobotMove;
+    /** Where it stands, 0 (left edge) to 100 (right edge). Default 30. */
+    x?: number;
+    emote?: RobotEmote;
+    /** Default "right". */
+    facing?: "left" | "right";
+  };
+  /** Default "drift". */
+  camera?: CameraMove;
+  /** The least time on screen; default from the length of the line. */
+  seconds?: number;
 }
 
 export interface PhaseDef {
@@ -105,10 +168,13 @@ export interface PhaseDef {
   /** One plain-words goal line, shown and read after the intro. */
   goal?: string;
   /**
-   * The cutscene that plays when the phase begins: four frames (where you
-   * are, what you do and why, how to do well, your goal).
+   * The intro film that plays when the phase begins: a run of shots that
+   * follow the little robot into the part, then a closing card with the goal
+   * and `tips`. A first phase's film opens on a title card for the universe.
    */
   cutscene?: readonly CutsceneFrame[];
+  /** Two or three short, kind, accurate tips, on the film's closing card. */
+  tips?: readonly string[];
   /** The resource the free manual action earns here. */
   manualResource: string;
   manualLabel: string;
