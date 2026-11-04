@@ -34,6 +34,7 @@ import {
   ExploreGraph,
   ExploreTimeline,
 } from "@/components/jim/notes/NotesExplore";
+import { NotesElection } from "@/components/jim/notes/NotesElection";
 import NotesPerson from "@/components/jim/notes/NotesPerson";
 import NotesReminder from "@/components/jim/notes/NotesReminder";
 import NotesReminders from "@/components/jim/notes/NotesReminders";
@@ -132,7 +133,8 @@ interface NotesShellProps {
 
 /**
  * The pills along the top on a phone. Health holds Training, Golf and
- * Mindset; People holds the Year; Explore holds Timeline, Graph and Ballot.
+ * Mindset; People holds the Year; Explore holds Timeline, Graph, Ballot and
+ * Election.
  */
 type Pill =
   "home" | "todos" | "work" | "money" | "health" | "people" | "explore";
@@ -153,7 +155,7 @@ const NO_DIRECTORY = { updated: "", people: [] };
 const SUB_PAGES: Partial<Record<Pill, readonly NotesPage[]>> = {
   health: ["health", "training", "golf", "mindset"],
   people: ["people", "year"],
-  explore: ["timeline", "graph", "ballot"],
+  explore: ["timeline", "graph", "ballot", "election"],
 };
 
 function pillOf(page: NotesPage): Pill {
@@ -771,7 +773,8 @@ function NotesShellView({
   } else if (
     listPage === "timeline" ||
     listPage === "graph" ||
-    listPage === "ballot"
+    listPage === "ballot" ||
+    listPage === "election"
   ) {
     const explore = {
       getToken,
@@ -785,8 +788,10 @@ function NotesShellView({
         <ExploreTimeline {...explore} />
       ) : listPage === "graph" ? (
         <ExploreGraph {...explore} />
-      ) : (
+      ) : listPage === "ballot" ? (
         <ExploreBallot {...explore} />
+      ) : (
+        <NotesElection {...explore} />
       );
   } else if (listPage === "mindset") {
     pageBody = <NotesMindset data={data} />;

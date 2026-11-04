@@ -3,6 +3,7 @@
 import type { Ref } from "react";
 import {
   Brain,
+  Landmark,
   Briefcase,
   CalendarDays,
   Clock3,
@@ -70,6 +71,7 @@ const PAGE_ICONS: Record<NotesPage, LucideIcon> = {
   timeline: Clock3,
   graph: Network,
   ballot: Vote,
+  election: Landmark,
 };
 
 const ITEM =
