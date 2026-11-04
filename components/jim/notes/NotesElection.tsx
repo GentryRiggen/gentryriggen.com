@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, RefreshCw } from "lucide-react";
 import {
   ExploreFrame,
   type ExplorePageProps,
@@ -20,7 +20,11 @@ import {
   type RaceAt,
   type RaceKind,
 } from "@/lib/jim/election";
-import { useExplore } from "@/lib/jim/explore";
+import {
+  refreshElections,
+  useExplore,
+  type ElectionRefresh,
+} from "@/lib/jim/explore";
 
 /**
  * Election: relive a night one update at a time. The slider moves through the
@@ -50,6 +54,12 @@ const KIND_FILTERS: readonly { id: KindFilter; label: string }[] = [
   { id: "house", label: "House" },
   { id: "governor", label: "Governor" },
 ];
+
+const CHECKED: Record<ElectionRefresh, string> = {
+  updated: "New results added.",
+  "nothing new": "Nothing new yet.",
+  failed: "Couldn't reach the results. Try again in a minute.",
+};
 
 function clock(at: string): string {
   return new Date(at).toLocaleTimeString("en-US", {
@@ -363,6 +373,18 @@ function Night({ election }: { election: Election }) {
 export function NotesElection(props: ExplorePageProps) {
   const state = useExplore("elections", props.getToken, props.api, true);
   const [slug, setSlug] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState<ElectionRefresh | null>(null);
+
+  async function check() {
+    setChecking(true);
+    setChecked(null);
+    const outcome = await refreshElections(props.getToken, props.api);
+    if (outcome === "updated") await state.reload();
+    setChecked(outcome);
+    setChecking(false);
+  }
+
   return (
     <ExploreFrame state={state} what="the election">
       {({ elections }) => {
@@ -380,10 +402,32 @@ export function NotesElection(props: ExplorePageProps) {
                 onChange={setSlug}
               />
             )}
-            <h2 className="text-xl font-semibold text-ayu-text">
-              {election.title}
-            </h2>
-            <Night key={election.slug} election={election} />
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-ayu-text">
+                {election.title}
+              </h2>
+              <button
+                type="button"
+                onClick={() => void check()}
+                disabled={checking}
+                className="flex min-h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-ayu-accent ring-1 ring-ayu-accent/30 hover:bg-ayu-accent/10 disabled:opacity-60"
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  className={`size-4 ${checking ? "animate-spin" : ""}`}
+                />
+                {checking ? "Checking…" : "Refresh"}
+              </button>
+            </div>
+            {checked && (
+              <p role="status" className="text-sm text-ayu-subtle">
+                {CHECKED[checked]}
+              </p>
+            )}
+            <Night
+              key={`${election.slug}-${election.updates.length}`}
+              election={election}
+            />
           </div>
         );
       }}

@@ -103,6 +103,54 @@ describe("NotesElection", () => {
     expect(screen.getByText("51 for control")).toBeInTheDocument();
   });
 
+  it("refreshes, then opens on the new moment", async () => {
+    serve({ elections: [ELECTION] });
+    show();
+    await screen.findByRole("slider");
+    const later = {
+      ...ELECTION,
+      updates: [
+        ...ELECTION.updates,
+        {
+          at: "2026-11-03T22:00:00-05:00",
+          headline: "Cy wins",
+          results: { co: { a: 51, b: 48, counted: 90, called: "a" } },
+        },
+      ],
+    };
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ added: 1, why: "updated" }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ elections: [later] }),
+      }) as unknown as typeof fetch;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("New results added.")).toBeInTheDocument();
+    expect(screen.getByText(/update 3 of 3/)).toBeInTheDocument();
+  });
+
+  it("says when there is nothing new or the check fails", async () => {
+    serve({ elections: [ELECTION] });
+    show();
+    await screen.findByRole("slider");
+    serve({ added: 0, why: "nothing new" });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Nothing new yet.")).toBeInTheDocument();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({}),
+    }) as unknown as typeof fetch;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText(/Couldn't reach/)).toBeInTheDocument();
+  });
+
   it("says so when there is nothing saved", async () => {
     serve({ elections: [] });
     show();

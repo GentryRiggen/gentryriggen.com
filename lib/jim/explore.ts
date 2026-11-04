@@ -320,6 +320,33 @@ let generation = 0;
 const forgetters = new Set<() => void>();
 
 /** Sign-out: every Explore page drops what it holds. */
+export type ElectionRefresh = "updated" | "nothing new" | "failed";
+
+/** Asks Jim to check the results now. The page reloads when it says "updated". */
+export async function refreshElections(
+  getToken: GetToken = getIdToken,
+  api: string = JIM_API,
+  fetchFn?: typeof fetch
+): Promise<ElectionRefresh> {
+  try {
+    const res = await callJim(
+      "/api/elections/refresh",
+      { method: "POST", body: {} },
+      getToken,
+      fetchFn,
+      api,
+      EXPLORE_TIMEOUT_MS
+    );
+    if (!res.ok) return "failed";
+    const body: unknown = await res.json();
+    return isRecord(body) && typeof body.added === "number" && body.added > 0
+      ? "updated"
+      : "nothing new";
+  } catch {
+    return "failed";
+  }
+}
+
 export function clearExplore(): void {
   generation += 1;
   forgetters.forEach((forget) => forget());
