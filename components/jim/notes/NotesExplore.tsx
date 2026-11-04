@@ -34,7 +34,7 @@ import { addDays, daysBetween, fmtDay, stripMd } from "@/lib/jim/todos";
 
 type GetToken = (force?: boolean) => Promise<string | null>;
 
-interface ExplorePageProps {
+export interface ExplorePageProps {
   getToken: GetToken;
   api: string;
   today: string;
@@ -61,7 +61,7 @@ interface FrameProps<K extends ExploreKind> {
 }
 
 /** Loading, error and stale states around an Explore page. */
-function ExploreFrame<K extends ExploreKind>({
+export function ExploreFrame<K extends ExploreKind>({
   state,
   what,
   children,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getIdToken } from "@/lib/jim/auth";
 import { JIM_API, JimError, type JimErrorKind } from "@/lib/jim/api";
+import { normalizeElections, type ElectionsData } from "@/lib/jim/election";
 import { callJim } from "@/lib/jim/view";
 
 /**
@@ -11,7 +12,7 @@ import { callJim } from "@/lib/jim/view";
  * sign-out. Every string is ready to show; nothing here names a note.
  */
 
-export type ExploreKind = "graph" | "timeline" | "ballot";
+export type ExploreKind = "graph" | "timeline" | "ballot" | "elections";
 
 export interface GraphNode {
   /** The note's repo path, e.g. "home/garden.md". */
@@ -95,6 +96,7 @@ export interface ExploreData {
   graph: GraphData;
   timeline: TimelineData;
   ballot: BallotData;
+  elections: ElectionsData;
 }
 
 /** Caps matching the server's, so a runaway payload can't flood the page. */
@@ -277,6 +279,7 @@ const NORMALIZE: {
   graph: normalizeGraph,
   timeline: normalizeTimeline,
   ballot: normalizeBallot,
+  elections: normalizeElections,
 };
 
 /**

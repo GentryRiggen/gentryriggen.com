@@ -10,7 +10,7 @@
  *                                   the query: ?area=work&project=…)
  *   /jim/notes/<page>               work, money, people, year, health,
  *                                   training, golf, mindset, timeline,
- *                                   graph, ballot
+ *                                   graph, ballot, election
  *   /jim/notes/people/<slug>        a person's profile
  *   /jim/notes/training/m/<slug>    one movement's page
  *   /jim/notes/training/day/<date>  one training day (YYYY-MM-DD)
@@ -40,7 +40,8 @@ export type NotesPage =
   | "mindset"
   | "timeline"
   | "graph"
-  | "ballot";
+  | "ballot"
+  | "election";
 
 export type JimRoute =
   | { kind: "chat" }
@@ -77,6 +78,7 @@ export const NOTES_PAGES: readonly NotesPage[] = [
   "timeline",
   "graph",
   "ballot",
+  "election",
 ];
 
 export const PAGE_LABELS: Record<NotesPage, string> = {
@@ -93,6 +95,7 @@ export const PAGE_LABELS: Record<NotesPage, string> = {
   timeline: "Timeline",
   graph: "Graph",
   ballot: "Ballot",
+  election: "Election",
 };
 
 export const CHAT_ROUTE: JimRoute = { kind: "chat" };
