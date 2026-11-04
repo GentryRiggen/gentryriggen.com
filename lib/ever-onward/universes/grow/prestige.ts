@@ -53,7 +53,8 @@ export const PRESTIGE: PrestigeDef = {
     {
       id: "acorn-barrel",
       name: "A bigger first barrel",
-      description: "The garden starts with rain barrels already set out.",
+      description:
+        "The garden starts with rain barrels already set out, so the water tank starts bigger.",
       cost: 2,
       maxLevel: 3,
       apply: (run, level) => {

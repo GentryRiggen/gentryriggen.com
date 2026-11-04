@@ -137,3 +137,40 @@ describe.each(PLAYS.map((p) => [p.def.title, p] as const))(
     });
   }
 );
+
+/**
+ * A card's About text is folded away, so a before-to-after line stands alone:
+ * "Holds 12 → 30" leaves a player asking "holds what?". It needs a label of
+ * two words or more ("Water tank 12 → 30") or a rate ("Power/sec 12 → 15").
+ */
+describe.each(PLAYS.map(({ def, runs }) => [def.title, def, runs] as const))(
+  "%s names what every card changes",
+  (_title, def, runs) => {
+    const unnamed = (preview: string | null | undefined): string[] =>
+      (preview ?? "")
+        .split(/\s*·\s*|\r?\n/)
+        .filter((line) => line.includes("→"))
+        .filter((line) => {
+          const label = line.split(/[\d×+]/)[0].trim();
+          return label.split(/\s+/).length < 2 && !label.endsWith("/sec");
+        });
+
+    const samples = runs.filter((run) => !run.complete);
+
+    test("every upgrade and project card has a label to go on", () => {
+      const bad = new Set<string>();
+      for (const run of samples) {
+        const phaseId = def.phases[run.phase].id;
+        for (const u of def.upgrades) {
+          if (u.phases && !u.phases.includes(phaseId)) continue;
+          for (const line of unnamed(u.effectPreview?.(run))) bad.add(line);
+        }
+        for (const p of def.projects ?? []) {
+          if (p.phase !== phaseId) continue;
+          for (const line of unnamed(p.effectPreview?.(run))) bad.add(line);
+        }
+      }
+      expect([...bad]).toEqual([]);
+    });
+  }
+);

@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.31.1",
+    date: "2026-11-03",
+    title: "Every card says what it changes",
+    highlights: [
+      "In Make It Grow, the rain barrel, hose, well, irrigation and river bend now say Water tank instead of just Holds, and what a dry tank costs you",
+      "Cards everywhere name what they change: Power supply, Grid strain, Fleet drift and Probe trip instead of one bare word",
+      "Upgrades that help in a roundabout way now say why it matters, like A steady grid pays more, A leaning tower slows the crew and A worn-out crowd pays less",
+      "Helpers say what they do for you (Follows the bees for you), and big boosts say what they pay (Every place pays ×2 the green)",
+      "The friendship bank says what it is for, and two starting gifts say what they give you",
+    ],
+  },
+  {
     version: "1.31.0",
     date: "2026-11-03",
     title: "Always know what things do",

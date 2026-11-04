@@ -64,7 +64,7 @@ function swayPreview(run: RunState, id: string): string {
   const next = swayCalm(after);
   const round = (n: number): string => String(Math.round(n * 100) / 100);
   const slower = before > 0 ? Math.round((1 - next / before) * 100) : 0;
-  return `The tower sways ${slower}% slower\nSway speed ×${round(before)} → ×${round(next)}`;
+  return `The tower sways ${slower}% slower\nSway speed ×${round(before)} → ×${round(next)}\nA leaning tower slows the crew`;
 }
 
 const RAW_UPGRADES: readonly UpgradeDef[] = [
@@ -478,7 +478,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) =>
       descentShare(run) >= 0.1 || owned(run, "songbird") >= 2,
-    effectPreview: () => "Every step brings the ground twice as close",
+    effectPreview: () => "Every step down brings the ground twice as close",
   },
   {
     id: "set-down",

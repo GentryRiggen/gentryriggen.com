@@ -106,7 +106,7 @@ export const FORKS: readonly ForkDef[] = [
     stats: [
       { label: "Power/sec", read: powerPerSecond },
       {
-        label: "Strain",
+        label: "Grid strain",
         read: (run) => strainPerSecond(run) * 60,
         suffix: "% a minute",
       },
@@ -142,7 +142,7 @@ export const FORKS: readonly ForkDef[] = [
     stats: [
       { label: "Energy/sec", read: calmSkyIncomePerSecond },
       {
-        label: "Drift",
+        label: "Fleet drift",
         read: (run) => driftPerSecond(run) * 60,
         suffix: "% a minute",
       },

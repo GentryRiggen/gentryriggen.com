@@ -180,7 +180,8 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It only helps if you are warming the meter in the first place.",
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "band") >= 1,
-    effectPreview: () => `The cheer meter cools ${mult(K.coolMult)} as fast`,
+    effectPreview: () =>
+      `The cheer meter cools ${mult(K.coolMult)} as fast · a worn-out crowd pays less`,
     botValue: 0.3,
   },
   {
@@ -192,7 +193,7 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which a parade would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "smile-factory") >= 1,
-    effectPreview: () => `Every street pays ${mult(K.allMult)}`,
+    effectPreview: () => `Every street pays ${mult(K.allMult)} the cheers`,
   },
   {
     id: "quiet-hours",
@@ -203,7 +204,8 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "Know-how spent here is not there for a cheer broadcast.",
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "loudspeaker") >= 1,
-    effectPreview: () => `The cheer meter cools ${mult(K.coolMult)} as fast`,
+    effectPreview: () =>
+      `The cheer meter cools ${mult(K.coolMult)} as fast · a worn-out crowd pays less`,
     botValue: 0.3,
   },
   {
@@ -228,6 +230,6 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which a broadcast would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "cheer-tower") >= 1,
-    effectPreview: () => `Every place pays ${mult(K.allMult)}`,
+    effectPreview: () => `Every place pays ${mult(K.allMult)} the grins`,
   },
 ];

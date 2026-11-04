@@ -45,7 +45,7 @@ import {
   pickPerSecond,
   tendingValue,
 } from "./tick";
-import { waterCapacity } from "./water";
+import { DRY_FLOOR, waterCapacity } from "./water";
 import {
   LANTERN_ID,
   MUSIC_BOX_ID,
@@ -94,6 +94,25 @@ function ratePreview(
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
   return rateEffect(rate(run), rate(after), label.toLowerCase());
+}
+
+/**
+ * A water upgrade's card: the tank it grows, anything else it does, and what
+ * running dry costs (the About text is folded away, so this stands alone).
+ */
+function tankPreview(run: RunState, id: string, extra?: string): string {
+  const after: RunState = {
+    ...run,
+    owned: { ...run.owned, [id]: owned(run, id) + 1 },
+  };
+  const unit = run.phase === 0 ? "produce" : noun(run);
+  return [
+    `Water tank ${num(waterCapacity(run))} → ${num(waterCapacity(after))}`,
+    extra,
+    `Dry tank: ${Math.round((1 - DRY_FLOOR) * 100)}% less ${unit}/sec`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 const helperPreview = (run: RunState, id: string): string =>
@@ -158,13 +177,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 4,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("sprinkler", 3),
-    effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} → ${num(
-        waterCapacity({
-          ...run,
-          owned: { ...run.owned, "rain-barrel": owned(run, "rain-barrel") + 1 },
-        })
-      )}`,
+    effectPreview: (run) => tankPreview(run, "rain-barrel"),
   },
   {
     id: "bee-hive",
@@ -201,7 +214,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     visibleWhen: (run) =>
       run.flags[BEES_OPEN_FLAG] === true && keeperShown(run),
     effectPreview: (run) =>
-      `Follows after a wait: about ${num(Math.floor(keeperPays(run, incomePerSecond(run))))} seeds (${dancesSoFar(run)} dances so far)`,
+      `Follows the bees for you after a wait: about ${num(Math.floor(keeperPays(run, incomePerSecond(run))))} seeds (dances so far: ${dancesSoFar(run)})`,
   },
   {
     id: "garden-hose",
@@ -214,13 +227,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 2.3,
     maxLevel: 3,
     visibleWhen: ownsAtLeast("rain-barrel", 1),
-    effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} → ${num(
-        waterCapacity({
-          ...run,
-          owned: { ...run.owned, "garden-hose": owned(run, "garden-hose") + 1 },
-        })
-      )}`,
+    effectPreview: (run) => tankPreview(run, "garden-hose"),
   },
   {
     id: "gardener",
@@ -364,12 +371,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: ownsAtLeast("scarecrow", 2),
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} → ${num(
-        waterCapacity({
-          ...run,
-          owned: { ...run.owned, well: owned(run, "well") + 1 },
-        })
-      )}, and it seeps`,
+      tankPreview(run, "well", "Seeps in water, rain or not"),
   },
   {
     id: "tractor",
@@ -403,7 +405,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // Halfway along: once the first fair has been judged.
     visibleWhen: handShown,
     effectPreview: (run) =>
-      `Enters the likeliest pumpkin after a wait: about ${num(Math.floor(handPaysOn(run, incomePerSecond(run))))} harvest (${fairsSoFar(run)} fairs so far)`,
+      `Enters the fair's likeliest pumpkin for you after a wait: about ${num(Math.floor(handPaysOn(run, incomePerSecond(run))))} harvest (fairs so far: ${fairsSoFar(run)})`,
   },
   {
     id: MARKET_AGENT_ID,
@@ -419,7 +421,8 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     priority: -1,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("tractor", 3),
-    effectPreview: () => "Re-plants for demand every minute and a half",
+    effectPreview: () =>
+      `Re-plants what the towns want most, every ${TUNING.market.agentSeconds} seconds`,
   },
   {
     id: "irrigation",
@@ -434,12 +437,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: ownsAtLeast("well", 2),
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} → ${num(
-        waterCapacity({
-          ...run,
-          owned: { ...run.owned, irrigation: owned(run, "irrigation") + 1 },
-        })
-      )}, and catches more rain`,
+      tankPreview(run, "irrigation", "Catches more of the rain"),
   },
   {
     id: "silo",
@@ -533,12 +531,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: ownsAtLeast("windbreak", 2),
     effectPreview: (run) =>
-      `Holds ${num(waterCapacity(run))} → ${num(
-        waterCapacity({
-          ...run,
-          owned: { ...run.owned, "river-bend": owned(run, "river-bend") + 1 },
-        })
-      )}, and it seeps`,
+      tankPreview(run, "river-bend", "Seeps in water, rain or not"),
   },
   {
     id: "planting-rover",
@@ -572,7 +565,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // Halfway along: once a couple of flights have landed.
     visibleWhen: leaderShown,
     effectPreview: (run) =>
-      `Sends a waiting flock to the most welcoming place: about ${num(Math.floor(leaderPaysOn(run, incomePerSecond(run))))} green (${flightsSoFar(run)} flights so far)`,
+      `Sends a waiting flock to the most welcoming place: about ${num(Math.floor(leaderPaysOn(run, incomePerSecond(run))))} green (flights so far: ${flightsSoFar(run)})`,
   },
   {
     id: "cloud-seeder",
@@ -587,7 +580,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: ownsAtLeast("river-bend", 2),
     effectPreview: (run) =>
-      `Rain ${num(Math.round((1 + TUNING.world.water.cloudRain * owned(run, "cloud-seeder")) * 100))}% → ${num(Math.round((1 + TUNING.world.water.cloudRain * (owned(run, "cloud-seeder") + 1)) * 100))}%`,
+      `Rain into the tank ${num(Math.round((1 + TUNING.world.water.cloudRain * owned(run, "cloud-seeder")) * 100))}% → ${num(Math.round((1 + TUNING.world.water.cloudRain * (owned(run, "cloud-seeder") + 1)) * 100))}%`,
   },
   {
     id: "sky-seeder",
@@ -682,7 +675,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: (run) => tendsSoFar(run) >= 1,
     effectPreview: (run) =>
-      `Answers ${num(Math.round(canMult(run) * 100))}% → ${num(
+      `Care per answer ${num(Math.round(canMult(run) * 100))}% → ${num(
         Math.round(
           canMult({
             ...run,
@@ -707,7 +700,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: musicBoxShown,
     effectPreview: (run) =>
-      `Answers a waiting pot after a pause: about ${num(Math.floor(boxPays(run, tendingValue(run))))} care (${tendsSoFar(run)} answers so far)`,
+      `Answers a waiting pot for you after a pause: about ${num(Math.floor(boxPays(run, tendingValue(run))))} care (answers so far: ${tendsSoFar(run)})`,
   },
   {
     id: LANTERN_ID,

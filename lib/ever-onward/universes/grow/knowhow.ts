@@ -197,7 +197,7 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which a festival would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "tractor") >= 2,
-    effectPreview: () => `Every field pays ${times(K.hybridMult)}`,
+    effectPreview: () => `Every field pays ${times(K.hybridMult)} the harvest`,
   },
   {
     id: "rain-gauges",
@@ -233,6 +233,6 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which a green day would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "planting-rover") >= 2,
-    effectPreview: () => `Every place pays ${times(K.corridorMult)}`,
+    effectPreview: () => `Every place pays ${times(K.corridorMult)} the green`,
   },
 ];

@@ -23,6 +23,8 @@ export interface Stat {
   less?: string;
   /** Only the before-to-after line, no "×2" or "40% less" headline (a count). */
   isPlain?: boolean;
+  /** Why the stat matters, on a line of its own under it ("A steady grid pays more"). */
+  why?: string;
 }
 
 /** The run as it would be with one more level of `id`. */
@@ -57,19 +59,22 @@ export function previewOf(
         const next = stat.read(after);
         const detail = previewLines(run, after, [stat]);
         if (!detail) return [];
-        if (stat.isPlain) return [detail];
+        const why = stat.why ? [stat.why] : [];
+        if (stat.isPlain) return [detail, ...why];
         if (before > 0 && next / before >= 1.1)
           return [
             `${times(next / before)} ${stat.label.toLowerCase()}\n${detail}`,
+            ...why,
           ];
         if (before > next && next >= 0)
           return [
             `${short((1 - next / before) * 100)}% ${stat.less ?? "less"} ${stat.label.toLowerCase()}\n${detail}`,
+            ...why,
           ];
-        return [detail];
+        return [detail, ...why];
       })
       .join("\n");
-    // Every line hidden: show them anyway ("Supply 0 MW → 0 MW"), so the card
+    // Every line hidden: show them anyway ("Power supply 0 MW → 0 MW"), so the card
     // still says what it touches and the engine can tell it changes nothing.
     if (lines) return lines;
     return previewLines(

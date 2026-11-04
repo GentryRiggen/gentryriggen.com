@@ -186,7 +186,7 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "It costs a lot of know-how, which overtime would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "crane") >= 2,
-    effectPreview: () => `Every crew pays ${times(K.prefabMult)}`,
+    effectPreview: () => `Every crew pays ${times(K.prefabMult)} the bricks`,
   },
   {
     id: "wind-tunnel",
@@ -222,6 +222,6 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
       "It costs a lot of know-how, which a night shift would have used.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "cloud-crane") >= 2,
-    effectPreview: () => `Every crew pays ${times(K.cableMult)}`,
+    effectPreview: () => `Every crew pays ${times(K.cableMult)} the beams`,
   },
 ];
