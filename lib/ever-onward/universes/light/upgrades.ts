@@ -194,7 +194,7 @@ function chain({
       },
       badge: step.badge,
       // The steps share one stat list, so each card shows only the lines it
-      // changes: no "Balancing by hand → by hand" on the first step.
+      // changes: no "Grid balancing by hand → by hand" on the first step.
       effectPreview: plain
         ? plainOf(id, plain)
         : previewOf(
@@ -499,7 +499,7 @@ const nightUpgrades: UpgradeDef[] = [
     base: "lines",
     phases: night,
     currency: "power",
-    stats: [{ label: "Supply", read: supplyMW, suffix: " MW" }],
+    stats: [{ label: "Power supply", read: supplyMW, suffix: " MW" }],
     steps: [
       {
         name: "Run a power line",
@@ -527,7 +527,7 @@ const nightUpgrades: UpgradeDef[] = [
     base: "subs",
     phases: night,
     currency: "power",
-    stats: [{ label: "Supply", read: supplyMW, suffix: " MW" }],
+    stats: [{ label: "Power supply", read: supplyMW, suffix: " MW" }],
     steps: [
       {
         name: "Substations",
@@ -561,7 +561,7 @@ const nightUpgrades: UpgradeDef[] = [
     base: "bulbs",
     phases: night,
     currency: "power",
-    stats: [{ label: "Demand", read: demandMW, suffix: " MW" }],
+    stats: [{ label: "Power demand", read: demandMW, suffix: " MW" }],
     steps: [
       {
         name: "Efficient bulbs",
@@ -587,12 +587,13 @@ const nightUpgrades: UpgradeDef[] = [
     currency: "power",
     stats: [
       {
-        label: "Strain",
+        label: "Grid strain",
+        why: "A steady grid pays more",
         read: (run) => strainPerSecond(run) * 60,
         suffix: "% a minute",
       },
       {
-        label: "Balancing",
+        label: "Grid balancing",
         read: (run) => (isGridAuto(run) ? 1 : 0),
         format: (v) => (v > 0 ? "automatic" : "by hand"),
       },
@@ -670,7 +671,7 @@ const nightUpgrades: UpgradeDef[] = [
     onBuy: sync,
     effectPreview: previewOf(WEATHER_VANE_ID, [
       {
-        label: "Shielding",
+        label: "Storm shielding",
         read: (run) => (hasWeatherVane(run) ? 1 : 0),
         format: (v) => (v > 0 ? "automatic" : "by hand"),
       },
@@ -759,13 +760,13 @@ const skyUpgrades: UpgradeDef[] = [
       sync(run);
     },
     effectPreview: () =>
-      `Probes: 0 → ${TUNING.sky.firstProbes}, and they copy themselves`,
+      `Probes flying 0 → ${TUNING.sky.firstProbes}, and they copy themselves`,
   },
   ...chain({
     base: "copy",
     phases: sky,
     currency: "energy",
-    stats: [{ label: "Copy speed", read: copySpeed, suffix: "×" }],
+    stats: [{ label: "Probe copy speed", read: copySpeed, suffix: "×" }],
     steps: [
       {
         name: "Faster copying",
@@ -815,12 +816,13 @@ const skyUpgrades: UpgradeDef[] = [
     currency: "energy",
     stats: [
       {
-        label: "Drift",
+        label: "Fleet drift",
+        why: "On course, the fleet keeps full pace",
         read: (run) => driftPerSecond(run) * 60,
         suffix: "% a minute",
       },
       {
-        label: "Course",
+        label: "Fleet course",
         read: (run) => (isCourseAuto(run) ? 1 : 0),
         format: (v) => (v > 0 ? "automatic" : "by hand"),
       },
@@ -892,7 +894,12 @@ const skyUpgrades: UpgradeDef[] = [
     phases: sky,
     currency: "energy",
     stats: [
-      { label: "Trip", read: travelSeconds, suffix: " s", less: "shorter" },
+      {
+        label: "Probe trip",
+        read: travelSeconds,
+        suffix: " s",
+        less: "shorter",
+      },
     ],
     steps: [
       {
@@ -996,14 +1003,14 @@ const letGoUpgrades: UpgradeDef[] = LET_GO.map((light) => {
   };
 });
 
-/** "Flame 60% → 85%": the leap a burst gift gives the moment it is bought. */
+/** "Flame now 60% → 85%": the leap a burst gift gives the moment it is bought. */
 function burstLine(run: RunState): string {
   const now = flameFraction(run) * 100;
   const leapt =
     (Math.min(TUNING.last.flameFull, flameOf(run) + TUNING.last.burstFlame) /
       TUNING.last.flameFull) *
     100;
-  return `Flame ${short(now)}% → ${short(leapt)}%`;
+  return `Flame now ${short(now)}% → ${short(leapt)}%`;
 }
 
 /** The garden's helper: it opens once the first flower has been picked. */
@@ -1026,7 +1033,7 @@ const rainBarrel: UpgradeDef = {
   },
   effectPreview: previewOf(RAIN_BARREL_ID, [
     {
-      label: "Growth with no watering",
+      label: "Unwatered flowers grow",
       read: (run) => restingPace(run) * 100,
       suffix: "%",
     },

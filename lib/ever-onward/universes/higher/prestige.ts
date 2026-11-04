@@ -53,7 +53,8 @@ export const PRESTIGE: PrestigeDef = {
     {
       id: "star-tape",
       name: "A roll of tape",
-      description: "The playroom starts with the rug corners already taped.",
+      description:
+        "The playroom starts with the rug corners already taped, so the tower sways slower.",
       cost: 2,
       maxLevel: 3,
       apply: (run, level) => {

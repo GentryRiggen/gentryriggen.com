@@ -67,7 +67,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     revealWhen: (run) => owned(run, "gen2") >= 1,
     effectPreview: projectPreviewOf("smart-meters", [
       POWER_PER_SECOND,
-      { label: "Demand", read: demandMW, suffix: " MW" },
+      { label: "Power demand", read: demandMW, suffix: " MW" },
     ]),
   },
   {
@@ -80,7 +80,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     revealWhen: (run) => owned(run, "gen2") >= 2,
     effectPreview: projectPreviewOf("line-patrols", [
       {
-        label: "Strain",
+        label: "Grid strain",
         read: (run) => strainPerSecond(run) * 60,
         suffix: "% a minute",
       },
@@ -97,9 +97,9 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     costs: cost(100),
     revealWhen: (run) => frontsSoFar(run) >= 1,
     effectPreview: () =>
-      `First forecast ${pct(TUNING.weather.firm[0])} → ${pct(
+      `First storm forecast ${pct(TUNING.weather.firm[0])} → ${pct(
         TUNING.weather.firmBarometers[0]
-      )} sure · last ${pct(TUNING.weather.firm[2])} → ${pct(
+      )} sure · last forecast ${pct(TUNING.weather.firm[2])} → ${pct(
         TUNING.weather.firmBarometers[2]
       )}`,
     botValue: 0.12,
@@ -128,9 +128,9 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     costs: cost(120),
     revealWhen: (run) => owned(run, "gen2") >= 5,
     effectPreview: projectPreviewOf("lamplighters", [
-      { label: "Demand", read: demandMW, suffix: " MW" },
+      { label: "Power demand", read: demandMW, suffix: " MW" },
       {
-        label: "Steady glow",
+        label: "Steady-grid bonus",
         read: glowBonus,
         format: (v) => `+${pct(v)}`,
       },
@@ -149,7 +149,7 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     effectPreview: projectPreviewOf("co-op", [
       POWER_PER_SECOND,
       {
-        label: "Strain",
+        label: "Grid strain",
         read: (run) => strainPerSecond(run) * 60,
         suffix: "% a minute",
       },
@@ -166,8 +166,8 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     revealWhen: (run) =>
       (run.resources.wxFlickered ?? 0) >= 1 || frontsSoFar(run) >= 3,
     effectPreview: projectPreviewOf(SPARE_PARTS_ID, [
-      { label: "Crew ready in", read: readySeconds, suffix: " s" },
-      { label: "Fix in", read: fixSeconds, suffix: " s" },
+      { label: "Repair crew ready in", read: readySeconds, suffix: " s" },
+      { label: "Repairs take", read: fixSeconds, suffix: " s" },
     ]),
     botValue: 0.12,
   },
@@ -230,7 +230,7 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     effectPreview: projectPreviewOf("mirror-polish", [
       { label: "Energy/sec", read: collectorEnergyPerSecond },
       {
-        label: "Drift",
+        label: "Fleet drift",
         read: (run) => driftPerSecond(run) * 60,
         suffix: "% a minute",
       },
@@ -259,7 +259,7 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "The older ones hog the dish: flares come 30% less often.",
     costs: cost(140),
     revealWhen: (run) => owned(run, "copy-1") >= 1,
-    effectPreview: () => "Copying 1.5× as fast · flares 1.3× as far apart",
+    effectPreview: () => "Probes copy 1.5× as fast · flares 1.3× as far apart",
     botValue: 0.3,
   },
   {

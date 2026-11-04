@@ -64,13 +64,13 @@ const helperPreview = (run: RunState, id: string): string =>
     `${noun(run)}/sec`
   );
 
-/** "The cheer meter cools ×1.6 as fast" then "Cools 5% → 8% a second". */
+/** "The cheer meter cools ×1.6 as fast" then "Meter cools 5% → 8% a second". */
 function coolPreview(run: RunState, id: string): string {
   const before = coolPerSecond(run);
   const next = coolPerSecond(plusOne(run, id));
   const pct = (n: number): string => `${Number((n * 100).toFixed(1))}%`;
   const faster = before > 0 ? Number((next / before).toFixed(1)) : 1;
-  return `The cheer meter cools ×${faster} as fast\nCools ${pct(before)} → ${pct(next)} a second`;
+  return `The cheer meter cools ×${faster} as fast\nMeter cools ${pct(before)} → ${pct(next)} a second\nA worn-out crowd pays less`;
 }
 
 type Gate = (run: RunState) => boolean;
@@ -204,7 +204,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       baseCost: 270,
       gate: has("puppy", 1),
     },
-    () => "Opens the friendship bank"
+    () => "Opens the friendship bank\nSave smiles now, bigger laughs later"
   ),
   line({
     id: "lemonade",
@@ -389,7 +389,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       baseCost: 160000000,
       gate: has("cheer-tower", 1),
     },
-    () => `Every place pays ${NO_BAD_DAYS_MULT}x`
+    () => `Every place pays ${NO_BAD_DAYS_MULT}x the grins`
   ),
   once({
     id: "cheer-satellite",
@@ -466,8 +466,8 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     },
     (run) =>
       hasKettle(run)
-        ? "Answers a waiting friend"
-        : `Answers a waiting friend after a pause (${tendsSoFar(run)} answers so far)`
+        ? "Answers a waiting friend for you"
+        : `Answers a waiting friend for you after a pause (answers so far: ${tendsSoFar(run)})`
   ),
   once(
     {
