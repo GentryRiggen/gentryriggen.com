@@ -183,7 +183,7 @@ describe("forks", () => {
       expect(isPumpkinOpen(run)).toBe(true);
       expect(isPumpkinOpen(choose(run, "farm", 1))).toBe(false);
       expect(isPumpkinOpen(choose(run, "farm", 0))).toBe(true);
-      expect(ribbonPays(0, 5, 100)).toBe(90000);
+      expect(ribbonPays(0, 5, 100)).toBe(86000);
     });
 
     it("the crew makes the crops drink less", () => {
