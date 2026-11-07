@@ -106,7 +106,16 @@ export default function EverOnward() {
           onStart={() => setIsOnStartScreen(false)}
         />
       ) : (
-        <Hub save={save} isRecovered={game.recovered} onPlay={game.open} />
+        <Hub
+          save={save}
+          isRecovered={game.recovered}
+          onPlay={game.open}
+          testMode={
+            canTest
+              ? { isJumping: game.isJumping, onJump: game.jumpTo }
+              : undefined
+          }
+        />
       )}
       {(isUpdateReady || game.hasNewerSave) && (
         <UpdatePill

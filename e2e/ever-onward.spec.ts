@@ -77,11 +77,37 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("Test mode on the hub opens a locked universe", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await openHub(page);
+    await expect(page.getByTestId("lm-locked-grow")).toBeVisible();
+    await page.getByText("Test mode: jump into any universe").click();
+    await page
+      .getByTestId("eo-hub-test")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-test-exit").click();
+    await expect(page.getByTestId("lm-locked-grow")).toBeVisible();
+    const saved = await page.evaluate(() =>
+      window.localStorage.getItem("ever-onward:save")
+    );
+    expect(saved ?? "").not.toContain('"grow"');
+  });
+
   test("players without the owner mark see no Test mode", async ({ page }) => {
     await startGame(page);
     await page.getByRole("button", { name: "Menu" }).click();
     await expect(page.getByTestId("lm-menu")).toBeVisible();
     await expect(page.getByTestId("eo-test-mode")).toHaveCount(0);
+    await page.goBack();
+    await expect(page.getByTestId("eo-hub-test")).toHaveCount(0);
   });
 
   test(

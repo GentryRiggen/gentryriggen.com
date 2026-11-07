@@ -43,6 +43,36 @@ describe("Hub unlock", () => {
   });
 });
 
+describe("Hub test mode", () => {
+  it("is hidden without the owner's test mode", () => {
+    render(
+      <Hub
+        save={saveWithCompletions(0)}
+        isRecovered={false}
+        onPlay={jest.fn()}
+      />
+    );
+    expect(screen.queryByTestId("eo-hub-test")).not.toBeInTheDocument();
+  });
+
+  it("jumps into a locked universe", async () => {
+    const onJump = jest.fn();
+    render(
+      <Hub
+        save={saveWithCompletions(0)}
+        isRecovered={false}
+        onPlay={jest.fn()}
+        testMode={{ isJumping: false, onJump }}
+      />
+    );
+    expect(screen.getByTestId("lm-locked-grow")).toBeInTheDocument();
+    await userEvent.click(screen.getByText(/Test mode/));
+    await userEvent.click(screen.getByRole("button", { name: "Make It Grow" }));
+    await userEvent.click(screen.getByTestId("eo-jump-grow-0-late"));
+    expect(onJump).toHaveBeenCalledWith("grow", 0, "late");
+  });
+});
+
 describe("hubTitleScore", () => {
   it("plays the usual theme while Grow is locked", () => {
     expect(hubTitleScore(saveWithCompletions(0))).toBe(TITLE_SCORE);

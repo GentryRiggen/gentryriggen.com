@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.32.1",
+    date: "2026-11-07",
+    title: "Test mode on the universe list",
+    highlights: [
+      "For the game's maker only: Test mode now sits on the universe list too, so a locked universe can be opened for testing without playing to it",
+    ],
+  },
+  {
     version: "1.32.0",
     date: "2026-11-07",
     title: "Bees and flower beds",
