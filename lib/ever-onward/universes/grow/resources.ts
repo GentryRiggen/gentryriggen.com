@@ -166,6 +166,8 @@ export const RESOURCES: readonly ResourceDef[] = [
     "mkPending",
     "mkSurgeRate",
     "mkPaused",
+    "mkPay",
+    "mkPayDay",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // The prize pumpkin: size step, stage (2 judging), the judging clock, the
   // size entered, entries, splits and feedings, the last outcome (what, how

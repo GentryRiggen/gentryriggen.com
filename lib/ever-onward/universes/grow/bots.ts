@@ -38,6 +38,7 @@ import {
   daySeconds,
   forecastOf,
   grownIfPlantedIn,
+  growPay,
   isFieldPlanted,
   plantActionId,
   soilOf,
@@ -134,7 +135,7 @@ export const tendsBees: Actions = (run, available) => {
 };
 
 /** Steps the bot feeds the prize pumpkin to before it enters it. */
-const PUMPKIN_TARGET = 3;
+const PUMPKIN_TARGET = 4;
 
 /**
  * Tends the prize pumpkin: feeds it a step on each harvest day until it is
@@ -183,8 +184,7 @@ export const tendsPot =
  * for beans once the soil is tired.
  */
 function plantValue(run: RunState, crop: FieldCrop): number {
-  const pay =
-    forecastOf(run, crop).middle * (0.4 + 0.6 * grownIfPlantedIn(run, 0));
+  const pay = forecastOf(run, crop).middle * growPay(grownIfPlantedIn(run, 0));
   if (crop === "beans") return pay * (soilOf(run) < 0.5 ? 1.5 : 1);
   return wearsSoil(run, crop) ? pay * 0.65 : pay;
 }
@@ -196,7 +196,7 @@ function plantValue(run: RunState, crop: FieldCrop): number {
  * plants into an empty field only, and never changes its mind.
  */
 export const cropPolicy =
-  (window = 10, plantAt = 40): Actions =>
+  (window = 10, plantAt = 38): Actions =>
   (run, available) => {
     if (run.phase !== 1 || !isWindowStart(run, window)) return [];
     if (isFieldPlanted(run) || daySeconds(run) < plantAt) return [];

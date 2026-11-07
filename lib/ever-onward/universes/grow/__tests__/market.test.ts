@@ -14,6 +14,7 @@ import {
   harvestDays,
   isFieldPlanted,
   lastDay,
+  likeliestCrop,
   plantActionId,
   plantedCrop,
   soilFactor,
@@ -122,8 +123,10 @@ describe("harvest day", () => {
     const best = new Set<string>();
     walk(freshFarm(), M.daySeconds * 40, (run) => {
       for (const crop of CROPS) {
-        expect(demandOn(run, crop)).toBeGreaterThan(0.4);
-        expect(demandOn(run, crop)).toBeLessThan(1.8);
+        expect(demandOn(run, crop)).toBeGreaterThanOrEqual(
+          M.demandFloor - 0.001
+        );
+        expect(demandOn(run, crop)).toBeLessThan(2.4);
       }
       best.add(
         CROPS.reduce((a, b) => (demandOn(run, b) > demandOn(run, a) ? b : a))
@@ -163,7 +166,7 @@ describe("planting", () => {
     expect(grownByHarvest(run)).toBeGreaterThan(0.9);
     run = performAction(def, run, plantActionId("tomato"));
     expect(plantedCrop(run)).toBe("tomato");
-    expect(grownByHarvest(run)).toBeLessThan(0.5);
+    expect(grownByHarvest(run)).toBeLessThanOrEqual(0.5);
   });
 
   it("offers one plant button per crop, beans included, only on the farm", () => {
@@ -262,5 +265,32 @@ describe("old saves", () => {
     expect(run.resources.mkReady).toBe(1);
     expect(isFieldPlanted(run)).toBe(false);
     expect(soilOf(run)).toBeCloseTo(S.start);
+  });
+});
+
+describe("the forecast is a real bet", () => {
+  /** Harvest earned over `days` days by planting the forecast's pick `at` seconds into every day. */
+  function earnedPlantingAt(at: number, days: number): number {
+    const start = freshFarm();
+    let run: RunState = {
+      ...start,
+      owned: { ...start.owned, scarecrow: 5 },
+    };
+    const before = run.resources.harvest ?? 0;
+    for (let t = 0; t < M.daySeconds * days; t += 1) {
+      run = tick(def, run, 1);
+      if (!isFieldPlanted(run) && daySeconds(run) >= at)
+        run = performAction(def, run, plantActionId(likeliestCrop(run)));
+    }
+    return (run.resources.harvest ?? 0) - before;
+  }
+
+  it("planting a little into the day beats planting at second 0, and planting late loses", () => {
+    const days = 120;
+    const early = earnedPlantingAt(0, days);
+    const mid = earnedPlantingAt(Math.ceil(M.daySeconds / 3) + 1, days);
+    const late = earnedPlantingAt(Math.ceil((M.daySeconds * 2) / 3) + 5, days);
+    expect(mid).toBeGreaterThan(early);
+    expect(late).toBeLessThan(mid);
   });
 });

@@ -160,9 +160,9 @@ export const TUNING = {
     /** Seconds between harvest days. */
     daySeconds: 110,
     /** A crop needs this long in the ground to be fully grown. */
-    growSeconds: 75,
+    growSeconds: 60,
     /** What a crop that has only just gone in pays (full grown: 1). */
-    growFloor: 0.35,
+    growFloor: 0.5,
     /** How far the slow wave of demand swings from the usual price. */
     swing: 0.4,
     /** Seconds for the wave to go all the way round. */
@@ -170,16 +170,18 @@ export const TUNING = {
     /** The wave also jumps about by up to this many radians each day. */
     angleJitter: 0.9,
     /** Each day's luck: demand moves by up to this much, per crop. */
-    luck: 0.25,
+    luck: 0.8,
+    /** Luck never sinks a crop's demand below this share of the usual price. */
+    demandFloor: 0.3,
     /** Beans pay a steady share of the usual price and rest the soil. */
     beanDemand: 0.75,
     /** What the fields pay between harvest days, against the old market. */
-    fieldBase: 1.25,
+    fieldBase: 1.5,
     /** A bare field pays this much, and a grown crop this much more. */
-    bareShare: 0.75,
-    growShare: 0.35,
+    bareShare: 0.65,
+    growShare: 0.1,
     /** What a harvest day pays: this share of a day of farm pay, times demand. */
-    daySharePay: 0.6,
+    daySharePay: 0.8,
     /** Taps a second counted when a day of farm pay is worked out. */
     referenceTaps: 2,
     /** The day's pay flows in over this many seconds. */
@@ -212,15 +214,20 @@ export const TUNING = {
     /** Steps from a seedling (0) to a giant (the last). */
     steps: 5,
     /** Feeding costs this many seconds of farm pay, from each step. */
-    feedSeconds: [2, 3, 5, 8, 12] as readonly number[],
+    feedSeconds: [6, 9, 15, 24, 36] as readonly number[],
     /** The chance it splits when fed from each step. */
     splitChance: [0, 0.05, 0.12, 0.25, 0.4] as readonly number[],
     /** The chance of a blue ribbon at each step. */
     blueChance: [0.02, 0.06, 0.14, 0.28, 0.44, 0.62] as readonly number[],
     /** Of the rest, this share is a red ribbon. */
     redShare: 0.6,
-    /** Seconds of farm pay each ribbon is worth: blue, red, garden. */
-    ribbonSeconds: [150, 50, 15] as readonly number[],
+    /** Seconds of farm pay each ribbon is worth for a full-size pumpkin: blue, red, garden. */
+    ribbonSeconds: [450, 150, 45] as readonly number[],
+    /**
+     * How much of that a ribbon pays at each size, seedling first: a small
+     * pumpkin's ribbons are worth little, so waiting and feeding is the bet.
+     */
+    sizePay: [0.2, 0.35, 0.55, 0.85, 1.3, 2] as readonly number[],
     /** The judges take this long to walk the row. */
     judgeSeconds: 5,
     /** A ribbon's pay flows in over this many seconds. */
@@ -241,14 +248,14 @@ export const TUNING = {
      * A well-stocked barn adds up to `openingLeftover` more, no further than
      * `openingLeftoverFull` harvest.
      */
-    openingGreen: 1500,
+    openingGreen: 1800,
     /** A payout still flowing when the farm ends turns into green at this rate, up to a cap. */
     harvestToGreen: 0.0002,
     carryCap: 150,
     openingLeftover: 0.1,
     openingLeftoverFull: 8_000_000,
     /** Green per second from each helper, before bonuses. */
-    windbreakRate: 30,
+    windbreakRate: 36,
     roverRate: 225,
     seederRate: 1800,
     /** The planet's weather: its own tank, rivers, clouds and thirst. */

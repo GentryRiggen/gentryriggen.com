@@ -26,7 +26,7 @@ import {
   RESOURCES,
 } from "./resources";
 import {
-  farmPayPerSecond,
+  dayFarmPay,
   incomePerSecond,
   manualPerTap,
   pickPerSecond,
@@ -393,7 +393,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // Halfway along: once a few harvest days have gone by.
     visibleWhen: handShown,
     effectPreview: (run) =>
-      `Enters a grown pumpkin for you on a day you did not: about ${num(Math.floor(handPaysOn(run, farmPayPerSecond(run))))} harvest (harvest days so far: ${harvestDays(run)})`,
+      `Enters a grown pumpkin for you on a day you did not: about ${num(Math.floor(handPaysOn(run, dayFarmPay(run))))} harvest (harvest days so far: ${harvestDays(run)})`,
   },
   {
     id: MARKET_AGENT_ID,
@@ -570,7 +570,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     description: "One seed, saved from everything, kept safe for later.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 80000000,
+    baseCost: 110000000,
     costGrowth: 1,
     kind: "mechanic",
     visibleWhen: (run) =>

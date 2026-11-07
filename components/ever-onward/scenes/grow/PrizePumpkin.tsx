@@ -12,6 +12,8 @@ import { TUNING } from "@/lib/ever-onward/universes/grow/tuning";
 /** The podium's middle and its top (the pumpkin sits on it). */
 const CX = 238;
 const TOP = 150;
+/** The pumpkin's banners sit low in the picture, under the harvest day's. */
+const BANNER_Y = 218;
 
 const STAGGER = [
   "[animation-delay:0s]",
@@ -203,7 +205,7 @@ function Win({ kind, step }: { kind: RibbonKind; step: number }) {
       </g>
       <text
         x={CX}
-        y="74"
+        y={BANNER_Y}
         textAnchor="middle"
         className="gp-shout font-[family-name:var(--font-eo-pixel)]"
         fontSize="17"
@@ -280,7 +282,7 @@ function Split({ step }: { step: number }) {
       </g>
       <text
         x={CX}
-        y="80"
+        y={BANNER_Y}
         textAnchor="middle"
         className="gp-shout font-[family-name:var(--font-eo-pixel)]"
         fontSize="26"
@@ -373,7 +375,7 @@ export default function PrizePumpkin({ info }: { info: GrowSceneInfo }) {
       {isJudging && (
         <text
           x={CX}
-          y="74"
+          y={BANNER_Y}
           textAnchor="middle"
           className="gp-blink font-[family-name:var(--font-eo-pixel)]"
           fontSize="10"

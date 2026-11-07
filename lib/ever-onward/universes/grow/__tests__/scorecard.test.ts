@@ -33,9 +33,13 @@ jest.setTimeout(180_000);
  * barn). Every gate passes with nothing listed: the score is 80.2 and the
  * floor is that minus 1. The seed vault costs 80M (it was 46M): the
  * realistic run is 2.0 h, the bottom of its band.
+ *
+ * The farm review retune (a pumpkin that pays by size, a forecast worth
+ * waiting for, luck 0.8) scores 81.1; the vault costs 110M so the run stays
+ * at 2.0 h. The floor is that minus 1.
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 79.2;
+const UNCAPPED_FLOOR = 80.1;
 /** Gates allowed to fail for now, by their label prefix. None today. */
 const KNOWN_GATE_MISSES: readonly string[] = [];
 /**

@@ -19,7 +19,7 @@ const BASE_Y = 148;
 /** The middle of the parked cart: the bursts come from here. */
 const CX = CART_END + 20;
 const TEXT_X = 200;
-const TEXT_Y = 46;
+const TEXT_Y = 74;
 
 const CROP_COLOR: Record<FieldCrop, string> = {
   tomato: "#e03131",
@@ -199,7 +199,7 @@ function Cheer() {
         y={TEXT_Y}
         textAnchor="middle"
         className="gp-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="17"
+        fontSize="20"
         fill="#fff3bf"
         stroke="#7c4a03"
         strokeWidth="4"
@@ -216,45 +216,45 @@ function Droop() {
   return (
     <g aria-hidden="true" data-testid="eo-day-droop">
       <rect
-        className="gp-flash"
+        className="gf-gloom"
         x="-10"
-        y="60"
+        y="40"
         width="420"
-        height="240"
-        fill="#495057"
+        height="230"
+        fill="#343a40"
       />
-      <g className="gp-poof [animation-duration:1.6s]">
-        <circle cx="200" cy="104" r="30" fill="#5c6370" />
-        <circle cx="150" cy="112" r="22" fill="#6b7280" />
-        <circle cx="250" cy="112" r="24" fill="#6b7280" />
-        <circle cx="300" cy="118" r="18" fill="#7b8494" />
-        <circle cx="105" cy="120" r="16" fill="#7b8494" />
+      <g className="gp-poof [animation-duration:2.4s]">
+        <circle cx="200" cy="118" r="52" fill="#5c6370" />
+        <circle cx="120" cy="132" r="38" fill="#6b7280" />
+        <circle cx="290" cy="132" r="40" fill="#6b7280" />
+        <circle cx="352" cy="142" r="30" fill="#7b8494" />
+        <circle cx="52" cy="144" r="30" fill="#7b8494" />
       </g>
       <g fill="#74c0fc">
-        {Array.from({ length: 22 }, (_, k) => (
+        {Array.from({ length: 34 }, (_, k) => (
           <rect
             key={k}
             className={`gf-rain ${STAGGER[k % STAGGER.length]}`}
-            x={96 + k * 10}
-            y={124 + (k % 4) * 6}
-            width="2"
-            height="8"
+            x={24 + k * 11}
+            y={150 + (k % 5) * 14}
+            width="3"
+            height="12"
           />
         ))}
       </g>
       <g className="gf-rain">
-        <rect x={CX - 6} y={BASE_Y - 36} width="2" height="6" fill="#74c0fc" />
-        <rect x={CX + 10} y={BASE_Y - 34} width="2" height="6" fill="#74c0fc" />
+        <rect x={CX - 6} y={BASE_Y - 36} width="3" height="8" fill="#74c0fc" />
+        <rect x={CX + 10} y={BASE_Y - 34} width="3" height="8" fill="#74c0fc" />
       </g>
       <text
         x={TEXT_X}
         y={TEXT_Y}
         textAnchor="middle"
         className="gp-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="14"
+        fontSize="17"
         fill="#ced4da"
         stroke="#212529"
-        strokeWidth="4"
+        strokeWidth="5"
         paintOrder="stroke"
       >
         NOT WANTED TODAY...
@@ -268,6 +268,14 @@ function Beans() {
   return (
     <g aria-hidden="true" data-testid="eo-day-beans">
       <rect
+        className="gf-glow"
+        x="-10"
+        y="40"
+        width="420"
+        height="230"
+        fill="#69db7c"
+      />
+      <rect
         className="gf-richen"
         x="20"
         y="146"
@@ -275,15 +283,29 @@ function Beans() {
         height="92"
         fill="#2a1a0c"
       />
-      {Array.from({ length: 12 }, (_, k) => (
+      {[0, 1, 2].map((k) => (
+        <circle
+          key={k}
+          className={`gp-ring ${STAGGER[k * 3]}`}
+          cx={CX}
+          cy={BASE_Y + 30}
+          r={16 + k * 10}
+          fill="none"
+          stroke={k % 2 ? "#d8f5a2" : "#51cf66"}
+          strokeWidth="4"
+        />
+      ))}
+      {Array.from({ length: 20 }, (_, k) => (
         <rect
           key={k}
-          className={`gf-sparkle-up ${STAGGER[k]}`}
-          x={30 + k * 29}
-          y={190 - (k % 3) * 18}
-          width="3"
-          height="3"
+          className={`gf-sparkle-up ${STAGGER[k % STAGGER.length]}`}
+          x={26 + k * 18}
+          y={196 - (k % 4) * 18}
+          width="6"
+          height="6"
           fill={k % 2 ? "#b2f2bb" : "#69db7c"}
+          stroke="#1b4d1b"
+          strokeWidth="1"
         />
       ))}
       <text
@@ -291,10 +313,10 @@ function Beans() {
         y={TEXT_Y}
         textAnchor="middle"
         className="gp-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="15"
+        fontSize="19"
         fill="#d8f5a2"
         stroke="#1b4d1b"
-        strokeWidth="4"
+        strokeWidth="5"
         paintOrder="stroke"
       >
         BEANS! RICH SOIL!

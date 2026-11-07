@@ -22,7 +22,7 @@ import {
   splitChanceNow,
   splitsSoFar,
 } from "@/lib/ever-onward/universes/grow/pumpkin";
-import { farmPayPerSecond } from "@/lib/ever-onward/universes/grow/tick";
+import { dayFarmPay } from "@/lib/ever-onward/universes/grow/tick";
 import { TUNING } from "@/lib/ever-onward/universes/grow/tuning";
 import type { PanelProps } from "../../universes/types";
 import PanelFrame from "../retro/PanelFrame";
@@ -51,7 +51,7 @@ const button = (isOn: boolean, tone: "feed" | "enter") =>
  */
 export default function PumpkinPanel({ def, run, onAct }: PanelProps) {
   if (!isPumpkinOpen(run) || run.complete) return null;
-  const farmPay = farmPayPerSecond(run);
+  const farmPay = dayFarmPay(run);
   const step = pumpkinStep(run);
   const steps = TUNING.pumpkin.steps;
   const free = isDayFree(run);

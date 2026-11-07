@@ -120,20 +120,24 @@ export function ribbonFor(chances: readonly number[], u: number): number {
   return chances.length - 1;
 }
 
-/** Seconds of farm pay each ribbon is worth. */
-export const ribbonSeconds = (ribbon: number): number =>
-  P.ribbonSeconds[clamp(Math.round(ribbon), 0, P.ribbonSeconds.length - 1)];
+/** Seconds of farm pay a ribbon is worth for a pumpkin of this size. */
+export const ribbonSeconds = (ribbon: number, step: number): number =>
+  P.ribbonSeconds[clamp(Math.round(ribbon), 0, P.ribbonSeconds.length - 1)] *
+  P.sizePay[clamp(Math.round(step), 0, P.steps)];
 
 /** What entering a size pays on average, in seconds of farm pay. */
 export const expectedSeconds = (step: number): number =>
   chancesAt(step).reduce(
-    (sum, chance, ribbon) => sum + chance * ribbonSeconds(ribbon),
+    (sum, chance, ribbon) => sum + chance * ribbonSeconds(ribbon, step),
     0
   );
 
 /** What a ribbon pays right now, given the farm's pace. */
-export const ribbonPays = (ribbon: number, farmPay: FarmPay): number =>
-  ribbonSeconds(ribbon) * Math.max(1, farmPay);
+export const ribbonPays = (
+  ribbon: number,
+  step: number,
+  farmPay: FarmPay
+): number => ribbonSeconds(ribbon, step) * Math.max(1, farmPay);
 
 /** What the pumpkin helper's entry would pay on average. */
 export const handPaysOn = (run: RunState, farmPay: FarmPay): number =>
@@ -204,7 +208,7 @@ export function openPumpkin(run: RunState): void {
 }
 
 /** Feeds the pumpkin a step, unless it splits. */
-function feed(run: RunState, farmPay: FarmPay): void {
+function feed(run: RunState): void {
   const r = run.resources;
   const stream = { rng: res(run, "pkRng") | 0 };
   const roll = nextRandom(stream);
@@ -222,7 +226,6 @@ function feed(run: RunState, farmPay: FarmPay): void {
     return;
   }
   r.pkStep = pumpkinStep(run) + 1;
-  r.pkIncome = farmPay;
 }
 
 /** Sends the pumpkin to the judges (a hand entry pays less). */
@@ -246,7 +249,7 @@ function judge(run: RunState): void {
   r.pkRng = stream.rng;
   const byHand = res(run, "pkBy") === 1;
   const pays =
-    ribbonPays(ribbon, res(run, "pkIncome")) *
+    ribbonPays(ribbon, step, res(run, "pkIncome")) *
     (byHand ? P.handShare : 1) *
     fairForkMult(run);
   r.pkOutcome = ribbon + 1;
@@ -302,9 +305,9 @@ export function enterPumpkin(run: RunState, farmPay: FarmPay): void {
 }
 
 /** Feeds the pumpkin by hand (the panel's button calls this). */
-export function feedPumpkin(run: RunState, farmPay: FarmPay): void {
+export function feedPumpkin(run: RunState): void {
   if (!isDayFree(run) || isGiant(run)) return;
-  feed(run, farmPay);
+  feed(run);
 }
 
 /**
@@ -343,7 +346,7 @@ export function pumpkinActions(
           isBlocked: !free || giant,
         };
       },
-      perform: (run) => feedPumpkin(run, farmPayOf(run)),
+      perform: (run) => feedPumpkin(run),
     },
     {
       id: ENTER_ACTION_ID,

@@ -9,6 +9,7 @@ import {
   forecastOf,
   forecastStage,
   forecastText,
+  grownByHarvest,
   grownIfPlantedIn,
   harvestDays,
   isFieldPlanted,
@@ -32,7 +33,7 @@ const clock = (seconds: number): string => {
 
 /** Where a forecast sits, as a share of the widest bar (5% steps). */
 const barWidth = (demand: number): number =>
-  Math.round(Math.min(1, Math.max(0.2, demand / 1.8)) * 20) * 5;
+  Math.round(Math.min(1, Math.max(0.2, demand / 2.2)) * 20) * 5;
 
 const BAR_CLASSES: Record<number, string> = {
   20: "w-1/5",
@@ -145,7 +146,9 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
           const f = forecastOf(run, crop);
           const checked = crop === planted;
           const doable = canPerformAction(def, run, plantActionId(crop));
-          const grown = grownIfPlantedIn(run, 0);
+          const grown = checked
+            ? grownByHarvest(run)
+            : grownIfPlantedIn(run, 0);
           const wears = wearsSoil(run, crop);
           return (
             <button

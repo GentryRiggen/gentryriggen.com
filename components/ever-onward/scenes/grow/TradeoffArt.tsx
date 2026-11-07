@@ -2,8 +2,8 @@ import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 
 /**
  * The picture for the trade-offs: what each side of a fork looks like, and
- * the seed bank's sacks. Every group is drawn only once its choice is made
- * (or its sacks are in the bank), so the picture changes when you choose.
+ * Every group is drawn only once its choice is made, so the picture changes
+ * when you choose.
  * Motion lives in `gt-` classes in globals.css and stops for reduced motion.
  */
 

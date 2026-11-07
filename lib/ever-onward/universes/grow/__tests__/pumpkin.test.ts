@@ -18,10 +18,11 @@ import {
   pumpkinResultLine,
   pumpkinStep,
   ribbonFor,
+  ribbonSeconds,
   splitChanceNow,
   splitsSoFar,
 } from "../pumpkin";
-import { farmPayPerSecond } from "../tick";
+import { dayFarmPay } from "../tick";
 import { TUNING } from "../tuning";
 import { def, runAtPhaseStart } from "./fixtures";
 
@@ -194,8 +195,8 @@ describe("the prize pumpkin", () => {
     expect(isJudging(r)).toBe(false);
     for (let t = 0; t < 12; t += 1) r = tick(def, r, 1);
     expect(entriesSoFar(r) + (isJudging(r) ? 1 : 0)).toBe(1);
-    expect(handPaysOn(run, farmPayPerSecond(run))).toBeCloseTo(
-      expectedSeconds(2) * farmPayPerSecond(run) * P.handShare,
+    expect(handPaysOn(run, dayFarmPay(run))).toBeCloseTo(
+      expectedSeconds(2) * dayFarmPay(run) * P.handShare,
       6
     );
   });
@@ -205,5 +206,48 @@ describe("the prize pumpkin", () => {
     let r = run;
     for (let t = 0; t < 60; t += 1) r = tick(def, r, 1);
     expect(entriesSoFar(r)).toBe(0);
+  });
+});
+
+describe("the pumpkin is a real bet", () => {
+  /**
+   * Seconds of farm pay per harvest day for the plan "feed until step `k`,
+   * enter, repeat" (a split starts the cycle again from a seedling). Feeding
+   * and entering each take the day's one turn, so a day spent feeding is a
+   * day not entered.
+   */
+  function perDay(k: number): number {
+    let reward = 0;
+    let days = 0;
+    let alive = 1;
+    for (let step = 0; step < k; step += 1) {
+      // Fed from `step`: the cost is paid, the day is used, it may split.
+      reward -= alive * P.feedSeconds[step];
+      days += alive;
+      alive *= 1 - P.splitChance[step];
+    }
+    reward += alive * expectedSeconds(k);
+    days += alive;
+    return reward / days;
+  }
+
+  it("some feed-then-enter plan beats entering the seedling every day", () => {
+    const plans = Array.from({ length: P.steps + 1 }, (_, k) => perDay(k));
+    expect(Math.max(...plans)).toBeGreaterThan(plans[0] * 1.25);
+  });
+
+  it("feeding all the way to a giant is not the best plan either: the bet has an edge", () => {
+    const plans = Array.from({ length: P.steps + 1 }, (_, k) => perDay(k));
+    const best = plans.indexOf(Math.max(...plans));
+    expect(best).toBeGreaterThan(1);
+    expect(best).toBeLessThan(P.steps);
+  });
+
+  it("a bigger pumpkin's ribbons pay more", () => {
+    for (let step = 1; step <= P.steps; step += 1)
+      for (let ribbon = 0; ribbon < 3; ribbon += 1)
+        expect(ribbonSeconds(ribbon, step)).toBeGreaterThan(
+          ribbonSeconds(ribbon, step - 1)
+        );
   });
 });

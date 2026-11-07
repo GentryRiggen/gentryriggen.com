@@ -3344,7 +3344,7 @@ html:has(.jim-app) body {
   }
 }
 
-/* Make It Grow: the pictures of each fork and the seed bank. A new `gt-`
+/* Make It Grow: the pictures of each fork. A new `gt-`
    prefix; every loop stops for reduced motion and leaves the drawn picture. */
 .gt-flutter,
 .gt-flutter-b,
@@ -3352,7 +3352,6 @@ html:has(.jim-app) body {
 .gt-mist-b,
 .gt-crew,
 .gt-crew-b,
-.gt-sack,
 .gt-circle,
 .gt-canopy,
 .gt-canopy-b,
@@ -3435,20 +3434,6 @@ html:has(.jim-app) body {
 
 .gt-crew-b {
   animation: gt-crew 4.2s ease-in-out -1.5s infinite;
-}
-
-@keyframes gt-sack {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-.gt-sack {
-  animation: gt-sack 3s ease-in-out infinite;
 }
 
 @keyframes gt-circle {
@@ -3591,7 +3576,6 @@ html:has(.jim-app) body {
   .gt-mist-b,
   .gt-crew,
   .gt-crew-b,
-  .gt-sack,
   .gt-circle,
   .gt-canopy,
   .gt-canopy-b,
@@ -5146,6 +5130,37 @@ html:has(.jim-app) body {
   animation: gf-rain 0.7s linear infinite;
 }
 
+@keyframes gf-gloom {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  75% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gf-gloom {
+  animation: gf-gloom 7s ease-out forwards;
+}
+
+@keyframes gf-glow {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gf-glow {
+  animation: gf-glow 3.5s ease-out forwards;
+}
+
 @keyframes gf-richen {
   0% {
     opacity: 0.6;
@@ -5346,6 +5361,8 @@ html:has(.jim-app) body {
   .gf-confetti,
   .gf-rain,
   .gf-richen,
+  .gf-gloom,
+  .gf-glow,
   .gf-sparkle-up,
   .gf-tumble,
   .gf-pk,
@@ -5355,6 +5372,11 @@ html:has(.jim-app) body {
   .gf-bit {
     animation: none;
     transition: none;
+  }
+  .gf-gloom,
+  .gf-glow,
+  .gf-richen {
+    opacity: 0.3;
   }
 }
 

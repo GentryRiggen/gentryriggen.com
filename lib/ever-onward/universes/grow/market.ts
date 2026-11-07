@@ -197,6 +197,9 @@ export function plantCrop(run: RunState, crop: FieldCrop): void {
   run.resources.mkPlants = res(run, "mkPlants") + 1;
 }
 
+/** The farm's pay a second as it stood when this harvest day began (0 before the first). */
+export const dayStartPay = (run: RunState): number => res(run, "mkPay");
+
 /** Times a crop has been planted (for the tally). */
 export const plantingsSoFar = (run: RunState): number => res(run, "mkPlants");
 
@@ -220,8 +223,12 @@ function startDay(run: RunState): void {
             Math.sin(res(run, "mkAngle") + (i * 2 * Math.PI) / CROPS.length)) *
           1000
       ) / 1000;
+    // Luck never sinks a crop below `demandFloor` of the usual price.
+    const luck = (nextRandom(stream) - 0.5) * 2 * M.luck;
     r[`mkLuck${i}`] =
-      Math.round((nextRandom(stream) - 0.5) * 2 * M.luck * 1000) / 1000;
+      Math.round(
+        Math.max(luck, M.demandFloor - res(run, `mkBase${i}`)) * 1000
+      ) / 1000;
   }
   r.mkRng = stream.rng;
   r.mkDay = 0;
@@ -319,8 +326,9 @@ function holdDay(run: RunState, farmPay: number): void {
       if (lastCrop(run) === crop)
         r.mkSoil = clamp(soilBefore - S.wear * soilWearMult(run), 0, 1);
     }
-    r.mkLast = FIELD_CROPS.indexOf(crop) + 1;
   }
+  // An empty day rests the soil too: the same crop after a gap is not a repeat.
+  r.mkLast = planted ? FIELD_CROPS.indexOf(crop) + 1 : 0;
   r.mkResAt = run.time;
   r.mkResMood = MOODS.indexOf(mood);
   r.mkResCrop = FIELD_CROPS.indexOf(crop);
@@ -357,6 +365,12 @@ export function tickMarket(
   const r = run.resources;
   if (r.mkPaused === 1) return;
   r.mkDay = daySeconds(run) + dt;
+  // The farm's pay is read once, at the start of each day: the pumpkin's
+  // prices follow it, not the field (which is bare again after harvest day).
+  if (res(run, "mkPayDay") !== harvestDays(run) + 1) {
+    r.mkPay = farmPay() / M.daySeconds;
+    r.mkPayDay = harvestDays(run) + 1;
+  }
   if (
     hasMarketAgent(run) &&
     !isFieldPlanted(run) &&
@@ -382,7 +396,7 @@ const pct = (n: number): string => `${formatNumber(Math.round(n * 100))}%`;
 export function forecastText(f: Forecast): string {
   return f.band <= 0
     ? `${pct(f.middle)}, sure`
-    : `${pct(f.middle - f.band)} to ${pct(f.middle + f.band)}`;
+    : `${pct(Math.max(M.demandFloor, f.middle - f.band))} to ${pct(f.middle + f.band)}`;
 }
 
 /** The result line under the market: what the last harvest day was like. */
@@ -412,12 +426,12 @@ const PLANT: readonly ActionDef[] = FIELD_CROPS.map((crop) => ({
   describe: (run) => {
     const here = isFieldPlanted(run) && plantedCrop(run) === crop;
     const f = forecastOf(run, crop);
-    const grown = grownIfPlantedIn(run, 0);
+    const grown = here ? grownByHarvest(run) : grownIfPlantedIn(run, 0);
     return {
       label: here
         ? `${CROP_LABELS[crop]} are growing`
         : `Plant ${CROP_LABELS[crop].toLowerCase()}`,
-      detail: `Harvest day pays about ${forecastText(f)}. Grown by then: ${pct(grown)}.${
+      detail: `Harvest day pays ${f.band > 0 ? "about " : ""}${forecastText(f)}. Grown by then: ${pct(grown)}.${
         wearsSoil(run, crop) ? " Same as last time: wears the soil." : ""
       }`,
       isBlocked: here,

@@ -27,7 +27,7 @@ import { FESTIVAL_ACTIONS } from "./knowhow";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
-import { farmPayPerSecond, incomePerSecond, tendingValue } from "./tick";
+import { dayFarmPay, incomePerSecond, tendingValue } from "./tick";
 import { tendActions } from "./windowbox";
 import { TUNING } from "./tuning";
 
@@ -152,7 +152,7 @@ export const GROW_ACTIONS: readonly ActionDef[] = [
   ...MARKET_ACTIONS,
   ...FESTIVAL_ACTIONS,
   ...MIX_ACTIONS,
-  ...pumpkinActions(farmPayPerSecond),
+  ...pumpkinActions(dayFarmPay),
   ...tendActions(tendingValue),
 ];
 

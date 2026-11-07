@@ -10,7 +10,7 @@ import {
   seedHelperMult,
   sprinklerForkMult,
 } from "./forks";
-import { daySeconds, marketMult, tickMarket } from "./market";
+import { dayStartPay, daySeconds, marketMult, tickMarket } from "./market";
 import { tickPumpkin } from "./pumpkin";
 import { seasonBoost } from "./seasons";
 import { TUNING } from "./tuning";
@@ -71,6 +71,15 @@ function farmIncome(run: RunState): number {
  */
 export const farmPayPerSecond = (run: RunState): number =>
   incomePerSecond(run) + TUNING.market.referenceTaps * manualPerTap(run);
+
+/**
+ * The farm's pay a second as it stood at the start of this harvest day: what
+ * the prize pumpkin's prices follow, so they do not swing with the field
+ * (it is bare again after every harvest day). Before the first day is read,
+ * the live pay.
+ */
+export const dayFarmPay = (run: RunState): number =>
+  dayStartPay(run) > 0 ? dayStartPay(run) : farmPayPerSecond(run);
 
 /** What one tap earns right now (in spring, planting pays more). */
 export function manualPerTap(run: RunState): number {
@@ -226,7 +235,7 @@ export function tickGrow(run: RunState, dt: number): void {
   tickMarket(run, dt, () => farmPayPerSecond(run) * TUNING.market.daySeconds);
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
-  tickPumpkin(run, dt, () => farmPayPerSecond(run), daySeconds(run));
+  tickPumpkin(run, dt, () => dayFarmPay(run), daySeconds(run));
   if (isWindowBoxOpen(run)) tickWindowBox(run, dt, () => tendingValue(run));
 }
 
