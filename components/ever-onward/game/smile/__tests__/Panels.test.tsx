@@ -6,7 +6,7 @@ import { FORKS } from "@/lib/ever-onward/universes/smile/forks";
 import { runAtPhaseStart } from "@/lib/ever-onward/universes/smile/__tests__/fixtures";
 import { areSmileScoresValid } from "../../../audio/smileScores";
 import { SMILE_UI } from "../../../universes/smile";
-import CheerMeter from "../CheerMeter";
+import SpeakersPanel from "../SpeakersPanel";
 import FriendPanel from "../FriendPanel";
 import KnowHowPanel from "../KnowHowPanel";
 import SmileForkPanel from "../SmileForkPanel";
@@ -80,29 +80,42 @@ describe("Smile panels", () => {
     expect(onAct).toHaveBeenCalledWith("tg-1");
   });
 
-  it("shows the cheer meter in the world only: the town has its own two dials", () => {
+  it("shows the loudspeakers once the world has one: five levels, each with a + and a −, never a best", () => {
+    const onAct = jest.fn();
     const { container, rerender } = render(
-      <CheerMeter def={def} run={runAtPhaseStart(0)} onAct={jest.fn()} />
+      <SpeakersPanel def={def} run={runAtPhaseStart(0)} onAct={onAct} />
     );
     expect(container).toBeEmptyDOMElement();
     rerender(
-      <CheerMeter def={def} run={runAtPhaseStart(1)} onAct={jest.fn()} />
+      <SpeakersPanel def={def} run={runAtPhaseStart(1)} onAct={onAct} />
     );
     expect(container).toBeEmptyDOMElement();
-    rerender(
-      <CheerMeter def={def} run={runAtPhaseStart(2)} onAct={jest.fn()} />
+    const world = runAtPhaseStart(2);
+    rerender(<SpeakersPanel def={def} run={world} onAct={onAct} />);
+    expect(container).toBeEmptyDOMElement();
+    const open = advance(withOwned(world, { loudspeaker: 1 }), 2);
+    rerender(<SpeakersPanel def={def} run={open} onAct={onAct} />);
+    expect(screen.getAllByRole("radio")).toHaveLength(5);
+    for (const i of [0, 1, 2, 3, 4]) {
+      const card = screen.getByTestId(`ms-level-${i}`);
+      expect(card).toHaveTextContent("+ ");
+      expect(card).toHaveTextContent("− ");
+    }
+    expect(screen.getByTestId("ms-speakers").textContent).not.toMatch(
+      /best|recommend/i
     );
-    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "0");
-    rerender(
-      <CheerMeter
-        def={def}
-        run={withOwned(runAtPhaseStart(2), {}, { mtHeat: 1.1, mtTired: 1 })}
-        onAct={jest.fn()}
-      />
-    );
-    expect(screen.getByTestId("ms-meter")).toHaveAttribute("data-tired", "yes");
-    expect(screen.getByTestId("ms-meter-result")).toHaveTextContent(
-      /worn out/i
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "100");
+    fireEvent.click(screen.getByTestId("ms-level-4"));
+    expect(onAct).toHaveBeenCalledWith("ws-4");
+  });
+
+  it("shows the painted share, and warns when most smiles are painted", () => {
+    const open = advance(withOwned(runAtPhaseStart(2), { loudspeaker: 1 }), 2);
+    const painted = withOwned(open, {}, { wsReal: 0.2 });
+    render(<SpeakersPanel def={def} run={painted} onAct={jest.fn()} />);
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "20");
+    expect(screen.getByTestId("ms-speakers-result")).toHaveTextContent(
+      /painted/i
     );
   });
 

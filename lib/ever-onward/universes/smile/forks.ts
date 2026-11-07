@@ -117,12 +117,12 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Loudspeakers",
         blurb: `A cheerful voice on every corner, saying the nicest thing. Every helper pays ${times(T.world.speakerHelpers)} as much.`,
-        catchLine: `Nobody can turn them down, so the cheer meter cools ${less(T.world.speakerCool)} slower.`,
+        catchLine: `Nobody can turn them down, so real smiles get painted over ${Math.round((T.world.speakerPaint - 1) * 100)}% faster.`,
       },
       {
         name: "Listening boxes",
-        blurb: `Notes go in, notes get read. Helpers pay ${times(T.world.boxHelpers)} as much, and the cheer meter cools ${times(T.world.boxCool)} as fast.`,
-        catchLine: "Slower to build, and the notes are not always happy ones.",
+        blurb: `Notes go in, notes get read. Real smiles get painted over ${less(T.world.boxPaint)} slower, and a few come back by themselves.`,
+        catchLine: `Not everyone writes a happy note, so helpers pay only ${times(T.world.boxHelpers)} as much.`,
       },
     ],
   },
@@ -231,9 +231,13 @@ export const forkFallMult = (run: RunState): number =>
 export const forkCareMult = (run: RunState): number =>
   pick(run, "town", 1, TUNING.town.factoryCare);
 
-/** How fast the cheer meter cools. */
-export const forkCoolMult = (run: RunState): number =>
-  pick(run, "world", T.world.speakerCool, T.world.boxCool);
+/** How much faster real smiles get painted over (the loudspeakers' catch). */
+export const forkPaintMult = (run: RunState): number =>
+  pick(run, "world", T.world.speakerPaint, T.world.boxPaint);
+
+/** Real smiles that come back a second by themselves (the boxes). */
+export const forkHealRate = (run: RunState): number =>
+  forkSide(run, "world") === 1 ? T.world.boxHeal : 0;
 
 /** The multiplier of a cheer broadcast. */
 export const forkParadeMult = (): number => TUNING.knowhow.paradeMult;

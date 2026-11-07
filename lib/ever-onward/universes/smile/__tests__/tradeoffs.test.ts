@@ -12,7 +12,6 @@ import {
   knowhowOf,
   paradeCost,
 } from "../knowhow";
-import { heatOf, isTired, tiredMult } from "../meter";
 import { currentWant, isWanting, tendActionId, tendsSoFar } from "../quiet";
 import { incomePerSecond, manualPerTap } from "../tick";
 import { TUNING } from "../tuning";
@@ -73,71 +72,6 @@ describe("Smile trade-offs", () => {
     });
   });
 
-  describe("a managed risk: the cheer meter (the world)", () => {
-    const town = (): RunState => {
-      const start = runAtPhaseStart(2);
-      return {
-        ...start,
-        resources: { ...start.resources, mtHeat: 0, mtTired: 0 },
-      };
-    };
-
-    it("warms with taps and settles instead of rising for ever at a steady pace", () => {
-      let run = town();
-      for (let s = 0; s < 120; s += 1) {
-        for (let t = 0; t < 3; t += 1) run = manualActionFor(run);
-        run = tick(def, run, 1);
-      }
-      expect(heatOf(run)).toBeGreaterThan(0.3);
-      expect(heatOf(run)).toBeLessThan(1);
-      expect(isTired(run)).toBe(false);
-    });
-
-    it("wears the crowd out when mashed hard, and never takes more than 40% of the pay", () => {
-      let run = town();
-      for (let s = 0; s < 120; s += 1) {
-        for (let t = 0; t < 12; t += 1) run = manualActionFor(run);
-        run = tick(def, run, 1);
-      }
-      expect(isTired(run)).toBe(true);
-      expect(tiredMult(run)).toBe(TUNING.meter.tiredMult);
-      expect(tiredMult(run)).toBeGreaterThanOrEqual(0.6);
-      expect(manualPerTap(run)).toBeGreaterThan(0);
-    });
-
-    it("cools on its own, and a rested crowd pays in full again", () => {
-      let run = town();
-      for (let s = 0; s < 60; s += 1) {
-        for (let t = 0; t < 12; t += 1) run = manualActionFor(run);
-        run = tick(def, run, 1);
-      }
-      expect(isTired(run)).toBe(true);
-      run = advance(run, 90);
-      expect(isTired(run)).toBe(false);
-      expect(heatOf(run)).toBeLessThan(0.4);
-    });
-
-    it("is gone in the first, second and last parts", () => {
-      expect(heatOf(runAtPhaseStart(0))).toBe(0);
-      expect(heatOf({ ...runAtPhaseStart(1), resources: { mtHeat: 1 } })).toBe(
-        0
-      );
-      expect(heatOf({ ...runAtPhaseStart(3), resources: { mtHeat: 1 } })).toBe(
-        0
-      );
-    });
-
-    it("blocks a parade while the crowd is too warm", () => {
-      let run = town();
-      run = {
-        ...run,
-        owned: { ...run.owned, poster: 3 },
-        resources: { ...run.resources, knowhow: 500, mtHeat: 0.9 },
-      };
-      expect(canPerformAction(def, run, PARADE_ACTION_ID)).toBe(false);
-    });
-  });
-
   describe("the friend on the bench: nothing is ever wrong", () => {
     it("pays for every answer, the fitting one most", () => {
       const start = runAtPhaseStart(3);
@@ -159,14 +93,3 @@ describe("Smile trade-offs", () => {
     });
   });
 });
-
-function manualActionFor(run: RunState): RunState {
-  // One tap, the way the game does it.
-  const next = {
-    ...run,
-    resources: { ...run.resources },
-    flags: { ...run.flags },
-  };
-  def.manualAction(next);
-  return next;
-}

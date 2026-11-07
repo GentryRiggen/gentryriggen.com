@@ -78,8 +78,29 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: [PHASE_WORLD],
     purpose: "Buys projects and broadcasts.",
   },
-  // The cheer meter (the world): heat (0 to 1) and whether the crowd is worn out.
-  ...hidden(["mtHeat", "mtTired"]),
+  // The world's dial: the real share of smiles, the loudspeaker level and the
+  // one being tuned to (seconds left), changes, the day (kind, seconds left,
+  // calm left, count), the random stream, the big moments' clocks and counts,
+  // and the real share the Quiet opened with.
+  ...hidden([
+    "wsReal",
+    "wsLoud",
+    "wsNext",
+    "wsTune",
+    "wsChanges",
+    "wsDay",
+    "wsDayLeft",
+    "wsCalm",
+    "wsDays",
+    "wsRng",
+    "wsLostAt",
+    "wsLosses",
+    "wsHealAt",
+    "wsHeals",
+    "wsDroneAt",
+    "wsDrones",
+    "wsKept",
+  ]),
   // The parade: seconds left and parades held.
   ...hidden(["pdLeft", "pdCount"]),
   // The town: the price and the one being painted, the seconds left, floats

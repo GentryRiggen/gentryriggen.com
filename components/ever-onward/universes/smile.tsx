@@ -6,10 +6,10 @@ import {
   SMILE_UNEASE,
 } from "../audio/smileScores";
 import type { CueName } from "../audio/everOnwardSynth";
-import CheerMeter from "../game/smile/CheerMeter";
 import FriendPanel from "../game/smile/FriendPanel";
 import KnowHowPanel from "../game/smile/KnowHowPanel";
 import SmileEndingArt from "../game/smile/SmileEndingArt";
+import SpeakersPanel from "../game/smile/SpeakersPanel";
 import SmileForkPanel from "../game/smile/SmileForkPanel";
 import TogetherPanel from "../game/smile/TogetherPanel";
 import TownPanel from "../game/smile/TownPanel";
@@ -54,13 +54,17 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   if (rose("tnGrumpAt")) cues.push("flutter");
   if (rose("tnDays")) cues.push("chime");
   if (rose("qtTends")) cues.push("flutter");
+  if (rose("wsLosses")) cues.push("flutter");
+  if (rose("wsHeals")) cues.push("bloom");
+  if (rose("wsDrones")) cues.push("buzz");
+  if (rose("wsDays")) cues.push("chime");
   return cues;
 }
 
 /** The Make Everyone Smile screens: scene, panels, ending, sounds. */
 export const SMILE_UI: UniverseUi = {
   Scene: SmileScene,
-  primaryPanels: [TogetherPanel, TownPanel, CheerMeter, FriendPanel],
+  primaryPanels: [TogetherPanel, TownPanel, SpeakersPanel, FriendPanel],
   panels: [SmileForkPanel, KnowHowPanel],
   ending: { storyIds: ENDING_STORY_IDS, Art: SmileEndingArt },
   tapLooks: LOOKS,

@@ -11,6 +11,7 @@ import {
   tendActionId,
   trustFraction,
 } from "@/lib/ever-onward/universes/smile/quiet";
+import { quietOpeningLine } from "@/lib/ever-onward/universes/smile/world";
 import type { PanelProps } from "../../universes/types";
 import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
@@ -51,6 +52,14 @@ export default function FriendPanel({ def, run, onAct }: PanelProps) {
       >
         {headline}
       </p>
+      {quietOpeningLine(run) && (
+        <p
+          data-testid="ms-friend-opening"
+          className="font-mono text-xs font-bold text-sky-100"
+        >
+          {quietOpeningLine(run)}
+        </p>
+      )}
       <p className="font-mono text-xs text-slate-300">
         Every answer helps. The one that fits helps most. There is no hurry.
       </p>

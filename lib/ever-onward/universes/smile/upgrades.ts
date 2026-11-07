@@ -1,7 +1,6 @@
 import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
-import { coolPerSecond } from "./meter";
 import { streetRise } from "./town";
 import {
   BENCH_ID,
@@ -65,13 +64,14 @@ const helperPreview = (run: RunState, id: string): string =>
     `${noun(run)}/sec`
   );
 
-/** "The cheer meter cools ×1.6 as fast" then "Meter cools 5% → 8% a second". */
-function coolPreview(run: RunState, id: string): string {
-  const before = coolPerSecond(run);
-  const next = coolPerSecond(plusOne(run, id));
-  const pct = (n: number): string => `${Number((n * 100).toFixed(1))}%`;
-  const faster = before > 0 ? Number((next / before).toFixed(1)) : 1;
-  return `The cheer meter cools ×${faster} as fast\nMeter cools ${pct(before)} → ${pct(next)} a second\nA worn-out crowd pays less`;
+/** "Every place pays ×1.2" then "Real smiles get painted over 15% faster". */
+function maskPreview(run: RunState, id: string): string {
+  const next = plusOne(run, id);
+  const faster = Math.round(TUNING.world.maskPaint * 100);
+  return [
+    rateEffect(incomePerSecond(run), incomePerSecond(next), `${noun(run)}/sec`),
+    `− Real smiles get painted over ${faster}% faster`,
+  ].join("\n");
 }
 
 /** "Floats cheer a street ×1.4 as fast" then "Street mood rises 3% → 4.2% a second". */
@@ -357,7 +357,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       id: "mask-booth",
       name: "A smile-mask booth",
       description:
-        "Pick a mask with a happy mouth and wear it all day. Nobody looks tired in a mask, and the cheer meter cools a good deal faster.",
+        "Pick a mask with a happy mouth and wear it all day. Nobody can tell who is under one. Every set pays more, and every set paints a bit more.",
       phase: PHASE_WORLD,
       currency: "grins",
       baseCost: 28000,
@@ -366,7 +366,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       gate: has("loudspeaker", 1),
     }),
     kind: "mechanic",
-    effectPreview: (run) => coolPreview(run, "mask-booth"),
+    effectPreview: (run) => maskPreview(run, "mask-booth"),
   },
   line({
     id: "cheer-tower",

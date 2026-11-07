@@ -1,8 +1,8 @@
 import type { GaugeView, RunState } from "../../engine/types";
-import { hasMeter, heatOf, isTired } from "./meter";
+import { isWorldOpen, realOf } from "./world";
 import { grumpyCount, isTownOpen, townMood } from "./town";
 
-/** The town's mood or the world's cheer meter, kept on the HUD. */
+/** The town's mood or the world's real smiles, kept on the HUD. */
 export function smileGauge(run: RunState): GaugeView | null {
   if (run.complete) return null;
   if (isTownOpen(run)) {
@@ -18,16 +18,15 @@ export function smileGauge(run: RunState): GaugeView | null {
       status: grumpy ? "GRUMPY" : "",
     };
   }
-  if (!hasMeter(run)) return null;
-  const heat = heatOf(run);
-  const tired = isTired(run);
+  if (!isWorldOpen(run)) return null;
+  const real = realOf(run);
   return {
-    label: "CHEER",
-    current: heat,
+    label: "REAL",
+    current: real,
     max: 1,
-    isLow: tired || heat >= 0.7,
-    isCritical: tired || heat >= 0.9,
-    display: `${Math.round(heat * 100)}%`,
-    status: tired ? "TIRED" : heat >= 0.7 ? "WARM" : "",
+    isLow: real < 0.4,
+    isCritical: real < 0.15,
+    display: `${Math.round(real * 100)}%`,
+    status: real < 0.4 ? "PAINTED" : "",
   };
 }

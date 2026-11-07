@@ -1,13 +1,13 @@
 import { visitorHereFlag } from "../../engine/engine";
 import type { RunState } from "../../engine/types";
 import { forkHelperMult, forkTapMult } from "./forks";
-import { phaseBoost, tickKnowhow } from "./knowhow";
-import { heatByTap, tickMeter, tiredMult } from "./meter";
+import { isParadeOn, phaseBoost, tickKnowhow } from "./knowhow";
 import { addPatience, isQuietOpen, tickQuiet } from "./quiet";
 import { MANUAL_RESOURCES } from "./resources";
 import { tickTown } from "./town";
 import { TUNING } from "./tuning";
 import { bondGain, tickTogether, togetherPay } from "./together";
+import { tickWorld, worldPay } from "./world";
 import { RETURN_VISITOR_ID } from "./visitors";
 
 /** The three helper lines of each phase, by phase index. */
@@ -103,7 +103,7 @@ export function manualPerTap(run: RunState): number {
     tapReach(run) *
     forkTapMult(run) *
     phaseBoost(run) *
-    tiredMult(run) *
+    worldPay(run) *
     signMult(run)
   );
 }
@@ -114,7 +114,7 @@ export function incomePerSecond(run: RunState): number {
   const base =
     helperSum(run) * scaleMult(run) * forkHelperMult(run) * speed(run);
   if (run.phase === 3) return base;
-  return base * phaseBoost(run) * tiredMult(run) * signMult(run);
+  return base * phaseBoost(run) * worldPay(run) * signMult(run);
 }
 
 /** What a second of tending is worth: the helpers plus one tap. */
@@ -135,13 +135,12 @@ export function tickSmile(run: RunState, dt: number): void {
   tickTogether(run, dt, () => friendGrossIncome(run) + friendGrossTap(run));
   tickKnowhow(run, dt);
   tickTown(run, dt);
-  tickMeter(run, dt);
+  tickWorld(run, dt, isParadeOn(run));
   if (isQuietOpen(run)) tickQuiet(run, dt, () => tendingValue(run));
 }
 
 export function manualSmile(run: RunState): void {
   earn(run, manualPerTap(run));
-  heatByTap(run);
 }
 
 export const isSmileComplete = (run: RunState): boolean =>

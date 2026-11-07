@@ -39,6 +39,7 @@ export const smileUniverse: UniverseDef = {
   actions: SMILE_ACTIONS,
   projects: SMILE_PROJECTS,
   maxVisible: 3,
+  maxProjects: 6,
   goalMeter: smileGoal,
   story: STORY,
   events: SMILE_EVENTS,

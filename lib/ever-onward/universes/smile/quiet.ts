@@ -2,6 +2,7 @@ import type { ActionDef, RunState } from "../../engine/types";
 import { forkTapMult } from "./forks";
 import { FULL_TRUST, PHASE_QUIET } from "./resources";
 import { tendingValue } from "./tick";
+import { carryRealSmiles } from "./world";
 import { TUNING } from "./tuning";
 
 /**
@@ -144,6 +145,11 @@ export function tendFriend(run: RunState, choice: number, value: number): void {
 
 /** Opens the bench: the friend wants nothing yet. */
 export function openQuiet(run: RunState): void {
+  // The real smiles the world kept are trust already, from the first minute.
+  run.resources.trust = Math.max(
+    res(run, "trust"),
+    carryRealSmiles(run) * FULL_TRUST
+  );
   run.resources.qtStage = 0;
   run.resources.qtTime = 0;
   run.resources.qtWant = PATTERN[0];

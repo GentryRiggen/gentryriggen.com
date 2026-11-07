@@ -6712,3 +6712,170 @@ html:has(.jim-app) body {
     opacity: 1;
   }
 }
+
+/* ---- Real smiles and painted smiles (Make Everyone Smile, the world): ms-w- ---- */
+/* A painted face's gloss: a slow glint that crosses the forehead. */
+@keyframes ms-w-gloss {
+  0%,
+  60%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.2;
+  }
+  80% {
+    transform: translateX(6px);
+    opacity: 1;
+  }
+}
+.ms-w-gloss {
+  animation: ms-w-gloss 4.4s ease-in-out infinite;
+}
+
+/* Faces get painted: a pale band sweeps across the crowd. */
+@keyframes ms-w-sweep {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(470px);
+    opacity: 0.9;
+  }
+}
+.ms-w-sweep {
+  animation: ms-w-sweep 1.5s ease-in forwards;
+}
+
+/* Real smiles back: warm colour floods the whole picture and drains away. */
+@keyframes ms-w-flood {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-w-flood {
+  animation: ms-w-flood 3.6s ease-out forwards;
+}
+
+@keyframes ms-w-rise {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) scale(1.2);
+    opacity: 0;
+  }
+}
+.ms-w-rise {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-w-rise 2.6s ease-out both;
+}
+
+/* The drones sweep across the top of the picture, one after another. */
+@keyframes ms-w-fly {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(480px);
+  }
+}
+.ms-w-fly {
+  animation: ms-w-fly 2.4s ease-in-out both;
+}
+
+@keyframes ms-w-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.ms-w-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-w-spin 2.2s linear infinite;
+}
+.ms-w-spin-b {
+  animation-direction: reverse;
+  animation-duration: 3.4s;
+}
+
+@keyframes ms-w-dim {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-w-dim {
+  animation: ms-w-dim 4.4s ease-in-out forwards;
+}
+
+@keyframes ms-w-beams {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ms-w-beams {
+  animation: ms-w-beams 0.8s ease-in-out infinite;
+}
+
+/* Sound rings on the loudspeakers, and wavy lines for noise. */
+@keyframes ms-w-wave {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.ms-w-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-w-wave 1.6s ease-out infinite;
+}
+.ms-w-wave-b {
+  animation-delay: 0.8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-w-gloss,
+  .ms-w-sweep,
+  .ms-w-flood,
+  .ms-w-rise,
+  .ms-w-fly,
+  .ms-w-spin,
+  .ms-w-dim,
+  .ms-w-beams,
+  .ms-w-wave {
+    animation: none;
+  }
+
+  .ms-w-sweep,
+  .ms-w-flood,
+  .ms-w-rise,
+  .ms-w-fly,
+  .ms-w-dim {
+    opacity: 0;
+  }
+}

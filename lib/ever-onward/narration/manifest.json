@@ -2336,8 +2336,8 @@
   },
   "smile/cut-world-end": {
     "file": "/ever-onward/voice/smile/cut-world-end.mp3",
-    "hash": "0755b01fa80a",
-    "durationGuess": 22
+    "hash": "33043cb91fb0",
+    "durationGuess": 28
   },
   "smile/cut-quiet-1": {
     "file": "/ever-onward/voice/smile/cut-quiet-1.mp3",
@@ -2694,10 +2694,20 @@
     "hash": "978d1c20bf80",
     "durationGuess": 16
   },
-  "smile/world-tired": {
-    "file": "/ever-onward/voice/smile/world-tired.mp3",
-    "hash": "bf1da63b933f",
-    "durationGuess": 16
+  "smile/world-painted": {
+    "file": "/ever-onward/voice/smile/world-painted.mp3",
+    "hash": "22ec81dbf8cb",
+    "durationGuess": 12
+  },
+  "smile/world-drones": {
+    "file": "/ever-onward/voice/smile/world-drones.mp3",
+    "hash": "bb02919c6615",
+    "durationGuess": 17
+  },
+  "smile/world-heal": {
+    "file": "/ever-onward/voice/smile/world-heal.mp3",
+    "hash": "8731c31ad866",
+    "durationGuess": 17
   },
   "smile/world-tower": {
     "file": "/ever-onward/voice/smile/world-tower.mp3",
@@ -2798,6 +2808,16 @@
     "file": "/ever-onward/voice/smile/quiet-hello.mp3",
     "hash": "c9540b3c4852",
     "durationGuess": 15
+  },
+  "smile/quiet-kept-many": {
+    "file": "/ever-onward/voice/smile/quiet-kept-many.mp3",
+    "hash": "bbaa48e60351",
+    "durationGuess": 14
+  },
+  "smile/quiet-kept-few": {
+    "file": "/ever-onward/voice/smile/quiet-kept-few.mp3",
+    "hash": "434fa06ae432",
+    "durationGuess": 16
   },
   "smile/quiet-first": {
     "file": "/ever-onward/voice/smile/quiet-first.mp3",

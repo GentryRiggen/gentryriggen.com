@@ -240,9 +240,9 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Rain, a hot day or a street party can change what works best. Keep an eye on the day.",
   ],
   [PHASE_WORLD]: [
-    "A cheer broadcast pays double, but it warms the meter. Start one when it is cool.",
-    "Masks and quiet hours cool the meter. A worn-out world pays less.",
-    "Loudspeakers or listening boxes: one gets built first, and the other waits.",
+    "A louder loudspeaker pays more grins, and it paints real smiles over. A quiet one lets them come back.",
+    "A festival, a gloomy week or tired ears change what suits the day. Keep an eye on it.",
+    "Some projects are cheap in grins and cost real smiles. How many you keep shapes The Quiet.",
   ],
   [PHASE_QUIET]: [
     "Watch the friend. The clue says what they want, and the right answer helps most.",

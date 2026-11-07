@@ -35,7 +35,7 @@ const STAGGER = [
 const PRICE_WORDS = ["FREE", "CHEAP", "FAIR", "DEAR", "PRICEY"] as const;
 
 /** Big shouted words: outlined so they read over anything. */
-function Shout({
+export function Shout({
   x,
   y,
   size = 14,

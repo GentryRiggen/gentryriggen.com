@@ -50,7 +50,11 @@ export function captionFor(info: SmileSceneInfo): string {
           : "Smiling posters everywhere",
         ...(info.a > 0 ? [plural(info.a, "poster")] : []),
         ...(info.b > 0 ? [plural(info.b, "loudspeaker")] : []),
-        ...(info.tired ? ["everyone is worn out"] : []),
+        ...(info.real <= 4
+          ? ["most smiles are painted on"]
+          : info.real <= 8
+            ? ["some smiles are painted on"]
+            : []),
       ].join(" · ");
     default:
       return info.visitorHere

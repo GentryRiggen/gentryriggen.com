@@ -1,7 +1,7 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
 import { paradesSoFar } from "../knowhow";
-import { isTired } from "../meter";
 import { PHASE_WORLD } from "../resources";
+import { droneCount, healCount, lostCount, realOf } from "../world";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -58,10 +58,22 @@ export const world: StoryMessage[] = [
     text: "The first cheer broadcast goes out on every channel at once. Every screen shows the same smile. The robot thinks it looks wonderful. It is surprised to feel that it looks a lot like the posters.",
   },
   {
-    id: "world-tired",
+    id: "world-painted",
     phase: PHASE_WORLD,
-    when: (run) => isTired(run),
-    text: "Everyone is worn out from being so cheerful. A tired person in a mask is still a tired person. The robot adds a quiet hour, and a sign about the quiet hour, which is also very cheerful.",
+    when: (run) => lostCount(run) >= 1 || realOf(run) < 0.75,
+    text: "Some of the smiles have stopped moving. They are still smiles. They are exactly the same smile, on every face, and they never crinkle at the eyes.",
+  },
+  {
+    id: "world-drones",
+    phase: PHASE_WORLD,
+    when: (run) => droneCount(run) >= 1,
+    text: "The drones hum their swirly tune, and everybody who looks up grins. They go on grinning after the drones have gone over. The robot counts the grins. It is a very big number. It does not count the other kind.",
+  },
+  {
+    id: "world-heal",
+    phase: PHASE_WORLD,
+    when: (run) => healCount(run) >= 1,
+    text: "On a bench in a square, somebody says how they really are. Then somebody else laughs, a real laugh, a bit too loud, with a snort in it. The robot has not heard one in a long time.",
   },
   {
     id: "world-tower",

@@ -2,7 +2,6 @@ import { visitorHereFlag } from "../../engine/engine";
 import type { RunState } from "../../engine/types";
 import { forkSide } from "./forks";
 import { isParadeOn, isProjectDone } from "./knowhow";
-import { isTired, meterQuarters } from "./meter";
 import {
   TRUST_STAGES,
   isWanting,
@@ -42,6 +41,22 @@ import {
   priceOf,
 } from "./town";
 import { RETURN_VISITOR_ID } from "./visitors";
+import {
+  DAY_FESTIVAL,
+  DAY_GLOOM,
+  DAY_WEARY,
+  dayKind as worldDayKind,
+  droneCount,
+  healCount,
+  isRetuning,
+  isWorldOpen,
+  justDroned,
+  justHealed,
+  justLost,
+  levelOf,
+  lostCount,
+  realOf,
+} from "./world";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
 export interface SmileSceneInfo {
@@ -79,10 +94,21 @@ export interface SmileSceneInfo {
   moving: number;
   arrived: number;
   grumped: number;
-  /** World: the broadcast is on, the cheer meter in quarters, worn out. */
+  /**
+   * World: the broadcast is on; once the dial is open, the loudspeaker level
+   * (0 to 4), it is being retuned, the share of smiles that are real in
+   * tenths (10 = all real), the day ("" plain, "fest", "gloom", "weary"), and
+   * the three big moments (faces painted over, real smiles back, HypnoDrones
+   * launched: each one's running count while it shows, else 0).
+   */
   parade: boolean;
-  heat: number;
-  tired: boolean;
+  loud: number;
+  retune: boolean;
+  real: number;
+  wday: string;
+  lostKey: number;
+  healKey: number;
+  droneKey: number;
   /** Which know-how projects are done (bit 0, 1 and 2). */
   projects: number;
   /** Friend: the bond's tier (0 to 3). */
@@ -167,7 +193,14 @@ const IDS: readonly (readonly string[])[] = [
 const PROJECT_IDS: readonly (readonly string[])[] = [
   [],
   ["big-top", "shady-corners", "confetti-cannons"],
-  ["quiet-hours", "every-language", "grin-guide"],
+  [
+    "quiet-hours",
+    "every-language",
+    "grin-guide",
+    "smile-filters",
+    "hypno-drones",
+    "listening-benches",
+  ],
   [],
 ];
 
@@ -275,6 +308,41 @@ function townInfo(
   };
 }
 
+function worldInfo(
+  run: RunState
+): Pick<
+  SmileSceneInfo,
+  "loud" | "retune" | "real" | "wday" | "lostKey" | "healKey" | "droneKey"
+> {
+  if (!isWorldOpen(run))
+    return {
+      loud: 2,
+      retune: false,
+      real: 10,
+      wday: "",
+      lostKey: 0,
+      healKey: 0,
+      droneKey: 0,
+    };
+  const kind = worldDayKind(run);
+  return {
+    loud: levelOf(run),
+    retune: isRetuning(run),
+    real: Math.round(realOf(run) * 10),
+    wday:
+      kind === DAY_FESTIVAL
+        ? "fest"
+        : kind === DAY_GLOOM
+          ? "gloom"
+          : kind === DAY_WEARY
+            ? "weary"
+            : "",
+    lostKey: justLost(run) ? lostCount(run) : 0,
+    healKey: justHealed(run) ? healCount(run) : 0,
+    droneKey: justDroned(run) ? droneCount(run) : 0,
+  };
+}
+
 export function sceneInfo(run: RunState): SmileSceneInfo {
   const p = Math.max(0, Math.min(3, run.phase));
   const phase = PHASE_IDS[p];
@@ -296,8 +364,7 @@ export function sceneInfo(run: RunState): SmileSceneInfo {
     extraC: level(run, ids[7]),
     ...townInfo(run),
     parade: isParadeOn(run) && p === 2,
-    heat: p === 2 ? meterQuarters(run) : 0,
-    tired: isTired(run),
+    ...worldInfo(run),
     projects: PROJECT_IDS[p].reduce(
       (bits, id, i) => bits | (isProjectDone(run, id) ? 1 << i : 0),
       0

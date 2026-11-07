@@ -2,10 +2,10 @@ import { projectDoneFlag } from "../../engine/engine";
 import { formatNumber } from "../../engine/format";
 import type { ActionDef, ProjectDef, RunState } from "../../engine/types";
 import { forkParadeMult } from "./forks";
-import { heatOf, isTired } from "./meter";
 import { COINS, townMult } from "./town";
 import { PHASE_TOWN, PHASE_WORLD } from "./resources";
 import { TUNING } from "./tuning";
+import { launchDrones, paintOver, restoreSmiles } from "./world";
 
 /**
  * Know-how: the town's and the world's one second resource, and the place
@@ -24,6 +24,10 @@ import { TUNING } from "./tuning";
 
 const K = TUNING.knowhow;
 const T = TUNING.town;
+const W = TUNING.world;
+
+/** A share of the crowd a second, as a share a minute ("7%"). */
+const perMin = (n: number): string => `${Number((n * 6000).toFixed(1))}%`;
 
 export const KNOWHOW = "knowhow";
 export const PARADE_ACTION_ID = "parade-start";
@@ -80,10 +84,6 @@ export const isParadeOpen = (run: RunState): boolean =>
 export const paradeMult = (run: RunState): number =>
   hasKnowhow(run) && isParadeOn(run) ? forkParadeMult() * bigTopMult(run) : 1;
 
-/** The crowd can take a parade when the meter is cool enough. */
-export const canParade = (run: RunState): boolean =>
-  !isTired(run) && heatOf(run) <= TUNING.meter.paradeMaxHeat;
-
 function startParade(run: RunState): void {
   run.resources.pdLeft = paradeSeconds() + K.paradeRest;
   run.resources.pdCount = paradesSoFar(run) + 1;
@@ -106,18 +106,15 @@ export const PARADE_ACTIONS: readonly ActionDef[] = [
     describe: (run) => {
       const on = isParadeOn(run);
       const resting = isParadeResting(run);
-      const rested = canParade(run);
       return {
         label: on
           ? `${PARADE_NAMES[run.phase]} is on`
           : resting
             ? "Everyone is catching their breath"
             : `Start a ${PARADE_NAMES[run.phase].toLowerCase()}`,
-        detail: rested
-          ? `Everything pays ${Number((forkParadeMult() * bigTopMult(run)).toFixed(2))}x for ${paradeSeconds()} seconds, and it warms the cheer meter. Best when the meter is cool.`
-          : "The crowd is too warm for a parade right now. Wait for the cheer meter to cool.",
+        detail: `Everything pays ${Number((forkParadeMult() * bigTopMult(run)).toFixed(2))}x for ${paradeSeconds()} seconds. Real smiles get painted over ${Math.round((TUNING.world.broadcastPaint - 1) * 100)}% faster while it plays.`,
         cost: { resource: KNOWHOW, amount: K.paradeCost },
-        isBlocked: on || resting || !rested,
+        isBlocked: on || resting,
       };
     },
     perform: (run) => startParade(run),
@@ -132,10 +129,6 @@ const times = (before: number, after: number): string =>
 
 /** "×2": a project's multiplier, no more digits than it needs. */
 const mult = (n: number): string => `×${Number(n.toFixed(2))}`;
-
-/** The meter cools twice as fast with quiet hours. */
-export const coolProjectMult = (run: RunState): number =>
-  run.phase === 2 && isProjectDone(run, "quiet-hours") ? K.coolMult : 1;
 
 /** Confetti cannons and the grin guide: everything pays twice, always. */
 export const projectIncomeMult = (run: RunState): number =>
@@ -193,12 +186,12 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_WORLD,
     name: "Quiet hours",
     description:
-      "One hour a day when the loudspeakers go soft and everyone smiles very quietly. The cheer meter cools twice as fast.",
-    tradeOff: "Know-how spent here is not there for a cheer broadcast.",
+      "One hour a day when the loudspeakers go soft and everyone smiles very quietly.",
+    tradeOff: `Grins pay ${mult(W.quietHoursPay)}, slower all day long.`,
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "loudspeaker") >= 1,
     effectPreview: () =>
-      `The cheer meter cools ${mult(K.coolMult)} as fast · a worn-out crowd pays less`,
+      `+ Real smiles get painted over ${mult(1 / W.quietHoursPaint)} slower\n− Every place pays ${mult(W.quietHoursPay)} the grins`,
     botValue: 0.3,
   },
   {
@@ -211,18 +204,61 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "poster") >= 3,
     effectPreview: () =>
-      `A broadcast pays ${times(forkParadeMult(), forkParadeMult() * K.bigTopMult)}`,
+      `+ A broadcast pays ${times(forkParadeMult(), forkParadeMult() * K.bigTopMult)}\n− It still paints real smiles over faster`,
     botValue: 0.4,
+  },
+  {
+    id: "smile-filters",
+    phase: PHASE_WORLD,
+    name: "Smile filters",
+    description:
+      "A little app that paints a grin on every photo, and then on every face that looks at one.",
+    tradeOff: "Painted grins keep spreading, whatever the loudspeakers do.",
+    costs: cost(K.costs[0]),
+    revealWhen: (run) => owned(run, "poster") >= 2,
+    effectPreview: () =>
+      `+ Every place pays ${mult(W.filtersPay)} the grins\n− Real smiles lose ${perMin(W.filtersDrift)} a minute`,
+    botValue: 0.2,
   },
   {
     id: "grin-guide",
     phase: PHASE_WORLD,
     name: "The Official Grin Guide",
     description:
-      "A handbook for correct smiling. Page one says to do it all the time. Every place pays twice as many grins.",
-    tradeOff: "It costs a lot of know-how, which a broadcast would have used.",
+      "A handbook for correct smiling. Page one says to do it all the time.",
+    tradeOff:
+      "A lot of know-how, and the first faces learn it by heart at once.",
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "cheer-tower") >= 1,
-    effectPreview: () => `Every place pays ${mult(K.allMult)} the grins`,
+    effectPreview: () =>
+      `+ Every place pays ${mult(K.allMult)} the grins\n− ${Math.round(W.guideLoss * 100)}% of real smiles painted over at once`,
+    onDone: (run) => paintOver(run, W.guideLoss),
+  },
+  {
+    id: "hypno-drones",
+    phase: PHASE_WORLD,
+    name: "HypnoDrones",
+    description:
+      "A swarm of little drones that hum a swirly tune. Whoever looks up grins and cannot stop. It is the biggest crowd-pleaser ever made.",
+    tradeOff:
+      "Whoever looks up stops smiling for real, and it does not wear off.",
+    costs: cost(K.costs[2]),
+    revealWhen: (run) => owned(run, "cheer-tower") >= 1,
+    effectPreview: () =>
+      `+ Every place pays ${mult(W.dronesPay)} the grins\n− ${Math.round(W.dronesLoss * 100)}% of real smiles painted over at once, and ${perMin(W.dronesDrift)} more a minute`,
+    onDone: (run) => launchDrones(run),
+  },
+  {
+    id: "listening-benches",
+    phase: PHASE_WORLD,
+    name: "Listening benches",
+    description:
+      "A bench in every square with a sign: sit here and tell someone how you really are. Someone sits and listens.",
+    tradeOff: `Slow work. Grins pay ${mult(W.benchesPay)} while helpers keep it up.`,
+    costs: cost(K.costs[1]),
+    revealWhen: (run) => owned(run, "poster") >= 4,
+    effectPreview: () =>
+      `+ ${Math.round(W.benchesGain * 100)}% of the smiles are real again at once, and ${perMin(W.benchesHeal)} more a minute\n− Every place pays ${mult(W.benchesPay)} the grins`,
+    onDone: (run) => restoreSmiles(run),
   },
 ];

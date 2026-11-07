@@ -75,7 +75,8 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Spread cheer to every place and launch the satellite.",
     manualResource: "grins",
     manualLabel: "Spread the cheer",
-    tapDoes: "spread the cheer. Tap too fast and the world gets tired",
+    tapDoes:
+      "spread the cheer. A louder loudspeaker pays more, and paints real smiles over",
     isDone: (run) => owned(run, "cheer-satellite") >= 1,
     onEnter: (run) => {
       carry(1, 2)(run);

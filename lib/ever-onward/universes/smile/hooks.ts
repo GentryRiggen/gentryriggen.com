@@ -9,13 +9,11 @@ import {
 import {
   PARADE_ACTION_ID,
   SMILE_PROJECTS,
-  canParade,
   isParadeOpen,
   paradeLeft,
   knowhowOf,
   paradeCost,
 } from "./knowhow";
-import { hasMeter, heatOf, withoutHeat } from "./meter";
 import { QUIET_ACTION_IDS, isWanting } from "./quiet";
 import { PHASE_IDS } from "./resources";
 import { isSameSceneInfo, sceneInfo } from "./scene";
@@ -45,6 +43,14 @@ import {
   townMood,
 } from "./town";
 import { TUNING } from "./tuning";
+import {
+  DAY_NONE as WORLD_DAY_NONE,
+  LEVEL_ACTION_IDS,
+  dayKind as worldDayKind,
+  isWorldOpen,
+  realOf,
+  withoutWorldDay,
+} from "./world";
 
 /** A project is on offer and not yet done. */
 function hasOpenProject(run: RunState): boolean {
@@ -78,7 +84,11 @@ export function smilePlates(run: RunState): string[] {
     plates.push("fork");
   if (isTogetherOpen(run)) plates.push("together");
   if (needsALook(run)) plates.push("face");
-  if (hasMeter(run) && heatOf(run) >= 0.6) plates.push("meter");
+  if (
+    isWorldOpen(run) &&
+    (worldDayKind(run) !== WORLD_DAY_NONE || realOf(run) < 0.4)
+  )
+    plates.push("dial");
   if (isTownOpen(run)) {
     const day = dayKind(run);
     if (day === DAY_HOT || day === DAY_RAIN) plates.push("stand");
@@ -92,8 +102,7 @@ export function smilePlates(run: RunState): string[] {
   if (
     isParadeOpen(run) &&
     paradeLeft(run) <= 0 &&
-    knowhowOf(run) >= paradeCost() &&
-    canParade(run)
+    knowhowOf(run) >= paradeCost()
   )
     plates.push("parade");
   if (hasOpenProject(run)) plates.push("project");
@@ -107,6 +116,7 @@ export const SMILE_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
     face: TOGETHER_ACTION_IDS,
     stand: PRICE_ACTION_IDS,
     route: ROUTE_ACTION_IDS,
+    dial: LEVEL_ACTION_IDS,
     friend: QUIET_ACTION_IDS,
     fork: FORK_ACTION_IDS,
     parade: [PARADE_ACTION_ID],
@@ -120,20 +130,21 @@ export const SMILE_DECISION_ACTIONS: readonly string[] = [
   ...FORK_ACTION_IDS,
   ...TOGETHER_ACTION_IDS,
   ...TOWN_ACTION_IDS,
+  ...LEVEL_ACTION_IDS,
   PARADE_ACTION_ID,
   ...QUIET_ACTION_IDS,
 ];
 
 /**
- * The world's one watched number is the cheer meter; the town's is its mood
- * (how happy its streets are).
+ * The world's one watched number is the share of smiles that are real; the
+ * town's is its mood (how happy its streets are).
  */
 export const SMILE_CONSUMABLES: readonly ConsumableDef[] = [
   {
-    id: "cool",
-    label: "Cool",
-    level: (run) => (hasMeter(run) ? 1 - heatOf(run) : null),
-    lowZone: { lo: 0.02, hi: 0.35 },
+    id: "real",
+    label: "Real smiles",
+    level: (run) => (isWorldOpen(run) ? realOf(run) : null),
+    lowZone: { lo: 0.02, hi: 0.5 },
   },
   {
     id: "mood",
@@ -144,12 +155,12 @@ export const SMILE_CONSUMABLES: readonly ConsumableDef[] = [
 ];
 
 /**
- * Income probes read the crowd rested and the friend at plain pay: being worn
- * out, or listening for a while, is not a smaller town.
+ * Income probes read the friend at plain pay and the world on a plain day:
+ * today's weather is not a bigger or a smaller town.
  */
 export function smileIncomeView(run: RunState): RunState {
   if (run.phase === 0) return withoutTogether(run);
-  return hasMeter(run) ? withoutHeat(run) : run;
+  return isWorldOpen(run) ? withoutWorldDay(run) : run;
 }
 
 /** True when the picture differs between two runs. */

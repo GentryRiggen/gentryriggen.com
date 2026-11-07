@@ -3,6 +3,7 @@ import type { RunState, StoryMessage } from "../../../engine/types";
 import { PHASE_QUIET } from "../resources";
 import { tendsSoFar, trustFraction } from "../quiet";
 import { RETURN_VISITOR_ID } from "../visitors";
+import { hasKept, keptOf } from "../world";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -21,6 +22,18 @@ export const quiet: StoryMessage[] = [
     id: "quiet-hello",
     phase: PHASE_QUIET,
     text: "The robot stops. It is the first time it has stopped since the step. At the very edge of the cheer, on a bench, sits a person whose face is not doing anything at all.",
+  },
+  {
+    id: "quiet-kept-many",
+    phase: PHASE_QUIET,
+    when: (run) => hasKept(run) && keptOf(run) >= 0.5,
+    text: "Some of the smiles out there were real, and the person on the bench has heard about it. They look up, just a little. It is more than the robot hoped for.",
+  },
+  {
+    id: "quiet-kept-few",
+    phase: PHASE_QUIET,
+    when: (run) => hasKept(run) && keptOf(run) < 0.5,
+    text: "Most of the smiles out there were painted on, and the person on the bench can tell. They do not look up. The robot sits down anyway, a little further along, and waits to be trusted.",
   },
   {
     id: "quiet-first",

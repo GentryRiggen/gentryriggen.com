@@ -77,7 +77,8 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
     >
       <p className="font-mono text-sm text-slate-200">
         Your helpers learn as they work. Spend it on a project that lasts, or on
-        a {name.toLowerCase()} that pays now. Not both.
+        a {name.toLowerCase()} that pays now. Some projects are cheap in grins
+        and cost real smiles. Not all of them do.
       </p>
       {shown.length > 0 && (
         <ul className="space-y-2" aria-label="Projects">
@@ -105,9 +106,23 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
                   {project.description}
                 </p>
                 {effect && (
-                  <p className="font-mono text-xs font-bold text-emerald-200 tabular-nums">
-                    {effect}
-                  </p>
+                  <ul
+                    data-testid={`ms-project-${project.id}-effect`}
+                    className="space-y-0.5 font-mono text-xs font-bold tabular-nums"
+                  >
+                    {effect.split("\n").map((line) => (
+                      <li
+                        key={line}
+                        className={
+                          line.startsWith("−")
+                            ? "text-fuchsia-200"
+                            : "text-emerald-200"
+                        }
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
                 )}
                 {project.tradeOff && (
                   <p className="font-mono text-xs text-amber-200">
@@ -151,8 +166,10 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
           <h3 className={`${pixelClass} text-[10px] text-amber-200`}>{name}</h3>
           <p id="ms-parade-about" className="font-mono text-sm text-slate-100">
             Everything pays {Number(forkParadeMult().toFixed(2))}x or more for{" "}
-            {paradeSeconds()} seconds. It warms the cheer meter, and the crowd
-            needs a short rest after. {paradesSoFar(run)} so far.
+            {paradeSeconds()} seconds. Real smiles get painted over{" "}
+            {Math.round((TUNING.world.broadcastPaint - 1) * 100)}% faster while
+            it plays, and the crowd needs a short rest after.{" "}
+            {paradesSoFar(run)} so far.
           </p>
           <button
             type="button"

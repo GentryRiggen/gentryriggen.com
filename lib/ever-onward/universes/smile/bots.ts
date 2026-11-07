@@ -1,10 +1,9 @@
 import { genericBots, type BotSet } from "../../engine/bots";
 import { shownProjects } from "../../engine/engine";
-import type { Strategy } from "../../engine/sim";
+import { bestProject, type Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { PARADE_ACTION_ID, knowhowOf, paradeCost } from "./knowhow";
-import { heatOf } from "./meter";
 import { currentWant, isWanting, tendActionId, tendsSoFar } from "./quiet";
 import {
   ACTIVITY_COUNT,
@@ -42,16 +41,24 @@ import {
   weightOf,
 } from "./town";
 import { TUNING } from "./tuning";
+import {
+  DAY_FESTIVAL,
+  DAY_GLOOM,
+  DAY_WEARY,
+  LEVEL_COUNT,
+  dayKind as worldDayKind,
+  isRetuning,
+  isWorldOpen,
+  levelActionId,
+  levelOf,
+  realOf,
+} from "./world";
 import { smileUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
 
 /** A choice the bot lets go to the helper after this long (a kettle). */
 const SKIP_DELAY = 45;
-
-/** Taps ease to this share while the crowd is warm. */
-const EASE_AT = 0.8;
-const EASED_SHARE = 0.25;
 
 /** Both choices at once, so a bot can pick and follow in the same step. */
 const alongside =
@@ -64,17 +71,83 @@ const isWindowStart = (run: RunState, seconds: number): boolean =>
   run.time % seconds < 0.5;
 
 /**
- * A strategy whose tapping eases off when the cheer meter runs warm, the way
- * anyone who watches the meter would.
+ * Holds the loudspeakers at one level for good (a player who never touches
+ * the dial).
  */
-export function easesOnHeat(strategy: Strategy): Strategy {
-  return {
-    ...strategy,
-    tapRate: (run) =>
-      (strategy.tapRate?.(run) ?? strategy.tapsPerSecond ?? 3) *
-      (heatOf(run) > EASE_AT ? EASED_SHARE : 1),
+export const holdsLevel =
+  (level: number): Actions =>
+  (run, available) => {
+    const id = levelActionId(level);
+    return isWorldOpen(run) &&
+      levelOf(run) !== level &&
+      !isRetuning(run) &&
+      available.includes(id)
+      ? [id]
+      : [];
   };
-}
+
+/**
+ * Plays the dial by the day: a step louder at a festival, a step quieter in a
+ * gloomy week, and no louder than Loud while the crowds are weary of noise.
+ * It also backs off to a quiet level when the real smiles fall under `floor`,
+ * and stays there until a fifth of the crowd has come back. Looks every
+ * `window` seconds.
+ */
+export const followsTheDay =
+  (options: {
+    base: number;
+    floor: number;
+    window?: number;
+    /** False for a player who only cares about time, and sits through gloom. */
+    easesInGloom?: boolean;
+  }): Actions =>
+  (run, available) => {
+    const window = options.window ?? 10;
+    if (!isWorldOpen(run) || isRetuning(run) || !isWindowStart(run, window))
+      return [];
+    const level = levelOf(run);
+    const real = realOf(run);
+    const kind = worldDayKind(run);
+    let target = options.base;
+    if (kind === DAY_FESTIVAL) target += 1;
+    if (kind === DAY_GLOOM && options.easesInGloom !== false) target -= 1;
+    if (kind === DAY_WEARY) target = Math.min(target, 2);
+    if (real < options.floor || (level <= 1 && real < options.floor + 0.2))
+      target = 1;
+    target = Math.min(LEVEL_COUNT - 1, Math.max(0, target));
+    const id = levelActionId(target);
+    return target !== level && available.includes(id) ? [id] : [];
+  };
+
+/** The projects a bot is willing to start, in the order it prefers them. */
+export const PROJECT_TASTES = {
+  /** Cheap grins and nothing to lose real smiles over. */
+  gentle: ["quiet-hours", "listening-benches", "every-language"],
+  /** Mostly gentle, plus the Grin Guide's one-off cost. */
+  steady: ["quiet-hours", "every-language", "grin-guide", "listening-benches"],
+  /** What a player who only watches the grins picks: the biggest number first. */
+  income: ["hypno-drones", "grin-guide", "smile-filters"],
+  /** Anything that pays, HypnoDrones first. */
+  greedy: [
+    "hypno-drones",
+    "grin-guide",
+    "smile-filters",
+    "every-language",
+    "quiet-hours",
+  ],
+} as const;
+
+/** Starts the projects of a taste (the town's and the earlier ones as "best" would). */
+export const takesProjects =
+  (taste: keyof typeof PROJECT_TASTES): NonNullable<Strategy["projects"]> =>
+  (run, shown) => {
+    if (run.phase !== 2) {
+      const best = bestProject(smileUniverse, run, shown);
+      return best ? [best.id] : [];
+    }
+    const wanted: readonly string[] = PROJECT_TASTES[taste];
+    return wanted.filter((id) => shown.some((p) => p.id === id));
+  };
 
 /** Buys the given side of the current part's fork the moment it is open. */
 const ENGAGED_SIDES: readonly ForkSide[] = [0, 0, 0, 0];
@@ -138,7 +211,7 @@ export const rotatesEvery =
  * back half of the cheapest project on offer) and the crowd is cool.
  */
 export const holdsParade: Actions = (run, available) => {
-  if (!available.includes(PARADE_ACTION_ID) || heatOf(run) > 0.35) return [];
+  if (!available.includes(PARADE_ACTION_ID)) return [];
   const shown = shownProjects(smileUniverse, run);
   const reserve = shown.length
     ? 0.5 * Math.min(...shown.map((p) => p.costs[0].amount))
@@ -317,19 +390,55 @@ export const answersFriend =
     return available.includes(id) ? [id] : [];
   };
 
-/** A strategy that plays the fork, the face, the parade and the friend. */
+/**
+ * A player at the loudspeakers: the fork, the face, the town and the friend as
+ * usual, a dial policy and a taste in projects. The scorecard's skill pair and
+ * the dominance tests are built from this.
+ */
+export function worldPlayer(
+  base: Strategy,
+  dial: Actions,
+  taste: keyof typeof PROJECT_TASTES = "steady"
+): Strategy {
+  return {
+    ...base,
+    projects: takesProjects(taste),
+    actions: alongside(
+      takesFork(),
+      holdsParade,
+      readsFace(10),
+      minesTown(),
+      dial,
+      answersFriend()
+    ),
+  };
+}
+
+/** The dial and projects of a player who follows the day (the usual bots). */
+const worldHands = (
+  window: number,
+  taste: keyof typeof PROJECT_TASTES = "steady"
+): Pick<Strategy, "projects"> & { dial: Actions } => ({
+  projects: takesProjects(taste),
+  dial: followsTheDay({ base: 2, floor: 0.4, window }),
+});
+
+/** A strategy that plays the fork, the face, the dial, the parade and the friend. */
 export function smilePlayer(
   base: Strategy,
   options: { skipEvery?: number; window?: number; side?: ForkSide } = {}
 ): Strategy {
   const window = options.window ?? 12;
+  const hands = worldHands(Math.max(window, 10));
   return {
-    ...easesOnHeat(base),
+    ...base,
+    projects: hands.projects,
     actions: alongside(
       takesFork(options.side),
       holdsParade,
       readsFace(window),
       minesTown(Math.max(window, 10)),
+      hands.dial,
       answersFriend({ skipEvery: options.skipEvery })
     ),
   };
@@ -343,22 +452,37 @@ export function smileBots(): BotSet {
     ...strategy,
     tapRate: () => 6,
   });
-  // Naive: the sign stays at Fair, the floats stay where they were put, and
-  // every float is built at once. Careful: the whole town played by hand.
-  const naiveCrowd = {
+  // Naive: the sign stays at Fair, the floats stay where they were put, every
+  // float is built at once, and the loudspeakers stay at Louder whatever the
+  // day. Careful: the whole town and the dial played by hand.
+  const naiveCrowd: Strategy = {
     ...hard(base.tapper),
-    actions: alongside(takesFork(), holdsParade, readsFace(10), buildsFloats),
+    projects: takesProjects("steady"),
+    actions: alongside(
+      takesFork(),
+      holdsParade,
+      readsFace(10),
+      buildsFloats,
+      holdsLevel(3)
+    ),
   };
-  const carefulCrowd = {
-    ...easesOnHeat(hard(base.tapper)),
-    actions: alongside(takesFork(), holdsParade, readsFace(10), minesTown()),
+  const carefulCrowd: Strategy = {
+    ...hard(base.tapper),
+    projects: takesProjects("steady"),
+    actions: alongside(
+      takesFork(),
+      holdsParade,
+      readsFace(10),
+      minesTown(),
+      followsTheDay({ base: 3, floor: 0.25 })
+    ),
   };
   return {
     tapper,
     realistic: smilePlayer(base.realistic, { skipEvery: 6, window: 20 }),
     idle: {
       ...base.idle,
-      projects: "best",
+      projects: takesProjects("income"),
       actions: takesFork(1),
       greetAfter: Infinity,
     },

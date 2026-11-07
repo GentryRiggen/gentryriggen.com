@@ -247,6 +247,40 @@ test.describe("Ever Onward", () => {
     await expect(page.getByTestId("eo-float-road")).toBeAttached();
   });
 
+  test("the world: loudspeaker level, real and painted smiles, and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-speakers");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("ms-meter")).toHaveCount(0);
+    await expect(page.getByTestId("eo-world-crowd")).toBeAttached();
+    for (const i of [0, 1, 2, 3, 4]) {
+      await expect(panel.getByTestId(`ms-level-${i}`)).toContainText("+ ");
+      await expect(panel.getByTestId(`ms-level-${i}`)).toContainText("− ");
+    }
+    await panel.getByRole("radio", { name: "Loudspeakers: Loudest" }).click();
+    await expect(panel).toHaveAttribute("data-retuning", "yes");
+    await expect(page.getByTestId("eo-world-retune")).toBeAttached();
+    await expect(panel).toHaveAttribute("data-level", "4", { timeout: 20_000 });
+    await expect(page.getByTestId("eo-world-waves")).toHaveAttribute(
+      "data-loud",
+      "4"
+    );
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

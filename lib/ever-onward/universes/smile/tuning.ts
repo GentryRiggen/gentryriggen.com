@@ -18,7 +18,7 @@ export const TUNING = {
   phases: [
     { tap: 1.2, lines: [0.6, 3.9, 25, 165], scalePer: 0.6 },
     { tap: 6, lines: [3, 19.5, 127, 825], scalePer: 0.6 },
-    { tap: 80, lines: [40, 260, 1690, 11000], scalePer: 0.6 },
+    { tap: 62.5, lines: [31.2, 203, 1320, 8590], scalePer: 0.6 },
     { tap: 1, lines: [0.5, 3.25, 21, 137], scalePer: 0.6 },
   ] as readonly PhaseTuning[],
   /** Leftover currency carried into the next phase (friend, town, world). */
@@ -53,20 +53,53 @@ export const TUNING = {
     showSeconds: 4,
   },
   /**
-   * The cheer meter (the world): taps and broadcasts heat it, rest cools it.
-   * Past full the crowd is worn out and pays less until it has rested.
+   * The world's dial: real smiles and painted smiles. The loudspeakers have
+   * five levels. A louder one pays more grins (`pay`) and paints real smiles
+   * over faster (`pressure`, a share of the crowd a second), a quieter one
+   * pays less and lets real smiles come back (`heal`). The real share never
+   * drops under `floor`. Retuning takes `retuneSeconds` and pays `retunePay`
+   * meanwhile. Days move the best level: a festival (noise is welcome: levels
+   * from `loudFrom` pay `festivalPay`, painting is `festivalPaint`), a gloomy
+   * week (`gloomPaint` as much painting) and noise-weary crowds (levels from
+   * `loudFrom` pay `wearyPay`). Projects: some are cheap in grins and cost
+   * real smiles (`drift` is painting a second whatever the level, `loss` is
+   * painted at once), some protect or restore them.
    */
-  meter: {
-    heatPerTap: 0.012,
-    paradeHeat: 0.02,
-    coolPerSecond: 0.05,
-    /** Each mask booth cools this much faster per level. */
-    coolPerLevel: 1.6,
-    tiredAt: 1,
-    restedAt: 0.4,
-    tiredMult: 0.6,
-    /** A broadcast needs the meter at or under this. */
-    paradeMaxHeat: 0.6,
+  world: {
+    startLevel: 2,
+    pay: [0.55, 0.8, 1, 1.35, 1.8] as readonly number[],
+    pressure: [0, 0, 0.0007, 0.0016, 0.004] as readonly number[],
+    heal: [0.002, 0.0009, 0, 0, 0] as readonly number[],
+    floor: 0.03,
+    retuneSeconds: 6,
+    retunePay: 0.5,
+    loudFrom: 3,
+    dayKinds: [0.35, 0.6] as readonly number[],
+    daySeconds: [60, 90] as readonly number[],
+    calmSeconds: [12, 30] as readonly number[],
+    firstDay: 45,
+    festivalPay: 1.3,
+    festivalPaint: 0.5,
+    gloomPaint: 2,
+    wearyPay: 0.25,
+    broadcastPaint: 1.6,
+    maskPay: 0.15,
+    maskPaint: 0.15,
+    quietHoursPaint: 0.5,
+    quietHoursPay: 0.9,
+    filtersPay: 1.25,
+    filtersDrift: 0.0004,
+    guideLoss: 0.1,
+    dronesPay: 2.2,
+    dronesDrift: 0.0015,
+    dronesLoss: 0.3,
+    benchesPay: 0.95,
+    benchesHeal: 0.0004,
+    benchesGain: 0.2,
+    momentGap: 8,
+    showSeconds: 4.5,
+    /** The Quiet opens with this share of the trust bar for all real smiles kept. */
+    quietHeadStart: 0.6,
   },
   /**
    * The town's two dials. The lemonade stand: five prices (free to pricey);
@@ -134,7 +167,6 @@ export const TUNING = {
     costs: [30, 70, 160] as readonly number[],
     /** The town's projects cost coins. */
     townCosts: [40, 80, 170] as readonly number[],
-    coolMult: 2,
     bigTopMult: 1.5,
     allMult: 2,
     spreadMult: 2,
@@ -150,15 +182,16 @@ export const TUNING = {
     world: {
       cost: 8000,
       speakerHelpers: 2,
-      speakerCool: 0.7,
-      boxHelpers: 2.4,
-      boxCool: 1.5,
+      speakerPaint: 1.4,
+      boxHelpers: 1.75,
+      boxPaint: 0.6,
+      boxHeal: 0.0008,
     },
     quiet: { cost: 15, wordsTap: 4, silenceHelpers: 1.8 },
   },
   /** The friend's wants in the quiet. */
   quiet: {
-    growthPerPatience: 2e-5,
+    growthPerPatience: 1.25e-5,
     firstWaitSeconds: 15,
     restSeconds: 25,
     matchSeconds: 12,
