@@ -139,9 +139,9 @@ export const waterProjectThirst = (run: RunState): number =>
     ? K.thirstMult
     : 1;
 
-/** Farm: a cold store makes the seed bank's seed spoil half as fast. */
-export const bankSpoilMult = (run: RunState): number =>
-  isProjectDone(run, "cold-store") ? K.coldStoreSpoil : 1;
+/** Farm: a compost heap makes the soil wear half as fast when a crop repeats. */
+export const soilWearMult = (run: RunState): number =>
+  isProjectDone(run, "compost-heap") ? K.heapWear : 1;
 
 /** Farm hybrid seed and world wildlife corridors: all pay more, always. */
 export const projectIncomeMult = (run: RunState): number =>
@@ -176,16 +176,16 @@ export const GROW_PROJECTS: readonly ProjectDef[] = [
     botValue: 0.3,
   },
   {
-    id: "cold-store",
+    id: "compost-heap",
     phase: PHASE_FARM,
-    name: "A cold store",
+    name: "A leaf-mould heap",
     description:
-      "A cool, dark shed under the hill. Seed in the bank keeps twice as long, so a smaller share does the work of a bigger one.",
-    tradeOff: "It only helps if you keep some seed back.",
+      "A warm heap of old leaves that feeds the field. When the same crop goes in twice, the soil wears half as much.",
+    tradeOff: "It only helps if you plant the same crop twice in a row.",
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "scarecrow") >= 3,
     effectPreview: () =>
-      `Banked seed lasts ${times(1 / K.coldStoreSpoil)} as long`,
+      `The soil wears ${asMuch(K.heapWear)} when a crop repeats`,
     botValue: 0.35,
   },
   {

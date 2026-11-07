@@ -5,11 +5,9 @@ import { FESTIVAL_ACTION_ID } from "@/lib/ever-onward/universes/grow/knowhow";
 import { growUniverse as def } from "@/lib/ever-onward/universes/grow";
 import { runAtPhaseStart } from "@/lib/ever-onward/universes/grow/__tests__/fixtures";
 import { forkActionId, forkCost } from "@/lib/ever-onward/universes/grow/forks";
-import { bankActionId } from "@/lib/ever-onward/universes/grow/seedbank";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import ForkPanel from "../ForkPanel";
 import KnowHowPanel from "../KnowHowPanel";
-import SeedBankPanel from "../SeedBankPanel";
 
 function yardWithFork(care = 3): RunState {
   const run = runAtPhaseStart(0);
@@ -68,36 +66,6 @@ describe("ForkPanel", () => {
     );
     expect(screen.getByTestId("gr-fork-1-choose")).toHaveTextContent("Closed");
     expect(screen.getByRole("status")).toHaveTextContent(/Ask the bees/);
-  });
-});
-
-describe("SeedBankPanel", () => {
-  const farm = (): RunState => {
-    const run = runAtPhaseStart(1);
-    return { ...run, owned: { ...run.owned, scarecrow: 3 } };
-  };
-
-  it("renders nothing until two scarecrows stand", () => {
-    const { container } = render(
-      <SeedBankPanel def={def} run={runAtPhaseStart(1)} onAct={jest.fn()} />
-    );
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("is a radio group with the set step checked", () => {
-    render(<SeedBankPanel def={def} run={farm()} onAct={jest.fn()} />);
-    expect(screen.getAllByRole("radio")).toHaveLength(3);
-    expect(screen.getByRole("radio", { name: "Keep a quarter" })).toBeChecked();
-  });
-
-  it("changes the share on a choose, and says what it costs now", async () => {
-    const onAct = jest.fn();
-    render(<SeedBankPanel def={def} run={farm()} onAct={onAct} />);
-    expect(screen.getByRole("radio", { name: "Keep half" })).toHaveTextContent(
-      /Spend 50% now/
-    );
-    await userEvent.click(screen.getByRole("radio", { name: "Keep half" }));
-    expect(onAct).toHaveBeenCalledWith(bankActionId(2));
   });
 });
 

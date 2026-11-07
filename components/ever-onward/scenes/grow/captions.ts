@@ -17,7 +17,9 @@ export function captionFor(info: GrowSceneInfo): string {
     }
     case "farm":
       return [
-        `${CROP_LABELS[info.crop]} in ${plural(info.fields, "field")}`,
+        info.cropStage > 0
+          ? `${CROP_LABELS[info.crop]} growing in ${plural(info.fields, "field")}`
+          : `${plural(info.fields, "empty field")}, waiting to be planted`,
         ...(info.helpers > 0 ? [plural(info.helpers, "scarecrow")] : []),
         ...(info.townFed >= 0.8 ? ["the towns are happy"] : []),
         ...(info.dry ? ["thirsty fields"] : []),

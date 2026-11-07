@@ -2,24 +2,37 @@
 
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import {
-  CROPS,
   CROP_LABELS,
-  bestCrop,
-  demandOf,
+  FIELD_CROPS,
+  daySeconds,
+  dayResultLine,
+  forecastOf,
+  forecastStage,
+  forecastText,
+  grownIfPlantedIn,
+  harvestDays,
+  isFieldPlanted,
   plantActionId,
   plantedCrop,
-  plantingsSoFar,
-  sproutLeft,
-  type Crop,
+  secondsToHarvest,
+  soilOf,
+  wearsSoil,
+  type FieldCrop,
 } from "@/lib/ever-onward/universes/grow/market";
+import { TUNING } from "@/lib/ever-onward/universes/grow/tuning";
 import type { PanelProps } from "../../universes/types";
 import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 import useRoving from "./useRoving";
 
-/** Where each crop's order sits, as a share of the widest bar. */
+const clock = (seconds: number): string => {
+  const whole = Math.max(0, Math.ceil(seconds));
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+};
+
+/** Where a forecast sits, as a share of the widest bar (5% steps). */
 const barWidth = (demand: number): number =>
-  Math.round(Math.min(1, Math.max(0.2, demand / 1.6)) * 20) * 5;
+  Math.round(Math.min(1, Math.max(0.2, demand / 1.8)) * 20) * 5;
 
 const BAR_CLASSES: Record<number, string> = {
   20: "w-1/5",
@@ -41,70 +54,99 @@ const BAR_CLASSES: Record<number, string> = {
   100: "w-full",
 };
 
-const SWATCH: Record<Crop, string> = {
+const SWATCH: Record<FieldCrop, string> = {
   tomato: "bg-red-500",
   corn: "bg-yellow-300",
   pumpkin: "bg-orange-500",
+  beans: "bg-lime-600",
 };
 
-const TOWNS: Record<Crop, string> = {
-  tomato: "Tomato Town",
-  corn: "Corn Corner",
-  pumpkin: "Pumpkin Point",
+const SWATCH_PALE: Record<FieldCrop, string> = {
+  tomato: "bg-red-500/40",
+  corn: "bg-yellow-300/40",
+  pumpkin: "bg-orange-500/40",
+  beans: "bg-lime-600/40",
 };
 
-/** The result line: only changes when the crop is planted and when it is up. */
-function resultLine(run: PanelProps["run"]): string {
-  if (plantingsSoFar(run) === 0) return "";
-  const name = CROP_LABELS[plantedCrop(run)];
-  return sproutLeft(run) > 0
-    ? `${name} are sprouting. They pay a little less until they are up, and nothing is lost.`
-    : `${name} are up and growing.`;
-}
+const STAGE_LABELS = ["A rough guess", "A better guess", "A sure forecast"];
+
+const SOIL_WORDS = ["worn out", "tired", "fair", "good", "rich"];
+
+/** Soil bar colour: pale and dry when worn, dark and rich when fed. */
+const soilBar = (soil: number): string =>
+  soil < 0.3
+    ? "[&::-webkit-progress-value]:bg-amber-200 [&::-moz-progress-bar]:bg-amber-200"
+    : soil < 0.7
+      ? "[&::-webkit-progress-value]:bg-amber-600 [&::-moz-progress-bar]:bg-amber-600"
+      : "[&::-webkit-progress-value]:bg-amber-900 [&::-moz-progress-bar]:bg-amber-900";
 
 /**
- * The market: three towns post their orders, and the order that is wanted
- * most pays the most. Pick what to plant. A new crop takes a moment to sprout
- * and nothing is ever lost; the orders drift on their own, so check back.
+ * Plant for harvest day. The towns send a cart every couple of minutes and
+ * pay for what they want ON THAT DAY; the forecast of it is a rough guess
+ * early and firms up as the day comes. A crop needs time in the ground, so
+ * planting late means a sure forecast but a small crop. The soil wears when
+ * the same crop goes in twice in a row, and rests after beans.
  */
 export default function MarketPanel({ def, run, onAct }: PanelProps) {
+  const planted = isFieldPlanted(run) ? plantedCrop(run) : null;
   const { radioProps } = useRoving(
-    CROPS.length,
-    CROPS.indexOf(plantedCrop(run))
+    FIELD_CROPS.length,
+    planted ? FIELD_CROPS.indexOf(planted) : 0
   );
   if (run.phase !== 1 || run.complete) return null;
 
-  const planted = plantedCrop(run);
-  const best = bestCrop(run);
-  const result = resultLine(run);
+  const stage = forecastStage(run);
+  const soil = soilOf(run);
+  const soilWord = SOIL_WORDS[Math.min(4, Math.round(soil * 4))];
+  const days = harvestDays(run);
 
-  // Deliberate: arrows only move focus. Planting has a cost (the new crop
-  // sprouts for a moment), so it takes Enter, Space or a click to choose.
+  // Deliberate: arrows only move focus. Planting is a commitment (a new
+  // crop starts again from a seed), so it takes Enter, Space or a click.
   return (
     <PanelFrame
       label="The market"
-      title="Market orders"
+      title="Plant for harvest day"
       tone="orange"
-      status={`Most wanted: ${CROP_LABELS[best]}`}
-      statusActive={false}
+      status={`Harvest day in ${clock(secondsToHarvest(run))}`}
+      statusActive={planted === null}
       testId="lm-market"
-      data={{ "data-planted": planted }}
-      result={result}
+      data={{
+        "data-planted": planted ?? "none",
+        "data-stage": stage,
+      }}
+      result={dayResultLine(run)}
       resultTestId="lm-market-result"
+      resultKey={days}
     >
       <p className="font-mono text-sm text-slate-200">
-        The towns are asking for different crops. Plant what is wanted most and
-        every harvest pays more.
+        The towns pay for what they want on harvest day. A crop needs about{" "}
+        {TUNING.market.growSeconds} seconds in the ground to grow all the way.
       </p>
+      <div className="space-y-1">
+        <progress
+          aria-label="Time to harvest day"
+          max={TUNING.market.daySeconds}
+          value={Math.round(daySeconds(run))}
+          className="block h-2 w-full appearance-none border-0 bg-slate-700 [&::-webkit-progress-bar]:bg-slate-700 [&::-webkit-progress-value]:bg-orange-400 [&::-moz-progress-bar]:bg-orange-400"
+        />
+        <p
+          data-testid="lm-market-stage"
+          className="font-mono text-xs text-orange-100"
+        >
+          Forecast: {STAGE_LABELS[stage]}.
+        </p>
+      </div>
       <div
         role="radiogroup"
         aria-label="What to plant"
-        className="grid gap-2 sm:grid-cols-3"
+        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
       >
-        {CROPS.map((crop, i) => {
-          const demand = demandOf(run, crop);
+        {FIELD_CROPS.map((crop, i) => {
+          const f = forecastOf(run, crop);
           const checked = crop === planted;
           const doable = canPerformAction(def, run, plantActionId(crop));
+          const grown = grownIfPlantedIn(run, 0);
+          const wears = wearsSoil(run, crop);
           return (
             <button
               key={crop}
@@ -131,23 +173,66 @@ export default function MarketPanel({ def, run, onAct }: PanelProps) {
                 />
                 <span>{CROP_LABELS[crop]}</span>
               </span>
-              <span aria-hidden="true" className="block h-2 w-full bg-black/40">
+              <span
+                aria-hidden="true"
+                className="relative block h-2 w-full bg-black/40"
+              >
                 <span
-                  className={`block h-2 ${SWATCH[crop]} ${BAR_CLASSES[barWidth(demand)]}`}
+                  className={`absolute left-0 top-0 block h-2 ${SWATCH_PALE[crop]} ${BAR_CLASSES[barWidth(f.middle + f.band)]}`}
+                />
+                <span
+                  className={`absolute left-0 top-0 block h-2 ${SWATCH[crop]} ${BAR_CLASSES[barWidth(f.middle - f.band)]}`}
                 />
               </span>
               <span
                 id={`lm-market-${crop}-order`}
-                className="block font-mono text-xs font-bold normal-case"
+                data-testid={`lm-market-${crop}-order`}
+                className="block space-y-0.5 font-mono text-xs font-bold normal-case"
               >
-                {TOWNS[crop]} pays {Math.round(demand * 100)}%
-                {crop === best ? ", most wanted" : ""}
-                {checked ? ", in the ground" : ""}
+                <span className="block">
+                  {crop === "beans"
+                    ? `A steady ${forecastText(f).replace(", sure", "")}`
+                    : `Towns pay ${forecastText(f)}`}
+                  {checked ? ", in the ground" : ""}
+                </span>
+                <span className="block font-normal">
+                  Grown by harvest day: {Math.round(grown * 100)}%
+                </span>
+                {crop === "beans" && (
+                  <span className="block font-normal">
+                    Rests the soil, and it comes back rich.
+                  </span>
+                )}
+                {wears && (
+                  <span className="block font-normal">
+                    Same as last time: wears the soil.
+                  </span>
+                )}
               </span>
             </button>
           );
         })}
       </div>
+      <div
+        className="space-y-1"
+        data-testid="lm-soil"
+        data-soil={Math.round(soil * 100)}
+      >
+        <p className="font-mono text-xs text-amber-100">
+          Soil: {soilWord}. Worn soil makes every crop pay less.
+        </p>
+        <progress
+          aria-label="Soil"
+          max={100}
+          value={Math.round(soil * 100)}
+          className={`block h-2 w-full appearance-none border-0 bg-slate-700 [&::-webkit-progress-bar]:bg-slate-700 ${soilBar(soil)}`}
+        />
+      </div>
+      {planted !== null && (
+        <p className="font-mono text-xs text-slate-300">
+          Planting something else starts again from a seed.
+        </p>
+      )}
     </PanelFrame>
   );
 }

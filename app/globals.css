@@ -4976,6 +4976,388 @@ html:has(.jim-app) body {
   transform-origin: center;
 }
 
+/* The farm's harvest day and prize pumpkin (gf-*). */
+.gf-cart {
+  transition: none;
+}
+.gf-cart-0 {
+  transform: translateX(-110px);
+}
+.gf-cart-1 {
+  transform: translateX(-60px);
+  transition: transform 9s linear;
+}
+.gf-cart-2 {
+  transform: translateX(-20px);
+  transition: transform 9s linear;
+}
+.gf-cart-3 {
+  transform: translateX(10px);
+  transition: transform 9s linear;
+}
+.gf-cart-4 {
+  transform: translateX(26px);
+  transition: transform 9s linear;
+}
+
+@keyframes gf-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.gf-jump {
+  animation: gf-jump 0.5s ease-in-out infinite;
+}
+.gf-slump {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: translateY(2px) scaleY(0.9) rotate(4deg);
+}
+
+@keyframes gf-coin {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(calc(var(--gf-dx, 0) * 0.8), var(--gf-dy, -60px))
+      scale(1.5);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--gf-dx, 0), calc(var(--gf-dy, -60px) + 50px))
+      scale(1.2);
+    opacity: 0;
+  }
+}
+.gf-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-coin 1.8s ease-out 3 both;
+}
+.gf-coin-0 {
+  --gf-dx: 10px;
+  --gf-dy: -70px;
+  animation-delay: 0s;
+}
+.gf-coin-1 {
+  --gf-dx: 40px;
+  --gf-dy: -95px;
+  animation-delay: 0.12s;
+}
+.gf-coin-2 {
+  --gf-dx: 70px;
+  --gf-dy: -60px;
+  animation-delay: 0.24s;
+}
+.gf-coin-3 {
+  --gf-dx: 100px;
+  --gf-dy: -100px;
+  animation-delay: 0.36s;
+}
+.gf-coin-4 {
+  --gf-dx: 130px;
+  --gf-dy: -80px;
+  animation-delay: 0.48s;
+}
+.gf-coin-5 {
+  --gf-dx: 160px;
+  --gf-dy: -105px;
+  animation-delay: 0.6s;
+}
+.gf-coin-6 {
+  --gf-dx: 190px;
+  --gf-dy: -70px;
+  animation-delay: 0.72s;
+}
+.gf-coin-7 {
+  --gf-dx: 25px;
+  --gf-dy: -95px;
+  animation-delay: 0.84s;
+}
+.gf-coin-8 {
+  --gf-dx: 85px;
+  --gf-dy: -45px;
+  animation-delay: 0.96s;
+}
+.gf-coin-9 {
+  --gf-dx: 145px;
+  --gf-dy: -55px;
+  animation-delay: 1.08s;
+}
+.gf-coin-10 {
+  --gf-dx: 55px;
+  --gf-dy: -70px;
+  animation-delay: 1.2s;
+}
+.gf-coin-11 {
+  --gf-dx: 115px;
+  --gf-dy: -83px;
+  animation-delay: 1.32s;
+}
+.gf-coin-12 {
+  --gf-dx: 175px;
+  --gf-dy: -96px;
+  animation-delay: 1.44s;
+}
+.gf-coin-13 {
+  --gf-dx: 5px;
+  --gf-dy: -69px;
+  animation-delay: 1.56s;
+}
+
+@keyframes gf-confetti {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110px) translateX(14px) rotate(540deg);
+    opacity: 0;
+  }
+}
+.gf-confetti {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-confetti 2.4s linear 3 both;
+}
+
+@keyframes gf-rain {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(32px);
+    opacity: 0;
+  }
+}
+.gf-rain {
+  animation: gf-rain 0.7s linear infinite;
+}
+
+@keyframes gf-richen {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gf-richen {
+  animation: gf-richen 4s ease-out forwards;
+}
+
+@keyframes gf-sparkle-up {
+  0% {
+    transform: translateY(8px) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-46px) scale(1.6);
+    opacity: 0;
+  }
+}
+.gf-sparkle-up {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-sparkle-up 1.6s ease-out 4 both;
+}
+
+@keyframes gf-tumble {
+  0% {
+    transform: translate(-20px, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(200px, -4px) rotate(360deg);
+  }
+  100% {
+    transform: translate(430px, 0) rotate(720deg);
+  }
+}
+.gf-tumble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-tumble 6s linear forwards;
+}
+
+.gf-pk {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.9s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.gf-pk-0 {
+  transform: scale(0.35);
+}
+.gf-pk-1 {
+  transform: scale(0.7);
+}
+.gf-pk-2 {
+  transform: scale(1.1);
+}
+.gf-pk-3 {
+  transform: scale(1.6);
+}
+.gf-pk-4 {
+  transform: scale(2.2);
+}
+.gf-pk-5 {
+  transform: scale(3);
+}
+
+@keyframes gf-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+.gf-wobble {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gf-wobble 0.35s ease-in-out infinite;
+}
+
+@keyframes gf-judge {
+  0% {
+    transform: translateX(130px);
+  }
+  100% {
+    transform: translateX(300px);
+  }
+}
+.gf-judge {
+  animation: gf-judge 5s linear forwards;
+}
+
+@keyframes gf-splat {
+  0% {
+    transform: scale(0, 0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    opacity: 0.55;
+  }
+}
+.gf-splat {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-splat 0.4s ease-out both;
+}
+
+@keyframes gf-bit {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(var(--gf-dx, 0), var(--gf-dy, -50px)) rotate(240deg)
+      scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(var(--gf-dx, 0) * 1.25), 14px) rotate(520deg)
+      scale(1);
+    opacity: 0;
+  }
+}
+.gf-bit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-bit 1.7s ease-out 2 both;
+}
+.gf-bit-0 {
+  --gf-dx: -95px;
+  --gf-dy: -55px;
+}
+.gf-bit-1 {
+  --gf-dx: -70px;
+  --gf-dy: -85px;
+}
+.gf-bit-2 {
+  --gf-dx: -48px;
+  --gf-dy: -40px;
+}
+.gf-bit-3 {
+  --gf-dx: -30px;
+  --gf-dy: -95px;
+}
+.gf-bit-4 {
+  --gf-dx: -12px;
+  --gf-dy: -60px;
+}
+.gf-bit-5 {
+  --gf-dx: 8px;
+  --gf-dy: -100px;
+}
+.gf-bit-6 {
+  --gf-dx: 26px;
+  --gf-dy: -50px;
+}
+.gf-bit-7 {
+  --gf-dx: 44px;
+  --gf-dy: -90px;
+}
+.gf-bit-8 {
+  --gf-dx: 64px;
+  --gf-dy: -45px;
+}
+.gf-bit-9 {
+  --gf-dx: 86px;
+  --gf-dy: -75px;
+}
+.gf-bit-10 {
+  --gf-dx: 104px;
+  --gf-dy: -35px;
+}
+.gf-bit-11 {
+  --gf-dx: -110px;
+  --gf-dy: -30px;
+}
+.gf-bit-12 {
+  --gf-dx: -3px;
+  --gf-dy: -45px;
+}
+.gf-bit-13 {
+  --gf-dx: 116px;
+  --gf-dy: -62px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gf-cart,
+  .gf-jump,
+  .gf-coin,
+  .gf-confetti,
+  .gf-rain,
+  .gf-richen,
+  .gf-sparkle-up,
+  .gf-tumble,
+  .gf-pk,
+  .gf-wobble,
+  .gf-judge,
+  .gf-splat,
+  .gf-bit {
+    animation: none;
+    transition: none;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,

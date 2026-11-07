@@ -26,17 +26,25 @@ import {
   spreadActionId,
   type Biome,
 } from "./biomes";
-import { enterActionId, fairsSoFar, likeliestPumpkin } from "./fair";
+import {
+  ENTER_ACTION_ID,
+  FEED_ACTION_ID,
+  entriesSoFar,
+  pumpkinStep,
+} from "./pumpkin";
 import { flightsSoFar, mostWelcoming, sendActionId } from "./migration";
 import {
-  bestCrop,
-  cropPrice,
+  CROPS,
+  daySeconds,
+  forecastOf,
+  grownIfPlantedIn,
+  isFieldPlanted,
   plantActionId,
-  plantedCrop,
-  type Crop,
+  soilOf,
+  wearsSoil,
+  type FieldCrop,
 } from "./market";
 import { seasonOf, seasonSecondsLeft, secondsToAutumn } from "./seasons";
-import { bankActionId, bankStep } from "./seedbank";
 import { shownProjects } from "../../engine/engine";
 import { FESTIVAL_ACTION_ID, festivalCost, knowhowOf } from "./knowhow";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
@@ -125,22 +133,28 @@ export const tendsBees: Actions = (run, available) => {
   return [];
 };
 
+/** Steps the bot feeds the prize pumpkin to before it enters it. */
+const PUMPKIN_TARGET = 3;
+
 /**
- * Enters the pumpkin with the best expected payout. Like the bee bot, one
- * fair in every `skipEvery`th goes to the fair helper instead.
+ * Tends the prize pumpkin: feeds it a step on each harvest day until it is
+ * big enough, then enters it. Like the bee bot, one entry in every
+ * `skipEvery`th goes to the fair helper instead (or after SKIP_DELAY).
  */
-export const entersFair =
-  (options: { skipEvery?: number } = {}): Actions =>
+export const feedsPumpkin =
+  (options: { skipEvery?: number; target?: number } = {}): Actions =>
   (run, available) => {
     if (run.phase !== 1) return [];
-    const { skipEvery } = options;
+    const { skipEvery, target = PUMPKIN_TARGET } = options;
+    const wantsEntry = pumpkinStep(run) >= target;
     if (
+      wantsEntry &&
       skipEvery &&
-      fairsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.frTime ?? 0) < SKIP_DELAY
+      entriesSoFar(run) % skipEvery === skipEvery - 1 &&
+      daySeconds(run) < SKIP_DELAY
     )
       return [];
-    const id = enterActionId(likeliestPumpkin(run));
+    const id = wantsEntry ? ENTER_ACTION_ID : FEED_ACTION_ID;
     return available.includes(id) ? [id] : [];
   };
 
@@ -183,61 +197,41 @@ export const tendsPot =
   };
 
 /**
- * Looks at the market now and then and plants the crop the towns want most,
- * once it beats what is planted by `margin` (so it never chases a crumb).
+ * How much a bot likes planting a crop now: what the forecast expects, times
+ * how grown it would be, less a worry about wearing the soil, plus a liking
+ * for beans once the soil is tired.
+ */
+function plantValue(run: RunState, crop: FieldCrop): number {
+  const pay =
+    forecastOf(run, crop).middle * (0.4 + 0.6 * grownIfPlantedIn(run, 0));
+  if (crop === "beans") return pay * (soilOf(run) < 0.5 ? 1.5 : 1);
+  return wearsSoil(run, crop) ? pay * 0.65 : pay;
+}
+
+/**
+ * Looks at the forecast and plants for harvest day once the day is
+ * `plantAt` seconds old (so the forecast has firmed up a little): the crop
+ * the forecast and the soil like best, beans when the soil is tired. It
+ * plants into an empty field only, and never changes its mind.
  */
 export const cropPolicy =
-  (window = 10, margin = TUNING.market.playerMargin): Actions =>
+  (window = 10, plantAt = 40): Actions =>
   (run, available) => {
     if (run.phase !== 1 || !isWindowStart(run, window)) return [];
-    const best = bestCrop(run);
-    if (best === plantedCrop(run)) return [];
-    if (cropPrice(run, best) < cropPrice(run, plantedCrop(run)) * margin)
-      return [];
+    if (isFieldPlanted(run) || daySeconds(run) < plantAt) return [];
+    let best: FieldCrop = CROPS[0];
+    for (const crop of [...CROPS, "beans" as const])
+      if (plantValue(run, crop) > plantValue(run, best)) best = crop;
     const id = plantActionId(best);
     return available.includes(id) ? [id] : [];
   };
 
-/** Sets the seed bank to this step on the first look and never changes it. */
-export const keepsSeed =
-  (step: number): Actions =>
-  (run, available) => {
-    const id = bankActionId(step);
-    return run.phase === 1 && bankStep(run) !== step && available.includes(id)
-      ? [id]
-      : [];
-  };
-
-/** Share of the barn's price in hand at which seed stops being kept. */
-const BARN_NEAR_SHARE = 0.25;
-
-/**
- * Keeps a quarter of the harvest as seed while the barn is far off, and
- * sells it all once a good part of the barn's price is in hand (seed in the
- * bank when the farm ends is left behind). Looks every `window` seconds.
- */
-export const bankPolicy =
-  (window = 10): Actions =>
-  (run, available) => {
-    if (run.phase !== 1 || !isWindowStart(run, window)) return [];
-    const barn = growUniverse.upgrades.find((u) => u.id === "grain-barn");
-    const isNear =
-      !!barn &&
-      run.revealed.includes(barn.id) &&
-      (run.resources.harvest ?? 0) >= BARN_NEAR_SHARE * upgradeCost(run, barn);
-    const want = isNear ? 0 : 1;
-    const id = bankActionId(want);
-    return bankStep(run) !== want && available.includes(id) ? [id] : [];
-  };
-
-/** Plants this crop on the first look and never changes its mind. */
+/** Plants this crop into every empty field at once, whatever the forecast. */
 export const alwaysPlants =
-  (crop: Crop): Actions =>
+  (crop: FieldCrop): Actions =>
   (run, available) => {
     const id = plantActionId(crop);
-    return run.phase === 1 &&
-      plantedCrop(run) !== crop &&
-      available.includes(id)
+    return run.phase === 1 && !isFieldPlanted(run) && available.includes(id)
       ? [id]
       : [];
   };
@@ -357,9 +351,9 @@ export function growBots(): BotSet {
       alongside(
         tendsBees,
         alongside(
-          alongside(cropPolicy(), bankPolicy()),
+          cropPolicy(),
           alongside(
-            entersFair(),
+            feedsPumpkin(),
             alongside(biomePolicy(), alongside(sendsFlock(), tendsPot()))
           )
         )
@@ -376,9 +370,9 @@ export function growBots(): BotSet {
         alongside(
           tendsBees,
           alongside(
-            alongside(cropPolicy(20), bankPolicy(20)),
+            cropPolicy(20, 45),
             alongside(
-              entersFair({ skipEvery: 6 }),
+              feedsPumpkin({ skipEvery: 6 }),
               alongside(
                 biomePolicy(30),
                 alongside(
@@ -405,9 +399,9 @@ export function growBots(): BotSet {
         alongside(
           tendsBees,
           alongside(
-            alongside(cropPolicy(60), bankPolicy(60)),
+            cropPolicy(60, 70),
             alongside(
-              entersFair({ skipEvery: 2 }),
+              feedsPumpkin({ skipEvery: 2 }),
               alongside(
                 biomePolicy(90),
                 alongside(
@@ -437,12 +431,12 @@ export function growBots(): BotSet {
       1: {
         naive: yardPlayer(
           base.tapper,
-          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
+          alongside(cropPolicy(), feedsPumpkin()),
           afterRunningDry
         ),
         careful: yardPlayer(
           base.tapper,
-          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
+          alongside(cropPolicy(), feedsPumpkin()),
           whenRainTurnsDry
         ),
       },
@@ -469,14 +463,10 @@ export function growBots(): BotSet {
         ),
       },
       1: {
-        ignores: yardPlayer(
-          base.tapper,
-          alongside(cropPolicy(), bankPolicy()),
-          whenRainTurnsDry
-        ),
+        ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
         claims: yardPlayer(
           base.tapper,
-          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
+          alongside(cropPolicy(), feedsPumpkin()),
           whenRainTurnsDry
         ),
       },

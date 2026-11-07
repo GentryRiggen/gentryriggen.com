@@ -7,7 +7,7 @@ import { simulate } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { activeBiome, greenMult, isBiomeLocked, spreadBiome } from "../biomes";
 import { growBots, takesFork } from "../bots";
-import { isFairOpen, ribbonPays } from "../fair";
+import { isPumpkinOpen, ribbonPays } from "../pumpkin";
 import {
   FORKS,
   FORK_ACTION_IDS,
@@ -169,13 +169,14 @@ describe("forks", () => {
       expect(hawk / none).toBeCloseTo(TUNING.forks.farm.hawkIncome, 5);
     });
 
-    it("the hawk frightens the fair away and the crew doubles its ribbons", () => {
+    it("the hawk frightens the fair away and the crew triples its ribbons", () => {
       const run = openFork("farm");
       run.flags["fair-open"] = true;
-      expect(isFairOpen(run)).toBe(true);
-      expect(isFairOpen(choose(run, "farm", 1))).toBe(false);
-      expect(isFairOpen(choose(run, "farm", 0))).toBe(true);
-      expect(ribbonPays(0, 100)).toBe(2400);
+      run.phase = 1;
+      expect(isPumpkinOpen(run)).toBe(true);
+      expect(isPumpkinOpen(choose(run, "farm", 1))).toBe(false);
+      expect(isPumpkinOpen(choose(run, "farm", 0))).toBe(true);
+      expect(ribbonPays(0, 100)).toBe(15000);
     });
 
     it("the crew makes the crops drink less", () => {

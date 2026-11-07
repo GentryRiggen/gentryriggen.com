@@ -136,21 +136,6 @@ export const TUNING = {
     droneRate: 580,
     /** Leftover seeds become this much harvest when the farm opens. */
     seedsToHarvest: 0.004,
-    /** The seed bank: keep a share of income as seed, grow richer harvests. */
-    bank: {
-      /** Shares that can be kept back: none, a quarter, half. */
-      shares: [0, 0.25, 0.5] as readonly number[],
-      /** The most the bank can add to every harvest (a fraction). */
-      maxGain: 2.5,
-      /** Seconds of farm income in the bank for half of that. */
-      halfSeconds: 100,
-      /** Share of the bank that spoils each second. */
-      spoilPerSecond: 1 / 240,
-      /** The bank opens with this many scarecrows. */
-      opensAtScarecrows: 2,
-      /** Taps a second counted when the bank is weighed against the farm. */
-      referenceTaps: 2,
-    },
     /** The farm's thirsty fields: a bigger tank, more thirst, and wells. */
     water: {
       baseCapacity: 40,
@@ -166,51 +151,87 @@ export const TUNING = {
       thirstPerHelper: 0.045,
     },
   },
-  /** The county fair: a pumpkin to enter about every two minutes. */
-  fair: {
-    /** Seconds before the first fair, then between fairs. */
-    firstWaitSeconds: 45,
-    waitSeconds: 110,
-    /** The judges take this long to walk the row. */
-    judgeSeconds: 5,
-    /** Seconds of farm income a ribbon pays: blue, red, garden. */
-    placeSeconds: [24, 11, 5],
-    /** The chance of a blue ribbon: a floor, plus this much times quality. */
-    blueBase: 0.05,
-    blueSlope: 0.75,
+  /**
+   * The farm's harvest day: the towns send a cart every `daySeconds`. What
+   * the planted crop pays depends on what the towns want ON THAT DAY, and
+   * the forecast of it firms up as the day comes closer.
+   */
+  market: {
+    /** Seconds between harvest days. */
+    daySeconds: 110,
+    /** A crop needs this long in the ground to be fully grown. */
+    growSeconds: 75,
+    /** What a crop that has only just gone in pays (full grown: 1). */
+    growFloor: 0.35,
+    /** How far the slow wave of demand swings from the usual price. */
+    swing: 0.4,
+    /** Seconds for the wave to go all the way round. */
+    periodSeconds: 900,
+    /** The wave also jumps about by up to this many radians each day. */
+    angleJitter: 0.9,
+    /** Each day's luck: demand moves by up to this much, per crop. */
+    luck: 0.25,
+    /** Beans pay a steady share of the usual price and rest the soil. */
+    beanDemand: 0.75,
+    /** What the fields pay between harvest days, against the old market. */
+    fieldBase: 1.25,
+    /** A bare field pays this much, and a grown crop this much more. */
+    bareShare: 0.75,
+    growShare: 0.35,
+    /** What a harvest day pays: this share of a day of farm pay, times demand. */
+    daySharePay: 0.6,
+    /** Taps a second counted when a day of farm pay is worked out. */
+    referenceTaps: 2,
+    /** The day's pay flows in over this many seconds. */
+    surgeSeconds: 4,
+    /** The cart starts rolling in this many seconds before harvest day. */
+    cartSeconds: 40,
+    /** How long the scene shows a harvest day's cheer or droop. */
+    showSeconds: 9,
+    /** A pay this close to the best the day offered counts as a match. */
+    matchShare: 0.93,
+    /** A crop that sold under this share of the usual price droops. */
+    droopBelow: 0.85,
+    /** The market agent plants this far into each day. */
+    agentAt: 55,
+  },
+  /** The soil: wears when a crop is repeated, rests after beans. */
+  soil: {
+    /** A fresh farm's soil (0 worn out, 1 rich). */
+    start: 0.6,
+    /** Growing the same crop twice takes this much from the soil. */
+    wear: 0.22,
+    /** A bean harvest gives this much back. */
+    rest: 0.3,
+    /** Yield at worn out soil, and the most a rich soil adds. */
+    floor: 0.8,
+    reach: 0.4,
+  },
+  /** The prize pumpkin: feed it, risk it, enter it on a harvest day. */
+  pumpkin: {
+    /** Steps from a seedling (0) to a giant (the last). */
+    steps: 5,
+    /** Feeding costs this many seconds of farm pay, from each step. */
+    feedSeconds: [2, 3, 5, 8, 12] as readonly number[],
+    /** The chance it splits when fed from each step. */
+    splitChance: [0, 0.05, 0.12, 0.25, 0.4] as readonly number[],
+    /** The chance of a blue ribbon at each step. */
+    blueChance: [0.02, 0.06, 0.14, 0.28, 0.44, 0.62] as readonly number[],
     /** Of the rest, this share is a red ribbon. */
     redShare: 0.6,
-    /** The fair helper enters a waiting fair after this long, at this share. */
-    handDelay: 30,
-    handShare: 0.5,
-    /** A payout flows into the harvest over this many seconds. */
+    /** Seconds of farm pay each ribbon is worth: blue, red, garden. */
+    ribbonSeconds: [150, 50, 15] as readonly number[],
+    /** The judges take this long to walk the row. */
+    judgeSeconds: 5,
+    /** A ribbon's pay flows in over this many seconds. */
     surgeSeconds: 4,
-    /** Fairs finished (or the first glasshouse) before the fair helper turns up. */
-    handAfterFairs: 5,
-    /** How much of a pumpkin's quality is its size (the rest is shine). */
-    sizeWeight: 0.6,
-  },
-  /** The market: three towns ask for crops, and the asks drift. */
-  market: {
-    /** How far a wave of demand swings from the usual price. */
-    swing: 0.4,
-    /** Seconds for the demand to go all the way round. */
-    periodSeconds: 330,
-    /** Wobble on each crop: step size, pull back to zero, and its limit. */
-    wobbleStep: 0.05,
-    wobblePull: 0.02,
-    wobbleMax: 0.08,
-    /** The wave's speed wanders by this, between 0.7 and 1.3 of usual. */
-    speedStep: 0.04,
-    speedPull: 0.02,
-    /** A newly planted crop pays this share of the price while it sprouts. */
-    sproutSeconds: 20,
-    sproutFloor: 0.5,
-    /** The market agent looks this often, and only moves for this gain. */
-    agentSeconds: 90,
-    agentMargin: 1.25,
-    /** A player moves once the best crop pays this much more. */
-    playerMargin: 1.15,
+    /** The pumpkin helper enters it this far into a day, at this share. */
+    handDelay: 20,
+    handShare: 0.5,
+    /** Harvest days held before the pumpkin helper turns up. */
+    handAfterDays: 6,
+    /** How long the scene shows a ribbon or a split. */
+    showSeconds: 10,
   },
   /** The green world: biomes spread over the map, with rivers and clouds. */
   world: {
@@ -325,8 +346,8 @@ export const TUNING = {
     /** Drip lines and rain gauges. */
     tankMult: 2,
     thirstMult: 0.5,
-    /** The cold store: the seed bank's seed spoils this much as fast. */
-    coldStoreSpoil: 0.5,
+    /** The compost heap: the soil wears this much as fast when a crop repeats. */
+    heapWear: 0.5,
     /** Hybrid seed (farm) and wildlife corridors (world). */
     hybridMult: 2,
     corridorMult: 2,

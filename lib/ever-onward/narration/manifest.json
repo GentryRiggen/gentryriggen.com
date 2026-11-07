@@ -656,8 +656,8 @@
   },
   "grow/cut-farm-end": {
     "file": "/ever-onward/voice/grow/cut-farm-end.mp3",
-    "hash": "f828b82d8cd0",
-    "durationGuess": 18
+    "hash": "c7a7a762e1c6",
+    "durationGuess": 25
   },
   "grow/cut-world-1": {
     "file": "/ever-onward/voice/grow/cut-world-1.mp3",
@@ -921,8 +921,8 @@
   },
   "grow/farm-market": {
     "file": "/ever-onward/voice/grow/farm-market.mp3",
-    "hash": "1dcb254183db",
-    "durationGuess": 18
+    "hash": "4d6e13d07982",
+    "durationGuess": 22
   },
   "grow/farm-well": {
     "file": "/ever-onward/voice/grow/farm-well.mp3",
@@ -956,8 +956,8 @@
   },
   "grow/farm-agent": {
     "file": "/ever-onward/voice/grow/farm-agent.mp3",
-    "hash": "3e969df4b480",
-    "durationGuess": 16
+    "hash": "292d6b531174",
+    "durationGuess": 19
   },
   "grow/farm-time-2": {
     "file": "/ever-onward/voice/grow/farm-time-2.mp3",

@@ -1,6 +1,8 @@
 import { FarmForkArt, FarmProjectArt } from "./TradeoffArt";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
-import type { Crop } from "@/lib/ever-onward/universes/grow/market";
+import type { FieldCrop } from "@/lib/ever-onward/universes/grow/market";
+import FarmDayLayer from "./FarmDayLayer";
+import PrizePumpkin from "./PrizePumpkin";
 import {
   AGENT,
   COMPOST,
@@ -17,9 +19,28 @@ import {
   wellAt,
 } from "./anchors";
 
-const SOIL_WET = "#5a3a1c";
+/** Soil from worn out and pale (0) to dark and rich (4). */
+const SOILS = ["#dcc99a", "#b38c58", "#7b5530", "#5a3a1c", "#33200f"] as const;
+const SOIL_EDGES = [
+  "#e8d9b0",
+  "#c9a470",
+  "#8f6638",
+  "#7a5230",
+  "#4b3018",
+] as const;
 const SOIL_DRY = "#c9a56a";
 const PLANTS = 6;
+
+/** What each crop is called on its little flag, and its colour. */
+const FLAG: Record<FieldCrop, string> = {
+  tomato: "#e03131",
+  corn: "#f5d33d",
+  pumpkin: "#f08a24",
+  beans: "#4c9a2a",
+};
+
+/** How big the crop is at each growth stage (0 is an empty field). */
+const STAGE_SCALE = [0, 0.32, 0.6, 0.85, 1] as const;
 
 /** One row of the planted crop across a field. */
 function Plant({
@@ -30,10 +51,26 @@ function Plant({
 }: {
   x: number;
   y: number;
-  crop: Crop;
+  crop: FieldCrop;
   dry: boolean;
 }) {
   const sag = dry ? 3 : 0;
+  if (crop === "beans")
+    return (
+      <g>
+        <rect
+          x={x - 1}
+          y={y - 11 + sag}
+          width="3"
+          height={11 - sag}
+          fill="#2f8a2a"
+        />
+        <rect x={x - 4} y={y - 8 + sag} width="9" height="4" fill="#4c9a2a" />
+        <rect x={x - 5} y={y - 5} width="3" height="6" fill="#74b816" />
+        <rect x={x + 3} y={y - 6} width="3" height="6" fill="#74b816" />
+        <rect x={x} y={y - 14 + sag} width="2" height="4" fill="#6abf3a" />
+      </g>
+    );
   if (crop === "corn")
     return (
       <g>
@@ -67,6 +104,36 @@ function Plant({
   );
 }
 
+/** Hairline cracks across worn-out soil. */
+function Cracks({
+  x,
+  y,
+  h,
+  level,
+}: {
+  x: number;
+  y: number;
+  h: number;
+  level: number;
+}) {
+  if (level > 1) return null;
+  return (
+    <g aria-hidden="true" fill="#6b4a22" fillOpacity={level === 0 ? 0.9 : 0.55}>
+      {[0, 1, 2, 3].map((k) => {
+        const cx = x + 10 + k * 20;
+        return (
+          <g key={k}>
+            <rect x={cx} y={y + 6} width="1.5" height="7" />
+            <rect x={cx + 1.5} y={y + 12} width="6" height="1.5" />
+            <rect x={cx + 7} y={y + 12} width="1.5" height={h - 18} />
+            <rect x={cx - 5} y={y + h - 10} width="5" height="1.5" />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 function Field({
   i,
   info,
@@ -81,36 +148,78 @@ function Field({
 }) {
   const { x, y } = fieldAt(i);
   const h = i < 4 ? 34 : 40;
+  const stage = info.cropStage;
+  const scale = STAGE_SCALE[stage];
+  const shows = stage > 0;
   return (
-    <g>
+    <g data-testid={`eo-field-${i}`} data-soil={info.soil} data-stage={stage}>
       <rect
         x={x}
         y={y}
         width={FIELD_W}
         height={h}
-        fill={info.dry ? SOIL_DRY : SOIL_WET}
+        fill={info.dry ? SOIL_DRY : SOILS[info.soil]}
       />
-      <rect x={x} y={y} width={FIELD_W} height="3" fill="#7a5230" />
+      <rect
+        x={x}
+        y={y}
+        width={FIELD_W}
+        height="3"
+        fill={info.dry ? "#7a5230" : SOIL_EDGES[info.soil]}
+      />
+      {!info.dry && <Cracks x={x} y={y} h={h} level={info.soil} />}
+      {info.soil === 4 && !info.dry && (
+        <g aria-hidden="true">
+          {[0, 1, 2].map((k) => (
+            <rect
+              key={k}
+              className={`gp-glow ${k === 1 ? "[animation-delay:-0.6s]" : k === 2 ? "[animation-delay:-1.2s]" : ""}`}
+              x={x + 14 + k * 26}
+              y={y + h - 6}
+              width="2.5"
+              height="2.5"
+              fill="#b2f2bb"
+            />
+          ))}
+        </g>
+      )}
+      {/* A little flag says what is in the ground. */}
+      {shows && (
+        <g aria-hidden="true">
+          <rect x={x + 2} y={y - 10} width="1.5" height="10" fill="#6b4423" />
+          <rect
+            x={x + 3.5}
+            y={y - 10}
+            width="7"
+            height="5"
+            fill={FLAG[info.crop]}
+          />
+        </g>
+      )}
       <g
         className={
-          info.dry || info.crop === "pumpkin"
+          info.dry || info.crop === "pumpkin" || !shows
             ? undefined
             : i % 2
               ? "gg-sway-b"
               : "gg-sway"
         }
       >
-        {Array.from({ length: 2 }, (_, r) =>
-          Array.from({ length: PLANTS }, (_, k) => (
-            <Plant
-              key={`${r}-${k}`}
-              x={x + 8 + k * 13}
-              y={y + 16 + r * (h / 2 - 3)}
-              crop={info.crop}
-              dry={info.dry}
-            />
-          ))
-        )}
+        {shows &&
+          Array.from({ length: 2 }, (_, r) =>
+            Array.from({ length: PLANTS }, (_, k) => {
+              const px = x + 8 + k * 13;
+              const py = y + 16 + r * (h / 2 - 3);
+              return (
+                <g
+                  key={`${r}-${k}`}
+                  transform={`translate(${px} ${py}) scale(${scale}) translate(${-px} ${-py})`}
+                >
+                  <Plant x={px} y={py} crop={info.crop} dry={info.dry} />
+                </g>
+              );
+            })
+          )}
       </g>
       {scarecrow && (
         <g>
@@ -614,6 +723,8 @@ export default function FarmLayer({ info }: { info: GrowSceneInfo }) {
           </g>
         </g>
       )}
+      <FarmDayLayer info={info} />
+      <PrizePumpkin info={info} />
       <FarmForkArt info={info} />
       <FarmProjectArt info={info} />
     </g>

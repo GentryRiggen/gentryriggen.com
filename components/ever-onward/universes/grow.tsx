@@ -16,10 +16,9 @@ import AcornIcon from "../game/grow/AcornIcon";
 import GrowEndingArt from "../game/grow/GrowEndingArt";
 import PollinationPanel from "../game/grow/PollinationPanel";
 import BiomePanel from "../game/grow/BiomePanel";
-import CountyFair from "../game/grow/CountyFair";
+import PumpkinPanel from "../game/grow/PumpkinPanel";
 import ForkPanel from "../game/grow/ForkPanel";
 import KnowHowPanel from "../game/grow/KnowHowPanel";
-import SeedBankPanel from "../game/grow/SeedBankPanel";
 import MarketPanel from "../game/grow/MarketPanel";
 import SeedMigration from "../game/grow/SeedMigration";
 import WindowBox from "../game/grow/WindowBox";
@@ -59,7 +58,9 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
   if (rose("pbRare")) cues.push("bloom");
   if (rose("pbWilts")) cues.push("buzz");
-  if (rose("frFairs")) cues.push("ribbon");
+  if (rose("pkEntries")) cues.push("ribbon");
+  if (rose("pkSplits")) cues.push("buzz");
+  if (rose("mkDays")) cues.push("bloom");
   if (rose("mgFlights")) cues.push("flutter");
   if (rose("potStage")) cues.push("bloom");
   return cues;
@@ -71,10 +72,9 @@ export const GROW_UI: UniverseUi = {
   primaryPanels: [SeasonDial, MarketPanel, BiomePanel, WindowBox],
   panels: [
     ForkPanel,
-    SeedBankPanel,
     KnowHowPanel,
     PollinationPanel,
-    CountyFair,
+    PumpkinPanel,
     SeedMigration,
   ],
   ending: {

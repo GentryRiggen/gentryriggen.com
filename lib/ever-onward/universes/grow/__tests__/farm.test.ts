@@ -9,10 +9,17 @@ import { incomePerSecond } from "../tick";
 import { isDry, waterCapacity, waterLevel } from "../water";
 import { def, runAtPhaseStart, withWater } from "./fixtures";
 
-/** The farm run opening, with the market wave at this angle. */
+/** The farm run opening, with the market's wave and luck started differently. */
 const farmAt = (angle: number): RunState => {
   const start = runAtPhaseStart(1);
-  return { ...start, resources: { ...start.resources, mkAngle: angle } };
+  return {
+    ...start,
+    resources: {
+      ...start.resources,
+      mkAngle: angle,
+      mkRng: Math.round(angle * 1000) + 17,
+    },
+  };
 };
 
 /** Minutes a strategy needs to clear the farm from a given start. */
@@ -40,11 +47,7 @@ const mean = (xs: number[]): number =>
 describe("the farm", () => {
   it("rewards choosing: the crop-policy bot clears the farm at least 8% sooner than always-corn", () => {
     const corn = ANGLES.map((a) => {
-      const start = farmAt(a);
-      return farmMinutes(
-        { ...start, resources: { ...start.resources, mkCrop: 1 } },
-        tapperWith(alwaysPlants("corn"))
-      );
+      return farmMinutes(farmAt(a), tapperWith(alwaysPlants("corn")));
     });
     const chooser = ANGLES.map((a) =>
       farmMinutes(farmAt(a), tapperWith(cropPolicy()))

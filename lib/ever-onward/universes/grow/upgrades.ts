@@ -3,13 +3,7 @@ import { handHarvestPays } from "./actions";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import { formatNumber } from "../../engine/format";
 import type { RunState, UpgradeDef } from "../../engine/types";
-import {
-  FAIR_HAND_ID,
-  fairsSoFar,
-  handPaysOn,
-  handShown,
-  openFair,
-} from "./fair";
+import { PUMPKIN_HAND_ID, handPaysOn, handShown, openPumpkin } from "./pumpkin";
 import {
   BEE_KEEPER_ID,
   BEES_OPEN_FLAG,
@@ -27,7 +21,7 @@ import {
 } from "./migration";
 import { TUNING } from "./tuning";
 import { beesWelcome, forkSide } from "./forks";
-import { MARKET_AGENT_ID } from "./market";
+import { MARKET_AGENT_ID, harvestDays } from "./market";
 import {
   PHASE_FARM,
   PHASE_IDS,
@@ -39,6 +33,7 @@ import {
   RESOURCES,
 } from "./resources";
 import {
+  farmPayPerSecond,
   incomePerSecond,
   manualPerTap,
   pickPerSecond,
@@ -386,15 +381,15 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 6,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("scarecrow", 3),
-    onBuy: openFair,
+    onBuy: openPumpkin,
     effectPreview: (run) => helperPreview(run, "tractor"),
   },
   {
-    id: FAIR_HAND_ID,
+    id: PUMPKIN_HAND_ID,
     badge: "NEW ABILITY",
     name: "A fair helper",
     description:
-      "A cheerful neighbour in a straw hat who carries a pumpkin to the county fair when you are busy. Your own pick still pays more.",
+      "A cheerful neighbour in a straw hat who carries your prize pumpkin to the county fair if you forget to. Your own entry still pays more.",
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 45000,
@@ -402,17 +397,17 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // A bonus helper, not income: bots buy the farm first.
     priority: -1,
     kind: "mechanic",
-    // Halfway along: once the first fair has been judged.
+    // Halfway along: once a few harvest days have gone by.
     visibleWhen: handShown,
     effectPreview: (run) =>
-      `Enters the fair's likeliest pumpkin for you after a wait: about ${num(Math.floor(handPaysOn(run, incomePerSecond(run))))} harvest (fairs so far: ${fairsSoFar(run)})`,
+      `Enters a grown pumpkin for you on a day you did not: about ${num(Math.floor(handPaysOn(run, farmPayPerSecond(run))))} harvest (harvest days so far: ${harvestDays(run)})`,
   },
   {
     id: MARKET_AGENT_ID,
     badge: "NEW ABILITY",
     name: "A market agent",
     description:
-      "A friendly person with a clipboard who asks the towns what they want, and plants it now and then. You will always choose better, because you are looking.",
+      "A friendly person with a clipboard who reads the forecast and plants what looks likeliest, a little way into every harvest day. He never rests the soil. You will always choose better, because you are looking.",
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 90000,
@@ -422,7 +417,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: ownsAtLeast("tractor", 3),
     effectPreview: () =>
-      `Re-plants what the towns want most, every ${TUNING.market.agentSeconds} seconds`,
+      `Plants the likeliest crop ${TUNING.market.agentAt} seconds into every harvest day`,
   },
   {
     id: "irrigation",

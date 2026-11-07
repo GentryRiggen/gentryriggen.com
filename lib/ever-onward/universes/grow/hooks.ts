@@ -3,12 +3,12 @@ import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
 import { BEE_ACTION_IDS, needsBees, isBeesOpen, withoutBees } from "./bees";
 import {
-  FAIR_HAND_ID,
-  FAIR_ACTION_IDS,
-  isFairOn,
-  isFairOpen,
-  withoutFair,
-} from "./fair";
+  PUMPKIN_ACTION_IDS,
+  PUMPKIN_HAND_ID,
+  isDayFree,
+  isPumpkinOpen,
+  withoutPumpkin,
+} from "./pumpkin";
 import { SPREAD_ACTION_IDS, biomeGap } from "./biomes";
 import {
   MIGRATION_ACTION_IDS,
@@ -16,9 +16,13 @@ import {
   isMigrationOpen,
   withoutMigration,
 } from "./migration";
-import { MARKET_AGENT_ID, PLANT_ACTION_IDS, demandGap } from "./market";
+import {
+  MARKET_AGENT_ID,
+  PLANT_ACTION_IDS,
+  isFieldPlanted,
+  withoutMarketDay,
+} from "./market";
 import { PHASE_IDS } from "./resources";
-import { BANK_ACTION_IDS } from "./seedbank";
 import {
   FESTIVAL_ACTION_ID,
   festivalCost,
@@ -80,8 +84,8 @@ export function growPlates(run: RunState): string[] {
   if (run.phase === 1) {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
-    if (demandGap(run) >= TUNING.market.playerMargin) plates.push("market");
-    if (isFairOn(run)) plates.push("fair");
+    if (!isFieldPlanted(run)) plates.push("market");
+    if (isDayFree(run)) plates.push("pumpkin");
   }
   if (run.phase === 2) {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
@@ -99,7 +103,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   bees: BEE_ACTION_IDS,
   market: PLANT_ACTION_IDS,
   spread: SPREAD_ACTION_IDS,
-  fair: FAIR_ACTION_IDS,
+  pumpkin: PUMPKIN_ACTION_IDS,
   flock: MIGRATION_ACTION_IDS,
   pot: WINDOWBOX_ACTION_IDS,
   fork: FORK_ACTION_IDS,
@@ -108,7 +112,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Real choices, for the decision-gap metric: which patch to follow, what to
- * plant, what to spread, which pumpkin to enter, where to send the flock,
+ * plant, what to spread, whether to feed or enter the pumpkin, where to send the flock,
  * how to tend the pot. Picking the harvest is a collect, not a choice.
  */
 export const GROW_DECISION_ACTIONS: readonly string[] = [
@@ -116,9 +120,8 @@ export const GROW_DECISION_ACTIONS: readonly string[] = [
   ...FORK_ACTION_IDS,
   FESTIVAL_ACTION_ID,
   ...PLANT_ACTION_IDS,
-  ...BANK_ACTION_IDS,
   ...SPREAD_ACTION_IDS,
-  ...FAIR_ACTION_IDS,
+  ...PUMPKIN_ACTION_IDS,
   ...MIGRATION_ACTION_IDS,
   ...WINDOWBOX_ACTION_IDS,
 ];
@@ -138,9 +141,11 @@ export const GROW_CONSUMABLES: readonly ConsumableDef[] = [
  * and an emptied basket should not read as no helpers at all.
  */
 export function growIncomeView(run: RunState): RunState {
-  if (run.phase === 1 && isFairOpen(run))
-    // A fair payout flowing in is not income.
-    return withoutFair({ ...run, resources: { ...run.resources } });
+  if (run.phase === 1) {
+    // A harvest day's or a ribbon's pay flowing in is not income.
+    const view = withoutMarketDay({ ...run, resources: { ...run.resources } });
+    return isPumpkinOpen(view) ? withoutPumpkin(view) : view;
+  }
   if (run.phase === 2 && isMigrationOpen(run))
     // A landing flowing in is not income.
     return withoutMigration({ ...run, resources: { ...run.resources } });
@@ -194,14 +199,13 @@ function sceneKey(run: RunState): string {
     s.tea,
     s.keeper,
     s.fork,
-    s.bank,
     s.projects,
     s.festival,
     // The farm's one-offs: silos, the market agent, the fair tent and helper.
     run.owned.silo ?? 0,
     run.owned[MARKET_AGENT_ID] ?? 0,
-    isFairOpen(run),
-    run.owned[FAIR_HAND_ID] ?? 0,
+    isPumpkinOpen(run),
+    run.owned[PUMPKIN_HAND_ID] ?? 0,
   ].join("|");
 }
 

@@ -81,23 +81,7 @@ describe("the picture of each fork", () => {
   });
 });
 
-describe("the seed bank and the projects in the picture", () => {
-  it("draws sacks once the bank holds seed, more as it fills", () => {
-    const farm = runAtPhaseStart(1);
-    const sacks = (stock: number) => {
-      const run = {
-        ...farm,
-        owned: { ...farm.owned, scarecrow: 3 },
-        resources: { ...farm.resources, sbStep: 1, sbStock: stock },
-      };
-      return svg(<FarmForkArt info={sceneInfo(run)} />).querySelector(
-        "[data-bank]"
-      );
-    };
-    expect(sacks(0)).toBeNull();
-    expect(sacks(1e6)).not.toBeNull();
-  });
-
+describe("the projects in the picture", () => {
   it("draws a thing for each done farm project, and bunting for a festival", () => {
     const farm = runAtPhaseStart(1);
     const run: RunState = {
@@ -105,13 +89,13 @@ describe("the seed bank and the projects in the picture", () => {
       flags: {
         ...farm.flags,
         "project-drip-lines": true,
-        "project-cold-store": true,
+        "project-compost-heap": true,
         "project-hybrid-seed": true,
       },
       resources: { ...farm.resources, fsLeft: 20 },
     };
     const root = svg(<FarmProjectArt info={sceneInfo(run)} />);
-    for (const id of ["drip-lines", "cold-store", "hybrid-seed"])
+    for (const id of ["drip-lines", "compost-heap", "hybrid-seed"])
       expect(root.querySelector(`[data-project="${id}"]`)).not.toBeNull();
     expect(root.querySelector('[data-festival="on"]')).not.toBeNull();
     expect(growSceneDiff(farm, run)).toBe(true);
