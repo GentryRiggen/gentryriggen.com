@@ -35,6 +35,7 @@
 ### Task 1: Engine: map types, fresh runs, moving, save
 
 **Files:**
+
 - Modify: `lib/ever-onward/engine/types.ts` (MapDef, ArtifactDef, SquareChange, MapState; `UniverseDef.map?`, `UniverseSave.map?`)
 - Modify: `lib/ever-onward/engine/engine.ts` (`newRun(def, levels, seed, shape?)`)
 - Create: `lib/ever-onward/engine/map.ts`
@@ -43,6 +44,7 @@
 - Test: `lib/ever-onward/engine/__tests__/map.test.ts` (a tiny 3 × 3 fixture def)
 
 **Interfaces (produces):**
+
 ```ts
 type SquareKey = string; // "x,y"
 interface SquareChange { text: string; apply?(run: RunState): void }
@@ -69,6 +71,7 @@ pendingFind(def, save): ArtifactDef | undefined // run complete, square's artifa
 stepMap(def, save, target, seed?): UniverseSave
 toggleArtifact(def, save, id): UniverseSave
 ```
+
 - `freshRun`'s shape applies, in order: active artifacts' `apply` and `flags["art:<id>"] = true`; then the square changes; then `mods.depth = y`.
 - `stepMap` (only when `run.complete` and `target` is in `ahead` ∪ `back` ∪ `{at}`) does: best = min; completions + 1; the artifact at `at` is added to found; `at` is added to visited; `done` is set if `at` is the last square; then `at = target` and `run = freshRun`.
 
@@ -80,6 +83,7 @@ toggleArtifact(def, save, id): UniverseSave
 ### Task 2: Light's map data, the route bot, scorecard M13 and the pacing test
 
 **Files:**
+
 - Create: `lib/ever-onward/universes/light/map.ts` (MAP: columns and rows from the spec's tables, 14 artifacts: big Brass Heart (6,2), Keeper's Lantern (2,6), Star Chart (5,5); modest Gull Feather (1,0), Driftwood Charm (0,2), Tin of Biscuits (2,1), Salt-Cured Coin (3,3), Ship in a Bottle (4,1), Warm Wick (1,4); odd Storm Glass (6,0), Cracked Lens (0,5), Ghost Keeper (3,5), Black Pearl (7,4), Moth Jar (4,7)). Effects multiply onto mods (`speed`, `tapMult`, `costMult`), `calm` and `bright` add, and `headStart` adds. Catches use negative calm or bright, or a lower speed or tapMult.
 - Modify: `lib/ever-onward/universes/light/index.ts` (`map: MAP`)
 - Create: `lib/ever-onward/engine/mapRoute.ts` (`routeStep(def, state): SquareKey`: greedy toward the nearest reachable unfound artifact, otherwise back to the visited square closest to one, otherwise toward the last square)
@@ -91,6 +95,7 @@ toggleArtifact(def, save, id): UniverseSave
 ### Task 3: Map UI: dialog, shelf, reveal, header button, end-of-run panel
 
 **Files:**
+
 - Create: `components/ever-onward/game/map/MapDialog.tsx` (portal overlay; `mode: "view" | "choose"`; grid, square details, Go button in choose mode, shelf below; reveal first when `pendingFind`)
 - Create: `components/ever-onward/game/map/MapGrid.tsx` (CSS grid of square buttons: hatched visited, pulsing current, floating glyph for an unfound artifact labelled "Something strange is here", the found glyph dimmed, choosable squares outlined)
 - Create: `components/ever-onward/game/map/Glyph.tsx` (SVG from `spriteRects`)
@@ -106,6 +111,7 @@ toggleArtifact(def, save, id): UniverseSave
 ### Task 4: Artifacts and depth in Light's scene, hub stat, Test mode presets
 
 **Files:**
+
 - Create: `components/ever-onward/scenes/light/ArtifactLayer.tsx` (each active artifact's glyph floats at its own spot in the 400 × 300 viewBox, drawn over every part; the Ghost Keeper walks; row depth adds a violet dream tint, from 0 to 0.35 opacity across rows 0–7)
 - Modify: `LightScene.tsx` (render the layer from a stable key of `art:` flags and `mods.depth`)
 - Modify: `components/ever-onward/Hub.tsx` (stat "Map": "`visited.length` of 64 squares · `found.length` of 14 found")
