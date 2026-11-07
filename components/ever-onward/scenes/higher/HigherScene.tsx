@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
+import { HIGHER_MAP } from "@/lib/ever-onward/universes/higher/map";
+import ArtifactLayer, { artifactKey } from "../ArtifactLayer";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import {
   sceneInfo,
@@ -58,9 +60,13 @@ function useStableInfo(run: RunState): HigherSceneInfo {
 const HigherSceneView = memo(function HigherSceneView({
   info,
   testId,
+  found,
+  depth,
 }: {
   info: HigherSceneInfo;
   testId: string;
+  found: string;
+  depth: number;
 }) {
   const target = Math.max(0, PHASE_IDS.indexOf(info.phase));
   const [visual, setVisual] = useState<Visual>({
@@ -128,6 +134,7 @@ const HigherSceneView = memo(function HigherSceneView({
             </g>
           );
         })}
+        <ArtifactLayer map={HIGHER_MAP} found={found} depth={depth} />
       </svg>
       <p
         aria-hidden="true"
@@ -142,5 +149,12 @@ const HigherSceneView = memo(function HigherSceneView({
 
 /** The Build It Higher picture: one living layer per phase. */
 export default function HigherScene({ run, testId = "lm-scene" }: SceneProps) {
-  return <HigherSceneView info={useStableInfo(run)} testId={testId} />;
+  return (
+    <HigherSceneView
+      info={useStableInfo(run)}
+      testId={testId}
+      found={artifactKey(run)}
+      depth={run.mods.depth ?? 0}
+    />
+  );
 }

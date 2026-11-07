@@ -46,6 +46,7 @@ const MAP: MapDef = {
       tier: "big",
       glyph,
       palette: { A: "#fff" },
+      spot: { x: 0, y: 0, scale: 1 },
       apply: (r) => void (r.mods.mult = (r.mods.mult ?? 1) * 3),
     },
     {
@@ -58,12 +59,14 @@ const MAP: MapDef = {
       tier: "odd",
       glyph,
       palette: { A: "#fff" },
+      spot: { x: 0, y: 0, scale: 1 },
       apply: (r) => {
         r.resources.coins += 10;
         r.mods.mult = (r.mods.mult ?? 1) * 0.5;
       },
     },
   ],
+  tint: "#000",
   keepsake: { name: "Keepsake", glyph, palette: { A: "#fff" } },
 };
 const def: UniverseDef = { ...fixture, map: MAP };

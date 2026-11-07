@@ -1,9 +1,6 @@
+import { legalTargets, stepMap } from "../../../engine/map";
 import { manualGain, visitorHereFlag } from "../../../engine/engine";
-import {
-  prestigeLabel,
-  endRun,
-  newUniverseSave,
-} from "../../../engine/prestige";
+import { prestigeLabel, newUniverseSave } from "../../../engine/prestige";
 import { newSave, parseSave } from "../../../engine/save";
 import { simulate } from "../../../engine/sim";
 import { lightUniverse } from "../../light";
@@ -66,12 +63,17 @@ describe("Make It Grow skeleton", () => {
     const before = JSON.stringify(save.universes.light);
     // end a Grow run the way the game does, then store it in the same save
     const grow = save.universes.grow;
-    const ended = endRun(def, { ...grow, run: { ...grow.run, phase: 2 } });
-    expect(ended.embers).toBeGreaterThan(0);
+    // a finished run moves to the next square on the map
+    const finished = {
+      ...grow,
+      run: { ...grow.run, time: 60, complete: true },
+    };
+    const ended = stepMap(def, finished, legalTargets(def, finished)[0]);
+    expect(ended.map?.at).not.toBe(finished.map?.at);
     save.universes.grow = ended;
     const reloaded = parseSave(JSON.parse(JSON.stringify(save)));
     expect(JSON.stringify(reloaded?.universes.light)).toBe(before);
-    expect(reloaded?.universes.grow.embers).toBe(ended.embers);
+    expect(reloaded?.universes.grow.map).toEqual(ended.map);
   });
 
   it("is listed by the scorecard script", () =>

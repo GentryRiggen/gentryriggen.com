@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
+import { GROW_MAP } from "@/lib/ever-onward/universes/grow/map";
+import ArtifactLayer, { artifactKey } from "../ArtifactLayer";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import {
   isSameSceneInfo,
@@ -39,10 +41,14 @@ const GrowSceneView = memo(function GrowSceneView({
   info,
   lastBuy,
   testId,
+  found,
+  depth,
 }: {
   info: GrowSceneInfo;
   lastBuy: LastBuy | null;
   testId: string;
+  found: string;
+  depth: number;
 }) {
   const Art = ART[info.phase];
   return (
@@ -57,6 +63,7 @@ const GrowSceneView = memo(function GrowSceneView({
         className="block h-full w-full"
       >
         <Art info={info} />
+        <ArtifactLayer map={GROW_MAP} found={found} depth={depth} />
         {lastBuy && <SceneCallout key={lastBuy.id} buy={lastBuy} info={info} />}
       </svg>
       <p
@@ -81,6 +88,8 @@ export default function GrowScene({
       info={useStableInfo(run)}
       lastBuy={lastBuy}
       testId={testId}
+      found={artifactKey(run)}
+      depth={run.mods.depth ?? 0}
     />
   );
 }

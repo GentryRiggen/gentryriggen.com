@@ -13,6 +13,7 @@ import {
   growSceneDiff,
 } from "./hooks";
 import { PHASES } from "./phases";
+import { GROW_MAP } from "./map";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
@@ -47,6 +48,7 @@ export const growUniverse: UniverseDef = {
   alert: growAlert,
   gauge: growGauge,
   prestige: PRESTIGE,
+  map: GROW_MAP,
   plates: growPlates,
   plateActions: GROW_PLATE_ACTIONS,
   decisionActions: GROW_DECISION_ACTIONS,

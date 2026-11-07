@@ -13,6 +13,7 @@ import {
 } from "./hooks";
 import { HIGHER_PROJECTS } from "./knowhow";
 import { PHASES } from "./phases";
+import { HIGHER_MAP } from "./map";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
@@ -47,6 +48,7 @@ export const higherUniverse: UniverseDef = {
   alert: higherAlert,
   gauge: higherGauge,
   prestige: PRESTIGE,
+  map: HIGHER_MAP,
   plates: higherPlates,
   plateActions: HIGHER_PLATE_ACTIONS,
   decisionActions: HIGHER_DECISION_ACTIONS,

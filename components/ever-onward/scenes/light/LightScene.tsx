@@ -6,7 +6,8 @@ import {
   sceneInfo,
   type LightSceneInfo,
 } from "@/lib/ever-onward/universes/light";
-import ArtifactLayer, { artifactKey } from "./ArtifactLayer";
+import { LIGHT_MAP } from "@/lib/ever-onward/universes/light/map";
+import ArtifactLayer, { artifactKey } from "../ArtifactLayer";
 import CoastLayer from "./CoastLayer";
 import LastLayer from "./LastLayer";
 import NightLayer from "./NightLayer";
@@ -217,7 +218,7 @@ const LightSceneView = memo(function LightSceneView({
             </g>
           );
         })}
-        <ArtifactLayer found={found} depth={depth} />
+        <ArtifactLayer map={LIGHT_MAP} found={found} depth={depth} />
         {lastBuy && <SceneCallout key={lastBuy.id} buy={lastBuy} info={info} />}
       </svg>
       <SceneCaption info={info} />
