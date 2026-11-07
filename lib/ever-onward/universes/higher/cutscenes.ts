@@ -264,7 +264,7 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
 /** Short, true tips for each part's closing card. */
 export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_PLAYROOM]: [
-    "Press Steady when the tower leans, and the crew goes back to full speed.",
+    "Rush when it is safe and go careful when the toddler comes. Bank a streak before the top tumbles.",
     "Keep a quarter of your blocks for the base, and every later payout grows.",
     "When a box arrives, read the cards and place the one that helps most.",
   ],

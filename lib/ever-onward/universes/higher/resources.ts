@@ -1,4 +1,5 @@
 import type { ResourceDef } from "../../engine/types";
+import { TUNING } from "./tuning";
 
 export const PHASE_PLAYROOM = "playroom";
 export const PHASE_TOWN = "town";
@@ -30,8 +31,11 @@ export const FULL_DESCENT = 100;
 
 const HIDDEN: readonly string[] = [];
 
-const hidden = (ids: readonly string[]): ResourceDef[] =>
-  ids.map((id) => ({ id, label: id, phases: HIDDEN }));
+const hidden = (
+  ids: readonly string[],
+  initial?: Readonly<Record<string, number>>
+): ResourceDef[] =>
+  ids.map((id) => ({ id, label: id, phases: HIDDEN, initial: initial?.[id] }));
 
 export const RESOURCES: readonly ResourceDef[] = [
   {
@@ -73,6 +77,33 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   // Sway: how far the tower leans, 0 (upright) to 1 (wobbling).
   ...hidden(["sway"]),
+  // The playroom's dials: pace (set and where the dial is), lean, the streak,
+  // the clock that stacks blocks, the tower awake until, the random stream,
+  // the toddler's next visit, tumbles and banks (with when and how much).
+  ...hidden(
+    [
+      "pcPace",
+      "pcEff",
+      "pcLean",
+      "pcStreak",
+      "pcAcc",
+      "pcArmed",
+      "pcRng",
+      "pcTodNext",
+      "pcChanges",
+      "pcSoftUntil",
+      "pcTumbles",
+      "pcTumbleAt",
+      "pcRebuildUntil",
+      "pcPauseUntil",
+      "pcLostN",
+      "pcBanks",
+      "pcBankAt",
+      "pcBankN",
+      "pcBankPays",
+    ],
+    { pcPace: TUNING.playroom.startPace, pcEff: TUNING.playroom.startPace }
+  ),
   // Overtime: seconds left and times held.
   ...hidden(["otLeft", "otCount"]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).

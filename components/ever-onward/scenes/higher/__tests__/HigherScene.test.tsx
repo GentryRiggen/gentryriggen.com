@@ -92,11 +92,11 @@ describe("Build It Higher scenes", () => {
     }
   );
 
-  it("draws the tower leaning when it needs steadying", () => {
+  it("draws the tower leaning when the pace makes it lean", () => {
     const run = runAtPhaseStart(0);
     const leaning = {
       ...run,
-      resources: { ...run.resources, sway: 0.9 },
+      resources: { ...run.resources, pcLean: 0.9 },
     };
     expect(markup(leaning)).not.toBe(markup(run));
     expect(markup(leaning)).toContain("bh-wobble");

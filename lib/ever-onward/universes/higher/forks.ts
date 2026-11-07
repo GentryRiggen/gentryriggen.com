@@ -71,12 +71,12 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "Tall and thin",
-        blurb: `Helpers pay ${times(T.play.tallPay)} as much. It also leans ${times(T.play.tallSway)} as fast, so keep an eye on it.`,
-        catchLine: "It wobbles. You will be steadying it a lot.",
+        blurb: `Helpers pay ${times(T.play.tallPay)} as much. It also leans ${times(T.play.tallSway)} as much, so the top tumbles sooner.`,
+        catchLine: "It wobbles. Tumbles come much sooner.",
       },
       {
         name: "Wide and sturdy",
-        blurb: `Helpers pay ${times(T.play.widePay)} as much, and the tower leans less than half as fast.`,
+        blurb: `Helpers pay ${times(T.play.widePay)} as much, and the tower leans less than half as much.`,
         catchLine: "Slower to climb. Everything pays less than tall and thin.",
       },
     ],

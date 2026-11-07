@@ -4317,6 +4317,19 @@ html:has(.jim-app) body {
   .bh-climb,
   .bh-shadow,
   .bh-sway,
+  .bh-shout,
+  .bh-flash,
+  .bh-flash-gold,
+  .bh-poof,
+  .bh-tumble-block,
+  .bh-ring,
+  .bh-spark,
+  .bh-confetti,
+  .bh-star-rise,
+  .bh-star-pop,
+  .bh-toddler-run,
+  .bh-toddler-stomp,
+  .bh-quake,
   .bh-creak,
   .bh-glow,
   .bh-note {
@@ -4334,6 +4347,301 @@ html:has(.jim-app) body {
   .bh-note {
     opacity: 1;
   }
+}
+
+/* ---- Build It Higher: the playroom's dials (pace, streak, tumble, bank) ---- */
+.bh-shout,
+.bh-tumble-block,
+.bh-poof,
+.bh-ring,
+.bh-spark,
+.bh-star-rise,
+.bh-star-pop,
+.bh-toddler-stomp {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  12% {
+    transform: scale(1.35);
+  }
+  22% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-6px);
+    opacity: 0;
+  }
+}
+.bh-shout {
+  animation: bh-shout 5s ease-out forwards;
+}
+
+@keyframes bh-flash {
+  0%,
+  40%,
+  80% {
+    opacity: 0.45;
+  }
+  20%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+}
+.bh-flash {
+  animation: bh-flash 1.2s steps(1, end) forwards;
+}
+
+@keyframes bh-flash-gold {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bh-flash-gold {
+  animation: bh-flash-gold 1.6s ease-out forwards;
+}
+
+@keyframes bh-poof {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  60% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.bh-poof {
+  animation: bh-poof 2.2s ease-out forwards;
+}
+
+@keyframes bh-tumble-block {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(calc(var(--bh-dx) * 0.5), -26px)
+      rotate(calc(var(--bh-rot) * 0.4));
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bh-dx), var(--bh-dy)) rotate(var(--bh-rot));
+    opacity: 0;
+  }
+}
+.bh-tumble-block {
+  animation: bh-tumble-block 1.8s ease-in forwards;
+}
+.bh-tumble-0 {
+  --bh-dx: -70px;
+  --bh-dy: 120px;
+  --bh-rot: -200deg;
+}
+.bh-tumble-1 {
+  --bh-dx: 80px;
+  --bh-dy: 110px;
+  --bh-rot: 240deg;
+}
+.bh-tumble-2 {
+  --bh-dx: -110px;
+  --bh-dy: 90px;
+  --bh-rot: -320deg;
+}
+.bh-tumble-3 {
+  --bh-dx: 120px;
+  --bh-dy: 100px;
+  --bh-rot: 180deg;
+}
+
+@keyframes bh-ring {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4.2);
+    opacity: 0;
+  }
+}
+.bh-ring {
+  animation: bh-ring 1.6s ease-out 3 both;
+}
+
+@keyframes bh-spark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bh-sx), var(--bh-sy)) scale(0.4);
+    opacity: 0;
+  }
+}
+.bh-spark {
+  animation: bh-spark 1.3s ease-out 3 both;
+}
+.bh-spark-0 {
+  --bh-sx: 70px;
+  --bh-sy: 0px;
+}
+.bh-spark-1 {
+  --bh-sx: 50px;
+  --bh-sy: 50px;
+}
+.bh-spark-2 {
+  --bh-sx: 0px;
+  --bh-sy: 70px;
+}
+.bh-spark-3 {
+  --bh-sx: -50px;
+  --bh-sy: 50px;
+}
+.bh-spark-4 {
+  --bh-sx: -70px;
+  --bh-sy: 0px;
+}
+.bh-spark-5 {
+  --bh-sx: -50px;
+  --bh-sy: -50px;
+}
+.bh-spark-6 {
+  --bh-sx: 0px;
+  --bh-sy: -70px;
+}
+.bh-spark-7 {
+  --bh-sx: 50px;
+  --bh-sy: -50px;
+}
+
+@keyframes bh-confetti {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(14px, 310px) rotate(300deg);
+    opacity: 0.2;
+  }
+}
+.bh-confetti {
+  animation: bh-confetti 2.2s ease-in 2 both;
+}
+
+@keyframes bh-star-rise {
+  0% {
+    transform: translateY(24px) scale(0.2);
+    opacity: 0;
+  }
+  30% {
+    transform: translateY(0) scale(1.6);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-4px) scale(1.2);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-16px) scale(1.3);
+    opacity: 0;
+  }
+}
+.bh-star-rise {
+  animation: bh-star-rise 4.5s ease-out forwards;
+}
+
+@keyframes bh-star-pop {
+  0% {
+    transform: scale(0.2);
+  }
+  60% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bh-star-pop {
+  animation: bh-star-pop 0.4s ease-out both;
+}
+
+@keyframes bh-toddler-run {
+  0% {
+    transform: translateX(372px);
+  }
+  50% {
+    transform: translateX(70px);
+  }
+  100% {
+    transform: translateX(372px);
+  }
+}
+.bh-toddler-run {
+  animation: bh-toddler-run 3.6s ease-in-out infinite;
+}
+
+@keyframes bh-toddler-stomp {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.bh-toddler-stomp {
+  animation: bh-toddler-stomp 0.3s ease-in-out infinite;
+}
+
+@keyframes bh-quake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1.5px, 1px);
+  }
+  75% {
+    transform: translate(1.5px, -1px);
+  }
+}
+.bh-quake {
+  animation: bh-quake 0.18s linear infinite;
+}
+
+/* The faster the pace, the faster the teddies hop. */
+.bh-pace-0 .bh-hop,
+.bh-pace-0 .bh-hop-b {
+  animation-duration: 1.8s;
+}
+.bh-pace-2 .bh-hop,
+.bh-pace-2 .bh-hop-b {
+  animation-duration: 0.6s;
+}
+.bh-pace-3 .bh-hop,
+.bh-pace-3 .bh-hop-b {
+  animation-duration: 0.35s;
 }
 
 /* ---- Ever Onward intro films (components/ever-onward/game/film) ---- */

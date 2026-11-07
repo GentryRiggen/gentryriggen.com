@@ -77,6 +77,44 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("the playroom's build pace and streak work in the panel and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("bh-playroom");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("ph-playroom-scene")).toBeAttached();
+    await panel.getByTestId("bh-pace-1").click();
+    await expect(page.getByTestId("ph-pace-sign")).toHaveText("EASY", {
+      timeout: 10_000,
+    });
+    await expect(panel.getByTestId("bh-streak-chance")).toContainText(
+      "tumbles the top"
+    );
+    await panel.getByTestId("bh-pace-3").click();
+    await expect(panel.getByTestId("bh-pace-3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    await expect(page.getByTestId("ph-pace-sign")).toHaveText("RUSH!", {
+      timeout: 10_000,
+    });
+    await expect(panel.getByTestId("bh-bank")).toBeVisible();
+    await expect(page.getByTestId("bh-steady")).toHaveCount(0);
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

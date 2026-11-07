@@ -1,7 +1,7 @@
 import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
-import { swayCalm } from "./sway";
+import { leanCalm, swayCalm } from "./sway";
 import {
   PHASE_IDS,
   PHASE_PLAYROOM,
@@ -60,9 +60,17 @@ function swayPreview(run: RunState, id: string): string {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
+  const round = (n: number): string => String(Math.round(n * 100) / 100);
+  if (run.phase === 0) {
+    // The playroom's lean comes from the build pace; braces only go so far.
+    const floor = TUNING.playroom.calmFloor;
+    const was = Math.max(floor, leanCalm(run));
+    const now = Math.max(floor, leanCalm(after));
+    const less = Math.round((1 - now / was) * 100);
+    return `The tower leans ${less}% less\nLean amount ×${round(was)} → ×${round(now)}\nA leaning tower tumbles sooner`;
+  }
   const before = swayCalm(run);
   const next = swayCalm(after);
-  const round = (n: number): string => String(Math.round(n * 100) / 100);
   const slower = before > 0 ? Math.round((1 - next / before) * 100) : 0;
   return `The tower sways ${slower}% slower\nSway speed ×${round(before)} → ×${round(next)}\nA leaning tower slows the crew`;
 }
@@ -98,7 +106,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "rug-corners",
     name: "Tape on the rug corners",
     description:
-      "The rug stops sliding, so the tower sways more slowly. Less steadying for you.",
+      "The rug stops sliding, so the tower leans less at every pace. Fewer tumbles for you.",
     phases: [PHASE_PLAYROOM],
     currency: "blocks",
     baseCost: 90,
@@ -126,7 +134,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "cushion-fort",
     name: "A cushion fort",
     description:
-      "Sofa cushions around the bottom. Soft and wide, and the tower sways half as fast.",
+      "Sofa cushions around the bottom. Soft and wide, and the tower leans half as much.",
     phases: [PHASE_PLAYROOM],
     currency: "blocks",
     baseCost: 3000,

@@ -7,6 +7,7 @@ import { referenceIncome } from "./income";
 import { KNOWHOW, dockMult } from "./knowhow";
 import { HELPER_LINES, owned, res } from "./lines";
 import { MANUAL_RESOURCES } from "./resources";
+import { playroomLean, softenTumbles } from "./playroom";
 import { relieveSway, swayOf } from "./sway";
 import { TUNING } from "./tuning";
 
@@ -43,8 +44,8 @@ export const LOADS: readonly (readonly [LoadDef, LoadDef, LoadDef])[] = [
   [
     { name: "A box of blocks", note: "Blocks to spend right now." },
     {
-      name: "A steadying pillow",
-      note: "Straightens the tower and brings a few blocks.",
+      name: "A soft pillow",
+      note: "A few blocks, and a minute of softer tumbles.",
     },
     {
       name: "A wide base block",
@@ -115,7 +116,11 @@ function loadWorth(run: RunState, option: number, value: number): number {
   if (run.phase === 3) return loadPays(run, option, value) / v;
   if (option === 0) return D.materialSeconds * loadMult(run);
   if (option === 1)
-    return (D.poleSeconds + 21 * swayOf(run)) * Math.max(1, loadMult(run));
+    return (
+      (D.poleSeconds +
+        21 * (run.phase === 0 ? playroomLean(run) : swayOf(run))) *
+      Math.max(1, loadMult(run))
+    );
   if (run.phase === 1) return 30 * loadMult(run);
   if (!isFootingOpen(run)) return 0;
   const stock = footingStock(run);
@@ -144,7 +149,7 @@ export function loadPaysText(
   if (run.phase !== 3 && option === 2)
     return `+${pays} into the ${run.phase === 0 ? "base" : "anchors"}`;
   const word = MANUAL_RESOURCES[run.phase];
-  return `+${pays} ${word}${option === 1 && run.phase !== 3 ? " and a straighter tower" : ""}`;
+  return `+${pays} ${word}${option === 1 && run.phase === 0 ? " and softer tumbles" : option === 1 && run.phase !== 3 ? " and a straighter tower" : ""}`;
 }
 
 /** Places the load. */
@@ -158,7 +163,8 @@ export function placeLoad(run: RunState, option: number, value: number): void {
   else {
     const key = MANUAL_RESOURCES[run.phase];
     run.resources[key] = res(run, key) + pays;
-    if (option === 1) relieveSway(run, TUNING.sway.poleRelief);
+    if (option === 1 && run.phase === 0) softenTumbles(run);
+    else if (option === 1) relieveSway(run, TUNING.sway.poleRelief);
   }
   run.resources.dlStage = 0;
   run.resources.dlTime = 0;

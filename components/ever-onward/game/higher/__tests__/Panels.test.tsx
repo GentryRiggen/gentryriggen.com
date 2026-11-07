@@ -11,11 +11,16 @@ import {
   forkCost,
 } from "@/lib/ever-onward/universes/higher/forks";
 import { OVERTIME_ACTION_ID } from "@/lib/ever-onward/universes/higher/knowhow";
+import {
+  BANK_ACTION_ID,
+  paceActionId,
+} from "@/lib/ever-onward/universes/higher/playroom";
 import { STEADY_ACTION_ID } from "@/lib/ever-onward/universes/higher/sway";
 import DeliveryPanel from "../DeliveryPanel";
 import FootingPanel from "../FootingPanel";
 import ForkPanel from "../ForkPanel";
 import KnowHowPanel from "../KnowHowPanel";
+import PlayroomPanel from "../PlayroomPanel";
 import SwayPanel from "../SwayPanel";
 
 function playroom(bears = 4, extra: Record<string, number> = {}): RunState {
@@ -121,12 +126,72 @@ describe("FootingPanel", () => {
   });
 });
 
+describe("PlayroomPanel", () => {
+  it("shows four paces with what each pays and costs, and picks one on a click", async () => {
+    const onAct = jest.fn();
+    render(<PlayroomPanel def={def} run={playroom(3)} onAct={onAct} />);
+    const rush = screen.getByTestId("bh-pace-3");
+    expect(rush).toHaveTextContent("Rush");
+    expect(rush).toHaveTextContent(/\+22% pay/);
+    expect(rush).toHaveTextContent(/Leans a lot/);
+    expect(screen.getByTestId("bh-pace-0")).toHaveTextContent(/-10% pay/);
+    expect(screen.getByTestId("bh-pace-1")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    await userEvent.click(rush);
+    expect(onAct).toHaveBeenCalledWith(paceActionId(3));
+    expect(screen.queryByText(/best|recommended/i)).toBeNull();
+  });
+
+  it("shows the streak, the tumble chance and banks only a real streak", async () => {
+    const onAct = jest.fn();
+    const { rerender } = render(
+      <PlayroomPanel def={def} run={playroom(3)} onAct={onAct} />
+    );
+    expect(screen.getByTestId("bh-bank")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+    await userEvent.click(screen.getByTestId("bh-bank"));
+    expect(onAct).not.toHaveBeenCalled();
+    rerender(
+      <PlayroomPanel
+        def={def}
+        run={playroom(3, { pcStreak: 6 })}
+        onAct={onAct}
+      />
+    );
+    expect(screen.getByTestId("bh-streak")).toHaveTextContent(
+      /6 blocks in a row/
+    );
+    expect(screen.getByTestId("bh-streak-chance")).toHaveTextContent(
+      /tumbles the top \d+% of the time/
+    );
+    await userEvent.click(screen.getByTestId("bh-bank"));
+    expect(onAct).toHaveBeenCalledWith(BANK_ACTION_ID);
+  });
+
+  it("warns when the toddler is coming, and renders nothing in the town", () => {
+    const run = playroom(3, { pcTodNext: 5 });
+    render(
+      <PlayroomPanel def={def} run={{ ...run, time: 0 }} onAct={jest.fn()} />
+    );
+    expect(screen.getByTestId("bh-playroom")).toHaveAttribute(
+      "data-toddler",
+      "coming"
+    );
+    const { container } = render(
+      <PlayroomPanel def={def} run={town()} onAct={jest.fn()} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
 describe("SwayPanel", () => {
   it("steadies a leaning tower on a click", async () => {
     const onAct = jest.fn();
-    render(
-      <SwayPanel def={def} run={playroom(3, { sway: 0.8 })} onAct={onAct} />
-    );
+    render(<SwayPanel def={def} run={town({ sway: 0.8 })} onAct={onAct} />);
     expect(screen.getByTestId("bh-sway")).toHaveAttribute(
       "data-state",
       "wobbling"
@@ -135,9 +200,16 @@ describe("SwayPanel", () => {
     expect(onAct).toHaveBeenCalledWith(STEADY_ACTION_ID);
   });
 
+  it("renders nothing in the playroom, which has the pace dial instead", () => {
+    const { container } = render(
+      <SwayPanel def={def} run={playroom(3)} onAct={jest.fn()} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("says the tower is standing straight, and the button waits", async () => {
     const onAct = jest.fn();
-    render(<SwayPanel def={def} run={playroom(3)} onAct={onAct} />);
+    render(<SwayPanel def={def} run={town()} onAct={onAct} />);
     const button = screen.getByTestId("bh-steady");
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).toHaveTextContent("Standing straight");
@@ -189,14 +261,12 @@ describe("DeliveryPanel", () => {
     render(
       <DeliveryPanel
         def={def}
-        run={playroom(3, { dlStage: 1, sway: 0.95, ftStock: 1e9 })}
+        run={playroom(3, { dlStage: 1, pcLean: 0.95, ftStock: 1e9 })}
         onAct={onAct}
       />
     );
     expect(screen.getByTestId("bh-load-1")).toHaveAttribute("data-best", "yes");
-    expect(screen.getByTestId("bh-load-1")).toHaveTextContent(
-      /straighter tower/
-    );
+    expect(screen.getByTestId("bh-load-1")).toHaveTextContent(/softer tumbles/);
     await userEvent.click(screen.getByTestId("bh-load-1-place"));
     expect(onAct).toHaveBeenCalledWith(loadActionId(1));
   });

@@ -17,6 +17,7 @@ import ForkPanel from "../game/higher/ForkPanel";
 import HigherEndingArt from "../game/higher/HigherEndingArt";
 import KnowHowPanel from "../game/higher/KnowHowPanel";
 import StarIcon from "../game/higher/StarIcon";
+import PlayroomPanel from "../game/higher/PlayroomPanel";
 import SwayPanel from "../game/higher/SwayPanel";
 import HigherScene from "../scenes/higher/HigherScene";
 import type { TapLook, UniverseUi } from "./types";
@@ -52,13 +53,15 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
   if (rose("dlCount")) cues.push("arrive");
   if (rose("otCount")) cues.push("chime");
+  if (rose("pcBanks")) cues.push("chime");
+  if (rose("pcTumbles")) cues.push("buzz");
   return cues;
 }
 
 /** The Build It Higher screens: scene, panels, ending, sounds. */
 export const HIGHER_UI: UniverseUi = {
   Scene: HigherScene,
-  primaryPanels: [SwayPanel],
+  primaryPanels: [PlayroomPanel, SwayPanel],
   panels: [ForkPanel, FootingPanel, KnowHowPanel, DeliveryPanel],
   ending: { storyIds: ENDING_STORY_IDS, Art: HigherEndingArt },
   tapLooks: LOOKS,

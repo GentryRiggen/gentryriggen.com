@@ -29,7 +29,7 @@ describe("Higher sceneInfo", () => {
     const run = { ...runAtPhaseStart(0), owned: { bear: 4 } };
     const base: HigherSceneInfo = sceneInfo(run);
     expect(
-      isSameSceneInfo(base, sceneInfo(withResources(run, { sway: 0.9 })))
+      isSameSceneInfo(base, sceneInfo(withResources(run, { pcLean: 0.9 })))
     ).toBe(false);
     expect(
       isSameSceneInfo(base, sceneInfo(withResources(run, { ftStock: 5e4 })))

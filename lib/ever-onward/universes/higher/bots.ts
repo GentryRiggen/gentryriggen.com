@@ -11,7 +11,20 @@ import {
 } from "./footing";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { OVERTIME_ACTION_ID, knowhowOf } from "./knowhow";
-import { STEADY_ACTION_ID, swayOf } from "./sway";
+import {
+  BANK_ACTION_ID,
+  PACES,
+  TUMBLE_COST_SECONDS,
+  canBank,
+  isPlayroomOpen,
+  isSoft,
+  paceActionId,
+  paceStep,
+  potSeconds,
+  streakOf,
+  toddlerStage,
+} from "./playroom";
+import { STEADY_ACTION_ID, leanCalm, swayOf } from "./sway";
 import { tendingValue } from "./tick";
 import { TUNING } from "./tuning";
 import { UPGRADES } from "./upgrades";
@@ -50,6 +63,95 @@ export const steadiesAt =
     available.includes(STEADY_ACTION_ID)
       ? [STEADY_ACTION_ID]
       : [];
+
+/**
+ * How a bot plays the Playroom's dials. `pace` is a fixed step, or "reads":
+ * quick when the coast is clear, careful while the toddler is on the way.
+ * `bank` is a fixed streak length to bank at, "never", or "reads": bank when
+ * one more block is worth less than the chance of losing the pot.
+ */
+export interface PlayroomStyle {
+  pace: number | "reads" | "plan";
+  bank: number | "never" | "reads";
+}
+
+/**
+ * What a pace is worth in the long run when banking at `blocks`: pay times
+ * one plus the bonus per second of building, with the tumbles priced in
+ * (`stomping` triples the chance of a tumble).
+ */
+export function paceRate(
+  run: RunState,
+  step: number,
+  blocks: number,
+  stomping: boolean
+): number {
+  const P = TUNING.playroom;
+  const pace = PACES[step];
+  const lean = Math.min(1, pace.lean * Math.max(P.calmFloor, leanCalm(run)));
+  let alive = 1;
+  let seconds = 0;
+  let lost = 0;
+  for (let k = 0; k < blocks; k += 1) {
+    const q = Math.min(
+      P.tumbleMax,
+      (P.tumbleBase + P.tumbleLean * lean + P.tumbleStreak * k) *
+        (stomping ? P.toddlerMult : 1) *
+        (isSoft(run) ? 0.5 : 1)
+    );
+    seconds += alive * pace.stack;
+    lost += alive * q * TUMBLE_COST_SECONDS;
+    alive *= 1 - q;
+  }
+  seconds += alive * P.bankPause;
+  return pace.pay * (1 + (alive * potSeconds(blocks) - lost) / seconds);
+}
+
+/** The pace and streak length that earn the most right now. */
+const PLANS = new Map<string, { step: number; blocks: number }>();
+
+export function bestPlan(run: RunState): { step: number; blocks: number } {
+  const key = `${toddlerStage(run) !== "away"}|${isSoft(run)}|${Math.round(leanCalm(run) * 100)}`;
+  const known = PLANS.get(key);
+  if (known) return known;
+  const stomping = toddlerStage(run) !== "away";
+  let best = { step: paceStep(run), blocks: P_BANK_MIN, rate: -Infinity };
+  for (let step = 0; step < PACES.length; step += 1)
+    for (let blocks = P_BANK_MIN; blocks <= 16; blocks += 1) {
+      const rate = paceRate(run, step, blocks, stomping);
+      if (rate > best.rate) best = { step, blocks, rate };
+    }
+  const plan = { step: best.step, blocks: best.blocks };
+  PLANS.set(key, plan);
+  return plan;
+}
+
+const P_BANK_MIN = TUNING.playroom.bankMin;
+
+/** Sets the pace and banks the streak by a style, looking every `window` seconds. */
+export const playsPlayroom =
+  (style: PlayroomStyle, window = 1): Actions =>
+  (run, available) => {
+    if (!isPlayroomOpen(run) || !isWindowStart(run, window)) return [];
+    const bankNow =
+      style.bank === "never"
+        ? false
+        : style.bank === "reads"
+          ? (canBank(run) && streakOf(run) >= bestPlan(run).blocks) ||
+            (toddlerStage(run) === "coming" && canBank(run))
+          : streakOf(run) >= style.bank;
+    if (bankNow && available.includes(BANK_ACTION_ID)) return [BANK_ACTION_ID];
+    const want =
+      style.pace === "plan"
+        ? bestPlan(run).step
+        : style.pace === "reads"
+          ? toddlerStage(run) === "away"
+            ? 2
+            : 0
+          : style.pace;
+    const id = paceActionId(Math.min(PACES.length - 1, want));
+    return paceStep(run) !== want && available.includes(id) ? [id] : [];
+  };
 
 /** Places the load that helps most, looking every `window` seconds. */
 export const placesLoad =
@@ -118,13 +220,28 @@ const site = (base: Strategy, actions: Actions): Strategy => ({
   actions,
 });
 
+/** A player who builds quickly and banks when one more block risks more than it adds. */
+const READS: PlayroomStyle = { pace: 2, bank: "reads" };
+
+/** A player who never touches the dials. */
+const IGNORES: PlayroomStyle = { pace: 1, bank: "never" };
+
+/** A player who rushes and banks on a hunch rather than by the odds. */
+const GREEDY: PlayroomStyle = { pace: 3, bank: 3 };
+
 /** The scorecard's player personalities for Build It Higher. */
 export function higherBots(): BotSet {
   const base = genericBots(higherUniverse);
-  const hands = (steady: number, window: number, load: number): Actions =>
+  const hands = (
+    steady: number,
+    window: number,
+    load: number,
+    dials: PlayroomStyle = READS
+  ): Actions =>
     together(
       takesFork(),
       steadiesAt(steady, window),
+      playsPlayroom(dials, window),
       placesLoad(load),
       footingPolicy(1, Math.max(window, 10)),
       holdsOvertime
@@ -144,7 +261,7 @@ export function higherBots(): BotSet {
       [0, 1, 2].map((phase) => [
         phase,
         {
-          naive: site(base.tapper, hands(0.97, 1, 1)),
+          naive: site(base.tapper, hands(0.97, 1, 1, GREEDY)),
           careful: site(base.tapper, hands(0.7, 1, 1)),
         },
       ])
@@ -155,13 +272,18 @@ export function higherBots(): BotSet {
         {
           ignores: site(
             base.tapper,
-            together(takesFork(), steadiesAt(0.8), footingPolicy(1, 10))
+            together(
+              takesFork(),
+              steadiesAt(0.8),
+              playsPlayroom(IGNORES),
+              footingPolicy(1, 10)
+            )
           ),
           claims: tapper,
         },
       ])
     ),
-    naiveOil: site(base.tapper, hands(0.97, 1, 1)),
+    naiveOil: site(base.tapper, hands(0.97, 1, 1, GREEDY)),
     cheapskateOil: tapper,
   };
 }

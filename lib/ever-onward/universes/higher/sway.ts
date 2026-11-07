@@ -9,7 +9,7 @@ import {
   owned,
   res,
 } from "./lines";
-import { PHASE_PLAYROOM, PHASE_SKY, PHASE_TOWN } from "./resources";
+import { PHASE_SKY, PHASE_TOWN } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -24,8 +24,12 @@ const S = TUNING.sway;
 
 export const STEADY_ACTION_ID = "steady";
 
-/** Sway belongs to the first three parts. */
-export const hasSway = (run: RunState): boolean => run.phase <= 2;
+/**
+ * Sway belongs to the town and the sky. The playroom has no button for it:
+ * its lean comes from the build pace (playroom.ts).
+ */
+export const hasSway = (run: RunState): boolean =>
+  run.phase === 1 || run.phase === 2;
 
 /** How far the tower leans, 0 (upright) to 1. */
 export const swayOf = (run: RunState): number =>
@@ -42,9 +46,12 @@ export function swayFactor(run: RunState): number {
 export const isWobbly = (run: RunState): boolean =>
   hasSway(run) && swayOf(run) > S.from;
 
-/** How much the footing, braces, projects and forks slow the sway (1 = none). */
-export function swayCalm(run: RunState): number {
-  if (!hasSway(run)) return 1;
+/**
+ * How much the footing, braces, projects and forks slow the lean (1 = none).
+ * The playroom uses it too, to shrink the lean its build pace brings.
+ */
+export function leanCalm(run: RunState): number {
+  if (run.phase > 2) return 1;
   return (
     (S.brace ** owned(run, BRACE_IDS[run.phase]) *
       (owned(run, STEADY_ONEOFF_IDS[run.phase]) > 0 ? S.fortMult : 1) *
@@ -53,6 +60,10 @@ export function swayCalm(run: RunState): number {
     (1 + footingGain(run) * S.footing)
   );
 }
+
+/** How much the footing, braces, projects and forks slow the sway (1 = none). */
+export const swayCalm = (run: RunState): number =>
+  hasSway(run) ? leanCalm(run) : 1;
 
 /** Share of the whole scale the tower sways per second. */
 export function swayPerSecond(run: RunState): number {
@@ -86,13 +97,13 @@ export function relieveSway(run: RunState, share: number): void {
   run.resources.sway = Math.max(0, swayOf(run) * (1 - share));
 }
 
-const WORDS = ["blocks", "bricks", "beams"] as const;
-const TOWERS = ["block tower", "tower", "tower"] as const;
+const WORDS = [undefined, "bricks", "beams"] as const;
+const TOWERS = [undefined, "tower", "tower"] as const;
 
 /** Press to set the tower right. Free, and never a loss. */
 export const STEADY_ACTION: ActionDef = {
   id: STEADY_ACTION_ID,
-  phases: [PHASE_PLAYROOM, PHASE_TOWN, PHASE_SKY],
+  phases: [PHASE_TOWN, PHASE_SKY],
   isInline: true,
   visibleWhen: (run) => hasSway(run) && helperLevels(run) >= 2,
   describe: (run) => {

@@ -46,9 +46,20 @@ describe("HUD gauges", () => {
     });
   });
 
-  test("Higher shows the sway, LEANS then WOBBLY", () => {
+  test("Higher shows the playroom's lean and streak, then the town's sway", () => {
+    const play = newRun(higherUniverse);
+    expect(higherUniverse.gauge?.(play)).toBeNull();
+    play.owned.bear = 3;
+    play.resources.pcLean = 0.4;
+    play.resources.pcStreak = 5;
+    expect(higherUniverse.gauge?.(play)).toMatchObject({
+      label: "LEAN",
+      display: "40%",
+      status: "STREAK 5",
+      isLow: true,
+    });
     const run = newRun(higherUniverse);
-    run.phase = 0;
+    run.phase = 1;
     run.resources.sway = 0.1;
     expect(higherUniverse.gauge?.(run)).toMatchObject({
       label: "SWAY",

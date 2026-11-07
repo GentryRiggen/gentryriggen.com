@@ -65,6 +65,67 @@ export const TUNING = {
     /** A steadying pole from a delivery takes this much off. */
     poleRelief: 0.7,
   },
+  /**
+   * The Playroom's two dials (playroom.ts): the build pace and the streak.
+   * Pace trades pay and speed against a leaning tower; the streak is a pot
+   * that grows block by block, banked for a bonus or lost in a tumble.
+   */
+  playroom: {
+    /** Careful to rush: pay, how far it leans, seconds between blocks. */
+    paces: [
+      { name: "Careful", pay: 0.9, lean: 0.05, stack: 5.1 },
+      { name: "Easy", pay: 1, lean: 0.22, stack: 3.5 },
+      { name: "Quick", pay: 1.12, lean: 0.5, stack: 2.4 },
+      { name: "Rush", pay: 1.22, lean: 0.9, stack: 1.6 },
+    ] as readonly {
+      name: string;
+      pay: number;
+      lean: number;
+      stack: number;
+    }[],
+    /** The pace a fresh playroom starts at (index into `paces`). */
+    startPace: 1,
+    /** The pace dial moves one step every this many seconds. */
+    settleSeconds: 2,
+    /** The lean eases toward its target; this many seconds to close the gap. */
+    leanSeconds: 4,
+    /** The tower only stacks (and can only tumble) this long after a tap. */
+    armSeconds: 6,
+    /** Tumble chance per block: base, per full lean, per block in the streak. */
+    tumbleBase: 0.01,
+    tumbleLean: 0.3,
+    tumbleStreak: 0.008,
+    /** Braces and footings never calm the lean below this share of the pace's lean. */
+    calmFloor: 0.7,
+    tumbleMax: 0.75,
+    /** The streak stops growing here. */
+    streakMax: 40,
+    /** The streak is worth `pot * blocks ^ potPower` seconds of building. */
+    pot: 0.24,
+    potPower: 2,
+    /** Banking pauses the stacking this long while the crew cheers. */
+    bankPause: 5,
+    /** A streak shorter than this cannot be banked. */
+    bankMin: 3,
+    /**
+     * A tumble sends blocks everywhere: the crew spends this long picking
+     * them up, paid at this share of the usual rate.
+     */
+    rebuildSeconds: 6,
+    rebuildPay: 0.4,
+    /** The toddler: gap between visits, warning before, and how long it stomps. */
+    toddlerGap: [22, 34] as readonly [number, number],
+    toddlerWarn: 6,
+    toddlerStomp: 14,
+    /** While the toddler stomps, a tumble is this many times as likely. */
+    toddlerMult: 5,
+    /** The scene shows a tumble or a bank for this long. */
+    showSeconds: 5,
+    /** A pillow from a delivery halves tumbles for this many seconds. */
+    softSeconds: 60,
+    /** The streak plate lights at this many blocks. */
+    plateAt: 5,
+  },
   /** Foundations: the spend-now-or-invest choice of the first three parts. */
   footing: {
     /** Shares that can be kept back: none, a quarter, half. */

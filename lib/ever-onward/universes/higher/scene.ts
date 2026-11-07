@@ -7,6 +7,18 @@ import { isOvertimeOn, isProjectDone } from "./knowhow";
 import { HELPER_LINES, owned } from "./lines";
 import { PHASE_IDS, RETURN_VISITOR_ID, type HigherPhaseId } from "./resources";
 import { isLoadHere } from "./deliveries";
+import {
+  bankTier,
+  banksSoFar,
+  isPlayroomOpen,
+  justBanked,
+  justTumbled,
+  paceNow,
+  playroomLean,
+  streakOf,
+  toddlerStage,
+  tumblesSoFar,
+} from "./playroom";
 import { swayOf } from "./sway";
 import { UPGRADES } from "./upgrades";
 
@@ -19,6 +31,18 @@ export interface HigherSceneInfo {
   fork: number;
   /** How far the tower leans, 0 (upright) to 4. */
   lean: number;
+  /** The playroom's build pace, 0 (careful) to 3 (rush). */
+  pace: number;
+  /** Blocks in the streak, 0 to 12 (the playroom). */
+  streak: number;
+  /** The toddler: 0 away, 1 coming, 2 stomping. */
+  toddler: number;
+  /** The top tumbled a moment ago, and how many times it has this run. */
+  tumbling: boolean;
+  tumbles: number;
+  /** A streak was just banked: 0 no, or the fanfare's size 1 to 3; and the count. */
+  banking: number;
+  banks: number;
   /** How much footing there is, 0 (none) to 3. */
   footing: number;
   /** The share of income kept back (0, 1 or 2). */
@@ -64,7 +88,17 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     phase,
     own,
     fork: side === null ? 0 : side + 1,
-    lean: Math.min(4, Math.floor(swayOf(run) * 4.999)),
+    lean: Math.min(
+      4,
+      Math.floor((run.phase === 0 ? playroomLean(run) : swayOf(run)) * 4.999)
+    ),
+    pace: run.phase === 0 && isPlayroomOpen(run) ? Math.round(paceNow(run)) : 1,
+    streak: Math.min(12, streakOf(run)),
+    toddler: ["away", "coming", "stomping"].indexOf(toddlerStage(run)),
+    tumbling: justTumbled(run),
+    tumbles: tumblesSoFar(run),
+    banking: justBanked(run) ? bankTier(run) : 0,
+    banks: banksSoFar(run),
     footing: Math.min(3, Math.round(gainOf(run) * 2)),
     keeps: run.phase <= 2 ? footingStep(run) : 0,
     projects: PROJECT_IDS[run.phase].reduce(
