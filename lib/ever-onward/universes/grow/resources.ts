@@ -238,23 +238,32 @@ export const RESOURCES: readonly ResourceDef[] = [
     "bmHealedWho",
     "bmSwitches",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
-  // The old window box: stage (0 resting, 1 wanting), clocks, what the pot
-  // wants, how many wants it has shown, answers given, the last answer (what
-  // was chosen, what was wanted, what it paid, who gave it), care earned from
-  // answers, the pot's stage (0 soil to 3 bloom, the bloom sound reads it),
-  // and the pot's own random stream.
+  // The old window box: where the blind is aimed (0 to 4) and where it is
+  // now (0 to 1), the soil's moisture, the sky (an index), its clock and how
+  // many times it has changed, how
+  // long the pot has grown well, the leaf's mood last seen (0 perky, 1 curl,
+  // 2 dry, 3 droop, 4 soggy), the last thrive and last wilt (run time, and
+  // which), how many times each has happened, dial moves, the pot's stage
+  // (0 soil to 3 bloom, the bloom sound reads it), and its own random stream.
   ...[
-    "wbStage",
-    "wbTime",
-    "wbWant",
-    "wbShown",
-    "wbTends",
-    "wbLastChoice",
-    "wbLastWant",
-    "wbLastPays",
-    "wbBy",
+    "wbAim",
+    "wbLight",
+    "wbMoist",
+    "wbSky",
+    "wbSkyTime",
+    "wbSkyLen",
+    "wbSkies",
+    "wbGood",
+    "wbLeaf",
+    "wbLeafAt",
+    "wbThriveAt",
+    "wbThrives",
+    "wbWiltAt",
+    "wbWiltKind",
+    "wbWilts",
+    "wbMoves",
     "wbRng",
-    "wbPaused",
+    "wbReady",
     "potStage",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.

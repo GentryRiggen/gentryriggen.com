@@ -317,31 +317,75 @@ export const TUNING = {
     /** The planet counts as green enough for a vault at this cover. */
     vaultCover: 0.7,
   },
-  /** The old window box: the last pot, and what it asks for. */
+  /**
+   * The old window box: one pot, and one quiet choice, how much sun it gets.
+   * More sun grows it faster and dries the soil out; shade is slow and keeps
+   * it moist. The sky changes how much sun is right, and the leaves tell.
+   */
   windowbox: {
     /** Care per second from a wind chime and from a dew collector. */
     chimeRate: 3,
     dewRate: 20,
+    /** Care per second from a sun-catcher (between the chime and the dew). */
+    catcherRate: 7,
     /** A window lantern makes each unit of care grow the pot this much more. */
     lanternBoost: 1,
-    /** Growth (of 100) each unit of care adds to the pot. */
-    growthPerCare: 0.00003,
+    /** Growth (of 100) the pot adds a second just from the light, at a pace of 1. */
+    lightGrowth: 0.031,
+    /** Growth (of 100) each unit of care adds to the pot, at a pace of 1. */
+    growthPerCare: 0.0002,
     /** The pot is a sprout from this share grown, and a bud from this one. */
     sproutAt: 0.015,
     budAt: 0.6,
-    /** Seconds before the first want, and between one answer and the next. */
-    firstWantSeconds: 15,
-    restSeconds: 25,
-    /** The right answer pays this many seconds of tending, any other this. */
-    matchSeconds: 12,
-    otherSeconds: 4,
-    /** Each watering can adds this share to every answer. */
-    canPer: 0.5,
-    /** The music box answers after this long, for this share of a right one. */
-    boxDelay: 30,
-    boxShare: 0.5,
-    /** Answers by hand before the music box is offered. */
-    boxAfterTends: 4,
+    /** The blind has this many places (0 drawn, the last wide open). */
+    steps: 3,
+    startAim: 1,
+    /** Seconds the blind takes to move one place. */
+    moveSeconds: 4,
+    startMoist: 0.55,
+    /** Each deeper pot makes the soil change this share as fast (a slower dial). */
+    deepPer: 0.72,
+    /** Soil moisture lost each second, for each unit of sun on the pot. */
+    evap: 0.04,
+    /**
+     * The sky, in the order it can come. `sun` is how strong the light is
+     * outside; `wet` is moisture the soil gains each second from the air.
+     */
+    skies: [
+      { id: "rain", sun: 0.35, wet: 0.019 },
+      { id: "cloud", sun: 0.7, wet: 0.012 },
+      { id: "bright", sun: 1.2, wet: 0.012 },
+      { id: "heat", sun: 1.9, wet: 0.012 },
+    ] as readonly { id: string; sun: number; wet: number }[],
+    /** The sky changes after this many seconds, plus up to `skySpan` more. */
+    skyMin: 45,
+    skySpan: 45,
+    /**
+     * The leaves curl (a warning) below `curlBelow` and droop above
+     * `droopAbove`. Past `dryBelow` or `soggyAbove` they have gone crisp or
+     * floppy, and growth slows the further it goes.
+     */
+    curlBelow: 0.35,
+    droopAbove: 0.75,
+    dryBelow: 0.2,
+    soggyAbove: 0.9,
+    /** Sun on the pot at which growth stops getting faster. */
+    sunFull: 0.8,
+    /** Share of the pace sun alone gives with no light at all. */
+    sunFloor: 0.1,
+    /** Share of the pace left when the soil is bone dry or flooded. */
+    moistFloor: 0.1,
+    /** The pace (times the care rate): the worst and the best. */
+    paceMin: 0.15,
+    paceMax: 1.5,
+    /** The sun's effect on growth must be at least this for the pot to thrive. */
+    thriveSun: 0.7,
+    /** Seconds of good growing in a row that make the pot thrive. */
+    thriveAfter: 8,
+    /** Seconds before the pot can thrive again after it has. */
+    thriveRest: 25,
+    /** Seconds the scene shows a thrive or a wilt. */
+    momentSeconds: 4.5,
   },
   /** Know-how (farm and world): projects and festivals both want it. */
   knowhow: {
@@ -395,8 +439,8 @@ export const TUNING = {
     },
     seed: {
       cost: 15,
-      /** Morning sun: answers to the pot pay this much more. */
-      sunTap: 3,
+      /** Morning sun: the pot grows this much faster from the light itself. */
+      sunGrowth: 4.5,
       /** Night-light: trellis, chime and dew pay this much more. */
       nightHelpers: 2.5,
     },

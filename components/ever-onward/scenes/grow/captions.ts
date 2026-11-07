@@ -1,6 +1,10 @@
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import { BIOMES, BIOME_LABELS } from "@/lib/ever-onward/universes/grow/biomes";
 import { CROP_LABELS } from "@/lib/ever-onward/universes/grow/market";
+import {
+  LEAF_WORDS,
+  SKY_WORDS,
+} from "@/lib/ever-onward/universes/grow/windowbox";
 
 const plural = (n: number, word: string): string =>
   `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -43,7 +47,7 @@ export function captionFor(info: GrowSceneInfo): string {
     default:
       return info.visitorHere
         ? "Someone came back to see the pot"
-        : `One small pot · ${info.growth}% grown${info.windowLit ? " · the light is on" : ""}`;
+        : `One small pot · ${info.growth}% grown · ${SKY_WORDS[info.sky].toLowerCase()} · leaves: ${LEAF_WORDS[info.leaf].toLowerCase()}`;
   }
 }
 
@@ -67,7 +71,7 @@ export function sceneLabelFor(info: GrowSceneInfo): string {
       return "A round globe seen from far away, with green spreading across it, with meadows and woods";
     default:
       return [
-        info.isNight ? "A window at night" : "A window at dusk",
+        `A window with ${SKY_WORDS[info.sky].toLowerCase()} weather outside`,
         " with a small pot on the sill",
         info.windowLit ? ", a light left on" : "",
         info.visitorHere ? ", and someone who came back to see it" : "",

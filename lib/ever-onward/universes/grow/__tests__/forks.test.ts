@@ -24,13 +24,13 @@ import {
   forkSide,
   isForkChosen,
   isForkOpen,
+  seedSunMult,
   type ForkId,
   type ForkSide,
 } from "../forks";
 import { incomePerSecond } from "../tick";
 import { TUNING } from "../tuning";
 import { waterCapacity } from "../water";
-import { canMult } from "../windowbox";
 import { def, runAtPhaseStart } from "./fixtures";
 
 const PHASE_OF: Record<ForkId, number> = {
@@ -241,7 +241,7 @@ describe("forks", () => {
   });
 
   describe("the old window box: morning sun or night-light", () => {
-    it("the sun makes answers pay more, the night-light makes helpers pay more", () => {
+    it("the sun makes the light grow the pot faster, the night-light makes helpers pay more", () => {
       const run = openFork("seed");
       const none = incomePerSecond(run);
       const sun = choose(run, "seed", 0);
@@ -251,11 +251,11 @@ describe("forks", () => {
         TUNING.forks.seed.nightHelpers,
         5
       );
-      expect(canMult(sun) / canMult(run)).toBeCloseTo(
-        TUNING.forks.seed.sunTap,
+      expect(seedSunMult(sun) / seedSunMult(run)).toBeCloseTo(
+        TUNING.forks.seed.sunGrowth,
         5
       );
-      expect(canMult(night)).toBe(canMult(run));
+      expect(seedSunMult(night)).toBe(seedSunMult(run));
     });
   });
 

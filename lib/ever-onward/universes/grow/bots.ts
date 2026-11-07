@@ -51,7 +51,13 @@ import { FESTIVAL_ACTION_ID, festivalCost, knowhowOf } from "./knowhow";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { TUNING } from "./tuning";
 import { STORAGE_IDS, isDry, rainOutlook, waterLevel } from "./water";
-import { currentWant, isWanting, tendActionId, tendsSoFar } from "./windowbox";
+import {
+  SHADE_ACTION_ID,
+  SUN_ACTION_ID,
+  isBlindMoving,
+  leafOf,
+  leafSeconds,
+} from "./windowbox";
 import { growUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
@@ -160,21 +166,20 @@ export const feedsPumpkin =
   };
 
 /**
- * Answers what the pot wants. Like the other side-machine bots, one want in
- * every `skipEvery`th goes to the music box instead (or after SKIP_DELAY).
+ * Reads the leaves and turns the blind: shade when they curl or crisp up
+ * (the soil is drying), sun when they droop or go floppy (too wet). It waits
+ * for the blind to finish moving, and for the leaves to have looked that way
+ * for `reactAfter` seconds (a slower player notices later). It never looks at
+ * the weather: the leaves are all it reads.
  */
-export const tendsPot =
-  (options: { skipEvery?: number } = {}): Actions =>
+export const readsLeaves =
+  (reactAfter = 4): Actions =>
   (run, available) => {
-    if (run.phase !== 3 || !isWanting(run)) return [];
-    const { skipEvery } = options;
-    if (
-      skipEvery &&
-      tendsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.wbTime ?? 0) < SKIP_DELAY
-    )
-      return [];
-    const id = tendActionId(currentWant(run));
+    if (run.phase !== 3 || isBlindMoving(run)) return [];
+    const leaf = leafOf(run);
+    if (leaf === "perky" || leafSeconds(run) < reactAfter) return [];
+    const id =
+      leaf === "curl" || leaf === "dry" ? SHADE_ACTION_ID : SUN_ACTION_ID;
     return available.includes(id) ? [id] : [];
   };
 
@@ -420,7 +425,7 @@ export function growBots(): BotSet {
         tendsBees,
         alongside(
           cropPolicy(),
-          alongside(feedsPumpkin(), alongside(mixPolicy(), tendsPot()))
+          alongside(feedsPumpkin(), alongside(mixPolicy(), readsLeaves(6)))
         )
       )
     ),
@@ -438,7 +443,7 @@ export function growBots(): BotSet {
             cropPolicy(20, 45),
             alongside(
               feedsPumpkin({ skipEvery: 6 }),
-              alongside(mixPolicy(30), tendsPot({ skipEvery: 6 }))
+              alongside(mixPolicy(30), readsLeaves(5))
             )
           )
         )
@@ -461,7 +466,7 @@ export function growBots(): BotSet {
             cropPolicy(60, 70),
             alongside(
               feedsPumpkin({ skipEvery: 2 }),
-              alongside(mixPolicy(90), tendsPot({ skipEvery: 2 }))
+              alongside(mixPolicy(90), readsLeaves(10))
             )
           )
         )

@@ -77,6 +77,44 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("eo-windowbox");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("eo-windowbox-leaves")).toBeVisible();
+    await expect(panel.getByTestId("eo-windowbox-sky")).toBeVisible();
+    await expect(page.getByTestId("eo-leaves")).toBeAttached();
+    const blind = page.getByTestId("eo-blind");
+    await expect(blind).toBeAttached();
+    // The blind takes a few seconds to open all the way.
+    await panel.getByRole("button", { name: "More sun" }).click();
+    await panel.getByRole("button", { name: "More sun" }).click();
+    await expect(blind).toHaveAttribute("data-light", "8", { timeout: 20_000 });
+    await expect(
+      panel.getByRole("button", { name: "More sun" })
+    ).toHaveAttribute("aria-disabled", "true");
+    await panel.getByRole("button", { name: "More shade" }).click();
+    await panel.getByRole("button", { name: "More shade" }).click();
+    await expect(blind).toHaveAttribute("data-light", "0", { timeout: 20_000 });
+    await expect(
+      panel.getByRole("button", { name: "More shade" })
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
   test("the farm plants for harvest day and tends a prize pumpkin in the panels and the picture", async ({
     page,
   }) => {

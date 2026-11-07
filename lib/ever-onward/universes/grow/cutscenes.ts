@@ -299,8 +299,8 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "If one kind covers too much of the world, it rots. Spreading the mix out is the only cure.",
   ],
   [PHASE_SEED]: [
-    "Read the clue, then give the pot what it wants. The right answer helps most.",
-    "A wind chime and a dew collector tend the pot between your answers.",
-    "A bigger watering can helps every answer.",
+    "Slide the blind. More sun grows the pot faster but dries the soil. Shade keeps it moist but is slow.",
+    "Read the leaves: curling and crisp mean dry, drooping and floppy mean soggy. The weather keeps changing.",
+    "A wind chime and a dew collector grow the pot between your taps.",
   ],
 };

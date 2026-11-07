@@ -178,20 +178,48 @@ describe("Grow sceneInfo", () => {
       return run;
     };
 
-    it("starts as soil in the dusk, with the window dark and nobody there", () => {
+    it("starts as soil in a sunny window, with the window dark and nobody there", () => {
       const info = sceneInfo(seedRun(0));
       expect(info.phase).toBe("seed");
       expect(info.potStage).toBe("soil");
-      expect(info.isNight).toBe(false);
+      expect(info.leaf).toBe("perky");
+      expect(info.moment).toBe("");
       expect(info.windowLit).toBe(false);
       expect(info.visitorHere).toBe(false);
     });
 
-    it("follows the pot's stages and the night", () => {
+    it("follows the pot's stages", () => {
       expect(sceneInfo(seedRun(10)).potStage).toBe("sprout");
       expect(sceneInfo(seedRun(70)).potStage).toBe("bud");
-      expect(sceneInfo(seedRun(70)).isNight).toBe(true);
       expect(sceneInfo(seedRun(100)).potStage).toBe("bloom");
+    });
+
+    it("shows the blind, the sky and the leaves as flat values", () => {
+      const run = seedRun(10);
+      run.resources.wbReady = 1;
+      run.resources.wbLight = 1;
+      run.resources.wbAim = 2;
+      run.resources.wbSky = 3;
+      run.resources.wbMoist = 0.1;
+      const info = sceneInfo(run);
+      expect(info.light).toBe(8);
+      expect(info.sky).toBe("heat");
+      expect(info.leaf).toBe("dry");
+      expect(info.glare).toBe(3);
+      run.resources.wbLight = 0;
+      expect(sceneInfo(run).light).toBe(0);
+      expect(sceneInfo(run).glare).toBe(0);
+    });
+
+    it("shows a thrive or a wilt for a few seconds, then lets it go", () => {
+      const run = seedRun(10);
+      run.resources.wbThriveAt = run.time;
+      expect(sceneInfo(run).moment).toBe("thrive");
+      expect(sceneInfo({ ...run, time: run.time + 60 }).moment).toBe("");
+      const wilted = seedRun(10);
+      wilted.resources.wbWiltAt = wilted.time;
+      wilted.resources.wbWiltKind = 1;
+      expect(sceneInfo(wilted).moment).toBe("soggy");
     });
 
     it("leaves the light on with the lantern, or once the pot is nearly grown", () => {
@@ -203,16 +231,11 @@ describe("Grow sceneInfo", () => {
     });
 
     it("shows the visitors when someone comes back, and lists what sits on the sill", () => {
-      const run = seedRun(100, { trellis: 2, "wind-chime": 1, "music-box": 1 });
+      const run = seedRun(100, { trellis: 2, "wind-chime": 1 });
       run.flags[visitorHereFlag(RETURN_VISITOR_ID)] = true;
       const info = sceneInfo(run);
       expect(info.visitorHere).toBe(true);
-      expect([info.trellis, info.chime, info.musicBox, info.can]).toEqual([
-        true,
-        true,
-        true,
-        false,
-      ]);
+      expect([info.trellis, info.chime, info.dew]).toEqual([true, true, false]);
     });
 
     it("is quantized: a 0.1 s tick leaves it equal", () => {

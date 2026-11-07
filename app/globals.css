@@ -5481,6 +5481,249 @@ html:has(.jim-app) body {
   }
 }
 
+/* The old window box: the blind, the weather and the pot's big moments. */
+.gb-blind {
+  transform-box: fill-box;
+  transform-origin: top center;
+  transition: transform 1s ease-in-out;
+}
+.gb-open-0 {
+  transform: scaleY(1);
+}
+.gb-open-1 {
+  transform: scaleY(0.88);
+}
+.gb-open-2 {
+  transform: scaleY(0.75);
+}
+.gb-open-3 {
+  transform: scaleY(0.62);
+}
+.gb-open-4 {
+  transform: scaleY(0.5);
+}
+.gb-open-5 {
+  transform: scaleY(0.38);
+}
+.gb-open-6 {
+  transform: scaleY(0.26);
+}
+.gb-open-7 {
+  transform: scaleY(0.14);
+}
+.gb-open-8 {
+  transform: scaleY(0.06);
+}
+
+@keyframes gb-beam {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gb-beam {
+  animation: gb-beam 3.2s ease-in-out infinite;
+}
+
+@keyframes gb-motes {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(6px, -10px);
+    opacity: 0.3;
+  }
+}
+.gb-motes {
+  animation: gb-motes 4s ease-in-out infinite;
+}
+
+@keyframes gb-sun-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.gb-sun-rays {
+  transform-box: view-box;
+  transform-origin: 150px 80px;
+  animation: gb-sun-rays 30s linear infinite;
+}
+
+@keyframes gb-rain {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(130px);
+    opacity: 0.2;
+  }
+}
+.gb-rain {
+  animation: gb-rain 0.75s linear infinite;
+}
+
+@keyframes gb-shimmer {
+  0%,
+  100% {
+    transform: translateX(-3px);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 0.5;
+  }
+}
+.gb-shimmer {
+  animation: gb-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes gb-puddle {
+  0% {
+    transform: scaleX(0.2);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+.gb-puddle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gb-puddle 1.6s ease-out both;
+}
+
+@keyframes gb-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+}
+.gb-drip {
+  animation: gb-drip 1.4s ease-in infinite;
+}
+
+@keyframes gb-sparkle {
+  0% {
+    transform: translateY(8px) scale(0.2);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(0) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-16px) scale(0.6);
+    opacity: 0;
+  }
+}
+.gb-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gb-sparkle 1.5s ease-out 3 both;
+}
+
+@keyframes gb-thrive {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.12);
+  }
+  60% {
+    transform: scale(0.97);
+  }
+}
+.gb-thrive {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gb-thrive 1.1s ease-in-out 4;
+}
+
+@keyframes gb-parched {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1.5px);
+  }
+  75% {
+    transform: translateX(1.5px);
+  }
+}
+.gb-parched {
+  animation: gb-parched 0.4s linear 6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-blind {
+    transition: none;
+  }
+  .gb-beam,
+  .gb-motes,
+  .gb-sun-rays,
+  .gb-rain,
+  .gb-shimmer,
+  .gb-puddle,
+  .gb-drip,
+  .gb-sparkle,
+  .gb-thrive,
+  .gb-parched {
+    animation: none;
+  }
+}
+
+@keyframes gb-glint {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gb-glint {
+  animation: gb-glint 2.4s ease-in-out infinite;
+}
+
+@keyframes gb-rainbow {
+  0%,
+  100% {
+    transform: translateX(-4px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateX(4px);
+    opacity: 0.9;
+  }
+}
+.gb-rainbow {
+  animation: gb-rainbow 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-glint,
+  .gb-rainbow {
+    animation: none;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,

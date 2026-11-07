@@ -99,7 +99,7 @@ export const PHASES: readonly PhaseDef[] = [
     title: "The Old Window Box",
     intro:
       "The whole world is green now, and so quiet you can hear the leaves. The robot has grown everything there is to grow, except for one thing: the old window box, empty on its sill. The kid who planted the first seed grew up and moved away. So the robot tends one small pot and plants one small seed, just in case they come back.",
-    goal: "Tend the old window box until the seed blooms.",
+    goal: "Keep the old window box just right until the seed blooms.",
     manualResource: "care",
     manualLabel: "Tend the pot",
     tapDoes: "tend the pot. Every bit of care you earn grows it",

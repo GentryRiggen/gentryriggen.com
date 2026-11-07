@@ -1,22 +1,13 @@
-import {
-  manualGain,
-  performAction,
-  tick,
-  visitorHereFlag,
-} from "../../../engine/engine";
+import { manualGain, tick, visitorHereFlag } from "../../../engine/engine";
 import { simulate } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { growBots } from "../bots";
 import { RETURN_VISITOR_ID } from "../visitors";
 import {
-  WINDOWBOX_ACTION_IDS,
-  currentWant,
+  SUN_ACTION_ID,
   isSeedBloomed,
-  isWanting,
   potGrowth,
   potStage,
-  tendActionId,
-  windowBoxLine,
 } from "../windowbox";
 import { def, runAtPhaseStart } from "./fixtures";
 
@@ -29,13 +20,6 @@ const fresh = (): RunState => {
 const run = (from: RunState, seconds: number): RunState => {
   let next = from;
   for (let t = 0; t < seconds; t += 1) next = tick(def, next, 1);
-  return next;
-};
-
-const toWant = (from: RunState): RunState => {
-  let next = from;
-  for (let t = 0; t < 120 && !isWanting(next); t += 1)
-    next = tick(def, next, 1);
   return next;
 };
 
@@ -58,42 +42,26 @@ describe("the last seed", () => {
   });
 
   it("grows the pot by tending, and a tap always earns care", () => {
-    const start = { ...fresh(), resources: { ...fresh().resources, care: 0 } };
+    const start: RunState = {
+      ...fresh(),
+      resources: { ...fresh().resources, care: 0 },
+    };
     expect(manualGain(def, start)).toBeGreaterThan(0);
-    const waiting = toWant(start);
-    expect(isWanting(waiting)).toBe(true);
-    const before = waiting.resources.growth;
-    const after = performAction(
-      def,
-      waiting,
-      tendActionId(currentWant(waiting))
-    );
-    expect(after.resources.growth).toBeGreaterThan(before);
-    expect(after.resources.care).toBeGreaterThan(waiting.resources.care);
-    expect(isWanting(after)).toBe(false);
+    const after = run(start, 30);
+    expect(after.resources.growth).toBeGreaterThan(start.resources.growth);
   });
 
-  it("pays the right answer more, and every answer something", () => {
-    const waiting = toWant(fresh());
-    const want = currentWant(waiting);
-    const pays = WINDOWBOX_ACTION_IDS.map(
-      (_, i) =>
-        performAction(def, waiting, tendActionId(i)).resources.care -
-        waiting.resources.care
-    );
-    pays.forEach((p) => expect(p).toBeGreaterThan(0));
-    pays.forEach((p, i) => i !== want && expect(pays[want]).toBeGreaterThan(p));
+  it("grows the pot a little from the light alone, even with no care at all", () => {
+    const start = fresh();
+    const later = run(start, 60);
+    expect(later.resources.growth).toBeGreaterThan(start.resources.growth);
   });
 
-  it("keeps the want waiting as long as it takes, and never says wrong", () => {
-    const waiting = toWant(fresh());
-    const later = run(waiting, 600);
-    expect(isWanting(later)).toBe(true);
-    expect(currentWant(later)).toBe(currentWant(waiting));
-    const wrong = (currentWant(waiting) + 1) % 3;
-    const done = performAction(def, waiting, tendActionId(wrong));
-    expect(windowBoxLine(done)).toMatch(/liked that too/);
-    expect(windowBoxLine(done)).not.toMatch(/wrong|fail|lose|bad/i);
+  it("has two ways to turn the blind and no wants to answer", () => {
+    expect(def.actions?.some((a) => a.id === SUN_ACTION_ID)).toBe(true);
+    expect(def.actions?.some((a) => /^windowbox-(song|water)/.test(a.id))).toBe(
+      false
+    );
   });
 
   it("gives the pot its own random stream: run.rng never moves", () => {
@@ -180,25 +148,6 @@ describe("the last seed", () => {
     expect(r.finished).toBe(true);
     expect(min).toBeGreaterThanOrEqual(12);
     expect(min).toBeLessThanOrEqual(30);
-  });
-
-  it("the music box only adds to hand play", () => {
-    const base = fresh();
-    const withBox = {
-      ...base,
-      owned: { ...base.owned, "music-box": 1 },
-    };
-    const waiting = toWant(withBox);
-    const hand = performAction(
-      def,
-      waiting,
-      tendActionId(currentWant(waiting))
-    );
-    const boxed = run(waiting, 40);
-    expect(boxed.resources.care - waiting.resources.care).toBeGreaterThan(0);
-    expect(boxed.resources.care - waiting.resources.care).toBeLessThan(
-      hand.resources.care - waiting.resources.care
-    );
   });
 
   it("never mentions anything scary in what it says", () => {

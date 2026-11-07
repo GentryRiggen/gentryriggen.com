@@ -30,18 +30,14 @@ import {
   incomePerSecond,
   manualPerTap,
   pickPerSecond,
-  tendingValue,
 } from "./tick";
 import { DRY_FLOOR, waterCapacity } from "./water";
 import {
+  DEEP_POT_ID,
   LANTERN_ID,
-  MUSIC_BOX_ID,
-  WATERING_CAN_ID,
-  boxPays,
-  canMult,
-  musicBoxShown,
   potGrowth,
-  tendsSoFar,
+  soilRate,
+  wiltsSoFar as potWilts,
 } from "./windowbox";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
@@ -617,6 +613,20 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     effectPreview: (run) => helperPreview(run, "wind-chime"),
   },
   {
+    id: "sun-catcher",
+    name: "A little sun-catcher",
+    description:
+      "A crystal in the window. It throws small rainbows across the room, and the pot likes them.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 420,
+    costGrowth: 2.4,
+    maxLevel: 6,
+    kind: "mechanic",
+    visibleWhen: ownsAtLeast("wind-chime", 1),
+    effectPreview: (run) => helperPreview(run, "sun-catcher"),
+  },
+  {
     id: "dew-collector",
     name: "A dew collector",
     description:
@@ -631,44 +641,26 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     effectPreview: (run) => helperPreview(run, "dew-collector"),
   },
   {
-    id: WATERING_CAN_ID,
-    name: "A bigger watering can",
+    id: DEEP_POT_ID,
+    name: "A deeper pot",
     description:
-      "A little tin can with a long spout. Every answer you give the pot is worth half as much again.",
+      "More soil holds more water, so it dries and soaks more slowly. The leaves give you longer to notice.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 24,
-    costGrowth: 2.2,
-    maxLevel: 5,
+    baseCost: 600,
+    costGrowth: 3,
+    maxLevel: 3,
     kind: "mechanic",
-    visibleWhen: (run) => tendsSoFar(run) >= 1,
+    visibleWhen: (run) => potWilts(run) >= 1 || owned(run, "wind-chime") >= 1,
     effectPreview: (run) =>
-      `Care per answer ${num(Math.round(canMult(run) * 100))}% → ${num(
+      `Soil change speed ${num(Math.round(soilRate(run) * 100))}% → ${num(
         Math.round(
-          canMult({
+          soilRate({
             ...run,
-            owned: {
-              ...run.owned,
-              [WATERING_CAN_ID]: owned(run, WATERING_CAN_ID) + 1,
-            },
+            owned: { ...run.owned, [DEEP_POT_ID]: owned(run, DEEP_POT_ID) + 1 },
           }) * 100
         )
       )}%`,
-  },
-  {
-    id: MUSIC_BOX_ID,
-    badge: "NEW ABILITY",
-    name: "A little music box",
-    description:
-      "It plays the pot a soft tune when you are busy. Your own answer still grows it more.",
-    phases: [PHASE_SEED],
-    currency: "care",
-    baseCost: 120,
-    costGrowth: 1,
-    kind: "mechanic",
-    visibleWhen: musicBoxShown,
-    effectPreview: (run) =>
-      `Answers a waiting pot for you after a pause: about ${num(Math.floor(boxPays(run, tendingValue(run))))} care (answers so far: ${tendsSoFar(run)})`,
   },
   {
     id: LANTERN_ID,

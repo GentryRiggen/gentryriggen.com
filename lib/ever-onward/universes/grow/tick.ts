@@ -163,6 +163,7 @@ export function incomePerSecond(run: RunState): number {
     return (
       (stacked(owned(run, "trellis")) * TUNING.phases[3].helper +
         stacked(owned(run, "wind-chime")) * b.chimeRate +
+        stacked(owned(run, "sun-catcher")) * b.catcherRate +
         stacked(owned(run, "dew-collector")) * b.dewRate) *
       seedHelperMult(run) *
       scaleMult(run) *
@@ -207,10 +208,6 @@ function earn(run: RunState, amount: number): void {
   run.resources[MANUAL_RESOURCES[run.phase]] += amount;
 }
 
-/** What a second of tending is worth: the helpers plus one tap. */
-export const tendingValue = (run: RunState): number =>
-  incomePerSecond(run) + manualPerTap(run);
-
 /** The yard: water, ripening, and the helpers that pick (never spoils). */
 function tickYard(run: RunState, dt: number): void {
   tickWater(run, dt);
@@ -236,7 +233,7 @@ export function tickGrow(run: RunState, dt: number): void {
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
   tickPumpkin(run, dt, () => dayFarmPay(run), daySeconds(run));
-  if (isWindowBoxOpen(run)) tickWindowBox(run, dt, () => tendingValue(run));
+  if (isWindowBoxOpen(run)) tickWindowBox(run, dt);
 }
 
 export function manualGrow(run: RunState): void {

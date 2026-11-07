@@ -35,12 +35,7 @@ import { pickPerSecond } from "./tick";
 import { TUNING } from "./tuning";
 import { UPGRADES } from "./upgrades";
 import { STORAGE_IDS, waterLevel } from "./water";
-import {
-  WINDOWBOX_ACTION_IDS,
-  isWanting,
-  potStage,
-  withoutWindowBox,
-} from "./windowbox";
+import { WINDOWBOX_ACTION_IDS, needsLook, potStage } from "./windowbox";
 
 /** The water plate lights when the tank is under this share. */
 const WATER_LOW = 0.35;
@@ -86,7 +81,7 @@ export function growPlates(run: RunState): string[] {
       plates.push("water");
     if (needsMixing(run)) plates.push("mix");
   }
-  if (run.phase === 3 && isWanting(run)) plates.push("pot");
+  if (run.phase === 3 && needsLook(run)) plates.push("pot");
   return plates;
 }
 
@@ -105,7 +100,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 /**
  * Real choices, for the decision-gap metric: which patch to follow, what to
  * plant, how to mix the biomes, whether to feed or enter the pumpkin,
- * how to tend the pot. Picking the harvest is a collect, not a choice.
+ * how much sun the pot gets. Picking the harvest is a collect, not a choice.
  */
 export const GROW_DECISION_ACTIONS: readonly string[] = [
   ...BEE_ACTION_IDS,
@@ -137,9 +132,6 @@ export function growIncomeView(run: RunState): RunState {
     const view = withoutMarketDay({ ...run, resources: { ...run.resources } });
     return isPumpkinOpen(view) ? withoutPumpkin(view) : view;
   }
-  if (run.phase === 3)
-    // An answer from the music box is not income.
-    return withoutWindowBox({ ...run, resources: { ...run.resources } });
   if (run.phase !== 0) return run;
   const floor = pickPerSecond(run) * 2;
   const view =

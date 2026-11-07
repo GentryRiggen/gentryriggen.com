@@ -54,7 +54,7 @@ const GrowSceneView = memo(function GrowSceneView({
   return (
     <div className="relative h-full w-full">
       <svg
-        viewBox={info.phase === "seed" ? "0 6 400 228" : "0 0 400 300"}
+        viewBox={info.phase === "seed" ? "40 6 320 228" : "0 0 400 300"}
         role="img"
         aria-label={sceneLabelFor(info)}
         data-testid={testId}

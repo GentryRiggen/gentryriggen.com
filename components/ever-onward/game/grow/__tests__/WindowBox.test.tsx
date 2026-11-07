@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { growUniverse as def } from "@/lib/ever-onward/universes/grow";
 import {
-  tendActionId,
-  WANTS,
+  SHADE_ACTION_ID,
+  SUN_ACTION_ID,
   type PotStage,
 } from "@/lib/ever-onward/universes/grow/windowbox";
 import WindowBox from "../WindowBox";
 
-const pot = (growth = 0, want?: number) => {
+const pot = (growth = 0, resources: Record<string, number> = {}) => {
   const base = newRun(def);
   return {
     ...base,
@@ -17,9 +17,12 @@ const pot = (growth = 0, want?: number) => {
     resources: {
       ...base.resources,
       growth,
-      wbStage: want === undefined ? 0 : 1,
-      wbWant: want ?? 0,
-      wbShown: want === undefined ? 0 : 1,
+      wbReady: 1,
+      wbAim: 1,
+      wbLight: 0.5,
+      wbMoist: 0.55,
+      wbSky: 1,
+      ...resources,
     },
   };
 };
@@ -41,49 +44,83 @@ describe("WindowBox", () => {
     "shows the pot's stage at %i%% grown: %s",
     (growth, stage) => {
       render(<WindowBox def={def} run={pot(growth)} onAct={jest.fn()} />);
-      expect(screen.getByTestId("lm-windowbox-pot")).toHaveAttribute(
+      expect(screen.getByTestId("eo-windowbox")).toHaveAttribute(
         "data-stage",
         stage
       );
     }
   );
 
-  it("calls onAct for a tending choice when the pot wants something", async () => {
-    const onAct = jest.fn();
-    render(<WindowBox def={def} run={pot(10, 1)} onAct={onAct} />);
-    expect(screen.getByRole("status")).toHaveTextContent(WANTS[1].clue);
-    await userEvent.click(
-      screen.getByRole("button", { name: "Sing it a song" })
+  it("shows what the leaves look like, and the weather", () => {
+    render(
+      <WindowBox
+        def={def}
+        run={pot(30, { wbMoist: 0.1, wbSky: 3 })}
+        onAct={jest.fn()}
+      />
     );
-    expect(onAct).toHaveBeenCalledWith(tendActionId(1));
+    expect(screen.getByTestId("eo-windowbox-leaves")).toHaveTextContent(
+      "Crisp and brown"
+    );
+    expect(screen.getByTestId("eo-windowbox-sky")).toHaveTextContent(
+      "A hot spell"
+    );
   });
 
-  it("uses aria-disabled while the pot rests, and never the disabled attribute", async () => {
+  it("shows the plus and the minus of each choice, and never says which is best", () => {
+    render(<WindowBox def={def} run={pot(30)} onAct={jest.fn()} />);
+    const sun = screen.getByRole("button", { name: "More sun" });
+    expect(sun).toHaveTextContent("+ Grows faster");
+    expect(sun).toHaveTextContent("− Dries the soil out");
+    const shade = screen.getByRole("button", { name: "More shade" });
+    expect(shade).toHaveTextContent("+ Keeps the soil moist");
+    expect(shade).toHaveTextContent("− Grows slower");
+    expect(screen.getByTestId("eo-windowbox").textContent).not.toMatch(
+      /best|recommend|should|just right/i
+    );
+  });
+
+  it("calls onAct for a choice", async () => {
     const onAct = jest.fn();
-    render(<WindowBox def={def} run={pot(10)} onAct={onAct} />);
-    const group = screen.getByRole("group", { name: "Tend the pot" });
-    const buttons = group.querySelectorAll("button");
-    expect(buttons).toHaveLength(3);
-    buttons.forEach((b) => {
-      expect(b).toHaveAttribute("aria-disabled", "true");
-      expect(b).not.toBeDisabled();
-    });
-    await userEvent.click(buttons[0]);
+    render(<WindowBox def={def} run={pot(30)} onAct={onAct} />);
+    await userEvent.click(screen.getByRole("button", { name: "More sun" }));
+    expect(onAct).toHaveBeenCalledWith(SUN_ACTION_ID);
+    await userEvent.click(screen.getByRole("button", { name: "More shade" }));
+    expect(onAct).toHaveBeenCalledWith(SHADE_ACTION_ID);
+  });
+
+  it("uses aria-disabled at the end of the blind, and never the disabled attribute", async () => {
+    const onAct = jest.fn();
+    render(
+      <WindowBox
+        def={def}
+        run={pot(30, { wbAim: 2, wbLight: 1 })}
+        onAct={onAct}
+      />
+    );
+    const sun = screen.getByRole("button", { name: "More sun" });
+    expect(sun).toHaveAttribute("aria-disabled", "true");
+    expect(sun).not.toBeDisabled();
+    await userEvent.click(sun);
     expect(onAct).not.toHaveBeenCalled();
   });
 
-  it("keeps the same button elements and labels when the pot starts to want", () => {
+  it("keeps the same button elements and labels when the blind moves", () => {
     const { rerender } = render(
       <WindowBox def={def} run={pot(10)} onAct={jest.fn()} />
     );
-    const before = screen.getByRole("button", {
-      name: "Water it from the can",
-    });
+    const before = screen.getByRole("button", { name: "More shade" });
     act(() => before.focus());
-    rerender(<WindowBox def={def} run={pot(10, 2)} onAct={jest.fn()} />);
-    const after = screen.getByRole("button", { name: "Water it from the can" });
+    rerender(
+      <WindowBox
+        def={def}
+        run={pot(10, { wbAim: 0, wbMoist: 0.1 })}
+        onAct={jest.fn()}
+      />
+    );
+    const after = screen.getByRole("button", { name: "More shade" });
     expect(after).toBe(before);
     expect(document.activeElement).toBe(before);
-    expect(after).toHaveAttribute("aria-disabled", "false");
+    expect(after).toHaveAttribute("aria-disabled", "true");
   });
 });

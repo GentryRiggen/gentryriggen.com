@@ -27,8 +27,8 @@ import { FESTIVAL_ACTIONS } from "./knowhow";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
-import { dayFarmPay, incomePerSecond, tendingValue } from "./tick";
-import { tendActions } from "./windowbox";
+import { dayFarmPay, incomePerSecond } from "./tick";
+import { BLIND_ACTIONS } from "./windowbox";
 import { TUNING } from "./tuning";
 
 export const YARD_HARVEST = "yard-harvest";
@@ -153,7 +153,7 @@ export const GROW_ACTIONS: readonly ActionDef[] = [
   ...FESTIVAL_ACTIONS,
   ...MIX_ACTIONS,
   ...pumpkinActions(dayFarmPay),
-  ...tendActions(tendingValue),
+  ...BLIND_ACTIONS,
 ];
 
 /** Used by the plate and by bots: enough ripe to bother with. */

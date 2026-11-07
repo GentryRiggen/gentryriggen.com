@@ -53,12 +53,19 @@ import { TUNING } from "./tuning";
 import { visitorHereFlag } from "../../engine/engine";
 import { RETURN_VISITOR_ID } from "./visitors";
 import {
+  DEEP_POT_ID,
   LANTERN_ID,
-  MUSIC_BOX_ID,
-  WATERING_CAN_ID,
+  leafOf,
+  lightOf,
+  momentOf,
   potGrowth,
   potStage,
+  skyOf,
+  sunOnPot,
+  type LeafMood,
+  type PotMoment,
   type PotStage,
+  type SkyId,
 } from "./windowbox";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
@@ -174,8 +181,16 @@ export interface GrowSceneInfo {
   growth: number;
   /** Seed phase: soil, sprout, bud or bloom. */
   potStage: PotStage;
-  /** Seed phase: the sky has gone from dusk to night (a quarter grown). */
-  isNight: boolean;
+  /** Seed phase: the weather outside (it changes how much sun is right). */
+  sky: SkyId;
+  /** Seed phase: how the leaves look (the player reads these). */
+  leaf: LeafMood;
+  /** Seed phase: how far the blind is open, 0 to 8 eighths (it slides). */
+  light: number;
+  /** Seed phase: how hard the sun lands on the pot, 0 (none) to 3 (fierce). */
+  glare: number;
+  /** Seed phase: a thrive, or a dry or soggy spell, the scene is showing. */
+  moment: PotMoment;
   /** Seed phase: the light is left on in the window. */
   windowLit: boolean;
   /** Seed phase: someone came back and is at the window. */
@@ -184,9 +199,10 @@ export interface GrowSceneInfo {
   trellis: boolean;
   chime: boolean;
   dew: boolean;
-  can: boolean;
-  musicBox: boolean;
+  catcher: boolean;
   sunnySill: boolean;
+  /** Seed phase: how many deeper pots (the pot sits in a bigger tray). */
+  deepPot: number;
 }
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
@@ -205,21 +221,29 @@ function seedInfo(
 ): Pick<
   GrowSceneInfo,
   | "potStage"
-  | "isNight"
+  | "sky"
+  | "leaf"
+  | "light"
+  | "glare"
+  | "moment"
   | "windowLit"
   | "visitorHere"
   | "trellis"
   | "chime"
   | "dew"
-  | "can"
-  | "musicBox"
+  | "catcher"
   | "sunnySill"
+  | "deepPot"
 > {
   const has = (id: string) => isSeed && owned(run, id) > 0;
   const grown = isSeed ? potGrowth(run) : 0;
   return {
     potStage: isSeed ? potStage(run) : "soil",
-    isNight: isSeed && grown >= 0.25,
+    sky: isSeed ? (skyOf(run).id as SkyId) : "cloud",
+    leaf: isSeed ? leafOf(run) : "perky",
+    light: isSeed ? Math.round(lightOf(run) * 8) : 0,
+    glare: isSeed ? Math.min(3, Math.floor(sunOnPot(run) / 0.3)) : 0,
+    moment: isSeed ? momentOf(run) : "",
     // The robot leaves a light on near the end, and the lantern keeps one.
     windowLit: has(LANTERN_ID) || (isSeed && grown >= 0.85),
     visitorHere:
@@ -227,9 +251,9 @@ function seedInfo(
     trellis: has("trellis"),
     chime: has("wind-chime"),
     dew: has("dew-collector"),
-    can: has(WATERING_CAN_ID),
-    musicBox: has(MUSIC_BOX_ID),
+    catcher: has("sun-catcher"),
     sunnySill: has("sunny-sill"),
+    deepPot: isSeed ? Math.min(3, owned(run, DEEP_POT_ID)) : 0,
   };
 }
 
