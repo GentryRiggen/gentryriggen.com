@@ -152,10 +152,10 @@ function Cheer() {
     <g aria-hidden="true" data-testid="eo-day-cheer">
       <rect
         className="gp-flash"
-        x="-10"
-        y="60"
-        width="420"
-        height="240"
+        x="-1200"
+        y="-1200"
+        width="2800"
+        height="2700"
         fill="#ffe66d"
       />
       {[0, 1, 2].map((k) => (
@@ -217,10 +217,10 @@ function Droop() {
     <g aria-hidden="true" data-testid="eo-day-droop">
       <rect
         className="gf-gloom"
-        x="-10"
-        y="40"
-        width="420"
-        height="230"
+        x="-1200"
+        y="-1200"
+        width="2800"
+        height="2700"
         fill="#343a40"
       />
       <g className="gp-poof [animation-duration:2.4s]">
@@ -269,10 +269,10 @@ function Beans() {
     <g aria-hidden="true" data-testid="eo-day-beans">
       <rect
         className="gf-glow"
-        x="-10"
-        y="40"
-        width="420"
-        height="230"
+        x="-1200"
+        y="-1200"
+        width="2800"
+        height="2700"
         fill="#69db7c"
       />
       <rect

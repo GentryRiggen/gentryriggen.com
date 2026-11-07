@@ -214,20 +214,20 @@ export const TUNING = {
     /** Steps from a seedling (0) to a giant (the last). */
     steps: 5,
     /** Feeding costs this many seconds of farm pay, from each step. */
-    feedSeconds: [6, 9, 15, 24, 36] as readonly number[],
+    feedSeconds: [6, 9, 13, 22, 38] as readonly number[],
     /** The chance it splits when fed from each step. */
-    splitChance: [0, 0.05, 0.12, 0.25, 0.4] as readonly number[],
+    splitChance: [0.04, 0.1, 0.2, 0.35, 0.5] as readonly number[],
     /** The chance of a blue ribbon at each step. */
     blueChance: [0.02, 0.06, 0.14, 0.28, 0.44, 0.62] as readonly number[],
     /** Of the rest, this share is a red ribbon. */
     redShare: 0.6,
     /** Seconds of farm pay each ribbon is worth for a full-size pumpkin: blue, red, garden. */
-    ribbonSeconds: [450, 150, 45] as readonly number[],
+    ribbonSeconds: [430, 143, 43] as readonly number[],
     /**
      * How much of that a ribbon pays at each size, seedling first: a small
      * pumpkin's ribbons are worth little, so waiting and feeding is the bet.
      */
-    sizePay: [0.2, 0.35, 0.55, 0.85, 1.3, 2] as readonly number[],
+    sizePay: [0.2, 0.38, 0.62, 0.95, 1.2, 2] as readonly number[],
     /** The judges take this long to walk the row. */
     judgeSeconds: 5,
     /** A ribbon's pay flows in over this many seconds. */

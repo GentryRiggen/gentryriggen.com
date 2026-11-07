@@ -89,8 +89,8 @@ describe("the prize pumpkin", () => {
     run = performAction(def, run, FEED_ACTION_ID);
     expect(splitsSoFar(run) + pumpkinStep(run)).toBeGreaterThanOrEqual(0);
     expect(run.resources.harvest).toBeLessThan(before);
-    // the step-0 feeding never splits
-    expect(splitChanceNow(fairDay())).toBe(0);
+    // every feeding shows its split chance, even the first
+    expect(splitChanceNow(fairDay())).toBe(P.splitChance[0]);
     expect(pumpkinStep(run)).toBe(1);
     expect(feedCost(fairDay(), 100)).toBe(P.feedSeconds[0] * 100);
     expect(feedCost(withStep(fairDay(), 3), 100)).toBe(P.feedSeconds[3] * 100);
@@ -241,6 +241,15 @@ describe("the pumpkin is a real bet", () => {
     const best = plans.indexOf(Math.max(...plans));
     expect(best).toBeGreaterThan(1);
     expect(best).toBeLessThan(P.steps);
+  });
+
+  it("stopping at a middle size is the right call, and feeding on is not", () => {
+    const plans = Array.from({ length: P.steps + 1 }, (_, k) => perDay(k));
+    const best = plans.indexOf(Math.max(...plans));
+    expect([2, 3]).toContain(best);
+    // Feeding past the best stop loses at least a tenth of the pay.
+    for (let k = best + 1; k <= P.steps; k += 1)
+      expect(plans[k]).toBeLessThan(plans[best] * 0.9);
   });
 
   it("a bigger pumpkin's ribbons pay more", () => {

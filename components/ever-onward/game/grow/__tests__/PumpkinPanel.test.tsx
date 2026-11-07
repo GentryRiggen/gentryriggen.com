@@ -38,7 +38,7 @@ describe("PumpkinPanel", () => {
       "true"
     );
     expect(screen.getByTestId("lm-pumpkin-feed")).toHaveTextContent(
-      /Chance it splits: 0%/
+      /Chance it splits: 4%/
     );
     expect(screen.getByTestId("lm-pumpkin-feed")).toHaveTextContent(/Costs/);
     expect(screen.getByTestId("lm-pumpkin-odds")).toHaveTextContent(
