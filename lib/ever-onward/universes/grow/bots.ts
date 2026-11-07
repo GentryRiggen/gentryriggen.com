@@ -20,7 +20,6 @@ import {
 } from "./bees";
 import {
   BIOMES,
-  blightOf,
   isBiomeLocked,
   lessActionId,
   moreActionId,
@@ -222,59 +221,45 @@ export const alwaysPlants =
       : [];
   };
 
-/** The mix a careful player aims for with the world quiet: some of each. */
-const CALM_MIX: Readonly<Record<Biome, number>> = {
-  forest: 3,
-  jungle: 3,
-  meadow: 2,
-  wetland: 2,
-};
-
 /** What a player who only wants the most green sets, and leaves. */
 const GREEDY_MIX: Readonly<Record<Biome, number>> = {
-  forest: 3,
-  jungle: 5,
-  meadow: 1,
-  wetland: 1,
+  forest: 7,
+  jungle: 7,
+  meadow: 3,
+  wetland: 3,
 };
 
+/** Slider points a careful bot spreads over the open kinds (a point is 5%). */
+const CAREFUL_POINTS = 20;
+
 /**
- * The mix a careful bot wants now: some of every open biome, a point of
- * jungle moved to wetland while the tank is low (and kept there until it has
- * refilled well), and a point off any biome close to the blight line, given
- * to the open biome with the least.
+ * The mix a careful bot wants now. The world's fork leaves three kinds open
+ * (the focus kind, jungle and meadow). The focus kind and the meadow take what
+ * the jungle leaves; the jungle gets less while the tank is low or the rain is
+ * dry, and more once the tank is full in a rainy spell. A point is 5% of the
+ * mix, so a one point drift is left alone (see steerTo's tolerance) and the
+ * bot does not flap across a line.
  */
 export function idealMix(run: RunState): Record<Biome, number> {
   const open = BIOMES.filter((b) => !isBiomeLocked(run, b));
-  // With a biome closed there is less to mix: the rest share evenly.
-  const mix = Object.fromEntries(
-    BIOMES.map((b) => [
-      b,
-      open.includes(b) ? (open.length > 3 ? CALM_MIX[b] : 3) : 0,
-    ])
-  ) as Record<Biome, number>;
+  const focus = open.find((b) => b !== "jungle" && b !== "meadow") ?? "forest";
   const level = waterLevel(run);
-  const moved = pointsOf(run, "wetland") > CALM_MIX.wetland || open.length < 4;
-  const thirsty =
-    level < 0.25 || rainOutlook(run) < 0.25 || (moved && level < 0.6);
-  if (thirsty && mix.jungle > 2) {
-    mix.jungle -= 1;
-    // The point goes to whatever open biome has the least (wetland first).
-    const others = open.filter((b) => b !== "jungle");
-    const drink = others.reduce(
-      (l, o) =>
-        mix[o] < mix[l] || (mix[o] === mix[l] && o === "wetland") ? o : l,
-      others[0]
-    );
-    mix[drink] += 1;
-  }
-  // A biome that is already rotting gives up a point to the one with least.
-  for (const b of open) {
-    if (blightOf(run, b) < TUNING.world.blightShows) continue;
-    const least = open.reduce((l, o) => (mix[o] < mix[l] ? o : l), open[0]);
-    mix[b] = Math.max(1, mix[b] - 1);
-    if (least !== b) mix[least] += 1;
-  }
+  const rain = rainOutlook(run);
+  const jungle =
+    level < 0.3 || rain < 0.3
+      ? 4
+      : level < 0.5 && rain < 0.5
+        ? 5
+        : level > 0.7 && rain > 0.55
+          ? 8
+          : 6;
+  const mix: Record<Biome, number> = {
+    forest: 0,
+    jungle,
+    meadow: CAREFUL_POINTS - jungle - 8,
+    wetland: 0,
+  };
+  mix[focus] = 8;
   return mix;
 }
 
@@ -406,12 +391,45 @@ function withStorageRule(strategy: Strategy, allows: StorageRule): Strategy {
 export function yardPlayer(
   base: Strategy,
   harvest: Actions,
-  storage: StorageRule
+  storage: StorageRule,
+  fork: Actions = takesFork()
 ): Strategy {
   return {
     ...withStorageRule(base, storage),
-    actions: alongside(takesFork(), alongside(holdsFestival, harvest)),
+    actions: alongside(fork, alongside(holdsFestival, harvest)),
   };
+}
+
+/** Takes the usual side everywhere but the world, where it takes `side`. */
+export const takesWorldSide =
+  (side: ForkSide): Actions =>
+  (run, available) =>
+    (run.phase === 2 ? takesFork(side) : takesFork())(run, available);
+
+/**
+ * A player who sets the world's sliders once and leaves them, with the given
+ * side of the world's fork (the sweep and the guard test use it).
+ */
+export function staticMixPlayer(
+  mix: Record<Biome, number>,
+  side: ForkSide = 0
+): Strategy {
+  return yardPlayer(
+    genericBots(growUniverse).tapper,
+    setsMixOnce(mix),
+    whenRainTurnsDry,
+    takesWorldSide(side)
+  );
+}
+
+/** A player who keeps adjusting the sliders, with the given world side. */
+export function adjustingPlayer(side: ForkSide = 0): Strategy {
+  return yardPlayer(
+    genericBots(growUniverse).tapper,
+    mixPolicy(),
+    whenRainTurnsDry,
+    takesWorldSide(side)
+  );
 }
 
 /** The scorecard's player personalities for Make It Grow. */
@@ -433,6 +451,8 @@ export function growBots(): BotSet {
   );
   return {
     tapper,
+    // The realistic player takes the wetland in the world (the tapper takes
+    // the old forest), so both sides of that fork are played.
     realistic: yardPlayer(
       base.realistic,
       alongside(
@@ -448,7 +468,8 @@ export function growBots(): BotSet {
           )
         )
       ),
-      whenRainTurnsDry
+      whenRainTurnsDry,
+      takesWorldSide(1)
     ),
     idle: {
       ...withStorageRule(base.idle, afterRunningDry),

@@ -65,7 +65,7 @@ function rainWords(outlook: number): string {
 function resultLine(run: PanelProps["run"]): string {
   const sick = blightedBiome(run);
   if (sick)
-    return `Blight in the ${BIOME_LABELS[sick].toLowerCase()}: it covers too much of the world. Spread the mix out to cure it.`;
+    return `Blight in the ${BIOME_LABELS[sick].toLowerCase()}. It is rotting and pays much less.`;
   if (isDry(run))
     return "The world has run dry. The thirsty green is drying out.";
   return "Slide each kind up or down. The land moves toward the mix a little at a time.";
@@ -117,10 +117,6 @@ export default function BiomePanel({ def, run, onAct }: PanelProps) {
           className={`block h-2 w-full appearance-none border-0 bg-slate-700 [&::-webkit-progress-bar]:bg-slate-700 ${WATER_BAR(level < 0.3)}`}
         />
       </div>
-      <p className="mb-2 font-mono text-xs font-bold normal-case text-stone-300">
-        A kind that covers more than {pct(TUNING.world.blightAt)} of the world
-        catches a blight, and pays much less until the mix is spread out again.
-      </p>
       <ul className="grid gap-2 sm:grid-cols-2" aria-label="The mix sliders">
         {BIOMES.map((biome: Biome) => {
           const locked = isBiomeLocked(run, biome);

@@ -701,7 +701,7 @@
   },
   "grow/cut-world-end": {
     "file": "/ever-onward/voice/grow/cut-world-end.mp3",
-    "hash": "03bfff0bf97e",
+    "hash": "c0c1412312b0",
     "durationGuess": 26
   },
   "grow/cut-seed-1": {
@@ -1136,8 +1136,8 @@
   },
   "grow/world-blight": {
     "file": "/ever-onward/voice/grow/world-blight.mp3",
-    "hash": "3688e94dcd21",
-    "durationGuess": 15
+    "hash": "eef5d2285970",
+    "durationGuess": 11
   },
   "grow/world-healed": {
     "file": "/ever-onward/voice/grow/world-healed.mp3",

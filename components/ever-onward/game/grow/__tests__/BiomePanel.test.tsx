@@ -40,9 +40,12 @@ describe("BiomePanel", () => {
 
   it("says what each kind costs and never which is best", () => {
     render(<BiomePanel def={def} run={world()} onAct={jest.fn()} />);
-    expect(screen.getByText(/thirstiest/)).toBeInTheDocument();
-    expect(screen.getByText(/catches a blight/)).toBeInTheDocument();
+    expect(screen.getByText(/drinks the most water/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/best|recommended/i);
+    // No printed threshold and no cure: the player finds the line.
+    expect(document.body.textContent).not.toMatch(
+      /\d+% of the world|spread it out|cure/i
+    );
   });
 
   it("flags a blight in its row and in the result line", () => {

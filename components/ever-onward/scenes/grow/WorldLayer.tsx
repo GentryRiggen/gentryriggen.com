@@ -28,9 +28,11 @@ const OCEAN = "#2c6cc4";
 const LAND = "#c9a56a";
 const LAND_DRY = "#d9b25a";
 /** Blight: a creeping grey-brown rot, with a darker stain and dead wood. */
-const ROT = "#8a8474";
-const ROT_STAIN = "#4d4538";
-const ROT_WOOD = "#2c241b";
+const ROT = "#4b3b2c";
+const ROT_STAIN = "#1e1710";
+const ROT_WOOD = "#150f09";
+/** The alarm ring around a sick globe, and the screen's blighted edge. */
+const ROT_GLOW = "#ff6a2e";
 /** Cracked earth, and the dust over a thirsty land. */
 const CRACK = "#5a3a1c";
 const DUST = "#e0b44f";
@@ -334,30 +336,64 @@ function WiltedTree({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** The rot has just shown: a brown flash over the globe and a warning. */
+/** Bounds of a rect that covers the whole scene, however the phone crops it. */
+const SCREEN = { x: -1200, y: -1200, width: 2800, height: 2700 } as const;
+
+/**
+ * A banner across the whole scene (not the globe): a dark band and big
+ * outlined letters, sized to the scene's width so a phone reads it too.
+ */
+function Banner({
+  text,
+  fill,
+  stroke,
+  band,
+}: {
+  text: string;
+  fill: string;
+  stroke: string;
+  band: string;
+}) {
+  return (
+    <g className="gp-shout">
+      <rect
+        x={SCREEN.x}
+        y={GLOBE.y - 34}
+        width={SCREEN.width}
+        height="68"
+        fill={band}
+        fillOpacity="0.88"
+      />
+      <text
+        x="200"
+        y={GLOBE.y + 17}
+        textAnchor="middle"
+        className="font-[family-name:var(--font-eo-pixel)]"
+        fontSize="50"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="7"
+        paintOrder="stroke"
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
+
+/** The rot has just shown: the whole scene flashes brown-red and a banner slams in. */
 function BlightAlarm() {
   return (
     <g aria-hidden="true" data-testid="eo-blight-alarm">
-      <circle
+      <rect
         className="gp-flash"
-        cx={GLOBE.x}
-        cy={GLOBE.y}
-        r={GLOBE.r}
-        fill="#6b4a22"
+        x={SCREEN.x}
+        y={SCREEN.y}
+        width={SCREEN.width}
+        height={SCREEN.height}
+        fill="#8a2a0e"
       />
-      <text
-        x={GLOBE.x}
-        y={GLOBE.y - 6}
-        textAnchor="middle"
-        className="gp-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="22"
-        fill="#e6d3a3"
-        stroke="#2b1d0a"
-        strokeWidth="5"
-        paintOrder="stroke"
-      >
-        BLIGHT!
-      </text>
+      <Banner text="BLIGHT!" fill="#ffd9a0" stroke="#2b0d05" band="#2b0d05" />
     </g>
   );
 }
@@ -366,11 +402,12 @@ function BlightAlarm() {
 function HealedWave() {
   return (
     <g aria-hidden="true" data-testid="eo-healed">
-      <circle
+      <rect
         className="gp-flash"
-        cx={GLOBE.x}
-        cy={GLOBE.y}
-        r={GLOBE.r}
+        x={SCREEN.x}
+        y={SCREEN.y}
+        width={SCREEN.width}
+        height={SCREEN.height}
         fill="#b8ff9a"
       />
       {DELAYS.slice(0, 3).map((delay, k) => (
@@ -396,19 +433,7 @@ function HealedWave() {
           fill={p.color}
         />
       ))}
-      <text
-        x={GLOBE.x}
-        y={GLOBE.y - 6}
-        textAnchor="middle"
-        className="gp-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="24"
-        fill="#9dff8a"
-        stroke="#0b3b14"
-        strokeWidth="5"
-        paintOrder="stroke"
-      >
-        HEALED!
-      </text>
+      <Banner text="HEALED!" fill="#9dff8a" stroke="#0b3b14" band="#0b3b14" />
     </g>
   );
 }
@@ -480,6 +505,10 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
         <clipPath id="gw-clip">
           <circle cx={GLOBE.x} cy={GLOBE.y} r={GLOBE.r} />
         </clipPath>
+        <radialGradient id="gw-vignette" cx="50%" cy="50%" r="70%">
+          <stop offset="0.45" stopColor="#6e1c08" stopOpacity="0" />
+          <stop offset="1" stopColor="#6e1c08" stopOpacity="0.85" />
+        </radialGradient>
         <radialGradient id="gw-shade" cx="35%" cy="30%" r="75%">
           <stop offset="0" stopColor="#fff" stopOpacity="0.28" />
           <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
@@ -506,10 +535,10 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
             data-testid="eo-blight-halo"
             cx={GLOBE.x}
             cy={GLOBE.y}
-            r={GLOBE.r + 4}
+            r={GLOBE.r + 5}
             fill="none"
-            stroke={ROT}
-            strokeWidth="6"
+            stroke={ROT_GLOW}
+            strokeWidth="9"
           />
         )}
         <circle cx={GLOBE.x} cy={GLOBE.y} r={GLOBE.r} fill={OCEAN} />
@@ -742,6 +771,18 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
           />
         </g>
       </g>
+      {isSick && (
+        <rect
+          aria-hidden="true"
+          data-testid="eo-blight-vignette"
+          className="gv-vignette pointer-events-none"
+          x={SCREEN.x}
+          y={SCREEN.y}
+          width={SCREEN.width}
+          height={SCREEN.height}
+          fill="url(#gw-vignette)"
+        />
+      )}
       <FarmBehind away={gone} />
       <WorldForkArt info={info} />
       <WorldProjectArt info={info} />

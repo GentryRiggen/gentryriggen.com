@@ -296,7 +296,7 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_WORLD]: [
     "Mix the kinds of green: a new one soon beats a bigger first one.",
     "The jungle pays most but drinks the most. Wetland and rivers keep the water up.",
-    "If one kind covers too much of the world, it rots. Spreading the mix out is the only cure.",
+    "A kind that takes over the land can catch a blight, and the rain keeps changing. Watch the tank.",
   ],
   [PHASE_SEED]: [
     "Slide the blind. More sun grows the pot faster but dries the soil. Shade keeps it moist but is slow.",

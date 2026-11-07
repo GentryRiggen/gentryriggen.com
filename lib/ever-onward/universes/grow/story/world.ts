@@ -121,7 +121,7 @@ export const world: StoryMessage[] = [
     id: "world-blight",
     phase: PHASE_WORLD,
     when: (run) => blightsSoFar(run) >= 1,
-    text: "A grey-brown rot creeps through the part of the world that has too much of one thing. The trees wilt, and the birds go elsewhere. A mix of everything is the only medicine there is.",
+    text: "A grey-brown rot creeps through the part of the world that has too much of one thing. The trees wilt, and the birds go elsewhere.",
   },
   {
     id: "world-healed",

@@ -248,6 +248,11 @@ export const TUNING = {
      * A well-stocked barn adds up to `openingLeftover` more, no further than
      * `openingLeftoverFull` harvest.
      */
+    /**
+     * Careful: 1500 until 56c03642, 1800 since. The world is tuned so a
+     * player who tends it lands a little over the scorecard's 2.0 h length
+     * floor, so any change here moves the finish (re-run the scorecard).
+     */
     openingGreen: 1800,
     /** A payout still flowing when the farm ends turns into green at this rate, up to a cap. */
     harvestToGreen: 0.0002,
@@ -266,11 +271,13 @@ export const TUNING = {
       riverSeep: 0.3,
       /** Each cloud seeder adds this share to what the rain gives. */
       cloudRain: 0.25,
-      rainMax: 1.2,
+      rainMax: 2.8,
+      /** The planet's rain swings harder than a yard's: long dry and rainy spells. */
+      outlookWobble: 0.14,
       thirst: 0.4,
       thirstPerHelper: 0.02,
-      /** Extra thirst of a fully grown jungle (scaled by its perk curve). */
-      jungleThirst: 3,
+      /** Thirst of a jungle covering the whole planet; it grows with the square of its share. */
+      jungleThirst: 56,
       /** Wetland: extra tank and a gentle seep, at a fully grown wetland. */
       wetlandCapacity: 160,
       wetlandSeep: 0.4,
@@ -293,7 +300,7 @@ export const TUNING = {
     /** Meadow: how much faster the green spreads at a fully grown meadow. */
     meadowSpread: 1.5,
     /** The mix a fresh world starts with (half forest, a little of the rest), as slider points. */
-    startMix: [5, 2, 2, 1] as readonly number[],
+    startMix: [6, 5, 5, 4] as readonly number[],
     /** Slider points a biome can hold, 0 to this. */
     maxPoints: 10,
     /**
@@ -303,6 +310,11 @@ export const TUNING = {
      * to `blightCut` of that biome's green.
      */
     blightAt: 0.42,
+    /** The land counts as at least this green when sizing a biome's share of it. */
+    blightMinCover: 0.15,
+    /** The mix plate shows when the tank is under this much with a jungle past `thirstyJungle`. */
+    lowTank: 0.45,
+    thirstyJungle: 0.2,
     blightRise: 0.01,
     blightExtra: 2.5,
     blightHeal: 0.02,

@@ -3,7 +3,7 @@ import { PHASE_WORLD } from "./resources";
 import { TUNING } from "./tuning";
 import { worldFocus } from "./forks";
 import { nurserySpread } from "./knowhow";
-import { isDry } from "./water";
+import { isDry, rainOutlook, waterLevel } from "./water";
 
 /**
  * The green world's mix: one slider for each biome says how much of the
@@ -15,9 +15,11 @@ import { isDry } from "./water";
  *  - meadow: bees and birds help every planting spread faster;
  *  - wetland: stores water and seeps it back, a little green on the side.
  * A biome's gain flattens the more of the planet it covers, so mixing beats
- * piling everything into one. And a biome that covers too much of the planet
- * catches a blight: it rots and pays less until the mix is spread out again.
- * There is no cure but the mix.
+ * piling everything into one. And a biome that covers too much of the green
+ * catches a blight: it rots and pays less until it is back under the line.
+ * There is no cure but the mix. The jungle's thirst grows faster than its
+ * size, so the water is a second pressure well before any blight line, and
+ * the rain (which drifts) moves how much jungle the tank can carry.
  */
 
 const T = TUNING.world;
@@ -34,7 +36,7 @@ export const BIOME_LABELS: Readonly<Record<Biome, string>> = {
 
 export const PERK_WORDS: Readonly<Record<Biome, string>> = {
   forest: "steady green, and easy on the water",
-  jungle: "the most green, and the thirstiest",
+  jungle: "the most green, and it drinks the most water",
   meadow: "helps all the green spread faster",
   wetland: "holds water for dry spells, and a little green",
 };
@@ -129,14 +131,29 @@ export function blightedBiome(run: RunState): Biome | null {
   return worst;
 }
 
-/** The rot a biome is about to catch: its share is past the line. */
-export const isOverGrown = (run: RunState, biome: Biome): boolean =>
-  biomeShare(run, biome) > T.blightAt;
+/**
+ * A biome's share of the green land (not of the whole planet), so a lopsided
+ * mix starts to show as soon as there is some green to be lopsided.
+ */
+export const landShare = (run: RunState, biome: Biome): number =>
+  biomeShare(run, biome) / Math.max(worldCover(run), T.blightMinCover);
 
-/** True while some biome is rotting or about to (the mix needs a look). */
+/** The rot a biome is about to catch: its share of the land is past the line. */
+export const isOverGrown = (run: RunState, biome: Biome): boolean =>
+  landShare(run, biome) > T.blightAt;
+
+/**
+ * True while the mix needs a look: some biome is rotting or about to, or the
+ * tank is running low or the rain has turned dry with a thirsty jungle on
+ * the land.
+ */
 export const needsMixing = (run: RunState): boolean =>
   blightedBiome(run) !== null ||
-  BIOMES.some((b) => biomeShare(run, b) > T.blightAt - 0.04);
+  BIOMES.some((b) => landShare(run, b) > T.blightAt - 0.04) ||
+  isDry(run) ||
+  ((waterLevel(run) < T.lowTank ||
+    rainOutlook(run) < TUNING.water.dryOutlook) &&
+    biomeShare(run, "jungle") > T.thirstyJungle);
 
 /** True for a few seconds after the rot first showed (the scene flashes it). */
 export const justBlighted = (run: RunState): boolean =>
@@ -164,8 +181,8 @@ export function mixResultLine(run: RunState): string | null {
   const name = (id: string) =>
     BIOME_LABELS[BIOMES[clamp(Math.round(res(run, id)), 0, 3)]].toLowerCase();
   return healedLast
-    ? `The blight in the ${name("bmHealedWho")} is gone. The mix is spread out again.`
-    : `A blight started in the ${name("bmBlightWho")}: it covers too much of the world.`;
+    ? `The blight in the ${name("bmHealedWho")} is gone. The land is healthy again.`
+    : `A blight started in the ${name("bmBlightWho")}. It rots and pays much less.`;
 }
 
 /** Times a slider has been moved. */
@@ -289,7 +306,7 @@ function tickBlight(run: RunState, dt: number): void {
   const r = run.resources;
   for (const b of BIOMES) {
     const before = blightOf(run, b);
-    const over = biomeShare(run, b) - T.blightAt;
+    const over = landShare(run, b) - T.blightAt;
     const after =
       over > 0
         ? Math.min(

@@ -5411,6 +5411,19 @@ html:has(.jim-app) body {
   animation: gv-sick 2s ease-in-out infinite;
 }
 
+@keyframes gv-vignette {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gv-vignette {
+  animation: gv-vignette 2.2s ease-in-out infinite;
+}
+
 @keyframes gv-spore {
   0% {
     transform: translateY(2px) scale(0.6);
@@ -5469,6 +5482,7 @@ html:has(.jim-app) body {
   }
   .gv-glisten,
   .gv-sick,
+  .gv-vignette,
   .gv-spore,
   .gv-wave,
   .gv-spark {
