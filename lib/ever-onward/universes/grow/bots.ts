@@ -3,7 +3,21 @@ import { upgradeCost } from "../../engine/engine";
 import type { Strategy } from "../../engine/sim";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { YARD_HARVEST, isWorthPicking } from "./actions";
-import { danceHint, dancesSoFar, followActionId } from "./bees";
+import {
+  BEDS,
+  SELL_HALF_ID,
+  addBeeActionId,
+  beesOn,
+  bloomOf,
+  honeyOf,
+  isBeesOpen,
+  isDormant,
+  isPlanted,
+  plantActionId as beePlantId,
+  takeBeeActionId,
+  winterEats,
+  winterNeeds,
+} from "./bees";
 import {
   BIOMES,
   activeBiome,
@@ -21,7 +35,7 @@ import {
   plantedCrop,
   type Crop,
 } from "./market";
-import { seasonOf, secondsToAutumn } from "./seasons";
+import { seasonOf, seasonSecondsLeft, secondsToAutumn } from "./seasons";
 import { bankActionId, bankStep } from "./seedbank";
 import { shownProjects } from "../../engine/engine";
 import { FESTIVAL_ACTION_ID, festivalCost, knowhowOf } from "./knowhow";
@@ -74,26 +88,42 @@ export const picksInAutumn =
       : [];
   };
 
+/** Bees the bot wants on each bed (clover, sunflower, lavender, apple). */
+const BEE_PLAN = { clover: 3, sunflower: 4, lavender: 2, apple: 3 } as const;
+
 /**
- * Follows the dance to the patch it points at. A bot with real attention
- * misses now and then: it lets one dance in every `skipEvery`th go to the
- * keeper (counted by the bees themselves, so the sim stays deterministic).
+ * Tends the bees like a careful player: plants every bed it can afford,
+ * spreads bees to a plan (the apple tree only in autumn), calls a bee home
+ * from a bed that is wearing thin, keeps enough honey for winter and sells
+ * the rest (more of it in winter, when the price is best).
  */
-export const followsDance =
-  (options: { skipEvery?: number } = {}): Actions =>
-  (run, available) => {
-    if (run.phase !== 0) return [];
-    const { skipEvery } = options;
-    const dance = dancesSoFar(run);
-    if (
-      skipEvery &&
-      dance % skipEvery === skipEvery - 1 &&
-      (run.resources.beTime ?? 0) < SKIP_DELAY
-    )
-      return [];
-    const id = followActionId(danceHint(run));
-    return available.includes(id) ? [id] : [];
-  };
+export const tendsBees: Actions = (run, available) => {
+  if (!isBeesOpen(run)) return [];
+  const picks: string[] = [];
+  const ok = (id: string) => available.includes(id);
+  BEDS.forEach((bed, i) => {
+    if (!isPlanted(run, i)) {
+      if (ok(beePlantId(i))) picks.push(beePlantId(i));
+      return;
+    }
+    let want: number = BEE_PLAN[bed.kind];
+    if (bed.kind === "apple" && seasonOf(run) !== "autumn") want = 0;
+    if (bloomOf(run, i) < 0.35) want = Math.min(want, beesOn(run, i) - 1);
+    else if (bloomOf(run, i) < 0.55) want = Math.min(want, beesOn(run, i));
+    if (beesOn(run, i) > want && ok(takeBeeActionId(i)))
+      picks.push(takeBeeActionId(i));
+    else if (beesOn(run, i) < want && ok(addBeeActionId(i)))
+      picks.push(addBeeActionId(i));
+  });
+  if (picks.length > 0) return picks.slice(0, 1);
+  // Keep a winter's worth (what is left of this one, in winter), sell the
+  // rest: half at a time, so a sale is a step, not a habit.
+  const keep = isDormant(run)
+    ? winterEats(run) * seasonSecondsLeft(run) * 1.2
+    : winterNeeds(run) * 1.4;
+  if (honeyOf(run) > keep * 2 + 5 && ok(SELL_HALF_ID)) return [SELL_HALF_ID];
+  return [];
+};
 
 /**
  * Enters the pumpkin with the best expected payout. Like the bee bot, one
@@ -325,7 +355,7 @@ export function growBots(): BotSet {
     alongside(
       picksAnytime(),
       alongside(
-        followsDance(),
+        tendsBees,
         alongside(
           alongside(cropPolicy(), bankPolicy()),
           alongside(
@@ -344,7 +374,7 @@ export function growBots(): BotSet {
       alongside(
         picksInAutumn(45),
         alongside(
-          followsDance({ skipEvery: 6 }),
+          tendsBees,
           alongside(
             alongside(cropPolicy(20), bankPolicy(20)),
             alongside(
@@ -373,7 +403,7 @@ export function growBots(): BotSet {
       alongside(
         picksAnytime(60),
         alongside(
-          followsDance({ skipEvery: 2 }),
+          tendsBees,
           alongside(
             alongside(cropPolicy(60), bankPolicy(60)),
             alongside(
@@ -419,12 +449,12 @@ export function growBots(): BotSet {
       0: {
         naive: yardPlayer(
           base.tapper,
-          alongside(picksAnytime(), followsDance()),
+          alongside(picksAnytime(), tendsBees),
           afterRunningDry
         ),
         careful: yardPlayer(
           base.tapper,
-          alongside(picksInAutumn(), followsDance()),
+          alongside(picksInAutumn(), tendsBees),
           whenRainTurnsDry
         ),
       },
@@ -454,14 +484,14 @@ export function growBots(): BotSet {
         ignores: yardPlayer(base.tapper, picksInAutumn(), whenRainTurnsDry),
         claims: yardPlayer(
           base.tapper,
-          alongside(picksInAutumn(), followsDance()),
+          alongside(picksInAutumn(), tendsBees),
           whenRainTurnsDry
         ),
       },
     },
     naiveOil: yardPlayer(
       base.tapper,
-      alongside(picksAnytime(), followsDance()),
+      alongside(picksAnytime(), tendsBees),
       afterRunningDry
     ),
     cheapskateOil: tapper,

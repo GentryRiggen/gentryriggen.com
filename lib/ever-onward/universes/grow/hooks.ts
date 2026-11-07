@@ -1,7 +1,7 @@
 import { upgradeCost } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
 import { YARD_HARVEST, ripeProduce } from "./actions";
-import { BEE_ACTION_IDS, isDancing, isBeesOpen, withoutBees } from "./bees";
+import { BEE_ACTION_IDS, needsBees, isBeesOpen, withoutBees } from "./bees";
 import {
   FAIR_HAND_ID,
   FAIR_ACTION_IDS,
@@ -69,7 +69,7 @@ export function growPlates(run: RunState): string[] {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
     if (ripeProduce(run) >= TUNING.yard.ripeFor) plates.push("harvest");
-    if (isDancing(run)) plates.push("bees");
+    if (needsBees(run)) plates.push("bees");
   }
   if (
     isFestivalOpen(run) &&

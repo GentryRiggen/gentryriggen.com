@@ -49,7 +49,8 @@ describe("Grow scores", () => {
       resources: { ...before.resources, ...r },
     });
     expect(cues(before, before)).toEqual([]);
-    expect(cues(before, withRes({ beDances: 1 }))).toEqual(["buzz"]);
+    expect(cues(before, withRes({ pbWilts: 1 }))).toEqual(["buzz"]);
+    expect(cues(before, withRes({ pbRare: 1 }))).toEqual(["bloom"]);
     expect(cues(before, withRes({ frFairs: 1 }))).toEqual(["ribbon"]);
     expect(cues(before, withRes({ mgFlights: 1 }))).toEqual(["flutter"]);
     expect(cues(before, withRes({ potStage: 1 }))).toEqual(["bloom"]);

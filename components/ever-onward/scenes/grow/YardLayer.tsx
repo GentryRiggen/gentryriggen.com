@@ -1,4 +1,5 @@
 import { YardForkArt } from "./TradeoffArt";
+import PollenLayer from "./PollenLayer";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 import type { Season } from "@/lib/ever-onward/universes/grow/seasons";
 import {
@@ -245,7 +246,11 @@ function Gardener({ i }: { i: number }) {
 /** The backyard: a window box on the sill, opening out into the garden. */
 export default function YardLayer({ info }: { info: GrowSceneInfo }) {
   const look = LOOKS[info.season];
-  const beds = Array.from({ length: info.beds }, (_, i) => i);
+  // Once the bees are in, the second row of beds is their flower beds.
+  const beds = Array.from(
+    { length: info.flowerBeds ? Math.min(4, info.beds) : info.beds },
+    (_, i) => i
+  );
   const baskets = Math.min(8, Math.max(0, info.pickers - info.gardeners));
   const sprout = 14 + info.scaling * 4;
   return (
@@ -479,6 +484,7 @@ export default function YardLayer({ info }: { info: GrowSceneInfo }) {
       {beds.map((i) => (
         <Bed key={i} i={i} info={info} look={look} />
       ))}
+      <PollenLayer info={info} />
       {info.bloom >= 0.4 &&
         (info.season === "spring" || info.season === "summer") && (
           <g aria-hidden="true">

@@ -1,13 +1,24 @@
 import { formatNumber } from "../../engine/format";
 import type { ActionDef, RunState } from "../../engine/types";
 import {
-  PATCHES,
-  danceHint,
-  followActionId,
-  followDance,
+  BEDS,
+  SELL_ALL_ID,
+  SELL_HALF_ID,
+  addBee,
+  addBeeActionId,
+  canAddBee,
+  beesOn,
+  honeyOf,
+  honeyPrice,
   isBeesOpen,
-  isDancing,
-  patchPays,
+  isDormant,
+  isPlanted,
+  plantActionId,
+  plantBed,
+  plantCost,
+  sellHoney,
+  takeBee,
+  takeBeeActionId,
 } from "./bees";
 import {
   enterActionId,
@@ -84,27 +95,66 @@ const HARVEST: ActionDef = {
   },
 };
 
-/** One follow button per flower patch; the bee panel draws them itself. */
-const FOLLOW_PATCH: readonly ActionDef[] = PATCHES.map((patch, index) => ({
-  id: followActionId(index),
-  phases: [PHASE_YARD],
-  isInline: true,
-  visibleWhen: isBeesOpen,
-  describe: (run) => ({
-    label: `Follow the bees to ${patch.name}`,
-    detail: isDancing(run)
-      ? `About +${formatNumber(Math.floor(patchPays(run, index, incomePerSecond(run))))} seeds${
-          danceHint(run) === index ? ", the best the dance can offer" : ""
-        }.`
-      : "The bees are out among the flowers.",
-    isBlocked: !isDancing(run),
-    hint:
-      isDancing(run) && danceHint(run) === index
-        ? { text: "the dance points here", tone: "good" as const }
-        : undefined,
-  }),
-  perform: (run) => followDance(run, index, incomePerSecond(run)),
-}));
+/** Pollination's buttons; the bee panel draws them itself. */
+const POLLINATION: readonly ActionDef[] = [
+  ...BEDS.flatMap((bed, index): ActionDef[] => [
+    {
+      id: plantActionId(index),
+      phases: [PHASE_YARD],
+      isInline: true,
+      visibleWhen: isBeesOpen,
+      describe: (run) => ({
+        label: `Plant ${bed.name.toLowerCase()}`,
+        detail: bed.gives,
+        cost: {
+          resource: "seeds",
+          amount: plantCost(run, index, incomePerSecond(run)),
+        },
+        isBlocked: isPlanted(run, index),
+      }),
+      perform: (run) => plantBed(run, index),
+    },
+    {
+      id: addBeeActionId(index),
+      phases: [PHASE_YARD],
+      isInline: true,
+      visibleWhen: isBeesOpen,
+      describe: (run) => ({
+        label: `Send a bee to the ${bed.name.toLowerCase()}`,
+        isBlocked: !canAddBee(run, index),
+      }),
+      perform: (run) => addBee(run, index),
+    },
+    {
+      id: takeBeeActionId(index),
+      phases: [PHASE_YARD],
+      isInline: true,
+      visibleWhen: isBeesOpen,
+      describe: (run) => ({
+        label: `Call a bee home from the ${bed.name.toLowerCase()}`,
+        isBlocked: beesOn(run, index) <= 0,
+      }),
+      perform: (run) => takeBee(run, index),
+    },
+  ]),
+  ...[
+    { id: SELL_HALF_ID, share: 0.5, label: "Sell half the honey" },
+    { id: SELL_ALL_ID, share: 1, label: "Sell all the honey" },
+  ].map(({ id, share, label }): ActionDef => ({
+    id,
+    phases: [PHASE_YARD],
+    isInline: true,
+    visibleWhen: isBeesOpen,
+    describe: (run) => ({
+      label,
+      detail: `+${formatNumber(
+        Math.floor(honeyOf(run) * share * honeyPrice(run, incomePerSecond(run)))
+      )} seeds${isDormant(run) ? " (winter price!)" : ""}`,
+      isBlocked: honeyOf(run) < 1,
+    }),
+    perform: (run) => sellHoney(run, share, incomePerSecond(run)),
+  })),
+];
 
 /** One entry button per pumpkin; the fair panel draws them itself. */
 const ENTER_PUMPKIN: readonly ActionDef[] = Array.from(
@@ -141,7 +191,7 @@ const ENTER_PUMPKIN: readonly ActionDef[] = Array.from(
 export const GROW_ACTIONS: readonly ActionDef[] = [
   HARVEST,
   ...FORK_ACTIONS,
-  ...FOLLOW_PATCH,
+  ...POLLINATION,
   ...MARKET_ACTIONS,
   ...BANK_ACTIONS,
   ...FESTIVAL_ACTIONS,

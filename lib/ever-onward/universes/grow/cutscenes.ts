@@ -286,7 +286,7 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_YARD]: [
     "Plant in spring and pick in autumn: each season gives a boost.",
     "Rain fills the tank. Rain barrels hold more for dry spells.",
-    "When the bees dance, follow them to the best patch.",
+    "Plant flower beds for your bees, but don't work a bed too hard or it wilts. Keep honey for winter.",
   ],
   [PHASE_FARM]: [
     "Plant what the towns are asking for: their orders pay more.",

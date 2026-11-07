@@ -14,7 +14,7 @@ import {
 import type { CueName } from "../audio/everOnwardSynth";
 import AcornIcon from "../game/grow/AcornIcon";
 import GrowEndingArt from "../game/grow/GrowEndingArt";
-import BeeDance from "../game/grow/BeeDance";
+import PollinationPanel from "../game/grow/PollinationPanel";
 import BiomePanel from "../game/grow/BiomePanel";
 import CountyFair from "../game/grow/CountyFair";
 import ForkPanel from "../game/grow/ForkPanel";
@@ -57,7 +57,8 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   const cues: CueName[] = [];
   const rose = (id: string) =>
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
-  if (rose("beDances")) cues.push("buzz");
+  if (rose("pbRare")) cues.push("bloom");
+  if (rose("pbWilts")) cues.push("buzz");
   if (rose("frFairs")) cues.push("ribbon");
   if (rose("mgFlights")) cues.push("flutter");
   if (rose("potStage")) cues.push("bloom");
@@ -72,7 +73,7 @@ export const GROW_UI: UniverseUi = {
     ForkPanel,
     SeedBankPanel,
     KnowHowPanel,
-    BeeDance,
+    PollinationPanel,
     CountyFair,
     SeedMigration,
   ],
