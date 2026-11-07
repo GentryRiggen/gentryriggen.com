@@ -255,6 +255,12 @@ export interface ShipBuilderState extends ShipBuilderData {
   placeAt: (anchor: Anchor) => RuleResult;
   select: (id: string | null) => void;
   requestDelete: () => void;
+  /**
+   * Deletes one part from a press-and-hold. With a tool active the tool stays,
+   * so a builder can clear a mistake and keep placing; with none it acts like
+   * selecting the part and pressing Delete.
+   */
+  deletePart: (id: string) => void;
   confirmRemoval: () => void;
   cancelRemoval: () => void;
   changeHullLength: (delta: number) => void;
@@ -704,6 +710,23 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         return;
       }
       set({ pendingRemoval: { kind: "part", ids } });
+    },
+
+    deletePart(id) {
+      if (isTrialActive()) return;
+      const { ship, tool } = get();
+      if (tool.kind === "none") {
+        get().select(id);
+        get().requestDelete();
+        return;
+      }
+      const ids = cascadeIds(ship, [id]);
+      if (ids.length === 0) return;
+      if (ids.length === 1) {
+        commit(removeParts(ship, ids), CLEARED);
+        return;
+      }
+      set({ pendingRemoval: { kind: "part", ids }, hover: null });
     },
 
     confirmRemoval() {
