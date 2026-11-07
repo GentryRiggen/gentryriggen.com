@@ -14,12 +14,23 @@ import NarrationSettings from "../narration/NarrationSettings";
 import BackupPanel from "./BackupPanel";
 import Logbook from "./Logbook";
 import RetroDrawer from "./retro/RetroDrawer";
+import TestModePanel from "./TestModePanel";
+import type { JumpPoint } from "@/lib/ever-onward/test/jump";
+import type { TestSpeed } from "@/lib/ever-onward/test/tester";
 import {
   pixelClass,
   retroFocusClass,
   retroPrimaryButtonClass,
   retroSecondaryButtonClass,
 } from "./retro/retroStyles";
+
+export interface MenuTestMode {
+  speed: TestSpeed | null;
+  isJumping: boolean;
+  onJump: (universeId: string, phase: number, point: JumpPoint) => void;
+  onSpeed: (speed: TestSpeed) => void;
+  onExit: () => void;
+}
 
 interface MenuDialogProps {
   def: UniverseDef;
@@ -31,6 +42,8 @@ interface MenuDialogProps {
   /** Starts this universe again from its first part. */
   onStartOver: () => void;
   onClose: () => void;
+  /** Present for the owner only (Test mode). */
+  testMode?: MenuTestMode;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -130,11 +143,30 @@ export default function MenuDialog({
   onReplaceSave,
   onStartOver,
   onClose,
+  testMode,
 }: MenuDialogProps) {
   const isMusicOn = everOnwardChannels.music.useValue();
   const isEffectsOn = everOnwardChannels.effects.useValue();
   return (
     <RetroDrawer title="Menu" testId="lm-menu" onClose={onClose}>
+      {testMode && (
+        <Section title="Test mode">
+          <TestModePanel
+            currentId={def.id}
+            speed={testMode.speed}
+            isJumping={testMode.isJumping}
+            onJump={(id, phase, point) => {
+              testMode.onJump(id, phase, point);
+              onClose();
+            }}
+            onSpeed={testMode.onSpeed}
+            onExit={() => {
+              testMode.onExit();
+              onClose();
+            }}
+          />
+        </Section>
+      )}
       <Section title="Play">
         <div className="flex flex-col gap-2">
           <button

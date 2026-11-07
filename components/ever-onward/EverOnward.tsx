@@ -13,6 +13,7 @@ import { useStaleChunkRecovery } from "@/components/update/useStaleChunkRecovery
 import { useUpdateCheck } from "@/components/update/useUpdateCheck";
 import useBlockPinchZoom from "./useBlockPinchZoom";
 import scrollToTop from "./scrollToTop";
+import { isTester } from "@/lib/ever-onward/test/tester";
 
 const UPDATE_PILL_BUTTON =
   "pointer-events-auto min-h-11 rounded-full border-2 border-amber-300 bg-slate-950 px-5 py-2 text-sm font-semibold text-amber-200 shadow-[0_0_18px_rgba(251,191,36,0.45)] hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
@@ -24,6 +25,12 @@ export default function EverOnward() {
     versionUrl: "/ever-onward/version.json",
   });
   const [isOnStartScreen, setIsOnStartScreen] = useState(true);
+  // Read on the client after load (localStorage), so the server render matches.
+  const [canTest, setCanTest] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanTest(isTester());
+  }, []);
   const { save, def, universe } = game;
   useStaleChunkRecovery(game.saveNow);
   // Back at the hub, start at the top rather than where the game was scrolled.
@@ -62,6 +69,7 @@ export default function EverOnward() {
     <>
       {def && universe ? (
         <GameScreen
+          key={def.id}
           def={def}
           universe={universe}
           overlay={game.overlay}
@@ -78,6 +86,17 @@ export default function EverOnward() {
           onReplaceSave={game.replaceSave}
           currentSave={save}
           onDismissOverlay={game.dismissOverlay}
+          testMode={
+            canTest
+              ? {
+                  speed: game.test?.speed ?? null,
+                  isJumping: game.isJumping,
+                  onJump: game.jumpTo,
+                  onSpeed: game.setTestSpeed,
+                  onExit: game.exitTest,
+                }
+              : undefined
+          }
         />
       ) : isOnStartScreen ? (
         <StartScreen
