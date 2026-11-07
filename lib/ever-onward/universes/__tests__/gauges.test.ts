@@ -29,7 +29,7 @@ describe("HUD gauges", () => {
     const run = newRun(smileUniverse);
     run.phase = 0;
     expect(smileUniverse.gauge?.(run)).toBeNull();
-    run.phase = 1;
+    run.phase = 2;
     run.resources.mtHeat = 0.2;
     expect(smileUniverse.gauge?.(run)).toMatchObject({
       label: "CHEER",
@@ -44,6 +44,21 @@ describe("HUD gauges", () => {
       status: "TIRED",
       isCritical: true,
     });
+  });
+
+  test("Smile shows the town's mood once its stand and route are open, GRUMPY when a street is left out", () => {
+    const run = newRun(smileUniverse);
+    run.phase = 1;
+    expect(smileUniverse.gauge?.(run)).toBeNull();
+    run.flags["town-open"] = true;
+    for (let i = 0; i < 4; i += 1) run.resources[`tnH${i}`] = 1;
+    expect(smileUniverse.gauge?.(run)).toMatchObject({
+      label: "MOOD",
+      display: "100%",
+      status: "",
+    });
+    run.resources.tnH3 = 0;
+    expect(smileUniverse.gauge?.(run)).toMatchObject({ status: "GRUMPY" });
   });
 
   test("Higher shows the sway, LEANS then WOBBLY", () => {

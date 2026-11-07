@@ -1,13 +1,13 @@
 import type { RunState } from "../../engine/types";
-import { forkCoolMult, forkHeatMult } from "./forks";
+import { forkCoolMult } from "./forks";
 import { coolProjectMult, isParadeOn } from "./knowhow";
 import { TUNING } from "./tuning";
 
 /**
- * The cheer meter: the town and the world's managed risk. Every tap and every
+ * The cheer meter: the world's managed risk. Every tap and every
  * parade warms it a little, and rest cools it. If it fills right up the crowd
  * is worn out and everything pays a little less (never nothing) until they
- * have rested. Benches and mask booths cool it faster. Nothing is lost, nobody
+ * have rested. Mask booths cool it faster. Nothing is lost, nobody
  * is punished: it is a gentle nudge to ease off before the cheering gets too
  * much, and the same hand that warms it can wait for it to cool.
  *
@@ -20,9 +20,8 @@ const M = TUNING.meter;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
-/** The meter runs in the town and the world. */
-export const hasMeter = (run: RunState): boolean =>
-  run.phase === 1 || run.phase === 2;
+/** The meter runs in the world. */
+export const hasMeter = (run: RunState): boolean => run.phase === 2;
 
 /** 0 (cool) to 1 (worn out). */
 export const heatOf = (run: RunState): number =>
@@ -35,9 +34,8 @@ export const isTired = (run: RunState): boolean =>
 export const tiredMult = (run: RunState): number =>
   isTired(run) ? M.tiredMult : 1;
 
-/** Benches in the town, mask booths in the world. */
-export const coolLevels = (run: RunState): number =>
-  run.phase === 1 ? owned(run, "bench") : owned(run, "mask-booth");
+/** Mask booths cool the crowd. */
+export const coolLevels = (run: RunState): number => owned(run, "mask-booth");
 
 /** How quickly the crowd cools (a share of its heat lost each second). */
 export const coolPerSecond = (run: RunState): number =>
@@ -49,7 +47,7 @@ export const coolPerSecond = (run: RunState): number =>
 /** A tap warms the meter. */
 export function heatByTap(run: RunState): void {
   if (!hasMeter(run)) return;
-  setHeat(run, res(run, "mtHeat") + M.heatPerTap * forkHeatMult(run));
+  setHeat(run, res(run, "mtHeat") + M.heatPerTap);
 }
 
 function setHeat(run: RunState, heat: number): void {
@@ -68,7 +66,7 @@ export function tickMeter(run: RunState, dt: number): void {
     }
     return;
   }
-  const warm = isParadeOn(run) ? M.paradeHeat * forkHeatMult(run) : 0;
+  const warm = isParadeOn(run) ? M.paradeHeat : 0;
   // Newton's cooling: the warmer the crowd, the faster it cools, so steady
   // tapping settles at a level instead of rising for ever.
   const heat = res(run, "mtHeat");

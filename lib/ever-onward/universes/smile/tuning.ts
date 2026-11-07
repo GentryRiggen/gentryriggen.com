@@ -53,20 +53,74 @@ export const TUNING = {
     showSeconds: 4,
   },
   /**
-   * The cheer meter (town and world): taps and parades heat it, rest cools
-   * it. Past full the crowd is worn out and pays less until it has rested.
+   * The cheer meter (the world): taps and broadcasts heat it, rest cools it.
+   * Past full the crowd is worn out and pays less until it has rested.
    */
   meter: {
     heatPerTap: 0.012,
     paradeHeat: 0.02,
     coolPerSecond: 0.05,
-    /** Each bench (or mask booth) cools this much faster per level. */
+    /** Each mask booth cools this much faster per level. */
     coolPerLevel: 1.6,
     tiredAt: 1,
     restedAt: 0.4,
     tiredMult: 0.6,
-    /** A parade needs the meter at or under this. */
+    /** A broadcast needs the meter at or under this. */
     paradeMaxHeat: 0.6,
+  },
+  /**
+   * The town's two dials. The lemonade stand: five prices (free to pricey);
+   * `crowdSlope` is the share of the town each step up loses, so a higher
+   * price brings fewer people, and `thirst` moves the whole curve (a hot day
+   * lifts it, rain drops it). Coins come from the crowd times the price;
+   * cheers get `cheerBase` plus `cheerSpan` of the crowd. Changing the price
+   * repaints the sign (`repaintSeconds`) and the crowd stays away meanwhile
+   * (`repaintCrowd`). The parade route: floats cheer a street, and `1 -
+   * careDecay ^ floats` of it is cheered (each float after the first is worth
+   * less); a street left behind drifts to grumpy at `fall`, and cheers up at
+   * `rise`. The route pays `routeBase` plus `routeSpan` of the weighted
+   * mood, and every grumpy street takes `grumpyDrag` off all of it. Moving a
+   * float takes `moveSeconds`. Days bring hot weather, rain on one street or
+   * a party in one.
+   */
+  town: {
+    prices: 5,
+    crowdSlope: 0.22,
+    minCrowd: 0.04,
+    priceWeight: [0, 1, 2.2, 3.6, 5.5] as readonly number[],
+    coinPerLevel: 0.04,
+    cheerBase: 0.51,
+    cheerSpan: 0.9,
+    repaintSeconds: 6,
+    repaintCrowd: 0.4,
+    streetWeights: [0.34, 0.28, 0.22, 0.16] as readonly number[],
+    careDecay: 0.75,
+    rise: 0.05,
+    fall: 0.02,
+    grumpyAt: 0.25,
+    routeBase: 0.35,
+    routeSpan: 2.4,
+    grumpyDrag: 0.8,
+    startFloats: 3,
+    floatCosts: [
+      15, 25, 40, 60, 90, 130, 190, 280, 420, 640,
+    ] as readonly number[],
+    moveSeconds: 4,
+    benchRise: 1.4,
+    shadeFall: 0.5,
+    clownFall: 1.25,
+    factoryCare: 0.85,
+    hotThirst: 0.4,
+    rainThirst: -0.35,
+    rainCare: 0.25,
+    partyWeight: 3,
+    dayKinds: [0.4, 0.65] as readonly number[],
+    daySeconds: [60, 90] as readonly number[],
+    calmSeconds: [5, 15] as readonly number[],
+    firstDay: 40,
+    showSeconds: 4,
+    benchMax: 3,
+    bigTopCare: 1.5,
   },
   /** Know-how (town and world): projects and parades both want it. */
   knowhow: {
@@ -78,6 +132,8 @@ export const TUNING = {
     paradeRest: 20,
     paradeMult: 2,
     costs: [30, 70, 160] as readonly number[],
+    /** The town's projects cost coins. */
+    townCosts: [40, 80, 170] as readonly number[],
     coolMult: 2,
     bigTopMult: 1.5,
     allMult: 2,
@@ -89,9 +145,7 @@ export const TUNING = {
     town: {
       cost: 3000,
       clownTap: 3,
-      clownHeat: 1.25,
       factoryHelpers: 1.6,
-      factoryParade: 1.5,
     },
     world: {
       cost: 8000,

@@ -25,12 +25,12 @@ const advance = (run: RunState, seconds: number, step = 1): RunState => {
 };
 
 describe("Smile trade-offs", () => {
-  describe("one currency, two sinks: know-how", () => {
+  describe("one currency, two sinks: know-how (the world)", () => {
     function townRun(): RunState {
-      const start = runAtPhaseStart(1);
+      const start = runAtPhaseStart(2);
       return {
         ...start,
-        owned: { ...start.owned, clown: 4, band: 2, "smile-factory": 1 },
+        owned: { ...start.owned, poster: 4, loudspeaker: 2 },
         flags: { ...start.flags },
         resources: { ...start.resources, knowhow: 200, mtHeat: 0, mtTired: 0 },
       };
@@ -38,16 +38,18 @@ describe("Smile trade-offs", () => {
 
     it("buys a permanent project or a repeatable parade, not both", () => {
       const run = advance(townRun(), 1);
-      const project = def.projects!.find((p) => p.id === "big-top")!;
+      const project = def.projects!.find((p) => p.id === "every-language")!;
       const price = project.costs[0].amount;
-      const afterProject = startProject(def, run, "big-top");
+      const afterProject = startProject(def, run, "every-language");
       expect(afterProject).not.toBe(run);
       expect(knowhowOf(afterProject)).toBeLessThan(knowhowOf(run) - price + 5);
       const afterParade = performAction(def, run, PARADE_ACTION_ID);
       expect(isParadeOn(afterParade)).toBe(true);
       expect(knowhowOf(afterParade)).toBeLessThan(knowhowOf(run));
       // A parade can be held again; a project is done for good.
-      expect(startProject(def, afterProject, "big-top")).toBe(afterProject);
+      expect(startProject(def, afterProject, "every-language")).toBe(
+        afterProject
+      );
     });
 
     it("lets the crowd rest between parades", () => {
@@ -71,9 +73,9 @@ describe("Smile trade-offs", () => {
     });
   });
 
-  describe("a managed risk: the cheer meter", () => {
+  describe("a managed risk: the cheer meter (the world)", () => {
     const town = (): RunState => {
-      const start = runAtPhaseStart(1);
+      const start = runAtPhaseStart(2);
       return {
         ...start,
         resources: { ...start.resources, mtHeat: 0, mtTired: 0 },
@@ -115,8 +117,11 @@ describe("Smile trade-offs", () => {
       expect(heatOf(run)).toBeLessThan(0.4);
     });
 
-    it("is gone in the first and last parts", () => {
+    it("is gone in the first, second and last parts", () => {
       expect(heatOf(runAtPhaseStart(0))).toBe(0);
+      expect(heatOf({ ...runAtPhaseStart(1), resources: { mtHeat: 1 } })).toBe(
+        0
+      );
       expect(heatOf({ ...runAtPhaseStart(3), resources: { mtHeat: 1 } })).toBe(
         0
       );
@@ -126,7 +131,7 @@ describe("Smile trade-offs", () => {
       let run = town();
       run = {
         ...run,
-        owned: { ...run.owned, clown: 3 },
+        owned: { ...run.owned, poster: 3 },
         resources: { ...run.resources, knowhow: 500, mtHeat: 0.9 },
       };
       expect(canPerformAction(def, run, PARADE_ACTION_ID)).toBe(false);

@@ -11,6 +11,7 @@ import FriendPanel from "../FriendPanel";
 import KnowHowPanel from "../KnowHowPanel";
 import SmileForkPanel from "../SmileForkPanel";
 import TogetherPanel from "../TogetherPanel";
+import TownPanel from "../TownPanel";
 
 const advance = (run: RunState, seconds: number): RunState => {
   let next = run;
@@ -79,7 +80,7 @@ describe("Smile panels", () => {
     expect(onAct).toHaveBeenCalledWith("tg-1");
   });
 
-  it("shows the cheer meter in the town and the world only", () => {
+  it("shows the cheer meter in the world only: the town has its own two dials", () => {
     const { container, rerender } = render(
       <CheerMeter def={def} run={runAtPhaseStart(0)} onAct={jest.fn()} />
     );
@@ -87,11 +88,15 @@ describe("Smile panels", () => {
     rerender(
       <CheerMeter def={def} run={runAtPhaseStart(1)} onAct={jest.fn()} />
     );
+    expect(container).toBeEmptyDOMElement();
+    rerender(
+      <CheerMeter def={def} run={runAtPhaseStart(2)} onAct={jest.fn()} />
+    );
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "0");
     rerender(
       <CheerMeter
         def={def}
-        run={withOwned(runAtPhaseStart(1), {}, { mtHeat: 1.1, mtTired: 1 })}
+        run={withOwned(runAtPhaseStart(2), {}, { mtHeat: 1.1, mtTired: 1 })}
         onAct={jest.fn()}
       />
     );
@@ -101,11 +106,38 @@ describe("Smile panels", () => {
     );
   });
 
-  it("holds projects and a parade in one know-how panel", () => {
+  it("offers the town's stand and route once a clown is hired, showing the + and the - and never a best", () => {
+    const onAct = jest.fn();
+    const closed = runAtPhaseStart(1);
+    const { container, rerender } = render(
+      <TownPanel def={def} run={closed} onAct={onAct} />
+    );
+    expect(container).toBeEmptyDOMElement();
+    const open = advance(withOwned(closed, { clown: 3 }), 2);
+    rerender(<TownPanel def={def} run={open} onAct={onAct} />);
+    expect(screen.getAllByRole("radio")).toHaveLength(5);
+    for (const i of [0, 1, 2, 3, 4]) {
+      const card = screen.getByTestId(`ms-price-${i}`);
+      expect(card).toHaveTextContent("+ ");
+      expect(card).toHaveTextContent("− ");
+    }
+    expect(screen.getByTestId("ms-town").textContent).not.toMatch(
+      /best|recommend/i
+    );
+    for (const i of [0, 1, 2, 3])
+      expect(screen.getByTestId(`ms-street-${i}`)).toBeInTheDocument();
+    expect(screen.getByTestId("ms-town-day")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("ms-price-0"));
+    expect(onAct).toHaveBeenCalledWith("st-0");
+    fireEvent.click(screen.getByTestId("ms-send-3"));
+    expect(onAct).toHaveBeenCalledWith("rt-3");
+  });
+
+  it("holds the world's projects and broadcast in one know-how panel", () => {
     const onAct = jest.fn();
     const run = withOwned(
-      runAtPhaseStart(1),
-      { clown: 3, band: 1 },
+      runAtPhaseStart(2),
+      { poster: 3, loudspeaker: 1 },
       { knowhow: 500 }
     );
     render(<KnowHowPanel def={def} run={advance(run, 1)} onAct={onAct} />);

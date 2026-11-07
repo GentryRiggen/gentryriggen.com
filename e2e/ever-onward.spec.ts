@@ -211,6 +211,41 @@ test.describe("Ever Onward", () => {
     await expect(page.getByTestId("eo-together-scene")).toBeAttached();
   });
 
+  test("the town: lemonade stand price, parade route floats and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-1-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-town");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("ms-meter")).toHaveCount(0);
+    await expect(page.getByTestId("eo-town-dials")).toBeAttached();
+    await expect(page.getByTestId("eo-stand")).toBeAttached();
+    for (const i of [0, 1, 2, 3, 4]) {
+      await expect(panel.getByTestId(`ms-price-${i}`)).toContainText("+ ");
+    }
+    await panel.getByRole("radio", { name: "Price: Free" }).click();
+    await expect(panel).toHaveAttribute("data-painting", "yes");
+    await expect(page.getByTestId("eo-stand")).toHaveAttribute(
+      "data-price",
+      "2"
+    );
+    await expect(panel.getByTestId("ms-street-0")).toContainText("float");
+    await panel.getByTestId("ms-send-3").click();
+    await expect(page.getByTestId("eo-float-road")).toBeAttached();
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

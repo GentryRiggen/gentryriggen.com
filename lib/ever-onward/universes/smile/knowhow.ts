@@ -3,6 +3,7 @@ import { formatNumber } from "../../engine/format";
 import type { ActionDef, ProjectDef, RunState } from "../../engine/types";
 import { forkParadeMult } from "./forks";
 import { heatOf, isTired } from "./meter";
+import { COINS, townMult } from "./town";
 import { PHASE_TOWN, PHASE_WORLD } from "./resources";
 import { TUNING } from "./tuning";
 
@@ -22,28 +23,28 @@ import { TUNING } from "./tuning";
  */
 
 const K = TUNING.knowhow;
+const T = TUNING.town;
 
 export const KNOWHOW = "knowhow";
 export const PARADE_ACTION_ID = "parade-start";
 export const PARADE_NAMES = ["", "Parade", "Cheer broadcast"] as const;
+export const BROADCAST_NAME = PARADE_NAMES[2];
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
 
-export const hasKnowhow = (run: RunState): boolean =>
-  run.phase === 1 || run.phase === 2;
+/** Know-how and the broadcast are the world's; the town has coins. */
+export const hasKnowhow = (run: RunState): boolean => run.phase === 2;
 
-const TOWN_LINES = ["clown", "band", "smile-factory", "fireworks"];
 const WORLD_LINES = ["poster", "loudspeaker", "cheer-tower", "cheer-blimp"];
 
 /** Know-how each second: every level of every helper learns a little. */
 export function knowhowPerSecond(run: RunState): number {
   if (!hasKnowhow(run)) return 0;
-  const lines = run.phase === 1 ? TOWN_LINES : WORLD_LINES;
   return (
-    lines.reduce((sum, id) => sum + owned(run, id), 0) *
+    WORLD_LINES.reduce((sum, id) => sum + owned(run, id), 0) *
     K.perLevel *
-    (run.phase === 2 ? K.worldRate : 1)
+    K.worldRate
   );
 }
 
@@ -67,22 +68,17 @@ export const paradeCost = (): number => K.paradeCost;
 /** Seconds a parade lasts. */
 export const paradeSeconds = (): number => K.paradeSeconds;
 
-/** A big top (or a dictionary of cheers) makes every parade pay half as much again. */
+/** A dictionary of cheers makes every broadcast pay half as much again. */
 const bigTopMult = (run: RunState): number =>
-  isProjectDone(run, "big-top") || isProjectDone(run, "every-language")
-    ? K.bigTopMult
-    : 1;
+  isProjectDone(run, "every-language") ? K.bigTopMult : 1;
 
 /** The parade shows once the part has a few helpers learning. */
 export const isParadeOpen = (run: RunState): boolean =>
-  hasKnowhow(run) &&
-  (run.phase === 1 ? owned(run, "clown") >= 2 : owned(run, "poster") >= 2);
+  hasKnowhow(run) && owned(run, "poster") >= 2;
 
 /** Pay while a parade is on (1 otherwise). */
 export const paradeMult = (run: RunState): number =>
-  hasKnowhow(run) && isParadeOn(run)
-    ? forkParadeMult(run) * bigTopMult(run)
-    : 1;
+  hasKnowhow(run) && isParadeOn(run) ? forkParadeMult() * bigTopMult(run) : 1;
 
 /** The crowd can take a parade when the meter is cool enough. */
 export const canParade = (run: RunState): boolean =>
@@ -104,7 +100,7 @@ export function tickKnowhow(run: RunState, dt: number): void {
 export const PARADE_ACTIONS: readonly ActionDef[] = [
   {
     id: PARADE_ACTION_ID,
-    phases: [PHASE_TOWN, PHASE_WORLD],
+    phases: [PHASE_WORLD],
     isInline: true,
     visibleWhen: isParadeOpen,
     describe: (run) => {
@@ -118,7 +114,7 @@ export const PARADE_ACTIONS: readonly ActionDef[] = [
             ? "Everyone is catching their breath"
             : `Start a ${PARADE_NAMES[run.phase].toLowerCase()}`,
         detail: rested
-          ? `Everything pays ${Number((forkParadeMult(run) * bigTopMult(run)).toFixed(2))}x for ${paradeSeconds()} seconds, and it warms the cheer meter. Best when the meter is cool.`
+          ? `Everything pays ${Number((forkParadeMult() * bigTopMult(run)).toFixed(2))}x for ${paradeSeconds()} seconds, and it warms the cheer meter. Best when the meter is cool.`
           : "The crowd is too warm for a parade right now. Wait for the cheer meter to cool.",
         cost: { resource: KNOWHOW, amount: K.paradeCost },
         isBlocked: on || resting || !rested,
@@ -137,12 +133,9 @@ const times = (before: number, after: number): string =>
 /** "×2": a project's multiplier, no more digits than it needs. */
 const mult = (n: number): string => `×${Number(n.toFixed(2))}`;
 
-/** The meter cools twice as fast with shady corners or quiet hours. */
+/** The meter cools twice as fast with quiet hours. */
 export const coolProjectMult = (run: RunState): number =>
-  (run.phase === 1 && isProjectDone(run, "shady-corners")) ||
-  (run.phase === 2 && isProjectDone(run, "quiet-hours"))
-    ? K.coolMult
-    : 1;
+  run.phase === 2 && isProjectDone(run, "quiet-hours") ? K.coolMult : 1;
 
 /** Confetti cannons and the grin guide: everything pays twice, always. */
 export const projectIncomeMult = (run: RunState): number =>
@@ -153,9 +146,10 @@ export const projectIncomeMult = (run: RunState): number =>
 
 /** Everything that multiplies the pay of the town or the world right now. */
 export const phaseBoost = (run: RunState): number =>
-  paradeMult(run) * projectIncomeMult(run);
+  (run.phase === 1 ? townMult(run) : paradeMult(run)) * projectIncomeMult(run);
 
 const cost = (amount: number) => [{ resource: KNOWHOW, amount }];
+const coinCost = (amount: number) => [{ resource: COINS, amount }];
 
 export const SMILE_PROJECTS: readonly ProjectDef[] = [
   {
@@ -163,12 +157,11 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_TOWN,
     name: "A big top tent",
     description:
-      "Stripes, a trapeze and room for the whole town. Every parade pays half as much again.",
-    tradeOff: "Know-how spent here is not there for a parade today.",
-    costs: cost(K.costs[0]),
+      "Stripes, a trapeze and room for the whole town. Every float cheers its street half as much again.",
+    tradeOff: "Coins spent here are not there for another float.",
+    costs: coinCost(K.townCosts[0]),
     revealWhen: (run) => owned(run, "clown") >= 2,
-    effectPreview: (run) =>
-      `A parade pays ${times(forkParadeMult(run), forkParadeMult(run) * K.bigTopMult)}`,
+    effectPreview: () => `A float cheers ${mult(T.bigTopCare)} as much`,
     botValue: 0.3,
   },
   {
@@ -176,12 +169,12 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_TOWN,
     name: "Shady rest corners",
     description:
-      "Little shaded corners with a lemonade jug in every street. The cheer meter cools twice as fast.",
-    tradeOff: "It only helps if you are warming the meter in the first place.",
-    costs: cost(K.costs[1]),
-    revealWhen: (run) => owned(run, "band") >= 1,
+      "Little shaded corners with a lemonade jug in every street. A street with no float takes twice as long to turn grumpy.",
+    tradeOff: "It only helps the streets you leave without a float.",
+    costs: coinCost(K.townCosts[1]),
+    revealWhen: (run) => owned(run, "band") >= 2,
     effectPreview: () =>
-      `The cheer meter cools ${mult(K.coolMult)} as fast · a worn-out crowd pays less`,
+      `A skipped street turns grumpy ${mult(1 / T.shadeFall)} slower`,
     botValue: 0.3,
   },
   {
@@ -190,8 +183,8 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     name: "Confetti cannons",
     description:
       "One on every roof, set off by a cheerful string. The whole town pays twice as many cheers, all the time.",
-    tradeOff: "It costs a lot of know-how, which a parade would have used.",
-    costs: cost(K.costs[2]),
+    tradeOff: "It costs a lot of coins, which floats would have used.",
+    costs: coinCost(K.townCosts[2]),
     revealWhen: (run) => owned(run, "smile-factory") >= 1,
     effectPreview: () => `Every street pays ${mult(K.allMult)} the cheers`,
   },
@@ -217,8 +210,8 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     tradeOff: "Know-how spent here is not there for a broadcast today.",
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "poster") >= 3,
-    effectPreview: (run) =>
-      `A broadcast pays ${times(forkParadeMult(run), forkParadeMult(run) * K.bigTopMult)}`,
+    effectPreview: () =>
+      `A broadcast pays ${times(forkParadeMult(), forkParadeMult() * K.bigTopMult)}`,
     botValue: 0.4,
   },
   {

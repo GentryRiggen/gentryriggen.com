@@ -94,12 +94,12 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Clown school",
         blurb: `Honk! Every tap pays ${times(T.town.clownTap)} as much, and the big shoes get a laugh every time.`,
-        catchLine: `Clowns tire a crowd out fast: the cheer meter fills ${Math.round((T.town.clownHeat - 1) * 100)}% faster.`,
+        catchLine: `Clowns stir a crowd up, so a street with no float turns grumpy ${Math.round((TUNING.town.clownFall - 1) * 100)}% faster.`,
       },
       {
         name: "Smile factory",
         blurb: `Smiles in boxes, on belts, all day and night. Clowns, bands and factory floors all pay ${times(T.town.factoryHelpers)} as much.`,
-        catchLine: `Every factory smile looks alike, so parades pay only ${times(T.town.factoryParade)} instead of double.`,
+        catchLine: `Every factory smile looks alike, so a float cheers a street only ${Math.round(TUNING.town.factoryCare * 100)}% as much.`,
       },
     ],
   },
@@ -223,19 +223,20 @@ export const forkHelperMult = (run: RunState): number =>
 export const forkBondMult = (run: RunState): number =>
   pick(run, "friend", T.friend.jokesBond, 1);
 
-/** How fast the cheer meter heats (clowns tire a crowd). */
-export const forkHeatMult = (run: RunState): number =>
-  pick(run, "town", T.town.clownHeat, 1);
+/** How fast a street with no float turns grumpy (clowns stir a crowd up). */
+export const forkFallMult = (run: RunState): number =>
+  pick(run, "town", TUNING.town.clownFall, 1);
+
+/** How much a float cheers a street (the factory's smiles are all alike). */
+export const forkCareMult = (run: RunState): number =>
+  pick(run, "town", 1, TUNING.town.factoryCare);
 
 /** How fast the cheer meter cools. */
 export const forkCoolMult = (run: RunState): number =>
   pick(run, "world", T.world.speakerCool, T.world.boxCool);
 
-/** The multiplier of a parade (the factory's are all alike). */
-export const forkParadeMult = (run: RunState): number =>
-  forkSide(run, "town") === 1
-    ? T.town.factoryParade
-    : TUNING.knowhow.paradeMult;
+/** The multiplier of a cheer broadcast. */
+export const forkParadeMult = (): number => TUNING.knowhow.paradeMult;
 
 /** Marks a side as chosen (the engine has already taken the cost). */
 export function chooseSide(run: RunState, id: ForkId, side: ForkSide): void {

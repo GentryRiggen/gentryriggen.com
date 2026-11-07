@@ -70,7 +70,7 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
         last
           ? `${last.name}: done!`
           : on
-            ? `The ${name.toLowerCase()} is on: everything pays ${Number(forkParadeMult(run).toFixed(2))}x or more.`
+            ? `The ${name.toLowerCase()} is on: everything pays ${Number(forkParadeMult().toFixed(2))}x or more.`
             : ""
       }
       resultTestId="ms-knowhow-result"
@@ -150,9 +150,9 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
         >
           <h3 className={`${pixelClass} text-[10px] text-amber-200`}>{name}</h3>
           <p id="ms-parade-about" className="font-mono text-sm text-slate-100">
-            Everything pays {Number(forkParadeMult(run).toFixed(2))}x or more
-            for {paradeSeconds()} seconds. It warms the cheer meter, and the
-            crowd needs a short rest after. {paradesSoFar(run)} so far.
+            Everything pays {Number(forkParadeMult().toFixed(2))}x or more for{" "}
+            {paradeSeconds()} seconds. It warms the cheer meter, and the crowd
+            needs a short rest after. {paradesSoFar(run)} so far.
           </p>
           <button
             type="button"

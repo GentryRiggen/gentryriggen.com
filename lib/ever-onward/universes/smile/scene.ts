@@ -22,6 +22,23 @@ import {
   justSighed,
   wearOf,
 } from "./together";
+import {
+  DAY_RAIN,
+  DAY_PARTY,
+  STREET_COUNT,
+  crowdOf,
+  dayKind,
+  dayStreet,
+  floatsOn,
+  isMoving,
+  isRepainting,
+  isTownOpen,
+  lastArrival,
+  lastGrump,
+  moodOfStreet,
+  movingTo,
+  priceOf,
+} from "./town";
 import { RETURN_VISITOR_ID } from "./visitors";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
@@ -42,7 +59,25 @@ export interface SmileSceneInfo {
   extraA: number;
   extraB: number;
   extraC: number;
-  /** Town and world: the parade is on, the cheer meter in quarters, worn out. */
+  /**
+   * Town, once the stand and the route are open: the price (-1 until then),
+   * the sign is being repainted, the day ("" plain, "hot", "rain2", "party1":
+   * the street follows), floats on each street ("1-2-0-0"), each street's
+   * mood (0 grumpy to 3 delighted, "3201"), a float on the road (the street it
+   * goes to, -1 none), and the two big moments (a float just arrived, a street
+   * just turned grumpy: the street, -1 none).
+   */
+  price: number;
+  /** The crowd at the stand, in tenths (0 to 10). */
+  crowd: number;
+  painting: boolean;
+  day: string;
+  crew: string;
+  moods: string;
+  moving: number;
+  arrived: number;
+  grumped: number;
+  /** World: the broadcast is on, the cheer meter in quarters, worn out. */
   parade: boolean;
   heat: number;
   tired: boolean;
@@ -170,6 +205,58 @@ function togetherInfo(
   };
 }
 
+function townInfo(
+  run: RunState
+): Pick<
+  SmileSceneInfo,
+  | "price"
+  | "crowd"
+  | "painting"
+  | "day"
+  | "crew"
+  | "moods"
+  | "moving"
+  | "arrived"
+  | "grumped"
+> {
+  if (!isTownOpen(run))
+    return {
+      price: -1,
+      crowd: 0,
+      painting: false,
+      day: "",
+      crew: "",
+      moods: "",
+      moving: -1,
+      arrived: -1,
+      grumped: -1,
+    };
+  const kind = dayKind(run);
+  const day =
+    kind === 0
+      ? ""
+      : kind === 1
+        ? "hot"
+        : `${kind === DAY_RAIN ? "rain" : kind === DAY_PARTY ? "party" : ""}${dayStreet(run)}`;
+  const streets = Array.from({ length: STREET_COUNT }, (_, i) => i);
+  return {
+    price: priceOf(run),
+    crowd: Math.round(crowdOf(run) * 10),
+    painting: isRepainting(run),
+    day,
+    crew: streets.map((i) => floatsOn(run, i)).join("-"),
+    moods: streets
+      .map((i) => {
+        const mood = moodOfStreet(run, i);
+        return mood < 0.25 ? 0 : mood < 0.5 ? 1 : mood < 0.8 ? 2 : 3;
+      })
+      .join(""),
+    moving: isMoving(run) ? movingTo(run) : -1,
+    arrived: lastArrival(run),
+    grumped: lastGrump(run),
+  };
+}
+
 export function sceneInfo(run: RunState): SmileSceneInfo {
   const p = Math.max(0, Math.min(3, run.phase));
   const phase = PHASE_IDS[p];
@@ -189,8 +276,9 @@ export function sceneInfo(run: RunState): SmileSceneInfo {
     extraA: level(run, ids[5]),
     extraB: level(run, ids[6]),
     extraC: level(run, ids[7]),
-    parade: isParadeOn(run) && (p === 1 || p === 2),
-    heat: p === 1 || p === 2 ? meterQuarters(run) : 0,
+    ...townInfo(run),
+    parade: isParadeOn(run) && p === 2,
+    heat: p === 2 ? meterQuarters(run) : 0,
     tired: isTired(run),
     projects: PROJECT_IDS[p].reduce(
       (bits, id, i) => bits | (isProjectDone(run, id) ? 1 << i : 0),

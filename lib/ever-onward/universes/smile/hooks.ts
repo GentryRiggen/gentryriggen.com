@@ -29,6 +29,21 @@ import {
   wearOf,
   withoutTogether,
 } from "./together";
+import {
+  DAY_HOT,
+  DAY_NONE,
+  DAY_RAIN,
+  PRICE_ACTION_IDS,
+  ROUTE_ACTION_IDS,
+  TOWN_ACTION_IDS,
+  canBuyFloat,
+  coinsOf,
+  dayKind,
+  floatCost,
+  grumpyCount,
+  isTownOpen,
+  townMood,
+} from "./town";
 import { TUNING } from "./tuning";
 
 /** A project is on offer and not yet done. */
@@ -64,6 +79,16 @@ export function smilePlates(run: RunState): string[] {
   if (isTogetherOpen(run)) plates.push("together");
   if (needsALook(run)) plates.push("face");
   if (hasMeter(run) && heatOf(run) >= 0.6) plates.push("meter");
+  if (isTownOpen(run)) {
+    const day = dayKind(run);
+    if (day === DAY_HOT || day === DAY_RAIN) plates.push("stand");
+    if (
+      grumpyCount(run) > 0 ||
+      (day !== DAY_NONE && day !== DAY_HOT) ||
+      (canBuyFloat(run) && coinsOf(run) >= floatCost(run))
+    )
+      plates.push("route");
+  }
   if (
     isParadeOpen(run) &&
     paradeLeft(run) <= 0 &&
@@ -80,6 +105,8 @@ export function smilePlates(run: RunState): string[] {
 export const SMILE_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
   {
     face: TOGETHER_ACTION_IDS,
+    stand: PRICE_ACTION_IDS,
+    route: ROUTE_ACTION_IDS,
     friend: QUIET_ACTION_IDS,
     fork: FORK_ACTION_IDS,
     parade: [PARADE_ACTION_ID],
@@ -92,17 +119,27 @@ export const SMILE_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
 export const SMILE_DECISION_ACTIONS: readonly string[] = [
   ...FORK_ACTION_IDS,
   ...TOGETHER_ACTION_IDS,
+  ...TOWN_ACTION_IDS,
   PARADE_ACTION_ID,
   ...QUIET_ACTION_IDS,
 ];
 
-/** The cheer meter is the town's and the world's one watched number. */
+/**
+ * The world's one watched number is the cheer meter; the town's is its mood
+ * (how happy its streets are).
+ */
 export const SMILE_CONSUMABLES: readonly ConsumableDef[] = [
   {
     id: "cool",
     label: "Cool",
     level: (run) => (hasMeter(run) ? 1 - heatOf(run) : null),
     lowZone: { lo: 0.02, hi: 0.35 },
+  },
+  {
+    id: "mood",
+    label: "Mood",
+    level: (run) => (isTownOpen(run) ? townMood(run) : null),
+    lowZone: { lo: 0.02, hi: 0.4 },
   },
 ];
 

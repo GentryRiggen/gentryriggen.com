@@ -2296,8 +2296,8 @@
   },
   "smile/cut-town-end": {
     "file": "/ever-onward/voice/smile/cut-town-end.mp3",
-    "hash": "1d8e7ad58649",
-    "durationGuess": 23
+    "hash": "54f37a027937",
+    "durationGuess": 27
   },
   "smile/cut-world-1": {
     "file": "/ever-onward/voice/smile/cut-world-1.mp3",
@@ -2531,18 +2531,18 @@
   },
   "smile/town-bench": {
     "file": "/ever-onward/voice/smile/town-bench.mp3",
-    "hash": "badef5bf6fd5",
-    "durationGuess": 10
+    "hash": "8134d7d0ee68",
+    "durationGuess": 13
   },
-  "smile/town-warm": {
-    "file": "/ever-onward/voice/smile/town-warm.mp3",
-    "hash": "fbff1dfe6fc4",
-    "durationGuess": 14
+  "smile/town-stand": {
+    "file": "/ever-onward/voice/smile/town-stand.mp3",
+    "hash": "1f7b7af7741d",
+    "durationGuess": 13
   },
   "smile/town-parade": {
     "file": "/ever-onward/voice/smile/town-parade.mp3",
-    "hash": "4f20ad4735ac",
-    "durationGuess": 13
+    "hash": "67214d907180",
+    "durationGuess": 11
   },
   "smile/town-fork": {
     "file": "/ever-onward/voice/smile/town-fork.mp3",
@@ -2554,10 +2554,15 @@
     "hash": "48b59a71d776",
     "durationGuess": 16
   },
-  "smile/town-tired": {
-    "file": "/ever-onward/voice/smile/town-tired.mp3",
-    "hash": "9ccc06807ae1",
-    "durationGuess": 17
+  "smile/town-grumpy": {
+    "file": "/ever-onward/voice/smile/town-grumpy.mp3",
+    "hash": "4b1bbad8acda",
+    "durationGuess": 14
+  },
+  "smile/town-hot": {
+    "file": "/ever-onward/voice/smile/town-hot.mp3",
+    "hash": "ab068e5cbdb4",
+    "durationGuess": 13
   },
   "smile/town-hero": {
     "file": "/ever-onward/voice/smile/town-hero.mp3",

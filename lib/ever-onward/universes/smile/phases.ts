@@ -57,7 +57,8 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Fill the town with cheer and earn the key.",
     manualResource: "cheers",
     manualLabel: "Cheer the street",
-    tapDoes: "cheer the street. Tap too fast and the crowd gets tired",
+    tapDoes:
+      "cheer the street. The stand and the parade make every tap pay more",
     isDone: (run) => owned(run, "key-to-town") >= 1,
     onEnter: (run) => {
       carry(0, 1)(run);

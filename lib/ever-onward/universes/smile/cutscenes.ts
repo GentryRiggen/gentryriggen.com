@@ -235,9 +235,9 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Watch the friend's face. It only hints at what they need, and it gets surer the longer you look.",
   ],
   [PHASE_TOWN]: [
-    "Start a parade when the cheer meter is cool. It pays double for a while.",
-    "Tap too fast and the crowd gets tired. Ease off and let the meter cool.",
-    "Spend know-how on a project that lasts, or a parade that pays now.",
+    "Free lemonade fills the street with cheers. A higher price brings coins instead.",
+    "A street with no float gets grumpy. Send it one, but the floats you take away are missed.",
+    "Rain, a hot day or a street party can change what works best. Keep an eye on the day.",
   ],
   [PHASE_WORLD]: [
     "A cheer broadcast pays double, but it warms the meter. Start one when it is cool.",

@@ -2,6 +2,7 @@ import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { coolPerSecond } from "./meter";
+import { streetRise } from "./town";
 import {
   BENCH_ID,
   KETTLE_ID,
@@ -71,6 +72,15 @@ function coolPreview(run: RunState, id: string): string {
   const pct = (n: number): string => `${Number((n * 100).toFixed(1))}%`;
   const faster = before > 0 ? Number((next / before).toFixed(1)) : 1;
   return `The cheer meter cools ×${faster} as fast\nMeter cools ${pct(before)} → ${pct(next)} a second\nA worn-out crowd pays less`;
+}
+
+/** "Floats cheer a street ×1.4 as fast" then "Street mood rises 3% → 4.2% a second". */
+function risePreview(run: RunState, id: string): string {
+  const before = streetRise(run);
+  const next = streetRise(plusOne(run, id));
+  const pct = (n: number): string => `${Number((n * 100).toFixed(1))}%`;
+  const faster = before > 0 ? Number((next / before).toFixed(1)) : 1;
+  return `Floats cheer a street ×${faster} as fast\nStreet mood rises ${pct(before)} → ${pct(next)} a second\nA skipped street still turns grumpy`;
 }
 
 type Gate = (run: RunState) => boolean;
@@ -271,7 +281,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       id: "bench",
       name: "Resting benches",
       description:
-        "Cheering is tiring work, even for a town. Each set of benches cools the cheer meter a good deal faster.",
+        "A bench in the shade of every street, so a crowd waits happily for the next float. Each set makes a street cheer up faster.",
       phase: PHASE_TOWN,
       currency: "cheers",
       baseCost: 1800,
@@ -280,7 +290,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       gate: has("clown", 2),
     }),
     kind: "mechanic",
-    effectPreview: (run) => coolPreview(run, "bench"),
+    effectPreview: (run) => risePreview(run, "bench"),
   },
   line({
     id: "smile-factory",

@@ -6483,3 +6483,232 @@ html:has(.jim-app) body {
     opacity: 0;
   }
 }
+
+/* The town: the lemonade stand and the parade route. */
+@keyframes ms-mt-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(46px) scale(1);
+  }
+}
+.ms-mt-coin {
+  animation: ms-mt-coin 1.6s ease-in infinite;
+}
+
+@keyframes ms-mt-rush {
+  0% {
+    transform: translateX(var(--mt-from, -40px));
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+.ms-mt-rush-l {
+  --mt-from: -48px;
+  animation: ms-mt-rush 1.8s ease-out infinite;
+}
+.ms-mt-rush-r {
+  --mt-from: 48px;
+  animation: ms-mt-rush 1.8s ease-out infinite;
+}
+
+@keyframes ms-mt-hmph {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(4deg);
+  }
+}
+.ms-mt-hmph {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-mt-hmph 0.7s ease-in-out infinite;
+}
+
+@keyframes ms-mt-storm {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+.ms-mt-storm {
+  animation: ms-mt-storm 0.9s ease-in-out infinite;
+}
+
+@keyframes ms-mt-bolt {
+  0%,
+  62%,
+  100% {
+    opacity: 0;
+  }
+  66%,
+  74% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.2;
+  }
+}
+.ms-mt-bolt {
+  animation: ms-mt-bolt 1.8s linear infinite;
+}
+
+@keyframes ms-mt-roll {
+  0%,
+  100% {
+    transform: translate(-2px, 0);
+  }
+  50% {
+    transform: translate(2px, -2px);
+  }
+}
+.ms-mt-roll {
+  animation: ms-mt-roll 1.1s ease-in-out infinite;
+}
+
+@keyframes ms-mt-onroad {
+  0% {
+    transform: translateX(-60px);
+  }
+  100% {
+    transform: translateX(60px);
+  }
+}
+.ms-mt-onroad {
+  animation: ms-mt-onroad 1.6s linear infinite;
+}
+
+@keyframes ms-mt-burst {
+  0% {
+    opacity: 0;
+    transform: translateY(-22px) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(70px) rotate(300deg);
+  }
+}
+.ms-mt-burst {
+  animation: ms-mt-burst 2.4s ease-in infinite;
+}
+
+@keyframes ms-mt-shout {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  24% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+.ms-mt-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-mt-shout 3.6s ease-out infinite;
+}
+
+@keyframes ms-mt-sun {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+.ms-mt-sun {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-mt-sun 1.4s ease-in-out infinite;
+}
+
+@keyframes ms-mt-drops {
+  0% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(70px);
+    opacity: 0.1;
+  }
+}
+.ms-mt-drops {
+  animation: ms-mt-drops 0.7s linear infinite;
+}
+
+@keyframes ms-mt-disco {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.ms-mt-disco {
+  animation: ms-mt-disco 0.6s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-mt-coin,
+  .ms-mt-rush-l,
+  .ms-mt-rush-r,
+  .ms-mt-hmph,
+  .ms-mt-storm,
+  .ms-mt-bolt,
+  .ms-mt-roll,
+  .ms-mt-onroad,
+  .ms-mt-burst,
+  .ms-mt-shout,
+  .ms-mt-sun,
+  .ms-mt-drops,
+  .ms-mt-disco {
+    animation: none;
+  }
+
+  .ms-mt-coin,
+  .ms-mt-burst,
+  .ms-mt-bolt {
+    opacity: 1;
+  }
+}

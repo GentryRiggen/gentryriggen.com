@@ -12,6 +12,7 @@ import KnowHowPanel from "../game/smile/KnowHowPanel";
 import SmileEndingArt from "../game/smile/SmileEndingArt";
 import SmileForkPanel from "../game/smile/SmileForkPanel";
 import TogetherPanel from "../game/smile/TogetherPanel";
+import TownPanel from "../game/smile/TownPanel";
 import StickerIcon from "../game/smile/StickerIcon";
 import { SMILEY_DIM, SMILEY_LIT, SMILEY_ROWS } from "../game/smile/sprites";
 import SmileScene from "../scenes/smile/SmileScene";
@@ -49,6 +50,9 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   if (rose("tgLits")) cues.push("chime");
   if (rose("tgSighs")) cues.push("flutter");
   if (rose("pdCount")) cues.push("ribbon");
+  if (rose("tnArriveAt")) cues.push("ribbon");
+  if (rose("tnGrumpAt")) cues.push("flutter");
+  if (rose("tnDays")) cues.push("chime");
   if (rose("qtTends")) cues.push("flutter");
   return cues;
 }
@@ -56,7 +60,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** The Make Everyone Smile screens: scene, panels, ending, sounds. */
 export const SMILE_UI: UniverseUi = {
   Scene: SmileScene,
-  primaryPanels: [TogetherPanel, CheerMeter, FriendPanel],
+  primaryPanels: [TogetherPanel, TownPanel, CheerMeter, FriendPanel],
   panels: [SmileForkPanel, KnowHowPanel],
   ending: { storyIds: ENDING_STORY_IDS, Art: SmileEndingArt },
   tapLooks: LOOKS,

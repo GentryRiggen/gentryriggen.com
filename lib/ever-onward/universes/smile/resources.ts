@@ -67,15 +67,54 @@ export const RESOURCES: readonly ResourceDef[] = [
     format: (v) => `${((v / FULL_TRUST) * 100).toFixed(1)}%`,
   },
   {
+    id: "coins",
+    label: "Coins",
+    phases: [PHASE_TOWN],
+    purpose: "Buys floats and town projects.",
+  },
+  {
     id: "knowhow",
     label: "Know-how",
-    phases: [PHASE_TOWN, PHASE_WORLD],
-    purpose: "Buys projects and parades.",
+    phases: [PHASE_WORLD],
+    purpose: "Buys projects and broadcasts.",
   },
-  // The cheer meter: heat (0 to 1) and whether the crowd is worn out.
+  // The cheer meter (the world): heat (0 to 1) and whether the crowd is worn out.
   ...hidden(["mtHeat", "mtTired"]),
   // The parade: seconds left and parades held.
   ...hidden(["pdLeft", "pdCount"]),
+  // The town: the price and the one being painted, the seconds left, floats
+  // on each street and owned, the one on the road (and where to, how long),
+  // each street's mood, the day (kind, street, seconds left, calm left, count),
+  // the random stream, and the big moments' clocks.
+  ...hidden([
+    "tnPrice",
+    "tnNext",
+    "tnPaint",
+    "tnChanges",
+    "tnFloats",
+    "tnF0",
+    "tnF1",
+    "tnF2",
+    "tnF3",
+    "tnMove",
+    "tnTo",
+    "tnMoveLeft",
+    "tnMoves",
+    "tnH0",
+    "tnH1",
+    "tnH2",
+    "tnH3",
+    "tnDay",
+    "tnDaySt",
+    "tnDayLeft",
+    "tnCalm",
+    "tnDays",
+    "tnRng",
+    "tnArriveAt",
+    "tnArriveSt",
+    "tnGrumpAt",
+    "tnGrumpSt",
+  ]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).
   ...hidden(["fkFriend", "fkTown", "fkWorld", "fkQuiet"]),
   // What you do together: the activity, the one being switched to and the

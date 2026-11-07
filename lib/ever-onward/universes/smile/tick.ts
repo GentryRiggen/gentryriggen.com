@@ -5,6 +5,7 @@ import { phaseBoost, tickKnowhow } from "./knowhow";
 import { heatByTap, tickMeter, tiredMult } from "./meter";
 import { addPatience, isQuietOpen, tickQuiet } from "./quiet";
 import { MANUAL_RESOURCES } from "./resources";
+import { tickTown } from "./town";
 import { TUNING } from "./tuning";
 import { bondGain, tickTogether, togetherPay } from "./together";
 import { RETURN_VISITOR_ID } from "./visitors";
@@ -133,6 +134,7 @@ export function tickSmile(run: RunState, dt: number): void {
   earn(run, incomePerSecond(run) * dt);
   tickTogether(run, dt, () => friendGrossIncome(run) + friendGrossTap(run));
   tickKnowhow(run, dt);
+  tickTown(run, dt);
   tickMeter(run, dt);
   if (isQuietOpen(run)) tickQuiet(run, dt, () => tendingValue(run));
 }
