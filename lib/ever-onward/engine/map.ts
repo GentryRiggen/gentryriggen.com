@@ -129,7 +129,7 @@ export function pendingFind(
 }
 
 /** The map state once the finished run on `at` is counted. */
-function counted(def: UniverseDef, save: UniverseSave): MapState {
+export function counted(def: UniverseDef, save: UniverseSave): MapState {
   const state = mapOf(def, save);
   const find = pendingFind(def, save);
   return {
