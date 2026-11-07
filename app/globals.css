@@ -5358,6 +5358,107 @@ html:has(.jim-app) body {
   }
 }
 
+/* Ever Onward: Make It Grow, the world's water, blight and healing (gv-*). */
+.gv-cell {
+  transition: fill 0.9s ease;
+}
+
+@keyframes gv-glisten {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+.gv-glisten {
+  animation: gv-glisten 2.4s ease-in-out infinite;
+}
+
+@keyframes gv-sick {
+  0%,
+  100% {
+    stroke-opacity: 0.35;
+  }
+  50% {
+    stroke-opacity: 0.95;
+  }
+}
+.gv-sick {
+  animation: gv-sick 2s ease-in-out infinite;
+}
+
+@keyframes gv-spore {
+  0% {
+    transform: translateY(2px) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-16px) scale(1.5);
+    opacity: 0;
+  }
+}
+.gv-spore {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gv-spore 2.6s ease-out infinite;
+}
+
+@keyframes gv-wave {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+.gv-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gv-wave 1.8s ease-out 3 both;
+}
+
+@keyframes gv-spark {
+  0% {
+    transform: translateY(8px) scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-26px) scale(1.4);
+    opacity: 0;
+  }
+}
+.gv-spark {
+  animation: gv-spark 1.6s ease-out 4 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-cell {
+    transition: none;
+  }
+  .gv-glisten,
+  .gv-sick,
+  .gv-spore,
+  .gv-wave,
+  .gv-spark {
+    animation: none;
+  }
+  .gv-spore,
+  .gv-wave,
+  .gv-spark {
+    opacity: 0;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,

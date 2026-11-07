@@ -1,8 +1,10 @@
 import type { RunState } from "../../engine/types";
 import {
   BIOMES,
-  activeBiome,
   biomeShare,
+  blightOf,
+  justBlighted,
+  justHealed,
   worldCover,
   type Biome,
 } from "./biomes";
@@ -75,22 +77,25 @@ export interface GrowSceneInfo {
   /** Farm: tractors, glasshouses and seed drones, and the crop planted. */
   machines: number;
   crop: FieldCrop;
-  /** World: how much of the planet is green, and each biome's share (tenths). */
+  /** World: how much of the planet is green, and each biome's share (twentieths). */
   cover: number;
   forest: number;
   jungle: number;
   meadow: number;
   wetland: number;
-  /** World: the biome that is spreading. */
-  biome: Biome;
+  /** World: each biome's rot in tenths, "forest|jungle|meadow|wetland" ("0|0|0|0" when healthy). */
+  blight: string;
+  /** World: the rot has just shown, or the world has just healed (a few seconds each). */
+  blightNew: boolean;
+  healed: boolean;
+  /** World: how full the planet's water is, 0 to 10 (rivers, wetlands and cracks read it). */
+  worldWater: number;
   /** World: how much of the globe is green, in twentieths (the pull-back picture). */
   greenFraction: number;
   /** World: river bends, clouds drifting, and flocks of seed birds in the picture. */
   rivers: number;
   clouds: number;
   flocks: number;
-  /** World: a migrating flock has landed at least once (a V of birds in the sky). */
-  migrated: boolean;
   /** World: how much of the old roads and towns the picture still draws (0 to 1 in tenths). Drawn only, never shown as a number or a label. */
   roadsLeft: number;
   townsLeft: number;
@@ -419,16 +424,19 @@ function worldInfo(
   | "jungle"
   | "meadow"
   | "wetland"
-  | "biome"
+  | "blight"
+  | "blightNew"
+  | "healed"
+  | "worldWater"
   | "greenFraction"
   | "rivers"
   | "clouds"
   | "flocks"
-  | "migrated"
   | "roadsLeft"
   | "townsLeft"
 > {
-  const share = (b: Biome) => (isWorld ? tenths(biomeShare(run, b)) : 0);
+  const share = (b: Biome) =>
+    isWorld ? Math.round(biomeShare(run, b) * 20) : 0;
   const cover = isWorld ? worldCover(run) : 0;
   const n = (id: string) => (isWorld ? owned(run, id) : 0);
   return {
@@ -436,16 +444,20 @@ function worldInfo(
     rivers: Math.min(6, n("river-bend")),
     clouds: isWorld ? 2 + Math.min(4, n("cloud-seeder")) : 0,
     flocks: Math.min(5, n("sky-seeder")),
-    migrated: isWorld && (run.resources.mgFlights ?? 0) > 0,
     // Roads go quiet first, towns a little later; both are only drawn.
     roadsLeft: isWorld ? tenths(1 - (cover - 0.05) / 0.7) : 0,
     townsLeft: isWorld ? tenths(1 - (cover - 0.15) / 0.7) : 0,
-    cover: isWorld ? tenths(worldCover(run)) : 0,
+    cover: isWorld ? Math.round(worldCover(run) * 20) : 0,
     forest: share(BIOMES[0]),
     jungle: share(BIOMES[1]),
     meadow: share(BIOMES[2]),
     wetland: share(BIOMES[3]),
-    biome: isWorld ? activeBiome(run) : "forest",
+    blight: BIOMES.map((b) =>
+      isWorld ? Math.round(blightOf(run, b) * 10) : 0
+    ).join("|"),
+    blightNew: isWorld && justBlighted(run),
+    healed: isWorld && justHealed(run),
+    worldWater: isWorld ? tenths(waterLevel(run)) : 0,
   };
 }
 

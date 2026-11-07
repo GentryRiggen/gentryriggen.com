@@ -12,13 +12,6 @@ import {
   wiltsSoFar,
 } from "./bees";
 import { worldCover } from "./biomes";
-import {
-  FLOCK_LEADER_ID,
-  flightsSoFar,
-  leaderPaysOn,
-  leaderShown,
-  openMigration,
-} from "./migration";
 import { TUNING } from "./tuning";
 import { beesWelcome, forkSide } from "./forks";
 import { MARKET_AGENT_ID, harvestDays } from "./market";
@@ -530,7 +523,6 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "planting-rover",
-    badge: "NEW ABILITY",
     name: "A planting rover",
     description:
       "A six-wheeled rover that plants a tree, shuffles forward and plants another, all day and all night.",
@@ -541,26 +533,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 8,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("windbreak", 3),
-    onBuy: openMigration,
     effectPreview: (run) => helperPreview(run, "planting-rover"),
-  },
-  {
-    id: FLOCK_LEADER_ID,
-    badge: "NEW ABILITY",
-    name: "A flock leader",
-    description:
-      "A wise old goose who leads a waiting flock to the place that needs it most when you are busy. Your own choice still grows more.",
-    phases: [PHASE_WORLD],
-    currency: "green",
-    baseCost: 900000,
-    costGrowth: 1,
-    // A bonus helper, not income: bots buy the world first.
-    priority: -1,
-    kind: "mechanic",
-    // Halfway along: once a couple of flights have landed.
-    visibleWhen: leaderShown,
-    effectPreview: (run) =>
-      `Sends a waiting flock to the most welcoming place: about ${num(Math.floor(leaderPaysOn(run, incomePerSecond(run))))} green (flights so far: ${flightsSoFar(run)})`,
   },
   {
     id: "cloud-seeder",
@@ -597,7 +570,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     description: "One seed, saved from everything, kept safe for later.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 46000000,
+    baseCost: 80000000,
     costGrowth: 1,
     kind: "mechanic",
     visibleWhen: (run) =>

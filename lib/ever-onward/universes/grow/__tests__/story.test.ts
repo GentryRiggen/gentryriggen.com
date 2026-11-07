@@ -103,6 +103,9 @@ describe("Grow world story", () => {
       "world-jungle",
       "world-meadow",
       "world-wetland",
+      // A careful mix never catches the blight.
+      "world-blight",
+      "world-healed",
     ];
     expect(missing.filter((id) => !skippable.includes(id))).toEqual([]);
   });

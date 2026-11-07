@@ -1,7 +1,7 @@
 import { WorldForkArt, WorldProjectArt } from "./TradeoffArt";
 import { useEffect, useState } from "react";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
-import { GLOBE, GLOBE_FLOCK, cloudAt, riverAt } from "./anchors";
+import { GLOBE, cloudAt, riverAt } from "./anchors";
 
 const BIOME_FILL = {
   forest: "#3a8f3f",
@@ -27,6 +27,13 @@ const CELL = 11;
 const OCEAN = "#2c6cc4";
 const LAND = "#c9a56a";
 const LAND_DRY = "#d9b25a";
+/** Blight: a creeping grey-brown rot, with a darker stain and dead wood. */
+const ROT = "#8a8474";
+const ROT_STAIN = "#4d4538";
+const ROT_WOOD = "#2c241b";
+/** Cracked earth, and the dust over a thirsty land. */
+const CRACK = "#5a3a1c";
+const DUST = "#e0b44f";
 
 /** A small repeatable pseudo-random number (the same globe every time). */
 function rand(seed: number): () => number {
@@ -60,6 +67,10 @@ interface Cell {
   /** Which biome this cell turns into, as a 0 to 1 draw. */
   pick: number;
   fleck: boolean;
+  /** 0 = rots first, when its biome is blighted. */
+  rot: number;
+  /** Which cells glisten when a wetland is wet (a few, spread about). */
+  shine: number;
 }
 
 /** Every cell of the globe, with the order the green reaches it. */
@@ -76,7 +87,15 @@ const CELLS: readonly Cell[] = (() => {
       const land = inLand(x + CELL / 2, y + CELL / 2);
       const r = next();
       keys.push(land ? r * 0.55 : 0.4 + r * 0.6);
-      cells.push({ x, y, land, pick: next(), fleck: next() < 0.35 });
+      cells.push({
+        x,
+        y,
+        land,
+        pick: next(),
+        fleck: next() < 0.35,
+        rot: next(),
+        shine: Math.floor(next() * 4),
+      });
     }
   }
   const order = keys.map((k, i) => [k, i] as const).sort((a, b) => a[0] - b[0]);
@@ -123,38 +142,32 @@ const STARS = Array.from({ length: 36 }, (_, i) => {
   return { x: next() * 420 - 10, y: next() * 310 - 5, big: next() < 0.2 };
 });
 
-/** Which biome a cell turns into, from the shares. */
+/**
+ * Which biome a cell is, from the shares right now. The shares move as the
+ * mix does, so the whole globe re-colours as they shift (a cell is only
+ * ever one biome at a time, and the same cell is the same biome for the
+ * same shares).
+ */
 function biomeFor(pick: number, info: GrowSceneInfo): BiomeKey {
   const total = info.forest + info.jungle + info.meadow + info.wetland;
-  if (total <= 0) return info.biome;
+  if (total <= 0) return "forest";
   let at = pick * total;
   for (const b of BIOME_KEYS) {
     at -= info[b];
     if (at < 0) return b;
   }
-  return info.biome;
+  return "forest";
 }
 
-/**
- * Each green cell's biome, fixed at the moment it greens, so old patches keep
- * their look when the player points the birds somewhere new.
- */
-function useCellBiomes(
-  info: GrowSceneInfo,
-  greened: number
-): readonly (BiomeKey | undefined)[] {
-  const [fixed, setFixed] = useState<readonly (BiomeKey | undefined)[]>([]);
-  const fresh = CELLS.some(
-    (c, i) => c.rank * CELLS.length < greened && fixed[i] === undefined
-  );
-  if (!fresh) return fixed;
-  const next = CELLS.map((c, i) =>
-    c.rank * CELLS.length < greened
-      ? (fixed[i] ?? biomeFor(c.pick, info))
-      : undefined
-  );
-  setFixed(next);
-  return next;
+/** Each biome's rot in tenths ("forest|jungle|meadow|wetland"). */
+function rotOf(info: GrowSceneInfo): Record<BiomeKey, number> {
+  const parts = info.blight.split("|").map(Number);
+  return {
+    forest: parts[0] ?? 0,
+    jungle: parts[1] ?? 0,
+    meadow: parts[2] ?? 0,
+    wetland: parts[3] ?? 0,
+  };
 }
 
 /** True once the phase card is gone, so the pull-back is seen, not hidden. */
@@ -229,28 +242,6 @@ function Flock({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** A V of migrating birds, once a flock has landed somewhere. */
-function MigrantV({ x, y }: { x: number; y: number }) {
-  const spots = [0, 1, 2, 3, 4].map((k) => [Math.abs(k - 2) * 7, k * 5 - 8]);
-  return (
-    <g className="gw-drift [animation-delay:-3s]" data-testid="lm-migrants">
-      {spots.map(([dx, dy], k) => (
-        <g key={k}>
-          <rect x={x - dx} y={y + dy} width="4" height="2" fill="#fff8d6" />
-          <rect
-            x={x - dx + 4}
-            y={y + dy + 2}
-            width="3"
-            height="2"
-            fill="#fff8d6"
-          />
-          <rect x={x - dx + 7} y={y + dy} width="4" height="2" fill="#fff8d6" />
-        </g>
-      ))}
-    </g>
-  );
-}
-
 /** A close-up farm that the camera leaves behind. */
 function FarmBehind({ away }: { away: boolean }) {
   return (
@@ -274,11 +265,163 @@ function FarmBehind({ away }: { away: boolean }) {
   );
 }
 
+/** Fills for a thirsty land: dull, dusty greens (the wetland never thirsts). */
+const DRY_FILL = {
+  forest: "#7d8a3c",
+  jungle: "#8f8c2d",
+  meadow: "#d0c062",
+  wetland: BIOME_FILL.wetland,
+} as const;
+
+/** Cracks in the earth: short zigzags that start on land (the same every time). */
+const CRACKS: readonly string[] = (() => {
+  const next = rand(31);
+  const out: string[] = [];
+  for (let n = 0; n < 70; n += 1) {
+    let x = GLOBE.x - GLOBE.r + next() * GLOBE.r * 2;
+    let y = GLOBE.y - GLOBE.r + next() * GLOBE.r * 2;
+    if (!inLand(x, y)) continue;
+    let d = `M${x.toFixed(1)} ${y.toFixed(1)}`;
+    for (let k = 0; k < 4; k += 1) {
+      x += (next() - 0.5) * 16;
+      y += 3 + next() * 7;
+      d += `L${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    out.push(d);
+  }
+  return out;
+})();
+
+/** Spore puffs that drift up off a rotting land (only drawn while it rots). */
+const SPORES = (() => {
+  const next = rand(77);
+  const out: { x: number; y: number }[] = [];
+  for (let guard = 0; out.length < 10 && guard < 500; guard += 1) {
+    const x = GLOBE.x - GLOBE.r + next() * GLOBE.r * 2;
+    const y = GLOBE.y - GLOBE.r + next() * GLOBE.r * 2;
+    if (inLand(x, y)) out.push({ x, y });
+  }
+  return out;
+})();
+
+/** Sparkles for the healing wave: spread over the globe, rising as they fade. */
+const HEAL_SPARKS = Array.from({ length: 16 }, (_, i) => {
+  const next = rand(500 + i);
+  const angle = next() * Math.PI * 2;
+  const radius = 20 + next() * (GLOBE.r - 30);
+  return {
+    x: GLOBE.x + Math.cos(angle) * radius,
+    y: GLOBE.y + Math.sin(angle) * radius,
+    color: ["#d8ffb0", "#7cff8a", "#fff7a8", "#ffffff"][i % 4],
+  };
+});
+const DELAYS = [
+  "",
+  "[animation-delay:0.3s]",
+  "[animation-delay:0.6s]",
+  "[animation-delay:0.9s]",
+] as const;
+
+/** Wilting trees on a rotten patch: a dark trunk and a drooping crown. */
+function WiltedTree({ x, y }: { x: number; y: number }) {
+  return (
+    <g aria-hidden="true">
+      <rect x={x + 5} y={y + 4} width="1.5" height="6" fill={ROT_WOOD} />
+      <rect x={x + 2} y={y + 3} width="8" height="2" fill="#6b5b3f" />
+      <rect x={x + 1} y={y + 5} width="2" height="4" fill="#6b5b3f" />
+      <rect x={x + 9} y={y + 5} width="2" height="3" fill="#6b5b3f" />
+    </g>
+  );
+}
+
+/** The rot has just shown: a brown flash over the globe and a warning. */
+function BlightAlarm() {
+  return (
+    <g aria-hidden="true" data-testid="eo-blight-alarm">
+      <circle
+        className="gp-flash"
+        cx={GLOBE.x}
+        cy={GLOBE.y}
+        r={GLOBE.r}
+        fill="#6b4a22"
+      />
+      <text
+        x={GLOBE.x}
+        y={GLOBE.y - 6}
+        textAnchor="middle"
+        className="gp-shout font-[family-name:var(--font-eo-pixel)]"
+        fontSize="22"
+        fill="#e6d3a3"
+        stroke="#2b1d0a"
+        strokeWidth="5"
+        paintOrder="stroke"
+      >
+        BLIGHT!
+      </text>
+    </g>
+  );
+}
+
+/** The world has healed: green waves roll out, sparkles rise, a big cheer. */
+function HealedWave() {
+  return (
+    <g aria-hidden="true" data-testid="eo-healed">
+      <circle
+        className="gp-flash"
+        cx={GLOBE.x}
+        cy={GLOBE.y}
+        r={GLOBE.r}
+        fill="#b8ff9a"
+      />
+      {DELAYS.slice(0, 3).map((delay, k) => (
+        <circle
+          key={k}
+          className={`gv-wave ${delay}`}
+          cx={GLOBE.x}
+          cy={GLOBE.y}
+          r={GLOBE.r}
+          fill="none"
+          stroke={k % 2 ? "#fff7a8" : "#7cff8a"}
+          strokeWidth="7"
+        />
+      ))}
+      {HEAL_SPARKS.map((p, i) => (
+        <rect
+          key={i}
+          className={`gv-spark ${DELAYS[i % 4]}`}
+          x={p.x}
+          y={p.y}
+          width="4"
+          height="4"
+          fill={p.color}
+        />
+      ))}
+      <text
+        x={GLOBE.x}
+        y={GLOBE.y - 6}
+        textAnchor="middle"
+        className="gp-shout font-[family-name:var(--font-eo-pixel)]"
+        fontSize="24"
+        fill="#9dff8a"
+        stroke="#0b3b14"
+        strokeWidth="5"
+        paintOrder="stroke"
+      >
+        HEALED!
+      </text>
+    </g>
+  );
+}
+
 /**
  * The green world: the camera has left the farms and pulled back to a globe.
- * It starts bare and tan, then turns green biome by biome. The old roads fade
- * to meadow and the little towns turn into woods, quietly, and nothing about
- * that is ever counted or labelled. Kids see a beautiful green planet.
+ * It starts bare and tan, then turns green. The shares of each biome move
+ * with the player's mix, so the whole globe re-colours as they shift. Water
+ * is drawn too: rivers run full or shrink, wetlands glisten when wet, and a
+ * dry land cracks and fades. A biome that covers too much rots, a grey-brown
+ * creep with wilting trees, until the mix is spread out again and a green
+ * wave rolls back. The old roads fade to meadow and the little towns turn
+ * into woods, quietly, and nothing about that is ever counted or labelled.
  */
 export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
   const gone = useCardGone();
@@ -286,7 +429,12 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
   const roads = Math.round(info.roadsLeft * ROADS.length);
   const towns = Math.round(info.townsLeft * TOWNS.length);
   const bare = info.dry ? LAND_DRY : LAND;
-  const biomes = useCellBiomes(info, greened);
+  const rot = rotOf(info);
+  const isSick = BIOME_KEYS.some((b) => rot[b] >= 1);
+  const water = info.worldWater;
+  const parched = info.dry || water <= 2;
+  const thickness = info.dry ? 1 : 1 + (water / 10) * 2.2;
+  const riverColor = info.dry ? "#a8864a" : "#4aa3f0";
   const globeClass = `gw-globe ${gone ? "gw-pullback" : "gw-zoomed"}`;
   return (
     <g>
@@ -342,6 +490,8 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
         className={globeClass}
         data-testid="lm-globe"
         data-green={info.greenFraction}
+        data-water={water}
+        data-blight={isSick ? "yes" : "no"}
       >
         <circle
           cx={GLOBE.x}
@@ -350,28 +500,68 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
           fill={info.ended ? "#a5d6a7" : "#7fb2ff"}
           fillOpacity={info.ended ? 0.5 : 0.18}
         />
+        {isSick && (
+          <circle
+            className="gv-sick"
+            data-testid="eo-blight-halo"
+            cx={GLOBE.x}
+            cy={GLOBE.y}
+            r={GLOBE.r + 4}
+            fill="none"
+            stroke={ROT}
+            strokeWidth="6"
+          />
+        )}
         <circle cx={GLOBE.x} cy={GLOBE.y} r={GLOBE.r} fill={OCEAN} />
         <g clipPath="url(#gw-clip)">
           {CELLS.map((c, i) => {
             const green = c.rank * CELLS.length < greened;
             if (!green && !c.land) return null;
-            const biome = biomes[i] ?? biomeFor(c.pick, info);
+            const biome = biomeFor(c.pick, info);
+            const isRotten = green && c.rot * 10 < rot[biome];
+            const fill = !green
+              ? bare
+              : isRotten
+                ? c.fleck
+                  ? ROT_STAIN
+                  : ROT
+                : info.dry
+                  ? DRY_FILL[biome]
+                  : BIOME_FILL[biome];
+            const glistens =
+              green &&
+              !isRotten &&
+              biome === "wetland" &&
+              !info.dry &&
+              water >= 3;
             return (
               <g key={i}>
                 <rect
+                  className="gv-cell"
                   x={c.x}
                   y={c.y}
                   width={CELL}
                   height={CELL}
-                  fill={green ? BIOME_FILL[biome] : bare}
+                  fill={fill}
                 />
-                {green && c.fleck && (
+                {green && !isRotten && c.fleck && (
                   <rect
                     x={c.x + 3}
                     y={c.y + 3}
                     width="4"
                     height="3"
                     fill={BIOME_FLECK[biome]}
+                  />
+                )}
+                {isRotten && c.fleck && <WiltedTree x={c.x} y={c.y} />}
+                {glistens && (
+                  <rect
+                    className={`gv-glisten ${DELAYS[c.shine]}`}
+                    x={c.x + 2}
+                    y={c.y + 4}
+                    width="7"
+                    height="2"
+                    fill="#e8fbff"
                   />
                 )}
               </g>
@@ -418,23 +608,63 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
               </g>
             );
           })}
+          {isSick &&
+            SPORES.map((p, i) => (
+              <circle
+                key={i}
+                aria-hidden="true"
+                className={`gv-spore ${DELAYS[i % 4]}`}
+                cx={p.x}
+                cy={p.y}
+                r={4 + (i % 3)}
+                fill={ROT_STAIN}
+                fillOpacity="0.7"
+              />
+            ))}
+          {parched && (
+            <g
+              aria-hidden="true"
+              data-testid="eo-cracks"
+              fill="none"
+              stroke={CRACK}
+              strokeWidth="1.3"
+              strokeOpacity={info.dry ? 0.95 : 0.5}
+            >
+              {CRACKS.map((d, i) => (
+                <path key={i} d={d} />
+              ))}
+            </g>
+          )}
           {Array.from({ length: info.rivers }, (_, i) => {
             const { x, y } = riverAt(i);
+            const t = thickness;
             return (
-              <g key={i}>
-                <rect x={x} y={y} width="26" height="3" fill="#4aa3f0" />
-                <rect x={x + 24} y={y} width="3" height="18" fill="#4aa3f0" />
+              <g key={i} data-testid="eo-river">
+                <rect
+                  x={x}
+                  y={y + (3 - t) / 2}
+                  width="26"
+                  height={t}
+                  fill={riverColor}
+                />
+                <rect
+                  x={x + 24 + (3 - t) / 2}
+                  y={y}
+                  width={t}
+                  height="18"
+                  fill={riverColor}
+                />
                 <rect
                   x={x + 24}
-                  y={y + 16}
+                  y={y + 16 + (3 - t) / 2}
                   width="22"
-                  height="3"
-                  fill="#4aa3f0"
+                  height={t}
+                  fill={riverColor}
                 />
               </g>
             );
           })}
-          {info.rivers > 0 && (
+          {info.rivers > 0 && !info.dry && water >= 2 && (
             <g className="gg-flow">
               {Array.from({ length: info.rivers }, (_, i) => {
                 const { x, y } = riverAt(i);
@@ -451,8 +681,21 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
               })}
             </g>
           )}
+          {info.dry && (
+            <rect
+              aria-hidden="true"
+              x={GLOBE.x - GLOBE.r}
+              y={GLOBE.y - GLOBE.r}
+              width={GLOBE.r * 2}
+              height={GLOBE.r * 2}
+              fill={DUST}
+              fillOpacity="0.16"
+            />
+          )}
           <circle cx={GLOBE.x} cy={GLOBE.y} r={GLOBE.r} fill="url(#gw-shade)" />
         </g>
+        {info.blightNew && <BlightAlarm />}
+        {info.healed && <HealedWave />}
         {[0, 1].map((half) => (
           <g
             key={half}
@@ -463,7 +706,6 @@ export default function WorldLayer({ info }: { info: GrowSceneInfo }) {
             )}
           </g>
         ))}
-        {info.migrated && <MigrantV x={GLOBE_FLOCK.x} y={GLOBE_FLOCK.y} />}
         {info.flocks > 0 && (
           <g className="gg-glide">
             {Array.from({ length: info.flocks }, (_, i) => (

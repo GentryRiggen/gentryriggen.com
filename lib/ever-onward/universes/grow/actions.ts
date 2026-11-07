@@ -20,11 +20,10 @@ import {
   takeBee,
   takeBeeActionId,
 } from "./bees";
-import { SPREAD_ACTIONS } from "./biomes";
+import { MIX_ACTIONS } from "./biomes";
 import { pumpkinActions } from "./pumpkin";
 import { FORK_ACTIONS } from "./forks";
 import { FESTIVAL_ACTIONS } from "./knowhow";
-import { sendActions } from "./migration";
 import { MARKET_ACTIONS } from "./market";
 import { PHASE_YARD } from "./resources";
 import { seasonBoost, seasonOf } from "./seasons";
@@ -152,9 +151,8 @@ export const GROW_ACTIONS: readonly ActionDef[] = [
   ...POLLINATION,
   ...MARKET_ACTIONS,
   ...FESTIVAL_ACTIONS,
-  ...SPREAD_ACTIONS,
+  ...MIX_ACTIONS,
   ...pumpkinActions(farmPayPerSecond),
-  ...sendActions(incomePerSecond),
   ...tendActions(tendingValue),
 ];
 

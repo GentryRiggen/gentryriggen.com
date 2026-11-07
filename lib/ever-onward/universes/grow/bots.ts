@@ -20,10 +20,11 @@ import {
 } from "./bees";
 import {
   BIOMES,
-  activeBiome,
-  bestBiome,
-  biomeValue,
-  spreadActionId,
+  blightOf,
+  isBiomeLocked,
+  lessActionId,
+  moreActionId,
+  pointsOf,
   type Biome,
 } from "./biomes";
 import {
@@ -32,7 +33,6 @@ import {
   entriesSoFar,
   pumpkinStep,
 } from "./pumpkin";
-import { flightsSoFar, mostWelcoming, sendActionId } from "./migration";
 import {
   CROPS,
   daySeconds,
@@ -49,7 +49,7 @@ import { shownProjects } from "../../engine/engine";
 import { FESTIVAL_ACTION_ID, festivalCost, knowhowOf } from "./knowhow";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { TUNING } from "./tuning";
-import { STORAGE_IDS, isDry, rainOutlook } from "./water";
+import { STORAGE_IDS, isDry, rainOutlook, waterLevel } from "./water";
 import { currentWant, isWanting, tendActionId, tendsSoFar } from "./windowbox";
 import { growUniverse } from ".";
 
@@ -159,25 +159,6 @@ export const feedsPumpkin =
   };
 
 /**
- * Sends the flock to the most welcoming region. Like the fair bot, one flight
- * in every `skipEvery`th goes to the flock leader instead.
- */
-export const sendsFlock =
-  (options: { skipEvery?: number } = {}): Actions =>
-  (run, available) => {
-    if (run.phase !== 2) return [];
-    const { skipEvery } = options;
-    if (
-      skipEvery &&
-      flightsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.mgTime ?? 0) < SKIP_DELAY
-    )
-      return [];
-    const id = sendActionId(mostWelcoming(run));
-    return available.includes(id) ? [id] : [];
-  };
-
-/**
  * Answers what the pot wants. Like the other side-machine bots, one want in
  * every `skipEvery`th goes to the music box instead (or after SKIP_DELAY).
  */
@@ -236,36 +217,123 @@ export const alwaysPlants =
       : [];
   };
 
+/** The mix a careful player aims for with the world quiet: some of each. */
+const CALM_MIX: Readonly<Record<Biome, number>> = {
+  forest: 3,
+  jungle: 3,
+  meadow: 2,
+  wetland: 2,
+};
+
+/** What a player who only wants the most green sets, and leaves. */
+const GREEDY_MIX: Readonly<Record<Biome, number>> = {
+  forest: 3,
+  jungle: 5,
+  meadow: 1,
+  wetland: 1,
+};
+
 /**
- * Looks at the world now and then and spreads the biome worth the most,
- * once it beats the spreading one by `margin` (so it never chases a crumb).
+ * The mix a careful bot wants now: some of every open biome, a point of
+ * jungle moved to wetland while the tank is low (and kept there until it has
+ * refilled well), and a point off any biome close to the blight line, given
+ * to the open biome with the least.
  */
-export const biomePolicy =
-  (window = 15, margin = TUNING.world.playerMargin): Actions =>
-  (run, available) => {
-    if (run.phase !== 2 || !isWindowStart(run, window)) return [];
-    const best = bestBiome(run);
-    if (best === activeBiome(run)) return [];
-    if (biomeValue(run, best) < biomeValue(run, activeBiome(run)) * margin)
-      return [];
-    const id = spreadActionId(best);
-    return available.includes(id) ? [id] : [];
-  };
+export function idealMix(run: RunState): Record<Biome, number> {
+  const open = BIOMES.filter((b) => !isBiomeLocked(run, b));
+  // With a biome closed there is less to mix: the rest share evenly.
+  const mix = Object.fromEntries(
+    BIOMES.map((b) => [
+      b,
+      open.includes(b) ? (open.length > 3 ? CALM_MIX[b] : 3) : 0,
+    ])
+  ) as Record<Biome, number>;
+  const level = waterLevel(run);
+  const moved = pointsOf(run, "wetland") > CALM_MIX.wetland || open.length < 4;
+  const thirsty =
+    level < 0.25 || rainOutlook(run) < 0.25 || (moved && level < 0.6);
+  if (thirsty && mix.jungle > 2) {
+    mix.jungle -= 1;
+    // The point goes to whatever open biome has the least (wetland first).
+    const others = open.filter((b) => b !== "jungle");
+    const drink = others.reduce(
+      (l, o) =>
+        mix[o] < mix[l] || (mix[o] === mix[l] && o === "wetland") ? o : l,
+      others[0]
+    );
+    mix[drink] += 1;
+  }
+  // A biome that is already rotting gives up a point to the one with least.
+  for (const b of open) {
+    if (blightOf(run, b) < TUNING.world.blightShows) continue;
+    const least = open.reduce((l, o) => (mix[o] < mix[l] ? o : l), open[0]);
+    mix[b] = Math.max(1, mix[b] - 1);
+    if (least !== b) mix[least] += 1;
+  }
+  return mix;
+}
 
-/** Spreads this biome on the first look and never changes its mind. */
-export const alwaysSpreads =
-  (biome: Biome): Actions =>
-  (run, available) => {
-    const id = spreadActionId(biome);
-    return run.phase === 2 &&
-      activeBiome(run) !== biome &&
-      available.includes(id)
-      ? [id]
+/** Each biome's share of a mix, 0 to 1. */
+function fractions(mix: Record<Biome, number>): Record<Biome, number> {
+  const total = BIOMES.reduce((sum, b) => sum + mix[b], 0) || 1;
+  return Object.fromEntries(BIOMES.map((b) => [b, mix[b] / total])) as Record<
+    Biome,
+    number
+  >;
+}
+
+/**
+ * Moves the sliders toward `want`: one point off the biome that asks for the
+ * most too much and one onto the one that asks for the most too little, when
+ * either is off by `tolerance` of the mix (so a near miss is left alone).
+ */
+function steerTo(
+  run: RunState,
+  available: readonly string[],
+  want: Record<Biome, number>,
+  tolerance = 0.07
+): string[] {
+  const goal = fractions(want);
+  const now = fractions(
+    Object.fromEntries(BIOMES.map((b) => [b, pointsOf(run, b)])) as Record<
+      Biome,
+      number
+    >
+  );
+  const diff = (b: Biome) => goal[b] - now[b];
+  // Only a move that gets closer: a point is worth 1/total of the mix.
+  const total = BIOMES.reduce((sum, b) => sum + pointsOf(run, b), 0) || 1;
+  tolerance = Math.max(tolerance, 0.6 / total);
+  const ranked = [...BIOMES].sort((a, b) => diff(b) - diff(a));
+  const picks: string[] = [];
+  const up = ranked.find((b) => available.includes(moreActionId(b)));
+  const down = [...ranked]
+    .reverse()
+    .find((b) => available.includes(lessActionId(b)));
+  if (up && diff(up) >= tolerance) picks.push(moreActionId(up));
+  if (down && diff(down) <= -tolerance) picks.push(lessActionId(down));
+  return picks;
+}
+
+/**
+ * Looks at the world now and then and moves the sliders toward the careful
+ * mix (see idealMix), a point or two at a time.
+ */
+export const mixPolicy =
+  (window = 15): Actions =>
+  (run, available) =>
+    run.phase === 2 && isWindowStart(run, window)
+      ? steerTo(run, available, idealMix(run))
       : [];
-  };
 
-/** Every biome, for tests that want the list. */
-export const ALL_BIOMES: readonly Biome[] = BIOMES;
+/**
+ * Sets the sliders to this mix on the first look and never touches them
+ * again (the naive player: no eye on the water or the rot).
+ */
+export const setsMixOnce =
+  (mix: Record<Biome, number>): Actions =>
+  (run, available) =>
+    run.phase === 2 ? steerTo(run, available, mix, 0.04) : [];
 
 /**
  * Buys the given side of the current part's fork the moment it is open and
@@ -352,10 +420,7 @@ export function growBots(): BotSet {
         tendsBees,
         alongside(
           cropPolicy(),
-          alongside(
-            feedsPumpkin(),
-            alongside(biomePolicy(), alongside(sendsFlock(), tendsPot()))
-          )
+          alongside(feedsPumpkin(), alongside(mixPolicy(), tendsPot()))
         )
       )
     ),
@@ -373,13 +438,7 @@ export function growBots(): BotSet {
             cropPolicy(20, 45),
             alongside(
               feedsPumpkin({ skipEvery: 6 }),
-              alongside(
-                biomePolicy(30),
-                alongside(
-                  sendsFlock({ skipEvery: 6 }),
-                  tendsPot({ skipEvery: 6 })
-                )
-              )
+              alongside(mixPolicy(30), tendsPot({ skipEvery: 6 }))
             )
           )
         )
@@ -402,13 +461,7 @@ export function growBots(): BotSet {
             cropPolicy(60, 70),
             alongside(
               feedsPumpkin({ skipEvery: 2 }),
-              alongside(
-                biomePolicy(90),
-                alongside(
-                  sendsFlock({ skipEvery: 2 }),
-                  tendsPot({ skipEvery: 2 })
-                )
-              )
+              alongside(mixPolicy(90), tendsPot({ skipEvery: 2 }))
             )
           )
         )
@@ -419,14 +472,10 @@ export function growBots(): BotSet {
       2: {
         naive: yardPlayer(
           base.tapper,
-          alongside(biomePolicy(), sendsFlock()),
+          setsMixOnce(GREEDY_MIX),
           afterRunningDry
         ),
-        careful: yardPlayer(
-          base.tapper,
-          alongside(biomePolicy(), sendsFlock()),
-          whenRainTurnsDry
-        ),
+        careful: yardPlayer(base.tapper, mixPolicy(), whenRainTurnsDry),
       },
       1: {
         naive: yardPlayer(
@@ -454,14 +503,6 @@ export function growBots(): BotSet {
       },
     },
     claim: {
-      2: {
-        ignores: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
-        claims: yardPlayer(
-          base.tapper,
-          alongside(biomePolicy(), sendsFlock()),
-          whenRainTurnsDry
-        ),
-      },
       1: {
         ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
         claims: yardPlayer(

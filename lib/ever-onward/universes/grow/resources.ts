@@ -29,16 +29,13 @@ export const MANUAL_RESOURCES = ["seeds", "harvest", "green", "care"] as const;
  * gifts).
  */
 export function carryOver(from: number, amount: number): number {
-  if (from >= 2)
-    // The last seed starts small and calm: a flock still in the air at the
-    // world's end is a few taps' worth of care, however big the world's income.
-    return Math.min(
-      TUNING.migration.carryCap,
-      Math.floor(amount * TUNING.migration.greenToCare)
-    );
-  const rate =
-    from === 0 ? TUNING.farm.seedsToHarvest : TUNING.world.harvestToGreen;
-  return Math.floor(amount * rate);
+  if (from === 0) return Math.floor(amount * TUNING.farm.seedsToHarvest);
+  // A payout still flowing when the farm ends is a lottery in size, so it is
+  // capped: the world opens the same way however the farm ended.
+  return Math.min(
+    TUNING.world.carryCap,
+    Math.floor(amount * TUNING.world.harvestToGreen)
+  );
 }
 
 /** How much of the one pot is grown, 0 to 100. */
@@ -214,44 +211,30 @@ export const RESOURCES: readonly ResourceDef[] = [
     label: id,
     phases: HIDDEN,
   })),
-  // The green world: the biome that is spreading (an index), how much of
-  // the planet each one covers (0 to 1), a settle timer and times switched.
+  // The green world's mix: each biome's slider (0 to 10 points), how much of
+  // the planet each covers (0 to 1), how far the green has reached, each
+  // biome's rot (0 to 1), blights and heals so far (when, and which biome),
+  // and times a slider was moved.
+  ...[0, 1, 2, 3].map((i): ResourceDef => ({
+    id: `bmWant${i}`,
+    label: `bmWant${i}`,
+    initial: TUNING.world.startMix[i],
+    phases: HIDDEN,
+  })),
   ...[
-    "bmActive",
+    ...[0, 1, 2, 3].map((i) => `bmBlight${i}`),
     "bmForest",
     "bmJungle",
     "bmMeadow",
     "bmWetland",
-    "bmSettle",
+    "bmCover",
+    "bmBlights",
+    "bmBlightAt",
+    "bmBlightWho",
+    "bmHealed",
+    "bmHealedAt",
+    "bmHealedWho",
     "bmSwitches",
-  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
-  // Seed migration: stage (0 gathering, 1 ready, 2 flying), clocks, the
-  // destination, the day's weather and how green each region is, flights
-  // landed, green flowing in, the last flight, and the flocks' own stream.
-  ...[
-    "mgStage",
-    "mgTime",
-    "mgFly",
-    "mgDest",
-    "mgRoll0",
-    "mgRoll1",
-    "mgRoll2",
-    "mgRoll3",
-    "mgRoll4",
-    "mgGreen0",
-    "mgGreen1",
-    "mgGreen2",
-    "mgGreen3",
-    "mgGreen4",
-    "mgShown",
-    "mgFlights",
-    "mgPending",
-    "mgSurgeRate",
-    "mgEarned",
-    "mgLastPays",
-    "mgBy",
-    "mgRng",
-    "mgPaused",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // The old window box: stage (0 resting, 1 wanting), clocks, what the pot
   // wants, how many wants it has shown, answers given, the last answer (what

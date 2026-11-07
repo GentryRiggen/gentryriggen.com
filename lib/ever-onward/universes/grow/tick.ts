@@ -10,7 +10,6 @@ import {
   seedHelperMult,
   sprinklerForkMult,
 } from "./forks";
-import { tickMigration } from "./migration";
 import { daySeconds, marketMult, tickMarket } from "./market";
 import { tickPumpkin } from "./pumpkin";
 import { seasonBoost } from "./seasons";
@@ -228,7 +227,6 @@ export function tickGrow(run: RunState, dt: number): void {
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
   tickPumpkin(run, dt, () => farmPayPerSecond(run), daySeconds(run));
-  tickMigration(run, dt, () => incomePerSecond(run));
   if (isWindowBoxOpen(run)) tickWindowBox(run, dt, () => tendingValue(run));
 }
 

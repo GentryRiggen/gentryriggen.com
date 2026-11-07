@@ -20,7 +20,6 @@ import PumpkinPanel from "../game/grow/PumpkinPanel";
 import ForkPanel from "../game/grow/ForkPanel";
 import KnowHowPanel from "../game/grow/KnowHowPanel";
 import MarketPanel from "../game/grow/MarketPanel";
-import SeedMigration from "../game/grow/SeedMigration";
 import WindowBox from "../game/grow/WindowBox";
 import SeasonDial from "../game/grow/SeasonDial";
 import GrowScene from "../scenes/grow/GrowScene";
@@ -61,7 +60,8 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   if (rose("pkEntries")) cues.push("ribbon");
   if (rose("pkSplits")) cues.push("buzz");
   if (rose("mkDays")) cues.push("bloom");
-  if (rose("mgFlights")) cues.push("flutter");
+  if (rose("bmHealed")) cues.push("bloom");
+  if (rose("bmBlights")) cues.push("buzz");
   if (rose("potStage")) cues.push("bloom");
   return cues;
 }
@@ -70,13 +70,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 export const GROW_UI: UniverseUi = {
   Scene: GrowScene,
   primaryPanels: [SeasonDial, MarketPanel, BiomePanel, WindowBox],
-  panels: [
-    ForkPanel,
-    KnowHowPanel,
-    PollinationPanel,
-    PumpkinPanel,
-    SeedMigration,
-  ],
+  panels: [ForkPanel, KnowHowPanel, PollinationPanel, PumpkinPanel],
   ending: {
     storyIds: ENDING_STORY_IDS,
     Art: GrowEndingArt,

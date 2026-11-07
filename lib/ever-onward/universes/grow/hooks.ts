@@ -9,13 +9,7 @@ import {
   isPumpkinOpen,
   withoutPumpkin,
 } from "./pumpkin";
-import { SPREAD_ACTION_IDS, biomeGap } from "./biomes";
-import {
-  MIGRATION_ACTION_IDS,
-  isFlockReady,
-  isMigrationOpen,
-  withoutMigration,
-} from "./migration";
+import { MIX_ACTION_IDS, needsMixing } from "./biomes";
 import {
   MARKET_AGENT_ID,
   PLANT_ACTION_IDS,
@@ -90,8 +84,7 @@ export function growPlates(run: RunState): string[] {
   if (run.phase === 2) {
     if (waterLevel(run) < WATER_LOW || canBuildStorage(run))
       plates.push("water");
-    if (biomeGap(run) >= TUNING.world.playerMargin) plates.push("spread");
-    if (isFlockReady(run)) plates.push("flock");
+    if (needsMixing(run)) plates.push("mix");
   }
   if (run.phase === 3 && isWanting(run)) plates.push("pot");
   return plates;
@@ -102,9 +95,8 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   harvest: [YARD_HARVEST],
   bees: BEE_ACTION_IDS,
   market: PLANT_ACTION_IDS,
-  spread: SPREAD_ACTION_IDS,
+  mix: MIX_ACTION_IDS,
   pumpkin: PUMPKIN_ACTION_IDS,
-  flock: MIGRATION_ACTION_IDS,
   pot: WINDOWBOX_ACTION_IDS,
   fork: FORK_ACTION_IDS,
   festival: [FESTIVAL_ACTION_ID],
@@ -112,7 +104,7 @@ export const GROW_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Real choices, for the decision-gap metric: which patch to follow, what to
- * plant, what to spread, whether to feed or enter the pumpkin, where to send the flock,
+ * plant, how to mix the biomes, whether to feed or enter the pumpkin,
  * how to tend the pot. Picking the harvest is a collect, not a choice.
  */
 export const GROW_DECISION_ACTIONS: readonly string[] = [
@@ -120,9 +112,8 @@ export const GROW_DECISION_ACTIONS: readonly string[] = [
   ...FORK_ACTION_IDS,
   FESTIVAL_ACTION_ID,
   ...PLANT_ACTION_IDS,
-  ...SPREAD_ACTION_IDS,
+  ...MIX_ACTION_IDS,
   ...PUMPKIN_ACTION_IDS,
-  ...MIGRATION_ACTION_IDS,
   ...WINDOWBOX_ACTION_IDS,
 ];
 
@@ -146,9 +137,6 @@ export function growIncomeView(run: RunState): RunState {
     const view = withoutMarketDay({ ...run, resources: { ...run.resources } });
     return isPumpkinOpen(view) ? withoutPumpkin(view) : view;
   }
-  if (run.phase === 2 && isMigrationOpen(run))
-    // A landing flowing in is not income.
-    return withoutMigration({ ...run, resources: { ...run.resources } });
   if (run.phase === 3)
     // An answer from the music box is not income.
     return withoutWindowBox({ ...run, resources: { ...run.resources } });
@@ -184,7 +172,8 @@ function sceneKey(run: RunState): string {
     s.jungle,
     s.meadow,
     s.wetland,
-    s.biome,
+    s.blight,
+    s.healed,
     s.season,
     s.dry,
     s.ended,

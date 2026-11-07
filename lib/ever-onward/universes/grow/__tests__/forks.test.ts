@@ -5,7 +5,14 @@ import {
 } from "../../../engine/engine";
 import { simulate } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
-import { activeBiome, greenMult, isBiomeLocked, spreadBiome } from "../biomes";
+import {
+  greenMult,
+  isBiomeLocked,
+  lessActionId,
+  moreActionId,
+  pointsOf,
+  targetShare,
+} from "../biomes";
 import { growBots, takesFork } from "../bots";
 import { isPumpkinOpen, ribbonPays } from "../pumpkin";
 import {
@@ -188,22 +195,26 @@ describe("forks", () => {
   });
 
   describe("the world: old forest or wetland", () => {
-    it("closes the other biome and moves the spreading to the chosen one", () => {
+    it("closes the other biome and takes its points off the mix", () => {
       const run = openFork("world");
       const forest = choose(run, "world", 0);
       expect(isBiomeLocked(forest, "wetland")).toBe(true);
-      const sameActive = {
-        ...forest,
-        resources: { ...forest.resources, bmActive: 3 },
-      };
-      expect(activeBiome(sameActive)).toBe("forest");
+      expect(pointsOf(forest, "wetland")).toBe(0);
+      expect(targetShare(forest, "wetland")).toBe(0);
       const wetland = choose(run, "world", 1);
       expect(isBiomeLocked(wetland, "forest")).toBe(true);
-      expect(activeBiome(wetland)).toBe("wetland");
-      // A closed biome cannot be picked back.
-      const before = wetland.resources.bmActive;
-      spreadBiome(wetland, "forest");
-      expect(wetland.resources.bmActive).toBe(before);
+      expect(pointsOf(wetland, "forest")).toBe(0);
+      // The rest of the mix shares the whole planet between them.
+      const total = (["forest", "jungle", "meadow", "wetland"] as const).reduce(
+        (sum, b) => sum + targetShare(wetland, b),
+        0
+      );
+      expect(total).toBeCloseTo(1);
+      // A closed biome's slider cannot be moved.
+      const before = { ...wetland.resources };
+      const after = performAction(def, wetland, moreActionId("forest"));
+      expect(after.resources).toEqual(before);
+      expect(performAction(def, wetland, lessActionId("forest"))).toBe(wetland);
     });
 
     it("pays much more green for the chosen biome", () => {

@@ -71,7 +71,6 @@ export const cloudAt = (i: number): Point => ({
   x: 96 + ((i * 61) % 190),
   y: 70 + ((i * 43) % 120),
 });
-export const GLOBE_FLOCK: Point = { x: 300, y: 96 };
 
 /** The old window box (same 400 by 300 box): the pot sits on the sill. */
 export const SILL_Y = 186;

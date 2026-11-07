@@ -1,21 +1,23 @@
-import { formatNumber } from "../../engine/format";
 import type { ActionDef, RunState } from "../../engine/types";
 import { PHASE_WORLD } from "./resources";
 import { TUNING } from "./tuning";
 import { worldFocus } from "./forks";
 import { nurserySpread } from "./knowhow";
-import { waterLevel } from "./water";
+import { isDry } from "./water";
 
 /**
- * The green world's choice: which biome the birds and rovers spread next.
- * Every biome adds green income, each in its own way:
- *  - forest: steady green, and it asks nothing of the water;
+ * The green world's mix: one slider for each biome says how much of the
+ * planet it should be, and the land moves toward the mix a little at a time,
+ * so changing your mind takes a minute or so. Every biome adds green income
+ * in its own way:
+ *  - forest: steady green, and it asks little of the water;
  *  - jungle: the most green, but it drinks, so it needs rivers and rain;
- *  - meadow: feeds the pollinators, so migrating birds carry more seeds;
+ *  - meadow: bees and birds help every planting spread faster;
  *  - wetland: stores water and seeps it back, a little green on the side.
  * A biome's gain flattens the more of the planet it covers, so mixing beats
- * piling everything into one. Nothing is ever lost by switching: the
- * newly chosen biome only takes a moment to settle.
+ * piling everything into one. And a biome that covers too much of the planet
+ * catches a blight: it rots and pays less until the mix is spread out again.
+ * There is no cure but the mix.
  */
 
 const T = TUNING.world;
@@ -33,7 +35,7 @@ export const BIOME_LABELS: Readonly<Record<Biome, string>> = {
 export const PERK_WORDS: Readonly<Record<Biome, string>> = {
   forest: "steady green, and easy on the water",
   jungle: "the most green, and the thirstiest",
-  meadow: "feeds the pollinators, so migrating birds carry more seeds",
+  meadow: "helps all the green spread faster",
   wetland: "holds water for dry spells, and a little green",
 };
 
@@ -47,9 +49,17 @@ const SHARE_IDS: Readonly<Record<Biome, string>> = {
   meadow: "bmMeadow",
   wetland: "bmWetland",
 };
+const wantId = (biome: Biome): string => `bmWant${BIOMES.indexOf(biome)}`;
+const blightId = (biome: Biome): string => `bmBlight${BIOMES.indexOf(biome)}`;
 
-export const spreadActionId = (biome: Biome): string => `world-spread-${biome}`;
-export const SPREAD_ACTION_IDS: readonly string[] = BIOMES.map(spreadActionId);
+export const MAX_POINTS = T.maxPoints;
+
+export const moreActionId = (biome: Biome): string => `world-more-${biome}`;
+export const lessActionId = (biome: Biome): string => `world-less-${biome}`;
+export const MIX_ACTION_IDS: readonly string[] = BIOMES.flatMap((b) => [
+  moreActionId(b),
+  lessActionId(b),
+]);
 
 /**
  * A biome the world's fork has closed: old forest closes the wetland,
@@ -63,25 +73,28 @@ export function isBiomeLocked(run: RunState, biome: Biome): boolean {
   );
 }
 
-/** The biome that is spreading right now (a fresh world spreads forest). */
-export function activeBiome(run: RunState): Biome {
-  const stored =
-    BIOMES[clamp(Math.round(res(run, "bmActive")), 0, BIOMES.length - 1)];
-  // A choice that closed the stored biome moves the spreading to the one chosen.
-  return isBiomeLocked(run, stored) ? (worldFocus(run) as Biome) : stored;
+/** Slider points on a biome (0 to MAX_POINTS); a closed biome holds none. */
+export function pointsOf(run: RunState, biome: Biome): number {
+  if (isBiomeLocked(run, biome)) return 0;
+  const stored = run.resources[wantId(biome)];
+  return clamp(
+    Math.round(stored ?? T.startMix[BIOMES.indexOf(biome)]),
+    0,
+    MAX_POINTS
+  );
 }
 
-/** What a fully grown biome adds to green income, with the fork's focus. */
-export function greenPerOf(run: RunState, biome: Biome): number {
-  const focus = worldFocus(run);
-  const f = TUNING.forks.world;
-  const boost =
-    focus === "forest" && biome === "forest"
-      ? f.forestGreen
-      : focus === "wetland" && biome === "wetland"
-        ? f.wetlandGreen
-        : 1;
-  return T.greenPer[biome] * boost;
+const totalPoints = (run: RunState): number =>
+  BIOMES.reduce((sum, b) => sum + pointsOf(run, b), 0);
+
+/** The share of the whole mix a biome's slider asks for, 0 to 1. */
+export function targetShare(run: RunState, biome: Biome): number {
+  const total = totalPoints(run);
+  if (total > 0) return pointsOf(run, biome) / total;
+  // A choice that closed the only biome with points leaves the sliders
+  // empty: the open biomes share the planet evenly until the player moves them.
+  const open = BIOMES.filter((b) => !isBiomeLocked(run, b));
+  return open.includes(biome) ? 1 / open.length : 0;
 }
 
 /** How much of the planet this biome covers, 0 to 1. */
@@ -96,17 +109,96 @@ export const worldCover = (run: RunState): number =>
     1
   );
 
+/** How much of the planet the green has reached so far (before the mix settles). */
+export const reachedCover = (run: RunState): number =>
+  clamp(Math.max(res(run, "bmCover"), worldCover(run)), 0, 1);
+
+/** How rotten this biome is, 0 (healthy) to 1. */
+export const blightOf = (run: RunState, biome: Biome): number =>
+  clamp(res(run, blightId(biome)), 0, 1);
+
+/** The biome with the worst rot, or null while the world is healthy. */
+export function blightedBiome(run: RunState): Biome | null {
+  let worst: Biome | null = null;
+  for (const b of BIOMES)
+    if (
+      blightOf(run, b) >= T.blightShows &&
+      (worst === null || blightOf(run, b) > blightOf(run, worst))
+    )
+      worst = b;
+  return worst;
+}
+
+/** The rot a biome is about to catch: its share is past the line. */
+export const isOverGrown = (run: RunState, biome: Biome): boolean =>
+  biomeShare(run, biome) > T.blightAt;
+
+/** True while some biome is rotting or about to (the mix needs a look). */
+export const needsMixing = (run: RunState): boolean =>
+  blightedBiome(run) !== null ||
+  BIOMES.some((b) => biomeShare(run, b) > T.blightAt - 0.04);
+
+/** True for a few seconds after the rot first showed (the scene flashes it). */
+export const justBlighted = (run: RunState): boolean =>
+  res(run, "bmBlightAt") > 0 &&
+  run.time - res(run, "bmBlightAt") < T.healShowSeconds;
+
+/** True for a few seconds after the world healed (the scene's green wave). */
+export const justHealed = (run: RunState): boolean =>
+  res(run, "bmHealedAt") > 0 &&
+  run.time - res(run, "bmHealedAt") < T.healShowSeconds;
+
+/** Times a blight has started, and times the world has healed. */
+export const blightsSoFar = (run: RunState): number => res(run, "bmBlights");
+export const healsSoFar = (run: RunState): number => res(run, "bmHealed");
+
+/** What the log counts: blights that started plus times the world healed. */
+export const mixEvents = (run: RunState): number =>
+  blightsSoFar(run) + healsSoFar(run);
+
+/** The log line for the latest blight or healing, or null before the first. */
+export function mixResultLine(run: RunState): string | null {
+  if (mixEvents(run) <= 0) return null;
+  const healedLast =
+    healsSoFar(run) > 0 && res(run, "bmHealedAt") >= res(run, "bmBlightAt");
+  const name = (id: string) =>
+    BIOME_LABELS[BIOMES[clamp(Math.round(res(run, id)), 0, 3)]].toLowerCase();
+  return healedLast
+    ? `The blight in the ${name("bmHealedWho")} is gone. The mix is spread out again.`
+    : `A blight started in the ${name("bmBlightWho")}: it covers too much of the world.`;
+}
+
+/** Times a slider has been moved. */
+export const switchesSoFar = (run: RunState): number => res(run, "bmSwitches");
+
+/** What a fully grown biome adds to green income, with the fork's focus. */
+export function greenPerOf(run: RunState, biome: Biome): number {
+  const focus = worldFocus(run);
+  const f = TUNING.forks.world;
+  const boost =
+    focus === "forest" && biome === "forest"
+      ? f.forestGreen
+      : focus === "wetland" && biome === "wetland"
+        ? f.wetlandGreen
+        : 1;
+  return T.greenPer[biome] * boost;
+}
+
 /** A biome's gain at a share: fast at first, flattening toward 1. */
 export const curve = (share: number): number => share * (2 - share);
 
+/** A biome's gain with its rot taken off. */
+export const healthyGain = (run: RunState, biome: Biome): number =>
+  curve(biomeShare(run, biome)) * (1 - T.blightCut * blightOf(run, biome));
+
 /**
  * A biome's own perk right now, in its own kind of number: forest and jungle
- * give a fraction of extra green income, meadow a fraction of extra
- * migration seeds, wetland the units of water it adds to the tank.
+ * give a fraction of extra green income, meadow a fraction of extra spread
+ * speed, wetland the units of water it adds to the tank.
  */
 export function biomePerk(run: RunState, biome: Biome): number {
-  const gain = curve(biomeShare(run, biome));
-  if (biome === "meadow") return T.meadowSeeds * gain;
+  const gain = healthyGain(run, biome);
+  if (biome === "meadow") return T.meadowSpread * gain;
   if (biome === "wetland") return T.water.wetlandCapacity * gain;
   return greenPerOf(run, biome) * gain;
 }
@@ -114,125 +206,128 @@ export function biomePerk(run: RunState, biome: Biome): number {
 /** The green income multiplier from all the biomes together. */
 export const greenMult = (run: RunState): number =>
   1 +
-  BIOMES.reduce(
-    (sum, b) => sum + greenPerOf(run, b) * curve(biomeShare(run, b)),
-    0
-  );
+  BIOMES.reduce((sum, b) => sum + greenPerOf(run, b) * healthyGain(run, b), 0);
 
-/** The multiplier on seeds the migrating birds carry (1 with no meadow). */
-export const migrationSeedsMult = (run: RunState): number =>
-  1 + biomePerk(run, "meadow");
-
-/**
- * What one more bit of this biome is worth to a player right now, in
- * green-income terms. The jungle is worth little while the tank is low, the
- * wetland a lot, and every biome less the more of it there already is.
- */
-export function biomeValue(run: RunState, biome: Biome): number {
-  if (isBiomeLocked(run, biome)) return 0;
-  const room = 1 - biomeShare(run, biome);
-  const level = waterLevel(run);
-  const per = (b: Biome) => greenPerOf(run, b);
-  switch (biome) {
-    case "forest":
-      return 2 * per("forest") * room;
-    case "jungle":
-      return 2 * per("jungle") * room * clamp((level - 0.2) / 0.6, 0.1, 1);
-    case "meadow":
-      return 2 * (per("meadow") + T.meadowSeeds * T.seedsWeight) * room;
-    case "wetland":
-      return (
-        2 *
-        (per("wetland") + T.waterWeight * clamp((0.6 - level) / 0.5, 0, 1)) *
-        room
-      );
-  }
-}
-
-/** The biome worth spreading most right now. */
-export function bestBiome(run: RunState): Biome {
-  let best: Biome = BIOMES[0];
-  for (const b of BIOMES)
-    if (biomeValue(run, b) > biomeValue(run, best)) best = b;
-  return best;
-}
-
-/** How much better the best biome is than the one spreading (1 = no better). */
-export const biomeGap = (run: RunState): number =>
-  biomeValue(run, bestBiome(run)) /
-  Math.max(0.0001, biomeValue(run, activeBiome(run)));
-
-/** Chooses the biome to spread (a different one takes a moment to settle). */
-export function spreadBiome(run: RunState, biome: Biome): void {
-  const index = BIOMES.indexOf(biome);
-  if (index < 0 || isBiomeLocked(run, biome)) return;
-  if (index === Math.round(res(run, "bmActive"))) return;
-  run.resources.bmActive = index;
-  run.resources.bmSettle = T.settleSeconds;
+/** Moves a biome's slider by one point (a closed biome cannot be moved). */
+export function nudgeBiome(run: RunState, biome: Biome, by: 1 | -1): void {
+  if (!canNudge(run, biome, by)) return;
+  // Write every slider, so an old save without them takes the start mix.
+  for (const b of BIOMES) run.resources[wantId(b)] = pointsOf(run, b);
+  run.resources[wantId(biome)] = pointsOf(run, biome) + by;
   run.resources.bmSwitches = res(run, "bmSwitches") + 1;
 }
 
-/** Times a different biome has been chosen. */
-export const switchesSoFar = (run: RunState): number => res(run, "bmSwitches");
+/** True when the slider can move that way (the mix always keeps something). */
+export function canNudge(run: RunState, biome: Biome, by: 1 | -1): boolean {
+  if (isBiomeLocked(run, biome)) return false;
+  const now = pointsOf(run, biome);
+  if (by > 0) return now < MAX_POINTS;
+  return now > 0 && totalPoints(run) > 1;
+}
 
-/** Share of the planet the spreading biome gains each second right now. */
+/** Share of the planet the green reaches each second right now. */
 export function spreadRate(run: RunState): number {
   const owned = (id: string) => run.owned[id] ?? 0;
-  const settle = clamp(res(run, "bmSettle") / T.settleSeconds, 0, 1);
   const focus =
-    worldFocus(run) === "forest" && activeBiome(run) === "forest"
-      ? TUNING.forks.world.forestSpread
-      : 1;
+    worldFocus(run) === "forest" ? TUNING.forks.world.forestSpread : 1;
   return (
     (T.spreadBase +
       T.spreadPerRover * owned("planting-rover") +
       T.spreadPerSeeder * owned("sky-seeder")) *
-    (1 - (1 - T.settleFloor) * settle) *
+    (1 + biomePerk(run, "meadow")) *
     focus *
     nurserySpread(run)
   );
 }
 
-/** Starts the world bare, with the forest spreading. */
+/** Starts the world bare, with the start mix on the sliders. */
 export function seedBiomes(run: RunState): void {
-  run.resources.bmActive = 0;
-  run.resources.bmSettle = 0;
+  run.resources.bmCover = 0;
   run.resources.bmSwitches = 0;
-  for (const b of BIOMES) run.resources[SHARE_IDS[b]] = 0;
+  run.resources.bmBlights = 0;
+  run.resources.bmHealed = 0;
+  run.resources.bmBlightAt = 0;
+  run.resources.bmHealedAt = 0;
+  BIOMES.forEach((b, i) => {
+    run.resources[SHARE_IDS[b]] = 0;
+    run.resources[wantId(b)] = T.startMix[i];
+    run.resources[blightId(b)] = 0;
+  });
 }
 
-/** Spreads the chosen biome for `dt` seconds, until the map is full. */
+/** How much a dry spell dries each biome (jungle most, wetland not at all). */
+const thirstOf = (biome: Biome): number => T.dryThirst[biome];
+
+/**
+ * Moves the land for `dt` seconds: the green reaches further, each biome's
+ * share moves toward its slider, a dry world sheds some, and a biome past the
+ * blight line rots (and heals once it is back under).
+ */
 export function tickBiomes(run: RunState, dt: number): void {
   if (run.phase !== 2) return;
-  const active = activeBiome(run);
-  const room = 1 - worldCover(run);
-  run.resources[SHARE_IDS[active]] =
-    biomeShare(run, active) + Math.min(room, spreadRate(run) * dt);
-  run.resources.bmSettle = Math.max(0, res(run, "bmSettle") - dt);
+  const r = run.resources;
+  const reached = Math.min(1, reachedCover(run) + spreadRate(run) * dt);
+  r.bmCover = reached;
+  const step = T.shiftPerSecond * dt;
+  const dry = isDry(run);
+  const next = BIOMES.map((b) => {
+    const share = biomeShare(run, b);
+    const goal = targetShare(run, b) * reached;
+    const moved = share + clamp(goal - share, -step, step);
+    return Math.max(0, moved - (dry ? T.dryErode * thirstOf(b) * dt : 0));
+  });
+  const total = next.reduce((sum, n) => sum + n, 0);
+  const scale = total > 1 ? 1 / total : 1;
+  BIOMES.forEach((b, i) => {
+    r[SHARE_IDS[b]] = next[i] * scale;
+  });
+  tickBlight(run, dt);
 }
 
-const pct = (n: number): string => `${formatNumber(Math.round(n * 100))}%`;
+/** The rot climbs in a biome past the line and eases once it is back under. */
+function tickBlight(run: RunState, dt: number): void {
+  const r = run.resources;
+  for (const b of BIOMES) {
+    const before = blightOf(run, b);
+    const over = biomeShare(run, b) - T.blightAt;
+    const after =
+      over > 0
+        ? Math.min(
+            1,
+            before +
+              T.blightRise *
+                (1 + (T.blightExtra * over) / (1 - T.blightAt)) *
+                dt
+          )
+        : Math.max(0, before - T.blightHeal * dt);
+    r[blightId(b)] = after;
+    if (before < T.blightShows && after >= T.blightShows) {
+      r.bmBlights = res(run, "bmBlights") + 1;
+      r.bmBlightAt = run.time;
+      r.bmBlightWho = BIOMES.indexOf(b);
+    }
+    if (before >= T.blightShows && after < T.blightShows) {
+      r.bmHealed = res(run, "bmHealed") + 1;
+      r.bmHealedAt = run.time;
+      r.bmHealedWho = BIOMES.indexOf(b);
+    }
+  }
+}
 
-export const SPREAD_ACTIONS: readonly ActionDef[] = BIOMES.map((biome) => ({
-  id: spreadActionId(biome),
-  phases: [PHASE_WORLD],
-  isInline: true,
-  describe: (run) => {
-    const here = activeBiome(run) === biome;
-    const isLocked = isBiomeLocked(run, biome);
-    return {
-      label: isLocked
-        ? `${BIOME_LABELS[biome]} is closed`
-        : here
-          ? `${BIOME_LABELS[biome]} is spreading`
-          : `Spread ${biome}`,
-      detail: `${BIOME_LABELS[biome]}: ${PERK_WORDS[biome]}. It covers ${pct(biomeShare(run, biome))} of the world.`,
-      isBlocked: here || isLocked,
-      hint:
-        bestBiome(run) === biome && !here && !isLocked
-          ? { text: "worth spreading", tone: "good" as const }
-          : undefined,
-    };
-  },
-  perform: (run) => spreadBiome(run, biome),
-}));
+const pct = (n: number): string => `${Math.round(n * 100)}%`;
+
+/** The slider buttons: one point more or less for each biome. */
+export const MIX_ACTIONS: readonly ActionDef[] = BIOMES.flatMap(
+  (biome): ActionDef[] =>
+    ([1, -1] as const).map((by) => ({
+      id: by > 0 ? moreActionId(biome) : lessActionId(biome),
+      phases: [PHASE_WORLD],
+      isInline: true,
+      describe: (run: RunState) => ({
+        label: `${by > 0 ? "More" : "Less"} ${biome}`,
+        detail: `${BIOME_LABELS[biome]}: ${PERK_WORDS[biome]}. It covers ${pct(biomeShare(run, biome))} of the world and asks for ${pct(targetShare(run, biome))}.`,
+        isBlocked: !canNudge(run, biome, by),
+      }),
+      perform: (run: RunState) => nudgeBiome(run, biome, by),
+    }))
+);

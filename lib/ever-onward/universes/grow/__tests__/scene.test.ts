@@ -141,14 +141,20 @@ describe("Grow sceneInfo", () => {
       ]).toEqual([0, 0, 0, 0, 0, 0]);
     });
 
-    it("shows migrants once a flock has landed", () => {
+    it("shows the rot, the healing and the water in flat strings", () => {
       const run = runAtPhaseStart(2);
-      expect(sceneInfo(run).migrated).toBe(false);
-      const landed = {
+      expect(sceneInfo(run).blight).toBe("0|0|0|0");
+      expect(sceneInfo(run).healed).toBe(false);
+      const sick = {
         ...run,
-        resources: { ...run.resources, mgFlights: 1 },
+        resources: { ...run.resources, bmBlight1: 0.6, bmHealedAt: run.time },
       };
-      expect(sceneInfo(landed).migrated).toBe(true);
+      const info = sceneInfo(sick);
+      expect(info.blight).toBe("0|6|0|0");
+      expect(info.healed).toBe(true);
+      expect(sceneInfo({ ...sick, time: run.time + 60 }).healed).toBe(false);
+      expect(info.worldWater).toBeGreaterThan(0);
+      expect(sceneInfo(runAtPhaseStart(0)).blight).toBe("0|0|0|0");
     });
 
     it("counts rivers, clouds and flocks from what was built", () => {

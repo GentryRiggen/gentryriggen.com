@@ -701,8 +701,8 @@
   },
   "grow/cut-world-end": {
     "file": "/ever-onward/voice/grow/cut-world-end.mp3",
-    "hash": "041002e74182",
-    "durationGuess": 22
+    "hash": "03bfff0bf97e",
+    "durationGuess": 26
   },
   "grow/cut-seed-1": {
     "file": "/ever-onward/voice/grow/cut-seed-1.mp3",
@@ -1071,8 +1071,8 @@
   },
   "grow/world-choice": {
     "file": "/ever-onward/voice/grow/world-choice.mp3",
-    "hash": "dc6b8ad1e2aa",
-    "durationGuess": 12
+    "hash": "cc6f02d62308",
+    "durationGuess": 15
   },
   "grow/world-time-1": {
     "file": "/ever-onward/voice/grow/world-time-1.mp3",
@@ -1106,8 +1106,8 @@
   },
   "grow/world-meadow": {
     "file": "/ever-onward/voice/grow/world-meadow.mp3",
-    "hash": "37733bdeb932",
-    "durationGuess": 10
+    "hash": "0561076fc12b",
+    "durationGuess": 11
   },
   "grow/world-rover": {
     "file": "/ever-onward/voice/grow/world-rover.mp3",
@@ -1131,8 +1131,18 @@
   },
   "grow/world-switch": {
     "file": "/ever-onward/voice/grow/world-switch.mp3",
-    "hash": "ab9a351ddf08",
-    "durationGuess": 11
+    "hash": "cb4776b08a82",
+    "durationGuess": 12
+  },
+  "grow/world-blight": {
+    "file": "/ever-onward/voice/grow/world-blight.mp3",
+    "hash": "3688e94dcd21",
+    "durationGuess": 15
+  },
+  "grow/world-healed": {
+    "file": "/ever-onward/voice/grow/world-healed.mp3",
+    "hash": "9fabc2b9d7e8",
+    "durationGuess": 12
   },
   "grow/world-cover-1": {
     "file": "/ever-onward/voice/grow/world-cover-1.mp3",
@@ -1238,6 +1248,16 @@
     "file": "/ever-onward/voice/grow/world-time-16.mp3",
     "hash": "1290b14dfd1c",
     "durationGuess": 9
+  },
+  "grow/world-time-18": {
+    "file": "/ever-onward/voice/grow/world-time-18.mp3",
+    "hash": "dde8bbd2133f",
+    "durationGuess": 12
+  },
+  "grow/world-time-19": {
+    "file": "/ever-onward/voice/grow/world-time-19.mp3",
+    "hash": "977a55caf625",
+    "durationGuess": 13
   },
   "grow/world-time-17": {
     "file": "/ever-onward/voice/grow/world-time-17.mp3",

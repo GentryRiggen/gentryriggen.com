@@ -114,6 +114,34 @@ test.describe("Ever Onward", () => {
     );
   });
 
+  test("the world mixes biomes with sliders and the picture shows the water", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const globe = page.getByTestId("lm-globe");
+    await expect(globe).toBeAttached();
+    await expect(globe).toHaveAttribute("data-water", /\d+/);
+    const mix = page.getByTestId("lm-biomes");
+    await expect(mix).toBeVisible();
+    await expect(mix.getByTestId("lm-biomes-jungle")).toBeVisible();
+    const jungle = mix.getByTestId("lm-biomes-jungle");
+    const before = Number(await jungle.getAttribute("data-points"));
+    await mix.getByTestId("lm-mix-more-jungle").click();
+    await expect(jungle).toHaveAttribute("data-points", String(before + 1));
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

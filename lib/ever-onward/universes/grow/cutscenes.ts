@@ -294,9 +294,9 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Feed the prize pumpkin for better ribbons, but feed it too much and it splits.",
   ],
   [PHASE_WORLD]: [
-    "Try a second kind of green: a new one soon beats a bigger first one.",
-    "Send each flock where the weather is kind and the land is still bare.",
-    "Rivers and cloud seeders keep the whole planet watered.",
+    "Mix the kinds of green: a new one soon beats a bigger first one.",
+    "The jungle pays most but drinks the most. Wetland and rivers keep the water up.",
+    "If one kind covers too much of the world, it rots. Spreading the mix out is the only cure.",
   ],
   [PHASE_SEED]: [
     "Read the clue, then give the pot what it wants. The right answer helps most.",

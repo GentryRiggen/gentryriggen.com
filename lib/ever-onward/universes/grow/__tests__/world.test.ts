@@ -3,8 +3,8 @@ import { manualGain, performAction, tick } from "../../../engine/engine";
 import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { growAlert } from "../alerts";
-import { alwaysSpreads, biomePolicy, growBots } from "../bots";
-import { BIOMES, spreadActionId, worldCover } from "../biomes";
+import { growBots, mixPolicy, setsMixOnce } from "../bots";
+import { BIOMES, moreActionId, worldCover, type Biome } from "../biomes";
 import { incomePerSecond } from "../tick";
 import { isDry } from "../water";
 import { def, runAtPhaseStart, withWater } from "./fixtures";
@@ -29,19 +29,29 @@ const tapperWith = (actions: Strategy["actions"]): Strategy => ({
 });
 
 describe("the green world", () => {
-  it("rewards choosing: the biome-policy bot clears the world at least 8% sooner than forest-only", () => {
+  /** All the points on one biome. */
+  const piles = (biome: Biome): Strategy["actions"] =>
+    setsMixOnce({
+      forest: 0,
+      jungle: 0,
+      meadow: 0,
+      wetland: 0,
+      [biome]: 10,
+    });
+
+  it("rewards mixing: the mixing bot clears the world at least 8% sooner than piling into forest", () => {
     const start = worldStart();
-    const forest = worldMinutes(start, tapperWith(alwaysSpreads("forest")));
-    const chooser = worldMinutes(start, tapperWith(biomePolicy()));
-    expect(chooser).toBeLessThanOrEqual(forest * 0.92);
+    const forest = worldMinutes(start, tapperWith(piles("forest")));
+    const mixer = worldMinutes(start, tapperWith(mixPolicy()));
+    expect(mixer).toBeLessThanOrEqual(forest * 0.92);
   });
 
-  it("every biome other than forest-only is slower than choosing", () => {
+  it("piling into any one biome is slower than mixing", () => {
     const start = worldStart();
-    const chooser = worldMinutes(start, tapperWith(biomePolicy()));
+    const mixer = worldMinutes(start, tapperWith(mixPolicy()));
     for (const b of BIOMES) {
-      const only = worldMinutes(start, tapperWith(alwaysSpreads(b)));
-      expect(chooser).toBeLessThan(only);
+      const only = worldMinutes(start, tapperWith(piles(b)));
+      expect(mixer).toBeLessThan(only);
     }
   });
 
@@ -61,13 +71,17 @@ describe("the green world", () => {
     expect(growAlert(wet)).toBeNull();
   });
 
-  it("spreads the chosen biome and never touches the run's rng", () => {
+  it("moves the land toward the mix and never touches the run's rng", () => {
     const start = worldStart();
-    let run = performAction(def, start, spreadActionId("meadow"));
+    let run = performAction(def, start, moreActionId("meadow"));
+    run = performAction(def, run, moreActionId("meadow"));
+    run = performAction(def, run, moreActionId("meadow"));
     const rng = run.rng;
-    for (let t = 0; t < 120; t += 1) run = tick(def, run, 1);
+    for (let t = 0; t < 240; t += 1) run = tick(def, run, 1);
     expect(run.resources.bmMeadow).toBeGreaterThan(0.01);
-    expect(run.resources.bmForest).toBe(0);
+    expect(run.resources.bmMeadow).toBeGreaterThan(
+      start.resources.bmMeadow ?? 0
+    );
     expect(run.rng).toBe(rng);
     expect(worldCover(run)).toBeLessThanOrEqual(1);
   });

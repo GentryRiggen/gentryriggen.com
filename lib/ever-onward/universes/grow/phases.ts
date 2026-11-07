@@ -78,9 +78,14 @@ export const PHASES: readonly PhaseDef[] = [
     tapDoes: "plant something green and earn green",
     isDone: (run) => owned(run, "seed-vault") >= 1,
     onEnter: (run) => {
-      // The farm's leftover harvest turns into the first green.
+      // The world opens the same way however the farm ended: a fixed start,
+      // and a little extra for a well-stocked barn (never more than a tenth).
+      const W = TUNING.world;
       run.resources.green += Math.floor(
-        (run.resources.harvest ?? 0) * TUNING.world.harvestToGreen
+        W.openingGreen *
+          (1 +
+            W.openingLeftover *
+              Math.min(1, (run.resources.harvest ?? 0) / W.openingLeftoverFull))
       );
       seedBiomes(run);
       fillWorldTank(run);

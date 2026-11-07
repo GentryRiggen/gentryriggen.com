@@ -1,5 +1,5 @@
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
-import { BIOME_LABELS } from "@/lib/ever-onward/universes/grow/biomes";
+import { BIOMES, BIOME_LABELS } from "@/lib/ever-onward/universes/grow/biomes";
 import { CROP_LABELS } from "@/lib/ever-onward/universes/grow/market";
 
 const plural = (n: number, word: string): string =>
@@ -26,10 +26,16 @@ export function captionFor(info: GrowSceneInfo): string {
       ].join(" · ");
     case "world": {
       const percent = Math.round(info.greenFraction * 100);
+      const rot = info.blight.split("|").map(Number);
+      const sick = BIOMES.find((_, i) => (rot[i] ?? 0) >= 1);
       return [
-        percent > 0
-          ? `${BIOME_LABELS[info.biome]} spreading · the world is ${percent}% green`
-          : "The world, with bare spots",
+        sick
+          ? `Blight in the ${BIOME_LABELS[sick].toLowerCase()} · the world is ${percent}% green`
+          : info.healed
+            ? `Healed · the world is ${percent}% green`
+            : percent > 0
+              ? `The world is ${percent}% green`
+              : "The world, with bare spots",
         ...(info.helpers > 0 ? [plural(info.helpers, "windbreak")] : []),
         ...(info.dry ? ["thirsty land"] : []),
       ].join(" · ");

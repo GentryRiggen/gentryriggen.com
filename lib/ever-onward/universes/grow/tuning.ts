@@ -235,8 +235,18 @@ export const TUNING = {
   },
   /** The green world: biomes spread over the map, with rivers and clouds. */
   world: {
-    /** Leftover farm harvest becomes this much green when the world opens. */
+    /**
+     * The world opens with this much green however the farm ended (the
+     * farm's leftover harvest was a lottery that decided how the world began).
+     * A well-stocked barn adds up to `openingLeftover` more, no further than
+     * `openingLeftoverFull` harvest.
+     */
+    openingGreen: 1500,
+    /** A payout still flowing when the farm ends turns into green at this rate, up to a cap. */
     harvestToGreen: 0.0002,
+    carryCap: 150,
+    openingLeftover: 0.1,
+    openingLeftoverFull: 8_000_000,
     /** Green per second from each helper, before bonuses. */
     windbreakRate: 30,
     roverRate: 225,
@@ -258,52 +268,47 @@ export const TUNING = {
       wetlandCapacity: 160,
       wetlandSeep: 0.4,
     },
-    /** Share of the planet a biome gains per second while it spreads. */
+    /** Share of the planet the green reaches per second, before helpers. */
     spreadBase: 1 / 3200,
     spreadPerRover: 0.00004,
     spreadPerSeeder: 0.00008,
-    /** A newly chosen biome spreads at this share of the speed while it settles. */
-    settleSeconds: 15,
-    settleFloor: 0.5,
+    /**
+     * The mix sliders: a biome's share moves toward its slider's goal at this
+     * much of the planet per second, so changing your mind takes a minute or so.
+     */
+    shiftPerSecond: 0.004,
     /**
      * What a fully grown biome adds to green income: a fraction on top of
      * 1. Every biome's gain flattens as it covers more, so a second biome
      * soon beats a bigger first one.
      */
     greenPer: { forest: 0.8, jungle: 1.8, meadow: 0.35, wetland: 0.2 },
-    /** Meadow: extra migration seeds at a fully grown meadow (a fraction). */
-    meadowSeeds: 1.5,
-    /** How much a bot values a unit of migration seeds, and of stored water. */
-    seedsWeight: 0.55,
-    waterWeight: 1,
+    /** Meadow: how much faster the green spreads at a fully grown meadow. */
+    meadowSpread: 1.5,
+    /** The mix a fresh world starts with (half forest, a little of the rest), as slider points. */
+    startMix: [5, 2, 2, 1] as readonly number[],
+    /** Slider points a biome can hold, 0 to this. */
+    maxPoints: 10,
+    /**
+     * Blight: a biome that covers more than `blightAt` of the planet starts to
+     * rot. The rot climbs by `blightRise` a second (more the further past the
+     * line), eases by `blightHeal` once the biome is back under, and takes up
+     * to `blightCut` of that biome's green.
+     */
+    blightAt: 0.42,
+    blightRise: 0.01,
+    blightExtra: 2.5,
+    blightHeal: 0.02,
+    blightCut: 0.85,
+    /** Rot shows from this much; healing from this much shows the wave. */
+    blightShows: 0.08,
+    /** Seconds the HEALED wave and the first rot flash show for. */
+    healShowSeconds: 7,
+    /** A dry world sheds this share of the planet a second (jungle most). */
+    dryErode: 0.002,
+    dryThirst: { forest: 0.35, jungle: 1, meadow: 0.25, wetland: 0 },
     /** The planet counts as green enough for a vault at this cover. */
     vaultCover: 0.7,
-    /** A player switches when another biome is this much better. */
-    playerMargin: 1.1,
-  },
-  /** Seed migration: a flock of birds to send somewhere about every two minutes. */
-  migration: {
-    /** Seconds before the first flock, then between flocks. */
-    firstWaitSeconds: 45,
-    waitSeconds: 110,
-    /** The day's weather in a region is a number between these. */
-    weatherLow: 0.6,
-    weatherHigh: 1.4,
-    /** A fully green region welcomes this much less (a share). */
-    greenCut: 0.5,
-    /** Each landing greens a region by this much (0 to 1). */
-    greenStep: 0.25,
-    /** The flock leader sends a waiting flock after this long, at this share. */
-    leaderDelay: 30,
-    leaderShare: 0.5,
-    /** Flights landed before the flock leader turns up. */
-    leaderAfterFlights: 2,
-    /** A landing flows into the green over this many seconds. */
-    surgeSeconds: 4,
-    /** A landing still flowing when the world ends becomes this much care. */
-    greenToCare: 0.00005,
-    /** The most care a flock in flight at the world's end can hand the seed. */
-    carryCap: 5,
   },
   /** The old window box: the last pot, and what it asks for. */
   windowbox: {
