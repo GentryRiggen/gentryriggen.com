@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.35.0",
+    date: "2026-11-07",
+    title: "The farm, the whole world and the window box",
+    highlights: [
+      "In Make It Grow's farm, the seed bank and the county fair quiz are gone. Now you plant for harvest day, using a weather forecast that gets more sure the closer you get",
+      "Soil wears out if you keep planting the same thing, and beans give it a rest. You also feed one prize pumpkin, which can split in two, and enter it at the end",
+      "In the whole world, the bird migration quiz is gone. Now you slide the biomes up and down to shape the world",
+      "Jungle drinks water and wetland stores it, so the mix matters. Cover too much of the world with one kind of land and blight sets in",
+      "In the old window box, the guessing game is gone. You get a sun-or-shade blind to set, you read the leaves to see how the plants feel, and the weather changes what is right",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
     version: "1.34.0",
     date: "2026-11-07",
     title: "A map in every universe",
