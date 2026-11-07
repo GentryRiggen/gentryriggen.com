@@ -3,7 +3,9 @@ import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import {
   footingPolicy,
+  bestPlan,
   holdsOvertime,
+  paceRate,
   placesLoad,
   playsPlayroom,
   takesFork,
@@ -21,6 +23,7 @@ import {
   paceNow,
   paceStep,
   playroomLean,
+  potPays,
   potSeconds,
   streakOf,
   toddlerStage,
@@ -109,6 +112,8 @@ describe("the pace dial", () => {
     const braced = lean({ "rug-corners": 3, "cushion-fort": 1 });
     expect(braced).toBeLessThan(plain);
     expect(braced).toBeGreaterThan(plain * P.calmFloor - 0.05);
+    // The upgrades do what their cards say: well over a third less lean.
+    expect(braced).toBeLessThan(plain * 0.6);
   });
 });
 
@@ -140,10 +145,54 @@ describe("the streak", () => {
       resources: { ...base.resources, pcTodNext: 95 },
     };
     expect(toddlerStage(stomp)).toBe("stomping");
-    expect(tumbleChance(stomp)).toBeCloseTo(
-      tumbleChance(base) * P.toddlerMult,
-      6
+    // The stomp hits a leaning tower far harder than a straight one.
+    expect(tumbleChance(stomp)).toBeGreaterThan(tumbleChance(base) * 1.9);
+    const leanStomp = {
+      ...stomp,
+      resources: { ...stomp.resources, pcLean: 0.8 },
+    };
+    expect(tumbleChance(leanStomp) / tumbleChance(leaning)).toBeGreaterThan(
+      tumbleChance(stomp) / tumbleChance(base)
     );
+  });
+
+  it("does not let you hide from the toddler: a standing streak is shaken while it stomps, tapping or not", () => {
+    let run = performAction(def, crewed({ pcStreak: 20 }), paceActionId(3));
+    run = {
+      ...run,
+      time: 100,
+      resources: { ...run.resources, pcTodNext: 96, pcLean: 0.9 },
+    };
+    for (let t = 0; t < 12 && tumblesSoFar(run) === 0; t += 1)
+      run = tick(def, run, 1);
+    expect(toddlerStage(run)).toBe("stomping");
+    expect(tumblesSoFar(run)).toBeGreaterThan(0);
+  });
+
+  it("stacks nothing while the crew picks up, so a tumble cannot be re-rolled", () => {
+    const base = crewed({ pcStreak: 5 });
+    let run: RunState = {
+      ...base,
+      time: 10,
+      resources: { ...base.resources, pcRebuildUntil: 16, pcArmed: 100 },
+    };
+    run = tick(def, run, 2);
+    expect(streakOf(run)).toBe(5);
+    expect(tumblesSoFar(run)).toBe(0);
+  });
+
+  it("does not stack a pile of blocks when the pace changes", () => {
+    const run = crewed({ pcAcc: 4.9, pcArmed: 100 });
+    const moved = performAction(def, run, paceActionId(3));
+    expect(moved.resources.pcAcc).toBeLessThanOrEqual(0.5 * PACES[3].stack);
+  });
+
+  it("values a bank at the base rate, so rushing just to bank pays nothing extra", () => {
+    const at = (step: number) => {
+      const run = crewed({ pcStreak: 8, pcPace: step, pcEff: step });
+      return potPays(run, 10 * paceMult(run));
+    };
+    expect(at(3)).toBeCloseTo(at(0), 6);
   });
 
   it("pays more than in proportion for a longer streak", () => {
@@ -230,9 +279,9 @@ describe("no one setting wins (Build pace and the streak, played by the simulato
     ...[0, 1, 2, 3].map((pace) => minutes({ pace, bank: "reads" }))
   );
 
-  it("beats always careful and always rush, even with sensible banking", () => {
-    expect(minutes({ pace: 0, bank: "reads" })).toBeGreaterThan(adjusts * 1.05);
-    expect(minutes({ pace: 3, bank: "reads" })).toBeGreaterThan(adjusts * 1.03);
+  it("beats every fixed pace, even with sensible banking", () => {
+    for (const pace of [0, 1, 2, 3])
+      expect(minutes({ pace, bank: "reads" })).toBeGreaterThan(adjusts * 1.03);
   });
 
   it("beats banking too early and never banking", () => {
@@ -246,5 +295,25 @@ describe("no one setting wins (Build pace and the streak, played by the simulato
 
   it("is not beaten by any one fixed pace by more than a hair", () => {
     expect(bestFixed).toBeGreaterThan(adjusts * 0.97);
+  });
+
+  it("is a different best pace in different moments: careful in a stomp, rush on a braced tower", () => {
+    const base = crewed();
+    const calm = {
+      ...base,
+      time: 100,
+      owned: { ...base.owned, "rug-corners": 3, "cushion-fort": 1 },
+    };
+    expect(bestPlan(calm).step).toBeGreaterThanOrEqual(2);
+    expect(paceRate(calm, 3, 8, false)).toBeGreaterThan(
+      paceRate(calm, 0, 8, false) * 1.15
+    );
+    expect(
+      bestPlan({
+        ...base,
+        time: 100,
+        resources: { ...base.resources, pcTodNext: 95 },
+      }).step
+    ).toBe(0);
   });
 });

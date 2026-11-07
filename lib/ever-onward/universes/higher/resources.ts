@@ -101,6 +101,7 @@ export const RESOURCES: readonly ResourceDef[] = [
       "pcBankAt",
       "pcBankN",
       "pcBankPays",
+      "pcIdle",
     ],
     { pcPace: TUNING.playroom.startPace, pcEff: TUNING.playroom.startPace }
   ),

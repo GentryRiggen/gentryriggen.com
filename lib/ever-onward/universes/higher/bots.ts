@@ -23,6 +23,7 @@ import {
   potSeconds,
   streakOf,
   toddlerStage,
+  tumbleChanceFor,
 } from "./playroom";
 import { STEADY_ACTION_ID, leanCalm, swayOf } from "./sway";
 import { tendingValue } from "./tick";
@@ -93,18 +94,13 @@ export function paceRate(
   let seconds = 0;
   let lost = 0;
   for (let k = 0; k < blocks; k += 1) {
-    const q = Math.min(
-      P.tumbleMax,
-      (P.tumbleBase + P.tumbleLean * lean + P.tumbleStreak * k) *
-        (stomping ? P.toddlerMult : 1) *
-        (isSoft(run) ? 0.5 : 1)
-    );
+    const q = tumbleChanceFor(lean, k, stomping, isSoft(run));
     seconds += alive * pace.stack;
     lost += alive * q * TUMBLE_COST_SECONDS;
     alive *= 1 - q;
   }
   seconds += alive * P.bankPause;
-  return pace.pay * (1 + (alive * potSeconds(blocks) - lost) / seconds);
+  return pace.pay + (alive * potSeconds(blocks) - lost * pace.pay) / seconds;
 }
 
 /** The pace and streak length that earn the most right now. */

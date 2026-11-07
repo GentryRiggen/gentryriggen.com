@@ -73,10 +73,10 @@ export const TUNING = {
   playroom: {
     /** Careful to rush: pay, how far it leans, seconds between blocks. */
     paces: [
-      { name: "Careful", pay: 0.9, lean: 0.05, stack: 5.1 },
+      { name: "Careful", pay: 0.92, lean: 0.05, stack: 5.1 },
       { name: "Easy", pay: 1, lean: 0.22, stack: 3.5 },
-      { name: "Quick", pay: 1.12, lean: 0.5, stack: 2.4 },
-      { name: "Rush", pay: 1.22, lean: 0.9, stack: 1.6 },
+      { name: "Quick", pay: 1.15, lean: 0.5, stack: 2.4 },
+      { name: "Rush", pay: 1.3, lean: 0.9, stack: 1.6 },
     ] as readonly {
       name: string;
       pay: number;
@@ -93,10 +93,10 @@ export const TUNING = {
     armSeconds: 6,
     /** Tumble chance per block: base, per full lean, per block in the streak. */
     tumbleBase: 0.01,
-    tumbleLean: 0.3,
-    tumbleStreak: 0.008,
+    tumbleLean: 0.4,
+    tumbleStreak: 0.006,
     /** Braces and footings never calm the lean below this share of the pace's lean. */
-    calmFloor: 0.7,
+    calmFloor: 0.15,
     tumbleMax: 0.75,
     /** The streak stops growing here. */
     streakMax: 40,
@@ -117,8 +117,14 @@ export const TUNING = {
     toddlerGap: [22, 34] as readonly [number, number],
     toddlerWarn: 6,
     toddlerStomp: 14,
-    /** While the toddler stomps, a tumble is this many times as likely. */
-    toddlerMult: 5,
+    /**
+     * While the toddler stomps, the lean term is this many times as big and
+     * the base and streak terms this many times as big.
+     */
+    toddlerLeanMult: 6,
+    toddlerBaseMult: 2,
+    /** A standing streak is checked this often while the toddler stomps, even untapped. */
+    stompCheckSeconds: 1,
     /** The scene shows a tumble or a bank for this long. */
     showSeconds: 5,
     /** A pillow from a delivery halves tumbles for this many seconds. */

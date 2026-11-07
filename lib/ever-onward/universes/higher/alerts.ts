@@ -11,9 +11,9 @@ export function higherAlert(run: RunState): string | null {
   if (run.phase === 0) {
     const stage = toddlerStage(run);
     if (stage === "coming")
-      return `The toddler is coming in ${toddlerSeconds(run)} seconds! Tumbles will be three times as likely while it stomps. Bank your streak or slow down.`;
+      return `The toddler is coming in ${toddlerSeconds(run)} seconds! Tumbles come much more easily while it stomps, most of all for a leaning tower. Bank your streak or slow down.`;
     if (stage === "stomping")
-      return "The toddler is stomping on the rug! The tower tumbles three times as easily until it goes.";
+      return "The toddler is stomping on the rug! The tower tumbles much more easily until it goes, even if you stop tapping.";
     return null;
   }
   if (swayOf(run) < WOBBLE_AT) return null;

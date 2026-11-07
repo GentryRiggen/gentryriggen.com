@@ -29,6 +29,10 @@ function headStart(index: number): (run: RunState) => void {
 /** Every part begins with an upright tower, empty footing and no shift on. */
 function freshSite(run: RunState): void {
   run.resources.sway = 0;
+  // The playroom's lean, streak and toddler stay behind.
+  run.resources.pcLean = 0;
+  run.resources.pcStreak = 0;
+  run.resources.pcAcc = 0;
   run.resources.ftStock = 0;
   run.resources.otLeft = 0;
   run.resources.dlLast = 0;

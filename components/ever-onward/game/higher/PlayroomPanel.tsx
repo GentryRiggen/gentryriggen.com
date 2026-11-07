@@ -173,7 +173,7 @@ export default function PlayroomPanel({ def, run, onAct }: PanelProps) {
           The next block tumbles the top {pct(chance)} of the time. A tumble
           loses the streak.
           {stage === "coming" &&
-            ` The toddler stomps in ${toddlerSeconds(run)} sec and tumbles come ${TUNING.playroom.toddlerMult} times as often.`}
+            ` The toddler stomps in ${toddlerSeconds(run)} sec and tumbles come much more easily, even if you stop tapping.`}
           {stage === "stomping" &&
             ` The toddler is stomping for ${toddlerSeconds(run)} more sec.`}
         </p>
@@ -196,8 +196,8 @@ export default function PlayroomPanel({ def, run, onAct }: PanelProps) {
         </button>
       </div>
       <p className="font-mono text-xs text-slate-300">
-        Tap to stack. Blocks only go up while you tap, so a tower left alone
-        never tumbles.
+        Tap to stack. Blocks only go up while you tap, and a leaning tower
+        tumbles sooner.
       </p>
     </PanelFrame>
   );

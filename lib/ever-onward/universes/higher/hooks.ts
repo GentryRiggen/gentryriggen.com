@@ -23,7 +23,7 @@ import {
   toddlerStage,
 } from "./playroom";
 import { sceneInfo, sceneKey } from "./scene";
-import { STEADY_ACTION_ID, SWAY_CONSUMABLE, swayOf } from "./sway";
+import { STEADY_ACTION_ID, SWAY_CONSUMABLE, hasSway, swayOf } from "./sway";
 import { TUNING } from "./tuning";
 
 /** The sway plate lights when the tower leans this much. */
@@ -35,7 +35,7 @@ export function higherPlates(run: RunState): string[] {
   const fork = currentFork(run);
   if (isForkOpen(run, fork.id) && !isForkChosen(run, fork.id))
     plates.push("fork");
-  if (run.phase <= 2 && swayOf(run) >= LEAN_PLATE) plates.push("sway");
+  if (hasSway(run) && swayOf(run) >= LEAN_PLATE) plates.push("sway");
   if (isPlayroomOpen(run) && streakOf(run) >= TUNING.playroom.plateAt)
     plates.push("streak");
   if (isPlayroomOpen(run) && toddlerStage(run) !== "away")

@@ -40,7 +40,7 @@ import {
 } from "../forks";
 import { OVERTIME_ACTION_ID, isOvertimeOn, knowhowOf } from "../knowhow";
 import { STEADY_ACTION_ID, swayFactor, swayOf } from "../sway";
-import { tumbleChance } from "../playroom";
+import { leanTarget, tumbleChance } from "../playroom";
 import { incomePerSecond } from "../tick";
 import { TUNING } from "../tuning";
 import { def, runAtPhaseStart, withResources } from "./fixtures";
@@ -210,6 +210,36 @@ describe("Build It Higher trade-offs", () => {
       for (let t = 0; t < TUNING.knowhow.overtimeSeconds + 2; t += 1)
         later = tick(def, later, 1);
       expect(isOvertimeOn(later)).toBe(false);
+    });
+  });
+
+  describe("the playroom's lean", () => {
+    const crew = (extra: Record<string, number> = {}): RunState => {
+      const base = runAtPhaseStart(0);
+      return {
+        ...base,
+        owned: { bear: 3, ...extra },
+        resources: { ...base.resources, pcPace: 3, pcEff: 3 },
+      };
+    };
+
+    it("is leaned on less by the wide fork, by every rug corner and by the fort", () => {
+      const plain = leanTarget(crew());
+      expect(leanTarget(withResources(crew(), { fkPlay: 2 }))).toBeLessThan(
+        plain * 0.5
+      );
+      expect(leanTarget(withResources(crew(), { fkPlay: 1 }))).toBeGreaterThan(
+        plain
+      );
+      let last = plain;
+      for (const level of [1, 2, 3]) {
+        const now = leanTarget(crew({ "rug-corners": level }));
+        expect(now).toBeLessThan(last);
+        last = now;
+      }
+      expect(
+        leanTarget(crew({ "rug-corners": 3, "cushion-fort": 1 }))
+      ).toBeLessThan(last * 0.6);
     });
   });
 

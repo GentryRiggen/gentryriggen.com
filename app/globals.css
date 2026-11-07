@@ -4330,6 +4330,8 @@ html:has(.jim-app) body {
   .bh-toddler-run,
   .bh-toddler-stomp,
   .bh-quake,
+  .bh-banner,
+  .bh-edge,
   .bh-creak,
   .bh-glow,
   .bh-note {
@@ -4642,6 +4644,46 @@ html:has(.jim-app) body {
 .bh-pace-3 .bh-hop,
 .bh-pace-3 .bh-hop-b {
   animation-duration: 0.35s;
+}
+
+/* Full-width moment banners: HTML over the scene, so a phone's short strip still shouts. */
+@keyframes bh-banner {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bh-banner {
+  animation: bh-banner 4.6s ease-out forwards;
+}
+
+@keyframes bh-edge {
+  0%,
+  30%,
+  60% {
+    opacity: 0.95;
+  }
+  15%,
+  45%,
+  100% {
+    opacity: 0;
+  }
+}
+.bh-edge {
+  animation: bh-edge 1.8s steps(1, end) forwards;
 }
 
 /* ---- Ever Onward intro films (components/ever-onward/game/film) ---- */

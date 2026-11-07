@@ -18,10 +18,12 @@ import { TUNING } from "./tuning";
  * can be the one where the top tumbles: the pot is lost and the crew spends a
  * few seconds picking blocks up at a lower rate. A leaning tower tumbles sooner, so the two dials work together.
  * The toddler's stomping, on the rug every little while, makes tumbles far
- * more likely, so the best moment to bank (or to slow down) keeps moving.
+ * more likely (most of all for a leaning tower), so the best moment to bank
+ * (or to slow down) keeps moving.
  *
- * Nothing here runs unless a tap has just stacked a block, so a tower left
- * alone never tumbles. State is hidden resources (`pc*`), so a save from
+ * Blocks only stack, and only tumble, while you tap. The one exception is the
+ * stomp: a streak left standing is checked every second while the toddler is
+ * on the rug, so going quiet is not a way to hide. State is hidden resources (`pc*`), so a save from
  * before reads as "easy pace, no streak, toddler not seen yet".
  */
 
@@ -132,23 +134,40 @@ export const isRebuilding = (run: RunState): boolean =>
 export const TUMBLE_COST_SECONDS = P.rebuildSeconds * (1 - P.rebuildPay);
 
 /** The chance the next block is the one where the top tumbles. */
-export function tumbleChance(run: RunState): number {
-  const base =
-    P.tumbleBase +
-    P.tumbleLean * playroomLean(run) +
-    P.tumbleStreak * streakOf(run);
-  const stomp = toddlerStage(run) === "stomping" ? P.toddlerMult : 1;
-  const soft = isSoft(run) ? 0.5 : 1;
-  return Math.min(P.tumbleMax, base * stomp * soft);
-}
+export const tumbleChanceFor = (
+  lean: number,
+  streak: number,
+  stomping: boolean,
+  soft: boolean
+): number =>
+  Math.min(
+    P.tumbleMax,
+    ((P.tumbleBase + P.tumbleStreak * streak) *
+      (stomping ? P.toddlerBaseMult : 1) +
+      P.tumbleLean * lean * (stomping ? P.toddlerLeanMult : 1)) *
+      (soft ? 0.5 : 1)
+  );
+
+export const tumbleChance = (run: RunState): number =>
+  tumbleChanceFor(
+    playroomLean(run),
+    streakOf(run),
+    toddlerStage(run) === "stomping",
+    isSoft(run)
+  );
 
 /** What banking `blocks` in a row is worth, in seconds of building. */
 export const potSeconds = (blocks: number): number =>
   blocks <= 0 ? 0 : P.pot * blocks ** P.potPower;
 
-/** What banking now pays, in blocks, given what one second of building makes. */
+/**
+ * What banking now pays, in blocks, given what one second of building makes.
+ * The pot is valued at the base rate (the pace's pay and a rebuild are taken
+ * out), so flipping to Rush just to bank does not pay more.
+ */
 export const potPays = (run: RunState, perSecond: number): number =>
-  potSeconds(streakOf(run)) * Math.max(0, perSecond);
+  potSeconds(streakOf(run)) *
+  Math.max(0, perSecond / Math.max(0.01, paceMult(run)));
 
 export const canBank = (run: RunState): boolean =>
   isPlayroomOpen(run) && streakOf(run) >= P.bankMin;
@@ -179,6 +198,8 @@ export function setPace(run: RunState, step: number): void {
   const now = paceNow(run);
   r.pcPace = Math.min(PACES.length - 1, Math.max(0, Math.round(step)));
   r.pcEff = now;
+  // A change must not stack a pile of blocks in one go.
+  r.pcAcc = Math.min(res(run, "pcAcc"), 0.5 * PACES[r.pcPace].stack);
   r.pcChanges = res(run, "pcChanges") + 1;
 }
 
@@ -231,6 +252,24 @@ function tumble(run: RunState): void {
   r.pcTumbles = tumblesSoFar(run) + 1;
 }
 
+/** An untapped tower with a streak is still shaken, once a second, by a stomp. */
+function stompCheck(run: RunState, dt: number): void {
+  const r = run.resources;
+  if (toddlerStage(run) !== "stomping" || streakOf(run) <= 0) {
+    r.pcIdle = 0;
+    return;
+  }
+  r.pcIdle = res(run, "pcIdle") + dt;
+  while (r.pcIdle >= P.stompCheckSeconds) {
+    r.pcIdle -= P.stompCheckSeconds;
+    if (roll(run) < tumbleChance(run)) {
+      tumble(run);
+      r.pcIdle = 0;
+      return;
+    }
+  }
+}
+
 /** Tapping stacks a block by hand, and wakes the tower for a few seconds. */
 export function wakeTower(run: RunState): void {
   if (!isPlayroomOpen(run)) return;
@@ -252,8 +291,12 @@ export function tickPlayroom(run: RunState, dt: number): void {
   if (!isPlayroomOpen(run)) return;
   if (!r.pcTodNext) scheduleToddler(run);
   else if (run.time >= r.pcTodNext + P.toddlerStomp) scheduleToddler(run);
-  if (res(run, "pcArmed") <= run.time || res(run, "pcPauseUntil") > run.time)
+  // The crew picking up after a tumble (or cheering a bank) stacks nothing.
+  if (res(run, "pcPauseUntil") > run.time || isRebuilding(run)) return;
+  if (res(run, "pcArmed") <= run.time) {
+    stompCheck(run, dt);
     return;
+  }
   r.pcAcc = res(run, "pcAcc") + dt;
   const gap = stackSeconds(run);
   while (r.pcAcc >= gap) {

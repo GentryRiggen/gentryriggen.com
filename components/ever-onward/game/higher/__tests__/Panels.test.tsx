@@ -132,9 +132,9 @@ describe("PlayroomPanel", () => {
     render(<PlayroomPanel def={def} run={playroom(3)} onAct={onAct} />);
     const rush = screen.getByTestId("bh-pace-3");
     expect(rush).toHaveTextContent("Rush");
-    expect(rush).toHaveTextContent(/\+22% pay/);
+    expect(rush).toHaveTextContent(/\+30% pay/);
     expect(rush).toHaveTextContent(/Leans a lot/);
-    expect(screen.getByTestId("bh-pace-0")).toHaveTextContent(/-10% pay/);
+    expect(screen.getByTestId("bh-pace-0")).toHaveTextContent(/-8% pay/);
     expect(screen.getByTestId("bh-pace-1")).toHaveAttribute(
       "aria-checked",
       "true"
