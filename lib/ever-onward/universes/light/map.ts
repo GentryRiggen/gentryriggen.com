@@ -1,3 +1,4 @@
+import { add, mul } from "../../engine/mapKit";
 import type { ArtifactDef, MapDef, RunState } from "../../engine/types";
 
 /**
@@ -7,27 +8,12 @@ import type { ArtifactDef, MapDef, RunState } from "../../engine/types";
  * `bright`) and multiply onto whatever the keepsake set.
  */
 
-const mul = (run: RunState, mod: string, by: number) => {
-  run.mods[mod] = (run.mods[mod] ?? 1) * by;
-};
-const add = (run: RunState, mod: string, by: number) => {
-  run.mods[mod] = (run.mods[mod] ?? 0) + by;
-};
 /** Storm calm stays below 0.9, like the old Calm seas upgrade. */
 const calm = (run: RunState, by: number) => {
   run.mods.calm = Math.min(0.9, (run.mods.calm ?? 0) + by);
 };
 
-/** Where each artifact floats in the 400 x 300 scene, and how big. */
-export interface ArtifactSpot {
-  x: number;
-  y: number;
-  scale: number;
-}
-
-type LightArtifact = ArtifactDef & { spot: ArtifactSpot };
-
-export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
+export const LIGHT_ARTIFACTS: readonly ArtifactDef[] = [
   // ------------------------------------------------------------ big
   {
     id: "brass-heart",
@@ -336,7 +322,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     effect:
       "Nothing at all. An old keeper walks the shore in every run now, and waves.",
     apply: () => {},
-    spot: { x: 0, y: 250, scale: 1.6 },
+    spot: { x: 0, y: 250, scale: 1.6, walk: true },
     palette: { C: "#3b4a7a", W: "#e6ecff", w: "#9aa6cc", K: "#1b1f33" },
     glyph: [
       "....CCCC....",
@@ -413,10 +399,6 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
   },
 ];
 
-/** Scene spot of an artifact id (the scene draws them). */
-export const ARTIFACT_SPOTS: Readonly<Record<string, ArtifactSpot>> =
-  Object.fromEntries(LIGHT_ARTIFACTS.map((a) => [a.id, a.spot]));
-
 export const LIGHT_MAP: MapDef = {
   cols: 8,
   rows: 8,
@@ -492,6 +474,7 @@ export const LIGHT_MAP: MapDef = {
     },
   ],
   artifacts: LIGHT_ARTIFACTS,
+  tint: "#7c3aed",
   keepsake: {
     name: "A Keepsake of old embers",
     palette: { C: "#c9a14a", R: "#e2435b", O: "#ff9f3a", Y: "#ffe27a" },

@@ -439,6 +439,11 @@ export interface ArtifactDef {
   palette: GlyphPalette;
   /** Shapes every fresh run while it is found and switched on. */
   apply(run: RunState): void;
+  /**
+   * Where it shows in the universe's scene (400 x 300 viewBox), once found.
+   * `walk` makes it stroll across the scene instead of floating.
+   */
+  spot: { x: number; y: number; scale: number; walk?: boolean };
 }
 
 export interface MapDef {
@@ -455,6 +460,8 @@ export interface MapDef {
   /** Per row index: what that row changes. Index 0 changes nothing. */
   rowChanges: readonly SquareChange[];
   artifacts: readonly ArtifactDef[];
+  /** Deeper rows tint the scene this colour (the "within" feeling). */
+  tint: string;
   /** Shown on the shelf for players who bought the old permanent upgrades. */
   keepsake: { name: string; glyph: readonly string[]; palette: GlyphPalette };
 }

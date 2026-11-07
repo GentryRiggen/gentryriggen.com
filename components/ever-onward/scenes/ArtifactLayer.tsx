@@ -1,10 +1,6 @@
 import { memo } from "react";
-import type { RunState } from "@/lib/ever-onward/engine/types";
+import type { MapDef, RunState } from "@/lib/ever-onward/engine/types";
 import { spriteRects } from "@/lib/ever-onward/start/sprites";
-import {
-  ARTIFACT_SPOTS,
-  LIGHT_ARTIFACTS,
-} from "@/lib/ever-onward/universes/light/map";
 
 /** The run's switched-on artifacts as one stable string (for memo). */
 export function artifactKey(run: RunState): string {
@@ -16,39 +12,42 @@ export function artifactKey(run: RunState): string {
 }
 
 interface ArtifactLayerProps {
+  /** The universe's map (nothing is drawn without one). */
+  map: MapDef | undefined;
   /** `artifactKey` of the run. */
   found: string;
-  /** The map row the run is played on: deeper rows dream in violet. */
+  /** The map row the run is played on: deeper rows tint the scene. */
   depth: number;
 }
 
 /**
- * What the map has given this run, drawn in the scene: each artifact floats
- * at its own spot in every part, the Ghost Keeper walks the shore, and the
- * deeper the square, the more violet the dream.
+ * What the map has given this run, drawn in the scene (400 x 300): each
+ * artifact floats at its own spot in every part, walkers stroll across, and
+ * the deeper the square, the stronger the universe's dream tint.
  */
-function ArtifactLayer({ found, depth }: ArtifactLayerProps) {
+function ArtifactLayer({ map, found, depth }: ArtifactLayerProps) {
+  if (!map) return null;
   const ids = new Set(found ? found.split("|") : []);
-  const shown = LIGHT_ARTIFACTS.filter((a) => ids.has(a.id));
+  const shown = map.artifacts.filter((a) => ids.has(a.id));
   return (
     <g
-      data-testid="lm-artifacts"
+      data-testid="eo-artifacts"
       data-found={shown.length}
       pointerEvents="none"
     >
       {depth > 0 && (
         <rect
-          data-testid="lm-dream-tint"
+          data-testid="eo-dream-tint"
           x="-20"
           y="-20"
           width="440"
           height="340"
-          fill="#7c3aed"
+          fill={map.tint}
           opacity={Math.min(0.35, depth * 0.05)}
         />
       )}
       {shown.map((a, i) => {
-        const spot = ARTIFACT_SPOTS[a.id];
+        const { spot } = a;
         const art = spriteRects(a.glyph, a.palette).map((r, j) => (
           <rect
             key={j}
@@ -59,24 +58,20 @@ function ArtifactLayer({ found, depth }: ArtifactLayerProps) {
             fill={r.fill}
           />
         ));
-        if (a.id === "ghost-keeper") {
+        const place = `translate(${spot.x} ${spot.y}) scale(${spot.scale})`;
+        if (spot.walk) {
           return (
-            <g key={a.id} className="eo-art-ghost" opacity="0.75">
-              <g
-                transform={`translate(${spot.x} ${spot.y}) scale(${spot.scale})`}
-              >
+            <g key={a.id} className="eo-art-ghost" opacity="0.8">
+              <g transform={place} shapeRendering="crispEdges">
                 {art}
               </g>
             </g>
           );
         }
         return (
-          <g
-            key={a.id}
-            transform={`translate(${spot.x} ${spot.y}) scale(${spot.scale})`}
-          >
+          <g key={a.id} transform={place}>
             <g className="eo-art-new">
-              <circle cx="6" cy="6" r="9" fill="url(#lm-lamp)" opacity="0.55" />
+              <circle cx="6" cy="6" r="9" fill="#fff3b0" opacity="0.18" />
               <g
                 className={`eo-art-float ${i % 2 ? "[animation-delay:-2.5s]" : ""}`}
                 shapeRendering="crispEdges"

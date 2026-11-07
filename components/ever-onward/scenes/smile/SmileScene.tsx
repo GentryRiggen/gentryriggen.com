@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
+import { SMILE_MAP } from "@/lib/ever-onward/universes/smile/map";
+import ArtifactLayer, { artifactKey } from "../ArtifactLayer";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import {
   isSameSceneInfo,
@@ -55,11 +57,15 @@ const SmileSceneView = memo(function SmileSceneView({
   seen,
   lastBuy,
   testId,
+  found,
+  depth,
 }: {
   info: SmileSceneInfo;
   seen: Seen;
   lastBuy: LastBuy | null;
   testId: string;
+  found: string;
+  depth: number;
 }) {
   return (
     <div className="relative h-full w-full">
@@ -91,6 +97,7 @@ const SmileSceneView = memo(function SmileSceneView({
             </g>
           );
         })}
+        <ArtifactLayer map={SMILE_MAP} found={found} depth={depth} />
         {lastBuy && <SceneCallout key={lastBuy.id} buy={lastBuy} info={info} />}
       </svg>
       <p
@@ -112,6 +119,13 @@ export default function SmileScene({
 }: SceneProps) {
   const { info, seen } = useSeenInfo(run);
   return (
-    <SmileSceneView info={info} seen={seen} lastBuy={lastBuy} testId={testId} />
+    <SmileSceneView
+      info={info}
+      seen={seen}
+      lastBuy={lastBuy}
+      testId={testId}
+      found={artifactKey(run)}
+      depth={run.mods.depth ?? 0}
+    />
   );
 }

@@ -102,19 +102,16 @@ describe("the Last Seed ending", () => {
     );
   });
 
-  it("says Acorns on the finished panel and offers a restart (Review Focus 5)", async () => {
+  it("points to the Garden Map on the finished panel", async () => {
     saveFinished();
     await openGrow();
-    const panel = await screen.findByTestId("lm-embers");
-    expect(panel).toHaveTextContent(/You have \d+ acorns/);
-    expect(panel).toHaveTextContent(/more when you play again/);
-    expect(panel).not.toHaveTextContent(/embers/i);
-    expect(panel).toHaveTextContent("This run earns");
-    expect(panel).toHaveTextContent(/acorns/);
+    const panel = await screen.findByTestId("eo-map-end");
+    expect(panel).toHaveTextContent("the Garden Map");
     expect(
-      within(panel).getByRole("button", { name: "Play again" })
+      within(panel).getByRole("button", { name: "Open the map" })
     ).toBeInTheDocument();
-    // Grow has no "Universe 2" pointer: it is the second universe.
+    // The old Acorn shop is gone, and Grow has no "Universe 2" pointer.
+    expect(screen.queryByTestId("lm-embers")).not.toBeInTheDocument();
     expect(panel).not.toHaveTextContent("Universe 2");
   });
 
@@ -123,7 +120,7 @@ describe("the Last Seed ending", () => {
     try {
       saveFinished();
       await openGrow();
-      await screen.findByTestId("lm-embers");
+      await screen.findByTestId("eo-map-end");
       await act(async () => {
         jest.advanceTimersByTime(15_000);
       });

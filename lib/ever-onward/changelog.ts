@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.34.0",
+    date: "2026-11-07",
+    title: "A map in every universe",
+    highlights: [
+      "Make It Grow, Build It Higher and Make Everyone Smile have maps now too: the Garden Map, the Blueprint and the Crayon Map. Tap Map at the top any time",
+      "Finish a run, then pick your next square: one to the right, one down, or any square you've already been to. Each square changes the next run a little",
+      "Each map hides 14 strange things to find, from a Golden Trowel and a Teddy Crew to a clown who follows you around. Some are great, some are so-so, and some come with a catch you can switch off",
+      "Everything you find shows up in that universe's picture, and the deeper you go, the stranger it gets",
+      "The old shops (Acorns, Gold stars and Stickers) are gone. Anything you bought there still works: look for your Keepsake on the map",
+    ],
+  },
+  {
     version: "1.33.0",
     date: "2026-11-07",
     title: "The Sea Chart",

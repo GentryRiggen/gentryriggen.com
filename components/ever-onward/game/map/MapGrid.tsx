@@ -47,6 +47,15 @@ export function squareLabel(
   return parts.join(", ");
 }
 
+/** Each universe's chart has its own ground: sea, soil, blueprint, crayon. */
+const SEA: Record<string, string> = {
+  light: "border-cyan-800/80 bg-[#060b1f]",
+  grow: "border-lime-800/80 bg-[#1a1208]",
+  higher:
+    "border-sky-500/70 bg-[#0b2a5c] bg-[linear-gradient(rgba(186,230,253,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(186,230,253,0.12)_1px,transparent_1px)] bg-[size:12px_12px]",
+  smile: "border-pink-400/70 bg-[#2a0f22]",
+};
+
 const HATCH =
   "bg-[repeating-linear-gradient(135deg,rgba(148,163,184,0.28)_0_2px,transparent_2px_7px)]";
 
@@ -74,7 +83,7 @@ export default function MapGrid({
       role="grid"
       aria-label={map.title}
       data-testid="eo-map-grid"
-      className="eo-map-sea grid w-full grid-cols-8 border-2 border-cyan-800/80 bg-[#060b1f]"
+      className={`eo-map-sea grid w-full grid-cols-8 border-2 ${SEA[def.id] ?? SEA.light}`}
     >
       {keys.map((key) => {
         const artifact = artifactAt(def, key);

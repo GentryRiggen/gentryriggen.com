@@ -130,7 +130,7 @@ test.describe("Ever Onward", () => {
     );
     await expect(page.getByTestId("eo-map-shelf")).toContainText("of 14");
     await page.getByRole("button", { name: "Close the map" }).click();
-    await expect(page.getByTestId("lm-artifacts")).toBeAttached();
+    await expect(page.getByTestId("eo-artifacts")).toBeAttached();
   });
 
   test("players without the owner mark see no Test mode", async ({ page }) => {

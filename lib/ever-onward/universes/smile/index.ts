@@ -13,6 +13,7 @@ import {
 } from "./hooks";
 import { SMILE_PROJECTS } from "./knowhow";
 import { PHASES } from "./phases";
+import { SMILE_MAP } from "./map";
 import { PRESTIGE } from "./prestige";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
@@ -47,6 +48,7 @@ export const smileUniverse: UniverseDef = {
   alert: smileAlert,
   gauge: smileGauge,
   prestige: PRESTIGE,
+  map: SMILE_MAP,
   plates: smilePlates,
   plateActions: SMILE_PLATE_ACTIONS,
   decisionActions: SMILE_DECISION_ACTIONS,

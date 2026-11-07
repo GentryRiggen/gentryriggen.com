@@ -34,6 +34,6 @@ describe("Test mode map presets", () => {
     const jump = jumpToMap("light", "half")!;
     expect(jump.run.complete).toBe(true);
     expect(jump.map).toEqual(mapPreset(def, "half"));
-    expect(jumpToMap("grow", "half")).toBeNull();
+    expect(jumpToMap("nowhere", "half")).toBeNull();
   });
 });

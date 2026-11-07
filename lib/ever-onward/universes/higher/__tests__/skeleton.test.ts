@@ -1,10 +1,7 @@
+import { legalTargets, stepMap } from "../../../engine/map";
 import { manualGain, visitorHereFlag } from "../../../engine/engine";
 import { isUniverseUnlocked } from "../../../engine/progress";
-import {
-  endRun,
-  newUniverseSave,
-  prestigeLabel,
-} from "../../../engine/prestige";
+import { newUniverseSave, prestigeLabel } from "../../../engine/prestige";
 import { newSave, parseSave } from "../../../engine/save";
 import { simulate } from "../../../engine/sim";
 import { growUniverse } from "../../grow";
@@ -90,14 +87,19 @@ describe("Build It Higher skeleton", () => {
     save.universes.higher = newUniverseSave(def);
     const before = JSON.stringify([save.universes.light, save.universes.grow]);
     const mine = save.universes.higher;
-    const ended = endRun(def, { ...mine, run: { ...mine.run, phase: 2 } });
-    expect(ended.embers).toBeGreaterThan(0);
+    // a finished run moves to the next square on the map
+    const finished = {
+      ...mine,
+      run: { ...mine.run, time: 60, complete: true },
+    };
+    const ended = stepMap(def, finished, legalTargets(def, finished)[0]);
+    expect(ended.map?.at).not.toBe(finished.map?.at);
     save.universes.higher = ended;
     const reloaded = parseSave(JSON.parse(JSON.stringify(save)));
     expect(
       JSON.stringify([reloaded?.universes.light, reloaded?.universes.grow])
     ).toBe(before);
-    expect(reloaded?.universes.higher.embers).toBe(ended.embers);
+    expect(reloaded?.universes.higher.map).toEqual(ended.map);
   });
 
   describe("old saves", () => {
