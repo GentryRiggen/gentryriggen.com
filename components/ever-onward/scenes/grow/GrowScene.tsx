@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { GROW_MAP } from "@/lib/ever-onward/universes/grow/map";
 import ArtifactLayer, { artifactKey } from "../ArtifactLayer";
 import type { RunState } from "@/lib/ever-onward/engine/types";
@@ -37,6 +37,31 @@ const ART = {
   seed: SeedLayer,
 } as const;
 
+/** The seed scene's shape; a strip wider than this is a phone lying flat on its pane. */
+const SEED_ASPECT = 320 / 228;
+const SEED_CROP_ASPECT = 1.6;
+
+/**
+ * True while the scene's box is a wide, short strip (a phone), so the seed
+ * window can fill it, cropping a little off the top and bottom, instead of
+ * sitting small in the middle with empty sides.
+ */
+function useWideStrip(): [React.RefObject<HTMLDivElement | null>, boolean] {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() => {
+      const { width, height } = el.getBoundingClientRect();
+      setIsWide(height > 0 && width / height >= SEED_CROP_ASPECT);
+    });
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+  return [ref, isWide && SEED_CROP_ASPECT > SEED_ASPECT];
+}
+
 const GrowSceneView = memo(function GrowSceneView({
   info,
   lastBuy,
@@ -51,10 +76,15 @@ const GrowSceneView = memo(function GrowSceneView({
   depth: number;
 }) {
   const Art = ART[info.phase];
+  const [boxRef, isStrip] = useWideStrip();
   return (
-    <div className="relative h-full w-full">
+    <div ref={boxRef} className="relative h-full w-full">
       <svg
         viewBox={info.phase === "seed" ? "40 6 320 228" : "0 0 400 300"}
+        preserveAspectRatio={
+          info.phase === "seed" && isStrip ? "xMidYMid slice" : undefined
+        }
+        data-fill={info.phase === "seed" && isStrip ? "strip" : undefined}
         role="img"
         aria-label={sceneLabelFor(info)}
         data-testid={testId}

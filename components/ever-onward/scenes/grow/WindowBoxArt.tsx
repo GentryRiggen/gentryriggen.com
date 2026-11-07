@@ -483,10 +483,10 @@ export function PotMoment({
             className="gp-poof"
           />
           <rect
-            x={WINDOW.x}
-            y={WINDOW.y}
-            width={WINDOW.w}
-            height={WINDOW.h}
+            x="-1200"
+            y="-1200"
+            width="2800"
+            height="2700"
             fill="#fff3bf"
             className="gp-flash"
           />
@@ -525,10 +525,10 @@ export function PotMoment({
       {moment === "dry" && (
         <g>
           <rect
-            x={WINDOW.x}
-            y={WINDOW.y}
-            width={WINDOW.w}
-            height={WINDOW.h}
+            x="-1200"
+            y="-1200"
+            width="2800"
+            height="2700"
             fill="#ff922b"
             className="gp-flash"
           />
@@ -559,10 +559,10 @@ export function PotMoment({
       {moment === "soggy" && (
         <g>
           <rect
-            x={WINDOW.x}
-            y={WINDOW.y}
-            width={WINDOW.w}
-            height={WINDOW.h}
+            x="-1200"
+            y="-1200"
+            width="2800"
+            height="2700"
             fill="#4dabf7"
             className="gp-flash"
           />
@@ -590,19 +590,29 @@ export function PotMoment({
           />
         </g>
       )}
-      <text
-        x={POT.x}
-        y="70"
-        textAnchor="middle"
-        className="gp-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="15"
-        fill={word.fill}
-        stroke={word.stroke}
-        strokeWidth="4"
-        paintOrder="stroke"
-      >
-        {word.text}
-      </text>
+      <g className="gp-shout">
+        <rect
+          x="-1200"
+          y="58"
+          width="2800"
+          height="30"
+          fill={word.stroke}
+          fillOpacity="0.85"
+        />
+        <text
+          x={POT.x}
+          y="82"
+          textAnchor="middle"
+          className="font-[family-name:var(--font-eo-pixel)]"
+          fontSize="19"
+          fill={word.fill}
+          stroke={word.stroke}
+          strokeWidth="5"
+          paintOrder="stroke"
+        >
+          {word.text}
+        </text>
+      </g>
     </g>
   );
 }
