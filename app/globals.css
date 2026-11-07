@@ -904,6 +904,17 @@ html:has(.jim-app) body {
   .lm-pop,
   .lm-glow,
   .lm-fade-up,
+  .eo-map-float,
+  .eo-map-here,
+  .eo-map-beacon,
+  .eo-map-choosable,
+  .eo-map-rise,
+  .eo-map-burst,
+  .eo-map-rays,
+  .eo-map-caret,
+  .eo-art-float,
+  .eo-art-ghost,
+  .eo-art-new,
   .lm-cut-pan-a,
   .lm-cut-pan-b,
   .lm-float,
@@ -5186,4 +5197,206 @@ html:has(.jim-app) body {
   .ms-frown {
     opacity: 0;
   }
+}
+
+/* ---- Ever Onward prestige map ---------------------------------------- */
+
+.eo-map-sea {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, #dbeafe 50%, transparent 51%),
+    radial-gradient(1px 1px at 47% 63%, #bfdbfe 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 31%, #e0f2fe 50%, transparent 51%),
+    radial-gradient(1px 1px at 29% 84%, #c7d2fe 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 77%, #dbeafe 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 9%, #e0e7ff 50%, transparent 51%);
+  background-size: 140px 140px;
+}
+
+@keyframes eoMapFloat {
+  0%,
+  100% {
+    transform: translateY(-6%) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(6%) rotate(4deg);
+  }
+}
+.eo-map-float {
+  animation: eoMapFloat 4.5s ease-in-out infinite;
+}
+
+@keyframes eoMapHere {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.88);
+  }
+}
+.eo-map-here {
+  animation: eoMapHere 1.6s ease-in-out infinite;
+}
+
+@keyframes eoMapBeacon {
+  0%,
+  100% {
+    box-shadow: 0 0 2px 1px rgba(252, 211, 77, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px 4px rgba(252, 211, 77, 0.9);
+  }
+}
+.eo-map-beacon {
+  animation: eoMapBeacon 2.4s ease-in-out infinite;
+}
+
+@keyframes eoMapChoosable {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.85);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.3);
+  }
+}
+.eo-map-choosable {
+  animation: eoMapChoosable 1.2s ease-in-out infinite;
+}
+
+/* The find: rise out of the chart, then flip over. */
+@keyframes eoMapRise {
+  0% {
+    opacity: 0;
+    transform: translateY(70%) scale(0.3) rotateY(0deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-6%) scale(1.05) rotateY(0deg);
+  }
+  80% {
+    transform: translateY(0) scale(1) rotateY(360deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotateY(360deg);
+  }
+}
+.eo-map-rise {
+  animation: eoMapRise 1.6s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes eoMapBurst {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  55% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1.25);
+  }
+}
+.eo-map-burst {
+  animation: eoMapBurst 2.2s ease-out both;
+}
+
+@keyframes eoMapRays {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(360deg);
+  }
+}
+.eo-map-rays {
+  animation: eoMapRays 24s linear both infinite;
+}
+
+@keyframes eoMapCaret {
+  50% {
+    opacity: 0;
+  }
+}
+.eo-map-caret {
+  animation: eoMapCaret 0.8s steps(1) infinite;
+}
+
+/* Artifacts in the scene: they drift, the ghost walks the shore. */
+@keyframes eoArtFloat {
+  0%,
+  100% {
+    transform: translateY(-3px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+.eo-art-float {
+  animation: eoArtFloat 5s ease-in-out infinite;
+  transform-box: fill-box;
+}
+
+@keyframes eoArtGhost {
+  0% {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.75;
+  }
+  45% {
+    transform: translateX(220px);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateX(220px) translateY(-4px);
+    opacity: 0.9;
+  }
+  55% {
+    transform: translateX(220px);
+    opacity: 0.75;
+  }
+  90% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateX(430px);
+    opacity: 0;
+  }
+}
+.eo-art-ghost {
+  animation: eoArtGhost 38s linear infinite;
+}
+
+@keyframes eoArtNew {
+  0% {
+    opacity: 0;
+    transform: scale(3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.eo-art-new {
+  animation: eoArtNew 1.4s ease-out both;
+  transform-box: fill-box;
+  transform-origin: center;
 }

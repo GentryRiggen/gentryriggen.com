@@ -20,6 +20,10 @@ import {
 } from "@/lib/ever-onward/engine/prestige";
 import { isUniverseUnlocked } from "@/lib/ever-onward/engine/progress";
 import { loadSave, writeSave } from "@/lib/ever-onward/engine/save";
+import {
+  stepMap,
+  toggleArtifact as toggleArtifactOn,
+} from "@/lib/ever-onward/engine/map";
 import type {
   RunState,
   SaveData,
@@ -94,6 +98,10 @@ export interface GameApi {
   restart(): void;
   /** Starts the open universe again from its first part (from the menu). */
   startOver(): void;
+  /** Map universes: count the finished run and play the next one on `key`. */
+  stepTo(key: string): void;
+  /** Map universes: switch a found artifact with a catch on or off. */
+  toggleArtifact(id: string): void;
   /** Swaps in a whole save (from a backup code), writes it and shows the hub. */
   replaceSave(next: SaveData): void;
   /** Writes the save now (before a reload, for example). */
@@ -441,6 +449,34 @@ export function useGame(): GameApi {
     setEndingBeatDone(false);
   }, [activeId, def, replaceUniverse]);
 
+  const stepTo = useCallback(
+    (key: string) => {
+      const current = activeId
+        ? saveRef.current?.universes[activeId]
+        : undefined;
+      if (!activeId || !def || !current) return;
+      const next = stepMap(def, current, key);
+      if (next === current) return;
+      replaceUniverse(activeId, next, true);
+      setSeenTransitions(-1);
+      setEndingDone(false);
+      setEndingBeatDone(false);
+    },
+    [activeId, def, replaceUniverse]
+  );
+
+  const toggleArtifact = useCallback(
+    (id: string) => {
+      const current = activeId
+        ? saveRef.current?.universes[activeId]
+        : undefined;
+      if (!activeId || !def || !current) return;
+      const next = toggleArtifactOn(def, current, id);
+      if (next !== current) replaceUniverse(activeId, next, true);
+    },
+    [activeId, def, replaceUniverse]
+  );
+
   const startOverRun = useCallback(() => {
     const current = activeId ? saveRef.current?.universes[activeId] : undefined;
     if (!activeId || !def || !current) return;
@@ -564,6 +600,8 @@ export function useGame(): GameApi {
     test,
     isJumping,
     jumpTo,
+    stepTo,
+    toggleArtifact,
     setTestSpeed,
     exitTest,
   };

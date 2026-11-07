@@ -13,6 +13,14 @@ import EverOnward from "../EverOnward";
 import EndingOverlay from "../game/EndingOverlay";
 import GameScreen from "../game/GameScreen";
 
+// The ember shop is what's under test: it stays for universes without a map
+// (Grow, Higher, Smile), so play Light here as it was before its sea chart.
+jest.mock("@/lib/ever-onward/universes/light/map", () => ({
+  LIGHT_MAP: undefined,
+  LIGHT_ARTIFACTS: [],
+  ARTIFACT_SPOTS: {},
+}));
+
 class QuietObserver {
   observe() {}
   disconnect() {}

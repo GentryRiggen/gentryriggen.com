@@ -82,6 +82,8 @@ export default function EverOnward() {
           onDismissEmberTip={game.dismissEmberTip}
           onRestart={game.restart}
           onStartOver={game.startOver}
+          onStep={game.stepTo}
+          onToggleArtifact={game.toggleArtifact}
           onLeave={game.leave}
           onReplaceSave={game.replaceSave}
           currentSave={save}
