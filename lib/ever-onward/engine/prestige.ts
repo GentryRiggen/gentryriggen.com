@@ -1,5 +1,5 @@
 import { DEFAULT_SEED, newRun } from "./engine";
-import { freshRun, newMapState } from "./map";
+import { freshRun, mapOf, newMapState, stepMap } from "./map";
 import type {
   PrestigeUpgradeDef,
   RunState,
@@ -78,7 +78,11 @@ export function startOver(
   seed: number = DEFAULT_SEED
 ): UniverseSave {
   // On a map, starting over plays the same square again: no reward, no move.
-  if (def.map) return { ...save, run: freshRun(def, save, seed) };
+  // A finished run is counted first (completion, visit, find), then replayed.
+  if (def.map)
+    return save.run.complete
+      ? stepMap(def, save, mapOf(def, save).at, seed)
+      : { ...save, run: freshRun(def, save, seed) };
   if (canRestart(save.run)) return endRun(def, save, seed);
   return { ...save, run: newRun(def, save.prestigeUpgrades, seed) };
 }

@@ -59,11 +59,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 interface StartOverProps {
   title: string;
+  /** The universe prestiges on a map (no embers to keep). */
+  hasMap: boolean;
   onConfirm: () => void;
 }
 
 /** Start the universe over, behind a second, plainly worded tap. */
-function StartOver({ title, onConfirm }: StartOverProps) {
+function StartOver({ title, hasMap, onConfirm }: StartOverProps) {
   const [isAsking, setIsAsking] = useState(false);
   if (!isAsking)
     return (
@@ -85,7 +87,10 @@ function StartOver({ title, onConfirm }: StartOverProps) {
     >
       <p className="font-mono text-sm text-amber-100">
         Start {title} again from the very beginning? This run&apos;s progress
-        goes. Your embers, permanent upgrades and finished runs stay.
+        goes.{" "}
+        {hasMap
+          ? "You stay on the same square of the map, and everything you found stays."
+          : "Your embers, permanent upgrades and finished runs stay."}
       </p>
       <div className="flex gap-2">
         <button
@@ -190,6 +195,7 @@ export default function MenuDialog({
           </Link>
           <StartOver
             title={def.title}
+            hasMap={!!def.map}
             onConfirm={() => {
               onStartOver();
               onClose();

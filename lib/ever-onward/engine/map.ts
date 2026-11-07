@@ -183,7 +183,9 @@ export function toggleArtifact(
 ): UniverseSave {
   const state = mapOf(def, save);
   const artifact = def.map?.artifacts.find((a) => a.id === id);
-  if (!artifact?.catch || !state.found.includes(id)) return save;
+  // The find a finished run is about to bank can be switched already.
+  const isFound = state.found.includes(id) || pendingFind(def, save)?.id === id;
+  if (!artifact?.catch || !isFound) return save;
   const off = state.off.includes(id)
     ? state.off.filter((o) => o !== id)
     : [...state.off, id];

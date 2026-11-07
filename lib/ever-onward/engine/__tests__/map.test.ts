@@ -182,8 +182,10 @@ describe("map", () => {
   });
 
   it("switches off only found artifacts with a catch, from the next run", () => {
-    let save = done(at(newUniverseSave(def), "0,1"));
-    expect(toggleArtifact(def, save, "thorn")).toBe(save);
+    // Not found yet (the run on its square hasn't finished): no switch.
+    const unfinished = at(newUniverseSave(def), "0,1");
+    expect(toggleArtifact(def, unfinished, "thorn")).toBe(unfinished);
+    let save = done(unfinished);
     save = stepMap(def, save, "0,1");
     expect(save.run.resources.coins).toBe(10);
     const off = toggleArtifact(def, save, "thorn");
@@ -268,5 +270,22 @@ describe("map", () => {
       map: { ...newMapState(), found: ["ghost"] },
     };
     expect(activeArtifacts(def, mapOf(def, unknown))).toEqual([]);
+  });
+
+  it("a catch found by the run just finished can be switched off before stepping", () => {
+    const save = done(at(newUniverseSave(def), "0,1"));
+    const off = toggleArtifact(def, save, "thorn");
+    expect(off.map!.off).toEqual(["thorn"]);
+    const next = stepMap(def, off, "0,1");
+    expect(next.map!.found).toEqual(["thorn"]);
+    expect(next.run.resources.coins).toBe(0);
+  });
+
+  it("starting over after a finished run still counts it and keeps the find", () => {
+    const save = startOver(def, done(at(newUniverseSave(def), "1,0")));
+    expect(save.completions).toBe(1);
+    expect(save.map!.found).toEqual(["gem"]);
+    expect(save.map!.at).toBe("1,0");
+    expect(save.run.complete).toBe(false);
   });
 });
