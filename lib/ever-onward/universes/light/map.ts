@@ -37,7 +37,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "The Brass Heart",
     effect: "Everything runs 15% faster, in every part.",
     apply: (run) => mul(run, "speed", 1.15),
-    spot: { x: 30, y: 24, scale: 1.6 },
+    spot: { x: 14, y: 118, scale: 1.5 },
     palette: { G: "#f2b84b", D: "#8a5a1c", R: "#e2435b" },
     glyph: [
       "....GGGG....",
@@ -66,7 +66,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
       run.owned.keeper = (run.owned.keeper ?? 0) + 2;
       add(run, "headStart", 10);
     },
-    spot: { x: 352, y: 22, scale: 1.6 },
+    spot: { x: 368, y: 118, scale: 1.5 },
     palette: { K: "#3b3f5c", Y: "#ffe27a", O: "#ff9f3a" },
     glyph: [
       ".....KK.....",
@@ -94,7 +94,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
       mul(run, "speed", 1.1);
       mul(run, "costMult", 0.9);
     },
-    spot: { x: 196, y: 14, scale: 1.6 },
+    spot: { x: 44, y: 118, scale: 1.5 },
     palette: { B: "#7a5230", P: "#e9d8a6", S: "#3f8fd8" },
     glyph: [
       "............",
@@ -120,7 +120,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "A Gull Feather",
     effect: "Everything runs 5% faster.",
     apply: (run) => mul(run, "speed", 1.05),
-    spot: { x: 76, y: 46, scale: 1.2 },
+    spot: { x: 160, y: 124, scale: 1.1 },
     palette: { W: "#f1f5ff", G: "#8a97b5" },
     glyph: [
       ".........WW.",
@@ -145,7 +145,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "A Driftwood Charm",
     effect: "Every tap is worth 25% more.",
     apply: (run) => mul(run, "tapMult", 1.25),
-    spot: { x: 114, y: 30, scale: 1.2 },
+    spot: { x: 196, y: 124, scale: 1.1 },
     palette: { D: "#9c6b3f", d: "#5e3d22", B: "#59c3e8" },
     glyph: [
       "............",
@@ -170,7 +170,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "A Tin of Biscuits",
     effect: "Each part starts with a little extra to spend.",
     apply: (run) => add(run, "headStart", 10),
-    spot: { x: 152, y: 50, scale: 1.2 },
+    spot: { x: 232, y: 124, scale: 1.1 },
     palette: { L: "#f2c14e", T: "#d94b4b", C: "#c98a4b" },
     glyph: [
       "............",
@@ -195,7 +195,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "A Salt-Cured Coin",
     effect: "Upgrades cost 6% less.",
     apply: (run) => mul(run, "costMult", 0.94),
-    spot: { x: 236, y: 44, scale: 1.2 },
+    spot: { x: 268, y: 124, scale: 1.1 },
     palette: { C: "#f5c542", c: "#a8791b", W: "#ffffff" },
     glyph: [
       "....CCCC....",
@@ -220,7 +220,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "A Ship in a Bottle",
     effect: "Storms are shorter and oil prices wobble less.",
     apply: (run) => calm(run, 0.3),
-    spot: { x: 274, y: 26, scale: 1.2 },
+    spot: { x: 304, y: 124, scale: 1.1 },
     palette: {
       K: "#b07a43",
       G: "#9fe3d0",
@@ -251,7 +251,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
     name: "A Warm Wick",
     effect: "In The Last Light, the lights fade more slowly.",
     apply: (run) => add(run, "bright", 1),
-    spot: { x: 312, y: 48, scale: 1.2 },
+    spot: { x: 178, y: 144, scale: 1.1 },
     palette: { Y: "#ffd45e", O: "#ff8a3a", C: "#f3eadb", c: "#c9b99a" },
     glyph: [
       ".....Y......",
@@ -281,7 +281,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
       mul(run, "speed", 1.12);
       calm(run, -0.5);
     },
-    spot: { x: 56, y: 74, scale: 1.3 },
+    spot: { x: 214, y: 144, scale: 1.1 },
     palette: { G: "#9fc5e8", D: "#5b6b8c", Y: "#ffe14d" },
     glyph: [
       "....GGGG....",
@@ -310,7 +310,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
       mul(run, "tapMult", 1.6);
       mul(run, "speed", 0.92);
     },
-    spot: { x: 136, y: 76, scale: 1.3 },
+    spot: { x: 250, y: 144, scale: 1.1 },
     palette: { R: "#cfa040", L: "#bfe7ff", K: "#222222" },
     glyph: [
       "....RRRR....",
@@ -365,7 +365,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
       mul(run, "costMult", 0.88);
       add(run, "bright", -1);
     },
-    spot: { x: 258, y: 78, scale: 1.3 },
+    spot: { x: 286, y: 144, scale: 1.1 },
     palette: { P: "#2a2440", p: "#6e5ca8", S: "#e9e4ff", O: "#d9b7a0" },
     glyph: [
       "............",
@@ -394,7 +394,7 @@ export const LIGHT_ARTIFACTS: readonly LightArtifact[] = [
       mul(run, "speed", 1.08);
       mul(run, "tapMult", 0.85);
     },
-    spot: { x: 340, y: 76, scale: 1.3 },
+    spot: { x: 322, y: 144, scale: 1.1 },
     palette: { L: "#8c6b3e", G: "#b9d8c9", M: "#e6d2a0", m: "#a08350" },
     glyph: [
       "..LLLLLLLL..",

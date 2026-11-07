@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   artifactAt,
+  choices,
   lastSquare,
   legalTargets,
   mapOf,
@@ -171,6 +172,7 @@ export default function MapDialog({
                   state={shown}
                   selected={selected}
                   choosable={targets}
+                  ahead={isChoosing ? choices(def, shown).ahead : []}
                   onSelect={setSelected}
                 />
               </div>

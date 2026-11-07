@@ -6,6 +6,7 @@ import {
   sceneInfo,
   type LightSceneInfo,
 } from "@/lib/ever-onward/universes/light";
+import ArtifactLayer, { artifactKey } from "./ArtifactLayer";
 import CoastLayer from "./CoastLayer";
 import LastLayer from "./LastLayer";
 import NightLayer from "./NightLayer";
@@ -73,6 +74,8 @@ export default function LightScene({
       info={useStableInfo(run)}
       lastBuy={lastBuy}
       testId={testId}
+      found={artifactKey(run)}
+      depth={run.mods.depth ?? 0}
     />
   );
 }
@@ -85,10 +88,14 @@ const LightSceneView = memo(function LightSceneView({
   info,
   lastBuy,
   testId,
+  found,
+  depth,
 }: {
   info: LightSceneInfo;
   lastBuy: LastBuy | null;
   testId: string;
+  found: string;
+  depth: number;
 }) {
   const target = Math.min(LAYERS.length - 1, Math.max(0, info.phaseIndex));
   const [visual, setVisual] = useState<Visual>({
@@ -210,6 +217,7 @@ const LightSceneView = memo(function LightSceneView({
             </g>
           );
         })}
+        <ArtifactLayer found={found} depth={depth} />
         {lastBuy && <SceneCallout key={lastBuy.id} buy={lastBuy} info={info} />}
       </svg>
       <SceneCaption info={info} />

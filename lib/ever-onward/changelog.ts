@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.33.0",
+    date: "2026-11-07",
+    title: "The Sea Chart",
+    highlights: [
+      "Keep the Light On has a map now: the Sea Chart. Tap Map at the top any time to look at it",
+      "Every time you finish a run, you pick your next square: one to the right (a farther coast) or one down (deeper into the lamp's dream), or any square you've already been to",
+      "Each square changes the next run a little, like calmer seas or pricier upgrades. The square tells you what before you step on it",
+      "Strange things float on some squares. You only find out what one is by finishing a run on its square. Some are great, some are so-so, and some come with a catch you can switch off",
+      "Everything you find shows up in the lighthouse picture, and the deeper you go, the stranger the sky gets",
+      "Runs slowly get faster as you find more. Reach the bottom-right corner to end the voyage",
+      "The old Embers shop is gone from this universe. If you bought upgrades there, they still work: look for your Keepsake on the map",
+    ],
+  },
+  {
     version: "1.32.1",
     date: "2026-11-07",
     title: "Test mode on the universe list",

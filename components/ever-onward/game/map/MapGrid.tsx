@@ -19,6 +19,8 @@ interface MapGridProps {
   selected: SquareKey;
   /** Squares the next run may be played on (choose mode); empty otherwise. */
   choosable: readonly SquareKey[];
+  /** New squares (right and below) among them: these glow. */
+  ahead?: readonly SquareKey[];
   onSelect: (key: SquareKey) => void;
 }
 
@@ -58,6 +60,7 @@ export default function MapGrid({
   state,
   selected,
   choosable,
+  ahead = [],
   onSelect,
 }: MapGridProps) {
   const map = def.map!;
@@ -92,7 +95,7 @@ export default function MapGrid({
             onClick={() => onSelect(key)}
             className={`relative flex aspect-square touch-manipulation items-center justify-center border border-cyan-900/40 ${retroFocusClass} ${
               isVisited ? HATCH : ""
-            } ${isChoosable ? "eo-map-choosable bg-amber-400/15" : ""} ${
+            } ${ahead.includes(key) ? "eo-map-choosable bg-amber-400/20" : ""} ${
               isSelected ? "outline-2 -outline-offset-2 outline-cyan-200" : ""
             }`}
           >

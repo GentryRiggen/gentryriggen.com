@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
 import { JUMP_POINTS, type JumpPoint } from "@/lib/ever-onward/test/jump";
+import { MAP_PRESETS, type MapPreset } from "@/lib/ever-onward/test/mapJump";
 import { TEST_SPEEDS, type TestSpeed } from "@/lib/ever-onward/test/tester";
 import {
   pixelClass,
@@ -16,6 +17,8 @@ interface TestModePanelProps {
   speed: TestSpeed | null;
   isJumping: boolean;
   onJump: (universeId: string, phase: number, point: JumpPoint) => void;
+  /** Lands on the universe's map with a run just finished. */
+  onJumpMap?: (universeId: string, preset: MapPreset) => void;
   onSpeed: (speed: TestSpeed) => void;
   onExit: () => void;
 }
@@ -36,6 +39,7 @@ export default function TestModePanel({
   speed,
   isJumping,
   onJump,
+  onJumpMap,
   onSpeed,
   onExit,
 }: TestModePanelProps) {
@@ -116,6 +120,27 @@ export default function TestModePanel({
           </li>
         ))}
       </ol>
+      {picked.map && onJumpMap && (
+        <div className="space-y-1">
+          <p className="font-mono text-xs text-slate-100">
+            {picked.map.title}: a run just finished
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {MAP_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                disabled={isJumping}
+                data-testid={`eo-jump-map-${picked.id}-${preset.id}`}
+                onClick={() => onJumpMap(picked.id, preset.id)}
+                className={`${chipClass(false)} disabled:opacity-40`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {isJumping && (
         <p role="status" className="font-mono text-xs text-fuchsia-100">
           Getting there…

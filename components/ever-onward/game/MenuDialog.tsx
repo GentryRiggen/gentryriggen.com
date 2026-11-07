@@ -16,6 +16,7 @@ import Logbook from "./Logbook";
 import RetroDrawer from "./retro/RetroDrawer";
 import TestModePanel from "./TestModePanel";
 import type { JumpPoint } from "@/lib/ever-onward/test/jump";
+import type { MapPreset } from "@/lib/ever-onward/test/mapJump";
 import type { TestSpeed } from "@/lib/ever-onward/test/tester";
 import {
   pixelClass,
@@ -28,6 +29,7 @@ export interface MenuTestMode {
   speed: TestSpeed | null;
   isJumping: boolean;
   onJump: (universeId: string, phase: number, point: JumpPoint) => void;
+  onJumpMap?: (universeId: string, preset: MapPreset) => void;
   onSpeed: (speed: TestSpeed) => void;
   onExit: () => void;
 }
@@ -157,6 +159,10 @@ export default function MenuDialog({
             isJumping={testMode.isJumping}
             onJump={(id, phase, point) => {
               testMode.onJump(id, phase, point);
+              onClose();
+            }}
+            onJumpMap={(id, preset) => {
+              testMode.onJumpMap?.(id, preset);
               onClose();
             }}
             onSpeed={testMode.onSpeed}

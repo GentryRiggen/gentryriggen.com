@@ -17,6 +17,7 @@ import {
   type LockedUniverse,
 } from "@/lib/ever-onward/universes";
 import type { JumpPoint } from "@/lib/ever-onward/test/jump";
+import type { MapPreset } from "@/lib/ever-onward/test/mapJump";
 import { uiFor } from "./universes";
 import TestModePanel from "./game/TestModePanel";
 import MusicToggle from "./audio/MusicToggle";
@@ -42,6 +43,7 @@ interface HubProps {
 export interface HubTestMode {
   isJumping: boolean;
   onJump: (universeId: string, phase: number, point: JumpPoint) => void;
+  onJumpMap?: (universeId: string, preset: MapPreset) => void;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -86,7 +88,13 @@ function UniverseCard({
       });
     if (universe.best !== null)
       stats.push({ label: "Best time", value: formatDuration(universe.best) });
-    if (universe.embers > 0)
+    if (def.map && universe.map && universe.map.visited.length > 0) {
+      const { visited, found } = universe.map;
+      stats.push({
+        label: "Chart",
+        value: `${visited.length} of ${def.map.cols * def.map.rows} squares, ${found.length} of ${def.map.artifacts.length} found${universe.map.done ? ", voyage done" : ""}`,
+      });
+    } else if (!def.map && universe.embers > 0)
       stats.push({ label: prestigeLabel(def), value: String(universe.embers) });
   }
   return (
@@ -311,6 +319,7 @@ export default function Hub({ save, isRecovered, onPlay, testMode }: HubProps) {
               speed={null}
               isJumping={testMode.isJumping}
               onJump={testMode.onJump}
+              onJumpMap={testMode.onJumpMap}
               onSpeed={() => {}}
               onExit={() => {}}
             />

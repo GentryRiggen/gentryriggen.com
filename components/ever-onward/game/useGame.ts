@@ -33,6 +33,7 @@ import type {
 import { everOnwardSynth } from "../audio/everOnwardSynth";
 import { getPlayableUniverse } from "@/lib/ever-onward/universes";
 import type { JumpPoint } from "@/lib/ever-onward/test/jump";
+import type { MapPreset } from "@/lib/ever-onward/test/mapJump";
 import type { TestSpeed } from "@/lib/ever-onward/test/tester";
 
 /** The sim and the readouts update this often; CSS handles smooth motion. */
@@ -112,6 +113,8 @@ export interface GameApi {
   isJumping: boolean;
   /** Opens a throwaway test run of part `phase` of a universe at `point`. */
   jumpTo(universeId: string, phase: number, point: JumpPoint): void;
+  /** Opens a throwaway test run at a map preset, the run just finished. */
+  jumpToMap(universeId: string, preset: MapPreset): void;
   setTestSpeed(speed: TestSpeed): void;
   /** Leaves the test run and puts the real save back, untouched. */
   exitTest(): void;
@@ -546,6 +549,48 @@ export function useGame(): GameApi {
     [activeId, commit, isJumping, persist]
   );
 
+  const jumpToMap = useCallback(
+    (universeId: string, preset: MapPreset) => {
+      const target = getPlayableUniverse(universeId);
+      if (!target?.map || !saveRef.current || isJumping) return;
+      if (!isTestRef.current) {
+        persist();
+        realActiveRef.current = activeId;
+      }
+      setIsJumping(true);
+      window.setTimeout(() => {
+        void import("@/lib/ever-onward/test/bots")
+          .then(({ jumpToMap: playTo }) => {
+            const jump = playTo(universeId, preset);
+            const current = saveRef.current;
+            if (!jump || !current) return;
+            isTestRef.current = true;
+            speedRef.current = speedRef.current || 1;
+            const existing = current.universes[universeId];
+            const universe: UniverseSave = {
+              ...(existing ?? newUniverseSave(target)),
+              run: jump.run,
+              map: jump.map,
+            };
+            commit({
+              ...current,
+              universes: { ...current.universes, [universeId]: universe },
+            });
+            setTest((t) => t ?? { speed: 1 });
+            // Straight to the chart: no ending screen in a map test.
+            setSeenTransitions(jump.run.transitions.length);
+            setEndingDone(true);
+            setEndingBeatDone(true);
+            if (!activeId)
+              window.history.pushState({ [GAME_HISTORY_KEY]: universeId }, "");
+            setActiveId(universeId);
+          })
+          .finally(() => setIsJumping(false));
+      }, 30);
+    },
+    [activeId, commit, isJumping, persist]
+  );
+
   const setTestSpeed = useCallback((speed: TestSpeed) => {
     if (!isTestRef.current) return;
     speedRef.current = speed;
@@ -600,6 +645,7 @@ export function useGame(): GameApi {
     test,
     isJumping,
     jumpTo,
+    jumpToMap,
     stepTo,
     toggleArtifact,
     setTestSpeed,
