@@ -11,6 +11,7 @@ import {
   TOGETHER_ACTION_IDS,
   activityOf,
   bondOf,
+  faceLine,
   hintOf,
   hintStage,
   isSwitching,
@@ -78,6 +79,37 @@ const rotates =
   (every: number): Policy =>
   (run) =>
     Math.floor(run.time / every) % ACTIVITY_COUNT;
+
+/** Knows what the friend needs: the best anyone could do. */
+const oracle: Policy = (run) =>
+  isSwitching(run) || needOf(run) === activityOf(run) ? null : needOf(run);
+
+/**
+ * Knows what the friend needs, and sits on it, but after `hold` seconds of
+ * being right hops to something else and straight back (to light them up
+ * again, if that were allowed).
+ */
+const hopsAndReturns = (hold: number): Policy => {
+  let rightSince = -1;
+  let isAway = false;
+  return (run) => {
+    if (isSwitching(run)) return null;
+    const act = activityOf(run);
+    const need = needOf(run);
+    if (act !== need) {
+      rightSince = -1;
+      isAway = false;
+      return need;
+    }
+    if (rightSince < 0) rightSince = run.time;
+    if (!isAway && run.time - rightSince >= hold) {
+      isAway = true;
+      rightSince = -1;
+      return (act + 1) % ACTIVITY_COUNT;
+    }
+    return null;
+  };
+};
 
 const SEEDS = [3, 7, 11, 19, 23, 31];
 const mean = (policy: Policy): number =>
@@ -216,5 +248,50 @@ describe("What you do together", () => {
     it.each(fixed)("reading the face beats %s", (_name, value) => {
       expect(reader).toBeGreaterThan(value * 1.1);
     });
+    it.each([20, 30, 45, 60])(
+      "reading the face beats rotating every %is by a clear 25%",
+      (every) => {
+        expect(reader).toBeGreaterThan(mean(rotates(every)) * 1.25);
+      }
+    );
+    it("is only beaten by someone who knows the need, and by little", () => {
+      const knows = mean(oracle);
+      expect(knows).toBeGreaterThan(reader);
+      expect(knows).toBeLessThan(reader * 1.3);
+    });
+    it.each([5, 15, 30])(
+      "hopping away and back every %is does not beat sitting on what they need",
+      (hold) => {
+        expect(mean(hopsAndReturns(hold))).toBeLessThanOrEqual(
+          mean(oracle) * 1.001
+        );
+      }
+    );
+  });
+
+  it("lights them up once for each need, however often you hop away and back", () => {
+    let run = advance(openRun(5), 2);
+    const need = needOf(run);
+    if (need !== activityOf(run)) {
+      run = performAction(def, run, togetherActionId(need));
+      run = advance(run, T.switchSeconds + 1);
+    }
+    const lits = (r: RunState) => r.resources.tgLits ?? 0;
+    expect(lits(run)).toBe(1);
+    const other = (need + 1) % ACTIVITY_COUNT;
+    for (let hop = 0; hop < 3; hop += 1) {
+      for (const to of [other, need]) {
+        run = performAction(def, run, togetherActionId(to));
+        run = advance(run, T.switchSeconds + 1);
+      }
+    }
+    expect(needOf(run)).toBe(need);
+    expect(lits(run)).toBe(1);
+  });
+
+  it("writes the face in a sentence", () => {
+    expect(faceLine(openRun())).toMatch(
+      /^Their face looks like it wants .+\. [A-Z][a-z ]+\.$/
+    );
   });
 });

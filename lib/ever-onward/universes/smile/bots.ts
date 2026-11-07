@@ -322,14 +322,14 @@ export function smilePlayer(
   base: Strategy,
   options: { skipEvery?: number; window?: number; side?: ForkSide } = {}
 ): Strategy {
-  const window = options.window ?? 10;
+  const window = options.window ?? 12;
   return {
     ...easesOnHeat(base),
     actions: alongside(
       takesFork(options.side),
       holdsParade,
       readsFace(window),
-      minesTown(Math.max(window, 15)),
+      minesTown(Math.max(window, 10)),
       answersFriend({ skipEvery: options.skipEvery })
     ),
   };

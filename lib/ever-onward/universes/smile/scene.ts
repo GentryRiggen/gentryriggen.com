@@ -20,6 +20,8 @@ import {
   isTogetherOpen,
   justLit,
   justSighed,
+  litCount,
+  sighCount,
   wearOf,
 } from "./together";
 import {
@@ -100,6 +102,9 @@ export interface SmileSceneInfo {
   lit: boolean;
   sigh: boolean;
   sighThin: boolean;
+  /** Which light-up and which sigh is showing (their running counts, else 0). */
+  litKey: number;
+  sighKey: number;
   /** Quiet: whole percent of trust (steps of 5), and the face's stage. */
   trust: number;
   face: TrustStage;
@@ -179,7 +184,16 @@ function togetherInfo(
   run: RunState
 ): Pick<
   SmileSceneInfo,
-  "doing" | "switching" | "hint" | "sure" | "thin" | "lit" | "sigh" | "sighThin"
+  | "doing"
+  | "switching"
+  | "hint"
+  | "sure"
+  | "thin"
+  | "lit"
+  | "sigh"
+  | "sighThin"
+  | "litKey"
+  | "sighKey"
 > {
   if (!isTogetherOpen(run))
     return {
@@ -191,6 +205,8 @@ function togetherInfo(
       lit: false,
       sigh: false,
       sighThin: false,
+      litKey: 0,
+      sighKey: 0,
     };
   const act = activityOf(run);
   return {
@@ -202,6 +218,8 @@ function togetherInfo(
     lit: justLit(run),
     sigh: justSighed(run),
     sighThin: (run.resources.tgSighWhy ?? 0) === 0,
+    litKey: justLit(run) ? litCount(run) : 0,
+    sighKey: justSighed(run) ? sighCount(run) : 0,
   };
 }
 

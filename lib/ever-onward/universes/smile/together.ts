@@ -18,10 +18,11 @@ import { TUNING } from "./tuning";
  * moment, and the moment pays little.
  *
  * Forecast you bet on. The friend needs one of the three at a time, and what
- * they need shifts every minute or so. Their face hints at the next need, but
- * only hints: early on the hint is often wrong, and it firms up the longer you
- * watch. Doing what they need pays extra (and lights them up); doing the wrong
- * thing pays less (and earns a gentle sigh).
+ * they need shifts every minute or so. Their face hints at the need, but only
+ * hints: early on the hint is often wrong, and it firms up the longer you
+ * watch. Doing what they need pays extra, and lights them up with a burst of
+ * smiles once for each need (hopping away and back does not light them up
+ * again); doing the wrong thing pays less and earns a gentle sigh.
  *
  * Random numbers (the needs and the hints) come from a stream of their own
  * (`run.rng` is never touched). All state is hidden `run.resources` plus one
@@ -42,8 +43,6 @@ export interface ActivityDef {
   plus: string;
   /** What it costs, in plain words (the - line). */
   minus: string;
-  /** What the friend looks like when they need it. */
-  need: string;
   /** What the face looks like when it hints at it. */
   looks: string;
 }
@@ -54,7 +53,6 @@ export const ACTIVITIES: readonly ActivityDef[] = [
     label: "Tell jokes",
     plus: "Smiles right now",
     minus: "No bond. Wears thin fast",
-    need: "a good laugh",
     looks: "a laugh",
   },
   {
@@ -62,7 +60,6 @@ export const ACTIVITIES: readonly ActivityDef[] = [
     label: "Play games",
     plus: "Some smiles and a little bond",
     minus: "Neither is a big one",
-    need: "a game of fetch",
     looks: "a game",
   },
   {
@@ -70,7 +67,6 @@ export const ACTIVITIES: readonly ActivityDef[] = [
     label: "Just listen",
     plus: "A big bond: every laugh grows",
     minus: "No smiles while you do it",
-    need: "someone to listen",
     looks: "a listening ear",
   },
 ];
@@ -131,10 +127,6 @@ export function bondGain(run: RunState): number {
   if (run.phase !== 0) return 0;
   return T.maxGain * bondOf(run) * forkBondMult(run);
 }
-
-/** What bond a long stretch of one activity settles at (a card's promise). */
-export const settledBond = (activity: number): number =>
-  T.bondRate[activity] / (T.bondRate[activity] + T.fadePerSecond);
 
 // ------------------------------------------------------- what they need
 
@@ -201,6 +193,7 @@ function newNeed(run: RunState, previous: number): void {
       ? Math.floor(roll() * ACTIVITY_COUNT)
       : (previous + 1 + (roll() < 0.5 ? 0 : 1)) % ACTIVITY_COUNT;
   r.tgNeed = need;
+  r.tgEpoch = res(run, "tgEpoch") + 1;
   r.tgSince = 0;
   r.tgLeft = T.dwell[0] + roll() * (T.dwell[1] - T.dwell[0]);
   for (let stage = 0; stage < T.hintRight.length; stage += 1) {
@@ -219,8 +212,13 @@ export function openTogether(run: RunState): void {
   newNeed(run, -1);
 }
 
+/** True once this need has lit them up (one light-up for each need). */
+const hasLitThisNeed = (run: RunState): boolean =>
+  res(run, "tgLitEpoch") === res(run, "tgEpoch");
+
 function lightUp(run: RunState, value: number): void {
   const r = run.resources;
+  r.tgLitEpoch = res(run, "tgEpoch");
   r.tgLitAt = run.time;
   r.tgLits = litCount(run) + 1;
   r.smiles = res(run, "smiles") + T.burstSeconds * value;
@@ -291,7 +289,7 @@ export function tickTogether(
   if (r.tgLeft <= 0) newNeed(run, needOf(run));
 
   if (arrived && !isRight(run)) sigh(run, 1);
-  if (!wasRight && isRight(run)) lightUp(run, value());
+  if (!wasRight && isRight(run) && !hasLitThisNeed(run)) lightUp(run, value());
 }
 
 export function setActivity(run: RunState, activity: number): void {
@@ -317,7 +315,8 @@ const pct = (n: number): string => `${Math.round(n * 100)}%`;
 /** The face, in plain words. */
 export function faceLine(run: RunState): string {
   const hint = ACTIVITIES[hintOf(run)];
-  return `Their face looks like it wants ${hint.looks}. ${STAGE_WORDS[hintStage(run)]}.`;
+  const stage = STAGE_WORDS[hintStage(run)];
+  return `Their face looks like it wants ${hint.looks}. ${stage[0].toUpperCase()}${stage.slice(1)}.`;
 }
 
 /** How worn an activity is, in plain words. */

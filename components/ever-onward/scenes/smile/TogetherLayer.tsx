@@ -58,7 +58,12 @@ function Ball() {
 /** What the friend's face seems to want next. It can be wrong. */
 function Hint({ hint, sure }: { hint: number; sure: number }) {
   return (
-    <g aria-hidden="true" data-testid="eo-face-hint" data-hint={hint}>
+    <g
+      aria-hidden="true"
+      data-testid="eo-face-hint"
+      data-hint={hint}
+      transform="translate(186 138) scale(1.6) translate(-186 -138)"
+    >
       <g className={BUBBLE_OPACITY[sure]}>
         <rect x="192" y="98" width="68" height="38" fill="#2b2140" />
         <rect x="195" y="101" width="62" height="32" fill="#fff6d6" />
@@ -76,16 +81,16 @@ function Hint({ hint, sure }: { hint: number; sure: number }) {
           key={i}
           x={214 + i * 10}
           y="141"
-          width="6"
-          height="6"
+          width="7"
+          height="7"
           fill={i <= sure ? "#ff7a00" : "#d6c9a0"}
           stroke="#2b2140"
-          strokeWidth="1"
+          strokeWidth="1.5"
         />
       ))}
       {sure === 0 && (
         <g className="ms-t-pulse">
-          <PixelText x={252} y={110} size={14} fill="#7a5cff">
+          <PixelText x={252} y={112} size={18} fill="#7a5cff">
             ?
           </PixelText>
         </g>
@@ -288,16 +293,16 @@ function Sigh({ isThin }: { isThin: boolean }) {
         fill="#475569"
       />
       <g className="ms-t-cloud">
-        <Cloud x={142} y={110} fill="#8b95a5" k={1.5} />
+        <Cloud x={136} y={104} fill="#8b95a5" k={1.9} />
       </g>
       {[0, 1, 2, 3].map((k) => (
         <rect
           key={k}
           className={`ms-t-drop ${STAGGER[k]}`}
-          x={152 + k * 14}
-          y="142"
-          width="3"
-          height="6"
+          x={150 + k * 16}
+          y="146"
+          width="4"
+          height="9"
           fill="#7aa2d6"
         />
       ))}
@@ -306,7 +311,7 @@ function Sigh({ isThin }: { isThin: boolean }) {
         y="76"
         textAnchor="middle"
         className="ms-t-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="15"
+        fontSize="18"
         fill="#e2e8f0"
         stroke="#334155"
         strokeWidth="3"
@@ -328,10 +333,12 @@ export default function TogetherLayer({ info }: LayerProps) {
   return (
     <g data-testid="eo-together-scene" data-doing={info.doing}>
       <Hint hint={info.hint} sure={info.sure} />
-      <Doing doing={info.doing} switching={info.switching} />
+      {!info.lit && !info.sigh && (
+        <Doing doing={info.doing} switching={info.switching} />
+      )}
       {info.thin >= 3 && !info.sigh && <ThinCloud />}
-      {info.lit && <LitUp />}
-      {info.sigh && <Sigh isThin={info.sighThin} />}
+      {info.lit && <LitUp key={info.litKey} />}
+      {info.sigh && <Sigh key={info.sighKey} isThin={info.sighThin} />}
     </g>
   );
 }

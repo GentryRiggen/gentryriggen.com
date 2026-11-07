@@ -137,6 +137,8 @@ export const RESOURCES: readonly ResourceDef[] = [
     "tgRng",
     "tgPaused",
     "tgChanges",
+    "tgEpoch",
+    "tgLitEpoch",
     "tgLitAt",
     "tgLits",
     "tgSighAt",

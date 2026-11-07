@@ -206,7 +206,8 @@ test.describe("Ever Onward", () => {
     for (const i of [0, 1, 2]) {
       await expect(panel.getByTestId(`ms-together-${i}`)).toContainText("+ ");
     }
-    await panel.getByRole("radio", { name: "Just listen" }).click();
+    // Whatever the run was doing when we jumped in, pick something else.
+    await panel.locator('[role="radio"][aria-checked="false"]').first().click();
     await expect(panel).toHaveAttribute("data-switching", "yes");
     await expect(page.getByTestId("eo-together-scene")).toBeAttached();
   });

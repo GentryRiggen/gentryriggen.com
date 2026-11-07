@@ -63,6 +63,15 @@ function openTown(): RunState {
   return advance(run, 1);
 }
 
+/** The same town with Dock Row left without a float (its float went to Elm Street). */
+function leanTown(): RunState {
+  const run = openTown();
+  return {
+    ...run,
+    resources: { ...run.resources, tnF0: 2, tnF3: 0 },
+  };
+}
+
 const withDay = (run: RunState, kind: number, street = 0): RunState => ({
   ...run,
   resources: {
@@ -74,7 +83,7 @@ const withDay = (run: RunState, kind: number, street = 0): RunState => ({
 });
 
 describe("The town: the lemonade stand", () => {
-  it("opens with the first clown, at a fair price, with a few floats", () => {
+  it("opens with the first clown, at a fair price, with a float for every street", () => {
     const closed = runAtPhaseStart(1);
     expect(isTownOpen(closed)).toBe(false);
     expect(routeMult(closed)).toBe(1);
@@ -136,7 +145,7 @@ describe("The town: the lemonade stand", () => {
 
 describe("The town: the parade route", () => {
   it("lets a street with no float turn grumpy, and a grumpy street drags the whole town down", () => {
-    const run = openTown();
+    const run = leanTown();
     const empty = [0, 1, 2, 3].find((i) => floatsOn(run, i) === 0)!;
     expect(isGrumpy(run, empty)).toBe(false);
     const later = advance(run, 120);
@@ -156,7 +165,7 @@ describe("The town: the parade route", () => {
   });
 
   it("takes a moment to move a float, one at a time, and the float cheers nobody on the road", () => {
-    const run = openTown();
+    const run = leanTown();
     const to = [0, 1, 2, 3].find((i) => floatsOn(run, i) === 0)!;
     const sent = performAction(def, run, sendActionId(to));
     expect(isMoving(sent)).toBe(true);
@@ -200,10 +209,10 @@ describe("The town: the parade route", () => {
 
 describe("The town: the picture", () => {
   it("encodes the town as flat strings and numbers", () => {
-    const run = openTown();
+    const run = leanTown();
     const info = sceneInfo(run);
     expect(info.price).toBe(2);
-    expect(info.crew).toBe("1-1-1-0");
+    expect(info.crew).toBe("2-1-1-0");
     expect(info.moods).toHaveLength(STREET_COUNT);
     expect(info.moving).toBe(-1);
     for (const value of [info.day, info.crew, info.moods])
@@ -212,7 +221,7 @@ describe("The town: the picture", () => {
   });
 
   it("shows a grumpy street and a float arriving as big moments", () => {
-    const run = openTown();
+    const run = leanTown();
     const grumpy = advance(run, 80);
     expect(sceneInfo(grumpy).moods).toContain("0");
     const empty = [0, 1, 2, 3].find((i) => floatsOn(run, i) === 0)!;
