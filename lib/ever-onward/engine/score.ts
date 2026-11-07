@@ -14,7 +14,9 @@
  * total at 59.
  */
 import { genericBots, type BotSet } from "./bots";
-import { emberReward, prestigeUpgradeCost } from "./prestige";
+import { counted, freshRun } from "./map";
+import { routeStep } from "./mapRoute";
+import { emberReward, newUniverseSave, prestigeUpgradeCost } from "./prestige";
 import { clickCurve, type PhaseClicks } from "./clicks";
 import { decisionGaps, type PhaseDecisions } from "./decisions";
 import { simulate, type SimResult } from "./sim";
@@ -25,7 +27,7 @@ import {
   type Trace,
   type TraceSample,
 } from "./trace";
-import type { UniverseDef, UniverseSave } from "./types";
+import type { RunState, UniverseDef, UniverseSave } from "./types";
 
 const MIN = 60;
 const HOUR = 3600;
@@ -213,6 +215,11 @@ export interface ScoreInputs {
   /** Prestige runs of the tapper bot; run 2 is traced. */
   run2: SimResult;
   run3: SimResult;
+  /**
+   * The universe prestiges on a map: runs 2 and 3 follow the route bot, and
+   * speed-ups come slowly (an artifact is found only when a run ends).
+   */
+  isMap?: boolean;
 }
 
 interface PhaseContext {
@@ -926,7 +933,7 @@ const M13: MetricSpec = {
   id: "M13",
   name: "Prestige speedup",
   weight: 5,
-  band: "run2/run1 0.50-0.70, run3/run2 0.75-0.95, early reveals >= 60% of run 1",
+  band: "run2/run1 0.50-0.70 (map: 0.90-1.02), run3/run2 0.75-0.95 (map: 0.85-1.00), early reveals >= 60% of run 1",
   gate: "run2 < run1 and run2/run1 >= 0.40",
 };
 const earlyBeats = (trace: Trace): number =>
@@ -942,12 +949,19 @@ function evalM13(inputs: ScoreInputs): PhaseResult {
     earlyBeats(inputs.run2.trace!),
     earlyBeats(inputs.primary.trace!)
   );
-  const gate = f2 < f1 && r21 >= 0.4;
+  // On a map, run 2 has found nothing yet (about run 1), run 3 one artifact.
+  const gate = inputs.isMap
+    ? r21 >= 0.75 && r21 <= 1.05
+    : f2 < f1 && r21 >= 0.4;
   return {
     phase: "run",
     sub: subMean(
-      bandScore(r21, between(0.5, 0.7, 0.4)),
-      bandScore(r32, between(0.75, 0.95)),
+      inputs.isMap
+        ? bandScore(r21, between(0.9, 1.02, 0.75, 1.05))
+        : bandScore(r21, between(0.5, 0.7, 0.4)),
+      inputs.isMap
+        ? bandScore(r32, between(0.85, 1.0, 0.75, 1.05))
+        : bandScore(r32, between(0.75, 0.95)),
       bandScore(early, atLeast(0.6))
     ),
     gate,
@@ -1258,18 +1272,42 @@ export function scoreUniverse(
     };
   });
 
-  const embers = emberReward(def, primary.finalRun);
-  const run2 = simulate(def, {
-    ...base,
-    strategy: bots.tapper,
-    prestige: typicalPrestige(def, embers),
-    trace: { sampleEvery: 5 },
-  });
-  const run3 = simulate(def, {
-    ...base,
-    strategy: bots.tapper,
-    prestige: typicalPrestige(def, embers + emberReward(def, run2.finalRun)),
-  });
+  let run2: SimResult;
+  let run3: SimResult;
+  if (def.map) {
+    // Map universes: the route bot picks each next square.
+    const after = (save: UniverseSave, finalRun: RunState): UniverseSave => {
+      const finished = { ...save, run: finalRun };
+      const map = { ...counted(def, finished), at: routeStep(def, finished) };
+      return { ...finished, map, run: freshRun(def, { ...finished, map }) };
+    };
+    const start = newUniverseSave(def);
+    const second = after(start, primary.finalRun);
+    run2 = simulate(def, {
+      ...base,
+      strategy: bots.tapper,
+      startRun: second.run,
+      trace: { sampleEvery: 5 },
+    });
+    run3 = simulate(def, {
+      ...base,
+      strategy: bots.tapper,
+      startRun: after(second, run2.finalRun).run,
+    });
+  } else {
+    const embers = emberReward(def, primary.finalRun);
+    run2 = simulate(def, {
+      ...base,
+      strategy: bots.tapper,
+      prestige: typicalPrestige(def, embers),
+      trace: { sampleEvery: 5 },
+    });
+    run3 = simulate(def, {
+      ...base,
+      strategy: bots.tapper,
+      prestige: typicalPrestige(def, embers + emberReward(def, run2.finalRun)),
+    });
+  }
 
   const dawdler = simulate(def, {
     ...base,
@@ -1288,6 +1326,7 @@ export function scoreUniverse(
     skill,
     run2,
     run3,
+    isMap: !!def.map,
   });
   return { ...card, runtimeMs: Date.now() - started };
 }

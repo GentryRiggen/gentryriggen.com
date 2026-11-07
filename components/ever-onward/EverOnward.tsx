@@ -82,6 +82,8 @@ export default function EverOnward() {
           onDismissEmberTip={game.dismissEmberTip}
           onRestart={game.restart}
           onStartOver={game.startOver}
+          onStep={game.stepTo}
+          onToggleArtifact={game.toggleArtifact}
           onLeave={game.leave}
           onReplaceSave={game.replaceSave}
           currentSave={save}
@@ -92,6 +94,7 @@ export default function EverOnward() {
                   speed: game.test?.speed ?? null,
                   isJumping: game.isJumping,
                   onJump: game.jumpTo,
+                  onJumpMap: game.jumpToMap,
                   onSpeed: game.setTestSpeed,
                   onExit: game.exitTest,
                 }
@@ -112,7 +115,11 @@ export default function EverOnward() {
           onPlay={game.open}
           testMode={
             canTest
-              ? { isJumping: game.isJumping, onJump: game.jumpTo }
+              ? {
+                  isJumping: game.isJumping,
+                  onJump: game.jumpTo,
+                  onJumpMap: game.jumpToMap,
+                }
               : undefined
           }
         />

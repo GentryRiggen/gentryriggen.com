@@ -339,11 +339,15 @@ function isInPhase(
   return !upgrade.phases || upgrade.phases.includes(currentPhase(def, run).id);
 }
 
-/** A fresh run. `prestigeLevels` are the permanent upgrades that shape it. */
+/**
+ * A fresh run. `prestigeLevels` are the permanent upgrades that shape it;
+ * `shape` (the map square and its artifacts) runs after them.
+ */
 export function newRun(
   def: UniverseDef,
   prestigeLevels: Readonly<Record<string, number>> = {},
-  seed: number = DEFAULT_SEED
+  seed: number = DEFAULT_SEED,
+  shape?: (run: RunState) => void
 ): RunState {
   const run: RunState = {
     phase: 0,
@@ -367,6 +371,7 @@ export function newRun(
     const level = prestigeLevels[upgrade.id] ?? 0;
     if (level > 0) upgrade.apply(run, Math.min(level, upgrade.maxLevel));
   }
+  shape?.(run);
   def.phases[0].onEnter?.(run);
   settle(def, run);
   return run;
@@ -636,13 +641,14 @@ function finiteEntries(
 export function reconcileRun(
   def: UniverseDef,
   run: RunState,
-  prestigeLevels: Readonly<Record<string, number>> = {}
+  prestigeLevels: Readonly<Record<string, number>> = {},
+  shape?: (run: RunState) => void
 ): RunState {
   const isPhaseValid =
     Number.isInteger(run.phase) &&
     run.phase >= 0 &&
     run.phase < def.phases.length;
-  if (!isPhaseValid) return newRun(def, prestigeLevels);
+  if (!isPhaseValid) return newRun(def, prestigeLevels, DEFAULT_SEED, shape);
   const saved = finiteEntries(run.resources);
   const resources = Object.fromEntries(
     def.resources.map((r) => [r.id, saved[r.id] ?? r.initial ?? 0])

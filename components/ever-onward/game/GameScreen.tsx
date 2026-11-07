@@ -44,6 +44,7 @@ import ActionPanel from "./ActionPanel";
 import CountdownBar from "./CountdownBar";
 import { type Effect } from "./EffectFloater";
 import EmberDialog from "./EmberDialog";
+import MapDialog, { type MapMode } from "./map/MapDialog";
 import EmberPanel from "./EmberPanel";
 import EmberTip from "./EmberTip";
 import EndingOverlay from "./EndingOverlay";
@@ -67,9 +68,12 @@ import {
   pixelFont,
   retroFocusClass,
   retroLabelClass,
+  retroPanelClass,
+  retroPrimaryButtonClass,
   retroSecondaryButtonClass,
   pixelClass,
 } from "./retro/retroStyles";
+import { formatDuration } from "@/lib/ever-onward/engine/format";
 import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
@@ -95,6 +99,10 @@ interface GameScreenProps {
   onRestart: () => void;
   /** Starts the universe again from its first part (the menu's Start over). */
   onStartOver: () => void;
+  /** Map universes: play the next run on this square. */
+  onStep?: (key: string) => void;
+  /** Map universes: switch a found artifact with a catch on or off. */
+  onToggleArtifact?: (id: string) => void;
   onLeave: () => void;
   currentSave: SaveData;
   onReplaceSave: (save: SaveData) => void;
@@ -116,6 +124,8 @@ export default function GameScreen({
   onDismissEmberTip,
   onRestart,
   onStartOver,
+  onStep,
+  onToggleArtifact,
   onLeave,
   currentSave,
   onReplaceSave,
@@ -134,15 +144,28 @@ export default function GameScreen({
   const isStorm = ui.audio.isStormy?.(run) ?? false;
   // Once a restart is possible (or embers are banked) the header offers the
   // embers dialog. A finished run shows the panel in the page instead.
+  const hasMap = !!def.map;
   const showsEmbersButton =
-    !run.complete && (canRestart(run) || universe.embers > 0);
+    !hasMap && !run.complete && (canRestart(run) || universe.embers > 0);
   const waitingEmbers = canRestart(run) ? emberReward(def, run) : 0;
   const showsEmberTip =
+    !hasMap &&
     !run.complete &&
     canRestart(run) &&
     !universe.hasSeenEmberTip &&
     overlay === null;
   const [isEmberDialogOpen, setIsEmberDialogOpen] = useState(false);
+  // The map: looked at any time, chosen on after a finished run.
+  const [mapMode, setMapMode] = useState<MapMode | null>(null);
+  const mapButtonRef = useRef<HTMLButtonElement>(null);
+  // A finished run opens the map by itself once (after the ending screen).
+  const [hasAutoOpenedMap, setHasAutoOpenedMap] = useState(false);
+  if (hasMap && run.complete && overlay === null && !hasAutoOpenedMap) {
+    setHasAutoOpenedMap(true);
+    setMapMode("choose");
+  }
+  if (hasAutoOpenedMap && !run.complete) setHasAutoOpenedMap(false);
+  if (mapMode !== null && overlay !== null) setMapMode(null);
   const emberButtonRef = useRef<HTMLButtonElement>(null);
   const [isUpgradesOpen, setIsUpgradesOpen] = useState(false);
   const upgradesButtonRef = useRef<HTMLButtonElement>(null);
@@ -155,7 +178,11 @@ export default function GameScreen({
   // Anything modal (cutscene, ending, either dialog) makes the game behind it
   // inert: no clicks, no focus, hidden from screen readers.
   const isCovered =
-    overlay !== null || isEmberDialogOpen || isUpgradesOpen || isMenuOpen;
+    overlay !== null ||
+    isEmberDialogOpen ||
+    isUpgradesOpen ||
+    isMenuOpen ||
+    mapMode !== null;
   const showsUpgradesButton = hasAnyUpgrade(def, universe);
 
   const primaryId = primaryResourceId(def, run);
@@ -293,6 +320,15 @@ export default function GameScreen({
     onDismissEmberTip();
     setIsEmberDialogOpen(true);
   };
+  const handleCloseMap = useCallback(() => {
+    setMapMode(null);
+    window.setTimeout(() => mapButtonRef.current?.focus(), 0);
+  }, []);
+  const handleStep = (key: string) => {
+    setMapMode(null);
+    onStep?.(key);
+  };
+
   const handleCloseEmbers = useCallback(() => {
     setIsEmberDialogOpen(false);
     // The dialog unmounts first; put focus back on the button that opened it.
@@ -475,6 +511,19 @@ export default function GameScreen({
                 </span>
               </button>
             )}
+            {hasMap && (
+              <button
+                ref={mapButtonRef}
+                type="button"
+                data-testid="eo-map-button"
+                aria-haspopup="dialog"
+                aria-expanded={mapMode !== null}
+                onClick={() => setMapMode(run.complete ? "choose" : "view")}
+                className={`${retroSecondaryButtonClass} shrink-0 text-cyan-100!`}
+              >
+                Map
+              </button>
+            )}
             <button
               ref={menuButtonRef}
               type="button"
@@ -528,7 +577,33 @@ export default function GameScreen({
           />
         )}
 
-        {run.complete && (
+        {run.complete && hasMap && (
+          <section
+            data-testid="eo-map-end"
+            className={`${retroPanelClass} space-y-3 p-4`}
+          >
+            <RetroHeading
+              as="h2"
+              className="text-sm leading-relaxed sm:text-base"
+            >
+              {ui.copy.stillGoing}
+            </RetroHeading>
+            <p className="font-mono text-sm text-slate-200">
+              You finished {def.title} in {formatDuration(run.time)}. Pick the
+              square on {def.map!.title.replace(/^The /, "the ")} where your
+              next run is played.
+            </p>
+            <button
+              type="button"
+              data-testid="eo-map-open-choose"
+              onClick={() => setMapMode("choose")}
+              className={`${retroPrimaryButtonClass} w-full`}
+            >
+              Open the map
+            </button>
+          </section>
+        )}
+        {run.complete && !hasMap && (
           <EmberPanel
             def={def}
             universe={universe}
@@ -667,6 +742,17 @@ export default function GameScreen({
         />
       )}
 
+      {mapMode !== null && (
+        <MapDialog
+          def={def}
+          universe={universe}
+          mode={mapMode}
+          onStep={handleStep}
+          onToggle={(id) => onToggleArtifact?.(id)}
+          onClose={handleCloseMap}
+        />
+      )}
+
       {isMenuOpen && (
         <MenuDialog
           def={def}
@@ -708,7 +794,7 @@ export default function GameScreen({
       {overlay === "ending" && (
         <EndingOverlay
           lines={endingLines}
-          embers={emberReward(def, run)}
+          embers={hasMap ? 0 : emberReward(def, run)}
           label={label}
           labelSingular={prestigeSingular(def)}
           Icon={ui.PrestigeIcon}

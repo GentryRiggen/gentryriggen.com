@@ -101,6 +101,38 @@ test.describe("Ever Onward", () => {
     expect(saved ?? "").not.toContain('"grow"');
   });
 
+  test("the Sea Chart: a finished run reveals a find and steps on", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await openHub(page);
+    await page.getByText("Test mode: jump into any universe").click();
+    await page.getByTestId("eo-jump-map-light-half").click();
+    const reveal = page.getByTestId("eo-map-reveal");
+    await expect(reveal).toBeVisible({ timeout: 20_000 });
+    const next = page.getByTestId("eo-map-reveal-continue");
+    await next.click();
+    await next.click();
+    await expect(reveal).toHaveCount(0);
+    const dialog = page.getByTestId("eo-map-dialog");
+    await expect(dialog).toHaveAttribute("data-mode", "choose");
+    await dialog.locator("[data-choosable]").first().click();
+    await page.getByTestId("eo-map-go").click();
+    await expect(dialog).toHaveCount(0);
+    // The next run opens with its intro, as every new run does.
+    await passCutscene(page);
+    await page.getByTestId("eo-map-button").click();
+    await expect(page.getByTestId("eo-map-dialog")).toHaveAttribute(
+      "data-mode",
+      "view"
+    );
+    await expect(page.getByTestId("eo-map-shelf")).toContainText("of 14");
+    await page.getByRole("button", { name: "Close the map" }).click();
+    await expect(page.getByTestId("lm-artifacts")).toBeAttached();
+  });
+
   test("players without the owner mark see no Test mode", async ({ page }) => {
     await startGame(page);
     await page.getByRole("button", { name: "Menu" }).click();

@@ -1,4 +1,4 @@
-import type { RunState, SaveData, UniverseSave } from "./types";
+import type { MapState, RunState, SaveData, UniverseSave } from "./types";
 
 export const SAVE_KEY = "ever-onward:save";
 /** The key from before the game was renamed from Little Machines. */
@@ -69,6 +69,26 @@ function isRun(v: unknown): v is RunState {
   );
 }
 
+const isSquare = (v: unknown): v is string =>
+  isString(v) && /^\d+,\d+$/.test(v);
+
+/** A readable map, or null (a damaged map starts over, the universe stays). */
+function parseMap(v: unknown): MapState | null {
+  if (!isRecord(v) || !isSquare(v.at)) return null;
+  const { visited, found, off } = v;
+  const isList = (l: unknown, ok: (x: unknown) => boolean) =>
+    Array.isArray(l) && l.every(ok);
+  if (!isList(visited, isSquare)) return null;
+  if (!isList(found, isString) || !isList(off, isString)) return null;
+  return {
+    at: v.at,
+    visited: visited as string[],
+    found: found as string[],
+    off: off as string[],
+    ...(v.done === true ? { done: true } : {}),
+  };
+}
+
 function parseUniverse(v: unknown): UniverseSave | null {
   if (!isRecord(v) || !isRun(v.run)) return null;
   const { best, completions, embers, prestigeUpgrades, hasSeenEmberTip } = v;
@@ -82,6 +102,7 @@ function parseUniverse(v: unknown): UniverseSave | null {
     embers,
     prestigeUpgrades: prestigeUpgrades as Record<string, number>,
     ...(hasSeenEmberTip === true ? { hasSeenEmberTip: true } : {}),
+    ...(parseMap(v.map) ? { map: parseMap(v.map)! } : {}),
   };
 }
 

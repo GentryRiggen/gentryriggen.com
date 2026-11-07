@@ -92,7 +92,7 @@ describe("Ever Onward hub", () => {
     expect(screen.queryByTestId("lm-play-smile")).not.toBeInTheDocument();
   });
 
-  it("shows best time and embers once earned", async () => {
+  it("shows best time and the chart once earned", async () => {
     writeSave({
       ...newSave(),
       seenIntro: true,
@@ -103,14 +103,19 @@ describe("Ever Onward hub", () => {
           completions: 1,
           embers: 7,
           prestigeUpgrades: {},
+          map: { at: "1,0", visited: ["0,0"], found: [], off: [] },
         },
       },
     });
     await renderHub();
     const facts = await screen.findByTestId("lm-facts-light");
     expect(within(facts).getByText("Best time")).toBeInTheDocument();
-    expect(within(facts).getByText("Embers")).toBeInTheDocument();
-    expect(within(facts).getByText("7")).toBeInTheDocument();
+    // Light prestiges on the Sea Chart now; old embers aren't shown.
+    expect(within(facts).queryByText("Embers")).toBeNull();
+    expect(within(facts).getByText("Chart")).toBeInTheDocument();
+    expect(
+      within(facts).getByText("1 of 64 squares, 0 of 14 found")
+    ).toBeInTheDocument();
     expect(within(facts).getByText("1 time")).toBeInTheDocument();
   });
 });

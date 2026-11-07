@@ -110,17 +110,19 @@ export default function EndingOverlay({
               {afterword}
             </p>
           )}
-          <div
-            data-testid="lm-ending-embers"
-            className="flex flex-col items-center gap-2 border-2 border-orange-400/60 bg-orange-950/40 p-3"
-          >
-            <Icon className="h-5" />
-            <p className="font-mono text-sm text-orange-100">
-              This run earned {embers} {embers === 1 ? singular : plural}. Spend
-              them on permanent upgrades, then play again. Every new run goes
-              faster.
-            </p>
-          </div>
+          {embers > 0 && (
+            <div
+              data-testid="lm-ending-embers"
+              className="flex flex-col items-center gap-2 border-2 border-orange-400/60 bg-orange-950/40 p-3"
+            >
+              <Icon className="h-5" />
+              <p className="font-mono text-sm text-orange-100">
+                This run earned {embers} {embers === 1 ? singular : plural}.
+                Spend them on permanent upgrades, then play again. Every new run
+                goes faster.
+              </p>
+            </div>
+          )}
           <button
             ref={buttonRef}
             type="button"

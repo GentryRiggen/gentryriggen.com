@@ -10,6 +10,7 @@ import {
 } from "./hooks";
 import { lightAlert } from "./alerts";
 import { lightGauge, lightGoal } from "./goal";
+import { LIGHT_MAP } from "./map";
 import { PHASES } from "./phases";
 import { PRESTIGE } from "./prestige";
 import { ALL_PROJECTS } from "./projects";
@@ -42,6 +43,7 @@ export const lightUniverse: UniverseDef = {
   goalMeter: lightGoal,
   gauge: lightGauge,
   prestige: PRESTIGE,
+  map: LIGHT_MAP,
   upkeep: (run): Record<string, number> => {
     if (run.phase === 0) return { coins: coastUpkeep(run) };
     return {};
