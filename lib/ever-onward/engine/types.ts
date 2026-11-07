@@ -409,6 +409,70 @@ export interface PrestigeUpgradeDef {
   apply(run: RunState, level: number): void;
 }
 
+/** A map square as "x,y" (column, row); "0,0" is the top-left start. */
+export type SquareKey = string;
+
+/** One small change a map column or row makes to runs played there. */
+export interface SquareChange {
+  /** Plain words, shown on the square before you step ("Calmer seas"). */
+  text: string;
+  apply?(run: RunState): void;
+}
+
+export type ArtifactTier = "big" | "modest" | "odd";
+
+/** Pixel art: rows of palette keys ("." is empty). */
+export type GlyphPalette = Readonly<Record<string, string>>;
+
+/** Something strange on a map square, unknown until a run finishes there. */
+export interface ArtifactDef {
+  id: string;
+  x: number;
+  y: number;
+  name: string;
+  /** What it does, in plain words (shown only once found). */
+  effect: string;
+  /** The downside, if any. Artifacts with a catch can be switched off. */
+  catch?: string;
+  tier: ArtifactTier;
+  glyph: readonly string[];
+  palette: GlyphPalette;
+  /** Shapes every fresh run while it is found and switched on. */
+  apply(run: RunState): void;
+}
+
+export interface MapDef {
+  cols: number;
+  rows: number;
+  /** "The sea chart". */
+  title: string;
+  /** What a step right is called ("Farther coast"). */
+  rightLabel: string;
+  /** What a step down is called ("Deeper dream"). */
+  downLabel: string;
+  /** Per column index: what that column changes. Index 0 changes nothing. */
+  columns: readonly SquareChange[];
+  /** Per row index: what that row changes. Index 0 changes nothing. */
+  rowChanges: readonly SquareChange[];
+  artifacts: readonly ArtifactDef[];
+  /** Shown on the shelf for players who bought the old permanent upgrades. */
+  keepsake: { name: string; glyph: readonly string[]; palette: GlyphPalette };
+}
+
+/** Saved progress on a universe's map. */
+export interface MapState {
+  /** The square the current run is played on. */
+  at: SquareKey;
+  /** Squares a run has been finished on. */
+  visited: SquareKey[];
+  /** Artifact ids found. */
+  found: string[];
+  /** Found artifacts the player switched off. */
+  off: string[];
+  /** A run has been finished on the last square. */
+  done?: boolean;
+}
+
 export interface PrestigeDef {
   /** Plural display name of the prestige currency; "Embers" when unset. */
   label?: string;
@@ -497,6 +561,11 @@ export interface UniverseDef {
   /** A short warning to show right now (e.g. the lamp ran dry), or null. Must only read. */
   alert?(run: RunState): string | null;
   prestige: PrestigeDef;
+  /**
+   * The prestige map (Paperclips style). When set, it replaces the prestige
+   * shop: finished runs step across the map and find artifacts.
+   */
+  map?: MapDef;
   /** Continuous production; dt is seconds, already clamped. */
   tick(run: RunState, dt: number): void;
   /**
@@ -559,6 +628,8 @@ export interface UniverseSave {
    * (read as false).
    */
   hasSeenEmberTip?: boolean;
+  /** Progress on the universe's map; missing means the start square. */
+  map?: MapState;
 }
 
 export interface SaveData {

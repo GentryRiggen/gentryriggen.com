@@ -1,4 +1,5 @@
 import { DEFAULT_SEED, newRun } from "./engine";
+import { freshRun, newMapState } from "./map";
 import type {
   PrestigeUpgradeDef,
   RunState,
@@ -16,6 +17,7 @@ export function newUniverseSave(
     completions: 0,
     embers: 0,
     prestigeUpgrades: {},
+    ...(def.map ? { map: newMapState() } : {}),
   };
 }
 
@@ -50,7 +52,8 @@ export function endRun(
   save: UniverseSave,
   seed: number = DEFAULT_SEED
 ): UniverseSave {
-  if (!canRestart(save.run)) return save;
+  // A map universe moves on with `stepMap` instead.
+  if (def.map || !canRestart(save.run)) return save;
   const { run } = save;
   const best = run.complete
     ? Math.min(save.best ?? Infinity, run.time)
@@ -74,6 +77,8 @@ export function startOver(
   save: UniverseSave,
   seed: number = DEFAULT_SEED
 ): UniverseSave {
+  // On a map, starting over plays the same square again: no reward, no move.
+  if (def.map) return { ...save, run: freshRun(def, save, seed) };
   if (canRestart(save.run)) return endRun(def, save, seed);
   return { ...save, run: newRun(def, save.prestigeUpgrades, seed) };
 }
