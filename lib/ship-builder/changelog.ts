@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.39.2",
+    date: "2026-11-07",
+    title: "Keep building after a delete",
+    highlights: [
+      "Press and hold a part to delete it while you are building, and the part you picked stays picked, so you can carry on placing",
+    ],
+  },
+  {
     version: "2.39.1",
     date: "2026-11-02",
     title: "A steadier sea trial bar",

@@ -27,7 +27,7 @@ export interface PartPress {
 /**
  * Press-and-hold to delete. Window listeners feed the long-press machine, so
  * a hold is tracked even while OrbitControls captures the pointer. On fire it
- * selects the part and requests its deletion, exactly like the Delete button.
+ * deletes the part, keeping any active tool so building carries on.
  */
 export function usePartLongPress(wrapper: RefObject<HTMLElement | null>): {
   ring: RingState | null;
@@ -39,9 +39,7 @@ export function usePartLongPress(wrapper: RefObject<HTMLElement | null>): {
       onFire: (partId) => {
         setRing(null);
         holdClickGuard();
-        const { select, requestDelete } = useShipBuilderStore.getState();
-        select(partId);
-        requestDelete();
+        useShipBuilderStore.getState().deletePart(partId);
       },
       onCancel: () => setRing(null),
     })
